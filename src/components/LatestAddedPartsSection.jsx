@@ -1,6 +1,8 @@
 import React from 'react';
 import { Sparkles, Clock, CheckCircle2, ShoppingCart, MessageSquare, ShieldCheck, MapPin } from 'lucide-react';
 import { LATEST_ADDED_PARTS } from '../data/liveMarketplaceData';
+import { CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID } from '../data/categories';
+import CategoryIconTile from './CategoryIconTile';
 
 export default function LatestAddedPartsSection({ onAddToCart, onQuickView }) {
   return (
@@ -27,7 +29,12 @@ export default function LatestAddedPartsSection({ onAddToCart, onQuickView }) {
             </div>
 
             <div className="part-card-img-box" onClick={() => onQuickView(part)}>
-              <img src={part.imagen} alt={part.titulo} />
+              <CategoryIconTile
+                iconName={CATEGORY_ICON_BY_ID[part.categoria]}
+                color={CATEGORY_COLOR_BY_ID[part.categoria]}
+                image={CATEGORY_IMAGE_BY_ID[part.categoria]}
+                size={36}
+              />
               <span className="discount-red-badge">-{part.descuento}% OFF</span>
             </div>
 

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  X, Check, ShieldCheck, Truck, Star, ShoppingBag, 
-  Store, Car, FileText, AlertTriangle, ChevronRight, CheckCircle2 
+import {
+  X, Check, ShieldCheck, Truck, Star, ShoppingBag,
+  Store, Car, FileText, AlertTriangle, ChevronRight, CheckCircle2
 } from 'lucide-react';
+import { CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID } from '../data/categories';
+import CategoryIconTile from './CategoryIconTile';
 
 export default function ProductQuickViewModal({ product, activeVehicle, onClose, onAddToCart }) {
   const [activeTab, setActiveTab] = useState('specs'); // 'specs' | 'compatibilidad' | 'vendedor'
@@ -25,7 +27,12 @@ export default function ProductQuickViewModal({ product, activeVehicle, onClose,
           {/* Left Column: High-Res Image & Badges */}
           <div className="quickview-media-col">
             <div className="main-image-wrap">
-              <img src={product.imagen} alt={product.titulo} />
+              <CategoryIconTile
+                iconName={CATEGORY_ICON_BY_ID[product.categoria]}
+                color={CATEGORY_COLOR_BY_ID[product.categoria]}
+                image={CATEGORY_IMAGE_BY_ID[product.categoria]}
+                size={64}
+              />
               {product.descuentoPercent > 0 && (
                 <span className="modal-discount-tag">-{product.descuentoPercent}%</span>
               )}

@@ -1,21 +1,9 @@
 import React from 'react';
-import { 
-  Disc, Cpu, Activity, Zap, Droplet, ZapOff, Shield, CircleDot, ChevronRight 
-} from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { CATEGORIES } from '../data/categories';
+import CategoryIconTile from './CategoryIconTile';
 
 export default function CategoryGrid({ selectedCategory, onSelectCategory }) {
-  const iconMap = {
-    Disc: Disc,
-    Cpu: Cpu,
-    Activity: Activity,
-    Zap: Zap,
-    Droplet: Droplet,
-    ZapOff: ZapOff,
-    Shield: Shield,
-    CircleDot: CircleDot
-  };
-
   return (
     <section className="category-section container">
       <div className="section-header">
@@ -41,8 +29,7 @@ export default function CategoryGrid({ selectedCategory, onSelectCategory }) {
               onClick={() => onSelectCategory(isSelected ? null : cat.id)}
             >
               <div className="cat-card-img-wrap">
-                <img src={cat.imagen} alt={cat.nombre} loading="lazy" />
-                <span className="cat-emoji-badge">{cat.emoji}</span>
+                <CategoryIconTile iconName={cat.iconName} color={cat.color} image={cat.image} size={40} />
                 {cat.badge && <span className="cat-top-tag">{cat.badge}</span>}
               </div>
 

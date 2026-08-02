@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  Truck, Store, ShieldCheck, Headphones, Camera, 
-  Search, ShoppingCart, User, ChevronDown, X, Lock, CheckCircle2, Database, Layers, ArrowRight 
+import {
+  Truck, Users, ShieldCheck, MessageCircle, Package, HelpCircle,
+  Search, ShoppingCart, User, ChevronDown, X, CheckCircle2
 } from 'lucide-react';
 import { SIDEBAR_CATEGORIES } from '../data/categories';
 import RepuesTopLogo from './RepuesTopLogo';
 
-export default function Header({ 
-  activeVehicle, 
-  onOpenSellerModal, 
-  cartCount, 
+export default function Header({
+  activeVehicle,
+  cartCount,
   onOpenCart,
   searchQuery,
   setSearchQuery,
@@ -21,42 +20,40 @@ export default function Header({
 
   return (
     <header className="trust-header-main">
-      {/* 1. RESTORED: Top High-Trust Inventory & Security Bar */}
+      {/* 1. Minimal Top Utility Bar */}
       <div className="top-trust-bar-vivid">
         <div className="container top-trust-content-vivid">
           <div className="trust-items-left-vivid">
-            <span className="trust-item-pill">
-              <Database size={14} className="icon-cyan-glow" /> 
-              <span><strong>Red Nacional de Inventarios</strong> (+1.200 Vendedores)</span>
+            <span className="trust-item-plain">
+              <Truck size={15} />
+              <span>Envíos a todo Chile</span>
             </span>
 
-            <span className="top-bar-dot">•</span>
-
-            <span className="trust-item-pill">
-              <Layers size={14} className="icon-blue-glow" /> 
-              <span><strong>+450.000 Repuestos</strong> Sincronizados</span>
+            <span className="trust-item-plain">
+              <Users size={15} />
+              <span>Más de 500 vendedores</span>
             </span>
 
-            <span className="top-bar-dot">•</span>
+            <span className="trust-item-plain">
+              <ShieldCheck size={15} />
+              <span>Compra segura</span>
+            </span>
 
-            <span className="trust-item-pill">
-              <Lock size={13} className="icon-green-glow" /> 
-              <span>Boleta y Factura Electrónica</span>
+            <span className="trust-item-plain">
+              <MessageCircle size={15} />
+              <span>Soporte</span>
             </span>
           </div>
 
           <div className="trust-items-right-vivid">
-            <button className="seller-badge-btn" onClick={onOpenSellerModal}>
-              <Store size={13} className="icon-cyan" /> 
-              <span><strong>¿Vendes repuestos?</strong> Conectar Mi Inventario (Bsale/ERP)</span>
-              <ArrowRight size={12} />
-            </button>
+            <span className="trust-item-plain">
+              <Package size={15} />
+              <span>Mis pedidos</span>
+            </span>
 
-            <span className="top-divider-vivid">|</span>
-
-            <span className="top-help-link-vivid">
-              <Headphones size={13} className="icon-cyan" /> 
-              <span>Mesa de Soporte: <strong>+56 2 2938 4000</strong></span>
+            <span className="trust-item-plain">
+              <HelpCircle size={15} />
+              <span>Ayuda</span>
             </span>
           </div>
         </div>
@@ -66,7 +63,7 @@ export default function Header({
       <div className="container header-brand-row">
         {/* Official Brand Logo */}
         <div className="brand-logo-official" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <RepuesTopLogo height={48} />
+          <RepuesTopLogo height={64} />
         </div>
 
         {/* Central Search Bar Console */}

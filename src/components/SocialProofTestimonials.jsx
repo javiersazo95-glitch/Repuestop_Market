@@ -1,5 +1,7 @@
 import React from 'react';
 import { Star, CheckCircle2, UserCheck, ShieldCheck, MapPin, Building2, Database } from 'lucide-react';
+import { CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID } from '../data/categories';
+import CategoryIconTile from './CategoryIconTile';
 
 export default function SocialProofTestimonials() {
   const reviews = [
@@ -13,7 +15,7 @@ export default function SocialProofTestimonials() {
       comentario: 'Conectamos nuestro sistema Bsale a RepuesTop. Ahora cuando un cliente busca por patente en la web, ve nuestro inventario en vivo y vendemos un 45% más a todo Chile.',
       fecha: 'Hace 2 días',
       patenteComprada: 'VENDEDOR VERIFICADO',
-      autoImg: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=200&q=80'
+      categoria: null
     },
     {
       id: 2,
@@ -25,7 +27,7 @@ export default function SocialProofTestimonials() {
       comentario: 'Ingresé la patente de mi RAV4 y me mostró el stock en tiempo real en una tienda de Santiago. Compré las pastillas cerámicas Brembo con factura y llegaron al día siguiente.',
       fecha: 'Hace 4 días',
       patenteComprada: 'BB-CL-12',
-      autoImg: 'https://images.unsplash.com/photo-1600793575654-910699b5e4d4?auto=format&fit=crop&w=200&q=80'
+      categoria: 'frenos'
     },
     {
       id: 3,
@@ -37,7 +39,7 @@ export default function SocialProofTestimonials() {
       comentario: 'Consultar el inventario por patente nos ahorró horas de llamadas a distribuidores. Encontramos amortiguadores KYB en stock directo de bodega con garantía de calce.',
       fecha: 'Hace 1 semana',
       patenteComprada: 'AA-123-BB',
-      autoImg: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=200&q=80'
+      categoria: 'suspension'
     }
   ];
 
@@ -76,7 +78,21 @@ export default function SocialProofTestimonials() {
             <p className="review-text">"{rev.comentario}"</p>
 
             <div className="review-car-preview-bar">
-              <img src={rev.autoImg} alt="Repuesto Verificado" className="car-preview-thumb" />
+              {rev.categoria ? (
+                <CategoryIconTile
+                  iconName={CATEGORY_ICON_BY_ID[rev.categoria]}
+                  color={CATEGORY_COLOR_BY_ID[rev.categoria]}
+                  size={22}
+                  className="car-preview-thumb"
+                />
+              ) : (
+                <div
+                  className="category-icon-tile car-preview-thumb"
+                  style={{ background: 'linear-gradient(135deg, #0066ff 0%, #0033aa 100%)' }}
+                >
+                  <Database size={22} strokeWidth={1.6} />
+                </div>
+              )}
               <div className="car-preview-info">
                 <span>🗄️ Stock Sincronizado en Tiempo Real</span>
                 <strong>Inventario 100% Verificado</strong>

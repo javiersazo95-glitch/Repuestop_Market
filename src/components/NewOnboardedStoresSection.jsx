@@ -1,6 +1,7 @@
 import React from 'react';
 import { Store, ShieldCheck, MapPin, CheckCircle2, Layers, Star, ArrowRight } from 'lucide-react';
 import { NEW_ONBOARDED_STORES } from '../data/liveMarketplaceData';
+import StoreLogoBadge from './StoreLogoBadge';
 
 export default function NewOnboardedStoresSection({ onOpenSellerModal }) {
   return (
@@ -20,15 +21,14 @@ export default function NewOnboardedStoresSection({ onOpenSellerModal }) {
       </div>
 
       <div className="new-stores-grid-3">
-        {NEW_ONBOARDED_STORES.map(store => (
+        {NEW_ONBOARDED_STORES.map((store, idx) => (
           <div key={store.id} className="new-store-card">
             <div className="store-img-header-wrap">
-              <img src={store.imagenStore} alt={store.nombre} className="store-banner-img" />
-              <div className="store-img-overlay"></div>
-
               <span className="store-onboard-tag">
                 <CheckCircle2 size={12} /> {store.verificadoFecha}
               </span>
+
+              <StoreLogoBadge name={store.nombre} seed={idx} size={64} className="store-logo-floating" />
             </div>
 
             <div className="store-body-content">

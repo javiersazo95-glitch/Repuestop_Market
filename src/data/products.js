@@ -16,7 +16,6 @@ export const PRODUCTS = [
     localFisico: true,
     garantiaDias: 90,
     stock: 14,
-    imagen: '/repuestos_warehouse_bg.jpg',
     compatibilidad: [
       { marca: 'Toyota', modelo: 'RAV4', anioInicio: 2019, anioFin: 2024, motor: '2.5L / Hybrid' },
       { marca: 'Toyota', modelo: 'Corolla Cross', anioInicio: 2021, anioFin: 2024, motor: '2.0L' }
@@ -39,7 +38,6 @@ export const PRODUCTS = [
     localFisico: true,
     garantiaDias: 180,
     stock: 8,
-    imagen: 'https://images.unsplash.com/photo-1615906655593-ad0386982a0f?auto=format&fit=crop&w=500&q=80',
     compatibilidad: [
       { marca: 'Chevrolet', modelo: 'Sail', anioInicio: 2016, anioFin: 2022, motor: '1.5L' }
     ]
@@ -61,7 +59,6 @@ export const PRODUCTS = [
     localFisico: true,
     garantiaDias: 365,
     stock: 22,
-    imagen: 'https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&w=500&q=80',
     compatibilidad: [
       { marca: 'Nissan', modelo: 'Qashqai', anioInicio: 2014, anioFin: 2021, motor: '2.0L' }
     ]
@@ -83,7 +80,6 @@ export const PRODUCTS = [
     localFisico: true,
     garantiaDias: 90,
     stock: 45,
-    imagen: 'https://images.unsplash.com/photo-1615906655593-ad0386982a0f?auto=format&fit=crop&w=500&q=80',
     compatibilidad: [
       { marca: 'Toyota', modelo: 'RAV4', anioInicio: 2019, anioFin: 2024, motor: '2.5L' }
     ]
@@ -105,7 +101,6 @@ export const PRODUCTS = [
     localFisico: true,
     garantiaDias: 180,
     stock: 19,
-    imagen: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=500&q=80',
     compatibilidad: [
       { marca: 'Nissan', modelo: 'Qashqai', anioInicio: 2014, anioFin: 2021, motor: '2.0L' }
     ]
@@ -127,7 +122,6 @@ export const PRODUCTS = [
     localFisico: true,
     garantiaDias: 180,
     stock: 28,
-    imagen: 'https://images.unsplash.com/photo-1588702547919-26089e690ecc?auto=format&fit=crop&w=500&q=80',
     compatibilidad: [
       { marca: 'Ford', modelo: 'Ranger', anioInicio: 2019, anioFin: 2023, motor: '2.2L / 3.2L' }
     ]
@@ -149,7 +143,6 @@ export const PRODUCTS = [
     localFisico: true,
     garantiaDias: 90,
     stock: 60,
-    imagen: 'https://images.unsplash.com/photo-1615906655593-ad0386982a0f?auto=format&fit=crop&w=500&q=80',
     compatibilidad: [
       { marca: 'Toyota', modelo: 'RAV4', anioInicio: 2019, anioFin: 2024, motor: '2.5L' }
     ]
@@ -171,7 +164,6 @@ export const PRODUCTS = [
     localFisico: true,
     garantiaDias: 90,
     stock: 10,
-    imagen: '/repuestos_warehouse_bg.jpg',
     compatibilidad: [
       { marca: 'Toyota', modelo: 'RAV4', anioInicio: 2019, anioFin: 2024, motor: '2.5L' }
     ]

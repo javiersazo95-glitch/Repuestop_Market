@@ -12,8 +12,7 @@ export const LATEST_ADDED_PARTS = [
     verificado: true,
     agregadoHace: 'Hace 4 minutos',
     stockAvailable: 14,
-    compatibilidadSummary: 'Toyota RAV4 2019–2024 / Corolla Cross',
-    imagen: '/repuestos_warehouse_bg.jpg'
+    compatibilidadSummary: 'Toyota RAV4 2019–2024 / Corolla Cross'
   },
   {
     id: 'part-latest-2',
@@ -28,8 +27,7 @@ export const LATEST_ADDED_PARTS = [
     verificado: true,
     agregadoHace: 'Hace 11 minutos',
     stockAvailable: 8,
-    compatibilidadSummary: 'Chevrolet Sail 1.5L / Aveo G3',
-    imagen: 'https://images.unsplash.com/photo-1615906655593-ad0386982a0f?auto=format&fit=crop&w=500&q=80'
+    compatibilidadSummary: 'Chevrolet Sail 1.5L / Aveo G3'
   },
   {
     id: 'part-latest-3',
@@ -44,8 +42,7 @@ export const LATEST_ADDED_PARTS = [
     verificado: true,
     agregadoHace: 'Hace 19 minutos',
     stockAvailable: 22,
-    compatibilidadSummary: 'Nissan Qashqai 2014–2021',
-    imagen: 'https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&w=500&q=80'
+    compatibilidadSummary: 'Nissan Qashqai 2014–2021'
   },
   {
     id: 'part-latest-4',
@@ -60,8 +57,7 @@ export const LATEST_ADDED_PARTS = [
     verificado: true,
     agregadoHace: 'Hace 32 minutos',
     stockAvailable: 2,
-    compatibilidadSummary: 'Nissan X-Trail 2018–2022',
-    imagen: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=500&q=80'
+    compatibilidadSummary: 'Nissan X-Trail 2018–2022'
   }
 ];
 
@@ -75,8 +71,7 @@ export const NEW_ONBOARDED_STORES = [
     verificadoFecha: 'Ingresado Hoy a las 09:30',
     totalPublicaciones: 1420,
     rating: 4.9,
-    especialidad: 'Toyota, Nissan, Hyundai',
-    imagenStore: '/repuestos_warehouse_bg.jpg'
+    especialidad: 'Toyota, Nissan, Hyundai'
   },
   {
     id: 'store-2',
@@ -87,8 +82,7 @@ export const NEW_ONBOARDED_STORES = [
     verificadoFecha: 'Ingresado Hoy a las 11:15',
     totalPublicaciones: 850,
     rating: 4.8,
-    especialidad: 'Repuestos Originales Usados',
-    imagenStore: 'https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&w=300&q=80'
+    especialidad: 'Repuestos Originales Usados'
   },
   {
     id: 'store-3',
@@ -99,8 +93,7 @@ export const NEW_ONBOARDED_STORES = [
     verificadoFecha: 'Ingresado Ayer',
     totalPublicaciones: 3100,
     rating: 5.0,
-    especialidad: 'Frenos, Filtros, Distribución',
-    imagenStore: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=300&q=80'
+    especialidad: 'Frenos, Filtros, Distribución'
   }
 ];
 

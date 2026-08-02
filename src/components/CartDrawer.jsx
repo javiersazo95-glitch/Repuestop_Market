@@ -1,5 +1,7 @@
 import React from 'react';
 import { ShoppingBag, X, Trash2, Plus, Minus, ShieldCheck, Truck, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID } from '../data/categories';
+import CategoryIconTile from './CategoryIconTile';
 
 export default function CartDrawer({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, activeVehicle }) {
   if (!isOpen) return null;
@@ -59,7 +61,12 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onUpdateQuantit
             <div className="cart-items-list">
               {cartItems.map((item) => (
                 <div key={item.id} className="cart-item-row">
-                  <img src={item.imagen} alt={item.titulo} className="item-thumb" />
+                  <CategoryIconTile
+                    iconName={CATEGORY_ICON_BY_ID[item.categoria]}
+                    color={CATEGORY_COLOR_BY_ID[item.categoria]}
+                    size={22}
+                    className="item-thumb"
+                  />
 
                   <div className="item-details">
                     <h4 className="item-title">{item.titulo}</h4>

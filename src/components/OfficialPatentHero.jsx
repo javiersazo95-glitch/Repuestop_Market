@@ -1,37 +1,22 @@
 import React, { useState } from 'react';
-import { 
-  Menu, Cpu, Disc, Activity, GitCommit, Zap, Sun, Shield, 
-  Wind, Droplet, Sparkles, Wrench, Store, 
-  Search, ShieldCheck, CheckCircle2, RefreshCw, AlertCircle, 
-  Truck, Award, Lock, ArrowRight, Check, Star, Building2, Layers, Database
+import {
+  Menu, Store,
+  Search, CheckCircle2, RefreshCw, AlertCircle,
+  Award, Lock, ArrowRight, Check, Star, Building2
 } from 'lucide-react';
 import { SIDEBAR_CATEGORIES } from '../data/categories';
 import { searchVehicleByPatente } from '../data/sampleVehicles';
+import CategoryIconTile from './CategoryIconTile';
 
 export default function OfficialPatentHero({ activeVehicle, onSelectVehicle, onOpenSellerModal, selectedCategory, onSelectCategory }) {
   const [inputPatente, setInputPatente] = useState(activeVehicle ? activeVehicle.patente : '');
   const [isSearching, setIsSearching] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const iconMap = {
-    Cpu: Cpu,
-    Disc: Disc,
-    Activity: Activity,
-    GitCommit: GitCommit,
-    Zap: Zap,
-    Sun: Sun,
-    Shield: Shield,
-    Wind: Wind,
-    Droplet: Droplet,
-    Sparkles: Sparkles,
-    Wrench: Wrench
-  };
-
   const samplePatentes = [
     { code: 'BB-CL-12', label: 'Toyota RAV4 2021 LE 4WD' },
     { code: 'HG-89-21', label: 'Chevrolet Sail 2018 LT' },
-    { code: 'AA-123-BB', label: 'Nissan Qashqai 2020 CVT' },
-    { code: 'DF-77-11', label: 'Ford Ranger 2022 XLT 4x4' }
+    { code: 'AA-123-BB', label: 'Nissan Qashqai 2020 CVT' }
   ];
 
   const handleSearch = (codeToUse) => {
@@ -65,17 +50,16 @@ export default function OfficialPatentHero({ activeVehicle, onSelectVehicle, onO
 
           <ul className="sidebar-categories-list">
             {SIDEBAR_CATEGORIES.map(cat => {
-              const IconComp = iconMap[cat.iconName] || Cpu;
               const isSelected = selectedCategory === cat.id;
 
               return (
-                <li 
-                  key={cat.id} 
+                <li
+                  key={cat.id}
                   className={`cat-list-item ${isSelected ? 'selected' : ''}`}
                   onClick={() => onSelectCategory(isSelected ? null : cat.id)}
                 >
                   <div className="item-inner">
-                    <span className="cat-emoji">{cat.emoji}</span>
+                    <CategoryIconTile iconName={cat.iconName} color={cat.color} size={14} className="cat-icon-tile" />
                     <span>{cat.nombre}</span>
                   </div>
                 </li>
@@ -93,30 +77,24 @@ export default function OfficialPatentHero({ activeVehicle, onSelectVehicle, onO
           </div>
         </aside>
 
-        {/* HERO CARD WITH EXACT USER-PROVIDED AUTO PARTS WAREHOUSE BACKGROUND */}
+        {/* HERO CARD — engine photo treated in a sober gray duotone */}
         <div className="hero-parts-shop-card">
-          {/* User-Provided Real Auto Parts Warehouse Shelves Background Image */}
-          <div className="shop-bg-image-container">
-            <img 
-              src="/repuestos_warehouse_bg.jpg" 
-              alt="Bodega de Repuestos Automotrices Chile" 
-              className="shop-main-bg-img"
+          <div className="shop-bg-modern">
+            <img
+              src="/repuestos_hero_bg.jpg"
+              alt="Motor y repuestos automotrices"
+              className="shop-bg-photo"
             />
-            <div className="inventory-vivid-overlay"></div>
+            <div className="shop-bg-duotone-overlay"></div>
+            <div className="shop-bg-legibility-overlay"></div>
           </div>
 
           {/* Foreground Content Focused on Inventory Lookup */}
           <div className="shop-hero-foreground">
-            {/* Top Live Inventory System Header */}
-            <div className="shop-badge-header-row">
-              <div className="shop-live-tag">
-                <Database size={16} className="text-yellow" />
-                <span>SISTEMA DE INVENTARIO CONECTADO EN TIEMPO REAL CON VENDEDORES</span>
-              </div>
-
-              <div className="shop-stock-tag">
-                <Layers size={14} /> +450.000 Repuestos en Stock Digital
-              </div>
+            {/* Minimal live-status indicator */}
+            <div className="shop-live-tag">
+              <span className="live-pulse-dot"></span>
+              <span>Búsqueda en tiempo real en la red de vendedores</span>
             </div>
 
             {/* Clear Title Focused on Inventory System & Vendors */}
@@ -176,35 +154,19 @@ export default function OfficialPatentHero({ activeVehicle, onSelectVehicle, onO
 
               {/* Quick Patente Presets */}
               <div className="preset-patentes-bar-shop">
-                <span className="preset-label-shop">Probar patentes en el inventario:</span>
+                <span className="preset-label-shop">Probar con:</span>
                 <div className="preset-chips-shop">
                   {samplePatentes.map((sample, idx) => (
                     <button
                       key={idx}
                       className="sample-chip-btn-shop"
                       onClick={() => handleSearch(sample.code)}
+                      title={sample.label}
                     >
-                      <strong className="code">🚘 {sample.code}</strong>
-                      <span className="desc">({sample.label})</span>
+                      {sample.code}
                     </button>
                   ))}
                 </div>
-              </div>
-            </div>
-
-            {/* Connected Stores Inventory Micro Badges */}
-            <div className="shop-stores-footer-row">
-              <div className="store-footer-pill">
-                <Database size={14} className="text-cyan" />
-                <span>Inventario Autopartes San Cristóbal (Stock Sincronizado)</span>
-              </div>
-              <div className="store-footer-pill">
-                <ShieldCheck size={14} className="text-green" />
-                <span>Bodega Desarmaduría San Antonio (RUT Verificado)</span>
-              </div>
-              <div className="store-footer-pill">
-                <Truck size={14} className="text-yellow" />
-                <span>Tienda Valparaíso (Envíos 24h a Regiones)</span>
               </div>
             </div>
 
