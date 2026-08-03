@@ -5,7 +5,8 @@ import {
   Award, Lock, ArrowRight, Check, Star, Building2
 } from 'lucide-react';
 import { SIDEBAR_CATEGORIES } from '../data/categories';
-import { searchVehicleByPatente } from '../data/sampleVehicles';
+import { searchVehicleByPatenteApi } from '../services/api';
+import { adaptVehicle } from '../services/adapters';
 import CategoryIconTile from './CategoryIconTile';
 
 export default function OfficialPatentHero({ activeVehicle, onSelectVehicle, onOpenSellerModal, selectedCategory, onSelectCategory }) {
@@ -19,7 +20,8 @@ export default function OfficialPatentHero({ activeVehicle, onSelectVehicle, onO
     { code: 'AA-123-BB', label: 'Nissan Qashqai 2020 CVT' }
   ];
 
-  const handleSearch = (codeToUse) => {
+  // Identificación real por patente: GET /api/v1/vehiculos/patente/{patente}.
+  const handleSearch = async (codeToUse) => {
     const val = codeToUse || inputPatente;
     if (!val || val.trim().length < 3) {
       setErrorMsg('Ingresa una patente válida (ejemplo: BB-CL-12)');
@@ -28,14 +30,19 @@ export default function OfficialPatentHero({ activeVehicle, onSelectVehicle, onO
     setErrorMsg('');
     setIsSearching(true);
 
-    setTimeout(() => {
-      const result = searchVehicleByPatente(val);
-      if (result) {
+    try {
+      const result = adaptVehicle(await searchVehicleByPatenteApi(val.trim()));
+      if (result && !result.requiereIngresoManual && result.marca) {
         onSelectVehicle(result);
-        setInputPatente(result.patente);
+        setInputPatente(result.patente || val.trim());
+      } else {
+        setErrorMsg(result?.mensaje || 'No encontramos ese vehículo. Verifica la patente e intenta de nuevo.');
       }
+    } catch (err) {
+      setErrorMsg(err.message || 'No se pudo consultar la patente. Intenta nuevamente.');
+    } finally {
       setIsSearching(false);
-    }, 300);
+    }
   };
 
   return (

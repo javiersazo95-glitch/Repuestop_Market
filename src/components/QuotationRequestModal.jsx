@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import {
-  X, MessageSquare, Send, CheckCircle2, ShieldCheck, Car, Building2, Phone, Mail, FileText
+  X, MessageSquare, Send, CheckCircle2, ShieldCheck, Car, Building2, Phone, Mail, FileText, AlertCircle
 } from 'lucide-react';
+import { sendDirectQuotationApi } from '../services/api';
 
 export default function QuotationRequestModal({ product, activeVehicle, isOpen, onClose }) {
-  if (!isOpen || !product) return null;
-
   const [formData, setFormData] = useState({
     nombre: '',
     telefono: '',
@@ -18,21 +17,46 @@ export default function QuotationRequestModal({ product, activeVehicle, isOpen, 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [ticketNum, setTicketNum] = useState('');
+  const [submitError, setSubmitError] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  // El canal se envía con los valores que espera CotizacionDirectaRequestDTO.
+  const CANAL_POR_METODO = {
+    whatsapp: 'WHATSAPP',
+    email: 'EMAIL_PDF',
+    telefono: 'TELEFONO',
+  };
+
+  // POST /api/v1/cotizaciones/directa
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError('');
 
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const respuesta = await sendDirectQuotationApi({
+        productoId: product.id,
+        proveedorId: product.proveedorId ?? null,
+        nombreCliente: formData.nombre,
+        whatsapp: formData.telefono,
+        email: formData.email,
+        patente: formData.patente,
+        vin: activeVehicle?.vin || null,
+        canalPreferido: CANAL_POR_METODO[formData.metodoContacto] || 'WHATSAPP',
+        observaciones: formData.mensaje,
+      });
+
+      setTicketNum(respuesta?.ticketNumber || '');
       setIsSuccess(true);
-      setTicketNum(`COT-${Math.floor(100000 + Math.random() * 900000)}`);
-    }, 600);
+    } catch (err) {
+      setSubmitError(err.message || 'No se pudo enviar la solicitud de cotización.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
@@ -47,6 +71,11 @@ export default function QuotationRequestModal({ product, activeVehicle, isOpen, 
     });
     onClose();
   };
+
+  // El corte va después de los hooks: hacerlo antes cambiaba la cantidad de hooks
+  // entre renders y React lanzaba "Rendered more hooks than during the previous render"
+  // al abrir el modal.
+  if (!isOpen || !product) return null;
 
   const sellerName = typeof product.vendedor === 'object'
     ? (product.vendedor.nombre || 'Tienda Verificada')
@@ -167,6 +196,13 @@ export default function QuotationRequestModal({ product, activeVehicle, isOpen, 
                     className="modal-form-textarea"
                   />
                 </div>
+
+                {submitError && (
+                  <div className="modal-form-error" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626', fontSize: '13px', marginTop: '10px' }}>
+                    <AlertCircle size={15} />
+                    <span>{submitError}</span>
+                  </div>
+                )}
 
                 <button
                   type="submit"

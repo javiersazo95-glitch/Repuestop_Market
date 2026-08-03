@@ -5,7 +5,8 @@ import {
   Search, ShieldCheck, CheckCircle2, RefreshCw, AlertCircle, Sparkles as SparklesIcon, Truck, Award, ChevronRight, Check
 } from 'lucide-react';
 import { SIDEBAR_CATEGORIES } from '../data/categories';
-import { searchVehicleByPatente } from '../data/sampleVehicles';
+import { searchVehicleByPatenteApi } from '../services/api';
+import { adaptVehicle } from '../services/adapters';
 
 export default function HeroWithSidebar({ activeVehicle, onSelectVehicle, onOpenSellerModal, selectedCategory, onSelectCategory }) {
   const [inputPatente, setInputPatente] = useState(activeVehicle ? activeVehicle.patente : '');
@@ -33,7 +34,8 @@ export default function HeroWithSidebar({ activeVehicle, onSelectVehicle, onOpen
     { code: 'DF-77-11', info: 'Ford Ranger 2022' }
   ];
 
-  const handlePatenteSearch = (codeToUse) => {
+  // Identificación real por patente: GET /api/v1/vehiculos/patente/{patente}.
+  const handlePatenteSearch = async (codeToUse) => {
     const val = codeToUse || inputPatente;
     if (!val || val.trim().length < 3) {
       setErrorMsg('Por favor ingresa una patente válida (ej: BB-CL-12)');
@@ -42,14 +44,19 @@ export default function HeroWithSidebar({ activeVehicle, onSelectVehicle, onOpen
     setErrorMsg('');
     setIsSearching(true);
 
-    setTimeout(() => {
-      const result = searchVehicleByPatente(val);
-      if (result) {
+    try {
+      const result = adaptVehicle(await searchVehicleByPatenteApi(val.trim()));
+      if (result && !result.requiereIngresoManual && result.marca) {
         onSelectVehicle(result);
-        setInputPatente(result.patente);
+        setInputPatente(result.patente || val.trim());
+      } else {
+        setErrorMsg(result?.mensaje || 'No encontramos ese vehículo. Verifica la patente e intenta de nuevo.');
       }
+    } catch (err) {
+      setErrorMsg(err.message || 'No se pudo consultar la patente. Intenta nuevamente.');
+    } finally {
       setIsSearching(false);
-    }, 300);
+    }
   };
 
   return (

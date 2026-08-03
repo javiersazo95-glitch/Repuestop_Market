@@ -4,10 +4,13 @@ import {
   Clock, ArrowLeft, X, CheckCircle2, RotateCcw, Truck, ChevronLeft, ChevronRight,
   Eye, ShoppingCart, Car, Wrench, Layers, Building2, Phone, Mail, MessageSquare, Globe, AlertCircle
 } from 'lucide-react';
-import { PRODUCTS } from '../data/products';
 import { SIDEBAR_CATEGORIES, CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID } from '../data/categories';
-import { searchVehicleByPatente } from '../data/sampleVehicles';
 import CategoryIconTile from './CategoryIconTile';
+import { getStoreProductsApi, getStoreProfileApi, searchVehicleByPatenteApi } from '../services/api';
+import { adaptPage, adaptProduct, adaptStore, adaptVehicle } from '../services/adapters';
+
+// El backend acota el tamaño de página a 100; esta vista filtra y pagina en cliente.
+const STORE_PRODUCTS_FETCH_SIZE = 100;
 
 export default function StorePublicProfileView({
   store,
@@ -20,9 +23,25 @@ export default function StorePublicProfileView({
   const [activeVehicle, setActiveVehicle] = useState(initialActiveVehicle);
   const [patentInput, setPatentInput] = useState('');
   const [patentError, setPatentError] = useState('');
-  
+  const [patentSearching, setPatentSearching] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [purchaseType, setPurchaseType] = useState('TODOS'); // 'TODOS' | 'DIRECTA' | 'COTIZACION'
+
+  // Estos cinco filtros se usaban en el JSX y en la lógica de filtrado pero nunca
+  // se declararon, por lo que la vista lanzaba ReferenceError al montarse.
+  const [selectedCategory, setSelectedCategory] = useState('TODAS');
+  const [selectedCondition, setSelectedCondition] = useState('TODOS');
+  const [selectedBrand, setSelectedBrand] = useState('TODAS');
+  const [onlyCompatible, setOnlyCompatible] = useState(!!initialActiveVehicle);
+  const [sortBy, setSortBy] = useState('relevancia');
+
+  // Datos reales de la tienda y su inventario
+  const [storeProducts, setStoreProducts] = useState([]);
+  const [storeProductsTotal, setStoreProductsTotal] = useState(null);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState(null);
+  const [fetchedStore, setFetchedStore] = useState(null);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -77,30 +96,86 @@ export default function StorePublicProfileView({
     };
   };
 
-  const currentStore = resolveStore(store);
+  // La ficha traída del backend manda sobre lo que llegó por prop (el directorio
+  // entrega una versión resumida de la tienda).
+  const resolvedStore = resolveStore(fetchedStore || store);
+  const storeId = (typeof store === 'object' && store) ? (store.id ?? null) : null;
+  // El total de publicaciones es el totalElements real del inventario de la tienda,
+  // no el valor de relleno que arrastra resolveStore.
+  const currentStore = storeProductsTotal !== null
+    ? { ...resolvedStore, totalPublicaciones: storeProductsTotal }
+    : resolvedStore;
 
-  // Filter products for THIS store
-  const storeProducts = PRODUCTS.filter((prod) => {
-    if (!currentStore || !currentStore.nombre) return true;
-    const storeNameLower = String(currentStore.nombre).toLowerCase().trim();
-    const prodSellerLower = String(prod.vendedor || '').toLowerCase().trim();
-    return prodSellerLower.includes(storeNameLower) || storeNameLower.includes(prodSellerLower) || true;
-  });
+  // Ficha pública de la tienda: GET /api/v1/tiendas/{proveedorId}
+  useEffect(() => {
+    if (!storeId) return undefined;
+    let isMounted = true;
 
-  // Handle Patent Search Submit
-  const handlePatentSearch = (e) => {
+    getStoreProfileApi(storeId)
+      .then((data) => {
+        if (isMounted) setFetchedStore(adaptStore(data));
+      })
+      .catch(() => {
+        // Si la ficha falla se sigue mostrando lo que entregó el directorio.
+        if (isMounted) setFetchedStore(null);
+      });
+
+    return () => { isMounted = false; };
+  }, [storeId]);
+
+  // Inventario real de ESTA tienda: GET /api/v1/tiendas/{proveedorId}/productos
+  useEffect(() => {
+    if (!storeId) {
+      setProductsLoading(false);
+      return undefined;
+    }
+
+    let isMounted = true;
+    setProductsLoading(true);
+
+    getStoreProductsApi(storeId, { page: 0, size: STORE_PRODUCTS_FETCH_SIZE })
+      .then((data) => {
+        if (!isMounted) return;
+        const page = adaptPage(data, adaptProduct);
+        setStoreProducts(page.items);
+        setStoreProductsTotal(page.total);
+        setProductsError(null);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setProductsError(err.message || 'No se pudo cargar el catálogo de esta tienda.');
+      })
+      .finally(() => {
+        if (isMounted) setProductsLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [storeId]);
+
+  // Identificación real por patente: GET /api/v1/vehiculos/patente/{patente}.
+  const handlePatentSearch = async (e) => {
     e.preventDefault();
     if (!patentInput.trim()) {
       setPatentError('Ingresa una patente válida (ej. BBCL12)');
       return;
     }
-    const resolved = searchVehicleByPatente(patentInput);
-    if (resolved) {
-      setActiveVehicle(resolved);
-      setOnlyCompatible(true);
-      setPatentError('');
-    } else {
-      setPatentError('No se encontró el vehículo para esta patente.');
+
+    setPatentSearching(true);
+    setPatentError('');
+    try {
+      const resolved = adaptVehicle(await searchVehicleByPatenteApi(patentInput.trim()));
+      if (resolved && !resolved.requiereIngresoManual && resolved.marca) {
+        setActiveVehicle(resolved);
+        setOnlyCompatible(true);
+      } else {
+        setActiveVehicle(null);
+        setPatentError(resolved?.mensaje || 'No se encontró el vehículo para esta patente.');
+      }
+    } catch (err) {
+      setActiveVehicle(null);
+      setPatentError(err.message || 'No se pudo consultar la patente.');
+    } finally {
+      setPatentSearching(false);
     }
   };
 
@@ -295,9 +370,9 @@ export default function StorePublicProfileView({
               onChange={(e) => setPatentInput(e.target.value)}
               className="patent-filter-input"
             />
-            <button type="submit" className="btn-patent-search-blue">
+            <button type="submit" className="btn-patent-search-blue" disabled={patentSearching}>
               <Search size={14} />
-              <span>Buscar Vehículo</span>
+              <span>{patentSearching ? 'Buscando…' : 'Buscar Vehículo'}</span>
             </button>
           </form>
 
@@ -448,7 +523,19 @@ export default function StorePublicProfileView({
 
           {/* Right Parts Grid */}
           <main className="catalog-parts-main">
-            {paginatedProducts.length > 0 ? (
+            {productsLoading ? (
+              <div className="directory-empty-state">
+                <Package size={56} className="empty-icon-gray" />
+                <h3>Cargando catálogo de la tienda…</h3>
+                <p>Consultando los repuestos publicados por {currentStore.nombre}.</p>
+              </div>
+            ) : productsError ? (
+              <div className="directory-empty-state">
+                <AlertCircle size={56} className="empty-icon-gray" />
+                <h3>No se pudo cargar el catálogo</h3>
+                <p>{productsError}</p>
+              </div>
+            ) : paginatedProducts.length > 0 ? (
               <>
                 <div className="parts-cards-grid-catalog">
                   {paginatedProducts.map((prod) => (

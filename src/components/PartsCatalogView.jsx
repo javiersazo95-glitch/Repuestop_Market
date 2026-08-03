@@ -4,8 +4,18 @@ import {
   Clock, ArrowRight, ArrowLeft, X, CheckCircle2, RotateCcw, Tag, Truck,
   ChevronLeft, ChevronRight, Eye, ShoppingCart, Car, Wrench, Layers, AlertCircle, Globe, MessageSquare
 } from 'lucide-react';
-import { PRODUCTS } from '../data/products';
-import { searchVehicleByPatente } from '../data/sampleVehicles';
+// CategoryIconTile y SIDEBAR_CATEGORIES se usaban sin estar importados, por lo que la
+// vista lanzaba ReferenceError al montarse (el ErrorBoundary la reemplazaba por completo).
+import CategoryIconTile from './CategoryIconTile';
+import {
+  SIDEBAR_CATEGORIES, CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID
+} from '../data/categories';
+import { getPublicProductsApi, searchVehicleByPatenteApi } from '../services/api';
+import { adaptPage, adaptProduct, adaptVehicle } from '../services/adapters';
+
+// El backend acota el tamaño de página a 100. Esta vista filtra y pagina en cliente,
+// así que se trae un bloque grande y la UI hace el resto del trabajo.
+const CATALOG_FETCH_SIZE = 100;
 
 export default function PartsCatalogView({
   onBackToStore,
@@ -14,10 +24,34 @@ export default function PartsCatalogView({
   onOpenQuote,
   activeVehicle: initialActiveVehicle
 }) {
-  const [products] = useState(PRODUCTS);
+  const [products, setProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState(null);
   const [activeVehicle, setActiveVehicle] = useState(initialActiveVehicle);
   const [patentInput, setPatentInput] = useState('');
   const [patentError, setPatentError] = useState('');
+  const [patentSearching, setPatentSearching] = useState(false);
+
+  // Catálogo real: GET /api/v1/inventario/productos (endpoint público).
+  useEffect(() => {
+    let isMounted = true;
+
+    getPublicProductsApi({ page: 0, size: CATALOG_FETCH_SIZE, sort: 'createdAt,desc' })
+      .then((data) => {
+        if (!isMounted) return;
+        setProducts(adaptPage(data, adaptProduct).items);
+        setProductsError(null);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setProductsError(err.message || 'No se pudo cargar el catálogo de repuestos.');
+      })
+      .finally(() => {
+        if (isMounted) setProductsLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('TODAS');
@@ -30,20 +64,30 @@ export default function PartsCatalogView({
   const [maxPrice, setMaxPrice] = useState(1000000);
   const [sortBy, setSortBy] = useState('relevancia');
 
-  // Handle Patent Search
-  const handlePatentSearch = (e) => {
+  // Identificación real por patente: GET /api/v1/vehiculos/patente/{patente}.
+  const handlePatentSearch = async (e) => {
     e.preventDefault();
     if (!patentInput.trim()) {
       setPatentError('Ingresa una patente (ej. BBCL12)');
       return;
     }
-    const resolved = searchVehicleByPatente(patentInput);
-    if (resolved) {
-      setActiveVehicle(resolved);
-      setOnlyCompatible(true);
-      setPatentError('');
-    } else {
-      setPatentError('No se encontró vehículo para esta patente.');
+
+    setPatentSearching(true);
+    setPatentError('');
+    try {
+      const resolved = adaptVehicle(await searchVehicleByPatenteApi(patentInput.trim()));
+      if (resolved && !resolved.requiereIngresoManual && resolved.marca) {
+        setActiveVehicle(resolved);
+        setOnlyCompatible(true);
+      } else {
+        setActiveVehicle(null);
+        setPatentError(resolved?.mensaje || 'No se encontró vehículo para esta patente.');
+      }
+    } catch (err) {
+      setActiveVehicle(null);
+      setPatentError(err.message || 'No se pudo consultar la patente.');
+    } finally {
+      setPatentSearching(false);
     }
   };
 
@@ -256,9 +300,9 @@ export default function PartsCatalogView({
               onChange={(e) => setPatentInput(e.target.value)}
               className="patent-filter-input"
             />
-            <button type="submit" className="btn-patent-search-blue">
+            <button type="submit" className="btn-patent-search-blue" disabled={patentSearching}>
               <Search size={14} />
-              <span>Buscar Vehículo</span>
+              <span>{patentSearching ? 'Buscando…' : 'Buscar Vehículo'}</span>
             </button>
           </form>
 
@@ -451,7 +495,19 @@ export default function PartsCatalogView({
 
           {/* Parts Cards Column (Right Grid) */}
           <main className="catalog-parts-main">
-            {paginatedProducts.length > 0 ? (
+            {productsLoading ? (
+              <div className="directory-empty-state">
+                <Package size={56} className="empty-icon-gray" />
+                <h3>Cargando catálogo…</h3>
+                <p>Consultando los repuestos publicados por las tiendas.</p>
+              </div>
+            ) : productsError ? (
+              <div className="directory-empty-state">
+                <AlertCircle size={56} className="empty-icon-gray" />
+                <h3>No se pudo cargar el catálogo</h3>
+                <p>{productsError}</p>
+              </div>
+            ) : paginatedProducts.length > 0 ? (
               <>
                 <div className="parts-cards-grid-catalog">
                   {paginatedProducts.map((prod) => (

@@ -19,8 +19,6 @@ import QuotationRequestModal from './components/QuotationRequestModal';
 import StorePublicProfileView from './components/StorePublicProfileView';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
-import { PRODUCTS } from './data/products';
-import { SAMPLE_PATENTES } from './data/sampleVehicles';
 
 function MainApp() {
   const { isLoggedIn } = useAuth();
@@ -30,9 +28,17 @@ function MainApp() {
   const [selectedStore, setSelectedStore] = useState(null);
 
   // Active Vehicle Garage State
+  //
+  // La clave lleva sufijo de versión: la versión anterior guardaba el vehículo de
+  // demostración de src/data/sampleVehicles.js, que al volver de localStorage activaba
+  // el filtro "solo compatibles" contra un auto que no existe en el inventario real y
+  // dejaba el catálogo en cero resultados. Cambiar la clave descarta ese dato una vez.
+  const ACTIVE_VEHICLE_KEY = 'repuestop_active_vehicle_v2';
+
   const [activeVehicle, setActiveVehicle] = useState(() => {
     try {
-      const saved = localStorage.getItem('repuestop_active_vehicle');
+      localStorage.removeItem('repuestop_active_vehicle'); // dato de la era mock
+      const saved = localStorage.getItem(ACTIVE_VEHICLE_KEY);
       if (saved && saved !== 'undefined') {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object') return parsed;
@@ -40,15 +46,17 @@ function MainApp() {
     } catch (e) {
       console.warn('Omitiendo parseo de vehículo previo:', e);
     }
-    return SAMPLE_PATENTES['BBCL12']; // Toyota RAV4 default
+    // Sin vehículo precargado: el usuario identifica su auto por patente contra
+    // el backend (GET /api/v1/vehiculos/patente/{patente}).
+    return null;
   });
 
   useEffect(() => {
     try {
       if (activeVehicle) {
-        localStorage.setItem('repuestop_active_vehicle', JSON.stringify(activeVehicle));
+        localStorage.setItem(ACTIVE_VEHICLE_KEY, JSON.stringify(activeVehicle));
       } else {
-        localStorage.removeItem('repuestop_active_vehicle');
+        localStorage.removeItem(ACTIVE_VEHICLE_KEY);
       }
     } catch (e) {
       // ignore quota or storage errors
@@ -66,9 +74,8 @@ function MainApp() {
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [quoteProduct, setQuoteProduct] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [cartItems, setCartItems] = useState([
-    { ...PRODUCTS[0], quantity: 1 }
-  ]);
+  // El carrito parte vacío; antes venía precargado con un producto de ejemplo.
+  const [cartItems, setCartItems] = useState([]);
 
   const handleAddToCart = (product) => {
     setCartItems(prev => {

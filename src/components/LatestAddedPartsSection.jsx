@@ -1,10 +1,39 @@
-import React from 'react';
-import { Sparkles, Clock, CheckCircle2, ShoppingCart, MessageSquare, ShieldCheck, MapPin } from 'lucide-react';
-import { LATEST_ADDED_PARTS } from '../data/liveMarketplaceData';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, Clock, CheckCircle2, ShoppingCart, MessageSquare, ShieldCheck, MapPin, Loader2, Inbox } from 'lucide-react';
 import { CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
+import { getPublicProductsApi } from '../services/api';
+import { adaptPage, adaptLatestPart } from '../services/adapters';
+
+const LATEST_PARTS_COUNT = 4;
 
 export default function LatestAddedPartsSection({ onAddToCart, onQuickView, onOpenQuote, onOpenCatalog }) {
+  const [parts, setParts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Feed real de las últimas publicaciones: GET /api/v1/inventario/productos
+  // ordenado por fecha de creación descendente (endpoint público).
+  useEffect(() => {
+    let isMounted = true;
+
+    getPublicProductsApi({ page: 0, size: LATEST_PARTS_COUNT, sort: 'createdAt,desc' })
+      .then((data) => {
+        if (!isMounted) return;
+        setParts(adaptPage(data, adaptLatestPart).items);
+        setError(null);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setError(err.message || 'No se pudieron cargar las últimas publicaciones.');
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, []);
+
   return (
     <section className="latest-parts-section container">
       <div className="section-title-header-flex">
@@ -27,13 +56,35 @@ export default function LatestAddedPartsSection({ onAddToCart, onQuickView, onOp
         </div>
       </div>
 
+      {loading && (
+        <div className="latest-parts-state">
+          <Loader2 size={22} className="spin-icon" />
+          <span>Cargando últimas publicaciones…</span>
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="latest-parts-state latest-parts-state-error">
+          <Inbox size={22} />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {!loading && !error && parts.length === 0 && (
+        <div className="latest-parts-state">
+          <Inbox size={22} />
+          <span>Aún no hay repuestos publicados en el sistema.</span>
+        </div>
+      )}
+
       <div className="latest-parts-grid-4">
-        {LATEST_ADDED_PARTS.map(part => (
+        {parts.map(part => (
           <div key={part.id} className="latest-part-card-rich">
             <div className="part-card-top-tag">
               <span className="time-ago-pill"><Clock size={12} /> {part.agregadoHace}</span>
               <span className="stock-count-pill">{part.stockAvailable} en stock</span>
             </div>
+
 
             <div className="part-card-img-box" onClick={() => onQuickView(part)}>
               <CategoryIconTile
@@ -42,7 +93,9 @@ export default function LatestAddedPartsSection({ onAddToCart, onQuickView, onOp
                 image={CATEGORY_IMAGE_BY_ID[part.categoria]}
                 size={36}
               />
-              <span className="discount-red-badge">-{part.descuento}% OFF</span>
+              {part.descuento > 0 && (
+                <span className="discount-red-badge">-{part.descuento}% OFF</span>
+              )}
             </div>
 
             <div className="part-card-body-rich">
@@ -62,8 +115,16 @@ export default function LatestAddedPartsSection({ onAddToCart, onQuickView, onOp
 
               <div className="price-and-action-row">
                 <div className="price-stack">
-                  <span className="price-main-bold">${part.precio.toLocaleString('es-CL')}</span>
-                  <span className="price-old">${part.precioOriginal.toLocaleString('es-CL')}</span>
+                  {part.soloCotizacion ? (
+                    <span className="price-main-bold">A cotizar</span>
+                  ) : (
+                    <>
+                      <span className="price-main-bold">${part.precio.toLocaleString('es-CL')}</span>
+                      {part.precioOriginal > 0 && (
+                        <span className="price-old">${part.precioOriginal.toLocaleString('es-CL')}</span>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 <div className="part-btn-group">

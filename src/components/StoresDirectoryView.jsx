@@ -4,17 +4,20 @@ import {
   Star, Package, Clock, ArrowRight, ArrowLeft, X, CheckCircle2, RotateCcw,
   Store, Tag, Truck, Bike, Globe, ChevronLeft, ChevronRight, Car
 } from 'lucide-react';
-import { NEW_ONBOARDED_STORES } from '../data/liveMarketplaceData';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
 import { useAuth } from '../context/AuthContext';
-import { searchVehicleByPatente } from '../data/sampleVehicles';
+import { getPublicStoresApi } from '../services/api';
+import { adaptPage, adaptStore } from '../services/adapters';
+
+// El backend acota el tamaño de página a 100. El directorio filtra y pagina en
+// cliente, así que se trae un bloque grande y se deja que la UI haga el resto.
+const STORES_FETCH_SIZE = 100;
 
 export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   const { user } = useAuth();
-  const [stores, setStores] = useState(NEW_ONBOARDED_STORES);
-  const [activeVehicle, setActiveVehicle] = useState(null);
-  const [patentInput, setPatentInput] = useState('');
-  const [patentError, setPatentError] = useState('');
+  const [stores, setStores] = useState([]);
+  const [storesLoading, setStoresLoading] = useState(true);
+  const [storesError, setStoresError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryType, setSelectedCategoryType] = useState('TODAS');
   const [selectedRegion, setSelectedRegion] = useState('TODAS');
@@ -64,6 +67,27 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedCategoryType, selectedRegion, selectedShipping, selectedBrand, sortBy, itemsPerPage]);
+
+  // Directorio real de tiendas: GET /api/v1/tiendas/publicas (endpoint público).
+  useEffect(() => {
+    let isMounted = true;
+
+    getPublicStoresApi({ page: 0, size: STORES_FETCH_SIZE })
+      .then((data) => {
+        if (!isMounted) return;
+        setStores(adaptPage(data, adaptStore).items);
+        setStoresError(null);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setStoresError(err.message || 'No se pudo cargar el directorio de tiendas.');
+      })
+      .finally(() => {
+        if (isMounted) setStoresLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, []);
 
   // Synchronize authenticated user profile photo / cover photo with their store card
   const getSyncedStores = () => {
@@ -173,22 +197,6 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
       .map((s) => s.trim())
       .filter(Boolean);
   }
-
-  const handlePatentSearch = (e) => {
-    e.preventDefault();
-    if (!patentInput.trim()) {
-      setPatentError('Ingresa una patente (ej. BBCL12)');
-      return;
-    }
-    const resolved = searchVehicleByPatente(patentInput);
-    if (resolved) {
-      setActiveVehicle(resolved);
-      setSelectedBrand(resolved.marca);
-      setPatentError('');
-    } else {
-      setPatentError('No se encontró vehículo para esta patente.');
-    }
-  };
 
   return (
     <div className="stores-directory-view-wrapper">
@@ -353,7 +361,19 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
 
           {/* Stores Cards Column (Right Grid) */}
           <main className="directory-stores-main">
-            {paginatedStores.length > 0 ? (
+            {storesLoading ? (
+              <div className="directory-empty-state">
+                <Building2 size={56} className="empty-icon-gray" />
+                <h3>Cargando tiendas…</h3>
+                <p>Consultando el directorio de casas de repuestos acreditadas.</p>
+              </div>
+            ) : storesError ? (
+              <div className="directory-empty-state">
+                <Building2 size={56} className="empty-icon-gray" />
+                <h3>No se pudo cargar el directorio</h3>
+                <p>{storesError}</p>
+              </div>
+            ) : paginatedStores.length > 0 ? (
               <>
                 <div className="stores-cards-grid-directory">
                   {paginatedStores.map((store) => {

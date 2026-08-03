@@ -1,0 +1,291 @@
+/**
+ * Capa de adaptación backend -> UI.
+ *
+ * Los componentes de este repo fueron construidos contra los mocks de `src/data/*`,
+ * mientras que el backend Spring Boot devuelve DTOs con otros nombres de campo
+ * (y, en varios casos, el mismo dato duplicado en inglés y español: storeName /
+ * tiendaNombre, sellerCity / city). Estas funciones normalizan esa diferencia en un
+ * solo lugar para que los componentes no tengan que conocer la forma del backend.
+ */
+
+import { SIDEBAR_CATEGORIES } from '../data/categories';
+
+const CATEGORY_IDS = SIDEBAR_CATEGORIES.map((c) => c.id);
+
+/**
+ * El backend devuelve el nombre de la categoría como texto libre ("Sistema de Frenos",
+ * "Motor y Distribución"). La UI colorea e iconiza por el id corto del mock, así que se
+ * resuelve por coincidencia de palabra clave y cae en 'motor' si no hay match.
+ */
+const CATEGORY_KEYWORDS = {
+  frenos: ['freno', 'brake', 'pastilla', 'disco'],
+  motor: ['motor', 'engine', 'distribuc', 'correa', 'bujia', 'bujía'],
+  suspension: ['suspens', 'direcc', 'amortigua', 'rotula', 'rótula'],
+  iluminacion: ['ilumina', 'ampolleta', 'luz', 'luces', 'foco', 'far'],
+  aceites: ['aceite', 'filtro', 'lubric', 'oil'],
+  electrico: ['electric', 'eléctric', 'encendido', 'bateria', 'batería', 'alternador'],
+  carroceria: ['carroc', 'espejo', 'paragolpe', 'parachoque', 'puerta', 'capot'],
+  neumaticos: ['neumat', 'neumát', 'llanta', 'rueda', 'tire'],
+};
+
+export function normalizeCategoryId(rawCategoria) {
+  if (!rawCategoria) return 'motor';
+
+  const texto = String(rawCategoria).toLowerCase().trim();
+  if (CATEGORY_IDS.includes(texto)) return texto;
+
+  for (const [id, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some((k) => texto.includes(k))) return id;
+  }
+  return 'motor';
+}
+
+function toNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Descuento porcentual derivado de precio vs precioAnterior. El backend no lo entrega
+ * calculado y la UI lo muestra como badge.
+ */
+function calcularDescuento(precio, precioOriginal) {
+  const p = toNumber(precio);
+  const po = toNumber(precioOriginal);
+  if (!p || !po || po <= p) return 0;
+  return Math.round(((po - p) / po) * 100);
+}
+
+/**
+ * "Hace 4 minutos" a partir de createdAt, para el feed de últimos agregados.
+ */
+export function formatRelativeTime(isoDate) {
+  if (!isoDate) return 'Recién agregado';
+
+  const fecha = new Date(isoDate);
+  if (Number.isNaN(fecha.getTime())) return 'Recién agregado';
+
+  const segundos = Math.floor((Date.now() - fecha.getTime()) / 1000);
+  if (segundos < 60) return 'Hace instantes';
+
+  const minutos = Math.floor(segundos / 60);
+  if (minutos < 60) return `Hace ${minutos} ${minutos === 1 ? 'minuto' : 'minutos'}`;
+
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return `Hace ${horas} ${horas === 1 ? 'hora' : 'horas'}`;
+
+  const dias = Math.floor(horas / 24);
+  if (dias < 30) return `Hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
+
+  return fecha.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/**
+ * Arma la lista de compatibilidad. El backend entrega o bien un JSON de grupos
+ * (compatibilityGroupsJson) o los campos sueltos marca/modelo/años/motor.
+ */
+function mapCompatibilidad(dto) {
+  if (dto.compatibilityGroupsJson) {
+    try {
+      const grupos = JSON.parse(dto.compatibilityGroupsJson);
+      if (Array.isArray(grupos) && grupos.length > 0) {
+        return grupos.map((g) => ({
+          marca: g.marca || g.brand || '',
+          modelo: g.modelo || g.model || '',
+          anioInicio: toNumber(g.anioDesde ?? g.anioInicio ?? g.yearFrom),
+          anioFin: toNumber(g.anioHasta ?? g.anioFin ?? g.yearTo),
+          motor: g.motor || g.engine || '',
+        }));
+      }
+    } catch {
+      // JSON malformado en BD: se cae a los campos sueltos de abajo.
+    }
+  }
+
+  if (!dto.compatibilidadMarca && !dto.compatibilidadModelo) return [];
+
+  return [{
+    marca: dto.compatibilidadMarca || '',
+    modelo: dto.compatibilidadModelo || '',
+    anioInicio: toNumber(dto.anioDesde),
+    anioFin: toNumber(dto.anioHasta),
+    motor: dto.motor || '',
+  }];
+}
+
+export function compatibilidadSummary(compatibilidad) {
+  if (!Array.isArray(compatibilidad) || compatibilidad.length === 0) {
+    return 'Consultar compatibilidad';
+  }
+  const [primera] = compatibilidad;
+  const anios = primera.anioInicio && primera.anioFin
+    ? ` ${primera.anioInicio}–${primera.anioFin}`
+    : '';
+  const resto = compatibilidad.length > 1 ? ` +${compatibilidad.length - 1} más` : '';
+  return `${primera.marca} ${primera.modelo}${anios}${resto}`.trim();
+}
+
+/**
+ * ProveedorProductoResponseDTO -> forma de PRODUCTS (src/data/products.js).
+ */
+export function adaptProduct(dto) {
+  if (!dto) return null;
+
+  const precio = toNumber(dto.precio) ?? 0;
+  const precioOriginal = toNumber(dto.precioAnterior);
+  const compatibilidad = mapCompatibilidad(dto);
+  const imagenes = Array.isArray(dto.imageUrls) ? dto.imageUrls.filter(Boolean) : [];
+
+  return {
+    id: dto.id,
+    titulo: dto.nombrePublicado || dto.repuestoNombre || 'Repuesto sin nombre',
+    categoria: normalizeCategoryId(dto.categoria),
+    subcategoria: dto.repuestoNombre || '',
+    oemCode: dto.referenciaOem || dto.skuProveedor || dto.codigoInterno || '',
+    descripcion: dto.descripcion || '',
+    precio,
+    precioOriginal,
+    descuento: calcularDescuento(precio, precioOriginal),
+    vendidos: toNumber(dto.salesCount) ?? 0,
+    // El backend duplica estos campos en inglés/español según el endpoint.
+    vendedor: dto.storeName || dto.tiendaNombre || 'Tienda RepuesTop',
+    proveedorId: dto.proveedorId,
+    ciudadVendedor: dto.sellerCity || dto.city || '',
+    vendedorVerificado: Boolean(dto.sellerFounder) || dto.sellerTrustLevel === 'VERIFICADO',
+    vendedorFundador: Boolean(dto.sellerFounder),
+    localFisico: Boolean(dto.sellerHours),
+    metodosEnvio: dto.sellerShippingMethods || '',
+    rating: toNumber(dto.productRating) ?? toNumber(dto.sellerRating),
+    reviewCount: toNumber(dto.productReviewCount) ?? 0,
+    stock: toNumber(dto.stock) ?? 0,
+    condicion: dto.condicion || '',
+    imagen: imagenes[0] || null,
+    imagenes,
+    logoTienda: dto.storeIconUrl || null,
+    requiereChasis: Boolean(dto.requiereChasis),
+    soloCotizacion: dto.pricingMode === 'COTIZACION' || precio <= 0,
+    createdAt: dto.createdAt || null,
+    compatibilidad,
+  };
+}
+
+/**
+ * ProveedorProductoResponseDTO -> forma de LATEST_ADDED_PARTS.
+ */
+export function adaptLatestPart(dto) {
+  const producto = adaptProduct(dto);
+  if (!producto) return null;
+
+  return {
+    ...producto,
+    ciudad: producto.ciudadVendedor,
+    verificado: producto.vendedorVerificado,
+    agregadoHace: formatRelativeTime(dto.createdAt),
+    stockAvailable: producto.stock,
+    compatibilidadSummary: compatibilidadSummary(producto.compatibilidad),
+  };
+}
+
+const STORE_FALLBACK_COLORS = ['#0066ff', '#059669', '#7c3aed', '#d97706', '#ff5757', '#0891b2'];
+
+export function getStoreInitials(nombre) {
+  if (!nombre) return 'RT';
+  return String(nombre)
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((palabra) => palabra.charAt(0).toUpperCase())
+    .join('');
+}
+
+/**
+ * TiendaResponseDTO -> forma de NEW_ONBOARDED_STORES.
+ */
+export function adaptStore(dto, index = 0) {
+  if (!dto) return null;
+
+  const nombre = dto.storeName || dto.nombreTienda || 'Tienda RepuesTop';
+  const ciudad = [dto.comuna, dto.region].filter(Boolean).join(', ');
+  // El backend entrega shippingMethods como CSV; la UI espera un arreglo.
+  const metodosEnvio = typeof dto.shippingMethods === 'string'
+    ? dto.shippingMethods.split(',').map((m) => m.trim()).filter(Boolean)
+    : Array.isArray(dto.shippingMethods) ? dto.shippingMethods : [];
+
+  return {
+    id: dto.proveedorId || dto.sellerId || dto.storeId || dto.tiendaId,
+    nombre,
+    initials: getStoreInitials(nombre),
+    bgColor: STORE_FALLBACK_COLORS[index % STORE_FALLBACK_COLORS.length],
+    textColor: '#ffffff',
+    rut: dto.taxId || '',
+    tipo: dto.giro || 'Casa de Repuestos',
+    ciudad: ciudad || 'Chile',
+    direccion: dto.address || '',
+    telefono: dto.phone || '',
+    horario: dto.hours || '',
+    abierta: Boolean(dto.isOpen ?? dto.open),
+    estado: dto.status || null,
+    verificadoFecha: dto.createdAt
+      ? `Ingresada ${formatRelativeTime(dto.createdAt).toLowerCase()}`
+      : 'Verificada recientemente',
+    totalPublicaciones: toNumber(dto.totalPublicaciones) ?? 0,
+    rating: toNumber(dto.rating) ?? 0,
+    reviewCount: toNumber(dto.reviewCount) ?? 0,
+    especialidad: dto.giro || '',
+    metodosEnvio,
+    fundador: Boolean(dto.founder),
+    logoUrl: dto.logoUrl || null,
+    coverUrl: dto.coverUrl || null,
+  };
+}
+
+/**
+ * VehiculoIdentificadoDTO -> forma de SAMPLE_PATENTES.
+ * `requiereIngresoManual` indica que ni la BD local ni la API externa identificaron
+ * el vehículo; la UI debe ofrecer el ingreso manual en ese caso.
+ */
+export function adaptVehicle(dto) {
+  if (!dto) return null;
+
+  return {
+    vehiculoConsultadoId: dto.vehiculoConsultadoId || null,
+    catalogoId: dto.catalogoId || null,
+    patente: dto.patente || '',
+    marca: dto.marca || '',
+    modelo: [dto.modelo, dto.version].filter(Boolean).join(' '),
+    anio: toNumber(dto.anio),
+    motor: dto.numeroMotor || '',
+    transmision: dto.transmision || '',
+    vin: dto.vin || dto.chasis || '',
+    combustible: dto.tipoCombustible || '',
+    color: dto.color || '',
+    imagen: null,
+    totalRepuestos: null,
+    fuente: dto.fuenteIdentificacion || null,
+    requiereIngresoManual: Boolean(dto.requiereIngresoManual),
+    mensaje: dto.mensaje || null,
+  };
+}
+
+/**
+ * Normaliza las dos formas de respuesta paginada que devuelve el backend:
+ * `Page` de Spring (content/totalElements/totalPages/number) en /tiendas/publicas, y
+ * ProductoPageResponseDTO (content/totalElements/totalPages/currentPage) en catálogo.
+ */
+export function adaptPage(response, itemAdapter) {
+  if (!response) {
+    return { items: [], total: 0, totalPages: 0, page: 0 };
+  }
+
+  const content = Array.isArray(response.content)
+    ? response.content
+    : Array.isArray(response) ? response : [];
+
+  return {
+    items: content.map((item, index) => itemAdapter(item, index)).filter(Boolean),
+    total: toNumber(response.totalElements) ?? content.length,
+    totalPages: toNumber(response.totalPages) ?? 1,
+    page: toNumber(response.currentPage ?? response.number) ?? 0,
+  };
+}

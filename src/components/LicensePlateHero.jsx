@@ -3,7 +3,9 @@ import {
   Car, Search, CheckCircle2, ShieldCheck, Zap, 
   ArrowRight, RefreshCw, AlertCircle, Sparkles, Store, Award, ChevronRight
 } from 'lucide-react';
-import { searchVehicleByPatente, POPULAR_MARCAS, ANIOS_DISPONIBLES } from '../data/sampleVehicles';
+import { POPULAR_MARCAS, ANIOS_DISPONIBLES } from '../data/sampleVehicles';
+import { searchVehicleByPatenteApi } from '../services/api';
+import { adaptVehicle } from '../services/adapters';
 
 export default function LicensePlateHero({ activeVehicle, onSelectVehicle, onOpenSellerModal }) {
   const [searchTab, setSearchTab] = useState('patente'); // 'patente' | 'manual'
@@ -24,7 +26,8 @@ export default function LicensePlateHero({ activeVehicle, onSelectVehicle, onOpe
     { code: 'DF-77-11', info: 'Ford Ranger 2022' }
   ];
 
-  const handlePatenteSearch = (patenteToUse) => {
+  // Identificación real por patente: GET /api/v1/vehiculos/patente/{patente}.
+  const handlePatenteSearch = async (patenteToUse) => {
     const val = patenteToUse || inputPatente;
     if (!val || val.trim().length < 3) {
       setErrorMsg('Por favor ingresa una patente válida (mínimo 3 caracteres)');
@@ -34,14 +37,19 @@ export default function LicensePlateHero({ activeVehicle, onSelectVehicle, onOpe
     setErrorMsg('');
     setIsSearching(true);
 
-    setTimeout(() => {
-      const result = searchVehicleByPatente(val);
-      if (result) {
+    try {
+      const result = adaptVehicle(await searchVehicleByPatenteApi(val.trim()));
+      if (result && !result.requiereIngresoManual && result.marca) {
         onSelectVehicle(result);
-        setInputPatente(result.patente);
+        setInputPatente(result.patente || val.trim());
+      } else {
+        setErrorMsg(result?.mensaje || 'No encontramos ese vehículo. Verifica la patente e intenta de nuevo.');
       }
+    } catch (err) {
+      setErrorMsg(err.message || 'No se pudo consultar la patente. Intenta nuevamente.');
+    } finally {
       setIsSearching(false);
-    }, 400);
+    }
   };
 
   const handleManualSearch = (e) => {

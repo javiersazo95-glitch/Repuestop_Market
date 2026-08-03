@@ -179,10 +179,72 @@ export async function getSellerStoreApi(proveedorId) {
   return fetchApi(`/proveedores/${proveedorId}/tienda`, { method: 'GET' });
 }
 
-export async function updateOrderStatusApi(orderId, estado) {
+// El backend expone PUT /pedidos/{pedidoId}/estado (PedidoController). Con PATCH
+// responde 405. El `pin` es opcional y solo lo exigen algunas transiciones de estado.
+export async function updateOrderStatusApi(orderId, estado, pin) {
   return fetchApi(`/pedidos/${orderId}/estado`, {
-    method: 'PATCH',
-    body: JSON.stringify({ estado }),
+    method: 'PUT',
+    body: JSON.stringify(pin ? { estado, pin } : { estado }),
   });
+}
+
+/**
+ * Marketplace Endpoints (Unificados con Spring Boot Backend)
+ */
+
+export async function getPublicStoresApi({ page = 0, size = 12, texto } = {}) {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (texto) params.set('texto', texto);
+  return fetchApi(`/tiendas/publicas?${params.toString()}`, { method: 'GET' });
+}
+
+export async function getStoreProfileApi(storeId) {
+  return fetchApi(`/tiendas/${storeId}`, { method: 'GET' });
+}
+
+export async function getStoreProductsApi(storeId, { page = 0, size = 12, texto, categoriaId } = {}) {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (texto) params.set('texto', texto);
+  if (categoriaId) params.set('categoriaId', String(categoriaId));
+  return fetchApi(`/tiendas/${storeId}/productos?${params.toString()}`, { method: 'GET' });
+}
+
+export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, categoriaId, marcaId, precioMin, precioMax, sort = 'precio,asc' } = {}) {
+  const params = new URLSearchParams({ page: String(page), size: String(size), sort });
+  if (texto) params.set('texto', texto);
+  if (patente) params.set('patente', patente);
+  if (soloCotizacion !== undefined) params.set('soloCotizacion', String(soloCotizacion));
+  if (categoriaId) params.set('categoriaId', String(categoriaId));
+  if (marcaId) params.set('marcaId', String(marcaId));
+  if (precioMin) params.set('precioMin', String(precioMin));
+  if (precioMax) params.set('precioMax', String(precioMax));
+  return fetchApi(`/inventario/productos?${params.toString()}`, { method: 'GET' });
+}
+
+export async function sendDirectQuotationApi(quoteData) {
+  return fetchApi('/cotizaciones/directa', {
+    method: 'POST',
+    body: JSON.stringify(quoteData),
+  });
+}
+
+/**
+ * Identificación por patente. El backend exige sesión en este endpoint porque cada
+ * consulta no cacheada golpea una API externa facturada (ver SecurityConfig), así que
+ * el 401 se traduce a un mensaje accionable en vez de "no autorizado".
+ */
+export async function searchVehicleByPatenteApi(patente) {
+  try {
+    return await fetchApi(`/vehiculos/patente/${encodeURIComponent(patente)}`, { method: 'GET' });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      throw new ApiError(
+        'Inicia sesión para identificar tu vehículo por patente.',
+        401,
+        error.data
+      );
+    }
+    throw error;
+  }
 }
 
