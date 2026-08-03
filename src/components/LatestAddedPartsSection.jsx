@@ -4,7 +4,7 @@ import { LATEST_ADDED_PARTS } from '../data/liveMarketplaceData';
 import { CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
 
-export default function LatestAddedPartsSection({ onAddToCart, onQuickView }) {
+export default function LatestAddedPartsSection({ onAddToCart, onQuickView, onOpenQuote, onOpenCatalog }) {
   return (
     <section className="latest-parts-section container">
       <div className="section-title-header-flex">
@@ -17,7 +17,14 @@ export default function LatestAddedPartsSection({ onAddToCart, onQuickView }) {
           <p>Publicaciones sincronizadas en tiempo real desde los sistemas de casas de repuestos y desarmadurías en Chile.</p>
         </div>
 
-        <span className="live-update-tag"><Clock size={14} /> Actualizado automáticamente cada 5 min</span>
+        <div className="latest-header-right-actions">
+          <span className="live-update-tag"><Clock size={14} /> Actualizado automáticamente cada 5 min</span>
+          {onOpenCatalog && (
+            <button className="btn-view-directory-blue" onClick={onOpenCatalog}>
+              <span>Ver Todos los Repuestos →</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="latest-parts-grid-4">
@@ -60,7 +67,11 @@ export default function LatestAddedPartsSection({ onAddToCart, onQuickView }) {
                 </div>
 
                 <div className="part-btn-group">
-                  <button className="btn-quote-chat" title="Cotizar por chat con el vendedor">
+                  <button
+                    className="btn-quote-chat"
+                    title="Cotizar por chat con el vendedor"
+                    onClick={() => onOpenQuote ? onOpenQuote(part) : onQuickView(part)}
+                  >
                     <MessageSquare size={15} />
                   </button>
                   <button className="btn-add-cart-red" onClick={() => onAddToCart(part)}>

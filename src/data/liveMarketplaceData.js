@@ -63,37 +63,96 @@ export const LATEST_ADDED_PARTS = [
 
 export const NEW_ONBOARDED_STORES = [
   {
+    id: 'store-tiensoft',
+    nombre: 'Tiensoft AutoRepuestos',
+    initials: 'TS',
+    bgColor: '#0066ff',
+    textColor: '#ffffff',
+    rut: '77.589.410-8',
+    tipo: 'Importador y Distribuidor Directo',
+    ciudad: 'Santiago, RM',
+    verificadoFecha: 'Verificada Recientemente',
+    totalPublicaciones: 2450,
+    rating: 4.95,
+    especialidad: 'Toyota, Chevrolet, Nissan, Hyundai',
+    metodosEnvio: ['Retiro en tienda', 'Envío dentro de la comuna', 'Envío fuera de la comuna'],
+    logoUrl: '/tiensoft_logo.jpg',
+    coverUrl: '/tiensoft_cover.jpg',
+  },
+  {
     id: 'store-1',
     nombre: 'Autopartes San Cristóbal',
+    initials: 'SC',
+    bgColor: '#ff5757',
+    textColor: '#ffffff',
     rut: '76.849.210-K',
     tipo: 'Casa de Repuestos Multimarca',
     ciudad: 'Santiago, RM',
     verificadoFecha: 'Ingresado Hoy a las 09:30',
     totalPublicaciones: 1420,
     rating: 4.9,
-    especialidad: 'Toyota, Nissan, Hyundai'
+    especialidad: 'Toyota, Nissan, Hyundai',
+    metodosEnvio: ['Retiro en tienda', 'Envío dentro de la comuna', 'Envío fuera de la comuna']
   },
   {
     id: 'store-2',
     nombre: 'Desarmaduría San Antonio',
+    initials: 'SA',
+    bgColor: '#ffa000',
+    textColor: '#ffffff',
     rut: '77.102.450-3',
     tipo: 'Desarmaduría Certificada',
     ciudad: 'San Antonio, Valparaíso',
     verificadoFecha: 'Ingresado Hoy a las 11:15',
     totalPublicaciones: 850,
     rating: 4.8,
-    especialidad: 'Repuestos Originales Usados'
+    especialidad: 'Repuestos Originales Usados',
+    metodosEnvio: ['Retiro en tienda', 'Envío dentro de la comuna']
   },
   {
     id: 'store-3',
     nombre: 'Importadora Repuestos del Sur',
+    initials: 'RD',
+    bgColor: '#ccff00',
+    textColor: '#0f172a',
     rut: '76.512.980-4',
     tipo: 'Importador Directo OEM',
     ciudad: 'Concepción, Biobío',
     verificadoFecha: 'Ingresado Ayer',
     totalPublicaciones: 3100,
     rating: 5.0,
-    especialidad: 'Frenos, Filtros, Distribución'
+    especialidad: 'Frenos, Filtros, Distribución',
+    metodosEnvio: ['Envío dentro de la comuna', 'Envío fuera de la comuna']
+  },
+  {
+    id: 'store-4',
+    nombre: 'Distribuidora Norte Repuestos',
+    initials: 'DN',
+    bgColor: '#7c3aed',
+    textColor: '#ffffff',
+    rut: '76.992.110-5',
+    tipo: 'Distribuidor Oficial de Marca',
+    ciudad: 'Antofagasta',
+    verificadoFecha: 'Ingresado Esta Semana',
+    totalPublicaciones: 1890,
+    rating: 4.85,
+    especialidad: 'Ford, Chevrolet, Volkswagen',
+    metodosEnvio: ['Retiro en tienda', 'Envío fuera de la comuna']
+  },
+  {
+    id: 'store-5',
+    nombre: 'Frenos & Suspensión Italia',
+    initials: 'FI',
+    bgColor: '#059669',
+    textColor: '#ffffff',
+    rut: '77.401.890-2',
+    tipo: 'Casa de Repuestos Multimarca',
+    ciudad: 'Santiago, RM',
+    verificadoFecha: 'Ingresado Esta Semana',
+    totalPublicaciones: 1250,
+    rating: 4.92,
+    especialidad: 'Toyota, Nissan, Honda',
+    metodosEnvio: ['Retiro en tienda', 'Envío dentro de la comuna', 'Envío fuera de la comuna']
   }
 ];
 

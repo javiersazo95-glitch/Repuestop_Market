@@ -1,15 +1,23 @@
 import React, { useState } from 'react';
 import {
   Truck, Users, ShieldCheck, MessageCircle, Package, HelpCircle,
-  Search, ShoppingCart, User, ChevronDown, X, CheckCircle2
+  Search, ShoppingCart, User, ChevronDown, X, CheckCircle2, LogOut, Store, Car, LayoutDashboard,
+  Building2, Wrench
 } from 'lucide-react';
 import { SIDEBAR_CATEGORIES } from '../data/categories';
 import RepuesTopLogo from './RepuesTopLogo';
+import { useAuth } from '../context/AuthContext';
 
 export default function Header({
   activeVehicle,
   cartCount,
   onOpenCart,
+  onOpenAuthModal,
+  onOpenSellerModal,
+  onOpenProfile,
+  onOpenStores,
+  onOpenCatalog,
+  onOpenHelp,
   searchQuery,
   setSearchQuery,
   onSearchSubmit,
@@ -17,6 +25,22 @@ export default function Header({
   onSelectCategory
 }) {
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const { user, isLoggedIn, role, logout } = useAuth();
+
+  const handleUserBoxClick = () => {
+    if (isLoggedIn) {
+      setShowUserMenu(!showUserMenu);
+    } else {
+      onOpenAuthModal();
+    }
+  };
+
+  const handleLogout = () => {
+    setShowUserMenu(false);
+    logout();
+  };
 
   return (
     <header className="trust-header-main">
@@ -29,7 +53,7 @@ export default function Header({
               <span>Envíos a todo Chile</span>
             </span>
 
-            <span className="trust-item-plain">
+            <span className="trust-item-plain" onClick={onOpenStores} style={{ cursor: 'pointer' }} title="Ver Directorio Completo de Tiendas">
               <Users size={15} />
               <span>Más de 500 vendedores</span>
             </span>
@@ -39,19 +63,19 @@ export default function Header({
               <span>Compra segura</span>
             </span>
 
-            <span className="trust-item-plain">
+            <span className="trust-item-plain" onClick={onOpenHelp} style={{ cursor: 'pointer' }} title="Centro de Soporte y Mediación">
               <MessageCircle size={15} />
               <span>Soporte</span>
             </span>
           </div>
 
           <div className="trust-items-right-vivid">
-            <span className="trust-item-plain">
+            <span className="trust-item-plain" onClick={handleUserBoxClick} style={{ cursor: 'pointer' }}>
               <Package size={15} />
               <span>Mis pedidos</span>
             </span>
 
-            <span className="trust-item-plain">
+            <span className="trust-item-plain" onClick={onOpenHelp} style={{ cursor: 'pointer' }} title="Centro de Ayuda y Preguntas Frecuentes">
               <HelpCircle size={15} />
               <span>Ayuda</span>
             </span>
@@ -107,12 +131,82 @@ export default function Header({
 
         {/* User Account & Cart Drawer Trigger */}
         <div className="header-user-group">
-          <div className="user-login-box">
-            <User size={22} className="user-avatar-icon" />
-            <div className="user-meta">
-              <span className="user-sub">Portal Clientes</span>
-              <span className="user-main">Iniciar sesión <ChevronDown size={12} /></span>
+          <div className={`user-login-box ${isLoggedIn ? 'logged-in' : ''}`} onClick={handleUserBoxClick}>
+            <div className="avatar-wrap">
+              {isLoggedIn && user?.userProfileUrl ? (
+                <img src={user.userProfileUrl} alt="" className="user-avatar-photo" referrerPolicy="no-referrer" />
+              ) : isLoggedIn && role === 'SELLER' ? (
+                <Store size={20} className="user-avatar-icon seller-icon" />
+              ) : (
+                <User size={22} className="user-avatar-icon" />
+              )}
             </div>
+
+            <div className="user-meta">
+              {isLoggedIn ? (
+                <>
+                  <span className="user-sub">
+                    {role === 'SELLER' ? 'Tienda Vendedora' : 'Modo Comprador'}
+                  </span>
+                  <span className="user-main font-semibold">
+                    {user?.userName || user?.storeName || user?.email?.split('@')[0] || 'Mi Cuenta'}
+                    <ChevronDown size={12} />
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="user-sub">Portal Clientes</span>
+                  <span className="user-main">Iniciar sesión <ChevronDown size={12} /></span>
+                </>
+              )}
+            </div>
+
+            {/* Dropdown Menu when Logged In */}
+            {isLoggedIn && showUserMenu && (
+              <div className="user-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                <div className="user-dropdown-header">
+                  {user?.userProfileUrl && (
+                    <img src={user.userProfileUrl} alt="" className="dropdown-user-photo" referrerPolicy="no-referrer" />
+                  )}
+                  <span className="dropdown-user-name">{user?.userName || user?.storeName || 'Usuario Repuestop'}</span>
+                  <span className="dropdown-user-email">{user?.email}</span>
+                  <span className={`dropdown-role-badge ${role === 'SELLER' ? 'badge-seller' : 'badge-buyer'}`}>
+                    {role === 'SELLER' ? 'PROVEEDOR ACTIVO' : 'COMPRADOR ACTIVO'}
+                  </span>
+                </div>
+
+                <div className="user-dropdown-body">
+                  <div className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.(); }}>
+                    <LayoutDashboard size={15} />
+                    <span>Mi Perfil</span>
+                  </div>
+
+                  <div className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenStores?.(); }}>
+                    <Building2 size={15} />
+                    <span>Directorio de Tiendas Verificadas</span>
+                  </div>
+
+                  <div className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenCatalog?.(); }}>
+                    <Wrench size={15} />
+                    <span>Catálogo General de Repuestos</span>
+                  </div>
+
+                  {role === 'SELLER' && (
+                    <div className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.(); }}>
+                      <Store size={15} />
+                      <span>Panel Tienda / Inventario</span>
+                    </div>
+                  )}
+
+                  <div className="dropdown-divider" />
+
+                  <div className="dropdown-item logout-item" onClick={handleLogout}>
+                    <LogOut size={15} />
+                    <span>Cerrar Sesión</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="cart-trigger-box" onClick={onOpenCart}>
@@ -128,7 +222,29 @@ export default function Header({
         </div>
       </div>
 
-      {/* 3. Active Garage Vehicle Tag Bar */}
+      {/* 3. Quick Navigation Bar with Action Buttons */}
+      <div className="header-quick-nav-bar">
+        <div className="container quick-nav-inner">
+          <button className="quick-nav-btn btn-nav-stores" onClick={onOpenStores}>
+            <Building2 size={15} />
+            <span>Visitar Tiendas Verificadas</span>
+          </button>
+          <button className="quick-nav-btn btn-nav-catalog" onClick={onOpenCatalog}>
+            <Wrench size={15} />
+            <span>Catálogo General de Repuestos</span>
+          </button>
+          <button className="quick-nav-btn btn-nav-help" onClick={onOpenHelp}>
+            <HelpCircle size={15} />
+            <span>Centro de Ayuda & Soporte</span>
+          </button>
+          <button className="quick-nav-btn btn-nav-seller" onClick={onOpenSellerModal}>
+            <Store size={15} />
+            <span>¿Tienes una Tienda? Vende Aquí</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 4. Active Garage Vehicle Tag Bar */}
       {activeVehicle && (
         <div className="active-garage-subbar">
           <div className="container garage-subbar-content">

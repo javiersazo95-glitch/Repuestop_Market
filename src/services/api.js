@@ -1,0 +1,188 @@
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+
+/**
+ * Custom error class for API errors
+ */
+export class ApiError extends Error {
+  constructor(message, status, data = null) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
+/**
+ * Generic fetch wrapper for backend endpoints
+ */
+export async function fetchApi(endpoint, options = {}) {
+  const token = localStorage.getItem('repuestop_token');
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
+
+  const config = {
+    ...options,
+    headers,
+  };
+
+  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+
+  try {
+    const response = await fetch(url, config);
+    const contentType = response.headers.get('content-type');
+    let data = null;
+
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      data = await response.text();
+    }
+
+    if (!response.ok) {
+      const errorMessage =
+        (typeof data === 'object' && (data?.message || data?.error)) ||
+        (typeof data === 'string' ? data : `Error HTTP ${response.status}`);
+      throw new ApiError(errorMessage, response.status, data);
+    }
+
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    // Network or connection error
+    throw new ApiError(
+      'No se pudo conectar con el servidor backend. Por favor verifica tu conexión.',
+      0
+    );
+  }
+}
+
+/**
+ * Auth API endpoints
+ */
+export async function loginApi({ email, password }) {
+  return fetchApi('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: email.trim(),
+      password,
+      authProvider: 'EMAIL_PASSWORD',
+    }),
+  });
+}
+
+export async function loginGoogleApi({ idToken }) {
+  return fetchApi('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ idToken }),
+  });
+}
+
+export async function registerBuyerApi(buyerData) {
+  return fetchApi('/auth/register/buyer', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: buyerData.email.trim(),
+      password: buyerData.password,
+      userName: buyerData.name || buyerData.userName,
+      phone: buyerData.phone || '',
+      authProvider: 'EMAIL_PASSWORD',
+    }),
+  });
+}
+
+export async function registerSellerApi(sellerData) {
+  return fetchApi('/auth/register/seller', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: sellerData.email.trim(),
+      password: sellerData.password,
+      userName: sellerData.userName || sellerData.nombreTienda,
+      storeName: sellerData.storeName || sellerData.nombreTienda,
+      taxId: sellerData.taxId || sellerData.rutEmpresa,
+      phone: sellerData.phone || sellerData.telefono,
+      region: sellerData.region || 'Región Metropolitana',
+      comuna: sellerData.comuna || sellerData.ciudad,
+      address: sellerData.address || '',
+      shippingMethods: sellerData.shippingMethods || 'Starken, Chilexpress, Retiro en Tienda',
+      authProvider: 'EMAIL_PASSWORD',
+    }),
+  });
+}
+
+export async function getRecentSellersApi() {
+  return fetchApi('/auth/recent-sellers', {
+    method: 'GET',
+  });
+}
+
+export async function logoutApi(token) {
+  try {
+    return await fetchApi('/auth/logout', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch (err) {
+    console.warn('Logout remoto omitido o fallido:', err);
+    return null;
+  }
+}
+
+export async function getProfileApi() {
+  return fetchApi('/users/perfil', {
+    method: 'GET',
+  });
+}
+
+export async function updateProfileApi(payload) {
+  return fetchApi('/users/perfil', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Perfil: Pedidos, favoritos e inventario/tienda del proveedor
+ */
+export async function getBuyerOrdersApi(usuarioId) {
+  return fetchApi(`/usuarios/${usuarioId}/pedidos`, { method: 'GET' });
+}
+
+export async function getSellerOrdersApi(proveedorId) {
+  return fetchApi(`/proveedores/${proveedorId}/pedidos`, { method: 'GET' });
+}
+
+export async function getFavoritesApi(usuarioId) {
+  return fetchApi(`/usuarios/${usuarioId}/favoritos`, { method: 'GET' });
+}
+
+export async function getSellerInventoryApi(proveedorId, { page = 0, size = 12, texto } = {}) {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (texto) params.set('texto', texto);
+  return fetchApi(`/proveedores/${proveedorId}/inventario?${params.toString()}`, { method: 'GET' });
+}
+
+export async function getSellerInventorySummaryApi(proveedorId) {
+  return fetchApi(`/proveedores/${proveedorId}/inventario/resumen`, { method: 'GET' });
+}
+
+export async function getSellerConversationsApi(proveedorId) {
+  return fetchApi(`/proveedores/${proveedorId}/conversaciones`, { method: 'GET' });
+}
+
+export async function getSellerStoreApi(proveedorId) {
+  return fetchApi(`/proveedores/${proveedorId}/tienda`, { method: 'GET' });
+}
+
+export async function updateOrderStatusApi(orderId, estado) {
+  return fetchApi(`/pedidos/${orderId}/estado`, {
+    method: 'PATCH',
+    body: JSON.stringify({ estado }),
+  });
+}
+

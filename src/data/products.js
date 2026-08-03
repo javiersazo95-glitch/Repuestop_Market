@@ -164,8 +164,108 @@ export const PRODUCTS = [
     localFisico: true,
     garantiaDias: 90,
     stock: 10,
+    condicion: 'Nuevo Alternativo Homologado',
+    origen: 'Brasil',
+    envioRapido: true,
     compatibilidad: [
       { marca: 'Toyota', modelo: 'RAV4', anioInicio: 2019, anioFin: 2024, motor: '2.5L' }
+    ]
+  },
+  {
+    id: 'prod-9',
+    titulo: 'Radiador de Agua de Motor Denso OEM Japón',
+    categoria: 'motor',
+    subcategoria: 'Refrigeración',
+    oemCode: '16400-F0020',
+    precio: 89900,
+    precioOriginal: 109900,
+    descuento: 18,
+    vendidos: 64,
+    vendedor: 'Tiensoft AutoRepuestos',
+    rutVendedor: '77.589.410-8',
+    ciudadVendedor: 'Santiago, RM',
+    vendedorVerificado: true,
+    localFisico: true,
+    garantiaDias: 180,
+    stock: 6,
+    condicion: 'Nuevo OEM Original',
+    origen: 'Japón',
+    envioRapido: true,
+    compatibilidad: [
+      { marca: 'Toyota', modelo: 'RAV4', anioInicio: 2019, anioFin: 2024, motor: '2.0L / 2.5L' }
+    ]
+  },
+  {
+    id: 'prod-10',
+    titulo: 'Cremallera de Dirección Electroasistida Bosch',
+    categoria: 'suspension',
+    subcategoria: 'Dirección',
+    oemCode: '49001-4EA0A',
+    precio: 249900,
+    precioOriginal: 299900,
+    descuento: 16,
+    vendidos: 35,
+    vendedor: 'Frenos & Suspensión Italia',
+    rutVendedor: '77.401.890-2',
+    ciudadVendedor: 'Santiago, RM',
+    vendedorVerificado: true,
+    localFisico: true,
+    garantiaDias: 365,
+    stock: 4,
+    condicion: 'Nuevo OEM Original',
+    origen: 'Alemania',
+    envioRapido: true,
+    compatibilidad: [
+      { marca: 'Nissan', modelo: 'Qashqai', anioInicio: 2014, anioFin: 2021, motor: '2.0L' }
+    ]
+  },
+  {
+    id: 'prod-11',
+    titulo: 'Motor 2.0L SkyActiv-G Completo Probado en Banco',
+    categoria: 'motor',
+    subcategoria: 'Motores Usados',
+    oemCode: 'PE01-02-300',
+    precio: 850000,
+    precioOriginal: 990000,
+    descuento: 14,
+    vendidos: 12,
+    vendedor: 'Desarmaduría San Antonio',
+    rutVendedor: '77.102.450-3',
+    ciudadVendedor: 'San Antonio, Valparaíso',
+    vendedorVerificado: true,
+    localFisico: true,
+    garantiaDias: 90,
+    stock: 2,
+    condicion: 'Usado Certificado Desarmaduría',
+    origen: 'Japón',
+    envioRapido: false,
+    soloCotizacion: true,
+    compatibilidad: [
+      { marca: 'Mazda', modelo: 'CX-5', anioInicio: 2017, anioFin: 2022, motor: '2.0L SkyActiv' }
+    ]
+  },
+  {
+    id: 'prod-12',
+    titulo: 'Kit de Embrague Completo LUK RepSet (Disco + Prensa + Crapodina)',
+    categoria: 'motor',
+    subcategoria: 'Embragues',
+    oemCode: '624 3535 00',
+    precio: 128900,
+    precioOriginal: 149900,
+    descuento: 14,
+    vendidos: 88,
+    vendedor: 'Distribuidora Norte Repuestos',
+    rutVendedor: '76.992.110-5',
+    ciudadVendedor: 'Antofagasta',
+    vendedorVerificado: true,
+    localFisico: true,
+    garantiaDias: 180,
+    stock: 9,
+    condicion: 'Nuevo OEM Original',
+    origen: 'Alemania',
+    envioRapido: true,
+    compatibilidad: [
+      { marca: 'Chevrolet', modelo: 'D-Max', anioInicio: 2014, anioFin: 2020, motor: '2.5L / 3.0L TD' }
     ]
   }
 ];

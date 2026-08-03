@@ -1,24 +1,29 @@
 import React, { useState } from 'react';
 import { 
   Store, CheckCircle2, Building, ShieldCheck, FileText, 
-  CreditCard, ArrowRight, X, Sparkles, TrendingUp, Users, PackageCheck 
+  CreditCard, ArrowRight, X, Sparkles, TrendingUp, Users, PackageCheck, AlertCircle 
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function SellerRegisterModal({ isOpen, onClose }) {
+  const { registerSeller } = useAuth();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     nombreTienda: '',
     rutEmpresa: '',
     telefono: '',
     ciudad: '',
+    emailContact: '',
+    password: '',
     tipoRepuestos: 'nuevos_oem',
     marcasPrincipales: '',
-    emailContact: '',
     banco: 'Banco de Chile',
     tipoCuenta: 'Cuenta Corriente',
     numeroCuenta: ''
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
   if (!isOpen) return null;
@@ -27,18 +32,42 @@ export default function SellerRegisterModal({ isOpen, onClose }) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleNextStep = (e) => {
+  const handleNextStep = async (e) => {
     e.preventDefault();
+    setErrorMessage(null);
+
     if (step < 3) {
       setStep(step + 1);
     } else {
-      setIsSuccess(true);
+      // Step 3 final submit to backend
+      if (!formData.emailContact || !formData.password) {
+        setErrorMessage('Por favor ingresa un correo de contacto y contraseña para la cuenta de tienda.');
+        return;
+      }
+
+      setIsSubmitting(true);
+      const result = await registerSeller({
+        email: formData.emailContact,
+        password: formData.password,
+        storeName: formData.nombreTienda,
+        taxId: formData.rutEmpresa,
+        phone: formData.telefono,
+        comuna: formData.ciudad,
+      });
+      setIsSubmitting(false);
+
+      if (result.success) {
+        setIsSuccess(true);
+      } else {
+        setErrorMessage(result.error || 'No se pudo completar el registro de la tienda.');
+      }
     }
   };
 
   const handleResetAndClose = () => {
     setStep(1);
     setIsSuccess(false);
+    setErrorMessage(null);
     onClose();
   };
 
@@ -69,6 +98,13 @@ export default function SellerRegisterModal({ isOpen, onClose }) {
             </div>
           )}
         </div>
+
+        {errorMessage && (
+          <div className="auth-alert alert-error" style={{ margin: '0 2rem 1rem 2rem' }}>
+            <AlertCircle size={18} />
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
         {!isSuccess ? (
           <form onSubmit={handleNextStep} className="seller-modal-body">
@@ -131,7 +167,33 @@ export default function SellerRegisterModal({ isOpen, onClose }) {
             {/* Step 2: Especialidad e Inventario */}
             {step === 2 && (
               <div className="wizard-step-content">
-                <h3><PackageCheck size={18} /> Especialidad y Tipo de Repuestos</h3>
+                <h3><PackageCheck size={18} /> Especialidad y Credenciales de Acceso</h3>
+
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label>Correo Electrónico de la Tienda *</label>
+                    <input
+                      type="email"
+                      name="emailContact"
+                      required
+                      placeholder="tienda@correo.com"
+                      value={formData.emailContact}
+                      onChange={handleChange}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Contraseña de Acceso *</label>
+                    <input
+                      type="password"
+                      name="password"
+                      required
+                      placeholder="Crea tu contraseña"
+                      value={formData.password}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
 
                 <div className="form-group">
                   <label>Categoría Principal de Repuestos *</label>
@@ -218,10 +280,10 @@ export default function SellerRegisterModal({ isOpen, onClose }) {
                   Atrás
                 </button>
               )}
-              <button type="submit" className="btn-wizard-next">
+              <button type="submit" className="btn-wizard-next" disabled={isSubmitting}>
                 {step === 3 ? (
                   <>
-                    <span>Finalizar Registro de Tienda</span>
+                    <span>{isSubmitting ? 'Registrando...' : 'Finalizar Registro de Tienda'}</span>
                     <CheckCircle2 size={18} />
                   </>
                 ) : (
@@ -241,7 +303,7 @@ export default function SellerRegisterModal({ isOpen, onClose }) {
             </div>
             <h3>¡Felicidades, {formData.nombreTienda || 'Tu Tienda'} ha sido registrada con éxito!</h3>
             <p>
-              Tu solicitud fue aprobada automáticamente. Ya puedes comenzar a subir tu catálogo de repuestos con código OEM y vincular tu inventario a patentes de vehículos.
+              Tu solicitud fue procesada y tu cuenta de tienda está lista en el backend. Ya puedes iniciar sesión en Modo Proveedor y gestionar tu catálogo de repuestos.
             </p>
 
             <div className="dashboard-preview-card">
