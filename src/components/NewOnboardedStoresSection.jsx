@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowRight, Building2, Truck, ShieldCheck, Package, Bike } from 'lucide-react';
-import { NEW_ONBOARDED_STORES } from '../data/liveMarketplaceData';
-import { getRecentSellersApi, getStoreProductsApi } from '../services/api';
+import { getPublicStoresApi, getStoreProductsApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import MarketplaceSellerCard from './MarketplaceSellerCard';
-import { adaptPage, adaptProduct } from '../services/adapters';
+import { adaptPage, adaptProduct, adaptStore } from '../services/adapters';
 
 export function getShippingIconConfig(method) {
   const norm = String(method || '').toLowerCase().trim();
@@ -53,47 +52,21 @@ export function getShippingIconConfig(method) {
 
 export default function NewOnboardedStoresSection({ onOpenStores, onSelectStore }) {
   const { user } = useAuth();
-  const [stores, setStores] = useState(NEW_ONBOARDED_STORES);
+  const [stores, setStores] = useState([]);
   const [inventoryTotals, setInventoryTotals] = useState({});
 
   useEffect(() => {
     let isMounted = true;
-    getRecentSellersApi()
+    getPublicStoresApi({ page: 0, size: 5 })
       .then((data) => {
-        if (isMounted && Array.isArray(data) && data.length > 0) {
-          const formattedStores = data.map((item, idx) => ({
-            id: item.proveedorId || item.sellerId || item.storeId || item.tiendaId || item.id || `backend-${idx}`,
-            nombre: item.nombre || item.storeName || item.nombreTienda || 'Tienda Vendedora',
-            initials: item.initials || getStoreInitials(item.nombre || item.storeName || item.nombreTienda),
-            bgColor: item.bgColor || ['#0066ff', '#059669', '#7c3aed', '#d97706'][idx % 4],
-            textColor: '#ffffff',
-            rut: item.rut || item.taxId || '',
-            tipo: item.tipo || item.giro || 'Casa de Repuestos Multimarca',
-            ciudad: item.ciudad || item.comuna || 'Santiago, RM',
-            verificadoFecha: item.verificadoFecha || 'Verificada Recientemente',
-            totalPublicaciones: item.totalPublicaciones ?? item.totalProductos ?? item.productCount ?? item.publishedProductsCount ?? item.inventoryCount ?? 0,
-            rating: item.rating ?? 0,
-            reviewCount: item.reviewCount ?? 0,
-            responseRate: item.responseRate ?? null,
-            especialidad: item.especialidad || item.descripcion || item.giro || '',
-            descripcion: item.descripcion || item.description || item.tipo || item.giro || '',
-            metodosEnvio: parseShippingMethods(item.metodosEnvio || item.shippingMethods),
-            logoUrl: item.logoUrl || item.userProfileUrl || item.imagenUrl,
-            userProfileUrl: item.userProfileUrl || item.logoUrl,
-            coverUrl: item.coverUrl,
-          }));
-          const backendIds = new Set(formattedStores.map((store) => String(store.id)));
-          const backendNames = new Set(formattedStores.map((store) => String(store.nombre).toLowerCase()));
-          const fallbackStores = NEW_ONBOARDED_STORES.filter((store) => (
-            !backendIds.has(String(store.id)) && !backendNames.has(String(store.nombre).toLowerCase())
-          ));
-
-          // El bloque de portada siempre conserva las cinco posiciones del diseño.
-          setStores([...formattedStores, ...fallbackStores].slice(0, 5));
+        if (isMounted) {
+          // Sin respaldo de mocks: solo se muestran tiendas reales y públicas.
+          setStores(adaptPage(data, adaptStore).items);
         }
       })
       .catch((err) => {
-        console.warn('Omitiendo fetch de vendedores desde backend (usando dataset local):', err);
+        console.warn('No se pudieron cargar los vendedores recientes:', err);
+        if (isMounted) setStores([]);
       });
 
     return () => {
@@ -125,24 +98,6 @@ export default function NewOnboardedStoresSection({ onOpenStores, onSelectStore 
 
     return () => { isMounted = false; };
   }, [visibleStoreIds, inventoryTotals]);
-
-  function parseShippingMethods(raw) {
-    if (Array.isArray(raw)) return raw;
-    if (!raw) return [];
-    return raw
-      .split(',')
-      .map((method) => method.trim())
-      .filter(Boolean);
-  }
-
-  function getStoreInitials(name) {
-    if (!name) return 'RT';
-    const words = name.trim().split(/\s+/);
-    if (words.length >= 2 && words[0][0] && words[1][0]) {
-      return (words[0][0] + words[1][0]).toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-  }
 
   return (
     <section className="new-stores-section container">

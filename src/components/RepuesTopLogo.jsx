@@ -63,6 +63,7 @@ export default function RepuesTopLogo({ height = 96, className = '', variant = '
       <img
         src="/repuestop_wordmark.png"
         alt="RepuesTop Chile"
+        className="official-brand-wordmark"
         style={{
           height: `${wordmarkHeight}px`,
           width: 'auto',

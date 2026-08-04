@@ -1,5 +1,16 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
 
+// El backend persiste rutas de R2 como `/api/v1/uploads/...`. En desarrollo el
+// marketplace vive en otro origen (Vite), por eso las convertimos en URLs de la
+// API antes de entregarlas a un <img>. Las URLs absolutas y data/blob se preservan.
+export function resolveMediaUrl(value) {
+  if (!value || typeof value !== 'string' || /^(https?:|data:|blob:)/i.test(value)) {
+    return value || null;
+  }
+  const apiOrigin = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+  return `${apiOrigin}${value.startsWith('/') ? value : `/${value}`}`;
+}
+
 /**
  * Custom error class for API errors
  */
@@ -146,6 +157,24 @@ export async function updateProfileApi(payload) {
   });
 }
 
+/** Sube un logo/avatar o portada al backend; el backend lo persiste en R2. */
+export async function uploadProfileImageApi(file, type = 'avatar') {
+  const token = localStorage.getItem('repuestop_token');
+  const formData = new FormData();
+  formData.append('file', file);
+  const endpoint = type === 'cover' ? '/users/perfil/portada' : '/users/perfil/foto';
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(data?.message || data?.error || 'No se pudo subir la imagen.', response.status, data);
+  }
+  return data;
+}
+
 /**
  * Perfil: Pedidos, favoritos e inventario/tienda del proveedor
  */
@@ -221,6 +250,14 @@ export async function getPublicProductsApi({ page = 0, size = 12, texto, patente
   return fetchApi(`/inventario/productos?${params.toString()}`, { method: 'GET' });
 }
 
+export async function getPublicCategoryCountsApi() {
+  return fetchApi('/inventario/productos/resumen-categorias', { method: 'GET' });
+}
+
+export async function getPartCategoriesApi() {
+  return fetchApi('/catalogos/inventario/categorias-repuesto', { method: 'GET' });
+}
+
 export async function sendDirectQuotationApi(quoteData) {
   return fetchApi('/cotizaciones/directa', {
     method: 'POST',
@@ -247,4 +284,3 @@ export async function searchVehicleByPatenteApi(patente) {
     throw error;
   }
 }
-

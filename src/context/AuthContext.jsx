@@ -1,12 +1,22 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { loginApi, loginGoogleApi, logoutApi, getProfileApi, updateProfileApi, registerBuyerApi, registerSellerApi } from '../services/api';
+import { loginApi, loginGoogleApi, logoutApi, getProfileApi, updateProfileApi, registerBuyerApi, registerSellerApi, resolveMediaUrl } from '../services/api';
 
 const AuthContext = createContext(null);
+
+function normalizeUserMedia(profile) {
+  if (!profile) return profile;
+  return {
+    ...profile,
+    userProfileUrl: resolveMediaUrl(profile.userProfileUrl),
+    logoUrl: resolveMediaUrl(profile.logoUrl),
+    coverUrl: resolveMediaUrl(profile.coverUrl),
+  };
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('repuestop_user');
-    return savedUser ? JSON.parse(savedUser) : null;
+    return savedUser ? normalizeUserMedia(JSON.parse(savedUser)) : null;
   });
 
   const [token, setToken] = useState(() => {
@@ -24,9 +34,10 @@ export function AuthProvider({ children }) {
     if (token && !user) {
       getProfileApi()
         .then((profile) => {
-          setUser(profile);
+          const normalizedProfile = normalizeUserMedia(profile);
+          setUser(normalizedProfile);
           if (profile.role) setRole(profile.role);
-          localStorage.setItem('repuestop_user', JSON.stringify(profile));
+          localStorage.setItem('repuestop_user', JSON.stringify(normalizedProfile));
         })
         .catch(() => {
           // Clear invalid token
@@ -47,7 +58,7 @@ export function AuthProvider({ children }) {
     // El backend es la fuente de verdad del rol y de los datos de tienda (buyerId/sellerId/storeName),
     // igual que en mobile (auth-registration.ts buildSession). El rol preseleccionado en el modal
     // es solo un valor de respaldo si el backend no informa uno (ej. respuestas legadas).
-    const userData = {
+    const userData = normalizeUserMedia({
       ...baseUser,
       buyerId: authResponse.buyerId ?? baseUser.buyerId,
       sellerId: authResponse.sellerId ?? baseUser.sellerId,
@@ -56,7 +67,7 @@ export function AuthProvider({ children }) {
       comuna: authResponse.comuna ?? baseUser.comuna,
       address: authResponse.address ?? baseUser.address,
       shippingMethods: authResponse.shippingMethods ?? baseUser.shippingMethods,
-    };
+    });
 
     const assignedRole = baseUser.role || authResponse.role || preferredRole || 'BUYER';
 
@@ -150,7 +161,7 @@ export function AuthProvider({ children }) {
       // PerfilUsuarioDTO no devuelve todos los campos editables (ej. phone), así que
       // aplicamos el payload enviado como valor optimista y dejamos que la respuesta
       // del backend (autoritativa) sobreescriba solo los campos que sí trae.
-      const mergedUser = { ...user, ...payload, ...profile };
+      const mergedUser = normalizeUserMedia({ ...user, ...payload, ...profile });
       setUser(mergedUser);
       localStorage.setItem('repuestop_user', JSON.stringify(mergedUser));
       return { success: true, user: mergedUser };

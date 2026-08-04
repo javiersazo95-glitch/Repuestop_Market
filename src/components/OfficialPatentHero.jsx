@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Search, CheckCircle2, RefreshCw, AlertCircle, ChevronRight, Store,
-  CarFront, Barcode, Tag, Users, Truck, ShieldCheck, Headphones,
+  CarFront, Barcode, Tag, Users, Truck, ShieldCheck,
   ArrowLeft, ArrowRight, CircleHelp
 } from 'lucide-react';
 import { CATEGORY_GRID_ITEMS, SIDEBAR_CATEGORIES } from '../data/categories';
-import { searchVehicleByPatenteApi } from '../services/api';
-import { adaptVehicle } from '../services/adapters';
+import { getPartCategoriesApi, getPublicCategoryCountsApi, getPublicProductsApi, searchVehicleByPatenteApi } from '../services/api';
+import { adaptVehicle, normalizeCategoryId } from '../services/adapters';
 import CategoryIconTile from './CategoryIconTile';
 
 const SEARCH_MODES = [
@@ -25,17 +25,65 @@ export default function OfficialPatentHero({
   onOpenSellerModal,
   selectedCategory,
   onSelectCategory,
-  onOpenCatalog,
-  onOpenHelp
+  onOpenCatalog
 }) {
   const [searchMode, setSearchMode] = useState('patente');
   const [inputValue, setInputValue] = useState(activeVehicle?.patente || '');
   const [isSearching, setIsSearching] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [activeCarouselPage, setActiveCarouselPage] = useState(0);
+  const [categoryCounts, setCategoryCounts] = useState(null);
 
   const mode = SEARCH_MODES.find((item) => item.id === searchMode) || SEARCH_MODES[0];
   const samplePatentes = ['BB-CL-12', 'HG-89-21', 'AA-123-BB', 'JJ-TT-45'];
+
+  useEffect(() => {
+    let isMounted = true;
+    const toCountMap = (items) => (Array.isArray(items) ? items : []).reduce((result, item) => {
+      result[normalizeCategoryId(item.categoriaNombre)] = Number(item.total || 0);
+      return result;
+    }, {});
+
+    const loadFallbackCounts = async () => {
+      // Compatibilidad con una API aún sin el resumen agregado: se consulta el
+      // total exacto de cada categoría directamente desde el mismo catálogo.
+      const availableCategories = await getPartCategoriesApi();
+      const backendCategoryByUiId = (Array.isArray(availableCategories) ? availableCategories : [])
+        .reduce((result, category) => {
+          result[normalizeCategoryId(category.nombre)] = category.id;
+          return result;
+        }, {});
+
+      const entries = await Promise.all(CATEGORY_GRID_ITEMS.map(async (category) => {
+        const categoriaId = backendCategoryByUiId[category.id];
+        if (!categoriaId) return [category.id, 0];
+        const response = await getPublicProductsApi({ categoriaId, page: 0, size: 1 });
+        return [category.id, Number(response?.totalElements || 0)];
+      }));
+      return Object.fromEntries(entries);
+    };
+
+    (async () => {
+      try {
+        const directCounts = toCountMap(await getPublicCategoryCountsApi());
+        // Si el backend todavía no ha sido reiniciado con el endpoint nuevo, o
+        // responde un agregado vacío, no mostramos ceros ficticios: usamos el
+        // catálogo público como fuente de verdad.
+        const hasPublications = Object.values(directCounts).some((total) => total > 0);
+        const counts = hasPublications ? directCounts : await loadFallbackCounts();
+        if (isMounted) setCategoryCounts(counts);
+      } catch {
+        try {
+          const counts = await loadFallbackCounts();
+          if (isMounted) setCategoryCounts(counts);
+        } catch {
+          // No sustituimos con cifras mock; mantenemos el estado de carga.
+          if (isMounted) setCategoryCounts(null);
+        }
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
 
   const handleSearch = async (valueToUse) => {
     const value = (valueToUse || inputValue).trim();
@@ -214,7 +262,9 @@ export default function OfficialPatentHero({
                   <img src={category.image} alt="" />
                 </div>
                 <div className="category-showcase-footer">
-                  <span>{category.count}</span>
+                  <span>{categoryCounts === null
+                    ? 'Cargando…'
+                    : `${Number(categoryCounts[category.id] || 0).toLocaleString('es-CL')} disponibles`}</span>
                   <i style={{ backgroundColor: category.color }}><ArrowRight size={20} /></i>
                 </div>
               </button>
@@ -242,11 +292,6 @@ export default function OfficialPatentHero({
         </div>
       </section>
 
-      <div className="container help-strip">
-        <Headphones size={34} />
-        <p><strong>¿Necesitas ayuda para encontrar tu repuesto?</strong><span>Nuestro equipo está listo para asesorarte.</span></p>
-        <button onClick={onOpenHelp}><Headphones size={18} /> Contactar soporte</button>
-      </div>
     </section>
   );
 }

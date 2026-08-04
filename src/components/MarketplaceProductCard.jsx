@@ -53,6 +53,12 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity }
   const partBrand = getPartBrand(product);
   const partType = getPartType(product);
   const PartTypeIcon = partType.icon;
+  // La foto registrada por la tienda siempre tiene prioridad. La imagen de la
+  // categoría solo es el respaldo para publicaciones que aún no tienen foto.
+  const productImage = product.imagen
+    || product.imagenes?.[0]
+    || product.imageUrls?.[0]
+    || CATEGORY_IMAGE_BY_ID[category];
 
   return (
     <article className="market-product-card">
@@ -60,7 +66,7 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity }
         <CategoryIconTile
           iconName={CATEGORY_ICON_BY_ID[category]}
           color={CATEGORY_COLOR_BY_ID[category]}
-          image={CATEGORY_IMAGE_BY_ID[category]}
+          image={productImage}
           size={34}
         />
         <span className={`market-product-badge ${isOffer ? 'offer' : isNew ? 'new' : 'top'}`}>{badgeLabel}</span>

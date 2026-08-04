@@ -9,6 +9,7 @@
  */
 
 import { SIDEBAR_CATEGORIES } from '../data/categories';
+import { resolveMediaUrl } from './api';
 
 const CATEGORY_IDS = SIDEBAR_CATEGORIES.map((c) => c.id);
 
@@ -135,7 +136,9 @@ export function adaptProduct(dto) {
   const precio = toNumber(dto.precio) ?? 0;
   const precioOriginal = toNumber(dto.precioAnterior);
   const compatibilidad = mapCompatibilidad(dto);
-  const imagenes = Array.isArray(dto.imageUrls) ? dto.imageUrls.filter(Boolean) : [];
+  const imagenes = Array.isArray(dto.imageUrls)
+    ? dto.imageUrls.filter(Boolean).map(resolveMediaUrl)
+    : [];
 
   return {
     id: dto.id,
@@ -163,7 +166,7 @@ export function adaptProduct(dto) {
     condicion: dto.condicion || '',
     imagen: imagenes[0] || null,
     imagenes,
-    logoTienda: dto.storeIconUrl || null,
+    logoTienda: resolveMediaUrl(dto.storeIconUrl),
     requiereChasis: Boolean(dto.requiereChasis),
     soloCotizacion: dto.pricingMode === 'COTIZACION' || precio <= 0,
     createdAt: dto.createdAt || null,
@@ -248,8 +251,8 @@ export function adaptStore(dto, index = 0) {
     metodosEnvio,
     fundador: Boolean(dto.founder),
     verificada: Boolean(dto.verified ?? dto.isVerified ?? true),
-    logoUrl: dto.logoUrl || null,
-    coverUrl: dto.coverUrl || null,
+    logoUrl: resolveMediaUrl(dto.logoUrl || dto.userProfileUrl),
+    coverUrl: resolveMediaUrl(dto.coverUrl),
   };
 }
 

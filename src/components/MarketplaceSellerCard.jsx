@@ -25,7 +25,14 @@ export default function MarketplaceSellerCard({ store, avatarPhoto, onView }) {
 
   return (
     <article className="market-seller-card">
-      <div className="market-seller-identity">
+      {store.coverUrl && (
+        <div
+          className="market-seller-cover"
+          style={{ backgroundImage: `url("${store.coverUrl}")` }}
+          aria-hidden="true"
+        />
+      )}
+      <div className={`market-seller-identity ${store.coverUrl ? 'has-cover' : ''}`}>
         <div className="market-seller-avatar" style={!avatarPhoto ? { background: `linear-gradient(145deg, ${store.bgColor || '#1268f3'}, #071934)` } : undefined}>
           {avatarPhoto ? <img src={avatarPhoto} alt={store.nombre} /> : <span>{store.initials || initials(store.nombre)}</span>}
         </div>

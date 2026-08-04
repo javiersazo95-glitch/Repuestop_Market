@@ -92,7 +92,10 @@ export default function Header({
             </div>
             <div className="user-meta">
               <span className="user-main">{isLoggedIn ? (user?.userName || user?.storeName || 'Mi cuenta') : 'Mi cuenta'}</span>
-              <span className="user-sub">{isLoggedIn ? 'Ver perfil' : 'Iniciar sesión'}</span>
+              <span className="user-sub">
+                {isLoggedIn ? 'Ver perfil' : 'Iniciar sesión'}
+                {isLoggedIn && <ChevronDown size={13} aria-hidden="true" />}
+              </span>
             </div>
 
             {isLoggedIn && showUserMenu && (

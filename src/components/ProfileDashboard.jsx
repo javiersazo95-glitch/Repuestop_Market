@@ -10,7 +10,7 @@ import RepuesTopLogo from './RepuesTopLogo';
 import {
   getBuyerOrdersApi, getSellerOrdersApi, getFavoritesApi,
   getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getSellerStoreApi,
-  updateOrderStatusApi
+  updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl
 } from '../services/api';
 import OrderCard from './OrderCard';
 import OrderDetailModal from './OrderDetailModal';
@@ -132,13 +132,15 @@ export default function ProfileDashboard({ onBackToStore }) {
   const [isSaving, setIsSaving] = useState(false);
   const [showMediaModal, setShowMediaModal] = useState(null);
   const [mediaInput, setMediaInput] = useState('');
+  const [mediaFile, setMediaFile] = useState(null);
 
   const handleOpenMediaModal = (type) => {
     setShowMediaModal(type);
+    setMediaFile(null);
     if (type === 'avatar') {
-      setMediaInput(user?.userProfileUrl || storeInfo?.logoUrl || '');
+      setMediaInput(resolveMediaUrl(user?.userProfileUrl || storeInfo?.logoUrl || ''));
     } else {
-      setMediaInput(user?.coverUrl || storeInfo?.coverUrl || '');
+      setMediaInput(resolveMediaUrl(user?.coverUrl || storeInfo?.coverUrl || ''));
     }
   };
 
@@ -150,11 +152,16 @@ export default function ProfileDashboard({ onBackToStore }) {
       alert('Por favor selecciona un archivo de imagen válido (PNG, JPG, WEBP).');
       return;
     }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen no puede superar los 5 MB.');
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target?.result) {
         setMediaInput(event.target.result);
+        setMediaFile(file);
       }
     };
     reader.readAsDataURL(file);
@@ -162,21 +169,27 @@ export default function ProfileDashboard({ onBackToStore }) {
 
   const handleSaveMediaUrl = async (e) => {
     e.preventDefault();
-    if (!mediaInput.trim()) return;
+    if (!mediaFile) return;
 
     const type = showMediaModal;
-    const payload = type === 'avatar'
-      ? { userProfileUrl: mediaInput.trim(), logoUrl: mediaInput.trim() }
-      : { coverUrl: mediaInput.trim() };
+    try {
+      const uploaded = await uploadProfileImageApi(mediaFile, type === 'avatar' ? 'avatar' : 'cover');
+      const uploadedUrl = resolveMediaUrl(type === 'avatar' ? uploaded.userProfileUrl : uploaded.coverUrl);
+      const payload = type === 'avatar'
+        ? { userProfileUrl: uploadedUrl, logoUrl: uploadedUrl }
+        : { coverUrl: uploadedUrl };
 
-    await updateProfile(payload);
-    if (storeInfo) {
-      setStoreInfo((prev) => ({
-        ...prev,
-        ...(type === 'avatar' ? { logoUrl: mediaInput.trim(), userProfileUrl: mediaInput.trim() } : { coverUrl: mediaInput.trim() })
-      }));
+      await updateProfile(payload);
+      if (storeInfo) {
+        setStoreInfo((prev) => ({
+          ...prev,
+          ...(type === 'avatar' ? { logoUrl: uploadedUrl, userProfileUrl: uploadedUrl } : { coverUrl: uploadedUrl })
+        }));
+      }
+      setShowMediaModal(null);
+    } catch (error) {
+      alert(error?.message || 'No se pudo guardar la imagen.');
     }
-    setShowMediaModal(null);
   };
 
   // Datos reales traídos del backend (sin datos de ejemplo)
@@ -1282,31 +1295,6 @@ export default function ProfileDashboard({ onBackToStore }) {
                 </label>
               </div>
 
-              <div className="media-url-divider">
-                <span>O ingresa la URL de la imagen</span>
-              </div>
-
-              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  Enlace URL de la Imagen
-                </label>
-                <input
-                  type="url"
-                  placeholder={showMediaModal === 'avatar' ? 'https://... (400x400 px)' : 'https://... (1200x450 px)'}
-                  value={mediaInput}
-                  onChange={(e) => setMediaInput(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '11px 14px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border-subtle)',
-                    fontSize: '13.5px',
-                    background: '#f8fafc',
-                    color: 'var(--text-primary)'
-                  }}
-                />
-              </div>
-
               {mediaInput && (
                 <div style={{ background: '#f8fafc', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
                   <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '8px', textTransform: 'uppercase' }}>
@@ -1328,7 +1316,7 @@ export default function ProfileDashboard({ onBackToStore }) {
                 <button type="button" className="btn-auth-secondary" onClick={() => setShowMediaModal(null)}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn-auth-primary" disabled={!mediaInput} style={{ width: 'auto' }}>
+                <button type="submit" className="btn-auth-primary" disabled={!mediaFile} style={{ width: 'auto' }}>
                   <Save size={16} /> Guardar Imagen
                 </button>
               </div>
