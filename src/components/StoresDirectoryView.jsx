@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import {
   Building2, Search, Filter, SlidersHorizontal, MapPin, ShieldCheck,
   Star, Package, Clock, ArrowRight, ArrowLeft, X, CheckCircle2, RotateCcw,
-  Store, Tag, Truck, Bike, Globe, ChevronLeft, ChevronRight, Car
+  Store, Tag, Truck, Bike, Globe, ChevronLeft, ChevronRight, ChevronDown, Car, Wrench
 } from 'lucide-react';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
 import { useAuth } from '../context/AuthContext';
-import { getPublicStoresApi } from '../services/api';
-import { adaptPage, adaptStore } from '../services/adapters';
+import { getPublicStoresApi, getStoreProductsApi } from '../services/api';
+import { adaptPage, adaptProduct, adaptStore } from '../services/adapters';
+import MarketplaceSellerCard from './MarketplaceSellerCard';
 
 // El backend acota el tamaño de página a 100. El directorio filtra y pagina en
 // cliente, así que se trae un bloque grande y se deja que la UI haga el resto.
@@ -24,6 +25,8 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   const [selectedShipping, setSelectedShipping] = useState('TODAS');
   const [selectedBrand, setSelectedBrand] = useState('TODAS');
   const [sortBy, setSortBy] = useState('relevancia');
+  const [openFilterSections, setOpenFilterSections] = useState({ business: true, shipping: true });
+  const [inventoryTotals, setInventoryTotals] = useState({});
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -169,6 +172,35 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(sortedStores.length, currentPage * itemsPerPage);
   const paginatedStores = sortedStores.slice(startIndex, endIndex);
+  const visibleStoreIds = paginatedStores.map((store) => store.id).filter(Boolean).join(',');
+
+  // El directorio puede no traer el contador de publicaciones en su DTO. Para que
+  // cada card muestre el inventario real, se consulta el total paginado de cada
+  // tienda visible (size=1 basta: totalElements contiene el valor correcto).
+  useEffect(() => {
+    const storesToMeasure = paginatedStores.filter((store) => (
+      store.id && !Object.prototype.hasOwnProperty.call(inventoryTotals, store.id)
+    ));
+    if (!storesToMeasure.length) return undefined;
+
+    let isMounted = true;
+    Promise.all(storesToMeasure.map(async (store) => {
+      try {
+        const response = await getStoreProductsApi(store.id, { page: 0, size: 1 });
+        return [store.id, adaptPage(response, adaptProduct).total];
+      } catch {
+        return null;
+      }
+    })).then((entries) => {
+      if (!isMounted) return;
+      const resolvedEntries = entries.filter(Boolean);
+      if (resolvedEntries.length) {
+        setInventoryTotals((current) => ({ ...current, ...Object.fromEntries(resolvedEntries) }));
+      }
+    });
+
+    return () => { isMounted = false; };
+  }, [visibleStoreIds, inventoryTotals]);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -188,6 +220,22 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
     setSelectedBrand('TODAS');
     setSortBy('relevancia');
     setCurrentPage(1);
+  };
+
+  const toggleFilterSection = (section) => {
+    setOpenFilterSections((current) => ({ ...current, [section]: !current[section] }));
+  };
+
+  const handleApplyFilters = () => {
+    document.querySelector('.directory-stores-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const businessTypeIcon = (index) => {
+    if (index === 0) return SlidersHorizontal;
+    if (index === 1) return Globe;
+    if (index === 2) return Store;
+    if (index === 3) return Wrench;
+    return ShieldCheck;
   };
 
   function parseSpecialties(raw) {
@@ -211,9 +259,9 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
           <div className="directory-hero-text">
             <div className="directory-hero-badge">
               <Building2 size={14} />
-              <span>DIRECTORIO NACIONAL DE TIENDAS Y DESARMADURÍAS</span>
+              <span>DIRECTORIO NACIONAL</span>
             </div>
-            <h1>Casas de Repuestos Acreditadas en Chile</h1>
+            <h1>Casas de Repuestos <span>Acreditadas</span> en Chile</h1>
             <p>
               Explora más de 500 importadores, distribuidoras y desarmadurías con RUT verificado, local físico y despacho a todo el país.
             </p>
@@ -221,16 +269,20 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
 
           <div className="directory-hero-stats-row">
             <div className="stat-pill-item">
-              <ShieldCheck size={16} className="text-emerald-400" />
-              <span>100% Tiendas Acreditadas</span>
+              <ShieldCheck size={24} className="text-emerald-400" />
+              <span><strong>100% Tiendas<br />Acreditadas</strong><small>Verificadas y confiables</small></span>
             </div>
             <div className="stat-pill-item">
-              <Store size={16} className="text-blue-400" />
-              <span>+500 Locales en Chile</span>
+              <Store size={24} className="text-blue-400" />
+              <span><strong>+500 Locales<br />en Chile</strong><small>Cobertura nacional</small></span>
             </div>
             <div className="stat-pill-item">
-              <Truck size={16} className="text-sky-400" />
-              <span>Despacho Directo o Retiro</span>
+              <Truck size={24} className="text-sky-400" />
+              <span><strong>Despacho Directo<br />o Retiro</strong><small>En todo el país</small></span>
+            </div>
+            <div className="stat-pill-item">
+              <CheckCircle2 size={24} className="text-purple-400" />
+              <span><strong>RUT Verificado<br />y Validado</strong><small>Seguridad garantizada</small></span>
             </div>
           </div>
         </div>
@@ -273,42 +325,37 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
         </div>
 
         {/* 3. Main 2-Column Content Layout (Sidebar Filters + Stores Grid) */}
-        <div className="directory-content-grid">
+        <div className="directory-content-grid directory-advanced-content-grid">
           {/* Sidebar Filters Column (Left 280px) */}
-          <aside className="directory-sidebar-filters">
+          <aside className="directory-sidebar-filters catalog-sidebar-filters catalog-advanced-filter-panel directory-advanced-filter-panel">
             <div className="sidebar-filters-header">
               <div className="sidebar-title-group">
-                <SlidersHorizontal size={16} />
-                <span>Filtros de Tienda</span>
+                <SlidersHorizontal size={25} />
+                <span><strong>Filtros Avanzados</strong><small>Encuentra la tienda ideal para tu compra</small></span>
               </div>
 
-              {(selectedCategoryType !== 'TODAS' || selectedRegion !== 'TODAS' || selectedShipping !== 'TODAS' || selectedBrand !== 'TODAS' || searchQuery) && (
-                <button className="btn-reset-filters-mini" onClick={handleResetFilters}>
-                  <RotateCcw size={12} />
-                  <span>Limpiar</span>
-                </button>
-              )}
+              <button className="btn-reset-filters-mini" onClick={handleResetFilters}><RotateCcw size={15} /><span>Limpiar</span></button>
             </div>
 
             {/* Filter 1: Tipo / Giro de Tienda */}
-            <div className="filter-section-group">
-              <label className="filter-group-label">Tipo de Empresa / Giro</label>
-              <div className="filter-options-list">
-                {CATEGORY_TYPES.map((type) => (
-                  <button
-                    key={type}
-                    className={`filter-option-btn ${selectedCategoryType === type ? 'active' : ''}`}
-                    onClick={() => setSelectedCategoryType(type)}
-                  >
-                    <span>{type === 'TODAS' ? 'Todas las Tiendas' : type}</span>
-                    {selectedCategoryType === type && <CheckCircle2 size={14} className="check-active" />}
-                  </button>
-                ))}
-              </div>
+            <div className={`filter-section-group ${openFilterSections.business ? 'is-open' : 'is-collapsed'}`}>
+              <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('business')} aria-expanded={openFilterSections.business}>
+                <span className="filter-group-label"><Building2 size={13} /> Tipo de Empresa / Giro</span><ChevronDown size={16} />
+              </button>
+              {openFilterSections.business && <div className="filter-options-list">
+                {CATEGORY_TYPES.map((type, index) => {
+                  const TypeIcon = businessTypeIcon(index);
+                  return <button key={type} className={`filter-option-btn ${selectedCategoryType === type ? 'active' : ''}`} onClick={() => setSelectedCategoryType(type)}>
+                    <span className="filter-condition-icon"><TypeIcon size={14} /></span>
+                    <span className="filter-option-copy"><strong>{type === 'TODAS' ? 'Todas las Tiendas' : type}</strong><small>{type === 'TODAS' ? 'Explorar todo el directorio' : 'Tiendas verificadas'}</small></span>
+                    {selectedCategoryType === type ? <CheckCircle2 size={18} className="check-active" /> : <ChevronRight size={16} className="filter-option-chevron" />}
+                  </button>;
+                })}
+              </div>}
             </div>
 
             {/* Filter 2: Ciudad / Ubicación */}
-            <div className="filter-section-group">
+            <div className="filter-section-group compact-select-section">
               <label className="filter-group-label"><MapPin size={13} /> Ciudad / Ubicación</label>
               <select
                 value={selectedRegion}
@@ -322,24 +369,25 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
             </div>
 
             {/* Filter 3: Métodos de Envío */}
-            <div className="filter-section-group">
-              <label className="filter-group-label"><Truck size={13} /> Método de Envío</label>
-              <div className="filter-options-list">
-                {SHIPPING_OPTIONS.map((method) => (
-                  <button
-                    key={method}
-                    className={`filter-option-btn ${selectedShipping === method ? 'active' : ''}`}
-                    onClick={() => setSelectedShipping(method)}
-                  >
-                    <span>{method === 'TODAS' ? 'Todos los Métodos' : method}</span>
-                    {selectedShipping === method && <CheckCircle2 size={14} className="check-active" />}
-                  </button>
-                ))}
-              </div>
+            <div className={`filter-section-group ${openFilterSections.shipping ? 'is-open' : 'is-collapsed'}`}>
+              <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('shipping')} aria-expanded={openFilterSections.shipping}>
+                <span className="filter-group-label"><Truck size={13} /> Método de Envío</span><ChevronDown size={16} />
+              </button>
+              {openFilterSections.shipping && <div className="filter-options-list">
+                {SHIPPING_OPTIONS.map((method) => {
+                  const shippingConfig = method === 'TODAS' ? { icon: Truck, label: 'Todos los servicios' } : getShippingIconConfig(method);
+                  const ShippingIcon = shippingConfig.icon;
+                  return <button key={method} className={`filter-option-btn ${selectedShipping === method ? 'active' : ''}`} onClick={() => setSelectedShipping(method)}>
+                    <span className="filter-condition-icon"><ShippingIcon size={14} /></span>
+                    <span className="filter-option-copy"><strong>{method === 'TODAS' ? 'Todos los Métodos' : method}</strong><small>{method === 'TODAS' ? 'Retiro y despacho disponibles' : shippingConfig.label}</small></span>
+                    {selectedShipping === method && <CheckCircle2 size={18} className="check-active" />}
+                  </button>;
+                })}
+              </div>}
             </div>
 
             {/* Filter 4: Especialidad de Marcas */}
-            <div className="filter-section-group">
+            <div className="filter-section-group compact-select-section">
               <label className="filter-group-label"><Tag size={13} /> Marcas que Comercializa</label>
               <select
                 value={selectedBrand}
@@ -352,11 +400,11 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
               </select>
             </div>
 
-            {/* Clear All Filters Large Button */}
-            <button className="btn-clear-all-filters-wide" onClick={handleResetFilters}>
-              <RotateCcw size={14} />
-              <span>Restablecer Filtros</span>
+            <button className="btn-clear-all-filters-wide" onClick={handleApplyFilters}>
+              <Search size={18} />
+              <span>Aplicar Filtros y Ver Tiendas</span>
             </button>
+            <p className="filter-security-note"><ShieldCheck size={14} /> Solo mostramos tiendas verificadas.</p>
           </aside>
 
           {/* Stores Cards Column (Right Grid) */}
@@ -375,12 +423,27 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
               </div>
             ) : paginatedStores.length > 0 ? (
               <>
-                <div className="stores-cards-grid-directory">
+                <div className={`stores-cards-grid-directory ${paginatedStores.length < 4 ? 'is-incomplete-row' : ''}`}>
                   {paginatedStores.map((store) => {
                     const specialties = parseSpecialties(store.especialidad);
                     const avatarPhoto = store.logoUrl || store.userProfileUrl || store.imagenUrl;
                     const coverPhoto = store.coverUrl;
 
+                    const storeWithInventoryTotal = Object.prototype.hasOwnProperty.call(inventoryTotals, store.id)
+                      ? { ...store, totalPublicaciones: inventoryTotals[store.id] }
+                      : store;
+
+                    return (
+                      <MarketplaceSellerCard
+                        key={store.id}
+                        store={storeWithInventoryTotal}
+                        avatarPhoto={avatarPhoto}
+                        onView={onSelectStore}
+                      />
+                    );
+
+                    /* Legacy card retained below only as a source reference; the shared
+                       marketplace card above is now the system-wide renderer. */
                     return (
                       <div key={store.id} className="seller-exact-card seller-horizontal-card">
                         {/* Top Banner Accent */}
@@ -433,8 +496,14 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                           <div className="seller-type-location-row">
                             <span className="seller-location">
                               <MapPin size={13} className="pin-icon" />
-                              <span>{store.ciudad} (Local Físico Verificado)</span>
+                              <span>{store.ciudad}</span>
                             </span>
+                          </div>
+
+                          <div className="seller-rating-line">
+                            <strong>{store.rating || 4.9}</strong>
+                            <span aria-label={`${store.rating || 4.9} de 5 estrellas`}>★★★★★</span>
+                            <small>({Math.round(Number(store.totalPublicaciones || 1400) / 11)})</small>
                           </div>
 
                           {/* Specialty Line with Pills */}
@@ -458,10 +527,10 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                             </div>
 
                             <div className="stat-col-item">
-                              <Star size={14} className="stat-icon-amber" />
+                              <ShieldCheck size={14} className="stat-icon-blue" />
                               <div className="stat-text-group">
-                                <strong>{store.rating || 4.9} / 5.0</strong>
-                                <span>Calificación</span>
+                                <strong>{Math.min(99, 94 + Math.round(Number(store.rating || 4.9)))}%</strong>
+                                <span>Tasa de respuesta</span>
                               </div>
                             </div>
 
@@ -469,7 +538,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                               <Clock size={14} className="stat-icon-green" />
                               <div className="stat-text-group">
                                 <strong>&lt; 15 min</strong>
-                                <span>Respuesta</span>
+                                <span>Tiempo de respuesta</span>
                               </div>
                             </div>
                           </div>
@@ -502,7 +571,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                               className="btn-view-catalog-link"
                               onClick={() => onSelectStore?.(store)}
                             >
-                              <span>Ver catálogo de tienda</span>
+                              <span>Ver perfil</span>
                               <ArrowRight size={14} className="btn-arrow-icon" />
                             </button>
                           </div>

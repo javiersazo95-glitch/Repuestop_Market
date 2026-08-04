@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search, Filter, SlidersHorizontal, ShieldCheck, MapPin, Star, Package,
   Clock, ArrowRight, ArrowLeft, X, CheckCircle2, RotateCcw, Tag, Truck,
-  ChevronLeft, ChevronRight, Eye, ShoppingCart, Car, Wrench, Layers, AlertCircle, Globe, MessageSquare
+  ChevronLeft, ChevronRight, ChevronDown, Eye, ShoppingCart, Car, Wrench, Layers, AlertCircle, Globe, MessageSquare, Info
 } from 'lucide-react';
 // CategoryIconTile y SIDEBAR_CATEGORIES se usaban sin estar importados, por lo que la
 // vista lanzaba ReferenceError al montarse (el ErrorBoundary la reemplazaba por completo).
 import CategoryIconTile from './CategoryIconTile';
+import MarketplaceProductCard from './MarketplaceProductCard';
 import {
   SIDEBAR_CATEGORIES, CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID
 } from '../data/categories';
@@ -63,6 +64,33 @@ export default function PartsCatalogView({
   const [onlyFastDelivery, setOnlyFastDelivery] = useState(false);
   const [maxPrice, setMaxPrice] = useState(1000000);
   const [sortBy, setSortBy] = useState('relevancia');
+  const [openFilterSections, setOpenFilterSections] = useState({
+    purchase: true,
+    category: true,
+    condition: true,
+    shipping: true,
+  });
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const filterPanelRef = useRef(null);
+  const [filterDrawerHeight, setFilterDrawerHeight] = useState(0);
+
+  useEffect(() => {
+    if (!isFiltersOpen || !filterPanelRef.current) {
+      setFilterDrawerHeight(0);
+      return undefined;
+    }
+
+    const panel = filterPanelRef.current;
+    const measurePanel = () => setFilterDrawerHeight(Math.ceil(panel.getBoundingClientRect().height) + 16);
+    measurePanel();
+    const observer = new ResizeObserver(measurePanel);
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, [isFiltersOpen]);
+
+  const toggleFilterSection = (section) => {
+    setOpenFilterSections((current) => ({ ...current, [section]: !current[section] }));
+  };
 
   // Identificación real por patente: GET /api/v1/vehiculos/patente/{patente}.
   const handlePatentSearch = async (e) => {
@@ -248,6 +276,11 @@ export default function PartsCatalogView({
     setCurrentPage(1);
   };
 
+  const handleApplyFilters = () => {
+    setIsFiltersOpen(false);
+    document.querySelector('.catalog-parts-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
     <div className="parts-catalog-view-wrapper">
       {/* 1. Catalog Hero Header */}
@@ -263,10 +296,16 @@ export default function PartsCatalogView({
               <Wrench size={14} />
               <span>CATÁLOGO TÉCNICO OFICIAL REPUESTOP.CL</span>
             </div>
-            <h1>Inventario General de Repuestos</h1>
+            <h1>Inventario General de <span>Repuestos</span></h1>
             <p>
               Busca y filtra repuestos mecánicos, eléctricos y de carrocería con código OEM, origen verificado y calce 100% garantizado.
             </p>
+            <div className="catalog-hero-perks">
+              <span><ShieldCheck size={20} /> 100% OEM Verificado</span>
+              <span><Package size={20} /> Miles de productos en stock</span>
+              <span><Truck size={20} /> Despacho a todo Chile</span>
+              <span><ShieldCheck size={20} /> Garantía de compatibilidad</span>
+            </div>
           </div>
 
           {activeVehicle && (
@@ -284,12 +323,14 @@ export default function PartsCatalogView({
         </div>
       </div>
 
-      <div className="container catalog-main-container">
-        {/* 1. Patent Filter Console Bar */}
+      <div className="container catalog-patent-console-wrap">
         <div className="patent-filter-box-bar">
           <div className="patent-filter-header-title">
             <Car size={18} className="text-blue-500" />
-            <span>Filtrar Repuestos del Catálogo por Patente:</span>
+            <span>
+              <strong>FILTRAR POR <b>PATENTE O VIN</b></strong>
+              <small>Encuentra repuestos exactos para tu vehículo</small>
+            </span>
           </div>
 
           <form onSubmit={handlePatentSearch} className="patent-filter-form-inline">
@@ -319,7 +360,9 @@ export default function PartsCatalogView({
             </div>
           )}
         </div>
+      </div>
 
+      <div className="container catalog-main-container">
         {patentError && <div className="patent-error-msg">{patentError}</div>}
 
         {/* 2. Top Control Bar (Search & Sort) */}
@@ -340,6 +383,10 @@ export default function PartsCatalogView({
             )}
           </div>
 
+          <button className="catalog-open-filters" type="button" onClick={() => setIsFiltersOpen(true)}>
+            <Filter size={18} /><span>Filtros</span><ChevronRight size={16} />
+          </button>
+
           <div className="control-bar-right-group">
             <div className="results-count-badge">
               <span>Mostrando <strong>{sortedProducts.length}</strong> de {products.length} repuestos</span>
@@ -359,61 +406,70 @@ export default function PartsCatalogView({
         </div>
 
         {/* 3. Main 2-Column Content Layout (Technical Sidebar + Parts Grid) */}
-        <div className="catalog-content-grid">
+        <div className={`catalog-content-grid catalog-main-content-grid product-filter-drawer-layout ${isFiltersOpen ? 'filters-open' : ''}`} style={isFiltersOpen && filterDrawerHeight ? { minHeight: `${filterDrawerHeight}px` } : undefined}>
+          {isFiltersOpen && <button className="catalog-filter-backdrop" type="button" aria-label="Cerrar filtros" onClick={() => setIsFiltersOpen(false)} />}
           {/* Sidebar Technical Filters (Left 280px) */}
-          <aside className="catalog-sidebar-filters">
+          <aside ref={filterPanelRef} className="catalog-sidebar-filters catalog-advanced-filter-panel">
             <div className="sidebar-filters-header">
               <div className="sidebar-title-group">
-                <SlidersHorizontal size={16} />
-                <span>Filtros Técnicos Avanzados</span>
+                <SlidersHorizontal size={25} />
+                <span><strong>Filtros Avanzados</strong><small>Encuentra el repuesto exacto para tu vehículo</small></span>
               </div>
 
-              {(selectedCategory !== 'TODAS' || selectedCondition !== 'TODOS' || selectedOrigin !== 'TODOS' || selectedBrand !== 'TODAS' || purchaseType !== 'TODOS' || searchQuery || onlyCompatible || onlyFastDelivery) && (
+              <div className="filter-panel-header-actions">
                 <button className="btn-reset-filters-mini" onClick={handleResetFilters}>
-                  <RotateCcw size={12} />
+                  <RotateCcw size={15} />
                   <span>Limpiar</span>
                 </button>
-              )}
+                <button className="btn-close-filter-drawer" type="button" onClick={() => setIsFiltersOpen(false)} aria-label="Cerrar filtros" title="Cerrar filtros">
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
             {/* Filter 0: Modalidad / Origen de Compra */}
-            <div className="filter-section-group">
-              <label className="filter-group-label"><ShoppingCart size={13} /> Modalidad de Compra</label>
-              <div className="filter-options-list">
+            <div className={`filter-section-group ${openFilterSections.purchase ? 'is-open' : 'is-collapsed'}`}>
+              <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('purchase')} aria-expanded={openFilterSections.purchase}>
+                <span className="filter-group-label"><ShoppingCart size={13} /> Modalidad de Compra</span><ChevronDown size={16} />
+              </button>
+              {openFilterSections.purchase && <div className="filter-options-list">
                 <button
                   className={`filter-option-btn ${purchaseType === 'TODOS' ? 'active' : ''}`}
                   onClick={() => setPurchaseType('TODOS')}
                 >
-                  <span>Todos los Repuestos</span>
-                  {purchaseType === 'TODOS' && <CheckCircle2 size={14} className="check-active" />}
+                  <span className="filter-choice-dot">{purchaseType === 'TODOS' && <CheckCircle2 size={18} />}</span>
+                  <span className="filter-option-copy"><strong>Todos los Repuestos</strong><small>Ver todos los productos</small></span>
                 </button>
                 <button
                   className={`filter-option-btn ${purchaseType === 'DIRECTA' ? 'active' : ''}`}
                   onClick={() => setPurchaseType('DIRECTA')}
                 >
-                  <span>Con Precio Directo</span>
-                  {purchaseType === 'DIRECTA' && <CheckCircle2 size={14} className="check-active" />}
+                  <span className="filter-choice-dot">{purchaseType === 'DIRECTA' && <CheckCircle2 size={18} />}</span>
+                  <span className="filter-option-copy"><strong>Con Precio Directo</strong><small>Compra inmediata</small></span>
                 </button>
                 <button
                   className={`filter-option-btn ${purchaseType === 'COTIZACION' ? 'active' : ''}`}
                   onClick={() => setPurchaseType('COTIZACION')}
                 >
-                  <span>Solo Bajo Cotización</span>
-                  {purchaseType === 'COTIZACION' && <CheckCircle2 size={14} className="check-active" />}
+                  <span className="filter-choice-dot">{purchaseType === 'COTIZACION' && <CheckCircle2 size={18} />}</span>
+                  <span className="filter-option-copy"><strong>Solo Bajo Cotización</strong><small>Requiere evaluación</small></span>
                 </button>
-              </div>
+              </div>}
             </div>
 
             {/* Filter 1: Categoría del Repuesto */}
-            <div className="filter-section-group">
-              <label className="filter-group-label"><Layers size={13} /> Categoría del Repuesto</label>
-              <div className="filter-options-list">
+            <div className={`filter-section-group ${openFilterSections.category ? 'is-open' : 'is-collapsed'}`}>
+              <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('category')} aria-expanded={openFilterSections.category}>
+                <span className="filter-group-label"><Layers size={13} /> Categoría del Repuesto</span><ChevronDown size={16} />
+              </button>
+              {openFilterSections.category && <div className="filter-options-list">
                 <button
                   className={`filter-option-btn ${selectedCategory === 'TODAS' ? 'active' : ''}`}
                   onClick={() => setSelectedCategory('TODAS')}
                 >
-                  <span>Todas las Categorías</span>
-                  {selectedCategory === 'TODAS' && <CheckCircle2 size={14} className="check-active" />}
+                  <span className="filter-category-icon filter-category-icon-all"><Layers size={13} /></span>
+                  <span className="filter-option-copy"><strong>Todas las Categorías</strong><small>Explorar todo el catálogo</small></span>
+                  {selectedCategory === 'TODAS' && <CheckCircle2 size={18} className="check-active" />}
                 </button>
                 {SIDEBAR_CATEGORIES.map((cat) => (
                   <button
@@ -421,32 +477,39 @@ export default function PartsCatalogView({
                     className={`filter-option-btn ${selectedCategory === cat.id ? 'active' : ''}`}
                     onClick={() => setSelectedCategory(cat.id)}
                   >
-                    <span>{cat.nombre}</span>
-                    {selectedCategory === cat.id && <CheckCircle2 size={14} className="check-active" />}
+                    <CategoryIconTile iconName={cat.iconName} color={cat.color} size={9} className="filter-category-icon" />
+                    <span className="filter-option-copy"><strong>{cat.nombre}</strong></span>
+                    {selectedCategory === cat.id ? <CheckCircle2 size={18} className="check-active" /> : <ChevronRight size={17} className="filter-option-chevron" />}
                   </button>
                 ))}
-              </div>
+              </div>}
             </div>
 
             {/* Filter 2: Condición / Estado Técnico */}
-            <div className="filter-section-group">
-              <label className="filter-group-label"><ShieldCheck size={13} /> Condición Técnica</label>
-              <div className="filter-options-list">
-                {CONDITIONS.map((cond) => (
+            <div className={`filter-section-group ${openFilterSections.condition ? 'is-open' : 'is-collapsed'}`}>
+              <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('condition')} aria-expanded={openFilterSections.condition}>
+                <span className="filter-group-label"><ShieldCheck size={13} /> Condición Técnica</span><ChevronDown size={16} />
+              </button>
+              {openFilterSections.condition && <div className="filter-options-list">
+                {CONDITIONS.map((cond, conditionIndex) => (
                   <button
                     key={cond}
                     className={`filter-option-btn ${selectedCondition === cond ? 'active' : ''}`}
                     onClick={() => setSelectedCondition(cond)}
                   >
-                    <span>{cond === 'TODOS' ? 'Todos los Estados' : cond}</span>
-                    {selectedCondition === cond && <CheckCircle2 size={14} className="check-active" />}
+                    <span className="filter-condition-icon">{conditionIndex === 0 ? <CheckCircle2 size={14} /> : conditionIndex === 1 ? <Package size={14} /> : conditionIndex === 2 ? <ShieldCheck size={14} /> : <RotateCcw size={14} />}</span>
+                    <span className="filter-option-copy">
+                      <strong>{cond === 'TODOS' ? 'Todos los Estados' : cond}</strong>
+                      <small>{cond === 'TODOS' ? 'Mostrar todas las opciones' : cond === 'Nuevo OEM Original' ? 'Producto 100% original' : cond === 'Nuevo Alternativo Homologado' ? 'Alternativa de calidad' : 'Revisado y garantizado'}</small>
+                    </span>
+                    {selectedCondition === cond && <CheckCircle2 size={18} className="check-active" />}
                   </button>
                 ))}
-              </div>
+              </div>}
             </div>
 
             {/* Filter 3: Origen / Procedencia */}
-            <div className="filter-section-group">
+            <div className="filter-section-group compact-select-section">
               <label className="filter-group-label"><Globe size={13} /> Origen / Fabricación</label>
               <select
                 value={selectedOrigin}
@@ -460,7 +523,7 @@ export default function PartsCatalogView({
             </div>
 
             {/* Filter 4: Marca del Vehículo */}
-            <div className="filter-section-group">
+            <div className="filter-section-group compact-select-section">
               <label className="filter-group-label"><Car size={13} /> Marca de Vehículo</label>
               <select
                 value={selectedBrand}
@@ -474,23 +537,26 @@ export default function PartsCatalogView({
             </div>
 
             {/* Filter 5: Opciones Rápidas */}
-            <div className="filter-section-group">
-              <label className="filter-group-label"><Truck size={13} /> Opciones de Despacho</label>
-              <label className="checkbox-filter-label">
+            <div className={`filter-section-group ${openFilterSections.shipping ? 'is-open' : 'is-collapsed'}`}>
+              <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('shipping')} aria-expanded={openFilterSections.shipping}>
+                <span className="filter-group-label"><Truck size={13} /> Opciones de Despacho</span><ChevronDown size={16} />
+              </button>
+              {openFilterSections.shipping && <label className="checkbox-filter-label">
                 <input
                   type="checkbox"
                   checked={onlyFastDelivery}
                   onChange={(e) => setOnlyFastDelivery(e.target.checked)}
                 />
-                <span>Solo con Envío Rápido el mismo día</span>
-              </label>
+                <span><strong>Solo con Envío Rápido el mismo día</strong><small><Info size={12} /> Disponible en comunas seleccionadas.</small></span>
+              </label>}
             </div>
 
             {/* Clear All Filters Button */}
-            <button className="btn-clear-all-filters-wide" onClick={handleResetFilters}>
-              <RotateCcw size={14} />
-              <span>Restablecer Filtros</span>
+            <button className="btn-clear-all-filters-wide" onClick={handleApplyFilters}>
+              <Search size={18} />
+              <span>Aplicar Filtros y Ver Resultados</span>
             </button>
+            <p className="filter-security-note"><ShieldCheck size={14} /> Tus preferencias están seguras con nosotros.</p>
           </aside>
 
           {/* Parts Cards Column (Right Grid) */}
@@ -511,93 +577,7 @@ export default function PartsCatalogView({
               <>
                 <div className="parts-cards-grid-catalog">
                   {paginatedProducts.map((prod) => (
-                    <div key={prod.id} className="latest-part-card-rich">
-                      <div className="part-card-top-tag">
-                        <span className="time-ago-pill">
-                          <ShieldCheck size={12} /> {prod.condicion || 'Nuevo OEM'}
-                        </span>
-                        <span className="stock-count-pill">{prod.stock || 12} en stock</span>
-                      </div>
-
-                      <div className="part-card-img-box" onClick={() => onQuickView(prod)}>
-                        <CategoryIconTile
-                          iconName={CATEGORY_ICON_BY_ID[prod.categoria]}
-                          color={CATEGORY_COLOR_BY_ID[prod.categoria]}
-                          image={CATEGORY_IMAGE_BY_ID[prod.categoria]}
-                          size={36}
-                        />
-                        {prod.descuento > 0 && (
-                          <span className="discount-red-badge">-{prod.descuento}% OFF</span>
-                        )}
-                      </div>
-
-                      <div className="part-card-body-rich">
-                        {prod.oemCode && <span className="oem-code-tag">OEM: {prod.oemCode}</span>}
-                        <h3 className="part-title" onClick={() => onQuickView(prod)}>{prod.titulo}</h3>
-
-                        <div className="part-compat-sub">
-                          <CheckCircle2 size={13} className="text-green-icon" />
-                          <span>
-                            {prod.compatibilidad && prod.compatibilidad.length > 0
-                              ? `Calza en ${prod.compatibilidad[0].marca} ${prod.compatibilidad[0].modelo}`
-                              : 'Compatibilidad Multimarca Garantizada'}
-                          </span>
-                        </div>
-
-                        <div className="vendor-info-line">
-                          <ShieldCheck size={14} className="text-blue-icon" />
-                          <strong>{prod.vendedor}</strong>
-                          <span className="city-span"><MapPin size={11} /> {prod.ciudadVendedor || 'Santiago, RM'}</span>
-                        </div>
-
-                        <div className="price-and-action-row">
-                          <div className="price-stack">
-                            {prod.soloCotizacion || !prod.precio || prod.precio === 0 ? (
-                              <span className="price-main-bold quote-only-text" style={{ color: '#0066ff', fontSize: '12px' }}>
-                                Bajo Cotización
-                              </span>
-                            ) : (
-                              <>
-                                <span className="price-main-bold">${Number(prod.precio).toLocaleString('es-CL')}</span>
-                                {prod.precioOriginal > prod.precio && (
-                                  <span className="price-old">${Number(prod.precioOriginal).toLocaleString('es-CL')}</span>
-                                )}
-                              </>
-                            )}
-                          </div>
-
-                          <div className="part-btn-group">
-                            {prod.soloCotizacion || !prod.precio || prod.precio === 0 ? (
-                              <button
-                                className="btn-add-cart-red btn-quote-chat-only"
-                                title="Cotizar por chat con la tienda"
-                                onClick={() => onOpenQuote ? onOpenQuote(prod) : onQuickView(prod)}
-                              >
-                                <MessageSquare size={14} />
-                                <span>Cotizar</span>
-                              </button>
-                            ) : (
-                              <>
-                                <button
-                                  className="btn-quote-chat"
-                                  title="Vista Rápida"
-                                  onClick={() => onQuickView(prod)}
-                                >
-                                  <Eye size={15} />
-                                </button>
-                                <button
-                                  className="btn-add-cart-red"
-                                  onClick={() => onAddToCart(prod)}
-                                >
-                                  <ShoppingCart size={15} />
-                                  <span>Comprar</span>
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <MarketplaceProductCard key={prod.id} product={prod} onView={onQuickView} />
                   ))}
                 </div>
 

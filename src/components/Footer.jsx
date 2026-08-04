@@ -1,142 +1,100 @@
 import React from 'react';
-import { 
-  ShieldCheck, Truck, Lock, FileText, Phone, Mail, MapPin, 
-  Clock, Store, ArrowRight, CheckCircle2, ChevronRight, Sparkles, Building2, Wrench, HelpCircle
+import {
+  ChevronRight, Compass, Headphones, Mail, MessageSquare,
+  PackageSearch, RotateCcw, Search, ShieldCheck, Store, Tag, Truck
 } from 'lucide-react';
-import RepuesTopLogo from './RepuesTopLogo';
 
-export default function Footer({
-  onOpenSellerModal,
-  onOpenStores,
-  onOpenCatalog,
-  onOpenHelp
-}) {
+const MARKETPLACE_LINKS = [
+  ['Catálogo General de Repuestos', PackageSearch],
+  ['Directorio de Tiendas Verificadas', Store],
+  ['Búsqueda por Patente / VIN', Search],
+  ['Centro de Ayuda & Soporte', Headphones]
+];
+
+const CATEGORY_LINKS = [
+  ['Pastillas & Discos de Freno', Tag],
+  ['Kits de Distribución Motor', PackageSearch],
+  ['Amortiguadores & Suspensión', RotateCcw],
+  ['Aceites y Filtros', PackageSearch]
+];
+
+const SUPPORT_LINKS = [
+  ['Centro de Ayuda', 'Preguntas frecuentes y soporte', Headphones],
+  ['Mediación de Conflictos', 'Te ayudamos con tu compra', MessageSquare]
+];
+
+export default function Footer({ onOpenStores, onOpenCatalog, onOpenHelp }) {
+  const openCatalog = () => onOpenCatalog?.();
+
   return (
-    <footer className="modern-footer-section">
-      {/* Main Footer Body Columns */}
-      <div className="main-footer-body">
-        <div className="container footer-columns-grid">
-          {/* Column 1: Brand & Seller Portal CTA */}
-          <div className="footer-col brand-col">
-            <RepuesTopLogo height={52} variant="footer" />
-            <p className="footer-about-text">
-              El marketplace automotriz líder de Chile. Conectamos a conductores y talleres con más de <strong className="text-cyan-glow">+1.200 casas de repuestos y desarmadurías verificadas</strong> en todo el país.
-            </p>
+    <footer className="modern-footer-section reference-footer">
+      <div className="container reference-footer-grid">
+        <section className="reference-footer-brand">
+          <div className="reference-footer-logo">
+            <img src="/repuestop_icon.png" alt="" />
+            <span>Repues<b>Top</b></span>
+          </div>
+          <p>El marketplace automotriz para encontrar repuestos, comparar opciones y comprar con seguridad.</p>
 
-            <div className="seller-box-card-vivid" onClick={onOpenSellerModal} style={{ cursor: 'pointer' }}>
-              <div className="sb-header-vivid">
-                <Store size={20} className="icon-store-glow" />
-                <span>¿Tienes una Tienda de Repuestos?</span>
-              </div>
-              <p>Comienza a vender a miles de conductores y mecánicos a diario.</p>
-              <button className="sb-btn-blue-official" onClick={(e) => { e.stopPropagation(); onOpenSellerModal?.(); }}>
-                <span>Registrar Mi Tienda Gratis</span>
-                <ArrowRight size={15} />
-              </button>
-            </div>
+          <div className="footer-trust-points">
+            <div><ShieldCheck /><span><strong>Compra 100% segura</strong>Protegemos tu compra en cada paso.</span></div>
+            <div><Truck /><span><strong>Envíos a todo Chile</strong>Entregas rápidas y seguras donde estés.</span></div>
           </div>
 
-          {/* Column 2: Navigation & Directories */}
-          <div className="footer-col">
-            <h4 className="title-official">Explorar Marketplace</h4>
-            <ul className="footer-links-list">
-              <li onClick={onOpenCatalog} style={{ cursor: 'pointer' }}>
-                <ChevronRight size={12} className="link-arrow" />
-                <span>Catálogo General de Repuestos</span>
+        </section>
+
+        <section className="reference-footer-column">
+          <h2><Compass /> Explorar Marketplace</h2>
+          <ul>
+            {MARKETPLACE_LINKS.map(([label, Icon], index) => (
+              <li key={label}>
+                <button onClick={index === 1 ? onOpenStores : index === 3 ? onOpenHelp : openCatalog}>
+                  <Icon /> <span>{label}</span> <ChevronRight className="footer-link-chevron" />
+                </button>
               </li>
-              <li onClick={onOpenStores} style={{ cursor: 'pointer' }}>
-                <ChevronRight size={12} className="link-arrow" />
-                <span>Directorio de Tiendas Verificadas</span>
+            ))}
+          </ul>
+        </section>
+
+        <section className="reference-footer-column">
+          <h2><Tag /> Categorías Populares</h2>
+          <ul>
+            {CATEGORY_LINKS.map(([label, Icon]) => (
+              <li key={label}>
+                <button onClick={openCatalog}><Icon /> <span>{label}</span> <ChevronRight className="footer-link-chevron" /></button>
               </li>
-              <li onClick={onOpenCatalog} style={{ cursor: 'pointer' }}>
-                <ChevronRight size={12} className="link-arrow" />
-                <span>Búsqueda por Patente / VIN</span>
+            ))}
+          </ul>
+        </section>
+
+        <section className="reference-footer-column reference-support-column">
+          <h2><ShieldCheck /> Soporte y Mediación</h2>
+          <ul>
+            {SUPPORT_LINKS.map(([label, detail, Icon]) => (
+              <li key={label}>
+                <button onClick={onOpenHelp}><Icon /><span><strong>{label}</strong><small>{detail}</small></span></button>
               </li>
-              <li onClick={onOpenHelp} style={{ cursor: 'pointer' }}>
-                <ChevronRight size={12} className="link-arrow" />
-                <span>Centro de Ayuda & Soporte Ticket</span>
-              </li>
-              <li onClick={onOpenSellerModal} style={{ cursor: 'pointer' }}>
-                <ChevronRight size={12} className="link-arrow" />
-                <span>Portal de Vendedores & Desarmadurías</span>
-              </li>
-            </ul>
+            ))}
+          </ul>
+        </section>
+
+        <section className="reference-footer-column reference-contact-column">
+          <h2><Headphones /> Atención al Cliente</h2>
+          <div className="reference-contact-list compact-contact-list">
+            <button onClick={onOpenHelp}><Headphones /><span><strong>Soporte</strong>Resolvemos tus dudas de compra</span></button>
+            <button onClick={onOpenHelp}><Mail /><span><strong>Centro de ayuda</strong>Encuentra respuestas y asistencia</span></button>
           </div>
-
-          {/* Column 3: Categorías de Repuestos */}
-          <div className="footer-col">
-            <h4 className="title-official">Categorías Populares</h4>
-            <ul className="footer-links-list">
-              <li onClick={onOpenCatalog} style={{ cursor: 'pointer' }}>
-                <ChevronRight size={12} className="link-arrow" />
-                <span>Pastillas & Discos de Freno</span>
-              </li>
-              <li onClick={onOpenCatalog} style={{ cursor: 'pointer' }}>
-                <ChevronRight size={12} className="link-arrow" />
-                <span>Kits de Distribución Motor</span>
-              </li>
-              <li onClick={onOpenCatalog} style={{ cursor: 'pointer' }}>
-                <ChevronRight size={12} className="link-arrow" />
-                <span>Amortiguadores & Suspensión</span>
-              </li>
-              <li onClick={onOpenCatalog} style={{ cursor: 'pointer' }}>
-                <ChevronRight size={12} className="link-arrow" />
-                <span>Aceites Sintéticos 5W30 / 10W40</span>
-              </li>
-              <li onClick={onOpenCatalog} style={{ cursor: 'pointer' }}>
-                <ChevronRight size={12} className="link-arrow" />
-                <span>Iluminación & Focos LED</span>
-              </li>
-              <li onClick={onOpenCatalog} style={{ cursor: 'pointer' }}>
-                <ChevronRight size={12} className="link-arrow" />
-                <span>Baterías 12V AGM & Start-Stop</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Column 4: Customer Support & Contact */}
-          <div className="footer-col">
-            <h4 className="title-official">Atención al Cliente</h4>
-            
-            <div className="contact-item-vivid" onClick={onOpenHelp} style={{ cursor: 'pointer' }}>
-              <Phone size={16} className="text-cyan-glow" />
-              <span><strong>Mesa Central:</strong> +56 2 2938 4000</span>
-            </div>
-
-            <div className="contact-item-vivid" onClick={onOpenHelp} style={{ cursor: 'pointer' }}>
-              <Mail size={16} className="text-cyan-glow" />
-              <span><strong>Email:</strong> contacto@repuestop.cl</span>
-            </div>
-
-            <div className="contact-item-vivid">
-              <MapPin size={16} className="text-cyan-glow" />
-              <span><strong>Sede:</strong> Av. Providencia 1200, Santiago</span>
-            </div>
-
-            <div className="contact-item-vivid">
-              <Clock size={16} className="text-cyan-glow" />
-              <span><strong>Atención:</strong> Lun a Vie 08:30 - 18:30 hrs</span>
-            </div>
-
-            <div className="payment-badges-row-vivid">
-              <span className="pay-tag webpay-official">WebPay Plus 🇨🇱</span>
-              <span className="pay-tag mp-official">MercadoPago</span>
-              <span className="pay-tag card-official">Visa / MasterCard</span>
-            </div>
-          </div>
-        </div>
+        </section>
       </div>
 
-      {/* 3. Bottom Legal & Copyright Bar */}
-      <div className="footer-bottom-row-vivid">
-        <div className="container bottom-flex">
-          <p>© 2026 Corebit SpA Chile. Todos los derechos reservados.</p>
-          <div className="legal-links-list">
-            <span onClick={onOpenHelp} style={{ cursor: 'pointer' }}>Términos & Condiciones</span>
-            <span onClick={onOpenHelp} style={{ cursor: 'pointer' }}>Política de Privacidad</span>
-            <span onClick={onOpenHelp} style={{ cursor: 'pointer' }}>Garantía por Patente</span>
-          </div>
-        </div>
+      <div className="container reference-footer-bottom">
+        <p>© 2026 Corebit SpA Chile.<br />Todos los derechos reservados.</p>
+        <nav>
+          <button onClick={onOpenHelp}>Términos y Condiciones</button>
+          <button onClick={onOpenHelp}>Política de Privacidad</button>
+          <button onClick={onOpenHelp}>Garantía por Patente</button>
+        </nav>
+        <span className="reference-footer-security">Compra protegida</span>
       </div>
     </footer>
   );

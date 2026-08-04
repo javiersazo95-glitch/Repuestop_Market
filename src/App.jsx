@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import OfficialPatentHero from './components/OfficialPatentHero';
-import PromoGridBanners from './components/PromoGridBanners';
 import LatestAddedPartsSection from './components/LatestAddedPartsSection';
 import NewOnboardedStoresSection from './components/NewOnboardedStoresSection';
-import CategoryGrid from './components/CategoryGrid';
 import SocialProofTestimonials from './components/SocialProofTestimonials';
 import ProductQuickViewModal from './components/ProductQuickViewModal';
 import SellerRegisterModal from './components/SellerRegisterModal';
@@ -21,7 +19,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 
 
 function MainApp() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user, role } = useAuth();
 
   // Top-level view: 'store' (marketplace homepage), 'profile' (account dashboard), 'stores' (stores directory), 'catalog' (all parts) or 'store-profile' (single store)
   const [view, setView] = useState('store');
@@ -58,7 +56,7 @@ function MainApp() {
       } else {
         localStorage.removeItem(ACTIVE_VEHICLE_KEY);
       }
-    } catch (e) {
+    } catch {
       // ignore quota or storage errors
     }
   }, [activeVehicle]);
@@ -100,14 +98,10 @@ function MainApp() {
     setCartItems(prev => prev.filter(item => item.id !== productId));
   };
 
-  const scrollToSection = () => {
-    const el = document.querySelector('.latest-parts-section');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  };
-
   const handleSelectStore = (store) => {
     setSelectedStore(store);
     setView('store-profile');
+    window.scrollTo({ top: 0, behavior: 'auto' });
   };
 
   if (view === 'profile' && isLoggedIn) {
@@ -153,6 +147,10 @@ function MainApp() {
           onQuickView={(prod) => setQuickViewProduct(prod)}
           onOpenQuote={(prod) => setQuoteProduct(prod)}
           activeVehicle={activeVehicle}
+          onEditStore={['SELLER', 'PROVIDER', 'PROVEEDOR'].includes(role) && (
+            String(user?.sellerId || '') === String(selectedStore?.id || '') ||
+            user?.storeName === selectedStore?.nombre
+          ) ? () => setView('profile') : null}
         />
       ) : view === 'catalog' ? (
         <PartsCatalogView
@@ -167,15 +165,18 @@ function MainApp() {
           {/* 2. Official Patent Hero Console */}
           <OfficialPatentHero 
             activeVehicle={activeVehicle}
-            setActiveVehicle={setActiveVehicle}
+            onSelectVehicle={setActiveVehicle}
             onOpenSellerModal={() => setIsSellerModalOpen(true)}
-            onSearchSubmit={scrollToSection}
+            onOpenCatalog={() => setView('catalog')}
+            onOpenHelp={() => setIsHelpModalOpen(true)}
+            selectedCategory={selectedCategory}
+            onSelectCategory={(catId) => {
+              setSelectedCategory(catId);
+              setView('catalog');
+            }}
           />
 
-          {/* 3. PROMO GRID BANNERS */}
-          <PromoGridBanners onScrollToCatalog={() => setView('catalog')} />
-
-          {/* 4. LATEST ADDED SPARE PARTS IN REAL-TIME */}
+          {/* 3. LATEST ADDED SPARE PARTS IN REAL-TIME */}
           <LatestAddedPartsSection 
             onAddToCart={handleAddToCart} 
             onQuickView={(prod) => setQuickViewProduct(prod)}
@@ -183,23 +184,14 @@ function MainApp() {
             onOpenCatalog={() => setView('catalog')}
           />
 
-          {/* 5. NEW ONBOARDED AUTO PARTS STORES & WRECKING YARDS */}
+          {/* 4. NEW ONBOARDED AUTO PARTS STORES & WRECKING YARDS */}
           <NewOnboardedStoresSection 
             onOpenSellerModal={() => setIsSellerModalOpen(true)}
             onOpenStores={() => setView('stores')}
             onSelectStore={handleSelectStore}
           />
 
-          {/* 6. Illustrated Category Grid Section */}
-          <CategoryGrid 
-            selectedCategory={selectedCategory} 
-            onSelectCategory={(catId) => {
-              setSelectedCategory(catId);
-              setView('catalog');
-            }} 
-          />
-
-          {/* 7. Social Proof Testimonials Section */}
+          {/* 5. Social Proof Testimonials Section */}
           <SocialProofTestimonials />
         </>
       )}

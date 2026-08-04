@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Store, MapPin, Check, Layers, Star, ArrowRight, Building2, Truck, ShieldCheck, Tag, Package, Zap, Bike, Globe, Clock } from 'lucide-react';
+import { ArrowRight, Building2, Truck, ShieldCheck, Package, Bike } from 'lucide-react';
 import { NEW_ONBOARDED_STORES } from '../data/liveMarketplaceData';
-import { getRecentSellersApi } from '../services/api';
+import { getRecentSellersApi, getStoreProductsApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import MarketplaceSellerCard from './MarketplaceSellerCard';
+import { adaptPage, adaptProduct } from '../services/adapters';
 
 export function getShippingIconConfig(method) {
   const norm = String(method || '').toLowerCase().trim();
@@ -49,44 +51,49 @@ export function getShippingIconConfig(method) {
   };
 }
 
-export default function NewOnboardedStoresSection({ onOpenSellerModal, onOpenStores, onSelectStore }) {
+export default function NewOnboardedStoresSection({ onOpenStores, onSelectStore }) {
   const { user } = useAuth();
   const [stores, setStores] = useState(NEW_ONBOARDED_STORES);
-  const [loading, setLoading] = useState(false);
+  const [inventoryTotals, setInventoryTotals] = useState({});
 
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
-
     getRecentSellersApi()
       .then((data) => {
         if (isMounted && Array.isArray(data) && data.length > 0) {
           const formattedStores = data.map((item, idx) => ({
-            id: item.id || `backend-${idx}`,
+            id: item.proveedorId || item.sellerId || item.storeId || item.tiendaId || item.id || `backend-${idx}`,
             nombre: item.nombre || item.storeName || item.nombreTienda || 'Tienda Vendedora',
             initials: item.initials || getStoreInitials(item.nombre || item.storeName || item.nombreTienda),
             bgColor: item.bgColor || ['#0066ff', '#059669', '#7c3aed', '#d97706'][idx % 4],
             textColor: '#ffffff',
-            rut: item.rut || item.taxId || '76.849.210-K',
+            rut: item.rut || item.taxId || '',
             tipo: item.tipo || item.giro || 'Casa de Repuestos Multimarca',
             ciudad: item.ciudad || item.comuna || 'Santiago, RM',
             verificadoFecha: item.verificadoFecha || 'Verificada Recientemente',
-            totalPublicaciones: item.totalPublicaciones || 1420,
-            rating: item.rating || 4.9,
-            especialidad: item.especialidad || item.descripcion || 'Toyota, Nissan, Hyundai',
+            totalPublicaciones: item.totalPublicaciones ?? item.totalProductos ?? item.productCount ?? item.publishedProductsCount ?? item.inventoryCount ?? 0,
+            rating: item.rating ?? 0,
+            reviewCount: item.reviewCount ?? 0,
+            responseRate: item.responseRate ?? null,
+            especialidad: item.especialidad || item.descripcion || item.giro || '',
+            descripcion: item.descripcion || item.description || item.tipo || item.giro || '',
             metodosEnvio: parseShippingMethods(item.metodosEnvio || item.shippingMethods),
             logoUrl: item.logoUrl || item.userProfileUrl || item.imagenUrl,
             userProfileUrl: item.userProfileUrl || item.logoUrl,
             coverUrl: item.coverUrl,
           }));
-          setStores(formattedStores);
+          const backendIds = new Set(formattedStores.map((store) => String(store.id)));
+          const backendNames = new Set(formattedStores.map((store) => String(store.nombre).toLowerCase()));
+          const fallbackStores = NEW_ONBOARDED_STORES.filter((store) => (
+            !backendIds.has(String(store.id)) && !backendNames.has(String(store.nombre).toLowerCase())
+          ));
+
+          // El bloque de portada siempre conserva las cinco posiciones del diseño.
+          setStores([...formattedStores, ...fallbackStores].slice(0, 5));
         }
       })
       .catch((err) => {
         console.warn('Omitiendo fetch de vendedores desde backend (usando dataset local):', err);
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
       });
 
     return () => {
@@ -94,20 +101,37 @@ export default function NewOnboardedStoresSection({ onOpenSellerModal, onOpenSto
     };
   }, []);
 
+  const visibleStoreIds = stores.slice(0, 5).map((store) => store.id).filter(Boolean).join(',');
+
+  useEffect(() => {
+    const storesToMeasure = stores.slice(0, 5).filter((store) => (
+      store.id && !Object.prototype.hasOwnProperty.call(inventoryTotals, store.id)
+    ));
+    if (!storesToMeasure.length) return undefined;
+
+    let isMounted = true;
+    Promise.all(storesToMeasure.map(async (store) => {
+      try {
+        const response = await getStoreProductsApi(store.id, { page: 0, size: 1 });
+        return [store.id, adaptPage(response, adaptProduct).total];
+      } catch {
+        return null;
+      }
+    })).then((entries) => {
+      if (!isMounted) return;
+      const resolvedEntries = entries.filter(Boolean);
+      if (resolvedEntries.length) setInventoryTotals((current) => ({ ...current, ...Object.fromEntries(resolvedEntries) }));
+    });
+
+    return () => { isMounted = false; };
+  }, [visibleStoreIds, inventoryTotals]);
+
   function parseShippingMethods(raw) {
     if (Array.isArray(raw)) return raw;
-    if (!raw) return ['Retiro en tienda', 'Envío dentro de la comuna', 'Envío fuera de la comuna'];
+    if (!raw) return [];
     return raw
       .split(',')
       .map((method) => method.trim())
-      .filter(Boolean);
-  }
-
-  function parseSpecialties(raw) {
-    if (!raw) return ['Toyota', 'Nissan', 'Hyundai'];
-    return String(raw)
-      .split(/[,·]/)
-      .map((s) => s.trim())
       .filter(Boolean);
   }
 
@@ -127,36 +151,30 @@ export default function NewOnboardedStoresSection({ onOpenSellerModal, onOpenSto
         <div className="header-text-group">
           <div className="badge-verified-stores">
             <ShieldCheck size={14} />
-            <span>TIENDAS Y DESARMADURÍAS VERIFICADAS</span>
+            <span>NUEVOS MIEMBROS</span>
           </div>
 
           <h2 className="stores-main-title">
-            <Building2 size={26} className="inline-icon-building" />
-            <span>Últimos Vendedores e Importadores Ingresados</span>
+            <span>Últimos vendedores agregados</span>
           </h2>
 
           <p className="stores-description">
-            Conoce las tiendas recién integradas a RepuesTop.cl. Verificamos su RUT, documentación comercial y local físico antes de activar su catálogo.
+            Conoce a los nuevos miembros que se han unido a nuestra red.
           </p>
         </div>
 
         <div className="stores-header-actions-group">
           {onOpenStores && (
             <button className="btn-view-directory-blue" onClick={onOpenStores}>
-              <span>Ver Directorio Completo →</span>
+              <span>Ver todos los vendedores</span><ArrowRight size={16} />
             </button>
           )}
-          <button className="btn-connect-inventory-navy" onClick={onOpenSellerModal}>
-            <span>¿Tienes Tienda? Conectar Mi Inventario</span>
-          </button>
         </div>
       </div>
 
       {/* 2. Sellers Grid */}
       <div className="stores-cards-grid">
-        {stores.map((store) => {
-          const specialties = parseSpecialties(store.especialidad);
-
+        {stores.slice(0, 5).map((store) => {
           const isCurrentUserStore =
             user &&
             (store.id === user.sellerId ||
@@ -165,142 +183,20 @@ export default function NewOnboardedStoresSection({ onOpenSellerModal, onOpenSto
              (user.storeName && store.nombre.toLowerCase().includes(user.storeName.toLowerCase())) ||
              (user.userName && store.nombre.toLowerCase().includes(user.userName.toLowerCase())));
 
-          const avatarPhoto = isCurrentUserStore
-            ? (user.userProfileUrl || user.logoUrl || store.logoUrl || store.userProfileUrl || store.imagenUrl)
-            : (store.logoUrl || store.userProfileUrl || store.imagenUrl);
+          const syncedStore = isCurrentUserStore
+            ? {
+                ...store,
+                logoUrl: user.userProfileUrl || user.logoUrl || store.logoUrl,
+                userProfileUrl: user.userProfileUrl || store.userProfileUrl,
+                coverUrl: user.coverUrl || store.coverUrl,
+              }
+            : store;
+          const storeWithInventoryTotal = Object.prototype.hasOwnProperty.call(inventoryTotals, syncedStore.id)
+            ? { ...syncedStore, totalPublicaciones: inventoryTotals[syncedStore.id] }
+            : syncedStore;
+          const avatarPhoto = storeWithInventoryTotal.logoUrl || storeWithInventoryTotal.userProfileUrl || storeWithInventoryTotal.imagenUrl;
 
-          const coverPhoto = isCurrentUserStore
-            ? (user.coverUrl || store.coverUrl)
-            : store.coverUrl;
-
-          return (
-            <div key={store.id} className="seller-exact-card seller-horizontal-card">
-              {/* Top Banner Accent */}
-              <div
-                className="seller-card-cover-header"
-                style={{
-                  backgroundImage: coverPhoto
-                    ? `url(${coverPhoto})`
-                    : 'linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0066ff 100%)',
-                }}
-              >
-                <div className="green-onboard-pill store-verified-pill top-right-verified">
-                  <ShieldCheck size={13} strokeWidth={2.5} />
-                  <span>{store.verificadoFecha}</span>
-                </div>
-              </div>
-
-              {/* Main Info Row (Avatar + Title + Category) */}
-              <div className="seller-card-body-content">
-                <div className="seller-avatar-header-row">
-                  <div className="seller-avatar-wrapper">
-                    {avatarPhoto ? (
-                      <div className="seller-avatar-circle seller-photo-avatar">
-                        <img src={avatarPhoto} alt={store.nombre} className="seller-avatar-img" />
-                      </div>
-                    ) : (
-                      <div
-                        className="seller-avatar-circle seller-gradient-avatar"
-                        style={{
-                          background: `linear-gradient(135deg, ${store.bgColor || '#0066ff'} 0%, #0f172a 100%)`,
-                          color: store.textColor || '#ffffff',
-                        }}
-                      >
-                        <span>{store.initials}</span>
-                      </div>
-                    )}
-                    <div className="seller-avatar-online-dot" title="Tienda Activa en Línea" />
-                  </div>
-
-                  <div className="seller-main-title-box">
-                    <div className="seller-title-rut-row">
-                      <h3 className="seller-name">{store.nombre}</h3>
-                      <span className="seller-rut-badge">RUT {store.rut}</span>
-                    </div>
-                    <span className="seller-type-chip">{store.tipo}</span>
-                  </div>
-                </div>
-
-                {/* Location & Commercial Address */}
-                <div className="seller-type-location-row">
-                  <span className="seller-location">
-                    <MapPin size={13} className="pin-icon" />
-                    <span>{store.ciudad} (Local Físico Verificado)</span>
-                  </span>
-                </div>
-
-                {/* Specialty Line with Pills */}
-                <div className="seller-specialty-pills-row">
-                  <span className="spec-label">Especialidad:</span>
-                  <div className="specialty-pills-list">
-                    {specialties.slice(0, 4).map((spec, i) => (
-                      <span key={i} className="specialty-pill">{spec}</span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Rich 3-Column Metrics Bar */}
-                <div className="seller-stats-3col-bar">
-                  <div className="stat-col-item">
-                    <Package size={14} className="stat-icon-blue" />
-                    <div className="stat-text-group">
-                      <strong>+{Number(store.totalPublicaciones || 1400).toLocaleString('es-CL')}</strong>
-                      <span>Repuestos</span>
-                    </div>
-                  </div>
-
-                  <div className="stat-col-item">
-                    <Star size={14} className="stat-icon-amber" />
-                    <div className="stat-text-group">
-                      <strong>{store.rating || 4.9} / 5.0</strong>
-                      <span>Calificación</span>
-                    </div>
-                  </div>
-
-                  <div className="stat-col-item">
-                    <Clock size={14} className="stat-icon-green" />
-                    <div className="stat-text-group">
-                      <strong>&lt; 15 min</strong>
-                      <span>Respuesta</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Shipping Icons Row */}
-                <div className="seller-shipping-icons-row">
-                  <span className="shipping-label-small">Envíos:</span>
-                  <div className="shipping-icons-list">
-                    {(store.metodosEnvio || ['Retiro en tienda', 'Envío dentro de la comuna', 'Envío fuera de la comuna']).map((method, i) => {
-                      const config = getShippingIconConfig(method);
-                      const Icon = config.icon;
-                      return (
-                        <div
-                          key={i}
-                          className="shipping-icon-badge"
-                          style={{ color: config.color, backgroundColor: config.bg }}
-                          title={config.label}
-                        >
-                          <Icon size={14} />
-                          <span className="shipping-tooltip-text">{config.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Bottom Full-Width Action Button */}
-                <div className="seller-catalog-link-box">
-                  <button
-                    className="btn-view-catalog-link"
-                    onClick={() => onSelectStore?.(store)}
-                  >
-                    <span>Ver catálogo de tienda</span>
-                    <ArrowRight size={14} className="btn-arrow-icon" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
+          return <MarketplaceSellerCard key={storeWithInventoryTotal.id} store={storeWithInventoryTotal} avatarPhoto={avatarPhoto} onView={onSelectStore} />;
         })}
       </div>
     </section>

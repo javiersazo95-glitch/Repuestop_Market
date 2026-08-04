@@ -1,191 +1,251 @@
 import React, { useState } from 'react';
 import {
-  Menu, Store,
-  Search, CheckCircle2, RefreshCw, AlertCircle,
-  Award, Lock, ArrowRight, Check, Star, Building2
+  Search, CheckCircle2, RefreshCw, AlertCircle, ChevronRight, Store,
+  CarFront, Barcode, Tag, Users, Truck, ShieldCheck, Headphones,
+  ArrowLeft, ArrowRight, CircleHelp
 } from 'lucide-react';
-import { SIDEBAR_CATEGORIES } from '../data/categories';
+import { CATEGORY_GRID_ITEMS, SIDEBAR_CATEGORIES } from '../data/categories';
 import { searchVehicleByPatenteApi } from '../services/api';
 import { adaptVehicle } from '../services/adapters';
 import CategoryIconTile from './CategoryIconTile';
 
-export default function OfficialPatentHero({ activeVehicle, onSelectVehicle, onOpenSellerModal, selectedCategory, onSelectCategory }) {
-  const [inputPatente, setInputPatente] = useState(activeVehicle ? activeVehicle.patente : '');
+const SEARCH_MODES = [
+  { id: 'patente', label: 'Buscar por patente', icon: CarFront, placeholder: 'Ej: BB-CL-12' },
+  { id: 'vin', label: 'Buscar por VIN', icon: Barcode, placeholder: 'Ingresa los 17 caracteres del VIN' },
+  { id: 'oem', label: 'Buscar por código OEM', icon: Tag, placeholder: 'Ej: 04465-0D150' },
+  { id: 'repuesto', label: 'Buscar por repuesto', icon: Search, placeholder: 'Ej: Pastillas de freno' }
+];
+
+const CAROUSEL_PAGE_SIZE = 6;
+const CAROUSEL_PAGE_COUNT = Math.ceil(CATEGORY_GRID_ITEMS.length / CAROUSEL_PAGE_SIZE);
+
+export default function OfficialPatentHero({
+  activeVehicle,
+  onSelectVehicle,
+  onOpenSellerModal,
+  selectedCategory,
+  onSelectCategory,
+  onOpenCatalog,
+  onOpenHelp
+}) {
+  const [searchMode, setSearchMode] = useState('patente');
+  const [inputValue, setInputValue] = useState(activeVehicle?.patente || '');
   const [isSearching, setIsSearching] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [activeCarouselPage, setActiveCarouselPage] = useState(0);
 
-  const samplePatentes = [
-    { code: 'BB-CL-12', label: 'Toyota RAV4 2021 LE 4WD' },
-    { code: 'HG-89-21', label: 'Chevrolet Sail 2018 LT' },
-    { code: 'AA-123-BB', label: 'Nissan Qashqai 2020 CVT' }
-  ];
+  const mode = SEARCH_MODES.find((item) => item.id === searchMode) || SEARCH_MODES[0];
+  const samplePatentes = ['BB-CL-12', 'HG-89-21', 'AA-123-BB', 'JJ-TT-45'];
 
-  // Identificación real por patente: GET /api/v1/vehiculos/patente/{patente}.
-  const handleSearch = async (codeToUse) => {
-    const val = codeToUse || inputPatente;
-    if (!val || val.trim().length < 3) {
-      setErrorMsg('Ingresa una patente válida (ejemplo: BB-CL-12)');
+  const handleSearch = async (valueToUse) => {
+    const value = (valueToUse || inputValue).trim();
+    if (!value) {
+      setErrorMsg(searchMode === 'patente' ? 'Ingresa una patente válida (ejemplo: BB-CL-12)' : 'Ingresa un término para buscar.');
       return;
     }
+
+    if (searchMode !== 'patente') {
+      onOpenCatalog?.();
+      return;
+    }
+
     setErrorMsg('');
     setIsSearching(true);
-
     try {
-      const result = adaptVehicle(await searchVehicleByPatenteApi(val.trim()));
+      const result = adaptVehicle(await searchVehicleByPatenteApi(value));
       if (result && !result.requiereIngresoManual && result.marca) {
         onSelectVehicle(result);
-        setInputPatente(result.patente || val.trim());
+        setInputValue(result.patente || value);
       } else {
         setErrorMsg(result?.mensaje || 'No encontramos ese vehículo. Verifica la patente e intenta de nuevo.');
       }
-    } catch (err) {
-      setErrorMsg(err.message || 'No se pudo consultar la patente. Intenta nuevamente.');
+    } catch (error) {
+      setErrorMsg(error.message || 'No se pudo consultar la patente. Intenta nuevamente.');
     } finally {
       setIsSearching(false);
     }
   };
 
+  const selectMode = (modeId) => {
+    setSearchMode(modeId);
+    setInputValue(modeId === 'patente' ? (activeVehicle?.patente || '') : '');
+    setErrorMsg('');
+  };
+
+  const visibleCarouselCategories = Array.from(
+    { length: CAROUSEL_PAGE_SIZE },
+    (_, index) => CATEGORY_GRID_ITEMS[(activeCarouselPage * CAROUSEL_PAGE_SIZE + index) % CATEGORY_GRID_ITEMS.length]
+  );
+
+  const moveCategoryCarousel = (direction) => {
+    setActiveCarouselPage((page) => (page + direction + CAROUSEL_PAGE_COUNT) % CAROUSEL_PAGE_COUNT);
+  };
+
   return (
-    <section className="official-hero-section container">
-      <div className="hero-layout-grid">
-        {/* Left Sidebar Navigation */}
-        <aside className="sidebar-categories-card">
-          <div className="sidebar-title-header">
-            <Menu size={18} />
-            <span>Categorías de Repuestos</span>
-          </div>
-
-          <ul className="sidebar-categories-list">
-            {SIDEBAR_CATEGORIES.map(cat => {
-              const isSelected = selectedCategory === cat.id;
-
-              return (
-                <li
-                  key={cat.id}
-                  className={`cat-list-item ${isSelected ? 'selected' : ''}`}
-                  onClick={() => onSelectCategory(isSelected ? null : cat.id)}
+    <section className="light-home-hero">
+      <div className="container light-home-layout">
+        <aside className="light-category-sidebar">
+          <h2>Categorías</h2>
+          <ul>
+            {SIDEBAR_CATEGORIES.map((category) => (
+              <li key={category.id}>
+                <button
+                  className={selectedCategory === category.id ? 'active' : ''}
+                  onClick={() => onSelectCategory(category.id)}
                 >
-                  <div className="item-inner">
-                    <CategoryIconTile iconName={cat.iconName} color={cat.color} size={14} className="cat-icon-tile" />
-                    <span>{cat.nombre}</span>
-                  </div>
-                </li>
-              );
-            })}
+                  <CategoryIconTile iconName={category.iconName} color={category.color} size={16} className="light-cat-icon" />
+                  <span>{category.nombre.replace('Sistema de ', 'Sistema de ').replace(' y Encendido', '')}</span>
+                  <ChevronRight size={15} />
+                </button>
+              </li>
+            ))}
           </ul>
-
-          <div className="sidebar-seller-cta" onClick={onOpenSellerModal}>
-            <Store size={22} className="seller-cta-icon" />
-            <div>
-              <strong>¿Vendes repuestos en Chile?</strong>
-              <p>Conecta tu sistema de inventario y vende más.</p>
-              <span className="seller-link">Conectar Mi Inventario →</span>
-            </div>
-          </div>
+          <button className="light-seller-card" onClick={onOpenSellerModal}>
+            <span className="seller-icon-box"><Store size={20} /></span>
+            <span>
+              <strong>¿Tienes una tienda?</strong>
+              <small>Únete a nuestro marketplace<br />y aumenta tus ventas.</small>
+              <b>Quiero vender <ArrowRight size={13} /></b>
+            </span>
+          </button>
         </aside>
 
-        {/* HERO CARD — engine photo treated in a sober gray duotone */}
-        <div className="hero-parts-shop-card">
-          <div className="shop-bg-modern">
-            <img
-              src="/repuestos_hero_bg.jpg"
-              alt="Motor y repuestos automotrices"
-              className="shop-bg-photo"
-            />
-            <div className="shop-bg-duotone-overlay"></div>
-            <div className="shop-bg-legibility-overlay"></div>
+        <main className="light-hero-main">
+          <div className="light-search-intro">
+            <div className="light-intro-copy">
+              <h1>Encuentra el<br />repuesto correcto<br /><span>en segundos</span></h1>
+              <i aria-hidden="true" />
+              <p>Busca por patente, código OEM, VIN o nombre del repuesto y encuentra la mejor opción entre cientos de vendedores.</p>
+              <ul>
+                <li><CheckCircle2 size={17} /> Repuestos originales y alternativos</li>
+                <li><CheckCircle2 size={17} /> Precios competitivos</li>
+                <li><CheckCircle2 size={17} /> Vendedores verificados</li>
+                <li><CheckCircle2 size={17} /> Compra 100% segura</li>
+              </ul>
+            </div>
+
+            <div className="light-search-panel">
+              <div className="light-search-tabs" role="tablist" aria-label="Tipos de búsqueda">
+                {SEARCH_MODES.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      role="tab"
+                      aria-selected={searchMode === item.id}
+                      className={searchMode === item.id ? 'active' : ''}
+                      onClick={() => selectMode(item.id)}
+                    >
+                      <Icon size={20} /> <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="light-search-form">
+                <div className="light-input-row">
+                  {searchMode === 'patente' && (
+                    <button className="country-selector" type="button">
+                      <span>🇨🇱</span><strong>CHILE</strong><ChevronRight size={14} />
+                    </button>
+                  )}
+                  <div className="light-query-field">
+                    <input
+                      type="text"
+                      placeholder={mode.placeholder}
+                      value={inputValue}
+                      onChange={(event) => {
+                        setInputValue(searchMode === 'patente' ? event.target.value.toUpperCase() : event.target.value);
+                        if (errorMsg) setErrorMsg('');
+                      }}
+                      onKeyDown={(event) => event.key === 'Enter' && handleSearch()}
+                    />
+                    {searchMode === 'patente' && <button type="button" className="plate-help"><CircleHelp size={14} /> ¿Dónde está mi patente?</button>}
+                  </div>
+                </div>
+
+                <button className="light-primary-search" onClick={() => handleSearch()} disabled={isSearching}>
+                  {isSearching ? <RefreshCw size={21} className="spin-icon" /> : <Search size={22} />}
+                  {searchMode === 'patente' ? 'Buscar repuestos' : 'Buscar'}
+                </button>
+
+                {errorMsg && <div className="light-search-error"><AlertCircle size={14} /> {errorMsg}</div>}
+
+                <div className="popular-searches">
+                  <span>Búsquedas populares:</span>
+                  {samplePatentes.map((plate) => <button key={plate} onClick={() => handleSearch(plate)}>{plate}</button>)}
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Foreground Content Focused on Inventory Lookup */}
-          <div className="shop-hero-foreground">
-            {/* Minimal live-status indicator */}
-            <div className="shop-live-tag">
-              <span className="live-pulse-dot"></span>
-              <span>Búsqueda en tiempo real en la red de vendedores</span>
-            </div>
+          {activeVehicle && (
+            <div className="light-active-vehicle"><CheckCircle2 size={17} /> Vehículo activo: <strong>{activeVehicle.marca} {activeVehicle.modelo} ({activeVehicle.patente})</strong></div>
+          )}
 
-            {/* Clear Title Focused on Inventory System & Vendors */}
-            <h1 className="shop-hero-title">
-              Busca en el <span className="yellow-highlight-text">inventario de vendedores</span> <br />
-              con la patente de tu vehículo
-            </h1>
+          <div className="light-trust-row">
+            <div><span className="trust-circle blue"><Users size={27} /></span><p><strong>538+ vendedores</strong><small>Tiendas verificadas</small></p></div>
+            <div><span className="trust-circle green"><Truck size={27} /></span><p><strong>Envíos a todo Chile</strong><small>Rápido y seguro</small></p></div>
+            <div><span className="trust-circle amber"><ShieldCheck size={27} /></span><p><strong>Repuestos originales<br />y alternativos</strong><small>Calidad garantizada</small></p></div>
+            <div><span className="trust-circle purple"><ShieldCheck size={27} /></span><p><strong>Compra protegida</strong><small>Tu compra 100% segura</small></p></div>
+          </div>
+        </main>
+      </div>
 
-            <p className="shop-hero-subtitle">
-              Al ingresar tu patente, nuestro sistema consulta en vivo las bodegas e inventarios digitales de las mejores casas de repuestos de Chile.
-            </p>
-
-            {/* FLOATING INVENTORY SEARCH CONSOLE CARD */}
-            <div className="shop-patent-floating-card">
-              <div className="license-plate-white-frame-shop">
-                <div className="chile-flag-badge-shop">
-                  <span className="flag">🇨🇱</span>
-                  <span className="country">CHILE</span>
+      <section className="container category-showcase-carousel" aria-label="Explora por categorías">
+        <button
+          className="category-carousel-arrow previous"
+          onClick={() => moveCategoryCarousel(-1)}
+          aria-label="Ver categorías anteriores"
+        >
+          <ArrowLeft size={22} />
+        </button>
+        <div className="category-carousel-viewport">
+          <div className="category-carousel-track" key={activeCarouselPage}>
+            {visibleCarouselCategories.map((category, index) => (
+              <button
+                key={`${activeCarouselPage}-${category.id}-${index}`}
+                className="category-showcase-card"
+                onClick={() => onSelectCategory(category.id)}
+              >
+                <CategoryIconTile iconName={category.iconName} color={category.color} size={24} className="category-showcase-icon" />
+                <strong>{category.nombre}</strong>
+                <div className="category-showcase-image">
+                  <img src={category.image} alt="" />
                 </div>
-
-                <div className="plate-input-group-shop">
-                  <input
-                    type="text"
-                    className="input-patente-shop"
-                    placeholder="Ej: BB-CL-12"
-                    value={inputPatente}
-                    onChange={(e) => {
-                      setInputPatente(e.target.value.toUpperCase());
-                      if (errorMsg) setErrorMsg('');
-                    }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  />
-                  <span className="req-tag-shop">OBLIGATORIO</span>
+                <div className="category-showcase-footer">
+                  <span>{category.count}</span>
+                  <i style={{ backgroundColor: category.color }}><ArrowRight size={20} /></i>
                 </div>
-
-                <button 
-                  className={`btn-search-red-shop ${isSearching ? 'loading' : ''}`}
-                  onClick={() => handleSearch()}
-                  disabled={isSearching}
-                >
-                  {isSearching ? (
-                    <RefreshCw size={18} className="spin-icon" />
-                  ) : (
-                    <>
-                      <span>CONSULTAR INVENTARIO</span>
-                      <Search size={18} />
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {errorMsg && (
-                <div className="patent-error-msg-shop">
-                  <AlertCircle size={14} /> {errorMsg}
-                </div>
-              )}
-
-              {/* Quick Patente Presets */}
-              <div className="preset-patentes-bar-shop">
-                <span className="preset-label-shop">Probar con:</span>
-                <div className="preset-chips-shop">
-                  {samplePatentes.map((sample, idx) => (
-                    <button
-                      key={idx}
-                      className="sample-chip-btn-shop"
-                      onClick={() => handleSearch(sample.code)}
-                      title={sample.label}
-                    >
-                      {sample.code}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Active Vehicle Status Pill */}
-            {activeVehicle && (
-              <div className="active-vehicle-card-shop">
-                <CheckCircle2 size={18} className="check-icon" />
-                <span>Ficha de Inventario Cargada: <strong>{activeVehicle.marca} {activeVehicle.modelo} ({activeVehicle.patente})</strong> • +{activeVehicle.totalRepuestos} repuestos detectados en stock</span>
-              </div>
-            )}
+              </button>
+            ))}
           </div>
         </div>
+        <button
+          className="category-carousel-arrow next"
+          onClick={() => moveCategoryCarousel(1)}
+          aria-label="Ver más categorías"
+        >
+          <ChevronRight size={22} />
+        </button>
+        <div className="category-carousel-dots" role="tablist" aria-label="Páginas de categorías">
+          {Array.from({ length: CAROUSEL_PAGE_COUNT }, (_, index) => (
+            <button
+              key={index}
+              className={activeCarouselPage === index ? 'active' : ''}
+              onClick={() => setActiveCarouselPage(index)}
+              aria-label={`Ir a la página ${index + 1}`}
+              aria-selected={activeCarouselPage === index}
+              role="tab"
+            />
+          ))}
+        </div>
+      </section>
+
+      <div className="container help-strip">
+        <Headphones size={34} />
+        <p><strong>¿Necesitas ayuda para encontrar tu repuesto?</strong><span>Nuestro equipo está listo para asesorarte.</span></p>
+        <button onClick={onOpenHelp}><Headphones size={18} /> Contactar soporte</button>
       </div>
     </section>
   );

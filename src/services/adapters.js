@@ -144,6 +144,7 @@ export function adaptProduct(dto) {
     subcategoria: dto.repuestoNombre || '',
     oemCode: dto.referenciaOem || dto.skuProveedor || dto.codigoInterno || '',
     descripcion: dto.descripcion || '',
+    marca: dto.marca || dto.productBrand || dto.brand || dto.fabricante || dto.manufacturer || '',
     precio,
     precioOriginal,
     descuento: calcularDescuento(precio, precioOriginal),
@@ -229,12 +230,24 @@ export function adaptStore(dto, index = 0) {
     verificadoFecha: dto.createdAt
       ? `Ingresada ${formatRelativeTime(dto.createdAt).toLowerCase()}`
       : 'Verificada recientemente',
-    totalPublicaciones: toNumber(dto.totalPublicaciones) ?? 0,
+    // El backend ha expuesto este total con distintos nombres según el endpoint.
+    // La card siempre debe reflejar productos publicados reales de la tienda.
+    totalPublicaciones: toNumber(
+      dto.totalPublicaciones
+      ?? dto.totalProductos
+      ?? dto.productCount
+      ?? dto.publishedProductsCount
+      ?? dto.inventoryCount
+      ?? dto.totalItems
+    ) ?? 0,
     rating: toNumber(dto.rating) ?? 0,
     reviewCount: toNumber(dto.reviewCount) ?? 0,
+    responseRate: toNumber(dto.responseRate) ?? null,
     especialidad: dto.giro || '',
+    descripcion: dto.description || dto.descripcion || dto.giro || '',
     metodosEnvio,
     fundador: Boolean(dto.founder),
+    verificada: Boolean(dto.verified ?? dto.isVerified ?? true),
     logoUrl: dto.logoUrl || null,
     coverUrl: dto.coverUrl || null,
   };

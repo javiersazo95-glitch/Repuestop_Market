@@ -1,24 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  Search, Filter, SlidersHorizontal, ShieldCheck, MapPin, Star, Package,
-  Clock, ArrowLeft, X, CheckCircle2, RotateCcw, Truck, ChevronLeft, ChevronRight,
-  Eye, ShoppingCart, Car, Wrench, Layers, Building2, Phone, Mail, MessageSquare, Globe, AlertCircle
+  Search, SlidersHorizontal, ShieldCheck, MapPin, Star, Package,
+  ArrowLeft, X, CheckCircle2, RotateCcw, Truck, ChevronLeft, ChevronRight, ChevronDown,
+  ShoppingCart, Car, Wrench, Layers, Building2, MessageSquare, AlertCircle,
+  Heart, Share2, Image, PenLine, Bike, Store, ArrowRight, HelpCircle
 } from 'lucide-react';
-import { SIDEBAR_CATEGORIES, CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID } from '../data/categories';
+import { SIDEBAR_CATEGORIES } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
+import MarketplaceProductCard from './MarketplaceProductCard';
 import { getStoreProductsApi, getStoreProfileApi, searchVehicleByPatenteApi } from '../services/api';
 import { adaptPage, adaptProduct, adaptStore, adaptVehicle } from '../services/adapters';
 
 // El backend acota el tamaño de página a 100; esta vista filtra y pagina en cliente.
 const STORE_PRODUCTS_FETCH_SIZE = 100;
+const STORE_FILTER_BRANDS = ['TODAS', 'Toyota', 'Nissan', 'Hyundai', 'Chevrolet', 'Kia', 'Mazda', 'Suzuki', 'Mitsubishi'];
+const STORE_FILTER_CONDITIONS = ['TODOS', 'Nuevo OEM Original', 'Nuevo Alternativo Homologado', 'Usado Certificado Desarmaduría'];
+
+function normalizeShippingMethods(methods) {
+  if (Array.isArray(methods)) return methods.filter(Boolean);
+  return String(methods || '').split(',').map((method) => method.trim()).filter(Boolean);
+}
+
+function getShippingService(method) {
+  const normalized = String(method || '').toLowerCase();
+  if (normalized.includes('retiro') || normalized.includes('tienda')) return { icon: Store, label: 'Retiro en tienda' };
+  if (normalized.includes('dentro') || normalized.includes('comuna')) return { icon: Bike, label: method };
+  return { icon: Truck, label: method || 'Despacho disponible' };
+}
 
 export default function StorePublicProfileView({
   store,
   onBackToStores,
-  onAddToCart,
   onQuickView,
   onOpenQuote,
-  activeVehicle: initialActiveVehicle
+  activeVehicle: initialActiveVehicle,
+  onEditStore
 }) {
   const [activeVehicle, setActiveVehicle] = useState(initialActiveVehicle);
   const [patentInput, setPatentInput] = useState('');
@@ -42,6 +58,26 @@ export default function StorePublicProfileView({
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState(null);
   const [fetchedStore, setFetchedStore] = useState(null);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [shareFeedback, setShareFeedback] = useState('');
+  const [openFilterSections, setOpenFilterSections] = useState({ purchase: true, category: true, condition: true });
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const filterPanelRef = useRef(null);
+  const [filterDrawerHeight, setFilterDrawerHeight] = useState(0);
+
+  useEffect(() => {
+    if (!isFiltersOpen || !filterPanelRef.current) {
+      setFilterDrawerHeight(0);
+      return undefined;
+    }
+
+    const panel = filterPanelRef.current;
+    const measurePanel = () => setFilterDrawerHeight(Math.ceil(panel.getBoundingClientRect().height) + 16);
+    measurePanel();
+    const observer = new ResizeObserver(measurePanel);
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, [isFiltersOpen]);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -82,12 +118,15 @@ export default function StorePublicProfileView({
     return {
       id: inputStore.id || 'store-1',
       nombre: inputStore.nombre || inputStore.name || 'Tiensoft AutoRepuestos',
-      rut: inputStore.rut || '77.589.410-8',
+      rut: inputStore.rut || '',
       tipo: inputStore.tipo || 'Casa de Repuestos Multimarca',
       ciudad: inputStore.ciudad || 'Santiago, RM',
-      totalPublicaciones: inputStore.totalPublicaciones || 1420,
-      rating: inputStore.rating || 4.9,
+      totalPublicaciones: inputStore.totalPublicaciones ?? 0,
+      rating: inputStore.rating ?? 0,
+      reviewCount: inputStore.reviewCount ?? 0,
+      responseRate: inputStore.responseRate ?? null,
       especialidad: inputStore.especialidad || 'Toyota, Nissan, Hyundai',
+      descripcion: inputStore.descripcion || inputStore.description || inputStore.tipo || 'Casa de Repuestos Multimarca',
       metodosEnvio: inputStore.metodosEnvio || ['Retiro en tienda', 'Envío dentro de la comuna'],
       coverUrl: inputStore.coverUrl || '/tiensoft_cover.jpg',
       logoUrl: inputStore.logoUrl || (inputStore.nombre?.toLowerCase().includes('tiensoft') ? '/tiensoft_logo.jpg' : null),
@@ -98,7 +137,15 @@ export default function StorePublicProfileView({
 
   // La ficha traída del backend manda sobre lo que llegó por prop (el directorio
   // entrega una versión resumida de la tienda).
-  const resolvedStore = resolveStore(fetchedStore || store);
+  const storeProfileSource = fetchedStore && typeof store === 'object' && store
+    ? {
+        ...store,
+        ...fetchedStore,
+        logoUrl: fetchedStore.logoUrl || store.logoUrl || store.userProfileUrl,
+        coverUrl: fetchedStore.coverUrl || store.coverUrl,
+      }
+    : (fetchedStore || store);
+  const resolvedStore = resolveStore(storeProfileSource);
   const storeId = (typeof store === 'object' && store) ? (store.id ?? null) : null;
   // El total de publicaciones es el totalElements real del inventario de la tienda,
   // no el valor de relleno que arrastra resolveStore.
@@ -269,20 +316,55 @@ export default function StorePublicProfileView({
     setCurrentPage(1);
   };
 
+  const toggleFilterSection = (section) => {
+    setOpenFilterSections((current) => ({ ...current, [section]: !current[section] }));
+  };
+
+  const handleApplyStoreFilters = () => {
+    setIsFiltersOpen(false);
+    document.querySelector('.store-public-profile-wrapper .catalog-parts-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const shippingMethods = normalizeShippingMethods(currentStore.metodosEnvio);
+  const rating = Number(currentStore.rating ?? 0);
+  const reviewCount = Number(currentStore.reviewCount ?? 0);
+  const responseRate = currentStore.responseRate ?? (rating > 0 ? Math.min(99, 94 + Math.round(rating)) : null);
+  const isVerified = currentStore.verificada !== false;
+
+  const handleShareStore = async () => {
+    const shareData = {
+      title: currentStore.nombre,
+      text: `Revisa el catálogo de ${currentStore.nombre} en RepuesTop`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) await navigator.share(shareData);
+      else await navigator.clipboard.writeText(window.location.href);
+      setShareFeedback('Enlace copiado');
+      window.setTimeout(() => setShareFeedback(''), 1800);
+    } catch (error) {
+      if (error?.name !== 'AbortError') setShareFeedback('No se pudo compartir');
+    }
+  };
+
   return (
     <div className="store-public-profile-wrapper">
       {/* 1. Store Cover & Profile Hero Banner */}
-      <div
-        className="store-public-hero-banner"
-        style={{
-          backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.88) 0%, rgba(15, 23, 42, 0.96) 100%), url('${currentStore.coverUrl || '/directory_hero_warehouse.jpg'}')`
-        }}
-      >
+      <div className="store-public-hero-banner" style={{ '--store-cover': `url("${currentStore.coverUrl || '/tiensoft_cover.jpg'}")` }}>
         <div className="container store-hero-inner">
-          <button className="btn-back-marketplace" onClick={onBackToStores}>
-            <ArrowLeft size={16} />
-            <span>Volver a Tiendas</span>
-          </button>
+          <div className="store-hero-topbar">
+            <button className="btn-back-marketplace" onClick={onBackToStores}>
+              <ArrowLeft size={17} />
+              <span>Volver a tiendas</span>
+            </button>
+            {onEditStore && (
+              <button className="store-cover-edit-action" type="button" onClick={onEditStore}>
+                <Image size={18} />
+                <span><strong>Personalizar portada</strong><small>Editar logo e imagen de fondo</small></span>
+              </button>
+            )}
+          </div>
 
           <div className="store-header-profile-card">
             <div className="store-logo-avatar-wrap">
@@ -300,23 +382,26 @@ export default function StorePublicProfileView({
                   <Building2 size={32} />
                 </div>
               )}
+              <span className="store-avatar-rating"><Star size={13} /> {rating ? rating.toFixed(1) : '—'}</span>
+              {onEditStore && <button className="store-avatar-edit" type="button" onClick={onEditStore} aria-label="Editar imagen de perfil"><PenLine size={15} /></button>}
             </div>
 
             <div className="store-header-info-col">
               <div className="store-rut-badge">
                 <ShieldCheck size={14} className="text-emerald-400" />
-                <span>RUT: <strong>{currentStore.rut || '77.589.410-8'}</strong> • Tienda Acreditada</span>
+                <span>RUT: <strong>{currentStore.rut || 'No informado'}</strong> • Tienda Acreditada</span>
               </div>
 
               <h1 className="store-profile-name">{currentStore.nombre}</h1>
-              <p className="store-profile-sub">
-                {currentStore.tipo || 'Casa de Repuestos Multimarca'} • <MapPin size={13} /> {currentStore.ciudad || 'Santiago, RM'} • Especialidad: <strong>{currentStore.especialidad || 'Toyota, Nissan, Hyundai'}</strong>
-              </p>
+              <p className="store-profile-description">{currentStore.descripcion || currentStore.tipo}</p>
+              <p className="store-profile-sub"><MapPin size={15} /> <strong>{currentStore.ciudad || 'Chile'}</strong><span>•</span>Especialidad: <strong>{currentStore.especialidad || currentStore.tipo}</strong></p>
 
-              <div className="store-metrics-row">
-                <span className="metric-pill"><Star size={13} className="text-amber-400" /> {currentStore.rating || 4.9} Rating</span>
-                <span className="metric-pill"><Package size={13} /> +{currentStore.totalPublicaciones || 1420} Repuestos en Stock</span>
-                <span className="metric-pill"><Truck size={13} /> Envíos a todo Chile</span>
+              <div className="store-service-icons" aria-label="Servicios de la tienda">
+                {shippingMethods.map((method) => {
+                  const service = getShippingService(method);
+                  const ServiceIcon = service.icon;
+                  return <span key={method} title={service.label}><ServiceIcon size={15} /> {service.label}</span>;
+                })}
               </div>
             </div>
 
@@ -325,17 +410,22 @@ export default function StorePublicProfileView({
                 className="btn-store-quote-main"
                 onClick={() => onOpenQuote({ titulo: `Cotización General - ${currentStore.nombre}`, vendedor: currentStore.nombre })}
               >
-                <MessageSquare size={16} />
-                <span>Solicitar Cotización Directa</span>
+                <MessageSquare size={19} />
+                <span>Solicitar cotización directa</span>
+                <ArrowRight size={18} />
               </button>
 
-              <div className="store-shipping-methods-pills">
-                {(currentStore.metodosEnvio || ['Retiro en tienda', 'Envío dentro de la comuna']).map((method, i) => (
-                  <span key={i} className="shipping-method-chip">
-                    <CheckCircle2 size={11} /> {method}
-                  </span>
-                ))}
+              <div className="store-social-actions">
+                <button type="button" className={isFollowing ? 'active' : ''} onClick={() => setIsFollowing((value) => !value)}><Heart size={17} fill={isFollowing ? 'currentColor' : 'none'} /> {isFollowing ? 'Siguiendo' : 'Seguir tienda'}</button>
+                <button type="button" onClick={handleShareStore}><Share2 size={17} /> {shareFeedback || 'Compartir'}</button>
               </div>
+            </div>
+
+            <div className="store-metrics-row">
+              <div><span><Star size={19} /></span><p><strong>{rating ? rating.toFixed(1) : '—'}</strong><small>{reviewCount ? `${reviewCount.toLocaleString('es-CL')} evaluaciones` : 'Calificación de la tienda'}</small></p></div>
+              <div><span><Package size={19} /></span><p><strong>{Number(currentStore.totalPublicaciones ?? 0).toLocaleString('es-CL')}</strong><small>Repuestos en stock</small></p></div>
+              <div><span><Truck size={19} /></span><p><strong>{shippingMethods.length ? `${shippingMethods.length} opciones` : 'Consultar'}</strong><small>Servicios de entrega</small></p></div>
+              <div><span><ShieldCheck size={19} /></span><p><strong>{isVerified ? 'Tienda verificada' : 'Tienda registrada'}</strong><small>{responseRate ? `${responseRate}% tasa de respuesta` : 'Información acreditada'}</small></p></div>
             </div>
           </div>
         </div>
@@ -354,12 +444,12 @@ export default function StorePublicProfileView({
         </div>
       </div>
 
-      <div className="container catalog-main-container">
+      <div className="container catalog-main-container store-profile-search-stack">
         {/* 2. License Plate Filter Console inside Store View */}
         <div className="patent-filter-box-bar">
           <div className="patent-filter-header-title">
-            <Car size={18} className="text-blue-500" />
-            <span>Filtrar Repuestos de {currentStore.nombre} por Patente:</span>
+            <Car size={24} />
+            <span><strong>Buscar por patente</strong><small>Encuentra repuestos específicos para tu vehículo</small></span>
           </div>
 
           <form onSubmit={handlePatentSearch} className="patent-filter-form-inline">
@@ -370,8 +460,9 @@ export default function StorePublicProfileView({
               onChange={(e) => setPatentInput(e.target.value)}
               className="patent-filter-input"
             />
+            <HelpCircle className="store-search-help" size={17} />
             <button type="submit" className="btn-patent-search-blue" disabled={patentSearching}>
-              <Search size={14} />
+              <Search size={17} />
               <span>{patentSearching ? 'Buscando…' : 'Buscar Vehículo'}</span>
             </button>
           </form>
@@ -394,94 +485,103 @@ export default function StorePublicProfileView({
 
         {/* 3. Store Search & Control Bar */}
         <div className="catalog-control-bar store-inventory-control-bar">
-          <div className="search-bar-catalog-box">
-            <Search size={18} className="search-box-icon" />
-            <input
-              type="text"
-              placeholder={`Buscar en el inventario de ${currentStore.nombre} (ej. pastillas, OEM 04465)...`}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-catalog-input"
-            />
-            {searchQuery && (
-              <button className="btn-clear-search-dir" onClick={() => setSearchQuery('')}>
-                <X size={14} />
-              </button>
-            )}
+          <div className="store-inventory-search-title">
+            <span><Search size={29} /></span>
+            <p><strong>Buscar en el inventario de {currentStore.nombre}</strong><small>Más de {Number(currentStore.totalPublicaciones ?? 0).toLocaleString('es-CL')} repuestos disponibles</small></p>
           </div>
-
-          <div className="control-bar-right-group">
-            <div className="results-count-badge">
-              <span>Mostrando <strong>{sortedProducts.length}</strong> repuestos en esta tienda</span>
+          <div className="store-inventory-search-body">
+            <div className="store-inventory-search-row">
+              <div className="search-bar-catalog-box">
+                <Search size={18} className="search-box-icon" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre de repuesto, código OEM, marca o modelo..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-catalog-input"
+                />
+                {searchQuery && <button className="btn-clear-search-dir" onClick={() => setSearchQuery('')}><X size={14} /></button>}
+              </div>
+              <button className="store-open-filters" type="button" onClick={() => setIsFiltersOpen(true)}><SlidersHorizontal size={18} /> Filtros <ChevronRight size={16} /></button>
             </div>
-
-            <div className="sort-dropdown-box">
-              <span className="sort-label">Ordenar:</span>
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sort-select-input">
-                <option value="relevancia">Recomendados / Relevancia</option>
-                <option value="precio-asc">Precio: Menor a Mayor</option>
-                <option value="precio-desc">Precio: Mayor a Menor</option>
-                <option value="vendidos">Más Vendidos</option>
-              </select>
+            <div className="store-popular-searches">
+              <span>Búsquedas populares:</span>
+              {['Pastillas de freno', 'Filtro de aceite', 'Alternador', 'Amortiguadores', 'Kit de distribución'].map((term) => <button type="button" key={term} onClick={() => setSearchQuery(term)}>{term}</button>)}
             </div>
           </div>
         </div>
 
+        <div className="store-results-toolbar">
+          <span>Mostrando <strong>{sortedProducts.length}</strong> repuestos de {currentStore.nombre}</span>
+          <label>Ordenar por:
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="relevancia">Recomendados / Relevancia</option>
+              <option value="precio-asc">Precio: Menor a Mayor</option>
+              <option value="precio-desc">Precio: Mayor a Menor</option>
+              <option value="vendidos">Más Vendidos</option>
+            </select>
+          </label>
+        </div>
+
         {/* 4. 2-Column Content Layout (Sidebar + Grid) */}
-        <div className="catalog-content-grid">
+        <div className={`catalog-content-grid store-catalog-main-content-grid product-filter-drawer-layout ${isFiltersOpen ? 'filters-open' : ''}`} style={isFiltersOpen && filterDrawerHeight ? { minHeight: `${filterDrawerHeight}px` } : undefined}>
+          {isFiltersOpen && <button className="catalog-filter-backdrop" type="button" aria-label="Cerrar filtros" onClick={() => setIsFiltersOpen(false)} />}
           {/* Left Technical Filters Sidebar */}
-          <aside className="catalog-sidebar-filters">
+          <aside ref={filterPanelRef} className="catalog-sidebar-filters catalog-advanced-filter-panel store-advanced-filter-panel">
             <div className="sidebar-filters-header">
               <div className="sidebar-title-group">
-                <SlidersHorizontal size={16} />
-                <span>Filtros de Tienda</span>
+                <SlidersHorizontal size={25} />
+                <span><strong>Filtros Avanzados</strong><small>Filtra el inventario de {currentStore.nombre}</small></span>
               </div>
 
-              {(selectedCategory !== 'TODAS' || selectedCondition !== 'TODOS' || selectedBrand !== 'TODAS' || searchQuery || onlyCompatible) && (
-                <button className="btn-reset-filters-mini" onClick={handleResetFilters}>
-                  <RotateCcw size={12} />
-                  <span>Limpiar</span>
-                </button>
-              )}
+              <div className="filter-panel-header-actions">
+                <button className="btn-reset-filters-mini" onClick={handleResetFilters}><RotateCcw size={15} /><span>Limpiar</span></button>
+                <button className="btn-close-filter-drawer" type="button" onClick={() => setIsFiltersOpen(false)} aria-label="Cerrar filtros" title="Cerrar filtros"><X size={16} /></button>
+              </div>
             </div>
 
             {/* Filter 0: Modalidad de Compra */}
-            <div className="filter-section-group">
-              <label className="filter-group-label"><ShoppingCart size={13} /> Modalidad de Compra</label>
-              <div className="filter-options-list">
+            <div className={`filter-section-group ${openFilterSections.purchase ? 'is-open' : 'is-collapsed'}`}>
+              <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('purchase')} aria-expanded={openFilterSections.purchase}>
+                <span className="filter-group-label"><ShoppingCart size={13} /> Modalidad de Compra</span><ChevronDown size={16} />
+              </button>
+              {openFilterSections.purchase && <div className="filter-options-list">
                 <button
                   className={`filter-option-btn ${purchaseType === 'TODOS' ? 'active' : ''}`}
                   onClick={() => setPurchaseType('TODOS')}
                 >
-                  <span>Todos los Repuestos</span>
-                  {purchaseType === 'TODOS' && <CheckCircle2 size={14} className="check-active" />}
+                  <span className="filter-choice-dot">{purchaseType === 'TODOS' && <CheckCircle2 size={18} />}</span>
+                  <span className="filter-option-copy"><strong>Todos los Repuestos</strong><small>Ver todo el inventario</small></span>
                 </button>
                 <button
                   className={`filter-option-btn ${purchaseType === 'DIRECTA' ? 'active' : ''}`}
                   onClick={() => setPurchaseType('DIRECTA')}
                 >
-                  <span>Con Precio Directo</span>
-                  {purchaseType === 'DIRECTA' && <CheckCircle2 size={14} className="check-active" />}
+                  <span className="filter-choice-dot">{purchaseType === 'DIRECTA' && <CheckCircle2 size={18} />}</span>
+                  <span className="filter-option-copy"><strong>Con Precio Directo</strong><small>Compra inmediata</small></span>
                 </button>
                 <button
                   className={`filter-option-btn ${purchaseType === 'COTIZACION' ? 'active' : ''}`}
                   onClick={() => setPurchaseType('COTIZACION')}
                 >
-                  <span>Solo Bajo Cotización</span>
-                  {purchaseType === 'COTIZACION' && <CheckCircle2 size={14} className="check-active" />}
+                  <span className="filter-choice-dot">{purchaseType === 'COTIZACION' && <CheckCircle2 size={18} />}</span>
+                  <span className="filter-option-copy"><strong>Solo Bajo Cotización</strong><small>Requiere evaluación</small></span>
                 </button>
-              </div>
+              </div>}
             </div>
 
             {/* Filter 1: Categorías */}
-            <div className="filter-section-group">
-              <label className="filter-group-label"><Layers size={13} /> Categoría</label>
-              <div className="filter-options-list">
+            <div className={`filter-section-group ${openFilterSections.category ? 'is-open' : 'is-collapsed'}`}>
+              <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('category')} aria-expanded={openFilterSections.category}>
+                <span className="filter-group-label"><Layers size={13} /> Categoría del Repuesto</span><ChevronDown size={16} />
+              </button>
+              {openFilterSections.category && <div className="filter-options-list">
                 <button
                   className={`filter-option-btn ${selectedCategory === 'TODAS' ? 'active' : ''}`}
                   onClick={() => setSelectedCategory('TODAS')}
                 >
-                  <span>Todas las Categorías</span>
+                  <span className="filter-category-icon filter-category-icon-all"><Layers size={13} /></span>
+                  <span className="filter-option-copy"><strong>Todas las Categorías</strong><small>Explorar el catálogo completo</small></span>
                   {selectedCategory === 'TODAS' && <CheckCircle2 size={14} className="check-active" />}
                 </button>
                 {SIDEBAR_CATEGORIES.map((cat) => (
@@ -490,35 +590,46 @@ export default function StorePublicProfileView({
                     className={`filter-option-btn ${selectedCategory === cat.id ? 'active' : ''}`}
                     onClick={() => setSelectedCategory(cat.id)}
                   >
-                    <span>{cat.nombre}</span>
-                    {selectedCategory === cat.id && <CheckCircle2 size={14} className="check-active" />}
+                    <CategoryIconTile iconName={cat.iconName} color={cat.color} size={9} className="filter-category-icon" />
+                    <span className="filter-option-copy"><strong>{cat.nombre}</strong></span>
+                    {selectedCategory === cat.id ? <CheckCircle2 size={18} className="check-active" /> : <ChevronRight size={16} className="filter-option-chevron" />}
                   </button>
                 ))}
-              </div>
+              </div>}
             </div>
 
             {/* Filter 2: Condición */}
-            <div className="filter-section-group">
-              <label className="filter-group-label"><ShieldCheck size={13} /> Condición</label>
-              <div className="filter-options-list">
-                {['TODOS', 'Nuevo OEM Original', 'Nuevo Alternativo Homologado', 'Usado Certificado Desarmaduría'].map((cond) => (
+            <div className={`filter-section-group ${openFilterSections.condition ? 'is-open' : 'is-collapsed'}`}>
+              <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('condition')} aria-expanded={openFilterSections.condition}>
+                <span className="filter-group-label"><ShieldCheck size={13} /> Condición Técnica</span><ChevronDown size={16} />
+              </button>
+              {openFilterSections.condition && <div className="filter-options-list">
+                {STORE_FILTER_CONDITIONS.map((cond, index) => (
                   <button
                     key={cond}
                     className={`filter-option-btn ${selectedCondition === cond ? 'active' : ''}`}
                     onClick={() => setSelectedCondition(cond)}
                   >
-                    <span>{cond === 'TODOS' ? 'Todos los Estados' : cond}</span>
+                    <span className="filter-condition-icon">{index === 0 ? <CheckCircle2 size={14} /> : index === 1 ? <Package size={14} /> : index === 2 ? <ShieldCheck size={14} /> : <RotateCcw size={14} />}</span>
+                    <span className="filter-option-copy"><strong>{cond === 'TODOS' ? 'Todos los Estados' : cond}</strong><small>{cond === 'TODOS' ? 'Mostrar todas las opciones' : index === 1 ? 'Producto 100% original' : index === 2 ? 'Alternativa de calidad' : 'Revisado y garantizado'}</small></span>
                     {selectedCondition === cond && <CheckCircle2 size={14} className="check-active" />}
                   </button>
                 ))}
-              </div>
+              </div>}
             </div>
 
-            {/* Clear Filters Button */}
-            <button className="btn-clear-all-filters-wide" onClick={handleResetFilters}>
-              <RotateCcw size={14} />
-              <span>Restablecer Filtros</span>
+            <div className="filter-section-group compact-select-section">
+              <label className="filter-group-label"><Car size={13} /> Marca de Vehículo</label>
+              <select value={selectedBrand} onChange={(event) => setSelectedBrand(event.target.value)} className="sidebar-select-input">
+                {STORE_FILTER_BRANDS.map((brand) => <option key={brand} value={brand}>{brand === 'TODAS' ? 'Todas las Marcas' : brand}</option>)}
+              </select>
+            </div>
+
+            <button className="btn-clear-all-filters-wide" onClick={handleApplyStoreFilters}>
+              <Search size={18} />
+              <span>Aplicar Filtros y Ver Resultados</span>
             </button>
+            <p className="filter-security-note"><ShieldCheck size={14} /> Inventario exclusivo de {currentStore.nombre}.</p>
           </aside>
 
           {/* Right Parts Grid */}
@@ -539,93 +650,12 @@ export default function StorePublicProfileView({
               <>
                 <div className="parts-cards-grid-catalog">
                   {paginatedProducts.map((prod) => (
-                    <div key={prod.id} className="latest-part-card-rich">
-                      <div className="part-card-top-tag">
-                        <span className="time-ago-pill">
-                          <ShieldCheck size={12} /> {prod.condicion || 'Nuevo OEM'}
-                        </span>
-                        <span className="stock-count-pill">{prod.stock || 12} en stock</span>
-                      </div>
-
-                      <div className="part-card-img-box" onClick={() => onQuickView(prod)}>
-                        <CategoryIconTile
-                          iconName={CATEGORY_ICON_BY_ID[prod.categoria]}
-                          color={CATEGORY_COLOR_BY_ID[prod.categoria]}
-                          image={CATEGORY_IMAGE_BY_ID[prod.categoria]}
-                          size={36}
-                        />
-                        {prod.descuento > 0 && (
-                          <span className="discount-red-badge">-{prod.descuento}% OFF</span>
-                        )}
-                      </div>
-
-                      <div className="part-card-body-rich">
-                        {prod.oemCode && <span className="oem-code-tag">OEM: {prod.oemCode}</span>}
-                        <h3 className="part-title" onClick={() => onQuickView(prod)}>{prod.titulo}</h3>
-
-                        <div className="part-compat-sub">
-                          <CheckCircle2 size={13} className="text-green-icon" />
-                          <span>
-                            {prod.compatibilidad && prod.compatibilidad.length > 0
-                              ? `Calza en ${prod.compatibilidad[0].marca} ${prod.compatibilidad[0].modelo}`
-                              : 'Compatibilidad Multimarca Garantizada'}
-                          </span>
-                        </div>
-
-                        <div className="vendor-info-line">
-                          <ShieldCheck size={14} className="text-blue-icon" />
-                          <strong>{currentStore.nombre}</strong>
-                          <span className="city-span"><MapPin size={11} /> {currentStore.ciudad || 'Santiago, RM'}</span>
-                        </div>
-
-                        <div className="price-and-action-row">
-                          <div className="price-stack">
-                            {prod.soloCotizacion || !prod.precio || prod.precio === 0 ? (
-                              <span className="price-main-bold quote-only-text" style={{ color: '#0066ff', fontSize: '12px' }}>
-                                Bajo Cotización
-                              </span>
-                            ) : (
-                              <>
-                                <span className="price-main-bold">${Number(prod.precio).toLocaleString('es-CL')}</span>
-                                {prod.precioOriginal > prod.precio && (
-                                  <span className="price-old">${Number(prod.precioOriginal).toLocaleString('es-CL')}</span>
-                                )}
-                              </>
-                            )}
-                          </div>
-
-                          <div className="part-btn-group">
-                            {prod.soloCotizacion || !prod.precio || prod.precio === 0 ? (
-                              <button
-                                className="btn-add-cart-red btn-quote-chat-only"
-                                title="Cotizar con el vendedor"
-                                onClick={() => onOpenQuote ? onOpenQuote(prod) : onQuickView(prod)}
-                              >
-                                <MessageSquare size={14} />
-                                <span>Cotizar</span>
-                              </button>
-                            ) : (
-                              <>
-                                <button
-                                  className="btn-quote-chat"
-                                  title="Vista Rápida"
-                                  onClick={() => onQuickView(prod)}
-                                >
-                                  <Eye size={15} />
-                                </button>
-                                <button
-                                  className="btn-add-cart-red"
-                                  onClick={() => onAddToCart(prod)}
-                                >
-                                  <ShoppingCart size={15} />
-                                  <span>Comprar</span>
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <MarketplaceProductCard
+                      key={prod.id}
+                      product={prod}
+                      onView={onQuickView}
+                      fallbackCity={currentStore.ciudad || 'Santiago, RM'}
+                    />
                   ))}
                 </div>
 
