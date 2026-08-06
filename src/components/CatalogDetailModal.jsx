@@ -3,6 +3,7 @@ import {
   X, Package, Save, Tag, Layers, CheckCircle2, DollarSign, ShieldCheck
 } from 'lucide-react';
 import { StockBadge } from './CatalogCard';
+import { resolveMediaUrl } from '../services/api';
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
@@ -31,8 +32,10 @@ export default function CatalogDetailModal({
   const sku = product.sku || product.codigoSKU || 'SKU-000';
   const brand = product.marca || product.productBrand || 'Genérico';
   const category = product.categoriaNombre || product.category || 'Repuestos';
-  const photos = product.imageUrls && product.imageUrls.length > 0 ? product.imageUrls : [product.imagenUrl || product.photoUri];
-  const activePhoto = photos[0];
+  const photos = product.imageUrls && product.imageUrls.length > 0
+    ? product.imageUrls
+    : [product.imagenUrl || product.photoUri || product.imagenes?.[0]?.url];
+  const activePhoto = resolveMediaUrl(photos[0]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

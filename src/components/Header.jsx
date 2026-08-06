@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Truck, ShieldCheck, Store, HelpCircle, Search, ShoppingCart, User,
-  ChevronDown, X, LogOut, LayoutDashboard, Building2, Wrench, Menu,
+  ChevronDown, ChevronRight, X, LogOut, LayoutDashboard, MessageSquare, Menu,
   Package, Tag
 } from 'lucide-react';
-import { SIDEBAR_CATEGORIES } from '../data/categories';
+import { CATEGORY_VISUALS, HEADER_CATEGORIES } from '../data/categories';
 import RepuesTopLogo from './RepuesTopLogo';
 import { useAuth } from '../context/AuthContext';
+import { getPublicProductsApi, resolveMediaUrl } from '../services/api';
+import CategoryIconTile from './CategoryIconTile';
 
 export default function Header({
   cartCount,
@@ -23,8 +25,55 @@ export default function Header({
   onSelectCategory
 }) {
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+  const [activeHeaderCategoryId, setActiveHeaderCategoryId] = useState(HEADER_CATEGORIES[0].id);
+  const [subcategoryInventory, setSubcategoryInventory] = useState({});
+  const requestedSubcategories = useRef(new Set());
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { user, isLoggedIn, role, logout } = useAuth();
+  const inventoryPanelUrl = __DEPLOY_BRANCH__ === 'main'
+    ? 'https://inventario.repuestop.cl'
+    : 'https://dev-inventario.repuestop.cl';
+
+  const openInventoryPanel = () => {
+    setShowUserMenu(false);
+    window.location.assign(inventoryPanelUrl);
+  };
+
+  const activeHeaderCategory = useMemo(
+    () => HEADER_CATEGORIES.find((category) => category.id === activeHeaderCategoryId) || HEADER_CATEGORIES[0],
+    [activeHeaderCategoryId]
+  );
+
+  // Se consulta una página por subcategoría para recibir totalElements: el número
+  // mostrado es el total publicado en el sistema, no solo los elementos cargados.
+  useEffect(() => {
+    let active = true;
+    const pending = activeHeaderCategory.subcategories.filter((subcategory) => {
+      const key = `${activeHeaderCategory.id}:${subcategory}`;
+      if (requestedSubcategories.current.has(key)) return false;
+      requestedSubcategories.current.add(key);
+      return true;
+    });
+
+    if (!pending.length) return () => { active = false; };
+
+    Promise.all(pending.map(async (subcategory) => {
+      try {
+        const page = await getPublicProductsApi({ page: 0, size: 1, texto: subcategory, sort: 'createdAt,desc' });
+        return [
+          `${activeHeaderCategory.id}:${subcategory}`,
+          { count: Number(page?.totalElements || 0), image: page?.content?.[0]?.imageUrls?.[0] || null },
+        ];
+      } catch {
+        return [`${activeHeaderCategory.id}:${subcategory}`, { count: 0, image: null }];
+      }
+    })).then((entries) => {
+      if (!active) return;
+      setSubcategoryInventory((current) => ({ ...current, ...Object.fromEntries(entries) }));
+    });
+
+    return () => { active = false; };
+  }, [activeHeaderCategory]);
 
   const handleUserBoxClick = () => {
     if (isLoggedIn) setShowUserMenu((open) => !open);
@@ -106,8 +155,8 @@ export default function Header({
                 </div>
                 <div className="user-dropdown-body">
                   <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.(); }}><LayoutDashboard size={15} /> Mi perfil</button>
-                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenStores?.(); }}><Building2 size={15} /> Tiendas verificadas</button>
-                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenCatalog?.(); }}><Wrench size={15} /> Catálogo de repuestos</button>
+                  <button className="dropdown-item" onClick={openInventoryPanel}><Package size={15} /> Panel de inventario</button>
+                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenHelp?.(); }}><MessageSquare size={15} /> Consultas/Reclamos</button>
                   <div className="dropdown-divider" />
                   <button className="dropdown-item logout-item" onClick={handleLogout}><LogOut size={15} /> Cerrar sesión</button>
                 </div>
@@ -136,12 +185,45 @@ export default function Header({
               <Menu size={20} /> Categorías
             </button>
             {showCategoryMenu && (
-              <div className="header-category-dropdown">
-                {SIDEBAR_CATEGORIES.map((category) => (
-                  <button key={category.id} onClick={() => { setShowCategoryMenu(false); onSelectCategory(category.id); }}>
-                    {category.nombre}
-                  </button>
-                ))}
+              <div className="header-category-dropdown header-category-mega-menu">
+                <div className="header-category-list" aria-label="Categorías de repuestos">
+                  {HEADER_CATEGORIES.map((category) => (
+                    <button
+                      key={category.id}
+                      className={category.id === activeHeaderCategory.id ? 'active' : ''}
+                      onMouseEnter={() => setActiveHeaderCategoryId(category.id)}
+                      onFocus={() => setActiveHeaderCategoryId(category.id)}
+                      onClick={() => { setShowCategoryMenu(false); onSelectCategory(category.filterId); }}
+                    >
+                      <span className="header-category-label"><CategoryIconTile iconName={CATEGORY_VISUALS[category.id].iconName} color={CATEGORY_VISUALS[category.id].color} size={16} />{category.nombre}</span>
+                      <ChevronRight size={16} aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
+                <div className="header-subcategory-panel">
+                  <div className="header-subcategory-panel-title">
+                    <strong>{activeHeaderCategory.nombre}</strong>
+                    <button onClick={() => { setShowCategoryMenu(false); onSelectCategory(activeHeaderCategory.filterId); }}>Ver más <ChevronRight size={16} /></button>
+                  </div>
+                  <div className="header-subcategory-grid">
+                    {activeHeaderCategory.subcategories.map((subcategory) => {
+                      const inventory = subcategoryInventory[`${activeHeaderCategory.id}:${subcategory}`];
+                      const productImage = inventory?.image;
+                      const categoryImage = activeHeaderCategory.subcategoryImages?.[subcategory];
+                      return (
+                        <button
+                          key={subcategory}
+                          className="header-subcategory-card"
+                          onClick={() => { setShowCategoryMenu(false); onSelectCategory(activeHeaderCategory.filterId); }}
+                        >
+                          <img src={categoryImage || (productImage ? resolveMediaUrl(productImage) : activeHeaderCategory.image)} alt="" />
+                          <span className="header-subcategory-name">{subcategory}</span>
+                          <span className="header-subcategory-count">{inventory?.count ?? 0} repuestos</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
           </div>

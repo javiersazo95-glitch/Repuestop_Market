@@ -4,7 +4,7 @@ import {
   Wind, Droplet, Sparkles, Wrench, Store, 
   Search, ShieldCheck, CheckCircle2, RefreshCw, AlertCircle, Sparkles as SparklesIcon, Truck, Award, ChevronRight, Check
 } from 'lucide-react';
-import { SIDEBAR_CATEGORIES } from '../data/categories';
+import { NAVIGATION_CATEGORIES } from '../data/categories';
 import { searchVehicleByPatenteApi } from '../services/api';
 import { adaptVehicle } from '../services/adapters';
 
@@ -70,15 +70,15 @@ export default function HeroWithSidebar({ activeVehicle, onSelectVehicle, onOpen
           </div>
 
           <ul className="sidebar-list">
-            {SIDEBAR_CATEGORIES.map(cat => {
+            {NAVIGATION_CATEGORIES.map(cat => {
               const IconComp = iconMap[cat.iconName] || Cpu;
-              const isSelected = selectedCategory === cat.id;
+              const isSelected = selectedCategory === cat.filterId;
 
               return (
                 <li 
                   key={cat.id} 
                   className={`sidebar-item ${isSelected ? 'active' : ''}`}
-                  onClick={() => onSelectCategory(isSelected ? null : cat.id)}
+                  onClick={() => onSelectCategory(isSelected ? null : cat.filterId)}
                 >
                   <div className="item-left">
                     <IconComp size={16} className="cat-sidebar-icon" />
@@ -88,9 +88,6 @@ export default function HeroWithSidebar({ activeVehicle, onSelectVehicle, onOpen
                 </li>
               );
             })}
-            <li className="sidebar-item more-item">
-              <span>... Ver Más Categorías</span>
-            </li>
           </ul>
 
           {/* Sidebar Seller Recruitment Box */}

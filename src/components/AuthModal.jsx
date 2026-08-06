@@ -98,11 +98,11 @@ function GoogleButton({ label }) {
 }
 
 export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLoginSuccess }) {
-  // Step 1: 'select_role' (Pregunta si inicia como Comprador o Vendedor)
-  // Step 2: 'login_form' (Ingreso de email/password)
-  // Step 3: 'register_buyer' (Registro rápido de Comprador)
-  const [step, setStep] = useState('select_role');
+  // El acceso siempre comienza en login. La selección de cuenta sólo aparece
+  // al crear una cuenta o cuando el backend confirma que el correo no existe.
+  const [step, setStep] = useState('login_form');
   const [selectedRole, setSelectedRole] = useState('BUYER'); // 'BUYER' | 'SELLER'
+  const [isRegistrationFlow, setIsRegistrationFlow] = useState(false);
   
   const { login, loginWithGoogle, registerBuyer } = useAuth();
 
@@ -123,8 +123,9 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
   if (!isOpen) return null;
 
   const resetForm = () => {
-    setStep('select_role');
+    setStep('login_form');
     setSelectedRole('BUYER');
+    setIsRegistrationFlow(false);
     setEmail('');
     setPassword('');
     setBuyerName('');
@@ -145,7 +146,21 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
 
   const handleContinueFromRole = () => {
     setErrorMessage(null);
+    if (isRegistrationFlow) {
+      if (selectedRole === 'SELLER') {
+        handleClose();
+        onOpenSellerRegister();
+      } else {
+        setStep('register_buyer');
+      }
+      return;
+    }
     setStep('login_form');
+  };
+
+  const isAccountNotFound = (result) => {
+    if (result?.status === 404) return true;
+    return /(?:usuario|correo|cuenta|account|user).{0,40}(?:no existe|no encontrada|not found)/i.test(result?.error || '');
   };
 
   const handleLoginSubmit = async (e) => {
@@ -172,6 +187,10 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
         handleClose();
         onLoginSuccess?.();
       }, 1200);
+    } else if (isAccountNotFound(result)) {
+      setIsRegistrationFlow(true);
+      setErrorMessage('No encontramos una cuenta con este correo. Elige cómo quieres crearla.');
+      setStep('select_role');
     } else {
       setErrorMessage(result.error || 'Credenciales inválidas. Verifica tu correo y contraseña.');
     }
@@ -244,8 +263,11 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
           
           {step === 'select_role' && (
             <>
-              <h2>Elige el tipo de cuenta</h2>
-              <p>Selecciona cómo deseas ingresar a Repuestop para personalizar tu experiencia.</p>
+              <h2>{isRegistrationFlow ? 'Crea tu cuenta' : 'Elige el tipo de cuenta'}</h2>
+              <p>{isRegistrationFlow
+                ? 'Selecciona el tipo de cuenta que quieres crear en Repuestop.'
+                : 'Selecciona cómo deseas ingresar a Repuestop para personalizar tu experiencia.'}
+              </p>
             </>
           )}
 
@@ -353,7 +375,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                 className="btn-auth-primary"
                 onClick={handleContinueFromRole}
               >
-                <span>Continuar a Iniciar Sesión</span>
+                <span>{isRegistrationFlow ? 'Continuar a crear cuenta' : 'Continuar a Iniciar Sesión'}</span>
                 <ChevronRight size={18} />
               </button>
             </div>
@@ -412,7 +434,11 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               <button
                 type="button"
                 className="btn-auth-secondary"
-                onClick={() => setStep('select_role')}
+                onClick={() => {
+                  setIsRegistrationFlow(false);
+                  setErrorMessage(null);
+                  setStep('select_role');
+                }}
               >
                 <ArrowLeft size={16} />
                 <span>Cambiar Rol</span>
@@ -443,7 +469,8 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                     className="link-btn"
                     onClick={() => {
                       setErrorMessage(null);
-                      setStep('register_buyer');
+                      setIsRegistrationFlow(true);
+                      setStep('select_role');
                     }}
                   >
                     Crear cuenta rápida
@@ -456,8 +483,10 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                     type="button"
                     className="link-btn highlight"
                     onClick={() => {
-                      handleClose();
-                      onOpenSellerRegister();
+                      setIsRegistrationFlow(true);
+                      setSelectedRole('SELLER');
+                      setErrorMessage(null);
+                      setStep('select_role');
                     }}
                   >
                     Postular mi Tienda Vendedora

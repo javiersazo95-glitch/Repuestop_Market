@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight, Bike, Building2, Clock, MapPin, Package, ShieldCheck, Truck } from 'lucide-react';
+import VehicleBrandLogo from './VehicleBrandLogo';
 
 function initials(name) {
   return String(name || 'RT').split(/\s+/).slice(0, 2).map((word) => word[0]).join('').toUpperCase();
@@ -16,12 +17,14 @@ function shippingConfig(method) {
 export default function MarketplaceSellerCard({ store, avatarPhoto, onView }) {
   const rating = Number(store.rating ?? 0);
   const publications = Number(store.totalPublicaciones ?? 0);
-  const responseRate = store.responseRate ?? (rating ? Math.min(99, 94 + Math.round(rating)) : 0);
+  const averageResponseTime = store.averageResponseTime || store.tiempoPromedioRespuesta || '15 min';
   const reviewCount = Number(store.reviewCount ?? 0);
   const parsedShippingMethods = Array.isArray(store.metodosEnvio)
     ? store.metodosEnvio
     : String(store.metodosEnvio || '').split(',').map((method) => method.trim()).filter(Boolean);
   const shippingMethods = parsedShippingMethods;
+  const specialistBrands = Array.isArray(store.marcasEspecialistas) ? store.marcasEspecialistas : [];
+  const averageDispatchTime = store.averageDispatchTime || store.tiempoPromedioDespacho || '24 h';
 
   return (
     <article className="market-seller-card">
@@ -52,8 +55,24 @@ export default function MarketplaceSellerCard({ store, avatarPhoto, onView }) {
 
       <div className="market-seller-metrics">
         <div><Package size={15} /><p><strong>{publications.toLocaleString('es-CL')}</strong><small>Repuestos</small></p></div>
-        <div><ShieldCheck size={15} /><p><strong>{responseRate}%</strong><small>Tasa de respuesta</small></p></div>
-        <div><Clock size={15} /><p><strong>&lt; 15 min</strong><small>Tiempo de respuesta</small></p></div>
+        <div><Clock size={15} /><p><strong>{averageResponseTime}</strong><small>Tiempo de respuesta</small></p></div>
+        <div><Clock size={15} /><p><strong>{averageDispatchTime}</strong><small>Tiempo promedio de despacho</small></p></div>
+        <div className="market-seller-specialist-brands">
+          <div aria-label="Marcas especialistas">
+            {specialistBrands.slice(0, 3).map((brand) => (
+              <VehicleBrandLogo key={brand.id || brand.nombre} brand={brand.nombre} />
+            ))}
+            {specialistBrands.length > 3 && (
+              <span
+                className="vehicle-brand-icon vehicle-brand-more"
+                data-tooltip={specialistBrands.slice(3).map((brand) => brand.nombre).join(', ')}
+                tabIndex={0}
+                aria-label={`${specialistBrands.length - 3} marcas especialistas más`}
+              >+{specialistBrands.length - 3}</span>
+            )}
+          </div>
+          <p><small>Marcas especialistas</small></p>
+        </div>
       </div>
 
       <div className="market-seller-shipping">

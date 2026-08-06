@@ -249,6 +249,9 @@ export function adaptStore(dto, index = 0) {
     especialidad: dto.giro || '',
     descripcion: dto.description || dto.descripcion || dto.giro || '',
     metodosEnvio,
+    marcasEspecialistas: Array.isArray(dto.marcasEspecialistas)
+      ? dto.marcasEspecialistas.map((marca) => ({ id: marca.id, nombre: marca.nombre })).filter((marca) => marca.nombre)
+      : [],
     fundador: Boolean(dto.founder),
     verificada: Boolean(dto.verified ?? dto.isVerified ?? true),
     logoUrl: resolveMediaUrl(dto.logoUrl || dto.userProfileUrl),

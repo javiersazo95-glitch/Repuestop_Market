@@ -1,7 +1,7 @@
 import React from 'react';
-import { Disc3, Cog, ArrowUpDown, Lightbulb, Droplets, Zap, CarFront, CircleDot, Package } from 'lucide-react';
+import { Disc3, Cog, ArrowUpDown, Lightbulb, Droplets, Zap, CarFront, CircleDot, Package, Wind, ThermometerSun, KeyRound, Fuel, Gauge, CircleGauge, Recycle, GitFork, Layers, Filter, Cable, Snowflake, Radar, Box } from 'lucide-react';
 
-const ICONS = { Disc3, Cog, ArrowUpDown, Lightbulb, Droplets, Zap, CarFront, CircleDot };
+const ICONS = { Disc3, Cog, ArrowUpDown, Lightbulb, Droplets, Zap, CarFront, CircleDot, Wind, ThermometerSun, KeyRound, Fuel, Gauge, CircleGauge, Recycle, GitFork, Layers, Filter, Cable, Snowflake, Radar, Box };
 
 // Darkens a #rrggbb hex color by a given amount (0-1), used for the flat
 // gradient fallback when no reference photo is available for a category.

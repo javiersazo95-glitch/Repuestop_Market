@@ -24,6 +24,7 @@ function MainApp() {
   // Top-level view: 'store' (marketplace homepage), 'profile' (account dashboard), 'stores' (stores directory), 'catalog' (all parts) or 'store-profile' (single store)
   const [view, setView] = useState('store');
   const [selectedStore, setSelectedStore] = useState(null);
+  const [profileInitialTab, setProfileInitialTab] = useState('resumen');
 
   // Active Vehicle Garage State
   //
@@ -104,8 +105,13 @@ function MainApp() {
     window.scrollTo({ top: 0, behavior: 'auto' });
   };
 
+  const openProfile = (tab = 'resumen') => {
+    setProfileInitialTab(tab);
+    setView('profile');
+  };
+
   if (view === 'profile' && isLoggedIn) {
-    return <ProfileDashboard onBackToStore={() => setView('store')} />;
+    return <ProfileDashboard initialTab={profileInitialTab} onBackToStore={() => setView('store')} />;
   }
 
   return (
@@ -115,7 +121,7 @@ function MainApp() {
         activeVehicle={activeVehicle}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onOpenSellerModal={() => setIsSellerModalOpen(true)}
-        onOpenProfile={() => setView('profile')}
+        onOpenProfile={() => openProfile()}
         onOpenStores={() => setView('stores')}
         onOpenCatalog={() => setView('catalog')}
         onOpenHelp={() => setIsHelpModalOpen(true)}

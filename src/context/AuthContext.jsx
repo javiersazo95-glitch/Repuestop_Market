@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { loginApi, loginGoogleApi, logoutApi, getProfileApi, updateProfileApi, registerBuyerApi, registerSellerApi, resolveMediaUrl } from '../services/api';
+import { loginApi, loginGoogleApi, logoutApi, getProfileApi, updateProfileApi, deleteAccountApi, registerBuyerApi, registerSellerApi, resolveMediaUrl } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -98,7 +98,9 @@ export function AuthProvider({ children }) {
       const savedUserData = saveSession(response, preferredRole);
       return { success: true, user: savedUserData };
     } catch (error) {
-      return { success: false, error: error.message };
+      // Conservamos el código HTTP para que la interfaz pueda distinguir entre
+      // una cuenta inexistente y credenciales inválidas de una cuenta creada.
+      return { success: false, error: error.message, status: error.status };
     } finally {
       setIsLoading(false);
     }
@@ -172,6 +174,24 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const deleteAccount = async () => {
+    const userId = user?.userId ?? user?.id;
+    if (!userId) {
+      return { success: false, error: 'No fue posible identificar la cuenta a eliminar.' };
+    }
+
+    setIsLoading(true);
+    try {
+      await deleteAccountApi(userId);
+      logoutLocal();
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message || 'No se pudo eliminar la cuenta.' };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value = {
     user,
     token,
@@ -184,6 +204,7 @@ export function AuthProvider({ children }) {
     registerBuyer,
     registerSeller,
     updateProfile,
+    deleteAccount,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

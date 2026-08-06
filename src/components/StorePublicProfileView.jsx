@@ -5,7 +5,7 @@ import {
   ShoppingCart, Car, Wrench, Layers, Building2, MessageSquare, AlertCircle,
   Heart, Share2, Image, PenLine, Bike, Store, ArrowRight, HelpCircle
 } from 'lucide-react';
-import { SIDEBAR_CATEGORIES } from '../data/categories';
+import { NAVIGATION_CATEGORIES } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
 import { getStoreProductsApi, getStoreProfileApi, searchVehicleByPatenteApi } from '../services/api';
@@ -125,7 +125,10 @@ export default function StorePublicProfileView({
       rating: inputStore.rating ?? 0,
       reviewCount: inputStore.reviewCount ?? 0,
       responseRate: inputStore.responseRate ?? null,
-      especialidad: inputStore.especialidad || 'Toyota, Nissan, Hyundai',
+      marcasEspecialistas: Array.isArray(inputStore.marcasEspecialistas) ? inputStore.marcasEspecialistas : [],
+      especialidad: Array.isArray(inputStore.marcasEspecialistas) && inputStore.marcasEspecialistas.length
+        ? inputStore.marcasEspecialistas.map((marca) => marca.nombre).filter(Boolean).join(', ')
+        : (inputStore.especialidad || 'Multimarca'),
       descripcion: inputStore.descripcion || inputStore.description || inputStore.tipo || 'Casa de Repuestos Multimarca',
       metodosEnvio: inputStore.metodosEnvio || ['Retiro en tienda', 'Envío dentro de la comuna'],
       coverUrl: inputStore.coverUrl || '/tiensoft_cover.jpg',
@@ -575,7 +578,7 @@ export default function StorePublicProfileView({
               <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('category')} aria-expanded={openFilterSections.category}>
                 <span className="filter-group-label"><Layers size={13} /> Categoría del Repuesto</span><ChevronDown size={16} />
               </button>
-              {openFilterSections.category && <div className="filter-options-list">
+              {openFilterSections.category && <div className="filter-options-list category-options-scroll">
                 <button
                   className={`filter-option-btn ${selectedCategory === 'TODAS' ? 'active' : ''}`}
                   onClick={() => setSelectedCategory('TODAS')}
@@ -584,15 +587,15 @@ export default function StorePublicProfileView({
                   <span className="filter-option-copy"><strong>Todas las Categorías</strong><small>Explorar el catálogo completo</small></span>
                   {selectedCategory === 'TODAS' && <CheckCircle2 size={14} className="check-active" />}
                 </button>
-                {SIDEBAR_CATEGORIES.map((cat) => (
+                {NAVIGATION_CATEGORIES.map((cat) => (
                   <button
                     key={cat.id}
-                    className={`filter-option-btn ${selectedCategory === cat.id ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`filter-option-btn ${selectedCategory === cat.filterId ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory(cat.filterId)}
                   >
                     <CategoryIconTile iconName={cat.iconName} color={cat.color} size={9} className="filter-category-icon" />
                     <span className="filter-option-copy"><strong>{cat.nombre}</strong></span>
-                    {selectedCategory === cat.id ? <CheckCircle2 size={18} className="check-active" /> : <ChevronRight size={16} className="filter-option-chevron" />}
+                    {selectedCategory === cat.filterId ? <CheckCircle2 size={18} className="check-active" /> : <ChevronRight size={16} className="filter-option-chevron" />}
                   </button>
                 ))}
               </div>}

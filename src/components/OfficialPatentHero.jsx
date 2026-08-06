@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Search, CheckCircle2, RefreshCw, AlertCircle, ChevronRight, Store,
   CarFront, Barcode, Tag, Users, Truck, ShieldCheck,
   ArrowLeft, ArrowRight, CircleHelp
 } from 'lucide-react';
-import { CATEGORY_GRID_ITEMS, SIDEBAR_CATEGORIES } from '../data/categories';
+import { CAROUSEL_CATEGORIES, NAVIGATION_CATEGORIES } from '../data/categories';
 import { getPartCategoriesApi, getPublicCategoryCountsApi, getPublicProductsApi, searchVehicleByPatenteApi } from '../services/api';
 import { adaptVehicle, normalizeCategoryId } from '../services/adapters';
 import CategoryIconTile from './CategoryIconTile';
@@ -17,7 +17,7 @@ const SEARCH_MODES = [
 ];
 
 const CAROUSEL_PAGE_SIZE = 6;
-const CAROUSEL_PAGE_COUNT = Math.ceil(CATEGORY_GRID_ITEMS.length / CAROUSEL_PAGE_SIZE);
+const CAROUSEL_PAGE_COUNT = Math.ceil(CAROUSEL_CATEGORIES.length / CAROUSEL_PAGE_SIZE);
 
 export default function OfficialPatentHero({
   activeVehicle,
@@ -54,7 +54,7 @@ export default function OfficialPatentHero({
           return result;
         }, {});
 
-      const entries = await Promise.all(CATEGORY_GRID_ITEMS.map(async (category) => {
+      const entries = await Promise.all(CAROUSEL_CATEGORIES.map(async (category) => {
         const categoriaId = backendCategoryByUiId[category.id];
         if (!categoriaId) return [category.id, 0];
         const response = await getPublicProductsApi({ categoriaId, page: 0, size: 1 });
@@ -122,8 +122,20 @@ export default function OfficialPatentHero({
 
   const visibleCarouselCategories = Array.from(
     { length: CAROUSEL_PAGE_SIZE },
-    (_, index) => CATEGORY_GRID_ITEMS[(activeCarouselPage * CAROUSEL_PAGE_SIZE + index) % CATEGORY_GRID_ITEMS.length]
+    (_, index) => CAROUSEL_CATEGORIES[(activeCarouselPage * CAROUSEL_PAGE_SIZE + index) % CAROUSEL_CATEGORIES.length]
   );
+
+  // La barra lateral es un acceso rápido, no un catálogo completo. Se ordena
+  // con los totales dinámicos disponibles en el sistema y solo conserva las
+  // ocho categorías con mayor actividad; si aún carga, mantiene el orden base.
+  const popularNavigationCategories = useMemo(() => NAVIGATION_CATEGORIES
+    .map((category, index) => ({
+      ...category,
+      index,
+      popularity: Number(categoryCounts?.[category.filterId] ?? categoryCounts?.[category.id] ?? 0),
+    }))
+    .sort((left, right) => right.popularity - left.popularity || left.index - right.index)
+    .slice(0, 8), [categoryCounts]);
 
   const moveCategoryCarousel = (direction) => {
     setActiveCarouselPage((page) => (page + direction + CAROUSEL_PAGE_COUNT) % CAROUSEL_PAGE_COUNT);
@@ -133,16 +145,19 @@ export default function OfficialPatentHero({
     <section className="light-home-hero">
       <div className="container light-home-layout">
         <aside className="light-category-sidebar">
-          <h2>Categorías</h2>
+          <div className="light-category-sidebar-heading">
+            <h2>Más consultadas</h2>
+            <p>Accesos rápidos según las búsquedas de la comunidad</p>
+          </div>
           <ul>
-            {SIDEBAR_CATEGORIES.map((category) => (
+            {popularNavigationCategories.map((category) => (
               <li key={category.id}>
                 <button
-                  className={selectedCategory === category.id ? 'active' : ''}
-                  onClick={() => onSelectCategory(category.id)}
+                  className={selectedCategory === category.filterId ? 'active' : ''}
+                  onClick={() => onSelectCategory(category.filterId)}
                 >
                   <CategoryIconTile iconName={category.iconName} color={category.color} size={16} className="light-cat-icon" />
-                  <span>{category.nombre.replace('Sistema de ', 'Sistema de ').replace(' y Encendido', '')}</span>
+                  <span>{category.nombre}</span>
                   <ChevronRight size={15} />
                 </button>
               </li>
@@ -254,6 +269,7 @@ export default function OfficialPatentHero({
               <button
                 key={`${activeCarouselPage}-${category.id}-${index}`}
                 className="category-showcase-card"
+                data-category={category.id}
                 onClick={() => onSelectCategory(category.id)}
               >
                 <CategoryIconTile iconName={category.iconName} color={category.color} size={24} className="category-showcase-icon" />

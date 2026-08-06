@@ -157,6 +157,11 @@ export async function updateProfileApi(payload) {
   });
 }
 
+/** Desactiva la cuenta autenticada y anonimiza sus credenciales en el backend. */
+export async function deleteAccountApi(userId) {
+  return fetchApi(`/auth/users/${userId}`, { method: 'DELETE' });
+}
+
 /** Sube un logo/avatar o portada al backend; el backend lo persiste en R2. */
 export async function uploadProfileImageApi(file, type = 'avatar') {
   const token = localStorage.getItem('repuestop_token');
@@ -256,6 +261,19 @@ export async function getPublicCategoryCountsApi() {
 
 export async function getPartCategoriesApi() {
   return fetchApi('/catalogos/inventario/categorias-repuesto', { method: 'GET' });
+}
+
+/** Marcas de vehículo disponibles para declarar la especialidad de una tienda. */
+export async function getVehicleBrandsApi() {
+  return fetchApi('/catalogos/inventario/marcas-vehiculo', { method: 'GET' });
+}
+
+/** Reemplaza las marcas especialistas de la tienda autenticada. */
+export async function updateStoreSpecialistBrandsApi(sellerId, marcaIds) {
+  return fetchApi(`/proveedores/${sellerId}/marcas-especialistas`, {
+    method: 'PUT',
+    body: JSON.stringify({ marcaIds }),
+  });
 }
 
 export async function sendDirectQuotationApi(quoteData) {

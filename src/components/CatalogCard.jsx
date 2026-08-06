@@ -2,6 +2,7 @@ import React from 'react';
 import {
   Package, Tag, Layers, ChevronRight, Edit3, CheckCircle, AlertTriangle, XCircle
 } from 'lucide-react';
+import { resolveMediaUrl } from '../services/api';
 
 export function StockBadge({ stock }) {
   const numStock = Number(stock || 0);
@@ -47,7 +48,11 @@ export default function CatalogCard({
   const price = Number(product.precio || 0);
   const oldPrice = product.precioAnterior ? Number(product.precioAnterior) : null;
   const stock = Number(product.stock ?? 0);
-  const photo = product.imageUrls?.[0] || product.imagenUrl || product.photoUri;
+  const rawPhoto = product.imageUrls?.[0]
+    || product.imagenUrl
+    || product.photoUri
+    || product.imagenes?.[0]?.url;
+  const photo = resolveMediaUrl(rawPhoto);
 
   return (
     <div className="order-card-container catalog-card-container" onClick={() => onSelectProduct && onSelectProduct(product)}>

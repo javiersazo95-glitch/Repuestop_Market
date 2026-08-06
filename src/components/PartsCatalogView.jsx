@@ -4,12 +4,12 @@ import {
   Clock, ArrowRight, ArrowLeft, X, CheckCircle2, RotateCcw, Tag, Truck,
   ChevronLeft, ChevronRight, ChevronDown, Eye, ShoppingCart, Car, Wrench, Layers, AlertCircle, Globe, MessageSquare, Info
 } from 'lucide-react';
-// CategoryIconTile y SIDEBAR_CATEGORIES se usaban sin estar importados, por lo que la
+// CategoryIconTile y NAVIGATION_CATEGORIES se usaban sin estar importados, por lo que la
 // vista lanzaba ReferenceError al montarse (el ErrorBoundary la reemplazaba por completo).
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
 import {
-  SIDEBAR_CATEGORIES, CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID
+  NAVIGATION_CATEGORIES, CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID
 } from '../data/categories';
 import { getPublicProductsApi, searchVehicleByPatenteApi } from '../services/api';
 import { adaptPage, adaptProduct, adaptVehicle } from '../services/adapters';
@@ -462,7 +462,7 @@ export default function PartsCatalogView({
               <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('category')} aria-expanded={openFilterSections.category}>
                 <span className="filter-group-label"><Layers size={13} /> Categoría del Repuesto</span><ChevronDown size={16} />
               </button>
-              {openFilterSections.category && <div className="filter-options-list">
+              {openFilterSections.category && <div className="filter-options-list category-options-scroll">
                 <button
                   className={`filter-option-btn ${selectedCategory === 'TODAS' ? 'active' : ''}`}
                   onClick={() => setSelectedCategory('TODAS')}
@@ -471,15 +471,15 @@ export default function PartsCatalogView({
                   <span className="filter-option-copy"><strong>Todas las Categorías</strong><small>Explorar todo el catálogo</small></span>
                   {selectedCategory === 'TODAS' && <CheckCircle2 size={18} className="check-active" />}
                 </button>
-                {SIDEBAR_CATEGORIES.map((cat) => (
+                {NAVIGATION_CATEGORIES.map((cat) => (
                   <button
                     key={cat.id}
-                    className={`filter-option-btn ${selectedCategory === cat.id ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`filter-option-btn ${selectedCategory === cat.filterId ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory(cat.filterId)}
                   >
                     <CategoryIconTile iconName={cat.iconName} color={cat.color} size={9} className="filter-category-icon" />
                     <span className="filter-option-copy"><strong>{cat.nombre}</strong></span>
-                    {selectedCategory === cat.id ? <CheckCircle2 size={18} className="check-active" /> : <ChevronRight size={17} className="filter-option-chevron" />}
+                    {selectedCategory === cat.filterId ? <CheckCircle2 size={18} className="check-active" /> : <ChevronRight size={17} className="filter-option-chevron" />}
                   </button>
                 ))}
               </div>}

@@ -3,14 +3,15 @@ import {
   ArrowLeft, LayoutGrid, Package, Heart, MapPin, UserCog, Store, ShoppingBag,
   MessageSquare, LogOut, Star, Layers, TrendingUp, Truck, Check, Pencil, Save, X,
   Clock, ShieldCheck, Building2, PackageCheck, Loader2, Inbox, ChevronLeft, ChevronRight, Search,
-  CreditCard, Award, Phone, Mail, FileText, ArrowUpRight, Sliders, Sparkles, Camera, Upload, Image as ImageIcon
+  CreditCard, Award, Phone, Mail, FileText, ArrowUpRight, Sliders, Sparkles, Camera, Upload, Image as ImageIcon,
+  Trash2, AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
 import {
   getBuyerOrdersApi, getSellerOrdersApi, getFavoritesApi,
   getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getSellerStoreApi,
-  updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl
+  updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi
 } from '../services/api';
 import OrderCard from './OrderCard';
 import OrderDetailModal from './OrderDetailModal';
@@ -19,6 +20,7 @@ import CatalogDetailModal from './CatalogDetailModal';
 import QuoteCard from './QuoteCard';
 import QuoteDetailModal from './QuoteDetailModal';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
+import VehicleBrandLogo from './VehicleBrandLogo';
 
 const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
 
@@ -111,9 +113,13 @@ function EmptyState({ label }) {
   );
 }
 
-export default function ProfileDashboard({ onBackToStore }) {
-  const { user, role, logout, updateProfile } = useAuth();
+export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen' }) {
+  const { user, role, logout, updateProfile, deleteAccount } = useAuth();
   const [activeTab, setActiveTab] = useState('resumen');
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
   const [isEditing, setIsEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(user?.userName || user?.nombre || '');
   const [phoneDraft, setPhoneDraft] = useState(user?.phone || user?.telefono || '');
@@ -127,12 +133,19 @@ export default function ProfileDashboard({ onBackToStore }) {
   const [tipoCuentaDraft, setTipoCuentaDraft] = useState('Cuenta Corriente');
   const [numCuentaDraft, setNumCuentaDraft] = useState('123-45678-90');
   const [rutTitularDraft, setRutTitularDraft] = useState(user?.taxId || '');
+  const [availableVehicleBrands, setAvailableVehicleBrands] = useState([]);
+  const [specialistBrandIdsDraft, setSpecialistBrandIdsDraft] = useState([]);
+  const [showSpecialistBrandsModal, setShowSpecialistBrandsModal] = useState(false);
+  const [specialistBrandSearch, setSpecialistBrandSearch] = useState('');
 
   const [saveStatus, setSaveStatus] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showMediaModal, setShowMediaModal] = useState(null);
   const [mediaInput, setMediaInput] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState(null);
 
   const handleOpenMediaModal = (type) => {
     setShowMediaModal(type);
@@ -293,6 +306,17 @@ export default function ProfileDashboard({ onBackToStore }) {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    if (!isSeller || !isEditing || availableVehicleBrands.length) return;
+    let cancelled = false;
+    getVehicleBrandsApi()
+      .then((brands) => {
+        if (!cancelled) setAvailableVehicleBrands(Array.isArray(brands) ? brands : []);
+      })
+      .catch((error) => console.warn('No se pudieron cargar las marcas de vehículo:', error));
+    return () => { cancelled = true; };
+  }, [isSeller, isEditing, availableVehicleBrands.length]);
+
   // Catálogo del proveedor: se pide en páginas acotadas (12/24/48) en vez de
   // traer todo el inventario de una sola vez, para no sobrecargar la memoria
   // del navegador cuando la tienda tiene cientos de productos.
@@ -337,6 +361,21 @@ export default function ProfileDashboard({ onBackToStore }) {
     onBackToStore();
   };
 
+  const handleDeleteAccount = async () => {
+    setIsDeletingAccount(true);
+    setDeleteAccountError(null);
+    const result = await deleteAccount();
+    setIsDeletingAccount(false);
+
+    if (!result.success) {
+      setDeleteAccountError(result.error || 'No se pudo eliminar la cuenta. Inténtalo nuevamente.');
+      return;
+    }
+
+    setShowDeleteAccountModal(false);
+    onBackToStore();
+  };
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setIsSaving(true);
@@ -356,7 +395,17 @@ export default function ProfileDashboard({ onBackToStore }) {
       payload.shippingMethods = shippingMethodsDraft;
     }
 
-    const result = await updateProfile(payload);
+    let result;
+    try {
+      if (isSeller) {
+        await updateStoreSpecialistBrandsApi(user.sellerId, specialistBrandIdsDraft);
+      }
+      result = await updateProfile(payload);
+    } catch (error) {
+      setIsSaving(false);
+      setSaveStatus({ type: 'error', message: error?.message || 'No se pudieron actualizar las marcas especialistas.' });
+      return;
+    }
     setIsSaving(false);
 
     if (result.success) {
@@ -370,6 +419,7 @@ export default function ProfileDashboard({ onBackToStore }) {
           comuna: comunaDraft || prev?.comuna,
           region: regionDraft || prev?.region,
           shippingMethods: shippingMethodsDraft || prev?.shippingMethods,
+          marcasEspecialistas: availableVehicleBrands.filter((brand) => specialistBrandIdsDraft.includes(String(brand.id))),
           banco: bancoDraft,
           tipoCuenta: tipoCuentaDraft,
           numCuenta: numCuentaDraft,
@@ -524,6 +574,17 @@ export default function ProfileDashboard({ onBackToStore }) {
                 </button>
               );
             })}
+            <button
+              type="button"
+              className="profile-nav-item profile-nav-delete"
+              onClick={() => {
+                setDeleteAccountError(null);
+                setShowDeleteAccountModal(true);
+              }}
+            >
+              <Trash2 size={17} />
+              <span>Eliminar cuenta</span>
+            </button>
           </div>
         </aside>
 
@@ -932,6 +993,7 @@ export default function ProfileDashboard({ onBackToStore }) {
                           setComunaDraft(storeInfo?.comuna || user?.comuna || '');
                           setRegionDraft(storeInfo?.region || user?.region || '');
                           setShippingMethodsDraft(storeInfo?.shippingMethods || 'Starken, Chilexpress, Retiro en Tienda');
+                          setSpecialistBrandIdsDraft((storeInfo?.marcasEspecialistas || []).map((brand) => String(brand.id)));
                         }}
                       >
                         <Pencil size={14} /> Editar Información
@@ -993,6 +1055,22 @@ export default function ProfileDashboard({ onBackToStore }) {
                           <div className="form-group">
                             <label>Métodos de Envío Aceptados</label>
                             <input type="text" value={shippingMethodsDraft} onChange={(e) => setShippingMethodsDraft(e.target.value)} placeholder="Starken, Chilexpress, Retiro en Tienda" />
+                          </div>
+
+                          <div className="form-group">
+                            <label>Marcas especialistas</label>
+                            <button
+                              type="button"
+                              className="btn-manage-specialist-brands"
+                              onClick={() => {
+                                setSpecialistBrandSearch('');
+                                setShowSpecialistBrandsModal(true);
+                              }}
+                            >
+                              <span>Ver marcas</span>
+                              <strong>{specialistBrandIdsDraft.length} seleccionada{specialistBrandIdsDraft.length === 1 ? '' : 's'}</strong>
+                            </button>
+                            <small className="form-helper-text">Selecciona las marcas de vehículo con las que trabaja tu tienda.</small>
                           </div>
 
                           <div className="form-section-title" style={{ marginTop: '16px' }}>Datos de Cuenta Bancaria de Cobro</div>
@@ -1088,10 +1166,21 @@ export default function ProfileDashboard({ onBackToStore }) {
                               <span className="info-label">RUT / Identificador Fiscal</span>
                               <strong className="info-value">{storeInfo?.taxId || user?.taxId || '—'}</strong>
                             </div>
-                            <div className="details-info-row">
-                              <span className="info-label">Tipo de Cuenta</span>
-                              <strong className="info-value">{isSeller ? 'Proveedor Oficial RepuesTop' : 'Comprador Verificado'}</strong>
-                            </div>
+                            {isSeller ? (
+                              <div className="details-info-row">
+                                <span className="info-label">Marcas especialistas</span>
+                                <div className="profile-specialist-brands">
+                                  {(storeInfo?.marcasEspecialistas || []).length ? (storeInfo.marcasEspecialistas || []).map((brand) => (
+                                    <VehicleBrandLogo key={brand.id || brand.nombre} brand={brand.nombre} />
+                                  )) : <strong className="info-value">Sin marcas registradas</strong>}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="details-info-row">
+                                <span className="info-label">Tipo de Cuenta</span>
+                                <strong className="info-value">Comprador Verificado</strong>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -1230,6 +1319,105 @@ export default function ProfileDashboard({ onBackToStore }) {
           onClose={() => setSelectedQuote(null)}
           onSendQuoteResponse={handleSendQuoteResponse}
         />
+      )}
+
+      {showDeleteAccountModal && (
+        <div
+          className="order-modal-backdrop delete-account-backdrop"
+          onClick={() => !isDeletingAccount && setShowDeleteAccountModal(false)}
+        >
+          <section
+            className="delete-account-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-account-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="delete-account-icon" aria-hidden="true"><AlertTriangle size={25} /></div>
+            <h2 id="delete-account-title">¿Eliminar tu cuenta?</h2>
+            <p>
+              Esta acción desactivará tu cuenta y eliminará tus credenciales de acceso. Esta operación no se puede deshacer.
+            </p>
+            {deleteAccountError && (
+              <div className="auth-alert alert-error"><span>{deleteAccountError}</span></div>
+            )}
+            <div className="delete-account-actions">
+              <button
+                type="button"
+                className="btn-auth-secondary"
+                onClick={() => setShowDeleteAccountModal(false)}
+                disabled={isDeletingAccount}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn-delete-account-confirm"
+                onClick={handleDeleteAccount}
+                disabled={isDeletingAccount}
+              >
+                <Trash2 size={16} />
+                {isDeletingAccount ? 'Eliminando cuenta...' : 'Sí, eliminar cuenta'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {showSpecialistBrandsModal && (
+        <div className="order-modal-backdrop specialist-brands-backdrop" onClick={() => setShowSpecialistBrandsModal(false)}>
+          <section className="specialist-brands-modal" role="dialog" aria-modal="true" aria-labelledby="specialist-brands-title" onClick={(event) => event.stopPropagation()}>
+            <header>
+              <div>
+                <h2 id="specialist-brands-title">Marcas especialistas</h2>
+                <p>Selecciona todas las marcas con las que trabaja tu tienda.</p>
+              </div>
+              <button type="button" aria-label="Cerrar" onClick={() => setShowSpecialistBrandsModal(false)}><X size={19} /></button>
+            </header>
+            <div className="specialist-brands-selected" aria-label="Marcas ya seleccionadas">
+              <span>Seleccionadas:</span>
+              {availableVehicleBrands.filter((brand) => specialistBrandIdsDraft.includes(String(brand.id))).length ? (
+                availableVehicleBrands
+                  .filter((brand) => specialistBrandIdsDraft.includes(String(brand.id)))
+                  .map((brand) => (
+                    <span key={brand.id} className="specialist-selected-chip" title={brand.nombre}>
+                      <VehicleBrandLogo brand={brand.nombre} />
+                      {brand.nombre}
+                    </span>
+                  ))
+              ) : <em>Aún no has seleccionado marcas</em>}
+            </div>
+            <div className="specialist-brands-search">
+              <Search size={17} />
+              <input autoFocus value={specialistBrandSearch} onChange={(event) => setSpecialistBrandSearch(event.target.value)} placeholder="Buscar marca de vehículo..." />
+            </div>
+            <div className="specialist-brands-options">
+              {availableVehicleBrands
+                .filter((brand) => brand.nombre?.toLowerCase().includes(specialistBrandSearch.trim().toLowerCase()))
+                .map((brand) => {
+                  const id = String(brand.id);
+                  const selected = specialistBrandIdsDraft.includes(id);
+                  return (
+                    <button
+                      type="button"
+                      key={brand.id}
+                      className={`specialist-brand-option ${selected ? 'is-selected' : ''}`}
+                      onClick={() => setSpecialistBrandIdsDraft((current) => selected ? current.filter((currentId) => currentId !== id) : [...current, id])}
+                    >
+                      <VehicleBrandLogo brand={brand.nombre} />
+                      <span>{brand.nombre}</span>
+                      <span className="specialist-brand-tick" aria-hidden="true">{selected && <Check size={15} />}</span>
+                    </button>
+                  );
+                })}
+              {!availableVehicleBrands.length && <p className="specialist-brands-empty">No hay marcas disponibles para seleccionar.</p>}
+            </div>
+            <footer>
+              <span>{specialistBrandIdsDraft.length} marca{specialistBrandIdsDraft.length === 1 ? '' : 's'} seleccionada{specialistBrandIdsDraft.length === 1 ? '' : 's'}</span>
+              <button type="button" className="btn-auth-primary" onClick={() => setShowSpecialistBrandsModal(false)}><Check size={16} /> Listo</button>
+            </footer>
+          </section>
+        </div>
       )}
 
       {showMediaModal && (
