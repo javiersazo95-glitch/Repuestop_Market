@@ -4,21 +4,25 @@ import {
   MessageSquare, LogOut, Star, Layers, TrendingUp, Truck, Check, Pencil, Save, X,
   Clock, ShieldCheck, Building2, PackageCheck, Loader2, Inbox, ChevronLeft, ChevronRight, Search,
   CreditCard, Award, Phone, Mail, FileText, ArrowUpRight, Sliders, Sparkles, Camera, Upload, Image as ImageIcon,
-  Trash2, AlertTriangle
+  Trash2, AlertTriangle, ReceiptText, Wrench, Boxes, Plus, MessageCircleQuestion, Scale, Headphones
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
 import {
   getBuyerOrdersApi, getSellerOrdersApi, getFavoritesApi,
-  getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getSellerStoreApi,
+  getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
   updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi
 } from '../services/api';
 import OrderCard from './OrderCard';
 import OrderDetailModal from './OrderDetailModal';
 import CatalogCard from './CatalogCard';
-import CatalogDetailModal from './CatalogDetailModal';
 import QuoteCard from './QuoteCard';
 import QuoteDetailModal from './QuoteDetailModal';
+import ProfileSupportPanel from './ProfileSupportPanel';
+import ProfileNotificationsBell from './ProfileNotificationsBell';
+import NewCatalogProductModal from './NewCatalogProductModal';
+import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
+import SupportHelpPanel from './SupportHelpPanel';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
 import VehicleBrandLogo from './VehicleBrandLogo';
 
@@ -35,8 +39,8 @@ const BUYER_TABS = [
 const SELLER_TABS = [
   { id: 'resumen', label: 'Resumen', icon: LayoutGrid },
   { id: 'pedidos', label: 'Pedidos Recibidos', icon: ShoppingBag },
-  { id: 'productos', label: 'Catálogo', icon: Package },
-  { id: 'cotizaciones', label: 'Cotizaciones', icon: MessageSquare },
+  { id: 'cotizaciones', label: 'Cotizaciones', icon: ReceiptText },
+  { id: 'preguntas_productos', label: 'Preguntas de productos', icon: MessageCircleQuestion },
   { id: 'tienda_datos', label: 'Mi Tienda y Datos', icon: Store },
 ];
 
@@ -146,6 +150,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteAccountError, setDeleteAccountError] = useState(null);
+
+  const inventoryPanelUrl = __DEPLOY_BRANCH__ === 'main'
+    ? 'https://inventario.repuestop.cl'
+    : 'https://dev-inventario.repuestop.cl';
 
   const handleOpenMediaModal = (type) => {
     setShowMediaModal(type);
@@ -264,6 +272,12 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [catalogSearchTerm, setCatalogSearchTerm] = useState('');
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState(null);
+  const [productQuestions, setProductQuestions] = useState([]);
+  const [productQuestionsLoading, setProductQuestionsLoading] = useState(false);
+  const [productQuestionsError, setProductQuestionsError] = useState('');
+  const [questionsProductFilter, setQuestionsProductFilter] = useState(null);
+  const [showNewProductModal, setShowNewProductModal] = useState(false);
+  const [catalogRefreshKey, setCatalogRefreshKey] = useState(0);
 
   const isSeller = role === 'SELLER';
   const tabs = isSeller ? SELLER_TABS : BUYER_TABS;
@@ -343,7 +357,32 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       });
 
     return () => { cancelled = true; };
-  }, [isSeller, activeTab, user?.sellerId, catalogPage, catalogPageSize, catalogSearchTerm]);
+  }, [isSeller, activeTab, user?.sellerId, catalogPage, catalogPageSize, catalogSearchTerm, catalogRefreshKey]);
+
+  useEffect(() => {
+    if (!isSeller || !user?.sellerId || !['productos', 'preguntas_productos'].includes(activeTab)) return;
+    let cancelled = false;
+    setProductQuestionsLoading(true);
+    setProductQuestionsError('');
+    getSellerProductQuestionsApi(user.sellerId)
+      .then((response) => {
+        if (!cancelled) setProductQuestions(Array.isArray(response) ? response : response?.content || []);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setProductQuestions([]);
+          setProductQuestionsError(error.message || 'No se pudieron cargar las preguntas de tus productos.');
+        }
+      })
+      .finally(() => { if (!cancelled) setProductQuestionsLoading(false); });
+    return () => { cancelled = true; };
+  }, [isSeller, user?.sellerId, activeTab]);
+
+  const questionCountForProduct = (product) => {
+    const embeddedCount = product.questionCount ?? product.preguntasCount ?? product.totalPreguntas;
+    if (embeddedCount !== undefined && embeddedCount !== null) return Number(embeddedCount) || 0;
+    return productQuestions.filter((question) => String(question.productoId ?? question.productId ?? question.product?.id ?? question.producto?.id ?? '') === String(product.id)).length;
+  };
 
   const handleCatalogSearchSubmit = (e) => {
     e.preventDefault();
@@ -354,6 +393,22 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const handleCatalogPageSizeChange = (size) => {
     setCatalogPageSize(size);
     setCatalogPage(0);
+  };
+
+  const handleCatalogProductCreated = () => {
+    setCatalogPage(0);
+    setCatalogSearchInput('');
+    setCatalogSearchTerm('');
+    setCatalogRefreshKey((current) => current + 1);
+    loadData();
+  };
+
+  const handleCatalogProductSaved = (savedProduct) => {
+    if (savedProduct?.id) {
+      setSellerProducts((previous) => (previous || []).map((item) => item.id === savedProduct.id ? savedProduct : item));
+    }
+    setCatalogRefreshKey((current) => current + 1);
+    loadData();
   };
 
   const handleLogout = () => {
@@ -464,6 +519,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               {isSeller ? <Store size={13} /> : <ShoppingBag size={13} />}
               <span>{isSeller ? 'Proveedor' : 'Comprador'}</span>
             </div>
+            <ProfileNotificationsBell user={user} />
             <button className="btn-topbar-logout" onClick={handleLogout}>
               <LogOut size={15} />
               <span>Salir</span>
@@ -576,6 +632,38 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             })}
             <button
               type="button"
+              className={`profile-nav-item ${isSeller ? 'nav-seller' : 'nav-buyer'} ${activeTab === 'consultas' ? 'active' : ''}`}
+              onClick={() => setActiveTab('consultas')}
+            >
+              <Scale size={17} />
+              <span>Reportes/Disputa</span>
+            </button>
+            <button type="button" className={`profile-nav-item ${isSeller ? 'nav-seller' : 'nav-buyer'} ${activeTab === 'soporte' ? 'active' : ''}`} onClick={() => setActiveTab('soporte')}>
+              <Headphones size={17} />
+              <span>Soporte</span>
+            </button>
+            {isSeller && (
+              <>
+                <button
+                  type="button"
+                  className={`profile-nav-item profile-nav-service profile-nav-service-start nav-seller ${activeTab === 'productos' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('productos')}
+                >
+                  <Wrench size={17} />
+                  <span>Catálogo</span>
+                </button>
+                <button
+                  type="button"
+                  className="profile-nav-item profile-nav-service"
+                  onClick={() => window.location.assign(inventoryPanelUrl)}
+                >
+                  <Boxes size={17} />
+                  <span>Panel de inventario</span>
+                </button>
+              </>
+            )}
+            <button
+              type="button"
               className="profile-nav-item profile-nav-delete"
               onClick={() => {
                 setDeleteAccountError(null);
@@ -670,7 +758,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                           </div>
 
                           <div className="quick-shortcut-card" onClick={() => setActiveTab('productos')}>
-                            <div className="shortcut-icon shortcut-amber"><Package size={20} /></div>
+                            <div className="shortcut-icon shortcut-amber"><Wrench size={20} /></div>
                             <div className="shortcut-info">
                               <strong>Administrar Catálogo</strong>
                               <span>Ajustar precios, stock e inventario publicado</span>
@@ -679,7 +767,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                           </div>
 
                           <div className="quick-shortcut-card" onClick={() => setActiveTab('cotizaciones')}>
-                            <div className="shortcut-icon shortcut-purple"><MessageSquare size={20} /></div>
+                            <div className="shortcut-icon shortcut-purple"><ReceiptText size={20} /></div>
                             <div className="shortcut-info">
                               <strong>Responder Cotizaciones</strong>
                               <span>Atender preguntas y solicitudes de clientes</span>
@@ -875,16 +963,26 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                     <h2 className="profile-panel-title">
                       Catálogo Publicado {catalogTotalElements > 0 && <span className="catalog-total-badge">{catalogTotalElements}</span>}
                     </h2>
+                    <div className="catalog-header-actions">
+                      <form className="catalog-search-form" onSubmit={handleCatalogSearchSubmit}>
+                        <Search size={14} />
+                        <input
+                          type="text"
+                          placeholder="Buscar por nombre o SKU..."
+                          value={catalogSearchInput}
+                          onChange={(e) => setCatalogSearchInput(e.target.value)}
+                        />
+                      </form>
+                      <button type="button" className="catalog-add-product-button" onClick={() => setShowNewProductModal(true)}>
+                        <Plus size={16} /> Agregar producto
+                      </button>
+                    </div>
+                  </div>
 
-                    <form className="catalog-search-form" onSubmit={handleCatalogSearchSubmit}>
-                      <Search size={14} />
-                      <input
-                        type="text"
-                        placeholder="Buscar por nombre o SKU..."
-                        value={catalogSearchInput}
-                        onChange={(e) => setCatalogSearchInput(e.target.value)}
-                      />
-                    </form>
+                  <div className="catalog-bulk-inventory-notice">
+                    <div className="catalog-bulk-inventory-icon"><Boxes size={19} /></div>
+                    <p><strong>¿Necesitas cargar o editar muchos productos?</strong><span>Para cargas masivas y ediciones masivas de tu inventario, ingresa al Panel de inventario.</span></p>
+                    <a href={inventoryPanelUrl} target="_blank" rel="noreferrer">Ir al panel <ArrowUpRight size={15} /></a>
                   </div>
 
                   <div className="catalog-range-filter">
@@ -914,13 +1012,18 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                     <EmptyState label={catalogSearchTerm ? `Sin resultados para "${catalogSearchTerm}".` : 'Aún no has publicado productos en tu catálogo.'} />
                   ) : (
                     <>
-                      <div className="profile-orders-cards-grid">
+                      <div className="profile-orders-cards-grid seller-catalog-grid">
                         {sellerProducts.map((p) => (
                           <CatalogCard
                             key={p.id}
                             product={p}
+                            questionCount={questionCountForProduct(p)}
                             onSelectProduct={(item) => setSelectedCatalogProduct(item)}
                             onQuickEditStock={(item) => setSelectedCatalogProduct(item)}
+                            onOpenQuestions={(item) => {
+                              setQuestionsProductFilter(item.id);
+                              setActiveTab('preguntas_productos');
+                            }}
                           />
                         ))}
                       </div>
@@ -953,6 +1056,17 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 </div>
               )}
 
+              {activeTab === 'preguntas_productos' && isSeller && (
+                <SellerProductQuestionsPanel
+                  questions={productQuestions}
+                  products={sellerProducts || []}
+                  loading={productQuestionsLoading}
+                  error={productQuestionsError}
+                  initialProductId={questionsProductFilter}
+                  onClearProduct={() => setQuestionsProductFilter(null)}
+                />
+              )}
+
               {activeTab === 'cotizaciones' && isSeller && (
                 <div className="profile-panel">
                   <h2 className="profile-panel-title">Solicitudes de Cotización</h2>
@@ -971,6 +1085,14 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                     </div>
                   )}
                 </div>
+              )}
+
+              {activeTab === 'consultas' && (
+                <ProfileSupportPanel user={user} orders={orders || []} isSeller={isSeller} />
+              )}
+
+              {activeTab === 'soporte' && (
+                <SupportHelpPanel user={user} role={role} onViewCases={() => setActiveTab('consultas')} />
               )}
 
               {(activeTab === 'tienda_datos' || activeTab === 'datos') && (
@@ -1306,10 +1428,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       )}
 
       {selectedCatalogProduct && (
-        <CatalogDetailModal
+        <NewCatalogProductModal
           product={selectedCatalogProduct}
+          sellerId={user?.sellerId}
           onClose={() => setSelectedCatalogProduct(null)}
-          onSaveProduct={handleSaveCatalogProduct}
+          onCreated={handleCatalogProductSaved}
         />
       )}
 
@@ -1512,6 +1635,15 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           </div>
         </div>
       )}
+
+      {showNewProductModal && isSeller && (
+        <NewCatalogProductModal
+          sellerId={user?.sellerId}
+          onClose={() => setShowNewProductModal(false)}
+          onCreated={handleCatalogProductCreated}
+        />
+      )}
+
     </div>
   );
 }

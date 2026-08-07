@@ -120,11 +120,11 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onUpdateQuantit
             </div>
 
             <div className="checkout-trust-badge">
-              <ShieldCheck size={16} /> Compra 100% Protegida con Garantía de Calce por Patente
+              <ShieldCheck size={16} /> Pago protegido con Flow o transferencia vía Khipu
             </div>
 
-            <button className="btn-proceed-checkout" onClick={() => alert('¡Redirigiendo a Pasarela de Pago Segura (WebPay / MercadoPago)!')}>
-              <span>PROCESAR COMPRA SEGURA</span>
+            <button className="btn-proceed-checkout" onClick={() => alert('En el checkout podrás elegir Flow (débito o crédito) o transferencia bancaria vía Khipu.')}>
+              <span>CONTINUAR AL PAGO</span>
               <ArrowRight size={18} />
             </button>
           </div>

@@ -33,14 +33,33 @@ export default function OfficialPatentHero({
   const [errorMsg, setErrorMsg] = useState('');
   const [activeCarouselPage, setActiveCarouselPage] = useState(0);
   const [categoryCounts, setCategoryCounts] = useState(null);
+  const [backendCategories, setBackendCategories] = useState([]);
 
   const mode = SEARCH_MODES.find((item) => item.id === searchMode) || SEARCH_MODES[0];
   const samplePatentes = ['BB-CL-12', 'HG-89-21', 'AA-123-BB', 'JJ-TT-45'];
+  const categoryNameKey = (value) => String(value || '').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  useEffect(() => {
+    getPartCategoriesApi()
+      .then((items) => setBackendCategories(Array.isArray(items) ? items : []))
+      .catch(() => setBackendCategories([]));
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
     const toCountMap = (items) => (Array.isArray(items) ? items : []).reduce((result, item) => {
-      result[normalizeCategoryId(item.categoriaNombre)] = Number(item.total || 0);
+      const normalized = normalizeCategoryId(item.categoriaNombre);
+      const carouselCategory = CAROUSEL_CATEGORIES.find((category) =>
+        categoryNameKey(category.nombre) === categoryNameKey(item.categoriaNombre));
+      const total = Number(item.total || 0);
+      // El carrusel usa IDs técnicos (p. ej. `aceite`) y los filtros usan IDs
+      // visuales (`aceites`); guardamos ambos para que nunca se pierda el conteo.
+      result[normalized] = total;
+      if (carouselCategory) {
+        result[carouselCategory.id] = total;
+        result[carouselCategory.filterId] = total;
+      }
       return result;
     }, {});
 
@@ -48,14 +67,10 @@ export default function OfficialPatentHero({
       // Compatibilidad con una API aún sin el resumen agregado: se consulta el
       // total exacto de cada categoría directamente desde el mismo catálogo.
       const availableCategories = await getPartCategoriesApi();
-      const backendCategoryByUiId = (Array.isArray(availableCategories) ? availableCategories : [])
-        .reduce((result, category) => {
-          result[normalizeCategoryId(category.nombre)] = category.id;
-          return result;
-        }, {});
-
+      if (isMounted) setBackendCategories(Array.isArray(availableCategories) ? availableCategories : []);
       const entries = await Promise.all(CAROUSEL_CATEGORIES.map(async (category) => {
-        const categoriaId = backendCategoryByUiId[category.id];
+        const categoriaId = (Array.isArray(availableCategories) ? availableCategories : [])
+          .find((backendCategory) => categoryNameKey(backendCategory.nombre) === categoryNameKey(category.nombre))?.id;
         if (!categoriaId) return [category.id, 0];
         const response = await getPublicProductsApi({ categoriaId, page: 0, size: 1 });
         return [category.id, Number(response?.totalElements || 0)];
@@ -65,16 +80,15 @@ export default function OfficialPatentHero({
 
     (async () => {
       try {
-        const directCounts = toCountMap(await getPublicCategoryCountsApi());
-        // Si el backend todavía no ha sido reiniciado con el endpoint nuevo, o
-        // responde un agregado vacío, no mostramos ceros ficticios: usamos el
-        // catálogo público como fuente de verdad.
-        const hasPublications = Object.values(directCounts).some((total) => total > 0);
-        const counts = hasPublications ? directCounts : await loadFallbackCounts();
+        // La card y la vista filtrada deben compartir exactamente la misma
+        // fuente: GET /inventario/productos?categoriaId=... con totalElements.
+        // El resumen agregado se conserva como respaldo, pero no decide el
+        // número mostrado porque sus IDs visuales pueden agrupar categorías.
+        const counts = await loadFallbackCounts();
         if (isMounted) setCategoryCounts(counts);
       } catch {
         try {
-          const counts = await loadFallbackCounts();
+          const counts = toCountMap(await getPublicCategoryCountsApi());
           if (isMounted) setCategoryCounts(counts);
         } catch {
           // No sustituimos con cifras mock; mantenemos el estado de carga.
@@ -84,6 +98,18 @@ export default function OfficialPatentHero({
     })();
     return () => { isMounted = false; };
   }, []);
+
+  const selectCarouselCategory = (category) => {
+    // `filterId` es solo una familia visual (p. ej. Admisión pertenece al
+    // estilo "motor"); para filtrar se debe resolver por el nombre exacto de
+    // la categoría padre persistida en el backend.
+    const backendCategory = backendCategories.find((item) => categoryNameKey(item.nombre) === categoryNameKey(category.nombre));
+    onSelectCategory({
+      category: category.filterId || category.id,
+      categoryId: backendCategory?.id,
+      categoryName: category.nombre,
+    });
+  };
 
   const handleSearch = async (valueToUse) => {
     const value = (valueToUse || inputValue).trim();
@@ -154,7 +180,7 @@ export default function OfficialPatentHero({
               <li key={category.id}>
                 <button
                   className={selectedCategory === category.filterId ? 'active' : ''}
-                  onClick={() => onSelectCategory(category.filterId)}
+                  onClick={() => selectCarouselCategory(category)}
                 >
                   <CategoryIconTile iconName={category.iconName} color={category.color} size={16} className="light-cat-icon" />
                   <span>{category.nombre}</span>
@@ -270,7 +296,7 @@ export default function OfficialPatentHero({
                 key={`${activeCarouselPage}-${category.id}-${index}`}
                 className="category-showcase-card"
                 data-category={category.id}
-                onClick={() => onSelectCategory(category.id)}
+                onClick={() => selectCarouselCategory(category)}
               >
                 <CategoryIconTile iconName={category.iconName} color={category.color} size={24} className="category-showcase-icon" />
                 <strong>{category.nombre}</strong>

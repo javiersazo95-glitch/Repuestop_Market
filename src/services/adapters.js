@@ -94,6 +94,7 @@ function mapCompatibilidad(dto) {
         return grupos.map((g) => ({
           marca: g.marca || g.brand || '',
           modelo: g.modelo || g.model || '',
+          version: g.version || g.versionNombre || g.trim || '',
           anioInicio: toNumber(g.anioDesde ?? g.anioInicio ?? g.yearFrom),
           anioFin: toNumber(g.anioHasta ?? g.anioFin ?? g.yearTo),
           motor: g.motor || g.engine || '',
@@ -109,6 +110,7 @@ function mapCompatibilidad(dto) {
   return [{
     marca: dto.compatibilidadMarca || '',
     modelo: dto.compatibilidadModelo || '',
+    version: dto.compatibilidadVersion || dto.version || '',
     anioInicio: toNumber(dto.anioDesde),
     anioFin: toNumber(dto.anioHasta),
     motor: dto.motor || '',
@@ -143,11 +145,15 @@ export function adaptProduct(dto) {
   return {
     id: dto.id,
     titulo: dto.nombrePublicado || dto.repuestoNombre || 'Repuesto sin nombre',
+    // `categoria` es el identificador normalizado que usa la UI para color e
+    // icono. Conservamos además el nombre literal del backend para no cambiar
+    // etiquetas válidas como "Aceite" por una categoría visual genérica.
     categoria: normalizeCategoryId(dto.categoria),
-    subcategoria: dto.repuestoNombre || '',
+    categoriaNombre: dto.categoria || '',
+    subcategoria: dto.subcategoria || '',
     oemCode: dto.referenciaOem || dto.skuProveedor || dto.codigoInterno || '',
     descripcion: dto.descripcion || '',
-    marca: dto.marca || dto.productBrand || dto.brand || dto.fabricante || dto.manufacturer || '',
+    marca: dto.marcaRepuesto || dto.marca || dto.productBrand || dto.brand || dto.fabricante || dto.manufacturer || '',
     precio,
     precioOriginal,
     descuento: calcularDescuento(precio, precioOriginal),
@@ -168,7 +174,8 @@ export function adaptProduct(dto) {
     imagenes,
     logoTienda: resolveMediaUrl(dto.storeIconUrl),
     requiereChasis: Boolean(dto.requiereChasis),
-    soloCotizacion: dto.pricingMode === 'COTIZACION' || precio <= 0,
+    pricingMode: dto.pricingMode || (precio > 0 ? 'SHOW_PRICE' : 'QUOTE_ONLY'),
+    soloCotizacion: dto.pricingMode === 'COTIZACION' || dto.pricingMode === 'QUOTE_ONLY' || precio <= 0,
     createdAt: dto.createdAt || null,
     compatibilidad,
   };

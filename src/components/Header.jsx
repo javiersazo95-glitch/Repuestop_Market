@@ -1,13 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Truck, ShieldCheck, Store, HelpCircle, Search, ShoppingCart, User,
   ChevronDown, ChevronRight, X, LogOut, LayoutDashboard, MessageSquare, Menu,
-  Package, Tag
+  Package, Tag, Info
 } from 'lucide-react';
 import { CATEGORY_VISUALS, HEADER_CATEGORIES } from '../data/categories';
 import RepuesTopLogo from './RepuesTopLogo';
 import { useAuth } from '../context/AuthContext';
-import { getPublicProductsApi, resolveMediaUrl } from '../services/api';
+import { getPartCategoriesApi, getPartSubcategoriesApi, getPublicProductsApi, resolveMediaUrl } from '../services/api';
 import CategoryIconTile from './CategoryIconTile';
 
 export default function Header({
@@ -18,6 +18,7 @@ export default function Header({
   onOpenProfile,
   onOpenStores,
   onOpenCatalog,
+  onOpenAbout,
   onOpenHelp,
   searchQuery,
   setSearchQuery,
@@ -27,7 +28,7 @@ export default function Header({
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [activeHeaderCategoryId, setActiveHeaderCategoryId] = useState(HEADER_CATEGORIES[0].id);
   const [subcategoryInventory, setSubcategoryInventory] = useState({});
-  const requestedSubcategories = useRef(new Set());
+  const [backendCategories, setBackendCategories] = useState([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { user, isLoggedIn, role, logout } = useAuth();
   const inventoryPanelUrl = __DEPLOY_BRANCH__ === 'main'
@@ -44,36 +45,57 @@ export default function Header({
     [activeHeaderCategoryId]
   );
 
+  const normalizeCatalogName = (value) => String(value || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]/g, '').replace(/s$/, '');
+
+  const getBackendCategory = (category) => backendCategories.find((item) =>
+    normalizeCatalogName(item.nombre) === normalizeCatalogName(category.nombre));
+
+  useEffect(() => {
+    getPartCategoriesApi()
+      .then((items) => setBackendCategories(Array.isArray(items) ? items : []))
+      .catch(() => setBackendCategories([]));
+  }, []);
+
   // Se consulta una página por subcategoría para recibir totalElements: el número
   // mostrado es el total publicado en el sistema, no solo los elementos cargados.
   useEffect(() => {
     let active = true;
-    const pending = activeHeaderCategory.subcategories.filter((subcategory) => {
-      const key = `${activeHeaderCategory.id}:${subcategory}`;
-      if (requestedSubcategories.current.has(key)) return false;
-      requestedSubcategories.current.add(key);
-      return true;
-    });
+    const backendCategory = getBackendCategory(activeHeaderCategory);
+    if (!backendCategory?.id) return () => { active = false; };
 
-    if (!pending.length) return () => { active = false; };
-
-    Promise.all(pending.map(async (subcategory) => {
+    const loadCounts = async () => {
+      let backendSubcategories = [];
       try {
-        const page = await getPublicProductsApi({ page: 0, size: 1, texto: subcategory, sort: 'createdAt,desc' });
-        return [
-          `${activeHeaderCategory.id}:${subcategory}`,
-          { count: Number(page?.totalElements || 0), image: page?.content?.[0]?.imageUrls?.[0] || null },
-        ];
+        backendSubcategories = await getPartSubcategoriesApi(backendCategory.id);
       } catch {
-        return [`${activeHeaderCategory.id}:${subcategory}`, { count: 0, image: null }];
+        return;
       }
-    })).then((entries) => {
-      if (!active) return;
-      setSubcategoryInventory((current) => ({ ...current, ...Object.fromEntries(entries) }));
-    });
-
+      const subcategoriesByName = new Map((Array.isArray(backendSubcategories) ? backendSubcategories : [])
+        .map((subcategory) => [normalizeCatalogName(subcategory.nombre), subcategory]));
+      const pending = activeHeaderCategory.subcategories.filter((subcategory) => {
+        const key = `${activeHeaderCategory.id}:${subcategory}`;
+        return subcategoriesByName.has(normalizeCatalogName(subcategory)) && subcategoryInventory[key] === undefined;
+      });
+      if (!pending.length) return;
+      const entries = await Promise.all(pending.map(async (subcategory) => {
+        const backendSubcategory = subcategoriesByName.get(normalizeCatalogName(subcategory));
+        try {
+          const page = await getPublicProductsApi({ page: 0, size: 1, subcategoriaId: backendSubcategory.id, sort: 'createdAt,desc' });
+          return [
+            `${activeHeaderCategory.id}:${subcategory}`,
+            { count: Number(page?.totalElements || 0), image: page?.content?.[0]?.imageUrls?.[0] || null, subcategoryId: backendSubcategory.id },
+          ];
+        } catch {
+          return [`${activeHeaderCategory.id}:${subcategory}`, { count: 0, image: null }];
+        }
+      }));
+      if (active) setSubcategoryInventory((current) => ({ ...current, ...Object.fromEntries(entries) }));
+    };
+    loadCounts();
     return () => { active = false; };
-  }, [activeHeaderCategory]);
+  }, [activeHeaderCategory, backendCategories, subcategoryInventory]);
 
   const handleUserBoxClick = () => {
     if (isLoggedIn) setShowUserMenu((open) => !open);
@@ -156,7 +178,8 @@ export default function Header({
                 <div className="user-dropdown-body">
                   <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.(); }}><LayoutDashboard size={15} /> Mi perfil</button>
                   <button className="dropdown-item" onClick={openInventoryPanel}><Package size={15} /> Panel de inventario</button>
-                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenHelp?.(); }}><MessageSquare size={15} /> Consultas/Reclamos</button>
+                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.('consultas'); }}><MessageSquare size={15} /> Reportes/Disputa</button>
+                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenHelp?.(); }}><HelpCircle size={15} /> Soporte</button>
                   <div className="dropdown-divider" />
                   <button className="dropdown-item logout-item" onClick={handleLogout}><LogOut size={15} /> Cerrar sesión</button>
                 </div>
@@ -193,7 +216,7 @@ export default function Header({
                       className={category.id === activeHeaderCategory.id ? 'active' : ''}
                       onMouseEnter={() => setActiveHeaderCategoryId(category.id)}
                       onFocus={() => setActiveHeaderCategoryId(category.id)}
-                      onClick={() => { setShowCategoryMenu(false); onSelectCategory(category.filterId); }}
+                      onClick={() => { setShowCategoryMenu(false); onSelectCategory({ category: category.filterId, categoryId: getBackendCategory(category)?.id }); }}
                     >
                       <span className="header-category-label"><CategoryIconTile iconName={CATEGORY_VISUALS[category.id].iconName} color={CATEGORY_VISUALS[category.id].color} size={16} />{category.nombre}</span>
                       <ChevronRight size={16} aria-hidden="true" />
@@ -203,7 +226,7 @@ export default function Header({
                 <div className="header-subcategory-panel">
                   <div className="header-subcategory-panel-title">
                     <strong>{activeHeaderCategory.nombre}</strong>
-                    <button onClick={() => { setShowCategoryMenu(false); onSelectCategory(activeHeaderCategory.filterId); }}>Ver más <ChevronRight size={16} /></button>
+                    <button onClick={() => { setShowCategoryMenu(false); onSelectCategory({ category: activeHeaderCategory.filterId, categoryId: getBackendCategory(activeHeaderCategory)?.id }); }}>Ver más <ChevronRight size={16} /></button>
                   </div>
                   <div className="header-subcategory-grid">
                     {activeHeaderCategory.subcategories.map((subcategory) => {
@@ -214,7 +237,7 @@ export default function Header({
                         <button
                           key={subcategory}
                           className="header-subcategory-card"
-                          onClick={() => { setShowCategoryMenu(false); onSelectCategory(activeHeaderCategory.filterId); }}
+                          onClick={() => { setShowCategoryMenu(false); onSelectCategory({ category: activeHeaderCategory.filterId, categoryId: getBackendCategory(activeHeaderCategory)?.id, subcategoryId: inventory?.subcategoryId, subcategory: subcategory }); }}
                         >
                           <img src={categoryImage || (productImage ? resolveMediaUrl(productImage) : activeHeaderCategory.image)} alt="" />
                           <span className="header-subcategory-name">{subcategory}</span>
@@ -230,6 +253,7 @@ export default function Header({
           <button onClick={onOpenStores}><Store size={16} /> Tiendas</button>
           <button onClick={onOpenCatalog}><Package size={16} /> Catálogo de repuestos</button>
           <button className="offers-nav-link" onClick={onOpenCatalog}><Tag size={16} /> Ofertas</button>
+          <button onClick={onOpenAbout}><Info size={16} /> Sobre RepuesTop</button>
           <button onClick={onOpenHelp}><HelpCircle size={16} /> Ayuda</button>
         </div>
       </nav>

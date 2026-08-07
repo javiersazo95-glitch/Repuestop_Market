@@ -28,9 +28,10 @@ export class ApiError extends Error {
  */
 export async function fetchApi(endpoint, options = {}) {
   const token = localStorage.getItem('repuestop_token');
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };
@@ -209,6 +210,22 @@ export async function getSellerConversationsApi(proveedorId) {
   return fetchApi(`/proveedores/${proveedorId}/conversaciones`, { method: 'GET' });
 }
 
+// Preguntas públicas asociadas a productos del catálogo del vendedor.
+export async function getSellerProductQuestionsApi(proveedorId) {
+  return fetchApi(`/proveedores/${proveedorId}/preguntas-productos`, { method: 'GET' });
+}
+
+export async function getProductQuestionsApi(productoId) {
+  return fetchApi(`/productos/${productoId}/preguntas`, { method: 'GET' });
+}
+
+export async function createProductQuestionApi(productoId, question) {
+  return fetchApi(`/productos/${productoId}/preguntas`, {
+    method: 'POST',
+    body: JSON.stringify(question),
+  });
+}
+
 export async function getSellerStoreApi(proveedorId) {
   return fetchApi(`/proveedores/${proveedorId}/tienda`, { method: 'GET' });
 }
@@ -243,12 +260,13 @@ export async function getStoreProductsApi(storeId, { page = 0, size = 12, texto,
   return fetchApi(`/tiendas/${storeId}/productos?${params.toString()}`, { method: 'GET' });
 }
 
-export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, categoriaId, marcaId, precioMin, precioMax, sort = 'precio,asc' } = {}) {
+export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, sort = 'precio,asc' } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size), sort });
   if (texto) params.set('texto', texto);
   if (patente) params.set('patente', patente);
   if (soloCotizacion !== undefined) params.set('soloCotizacion', String(soloCotizacion));
   if (categoriaId) params.set('categoriaId', String(categoriaId));
+  if (subcategoriaId) params.set('subcategoriaId', String(subcategoriaId));
   if (marcaId) params.set('marcaId', String(marcaId));
   if (precioMin) params.set('precioMin', String(precioMin));
   if (precioMax) params.set('precioMax', String(precioMax));
@@ -261,6 +279,42 @@ export async function getPublicCategoryCountsApi() {
 
 export async function getPartCategoriesApi() {
   return fetchApi('/catalogos/inventario/categorias-repuesto', { method: 'GET' });
+}
+
+export async function getPartBrandsApi(categoria) {
+  const query = categoria ? `?categoria=${encodeURIComponent(categoria)}` : '';
+  return fetchApi(`/catalogos/inventario/marcas-repuesto${query}`, { method: 'GET' });
+}
+
+export async function getPartSubcategoriesApi(categoriaId) {
+  return fetchApi(`/catalogos/inventario/categorias-repuesto/${categoriaId}/subcategorias`, { method: 'GET' });
+}
+
+export async function getVehicleModelsApi(marcaId) {
+  return fetchApi(`/catalogos/inventario/marcas-vehiculo/${marcaId}/modelos`, { method: 'GET' });
+}
+
+export async function getVehicleVersionsApi({ marca, modelo, anioDesde, anioHasta }) {
+  const params = new URLSearchParams({ marca, modelo });
+  if (anioDesde) params.set('anioDesde', String(anioDesde));
+  if (anioHasta) params.set('anioHasta', String(anioHasta));
+  return fetchApi(`/catalogos/inventario/versiones?${params.toString()}`, { method: 'GET' });
+}
+
+/** Crea un producto personalizado mediante el mismo flujo multipart del panel de inventario. */
+export async function createSellerInventoryProductApi(proveedorId, formData) {
+  return fetchApi(`/proveedores/${proveedorId}/inventario/personalizado`, {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+/** Edita un producto personalizado, manteniendo las imágenes actuales si no se adjuntan nuevas. */
+export async function updateSellerInventoryProductApi(proveedorId, productId, formData) {
+  return fetchApi(`/proveedores/${proveedorId}/inventario/${productId}/editar`, {
+    method: 'POST',
+    body: formData,
+  });
 }
 
 /** Marcas de vehículo disponibles para declarar la especialidad de una tienda. */
@@ -301,4 +355,39 @@ export async function searchVehicleByPatenteApi(patente) {
     }
     throw error;
   }
+}
+
+// Soporte y notificaciones del usuario autenticado.
+export async function getMySupportTicketsApi(userId) {
+  return fetchApi(`/support/tickets/mine/${userId}`, { method: 'GET' });
+}
+
+export async function createSupportTicketApi(ticket) {
+  return fetchApi('/support/tickets', {
+    method: 'POST',
+    body: JSON.stringify(ticket),
+  });
+}
+
+export async function createOrderClaimApi(userId, orderId, claim) {
+  return fetchApi(`/usuarios/${userId}/pedidos/${orderId}/reclamo`, {
+    method: 'POST',
+    body: JSON.stringify(claim),
+  });
+}
+
+export async function getNotificationsApi(userId) {
+  return fetchApi(`/usuarios/${userId}/notificaciones`, { method: 'GET' });
+}
+
+export async function getUnreadNotificationsCountApi(userId) {
+  return fetchApi(`/usuarios/${userId}/notificaciones/unread-count`, { method: 'GET' });
+}
+
+export async function markNotificationReadApi(userId, notificationId) {
+  return fetchApi(`/usuarios/${userId}/notificaciones/${notificationId}/leida`, { method: 'PUT' });
+}
+
+export async function markAllNotificationsReadApi(userId) {
+  return fetchApi(`/usuarios/${userId}/notificaciones/leidas`, { method: 'PUT' });
 }

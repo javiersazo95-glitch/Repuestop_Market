@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import {
   X, Check, ShieldCheck, Truck, Star, ShoppingBag,
-  Store, Car, FileText, AlertTriangle, ChevronRight, CheckCircle2, MessageSquare
+  Store, Car, AlertTriangle, CheckCircle2, MessageSquare, MapPin, PackageCheck, Copy, BadgeCheck, ChevronRight, CreditCard, Landmark
 } from 'lucide-react';
 import { CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
 
-export default function ProductQuickViewModal({ product, activeVehicle, onClose, onAddToCart }) {
+export default function ProductQuickViewModal({ product, activeVehicle, onClose, onAddToCart, onOpenQuote }) {
   const [activeTab, setActiveTab] = useState('specs'); // 'specs' | 'compatibilidad' | 'vendedor'
   const [quoteRequested, setQuoteRequested] = useState(false);
+  const [activeImage, setActiveImage] = useState(0);
 
   if (!product) return null;
 
@@ -27,6 +28,10 @@ export default function ProductQuickViewModal({ product, activeVehicle, onClose,
     : (product.ciudadVendedor || product.ciudad || 'Santiago, RM');
 
   const isQuoteOnly = product.soloCotizacion || !product.precio || product.precio === 0;
+  const images = (product.imagenes?.length ? product.imagenes : [product.imagen || CATEGORY_IMAGE_BY_ID[product.categoria]]).filter(Boolean);
+  const stock = Number(product.stock ?? 0);
+  const shippingMethods = String(product.metodosEnvio || '').split(',').map((item) => item.trim()).filter(Boolean);
+  const categoryLabel = product.categoriaNombre || product.categoria || 'Repuestos';
 
   const specsList = product.especificaciones || [
     { label: 'Código OEM', val: product.oemCode || 'OEM-REF-100' },
@@ -42,13 +47,13 @@ export default function ProductQuickViewModal({ product, activeVehicle, onClose,
           <X size={20} />
         </button>
 
-        <div className="quickview-grid">
+        <div className="quickview-grid product-detail-redesign">
           {/* Left Column: High-Res Image & Badges */}
           <div className="quickview-media-col">
-            <div className="main-image-wrap">
-              {product.imagen || CATEGORY_IMAGE_BY_ID[product.categoria] ? (
+            <div className="main-image-wrap product-detail-image-stage">
+              {images[activeImage] ? (
                 <img
-                  src={product.imagen || CATEGORY_IMAGE_BY_ID[product.categoria]}
+                  src={images[activeImage]}
                   alt={product.titulo}
                   className="quickview-product-img"
                 />
@@ -62,7 +67,9 @@ export default function ProductQuickViewModal({ product, activeVehicle, onClose,
               {product.descuento > 0 && (
                 <span className="modal-discount-tag">-{product.descuento}% OFF</span>
               )}
+              <span className={`product-detail-stock ${stock > 0 ? 'in-stock' : 'out-stock'}`}><PackageCheck size={14} />{stock > 0 ? `${stock} disponibles` : 'Sin stock'}</span>
             </div>
+            {images.length > 1 && <div className="product-detail-thumbnails">{images.map((image, index) => <button type="button" key={image} className={activeImage === index ? 'active' : ''} onClick={() => setActiveImage(index)}><img src={image} alt={`Vista ${index + 1}`} /></button>)}</div>}
 
             {/* Compatibility Notification Banner */}
             {activeVehicle && (
@@ -87,37 +94,40 @@ export default function ProductQuickViewModal({ product, activeVehicle, onClose,
               </div>
             )}
 
-            <div className="quick-trust-specs">
-              <div className="trust-spec-item"><ShieldCheck size={16} /> Garantía: {product.garantiaDias || 90} Días</div>
-              <div className="trust-spec-item"><Truck size={16} /> Despacho: {product.envioRapido ? 'Mismo Día / Express' : 'Estándar a Regiones'}</div>
+            <div className="quick-trust-specs product-detail-trust">
+              <div className="trust-spec-item"><ShieldCheck size={16} /> Compra protegida</div>
+              <div className="trust-spec-item"><Truck size={16} /> Envío a todo Chile</div>
             </div>
           </div>
 
           {/* Right Column: Title, Prices, Tabs & Add to Cart */}
           <div className="quickview-details-col">
-            <div className="modal-category-breadcrumb">
-              Repuestos &gt; {String(product.categoria || 'general').toUpperCase()} &gt; {product.subcategoria || 'Repuestos Mecánicos'}
+            <div className="modal-category-breadcrumb product-detail-breadcrumb">
+              <span>{categoryLabel}</span>{product.subcategoria && <><ChevronRight size={13} /><span>{product.subcategoria}</span></>}
             </div>
 
             <h2 className="modal-product-title">{product.titulo}</h2>
 
+            <div className="product-detail-seller-line"><Store size={15} /><strong>{sellerName}</strong><MapPin size={14} />{sellerCity}{product.vendedorVerificado && <span><BadgeCheck size={14} /> Tienda verificada</span>}</div>
+
             <div className="modal-oem-row">
               <span className="oem-label">Código OEM / Número de Parte:</span>
-              <code className="oem-badge">{product.oemCode || 'OEM-REF-100'}</code>
+              <code className="oem-badge">{product.oemCode || 'Sin referencia OEM'}</code>
+              {product.oemCode && <button className="product-detail-copy" type="button" onClick={() => navigator.clipboard?.writeText(product.oemCode)} aria-label="Copiar código OEM"><Copy size={13} /></button>}
               <span className="condition-badge">{product.condicion || 'Nuevo OEM Original'}</span>
             </div>
 
-            <div className="modal-rating-row">
+            <div className="modal-rating-row product-detail-rating-row">
               <div className="rating-stars">
                 <Star size={16} className="star-filled" />
                 <span className="score">{product.rating || 4.9}</span>
                 <span className="count">({product.reviewsCount || 42} evaluaciones)</span>
               </div>
-              <span className="sold-volume">{product.vendidos || 120} unidades vendidas</span>
+              <span className="sold-volume">{product.vendidos || 0} unidades vendidas</span>
             </div>
 
             {/* Price Box vs Quote Only Box */}
-            <div className="modal-price-box">
+            <div className="modal-price-box product-detail-price-box">
               {isQuoteOnly ? (
                 <div className="quote-only-header-pill">
                   <MessageSquare size={18} className="text-blue-500" />
@@ -133,6 +143,8 @@ export default function ProductQuickViewModal({ product, activeVehicle, onClose,
                 </>
               )}
             </div>
+
+            {shippingMethods.length > 0 && <div className="product-detail-shipping"><Truck size={15} /><div><strong>Opciones de entrega</strong><span>{shippingMethods.join(' · ')}</span></div></div>}
 
             {/* Modal Detail Tabs */}
             <div className="modal-tabs">
@@ -209,27 +221,27 @@ export default function ProductQuickViewModal({ product, activeVehicle, onClose,
               )}
             </div>
 
+            <section className="marketplace-purchase-panel">
+              <div className="marketplace-purchase-heading"><div><strong>Compra protegida RepuesTop</strong><span>Elige cómo quieres avanzar con este repuesto</span></div><ShieldCheck size={21} /></div>
+              <div className="marketplace-payment-methods"><span><CreditCard size={15} /><b>Flow</b> Débito y crédito</span><span><Landmark size={15} /><b>Khipu</b> Transferencia bancaria</span></div>
             {/* CTA Buttons */}
-            <div className="modal-cta-row">
+            <div className="modal-cta-row marketplace-actions">
               {isQuoteOnly ? (
-                !quoteRequested ? (
-                  <button className="btn-modal-add-cart bg-blue-600" onClick={() => setQuoteRequested(true)}>
-                    <MessageSquare size={18} />
-                    <span>Cotizar este repuesto con la tienda →</span>
+                <button className="btn-modal-add-cart bg-blue-600" onClick={() => onOpenQuote ? onOpenQuote(product) : setQuoteRequested(true)}>
+                  <MessageSquare size={18} />
+                  <span>Cotizar este repuesto con la tienda →</span>
                   </button>
-                ) : (
-                  <div className="quote-success-banner">
-                    <CheckCircle2 size={18} className="text-emerald-500" />
-                    <span>¡Solicitud enviada a <strong>{sellerName}</strong>! Te contactarán a la brevedad.</span>
-                  </div>
-                )
               ) : (
-                <button className="btn-modal-add-cart" onClick={() => { onAddToCart && onAddToCart(product); onClose(); }}>
+                <>
+                <button className="btn-modal-add-cart" disabled={stock <= 0} onClick={() => { onAddToCart && onAddToCart(product); onClose(); }}>
                   <ShoppingBag size={20} />
-                  <span>Agregar al Carrito • ${Number(product.precio).toLocaleString('es-CL')}</span>
+                  <span>{stock > 0 ? `Comprar ahora • $${Number(product.precio).toLocaleString('es-CL')}` : 'Producto sin stock'}</span>
                 </button>
+                <button className="marketplace-quote-link" type="button" onClick={() => onOpenQuote?.(product)}><MessageSquare size={16} /> Prefiero solicitar una cotización</button>
+                </>
               )}
             </div>
+            </section>
           </div>
         </div>
       </div>

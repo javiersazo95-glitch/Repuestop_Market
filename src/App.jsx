@@ -4,14 +4,15 @@ import OfficialPatentHero from './components/OfficialPatentHero';
 import LatestAddedPartsSection from './components/LatestAddedPartsSection';
 import NewOnboardedStoresSection from './components/NewOnboardedStoresSection';
 import SocialProofTestimonials from './components/SocialProofTestimonials';
-import ProductQuickViewModal from './components/ProductQuickViewModal';
-import SellerRegisterModal from './components/SellerRegisterModal';
+import ProductDetailPage from './components/ProductDetailPage';
+import FounderRegistration from './components/FounderRegistration';
 import AuthModal from './components/AuthModal';
 import CartDrawer from './components/CartDrawer';
 import Footer from './components/Footer';
 import ProfileDashboard from './components/ProfileDashboard';
 import StoresDirectoryView from './components/StoresDirectoryView';
-import HelpSupportModal from './components/HelpSupportModal';
+import SupportHelpPanel from './components/SupportHelpPanel';
+import AboutRepuesTopPage from './components/AboutRepuesTopPage';
 import PartsCatalogView from './components/PartsCatalogView';
 import QuotationRequestModal from './components/QuotationRequestModal';
 import StorePublicProfileView from './components/StorePublicProfileView';
@@ -65,11 +66,11 @@ function MainApp() {
   // Filters & Search State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [catalogFilter, setCatalogFilter] = useState(null);
 
   // Modals & Cart Drawer State
   const [isSellerModalOpen, setIsSellerModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [quoteProduct, setQuoteProduct] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -105,13 +106,39 @@ function MainApp() {
     window.scrollTo({ top: 0, behavior: 'auto' });
   };
 
+  const openProductDetail = (product) => {
+    setQuickViewProduct(product);
+    setView('product-detail');
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  };
+
   const openProfile = (tab = 'resumen') => {
     setProfileInitialTab(tab);
     setView('profile');
   };
 
+  if (isSellerModalOpen) {
+    return (
+      <div className="repuestop-about-page">
+        <FounderRegistration onBack={() => setIsSellerModalOpen(false)} />
+      </div>
+    );
+  }
+
   if (view === 'profile' && isLoggedIn) {
     return <ProfileDashboard initialTab={profileInitialTab} onBackToStore={() => setView('store')} />;
+  }
+
+  if (view === 'about') {
+    return (
+      <>
+        <AboutRepuesTopPage
+          onBack={() => setView('store')}
+          onContact={() => setView('support')}
+          onOpenSeller={() => setIsSellerModalOpen(true)}
+        />
+      </>
+    );
   }
 
   return (
@@ -121,10 +148,11 @@ function MainApp() {
         activeVehicle={activeVehicle}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onOpenSellerModal={() => setIsSellerModalOpen(true)}
-        onOpenProfile={() => openProfile()}
+        onOpenProfile={(tab) => openProfile(tab)}
         onOpenStores={() => setView('stores')}
         onOpenCatalog={() => setView('catalog')}
-        onOpenHelp={() => setIsHelpModalOpen(true)}
+        onOpenAbout={() => setView('about')}
+        onOpenHelp={() => isLoggedIn ? openProfile('soporte') : setView('support')}
         cartCount={cartItems.reduce((a, b) => a + b.quantity, 0)}
         onOpenCart={() => setIsCartOpen(true)}
         searchQuery={searchQuery}
@@ -133,14 +161,17 @@ function MainApp() {
           if (view !== 'catalog') setView('catalog');
         }}
         selectedCategory={selectedCategory}
-        onSelectCategory={(catId) => {
-          setSelectedCategory(catId);
+        onSelectCategory={(filter) => {
+          setSelectedCategory(filter?.category || filter);
+          setCatalogFilter(typeof filter === 'object' ? filter : { category: filter });
           setView('catalog');
         }}
       />
 
       {/* DYNAMIC VIEW CONTENT */}
-      {view === 'stores' ? (
+      {view === 'support' ? (
+        <SupportHelpPanel user={user} role={role} standalone onBack={() => setView('store')} onViewCases={() => isLoggedIn ? openProfile('consultas') : setView('store')} />
+      ) : view === 'stores' ? (
         <StoresDirectoryView
           onBackToStore={() => setView('store')}
           onSelectStore={handleSelectStore}
@@ -150,7 +181,7 @@ function MainApp() {
           store={selectedStore}
           onBackToStores={() => setView('stores')}
           onAddToCart={handleAddToCart}
-          onQuickView={(prod) => setQuickViewProduct(prod)}
+          onQuickView={openProductDetail}
           onOpenQuote={(prod) => setQuoteProduct(prod)}
           activeVehicle={activeVehicle}
           onEditStore={['SELLER', 'PROVIDER', 'PROVEEDOR'].includes(role) && (
@@ -158,13 +189,24 @@ function MainApp() {
             user?.storeName === selectedStore?.nombre
           ) ? () => setView('profile') : null}
         />
+      ) : view === 'product-detail' && quickViewProduct ? (
+        <ProductDetailPage
+          product={quickViewProduct}
+          user={user}
+          activeVehicle={activeVehicle}
+          onBack={() => setView('catalog')}
+          onAddToCart={(product) => { handleAddToCart(product); setView('catalog'); }}
+          onOpenQuote={(product) => { setQuoteProduct(product); setView('catalog'); }}
+        />
       ) : view === 'catalog' ? (
         <PartsCatalogView
+          key={`${catalogFilter?.category || 'all'}:${catalogFilter?.subcategoryId || catalogFilter?.subcategory || 'all'}`}
           onBackToStore={() => setView('store')}
           onAddToCart={handleAddToCart}
-          onQuickView={(prod) => setQuickViewProduct(prod)}
+          onQuickView={openProductDetail}
           onOpenQuote={(prod) => setQuoteProduct(prod)}
           activeVehicle={activeVehicle}
+          initialCatalogFilter={catalogFilter}
         />
       ) : (
         <>
@@ -174,10 +216,11 @@ function MainApp() {
             onSelectVehicle={setActiveVehicle}
             onOpenSellerModal={() => setIsSellerModalOpen(true)}
             onOpenCatalog={() => setView('catalog')}
-            onOpenHelp={() => setIsHelpModalOpen(true)}
+            onOpenHelp={() => isLoggedIn ? openProfile('soporte') : setView('support')}
             selectedCategory={selectedCategory}
-            onSelectCategory={(catId) => {
-              setSelectedCategory(catId);
+            onSelectCategory={(filter) => {
+              setSelectedCategory(filter?.category || filter);
+              setCatalogFilter(typeof filter === 'object' ? filter : { category: filter });
               setView('catalog');
             }}
           />
@@ -185,7 +228,7 @@ function MainApp() {
           {/* 3. LATEST ADDED SPARE PARTS IN REAL-TIME */}
           <LatestAddedPartsSection 
             onAddToCart={handleAddToCart} 
-            onQuickView={(prod) => setQuickViewProduct(prod)}
+            onQuickView={openProductDetail}
             onOpenQuote={(prod) => setQuoteProduct(prod)}
             onOpenCatalog={() => setView('catalog')}
           />
@@ -207,7 +250,7 @@ function MainApp() {
         onOpenSellerModal={() => setIsSellerModalOpen(true)}
         onOpenStores={() => setView('stores')}
         onOpenCatalog={() => setView('catalog')}
-        onOpenHelp={() => setIsHelpModalOpen(true)}
+        onOpenHelp={() => isLoggedIn ? openProfile('soporte') : setView('support')}
       />
 
       {/* Shared Modals & Drawers */}
@@ -218,28 +261,11 @@ function MainApp() {
         onLoginSuccess={() => setView('profile')}
       />
 
-      <SellerRegisterModal 
-        isOpen={isSellerModalOpen} 
-        onClose={() => setIsSellerModalOpen(false)} 
-      />
-
-      <ProductQuickViewModal 
-        product={quickViewProduct} 
-        activeVehicle={activeVehicle} 
-        onClose={() => setQuickViewProduct(null)}
-        onAddToCart={handleAddToCart}
-      />
-
       <QuotationRequestModal
         product={quoteProduct}
         isOpen={!!quoteProduct}
         onClose={() => setQuoteProduct(null)}
         activeVehicle={activeVehicle}
-      />
-
-      <HelpSupportModal 
-        isOpen={isHelpModalOpen}
-        onClose={() => setIsHelpModalOpen(false)}
       />
 
       <CartDrawer 

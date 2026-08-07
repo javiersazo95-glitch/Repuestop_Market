@@ -26,7 +26,7 @@ function getCompatibility(product) {
 }
 
 function getPartBrand(product) {
-  const explicitBrand = String(product.marca || product.productBrand || product.brand || product.fabricante || '').trim();
+  const explicitBrand = String(product.marcaRepuesto || product.marca || product.productBrand || product.brand || product.fabricante || '').trim();
   if (explicitBrand) return explicitBrand;
 
   const knownBrands = ['Brembo', 'Bosch', 'Gates', 'KYB', 'Mann-Filter', 'Mann', 'NGK', 'Denso', 'SKF', 'Valeo', 'Monroe'];
@@ -81,7 +81,7 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity }
         <div className="market-product-tags">
           <span className="market-product-category" data-category={category}>
             <CategoryIconTile iconName={CATEGORY_ICON_BY_ID[category]} color={CATEGORY_COLOR_BY_ID[category]} size={11} className="market-product-tag-icon" />
-            {CATEGORY_LABELS[category] || 'Repuesto'}
+            {product.categoriaNombre || CATEGORY_LABELS[category] || 'Repuesto'}
           </span>
           <span className={`market-product-origin ${partType.kind}`}><PartTypeIcon size={11} /> {partType.label}</span>
           <span className="market-product-brand"><Tag size={11} /> {partBrand}</span>

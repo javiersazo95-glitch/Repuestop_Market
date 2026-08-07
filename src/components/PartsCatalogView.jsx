@@ -11,7 +11,7 @@ import MarketplaceProductCard from './MarketplaceProductCard';
 import {
   NAVIGATION_CATEGORIES, CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID
 } from '../data/categories';
-import { getPublicProductsApi, searchVehicleByPatenteApi } from '../services/api';
+import { getPartCategoriesApi, getPublicProductsApi, searchVehicleByPatenteApi } from '../services/api';
 import { adaptPage, adaptProduct, adaptVehicle } from '../services/adapters';
 
 // El backend acota el tamaño de página a 100. Esta vista filtra y pagina en cliente,
@@ -23,7 +23,8 @@ export default function PartsCatalogView({
   onAddToCart,
   onQuickView,
   onOpenQuote,
-  activeVehicle: initialActiveVehicle
+  activeVehicle: initialActiveVehicle,
+  initialCatalogFilter = null,
 }) {
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -36,8 +37,22 @@ export default function PartsCatalogView({
   // Catálogo real: GET /api/v1/inventario/productos (endpoint público).
   useEffect(() => {
     let isMounted = true;
+    const normalizeName = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    getPublicProductsApi({ page: 0, size: CATALOG_FETCH_SIZE, sort: 'createdAt,desc' })
+    const loadProducts = async () => {
+      let categoriaId = initialCatalogFilter?.categoryId;
+      // Si el Home se presiona antes de que termine su catálogo auxiliar,
+      // resolvemos aquí el ID real en vez de caer al alias visual "motor".
+      if (!categoriaId && initialCatalogFilter?.categoryName) {
+        const categories = await getPartCategoriesApi();
+        categoriaId = (Array.isArray(categories) ? categories : [])
+          .find((category) => normalizeName(category.nombre) === normalizeName(initialCatalogFilter.categoryName))?.id;
+      }
+      return getPublicProductsApi({ page: 0, size: CATALOG_FETCH_SIZE, categoriaId, subcategoriaId: initialCatalogFilter?.subcategoryId, sort: 'createdAt,desc' });
+    };
+
+    loadProducts()
       .then((data) => {
         if (!isMounted) return;
         setProducts(adaptPage(data, adaptProduct).items);
@@ -52,10 +67,11 @@ export default function PartsCatalogView({
       });
 
     return () => { isMounted = false; };
-  }, []);
+  }, [initialCatalogFilter?.categoryId, initialCatalogFilter?.categoryName, initialCatalogFilter?.subcategoryId]);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('TODAS');
+  const [selectedCategory, setSelectedCategory] = useState(initialCatalogFilter?.category || 'TODAS');
+  const [selectedSubcategory, setSelectedSubcategory] = useState(initialCatalogFilter?.subcategory || 'TODAS');
   const [selectedCondition, setSelectedCondition] = useState('TODOS');
   const [selectedOrigin, setSelectedOrigin] = useState('TODOS');
   const [selectedBrand, setSelectedBrand] = useState('TODAS');
@@ -67,12 +83,19 @@ export default function PartsCatalogView({
   const [openFilterSections, setOpenFilterSections] = useState({
     purchase: true,
     category: true,
+    subcategory: true,
     condition: true,
     shipping: true,
   });
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const filterPanelRef = useRef(null);
   const [filterDrawerHeight, setFilterDrawerHeight] = useState(0);
+  const [expandedCategories, setExpandedCategories] = useState({});
+
+  useEffect(() => {
+    setSelectedCategory(initialCatalogFilter?.category || 'TODAS');
+    setSelectedSubcategory(initialCatalogFilter?.subcategory || 'TODAS');
+  }, [initialCatalogFilter?.category, initialCatalogFilter?.subcategory]);
 
   useEffect(() => {
     if (!isFiltersOpen || !filterPanelRef.current) {
@@ -152,7 +175,7 @@ export default function PartsCatalogView({
   useEffect(() => {
     setCurrentPage(1);
   }, [
-    searchQuery, selectedCategory, selectedCondition, selectedOrigin,
+    searchQuery, selectedCategory, selectedSubcategory, selectedCondition, selectedOrigin,
     selectedBrand, onlyCompatible, onlyFastDelivery, maxPrice, sortBy, itemsPerPage
   ]);
 
@@ -179,6 +202,8 @@ export default function PartsCatalogView({
     if (selectedCategory !== 'TODAS' && prod.categoria !== selectedCategory) {
       return false;
     }
+
+    if (selectedSubcategory !== 'TODAS' && prod.subcategoria !== selectedSubcategory) return false;
 
     // 3. Technical Condition Filter
     if (selectedCondition !== 'TODOS' && prod.condicion && prod.condicion !== selectedCondition) {
@@ -266,6 +291,7 @@ export default function PartsCatalogView({
   const handleResetFilters = () => {
     setSearchQuery('');
     setSelectedCategory('TODAS');
+    setSelectedSubcategory('TODAS');
     setSelectedCondition('TODOS');
     setSelectedOrigin('TODOS');
     setSelectedBrand('TODAS');
@@ -279,6 +305,17 @@ export default function PartsCatalogView({
   const handleApplyFilters = () => {
     setIsFiltersOpen(false);
     document.querySelector('.catalog-parts-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const appliedFilterLabel = selectedSubcategory !== 'TODAS'
+    ? selectedSubcategory
+    : selectedCategory !== 'TODAS'
+      ? (NAVIGATION_CATEGORIES.find((category) => category.filterId === selectedCategory)?.nombre || selectedCategory)
+      : null;
+
+  const clearAppliedCatalogFilter = () => {
+    setSelectedCategory('TODAS');
+    setSelectedSubcategory('TODAS');
   };
 
   return (
@@ -405,6 +442,11 @@ export default function PartsCatalogView({
           </div>
         </div>
 
+        {appliedFilterLabel && <div className="catalog-applied-filter-notice">
+          <Filter size={15} /><span>Filtro aplicado: <strong>{appliedFilterLabel}</strong></span>
+          <button type="button" onClick={clearAppliedCatalogFilter}><X size={14} /> Quitar filtro</button>
+        </div>}
+
         {/* 3. Main 2-Column Content Layout (Technical Sidebar + Parts Grid) */}
         <div className={`catalog-content-grid catalog-main-content-grid product-filter-drawer-layout ${isFiltersOpen ? 'filters-open' : ''}`} style={isFiltersOpen && filterDrawerHeight ? { minHeight: `${filterDrawerHeight}px` } : undefined}>
           {isFiltersOpen && <button className="catalog-filter-backdrop" type="button" aria-label="Cerrar filtros" onClick={() => setIsFiltersOpen(false)} />}
@@ -471,17 +513,25 @@ export default function PartsCatalogView({
                   <span className="filter-option-copy"><strong>Todas las Categorías</strong><small>Explorar todo el catálogo</small></span>
                   {selectedCategory === 'TODAS' && <CheckCircle2 size={18} className="check-active" />}
                 </button>
-                {NAVIGATION_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.id}
-                    className={`filter-option-btn ${selectedCategory === cat.filterId ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory(cat.filterId)}
-                  >
-                    <CategoryIconTile iconName={cat.iconName} color={cat.color} size={9} className="filter-category-icon" />
-                    <span className="filter-option-copy"><strong>{cat.nombre}</strong></span>
-                    {selectedCategory === cat.filterId ? <CheckCircle2 size={18} className="check-active" /> : <ChevronRight size={17} className="filter-option-chevron" />}
-                  </button>
-                ))}
+                {NAVIGATION_CATEGORIES.map((cat) => {
+                  const expanded = expandedCategories[cat.id];
+                  return <div className="filter-category-tree" key={cat.id}>
+                    <div className={`filter-option-btn ${selectedCategory === cat.filterId ? 'active' : ''}`}>
+                      <button type="button" className="filter-category-main-action" onClick={() => { setSelectedCategory(cat.filterId); setSelectedSubcategory('TODAS'); }}>
+                        <CategoryIconTile iconName={cat.iconName} color={cat.color} size={9} className="filter-category-icon" />
+                        <span className="filter-option-copy"><strong>{cat.nombre}</strong></span>
+                      </button>
+                      <button type="button" className="filter-subcategory-toggle" aria-label={`Mostrar subcategorías de ${cat.nombre}`} onClick={() => setExpandedCategories((current) => ({ ...current, [cat.id]: !current[cat.id] }))}>
+                        <ChevronDown size={16} className={expanded ? 'is-open' : ''} />
+                      </button>
+                    </div>
+                    {expanded && <div className="filter-subcategory-branch">
+                      {cat.subcategories.map((subcategory) => <button type="button" key={subcategory} className={`filter-subcategory-option ${selectedSubcategory === subcategory ? 'active' : ''}`} onClick={() => { setSelectedCategory(cat.filterId); setSelectedSubcategory(subcategory); }}>
+                        <span className="filter-subcategory-node" />{subcategory}{selectedSubcategory === subcategory && <CheckCircle2 size={15} />}
+                      </button>)}
+                    </div>}
+                  </div>;
+                })}
               </div>}
             </div>
 
