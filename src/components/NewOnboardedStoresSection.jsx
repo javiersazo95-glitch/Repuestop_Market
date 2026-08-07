@@ -1,54 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, Building2, Truck, ShieldCheck, Package, Bike } from 'lucide-react';
+import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { getPublicStoresApi, getStoreProductsApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import MarketplaceSellerCard from './MarketplaceSellerCard';
 import { adaptPage, adaptProduct, adaptStore } from '../services/adapters';
+import { resolveShippingService } from '../data/shippingMethods';
 
-export function getShippingIconConfig(method) {
-  const norm = String(method || '').toLowerCase().trim();
-
-  // 1. Retiro en tienda
-  if (norm.includes('retiro') || norm.includes('tienda')) {
-    return {
-      name: 'Retiro en tienda',
-      icon: Building2,
-      label: 'Retiro en tienda',
-      color: '#7c3aed',
-      bg: '#f3f0ff'
-    };
-  }
-
-  // 2. Envío dentro de la comuna
-  if (norm.includes('dentro') || (norm.includes('comuna') && !norm.includes('fuera'))) {
-    return {
-      name: 'Envío dentro de la comuna',
-      icon: Bike,
-      label: 'Envío dentro de la comuna',
-      color: '#059669',
-      bg: '#eafbf1'
-    };
-  }
-
-  // 3. Envío fuera de la comuna (Camión)
-  if (norm.includes('fuera') || norm.includes('region') || norm.includes('región') || norm.includes('nacional') || norm.includes('starken') || norm.includes('chilexpress')) {
-    return {
-      name: 'Envío fuera de la comuna',
-      icon: Truck,
-      label: 'Envío fuera de la comuna',
-      color: '#0284c7',
-      bg: '#e0f2fe'
-    };
-  }
-
-  return {
-    name: method,
-    icon: Package,
-    label: method,
-    color: '#475569',
-    bg: '#f1f5f9'
-  };
-}
+// Se mantiene el nombre exportado porque StoresDirectoryView ya lo consume; la
+// tabla vive ahora en src/data/shippingMethods.js, compartida con la card del
+// vendedor, el perfil de tienda y la ficha del producto.
+export const getShippingIconConfig = resolveShippingService;
 
 export default function NewOnboardedStoresSection({ onOpenStores, onSelectStore }) {
   const { user } = useAuth();

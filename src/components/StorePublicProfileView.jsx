@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search, SlidersHorizontal, ShieldCheck, MapPin, Star, Package,
   ArrowLeft, X, CheckCircle2, RotateCcw, Truck, ChevronLeft, ChevronRight, ChevronDown,
   ShoppingCart, Car, Wrench, Layers, Building2, MessageSquare, AlertCircle,
-  Heart, Share2, Image, PenLine, Bike, Store, ArrowRight, HelpCircle
+  Heart, Share2, Image, PenLine, ArrowRight, HelpCircle
 } from 'lucide-react';
 import { NAVIGATION_CATEGORIES } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
+import { parseShippingMethods, resolveShippingService } from '../data/shippingMethods';
 import { getStoreProductsApi, getStoreProfileApi, searchVehicleByPatenteApi } from '../services/api';
 import { adaptPage, adaptProduct, adaptStore, adaptVehicle } from '../services/adapters';
 
@@ -15,18 +16,6 @@ import { adaptPage, adaptProduct, adaptStore, adaptVehicle } from '../services/a
 const STORE_PRODUCTS_FETCH_SIZE = 100;
 const STORE_FILTER_BRANDS = ['TODAS', 'Toyota', 'Nissan', 'Hyundai', 'Chevrolet', 'Kia', 'Mazda', 'Suzuki', 'Mitsubishi'];
 const STORE_FILTER_CONDITIONS = ['TODOS', 'Nuevo OEM Original', 'Nuevo Alternativo Homologado', 'Usado Certificado Desarmaduría'];
-
-function normalizeShippingMethods(methods) {
-  if (Array.isArray(methods)) return methods.filter(Boolean);
-  return String(methods || '').split(',').map((method) => method.trim()).filter(Boolean);
-}
-
-function getShippingService(method) {
-  const normalized = String(method || '').toLowerCase();
-  if (normalized.includes('retiro') || normalized.includes('tienda')) return { icon: Store, label: 'Retiro en tienda' };
-  if (normalized.includes('dentro') || normalized.includes('comuna')) return { icon: Bike, label: method };
-  return { icon: Truck, label: method || 'Despacho disponible' };
-}
 
 export default function StorePublicProfileView({
   store,
@@ -61,23 +50,6 @@ export default function StorePublicProfileView({
   const [isFollowing, setIsFollowing] = useState(false);
   const [shareFeedback, setShareFeedback] = useState('');
   const [openFilterSections, setOpenFilterSections] = useState({ purchase: true, category: true, condition: true });
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const filterPanelRef = useRef(null);
-  const [filterDrawerHeight, setFilterDrawerHeight] = useState(0);
-
-  useEffect(() => {
-    if (!isFiltersOpen || !filterPanelRef.current) {
-      setFilterDrawerHeight(0);
-      return undefined;
-    }
-
-    const panel = filterPanelRef.current;
-    const measurePanel = () => setFilterDrawerHeight(Math.ceil(panel.getBoundingClientRect().height) + 16);
-    measurePanel();
-    const observer = new ResizeObserver(measurePanel);
-    observer.observe(panel);
-    return () => observer.disconnect();
-  }, [isFiltersOpen]);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -286,6 +258,8 @@ export default function StorePublicProfileView({
 
   // Sorting
   const sortedProducts = [...filteredProducts].sort((a, b) => {
+    const topPriority = Number(Boolean(b.isTop || b.destacado)) - Number(Boolean(a.isTop || a.destacado));
+    if (topPriority !== 0) return topPriority;
     if (sortBy === 'precio-asc') return a.precio - b.precio;
     if (sortBy === 'precio-desc') return b.precio - a.precio;
     if (sortBy === 'vendidos') return (b.vendidos || 0) - (a.vendidos || 0);
@@ -324,11 +298,10 @@ export default function StorePublicProfileView({
   };
 
   const handleApplyStoreFilters = () => {
-    setIsFiltersOpen(false);
     document.querySelector('.store-public-profile-wrapper .catalog-parts-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const shippingMethods = normalizeShippingMethods(currentStore.metodosEnvio);
+  const shippingMethods = parseShippingMethods(currentStore.metodosEnvio);
   const rating = Number(currentStore.rating ?? 0);
   const reviewCount = Number(currentStore.reviewCount ?? 0);
   const responseRate = currentStore.responseRate ?? (rating > 0 ? Math.min(99, 94 + Math.round(rating)) : null);
@@ -401,7 +374,7 @@ export default function StorePublicProfileView({
 
               <div className="store-service-icons" aria-label="Servicios de la tienda">
                 {shippingMethods.map((method) => {
-                  const service = getShippingService(method);
+                  const service = resolveShippingService(method);
                   const ServiceIcon = service.icon;
                   return <span key={method} title={service.label}><ServiceIcon size={15} /> {service.label}</span>;
                 })}
@@ -505,7 +478,6 @@ export default function StorePublicProfileView({
                 />
                 {searchQuery && <button className="btn-clear-search-dir" onClick={() => setSearchQuery('')}><X size={14} /></button>}
               </div>
-              <button className="store-open-filters" type="button" onClick={() => setIsFiltersOpen(true)}><SlidersHorizontal size={18} /> Filtros <ChevronRight size={16} /></button>
             </div>
             <div className="store-popular-searches">
               <span>Búsquedas populares:</span>
@@ -527,10 +499,9 @@ export default function StorePublicProfileView({
         </div>
 
         {/* 4. 2-Column Content Layout (Sidebar + Grid) */}
-        <div className={`catalog-content-grid store-catalog-main-content-grid product-filter-drawer-layout ${isFiltersOpen ? 'filters-open' : ''}`} style={isFiltersOpen && filterDrawerHeight ? { minHeight: `${filterDrawerHeight}px` } : undefined}>
-          {isFiltersOpen && <button className="catalog-filter-backdrop" type="button" aria-label="Cerrar filtros" onClick={() => setIsFiltersOpen(false)} />}
+        <div className="catalog-content-grid store-catalog-main-content-grid">
           {/* Left Technical Filters Sidebar */}
-          <aside ref={filterPanelRef} className="catalog-sidebar-filters catalog-advanced-filter-panel store-advanced-filter-panel">
+          <aside className="catalog-sidebar-filters catalog-advanced-filter-panel store-advanced-filter-panel">
             <div className="sidebar-filters-header">
               <div className="sidebar-title-group">
                 <SlidersHorizontal size={25} />
@@ -539,7 +510,6 @@ export default function StorePublicProfileView({
 
               <div className="filter-panel-header-actions">
                 <button className="btn-reset-filters-mini" onClick={handleResetFilters}><RotateCcw size={15} /><span>Limpiar</span></button>
-                <button className="btn-close-filter-drawer" type="button" onClick={() => setIsFiltersOpen(false)} aria-label="Cerrar filtros" title="Cerrar filtros"><X size={16} /></button>
               </div>
             </div>
 

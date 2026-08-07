@@ -1,17 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
-  ArrowLeft, LayoutGrid, Package, Heart, MapPin, UserCog, Store, ShoppingBag,
+  ArrowLeft, LayoutGrid, Package, Heart, UserCog, Store, ShoppingBag,
   MessageSquare, LogOut, Star, Layers, TrendingUp, Truck, Check, Pencil, Save, X,
   Clock, ShieldCheck, Building2, PackageCheck, Loader2, Inbox, ChevronLeft, ChevronRight, Search,
   CreditCard, Award, Phone, Mail, FileText, ArrowUpRight, Sliders, Sparkles, Camera, Upload, Image as ImageIcon,
-  Trash2, AlertTriangle, ReceiptText, Wrench, Boxes, Plus, MessageCircleQuestion, Scale, Headphones
+  Trash2, AlertTriangle, ReceiptText, Wrench, Boxes, Plus, MessageCircleQuestion, Scale, Headphones, Wallet, Info, Crown,
+  CheckCircle, Send
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
 import {
   getBuyerOrdersApi, getSellerOrdersApi, getFavoritesApi,
   getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
-  updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi
+  updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi,
+  getStoreCoverTemplatesApi, selectStoreCoverTemplateApi, updateSellerProductTopApi,
+  saveConversationQuoteApi, sendConversationMessageApi
 } from '../services/api';
 import OrderCard from './OrderCard';
 import OrderDetailModal from './OrderDetailModal';
@@ -25,14 +29,17 @@ import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
 import SupportHelpPanel from './SupportHelpPanel';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
 import VehicleBrandLogo from './VehicleBrandLogo';
+import SellerWithdrawalsPanel from './SellerWithdrawalsPanel';
+import SellerOrdersPanel from './SellerOrdersPanel';
 
 const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
+const BUYER_PROFILE_COVER_URL = import.meta.env.VITE_BUYER_PROFILE_COVER_URL
+  || 'https://pub-650d4cc5c6be42bc9a81e878e6042ea6.r2.dev/Plantillas/Portadas_Perfil/comprador-default.png';
 
 const BUYER_TABS = [
   { id: 'resumen', label: 'Resumen', icon: LayoutGrid },
   { id: 'pedidos', label: 'Mis Pedidos', icon: Package },
   { id: 'favoritos', label: 'Favoritos', icon: Heart },
-  { id: 'direcciones', label: 'Direcciones', icon: MapPin },
   { id: 'datos', label: 'Mis Datos y Perfil', icon: UserCog },
 ];
 
@@ -41,6 +48,7 @@ const SELLER_TABS = [
   { id: 'pedidos', label: 'Pedidos Recibidos', icon: ShoppingBag },
   { id: 'cotizaciones', label: 'Cotizaciones', icon: ReceiptText },
   { id: 'preguntas_productos', label: 'Preguntas de productos', icon: MessageCircleQuestion },
+  { id: 'retiros', label: 'Retirar dinero', icon: Wallet },
   { id: 'tienda_datos', label: 'Mi Tienda y Datos', icon: Store },
 ];
 
@@ -117,13 +125,20 @@ function EmptyState({ label }) {
   );
 }
 
-export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen' }) {
-  const { user, role, logout, updateProfile, deleteAccount } = useAuth();
-  const [activeTab, setActiveTab] = useState('resumen');
+export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange }) {
+  const { user, role, logout, updateProfile, refreshProfile, deleteAccount } = useAuth();
+  const [activeTab, setActiveTabState] = useState(initialTab);
 
   useEffect(() => {
-    setActiveTab(initialTab);
+    setActiveTabState(initialTab);
   }, [initialTab]);
+
+  // Cada pestaña es una URL propia (`/perfil/pedidos`), así el panel se puede
+  // compartir, refrescar y recorrer con los botones atrás/adelante del navegador.
+  const setActiveTab = useCallback((tab) => {
+    setActiveTabState(tab);
+    onTabChange?.(tab);
+  }, [onTabChange]);
   const [isEditing, setIsEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(user?.userName || user?.nombre || '');
   const [phoneDraft, setPhoneDraft] = useState(user?.phone || user?.telefono || '');
@@ -133,10 +148,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [comunaDraft, setComunaDraft] = useState(user?.comuna || '');
   const [regionDraft, setRegionDraft] = useState(user?.region || '');
   const [shippingMethodsDraft, setShippingMethodsDraft] = useState('Retiro en tienda, Envío dentro de la comuna, Envío fuera de la comuna');
-  const [bancoDraft, setBancoDraft] = useState('Banco de Chile');
-  const [tipoCuentaDraft, setTipoCuentaDraft] = useState('Cuenta Corriente');
-  const [numCuentaDraft, setNumCuentaDraft] = useState('123-45678-90');
-  const [rutTitularDraft, setRutTitularDraft] = useState(user?.taxId || '');
   const [availableVehicleBrands, setAvailableVehicleBrands] = useState([]);
   const [specialistBrandIdsDraft, setSpecialistBrandIdsDraft] = useState([]);
   const [showSpecialistBrandsModal, setShowSpecialistBrandsModal] = useState(false);
@@ -147,6 +158,12 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [showMediaModal, setShowMediaModal] = useState(null);
   const [mediaInput, setMediaInput] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
+  const [showCoverTemplatesModal, setShowCoverTemplatesModal] = useState(false);
+  const [coverTemplates, setCoverTemplates] = useState([]);
+  const [selectedCoverTemplateId, setSelectedCoverTemplateId] = useState(null);
+  const [isLoadingCoverTemplates, setIsLoadingCoverTemplates] = useState(false);
+  const [isSavingCoverTemplate, setIsSavingCoverTemplate] = useState(false);
+  const [coverTemplateError, setCoverTemplateError] = useState('');
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteAccountError, setDeleteAccountError] = useState(null);
@@ -158,10 +175,44 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const handleOpenMediaModal = (type) => {
     setShowMediaModal(type);
     setMediaFile(null);
-    if (type === 'avatar') {
-      setMediaInput(resolveMediaUrl(user?.userProfileUrl || storeInfo?.logoUrl || ''));
-    } else {
-      setMediaInput(resolveMediaUrl(user?.coverUrl || storeInfo?.coverUrl || ''));
+    setMediaInput(resolveMediaUrl(user?.userProfileUrl || storeInfo?.logoUrl || ''));
+  };
+
+  const handleOpenCoverTemplates = async () => {
+    setShowCoverTemplatesModal(true);
+    setCoverTemplateError('');
+    setIsLoadingCoverTemplates(true);
+    try {
+      const templates = await getStoreCoverTemplatesApi();
+      const normalizedTemplates = (Array.isArray(templates) ? templates : []).map((template) => ({
+        ...template,
+        url: resolveMediaUrl(template.url),
+      }));
+      const currentCover = resolveMediaUrl(user?.coverUrl || storeInfo?.coverUrl || '');
+      const currentTemplate = normalizedTemplates.find((template) => template.url === currentCover);
+      setCoverTemplates(normalizedTemplates);
+      setSelectedCoverTemplateId(currentTemplate?.id || null);
+    } catch (error) {
+      setCoverTemplateError(error?.message || 'No se pudieron cargar las plantillas de portada.');
+    } finally {
+      setIsLoadingCoverTemplates(false);
+    }
+  };
+
+  const handleSaveCoverTemplate = async () => {
+    if (!selectedCoverTemplateId) return;
+    setIsSavingCoverTemplate(true);
+    setCoverTemplateError('');
+    try {
+      const result = await selectStoreCoverTemplateApi(selectedCoverTemplateId);
+      const coverUrl = resolveMediaUrl(result.coverUrl);
+      setStoreInfo((current) => current ? { ...current, coverUrl } : current);
+      await refreshProfile({ coverUrl });
+      setShowCoverTemplatesModal(false);
+    } catch (error) {
+      setCoverTemplateError(error?.message || 'No se pudo guardar la portada seleccionada.');
+    } finally {
+      setIsSavingCoverTemplate(false);
     }
   };
 
@@ -192,19 +243,14 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     e.preventDefault();
     if (!mediaFile) return;
 
-    const type = showMediaModal;
     try {
-      const uploaded = await uploadProfileImageApi(mediaFile, type === 'avatar' ? 'avatar' : 'cover');
-      const uploadedUrl = resolveMediaUrl(type === 'avatar' ? uploaded.userProfileUrl : uploaded.coverUrl);
-      const payload = type === 'avatar'
-        ? { userProfileUrl: uploadedUrl, logoUrl: uploadedUrl }
-        : { coverUrl: uploadedUrl };
-
-      await updateProfile(payload);
+      const uploaded = await uploadProfileImageApi(mediaFile);
+      const uploadedUrl = resolveMediaUrl(uploaded.userProfileUrl);
+      await refreshProfile({ userProfileUrl: uploadedUrl, logoUrl: uploadedUrl });
       if (storeInfo) {
         setStoreInfo((prev) => ({
           ...prev,
-          ...(type === 'avatar' ? { logoUrl: uploadedUrl, userProfileUrl: uploadedUrl } : { coverUrl: uploadedUrl })
+          ...{ logoUrl: uploadedUrl, userProfileUrl: uploadedUrl }
         }));
       }
       setShowMediaModal(null);
@@ -221,6 +267,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [favorites, setFavorites] = useState(null);
   const [inventorySummary, setInventorySummary] = useState(null);
   const [conversations, setConversations] = useState(null);
+  const [quoteFilter, setQuoteFilter] = useState('all');
+  const [quoteSearch, setQuoteSearch] = useState('');
+  const [quoteSort, setQuoteSort] = useState('newest');
   const [storeInfo, setStoreInfo] = useState(null);
   const [dataError, setDataError] = useState(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -254,13 +303,30 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   };
 
   const handleSendQuoteResponse = async (quoteId, responseData) => {
+    const savedQuote = await saveConversationQuoteApi(quoteId, responseData);
+    const finalPrice = Number(savedQuote?.precioFinal ?? savedQuote?.precio ?? responseData.precioFinal ?? responseData.precio ?? 0);
+    const notificationText = `Cotización enviada por $${finalPrice.toLocaleString('es-CL')}. ${responseData.condicionesEntrega || ''}`.trim();
+    const sentMessage = await sendConversationMessageApi(quoteId, notificationText).catch(() => null);
+    const updatedFields = {
+      cotizacion: savedQuote,
+      ultimoMensaje: sentMessage?.texto || notificationText,
+      ultimoMensajeFecha: sentMessage?.createdAt || new Date().toISOString(),
+      mensajesNoLeidos: 0,
+    };
     setConversations((prev) =>
-      (prev || []).map((c) => (c.id === quoteId ? { ...c, ...responseData } : c))
+      (prev || []).map((c) => (c.id === quoteId ? { ...c, ...updatedFields } : c))
     );
     setSelectedQuote((prev) =>
-      prev && prev.id === quoteId ? { ...prev, ...responseData } : prev
+      prev && prev.id === quoteId ? { ...prev, ...updatedFields } : prev
     );
+    return savedQuote;
   };
+
+  const handleQuoteMarkedRead = useCallback((quoteId) => {
+    setConversations((previous) => (previous || []).map((conversation) => (
+      conversation.id === quoteId ? { ...conversation, mensajesNoLeidos: 0 } : conversation
+    )));
+  }, []);
 
   // Catálogo: paginado en el servidor para no cargar todo el inventario en memoria de una vez
   const [sellerProducts, setSellerProducts] = useState(null);
@@ -272,6 +338,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [catalogSearchTerm, setCatalogSearchTerm] = useState('');
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState(null);
+  const [catalogTopFeedback, setCatalogTopFeedback] = useState('');
+  const [updatingTopProductId, setUpdatingTopProductId] = useState(null);
   const [productQuestions, setProductQuestions] = useState([]);
   const [productQuestionsLoading, setProductQuestionsLoading] = useState(false);
   const [productQuestionsError, setProductQuestionsError] = useState('');
@@ -282,6 +350,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const isSeller = role === 'SELLER';
   const tabs = isSeller ? SELLER_TABS : BUYER_TABS;
   const displayName = user?.userName || user?.nombre || (isSeller ? user?.storeName : null) || 'Usuario Repuestop';
+  const profileCoverUrl = isSeller
+    ? resolveMediaUrl(user?.coverUrl || storeInfo?.coverUrl || '')
+    : BUYER_PROFILE_COVER_URL;
   const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' }) : null;
 
   const loadData = useCallback(async () => {
@@ -384,6 +455,40 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     return productQuestions.filter((question) => String(question.productoId ?? question.productId ?? question.product?.id ?? question.producto?.id ?? '') === String(product.id)).length;
   };
 
+  const quoteConversations = useMemo(() => {
+    const query = quoteSearch.trim().toLowerCase();
+    return (conversations || [])
+      .filter((conversation) => !conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion')
+      .filter((conversation) => {
+        if (quoteFilter === 'pending') return !conversation.cotizacion;
+        if (quoteFilter === 'sent') return Boolean(conversation.cotizacion);
+        if (quoteFilter === 'unread') return Number(conversation.mensajesNoLeidos || 0) > 0;
+        return true;
+      })
+      .filter((conversation) => {
+        if (!query) return true;
+        return [conversation.id, conversation.otroParticipanteNombre, conversation.productoNombre, conversation.ultimoMensaje]
+          .some((value) => String(value || '').toLowerCase().includes(query));
+      })
+      .sort((left, right) => {
+        const leftTime = new Date(left.ultimoMensajeFecha || left.updatedAt || 0).getTime() || 0;
+        const rightTime = new Date(right.ultimoMensajeFecha || right.updatedAt || 0).getTime() || 0;
+        return quoteSort === 'newest' ? rightTime - leftTime : leftTime - rightTime;
+      });
+  }, [conversations, quoteFilter, quoteSearch, quoteSort]);
+
+  const quoteSummary = useMemo(() => {
+    const quoteOnly = (conversations || []).filter((conversation) => (
+      !conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion'
+    ));
+    return {
+      total: quoteOnly.length,
+      pending: quoteOnly.filter((conversation) => !conversation.cotizacion).length,
+      sent: quoteOnly.filter((conversation) => Boolean(conversation.cotizacion)).length,
+      unread: quoteOnly.reduce((total, conversation) => total + Number(conversation.mensajesNoLeidos || 0), 0),
+    };
+  }, [conversations]);
+
   const handleCatalogSearchSubmit = (e) => {
     e.preventDefault();
     setCatalogPage(0);
@@ -409,6 +514,29 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     }
     setCatalogRefreshKey((current) => current + 1);
     loadData();
+  };
+
+  const handleToggleProductTop = async (product, destacado) => {
+    if (!user?.sellerId || !product?.id || updatingTopProductId) return;
+    setUpdatingTopProductId(product.id);
+    setCatalogError(null);
+    setCatalogTopFeedback('');
+    try {
+      const updated = await updateSellerProductTopApi(user.sellerId, product.id, destacado);
+      setSellerProducts((previous) => (previous || []).map((item) => (
+        item.id === product.id ? { ...item, ...updated, destacado: Boolean(updated?.destacado ?? destacado) } : item
+      )));
+      setSelectedCatalogProduct((previous) => previous?.id === product.id
+        ? { ...previous, ...updated, destacado: Boolean(updated?.destacado ?? destacado) }
+        : previous);
+      setCatalogTopFeedback(destacado
+        ? 'Producto marcado como Top: tendrá prioridad dentro de tu tienda.'
+        : 'El producto dejó de tener prioridad Top.');
+    } catch (error) {
+      setCatalogError(error.message || 'No se pudo actualizar el producto Top.');
+    } finally {
+      setUpdatingTopProductId(null);
+    }
   };
 
   const handleLogout = () => {
@@ -475,10 +603,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           region: regionDraft || prev?.region,
           shippingMethods: shippingMethodsDraft || prev?.shippingMethods,
           marcasEspecialistas: availableVehicleBrands.filter((brand) => specialistBrandIdsDraft.includes(String(brand.id))),
-          banco: bancoDraft,
-          tipoCuenta: tipoCuentaDraft,
-          numCuenta: numCuentaDraft,
-          rutTitular: rutTitularDraft,
         }));
       }
       setSaveStatus({ type: 'success', message: 'Los datos de tu tienda y perfil se actualizaron correctamente.' });
@@ -534,19 +658,21 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         <div
           className="facebook-cover-banner"
           style={{
-            backgroundImage: user?.coverUrl || storeInfo?.coverUrl
-              ? `url(${user?.coverUrl || storeInfo?.coverUrl})`
+            backgroundImage: profileCoverUrl
+              ? `url(${profileCoverUrl})`
               : 'linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0066ff 100%)',
           }}
         >
-          <button
-            className="btn-change-cover-photo"
-            onClick={() => handleOpenMediaModal('cover')}
-            title="Cambiar Foto de Portada"
-          >
-            <Camera size={15} />
-            <span>Editar Portada</span>
-          </button>
+          {isSeller && (
+            <button
+              className="btn-change-cover-photo"
+              onClick={handleOpenCoverTemplates}
+              title="Cambiar Foto de Portada"
+            >
+              <Camera size={15} />
+              <span>Editar Portada</span>
+            </button>
+          )}
         </div>
 
         {/* Info Bar Below Cover (High Contrast) */}
@@ -591,7 +717,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
               {isSeller && (
                 <span className="hero-tag founder-tag-contrast">
-                  <Sparkles size={13} /> Beneficio Tarifa Fundador Activo (5%)
+                  <Crown size={14} strokeWidth={2.4} /> Beneficio Tarifa Fundador Activo (5%)
                 </span>
               )}
             </div>
@@ -783,6 +909,15 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                             </div>
                             <ArrowUpRight size={16} className="shortcut-arrow" />
                           </div>
+
+                          <div className="quick-shortcut-card" onClick={() => setActiveTab('retiros')}>
+                            <div className="shortcut-icon shortcut-green"><Wallet size={20} /></div>
+                            <div className="shortcut-info">
+                              <strong>Retirar dinero</strong>
+                              <span>Solicitar el depósito de ventas finalizadas</span>
+                            </div>
+                            <ArrowUpRight size={16} className="shortcut-arrow" />
+                          </div>
                         </>
                       ) : (
                         <>
@@ -800,15 +935,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                             <div className="shortcut-info">
                               <strong>Repuestos Favoritos</strong>
                               <span>Accede a tus repuestos guardados</span>
-                            </div>
-                            <ArrowUpRight size={16} className="shortcut-arrow" />
-                          </div>
-
-                          <div className="quick-shortcut-card" onClick={() => setActiveTab('direcciones')}>
-                            <div className="shortcut-icon shortcut-amber"><MapPin size={20} /></div>
-                            <div className="shortcut-info">
-                              <strong>Dirección de Entrega</strong>
-                              <span>Gestiona tus ubicaciones de despacho</span>
                             </div>
                             <ArrowUpRight size={16} className="shortcut-arrow" />
                           </div>
@@ -857,24 +983,19 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
 
               {activeTab === 'pedidos' && (
-                <div className="profile-panel">
-                  <h2 className="profile-panel-title">{isSeller ? 'Pedidos Recibidos' : 'Mis Pedidos'}</h2>
-                  {(orders || []).length === 0 ? (
-                    <EmptyState label={isSeller ? 'Aún no has recibido pedidos.' : 'Aún no has realizado pedidos.'} />
-                  ) : (
-                    <div className="profile-orders-cards-grid">
-                      {orders.map((order) => (
-                        <OrderCard
-                          key={order.id}
-                          order={order}
-                          mode={isSeller ? 'seller' : 'buyer'}
-                          onSelectOrder={(ord) => setSelectedOrder(ord)}
-                          onUpdateStatus={handleUpdateOrderStatus}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                isSeller ? (
+                  <SellerOrdersPanel
+                    orders={orders || []}
+                    sellerId={user?.sellerId}
+                    onSelectOrder={(order) => setSelectedOrder(order)}
+                    onUpdateStatus={handleUpdateOrderStatus}
+                  />
+                ) : (
+                  <div className="profile-panel">
+                    <h2 className="profile-panel-title">Mis Pedidos</h2>
+                    {(orders || []).length === 0 ? <EmptyState label="Aún no has realizado pedidos." /> : <div className="profile-orders-cards-grid">{orders.map((order) => <OrderCard key={order.id} order={order} mode="buyer" onSelectOrder={(item) => setSelectedOrder(item)} onUpdateStatus={handleUpdateOrderStatus} />)}</div>}
+                  </div>
+                )
               )}
 
               {activeTab === 'favoritos' && !isSeller && (
@@ -902,24 +1023,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'direcciones' && !isSeller && (
-                <div className="profile-panel">
-                  <h2 className="profile-panel-title">Mis Direcciones</h2>
-                  {(user?.address || user?.comuna) ? (
-                    <div className="profile-address-card">
-                      <MapPin size={18} />
-                      <div>
-                        <strong>{user?.address || 'Dirección registrada'}</strong>
-                        <span>{[user?.comuna, user?.region].filter(Boolean).join(', ')}</span>
-                      </div>
-                      <span className="address-default-tag">Principal</span>
-                    </div>
-                  ) : (
-                    <EmptyState label="Aún no tienes una dirección registrada." />
                   )}
                 </div>
               )}
@@ -985,6 +1088,15 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                     <a href={inventoryPanelUrl} target="_blank" rel="noreferrer">Ir al panel <ArrowUpRight size={15} /></a>
                   </div>
 
+                  <div className="catalog-top-info">
+                    <span className="catalog-top-info-icon"><Star size={17} fill="currentColor" /></span>
+                    <p><strong>Destaca tus productos estrella</strong><span>Un Producto Top recibe mayor visibilidad y prioridad dentro de tu tienda. Puedes activarlo o quitarlo directamente en cada tarjeta.</span></p>
+                  </div>
+
+                  {catalogTopFeedback && (
+                    <div className="catalog-top-feedback"><CheckCircle size={15} /> {catalogTopFeedback}</div>
+                  )}
+
                   <div className="catalog-range-filter">
                     <span>Mostrar por página:</span>
                     {CATALOG_PAGE_SIZE_OPTIONS.map((size) => (
@@ -1024,6 +1136,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                               setQuestionsProductFilter(item.id);
                               setActiveTab('preguntas_productos');
                             }}
+                            onToggleTop={handleToggleProductTop}
+                            isUpdatingTop={updatingTopProductId === p.id}
                           />
                         ))}
                       </div>
@@ -1068,13 +1182,41 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
 
               {activeTab === 'cotizaciones' && isSeller && (
-                <div className="profile-panel">
-                  <h2 className="profile-panel-title">Solicitudes de Cotización</h2>
-                  {(conversations || []).length === 0 ? (
+                <div className="profile-panel seller-quotes-panel">
+                  <div className="seller-quotes-heading">
+                    <div>
+                      <span className="seller-quotes-eyebrow"><ReceiptText size={14} /> Centro de cotizaciones</span>
+                      <h2 className="profile-panel-title">Cotizaciones de compradores</h2>
+                      <p>Revisa solicitudes, responde con tus condiciones comerciales y mantén cada oferta vinculada a su conversación.</p>
+                    </div>
+                    <button type="button" className="seller-quotes-sort" onClick={() => setQuoteSort((current) => current === 'newest' ? 'oldest' : 'newest')}>
+                      <Sliders size={15} /> {quoteSort === 'newest' ? 'Más recientes' : 'Más antiguas'}
+                    </button>
+                  </div>
+
+                  <div className="seller-quotes-summary">
+                    <article><MessageSquare size={18} /><span><strong>{quoteSummary.total}</strong>Total</span></article>
+                    <article className="is-pending"><Clock size={18} /><span><strong>{quoteSummary.pending}</strong>Por responder</span></article>
+                    <article className="is-sent"><Send size={18} /><span><strong>{quoteSummary.sent}</strong>Ofertas enviadas</span></article>
+                    <article className="is-unread"><Inbox size={18} /><span><strong>{quoteSummary.unread}</strong>Mensajes sin leer</span></article>
+                  </div>
+
+                  <div className="seller-quotes-toolbar">
+                    <label className="seller-quotes-search"><Search size={15} /><input value={quoteSearch} onChange={(event) => setQuoteSearch(event.target.value)} placeholder="Buscar comprador, producto o cotización..." />{quoteSearch && <button type="button" onClick={() => setQuoteSearch('')} aria-label="Limpiar búsqueda"><X size={13} /></button>}</label>
+                    <div className="seller-quotes-filters" role="group" aria-label="Filtrar cotizaciones">
+                      {[['all', 'Todas'], ['pending', 'Sin responder'], ['sent', 'Enviadas'], ['unread', 'Sin leer']].map(([value, label]) => (
+                        <button key={value} type="button" className={quoteFilter === value ? 'active' : ''} onClick={() => setQuoteFilter(value)}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {quoteSummary.total === 0 ? (
                     <EmptyState label="Aún no tienes solicitudes de cotización." />
+                  ) : quoteConversations.length === 0 ? (
+                    <EmptyState label="No encontramos cotizaciones con esos filtros." />
                   ) : (
-                    <div className="profile-orders-cards-grid">
-                      {conversations.map((c) => (
+                    <div className="profile-orders-cards-grid seller-quotes-grid">
+                      {quoteConversations.map((c) => (
                         <QuoteCard
                           key={c.id}
                           quote={c}
@@ -1085,6 +1227,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                     </div>
                   )}
                 </div>
+              )}
+
+              {activeTab === 'retiros' && isSeller && (
+                <SellerWithdrawalsPanel sellerId={user?.sellerId} sellerEmail={user?.email} />
               )}
 
               {activeTab === 'consultas' && (
@@ -1196,29 +1342,12 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                           </div>
 
                           <div className="form-section-title" style={{ marginTop: '16px' }}>Datos de Cuenta Bancaria de Cobro</div>
-                          <div className="form-grid-2">
-                            <div className="form-group">
-                              <label>Banco Destino</label>
-                              <input type="text" value={bancoDraft} onChange={(e) => setBancoDraft(e.target.value)} placeholder="Banco de Chile / BCI / Estado" />
-                            </div>
-                            <div className="form-group">
-                              <label>Tipo de Cuenta</label>
-                              <select value={tipoCuentaDraft} onChange={(e) => setTipoCuentaDraft(e.target.value)} className="status-select-input">
-                                <option value="Cuenta Corriente">Cuenta Corriente</option>
-                                <option value="Cuenta Vista">Cuenta Vista / RUT</option>
-                                <option value="Cuenta de Ahorro">Cuenta de Ahorro</option>
-                              </select>
-                            </div>
-                          </div>
-                          <div className="form-grid-2">
-                            <div className="form-group">
-                              <label>Número de Cuenta</label>
-                              <input type="text" value={numCuentaDraft} onChange={(e) => setNumCuentaDraft(e.target.value)} placeholder="123456789" />
-                            </div>
-                            <div className="form-group">
-                              <label>RUT Titular de la Cuenta</label>
-                              <input type="text" value={rutTitularDraft} onChange={(e) => setRutTitularDraft(e.target.value)} placeholder="76.123.456-7" />
-                            </div>
+                          <div className="withdrawal-info-banner">
+                            <Info size={18} />
+                            <span>Los datos bancarios se validan y guardan desde el apartado Retirar dinero.</span>
+                            <button type="button" className="withdrawal-bank-button" onClick={() => { setIsEditing(false); setActiveTab('retiros'); }}>
+                              <Wallet size={16} /> Gestionar cuenta bancaria
+                            </button>
                           </div>
                         </>
                       )}
@@ -1262,7 +1391,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                             )}
                             {isSeller && (
                               <span className="hero-tag founder-tag">
-                                <Sparkles size={12} /> Beneficio Tarifa Fundador Activo (5%)
+                                <Crown size={13} strokeWidth={2.4} /> Beneficio Tarifa Fundador Activo (5%)
                               </span>
                             )}
                           </div>
@@ -1389,22 +1518,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                               <span>Datos Bancarios para Depósito de Ventas</span>
                             </h3>
                             <div className="details-info-list">
-                              <div className="details-info-row">
-                                <span className="info-label">Banco Destino</span>
-                                <strong className="info-value">{storeInfo?.banco || 'Banco de Chile'}</strong>
-                              </div>
-                              <div className="details-info-row">
-                                <span className="info-label">Tipo de Cuenta</span>
-                                <strong className="info-value">{storeInfo?.tipoCuenta || 'Cuenta Corriente'}</strong>
-                              </div>
-                              <div className="details-info-row">
-                                <span className="info-label">Número de Cuenta</span>
-                                <strong className="info-value bank-account-number">{storeInfo?.numCuenta || '123-45678-90'}</strong>
-                              </div>
-                              <div className="details-info-row">
-                                <span className="info-label">RUT del Titular</span>
-                                <strong className="info-value">{storeInfo?.rutTitular || storeInfo?.taxId || user?.taxId || '—'}</strong>
-                              </div>
+                              <p className="bank-card-helper">Registra o actualiza la cuenta donde recibirás el depósito de tus ventas y revisa tus solicitudes de retiro.</p>
+                              <button type="button" className="withdrawal-bank-button" onClick={() => setActiveTab('retiros')}>
+                                <Wallet size={16} /> Ir a Retirar dinero
+                              </button>
                             </div>
                           </div>
                         )}
@@ -1441,6 +1558,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           quote={selectedQuote}
           onClose={() => setSelectedQuote(null)}
           onSendQuoteResponse={handleSendQuoteResponse}
+          onMarkedRead={handleQuoteMarkedRead}
         />
       )}
 
@@ -1541,6 +1659,91 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             </footer>
           </section>
         </div>
+      )}
+
+      {showCoverTemplatesModal && createPortal(
+        <div
+          className="store-cover-template-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isSavingCoverTemplate) setShowCoverTemplatesModal(false);
+          }}
+        >
+          <section className="store-cover-template-modal" role="dialog" aria-modal="true" aria-labelledby="cover-template-title">
+            <header className="store-cover-template-header">
+              <div className="store-cover-template-heading">
+                <span className="store-cover-template-icon" aria-hidden="true"><ImageIcon size={22} /></span>
+                <div>
+                  <span className="store-cover-template-eyebrow"><Sparkles size={13} /> Portadas oficiales RepuesTop</span>
+                  <h2 id="cover-template-title">Elige el fondo de tu tienda</h2>
+                  <p>Selecciona una plantilla profesional. La imagen se adaptará automáticamente a tu portada.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="store-cover-template-close"
+                onClick={() => setShowCoverTemplatesModal(false)}
+                disabled={isSavingCoverTemplate}
+                aria-label="Cerrar selector de portadas"
+              >
+                <X size={20} />
+              </button>
+            </header>
+
+            <div className="store-cover-template-body">
+              <div className="store-cover-template-notice">
+                <ShieldCheck size={17} />
+                <span>Puedes escoger una de estas imágenes de fondo. Por seguridad y consistencia visual, no se permiten portadas personales.</span>
+              </div>
+
+              {isLoadingCoverTemplates ? (
+                <div className="store-cover-template-loading"><Loader2 className="spin-icon" size={24} /> Cargando plantillas...</div>
+              ) : (
+                <div className="store-cover-template-grid" role="radiogroup" aria-label="Plantillas de portada disponibles">
+                  {coverTemplates.map((template) => {
+                    const isSelected = selectedCoverTemplateId === template.id;
+                    return (
+                      <button
+                        type="button"
+                        key={template.id}
+                        className={`store-cover-template-card ${isSelected ? 'is-selected' : ''}`}
+                        onClick={() => setSelectedCoverTemplateId(template.id)}
+                        role="radio"
+                        aria-checked={isSelected}
+                      >
+                        <span className="store-cover-template-preview">
+                          <img src={template.url} alt={`Vista previa: ${template.name}`} />
+                          <span className="store-cover-template-check"><Check size={16} strokeWidth={3} /></span>
+                        </span>
+                        <span className="store-cover-template-copy">
+                          <strong>{template.name}</strong>
+                          <small>{template.description}</small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {coverTemplateError && (
+                <div className="store-cover-template-error" role="alert"><AlertTriangle size={16} /> {coverTemplateError}</div>
+              )}
+            </div>
+
+            <footer className="store-cover-template-footer">
+              <span><ShieldCheck size={15} /> Imágenes alojadas de forma segura en Cloudflare R2</span>
+              <div>
+                <button type="button" className="btn-auth-secondary" onClick={() => setShowCoverTemplatesModal(false)} disabled={isSavingCoverTemplate}>
+                  Cancelar
+                </button>
+                <button type="button" className="btn-auth-primary" onClick={handleSaveCoverTemplate} disabled={!selectedCoverTemplateId || isSavingCoverTemplate}>
+                  {isSavingCoverTemplate ? <Loader2 size={16} className="spin-icon" /> : <Check size={16} />}
+                  {isSavingCoverTemplate ? 'Guardando...' : 'Usar esta portada'}
+                </button>
+              </div>
+            </footer>
+          </section>
+        </div>,
+        document.body
       )}
 
       {showMediaModal && (

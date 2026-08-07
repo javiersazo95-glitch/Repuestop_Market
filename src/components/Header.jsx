@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Truck, ShieldCheck, Store, HelpCircle, Search, ShoppingCart, User,
   ChevronDown, ChevronRight, X, LogOut, LayoutDashboard, MessageSquare, Menu,
@@ -16,6 +16,7 @@ export default function Header({
   onOpenAuthModal,
   onOpenSellerModal,
   onOpenProfile,
+  onOpenHome,
   onOpenStores,
   onOpenCatalog,
   onOpenAbout,
@@ -27,10 +28,17 @@ export default function Header({
 }) {
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [activeHeaderCategoryId, setActiveHeaderCategoryId] = useState(HEADER_CATEGORIES[0].id);
+  const [categorySearchQuery, setCategorySearchQuery] = useState('');
+  const [highlightedSubcategory, setHighlightedSubcategory] = useState('');
   const [subcategoryInventory, setSubcategoryInventory] = useState({});
   const [backendCategories, setBackendCategories] = useState([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const categorySearchInputRef = useRef(null);
+  const categoryButtonRefs = useRef(new Map());
+  const subcategoryCardRefs = useRef(new Map());
   const { user, isLoggedIn, role, logout } = useAuth();
+  const isSellerAccount = String(user?.role || role || '').toUpperCase() === 'SELLER'
+    && Boolean(user?.sellerId);
   const inventoryPanelUrl = __DEPLOY_BRANCH__ === 'main'
     ? 'https://inventario.repuestop.cl'
     : 'https://dev-inventario.repuestop.cl';
@@ -48,6 +56,29 @@ export default function Header({
   const normalizeCatalogName = (value) => String(value || '')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase().replace(/[^a-z0-9]/g, '').replace(/s$/, '');
+
+  const normalizeSearchText = (value) => String(value || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().trim();
+
+  const categorySearchResults = useMemo(() => {
+    const query = normalizeSearchText(categorySearchQuery);
+    if (!query) return [];
+
+    return HEADER_CATEGORIES.flatMap((category) => {
+      const categoryMatch = normalizeSearchText(category.nombre).includes(query)
+        ? [{ type: 'category', category, label: category.nombre }]
+        : [];
+      const subcategoryMatches = category.subcategories
+        .filter((subcategory) => normalizeSearchText(subcategory).includes(query))
+        .map((subcategory) => ({ type: 'subcategory', category, label: subcategory }));
+      return [...categoryMatch, ...subcategoryMatches];
+    }).sort((left, right) => {
+      const leftStarts = normalizeSearchText(left.label).startsWith(query) ? 0 : 1;
+      const rightStarts = normalizeSearchText(right.label).startsWith(query) ? 0 : 1;
+      return leftStarts - rightStarts || left.label.localeCompare(right.label, 'es');
+    }).slice(0, 12);
+  }, [categorySearchQuery]);
 
   const getBackendCategory = (category) => backendCategories.find((item) =>
     normalizeCatalogName(item.nombre) === normalizeCatalogName(category.nombre));
@@ -97,6 +128,28 @@ export default function Header({
     return () => { active = false; };
   }, [activeHeaderCategory, backendCategories, subcategoryInventory]);
 
+  useEffect(() => {
+    if (showCategoryMenu) requestAnimationFrame(() => categorySearchInputRef.current?.focus());
+    else {
+      setCategorySearchQuery('');
+      setHighlightedSubcategory('');
+    }
+  }, [showCategoryMenu]);
+
+  useEffect(() => {
+    if (!highlightedSubcategory || categorySearchQuery) return;
+    requestAnimationFrame(() => {
+      categoryButtonRefs.current.get(activeHeaderCategoryId)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      subcategoryCardRefs.current.get(highlightedSubcategory)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+  }, [activeHeaderCategoryId, categorySearchQuery, highlightedSubcategory]);
+
+  const handleCategorySearchResult = (result) => {
+    setActiveHeaderCategoryId(result.category.id);
+    setHighlightedSubcategory(result.type === 'subcategory' ? result.label : '');
+    setCategorySearchQuery('');
+  };
+
   const handleUserBoxClick = () => {
     if (isLoggedIn) setShowUserMenu((open) => !open);
     else onOpenAuthModal();
@@ -128,7 +181,7 @@ export default function Header({
       </div>
 
       <div className="container header-brand-row">
-        <button className="brand-logo-official" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+        <button className="brand-logo-official" onClick={() => { onOpenHome?.(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
           <RepuesTopLogo height={66} />
         </button>
 
@@ -159,7 +212,7 @@ export default function Header({
             <div className="avatar-wrap">
               {isLoggedIn && user?.userProfileUrl ? (
                 <img src={user.userProfileUrl} alt="" className="user-avatar-photo" referrerPolicy="no-referrer" />
-              ) : isLoggedIn && role === 'SELLER' ? <Store size={22} /> : <User size={23} />}
+              ) : isLoggedIn && isSellerAccount ? <Store size={22} /> : <User size={23} />}
             </div>
             <div className="user-meta">
               <span className="user-main">{isLoggedIn ? (user?.userName || user?.storeName || 'Mi cuenta') : 'Mi cuenta'}</span>
@@ -177,7 +230,9 @@ export default function Header({
                 </div>
                 <div className="user-dropdown-body">
                   <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.(); }}><LayoutDashboard size={15} /> Mi perfil</button>
-                  <button className="dropdown-item" onClick={openInventoryPanel}><Package size={15} /> Panel de inventario</button>
+                  {isSellerAccount && (
+                    <button className="dropdown-item" onClick={openInventoryPanel}><Package size={15} /> Panel de inventario</button>
+                  )}
                   <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.('consultas'); }}><MessageSquare size={15} /> Reportes/Disputa</button>
                   <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenHelp?.(); }}><HelpCircle size={15} /> Soporte</button>
                   <div className="dropdown-divider" />
@@ -209,13 +264,61 @@ export default function Header({
             </button>
             {showCategoryMenu && (
               <div className="header-category-dropdown header-category-mega-menu">
+                <div className="header-category-search-wrap">
+                  <Search size={16} aria-hidden="true" />
+                  <input
+                    ref={categorySearchInputRef}
+                    type="search"
+                    value={categorySearchQuery}
+                    onChange={(event) => setCategorySearchQuery(event.target.value)}
+                    placeholder="Buscar categoría o subcategoría"
+                    aria-label="Buscar categoría o subcategoría"
+                    autoComplete="off"
+                  />
+                  {categorySearchQuery && (
+                    <button type="button" className="header-category-search-clear" onClick={() => setCategorySearchQuery('')} aria-label="Limpiar búsqueda de categorías">
+                      <X size={15} />
+                    </button>
+                  )}
+                </div>
+
+                {categorySearchQuery ? (
+                  <div className="header-category-search-results" aria-live="polite">
+                    {categorySearchResults.length ? categorySearchResults.map((result) => (
+                      <button
+                        type="button"
+                        key={`${result.type}:${result.category.id}:${result.label}`}
+                        className="header-category-search-result"
+                        onClick={() => handleCategorySearchResult(result)}
+                      >
+                        <CategoryIconTile iconName={CATEGORY_VISUALS[result.category.id].iconName} color={CATEGORY_VISUALS[result.category.id].color} size={17} />
+                        <span className="header-category-result-copy">
+                          <strong>{result.label}</strong>
+                          <small>{result.type === 'category' ? 'Categoría' : `Subcategoría de ${result.category.nombre}`}</small>
+                        </span>
+                        <span className="header-category-result-type">{result.type === 'category' ? 'Categoría' : 'Subcategoría'}</span>
+                        <ChevronRight size={16} aria-hidden="true" />
+                      </button>
+                    )) : (
+                      <div className="header-category-search-empty">
+                        <Search size={22} aria-hidden="true" />
+                        <strong>No encontramos coincidencias</strong>
+                        <span>Prueba con otro nombre de categoría o repuesto.</span>
+                      </div>
+                    )}
+                  </div>
+                ) : <>
                 <div className="header-category-list" aria-label="Categorías de repuestos">
                   {HEADER_CATEGORIES.map((category) => (
                     <button
                       key={category.id}
+                      ref={(node) => {
+                        if (node) categoryButtonRefs.current.set(category.id, node);
+                        else categoryButtonRefs.current.delete(category.id);
+                      }}
                       className={category.id === activeHeaderCategory.id ? 'active' : ''}
-                      onMouseEnter={() => setActiveHeaderCategoryId(category.id)}
-                      onFocus={() => setActiveHeaderCategoryId(category.id)}
+                      onMouseEnter={() => { setActiveHeaderCategoryId(category.id); setHighlightedSubcategory(''); }}
+                      onFocus={() => { setActiveHeaderCategoryId(category.id); setHighlightedSubcategory(''); }}
                       onClick={() => { setShowCategoryMenu(false); onSelectCategory({ category: category.filterId, categoryId: getBackendCategory(category)?.id }); }}
                     >
                       <span className="header-category-label"><CategoryIconTile iconName={CATEGORY_VISUALS[category.id].iconName} color={CATEGORY_VISUALS[category.id].color} size={16} />{category.nombre}</span>
@@ -236,7 +339,11 @@ export default function Header({
                       return (
                         <button
                           key={subcategory}
-                          className="header-subcategory-card"
+                          ref={(node) => {
+                            if (node) subcategoryCardRefs.current.set(subcategory, node);
+                            else subcategoryCardRefs.current.delete(subcategory);
+                          }}
+                          className={`header-subcategory-card ${highlightedSubcategory === subcategory ? 'search-highlighted' : ''}`}
                           onClick={() => { setShowCategoryMenu(false); onSelectCategory({ category: activeHeaderCategory.filterId, categoryId: getBackendCategory(activeHeaderCategory)?.id, subcategoryId: inventory?.subcategoryId, subcategory: subcategory }); }}
                         >
                           <img src={categoryImage || (productImage ? resolveMediaUrl(productImage) : activeHeaderCategory.image)} alt="" />
@@ -247,6 +354,7 @@ export default function Header({
                     })}
                   </div>
                 </div>
+                </>}
               </div>
             )}
           </div>

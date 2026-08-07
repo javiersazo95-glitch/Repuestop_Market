@@ -48,7 +48,9 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity }
   const oldPrice = Number(product.precioOriginal || 0);
   const isOffer = Number(product.descuento || 0) > 0;
   const isNew = String(product.condicion || '').toLowerCase().includes('nuevo');
-  const badgeLabel = isOffer ? '🔥 Oferta' : isNew ? '✦ Nuevo' : '★ Top';
+  const isTop = Boolean(product.isTop || product.destacado);
+  const badgeLabel = isOffer ? '🔥 Oferta' : isTop ? '★ Top' : isNew ? '✦ Nuevo' : null;
+  const badgeKind = isOffer ? 'offer' : isTop ? 'top' : 'new';
   const city = product.ciudad || product.ciudadVendedor || fallbackCity || 'Santiago, RM';
   const partBrand = getPartBrand(product);
   const partType = getPartType(product);
@@ -69,7 +71,7 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity }
           image={productImage}
           size={34}
         />
-        <span className={`market-product-badge ${isOffer ? 'offer' : isNew ? 'new' : 'top'}`}>{badgeLabel}</span>
+        {badgeLabel && <span className={`market-product-badge ${badgeKind}`}>{badgeLabel}</span>}
         <button className="market-product-favorite" type="button" aria-label="Agregar a favoritos">
           <Heart size={21} />
         </button>

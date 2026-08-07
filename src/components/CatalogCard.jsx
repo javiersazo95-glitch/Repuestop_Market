@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Package, Tag, ChevronRight, Edit3, CheckCircle, AlertTriangle, XCircle, MessageCircleQuestion
+  Package, Tag, ChevronRight, Edit3, CheckCircle, AlertTriangle, XCircle, MessageCircleQuestion, Star, Loader2
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
 
@@ -40,6 +40,8 @@ export default function CatalogCard({
   onQuickEditStock,
   questionCount,
   onOpenQuestions,
+  onToggleTop,
+  isUpdatingTop = false,
 }) {
   if (!product) return null;
 
@@ -56,6 +58,7 @@ export default function CatalogCard({
     || product.photoUri
     || product.imagenes?.[0]?.url;
   const photo = resolveMediaUrl(rawPhoto);
+  const isTop = Boolean(product.destacado ?? product.isTop);
 
   return (
     <div className="order-card-container catalog-card-container" onClick={() => onSelectProduct && onSelectProduct(product)}>
@@ -72,6 +75,7 @@ export default function CatalogCard({
           <span className="catalog-category-pill"><Tag size={12} /> {category}</span>
           <StockBadge stock={stock} />
         </div>
+        {isTop && <span className="catalog-top-ribbon"><Star size={13} fill="currentColor" /> Producto Top</span>}
       </div>
 
       <div className="catalog-card-content">
@@ -110,6 +114,21 @@ export default function CatalogCard({
 
       {/* Bottom Actions Row */}
       <div className="order-card-actions">
+        <button
+          type="button"
+          className={`catalog-top-toggle ${isTop ? 'is-active' : ''}`}
+          disabled={isUpdatingTop}
+          aria-pressed={isTop}
+          title={isTop ? 'Quitar prioridad dentro de tu tienda' : 'Dar mayor visibilidad dentro de tu tienda'}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleTop?.(product, !isTop);
+          }}
+        >
+          {isUpdatingTop ? <Loader2 size={14} className="spin-icon" /> : <Star size={14} fill={isTop ? 'currentColor' : 'none'} />}
+          <span>{isTop ? 'Producto Top' : 'Marcar como Top'}</span>
+        </button>
+
         <button
           type="button"
           className="btn-view-details"

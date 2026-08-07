@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft, BadgeCheck, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, CreditCard,
   Heart, Landmark, MapPin, MessageCircle, Package, Search, Send, ShieldCheck,
-  ShoppingCart, Star, Store, Truck, Wrench, X
+  ShoppingCart, Star, Truck, Wrench, X
 } from 'lucide-react';
 import { CATEGORY_IMAGE_BY_ID } from '../data/categories';
+import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import { createProductQuestionApi, getProductQuestionsApi } from '../services/api';
+import StoreLogoBadge from './StoreLogoBadge';
+import RelatedProductsCarousel from './RelatedProductsCarousel';
 
-export default function ProductDetailPage({ product, user, activeVehicle, onBack, onAddToCart, onOpenQuote }) {
+export default function ProductDetailPage({ product, user, activeVehicle, onBack, onAddToCart, onOpenQuote, onOpenStore, onSelectProduct }) {
   const images = (product.imagenes?.length
     ? product.imagenes
     : [product.imagen || CATEGORY_IMAGE_BY_ID[product.categoria]]).filter(Boolean);
@@ -32,6 +35,18 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const category = product.categoriaNombre || product.categoria || 'Repuestos';
   const condition = product.condicion || 'Original';
   const city = product.ciudadVendedor || 'Chile';
+  // Reputación real de la tienda. Antes la ficha mostraba "4.8" y "+5 años"
+  // fijos en el código para cualquier vendedor.
+  const sellerRating = Number(product.vendedorRating ?? 0);
+  const sellerReviews = Number(product.vendedorReviewCount ?? 0);
+  const hasSellerRating = sellerRating > 0;
+  const shippingMethods = parseShippingMethods(product.metodosEnvio);
+  // El distintivo "Más vendido" solo aparece cuando el producto registra ventas.
+  const isBestSeller = Number(product.vendidos || 0) > 0;
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const descriptionText = product.descripcion
+    || 'Repuesto publicado por una tienda verificada en RepuesTop. Consulta la compatibilidad antes de completar tu compra.';
+  const descriptionIsLong = descriptionText.length > 320;
   const visibleCompatibilities = compatibility.filter((item) => {
     const query = compatibilitySearch.trim().toLocaleLowerCase('es');
     if (!query) return true;
@@ -94,8 +109,8 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
         </div>
 
         <section className="product-marketplace-layout">
-          <article className="product-marketplace-gallery">
-            <span className="product-marketplace-ranking">Más vendido</span>
+          <article className={`product-marketplace-gallery ${images.length > 1 ? '' : 'single-image'}`}>
+            {isBestSeller && <span className="product-marketplace-ranking">Más vendido</span>}
             <button
               className={`product-marketplace-favorite ${favorite ? 'active' : ''}`}
               type="button"
@@ -113,13 +128,15 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
               <button className="product-marketplace-image-arrow previous" type="button" onClick={() => changeImage(-1)} aria-label="Imagen anterior"><ChevronLeft /></button>
               <button className="product-marketplace-image-arrow next" type="button" onClick={() => changeImage(1)} aria-label="Imagen siguiente"><ChevronRight /></button>
             </>}
-            <div className="product-marketplace-thumbs">
+            {/* Con una sola foto la tira de miniaturas es una barra vacía: se omite
+                y la imagen ocupa todo el alto de la galería. */}
+            {images.length > 1 && <div className="product-marketplace-thumbs">
               {images.map((image, index) => (
                 <button key={`${image}-${index}`} type="button" className={index === activeImage ? 'active' : ''} onClick={() => setActiveImage(index)}>
                   <img src={image} alt={`Vista ${index + 1} de ${product.titulo}`} />
                 </button>
               ))}
-            </div>
+            </div>}
           </article>
 
           <article className="product-marketplace-summary">
@@ -134,13 +151,42 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             </div>
             {compatible && <div className="product-marketplace-match"><CheckCircle2 size={18} /> Compatible con tu {activeVehicle.marca} {activeVehicle.modelo}</div>}
             <div className="product-marketplace-code">Código OEM / SKU: <strong>{product.oemCode || product.sku || 'No informado'}</strong></div>
-            <p className="product-marketplace-description">{product.descripcion || 'Repuesto publicado por una tienda verificada en RepuesTop. Consulta la compatibilidad antes de completar tu compra.'}</p>
+            <div className={`product-marketplace-description ${descriptionExpanded ? 'expanded' : ''}`}>
+              <p>{descriptionText}</p>
+            </div>
+            {descriptionIsLong && (
+              <button type="button" className="product-marketplace-description-toggle" onClick={() => setDescriptionExpanded((value) => !value)}>
+                {descriptionExpanded ? 'Ver menos' : 'Ver descripción completa'}
+                <ChevronRight size={13} />
+              </button>
+            )}
 
             <section className="product-marketplace-store">
-              <span className="product-marketplace-store-icon"><Store size={23} /></span>
-              <div><strong>Vendido por <b>{sellerName}</b> <BadgeCheck size={15} /></strong><small><MapPin size={13} /> Tienda verificada en {city}</small></div>
-              <div className="product-marketplace-rating"><Star size={17} fill="currentColor" /><strong>4.8</strong><small>Calificación</small></div>
-              <div className="product-marketplace-seniority"><BadgeCheck size={17} /><strong>+5 años</strong><small>en el mercado</small></div>
+              <span className="product-marketplace-store-logo">
+                {product.logoTienda
+                  ? <img src={product.logoTienda} alt={`Logo de ${sellerName}`} referrerPolicy="no-referrer" />
+                  : <StoreLogoBadge name={sellerName} seed={product.proveedorId || 0} size={46} />}
+              </span>
+
+              <div className="product-marketplace-store-copy">
+                <small>Vendido por</small>
+                <strong title={sellerName}>{sellerName} <BadgeCheck size={15} /></strong>
+                <small className="product-marketplace-store-place"><MapPin size={12} /> Tienda verificada en {city}</small>
+              </div>
+
+              {hasSellerRating && (
+                <div className="product-marketplace-rating">
+                  <Star size={15} fill="currentColor" />
+                  <strong>{sellerRating.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</strong>
+                  <small>{sellerReviews === 1 ? '1 evaluación' : `${sellerReviews} evaluaciones`}</small>
+                </div>
+              )}
+
+              {onOpenStore && (
+                <button type="button" className="product-marketplace-store-link" onClick={() => onOpenStore(product)}>
+                  Ver tienda <ChevronRight size={14} />
+                </button>
+              )}
             </section>
 
             <div className="product-marketplace-benefits">
@@ -179,8 +225,22 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
 
             <div className="product-marketplace-assurances">
               <span><ShieldCheck /><p><b>Compra segura y protegida</b><small>Tu información está 100% protegida</small></p></span>
-              <span><Truck /><p><b>Envío dentro de la comuna</b><small>Valor informado por la tienda</small></p></span>
-              <span><Package /><p><b>Envío fuera de la comuna</b><small>Cálculo al ingresar tu dirección</small></p></span>
+
+              {/* Métodos de entrega reales publicados por la tienda; si todavía no
+                  declaró ninguno se muestra el respaldo genérico. */}
+              {shippingMethods.length ? shippingMethods.map((method) => {
+                const { icon: ShippingIcon, label } = resolveShippingService(method);
+                const price = shippingMethodPrice(method);
+                return (
+                  <span key={method}>
+                    <ShippingIcon />
+                    <p><b>{label}</b><small>{price ? `Valor informado por la tienda: ${price}` : 'Coordinado con la tienda'}</small></p>
+                  </span>
+                );
+              }) : (
+                <span><Truck /><p><b>Despacho a coordinar</b><small>La tienda informa el valor al confirmar tu pedido</small></p></span>
+              )}
+
               <span><Landmark /><p><b>Transferencia vía Khipu</b><small>Disponible como alternativa de pago</small></p></span>
             </div>
           </aside>
@@ -209,6 +269,8 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             </article>
           </section>
         </section>
+
+        <RelatedProductsCarousel product={product} onSelectProduct={onSelectProduct} />
 
         <section className="product-marketplace-questions">
           <div className="product-marketplace-questions-head">

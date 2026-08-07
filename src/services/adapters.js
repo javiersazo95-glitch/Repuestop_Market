@@ -151,6 +151,11 @@ export function adaptProduct(dto) {
     categoria: normalizeCategoryId(dto.categoria),
     categoriaNombre: dto.categoria || '',
     subcategoria: dto.subcategoria || '',
+    // Ids reales del catálogo: los necesita la vitrina de productos relacionados
+    // para pedir el inventario de la misma subcategoría (o categoría) al backend.
+    // `categoriaId` no viene en todos los endpoints y se resuelve por nombre.
+    categoriaId: toNumber(dto.categoriaId),
+    subcategoriaId: toNumber(dto.subcategoriaId),
     oemCode: dto.referenciaOem || dto.skuProveedor || dto.codigoInterno || '',
     descripcion: dto.descripcion || '',
     marca: dto.marcaRepuesto || dto.marca || dto.productBrand || dto.brand || dto.fabricante || dto.manufacturer || '',
@@ -168,12 +173,19 @@ export function adaptProduct(dto) {
     metodosEnvio: dto.sellerShippingMethods || '',
     rating: toNumber(dto.productRating) ?? toNumber(dto.sellerRating),
     reviewCount: toNumber(dto.productReviewCount) ?? 0,
+    // La reputación de la tienda va aparte: `rating` se queda en 0 cuando el
+    // producto todavía no tiene evaluaciones propias, y la ficha necesita mostrar
+    // la calificación real del vendedor en vez de un valor inventado.
+    vendedorRating: toNumber(dto.sellerRating),
+    vendedorReviewCount: toNumber(dto.sellerReviewCount) ?? 0,
+    horarioVendedor: dto.sellerHours || '',
     stock: toNumber(dto.stock) ?? 0,
     condicion: dto.condicion || '',
     imagen: imagenes[0] || null,
     imagenes,
     logoTienda: resolveMediaUrl(dto.storeIconUrl),
     requiereChasis: Boolean(dto.requiereChasis),
+    isTop: Boolean(dto.destacado),
     pricingMode: dto.pricingMode || (precio > 0 ? 'SHOW_PRICE' : 'QUOTE_ONLY'),
     soloCotizacion: dto.pricingMode === 'COTIZACION' || dto.pricingMode === 'QUOTE_ONLY' || precio <= 0,
     createdAt: dto.createdAt || null,

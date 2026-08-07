@@ -25,6 +25,9 @@ export default function PartsCatalogView({
   onOpenQuote,
   activeVehicle: initialActiveVehicle,
   initialCatalogFilter = null,
+  initialSearchQuery = '',
+  initialPage = 1,
+  onNavigationStateChange,
 }) {
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -69,7 +72,7 @@ export default function PartsCatalogView({
     return () => { isMounted = false; };
   }, [initialCatalogFilter?.categoryId, initialCatalogFilter?.categoryName, initialCatalogFilter?.subcategoryId]);
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedCategory, setSelectedCategory] = useState(initialCatalogFilter?.category || 'TODAS');
   const [selectedSubcategory, setSelectedSubcategory] = useState(initialCatalogFilter?.subcategory || 'TODAS');
   const [selectedCondition, setSelectedCondition] = useState('TODOS');
@@ -87,9 +90,6 @@ export default function PartsCatalogView({
     condition: true,
     shipping: true,
   });
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const filterPanelRef = useRef(null);
-  const [filterDrawerHeight, setFilterDrawerHeight] = useState(0);
   const [expandedCategories, setExpandedCategories] = useState({});
 
   useEffect(() => {
@@ -97,19 +97,11 @@ export default function PartsCatalogView({
     setSelectedSubcategory(initialCatalogFilter?.subcategory || 'TODAS');
   }, [initialCatalogFilter?.category, initialCatalogFilter?.subcategory]);
 
+  // El término de búsqueda también llega por URL (`/repuestos?q=...`), tanto desde
+  // el buscador del header como al abrir o compartir un enlace.
   useEffect(() => {
-    if (!isFiltersOpen || !filterPanelRef.current) {
-      setFilterDrawerHeight(0);
-      return undefined;
-    }
-
-    const panel = filterPanelRef.current;
-    const measurePanel = () => setFilterDrawerHeight(Math.ceil(panel.getBoundingClientRect().height) + 16);
-    measurePanel();
-    const observer = new ResizeObserver(measurePanel);
-    observer.observe(panel);
-    return () => observer.disconnect();
-  }, [isFiltersOpen]);
+    setSearchQuery(initialSearchQuery);
+  }, [initialSearchQuery]);
 
   const toggleFilterSection = (section) => {
     setOpenFilterSections((current) => ({ ...current, [section]: !current[section] }));
@@ -142,9 +134,13 @@ export default function PartsCatalogView({
     }
   };
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
+  // Pagination state (la página vive en la URL: `/repuestos?pagina=3`)
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const [itemsPerPage, setItemsPerPage] = useState(12);
+
+  useEffect(() => {
+    setCurrentPage(initialPage);
+  }, [initialPage]);
 
   // Filter options lists
   const CONDITIONS = [
@@ -171,8 +167,19 @@ export default function PartsCatalogView({
     'Mazda'
   ];
 
-  // Reset to page 1 when any filter changes
+  // Reset to page 1 when any filter changes.
+  // Se compara contra la combinación anterior en vez de usar un flag de "primer
+  // render": así la página que viene en la URL sobrevive tanto al montaje como al
+  // doble montaje de StrictMode, y solo un cambio real de filtro vuelve a la 1.
+  const previousFiltersRef = useRef(null);
   useEffect(() => {
+    const signature = JSON.stringify([
+      searchQuery, selectedCategory, selectedSubcategory, selectedCondition, selectedOrigin,
+      selectedBrand, onlyCompatible, onlyFastDelivery, maxPrice, sortBy, itemsPerPage
+    ]);
+    const previous = previousFiltersRef.current;
+    previousFiltersRef.current = signature;
+    if (previous === null || previous === signature) return;
     setCurrentPage(1);
   }, [
     searchQuery, selectedCategory, selectedSubcategory, selectedCondition, selectedOrigin,
@@ -278,6 +285,17 @@ export default function PartsCatalogView({
   const endIndex = Math.min(sortedProducts.length, currentPage * itemsPerPage);
   const paginatedProducts = sortedProducts.slice(startIndex, endIndex);
 
+  // Categoría, subcategoría, búsqueda y página se reflejan en la URL para que el
+  // catálogo se pueda compartir, refrescar y recorrer con el botón atrás.
+  useEffect(() => {
+    onNavigationStateChange?.({
+      category: selectedCategory === 'TODAS' ? null : selectedCategory,
+      subcategory: selectedSubcategory === 'TODAS' ? null : selectedSubcategory,
+      query: searchQuery,
+      page: currentPage,
+    });
+  }, [onNavigationStateChange, selectedCategory, selectedSubcategory, searchQuery, currentPage]);
+
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);
@@ -303,7 +321,6 @@ export default function PartsCatalogView({
   };
 
   const handleApplyFilters = () => {
-    setIsFiltersOpen(false);
     document.querySelector('.catalog-parts-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
@@ -420,10 +437,6 @@ export default function PartsCatalogView({
             )}
           </div>
 
-          <button className="catalog-open-filters" type="button" onClick={() => setIsFiltersOpen(true)}>
-            <Filter size={18} /><span>Filtros</span><ChevronRight size={16} />
-          </button>
-
           <div className="control-bar-right-group">
             <div className="results-count-badge">
               <span>Mostrando <strong>{sortedProducts.length}</strong> de {products.length} repuestos</span>
@@ -448,10 +461,9 @@ export default function PartsCatalogView({
         </div>}
 
         {/* 3. Main 2-Column Content Layout (Technical Sidebar + Parts Grid) */}
-        <div className={`catalog-content-grid catalog-main-content-grid product-filter-drawer-layout ${isFiltersOpen ? 'filters-open' : ''}`} style={isFiltersOpen && filterDrawerHeight ? { minHeight: `${filterDrawerHeight}px` } : undefined}>
-          {isFiltersOpen && <button className="catalog-filter-backdrop" type="button" aria-label="Cerrar filtros" onClick={() => setIsFiltersOpen(false)} />}
+        <div className="catalog-content-grid catalog-main-content-grid">
           {/* Sidebar Technical Filters (Left 280px) */}
-          <aside ref={filterPanelRef} className="catalog-sidebar-filters catalog-advanced-filter-panel">
+          <aside className="catalog-sidebar-filters catalog-advanced-filter-panel">
             <div className="sidebar-filters-header">
               <div className="sidebar-title-group">
                 <SlidersHorizontal size={25} />
@@ -462,9 +474,6 @@ export default function PartsCatalogView({
                 <button className="btn-reset-filters-mini" onClick={handleResetFilters}>
                   <RotateCcw size={15} />
                   <span>Limpiar</span>
-                </button>
-                <button className="btn-close-filter-drawer" type="button" onClick={() => setIsFiltersOpen(false)} aria-label="Cerrar filtros" title="Cerrar filtros">
-                  <X size={16} />
                 </button>
               </div>
             </div>

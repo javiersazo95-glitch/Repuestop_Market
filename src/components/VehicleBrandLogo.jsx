@@ -1,40 +1,36 @@
 import React, { useState } from 'react';
-import { CarFront } from 'lucide-react';
+import { vehicleBrandLogoUrl, vehicleBrandMonogram } from '../data/vehicleBrands';
 
-// Marcas de vehículo frecuentes en el catálogo. Simple Icons entrega los emblemas
-// vectoriales y el respaldo evita volver a mostrar letras para marcas sin logo.
-const BRAND_SLUGS = {
-  acura: 'acura', 'alfa romeo': 'alfaromeo', astonmartin: 'astonmartin', audi: 'audi',
-  bentley: 'bentley', bmw: 'bmw', byd: 'byd', cadillac: 'cadillac', chevrolet: 'chevrolet',
-  chrysler: 'chrysler', citroen: 'citroen', cupra: 'cupra', dacia: 'dacia', dodge: 'dodge',
-  ferrari: 'ferrari', fiat: 'fiat', ford: 'ford', geely: 'geely', honda: 'honda',
-  hyundai: 'hyundai', infiniti: 'infiniti', isuzu: 'isuzu', jaguar: 'jaguar', jeep: 'jeep',
-  kia: 'kia', 'kia motors': 'kia', lamborghini: 'lamborghini', 'land rover': 'landrover',
-  lexus: 'lexus', lotus: 'lotus', mazda: 'mazda', 'mercedes benz': 'mercedes', 'mercedes-benz': 'mercedes',
-  mini: 'mini', mitsubishi: 'mitsubishi', nissan: 'nissan', opel: 'opel', peugeot: 'peugeot',
-  porsche: 'porsche', ram: 'ram', renault: 'renault', saab: 'saab', subaru: 'subaru',
-  suzuki: 'suzuki', tesla: 'tesla', toyota: 'toyota', volkswagen: 'volkswagen', volvo: 'volvo',
-};
-
-function normalizedBrand(name) {
-  return String(name || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+/**
+ * Emblema de una marca de vehículo. Los logos se sirven desde public/brand-logos
+ * (antes se pedían a un CDN externo que fue dando de baja emblemas de autos: varias
+ * marcas ya mapeadas —Mercedes, Lexus, Dodge, Jaguar, Land Rover, Alfa Romeo— caían
+ * en 404 y terminaban mostrando el mismo ícono genérico).
+ *
+ * Cualquier marca sin emblema disponible se dibuja con su monograma, así que toda
+ * marca que el vendedor registre como especialista se distingue de las demás.
+ */
+// El tamaño depende del largo: tres letras anchas (MOR, WOL, XMO) no caben en el
+// círculo de 17px con el cuerpo que usan las de dos.
+function Monogram({ brand }) {
+  const text = vehicleBrandMonogram(brand);
+  return (
+    <span className="vehicle-brand-monogram" data-length={text.length} aria-hidden="true">{text}</span>
+  );
 }
 
 export default function VehicleBrandLogo({ brand, className = '', title }) {
   const [failed, setFailed] = useState(false);
-  const slug = BRAND_SLUGS[normalizedBrand(brand)];
+  const logoUrl = vehicleBrandLogoUrl(brand);
   const label = title || brand;
 
   return (
     <span className={`vehicle-brand-icon ${className}`.trim()} data-tooltip={label} title={label} aria-label={label}>
-      {slug && !failed ? (
-        <img src={`https://cdn.simpleicons.org/${slug}/1268f3`} alt="" onError={() => setFailed(true)} />
-      ) : <CarFront size={12} aria-hidden="true" />}
+      {logoUrl && !failed ? (
+        <img src={logoUrl} alt="" onError={() => setFailed(true)} />
+      ) : (
+        <Monogram brand={brand} />
+      )}
     </span>
   );
 }

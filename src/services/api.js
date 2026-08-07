@@ -163,13 +163,12 @@ export async function deleteAccountApi(userId) {
   return fetchApi(`/auth/users/${userId}`, { method: 'DELETE' });
 }
 
-/** Sube un logo/avatar o portada al backend; el backend lo persiste en R2. */
-export async function uploadProfileImageApi(file, type = 'avatar') {
+/** Sube el logo/avatar del perfil. Las portadas se eligen desde plantillas R2. */
+export async function uploadProfileImageApi(file) {
   const token = localStorage.getItem('repuestop_token');
   const formData = new FormData();
   formData.append('file', file);
-  const endpoint = type === 'cover' ? '/users/perfil/portada' : '/users/perfil/foto';
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${API_BASE_URL}/users/perfil/foto`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
@@ -181,6 +180,17 @@ export async function uploadProfileImageApi(file, type = 'avatar') {
   return data;
 }
 
+export async function getStoreCoverTemplatesApi() {
+  return fetchApi('/users/perfil/portadas-plantilla', { method: 'GET' });
+}
+
+export async function selectStoreCoverTemplateApi(templateId) {
+  return fetchApi('/users/perfil/portada-plantilla', {
+    method: 'PUT',
+    body: JSON.stringify({ templateId }),
+  });
+}
+
 /**
  * Perfil: Pedidos, favoritos e inventario/tienda del proveedor
  */
@@ -189,7 +199,9 @@ export async function getBuyerOrdersApi(usuarioId) {
 }
 
 export async function getSellerOrdersApi(proveedorId) {
-  return fetchApi(`/proveedores/${proveedorId}/pedidos`, { method: 'GET' });
+  // Igual que mobile: el backend pagina este historial y permite hasta 100 filas.
+  // Se carga el lote máximo para que búsqueda y filtros operen sobre el historial visible completo.
+  return fetchApi(`/proveedores/${proveedorId}/pedidos?size=100`, { method: 'GET' });
 }
 
 export async function getFavoritesApi(usuarioId) {
@@ -206,8 +218,37 @@ export async function getSellerInventorySummaryApi(proveedorId) {
   return fetchApi(`/proveedores/${proveedorId}/inventario/resumen`, { method: 'GET' });
 }
 
+export async function updateSellerProductTopApi(proveedorId, productId, destacado) {
+  return fetchApi(`/proveedores/${proveedorId}/inventario/${productId}/top`, {
+    method: 'PATCH',
+    body: JSON.stringify({ destacado: Boolean(destacado) }),
+  });
+}
+
 export async function getSellerConversationsApi(proveedorId) {
   return fetchApi(`/proveedores/${proveedorId}/conversaciones`, { method: 'GET' });
+}
+
+export async function getConversationMessagesApi(conversationId) {
+  return fetchApi(`/conversaciones/${conversationId}/mensajes`, { method: 'GET' });
+}
+
+export async function sendConversationMessageApi(conversationId, texto) {
+  return fetchApi(`/conversaciones/${conversationId}/mensajes`, {
+    method: 'POST',
+    body: JSON.stringify({ texto }),
+  });
+}
+
+export async function saveConversationQuoteApi(conversationId, payload) {
+  return fetchApi(`/conversaciones/${conversationId}/cotizacion`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function markConversationReadApi(conversationId) {
+  return fetchApi(`/conversaciones/${conversationId}/leidos`, { method: 'PUT' });
 }
 
 // Preguntas públicas asociadas a productos del catálogo del vendedor.
@@ -228,6 +269,34 @@ export async function createProductQuestionApi(productoId, question) {
 
 export async function getSellerStoreApi(proveedorId) {
   return fetchApi(`/proveedores/${proveedorId}/tienda`, { method: 'GET' });
+}
+
+/** Fondos de pedidos finalizados que todavía no han sido incluidos en un retiro. */
+export async function getSellerPendingWithdrawalsApi(proveedorId) {
+  return fetchApi(`/proveedores/${proveedorId}/retiros/pendientes`, { method: 'GET' });
+}
+
+export async function getSellerWithdrawalsApi(proveedorId) {
+  return fetchApi(`/proveedores/${proveedorId}/retiros`, { method: 'GET' });
+}
+
+export async function getSellerWithdrawalDetailApi(proveedorId, retiroId) {
+  return fetchApi(`/proveedores/${proveedorId}/retiros/${retiroId}`, { method: 'GET' });
+}
+
+export async function createSellerWithdrawalApi(proveedorId) {
+  return fetchApi(`/proveedores/${proveedorId}/retiros`, { method: 'POST' });
+}
+
+export async function getSellerBankAccountApi(proveedorId) {
+  return fetchApi(`/proveedores/${proveedorId}/cuenta-bancaria`, { method: 'GET' });
+}
+
+export async function updateSellerBankAccountApi(proveedorId, payload) {
+  return fetchApi(`/proveedores/${proveedorId}/cuenta-bancaria`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
 }
 
 // El backend expone PUT /pedidos/{pedidoId}/estado (PedidoController). Con PATCH
@@ -271,6 +340,15 @@ export async function getPublicProductsApi({ page = 0, size = 12, texto, patente
   if (precioMin) params.set('precioMin', String(precioMin));
   if (precioMax) params.set('precioMax', String(precioMax));
   return fetchApi(`/inventario/productos?${params.toString()}`, { method: 'GET' });
+}
+
+/**
+ * Ficha pública de un producto. Se usa al entrar por URL directa
+ * (`/repuestos/{id}-{slug}`), cuando no venimos navegando desde el catálogo.
+ * Si el backend aún no expone el detalle unitario, el llamador cae al listado.
+ */
+export async function getPublicProductApi(productId) {
+  return fetchApi(`/inventario/productos/${productId}`, { method: 'GET' });
 }
 
 export async function getPublicCategoryCountsApi() {

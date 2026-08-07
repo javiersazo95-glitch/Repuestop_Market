@@ -1,0 +1,4 @@
+# SPA fallback: el router vive en el cliente, así que cualquier URL profunda
+# (/repuestos/12-pastillas, /perfil/pedidos, ...) debe servir index.html.
+# Lo leen Netlify y Cloudflare Pages.
+/*    /index.html   200

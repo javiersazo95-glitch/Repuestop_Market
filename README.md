@@ -1,16 +1,46 @@
-# React + Vite
+# RepuesTop Market
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Marketplace de repuestos (React + Vite). El backend Spring Boot se configura con
+`VITE_API_URL` (ver `.env.example`).
 
-Currently, two official plugins are available:
+## Rutas
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+La navegación usa `react-router-dom`. Toda URL es compartible y sobrevive a un
+refresco; los paths se construyen desde `src/routes/paths.js` (no escribas rutas
+a mano en los componentes).
 
-## React Compiler
+| Ruta | Vista |
+| --- | --- |
+| `/` | Home del marketplace |
+| `/repuestos` | Catálogo. Filtros en el query string: `?categoria=`, `?categoriaId=`, `?subcategoria=`, `?subcategoriaId=`, `?q=`, `?pagina=` |
+| `/repuestos/:id-slug` | Ficha del repuesto (ej. `/repuestos/37-aceite-5w30`) |
+| `/tiendas` | Directorio de tiendas |
+| `/tiendas/:id-slug` | Perfil público de una tienda |
+| `/perfil/:pestaña` | Panel de la cuenta (requiere sesión). Ej. `/perfil/pedidos` |
+| `/ayuda` | Centro de ayuda |
+| `/nosotros` | Quiénes somos |
+| `/vender` | Registro de tienda fundadora |
+| cualquier otra | Página 404 |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+El id va primero en el slug (`37-aceite-5w30`) para poder resolverlo aunque el
+nombre del producto cambie.
 
-## Expanding the Oxlint configuration
+## Despliegue (fallback SPA)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+El router vive en el cliente, así que el servidor debe responder `index.html`
+para cualquier ruta desconocida; si no, `/perfil/pedidos` devuelve 404 al
+refrescar. Ya está resuelto para Netlify/Cloudflare Pages (`public/_redirects`) y
+Vercel (`vercel.json`). En Nginx:
+
+```nginx
+location / {
+  try_files $uri $uri/ /index.html;
+}
+```
+
+## Scripts
+
+- `npm run dev` — servidor de desarrollo
+- `npm run build` — build de producción en `dist/`
+- `npm run preview` — sirve el build
+- `npm run lint` — oxlint

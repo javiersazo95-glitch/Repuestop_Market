@@ -174,6 +174,15 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const refreshProfile = async (overrides = {}) => {
+    const profile = normalizeUserMedia(await getProfileApi());
+    const mergedUser = normalizeUserMedia({ ...user, ...profile, ...overrides });
+    setUser(mergedUser);
+    if (profile?.role) setRole(profile.role);
+    localStorage.setItem('repuestop_user', JSON.stringify(mergedUser));
+    return mergedUser;
+  };
+
   const deleteAccount = async () => {
     const userId = user?.userId ?? user?.id;
     if (!userId) {
@@ -197,6 +206,9 @@ export function AuthProvider({ children }) {
     token,
     role,
     isLoggedIn: !!token && !!user,
+    // Hay token guardado pero el perfil aún viaja desde el backend: las rutas
+    // privadas deben esperar en vez de redirigir al home.
+    isRestoringSession: !!token && !user,
     isLoading,
     login,
     loginWithGoogle,
@@ -204,6 +216,7 @@ export function AuthProvider({ children }) {
     registerBuyer,
     registerSeller,
     updateProfile,
+    refreshProfile,
     deleteAccount,
   };
 

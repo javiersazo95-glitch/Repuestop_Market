@@ -3,6 +3,7 @@ import {
   Clock, Wrench, Truck, PackageCheck, ShieldCheck, AlertCircle, XCircle,
   RotateCcw, FileText, User, Store, Package, Info, ChevronRight, Check
 } from 'lucide-react';
+import { resolveMediaUrl } from '../services/api';
 
 export const UNIFIED_STATUS_CONFIG = {
   PENDIENTE: { label: 'Pendiente de pago', icon: Clock, className: 'badge-amber', tone: 'amber' },
@@ -12,6 +13,7 @@ export const UNIFIED_STATUS_CONFIG = {
   preparing: { label: 'En preparación', icon: Wrench, className: 'badge-amber-dark', tone: 'amber' },
   ENVIADO: { label: 'Enviado', icon: Truck, className: 'badge-blue', tone: 'blue' },
   sent: { label: 'Enviado', icon: Truck, className: 'badge-blue', tone: 'blue' },
+  LISTO_RETIRO: { label: 'Listo para retirar', icon: Store, className: 'badge-blue', tone: 'blue' },
   ENTREGADO: { label: 'Entregado', icon: PackageCheck, className: 'badge-green', tone: 'green' },
   received: { label: 'Recibido', icon: PackageCheck, className: 'badge-green', tone: 'green' },
   FINALIZADO: { label: 'Finalizado', icon: ShieldCheck, className: 'badge-emerald', tone: 'green' },
@@ -38,6 +40,10 @@ function formatOrderDate(value) {
   });
 }
 
+function normalizeOrderText(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
 export function OrderStatusBadge({ status, size = 'medium' }) {
   const normalizedStatus = String(status || 'PENDIENTE').toUpperCase();
   const config = UNIFIED_STATUS_CONFIG[status] || UNIFIED_STATUS_CONFIG[normalizedStatus] || UNIFIED_STATUS_CONFIG.PENDIENTE;
@@ -56,6 +62,7 @@ export default function OrderCard({
   mode = 'buyer',
   onSelectOrder,
   onUpdateStatus,
+  withdrawalDate,
 }) {
   const [showCommissionModal, setShowCommissionModal] = useState(false);
   const isSeller = mode === 'seller';
@@ -69,31 +76,38 @@ export default function OrderCard({
   // Normalización de campos según comprador vs vendedor
   const rawStatus = order.estado || order.status || 'PENDIENTE';
   const normStatus = String(rawStatus).toUpperCase();
+  const deliveryTerms = String(order.deliveryTerms || order.tipoEnvio || order.direccionEntrega || 'Despacho a domicilio');
+  const isStorePickup = normalizeOrderText(deliveryTerms).includes('retiro') || normalizeOrderText(deliveryTerms).includes('tienda') || order.shipping?.method === 'store_pickup';
+  const displayStatus = normStatus === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : rawStatus;
 
   const orderIdShort = String(order.id || '').slice(-6).toUpperCase();
   const orderDate = formatOrderDate(order.createdAt || order.fecha);
   const orderSource = order.source === 'quote' || order.origen === 'COTIZACION' ? 'Cotización' : 'Carrito';
 
   const buyerName = order.compradorNombre || order.buyerName || order.usuarioNombre || 'Cliente sin nombre';
-  const buyerAvatar = order.compradorAvatarUrl || order.buyerAvatarUrl || null;
+  const buyerAvatar = resolveMediaUrl(order.compradorFotoPerfil || order.compradorAvatarUrl || order.buyerAvatarUrl || order.buyerAvatar || null);
   const sellerName = order.vendedorNombre || order.sellerName || order.nombreTienda || 'Tienda RepuesTop';
 
-  const firstItemPhoto = firstItem.imagenUrl || firstItem.productPhotoUri || (firstItem.imageUrls && firstItem.imageUrls[0]);
+  const firstItemPhoto = resolveMediaUrl(firstItem.imagenUrl || firstItem.imageUrl || firstItem.productPhotoUri || (firstItem.imageUrls && firstItem.imageUrls[0]));
   const firstItemName = firstItem.nombre || firstItem.productName || firstItem.name || 'Repuesto de auto';
   const firstItemBrand = firstItem.marca || firstItem.productBrand || firstItem.brand || '';
   const firstItemSku = firstItem.sku || firstItem.productSku || '';
-  const firstItemPrice = Number(firstItem.precio || firstItem.unitPrice || 0);
+  const firstItemPrice = Number(firstItem.precioUnitario || firstItem.precio || firstItem.unitPrice || 0);
   const firstItemQty = Number(firstItem.cantidad || firstItem.quantity || 1);
 
-  const subtotal = Number(order.subtotal || order.total || 0);
+  const itemsSubtotal = items.reduce((total, item) => total + (Number(item.precioUnitario || item.precio || item.unitPrice || 0) * Number(item.cantidad || item.quantity || 1)), 0);
+  const subtotal = Number(order.subtotal || itemsSubtotal || order.total || 0);
   const totalSeller = Number(order.totalVendedor ?? order.totalSeller ?? (subtotal * 0.93));
   const totalBuyer = Number(order.total || subtotal);
 
   // Cálculo de comisiones para el modal de información del vendedor
-  const commissionRate = order.commissionRate ? order.commissionRate * 100 : subtotal > 250000 ? 5 : subtotal > 100000 ? 7 : 10;
+  const storedCommissionRate = Number(order.commissionRate ?? order.comisionTasaAplicada ?? 0);
+  const commissionRate = storedCommissionRate > 0 ? (storedCommissionRate <= 1 ? storedCommissionRate * 100 : storedCommissionRate) : subtotal > 250000 ? 5 : subtotal > 100000 ? 7 : 10;
   const repuestopFee = order.commissionSeller || Math.round(subtotal * (commissionRate / 100) * 1.19);
   const paymentProcessingFee = order.comisionPasarela || Math.max(0, Math.round(subtotal * 0.025 * 1.19));
   const totalDeductions = repuestopFee + paymentProcessingFee;
+  const paymentFailed = String(order.paymentStatus || '').toLowerCase() === 'failed' && !['CANCELADO', 'CANCELLED'].includes(normStatus);
+  const hasRefund = ['REEMBOLSADO', 'REEMBOLSO_SOLICITADO'].includes(String(order.refundStatus || '').toUpperCase());
 
   // Lógica de cambio de estado
   const handleQuickStatusChange = (e, nextStatus) => {
@@ -189,7 +203,7 @@ export default function OrderCard({
               </span>
             )}
           </div>
-          <OrderStatusBadge status={rawStatus} size="small" />
+          <OrderStatusBadge status={displayStatus} size="small" />
         </div>
 
         {/* Persona Row (Buyer vs Seller profile) */}
@@ -221,6 +235,20 @@ export default function OrderCard({
           )}
         </div>
 
+        {paymentFailed && (
+          <div className="order-card-state-banner payment-failed">
+            <AlertCircle size={18} />
+            <div><strong>Pago fallido</strong><span>El comprador puede retomarlo desde su menú de pedidos.</span></div>
+          </div>
+        )}
+
+        {hasRefund && (
+          <div className="order-card-state-banner refund">
+            <ShieldCheck size={18} />
+            <div><strong>{String(order.refundStatus).toUpperCase() === 'REEMBOLSADO' ? 'Reembolsado' : 'Reembolso en proceso'}</strong></div>
+          </div>
+        )}
+
         {/* Product Details Row */}
         <div className="order-card-product-row">
           {firstItemPhoto ? (
@@ -247,7 +275,7 @@ export default function OrderCard({
           <div className="delivery-info">
             <span className="footer-label">Entrega</span>
             <strong className="footer-value">
-              {order.deliveryTerms || order.tipoEnvio || order.direccionEntrega || 'Despacho a domicilio'}
+              {deliveryTerms}
             </strong>
           </div>
 
@@ -276,6 +304,15 @@ export default function OrderCard({
                 Descuentos por servicio y pago: -{formatCLP(totalDeductions)}
               </span>
             )}
+            {isSeller && (
+              <span className="order-withdrawal-note">
+                {normStatus === 'FINALIZADO'
+                  ? withdrawalDate
+                    ? `Retiro programado para el ${new Date(withdrawalDate).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}`
+                    : 'Listo para solicitar retiro'
+                  : 'Finaliza el pedido para solicitar el retiro del dinero'}
+              </span>
+            )}
           </div>
         </div>
 
@@ -286,7 +323,7 @@ export default function OrderCard({
             className="btn-view-details"
             onClick={(e) => {
               e.stopPropagation();
-              onSelectOrder && onSelectOrder(order);
+              onSelectOrder?.(order);
             }}
           >
             <span>Ver detalles completos</span>

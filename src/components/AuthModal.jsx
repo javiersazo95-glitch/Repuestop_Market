@@ -10,6 +10,32 @@ import { useAuth } from '../context/AuthContext';
 // Google son públicos por diseño, la validación real ocurre en el backend contra el idToken firmado.
 const GOOGLE_CLIENT_ID = '117201265366-ao32ed2314d1ncce1qt47biide1ij62r.apps.googleusercontent.com';
 
+// Google Identity Services mantiene una única configuración global por página.
+// React puede montar efectos dos veces en desarrollo y el modal puede abrirse muchas
+// veces, por lo que initialize() no debe vivir dentro del ciclo de vida del botón.
+const googleIdentityState = {
+  initialized: false,
+  activeCredentialHandler: null,
+};
+
+function initializeGoogleIdentity(onCredential) {
+  if (!window.google?.accounts?.id) return false;
+
+  googleIdentityState.activeCredentialHandler = onCredential;
+  if (!googleIdentityState.initialized) {
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: (response) => {
+        if (response?.credential) {
+          googleIdentityState.activeCredentialHandler?.(response.credential);
+        }
+      },
+    });
+    googleIdentityState.initialized = true;
+  }
+  return true;
+}
+
 const BUYER_FEATURES = [
   'Busca repuestos compatibles por patente',
   'Cotiza en tiempo real con varias tiendas',
@@ -26,27 +52,30 @@ const SELLER_FEATURES = [
 
 function GoogleSignInButton({ onCredential, disabled }) {
   const containerRef = useRef(null);
+  const credentialHandlerRef = useRef(onCredential);
+
+  useEffect(() => {
+    credentialHandlerRef.current = onCredential;
+  }, [onCredential]);
 
   useEffect(() => {
     if (disabled || !containerRef.current) return;
 
     let cancelled = false;
+    const currentContainer = containerRef.current;
+    const credentialHandler = (credential) => credentialHandlerRef.current?.(credential);
 
     const renderButton = () => {
-      if (cancelled || !window.google?.accounts?.id || !containerRef.current) return;
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: (response) => onCredential(response.credential),
-      });
-      containerRef.current.innerHTML = '';
-      window.google.accounts.id.renderButton(containerRef.current, {
+      if (cancelled || !currentContainer.isConnected || !initializeGoogleIdentity(credentialHandler)) return;
+      currentContainer.replaceChildren();
+      window.google.accounts.id.renderButton(currentContainer, {
         type: 'standard',
         theme: 'outline',
         size: 'large',
         shape: 'pill',
         text: 'continue_with',
         logo_alignment: 'left',
-        width: containerRef.current.offsetWidth || 360,
+        width: currentContainer.offsetWidth || 360,
       });
     };
 
@@ -63,11 +92,19 @@ function GoogleSignInButton({ onCredential, disabled }) {
       return () => {
         cancelled = true;
         clearInterval(intervalId);
+        if (googleIdentityState.activeCredentialHandler === credentialHandler) {
+          googleIdentityState.activeCredentialHandler = null;
+        }
+        currentContainer.replaceChildren();
       };
     }
 
     return () => {
       cancelled = true;
+      if (googleIdentityState.activeCredentialHandler === credentialHandler) {
+        googleIdentityState.activeCredentialHandler = null;
+      }
+      currentContainer.replaceChildren();
     };
   }, [disabled]);
 

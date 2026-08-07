@@ -1,7 +1,8 @@
 import React from 'react';
 import {
-  MessageSquare, Clock, CheckCircle2, XCircle, Send, User, ChevronRight, Package
+  MessageSquare, Clock, CheckCircle2, XCircle, Send, User, ChevronRight
 } from 'lucide-react';
+import { resolveMediaUrl } from '../services/api';
 
 export const UNIFIED_QUOTE_STATUS = {
   PENDIENTE: { label: 'Pendiente de respuesta', icon: Clock, className: 'badge-amber' },
@@ -49,16 +50,19 @@ export default function QuoteCard({
   if (!quote) return null;
 
   const quoteIdShort = String(quote.id || '').slice(-6).toUpperCase();
-  const dateStr = formatDate(quote.createdAt || quote.fecha);
-  const rawStatus = quote.estado || quote.status || 'PENDIENTE';
+  const activeQuote = quote.cotizacion || null;
+  const dateStr = formatDate(quote.ultimoMensajeFecha || quote.createdAt || quote.fecha);
+  const rawStatus = activeQuote ? 'RESPONDIDA' : 'PENDIENTE';
   const normStatus = String(rawStatus).toUpperCase();
 
   const customerName = quote.otroParticipanteNombre || quote.compradorNombre || quote.buyerName || 'Comprador RepuesTop';
-  const customerAvatar = quote.compradorAvatarUrl || null;
+  const customerAvatar = resolveMediaUrl(quote.otroParticipanteFotoUrl || quote.compradorAvatarUrl || null);
   const productName = quote.productoNombre || quote.productName || 'Consulta de repuesto';
-  const productPhoto = quote.imagenUrl || quote.productoImagen;
+  const productPhoto = resolveMediaUrl(quote.productoImagenUrl || quote.imagenUrl || quote.productoImagen);
   const lastMessage = quote.ultimoMensaje || quote.mensaje || 'Solicito cotización para este repuesto...';
-  const quotedPrice = quote.precioCotizado || quote.montoEstimado ? Number(quote.precioCotizado || quote.montoEstimado) : null;
+  const quotedPriceRaw = activeQuote?.precioFinal ?? activeQuote?.precio ?? quote.precioCotizado ?? quote.montoEstimado;
+  const quotedPrice = quotedPriceRaw != null ? Number(quotedPriceRaw) : null;
+  const unreadCount = Number(quote.mensajesNoLeidos || 0);
 
   return (
     <div className="order-card-container quote-card-container" onClick={() => onSelectQuote && onSelectQuote(quote)}>
@@ -66,7 +70,7 @@ export default function QuoteCard({
       <div className="order-card-header">
         <div className="order-card-title-group">
           <h3 className="order-card-id">Cotización #{quoteIdShort}</h3>
-          <span className="order-card-date-meta">{dateStr}</span>
+          <span className="order-card-date-meta">{dateStr}{unreadCount > 0 ? ` · ${unreadCount} sin leer` : ''}</span>
         </div>
         <QuoteStatusBadge status={rawStatus} size="small" />
       </div>
@@ -106,7 +110,7 @@ export default function QuoteCard({
         <div className="delivery-info">
           <span className="footer-label">Estado solicitud</span>
           <strong className="footer-value">
-            {normStatus === 'PENDIENTE' ? 'Esperando respuesta' : 'Cotización procesada'}
+            {normStatus === 'PENDIENTE' ? 'Esperando tu respuesta' : activeQuote?.disponibilidad || 'Oferta enviada'}
           </strong>
         </div>
 

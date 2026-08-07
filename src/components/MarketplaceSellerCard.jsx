@@ -1,17 +1,10 @@
 import React from 'react';
-import { ArrowRight, Bike, Building2, Clock, MapPin, Package, ShieldCheck, Truck } from 'lucide-react';
+import { ArrowRight, Clock, MapPin, Package, ShieldCheck } from 'lucide-react';
 import VehicleBrandLogo from './VehicleBrandLogo';
+import { parseShippingMethods, resolveShippingService } from '../data/shippingMethods';
 
 function initials(name) {
   return String(name || 'RT').split(/\s+/).slice(0, 2).map((word) => word[0]).join('').toUpperCase();
-}
-
-function shippingConfig(method) {
-  const normalized = String(method || '').toLowerCase();
-  if (normalized.includes('retiro') || normalized.includes('tienda')) return { label: 'Retiro en tienda', icon: Building2 };
-  if (normalized.includes('dentro') || (normalized.includes('comuna') && !normalized.includes('fuera'))) return { label: 'Envío dentro de la comuna', icon: Bike };
-  if (normalized.includes('fuera') || normalized.includes('región') || normalized.includes('region') || normalized.includes('nacional')) return { label: 'Envío fuera de la comuna', icon: Truck };
-  return { label: method || 'Método de envío', icon: Package };
 }
 
 export default function MarketplaceSellerCard({ store, avatarPhoto, onView }) {
@@ -19,10 +12,7 @@ export default function MarketplaceSellerCard({ store, avatarPhoto, onView }) {
   const publications = Number(store.totalPublicaciones ?? 0);
   const averageResponseTime = store.averageResponseTime || store.tiempoPromedioRespuesta || '15 min';
   const reviewCount = Number(store.reviewCount ?? 0);
-  const parsedShippingMethods = Array.isArray(store.metodosEnvio)
-    ? store.metodosEnvio
-    : String(store.metodosEnvio || '').split(',').map((method) => method.trim()).filter(Boolean);
-  const shippingMethods = parsedShippingMethods;
+  const shippingMethods = parseShippingMethods(store.metodosEnvio);
   const specialistBrands = Array.isArray(store.marcasEspecialistas) ? store.marcasEspecialistas : [];
   const averageDispatchTime = store.averageDispatchTime || store.tiempoPromedioDespacho || '24 h';
 
@@ -79,7 +69,7 @@ export default function MarketplaceSellerCard({ store, avatarPhoto, onView }) {
         <span>Envíos</span>
         <div>
           {shippingMethods.slice(0, 3).map((method) => {
-            const config = shippingConfig(method);
+            const config = resolveShippingService(method);
             const ShippingIcon = config.icon;
             return (
               <span className="market-shipping-icon" key={method} title={config.label} tabIndex={0} aria-label={config.label}>
