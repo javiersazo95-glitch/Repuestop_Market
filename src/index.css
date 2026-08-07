@@ -9080,6 +9080,16 @@ input, select, textarea {
   padding: 8px 11px;
   border-bottom: 1px solid #edf1f6;
   border-radius: 8px;
+  cursor: pointer;
+}
+.header-category-search-result > * {
+  pointer-events: none;
+}
+.header-category-mega-menu .header-category-list button > * {
+  pointer-events: none;
+}
+.header-subcategory-card > * {
+  pointer-events: none;
 }
 .header-category-search-result .category-icon-tile {
   width: 32px;
@@ -10074,9 +10084,20 @@ input, select, textarea {
 .market-product-category[data-category='iluminacion'], .market-product-category[data-category='aceites'] { color: #9f7011; background: #fff1cf; }
 .market-product-category[data-category='carroceria'] { color: #bd3d75; background: #ffe9f3; }
 .market-product-category[data-category='neumaticos'] { color: #187f91; background: #e7f8fb; }
-.market-product-meta { min-height: 25px; margin-top: 8px; display: flex; align-items: center; gap: 9px; color: #728198; font-size: 8.7px; white-space: nowrap; }
+.market-product-store { min-height: 18px; margin-top: 7px; display: flex; align-items: center; gap: 5px; overflow: hidden; color: #3a5c8a; font-size: 10.5px; font-weight: 750; }
+.market-product-store > svg { flex: 0 0 auto; color: #1268f3; }
+.market-product-store-logo { width: 16px; height: 16px; flex: 0 0 auto; border: 1px solid #e1e7ef; border-radius: 50%; object-fit: cover; background: #fff; }
+.market-product-store-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.market-product-store-city { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 2px; margin-left: auto; padding-left: 6px; color: #8493a8; font-size: 9.5px; font-weight: 650; white-space: nowrap; }
+.market-product-store-city svg { flex: 0 0 auto; }
+.market-product-meta { min-height: 25px; margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 5px 9px; color: #728198; font-size: 8.7px; white-space: nowrap; }
 .market-product-meta span { min-width: 0; display: inline-flex; align-items: center; gap: 3px; overflow: hidden; text-overflow: ellipsis; }
 .market-product-meta span:first-child { max-width: 55%; }
+.market-product-rating { color: #a3720b; font-weight: 800; }
+.market-product-rating svg { color: #f0a30a; fill: #f0a30a; }
+.market-product-stock { color: #167149; font-weight: 800; }
+.market-product-stock.low { color: #b3720c; }
+.market-product-stock.out { color: #b3272b; }
 .market-product-price { margin-top: 4px; display: flex; align-items: baseline; gap: 8px; min-height: 24px; }
 .market-product-price strong { color: #101c33; font-size: 15.5px; font-weight: 900; }
 .market-product-price del { color: #8e99aa; font-size: 9.5px; }

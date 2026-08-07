@@ -34,6 +34,8 @@ export default function Header({
   const [backendCategories, setBackendCategories] = useState([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const categorySearchInputRef = useRef(null);
+  const categoryMenuRef = useRef(null);
+  const userMenuRef = useRef(null);
   const categoryButtonRefs = useRef(new Map());
   const subcategoryCardRefs = useRef(new Map());
   const { user, isLoggedIn, role, logout } = useAuth();
@@ -144,7 +146,44 @@ export default function Header({
     });
   }, [activeHeaderCategoryId, categorySearchQuery, highlightedSubcategory]);
 
+  const hoverTimeoutRef = useRef(null);
+  const searchSelectionLockRef = useRef(false);
+
+  useEffect(() => {
+    if (!showCategoryMenu && !showUserMenu) return;
+    const handleClickOutside = (event) => {
+      if (showCategoryMenu && categoryMenuRef.current && !categoryMenuRef.current.contains(event.target)) {
+        setShowCategoryMenu(false);
+      }
+      if (showUserMenu && userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showCategoryMenu, showUserMenu]);
+
+  const handleCategoryMouseEnter = (categoryId) => {
+    if (searchSelectionLockRef.current) return;
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    const delay = highlightedSubcategory ? 300 : 80;
+    hoverTimeoutRef.current = setTimeout(() => {
+      if (searchSelectionLockRef.current) return;
+      setActiveHeaderCategoryId(categoryId);
+      setHighlightedSubcategory('');
+    }, delay);
+  };
+
   const handleCategorySearchResult = (result) => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    searchSelectionLockRef.current = true;
+    setTimeout(() => {
+      searchSelectionLockRef.current = false;
+    }, 600);
     setActiveHeaderCategoryId(result.category.id);
     setHighlightedSubcategory(result.type === 'subcategory' ? result.label : '');
     setCategorySearchQuery('');
@@ -208,7 +247,7 @@ export default function Header({
         </form>
 
         <div className="header-user-group">
-          <div className={`user-login-box ${isLoggedIn ? 'logged-in' : ''}`} onClick={handleUserBoxClick}>
+          <div ref={userMenuRef} className={`user-login-box ${isLoggedIn ? 'logged-in' : ''}`} onClick={handleUserBoxClick}>
             <div className="avatar-wrap">
               {isLoggedIn && user?.userProfileUrl ? (
                 <img src={user.userProfileUrl} alt="" className="user-avatar-photo" referrerPolicy="no-referrer" />
@@ -258,7 +297,7 @@ export default function Header({
 
       <nav className="header-primary-nav">
         <div className="container primary-nav-inner">
-          <div className="categories-nav-wrap">
+          <div ref={categoryMenuRef} className="categories-nav-wrap">
             <button className="categories-nav-button" onClick={() => setShowCategoryMenu((open) => !open)}>
               <Menu size={20} /> Categorías
             </button>
@@ -289,7 +328,11 @@ export default function Header({
                         type="button"
                         key={`${result.type}:${result.category.id}:${result.label}`}
                         className="header-category-search-result"
-                        onClick={() => handleCategorySearchResult(result)}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          handleCategorySearchResult(result);
+                        }}
                       >
                         <CategoryIconTile iconName={CATEGORY_VISUALS[result.category.id].iconName} color={CATEGORY_VISUALS[result.category.id].color} size={17} />
                         <span className="header-category-result-copy">
@@ -317,9 +360,13 @@ export default function Header({
                         else categoryButtonRefs.current.delete(category.id);
                       }}
                       className={category.id === activeHeaderCategory.id ? 'active' : ''}
-                      onMouseEnter={() => { setActiveHeaderCategoryId(category.id); setHighlightedSubcategory(''); }}
-                      onFocus={() => { setActiveHeaderCategoryId(category.id); setHighlightedSubcategory(''); }}
-                      onClick={() => { setShowCategoryMenu(false); onSelectCategory({ category: category.filterId, categoryId: getBackendCategory(category)?.id }); }}
+                      onMouseEnter={() => handleCategoryMouseEnter(category.id)}
+                      onFocus={() => handleCategoryMouseEnter(category.id)}
+                      onClick={() => {
+                        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+                        setShowCategoryMenu(false);
+                        onSelectCategory({ category: category.filterId, categoryId: getBackendCategory(category)?.id });
+                      }}
                     >
                       <span className="header-category-label"><CategoryIconTile iconName={CATEGORY_VISUALS[category.id].iconName} color={CATEGORY_VISUALS[category.id].color} size={16} />{category.nombre}</span>
                       <ChevronRight size={16} aria-hidden="true" />
@@ -329,7 +376,11 @@ export default function Header({
                 <div className="header-subcategory-panel">
                   <div className="header-subcategory-panel-title">
                     <strong>{activeHeaderCategory.nombre}</strong>
-                    <button onClick={() => { setShowCategoryMenu(false); onSelectCategory({ category: activeHeaderCategory.filterId, categoryId: getBackendCategory(activeHeaderCategory)?.id }); }}>Ver más <ChevronRight size={16} /></button>
+                    <button onClick={() => {
+                      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+                      setShowCategoryMenu(false);
+                      onSelectCategory({ category: activeHeaderCategory.filterId, categoryId: getBackendCategory(activeHeaderCategory)?.id });
+                    }}>Ver más <ChevronRight size={16} /></button>
                   </div>
                   <div className="header-subcategory-grid">
                     {activeHeaderCategory.subcategories.map((subcategory) => {
@@ -344,7 +395,11 @@ export default function Header({
                             else subcategoryCardRefs.current.delete(subcategory);
                           }}
                           className={`header-subcategory-card ${highlightedSubcategory === subcategory ? 'search-highlighted' : ''}`}
-                          onClick={() => { setShowCategoryMenu(false); onSelectCategory({ category: activeHeaderCategory.filterId, categoryId: getBackendCategory(activeHeaderCategory)?.id, subcategoryId: inventory?.subcategoryId, subcategory: subcategory }); }}
+                          onClick={() => {
+                            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+                            setShowCategoryMenu(false);
+                            onSelectCategory({ category: activeHeaderCategory.filterId, categoryId: getBackendCategory(activeHeaderCategory)?.id, subcategoryId: inventory?.subcategoryId, subcategory: subcategory });
+                          }}
                         >
                           <img src={categoryImage || (productImage ? resolveMediaUrl(productImage) : activeHeaderCategory.image)} alt="" />
                           <span className="header-subcategory-name">{subcategory}</span>

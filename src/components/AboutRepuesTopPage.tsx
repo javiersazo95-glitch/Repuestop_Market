@@ -7,7 +7,7 @@ import {
   MessageSquareQuote, PackageCheck, Search, ShieldCheck, ShoppingCart,
   Smartphone, Store, Users, Zap, KeyRound, MapPin, UserRound,
   Package, CreditCard, CarFront, Truck, Mail, MessageCircle, ClipboardCheck, Info,
-  Menu, X,
+  Menu, Monitor, X,
 } from 'lucide-react';
 import { siteConfig, trackEvent } from './founderConfig';
 
@@ -29,7 +29,7 @@ const sellerFeatures: Feature[] = [
   { icon: <Calculator />, title: 'Precio con ganancia clara', text: 'Usa una calculadora que sugiere precio de lista según la ganancia neta que quieres obtener.' },
   { icon: <MessageSquareQuote />, title: 'Cotizaciones formales', text: 'Responde por chat con precio final, descuento, garantía, disponibilidad, notas y tiempo de entrega.' },
   { icon: <Truck />, title: 'Envíos configurables', text: 'Activa retiro en tienda, despacho local por comuna o courier nacional por pagar con tracking.' },
-  { icon: <Crown />, title: 'Tienda fundadora', text: 'Las tiendas que se inscriban al lanzamiento tendrán 5% fijo de comisión, sin importar el valor de la venta, y reconocimiento por creer temprano en RepuesTop.' },
+  { icon: <Crown />, title: 'Tienda fundadora', text: 'Las tiendas que se integren en esta primera etapa tendrán 5% fijo de comisión, sin importar el valor de la venta, y reconocimiento por creer temprano en RepuesTop.' },
 ];
 
 
@@ -38,14 +38,14 @@ const experiences = {
     label: 'Quiero comprar', icon: <ShoppingCart />, eyebrow: 'Para personas y talleres',
     title: 'Encuentra repuestos compatibles y compra con respaldo',
     text: 'Tu patente abre el camino: identificamos el vehículo, filtramos el catálogo, conectamos con tiendas verificadas y protegemos el pago durante la entrega.',
-    features: buyerFeatures, image: '/about-assets/comprador-como-funciona.png',
+    features: buyerFeatures, image: '/about-assets/comprador-web-mobile.png',
     stats: [['Patente o manual', 'Ficha técnica del vehículo'], ['3 días protegidos', 'Fondos retenidos tras entrega'], ['PIN de retiro', 'Entrega trazable en tienda']],
   },
   seller: {
     label: 'Soy proveedor', icon: <Store />, eyebrow: 'Para tiendas de repuestos',
     title: 'Vende con inventario ordenado, cotizaciones y control de despacho',
     text: 'Carga productos, responde oportunidades por chat, configura tus entregas y controla ganancias, pedidos en curso y ventas completadas desde un dashboard.',
-    features: sellerFeatures, image: '/about-assets/vendedor-como-funciona.png',
+    features: sellerFeatures, image: '/about-assets/vendedor-web-mobile.png',
     stats: [['5% fundador', 'Comisión fija por venta'], ['Excel/CSV', 'Carga masiva de stock'], ['Tienda verificada', 'Documentos revisados por soporte']],
   },
 } as const;
@@ -81,12 +81,13 @@ function Brand() {
   return <a href="#inicio" className="hero-brand" aria-label="RepuesTop, inicio"><img src="/about-assets/repuestop-icon.jpg" alt="" /><span>Repues<span>Top</span></span></a>;
 }
 
-function PlatformPill({ platform, soon = false }: { platform: 'android' | 'ios'; soon?: boolean }) {
+function PlatformPill({ platform, soon = false }: { platform: 'web' | 'android' | 'ios'; soon?: boolean }) {
+  const isWeb = platform === 'web';
   const isAndroid = platform === 'android';
   return <div className={`platform-pill ${platform}`}>
-    <span className="platform-icon">{isAndroid ? <AndroidIcon /> : <AppleIcon />}</span>
-    <span><small>{soon ? 'Próximamente en' : 'Primero en'}</small><strong>{isAndroid ? 'Android' : 'iOS'}</strong></span>
-      <i>{isAndroid ? 'Muy pronto' : 'Próx. etapa'}</i>
+    <span className="platform-icon">{isWeb ? <Monitor /> : isAndroid ? <AndroidIcon /> : <AppleIcon />}</span>
+    <span><small>{isWeb ? 'Disponible ahora' : 'App móvil próximamente'}</small><strong>{isWeb ? 'Versión web' : isAndroid ? 'Android' : 'iOS'}</strong></span>
+    <i>{isWeb ? 'Disponible' : soon ? 'Próx. etapa' : 'Muy pronto'}</i>
   </div>;
 }
 
@@ -189,7 +190,7 @@ const helpTopics: Record<HelpTopicKey, {
     icon: <UserRound />,
     intro: 'Patente, compatibilidad y compra protegida.',
     title: 'Compra repuestos con más seguridad',
-    description: 'La app reduce la incertidumbre desde la identificación del vehículo hasta la entrega del repuesto.',
+    description: 'La plataforma reduce la incertidumbre desde la identificación del vehículo hasta la entrega del repuesto, tanto en la web como en la futura app móvil.',
     questions: [
       {
         icon: <Search />,
@@ -238,7 +239,7 @@ const helpTopics: Record<HelpTopicKey, {
       {
         icon: <Crown />,
         question: '¿Qué significa ser tienda fundadora?',
-        answer: 'Ser tienda fundadora significa entrar desde el lanzamiento, vender con una comisión fija del 5% sin importar el valor de la venta y destacar como uno de los primeros comercios que creyó en RepuesTop.',
+        answer: 'Ser tienda fundadora significa entrar en esta primera etapa, vender con una comisión fija del 5% sin importar el valor de la venta y destacar como uno de los primeros comercios que creyó en RepuesTop.',
       },
     ],
   },
@@ -384,7 +385,7 @@ function FlowExperience() {
       label: 'Comprador', icon: <ShoppingCart />,
       summary: 'Desde la patente hasta la validación de entrega, cada paso reduce incertidumbre y deja trazabilidad.',
       steps: [
-        { icon: <Search />, title: 'Busca por patente', text: 'La app completa la ficha técnica o permite ingreso manual si no encuentra el vehículo.' },
+        { icon: <Search />, title: 'Busca por patente', text: 'La plataforma completa la ficha técnica o permite ingreso manual si no encuentra el vehículo.' },
         { icon: <BadgeCheck />, title: 'Compara compatibles', text: 'El catálogo se filtra con la ficha del vehículo para mostrar opciones con más contexto.' },
         { icon: <MessageSquareQuote />, title: 'Cotiza o compra', text: 'Puedes comprar directo o recibir una cotización formal por chat con garantía y vigencia.' },
         { icon: <Truck />, title: 'Elige despacho', text: 'Retiro con PIN, despacho local por comuna o courier nacional por pagar con tracking.' },
@@ -423,7 +424,7 @@ function FlowExperience() {
     <div className="flow-intro-column">
       <div className="flow-title-row"><span className="flow-title-icon"><Zap /></span><div><span className="eyebrow">Cómo funciona</span><h2>El repuesto correcto. La venta correcta.</h2><p>RepuesTop conecta búsqueda por patente, catálogo compatible, cotización, pago, despacho y reclamos en un flujo diseñado para el mercado chileno.</p></div></div>
       <div className="flow-problem-card"><span className="flow-problem-icon"><Search /></span><div><strong>El problema que resolvemos</strong><p>Comprar repuestos suele depender de llamadas, fotos sueltas y confianza informal. RepuesTop ordena la información del vehículo, valida tiendas y deja registro de la compra.</p></div></div>
-      <div className="flow-visual"><img src="/about-assets/como-funciona.jpg" alt="Cómo funciona RepuesTop" /></div>
+      <div className="flow-visual web-preview-visual"><span><Monitor /> Versión web disponible</span><img src="/about-assets/repuestop-web-home.png" alt="Marketplace web de RepuesTop disponible desde computadores" /></div>
       <div className="trust-signal-grid">{trustSignals.map((item, index) => <Reveal as="article" key={item.title} delay={index * 60}><span>{item.icon}</span><div><strong>{item.title}</strong><p>{item.text}</p></div></Reveal>)}</div>
     </div>
     <div className="flow-content-column">
@@ -527,7 +528,7 @@ function FounderSection({ onOpenSeller }: { onOpenSeller: () => void }) {
       <Reveal as="div" className="founder-copy">
         <span className="eyebrow"><Crown /> Campaña proveedores</span>
         <h2>Sé parte de las tiendas fundadoras de RepuesTop</h2>
-        <p>Estamos convocando a los primeros comercios que quieran creer en el proyecto desde el lanzamiento: tiendas reales, verificadas y protagonistas de una nueva forma de vender repuestos en Chile, con 5% fijo de comisión como beneficio fundador.</p>
+        <p>Estamos convocando a los primeros comercios que quieran sumarse a esta etapa fundadora: tiendas reales, verificadas y protagonistas de una nueva forma de vender repuestos en Chile, con 5% fijo de comisión como beneficio fundador.</p>
         <div className="founder-actions">
           <button type="button" className="button" onClick={onOpenSeller} style={{ cursor: 'pointer' }}><Crown /> Quiero ser tienda fundadora</button>
           <a className="button button-outline" href="#como-funciona">Ver cómo vender <ArrowRight /></a>
@@ -549,7 +550,7 @@ function FounderSection({ onOpenSeller }: { onOpenSeller: () => void }) {
   </section>;
 }
 
-function FinalStage({ setInfoMode, onContact, onOpenSeller }: { setInfoMode: (mode: InfoMode) => void; onContact: () => void; onOpenSeller: () => void; }) {
+function FinalStage({ setInfoMode, onContact, onOpenSeller, onBack }: { setInfoMode: (mode: InfoMode) => void; onContact: () => void; onOpenSeller: () => void; onBack: () => void; }) {
   const buyerHighlights = [
     { icon: <Search />, label: 'Patente inteligente', text: 'Ficha del vehículo en segundos' },
     { icon: <BadgeCheck />, label: 'Catálogo compatible', text: 'Opciones filtradas por vehículo' },
@@ -566,9 +567,9 @@ function FinalStage({ setInfoMode, onContact, onOpenSeller }: { setInfoMode: (mo
   return <section className="final-stage" id="descargar">
     <div className="section final-stage-shell">
       <Reveal as="div" className="final-stage-heading">
-        <span className="eyebrow"><Smartphone /> La experiencia continúa en tu teléfono</span>
-        <h2>Compra con respaldo. Vende con control.</h2>
-        <p>Elige tu lado de RepuesTop: encuentra repuestos compatibles por patente o postula tu tienda para vender como proveedor verificado.</p>
+        <span className="eyebrow"><Monitor /> Disponible en la web · App móvil próximamente</span>
+        <h2>Úsalo hoy en la web. Muy pronto, también desde tu teléfono.</h2>
+        <p>RepuesTop es una plataforma web y móvil para compradores y vendedores. El marketplace web ya está disponible; la app móvil llegará próximamente para acompañarte estés donde estés.</p>
       </Reveal>
 
       <div className="final-stage-grid">
@@ -582,25 +583,24 @@ function FinalStage({ setInfoMode, onContact, onOpenSeller }: { setInfoMode: (mo
             {buyerHighlights.map((item, i) => <Reveal as="span" key={item.label} delay={i * 60}><i>{item.icon}</i><strong>{item.label}</strong><small>{item.text}</small></Reveal>)}
           </div>
           <div className="route-actions">
-            <a className="button button-white" href="#experiencias">Buscar repuestos compatibles <ArrowRight /></a>
+            <button type="button" className="button button-white" onClick={onBack}>Entrar al marketplace web <ArrowRight /></button>
             <button type="button" className="button button-ghost route-dark" onClick={onContact} style={{ cursor: 'pointer' }}>
-              <Smartphone /> Avísame del lanzamiento
+              <Smartphone /> Avísame cuando llegue la app
             </button>
           </div>
         </article>
 
-        <div className="final-device-stage" aria-hidden="true">
-          <div className="final-device device-a"><img src="/about-assets/comprador-como-funciona.png" alt="" /></div>
-          <div className="final-device device-b"><img src="/about-assets/vendedor-como-funciona.png" alt="" /></div>
-          <span className="floating-chip chip-search"><Search /> Busca</span>
-          <span className="floating-chip chip-store"><Store /> Vende</span>
+        <div className="final-device-stage final-platform-stage">
+          <img src="/about-assets/repuestop-web-mobile-hero.png" alt="RepuesTop disponible en la web y próximamente como aplicación móvil" />
+          <span className="floating-chip chip-search"><Monitor /> Web disponible</span>
+          <span className="floating-chip chip-store"><Smartphone /> App próximamente</span>
         </div>
 
         <article className="final-route-card route-seller">
           <span className="route-icon"><Store /></span>
           <div>
             <h3>Soy vendedor</h3>
-            <p>Inscríbete al lanzamiento, verifica tu tienda, carga inventario y vende como comercio fundador con 5% fijo de comisión.</p>
+            <p>Postula a la etapa fundadora, verifica tu tienda, carga inventario y vende desde la web con 5% fijo de comisión.</p>
           </div>
           <div className="route-mini-grid">
             {sellerHighlights.map((item, i) => <Reveal as="span" key={item.label} delay={i * 60}><i>{item.icon}</i><strong>{item.label}</strong><small>{item.text}</small></Reveal>)}
@@ -625,6 +625,7 @@ function FinalStage({ setInfoMode, onContact, onOpenSeller }: { setInfoMode: (mo
             <Brand />
             <p>Marketplace chileno para buscar repuestos por patente, comprar con respaldo y conectar con tiendas verificadas.</p>
             <div className="store-badges">
+              <PlatformPill platform="web" />
               <PlatformPill platform="android" />
               <PlatformPill platform="ios" soon />
             </div>
@@ -744,7 +745,7 @@ function HomePage({ onContact, onOpenSeller, onBack }: { onContact: () => void; 
     <FounderModal isOpen={founderModalOpen} onClose={() => setFounderModalOpen(false)} onApply={onOpenSeller} />
     <SiteHeader onContact={onContact} onBack={onBack} setInfoMode={setInfoMode} />
     <main className="single-page">
-    <section className="home-hero section" id="inicio"><div className="hero-mesh" aria-hidden="true" /><div className="hero-orb orb-one" /><div className="hero-orb orb-two" /><div className="hero-copy"><div className="hero-topline"><Brand /><span className="hero-topline-divider" aria-hidden="true" /><span className="eyebrow hero-eyebrow"><MapPin /> Marketplace chileno de repuestos</span></div><h1>Repuestos por patente, tiendas verificadas y pago <em>protegido.</em></h1><p>RepuesTop identifica tu vehículo, filtra repuestos compatibles, permite cotizar por chat y mantiene la compra respaldada hasta validar la entrega.</p><div className="button-row"><a href="#experiencias" className="button"><Zap /> Comprar con respaldo</a><a href="#proveedores" className="button button-outline">Ser tienda fundadora <ArrowDown /></a></div><div className="hero-platforms"><PlatformPill platform="android" /><PlatformPill platform="ios" soon /></div></div><div className="hero-visual"><HeroLiveBadge /><div className="image-panel"><img src="/about-assets/compradores.jpg" alt="Aplicación RepuesTop buscando repuestos por patente en Chile" /><div className="scan-sweep" aria-hidden="true" /></div></div></section>
+    <section className="home-hero section" id="inicio"><div className="hero-mesh" aria-hidden="true" /><div className="hero-orb orb-one" /><div className="hero-orb orb-two" /><div className="hero-copy"><div className="hero-topline"><Brand /><span className="hero-topline-divider" aria-hidden="true" /><span className="eyebrow hero-eyebrow"><Monitor /> Web disponible · App móvil próximamente</span></div><h1>Tu marketplace de repuestos, hoy en la web y pronto en tu <em>teléfono.</em></h1><p>RepuesTop ya cuenta con una versión web para buscar por patente, cotizar y comprar con respaldo. Próximamente podrás vivir la misma experiencia desde nuestra app móvil.</p><div className="button-row"><button type="button" className="button" onClick={onBack}><Monitor /> Entrar al marketplace web</button><a href="#proveedores" className="button button-outline">Ser tienda fundadora <ArrowDown /></a></div><div className="hero-platforms"><PlatformPill platform="web" /><PlatformPill platform="android" /><PlatformPill platform="ios" soon /></div></div><div className="hero-visual"><HeroLiveBadge /><div className="image-panel"><img src="/about-assets/repuestop-web-mobile-hero.png" alt="RepuesTop disponible en la web y próximamente como aplicación móvil" /><div className="scan-sweep" aria-hidden="true" /></div></div></section>
 
     <HeroProofStrip />
 
@@ -754,7 +755,7 @@ function HomePage({ onContact, onOpenSeller, onBack }: { onContact: () => void; 
 
     <FounderSection onOpenSeller={onOpenSeller} />
 
-    <FinalStage setInfoMode={setInfoMode} onContact={onContact} onOpenSeller={onOpenSeller} />
+    <FinalStage setInfoMode={setInfoMode} onContact={onContact} onOpenSeller={onOpenSeller} onBack={onBack} />
   </main></>;
 }
 

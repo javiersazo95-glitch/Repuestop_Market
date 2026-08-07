@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Heart, MapPin, ShieldCheck, Sparkles, Tag } from 'lucide-react';
+import { Heart, MapPin, PackageCheck, ShieldCheck, Sparkles, Star, Store, Tag } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
 import { CATEGORY_COLOR_BY_ID, CATEGORY_ICON_BY_ID, CATEGORY_IMAGE_BY_ID } from '../data/categories';
 
@@ -55,6 +55,10 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity }
   const partBrand = getPartBrand(product);
   const partType = getPartType(product);
   const PartTypeIcon = partType.icon;
+  const storeName = product.vendedor || product.tienda || 'Tienda RepuesTop';
+  const storeLogo = product.logoTienda || product.storeIconUrl || product.tiendaLogo || null;
+  const stock = Number(product.stock ?? product.stockAvailable ?? 0);
+  const rating = Number(product.rating || product.calificacion || 4.8);
   // La foto registrada por la tienda siempre tiene prioridad. La imagen de la
   // categoría solo es el respaldo para publicaciones que aún no tienen foto.
   const productImage = product.imagen
@@ -89,9 +93,21 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity }
           <span className="market-product-brand"><Tag size={11} /> {partBrand}</span>
         </div>
 
+        <div className="market-product-store">
+          {storeLogo ? (
+            <img className="market-product-store-logo" src={storeLogo} alt={storeName} />
+          ) : (
+            <Store size={13} />
+          )}
+          <span className="market-product-store-name">{storeName}</span>
+          <span className="market-product-store-city"><MapPin size={11} /> {city}</span>
+        </div>
+
         <div className="market-product-meta">
-          <span><MapPin size={12} /> {city}</span>
-          <span><Clock size={12} /> {product.agregadoHace || 'Actualizado recientemente'}</span>
+          <span className="market-product-rating"><Star size={12} /> {rating.toFixed(1)}</span>
+          <span className={`market-product-stock ${stock <= 0 ? 'out' : stock <= 5 ? 'low' : ''}`}>
+            <PackageCheck size={12} /> {stock > 0 ? `${stock} en stock` : 'Sin stock'}
+          </span>
         </div>
 
         <div className="market-product-price">
