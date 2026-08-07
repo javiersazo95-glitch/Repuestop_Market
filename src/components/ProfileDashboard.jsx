@@ -6,7 +6,7 @@ import {
   Clock, ShieldCheck, Building2, PackageCheck, Loader2, Inbox, ChevronLeft, ChevronRight, Search,
   CreditCard, Award, Phone, Mail, FileText, ArrowUpRight, Sliders, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Wrench, Boxes, Plus, MessageCircleQuestion, Scale, Headphones, Wallet, Info, Crown,
-  CheckCircle, Send
+  CheckCircle, Send, MapPin
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
