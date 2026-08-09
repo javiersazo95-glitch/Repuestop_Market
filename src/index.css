@@ -2600,6 +2600,12 @@ input, select, textarea {
   align-items: center;
 }
 
+.profile-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .btn-back-to-store {
   display: flex;
   align-items: center;
@@ -2619,6 +2625,30 @@ input, select, textarea {
   background: #e2e8f0;
   color: #0f172a;
   transform: translateX(-2px);
+}
+
+/* Botón que abre la tienda pública del vendedor en una pestaña nueva: es una
+   vista previa real, no una simulación, así que se distingue visualmente de
+   "Volver a la tienda" (que lleva al home del marketplace). */
+.btn-visit-my-store {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #eff6ff;
+  color: var(--color-brand-blue, #1268f3);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 16px;
+  border-radius: 30px;
+  border: 1px solid #cfe0fb;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.btn-visit-my-store:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
 }
 
 .profile-topbar-user {
@@ -4080,6 +4110,50 @@ input, select, textarea {
   color: var(--text-muted);
 }
 
+.person-contact-link {
+  margin-left: auto;
+  padding: 5px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 20px;
+  border: 1px solid #d7e6fc;
+  background: #fff;
+  color: var(--color-brand-blue);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.person-contact-link:hover { background: #eff6ff; }
+
+/* Chips que llenan el espacio en blanco entre la fila de persona y el
+   producto, con datos reales del pedido (cantidad, envío, dirección). */
+.order-card-info-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.order-info-chip {
+  padding: 4px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+.order-info-chip svg { flex: 0 0 auto; color: #7b8aa3; }
+.order-info-chip.address {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* --- PRODUCT ROW --- */
 .order-card-product-row {
   display: flex;
@@ -4405,7 +4479,7 @@ input, select, textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #f8fafc;
+  background: linear-gradient(120deg, #eef4ff 0%, #f8fafc 55%, #fdf4ff 100%);
 }
 
 .order-modal-title-group {
@@ -4418,7 +4492,8 @@ input, select, textarea {
   width: 44px;
   height: 44px;
   border-radius: var(--radius-md);
-  background: #0f172a;
+  background: linear-gradient(135deg, #2987ff, #6c4bff);
+  box-shadow: 0 8px 18px rgba(41, 111, 255, .25);
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -4602,6 +4677,180 @@ input, select, textarea {
   font-weight: 700;
 }
 
+/* Tarjeta destacada del comprador/vendedor: es el dato más relevante del
+   pedido, por eso lleva su propio acento de color y va a todo el ancho en
+   vez de compartir una lista genérica de filas con el resto de los datos. */
+.person-highlight-card {
+  background: linear-gradient(135deg, #eef4ff 0%, #f7f9ff 60%);
+  border: 1px solid #cfe0fb;
+}
+
+.person-highlight-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.person-highlight-avatar {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, #2987ff, #6c4bff);
+  box-shadow: 0 8px 18px rgba(41, 111, 255, .28);
+}
+
+.person-highlight-avatar svg {
+  position: absolute;
+  opacity: .28;
+  width: 34px;
+  height: 34px;
+}
+
+.person-highlight-avatar span {
+  position: relative;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: .02em;
+}
+
+.person-highlight-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.person-highlight-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #3f68d6;
+}
+
+.person-highlight-name {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.person-contact-chips {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.person-contact-chip {
+  padding: 7px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 10px;
+  border: 1px solid #d7e4fb;
+  background: #ffffff;
+  color: #1d4ed8;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.person-contact-chip:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.person-contact-chip.document {
+  color: #7c3aed;
+  border-color: #e0d7fb;
+  background: #f8f6ff;
+}
+
+/* Tarjeta de envío: color e ícono cambian según el método (retiro / comuna /
+   fuera de comuna) usando la misma paleta que ya usa la ficha de producto. */
+.shipping-highlight-card {
+  background: var(--shipping-bg, #f8fafc);
+  border-color: color-mix(in srgb, var(--shipping-color, #64748b) 35%, #e2e8f0);
+}
+
+.shipping-highlight-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.shipping-method-badge {
+  width: fit-content;
+  padding: 7px 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 10px;
+  color: #fff;
+  background: var(--shipping-color, #475569);
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.shipping-address-block {
+  margin-top: 4px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+}
+
+.shipping-address-block > svg {
+  color: var(--shipping-color, #475569);
+  flex-shrink: 0;
+}
+
+.shipping-address-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shipping-address-text {
+  color: var(--text-primary);
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.btn-copy-address {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.btn-copy-address:hover {
+  background: #eff6ff;
+  color: var(--color-brand-blue);
+}
+
 /* Status update block inside modal */
 .status-update-block {
   background: #eff6ff;
@@ -4777,18 +5026,26 @@ input, select, textarea {
   overflow: hidden;
 }
 
+/* La miniatura del vendedor debe verse EXACTAMENTE como la card pública
+   (.market-product-media / .category-tile-photo en index.css): mismo alto,
+   mismo `object-fit: contain` con relleno blanco, en vez de un recorte
+   `cover` que hacía pensar al vendedor que su foto se vería distinta a como
+   realmente la ven los compradores. */
 .catalog-image-stage {
   position: relative;
-  height: 158px;
+  height: 170px;
   overflow: hidden;
-  background: linear-gradient(145deg, #eef4fb, #dbe7f5);
+  background: #fff;
 }
 
 .catalog-product-image {
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: cover;
+  padding: 7px;
+  box-sizing: border-box;
+  object-fit: contain;
+  background: #fff;
   transition: transform .35s ease;
 }
 
@@ -4869,7 +5126,7 @@ input, select, textarea {
 
 @media (max-width: 600px) {
   .seller-catalog-grid { grid-template-columns: 1fr; }
-  .catalog-image-stage { height: 150px; }
+  .catalog-image-stage { height: 185px; }
   .catalog-card-content { padding: 13px 14px 11px; }
   .catalog-card-container .order-card-actions { padding: 10px 14px 13px; }
 }
@@ -9462,12 +9719,16 @@ input, select, textarea {
 .light-query-field input { min-width: 0; flex: 1; height: 100%; border: 0; outline: 0; color: #1c2c47; font-size: 19px; font-weight: 600; }
 .light-query-field input::placeholder { color: #66758f; }
 .plate-help { display: flex; align-items: center; gap: 4px; color: #0864ed; font-size: 11px; white-space: nowrap; }
-.light-primary-search { width: calc(100% - 161px); height: 58px; margin: 22px 0 20px 161px; display: flex; align-items: center; justify-content: center; gap: 15px; border-radius: 7px; color: #fff; background: linear-gradient(90deg, #0a58ef, #0669f7); font-size: 16px; font-weight: 800; }
+.light-primary-search { width: calc(100% - 161px); height: 58px; margin: 22px 0 20px 161px; display: flex; align-items: center; justify-content: center; gap: 15px; border-radius: 7px; color: #fff; background: linear-gradient(90deg, #0a58ef, #0669f7); font-size: 16px; font-weight: 800; cursor: pointer; transition: background 0.2s ease; }
 .light-primary-search:hover { background: #0457d9; }
 .light-search-error { margin: -10px 0 14px 161px; display: flex; gap: 6px; color: #dc2626; font-size: 12px; }
-.popular-searches { border-top: 1px solid #e8ecf2; padding-top: 17px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+.light-search-form.mode-no-country .light-primary-search { margin-left: 0; width: 100%; }
+.light-search-form.mode-no-country .light-search-error { margin-left: 0; }
+.catalog-unified-search-panel { border-radius: 18px; box-shadow: 0 16px 36px rgba(2, 15, 42, 0.12); border: 1px solid #dce5f1; }
+.popular-searches { border-top: 1px solid #e8ecf2; padding-top: 17px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-top: 14px; }
 .popular-searches > span { color: #52627c; font-size: 12px; font-weight: 700; }
-.popular-searches button { padding: 7px 14px; border: 1px solid #d5dfec; border-radius: 6px; color: #075fea; background: #f8fbff; font-size: 12px; font-weight: 700; }
+.popular-searches button { padding: 7px 14px; border: 1px solid #d5dfec; border-radius: 6px; color: #075fea; background: #f8fbff; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s ease; }
+.popular-searches button:hover { background: #eef5ff; border-color: #0864ed; }
 .light-active-vehicle { margin: 12px 0 0; padding: 10px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid #bbf7d0; border-radius: 8px; color: #047857; background: #ecfdf5; font-size: 12px; }
 
 .light-trust-row { min-height: 126px; margin-top: 70px; display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; background: #fff; border: 1px solid #dde5ef; border-radius: 12px; box-shadow: 0 6px 18px rgba(20, 41, 70, .04); }
@@ -10532,11 +10793,14 @@ input, select, textarea {
 .product-marketplace-brand span { min-height: 32px; padding: 0 13px; display: inline-flex; align-items: center; border-radius: 12px; color: #245bac; background: #eaf3ff; font-size: 11px; }
 .product-marketplace-brand span + span { color: #5a6980; background: #f0f3f7; }.product-marketplace-brand b { margin-left: 4px; color: #20334f; }
 .product-marketplace-code { margin: 0 0 12px; color: #65758c; font-size: 12px; }.product-marketplace-code strong { color: #194277; }
-.product-marketplace-description { position: relative; margin: 0; max-height: 108px; overflow: hidden; color: #38475d; font-size: 11.5px; line-height: 1.62; }
+.product-marketplace-description { position: relative; margin: 0; color: #38475d; font-size: 11.5px; line-height: 1.62; }
 .product-marketplace-description p { margin: 0; }
 /* Velo inferior en lugar de una barra de scroll dentro del texto: la descripción
-   se recorta con degradado y se despliega con "Ver descripción completa". */
-.product-marketplace-description::after { position: absolute; right: 0; bottom: 0; left: 0; height: 34px; background: linear-gradient(180deg, rgba(255,255,255,0), #fff 88%); content: ''; pointer-events: none; }
+   se recorta con degradado y se despliega con "Ver descripción completa". Solo se
+   aplica cuando el texto es largo (clase .clamped); textos cortos no llevan
+   max-height ni degradado, para no verse recortados/desvanecidos sin motivo. */
+.product-marketplace-description.clamped { max-height: 108px; overflow: hidden; }
+.product-marketplace-description.clamped::after { position: absolute; right: 0; bottom: 0; left: 0; height: 34px; background: linear-gradient(180deg, rgba(255,255,255,0), #fff 88%); content: ''; pointer-events: none; }
 .product-marketplace-description.expanded { max-height: none; }
 .product-marketplace-description.expanded::after { display: none; }
 .product-marketplace-description-toggle { margin: 7px 0 0; padding: 0; display: inline-flex; align-items: center; gap: 3px; border: 0; color: #176cff; background: transparent; font-size: 10.5px; font-weight: 800; cursor: pointer; }
@@ -10567,14 +10831,33 @@ input, select, textarea {
 .product-marketplace-buy-status { display: flex; align-items: center; justify-content: space-between; color: #06a740; font-size: 12px; font-weight: 750; }.product-marketplace-buy-status span { display: flex; align-items: center; gap: 8px; }.product-marketplace-buy-status i { width: 10px; height: 10px; display: block; border: 2px solid #b7f5c9; border-radius: 50%; background: #08bd3d; }.product-marketplace-buy-status small { color: #758399; font-size: 10px; font-weight: 500; }
 .product-marketplace-price { margin: 14px 0 2px; color: #050b15; font-size: clamp(38px, 3vw, 48px); font-weight: 600; letter-spacing: -1.5px; line-height: 1; }.product-marketplace-price small { font-size: 16px; font-weight: 500; letter-spacing: 0; }.product-marketplace-buybox > h2 { margin: 15px 0 7px; color: #0d1626; font-size: 28px; }.product-marketplace-buybox > p { margin: 0 0 13px; color: #748198; font-size: 11px; }
 .product-marketplace-primary, .product-marketplace-secondary { width: 100%; min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 12px; font-size: 14px; font-weight: 850; cursor: pointer; }.product-marketplace-primary svg, .product-marketplace-secondary svg { width: 20px; }.product-marketplace-primary { margin-top: 16px; color: #fff; background: linear-gradient(135deg, #2987ff, #074de7); box-shadow: 0 10px 20px rgba(17, 95, 236, .22); }.product-marketplace-primary:hover { background: linear-gradient(135deg, #1674ee, #0643cb); }.product-marketplace-primary:disabled { background: #bfc8d6; box-shadow: none; cursor: not-allowed; }.product-marketplace-primary.quote { background: linear-gradient(135deg, #7155f7, #4b27df); }.product-marketplace-secondary { min-height: 51px; margin-top: 8px; color: #1658e9; background: linear-gradient(110deg, #e9f3ff, #f4f8ff); }
-.product-marketplace-flow { margin-top: 14px; padding: 12px 15px; border: 1px solid #dce3ec; border-radius: 11px; }.product-marketplace-flow > div:first-child { display: flex; align-items: center; gap: 13px; }.product-marketplace-flow > div:first-child small { color: #53627a; font-size: 9px; }.product-marketplace-flow > div:first-child strong { color: #16b7a8; font-size: 24px; font-weight: 500; letter-spacing: -1px; }.product-marketplace-flow > div:first-child span { color: #728197; font-size: 9px; }.product-marketplace-flow > p { margin: 7px 0 0; display: flex; align-items: center; gap: 8px; color: #43536b; font-size: 9.5px; }.product-marketplace-flow > p svg { width: 15px; }.product-marketplace-card-brands { margin-top: 10px; padding-top: 9px; display: flex; align-items: center; justify-content: space-between; gap: 5px; border-top: 1px solid #e8ecf1; }.product-marketplace-card-brands b { padding: 3px 5px; border: 1px solid #e0e5ec; border-radius: 3px; color: #1c4f9a; background: #fff; font-size: 7px; }
+.product-marketplace-flow { margin-top: 14px; padding: 12px 15px; border: 1px solid #dce3ec; border-radius: 11px; }.product-marketplace-flow > div:first-child { display: flex; align-items: center; gap: 13px; }.product-marketplace-flow > div:first-child small { color: #53627a; font-size: 9px; }.product-marketplace-flow > div:first-child strong { color: #16b7a8; font-size: 24px; font-weight: 500; letter-spacing: -1px; }.product-marketplace-flow > div:first-child span { color: #728197; font-size: 9px; }.product-marketplace-card-brands { margin-top: 10px; padding-top: 9px; display: flex; align-items: center; justify-content: space-between; gap: 5px; border-top: 1px solid #e8ecf1; }.product-marketplace-card-brands b { padding: 3px 5px; border: 1px solid #e0e5ec; border-radius: 3px; color: #1c4f9a; background: #fff; font-size: 7px; }
+/* Simulación de cuotas Flow: reemplaza el listado estático de "Tarjeta de
+   crédito/débito" por montos aproximados en 3/6/12 cuotas, para incentivar
+   la compra mostrando cuánto pagaría el cliente mes a mes. */
+.product-marketplace-installments { margin: 9px 0 0; padding-top: 9px; border-top: 1px solid #e8ecf1; }
+.product-marketplace-installments-hint { margin: 0 0 8px; display: flex; align-items: center; gap: 7px; color: #16b7a8; font-size: 10.5px; font-weight: 800; }
+.product-marketplace-installments-hint svg { width: 15px; }
+.product-marketplace-installments-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.product-marketplace-installments-grid > div { padding: 8px 6px; display: grid; justify-items: center; gap: 2px; border: 1px solid #d8f2ec; border-radius: 9px; background: linear-gradient(180deg, #f2fdfb, #fff); }
+.product-marketplace-installments-grid strong { color: #0d8f7f; font-size: 11.5px; font-weight: 850; }
+.product-marketplace-installments-grid span { color: #1c2c3f; font-size: 11px; font-weight: 750; white-space: nowrap; }
+.product-marketplace-installments > small { margin-top: 7px; display: block; color: #8a97a9; font-size: 8.5px; line-height: 1.4; }
 .product-marketplace-assurances { margin-top: 14px; display: grid; gap: 11px; }.product-marketplace-assurances > span { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 10px; }.product-marketplace-assurances > span > svg { width: 32px; height: 32px; padding: 7px; border-radius: 9px; color: #219e75; background: #e8f9f2; }.product-marketplace-assurances > span:nth-child(2) > svg, .product-marketplace-assurances > span:nth-child(3) > svg { color: #1d9bb3; background: #e8f8fb; }.product-marketplace-assurances > span:nth-child(4) > svg { color: #6754df; background: #f0edff; }.product-marketplace-assurances p { margin: 0; display: grid; gap: 2px; }.product-marketplace-assurances b { color: #334056; font-size: 9.5px; }.product-marketplace-assurances small { color: #8390a1; font-size: 8.5px; }
 
 .product-marketplace-info-grid { grid-area: information; display: grid; grid-template-columns: 1.2fr .95fr .95fr; gap: 18px; margin: 0; }
 .product-marketplace-info-grid > article { min-height: 139px; padding: 17px 20px; border-radius: 13px; box-shadow: 0 5px 17px rgba(23,50,91,.06); }
 .product-marketplace-info-grid h2 { margin: 0 0 13px; display: flex; align-items: center; gap: 8px; color: #152136; font-size: 12px; }.product-marketplace-info-grid h2 svg { width: 18px; color: #176cff; }.product-marketplace-info-grid > article:nth-child(2) h2 svg { color: #21a775; }.product-marketplace-info-grid > article:nth-child(3) h2 svg { color: #6b4eed; }
 .product-marketplace-info-grid dl { margin: 0; }.product-marketplace-info-grid dl div { min-height: 25px; padding: 3px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border: 0; font-size: 9.5px; }.product-marketplace-info-grid dt { color: #748299; }.product-marketplace-info-grid dd { margin: 0; color: #2e3e55; text-align: left; }.product-marketplace-info-grid dd span { padding: 4px 8px; border-radius: 5px; color: #178052; background: #e7f8ee; font-size: 8px; font-weight: 800; text-transform: uppercase; }
-.product-marketplace-info-grid p { margin: 0; color: #66768d; font-size: 9px; line-height: 1.45; }.product-marketplace-info-grid article > button { margin-top: 8px; padding: 0; display: flex; align-items: center; gap: 5px; border: 0; color: #176cff; background: transparent; font-size: 8.5px; font-weight: 750; cursor: pointer; }.product-marketplace-info-grid article > button svg { width: 13px; }.product-marketplace-compatibility { display: flex; flex-wrap: wrap; gap: 5px; }.product-marketplace-compatibility span, .product-marketplace-protected { padding: 6px 9px; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; color: #12824d; background: #e6f9ed; font-size: 8.5px; font-weight: 750; }.product-marketplace-protected { margin-top: 9px; }.product-marketplace-protected svg { width: 13px; }
+.product-marketplace-info-grid p { margin: 0; color: #66768d; font-size: 9px; line-height: 1.45; }.product-marketplace-info-grid article > button { margin-top: 8px; padding: 0; display: flex; align-items: center; gap: 5px; border: 0; color: #176cff; background: transparent; font-size: 8.5px; font-weight: 750; cursor: pointer; }.product-marketplace-info-grid article > button svg { width: 13px; }.product-marketplace-protected { padding: 6px 9px; margin-top: 9px; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; color: #12824d; background: #e6f9ed; font-size: 8.5px; font-weight: 750; }.product-marketplace-protected svg { width: 13px; }
+/* Card de compatibilidad en el grid de información: lista los vehículos
+   compatibles (marca + modelo) con sus etiquetas de año/versión, en vez de un
+   único chip que solo mostraba el primer registro. */
+.product-marketplace-compat-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.product-marketplace-compat-list li { padding: 7px 9px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; border: 1px solid #e1e9f4; border-radius: 8px; background: #f8fbff; }
+.product-marketplace-compat-vehicle { color: #17263d; font-size: 9.5px; font-weight: 800; }
+.product-marketplace-compat-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.product-marketplace-compat-tags b { padding: 3px 7px; border-radius: 5px; color: #12824d; background: #e6f9ed; font-size: 8px; font-weight: 800; }
 
 .product-marketplace-questions { margin-top: 18px; padding: 16px 20px 18px; border-radius: 15px; }
 .product-marketplace-questions-head { display: grid; grid-template-columns: minmax(250px,.7fr) minmax(470px,1.3fr); align-items: center; gap: 20px; }.product-marketplace-questions-head h2 { margin: 0; display: flex; align-items: center; gap: 8px; color: #142035; font-size: 13px; }.product-marketplace-questions-head h2 svg { color: #6e42f5; }.product-marketplace-questions-head p { margin: 3px 0 0 29px; color: #8190a5; font-size: 8.5px; }.product-marketplace-questions form { display: grid; grid-template-columns: 1fr auto; gap: 8px; }.product-marketplace-questions label { min-height: 39px; padding: 0 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #dce3ed; border-radius: 9px; background: #fff; }.product-marketplace-questions label svg { width: 14px; color: #98a6b8; }.product-marketplace-questions input { width: 100%; border: 0; outline: 0; color: #283951; font-size: 9.5px; }.product-marketplace-questions form button { min-height: 39px; padding: 0 17px; display: flex; align-items: center; gap: 7px; border: 0; border-radius: 8px; color: #fff; background: linear-gradient(135deg,#7549f7,#5422d8); font-size: 9.5px; font-weight: 750; cursor: pointer; }.product-marketplace-questions form button svg { width: 13px; }
@@ -10599,16 +10882,16 @@ input, select, textarea {
 .product-marketplace-verified { font-size: 11.5px; }.product-marketplace-verified svg { width: 20px; height: 20px; }
 .product-marketplace-brand span { min-height: 35px; font-size: 12.5px; }
 .product-marketplace-code { font-size: 13px; }
-.product-marketplace-description { font-size: 13px; line-height: 1.58; }
+.product-marketplace-description { font-size: 13px; line-height: 1.58; }.product-marketplace-description.clamped { max-height: 128px; }
 .product-marketplace-store-icon { width: 44px; height: 44px; }.product-marketplace-store-icon svg { width: 25px; height: 25px; }
 .product-marketplace-store > div:nth-child(2) strong { font-size: 12px; }.product-marketplace-store > div:nth-child(2) small { font-size: 10.5px; }.product-marketplace-store > div:nth-child(2) small svg { width: 15px; height: 15px; }
 .product-marketplace-rating strong, .product-marketplace-seniority strong { font-size: 11px; }.product-marketplace-rating small, .product-marketplace-seniority small { font-size: 9px; }.product-marketplace-rating svg, .product-marketplace-seniority svg { width: 19px; height: 19px; }
 .product-marketplace-benefits svg { width: 21px; height: 21px; }.product-marketplace-benefits b { font-size: 9.5px; }.product-marketplace-benefits small { font-size: 8.5px; }
 .product-marketplace-buy-status { font-size: 13.5px; }.product-marketplace-buy-status small { font-size: 11.5px; }
 .product-marketplace-buybox > p { font-size: 12.5px; }.product-marketplace-primary, .product-marketplace-secondary { font-size: 15px; }.product-marketplace-primary svg, .product-marketplace-secondary svg { width: 22px; height: 22px; }
-.product-marketplace-flow > div:first-child small, .product-marketplace-flow > div:first-child span { font-size: 10.5px; }.product-marketplace-flow > p { font-size: 11px; }.product-marketplace-flow > p svg { width: 17px; height: 17px; }.product-marketplace-card-brands b { font-size: 8px; }
+.product-marketplace-flow > div:first-child small, .product-marketplace-flow > div:first-child span { font-size: 10.5px; }.product-marketplace-installments-hint { font-size: 11.5px; }.product-marketplace-installments-hint svg { width: 17px; height: 17px; }.product-marketplace-installments-grid strong { font-size: 12.5px; }.product-marketplace-installments-grid span { font-size: 12px; }.product-marketplace-card-brands b { font-size: 8px; }
 .product-marketplace-assurances > span > svg { width: 36px; height: 36px; }.product-marketplace-assurances b { font-size: 11px; }.product-marketplace-assurances small { font-size: 9.5px; }
-.product-marketplace-info-grid h2 { font-size: 14px; }.product-marketplace-info-grid h2 svg { width: 21px; height: 21px; }.product-marketplace-info-grid dl div { font-size: 11px; }.product-marketplace-info-grid dd span { font-size: 9px; }.product-marketplace-info-grid p { font-size: 10.5px; }.product-marketplace-info-grid article > button { font-size: 10px; }.product-marketplace-info-grid article > button svg { width: 15px; height: 15px; }.product-marketplace-compatibility span, .product-marketplace-protected { font-size: 10px; }.product-marketplace-protected svg { width: 15px; height: 15px; }
+.product-marketplace-info-grid h2 { font-size: 14px; }.product-marketplace-info-grid h2 svg { width: 21px; height: 21px; }.product-marketplace-info-grid dl div { font-size: 11px; }.product-marketplace-info-grid dd span { font-size: 9px; }.product-marketplace-info-grid p { font-size: 10.5px; }.product-marketplace-info-grid article > button { font-size: 10px; }.product-marketplace-info-grid article > button svg { width: 15px; height: 15px; }.product-marketplace-protected { font-size: 10px; }.product-marketplace-protected svg { width: 15px; height: 15px; }.product-marketplace-compat-vehicle { font-size: 10.5px; }.product-marketplace-compat-tags b { font-size: 9px; }
 .product-marketplace-questions-head h2 { font-size: 15px; }.product-marketplace-questions-head h2 svg { width: 22px; height: 22px; }.product-marketplace-questions-head p { font-size: 10px; }.product-marketplace-questions input, .product-marketplace-questions form button { font-size: 11px; }.product-marketplace-questions label svg, .product-marketplace-questions form button svg { width: 16px; height: 16px; }.product-marketplace-no-questions > svg { width: 25px; height: 25px; }.product-marketplace-no-questions strong { font-size: 11px; }.product-marketplace-no-questions small { font-size: 9.5px; }.product-marketplace-question-list span { font-size: 9px; }.product-marketplace-question-list strong { font-size: 11.5px; }.product-marketplace-question-list p { font-size: 10px; }
 
 /* Product detail readability — prominent scale requested for the marketplace view. */
@@ -10621,7 +10904,7 @@ input, select, textarea {
 .product-marketplace-verified { font-size: 13px; }.product-marketplace-verified svg { width: 23px; height: 23px; }
 .product-marketplace-brand span { min-height: 39px; padding: 0 15px; font-size: 14px; }
 .product-marketplace-code { font-size: 14.5px; }
-.product-marketplace-description { max-height: 145px; font-size: 14.5px; line-height: 1.6; }
+.product-marketplace-description { font-size: 14.5px; line-height: 1.6; }.product-marketplace-description.clamped { max-height: 145px; }
 .product-marketplace-match { font-size: 13.5px; }.product-marketplace-match svg { width: 21px; height: 21px; }
 .product-marketplace-store { min-height: 82px; }.product-marketplace-store-icon { width: 49px; height: 49px; }.product-marketplace-store-icon svg { width: 28px; height: 28px; }
 .product-marketplace-store > div:nth-child(2) strong { font-size: 13.5px; }.product-marketplace-store > div:nth-child(2) small { font-size: 12px; }.product-marketplace-store > div:nth-child(2) small svg { width: 17px; height: 17px; }
@@ -10629,9 +10912,9 @@ input, select, textarea {
 .product-marketplace-benefits > span { min-height: 57px; padding: 9px; }.product-marketplace-benefits svg { width: 24px; height: 24px; }.product-marketplace-benefits b { font-size: 11px; }.product-marketplace-benefits small { font-size: 10px; }
 .product-marketplace-buy-status { font-size: 15px; }.product-marketplace-buy-status small { font-size: 13px; }.product-marketplace-buy-status i { width: 12px; height: 12px; }
 .product-marketplace-buybox > p { font-size: 14px; }.product-marketplace-primary, .product-marketplace-secondary { min-height: 61px; font-size: 17px; }.product-marketplace-primary svg, .product-marketplace-secondary svg { width: 25px; height: 25px; }
-.product-marketplace-flow { padding: 15px 17px; }.product-marketplace-flow > div:first-child small, .product-marketplace-flow > div:first-child span { font-size: 12px; }.product-marketplace-flow > div:first-child strong { font-size: 28px; }.product-marketplace-flow > p { font-size: 12.5px; }.product-marketplace-flow > p svg { width: 20px; height: 20px; }.product-marketplace-card-brands b { font-size: 9.5px; }
+.product-marketplace-flow { padding: 15px 17px; }.product-marketplace-flow > div:first-child small, .product-marketplace-flow > div:first-child span { font-size: 12px; }.product-marketplace-flow > div:first-child strong { font-size: 28px; }.product-marketplace-installments-hint { font-size: 12.5px; }.product-marketplace-installments-hint svg { width: 20px; height: 20px; }.product-marketplace-installments-grid strong { font-size: 13.5px; }.product-marketplace-installments-grid span { font-size: 13px; }.product-marketplace-card-brands b { font-size: 9.5px; }
 .product-marketplace-assurances { gap: 14px; }.product-marketplace-assurances > span > svg { width: 40px; height: 40px; }.product-marketplace-assurances b { font-size: 12.5px; }.product-marketplace-assurances small { font-size: 11px; }
-.product-marketplace-info-grid > article { min-height: 160px; padding: 20px 22px; }.product-marketplace-info-grid h2 { font-size: 16px; }.product-marketplace-info-grid h2 svg { width: 24px; height: 24px; }.product-marketplace-info-grid dl div { min-height: 30px; font-size: 13px; }.product-marketplace-info-grid dd span { font-size: 10.5px; }.product-marketplace-info-grid p { font-size: 12px; }.product-marketplace-info-grid article > button { font-size: 11.5px; }.product-marketplace-info-grid article > button svg { width: 17px; height: 17px; }.product-marketplace-compatibility span, .product-marketplace-protected { padding: 8px 10px; font-size: 11.5px; }.product-marketplace-protected svg { width: 18px; height: 18px; }
+.product-marketplace-info-grid > article { min-height: 160px; padding: 20px 22px; }.product-marketplace-info-grid h2 { font-size: 16px; }.product-marketplace-info-grid h2 svg { width: 24px; height: 24px; }.product-marketplace-info-grid dl div { min-height: 30px; font-size: 13px; }.product-marketplace-info-grid dd span { font-size: 10.5px; }.product-marketplace-info-grid p { font-size: 12px; }.product-marketplace-info-grid article > button { font-size: 11.5px; }.product-marketplace-info-grid article > button svg { width: 17px; height: 17px; }.product-marketplace-protected { padding: 8px 10px; font-size: 11.5px; }.product-marketplace-protected svg { width: 18px; height: 18px; }.product-marketplace-compat-list li { padding: 9px 11px; }.product-marketplace-compat-vehicle { font-size: 11.5px; }.product-marketplace-compat-tags b { padding: 4px 8px; font-size: 10px; }
 .product-marketplace-questions { padding: 20px 23px; }.product-marketplace-questions-head h2 { font-size: 17px; }.product-marketplace-questions-head h2 svg { width: 25px; height: 25px; }.product-marketplace-questions-head p { margin-left: 33px; font-size: 11.5px; }.product-marketplace-questions label, .product-marketplace-questions form button { min-height: 45px; }.product-marketplace-questions input, .product-marketplace-questions form button { font-size: 12.5px; }.product-marketplace-questions label svg, .product-marketplace-questions form button svg { width: 19px; height: 19px; }.product-marketplace-no-questions { min-height: 76px; }.product-marketplace-no-questions > svg { width: 29px; height: 29px; }.product-marketplace-no-questions strong { font-size: 12.5px; }.product-marketplace-no-questions small { font-size: 11px; }.product-marketplace-question-list span { font-size: 10.5px; }.product-marketplace-question-list strong { font-size: 13px; }.product-marketplace-question-list p { font-size: 11.5px; }
 
 /* Recognizable payment brand marks, replacing the generic text chips. */
@@ -10654,21 +10937,52 @@ input, select, textarea {
 .product-compatibility-modal > header > span { width: 52px; height: 52px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.35); border-radius: 15px; background: rgba(255,255,255,.14); }.product-compatibility-modal > header > span svg { width: 28px; height: 28px; }
 .product-compatibility-modal > header h2 { margin: 0; font-size: 23px; line-height: 1.1; }.product-compatibility-modal > header p { margin: 5px 0 0; color: #dce9ff; font-size: 13px; }
 .product-compatibility-modal > header > button { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.34); border-radius: 50%; color: #fff; background: rgba(4,22,58,.16); cursor: pointer; }.product-compatibility-modal > header > button:hover { background: rgba(4,22,58,.34); }.product-compatibility-modal > header > button svg { width: 22px; height: 22px; }
-.product-compatibility-modal-toolbar { padding: 17px 20px; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 13px; border-bottom: 1px solid #e1e7f0; background: #fff; }
+.product-compatibility-modal-controls { display: grid; background: #fff; border-bottom: 1px solid #e1e7f0; }
+.product-compatibility-modal-toolbar { padding: 17px 20px; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 13px; background: #fff; }
 .product-compatibility-modal-toolbar label { min-height: 48px; padding: 0 14px; display: flex; align-items: center; gap: 10px; border: 1px solid #d4deec; border-radius: 12px; background: #fafeff; box-shadow: inset 0 1px 2px rgba(28,48,79,.04); }.product-compatibility-modal-toolbar label:focus-within { border-color: #68a1ff; box-shadow: 0 0 0 3px rgba(18,104,243,.1); }.product-compatibility-modal-toolbar label svg { width: 20px; height: 20px; color: #7e8da3; }.product-compatibility-modal-toolbar input { width: 100%; border: 0; outline: 0; color: #263850; background: transparent; font-size: 13px; }
 .product-compatibility-modal-toolbar > span { padding: 8px 11px; border-radius: 9px; color: #2764bf; background: #eaf3ff; font-size: 11px; font-weight: 800; white-space: nowrap; }
+
+/* Verificación por patente dentro del popup: confirma si el vehículo del
+   comprador (no los de la lista, que son de otros compradores) calza con el
+   repuesto, y si no, invita a ver los repuestos que sí le sirven. */
+.product-compatibility-plate-check { margin: 16px 20px 0; padding: 12px; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 10px; border: 1px solid #bfe0ff; border-radius: 13px; background: linear-gradient(120deg, #eef7ff, #f7fbff); }
+.product-compatibility-plate-check label { min-height: 44px; padding: 0 13px; display: flex; align-items: center; gap: 9px; border: 1px solid #cfe0f5; border-radius: 10px; background: #fff; }
+.product-compatibility-plate-check label svg { width: 18px; height: 18px; color: #1268f3; }
+.product-compatibility-plate-check input { width: 100%; border: 0; outline: 0; color: #1c2c45; background: transparent; font-size: 13px; text-transform: uppercase; }
+.product-compatibility-plate-check button { min-height: 44px; padding: 0 18px; border: 0; border-radius: 10px; color: #fff; background: linear-gradient(135deg, #2987ff, #074de7); font-size: 12.5px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.product-compatibility-plate-check button:disabled { opacity: .7; cursor: wait; }
+.product-compatibility-plate-error { margin: 10px 20px 0; padding: 9px 13px; display: flex; align-items: center; gap: 8px; border-radius: 10px; color: #9a3412; background: #fff3ea; font-size: 12px; font-weight: 700; }
+.product-compatibility-plate-error svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.product-compatibility-plate-banner { margin: 10px 20px 0; padding: 12px 14px; display: grid; grid-template-columns: auto minmax(0,1fr); align-items: start; gap: 11px; border-radius: 13px; }
+.product-compatibility-plate-banner > svg { width: 22px; height: 22px; margin-top: 1px; }
+.product-compatibility-plate-banner strong { display: block; font-size: 12.5px; line-height: 1.4; }
+.product-compatibility-plate-banner span { display: block; margin-top: 3px; font-size: 11px; line-height: 1.4; }
+.product-compatibility-plate-banner.is-match { color: #14603f; background: #e6f9ed; }.product-compatibility-plate-banner.is-match > svg { color: #17a869; }.product-compatibility-plate-banner.is-match span { color: #3f7a5f; }
+.product-compatibility-plate-banner.is-nomatch { color: #7c2d12; background: #fff1e8; }.product-compatibility-plate-banner.is-nomatch > svg { color: #e0762c; }.product-compatibility-plate-banner.is-nomatch span { color: #8a5236; }
+.product-compatibility-plate-banner.is-nomatch button { margin-top: 9px; padding: 0 14px; min-height: 36px; display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 9px; color: #fff; background: linear-gradient(135deg, #ff8a3d, #e35f16); font-size: 11.5px; font-weight: 800; cursor: pointer; }
+.product-compatibility-plate-banner.is-nomatch button svg { width: 14px; height: 14px; }
 .product-compatibility-modal-list { min-height: 260px; padding: 18px 20px; display: grid; align-content: start; gap: 11px; overflow-y: auto; scrollbar-width: thin; }
 .product-compatibility-modal-list article { min-height: 112px; padding: 16px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 14px; border: 1px solid #dce5f1; border-radius: 14px; background: #fff; box-shadow: 0 5px 15px rgba(27,53,91,.055); }
 .product-compatibility-car-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; color: #168455; background: #e5f8ed; }.product-compatibility-car-icon svg { width: 25px; height: 25px; }
-.product-compatibility-copy { min-width: 0; }.product-compatibility-copy h3 { margin: 0 0 8px; color: #17263d; font-size: 17px; }.product-compatibility-copy p { margin: 4px 0 0; display: flex; align-items: center; gap: 6px; color: #718096; font-size: 12px; }.product-compatibility-copy p svg { width: 15px; height: 15px; color: #3778d9; }.product-compatibility-copy p strong { color: #34465f; }
+.product-compatibility-copy { min-width: 0; }.product-compatibility-copy h3 { margin: 0 0 10px; color: #17263d; font-size: 17px; }.product-compatibility-copy p { margin: 8px 0 0; display: flex; align-items: center; gap: 6px; color: #718096; font-size: 12px; }.product-compatibility-copy p svg { width: 15px; height: 15px; color: #3778d9; }.product-compatibility-copy p strong { color: #34465f; }
+/* Grid de 4 campos etiquetados (Marca, Modelo, Año, Versión) por cada vehículo
+   compatible, para que el calce quede explícito y no dependa solo del título. */
+.product-compatibility-fields { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px 12px; }
+.product-compatibility-fields > div { min-width: 0; padding: 6px 9px; display: grid; gap: 2px; border-radius: 8px; background: #f3f7fd; }
+.product-compatibility-fields span { color: #8290a3; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
+.product-compatibility-fields strong { min-width: 0; overflow: hidden; color: #1c2c45; font-size: 12.5px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .product-compatibility-seller-check { min-height: 31px; padding: 0 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 9px; color: #168153; background: #e8f8ee; font-size: 10px; font-weight: 800; white-space: nowrap; }.product-compatibility-seller-check svg { width: 15px; height: 15px; }
+/* Tarjeta que coincide con la patente ingresada por el comprador: se distingue
+   del resto (que son vehículos de otros compradores) con borde y ribbon azules. */
+.product-compatibility-modal-list article.is-plate-match { border: 2px solid #1268f3; background: #f3f8ff; box-shadow: 0 8px 22px rgba(18,104,243,.16); }
+.product-compatibility-seller-check.is-plate-match { color: #0d4fc4; background: #e3efff; }
 .product-compatibility-empty { min-height: 230px; display: grid; place-items: center; align-content: center; gap: 7px; color: #8b98aa; }.product-compatibility-empty > svg { width: 38px; height: 38px; color: #9bb9e7; }.product-compatibility-empty strong { color: #40516a; font-size: 15px; }.product-compatibility-empty span { font-size: 12px; }
 .product-compatibility-modal > footer { min-height: 72px; padding: 13px 20px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 10px; border-top: 1px solid #dde5ef; color: #66768d; background: #fff; font-size: 11px; }.product-compatibility-modal > footer > svg { width: 22px; height: 22px; color: #168153; }.product-compatibility-modal > footer button { min-height: 39px; padding: 0 20px; border: 0; border-radius: 10px; color: #fff; background: #1268f3; font-size: 12px; font-weight: 800; cursor: pointer; }
 @keyframes compatibility-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes compatibility-modal-in { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 @media (max-width: 650px) {
-  .product-compatibility-modal-backdrop { padding: 10px; }.product-compatibility-modal { max-height: calc(100vh - 20px); border-radius: 17px; }.product-compatibility-modal > header { min-height: 90px; padding: 17px; }.product-compatibility-modal > header > span { width: 44px; height: 44px; }.product-compatibility-modal > header h2 { font-size: 18px; }.product-compatibility-modal > header p { font-size: 11px; }.product-compatibility-modal-toolbar { grid-template-columns: 1fr; padding: 13px; }.product-compatibility-modal-toolbar > span { width: fit-content; }.product-compatibility-modal-list { padding: 13px; }.product-compatibility-modal-list article { grid-template-columns: auto 1fr; }.product-compatibility-seller-check { grid-column: 1 / -1; width: fit-content; }.product-compatibility-modal > footer { grid-template-columns: auto 1fr; }.product-compatibility-modal > footer button { grid-column: 1 / -1; width: 100%; }
+  .product-compatibility-modal-backdrop { padding: 10px; }.product-compatibility-modal { max-height: calc(100vh - 20px); border-radius: 17px; }.product-compatibility-modal > header { min-height: 90px; padding: 17px; }.product-compatibility-modal > header > span { width: 44px; height: 44px; }.product-compatibility-modal > header h2 { font-size: 18px; }.product-compatibility-modal > header p { font-size: 11px; }.product-compatibility-plate-check { grid-template-columns: 1fr; margin: 13px; }.product-compatibility-plate-error, .product-compatibility-plate-banner { margin-left: 13px; margin-right: 13px; }.product-compatibility-modal-toolbar { grid-template-columns: 1fr; padding: 13px; }.product-compatibility-modal-toolbar > span { width: fit-content; }.product-compatibility-modal-list { padding: 13px; }.product-compatibility-modal-list article { grid-template-columns: auto 1fr; }.product-compatibility-seller-check { grid-column: 1 / -1; width: fit-content; }.product-compatibility-modal > footer { grid-template-columns: auto 1fr; }.product-compatibility-modal > footer button { grid-column: 1 / -1; width: 100%; }
 }
 
 /* Use the available desktop width consistently: four marketplace cards per row. */
@@ -10813,3 +11127,112 @@ input, select, textarea {
   .related-products-arrows { display: none; }
   .related-products-item { width: 200px; flex: 0 0 200px; }
 }
+
+/* ------------------------------------------------------------------ *
+ * Carrito (CartDrawer): panel deslizante sin estilos previos — el
+ * checkout era solo un botón de alert(), así que este bloque es nuevo.
+ * ------------------------------------------------------------------ */
+.cart-drawer-backdrop { position: fixed; inset: 0; z-index: 1300; display: flex; justify-content: flex-end; background: rgba(11, 21, 39, .55); backdrop-filter: blur(3px); animation: compatibility-backdrop-in .18s ease-out; }
+.cart-drawer-panel { width: min(440px, 100%); height: 100%; display: flex; flex-direction: column; background: #fff; box-shadow: -20px 0 50px rgba(6, 20, 48, .25); animation: cart-drawer-in .22s ease-out; }
+@keyframes cart-drawer-in { from { transform: translateX(24px); opacity: .6; } to { transform: translateX(0); opacity: 1; } }
+
+.drawer-header { padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eef1f6; }
+.drawer-title { display: flex; align-items: center; gap: 9px; color: #142035; }
+.drawer-title h2 { margin: 0; font-size: 16px; font-weight: 800; }
+.drawer-title .count-badge { min-width: 20px; height: 20px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: #1268f3; color: #fff; font-size: 11px; font-weight: 800; }
+.drawer-close-btn { width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 50%; color: #64748b; background: transparent; cursor: pointer; }
+.drawer-close-btn:hover { background: #f1f5f9; color: #0f172a; }
+
+.free-shipping-bar-wrapper { padding: 12px 20px; border-bottom: 1px solid #eef1f6; }
+.free-shipping-success { display: flex; align-items: center; gap: 8px; color: #0e7038; font-size: 12.5px; font-weight: 700; }
+.free-shipping-progress p { margin: 0 0 8px; color: #475569; font-size: 12px; }
+.progress-bar-outer { height: 6px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
+.progress-bar-inner { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2987ff, #6c4bff); transition: width .25s ease; }
+
+.drawer-body { flex: 1 1 auto; overflow-y: auto; padding: 14px 20px; }
+.empty-cart-state { min-height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; color: #64748b; }
+.empty-cart-state .empty-icon { color: #cbd5e1; margin-bottom: 6px; }
+.empty-cart-state h3 { margin: 0; font-size: 15px; color: #1e293b; }
+.empty-cart-state p { margin: 0; font-size: 12.5px; max-width: 260px; }
+.btn-continue-shopping { margin-top: 8px; padding: 10px 18px; border: 0; border-radius: 10px; background: #1268f3; color: #fff; font-size: 13px; font-weight: 800; cursor: pointer; }
+
+.cart-items-list { display: flex; flex-direction: column; gap: 12px; }
+.cart-item-row { display: flex; gap: 12px; padding: 12px; border: 1px solid #eef1f6; border-radius: 12px; }
+.cart-item-row .item-thumb { width: 54px; height: 54px; flex: 0 0 auto; border-radius: 9px; overflow: hidden; }
+.item-details { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.item-title { margin: 0; font-size: 13px; font-weight: 700; color: #142035; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-oem { font-size: 10.5px; color: #8290a3; }
+.item-veh-tag { width: fit-content; padding: 2px 7px; border-radius: 6px; background: #e6f9ed; color: #12824d; font-size: 10px; font-weight: 700; }
+.item-price-row { margin-top: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.item-unit-price { font-size: 13px; font-weight: 800; color: #0f172a; }
+.quantity-controls { display: flex; align-items: center; gap: 8px; padding: 3px; border: 1px solid #e2e8f0; border-radius: 8px; }
+.quantity-controls button { width: 22px; height: 22px; display: grid; place-items: center; border: 0; border-radius: 5px; background: #f1f5f9; color: #334155; cursor: pointer; }
+.quantity-controls span { min-width: 16px; text-align: center; font-size: 12px; font-weight: 700; }
+.btn-remove-item { width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 7px; background: transparent; color: #cbd5e1; cursor: pointer; }
+.btn-remove-item:hover { background: #fef2f2; color: #dc2626; }
+
+.drawer-footer { padding: 16px 20px 20px; border-top: 1px solid #eef1f6; background: #fbfcfe; }
+.summary-row { display: flex; justify-content: space-between; font-size: 12.5px; color: #475569; margin-bottom: 6px; }
+.summary-row .green-text { color: #0e7038; }
+.total-row { margin: 8px 0 14px; padding-top: 10px; border-top: 1px dashed #dde5ef; display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; font-weight: 800; color: #0f172a; }
+.total-amount { font-size: 18px; color: #1268f3; }
+.checkout-trust-badge { margin: 12px 0; display: flex; align-items: center; gap: 8px; color: #56708f; font-size: 11.5px; }
+.btn-proceed-checkout { width: 100%; min-height: 50px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 12px; color: #fff; background: linear-gradient(135deg, #2987ff, #074de7); font-size: 14px; font-weight: 800; cursor: pointer; box-shadow: 0 10px 20px rgba(17, 95, 236, .22); }
+.btn-proceed-checkout:disabled { opacity: .7; cursor: wait; }
+.cart-checkout-error { margin-top: 10px; padding: 9px 12px; display: flex; align-items: center; gap: 7px; border-radius: 9px; color: #9a3412; background: #fff3ea; font-size: 12px; font-weight: 700; }
+
+/* Selector de dirección dentro del carrito: reutiliza BuyerAddressBook
+   cuando el comprador aún no tiene direcciones o quiere agregar otra. */
+.cart-checkout-address { margin-bottom: 14px; padding: 12px; border: 1px solid #dbe6f7; border-radius: 12px; background: #f5f9ff; }
+.cart-checkout-address > label { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: #14335c; font-size: 12px; font-weight: 800; }
+.cart-checkout-address select { width: 100%; min-height: 40px; padding: 0 10px; border: 1px solid #cfe0f5; border-radius: 9px; background: #fff; color: #1c2c45; font-size: 12.5px; }
+.cart-address-loading, .cart-address-empty { display: flex; align-items: center; gap: 7px; color: #7b899c; font-size: 12px; }
+.cart-address-empty { color: #b45309; }
+.btn-manage-cart-addresses { margin-top: 8px; padding: 0; border: 0; background: transparent; color: #1268f3; font-size: 11.5px; font-weight: 800; cursor: pointer; }
+.cart-address-manager { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #cfe0f5; }
+
+.cart-order-success { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 40px 24px; text-align: center; color: #14603f; }
+.cart-order-success svg { color: #17a869; }
+.cart-order-success h3 { margin: 0; font-size: 17px; color: #0f172a; }
+.cart-order-success p { margin: 0; max-width: 300px; color: #475569; font-size: 12.5px; }
+
+@media (max-width: 480px) {
+  .cart-drawer-panel { width: 100%; }
+}
+
+/* ------------------------------------------------------------------ *
+ * Libreta de direcciones del comprador (BuyerAddressBook): icono para
+ * agregar, lista de direcciones guardadas y desplegable de principal.
+ * ------------------------------------------------------------------ */
+.buyer-address-book { margin-top: 4px; }
+.buyer-address-book-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.buyer-address-book-header h4 { margin: 0 0 2px; font-size: 13.5px; font-weight: 800; color: #142035; }
+.buyer-address-book-header p { margin: 0; font-size: 11.5px; color: #8290a3; }
+.btn-add-address { flex: 0 0 auto; padding: 8px 14px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #cfe0fb; border-radius: 10px; background: #eff6ff; color: #1268f3; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.btn-add-address:hover { background: #dbeafe; }
+
+.buyer-address-loading, .buyer-address-empty { display: flex; align-items: center; gap: 9px; padding: 14px; border-radius: 10px; background: #f8fafc; color: #64748b; font-size: 12.5px; }
+
+.buyer-address-principal-picker { margin-bottom: 12px; padding: 10px 12px; border-radius: 10px; background: #fffbeb; border: 1px solid #fde68a; }
+.buyer-address-principal-picker label { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; color: #92400e; font-size: 11.5px; font-weight: 800; }
+.buyer-address-principal-picker select { width: 100%; min-height: 38px; padding: 0 10px; border: 1px solid #fcd34d; border-radius: 8px; background: #fff; color: #1c2c45; font-size: 12.5px; }
+.buyer-address-principal-picker small { display: block; margin-top: 6px; color: #92601a; font-size: 10.5px; }
+
+.buyer-address-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.buyer-address-list li { padding: 11px 12px; display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 10px; border: 1px solid #e1e7f0; border-radius: 11px; background: #fff; }
+.buyer-address-list li.is-principal { border-color: #1268f3; background: #f5f9ff; }
+.buyer-address-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; background: #eef4fb; color: #1268f3; flex-shrink: 0; }
+.buyer-address-copy { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.buyer-address-copy strong { font-size: 12.5px; color: #142035; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.buyer-address-copy span { font-size: 11px; color: #7b899c; }
+.buyer-address-zip { font-size: 10px !important; color: #a3b1c2 !important; }
+.buyer-address-principal-badge { padding: 3px 8px; display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 9.5px; font-weight: 800; white-space: nowrap; }
+.buyer-address-actions { display: flex; gap: 4px; }
+.buyer-address-actions button { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #e1e7f0; border-radius: 7px; background: #fff; color: #64748b; cursor: pointer; }
+.buyer-address-actions button:hover { background: #f1f5f9; color: #1268f3; }
+
+.buyer-address-form-backdrop { position: fixed; inset: 0; z-index: 1400; display: grid; place-items: center; padding: 20px; background: rgba(11, 21, 39, .55); backdrop-filter: blur(3px); }
+.buyer-address-form { width: min(420px, 100%); max-height: min(600px, calc(100vh - 40px)); overflow-y: auto; padding: 20px; border-radius: 16px; background: #fff; box-shadow: 0 30px 60px rgba(6, 20, 48, .3); }
+.buyer-address-form-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.buyer-address-form-header h4 { margin: 0; font-size: 15px; font-weight: 800; color: #142035; }
+.buyer-address-form-header button { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 50%; background: #f1f5f9; color: #64748b; cursor: pointer; }

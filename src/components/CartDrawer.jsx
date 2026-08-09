@@ -1,9 +1,40 @@
-import React from 'react';
-import { ShoppingBag, X, Trash2, Plus, Minus, ShieldCheck, Truck, ArrowRight, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ShoppingBag, X, Trash2, Plus, Minus, ShieldCheck, Truck, ArrowRight, CheckCircle2, MapPin, Loader2, AlertTriangle } from 'lucide-react';
 import { CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
+import BuyerAddressBook from './BuyerAddressBook';
+import { getAddressesApi, checkoutCartApi } from '../services/api';
 
-export default function CartDrawer({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, activeVehicle }) {
+export default function CartDrawer({
+  isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, activeVehicle,
+  user, isLoggedIn, onOpenAuthModal, onOrderCreated, onClearCart,
+}) {
+  const [addresses, setAddresses] = useState([]);
+  const [addressesLoading, setAddressesLoading] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState('');
+  const [showAddressManager, setShowAddressManager] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
+  const [orderSuccess, setOrderSuccess] = useState(null);
+
+  const loadAddresses = () => {
+    if (!user?.userId) return;
+    setAddressesLoading(true);
+    getAddressesApi(user.userId)
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setAddresses(list);
+        const principal = list.find((address) => address.esPrincipal);
+        setSelectedAddressId((current) => current || String(principal?.id || list[0]?.id || ''));
+      })
+      .catch(() => setAddresses([]))
+      .finally(() => setAddressesLoading(false));
+  };
+
+  useEffect(() => {
+    if (isOpen && isLoggedIn && user?.userId) loadAddresses();
+  }, [isOpen, isLoggedIn, user?.userId]);
+
   if (!isOpen) return null;
 
   const subtotal = cartItems.reduce((acc, item) => acc + (item.precio * item.quantity), 0);
@@ -11,6 +42,29 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onUpdateQuantit
   const isFreeShipping = subtotal >= freeShippingThreshold;
   const shippingFee = subtotal > 0 && !isFreeShipping ? 3990 : 0;
   const total = subtotal + shippingFee;
+
+  const handleCheckout = async () => {
+    if (!isLoggedIn) {
+      onOpenAuthModal?.();
+      return;
+    }
+    if (!selectedAddressId) {
+      setCheckoutError('Selecciona la dirección donde quieres recibir tu pedido.');
+      return;
+    }
+    setCheckingOut(true);
+    setCheckoutError('');
+    try {
+      const order = await checkoutCartApi(user.userId, { direccionId: selectedAddressId });
+      setOrderSuccess(order);
+      onClearCart?.();
+      onOrderCreated?.(order);
+    } catch (error) {
+      setCheckoutError(error.message || 'No se pudo generar el pedido. Intenta nuevamente.');
+    } finally {
+      setCheckingOut(false);
+    }
+  };
 
   return (
     <div className="cart-drawer-backdrop" onClick={onClose}>
@@ -27,6 +81,21 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onUpdateQuantit
           </button>
         </div>
 
+        {orderSuccess ? (
+          <div className="cart-order-success">
+            <CheckCircle2 size={44} />
+            <h3>¡Pedido generado con éxito!</h3>
+            <p>Pedido #{String(orderSuccess.id || '').slice(-6).toUpperCase() || orderSuccess.id} enviado a la dirección seleccionada. Sigue su estado desde tu perfil.</p>
+            <button
+              type="button"
+              className="btn-continue-shopping"
+              onClick={() => { setOrderSuccess(null); onClose(); }}
+            >
+              Seguir comprando
+            </button>
+          </div>
+        ) : (
+        <>
         {/* Free Shipping Progress Indicator */}
         <div className="free-shipping-bar-wrapper">
           {isFreeShipping ? (
@@ -119,15 +188,54 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onUpdateQuantit
               <span className="total-amount">${total.toLocaleString('es-CL')}</span>
             </div>
 
+            {isLoggedIn && (
+              <div className="cart-checkout-address">
+                <label htmlFor="cart-checkout-address-select"><MapPin size={14} /> Dirección de envío</label>
+                {addressesLoading ? (
+                  <div className="cart-address-loading"><Loader2 size={15} className="spin-icon" /> Cargando tus direcciones...</div>
+                ) : addresses.length > 0 ? (
+                  <>
+                    <select
+                      id="cart-checkout-address-select"
+                      value={selectedAddressId}
+                      onChange={(e) => setSelectedAddressId(e.target.value)}
+                    >
+                      {addresses.map((address) => (
+                        <option key={address.id} value={address.id}>
+                          {address.calleYNumero} · {address.comunaNombre}{address.esPrincipal ? ' (Principal)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" className="btn-manage-cart-addresses" onClick={() => setShowAddressManager((v) => !v)}>
+                      {showAddressManager ? 'Ocultar direcciones' : 'Agregar otra dirección'}
+                    </button>
+                  </>
+                ) : (
+                  <div className="cart-address-empty">
+                    <AlertTriangle size={15} /> No tienes direcciones guardadas todavía.
+                  </div>
+                )}
+                {(showAddressManager || addresses.length === 0) && (
+                  <div className="cart-address-manager">
+                    <BuyerAddressBook usuarioId={user?.userId} />
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="checkout-trust-badge">
               <ShieldCheck size={16} /> Pago protegido con Flow o transferencia vía Khipu
             </div>
 
-            <button className="btn-proceed-checkout" onClick={() => alert('En el checkout podrás elegir Flow (débito o crédito) o transferencia bancaria vía Khipu.')}>
-              <span>CONTINUAR AL PAGO</span>
-              <ArrowRight size={18} />
+            {checkoutError && <div className="cart-checkout-error"><AlertTriangle size={15} /> {checkoutError}</div>}
+
+            <button className="btn-proceed-checkout" onClick={handleCheckout} disabled={checkingOut}>
+              <span>{checkingOut ? 'Generando pedido...' : isLoggedIn ? 'CONTINUAR AL PAGO' : 'INICIA SESIÓN PARA COMPRAR'}</span>
+              {checkingOut ? <Loader2 size={18} className="spin-icon" /> : <ArrowRight size={18} />}
             </button>
           </div>
+        )}
+        </>
         )}
       </div>
     </div>

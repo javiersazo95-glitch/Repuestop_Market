@@ -4,6 +4,7 @@ import {
   CreditCard, ArrowRight, X, Sparkles, TrendingUp, Users, PackageCheck, AlertCircle 
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { formatRut } from '../services/adapters';
 
 export default function SellerRegisterModal({ isOpen, onClose }) {
   const { registerSeller } = useAuth();
@@ -132,7 +133,8 @@ export default function SellerRegisterModal({ isOpen, onClose }) {
                       required
                       placeholder="Ej: 76.543.210-K"
                       value={formData.rutEmpresa}
-                      onChange={handleChange}
+                      onChange={(e) => setFormData({ ...formData, rutEmpresa: formatRut(e.target.value) })}
+                      maxLength={12}
                     />
                   </div>
                 </div>

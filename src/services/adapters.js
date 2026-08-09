@@ -14,6 +14,20 @@ import { resolveMediaUrl } from './api';
 const CATEGORY_IDS = SIDEBAR_CATEGORIES.map((c) => c.id);
 
 /**
+ * Deja solo dígitos + dígito verificador (k/K) y aplica puntos de miles + guion.
+ * Ejemplo: "12345678k" -> "12.345.678-K"
+ */
+export function formatRut(value) {
+  if (!value) return '';
+  const cleaned = String(value).replace(/[^0-9kK]/g, '').toUpperCase().slice(0, 9);
+  if (cleaned.length <= 1) return cleaned;
+  const body = cleaned.slice(0, -1);
+  const verifier = cleaned.slice(-1);
+  const formattedBody = body.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${formattedBody}-${verifier}`;
+}
+
+/**
  * El backend devuelve el nombre de la categoría como texto libre ("Sistema de Frenos",
  * "Motor y Distribución"). La UI colorea e iconiza por el id corto del mock, así que se
  * resuelve por coincidencia de palabra clave y cae en 'motor' si no hay match.

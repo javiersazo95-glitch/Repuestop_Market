@@ -31,6 +31,9 @@ import { getShippingIconConfig } from './NewOnboardedStoresSection';
 import VehicleBrandLogo from './VehicleBrandLogo';
 import SellerWithdrawalsPanel from './SellerWithdrawalsPanel';
 import SellerOrdersPanel from './SellerOrdersPanel';
+import BuyerAddressBook from './BuyerAddressBook';
+import { formatRut } from '../services/adapters';
+import { storePath } from '../routes/paths';
 
 const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
 const BUYER_PROFILE_COVER_URL = import.meta.env.VITE_BUYER_PROFILE_COVER_URL
@@ -567,14 +570,14 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     const payload = {
       userName: nameDraft,
       phone: phoneDraft,
-      address: addressDraft,
-      comuna: comunaDraft,
-      region: regionDraft,
+      taxId: taxIdDraft,
     };
 
     if (isSeller) {
       payload.storeName = storeNameDraft;
-      payload.taxId = taxIdDraft;
+      payload.address = addressDraft;
+      payload.comuna = comunaDraft;
+      payload.region = regionDraft;
       payload.shippingMethods = shippingMethodsDraft;
     }
 
@@ -633,10 +636,26 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             <RepuesTopLogo height={38} />
           </div>
 
-          <button className="btn-back-to-store" onClick={onBackToStore}>
-            <ArrowLeft size={16} />
-            <span>Volver a la tienda</span>
-          </button>
+          <div className="profile-topbar-actions">
+            <button className="btn-back-to-store" onClick={onBackToStore}>
+              <ArrowLeft size={16} />
+              <span>Volver a la tienda</span>
+            </button>
+
+            {isSeller && user?.sellerId && (
+              <a
+                className="btn-visit-my-store"
+                href={storePath({ id: user.sellerId, nombre: storeInfo?.storeName || user?.storeName })}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Se abre en una pestaña nueva: es exactamente como los compradores ven tu tienda."
+              >
+                <Store size={16} />
+                <span>Visitar mi tienda</span>
+                <ArrowUpRight size={14} />
+              </a>
+            )}
+          </div>
 
           <div className="profile-topbar-user">
             <div className={`profile-role-chip ${isSeller ? 'chip-seller' : 'chip-buyer'}`}>
@@ -1278,10 +1297,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
                   {isEditing ? (
                     <form className="profile-data-form unified-profile-form" onSubmit={handleSaveProfile}>
-                      <div className="form-section-title">Datos Personales y de Representante</div>
+                      <div className="form-section-title">Datos Personales y de Contacto</div>
                       <div className="form-grid-2">
                         <div className="form-group">
-                          <label>Nombre Completo / Representante</label>
+                          <label>{isSeller ? 'Nombre Completo / Representante' : 'Nombre Completo'}</label>
                           <input type="text" value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} required />
                         </div>
                         <div className="form-group">
@@ -1289,26 +1308,18 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                           <input type="tel" value={phoneDraft} onChange={(e) => setPhoneDraft(e.target.value)} placeholder="+56 9 1234 5678" />
                         </div>
                       </div>
+                      <div className="form-group">
+                        <label>RUT / Identificador Fiscal</label>
+                        <input type="text" value={taxIdDraft} onChange={(e) => setTaxIdDraft(formatRut(e.target.value))} placeholder="12.345.678-K" maxLength={12} />
+                      </div>
 
-                      {isSeller && (
+                      {isSeller ? (
                         <>
-                          <div className="form-section-title" style={{ marginTop: '16px' }}>Datos de la Tienda y Empresa</div>
-                          <div className="form-grid-2">
-                            <div className="form-group">
-                              <label>Nombre de la Tienda</label>
-                              <input type="text" value={storeNameDraft} onChange={(e) => setStoreNameDraft(e.target.value)} required />
-                            </div>
-                            <div className="form-group">
-                              <label>RUT Empresa / Identificador Fiscal</label>
-                              <input type="text" value={taxIdDraft} onChange={(e) => setTaxIdDraft(e.target.value)} placeholder="12.345.678-K" />
-                            </div>
-                          </div>
-
+                          <div className="form-section-title" style={{ marginTop: '16px' }}>Dirección Comercial de Despacho</div>
                           <div className="form-group">
-                            <label>Dirección Comercial de Despacho</label>
+                            <label>Dirección</label>
                             <input type="text" value={addressDraft} onChange={(e) => setAddressDraft(e.target.value)} placeholder="Av. Italia 1234, Local 5" />
                           </div>
-
                           <div className="form-grid-2">
                             <div className="form-group">
                               <label>Comuna</label>
@@ -1318,6 +1329,21 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                               <label>Región</label>
                               <input type="text" value={regionDraft} onChange={(e) => setRegionDraft(e.target.value)} placeholder="Región Metropolitana" />
                             </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ marginTop: '16px' }}>
+                          <div className="form-section-title">Direcciones de Despacho</div>
+                          <BuyerAddressBook usuarioId={user?.userId} />
+                        </div>
+                      )}
+
+                      {isSeller && (
+                        <>
+                          <div className="form-section-title" style={{ marginTop: '16px' }}>Datos de la Tienda</div>
+                          <div className="form-group">
+                            <label>Nombre de la Tienda</label>
+                            <input type="text" value={storeNameDraft} onChange={(e) => setStoreNameDraft(e.target.value)} required />
                           </div>
 
                           <div className="form-group">
@@ -1463,17 +1489,22 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                             <Truck size={16} />
                             <span>Ubicación y Logística de Despacho</span>
                           </h3>
+                          {!isSeller && <BuyerAddressBook usuarioId={user?.userId} />}
                           <div className="details-info-list">
-                            <div className="details-info-row">
-                              <span className="info-label"><MapPin size={13} /> Dirección Comercial</span>
-                              <strong className="info-value">{storeInfo?.address || user?.address || 'Dirección no registrada'}</strong>
-                            </div>
-                            <div className="details-info-row">
-                              <span className="info-label">Comuna / Región</span>
-                              <strong className="info-value">
-                                {[storeInfo?.comuna || user?.comuna, storeInfo?.region || user?.region].filter(Boolean).join(', ') || '—'}
-                              </strong>
-                            </div>
+                            {isSeller && (
+                              <>
+                                <div className="details-info-row">
+                                  <span className="info-label"><MapPin size={13} /> Dirección Comercial</span>
+                                  <strong className="info-value">{storeInfo?.address || user?.address || 'Dirección no registrada'}</strong>
+                                </div>
+                                <div className="details-info-row">
+                                  <span className="info-label">Comuna / Región</span>
+                                  <strong className="info-value">
+                                    {[storeInfo?.comuna || user?.comuna, storeInfo?.region || user?.region].filter(Boolean).join(', ') || '—'}
+                                  </strong>
+                                </div>
+                              </>
+                            )}
                             {isSeller && (
                               <div className="details-info-row">
                                 <span className="info-label">Métodos de Envío Registrados</span>

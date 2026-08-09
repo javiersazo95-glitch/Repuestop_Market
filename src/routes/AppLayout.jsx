@@ -21,13 +21,13 @@ export default function AppLayout() {
   const [searchParams] = useSearchParams();
   const nav = useAppNavigation();
   const {
-    activeVehicle, cartCount, cartItems, updateCartQuantity, removeFromCart,
+    activeVehicle, cartCount, cartItems, updateCartQuantity, removeFromCart, clearCart,
     isCartOpen, openCart, closeCart,
     isAuthModalOpen, openAuthModal, closeAuthModal,
     quoteProduct, closeQuote,
     searchQuery, setSearchQuery,
   } = useMarketplace();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
 
   // Una ruta protegida redirige aquí marcando `requireAuth`: abrimos el login y
   // recordamos a dónde quería ir el usuario.
@@ -100,7 +100,11 @@ export default function AppLayout() {
         cartItems={cartItems}
         onUpdateQuantity={updateCartQuantity}
         onRemoveItem={removeFromCart}
+        onClearCart={clearCart}
         activeVehicle={activeVehicle}
+        user={user}
+        isLoggedIn={isLoggedIn}
+        onOpenAuthModal={openAuthModal}
       />
     </div>
   );

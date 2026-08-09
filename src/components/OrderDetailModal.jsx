@@ -1,9 +1,20 @@
 import React, { useState } from 'react';
 import {
   X, Clock, Wrench, Truck, PackageCheck, ShieldCheck, User, Store,
-  MapPin, Phone, Mail, FileText, Package, CreditCard, CheckCircle2, ChevronRight
+  MapPin, Phone, Mail, FileText, Package, CreditCard, CheckCircle2, ChevronRight, Copy
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
+import { resolveShippingService } from '../data/shippingMethods';
+
+function initialsFromName(name) {
+  return String(name || '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase() || '?';
+}
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
@@ -60,6 +71,19 @@ export default function OrderDetailModal({
   const sellerName = order.vendedorNombre || order.sellerName || order.nombreTienda || 'Tienda RepuesTop';
   const deliveryAddress = order.direccionEntrega || order.address || order.comuna ? `${order.direccionEntrega || ''} ${order.comuna || ''} ${order.region || ''}`.trim() : 'Despacho a domicilio';
   const deliveryTerms = order.deliveryTerms || order.tipoEnvio || 'Envío por Starken / Chilexpress';
+  // Traduce el método de envío a español + ícono, con la misma lógica que la
+  // ficha de producto usa para los métodos que declara la tienda.
+  const shippingService = resolveShippingService(deliveryTerms);
+  const ShippingIcon = shippingService.icon;
+  const isStorePickup = shippingService.name === 'Retiro en tienda';
+  const [addressCopied, setAddressCopied] = useState(false);
+  const copyAddress = (e) => {
+    e.stopPropagation();
+    navigator.clipboard?.writeText(deliveryAddress).then(() => {
+      setAddressCopied(true);
+      setTimeout(() => setAddressCopied(false), 1500);
+    });
+  };
 
   const subtotal = Number(order.subtotal || order.total || 0);
   const shippingFee = Number(order.shippingFee || order.costoEnvio || 0);
@@ -129,51 +153,67 @@ export default function OrderDetailModal({
             </div>
           </div>
 
+          {/* Tarjeta de la persona (comprador/vendedor): es el dato más importante
+              del pedido, así que va primero y a todo el ancho, con su propio
+              acento de color en vez de perderse entre el resto de la info. */}
+          <div className="details-card-block person-highlight-card">
+            <div className="person-highlight-header">
+              <div className="person-highlight-avatar">
+                {isSeller ? <User size={20} /> : <Store size={20} />}
+                <span>{initialsFromName(isSeller ? buyerName : sellerName)}</span>
+              </div>
+              <div className="person-highlight-copy">
+                <span className="person-highlight-eyebrow">{isSeller ? 'Comprador' : 'Vendedor'}</span>
+                <h3 className="person-highlight-name">{isSeller ? buyerName : sellerName}</h3>
+              </div>
+            </div>
+
+            {isSeller && (
+              <div className="person-contact-chips">
+                <a className="person-contact-chip" href={`mailto:${buyerEmail}`} onClick={(e) => e.stopPropagation()}>
+                  <Mail size={14} /> {buyerEmail}
+                </a>
+                <a className="person-contact-chip" href={`tel:${buyerPhone}`} onClick={(e) => e.stopPropagation()}>
+                  <Phone size={14} /> {buyerPhone}
+                </a>
+                {(order.tipoDocumento || order.documentType) && (
+                  <span className="person-contact-chip document">
+                    <FileText size={14} />
+                    {order.tipoDocumento === 'factura' || order.documentType === 'factura'
+                      ? `Factura · RUT ${buyerRut}`
+                      : 'Boleta Electrónica'}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="order-details-grid">
-            {/* Left Column: Customer & Shipping Info */}
-            <div className="details-card-block">
+            {/* Tarjeta de envío: método traducido a español con su ícono y color
+                propios, y la dirección de entrega bien visible con copia rápida. */}
+            <div className={`details-card-block shipping-highlight-card ${!onUpdateStatus ? 'full-width' : ''}`} style={{ '--shipping-color': shippingService.color, '--shipping-bg': shippingService.bg }}>
               <h3 className="section-subtitle">
-                {isSeller ? <User size={16} /> : <Store size={16} />}
-                <span>{isSeller ? 'Información del Comprador' : 'Información de la Tienda'}</span>
+                <Truck size={16} />
+                <span>Envío</span>
               </h3>
 
-              <div className="details-info-list">
-                <div className="details-info-row">
-                  <span className="info-label">Nombre</span>
-                  <strong className="info-value">{isSeller ? buyerName : sellerName}</strong>
-                </div>
-                {isSeller && (
-                  <>
-                    <div className="details-info-row">
-                      <span className="info-label"><Mail size={13} /> Correo</span>
-                      <strong className="info-value">{buyerEmail}</strong>
-                    </div>
-                    <div className="details-info-row">
-                      <span className="info-label"><Phone size={13} /> Teléfono</span>
-                      <strong className="info-value">{buyerPhone}</strong>
-                    </div>
-                    {(order.tipoDocumento || order.documentType) && (
-                      <div className="details-info-row">
-                        <span className="info-label"><FileText size={13} /> Documento</span>
-                        <strong className="info-value">
-                          {order.tipoDocumento === 'factura' || order.documentType === 'factura'
-                            ? `Factura (RUT: ${buyerRut})`
-                            : 'Boleta Electrónica'}
-                        </strong>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                <div className="details-info-row">
-                  <span className="info-label"><MapPin size={13} /> Dirección de Entrega</span>
-                  <strong className="info-value">{deliveryAddress}</strong>
-                </div>
-                <div className="details-info-row">
-                  <span className="info-label"><Truck size={13} /> Método de Envío</span>
-                  <strong className="info-value">{deliveryTerms}</strong>
-                </div>
+              <div className="shipping-method-badge">
+                <ShippingIcon size={16} />
+                <span>{shippingService.label}</span>
               </div>
+
+              {!isStorePickup && (
+                <div className="shipping-address-block">
+                  <MapPin size={16} />
+                  <div className="shipping-address-copy">
+                    <span className="info-label">Dirección de entrega</span>
+                    <strong className="shipping-address-text">{deliveryAddress}</strong>
+                  </div>
+                  <button type="button" className="btn-copy-address" onClick={copyAddress} title="Copiar dirección">
+                    {addressCopied ? <CheckCircle2 size={15} /> : <Copy size={15} />}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Right Column: Update Order Status */}

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {
   Clock, Wrench, Truck, PackageCheck, ShieldCheck, AlertCircle, XCircle,
-  RotateCcw, FileText, User, Store, Package, Info, ChevronRight, Check
+  RotateCcw, FileText, User, Store, Package, Info, ChevronRight, Check,
+  Phone, MapPin, Boxes
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
 
@@ -86,7 +87,14 @@ export default function OrderCard({
 
   const buyerName = order.compradorNombre || order.buyerName || order.usuarioNombre || 'Cliente sin nombre';
   const buyerAvatar = resolveMediaUrl(order.compradorFotoPerfil || order.compradorAvatarUrl || order.buyerAvatarUrl || order.buyerAvatar || null);
+  const buyerPhone = order.compradorTelefono || order.buyerPhone || order.telefono || '';
   const sellerName = order.vendedorNombre || order.sellerName || order.nombreTienda || 'Tienda RepuesTop';
+
+  // Dirección real de despacho (no solo la etiqueta genérica "Despacho a domicilio"):
+  // el vendedor la necesita para preparar el envío sin tener que abrir el detalle.
+  const deliveryAddress = [order.direccionEntrega || order.address, order.comuna, order.region].filter(Boolean).join(', ');
+  const shippingFee = Number(order.shippingFee || order.costoEnvio || 0);
+  const itemsCount = items.reduce((total, item) => total + Number(item.cantidad || item.quantity || 1), 0) || 1;
 
   const firstItemPhoto = resolveMediaUrl(firstItem.imagenUrl || firstItem.imageUrl || firstItem.productPhotoUri || (firstItem.imageUrls && firstItem.imageUrls[0]));
   const firstItemName = firstItem.nombre || firstItem.productName || firstItem.name || 'Repuesto de auto';
@@ -221,6 +229,16 @@ export default function OrderCard({
                 <strong className="person-name">{buyerName}</strong>
                 <span className="person-role">Comprador</span>
               </div>
+              {buyerPhone && (
+                <a
+                  className="person-contact-link"
+                  href={`tel:${buyerPhone}`}
+                  onClick={(e) => e.stopPropagation()}
+                  title="Llamar al comprador"
+                >
+                  <Phone size={13} /> {buyerPhone}
+                </a>
+              )}
             </>
           ) : (
             <>
@@ -232,6 +250,22 @@ export default function OrderCard({
                 <span className="person-role">Vendedor</span>
               </div>
             </>
+          )}
+        </div>
+
+        {/* Chips informativos: llenan el espacio en blanco de la card con datos
+            reales del pedido (cantidad de productos, envío, forma de entrega). */}
+        <div className="order-card-info-chips">
+          <span className="order-info-chip"><Boxes size={13} /> {itemsCount} {itemsCount === 1 ? 'producto' : 'productos'}</span>
+          {isStorePickup ? (
+            <span className="order-info-chip"><Store size={13} /> Retiro en tienda</span>
+          ) : shippingFee > 0 ? (
+            <span className="order-info-chip"><Truck size={13} /> Envío: {formatCLP(shippingFee)}</span>
+          ) : (
+            <span className="order-info-chip"><Truck size={13} /> Despacho a domicilio</span>
+          )}
+          {isSeller && deliveryAddress && !isStorePickup && (
+            <span className="order-info-chip address"><MapPin size={13} /> {deliveryAddress}</span>
           )}
         </div>
 

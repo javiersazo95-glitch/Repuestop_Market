@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Search, Filter, SlidersHorizontal, ShieldCheck, MapPin, Star, Package,
   Clock, ArrowRight, ArrowLeft, X, CheckCircle2, RotateCcw, Tag, Truck,
-  ChevronLeft, ChevronRight, ChevronDown, Eye, ShoppingCart, Car, Wrench, Layers, AlertCircle, Globe, MessageSquare, Info
+  ChevronLeft, ChevronRight, ChevronDown, Eye, ShoppingCart, Car, Wrench, Layers, AlertCircle, Globe, MessageSquare, Info,
+  CarFront, Barcode, CircleHelp, RefreshCw
 } from 'lucide-react';
 // CategoryIconTile y NAVIGATION_CATEGORIES se usaban sin estar importados, por lo que la
 // vista lanzaba ReferenceError al montarse (el ErrorBoundary la reemplazaba por completo).
@@ -17,6 +18,17 @@ import { adaptPage, adaptProduct, adaptVehicle } from '../services/adapters';
 // El backend acota el tamaño de página a 100. Esta vista filtra y pagina en cliente,
 // así que se trae un bloque grande y la UI hace el resto del trabajo.
 const CATALOG_FETCH_SIZE = 100;
+
+const SEARCH_MODES = [
+  { id: 'patente', label: 'Buscar por patente', icon: CarFront, placeholder: 'Ej: BB-CL-12' },
+  { id: 'vin', label: 'Buscar por VIN', icon: Barcode, placeholder: 'Ingresa los 17 caracteres del VIN' },
+  { id: 'oem', label: 'Buscar por código OEM', icon: Tag, placeholder: 'Ej: 04465-0D150' },
+  { id: 'repuesto', label: 'Buscar por repuesto', icon: Search, placeholder: 'Ej: Pastillas de freno, filtro de aceite, Bosch...' }
+];
+
+const samplePatentes = ['BB-CL-12', 'HG-89-21', 'AA-123-BB', 'JJ-TT-45'];
+const sampleOemCodes = ['04465-0D150', '90919-01253', '26300-35505', '15400-PLM-A02'];
+const sampleKeywords = ['Pastillas de freno', 'Filtro de aceite', 'Amortiguador', 'Bomba de agua'];
 
 export default function PartsCatalogView({
   onBackToStore,
@@ -36,6 +48,8 @@ export default function PartsCatalogView({
   const [patentInput, setPatentInput] = useState('');
   const [patentError, setPatentError] = useState('');
   const [patentSearching, setPatentSearching] = useState(false);
+  const [searchMode, setSearchMode] = useState('patente');
+  const [inputValue, setInputValue] = useState(initialActiveVehicle?.patente || initialSearchQuery || '');
 
   // Catálogo real: GET /api/v1/inventario/productos (endpoint público).
   useEffect(() => {
@@ -101,36 +115,68 @@ export default function PartsCatalogView({
   // el buscador del header como al abrir o compartir un enlace.
   useEffect(() => {
     setSearchQuery(initialSearchQuery);
+    if (initialSearchQuery) {
+      setInputValue(initialSearchQuery);
+      setSearchMode('repuesto');
+    }
   }, [initialSearchQuery]);
 
   const toggleFilterSection = (section) => {
     setOpenFilterSections((current) => ({ ...current, [section]: !current[section] }));
   };
 
-  // Identificación real por patente: GET /api/v1/vehiculos/patente/{patente}.
-  const handlePatentSearch = async (e) => {
-    e.preventDefault();
-    if (!patentInput.trim()) {
-      setPatentError('Ingresa una patente (ej. BBCL12)');
+  const currentSearchMode = SEARCH_MODES.find((m) => m.id === searchMode) || SEARCH_MODES[0];
+
+  const selectSearchMode = (modeId) => {
+    setSearchMode(modeId);
+    setPatentError('');
+    if (modeId === 'patente') {
+      setInputValue(activeVehicle?.patente || patentInput || '');
+    } else if (modeId === 'vin') {
+      setInputValue(patentInput || '');
+    } else if (modeId === 'oem' || modeId === 'repuesto') {
+      setInputValue(searchQuery || '');
+    }
+  };
+
+  const handleUnifiedSearch = async (valToUse) => {
+    const value = (valToUse !== undefined ? valToUse : inputValue).trim();
+    if (!value) {
+      if (searchMode === 'patente') {
+        setPatentError('Ingresa una patente válida (ej. BB-CL-12)');
+      } else if (searchMode === 'vin') {
+        setPatentError('Ingresa los 17 caracteres del VIN');
+      } else if (searchMode === 'oem') {
+        setPatentError('Ingresa un código OEM (ej. 04465-0D150)');
+      } else {
+        setPatentError('Ingresa un término para buscar repuestos');
+      }
       return;
     }
 
-    setPatentSearching(true);
     setPatentError('');
-    try {
-      const resolved = adaptVehicle(await searchVehicleByPatenteApi(patentInput.trim()));
-      if (resolved && !resolved.requiereIngresoManual && resolved.marca) {
-        setActiveVehicle(resolved);
-        setOnlyCompatible(true);
-      } else {
+
+    if (searchMode === 'patente' || searchMode === 'vin') {
+      setPatentSearching(true);
+      setPatentInput(value);
+      try {
+        const resolved = adaptVehicle(await searchVehicleByPatenteApi(value));
+        if (resolved && !resolved.requiereIngresoManual && resolved.marca) {
+          setActiveVehicle(resolved);
+          setOnlyCompatible(true);
+          setInputValue(resolved.patente || value);
+        } else {
+          setActiveVehicle(null);
+          setPatentError(resolved?.mensaje || 'No encontramos ese vehículo. Verifica la patente o VIN e intenta de nuevo.');
+        }
+      } catch (err) {
         setActiveVehicle(null);
-        setPatentError(resolved?.mensaje || 'No se encontró vehículo para esta patente.');
+        setPatentError(err.message || 'No se pudo consultar la patente o VIN. Intenta nuevamente.');
+      } finally {
+        setPatentSearching(false);
       }
-    } catch (err) {
-      setActiveVehicle(null);
-      setPatentError(err.message || 'No se pudo consultar la patente.');
-    } finally {
-      setPatentSearching(false);
+    } else if (searchMode === 'oem' || searchMode === 'repuesto') {
+      setSearchQuery(value);
     }
   };
 
@@ -168,9 +214,6 @@ export default function PartsCatalogView({
   ];
 
   // Reset to page 1 when any filter changes.
-  // Se compara contra la combinación anterior en vez de usar un flag de "primer
-  // render": así la página que viene en la URL sobrevive tanto al montaje como al
-  // doble montaje de StrictMode, y solo un cambio real de filtro vuelve a la 1.
   const previousFiltersRef = useRef(null);
   useEffect(() => {
     const signature = JSON.stringify([
@@ -285,8 +328,6 @@ export default function PartsCatalogView({
   const endIndex = Math.min(sortedProducts.length, currentPage * itemsPerPage);
   const paginatedProducts = sortedProducts.slice(startIndex, endIndex);
 
-  // Categoría, subcategoría, búsqueda y página se reflejan en la URL para que el
-  // catálogo se pueda compartir, refrescar y recorrer con el botón atrás.
   useEffect(() => {
     onNavigationStateChange?.({
       category: selectedCategory === 'TODAS' ? null : selectedCategory,
@@ -308,6 +349,7 @@ export default function PartsCatalogView({
 
   const handleResetFilters = () => {
     setSearchQuery('');
+    setInputValue('');
     setSelectedCategory('TODAS');
     setSelectedSubcategory('TODAS');
     setSelectedCondition('TODOS');
@@ -352,7 +394,7 @@ export default function PartsCatalogView({
             </div>
             <h1>Inventario General de <span>Repuestos</span></h1>
             <p>
-              Busca y filtra repuestos mecánicos, eléctricos y de carrocería con código OEM, origen verificado y calce 100% garantizado.
+              Busca y filtra repuestos mecánicos, eléctricos y de carrocería por patente, VIN o código OEM con origen verificado y calce 100% garantizado.
             </p>
             <div className="catalog-hero-perks">
               <span><ShieldCheck size={20} /> 100% OEM Verificado</span>
@@ -378,60 +420,146 @@ export default function PartsCatalogView({
       </div>
 
       <div className="container catalog-patent-console-wrap">
-        <div className="patent-filter-box-bar">
-          <div className="patent-filter-header-title">
-            <Car size={18} className="text-blue-500" />
-            <span>
-              <strong>FILTRAR POR <b>PATENTE O VIN</b></strong>
-              <small>Encuentra repuestos exactos para tu vehículo</small>
-            </span>
+        <div className="light-search-panel catalog-unified-search-panel">
+          <div className="light-search-tabs" role="tablist" aria-label="Tipos de búsqueda">
+            {SEARCH_MODES.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  role="tab"
+                  aria-selected={searchMode === item.id}
+                  className={searchMode === item.id ? 'active' : ''}
+                  onClick={() => selectSearchMode(item.id)}
+                >
+                  <Icon size={20} /> <span>{item.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          <form onSubmit={handlePatentSearch} className="patent-filter-form-inline">
-            <input
-              type="text"
-              placeholder="Ingresa patente (ej. BBCL12)..."
-              value={patentInput}
-              onChange={(e) => setPatentInput(e.target.value)}
-              className="patent-filter-input"
-            />
-            <button type="submit" className="btn-patent-search-blue" disabled={patentSearching}>
-              <Search size={14} />
-              <span>{patentSearching ? 'Buscando…' : 'Buscar Vehículo'}</span>
-            </button>
-          </form>
-
-          {activeVehicle && (
-            <div className="active-patent-verified-chip">
-              <CheckCircle2 size={14} className="text-emerald-500" />
-              <span>Vehículo: <strong>{activeVehicle.marca} {activeVehicle.modelo} ({activeVehicle.patente})</strong></span>
-              <button
-                className={`btn-toggle-compat-mini ${onlyCompatible ? 'active' : ''}`}
-                onClick={() => setOnlyCompatible(!onlyCompatible)}
-              >
-                {onlyCompatible ? '✓ Solo compatibles' : 'Filtrar calce'}
-              </button>
+          <div className={`light-search-form ${searchMode !== 'patente' ? 'mode-no-country' : ''}`}>
+            <div className="light-input-row">
+              {searchMode === 'patente' && (
+                <button className="country-selector" type="button">
+                  <span>🇨🇱</span><strong>CHILE</strong><ChevronRight size={14} />
+                </button>
+              )}
+              <div className="light-query-field">
+                <input
+                  type="text"
+                  placeholder={currentSearchMode.placeholder}
+                  value={inputValue}
+                  onChange={(event) => {
+                    const val = searchMode === 'patente' || searchMode === 'vin' || searchMode === 'oem'
+                      ? event.target.value.toUpperCase()
+                      : event.target.value;
+                    setInputValue(val);
+                    if (searchMode === 'oem' || searchMode === 'repuesto') {
+                      setSearchQuery(val);
+                    }
+                    if (patentError) setPatentError('');
+                  }}
+                  onKeyDown={(event) => event.key === 'Enter' && handleUnifiedSearch()}
+                />
+                {searchMode === 'patente' && (
+                  <button type="button" className="plate-help">
+                    <CircleHelp size={14} /> ¿Dónde está mi patente?
+                  </button>
+                )}
+              </div>
             </div>
-          )}
+
+            <button
+              className="light-primary-search"
+              onClick={() => handleUnifiedSearch()}
+              disabled={patentSearching}
+              type="button"
+            >
+              {patentSearching ? <RefreshCw size={21} className="spin-icon" /> : <Search size={22} />}
+              {searchMode === 'patente'
+                ? 'Buscar vehículo por patente'
+                : searchMode === 'vin'
+                  ? 'Buscar por VIN'
+                  : searchMode === 'oem'
+                    ? 'Buscar por código OEM'
+                    : 'Buscar repuestos'}
+            </button>
+
+            {patentError && (
+              <div className="light-search-error">
+                <AlertCircle size={14} /> {patentError}
+              </div>
+            )}
+
+            {activeVehicle && (
+              <div className="light-active-vehicle">
+                <CheckCircle2 size={17} />
+                <span>Vehículo activo: <strong>{activeVehicle.marca} {activeVehicle.modelo} ({activeVehicle.patente})</strong></span>
+                <button
+                  type="button"
+                  className={`btn-toggle-compat-mini ${onlyCompatible ? 'active' : ''}`}
+                  onClick={() => setOnlyCompatible(!onlyCompatible)}
+                  style={{ marginLeft: 'auto' }}
+                >
+                  {onlyCompatible ? '✓ Solo compatibles' : 'Filtrar calce'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setActiveVehicle(null); setOnlyCompatible(false); }}
+                  style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '2px 6px' }}
+                  title="Quitar vehículo"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+
+            <div className="popular-searches">
+              <span>
+                {searchMode === 'patente'
+                  ? 'Patentes populares:'
+                  : searchMode === 'oem'
+                    ? 'Códigos OEM sugeridos:'
+                    : searchMode === 'vin'
+                      ? 'Ejemplos VIN:'
+                      : 'Búsquedas populares:'}
+              </span>
+              {(searchMode === 'patente' ? samplePatentes : searchMode === 'oem' ? sampleOemCodes : sampleKeywords).map((item) => (
+                <button key={item} type="button" onClick={() => { setInputValue(item); handleUnifiedSearch(item); }}>
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="container catalog-main-container">
-        {patentError && <div className="patent-error-msg">{patentError}</div>}
-
         {/* 2. Top Control Bar (Search & Sort) */}
         <div className="catalog-control-bar">
           <div className="search-bar-catalog-box">
             <Search size={18} className="search-box-icon" />
             <input
               type="text"
-              placeholder="Buscar por repuesto, código OEM (ej. 04465-0D150), marca o vendedor..."
+              placeholder="Filtrar por código OEM, repuesto, marca o vendedor..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (searchMode === 'oem' || searchMode === 'repuesto') {
+                  setInputValue(e.target.value);
+                }
+              }}
               className="search-catalog-input"
             />
             {searchQuery && (
-              <button className="btn-clear-search-dir" onClick={() => setSearchQuery('')}>
+              <button
+                className="btn-clear-search-dir"
+                onClick={() => {
+                  setSearchQuery('');
+                  if (searchMode === 'oem' || searchMode === 'repuesto') setInputValue('');
+                }}
+              >
                 <X size={14} />
               </button>
             )}

@@ -208,6 +208,227 @@ export async function getFavoritesApi(usuarioId) {
   return fetchApi(`/usuarios/${usuarioId}/favoritos`, { method: 'GET' });
 }
 
+/**
+ * Local Storage Key for Address Fallback
+ */
+function getLocalAddressKey(usuarioId) {
+  return `repuestop_user_addresses_${usuarioId || 'guest'}`;
+}
+
+function getLocalAddresses(usuarioId) {
+  try {
+    const raw = localStorage.getItem(getLocalAddressKey(usuarioId));
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalAddresses(usuarioId, items) {
+  try {
+    localStorage.setItem(getLocalAddressKey(usuarioId), JSON.stringify(items));
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Direcciones guardadas del comprador (agregar/editar/eliminar/marcar principal).
+ */
+export async function getAddressesApi(usuarioId) {
+  if (!usuarioId) return getLocalAddresses(usuarioId);
+  try {
+    const data = await fetchApi(`/usuarios/${usuarioId}/direcciones`, { method: 'GET' })
+      .catch(async (err) => {
+        if (err.status === 404) {
+          return fetchApi(`/users/${usuarioId}/direcciones`, { method: 'GET' });
+        }
+        throw err;
+      });
+    const serverItems = Array.isArray(data) ? data : [];
+    const localItems = getLocalAddresses(usuarioId);
+    const combined = [...serverItems];
+    localItems.forEach((loc) => {
+      if (!combined.some((srv) => String(srv.id) === String(loc.id))) {
+        combined.push(loc);
+      }
+    });
+    return combined;
+  } catch (err) {
+    if (err.status === 404 || err.status === 0 || err.status === 500) {
+      return getLocalAddresses(usuarioId);
+    }
+    throw err;
+  }
+}
+
+export async function createAddressApi(usuarioId, payload) {
+  try {
+    return await fetchApi(`/usuarios/${usuarioId}/direcciones`, { method: 'POST', body: JSON.stringify(payload) })
+      .catch(async (err) => {
+        if (err.status === 404) {
+          return fetchApi(`/users/${usuarioId}/direcciones`, { method: 'POST', body: JSON.stringify(payload) });
+        }
+        throw err;
+      });
+  } catch (err) {
+    if (err.status === 404 || err.status === 0 || err.status === 500) {
+      const local = getLocalAddresses(usuarioId);
+      const isFirst = local.length === 0;
+      const newAddress = {
+        id: `addr_${Date.now()}`,
+        usuarioId: Number(usuarioId),
+        comunaId: payload.comunaId,
+        comunaNombre: payload.comunaNombre || 'Comuna',
+        regionNombre: payload.regionNombre || '',
+        calleYNumero: payload.calleYNumero,
+        codigoPostal: payload.codigoPostal || null,
+        esPrincipal: isFirst,
+        createdAt: new Date().toISOString()
+      };
+      local.push(newAddress);
+      saveLocalAddresses(usuarioId, local);
+      return newAddress;
+    }
+    throw err;
+  }
+}
+
+export async function updateAddressApi(usuarioId, direccionId, payload) {
+  try {
+    return await fetchApi(`/usuarios/${usuarioId}/direcciones/${direccionId}`, { method: 'PUT', body: JSON.stringify(payload) })
+      .catch(async (err) => {
+        if (err.status === 404) {
+          return fetchApi(`/users/${usuarioId}/direcciones/${direccionId}`, { method: 'PUT', body: JSON.stringify(payload) });
+        }
+        throw err;
+      });
+  } catch (err) {
+    if (err.status === 404 || err.status === 0 || err.status === 500) {
+      let local = getLocalAddresses(usuarioId);
+      local = local.map((item) => {
+        if (String(item.id) === String(direccionId)) {
+          return {
+            ...item,
+            comunaId: payload.comunaId || item.comunaId,
+            comunaNombre: payload.comunaNombre || item.comunaNombre,
+            regionNombre: payload.regionNombre || item.regionNombre,
+            calleYNumero: payload.calleYNumero || item.calleYNumero,
+            codigoPostal: payload.codigoPostal !== undefined ? payload.codigoPostal : item.codigoPostal
+          };
+        }
+        return item;
+      });
+      saveLocalAddresses(usuarioId, local);
+      return local.find((item) => String(item.id) === String(direccionId));
+    }
+    throw err;
+  }
+}
+
+export async function deleteAddressApi(usuarioId, direccionId) {
+  try {
+    return await fetchApi(`/usuarios/${usuarioId}/direcciones/${direccionId}`, { method: 'DELETE' })
+      .catch(async (err) => {
+        if (err.status === 404) {
+          return fetchApi(`/users/${usuarioId}/direcciones/${direccionId}`, { method: 'DELETE' });
+        }
+        throw err;
+      });
+  } catch (err) {
+    if (err.status === 404 || err.status === 0 || err.status === 500) {
+      let local = getLocalAddresses(usuarioId);
+      local = local.filter((item) => String(item.id) !== String(direccionId));
+      if (local.length > 0 && !local.some((item) => item.esPrincipal)) {
+        local[0].esPrincipal = true;
+      }
+      saveLocalAddresses(usuarioId, local);
+      return { success: true };
+    }
+    throw err;
+  }
+}
+
+export async function setDefaultAddressApi(usuarioId, direccionId) {
+  try {
+    return await fetchApi(`/usuarios/${usuarioId}/direcciones/${direccionId}/principal`, { method: 'PATCH' })
+      .catch(async (err) => {
+        if (err.status === 404) {
+          return fetchApi(`/users/${usuarioId}/direcciones/${direccionId}/principal`, { method: 'PATCH' });
+        }
+        throw err;
+      });
+  } catch (err) {
+    if (err.status === 404 || err.status === 0 || err.status === 500) {
+      let local = getLocalAddresses(usuarioId);
+      local = local.map((item) => ({
+        ...item,
+        esPrincipal: String(item.id) === String(direccionId)
+      }));
+      saveLocalAddresses(usuarioId, local);
+      return { success: true };
+    }
+    throw err;
+  }
+}
+
+const FALLBACK_PAISES = [{ id: 1, nombre: 'Chile' }];
+
+const FALLBACK_REGIONES = [
+  { id: 13, nombre: 'Región Metropolitana de Santiago' },
+  { id: 5, nombre: 'Valparaíso' },
+  { id: 8, nombre: 'Bío Bío' },
+  { id: 1, nombre: 'Tarapacá' },
+  { id: 2, nombre: 'Antofagasta' },
+  { id: 3, nombre: 'Atacama' },
+  { id: 4, nombre: 'Coquimbo' },
+  { id: 6, nombre: "O'Higgins" },
+  { id: 7, nombre: 'Maule' },
+  { id: 9, nombre: 'La Araucanía' },
+  { id: 10, nombre: 'Los Lagos' },
+  { id: 11, nombre: 'Aysén' },
+  { id: 12, nombre: 'Magallanes' },
+  { id: 14, nombre: 'Los Ríos' },
+  { id: 15, nombre: 'Arica y Parinacota' },
+  { id: 16, nombre: 'Ñuble' }
+];
+
+const FALLBACK_COMUNAS = [
+  { id: 101, nombre: 'Santiago' }, { id: 102, nombre: 'Providencia' }, { id: 103, nombre: 'Las Condes' },
+  { id: 104, nombre: 'Ñuñoa' }, { id: 105, nombre: 'Vitacura' }, { id: 106, nombre: 'Lo Barnechea' },
+  { id: 107, nombre: 'Maipú' }, { id: 108, nombre: 'La Florida' }, { id: 109, nombre: 'San Miguel' },
+  { id: 110, nombre: 'Peñalolén' }, { id: 111, nombre: 'Macul' }, { id: 112, nombre: 'La Reina' },
+  { id: 113, nombre: 'Pudahuel' }, { id: 114, nombre: 'Quilicura' }, { id: 115, nombre: 'Lampa' },
+  { id: 116, nombre: 'Colina' }, { id: 117, nombre: 'Puente Alto' }, { id: 118, nombre: 'San Bernardo' },
+  { id: 201, nombre: 'Viña del Mar' }, { id: 202, nombre: 'Valparaíso' }, { id: 203, nombre: 'Concepción' }
+];
+
+export async function getPaisesApi() {
+  return fetchApi('/geografia/paises', { method: 'GET' })
+    .catch(() => fetchApi('/geography/paises', { method: 'GET' }))
+    .catch(() => FALLBACK_PAISES);
+}
+
+export async function getRegionesApi(paisId) {
+  return fetchApi(`/geografia/paises/${encodeURIComponent(paisId)}/regiones`, { method: 'GET' })
+    .catch(() => fetchApi(`/geography/paises/${encodeURIComponent(paisId)}/regiones`, { method: 'GET' }))
+    .catch(() => FALLBACK_REGIONES);
+}
+
+export async function getComunasApi(regionId) {
+  return fetchApi(`/geografia/regiones/${encodeURIComponent(regionId)}/comunas`, { method: 'GET' })
+    .catch(() => fetchApi(`/geography/regiones/${encodeURIComponent(regionId)}/comunas`, { method: 'GET' }))
+    .catch(() => FALLBACK_COMUNAS);
+}
+
+/**
+ * Checkout del carrito: crea el pedido a partir de la dirección elegida por
+ * el comprador (o la principal si no se especifica ninguna).
+ */
+export async function checkoutCartApi(usuarioId, payload) {
+  return fetchApi(`/usuarios/${usuarioId}/pedidos/checkout`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
 export async function getSellerInventoryApi(proveedorId, { page = 0, size = 12, texto } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (texto) params.set('texto', texto);

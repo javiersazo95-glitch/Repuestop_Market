@@ -71,6 +71,10 @@ export function MarketplaceProvider({ children }) {
     setCartItems((prev) => prev.filter((item) => item.id !== productId));
   }, []);
 
+  const clearCart = useCallback(() => {
+    setCartItems([]);
+  }, []);
+
   const cartCount = useMemo(
     () => cartItems.reduce((total, item) => total + item.quantity, 0),
     [cartItems]
@@ -84,6 +88,7 @@ export function MarketplaceProvider({ children }) {
     addToCart,
     updateCartQuantity,
     removeFromCart,
+    clearCart,
     isCartOpen,
     openCart: () => setIsCartOpen(true),
     closeCart: () => setIsCartOpen(false),
@@ -96,7 +101,7 @@ export function MarketplaceProvider({ children }) {
     searchQuery,
     setSearchQuery,
   }), [
-    activeVehicle, cartItems, cartCount, addToCart, updateCartQuantity, removeFromCart,
+    activeVehicle, cartItems, cartCount, addToCart, updateCartQuantity, removeFromCart, clearCart,
     isCartOpen, isAuthModalOpen, quoteProduct, searchQuery,
   ]);
 

@@ -1,14 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  ArrowLeft, BadgeCheck, CalendarDays, Car, CheckCircle2, ChevronLeft, ChevronRight, CreditCard,
+  AlertTriangle, ArrowLeft, BadgeCheck, Car, CheckCircle2, ChevronLeft, ChevronRight, CreditCard,
   Heart, Landmark, MapPin, MessageCircle, Package, Search, Send, ShieldCheck,
   ShoppingCart, Star, Truck, Wrench, X
 } from 'lucide-react';
 import { CATEGORY_IMAGE_BY_ID } from '../data/categories';
 import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
-import { createProductQuestionApi, getProductQuestionsApi } from '../services/api';
+import { createProductQuestionApi, getProductQuestionsApi, searchVehicleByPatenteApi } from '../services/api';
+import { adaptVehicle } from '../services/adapters';
+import { useMarketplace } from '../context/MarketplaceContext';
+import { useAppNavigation } from '../routes/useAppNavigation';
 import StoreLogoBadge from './StoreLogoBadge';
 import RelatedProductsCarousel from './RelatedProductsCarousel';
+
+// Compara el vehículo resuelto por patente contra un registro de compatibilidad
+// del repuesto. El modelo del vehículo puede traer la versión pegada (p.ej.
+// "D-Max LTZ"), así que se usa coincidencia parcial en vez de igualdad estricta.
+function vehicleMatchesCompatibility(vehicle, item) {
+  const norm = (value) => String(value || '').toLocaleLowerCase('es').trim();
+  const marcaOk = norm(vehicle.marca) === norm(item.marca);
+  const vehicleModelo = norm(vehicle.modelo);
+  const itemModelo = norm(item.modelo);
+  const modeloOk = Boolean(itemModelo) && (vehicleModelo.includes(itemModelo) || itemModelo.includes(vehicleModelo));
+  const anio = Number(vehicle.anio) || null;
+  const anioOk = !anio || ((!item.anioInicio || anio >= item.anioInicio) && (!item.anioFin || anio <= item.anioFin));
+  return marcaOk && modeloOk && anioOk;
+}
 
 export default function ProductDetailPage({ product, user, activeVehicle, onBack, onAddToCart, onOpenQuote, onOpenStore, onSelectProduct }) {
   const images = (product.imagenes?.length
@@ -22,6 +39,14 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const [questionError, setQuestionError] = useState('');
   const [compatibilityOpen, setCompatibilityOpen] = useState(false);
   const [compatibilitySearch, setCompatibilitySearch] = useState('');
+  const [plateInput, setPlateInput] = useState('');
+  const [plateSearching, setPlateSearching] = useState(false);
+  const [plateError, setPlateError] = useState('');
+  const [plateVehicle, setPlateVehicle] = useState(null);
+  const [plateMatchIndex, setPlateMatchIndex] = useState(null);
+  const compatibilityItemRefs = useRef([]);
+  const { setActiveVehicle } = useMarketplace();
+  const nav = useAppNavigation();
   const stock = Number(product.stock || 0);
   const pricingMode = String(product.pricingMode || '').toUpperCase();
   const quoteOnly = pricingMode === 'QUOTE_ONLY' || pricingMode === 'COTIZACION' || product.soloCotizacion || !product.precio;
@@ -67,9 +92,69 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     return () => { cancelled = true; };
   }, [product.id]);
 
+  // Cuando la patente encuentra coincidencia dentro de la lista, se despeja el
+  // buscador de texto (para que el registro no quede oculto por otro filtro) y
+  // se hace scroll hasta la tarjeta correspondiente.
+  useEffect(() => {
+    if (plateMatchIndex === null || plateMatchIndex < 0) return;
+    const node = compatibilityItemRefs.current[plateMatchIndex];
+    if (node) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [plateMatchIndex]);
+
   const changeImage = (direction) => {
     if (images.length < 2) return;
     setActiveImage((current) => (current + direction + images.length) % images.length);
+  };
+
+  const searchVehicleByPlate = async (event) => {
+    event.preventDefault();
+    const plate = plateInput.trim();
+    if (!plate) {
+      setPlateError('Ingresa tu patente (ej. BBCL12).');
+      return;
+    }
+    setPlateSearching(true);
+    setPlateError('');
+    setPlateVehicle(null);
+    setPlateMatchIndex(null);
+    // Patente de prueba para validar el flujo sin depender del endpoint real
+    // (que exige sesión iniciada): ABCD11 resuelve directo a un Toyota Yaris 2018.
+    const normalizedPlate = plate.replace(/[^a-z0-9]/gi, '').toUpperCase();
+    if (normalizedPlate === 'ABCD11') {
+      const testVehicle = { marca: 'Toyota', modelo: 'Yaris', anio: 2018, patente: normalizedPlate };
+      setCompatibilitySearch('');
+      setPlateVehicle(testVehicle);
+      setPlateMatchIndex(compatibility.findIndex((item) => vehicleMatchesCompatibility(testVehicle, item)));
+      setPlateSearching(false);
+      return;
+    }
+    try {
+      const resolved = adaptVehicle(await searchVehicleByPatenteApi(plate));
+      if (!resolved || resolved.requiereIngresoManual || !resolved.marca) {
+        setPlateError(resolved?.mensaje || 'No pudimos identificar un vehículo con esa patente.');
+        return;
+      }
+      setCompatibilitySearch('');
+      setPlateVehicle(resolved);
+      const matchIndex = compatibility.findIndex((item) => vehicleMatchesCompatibility(resolved, item));
+      setPlateMatchIndex(matchIndex);
+    } catch (error) {
+      setPlateError(error.message || 'No se pudo consultar la patente.');
+    } finally {
+      setPlateSearching(false);
+    }
+  };
+
+  const viewCompatibleProducts = () => {
+    if (!plateVehicle) return;
+    setActiveVehicle(plateVehicle);
+    setCompatibilityOpen(false);
+    nav.goCatalog({
+      categoryId: product.categoriaId || undefined,
+      category: product.categoriaId ? undefined : (product.categoriaNombre || undefined),
+      subcategoryId: product.subcategoriaId || undefined,
+      subcategory: product.subcategoriaId ? undefined : (product.subcategoria || undefined),
+    });
   };
 
   const submitQuestion = async (event) => {
@@ -151,7 +236,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             </div>
             {compatible && <div className="product-marketplace-match"><CheckCircle2 size={18} /> Compatible con tu {activeVehicle.marca} {activeVehicle.modelo}</div>}
             <div className="product-marketplace-code">Código OEM / SKU: <strong>{product.oemCode || product.sku || 'No informado'}</strong></div>
-            <div className={`product-marketplace-description ${descriptionExpanded ? 'expanded' : ''}`}>
+            <div className={`product-marketplace-description ${descriptionIsLong ? 'clamped' : ''} ${descriptionExpanded ? 'expanded' : ''}`}>
               <p>{descriptionText}</p>
             </div>
             {descriptionIsLong && (
@@ -214,8 +299,20 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
 
             <div className="product-marketplace-flow">
               <div><small>Paga con</small><strong>flow</strong><span>Procesamos tu pago con Flow</span></div>
-              <p><CreditCard /> Tarjeta de crédito</p>
-              <p><CreditCard /> Tarjeta de débito</p>
+              {!quoteOnly && Number(product.precio) > 0 && (
+                <div className="product-marketplace-installments">
+                  <p className="product-marketplace-installments-hint"><CreditCard /> Simula tus cuotas con Flow</p>
+                  <div className="product-marketplace-installments-grid">
+                    {[3, 6, 12].map((cuotas) => (
+                      <div key={cuotas}>
+                        <strong>{cuotas}x</strong>
+                        <span>${Math.ceil(Number(product.precio) / cuotas).toLocaleString('es-CL')}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <small>Valor aproximado por cuota, sin interés. Confirma las condiciones finales al pagar con Flow.</small>
+                </div>
+              )}
               <div className="product-marketplace-card-brands" aria-label="Tarjetas aceptadas">
                 <span className="payment-brand-logo payment-brand-visa" aria-label="Visa">VISA</span>
                 <span className="payment-brand-logo payment-brand-mastercard" aria-label="Mastercard"><i /><i /><small>mastercard</small></span>
@@ -256,11 +353,28 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
               </dl>
             </article>
             <article>
-              <h2><Car /> Compatibilidad</h2>
-              {compatibility.length
-                ? <div className="product-marketplace-compatibility"><span>{compatibility[0].marca} {compatibility[0].modelo} {compatibility[0].anioInicio && `(${compatibility[0].anioInicio}${compatibility[0].anioFin ? `–${compatibility[0].anioFin}` : ''})`}</span></div>
-                : <p>Consulta a la tienda con tu patente o código OEM para confirmar el calce.</p>}
-              <button type="button" onClick={() => setCompatibilityOpen(true)}>Ver más compatibilidades {compatibility.length > 0 && `(${compatibility.length})`} <ChevronRight /></button>
+              <h2><Car /> Otras compatibilidades</h2>
+              {compatibility.length ? (
+                <ul className="product-marketplace-compat-list">
+                  {compatibility.slice(0, 2).map((item, index) => (
+                    <li key={`${item.marca}-${item.modelo}-${index}`}>
+                      <span className="product-marketplace-compat-vehicle">
+                        {[item.marca, item.modelo].filter(Boolean).join(' ') || 'Vehículo compatible'}
+                      </span>
+                      <span className="product-marketplace-compat-tags">
+                        {(item.anioInicio || item.anioFin) && (
+                          <b>{item.anioInicio || '—'}{item.anioFin && item.anioFin !== item.anioInicio ? `–${item.anioFin}` : ''}</b>
+                        )}
+                        {item.version && <b>{item.version}</b>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p>Consulta a la tienda con tu patente o código OEM para confirmar el calce.</p>}
+              <button type="button" onClick={() => setCompatibilityOpen(true)}>
+                {compatibility.length > 2 ? `Ver todas las compatibilidades (${compatibility.length})` : compatibility.length > 0 ? 'Ver detalle de compatibilidad' : 'Ver compatibilidades'}
+                <ChevronRight />
+              </button>
             </article>
             <article>
               <h2><ShieldCheck /> Compra protegida</h2>
@@ -293,24 +407,72 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
           <section className="product-compatibility-modal" role="dialog" aria-modal="true" aria-labelledby="compatibility-modal-title" onMouseDown={(event) => event.stopPropagation()}>
             <header>
               <span><Car /></span>
-              <div><h2 id="compatibility-modal-title">Compatibilidades del producto</h2><p>Vehículos registrados por el vendedor para este repuesto.</p></div>
+              <div><h2 id="compatibility-modal-title">Compatibilidades del producto</h2><p>Estos son vehículos de <strong>otros compradores</strong> registrados por el vendedor. Ingresa tu patente para confirmar si tu vehículo calza con este repuesto.</p></div>
               <button type="button" aria-label="Cerrar compatibilidades" onClick={() => setCompatibilityOpen(false)}><X /></button>
             </header>
-            <div className="product-compatibility-modal-toolbar">
-              <label><Search /><input value={compatibilitySearch} onChange={(event) => setCompatibilitySearch(event.target.value)} placeholder="Buscar por marca, modelo, versión, motor o año" /></label>
-              <span>{visibleCompatibilities.length} de {compatibility.length} compatibilidades</span>
+
+            <div className="product-compatibility-modal-controls">
+              <form className="product-compatibility-plate-check" onSubmit={searchVehicleByPlate}>
+                <label>
+                  <Car />
+                  <input
+                    value={plateInput}
+                    onChange={(event) => { setPlateInput(event.target.value); }}
+                    placeholder="Ingresa tu patente (ej. BBCL12)"
+                  />
+                </label>
+                <button type="submit" disabled={plateSearching}>{plateSearching ? 'Buscando...' : 'Buscar'}</button>
+              </form>
+              {plateError && <div className="product-compatibility-plate-error"><AlertTriangle /> {plateError}</div>}
+
+              {plateVehicle && plateMatchIndex !== null && plateMatchIndex >= 0 && (
+                <div className="product-compatibility-plate-banner is-match">
+                  <CheckCircle2 />
+                  <div>
+                    <strong>Tu {plateVehicle.marca} {plateVehicle.modelo}{plateVehicle.anio ? ` (${plateVehicle.anio})` : ''} es compatible con este repuesto.</strong>
+                    <span>Lo destacamos en la lista de abajo.</span>
+                  </div>
+                </div>
+              )}
+              {plateVehicle && plateMatchIndex === -1 && (
+                <div className="product-compatibility-plate-banner is-nomatch">
+                  <AlertTriangle />
+                  <div>
+                    <strong>Tu {plateVehicle.marca} {plateVehicle.modelo}{plateVehicle.anio ? ` (${plateVehicle.anio})` : ''} no figura entre las compatibilidades que registró el vendedor para este repuesto.</strong>
+                    <span>Evita comprar algo que no calce: revisa los repuestos que sí son compatibles con tu vehículo.</span>
+                    <button type="button" onClick={viewCompatibleProducts}>
+                      Ver repuestos compatibles con mi vehículo <ChevronRight />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="product-compatibility-modal-toolbar">
+                <label><Search /><input value={compatibilitySearch} onChange={(event) => setCompatibilitySearch(event.target.value)} placeholder="Buscar por marca, modelo, versión, motor o año" /></label>
+                <span>{visibleCompatibilities.length} de {compatibility.length} compatibilidades</span>
+              </div>
             </div>
             <div className="product-compatibility-modal-list">
               {visibleCompatibilities.length > 0 ? visibleCompatibilities.map((item, index) => (
-                <article key={`${item.marca}-${item.modelo}-${item.version}-${item.motor}-${index}`}>
+                <article
+                  key={`${item.marca}-${item.modelo}-${item.version}-${item.motor}-${index}`}
+                  ref={(node) => { compatibilityItemRefs.current[index] = node; }}
+                  className={index === plateMatchIndex ? 'is-plate-match' : ''}
+                >
                   <span className="product-compatibility-car-icon"><Car /></span>
                   <div className="product-compatibility-copy">
                     <h3>{[item.marca, item.modelo].filter(Boolean).join(' ') || 'Vehículo compatible'}</h3>
-                    {item.version && <p><BadgeCheck /> Versión: <strong>{item.version}</strong></p>}
+                    <div className="product-compatibility-fields">
+                      <div><span>Marca</span><strong>{item.marca || '—'}</strong></div>
+                      <div><span>Modelo</span><strong>{item.modelo || '—'}</strong></div>
+                      <div><span>Año</span><strong>{(item.anioInicio || item.anioFin) ? `${item.anioInicio || '—'}${item.anioFin && item.anioFin !== item.anioInicio ? `–${item.anioFin}` : ''}` : '—'}</strong></div>
+                      <div><span>Versión</span><strong>{item.version || '—'}</strong></div>
+                    </div>
                     {item.motor && <p><Wrench /> Motor: <strong>{item.motor}</strong></p>}
-                    {(item.anioInicio || item.anioFin) && <p><CalendarDays /> Años: <strong>{item.anioInicio || '—'}{item.anioFin && item.anioFin !== item.anioInicio ? ` a ${item.anioFin}` : ''}</strong></p>}
                   </div>
-                  <span className="product-compatibility-seller-check"><CheckCircle2 /> Registrada por el vendedor</span>
+                  {index === plateMatchIndex
+                    ? <span className="product-compatibility-seller-check is-plate-match"><CheckCircle2 /> Es tu vehículo</span>
+                    : <span className="product-compatibility-seller-check"><CheckCircle2 /> Registrada por el vendedor</span>}
                 </article>
               )) : (
                 <div className="product-compatibility-empty"><Search /><strong>No encontramos compatibilidades</strong><span>Prueba con otro término de búsqueda.</span></div>

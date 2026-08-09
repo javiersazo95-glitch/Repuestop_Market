@@ -3,7 +3,8 @@ import {
   Search, SlidersHorizontal, ShieldCheck, MapPin, Star, Package,
   ArrowLeft, X, CheckCircle2, RotateCcw, Truck, ChevronLeft, ChevronRight, ChevronDown,
   ShoppingCart, Car, Wrench, Layers, Building2, MessageSquare, AlertCircle,
-  Heart, Share2, Image, PenLine, ArrowRight, HelpCircle
+  Heart, Share2, Image, PenLine, ArrowRight, HelpCircle,
+  CarFront, Barcode, CircleHelp, RefreshCw, Tag
 } from 'lucide-react';
 import { NAVIGATION_CATEGORIES } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
@@ -17,6 +18,17 @@ const STORE_PRODUCTS_FETCH_SIZE = 100;
 const STORE_FILTER_BRANDS = ['TODAS', 'Toyota', 'Nissan', 'Hyundai', 'Chevrolet', 'Kia', 'Mazda', 'Suzuki', 'Mitsubishi'];
 const STORE_FILTER_CONDITIONS = ['TODOS', 'Nuevo OEM Original', 'Nuevo Alternativo Homologado', 'Usado Certificado Desarmaduría'];
 
+const SEARCH_MODES = [
+  { id: 'patente', label: 'Buscar por patente', icon: CarFront, placeholder: 'Ej: BB-CL-12' },
+  { id: 'vin', label: 'Buscar por VIN', icon: Barcode, placeholder: 'Ingresa los 17 caracteres del VIN' },
+  { id: 'oem', label: 'Buscar por código OEM', icon: Tag, placeholder: 'Ej: 04465-0D150' },
+  { id: 'repuesto', label: 'Buscar por repuesto', icon: Search, placeholder: 'Ej: Pastillas de freno, filtro de aceite, Bosch...' }
+];
+
+const samplePatentes = ['BB-CL-12', 'HG-89-21', 'AA-123-BB', 'JJ-TT-45'];
+const sampleOemCodes = ['04465-0D150', '90919-01253', '26300-35505', '15400-PLM-A02'];
+const sampleKeywords = ['Pastillas de freno', 'Filtro de aceite', 'Amortiguador', 'Bomba de agua'];
+
 export default function StorePublicProfileView({
   store,
   onBackToStores,
@@ -29,6 +41,8 @@ export default function StorePublicProfileView({
   const [patentInput, setPatentInput] = useState('');
   const [patentError, setPatentError] = useState('');
   const [patentSearching, setPatentSearching] = useState(false);
+  const [searchMode, setSearchMode] = useState('patente');
+  const [inputValue, setInputValue] = useState(initialActiveVehicle?.patente || '');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [purchaseType, setPurchaseType] = useState('TODOS'); // 'TODOS' | 'DIRECTA' | 'COTIZACION'
@@ -98,35 +112,24 @@ export default function StorePublicProfileView({
       reviewCount: inputStore.reviewCount ?? 0,
       responseRate: inputStore.responseRate ?? null,
       marcasEspecialistas: Array.isArray(inputStore.marcasEspecialistas) ? inputStore.marcasEspecialistas : [],
-      especialidad: Array.isArray(inputStore.marcasEspecialistas) && inputStore.marcasEspecialistas.length
-        ? inputStore.marcasEspecialistas.map((marca) => marca.nombre).filter(Boolean).join(', ')
-        : (inputStore.especialidad || 'Multimarca'),
-      descripcion: inputStore.descripcion || inputStore.description || inputStore.tipo || 'Casa de Repuestos Multimarca',
-      metodosEnvio: inputStore.metodosEnvio || ['Retiro en tienda', 'Envío dentro de la comuna'],
-      coverUrl: inputStore.coverUrl || '/tiensoft_cover.jpg',
-      logoUrl: inputStore.logoUrl || (inputStore.nombre?.toLowerCase().includes('tiensoft') ? '/tiensoft_logo.jpg' : null),
-      bgColor: inputStore.bgColor || '#0066ff',
-      initials: inputStore.initials || 'TS'
+      metodosEnvio: Array.isArray(inputStore.metodosEnvio) ? inputStore.metodosEnvio : ['Retiro en tienda'],
+      logoUrl: inputStore.logoUrl || null,
+      coverUrl: inputStore.coverUrl || null,
+      descripcion: inputStore.descripcion || '',
+      direccion: inputStore.direccion || '',
+      telefono: inputStore.telefono || '',
+      email: inputStore.email || '',
+      esOficial: !!inputStore.esOficial
     };
   };
 
-  // La ficha traída del backend manda sobre lo que llegó por prop (el directorio
-  // entrega una versión resumida de la tienda).
-  const storeProfileSource = fetchedStore && typeof store === 'object' && store
-    ? {
-        ...store,
-        ...fetchedStore,
-        logoUrl: fetchedStore.logoUrl || store.logoUrl || store.userProfileUrl,
-        coverUrl: fetchedStore.coverUrl || store.coverUrl,
-      }
-    : (fetchedStore || store);
-  const resolvedStore = resolveStore(storeProfileSource);
-  const storeId = (typeof store === 'object' && store) ? (store.id ?? null) : null;
-  // El total de publicaciones es el totalElements real del inventario de la tienda,
-  // no el valor de relleno que arrastra resolveStore.
-  const currentStore = storeProductsTotal !== null
-    ? { ...resolvedStore, totalPublicaciones: storeProductsTotal }
-    : resolvedStore;
+  const currentStore = fetchedStore || resolveStore(store);
+  const storeId = currentStore?.id;
+  const rating = Number(currentStore.rating ?? 0);
+  const reviewCount = Number(currentStore.reviewCount ?? 0);
+  const responseRate = currentStore.responseRate != null ? Number(currentStore.responseRate) : null;
+  const shippingMethods = parseShippingMethods(currentStore.metodosEnvio);
+  const isVerified = currentStore.esOficial || rating >= 4.5;
 
   // Ficha pública de la tienda: GET /api/v1/tiendas/{proveedorId}
   useEffect(() => {
@@ -138,7 +141,6 @@ export default function StorePublicProfileView({
         if (isMounted) setFetchedStore(adaptStore(data));
       })
       .catch(() => {
-        // Si la ficha falla se sigue mostrando lo que entregó el directorio.
         if (isMounted) setFetchedStore(null);
       });
 
@@ -174,30 +176,58 @@ export default function StorePublicProfileView({
     return () => { isMounted = false; };
   }, [storeId]);
 
-  // Identificación real por patente: GET /api/v1/vehiculos/patente/{patente}.
-  const handlePatentSearch = async (e) => {
-    e.preventDefault();
-    if (!patentInput.trim()) {
-      setPatentError('Ingresa una patente válida (ej. BBCL12)');
+  const currentSearchMode = SEARCH_MODES.find((m) => m.id === searchMode) || SEARCH_MODES[0];
+
+  const selectSearchMode = (modeId) => {
+    setSearchMode(modeId);
+    setPatentError('');
+    if (modeId === 'patente') {
+      setInputValue(activeVehicle?.patente || patentInput || '');
+    } else if (modeId === 'vin') {
+      setInputValue(patentInput || '');
+    } else if (modeId === 'oem' || modeId === 'repuesto') {
+      setInputValue(searchQuery || '');
+    }
+  };
+
+  const handleUnifiedSearch = async (valToUse) => {
+    const value = (valToUse !== undefined ? valToUse : inputValue).trim();
+    if (!value) {
+      if (searchMode === 'patente') {
+        setPatentError('Ingresa una patente válida (ej. BB-CL-12)');
+      } else if (searchMode === 'vin') {
+        setPatentError('Ingresa los 17 caracteres del VIN');
+      } else if (searchMode === 'oem') {
+        setPatentError('Ingresa un código OEM (ej. 04465-0D150)');
+      } else {
+        setPatentError('Ingresa un término para buscar repuestos');
+      }
       return;
     }
 
-    setPatentSearching(true);
     setPatentError('');
-    try {
-      const resolved = adaptVehicle(await searchVehicleByPatenteApi(patentInput.trim()));
-      if (resolved && !resolved.requiereIngresoManual && resolved.marca) {
-        setActiveVehicle(resolved);
-        setOnlyCompatible(true);
-      } else {
+
+    if (searchMode === 'patente' || searchMode === 'vin') {
+      setPatentSearching(true);
+      setPatentInput(value);
+      try {
+        const resolved = adaptVehicle(await searchVehicleByPatenteApi(value));
+        if (resolved && !resolved.requiereIngresoManual && resolved.marca) {
+          setActiveVehicle(resolved);
+          setOnlyCompatible(true);
+          setInputValue(resolved.patente || value);
+        } else {
+          setActiveVehicle(null);
+          setPatentError(resolved?.mensaje || 'No encontramos ese vehículo. Verifica la patente o VIN e intenta de nuevo.');
+        }
+      } catch (err) {
         setActiveVehicle(null);
-        setPatentError(resolved?.mensaje || 'No se encontró el vehículo para esta patente.');
+        setPatentError(err.message || 'No se pudo consultar la patente o VIN. Intenta nuevamente.');
+      } finally {
+        setPatentSearching(false);
       }
-    } catch (err) {
-      setActiveVehicle(null);
-      setPatentError(err.message || 'No se pudo consultar la patente.');
-    } finally {
-      setPatentSearching(false);
+    } else if (searchMode === 'oem' || searchMode === 'repuesto') {
+      setSearchQuery(value);
     }
   };
 
@@ -222,12 +252,21 @@ export default function StorePublicProfileView({
       return false;
     }
 
-    // 3. Condition
+    // 3. Technical Condition
     if (selectedCondition !== 'TODOS' && prod.condicion && prod.condicion !== selectedCondition) {
       return false;
     }
 
-    // 4. Purchase Type / Modalidad Filter (Precio Directo vs Solo Cotización)
+    // 4. Vehicle Compatibility
+    if (onlyCompatible && activeVehicle) {
+      const matchesVehicle = (prod.compatibilidad || []).some(
+        c => c.marca?.toLowerCase() === activeVehicle.marca?.toLowerCase() &&
+             c.modelo?.toLowerCase() === activeVehicle.modelo?.toLowerCase()
+      );
+      if (!matchesVehicle) return false;
+    }
+
+    // 5. Purchase Type / Modalidad Filter (Precio Directo vs Solo Cotización)
     if (purchaseType === 'DIRECTA') {
       const isQuoteOnly = prod.soloCotizacion || !prod.precio || prod.precio === 0;
       if (isQuoteOnly) return false;
@@ -236,30 +275,11 @@ export default function StorePublicProfileView({
       if (!isQuoteOnly) return false;
     }
 
-    // 4. Brand
-    if (selectedBrand !== 'TODAS') {
-      const hasBrand = (prod.compatibilidad || []).some(
-        c => c.marca?.toLowerCase() === selectedBrand.toLowerCase()
-      );
-      if (!hasBrand) return false;
-    }
-
-    // 5. Patent / Vehicle Compatibility Filter
-    if (onlyCompatible && activeVehicle) {
-      const matchesVehicle = (prod.compatibilidad || []).some(
-        c => c.marca?.toLowerCase() === activeVehicle.marca?.toLowerCase() ||
-             (c.modelo && c.modelo.toLowerCase().includes(activeVehicle.modelo?.toLowerCase()))
-      );
-      if (!matchesVehicle) return false;
-    }
-
     return true;
   });
 
-  // Sorting
+  // Sorting Logic
   const sortedProducts = [...filteredProducts].sort((a, b) => {
-    const topPriority = Number(Boolean(b.isTop || b.destacado)) - Number(Boolean(a.isTop || a.destacado));
-    if (topPriority !== 0) return topPriority;
     if (sortBy === 'precio-asc') return a.precio - b.precio;
     if (sortBy === 'precio-desc') return b.precio - a.precio;
     if (sortBy === 'vendidos') return (b.vendidos || 0) - (a.vendidos || 0);
@@ -272,128 +292,107 @@ export default function StorePublicProfileView({
   const endIndex = Math.min(sortedProducts.length, currentPage * itemsPerPage);
   const paginatedProducts = sortedProducts.slice(startIndex, endIndex);
 
-  const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-      const mainGrid = document.querySelector('.store-inventory-control-bar');
-      if (mainGrid) {
-        mainGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const toggleFollow = () => setIsFollowing(!isFollowing);
+
+  const handleShare = async () => {
+    const shareData = {
+      title: currentStore.nombre,
+      text: `Mira los repuestos de ${currentStore.nombre} en RepuesTop`,
+      url: window.location.href,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        setShareFeedback('Compartido');
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        setShareFeedback('Enlace copiado');
       }
+    } catch {
+      setShareFeedback('Enlace copiado');
     }
+    setTimeout(() => setShareFeedback(''), 2500);
   };
 
-  const handleResetFilters = () => {
+  const handleResetStoreFilters = () => {
     setSearchQuery('');
+    setInputValue('');
     setSelectedCategory('TODAS');
     setSelectedCondition('TODOS');
     setSelectedBrand('TODAS');
     setOnlyCompatible(false);
-    setPatentInput('');
+    setPurchaseType('TODOS');
     setSortBy('relevancia');
     setCurrentPage(1);
   };
 
   const toggleFilterSection = (section) => {
-    setOpenFilterSections((current) => ({ ...current, [section]: !current[section] }));
-  };
-
-  const handleApplyStoreFilters = () => {
-    document.querySelector('.store-public-profile-wrapper .catalog-parts-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  const shippingMethods = parseShippingMethods(currentStore.metodosEnvio);
-  const rating = Number(currentStore.rating ?? 0);
-  const reviewCount = Number(currentStore.reviewCount ?? 0);
-  const responseRate = currentStore.responseRate ?? (rating > 0 ? Math.min(99, 94 + Math.round(rating)) : null);
-  const isVerified = currentStore.verificada !== false;
-
-  const handleShareStore = async () => {
-    const shareData = {
-      title: currentStore.nombre,
-      text: `Revisa el catálogo de ${currentStore.nombre} en RepuesTop`,
-      url: window.location.href,
-    };
-
-    try {
-      if (navigator.share) await navigator.share(shareData);
-      else await navigator.clipboard.writeText(window.location.href);
-      setShareFeedback('Enlace copiado');
-      window.setTimeout(() => setShareFeedback(''), 1800);
-    } catch (error) {
-      if (error?.name !== 'AbortError') setShareFeedback('No se pudo compartir');
-    }
+    setOpenFilterSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
   return (
     <div className="store-public-profile-wrapper">
-      {/* 1. Store Cover & Profile Hero Banner */}
-      <div className="store-public-hero-banner" style={{ '--store-cover': `url("${currentStore.coverUrl || '/tiensoft_cover.jpg'}")` }}>
-        <div className="container store-hero-inner">
-          <div className="store-hero-topbar">
-            <button className="btn-back-marketplace" onClick={onBackToStores}>
-              <ArrowLeft size={17} />
-              <span>Volver a tiendas</span>
+      {/* 1. Header Banner & Store Info */}
+      <div className="store-header-banner">
+        <div className="store-cover-image">
+          {currentStore.coverUrl ? (
+            <img src={currentStore.coverUrl} alt="Portada de la tienda" />
+          ) : (
+            <div className="store-cover-placeholder" />
+          )}
+          <div className="store-cover-overlay" />
+          <button className="btn-back-stores" onClick={onBackToStores}>
+            <ArrowLeft size={16} />
+            <span>Volver a Tiendas</span>
+          </button>
+          {onEditStore && (
+            <button className="btn-edit-store-profile" onClick={onEditStore} title="Editar mi tienda">
+              <PenLine size={15} />
+              <span>Editar tienda</span>
             </button>
-            {onEditStore && (
-              <button className="store-cover-edit-action" type="button" onClick={onEditStore}>
-                <Image size={18} />
-                <span><strong>Personalizar portada</strong><small>Editar logo e imagen de fondo</small></span>
-              </button>
-            )}
-          </div>
+          )}
+        </div>
 
-          <div className="store-header-profile-card">
-            <div className="store-logo-avatar-wrap">
+        <div className="container store-profile-content">
+          <div className="store-main-info-card">
+            <div className="store-avatar-box">
               {currentStore.logoUrl ? (
-                <img src={currentStore.logoUrl} alt={currentStore.nombre} className="store-logo-img" />
-              ) : currentStore.bgColor ? (
-                <div
-                  className="store-logo-initials-box"
-                  style={{ backgroundColor: currentStore.bgColor, color: currentStore.textColor || '#ffffff' }}
-                >
-                  {currentStore.initials || currentStore.nombre.slice(0, 2).toUpperCase()}
-                </div>
+                <img src={currentStore.logoUrl} alt={currentStore.nombre} />
               ) : (
-                <div className="store-logo-initials-box" style={{ backgroundColor: '#0066ff', color: '#ffffff' }}>
-                  <Building2 size={32} />
+                <div className="store-avatar-fallback">
+                  <Building2 size={36} />
                 </div>
               )}
-              <span className="store-avatar-rating"><Star size={13} /> {rating ? rating.toFixed(1) : '—'}</span>
-              {onEditStore && <button className="store-avatar-edit" type="button" onClick={onEditStore} aria-label="Editar imagen de perfil"><PenLine size={15} /></button>}
+              {isVerified && <span className="verified-badge-icon" title="Tienda Verificada Oficial"><ShieldCheck size={18} /></span>}
             </div>
 
-            <div className="store-header-info-col">
-              <div className="store-rut-badge">
-                <ShieldCheck size={14} className="text-emerald-400" />
-                <span>RUT: <strong>{currentStore.rut || 'No informado'}</strong> • Tienda Acreditada</span>
+            <div className="store-info-details">
+              <div className="store-title-badge-row">
+                <h1>{currentStore.nombre}</h1>
+                {isVerified && <span className="badge-official-store"><ShieldCheck size={13} /> TIENDA VERIFICADA</span>}
               </div>
 
-              <h1 className="store-profile-name">{currentStore.nombre}</h1>
-              <p className="store-profile-description">{currentStore.descripcion || currentStore.tipo}</p>
-              <p className="store-profile-sub"><MapPin size={15} /> <strong>{currentStore.ciudad || 'Chile'}</strong><span>•</span>Especialidad: <strong>{currentStore.especialidad || currentStore.tipo}</strong></p>
+              <p className="store-subtitle-meta">
+                <span>{currentStore.tipo}</span> • <MapPin size={13} /> {currentStore.ciudad} • RUT: {currentStore.rut}
+              </p>
 
-              <div className="store-service-icons" aria-label="Servicios de la tienda">
-                {shippingMethods.map((method) => {
-                  const service = resolveShippingService(method);
-                  const ServiceIcon = service.icon;
-                  return <span key={method} title={service.label}><ServiceIcon size={15} /> {service.label}</span>;
-                })}
-              </div>
-            </div>
+              {currentStore.descripcion && (
+                <p className="store-description-text">{currentStore.descripcion}</p>
+              )}
 
-            <div className="store-header-actions-col">
-              <button
-                className="btn-store-quote-main"
-                onClick={() => onOpenQuote({ titulo: `Cotización General - ${currentStore.nombre}`, vendedor: currentStore.nombre })}
-              >
-                <MessageSquare size={19} />
-                <span>Solicitar cotización directa</span>
-                <ArrowRight size={18} />
-              </button>
+              <div className="store-action-buttons">
+                <button
+                  className={`btn-follow-store ${isFollowing ? 'following' : ''}`}
+                  onClick={toggleFollow}
+                >
+                  <Heart size={16} className={isFollowing ? 'fill-current' : ''} />
+                  <span>{isFollowing ? 'Siguiendo tienda' : 'Seguir tienda'}</span>
+                </button>
 
-              <div className="store-social-actions">
-                <button type="button" className={isFollowing ? 'active' : ''} onClick={() => setIsFollowing((value) => !value)}><Heart size={17} fill={isFollowing ? 'currentColor' : 'none'} /> {isFollowing ? 'Siguiendo' : 'Seguir tienda'}</button>
-                <button type="button" onClick={handleShareStore}><Share2 size={17} /> {shareFeedback || 'Compartir'}</button>
+                <button className="btn-share-store" onClick={handleShare}>
+                  <Share2 size={16} />
+                  <span>{shareFeedback || 'Compartir'}</span>
+                </button>
               </div>
             </div>
 
@@ -421,43 +420,120 @@ export default function StorePublicProfileView({
       </div>
 
       <div className="container catalog-main-container store-profile-search-stack">
-        {/* 2. License Plate Filter Console inside Store View */}
-        <div className="patent-filter-box-bar">
-          <div className="patent-filter-header-title">
-            <Car size={24} />
-            <span><strong>Buscar por patente</strong><small>Encuentra repuestos específicos para tu vehículo</small></span>
+        {/* 2. License Plate & Inventory Unified Filter Console inside Store View */}
+        <div className="light-search-panel catalog-unified-search-panel">
+          <div className="light-search-tabs" role="tablist" aria-label="Tipos de búsqueda">
+            {SEARCH_MODES.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  role="tab"
+                  aria-selected={searchMode === item.id}
+                  className={searchMode === item.id ? 'active' : ''}
+                  onClick={() => selectSearchMode(item.id)}
+                >
+                  <Icon size={20} /> <span>{item.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          <form onSubmit={handlePatentSearch} className="patent-filter-form-inline">
-            <input
-              type="text"
-              placeholder="Ingresa patente (ej. BBCL12)..."
-              value={patentInput}
-              onChange={(e) => setPatentInput(e.target.value)}
-              className="patent-filter-input"
-            />
-            <HelpCircle className="store-search-help" size={17} />
-            <button type="submit" className="btn-patent-search-blue" disabled={patentSearching}>
-              <Search size={17} />
-              <span>{patentSearching ? 'Buscando…' : 'Buscar Vehículo'}</span>
-            </button>
-          </form>
-
-          {activeVehicle && (
-            <div className="active-patent-verified-chip">
-              <CheckCircle2 size={14} className="text-emerald-500" />
-              <span>Vehículo: <strong>{activeVehicle.marca} {activeVehicle.modelo} ({activeVehicle.patente})</strong></span>
-              <button
-                className={`btn-toggle-compat-mini ${onlyCompatible ? 'active' : ''}`}
-                onClick={() => setOnlyCompatible(!onlyCompatible)}
-              >
-                {onlyCompatible ? '✓ Solo compatibles' : 'Filtrar calce'}
-              </button>
+          <div className={`light-search-form ${searchMode !== 'patente' ? 'mode-no-country' : ''}`}>
+            <div className="light-input-row">
+              {searchMode === 'patente' && (
+                <button className="country-selector" type="button">
+                  <span>🇨🇱</span><strong>CHILE</strong><ChevronRight size={14} />
+                </button>
+              )}
+              <div className="light-query-field">
+                <input
+                  type="text"
+                  placeholder={currentSearchMode.placeholder}
+                  value={inputValue}
+                  onChange={(event) => {
+                    const val = searchMode === 'patente' || searchMode === 'vin' || searchMode === 'oem'
+                      ? event.target.value.toUpperCase()
+                      : event.target.value;
+                    setInputValue(val);
+                    if (searchMode === 'oem' || searchMode === 'repuesto') {
+                      setSearchQuery(val);
+                    }
+                    if (patentError) setPatentError('');
+                  }}
+                  onKeyDown={(event) => event.key === 'Enter' && handleUnifiedSearch()}
+                />
+                {searchMode === 'patente' && (
+                  <button type="button" className="plate-help">
+                    <CircleHelp size={14} /> ¿Dónde está mi patente?
+                  </button>
+                )}
+              </div>
             </div>
-          )}
-        </div>
 
-        {patentError && <div className="patent-error-msg">{patentError}</div>}
+            <button
+              className="light-primary-search"
+              onClick={() => handleUnifiedSearch()}
+              disabled={patentSearching}
+              type="button"
+            >
+              {patentSearching ? <RefreshCw size={21} className="spin-icon" /> : <Search size={22} />}
+              {searchMode === 'patente'
+                ? `Buscar vehículo en ${currentStore.nombre}`
+                : searchMode === 'vin'
+                  ? 'Buscar por VIN'
+                  : searchMode === 'oem'
+                    ? `Buscar por código OEM en ${currentStore.nombre}`
+                    : `Buscar repuestos en ${currentStore.nombre}`}
+            </button>
+
+            {patentError && (
+              <div className="light-search-error">
+                <AlertCircle size={14} /> {patentError}
+              </div>
+            )}
+
+            {activeVehicle && (
+              <div className="light-active-vehicle">
+                <CheckCircle2 size={17} />
+                <span>Vehículo activo: <strong>{activeVehicle.marca} {activeVehicle.modelo} ({activeVehicle.patente})</strong></span>
+                <button
+                  type="button"
+                  className={`btn-toggle-compat-mini ${onlyCompatible ? 'active' : ''}`}
+                  onClick={() => setOnlyCompatible(!onlyCompatible)}
+                  style={{ marginLeft: 'auto' }}
+                >
+                  {onlyCompatible ? '✓ Solo compatibles' : 'Filtrar calce'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setActiveVehicle(null); setOnlyCompatible(false); }}
+                  style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '2px 6px' }}
+                  title="Quitar vehículo"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+
+            <div className="popular-searches">
+              <span>
+                {searchMode === 'patente'
+                  ? 'Patentes populares:'
+                  : searchMode === 'oem'
+                    ? 'Códigos OEM sugeridos:'
+                    : searchMode === 'vin'
+                      ? 'Ejemplos VIN:'
+                      : 'Búsquedas populares:'}
+              </span>
+              {(searchMode === 'patente' ? samplePatentes : searchMode === 'oem' ? sampleOemCodes : sampleKeywords).map((item) => (
+                <button key={item} type="button" onClick={() => { setInputValue(item); handleUnifiedSearch(item); }}>
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {/* 3. Store Search & Control Bar */}
         <div className="catalog-control-bar store-inventory-control-bar">
@@ -471,17 +547,28 @@ export default function StorePublicProfileView({
                 <Search size={18} className="search-box-icon" />
                 <input
                   type="text"
-                  placeholder="Buscar por nombre de repuesto, código OEM, marca o modelo..."
+                  placeholder="Filtrar por código OEM, repuesto, marca o modelo en esta tienda..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    if (searchMode === 'oem' || searchMode === 'repuesto') {
+                      setInputValue(e.target.value);
+                    }
+                  }}
                   className="search-catalog-input"
                 />
-                {searchQuery && <button className="btn-clear-search-dir" onClick={() => setSearchQuery('')}><X size={14} /></button>}
+                {searchQuery && (
+                  <button
+                    className="btn-clear-search-dir"
+                    onClick={() => {
+                      setSearchQuery('');
+                      if (searchMode === 'oem' || searchMode === 'repuesto') setInputValue('');
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
-            </div>
-            <div className="store-popular-searches">
-              <span>Búsquedas populares:</span>
-              {['Pastillas de freno', 'Filtro de aceite', 'Alternador', 'Amortiguadores', 'Kit de distribución'].map((term) => <button type="button" key={term} onClick={() => setSearchQuery(term)}>{term}</button>)}
             </div>
           </div>
         </div>
