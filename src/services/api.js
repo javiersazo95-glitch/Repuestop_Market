@@ -429,6 +429,22 @@ export async function checkoutCartApi(usuarioId, payload) {
   return fetchApi(`/usuarios/${usuarioId}/pedidos/checkout`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
+export async function getCartApi(usuarioId) {
+  return fetchApi(`/usuarios/${usuarioId}/carrito`, { method: 'GET' });
+}
+
+export async function addCartItemApi(usuarioId, payload) {
+  return fetchApi(`/usuarios/${usuarioId}/carrito/items`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function removeCartItemApi(usuarioId, itemId) {
+  return fetchApi(`/usuarios/${usuarioId}/carrito/items/${itemId}`, { method: 'DELETE' });
+}
+
+export async function updateCartItemApi(usuarioId, itemId, payload) {
+  return fetchApi(`/usuarios/${usuarioId}/carrito/items/${itemId}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
 export async function getSellerInventoryApi(proveedorId, { page = 0, size = 12, texto } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (texto) params.set('texto', texto);

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import {
-  X, Clock, Wrench, Truck, PackageCheck, ShieldCheck, User, Store,
-  MapPin, Phone, Mail, FileText, Package, CreditCard, CheckCircle2, ChevronRight, Copy
+  X, Clock, Wrench, Truck, PackageCheck, User, Store,
+  MapPin, Phone, Mail, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
 import { resolveShippingService } from '../data/shippingMethods';
+import { resolveMediaUrl } from '../services/api';
+import { getControlledOrderAction, isStorePickupOrder } from '../data/orderStatusFlow';
 
 function initialsFromName(name) {
   return String(name || '')
@@ -52,13 +54,16 @@ export default function OrderDetailModal({
   onClose,
   onUpdateStatus,
 }) {
+  const rawStatus = order?.estado || order?.status || 'PENDIENTE';
+  const normStatus = String(rawStatus).toUpperCase();
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [addressCopied, setAddressCopied] = useState(false);
+  const [pickupPin, setPickupPin] = useState('');
+  const [statusError, setStatusError] = useState('');
+
   if (!order) return null;
 
   const isSeller = mode === 'seller';
-  const rawStatus = order.estado || order.status || 'PENDIENTE';
-  const normStatus = String(rawStatus).toUpperCase();
-  const [selectedNextStatus, setSelectedNextStatus] = useState(rawStatus);
-  const [isUpdating, setIsUpdating] = useState(false);
 
   const orderIdShort = String(order.id || '').slice(-6).toUpperCase();
   const items = order.items || [];
@@ -66,17 +71,21 @@ export default function OrderDetailModal({
   const buyerName = order.compradorNombre || order.buyerName || order.usuarioNombre || 'Cliente RepuesTop';
   const buyerEmail = order.compradorEmail || order.buyerEmail || order.email || '—';
   const buyerPhone = order.compradorTelefono || order.buyerPhone || order.telefono || '—';
-  const buyerRut = order.compradorRut || order.taxId || order.rutEmpresa || '—';
+  const buyerRut = order.facturaRut || order.compradorRut || order.taxId || order.rutEmpresa || '—';
+  const buyerAvatar = resolveMediaUrl(order.compradorFotoPerfil || order.buyerAvatar || order.buyerAvatarUrl);
 
   const sellerName = order.vendedorNombre || order.sellerName || order.nombreTienda || 'Tienda RepuesTop';
-  const deliveryAddress = order.direccionEntrega || order.address || order.comuna ? `${order.direccionEntrega || ''} ${order.comuna || ''} ${order.region || ''}`.trim() : 'Despacho a domicilio';
-  const deliveryTerms = order.deliveryTerms || order.tipoEnvio || 'Envío por Starken / Chilexpress';
+  const deliveryAddress = [
+    order.compradorDireccion || order.direccionEntrega || order.address,
+    order.compradorComuna || order.comuna,
+    order.compradorRegion || order.region,
+  ].filter(Boolean).join(', ') || 'Dirección de envío no registrada';
+  const deliveryTerms = order.courier || order.deliveryTerms || order.tipoEnvio || 'Envío por coordinar';
   // Traduce el método de envío a español + ícono, con la misma lógica que la
   // ficha de producto usa para los métodos que declara la tienda.
   const shippingService = resolveShippingService(deliveryTerms);
   const ShippingIcon = shippingService.icon;
-  const isStorePickup = shippingService.name === 'Retiro en tienda';
-  const [addressCopied, setAddressCopied] = useState(false);
+  const isStorePickup = isStorePickupOrder(order);
   const copyAddress = (e) => {
     e.stopPropagation();
     navigator.clipboard?.writeText(deliveryAddress).then(() => {
@@ -92,16 +101,48 @@ export default function OrderDetailModal({
 
   const commissionRate = order.commissionRate ? order.commissionRate * 100 : subtotal > 250000 ? 5 : subtotal > 100000 ? 7 : 10;
   const repuestopFee = order.commissionSeller || Math.round(subtotal * (commissionRate / 100) * 1.19);
-  const paymentProcessingFee = order.comisionPasarela || Math.max(0, Math.round(subtotal * 0.025 * 1.19));
+  const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(subtotal * 0.025 * 1.19)));
 
   const timelineIndex = getTimelineIndex(normStatus);
+  const controlledAction = getControlledOrderAction(order, mode);
+  const sellers = [...new Map(items.map((item) => {
+    const name = item.proveedorNombre || item.sellerName || sellerName;
+    const id = item.proveedorId || item.sellerId || name;
+    return [String(id), {
+      id,
+      name,
+      logo: resolveMediaUrl(item.proveedorLogoUrl || item.sellerLogoUrl),
+      phone: item.proveedorTelefono || item.sellerPhone || '',
+      email: item.proveedorEmail || item.sellerEmail || '',
+      address: [
+        item.proveedorDireccion || item.sellerAddress,
+        item.proveedorComuna || item.sellerCity,
+        item.proveedorRegion || item.sellerRegion,
+      ].filter(Boolean).join(', '),
+      giro: item.proveedorGiro || '',
+      horario: item.proveedorHorario || '',
+    }];
+  })).values()];
 
-  const handleStatusSubmit = async (e) => {
-    e.preventDefault();
-    if (!onUpdateStatus || selectedNextStatus === rawStatus) return;
+  const handleStatusSubmit = async () => {
+    if (!onUpdateStatus || !controlledAction?.nextStatus || controlledAction.disabled) return;
+    const pin = pickupPin.trim();
+    if (controlledAction.requiresPin && !/^\d{6}$/.test(pin)) {
+      setStatusError('Ingresa el código de retiro de 6 dígitos entregado al comprador.');
+      return;
+    }
+    if (!controlledAction.requiresPin
+      && !window.confirm(`${controlledAction.title}\n\n${controlledAction.message}`)) return;
     setIsUpdating(true);
-    await onUpdateStatus(order.id, selectedNextStatus);
-    setIsUpdating(false);
+    setStatusError('');
+    try {
+      await onUpdateStatus(order.id, controlledAction.nextStatus, controlledAction.requiresPin ? pin : undefined);
+      setPickupPin('');
+    } catch (error) {
+      setStatusError(error.message || 'No se pudo actualizar el estado del pedido.');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (
@@ -153,40 +194,51 @@ export default function OrderDetailModal({
             </div>
           </div>
 
-          {/* Tarjeta de la persona (comprador/vendedor): es el dato más importante
-              del pedido, así que va primero y a todo el ancho, con su propio
-              acento de color en vez de perderse entre el resto de la info. */}
-          <div className="details-card-block person-highlight-card">
-            <div className="person-highlight-header">
-              <div className="person-highlight-avatar">
-                {isSeller ? <User size={20} /> : <Store size={20} />}
-                <span>{initialsFromName(isSeller ? buyerName : sellerName)}</span>
-              </div>
-              <div className="person-highlight-copy">
-                <span className="person-highlight-eyebrow">{isSeller ? 'Comprador' : 'Vendedor'}</span>
-                <h3 className="person-highlight-name">{isSeller ? buyerName : sellerName}</h3>
-              </div>
-            </div>
+          <section className="order-participants-section" aria-labelledby="order-participants-title">
+            <h3 id="order-participants-title"><User size={17} /> Participantes del pedido</h3>
+            <div className="order-participants-grid">
+              <article className="details-card-block person-highlight-card participant-card buyer-participant-card">
+                <div className="person-highlight-header">
+                  <div className="person-highlight-avatar">
+                    {buyerAvatar ? <img src={buyerAvatar} alt={buyerName} /> : <><User size={20} /><span>{initialsFromName(buyerName)}</span></>}
+                  </div>
+                  <div className="person-highlight-copy">
+                    <span className="person-highlight-eyebrow">Comprador</span>
+                    <h4 className="person-highlight-name">{buyerName}</h4>
+                  </div>
+                </div>
+                <div className="participant-information-list">
+                  <a href={`mailto:${buyerEmail}`}><Mail size={14} /><span><small>Correo</small><strong>{buyerEmail}</strong></span></a>
+                  <a href={`tel:${buyerPhone}`}><Phone size={14} /><span><small>Teléfono</small><strong>{buyerPhone}</strong></span></a>
+                  {!isStorePickup && <div><MapPin size={14} /><span><small>Dirección de entrega</small><strong>{deliveryAddress}</strong></span></div>}
+                  {(order.tipoDocumentoTributario || order.tipoDocumento || order.documentType) && (
+                    <div><FileText size={14} /><span><small>Documento</small><strong>{String(order.tipoDocumentoTributario || order.tipoDocumento || order.documentType).toUpperCase() === 'FACTURA' ? `Factura · RUT ${buyerRut}` : 'Boleta electrónica'}</strong></span></div>
+                  )}
+                </div>
+              </article>
 
-            {isSeller && (
-              <div className="person-contact-chips">
-                <a className="person-contact-chip" href={`mailto:${buyerEmail}`} onClick={(e) => e.stopPropagation()}>
-                  <Mail size={14} /> {buyerEmail}
-                </a>
-                <a className="person-contact-chip" href={`tel:${buyerPhone}`} onClick={(e) => e.stopPropagation()}>
-                  <Phone size={14} /> {buyerPhone}
-                </a>
-                {(order.tipoDocumento || order.documentType) && (
-                  <span className="person-contact-chip document">
-                    <FileText size={14} />
-                    {order.tipoDocumento === 'factura' || order.documentType === 'factura'
-                      ? `Factura · RUT ${buyerRut}`
-                      : 'Boleta Electrónica'}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+              {sellers.map((seller) => (
+                <article className="details-card-block person-highlight-card participant-card seller-participant-card" key={seller.id}>
+                  <div className="person-highlight-header">
+                    <div className="person-highlight-avatar seller-avatar">
+                      {seller.logo ? <img src={seller.logo} alt={seller.name} /> : <><Store size={20} /><span>{initialsFromName(seller.name)}</span></>}
+                    </div>
+                    <div className="person-highlight-copy">
+                      <span className="person-highlight-eyebrow">Tienda vendedora</span>
+                      <h4 className="person-highlight-name">{seller.name}</h4>
+                      {seller.giro && <p>{seller.giro}</p>}
+                    </div>
+                  </div>
+                  <div className="participant-information-list">
+                    {seller.email && <a href={`mailto:${seller.email}`}><Mail size={14} /><span><small>Correo</small><strong>{seller.email}</strong></span></a>}
+                    {seller.phone && <a href={`tel:${seller.phone}`}><Phone size={14} /><span><small>Teléfono</small><strong>{seller.phone}</strong></span></a>}
+                    {seller.address && <div><MapPin size={14} /><span><small>Ubicación de la tienda</small><strong>{seller.address}</strong></span></div>}
+                    {seller.horario && <div><Clock size={14} /><span><small>Horario</small><strong>{seller.horario}</strong></span></div>}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
 
           <div className="order-details-grid">
             {/* Tarjeta de envío: método traducido a español con su ícono y color
@@ -216,37 +268,48 @@ export default function OrderDetailModal({
               )}
             </div>
 
-            {/* Right Column: Update Order Status */}
+            {/* La acción disponible replica el flujo controlado de la app móvil. */}
             {onUpdateStatus && (
               <div className="details-card-block status-update-block">
                 <h3 className="section-subtitle">
                   <CheckCircle2 size={16} />
                   <span>Gestionar Estado del Pedido</span>
                 </h3>
-                <form onSubmit={handleStatusSubmit} className="status-update-form">
-                  <label className="form-label">Seleccionar nuevo estado:</label>
-                  <select
-                    className="status-select-input"
-                    value={selectedNextStatus}
-                    onChange={(e) => setSelectedNextStatus(e.target.value)}
-                  >
-                    <option value="PENDIENTE">Pendiente de pago</option>
-                    <option value="EN_PREPARACION">En preparación</option>
-                    <option value="ENVIADO">Enviado</option>
-                    <option value="ENTREGADO">Entregado</option>
-                    <option value="FINALIZADO">Finalizado</option>
-                    <option value="EN_MEDIACION">En mediación</option>
-                    <option value="CANCELADO">Cancelado</option>
-                  </select>
-
-                  <button
-                    type="submit"
-                    className="btn-auth-primary btn-save-status"
-                    disabled={isUpdating || selectedNextStatus === rawStatus}
-                  >
-                    {isUpdating ? 'Actualizando...' : 'Actualizar Estado'}
-                  </button>
-                </form>
+                {!controlledAction ? (
+                  <p className="order-status-complete-message">Este pedido no tiene más avances disponibles para tu perfil.</p>
+                ) : controlledAction.waiting ? (
+                  <div className="order-status-waiting"><Clock size={17} /><span>{controlledAction.label}</span></div>
+                ) : (
+                  <div className="status-update-form controlled-status-form">
+                    <div className="controlled-status-next">
+                      <small>Siguiente estado permitido</small>
+                      <strong>{controlledAction.label}</strong>
+                      <p>{controlledAction.message}</p>
+                    </div>
+                    {controlledAction.requiresPin && (
+                      <label className="controlled-status-pin">
+                        <span><KeyRound size={15} /> Código de retiro</span>
+                        <input
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={pickupPin}
+                          onChange={(event) => setPickupPin(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                          placeholder="000000"
+                          autoComplete="one-time-code"
+                        />
+                      </label>
+                    )}
+                    {statusError && <p className="order-status-action-error">{statusError}</p>}
+                    <button
+                      type="button"
+                      className="btn-auth-primary btn-save-status"
+                      disabled={isUpdating || controlledAction.disabled}
+                      onClick={handleStatusSubmit}
+                    >
+                      {isUpdating ? 'Actualizando...' : controlledAction.label}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -263,12 +326,12 @@ export default function OrderDetailModal({
             ) : (
               <div className="order-items-table">
                 {items.map((item, i) => {
-                  const photo = item.imagenUrl || item.productPhotoUri || (item.imageUrls && item.imageUrls[0]);
+                  const photo = resolveMediaUrl(item.imagenUrl || item.imageUrl || item.productPhotoUri || (item.imageUrls && item.imageUrls[0]));
                   const name = item.nombre || item.productName || item.name || 'Repuesto de vehículo';
                   const brand = item.marca || item.productBrand || item.brand || '';
                   const sku = item.sku || item.productSku || '';
                   const qty = Number(item.cantidad || item.quantity || 1);
-                  const price = Number(item.precio || item.unitPrice || 0);
+                  const price = Number(item.precioUnitario || item.precio || item.unitPrice || 0);
 
                   return (
                     <div key={item.id || i} className="order-item-row">
@@ -321,10 +384,12 @@ export default function OrderDetailModal({
                     <span>Comisión RepuesTop ({commissionRate}% + IVA)</span>
                     <strong className="negative-text">-{formatCLP(repuestopFee)}</strong>
                   </div>
-                  <div className="financial-row deduction-row">
-                    <span>Procesador de Pago Flow (IVA inc.)</span>
-                    <strong className="negative-text">-{formatCLP(paymentProcessingFee)}</strong>
-                  </div>
+                  {paymentProcessingFee > 0 && (
+                    <div className="financial-row deduction-row">
+                      <span>Procesador de pago</span>
+                      <strong className="negative-text">-{formatCLP(paymentProcessingFee)}</strong>
+                    </div>
+                  )}
                 </>
               )}
 

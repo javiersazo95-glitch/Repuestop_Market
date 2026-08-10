@@ -38,3 +38,11 @@ export function resolveShippingService(method) {
 export function shippingMethodPrice(method) {
   return String(method || '').match(/\(([^)]+)\)/)?.[1] || null;
 }
+
+/** Convierte el precio publicado en el método ("$4.500") a un número para el checkout. */
+export function shippingMethodCost(method) {
+  const price = shippingMethodPrice(method);
+  if (!price) return 0;
+  const numeric = Number(String(price).replace(/[^0-9]/g, ''));
+  return Number.isFinite(numeric) ? numeric : 0;
+}

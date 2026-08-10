@@ -14,6 +14,7 @@ import AboutPage from '../pages/AboutPage';
 import ProfilePage from '../pages/ProfilePage';
 import SellerRegisterPage from '../pages/SellerRegisterPage';
 import NotFoundPage from '../pages/NotFoundPage';
+import PurchaseSuccessPage from '../pages/PurchaseSuccessPage';
 
 export default function AppRoutes() {
   return (
@@ -28,6 +29,10 @@ export default function AppRoutes() {
           <Route path={ROUTES.stores} element={<StoresPage />} />
           <Route path={ROUTES.store} element={<StorePage />} />
           <Route path={ROUTES.support} element={<SupportPage />} />
+          <Route
+            path={ROUTES.purchaseSuccess}
+            element={<RequireAuth><PurchaseSuccessPage /></RequireAuth>}
+          />
           <Route path={ROUTES.notFound} element={<NotFoundPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

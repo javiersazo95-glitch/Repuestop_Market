@@ -5,6 +5,7 @@ import {
   Phone, MapPin, Boxes
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
+import { getControlledOrderAction, isStorePickupOrder } from '../data/orderStatusFlow';
 
 export const UNIFIED_STATUS_CONFIG = {
   PENDIENTE: { label: 'Pendiente de pago', icon: Clock, className: 'badge-amber', tone: 'amber' },
@@ -41,10 +42,6 @@ function formatOrderDate(value) {
   });
 }
 
-function normalizeOrderText(value) {
-  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-}
-
 export function OrderStatusBadge({ status, size = 'medium' }) {
   const normalizedStatus = String(status || 'PENDIENTE').toUpperCase();
   const config = UNIFIED_STATUS_CONFIG[status] || UNIFIED_STATUS_CONFIG[normalizedStatus] || UNIFIED_STATUS_CONFIG.PENDIENTE;
@@ -66,6 +63,8 @@ export default function OrderCard({
   withdrawalDate,
 }) {
   const [showCommissionModal, setShowCommissionModal] = useState(false);
+  const [isAdvancing, setIsAdvancing] = useState(false);
+  const [actionError, setActionError] = useState('');
   const isSeller = mode === 'seller';
 
   if (!order) return null;
@@ -77,8 +76,8 @@ export default function OrderCard({
   // Normalización de campos según comprador vs vendedor
   const rawStatus = order.estado || order.status || 'PENDIENTE';
   const normStatus = String(rawStatus).toUpperCase();
-  const deliveryTerms = String(order.deliveryTerms || order.tipoEnvio || order.direccionEntrega || 'Despacho a domicilio');
-  const isStorePickup = normalizeOrderText(deliveryTerms).includes('retiro') || normalizeOrderText(deliveryTerms).includes('tienda') || order.shipping?.method === 'store_pickup';
+  const deliveryTerms = String(order.courier || order.deliveryTerms || order.tipoEnvio || order.compradorDireccion || order.direccionEntrega || 'Despacho a domicilio');
+  const isStorePickup = isStorePickupOrder(order);
   const displayStatus = normStatus === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : rawStatus;
 
   const orderIdShort = String(order.id || '').slice(-6).toUpperCase();
@@ -92,7 +91,11 @@ export default function OrderCard({
 
   // Dirección real de despacho (no solo la etiqueta genérica "Despacho a domicilio"):
   // el vendedor la necesita para preparar el envío sin tener que abrir el detalle.
-  const deliveryAddress = [order.direccionEntrega || order.address, order.comuna, order.region].filter(Boolean).join(', ');
+  const deliveryAddress = [
+    order.compradorDireccion || order.direccionEntrega || order.address,
+    order.compradorComuna || order.comuna,
+    order.compradorRegion || order.region,
+  ].filter(Boolean).join(', ');
   const shippingFee = Number(order.shippingFee || order.costoEnvio || 0);
   const itemsCount = items.reduce((total, item) => total + Number(item.cantidad || item.quantity || 1), 0) || 1;
 
@@ -112,86 +115,52 @@ export default function OrderCard({
   const storedCommissionRate = Number(order.commissionRate ?? order.comisionTasaAplicada ?? 0);
   const commissionRate = storedCommissionRate > 0 ? (storedCommissionRate <= 1 ? storedCommissionRate * 100 : storedCommissionRate) : subtotal > 250000 ? 5 : subtotal > 100000 ? 7 : 10;
   const repuestopFee = order.commissionSeller || Math.round(subtotal * (commissionRate / 100) * 1.19);
-  const paymentProcessingFee = order.comisionPasarela || Math.max(0, Math.round(subtotal * 0.025 * 1.19));
+  const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(subtotal * 0.025 * 1.19)));
   const totalDeductions = repuestopFee + paymentProcessingFee;
   const paymentFailed = String(order.paymentStatus || '').toLowerCase() === 'failed' && !['CANCELADO', 'CANCELLED'].includes(normStatus);
   const hasRefund = ['REEMBOLSADO', 'REEMBOLSO_SOLICITADO'].includes(String(order.refundStatus || '').toUpperCase());
 
-  // Lógica de cambio de estado
-  const handleQuickStatusChange = (e, nextStatus) => {
+  const controlledAction = getControlledOrderAction(order, mode);
+
+  // La app móvil solo permite avanzar al siguiente estado válido para cada rol.
+  const handleQuickStatusChange = async (e) => {
     e.stopPropagation();
-    if (onUpdateStatus) {
-      onUpdateStatus(order.id, nextStatus);
+    if (!onUpdateStatus || !controlledAction || controlledAction.waiting || controlledAction.disabled) return;
+    if (controlledAction.requiresPin) {
+      onSelectOrder?.(order);
+      return;
+    }
+    if (!window.confirm(`${controlledAction.title}\n\n${controlledAction.message}`)) return;
+    setIsAdvancing(true);
+    setActionError('');
+    try {
+      await onUpdateStatus(order.id, controlledAction.nextStatus);
+    } catch (error) {
+      setActionError(error.message || 'No se pudo actualizar el pedido.');
+    } finally {
+      setIsAdvancing(false);
     }
   };
 
   const renderStatusButton = () => {
-    if (!onUpdateStatus) return null;
-
-    if (isSeller) {
-      if (normStatus === 'PENDIENTE' || normStatus === 'PAGADO') {
-        return (
-          <button
-            type="button"
-            className="btn-order-action btn-action-amber"
-            onClick={(e) => handleQuickStatusChange(e, 'EN_PREPARACION')}
-          >
-            <Wrench size={14} />
-            <span>Iniciar Preparación</span>
-          </button>
-        );
-      }
-      if (normStatus === 'EN_PREPARACION') {
-        return (
-          <button
-            type="button"
-            className="btn-order-action btn-action-blue"
-            onClick={(e) => handleQuickStatusChange(e, 'ENVIADO')}
-          >
-            <Truck size={14} />
-            <span>Marcar como Enviado</span>
-          </button>
-        );
-      }
-      if (normStatus === 'ENVIADO') {
-        return (
-          <button
-            type="button"
-            className="btn-order-action btn-action-green"
-            onClick={(e) => handleQuickStatusChange(e, 'FINALIZADO')}
-          >
-            <Check size={14} />
-            <span>Marcar como Finalizado</span>
-          </button>
-        );
-      }
-    } else {
-      if (normStatus === 'ENVIADO') {
-        return (
-          <button
-            type="button"
-            className="btn-order-action btn-action-green"
-            onClick={(e) => handleQuickStatusChange(e, 'ENTREGADO')}
-          >
-            <PackageCheck size={14} />
-            <span>Confirmar Recepción</span>
-          </button>
-        );
-      }
-      if (normStatus === 'PENDIENTE') {
-        return (
-          <button
-            type="button"
-            className="btn-order-action btn-action-red"
-            onClick={(e) => handleQuickStatusChange(e, 'RETOMAR')}
-          >
-            <RotateCcw size={14} />
-            <span>Retomar Pago</span>
-          </button>
-        );
-      }
+    if (!onUpdateStatus || !controlledAction) return null;
+    if (controlledAction.waiting) {
+      return <span className="order-controlled-wait"><Clock size={14} /> {controlledAction.label}</span>;
     }
-    return null;
+    return (
+      <div className="order-controlled-action-wrap">
+        <button
+          type="button"
+          className={`btn-order-action ${controlledAction.disabled ? 'btn-action-disabled' : isSeller ? 'btn-action-blue' : 'btn-action-green'}`}
+          disabled={controlledAction.disabled || isAdvancing}
+          onClick={handleQuickStatusChange}
+        >
+          {controlledAction.nextStatus === 'ENVIADO' ? <Truck size={14} /> : <Check size={14} />}
+          <span>{isAdvancing ? 'Actualizando...' : controlledAction.label}</span>
+        </button>
+        {actionError && <small className="order-controlled-error">{actionError}</small>}
+      </div>
+    );
   };
 
   return (
@@ -381,9 +350,9 @@ export default function OrderCard({
               <p>
                 <strong>Tarifa de servicio RepuesTop:</strong> {commissionRate}% sobre productos ({formatCLP(subtotal)}). Comisión + IVA: {formatCLP(repuestopFee)}.
               </p>
-              <p>
-                <strong>Costo procesador de pago (Flow / IVA inc.):</strong> {formatCLP(paymentProcessingFee)}.
-              </p>
+              {paymentProcessingFee > 0 && (
+                <p><strong>Costo procesador de pago:</strong> {formatCLP(paymentProcessingFee)}.</p>
+              )}
               <p className="commission-highlight">
                 <strong>Descuentos totales:</strong> -{formatCLP(totalDeductions)}
               </p>

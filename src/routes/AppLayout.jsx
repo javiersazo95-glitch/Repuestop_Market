@@ -8,7 +8,7 @@ import QuotationRequestModal from '../components/QuotationRequestModal';
 import { useAuth } from '../context/AuthContext';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from './useAppNavigation';
-import { catalogPath, profilePath } from './paths';
+import { catalogPath, profilePath, ROUTES } from './paths';
 
 /**
  * Chrome compartido (header, footer, carrito y modales globales) para todas las
@@ -84,7 +84,9 @@ export default function AppLayout() {
         isOpen={isAuthModalOpen}
         onClose={closeAuthModal}
         onOpenSellerRegister={nav.goSellerRegister}
-        onLoginSuccess={() => navigate(redirectedFrom || profilePath('resumen'), { replace: true })}
+        onLoginSuccess={() => {
+          if (!isCartOpen) navigate(redirectedFrom || profilePath('resumen'), { replace: true });
+        }}
       />
 
       <QuotationRequestModal
@@ -105,6 +107,15 @@ export default function AppLayout() {
         user={user}
         isLoggedIn={isLoggedIn}
         onOpenAuthModal={openAuthModal}
+        onOrderCreated={(order) => {
+          try {
+            sessionStorage.setItem('repuestop_last_successful_order', JSON.stringify(order));
+          } catch {
+            // El state de navegación mantiene disponible la confirmación en esta sesión.
+          }
+          closeCart();
+          navigate(ROUTES.purchaseSuccess, { state: { order } });
+        }}
       />
     </div>
   );

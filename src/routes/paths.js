@@ -13,6 +13,7 @@ export const ROUTES = {
   support: '/ayuda',
   about: '/nosotros',
   sellerRegister: '/vender',
+  purchaseSuccess: '/compra-exitosa',
   notFound: '/404',
 };
 

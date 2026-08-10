@@ -277,23 +277,21 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [dataError, setDataError] = useState(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
-  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+  const handleUpdateOrderStatus = async (orderId, newStatus, pin) => {
     try {
-      await updateOrderStatusApi(orderId, newStatus);
+      const updatedOrder = await updateOrderStatusApi(orderId, newStatus, pin);
+      const mergeUpdatedOrder = (order) => String(order.id) === String(orderId)
+        ? { ...order, ...updatedOrder, estado: updatedOrder?.estado || newStatus, status: updatedOrder?.status || newStatus }
+        : order;
+      setOrders((prevOrders) => (prevOrders || []).map(mergeUpdatedOrder));
+      setSelectedOrder((prevSelected) => String(prevSelected?.id) === String(orderId)
+        ? mergeUpdatedOrder(prevSelected)
+        : prevSelected);
+      return updatedOrder;
     } catch (err) {
-      console.warn('Servidor sin endpoint persistente de cambio de estado o error:', err);
+      console.warn('No se pudo actualizar el estado del pedido:', err);
+      throw err;
     }
-    // Actualizar estado local del array de pedidos y del pedido seleccionado si está abierto
-    setOrders((prevOrders) =>
-      (prevOrders || []).map((ord) =>
-        ord.id === orderId ? { ...ord, estado: newStatus, status: newStatus } : ord
-      )
-    );
-    setSelectedOrder((prevSelected) =>
-      prevSelected && prevSelected.id === orderId
-        ? { ...prevSelected, estado: newStatus, status: newStatus }
-        : prevSelected
-    );
   };
 
   const handleSaveCatalogProduct = async (productId, updatedFields) => {

@@ -1,0 +1,89 @@
+.system-error-page {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  min-width: 280px;
+  min-height: 320px;
+  background: #f9fbff;
+}
+
+.system-error-artwork {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  flex: none;
+  width: min(225dvw, 150dvh);
+  height: auto;
+  aspect-ratio: 3 / 2;
+}
+
+.system-error-artwork img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.system-error-hotspot {
+  position: absolute;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  color: transparent;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.system-error-hotspot:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.system-error-hotspot:active {
+  background: rgba(0, 52, 139, 0.12);
+}
+
+.system-error-hotspot:focus-visible {
+  outline: 4px solid #ffbf47;
+  outline-offset: 3px;
+}
+
+.system-error-retry {
+  left: 35.29%;
+  top: 50%;
+  width: 26.43%;
+  height: max(6.94%, 44px);
+}
+
+.system-error-home {
+  left: 39.91%;
+  top: 59.18%;
+  width: 20.18%;
+  height: max(4.79%, 44px);
+}
+
+.system-error-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (min-aspect-ratio: 3 / 2) {
+  .system-error-artwork {
+    width: min(100dvw, 150dvh);
+  }
+}

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ShoppingBag, X, Trash2, Plus, Minus, ShieldCheck, Truck, ArrowRight, CheckCircle2, MapPin, Loader2, AlertTriangle } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ShoppingBag, X, Trash2, Plus, Minus, ShieldCheck, Truck, ArrowRight, CheckCircle2, MapPin, Loader2, AlertTriangle, ReceiptText, Building2 } from 'lucide-react';
 import { CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
 import BuyerAddressBook from './BuyerAddressBook';
@@ -9,6 +9,7 @@ export default function CartDrawer({
   isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, activeVehicle,
   user, isLoggedIn, onOpenAuthModal, onOrderCreated, onClearCart,
 }) {
+  const userId = user?.userId ?? user?.id;
   const [addresses, setAddresses] = useState([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState('');
@@ -16,11 +17,22 @@ export default function CartDrawer({
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
   const [orderSuccess, setOrderSuccess] = useState(null);
+  const [documentType, setDocumentType] = useState('');
+  const [invoiceData, setInvoiceData] = useState({
+    rut: user?.facturaRut || '',
+    razonSocial: user?.facturaRazonSocial || '',
+    giro: user?.facturaGiro || '',
+  });
 
-  const loadAddresses = () => {
-    if (!user?.userId) return;
+  const needsAddress = cartItems.some((item) => {
+    const method = String(item.shippingMethod || '').toLowerCase();
+    return !method.includes('retiro') && !method.includes('tienda');
+  });
+
+  const loadAddresses = useCallback(() => {
+    if (!userId) return;
     setAddressesLoading(true);
-    getAddressesApi(user.userId)
+    getAddressesApi(userId)
       .then((data) => {
         const list = Array.isArray(data) ? data : [];
         setAddresses(list);
@@ -29,36 +41,58 @@ export default function CartDrawer({
       })
       .catch(() => setAddresses([]))
       .finally(() => setAddressesLoading(false));
-  };
+  }, [userId]);
 
   useEffect(() => {
-    if (isOpen && isLoggedIn && user?.userId) loadAddresses();
-  }, [isOpen, isLoggedIn, user?.userId]);
+    if (isOpen && isLoggedIn && userId) loadAddresses();
+  }, [isOpen, isLoggedIn, userId, loadAddresses]);
 
   if (!isOpen) return null;
 
   const subtotal = cartItems.reduce((acc, item) => acc + (item.precio * item.quantity), 0);
-  const freeShippingThreshold = 30000;
-  const isFreeShipping = subtotal >= freeShippingThreshold;
-  const shippingFee = subtotal > 0 && !isFreeShipping ? 3990 : 0;
+  const shippingBySeller = new Map();
+  cartItems.forEach((item) => {
+    const fee = Number(item.shippingFee || 0);
+    if (fee <= 0) return;
+    const sellerKey = String(item.proveedorId || item.vendedor || item.id);
+    if (!shippingBySeller.has(sellerKey)) shippingBySeller.set(sellerKey, fee);
+  });
+  const shippingFee = [...shippingBySeller.values()].reduce((sum, fee) => sum + fee, 0);
   const total = subtotal + shippingFee;
+  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const selectedShippingMethods = [...new Set(cartItems.map((item) => item.shippingMethod).filter(Boolean))];
 
   const handleCheckout = async () => {
     if (!isLoggedIn) {
       onOpenAuthModal?.();
       return;
     }
-    if (!selectedAddressId) {
+    if (!documentType) {
+      setCheckoutError('Indica si necesitas boleta o factura para continuar.');
+      return;
+    }
+    if (documentType === 'FACTURA' && !invoiceData.rut.trim()) {
+      setCheckoutError('Ingresa el RUT de facturación.');
+      return;
+    }
+    if (needsAddress && !selectedAddressId) {
       setCheckoutError('Selecciona la dirección donde quieres recibir tu pedido.');
       return;
     }
     setCheckingOut(true);
     setCheckoutError('');
     try {
-      const order = await checkoutCartApi(user.userId, { direccionId: selectedAddressId });
-      setOrderSuccess(order);
+      const order = await checkoutCartApi(userId, {
+        direccionId: needsAddress ? selectedAddressId : '',
+        metodoEnvio: selectedShippingMethods.join(' | '),
+        tipoDocumentoTributario: documentType,
+        facturaRut: documentType === 'FACTURA' ? invoiceData.rut.trim() : '',
+        facturaRazonSocial: documentType === 'FACTURA' ? invoiceData.razonSocial.trim() : '',
+        facturaGiro: documentType === 'FACTURA' ? invoiceData.giro.trim() : '',
+      });
       onClearCart?.();
-      onOrderCreated?.(order);
+      if (onOrderCreated) onOrderCreated(order);
+      else setOrderSuccess(order);
     } catch (error) {
       setCheckoutError(error.message || 'No se pudo generar el pedido. Intenta nuevamente.');
     } finally {
@@ -74,9 +108,9 @@ export default function CartDrawer({
           <div className="drawer-title">
             <ShoppingBag size={20} />
             <h2>Mi Carrito de Repuestos</h2>
-            <span className="count-badge">{cartItems.length}</span>
+            <span className="count-badge">{cartCount}</span>
           </div>
-          <button className="drawer-close-btn" onClick={onClose}>
+          <button className="drawer-close-btn" onClick={onClose} aria-label="Cerrar carrito">
             <X size={20} />
           </button>
         </div>
@@ -96,24 +130,7 @@ export default function CartDrawer({
           </div>
         ) : (
         <>
-        {/* Free Shipping Progress Indicator */}
-        <div className="free-shipping-bar-wrapper">
-          {isFreeShipping ? (
-            <div className="free-shipping-success">
-              <CheckCircle2 size={16} /> ¡Felicidades! Tienes <strong>ENVÍO GRATIS</strong> en esta compra.
-            </div>
-          ) : (
-            <div className="free-shipping-progress">
-              <p>Agrega <strong>${(freeShippingThreshold - subtotal).toLocaleString('es-CL')}</strong> más para tener Envío Gratis</p>
-              <div className="progress-bar-outer">
-                <div 
-                  className="progress-bar-inner" 
-                  style={{ width: `${Math.min(100, (subtotal / freeShippingThreshold) * 100)}%` }}
-                ></div>
-              </div>
-            </div>
-          )}
-        </div>
+        <div className="cart-flow-note"><ShieldCheck size={16} /><span>Revisa productos, entrega y documento tributario antes de pagar.</span></div>
 
         {/* Drawer Body - Items List */}
         <div className="drawer-body">
@@ -130,16 +147,19 @@ export default function CartDrawer({
             <div className="cart-items-list">
               {cartItems.map((item) => (
                 <div key={item.id} className="cart-item-row">
-                  <CategoryIconTile
-                    iconName={CATEGORY_ICON_BY_ID[item.categoria]}
-                    color={CATEGORY_COLOR_BY_ID[item.categoria]}
-                    size={22}
-                    className="item-thumb"
-                  />
+                  {item.imagen ? <img className="item-thumb cart-item-image" src={item.imagen} alt="" /> : (
+                    <CategoryIconTile
+                      iconName={CATEGORY_ICON_BY_ID[item.categoria]}
+                      color={CATEGORY_COLOR_BY_ID[item.categoria]}
+                      size={22}
+                      className="item-thumb"
+                    />
+                  )}
 
                   <div className="item-details">
                     <h4 className="item-title">{item.titulo}</h4>
                     <span className="item-oem">OEM: {item.oemCode}</span>
+                    <span className="cart-item-shipping"><Truck size={12} /> {item.shippingMethod || 'Entrega por coordinar'}</span>
                     
                     {activeVehicle && (
                       <span className="item-veh-tag">
@@ -151,16 +171,16 @@ export default function CartDrawer({
                       <span className="item-unit-price">${(item.precio * item.quantity).toLocaleString('es-CL')}</span>
                       
                       <div className="quantity-controls">
-                        <button onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}>
+                        <button onClick={() => onUpdateQuantity(item.id, item.quantity - 1)} aria-label={`Restar una unidad de ${item.titulo}`}>
                           <Minus size={14} />
                         </button>
                         <span>{item.quantity}</span>
-                        <button onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}>
+                        <button onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} aria-label={`Sumar una unidad de ${item.titulo}`}>
                           <Plus size={14} />
                         </button>
                       </div>
 
-                      <button className="btn-remove-item" onClick={() => onRemoveItem(item.id)}>
+                      <button className="btn-remove-item" onClick={() => onRemoveItem(item.id)} aria-label={`Eliminar ${item.titulo} del carrito`}>
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -174,13 +194,18 @@ export default function CartDrawer({
         {/* Drawer Footer - Checkout & Totals */}
         {cartItems.length > 0 && (
           <div className="drawer-footer">
+            <h3 className="cart-summary-title">Resumen de la compra</h3>
             <div className="summary-row">
-              <span>Subtotal Repuestos:</span>
+              <span>Productos ({cartCount}):</span>
               <span>${subtotal.toLocaleString('es-CL')}</span>
             </div>
             <div className="summary-row">
-              <span>Envío Express a domicilio:</span>
-              <span>{shippingFee === 0 ? <strong className="green-text">GRATIS</strong> : `$${shippingFee.toLocaleString('es-CL')}`}</span>
+              <span>Método de entrega:</span>
+              <span className="cart-summary-shipping-method">{selectedShippingMethods.join(', ') || 'Por coordinar'}</span>
+            </div>
+            <div className="summary-row">
+              <span>Costo de envío:</span>
+              <span>{shippingFee > 0 ? `$${shippingFee.toLocaleString('es-CL')}` : needsAddress ? 'Por pagar / coordinar' : <strong className="green-text">Sin costo</strong>}</span>
             </div>
 
             <div className="total-row">
@@ -188,7 +213,7 @@ export default function CartDrawer({
               <span className="total-amount">${total.toLocaleString('es-CL')}</span>
             </div>
 
-            {isLoggedIn && (
+            {isLoggedIn && needsAddress && (
               <div className="cart-checkout-address">
                 <label htmlFor="cart-checkout-address-select"><MapPin size={14} /> Dirección de envío</label>
                 {addressesLoading ? (
@@ -217,20 +242,41 @@ export default function CartDrawer({
                 )}
                 {(showAddressManager || addresses.length === 0) && (
                   <div className="cart-address-manager">
-                    <BuyerAddressBook usuarioId={user?.userId} />
+                    <BuyerAddressBook usuarioId={userId} />
                   </div>
                 )}
               </div>
             )}
 
+            <section className="cart-document-section" aria-labelledby="cart-document-title">
+              <div className="cart-document-heading"><ReceiptText size={17} /><div><strong id="cart-document-title">¿Necesitas boleta o factura?</strong><small>Esta información se enviará a la tienda para emitir tu documento.</small></div></div>
+              <div className="cart-document-options">
+                <label className={documentType === 'BOLETA' ? 'selected' : ''}>
+                  <input type="radio" name="document-type" value="BOLETA" checked={documentType === 'BOLETA'} onChange={(event) => setDocumentType(event.target.value)} />
+                  <ReceiptText /><span><strong>Boleta</strong><small>Compra personal</small></span>
+                </label>
+                <label className={documentType === 'FACTURA' ? 'selected' : ''}>
+                  <input type="radio" name="document-type" value="FACTURA" checked={documentType === 'FACTURA'} onChange={(event) => setDocumentType(event.target.value)} />
+                  <Building2 /><span><strong>Factura</strong><small>Compra empresa</small></span>
+                </label>
+              </div>
+              {documentType === 'FACTURA' && (
+                <div className="cart-invoice-fields">
+                  <label><span>RUT empresa *</span><input value={invoiceData.rut} onChange={(event) => setInvoiceData((current) => ({ ...current, rut: event.target.value }))} placeholder="76.123.456-7" /></label>
+                  <label><span>Razón social</span><input value={invoiceData.razonSocial} onChange={(event) => setInvoiceData((current) => ({ ...current, razonSocial: event.target.value }))} placeholder="Nombre de la empresa" /></label>
+                  <label><span>Giro</span><input value={invoiceData.giro} onChange={(event) => setInvoiceData((current) => ({ ...current, giro: event.target.value }))} placeholder="Actividad comercial" /></label>
+                </div>
+              )}
+            </section>
+
             <div className="checkout-trust-badge">
-              <ShieldCheck size={16} /> Pago protegido con Flow o transferencia vía Khipu
+              <ShieldCheck size={16} /> Confirmación inmediata y compra protegida por RepuesTop
             </div>
 
             {checkoutError && <div className="cart-checkout-error"><AlertTriangle size={15} /> {checkoutError}</div>}
 
             <button className="btn-proceed-checkout" onClick={handleCheckout} disabled={checkingOut}>
-              <span>{checkingOut ? 'Generando pedido...' : isLoggedIn ? 'CONTINUAR AL PAGO' : 'INICIA SESIÓN PARA COMPRAR'}</span>
+              <span>{checkingOut ? 'Confirmando compra...' : isLoggedIn ? 'CONFIRMAR COMPRA' : 'INICIA SESIÓN PARA COMPRAR'}</span>
               {checkingOut ? <Loader2 size={18} className="spin-icon" /> : <ArrowRight size={18} />}
             </button>
           </div>

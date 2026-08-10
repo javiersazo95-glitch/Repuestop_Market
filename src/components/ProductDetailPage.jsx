@@ -12,6 +12,7 @@ import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import StoreLogoBadge from './StoreLogoBadge';
 import RelatedProductsCarousel from './RelatedProductsCarousel';
+import PurchaseShippingModal from './PurchaseShippingModal';
 
 // Compara el vehículo resuelto por patente contra un registro de compatibilidad
 // del repuesto. El modelo del vehículo puede traer la versión pegada (p.ej.
@@ -44,8 +45,9 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const [plateError, setPlateError] = useState('');
   const [plateVehicle, setPlateVehicle] = useState(null);
   const [plateMatchIndex, setPlateMatchIndex] = useState(null);
+  const [purchaseIntent, setPurchaseIntent] = useState(null);
   const compatibilityItemRefs = useRef([]);
-  const { setActiveVehicle } = useMarketplace();
+  const { setActiveVehicle, openCart } = useMarketplace();
   const nav = useAppNavigation();
   const stock = Number(product.stock || 0);
   const pricingMode = String(product.pricingMode || '').toUpperCase();
@@ -180,6 +182,13 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     }
   };
 
+  const confirmPurchaseAction = async (shipping) => {
+    await onAddToCart(product, shipping);
+    const shouldOpenCart = purchaseIntent === 'buy';
+    setPurchaseIntent(null);
+    if (shouldOpenCart) openCart();
+  };
+
   return (
     <main className="product-marketplace-page">
       <div className="product-marketplace-container">
@@ -293,7 +302,8 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
               <>
                 <div className="product-marketplace-price">${Number(product.precio).toLocaleString('es-CL')} <small>CLP</small></div>
                 <p>IVA incluido</p>
-                <button className="product-marketplace-primary" type="button" disabled={!stock} onClick={() => onAddToCart(product)}><ShoppingCart /> Comprar producto</button>
+                <button className="product-marketplace-primary" type="button" disabled={!stock} onClick={() => setPurchaseIntent('buy')}><ShoppingCart /> Comprar ahora</button>
+                <button className="product-marketplace-secondary" type="button" disabled={!stock} onClick={() => setPurchaseIntent('add')}><Package /> Añadir al carro</button>
               </>
             )}
 
@@ -482,6 +492,13 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
           </section>
         </div>
       )}
+
+      <PurchaseShippingModal
+        product={product}
+        intent={purchaseIntent}
+        onClose={() => setPurchaseIntent(null)}
+        onConfirm={confirmPurchaseAction}
+      />
     </main>
   );
 }
