@@ -94,6 +94,12 @@ export default function AppLayout() {
         isOpen={!!quoteProduct}
         onClose={closeQuote}
         activeVehicle={activeVehicle}
+        user={user}
+        isLoggedIn={isLoggedIn}
+        onRequireLogin={() => {
+          closeQuote();
+          openAuthModal();
+        }}
       />
 
       <CartDrawer

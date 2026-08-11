@@ -7,7 +7,20 @@
   overflow: hidden;
   min-width: 280px;
   min-height: 320px;
-  background: #f9fbff;
+  background: #f7f9fd;
+  isolation: isolate;
+}
+
+.system-error-page::before {
+  position: absolute;
+  inset: -5%;
+  z-index: 0;
+  content: '';
+  background:
+    linear-gradient(rgba(247, 249, 253, 0.62), rgba(239, 243, 251, 0.66)),
+    url('../assets/system-error-page.png') center / cover no-repeat;
+  filter: blur(22px);
+  transform: scale(1.05);
 }
 
 .system-error-artwork {
@@ -16,58 +29,92 @@
   left: 50%;
   transform: translate(-50%, -50%);
   flex: none;
-  width: min(225dvw, 150dvh);
-  height: auto;
+  z-index: 1;
+  width: min(100dvw, 150dvh);
+  height: min(100dvh, 66.6667dvw);
   aspect-ratio: 3 / 2;
+  container-type: size;
 }
 
 .system-error-artwork img {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: fill;
+  object-fit: contain;
+  object-position: center;
   user-select: none;
   -webkit-user-drag: none;
 }
 
 .system-error-hotspot {
   position: absolute;
-  z-index: 1;
+  z-index: 2;
   margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 12px;
-  color: transparent;
-  background: transparent;
+  padding: 0 4%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4%;
+  overflow: hidden;
+  border-radius: clamp(8px, 1.1cqh, 16px);
+  font-family: inherit;
+  font-size: clamp(15px, 2.35cqh, 29px);
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
+  box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease, border-color 160ms ease;
 }
 
 .system-error-hotspot:hover {
-  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+  filter: brightness(1.06) saturate(1.08);
 }
 
 .system-error-hotspot:active {
-  background: rgba(0, 52, 139, 0.12);
+  transform: translateY(1px) scale(0.99);
+  filter: brightness(0.97);
 }
 
 .system-error-hotspot:focus-visible {
   outline: 4px solid #ffbf47;
-  outline-offset: 3px;
+  outline-offset: 4px;
 }
 
 .system-error-retry {
   left: 35.29%;
   top: 50%;
   width: 26.43%;
-  height: max(6.94%, 44px);
+  height: 6.94%;
+  border: 1px solid rgba(0, 55, 148, 0.8);
+  color: #fff;
+  background: linear-gradient(180deg, #1472e1 0%, #0757c5 100%);
+  box-shadow:
+    0 1.1cqh 2.2cqh rgba(0, 63, 155, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -3px 0 rgba(0, 40, 125, 0.22);
 }
 
 .system-error-home {
-  left: 39.91%;
-  top: 59.18%;
-  width: 20.18%;
-  height: max(4.79%, 44px);
+  left: 37.8%;
+  top: 58.55%;
+  width: 24.4%;
+  height: 6.15%;
+  border: 2px solid #1766c4;
+  color: #0759b8;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 0.75cqh 1.8cqh rgba(18, 71, 137, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.system-error-hotspot svg {
+  width: clamp(19px, 3.2cqh, 38px);
+  height: clamp(19px, 3.2cqh, 38px);
+  flex: 0 0 auto;
+  stroke-width: 2.6;
 }
 
 .system-error-sr-only {
@@ -82,8 +129,34 @@
   border: 0;
 }
 
-@media (min-aspect-ratio: 3 / 2) {
-  .system-error-artwork {
-    width: min(100dvw, 150dvh);
+@media (max-width: 560px) {
+  .system-error-hotspot {
+    font-size: clamp(13px, 5.4cqh, 18px);
+  }
+
+  .system-error-retry {
+    left: 20%;
+    top: 48%;
+    width: 60%;
+    height: 16%;
+  }
+
+  .system-error-home {
+    left: 20%;
+    top: 66%;
+    width: 60%;
+    height: 16%;
+  }
+}
+
+@media (max-height: 520px) and (min-width: 561px) {
+  .system-error-hotspot {
+    font-size: clamp(13px, 2.15cqh, 20px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .system-error-hotspot {
+    transition: none;
   }
 }

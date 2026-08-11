@@ -553,6 +553,17 @@ export async function getSellerConversationsApi(proveedorId) {
   return fetchApi(`/proveedores/${proveedorId}/conversaciones`, { method: 'GET' });
 }
 
+export async function getBuyerConversationsApi(usuarioId) {
+  return fetchApi(`/usuarios/${usuarioId}/conversaciones`, { method: 'GET' });
+}
+
+export async function createConversationApi(proveedorId, productoId) {
+  return fetchApi('/conversaciones', {
+    method: 'POST',
+    body: JSON.stringify({ proveedorId: Number(proveedorId), productoId: Number(productoId) }),
+  });
+}
+
 export async function getConversationMessagesApi(conversationId) {
   return fetchApi(`/conversaciones/${conversationId}/mensajes`, { method: 'GET' });
 }
@@ -571,8 +582,20 @@ export async function saveConversationQuoteApi(conversationId, payload) {
   });
 }
 
+export async function getConversationQuoteApi(conversationId) {
+  const result = await fetchApi(`/conversaciones/${conversationId}/cotizacion`, { method: 'GET' });
+  return result && typeof result === 'object' ? result : null;
+}
+
 export async function markConversationReadApi(conversationId) {
   return fetchApi(`/conversaciones/${conversationId}/leidos`, { method: 'PUT' });
+}
+
+export async function checkoutConversationQuoteApi(usuarioId, payload) {
+  return fetchApi(`/usuarios/${usuarioId}/pedidos/cotizacion/checkout`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 // Preguntas públicas asociadas a productos del catálogo del vendedor.

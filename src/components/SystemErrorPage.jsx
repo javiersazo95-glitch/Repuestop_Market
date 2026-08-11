@@ -1,4 +1,5 @@
 import React from 'react';
+import { House, RotateCw } from 'lucide-react';
 import systemErrorArtwork from '../assets/system-error-page.png';
 import './SystemErrorPage.css';
 
@@ -28,14 +29,20 @@ export default function SystemErrorPage() {
           onClick={retry}
           aria-label="Reintentar y recargar la aplicación"
           title="Reintentar"
-        />
+        >
+          <RotateCw aria-hidden="true" />
+          <span>Reintentar</span>
+        </button>
         <button
           type="button"
           className="system-error-hotspot system-error-home"
           onClick={goHome}
           aria-label="Volver al inicio de RepuesTop"
           title="Volver al inicio"
-        />
+        >
+          <House aria-hidden="true" />
+          <span>Volver al inicio</span>
+        </button>
       </div>
     </main>
   );

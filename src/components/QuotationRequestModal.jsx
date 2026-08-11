@@ -1,238 +1,143 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  X, MessageSquare, Send, CheckCircle2, ShieldCheck, Car, Building2, Phone, Mail, FileText, AlertCircle
+  AlertCircle, BadgeCheck, BadgeDollarSign, Box, CheckCircle2, ChevronRight,
+  CircleHelp, ClipboardList, FileText, LockKeyhole, Package, Send, Shield, Store, X,
 } from 'lucide-react';
-import { sendDirectQuotationApi } from '../services/api';
+import {
+  createConversationApi, resolveMediaUrl, sendConversationMessageApi,
+} from '../services/api';
+import {
+  buildQuoteRequestMessage, QUOTE_DELIVERY_OPTIONS,
+} from '../utils/quoteFlow';
 
-export default function QuotationRequestModal({ product, activeVehicle, isOpen, onClose }) {
-  const [formData, setFormData] = useState({
-    nombre: '',
-    telefono: '',
-    email: '',
-    patente: activeVehicle ? activeVehicle.patente : '',
-    metodoContacto: 'whatsapp',
-    mensaje: ''
-  });
+const initialForm = (activeVehicle) => ({
+  quantity: 1,
+  shippingMethod: '',
+  chassis: activeVehicle?.vin || activeVehicle?.patente || '',
+  notes: '',
+});
 
+export default function QuotationRequestModal({
+  product, activeVehicle, isOpen, onClose, user, isLoggedIn, onRequireLogin,
+}) {
+  const [formData, setFormData] = useState(() => initialForm(activeVehicle));
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [ticketNum, setTicketNum] = useState('');
+  const [conversation, setConversation] = useState(null);
   const [submitError, setSubmitError] = useState('');
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  useEffect(() => {
+    if (!isOpen) return;
+    setFormData(initialForm(activeVehicle));
+    setConversation(null);
+    setSubmitError('');
+  }, [isOpen, product?.id, activeVehicle]);
 
-  // El canal se envía con los valores que espera CotizacionDirectaRequestDTO.
-  const CANAL_POR_METODO = {
-    whatsapp: 'WHATSAPP',
-    email: 'EMAIL_PDF',
-    telefono: 'TELEFONO',
-  };
+  if (!isOpen || !product) return null;
 
-  // POST /api/v1/cotizaciones/directa
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const sellerName = typeof product.vendedor === 'object'
+    ? (product.vendedor.nombre || 'Tienda verificada')
+    : (product.vendedor || product.storeName || 'Tienda verificada');
+  const productName = product.titulo || product.nombre || product.name || 'Repuesto';
+  const productImage = resolveMediaUrl(
+    product.imagen || product.imagenUrl || product.image || product.imagenes?.[0] || product.fotos?.[0],
+  );
+  const providerId = product.proveedorId ?? product.sellerId ?? product.vendedor?.id;
+  const requiresChassis = Boolean(product.requiereChasis || product.requiresChassis);
+
+  const updateField = (field, value) => setFormData((previous) => ({ ...previous, [field]: value }));
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!isLoggedIn || !user) {
+      onRequireLogin?.();
+      return;
+    }
+    if (!formData.shippingMethod) {
+      setSubmitError('Selecciona el método de envío que necesitas.');
+      return;
+    }
+    if (!providerId || !product.id) {
+      setSubmitError('No fue posible identificar el producto o la tienda.');
+      return;
+    }
+    if (requiresChassis && !formData.chassis.trim()) {
+      setSubmitError('Este repuesto requiere patente o chasis para validar compatibilidad.');
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitError('');
-
     try {
-      const respuesta = await sendDirectQuotationApi({
-        productoId: product.id,
-        proveedorId: product.proveedorId ?? null,
-        nombreCliente: formData.nombre,
-        whatsapp: formData.telefono,
-        email: formData.email,
-        patente: formData.patente,
-        vin: activeVehicle?.vin || null,
-        canalPreferido: CANAL_POR_METODO[formData.metodoContacto] || 'WHATSAPP',
-        observaciones: formData.mensaje,
-      });
-
-      setTicketNum(respuesta?.ticketNumber || '');
-      setIsSuccess(true);
-    } catch (err) {
-      setSubmitError(err.message || 'No se pudo enviar la solicitud de cotización.');
+      const createdConversation = await createConversationApi(providerId, product.id);
+      const message = buildQuoteRequestMessage(formData);
+      const sentMessage = await sendConversationMessageApi(createdConversation.id, message);
+      setConversation({ ...createdConversation, ultimoMensaje: sentMessage?.texto || message });
+    } catch (error) {
+      setSubmitError(error.message || 'No se pudo enviar la solicitud de cotización.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleReset = () => {
-    setIsSuccess(false);
-    setFormData({
-      nombre: '',
-      telefono: '',
-      email: '',
-      patente: activeVehicle ? activeVehicle.patente : '',
-      metodoContacto: 'whatsapp',
-      mensaje: ''
-    });
-    onClose();
-  };
-
-  // El corte va después de los hooks: hacerlo antes cambiaba la cantidad de hooks
-  // entre renders y React lanzaba "Rendered more hooks than during the previous render"
-  // al abrir el modal.
-  if (!isOpen || !product) return null;
-
-  const sellerName = typeof product.vendedor === 'object'
-    ? (product.vendedor.nombre || 'Tienda Verificada')
-    : (product.vendedor || 'Tienda Verificada');
-
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="seller-modal-card" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close-btn" onClick={onClose}>
-          <X size={20} />
-        </button>
+    <div className="modal-backdrop quote-request-backdrop" onClick={onClose}>
+      <section className="quote-request-modal" role="dialog" aria-modal="true" aria-labelledby="quote-request-title" onClick={(event) => event.stopPropagation()}>
+        <button className="modal-close-btn quote-request-close" type="button" onClick={onClose} aria-label="Cerrar"><X size={28} /></button>
 
-        {/* Modal Header */}
-        <div className="seller-modal-header" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 60%, #0066ff 100%)' }}>
-          <div className="header-badge">
-            <MessageSquare size={12} /> SOLICITUD DE COTIZACIÓN EN TIEMPO REAL
+        <header className="quote-request-header">
+          <div className="quote-request-header-icon"><FileText className="quote-request-header-file" size={38} /><BadgeDollarSign className="quote-request-header-money" size={20} /></div>
+          <div className="quote-request-header-copy">
+            <span>COTIZACIÓN CON LA TIENDA</span>
+            <h2 id="quote-request-title">{conversation ? 'Solicitud enviada' : 'Solicita tu cotización'}</h2>
+            <p>{conversation ? 'La tienda ya recibió los datos y puede responderte en la conversación.' : 'Completa los datos necesarios para solicitar la cotización del repuesto.'}</p>
           </div>
-          <h2>Cotizar Repuesto Directo con el Vendedor</h2>
-          <p style={{ color: '#cbd5e1', fontSize: '13px', margin: '4px 0 0' }}>
-            Recibe precio final, costo de envío y opciones de pago directamente de <strong>{sellerName}</strong>.
-          </p>
-        </div>
+        </header>
 
-        <div style={{ padding: '24px' }}>
-          {!isSuccess ? (
-            <>
-              {/* Product Summary Box */}
-              <div className="quote-product-summary-box">
-                <div className="summary-left-info">
-                  <span className="oem-code-tag">OEM: {product.oemCode || 'OEM-REF-100'}</span>
-                  <h4 className="quote-item-title">{product.titulo}</h4>
-                  <div className="quote-store-line">
-                    <Building2 size={13} className="text-blue-500" />
-                    <span>Tienda: <strong>{sellerName}</strong></span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quotation Form */}
-              <form onSubmit={handleSubmit} className="ticket-form" style={{ marginTop: '16px' }}>
-                <div className="form-grid-2">
-                  <div className="form-group-clean">
-                    <label>Nombre y Apellido *</label>
-                    <input
-                      type="text"
-                      name="nombre"
-                      required
-                      placeholder="Ej. Carlos Mendoza"
-                      value={formData.nombre}
-                      onChange={handleChange}
-                      className="modal-form-input"
-                    />
-                  </div>
-
-                  <div className="form-group-clean">
-                    <label>WhatsApp / Teléfono *</label>
-                    <input
-                      type="tel"
-                      name="telefono"
-                      required
-                      placeholder="Ej. +56 9 8765 4321"
-                      value={formData.telefono}
-                      onChange={handleChange}
-                      className="modal-form-input"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-grid-2">
-                  <div className="form-group-clean">
-                    <label>Correo Electrónico *</label>
-                    <input
-                      type="email"
-                      name="email"
-                      required
-                      placeholder="ejemplo@correo.cl"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="modal-form-input"
-                    />
-                  </div>
-
-                  <div className="form-group-clean">
-                    <label>Patente o VIN (Opcional)</label>
-                    <input
-                      type="text"
-                      name="patente"
-                      placeholder="Ej. BBCL12 para validar calce"
-                      value={formData.patente}
-                      onChange={handleChange}
-                      className="modal-form-input"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group-clean">
-                  <label>Preferencia de Respuesta</label>
-                  <select
-                    name="metodoContacto"
-                    value={formData.metodoContacto}
-                    onChange={handleChange}
-                    className="modal-form-select"
-                  >
-                    <option value="whatsapp">📱 WhatsApp (Respuesta rápida en 15 min)</option>
-                    <option value="email">✉️ Correo Electrónico con Cotización Formal PDF</option>
-                    <option value="llamada">📞 Llamada Telefónica</option>
-                  </select>
-                </div>
-
-                <div className="form-group-clean">
-                  <label>Observaciones o Requerimientos Específicos</label>
-                  <textarea
-                    name="mensaje"
-                    rows="3"
-                    placeholder="Indica si necesitas despacho a región, factura a nombre de empresa o kit completo..."
-                    value={formData.mensaje}
-                    onChange={handleChange}
-                    className="modal-form-textarea"
-                  />
-                </div>
-
-                {submitError && (
-                  <div className="modal-form-error" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626', fontSize: '13px', marginTop: '10px' }}>
-                    <AlertCircle size={15} />
-                    <span>{submitError}</span>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="btn-submit-ticket"
-                  style={{ background: '#0066ff' }}
-                >
-                  <Send size={16} />
-                  <span>{isSubmitting ? 'Enviando Solicitud...' : 'Enviar Solicitud de Cotización'}</span>
-                </button>
-              </form>
-            </>
-          ) : (
-            /* Success Confirmation Screen */
-            <div className="ticket-success-screen">
-              <CheckCircle2 size={56} style={{ color: '#059669' }} />
-              <h3>¡Solicitud de Cotización Enviada con Éxito!</h3>
-              <div className="quote-ticket-badge" style={{ background: '#eff6ff', color: '#0066ff', padding: '6px 16px', borderRadius: '20px', fontWeight: '800', fontSize: '14px' }}>
-                N° de Referencia: {ticketNum}
-              </div>
-              <p style={{ marginTop: '8px', fontSize: '13.5px', color: '#475569' }}>
-                Tu solicitud ha sido entregada a la tienda <strong>{sellerName}</strong>. Te contactarán vía {formData.metodoContacto === 'whatsapp' ? 'WhatsApp' : 'correo electrónico'} en un plazo máximo de 30 minutos.
-              </p>
-              <button className="btn-reset-ticket" onClick={handleReset}>
-                Entendido / Cerrar
-              </button>
+        <div className="quote-request-content">
+          <article className="quote-request-product">
+            <div className="quote-request-product-media">
+              {productImage ? <img src={productImage} alt={productName} /> : <span><Package size={34} /></span>}
             </div>
+            <dl className="quote-request-product-data">
+              <div><dt><Shield size={19} /> Marca</dt><dd>{product.marca || 'No informada'}</dd></div>
+              <div><dt><Box size={19} /> Producto</dt><dd>{productName}</dd></div>
+              <div><dt><Store size={19} /> Tienda</dt><dd>{sellerName}</dd></div>
+            </dl>
+            <div className="quote-request-trust">
+              <BadgeCheck size={35} />
+              <strong>Cotizas con una tienda verificada</strong>
+              <span>Tu solicitud será enviada de forma segura.</span>
+            </div>
+          </article>
+
+          {conversation ? (
+            <div className="quote-request-success">
+              <CheckCircle2 size={54} />
+              <h3>¡Cotización solicitada correctamente!</h3>
+              <p>Quedó creada la conversación #{conversation.id}. Podrás revisar la propuesta, su vigencia y responder desde <strong>Mis cotizaciones</strong>.</p>
+              <a className="btn-submit-ticket" href="/perfil/cotizaciones">Ir a mis cotizaciones <ChevronRight size={17} /></a>
+              <button className="btn-auth-secondary" type="button" onClick={onClose}>Seguir viendo productos</button>
+            </div>
+          ) : (
+            <form className="quote-request-form" onSubmit={handleSubmit}>
+              <div className="quote-request-section-title"><ClipboardList size={25} /><div><strong>Detalle de tu solicitud</strong><small>Estos datos quedarán visibles para el vendedor.</small></div></div>
+
+              <div className="quote-request-grid">
+                <label><span>Cantidad</span><input type="number" min="1" max={Math.max(1, Number(product.stock || 99))} value={formData.quantity} onChange={(event) => updateField('quantity', event.target.value)} required /></label>
+                <label><span>Método de envío *</span><select value={formData.shippingMethod} onChange={(event) => updateField('shippingMethod', event.target.value)} required><option value="">Selecciona una opción</option>{QUOTE_DELIVERY_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
+              </div>
+
+              <label><span className="quote-request-label-with-help">Patente o chasis {requiresChassis ? '*' : '(opcional)'} <CircleHelp size={16} /></span><input value={formData.chassis} onChange={(event) => updateField('chassis', event.target.value.toUpperCase())} required={requiresChassis} placeholder="Ej. BBCL12 o VIN" /></label>
+              <label><span>Nota para el vendedor (opcional)</span><textarea rows="3" value={formData.notes} onChange={(event) => updateField('notes', event.target.value)} maxLength="500" placeholder="Marca preferida, urgencia u otra información útil..." /><small className="quote-request-counter">{formData.notes.length}/500</small></label>
+
+              {submitError && <div className="modal-form-error"><AlertCircle size={16} /><span>{submitError}</span></div>}
+
+              <button type="submit" disabled={isSubmitting} className="btn-submit-ticket"><Send size={24} /><span>{isSubmitting ? 'Enviando solicitud...' : 'Enviar solicitud de cotización'}</span></button>
+              {!isLoggedIn && <p className="quote-request-login-hint"><LockKeyhole size={15} /> Necesitas iniciar sesión para enviar tu solicitud y guardar la conversación.</p>}
+            </form>
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

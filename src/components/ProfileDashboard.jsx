@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
 import {
   getBuyerOrdersApi, getSellerOrdersApi, getFavoritesApi,
-  getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
+  getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getBuyerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
   updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi, updateSellerProductTopApi,
   saveConversationQuoteApi, sendConversationMessageApi, getRegionesApi, getComunasApi
@@ -42,6 +42,7 @@ const BUYER_PROFILE_COVER_URL = import.meta.env.VITE_BUYER_PROFILE_COVER_URL
 const BUYER_TABS = [
   { id: 'resumen', label: 'Resumen', icon: LayoutGrid },
   { id: 'pedidos', label: 'Mis Pedidos', icon: Package },
+  { id: 'cotizaciones', label: 'Mis Cotizaciones', icon: ReceiptText },
   { id: 'favoritos', label: 'Favoritos', icon: Heart },
   { id: 'datos', label: 'Mis Datos y Perfil', icon: UserCog },
 ];
@@ -377,12 +378,14 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         setStoreInfo(storeRes);
       } else {
         if (!user?.userId) throw new Error('No se encontró tu identificador de usuario.');
-        const [ordersRes, favoritesRes] = await Promise.all([
+        const [ordersRes, favoritesRes, conversationsRes] = await Promise.all([
           getBuyerOrdersApi(user.userId),
           getFavoritesApi(user.userId),
+          getBuyerConversationsApi(user.userId),
         ]);
         setOrders(ordersRes?.content || []);
         setFavorites(favoritesRes || []);
+        setConversations(conversationsRes || []);
       }
     } catch (error) {
       setDataError(error.message || 'No se pudieron cargar tus datos.');
@@ -1244,13 +1247,13 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 />
               )}
 
-              {activeTab === 'cotizaciones' && isSeller && (
+              {activeTab === 'cotizaciones' && (
                 <div className="profile-panel seller-quotes-panel">
                   <div className="seller-quotes-heading">
                     <div>
-                      <span className="seller-quotes-eyebrow"><ReceiptText size={14} /> Centro de cotizaciones</span>
-                      <h2 className="profile-panel-title">Cotizaciones de compradores</h2>
-                      <p>Revisa solicitudes, responde con tus condiciones comerciales y mantén cada oferta vinculada a su conversación.</p>
+                      <span className="seller-quotes-eyebrow"><ReceiptText size={14} /> {isSeller ? 'Centro de cotizaciones' : 'Conversaciones de cotización'}</span>
+                      <h2 className="profile-panel-title">{isSeller ? 'Cotizaciones de compradores' : 'Mis cotizaciones'}</h2>
+                      <p>{isSeller ? 'Revisa solicitudes, responde con tus condiciones comerciales y mantén cada oferta vinculada a su conversación.' : 'Revisa las respuestas de las tiendas, conversa y consulta cada propuesta con su vigencia y condiciones.'}</p>
                     </div>
                     <button type="button" className="seller-quotes-sort" onClick={() => setQuoteSort((current) => current === 'newest' ? 'oldest' : 'newest')}>
                       <Sliders size={15} /> {quoteSort === 'newest' ? 'Más recientes' : 'Más antiguas'}
@@ -1283,6 +1286,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                         <QuoteCard
                           key={c.id}
                           quote={c}
+                          mode={isSeller ? 'seller' : 'buyer'}
                           onSelectQuote={(item) => setSelectedQuote(item)}
                           onQuickRespond={(item) => setSelectedQuote(item)}
                         />
@@ -1673,9 +1677,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       {selectedQuote && (
         <QuoteDetailModal
           quote={selectedQuote}
+          mode={isSeller ? 'seller' : 'buyer'}
           onClose={() => setSelectedQuote(null)}
           onSendQuoteResponse={handleSendQuoteResponse}
           onMarkedRead={handleQuoteMarkedRead}
+          user={user}
         />
       )}
 

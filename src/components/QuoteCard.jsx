@@ -44,6 +44,7 @@ export function QuoteStatusBadge({ status, size = 'small' }) {
 
 export default function QuoteCard({
   quote,
+  mode = 'seller',
   onSelectQuote,
   onQuickRespond,
 }) {
@@ -55,7 +56,7 @@ export default function QuoteCard({
   const rawStatus = activeQuote ? 'RESPONDIDA' : 'PENDIENTE';
   const normStatus = String(rawStatus).toUpperCase();
 
-  const customerName = quote.otroParticipanteNombre || quote.compradorNombre || quote.buyerName || 'Comprador RepuesTop';
+  const customerName = quote.otroParticipanteNombre || quote.compradorNombre || quote.buyerName || (mode === 'buyer' ? 'Tienda RepuesTop' : 'Comprador RepuesTop');
   const customerAvatar = resolveMediaUrl(quote.otroParticipanteFotoUrl || quote.compradorAvatarUrl || null);
   const productName = quote.productoNombre || quote.productName || 'Consulta de repuesto';
   const productPhoto = resolveMediaUrl(quote.productoImagenUrl || quote.imagenUrl || quote.productoImagen);
@@ -86,7 +87,7 @@ export default function QuoteCard({
         )}
         <div className="person-copy">
           <strong className="person-name">{customerName}</strong>
-          <span className="person-role">Solicitante</span>
+          <span className="person-role">{mode === 'buyer' ? 'Tienda vendedora' : 'Solicitante'}</span>
         </div>
       </div>
 
@@ -110,7 +111,7 @@ export default function QuoteCard({
         <div className="delivery-info">
           <span className="footer-label">Estado solicitud</span>
           <strong className="footer-value">
-            {normStatus === 'PENDIENTE' ? 'Esperando tu respuesta' : activeQuote?.disponibilidad || 'Oferta enviada'}
+            {normStatus === 'PENDIENTE' ? (mode === 'buyer' ? 'Esperando a la tienda' : 'Esperando tu respuesta') : activeQuote?.disponibilidad || 'Oferta enviada'}
           </strong>
         </div>
 
@@ -129,7 +130,7 @@ export default function QuoteCard({
           className="btn-view-details"
           onClick={(e) => {
             e.stopPropagation();
-            onSelectQuote && onSelectQuote(quote);
+            onSelectQuote?.(quote);
           }}
         >
           <span>Ver conversación completa</span>
@@ -142,11 +143,11 @@ export default function QuoteCard({
           onClick={(e) => {
             e.stopPropagation();
             if (onQuickRespond) onQuickRespond(quote);
-            else onSelectQuote && onSelectQuote(quote);
+            else onSelectQuote?.(quote);
           }}
         >
           <Send size={13} />
-          <span>{normStatus === 'PENDIENTE' ? 'Responder' : 'Ver Oferta'}</span>
+          <span>{normStatus === 'PENDIENTE' ? (mode === 'buyer' ? 'Ver chat' : 'Responder') : 'Ver oferta'}</span>
         </button>
       </div>
     </div>
