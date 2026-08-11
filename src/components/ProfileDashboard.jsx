@@ -15,7 +15,7 @@ import {
   getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
   updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi, updateSellerProductTopApi,
-  saveConversationQuoteApi, sendConversationMessageApi
+  saveConversationQuoteApi, sendConversationMessageApi, getRegionesApi, getComunasApi
 } from '../services/api';
 import OrderCard from './OrderCard';
 import OrderDetailModal from './OrderDetailModal';
@@ -148,8 +148,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [storeNameDraft, setStoreNameDraft] = useState(user?.storeName || '');
   const [taxIdDraft, setTaxIdDraft] = useState(user?.taxId || '');
   const [addressDraft, setAddressDraft] = useState(user?.address || '');
-  const [comunaDraft, setComunaDraft] = useState(user?.comuna || '');
-  const [regionDraft, setRegionDraft] = useState(user?.region || '');
+  const [regionIdDraft, setRegionIdDraft] = useState('');
+  const [comunaIdDraft, setComunaIdDraft] = useState('');
+  const [regionesOptions, setRegionesOptions] = useState([]);
+  const [comunasOptions, setComunasOptions] = useState([]);
+  const [geoLoadingProfile, setGeoLoadingProfile] = useState(false);
   const [shippingMethodsDraft, setShippingMethodsDraft] = useState('Retiro en tienda, Envío dentro de la comuna, Envío fuera de la comuna');
   const [availableVehicleBrands, setAvailableVehicleBrands] = useState([]);
   const [specialistBrandIdsDraft, setSpecialistBrandIdsDraft] = useState([]);
@@ -392,6 +395,15 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     loadData();
   }, [loadData]);
 
+  // La dirección Comercial principal de BuyerAddressBook se sincroniza con
+  // RT_tienda al guardarse (ver BuyerAddressBook.jsx); esto refresca storeInfo
+  // en el perfil para que "Dirección Comercial de Tienda" muestre el dato
+  // recién guardado sin esperar a un reload completo de la página.
+  const refreshStoreInfoAfterAddressSync = useCallback(() => {
+    if (!isSeller || !user?.sellerId) return;
+    getSellerStoreApi(user.sellerId).then(setStoreInfo).catch(() => {});
+  }, [isSeller, user?.sellerId]);
+
   useEffect(() => {
     if (!isSeller || !isEditing || availableVehicleBrands.length) return;
     let cancelled = false;
@@ -560,6 +572,23 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     onBackToStore();
   };
 
+  // Chile es el único país operativo del marketplace (ver selector "🇨🇱 CHILE"
+  // fijo en el catálogo), así que se hardcodea el paisId en vez de agregar un
+  // selector de país que solo tendría una opción.
+  const CHILE_PAIS_ID = 'CL';
+
+  const handleRegionDraftChange = (regionId) => {
+    setRegionIdDraft(regionId);
+    setComunaIdDraft('');
+    setComunasOptions([]);
+    if (!regionId) return;
+    setGeoLoadingProfile(true);
+    getComunasApi(regionId)
+      .then((data) => setComunasOptions(Array.isArray(data) ? data : []))
+      .catch(() => setComunasOptions([]))
+      .finally(() => setGeoLoadingProfile(false));
+  };
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setIsSaving(true);
@@ -574,8 +603,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     if (isSeller) {
       payload.storeName = storeNameDraft;
       payload.address = addressDraft;
-      payload.comuna = comunaDraft;
-      payload.region = regionDraft;
+      if (comunaIdDraft) payload.comunaId = Number(comunaIdDraft);
       payload.shippingMethods = shippingMethodsDraft;
     }
 
@@ -593,15 +621,21 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     setIsSaving(false);
 
     if (result.success) {
-      // Actualizar también el estado local de la tienda
+      // Actualizar también el estado local de la tienda. El backend (result.user)
+      // es la fuente autoritativa para comuna/región (viene con nombre resuelto),
+      // pero por si el DTO no las trae se cae a las opciones ya cargadas en el form.
       if (storeInfo) {
+        const selectedComuna = comunasOptions.find((c) => String(c.id) === String(comunaIdDraft));
+        const selectedRegion = regionesOptions.find((r) => String(r.id) === String(regionIdDraft));
         setStoreInfo((prev) => ({
           ...prev,
           storeName: storeNameDraft || prev?.storeName,
           taxId: taxIdDraft || prev?.taxId,
           address: addressDraft || prev?.address,
-          comuna: comunaDraft || prev?.comuna,
-          region: regionDraft || prev?.region,
+          comunaId: result.user?.comunaId || (comunaIdDraft ? Number(comunaIdDraft) : prev?.comunaId),
+          comuna: result.user?.comuna || selectedComuna?.nombre || prev?.comuna,
+          regionId: regionIdDraft ? Number(regionIdDraft) : prev?.regionId,
+          region: result.user?.region || selectedRegion?.nombre || prev?.region,
           shippingMethods: shippingMethodsDraft || prev?.shippingMethods,
           marcasEspecialistas: availableVehicleBrands.filter((brand) => specialistBrandIdsDraft.includes(String(brand.id))),
         }));
@@ -739,6 +773,18 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
             </div>
           </div>
+
+          {isSeller && (
+            <button
+              type="button"
+              className="btn-withdraw-money-hero"
+              onClick={() => setActiveTab('retiros')}
+              title="Ir a Retirar dinero"
+            >
+              <Wallet size={16} />
+              <span>Retirar dinero</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1275,10 +1321,28 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                           setStoreNameDraft(storeInfo?.storeName || user?.storeName || '');
                           setTaxIdDraft(storeInfo?.taxId || user?.taxId || '');
                           setAddressDraft(storeInfo?.address || user?.address || '');
-                          setComunaDraft(storeInfo?.comuna || user?.comuna || '');
-                          setRegionDraft(storeInfo?.region || user?.region || '');
                           setShippingMethodsDraft(storeInfo?.shippingMethods || 'Starken, Chilexpress, Retiro en Tienda');
                           setSpecialistBrandIdsDraft((storeInfo?.marcasEspecialistas || []).map((brand) => String(brand.id)));
+
+                          const initialRegionId = storeInfo?.regionId ? String(storeInfo.regionId) : '';
+                          const initialComunaId = storeInfo?.comunaId ? String(storeInfo.comunaId) : '';
+                          setRegionIdDraft(initialRegionId);
+                          setComunaIdDraft(initialComunaId);
+                          setComunasOptions([]);
+                          if (isSeller) {
+                            setGeoLoadingProfile(true);
+                            getRegionesApi(CHILE_PAIS_ID)
+                              .then((regiones) => {
+                                setRegionesOptions(Array.isArray(regiones) ? regiones : []);
+                                if (initialRegionId) {
+                                  return getComunasApi(initialRegionId)
+                                    .then((comunas) => setComunasOptions(Array.isArray(comunas) ? comunas : []));
+                                }
+                                return null;
+                              })
+                              .catch(() => {})
+                              .finally(() => setGeoLoadingProfile(false));
+                          }
                         }}
                       >
                         <Pencil size={14} /> Editar Información
@@ -1306,42 +1370,63 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                           <input type="tel" value={phoneDraft} onChange={(e) => setPhoneDraft(e.target.value)} placeholder="+56 9 1234 5678" />
                         </div>
                       </div>
-                      <div className="form-group">
-                        <label>RUT / Identificador Fiscal</label>
-                        <input type="text" value={taxIdDraft} onChange={(e) => setTaxIdDraft(formatRut(e.target.value))} placeholder="12.345.678-K" maxLength={12} />
-                      </div>
+                      {!isSeller && (
+                        <div className="form-group">
+                          <label>RUT / Identificador Fiscal</label>
+                          <input type="text" value={taxIdDraft} onChange={(e) => setTaxIdDraft(formatRut(e.target.value))} placeholder="12.345.678-K" maxLength={12} />
+                        </div>
+                      )}
 
-                      {isSeller ? (
+                      {isSeller && (
                         <>
-                          <div className="form-section-title" style={{ marginTop: '16px' }}>Dirección Comercial de Despacho</div>
+                          <div className="form-section-title" style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span>Dirección Comercial de Despacho</span>
+                            <span className="info-tooltip-wrapper" tabIndex={0} role="note" aria-label="Información sobre la dirección comercial">
+                              <Info size={15} className="info-tooltip-icon" />
+                              <span className="info-tooltip-content">
+                                Ubicación física oficial de tu tienda, local o bodega. Desde esta dirección se originan y preparan los envíos hacia los compradores, y se coordinan los retiros en tienda.
+                              </span>
+                            </span>
+                          </div>
                           <div className="form-group">
                             <label>Dirección</label>
                             <input type="text" value={addressDraft} onChange={(e) => setAddressDraft(e.target.value)} placeholder="Av. Italia 1234, Local 5" />
                           </div>
                           <div className="form-grid-2">
                             <div className="form-group">
-                              <label>Comuna</label>
-                              <input type="text" value={comunaDraft} onChange={(e) => setComunaDraft(e.target.value)} placeholder="Providencia" />
+                              <label>Región {geoLoadingProfile && <Loader2 size={12} className="spin-icon" />}</label>
+                              <select value={regionIdDraft} onChange={(e) => handleRegionDraftChange(e.target.value)}>
+                                <option value="">Selecciona una región</option>
+                                {regionesOptions.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+                              </select>
                             </div>
                             <div className="form-group">
-                              <label>Región</label>
-                              <input type="text" value={regionDraft} onChange={(e) => setRegionDraft(e.target.value)} placeholder="Región Metropolitana" />
+                              <label>Comuna</label>
+                              <select
+                                value={comunaIdDraft}
+                                onChange={(e) => setComunaIdDraft(e.target.value)}
+                                disabled={!regionIdDraft}
+                              >
+                                <option value="">Selecciona una comuna</option>
+                                {comunasOptions.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                              </select>
                             </div>
                           </div>
                         </>
-                      ) : (
-                        <div style={{ marginTop: '16px' }}>
-                          <div className="form-section-title">Direcciones de Despacho</div>
-                          <BuyerAddressBook usuarioId={user?.userId} />
-                        </div>
                       )}
 
                       {isSeller && (
                         <>
-                          <div className="form-section-title" style={{ marginTop: '16px' }}>Datos de la Tienda</div>
-                          <div className="form-group">
-                            <label>Nombre de la Tienda</label>
-                            <input type="text" value={storeNameDraft} onChange={(e) => setStoreNameDraft(e.target.value)} required />
+                          <div className="form-section-title" style={{ marginTop: '20px' }}>Datos de la Tienda</div>
+                          <div className="form-grid-2">
+                            <div className="form-group">
+                              <label>Nombre de la Tienda</label>
+                              <input type="text" value={storeNameDraft} onChange={(e) => setStoreNameDraft(e.target.value)} required />
+                            </div>
+                            <div className="form-group">
+                              <label>RUT de la Tienda / Identificador Fiscal</label>
+                              <input type="text" value={taxIdDraft} onChange={(e) => setTaxIdDraft(formatRut(e.target.value))} placeholder="12.345.678-K" maxLength={12} />
+                            </div>
                           </div>
 
                           <div className="form-group">
@@ -1375,6 +1460,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                           </div>
                         </>
                       )}
+
+                      <div className="form-section-title" style={{ marginTop: '24px' }}>Gestión de Direcciones (Personales y Despacho)</div>
+                      <BuyerAddressBook usuarioId={user?.userId} />
 
                       <div className="profile-data-form-actions" style={{ marginTop: '20px' }}>
                         <button type="button" className="btn-auth-secondary" onClick={() => setIsEditing(false)}>
@@ -1487,16 +1575,16 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                             <Truck size={16} />
                             <span>Ubicación y Logística de Despacho</span>
                           </h3>
-                          {!isSeller && <BuyerAddressBook usuarioId={user?.userId} />}
-                          <div className="details-info-list">
+                          <BuyerAddressBook usuarioId={user?.userId} onCommercialAddressSynced={refreshStoreInfoAfterAddressSync} />
+                          <div className="details-info-list" style={{ marginTop: '16px' }}>
                             {isSeller && (
                               <>
                                 <div className="details-info-row">
-                                  <span className="info-label"><MapPin size={13} /> Dirección Comercial</span>
+                                  <span className="info-label"><MapPin size={13} /> Dirección Comercial de Tienda</span>
                                   <strong className="info-value">{storeInfo?.address || user?.address || 'Dirección no registrada'}</strong>
                                 </div>
                                 <div className="details-info-row">
-                                  <span className="info-label">Comuna / Región</span>
+                                  <span className="info-label">Comuna / Región Comercial</span>
                                   <strong className="info-value">
                                     {[storeInfo?.comuna || user?.comuna, storeInfo?.region || user?.region].filter(Boolean).join(', ') || '—'}
                                   </strong>

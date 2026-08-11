@@ -232,11 +232,44 @@ function saveLocalAddresses(usuarioId, items) {
   }
 }
 
+function getAddressTypeMap(usuarioId) {
+  try {
+    const raw = localStorage.getItem(`repuestop_address_type_map_${usuarioId || 'guest'}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveAddressTypeMeta(usuarioId, addressId, streetName, tipo) {
+  if (!tipo) return;
+  try {
+    const map = getAddressTypeMap(usuarioId);
+    if (addressId) map[String(addressId)] = tipo;
+    if (streetName) map[String(streetName).trim().toLowerCase()] = tipo;
+    localStorage.setItem(`repuestop_address_type_map_${usuarioId || 'guest'}`, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
+}
+
+export function resolveAddressType(usuarioId, address) {
+  if (!address) return 'PERSONAL';
+  if (address.tipoDireccion) return address.tipoDireccion;
+  if (address.tipo) return address.tipo;
+  const map = getAddressTypeMap(usuarioId);
+  if (address.id && map[String(address.id)]) return map[String(address.id)];
+  if (address.calleYNumero && map[String(address.calleYNumero).trim().toLowerCase()]) {
+    return map[String(address.calleYNumero).trim().toLowerCase()];
+  }
+  return 'PERSONAL';
+}
+
 /**
  * Direcciones guardadas del comprador (agregar/editar/eliminar/marcar principal).
  */
 export async function getAddressesApi(usuarioId) {
-  if (!usuarioId) return getLocalAddresses(usuarioId);
+  if (!usuarioId) return getLocalAddresses(usuarioId).map((item) => ({ ...item, tipoDireccion: resolveAddressType(usuarioId, item) }));
   try {
     const data = await fetchApi(`/usuarios/${usuarioId}/direcciones`, { method: 'GET' })
       .catch(async (err) => {
@@ -247,34 +280,63 @@ export async function getAddressesApi(usuarioId) {
       });
     const serverItems = Array.isArray(data) ? data : [];
     const localItems = getLocalAddresses(usuarioId);
-    const combined = [...serverItems];
+    const combined = serverItems.map((srv) => {
+      const locMatch = localItems.find((loc) => String(loc.id) === String(srv.id));
+      const resolved = resolveAddressType(usuarioId, srv) || locMatch?.tipoDireccion || 'PERSONAL';
+      return {
+        ...srv,
+        tipoDireccion: resolved
+      };
+    });
     localItems.forEach((loc) => {
       if (!combined.some((srv) => String(srv.id) === String(loc.id))) {
-        combined.push(loc);
+        combined.push({
+          ...loc,
+          tipoDireccion: resolveAddressType(usuarioId, loc)
+        });
       }
     });
     return combined;
   } catch (err) {
     if (err.status === 404 || err.status === 0 || err.status === 500) {
-      return getLocalAddresses(usuarioId);
+      return getLocalAddresses(usuarioId).map((item) => ({ ...item, tipoDireccion: resolveAddressType(usuarioId, item) }));
     }
     throw err;
   }
 }
 
 export async function createAddressApi(usuarioId, payload) {
+  if (payload?.tipoDireccion) {
+    saveAddressTypeMeta(usuarioId, null, payload.calleYNumero, payload.tipoDireccion);
+  }
   try {
-    return await fetchApi(`/usuarios/${usuarioId}/direcciones`, { method: 'POST', body: JSON.stringify(payload) })
+    const res = await fetchApi(`/usuarios/${usuarioId}/direcciones`, { method: 'POST', body: JSON.stringify(payload) })
       .catch(async (err) => {
         if (err.status === 404) {
           return fetchApi(`/users/${usuarioId}/direcciones`, { method: 'POST', body: JSON.stringify(payload) });
         }
         throw err;
       });
+    const tipo = payload?.tipoDireccion || res?.tipoDireccion || res?.tipo || 'PERSONAL';
+    const newAddress = {
+      ...(res || {}),
+      tipoDireccion: tipo
+    };
+    if (newAddress.id) {
+      saveAddressTypeMeta(usuarioId, newAddress.id, payload.calleYNumero, tipo);
+    }
+    // No se guarda copia en `repuestop_user_addresses_*`: esa cache es solo el
+    // respaldo offline (ver el catch de abajo). El backend ya persistió la
+    // direccion con id real, así que `getAddressesApi` la trae de ahí en el
+    // próximo fetch. Guardarla también acá dejaba un "fantasma" en localStorage
+    // que sobrevivía a un DELETE exitoso en el servidor: al recargar, el merge
+    // de getAddressesApi la volvía a mostrar como si nunca se hubiese borrado.
+    return newAddress;
   } catch (err) {
     if (err.status === 404 || err.status === 0 || err.status === 500) {
       const local = getLocalAddresses(usuarioId);
       const isFirst = local.length === 0;
+      const tipo = payload?.tipoDireccion || 'PERSONAL';
       const newAddress = {
         id: `addr_${Date.now()}`,
         usuarioId: Number(usuarioId),
@@ -283,9 +345,11 @@ export async function createAddressApi(usuarioId, payload) {
         regionNombre: payload.regionNombre || '',
         calleYNumero: payload.calleYNumero,
         codigoPostal: payload.codigoPostal || null,
+        tipoDireccion: tipo,
         esPrincipal: isFirst,
         createdAt: new Date().toISOString()
       };
+      saveAddressTypeMeta(usuarioId, newAddress.id, payload.calleYNumero, tipo);
       local.push(newAddress);
       saveLocalAddresses(usuarioId, local);
       return newAddress;
@@ -295,17 +359,32 @@ export async function createAddressApi(usuarioId, payload) {
 }
 
 export async function updateAddressApi(usuarioId, direccionId, payload) {
+  if (payload?.tipoDireccion) {
+    saveAddressTypeMeta(usuarioId, direccionId, payload.calleYNumero, payload.tipoDireccion);
+  }
   try {
-    return await fetchApi(`/usuarios/${usuarioId}/direcciones/${direccionId}`, { method: 'PUT', body: JSON.stringify(payload) })
+    const res = await fetchApi(`/usuarios/${usuarioId}/direcciones/${direccionId}`, { method: 'PUT', body: JSON.stringify(payload) })
       .catch(async (err) => {
         if (err.status === 404) {
           return fetchApi(`/users/${usuarioId}/direcciones/${direccionId}`, { method: 'PUT', body: JSON.stringify(payload) });
         }
         throw err;
       });
+    const tipo = payload?.tipoDireccion || res?.tipoDireccion || res?.tipo || 'PERSONAL';
+    saveAddressTypeMeta(usuarioId, direccionId, payload.calleYNumero, tipo);
+    const updatedAddress = {
+      ...(res || {}),
+      tipoDireccion: tipo
+    };
+    let local = getLocalAddresses(usuarioId);
+    local = local.map((item) => String(item.id) === String(direccionId) ? { ...item, ...updatedAddress } : item);
+    saveLocalAddresses(usuarioId, local);
+    return updatedAddress;
   } catch (err) {
     if (err.status === 404 || err.status === 0 || err.status === 500) {
       let local = getLocalAddresses(usuarioId);
+      const tipo = payload?.tipoDireccion || 'PERSONAL';
+      saveAddressTypeMeta(usuarioId, direccionId, payload.calleYNumero, tipo);
       local = local.map((item) => {
         if (String(item.id) === String(direccionId)) {
           return {
@@ -314,7 +393,8 @@ export async function updateAddressApi(usuarioId, direccionId, payload) {
             comunaNombre: payload.comunaNombre || item.comunaNombre,
             regionNombre: payload.regionNombre || item.regionNombre,
             calleYNumero: payload.calleYNumero || item.calleYNumero,
-            codigoPostal: payload.codigoPostal !== undefined ? payload.codigoPostal : item.codigoPostal
+            codigoPostal: payload.codigoPostal !== undefined ? payload.codigoPostal : item.codigoPostal,
+            tipoDireccion: tipo
           };
         }
         return item;
@@ -328,13 +408,20 @@ export async function updateAddressApi(usuarioId, direccionId, payload) {
 
 export async function deleteAddressApi(usuarioId, direccionId) {
   try {
-    return await fetchApi(`/usuarios/${usuarioId}/direcciones/${direccionId}`, { method: 'DELETE' })
+    const result = await fetchApi(`/usuarios/${usuarioId}/direcciones/${direccionId}`, { method: 'DELETE' })
       .catch(async (err) => {
         if (err.status === 404) {
           return fetchApi(`/users/${usuarioId}/direcciones/${direccionId}`, { method: 'DELETE' });
         }
         throw err;
       });
+    // Por si quedó una copia "fantasma" en localStorage de antes de este fix
+    // (ver comentario en createAddressApi): sin esto, una direccion ya borrada
+    // en el servidor reaparecía en la lista porque getAddressesApi la seguía
+    // fusionando desde la cache local.
+    const local = getLocalAddresses(usuarioId).filter((item) => String(item.id) !== String(direccionId));
+    saveLocalAddresses(usuarioId, local);
+    return result;
   } catch (err) {
     if (err.status === 404 || err.status === 0 || err.status === 500) {
       let local = getLocalAddresses(usuarioId);
@@ -566,7 +653,7 @@ export async function getStoreProductsApi(storeId, { page = 0, size = 12, texto,
   return fetchApi(`/tiendas/${storeId}/productos?${params.toString()}`, { method: 'GET' });
 }
 
-export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, sort = 'precio,asc' } = {}) {
+export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, comunaId, sort = 'precio,asc' } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size), sort });
   if (texto) params.set('texto', texto);
   if (patente) params.set('patente', patente);
@@ -576,6 +663,7 @@ export async function getPublicProductsApi({ page = 0, size = 12, texto, patente
   if (marcaId) params.set('marcaId', String(marcaId));
   if (precioMin) params.set('precioMin', String(precioMin));
   if (precioMax) params.set('precioMax', String(precioMax));
+  if (comunaId) params.set('comunaId', String(comunaId));
   return fetchApi(`/inventario/productos?${params.toString()}`, { method: 'GET' });
 }
 

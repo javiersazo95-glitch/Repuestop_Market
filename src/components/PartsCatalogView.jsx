@@ -12,8 +12,9 @@ import MarketplaceProductCard from './MarketplaceProductCard';
 import {
   NAVIGATION_CATEGORIES, CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID
 } from '../data/categories';
-import { getPartCategoriesApi, getPublicProductsApi, searchVehicleByPatenteApi } from '../services/api';
+import { getPartCategoriesApi, getPublicProductsApi, searchVehicleByPatenteApi, getAddressesApi } from '../services/api';
 import { adaptPage, adaptProduct, adaptVehicle } from '../services/adapters';
+import { useAuth } from '../context/AuthContext';
 
 // El backend acota el tamaño de página a 100. Esta vista filtra y pagina en cliente,
 // así que se trae un bloque grande y la UI hace el resto del trabajo.
@@ -51,6 +52,55 @@ export default function PartsCatalogView({
   const [searchMode, setSearchMode] = useState('patente');
   const [inputValue, setInputValue] = useState(initialActiveVehicle?.patente || initialSearchQuery || '');
 
+  // "Filtrar por mi comuna": solo repuestos de tiendas ubicadas en la misma
+  // comuna registrada en el perfil del usuario logueado (comprador o vendedor).
+  const { user, isLoggedIn } = useAuth();
+  const [filterByMyComuna, setFilterByMyComuna] = useState(false);
+  const [myComunaId, setMyComunaId] = useState(null);
+  const [myComunaNombre, setMyComunaNombre] = useState('');
+  const [comunaLookupStatus, setComunaLookupStatus] = useState('idle'); // idle | loading | ready | no-comuna | error
+  const [comunaNotice, setComunaNotice] = useState('');
+  const activeComunaId = filterByMyComuna ? myComunaId : null;
+
+  const handleToggleComunaFilter = async () => {
+    if (filterByMyComuna) {
+      setFilterByMyComuna(false);
+      setComunaNotice('');
+      return;
+    }
+
+    if (!isLoggedIn || !user?.userId) {
+      setComunaNotice('Debes iniciar sesión y registrar una comuna desde tu perfil para usar este filtro.');
+      return;
+    }
+
+    if (myComunaId) {
+      setFilterByMyComuna(true);
+      setComunaNotice('');
+      return;
+    }
+
+    setComunaLookupStatus('loading');
+    setComunaNotice('');
+    try {
+      const addresses = await getAddressesApi(user.userId);
+      const list = Array.isArray(addresses) ? addresses : [];
+      const principal = list.find((addr) => addr.esPrincipal) || list[0];
+      if (principal?.comunaId) {
+        setMyComunaId(principal.comunaId);
+        setMyComunaNombre(principal.comunaNombre || '');
+        setFilterByMyComuna(true);
+        setComunaLookupStatus('ready');
+      } else {
+        setComunaLookupStatus('no-comuna');
+        setComunaNotice('Primero debes registrar una comuna desde tu perfil para poder usar este filtro.');
+      }
+    } catch (err) {
+      setComunaLookupStatus('error');
+      setComunaNotice(err.message || 'No pudimos verificar tu comuna registrada. Intenta nuevamente.');
+    }
+  };
+
   // Catálogo real: GET /api/v1/inventario/productos (endpoint público).
   useEffect(() => {
     let isMounted = true;
@@ -66,7 +116,7 @@ export default function PartsCatalogView({
         categoriaId = (Array.isArray(categories) ? categories : [])
           .find((category) => normalizeName(category.nombre) === normalizeName(initialCatalogFilter.categoryName))?.id;
       }
-      return getPublicProductsApi({ page: 0, size: CATALOG_FETCH_SIZE, categoriaId, subcategoriaId: initialCatalogFilter?.subcategoryId, sort: 'createdAt,desc' });
+      return getPublicProductsApi({ page: 0, size: CATALOG_FETCH_SIZE, categoriaId, subcategoriaId: initialCatalogFilter?.subcategoryId, comunaId: activeComunaId, sort: 'createdAt,desc' });
     };
 
     loadProducts()
@@ -84,7 +134,7 @@ export default function PartsCatalogView({
       });
 
     return () => { isMounted = false; };
-  }, [initialCatalogFilter?.categoryId, initialCatalogFilter?.categoryName, initialCatalogFilter?.subcategoryId]);
+  }, [initialCatalogFilter?.categoryId, initialCatalogFilter?.categoryName, initialCatalogFilter?.subcategoryId, activeComunaId]);
 
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedCategory, setSelectedCategory] = useState(initialCatalogFilter?.category || 'TODAS');
@@ -416,11 +466,37 @@ export default function PartsCatalogView({
               </button>
             </div>
           )}
+
         </div>
       </div>
 
       <div className="container catalog-patent-console-wrap">
         <div className="light-search-panel catalog-unified-search-panel">
+          <div className="catalog-comuna-filter-row">
+            <div className="my-comuna-filter-pill">
+              <MapPin size={16} className="text-blue-400" />
+              <span>Filtrar por mi comuna</span>
+              <button
+                type="button"
+                className={`btn-toggle-compat-mini ${filterByMyComuna ? 'active' : ''}`}
+                onClick={handleToggleComunaFilter}
+                disabled={comunaLookupStatus === 'loading'}
+                title="Muestra solo los repuestos de casas de repuesto ubicadas en tu misma comuna (la comuna registrada en tu perfil)."
+              >
+                {comunaLookupStatus === 'loading'
+                  ? 'Buscando tu comuna...'
+                  : filterByMyComuna
+                    ? `✓ Solo tiendas en ${myComunaNombre || 'tu comuna'}`
+                    : 'Activar filtro'}
+              </button>
+            </div>
+            {comunaNotice && (
+              <div className="light-search-error catalog-comuna-notice">
+                <AlertCircle size={14} /> {comunaNotice}
+              </div>
+            )}
+          </div>
+
           <div className="light-search-tabs" role="tablist" aria-label="Tipos de búsqueda">
             {SEARCH_MODES.map((item) => {
               const Icon = item.icon;
