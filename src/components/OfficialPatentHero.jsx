@@ -11,7 +11,6 @@ import CategoryIconTile from './CategoryIconTile';
 
 const SEARCH_MODES = [
   { id: 'patente', label: 'Buscar por patente', icon: CarFront, placeholder: 'Ej: BB-CL-12' },
-  { id: 'vin', label: 'Buscar por VIN', icon: Barcode, placeholder: 'Ingresa los 17 caracteres del VIN' },
   { id: 'oem', label: 'Buscar por código OEM', icon: Tag, placeholder: 'Ej: 04465-0D150' },
   { id: 'repuesto', label: 'Buscar por repuesto', icon: Search, placeholder: 'Ej: Pastillas de freno' }
 ];
@@ -204,7 +203,7 @@ export default function OfficialPatentHero({
             <div className="light-intro-copy">
               <h1>Encuentra el<br />repuesto correcto<br /><span>en segundos</span></h1>
               <i aria-hidden="true" />
-              <p>Busca por patente, código OEM, VIN o nombre del repuesto y encuentra la mejor opción entre cientos de vendedores.</p>
+              <p>Busca por patente, código OEM o nombre del repuesto y encuentra la mejor opción entre cientos de vendedores.</p>
               <ul>
                 <li><CheckCircle2 size={17} /> Repuestos originales y alternativos</li>
                 <li><CheckCircle2 size={17} /> Precios competitivos</li>

@@ -5140,9 +5140,13 @@ input, select, textarea {
 .catalog-top-toggle.is-active { border-color: #e5ad2c; background: #fff5d8; color: #a46700; }
 .catalog-top-toggle:disabled { cursor: wait; opacity: .7; }
 
-.seller-catalog-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.seller-catalog-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
-@media (max-width: 1050px) {
+@media (max-width: 1200px) {
+  .seller-catalog-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 850px) {
   .seller-catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -8190,13 +8194,13 @@ input, select, textarea {
   gap: 16px;
 }
 
-@media (max-width: 1380px) {
+@media (max-width: 1100px) {
   .parts-cards-grid-catalog {
     grid-template-columns: repeat(3, 1fr);
   }
 }
 
-@media (max-width: 992px) {
+@media (max-width: 800px) {
   .parts-cards-grid-catalog {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -11054,7 +11058,7 @@ input, select, textarea {
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1050px) {
   .directory-advanced-content-grid .stores-cards-grid-directory,
   .catalog-main-content-grid .parts-cards-grid-catalog,
   .store-catalog-main-content-grid .parts-cards-grid-catalog {
@@ -11071,7 +11075,7 @@ input, select, textarea {
   }
 }
 
-@media (min-width: 901px) and (max-width: 1279px) {
+@media (min-width: 768px) and (max-width: 1049px) {
   .directory-advanced-content-grid .stores-cards-grid-directory,
   .catalog-main-content-grid .parts-cards-grid-catalog,
   .store-catalog-main-content-grid .parts-cards-grid-catalog {

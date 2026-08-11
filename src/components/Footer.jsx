@@ -7,7 +7,7 @@ import {
 const MARKETPLACE_LINKS = [
   ['Catálogo General de Repuestos', PackageSearch],
   ['Directorio de Tiendas Verificadas', Store],
-  ['Búsqueda por Patente / VIN', Search],
+  ['Búsqueda por Patente / OEM', Search],
   ['Centro de Ayuda & Soporte', Headphones]
 ];
 

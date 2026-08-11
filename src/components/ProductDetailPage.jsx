@@ -488,7 +488,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                 <div className="product-compatibility-empty"><Search /><strong>No encontramos compatibilidades</strong><span>Prueba con otro término de búsqueda.</span></div>
               )}
             </div>
-            <footer><ShieldCheck /><span>Confirma siempre el calce con tu patente, VIN o código OEM antes de comprar.</span><button type="button" onClick={() => setCompatibilityOpen(false)}>Entendido</button></footer>
+            <footer><ShieldCheck /><span>Confirma siempre el calce con tu patente o código OEM antes de comprar.</span><button type="button" onClick={() => setCompatibilityOpen(false)}>Entendido</button></footer>
           </section>
         </div>
       )}

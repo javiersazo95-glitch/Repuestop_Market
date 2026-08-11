@@ -229,7 +229,7 @@ export default function Header({
             <input
               type="text"
               className="search-input-main"
-              placeholder="Ingresa tu patente, código OEM, VIN o repuesto"
+              placeholder="Ingresa tu patente, código OEM o repuesto"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
             />

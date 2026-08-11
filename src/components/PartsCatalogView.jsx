@@ -22,7 +22,6 @@ const CATALOG_FETCH_SIZE = 100;
 
 const SEARCH_MODES = [
   { id: 'patente', label: 'Buscar por patente', icon: CarFront, placeholder: 'Ej: BB-CL-12' },
-  { id: 'vin', label: 'Buscar por VIN', icon: Barcode, placeholder: 'Ingresa los 17 caracteres del VIN' },
   { id: 'oem', label: 'Buscar por código OEM', icon: Tag, placeholder: 'Ej: 04465-0D150' },
   { id: 'repuesto', label: 'Buscar por repuesto', icon: Search, placeholder: 'Ej: Pastillas de freno, filtro de aceite, Bosch...' }
 ];
@@ -182,8 +181,6 @@ export default function PartsCatalogView({
     setPatentError('');
     if (modeId === 'patente') {
       setInputValue(activeVehicle?.patente || patentInput || '');
-    } else if (modeId === 'vin') {
-      setInputValue(patentInput || '');
     } else if (modeId === 'oem' || modeId === 'repuesto') {
       setInputValue(searchQuery || '');
     }
@@ -194,8 +191,6 @@ export default function PartsCatalogView({
     if (!value) {
       if (searchMode === 'patente') {
         setPatentError('Ingresa una patente válida (ej. BB-CL-12)');
-      } else if (searchMode === 'vin') {
-        setPatentError('Ingresa los 17 caracteres del VIN');
       } else if (searchMode === 'oem') {
         setPatentError('Ingresa un código OEM (ej. 04465-0D150)');
       } else {
@@ -206,7 +201,7 @@ export default function PartsCatalogView({
 
     setPatentError('');
 
-    if (searchMode === 'patente' || searchMode === 'vin') {
+    if (searchMode === 'patente') {
       setPatentSearching(true);
       setPatentInput(value);
       try {
@@ -217,11 +212,11 @@ export default function PartsCatalogView({
           setInputValue(resolved.patente || value);
         } else {
           setActiveVehicle(null);
-          setPatentError(resolved?.mensaje || 'No encontramos ese vehículo. Verifica la patente o VIN e intenta de nuevo.');
+          setPatentError(resolved?.mensaje || 'No encontramos ese vehículo. Verifica la patente e intenta de nuevo.');
         }
       } catch (err) {
         setActiveVehicle(null);
-        setPatentError(err.message || 'No se pudo consultar la patente o VIN. Intenta nuevamente.');
+        setPatentError(err.message || 'No se pudo consultar la patente. Intenta nuevamente.');
       } finally {
         setPatentSearching(false);
       }
@@ -444,7 +439,7 @@ export default function PartsCatalogView({
             </div>
             <h1>Inventario General de <span>Repuestos</span></h1>
             <p>
-              Busca y filtra repuestos mecánicos, eléctricos y de carrocería por patente, VIN o código OEM con origen verificado y calce 100% garantizado.
+              Busca y filtra repuestos mecánicos, eléctricos y de carrocería por patente o código OEM con origen verificado y calce 100% garantizado.
             </p>
             <div className="catalog-hero-perks">
               <span><ShieldCheck size={20} /> 100% OEM Verificado</span>
@@ -527,7 +522,7 @@ export default function PartsCatalogView({
                   placeholder={currentSearchMode.placeholder}
                   value={inputValue}
                   onChange={(event) => {
-                    const val = searchMode === 'patente' || searchMode === 'vin' || searchMode === 'oem'
+                    const val = searchMode === 'patente' || searchMode === 'oem'
                       ? event.target.value.toUpperCase()
                       : event.target.value;
                     setInputValue(val);
@@ -555,11 +550,9 @@ export default function PartsCatalogView({
               {patentSearching ? <RefreshCw size={21} className="spin-icon" /> : <Search size={22} />}
               {searchMode === 'patente'
                 ? 'Buscar vehículo por patente'
-                : searchMode === 'vin'
-                  ? 'Buscar por VIN'
-                  : searchMode === 'oem'
-                    ? 'Buscar por código OEM'
-                    : 'Buscar repuestos'}
+                : searchMode === 'oem'
+                  ? 'Buscar por código OEM'
+                  : 'Buscar repuestos'}
             </button>
 
             {patentError && (
@@ -597,9 +590,7 @@ export default function PartsCatalogView({
                   ? 'Patentes populares:'
                   : searchMode === 'oem'
                     ? 'Códigos OEM sugeridos:'
-                    : searchMode === 'vin'
-                      ? 'Ejemplos VIN:'
-                      : 'Búsquedas populares:'}
+                    : 'Búsquedas populares:'}
               </span>
               {(searchMode === 'patente' ? samplePatentes : searchMode === 'oem' ? sampleOemCodes : sampleKeywords).map((item) => (
                 <button key={item} type="button" onClick={() => { setInputValue(item); handleUnifiedSearch(item); }}>
