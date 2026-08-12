@@ -316,3 +316,60 @@ export const POPULAR_CATEGORIES = [
   { id: 'aceites', label: 'Aceite 5W-30', count: '15.400', iconName: 'Droplets', color: '#14b8a6', image: '/cat_aceites.jpg' },
   { id: 'baterias', label: 'Baterías 12V', count: '4.100', iconName: 'Zap', color: '#6366f1', image: '/cat_electrico.jpg' }
 ];
+
+/**
+ * Asocia dinámicamente cualquier categoría/subcategoría recibida del backend con
+ * su imagen de alta resolución, icono de Lucide, color de marca y miniaturas PNG.
+ */
+export function getCategoryVisuals(categoryOrName) {
+  if (!categoryOrName) {
+    return { iconName: 'Cog', color: '#f97316', image: '/cat_motor.jpg' };
+  }
+
+  const name = typeof categoryOrName === 'string'
+    ? categoryOrName.toLowerCase().trim()
+    : (categoryOrName.nombre || categoryOrName.id || '').toLowerCase().trim();
+
+  const matchSidebar = SIDEBAR_CATEGORIES.find(c =>
+    name.includes(c.id) || c.nombre.toLowerCase().includes(name) || name.includes(c.nombre.toLowerCase())
+  );
+  if (matchSidebar) {
+    return { iconName: matchSidebar.iconName, color: matchSidebar.color, image: matchSidebar.image };
+  }
+
+  const matchHeader = HEADER_CATEGORIES.find(c =>
+    name.includes(c.id) || c.nombre.toLowerCase().includes(name) || name.includes(c.nombre.toLowerCase())
+  );
+  if (matchHeader) {
+    const filterMatch = SIDEBAR_CATEGORIES.find(s => s.id === matchHeader.filterId);
+    return {
+      iconName: filterMatch?.iconName || 'Cog',
+      color: filterMatch?.color || '#f97316',
+      image: matchHeader.image || filterMatch?.image || '/cat_motor.jpg'
+    };
+  }
+
+  if (name.includes('freno') || name.includes('disco') || name.includes('pastilla')) {
+    return { iconName: 'Disc3', color: '#ef4444', image: '/cat_frenos.jpg' };
+  }
+  if (name.includes('aceite') || name.includes('filtro') || name.includes('lubric')) {
+    return { iconName: 'Droplets', color: '#14b8a6', image: '/cat_aceites.jpg' };
+  }
+  if (name.includes('suspens') || name.includes('direcc') || name.includes('amortigua')) {
+    return { iconName: 'ArrowUpDown', color: '#8b5cf6', image: '/cat_suspension.jpg' };
+  }
+  if (name.includes('luz') || name.includes('ampolleta') || name.includes('foco') || name.includes('ilumina')) {
+    return { iconName: 'Lightbulb', color: '#eab308', image: '/cat_iluminacion.jpg' };
+  }
+  if (name.includes('electric') || name.includes('bateria') || name.includes('encendido') || name.includes('bujia')) {
+    return { iconName: 'Zap', color: '#6366f1', image: '/cat_electrico.jpg' };
+  }
+  if (name.includes('espejo') || name.includes('carroc') || name.includes('parachoq') || name.includes('puerta')) {
+    return { iconName: 'CarFront', color: '#ec4899', image: '/cat_carroceria.jpg' };
+  }
+  if (name.includes('neumat') || name.includes('llanta') || name.includes('rueda')) {
+    return { iconName: 'CircleDot', color: '#0891b2', image: '/cat_neumaticos.jpg' };
+  }
+
+  return { iconName: 'Cog', color: '#f97316', image: '/cat_motor.jpg' };
+}

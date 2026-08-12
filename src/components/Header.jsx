@@ -4,6 +4,8 @@ import {
   ChevronDown, ChevronRight, X, LogOut, LayoutDashboard, MessageSquare, Menu,
   Package, Tag, Info
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { qk } from '../services/queryKeys';
 import { CATEGORY_VISUALS, HEADER_CATEGORIES } from '../data/categories';
 import RepuesTopLogo from './RepuesTopLogo';
 import { useAuth } from '../context/AuthContext';
@@ -31,7 +33,6 @@ export default function Header({
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const [highlightedSubcategory, setHighlightedSubcategory] = useState('');
   const [subcategoryInventory, setSubcategoryInventory] = useState({});
-  const [backendCategories, setBackendCategories] = useState([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const categorySearchInputRef = useRef(null);
   const categoryMenuRef = useRef(null);
@@ -82,14 +83,21 @@ export default function Header({
     }).slice(0, 12);
   }, [categorySearchQuery]);
 
+  const { data: backendCategories = [] } = useQuery({
+    queryKey: qk.categories(),
+    queryFn: async ({ signal }) => {
+      try {
+        const items = await getPartCategoriesApi({ signal });
+        return Array.isArray(items) ? items : [];
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+
   const getBackendCategory = (category) => backendCategories.find((item) =>
     normalizeCatalogName(item.nombre) === normalizeCatalogName(category.nombre));
-
-  useEffect(() => {
-    getPartCategoriesApi()
-      .then((items) => setBackendCategories(Array.isArray(items) ? items : []))
-      .catch(() => setBackendCategories([]));
-  }, []);
 
   // Se consulta una página por subcategoría para recibir totalElements: el número
   // mostrado es el total publicado en el sistema, no solo los elementos cargados.
@@ -289,7 +297,6 @@ export default function Header({
             </div>
             <div className="cart-meta">
               <span className="cart-lbl">Mi carrito</span>
-              <span className="cart-val">{cartCount}</span>
             </div>
           </button>
         </div>

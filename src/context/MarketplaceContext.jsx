@@ -107,17 +107,7 @@ export function MarketplaceProvider({ children }) {
     const shippingMethod = options.shippingMethod || '';
     const shippingFee = Number(options.shippingFee || 0);
 
-    if (isLoggedIn && userId) {
-      const summary = await addCartItemApi(userId, {
-        proveedorProductoId: Number(product.id),
-        cantidad: 1,
-        metodoEnvio: shippingMethod,
-        costoEnvioLocal: shippingFee,
-      });
-      setCartItems(mapServerCart(summary));
-      return summary;
-    }
-
+    // Optimistic UI update: update local cart state immediately (0ms latency)
     setCartItems((prev) => {
       const existing = prev.find((item) => String(item.id) === String(product.id));
       if (existing) {
@@ -127,6 +117,23 @@ export function MarketplaceProvider({ children }) {
       }
       return [...prev, { ...product, quantity: 1, shippingMethod, shippingFee }];
     });
+
+    if (isLoggedIn && userId) {
+      try {
+        const summary = await addCartItemApi(userId, {
+          proveedorProductoId: Number(product.id),
+          cantidad: 1,
+          metodoEnvio: shippingMethod,
+          costoEnvioLocal: shippingFee,
+        });
+        setCartItems(mapServerCart(summary));
+        return summary;
+      } catch (error) {
+        console.warn('No se pudo persistir el producto en el backend, resincronizando:', error);
+        const summary = await getCartApi(userId).catch(() => null);
+        if (summary) setCartItems(mapServerCart(summary));
+      }
+    }
     return null;
   }, [isLoggedIn, userId]);
 

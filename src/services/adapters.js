@@ -266,16 +266,7 @@ export function adaptStore(dto, index = 0) {
     verificadoFecha: dto.createdAt
       ? `Ingresada ${formatRelativeTime(dto.createdAt).toLowerCase()}`
       : 'Verificada recientemente',
-    // El backend ha expuesto este total con distintos nombres según el endpoint.
-    // La card siempre debe reflejar productos publicados reales de la tienda.
-    totalPublicaciones: toNumber(
-      dto.totalPublicaciones
-      ?? dto.totalProductos
-      ?? dto.productCount
-      ?? dto.publishedProductsCount
-      ?? dto.inventoryCount
-      ?? dto.totalItems
-    ) ?? 0,
+    totalPublicaciones: toNumber(dto.productCount ?? dto.totalPublicaciones ?? dto.totalProductos) ?? 0,
     rating: toNumber(dto.rating) ?? 0,
     reviewCount: toNumber(dto.reviewCount) ?? 0,
     responseRate: toNumber(dto.responseRate) ?? null,
@@ -287,8 +278,8 @@ export function adaptStore(dto, index = 0) {
       : [],
     fundador: Boolean(dto.founder),
     verificada: Boolean(dto.verified ?? dto.isVerified ?? true),
-    logoUrl: resolveMediaUrl(dto.logoUrl || dto.userProfileUrl),
-    coverUrl: resolveMediaUrl(dto.coverUrl),
+    logoUrl: resolveMediaUrl(dto.logoUrl || dto.userProfileUrl) || '/tiensoft_logo.jpg',
+    coverUrl: resolveMediaUrl(dto.coverUrl) || '/tiensoft_cover.jpg',
   };
 }
 

@@ -1,9 +1,22 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, lazy, Suspense } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import ProfileDashboard from '../components/ProfileDashboard';
 import { PROFILE_TABS, profilePath, ROUTES } from '../routes/paths';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
+
+const ProfileDashboard = lazy(() => import('../components/ProfileDashboard'));
+
+function ProfileSkeleton() {
+  return (
+    <div className="container py-12 flex justify-center items-center min-h-[400px]">
+      <div className="animate-pulse flex flex-col items-center gap-4">
+        <div className="w-12 h-12 rounded-full bg-slate-200" />
+        <div className="h-4 w-48 bg-slate-200 rounded" />
+        <div className="h-3 w-32 bg-slate-100 rounded" />
+      </div>
+    </div>
+  );
+}
 
 export default function ProfilePage() {
   const { tab } = useParams();
@@ -15,8 +28,6 @@ export default function ProfilePage() {
     navigate(profilePath(nextTab));
   }, [navigate]);
 
-  // Compatibilidad con enlaces antiguos: Direcciones dejó de formar parte del
-  // perfil y cualquier URL guardada debe volver al resumen de la cuenta.
   if (tab === 'direcciones') {
     return <Navigate to={profilePath('resumen')} replace />;
   }
@@ -26,10 +37,12 @@ export default function ProfilePage() {
   }
 
   return (
-    <ProfileDashboard
-      initialTab={tab}
-      onTabChange={handleTabChange}
-      onBackToStore={nav.goHome}
-    />
+    <Suspense fallback={<ProfileSkeleton />}>
+      <ProfileDashboard
+        initialTab={tab}
+        onTabChange={handleTabChange}
+        onBackToStore={nav.goHome}
+      />
+    </Suspense>
   );
 }

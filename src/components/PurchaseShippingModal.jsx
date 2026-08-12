@@ -32,6 +32,7 @@ export default function PurchaseShippingModal({ product, intent, onClose, onConf
       });
     } catch (submitError) {
       setError(submitError.message || 'No pudimos agregar el producto. Intenta nuevamente.');
+    } finally {
       setSubmitting(false);
     }
   };
@@ -74,7 +75,12 @@ export default function PurchaseShippingModal({ product, intent, onClose, onConf
 
         <footer>
           <button type="button" className="purchase-shipping-cancel" onClick={onClose}>Cancelar</button>
-          <button type="button" className="purchase-shipping-confirm" onClick={submit} disabled={submitting}>
+          <button
+            type="button"
+            className="purchase-shipping-confirm"
+            onClick={submit}
+            disabled={submitting || !selectedMethod}
+          >
             {intent === 'buy' ? <ShoppingCart /> : <Check />}
             {submitting ? 'Agregando…' : intent === 'buy' ? 'Continuar al carrito' : 'Añadir al carro'}
             {!submitting && <ArrowRight />}

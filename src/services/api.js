@@ -15,12 +15,59 @@ export function resolveMediaUrl(value) {
  * Custom error class for API errors
  */
 export class ApiError extends Error {
-  constructor(message, status, data = null) {
-    super(message);
+  constructor(message, status, data = null, options = {}) {
+    super(message, options);
     this.name = 'ApiError';
     this.status = status;
     this.data = data;
   }
+}
+
+let refreshPromise = null;
+
+/**
+ * Renueva la sesión enviando el JWT actual a POST /auth/refresh.
+ * Garantiza una sola petición concurrente (single flight) para múltiples llamadas simultáneas.
+ */
+export async function refreshSessionApi(currentJwt) {
+  const tokenToRefresh = currentJwt || localStorage.getItem('repuestop_token');
+  if (!tokenToRefresh) return null;
+
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: tokenToRefresh, refreshToken: tokenToRefresh }),
+        });
+
+        if (!response.ok) {
+          if ([400, 401, 403].includes(response.status)) {
+            localStorage.removeItem('repuestop_token');
+            window.dispatchEvent(new CustomEvent('repuestop:session_expired'));
+            return null;
+          }
+          return null;
+        }
+
+        const data = await response.json();
+        if (data && data.token) {
+          localStorage.setItem('repuestop_token', data.token);
+          window.dispatchEvent(new CustomEvent('repuestop:token_refreshed', { detail: data }));
+          return data.token;
+        }
+        return null;
+      } catch (err) {
+        console.warn('Error intentando renovar sesión:', err);
+        return null;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+  }
+
+  return refreshPromise;
 }
 
 /**
@@ -30,15 +77,24 @@ export async function fetchApi(endpoint, options = {}) {
   const token = localStorage.getItem('repuestop_token');
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   
+  const isCustomSignal = Boolean(options.signal);
+  const signal = options.signal ?? (typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(15000) : undefined);
+
+  const requestId = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `req-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
   const headers = {
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    'X-Request-Id': requestId,
     ...options.headers,
   };
 
   const config = {
     ...options,
     headers,
+    ...(signal ? { signal } : {}),
   };
 
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
@@ -55,6 +111,15 @@ export async function fetchApi(endpoint, options = {}) {
     }
 
     if (!response.ok) {
+      // Si recibimos 401 y hay token, intentamos renovar con POST /auth/refresh
+      // (siempre que la llamada no provenga del grupo /auth/ ni sea un reintento previo).
+      if (response.status === 401 && token && !endpoint.includes('/auth/') && !options._retry) {
+        const newToken = await refreshSessionApi(token);
+        if (newToken) {
+          return fetchApi(endpoint, { ...options, _retry: true });
+        }
+      }
+
       if (response.status === 401 && token && !endpoint.includes('/auth/login')) {
         window.dispatchEvent(new CustomEvent('repuestop:unauthorized'));
       }
@@ -69,10 +134,23 @@ export async function fetchApi(endpoint, options = {}) {
     if (error instanceof ApiError) {
       throw error;
     }
+    if (isCustomSignal && error.name === 'AbortError') {
+      throw error;
+    }
+    if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+      throw new ApiError(
+        'La petición al servidor ha superado el tiempo límite de espera (15s).',
+        0,
+        null,
+        { cause: error }
+      );
+    }
     // Network or connection error
     throw new ApiError(
       'No se pudo conectar con el servidor backend. Por favor verifica tu conexión.',
-      0
+      0,
+      null,
+      { cause: error }
     );
   }
 }
@@ -271,16 +349,10 @@ export function resolveAddressType(usuarioId, address) {
 /**
  * Direcciones guardadas del comprador (agregar/editar/eliminar/marcar principal).
  */
-export async function getAddressesApi(usuarioId) {
+export async function getAddressesApi(usuarioId, options = {}) {
   if (!usuarioId) return getLocalAddresses(usuarioId).map((item) => ({ ...item, tipoDireccion: resolveAddressType(usuarioId, item) }));
   try {
-    const data = await fetchApi(`/usuarios/${usuarioId}/direcciones`, { method: 'GET' })
-      .catch(async (err) => {
-        if (err.status === 404) {
-          return fetchApi(`/users/${usuarioId}/direcciones`, { method: 'GET' });
-        }
-        throw err;
-      });
+    const data = await fetchApi(`/usuarios/${usuarioId}/direcciones`, { method: 'GET', ...options });
     const serverItems = Array.isArray(data) ? data : [];
     const localItems = getLocalAddresses(usuarioId);
     const combined = serverItems.map((srv) => {
@@ -308,18 +380,12 @@ export async function getAddressesApi(usuarioId) {
   }
 }
 
-export async function createAddressApi(usuarioId, payload) {
+export async function createAddressApi(usuarioId, payload, options = {}) {
   if (payload?.tipoDireccion) {
     saveAddressTypeMeta(usuarioId, null, payload.calleYNumero, payload.tipoDireccion);
   }
   try {
-    const res = await fetchApi(`/usuarios/${usuarioId}/direcciones`, { method: 'POST', body: JSON.stringify(payload) })
-      .catch(async (err) => {
-        if (err.status === 404) {
-          return fetchApi(`/users/${usuarioId}/direcciones`, { method: 'POST', body: JSON.stringify(payload) });
-        }
-        throw err;
-      });
+    const res = await fetchApi(`/usuarios/${usuarioId}/direcciones`, { method: 'POST', body: JSON.stringify(payload), ...options });
     const tipo = payload?.tipoDireccion || res?.tipoDireccion || res?.tipo || 'PERSONAL';
     const newAddress = {
       ...(res || {}),
@@ -328,12 +394,6 @@ export async function createAddressApi(usuarioId, payload) {
     if (newAddress.id) {
       saveAddressTypeMeta(usuarioId, newAddress.id, payload.calleYNumero, tipo);
     }
-    // No se guarda copia en `repuestop_user_addresses_*`: esa cache es solo el
-    // respaldo offline (ver el catch de abajo). El backend ya persistió la
-    // direccion con id real, así que `getAddressesApi` la trae de ahí en el
-    // próximo fetch. Guardarla también acá dejaba un "fantasma" en localStorage
-    // que sobrevivía a un DELETE exitoso en el servidor: al recargar, el merge
-    // de getAddressesApi la volvía a mostrar como si nunca se hubiese borrado.
     return newAddress;
   } catch (err) {
     if (err.status === 404 || err.status === 0 || err.status === 500) {
@@ -361,18 +421,12 @@ export async function createAddressApi(usuarioId, payload) {
   }
 }
 
-export async function updateAddressApi(usuarioId, direccionId, payload) {
+export async function updateAddressApi(usuarioId, direccionId, payload, options = {}) {
   if (payload?.tipoDireccion) {
     saveAddressTypeMeta(usuarioId, direccionId, payload.calleYNumero, payload.tipoDireccion);
   }
   try {
-    const res = await fetchApi(`/usuarios/${usuarioId}/direcciones/${direccionId}`, { method: 'PUT', body: JSON.stringify(payload) })
-      .catch(async (err) => {
-        if (err.status === 404) {
-          return fetchApi(`/users/${usuarioId}/direcciones/${direccionId}`, { method: 'PUT', body: JSON.stringify(payload) });
-        }
-        throw err;
-      });
+    const res = await fetchApi(`/usuarios/${usuarioId}/direcciones/${direccionId}`, { method: 'PUT', body: JSON.stringify(payload), ...options });
     const tipo = payload?.tipoDireccion || res?.tipoDireccion || res?.tipo || 'PERSONAL';
     saveAddressTypeMeta(usuarioId, direccionId, payload.calleYNumero, tipo);
     const updatedAddress = {
@@ -409,19 +463,9 @@ export async function updateAddressApi(usuarioId, direccionId, payload) {
   }
 }
 
-export async function deleteAddressApi(usuarioId, direccionId) {
+export async function deleteAddressApi(usuarioId, direccionId, options = {}) {
   try {
-    const result = await fetchApi(`/usuarios/${usuarioId}/direcciones/${direccionId}`, { method: 'DELETE' })
-      .catch(async (err) => {
-        if (err.status === 404) {
-          return fetchApi(`/users/${usuarioId}/direcciones/${direccionId}`, { method: 'DELETE' });
-        }
-        throw err;
-      });
-    // Por si quedó una copia "fantasma" en localStorage de antes de este fix
-    // (ver comentario en createAddressApi): sin esto, una direccion ya borrada
-    // en el servidor reaparecía en la lista porque getAddressesApi la seguía
-    // fusionando desde la cache local.
+    const result = await fetchApi(`/usuarios/${usuarioId}/direcciones/${direccionId}`, { method: 'DELETE', ...options });
     const local = getLocalAddresses(usuarioId).filter((item) => String(item.id) !== String(direccionId));
     saveLocalAddresses(usuarioId, local);
     return result;
@@ -439,15 +483,9 @@ export async function deleteAddressApi(usuarioId, direccionId) {
   }
 }
 
-export async function setDefaultAddressApi(usuarioId, direccionId) {
+export async function setDefaultAddressApi(usuarioId, direccionId, options = {}) {
   try {
-    return await fetchApi(`/usuarios/${usuarioId}/direcciones/${direccionId}/principal`, { method: 'PATCH' })
-      .catch(async (err) => {
-        if (err.status === 404) {
-          return fetchApi(`/users/${usuarioId}/direcciones/${direccionId}/principal`, { method: 'PATCH' });
-        }
-        throw err;
-      });
+    return await fetchApi(`/usuarios/${usuarioId}/direcciones/${direccionId}/principal`, { method: 'PATCH', ...options });
   } catch (err) {
     if (err.status === 404 || err.status === 0 || err.status === 500) {
       let local = getLocalAddresses(usuarioId);
@@ -462,53 +500,16 @@ export async function setDefaultAddressApi(usuarioId, direccionId) {
   }
 }
 
-const FALLBACK_PAISES = [{ id: 1, nombre: 'Chile' }];
-
-const FALLBACK_REGIONES = [
-  { id: 13, nombre: 'Región Metropolitana de Santiago' },
-  { id: 5, nombre: 'Valparaíso' },
-  { id: 8, nombre: 'Bío Bío' },
-  { id: 1, nombre: 'Tarapacá' },
-  { id: 2, nombre: 'Antofagasta' },
-  { id: 3, nombre: 'Atacama' },
-  { id: 4, nombre: 'Coquimbo' },
-  { id: 6, nombre: "O'Higgins" },
-  { id: 7, nombre: 'Maule' },
-  { id: 9, nombre: 'La Araucanía' },
-  { id: 10, nombre: 'Los Lagos' },
-  { id: 11, nombre: 'Aysén' },
-  { id: 12, nombre: 'Magallanes' },
-  { id: 14, nombre: 'Los Ríos' },
-  { id: 15, nombre: 'Arica y Parinacota' },
-  { id: 16, nombre: 'Ñuble' }
-];
-
-const FALLBACK_COMUNAS = [
-  { id: 101, nombre: 'Santiago' }, { id: 102, nombre: 'Providencia' }, { id: 103, nombre: 'Las Condes' },
-  { id: 104, nombre: 'Ñuñoa' }, { id: 105, nombre: 'Vitacura' }, { id: 106, nombre: 'Lo Barnechea' },
-  { id: 107, nombre: 'Maipú' }, { id: 108, nombre: 'La Florida' }, { id: 109, nombre: 'San Miguel' },
-  { id: 110, nombre: 'Peñalolén' }, { id: 111, nombre: 'Macul' }, { id: 112, nombre: 'La Reina' },
-  { id: 113, nombre: 'Pudahuel' }, { id: 114, nombre: 'Quilicura' }, { id: 115, nombre: 'Lampa' },
-  { id: 116, nombre: 'Colina' }, { id: 117, nombre: 'Puente Alto' }, { id: 118, nombre: 'San Bernardo' },
-  { id: 201, nombre: 'Viña del Mar' }, { id: 202, nombre: 'Valparaíso' }, { id: 203, nombre: 'Concepción' }
-];
-
-export async function getPaisesApi() {
-  return fetchApi('/geografia/paises', { method: 'GET' })
-    .catch(() => fetchApi('/geography/paises', { method: 'GET' }))
-    .catch(() => FALLBACK_PAISES);
+export async function getPaisesApi(options = {}) {
+  return fetchApi('/geografia/paises', { method: 'GET', ...options });
 }
 
-export async function getRegionesApi(paisId) {
-  return fetchApi(`/geografia/paises/${encodeURIComponent(paisId)}/regiones`, { method: 'GET' })
-    .catch(() => fetchApi(`/geography/paises/${encodeURIComponent(paisId)}/regiones`, { method: 'GET' }))
-    .catch(() => FALLBACK_REGIONES);
+export async function getRegionesApi(paisId, options = {}) {
+  return fetchApi(`/geografia/paises/${encodeURIComponent(paisId)}/regiones`, { method: 'GET', ...options });
 }
 
-export async function getComunasApi(regionId) {
-  return fetchApi(`/geografia/regiones/${encodeURIComponent(regionId)}/comunas`, { method: 'GET' })
-    .catch(() => fetchApi(`/geography/regiones/${encodeURIComponent(regionId)}/comunas`, { method: 'GET' }))
-    .catch(() => FALLBACK_COMUNAS);
+export async function getComunasApi(regionId, options = {}) {
+  return fetchApi(`/geografia/regiones/${encodeURIComponent(regionId)}/comunas`, { method: 'GET', ...options });
 }
 
 /**
@@ -553,11 +554,23 @@ export async function updateSellerProductTopApi(proveedorId, productId, destacad
 }
 
 export async function getSellerConversationsApi(proveedorId) {
-  return fetchApi(`/proveedores/${proveedorId}/conversaciones`, { method: 'GET' });
+  try {
+    const res = await fetchApi(`/proveedores/${proveedorId}/conversaciones`, { method: 'GET' });
+    return Array.isArray(res) ? res : (res?.content || []);
+  } catch (err) {
+    if (err.status === 404) return [];
+    throw err;
+  }
 }
 
 export async function getBuyerConversationsApi(usuarioId) {
-  return fetchApi(`/usuarios/${usuarioId}/conversaciones`, { method: 'GET' });
+  try {
+    const res = await fetchApi(`/usuarios/${usuarioId}/conversaciones`, { method: 'GET' });
+    return Array.isArray(res) ? res : (res?.content || []);
+  } catch (err) {
+    if (err.status === 404) return [];
+    throw err;
+  }
 }
 
 export async function createConversationApi(proveedorId, productoId) {
@@ -603,7 +616,13 @@ export async function checkoutConversationQuoteApi(usuarioId, payload) {
 
 // Preguntas públicas asociadas a productos del catálogo del vendedor.
 export async function getSellerProductQuestionsApi(proveedorId) {
-  return fetchApi(`/proveedores/${proveedorId}/preguntas-productos`, { method: 'GET' });
+  try {
+    const res = await fetchApi(`/proveedores/${proveedorId}/preguntas-productos`, { method: 'GET' });
+    return Array.isArray(res) ? res : (res?.content || []);
+  } catch (err) {
+    if (err.status === 404) return [];
+    throw err;
+  }
 }
 
 export async function getProductQuestionsApi(productoId) {
@@ -618,16 +637,36 @@ export async function createProductQuestionApi(productoId, question) {
 }
 
 export async function getSellerStoreApi(proveedorId) {
-  return fetchApi(`/proveedores/${proveedorId}/tienda`, { method: 'GET' });
+  try {
+    return await fetchApi(`/proveedores/${proveedorId}/tienda`, { method: 'GET' });
+  } catch (err) {
+    if (err.status === 404 || err.status === 0 || err.status === 500) {
+      try {
+        return await fetchApi(`/tiendas/${proveedorId}`, { method: 'GET' });
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
 }
 
 /** Fondos de pedidos finalizados que todavía no han sido incluidos en un retiro. */
 export async function getSellerPendingWithdrawalsApi(proveedorId) {
-  return fetchApi(`/proveedores/${proveedorId}/retiros/pendientes`, { method: 'GET' });
+  try {
+    return await fetchApi(`/proveedores/${proveedorId}/retiros/pendientes`, { method: 'GET' });
+  } catch (err) {
+    return { acumuladoActual: 0, disponibleRetiro: 0, pendientesLiquidacion: 0, items: [] };
+  }
 }
 
 export async function getSellerWithdrawalsApi(proveedorId) {
-  return fetchApi(`/proveedores/${proveedorId}/retiros`, { method: 'GET' });
+  try {
+    const res = await fetchApi(`/proveedores/${proveedorId}/retiros`, { method: 'GET' });
+    return Array.isArray(res) ? res : (res?.content || []);
+  } catch (err) {
+    return [];
+  }
 }
 
 export async function getSellerWithdrawalDetailApi(proveedorId, retiroId) {
@@ -639,7 +678,11 @@ export async function createSellerWithdrawalApi(proveedorId) {
 }
 
 export async function getSellerBankAccountApi(proveedorId) {
-  return fetchApi(`/proveedores/${proveedorId}/cuenta-bancaria`, { method: 'GET' });
+  try {
+    return await fetchApi(`/proveedores/${proveedorId}/cuenta-bancaria`, { method: 'GET' });
+  } catch (err) {
+    return null;
+  }
 }
 
 export async function updateSellerBankAccountApi(proveedorId, payload) {

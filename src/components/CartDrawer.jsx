@@ -275,7 +275,11 @@ export default function CartDrawer({
 
             {checkoutError && <div className="cart-checkout-error"><AlertTriangle size={15} /> {checkoutError}</div>}
 
-            <button className="btn-proceed-checkout" onClick={handleCheckout} disabled={checkingOut}>
+            <button
+              className="btn-proceed-checkout"
+              onClick={handleCheckout}
+              disabled={checkingOut || (isLoggedIn && (!documentType || (documentType === 'FACTURA' && !invoiceData.rut.trim()) || (needsAddress && !selectedAddressId)))}
+            >
               <span>{checkingOut ? 'Confirmando compra...' : isLoggedIn ? 'CONFIRMAR COMPRA' : 'INICIA SESIÓN PARA COMPRAR'}</span>
               {checkingOut ? <Loader2 size={18} className="spin-icon" /> : <ArrowRight size={18} />}
             </button>

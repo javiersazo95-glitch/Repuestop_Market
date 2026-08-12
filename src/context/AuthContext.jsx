@@ -5,8 +5,14 @@ const AuthContext = createContext(null);
 
 function normalizeUserMedia(profile) {
   if (!profile) return profile;
+  const rawRole = String(profile.role || profile.rol || '').toUpperCase();
+  const sellerId = profile.sellerId ?? profile.proveedorId ?? profile.tiendaId ?? (rawRole === 'SELLER' ? (profile.userId ?? profile.id) : null);
+  const buyerId = profile.buyerId ?? profile.compradorId ?? profile.userId ?? profile.id;
   return {
     ...profile,
+    role: profile.role || (rawRole === 'SELLER' ? 'SELLER' : 'BUYER'),
+    sellerId: sellerId != null ? (isNaN(Number(sellerId)) ? sellerId : Number(sellerId)) : null,
+    buyerId: buyerId != null ? (isNaN(Number(buyerId)) ? buyerId : Number(buyerId)) : null,
     userProfileUrl: resolveMediaUrl(profile.userProfileUrl),
     logoUrl: resolveMediaUrl(profile.logoUrl),
     coverUrl: resolveMediaUrl(profile.coverUrl),
@@ -29,9 +35,9 @@ export function AuthProvider({ children }) {
 
   const [isLoading, setIsLoading] = useState(false);
 
-  // Validate session on mount if token exists
+  // Validar siempre la sesión en segundo plano al montar si hay token
   useEffect(() => {
-    if (token && !user) {
+    if (token) {
       getProfileApi()
         .then((profile) => {
           const normalizedProfile = normalizeUserMedia(profile);
@@ -39,20 +45,42 @@ export function AuthProvider({ children }) {
           if (profile.role) setRole(profile.role);
           localStorage.setItem('repuestop_user', JSON.stringify(normalizedProfile));
         })
-        .catch(() => {
-          // Clear invalid token
-          logoutLocal();
+        .catch((err) => {
+          if (err?.status === 401 || err?.status === 403) {
+            logoutLocal();
+          }
         });
     }
   }, [token]);
 
-  // Escuchar eventos 401 Unauthorized para limpiar la sesión expirada
+  // Escuchar eventos 401, sesión expirada, token renovado y cambios de localStorage entre pestañas
   useEffect(() => {
-    const handleUnauthorized = () => {
-      logoutLocal();
+    const handleUnauthorized = () => logoutLocal();
+    const handleExpired = () => logoutLocal();
+    const handleTokenRefreshed = (e) => {
+      if (e.detail?.token) setToken(e.detail.token);
     };
+    const handleStorage = (e) => {
+      if (e.key === 'repuestop_token') {
+        if (!e.newValue) {
+          logoutLocal();
+        } else {
+          setToken(e.newValue);
+        }
+      }
+    };
+
     window.addEventListener('repuestop:unauthorized', handleUnauthorized);
-    return () => window.removeEventListener('repuestop:unauthorized', handleUnauthorized);
+    window.addEventListener('repuestop:session_expired', handleExpired);
+    window.addEventListener('repuestop:token_refreshed', handleTokenRefreshed);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener('repuestop:unauthorized', handleUnauthorized);
+      window.removeEventListener('repuestop:session_expired', handleExpired);
+      window.removeEventListener('repuestop:token_refreshed', handleTokenRefreshed);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
   const saveSession = (authResponse, preferredRole) => {

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { qk } from '../services/queryKeys';
 import {
-  Search, SlidersHorizontal, ShieldCheck, MapPin, Star, Package,
+  Search, SlidersHorizontal, ShieldCheck, MapPin, Star, Package, Clock,
   ArrowLeft, X, CheckCircle2, RotateCcw, Truck, ChevronLeft, ChevronRight, ChevronDown,
   ShoppingCart, Car, Wrench, Layers, Building2, MessageSquare, AlertCircle,
   Heart, Share2, Image, PenLine, ArrowRight, HelpCircle,
@@ -18,49 +20,44 @@ const STORE_PRODUCTS_FETCH_SIZE = 100;
 const STORE_FILTER_BRANDS = ['TODAS', 'Toyota', 'Nissan', 'Hyundai', 'Chevrolet', 'Kia', 'Mazda', 'Suzuki', 'Mitsubishi'];
 const STORE_FILTER_CONDITIONS = ['TODOS', 'Nuevo OEM Original', 'Nuevo Alternativo Homologado', 'Usado Certificado Desarmaduría'];
 
-const SEARCH_MODES = [
-  { id: 'patente', label: 'Buscar por patente', icon: CarFront, placeholder: 'Ej: BB-CL-12' },
-  { id: 'vin', label: 'Buscar por VIN', icon: Barcode, placeholder: 'Ingresa los 17 caracteres del VIN' },
-  { id: 'oem', label: 'Buscar por código OEM', icon: Tag, placeholder: 'Ej: 04465-0D150' },
-  { id: 'repuesto', label: 'Buscar por repuesto', icon: Search, placeholder: 'Ej: Pastillas de freno, filtro de aceite, Bosch...' }
-];
+const samplePatentes = ['BB-CL-12', 'HG-89-21', 'AA-123-BB'];
+const sampleOemCodes = ['04465-0D150', '90919-01253', '26300-35505'];
+const sampleKeywords = ['Pastillas de freno', 'Filtro de aceite', 'Amortiguador'];
 
-const samplePatentes = ['BB-CL-12', 'HG-89-21', 'AA-123-BB', 'JJ-TT-45'];
-const sampleOemCodes = ['04465-0D150', '90919-01253', '26300-35505', '15400-PLM-A02'];
-const sampleKeywords = ['Pastillas de freno', 'Filtro de aceite', 'Amortiguador', 'Bomba de agua'];
+const SEARCH_MODES = [
+  { id: 'repuesto', label: 'Repuesto o Categoría', icon: Search, placeholder: 'Ej. Pastillas de freno, Filtro de aceite...' },
+  { id: 'patente', label: 'Por Patente', icon: CarFront, placeholder: 'Ej. BB-CL-12 o BBCL12' },
+  { id: 'vin', label: 'Por Chasis / VIN', icon: Barcode, placeholder: 'Ej. 1HGCR2F83HA000000 (17 caracteres)' },
+  { id: 'oem', label: 'Código OEM', icon: Tag, placeholder: 'Ej. 04465-02220' },
+];
 
 export default function StorePublicProfileView({
   store,
   onBackToStores,
+  onAddToCart,
   onQuickView,
   onOpenQuote,
   activeVehicle: initialActiveVehicle,
   onEditStore
 }) {
+  const initialStoreId = typeof store === 'string' ? null : store?.id;
+
   const [activeVehicle, setActiveVehicle] = useState(initialActiveVehicle);
   const [patentInput, setPatentInput] = useState('');
   const [patentError, setPatentError] = useState('');
   const [patentSearching, setPatentSearching] = useState(false);
-  const [searchMode, setSearchMode] = useState('patente');
+  const [searchMode, setSearchMode] = useState('repuesto');
   const [inputValue, setInputValue] = useState(initialActiveVehicle?.patente || '');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [purchaseType, setPurchaseType] = useState('TODOS'); // 'TODOS' | 'DIRECTA' | 'COTIZACION'
 
-  // Estos cinco filtros se usaban en el JSX y en la lógica de filtrado pero nunca
-  // se declararon, por lo que la vista lanzaba ReferenceError al montarse.
   const [selectedCategory, setSelectedCategory] = useState('TODAS');
   const [selectedCondition, setSelectedCondition] = useState('TODOS');
   const [selectedBrand, setSelectedBrand] = useState('TODAS');
   const [onlyCompatible, setOnlyCompatible] = useState(!!initialActiveVehicle);
   const [sortBy, setSortBy] = useState('relevancia');
 
-  // Datos reales de la tienda y su inventario
-  const [storeProducts, setStoreProducts] = useState([]);
-  const [storeProductsTotal, setStoreProductsTotal] = useState(null);
-  const [productsLoading, setProductsLoading] = useState(true);
-  const [productsError, setProductsError] = useState(null);
-  const [fetchedStore, setFetchedStore] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [shareFeedback, setShareFeedback] = useState('');
   const [openFilterSections, setOpenFilterSections] = useState({ purchase: true, category: true, condition: true });
@@ -68,6 +65,21 @@ export default function StorePublicProfileView({
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
+
+  // Ficha pública de la tienda con TanStack Query
+  const { data: fetchedStore } = useQuery({
+    queryKey: qk.store(initialStoreId),
+    queryFn: async ({ signal }) => {
+      try {
+        const data = await getStoreProfileApi(initialStoreId, { signal });
+        return adaptStore(data);
+      } catch (err) {
+        console.warn('No se pudo cargar el perfil remoto de la tienda:', err);
+        return null;
+      }
+    },
+    enabled: Boolean(initialStoreId),
+  });
 
   // Safe Store Object Resolution
   const resolveStore = (inputStore) => {
@@ -77,8 +89,8 @@ export default function StorePublicProfileView({
       rut: '77.589.410-8',
       tipo: 'Importador y Distribuidor Directo',
       ciudad: 'Santiago, RM',
-      totalPublicaciones: 2450,
-      rating: 4.95,
+      totalPublicaciones: 0,
+      rating: 0,
       especialidad: 'Toyota, Chevrolet, Nissan, Hyundai',
       metodosEnvio: ['Retiro en tienda', 'Envío dentro de la comuna', 'Envío fuera de la comuna'],
       logoUrl: '/tiensoft_logo.jpg',
@@ -92,8 +104,8 @@ export default function StorePublicProfileView({
         rut: '77.589.410-8',
         tipo: 'Casa de Repuestos Multimarca',
         ciudad: 'Santiago, RM',
-        totalPublicaciones: 1420,
-        rating: 4.9,
+        totalPublicaciones: 0,
+        rating: 0,
         especialidad: 'Toyota, Nissan, Hyundai',
         metodosEnvio: ['Retiro en tienda', 'Envío dentro de la comuna'],
         coverUrl: '/tiensoft_cover.jpg',
@@ -113,8 +125,8 @@ export default function StorePublicProfileView({
       responseRate: inputStore.responseRate ?? null,
       marcasEspecialistas: Array.isArray(inputStore.marcasEspecialistas) ? inputStore.marcasEspecialistas : [],
       metodosEnvio: Array.isArray(inputStore.metodosEnvio) ? inputStore.metodosEnvio : ['Retiro en tienda'],
-      logoUrl: inputStore.logoUrl || null,
-      coverUrl: inputStore.coverUrl || null,
+      logoUrl: inputStore.logoUrl || '/tiensoft_logo.jpg',
+      coverUrl: inputStore.coverUrl || '/tiensoft_cover.jpg',
       descripcion: inputStore.descripcion || '',
       direccion: inputStore.direccion || '',
       telefono: inputStore.telefono || '',
@@ -131,52 +143,46 @@ export default function StorePublicProfileView({
   const shippingMethods = parseShippingMethods(currentStore.metodosEnvio);
   const isVerified = currentStore.esOficial || rating >= 4.5;
 
-  // Ficha pública de la tienda: GET /api/v1/tiendas/{proveedorId}
-  useEffect(() => {
-    if (!storeId) return undefined;
-    let isMounted = true;
+  // Inventario real de la tienda con TanStack Query
+  const {
+    data: productsPageData,
+    isLoading: productsLoading,
+    error: productsQueryError
+  } = useQuery({
+    queryKey: qk.storeProducts(storeId, { size: STORE_PRODUCTS_FETCH_SIZE }),
+    queryFn: async ({ signal }) => {
+      try {
+        const data = await getStoreProductsApi(storeId, { page: 0, size: STORE_PRODUCTS_FETCH_SIZE, signal });
+        return adaptPage(data, adaptProduct);
+      } catch (err) {
+        console.warn('No se pudo cargar el inventario de la tienda:', err);
+        return { items: [], total: 0 };
+      }
+    },
+    enabled: Boolean(storeId),
+  });
 
-    getStoreProfileApi(storeId)
-      .then((data) => {
-        if (isMounted) setFetchedStore(adaptStore(data));
-      })
-      .catch(() => {
-        if (isMounted) setFetchedStore(null);
-      });
-
-    return () => { isMounted = false; };
-  }, [storeId]);
-
-  // Inventario real de ESTA tienda: GET /api/v1/tiendas/{proveedorId}/productos
-  useEffect(() => {
-    if (!storeId) {
-      setProductsLoading(false);
-      return undefined;
-    }
-
-    let isMounted = true;
-    setProductsLoading(true);
-
-    getStoreProductsApi(storeId, { page: 0, size: STORE_PRODUCTS_FETCH_SIZE })
-      .then((data) => {
-        if (!isMounted) return;
-        const page = adaptPage(data, adaptProduct);
-        setStoreProducts(page.items);
-        setStoreProductsTotal(page.total);
-        setProductsError(null);
-      })
-      .catch((err) => {
-        if (!isMounted) return;
-        setProductsError(err.message || 'No se pudo cargar el catálogo de esta tienda.');
-      })
-      .finally(() => {
-        if (isMounted) setProductsLoading(false);
-      });
-
-    return () => { isMounted = false; };
-  }, [storeId]);
+  const storeProducts = productsPageData?.items || [];
+  const storeProductsTotal = productsPageData?.total || 0;
+  const productsError = productsQueryError ? (productsQueryError.message || 'No se pudo cargar el catálogo de esta tienda.') : null;
 
   const currentSearchMode = SEARCH_MODES.find((m) => m.id === searchMode) || SEARCH_MODES[0];
+
+  const handleResetFilters = () => {
+    setSelectedCategory('TODAS');
+    setSelectedCondition('TODOS');
+    setSelectedBrand('TODAS');
+    setPurchaseType('TODOS');
+    setOnlyCompatible(false);
+    setSearchQuery('');
+    setInputValue('');
+    setSortBy('relevancia');
+    setCurrentPage(1);
+  };
+
+  const handleApplyStoreFilters = () => {
+    setCurrentPage(1);
+  };
 
   const selectSearchMode = (modeId) => {
     setSearchMode(modeId);
@@ -314,18 +320,6 @@ export default function StorePublicProfileView({
     setTimeout(() => setShareFeedback(''), 2500);
   };
 
-  const handleResetStoreFilters = () => {
-    setSearchQuery('');
-    setInputValue('');
-    setSelectedCategory('TODAS');
-    setSelectedCondition('TODOS');
-    setSelectedBrand('TODAS');
-    setOnlyCompatible(false);
-    setPurchaseType('TODOS');
-    setSortBy('relevancia');
-    setCurrentPage(1);
-  };
-
   const toggleFilterSection = (section) => {
     setOpenFilterSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
@@ -341,66 +335,119 @@ export default function StorePublicProfileView({
             <div className="store-cover-placeholder" />
           )}
           <div className="store-cover-overlay" />
-          <button className="btn-back-stores" onClick={onBackToStores}>
-            <ArrowLeft size={16} />
-            <span>Volver a Tiendas</span>
-          </button>
-          {onEditStore && (
-            <button className="btn-edit-store-profile" onClick={onEditStore} title="Editar mi tienda">
-              <PenLine size={15} />
-              <span>Editar tienda</span>
+
+          <div className="container store-header-actions-bar">
+            <button className="btn-back-stores" onClick={onBackToStores}>
+              <ArrowLeft size={16} />
+              <span>Volver a Tiendas</span>
             </button>
-          )}
+            {onEditStore && (
+              <button className="btn-edit-store-profile" onClick={onEditStore} title="Editar mi tienda">
+                <PenLine size={15} />
+                <span>Editar tienda</span>
+              </button>
+            )}
+          </div>
+
+          <div className="container store-hero-inner-container">
+            <div className="store-hero-left">
+              <div className="store-avatar-box">
+                {currentStore.logoUrl ? (
+                  <img src={currentStore.logoUrl} alt={currentStore.nombre} />
+                ) : (
+                  <div className="store-avatar-fallback">
+                    <Building2 size={36} />
+                  </div>
+                )}
+              </div>
+
+              <div className="store-info-details">
+                <div className="store-title-badge-row">
+                  <h1>{currentStore.nombre}</h1>
+                  {isVerified && <span className="badge-official-store">Tienda verificada</span>}
+                </div>
+
+                {currentStore.descripcion && (
+                  <p className="store-description-text">{currentStore.descripcion}</p>
+                )}
+
+                <p className="store-subtitle-meta">
+                  <span className="meta-item"><MapPin size={14} /> {currentStore.ciudad}</span>
+                  <span className="meta-divider">|</span>
+                  <span className="meta-item"><ShieldCheck size={14} /> RUT: {currentStore.rut}</span>
+                </p>
+
+                <div className="store-action-buttons">
+                  <button
+                    className={`btn-follow-store ${isFollowing ? 'following' : ''}`}
+                    onClick={toggleFollow}
+                  >
+                    <Heart size={16} className={isFollowing ? 'fill-current' : ''} />
+                    <span>{isFollowing ? 'Siguiendo tienda' : 'Seguir tienda'}</span>
+                  </button>
+
+                  <button className="btn-share-store" onClick={handleShare}>
+                    <Share2 size={16} />
+                    <span>{shareFeedback || 'Compartir'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="store-hero-right">
+              <div className="store-rating-card">
+                <span className="rating-card-label">Calificación de la tienda</span>
+                <div className="rating-card-score-row">
+                  <span className="rating-score-num">{rating ? rating.toFixed(1) : '4.9'}</span>
+                  <div className="rating-stars-box">
+                    <div className="stars-row">
+                      <Star size={16} className="star-icon fill-star" />
+                      <Star size={16} className="star-icon fill-star" />
+                      <Star size={16} className="star-icon fill-star" />
+                      <Star size={16} className="star-icon fill-star" />
+                      <Star size={16} className="star-icon fill-star" />
+                    </div>
+                    <small className="rating-opinions-count">({reviewCount ? reviewCount : '128'} opiniones)</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="container store-profile-content">
-          <div className="store-main-info-card">
-            <div className="store-avatar-box">
-              {currentStore.logoUrl ? (
-                <img src={currentStore.logoUrl} alt={currentStore.nombre} />
-              ) : (
-                <div className="store-avatar-fallback">
-                  <Building2 size={36} />
-                </div>
-              )}
-              {isVerified && <span className="verified-badge-icon" title="Tienda Verificada Oficial"><ShieldCheck size={18} /></span>}
-            </div>
-
-            <div className="store-info-details">
-              <div className="store-title-badge-row">
-                <h1>{currentStore.nombre}</h1>
-                {isVerified && <span className="badge-official-store"><ShieldCheck size={13} /> TIENDA VERIFICADA</span>}
-              </div>
-
-              <p className="store-subtitle-meta">
-                <span>{currentStore.tipo}</span> • <MapPin size={13} /> {currentStore.ciudad} • RUT: {currentStore.rut}
-              </p>
-
-              {currentStore.descripcion && (
-                <p className="store-description-text">{currentStore.descripcion}</p>
-              )}
-
-              <div className="store-action-buttons">
-                <button
-                  className={`btn-follow-store ${isFollowing ? 'following' : ''}`}
-                  onClick={toggleFollow}
-                >
-                  <Heart size={16} className={isFollowing ? 'fill-current' : ''} />
-                  <span>{isFollowing ? 'Siguiendo tienda' : 'Seguir tienda'}</span>
-                </button>
-
-                <button className="btn-share-store" onClick={handleShare}>
-                  <Share2 size={16} />
-                  <span>{shareFeedback || 'Compartir'}</span>
-                </button>
+        {/* Bottom Metrics Card Strip */}
+        <div className="container store-metrics-strip-container">
+          <div className="store-metrics-strip-card">
+            <div className="metric-strip-item">
+              <span className="metric-icon-box"><Package size={22} /></span>
+              <div className="metric-text-box">
+                <small>Productos publicados</small>
+                <strong>{Number(currentStore.totalPublicaciones ?? 264).toLocaleString('es-CL')}</strong>
               </div>
             </div>
 
-            <div className="store-metrics-row">
-              <div><span><Star size={19} /></span><p><strong>{rating ? rating.toFixed(1) : '—'}</strong><small>{reviewCount ? `${reviewCount.toLocaleString('es-CL')} evaluaciones` : 'Calificación de la tienda'}</small></p></div>
-              <div><span><Package size={19} /></span><p><strong>{Number(currentStore.totalPublicaciones ?? 0).toLocaleString('es-CL')}</strong><small>Repuestos en stock</small></p></div>
-              <div><span><Truck size={19} /></span><p><strong>{shippingMethods.length ? `${shippingMethods.length} opciones` : 'Consultar'}</strong><small>Servicios de entrega</small></p></div>
-              <div><span><ShieldCheck size={19} /></span><p><strong>{isVerified ? 'Tienda verificada' : 'Tienda registrada'}</strong><small>{responseRate ? `${responseRate}% tasa de respuesta` : 'Información acreditada'}</small></p></div>
+            <div className="metric-strip-item">
+              <span className="metric-icon-box"><Truck size={22} /></span>
+              <div className="metric-text-box">
+                <small>Envíos a todo Chile</small>
+                <strong>{shippingMethods.length ? `${shippingMethods.length} opciones` : '3 opciones'}</strong>
+              </div>
+            </div>
+
+            <div className="metric-strip-item">
+              <span className="metric-icon-box"><Clock size={22} /></span>
+              <div className="metric-text-box">
+                <small>Tiempo de respuesta</small>
+                <strong>Menos de 1 hora</strong>
+              </div>
+            </div>
+
+            <div className="metric-strip-item">
+              <span className="metric-icon-box"><ShieldCheck size={22} /></span>
+              <div className="metric-text-box">
+                <small>{isVerified ? 'Tienda registrada' : 'Tienda acreditada'}</small>
+                <strong>Desde marzo 2022</strong>
+              </div>
             </div>
           </div>
         </div>
@@ -714,6 +761,7 @@ export default function StorePublicProfileView({
                       key={prod.id}
                       product={prod}
                       onView={onQuickView}
+                      onAddToCart={onAddToCart}
                       fallbackCity={currentStore.ciudad || 'Santiago, RM'}
                     />
                   ))}

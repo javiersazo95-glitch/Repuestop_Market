@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { qk } from '../services/queryKeys';
 import { 
   Car, Search, CheckCircle2, ShieldCheck, Zap, 
   ArrowRight, RefreshCw, AlertCircle, Sparkles, Store, Award, ChevronRight
 } from 'lucide-react';
 import { POPULAR_MARCAS, ANIOS_DISPONIBLES } from '../data/sampleVehicles';
-import { searchVehicleByPatenteApi } from '../services/api';
+import { getVehicleBrandsApi, searchVehicleByPatenteApi } from '../services/api';
 import { adaptVehicle } from '../services/adapters';
 
 export default function LicensePlateHero({ activeVehicle, onSelectVehicle, onOpenSellerModal }) {
@@ -12,6 +14,22 @@ export default function LicensePlateHero({ activeVehicle, onSelectVehicle, onOpe
   const [inputPatente, setInputPatente] = useState(activeVehicle ? activeVehicle.patente : '');
   const [isSearching, setIsSearching] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Fetch real vehicle brands from backend with fallbacks
+  const { data: remoteVehicleBrands = [] } = useQuery({
+    queryKey: qk.brands('vehicle'),
+    queryFn: async ({ signal }) => {
+      try {
+        const items = await getVehicleBrandsApi({ signal });
+        return Array.isArray(items) ? items.map((b) => b.nombre || b.name || b).filter(Boolean) : [];
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const availableBrands = remoteVehicleBrands.length ? remoteVehicleBrands : POPULAR_MARCAS;
 
   // Estados para búsqueda manual
   const [selectedMarca, setSelectedMarca] = useState('');
@@ -206,7 +224,7 @@ export default function LicensePlateHero({ activeVehicle, onSelectVehicle, onOpe
                   onChange={(e) => setSelectedMarca(e.target.value)}
                 >
                   <option value="">Seleccionar Marca</option>
-                  {POPULAR_MARCAS.map(marca => (
+                  {availableBrands.map(marca => (
                     <option key={marca} value={marca}>{marca}</option>
                   ))}
                 </select>

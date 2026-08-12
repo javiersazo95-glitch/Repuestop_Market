@@ -360,39 +360,44 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     : BUYER_PROFILE_COVER_URL;
   const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' }) : null;
 
+  const effectiveSellerId = user?.sellerId || user?.proveedorId || user?.tiendaId || user?.userId || user?.id;
+  const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
+
   const loadData = useCallback(async () => {
     setIsLoadingData(true);
     setDataError(null);
     try {
       if (isSeller) {
-        if (!user?.sellerId) throw new Error('No se encontró el identificador de tu tienda.');
-        const [ordersRes, summaryRes, conversationsRes, storeRes] = await Promise.all([
-          getSellerOrdersApi(user.sellerId),
-          getSellerInventorySummaryApi(user.sellerId),
-          getSellerConversationsApi(user.sellerId),
-          getSellerStoreApi(user.sellerId),
+        if (!effectiveSellerId) throw new Error('No se encontró el identificador de tu tienda.');
+        const [ordersRes, summaryRes, conversationsRes, storeRes] = await Promise.allSettled([
+          getSellerOrdersApi(effectiveSellerId),
+          getSellerInventorySummaryApi(effectiveSellerId),
+          getSellerConversationsApi(effectiveSellerId),
+          getSellerStoreApi(effectiveSellerId),
         ]);
-        setOrders(ordersRes?.content || []);
-        setInventorySummary(summaryRes);
-        setConversations(conversationsRes || []);
-        setStoreInfo(storeRes);
+        setOrders(ordersRes.status === 'fulfilled' ? (ordersRes.value?.content || ordersRes.value || []) : []);
+        setInventorySummary(summaryRes.status === 'fulfilled' ? summaryRes.value : null);
+        setConversations(conversationsRes.status === 'fulfilled' ? (conversationsRes.value || []) : []);
+        if (storeRes.status === 'fulfilled' && storeRes.value) {
+          setStoreInfo(storeRes.value);
+        }
       } else {
-        if (!user?.userId) throw new Error('No se encontró tu identificador de usuario.');
-        const [ordersRes, favoritesRes, conversationsRes] = await Promise.all([
-          getBuyerOrdersApi(user.userId),
-          getFavoritesApi(user.userId),
-          getBuyerConversationsApi(user.userId),
+        if (!effectiveUserId) throw new Error('No se encontró tu identificador de usuario.');
+        const [ordersRes, favoritesRes, conversationsRes] = await Promise.allSettled([
+          getBuyerOrdersApi(effectiveUserId),
+          getFavoritesApi(effectiveUserId),
+          getBuyerConversationsApi(effectiveUserId),
         ]);
-        setOrders(ordersRes?.content || []);
-        setFavorites(favoritesRes || []);
-        setConversations(conversationsRes || []);
+        setOrders(ordersRes.status === 'fulfilled' ? (ordersRes.value?.content || ordersRes.value || []) : []);
+        setFavorites(favoritesRes.status === 'fulfilled' ? (favoritesRes.value || []) : []);
+        setConversations(conversationsRes.status === 'fulfilled' ? (conversationsRes.value || []) : []);
       }
     } catch (error) {
       setDataError(error.message || 'No se pudieron cargar tus datos.');
     } finally {
       setIsLoadingData(false);
     }
-  }, [isSeller, user?.sellerId, user?.userId]);
+  }, [isSeller, effectiveSellerId, effectiveUserId]);
 
   useEffect(() => {
     loadData();
@@ -403,9 +408,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // en el perfil para que "Dirección Comercial de Tienda" muestre el dato
   // recién guardado sin esperar a un reload completo de la página.
   const refreshStoreInfoAfterAddressSync = useCallback(() => {
-    if (!isSeller || !user?.sellerId) return;
-    getSellerStoreApi(user.sellerId).then(setStoreInfo).catch(() => {});
-  }, [isSeller, user?.sellerId]);
+    if (!isSeller || !effectiveSellerId) return;
+    getSellerStoreApi(effectiveSellerId).then(setStoreInfo).catch(() => {});
+  }, [isSeller, effectiveSellerId]);
 
   useEffect(() => {
     if (!isSeller || !isEditing || availableVehicleBrands.length) return;

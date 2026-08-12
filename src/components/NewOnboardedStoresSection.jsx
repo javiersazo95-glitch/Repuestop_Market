@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
-import { getPublicStoresApi, getStoreProductsApi } from '../services/api';
+import { useQuery } from '@tanstack/react-query';
+import { qk } from '../services/queryKeys';
+import { getPublicStoresApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import MarketplaceSellerCard from './MarketplaceSellerCard';
-import { adaptPage, adaptProduct, adaptStore } from '../services/adapters';
+import { adaptPage, adaptStore } from '../services/adapters';
 import { resolveShippingService } from '../data/shippingMethods';
 
 // Se mantiene el nombre exportado porque StoresDirectoryView ya lo consume; la
@@ -13,52 +15,12 @@ export const getShippingIconConfig = resolveShippingService;
 
 export default function NewOnboardedStoresSection({ onOpenStores, onSelectStore }) {
   const { user } = useAuth();
-  const [stores, setStores] = useState([]);
-  const [inventoryTotals, setInventoryTotals] = useState({});
 
-  useEffect(() => {
-    let isMounted = true;
-    getPublicStoresApi({ page: 0, size: 5 })
-      .then((data) => {
-        if (isMounted) {
-          // Sin respaldo de mocks: solo se muestran tiendas reales y públicas.
-          setStores(adaptPage(data, adaptStore).items);
-        }
-      })
-      .catch((err) => {
-        console.warn('No se pudieron cargar los vendedores recientes:', err);
-        if (isMounted) setStores([]);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const visibleStoreIds = stores.slice(0, 5).map((store) => store.id).filter(Boolean).join(',');
-
-  useEffect(() => {
-    const storesToMeasure = stores.slice(0, 5).filter((store) => (
-      store.id && !Object.prototype.hasOwnProperty.call(inventoryTotals, store.id)
-    ));
-    if (!storesToMeasure.length) return undefined;
-
-    let isMounted = true;
-    Promise.all(storesToMeasure.map(async (store) => {
-      try {
-        const response = await getStoreProductsApi(store.id, { page: 0, size: 1 });
-        return [store.id, adaptPage(response, adaptProduct).total];
-      } catch {
-        return null;
-      }
-    })).then((entries) => {
-      if (!isMounted) return;
-      const resolvedEntries = entries.filter(Boolean);
-      if (resolvedEntries.length) setInventoryTotals((current) => ({ ...current, ...Object.fromEntries(resolvedEntries) }));
-    });
-
-    return () => { isMounted = false; };
-  }, [visibleStoreIds, inventoryTotals]);
+  const { data: stores = [] } = useQuery({
+    queryKey: qk.stores({ size: 5 }),
+    queryFn: ({ signal }) => getPublicStoresApi({ page: 0, size: 5, signal }),
+    select: (data) => adaptPage(data, adaptStore).items,
+  });
 
   return (
     <section className="new-stores-section container">
@@ -107,12 +69,9 @@ export default function NewOnboardedStoresSection({ onOpenStores, onSelectStore 
                 coverUrl: user.coverUrl || store.coverUrl,
               }
             : store;
-          const storeWithInventoryTotal = Object.prototype.hasOwnProperty.call(inventoryTotals, syncedStore.id)
-            ? { ...syncedStore, totalPublicaciones: inventoryTotals[syncedStore.id] }
-            : syncedStore;
-          const avatarPhoto = storeWithInventoryTotal.logoUrl || storeWithInventoryTotal.userProfileUrl || storeWithInventoryTotal.imagenUrl;
+          const avatarPhoto = syncedStore.logoUrl || syncedStore.userProfileUrl || syncedStore.imagenUrl;
 
-          return <MarketplaceSellerCard key={storeWithInventoryTotal.id} store={storeWithInventoryTotal} avatarPhoto={avatarPhoto} onView={onSelectStore} />;
+          return <MarketplaceSellerCard key={syncedStore.id} store={syncedStore} avatarPhoto={avatarPhoto} onView={onSelectStore} />;
         })}
       </div>
     </section>

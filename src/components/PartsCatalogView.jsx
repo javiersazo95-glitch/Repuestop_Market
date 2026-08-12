@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Search, Filter, SlidersHorizontal, ShieldCheck, MapPin, Star, Package,
   Clock, ArrowRight, ArrowLeft, X, CheckCircle2, RotateCcw, Tag, Truck,
@@ -9,6 +10,7 @@ import {
 // vista lanzaba ReferenceError al montarse (el ErrorBoundary la reemplazaba por completo).
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
+import { qk } from '../services/queryKeys';
 import {
   NAVIGATION_CATEGORIES, CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID
 } from '../data/categories';
@@ -41,9 +43,6 @@ export default function PartsCatalogView({
   initialPage = 1,
   onNavigationStateChange,
 }) {
-  const [products, setProducts] = useState([]);
-  const [productsLoading, setProductsLoading] = useState(true);
-  const [productsError, setProductsError] = useState(null);
   const [activeVehicle, setActiveVehicle] = useState(initialActiveVehicle);
   const [patentInput, setPatentInput] = useState('');
   const [patentError, setPatentError] = useState('');
@@ -100,40 +99,40 @@ export default function PartsCatalogView({
     }
   };
 
-  // Catálogo real: GET /api/v1/inventario/productos (endpoint público).
-  useEffect(() => {
-    let isMounted = true;
-    const normalizeName = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase().replace(/[^a-z0-9]/g, '');
-
-    const loadProducts = async () => {
+  // Catálogo real con TanStack Query
+  const {
+    data: products = [],
+    isLoading: productsLoading,
+    error: productsQueryError
+  } = useQuery({
+    queryKey: qk.products({
+      size: CATALOG_FETCH_SIZE,
+      categoryId: initialCatalogFilter?.categoryId,
+      subcategoryId: initialCatalogFilter?.subcategoryId,
+      comunaId: activeComunaId,
+    }),
+    queryFn: async ({ signal }) => {
       let categoriaId = initialCatalogFilter?.categoryId;
-      // Si el Home se presiona antes de que termine su catálogo auxiliar,
-      // resolvemos aquí el ID real en vez de caer al alias visual "motor".
       if (!categoriaId && initialCatalogFilter?.categoryName) {
-        const categories = await getPartCategoriesApi();
+        const categories = await getPartCategoriesApi({ signal });
+        const normalizeName = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
         categoriaId = (Array.isArray(categories) ? categories : [])
           .find((category) => normalizeName(category.nombre) === normalizeName(initialCatalogFilter.categoryName))?.id;
       }
-      return getPublicProductsApi({ page: 0, size: CATALOG_FETCH_SIZE, categoriaId, subcategoriaId: initialCatalogFilter?.subcategoryId, comunaId: activeComunaId, sort: 'createdAt,desc' });
-    };
-
-    loadProducts()
-      .then((data) => {
-        if (!isMounted) return;
-        setProducts(adaptPage(data, adaptProduct).items);
-        setProductsError(null);
-      })
-      .catch((err) => {
-        if (!isMounted) return;
-        setProductsError(err.message || 'No se pudo cargar el catálogo de repuestos.');
-      })
-      .finally(() => {
-        if (isMounted) setProductsLoading(false);
+      const data = await getPublicProductsApi({
+        page: 0,
+        size: CATALOG_FETCH_SIZE,
+        categoriaId,
+        subcategoriaId: initialCatalogFilter?.subcategoryId,
+        comunaId: activeComunaId,
+        sort: 'createdAt,desc',
+        signal,
       });
+      return adaptPage(data, adaptProduct).items;
+    },
+  });
 
-    return () => { isMounted = false; };
-  }, [initialCatalogFilter?.categoryId, initialCatalogFilter?.categoryName, initialCatalogFilter?.subcategoryId, activeComunaId]);
+  const productsError = productsQueryError ? (productsQueryError.message || 'No se pudo cargar el catálogo de repuestos.') : null;
 
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedCategory, setSelectedCategory] = useState(initialCatalogFilter?.category || 'TODAS');

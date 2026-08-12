@@ -1,18 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { qk } from '../services/queryKeys';
 import {
   Search, CheckCircle2, RefreshCw, AlertCircle, ChevronRight, Store,
-  CarFront, Barcode, Tag, Users, Truck, ShieldCheck,
+  CarFront, Barcode, Tag, Users, Truck, ShieldCheck, Car,
   ArrowLeft, ArrowRight, CircleHelp
 } from 'lucide-react';
 import { CAROUSEL_CATEGORIES, NAVIGATION_CATEGORIES } from '../data/categories';
-import { getPartCategoriesApi, getPublicCategoryCountsApi, getPublicProductsApi, searchVehicleByPatenteApi } from '../services/api';
+import { POPULAR_MARCAS, ANIOS_DISPONIBLES } from '../data/sampleVehicles';
+import { getPartCategoriesApi, getPublicCategoryCountsApi, getPublicProductsApi, getVehicleBrandsApi, searchVehicleByPatenteApi } from '../services/api';
 import { adaptVehicle, normalizeCategoryId } from '../services/adapters';
 import CategoryIconTile from './CategoryIconTile';
 
 const SEARCH_MODES = [
   { id: 'patente', label: 'Buscar por patente', icon: CarFront, placeholder: 'Ej: BB-CL-12' },
   { id: 'oem', label: 'Buscar por código OEM', icon: Tag, placeholder: 'Ej: 04465-0D150' },
-  { id: 'repuesto', label: 'Buscar por repuesto', icon: Search, placeholder: 'Ej: Pastillas de freno' }
+  { id: 'repuesto', label: 'Buscar por repuesto', icon: Search, placeholder: 'Ej: Pastillas de freno' },
+  { id: 'vehiculo', label: 'Por vehículo (Año / Marca)', icon: Car, placeholder: 'Seleccionar vehículo' }
 ];
 
 const CAROUSEL_PAGE_SIZE = 6;
@@ -110,15 +114,54 @@ export default function OfficialPatentHero({
     });
   };
 
+  // Fetch real vehicle brands from backend with fallbacks
+  const { data: remoteVehicleBrands = [] } = useQuery({
+    queryKey: qk.brands('vehicle'),
+    queryFn: async ({ signal }) => {
+      try {
+        const items = await getVehicleBrandsApi({ signal });
+        return Array.isArray(items) ? items.map((b) => b.nombre || b.name || b).filter(Boolean) : [];
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const availableBrands = remoteVehicleBrands.length ? remoteVehicleBrands : POPULAR_MARCAS;
+  const [selectedMarca, setSelectedMarca] = useState('');
+  const [selectedAnio, setSelectedAnio] = useState('');
+  const [selectedModelo, setSelectedModelo] = useState('');
+
   const handleSearch = async (valueToUse) => {
     const value = (valueToUse || inputValue).trim();
+
+    if (searchMode === 'vehiculo') {
+      if (!selectedMarca) {
+        setErrorMsg('Selecciona al menos la marca de tu vehículo.');
+        return;
+      }
+      setErrorMsg('');
+      const customVeh = {
+        patente: 'SELECCION-MANUAL',
+        marca: selectedMarca,
+        modelo: selectedModelo || 'Todos los Modelos',
+        anio: selectedAnio ? parseInt(selectedAnio) : 2020,
+        motor: 'Especificación Estándar VVT',
+      };
+      onSelectVehicle?.(customVeh);
+      onOpenCatalog?.(null, { q: `${selectedMarca} ${selectedModelo}`.trim() });
+      return;
+    }
+
     if (!value) {
       setErrorMsg(searchMode === 'patente' ? 'Ingresa una patente válida (ejemplo: BB-CL-12)' : 'Ingresa un término para buscar.');
       return;
     }
 
-    if (searchMode !== 'patente') {
-      onOpenCatalog?.();
+    if (searchMode === 'oem' || searchMode === 'repuesto') {
+      setErrorMsg('');
+      onOpenCatalog?.(null, { q: value });
       return;
     }
 
@@ -231,30 +274,64 @@ export default function OfficialPatentHero({
               </div>
 
               <div className="light-search-form">
-                <div className="light-input-row">
-                  {searchMode === 'patente' && (
-                    <button className="country-selector" type="button">
-                      <span>🇨🇱</span><strong>CHILE</strong><ChevronRight size={14} />
-                    </button>
-                  )}
-                  <div className="light-query-field">
+                {searchMode === 'vehiculo' ? (
+                  <div className="flex flex-wrap gap-3 mb-4 w-full">
+                    <select
+                      className="flex-1 min-w-[140px] px-3 py-2 border rounded-lg bg-white text-sm"
+                      value={selectedAnio}
+                      onChange={(e) => setSelectedAnio(e.target.value)}
+                    >
+                      <option value="">Año (Ej: 2021)</option>
+                      {ANIOS_DISPONIBLES.map((anio) => (
+                        <option key={anio} value={anio}>{anio}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      className="flex-1 min-w-[160px] px-3 py-2 border rounded-lg bg-white text-sm"
+                      value={selectedMarca}
+                      onChange={(e) => setSelectedMarca(e.target.value)}
+                    >
+                      <option value="">Marca del Auto</option>
+                      {availableBrands.map((marca) => (
+                        <option key={marca} value={marca}>{marca}</option>
+                      ))}
+                    </select>
+
                     <input
                       type="text"
-                      placeholder={mode.placeholder}
-                      value={inputValue}
-                      onChange={(event) => {
-                        setInputValue(searchMode === 'patente' ? event.target.value.toUpperCase() : event.target.value);
-                        if (errorMsg) setErrorMsg('');
-                      }}
-                      onKeyDown={(event) => event.key === 'Enter' && handleSearch()}
+                      placeholder="Modelo (Ej: RAV4)"
+                      className="flex-1 min-w-[160px] px-3 py-2 border rounded-lg bg-white text-sm"
+                      value={selectedModelo}
+                      onChange={(e) => setSelectedModelo(e.target.value)}
                     />
-                    {searchMode === 'patente' && <button type="button" className="plate-help"><CircleHelp size={14} /> ¿Dónde está mi patente?</button>}
                   </div>
-                </div>
+                ) : (
+                  <div className="light-input-row">
+                    {searchMode === 'patente' && (
+                      <button className="country-selector" type="button">
+                        <span>🇨🇱</span><strong>CHILE</strong><ChevronRight size={14} />
+                      </button>
+                    )}
+                    <div className="light-query-field">
+                      <input
+                        type="text"
+                        placeholder={mode.placeholder}
+                        value={inputValue}
+                        onChange={(event) => {
+                          setInputValue(searchMode === 'patente' ? event.target.value.toUpperCase() : event.target.value);
+                          if (errorMsg) setErrorMsg('');
+                        }}
+                        onKeyDown={(event) => event.key === 'Enter' && handleSearch()}
+                      />
+                      {searchMode === 'patente' && <button type="button" className="plate-help"><CircleHelp size={14} /> ¿Dónde está mi patente?</button>}
+                    </div>
+                  </div>
+                )}
 
                 <button className="light-primary-search" onClick={() => handleSearch()} disabled={isSearching}>
                   {isSearching ? <RefreshCw size={21} className="spin-icon" /> : <Search size={22} />}
-                  {searchMode === 'patente' ? 'Buscar repuestos' : 'Buscar'}
+                  {searchMode === 'patente' ? 'Buscar repuestos' : searchMode === 'vehiculo' ? 'Buscar por vehículo' : 'Buscar'}
                 </button>
 
                 {errorMsg && <div className="light-search-error"><AlertCircle size={14} /> {errorMsg}</div>}

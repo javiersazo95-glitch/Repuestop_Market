@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Building2, Search, Filter, SlidersHorizontal, MapPin, ShieldCheck,
   Star, Package, Clock, ArrowRight, ArrowLeft, X, CheckCircle2, RotateCcw,
   Store, Tag, Truck, Bike, Globe, ChevronLeft, ChevronRight, ChevronDown, Car, Wrench
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { qk } from '../services/queryKeys';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
 import { useAuth } from '../context/AuthContext';
-import { getPublicStoresApi, getStoreProductsApi } from '../services/api';
-import { adaptPage, adaptProduct, adaptStore } from '../services/adapters';
+import { getPublicStoresApi } from '../services/api';
+import { adaptPage, adaptStore } from '../services/adapters';
 import MarketplaceSellerCard from './MarketplaceSellerCard';
 
 // El backend acota el tamaño de página a 100. El directorio filtra y pagina en
@@ -16,17 +19,43 @@ const STORES_FETCH_SIZE = 100;
 
 export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   const { user } = useAuth();
-  const [stores, setStores] = useState([]);
-  const [storesLoading, setStoresLoading] = useState(true);
-  const [storesError, setStoresError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('texto') || '');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   const [selectedCategoryType, setSelectedCategoryType] = useState('TODAS');
   const [selectedRegion, setSelectedRegion] = useState('TODAS');
   const [selectedShipping, setSelectedShipping] = useState('TODAS');
   const [selectedBrand, setSelectedBrand] = useState('TODAS');
   const [sortBy, setSortBy] = useState('relevancia');
   const [openFilterSections, setOpenFilterSections] = useState({ business: true, shipping: true });
-  const [inventoryTotals, setInventoryTotals] = useState({});
+
+  // Debounce de 400ms para evitar una petición por cada tecla presionada
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (searchQuery.trim()) {
+          next.set('texto', searchQuery.trim());
+        } else {
+          next.delete('texto');
+        }
+        return next;
+      }, { replace: true });
+    }, 400);
+
+    return () => clearTimeout(handler);
+  }, [searchQuery, setSearchParams]);
+
+  // TanStack Query: Cargas en caché, cancelables, deduplicadas y con texto al servidor
+  const { data: stores = [], isLoading: storesLoading, error: queryError } = useQuery({
+    queryKey: qk.stores({ size: STORES_FETCH_SIZE, texto: debouncedSearchQuery }),
+    queryFn: ({ signal }) => getPublicStoresApi({ page: 0, size: STORES_FETCH_SIZE, texto: debouncedSearchQuery, signal }),
+    select: (data) => adaptPage(data, adaptStore).items,
+  });
+
+  const storesError = queryError ? (queryError.message || 'No se pudo cargar el directorio de tiendas.') : null;
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,27 +99,6 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedCategoryType, selectedRegion, selectedShipping, selectedBrand, sortBy, itemsPerPage]);
-
-  // Directorio real de tiendas: GET /api/v1/tiendas/publicas (endpoint público).
-  useEffect(() => {
-    let isMounted = true;
-
-    getPublicStoresApi({ page: 0, size: STORES_FETCH_SIZE })
-      .then((data) => {
-        if (!isMounted) return;
-        setStores(adaptPage(data, adaptStore).items);
-        setStoresError(null);
-      })
-      .catch((err) => {
-        if (!isMounted) return;
-        setStoresError(err.message || 'No se pudo cargar el directorio de tiendas.');
-      })
-      .finally(() => {
-        if (isMounted) setStoresLoading(false);
-      });
-
-    return () => { isMounted = false; };
-  }, []);
 
   // Synchronize authenticated user profile photo / cover photo with their store card
   const getSyncedStores = () => {
@@ -172,35 +180,6 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(sortedStores.length, currentPage * itemsPerPage);
   const paginatedStores = sortedStores.slice(startIndex, endIndex);
-  const visibleStoreIds = paginatedStores.map((store) => store.id).filter(Boolean).join(',');
-
-  // El directorio puede no traer el contador de publicaciones en su DTO. Para que
-  // cada card muestre el inventario real, se consulta el total paginado de cada
-  // tienda visible (size=1 basta: totalElements contiene el valor correcto).
-  useEffect(() => {
-    const storesToMeasure = paginatedStores.filter((store) => (
-      store.id && !Object.prototype.hasOwnProperty.call(inventoryTotals, store.id)
-    ));
-    if (!storesToMeasure.length) return undefined;
-
-    let isMounted = true;
-    Promise.all(storesToMeasure.map(async (store) => {
-      try {
-        const response = await getStoreProductsApi(store.id, { page: 0, size: 1 });
-        return [store.id, adaptPage(response, adaptProduct).total];
-      } catch {
-        return null;
-      }
-    })).then((entries) => {
-      if (!isMounted) return;
-      const resolvedEntries = entries.filter(Boolean);
-      if (resolvedEntries.length) {
-        setInventoryTotals((current) => ({ ...current, ...Object.fromEntries(resolvedEntries) }));
-      }
-    });
-
-    return () => { isMounted = false; };
-  }, [visibleStoreIds, inventoryTotals]);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -425,18 +404,12 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
               <>
                 <div className={`stores-cards-grid-directory ${paginatedStores.length < 4 ? 'is-incomplete-row' : ''}`}>
                   {paginatedStores.map((store) => {
-                    const specialties = parseSpecialties(store.especialidad);
                     const avatarPhoto = store.logoUrl || store.userProfileUrl || store.imagenUrl;
-                    const coverPhoto = store.coverUrl;
-
-                    const storeWithInventoryTotal = Object.prototype.hasOwnProperty.call(inventoryTotals, store.id)
-                      ? { ...store, totalPublicaciones: inventoryTotals[store.id] }
-                      : store;
 
                     return (
                       <MarketplaceSellerCard
                         key={store.id}
-                        store={storeWithInventoryTotal}
+                        store={store}
                         avatarPhoto={avatarPhoto}
                         onView={onSelectStore}
                       />
