@@ -626,11 +626,11 @@ export async function getSellerProductQuestionsApi(proveedorId) {
 }
 
 export async function getProductQuestionsApi(productoId) {
-  return fetchApi(`/productos/${productoId}/preguntas`, { method: 'GET' });
+  return fetchApi(`/inventario/productos/${productoId}/preguntas`, { method: 'GET' });
 }
 
 export async function createProductQuestionApi(productoId, question) {
-  return fetchApi(`/productos/${productoId}/preguntas`, {
+  return fetchApi(`/inventario/productos/${productoId}/preguntas`, {
     method: 'POST',
     body: JSON.stringify(question),
   });

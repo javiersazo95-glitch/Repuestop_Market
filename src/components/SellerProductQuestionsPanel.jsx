@@ -86,7 +86,7 @@ export default function SellerProductQuestionsPanel({ questions = [], products =
         return <article className="seller-question-product-group" key={productId}>
           <header>{rawPhoto ? <img src={resolveMediaUrl(rawPhoto)} alt="" /> : <span><Package /></span>}<div><h3>{name}</h3><small>SKU: {product.skuProveedor || product.sku || 'No informado'}</small></div><b><MessageCircleQuestion /> {group.questions.length} {group.questions.length === 1 ? 'pregunta' : 'preguntas'}</b></header>
           <div className="seller-question-list">{group.questions.map((question, index) => <div className="seller-question-item" key={question.id || index}>
-            <div className="seller-question-meta"><span className={question.answer ? 'answered' : 'pending'}>{question.answer ? <CheckCircle2 /> : <Clock3 />}{question.answer ? 'Respondida' : 'Pendiente'}</span><small>{question.userName || question.usuarioNombre || question.authorName || 'Comprador'} · {formatDate(question.createdAt || question.fechaCreacion)}</small></div>
+            <div className="seller-question-meta"><span className={question.answer ? 'answered' : 'pending'}>{question.answer ? <CheckCircle2 /> : <Clock3 />}{question.answer ? 'Respondida' : 'Pendiente'}</span><small>{question.compradorNombre || question.userName || question.usuarioNombre || question.authorName || 'Comprador'} · {formatDate(question.fechaPregunta || question.createdAt || question.fechaCreacion)}</small></div>
             <strong>{question.text}</strong>
             {question.answer ? <p><b>Respuesta de la tienda:</b> {question.answer}</p> : <p className="waiting-answer">Esta pregunta todavía espera una respuesta de la tienda.</p>}
           </div>)}</div>
