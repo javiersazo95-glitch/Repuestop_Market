@@ -58,7 +58,9 @@ function split(doc, value, width) {
 function loadImageElement(url, crossOrigin) {
   return new Promise((resolve, reject) => {
     const element = new Image();
-    if (crossOrigin) element.crossOrigin = crossOrigin;
+    if (crossOrigin && /^https?:\/\//i.test(url)) {
+      element.crossOrigin = crossOrigin;
+    }
     element.onload = () => resolve(element);
     element.onerror = () => reject(new Error('No se pudo cargar la imagen'));
     element.src = url;
@@ -66,31 +68,49 @@ function loadImageElement(url, crossOrigin) {
 }
 
 // Respaldo cuando `fetch` no puede leer el archivo (host sin CORS para XHR o
-// respuesta protegida): el <img> sí lo carga y el canvas lo exporta.
+// respuesta protegida): el <img> sí lo carga y el canvas lo exporta a PNG.
 async function imageElementToDataUrl(url) {
-  if (typeof document === 'undefined') return null;
-  const image = await loadImageElement(url, 'anonymous');
-  const canvas = document.createElement('canvas');
-  canvas.width = image.naturalWidth;
-  canvas.height = image.naturalHeight;
-  canvas.getContext('2d').drawImage(image, 0, 0);
-  return canvas.toDataURL('image/png');
+  if (typeof document === 'undefined' || !url) return null;
+  try {
+    const image = await loadImageElement(url, 'anonymous');
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth || 200;
+    canvas.height = image.naturalHeight || 200;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0);
+    return canvas.toDataURL('image/png');
+  } catch {
+    try {
+      const imageWithoutCors = await loadImageElement(url, null);
+      const canvas = document.createElement('canvas');
+      canvas.width = imageWithoutCors.naturalWidth || 200;
+      canvas.height = imageWithoutCors.naturalHeight || 200;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(imageWithoutCors, 0, 0);
+      return canvas.toDataURL('image/png');
+    } catch {
+      return null;
+    }
+  }
 }
 
 async function urlToDataUrl(url) {
   if (!url) return null;
-  if (/^data:/i.test(url)) return url;
+  if (/^data:image\/png;base64,/i.test(url)) return url;
+  if (/^data:/i.test(url)) {
+    return imageElementToDataUrl(url);
+  }
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`No se pudo cargar la imagen (${response.status})`);
-    const mime = response.headers.get('content-type') || 'image/png';
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    let binary = '';
-    const chunkSize = 0x8000;
-    for (let index = 0; index < bytes.length; index += chunkSize) {
-      binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    try {
+      const dataUrl = await imageElementToDataUrl(objectUrl);
+      return dataUrl;
+    } finally {
+      URL.revokeObjectURL(objectUrl);
     }
-    return `data:${mime};base64,${btoa(binary)}`;
   } catch {
     return imageElementToDataUrl(url);
   }
@@ -99,34 +119,33 @@ async function urlToDataUrl(url) {
 // Recorta la imagen en un círculo (mismo encuadre que la foto de perfil de la tienda).
 async function toCircularDataUrl(dataUrl, size = 512) {
   if (!dataUrl || typeof document === 'undefined') return dataUrl;
-  const image = await new Promise((resolve, reject) => {
-    const element = new Image();
-    element.crossOrigin = 'anonymous';
-    element.onload = () => resolve(element);
-    element.onerror = () => reject(new Error('No se pudo procesar el logo de la tienda'));
-    element.src = dataUrl;
-  });
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const context = canvas.getContext('2d');
-  context.fillStyle = '#ffffff';
-  context.fillRect(0, 0, size, size);
-  context.save();
-  context.beginPath();
-  context.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-  context.clip();
-  const scale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
-  const width = image.naturalWidth * scale;
-  const height = image.naturalHeight * scale;
-  context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
-  context.restore();
-  return canvas.toDataURL('image/png');
+  try {
+    const image = await loadImageElement(dataUrl, null);
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, size, size);
+    context.save();
+    context.beginPath();
+    context.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+    context.clip();
+    const scale = Math.max(size / (image.naturalWidth || size), size / (image.naturalHeight || size));
+    const width = (image.naturalWidth || size) * scale;
+    const height = (image.naturalHeight || size) * scale;
+    context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+    context.restore();
+    return canvas.toDataURL('image/png');
+  } catch {
+    return dataUrl;
+  }
 }
 
 // El logo de la tienda siempre se registra en el PDF: si el recorte circular
 // falla, se usa la imagen original en vez de perder el logo.
 async function loadStoreLogo(url) {
+  if (!url || typeof url !== 'string') return null;
   const dataUrl = await urlToDataUrl(url).catch(() => null);
   if (!dataUrl) return null;
   return toCircularDataUrl(dataUrl).catch(() => dataUrl);
@@ -135,12 +154,16 @@ async function loadStoreLogo(url) {
 function addContainedImage(doc, dataUrl, x, y, maxWidth, maxHeight, align = 'center') {
   if (!dataUrl) return false;
   try {
-    const properties = doc.getImageProperties(dataUrl);
+    let formattedDataUrl = dataUrl;
+    if (typeof dataUrl === 'string' && dataUrl.startsWith('data:') && !dataUrl.startsWith('data:image/')) {
+      formattedDataUrl = dataUrl.replace(/^data:[^;]+;/, 'data:image/png;');
+    }
+    const properties = doc.getImageProperties(formattedDataUrl);
     const ratio = Math.min(maxWidth / properties.width, maxHeight / properties.height);
     const width = properties.width * ratio;
     const height = properties.height * ratio;
     const offsetX = align === 'left' ? 0 : (maxWidth - width) / 2;
-    doc.addImage(dataUrl, properties.fileType, x + offsetX, y + (maxHeight - height) / 2, width, height, undefined, 'FAST');
+    doc.addImage(formattedDataUrl, properties.fileType || 'PNG', x + offsetX, y + (maxHeight - height) / 2, width, height, undefined, 'FAST');
     return true;
   } catch {
     return false;

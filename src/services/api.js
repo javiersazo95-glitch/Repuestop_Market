@@ -55,6 +55,9 @@ export async function fetchApi(endpoint, options = {}) {
     }
 
     if (!response.ok) {
+      if (response.status === 401 && token && !endpoint.includes('/auth/login')) {
+        window.dispatchEvent(new CustomEvent('repuestop:unauthorized'));
+      }
       const errorMessage =
         (typeof data === 'object' && (data?.message || data?.error)) ||
         (typeof data === 'string' ? data : `Error HTTP ${response.status}`);

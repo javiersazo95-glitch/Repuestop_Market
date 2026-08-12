@@ -46,6 +46,15 @@ export function AuthProvider({ children }) {
     }
   }, [token]);
 
+  // Escuchar eventos 401 Unauthorized para limpiar la sesión expirada
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logoutLocal();
+    };
+    window.addEventListener('repuestop:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('repuestop:unauthorized', handleUnauthorized);
+  }, []);
+
   const saveSession = (authResponse, preferredRole) => {
     const accessToken = authResponse.token || authResponse.accessToken;
     const baseUser = authResponse.usuario || authResponse.user || {

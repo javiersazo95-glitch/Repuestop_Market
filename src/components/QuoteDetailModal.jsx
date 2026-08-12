@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, BadgeCheck, BadgeDollarSign, Bell, CalendarDays, CalendarClock,
-  CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, Download, ExternalLink, Eye, FileText, Flag,
+  CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, CreditCard, Download, ExternalLink, Eye, FileText, Flag,
   Headphones, Info, Loader2, Lock, MessageSquare, MoreHorizontal, Package,
   Pencil, Send, ShieldCheck, ShoppingCart, Store, Truck, X,
 } from 'lucide-react';
@@ -169,10 +169,11 @@ export default function QuoteDetailModal({
   const buyerName = mode === 'seller' ? participantName : (user?.userName || user?.nombre || 'Comprador RepuesTop');
   const participantPhoto = resolveMediaUrl(quote.otroParticipanteFotoUrl);
   // El logo va al PDF de la cotización, así que se agotan todos los campos donde
-  // el backend puede entregarlo antes de caer en el placeholder.
-  const storePhoto = mode === 'buyer'
-    ? resolveMediaUrl(quote.otroParticipanteFotoUrl || quote.proveedorLogoUrl || quote.sellerLogoUrl || quote.tiendaLogoUrl)
-    : resolveMediaUrl(user?.logoUrl || user?.userProfileUrl || user?.storeLogoUrl || user?.avatarUrl);
+  // el backend o el usuario pueden entregarlo antes de caer en el placeholder.
+  const rawStoreLogo = mode === 'buyer'
+    ? (quote?.otroParticipanteFotoUrl || quote?.proveedorLogoUrl || quote?.sellerLogoUrl || quote?.tiendaLogoUrl || quote?.logoUrl || quote?.proveedorFotoUrl || quote?.logoTienda || quote?.imagenUrl || activeQuote?.proveedorLogoUrl || activeQuote?.logoUrl || user?.logoUrl || user?.userProfileUrl || user?.storeLogoUrl)
+    : (user?.logoUrl || user?.userProfileUrl || user?.storeLogoUrl || user?.avatarUrl || quote?.proveedorLogoUrl || quote?.otroParticipanteFotoUrl || quote?.sellerLogoUrl || quote?.tiendaLogoUrl || quote?.logoUrl || activeQuote?.proveedorLogoUrl || activeQuote?.logoUrl);
+  const storePhoto = resolveMediaUrl(rawStoreLogo);
   const expired = activeQuote ? isQuoteExpired(activeQuote) : false;
   const closed = quote.estado === 'CERRADA';
   const documentName = quoteDocumentFilename(quote.id);
@@ -361,12 +362,34 @@ export default function QuoteDetailModal({
           <header className="quote-ws-chat-header">
             <div className="quote-ws-person"><span>{participantPhoto ? <img src={participantPhoto} alt={participantName} /> : initials(participantName)}</span><div><strong>{participantName}</strong><small>{mode === 'buyer' ? 'Vendedor verificado' : 'Comprador'} <i /> En línea</small></div></div>
             <div className="quote-ws-chat-actions">
-              <button
-                type="button"
-                className="quote-ws-details-button"
-                disabled={mode === 'buyer' && !activeQuote}
-                onClick={() => mode === 'seller' ? setQuoteEditorOpen(true) : setQuotePreviewOpen(true)}
-              ><Eye size={17} /> {mode === 'seller' ? 'Ver detalles de la cotización' : (activeQuote ? 'Ver detalle de la cotización' : 'Esperando cotización')}</button>
+              {(() => {
+                const isBuyerPayReady = mode === 'buyer' && Boolean(activeQuote);
+                return (
+                  <button
+                    type="button"
+                    className={`quote-ws-details-button ${isBuyerPayReady ? 'pay-ready' : ''}`}
+                    disabled={mode === 'buyer' && !activeQuote}
+                    onClick={() => (mode === 'seller' ? setQuoteEditorOpen(true) : setQuotePreviewOpen(true))}
+                  >
+                    {isBuyerPayReady ? (
+                      <>
+                        <CreditCard size={16} />
+                        <span>Revisar y pagar</span>
+                      </>
+                    ) : mode === 'seller' ? (
+                      <>
+                        <Eye size={17} />
+                        <span>Ver detalles de la cotización</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye size={17} />
+                        <span>Esperando cotización</span>
+                      </>
+                    )}
+                  </button>
+                );
+              })()}
               <button type="button" className="quote-ws-icon-button" aria-label="Opciones de la conversación" aria-expanded={optionsOpen} onClick={() => setOptionsOpen(true)}><MoreHorizontal size={20} /></button>
             </div>
           </header>
