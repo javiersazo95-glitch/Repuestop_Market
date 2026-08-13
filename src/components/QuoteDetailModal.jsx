@@ -326,6 +326,10 @@ export default function QuoteDetailModal({
         facturaGiro: documentType === 'FACTURA' ? invoice.giro : null,
         direccionId: needsAddress ? Number(selectedAddressId) : null,
       });
+      if (order?.urlPago) {
+        window.location.href = order.urlPago;
+        return;
+      }
       sessionStorage.setItem('repuestop_last_successful_order', JSON.stringify(order));
       window.location.assign('/compra-exitosa');
     } catch (error) {

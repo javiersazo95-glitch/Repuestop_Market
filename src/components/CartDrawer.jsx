@@ -91,6 +91,10 @@ export default function CartDrawer({
         facturaGiro: documentType === 'FACTURA' ? invoiceData.giro.trim() : '',
       });
       onClearCart?.();
+      if (order?.urlPago) {
+        window.location.href = order.urlPago;
+        return;
+      }
       if (onOrderCreated) onOrderCreated(order);
       else setOrderSuccess(order);
     } catch (error) {
