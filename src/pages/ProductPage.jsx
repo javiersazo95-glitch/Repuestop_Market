@@ -12,6 +12,8 @@ import { getPublicProductApi, getPublicProductsApi } from '../services/api';
 import { adaptPage, adaptProduct } from '../services/adapters';
 import { qk } from '../services/queryKeys';
 
+import ProductDetailSkeleton from '../components/skeletons/ProductDetailSkeleton';
+
 // Respaldo cuando el backend no expone la ficha unitaria: se busca el producto
 // dentro del listado público paginado.
 const FALLBACK_FETCH_SIZE = 100;
@@ -69,12 +71,7 @@ export default function ProductPage() {
   }
 
   if (isLoading || !product) {
-    return (
-      <div className="route-status-panel">
-        <Loader2 size={34} className="route-status-spinner" aria-hidden="true" />
-        <p>Cargando la ficha del repuesto…</p>
-      </div>
-    );
+    return <ProductDetailSkeleton />;
   }
 
   return (

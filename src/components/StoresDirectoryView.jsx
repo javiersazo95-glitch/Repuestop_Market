@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { getPublicStoresApi } from '../services/api';
 import { adaptPage, adaptStore } from '../services/adapters';
 import MarketplaceSellerCard from './MarketplaceSellerCard';
+import StoreCardSkeleton from './skeletons/StoreCardSkeleton';
 
 /**
  * /tiendas/publicas topea `size` en 100. Antes ese tope se pedía SIEMPRE (una
@@ -399,10 +400,10 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
           {/* Stores Cards Column (Right Grid) */}
           <main className="directory-stores-main">
             {isLoading ? (
-              <div className="directory-empty-state">
-                <Building2 size={56} className="empty-icon-gray" />
-                <h3>Cargando tiendas…</h3>
-                <p>Consultando el directorio de casas de repuestos acreditadas.</p>
+              <div className="stores-cards-grid-directory" aria-busy="true">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <StoreCardSkeleton key={i} />
+                ))}
               </div>
             ) : storesError ? (
               <div className="directory-empty-state">

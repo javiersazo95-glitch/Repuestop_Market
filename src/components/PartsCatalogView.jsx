@@ -10,6 +10,7 @@ import {
 // vista lanzaba ReferenceError al montarse (el ErrorBoundary la reemplazaba por completo).
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
+import ProductCardSkeleton from './skeletons/ProductCardSkeleton';
 import { qk } from '../services/queryKeys';
 import {
   NAVIGATION_CATEGORIES, CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID
@@ -815,10 +816,10 @@ export default function PartsCatalogView({
           {/* Parts Cards Column (Right Grid) */}
           <main className="catalog-parts-main">
             {productsLoading ? (
-              <div className="directory-empty-state">
-                <Package size={56} className="empty-icon-gray" />
-                <h3>Cargando catálogo…</h3>
-                <p>Consultando los repuestos publicados por las tiendas.</p>
+              <div className="parts-cards-grid-catalog" aria-busy="true">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <ProductCardSkeleton key={i} />
+                ))}
               </div>
             ) : productsError ? (
               <div className="directory-empty-state">

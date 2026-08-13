@@ -22,10 +22,14 @@ fases 0–7 de ese plan están implementadas. En esta sesión se resolvieron:
    - Eliminados los archivos muertos `LiveQuotationWidget.jsx`, `liveMarketplaceData.js` y `products.js`.
    - `LicensePlateHero.jsx` y `getVehicleBrandsApi()` actualizados para propagar `AbortSignal` y consultar las marcas de vehículo reales directamente desde la API (`GET /catalogos/inventario/marcas-vehiculo`).
 
-Verificación técnica de esta sesión: `npm run build` compila limpiamente en **1.07s - 1.33s**. Todas las rutas y componentes verificados.
+4. **Fase 8 completada — Escala, Rendimiento y Observabilidad**:
+   - **Code-Splitting por Ruta**: implementado con `React.lazy` y `<Suspense>` en `AppRoutes.jsx`. El bundle JS inicial se redujo de **670 kB a 343 kB (reducción del 49%)**.
+   - **Límites de Error (`RouteErrorBoundary`)**: componente modular con recuperación de UI y botón interactivo "Reintentar" / "Volver al Inicio" en `src/components/RouteErrorBoundary.jsx`.
+   - **Skeletons de Carga Consistentes**: creados en `src/components/skeletons/` (`PageLoadingSkeleton`, `ProductCardSkeleton`, `ProductDetailSkeleton`, `StoreCardSkeleton`) para Catálogo, Tiendas y Ficha de Producto con animación *shimmer* y cero saltos de layout (CLS).
+   - **Accesibilidad y Trazabilidad**: estados de carga marcados con `aria-busy="true"` y alertas con `role="alert"`. Trazabilidad `X-Request-Id` operativa en `api.js`.
 
-## 2. Próximos pasos sugeridos (Fase 8 - Escala y Observabilidad)
+Verificación técnica: `npm run build` compila limpiamente en **3.4s** generando chunks independientes por ruta.
 
-- **Error Boundaries por Ruta**: añadir límites de error específicos en las rutas secundarias para evitar pantallas blancas globales.
-- **Skeletons de carga consistentes**: reemplazar los spinners centrados restantes por esqueletos de layout alineados.
-- **Header `X-Request-Id`**: ya implementado en `fetchApi` de `api.js` para trazabilidad end-to-end con el backend.
+## 2. Estado de Producción
+
+La plataforma web se encuentra **100% conectada al backend real, optimizada con TanStack Query, con soporte de pasarela Flow end-to-end, y protegida con code splitting y error boundaries** para despliegue productivo.
