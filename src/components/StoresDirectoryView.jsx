@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Building2, Search, Filter, SlidersHorizontal, MapPin, ShieldCheck,
   Star, ArrowLeft, X, CheckCircle2, RotateCcw,
-  Store, Tag, Truck, Bike, Globe, ChevronLeft, ChevronRight, ChevronDown, Car, Wrench
+  Store, Tag, Truck, Bike, ChevronLeft, ChevronRight, ChevronDown, Car
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
 import { useAuth } from '../context/AuthContext';
@@ -13,9 +13,40 @@ import { getPublicStoresApi } from '../services/api';
 import { adaptPage, adaptStore } from '../services/adapters';
 import MarketplaceSellerCard from './MarketplaceSellerCard';
 
-// El backend acota el tamaño de página a 100. El directorio filtra y pagina en
-// cliente, así que se trae un bloque grande y se deja que la UI haga el resto.
-const STORES_FETCH_SIZE = 100;
+/**
+ * /tiendas/publicas topea `size` en 100. Antes ese tope se pedía SIEMPRE (una
+ * sola consulta de 100, sin importar cuántas tiendas hubiera realmente) y todo
+ * el filtrado y la paginación se hacían en el cliente sobre ese bloque —
+ * pasadas las 100 tiendas, las siguientes quedaban invisibles sin ningún aviso.
+ *
+ * Ahora hay dos consultas, igual que en la app móvil:
+ * - `pageQuery`: la página real que se muestra, paginada por el servidor con
+ *   `texto` y `comuna` (los dos filtros que el backend sí resuelve). Escala sin
+ *   límite: la tienda 150 se ve igual que la 5.
+ * - `poolQuery`: hasta 100 tiendas (ya acotadas por `texto`/`comuna`) para
+ *   construir las opciones de los filtros que el backend no soporta (marca,
+ *   envío, giro) y para resolverlos en el cliente cuando el usuario los usa.
+ *   Solo en ese caso la paginación deja de ser exacta contra el sistema
+ *   completo — y el contador de resultados lo dice explícitamente en vez de
+ *   fingir un total que no es.
+ */
+const FILTER_POOL_SIZE = 100;
+
+/**
+ * Opciones de filtro derivadas de los datos reales del pool, no de una lista
+ * fija en el código. Se deduplica ignorando mayúsculas porque el giro y los
+ * métodos de envío los escribe cada vendedor a mano.
+ */
+function uniqueOptions(values) {
+  const byKey = new Map();
+  values.forEach((value) => {
+    const label = (value || '').toString().trim();
+    if (!label) return;
+    const key = label.toLowerCase();
+    if (!byKey.has(key)) byKey.set(key, label);
+  });
+  return Array.from(byKey.values()).sort((a, b) => a.localeCompare(b, 'es'));
+}
 
 export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   const { user } = useAuth();
@@ -23,163 +54,150 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
 
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get('texto') || '');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
-  const [selectedCategoryType, setSelectedCategoryType] = useState('TODAS');
-  const [selectedRegion, setSelectedRegion] = useState('TODAS');
+  const [selectedGiro, setSelectedGiro] = useState('TODAS');
+  const [selectedComuna, setSelectedComuna] = useState(() => searchParams.get('comuna') || 'TODAS');
   const [selectedShipping, setSelectedShipping] = useState('TODAS');
   const [selectedBrand, setSelectedBrand] = useState('TODAS');
   const [sortBy, setSortBy] = useState('relevancia');
   const [openFilterSections, setOpenFilterSections] = useState({ business: true, shipping: true });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(6);
 
-  // Debounce de 400ms para evitar una petición por cada tecla presionada
+  // Debounce de 400ms para evitar una petición por cada tecla presionada.
+  // La comuna se sincroniza junto al texto porque los dos viajan al backend.
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
-        if (searchQuery.trim()) {
-          next.set('texto', searchQuery.trim());
-        } else {
-          next.delete('texto');
-        }
+        if (searchQuery.trim()) next.set('texto', searchQuery.trim());
+        else next.delete('texto');
+        if (selectedComuna !== 'TODAS') next.set('comuna', selectedComuna);
+        else next.delete('comuna');
         return next;
       }, { replace: true });
     }, 400);
 
     return () => clearTimeout(handler);
-  }, [searchQuery, setSearchParams]);
+  }, [searchQuery, selectedComuna, setSearchParams]);
 
-  // TanStack Query: Cargas en caché, cancelables, deduplicadas y con texto al servidor
-  const { data: stores = [], isLoading: storesLoading, error: queryError } = useQuery({
-    queryKey: qk.stores({ size: STORES_FETCH_SIZE, texto: debouncedSearchQuery }),
-    queryFn: ({ signal }) => getPublicStoresApi({ page: 0, size: STORES_FETCH_SIZE, texto: debouncedSearchQuery, signal }),
-    select: (data) => adaptPage(data, adaptStore).items,
+  const backendComuna = selectedComuna !== 'TODAS' ? selectedComuna : undefined;
+
+  // Página real: paginada por el servidor con texto + comuna. Es la fuente
+  // por defecto mientras no haya un filtro u orden que el backend no resuelve.
+  const {
+    data: pageData,
+    isLoading: pageLoading,
+    error: pageQueryError,
+  } = useQuery({
+    queryKey: qk.stores({ page: currentPage, size: itemsPerPage, texto: debouncedSearchQuery, comuna: backendComuna }),
+    queryFn: ({ signal }) => getPublicStoresApi({
+      page: currentPage - 1, size: itemsPerPage, texto: debouncedSearchQuery, comuna: backendComuna, signal,
+    }),
+    select: (data) => adaptPage(data, adaptStore),
+    placeholderData: keepPreviousData,
   });
 
+  // Pool acotado (mismo texto/comuna, tope 100): alimenta las opciones de los
+  // filtros locales y se usa para mostrarlos cuando el usuario los activa.
+  const {
+    data: poolItems = [],
+    isLoading: poolLoading,
+    error: poolQueryError,
+  } = useQuery({
+    queryKey: qk.stores({ pool: true, texto: debouncedSearchQuery, comuna: backendComuna }),
+    queryFn: ({ signal }) => getPublicStoresApi({
+      page: 0, size: FILTER_POOL_SIZE, texto: debouncedSearchQuery, comuna: backendComuna, signal,
+    }),
+    select: (data) => adaptPage(data, adaptStore).items,
+    placeholderData: keepPreviousData,
+  });
+
+  const comunaOptions = useMemo(() => uniqueOptions(poolItems.map((s) => s.comuna)), [poolItems]);
+  const giroOptions = useMemo(() => uniqueOptions(poolItems.map((s) => s.tipo)), [poolItems]);
+  const shippingOptions = useMemo(
+    () => uniqueOptions(poolItems.flatMap((s) => s.metodosEnvio || [])),
+    [poolItems]
+  );
+  const brandOptions = useMemo(
+    () => uniqueOptions(poolItems.flatMap((s) => (s.marcasEspecialistas || []).map((b) => b.nombre))),
+    [poolItems]
+  );
+
+  // Solo estos filtros/orden fuerzan el modo pool: comuna y texto ya los
+  // resuelve el servidor en `pageQuery`, así que no cuentan aquí. "recientes"
+  // no reordena nada: el orden por defecto del backend ya es el más reciente
+  // primero, así que equivale a no aplicar ningún orden en el cliente.
+  const hasLocalFilters =
+    selectedGiro !== 'TODAS' ||
+    selectedShipping !== 'TODAS' ||
+    selectedBrand !== 'TODAS' ||
+    (sortBy !== 'relevancia' && sortBy !== 'recientes');
+
+  const isLoading = hasLocalFilters ? poolLoading : pageLoading;
+  const queryError = hasLocalFilters ? poolQueryError : pageQueryError;
   const storesError = queryError ? (queryError.message || 'No se pudo cargar el directorio de tiendas.') : null;
 
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(6);
+  // Synchronize authenticated user profile photo / cover photo with their store card
+  const applyUserSync = (list) => list.map(store => {
+    const isCurrentUserStore =
+      user &&
+      (store.id === user.sellerId ||
+       store.id === user.userId ||
+       (user.storeName && store.nombre.toLowerCase().includes(user.storeName.toLowerCase())) ||
+       (user.userName && store.nombre.toLowerCase().includes(user.userName.toLowerCase())));
 
-  // Filter options list
-  const CATEGORY_TYPES = [
-    'TODAS',
-    'Importador y Distribuidor Directo',
-    'Casa de Repuestos Multimarca',
-    'Desarmaduría Certificada',
-    'Distribuidor Oficial de Marca'
-  ];
+    if (isCurrentUserStore) {
+      return {
+        ...store,
+        logoUrl: user.userProfileUrl || user.logoUrl || store.logoUrl,
+        userProfileUrl: user.userProfileUrl || store.userProfileUrl,
+        coverUrl: user.coverUrl || store.coverUrl
+      };
+    }
+    return store;
+  });
 
-  const REGIONS = [
-    'TODAS',
-    'Santiago, RM',
-    'Concepción, Biobío',
-    'San Antonio, Valparaíso',
-    'Antofagasta'
-  ];
+  const pageStores = useMemo(() => applyUserSync(pageData?.items || []), [pageData, user]);
+  const poolStores = useMemo(() => applyUserSync(poolItems), [poolItems, user]);
 
-  const SHIPPING_OPTIONS = [
-    'TODAS',
-    'Retiro en tienda',
-    'Envío dentro de la comuna',
-    'Envío fuera de la comuna'
-  ];
+  // Filtrado sobre el pool: solo lo que el backend no resuelve (giro, envío, marca).
+  const filteredPoolStores = useMemo(() => poolStores.filter(store => {
+    if (selectedGiro !== 'TODAS' && store.tipo !== selectedGiro) return false;
+    if (selectedShipping !== 'TODAS') {
+      const methods = store.metodosEnvio || [];
+      if (!methods.some(m => m.toLowerCase() === selectedShipping.toLowerCase())) return false;
+    }
+    if (selectedBrand !== 'TODAS') {
+      const brands = (store.marcasEspecialistas || []).map(b => (b.nombre || '').toLowerCase());
+      if (!brands.includes(selectedBrand.toLowerCase())) return false;
+    }
+    return true;
+  }), [poolStores, selectedGiro, selectedShipping, selectedBrand]);
 
-  const BRANDS = [
-    'TODAS',
-    'Toyota',
-    'Nissan',
-    'Hyundai',
-    'Chevrolet',
-    'Ford',
-    'Volkswagen'
-  ];
+  const sortedPoolStores = useMemo(() => [...filteredPoolStores].sort((a, b) => {
+    if (sortBy === '+publicaciones') return (b.totalPublicaciones || 0) - (a.totalPublicaciones || 0);
+    if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
+    return 0;
+  }), [filteredPoolStores, sortBy]);
+
+  // Con filtros locales activos, se pagina el pool ya filtrado en el cliente.
+  // Sin ellos, la página ya viene paginada y ordenada por el servidor.
+  const totalElements = hasLocalFilters ? sortedPoolStores.length : (pageData?.total || 0);
+  const totalPages = hasLocalFilters
+    ? Math.max(1, Math.ceil(sortedPoolStores.length / itemsPerPage))
+    : Math.max(1, pageData?.totalPages || 1);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(totalElements, currentPage * itemsPerPage);
+  const paginatedStores = hasLocalFilters ? sortedPoolStores.slice(startIndex, endIndex) : pageStores;
+  // El pool tiene tope 100: si el filtro local devuelve justo ese tope, puede
+  // haber más tiendas que coinciden y que el pool no llegó a traer.
+  const poolMayBeIncomplete = hasLocalFilters && poolItems.length >= FILTER_POOL_SIZE;
 
   // Reset to Page 1 on any filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCategoryType, selectedRegion, selectedShipping, selectedBrand, sortBy, itemsPerPage]);
-
-  // Synchronize authenticated user profile photo / cover photo with their store card
-  const getSyncedStores = () => {
-    return stores.map(store => {
-      const isCurrentUserStore =
-        user &&
-        (store.id === user.sellerId ||
-         store.id === user.userId ||
-         store.id === 'store-tiensoft' ||
-         (user.storeName && store.nombre.toLowerCase().includes(user.storeName.toLowerCase())) ||
-         (user.userName && store.nombre.toLowerCase().includes(user.userName.toLowerCase())));
-
-      if (isCurrentUserStore) {
-        return {
-          ...store,
-          logoUrl: user.userProfileUrl || user.logoUrl || store.logoUrl,
-          userProfileUrl: user.userProfileUrl || store.userProfileUrl,
-          coverUrl: user.coverUrl || store.coverUrl
-        };
-      }
-      return store;
-    });
-  };
-
-  const syncedStores = getSyncedStores();
-
-  // Filtering Logic
-  const filteredStores = syncedStores.filter(store => {
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      const matchName = store.nombre?.toLowerCase().includes(q);
-      const matchRut = store.rut?.toLowerCase().includes(q);
-      const matchCity = store.ciudad?.toLowerCase().includes(q);
-      const matchSpec = store.especialidad?.toLowerCase().includes(q);
-      const matchType = store.tipo?.toLowerCase().includes(q);
-      if (!matchName && !matchRut && !matchCity && !matchSpec && !matchType) {
-        return false;
-      }
-    }
-
-    if (selectedCategoryType !== 'TODAS' && store.tipo !== selectedCategoryType) {
-      return false;
-    }
-
-    if (selectedRegion !== 'TODAS' && store.ciudad !== selectedRegion) {
-      return false;
-    }
-
-    if (selectedShipping !== 'TODAS') {
-      const methods = store.metodosEnvio || [];
-      const hasMethod = methods.some(m => m.toLowerCase().includes(selectedShipping.toLowerCase()));
-      if (!hasMethod) return false;
-    }
-
-    if (selectedBrand !== 'TODAS') {
-      const specs = (store.especialidad || '').toLowerCase();
-      if (!specs.includes(selectedBrand.toLowerCase())) return false;
-    }
-
-    return true;
-  });
-
-  // Sorting Logic
-  const sortedStores = [...filteredStores].sort((a, b) => {
-    if (sortBy === '+publicaciones') {
-      return (b.totalPublicaciones || 0) - (a.totalPublicaciones || 0);
-    }
-    if (sortBy === 'rating') {
-      return (b.rating || 0) - (a.rating || 0);
-    }
-    if (sortBy === 'recientes') {
-      return b.id === 'store-tiensoft' ? -1 : 1;
-    }
-    return 0;
-  });
-
-  // Pagination Slice
-  const totalPages = Math.max(1, Math.ceil(sortedStores.length / itemsPerPage));
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(sortedStores.length, currentPage * itemsPerPage);
-  const paginatedStores = sortedStores.slice(startIndex, endIndex);
+  }, [searchQuery, selectedGiro, selectedComuna, selectedShipping, selectedBrand, sortBy, itemsPerPage]);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -193,8 +211,8 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
 
   const handleResetFilters = () => {
     setSearchQuery('');
-    setSelectedCategoryType('TODAS');
-    setSelectedRegion('TODAS');
+    setSelectedGiro('TODAS');
+    setSelectedComuna('TODAS');
     setSelectedShipping('TODAS');
     setSelectedBrand('TODAS');
     setSortBy('relevancia');
@@ -208,22 +226,6 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   const handleApplyFilters = () => {
     document.querySelector('.directory-stores-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-
-  const businessTypeIcon = (index) => {
-    if (index === 0) return SlidersHorizontal;
-    if (index === 1) return Globe;
-    if (index === 2) return Store;
-    if (index === 3) return Wrench;
-    return ShieldCheck;
-  };
-
-  function parseSpecialties(raw) {
-    if (!raw) return ['Toyota', 'Nissan', 'Hyundai'];
-    return String(raw)
-      .split(/[,·]/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }
 
   return (
     <div className="stores-directory-view-wrapper">
@@ -288,7 +290,12 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
 
           <div className="control-bar-right-group">
             <div className="results-count-badge">
-              <span>Mostrando <strong>{sortedStores.length}</strong> tiendas encontradas</span>
+              <span>Mostrando <strong>{totalElements}</strong> tiendas encontradas</span>
+              {poolMayBeIncomplete && (
+                <small className="results-count-note">
+                  Puede haber más resultados: afina la búsqueda o la comuna para verlos todos.
+                </small>
+              )}
             </div>
 
             <div className="sort-dropdown-box">
@@ -316,44 +323,46 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
               <button className="btn-reset-filters-mini" onClick={handleResetFilters}><RotateCcw size={15} /><span>Limpiar</span></button>
             </div>
 
-            {/* Filter 1: Tipo / Giro de Tienda */}
+            {/* Filter 1: Tipo / Giro de Tienda — construido con los giros que
+                declararon las tiendas reales, no una lista fija */}
             <div className={`filter-section-group ${openFilterSections.business ? 'is-open' : 'is-collapsed'}`}>
               <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('business')} aria-expanded={openFilterSections.business}>
                 <span className="filter-group-label"><Building2 size={13} /> Tipo de Empresa / Giro</span><ChevronDown size={16} />
               </button>
               {openFilterSections.business && <div className="filter-options-list">
-                {CATEGORY_TYPES.map((type, index) => {
-                  const TypeIcon = businessTypeIcon(index);
-                  return <button key={type} className={`filter-option-btn ${selectedCategoryType === type ? 'active' : ''}`} onClick={() => setSelectedCategoryType(type)}>
-                    <span className="filter-condition-icon"><TypeIcon size={14} /></span>
+                {['TODAS', ...giroOptions].map((type) => (
+                  <button key={type} className={`filter-option-btn ${selectedGiro === type ? 'active' : ''}`} onClick={() => setSelectedGiro(type)}>
+                    <span className="filter-condition-icon"><Building2 size={14} /></span>
                     <span className="filter-option-copy"><strong>{type === 'TODAS' ? 'Todas las Tiendas' : type}</strong><small>{type === 'TODAS' ? 'Explorar todo el directorio' : 'Tiendas verificadas'}</small></span>
-                    {selectedCategoryType === type ? <CheckCircle2 size={18} className="check-active" /> : <ChevronRight size={16} className="filter-option-chevron" />}
-                  </button>;
-                })}
+                    {selectedGiro === type ? <CheckCircle2 size={18} className="check-active" /> : <ChevronRight size={16} className="filter-option-chevron" />}
+                  </button>
+                ))}
               </div>}
             </div>
 
-            {/* Filter 2: Ciudad / Ubicación */}
+            {/* Filter 2: Comuna — el único filtro (junto al texto) que el
+                backend resuelve de verdad; escala sin el tope de 100 del pool */}
             <div className="filter-section-group compact-select-section">
-              <label className="filter-group-label"><MapPin size={13} /> Ciudad / Ubicación</label>
+              <label className="filter-group-label"><MapPin size={13} /> Comuna</label>
               <select
-                value={selectedRegion}
-                onChange={(e) => setSelectedRegion(e.target.value)}
+                value={selectedComuna}
+                onChange={(e) => setSelectedComuna(e.target.value)}
                 className="sidebar-select-input"
               >
-                {REGIONS.map((r) => (
-                  <option key={r} value={r}>{r === 'TODAS' ? 'Todas las Ciudades' : r}</option>
+                <option value="TODAS">Todas las comunas</option>
+                {comunaOptions.map((c) => (
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </div>
 
-            {/* Filter 3: Métodos de Envío */}
+            {/* Filter 3: Métodos de Envío — igual, construido desde el pool */}
             <div className={`filter-section-group ${openFilterSections.shipping ? 'is-open' : 'is-collapsed'}`}>
               <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('shipping')} aria-expanded={openFilterSections.shipping}>
                 <span className="filter-group-label"><Truck size={13} /> Método de Envío</span><ChevronDown size={16} />
               </button>
               {openFilterSections.shipping && <div className="filter-options-list">
-                {SHIPPING_OPTIONS.map((method) => {
+                {['TODAS', ...shippingOptions].map((method) => {
                   const shippingConfig = method === 'TODAS' ? { icon: Truck, label: 'Todos los servicios' } : getShippingIconConfig(method);
                   const ShippingIcon = shippingConfig.icon;
                   return <button key={method} className={`filter-option-btn ${selectedShipping === method ? 'active' : ''}`} onClick={() => setSelectedShipping(method)}>
@@ -365,7 +374,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
               </div>}
             </div>
 
-            {/* Filter 4: Especialidad de Marcas */}
+            {/* Filter 4: Marcas — desde marcasEspecialistas real de cada tienda */}
             <div className="filter-section-group compact-select-section">
               <label className="filter-group-label"><Tag size={13} /> Marcas que Comercializa</label>
               <select
@@ -373,8 +382,9 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                 onChange={(e) => setSelectedBrand(e.target.value)}
                 className="sidebar-select-input"
               >
-                {BRANDS.map((b) => (
-                  <option key={b} value={b}>{b === 'TODAS' ? 'Todas las Marcas' : b}</option>
+                <option value="TODAS">Todas las marcas</option>
+                {brandOptions.map((b) => (
+                  <option key={b} value={b}>{b}</option>
                 ))}
               </select>
             </div>
@@ -388,7 +398,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
 
           {/* Stores Cards Column (Right Grid) */}
           <main className="directory-stores-main">
-            {storesLoading ? (
+            {isLoading ? (
               <div className="directory-empty-state">
                 <Building2 size={56} className="empty-icon-gray" />
                 <h3>Cargando tiendas…</h3>
@@ -421,7 +431,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                 <div className="directory-pagination-bar">
                   <div className="pagination-info">
                     <span>
-                      Mostrando del <strong>{startIndex + 1}</strong> al <strong>{endIndex}</strong> de <strong>{sortedStores.length}</strong> tiendas (Página {currentPage} de {totalPages})
+                      Mostrando del <strong>{startIndex + 1}</strong> al <strong>{endIndex}</strong> de <strong>{totalElements}</strong> tiendas (Página {currentPage} de {totalPages})
                     </span>
                   </div>
 

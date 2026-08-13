@@ -707,10 +707,11 @@ export async function updateOrderStatusApi(orderId, estado, pin) {
  * Marketplace Endpoints (Unificados con Spring Boot Backend)
  */
 
-export async function getPublicStoresApi({ page = 0, size = 12, texto } = {}) {
+export async function getPublicStoresApi({ page = 0, size = 12, texto, comuna, signal } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (texto) params.set('texto', texto);
-  return fetchApi(`/tiendas/publicas?${params.toString()}`, { method: 'GET' });
+  if (comuna) params.set('comuna', comuna);
+  return fetchApi(`/tiendas/publicas?${params.toString()}`, { method: 'GET', signal });
 }
 
 export async function getStoreProfileApi(storeId) {

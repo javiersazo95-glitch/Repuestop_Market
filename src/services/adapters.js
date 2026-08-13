@@ -258,6 +258,11 @@ export function adaptStore(dto, index = 0) {
     rut: dto.taxId || '',
     tipo: dto.giro || 'Casa de Repuestos',
     ciudad: ciudad || 'Chile',
+    // Campos separados ademas de `ciudad` (que ya viene unida "Comuna, Region"):
+    // el filtro de comuna del directorio necesita el valor exacto que el backend
+    // espera en `GET /tiendas/publicas?comuna=`, no el string combinado.
+    comuna: dto.comuna || '',
+    region: dto.region || '',
     direccion: dto.address || '',
     telefono: dto.phone || '',
     horario: dto.hours || '',
