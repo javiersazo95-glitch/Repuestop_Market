@@ -83,6 +83,11 @@ export function MarketplaceProvider({ children }) {
   // petición por clic. También evita que una respuesta lenta de un clic viejo
   // sobrescriba en el cliente el resultado de uno más nuevo.
   const quantityTimersRef = useRef(new Map());
+  // Peticiones de agregar al carrito en vuelo por producto: si el usuario hace
+  // clic en "Agregar" y luego en "Eliminar" antes de que la petición POST vuelva del
+  // servidor, este map permite marcar la petición como cancelada para que, cuando
+  // resuelva, elimine de inmediato la fila recién creada en la BD y no reaparezca en UI.
+  const pendingAddsRef = useRef(new Map());
 
   // Carrito real de un usuario logueado: vive en la caché de TanStack Query,
   // no en un useState propio, así que las mutaciones de abajo pueden escribir
@@ -144,15 +149,16 @@ export function MarketplaceProvider({ children }) {
   const addToCart = useCallback(async (product, options = {}) => {
     const shippingMethod = options.shippingMethod || '';
     const shippingFee = Number(options.shippingFee || 0);
+    const productIdStr = String(product.id);
     setCartError('');
 
     const previousServerCart = isLoggedIn && userId ? queryClient.getQueryData(qk.cart(userId)) : null;
 
     // Optimistic UI update: update local cart state immediately (0ms latency)
     applyOptimisticCart((current) => {
-      const existing = current.find((item) => String(item.id) === String(product.id));
+      const existing = current.find((item) => String(item.id) === productIdStr);
       if (existing) {
-        return current.map((item) => (String(item.id) === String(product.id)
+        return current.map((item) => (String(item.id) === productIdStr
           ? { ...item, quantity: item.quantity + 1, shippingMethod, shippingFee }
           : item));
       }
@@ -161,6 +167,9 @@ export function MarketplaceProvider({ children }) {
 
     if (!isLoggedIn || !userId) return null;
 
+    const pendingRecord = { cancelled: false };
+    pendingAddsRef.current.set(productIdStr, pendingRecord);
+
     try {
       const summary = await addCartItemApi(userId, {
         proveedorProductoId: Number(product.id),
@@ -168,29 +177,47 @@ export function MarketplaceProvider({ children }) {
         metodoEnvio: shippingMethod,
         costoEnvioLocal: shippingFee,
       });
+
+      if (pendingRecord.cancelled) {
+        // El usuario eliminó el producto mientras la llamada HTTP estaba viajando.
+        // Obtenemos el cartItemId que nos devolvió el servidor para eliminarlo de la BD.
+        const mapped = mapServerCart(summary);
+        const addedItem = mapped.find((item) => String(item.id) === productIdStr);
+        if (addedItem?.cartItemId) {
+          const cleanedSummary = await removeCartItemApi(userId, addedItem.cartItemId);
+          queryClient.setQueryData(qk.cart(userId), mapServerCart(cleanedSummary));
+          return cleanedSummary;
+        }
+        queryClient.setQueryData(qk.cart(userId), (current = []) => current.filter((item) => String(item.id) !== productIdStr));
+        return summary;
+      }
+
       queryClient.setQueryData(qk.cart(userId), mapServerCart(summary));
       return summary;
     } catch (error) {
-      // Antes, si esto fallaba se intentaba un GET de respaldo; si ese GET
-      // también fallaba, el item optimista quedaba en pantalla para siempre
-      // como si se hubiese guardado, sin avisarle a nadie. Ahora siempre se
-      // vuelve al último estado real conocido y se lo dice al usuario.
       console.warn('No se pudo agregar el producto en el backend, revirtiendo:', error);
       queryClient.setQueryData(qk.cart(userId), previousServerCart ?? []);
       setCartError('No se pudo agregar el producto al carrito. Intenta nuevamente.');
       return null;
+    } finally {
+      if (pendingAddsRef.current.get(productIdStr) === pendingRecord) {
+        pendingAddsRef.current.delete(productIdStr);
+      }
     }
   }, [isLoggedIn, userId, queryClient, applyOptimisticCart]);
 
   const updateCartQuantity = useCallback((productId, newQty) => {
+    const productIdStr = String(productId);
     setCartError('');
-    const current = cartItems.find((item) => String(item.id) === String(productId));
+    const current = cartItems.find((item) => String(item.id) === productIdStr);
     if (!current) return;
 
     if (newQty <= 0) {
-      applyOptimisticCart((list) => list.filter((item) => String(item.id) !== String(productId)));
+      const pendingRecord = pendingAddsRef.current.get(productIdStr);
+      if (pendingRecord) pendingRecord.cancelled = true;
+      applyOptimisticCart((list) => list.filter((item) => String(item.id) !== productIdStr));
     } else {
-      applyOptimisticCart((list) => list.map((item) => (String(item.id) === String(productId) ? { ...item, quantity: newQty } : item)));
+      applyOptimisticCart((list) => list.map((item) => (String(item.id) === productIdStr ? { ...item, quantity: newQty } : item)));
     }
 
     if (!isLoggedIn || !userId || !current.cartItemId) return;
@@ -222,9 +249,14 @@ export function MarketplaceProvider({ children }) {
   }, [cartItems, isLoggedIn, userId, queryClient, applyOptimisticCart]);
 
   const removeFromCart = useCallback(async (productId) => {
+    const productIdStr = String(productId);
     setCartError('');
-    const current = cartItems.find((item) => String(item.id) === String(productId));
-    applyOptimisticCart((list) => list.filter((item) => String(item.id) !== String(productId)));
+    const current = cartItems.find((item) => String(item.id) === productIdStr);
+
+    const pendingRecord = pendingAddsRef.current.get(productIdStr);
+    if (pendingRecord) pendingRecord.cancelled = true;
+
+    applyOptimisticCart((list) => list.filter((item) => String(item.id) !== productIdStr));
 
     if (!isLoggedIn || !userId || !current?.cartItemId) return;
 

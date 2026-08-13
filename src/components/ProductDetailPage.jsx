@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle, ArrowLeft, BadgeCheck, Car, CheckCircle2, ChevronLeft, ChevronRight, CreditCard,
   Heart, Landmark, MapPin, MessageCircle, Package, Search, Send, ShieldCheck,
@@ -10,6 +11,7 @@ import { createProductQuestionApi, getProductQuestionsApi, searchVehicleByPatent
 import { adaptVehicle } from '../services/adapters';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
+import { qk } from '../services/queryKeys';
 import StoreLogoBadge from './StoreLogoBadge';
 import RelatedProductsCarousel from './RelatedProductsCarousel';
 import PurchaseShippingModal from './PurchaseShippingModal';
@@ -29,14 +31,13 @@ function vehicleMatchesCompatibility(vehicle, item) {
 }
 
 export default function ProductDetailPage({ product, user, activeVehicle, onBack, onAddToCart, onOpenQuote, onOpenStore, onSelectProduct }) {
+  const queryClient = useQueryClient();
   const images = (product.imagenes?.length
     ? product.imagenes
     : [product.imagen || CATEGORY_IMAGE_BY_ID[product.categoria]]).filter(Boolean);
   const [activeImage, setActiveImage] = useState(0);
   const [favorite, setFavorite] = useState(false);
   const [question, setQuestion] = useState('');
-  const [publicQuestions, setPublicQuestions] = useState([]);
-  const [questionSending, setQuestionSending] = useState(false);
   const [questionError, setQuestionError] = useState('');
   const [compatibilityOpen, setCompatibilityOpen] = useState(false);
   const [compatibilitySearch, setCompatibilitySearch] = useState('');
@@ -84,15 +85,32 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
       .includes(query);
   });
 
-  useEffect(() => {
-    let cancelled = false;
-    getProductQuestionsApi(product.id)
-      .then((response) => {
-        if (!cancelled) setPublicQuestions(Array.isArray(response) ? response : response?.content || []);
-      })
-      .catch(() => { if (!cancelled) setPublicQuestions([]); });
-    return () => { cancelled = true; };
-  }, [product.id]);
+  const { data: publicQuestions = [] } = useQuery({
+    queryKey: qk.productQuestions(product.id),
+    queryFn: async ({ signal }) => {
+      const response = await getProductQuestionsApi(product.id, { signal });
+      return Array.isArray(response) ? response : response?.content || [];
+    },
+    enabled: Boolean(product.id),
+  });
+
+  const questionMutation = useMutation({
+    mutationFn: (text) => createProductQuestionApi(product.id, {
+      productoId: product.id,
+      proveedorId: product.proveedorId ?? null,
+      usuarioId: user?.userId ?? user?.id ?? null,
+      pregunta: text,
+      texto: text,
+    }),
+    onSuccess: (created) => {
+      queryClient.setQueryData(qk.productQuestions(product.id), (old = []) => [created, ...old]);
+      setQuestion('');
+      setQuestionError('');
+    },
+    onError: (error) => {
+      setQuestionError(error?.message || 'No se pudo publicar la pregunta.');
+    },
+  });
 
   // Cuando la patente encuentra coincidencia dentro de la lista, se despeja el
   // buscador de texto (para que el registro no quede oculto por otro filtro) y
@@ -159,27 +177,12 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     });
   };
 
-  const submitQuestion = async (event) => {
+  const submitQuestion = (event) => {
     event.preventDefault();
     const text = question.trim();
-    if (!text) return;
-    setQuestionSending(true);
+    if (!text || questionMutation.isPending) return;
     setQuestionError('');
-    try {
-      const created = await createProductQuestionApi(product.id, {
-        productoId: product.id,
-        proveedorId: product.proveedorId ?? null,
-        usuarioId: user?.userId ?? user?.id ?? null,
-        pregunta: text,
-        texto: text,
-      });
-      setPublicQuestions((current) => [created, ...current]);
-      setQuestion('');
-    } catch (error) {
-      setQuestionError(error.message || 'No se pudo publicar la pregunta.');
-    } finally {
-      setQuestionSending(false);
-    }
+    questionMutation.mutate(text);
   };
 
   const confirmPurchaseAction = async (shipping) => {
@@ -399,7 +402,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
         <section className="product-marketplace-questions">
           <div className="product-marketplace-questions-head">
             <div><h2><MessageCircle /> Preguntas públicas</h2><p>Haz preguntas públicas y ayuda a otros compradores.</p></div>
-            <form onSubmit={submitQuestion}><label><Search /><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Haz tu pregunta sobre este producto..." /></label><button type="submit" disabled={questionSending}><Send /> {questionSending ? 'Enviando...' : 'Enviar pregunta'}</button></form>
+            <form onSubmit={submitQuestion}><label><Search /><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Haz tu pregunta sobre este producto..." /></label><button type="submit" disabled={questionMutation.isPending}><Send /> {questionMutation.isPending ? 'Enviando...' : 'Enviar pregunta'}</button></form>
           </div>
           {questionError && <div className="product-marketplace-question-error">{questionError}</div>}
           {publicQuestions.length > 0 ? <div className="product-marketplace-question-list">

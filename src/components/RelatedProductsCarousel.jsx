@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Layers, Loader2 } from 'lucide-react';
 import MarketplaceProductCard from './MarketplaceProductCard';
 import { getPartCategoriesApi, getPublicProductsApi } from '../services/api';
 import { adaptPage, adaptProduct } from '../services/adapters';
+import { qk } from '../services/queryKeys';
 
 const RELATED_FETCH_SIZE = 24;
 const RELATED_MAX_ITEMS = 12;
@@ -32,48 +34,34 @@ async function resolveCategoryId(product) {
  * amplía a la categoría completa.
  */
 export default function RelatedProductsCarousel({ product, onSelectProduct }) {
-  const [items, setItems] = useState([]);
-  const [scope, setScope] = useState(null); // 'subcategoria' | 'categoria'
-  const [loading, setLoading] = useState(true);
   const trackRef = useRef(null);
   const [arrows, setArrows] = useState({ previous: false, next: false });
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setItems([]);
+  const { data: { items = [], scope = null } = {}, isLoading: loading } = useQuery({
+    queryKey: qk.relatedProducts(product.id),
+    queryFn: async ({ signal }) => {
+      const excludeCurrent = (list) => list.filter((item) => String(item.id) !== String(product.id));
 
-    const excludeCurrent = (list) => list.filter((item) => String(item.id) !== String(product.id));
-
-    const load = async () => {
       if (product.subcategoriaId) {
         const page = await getPublicProductsApi({
-          page: 0, size: RELATED_FETCH_SIZE, subcategoriaId: product.subcategoriaId, sort: 'createdAt,desc',
+          page: 0, size: RELATED_FETCH_SIZE, subcategoriaId: product.subcategoriaId, sort: 'createdAt,desc', signal,
         });
         const found = excludeCurrent(adaptPage(page, adaptProduct).items);
-        if (found.length) return { found, scope: 'subcategoria' };
+        if (found.length) return { items: found.slice(0, RELATED_MAX_ITEMS), scope: 'subcategoria' };
       }
 
       const categoriaId = await resolveCategoryId(product);
-      if (!categoriaId) return { found: [], scope: null };
+      if (!categoriaId) return { items: [], scope: null };
 
       const page = await getPublicProductsApi({
-        page: 0, size: RELATED_FETCH_SIZE, categoriaId, sort: 'createdAt,desc',
+        page: 0, size: RELATED_FETCH_SIZE, categoriaId, sort: 'createdAt,desc', signal,
       });
-      return { found: excludeCurrent(adaptPage(page, adaptProduct).items), scope: 'categoria' };
-    };
-
-    load()
-      .then(({ found, scope: resolvedScope }) => {
-        if (cancelled) return;
-        setItems(found.slice(0, RELATED_MAX_ITEMS));
-        setScope(resolvedScope);
-      })
-      .catch(() => { if (!cancelled) setItems([]); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-
-    return () => { cancelled = true; };
-  }, [product.id, product.subcategoriaId, product.categoriaId, product.categoriaNombre, product.categoria]);
+      const found = excludeCurrent(adaptPage(page, adaptProduct).items);
+      return { items: found.slice(0, RELATED_MAX_ITEMS), scope: 'categoria' };
+    },
+    enabled: Boolean(product?.id),
+    staleTime: 5 * 60 * 1000,
+  });
 
   const syncArrows = () => {
     const track = trackRef.current;

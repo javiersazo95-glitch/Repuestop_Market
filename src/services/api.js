@@ -277,18 +277,18 @@ export async function selectStoreCoverTemplateApi(templateId) {
 /**
  * Perfil: Pedidos, favoritos e inventario/tienda del proveedor
  */
-export async function getBuyerOrdersApi(usuarioId) {
-  return fetchApi(`/usuarios/${usuarioId}/pedidos`, { method: 'GET' });
+export async function getBuyerOrdersApi(usuarioId, { signal } = {}) {
+  return fetchApi(`/usuarios/${usuarioId}/pedidos`, { method: 'GET', signal });
 }
 
-export async function getSellerOrdersApi(proveedorId) {
+export async function getSellerOrdersApi(proveedorId, { signal } = {}) {
   // Igual que mobile: el backend pagina este historial y permite hasta 100 filas.
   // Se carga el lote máximo para que búsqueda y filtros operen sobre el historial visible completo.
-  return fetchApi(`/proveedores/${proveedorId}/pedidos?size=100`, { method: 'GET' });
+  return fetchApi(`/proveedores/${proveedorId}/pedidos?size=100`, { method: 'GET', signal });
 }
 
-export async function getFavoritesApi(usuarioId) {
-  return fetchApi(`/usuarios/${usuarioId}/favoritos`, { method: 'GET' });
+export async function getFavoritesApi(usuarioId, { signal } = {}) {
+  return fetchApi(`/usuarios/${usuarioId}/favoritos`, { method: 'GET', signal });
 }
 
 /**
@@ -538,14 +538,14 @@ export async function updateCartItemApi(usuarioId, itemId, payload) {
   return fetchApi(`/usuarios/${usuarioId}/carrito/items/${itemId}`, { method: 'PUT', body: JSON.stringify(payload) });
 }
 
-export async function getSellerInventoryApi(proveedorId, { page = 0, size = 12, texto } = {}) {
+export async function getSellerInventoryApi(proveedorId, { page = 0, size = 12, texto, signal } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (texto) params.set('texto', texto);
-  return fetchApi(`/proveedores/${proveedorId}/inventario?${params.toString()}`, { method: 'GET' });
+  return fetchApi(`/proveedores/${proveedorId}/inventario?${params.toString()}`, { method: 'GET', signal });
 }
 
-export async function getSellerInventorySummaryApi(proveedorId) {
-  return fetchApi(`/proveedores/${proveedorId}/inventario/resumen`, { method: 'GET' });
+export async function getSellerInventorySummaryApi(proveedorId, { signal } = {}) {
+  return fetchApi(`/proveedores/${proveedorId}/inventario/resumen`, { method: 'GET', signal });
 }
 
 export async function updateSellerProductTopApi(proveedorId, productId, destacado) {
@@ -555,9 +555,9 @@ export async function updateSellerProductTopApi(proveedorId, productId, destacad
   });
 }
 
-export async function getSellerConversationsApi(proveedorId) {
+export async function getSellerConversationsApi(proveedorId, { signal } = {}) {
   try {
-    const res = await fetchApi(`/proveedores/${proveedorId}/conversaciones`, { method: 'GET' });
+    const res = await fetchApi(`/proveedores/${proveedorId}/conversaciones`, { method: 'GET', signal });
     return Array.isArray(res) ? res : (res?.content || []);
   } catch (err) {
     if (err.status === 404) return [];
@@ -565,9 +565,9 @@ export async function getSellerConversationsApi(proveedorId) {
   }
 }
 
-export async function getBuyerConversationsApi(usuarioId) {
+export async function getBuyerConversationsApi(usuarioId, { signal } = {}) {
   try {
-    const res = await fetchApi(`/usuarios/${usuarioId}/conversaciones`, { method: 'GET' });
+    const res = await fetchApi(`/usuarios/${usuarioId}/conversaciones`, { method: 'GET', signal });
     return Array.isArray(res) ? res : (res?.content || []);
   } catch (err) {
     if (err.status === 404) return [];
@@ -617,9 +617,9 @@ export async function checkoutConversationQuoteApi(usuarioId, payload) {
 }
 
 // Preguntas públicas asociadas a productos del catálogo del vendedor.
-export async function getSellerProductQuestionsApi(proveedorId) {
+export async function getSellerProductQuestionsApi(proveedorId, { signal } = {}) {
   try {
-    const res = await fetchApi(`/proveedores/${proveedorId}/preguntas-productos`, { method: 'GET' });
+    const res = await fetchApi(`/proveedores/${proveedorId}/preguntas-productos`, { method: 'GET', signal });
     return Array.isArray(res) ? res : (res?.content || []);
   } catch (err) {
     if (err.status === 404) return [];
@@ -627,8 +627,8 @@ export async function getSellerProductQuestionsApi(proveedorId) {
   }
 }
 
-export async function getProductQuestionsApi(productoId) {
-  return fetchApi(`/inventario/productos/${productoId}/preguntas`, { method: 'GET' });
+export async function getProductQuestionsApi(productoId, { signal } = {}) {
+  return fetchApi(`/inventario/productos/${productoId}/preguntas`, { method: 'GET', signal });
 }
 
 export async function createProductQuestionApi(productoId, question) {
@@ -638,13 +638,13 @@ export async function createProductQuestionApi(productoId, question) {
   });
 }
 
-export async function getSellerStoreApi(proveedorId) {
+export async function getSellerStoreApi(proveedorId, { signal } = {}) {
   try {
-    return await fetchApi(`/proveedores/${proveedorId}/tienda`, { method: 'GET' });
+    return await fetchApi(`/proveedores/${proveedorId}/tienda`, { method: 'GET', signal });
   } catch (err) {
     if (err.status === 404 || err.status === 0 || err.status === 500) {
       try {
-        return await fetchApi(`/tiendas/${proveedorId}`, { method: 'GET' });
+        return await fetchApi(`/tiendas/${proveedorId}`, { method: 'GET', signal });
       } catch {
         return null;
       }
@@ -725,7 +725,7 @@ export async function getStoreProductsApi(storeId, { page = 0, size = 12, texto,
   return fetchApi(`/tiendas/${storeId}/productos?${params.toString()}`, { method: 'GET' });
 }
 
-export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, comunaId, sort = 'precio,asc' } = {}) {
+export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, comunaId, sort = 'precio,asc', signal } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size), sort });
   if (texto) params.set('texto', texto);
   if (patente) params.set('patente', patente);
@@ -736,7 +736,7 @@ export async function getPublicProductsApi({ page = 0, size = 12, texto, patente
   if (precioMin) params.set('precioMin', String(precioMin));
   if (precioMax) params.set('precioMax', String(precioMax));
   if (comunaId) params.set('comunaId', String(comunaId));
-  return fetchApi(`/inventario/productos?${params.toString()}`, { method: 'GET' });
+  return fetchApi(`/inventario/productos?${params.toString()}`, { method: 'GET', signal });
 }
 
 /**
@@ -744,8 +744,8 @@ export async function getPublicProductsApi({ page = 0, size = 12, texto, patente
  * (`/repuestos/{id}-{slug}`), cuando no venimos navegando desde el catálogo.
  * Si el backend aún no expone el detalle unitario, el llamador cae al listado.
  */
-export async function getPublicProductApi(productId) {
-  return fetchApi(`/inventario/productos/${productId}`, { method: 'GET' });
+export async function getPublicProductApi(productId, { signal } = {}) {
+  return fetchApi(`/inventario/productos/${productId}`, { method: 'GET', signal });
 }
 
 export async function getPublicCategoryCountsApi() {
@@ -793,8 +793,8 @@ export async function updateSellerInventoryProductApi(proveedorId, productId, fo
 }
 
 /** Marcas de vehículo disponibles para declarar la especialidad de una tienda. */
-export async function getVehicleBrandsApi() {
-  return fetchApi('/catalogos/inventario/marcas-vehiculo', { method: 'GET' });
+export async function getVehicleBrandsApi({ signal } = {}) {
+  return fetchApi('/catalogos/inventario/marcas-vehiculo', { method: 'GET', signal });
 }
 
 /** Reemplaza las marcas especialistas de la tienda autenticada. */

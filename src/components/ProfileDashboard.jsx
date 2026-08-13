@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, LayoutGrid, Package, Heart, UserCog, Store, ShoppingBag,
   MessageSquare, LogOut, Star, Layers, TrendingUp, Truck, Check, Pencil, Save, X,
@@ -17,6 +18,7 @@ import {
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi, updateSellerProductTopApi,
   saveConversationQuoteApi, sendConversationMessageApi, getRegionesApi, getComunasApi
 } from '../services/api';
+import { qk } from '../services/queryKeys';
 import OrderCard from './OrderCard';
 import OrderDetailModal from './OrderDetailModal';
 import CatalogCard from './CatalogCard';
@@ -266,30 +268,118 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     }
   };
 
-  // Datos reales traídos del backend (sin datos de ejemplo)
-  const [orders, setOrders] = useState(null);
+  const queryClient = useQueryClient();
+
+  // Datos del perfil y rol
+  const isSeller = role === 'SELLER';
+  const tabs = isSeller ? SELLER_TABS : BUYER_TABS;
+  const effectiveSellerId = user?.sellerId || user?.proveedorId || user?.tiendaId || user?.userId || user?.id;
+  const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
+
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedCatalogProduct, setSelectedCatalogProduct] = useState(null);
   const [selectedQuote, setSelectedQuote] = useState(null);
-  const [favorites, setFavorites] = useState(null);
-  const [inventorySummary, setInventorySummary] = useState(null);
-  const [conversations, setConversations] = useState(null);
   const [quoteFilter, setQuoteFilter] = useState('all');
   const [quoteSearch, setQuoteSearch] = useState('');
   const [quoteSort, setQuoteSort] = useState('newest');
-  const [storeInfo, setStoreInfo] = useState(null);
-  const [dataError, setDataError] = useState(null);
-  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  // Catálogo: paginado en el servidor
+  const [catalogPage, setCatalogPage] = useState(0);
+  const [catalogPageSize, setCatalogPageSize] = useState(CATALOG_PAGE_SIZE_OPTIONS[0]);
+  const [catalogSearchInput, setCatalogSearchInput] = useState('');
+  const [catalogSearchTerm, setCatalogSearchTerm] = useState('');
+  const [catalogTopFeedback, setCatalogTopFeedback] = useState('');
+  const [updatingTopProductId, setUpdatingTopProductId] = useState(null);
+  const [questionsProductFilter, setQuestionsProductFilter] = useState(null);
+  const [showNewProductModal, setShowNewProductModal] = useState(false);
+
+  // Queries centralizadas con TanStack Query
+  const ordersQuery = useQuery({
+    queryKey: isSeller ? qk.sellerOrders(effectiveSellerId) : qk.buyerOrders(effectiveUserId),
+    queryFn: async ({ signal }) => {
+      const res = isSeller
+        ? await getSellerOrdersApi(effectiveSellerId, { signal })
+        : await getBuyerOrdersApi(effectiveUserId, { signal });
+      return res?.content || (Array.isArray(res) ? res : []);
+    },
+    enabled: Boolean(isSeller ? effectiveSellerId : effectiveUserId),
+    staleTime: 60 * 1000,
+  });
+
+  const favoritesQuery = useQuery({
+    queryKey: qk.favorites(effectiveUserId),
+    queryFn: async ({ signal }) => {
+      const res = await getFavoritesApi(effectiveUserId, { signal });
+      return Array.isArray(res) ? res : (res?.content || []);
+    },
+    enabled: Boolean(!isSeller && effectiveUserId),
+    staleTime: 60 * 1000,
+  });
+
+  const conversationsQuery = useQuery({
+    queryKey: qk.conversations(isSeller ? effectiveSellerId : effectiveUserId, isSeller),
+    queryFn: ({ signal }) => isSeller ? getSellerConversationsApi(effectiveSellerId, { signal }) : getBuyerConversationsApi(effectiveUserId, { signal }),
+    enabled: Boolean(isSeller ? effectiveSellerId : effectiveUserId),
+    staleTime: 60 * 1000,
+  });
+
+  const storeInfoQuery = useQuery({
+    queryKey: qk.sellerStore(effectiveSellerId),
+    queryFn: ({ signal }) => getSellerStoreApi(effectiveSellerId, { signal }),
+    enabled: Boolean(isSeller && effectiveSellerId),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const inventorySummaryQuery = useQuery({
+    queryKey: qk.sellerInventorySummary(effectiveSellerId),
+    queryFn: ({ signal }) => getSellerInventorySummaryApi(effectiveSellerId, { signal }),
+    enabled: Boolean(isSeller && effectiveSellerId),
+    staleTime: 60 * 1000,
+  });
+
+  const catalogQuery = useQuery({
+    queryKey: qk.sellerInventory(user?.sellerId, { page: catalogPage, size: catalogPageSize, texto: catalogSearchTerm }),
+    queryFn: ({ signal }) => getSellerInventoryApi(user.sellerId, { page: catalogPage, size: catalogPageSize, texto: catalogSearchTerm || undefined, signal }),
+    enabled: Boolean(isSeller && activeTab === 'productos' && user?.sellerId),
+    staleTime: 60 * 1000,
+  });
+
+  const productQuestionsQuery = useQuery({
+    queryKey: qk.sellerProductQuestions(user?.sellerId),
+    queryFn: ({ signal }) => getSellerProductQuestionsApi(user.sellerId, { signal }),
+    enabled: Boolean(isSeller && user?.sellerId && ['productos', 'preguntas_productos'].includes(activeTab)),
+    staleTime: 60 * 1000,
+  });
+
+  const orders = ordersQuery.data || [];
+  const favorites = favoritesQuery.data || [];
+  const conversations = conversationsQuery.data || [];
+  const storeInfo = storeInfoQuery.data || null;
+  const inventorySummary = inventorySummaryQuery.data || null;
+  const sellerProducts = catalogQuery.data?.content || [];
+  const catalogTotalPages = catalogQuery.data?.totalPages ?? 0;
+  const catalogTotalElements = catalogQuery.data?.totalElements ?? 0;
+  const isCatalogLoading = catalogQuery.isLoading;
+  const catalogError = catalogQuery.error?.message || null;
+  const productQuestions = productQuestionsQuery.data || [];
+  const productQuestionsLoading = productQuestionsQuery.isLoading;
+  const productQuestionsError = productQuestionsQuery.error?.message || '';
+
+  const isLoadingData = isSeller ? (ordersQuery.isLoading || storeInfoQuery.isLoading) : ordersQuery.isLoading;
+  const dataError = ordersQuery.error?.message || null;
+
+  const displayName = user?.userName || user?.nombre || (isSeller ? user?.storeName : null) || 'Usuario Repuestop';
+  const profileCoverUrl = isSeller
+    ? resolveMediaUrl(user?.coverUrl || storeInfo?.coverUrl || '')
+    : BUYER_PROFILE_COVER_URL;
+  const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' }) : null;
 
   const handleUpdateOrderStatus = async (orderId, newStatus, pin) => {
     try {
       const updatedOrder = await updateOrderStatusApi(orderId, newStatus, pin);
-      const mergeUpdatedOrder = (order) => String(order.id) === String(orderId)
-        ? { ...order, ...updatedOrder, estado: updatedOrder?.estado || newStatus, status: updatedOrder?.status || newStatus }
-        : order;
-      setOrders((prevOrders) => (prevOrders || []).map(mergeUpdatedOrder));
+      queryClient.invalidateQueries({ queryKey: isSeller ? qk.sellerOrders(effectiveSellerId) : qk.buyerOrders(effectiveUserId) });
       setSelectedOrder((prevSelected) => String(prevSelected?.id) === String(orderId)
-        ? mergeUpdatedOrder(prevSelected)
+        ? { ...prevSelected, ...updatedOrder, estado: updatedOrder?.estado || newStatus, status: updatedOrder?.status || newStatus }
         : prevSelected);
       return updatedOrder;
     } catch (err) {
@@ -299,9 +389,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   };
 
   const handleSaveCatalogProduct = async (productId, updatedFields) => {
-    setSellerProducts((prev) =>
-      (prev || []).map((p) => (p.id === productId ? { ...p, ...updatedFields } : p))
-    );
+    queryClient.invalidateQueries({ queryKey: qk.sellerInventory(user?.sellerId, { page: catalogPage, size: catalogPageSize, texto: catalogSearchTerm }) });
     setSelectedCatalogProduct((prev) =>
       prev && prev.id === productId ? { ...prev, ...updatedFields } : prev
     );
@@ -312,96 +400,16 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     const finalPrice = Number(savedQuote?.precioFinal ?? savedQuote?.precio ?? responseData.precioFinal ?? responseData.precio ?? 0);
     const notificationText = `Cotización enviada por $${finalPrice.toLocaleString('es-CL')}. ${responseData.condicionesEntrega || ''}`.trim();
     const sentMessage = await sendConversationMessageApi(quoteId, notificationText).catch(() => null);
-    const updatedFields = {
-      cotizacion: savedQuote,
-      ultimoMensaje: sentMessage?.texto || notificationText,
-      ultimoMensajeFecha: sentMessage?.createdAt || new Date().toISOString(),
-      mensajesNoLeidos: 0,
-    };
-    setConversations((prev) =>
-      (prev || []).map((c) => (c.id === quoteId ? { ...c, ...updatedFields } : c))
-    );
+    queryClient.invalidateQueries({ queryKey: qk.conversations(isSeller ? effectiveSellerId : effectiveUserId, isSeller) });
     setSelectedQuote((prev) =>
-      prev && prev.id === quoteId ? { ...prev, ...updatedFields } : prev
+      prev && prev.id === quoteId ? { ...prev, cotizacion: savedQuote, ultimoMensaje: sentMessage?.texto || notificationText } : prev
     );
     return savedQuote;
   };
 
   const handleQuoteMarkedRead = useCallback((quoteId) => {
-    setConversations((previous) => (previous || []).map((conversation) => (
-      conversation.id === quoteId ? { ...conversation, mensajesNoLeidos: 0 } : conversation
-    )));
-  }, []);
-
-  // Catálogo: paginado en el servidor para no cargar todo el inventario en memoria de una vez
-  const [sellerProducts, setSellerProducts] = useState(null);
-  const [catalogPage, setCatalogPage] = useState(0);
-  const [catalogPageSize, setCatalogPageSize] = useState(CATALOG_PAGE_SIZE_OPTIONS[0]);
-  const [catalogTotalPages, setCatalogTotalPages] = useState(0);
-  const [catalogTotalElements, setCatalogTotalElements] = useState(0);
-  const [catalogSearchInput, setCatalogSearchInput] = useState('');
-  const [catalogSearchTerm, setCatalogSearchTerm] = useState('');
-  const [isCatalogLoading, setIsCatalogLoading] = useState(false);
-  const [catalogError, setCatalogError] = useState(null);
-  const [catalogTopFeedback, setCatalogTopFeedback] = useState('');
-  const [updatingTopProductId, setUpdatingTopProductId] = useState(null);
-  const [productQuestions, setProductQuestions] = useState([]);
-  const [productQuestionsLoading, setProductQuestionsLoading] = useState(false);
-  const [productQuestionsError, setProductQuestionsError] = useState('');
-  const [questionsProductFilter, setQuestionsProductFilter] = useState(null);
-  const [showNewProductModal, setShowNewProductModal] = useState(false);
-  const [catalogRefreshKey, setCatalogRefreshKey] = useState(0);
-
-  const isSeller = role === 'SELLER';
-  const tabs = isSeller ? SELLER_TABS : BUYER_TABS;
-  const displayName = user?.userName || user?.nombre || (isSeller ? user?.storeName : null) || 'Usuario Repuestop';
-  const profileCoverUrl = isSeller
-    ? resolveMediaUrl(user?.coverUrl || storeInfo?.coverUrl || '')
-    : BUYER_PROFILE_COVER_URL;
-  const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' }) : null;
-
-  const effectiveSellerId = user?.sellerId || user?.proveedorId || user?.tiendaId || user?.userId || user?.id;
-  const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
-
-  const loadData = useCallback(async () => {
-    setIsLoadingData(true);
-    setDataError(null);
-    try {
-      if (isSeller) {
-        if (!effectiveSellerId) throw new Error('No se encontró el identificador de tu tienda.');
-        const [ordersRes, summaryRes, conversationsRes, storeRes] = await Promise.allSettled([
-          getSellerOrdersApi(effectiveSellerId),
-          getSellerInventorySummaryApi(effectiveSellerId),
-          getSellerConversationsApi(effectiveSellerId),
-          getSellerStoreApi(effectiveSellerId),
-        ]);
-        setOrders(ordersRes.status === 'fulfilled' ? (ordersRes.value?.content || ordersRes.value || []) : []);
-        setInventorySummary(summaryRes.status === 'fulfilled' ? summaryRes.value : null);
-        setConversations(conversationsRes.status === 'fulfilled' ? (conversationsRes.value || []) : []);
-        if (storeRes.status === 'fulfilled' && storeRes.value) {
-          setStoreInfo(storeRes.value);
-        }
-      } else {
-        if (!effectiveUserId) throw new Error('No se encontró tu identificador de usuario.');
-        const [ordersRes, favoritesRes, conversationsRes] = await Promise.allSettled([
-          getBuyerOrdersApi(effectiveUserId),
-          getFavoritesApi(effectiveUserId),
-          getBuyerConversationsApi(effectiveUserId),
-        ]);
-        setOrders(ordersRes.status === 'fulfilled' ? (ordersRes.value?.content || ordersRes.value || []) : []);
-        setFavorites(favoritesRes.status === 'fulfilled' ? (favoritesRes.value || []) : []);
-        setConversations(conversationsRes.status === 'fulfilled' ? (conversationsRes.value || []) : []);
-      }
-    } catch (error) {
-      setDataError(error.message || 'No se pudieron cargar tus datos.');
-    } finally {
-      setIsLoadingData(false);
-    }
-  }, [isSeller, effectiveSellerId, effectiveUserId]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+    queryClient.invalidateQueries({ queryKey: qk.conversations(isSeller ? effectiveSellerId : effectiveUserId, isSeller) });
+  }, [isSeller, effectiveSellerId, effectiveUserId, queryClient]);
 
   // La dirección Comercial principal de BuyerAddressBook se sincroniza con
   // RT_tienda al guardarse (ver BuyerAddressBook.jsx); esto refresca storeInfo
@@ -409,8 +417,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // recién guardado sin esperar a un reload completo de la página.
   const refreshStoreInfoAfterAddressSync = useCallback(() => {
     if (!isSeller || !effectiveSellerId) return;
-    getSellerStoreApi(effectiveSellerId).then(setStoreInfo).catch(() => {});
-  }, [isSeller, effectiveSellerId]);
+    queryClient.invalidateQueries({ queryKey: qk.sellerStore(effectiveSellerId) });
+  }, [isSeller, effectiveSellerId, queryClient]);
 
   useEffect(() => {
     if (!isSeller || !isEditing || availableVehicleBrands.length) return;
@@ -422,53 +430,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       .catch((error) => console.warn('No se pudieron cargar las marcas de vehículo:', error));
     return () => { cancelled = true; };
   }, [isSeller, isEditing, availableVehicleBrands.length]);
-
-  // Catálogo del proveedor: se pide en páginas acotadas (12/24/48) en vez de
-  // traer todo el inventario de una sola vez, para no sobrecargar la memoria
-  // del navegador cuando la tienda tiene cientos de productos.
-  useEffect(() => {
-    if (!isSeller || activeTab !== 'productos' || !user?.sellerId) return;
-
-    let cancelled = false;
-    setIsCatalogLoading(true);
-    setCatalogError(null);
-
-    getSellerInventoryApi(user.sellerId, { page: catalogPage, size: catalogPageSize, texto: catalogSearchTerm || undefined })
-      .then((res) => {
-        if (cancelled) return;
-        setSellerProducts(res?.content || []);
-        setCatalogTotalPages(res?.totalPages ?? 0);
-        setCatalogTotalElements(res?.totalElements ?? 0);
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        setCatalogError(error.message || 'No se pudo cargar el catálogo.');
-      })
-      .finally(() => {
-        if (!cancelled) setIsCatalogLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [isSeller, activeTab, user?.sellerId, catalogPage, catalogPageSize, catalogSearchTerm, catalogRefreshKey]);
-
-  useEffect(() => {
-    if (!isSeller || !user?.sellerId || !['productos', 'preguntas_productos'].includes(activeTab)) return;
-    let cancelled = false;
-    setProductQuestionsLoading(true);
-    setProductQuestionsError('');
-    getSellerProductQuestionsApi(user.sellerId)
-      .then((response) => {
-        if (!cancelled) setProductQuestions(Array.isArray(response) ? response : response?.content || []);
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setProductQuestions([]);
-          setProductQuestionsError(error.message || 'No se pudieron cargar las preguntas de tus productos.');
-        }
-      })
-      .finally(() => { if (!cancelled) setProductQuestionsLoading(false); });
-    return () => { cancelled = true; };
-  }, [isSeller, user?.sellerId, activeTab]);
 
   const questionCountForProduct = (product) => {
     const embeddedCount = product.questionCount ?? product.preguntasCount ?? product.totalPreguntas;
@@ -525,16 +486,13 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     setCatalogPage(0);
     setCatalogSearchInput('');
     setCatalogSearchTerm('');
-    setCatalogRefreshKey((current) => current + 1);
-    loadData();
+    queryClient.invalidateQueries({ queryKey: ['sellerInventory'] });
+    queryClient.invalidateQueries({ queryKey: qk.sellerInventorySummary(effectiveSellerId) });
   };
 
   const handleCatalogProductSaved = (savedProduct) => {
-    if (savedProduct?.id) {
-      setSellerProducts((previous) => (previous || []).map((item) => item.id === savedProduct.id ? savedProduct : item));
-    }
-    setCatalogRefreshKey((current) => current + 1);
-    loadData();
+    queryClient.invalidateQueries({ queryKey: ['sellerInventory'] });
+    queryClient.invalidateQueries({ queryKey: qk.sellerInventorySummary(effectiveSellerId) });
   };
 
   const handleToggleProductTop = async (product, destacado) => {
@@ -544,9 +502,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     setCatalogTopFeedback('');
     try {
       const updated = await updateSellerProductTopApi(user.sellerId, product.id, destacado);
-      setSellerProducts((previous) => (previous || []).map((item) => (
-        item.id === product.id ? { ...item, ...updated, destacado: Boolean(updated?.destacado ?? destacado) } : item
-      )));
+      queryClient.invalidateQueries({ queryKey: ['sellerInventory'] });
       setSelectedCatalogProduct((previous) => previous?.id === product.id
         ? { ...previous, ...updated, destacado: Boolean(updated?.destacado ?? destacado) }
         : previous);

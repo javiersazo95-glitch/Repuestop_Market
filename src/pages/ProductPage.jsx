@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useLocation, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import ProductDetailPage from '../components/ProductDetailPage';
 import { useAuth } from '../context/AuthContext';
@@ -9,20 +10,22 @@ import { parseIdSlug } from '../routes/paths';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 import { getPublicProductApi, getPublicProductsApi } from '../services/api';
 import { adaptPage, adaptProduct } from '../services/adapters';
+import { qk } from '../services/queryKeys';
 
 // Respaldo cuando el backend no expone la ficha unitaria: se busca el producto
 // dentro del listado público paginado.
 const FALLBACK_FETCH_SIZE = 100;
 
-async function fetchProductById(productId) {
+async function fetchProductById(productId, signal) {
   try {
-    const dto = await getPublicProductApi(productId);
+    const dto = await getPublicProductApi(productId, { signal });
     if (dto && (dto.id ?? dto.productoId)) return adaptProduct(dto);
-  } catch {
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
     // sigue al respaldo
   }
 
-  const page = await getPublicProductsApi({ page: 0, size: FALLBACK_FETCH_SIZE, sort: 'createdAt,desc' });
+  const page = await getPublicProductsApi({ page: 0, size: FALLBACK_FETCH_SIZE, sort: 'createdAt,desc', signal });
   const found = adaptPage(page, adaptProduct).items
     .find((item) => String(item.id) === String(productId));
   if (!found) throw new Error('Este repuesto ya no está publicado.');
@@ -40,31 +43,24 @@ export default function ProductPage() {
   // Al llegar navegando desde el catálogo el producto ya viaja en el state; la
   // petición solo ocurre cuando se entra por URL directa o tras un refresco.
   const preloaded = location.state?.product;
-  const [product, setProduct] = useState(
-    preloaded && String(preloaded.id) === String(productId) ? preloaded : null
-  );
-  const [error, setError] = useState(null);
+  const initialData = preloaded && String(preloaded.id) === String(productId) ? preloaded : undefined;
+
+  const { data: product, isLoading, error } = useQuery({
+    queryKey: qk.product(productId),
+    queryFn: ({ signal }) => fetchProductById(productId, signal),
+    initialData,
+    enabled: Boolean(productId),
+    staleTime: 5 * 60 * 1000,
+  });
 
   useDocumentTitle(product?.titulo || 'Repuesto');
-
-  useEffect(() => {
-    if (product && String(product.id) === String(productId)) return undefined;
-
-    let cancelled = false;
-    setError(null);
-    fetchProductById(productId)
-      .then((found) => { if (!cancelled) setProduct(found); })
-      .catch((err) => { if (!cancelled) setError(err.message || 'No se pudo cargar el repuesto.'); });
-
-    return () => { cancelled = true; };
-  }, [productId, product]);
 
   if (error) {
     return (
       <div className="route-status-panel">
         <AlertCircle size={38} aria-hidden="true" />
         <h2>No encontramos este repuesto</h2>
-        <p>{error}</p>
+        <p>{error?.message || 'No se pudo cargar la información del repuesto.'}</p>
         <button type="button" className="route-status-action" onClick={() => nav.goCatalog()}>
           <ArrowLeft size={16} /> Volver al catálogo
         </button>
@@ -72,7 +68,7 @@ export default function ProductPage() {
     );
   }
 
-  if (!product) {
+  if (isLoading || !product) {
     return (
       <div className="route-status-panel">
         <Loader2 size={34} className="route-status-spinner" aria-hidden="true" />
@@ -89,8 +85,6 @@ export default function ProductPage() {
       onBack={() => nav.goCatalog()}
       onAddToCart={addToCart}
       onOpenQuote={openQuote}
-      // Desde la ficha se podía ver quién vende, pero no llegar a su tienda.
-      // La vitrina de relacionados navega a la ficha del producto elegido.
       onSelectProduct={nav.goProduct}
       onOpenStore={product.proveedorId
         ? () => nav.goStore({ id: product.proveedorId, nombre: product.vendedor })
