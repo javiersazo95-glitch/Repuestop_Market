@@ -6,7 +6,7 @@ import BuyerAddressBook from './BuyerAddressBook';
 import { getAddressesApi, checkoutCartApi } from '../services/api';
 
 export default function CartDrawer({
-  isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, activeVehicle,
+  isOpen, onClose, cartItems, cartError, onDismissCartError, onUpdateQuantity, onRemoveItem, activeVehicle,
   user, isLoggedIn, onOpenAuthModal, onOrderCreated, onClearCart,
 }) {
   const userId = user?.userId ?? user?.id;
@@ -131,6 +131,21 @@ export default function CartDrawer({
         ) : (
         <>
         <div className="cart-flow-note"><ShieldCheck size={16} /><span>Revisa productos, entrega y documento tributario antes de pagar.</span></div>
+
+        {cartError && (
+          <div className="cart-checkout-error cart-mutation-error">
+            <AlertTriangle size={15} />
+            <span>{cartError}</span>
+            <button
+              type="button"
+              className="cart-mutation-error-dismiss"
+              onClick={onDismissCartError}
+              aria-label="Cerrar aviso"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         {/* Drawer Body - Items List */}
         <div className="drawer-body">

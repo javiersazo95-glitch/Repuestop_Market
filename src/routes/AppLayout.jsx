@@ -21,7 +21,7 @@ export default function AppLayout() {
   const [searchParams] = useSearchParams();
   const nav = useAppNavigation();
   const {
-    activeVehicle, cartCount, cartItems, updateCartQuantity, removeFromCart, clearCart,
+    activeVehicle, cartCount, cartItems, cartError, dismissCartError, updateCartQuantity, removeFromCart, clearCart,
     isCartOpen, openCart, closeCart,
     isAuthModalOpen, openAuthModal, closeAuthModal,
     quoteProduct, closeQuote,
@@ -106,6 +106,8 @@ export default function AppLayout() {
         isOpen={isCartOpen}
         onClose={closeCart}
         cartItems={cartItems}
+        cartError={cartError}
+        onDismissCartError={dismissCartError}
         onUpdateQuantity={updateCartQuantity}
         onRemoveItem={removeFromCart}
         onClearCart={clearCart}

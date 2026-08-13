@@ -11240,6 +11240,9 @@ input, select, textarea {
 .btn-proceed-checkout { width: 100%; min-height: 50px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 12px; color: #fff; background: linear-gradient(135deg, #2987ff, #074de7); font-size: 14px; font-weight: 800; cursor: pointer; box-shadow: 0 10px 20px rgba(17, 95, 236, .22); }
 .btn-proceed-checkout:disabled { opacity: .7; cursor: wait; }
 .cart-checkout-error { margin-top: 10px; padding: 9px 12px; display: flex; align-items: center; gap: 7px; border-radius: 9px; color: #9a3412; background: #fff3ea; font-size: 12px; font-weight: 700; }
+.cart-mutation-error { margin: 10px 20px 0; }
+.cart-mutation-error span { flex: 1; }
+.cart-mutation-error-dismiss { display: flex; align-items: center; justify-content: center; border: none; background: transparent; color: inherit; cursor: pointer; padding: 2px; flex-shrink: 0; }
 
 /* Selector de dirección dentro del carrito: reutiliza BuyerAddressBook
    cuando el comprador aún no tiene direcciones o quiere agregar otra. */
