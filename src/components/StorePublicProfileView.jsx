@@ -398,16 +398,18 @@ export default function StorePublicProfileView({
               <div className="store-rating-card">
                 <span className="rating-card-label">Calificación de la tienda</span>
                 <div className="rating-card-score-row">
-                  <span className="rating-score-num">{rating ? rating.toFixed(1) : '4.9'}</span>
+                  <span className="rating-score-num">{rating.toFixed(1)}</span>
                   <div className="rating-stars-box">
-                    <div className="stars-row">
-                      <Star size={16} className="star-icon fill-star" />
-                      <Star size={16} className="star-icon fill-star" />
-                      <Star size={16} className="star-icon fill-star" />
-                      <Star size={16} className="star-icon fill-star" />
-                      <Star size={16} className="star-icon fill-star" />
+                    <div className="stars-row" aria-label={`${rating.toFixed(1)} de 5 estrellas`}>
+                      {Array.from({ length: 5 }, (_, index) => (
+                        // .stars-row .star-icon fuerza el relleno azul (!important):
+                        // las vacias NO llevan esa clase o se verian llenas igual.
+                        <Star key={index} size={16} className={index < Math.round(rating) ? 'star-icon' : 'star-icon-empty'} />
+                      ))}
                     </div>
-                    <small className="rating-opinions-count">({reviewCount ? reviewCount : '128'} opiniones)</small>
+                    <small className="rating-opinions-count">
+                      {reviewCount > 0 ? `(${reviewCount.toLocaleString('es-CL')} opiniones)` : 'Sin evaluaciones'}
+                    </small>
                   </div>
                 </div>
               </div>

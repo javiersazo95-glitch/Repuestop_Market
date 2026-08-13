@@ -101,7 +101,18 @@ export default function Header({
 
   // Se consulta una página por subcategoría para recibir totalElements: el número
   // mostrado es el total publicado en el sistema, no solo los elementos cargados.
+  //
+  // PERF: el panel de subcategorías solo se monta con showCategoryMenu === true
+  // (linea ~311), pero antes este efecto no lo comprobaba y disparaba las N
+  // peticiones (una por subcategoría de la categoría activa, con su propio
+  // preflight CORS cada una) en cada carga de página, en todo el sitio, aunque
+  // el usuario nunca abriera el menú. No existe un endpoint agregado de
+  // subcategorías (a diferencia de /resumen-categorias) porque este panel
+  // también necesita una imagen representativa por subcategoría, no solo el
+  // total; mientras no exista, la mitigación real es no pagar el costo hasta
+  // que el usuario efectivamente abre el menú.
   useEffect(() => {
+    if (!showCategoryMenu) return undefined;
     let active = true;
     const backendCategory = getBackendCategory(activeHeaderCategory);
     if (!backendCategory?.id) return () => { active = false; };
@@ -136,7 +147,7 @@ export default function Header({
     };
     loadCounts();
     return () => { active = false; };
-  }, [activeHeaderCategory, backendCategories, subcategoryInventory]);
+  }, [showCategoryMenu, activeHeaderCategory, backendCategories, subcategoryInventory]);
 
   useEffect(() => {
     if (showCategoryMenu) requestAnimationFrame(() => categorySearchInputRef.current?.focus());

@@ -9,7 +9,7 @@ import {
 import { CAROUSEL_CATEGORIES, NAVIGATION_CATEGORIES } from '../data/categories';
 import { POPULAR_MARCAS, ANIOS_DISPONIBLES } from '../data/sampleVehicles';
 import { getPartCategoriesApi, getPublicCategoryCountsApi, getPublicProductsApi, getVehicleBrandsApi, searchVehicleByPatenteApi } from '../services/api';
-import { adaptVehicle, normalizeCategoryId } from '../services/adapters';
+import { adaptVehicle } from '../services/adapters';
 import CategoryIconTile from './CategoryIconTile';
 
 const SEARCH_MODES = [
@@ -51,24 +51,41 @@ export default function OfficialPatentHero({
 
   useEffect(() => {
     let isMounted = true;
-    const toCountMap = (items) => (Array.isArray(items) ? items : []).reduce((result, item) => {
-      const normalized = normalizeCategoryId(item.categoriaNombre);
-      const carouselCategory = CAROUSEL_CATEGORIES.find((category) =>
-        categoryNameKey(category.nombre) === categoryNameKey(item.categoriaNombre));
-      const total = Number(item.total || 0);
-      // El carrusel usa IDs técnicos (p. ej. `aceite`) y los filtros usan IDs
-      // visuales (`aceites`); guardamos ambos para que nunca se pierda el conteo.
-      result[normalized] = total;
-      if (carouselCategory) {
-        result[carouselCategory.id] = total;
-        result[carouselCategory.filterId] = total;
-      }
-      return result;
-    }, {});
+    // GET /resumen-categorias trae el total exacto de TODAS las categorias en una
+    // sola consulta agregada en el servidor. `item.categoriaNombre` es el nombre
+    // real de una categoria backend (p. ej. "Direccion"); se resuelve contra
+    // CAROUSEL_CATEGORIES (= HEADER_CATEGORIES, las 24 categorias reales) para
+    // obtener su id real y su familia visual (filterId).
+    const toCountMap = (items) => {
+      const list = Array.isArray(items) ? items : [];
+      // Dos mapas separados, no uno solo: el id real de una categoria a veces
+      // coincide con el filterId de su propia familia (p. ej. "electrico" es el
+      // id de la categoria Eléctrico Y el filterId de Encendido/Sensores).
+      // Sumar sobre el mismo objeto hacia ambos fines contaminaba el total exacto
+      // de esa categoria con la suma de toda su familia.
+      const byId = {};
+      const byFilterId = {};
+      list.forEach((item) => {
+        const matchedCategory = CAROUSEL_CATEGORIES.find((category) =>
+          categoryNameKey(category.nombre) === categoryNameKey(item.categoriaNombre));
+        if (!matchedCategory) return;
+        const total = Number(item.total || 0);
+        // El carrusel lee por id real (p. ej. `direccion`): valor exacto, sin sumar.
+        byId[matchedCategory.id] = total;
+        // La barra lateral ordena por familia visual (p. ej. `suspension`), y varias
+        // categorias reales comparten familia: hay que sumar, no sobreescribir, o la
+        // familia se queda solo con el total de la ultima categoria procesada.
+        byFilterId[matchedCategory.filterId] = (byFilterId[matchedCategory.filterId] || 0) + total;
+      });
+      // Si un id real coincide con un filterId, el total exacto de la categoria
+      // (byId) debe ganarle a la suma de la familia (byFilterId): por eso va
+      // segundo en el merge.
+      return { ...byFilterId, ...byId };
+    };
 
     const loadFallbackCounts = async () => {
-      // Compatibilidad con una API aún sin el resumen agregado: se consulta el
-      // total exacto de cada categoría directamente desde el mismo catálogo.
+      // Solo corre si el resumen agregado falla: sin el en una sola consulta, se
+      // reconstruye pidiendo el total exacto de cada categoria por separado.
       const availableCategories = await getPartCategoriesApi();
       if (isMounted) setBackendCategories(Array.isArray(availableCategories) ? availableCategories : []);
       const entries = await Promise.all(CAROUSEL_CATEGORIES.map(async (category) => {
@@ -83,15 +100,15 @@ export default function OfficialPatentHero({
 
     (async () => {
       try {
-        // La card y la vista filtrada deben compartir exactamente la misma
-        // fuente: GET /inventario/productos?categoriaId=... con totalElements.
-        // El resumen agregado se conserva como respaldo, pero no decide el
-        // número mostrado porque sus IDs visuales pueden agrupar categorías.
-        const counts = await loadFallbackCounts();
+        // Camino normal: 1 sola peticion para las ~24 categorias. Antes se hacia
+        // al reves (24+ peticiones siempre, una por categoria) y el agregado solo
+        // se usaba si esas 24 fallaban — la portada pagaba el camino caro en cada
+        // carga, incluida la primera visita de cada usuario.
+        const counts = toCountMap(await getPublicCategoryCountsApi());
         if (isMounted) setCategoryCounts(counts);
       } catch {
         try {
-          const counts = toCountMap(await getPublicCategoryCountsApi());
+          const counts = await loadFallbackCounts();
           if (isMounted) setCategoryCounts(counts);
         } catch {
           // No sustituimos con cifras mock; mantenemos el estado de carga.
