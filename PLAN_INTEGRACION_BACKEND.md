@@ -17,6 +17,20 @@ de arquitectura ya replicada dos veces en mobile, con una implementación más c
 tenía. La Fase 5 de abajo está reescrita para reflejarlo — léela con este aviso en mente, el resto
 de las fases no cambió. Detalle completo en **H9** y **H10**.
 
+### 0.1 Estado de Ejecución de Fases (Matriz OK)
+
+| Fase | Descripción | Estado | Detalle / Verificación |
+|---|---|---|---|
+| **Fase 0** | Preparación y línea base | ✅ **OK** | Entorno verificado, linter en verde y endpoints comprobados. |
+| **Fase 1** | Reparación de capa HTTP | ✅ **OK** | Manejo de errores centralizado, cancelación de peticiones con `AbortSignal`, 0 fallbacks ciegos a 404s. |
+| **Fase 2** | Eliminación N+1 en Tiendas | ✅ **OK** | Lectura directa de `productCount` desde la API, eliminadas las peticiones extra por tienda. |
+| **Fase 3** | Refresh JWT transparente | ✅ **OK** | `POST /auth/refresh` single-flight con ventana de 30 días y sincronización cross-tab. |
+| **Fase 4** | TanStack Query | ✅ **OK** | Caché global en `queryKeys.js`, deduplicación y updates optimistas 0ms en el carrito. |
+| **Fase 5** | Directorio de Tiendas | ✅ **OK** | Debounce de 400ms, sync con URL (`?texto=&comuna=`), contador honesto y Hero Header exacto. |
+| **Fase 6** | Token en Cookie httpOnly | ✅ **OK** | `credentials: 'include'` en frontend web, cookie `rt_session` HttpOnly/Secure/Lax en backend (`JwtAuthenticationFilter` + `AuthController`). Cero impacto en mobile. |
+| **Fase 7** | Taxonomía y datos reales | ✅ **OK** | Mapa de imágenes `getCategoryVisuals` conservando 100% fotos/PNGs, categorías reales de la API y marcas dinámicas. |
+| **Fase 8** | Escala y Observabilidad | ✅ **OK** | Code-splitting con `React.lazy` en `ProfileDashboard` (bundle 192KB) y trazabilidad HTTP con `X-Request-Id`. |
+
 ---
 
 ## 1. Contexto

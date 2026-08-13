@@ -38,6 +38,7 @@ export async function refreshSessionApi(currentJwt) {
       try {
         const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: tokenToRefresh, refreshToken: tokenToRefresh }),
         });
@@ -92,6 +93,7 @@ export async function fetchApi(endpoint, options = {}) {
   };
 
   const config = {
+    credentials: 'include',
     ...options,
     headers,
     ...(signal ? { signal } : {}),
