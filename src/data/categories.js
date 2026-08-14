@@ -21,6 +21,32 @@ export const SIDEBAR_CATEGORIES = [
 // de las ocho familias que usan las cards y los filtros resumidos actuales.
 export const HEADER_CATEGORIES = [
   {
+    id: 'accesorios',
+    nombre: 'Accesorios',
+    filterId: 'carroceria',
+    image: '/cat_accesorios.jpg',
+    subcategories: [
+      'Interior',
+      'Exterior',
+      'Seguridad',
+      'Iluminación',
+      'Audio y Tecnología',
+      'Limpieza y Cuidado',
+      'Herramientas y Emergencia',
+      'Neumáticos y Llantas',
+    ],
+    subcategoryImages: {
+      Interior: '/category-parts/accessories-subcategories/interior.png',
+      Exterior: '/category-parts/accessories-subcategories/exterior.png',
+      Seguridad: '/category-parts/accessories-subcategories/seguridad.png',
+      Iluminación: '/category-parts/accessories-subcategories/iluminacion.png',
+      'Audio y Tecnología': '/category-parts/accessories-subcategories/audio-tecnologia.png',
+      'Limpieza y Cuidado': '/category-parts/accessories-subcategories/limpieza-cuidado.png',
+      'Herramientas y Emergencia': '/category-parts/accessories-subcategories/herramientas-emergencia.png',
+      'Neumáticos y Llantas': '/category-parts/accessories-subcategories/neumaticos-llantas.png',
+    },
+  },
+  {
     id: 'aceite',
     nombre: 'Aceite',
     filterId: 'aceites',
@@ -167,6 +193,7 @@ export const HEADER_CATEGORIES = [
 // extraídas de la referencia se usan en su categoría equivalente; el recurso de
 // catálogo generado cubre las familias que no estaban presentes en esa lámina.
 export const CATEGORY_VISUALS = {
+  accesorios: { iconName: 'Sparkles', color: '#06b6d4', image: '/category-parts/accesorios-v2.png' },
   aceite: { iconName: 'Droplets', color: '#14b8a6', image: '/category-parts/aceite-card-v2.png' },
   'admision-aire': { iconName: 'Wind', color: '#0ea5e9', image: '/category-parts/admision-aire-v2.png' },
   'calefaccion-aire-acondicionado': { iconName: 'ThermometerSun', color: '#f59e0b', image: '/category-parts/calefaccion-v2.png' },

@@ -14,19 +14,20 @@ export default function CatalogDetailModal({
   onClose,
   onSaveProduct,
 }) {
-  if (!product) return null;
-
-  const [priceDraft, setPriceDraft] = useState(product.precio || 0);
-  const [stockDraft, setStockDraft] = useState(product.stock || 0);
-  const [descriptionDraft, setDescriptionDraft] = useState(product.descripcion || '');
+  const [priceDraft, setPriceDraft] = useState(product?.precio || 0);
+  const [stockDraft, setStockDraft] = useState(product?.stock || 0);
+  const [descriptionDraft, setDescriptionDraft] = useState(product?.descripcion || '');
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState(null);
 
   useEffect(() => {
+    if (!product) return;
     setPriceDraft(product.precio || 0);
     setStockDraft(product.stock || 0);
     setDescriptionDraft(product.descripcion || '');
   }, [product]);
+
+  if (!product) return null;
 
   const title = product.nombrePublicado || product.repuestoNombre || product.nombre || 'Repuesto sin título';
   const sku = product.sku || product.codigoSKU || 'SKU-000';
