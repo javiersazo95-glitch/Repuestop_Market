@@ -182,6 +182,12 @@ export default function OfficialPatentHero({
       return;
     }
 
+    if (searchMode === 'patente' && activeVehicle && (activeVehicle.patente || '').toUpperCase() === value.toUpperCase()) {
+      setErrorMsg('');
+      onOpenCatalog?.();
+      return;
+    }
+
     setErrorMsg('');
     setIsSearching(true);
     try {
@@ -189,6 +195,7 @@ export default function OfficialPatentHero({
       if (result && !result.requiereIngresoManual && result.marca) {
         onSelectVehicle(result);
         setInputValue(result.patente || value);
+        onOpenCatalog?.();
       } else {
         setErrorMsg(result?.mensaje || 'No encontramos ese vehículo. Verifica la patente e intenta de nuevo.');
       }

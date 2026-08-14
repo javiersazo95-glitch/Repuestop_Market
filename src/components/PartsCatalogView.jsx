@@ -170,6 +170,17 @@ export default function PartsCatalogView({
     }
   }, [initialSearchQuery]);
 
+  useEffect(() => {
+    setActiveVehicle(initialActiveVehicle);
+    if (initialActiveVehicle) {
+      setOnlyCompatible(true);
+      if (initialActiveVehicle.patente) {
+        setInputValue(initialActiveVehicle.patente);
+        setSearchMode('patente');
+      }
+    }
+  }, [initialActiveVehicle]);
+
   const toggleFilterSection = (section) => {
     setOpenFilterSections((current) => ({ ...current, [section]: !current[section] }));
   };
