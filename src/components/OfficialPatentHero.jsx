@@ -31,7 +31,7 @@ export default function OfficialPatentHero({
   onOpenCatalog
 }) {
   const [searchMode, setSearchMode] = useState('patente');
-  const [inputValue, setInputValue] = useState(activeVehicle?.patente || '');
+  const [inputValue, setInputValue] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [activeCarouselPage, setActiveCarouselPage] = useState(0);
@@ -39,7 +39,7 @@ export default function OfficialPatentHero({
   const [backendCategories, setBackendCategories] = useState([]);
 
   const mode = SEARCH_MODES.find((item) => item.id === searchMode) || SEARCH_MODES[0];
-  const samplePatentes = ['BB-CL-12', 'HG-89-21', 'AA-123-BB', 'JJ-TT-45'];
+  const POPULAR_SEARCH_TERMS = ['Pastillas de freno', 'Filtro de aceite', 'Amortiguadores', 'Bujías', 'Baterías'];
   const categoryNameKey = (value) => String(value || '').normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -120,12 +120,9 @@ export default function OfficialPatentHero({
   }, []);
 
   const selectCarouselCategory = (category) => {
-    // `filterId` es solo una familia visual (p. ej. Admisión pertenece al
-    // estilo "motor"); para filtrar se debe resolver por el nombre exacto de
-    // la categoría padre persistida en el backend.
     const backendCategory = backendCategories.find((item) => categoryNameKey(item.nombre) === categoryNameKey(category.nombre));
     onSelectCategory({
-      category: category.filterId || category.id,
+      category: category.id,
       categoryId: backendCategory?.id,
       categoryName: category.nombre,
     });
@@ -172,6 +169,11 @@ export default function OfficialPatentHero({
     }
 
     if (!value) {
+      if (searchMode === 'patente' && activeVehicle?.patente) {
+        setErrorMsg('');
+        onOpenCatalog?.();
+        return;
+      }
       setErrorMsg(searchMode === 'patente' ? 'Ingresa una patente válida (ejemplo: BB-CL-12)' : 'Ingresa un término para buscar.');
       return;
     }
@@ -194,7 +196,7 @@ export default function OfficialPatentHero({
       const result = adaptVehicle(await searchVehicleByPatenteApi(value));
       if (result && !result.requiereIngresoManual && result.marca) {
         onSelectVehicle(result);
-        setInputValue(result.patente || value);
+        setInputValue('');
         onOpenCatalog?.();
       } else {
         setErrorMsg(result?.mensaje || 'No encontramos ese vehículo. Verifica la patente e intenta de nuevo.');
@@ -208,8 +210,13 @@ export default function OfficialPatentHero({
 
   const selectMode = (modeId) => {
     setSearchMode(modeId);
-    setInputValue(modeId === 'patente' ? (activeVehicle?.patente || '') : '');
+    setInputValue('');
     setErrorMsg('');
+  };
+
+  const handlePopularTermClick = (term) => {
+    setErrorMsg('');
+    onOpenCatalog?.(null, { q: term });
   };
 
   const visibleCarouselCategories = Array.from(
@@ -245,7 +252,7 @@ export default function OfficialPatentHero({
             {popularNavigationCategories.map((category) => (
               <li key={category.id}>
                 <button
-                  className={selectedCategory === category.filterId ? 'active' : ''}
+                  className={selectedCategory === category.id ? 'active' : ''}
                   onClick={() => selectCarouselCategory(category)}
                 >
                   <CategoryIconTile iconName={category.iconName} color={category.color} size={16} className="light-cat-icon" />
@@ -362,14 +369,29 @@ export default function OfficialPatentHero({
 
                 <div className="popular-searches">
                   <span>Búsquedas populares:</span>
-                  {samplePatentes.map((plate) => <button key={plate} onClick={() => handleSearch(plate)}>{plate}</button>)}
+                  {POPULAR_SEARCH_TERMS.map((term) => (
+                    <button key={term} type="button" onClick={() => handlePopularTermClick(term)}>
+                      {term}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
 
           {activeVehicle && (
-            <div className="light-active-vehicle"><CheckCircle2 size={17} /> Vehículo activo: <strong>{activeVehicle.marca} {activeVehicle.modelo} ({activeVehicle.patente})</strong></div>
+            <div className="light-active-vehicle">
+              <CheckCircle2 size={17} />
+              <span>Vehículo activo: <strong>{activeVehicle.marca} {activeVehicle.modelo} ({activeVehicle.patente})</strong></span>
+              <button
+                type="button"
+                onClick={() => onSelectVehicle?.(null)}
+                style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#047857', cursor: 'pointer', fontSize: '11px', textDecoration: 'underline', padding: '2px 4px' }}
+                title="Quitar vehículo activo"
+              >
+                Cambiar / Quitar
+              </button>
+            </div>
           )}
 
           <div className="light-trust-row">

@@ -254,8 +254,13 @@ export default function StorePublicProfileView({
     }
 
     // 2. Category
-    if (selectedCategory !== 'TODAS' && prod.categoria !== selectedCategory) {
-      return false;
+    if (selectedCategory !== 'TODAS') {
+      const matchCatId = prod.categoria === selectedCategory;
+      const matchCatNombre = prod.categoriaNombre && (
+        String(prod.categoriaNombre).toLowerCase() === String(selectedCategory).toLowerCase() ||
+        NAVIGATION_CATEGORIES.find((c) => c.id === selectedCategory)?.nombre.toLowerCase() === String(prod.categoriaNombre).toLowerCase()
+      );
+      if (!matchCatId && !matchCatNombre) return false;
     }
 
     // 3. Technical Condition
@@ -696,12 +701,12 @@ export default function StorePublicProfileView({
                 {NAVIGATION_CATEGORIES.map((cat) => (
                   <button
                     key={cat.id}
-                    className={`filter-option-btn ${selectedCategory === cat.filterId ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory(cat.filterId)}
+                    className={`filter-option-btn ${selectedCategory === cat.id ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory(selectedCategory === cat.id ? 'TODAS' : cat.id)}
                   >
                     <CategoryIconTile iconName={cat.iconName} color={cat.color} size={9} className="filter-category-icon" />
                     <span className="filter-option-copy"><strong>{cat.nombre}</strong></span>
-                    {selectedCategory === cat.filterId ? <CheckCircle2 size={18} className="check-active" /> : <ChevronRight size={16} className="filter-option-chevron" />}
+                    {selectedCategory === cat.id ? <CheckCircle2 size={18} className="check-active" /> : <ChevronRight size={16} className="filter-option-chevron" />}
                   </button>
                 ))}
               </div>}

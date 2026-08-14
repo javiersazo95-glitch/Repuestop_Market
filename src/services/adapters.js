@@ -8,8 +8,11 @@
  * solo lugar para que los componentes no tengan que conocer la forma del backend.
  */
 
-import { SIDEBAR_CATEGORIES } from '../data/categories';
+import { HEADER_CATEGORIES, SIDEBAR_CATEGORIES } from '../data/categories';
 import { resolveMediaUrl } from './api';
+
+const normalizeNameKey = (value) => String(value || '').normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 const CATEGORY_IDS = SIDEBAR_CATEGORIES.map((c) => c.id);
 
@@ -28,9 +31,8 @@ export function formatRut(value) {
 }
 
 /**
- * El backend devuelve el nombre de la categoría como texto libre ("Sistema de Frenos",
- * "Motor y Distribución"). La UI colorea e iconiza por el id corto del mock, así que se
- * resuelve por coincidencia de palabra clave y cae en 'motor' si no hay match.
+ * El backend devuelve el nombre de la categoría ("Accesorios", "Carrocería", "Sistema de Frenos", etc.).
+ * Se resuelve primero por coincidencia exacta/slug con HEADER_CATEGORIES y luego por palabras clave.
  */
 const CATEGORY_KEYWORDS = {
   frenos: ['freno', 'brake', 'pastilla', 'disco'],
@@ -46,12 +48,25 @@ const CATEGORY_KEYWORDS = {
 export function normalizeCategoryId(rawCategoria) {
   if (!rawCategoria) return 'motor';
 
-  const texto = String(rawCategoria).toLowerCase().trim();
-  if (CATEGORY_IDS.includes(texto)) return texto;
+  const texto = String(rawCategoria).trim();
+  const norm = normalizeNameKey(texto);
 
+  // 1. Coincidencia directa con alguna de las 24 categorías canónicas
+  const matchedCanonical = HEADER_CATEGORIES.find((c) =>
+    c.id === texto.toLowerCase() ||
+    normalizeNameKey(c.nombre) === norm ||
+    normalizeNameKey(c.id) === norm
+  );
+  if (matchedCanonical) return matchedCanonical.id;
+
+  // 2. Coincidencia por id corto de SIDEBAR_CATEGORIES
+  if (CATEGORY_IDS.includes(texto.toLowerCase())) return texto.toLowerCase();
+
+  // 3. Fallback por palabras clave
   for (const [id, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some((k) => texto.includes(k))) return id;
+    if (keywords.some((k) => texto.toLowerCase().includes(k))) return id;
   }
+
   return 'motor';
 }
 

@@ -19,7 +19,7 @@ export default function HomePage() {
         activeVehicle={activeVehicle}
         onSelectVehicle={setActiveVehicle}
         onOpenSellerModal={nav.goSellerRegister}
-        onOpenCatalog={() => nav.goCatalog()}
+        onOpenCatalog={(filter, extra) => nav.goCatalog(filter, extra)}
         onOpenHelp={nav.goHelp}
         selectedCategory={null}
         onSelectCategory={(filter) => nav.goCatalog(filter)}

@@ -239,15 +239,15 @@ export const CAROUSEL_CATEGORIES = HEADER_CATEGORIES.map((category) => ({
 // and reference image from a product's `categoria` id without duplicating
 // the mapping everywhere.
 export const CATEGORY_ICON_BY_ID = Object.fromEntries(
-  SIDEBAR_CATEGORIES.map(cat => [cat.id, cat.iconName])
+  NAVIGATION_CATEGORIES.map(cat => [cat.id, cat.iconName])
 );
 
 export const CATEGORY_COLOR_BY_ID = Object.fromEntries(
-  SIDEBAR_CATEGORIES.map(cat => [cat.id, cat.color])
+  NAVIGATION_CATEGORIES.map(cat => [cat.id, cat.color])
 );
 
 export const CATEGORY_IMAGE_BY_ID = Object.fromEntries(
-  SIDEBAR_CATEGORIES.map(cat => [cat.id, cat.image])
+  NAVIGATION_CATEGORIES.map(cat => [cat.id, cat.image])
 );
 
 export const CATEGORY_GRID_ITEMS = [
@@ -357,23 +357,15 @@ export function getCategoryVisuals(categoryOrName) {
     ? categoryOrName.toLowerCase().trim()
     : (categoryOrName.nombre || categoryOrName.id || '').toLowerCase().trim();
 
-  const matchSidebar = SIDEBAR_CATEGORIES.find(c =>
-    name.includes(c.id) || c.nombre.toLowerCase().includes(name) || name.includes(c.nombre.toLowerCase())
-  );
-  if (matchSidebar) {
-    return { iconName: matchSidebar.iconName, color: matchSidebar.color, image: matchSidebar.image };
+  if (CATEGORY_VISUALS[name]) {
+    return CATEGORY_VISUALS[name];
   }
 
   const matchHeader = HEADER_CATEGORIES.find(c =>
-    name.includes(c.id) || c.nombre.toLowerCase().includes(name) || name.includes(c.nombre.toLowerCase())
+    c.id === name || c.nombre.toLowerCase() === name || name.includes(c.id) || c.nombre.toLowerCase().includes(name)
   );
-  if (matchHeader) {
-    const filterMatch = SIDEBAR_CATEGORIES.find(s => s.id === matchHeader.filterId);
-    return {
-      iconName: filterMatch?.iconName || 'Cog',
-      color: filterMatch?.color || '#f97316',
-      image: matchHeader.image || filterMatch?.image || '/cat_motor.jpg'
-    };
+  if (matchHeader && CATEGORY_VISUALS[matchHeader.id]) {
+    return CATEGORY_VISUALS[matchHeader.id];
   }
 
   if (name.includes('freno') || name.includes('disco') || name.includes('pastilla')) {

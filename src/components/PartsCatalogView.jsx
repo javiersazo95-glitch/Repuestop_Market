@@ -13,11 +13,14 @@ import MarketplaceProductCard from './MarketplaceProductCard';
 import ProductCardSkeleton from './skeletons/ProductCardSkeleton';
 import { qk } from '../services/queryKeys';
 import {
-  NAVIGATION_CATEGORIES, CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID
+  NAVIGATION_CATEGORIES, CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID, HEADER_CATEGORIES
 } from '../data/categories';
 import { getPartCategoriesApi, getPublicProductsApi, searchVehicleByPatenteApi, getAddressesApi } from '../services/api';
 import { adaptPage, adaptProduct, adaptVehicle } from '../services/adapters';
 import { useAuth } from '../context/AuthContext';
+
+const normalizeNameKey = (value) => String(value || '').normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 // El backend acota el tamaño de página a 100. Esta vista filtra y pagina en cliente,
 // así que se trae un bloque grande y la UI hace el resto del trabajo.
@@ -114,11 +117,15 @@ export default function PartsCatalogView({
     }),
     queryFn: async ({ signal }) => {
       let categoriaId = initialCatalogFilter?.categoryId;
-      if (!categoriaId && initialCatalogFilter?.categoryName) {
+      if (!categoriaId && (initialCatalogFilter?.categoryName || initialCatalogFilter?.category)) {
+        const catTarget = initialCatalogFilter?.categoryName || initialCatalogFilter?.category;
         const categories = await getPartCategoriesApi({ signal });
-        const normalizeName = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        categoriaId = (Array.isArray(categories) ? categories : [])
-          .find((category) => normalizeName(category.nombre) === normalizeName(initialCatalogFilter.categoryName))?.id;
+        const matched = (Array.isArray(categories) ? categories : []).find((category) => {
+          const normBackend = normalizeNameKey(category.nombre);
+          return normBackend === normalizeNameKey(catTarget) ||
+                 normBackend === normalizeNameKey(HEADER_CATEGORIES.find((h) => h.id === catTarget)?.nombre);
+        });
+        categoriaId = matched?.id;
       }
       const data = await getPublicProductsApi({
         page: 0,
@@ -305,11 +312,25 @@ export default function PartsCatalogView({
     }
 
     // 2. Category Filter
-    if (selectedCategory !== 'TODAS' && prod.categoria !== selectedCategory) {
-      return false;
+    if (selectedCategory !== 'TODAS') {
+      const matchCatId = prod.categoria === selectedCategory;
+      const matchCatNombre = prod.categoriaNombre && (
+        normalizeNameKey(prod.categoriaNombre) === normalizeNameKey(selectedCategory) ||
+        normalizeNameKey(prod.categoriaNombre) === normalizeNameKey(NAVIGATION_CATEGORIES.find((c) => c.id === selectedCategory)?.nombre)
+      );
+      if (!matchCatId && !matchCatNombre) {
+        return false;
+      }
     }
 
-    if (selectedSubcategory !== 'TODAS' && prod.subcategoria !== selectedSubcategory) return false;
+    // 2b. Subcategory Filter
+    if (selectedSubcategory !== 'TODAS') {
+      const matchSub = prod.subcategoria && (
+        normalizeNameKey(prod.subcategoria) === normalizeNameKey(selectedSubcategory) ||
+        prod.subcategoria.toLowerCase().trim() === selectedSubcategory.toLowerCase().trim()
+      );
+      if (!matchSub) return false;
+    }
 
     // 3. Technical Condition Filter
     if (selectedCondition !== 'TODOS' && prod.condicion && prod.condicion !== selectedCondition) {
@@ -425,7 +446,7 @@ export default function PartsCatalogView({
   const appliedFilterLabel = selectedSubcategory !== 'TODAS'
     ? selectedSubcategory
     : selectedCategory !== 'TODAS'
-      ? (NAVIGATION_CATEGORIES.find((category) => category.filterId === selectedCategory)?.nombre || selectedCategory)
+      ? (NAVIGATION_CATEGORIES.find((category) => category.id === selectedCategory)?.nombre || selectedCategory)
       : null;
 
   const clearAppliedCatalogFilter = () => {
@@ -729,10 +750,11 @@ export default function PartsCatalogView({
                   {selectedCategory === 'TODAS' && <CheckCircle2 size={18} className="check-active" />}
                 </button>
                 {NAVIGATION_CATEGORIES.map((cat) => {
-                  const expanded = expandedCategories[cat.id];
+                  const isSelected = selectedCategory === cat.id;
+                  const expanded = expandedCategories[cat.id] || isSelected;
                   return <div className="filter-category-tree" key={cat.id}>
-                    <div className={`filter-option-btn ${selectedCategory === cat.filterId ? 'active' : ''}`}>
-                      <button type="button" className="filter-category-main-action" onClick={() => { setSelectedCategory(cat.filterId); setSelectedSubcategory('TODAS'); }}>
+                    <div className={`filter-option-btn ${isSelected ? 'active' : ''}`}>
+                      <button type="button" className="filter-category-main-action" onClick={() => { setSelectedCategory(isSelected ? 'TODAS' : cat.id); setSelectedSubcategory('TODAS'); }}>
                         <CategoryIconTile iconName={cat.iconName} color={cat.color} size={9} className="filter-category-icon" />
                         <span className="filter-option-copy"><strong>{cat.nombre}</strong></span>
                       </button>
@@ -741,9 +763,14 @@ export default function PartsCatalogView({
                       </button>
                     </div>
                     {expanded && <div className="filter-subcategory-branch">
-                      {cat.subcategories.map((subcategory) => <button type="button" key={subcategory} className={`filter-subcategory-option ${selectedSubcategory === subcategory ? 'active' : ''}`} onClick={() => { setSelectedCategory(cat.filterId); setSelectedSubcategory(subcategory); }}>
-                        <span className="filter-subcategory-node" />{subcategory}{selectedSubcategory === subcategory && <CheckCircle2 size={15} />}
-                      </button>)}
+                      {cat.subcategories.map((subcategory) => {
+                        const isSubSelected = selectedSubcategory === subcategory;
+                        return (
+                          <button type="button" key={subcategory} className={`filter-subcategory-option ${isSubSelected ? 'active' : ''}`} onClick={() => { setSelectedCategory(cat.id); setSelectedSubcategory(isSubSelected ? 'TODAS' : subcategory); }}>
+                            <span className="filter-subcategory-node" />{subcategory}{isSubSelected && <CheckCircle2 size={15} />}
+                          </button>
+                        );
+                      })}
                     </div>}
                   </div>;
                 })}

@@ -72,13 +72,13 @@ export default function HeroWithSidebar({ activeVehicle, onSelectVehicle, onOpen
           <ul className="sidebar-list">
             {NAVIGATION_CATEGORIES.map(cat => {
               const IconComp = iconMap[cat.iconName] || Cpu;
-              const isSelected = selectedCategory === cat.filterId;
+              const isSelected = selectedCategory === cat.id;
 
               return (
                 <li 
                   key={cat.id} 
                   className={`sidebar-item ${isSelected ? 'active' : ''}`}
-                  onClick={() => onSelectCategory(isSelected ? null : cat.filterId)}
+                  onClick={() => onSelectCategory(isSelected ? null : cat.id)}
                 >
                   <div className="item-left">
                     <IconComp size={16} className="cat-sidebar-icon" />

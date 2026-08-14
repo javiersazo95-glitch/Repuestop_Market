@@ -383,7 +383,7 @@ export default function Header({
                       onClick={() => {
                         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
                         setShowCategoryMenu(false);
-                        onSelectCategory({ category: category.filterId, categoryId: getBackendCategory(category)?.id });
+                        onSelectCategory({ category: category.id, categoryId: getBackendCategory(category)?.id, categoryName: category.nombre });
                       }}
                     >
                       <span className="header-category-label"><CategoryIconTile iconName={CATEGORY_VISUALS[category.id].iconName} color={CATEGORY_VISUALS[category.id].color} size={16} />{category.nombre}</span>
@@ -397,7 +397,7 @@ export default function Header({
                     <button onClick={() => {
                       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
                       setShowCategoryMenu(false);
-                      onSelectCategory({ category: activeHeaderCategory.filterId, categoryId: getBackendCategory(activeHeaderCategory)?.id });
+                      onSelectCategory({ category: activeHeaderCategory.id, categoryId: getBackendCategory(activeHeaderCategory)?.id, categoryName: activeHeaderCategory.nombre });
                     }}>Ver más <ChevronRight size={16} /></button>
                   </div>
                   <div className="header-subcategory-grid">
@@ -416,7 +416,7 @@ export default function Header({
                           onClick={() => {
                             if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
                             setShowCategoryMenu(false);
-                            onSelectCategory({ category: activeHeaderCategory.filterId, categoryId: getBackendCategory(activeHeaderCategory)?.id, subcategoryId: inventory?.subcategoryId, subcategory: subcategory });
+                            onSelectCategory({ category: activeHeaderCategory.id, categoryId: getBackendCategory(activeHeaderCategory)?.id, categoryName: activeHeaderCategory.nombre, subcategoryId: inventory?.subcategoryId, subcategory: subcategory });
                           }}
                         >
                           <img src={categoryImage || (productImage ? resolveMediaUrl(productImage) : activeHeaderCategory.image)} alt="" />
