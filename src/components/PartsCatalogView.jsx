@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Search, Filter, SlidersHorizontal, ShieldCheck, MapPin, Star, Package,
@@ -21,10 +21,6 @@ import { useAuth } from '../context/AuthContext';
 
 const normalizeNameKey = (value) => String(value || '').normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-// El backend acota el tamaño de página a 100. Esta vista filtra y pagina en cliente,
-// así que se trae un bloque grande y la UI hace el resto del trabajo.
-const CATALOG_FETCH_SIZE = 100;
 
 const SEARCH_MODES = [
   { id: 'patente', label: 'Buscar por patente', icon: CarFront, placeholder: 'Ej: BB-CL-12' },
@@ -53,6 +49,21 @@ export default function PartsCatalogView({
   const [patentSearching, setPatentSearching] = useState(false);
   const [searchMode, setSearchMode] = useState('patente');
   const [inputValue, setInputValue] = useState(initialActiveVehicle?.patente || initialSearchQuery || '');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+
+  const [selectedCategory, setSelectedCategory] = useState(initialCatalogFilter?.category || 'TODAS');
+  const [selectedSubcategory, setSelectedSubcategory] = useState(initialCatalogFilter?.subcategory || 'TODAS');
+  const [selectedCondition, setSelectedCondition] = useState('TODOS');
+  const [selectedOrigin, setSelectedOrigin] = useState('TODOS');
+  const [selectedBrand, setSelectedBrand] = useState('TODAS');
+  const [purchaseType, setPurchaseType] = useState('TODOS'); // 'TODOS' | 'DIRECTA' | 'COTIZACION'
+  const [onlyCompatible, setOnlyCompatible] = useState(!!initialActiveVehicle);
+  const [onlyFastDelivery, setOnlyFastDelivery] = useState(false);
+  const [maxPrice, setMaxPrice] = useState(1000000);
+  const [sortBy, setSortBy] = useState('relevancia');
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
 
   // "Filtrar por mi comuna": solo repuestos de tiendas ubicadas en la misma
   // comuna registrada en el perfil del usuario logueado (comprador o vendedor).
@@ -103,56 +114,79 @@ export default function PartsCatalogView({
     }
   };
 
-  // Catálogo real con TanStack Query
+  const backendSort = useMemo(() => {
+    switch (sortBy) {
+      case 'precio-asc': return 'precio,asc';
+      case 'precio-desc': return 'precio,desc';
+      case 'vendidos': return 'updatedAt,desc';
+      case 'descuento': return 'precio,asc';
+      case 'relevancia':
+      default:
+        return 'createdAt,desc';
+    }
+  }, [sortBy]);
+
+  // Lista de categorías persistidas en el backend para resolver IDs reales
+  const { data: backendCategories = [] } = useQuery({
+    queryKey: qk.categories(),
+    queryFn: async ({ signal }) => {
+      const list = await getPartCategoriesApi({ signal });
+      return Array.isArray(list) ? list : [];
+    },
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const activeCategoryId = useMemo(() => {
+    if (selectedCategory === 'TODAS') return initialCatalogFilter?.categoryId || undefined;
+    const matched = backendCategories.find((c) => {
+      const norm = normalizeNameKey(c.nombre);
+      return norm === normalizeNameKey(selectedCategory) ||
+             norm === normalizeNameKey(HEADER_CATEGORIES.find((h) => h.id === selectedCategory)?.nombre);
+    });
+    return matched?.id || initialCatalogFilter?.categoryId || undefined;
+  }, [selectedCategory, backendCategories, initialCatalogFilter?.categoryId]);
+
+  // Consulta paginada real en el servidor
   const {
-    data: products = [],
+    data: catalogData = { items: [], total: 0, totalPages: 1, page: 0 },
     isLoading: productsLoading,
-    error: productsQueryError
+    error: productsQueryError,
   } = useQuery({
     queryKey: qk.products({
-      size: CATALOG_FETCH_SIZE,
-      categoryId: initialCatalogFilter?.categoryId,
-      subcategoryId: initialCatalogFilter?.subcategoryId,
+      page: currentPage - 1,
+      size: itemsPerPage,
+      texto: deferredSearchQuery?.trim() || undefined,
+      categoryId: activeCategoryId,
       comunaId: activeComunaId,
+      sort: backendSort,
+      soloCotizacion: purchaseType === 'COTIZACION' ? true : purchaseType === 'DIRECTA' ? false : undefined,
     }),
     queryFn: async ({ signal }) => {
-      let categoriaId = initialCatalogFilter?.categoryId;
-      if (!categoriaId && (initialCatalogFilter?.categoryName || initialCatalogFilter?.category)) {
-        const catTarget = initialCatalogFilter?.categoryName || initialCatalogFilter?.category;
-        const categories = await getPartCategoriesApi({ signal });
-        const matched = (Array.isArray(categories) ? categories : []).find((category) => {
-          const normBackend = normalizeNameKey(category.nombre);
-          return normBackend === normalizeNameKey(catTarget) ||
-                 normBackend === normalizeNameKey(HEADER_CATEGORIES.find((h) => h.id === catTarget)?.nombre);
-        });
-        categoriaId = matched?.id;
-      }
       const data = await getPublicProductsApi({
-        page: 0,
-        size: CATALOG_FETCH_SIZE,
-        categoriaId,
-        subcategoriaId: initialCatalogFilter?.subcategoryId,
+        page: currentPage - 1,
+        size: itemsPerPage,
+        texto: deferredSearchQuery?.trim() || undefined,
+        categoriaId: activeCategoryId,
         comunaId: activeComunaId,
-        sort: 'createdAt,desc',
+        soloCotizacion: purchaseType === 'COTIZACION' ? true : purchaseType === 'DIRECTA' ? false : undefined,
+        sort: backendSort,
         signal,
       });
-      return adaptPage(data, adaptProduct).items;
+      const adapted = adaptPage(data, adaptProduct);
+      return {
+        items: adapted.items,
+        total: adapted.total,
+        totalPages: adapted.totalPages,
+        page: adapted.page,
+      };
     },
   });
 
+  const products = catalogData.items;
+  const totalProducts = catalogData.total;
+  const totalPages = Math.max(1, catalogData.totalPages);
   const productsError = productsQueryError ? (productsQueryError.message || 'No se pudo cargar el catálogo de repuestos.') : null;
 
-  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
-  const [selectedCategory, setSelectedCategory] = useState(initialCatalogFilter?.category || 'TODAS');
-  const [selectedSubcategory, setSelectedSubcategory] = useState(initialCatalogFilter?.subcategory || 'TODAS');
-  const [selectedCondition, setSelectedCondition] = useState('TODOS');
-  const [selectedOrigin, setSelectedOrigin] = useState('TODOS');
-  const [selectedBrand, setSelectedBrand] = useState('TODAS');
-  const [purchaseType, setPurchaseType] = useState('TODOS'); // 'TODOS' | 'DIRECTA' | 'COTIZACION'
-  const [onlyCompatible, setOnlyCompatible] = useState(!!initialActiveVehicle);
-  const [onlyFastDelivery, setOnlyFastDelivery] = useState(false);
-  const [maxPrice, setMaxPrice] = useState(1000000);
-  const [sortBy, setSortBy] = useState('relevancia');
   const [openFilterSections, setOpenFilterSections] = useState({
     purchase: true,
     category: true,
@@ -163,8 +197,8 @@ export default function PartsCatalogView({
   const [expandedCategories, setExpandedCategories] = useState({});
 
   useEffect(() => {
-    setSelectedCategory(initialCatalogFilter?.category || 'TODAS');
-    setSelectedSubcategory(initialCatalogFilter?.subcategory || 'TODAS');
+    if (initialCatalogFilter?.category) setSelectedCategory(initialCatalogFilter.category);
+    if (initialCatalogFilter?.subcategory) setSelectedSubcategory(initialCatalogFilter.subcategory);
   }, [initialCatalogFilter?.category, initialCatalogFilter?.subcategory]);
 
   // El término de búsqueda también llega por URL (`/repuestos?q=...`), tanto desde
@@ -187,6 +221,10 @@ export default function PartsCatalogView({
       }
     }
   }, [initialActiveVehicle]);
+
+  useEffect(() => {
+    setCurrentPage(initialPage);
+  }, [initialPage]);
 
   const toggleFilterSection = (section) => {
     setOpenFilterSections((current) => ({ ...current, [section]: !current[section] }));
@@ -243,14 +281,6 @@ export default function PartsCatalogView({
     }
   };
 
-  // Pagination state (la página vive en la URL: `/repuestos?pagina=3`)
-  const [currentPage, setCurrentPage] = useState(initialPage);
-  const [itemsPerPage, setItemsPerPage] = useState(12);
-
-  useEffect(() => {
-    setCurrentPage(initialPage);
-  }, [initialPage]);
-
   // Filter options lists
   const CONDITIONS = [
     'TODOS',
@@ -280,130 +310,73 @@ export default function PartsCatalogView({
   const previousFiltersRef = useRef(null);
   useEffect(() => {
     const signature = JSON.stringify([
-      searchQuery, selectedCategory, selectedSubcategory, selectedCondition, selectedOrigin,
-      selectedBrand, onlyCompatible, onlyFastDelivery, maxPrice, sortBy, itemsPerPage
+      deferredSearchQuery, selectedCategory, selectedSubcategory, selectedCondition, selectedOrigin,
+      selectedBrand, purchaseType, onlyCompatible, onlyFastDelivery, maxPrice, sortBy, itemsPerPage
     ]);
     const previous = previousFiltersRef.current;
     previousFiltersRef.current = signature;
     if (previous === null || previous === signature) return;
     setCurrentPage(1);
   }, [
-    searchQuery, selectedCategory, selectedSubcategory, selectedCondition, selectedOrigin,
-    selectedBrand, onlyCompatible, onlyFastDelivery, maxPrice, sortBy, itemsPerPage
+    deferredSearchQuery, selectedCategory, selectedSubcategory, selectedCondition, selectedOrigin,
+    selectedBrand, purchaseType, onlyCompatible, onlyFastDelivery, maxPrice, sortBy, itemsPerPage
   ]);
 
-  // Technical Filtering Logic
-  const filteredProducts = products.filter((prod) => {
-    // 1. Text Search Query (Title, Category, OEM Code, Seller Name, Brand)
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      const matchTitle = prod.titulo?.toLowerCase().includes(q);
-      const matchOem = prod.oemCode?.toLowerCase().includes(q);
-      const matchCat = prod.categoria?.toLowerCase().includes(q);
-      const matchSub = prod.subcategoria?.toLowerCase().includes(q);
-      const matchSeller = prod.vendedor?.toLowerCase().includes(q);
-      const matchCompat = (prod.compatibilidad || []).some(
-        c => c.marca?.toLowerCase().includes(q) || c.modelo?.toLowerCase().includes(q)
-      );
+  // Client-side refinements over the current server page (e.g. subcategory, condition, origin, compatibility)
+  const displayedProducts = useMemo(() => {
+    return products.filter((prod) => {
+      // 1. Subcategory Filter
+      if (selectedSubcategory !== 'TODAS') {
+        const matchSub = prod.subcategoria && (
+          normalizeNameKey(prod.subcategoria) === normalizeNameKey(selectedSubcategory) ||
+          prod.subcategoria.toLowerCase().trim() === selectedSubcategory.toLowerCase().trim()
+        );
+        if (!matchSub) return false;
+      }
 
-      if (!matchTitle && !matchOem && !matchCat && !matchSub && !matchSeller && !matchCompat) {
+      // 2. Technical Condition Filter
+      if (selectedCondition !== 'TODOS' && prod.condicion && prod.condicion !== selectedCondition) {
         return false;
       }
-    }
 
-    // 2. Category Filter
-    if (selectedCategory !== 'TODAS') {
-      const matchCatId = prod.categoria === selectedCategory;
-      const matchCatNombre = prod.categoriaNombre && (
-        normalizeNameKey(prod.categoriaNombre) === normalizeNameKey(selectedCategory) ||
-        normalizeNameKey(prod.categoriaNombre) === normalizeNameKey(NAVIGATION_CATEGORIES.find((c) => c.id === selectedCategory)?.nombre)
-      );
-      if (!matchCatId && !matchCatNombre) {
+      // 3. Origin Filter
+      if (selectedOrigin !== 'TODOS' && prod.origen && prod.origen !== selectedOrigin) {
         return false;
       }
-    }
 
-    // 2b. Subcategory Filter
-    if (selectedSubcategory !== 'TODAS') {
-      const matchSub = prod.subcategoria && (
-        normalizeNameKey(prod.subcategoria) === normalizeNameKey(selectedSubcategory) ||
-        prod.subcategoria.toLowerCase().trim() === selectedSubcategory.toLowerCase().trim()
-      );
-      if (!matchSub) return false;
-    }
+      // 4. Brand Specialty Filter
+      if (selectedBrand !== 'TODAS') {
+        const hasBrand = (prod.compatibilidad || []).some(
+          c => c.marca?.toLowerCase() === selectedBrand.toLowerCase()
+        );
+        if (!hasBrand) return false;
+      }
 
-    // 3. Technical Condition Filter
-    if (selectedCondition !== 'TODOS' && prod.condicion && prod.condicion !== selectedCondition) {
-      return false;
-    }
+      // 5. Active Garage Vehicle Compatibility Toggle
+      if (onlyCompatible && activeVehicle) {
+        const matchesVehicle = (prod.compatibilidad || []).some(
+          c => c.marca?.toLowerCase() === activeVehicle.marca?.toLowerCase() &&
+               c.modelo?.toLowerCase() === activeVehicle.modelo?.toLowerCase()
+        );
+        if (!matchesVehicle) return false;
+      }
 
-    // 4. Origin Filter
-    if (selectedOrigin !== 'TODOS' && prod.origen && prod.origen !== selectedOrigin) {
-      return false;
-    }
+      // 6. Fast Delivery Toggle
+      if (onlyFastDelivery && prod.envioRapido === false) {
+        return false;
+      }
 
-    // 5. Brand Specialty Filter
-    if (selectedBrand !== 'TODAS') {
-      const hasBrand = (prod.compatibilidad || []).some(
-        c => c.marca?.toLowerCase() === selectedBrand.toLowerCase()
-      );
-      if (!hasBrand) return false;
-    }
+      // 7. Max Price Filter
+      if (maxPrice < 1000000 && prod.precio > maxPrice) {
+        return false;
+      }
 
-    // 6. Active Garage Vehicle Compatibility Toggle
-    if (onlyCompatible && activeVehicle) {
-      const matchesVehicle = (prod.compatibilidad || []).some(
-        c => c.marca?.toLowerCase() === activeVehicle.marca?.toLowerCase() &&
-             c.modelo?.toLowerCase() === activeVehicle.modelo?.toLowerCase()
-      );
-      if (!matchesVehicle) return false;
-    }
+      return true;
+    });
+  }, [products, selectedSubcategory, selectedCondition, selectedOrigin, selectedBrand, onlyCompatible, activeVehicle, onlyFastDelivery, maxPrice]);
 
-    // 7. Fast Delivery Toggle
-    if (onlyFastDelivery && prod.envioRapido === false) {
-      return false;
-    }
-
-    // 8. Purchase Type / Modalidad Filter (Precio Directo vs Solo Cotización)
-    if (purchaseType === 'DIRECTA') {
-      const isQuoteOnly = prod.soloCotizacion || !prod.precio || prod.precio === 0;
-      if (isQuoteOnly) return false;
-    } else if (purchaseType === 'COTIZACION') {
-      const isQuoteOnly = prod.soloCotizacion || !prod.precio || prod.precio === 0;
-      if (!isQuoteOnly) return false;
-    }
-
-    // 9. Max Price Filter
-    if (prod.precio > maxPrice) {
-      return false;
-    }
-
-    return true;
-  });
-
-  // Sorting Logic
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (sortBy === 'precio-asc') {
-      return a.precio - b.precio;
-    }
-    if (sortBy === 'precio-desc') {
-      return b.precio - a.precio;
-    }
-    if (sortBy === 'vendidos') {
-      return (b.vendidos || 0) - (a.vendidos || 0);
-    }
-    if (sortBy === 'descuento') {
-      return (b.descuento || 0) - (a.descuento || 0);
-    }
-    // Relevancia default
-    return 0;
-  });
-
-  // Pagination Slice
-  const totalPages = Math.max(1, Math.ceil(sortedProducts.length / itemsPerPage));
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(sortedProducts.length, currentPage * itemsPerPage);
-  const paginatedProducts = sortedProducts.slice(startIndex, endIndex);
+  const startIndex = totalProducts === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = Math.min(currentPage * itemsPerPage, totalProducts);
 
   useEffect(() => {
     onNavigationStateChange?.({
@@ -666,7 +639,7 @@ export default function PartsCatalogView({
 
           <div className="control-bar-right-group">
             <div className="results-count-badge">
-              <span>Mostrando <strong>{sortedProducts.length}</strong> de {products.length} repuestos</span>
+              <span>Mostrando <strong>{displayedProducts.length}</strong> de {totalProducts} repuestos</span>
             </div>
 
             <div className="sort-dropdown-box">
@@ -865,10 +838,10 @@ export default function PartsCatalogView({
                 <h3>No se pudo cargar el catálogo</h3>
                 <p>{productsError}</p>
               </div>
-            ) : paginatedProducts.length > 0 ? (
+            ) : displayedProducts.length > 0 ? (
               <>
                 <div className="parts-cards-grid-catalog">
-                  {paginatedProducts.map((prod) => (
+                  {displayedProducts.map((prod) => (
                     <MarketplaceProductCard key={prod.id} product={prod} onView={onQuickView} />
                   ))}
                 </div>
@@ -877,7 +850,7 @@ export default function PartsCatalogView({
                 <div className="directory-pagination-bar">
                   <div className="pagination-info">
                     <span>
-                      Mostrando del <strong>{startIndex + 1}</strong> al <strong>{endIndex}</strong> de <strong>{sortedProducts.length}</strong> repuestos (Página {currentPage} de {totalPages})
+                      Mostrando del <strong>{startIndex}</strong> al <strong>{endIndex}</strong> de <strong>{totalProducts}</strong> repuestos (Página {currentPage} de {totalPages})
                     </span>
                   </div>
 
@@ -906,15 +879,43 @@ export default function PartsCatalogView({
                         <span>Anterior</span>
                       </button>
 
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                        <button
-                          key={pageNum}
-                          className={`btn-page-number ${currentPage === pageNum ? 'active' : ''}`}
-                          onClick={() => handlePageChange(pageNum)}
-                        >
-                          {pageNum}
-                        </button>
-                      ))}
+                      {totalPages <= 7 ? (
+                        Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                          <button
+                            key={pageNum}
+                            className={`btn-page-number ${currentPage === pageNum ? 'active' : ''}`}
+                            onClick={() => handlePageChange(pageNum)}
+                          >
+                            {pageNum}
+                          </button>
+                        ))
+                      ) : (
+                        (() => {
+                          const pages = [];
+                          pages.push(1);
+                          if (currentPage > 3) pages.push('dots-prev');
+                          const start = Math.max(2, currentPage - 1);
+                          const end = Math.min(totalPages - 1, currentPage + 1);
+                          for (let p = start; p <= end; p++) pages.push(p);
+                          if (currentPage < totalPages - 2) pages.push('dots-next');
+                          if (totalPages > 1) pages.push(totalPages);
+
+                          return pages.map((item, idx) => {
+                            if (typeof item === 'string') {
+                              return <span key={`${item}-${idx}`} className="pagination-dots" style={{ padding: '0 6px', color: '#94a3b8' }}>…</span>;
+                            }
+                            return (
+                              <button
+                                key={item}
+                                className={`btn-page-number ${currentPage === item ? 'active' : ''}`}
+                                onClick={() => handlePageChange(item)}
+                              >
+                                {item}
+                              </button>
+                            );
+                          });
+                        })()
+                      )}
 
                       <button
                         className="btn-page-nav"
