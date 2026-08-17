@@ -36,6 +36,14 @@ export default function AppLayout() {
     if (location.state?.requireAuth && !isLoggedIn) openAuthModal();
   }, [location.state, isLoggedIn, openAuthModal]);
 
+  // Sincronizar el buscador global con la ruta: si el usuario no está en el catálogo,
+  // el input del header se limpia automáticamente para una nueva búsqueda fresca.
+  useEffect(() => {
+    if (location.pathname !== ROUTES.catalog) {
+      if (searchQuery) setSearchQuery('');
+    }
+  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // El buscador del header es global: al enviarlo la búsqueda queda en la URL
   // del catálogo (`/repuestos?q=...`), así se puede compartir y refrescar.
   const submitSearch = () => {

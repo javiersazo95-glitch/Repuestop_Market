@@ -35,89 +35,46 @@ export default function OfficialPatentHero({
   const [isSearching, setIsSearching] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [activeCarouselPage, setActiveCarouselPage] = useState(0);
-  const [categoryCounts, setCategoryCounts] = useState(null);
-  const [backendCategories, setBackendCategories] = useState([]);
 
   const mode = SEARCH_MODES.find((item) => item.id === searchMode) || SEARCH_MODES[0];
   const POPULAR_SEARCH_TERMS = ['Pastillas de freno', 'Filtro de aceite', 'Amortiguadores', 'Bujías', 'Baterías'];
   const categoryNameKey = (value) => String(value || '').normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-  useEffect(() => {
-    getPartCategoriesApi()
-      .then((items) => setBackendCategories(Array.isArray(items) ? items : []))
-      .catch(() => setBackendCategories([]));
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-    // GET /resumen-categorias trae el total exacto de TODAS las categorias en una
-    // sola consulta agregada en el servidor. `item.categoriaNombre` es el nombre
-    // real de una categoria backend (p. ej. "Direccion"); se resuelve contra
-    // CAROUSEL_CATEGORIES (= HEADER_CATEGORIES, las 24 categorias reales) para
-    // obtener su id real y su familia visual (filterId).
-    const toCountMap = (items) => {
-      const list = Array.isArray(items) ? items : [];
-      // Dos mapas separados, no uno solo: el id real de una categoria a veces
-      // coincide con el filterId de su propia familia (p. ej. "electrico" es el
-      // id de la categoria Eléctrico Y el filterId de Encendido/Sensores).
-      // Sumar sobre el mismo objeto hacia ambos fines contaminaba el total exacto
-      // de esa categoria con la suma de toda su familia.
-      const byId = {};
-      const byFilterId = {};
-      list.forEach((item) => {
-        const matchedCategory = CAROUSEL_CATEGORIES.find((category) =>
-          categoryNameKey(category.nombre) === categoryNameKey(item.categoriaNombre));
-        if (!matchedCategory) return;
-        const total = Number(item.total || 0);
-        // El carrusel lee por id real (p. ej. `direccion`): valor exacto, sin sumar.
-        byId[matchedCategory.id] = total;
-        // La barra lateral ordena por familia visual (p. ej. `suspension`), y varias
-        // categorias reales comparten familia: hay que sumar, no sobreescribir, o la
-        // familia se queda solo con el total de la ultima categoria procesada.
-        byFilterId[matchedCategory.filterId] = (byFilterId[matchedCategory.filterId] || 0) + total;
-      });
-      // Si un id real coincide con un filterId, el total exacto de la categoria
-      // (byId) debe ganarle a la suma de la familia (byFilterId): por eso va
-      // segundo en el merge.
-      return { ...byFilterId, ...byId };
-    };
-
-    const loadFallbackCounts = async () => {
-      // Solo corre si el resumen agregado falla: sin el en una sola consulta, se
-      // reconstruye pidiendo el total exacto de cada categoria por separado.
-      const availableCategories = await getPartCategoriesApi();
-      if (isMounted) setBackendCategories(Array.isArray(availableCategories) ? availableCategories : []);
-      const entries = await Promise.all(CAROUSEL_CATEGORIES.map(async (category) => {
-        const categoriaId = (Array.isArray(availableCategories) ? availableCategories : [])
-          .find((backendCategory) => categoryNameKey(backendCategory.nombre) === categoryNameKey(category.nombre))?.id;
-        if (!categoriaId) return [category.id, 0];
-        const response = await getPublicProductsApi({ categoriaId, page: 0, size: 1 });
-        return [category.id, Number(response?.totalElements || 0)];
-      }));
-      return Object.fromEntries(entries);
-    };
-
-    (async () => {
+  const { data: backendCategories = [] } = useQuery({
+    queryKey: qk.categories(),
+    queryFn: async () => {
       try {
-        // Camino normal: 1 sola peticion para las ~24 categorias. Antes se hacia
-        // al reves (24+ peticiones siempre, una por categoria) y el agregado solo
-        // se usaba si esas 24 fallaban — la portada pagaba el camino caro en cada
-        // carga, incluida la primera visita de cada usuario.
-        const counts = toCountMap(await getPublicCategoryCountsApi());
-        if (isMounted) setCategoryCounts(counts);
+        const items = await getPartCategoriesApi();
+        return Array.isArray(items) ? items : [];
       } catch {
-        try {
-          const counts = await loadFallbackCounts();
-          if (isMounted) setCategoryCounts(counts);
-        } catch {
-          // No sustituimos con cifras mock; mantenemos el estado de carga.
-          if (isMounted) setCategoryCounts(null);
-        }
+        return [];
       }
-    })();
-    return () => { isMounted = false; };
-  }, []);
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const { data: categoryCounts = {}, isLoading: isCountsLoading } = useQuery({
+    queryKey: qk.categoryCounts(),
+    queryFn: async () => {
+      try {
+        const items = await getPublicCategoryCountsApi();
+        const list = Array.isArray(items) ? items : [];
+        const byId = {};
+        list.forEach((item) => {
+          const matchedCategory = CAROUSEL_CATEGORIES.find((category) =>
+            categoryNameKey(category.nombre) === categoryNameKey(item.categoriaNombre));
+          if (matchedCategory) {
+            byId[matchedCategory.id] = Number(item.total || 0);
+          }
+        });
+        return byId;
+      } catch {
+        return {};
+      }
+    },
+    staleTime: 1000 * 60 * 5,
+  });
 
   const selectCarouselCategory = (category) => {
     const backendCategory = backendCategories.find((item) => categoryNameKey(item.nombre) === categoryNameKey(category.nombre));
@@ -224,17 +181,47 @@ export default function OfficialPatentHero({
     (_, index) => CAROUSEL_CATEGORIES[(activeCarouselPage * CAROUSEL_PAGE_SIZE + index) % CAROUSEL_CATEGORIES.length]
   );
 
+const DEFAULT_CATEGORY_PRIORITY = [
+  'frenos',
+  'motor',
+  'aceite',
+  'filtros',
+  'suspension',
+  'electrico',
+  'iluminacion',
+  'carroceria',
+  'embrague',
+  'direccion',
+  'distribucion',
+  'refrigeracion',
+  'accesorios'
+];
+
   // La barra lateral es un acceso rápido, no un catálogo completo. Se ordena
-  // con los totales dinámicos disponibles en el sistema y solo conserva las
-  // ocho categorías con mayor actividad; si aún carga, mantiene el orden base.
-  const popularNavigationCategories = useMemo(() => NAVIGATION_CATEGORIES
-    .map((category, index) => ({
-      ...category,
-      index,
-      popularity: Number(categoryCounts?.[category.filterId] ?? categoryCounts?.[category.id] ?? 0),
-    }))
-    .sort((left, right) => right.popularity - left.popularity || left.index - right.index)
-    .slice(0, 8), [categoryCounts]);
+  // con los totales dinámicos de inventario disponibles en el sistema y solo conserva las
+  // ocho categorías con mayor actividad; si aún no hay stock o está cargando,
+  // utiliza un orden comercial automotriz relevante por defecto.
+  const popularNavigationCategories = useMemo(() => {
+    const getFallbackOrder = (id) => {
+      const idx = DEFAULT_CATEGORY_PRIORITY.indexOf(id);
+      return idx === -1 ? 999 : idx;
+    };
+
+    return NAVIGATION_CATEGORIES
+      .map((category, index) => ({
+        ...category,
+        index,
+        fallbackOrder: getFallbackOrder(category.id),
+        popularity: Number(categoryCounts?.[category.id] ?? 0),
+      }))
+      .sort((left, right) => {
+        if (right.popularity !== left.popularity) {
+          return right.popularity - left.popularity;
+        }
+        return left.fallbackOrder - right.fallbackOrder || left.index - right.index;
+      })
+      .slice(0, 8);
+  }, [categoryCounts]);
 
   const moveCategoryCarousel = (direction) => {
     setActiveCarouselPage((page) => (page + direction + CAROUSEL_PAGE_COUNT) % CAROUSEL_PAGE_COUNT);
@@ -246,7 +233,7 @@ export default function OfficialPatentHero({
         <aside className="light-category-sidebar">
           <div className="light-category-sidebar-heading">
             <h2>Más consultadas</h2>
-            <p>Accesos rápidos según las búsquedas de la comunidad</p>
+            <p>Accesos rápidos con mayor disponibilidad de repuestos</p>
           </div>
           <ul>
             {popularNavigationCategories.map((category) => (
@@ -426,7 +413,7 @@ export default function OfficialPatentHero({
                   <img src={category.image} alt="" />
                 </div>
                 <div className="category-showcase-footer">
-                  <span>{categoryCounts === null
+                  <span>{isCountsLoading
                     ? 'Cargando…'
                     : `${Number(categoryCounts[category.id] || 0).toLocaleString('es-CL')} disponibles`}</span>
                   <i style={{ backgroundColor: category.color }}><ArrowRight size={20} /></i>
