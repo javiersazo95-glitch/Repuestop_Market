@@ -15,6 +15,7 @@ const StoresPage = lazy(() => import('../pages/StoresPage'));
 const StorePage = lazy(() => import('../pages/StorePage'));
 const SupportPage = lazy(() => import('../pages/SupportPage'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
+const AdsWallPage = lazy(() => import('../pages/AdsWallPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
 const SellerRegisterPage = lazy(() => import('../pages/SellerRegisterPage'));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'));
@@ -34,6 +35,7 @@ export default function AppRoutes() {
               <Route path={ROUTES.product} element={<ProductPage />} />
               <Route path={ROUTES.stores} element={<StoresPage />} />
               <Route path={ROUTES.store} element={<StorePage />} />
+              <Route path={ROUTES.adsWall} element={<AdsWallPage />} />
               <Route path={ROUTES.support} element={<SupportPage />} />
               <Route
                 path={ROUTES.purchaseSuccess}

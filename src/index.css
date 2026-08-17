@@ -9292,8 +9292,21 @@ input, select, textarea {
   font-size: 14px;
   font-weight: 700;
 }
-.primary-nav-inner > button svg { display: none; }
+.primary-nav-inner > button svg {
+  display: inline-block;
+  flex-shrink: 0;
+  color: #64748b;
+  transition: color 0.18s ease, transform 0.18s ease;
+}
+.primary-nav-inner > button:hover {
+  color: #0866ed;
+}
+.primary-nav-inner > button:hover svg {
+  color: #0866ed;
+  transform: translateY(-1px);
+}
 .primary-nav-inner .offers-nav-link { color: #ef1515; }
+.primary-nav-inner .offers-nav-link svg { color: #ef1515; }
 
 .categories-nav-wrap { position: relative; height: 100%; }
 .categories-nav-wrap .categories-nav-button {

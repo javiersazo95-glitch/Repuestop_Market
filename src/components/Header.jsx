@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Truck, ShieldCheck, Store, HelpCircle, Search, ShoppingCart, User,
   ChevronDown, ChevronRight, X, LogOut, LayoutDashboard, MessageSquare, Menu,
-  Package, Tag, Info
+  Package, Tag, Info, Megaphone
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
@@ -22,6 +22,7 @@ export default function Header({
   onOpenStores,
   onOpenCatalog,
   onOpenAbout,
+  onOpenAdsWall,
   onOpenHelp,
   searchQuery,
   setSearchQuery,
@@ -233,7 +234,9 @@ export default function Header({
             <button className="trust-item-plain utility-link" onClick={onOpenHelp}>
               Centro de ayuda <HelpCircle size={14} />
             </button>
-            <button className="top-seller-link" onClick={onOpenSellerModal}>Vende en RepuestosTop</button>
+            <button className="top-seller-link" onClick={onOpenSellerModal}>
+              <Store size={14} /> Vende en RepuestosTop
+            </button>
           </div>
         </div>
       </div>
@@ -288,6 +291,7 @@ export default function Header({
                 </div>
                 <div className="user-dropdown-body">
                   <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.(); }}><LayoutDashboard size={15} /> Mi perfil</button>
+                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.('anuncios'); }}><Megaphone size={15} /> Gestión de anuncios</button>
                   {isSellerAccount && (
                     <button className="dropdown-item" onClick={openInventoryPanel}><Package size={15} /> Panel de inventario</button>
                   )}
@@ -431,11 +435,12 @@ export default function Header({
               </div>
             )}
           </div>
-          <button onClick={onOpenStores}><Store size={16} /> Tiendas</button>
-          <button onClick={onOpenCatalog}><Package size={16} /> Catálogo de repuestos</button>
-          <button className="offers-nav-link" onClick={onOpenCatalog}><Tag size={16} /> Ofertas</button>
-          <button onClick={onOpenAbout}><Info size={16} /> Sobre RepuesTop</button>
-          <button onClick={onOpenHelp}><HelpCircle size={16} /> Ayuda</button>
+          <button type="button" onClick={onOpenStores}><Store size={16} /> <span>Tiendas</span></button>
+          <button type="button" onClick={onOpenCatalog}><Package size={16} /> <span>Catálogo de repuestos</span></button>
+          <button type="button" className="offers-nav-link" onClick={onOpenCatalog}><Tag size={16} /> <span>Ofertas</span></button>
+          <button type="button" onClick={onOpenAbout}><Info size={16} /> <span>Sobre RepuesTop</span></button>
+          <button type="button" onClick={onOpenAdsWall}><Megaphone size={16} /> <span>Mural de anuncios</span></button>
+          <button type="button" onClick={onOpenHelp}><HelpCircle size={16} /> <span>Ayuda</span></button>
         </div>
       </nav>
     </header>

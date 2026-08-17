@@ -7,7 +7,7 @@ import {
   Clock, ShieldCheck, Building2, PackageCheck, Loader2, Inbox, ChevronLeft, ChevronRight, Search,
   CreditCard, Award, Phone, Mail, FileText, ArrowUpRight, Sliders, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Wrench, Boxes, Plus, MessageCircleQuestion, Scale, Headphones, Wallet, Info, Crown,
-  CheckCircle, Send, MapPin
+  CheckCircle, Send, MapPin, Megaphone, Coins
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
@@ -34,6 +34,7 @@ import VehicleBrandLogo from './VehicleBrandLogo';
 import SellerWithdrawalsPanel from './SellerWithdrawalsPanel';
 import SellerOrdersPanel from './SellerOrdersPanel';
 import BuyerAddressBook from './BuyerAddressBook';
+import AdsManagementSection from './ads/AdsManagementSection';
 import { formatRut } from '../services/adapters';
 import { storePath } from '../routes/paths';
 
@@ -43,6 +44,7 @@ const BUYER_PROFILE_COVER_URL = import.meta.env.VITE_BUYER_PROFILE_COVER_URL
 
 const BUYER_TABS = [
   { id: 'resumen', label: 'Resumen', icon: LayoutGrid },
+  { id: 'anuncios', label: 'Gestión de Anuncios', icon: Megaphone },
   { id: 'pedidos', label: 'Mis Pedidos', icon: Package },
   { id: 'cotizaciones', label: 'Mis Cotizaciones', icon: ReceiptText },
   { id: 'favoritos', label: 'Favoritos', icon: Heart },
@@ -51,6 +53,7 @@ const BUYER_TABS = [
 
 const SELLER_TABS = [
   { id: 'resumen', label: 'Resumen', icon: LayoutGrid },
+  { id: 'anuncios', label: 'Gestión de Anuncios', icon: Megaphone },
   { id: 'pedidos', label: 'Pedidos Recibidos', icon: ShoppingBag },
   { id: 'cotizaciones', label: 'Cotizaciones', icon: ReceiptText },
   { id: 'preguntas_productos', label: 'Preguntas de productos', icon: MessageCircleQuestion },
@@ -1255,6 +1258,13 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                     </div>
                   )}
                 </div>
+              )}
+
+              {activeTab === 'anuncios' && (
+                <AdsManagementSection
+                  user={user}
+                  onNavigateToMural={() => window.location.assign('/mural-anuncios')}
+                />
               )}
 
               {activeTab === 'retiros' && isSeller && (

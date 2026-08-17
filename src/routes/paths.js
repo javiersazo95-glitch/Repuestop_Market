@@ -12,6 +12,7 @@ export const ROUTES = {
   profileTab: '/perfil/:tab',
   support: '/ayuda',
   about: '/nosotros',
+  adsWall: '/mural-anuncios',
   sellerRegister: '/vender',
   purchaseSuccess: '/compra-exitosa',
   notFound: '/404',
@@ -21,6 +22,7 @@ export const ROUTES = {
 export const PROFILE_TABS = [
   'resumen', 'pedidos', 'favoritos', 'datos', 'consultas', 'soporte',
   'cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'tienda', 'tienda_datos',
+  'anuncios',
 ];
 
 /** Slug legible para URLs de producto/tienda: "Pastillas de freno" -> "pastillas-de-freno" */

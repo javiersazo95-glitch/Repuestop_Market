@@ -1,12 +1,14 @@
 import React from 'react';
 import {
   ChevronRight, Compass, Headphones, Mail, MessageSquare,
-  PackageSearch, RotateCcw, Search, ShieldCheck, Store, Tag, Truck
+  PackageSearch, RotateCcw, Search, ShieldCheck, Store, Tag, Truck, Megaphone,
+  FileText, Award
 } from 'lucide-react';
 
 const MARKETPLACE_LINKS = [
   ['Catálogo General de Repuestos', PackageSearch],
   ['Directorio de Tiendas Verificadas', Store],
+  ['Mural de Anuncios Automotrices', Megaphone],
   ['Búsqueda por Patente / OEM', Search],
   ['Centro de Ayuda & Soporte', Headphones]
 ];
@@ -23,7 +25,7 @@ const SUPPORT_LINKS = [
   ['Mediación de Conflictos', 'Te ayudamos con tu compra', MessageSquare]
 ];
 
-export default function Footer({ onOpenStores, onOpenCatalog, onOpenHelp }) {
+export default function Footer({ onOpenStores, onOpenCatalog, onOpenAdsWall, onOpenHelp }) {
   const openCatalog = () => onOpenCatalog?.();
 
   return (
@@ -48,7 +50,7 @@ export default function Footer({ onOpenStores, onOpenCatalog, onOpenHelp }) {
           <ul>
             {MARKETPLACE_LINKS.map(([label, Icon], index) => (
               <li key={label}>
-                <button onClick={index === 1 ? onOpenStores : index === 3 ? onOpenHelp : openCatalog}>
+                <button onClick={index === 1 ? onOpenStores : index === 2 ? onOpenAdsWall : index === 4 ? onOpenHelp : openCatalog}>
                   <Icon /> <span>{label}</span> <ChevronRight className="footer-link-chevron" />
                 </button>
               </li>
@@ -90,11 +92,13 @@ export default function Footer({ onOpenStores, onOpenCatalog, onOpenHelp }) {
       <div className="container reference-footer-bottom">
         <p>© 2026 Corebit SpA Chile.<br />Todos los derechos reservados.</p>
         <nav>
-          <button onClick={onOpenHelp}>Términos y Condiciones</button>
-          <button onClick={onOpenHelp}>Política de Privacidad</button>
-          <button onClick={onOpenHelp}>Garantía por Patente</button>
+          <button onClick={onOpenHelp}><FileText size={13} /> Términos y Condiciones</button>
+          <button onClick={onOpenHelp}><ShieldCheck size={13} /> Política de Privacidad</button>
+          <button onClick={onOpenHelp}><Award size={13} /> Garantía por Patente</button>
         </nav>
-        <span className="reference-footer-security">Compra protegida</span>
+        <span className="reference-footer-security">
+          <ShieldCheck size={14} /> Compra protegida
+        </span>
       </div>
     </footer>
   );

@@ -62,6 +62,7 @@ export default function AppLayout() {
         onOpenStores={nav.goStores}
         onOpenCatalog={() => nav.goCatalog()}
         onOpenAbout={nav.goAbout}
+        onOpenAdsWall={nav.goAdsWall}
         onOpenHelp={nav.goHelp}
         cartCount={cartCount}
         onOpenCart={openCart}
@@ -77,6 +78,7 @@ export default function AppLayout() {
         onOpenSellerModal={nav.goSellerRegister}
         onOpenStores={nav.goStores}
         onOpenCatalog={() => nav.goCatalog()}
+        onOpenAdsWall={nav.goAdsWall}
         onOpenHelp={nav.goHelp}
       />
 
@@ -85,7 +87,10 @@ export default function AppLayout() {
         onClose={closeAuthModal}
         onOpenSellerRegister={nav.goSellerRegister}
         onLoginSuccess={() => {
-          if (!isCartOpen) navigate(redirectedFrom || profilePath('resumen'), { replace: true });
+          if (!isCartOpen) {
+            const defaultTarget = location.pathname === ROUTES.adsWall ? profilePath('anuncios') : profilePath('resumen');
+            navigate(redirectedFrom || defaultTarget, { replace: true });
+          }
         }}
       />
 

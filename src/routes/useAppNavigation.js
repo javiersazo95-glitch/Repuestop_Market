@@ -34,6 +34,7 @@ export function useAppNavigation() {
     goStore,
     goProfile,
     goAbout: () => navigate(ROUTES.about),
+    goAdsWall: () => navigate(ROUTES.adsWall),
     goSupport: () => navigate(ROUTES.support),
     goSellerRegister: () => navigate(ROUTES.sellerRegister),
     // El centro de ayuda del usuario autenticado vive dentro de su panel.
