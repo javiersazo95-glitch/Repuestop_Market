@@ -757,6 +757,184 @@ input, select, textarea {
   }
 }
 
+/* ===========================================================================
+   SELLER DASHBOARD — desktop layout aligned with the provider proposal
+   These overrides are deliberately scoped to SELLER. Buyer views retain their
+   current hierarchy and components.
+   ========================================================================== */
+.seller-profile-dashboard {
+  background: #f8fafc;
+}
+
+.seller-profile-dashboard .profile-topbar {
+  background: rgba(255, 255, 255, .96);
+}
+
+.seller-profile-dashboard .profile-topbar-inner {
+  max-width: none;
+  min-height: 64px;
+  padding: 10px 28px;
+}
+
+.seller-profile-dashboard .btn-back-to-store,
+.seller-profile-dashboard .btn-visit-my-store {
+  min-height: 38px;
+  border-radius: 8px;
+  padding: 8px 15px;
+  font-size: 12px;
+}
+
+.seller-profile-dashboard .btn-visit-my-store {
+  border-color: #0875eb;
+  color: #fff;
+  background: #0875eb;
+  box-shadow: 0 5px 12px rgba(8, 117, 235, .18);
+}
+
+.seller-profile-dashboard .btn-visit-my-store:hover { background: #0665ca; }
+.seller-profile-dashboard .btn-topbar-logout { display: none; }
+.seller-profile-dashboard .profile-role-chip { box-shadow: none; background: transparent; padding: 5px 0; }
+
+.seller-profile-dashboard .facebook-cover-hero-container {
+  height: 202px;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+  position: relative;
+}
+
+.seller-profile-dashboard .facebook-cover-banner { height: 202px; }
+.seller-profile-dashboard .facebook-cover-banner::before {
+  background: linear-gradient(90deg, rgba(5, 21, 42, .68), rgba(5, 21, 42, .20) 60%, rgba(5, 21, 42, .48));
+}
+
+.seller-profile-dashboard .btn-change-cover-photo { display: none; }
+
+.seller-profile-dashboard .facebook-hero-bar {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  max-width: 1440px;
+  margin: auto;
+  padding: 0 42px;
+  background: transparent;
+  align-items: center;
+  gap: 20px;
+}
+
+.seller-profile-dashboard .facebook-avatar-wrapper { margin: 0; }
+.seller-profile-dashboard .facebook-avatar-circle { width: 114px; height: 114px; border-width: 4px; font-size: 34px; }
+.seller-profile-dashboard .btn-change-avatar-camera { display: none; }
+
+.seller-profile-dashboard .facebook-hero-info { padding: 0; gap: 7px; }
+.seller-profile-dashboard .facebook-hero-title-row { gap: 10px; }
+.seller-profile-dashboard .facebook-hero-name { color: #fff !important; font-size: 28px; letter-spacing: -.5px; }
+.seller-profile-dashboard .facebook-hero-email { color: rgba(255, 255, 255, .86) !important; font-size: 13px; }
+.seller-profile-dashboard .profile-hero-tags { display: flex; gap: 8px; }
+.seller-profile-dashboard .tag-contrast { color: #9af4bb !important; background: rgba(4, 90, 43, .55) !important; border-color: rgba(74, 222, 128, .55) !important; }
+.seller-profile-dashboard .founder-tag-contrast { color: #ffd264 !important; background: rgba(42, 28, 4, .68) !important; border-color: rgba(250, 204, 21, .6) !important; }
+.seller-profile-dashboard .store-status-chip { color: #9af4bb; }
+
+.seller-profile-dashboard .btn-withdraw-money-hero {
+  margin-left: auto;
+  background: #0875eb;
+  border-radius: 9px;
+  box-shadow: 0 8px 18px rgba(0, 58, 132, .28);
+}
+.seller-profile-dashboard .btn-withdraw-money-hero:hover { background: #0665ca; }
+
+.seller-profile-dashboard .profile-body {
+  max-width: none;
+  margin: 0;
+  padding: 24px 28px 54px;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 38px;
+}
+
+.seller-profile-dashboard .profile-sidebar {
+  position: sticky;
+  top: 82px;
+  align-self: start;
+  padding: 0 10px 12px 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.seller-profile-dashboard .sidebar-mini-profile { display: none; }
+.seller-profile-dashboard .sidebar-nav-list { gap: 5px; }
+.seller-profile-dashboard .sidebar-nav-group { gap: 5px; margin: 0 0 12px; }
+.seller-profile-dashboard .sidebar-group-title { padding: 9px 14px 3px; font-size: 10px; }
+.seller-profile-dashboard .profile-nav-item { min-height: 38px; padding: 9px 13px; border-radius: 8px; font-size: 12px; font-weight: 650; }
+.seller-profile-dashboard .profile-nav-item.nav-seller.active { color: #0875eb; background: #eaf3ff; box-shadow: none; }
+.seller-profile-dashboard .profile-nav-item:hover { color: #0875eb; background: #f1f7ff; }
+.seller-profile-dashboard .profile-nav-delete { margin: 8px 0 0; padding-top: 14px; }
+
+.seller-profile-dashboard .profile-overview-grid { grid-template-columns: minmax(0, 1fr) 266px; gap: 28px; }
+.seller-profile-dashboard .profile-overview-main-col { gap: 16px; }
+.seller-profile-dashboard .profile-overview-side-col { gap: 16px; }
+.seller-profile-dashboard .profile-stats-grid-v2 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.seller-profile-dashboard .profile-stat-card-v2 { min-height: 134px; padding: 17px; border-radius: 11px; }
+.seller-profile-dashboard .stat-v2-label { color: #1f3653; font-size: 11px; font-weight: 750; }
+.seller-profile-dashboard .stat-v2-val { font-size: 23px; }
+.seller-profile-dashboard .stat-v2-action { margin-top: auto; font-size: 11px; }
+.seller-profile-dashboard .stat-v2-icon { width: 37px; height: 37px; border-radius: 10px; }
+
+.seller-profile-dashboard .profile-panel-clean,
+.seller-profile-dashboard .overview-widget-card { border-radius: 11px; padding: 18px; box-shadow: 0 2px 10px rgba(15, 23, 42, .035); }
+.seller-profile-dashboard .profile-section-title { margin-bottom: 15px; font-size: 14px; }
+.seller-profile-dashboard .quick-actions-grid-v2 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; }
+.seller-profile-dashboard .quick-action-card-v2 { min-height: 78px; padding: 13px; gap: 11px; border-radius: 10px; background: #fff; }
+.seller-profile-dashboard .action-v2-icon { width: 36px; height: 36px; border-radius: 10px; }
+.seller-profile-dashboard .action-v2-body strong { font-size: 11.5px; }
+.seller-profile-dashboard .action-v2-desc { font-size: 10px; }
+.seller-profile-dashboard .activity-feed-table { border-radius: 10px; }
+.seller-profile-dashboard .activity-feed-header,
+.seller-profile-dashboard .activity-feed-row { grid-template-columns: minmax(165px, 1fr) minmax(170px, 1.25fr) minmax(92px, .72fr); padding: 10px 13px; font-size: 11px; }
+.seller-profile-dashboard .activity-type-col strong,
+.seller-profile-dashboard .activity-detail-col { font-size: 11px; }
+.seller-profile-dashboard .activity-date-col { font-size: 10px; }
+.seller-profile-dashboard .overview-widget-card { padding: 16px; }
+.seller-profile-dashboard .widget-header-row h3 { font-size: 12px; }
+.seller-profile-dashboard .onboarding-step-row { font-size: 10.5px; padding: 3px 1px; }
+.seller-profile-dashboard .tips-widget-text { font-size: 10.5px; }
+
+@media (max-width: 1180px) {
+  .seller-profile-dashboard .profile-stats-grid-v2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .seller-profile-dashboard .quick-actions-grid-v2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .seller-profile-dashboard .profile-overview-grid { grid-template-columns: minmax(0, 1fr) 250px; gap: 18px; }
+}
+
+@media (max-width: 900px) {
+  .seller-profile-dashboard .profile-body { grid-template-columns: 1fr; padding: 18px; }
+  .seller-profile-dashboard .profile-sidebar { position: static; padding: 0; }
+  .seller-profile-dashboard .sidebar-nav-list { overflow-x: auto; flex-direction: row; }
+  .seller-profile-dashboard .sidebar-nav-group { min-width: max-content; }
+  .seller-profile-dashboard .profile-nav-delete { min-width: max-content; border-top: 0; padding-top: 9px; }
+  .seller-profile-dashboard .profile-overview-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .seller-profile-dashboard .profile-topbar-inner { padding: 9px 14px; }
+  .seller-profile-dashboard .profile-logo-group { display: none; }
+  .seller-profile-dashboard .profile-topbar-actions { gap: 6px; }
+  .seller-profile-dashboard .btn-back-to-store span,
+  .seller-profile-dashboard .btn-visit-my-store span { display: none; }
+  .seller-profile-dashboard .facebook-cover-hero-container,
+  .seller-profile-dashboard .facebook-cover-banner { height: 220px; }
+  .seller-profile-dashboard .facebook-hero-bar { padding: 18px; align-items: flex-end; gap: 12px; }
+  .seller-profile-dashboard .facebook-avatar-circle { width: 72px; height: 72px; font-size: 22px; }
+  .seller-profile-dashboard .facebook-hero-name { font-size: 21px; }
+  .seller-profile-dashboard .facebook-hero-email { font-size: 11px; }
+  .seller-profile-dashboard .store-status-chip { font-size: 9px; }
+  .seller-profile-dashboard .btn-withdraw-money-hero { display: none; }
+  .seller-profile-dashboard .founder-tag-contrast { display: none; }
+  .seller-profile-dashboard .profile-stats-grid-v2,
+  .seller-profile-dashboard .quick-actions-grid-v2 { grid-template-columns: 1fr; }
+}
+
 .feature-info-card {
   background: #ffffff;
   border-radius: var(--radius-lg);
@@ -2361,8 +2539,14 @@ input, select, textarea {
 .auth-modal-body input[type="text"]::placeholder,
 .auth-modal-body input[type="email"]::placeholder,
 .auth-modal-body input[type="tel"]::placeholder,
-.auth-modal-body input[type="password"]::placeholder {
-  color: #94a3b8;
+.auth-modal-body input[type="password"]::placeholder,
+.profile-data-form input[type="text"]::placeholder,
+.profile-data-form input[type="tel"]::placeholder {
+  /* Itálica + gris marcado: sin esto, un placeholder como "+56 9 1234 5678"
+     se confunde a simple vista con un dato realmente guardado. */
+  color: #a3aebd;
+  font-style: italic;
+  font-weight: 500;
 }
 
 .auth-modal-body input[type="text"]:focus,
@@ -2956,6 +3140,28 @@ input, select, textarea {
   box-shadow: inset 0 0 0 1.5px rgba(30, 41, 59, 0.18);
 }
 
+.sidebar-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.sidebar-group-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 6px 14px 2px;
+}
+
+.sidebar-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .profile-notifications { position: relative; }
 .profile-bell-button {
   position: relative;
@@ -3214,6 +3420,545 @@ input, select, textarea {
   border-radius: 20px;
   padding: 26px;
   box-shadow: 0 12px 28px -16px rgba(15, 23, 42, 0.14);
+}
+
+.profile-panel-clean {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.75);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+}
+
+.profile-section-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 2-Column Overview Layout (comprador y vendedor comparten la estructura) */
+.profile-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .profile-overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.profile-overview-main-col {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.profile-overview-side-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* Profile Stats Grid V2 */
+.profile-stats-grid-v2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.profile-stat-card-v2 {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.22s ease, box-shadow 0.22s ease;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  /* Son <button>: se neutraliza el estilo nativo para que se vean como tarjetas. */
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  min-width: 0;
+}
+
+.profile-stat-card-v2:hover {
+  transform: translateY(-3px);
+  border-color: #93c5fd;
+  box-shadow: 0 12px 24px -6px rgba(0, 102, 255, 0.12);
+}
+
+.profile-stat-card-v2:focus-visible {
+  outline: 2px solid #0066ff;
+  outline-offset: 2px;
+}
+
+/* Fila superior: etiqueta a la izquierda, icono a la derecha. Es un grid en vez
+   de márgenes negativos para que la etiqueta nunca se solape con el icono. */
+.stat-v2-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.stat-v2-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-v2-blue .stat-v2-icon { background: #eff6ff; color: #0066ff; }
+.stat-v2-emerald .stat-v2-icon { background: #ecfdf5; color: #059669; }
+.stat-v2-amber .stat-v2-icon { background: #fffbeb; color: #d97706; }
+.stat-v2-purple .stat-v2-icon { background: #f5f3ff; color: #7c3aed; }
+
+.stat-v2-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  line-height: 1.3;
+  min-width: 0;
+}
+
+.stat-v2-val {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.stat-v2-action {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0066ff;
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Quick Actions Grid V2 */
+.quick-actions-grid-v2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.quick-action-card-v2 {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  min-width: 0;
+}
+
+.quick-action-card-v2:hover {
+  background: #ffffff;
+  border-color: #93c5fd;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -4px rgba(0, 102, 255, 0.1);
+}
+
+.quick-action-card-v2:focus-visible {
+  outline: 2px solid #0066ff;
+  outline-offset: 2px;
+}
+
+.action-v2-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.action-v2-icon.bg-blue-subtle { background: #eff6ff; color: #0066ff; }
+.action-v2-icon.bg-emerald-subtle { background: #ecfdf5; color: #059669; }
+.action-v2-icon.bg-purple-subtle { background: #f5f3ff; color: #7c3aed; }
+.action-v2-icon.bg-sky-subtle { background: #f0f9ff; color: #0284c7; }
+.action-v2-icon.bg-amber-subtle { background: #fffbeb; color: #d97706; }
+
+.action-v2-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.action-v2-body strong {
+  font-size: 13.5px;
+  font-weight: 750;
+  color: #0f172a;
+}
+
+.action-v2-desc {
+  font-size: 11.5px;
+  color: #64748b;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.action-v2-arrow {
+  color: #94a3b8;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.quick-action-card-v2:hover .action-v2-arrow {
+  transform: translateX(3px);
+  color: #0066ff;
+}
+
+/* Activity Feed Table */
+.activity-feed-table {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.activity-feed-header {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) minmax(0, 1fr) minmax(96px, 140px);
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  gap: 12px;
+}
+
+.activity-feed-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-feed-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) minmax(0, 1fr) minmax(96px, 140px);
+  gap: 12px;
+  padding: 12px 16px;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.activity-feed-row:last-child {
+  border-bottom: none;
+}
+
+.activity-feed-row:hover {
+  background: #f8fafc;
+}
+
+.activity-feed-row:focus-visible {
+  outline: 2px solid #0066ff;
+  outline-offset: -2px;
+}
+
+.activity-type-col {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.activity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.activity-dot.badge-blue { background: #0066ff; }
+.activity-dot.badge-emerald { background: #059669; }
+.activity-dot.badge-purple { background: #7c3aed; }
+.activity-dot.badge-amber { background: #d97706; }
+
+.activity-type-col strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.activity-detail-col {
+  font-size: 13px;
+  color: #475569;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-date-col {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Bajo 720px la tabla no cabe en 3 columnas: pasa a bloques apilados. */
+@media (max-width: 720px) {
+  .activity-feed-header {
+    display: none;
+  }
+
+  .activity-feed-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .activity-detail-col {
+    white-space: normal;
+  }
+}
+
+/* Overview Side Widgets */
+.overview-widget-card {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+}
+
+.widget-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.widget-header-row h3 {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.widget-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.widget-metric-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 14px;
+}
+
+.widget-metric-box .metric-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.widget-metric-box .metric-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.widget-metric-box .metric-sub {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.widget-metric-box .metric-sub.positive {
+  font-weight: 700;
+  color: #059669;
+}
+
+/* Dos métricas secundarias bajo la principal del widget lateral. */
+.widget-metric-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.widget-metric-split > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.widget-metric-split strong {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+/* Onboarding Steps */
+.onboarding-progress-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.onboarding-progress-meta span {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.onboarding-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.onboarding-progress-fill {
+  height: 100%;
+  background: #0066ff;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.onboarding-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.onboarding-step-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: none;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.onboarding-step-row:focus-visible {
+  outline: 2px solid #0066ff;
+  outline-offset: 1px;
+}
+
+.onboarding-step-row:hover {
+  background: #f8fafc;
+}
+
+.onboarding-step-row.completed {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.onboarding-step-row.completed .step-icon-done {
+  color: #059669;
+  flex-shrink: 0;
+}
+
+.onboarding-step-row.pending {
+  color: #64748b;
+}
+
+.onboarding-step-row.pending .step-icon-todo {
+  color: #cbd5e1;
+  flex-shrink: 0;
+}
+
+/* Tips Widget */
+.tips-widget {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+}
+
+.tips-widget-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tips-widget-icon-row .tips-icon {
+  color: #0066ff;
+}
+
+.tips-widget-icon-row h4 {
+  font-size: 13.5px;
+  font-weight: 750;
+  color: #0f172a;
+  margin: 0;
+}
+
+.tips-widget-text {
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.35;
+  margin: 0 0 10px 0;
+}
+
+.tips-widget-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #0066ff;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tips-widget-link:hover {
+  color: #0052cc;
+  text-decoration: underline;
 }
 
 .profile-panel-header-row {
@@ -3678,6 +4423,13 @@ input, select, textarea {
   max-width: 420px;
 }
 
+/* El formulario unificado de tienda/perfil usa grids de 2 columnas: el
+   max-width de 420px (pensado para un form simple de una sola columna) lo
+   dejaba comprimido a un tercio del ancho real del panel. */
+.profile-data-form.unified-profile-form {
+  max-width: 760px;
+}
+
 .profile-data-form-actions {
   display: flex;
   gap: 10px;
@@ -3731,10 +4483,10 @@ input, select, textarea {
 .catalog-header-actions { display: flex; align-items: center; gap: 10px; }
 .catalog-add-product-button {
   display: inline-flex; align-items: center; gap: 7px; border: 0; border-radius: 10px;
-  padding: 9px 13px; color: #fff; background: #0f3b68; font-size: 12.5px; font-weight: 800;
-  cursor: pointer; white-space: nowrap; box-shadow: 0 5px 12px rgba(15, 59, 104, .18);
+  padding: 9px 13px; color: #fff; background: var(--color-brand-blue, #0066ff); font-size: 12.5px; font-weight: 800;
+  cursor: pointer; white-space: nowrap; box-shadow: 0 5px 12px rgba(0, 102, 255, .22);
 }
-.catalog-add-product-button:hover { background: #0b2e52; transform: translateY(-1px); }
+.catalog-add-product-button:hover { background: #0052cc; transform: translateY(-1px); }
 .catalog-bulk-inventory-notice {
   display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin: -4px 0 18px;
   border: 1px solid #cfe0f5; border-radius: 13px; background: linear-gradient(100deg, #f0f7ff, #f8fbff);
@@ -5371,61 +6123,6 @@ input, select, textarea {
   gap: 18px;
 }
 
-.store-identity-banner {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  border-radius: var(--radius-lg);
-  padding: 20px 24px;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
-}
-
-.store-identity-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: var(--color-brand-blue);
-  color: #ffffff;
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 3px solid rgba(255, 255, 255, 0.2);
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.store-identity-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.store-identity-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-}
-
-.store-identity-title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.store-identity-title-row h3 {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 800;
-  color: #ffffff;
-}
-
 .store-status-chip {
   display: inline-flex;
   align-items: center;
@@ -5456,44 +6153,105 @@ input, select, textarea {
   border: 1px solid rgba(251, 191, 36, 0.4);
 }
 
-.store-identity-sub {
-  font-size: 12.5px;
-  color: #94a3b8;
-}
-
-.store-identity-tags {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 4px;
-  flex-wrap: wrap;
-}
-
-.founder-tag {
-  background: linear-gradient(135deg, rgba(234, 179, 8, 0.2) 0%, rgba(245, 158, 11, 0.3) 100%);
-  color: #fef08a;
-  border: 1px solid rgba(254, 240, 138, 0.4);
-}
-
-.founder-tag svg {
-  color: #facc15;
-}
-
-/* Modular Cards Grid */
+/* Pila vertical de secciones, todas a ancho completo: con solo 2-3 bloques y
+   ninguno de la misma altura, un grid de tarjetas de 320px dejaba columnas
+   vacías reservadas (hueco en blanco al lado de la primera tarjeta). Cada
+   sección aprovecha el ancho completo por dentro en vez de partir la página
+   en columnas que no tienen con qué llenarse. */
 .store-profile-unified-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 16px;
 }
 
 .store-section-card {
-  border-top: 3px solid var(--color-brand-blue);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+}
+
+/* Campos de "Identidad y Contacto" en 2-3 columnas: al ser la tarjeta ancho
+   completo, una lista de una fila por dato dejaría el mismo hueco en blanco
+   que tenía la tarjeta angosta, solo que ahora adentro. */
+.details-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px 24px;
+}
+
+.details-info-row-wide {
+  grid-column: 1 / -1;
+}
+
+/* Icono del título de cada tarjeta: un solo lenguaje visual (badge suave +
+   ícono a color) en vez de franjas de color distintas por tarjeta, para que
+   las 3-4 tarjetas del panel se sientan parte del mismo sistema. */
+.section-subtitle-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eff6ff;
+  color: var(--color-brand-blue);
+  flex-shrink: 0;
+}
+
+.section-subtitle-icon.icon-emerald { background: #ecfdf5; color: #059669; }
+.section-subtitle-icon.icon-amber { background: #fffbeb; color: #d97706; }
+
+/* Cabecera de la tarjeta "Identidad y Contacto": único punto de entrada para
+   cambiar logo/portada ahora que el botón flotante del hero está oculto. */
+.details-card-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.details-card-header-row .section-subtitle {
+  margin-bottom: 0;
+}
+
+.details-card-header-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.details-card-link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  background: #fff;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.details-card-link-button:hover {
+  border-color: var(--color-brand-blue);
+  color: var(--color-brand-blue);
+  background: #f5f9ff;
 }
 
 .bank-card {
   background: #f8fafc;
   border-color: #cbd5e1;
-  border-top-color: #059669;
+}
+
+.store-shipping-methods-row {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed #e2e8f0;
 }
 
 .bank-account-number {
@@ -6809,6 +7567,19 @@ input, select, textarea {
   font-size: 12.5px;
   font-weight: 700;
   color: #334155;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Contador "12/80" al lado del label: informa el límite del input sin
+   necesidad de intentar escribir de más para descubrirlo. */
+.char-counter {
+  font-size: 10.5px;
+  font-weight: 650;
+  color: #94a3b8;
+  flex-shrink: 0;
 }
 
 .form-group input,
@@ -7976,177 +8747,305 @@ input, select, textarea {
   padding-bottom: 60px;
 }
 
-.catalog-hero-banner {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  background: #020d24;
-  background-size: cover;
-  background-position: center;
-  color: #ffffff;
-  padding: 22px 0 112px;
-  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+/* ==========================================================================
+   TECHNICAL PARTS CATALOG CONTEXT HEADER
+   ========================================================================== */
+
+.catalog-context-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 16px 0;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  margin-bottom: 24px;
 }
 
-.catalog-hero-banner::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  background: url('/repuestos_warehouse_bg.jpg') center / cover no-repeat;
-  opacity: 0.72;
-  filter: saturate(0.72) contrast(1.08);
-}
-
-.catalog-hero-banner::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: linear-gradient(90deg, rgba(1, 10, 29, 0.98) 0%, rgba(2, 15, 42, 0.9) 43%, rgba(2, 18, 54, 0.36) 72%, rgba(3, 26, 82, 0.68) 100%);
-}
-
-.catalog-hero-content {
+.catalog-context-container {
   display: flex;
-  flex-direction: column;
-  gap: 15px;
-  position: relative;
-  min-height: 254px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
-.catalog-hero-badge {
+.catalog-context-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.catalog-breadcrumb-back {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(0, 102, 255, 0.35);
-  border: 1px solid rgba(96, 165, 250, 0.4);
-  color: #bfdbfe;
-  font-size: 11px;
-  font-weight: 800;
-  padding: 4px 12px;
-  border-radius: 20px;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
-}
-
-.catalog-hero-text h1 {
-  font-family: var(--font-display);
-  font-size: clamp(32px, 3vw, 48px);
-  font-weight: 900;
-  color: #ffffff;
-  margin: 0 0 8px 0;
-  line-height: 1.08;
-  max-width: 760px;
-}
-
-.catalog-hero-text h1 span {
-  color: #2f76ff;
-}
-
-.catalog-hero-text p {
-  font-size: 16px;
-  color: #d6deec;
-  max-width: 700px;
-  margin: 0;
-  line-height: 1.45;
-}
-
-.catalog-hero-perks {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px 27px;
-  margin-top: 10px;
-  color: #e2e8f0;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
   font-size: 13px;
-  font-weight: 750;
-}
-
-.catalog-hero-perks span {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
   white-space: nowrap;
 }
 
-.catalog-hero-perks svg {
-  color: #2d76ff;
-  flex: 0 0 auto;
+.catalog-breadcrumb-back:hover {
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
-.active-vehicle-pill-banner {
-  display: inline-flex;
+.catalog-context-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.catalog-context-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.catalog-context-title span {
+  color: #0066ff;
+}
+
+.catalog-context-title .highlight-term {
+  color: #0066ff;
+  font-weight: 900;
+}
+
+.catalog-context-counter {
+  font-size: 12.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.catalog-context-right {
+  display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 8px 16px;
-  border-radius: 24px;
-  font-size: 13px;
-  color: #f8fafc;
-  width: fit-content;
   flex-wrap: wrap;
 }
 
-.btn-toggle-compat {
-  background: #0066ff;
-  color: #ffffff;
-  border: none;
+.catalog-vehicle-badge-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #eff6ff;
+  border: 1.5px solid #bfdbfe;
+  padding: 6px 14px;
+  border-radius: 24px;
+}
+
+.catalog-vehicle-badge-active .vehicle-info-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.catalog-vehicle-badge-active .vehicle-title {
   font-size: 12px;
   font-weight: 800;
-  padding: 5px 14px;
-  border-radius: 20px;
+  color: #1e3a8a;
+}
+
+.catalog-vehicle-badge-active .vehicle-plate {
+  font-size: 11px;
+  font-weight: 700;
+  color: #3b82f6;
+  letter-spacing: 0.5px;
+}
+
+.btn-compat-toggle-pill {
+  background: #ffffff;
+  border: 1px solid #93c5fd;
+  color: #1d4ed8;
+  font-size: 11.5px;
+  font-weight: 750;
+  padding: 4px 10px;
+  border-radius: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.btn-toggle-compat:hover {
+.btn-compat-toggle-pill:hover {
+  background: #dbeafe;
+}
+
+.btn-compat-toggle-pill.active {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+}
+
+.btn-vehicle-clear {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.15s ease;
+}
+
+.btn-vehicle-clear:hover {
+  background: #dbeafe;
+  color: #1e293b;
+}
+
+.catalog-quick-patente-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  padding: 4px 6px 4px 12px;
+  border-radius: 24px;
+  position: relative;
+}
+
+.catalog-quick-patente-bar .patente-icon {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.patente-quick-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #0f172a;
+  width: 175px;
+  letter-spacing: 0.5px;
+}
+
+.patente-quick-input::placeholder {
+  font-weight: 500;
+  color: #94a3b8;
+  letter-spacing: normal;
+}
+
+.btn-quick-patente-submit {
+  background: #0066ff;
+  border: none;
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-quick-patente-submit:hover {
   background: #0052cc;
 }
 
-.btn-toggle-compat.active {
-  background: #059669;
+.btn-quick-patente-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.quick-patente-error {
+  position: absolute;
+  top: 100%;
+  left: 12px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #ef4444;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.btn-comuna-toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-comuna-toggle-pill:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.btn-comuna-toggle-pill.active {
+  background: #0066ff;
+  border-color: #0066ff;
+  color: #ffffff;
 }
 
 .catalog-control-bar {
   background: #ffffff;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
-  padding: 16px 20px;
+  padding: 14px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
-  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  margin-bottom: 20px;
   flex-wrap: wrap;
 }
 
-.search-bar-catalog-box {
-  position: relative;
-  flex: 1;
-  min-width: 280px;
-  display: flex;
-  align-items: center;
+.results-count-badge {
+  font-size: 13.5px;
+  color: #475569;
+  font-weight: 600;
 }
 
-.search-catalog-input {
-  width: 100%;
-  padding: 11px 40px 11px 42px;
-  border-radius: 24px;
+.results-count-badge strong {
+  color: #0f172a;
+}
+
+.sort-dropdown-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sort-dropdown-box .sort-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.sort-select-input {
+  padding: 8px 14px;
+  border-radius: 8px;
   border: 1.5px solid #cbd5e1;
   background: #f8fafc;
   color: #0f172a;
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.search-catalog-input:focus {
+.sort-select-input:focus {
   background: #ffffff;
   border-color: var(--color-brand-blue);
-  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.12);
   outline: none;
 }
 
@@ -9242,8 +10141,6 @@ input, select, textarea {
   gap: 34px;
 }
 
-.light-market-header .brand-logo-official { min-width: 300px; }
-
 .light-market-header .header-search-console {
   max-width: none;
   height: 58px;
@@ -9583,17 +10480,20 @@ input, select, textarea {
 .seller-withdrawals-panel { display: grid; gap: 20px; }
 .withdrawal-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .withdrawal-heading > div { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.withdrawal-heading-icon { display: grid; place-items: center; width: 45px; height: 45px; flex: 0 0 45px; border-radius: 13px; color: #fff; background: linear-gradient(135deg, #0f766e, #059669); box-shadow: 0 8px 18px rgba(5, 150, 105, .22); }
+/* Ícono de placa plana (mismo lenguaje que .section-subtitle-icon /
+   .stat-v2-icon en el resto del perfil): sin gradiente ni sombra de color,
+   que era lo que más desentonaba con el resto del panel. */
+.withdrawal-heading-icon { display: grid; place-items: center; width: 45px; height: 45px; flex: 0 0 45px; border-radius: 13px; color: #059669; background: #ecfdf5; }
 .withdrawal-heading h2 { margin: 0; color: #0f172a; font-size: 20px; font-weight: 850; }
 .withdrawal-heading p { margin: 3px 0 0; color: #64748b; font-size: 12px; }
-.withdrawal-bank-button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border: 1px solid #cbdde9; border-radius: 9px; color: #155e75; background: #f3fafb; font-size: 12px; font-weight: 800; cursor: pointer; }
-.withdrawal-bank-button:hover { border-color: #67b8c7; background: #e8f7f8; }
+.withdrawal-bank-button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border: 1px solid var(--border-subtle); border-radius: 9px; color: #475569; background: #ffffff; font-size: 12px; font-weight: 800; cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease; }
+.withdrawal-bank-button:hover { border-color: var(--color-brand-blue); color: var(--color-brand-blue); background: #f5f9ff; }
 .withdrawal-info-banner > span { flex: 1; }
 .withdrawal-info-banner .withdrawal-bank-button { flex: 0 0 auto; margin: -5px -5px -5px 8px; background: #fff; }
 .bank-card-helper { margin: 0; color: #64748b; font-size: 12px; line-height: 1.55; }
 .withdrawal-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 4px; border: 1px solid #dce5ed; border-radius: 11px; background: #f4f7fa; }
 .withdrawal-tabs button { min-height: 38px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 8px; color: #64748b; background: transparent; font-size: 12px; font-weight: 800; cursor: pointer; }
-.withdrawal-tabs button.active { color: #0f5d67; background: #fff; box-shadow: 0 2px 8px rgba(15, 23, 42, .09); }
+.withdrawal-tabs button.active { color: var(--color-brand-blue); background: #fff; box-shadow: 0 2px 8px rgba(15, 23, 42, .09); }
 .withdrawal-alert, .withdrawal-info-banner { display: flex; align-items: flex-start; gap: 9px; padding: 12px 13px; border: 1px solid; border-radius: 10px; font-size: 12px; font-weight: 650; line-height: 1.45; }
 .withdrawal-alert svg, .withdrawal-info-banner svg { flex: 0 0 auto; margin-top: 1px; }
 .withdrawal-alert > span { flex: 1; }
@@ -9616,8 +10516,12 @@ input, select, textarea {
 .withdrawal-total-card > span { color: #47766a; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
 .withdrawal-total-card > strong { color: #065f46; font-size: 27px; line-height: 1.1; }
 .withdrawal-total-card > small { color: #64877e; font-size: 10.5px; }
-.withdrawal-total-card > button { min-height: 41px; margin-top: 7px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 9px; color: #fff; background: linear-gradient(135deg, #047857, #059669); font-size: 12px; font-weight: 850; cursor: pointer; box-shadow: 0 6px 14px rgba(5, 150, 105, .2); }
-.withdrawal-total-card > button:disabled { opacity: .5; box-shadow: none; cursor: not-allowed; }
+/* Mismo tratamiento plano que .btn-auth-primary (el CTA azul del resto de la
+   app): color sólido + leve elevación al hover, sin gradiente ni resplandor
+   de color. */
+.withdrawal-total-card > button { min-height: 41px; margin-top: 7px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 9px; color: #fff; background: #059669; font-size: 12px; font-weight: 850; cursor: pointer; transition: background 0.2s ease, transform 0.2s ease; }
+.withdrawal-total-card > button:hover:not(:disabled) { background: #047857; transform: translateY(-1px); }
+.withdrawal-total-card > button:disabled { opacity: .5; cursor: not-allowed; }
 .withdrawal-total-card > p { margin: 2px 0 0; color: #78958e; font-size: 9.5px; text-align: center; }
 .withdrawal-empty { min-height: 190px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 7px; padding: 24px; border: 1px dashed #cbd5e1; border-radius: 12px; color: #8290a2; text-align: center; }
 .withdrawal-empty > span { display: grid; place-items: center; width: 47px; height: 47px; border-radius: 50%; color: #0f766e; background: #e7f7f3; }
@@ -9645,7 +10549,7 @@ input, select, textarea {
 .withdrawal-modal { width: min(520px, 100%); max-height: min(760px, calc(100vh - 40px)); display: flex; flex-direction: column; overflow: hidden; border-radius: 17px; background: #fff; box-shadow: 0 24px 55px rgba(3, 20, 39, .3); }
 .withdrawal-modal.wide { width: min(680px, 100%); }
 .withdrawal-modal > header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 11px; padding: 17px 19px; border-bottom: 1px solid #e5ebf1; background: #f8fafc; }
-.withdrawal-modal-icon { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 11px; color: #fff; background: linear-gradient(135deg, #0f766e, #059669); }
+.withdrawal-modal-icon { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 11px; color: #059669; background: #ecfdf5; }
 .withdrawal-modal h2 { margin: 0; color: #162235; font-size: 16px; }
 .withdrawal-modal header p { margin: 3px 0 0; color: #77869a; font-size: 10.5px; }
 .withdrawal-modal header > button { display: grid; place-items: center; width: 31px; height: 31px; border: 0; border-radius: 8px; color: #64748b; background: #e9eef3; cursor: pointer; }
@@ -9653,7 +10557,7 @@ input, select, textarea {
 .withdrawal-bank-form label { min-width: 0; display: grid; align-content: start; gap: 6px; color: #344256; font-size: 11px; font-weight: 750; }
 .withdrawal-bank-form label > span { display: inline-flex; align-items: center; gap: 5px; }
 .withdrawal-bank-form input, .withdrawal-bank-form select { min-width: 0; width: 100%; height: 40px; padding: 0 10px; border: 1px solid #cbd8e3; border-radius: 8px; outline: 0; color: #172033; background: #fff; font: inherit; font-size: 11.5px; }
-.withdrawal-bank-form input:focus, .withdrawal-bank-form select:focus { border-color: #2195a3; box-shadow: 0 0 0 3px rgba(33, 149, 163, .1); }
+.withdrawal-bank-form input:focus, .withdrawal-bank-form select:focus { border-color: var(--color-brand-blue); box-shadow: 0 0 0 3px rgba(0, 102, 255, .12); }
 .withdrawal-bank-form label small { color: #b42318; font-size: 9.5px; }
 .withdrawal-bank-form .wide-field, .withdrawal-bank-form > .withdrawal-alert { grid-column: 1 / -1; }
 .withdrawal-bank-form footer, .withdrawal-confirm-body footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 13px; border-top: 1px solid #e7edf3; }
@@ -9668,6 +10572,26 @@ input, select, textarea {
 .withdrawal-confirm-body dd { margin: 0; color: #26364a; font-weight: 750; overflow-wrap: anywhere; }
 .withdrawal-confirm-body > p { margin: 0; display: flex; align-items: flex-start; gap: 7px; color: #6c7786; font-size: 10.5px; line-height: 1.45; }
 .withdrawal-confirm-body > p svg { flex: 0 0 auto; }
+
+/* Número de cuenta enmascarado por defecto en la confirmación de retiro:
+   solo se revela con el toggle, para evitar exponerlo en capturas o
+   screen sharing aunque sea el dato del propio vendedor. */
+.withdrawal-confirm-account-number { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.withdrawal-confirm-account-number span { font-variant-numeric: tabular-nums; letter-spacing: 0.5px; }
+.withdrawal-toggle-reveal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: #eef2f7;
+  color: #52606d;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.withdrawal-toggle-reveal:hover { background: #e2e8f0; color: #1f2937; }
 .withdrawal-detail-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #64748b; font-size: 11px; }
 .withdrawal-detail-summary > span { display: flex; align-items: center; gap: 6px; }
 .withdrawal-detail-orders { display: grid; gap: 8px; }
@@ -10529,6 +11453,150 @@ input, select, textarea {
 .specialist-brands-select { width: 100%; min-height: 110px; padding: 8px 10px; border: 1px solid #ced9ea; border-radius: 9px; color: #162443; background: #fff; font: inherit; }
 .specialist-brands-select option { padding: 5px 7px; }
 .form-helper-text { display: block; margin-top: 5px; color: #71819a; font-size: 11px; }
+
+.form-helper-inline-link {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-brand-blue);
+  font-size: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Error inline por campo: mismo rojo que ya usa el formulario de cuenta
+   bancaria (Retirar dinero) para mantener un solo lenguaje de error. */
+.field-error-text {
+  display: block;
+  margin-top: 5px;
+  color: #b42318;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.form-group input.input-invalid,
+.form-group select.input-invalid {
+  border-color: #b42318;
+  background: #fef4f3;
+}
+
+/* Nombre/RUT de tienda: se muestran como un input deshabilitado (mismo alto y
+   tipografía que los editables) para que quede claro que es un dato real,
+   solo que no editable desde este formulario. */
+.form-locked-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid #e2e8f0;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.form-locked-value svg {
+  flex-shrink: 0;
+  color: #94a3b8;
+}
+
+/* Selector estructurado de métodos de envío: reemplaza el input de texto libre
+   ("Starken, Chilexpress...") por checkboxes sobre los 3 métodos que el
+   sistema realmente reconoce (src/data/shippingMethods.js), cada uno con un
+   precio opcional — sin typos posibles y sin depender de un formato de texto. */
+.shipping-methods-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shipping-method-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.shipping-method-option:hover {
+  border-color: #93c5fd;
+}
+
+.shipping-method-option.checked {
+  border-color: var(--color-brand-blue);
+  background: #f5f9ff;
+}
+
+.shipping-method-option input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--color-brand-blue);
+  flex-shrink: 0;
+}
+
+.shipping-method-option-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 650;
+  color: #1e293b;
+}
+
+.shipping-method-price-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 12.5px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.shipping-method-price-input input {
+  width: 72px;
+  border: none;
+  background: transparent;
+  color: #0f172a;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 0;
+}
+
+.shipping-method-price-input input:focus {
+  outline: none;
+}
+
+.shipping-method-price-input input::placeholder {
+  color: #a3aebd;
+  font-style: italic;
+  font-weight: 500;
+}
+
+/* Métodos sin precio configurable (ej: envío fuera de la comuna, que cobra el
+   courier al entregar): una nota en vez de un input vacío que invitaría a
+   escribir un precio que la tienda no fija. */
+.shipping-method-note-badge {
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 650;
+  font-style: italic;
+  flex-shrink: 0;
+}
+
 .btn-manage-specialist-brands { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 13px; border: 1px solid #bcd2fc; border-radius: 9px; color: #1268f3; background: #f5f9ff; font-size: 13px; font-weight: 800; transition: border-color .18s ease, background .18s ease; }
 .btn-manage-specialist-brands:hover { border-color: #1268f3; background: #edf5ff; }
 .btn-manage-specialist-brands strong { color: #52647d; font-size: 11px; font-weight: 750; }
@@ -12568,5 +13636,142 @@ input, select, textarea {
 .route-error-btn-secondary:hover {
   background: #e2e8f0;
 }
+
+/* Preguntas de productos: patrón visual del perfil de proveedor y azul de marca. */
+.seller-profile-dashboard .seller-product-questions-panel { gap: 20px; padding: 0; border: 0; box-shadow: none; background: transparent; }
+.seller-profile-dashboard .seller-questions-heading { align-items: center; padding: 4px 0 2px; }
+.seller-profile-dashboard .seller-questions-heading .profile-panel-title { color: #102a43; font-size: clamp(23px, 2.1vw, 29px); font-weight: 850; letter-spacing: -.6px; }
+.seller-profile-dashboard .seller-questions-heading .profile-panel-title svg { color: var(--color-brand-blue, #0066ff); }
+.seller-profile-dashboard .seller-questions-heading p { color: #64748b; font-size: 12px; }
+.seller-profile-dashboard .seller-question-summary { gap: 9px; }
+.seller-profile-dashboard .seller-question-summary > span { min-width: 88px; padding: 10px 12px; border-color: #d8e7f5; border-radius: 11px; color: #6d8298; background: #fbfdff; }
+.seller-profile-dashboard .seller-question-summary strong { color: #173b60; font-size: 19px; }
+.seller-profile-dashboard .seller-question-summary .pending { border-color: #a9cff4; background: #eff7ff; }
+.seller-profile-dashboard .seller-question-summary .pending strong { color: var(--color-brand-blue, #0066ff); }
+.seller-profile-dashboard .seller-question-summary .answered { border-color: #c7ead9; background: #f4fcf8; }
+.seller-profile-dashboard .seller-question-product-filter { border-color: #c6def4; color: #1665a7; background: #f1f8ff; }
+.seller-profile-dashboard .seller-question-product-filter strong { color: #174d7c; }
+.seller-profile-dashboard .seller-question-product-filter button { color: var(--color-brand-blue, #0066ff); background: #fff; }
+.seller-profile-dashboard .seller-question-product-filter button:hover { background: #e7f3ff; }
+.seller-profile-dashboard .seller-questions-toolbar { gap: 12px; }
+.seller-profile-dashboard .seller-questions-toolbar > label { min-height: 46px; padding: 0 14px; border-color: #cbdceb; border-radius: 10px; box-shadow: 0 1px 3px rgba(15,23,42,.025); }
+.seller-profile-dashboard .seller-questions-toolbar > label:focus-within { border-color: var(--color-brand-blue, #0066ff); box-shadow: 0 0 0 3px rgba(0,102,255,.11); }
+.seller-profile-dashboard .seller-questions-toolbar > label svg { color: #4c8bd4; }
+.seller-profile-dashboard .seller-questions-toolbar input { font-size: 12.5px; }
+.seller-profile-dashboard .seller-questions-toolbar > div { border-color: #cfdeeb; border-radius: 10px; background: #f7faff; }
+.seller-profile-dashboard .seller-questions-toolbar > div button { min-height: 34px; color: #61768c; font-size: 11px; }
+.seller-profile-dashboard .seller-questions-toolbar > div button:hover { color: var(--color-brand-blue, #0066ff); background: #edf6ff; }
+.seller-profile-dashboard .seller-questions-toolbar > div button.active { color: #fff; background: var(--color-brand-blue, #0066ff); box-shadow: 0 3px 8px rgba(0,102,255,.2); }
+.seller-profile-dashboard .seller-question-product-groups { gap: 14px; }
+.seller-profile-dashboard .seller-question-product-group { border-color: #dce8f3; border-radius: 13px; box-shadow: 0 3px 12px rgba(15,50,88,.045); }
+.seller-profile-dashboard .seller-question-product-group.has-pending-questions { border-left: 3px solid var(--color-brand-blue, #0066ff); }
+.seller-profile-dashboard .seller-question-product-group > header { border-bottom-color: #e0ebf5; background: linear-gradient(105deg, #fff, #f5faff); }
+.seller-profile-dashboard .seller-question-product-group > header h3 { color: #173b60; }
+.seller-profile-dashboard .seller-question-product-group > header b { color: #1765a5; background: #eaf4ff; }
+.seller-profile-dashboard .seller-question-product-group > header b svg { color: var(--color-brand-blue, #0066ff); }
+.seller-profile-dashboard .seller-question-item { border-color: #e0eaf3; border-radius: 10px; }
+.seller-profile-dashboard .seller-question-meta > span.pending { color: #0966b8; background: #eaf4ff; }
+.seller-profile-dashboard .seller-question-item > strong { color: #203d5a; }
+.seller-profile-dashboard .seller-question-item > p.waiting-answer { border-left-color: var(--color-brand-blue, #0066ff); color: #3e6385; background: #f1f8ff; }
+.seller-profile-dashboard .seller-questions-empty { border-color: #c8def2; border-radius: 13px; background: #fbfdff; }
+.seller-profile-dashboard .seller-questions-empty > svg { color: #72a9dc; }
+
+@media (max-width: 760px) {
+  .seller-profile-dashboard .seller-questions-heading { align-items: stretch; flex-direction: column; }
+}
+
+/* Centro de cotizaciones del proveedor: prioridad clara, sin alterar comprador. */
+.seller-profile-dashboard .seller-quotes-panel { gap: 20px; padding: 0; border: 0; box-shadow: none; background: transparent; }
+.seller-profile-dashboard .seller-quotes-heading { align-items: center; padding: 4px 0 2px; }
+.seller-profile-dashboard .seller-quotes-heading .profile-panel-title { margin: 4px 0; color: #102a43; font-size: clamp(23px, 2.1vw, 29px); font-weight: 850; letter-spacing: -.6px; line-height: 1.12; }
+.seller-profile-dashboard .seller-quotes-heading p { max-width: 650px; color: #64748b; font-size: 12px; }
+.seller-profile-dashboard .seller-quotes-eyebrow { color: var(--color-brand-blue, #0066ff); font-size: 11px; letter-spacing: .03em; }
+.seller-profile-dashboard .seller-quotes-heading-actions { display: flex; align-items: center; gap: 9px; }
+.seller-profile-dashboard .seller-quotes-total-badge { padding: 7px 10px; border: 1px solid #cfe3ff; border-radius: 999px; color: var(--color-brand-blue, #0066ff); background: #eff6ff; font-size: 11px; font-weight: 800; white-space: nowrap; }
+.seller-profile-dashboard .seller-quotes-sort { min-height: 38px; border-color: #c7dceb; border-radius: 9px; color: #416785; background: #fff; }
+.seller-profile-dashboard .seller-quotes-sort:hover { border-color: var(--color-brand-blue, #0066ff); color: var(--color-brand-blue, #0066ff); background: #f5faff; }
+.seller-profile-dashboard .seller-quotes-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.seller-profile-dashboard .seller-quotes-summary article { min-height: 83px; padding: 13px; border-color: #d8e7f5; border-radius: 12px; color: var(--color-brand-blue, #0066ff); background: #f7fbff; }
+.seller-profile-dashboard .seller-quotes-summary article strong { color: #173b60; font-size: 20px; }
+.seller-profile-dashboard .seller-quotes-summary .is-pending { color: var(--color-brand-blue, #0066ff); border-color: #a9cff4; background: #eff7ff; }
+.seller-profile-dashboard .seller-quotes-summary .is-pending strong { color: #0759ae; }
+.seller-profile-dashboard .seller-quotes-summary .is-sent { color: #087c51; border-color: #c4e5d5; background: #f4fcf8; }
+.seller-profile-dashboard .seller-quotes-summary .is-unread { color: #6f52c5; border-color: #dfd6f6; background: #faf9ff; }
+.seller-profile-dashboard .seller-quotes-toolbar { gap: 12px; }
+.seller-profile-dashboard .seller-quotes-search { min-height: 46px; padding: 0 14px; border-color: #cbdceb; border-radius: 10px; color: #4c8bd4; box-shadow: 0 1px 3px rgba(15,23,42,.025); }
+.seller-profile-dashboard .seller-quotes-search:focus-within { border-color: var(--color-brand-blue, #0066ff); box-shadow: 0 0 0 3px rgba(0,102,255,.11); }
+.seller-profile-dashboard .seller-quotes-search input { font-size: 12.5px; }
+.seller-profile-dashboard .seller-quotes-filters { padding: 4px; border-color: #cfdeeb; border-radius: 10px; background: #f7faff; }
+.seller-profile-dashboard .seller-quotes-filters button { min-height: 34px; color: #61768c; font-size: 11px; }
+.seller-profile-dashboard .seller-quotes-filters button:hover { color: var(--color-brand-blue, #0066ff); background: #edf6ff; }
+.seller-profile-dashboard .seller-quotes-filters button.active { color: #fff; background: var(--color-brand-blue, #0066ff); box-shadow: 0 3px 8px rgba(0,102,255,.2); }
+.seller-profile-dashboard .seller-quotes-grid { gap: 14px; }
+.seller-profile-dashboard .seller-quotes-grid .quote-card-container { border-color: #dce8f3; border-radius: 13px; box-shadow: 0 3px 12px rgba(15,50,88,.045); }
+.seller-profile-dashboard .seller-quotes-grid .quote-card-container:hover { border-color: #9ec8ef; box-shadow: 0 10px 24px rgba(15,82,145,.10); }
+.seller-profile-dashboard .seller-quotes-grid .quote-card-pending { border-left: 3px solid var(--color-brand-blue, #0066ff); }
+.seller-profile-dashboard .seller-quotes-grid .order-card-id { color: #173b60; }
+.seller-profile-dashboard .seller-quotes-grid .btn-view-details { color: var(--color-brand-blue, #0066ff); }
+.seller-profile-dashboard .seller-quotes-grid .btn-action-blue { background: var(--color-brand-blue, #0066ff); }
+
+@media (max-width: 780px) {
+  .seller-profile-dashboard .seller-quotes-heading { align-items: stretch; flex-direction: column; }
+  .seller-profile-dashboard .seller-quotes-heading-actions { justify-content: space-between; }
+}
+
+/* Pedidos recibidos del proveedor: misma escala cromática y superficies del home. */
+.seller-profile-dashboard .seller-orders-screen { gap: 20px; }
+.seller-profile-dashboard .seller-orders-page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 4px 0 2px; }
+.seller-profile-dashboard .seller-orders-eyebrow { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 5px; color: var(--color-brand-blue, #0066ff); font-size: 11px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
+.seller-profile-dashboard .seller-orders-page-heading h1 { margin: 0; color: #102a43; font-size: clamp(23px, 2.1vw, 29px); font-weight: 850; letter-spacing: -.6px; line-height: 1.12; }
+.seller-profile-dashboard .seller-orders-page-heading p { margin: 6px 0 0; color: #64748b; font-size: 12px; line-height: 1.45; }
+.seller-profile-dashboard .seller-orders-total-badge { flex: 0 0 auto; padding: 7px 10px; border: 1px solid #cfe3ff; border-radius: 999px; color: var(--color-brand-blue, #0066ff); background: #eff6ff; font-size: 11px; font-weight: 800; }
+.seller-profile-dashboard .seller-orders-summary { display: grid; grid-template-columns: minmax(170px, .8fr) minmax(0, 1.8fr); align-items: stretch; gap: 22px; padding: 18px 20px; border-color: #dce8f5; border-radius: 14px; box-shadow: 0 3px 15px rgba(17, 83, 147, .055); }
+.seller-profile-dashboard .seller-orders-summary > header { display: flex; align-items: center; padding-right: 22px; border-right: 1px solid #e6eef6; }
+.seller-profile-dashboard .seller-orders-summary > header h2 { color: #173b60; font-size: 14px; }
+.seller-profile-dashboard .seller-orders-summary > header p { color: #6d8298; font-size: 11px; line-height: 1.4; }
+.seller-profile-dashboard .seller-orders-summary-grid { align-items: stretch; margin: 0; gap: 12px; }
+.seller-profile-dashboard .seller-orders-summary-grid article { min-height: 86px; padding: 13px; flex-direction: row; justify-content: flex-start; gap: 11px; border-radius: 11px; text-align: left; }
+.seller-profile-dashboard .seller-orders-summary-grid article > span { width: 37px; height: 37px; flex: 0 0 auto; }
+.seller-profile-dashboard .seller-orders-summary-copy { display: grid; gap: 2px; min-width: 0; }
+.seller-profile-dashboard .seller-orders-summary-grid article small { display: block; margin: 0; }
+.seller-profile-dashboard .seller-orders-summary-grid article strong { font-size: 19px; }
+.seller-profile-dashboard .orders-summary-amber { color: #a76a08; border-color: #f4dfb0 !important; background: #fffbf2; }
+.seller-profile-dashboard .orders-summary-purple { color: #5f47c7; border-color: #ddd5fb !important; background: #faf9ff; }
+.seller-profile-dashboard .orders-summary-green { color: #087d52; border-color: #c7ead9 !important; background: #f5fcf8; }
+.seller-profile-dashboard .seller-orders-tools { gap: 12px; }
+.seller-profile-dashboard .seller-orders-search { min-height: 46px; padding: 0 14px; border-color: #cbdceb; border-radius: 10px; color: #4c8bd4; box-shadow: 0 1px 3px rgba(15, 23, 42, .025); }
+.seller-profile-dashboard .seller-orders-search:focus-within { border-color: var(--color-brand-blue, #0066ff); box-shadow: 0 0 0 3px rgba(0, 102, 255, .11); }
+.seller-profile-dashboard .seller-orders-search input { font-size: 12.5px; }
+.seller-profile-dashboard .seller-orders-filter-trigger { min-height: 46px; min-width: 120px; border-color: #bcd6ef; border-radius: 10px; color: var(--color-brand-blue, #0066ff); background: #f8fbff; font-size: 12px; }
+.seller-profile-dashboard .seller-orders-filter-trigger:hover { border-color: var(--color-brand-blue, #0066ff); background: #eff6ff; }
+.seller-profile-dashboard .seller-orders-filter-trigger.active { color: var(--color-brand-blue, #0066ff); border-color: var(--color-brand-blue, #0066ff); background: #eaf3ff; }
+.seller-profile-dashboard .seller-orders-filter-panel { padding: 17px 18px; border-color: #d8e6f4; border-radius: 12px; background: #f8fbff; }
+.seller-profile-dashboard .seller-orders-chip-group button.active { color: var(--color-brand-blue, #0066ff); border-color: #83b9ed; background: #eaf3ff; }
+.seller-profile-dashboard .seller-orders-list-heading { min-height: 52px; border-bottom-color: #dce8f3; }
+.seller-profile-dashboard .seller-orders-list-heading h3 { color: #173b60; font-size: 14px; }
+.seller-profile-dashboard .seller-orders-list-heading > div span { color: #6d8298; font-size: 10.5px; }
+.seller-profile-dashboard .seller-orders-list-heading label { color: #527797; font-size: 11px; }
+.seller-profile-dashboard .seller-orders-list-heading select { padding: 8px 28px 8px 10px; border-color: #c8dceb; border-radius: 8px; color: #315a80; font-size: 11px; }
+.seller-profile-dashboard .seller-orders-card-grid { gap: 14px; }
+.seller-profile-dashboard .seller-orders-card-grid .order-card-container { border-color: #dce8f3; border-radius: 13px; box-shadow: 0 3px 12px rgba(15, 50, 88, .045); }
+.seller-profile-dashboard .seller-orders-card-grid .order-card-container:hover { border-color: #9ec8ef; box-shadow: 0 10px 24px rgba(15, 82, 145, .10); }
+.seller-profile-dashboard .seller-orders-card-grid .order-card-id { color: #173b60; }
+.seller-profile-dashboard .seller-orders-card-grid .btn-view-details { color: var(--color-brand-blue, #0066ff); }
+.seller-profile-dashboard .seller-orders-card-grid .btn-action-blue { background: var(--color-brand-blue, #0066ff); }
+.seller-profile-dashboard .seller-orders-empty { border-color: #c8def2; border-radius: 13px; background: #fbfdff; }
+
+@media (max-width: 780px) {
+  .seller-profile-dashboard .seller-orders-page-heading { align-items: stretch; flex-direction: column; }
+  .seller-profile-dashboard .seller-orders-total-badge { width: fit-content; }
+  .seller-profile-dashboard .seller-orders-summary { grid-template-columns: 1fr; gap: 15px; }
+  .seller-profile-dashboard .seller-orders-summary > header { padding: 0 0 12px; border-right: 0; border-bottom: 1px solid #e6eef6; }
+}
+
+/* Seller provider dashboard: final scoped overrides (kept last for cascade). */
+.seller-profile-dashboard{background:#f8fafc}.seller-profile-dashboard .profile-topbar{background:rgba(255,255,255,.96)}.seller-profile-dashboard .profile-topbar-inner{max-width:none;min-height:64px;padding:10px 28px}.seller-profile-dashboard .btn-back-to-store,.seller-profile-dashboard .btn-visit-my-store{min-height:38px;border-radius:8px;padding:8px 15px;font-size:12px}.seller-profile-dashboard .btn-visit-my-store{border-color:#0875eb;color:#fff;background:#0875eb;box-shadow:0 5px 12px rgba(8,117,235,.18)}.seller-profile-dashboard .btn-visit-my-store:hover{background:#0665ca}.seller-profile-dashboard .btn-topbar-logout{display:none}.seller-profile-dashboard .profile-role-chip{box-shadow:none;background:transparent;padding:5px 0}
+.seller-profile-dashboard .facebook-cover-hero-container{height:202px;margin:0;border:0;border-radius:0;box-shadow:none;overflow:visible;position:relative}.seller-profile-dashboard .facebook-cover-banner{height:202px}.seller-profile-dashboard .facebook-cover-banner::before{background:linear-gradient(90deg,rgba(5,21,42,.68),rgba(5,21,42,.2) 60%,rgba(5,21,42,.48))}.seller-profile-dashboard .btn-change-cover-photo,.seller-profile-dashboard .btn-change-avatar-camera{display:none}.seller-profile-dashboard .facebook-hero-bar{position:absolute;z-index:2;inset:0;max-width:1440px;margin:auto;padding:0 42px;background:transparent;align-items:center;gap:20px}.seller-profile-dashboard .facebook-avatar-wrapper{margin:0}.seller-profile-dashboard .facebook-avatar-circle{width:114px;height:114px;border-width:4px;font-size:34px}.seller-profile-dashboard .facebook-hero-info{padding:0;gap:7px}.seller-profile-dashboard .facebook-hero-title-row{gap:10px}.seller-profile-dashboard .facebook-hero-name{color:#fff!important;font-size:28px;letter-spacing:-.5px}.seller-profile-dashboard .facebook-hero-email{color:rgba(255,255,255,.86)!important;font-size:13px}.seller-profile-dashboard .profile-hero-tags{display:flex;gap:8px}.seller-profile-dashboard .tag-contrast{color:#9af4bb!important;background:rgba(4,90,43,.55)!important;border-color:rgba(74,222,128,.55)!important}.seller-profile-dashboard .founder-tag-contrast{color:#ffd264!important;background:rgba(42,28,4,.68)!important;border-color:rgba(250,204,21,.6)!important}.seller-profile-dashboard .store-status-chip{color:#9af4bb}.seller-profile-dashboard .btn-withdraw-money-hero{margin-left:auto;background:#0875eb;border-radius:9px;box-shadow:0 8px 18px rgba(0,58,132,.28)}.seller-profile-dashboard .btn-withdraw-money-hero:hover{background:#0665ca}
+.seller-profile-dashboard .profile-body{max-width:none;margin:0;padding:24px 28px 54px;grid-template-columns:250px minmax(0,1fr);gap:38px}.seller-profile-dashboard .profile-sidebar{position:sticky;top:82px;align-self:start;padding:0 10px 12px 0;border:0;border-radius:0;box-shadow:none;background:transparent}.seller-profile-dashboard .sidebar-mini-profile{display:none}.seller-profile-dashboard .sidebar-nav-list{gap:5px}.seller-profile-dashboard .sidebar-nav-group{gap:5px;margin:0 0 12px}.seller-profile-dashboard .sidebar-group-title{padding:9px 14px 3px;font-size:10px}.seller-profile-dashboard .profile-nav-item{min-height:38px;padding:9px 13px;border-radius:8px;font-size:12px;font-weight:650}.seller-profile-dashboard .profile-nav-item.nav-seller.active{color:#0875eb;background:#eaf3ff;box-shadow:none}.seller-profile-dashboard .profile-nav-item:hover{color:#0875eb;background:#f1f7ff}.seller-profile-dashboard .profile-nav-delete{margin:8px 0 0;padding-top:14px}
+.seller-profile-dashboard .profile-overview-grid{grid-template-columns:minmax(0,1fr) 266px;gap:28px}.seller-profile-dashboard .profile-overview-main-col{gap:16px}.seller-profile-dashboard .profile-overview-side-col{gap:16px}.seller-profile-dashboard .profile-stats-grid-v2{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.seller-profile-dashboard .profile-stat-card-v2{min-height:134px;padding:17px;border-radius:11px}.seller-profile-dashboard .stat-v2-label{color:#1f3653;font-size:11px;font-weight:750}.seller-profile-dashboard .stat-v2-val{font-size:23px}.seller-profile-dashboard .stat-v2-action{margin-top:auto;font-size:11px}.seller-profile-dashboard .stat-v2-icon{width:37px;height:37px;border-radius:10px}.seller-profile-dashboard .profile-panel-clean,.seller-profile-dashboard .overview-widget-card{border-radius:11px;padding:18px;box-shadow:0 2px 10px rgba(15,23,42,.035)}.seller-profile-dashboard .profile-section-title{margin-bottom:15px;font-size:14px}.seller-profile-dashboard .quick-actions-grid-v2{grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}.seller-profile-dashboard .quick-action-card-v2{min-height:78px;padding:13px;gap:11px;border-radius:10px;background:#fff}.seller-profile-dashboard .action-v2-icon{width:36px;height:36px;border-radius:10px}.seller-profile-dashboard .action-v2-body strong{font-size:11.5px}.seller-profile-dashboard .action-v2-desc{font-size:10px}.seller-profile-dashboard .activity-feed-table{border-radius:10px}.seller-profile-dashboard .activity-feed-header,.seller-profile-dashboard .activity-feed-row{grid-template-columns:minmax(165px,1fr) minmax(170px,1.25fr) minmax(92px,.72fr);padding:10px 13px;font-size:11px}.seller-profile-dashboard .activity-type-col strong,.seller-profile-dashboard .activity-detail-col{font-size:11px}.seller-profile-dashboard .activity-date-col{font-size:10px}.seller-profile-dashboard .overview-widget-card{padding:16px}.seller-profile-dashboard .widget-header-row h3{font-size:12px}.seller-profile-dashboard .onboarding-step-row{font-size:10.5px;padding:3px 1px}.seller-profile-dashboard .tips-widget-text{font-size:10.5px}
+@media (max-width:1180px){.seller-profile-dashboard .profile-stats-grid-v2{grid-template-columns:repeat(2,minmax(0,1fr))}.seller-profile-dashboard .quick-actions-grid-v2{grid-template-columns:repeat(2,minmax(0,1fr))}.seller-profile-dashboard .profile-overview-grid{grid-template-columns:minmax(0,1fr) 250px;gap:18px}}@media (max-width:900px){.seller-profile-dashboard .profile-body{grid-template-columns:1fr;padding:18px}.seller-profile-dashboard .profile-sidebar{position:static;padding:0}.seller-profile-dashboard .sidebar-nav-list{overflow-x:auto;flex-direction:row}.seller-profile-dashboard .sidebar-nav-group{min-width:max-content}.seller-profile-dashboard .profile-nav-delete{min-width:max-content;border-top:0;padding-top:9px}.seller-profile-dashboard .profile-overview-grid{grid-template-columns:1fr}}@media (max-width:640px){.seller-profile-dashboard .profile-topbar-inner{padding:9px 14px}.seller-profile-dashboard .profile-logo-group{display:none}.seller-profile-dashboard .profile-topbar-actions{gap:6px}.seller-profile-dashboard .btn-back-to-store span,.seller-profile-dashboard .btn-visit-my-store span{display:none}.seller-profile-dashboard .facebook-cover-hero-container,.seller-profile-dashboard .facebook-cover-banner{height:220px}.seller-profile-dashboard .facebook-hero-bar{padding:18px;align-items:flex-end;gap:12px}.seller-profile-dashboard .facebook-avatar-circle{width:72px;height:72px;font-size:22px}.seller-profile-dashboard .facebook-hero-name{font-size:21px}.seller-profile-dashboard .facebook-hero-email{font-size:11px}.seller-profile-dashboard .store-status-chip{font-size:9px}.seller-profile-dashboard .btn-withdraw-money-hero,.seller-profile-dashboard .founder-tag-contrast{display:none}.seller-profile-dashboard .profile-stats-grid-v2,.seller-profile-dashboard .quick-actions-grid-v2{grid-template-columns:1fr}}
 
 

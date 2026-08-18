@@ -66,7 +66,7 @@ export default function QuoteCard({
   const unreadCount = Number(quote.mensajesNoLeidos || 0);
 
   return (
-    <div className="order-card-container quote-card-container" onClick={() => onSelectQuote && onSelectQuote(quote)}>
+    <div className={`order-card-container quote-card-container ${normStatus === 'PENDIENTE' ? 'quote-card-pending' : 'quote-card-answered'}`} onClick={() => onSelectQuote && onSelectQuote(quote)}>
       {/* Top Header Row */}
       <div className="order-card-header">
         <div className="order-card-title-group">

@@ -83,7 +83,7 @@ export default function SellerProductQuestionsPanel({ questions = [], products =
         const product = group.product || productsById.get(productId) || {};
         const name = product.nombrePublicado || product.repuestoNombre || product.nombre || group.questions[0]?.productName || group.questions[0]?.productoNombre || 'Producto publicado';
         const rawPhoto = product.imageUrls?.[0] || product.imagenUrl || product.photoUri;
-        return <article className="seller-question-product-group" key={productId}>
+        return <article className={`seller-question-product-group ${group.questions.some((question) => !question.answer) ? 'has-pending-questions' : ''}`} key={productId}>
           <header>{rawPhoto ? <img src={resolveMediaUrl(rawPhoto)} alt="" /> : <span><Package /></span>}<div><h3>{name}</h3><small>SKU: {product.skuProveedor || product.sku || 'No informado'}</small></div><b><MessageCircleQuestion /> {group.questions.length} {group.questions.length === 1 ? 'pregunta' : 'preguntas'}</b></header>
           <div className="seller-question-list">{group.questions.map((question, index) => <div className="seller-question-item" key={question.id || index}>
             <div className="seller-question-meta"><span className={question.answer ? 'answered' : 'pending'}>{question.answer ? <CheckCircle2 /> : <Clock3 />}{question.answer ? 'Respondida' : 'Pendiente'}</span><small>{question.compradorNombre || question.userName || question.usuarioNombre || question.authorName || 'Comprador'} · {formatDate(question.fechaPregunta || question.createdAt || question.fechaCreacion)}</small></div>

@@ -327,6 +327,12 @@ export default function QuoteDetailModal({
         direccionId: needsAddress ? Number(selectedAddressId) : null,
       });
       if (order?.urlPago) {
+        // plan_retorno_flow.md Fase 3: mismo respaldo que CartDrawer.jsx.
+        try {
+          sessionStorage.setItem('repuestop_last_successful_order', JSON.stringify(order));
+        } catch {
+          // El endpoint GET /pedidos/{id} sigue disponible como respaldo.
+        }
         window.location.href = order.urlPago;
         return;
       }

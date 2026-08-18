@@ -1,5 +1,5 @@
 import React, { useCallback, lazy, Suspense } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PROFILE_TABS, profilePath, ROUTES } from '../routes/paths';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
@@ -23,6 +23,12 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   useDocumentTitle('Mi cuenta');
   const nav = useAppNavigation();
+  // plan_retorno_flow.md Fase 3: PagoController redirige aqui con
+  // ?status=failure|pending&orderId=... cuando el pago no quedo aprobado. Se pasa a
+  // ProfileDashboard como prop en vez de que cada tab lea la URL por su cuenta.
+  const [searchParams] = useSearchParams();
+  const paymentStatus = searchParams.get('status');
+  const paymentOrderId = searchParams.get('orderId');
 
   const handleTabChange = useCallback((nextTab) => {
     navigate(profilePath(nextTab));
@@ -42,6 +48,8 @@ export default function ProfilePage() {
         initialTab={tab}
         onTabChange={handleTabChange}
         onBackToStore={nav.goHome}
+        paymentStatus={paymentStatus}
+        paymentOrderId={paymentOrderId}
       />
     </Suspense>
   );

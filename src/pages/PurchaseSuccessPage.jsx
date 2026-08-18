@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
-import { Check, CheckCircle2, FileText, MapPin, Package, ReceiptText, ShoppingBag, Truck } from 'lucide-react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { resolveMediaUrl } from '../services/api';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Check, CheckCircle2, FileText, MapPin, Package, ReceiptText, ShoppingBag, Truck, XCircle } from 'lucide-react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { getBuyerOrderByIdApi, resolveMediaUrl } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { profilePath, ROUTES } from '../routes/paths';
 
 const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
@@ -22,7 +23,48 @@ function readStoredOrder() {
 export default function PurchaseSuccessPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const order = useMemo(() => location.state?.order || readStoredOrder(), [location.state]);
+  const { user } = useAuth();
+  // plan_retorno_flow.md Fase 3: PagoController.retorno redirige aqui con
+  // ?status=success&orderId=... El state/sessionStorage cubren el caso feliz (misma
+  // pestaña); si no hay datos ahi (otra pestaña/dispositivo, storage limpiado) se
+  // trae el pedido por id con el endpoint nuevo.
+  const [searchParams] = useSearchParams();
+  const status = searchParams.get('status');
+  const orderIdFromUrl = searchParams.get('orderId');
+  const isFailure = status === 'failure';
+
+  const storedOrder = useMemo(() => location.state?.order || readStoredOrder(), [location.state]);
+  const [fetchedOrder, setFetchedOrder] = useState(null);
+  const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
+
+  useEffect(() => {
+    if (storedOrder || !orderIdFromUrl || !effectiveUserId || isFailure) return;
+    let active = true;
+    getBuyerOrderByIdApi(effectiveUserId, orderIdFromUrl)
+      .then((data) => { if (active) setFetchedOrder(data); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [storedOrder, orderIdFromUrl, effectiveUserId, isFailure]);
+
+  const order = storedOrder || fetchedOrder;
+
+  if (isFailure) {
+    return (
+      <main className="purchase-success-page">
+        <section className="purchase-success-card" aria-labelledby="purchase-failure-title">
+          <div className="purchase-success-hero">
+            <div className="purchase-success-icon" style={{ background: '#fef2f2', color: '#b91c1c' }}><XCircle /></div>
+            <h1 id="purchase-failure-title">Tu pago no pudo procesarse</h1>
+            <p>El pago fue rechazado o cancelado. Puedes reintentarlo desde Mis pedidos.</p>
+          </div>
+          <div className="purchase-success-actions">
+            <button type="button" className="purchase-success-primary" onClick={() => navigate(profilePath('pedidos'))}>Ir a Mis pedidos</button>
+            <button type="button" className="purchase-success-secondary" onClick={() => navigate(ROUTES.catalog)}>Seguir comprando</button>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   const items = order?.items || [];
   const orderNumber = order?.id ? String(order.id).padStart(6, '0') : 'confirmado';

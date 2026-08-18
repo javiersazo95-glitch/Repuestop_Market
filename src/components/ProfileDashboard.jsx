@@ -5,18 +5,18 @@ import {
   ArrowLeft, LayoutGrid, Package, Heart, UserCog, Store, ShoppingBag,
   MessageSquare, LogOut, Star, Layers, TrendingUp, Truck, Check, Pencil, Save, X,
   Clock, ShieldCheck, Building2, PackageCheck, Loader2, Inbox, ChevronLeft, ChevronRight, Search,
-  CreditCard, Award, Phone, Mail, FileText, ArrowUpRight, Sliders, Sparkles, Camera, Upload, Image as ImageIcon,
-  Trash2, AlertTriangle, ReceiptText, Wrench, Boxes, Plus, MessageCircleQuestion, Scale, Headphones, Wallet, Info, Crown,
-  CheckCircle, Send, MapPin, Megaphone, Coins
+  CreditCard, Phone, Mail, ArrowUpRight, Sliders, Sparkles, Camera, Upload, Image as ImageIcon,
+  Trash2, AlertTriangle, ReceiptText, Boxes, Plus, MessageCircleQuestion, Scale, Headphones, Wallet, Info, Crown,
+  CheckCircle, Send, Megaphone, Lightbulb, CheckCircle2, Circle, Lock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
 import {
-  getBuyerOrdersApi, getSellerOrdersApi, getFavoritesApi,
+  getBuyerOrdersApi, getBuyerOrderByIdApi, getSellerOrdersApi, getFavoritesApi,
   getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getBuyerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
   updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi, updateSellerProductTopApi,
-  saveConversationQuoteApi, sendConversationMessageApi, getRegionesApi, getComunasApi
+  saveConversationQuoteApi, sendConversationMessageApi
 } from '../services/api';
 import { qk } from '../services/queryKeys';
 import OrderCard from './OrderCard';
@@ -30,35 +30,129 @@ import NewCatalogProductModal from './NewCatalogProductModal';
 import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
 import SupportHelpPanel from './SupportHelpPanel';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
+import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import VehicleBrandLogo from './VehicleBrandLogo';
 import SellerWithdrawalsPanel from './SellerWithdrawalsPanel';
 import SellerOrdersPanel from './SellerOrdersPanel';
 import BuyerAddressBook from './BuyerAddressBook';
 import AdsManagementSection from './ads/AdsManagementSection';
-import { formatRut } from '../services/adapters';
+import { formatRut, isValidRut, isValidClPhone } from '../services/adapters';
 import { storePath } from '../routes/paths';
 
 const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
 const BUYER_PROFILE_COVER_URL = import.meta.env.VITE_BUYER_PROFILE_COVER_URL
   || 'https://pub-650d4cc5c6be42bc9a81e878e6042ea6.r2.dev/Plantillas/Portadas_Perfil/comprador-default.png';
 
-const BUYER_TABS = [
-  { id: 'resumen', label: 'Resumen', icon: LayoutGrid },
-  { id: 'anuncios', label: 'Gestión de Anuncios', icon: Megaphone },
-  { id: 'pedidos', label: 'Mis Pedidos', icon: Package },
-  { id: 'cotizaciones', label: 'Mis Cotizaciones', icon: ReceiptText },
-  { id: 'favoritos', label: 'Favoritos', icon: Heart },
-  { id: 'datos', label: 'Mis Datos y Perfil', icon: UserCog },
+// Los 3 métodos de envío que reconoce el sistema (ver src/data/shippingMethods.js).
+// Antes el formulario era un input de texto libre separado por comas ("Starken,
+// Chilexpress, Retiro en Tienda") que no coincidía con este modelo y no validaba
+// nada; ahora se editan como checkboxes + precio opcional y se serializan al
+// mismo formato de string que ya consume el resto de la app.
+const SHIPPING_METHOD_DEFS = [
+  { id: 'retiro', label: 'Retiro en tienda', canonicalName: 'Retiro en tienda', hasPrice: false },
+  { id: 'dentro', label: 'Envío dentro de la comuna', canonicalName: 'Envío dentro de la comuna', hasPrice: true },
+  // "Fuera de la comuna" va por courier externo y el cliente paga el flete al
+  // recibir el envío: la tienda no fija un precio acá, por eso no lleva input
+  // de precio (a diferencia de "dentro de la comuna", que sí lo maneja la tienda).
+  { id: 'fuera', label: 'Envío fuera de la comuna', canonicalName: 'Envío fuera de la comuna', hasPrice: false, note: 'Por pagar en destino' },
 ];
 
-const SELLER_TABS = [
-  { id: 'resumen', label: 'Resumen', icon: LayoutGrid },
-  { id: 'anuncios', label: 'Gestión de Anuncios', icon: Megaphone },
-  { id: 'pedidos', label: 'Pedidos Recibidos', icon: ShoppingBag },
-  { id: 'cotizaciones', label: 'Cotizaciones', icon: ReceiptText },
-  { id: 'preguntas_productos', label: 'Preguntas de productos', icon: MessageCircleQuestion },
-  { id: 'retiros', label: 'Retirar dinero', icon: Wallet },
-  { id: 'tienda_datos', label: 'Mi Tienda y Datos', icon: Store },
+function parseShippingSelections(rawMethods) {
+  const selections = Object.fromEntries(SHIPPING_METHOD_DEFS.map((def) => [def.id, { enabled: false, price: '' }]));
+  parseShippingMethods(rawMethods).forEach((method) => {
+    const canonicalName = resolveShippingService(method).name;
+    const def = SHIPPING_METHOD_DEFS.find((candidate) => candidate.canonicalName === canonicalName);
+    if (!def) return;
+    const price = shippingMethodPrice(method);
+    selections[def.id] = { enabled: true, price: price ? price.replace(/\D/g, '') : '' };
+  });
+  return selections;
+}
+
+function buildShippingMethodsString(selections) {
+  return SHIPPING_METHOD_DEFS
+    .filter((def) => selections[def.id]?.enabled)
+    .map((def) => {
+      if (!def.hasPrice) return def.label;
+      const digits = String(selections[def.id]?.price || '').replace(/\D/g, '');
+      return digits ? `${def.label} ($${Number(digits).toLocaleString('es-CL')})` : def.label;
+    })
+    .join(', ');
+}
+
+/** Deja pasar solo dígitos y, si estaba al inicio, un único "+" (prefijo de país). */
+function sanitizePhoneInput(rawValue) {
+  const value = String(rawValue || '');
+  const hasLeadingPlus = value.trimStart().startsWith('+');
+  const digits = value.replace(/\D/g, '');
+  return (hasLeadingPlus ? '+' : '') + digits;
+}
+
+// Navegación del panel: cada rol ve solo los accesos que le corresponden.
+// Los grupos se recorren tal cual para pintar el sidebar, así que un `id` no
+// puede repetirse entre grupos (dos ítems quedarían activos a la vez).
+const SELLER_SIDEBAR_GROUPS = [
+  {
+    title: null,
+    items: [
+      { id: 'resumen', label: 'Resumen', icon: LayoutGrid }
+    ]
+  },
+  {
+    title: 'VENTAS',
+    items: [
+      { id: 'pedidos', label: 'Pedidos recibidos', icon: ShoppingBag },
+      { id: 'productos', label: 'Productos', icon: Package },
+      { id: 'cotizaciones', label: 'Cotizaciones', icon: ReceiptText },
+      { id: 'preguntas_productos', label: 'Preguntas de productos', icon: MessageCircleQuestion }
+    ]
+  },
+  {
+    title: 'MI TIENDA',
+    items: [
+      { id: 'tienda_datos', label: 'Mi tienda y datos', icon: Store },
+      { id: 'retiros', label: 'Retirar dinero', icon: Wallet },
+      { id: 'anuncios', label: 'Gestión de anuncios', icon: Megaphone }
+    ]
+  },
+  {
+    title: 'SOPORTE',
+    items: [
+      { id: 'consultas', label: 'Reportes/Disputa', icon: Scale },
+      { id: 'soporte', label: 'Centro de ayuda', icon: Headphones }
+    ]
+  }
+];
+
+const BUYER_SIDEBAR_GROUPS = [
+  {
+    title: null,
+    items: [
+      { id: 'resumen', label: 'Resumen', icon: LayoutGrid }
+    ]
+  },
+  {
+    title: 'MIS COMPRAS',
+    items: [
+      { id: 'pedidos', label: 'Mis pedidos', icon: Package },
+      { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
+      { id: 'favoritos', label: 'Favoritos', icon: Heart }
+    ]
+  },
+  {
+    title: 'MI CUENTA',
+    items: [
+      { id: 'datos', label: 'Mis datos y perfil', icon: UserCog },
+      { id: 'anuncios', label: 'Gestión de anuncios', icon: Megaphone }
+    ]
+  },
+  {
+    title: 'SOPORTE',
+    items: [
+      { id: 'consultas', label: 'Reportes/Disputa', icon: Scale },
+      { id: 'soporte', label: 'Centro de ayuda', icon: Headphones }
+    ]
+  }
 ];
 
 const ORDER_STATUS_LABELS = {
@@ -99,6 +193,17 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function formatRelativeTime(date) {
+  if (!date) return 'Reciente';
+  const diffMs = Date.now() - new Date(date).getTime();
+  const diffHrs = Math.floor(diffMs / 3600000);
+  if (diffHrs < 1) return 'Hace unos minutos';
+  if (diffHrs < 24) return `Hace ${diffHrs} ${diffHrs === 1 ? 'hora' : 'horas'}`;
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays < 30) return `Hace ${diffDays} ${diffDays === 1 ? 'día' : 'días'}`;
+  return formatDate(date);
+}
+
 function orderTitle(order) {
   const items = order.items || [];
   if (items.length === 0) return `Pedido #${order.id}`;
@@ -134,7 +239,7 @@ function EmptyState({ label }) {
   );
 }
 
-export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange }) {
+export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange, paymentStatus, paymentOrderId }) {
   const { user, role, logout, updateProfile, refreshProfile, deleteAccount } = useAuth();
   const [activeTab, setActiveTabState] = useState(initialTab);
 
@@ -149,23 +254,27 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     onTabChange?.(tab);
   }, [onTabChange]);
   const [isEditing, setIsEditing] = useState(false);
+
+  // Al salir de la pestaña de datos se descarta el formulario de edición: como
+  // el dashboard nunca desmonta al cambiar de pestaña, sin esto el formulario
+  // quedaba abierto "en segundo plano" y reaparecía igual al volver.
+  useEffect(() => {
+    if (activeTab !== 'tienda_datos' && activeTab !== 'datos') {
+      setIsEditing(false);
+      setFormErrors({});
+    }
+  }, [activeTab]);
   const [nameDraft, setNameDraft] = useState(user?.userName || user?.nombre || '');
   const [phoneDraft, setPhoneDraft] = useState(user?.phone || user?.telefono || '');
-  const [storeNameDraft, setStoreNameDraft] = useState(user?.storeName || '');
   const [taxIdDraft, setTaxIdDraft] = useState(user?.taxId || '');
-  const [addressDraft, setAddressDraft] = useState(user?.address || '');
-  const [regionIdDraft, setRegionIdDraft] = useState('');
-  const [comunaIdDraft, setComunaIdDraft] = useState('');
-  const [regionesOptions, setRegionesOptions] = useState([]);
-  const [comunasOptions, setComunasOptions] = useState([]);
-  const [geoLoadingProfile, setGeoLoadingProfile] = useState(false);
-  const [shippingMethodsDraft, setShippingMethodsDraft] = useState('Retiro en tienda, Envío dentro de la comuna, Envío fuera de la comuna');
+  const [shippingSelectionsDraft, setShippingSelectionsDraft] = useState(() => parseShippingSelections(''));
   const [availableVehicleBrands, setAvailableVehicleBrands] = useState([]);
   const [specialistBrandIdsDraft, setSpecialistBrandIdsDraft] = useState([]);
   const [showSpecialistBrandsModal, setShowSpecialistBrandsModal] = useState(false);
   const [specialistBrandSearch, setSpecialistBrandSearch] = useState('');
 
   const [saveStatus, setSaveStatus] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [showMediaModal, setShowMediaModal] = useState(null);
   const [mediaInput, setMediaInput] = useState('');
@@ -218,7 +327,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     try {
       const result = await selectStoreCoverTemplateApi(selectedCoverTemplateId);
       const coverUrl = resolveMediaUrl(result.coverUrl);
-      setStoreInfo((current) => current ? { ...current, coverUrl } : current);
+      // storeInfo viene de React Query: se invalida la caché en vez de mutar
+      // un estado local que ya no existe.
+      queryClient.invalidateQueries({ queryKey: qk.sellerStore(effectiveSellerId) });
       await refreshProfile({ coverUrl });
       setShowCoverTemplatesModal(false);
     } catch (error) {
@@ -259,11 +370,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       const uploaded = await uploadProfileImageApi(mediaFile);
       const uploadedUrl = resolveMediaUrl(uploaded.userProfileUrl);
       await refreshProfile({ userProfileUrl: uploadedUrl, logoUrl: uploadedUrl });
-      if (storeInfo) {
-        setStoreInfo((prev) => ({
-          ...prev,
-          ...{ logoUrl: uploadedUrl, userProfileUrl: uploadedUrl }
-        }));
+      if (isSeller && effectiveSellerId) {
+        queryClient.invalidateQueries({ queryKey: qk.sellerStore(effectiveSellerId) });
       }
       setShowMediaModal(null);
     } catch (error) {
@@ -275,7 +383,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
   // Datos del perfil y rol
   const isSeller = role === 'SELLER';
-  const tabs = isSeller ? SELLER_TABS : BUYER_TABS;
+  const sidebarGroups = isSeller ? SELLER_SIDEBAR_GROUPS : BUYER_SIDEBAR_GROUPS;
   const effectiveSellerId = user?.sellerId || user?.proveedorId || user?.tiendaId || user?.userId || user?.id;
   const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
 
@@ -292,6 +400,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [catalogSearchInput, setCatalogSearchInput] = useState('');
   const [catalogSearchTerm, setCatalogSearchTerm] = useState('');
   const [catalogTopFeedback, setCatalogTopFeedback] = useState('');
+  // Errores de acciones sobre el catálogo (marcar Top). El error de carga del
+  // listado lo aporta React Query en `catalogQuery.error`.
+  const [catalogActionError, setCatalogActionError] = useState(null);
   const [updatingTopProductId, setUpdatingTopProductId] = useState(null);
   const [questionsProductFilter, setQuestionsProductFilter] = useState(null);
   const [showNewProductModal, setShowNewProductModal] = useState(false);
@@ -355,6 +466,30 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   });
 
   const orders = ordersQuery.data || [];
+
+  // plan_retorno_flow.md Fase 3: PagoController redirige aqui con
+  // ?status=pending|failure&orderId=... cuando el pago no quedo aprobado. Se busca
+  // primero en el listado ya cargado; si no aparece (recien creado, otra pestaña)
+  // se trae por id directo con el endpoint nuevo.
+  const [paymentBannerOrder, setPaymentBannerOrder] = useState(null);
+  useEffect(() => {
+    if (!paymentOrderId || !paymentStatus || paymentStatus === 'success') {
+      setPaymentBannerOrder(null);
+      return undefined;
+    }
+    const found = orders.find((o) => String(o.id) === String(paymentOrderId));
+    if (found) {
+      setPaymentBannerOrder(found);
+      return undefined;
+    }
+    if (!effectiveUserId) return undefined;
+    let active = true;
+    getBuyerOrderByIdApi(effectiveUserId, paymentOrderId)
+      .then((order) => { if (active) setPaymentBannerOrder(order); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [paymentStatus, paymentOrderId, orders, effectiveUserId]);
+
   const favorites = favoritesQuery.data || [];
   const conversations = conversationsQuery.data || [];
   const storeInfo = storeInfoQuery.data || null;
@@ -363,7 +498,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const catalogTotalPages = catalogQuery.data?.totalPages ?? 0;
   const catalogTotalElements = catalogQuery.data?.totalElements ?? 0;
   const isCatalogLoading = catalogQuery.isLoading;
-  const catalogError = catalogQuery.error?.message || null;
+  const catalogError = catalogQuery.error?.message || catalogActionError || null;
   const productQuestions = productQuestionsQuery.data || [];
   const productQuestionsLoading = productQuestionsQuery.isLoading;
   const productQuestionsError = productQuestionsQuery.error?.message || '';
@@ -501,7 +636,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const handleToggleProductTop = async (product, destacado) => {
     if (!user?.sellerId || !product?.id || updatingTopProductId) return;
     setUpdatingTopProductId(product.id);
-    setCatalogError(null);
+    setCatalogActionError(null);
     setCatalogTopFeedback('');
     try {
       const updated = await updateSellerProductTopApi(user.sellerId, product.id, destacado);
@@ -513,7 +648,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         ? 'Producto marcado como Top: tendrá prioridad dentro de tu tienda.'
         : 'El producto dejó de tener prioridad Top.');
     } catch (error) {
-      setCatalogError(error.message || 'No se pudo actualizar el producto Top.');
+      setCatalogActionError(error.message || 'No se pudo actualizar el producto Top.');
     } finally {
       setUpdatingTopProductId(null);
     }
@@ -539,39 +674,69 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     onBackToStore();
   };
 
-  // Chile es el único país operativo del marketplace (ver selector "🇨🇱 CHILE"
-  // fijo en el catálogo), así que se hardcodea el paisId en vez de agregar un
-  // selector de país que solo tendría una opción.
-  const CHILE_PAIS_ID = 'CL';
+  // Mismas reglas que ya existen en el resto de la app: el chequeo de dígito
+  // verificador del RUT es el que usa Retirar dinero (src/services/adapters.js),
+  // y el celular sigue el formato chileno estándar (9 + 8 dígitos).
+  const validateProfileForm = () => {
+    const errors = {};
 
-  const handleRegionDraftChange = (regionId) => {
-    setRegionIdDraft(regionId);
-    setComunaIdDraft('');
-    setComunasOptions([]);
-    if (!regionId) return;
-    setGeoLoadingProfile(true);
-    getComunasApi(regionId)
-      .then((data) => setComunasOptions(Array.isArray(data) ? data : []))
-      .catch(() => setComunasOptions([]))
-      .finally(() => setGeoLoadingProfile(false));
+    if (nameDraft.trim().length < 2) {
+      errors.name = 'Ingresa un nombre válido.';
+    }
+
+    if (phoneDraft.trim() && !isValidClPhone(phoneDraft)) {
+      errors.phone = 'Ingresa un celular chileno válido, ej: +56 9 1234 5678.';
+    }
+
+    if (!isSeller) {
+      if (!taxIdDraft.trim()) {
+        errors.taxId = 'Ingresa tu RUT.';
+      } else if (!isValidRut(taxIdDraft)) {
+        errors.taxId = 'El RUT ingresado no es válido.';
+      }
+    }
+
+    if (isSeller) {
+      // La dirección comercial (con región/comuna) ya no se valida acá: se
+      // edita y se valida una sola vez en BuyerAddressBook, más abajo.
+      const hasShippingMethod = SHIPPING_METHOD_DEFS.some((def) => shippingSelectionsDraft[def.id]?.enabled);
+      if (!hasShippingMethod) {
+        errors.shippingMethods = 'Selecciona al menos un método de envío.';
+      }
+    }
+
+    return errors;
   };
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+
+    const validationErrors = validateProfileForm();
+    setFormErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) {
+      setSaveStatus({ type: 'error', message: 'Revisa los campos marcados antes de guardar.' });
+      return;
+    }
+
     setIsSaving(true);
     setSaveStatus(null);
 
     const payload = {
       userName: nameDraft,
       phone: phoneDraft,
-      taxId: taxIdDraft,
     };
 
+    if (!isSeller) {
+      payload.taxId = taxIdDraft;
+    }
+
     if (isSeller) {
-      payload.storeName = storeNameDraft;
-      payload.address = addressDraft;
-      if (comunaIdDraft) payload.comunaId = Number(comunaIdDraft);
-      payload.shippingMethods = shippingMethodsDraft;
+      // Nombre y RUT de la tienda ya no se editan desde este formulario (ver
+      // bloque de solo lectura más abajo): son datos de identidad que deben
+      // cambiarse a través de soporte, no con un input libre. La dirección
+      // comercial (address/comunaId) tampoco se envía desde acá: BuyerAddressBook
+      // ya la sincroniza directamente al guardar una dirección de despacho.
+      payload.shippingMethods = buildShippingMethodsString(shippingSelectionsDraft);
     }
 
     let result;
@@ -588,24 +753,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     setIsSaving(false);
 
     if (result.success) {
-      // Actualizar también el estado local de la tienda. El backend (result.user)
-      // es la fuente autoritativa para comuna/región (viene con nombre resuelto),
-      // pero por si el DTO no las trae se cae a las opciones ya cargadas en el form.
-      if (storeInfo) {
-        const selectedComuna = comunasOptions.find((c) => String(c.id) === String(comunaIdDraft));
-        const selectedRegion = regionesOptions.find((r) => String(r.id) === String(regionIdDraft));
-        setStoreInfo((prev) => ({
-          ...prev,
-          storeName: storeNameDraft || prev?.storeName,
-          taxId: taxIdDraft || prev?.taxId,
-          address: addressDraft || prev?.address,
-          comunaId: result.user?.comunaId || (comunaIdDraft ? Number(comunaIdDraft) : prev?.comunaId),
-          comuna: result.user?.comuna || selectedComuna?.nombre || prev?.comuna,
-          regionId: regionIdDraft ? Number(regionIdDraft) : prev?.regionId,
-          region: result.user?.region || selectedRegion?.nombre || prev?.region,
-          shippingMethods: shippingMethodsDraft || prev?.shippingMethods,
-          marcasEspecialistas: availableVehicleBrands.filter((brand) => specialistBrandIdsDraft.includes(String(brand.id))),
-        }));
+      // El backend es la fuente autoritativa de la tienda (comuna/región vienen
+      // con nombre resuelto), así que se refetchea storeInfo desde React Query.
+      if (isSeller && effectiveSellerId) {
+        queryClient.invalidateQueries({ queryKey: qk.sellerStore(effectiveSellerId) });
       }
       setSaveStatus({ type: 'success', message: 'Los datos de tu tienda y perfil se actualizaron correctamente.' });
       setIsEditing(false);
@@ -626,8 +777,202 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
   const shippingOrdersCount = (orders || []).filter((o) => o.estado === 'ENVIADO').length;
 
+  // Checklist de puesta a punto de la cuenta. El vendedor completa su tienda;
+  // el comprador completa los datos que necesita para comprar y recibir.
+  const onboardingSteps = useMemo(() => {
+    if (!isSeller) {
+      return [
+        {
+          id: 'avatar',
+          label: 'Subir tu foto de perfil',
+          completed: Boolean(user?.userProfileUrl),
+          action: () => handleOpenMediaModal('avatar')
+        },
+        {
+          id: 'contacto',
+          label: 'Completar nombre y teléfono',
+          completed: Boolean((user?.userName || user?.nombre) && (user?.phone || user?.telefono)),
+          action: () => setActiveTab('datos')
+        },
+        {
+          id: 'rut',
+          label: 'Registrar tu RUT',
+          completed: Boolean(user?.taxId),
+          action: () => setActiveTab('datos')
+        },
+        {
+          id: 'direccion',
+          label: 'Agregar una dirección de envío',
+          completed: Boolean(user?.address),
+          action: () => setActiveTab('datos')
+        },
+        {
+          id: 'compra',
+          label: 'Realizar tu primera compra',
+          completed: (orders || []).length > 0,
+          action: () => onBackToStore()
+        },
+      ];
+    }
+    return [
+      {
+        id: 'logo',
+        label: 'Subir logo de la tienda',
+        completed: Boolean(user?.userProfileUrl || storeInfo?.logoUrl),
+        action: () => handleOpenMediaModal('avatar')
+      },
+      {
+        id: 'desc',
+        label: 'Completar descripción',
+        completed: Boolean(storeInfo?.description && storeInfo.description.trim().length >= 15),
+        action: () => setActiveTab('tienda_datos')
+      },
+      {
+        id: 'shipping',
+        label: 'Agregar métodos de envío',
+        completed: Boolean(storeInfo?.shippingMethods && String(storeInfo.shippingMethods).trim().length > 0),
+        action: () => setActiveTab('tienda_datos')
+      },
+      {
+        id: 'payment',
+        label: 'Configurar métodos de pago',
+        completed: Boolean(storeInfo?.bankAccount || storeInfo?.accountNumber || user?.bankAccount),
+        action: () => setActiveTab('retiros')
+      },
+      {
+        id: 'products',
+        label: 'Publicar al menos 5 productos',
+        completed: (inventorySummary?.total || sellerProducts?.length || 0) >= 5,
+        action: () => setShowNewProductModal(true)
+      },
+    ];
+  }, [isSeller, user, storeInfo, inventorySummary, sellerProducts, orders]);
+
+  const completedOnboardingCount = useMemo(
+    () => onboardingSteps.filter((step) => step.completed).length,
+    [onboardingSteps]
+  );
+
+  // KPIs del Resumen. Mismo layout para ambos roles, métricas distintas: el
+  // vendedor ve su tienda, el comprador ve sus compras.
+  const overviewStats = useMemo(() => {
+    if (isSeller) {
+      return [
+        {
+          id: 'productos', tone: 'blue', icon: Package, label: 'Productos publicados',
+          value: inventorySummary?.total ?? sellerProducts?.length ?? 0,
+          actionLabel: 'Ver catálogo', onClick: () => setActiveTab('productos'),
+        },
+        {
+          id: 'pedidos', tone: 'emerald', icon: ShoppingBag, label: 'Pedidos recibidos',
+          value: orders?.length ?? 0,
+          actionLabel: 'Ver pedidos', onClick: () => setActiveTab('pedidos'),
+        },
+        {
+          id: 'rating', tone: 'amber', icon: Star, label: 'Calificación promedio',
+          value: storeInfo?.rating ? Number(storeInfo.rating).toFixed(1) : '—',
+          actionLabel: 'Ver opiniones', onClick: () => setActiveTab('tienda_datos'),
+        },
+        {
+          id: 'ventas', tone: 'purple', icon: TrendingUp, label: 'Ventas este mes',
+          value: `$${formatCLP(ordersThisMonthTotal)}`,
+          actionLabel: 'Ver estadísticas', onClick: () => setActiveTab('pedidos'),
+        },
+      ];
+    }
+    return [
+      {
+        id: 'pedidos', tone: 'blue', icon: Package, label: 'Pedidos realizados',
+        value: orders?.length ?? 0,
+        actionLabel: 'Ver pedidos', onClick: () => setActiveTab('pedidos'),
+      },
+      {
+        id: 'envios', tone: 'emerald', icon: Truck, label: 'Envíos en camino',
+        value: shippingOrdersCount,
+        actionLabel: 'Seguir envíos', onClick: () => setActiveTab('pedidos'),
+      },
+      {
+        id: 'cotizaciones', tone: 'amber', icon: ReceiptText, label: 'Cotizaciones activas',
+        value: quoteSummary.total,
+        actionLabel: 'Ver cotizaciones', onClick: () => setActiveTab('cotizaciones'),
+      },
+      {
+        id: 'favoritos', tone: 'purple', icon: Heart, label: 'Favoritos guardados',
+        value: favorites?.length ?? 0,
+        actionLabel: 'Ver favoritos', onClick: () => setActiveTab('favoritos'),
+      },
+    ];
+  }, [isSeller, inventorySummary, sellerProducts, orders, storeInfo, ordersThisMonthTotal,
+      shippingOrdersCount, quoteSummary.total, favorites, setActiveTab]);
+
+  const overviewActions = useMemo(() => {
+    if (isSeller) {
+      return [
+        { id: 'pedidos', tone: 'blue', icon: ShoppingBag, title: 'Gestionar pedidos', description: 'Revisa, despacha y actualiza el estado de tus pedidos.', onClick: () => setActiveTab('pedidos') },
+        { id: 'nuevo', tone: 'emerald', icon: Plus, title: 'Agregar producto', description: 'Publica nuevos repuestos en tu catálogo.', onClick: () => setShowNewProductModal(true) },
+        { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Responder cotizaciones', description: 'Atiende solicitudes directas de clientes.', onClick: () => setActiveTab('cotizaciones') },
+        { id: 'tienda', tone: 'sky', icon: Store, title: 'Mi tienda y datos', description: 'Edita la información comercial de tu tienda.', onClick: () => setActiveTab('tienda_datos') },
+        { id: 'retiros', tone: 'emerald', icon: Wallet, title: 'Retirar dinero', description: 'Solicita el depósito bancario de tus ventas.', onClick: () => setActiveTab('retiros') },
+        { id: 'anuncios', tone: 'amber', icon: Megaphone, title: 'Gestión de anuncios', description: 'Publica y destaca en el Mural de Anuncios.', onClick: () => setActiveTab('anuncios') },
+      ];
+    }
+    return [
+      { id: 'pedidos', tone: 'blue', icon: Package, title: 'Mis pedidos', description: 'Sigue el estado de tus compras y recepciones.', onClick: () => setActiveTab('pedidos') },
+      { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Mis cotizaciones', description: 'Revisa las respuestas de las tiendas y compara precios.', onClick: () => setActiveTab('cotizaciones') },
+      { id: 'favoritos', tone: 'amber', icon: Heart, title: 'Repuestos favoritos', description: 'Accede a los repuestos que guardaste.', onClick: () => setActiveTab('favoritos') },
+      { id: 'datos', tone: 'sky', icon: UserCog, title: 'Mis datos y perfil', description: 'Actualiza tu información y direcciones de envío.', onClick: () => setActiveTab('datos') },
+      { id: 'anuncios', tone: 'emerald', icon: Megaphone, title: 'Gestión de anuncios', description: 'Publica tu búsqueda en el Mural de Anuncios.', onClick: () => setActiveTab('anuncios') },
+      { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte de compra.', onClick: () => setActiveTab('soporte') },
+    ];
+  }, [isSeller, setActiveTab]);
+
+  const recentActivities = useMemo(() => {
+    const list = [];
+
+    (orders || []).slice(0, 4).forEach((ord) => {
+      list.push({
+        id: `ord-${ord.id}`,
+        type: 'order',
+        title: isSeller ? 'Nuevo pedido' : 'Pedido realizado',
+        detail: `Pedido #${ord.id} - ${orderTitle(ord)}`,
+        date: ord.createdAt || ord.fecha || Date.now() - 86400000,
+        badgeClass: 'badge-emerald',
+        action: () => { setSelectedOrder(ord); }
+      });
+    });
+
+    (conversations || []).slice(0, 3).forEach((conv) => {
+      list.push({
+        id: `conv-${conv.id}`,
+        type: 'quote',
+        title: 'Cotización respondida',
+        detail: conv.partName ? `Cotización ${conv.partName}` : `Cotización #${conv.id}`,
+        date: conv.updatedAt || conv.createdAt || Date.now() - 172800000,
+        badgeClass: 'badge-purple',
+        action: () => setActiveTab('cotizaciones')
+      });
+    });
+
+    if (isSeller && (sellerProducts || []).length > 0) {
+      (sellerProducts || []).slice(0, 2).forEach((prod) => {
+        list.push({
+          id: `prod-${prod.id}`,
+          type: 'product',
+          title: 'Producto publicado',
+          detail: prod.nombre || prod.name || 'Repuesto en catálogo',
+          date: prod.createdAt || Date.now() - 7200000,
+          badgeClass: 'badge-blue',
+          action: () => setActiveTab('productos')
+        });
+      });
+    }
+
+    list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return list.slice(0, 5);
+  }, [orders, conversations, isSeller, sellerProducts]);
+
   return (
-    <div className="profile-dashboard">
+    <div className={`profile-dashboard ${isSeller ? 'seller-profile-dashboard' : 'buyer-profile-dashboard'}`}>
       {/* Top Bar */}
       <div className="profile-topbar">
         <div className="profile-topbar-inner">
@@ -741,7 +1086,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             </div>
           </div>
 
-          {isSeller && (
+          {/* El hero es compartido por todas las pestañas: este CTA solo va en
+              Resumen para no repetirse en cada pantalla (ya está en el sidebar
+              y en Acciones rápidas del Resumen). */}
+          {isSeller && activeTab === 'resumen' && (
             <button
               type="button"
               className="btn-withdraw-money-hero"
@@ -772,52 +1120,31 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             </div>
           </div>
 
-          <div className="sidebar-nav-list">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  className={`profile-nav-item ${isSeller ? 'nav-seller' : 'nav-buyer'} ${activeTab === tab.id ? 'active' : ''}`}
-                  onClick={() => setActiveTab(tab.id)}
-                >
-                  <Icon size={17} />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              className={`profile-nav-item ${isSeller ? 'nav-seller' : 'nav-buyer'} ${activeTab === 'consultas' ? 'active' : ''}`}
-              onClick={() => setActiveTab('consultas')}
-            >
-              <Scale size={17} />
-              <span>Reportes/Disputa</span>
-            </button>
-            <button type="button" className={`profile-nav-item ${isSeller ? 'nav-seller' : 'nav-buyer'} ${activeTab === 'soporte' ? 'active' : ''}`} onClick={() => setActiveTab('soporte')}>
-              <Headphones size={17} />
-              <span>Soporte</span>
-            </button>
-            {isSeller && (
-              <>
-                <button
-                  type="button"
-                  className={`profile-nav-item profile-nav-service profile-nav-service-start nav-seller ${activeTab === 'productos' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('productos')}
-                >
-                  <Wrench size={17} />
-                  <span>Catálogo</span>
-                </button>
-                <button
-                  type="button"
-                  className="profile-nav-item profile-nav-service"
-                  onClick={() => window.location.assign(inventoryPanelUrl)}
-                >
-                  <Boxes size={17} />
-                  <span>Panel de inventario</span>
-                </button>
-              </>
-            )}
+          <nav className="sidebar-nav-list" aria-label={isSeller ? 'Menú de proveedor' : 'Menú de comprador'}>
+            {sidebarGroups.map((group) => (
+              <div key={group.title || 'general'} className="sidebar-nav-group">
+                {group.title && <span className="sidebar-group-title">{group.title}</span>}
+                <div className="sidebar-group-items">
+                  {group.items.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        aria-current={isActive ? 'page' : undefined}
+                        className={`profile-nav-item ${isSeller ? 'nav-seller' : 'nav-buyer'} ${isActive ? 'active' : ''}`}
+                        onClick={() => setActiveTab(tab.id)}
+                      >
+                        <Icon size={17} />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
             <button
               type="button"
               className="profile-nav-item profile-nav-delete"
@@ -829,7 +1156,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               <Trash2 size={17} />
               <span>Eliminar cuenta</span>
             </button>
-          </div>
+          </nav>
         </aside>
 
         {/* Main Content */}
@@ -846,170 +1173,186 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           ) : (
             <>
               {activeTab === 'resumen' && (
-                <>
-                  {/* Stats Grid */}
-                  <div className="profile-stats-grid">
-                    {isSeller ? (
-                      <>
-                        <div className="profile-stat-card stat-blue clickable-stat-card" onClick={() => setActiveTab('productos')}>
-                          <div className="stat-icon-badge"><Layers size={19} /></div>
-                          <strong>{inventorySummary?.total ?? sellerProducts?.length ?? 0}</strong>
-                          <span>Productos Publicados</span>
-                        </div>
-                        <div className="profile-stat-card stat-navy clickable-stat-card" onClick={() => setActiveTab('pedidos')}>
-                          <div className="stat-icon-badge"><ShoppingBag size={19} /></div>
-                          <strong>{orders?.length ?? 0}</strong>
-                          <span>Pedidos Recibidos</span>
-                        </div>
-                        <div className="profile-stat-card stat-amber clickable-stat-card" onClick={() => setActiveTab('tienda_datos')}>
-                          <div className="stat-icon-badge"><Star size={19} /></div>
-                          <strong>{storeInfo?.rating ? Number(storeInfo.rating).toFixed(1) : '—'}</strong>
-                          <span>Calificación Promedio ({storeInfo?.reviewCount ?? 0})</span>
-                        </div>
-                        <div className="profile-stat-card stat-green clickable-stat-card" onClick={() => setActiveTab('pedidos')}>
-                          <div className="stat-icon-badge"><TrendingUp size={19} /></div>
-                          <strong>${formatCLP(ordersThisMonthTotal)}</strong>
-                          <span>Ventas este Mes</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="profile-stat-card stat-blue clickable-stat-card" onClick={() => setActiveTab('pedidos')}>
-                          <div className="stat-icon-badge"><Package size={19} /></div>
-                          <strong>{orders?.length ?? 0}</strong>
-                          <span>Pedidos Totales</span>
-                        </div>
-                        <div className="profile-stat-card stat-navy clickable-stat-card" onClick={() => setActiveTab('favoritos')}>
-                          <div className="stat-icon-badge"><Heart size={19} /></div>
-                          <strong>{favorites?.length ?? 0}</strong>
-                          <span>Favoritos Guardados</span>
-                        </div>
-                        <div className="profile-stat-card stat-amber clickable-stat-card" onClick={() => setActiveTab('pedidos')}>
-                          <div className="stat-icon-badge"><Truck size={19} /></div>
-                          <strong>{shippingOrdersCount}</strong>
-                          <span>Envíos en Camino</span>
-                        </div>
-                        <div className="profile-stat-card stat-green">
-                          <div className="stat-icon-badge"><ShieldCheck size={19} /></div>
-                          <strong>100%</strong>
-                          <span>Compras Protegidas</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Accesos Directos Rápido */}
-                  <div className="profile-panel">
-                    <h2 className="profile-panel-title">Acciones Rápidas</h2>
-                    <div className="quick-shortcuts-grid">
-                      {isSeller ? (
-                        <>
-                          <div className="quick-shortcut-card" onClick={() => setActiveTab('pedidos')}>
-                            <div className="shortcut-icon shortcut-blue"><ShoppingBag size={20} /></div>
-                            <div className="shortcut-info">
-                              <strong>Gestionar Pedidos Recibidos</strong>
-                              <span>Revisar ventas, despachos y actualizar estados</span>
+                <div className="profile-overview-grid">
+                  {/* Columna principal */}
+                  <div className="profile-overview-main-col">
+                    {/* 1. KPIs del rol */}
+                    <div className="profile-stats-grid-v2">
+                      {overviewStats.map((stat) => {
+                        const Icon = stat.icon;
+                        return (
+                          <button
+                            key={stat.id}
+                            type="button"
+                            className={`profile-stat-card-v2 stat-v2-${stat.tone}`}
+                            onClick={stat.onClick}
+                          >
+                            <div className="stat-v2-top">
+                              <span className="stat-v2-label">{stat.label}</span>
+                              <span className="stat-v2-icon"><Icon size={20} /></span>
                             </div>
-                            <ArrowUpRight size={16} className="shortcut-arrow" />
-                          </div>
-
-                          <div className="quick-shortcut-card" onClick={() => setActiveTab('productos')}>
-                            <div className="shortcut-icon shortcut-amber"><Wrench size={20} /></div>
-                            <div className="shortcut-info">
-                              <strong>Administrar Catálogo</strong>
-                              <span>Ajustar precios, stock e inventario publicado</span>
-                            </div>
-                            <ArrowUpRight size={16} className="shortcut-arrow" />
-                          </div>
-
-                          <div className="quick-shortcut-card" onClick={() => setActiveTab('cotizaciones')}>
-                            <div className="shortcut-icon shortcut-purple"><ReceiptText size={20} /></div>
-                            <div className="shortcut-info">
-                              <strong>Responder Cotizaciones</strong>
-                              <span>Atender preguntas y solicitudes de clientes</span>
-                            </div>
-                            <ArrowUpRight size={16} className="shortcut-arrow" />
-                          </div>
-
-                          <div className="quick-shortcut-card" onClick={() => setActiveTab('tienda_datos')}>
-                            <div className="shortcut-icon shortcut-green"><Store size={20} /></div>
-                            <div className="shortcut-info">
-                              <strong>Mi Tienda y Datos Bancarios</strong>
-                              <span>Configurar datos comerciales y cuenta de cobro</span>
-                            </div>
-                            <ArrowUpRight size={16} className="shortcut-arrow" />
-                          </div>
-
-                          <div className="quick-shortcut-card" onClick={() => setActiveTab('retiros')}>
-                            <div className="shortcut-icon shortcut-green"><Wallet size={20} /></div>
-                            <div className="shortcut-info">
-                              <strong>Retirar dinero</strong>
-                              <span>Solicitar el depósito de ventas finalizadas</span>
-                            </div>
-                            <ArrowUpRight size={16} className="shortcut-arrow" />
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="quick-shortcut-card" onClick={() => setActiveTab('pedidos')}>
-                            <div className="shortcut-icon shortcut-blue"><Package size={20} /></div>
-                            <div className="shortcut-info">
-                              <strong>Mis Pedidos Realizados</strong>
-                              <span>Sigue el estado de tus compras y recepciones</span>
-                            </div>
-                            <ArrowUpRight size={16} className="shortcut-arrow" />
-                          </div>
-
-                          <div className="quick-shortcut-card" onClick={() => setActiveTab('favoritos')}>
-                            <div className="shortcut-icon shortcut-pink"><Heart size={20} /></div>
-                            <div className="shortcut-info">
-                              <strong>Repuestos Favoritos</strong>
-                              <span>Accede a tus repuestos guardados</span>
-                            </div>
-                            <ArrowUpRight size={16} className="shortcut-arrow" />
-                          </div>
-
-                          <div className="quick-shortcut-card" onClick={() => setActiveTab('datos')}>
-                            <div className="shortcut-icon shortcut-green"><UserCog size={20} /></div>
-                            <div className="shortcut-info">
-                              <strong>Mis Datos y Perfil</strong>
-                              <span>Actualiza tu información personal</span>
-                            </div>
-                            <ArrowUpRight size={16} className="shortcut-arrow" />
-                          </div>
-                        </>
-                      )}
+                            <strong className="stat-v2-val">{stat.value}</strong>
+                            <span className="stat-v2-action">
+                              {stat.actionLabel} <ArrowUpRight size={13} />
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
-                  </div>
 
-                  {/* Actividad Reciente en Formato OrderCard */}
-                  <div className="profile-panel">
-                    <div className="profile-panel-header-row">
-                      <h2 className="profile-panel-title">Actividad Reciente</h2>
-                      {(orders || []).length > 0 && (
-                        <button className="btn-view-details" onClick={() => setActiveTab('pedidos')}>
-                          Ver todos los pedidos ({orders.length}) <ChevronRight size={15} />
+                    {/* 2. Acciones rápidas */}
+                    <section className="profile-panel-clean">
+                      <h2 className="profile-section-title">Acciones rápidas</h2>
+                      <div className="quick-actions-grid-v2">
+                        {overviewActions.map((action) => {
+                          const Icon = action.icon;
+                          return (
+                            <button
+                              key={action.id}
+                              type="button"
+                              className="quick-action-card-v2"
+                              onClick={action.onClick}
+                            >
+                              <span className={`action-v2-icon bg-${action.tone}-subtle`}><Icon size={20} /></span>
+                              <span className="action-v2-body">
+                                <strong>{action.title}</strong>
+                                <span className="action-v2-desc">{action.description}</span>
+                              </span>
+                              <ChevronRight size={16} className="action-v2-arrow" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+
+                    {/* 3. Actividad reciente */}
+                    <section className="profile-panel-clean">
+                      <div className="profile-panel-header-row">
+                        <h2 className="profile-section-title">Actividad reciente</h2>
+                        <button type="button" className="btn-view-details" onClick={() => setActiveTab('pedidos')}>
+                          Ver todo
                         </button>
-                      )}
-                    </div>
+                      </div>
 
-                    {(orders || []).length === 0 ? (
-                      <EmptyState label={isSeller ? 'Aún no has recibido pedidos.' : 'Aún no tienes pedidos.'} />
-                    ) : (
-                      <div className="profile-orders-cards-grid">
-                        {orders.slice(0, 3).map((order) => (
-                          <OrderCard
-                            key={order.id}
-                            order={order}
-                            mode={isSeller ? 'seller' : 'buyer'}
-                            onSelectOrder={(ord) => setSelectedOrder(ord)}
-                            onUpdateStatus={handleUpdateOrderStatus}
+                      {recentActivities.length === 0 ? (
+                        <EmptyState label="Aún no hay actividad reciente registrada." />
+                      ) : (
+                        <div className="activity-feed-table">
+                          <div className="activity-feed-header">
+                            <span>Actividad</span>
+                            <span>Detalle</span>
+                            <span>Fecha</span>
+                          </div>
+                          <div className="activity-feed-rows">
+                            {recentActivities.map((act) => (
+                              <button
+                                key={act.id}
+                                type="button"
+                                className="activity-feed-row"
+                                onClick={act.action}
+                              >
+                                <span className="activity-type-col">
+                                  <span className={`activity-dot ${act.badgeClass}`} />
+                                  <strong>{act.title}</strong>
+                                </span>
+                                <span className="activity-detail-col">{act.detail}</span>
+                                <span className="activity-date-col">{formatRelativeTime(act.date)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </section>
+                  </div>
+
+                  {/* Columna lateral (widgets de apoyo) */}
+                  <aside className="profile-overview-side-col">
+                    {/* El resumen de compras se mantiene para compradores. El
+                        rendimiento de la tienda no se muestra hasta contar con
+                        datos reales del backend. */}
+                    {!isSeller && <div className="overview-widget-card">
+                      <div className="widget-header-row">
+                        <h3>{isSeller ? 'Rendimiento de la tienda' : 'Resumen de tus compras'}</h3>
+                        <span className="widget-tag">Este mes</span>
+                      </div>
+                      <div className="widget-metric-box">
+                        <span className="metric-label">{isSeller ? 'Ventas' : 'Total comprado'}</span>
+                        <strong className="metric-value">${formatCLP(ordersThisMonthTotal)}</strong>
+                        <span className="metric-sub">
+                          {isSeller
+                            ? `${orders?.length ?? 0} pedidos recibidos en total`
+                            : `${orders?.length ?? 0} pedidos realizados en total`}
+                        </span>
+                      </div>
+                      <div className="widget-metric-split">
+                        <div>
+                          <span className="metric-label">{isSeller ? 'Por responder' : 'En camino'}</span>
+                          <strong>{isSeller ? quoteSummary.pending : shippingOrdersCount}</strong>
+                        </div>
+                        <div>
+                          <span className="metric-label">{isSeller ? 'Sin leer' : 'Cotizaciones'}</span>
+                          <strong>{isSeller ? quoteSummary.unread : quoteSummary.total}</strong>
+                        </div>
+                      </div>
+                    </div>}
+
+                    {/* Widget 2: checklist de la cuenta */}
+                    <div className="overview-widget-card">
+                      <div className="widget-header-row">
+                        <h3>{isSeller ? 'Completa tu tienda' : 'Completa tu perfil'}</h3>
+                      </div>
+                      <div className="onboarding-progress-meta">
+                        <span>{completedOnboardingCount} de {onboardingSteps.length} completado</span>
+                        <div
+                          className="onboarding-progress-bar"
+                          role="progressbar"
+                          aria-valuenow={completedOnboardingCount}
+                          aria-valuemin={0}
+                          aria-valuemax={onboardingSteps.length}
+                        >
+                          <div
+                            className="onboarding-progress-fill"
+                            style={{ width: `${onboardingSteps.length ? (completedOnboardingCount / onboardingSteps.length) * 100 : 0}%` }}
                           />
+                        </div>
+                      </div>
+
+                      <div className="onboarding-steps-list">
+                        {onboardingSteps.map((step) => (
+                          <button
+                            key={step.id}
+                            type="button"
+                            className={`onboarding-step-row ${step.completed ? 'completed' : 'pending'}`}
+                            onClick={step.action}
+                          >
+                            {step.completed ? (
+                              <CheckCircle2 size={17} className="step-icon-done" />
+                            ) : (
+                              <Circle size={17} className="step-icon-todo" />
+                            )}
+                            <span>{step.label}</span>
+                          </button>
                         ))}
                       </div>
-                    )}
-                  </div>
-                </>
+                    </div>
+
+                    {/* Widget 3: consejos según rol */}
+                    <div className="overview-widget-card tips-widget">
+                      <div className="tips-widget-icon-row">
+                        <Lightbulb size={18} className="tips-icon" />
+                        <h4>{isSeller ? 'Consejos para vender más' : 'Consejos para comprar mejor'}</h4>
+                      </div>
+                      <p className="tips-widget-text">
+                        {isSeller
+                          ? 'Responde rápido a las cotizaciones y mantén tu catálogo actualizado con fotos nítidas para aumentar tus ventas.'
+                          : 'Consulta por patente para filtrar repuestos compatibles y pide cotizaciones a varias tiendas antes de comprar.'}
+                      </p>
+                      <button type="button" className="tips-widget-link" onClick={() => setActiveTab('soporte')}>
+                        Ver más consejos <ArrowUpRight size={13} />
+                      </button>
+                    </div>
+                  </aside>
+                </div>
               )}
 
               {activeTab === 'pedidos' && (
@@ -1022,6 +1365,35 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   />
                 ) : (
                   <div className="profile-panel">
+                    {paymentStatus && paymentStatus !== 'success' && (
+                      <div
+                        style={{
+                          display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20,
+                          padding: '14px 16px', borderRadius: 12,
+                          background: paymentStatus === 'pending' ? '#fffbeb' : '#fef2f2',
+                          border: `1px solid ${paymentStatus === 'pending' ? '#fcd34d' : '#fca5a5'}`,
+                        }}
+                      >
+                        <AlertTriangle size={18} color={paymentStatus === 'pending' ? '#b45309' : '#b91c1c'} style={{ flexShrink: 0, marginTop: 2 }} />
+                        <div style={{ flex: 1 }}>
+                          <strong>{paymentStatus === 'pending' ? 'Estamos confirmando tu pago' : 'Tu pago no pudo procesarse'}</strong>
+                          <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: '#4b5563' }}>
+                            {paymentStatus === 'pending'
+                              ? 'En unos minutos verás el estado actualizado en este pedido.'
+                              : 'Revisa el detalle del pedido para reintentar el pago.'}
+                          </p>
+                        </div>
+                        {paymentBannerOrder && (
+                          <button
+                            type="button"
+                            className="btn-view-details"
+                            onClick={() => setSelectedOrder(paymentBannerOrder)}
+                          >
+                            Ver pedido
+                          </button>
+                        )}
+                      </div>
+                    )}
                     <h2 className="profile-panel-title">Mis Pedidos</h2>
                     {(orders || []).length === 0 ? <EmptyState label="Aún no has realizado pedidos." /> : <div className="profile-orders-cards-grid">{orders.map((order) => <OrderCard key={order.id} order={order} mode="buyer" onSelectOrder={(item) => setSelectedOrder(item)} onUpdateStatus={handleUpdateOrderStatus} />)}</div>}
                   </div>
@@ -1219,9 +1591,12 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                       <h2 className="profile-panel-title">{isSeller ? 'Cotizaciones de compradores' : 'Mis cotizaciones'}</h2>
                       <p>{isSeller ? 'Revisa solicitudes, responde con tus condiciones comerciales y mantén cada oferta vinculada a su conversación.' : 'Revisa las respuestas de las tiendas, conversa y consulta cada propuesta con su vigencia y condiciones.'}</p>
                     </div>
-                    <button type="button" className="seller-quotes-sort" onClick={() => setQuoteSort((current) => current === 'newest' ? 'oldest' : 'newest')}>
-                      <Sliders size={15} /> {quoteSort === 'newest' ? 'Más recientes' : 'Más antiguas'}
-                    </button>
+                    <div className="seller-quotes-heading-actions">
+                      {isSeller && <span className="seller-quotes-total-badge">{quoteSummary.total} {quoteSummary.total === 1 ? 'solicitud' : 'solicitudes'}</span>}
+                      <button type="button" className="seller-quotes-sort" onClick={() => setQuoteSort((current) => current === 'newest' ? 'oldest' : 'newest')}>
+                        <Sliders size={15} /> {quoteSort === 'newest' ? 'Más recientes' : 'Más antiguas'}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="seller-quotes-summary">
@@ -1291,33 +1666,12 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                         onClick={() => {
                           setIsEditing(true);
                           setSaveStatus(null);
+                          setFormErrors({});
                           setNameDraft(user?.userName || user?.nombre || '');
                           setPhoneDraft(user?.phone || user?.telefono || '');
-                          setStoreNameDraft(storeInfo?.storeName || user?.storeName || '');
                           setTaxIdDraft(storeInfo?.taxId || user?.taxId || '');
-                          setAddressDraft(storeInfo?.address || user?.address || '');
-                          setShippingMethodsDraft(storeInfo?.shippingMethods || 'Starken, Chilexpress, Retiro en Tienda');
+                          setShippingSelectionsDraft(parseShippingSelections(storeInfo?.shippingMethods));
                           setSpecialistBrandIdsDraft((storeInfo?.marcasEspecialistas || []).map((brand) => String(brand.id)));
-
-                          const initialRegionId = storeInfo?.regionId ? String(storeInfo.regionId) : '';
-                          const initialComunaId = storeInfo?.comunaId ? String(storeInfo.comunaId) : '';
-                          setRegionIdDraft(initialRegionId);
-                          setComunaIdDraft(initialComunaId);
-                          setComunasOptions([]);
-                          if (isSeller) {
-                            setGeoLoadingProfile(true);
-                            getRegionesApi(CHILE_PAIS_ID)
-                              .then((regiones) => {
-                                setRegionesOptions(Array.isArray(regiones) ? regiones : []);
-                                if (initialRegionId) {
-                                  return getComunasApi(initialRegionId)
-                                    .then((comunas) => setComunasOptions(Array.isArray(comunas) ? comunas : []));
-                                }
-                                return null;
-                              })
-                              .catch(() => {})
-                              .finally(() => setGeoLoadingProfile(false));
-                          }
                         }}
                       >
                         <Pencil size={14} /> Editar Información
@@ -1337,76 +1691,137 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                       <div className="form-section-title">Datos Personales y de Contacto</div>
                       <div className="form-grid-2">
                         <div className="form-group">
-                          <label>{isSeller ? 'Nombre Completo / Representante' : 'Nombre Completo'}</label>
-                          <input type="text" value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} required />
+                          <label>
+                            {isSeller ? 'Nombre Completo / Representante' : 'Nombre Completo'}
+                            <span className="char-counter">{nameDraft.length}/80</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={nameDraft}
+                            onChange={(e) => setNameDraft(e.target.value)}
+                            maxLength={80}
+                            required
+                            className={formErrors.name ? 'input-invalid' : ''}
+                          />
+                          {formErrors.name && <small className="field-error-text">{formErrors.name}</small>}
                         </div>
                         <div className="form-group">
-                          <label>Teléfono Móvil</label>
-                          <input type="tel" value={phoneDraft} onChange={(e) => setPhoneDraft(e.target.value)} placeholder="+56 9 1234 5678" />
+                          <label>
+                            Teléfono Móvil
+                            <span className="char-counter">{phoneDraft.length}/20</span>
+                          </label>
+                          <input
+                            type="tel"
+                            inputMode="tel"
+                            value={phoneDraft}
+                            onChange={(e) => setPhoneDraft(sanitizePhoneInput(e.target.value))}
+                            placeholder="+56 9 1234 5678"
+                            maxLength={20}
+                            className={formErrors.phone ? 'input-invalid' : ''}
+                          />
+                          {formErrors.phone && <small className="field-error-text">{formErrors.phone}</small>}
+                          <small className="form-helper-text">Solo números y, al inicio, el signo + (código de país).</small>
                         </div>
                       </div>
                       {!isSeller && (
                         <div className="form-group">
-                          <label>RUT / Identificador Fiscal</label>
-                          <input type="text" value={taxIdDraft} onChange={(e) => setTaxIdDraft(formatRut(e.target.value))} placeholder="12.345.678-K" maxLength={12} />
+                          <label>
+                            RUT / Identificador Fiscal
+                            <span className="char-counter">{taxIdDraft.length}/12</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={taxIdDraft}
+                            onChange={(e) => setTaxIdDraft(formatRut(e.target.value))}
+                            placeholder="12.345.678-K"
+                            maxLength={12}
+                            required
+                            className={formErrors.taxId ? 'input-invalid' : ''}
+                          />
+                          {formErrors.taxId && <small className="field-error-text">{formErrors.taxId}</small>}
                         </div>
                       )}
 
-                      {isSeller && (
-                        <>
-                          <div className="form-section-title" style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span>Dirección Comercial de Despacho</span>
-                            <span className="info-tooltip-wrapper" tabIndex={0} role="note" aria-label="Información sobre la dirección comercial">
-                              <Info size={15} className="info-tooltip-icon" />
-                              <span className="info-tooltip-content">
-                                Ubicación física oficial de tu tienda, local o bodega. Desde esta dirección se originan y preparan los envíos hacia los compradores, y se coordinan los retiros en tienda.
-                              </span>
-                            </span>
-                          </div>
-                          <div className="form-group">
-                            <label>Dirección</label>
-                            <input type="text" value={addressDraft} onChange={(e) => setAddressDraft(e.target.value)} placeholder="Av. Italia 1234, Local 5" />
-                          </div>
-                          <div className="form-grid-2">
-                            <div className="form-group">
-                              <label>Región {geoLoadingProfile && <Loader2 size={12} className="spin-icon" />}</label>
-                              <select value={regionIdDraft} onChange={(e) => handleRegionDraftChange(e.target.value)}>
-                                <option value="">Selecciona una región</option>
-                                {regionesOptions.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
-                              </select>
-                            </div>
-                            <div className="form-group">
-                              <label>Comuna</label>
-                              <select
-                                value={comunaIdDraft}
-                                onChange={(e) => setComunaIdDraft(e.target.value)}
-                                disabled={!regionIdDraft}
-                              >
-                                <option value="">Selecciona una comuna</option>
-                                {comunasOptions.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                              </select>
-                            </div>
-                          </div>
-                        </>
-                      )}
+                      {/* La dirección comercial de despacho (con región/comuna) ya se
+                          edita una sola vez, más abajo, en "Gestión de Direcciones" — ese
+                          widget sincroniza automáticamente comuna/región con la tienda al
+                          guardar (ver refreshStoreInfoAfterAddressSync). Repetirla acá
+                          arriba como un segundo input de texto libre era una segunda fuente
+                          de verdad para el mismo dato, y confundía cuál mandaba. */}
 
                       {isSeller && (
                         <>
                           <div className="form-section-title" style={{ marginTop: '20px' }}>Datos de la Tienda</div>
+                          {/* Nombre y RUT son la identidad legal de la tienda ya verificada:
+                              se muestran de solo lectura y cualquier cambio pasa por soporte,
+                              en vez de un input libre que permitiría alterarlos sin control. */}
                           <div className="form-grid-2">
                             <div className="form-group">
                               <label>Nombre de la Tienda</label>
-                              <input type="text" value={storeNameDraft} onChange={(e) => setStoreNameDraft(e.target.value)} required />
+                              <div className="form-locked-value">
+                                <Lock size={13} />
+                                <span>{storeInfo?.storeName || user?.storeName || '—'}</span>
+                              </div>
                             </div>
                             <div className="form-group">
                               <label>RUT de la Tienda / Identificador Fiscal</label>
-                              <input type="text" value={taxIdDraft} onChange={(e) => setTaxIdDraft(formatRut(e.target.value))} placeholder="12.345.678-K" maxLength={12} />
+                              <div className="form-locked-value">
+                                <Lock size={13} />
+                                <span>{storeInfo?.taxId || user?.taxId || '—'}</span>
+                              </div>
                             </div>
                           </div>
+                          <small className="form-helper-text">
+                            Para corregir el nombre o RUT de tu tienda, contáctanos desde{' '}
+                            <button type="button" className="form-helper-inline-link" onClick={() => { setIsEditing(false); setActiveTab('soporte'); }}>
+                              Centro de ayuda
+                            </button>.
+                          </small>
 
-                          <div className="form-group">
+                          <div className="form-group" style={{ marginTop: '16px' }}>
                             <label>Métodos de Envío Aceptados</label>
-                            <input type="text" value={shippingMethodsDraft} onChange={(e) => setShippingMethodsDraft(e.target.value)} placeholder="Starken, Chilexpress, Retiro en Tienda" />
+                            <div className="shipping-methods-editor">
+                              {SHIPPING_METHOD_DEFS.map((def) => {
+                                const selection = shippingSelectionsDraft[def.id];
+                                return (
+                                  <label key={def.id} className={`shipping-method-option ${selection.enabled ? 'checked' : ''}`}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selection.enabled}
+                                      onChange={(e) => setShippingSelectionsDraft((current) => ({
+                                        ...current,
+                                        [def.id]: { ...current[def.id], enabled: e.target.checked },
+                                      }))}
+                                    />
+                                    <span className="shipping-method-option-label">{def.label}</span>
+                                    {def.hasPrice && selection.enabled && (
+                                      <span className="shipping-method-price-input">
+                                        <span>$</span>
+                                        <input
+                                          type="text"
+                                          inputMode="numeric"
+                                          maxLength={7}
+                                          placeholder="Gratis"
+                                          value={selection.price}
+                                          onChange={(e) => {
+                                            const digits = e.target.value.replace(/\D/g, '');
+                                            setShippingSelectionsDraft((current) => ({
+                                              ...current,
+                                              [def.id]: { ...current[def.id], price: digits },
+                                            }));
+                                          }}
+                                        />
+                                      </span>
+                                    )}
+                                    {!def.hasPrice && def.note && selection.enabled && (
+                                      <span className="shipping-method-note-badge">{def.note}</span>
+                                    )}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                            {formErrors.shippingMethods && <small className="field-error-text">{formErrors.shippingMethods}</small>}
+                            <small className="form-helper-text">Elige los métodos que ofrece tu tienda. Deja el precio en blanco si es gratuito.</small>
                           </div>
 
                           <div className="form-group">
@@ -1436,11 +1851,13 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                         </>
                       )}
 
-                      <div className="form-section-title" style={{ marginTop: '24px' }}>Gestión de Direcciones (Personales y Despacho)</div>
-                      <BuyerAddressBook usuarioId={user?.userId} />
+                      {/* La libreta de direcciones se gestiona solo en la vista principal
+                          ("Ubicación y Logística de Despacho"): se guarda sola con sus
+                          propios botones, no con "Guardar Información" de este formulario,
+                          así que repetirla acá adentro era el mismo widget dos veces. */}
 
                       <div className="profile-data-form-actions" style={{ marginTop: '20px' }}>
-                        <button type="button" className="btn-auth-secondary" onClick={() => setIsEditing(false)}>
+                        <button type="button" className="btn-auth-secondary" onClick={() => { setIsEditing(false); setFormErrors({}); }}>
                           Cancelar
                         </button>
                         <button type="submit" className="btn-auth-primary" disabled={isSaving} style={{ width: 'auto' }}>
@@ -1450,50 +1867,39 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                     </form>
                   ) : (
                     <div className="store-unified-container">
-                      {/* Top Banner Identity */}
-                      <div className="store-identity-banner">
-                        <div className="store-identity-avatar">
-                          {user?.userProfileUrl ? (
-                            <img src={user.userProfileUrl} alt="" referrerPolicy="no-referrer" />
-                          ) : (
-                            initialsFromName(isSeller ? (storeInfo?.storeName || displayName) : displayName)
-                          )}
-                        </div>
-                        <div className="store-identity-info">
-                          <div className="store-identity-title-row">
-                            <h3>{isSeller ? (storeInfo?.storeName || user?.storeName || displayName) : displayName}</h3>
-                            {isSeller && (
-                              <span className={`store-status-chip ${storeInfo?.status === 'APPROVED' ? 'chip-approved' : 'chip-pending'}`}>
-                                <ShieldCheck size={13} />
-                                <span>{storeInfo?.status === 'APPROVED' ? 'Tienda Verificada' : 'Tienda en Revisión'}</span>
-                              </span>
-                            )}
-                          </div>
-                          <span className="store-identity-sub">
-                            {isSeller ? `RUT Empresa: ${storeInfo?.taxId || user?.taxId || 'No registrado'}` : user?.email}
-                          </span>
-                          <div className="store-identity-tags">
-                            {memberSince && (
-                              <span className="hero-tag"><Clock size={12} /> Miembro desde {memberSince}</span>
-                            )}
-                            {isSeller && (
-                              <span className="hero-tag founder-tag">
-                                <Crown size={13} strokeWidth={2.4} /> Beneficio Tarifa Fundador Activo (5%)
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                      {/* La identidad (nombre, estado de verificación, tag de fundador) ya
+                          se muestra en el hero de portada de arriba; repetirla aquí en un
+                          segundo banner era información duplicada. */}
 
                       {/* Modular Grid of Cards */}
                       <div className="store-profile-unified-grid">
-                        {/* Card 1: Identidad y Datos Comerciales */}
+                        {/* Card: Identidad y Contacto (fusiona los datos comerciales del
+                            representante con sus datos de contacto personal) */}
                         <div className="details-card-block store-section-card">
-                          <h3 className="section-subtitle">
-                            <Building2 size={16} />
-                            <span>{isSeller ? 'Identidad Comercial de la Tienda' : 'Datos de la Cuenta'}</span>
-                          </h3>
-                          <div className="details-info-list">
+                          <div className="details-card-header-row">
+                            <h3 className="section-subtitle">
+                              <span className="section-subtitle-icon"><Building2 size={16} /></span>
+                              <span>{isSeller ? 'Identidad y Contacto' : 'Mis Datos'}</span>
+                            </h3>
+                            {/* Único punto de entrada para cambiar logo/portada: el botón
+                                flotante sobre la foto de portada se ocultó a propósito en
+                                el hero compacto del vendedor. */}
+                            {isSeller && (
+                              <div className="details-card-header-actions">
+                                <button type="button" className="details-card-link-button" onClick={() => handleOpenMediaModal('avatar')}>
+                                  <Camera size={13} /> Cambiar logo
+                                </button>
+                                <button type="button" className="details-card-link-button" onClick={handleOpenCoverTemplates}>
+                                  <ImageIcon size={13} /> Cambiar portada
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          {/* Grid de 2-3 columnas en vez de una fila por dato: la tarjeta
+                              ahora ocupa el ancho completo del panel, así que el espacio
+                              extra se usa para mostrar los campos en pares en vez de dejar
+                              un hueco en blanco al costado de una lista angosta. */}
+                          <div className="details-info-grid">
                             {isSeller && (
                               <div className="details-info-row">
                                 <span className="info-label">Nombre Comercial de Tienda</span>
@@ -1504,33 +1910,14 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                               <span className="info-label">RUT / Identificador Fiscal</span>
                               <strong className="info-value">{storeInfo?.taxId || user?.taxId || '—'}</strong>
                             </div>
-                            {isSeller ? (
-                              <div className="details-info-row">
-                                <span className="info-label">Marcas especialistas</span>
-                                <div className="profile-specialist-brands">
-                                  {(storeInfo?.marcasEspecialistas || []).length ? (storeInfo.marcasEspecialistas || []).map((brand) => (
-                                    <VehicleBrandLogo key={brand.id || brand.nombre} brand={brand.nombre} />
-                                  )) : <strong className="info-value">Sin marcas registradas</strong>}
-                                </div>
-                              </div>
-                            ) : (
+                            {!isSeller && (
                               <div className="details-info-row">
                                 <span className="info-label">Tipo de Cuenta</span>
                                 <strong className="info-value">Comprador Verificado</strong>
                               </div>
                             )}
-                          </div>
-                        </div>
-
-                        {/* Card 2: Representante & Contacto */}
-                        <div className="details-card-block store-section-card">
-                          <h3 className="section-subtitle">
-                            <UserCog size={16} />
-                            <span>{isSeller ? 'Representante Legal y Contacto' : 'Datos de Contacto'}</span>
-                          </h3>
-                          <div className="details-info-list">
                             <div className="details-info-row">
-                              <span className="info-label">Nombre Completo</span>
+                              <span className="info-label">{isSeller ? 'Representante Legal' : 'Nombre Completo'}</span>
                               <strong className="info-value">{user?.userName || user?.nombre || '—'}</strong>
                             </div>
                             <div className="details-info-row">
@@ -1541,32 +1928,42 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                               <span className="info-label"><Phone size={13} /> Teléfono Móvil</span>
                               <strong className="info-value">{user?.phone || user?.telefono || '—'}</strong>
                             </div>
+                            {isSeller && (
+                              <div className="details-info-row details-info-row-wide">
+                                <span className="info-label">Marcas especialistas</span>
+                                <div className="profile-specialist-brands">
+                                  {(storeInfo?.marcasEspecialistas || []).length ? (storeInfo.marcasEspecialistas || []).map((brand) => (
+                                    <VehicleBrandLogo key={brand.id || brand.nombre} brand={brand.nombre} />
+                                  )) : <strong className="info-value">Sin marcas registradas</strong>}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
 
-                        {/* Card 3: Logística y Ubicación */}
+                        {/* Un solo botón no justifica una tarjeta completa del mismo peso
+                            que "Identidad y Contacto": queda como aviso liviano en vez de
+                            tarjeta vacía (mismo patrón que ya usa el formulario de edición). */}
+                        {isSeller && (
+                          <div className="withdrawal-info-banner">
+                            <CreditCard size={18} />
+                            <span>Los datos bancarios de cobro se validan y guardan desde el apartado Retirar dinero.</span>
+                            <button type="button" className="withdrawal-bank-button" onClick={() => setActiveTab('retiros')}>
+                              <Wallet size={16} /> Ir a Retirar dinero
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Logística y Ubicación: contiene la libreta de direcciones,
+                            mucho más densa que el resto. */}
                         <div className="details-card-block store-section-card">
                           <h3 className="section-subtitle">
-                            <Truck size={16} />
+                            <span className="section-subtitle-icon icon-amber"><Truck size={16} /></span>
                             <span>Ubicación y Logística de Despacho</span>
                           </h3>
                           <BuyerAddressBook usuarioId={user?.userId} onCommercialAddressSynced={refreshStoreInfoAfterAddressSync} />
-                          <div className="details-info-list" style={{ marginTop: '16px' }}>
-                            {isSeller && (
-                              <>
-                                <div className="details-info-row">
-                                  <span className="info-label"><MapPin size={13} /> Dirección Comercial de Tienda</span>
-                                  <strong className="info-value">{storeInfo?.address || user?.address || 'Dirección no registrada'}</strong>
-                                </div>
-                                <div className="details-info-row">
-                                  <span className="info-label">Comuna / Región Comercial</span>
-                                  <strong className="info-value">
-                                    {[storeInfo?.comuna || user?.comuna, storeInfo?.region || user?.region].filter(Boolean).join(', ') || '—'}
-                                  </strong>
-                                </div>
-                              </>
-                            )}
-                            {isSeller && (
+                          {isSeller && (
+                            <div className="details-info-list store-shipping-methods-row">
                               <div className="details-info-row">
                                 <span className="info-label">Métodos de Envío Registrados</span>
                                 <div className="shipping-methods-pills" style={{ marginTop: '6px', gap: '8px' }}>
@@ -1598,25 +1995,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                                     })}
                                 </div>
                               </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Card 4: Cobro y Datos Bancarios (Vendedor) */}
-                        {isSeller && (
-                          <div className="details-card-block store-section-card bank-card">
-                            <h3 className="section-subtitle">
-                              <CreditCard size={16} />
-                              <span>Datos Bancarios para Depósito de Ventas</span>
-                            </h3>
-                            <div className="details-info-list">
-                              <p className="bank-card-helper">Registra o actualiza la cuenta donde recibirás el depósito de tus ventas y revisa tus solicitudes de retiro.</p>
-                              <button type="button" className="withdrawal-bank-button" onClick={() => setActiveTab('retiros')}>
-                                <Wallet size={16} /> Ir a Retirar dinero
-                              </button>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}

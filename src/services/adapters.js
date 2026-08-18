@@ -30,6 +30,30 @@ export function formatRut(value) {
   return `${formattedBody}-${verifier}`;
 }
 
+/** Verifica el dígito verificador (módulo 11) de un RUT chileno, no solo el formato. */
+export function isValidRut(value) {
+  const clean = String(value || '').replace(/[^0-9kK]/g, '').toUpperCase();
+  if (clean.length < 8) return false;
+  const body = clean.slice(0, -1);
+  const dv = clean.slice(-1);
+  let sum = 0;
+  let multiplier = 2;
+  for (let index = body.length - 1; index >= 0; index -= 1) {
+    sum += Number(body[index]) * multiplier;
+    multiplier = multiplier === 7 ? 2 : multiplier + 1;
+  }
+  const expectedValue = 11 - (sum % 11);
+  const expected = expectedValue === 11 ? '0' : expectedValue === 10 ? 'K' : String(expectedValue);
+  return dv === expected;
+}
+
+/** Celular chileno: 9 dígitos empezando en 9, con o sin el prefijo de país 56. */
+export function isValidClPhone(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  const local = digits.length === 11 && digits.startsWith('56') ? digits.slice(2) : digits;
+  return /^9\d{8}$/.test(local);
+}
+
 /**
  * El backend devuelve el nombre de la categoría ("Accesorios", "Carrocería", "Sistema de Frenos", etc.).
  * Se resuelve primero por coincidencia exacta/slug con HEADER_CATEGORIES y luego por palabras clave.

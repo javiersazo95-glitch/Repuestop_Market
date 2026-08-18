@@ -92,6 +92,15 @@ export default function CartDrawer({
       });
       onClearCart?.();
       if (order?.urlPago) {
+        // plan_retorno_flow.md Fase 3: guardar el pedido antes de saltar a Flow para
+        // que PurchaseSuccessPage tenga el detalle disponible al volver (misma
+        // pestaña); si el storage se pierde, el endpoint GET /pedidos/{id} es el
+        // respaldo.
+        try {
+          sessionStorage.setItem('repuestop_last_successful_order', JSON.stringify(order));
+        } catch {
+          // El endpoint GET /pedidos/{id} sigue disponible como respaldo.
+        }
         window.location.href = order.urlPago;
         return;
       }

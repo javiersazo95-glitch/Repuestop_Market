@@ -281,6 +281,15 @@ export async function getBuyerOrdersApi(usuarioId, { signal } = {}) {
   return fetchApi(`/usuarios/${usuarioId}/pedidos`, { method: 'GET', signal });
 }
 
+/**
+ * Detalle de un pedido puntual. Usado por PurchaseSuccessPage al volver de Flow: si
+ * sessionStorage no tiene el pedido (otra pestaña/dispositivo, storage limpiado), esto
+ * lo trae directo por id en vez de depender del listado completo.
+ */
+export async function getBuyerOrderByIdApi(usuarioId, orderId, { signal } = {}) {
+  return fetchApi(`/usuarios/${usuarioId}/pedidos/${orderId}`, { method: 'GET', signal });
+}
+
 export async function getSellerOrdersApi(proveedorId, { signal } = {}) {
   // Igual que mobile: el backend pagina este historial y permite hasta 100 filas.
   // Se carga el lote máximo para que búsqueda y filtros operen sobre el historial visible completo.

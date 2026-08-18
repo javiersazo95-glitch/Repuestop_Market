@@ -144,12 +144,21 @@ export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder
 
   return (
     <div className="seller-orders-screen">
+      <header className="seller-orders-page-heading">
+        <div>
+          <span className="seller-orders-eyebrow"><ShoppingBag size={14} /> Gestión de ventas</span>
+          <h1>Pedidos recibidos</h1>
+          <p>Revisa, prepara y actualiza el estado de las compras de tu tienda.</p>
+        </div>
+        <span className="seller-orders-total-badge">{orders.length} {orders.length === 1 ? 'pedido' : 'pedidos'} total</span>
+      </header>
+
       <section className="seller-orders-summary">
         <header><div><h2>Resumen rápido</h2><p>{orders.length ? 'Vista alimentada desde pedidos reales' : 'Aún no hay pedidos registrados'}</p></div></header>
         <div className="seller-orders-summary-grid">
-          <article className="orders-summary-amber"><span><Clock3 size={19} /></span><small>En curso</small><strong>{summary.inProgress}</strong></article>
-          <article className="orders-summary-purple"><span><CheckCircle2 size={19} /></span><small>Completados</small><strong>{summary.completed}</strong></article>
-          <article className="orders-summary-green"><span><Banknote size={19} /></span><small>Mis ganancias</small><strong>{formatCLP(summary.revenue)}</strong></article>
+          <article className="orders-summary-amber"><span><Clock3 size={19} /></span><div className="seller-orders-summary-copy"><small>En curso</small><strong>{summary.inProgress}</strong></div></article>
+          <article className="orders-summary-purple"><span><CheckCircle2 size={19} /></span><div className="seller-orders-summary-copy"><small>Completados</small><strong>{summary.completed}</strong></div></article>
+          <article className="orders-summary-green"><span><Banknote size={19} /></span><div className="seller-orders-summary-copy"><small>Mis ganancias</small><strong>{formatCLP(summary.revenue)}</strong></div></article>
         </div>
       </section>
 

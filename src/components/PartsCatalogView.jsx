@@ -429,219 +429,106 @@ export default function PartsCatalogView({
 
   return (
     <div className="parts-catalog-view-wrapper">
-      {/* 1. Catalog Hero Header */}
-      <div className="catalog-hero-banner">
-        <div className="container catalog-hero-content">
-          <button className="btn-back-marketplace" onClick={onBackToStore}>
-            <ArrowLeft size={16} />
-            <span>Volver al Inicio</span>
-          </button>
-
-          <div className="catalog-hero-text">
-            <div className="catalog-hero-badge">
-              <Wrench size={14} />
-              <span>CATÁLOGO TÉCNICO OFICIAL REPUESTOP.CL</span>
-            </div>
-            <h1>Inventario General de <span>Repuestos</span></h1>
-            <p>
-              Busca y filtra repuestos mecánicos, eléctricos y de carrocería por patente o código OEM con origen verificado y calce 100% garantizado.
-            </p>
-            <div className="catalog-hero-perks">
-              <span><ShieldCheck size={20} /> 100% OEM Verificado</span>
-              <span><Package size={20} /> Miles de productos en stock</span>
-              <span><Truck size={20} /> Despacho a todo Chile</span>
-              <span><ShieldCheck size={20} /> Garantía de compatibilidad</span>
-            </div>
-          </div>
-
-          {activeVehicle && (
-            <div className="active-vehicle-pill-banner">
-              <Car size={16} className="text-blue-400" />
-              <span>Vehículo Activo en Garaje: <strong>{activeVehicle.marca} {activeVehicle.modelo} ({activeVehicle.patente})</strong></span>
-              <button
-                className={`btn-toggle-compat ${onlyCompatible ? 'active' : ''}`}
-                onClick={() => setOnlyCompatible(!onlyCompatible)}
-              >
-                <span>{onlyCompatible ? '✓ Mostrando solo compatibles' : 'Filtrar por mi vehículo'}</span>
-              </button>
-            </div>
-          )}
-
-        </div>
-      </div>
-
-      <div className="container catalog-patent-console-wrap">
-        <div className="light-search-panel catalog-unified-search-panel">
-          <div className="catalog-comuna-filter-row">
-            <div className="my-comuna-filter-pill">
-              <MapPin size={16} className="text-blue-400" />
-              <span>Filtrar por mi comuna</span>
-              <button
-                type="button"
-                className={`btn-toggle-compat-mini ${filterByMyComuna ? 'active' : ''}`}
-                onClick={handleToggleComunaFilter}
-                disabled={comunaLookupStatus === 'loading'}
-                title="Muestra solo los repuestos de casas de repuesto ubicadas en tu misma comuna (la comuna registrada en tu perfil)."
-              >
-                {comunaLookupStatus === 'loading'
-                  ? 'Buscando tu comuna...'
-                  : filterByMyComuna
-                    ? `✓ Solo tiendas en ${myComunaNombre || 'tu comuna'}`
-                    : 'Activar filtro'}
-              </button>
-            </div>
-            {comunaNotice && (
-              <div className="light-search-error catalog-comuna-notice">
-                <AlertCircle size={14} /> {comunaNotice}
-              </div>
-            )}
-          </div>
-
-          <div className="light-search-tabs" role="tablist" aria-label="Tipos de búsqueda">
-            {SEARCH_MODES.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  role="tab"
-                  aria-selected={searchMode === item.id}
-                  className={searchMode === item.id ? 'active' : ''}
-                  onClick={() => selectSearchMode(item.id)}
-                >
-                  <Icon size={20} /> <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className={`light-search-form ${searchMode !== 'patente' ? 'mode-no-country' : ''}`}>
-            <div className="light-input-row">
-              {searchMode === 'patente' && (
-                <button className="country-selector" type="button">
-                  <span>🇨🇱</span><strong>CHILE</strong><ChevronRight size={14} />
-                </button>
-              )}
-              <div className="light-query-field">
-                <input
-                  type="text"
-                  placeholder={currentSearchMode.placeholder}
-                  value={inputValue}
-                  onChange={(event) => {
-                    const val = searchMode === 'patente' || searchMode === 'oem'
-                      ? event.target.value.toUpperCase()
-                      : event.target.value;
-                    setInputValue(val);
-                    if (searchMode === 'oem' || searchMode === 'repuesto') {
-                      setSearchQuery(val);
-                    }
-                    if (patentError) setPatentError('');
-                  }}
-                  onKeyDown={(event) => event.key === 'Enter' && handleUnifiedSearch()}
-                />
-                {searchMode === 'patente' && (
-                  <button type="button" className="plate-help">
-                    <CircleHelp size={14} /> ¿Dónde está mi patente?
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <button
-              className="light-primary-search"
-              onClick={() => handleUnifiedSearch()}
-              disabled={patentSearching}
-              type="button"
-            >
-              {patentSearching ? <RefreshCw size={21} className="spin-icon" /> : <Search size={22} />}
-              {searchMode === 'patente'
-                ? 'Buscar vehículo por patente'
-                : searchMode === 'oem'
-                  ? 'Buscar por código OEM'
-                  : 'Buscar repuestos'}
+      {/* 1. Sleek Compact Catalog Context Bar */}
+      <div className="catalog-context-header">
+        <div className="container catalog-context-container">
+          <div className="catalog-context-left">
+            <button className="catalog-breadcrumb-back" onClick={onBackToStore} type="button">
+              <ArrowLeft size={16} />
+              <span>Volver</span>
             </button>
+            <div className="catalog-context-title-group">
+              <h1 className="catalog-context-title">
+                {searchQuery ? (
+                  <>Resultados para <span className="highlight-term">"{searchQuery}"</span></>
+                ) : appliedFilterLabel ? (
+                  <>Catálogo: <span>{appliedFilterLabel}</span></>
+                ) : (
+                  <>Catálogo General de <span>Repuestos</span></>
+                )}
+              </h1>
+              <span className="catalog-context-counter">
+                {totalProducts} repuestos disponibles con calce y despacho garantizado
+              </span>
+            </div>
+          </div>
 
-            {patentError && (
-              <div className="light-search-error">
-                <AlertCircle size={14} /> {patentError}
-              </div>
-            )}
-
-            {activeVehicle && (
-              <div className="light-active-vehicle">
-                <CheckCircle2 size={17} />
-                <span>Vehículo activo: <strong>{activeVehicle.marca} {activeVehicle.modelo} ({activeVehicle.patente})</strong></span>
+          <div className="catalog-context-right">
+            {activeVehicle ? (
+              <div className="catalog-vehicle-badge-active">
+                <Car size={16} className="text-blue-500" />
+                <div className="vehicle-info-text">
+                  <span className="vehicle-title">{activeVehicle.marca} {activeVehicle.modelo}</span>
+                  <span className="vehicle-plate">{activeVehicle.patente}</span>
+                </div>
                 <button
                   type="button"
-                  className={`btn-toggle-compat-mini ${onlyCompatible ? 'active' : ''}`}
+                  className={`btn-compat-toggle-pill ${onlyCompatible ? 'active' : ''}`}
                   onClick={() => setOnlyCompatible(!onlyCompatible)}
-                  style={{ marginLeft: 'auto' }}
+                  title="Filtrar solo repuestos compatibles con este vehículo"
                 >
                   {onlyCompatible ? '✓ Solo compatibles' : 'Filtrar calce'}
                 </button>
                 <button
                   type="button"
+                  className="btn-vehicle-clear"
                   onClick={() => { setActiveVehicle(null); setOnlyCompatible(false); }}
-                  style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '2px 6px' }}
                   title="Quitar vehículo"
+                  aria-label="Quitar vehículo"
                 >
-                  <X size={16} />
+                  <X size={15} />
                 </button>
+              </div>
+            ) : (
+              <div className="catalog-quick-patente-bar">
+                <CarFront size={16} className="patente-icon" />
+                <input
+                  type="text"
+                  placeholder="Filtrar por patente (ej: BB-CL-12)"
+                  value={patentInput}
+                  onChange={(e) => {
+                    setPatentInput(e.target.value.toUpperCase());
+                    if (patentError) setPatentError('');
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleUnifiedSearch(patentInput)}
+                  className="patente-quick-input"
+                />
+                <button
+                  type="button"
+                  className="btn-quick-patente-submit"
+                  onClick={() => handleUnifiedSearch(patentInput)}
+                  disabled={patentSearching}
+                >
+                  {patentSearching ? <RefreshCw size={14} className="spin-icon" /> : 'Calce'}
+                </button>
+                {patentError && <span className="quick-patente-error">{patentError}</span>}
               </div>
             )}
 
-            <div className="popular-searches">
-              <span>
-                {searchMode === 'patente'
-                  ? 'Patentes populares:'
-                  : searchMode === 'oem'
-                    ? 'Códigos OEM sugeridos:'
-                    : 'Búsquedas populares:'}
-              </span>
-              {(searchMode === 'patente' ? samplePatentes : searchMode === 'oem' ? sampleOemCodes : sampleKeywords).map((item) => (
-                <button key={item} type="button" onClick={() => { setInputValue(item); handleUnifiedSearch(item); }}>
-                  {item}
-                </button>
-              ))}
-            </div>
+            <button
+              type="button"
+              className={`btn-comuna-toggle-pill ${filterByMyComuna ? 'active' : ''}`}
+              onClick={handleToggleComunaFilter}
+              disabled={comunaLookupStatus === 'loading'}
+              title="Muestra repuestos de tiendas de tu comuna"
+            >
+              <MapPin size={15} />
+              <span>{filterByMyComuna ? `En ${myComunaNombre || 'mi comuna'}` : 'Mi comuna'}</span>
+            </button>
           </div>
         </div>
       </div>
 
       <div className="container catalog-main-container">
-        {/* 2. Top Control Bar (Search & Sort) */}
+        {/* 2. Top Control Bar (Summary & Sort) */}
         <div className="catalog-control-bar">
-          <div className="search-bar-catalog-box">
-            <Search size={18} className="search-box-icon" />
-            <input
-              type="text"
-              placeholder="Filtrar por código OEM, repuesto, marca o vendedor..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                if (searchMode === 'oem' || searchMode === 'repuesto') {
-                  setInputValue(e.target.value);
-                }
-              }}
-              className="search-catalog-input"
-            />
-            {searchQuery && (
-              <button
-                className="btn-clear-search-dir"
-                onClick={() => {
-                  setSearchQuery('');
-                  if (searchMode === 'oem' || searchMode === 'repuesto') setInputValue('');
-                }}
-              >
-                <X size={14} />
-              </button>
-            )}
+          <div className="control-bar-left-group">
+            <div className="results-count-badge">
+              <span>Mostrando <strong>{displayedProducts.length}</strong> de {totalProducts} repuestos encontrados</span>
+            </div>
           </div>
 
           <div className="control-bar-right-group">
-            <div className="results-count-badge">
-              <span>Mostrando <strong>{displayedProducts.length}</strong> de {totalProducts} repuestos</span>
-            </div>
-
             <div className="sort-dropdown-box">
               <span className="sort-label">Ordenar por:</span>
               <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sort-select-input">

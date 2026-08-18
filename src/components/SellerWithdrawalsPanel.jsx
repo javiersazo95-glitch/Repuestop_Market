@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  AlertCircle, CalendarDays, CheckCircle2, CreditCard, Eye, History, Info,
+  AlertCircle, CalendarDays, CheckCircle2, CreditCard, Eye, EyeOff, History, Info,
   Landmark, Loader2, Mail, Package, Save, User, Wallet, X,
 } from 'lucide-react';
 import {
@@ -9,6 +9,7 @@ import {
   getSellerWithdrawalDetailApi, getSellerWithdrawalsApi, updateSellerBankAccountApi,
 } from '../services/api';
 import { BANKS, findBankByCode } from '../data/banks';
+import { formatRut, isValidRut } from '../services/adapters';
 
 const EMPTY_PENDING = { pedidos: [], totalARetirar: 0 };
 const ACCOUNT_TYPES = [
@@ -46,27 +47,13 @@ function formatAccountNumber(value) {
   return digits ? digits.replace(/(.{4})/g, '$1 ').trim() : 'No registrado';
 }
 
-function formatRut(value) {
-  const clean = String(value || '').replace(/[^0-9kK]/g, '').toUpperCase().slice(0, 9);
-  if (clean.length <= 1) return clean;
-  const body = clean.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return `${body}-${clean.slice(-1)}`;
-}
-
-function isValidRut(value) {
-  const clean = String(value || '').replace(/[^0-9kK]/g, '').toUpperCase();
-  if (clean.length < 8) return false;
-  const body = clean.slice(0, -1);
-  const dv = clean.slice(-1);
-  let sum = 0;
-  let multiplier = 2;
-  for (let index = body.length - 1; index >= 0; index -= 1) {
-    sum += Number(body[index]) * multiplier;
-    multiplier = multiplier === 7 ? 2 : multiplier + 1;
-  }
-  const expectedValue = 11 - (sum % 11);
-  const expected = expectedValue === 11 ? '0' : expectedValue === 10 ? 'K' : String(expectedValue);
-  return dv === expected;
+// Solo se muestran los últimos 4 dígitos por defecto (patrón estándar en
+// banca/fintech): protege ante screen sharing o capturas aunque el dato
+// pertenezca al propio vendedor.
+function maskAccountNumber(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (!digits) return 'No registrado';
+  return `•••• •••• ${digits.slice(-4)}`;
 }
 
 function isCompleteBankAccount(account) {
@@ -201,6 +188,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [revealAccountNumber, setRevealAccountNumber] = useState(false);
 
   const loadWithdrawals = useCallback(async () => {
     if (!sellerId) return;
@@ -237,6 +225,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
         setShowBankModal(true);
         return;
       }
+      setRevealAccountNumber(false);
       setShowConfirmation(true);
     } catch (accountError) {
       setError(accountError.message || 'No se pudieron verificar tus datos bancarios.');
@@ -302,7 +291,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
 
       {showBankModal && <BankAccountModal sellerId={sellerId} fallbackEmail={sellerEmail} initialAccount={bankAccount} onClose={() => setShowBankModal(false)} onSaved={(account) => { setBankAccount(account); setShowBankModal(false); setNotice({ type: 'success', message: 'Tus datos bancarios se guardaron correctamente.' }); }} />}
 
-      {showConfirmation && bankAccount && <ModalShell title="Confirmar retiro" subtitle="Revisa la cuenta antes de enviar la solicitud." icon={Wallet} onClose={() => !submitting && setShowConfirmation(false)}><div className="withdrawal-confirm-body"><div className="withdrawal-confirm-amount"><span>Monto a solicitar</span><strong>{formatCLP(pending.totalARetirar)}</strong></div><dl><div><dt>Nombre</dt><dd>{bankAccount.bankAccountHolderName}</dd></div><div><dt>RUT</dt><dd>{bankAccount.bankAccountRut}</dd></div><div><dt>Banco</dt><dd>{bankAccount.bankName}</dd></div><div><dt>Tipo de cuenta</dt><dd>{formatAccountType(bankAccount.bankAccountType)}</dd></div><div><dt>Número de cuenta</dt><dd>{formatAccountNumber(bankAccount.bankAccountNumber)}</dd></div></dl><p><Info size={16} /> Confirma que estos datos son correctos. La solicitud no podrá modificarse después de enviarla.</p><footer><button type="button" className="btn-auth-secondary" onClick={() => setShowConfirmation(false)} disabled={submitting}>Cancelar</button><button type="button" className="btn-auth-primary" onClick={submitWithdrawal} disabled={submitting}>{submitting ? <Loader2 size={16} className="spin-icon" /> : <CheckCircle2 size={16} />}{submitting ? 'Solicitando...' : 'Confirmar solicitud'}</button></footer></div></ModalShell>}
+      {showConfirmation && bankAccount && <ModalShell title="Confirmar retiro" subtitle="Revisa la cuenta antes de enviar la solicitud." icon={Wallet} onClose={() => !submitting && setShowConfirmation(false)}><div className="withdrawal-confirm-body"><div className="withdrawal-confirm-amount"><span>Monto a solicitar</span><strong>{formatCLP(pending.totalARetirar)}</strong></div><dl><div><dt>Nombre</dt><dd>{bankAccount.bankAccountHolderName}</dd></div><div><dt>RUT</dt><dd>{bankAccount.bankAccountRut}</dd></div><div><dt>Banco</dt><dd>{bankAccount.bankName}</dd></div><div><dt>Tipo de cuenta</dt><dd>{formatAccountType(bankAccount.bankAccountType)}</dd></div><div><dt>Número de cuenta</dt><dd className="withdrawal-confirm-account-number"><span>{revealAccountNumber ? formatAccountNumber(bankAccount.bankAccountNumber) : maskAccountNumber(bankAccount.bankAccountNumber)}</span><button type="button" className="withdrawal-toggle-reveal" onClick={() => setRevealAccountNumber((current) => !current)} title={revealAccountNumber ? 'Ocultar número de cuenta' : 'Mostrar número de cuenta'}>{revealAccountNumber ? <EyeOff size={14} /> : <Eye size={14} />}</button></dd></div></dl><p><Info size={16} /> Confirma que estos datos son correctos. La solicitud no podrá modificarse después de enviarla.</p><footer><button type="button" className="btn-auth-secondary" onClick={() => setShowConfirmation(false)} disabled={submitting}>Cancelar</button><button type="button" className="btn-auth-primary" onClick={submitWithdrawal} disabled={submitting}>{submitting ? <Loader2 size={16} className="spin-icon" /> : <CheckCircle2 size={16} />}{submitting ? 'Solicitando...' : 'Confirmar solicitud'}</button></footer></div></ModalShell>}
 
       {(detail || detailLoading) && <ModalShell title="Detalle del retiro" subtitle={detail?.codigoExterno || (detail ? `RET-${String(detail.retiroId).padStart(6, '0')}` : 'Cargando información...')} icon={History} onClose={() => !detailLoading && setDetail(null)} wide>{detailLoading ? <div className="withdrawal-loading"><Loader2 size={20} className="spin-icon" /> Cargando detalle...</div> : <div className="withdrawal-detail-body"><div className="withdrawal-detail-summary"><WithdrawalStatus status={detail.estado} /><span><CalendarDays size={15} /> Pago estimado: {formatDate(detail.fechaEfectiva)}</span></div><div className="withdrawal-detail-orders">{(detail.pedidos || []).map((order) => <PendingOrderRow key={order.pedidoId} order={order} />)}</div><div className="withdrawal-detail-total"><span>Total</span><strong>{formatCLP(detail.montoTotal)}</strong></div></div>}</ModalShell>}
     </div>
