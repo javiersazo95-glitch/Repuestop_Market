@@ -30,10 +30,12 @@ export default function HelpCenterPage() {
         // Ya estamos en el centro de ayuda: el enlace del footer sube al inicio
         // en vez de navegar a la misma ruta.
         onOpenHelp={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        onOpenTerms={() => nav.goHelpCategory('politicas')}
+        onOpenTerms={nav.goTerms}
+        onOpenPrivacy={nav.goPrivacy}
       />
     </div>
   );
 }
+
 
 

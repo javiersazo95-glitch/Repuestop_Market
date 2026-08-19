@@ -40,5 +40,8 @@ export function useAppNavigation() {
     goHelp: () => navigate(ROUTES.support),
     goHelpCategory: (slug) => navigate(helpCategoryPath(slug)),
     goHelpContact: (topicId) => navigate(helpContactPath(topicId)),
+    goTerms: () => navigate(ROUTES.terms),
+    goPrivacy: () => navigate(ROUTES.privacy),
   }), [navigate, goProduct, goStore, goProfile]);
 }
+

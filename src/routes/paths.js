@@ -14,6 +14,8 @@ export const ROUTES = {
   helpContact: '/ayuda/contacto',
   helpAllFaqs: '/ayuda/preguntas-frecuentes',
   helpCategory: '/ayuda/:categoria',
+  terms: '/terminos',
+  privacy: '/privacidad',
   about: '/nosotros',
   adsWall: '/mural-anuncios',
   sellerRegister: '/vender',
@@ -120,5 +122,6 @@ export function catalogFilterFromParams(searchParams) {
     page: Math.max(1, Number(searchParams.get('pagina') || 1) || 1),
   };
 }
+
 
 

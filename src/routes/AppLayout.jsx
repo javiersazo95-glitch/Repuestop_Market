@@ -88,7 +88,8 @@ export default function AppLayout() {
         onOpenCatalog={() => nav.goCatalog()}
         onOpenAdsWall={nav.goAdsWall}
         onOpenHelp={nav.goHelp}
-        onOpenTerms={() => nav.goHelpCategory('politicas')}
+        onOpenTerms={nav.goTerms}
+        onOpenPrivacy={nav.goPrivacy}
       />
 
       <AuthModal
@@ -142,4 +143,5 @@ export default function AppLayout() {
     </div>
   );
 }
+
 

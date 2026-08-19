@@ -18,6 +18,8 @@ const HelpHomeView = lazy(() => import('../pages/help/HelpHomeView'));
 const HelpCategoryView = lazy(() => import('../pages/help/HelpCategoryView'));
 const HelpContactView = lazy(() => import('../pages/help/HelpContactView'));
 const HelpAllFaqsView = lazy(() => import('../pages/help/HelpAllFaqsView'));
+const TermsPage = lazy(() => import('../pages/TermsPage'));
+const PrivacyPage = lazy(() => import('../pages/PrivacyPage'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
 const AdsWallPage = lazy(() => import('../pages/AdsWallPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
@@ -58,6 +60,8 @@ export default function AppRoutes() {
               <Route path=":categoria" element={<HelpCategoryView />} />
             </Route>
 
+            <Route path={ROUTES.terms} element={<TermsPage />} />
+            <Route path={ROUTES.privacy} element={<PrivacyPage />} />
             <Route path={ROUTES.about} element={<AboutPage />} />
             <Route path={ROUTES.sellerRegister} element={<SellerRegisterPage />} />
 
@@ -76,4 +80,5 @@ export default function AppRoutes() {
     </>
   );
 }
+
 

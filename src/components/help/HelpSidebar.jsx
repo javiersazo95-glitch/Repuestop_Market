@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronRight, Headphones, LifeBuoy, LogIn, MessageSquare } from 'lucide-react';
+import { ChevronRight, FileText, Headphones, LifeBuoy, LogIn, MessageSquare, ShieldCheck } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getMyMediationsApi, getMyReportsApi, getMySupportTicketsApi } from '../../services/api';
@@ -106,6 +106,18 @@ export default function HelpSidebar({ currentSlug = null }) {
         </section>
       )}
 
+      <section className="help-side-card">
+        <h2><FileText size={16} /> Documentos</h2>
+        <ul className="help-side-list">
+          <li>
+            <Link to={ROUTES.terms}><span><FileText size={13} /> Términos y condiciones</span> <ChevronRight size={14} /></Link>
+          </li>
+          <li>
+            <Link to={ROUTES.privacy}><span><ShieldCheck size={13} /> Política de privacidad</span> <ChevronRight size={14} /></Link>
+          </li>
+        </ul>
+      </section>
+
       {reportType === HELP_ROLES.GUEST && (
         <section className="help-side-card help-side-note">
           <p>¿Quieres vender repuestos en RepuesTop? Crea tu tienda y publica tu inventario.</p>
@@ -117,4 +129,5 @@ export default function HelpSidebar({ currentSlug = null }) {
     </aside>
   );
 }
+
 
