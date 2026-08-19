@@ -22,7 +22,7 @@ export const ROUTES = {
 
 // Pestañas válidas del panel de perfil; cada una es una URL (`/perfil/pedidos`).
 export const PROFILE_TABS = [
-  'resumen', 'pedidos', 'favoritos', 'datos', 'consultas', 'soporte',
+  'resumen', 'pedidos', 'favoritos', 'datos', 'consultas',
   'cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'tienda', 'tienda_datos',
   'anuncios',
 ];
@@ -119,3 +119,4 @@ export function catalogFilterFromParams(searchParams) {
     page: Math.max(1, Number(searchParams.get('pagina') || 1) || 1),
   };
 }
+

@@ -34,6 +34,12 @@ export default function ProfilePage() {
     navigate(profilePath(nextTab));
   }, [navigate]);
 
+  // El centro de ayuda salió del perfil: los enlaces y marcadores viejos a
+  // /perfil/soporte siguen funcionando apuntando a la vista propia.
+  if (tab === 'soporte') {
+    return <Navigate to={ROUTES.support} replace />;
+  }
+
   if (tab === 'direcciones') {
     return <Navigate to={profilePath('resumen')} replace />;
   }
@@ -54,3 +60,4 @@ export default function ProfilePage() {
     </Suspense>
   );
 }
+

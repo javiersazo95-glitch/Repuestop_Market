@@ -25,7 +25,7 @@ const SUPPORT_LINKS = [
   ['Mediación de Conflictos', 'Te ayudamos con tu compra', MessageSquare]
 ];
 
-export default function Footer({ onOpenStores, onOpenCatalog, onOpenAdsWall, onOpenHelp }) {
+export default function Footer({ onOpenStores, onOpenCatalog, onOpenAdsWall, onOpenHelp, onOpenTerms }) {
   const openCatalog = () => onOpenCatalog?.();
 
   return (
@@ -92,7 +92,7 @@ export default function Footer({ onOpenStores, onOpenCatalog, onOpenAdsWall, onO
       <div className="container reference-footer-bottom">
         <p>© 2026 Corebit SpA Chile.<br />Todos los derechos reservados.</p>
         <nav>
-          <button onClick={onOpenHelp}><FileText size={13} /> Términos y Condiciones</button>
+          <button onClick={onOpenTerms || onOpenHelp}><FileText size={13} /> Términos y Condiciones</button>
           <button onClick={onOpenHelp}><ShieldCheck size={13} /> Política de Privacidad</button>
           <button onClick={onOpenHelp}><Award size={13} /> Garantía por Patente</button>
         </nav>
@@ -103,3 +103,4 @@ export default function Footer({ onOpenStores, onOpenCatalog, onOpenAdsWall, onO
     </footer>
   );
 }
+

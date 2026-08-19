@@ -28,7 +28,6 @@ import ProfileSupportPanel from './ProfileSupportPanel';
 import ProfileNotificationsBell from './ProfileNotificationsBell';
 import NewCatalogProductModal from './NewCatalogProductModal';
 import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
-import SupportHelpPanel from './SupportHelpPanel';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
 import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import VehicleBrandLogo from './VehicleBrandLogo';
@@ -37,7 +36,8 @@ import SellerOrdersPanel from './SellerOrdersPanel';
 import BuyerAddressBook from './BuyerAddressBook';
 import AdsManagementSection from './ads/AdsManagementSection';
 import { formatRut, isValidRut, isValidClPhone } from '../services/adapters';
-import { storePath } from '../routes/paths';
+import { useNavigate } from 'react-router-dom';
+import { helpContactPath, ROUTES, storePath } from '../routes/paths';
 
 const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
 const BUYER_PROFILE_COVER_URL = import.meta.env.VITE_BUYER_PROFILE_COVER_URL
@@ -119,7 +119,7 @@ const SELLER_SIDEBAR_GROUPS = [
     title: 'SOPORTE',
     items: [
       { id: 'consultas', label: 'Reportes/Disputa', icon: Scale },
-      { id: 'soporte', label: 'Centro de ayuda', icon: Headphones }
+      { id: 'soporte', label: 'Centro de ayuda', icon: Headphones, href: ROUTES.support }
     ]
   }
 ];
@@ -150,7 +150,7 @@ const BUYER_SIDEBAR_GROUPS = [
     title: 'SOPORTE',
     items: [
       { id: 'consultas', label: 'Reportes/Disputa', icon: Scale },
-      { id: 'soporte', label: 'Centro de ayuda', icon: Headphones }
+      { id: 'soporte', label: 'Centro de ayuda', icon: Headphones, href: ROUTES.support }
     ]
   }
 ];
@@ -241,6 +241,9 @@ function EmptyState({ label }) {
 
 export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange, paymentStatus, paymentOrderId }) {
   const { user, role, logout, updateProfile, refreshProfile, deleteAccount } = useAuth();
+  // El centro de ayuda dejó de ser una pestaña del perfil: vive en /ayuda y se
+  // navega hacia allá desde el sidebar y los accesos rápidos.
+  const navigate = useNavigate();
   const [activeTab, setActiveTabState] = useState(initialTab);
 
   useEffect(() => {
@@ -922,9 +925,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       { id: 'favoritos', tone: 'amber', icon: Heart, title: 'Repuestos favoritos', description: 'Accede a los repuestos que guardaste.', onClick: () => setActiveTab('favoritos') },
       { id: 'datos', tone: 'sky', icon: UserCog, title: 'Mis datos y perfil', description: 'Actualiza tu información y direcciones de envío.', onClick: () => setActiveTab('datos') },
       { id: 'anuncios', tone: 'emerald', icon: Megaphone, title: 'Gestión de anuncios', description: 'Publica tu búsqueda en el Mural de Anuncios.', onClick: () => setActiveTab('anuncios') },
-      { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte de compra.', onClick: () => setActiveTab('soporte') },
+      { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte de compra.', onClick: () => navigate(ROUTES.support) },
     ];
-  }, [isSeller, setActiveTab]);
+  }, [isSeller, setActiveTab, navigate]);
 
   const recentActivities = useMemo(() => {
     const list = [];
@@ -1127,14 +1130,14 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 <div className="sidebar-group-items">
                   {group.items.map((tab) => {
                     const Icon = tab.icon;
-                    const isActive = activeTab === tab.id;
+                    const isActive = !tab.href && activeTab === tab.id;
                     return (
                       <button
                         key={tab.id}
                         type="button"
                         aria-current={isActive ? 'page' : undefined}
                         className={`profile-nav-item ${isSeller ? 'nav-seller' : 'nav-buyer'} ${isActive ? 'active' : ''}`}
-                        onClick={() => setActiveTab(tab.id)}
+                        onClick={() => (tab.href ? navigate(tab.href) : setActiveTab(tab.id))}
                       >
                         <Icon size={17} />
                         <span>{tab.label}</span>
@@ -1347,7 +1350,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                           ? 'Responde rápido a las cotizaciones y mantén tu catálogo actualizado con fotos nítidas para aumentar tus ventas.'
                           : 'Consulta por patente para filtrar repuestos compatibles y pide cotizaciones a varias tiendas antes de comprar.'}
                       </p>
-                      <button type="button" className="tips-widget-link" onClick={() => setActiveTab('soporte')}>
+                      <button type="button" className="tips-widget-link" onClick={() => navigate(ROUTES.support)}>
                         Ver más consejos <ArrowUpRight size={13} />
                       </button>
                     </div>
@@ -1650,10 +1653,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 <ProfileSupportPanel user={user} />
               )}
 
-              {activeTab === 'soporte' && (
-                <SupportHelpPanel user={user} role={role} onViewCases={() => setActiveTab('consultas')} />
-              )}
-
               {(activeTab === 'tienda_datos' || activeTab === 'datos') && (
                 <div className="profile-panel">
                   <div className="profile-panel-header-row">
@@ -1773,7 +1772,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                           </div>
                           <small className="form-helper-text">
                             Para corregir el nombre o RUT de tu tienda, contáctanos desde{' '}
-                            <button type="button" className="form-helper-inline-link" onClick={() => { setIsEditing(false); setActiveTab('soporte'); }}>
+                            <button type="button" className="form-helper-inline-link" onClick={() => { setIsEditing(false); navigate(helpContactPath()); }}>
                               Centro de ayuda
                             </button>.
                           </small>
@@ -2325,3 +2324,4 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     </div>
   );
 }
+

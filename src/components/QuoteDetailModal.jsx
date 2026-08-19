@@ -17,7 +17,7 @@ import {
   QUOTE_VALIDITY_OPTIONS, QUOTE_WARRANTY_OPTIONS,
 } from '../utils/quoteFlow';
 import { buildQuotePdfBlob, quoteDocumentFilename } from '../utils/quoteDocument';
-import { productPath, ROUTES, storePath } from '../routes/paths';
+import { helpCategoryPath, productPath, storePath } from '../routes/paths';
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
@@ -185,7 +185,7 @@ export default function QuoteDetailModal({
   };
   const openHelp = () => {
     setOptionsOpen(false);
-    navigate(ROUTES.support);
+    navigate(helpCategoryPath('cotizaciones'));
   };
 
   const submitReport = async (event) => {
@@ -496,3 +496,4 @@ export default function QuoteDetailModal({
     </div>
   );
 }
+
