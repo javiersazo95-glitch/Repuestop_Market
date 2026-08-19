@@ -758,44 +758,44 @@ input, select, textarea {
 }
 
 /* ===========================================================================
-   SELLER DASHBOARD — desktop layout aligned with the provider proposal
-   These overrides are deliberately scoped to SELLER. Buyer views retain their
-   current hierarchy and components.
+   PROFILE DASHBOARD — layout denso compartido por comprador y proveedor
+   Este bloque nacio como rediseño del panel de proveedor y hoy aplica a los dos
+   roles: son reglas de layout y densidad, no de rol. Lo que si depende del rol
+   va marcado abajo con .seller-profile-dashboard / .buyer-profile-dashboard.
    ========================================================================== */
-.seller-profile-dashboard {
+.profile-dashboard {
   background: #f8fafc;
 }
 
-.seller-profile-dashboard .profile-topbar {
+.profile-dashboard .profile-topbar {
   background: rgba(255, 255, 255, .96);
 }
 
-.seller-profile-dashboard .profile-topbar-inner {
+.profile-dashboard .profile-topbar-inner {
   max-width: none;
   min-height: 64px;
   padding: 10px 28px;
 }
 
-.seller-profile-dashboard .btn-back-to-store,
-.seller-profile-dashboard .btn-visit-my-store {
+.profile-dashboard .btn-back-to-store,
+.profile-dashboard .btn-visit-my-store {
   min-height: 38px;
   border-radius: 8px;
   padding: 8px 15px;
   font-size: 12px;
 }
 
-.seller-profile-dashboard .btn-visit-my-store {
+.profile-dashboard .btn-visit-my-store {
   border-color: #0875eb;
   color: #fff;
   background: #0875eb;
   box-shadow: 0 5px 12px rgba(8, 117, 235, .18);
 }
 
-.seller-profile-dashboard .btn-visit-my-store:hover { background: #0665ca; }
-.seller-profile-dashboard .btn-topbar-logout { display: none; }
-.seller-profile-dashboard .profile-role-chip { box-shadow: none; background: transparent; padding: 5px 0; }
+.profile-dashboard .btn-visit-my-store:hover { background: #0665ca; }
+.profile-dashboard .profile-role-chip { box-shadow: none; background: transparent; padding: 5px 0; }
 
-.seller-profile-dashboard .facebook-cover-hero-container {
+.profile-dashboard .facebook-cover-hero-container {
   height: 202px;
   margin: 0;
   border: 0;
@@ -805,14 +805,12 @@ input, select, textarea {
   position: relative;
 }
 
-.seller-profile-dashboard .facebook-cover-banner { height: 202px; }
-.seller-profile-dashboard .facebook-cover-banner::before {
+.profile-dashboard .facebook-cover-banner { height: 202px; }
+.profile-dashboard .facebook-cover-banner::before {
   background: linear-gradient(90deg, rgba(5, 21, 42, .68), rgba(5, 21, 42, .20) 60%, rgba(5, 21, 42, .48));
 }
 
-.seller-profile-dashboard .btn-change-cover-photo { display: none; }
-
-.seller-profile-dashboard .facebook-hero-bar {
+.profile-dashboard .facebook-hero-bar {
   position: absolute;
   z-index: 2;
   inset: 0;
@@ -824,28 +822,33 @@ input, select, textarea {
   gap: 20px;
 }
 
-.seller-profile-dashboard .facebook-avatar-wrapper { margin: 0; }
-.seller-profile-dashboard .facebook-avatar-circle { width: 114px; height: 114px; border-width: 4px; font-size: 34px; }
+.profile-dashboard .facebook-avatar-wrapper { margin: 0; }
+.profile-dashboard .facebook-avatar-circle { width: 114px; height: 114px; border-width: 4px; font-size: 34px; }
 .seller-profile-dashboard .btn-change-avatar-camera { display: none; }
+/* El comprador cambia su foto solo desde aca, asi que la camara se queda; se
+   ajusta al avatar de 114px del hero. */
+.buyer-profile-dashboard .btn-change-avatar-camera { width: 30px; height: 30px; bottom: 2px; right: 2px; }
 
-.seller-profile-dashboard .facebook-hero-info { padding: 0; gap: 7px; }
-.seller-profile-dashboard .facebook-hero-title-row { gap: 10px; }
-.seller-profile-dashboard .facebook-hero-name { color: #fff !important; font-size: 28px; letter-spacing: -.5px; }
-.seller-profile-dashboard .facebook-hero-email { color: rgba(255, 255, 255, .86) !important; font-size: 13px; }
-.seller-profile-dashboard .profile-hero-tags { display: flex; gap: 8px; }
-.seller-profile-dashboard .tag-contrast { color: #9af4bb !important; background: rgba(4, 90, 43, .55) !important; border-color: rgba(74, 222, 128, .55) !important; }
-.seller-profile-dashboard .founder-tag-contrast { color: #ffd264 !important; background: rgba(42, 28, 4, .68) !important; border-color: rgba(250, 204, 21, .6) !important; }
-.seller-profile-dashboard .store-status-chip { color: #9af4bb; }
+.profile-dashboard .facebook-hero-info { padding: 0; gap: 7px; }
+.profile-dashboard .facebook-hero-title-row { gap: 10px; }
+.profile-dashboard .facebook-hero-name { color: #fff !important; font-size: 28px; letter-spacing: -.5px; }
+.profile-dashboard .facebook-hero-email { color: rgba(255, 255, 255, .86) !important; font-size: 13px; }
+.profile-dashboard .profile-hero-tags { display: flex; gap: 8px; }
+.profile-dashboard .tag-contrast { color: #9af4bb !important; background: rgba(4, 90, 43, .55) !important; border-color: rgba(74, 222, 128, .55) !important; }
+.profile-dashboard .founder-tag-contrast { color: #ffd264 !important; background: rgba(42, 28, 4, .68) !important; border-color: rgba(250, 204, 21, .6) !important; }
+.profile-dashboard .store-status-chip { color: #9af4bb; }
 
-.seller-profile-dashboard .btn-withdraw-money-hero {
+.profile-dashboard .btn-withdraw-money-hero,
+.profile-dashboard .btn-hero-cta {
   margin-left: auto;
   background: #0875eb;
   border-radius: 9px;
   box-shadow: 0 8px 18px rgba(0, 58, 132, .28);
 }
-.seller-profile-dashboard .btn-withdraw-money-hero:hover { background: #0665ca; }
+.profile-dashboard .btn-withdraw-money-hero:hover,
+.profile-dashboard .btn-hero-cta:hover { background: #0665ca; }
 
-.seller-profile-dashboard .profile-body {
+.profile-dashboard .profile-body {
   max-width: none;
   margin: 0;
   padding: 24px 28px 54px;
@@ -853,7 +856,7 @@ input, select, textarea {
   gap: 38px;
 }
 
-.seller-profile-dashboard .profile-sidebar {
+.profile-dashboard .profile-sidebar {
   position: sticky;
   top: 82px;
   align-self: start;
@@ -863,76 +866,78 @@ input, select, textarea {
   box-shadow: none;
   background: transparent;
 }
-.seller-profile-dashboard .sidebar-mini-profile { display: none; }
-.seller-profile-dashboard .sidebar-nav-list { gap: 5px; }
-.seller-profile-dashboard .sidebar-nav-group { gap: 5px; margin: 0 0 12px; }
-.seller-profile-dashboard .sidebar-group-title { padding: 9px 14px 3px; font-size: 10px; }
-.seller-profile-dashboard .profile-nav-item { min-height: 38px; padding: 9px 13px; border-radius: 8px; font-size: 12px; font-weight: 650; }
-.seller-profile-dashboard .profile-nav-item.nav-seller.active { color: #0875eb; background: #eaf3ff; box-shadow: none; }
-.seller-profile-dashboard .profile-nav-item:hover { color: #0875eb; background: #f1f7ff; }
-.seller-profile-dashboard .profile-nav-delete { margin: 8px 0 0; padding-top: 14px; }
+.profile-dashboard .sidebar-mini-profile { display: none; }
+.profile-dashboard .sidebar-nav-list { gap: 5px; }
+.profile-dashboard .sidebar-nav-group { gap: 5px; margin: 0 0 12px; }
+.profile-dashboard .sidebar-group-title { padding: 9px 14px 3px; font-size: 10px; }
+.profile-dashboard .profile-nav-item { min-height: 38px; padding: 9px 13px; border-radius: 8px; font-size: 12px; font-weight: 650; }
+.profile-dashboard .profile-nav-item.nav-buyer.active,
+.profile-dashboard .profile-nav-item.nav-seller.active { color: #0875eb; background: #eaf3ff; box-shadow: none; }
+.profile-dashboard .profile-nav-item:hover { color: #0875eb; background: #f1f7ff; }
+.profile-dashboard .profile-nav-delete { margin: 8px 0 0; padding-top: 14px; }
 
-.seller-profile-dashboard .profile-overview-grid { grid-template-columns: minmax(0, 1fr) 266px; gap: 28px; }
-.seller-profile-dashboard .profile-overview-main-col { gap: 16px; }
-.seller-profile-dashboard .profile-overview-side-col { gap: 16px; }
-.seller-profile-dashboard .profile-stats-grid-v2 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
-.seller-profile-dashboard .profile-stat-card-v2 { min-height: 134px; padding: 17px; border-radius: 11px; }
-.seller-profile-dashboard .stat-v2-label { color: #1f3653; font-size: 11px; font-weight: 750; }
-.seller-profile-dashboard .stat-v2-val { font-size: 23px; }
-.seller-profile-dashboard .stat-v2-action { margin-top: auto; font-size: 11px; }
-.seller-profile-dashboard .stat-v2-icon { width: 37px; height: 37px; border-radius: 10px; }
+.profile-dashboard .profile-overview-grid { grid-template-columns: minmax(0, 1fr) 266px; gap: 28px; }
+.profile-dashboard .profile-overview-main-col { gap: 16px; }
+.profile-dashboard .profile-overview-side-col { gap: 16px; }
+.profile-dashboard .profile-stats-grid-v2 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.profile-dashboard .profile-stat-card-v2 { min-height: 134px; padding: 17px; border-radius: 11px; }
+.profile-dashboard .stat-v2-label { color: #1f3653; font-size: 11px; font-weight: 750; }
+.profile-dashboard .stat-v2-val { font-size: 23px; }
+.profile-dashboard .stat-v2-action { margin-top: auto; font-size: 11px; }
+.profile-dashboard .stat-v2-icon { width: 37px; height: 37px; border-radius: 10px; }
 
-.seller-profile-dashboard .profile-panel-clean,
-.seller-profile-dashboard .overview-widget-card { border-radius: 11px; padding: 18px; box-shadow: 0 2px 10px rgba(15, 23, 42, .035); }
-.seller-profile-dashboard .profile-section-title { margin-bottom: 15px; font-size: 14px; }
-.seller-profile-dashboard .quick-actions-grid-v2 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; }
-.seller-profile-dashboard .quick-action-card-v2 { min-height: 78px; padding: 13px; gap: 11px; border-radius: 10px; background: #fff; }
-.seller-profile-dashboard .action-v2-icon { width: 36px; height: 36px; border-radius: 10px; }
-.seller-profile-dashboard .action-v2-body strong { font-size: 11.5px; }
-.seller-profile-dashboard .action-v2-desc { font-size: 10px; }
-.seller-profile-dashboard .activity-feed-table { border-radius: 10px; }
-.seller-profile-dashboard .activity-feed-header,
-.seller-profile-dashboard .activity-feed-row { grid-template-columns: minmax(165px, 1fr) minmax(170px, 1.25fr) minmax(92px, .72fr); padding: 10px 13px; font-size: 11px; }
-.seller-profile-dashboard .activity-type-col strong,
-.seller-profile-dashboard .activity-detail-col { font-size: 11px; }
-.seller-profile-dashboard .activity-date-col { font-size: 10px; }
-.seller-profile-dashboard .overview-widget-card { padding: 16px; }
-.seller-profile-dashboard .widget-header-row h3 { font-size: 12px; }
-.seller-profile-dashboard .onboarding-step-row { font-size: 10.5px; padding: 3px 1px; }
-.seller-profile-dashboard .tips-widget-text { font-size: 10.5px; }
+.profile-dashboard .profile-panel-clean,
+.profile-dashboard .overview-widget-card { border-radius: 11px; padding: 18px; box-shadow: 0 2px 10px rgba(15, 23, 42, .035); }
+.profile-dashboard .profile-section-title { margin-bottom: 15px; font-size: 14px; }
+.profile-dashboard .quick-actions-grid-v2 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; }
+.profile-dashboard .quick-action-card-v2 { min-height: 78px; padding: 13px; gap: 11px; border-radius: 10px; background: #fff; }
+.profile-dashboard .action-v2-icon { width: 36px; height: 36px; border-radius: 10px; }
+.profile-dashboard .action-v2-body strong { font-size: 11.5px; }
+.profile-dashboard .action-v2-desc { font-size: 10px; }
+.profile-dashboard .activity-feed-table { border-radius: 10px; }
+.profile-dashboard .activity-feed-header,
+.profile-dashboard .activity-feed-row { grid-template-columns: minmax(165px, 1fr) minmax(170px, 1.25fr) minmax(92px, .72fr); padding: 10px 13px; font-size: 11px; }
+.profile-dashboard .activity-type-col strong,
+.profile-dashboard .activity-detail-col { font-size: 11px; }
+.profile-dashboard .activity-date-col { font-size: 10px; }
+.profile-dashboard .overview-widget-card { padding: 16px; }
+.profile-dashboard .widget-header-row h3 { font-size: 12px; }
+.profile-dashboard .onboarding-step-row { font-size: 10.5px; padding: 3px 1px; }
+.profile-dashboard .tips-widget-text { font-size: 10.5px; }
 
 @media (max-width: 1180px) {
-  .seller-profile-dashboard .profile-stats-grid-v2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .seller-profile-dashboard .quick-actions-grid-v2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .seller-profile-dashboard .profile-overview-grid { grid-template-columns: minmax(0, 1fr) 250px; gap: 18px; }
+  .profile-dashboard .profile-stats-grid-v2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .profile-dashboard .quick-actions-grid-v2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .profile-dashboard .profile-overview-grid { grid-template-columns: minmax(0, 1fr) 250px; gap: 18px; }
 }
 
 @media (max-width: 900px) {
-  .seller-profile-dashboard .profile-body { grid-template-columns: 1fr; padding: 18px; }
-  .seller-profile-dashboard .profile-sidebar { position: static; padding: 0; }
-  .seller-profile-dashboard .sidebar-nav-list { overflow-x: auto; flex-direction: row; }
-  .seller-profile-dashboard .sidebar-nav-group { min-width: max-content; }
-  .seller-profile-dashboard .profile-nav-delete { min-width: max-content; border-top: 0; padding-top: 9px; }
-  .seller-profile-dashboard .profile-overview-grid { grid-template-columns: 1fr; }
+  .profile-dashboard .profile-body { grid-template-columns: 1fr; padding: 18px; }
+  .profile-dashboard .profile-sidebar { position: static; padding: 0; }
+  .profile-dashboard .sidebar-nav-list { overflow-x: auto; flex-direction: row; }
+  .profile-dashboard .sidebar-nav-group { min-width: max-content; }
+  .profile-dashboard .profile-nav-delete { min-width: max-content; border-top: 0; padding-top: 9px; }
+  .profile-dashboard .profile-overview-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
-  .seller-profile-dashboard .profile-topbar-inner { padding: 9px 14px; }
-  .seller-profile-dashboard .profile-logo-group { display: none; }
-  .seller-profile-dashboard .profile-topbar-actions { gap: 6px; }
-  .seller-profile-dashboard .btn-back-to-store span,
-  .seller-profile-dashboard .btn-visit-my-store span { display: none; }
-  .seller-profile-dashboard .facebook-cover-hero-container,
-  .seller-profile-dashboard .facebook-cover-banner { height: 220px; }
-  .seller-profile-dashboard .facebook-hero-bar { padding: 18px; align-items: flex-end; gap: 12px; }
-  .seller-profile-dashboard .facebook-avatar-circle { width: 72px; height: 72px; font-size: 22px; }
-  .seller-profile-dashboard .facebook-hero-name { font-size: 21px; }
-  .seller-profile-dashboard .facebook-hero-email { font-size: 11px; }
-  .seller-profile-dashboard .store-status-chip { font-size: 9px; }
-  .seller-profile-dashboard .btn-withdraw-money-hero { display: none; }
-  .seller-profile-dashboard .founder-tag-contrast { display: none; }
-  .seller-profile-dashboard .profile-stats-grid-v2,
-  .seller-profile-dashboard .quick-actions-grid-v2 { grid-template-columns: 1fr; }
+  .profile-dashboard .profile-topbar-inner { padding: 9px 14px; }
+  .profile-dashboard .profile-logo-group { display: none; }
+  .profile-dashboard .profile-topbar-actions { gap: 6px; }
+  .profile-dashboard .btn-back-to-store span,
+  .profile-dashboard .btn-visit-my-store span { display: none; }
+  .profile-dashboard .facebook-cover-hero-container,
+  .profile-dashboard .facebook-cover-banner { height: 220px; }
+  .profile-dashboard .facebook-hero-bar { padding: 18px; align-items: flex-end; gap: 12px; }
+  .profile-dashboard .facebook-avatar-circle { width: 72px; height: 72px; font-size: 22px; }
+  .profile-dashboard .facebook-hero-name { font-size: 21px; }
+  .profile-dashboard .facebook-hero-email { font-size: 11px; }
+  .profile-dashboard .store-status-chip { font-size: 9px; }
+  .profile-dashboard .btn-withdraw-money-hero,
+  .profile-dashboard .btn-hero-cta { display: none; }
+  .profile-dashboard .founder-tag-contrast { display: none; }
+  .profile-dashboard .profile-stats-grid-v2,
+  .profile-dashboard .quick-actions-grid-v2 { grid-template-columns: 1fr; }
 }
 
 .feature-info-card {
@@ -2756,7 +2761,6 @@ input, select, textarea {
    ========================================================================== */
 .profile-dashboard {
   min-height: 100vh;
-  background: #f4f6fb;
 }
 
 .profile-topbar {
@@ -6700,7 +6704,10 @@ input, select, textarea {
   transform: scale(1.1);
 }
 
-.btn-withdraw-money-hero {
+/* CTA a la derecha del hero: "Retirar dinero" en proveedor, "Buscar repuestos"
+   en comprador. Misma caja para ambos; el color lo fija el bloque compartido. */
+.btn-withdraw-money-hero,
+.btn-hero-cta {
   align-self: center;
   flex-shrink: 0;
   display: flex;
@@ -6718,7 +6725,8 @@ input, select, textarea {
   transition: all 0.2s ease;
 }
 
-.btn-withdraw-money-hero:hover {
+.btn-withdraw-money-hero:hover,
+.btn-hero-cta:hover {
   transform: translateY(-1px);
   box-shadow: 0 8px 20px rgba(4, 120, 87, 0.36);
 }
@@ -13939,13 +13947,6 @@ input, select, textarea {
   .seller-profile-dashboard .seller-orders-summary { grid-template-columns: 1fr; gap: 15px; }
   .seller-profile-dashboard .seller-orders-summary > header { padding: 0 0 12px; border-right: 0; border-bottom: 1px solid #e6eef6; }
 }
-
-/* Seller provider dashboard: final scoped overrides (kept last for cascade). */
-.seller-profile-dashboard{background:#f8fafc}.seller-profile-dashboard .profile-topbar{background:rgba(255,255,255,.96)}.seller-profile-dashboard .profile-topbar-inner{max-width:none;min-height:64px;padding:10px 28px}.seller-profile-dashboard .btn-back-to-store,.seller-profile-dashboard .btn-visit-my-store{min-height:38px;border-radius:8px;padding:8px 15px;font-size:12px}.seller-profile-dashboard .btn-visit-my-store{border-color:#0875eb;color:#fff;background:#0875eb;box-shadow:0 5px 12px rgba(8,117,235,.18)}.seller-profile-dashboard .btn-visit-my-store:hover{background:#0665ca}.seller-profile-dashboard .btn-topbar-logout{display:none}.seller-profile-dashboard .profile-role-chip{box-shadow:none;background:transparent;padding:5px 0}
-.seller-profile-dashboard .facebook-cover-hero-container{height:202px;margin:0;border:0;border-radius:0;box-shadow:none;overflow:visible;position:relative}.seller-profile-dashboard .facebook-cover-banner{height:202px}.seller-profile-dashboard .facebook-cover-banner::before{background:linear-gradient(90deg,rgba(5,21,42,.68),rgba(5,21,42,.2) 60%,rgba(5,21,42,.48))}.seller-profile-dashboard .btn-change-cover-photo,.seller-profile-dashboard .btn-change-avatar-camera{display:none}.seller-profile-dashboard .facebook-hero-bar{position:absolute;z-index:2;inset:0;max-width:1440px;margin:auto;padding:0 42px;background:transparent;align-items:center;gap:20px}.seller-profile-dashboard .facebook-avatar-wrapper{margin:0}.seller-profile-dashboard .facebook-avatar-circle{width:114px;height:114px;border-width:4px;font-size:34px}.seller-profile-dashboard .facebook-hero-info{padding:0;gap:7px}.seller-profile-dashboard .facebook-hero-title-row{gap:10px}.seller-profile-dashboard .facebook-hero-name{color:#fff!important;font-size:28px;letter-spacing:-.5px}.seller-profile-dashboard .facebook-hero-email{color:rgba(255,255,255,.86)!important;font-size:13px}.seller-profile-dashboard .profile-hero-tags{display:flex;gap:8px}.seller-profile-dashboard .tag-contrast{color:#9af4bb!important;background:rgba(4,90,43,.55)!important;border-color:rgba(74,222,128,.55)!important}.seller-profile-dashboard .founder-tag-contrast{color:#ffd264!important;background:rgba(42,28,4,.68)!important;border-color:rgba(250,204,21,.6)!important}.seller-profile-dashboard .store-status-chip{color:#9af4bb}.seller-profile-dashboard .btn-withdraw-money-hero{margin-left:auto;background:#0875eb;border-radius:9px;box-shadow:0 8px 18px rgba(0,58,132,.28)}.seller-profile-dashboard .btn-withdraw-money-hero:hover{background:#0665ca}
-.seller-profile-dashboard .profile-body{max-width:none;margin:0;padding:24px 28px 54px;grid-template-columns:250px minmax(0,1fr);gap:38px}.seller-profile-dashboard .profile-sidebar{position:sticky;top:82px;align-self:start;padding:0 10px 12px 0;border:0;border-radius:0;box-shadow:none;background:transparent}.seller-profile-dashboard .sidebar-mini-profile{display:none}.seller-profile-dashboard .sidebar-nav-list{gap:5px}.seller-profile-dashboard .sidebar-nav-group{gap:5px;margin:0 0 12px}.seller-profile-dashboard .sidebar-group-title{padding:9px 14px 3px;font-size:10px}.seller-profile-dashboard .profile-nav-item{min-height:38px;padding:9px 13px;border-radius:8px;font-size:12px;font-weight:650}.seller-profile-dashboard .profile-nav-item.nav-seller.active{color:#0875eb;background:#eaf3ff;box-shadow:none}.seller-profile-dashboard .profile-nav-item:hover{color:#0875eb;background:#f1f7ff}.seller-profile-dashboard .profile-nav-delete{margin:8px 0 0;padding-top:14px}
-.seller-profile-dashboard .profile-overview-grid{grid-template-columns:minmax(0,1fr) 266px;gap:28px}.seller-profile-dashboard .profile-overview-main-col{gap:16px}.seller-profile-dashboard .profile-overview-side-col{gap:16px}.seller-profile-dashboard .profile-stats-grid-v2{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.seller-profile-dashboard .profile-stat-card-v2{min-height:134px;padding:17px;border-radius:11px}.seller-profile-dashboard .stat-v2-label{color:#1f3653;font-size:11px;font-weight:750}.seller-profile-dashboard .stat-v2-val{font-size:23px}.seller-profile-dashboard .stat-v2-action{margin-top:auto;font-size:11px}.seller-profile-dashboard .stat-v2-icon{width:37px;height:37px;border-radius:10px}.seller-profile-dashboard .profile-panel-clean,.seller-profile-dashboard .overview-widget-card{border-radius:11px;padding:18px;box-shadow:0 2px 10px rgba(15,23,42,.035)}.seller-profile-dashboard .profile-section-title{margin-bottom:15px;font-size:14px}.seller-profile-dashboard .quick-actions-grid-v2{grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}.seller-profile-dashboard .quick-action-card-v2{min-height:78px;padding:13px;gap:11px;border-radius:10px;background:#fff}.seller-profile-dashboard .action-v2-icon{width:36px;height:36px;border-radius:10px}.seller-profile-dashboard .action-v2-body strong{font-size:11.5px}.seller-profile-dashboard .action-v2-desc{font-size:10px}.seller-profile-dashboard .activity-feed-table{border-radius:10px}.seller-profile-dashboard .activity-feed-header,.seller-profile-dashboard .activity-feed-row{grid-template-columns:minmax(165px,1fr) minmax(170px,1.25fr) minmax(92px,.72fr);padding:10px 13px;font-size:11px}.seller-profile-dashboard .activity-type-col strong,.seller-profile-dashboard .activity-detail-col{font-size:11px}.seller-profile-dashboard .activity-date-col{font-size:10px}.seller-profile-dashboard .overview-widget-card{padding:16px}.seller-profile-dashboard .widget-header-row h3{font-size:12px}.seller-profile-dashboard .onboarding-step-row{font-size:10.5px;padding:3px 1px}.seller-profile-dashboard .tips-widget-text{font-size:10.5px}
-@media (max-width:1180px){.seller-profile-dashboard .profile-stats-grid-v2{grid-template-columns:repeat(2,minmax(0,1fr))}.seller-profile-dashboard .quick-actions-grid-v2{grid-template-columns:repeat(2,minmax(0,1fr))}.seller-profile-dashboard .profile-overview-grid{grid-template-columns:minmax(0,1fr) 250px;gap:18px}}@media (max-width:900px){.seller-profile-dashboard .profile-body{grid-template-columns:1fr;padding:18px}.seller-profile-dashboard .profile-sidebar{position:static;padding:0}.seller-profile-dashboard .sidebar-nav-list{overflow-x:auto;flex-direction:row}.seller-profile-dashboard .sidebar-nav-group{min-width:max-content}.seller-profile-dashboard .profile-nav-delete{min-width:max-content;border-top:0;padding-top:9px}.seller-profile-dashboard .profile-overview-grid{grid-template-columns:1fr}}@media (max-width:640px){.seller-profile-dashboard .profile-topbar-inner{padding:9px 14px}.seller-profile-dashboard .profile-logo-group{display:none}.seller-profile-dashboard .profile-topbar-actions{gap:6px}.seller-profile-dashboard .btn-back-to-store span,.seller-profile-dashboard .btn-visit-my-store span{display:none}.seller-profile-dashboard .facebook-cover-hero-container,.seller-profile-dashboard .facebook-cover-banner{height:220px}.seller-profile-dashboard .facebook-hero-bar{padding:18px;align-items:flex-end;gap:12px}.seller-profile-dashboard .facebook-avatar-circle{width:72px;height:72px;font-size:22px}.seller-profile-dashboard .facebook-hero-name{font-size:21px}.seller-profile-dashboard .facebook-hero-email{font-size:11px}.seller-profile-dashboard .store-status-chip{font-size:9px}.seller-profile-dashboard .btn-withdraw-money-hero,.seller-profile-dashboard .founder-tag-contrast{display:none}.seller-profile-dashboard .profile-stats-grid-v2,.seller-profile-dashboard .quick-actions-grid-v2{grid-template-columns:1fr}}
 
 
 

@@ -1103,6 +1103,18 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               <span>Retirar dinero</span>
             </button>
           )}
+
+          {!isSeller && activeTab === 'resumen' && (
+            <button
+              type="button"
+              className="btn-hero-cta"
+              onClick={() => navigate(ROUTES.catalog)}
+              title="Ir al catálogo de repuestos"
+            >
+              <Search size={16} />
+              <span>Buscar repuestos</span>
+            </button>
+          )}
         </div>
       </div>
 
