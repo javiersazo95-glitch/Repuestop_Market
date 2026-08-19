@@ -16,6 +16,20 @@ export const HELP_ROLES = { BUYER: 'COMPRADOR', SELLER: 'VENDEDOR', GUEST: 'INVI
 
 const ALL_ROLES = [HELP_ROLES.BUYER, HELP_ROLES.SELLER, HELP_ROLES.GUEST];
 
+/**
+ * Temas del formulario de contacto por rol. Los ids son los que el backend ya
+ * clasifica: cambiarlos rompe el filtrado del backoffice. Viven aquí y no en el
+ * formulario para que la vista de contacto pueda leer la etiqueta del tema.
+ */
+export const CONTACT_TOPICS = {
+  COMPRADOR: [
+    ['Pedido o despacho', 'buyer-orders'], ['Pago o carrito', 'buyer-payment'], ['Cotización', 'buyer-quote'], ['Cuenta o perfil', 'general'],
+  ],
+  VENDEDOR: [
+    ['Pedidos o envío', 'seller-orders'], ['Productos', 'seller-products'], ['Mensajes o cotización', 'seller-quote'], ['Cuenta bloqueada', 'blocked-account'],
+  ],
+};
+
 export const HELP_CATEGORIES = [
   {
     slug: 'pedidos',
@@ -184,4 +198,5 @@ export function highlightedFaqs(reportType, limit = 5) {
     .flatMap((category) => faqsForRole(category, reportType).map((faq) => ({ ...faq, categoria: category.slug })))
     .slice(0, limit);
 }
+
 
