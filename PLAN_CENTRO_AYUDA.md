@@ -6,11 +6,15 @@ categoría y el formulario de consulta/reclamo en su propia ruta.
 
 Fecha de definición: 2026-08-19. Rama: `main`.
 
-**Estado: las 6 fases están implementadas** (commits `6f7ff48`, `984695d`,
+**Estado: cerrado.** Las 6 fases están implementadas (commits `6f7ff48`, `984695d`,
 `48b2931`, `baa6169`, `bcd9f30` y el de estilos). Queda pendiente solo la
-redacción de contenido: `tienda` y `seguridad` no tienen FAQ y por eso no
-aparecen como tarjeta; `politicas` tiene una sola. Ampliarlas es editar
-`src/data/helpContent.js`, sin tocar código.
+y después se sumaron: las 36 FAQ de las 7 categorías, la ampliación de los temas
+de reporte (9 para comprador, 11 para vendedor, con su `CategoriaTicket` real),
+el índice `/ayuda/preguntas-frecuentes` y las páginas legales `/terminos` y
+`/privacidad`.
+
+Pendiente fuera de código: revisión legal de `src/data/legalTexts.js` (las
+adaptaciones a web están marcadas en la cabecera del archivo).
 
 ---
 
