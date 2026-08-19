@@ -6,7 +6,7 @@ import HelpSidebar from '../../components/help/HelpSidebar';
 import { helpIcon } from '../../components/help/helpIcons';
 import { useAuth } from '../../context/AuthContext';
 import { getCategoriesForRole, highlightedFaqs, resolveReportType } from '../../data/helpContent';
-import { helpCategoryPath } from '../../routes/paths';
+import { ROUTES, helpCategoryPath } from '../../routes/paths';
 
 /** Portada del centro de ayuda: accesos por categoría y preguntas destacadas. */
 export default function HelpHomeView() {
@@ -14,7 +14,6 @@ export default function HelpHomeView() {
   const reportType = resolveReportType(role, user);
   const categories = getCategoriesForRole(reportType);
   const destacadas = highlightedFaqs(reportType);
-  const primeraCategoria = categories[0];
 
   return (
     <>
@@ -50,11 +49,9 @@ export default function HelpHomeView() {
           <section className="help-section">
             <div className="help-section-head">
               <h2>Preguntas frecuentes</h2>
-              {primeraCategoria && (
-                <Link className="help-section-link" to={helpCategoryPath(primeraCategoria.slug)}>
-                  Ver todas <ChevronRight size={14} />
-                </Link>
-              )}
+              <Link className="help-section-link" to={ROUTES.helpAllFaqs}>
+                Ver todas <ChevronRight size={14} />
+              </Link>
             </div>
             <HelpFaqAccordion faqs={destacadas} defaultOpen={-1} />
           </section>
@@ -65,4 +62,5 @@ export default function HelpHomeView() {
     </>
   );
 }
+
 

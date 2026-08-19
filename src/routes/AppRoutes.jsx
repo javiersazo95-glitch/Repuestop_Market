@@ -17,6 +17,7 @@ const HelpCenterPage = lazy(() => import('../pages/HelpCenterPage'));
 const HelpHomeView = lazy(() => import('../pages/help/HelpHomeView'));
 const HelpCategoryView = lazy(() => import('../pages/help/HelpCategoryView'));
 const HelpContactView = lazy(() => import('../pages/help/HelpContactView'));
+const HelpAllFaqsView = lazy(() => import('../pages/help/HelpAllFaqsView'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
 const AdsWallPage = lazy(() => import('../pages/AdsWallPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
@@ -53,6 +54,7 @@ export default function AppRoutes() {
             <Route path={ROUTES.support} element={<HelpCenterPage />}>
               <Route index element={<HelpHomeView />} />
               <Route path="contacto" element={<HelpContactView />} />
+              <Route path="preguntas-frecuentes" element={<HelpAllFaqsView />} />
               <Route path=":categoria" element={<HelpCategoryView />} />
             </Route>
 
@@ -74,3 +76,4 @@ export default function AppRoutes() {
     </>
   );
 }
+
