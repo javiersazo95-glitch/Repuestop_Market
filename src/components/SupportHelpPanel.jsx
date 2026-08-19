@@ -126,7 +126,10 @@ export default function SupportHelpPanel({ user, role, onViewCases, standalone =
           nombreReportante: user?.userName || user?.nombre || user?.storeName || 'Usuario',
           tipoReportante: reportType,
           categoria: topic === 'seller-products' || topic === 'buyer-payment' ? 'FALLA_TECNICA' : 'SOLICITUD_AYUDA',
-          plataforma: 'APP_MOBILE',
+          // Valor real del enum PlataformaTicket del backend (no una copia del
+          // valor que usa la app móvil): así el backoffice etiqueta y filtra
+          // correctamente los tickets creados desde la web como "Sitio Web".
+          plataforma: 'SITIO_WEB',
           motivo: finalSubject,
           detalle: detail.trim(),
           sellerId: user?.sellerId ? Number(user.sellerId) : undefined,

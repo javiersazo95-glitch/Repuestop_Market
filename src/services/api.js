@@ -860,6 +860,54 @@ export async function createOrderClaimApi(userId, orderId, claim) {
   });
 }
 
+// Reportes y disputas reales del usuario (antes se adivinaban filtrando texto
+// libre de los tickets de soporte / el estado del pedido; ver ProfileSupportPanel).
+export async function getMyReportsApi(userId) {
+  return fetchApi(`/usuarios/${userId}/reportes/mios`, { method: 'GET' });
+}
+
+export async function getMyMediationsApi(userId) {
+  return fetchApi(`/usuarios/${userId}/mediaciones/mias`, { method: 'GET' });
+}
+
+/** Reporta a la otra persona de una conversación (chat de cotización). */
+export async function reportConversationApi(conversacionId, { motivo, descripcion }) {
+  return fetchApi(`/conversaciones/${conversacionId}/reportar`, {
+    method: 'POST',
+    body: JSON.stringify({ motivo, descripcion }),
+  });
+}
+
+// Chat de mediación de un pedido (Fase 6a): reusa el mismo endpoint que ya
+// consume la app móvil, no hay nada nuevo del lado del backend.
+export async function getMediationChatApi(pedidoId) {
+  return fetchApi(`/pedidos/${pedidoId}/mediacion-chat`, { method: 'GET' });
+}
+
+export async function escalateMediationApi(pedidoId, { motivo, descripcion, imagenes }) {
+  const formData = new FormData();
+  formData.append('motivo', motivo);
+  formData.append('descripcion', descripcion);
+  (imagenes || []).forEach((file) => formData.append('imagenes', file));
+  // Timeout mas largo que el default de fetchApi (15s): son varias imagenes.
+  return fetchApi(`/pedidos/${pedidoId}/mediacion-escalar`, {
+    method: 'POST',
+    body: formData,
+    signal: AbortSignal.timeout(30000),
+  });
+}
+
+export async function resolveMediationApi(pedidoId, { motivoResolucion, evidencias }) {
+  const formData = new FormData();
+  formData.append('motivoResolucion', motivoResolucion);
+  (evidencias || []).forEach((file) => formData.append('evidencias', file));
+  return fetchApi(`/pedidos/${pedidoId}/mediacion-resolver`, {
+    method: 'POST',
+    body: formData,
+    signal: AbortSignal.timeout(30000),
+  });
+}
+
 export async function getNotificationsApi(userId) {
   return fetchApi(`/usuarios/${userId}/notificaciones`, { method: 'GET' });
 }

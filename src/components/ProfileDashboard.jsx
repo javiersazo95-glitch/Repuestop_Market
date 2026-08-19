@@ -1647,7 +1647,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
 
               {activeTab === 'consultas' && (
-                <ProfileSupportPanel user={user} orders={orders || []} isSeller={isSeller} />
+                <ProfileSupportPanel user={user} />
               )}
 
               {activeTab === 'soporte' && (

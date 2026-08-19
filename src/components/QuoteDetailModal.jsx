@@ -8,8 +8,8 @@ import {
 } from 'lucide-react';
 import RepuesTopLogo from './RepuesTopLogo';
 import {
-  checkoutConversationQuoteApi, createSupportTicketApi, getAddressesApi, getConversationMessagesApi,
-  getConversationQuoteApi, markConversationReadApi, resolveMediaUrl, sendConversationMessageApi,
+  checkoutConversationQuoteApi, getAddressesApi, getConversationMessagesApi,
+  getConversationQuoteApi, markConversationReadApi, reportConversationApi, resolveMediaUrl, sendConversationMessageApi,
 } from '../services/api';
 import {
   isQuoteExpired, parseQuoteRequestMessage, quantityFromLabel,
@@ -193,18 +193,15 @@ export default function QuoteDetailModal({
     if (!reportReason || isSubmittingReport) return;
     setIsSubmittingReport(true);
     try {
-      const reporterName = user?.userName || user?.nombre || user?.storeName || (mode === 'seller' ? 'Vendedor' : 'Comprador');
-      await createSupportTicketApi({
-        usuarioId: user?.userId ?? user?.id,
-        nombreReportante: reporterName,
-        tipoReportante: mode === 'seller' ? 'VENDEDOR' : 'COMPRADOR',
-        categoria: 'SOLICITUD_AYUDA',
-        plataforma: 'APP_MOBILE',
-        motivo: `Reporte de chat: ${reportReason}`,
-        detalle: reportDetail.trim() || `Reporte por el motivo: ${reportReason}`,
-        pedidoId: String(quote.id),
-        sellerId: Number(user?.sellerId || quote?.sellerId || quote?.proveedorId) || undefined,
-        contexto: `Reporte de chat (${mode === 'seller' ? 'Vendedor' : 'Comprador'}). ID conversación: ${quote.id} | Reportado: ${participantName}`,
+      // Antes esto creaba un ticket de soporte con motivo "Reporte de chat: ..."
+      // como truco para que el backend lo replicara a la tabla real de reportes
+      // por coincidencia de texto (frágil: si el texto no calzaba exacto, el
+      // reporte no quedaba registrado ahí). Ahora usa el endpoint que ya existía
+      // para esto, que crea el reporte directo y resuelve quién es el reportado
+      // a partir de la conversación.
+      await reportConversationApi(quote.id, {
+        motivo: reportReason,
+        descripcion: reportDetail.trim() || `Reporte por el motivo: ${reportReason}`,
       });
       setReportReason('');
       setReportDetail('');
