@@ -6,6 +6,12 @@ categoría y el formulario de consulta/reclamo en su propia ruta.
 
 Fecha de definición: 2026-08-19. Rama: `main`.
 
+**Estado: las 6 fases están implementadas** (commits `6f7ff48`, `984695d`,
+`48b2931`, `baa6169`, `bcd9f30` y el de estilos). Queda pendiente solo la
+redacción de contenido: `tienda` y `seguridad` no tienen FAQ y por eso no
+aparecen como tarjeta; `politicas` tiene una sola. Ampliarlas es editar
+`src/data/helpContent.js`, sin tocar código.
+
 ---
 
 ## 0. Decisiones cerradas con el usuario
