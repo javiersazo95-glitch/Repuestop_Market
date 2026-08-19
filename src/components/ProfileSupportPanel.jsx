@@ -1,20 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { AlertTriangle, ChevronRight, CircleAlert, Headphones, Inbox, Loader2, MessageSquare, Scale } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { AlertTriangle, ArrowLeft, ChevronRight, CircleAlert, Headphones, Inbox, Loader2, MessageSquare, Scale } from 'lucide-react';
 import { getMyMediationsApi, getMyReportsApi, getMySupportTicketsApi } from '../services/api';
-import MediationChatModal from './MediationChatModal';
+import { MEDIATION_STATUS_LABELS } from '../data/mediationStatus';
+import MediationCaseView from './MediationCaseView';
 
 const STATUS_LABELS = {
   ABIERTO: 'Abierto', EN_PROCESO: 'En proceso', PENDIENTE_VENDEDOR: 'Pendiente de tu respuesta',
   PENDIENTE_COMPRADOR: 'Pendiente de respuesta', SLA_VENCIDO: 'Atención vencida',
   RESUELTO: 'Resuelto', CERRADO: 'Cerrado', CANCELADO: 'Cancelado',
-};
-
-// Mismos estados que ya usa el backoffice/backend para mediaciones (EstadoMediacion).
-// Se exporta para que MediationChatModal use las mismas etiquetas.
-export const MEDIATION_STATUS_LABELS = {
-  ESPERANDO_VENDEDOR: 'Esperando al vendedor', ESCALADO: 'Escalado a mediador',
-  EN_MEDIACION: 'En mediación', RESUELTA: 'Resuelta', CERRADA: 'Cerrada',
 };
 
 // Un caso deja de estar abierto al llegar a uno de estos estados (mismos valores
@@ -50,7 +44,20 @@ export default function ProfileSupportPanel({ user }) {
   const [stateFilter, setStateFilter] = useState('abiertos');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [openMediation, setOpenMediation] = useState(null);
+  // El caso abierto vive en la URL (`/perfil/consultas?caso=<pedidoId>`) para que
+  // el botón atrás del navegador cierre el expediente y el enlace sea compartible.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openCaseId = searchParams.get('caso');
+  const openCase = (pedidoIdReal) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('caso', String(pedidoIdReal));
+    setSearchParams(next);
+  };
+  const closeCase = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('caso');
+    setSearchParams(next);
+  };
 
   const loadCases = useCallback(async () => {
     if (!userId) { setLoading(false); return; }
@@ -110,7 +117,7 @@ export default function ProfileSupportPanel({ user }) {
         // Las apelaciones de cuenta bloqueada usan la misma tabla de mediaciones
         // pero no tienen un pedido real detrás (pedidoIdReal null): no hay chat
         // que abrir, así que la fila queda solo informativa.
-        onOpen: mediation.pedidoIdReal ? () => setOpenMediation(mediation) : null,
+        onOpen: mediation.pedidoIdReal ? () => openCase(mediation.pedidoIdReal) : null,
         accion: mediation.pedidoIdReal ? 'Ver chat' : null,
       })),
       ...supportTickets.map((ticket) => ({
@@ -138,6 +145,52 @@ export default function ProfileSupportPanel({ user }) {
     soporte: supportTickets.length,
   };
   const abiertos = cases.filter((item) => !isClosed(item.status)).length;
+
+  // Con un caso abierto el panel pasa a maestro-detalle: riel de disputas a la
+  // izquierda y expediente a la derecha, dentro del mismo espacio del perfil.
+  // Antes esto montaba un chat a pantalla completa con su propia barra superior,
+  // que duplicaba la navegación y dejaba media pantalla vacía.
+  if (openCaseId) {
+    const disputes = mediations.filter((mediation) => mediation.pedidoIdReal);
+    return (
+      <section className="profile-panel profile-cases-panel dispute-workspace">
+        <nav className="dispute-rail" aria-label="Mis disputas">
+          <header>
+            <button type="button" onClick={closeCase}><ArrowLeft size={13} /> Todos mis casos</button>
+            <h2>Disputas <b>{disputes.length}</b></h2>
+          </header>
+          <ul>
+            {disputes.map((mediation) => {
+              const active = String(mediation.pedidoIdReal) === String(openCaseId);
+              return (
+                <li key={mediation.id}>
+                  <button
+                    type="button"
+                    className={active ? 'active' : ''}
+                    aria-current={active ? 'true' : undefined}
+                    onClick={() => openCase(mediation.pedidoIdReal)}
+                  >
+                    <span>{MEDIATION_STATUS_LABELS[mediation.status] || mediation.status || 'En mediación'}</span>
+                    <strong>{mediation.title || `Pedido ${mediation.orderId || mediation.pedidoIdReal}`}</strong>
+                    <time>{formatDate(mediation.createdAt)}</time>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        <MediationCaseView
+          key={openCaseId}
+          pedidoId={openCaseId}
+          user={user}
+          mode={isSeller ? 'seller' : 'buyer'}
+          onClose={closeCase}
+          onChanged={loadCases}
+        />
+      </section>
+    );
+  }
 
   return (
     <section className="profile-panel profile-cases-panel">
@@ -231,19 +284,6 @@ export default function ProfileSupportPanel({ user }) {
             </li>
           ))}
         </ul>
-      )}
-
-      {openMediation && createPortal(
-        <MediationChatModal
-          pedidoId={openMediation.pedidoIdReal}
-          user={user}
-          mode={isSeller ? 'seller' : 'buyer'}
-          onClose={() => {
-            setOpenMediation(null);
-            void loadCases();
-          }}
-        />,
-        document.body
       )}
     </section>
   );

@@ -30,6 +30,28 @@ fases 0–7 de ese plan están implementadas. En esta sesión se resolvieron:
 
 Verificación técnica: `npm run build` compila limpiamente en **3.4s** generando chunks independientes por ruta.
 
+## 1.b Sesión 2026-08-19 — panel de perfil
+
+1. **Vista del comprador alineada con la del proveedor (LISTO)**. El rediseño
+   denso del panel estaba scoped a `.seller-profile-dashboard`; el comprador caía
+   en los estilos base viejos (cuerpo centrado a 1280 contra un hero full-bleed,
+   KPIs en 3+1, acciones en 2 columnas). El bloque pasó a `.profile-dashboard`,
+   compartido por ambos roles, y quedaron marcadas solo las reglas que sí
+   dependen del rol. De paso se eliminó una copia minificada del mismo bloque que
+   estaba al final de `index.css` ("kept last for cascade") y revertía para el
+   proveedor cualquier cambio hecho arriba. Detalle en `PLAN_VISTA_COMPRADOR.md`.
+2. **Chat de mediación → expediente de disputa (LISTO)**. Dejó de ser un modal a
+   pantalla completa y vive como maestro/detalle dentro de `/perfil/consultas`,
+   con el caso abierto en la URL (`?caso=<pedidoId>`). Se corrigió que la
+   evidencia elegida nunca llegaba al estado (la `FileList` se vaciaba antes de
+   leerla), que el detalle de la escalación es obligatorio en el backend y que el
+   compositor seguía abierto con la conversación ya pausada. Detalle, contrato
+   verificado contra el backend y pendientes en `PLAN_EXPEDIENTE_DISPUTA.md`.
+
+Pendiente conocido tras esta sesión: la web no consume el hilo con el mediador
+(`/pedidos/{id}/mediacion-mensajes`) ni la carga de evidencia posterior
+(`/pedidos/{id}/mediacion-evidencias`), que el backend expone y mobile ya usa.
+
 ## 2. Estado de Producción
 
 La plataforma web se encuentra **100% conectada al backend real, optimizada con TanStack Query, con soporte de pasarela Flow end-to-end, y protegida con code splitting y error boundaries** para despliegue productivo.

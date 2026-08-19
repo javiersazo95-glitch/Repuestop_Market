@@ -13043,97 +13043,228 @@ input, select, textarea {
 }
 
 /* ==========================================================================
-   MEDIATION CHAT (Fase 6a) — reusa el shell y las clases .quote-ws-* del chat
-   de cotizaciones (mismo lenguaje visual ya en producción); estas son solo
-   las piezas específicas de mediación: layout de 2 columnas en vez de 3,
-   panel de estado/acciones, y los modales de escalar/resolver.
+   EXPEDIENTE DE DISPUTA — vista maestro-detalle dentro de /perfil/consultas
+   Lenguaje propio, distinto del resto del panel: papel de tramite en vez de
+   tarjetas. Esquinas de 3px, filetes de 1px en lugar de sombras, codigos en
+   monoespaciada y sellos de estado con borde. El chat vive acotado dentro del
+   expediente; antes era un workspace a pantalla completa con barra propia.
    ========================================================================== */
-.mediation-ws-loading { min-height: 300px; display: flex; align-items: center; justify-content: center; gap: 9px; color: #6d8298; font-size: 13px; }
-.mediation-ws-loading.error { color: #a92a35; }
-
-.mediation-ws-layout {
-  min-width: 0;
-  min-height: 0;
-  padding: 10px 16px;
-  display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(440px, 1fr);
-  gap: 12px;
+.dispute-workspace {
+  padding: 0;
   overflow: hidden;
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  align-items: stretch;
 }
 
-.mediation-detail-row { padding: 10px 0; display: grid; gap: 3px; border-bottom: 1px solid #eef2f6; font-size: 11px; }
-.mediation-detail-row:last-of-type { border-bottom: 0; }
-.mediation-detail-row small { color: #69809a; font-size: 9px; text-transform: uppercase; letter-spacing: .03em; }
-.mediation-detail-row strong { color: #17395e; font-size: 12px; }
-.mediation-detail-row span { color: #47607e; font-size: 11px; line-height: 1.45; }
-
-.mediation-escalated-banner, .mediation-resolved-banner {
-  margin-top: 10px;
-  padding: 9px 10px;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  border-radius: 9px;
-  font-size: 10.5px;
-  line-height: 1.4;
+/* --- Riel de disputas (maestro) --- */
+.dispute-rail { border-right: 1px solid #e3e7ec; background: #f7f8fa; display: flex; flex-direction: column; min-width: 0; }
+.dispute-rail > header { padding: 14px 14px 11px; border-bottom: 1px solid #e3e7ec; }
+.dispute-rail > header button {
+  display: inline-flex; align-items: center; gap: 5px; margin-bottom: 9px;
+  padding: 0; border: 0; background: none; cursor: pointer;
+  color: #5d6b7d; font-size: 11px; font-weight: 700;
 }
-.mediation-escalated-banner { color: #965d08; background: #fff9e9; border: 1px solid #f1d49c; }
-.mediation-resolved-banner { color: #087443; background: #e9f9ef; border: 1px solid #b9e4cd; }
-.mediation-escalated-banner svg, .mediation-resolved-banner svg { flex-shrink: 0; margin-top: 1px; }
-
-.mediation-actions-card h3 { margin: 0 0 11px; padding-bottom: 10px; border-bottom: 1px solid #e1e8ef; color: #17395e; font-size: 12px; }
-.mediation-actions-card { display: flex; flex-direction: column; gap: 8px; }
-.mediation-action-button { width: 100%; justify-content: center; font-size: 11px; }
-
-.mediation-empty-messages { min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #8a9bb0; font-size: 11px; text-align: center; }
-
-/* Modales de "Solicitar mediador" / "Marcar como resuelta": mismo backdrop
-   genérico que ya usan el resto de los modales de la app (eliminar cuenta,
-   marcas especialistas), ícono plano sin gradiente. */
-.mediation-action-modal { width: min(480px, 100%); padding: 22px; }
-.mediation-action-modal-header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; margin-bottom: 16px; }
-.mediation-action-modal-header span { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 11px; background: #fff9e9; color: #965d08; flex-shrink: 0; }
-.mediation-action-modal-header span.icon-emerald { background: #ecfdf5; color: #059669; }
-.mediation-action-modal-header h2 { margin: 0; font-size: 15px; color: #0f172a; }
-.mediation-action-modal-header p { margin: 2px 0 0; font-size: 11.5px; color: #64748b; }
-.mediation-action-modal-header > button { width: 30px; height: 30px; border: 0; border-radius: 8px; color: #64748b; background: #eef2f7; cursor: pointer; }
-
-.mediation-evidence-picker { display: flex; flex-direction: column; gap: 8px; }
-.mediation-evidence-list { display: flex; flex-wrap: wrap; gap: 6px; }
-.mediation-evidence-chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 8px; border-radius: 999px;
-  background: #eff6ff; color: var(--color-brand-blue);
-  font-size: 10.5px; font-weight: 700; max-width: 220px;
+.dispute-rail > header button:hover { color: var(--color-brand-blue, #0066ff); }
+.dispute-rail > header h2 { margin: 0; display: flex; align-items: center; gap: 7px; color: #1b2434; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; }
+.dispute-rail > header h2 b { padding: 1px 6px; border: 1px solid #d3dae2; border-radius: 3px; background: #fff; color: #5d6b7d; font-size: 10px; letter-spacing: 0; }
+.dispute-rail ul { margin: 0; padding: 0; list-style: none; overflow-y: auto; }
+.dispute-rail li + li button { border-top: 1px solid #e8ebef; }
+.dispute-rail li button {
+  width: 100%; padding: 11px 14px; display: grid; gap: 3px;
+  border: 0; border-left: 3px solid transparent; background: none;
+  text-align: left; cursor: pointer; font: inherit;
 }
-.mediation-evidence-chip button { border: 0; background: none; color: inherit; cursor: pointer; display: inline-flex; }
-.mediation-evidence-upload {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 12px; border: 1.5px dashed #cbd5e1; border-radius: 10px;
-  color: #64748b; font-size: 11px; font-weight: 650; cursor: pointer;
-}
-.mediation-evidence-upload:hover { border-color: var(--color-brand-blue); color: var(--color-brand-blue); }
-.mediation-evidence-upload.disabled { opacity: .5; cursor: not-allowed; }
-.mediation-evidence-upload input { display: none; }
+.dispute-rail li button:hover { background: #eef2f7; }
+.dispute-rail li button.active { border-left-color: var(--color-brand-blue, #0066ff); background: #fff; }
+.dispute-rail li button > span { color: #7a8798; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.dispute-rail li button > strong { color: #1b2434; font-size: 12px; font-weight: 700; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.dispute-rail li button > time { color: #93a0b0; font-size: 10px; font-variant-numeric: tabular-nums; }
 
-@media (max-width: 1120px) {
-  .mediation-ws-layout { grid-template-columns: 220px minmax(400px, 1fr); padding-inline: 10px; gap: 8px; }
+/* --- Expediente (detalle) --- */
+.dispute-file { min-width: 0; display: flex; flex-direction: column; background: #fff; }
+.dispute-file-loading {
+  min-height: 260px; padding: 24px; grid-column: 1 / -1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  color: #6d7a8b; font-size: 12.5px;
+}
+.dispute-file-loading.is-error { color: #a92a35; }
+.dispute-file-loading button { padding: 8px 14px; border: 1px solid #d3dae2; border-radius: 3px; background: #fff; color: #33445c; font-size: 12px; font-weight: 700; cursor: pointer; }
+
+.dispute-file-head { padding: 13px 18px; display: flex; align-items: center; gap: 14px; border-bottom: 2px solid #1b2434; }
+.dispute-back { display: none; align-items: center; gap: 5px; padding: 6px 9px; border: 1px solid #d3dae2; border-radius: 3px; background: #fff; color: #45566d; font-size: 11px; font-weight: 700; cursor: pointer; }
+.dispute-back:hover { border-color: #9fb0c4; color: #1b2434; }
+.dispute-folio { min-width: 0; flex: 1; display: grid; gap: 1px; }
+.dispute-folio small { color: #7a8798; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; }
+.dispute-folio strong {
+  color: #1b2434; font-size: 16px; font-weight: 700; letter-spacing: .02em;
+  font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dispute-seal { flex-shrink: 0; padding: 5px 10px; border: 1px solid; border-radius: 3px; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.dispute-seal.seal-wait { border-color: #d8b45e; color: #8a6300; background: #fdf8ec; }
+.dispute-seal.seal-alert { border-color: #d99a92; color: #a4342a; background: #fdf1f0; }
+.dispute-seal.seal-done { border-color: #8ac2a2; color: #0c6b40; background: #eef8f2; }
+
+.dispute-meta { margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #e3e7ec; }
+.dispute-meta > div { padding: 11px 18px; display: grid; gap: 3px; min-width: 0; }
+.dispute-meta > div + div { border-left: 1px solid #eceff3; }
+.dispute-meta dt { color: #7a8798; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.dispute-meta dd { margin: 0; color: #1b2434; font-size: 12px; font-weight: 650; line-height: 1.35; }
+.dispute-meta dd em { display: block; color: #7a8798; font-size: 10.5px; font-style: normal; font-weight: 600; text-transform: capitalize; }
+
+.dispute-statement { margin: 0; padding: 12px 18px; border-bottom: 1px solid #e3e7ec; color: #33445c; font-size: 12px; line-height: 1.5; }
+.dispute-statement span { display: block; margin-bottom: 3px; color: #7a8798; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+
+.dispute-record { margin: 0; padding: 12px 18px; border-bottom: 1px solid #e3e7ec; border-left: 3px solid transparent; }
+.dispute-record h3 { margin: 0 0 6px; display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 800; }
+.dispute-record p { margin: 0 0 4px; color: #33445c; font-size: 11.5px; line-height: 1.5; }
+.dispute-record p:last-child { margin-bottom: 0; }
+.dispute-record-note { color: #6d7a8b !important; font-style: italic; }
+.dispute-record.is-escalated { border-left-color: #d8b45e; background: #fdfaf3; }
+.dispute-record.is-escalated h3 { color: #8a6300; }
+.dispute-record.is-resolved { border-left-color: #8ac2a2; background: #f6fbf8; }
+.dispute-record.is-resolved h3 { color: #0c6b40; }
+.dispute-record.is-evidence { border-left-color: #b9c4d2; background: #fafbfc; }
+.dispute-record.is-evidence h3 { color: #33445c; }
+
+.dispute-evidence-strip + .dispute-evidence-strip { margin-top: 10px; }
+.dispute-evidence-strip small { display: block; margin-bottom: 5px; color: #7a8798; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.dispute-evidence-strip ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 7px; }
+.dispute-evidence-strip img { width: 62px; height: 62px; object-fit: cover; border: 1px solid #d3dae2; border-radius: 3px; display: block; }
+.dispute-evidence-strip a:hover img { border-color: var(--color-brand-blue, #0066ff); }
+
+.dispute-actions { padding: 11px 18px; display: flex; gap: 8px; border-bottom: 1px solid #e3e7ec; background: #fafbfc; }
+.dispute-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 9px 14px; border: 1px solid #cfd7e0; border-radius: 3px; background: #fff;
+  color: #33445c; font-size: 11.5px; font-weight: 750; cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, color .15s ease;
+}
+.dispute-btn:hover:not(:disabled) { border-color: #9fb0c4; background: #f4f7fb; color: #1b2434; }
+.dispute-btn.is-primary { border-color: #0b5fd0; background: #0b5fd0; color: #fff; }
+.dispute-btn.is-primary:hover:not(:disabled) { border-color: #094ba6; background: #094ba6; color: #fff; }
+/* Deshabilitado real: gris plano. Antes solo bajaba la opacidad de un boton
+   azul y se seguia leyendo como activo. */
+.dispute-btn:disabled { border-color: #e1e6ec; background: #f1f3f6; color: #a3adba; cursor: not-allowed; }
+
+/* --- Hilo de conversacion --- */
+.dispute-thread-block { min-height: 0; display: flex; flex-direction: column; }
+.dispute-thread-head { padding: 10px 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #e3e7ec; }
+.dispute-thread-avatar {
+  width: 32px; height: 32px; flex-shrink: 0; display: grid; place-items: center;
+  border: 1px solid #d3dae2; border-radius: 3px; overflow: hidden;
+  background: #eef2f7; color: #45566d; font-size: 11px; font-weight: 800;
+}
+.dispute-thread-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.dispute-thread-head strong { display: block; color: #1b2434; font-size: 12.5px; font-weight: 750; }
+.dispute-thread-head small { display: flex; align-items: center; gap: 4px; color: #7a8798; font-size: 10.5px; }
+
+.dispute-thread { padding: 14px 18px; display: flex; flex-direction: column; gap: 12px; max-height: 360px; min-height: 180px; overflow-y: auto; background: #fcfcfd; }
+.dispute-thread-empty { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 7px; color: #97a3b2; font-size: 11.5px; }
+
+.dispute-system-note {
+  margin: 2px 0; align-self: center; max-width: 82%;
+  padding: 6px; color: #7a8798; font-size: 10.5px; line-height: 1.45; text-align: center;
+  border-top: 1px solid #e6e9ee; border-bottom: 1px solid #e6e9ee;
 }
 
-@media (max-width: 840px) {
-  .mediation-ws-layout { padding: 7px; grid-template-columns: 1fr; }
-  .mediation-ws-layout .quote-ws-left { display: none; }
+.dispute-msg { max-width: 76%; display: grid; gap: 3px; }
+.dispute-msg.is-mine { margin-left: auto; justify-items: end; }
+.dispute-msg-author { color: #8a95a4; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.dispute-msg-body { padding: 9px 12px; border: 1px solid #e1e6ec; border-radius: 3px; background: #fff; }
+.dispute-msg.is-mine .dispute-msg-body { border-color: #bcd6f7; background: #f2f8ff; }
+.dispute-msg-body p { margin: 0; color: #1f2c3d; font-size: 12.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.dispute-msg-body img { max-width: 220px; margin-bottom: 6px; border-radius: 3px; display: block; }
+.dispute-msg time { color: #9aa5b3; font-size: 10px; font-variant-numeric: tabular-nums; }
+
+.dispute-thread-closed { margin: 0; padding: 13px 18px; display: flex; align-items: center; gap: 7px; border-top: 1px solid #e3e7ec; background: #f7f8fa; color: #6d7a8b; font-size: 11.5px; }
+
+.dispute-composer { padding: 12px 18px 14px; border-top: 1px solid #e3e7ec; }
+.dispute-composer textarea {
+  width: 100%; padding: 10px 12px; resize: vertical;
+  border: 1px solid #cfd7e0; border-radius: 3px; background: #fff;
+  color: #1f2c3d; font: inherit; font-size: 12.5px; line-height: 1.5;
+}
+.dispute-composer textarea:focus { outline: none; border-color: var(--color-brand-blue, #0066ff); }
+.dispute-composer footer { margin-top: 8px; display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+.dispute-composer footer small { margin-right: auto; color: #9aa5b3; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.dispute-composer button {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 16px; border: 1px solid #0b5fd0; border-radius: 3px;
+  background: #0b5fd0; color: #fff; font-size: 11.5px; font-weight: 750; cursor: pointer;
+}
+.dispute-composer button:hover:not(:disabled) { border-color: #094ba6; background: #094ba6; }
+.dispute-composer button:disabled { border-color: #e1e6ec; background: #f1f3f6; color: #a3adba; cursor: not-allowed; }
+.dispute-inline-error { display: block; margin-bottom: 7px; color: #a4342a; font-size: 11px; font-weight: 650; }
+
+/* --- Dialogos de "solicitar mediador" / "marcar como resuelta" --- */
+.dispute-dialog-backdrop { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 20px; background: rgba(15, 23, 42, .55); }
+.dispute-dialog { width: min(470px, 100%); max-height: 90vh; overflow-y: auto; border-radius: 4px; background: #fff; box-shadow: 0 24px 60px rgba(9, 20, 38, .3); }
+.dispute-dialog > header { padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px; border-bottom: 2px solid #1b2434; }
+.dispute-dialog > header > div { flex: 1; min-width: 0; }
+.dispute-dialog > header small { color: #7a8798; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+.dispute-dialog > header h2 { margin: 2px 0 0; color: #1b2434; font-size: 16px; font-weight: 800; }
+.dispute-dialog > header > button { width: 28px; height: 28px; flex-shrink: 0; display: grid; place-items: center; border: 1px solid #d3dae2; border-radius: 3px; background: #fff; color: #5d6b7d; cursor: pointer; }
+.dispute-dialog > header > button:hover:not(:disabled) { border-color: #9fb0c4; color: #1b2434; }
+.dispute-dialog-lead { margin: 0; padding: 12px 18px; border-bottom: 1px solid #e3e7ec; background: #fafbfc; color: #52627a; font-size: 11.5px; line-height: 1.5; }
+.dispute-dialog form { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+.dispute-field { display: grid; gap: 6px; }
+.dispute-field > span { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; color: #33445c; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.dispute-field > span i { color: #9aa5b3; font-size: 10px; font-style: normal; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.dispute-field input,
+.dispute-field textarea {
+  width: 100%; padding: 10px 12px; resize: vertical;
+  border: 1px solid #cfd7e0; border-radius: 3px; background: #fff;
+  color: #1f2c3d; font: inherit; font-size: 12.5px; line-height: 1.5;
+}
+.dispute-field input:focus,
+.dispute-field textarea:focus { outline: none; border-color: var(--color-brand-blue, #0066ff); }
+
+.dispute-evidence-picker { display: grid; gap: 8px; }
+.dispute-evidence-counter { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.dispute-evidence-counter span { display: inline-flex; align-items: center; gap: 5px; color: #33445c; font-size: 11px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.dispute-evidence-counter small { color: #8a95a4; font-size: 10px; }
+.dispute-evidence-thumbs { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.dispute-evidence-thumbs li { position: relative; width: 68px; }
+.dispute-evidence-thumbs img { width: 68px; height: 68px; object-fit: cover; border: 1px solid #d3dae2; border-radius: 3px; display: block; }
+.dispute-evidence-thumbs li > button {
+  position: absolute; top: -6px; right: -6px; width: 20px; height: 20px;
+  display: grid; place-items: center; border: 1px solid #fff; border-radius: 50%;
+  background: #1b2434; color: #fff; cursor: pointer;
+}
+.dispute-evidence-thumbs li > small { display: block; margin-top: 3px; color: #8a95a4; font-size: 9.5px; text-align: center; font-variant-numeric: tabular-nums; }
+.dispute-evidence-drop {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 11px 12px; border: 1px dashed #b9c4d2; border-radius: 3px;
+  color: #52627a; font-size: 11.5px; font-weight: 700; cursor: pointer;
+}
+.dispute-evidence-drop:hover { border-color: var(--color-brand-blue, #0066ff); color: var(--color-brand-blue, #0066ff); }
+.dispute-evidence-drop.is-off { border-style: solid; border-color: #e1e6ec; background: #f7f8fa; color: #a3adba; cursor: not-allowed; }
+.dispute-evidence-drop input { display: none; }
+
+.dispute-dialog-error { margin: 0; padding: 9px 11px; display: flex; align-items: flex-start; gap: 7px; border: 1px solid #e3b3ad; border-radius: 3px; background: #fdf1f0; color: #a4342a; font-size: 11.5px; line-height: 1.45; }
+.dispute-dialog form footer { display: flex; justify-content: flex-end; gap: 8px; }
+
+@media (max-width: 1080px) {
+  .dispute-workspace { grid-template-columns: 190px minmax(0, 1fr); }
+  .dispute-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dispute-meta > div:nth-child(3) { border-left: 0; }
+  .dispute-meta > div:nth-child(n+3) { border-top: 1px solid #eceff3; }
 }
 
-/* Tarjeta de disputa clickeable en el perfil: mismo hover que ya usan otras
-   tarjetas de acción, sin inventar un estilo nuevo. */
-.profile-dispute-ticket.clickable { cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
-.profile-dispute-ticket.clickable:hover { border-color: #93c5fd; box-shadow: 0 4px 14px rgba(0, 102, 255, .08); }
-.profile-dispute-chat-link {
-  grid-column: 1 / -1;
-  display: inline-flex; align-items: center; gap: 4px;
-  margin-top: 4px; color: var(--color-brand-blue);
-  font-size: 11px; font-weight: 700;
+@media (max-width: 760px) {
+  .dispute-workspace { grid-template-columns: 1fr; }
+  /* En movil el riel desaparece: manda el expediente abierto y se vuelve a la
+     lista con el boton "Casos", no con una columna que robaria media pantalla. */
+  .dispute-rail { display: none; }
+  .dispute-back { display: inline-flex; }
+  .dispute-meta { grid-template-columns: 1fr; }
+  .dispute-meta > div + div { border-left: 0; border-top: 1px solid #eceff3; }
+  .dispute-file-head, .dispute-meta > div, .dispute-statement, .dispute-record, .dispute-actions, .dispute-thread, .dispute-thread-head, .dispute-composer { padding-inline: 13px; }
+  .dispute-actions { flex-direction: column; }
+  .dispute-msg { max-width: 90%; }
 }
 
 /* ==========================================================================
