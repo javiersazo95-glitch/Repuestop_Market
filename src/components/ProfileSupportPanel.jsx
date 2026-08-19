@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, ChevronRight, CircleAlert, FileText, Headphones, Inbox, Loader2, MessageSquare, Scale } from 'lucide-react';
+import { AlertTriangle, ChevronRight, CircleAlert, Headphones, Inbox, Loader2, MessageSquare, Scale } from 'lucide-react';
 import { getMyMediationsApi, getMyReportsApi, getMySupportTicketsApi } from '../services/api';
 import MediationChatModal from './MediationChatModal';
 
@@ -17,14 +17,27 @@ export const MEDIATION_STATUS_LABELS = {
   EN_MEDIACION: 'En mediación', RESUELTA: 'Resuelta', CERRADA: 'Cerrada',
 };
 
-const CASE_TABS = [
-  { id: 'reportes', label: 'Reportes realizados', icon: AlertTriangle, description: 'Incidentes o situaciones que has reportado.' },
-  { id: 'disputas', label: 'Disputas', icon: Scale, description: 'Casos de mediación, reclamos o desacuerdos comerciales.' },
-  { id: 'soporte', label: 'Soporte técnico', icon: Headphones, description: 'Consultas técnicas enviadas al equipo de RepuesTop.' },
+// Un caso deja de estar abierto al llegar a uno de estos estados (mismos valores
+// que usa el sidebar del centro de ayuda).
+const CLOSED_STATUSES = ['RESUELTO', 'CERRADO', 'CANCELADO', 'RESUELTA', 'CERRADA'];
+
+const AREAS = [
+  { id: 'todos', label: 'Todos', icon: Inbox },
+  { id: 'reportes', label: 'Reportes', icon: AlertTriangle },
+  { id: 'disputas', label: 'Disputas', icon: Scale },
+  { id: 'soporte', label: 'Soporte técnico', icon: Headphones },
 ];
+const AREA_LABELS = { reportes: 'Reporte', disputas: 'Disputa', soporte: 'Soporte' };
+const STATE_FILTERS = [['abiertos', 'Abiertos'], ['cerrados', 'Resueltos'], ['todos', 'Todos']];
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Sin fecha';
+}
+function toList(response) {
+  return Array.isArray(response) ? response : response?.content || [];
+}
+function isClosed(status) {
+  return CLOSED_STATUSES.includes(String(status || '').toUpperCase());
 }
 
 export default function ProfileSupportPanel({ user }) {
@@ -33,7 +46,8 @@ export default function ProfileSupportPanel({ user }) {
   const [tickets, setTickets] = useState([]);
   const [reports, setReports] = useState([]);
   const [mediations, setMediations] = useState([]);
-  const [activeArea, setActiveArea] = useState('reportes');
+  const [activeArea, setActiveArea] = useState('todos');
+  const [stateFilter, setStateFilter] = useState('abiertos');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [openMediation, setOpenMediation] = useState(null);
@@ -48,9 +62,9 @@ export default function ProfileSupportPanel({ user }) {
         getMyReportsApi(userId),
         getMyMediationsApi(userId),
       ]);
-      setTickets(Array.isArray(ticketsRes) ? ticketsRes : ticketsRes?.content || []);
-      setReports(Array.isArray(reportsRes) ? reportsRes : reportsRes?.content || []);
-      setMediations(Array.isArray(mediationsRes) ? mediationsRes : mediationsRes?.content || []);
+      setTickets(toList(ticketsRes));
+      setReports(toList(reportsRes));
+      setMediations(toList(mediationsRes));
     } catch (requestError) {
       setError(requestError.message || 'No se pudieron cargar tus reportes y disputas.');
     } finally {
@@ -69,71 +83,155 @@ export default function ProfileSupportPanel({ user }) {
     () => tickets.filter((ticket) => !String(ticket.reason || '').startsWith('Reporte de chat:')),
     [tickets]
   );
-  const counts = { reportes: reports.length, disputas: mediations.length, soporte: supportTickets.length };
-  const activeConfig = CASE_TABS.find((tab) => tab.id === activeArea);
-  const totalCasos = reports.length + mediations.length + supportTickets.length;
+
+  // Los tres orígenes se normalizan a la misma forma para poder listarlos
+  // juntos, ordenarlos por fecha y filtrarlos por estado con un solo criterio.
+  const cases = useMemo(() => {
+    const rows = [
+      ...reports.map((report) => ({
+        key: `r-${report.id}`,
+        area: 'reportes',
+        status: report.status || 'EN_PROCESO',
+        estado: 'Reportado',
+        titulo: `Reporte a ${report.reportadoName || 'un usuario'}`,
+        detalle: report.descripcion || report.motivo || 'Sin detalle disponible.',
+        numero: report.idExterno || report.id,
+        fecha: report.fechaCreacion,
+      })),
+      ...mediations.map((mediation) => ({
+        key: `m-${mediation.id}`,
+        area: 'disputas',
+        status: mediation.status || 'EN_MEDIACION',
+        estado: MEDIATION_STATUS_LABELS[mediation.status] || mediation.displayStatus || mediation.status || 'En mediación',
+        titulo: mediation.title || `Pedido ${mediation.orderId || ''}`,
+        detalle: mediation.reason || mediation.nextAction || 'Caso de mediación registrado.',
+        numero: mediation.orderId ? `Pedido ${mediation.orderId}` : null,
+        fecha: mediation.createdAt,
+        // Las apelaciones de cuenta bloqueada usan la misma tabla de mediaciones
+        // pero no tienen un pedido real detrás (pedidoIdReal null): no hay chat
+        // que abrir, así que la fila queda solo informativa.
+        onOpen: mediation.pedidoIdReal ? () => setOpenMediation(mediation) : null,
+        accion: mediation.pedidoIdReal ? 'Ver chat' : null,
+      })),
+      ...supportTickets.map((ticket) => ({
+        key: `t-${ticket.id}`,
+        area: 'soporte',
+        status: ticket.status || 'ABIERTO',
+        estado: STATUS_LABELS[ticket.status] || ticket.status || 'Abierto',
+        titulo: ticket.reason || ticket.subject || 'Caso registrado',
+        detalle: ticket.lastMessage || ticket.message || ticket.supportResponse || 'Sin detalle disponible.',
+        numero: `#${ticket.externalId || ticket.id}`,
+        fecha: ticket.createdAt,
+      })),
+    ];
+    return rows.sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
+  }, [reports, mediations, supportTickets]);
+
+  const byArea = activeArea === 'todos' ? cases : cases.filter((item) => item.area === activeArea);
+  const visibles = byArea.filter((item) => (
+    stateFilter === 'todos' || (stateFilter === 'cerrados' ? isClosed(item.status) : !isClosed(item.status))
+  ));
+  const counts = {
+    todos: cases.length,
+    reportes: reports.length,
+    disputas: mediations.length,
+    soporte: supportTickets.length,
+  };
+  const abiertos = cases.filter((item) => !isClosed(item.status)).length;
 
   return (
     <section className="profile-panel profile-cases-panel">
       <div className="profile-cases-header">
-        <div><h2 className="profile-panel-title">Reportes y Disputas</h2><p>Consulta el seguimiento de tus casos separados por área de atención.</p></div>
-        <span>{totalCasos} {totalCasos === 1 ? 'caso registrado' : 'casos registrados'}</span>
+        <div>
+          <h2 className="profile-panel-title">Reportes y Disputas</h2>
+          <p>Consulta el seguimiento de tus casos separados por área de atención.</p>
+        </div>
+        <span>{abiertos} {abiertos === 1 ? 'caso abierto' : 'casos abiertos'} de {cases.length}</span>
       </div>
 
-      <nav className="profile-cases-tabs" aria-label="Áreas de reportes y disputas">
-        {CASE_TABS.map((tab) => {
-          const Icon = tab.icon;
-          return <button key={tab.id} type="button" className={activeArea === tab.id ? 'active' : ''} onClick={() => setActiveArea(tab.id)}><Icon /><span><strong>{tab.label}</strong><small>{tab.description}</small></span><b>{counts[tab.id]}</b></button>;
-        })}
-      </nav>
+      <div className="profile-cases-toolbar">
+        <nav className="profile-cases-pills" aria-label="Áreas de reportes y disputas">
+          {AREAS.map((area) => {
+            const Icon = area.icon;
+            return (
+              <button
+                key={area.id}
+                type="button"
+                className={activeArea === area.id ? 'active' : ''}
+                aria-pressed={activeArea === area.id}
+                onClick={() => setActiveArea(area.id)}
+              >
+                <Icon size={14} />
+                {area.label}
+                <b>{counts[area.id]}</b>
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="profile-cases-filter" role="group" aria-label="Filtrar por estado">
+          {STATE_FILTERS.map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={stateFilter === id ? 'active' : ''}
+              aria-pressed={stateFilter === id}
+              onClick={() => setStateFilter(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {error && <div className="auth-alert alert-error"><CircleAlert size={16} /><span>{error}</span></div>}
-      {loading ? <div className="profile-loading-state"><Loader2 size={18} className="spin-icon" /><span>Cargando casos...</span></div> : activeArea === 'disputas' ? (mediations.length === 0 ? (
-        <div className="profile-empty-state profile-cases-empty"><Inbox /><span>No tienes disputas o reclamos registrados.</span></div>
-      ) : <div className="profile-support-ticket-list">{mediations.map((mediation) => {
-        // Las apelaciones de cuenta bloqueada usan la misma tabla de mediaciones
-        // pero no tienen un pedido real detrás (pedidoIdReal null) — no hay a
-        // qué chat abrir en esos casos, así que la tarjeta queda solo informativa.
-        const hasChat = Boolean(mediation.pedidoIdReal);
-        return (
-          <article
-            className={`profile-support-ticket profile-dispute-ticket ${hasChat ? 'clickable' : ''}`}
-            key={mediation.id}
-            onClick={hasChat ? () => setOpenMediation(mediation) : undefined}
-            onKeyDown={hasChat ? (event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                setOpenMediation(mediation);
-              }
-            } : undefined}
-            role={hasChat ? 'button' : undefined}
-            tabIndex={hasChat ? 0 : undefined}
-          >
-            <span className={`profile-ticket-status status-${String(mediation.status || 'EN_MEDIACION').toLowerCase()}`}>
-              {MEDIATION_STATUS_LABELS[mediation.status] || mediation.displayStatus || mediation.status || 'En mediación'}
-            </span>
-            <div><strong>{mediation.title || `Pedido ${mediation.orderId || ''}`}</strong><p>{mediation.reason || mediation.nextAction || 'Caso de mediación registrado.'}</p></div>
-            <small><Scale size={13} /> Caso de mediación · {formatDate(mediation.createdAt)}</small>
-            {hasChat && <span className="profile-dispute-chat-link"><MessageSquare size={13} /> Ver chat <ChevronRight size={14} /></span>}
-          </article>
-        );
-      })}</div>) : activeArea === 'reportes' ? (reports.length === 0 ? (
-        <div className="profile-empty-state profile-cases-empty"><Inbox /><span>No existen registros en reportes realizados.</span></div>
-      ) : <div className="profile-support-ticket-list">{reports.map((report) => (
-        <article className="profile-support-ticket" key={report.id}>
-          <span className="profile-ticket-status status-en_proceso">Reportado</span>
-          <div><strong>Reporte a {report.reportadoName || 'un usuario'}</strong><p>{report.descripcion || report.motivo || 'Sin detalle disponible.'}</p></div>
-          <small><FileText size={13} /> #{report.idExterno || report.id} · {formatDate(report.fechaCreacion)}</small>
-        </article>
-      ))}</div>) : supportTickets.length === 0 ? (
-        <div className="profile-empty-state profile-cases-empty"><Inbox /><span>No existen registros en {activeConfig.label.toLocaleLowerCase('es')}.</span></div>
-      ) : <div className="profile-support-ticket-list">{supportTickets.map((ticket) => (
-        <article className="profile-support-ticket" key={ticket.id}>
-          <span className={`profile-ticket-status status-${String(ticket.status || 'ABIERTO').toLowerCase()}`}>{STATUS_LABELS[ticket.status] || ticket.status || 'Abierto'}</span>
-          <div><strong>{ticket.reason || ticket.subject || 'Caso registrado'}</strong><p>{ticket.lastMessage || ticket.message || ticket.supportResponse || 'Sin detalle disponible.'}</p></div>
-          <small><FileText size={13} /> #{ticket.externalId || ticket.id} · {formatDate(ticket.createdAt)}</small>
-        </article>
-      ))}</div>}
+
+      {loading ? (
+        <div className="profile-loading-state"><Loader2 size={18} className="spin-icon" /><span>Cargando casos...</span></div>
+      ) : visibles.length === 0 ? (
+        <div className="profile-empty-state profile-cases-empty">
+          <Inbox />
+          <span>
+            {stateFilter === 'abiertos' && byArea.length > 0
+              ? 'No tienes casos abiertos aquí. Cambia el filtro para ver los resueltos.'
+              : 'No existen registros en esta área.'}
+          </span>
+        </div>
+      ) : (
+        <ul className="case-rows">
+          {visibles.map((item) => (
+            <li key={item.key}>
+              <article
+                className={`case-row ${item.onOpen ? 'clickable' : ''}`}
+                onClick={item.onOpen || undefined}
+                onKeyDown={item.onOpen ? (event) => {
+                  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); item.onOpen(); }
+                } : undefined}
+                role={item.onOpen ? 'button' : undefined}
+                tabIndex={item.onOpen ? 0 : undefined}
+              >
+                <span className={`profile-ticket-status status-${String(item.status).toLowerCase()}`}>{item.estado}</span>
+
+                <div className="case-row-main">
+                  <strong>{item.titulo}</strong>
+                  <p>{item.detalle}</p>
+                </div>
+
+                <div className="case-row-meta">
+                  {activeArea === 'todos' && <span className={`case-row-area area-${item.area}`}>{AREA_LABELS[item.area]}</span>}
+                  {item.numero && <span className="case-row-id">{item.numero}</span>}
+                  <time>{formatDate(item.fecha)}</time>
+                </div>
+
+                <span className="case-row-action">
+                  {item.accion && <><MessageSquare size={13} /> {item.accion}</>}
+                  {item.onOpen && <ChevronRight size={16} />}
+                </span>
+              </article>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {openMediation && createPortal(
         <MediationChatModal
@@ -150,3 +248,4 @@ export default function ProfileSupportPanel({ user }) {
     </section>
   );
 }
+
