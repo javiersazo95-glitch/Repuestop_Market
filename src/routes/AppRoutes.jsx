@@ -13,7 +13,10 @@ const CatalogPage = lazy(() => import('../pages/CatalogPage'));
 const ProductPage = lazy(() => import('../pages/ProductPage'));
 const StoresPage = lazy(() => import('../pages/StoresPage'));
 const StorePage = lazy(() => import('../pages/StorePage'));
-const SupportPage = lazy(() => import('../pages/SupportPage'));
+const HelpCenterPage = lazy(() => import('../pages/HelpCenterPage'));
+const HelpHomeView = lazy(() => import('../pages/help/HelpHomeView'));
+const HelpCategoryView = lazy(() => import('../pages/help/HelpCategoryView'));
+const HelpContactView = lazy(() => import('../pages/help/HelpContactView'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
 const AdsWallPage = lazy(() => import('../pages/AdsWallPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
@@ -36,7 +39,6 @@ export default function AppRoutes() {
               <Route path={ROUTES.stores} element={<StoresPage />} />
               <Route path={ROUTES.store} element={<StorePage />} />
               <Route path={ROUTES.adsWall} element={<AdsWallPage />} />
-              <Route path={ROUTES.support} element={<SupportPage />} />
               <Route
                 path={ROUTES.purchaseSuccess}
                 element={<RequireAuth><PurchaseSuccessPage /></RequireAuth>}
@@ -46,6 +48,14 @@ export default function AppRoutes() {
             </Route>
 
             {/* Páginas a pantalla completa, sin el chrome del marketplace */}
+            {/* Centro de ayuda: header propio + footer del marketplace. `contacto`
+                va antes que `:categoria` o el param se lo comería. */}
+            <Route path={ROUTES.support} element={<HelpCenterPage />}>
+              <Route index element={<HelpHomeView />} />
+              <Route path="contacto" element={<HelpContactView />} />
+              <Route path=":categoria" element={<HelpCategoryView />} />
+            </Route>
+
             <Route path={ROUTES.about} element={<AboutPage />} />
             <Route path={ROUTES.sellerRegister} element={<SellerRegisterPage />} />
 

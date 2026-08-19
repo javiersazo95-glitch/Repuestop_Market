@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { ROUTES, catalogPath, productPath, profilePath, storePath } from './paths';
+import { ROUTES, catalogPath, helpCategoryPath, helpContactPath, productPath, profilePath, storePath } from './paths';
 
 /**
  * Navegación de alto nivel del marketplace. Los componentes de vista siguen
@@ -10,7 +9,6 @@ import { ROUTES, catalogPath, productPath, profilePath, storePath } from './path
  */
 export function useAppNavigation() {
   const navigate = useNavigate();
-  const { isLoggedIn } = useAuth();
 
   const goProfile = useCallback((tab = 'resumen') => {
     navigate(profilePath(typeof tab === 'string' ? tab : 'resumen'));
@@ -37,7 +35,10 @@ export function useAppNavigation() {
     goAdsWall: () => navigate(ROUTES.adsWall),
     goSupport: () => navigate(ROUTES.support),
     goSellerRegister: () => navigate(ROUTES.sellerRegister),
-    // El centro de ayuda del usuario autenticado vive dentro de su panel.
-    goHelp: () => (isLoggedIn ? goProfile('soporte') : navigate(ROUTES.support)),
-  }), [navigate, isLoggedIn, goProduct, goStore, goProfile]);
+    // El centro de ayuda es una vista propia: misma URL para invitados y para
+    // usuarios con sesión, porque se enlaza desde muchos puntos de la web.
+    goHelp: () => navigate(ROUTES.support),
+    goHelpCategory: (slug) => navigate(helpCategoryPath(slug)),
+    goHelpContact: (topicId) => navigate(helpContactPath(topicId)),
+  }), [navigate, goProduct, goStore, goProfile]);
 }

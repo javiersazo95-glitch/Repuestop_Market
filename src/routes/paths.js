@@ -11,6 +11,8 @@ export const ROUTES = {
   profile: '/perfil',
   profileTab: '/perfil/:tab',
   support: '/ayuda',
+  helpContact: '/ayuda/contacto',
+  helpCategory: '/ayuda/:categoria',
   about: '/nosotros',
   adsWall: '/mural-anuncios',
   sellerRegister: '/vender',
@@ -66,6 +68,19 @@ export function storePath(store) {
 
 export function profilePath(tab = 'resumen') {
   return `${ROUTES.profile}/${tab || 'resumen'}`;
+}
+
+/** `/ayuda/pedidos`. Sin slug devuelve la portada del centro de ayuda. */
+export function helpCategoryPath(slug) {
+  return slug ? `${ROUTES.support}/${slug}` : ROUTES.support;
+}
+
+/**
+ * `/ayuda/contacto?tema=buyer-orders`. El tema viaja en la URL para que el
+ * formulario llegue preseleccionado desde una categoría o desde otra pantalla.
+ */
+export function helpContactPath(topicId) {
+  return topicId ? `${ROUTES.helpContact}?tema=${encodeURIComponent(topicId)}` : ROUTES.helpContact;
 }
 
 /**

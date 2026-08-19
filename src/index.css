@@ -12217,6 +12217,17 @@ input, select, textarea {
   .profile-cases-header { align-items: flex-start; flex-direction: column; }.profile-cases-tabs { grid-template-columns: 1fr; }.profile-cases-tabs > button { min-height: 70px; }
 }
 
+/* Help center — standalone view: header, hero, categories, contact form. */
+.help-center-page { min-height: 100vh; display: flex; flex-direction: column; background: #f6f9fd; }.help-center-main { flex: 1; width: min(calc(100% - 40px), 1180px); margin: 26px auto 52px; }
+.help-header { position: sticky; top: 0; z-index: 40; border-bottom: 1px solid #dce5f0; background: #fff; box-shadow: 0 4px 14px rgba(24,54,95,.05); }.help-header-inner { width: min(calc(100% - 40px), 1180px); min-height: 66px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.help-header-brand { display: flex; align-items: center; gap: 9px; color: #14243d; font-size: 19px; font-weight: 800; text-decoration: none; }.help-header-brand img { width: 34px; height: 34px; object-fit: contain; }.help-header-brand b { color: #1268f3; }
+.help-header-back { min-height: 38px; padding: 0 15px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid #dce5f0; border-radius: 10px; color: #2b3c55; background: #fff; font-size: 12px; font-weight: 700; cursor: pointer; transition: border-color .18s ease, color .18s ease; }.help-header-back:hover { border-color: #a8c8f8; color: #1268f3; }
+.help-view-placeholder { padding: 28px 25px; border: 1px solid #dce5f0; border-radius: 16px; background: #fff; box-shadow: 0 7px 20px rgba(24,54,95,.055); }.help-view-placeholder h1 { margin: 0; color: #14243d; font-size: 26px; }.help-view-placeholder p { margin: 6px 0 0; color: #687c98; font-size: 12px; }
+
+@media (max-width: 800px) {
+  .help-center-main { width: calc(100% - 20px); margin: 14px auto 30px; }.help-header-inner { width: calc(100% - 20px); }.help-header-back span { display: none; }.help-header-back { padding: 0 11px; }
+}
+
 /* Full help flow ported from mobile: role FAQ + contextual ticket/claim form. */
 .support-help-panel { display: grid; gap: 18px; background: #f6f9fd; }.support-help-panel.standalone { width: min(calc(100% - 40px), 1180px); margin: 24px auto 52px; }
 .support-back { width: fit-content; padding: 0; border: 0; color: #1268f3; background: transparent; font-size: 12px; font-weight: 800; cursor: pointer; }
