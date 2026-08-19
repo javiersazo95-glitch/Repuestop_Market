@@ -12221,11 +12221,14 @@ input, select, textarea {
 .help-center-page { min-height: 100vh; display: flex; flex-direction: column; background: #f6f9fd; }.help-center-main { flex: 1; width: min(calc(100% - 40px), 1180px); margin: 26px auto 52px; }
 .help-header { position: sticky; top: 0; z-index: 40; border-bottom: 1px solid #dce5f0; background: #fff; box-shadow: 0 4px 14px rgba(24,54,95,.05); }.help-header-inner { width: min(calc(100% - 40px), 1180px); min-height: 66px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .help-header-brand { display: flex; align-items: center; gap: 9px; color: #14243d; font-size: 19px; font-weight: 800; text-decoration: none; }.help-header-brand img { width: 34px; height: 34px; object-fit: contain; }.help-header-brand b { color: #1268f3; }
+.help-header-actions { display: flex; align-items: center; gap: 10px; }
 .help-header-back { min-height: 38px; padding: 0 15px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid #dce5f0; border-radius: 10px; color: #2b3c55; background: #fff; font-size: 12px; font-weight: 700; cursor: pointer; transition: border-color .18s ease, color .18s ease; }.help-header-back:hover { border-color: #a8c8f8; color: #1268f3; }
+.help-header-cta { min-height: 38px; padding: 0 16px; display: inline-flex; align-items: center; gap: 7px; border: 0; border-radius: 10px; color: #fff; background: linear-gradient(135deg,#287ff5,#1054d5); font-size: 12px; font-weight: 700; text-decoration: none; cursor: pointer; box-shadow: 0 7px 15px rgba(18,91,216,.2); transition: transform .18s ease, box-shadow .18s ease; }.help-header-cta:hover { transform: translateY(-1px); box-shadow: 0 9px 19px rgba(18,91,216,.26); }
+.help-role-chip { min-height: 30px; padding: 0 11px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #dce5f0; border-radius: 999px; color: #2b3c55; background: #f6f9fd; font-size: 11px; font-weight: 700; }.help-role-chip.chip-seller { border-color: #cfe0fb; color: #1054d5; background: #eff5ff; }
 .help-view-placeholder { padding: 28px 25px; border: 1px solid #dce5f0; border-radius: 16px; background: #fff; box-shadow: 0 7px 20px rgba(24,54,95,.055); }.help-view-placeholder h1 { margin: 0; color: #14243d; font-size: 26px; }.help-view-placeholder p { margin: 6px 0 0; color: #687c98; font-size: 12px; }
 
 @media (max-width: 800px) {
-  .help-center-main { width: calc(100% - 20px); margin: 14px auto 30px; }.help-header-inner { width: calc(100% - 20px); }.help-header-back span { display: none; }.help-header-back { padding: 0 11px; }
+  .help-center-main { width: calc(100% - 20px); margin: 14px auto 30px; }.help-header-inner { width: calc(100% - 20px); gap: 10px; }.help-header-brand span { display: none; }.help-header-back span, .help-header-cta span { display: none; }.help-header-back, .help-header-cta { padding: 0 11px; }.help-role-chip { display: none; }
 }
 
 /* Full help flow ported from mobile: role FAQ + contextual ticket/claim form. */
