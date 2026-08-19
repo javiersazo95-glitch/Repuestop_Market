@@ -908,6 +908,30 @@ export async function resolveMediationApi(pedidoId, { motivoResolucion, evidenci
   });
 }
 
+// Hilo con el mediador de RepuesTop. No tiene GET propio: se lee desde
+// getMediationChatApi (`mensajesMediadorComprador` / `mensajesMediadorVendedor`
+// segun el rol). El backend recibe `mensaje` como @RequestParam, asi que va
+// como FormData igual que el resto de los endpoints de mediacion.
+export async function sendMediatorMessageApi(pedidoId, mensaje) {
+  const formData = new FormData();
+  formData.append('mensaje', mensaje);
+  return fetchApi(`/pedidos/${pedidoId}/mediacion-mensajes`, {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+/** Aporta evidencia al expediente durante la mediacion (endpoint aparte del mensaje). */
+export async function uploadMediationEvidenceApi(pedidoId, imagenes) {
+  const formData = new FormData();
+  (imagenes || []).forEach((file) => formData.append('imagenes', file));
+  return fetchApi(`/pedidos/${pedidoId}/mediacion-evidencias`, {
+    method: 'POST',
+    body: formData,
+    signal: AbortSignal.timeout(30000),
+  });
+}
+
 export async function getNotificationsApi(userId) {
   return fetchApi(`/usuarios/${userId}/notificaciones`, { method: 'GET' });
 }

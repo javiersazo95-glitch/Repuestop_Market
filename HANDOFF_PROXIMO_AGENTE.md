@@ -48,9 +48,17 @@ Verificación técnica: `npm run build` compila limpiamente en **3.4s** generand
    compositor seguía abierto con la conversación ya pausada. Detalle, contrato
    verificado contra el backend y pendientes en `PLAN_EXPEDIENTE_DISPUTA.md`.
 
-Pendiente conocido tras esta sesión: la web no consume el hilo con el mediador
-(`/pedidos/{id}/mediacion-mensajes`) ni la carga de evidencia posterior
-(`/pedidos/{id}/mediacion-evidencias`), que el backend expone y mobile ya usa.
+3. **Hilo con el mediador (LISTO)**. El expediente suma solapas sobre el bloque
+   del hilo: "Con el vendedor/comprador" y "Con el mediador", esta última solo si
+   el caso está escalado. Cada parte lee su propio array
+   (`mensajesMediadorComprador` / `mensajesMediadorVendedor`; nunca
+   `mensajesMediador`, que mezcla ambas partes), escribe por
+   `/pedidos/{id}/mediacion-mensajes` y aporta evidencia por
+   `/pedidos/{id}/mediacion-evidencias`, que es un envío aparte del mensaje.
+
+Pendiente conocido tras esta sesión: `/conversaciones/{id}/mediacion-imagenes`
+(adjuntar imagen al chat directo) sigue sin usarse en la web, y no hay aviso de
+mensajes nuevos del mediador fuera del expediente.
 
 ## 2. Estado de Producción
 

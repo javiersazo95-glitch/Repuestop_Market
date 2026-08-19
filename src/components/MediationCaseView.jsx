@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle, ArrowLeft, CheckCircle2, Image as ImageIcon, Loader2, Lock,
-  MessageSquare, Paperclip, Send, ShieldAlert, X,
+  MessageSquare, Paperclip, RefreshCw, Scale, Send, ShieldAlert, X,
 } from 'lucide-react';
 import {
   escalateMediationApi, getMediationChatApi, resolveMediationApi,
-  sendConversationMessageApi, resolveMediaUrl,
+  sendConversationMessageApi, sendMediatorMessageApi, uploadMediationEvidenceApi,
+  resolveMediaUrl,
 } from '../services/api';
 import { MEDIATION_STATUS_LABELS, MEDIATION_STATUS_TONES } from '../data/mediationStatus';
 
@@ -13,6 +14,32 @@ const MAX_EVIDENCE_FILES = 5;
 const MAX_EVIDENCE_SIZE = 5 * 1024 * 1024;
 const MAX_REASON = 150;
 const MAX_DETAIL = 500;
+
+// Entradas automaticas que el backend deja en el hilo del mediador: no son
+// mensajes de nadie, son asientos de la bitacora del caso.
+const LOG_ENTRY_TYPES = new Set(['solicitud_mediador', 'evidencia', 'system', 'nota']);
+
+/**
+ * El DTO del hilo del mediador serializa con nombres distintos a los campos Java
+ * (`@JsonProperty`): el texto llega como `text`, el autor como `author`, el tipo
+ * como `noteType` y la fecha como `createdAt`. Se normaliza acá, con los mismos
+ * respaldos que usa la app movil, para no depender de una sola forma.
+ */
+function normalizeMediatorEntry(entry, index) {
+  return {
+    id: entry.id ?? `entry-${index}`,
+    author: entry.author ?? entry.remitente ?? entry.sender ?? '',
+    text: entry.text ?? entry.mensaje ?? entry.message ?? '',
+    type: entry.noteType ?? entry.tipo ?? entry.type ?? '',
+    date: entry.createdAt ?? entry.fecha ?? entry.date ?? null,
+    senderRole: entry.senderRole ?? '',
+  };
+}
+
+/** Nombre de archivo de una URL, para cruzar la evidencia que llega por dos vias. */
+function fileKey(url) {
+  return String(url || '').split('?')[0].split('/').pop().toLowerCase();
+}
 
 function formatTime(value) {
   if (!value) return '';
@@ -128,6 +155,15 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState('');
 
+  // Hilo activo: con la otra parte o con el mediador de RepuesTop.
+  const [activeThread, setActiveThread] = useState('parte');
+  const [mediatorText, setMediatorText] = useState('');
+  const [mediatorFiles, setMediatorFiles] = useState([]);
+  const [mediatorError, setMediatorError] = useState('');
+  const [isSendingMediator, setIsSendingMediator] = useState(false);
+  const [isUploadingEvidence, setIsUploadingEvidence] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const [dialog, setDialog] = useState(null); // 'escalate' | 'resolve'
   const [reason, setReason] = useState('');
   const [detail, setDetail] = useState('');
@@ -137,17 +173,20 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
 
   const threadRef = useRef(null);
 
-  const load = async () => {
-    setLoading(true);
+  // `quiet` refresca sin desmontar la vista: se usa al cambiar de solapa, al
+  // volver de una accion y con el boton Actualizar.
+  const load = async ({ quiet = false } = {}) => {
+    if (quiet) setIsRefreshing(true); else setLoading(true);
     setLoadError('');
     try {
       const data = await getMediationChatApi(pedidoId);
       setChat(data);
       setMessages(data?.mensajes || []);
     } catch (error) {
-      setLoadError(error.message || 'No se pudo cargar el expediente.');
+      if (!quiet) setLoadError(error.message || 'No se pudo cargar el expediente.');
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -158,7 +197,7 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
   useEffect(() => {
     const node = threadRef.current;
     if (node) node.scrollTop = node.scrollHeight;
-  }, [messages.length, loading]);
+  }, [messages.length, loading, activeThread]);
 
   const estado = chat?.estadoMediacion;
   const statusTone = MEDIATION_STATUS_TONES[estado] || 'wait';
@@ -174,14 +213,42 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
 
   // El backend guarda la evidencia de escalación y la de resolución en el mismo
   // campo (urlDocumento, separado por "|"); las de cada parte vienen aparte.
-  const escalationEvidence = useMemo(
-    () => (chat?.evidenciasEscalacion || []).map((url) => ({ url: resolveMediaUrl(url) })),
-    [chat]
+  const ownRole = mode === 'buyer' ? 'COMPRADOR' : 'VENDEDOR';
+  const withUrl = (list) => (list || []).map((item) => ({ ...item, url: resolveMediaUrl(item.url) }));
+  const myEvidence = useMemo(
+    () => withUrl(mode === 'buyer' ? chat?.evidenciasComprador : chat?.evidenciasVendedor),
+    [chat, mode]
   );
-  const partyEvidence = useMemo(() => ([
-    ...(chat?.evidenciasComprador || []),
-    ...(chat?.evidenciasVendedor || []),
-  ].map((item) => ({ ...item, url: resolveMediaUrl(item.url) }))), [chat]);
+  const otherEvidence = useMemo(
+    () => withUrl(mode === 'buyer' ? chat?.evidenciasVendedor : chat?.evidenciasComprador),
+    [chat, mode]
+  );
+
+  // `evidenciasEscalacion` es el acumulado de `urlDocumento`, asi que repite los
+  // archivos que ya vienen atribuidos a cada parte. Solo se listan los que no
+  // estan en ninguna de las dos tiras, para no mostrar la misma foto tres veces.
+  const escalationEvidence = useMemo(() => {
+    const known = new Set([...myEvidence, ...otherEvidence].map((item) => fileKey(item.url)));
+    return (chat?.evidenciasEscalacion || [])
+      .map((url) => ({ url: resolveMediaUrl(url) }))
+      .filter((item) => !known.has(fileKey(item.url)));
+  }, [chat, myEvidence, otherEvidence]);
+
+  // Cada parte ve SOLO su propio hilo con el mediador. `mensajesMediador` trae
+  // los de ambas partes y no se usa acá: le mostraría al comprador lo que el
+  // vendedor le escribió al mediador.
+  const mediatorThread = useMemo(
+    () => ((mode === 'buyer' ? chat?.mensajesMediadorComprador : chat?.mensajesMediadorVendedor) || [])
+      .map(normalizeMediatorEntry),
+    [chat, mode]
+  );
+  const mediatorClosed = Boolean(chat?.chatCerrado);
+
+  // Si el caso deja de estar escalado (o todavía no lo está), la solapa del
+  // mediador no existe: hay que volver a la conversación directa.
+  useEffect(() => {
+    if (!chat?.escalado && activeThread === 'mediador') setActiveThread('parte');
+  }, [chat?.escalado, activeThread]);
 
   const openDialog = (kind) => {
     setDialog(kind);
@@ -205,6 +272,46 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
       setSendError(error.message || 'No se pudo enviar el mensaje.');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const submitMediatorMessage = async (event) => {
+    event.preventDefault();
+    const text = mediatorText.trim();
+    if (!text || isSendingMediator) return;
+    setIsSendingMediator(true);
+    setMediatorError('');
+    try {
+      await sendMediatorMessageApi(pedidoId, text);
+      setMediatorText('');
+      // El endpoint devuelve solo el mensaje creado; el hilo que ve cada parte
+      // lo arma el backend filtrando por rol, asi que se relee el expediente.
+      await load({ quiet: true });
+    } catch (error) {
+      setMediatorError(error.message || 'No se pudo enviar el mensaje al mediador.');
+    } finally {
+      setIsSendingMediator(false);
+    }
+  };
+
+  const submitMediatorEvidence = async () => {
+    if (!mediatorFiles.length || isUploadingEvidence) return;
+    setIsUploadingEvidence(true);
+    setMediatorError('');
+    try {
+      const data = await uploadMediationEvidenceApi(pedidoId, mediatorFiles);
+      setMediatorFiles([]);
+      if (data?.conversacion) {
+        setChat(data);
+        setMessages(data?.mensajes || []);
+      } else {
+        await load({ quiet: true });
+      }
+      onChanged?.();
+    } catch (error) {
+      setMediatorError(error.message || 'No se pudo adjuntar la evidencia.');
+    } finally {
+      setIsUploadingEvidence(false);
     }
   };
 
@@ -304,11 +411,12 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
         </section>
       )}
 
-      {(escalationEvidence.length > 0 || partyEvidence.length > 0) && (
+      {(escalationEvidence.length > 0 || myEvidence.length > 0 || otherEvidence.length > 0) && (
         <section className="dispute-record is-evidence">
           <h3><Paperclip size={15} /> Evidencia del expediente</h3>
           <EvidenceStrip title="Adjuntos del caso" items={escalationEvidence} />
-          <EvidenceStrip title="Aportada por las partes" items={partyEvidence} />
+          <EvidenceStrip title="Mis evidencias" items={myEvidence} />
+          <EvidenceStrip title={`Aportada por ${mode === 'buyer' ? 'el vendedor' : 'el comprador'}`} items={otherEvidence} />
         </section>
       )}
 
@@ -324,60 +432,178 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
       )}
 
       <section className="dispute-thread-block">
-        <header className="dispute-thread-head">
-          <span className="dispute-thread-avatar">
-            {participantPhoto ? <img src={participantPhoto} alt="" referrerPolicy="no-referrer" /> : initials(participantName)}
-          </span>
-          <div>
-            <strong>{participantName || 'Otra parte'}</strong>
-            <small><Lock size={11} /> Conversación privada del pedido {codigo}</small>
+        {/* Las solapas van sobre el hilo, no sobre todo el expediente: la
+            cabecera, los datos y la evidencia son comunes a las dos
+            conversaciones y no tiene sentido repetirlas dentro de cada una. */}
+        <div className="dispute-tabs">
+          <div role="tablist" aria-label="Conversaciones del expediente">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeThread === 'parte'}
+              className={activeThread === 'parte' ? 'active' : ''}
+              onClick={() => setActiveThread('parte')}
+            >
+              Con {mode === 'buyer' ? 'el vendedor' : 'el comprador'} <b>{messages.length}</b>
+            </button>
+            {chat?.escalado && (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeThread === 'mediador'}
+                className={activeThread === 'mediador' ? 'active' : ''}
+                onClick={() => { setActiveThread('mediador'); void load({ quiet: true }); }}
+              >
+                Con el mediador <b>{mediatorThread.length}</b>
+              </button>
+            )}
           </div>
-        </header>
-
-        <div className="dispute-thread" ref={threadRef}>
-          {messages.length === 0 ? (
-            <p className="dispute-thread-empty"><MessageSquare size={18} /> Todavía no hay mensajes en este expediente.</p>
-          ) : messages.map((message) => {
-            if (message.tipo === 'system') {
-              return <p key={message.id} className="dispute-system-note">{message.texto}</p>;
-            }
-            const mine = Number(message.emisorId) === Number(user?.userId ?? user?.id);
-            return (
-              <div key={message.id} className={`dispute-msg ${mine ? 'is-mine' : ''}`}>
-                <span className="dispute-msg-author">{mine ? 'Tú' : (participantName || 'Contraparte')}</span>
-                <div className="dispute-msg-body">
-                  {message.imagenUrl && <img src={resolveMediaUrl(message.imagenUrl)} alt="Adjunto del mensaje" />}
-                  {message.texto && <p>{message.texto}</p>}
-                </div>
-                <time>{formatTime(message.createdAt)}</time>
-              </div>
-            );
-          })}
+          <button
+            type="button"
+            className="dispute-refresh"
+            onClick={() => load({ quiet: true })}
+            disabled={isRefreshing}
+            title="Volver a leer el expediente"
+          >
+            {isRefreshing ? <Loader2 size={13} className="spin-icon" /> : <RefreshCw size={13} />} Actualizar
+          </button>
         </div>
 
-        {threadLocked ? (
-          <p className="dispute-thread-closed">
-            <Lock size={14} /> {isPaused
-              ? 'La conversación directa está pausada: el caso sigue con el mediador de RepuesTop.'
-              : `Este expediente está ${String(MEDIATION_STATUS_LABELS[estado] || 'cerrado').toLowerCase()}; ya no admite mensajes.`}
-          </p>
+        {activeThread === 'parte' ? (
+          <>
+            <header className="dispute-thread-head">
+              <span className="dispute-thread-avatar">
+                {participantPhoto ? <img src={participantPhoto} alt="" referrerPolicy="no-referrer" /> : initials(participantName)}
+              </span>
+              <div>
+                <strong>{participantName || 'Otra parte'}</strong>
+                <small><Lock size={11} /> Conversación privada del pedido {codigo}</small>
+              </div>
+            </header>
+
+            <div className="dispute-thread" ref={threadRef}>
+              {messages.length === 0 ? (
+                <p className="dispute-thread-empty"><MessageSquare size={18} /> Todavía no hay mensajes en este expediente.</p>
+              ) : messages.map((message) => {
+                if (message.tipo === 'system') {
+                  return <p key={message.id} className="dispute-system-note">{message.texto}</p>;
+                }
+                const mine = Number(message.emisorId) === Number(user?.userId ?? user?.id);
+                return (
+                  <div key={message.id} className={`dispute-msg ${mine ? 'is-mine' : ''}`}>
+                    <span className="dispute-msg-author">{mine ? 'Tú' : (participantName || 'Contraparte')}</span>
+                    <div className="dispute-msg-body">
+                      {message.imagenUrl && <img src={resolveMediaUrl(message.imagenUrl)} alt="Adjunto del mensaje" />}
+                      {message.texto && <p>{message.texto}</p>}
+                    </div>
+                    <time>{formatTime(message.createdAt)}</time>
+                  </div>
+                );
+              })}
+            </div>
+
+            {threadLocked ? (
+              <p className="dispute-thread-closed">
+                <Lock size={14} /> {isPaused
+                  ? 'La conversación directa está pausada: el caso sigue con el mediador de RepuesTop.'
+                  : `Este expediente está ${String(MEDIATION_STATUS_LABELS[estado] || 'cerrado').toLowerCase()}; ya no admite mensajes.`}
+              </p>
+            ) : (
+              <form className="dispute-composer" onSubmit={submitMessage}>
+                {sendError && <span className="dispute-inline-error">{sendError}</span>}
+                <textarea
+                  value={messageText}
+                  onChange={(event) => setMessageText(event.target.value)}
+                  placeholder="Escribe tu mensaje para la otra parte..."
+                  maxLength={1000}
+                  rows={2}
+                />
+                <footer>
+                  <small>{messageText.length}/1000</small>
+                  <button type="submit" disabled={isSending || !messageText.trim()}>
+                    {isSending ? <Loader2 size={15} className="spin-icon" /> : <Send size={15} />} Enviar
+                  </button>
+                </footer>
+              </form>
+            )}
+          </>
         ) : (
-          <form className="dispute-composer" onSubmit={submitMessage}>
-            {sendError && <span className="dispute-inline-error">{sendError}</span>}
-            <textarea
-              value={messageText}
-              onChange={(event) => setMessageText(event.target.value)}
-              placeholder="Escribe tu mensaje para la otra parte..."
-              maxLength={1000}
-              rows={2}
-            />
-            <footer>
-              <small>{messageText.length}/1000</small>
-              <button type="submit" disabled={isSending || !messageText.trim()}>
-                {isSending ? <Loader2 size={15} className="spin-icon" /> : <Send size={15} />} Enviar
-              </button>
-            </footer>
-          </form>
+          <>
+            <header className="dispute-thread-head">
+              <span className="dispute-thread-avatar is-mediator"><Scale size={16} /></span>
+              <div>
+                <strong>Mediador RepuesTop</strong>
+                <small><Lock size={11} /> Solo vos y el mediador ven este hilo</small>
+              </div>
+            </header>
+
+            <div className="dispute-thread" ref={threadRef}>
+              {mediatorThread.length === 0 ? (
+                <p className="dispute-thread-empty"><MessageSquare size={18} /> El mediador todavía no registró movimientos.</p>
+              ) : mediatorThread.map((entry) => {
+                if (LOG_ENTRY_TYPES.has(entry.type)) {
+                  return (
+                    <p key={entry.id} className="dispute-log-entry">
+                      <span>{formatDate(entry.date)} · {formatTime(entry.date)}</span>
+                      {entry.text}
+                    </p>
+                  );
+                }
+                const mine = entry.senderRole === ownRole;
+                return (
+                  <div key={entry.id} className={`dispute-msg ${mine ? 'is-mine' : ''}`}>
+                    <span className="dispute-msg-author">{mine ? 'Tú' : (entry.author || 'Mediador RepuesTop')}</span>
+                    <div className="dispute-msg-body"><p>{entry.text}</p></div>
+                    <time>{formatTime(entry.date)}</time>
+                  </div>
+                );
+              })}
+            </div>
+
+            {mediatorClosed ? (
+              <p className="dispute-thread-closed"><Lock size={14} /> El mediador cerró este hilo; ya no admite mensajes ni evidencia.</p>
+            ) : (
+              <form className="dispute-composer is-mediator" onSubmit={submitMediatorMessage}>
+                {mediatorError && <span className="dispute-inline-error">{mediatorError}</span>}
+                <textarea
+                  value={mediatorText}
+                  onChange={(event) => setMediatorText(event.target.value)}
+                  placeholder="Escribe al mediador de RepuesTop..."
+                  maxLength={1000}
+                  rows={2}
+                />
+                <footer>
+                  <small>{mediatorText.length}/1000</small>
+                  <button type="submit" disabled={isSendingMediator || !mediatorText.trim()}>
+                    {isSendingMediator ? <Loader2 size={15} className="spin-icon" /> : <Send size={15} />} Enviar
+                  </button>
+                </footer>
+
+                {/* Adjuntar es un envío aparte del mensaje: el backend lo registra
+                    como aporte de evidencia al expediente, no como archivo del chat. */}
+                <div className="dispute-evidence-tray">
+                  <EvidencePicker
+                    files={mediatorFiles}
+                    disabled={isUploadingEvidence}
+                    onAdd={(incoming) => {
+                      const picked = pickEvidenceFiles(incoming, mediatorFiles.length, setMediatorError);
+                      if (picked.length) setMediatorFiles((current) => [...current, ...picked]);
+                    }}
+                    onRemove={(index) => setMediatorFiles((current) => current.filter((_, i) => i !== index))}
+                  />
+                  <button
+                    type="button"
+                    className="dispute-btn"
+                    disabled={isUploadingEvidence || mediatorFiles.length === 0}
+                    onClick={submitMediatorEvidence}
+                  >
+                    {isUploadingEvidence ? <Loader2 size={15} className="spin-icon" /> : <Paperclip size={15} />}
+                    {isUploadingEvidence ? 'Subiendo...' : 'Enviar evidencia al expediente'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </>
         )}
       </section>
 
