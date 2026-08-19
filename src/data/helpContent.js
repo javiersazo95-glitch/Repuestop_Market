@@ -5,11 +5,9 @@
  *
  * Cada FAQ declara:
  * - `roles`: quién la ve (`COMPRADOR`, `VENDEDOR`, `INVITADO`).
- * - `topicId`: el tema con el que se abre el formulario de contacto. DEBE ser
- *   uno de los ids que ya usa el backend/formulario (`buyer-orders`,
- *   `buyer-payment`, `buyer-quote`, `general`, `seller-orders`,
- *   `seller-products`, `seller-quote`, `blocked-account`). Un id inventado
- *   dejaría el selector de asunto vacío.
+ * - `topicId`: el tema con el que se abre el formulario de contacto. DEBE existir
+ *   en `CONTACT_TOPICS` para el rol que ve la FAQ; un id que no exista deja el
+ *   selector de asunto vacío (el formulario lo sanea al primer tema).
  */
 
 export const HELP_ROLES = { BUYER: 'COMPRADOR', SELLER: 'VENDEDOR', GUEST: 'INVITADO' };
@@ -17,18 +15,53 @@ export const HELP_ROLES = { BUYER: 'COMPRADOR', SELLER: 'VENDEDOR', GUEST: 'INVI
 const ALL_ROLES = [HELP_ROLES.BUYER, HELP_ROLES.SELLER, HELP_ROLES.GUEST];
 
 /**
- * Temas del formulario de contacto por rol. Los ids son los que el backend ya
- * clasifica: cambiarlos rompe el filtrado del backoffice. Viven aquí y no en el
- * formulario para que la vista de contacto pueda leer la etiqueta del tema.
+ * Temas del formulario de contacto por rol.
+ *
+ * - `id`: viaja en `contexto` del ticket (`topic=...`) y es el valor de `?tema=`.
+ *   No es un enum del backend, pero cambiarlo rompe los enlaces ya publicados.
+ * - `categoria`: valor real del enum `CategoriaTicket` del backend. De él depende
+ *   la prioridad y el SLA que asigna el backoffice: FALLA_TECNICA → ALTA,
+ *   SOLICITUD_AYUDA → MEDIA, CONSULTA → BAJA. No inventar valores.
+ * - `target`: el tema denuncia algo externo (una publicación, una tienda, otro
+ *   usuario), así que el formulario pide identificarlo.
+ *
+ * `plataforma` siempre se envía como SITIO_WEB: identifica el canal de origen,
+ * no el área que atiende.
  */
+export const TICKET_CATEGORIES = { TECNICA: 'FALLA_TECNICA', AYUDA: 'SOLICITUD_AYUDA', CONSULTA: 'CONSULTA' };
+
 export const CONTACT_TOPICS = {
   COMPRADOR: [
-    ['Pedido o despacho', 'buyer-orders'], ['Pago o carrito', 'buyer-payment'], ['Cotización', 'buyer-quote'], ['Cuenta o perfil', 'general'],
+    { id: 'buyer-orders', label: 'Pedido o despacho', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'buyer-payment', label: 'Pago, cobro o reembolso', categoria: TICKET_CATEGORIES.TECNICA },
+    { id: 'buyer-quote', label: 'Cotizaciones o mensajes', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'buyer-report', label: 'Denunciar una publicación o una tienda', categoria: TICKET_CATEGORIES.AYUDA, target: 'Publicación, tienda o enlace' },
+    { id: 'account-security', label: 'Seguridad de mi cuenta', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'general', label: 'Cuenta o perfil', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'ads', label: 'Anuncios del mural', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'blocked-account', label: 'Cuenta bloqueada o apelación', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'info', label: 'Consulta general sobre RepuesTop', categoria: TICKET_CATEGORIES.CONSULTA },
   ],
   VENDEDOR: [
-    ['Pedidos o envío', 'seller-orders'], ['Productos', 'seller-products'], ['Mensajes o cotización', 'seller-quote'], ['Cuenta bloqueada', 'blocked-account'],
+    { id: 'seller-orders', label: 'Pedidos o envío', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'seller-products', label: 'Productos y publicaciones', categoria: TICKET_CATEGORIES.TECNICA },
+    { id: 'seller-quote', label: 'Mensajes o cotización', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'seller-payouts', label: 'Retiros, pagos y comisiones', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'seller-store', label: 'Mi tienda y verificación', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'general', label: 'Cuenta o perfil', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'seller-report', label: 'Denunciar una publicación o un usuario', categoria: TICKET_CATEGORIES.AYUDA, target: 'Publicación, tienda o usuario' },
+    { id: 'account-security', label: 'Seguridad de mi cuenta', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'ads', label: 'Anuncios y publicidad', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'blocked-account', label: 'Cuenta bloqueada o apelación', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'info', label: 'Consulta general sobre RepuesTop', categoria: TICKET_CATEGORIES.CONSULTA },
   ],
 };
+
+/** Metadatos del tema para el rol dado (categoría del ticket, campo objetivo). */
+export function contactTopic(reportType, topicId) {
+  const topics = CONTACT_TOPICS[reportType] || CONTACT_TOPICS.COMPRADOR;
+  return topics.find((topic) => topic.id === topicId) || topics[0];
+}
 
 export const HELP_CATEGORIES = [
   {
@@ -121,7 +154,7 @@ export const HELP_CATEGORIES = [
     titulo: 'Mi tienda',
     descripcion: 'Datos de la tienda, cobros, comisiones y verificación.',
     icono: 'store',
-    topicId: { [HELP_ROLES.SELLER]: 'seller-orders' },
+    topicId: { [HELP_ROLES.SELLER]: 'seller-store' },
     faqs: [
       {
         q: '¿Cómo edito los datos de mi tienda?',
@@ -166,7 +199,7 @@ export const HELP_CATEGORIES = [
     titulo: 'Cuenta y perfil',
     descripcion: 'Registro, sesión, datos personales y bloqueos.',
     icono: 'user',
-    topicId: { [HELP_ROLES.BUYER]: 'general', [HELP_ROLES.SELLER]: 'blocked-account' },
+    topicId: { [HELP_ROLES.BUYER]: 'general', [HELP_ROLES.SELLER]: 'general' },
     faqs: [
       {
         q: '¿Qué hago si mi cuenta fue bloqueada?',
@@ -217,7 +250,7 @@ export const HELP_CATEGORIES = [
     titulo: 'Políticas de la plataforma',
     descripcion: 'Cómo funciona RepuesTop, reglas de uso y datos personales.',
     icono: 'policy',
-    topicId: { [HELP_ROLES.BUYER]: 'general', [HELP_ROLES.SELLER]: 'seller-products' },
+    topicId: { [HELP_ROLES.BUYER]: 'info', [HELP_ROLES.SELLER]: 'info' },
     faqs: [
       {
         q: '¿RepuesTop vende directamente los repuestos?',
@@ -262,7 +295,7 @@ export const HELP_CATEGORIES = [
     titulo: 'Centro de seguridad',
     descripcion: 'Compra protegida, mediación y cuidado de tu cuenta.',
     icono: 'shield',
-    topicId: { [HELP_ROLES.BUYER]: 'buyer-orders', [HELP_ROLES.SELLER]: 'seller-orders' },
+    topicId: { [HELP_ROLES.BUYER]: 'buyer-report', [HELP_ROLES.SELLER]: 'seller-report' },
     faqs: [
       {
         q: '¿Cómo sé que una tienda es confiable?',
@@ -286,13 +319,11 @@ export const HELP_CATEGORIES = [
         q: '¿Cómo funciona la mediación?',
         a: 'Cuando se abre un reclamo, ambas partes pueden exponer su versión y adjuntar fotos en el chat del caso. Si no se llega a un acuerdo, el caso se escala a un mediador de RepuesTop que revisa la evidencia y define cómo se resuelve. Puedes seguir el estado en Reportes y disputas de tu perfil.',
         roles: [HELP_ROLES.BUYER, HELP_ROLES.SELLER],
-        topicId: 'buyer-orders',
       },
       {
         q: '¿Cómo reporto a un usuario o una conversación?',
-        a: 'Dentro del chat de la cotización, abre el menú de opciones y elige "Reportar". El reporte llega a nuestro equipo con el historial de esa conversación y queda registrado en Reportes y disputas.',
+        a: 'Dentro del chat de la cotización, abre el menú de opciones y elige "Reportar". El reporte llega a nuestro equipo con el historial de esa conversación y queda registrado en Reportes y disputas. Si no tienes un chat con esa persona, usa Contactar soporte con el tema de denuncia.',
         roles: [HELP_ROLES.BUYER, HELP_ROLES.SELLER],
-        topicId: 'buyer-quote',
       },
       {
         q: '¿RepuesTop me va a pedir mi contraseña o los datos de mi tarjeta?',
@@ -348,6 +379,9 @@ export function highlightedFaqs(reportType, limit = 5) {
     .flatMap((category) => faqsForRole(category, reportType).map((faq) => ({ ...faq, categoria: category.slug })))
     .slice(0, limit);
 }
+
+
+
 
 
 

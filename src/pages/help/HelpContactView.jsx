@@ -20,7 +20,7 @@ export default function HelpContactView() {
   const reportType = resolveReportType(role, user);
   const [topic, setTopic] = useState(searchParams.get('tema'));
 
-  const topicLabel = (CONTACT_TOPICS[reportType] || []).find(([, value]) => value === topic)?.[0];
+  const topicLabel = (CONTACT_TOPICS[reportType] || []).find((item) => item.id === topic)?.label;
 
   return (
     <>
@@ -106,5 +106,6 @@ export default function HelpContactView() {
     </>
   );
 }
+
 
 

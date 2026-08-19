@@ -4,17 +4,27 @@ import { useNavigate } from 'react-router-dom';
 import {
   createOrderClaimApi, createSupportTicketApi, getBuyerOrdersApi, getSellerOrdersApi,
 } from '../../services/api';
-import { CONTACT_TOPICS, HELP_ROLES } from '../../data/helpContent';
+import { CONTACT_TOPICS, HELP_ROLES, TICKET_CATEGORIES, contactTopic } from '../../data/helpContent';
 import { profilePath } from '../../routes/paths';
 
+// Asuntos por tema. Viajan como `motivo` del ticket (texto libre, no enum), así
+// que se pueden ajustar sin romper el backoffice. Se retiró "Problemas al usar
+// un cupón": la plataforma no tiene cupones.
 const SUBJECTS = {
   'buyer-orders': [],
-  'buyer-payment': ['Error al procesar el pago', 'Cobro duplicado en mi tarjeta', 'Problemas al usar un cupón', 'Error al cargar el carrito de compra', 'Otro'],
+  'buyer-payment': ['Error al procesar el pago', 'Cobro duplicado en mi tarjeta', 'El pago se descontó y el pedido no aparece', 'Estado de un reembolso', 'Error al cargar el carrito de compra', 'Otro'],
   'buyer-quote': ['Vendedor no responde el chat', 'Error al aceptar cotización', 'Dudas sobre vigencia de cotización', 'Otro'],
-  general: ['Problemas para iniciar sesión', 'Modificar datos de mi cuenta', 'Error al subir foto de perfil', 'Eliminar mi cuenta', 'Otro'],
+  general: ['Problemas para iniciar sesión', 'Modificar datos de mi cuenta', 'Error al subir foto de perfil', 'Cambiar mi dirección de despacho', 'Eliminar mi cuenta', 'Otro'],
+  'buyer-report': ['Publicación engañosa o con fotos que no corresponden', 'Sospecha de producto falsificado o sin procedencia', 'Producto prohibido o peligroso', 'La tienda insiste en vender fuera de RepuesTop', 'Trato irrespetuoso o acoso', 'Precio o stock que no se respeta', 'Otro'],
+  'account-security': ['Creo que accedieron a mi cuenta', 'Recibí un correo o mensaje sospechoso a nombre de RepuesTop', 'Me pidieron mi clave o datos de tarjeta', 'No puedo recuperar el acceso a mi cuenta', 'Otro'],
+  ads: ['Error al crear o publicar un anuncio', 'Pagué un anuncio y no se publicó', 'Quiero editar o dar de baja un anuncio', 'Dudas sobre los planes de difusión', 'Otro'],
+  info: ['Cómo funciona la compra en RepuesTop', 'Cómo funcionan las cotizaciones', 'Cómo funciona la mediación', 'Quiero vender en RepuesTop', 'Otro'],
   'seller-orders': [],
-  'seller-products': ['Error al crear o publicar producto', 'Problemas con las fotos del producto', 'Error al actualizar stock/inventario', 'Otro'],
+  'seller-products': ['Error al crear o publicar producto', 'Problemas con las fotos del producto', 'Error al actualizar stock/inventario', 'Problemas con la carga masiva', 'Otro'],
   'seller-quote': ['Mensajes bloqueados o no cargan', 'Problema al enviar una cotización', 'Comprador no responde el chat', 'Otro'],
+  'seller-payouts': ['No puedo solicitar un retiro', 'Un retiro no ha sido depositado', 'Error al validar mis datos bancarios', 'Mi saldo disponible no cuadra', 'Dudas sobre la comisión aplicada a una venta', 'Dudas sobre el Beneficio Tarifa Fundador', 'Otro'],
+  'seller-store': ['Corregir el nombre o el RUT de mi tienda', 'Problemas con el logo o la portada', 'Dudas sobre la verificación de mi tienda', 'Actualizar mis métodos de envío', 'Cambiar el correo o el representante de la cuenta', 'Otro'],
+  'seller-report': ['Otra tienda copió mis fotos o publicaciones', 'Publicación engañosa o producto falsificado', 'Comprador con conducta abusiva', 'Comprador que insiste en operar fuera de RepuesTop', 'Sospecha de fraude en un pedido', 'Otro'],
   'blocked-account': ['Solicitud de apelación de cuenta', 'Dudas sobre el motivo del bloqueo', 'Dificultades con una mediación en curso', 'Otro'],
 };
 const BUYER_CLAIMS = [
@@ -61,7 +71,7 @@ export default function HelpContactForm({ user, reportType, initialTopic = null,
   const topics = CONTACT_TOPICS[reportType] || CONTACT_TOPICS[HELP_ROLES.BUYER];
   // Un tema que no existe para este rol (por ejemplo `?tema=seller-products`
   // abierto con sesión de comprador) caería en un selector vacío: se ignora.
-  const validInitialTopic = topics.some(([, value]) => value === initialTopic) ? initialTopic : topics[0][1];
+  const validInitialTopic = topics.some((item) => item.id === initialTopic) ? initialTopic : topics[0].id;
 
   const [topic, setTopic] = useState(validInitialTopic);
   const [subject, setSubject] = useState('');
@@ -71,16 +81,18 @@ export default function HelpContactForm({ user, reportType, initialTopic = null,
   const [selectedOrderId, setSelectedOrderId] = useState('');
   const [claimType, setClaimType] = useState('');
   const [customClaimType, setCustomClaimType] = useState('');
+  const [target, setTarget] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [submittedId, setSubmittedId] = useState('');
 
+  const topicMeta = contactTopic(reportType, topic);
   const isOrdersTopic = topic === 'buyer-orders' || topic === 'seller-orders';
   const selectedOrder = orders.find((order) => String(order.id) === String(selectedOrderId));
   const claimOptions = useMemo(() => orderClaimOptions(selectedOrder, reportType), [selectedOrder, reportType]);
 
   useEffect(() => {
-    setSubject(''); setCustomSubject(''); setSelectedOrderId(''); setClaimType(''); setCustomClaimType('');
+    setSubject(''); setCustomSubject(''); setSelectedOrderId(''); setClaimType(''); setCustomClaimType(''); setTarget('');
     onTopicChange?.(topic);
   }, [topic]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -101,7 +113,8 @@ export default function HelpContactForm({ user, reportType, initialTopic = null,
   const finalSubject = subject === 'other' ? customSubject.trim() : subject;
   const finalClaim = claimType === 'other' ? customClaimType.trim() : claimType;
   const canSubmit = detail.trim().length > 0 && detail.trim().length <= 500
-    && (isOrdersTopic ? selectedOrderId && finalClaim : finalSubject);
+    && (isOrdersTopic ? selectedOrderId && finalClaim : finalSubject)
+    && (!topicMeta.target || target.trim().length > 0);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -116,13 +129,23 @@ export default function HelpContactForm({ user, reportType, initialTopic = null,
           usuarioId: user?.userId ?? user?.id,
           nombreReportante: user?.userName || user?.nombre || user?.storeName || 'Usuario',
           tipoReportante: reportType,
-          categoria: topic === 'seller-products' || topic === 'buyer-payment' ? 'FALLA_TECNICA' : 'SOLICITUD_AYUDA',
+          // Categoría real del enum CategoriaTicket: de ella dependen la
+          // prioridad y el SLA que asigna el backoffice.
+          categoria: topicMeta.categoria,
           // Valor real del enum PlataformaTicket del backend (no una copia del
           // valor que usa la app móvil): así el backoffice etiqueta y filtra
           // correctamente los tickets creados desde la web como "Sitio Web".
           plataforma: 'SITIO_WEB',
           motivo: finalSubject,
-          detalle: detail.trim(),
+          detalle: topicMeta.target
+            ? `${topicMeta.target}: ${target.trim()}
+
+${detail.trim()}`
+            : detail.trim(),
+          // El backend manda un correo de confirmación con el número de ticket
+          // cuando viene `correoContacto`. Se envía solo en los casos que se
+          // siguen (ayuda y fallas), no en consultas informativas.
+          correoContacto: topicMeta.categoria === TICKET_CATEGORIES.CONSULTA ? undefined : user?.email,
           sellerId: user?.sellerId ? Number(user.sellerId) : undefined,
           contexto: `topic=${topic} | sourceRoute=help-center`,
         });
@@ -156,7 +179,7 @@ export default function HelpContactForm({ user, reportType, initialTopic = null,
         <label>
           Tema
           <select value={topic} onChange={(event) => setTopic(event.target.value)}>
-            {topics.map(([label, value]) => <option key={value} value={value}>{label}</option>)}
+            {topics.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
           </select>
           <small>Sirve para derivar tu caso más rápido.</small>
         </label>
@@ -202,6 +225,19 @@ export default function HelpContactForm({ user, reportType, initialTopic = null,
           </label>
         )}
 
+        {topicMeta.target && (
+          <label>
+            {topicMeta.target}
+            <input
+              maxLength="200"
+              value={target}
+              onChange={(event) => setTarget(event.target.value)}
+              placeholder="Nombre de la tienda, título de la publicación o enlace"
+            />
+            <small>Sin este dato no podemos revisar la denuncia.</small>
+          </label>
+        )}
+
         {!isOrdersTopic && subject === 'other' && (
           <label>
             Especifica el asunto
@@ -242,5 +278,6 @@ export default function HelpContactForm({ user, reportType, initialTopic = null,
     </form>
   );
 }
+
 
 
