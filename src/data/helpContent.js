@@ -96,26 +96,101 @@ export const HELP_CATEGORIES = [
         roles: [HELP_ROLES.SELLER],
         topicId: 'seller-quote',
       },
+      {
+        q: '¿Cómo pido una cotización?',
+        a: 'Desde la ficha de un repuesto usa "Pedir cotización" y describe lo que necesitas, indicando tu vehículo. La solicitud abre un chat con la tienda, donde te responden con precio, stock y condiciones de entrega.',
+        roles: [HELP_ROLES.BUYER, HELP_ROLES.GUEST],
+        topicId: 'buyer-quote',
+      },
+      {
+        q: '¿Qué pasa cuando acepto una cotización?',
+        a: 'Al aceptarla, el repuesto queda disponible para que completes la compra con las condiciones acordadas en el chat. Mientras no la aceptes no hay ningún cobro.',
+        roles: [HELP_ROLES.BUYER],
+        topicId: 'buyer-quote',
+      },
+      {
+        q: '¿Qué hago si la tienda no responde mi cotización?',
+        a: 'Puedes pedir cotización a otras tiendas por el mismo repuesto: no hay límite ni exclusividad. Si una tienda deja conversaciones sin responder de forma reiterada, repórtala desde el menú de opciones del chat.',
+        roles: [HELP_ROLES.BUYER],
+        topicId: 'buyer-quote',
+      },
     ],
   },
   {
     slug: 'tienda',
     titulo: 'Mi tienda',
-    descripcion: 'Gestión de tienda, datos y configuración.',
+    descripcion: 'Datos de la tienda, cobros, comisiones y verificación.',
     icono: 'store',
-    faqs: [],
+    topicId: { [HELP_ROLES.SELLER]: 'seller-orders' },
+    faqs: [
+      {
+        q: '¿Cómo edito los datos de mi tienda?',
+        a: 'En tu perfil entra a "Mi tienda y datos": ahí actualizas la descripción, el logo, la portada, los horarios y los métodos de envío que aceptas. El nombre y el RUT de la tienda no se editan solos, porque son los datos con los que se verificó tu cuenta: para corregirlos escríbenos desde Contactar soporte.',
+        roles: [HELP_ROLES.SELLER],
+        topicId: 'seller-products',
+      },
+      {
+        q: '¿Cómo recibo el dinero de mis ventas?',
+        a: 'Desde "Retirar dinero" en tu perfil solicitas el retiro de tu saldo disponible. Los datos bancarios se cargan y validan en ese mismo apartado, no en los datos de la tienda, y deben coincidir con el RUT registrado.',
+        roles: [HELP_ROLES.SELLER],
+        topicId: 'seller-orders',
+      },
+      {
+        q: '¿Cuánto me cobra RepuesTop por vender?',
+        a: 'No hay un cargo fijo mensual: se descuenta una comisión por venta concretada, que varía según el monto del pedido, más el costo de procesamiento de la pasarela de pago. En el detalle de cada pedido puedes abrir "Ver cálculo de comisión" y revisar el desglose exacto de esa venta y el monto que te queda.',
+        roles: [HELP_ROLES.SELLER],
+        topicId: 'seller-orders',
+      },
+      {
+        q: '¿Qué es el Beneficio Tarifa Fundador?',
+        a: 'Es la tarifa preferente para las primeras tiendas que se suman a RepuesTop. Si tu cuenta lo tiene activo, verás la insignia en la cabecera de tu perfil y la comisión aplicada en tus pedidos será la del beneficio.',
+        roles: [HELP_ROLES.SELLER],
+        topicId: 'seller-orders',
+      },
+      {
+        q: '¿Qué significa el sello de Tienda Verificada?',
+        a: 'Indica que validamos la identidad de la tienda y sus datos tributarios al momento de registrarse. Aparece en tu perfil público y en el directorio de tiendas, y es una de las señales que más miran los compradores al elegir a quién comprarle.',
+        roles: [HELP_ROLES.SELLER],
+        topicId: 'seller-products',
+      },
+      {
+        q: '¿Cómo publico un anuncio de mi tienda?',
+        a: 'En "Gestión de anuncios" puedes crear una publicación para el Mural de Anuncios y elegir el plan de difusión. El pago del anuncio es aparte de las ventas y se gestiona desde ese mismo panel.',
+        roles: [HELP_ROLES.SELLER],
+        topicId: 'seller-products',
+      },
+    ],
   },
   {
     slug: 'cuenta',
     titulo: 'Cuenta y perfil',
     descripcion: 'Registro, sesión, datos personales y bloqueos.',
     icono: 'user',
+    topicId: { [HELP_ROLES.BUYER]: 'general', [HELP_ROLES.SELLER]: 'blocked-account' },
     faqs: [
       {
         q: '¿Qué hago si mi cuenta fue bloqueada?',
         a: 'Revisa la pantalla de bloqueo y solicita revisión. También puedes abrir un ticket para que soporte evalúe tu caso.',
-        roles: [HELP_ROLES.SELLER],
+        roles: [HELP_ROLES.BUYER, HELP_ROLES.SELLER],
         topicId: 'blocked-account',
+      },
+      {
+        q: '¿Cómo actualizo mis datos o mi dirección de envío?',
+        a: 'En tu perfil, en "Mis datos y perfil", puedes editar tu nombre, teléfono, foto y las direcciones de despacho que usas al comprar. Los cambios se aplican a los pedidos que hagas después de guardarlos, no a los que ya están en curso.',
+        roles: [HELP_ROLES.BUYER],
+        topicId: 'general',
+      },
+      {
+        q: 'No puedo iniciar sesión, ¿qué reviso?',
+        a: 'Confirma que estés usando el mismo correo con el que te registraste, incluido el acceso con Google si fue así como creaste la cuenta. Si el problema persiste, escríbenos desde Contactar soporte indicando el correo y el mensaje de error que ves.',
+        roles: [HELP_ROLES.BUYER, HELP_ROLES.SELLER],
+        topicId: 'general',
+      },
+      {
+        q: '¿Cómo elimino mi cuenta?',
+        a: 'La opción está al final del menú lateral de tu perfil, en "Eliminar cuenta". Antes de eliminarla resuelve los pedidos, reclamos o retiros que tengas en curso, porque el cierre de la cuenta no los cancela ni los devuelve.',
+        roles: [HELP_ROLES.BUYER, HELP_ROLES.SELLER],
+        topicId: 'general',
       },
       {
         q: '¿Qué puedo hacer como invitado?',
@@ -140,12 +215,43 @@ export const HELP_CATEGORIES = [
   {
     slug: 'politicas',
     titulo: 'Políticas de la plataforma',
-    descripcion: 'Cómo funciona RepuesTop, términos y condiciones de uso.',
+    descripcion: 'Cómo funciona RepuesTop, reglas de uso y datos personales.',
     icono: 'policy',
+    topicId: { [HELP_ROLES.BUYER]: 'general', [HELP_ROLES.SELLER]: 'seller-products' },
     faqs: [
       {
         q: '¿RepuesTop vende directamente los repuestos?',
         a: 'RepuesTop conecta compradores con vendedores de repuestos. La plataforma te ayuda a encontrar, cotizar y comprar.',
+        roles: ALL_ROLES,
+        topicId: 'general',
+      },
+      {
+        q: '¿Quién responde por el repuesto que compro?',
+        a: 'El vendedor es responsable del repuesto que publica: su descripción, su compatibilidad, su estado y el despacho. RepuesTop provee la plataforma, el medio de pago y la mediación cuando algo no sale como se acordó.',
+        roles: [HELP_ROLES.BUYER, HELP_ROLES.GUEST],
+        topicId: 'general',
+      },
+      {
+        q: '¿Puedo devolver un repuesto?',
+        a: 'Sí. La vía es abrir un reclamo desde el detalle del pedido eligiendo el motivo que corresponda (pieza incompatible, dañada, incorrecta o arrepentimiento). Desde ahí se coordina la devolución con el vendedor y, si no hay acuerdo, el caso pasa a mediación. No coordines devoluciones por fuera de la plataforma: sin el reclamo registrado no queda respaldo.',
+        roles: [HELP_ROLES.BUYER],
+        topicId: 'buyer-orders',
+      },
+      {
+        q: '¿Qué puedo publicar y qué no?',
+        a: 'Puedes publicar repuestos automotrices que tengas disponibles, con fotos propias, compatibilidad correcta y stock real. No se permiten publicaciones de piezas de origen dudoso, avisos que deriven la venta fuera de la plataforma, ni datos de contacto directo en el título o la descripción.',
+        roles: [HELP_ROLES.SELLER],
+        topicId: 'seller-products',
+      },
+      {
+        q: '¿Por qué se puede bloquear una cuenta?',
+        a: 'Por incumplir las reglas de uso: publicaciones engañosas, no responder los pedidos, insistir en coordinar pagos fuera de la plataforma o reportes reiterados de otros usuarios. El bloqueo se puede apelar: desde la pantalla de bloqueo solicitas la revisión y el caso queda registrado.',
+        roles: [HELP_ROLES.BUYER, HELP_ROLES.SELLER],
+        topicId: 'blocked-account',
+      },
+      {
+        q: '¿Qué se hace con mis datos personales?',
+        a: 'Se usan para operar tu cuenta, procesar tus pedidos y coordinar los despachos. Con la otra parte de una compra solo se comparte lo necesario para concretar la entrega. Puedes revisar y actualizar tus datos desde tu perfil, y solicitar la eliminación de tu cuenta desde esa misma sección.',
         roles: ALL_ROLES,
         topicId: 'general',
       },
@@ -154,9 +260,53 @@ export const HELP_CATEGORIES = [
   {
     slug: 'seguridad',
     titulo: 'Centro de seguridad',
-    descripcion: 'Compra protegida, mediación y buenas prácticas.',
+    descripcion: 'Compra protegida, mediación y cuidado de tu cuenta.',
     icono: 'shield',
-    faqs: [],
+    topicId: { [HELP_ROLES.BUYER]: 'buyer-orders', [HELP_ROLES.SELLER]: 'seller-orders' },
+    faqs: [
+      {
+        q: '¿Cómo sé que una tienda es confiable?',
+        a: 'Fíjate en el sello de Tienda Verificada, que indica que validamos su identidad y sus datos tributarios al registrarse, y revisa su perfil público: catálogo, métodos de envío y datos de contacto. Toda la conversación y la compra deben ocurrir dentro de la plataforma.',
+        roles: [HELP_ROLES.BUYER, HELP_ROLES.GUEST],
+        topicId: 'buyer-quote',
+      },
+      {
+        q: '¿Cómo protege RepuesTop mi compra?',
+        a: 'El pago se procesa por la pasarela dentro de la plataforma y queda asociado a tu pedido, con su estado y su historial. Si algo sale mal puedes abrir un reclamo desde el detalle del pedido y el caso pasa a nuestro equipo de mediación.',
+        roles: [HELP_ROLES.BUYER, HELP_ROLES.GUEST],
+        topicId: 'buyer-orders',
+      },
+      {
+        q: '¿Por qué no debo pagar ni coordinar fuera de la plataforma?',
+        a: 'Un pago hecho por transferencia directa, fuera del flujo de compra, no queda registrado en RepuesTop: no genera pedido, no tiene seguimiento y no podemos mediar si el repuesto no llega o no es el correcto. Si un vendedor te insiste en pagar por fuera, repórtalo.',
+        roles: [HELP_ROLES.BUYER, HELP_ROLES.GUEST],
+        topicId: 'buyer-quote',
+      },
+      {
+        q: '¿Cómo funciona la mediación?',
+        a: 'Cuando se abre un reclamo, ambas partes pueden exponer su versión y adjuntar fotos en el chat del caso. Si no se llega a un acuerdo, el caso se escala a un mediador de RepuesTop que revisa la evidencia y define cómo se resuelve. Puedes seguir el estado en Reportes y disputas de tu perfil.',
+        roles: [HELP_ROLES.BUYER, HELP_ROLES.SELLER],
+        topicId: 'buyer-orders',
+      },
+      {
+        q: '¿Cómo reporto a un usuario o una conversación?',
+        a: 'Dentro del chat de la cotización, abre el menú de opciones y elige "Reportar". El reporte llega a nuestro equipo con el historial de esa conversación y queda registrado en Reportes y disputas.',
+        roles: [HELP_ROLES.BUYER, HELP_ROLES.SELLER],
+        topicId: 'buyer-quote',
+      },
+      {
+        q: '¿RepuesTop me va a pedir mi contraseña o los datos de mi tarjeta?',
+        a: 'Nunca. Nuestro equipo no pide contraseñas, códigos de verificación ni números de tarjeta por chat, correo o teléfono. Los datos de pago se ingresan solo en la pasarela durante la compra. Si recibes un mensaje que te los pide, no respondas y avísanos.',
+        roles: ALL_ROLES,
+        topicId: 'general',
+      },
+      {
+        q: '¿Qué hago si creo que entraron a mi cuenta?',
+        a: 'Cambia tu contraseña de inmediato desde tus datos de perfil y revisa tus pedidos y cotizaciones recientes. Si ves movimientos que no reconoces, escríbenos desde Contactar soporte con el detalle para que bloqueemos la cuenta mientras se revisa.',
+        roles: [HELP_ROLES.BUYER, HELP_ROLES.SELLER],
+        topicId: 'general',
+      },
+    ],
   },
 ];
 
@@ -198,5 +348,7 @@ export function highlightedFaqs(reportType, limit = 5) {
     .flatMap((category) => faqsForRole(category, reportType).map((faq) => ({ ...faq, categoria: category.slug })))
     .slice(0, limit);
 }
+
+
 
 
