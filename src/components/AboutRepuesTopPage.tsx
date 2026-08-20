@@ -19,8 +19,8 @@ const buyerFeatures: Feature[] = [
   { icon: <BadgeCheck />, title: 'Catálogo filtrado', text: 'La búsqueda muestra repuestos asociados al vehículo seleccionado para reducir errores antes de comprar.' },
   { icon: <MessageSquareQuote />, title: 'Cotizaciones por chat', text: 'Habla con la tienda y recibe una cotización formal con precio, descuento, garantía, disponibilidad y vigencia.' },
   { icon: <LockKeyhole />, title: 'Pago protegido', text: 'Paga con Flow y mantenemos los fondos retenidos por 3 días tras la entrega para validar que el repuesto calza.' },
-  { icon: <PackageCheck />, title: 'Seguimiento claro', text: 'Revisa el avance desde pagado hasta finalizado con estados de preparación, envío, entrega y reclamo si hiciera falta.' },
-  { icon: <KeyRound />, title: 'Retiro con PIN', text: 'Si retiras en tienda, usas un PIN de 6 dígitos para confirmar la entrega de forma trazable.' },
+  { icon: <PackageCheck />, title: 'Seguimiento claro', text: 'Revisa el avance desde pagado hasta finalizado, con comprobante descargable, y valida el retiro en tienda con un PIN de 6 dígitos.' },
+  { icon: <ShoppingCart />, title: 'Carrito y checkout', text: 'Compra a varias tiendas en un solo carrito, con el envío calculado por proveedor, y define en tres pasos entrega, documento y pago.' },
 ];
 
 const sellerFeatures: Feature[] = [
@@ -37,14 +37,14 @@ const experiences = {
   buyer: {
     label: 'Quiero comprar', icon: <ShoppingCart />, eyebrow: 'Para personas y talleres',
     title: 'Encuentra repuestos compatibles y compra con respaldo',
-    text: 'Tu patente abre el camino: identificamos el vehículo, filtramos el catálogo, conectamos con tiendas verificadas y protegemos el pago durante la entrega.',
+    text: 'Tu patente abre el camino: identificamos el vehículo, filtramos el catálogo y conectamos con tiendas verificadas. Compras a varias tiendas en un solo carrito, eliges boleta o factura y el pago queda protegido hasta que confirmes que el repuesto calza.',
     features: buyerFeatures, image: '/about-assets/comprador-web-mobile.png',
-    stats: [['Patente o manual', 'Ficha técnica del vehículo'], ['3 días protegidos', 'Fondos retenidos tras entrega'], ['PIN de retiro', 'Entrega trazable en tienda']],
+    stats: [['Patente o manual', 'Ficha técnica del vehículo'], ['3 días protegidos', 'Fondos retenidos tras entrega'], ['Boleta o factura', 'Documento a tu nombre o al de tu empresa']],
   },
   seller: {
     label: 'Soy proveedor', icon: <Store />, eyebrow: 'Para tiendas de repuestos',
     title: 'Vende con inventario ordenado, cotizaciones y control de despacho',
-    text: 'Carga productos, responde oportunidades por chat, configura tus entregas y controla ganancias, pedidos en curso y ventas completadas desde un dashboard.',
+    text: 'Carga productos, responde oportunidades por chat, configura tus entregas y controla ganancias, pedidos en curso y ventas completadas desde un dashboard. Cuando la entrega queda cerrada, solicitas el retiro de tu saldo a la cuenta que registraste.',
     features: sellerFeatures, image: '/about-assets/vendedor-web-mobile.png',
     stats: [['5% fundador', 'Comisión fija por venta'], ['Excel/CSV', 'Carga masiva de stock'], ['Tienda verificada', 'Documentos revisados por soporte']],
   },
@@ -74,8 +74,8 @@ function PlatformPill({ platform, soon = false }: { platform: 'web' | 'android' 
   const isAndroid = platform === 'android';
   return <div className={`platform-pill ${platform}`}>
     <span className="platform-icon">{isWeb ? <Monitor /> : isAndroid ? <AndroidIcon /> : <AppleIcon />}</span>
-    <span><small>{isWeb ? 'Disponible ahora' : 'App móvil próximamente'}</small><strong>{isWeb ? 'Versión web' : isAndroid ? 'Android' : 'iOS'}</strong></span>
-    <i>{isWeb ? 'Disponible' : soon ? 'Próx. etapa' : 'Muy pronto'}</i>
+    <span><small>{isWeb ? 'Disponible ahora' : 'App móvil en desarrollo'}</small><strong>{isWeb ? 'Versión web' : isAndroid ? 'Android' : 'iOS'}</strong></span>
+    <i>{isWeb ? 'Disponible' : soon ? 'Etapa siguiente' : 'En camino'}</i>
   </div>;
 }
 
@@ -144,10 +144,10 @@ function ExperienceTabs() {
 
 function HeroProofStrip() {
   const proofs = [
-    { icon: <Search />, title: 'Patente', text: 'Identifica el vehículo y completa sus datos técnicos.' },
-    { icon: <PackageCheck />, title: 'Compatibilidad', text: 'Catálogo filtrado para comprar con más contexto.' },
+    { icon: <Search />, title: 'Patente', text: 'Identifica el vehículo y filtra el catálogo por compatibilidad.' },
+    { icon: <ShoppingCart />, title: 'Compra completa', text: 'Carrito multi-tienda, envío por proveedor y boleta o factura.' },
     { icon: <LockKeyhole />, title: 'Pago protegido', text: 'Fondos retenidos 3 días tras la entrega.' },
-    { icon: <FileCheck />, title: 'Tiendas verificadas', text: 'Proveedores revisados antes de vender.' },
+    { icon: <HeartHandshake />, title: 'Si algo falla', text: 'Reclamo, mediación con evidencia y soporte que responde.' },
   ];
   return <section className="proof-strip" aria-label="Beneficios principales de RepuesTop"><div className="section proof-strip-grid">
     {proofs.map((item, index) => <Reveal as="article" key={item.title} delay={index * 55}><span>{item.icon}</span><div><strong>{item.title}</strong><p>{item.text}</p></div></Reveal>)}
@@ -178,7 +178,7 @@ const helpTopics: Record<HelpTopicKey, {
     icon: <UserRound />,
     intro: 'Patente, compatibilidad y compra protegida.',
     title: 'Compra repuestos con más seguridad',
-    description: 'La plataforma reduce la incertidumbre desde la identificación del vehículo hasta la entrega del repuesto, tanto en la web como en la futura app móvil.',
+    description: 'La plataforma reduce la incertidumbre desde la identificación del vehículo hasta la entrega del repuesto, y deja por escrito el reclamo y la mediación si algo sale mal.',
     questions: [
       {
         icon: <Search />,
@@ -377,7 +377,7 @@ function FlowExperience() {
         { icon: <BadgeCheck />, title: 'Compara compatibles', text: 'El catálogo se filtra con la ficha del vehículo para mostrar opciones con más contexto.' },
         { icon: <MessageSquareQuote />, title: 'Cotiza o compra', text: 'Puedes comprar directo o recibir una cotización formal por chat con garantía y vigencia.' },
         { icon: <Truck />, title: 'Elige despacho', text: 'Retiro con PIN, despacho local por comuna o courier nacional por pagar con tracking.' },
-        { icon: <CreditCard />, title: 'Paga con Flow', text: 'El pago queda integrado y trazable antes de generar el pedido.' },
+        { icon: <CreditCard />, title: 'Paga en tres pasos', text: 'Entrega, documento —boleta o factura— y pago con Flow. El envío se cobra una vez por proveedor.' },
         { icon: <PackageCheck />, title: 'Valida entrega', text: 'El pedido avanza por timeline y mantiene 3 días de resguardo tras recibir el repuesto.' },
       ],
       benefits: [['Menos llamadas', 'Busca sin recorrer tienda por tienda'], ['Menos riesgo', 'Fondos protegidos tras entrega'], ['Más trazabilidad', 'Estados, chat y evidencia en un lugar']] as Array<[string, string]>,
@@ -404,7 +404,7 @@ function FlowExperience() {
   const orderStates = ['Pagado', 'En preparación', 'En camino / Listo para retirar', 'Entregado', 'En reclamo', 'Finalizado'];
   const trustSignals = [
     { icon: <LockKeyhole />, title: '3 días de resguardo', text: 'El pago no se libera inmediatamente tras entregar.' },
-    { icon: <Headphones />, title: 'Reclamos con soporte', text: 'El equipo de soporte revisa evidencia si comprador y proveedor no resuelven.' },
+    { icon: <Headphones />, title: 'Mediación con evidencia', text: 'Si comprador y proveedor no resuelven, un mediador revisa la evidencia de ambos lados con los fondos retenidos.' },
     { icon: <ShieldCheck />, title: 'Suspensión preventiva', text: 'Cuentas infractoras pueden bloquearse en tiempo real.' },
   ];
   const flow = flows[audience];
@@ -555,9 +555,9 @@ function FinalStage({ onContact, onOpenSeller, onBack }: { onContact: () => void
   return <section className="final-stage" id="descargar">
     <div className="section final-stage-shell">
       <Reveal as="div" className="final-stage-heading">
-        <span className="eyebrow"><Monitor /> Disponible en la web · App móvil próximamente</span>
-        <h2>Úsalo hoy en la web. Muy pronto, también desde tu teléfono.</h2>
-        <p>RepuesTop es una plataforma web y móvil para compradores y vendedores. El marketplace web ya está disponible; la app móvil llegará próximamente para acompañarte estés donde estés.</p>
+        <span className="eyebrow"><Monitor /> Marketplace web operativo · App móvil en desarrollo</span>
+        <h2>Empieza hoy en la web. La app llega con lo mismo.</h2>
+        <p>El marketplace web está completo: catálogo por patente, cotizaciones por chat, carrito multi-tienda, checkout con boleta o factura, seguimiento del pedido y mediación si algo falla. La app móvil suma lo que solo el teléfono puede dar: avisos push cuando tu pedido avanza y la cámara para publicar sin pasar por el computador.</p>
       </Reveal>
 
       <div className="final-stage-grid">
@@ -579,9 +579,9 @@ function FinalStage({ onContact, onOpenSeller, onBack }: { onContact: () => void
         </article>
 
         <div className="final-device-stage final-platform-stage">
-          <img src="/about-assets/repuestop-web-mobile-hero.png" alt="RepuesTop disponible en la web y próximamente como aplicación móvil" />
-          <span className="floating-chip chip-search"><Monitor /> Web disponible</span>
-          <span className="floating-chip chip-store"><Smartphone /> App próximamente</span>
+          <img src="/about-assets/repuestop-web-mobile-hero.png" alt="RepuesTop, marketplace web operativo y app móvil en desarrollo" />
+          <span className="floating-chip chip-search"><Monitor /> Web operativa</span>
+          <span className="floating-chip chip-store"><Smartphone /> App en desarrollo</span>
         </div>
 
         <article className="final-route-card route-seller">
@@ -641,7 +641,7 @@ function HomePage({ onContact, onOpenSeller, onBack }: { onContact: () => void; 
   return <>
     <FounderModal isOpen={founderModalOpen} onClose={() => setFounderModalOpen(false)} onApply={onOpenSeller} />
     <main className="single-page">
-    <section className="home-hero section" id="inicio"><div className="hero-mesh" aria-hidden="true" /><div className="hero-orb orb-one" /><div className="hero-orb orb-two" /><div className="hero-copy"><div className="hero-topline"><Brand /><span className="hero-topline-divider" aria-hidden="true" /><span className="eyebrow hero-eyebrow"><Monitor /> Web disponible · App móvil próximamente</span></div><h1>Tu marketplace de repuestos, hoy en la web y pronto en tu <em>teléfono.</em></h1><p>RepuesTop ya cuenta con una versión web para buscar por patente, cotizar y comprar con respaldo. Próximamente podrás vivir la misma experiencia desde nuestra app móvil.</p><div className="button-row"><button type="button" className="button" onClick={onBack}><Monitor /> Entrar al marketplace web</button><a href="#proveedores" className="button button-outline">Ser tienda fundadora <ArrowDown /></a></div><div className="hero-platforms"><PlatformPill platform="web" /><PlatformPill platform="android" /><PlatformPill platform="ios" soon /></div></div><div className="hero-visual"><HeroLiveBadge /><div className="image-panel"><img src="/about-assets/repuestop-web-mobile-hero.png" alt="RepuesTop disponible en la web y próximamente como aplicación móvil" /><div className="scan-sweep" aria-hidden="true" /></div></div></section>
+    <section className="home-hero section" id="inicio"><div className="hero-mesh" aria-hidden="true" /><div className="hero-orb orb-one" /><div className="hero-orb orb-two" /><div className="hero-copy"><div className="hero-topline"><Brand /><span className="hero-topline-divider" aria-hidden="true" /><span className="eyebrow hero-eyebrow"><Monitor /> Marketplace web operativo · App móvil en desarrollo</span></div><h1>De la patente a la puerta de tu casa, con <em>respaldo</em> en cada paso.</h1><p>El marketplace web ya está operativo de punta a punta: buscas por patente, cotizas por chat, compras a varias tiendas en un solo carrito, pagas con Flow y sigues el pedido hasta la entrega. La app móvil viene con lo mismo, en el bolsillo.</p><div className="button-row"><button type="button" className="button" onClick={onBack}><Monitor /> Entrar al marketplace web</button><a href="#proveedores" className="button button-outline">Ser tienda fundadora <ArrowDown /></a></div><div className="hero-platforms"><PlatformPill platform="web" /><PlatformPill platform="android" /><PlatformPill platform="ios" soon /></div></div><div className="hero-visual"><HeroLiveBadge /><div className="image-panel"><img src="/about-assets/repuestop-web-mobile-hero.png" alt="RepuesTop, marketplace web operativo y app móvil en desarrollo" /><div className="scan-sweep" aria-hidden="true" /></div></div></section>
 
     <HeroProofStrip />
 

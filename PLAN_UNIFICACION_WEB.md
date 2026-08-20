@@ -45,7 +45,7 @@ superó. Su rama activa es `dev`, remoto
 
 ---
 
-## Fase 1 — `/nosotros` dentro del marketplace
+## Fase 1 — `/nosotros` dentro del marketplace ✅ (commit `f9982e2`)
 
 **Riesgo bajo, sin efecto en producción** (el dominio todavía apunta al sitio antiguo).
 
@@ -63,25 +63,67 @@ superó. Su rama activa es `dev`, remoto
 4. Revisar `scroll-margin-top`, hoy calculado para el header propio: con el header del
    marketplace la altura cambia y las anclas quedan corridas.
 
+**Cómo quedó.** Además del header hubo que sacar el footer propio (`final-footer` dentro
+de `FinalStage`): dentro de `AppLayout` la página quedaba con dos footers. El CSS no se
+reescribió variable por variable; el bloque de tokens locales quedó como una **capa de
+alias** sobre los del market (`--blue: var(--color-brand-blue)`, `--navy:
+var(--text-primary)`, …), así un cambio de paleta en `index.css` arrastra esta página
+solo. El `scroll-margin-top` resultó al revés de lo previsto: el header del marketplace
+**no es sticky** —`.light-market-header` pisa `.trust-header-main` con `position:
+relative`—, así que se va con el scroll y las anclas quedaron en 24px de respiro, no en
+más de 84.
+
 **Verificación:** `/nosotros` con el header y el footer del marketplace, las cinco
 secciones con la paleta correcta, las anclas cayendo en el lugar justo, y el resto del
 sitio sin cambios visuales (nada del CSS scopeado se escapó).
 
-## Fase 2 — Actualizar el contenido
+## Fase 2 — Actualizar el contenido ✅
 
-El texto describe la plataforma como "web disponible, app próximamente", pero la web ya
-hace bastante más de lo que cuenta.
+El texto describía la plataforma como "web disponible, app próximamente", cuando la web ya
+hacía bastante más de lo que contaba.
 
-**Qué ofrece hoy la web y no está en el texto:** carrito multi-tienda con envío por
-proveedor, checkout en tres pasos con boleta o factura, pago de cotizaciones cerradas en
-el chat, comprobante con seguimiento del pedido, mural de anuncios, centro de ayuda con
-tickets, y mediación de disputas con evidencia.
+**Qué ofrece hoy la web y no estaba en el texto:** carrito multi-tienda con envío por
+proveedor, checkout en tres pasos —Entrega, Documento, Pago (`CheckoutPage.jsx:20`)— con
+boleta o factura, pago de cotizaciones cerradas en el chat, comprobante con seguimiento
+del pedido, centro de ayuda con tickets, y mediación de disputas con evidencia.
 
-**Qué traerá la app** (según el monorepo): agendamiento de citas con configuración de
-agenda, historial de citas, monedero de Fichas y publicación de anuncios desde el
-teléfono.
+### Corrección: la lista de "qué traerá la app" estaba mal
 
-Acordado: yo propongo los textos y tú los corriges.
+Este plan decía que la app aportaría agendamiento de citas, historial de citas, monedero
+de Fichas y publicación de anuncios. **Las cuatro ya están en la web** —`AdAppointmentModal`
+montado desde `AdsWallView.jsx:398`, `TokensWalletCard` y `RechargeTokensModal` dentro de
+`AdsManagementSection`, que cuelga de `ProfileDashboard.jsx:1654`—.
+
+Y más importante: **en ninguna de las dos plataformas tienen backend**. `adsStorage.js:78`
+guarda anuncios, saldo de Fichas y transacciones en `localStorage`; el móvil usa su
+`services/ads-storage` equivalente. Es el pendiente §7 de `PLAN_CARRITO_CHECKOUT.md`.
+**Las Fichas se están desarrollando ahora mismo** —el backend ya tiene
+`CompraFichaController`, pero el mural todavia no lo consume—, asi que esto es un estado
+transitorio, no una funcion abandonada.
+
+Por eso **el mural de anuncios, las Fichas y las citas quedaron fuera del texto
+institucional**: mientras el mural siga leyendo de `localStorage`, anunciarlas es prometer
+algo que el usuario todavia no puede usar de verdad. En cuanto la integracion cierre,
+entran al texto —es un cambio de tres parrafos, no un rediseno—.
+
+Eso dejó sin contenido el "qué traerá la app". Comparando pantalla por pantalla, el móvil
+tiene casi el mismo set que la web; lo genuinamente propio es nativo: `expo-notifications`
+(push) y `expo-image-picker` (cámara). El texto nuevo apuesta por eso —paridad + lo
+nativo— en vez de inventar funciones.
+
+### Qué se cambió
+
+- "próximamente" → "en desarrollo" en toda la página: llevaba meses ahí y sonaba a promesa
+  vencida.
+- H1: de *"Tu marketplace de repuestos, hoy en la web y pronto en tu teléfono"* a *"De la
+  patente a la puerta de tu casa, con respaldo en cada paso"*. El titular gastaba su única
+  frase hablando de plataformas en vez de decir qué hace el producto.
+- La franja de pruebas del hero cubría solo el inicio del viaje (patente, compatibilidad,
+  pago, tiendas); ahora cubre el arco completo, con la mediación —lo más sólido que tiene
+  el backend— mencionada por primera vez en la página.
+- Entró "Carrito y checkout" a las tarjetas del comprador; el PIN de retiro se mudó al
+  texto de "Seguimiento claro" en vez de perderse.
+- La bajada del proveedor no decía que el vendedor cobra; ahora menciona el retiro de saldo.
 
 ## Fase 3 — Vercel y el dominio
 
