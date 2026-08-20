@@ -44,6 +44,7 @@ export default function AppRoutes() {
               <Route path={ROUTES.stores} element={<StoresPage />} />
               <Route path={ROUTES.store} element={<StorePage />} />
               <Route path={ROUTES.adsWall} element={<AdsWallPage />} />
+              <Route path={ROUTES.about} element={<AboutPage />} />
               {/* El carrito es público: un invitado tiene que poder revisarlo antes de
                   iniciar sesión. El checkout sí exige sesión. */}
               <Route path={ROUTES.cart} element={<CartPage />} />
@@ -71,7 +72,6 @@ export default function AppRoutes() {
 
             <Route path={ROUTES.terms} element={<TermsPage />} />
             <Route path={ROUTES.privacy} element={<PrivacyPage />} />
-            <Route path={ROUTES.about} element={<AboutPage />} />
             <Route path={ROUTES.sellerRegister} element={<SellerRegisterPage />} />
 
             <Route path={ROUTES.profile} element={<Navigate to={`${ROUTES.profile}/resumen`} replace />} />

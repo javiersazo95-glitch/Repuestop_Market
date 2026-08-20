@@ -6,8 +6,8 @@ import {
   Calculator, CircleDollarSign, Crown, FileCheck, FileSpreadsheet, Headphones, HeartHandshake, LockKeyhole,
   MessageSquareQuote, PackageCheck, Search, ShieldCheck, ShoppingCart,
   Smartphone, Store, Users, Zap, KeyRound, MapPin, UserRound,
-  Package, CreditCard, CarFront, Truck, Mail, MessageCircle, ClipboardCheck, Info,
-  Menu, Monitor, X,
+  Package, CreditCard, CarFront, Truck, Mail, MessageCircle, ClipboardCheck,
+  Monitor,
 } from 'lucide-react';
 import { siteConfig, trackEvent } from './founderConfig';
 
@@ -63,18 +63,6 @@ function AndroidIcon() {
 
 function AppleIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.8 12.8c0-2.3 1.9-3.4 2-3.5a4.3 4.3 0 0 0-3.4-1.8c-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.9-3-.9a4.5 4.5 0 0 0-3.8 2.3c-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3.1-.7 1.4 0 1.9.7 3.1.7 1.3 0 2.1-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.7-1-2.7-3.6ZM14.5 6c.6-.8 1.1-2 1-3.2-1 .1-2.3.7-3 1.5-.7.7-1.2 1.9-1.1 3 1.2.1 2.4-.5 3.1-1.3Z" /></svg>;
-}
-
-function FacebookIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13.5 9.3V8c0-.7.5-1.1 1.2-1.1H16V4.2h-1.8C11.8 4.2 10 5.9 10 8.5v.8H8v2.7h2V20h3.1v-8h2.4l.4-2.7h-2.9Z" /></svg>;
-}
-
-function InstagramIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7.2 3.8h9.6A3.4 3.4 0 0 1 20.2 7.2v9.6a3.4 3.4 0 0 1-3.4 3.4H7.2a3.4 3.4 0 0 1-3.4-3.4V7.2a3.4 3.4 0 0 1 3.4-3.4Zm0 1.8a1.6 1.6 0 0 0-1.6 1.6v9.6a1.6 1.6 0 0 0 1.6 1.6h9.6a1.6 1.6 0 0 0 1.6-1.6V7.2a1.6 1.6 0 0 0-1.6-1.6H7.2Zm4.8 2.2a4.2 4.2 0 1 1 0 8.4 4.2 4.2 0 0 1 0-8.4Zm0 1.8a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8Zm4.9-2.1a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" /></svg>;
-}
-
-function TiktokIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14.5 4c.5 1.6 1.5 3 2.9 3.8.8.5 1.7.8 2.6.9v3.1c-1.8 0-3.4-.5-4.7-1.4V15a4.9 4.9 0 1 1-4.9-4.9c.2 0 .4 0 .6.1v3.1a1.8 1.8 0 1 0 1.8 1.8V4h1.7Z" /></svg>;
 }
 
 function Brand() {
@@ -550,7 +538,7 @@ function FounderSection({ onOpenSeller }: { onOpenSeller: () => void }) {
   </section>;
 }
 
-function FinalStage({ setInfoMode, onContact, onOpenSeller, onBack }: { setInfoMode: (mode: InfoMode) => void; onContact: () => void; onOpenSeller: () => void; onBack: () => void; }) {
+function FinalStage({ onContact, onOpenSeller, onBack }: { onContact: () => void; onOpenSeller: () => void; onBack: () => void; }) {
   const buyerHighlights = [
     { icon: <Search />, label: 'Patente inteligente', text: 'Ficha del vehículo en segundos' },
     { icon: <BadgeCheck />, label: 'Catálogo compatible', text: 'Opciones filtradas por vehículo' },
@@ -618,49 +606,6 @@ function FinalStage({ setInfoMode, onContact, onOpenSeller, onBack }: { setInfoM
         <Reveal as="span" delay={140}><Headphones /><div><strong>Soporte y reclamos</strong><small>Disputas con evidencia y fondos retenidos.</small></div></Reveal>
         <Reveal as="span" delay={210}><LockKeyhole /><div><strong>Pago protegido</strong><small>Flow más resguardo de 3 días tras entrega.</small></div></Reveal>
       </div>
-
-      <footer className="final-footer">
-        <div className="final-footer-grid">
-          <div className="footer-column footer-brand-block">
-            <Brand />
-            <p>Marketplace chileno para buscar repuestos por patente, comprar con respaldo y conectar con tiendas verificadas.</p>
-            <div className="store-badges">
-              <PlatformPill platform="web" />
-              <PlatformPill platform="android" />
-              <PlatformPill platform="ios" soon />
-            </div>
-          </div>
-          <div className="footer-column">
-            <strong>Plataforma</strong>
-            <a href="#inicio">Inicio</a>
-            <a href="#como-funciona">Cómo funciona</a>
-            <a href="#experiencias">Compradores</a>
-            <a href="#experiencias">Vendedores</a>
-            <a href="#proveedores">Tiendas fundadoras</a>
-            <a href="#como-funciona" onClick={() => setInfoMode('help')}>Ayuda</a>
-          </div>
-          <div className="footer-column">
-            <strong>Confianza</strong>
-            <a href="#como-funciona" onClick={() => setInfoMode('help')}>Tiendas verificadas</a>
-            <a href="#como-funciona" onClick={() => setInfoMode('help')}>Soporte y reclamos</a>
-            <a href="#como-funciona" onClick={() => setInfoMode('privacy')}>Privacidad</a>
-            <a href="#como-funciona" onClick={() => setInfoMode('privacy')}>Términos y condiciones</a>
-          </div>
-          <div className="footer-column footer-contact-column">
-            <strong>Contacto</strong>
-            <button type="button" onClick={onContact} style={{ background: 'none', border: 'none', color: 'inherit', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', padding: 0 }}><Mail style={{ width: '16px' }} /> {siteConfig.supportEmail}</button>
-            <button type="button" className="footer-cta" onClick={onOpenSeller} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}>Tienda fundadora <ArrowRight style={{ width: '16px' }} /></button>
-          </div>
-        </div>
-        <div className="footer-bottom-row">
-          <span>© 2026 RepuesTop. Hecho para el mercado automotriz chileno.</span>
-          <div className="footer-socials">
-            <a href="https://facebook.com/repuestop.cl" className="social-facebook" target="_blank" rel="noopener noreferrer" aria-label="Facebook de RepuesTop"><FacebookIcon /></a>
-            <a href={siteConfig.instagramUrl} className="social-instagram" target="_blank" rel="noopener noreferrer" aria-label="Instagram de RepuesTop"><InstagramIcon /></a>
-            <a href="https://tiktok.com/@repuestop.cl" className="social-tiktok" target="_blank" rel="noopener noreferrer" aria-label="TikTok de RepuesTop"><TiktokIcon /></a>
-          </div>
-        </div>
-      </footer>
     </div>
   </section>;
 }
@@ -681,54 +626,6 @@ function HeroLiveBadge() {
   return <div className="hero-badge hero-badge-live"><span className="hero-badge-dot" /><span className="hero-badge-icon" key={`icon-${i}`}>{current.icon}</span><span className="hero-badge-text" key={`text-${i}`}>{current.text}</span></div>;
 }
 
-function SiteHeader({ onContact, onBack, setInfoMode }: { onContact: () => void; onBack: () => void; setInfoMode: (mode: InfoMode) => void }) {
-  const [open, setOpen] = useState(false);
-  const links = [
-    { href: '#experiencias', label: 'Para compradores', icon: <UserRound size={16} strokeWidth={2.5} />, chevron: true },
-    { href: '#proveedores', label: 'Para proveedores', icon: <Store size={16} strokeWidth={2.5} />, chevron: true },
-    { href: '#como-funciona', label: 'Cómo funciona', icon: <Info size={16} strokeWidth={2.5} />, mode: 'flow' as InfoMode },
-    { href: '#como-funciona', label: 'Nosotros', icon: <Users size={16} strokeWidth={2.5} />, chevron: true, mode: 'about' as InfoMode },
-  ];
-  return <header className="site-header">
-    <div className="nav-shell">
-      <a href="#inicio" className="brand" aria-label="RepuesTop, inicio"><img src="/about-assets/repuestop-icon.jpg" alt="" /><span>Repues<span>Top</span></span></a>
-      
-      <nav className={`nav-links ${open ? 'is-open' : ''}`} aria-label="Navegación principal">
-        {links.map(({ href, label, icon, chevron, mode }) => (
-          <a
-            key={label}
-            href={href}
-            onClick={() => {
-              setOpen(false);
-              if (mode) setInfoMode(mode);
-            }}
-            className="nav-item"
-          >
-            {icon && <span className="nav-icon">{icon}</span>}
-            <span className="nav-label">{label}</span>
-            {chevron && <ChevronDown size={14} strokeWidth={3} className="nav-chevron" />}
-          </a>
-        ))}
-      </nav>
-
-      <div className={`header-actions ${open ? 'is-open' : ''}`}>
-        <button type="button" className="button button-outline" onClick={() => { setOpen(false); onBack(); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', fontSize: '0.8rem', minHeight: '38px', borderRadius: '8px', cursor: 'pointer' }}>
-          <ShoppingCart size={16} strokeWidth={2.5} /> Ir al marketplace
-        </button>
-        <button type="button" onClick={() => { setOpen(false); onContact(); }} style={{
-          background: 'var(--blue)', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: '8px',
-          padding: '8px 16px', borderRadius: '8px', cursor: 'pointer',
-          fontWeight: 600, fontSize: '0.875rem'
-        }}>
-          <MessageCircle size={16} strokeWidth={2.5} /> Contactar
-        </button>
-      </div>
-
-      <button type="button" className="menu-button" aria-label={open ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={open} onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button>
-    </div>
-  </header>;
-}
-
 function HomePage({ onContact, onOpenSeller, onBack }: { onContact: () => void; onOpenSeller: () => void; onBack: () => void }) {
   usePageMeta();
   const [infoMode, setInfoMode] = useState<InfoMode>('flow');
@@ -743,7 +640,6 @@ function HomePage({ onContact, onOpenSeller, onBack }: { onContact: () => void; 
 
   return <>
     <FounderModal isOpen={founderModalOpen} onClose={() => setFounderModalOpen(false)} onApply={onOpenSeller} />
-    <SiteHeader onContact={onContact} onBack={onBack} setInfoMode={setInfoMode} />
     <main className="single-page">
     <section className="home-hero section" id="inicio"><div className="hero-mesh" aria-hidden="true" /><div className="hero-orb orb-one" /><div className="hero-orb orb-two" /><div className="hero-copy"><div className="hero-topline"><Brand /><span className="hero-topline-divider" aria-hidden="true" /><span className="eyebrow hero-eyebrow"><Monitor /> Web disponible · App móvil próximamente</span></div><h1>Tu marketplace de repuestos, hoy en la web y pronto en tu <em>teléfono.</em></h1><p>RepuesTop ya cuenta con una versión web para buscar por patente, cotizar y comprar con respaldo. Próximamente podrás vivir la misma experiencia desde nuestra app móvil.</p><div className="button-row"><button type="button" className="button" onClick={onBack}><Monitor /> Entrar al marketplace web</button><a href="#proveedores" className="button button-outline">Ser tienda fundadora <ArrowDown /></a></div><div className="hero-platforms"><PlatformPill platform="web" /><PlatformPill platform="android" /><PlatformPill platform="ios" soon /></div></div><div className="hero-visual"><HeroLiveBadge /><div className="image-panel"><img src="/about-assets/repuestop-web-mobile-hero.png" alt="RepuesTop disponible en la web y próximamente como aplicación móvil" /><div className="scan-sweep" aria-hidden="true" /></div></div></section>
 
@@ -755,7 +651,7 @@ function HomePage({ onContact, onOpenSeller, onBack }: { onContact: () => void; 
 
     <FounderSection onOpenSeller={onOpenSeller} />
 
-    <FinalStage setInfoMode={setInfoMode} onContact={onContact} onOpenSeller={onOpenSeller} onBack={onBack} />
+    <FinalStage onContact={onContact} onOpenSeller={onOpenSeller} onBack={onBack} />
   </main></>;
 }
 

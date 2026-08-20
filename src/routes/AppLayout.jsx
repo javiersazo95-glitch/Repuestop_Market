@@ -12,8 +12,8 @@ import { catalogPath, profilePath, ROUTES } from './paths';
 
 /**
  * Chrome compartido (header, footer, carrito y modales globales) para todas las
- * rutas públicas del marketplace. Las páginas a pantalla completa —perfil,
- * "quiénes somos" y registro de vendedor— quedan fuera de este layout.
+ * rutas públicas del marketplace. Las páginas a pantalla completa —perfil y
+ * registro de vendedor— quedan fuera de este layout.
  */
 export default function AppLayout() {
   const location = useLocation();
