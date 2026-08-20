@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, CheckCircle2, FileText, MapPin, Package, ReceiptText, ShoppingBag, Truck, XCircle } from 'lucide-react';
+import { Check, FileText, MapPin, Package, ReceiptText, ShoppingBag, Truck, XCircle } from 'lucide-react';
+import deliveryTruck from '../assets/delivery-truck.webp';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { getBuyerOrderByIdApi, resolveMediaUrl } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -81,15 +82,46 @@ export default function PurchaseSuccessPage() {
   const shippingFee = Number(order?.costoEnvio || order?.shippingFee || 0);
   const total = Number(order?.total || subtotal + shippingFee);
   const documentType = String(order?.tipoDocumentoTributario || order?.documentType || 'BOLETA').toUpperCase();
+  const orderDate = (() => {
+    const raw = order?.fechaCreacion || order?.createdAt || order?.fecha;
+    const date = raw ? new Date(raw) : new Date();
+    return Number.isNaN(date.getTime())
+      ? new Date().toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })
+      : date.toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' });
+  })();
 
   return (
     <main className="purchase-success-page">
       <section className="purchase-success-card" aria-labelledby="purchase-success-title">
-        <div className="purchase-success-hero">
-          <div className="purchase-success-icon"><CheckCircle2 /></div>
-          <span className="purchase-success-kicker"><Check size={14} /> Compra confirmada</span>
-          <h1 id="purchase-success-title">¡Tu compra fue exitosa!</h1>
-          <p>El pedido <strong>#{orderNumber}</strong> quedó pagado y la tienda ya puede comenzar a prepararlo.</p>
+        <header className="purchase-receipt-head">
+          <div>
+            <span className="purchase-receipt-label">Comprobante de compra</span>
+            <h1 id="purchase-success-title">Pedido #{orderNumber}</h1>
+            <p>{orderDate}</p>
+          </div>
+          <span className="purchase-receipt-state"><Check size={13} strokeWidth={3} /> Pagado</span>
+        </header>
+
+        {/* Seguimiento del pedido con sus hitos, como el de los marketplaces locales. El
+            camión de la app va sobre el hito actual y avanza un tramo corto de ida y
+            vuelta: cruzar la pantalla entera dejaba la banda medio vacía y hacía ver el
+            pedido más lejos de lo que está. CSS puro y respeta `prefers-reduced-motion`. */}
+        <div className="purchase-journey">
+          <div className="purchase-journey-track" aria-hidden="true">
+            <span className="journey-road" />
+            <span className="journey-dot is-done" />
+            <span className="journey-dot is-current" />
+            <span className="journey-dot" />
+            <img className="journey-truck" src={deliveryTruck} alt="" />
+          </div>
+          <ol className="purchase-journey-stops">
+            <li className="is-done">Pago confirmado</li>
+            <li className="is-current">En preparación</li>
+            <li>{isPickup ? 'Listo para retiro' : 'Entrega'}</li>
+          </ol>
+          <p className="purchase-journey-note">
+            La tienda ya fue notificada y está preparando tu pedido. Te avisamos cuando lo despache.
+          </p>
         </div>
 
         {order ? (
@@ -138,16 +170,27 @@ export default function PurchaseSuccessPage() {
                 <div><span>Envío</span><strong>{shippingFee ? formatCLP(shippingFee) : 'Sin costo'}</strong></div>
                 <div className="purchase-success-total"><span>Total pagado</span><strong>{formatCLP(total)}</strong></div>
               </div>
+
+              {/* Las acciones viven al pie del resumen, no sueltas bajo la página: es
+                  donde las ponen los marketplaces locales y donde ya está mirando quien
+                  acaba de revisar el total. */}
+              <div className="purchase-success-actions">
+                <button type="button" className="purchase-success-primary" onClick={() => navigate(profilePath('pedidos'))}>Ver detalle del pedido</button>
+                <button type="button" className="purchase-success-secondary" onClick={() => navigate(ROUTES.catalog)}>Seguir comprando</button>
+              </div>
             </aside>
           </div>
         ) : (
-          <div className="purchase-success-missing"><ShoppingBag /><p>Tu compra fue confirmada. Puedes consultar todos sus datos en Mis pedidos.</p></div>
+          <div className="purchase-success-missing">
+            <ShoppingBag />
+            <p>Tu compra fue confirmada. Puedes consultar todos sus datos en Mis pedidos.</p>
+            <div className="purchase-success-actions">
+              <button type="button" className="purchase-success-primary" onClick={() => navigate(profilePath('pedidos'))}>Ver detalle del pedido</button>
+              <button type="button" className="purchase-success-secondary" onClick={() => navigate(ROUTES.catalog)}>Seguir comprando</button>
+            </div>
+          </div>
         )}
 
-        <div className="purchase-success-actions">
-          <button type="button" className="purchase-success-primary" onClick={() => navigate(profilePath('pedidos'))}>Ver detalle del pedido</button>
-          <button type="button" className="purchase-success-secondary" onClick={() => navigate(ROUTES.catalog)}>Seguir comprando</button>
-        </div>
       </section>
     </main>
   );

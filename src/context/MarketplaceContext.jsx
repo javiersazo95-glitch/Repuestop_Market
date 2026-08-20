@@ -12,6 +12,53 @@ const MarketplaceContext = createContext(null);
 // dejaba el catálogo en cero resultados. Cambiar la clave descarta ese dato una vez.
 const ACTIVE_VEHICLE_KEY = 'repuestop_active_vehicle_v2';
 
+// El carrito de invitado se persiste porque ahora vive en una URL propia (`/carrito`):
+// antes solo existía dentro del drawer y morir al recargar no se notaba.
+const GUEST_CART_KEY = 'repuestop_guest_cart_v1';
+
+function readGuestCart() {
+  try {
+    const saved = localStorage.getItem(GUEST_CART_KEY);
+    if (!saved || saved === 'undefined') return [];
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.warn('Omitiendo carrito de invitado previo:', e);
+    return [];
+  }
+}
+
+/**
+ * Totales de la compra, en un solo lugar para que el carrito, el checkout y el resumen
+ * no puedan discrepar entre sí.
+ *
+ * El comprador paga subtotal + envío, sin recargo: `PedidoCheckoutCarritoSupport` deja
+ * `comisionComprador` y `comisionPasarela` en cero (la comisión del 10/7/5% se le
+ * descuenta al vendedor), y en la app móvil `buyerDisplayPrice` es identidad y
+ * `flowFeeAmount()` devuelve 0.
+ *
+ * Los campos `comisionServicio` y `totalEstimado` que devuelve GET /carrito NO se usan
+ * como fuente: `CarritoService` deja la comisión hardcodeada en cero y el total sin el
+ * envío, así que mostrarlos daría un total más bajo que el que se cobra.
+ *
+ * El costo de envío se cuenta UNA vez por proveedor, igual que el checkout del backend
+ * (`costoEnvioPorProveedor.putIfAbsent`).
+ */
+function calcularTotalesCarrito(items) {
+  const subtotal = items.reduce((acc, item) => acc + Number(item.precio || 0) * Number(item.quantity || 0), 0);
+
+  const envioPorProveedor = new Map();
+  items.forEach((item) => {
+    const fee = Number(item.shippingFee || 0);
+    if (fee <= 0) return;
+    const proveedorKey = String(item.proveedorId || item.vendedor || item.id);
+    if (!envioPorProveedor.has(proveedorKey)) envioPorProveedor.set(proveedorKey, fee);
+  });
+  const costoEnvio = [...envioPorProveedor.values()].reduce((sum, fee) => sum + fee, 0);
+
+  return { subtotal, costoEnvio, total: subtotal + costoEnvio };
+}
+
 function mapServerCart(summary) {
   return (summary?.items || []).map((item) => ({
     id: item.proveedorProductoId ?? item.productId,
@@ -65,16 +112,32 @@ export function MarketplaceProvider({ children }) {
     }
   }, [activeVehicle]);
 
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  // Último producto agregado, para el aviso de confirmación. Sin esto, "Añadir al carro"
+  // solo mueve el número del header, que es fácil de no ver.
+  const [lastAddedItem, setLastAddedItem] = useState(null);
+  const lastAddedTimerRef = useRef(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [quoteProduct, setQuoteProduct] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const queryClient = useQueryClient();
 
-  // Carrito de invitado: vive solo en memoria, porque no hay usuarioId contra
-  // el cual persistirlo en el backend hasta que la persona inicia sesión.
-  const [guestCartItems, setGuestCartItems] = useState([]);
+  // Carrito de invitado: no hay usuarioId contra el cual persistirlo en el backend
+  // hasta que la persona inicia sesión, así que vive en localStorage.
+  const [guestCartItems, setGuestCartItems] = useState(readGuestCart);
+
+  useEffect(() => {
+    try {
+      if (guestCartItems.length > 0) {
+        localStorage.setItem(GUEST_CART_KEY, JSON.stringify(guestCartItems));
+      } else {
+        localStorage.removeItem(GUEST_CART_KEY);
+      }
+    } catch {
+      // ignore quota or storage errors
+    }
+  }, [guestCartItems]);
+
   // Mensaje de la última mutación de carrito que falló, para que el usuario
   // sepa que su acción no se guardó (antes solo quedaba un console.warn).
   const [cartError, setCartError] = useState('');
@@ -146,6 +209,15 @@ export function MarketplaceProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn, userId]);
 
+  const dismissLastAdded = useCallback(() => {
+    if (lastAddedTimerRef.current) clearTimeout(lastAddedTimerRef.current);
+    setLastAddedItem(null);
+  }, []);
+
+  useEffect(() => () => {
+    if (lastAddedTimerRef.current) clearTimeout(lastAddedTimerRef.current);
+  }, []);
+
   const addToCart = useCallback(async (product, options = {}) => {
     const shippingMethod = options.shippingMethod || '';
     const shippingFee = Number(options.shippingFee || 0);
@@ -164,6 +236,12 @@ export function MarketplaceProvider({ children }) {
       }
       return [...current, { ...product, quantity: 1, shippingMethod, shippingFee }];
     });
+
+    // El aviso se muestra con el cambio optimista, no con la respuesta del servidor: si
+    // la petición falla, el rollback y `cartError` se encargan de contarlo.
+    setLastAddedItem({ id: product.id, titulo: product.titulo, imagen: product.imagen, precio: product.precio });
+    if (lastAddedTimerRef.current) clearTimeout(lastAddedTimerRef.current);
+    lastAddedTimerRef.current = setTimeout(() => setLastAddedItem(null), 5000);
 
     if (!isLoggedIn || !userId) return null;
 
@@ -276,6 +354,45 @@ export function MarketplaceProvider({ children }) {
     }
   }, [cartItems, isLoggedIn, userId, queryClient, applyOptimisticCart]);
 
+  /**
+   * Cambia el método de entrega de un grupo de líneas. Recibe varias porque el cambio se
+   * aplica a todas las de una misma tienda: el backend cobra un costo de envío por
+   * proveedor, así que dos métodos distintos dentro de la misma tienda no tienen
+   * representación posible en el pedido.
+   */
+  const updateCartShipping = useCallback(async (productIds, { shippingMethod, shippingFee = 0 }) => {
+    const ids = (Array.isArray(productIds) ? productIds : [productIds]).map(String);
+    if (ids.length === 0) return;
+    setCartError('');
+
+    const previousServerCart = isLoggedIn && userId ? queryClient.getQueryData(qk.cart(userId)) : null;
+
+    applyOptimisticCart((list) => list.map((item) => (ids.includes(String(item.id))
+      ? { ...item, shippingMethod, shippingFee }
+      : item)));
+
+    if (!isLoggedIn || !userId) return;
+
+    try {
+      let summary;
+      for (const id of ids) {
+        const item = cartItems.find((entry) => String(entry.id) === id);
+        if (!item?.cartItemId) continue;
+        summary = await updateCartItemApi(userId, item.cartItemId, {
+          proveedorProductoId: Number(item.id),
+          cantidad: item.quantity,
+          metodoEnvio: shippingMethod,
+          costoEnvioLocal: shippingFee,
+        });
+      }
+      if (summary) queryClient.setQueryData(qk.cart(userId), mapServerCart(summary));
+    } catch (error) {
+      console.warn('No se pudo actualizar el método de entrega en el backend, revirtiendo:', error);
+      queryClient.setQueryData(qk.cart(userId), previousServerCart ?? []);
+      setCartError('No se pudo actualizar el método de entrega. Intenta nuevamente.');
+    }
+  }, [cartItems, isLoggedIn, userId, queryClient, applyOptimisticCart]);
+
   const clearCart = useCallback(() => {
     setCartError('');
     if (isLoggedIn && userId) {
@@ -294,20 +411,23 @@ export function MarketplaceProvider({ children }) {
     [cartItems]
   );
 
+  const cartTotals = useMemo(() => calcularTotalesCarrito(cartItems), [cartItems]);
+
   const value = useMemo(() => ({
     activeVehicle,
     setActiveVehicle,
     cartItems,
     cartCount,
+    cartTotals,
     cartError,
     dismissCartError: () => setCartError(''),
+    lastAddedItem,
+    dismissLastAdded,
     addToCart,
     updateCartQuantity,
+    updateCartShipping,
     removeFromCart,
     clearCart,
-    isCartOpen,
-    openCart: () => setIsCartOpen(true),
-    closeCart: () => setIsCartOpen(false),
     isAuthModalOpen,
     openAuthModal: () => setIsAuthModalOpen(true),
     closeAuthModal: () => setIsAuthModalOpen(false),
@@ -317,8 +437,8 @@ export function MarketplaceProvider({ children }) {
     searchQuery,
     setSearchQuery,
   }), [
-    activeVehicle, cartItems, cartCount, cartError, addToCart, updateCartQuantity, removeFromCart, clearCart,
-    isCartOpen, isAuthModalOpen, quoteProduct, searchQuery,
+    activeVehicle, cartItems, cartCount, cartTotals, cartError, addToCart, updateCartQuantity, updateCartShipping, removeFromCart, clearCart,
+    isAuthModalOpen, quoteProduct, searchQuery, lastAddedItem, dismissLastAdded,
   ]);
 
   return <MarketplaceContext.Provider value={value}>{children}</MarketplaceContext.Provider>;

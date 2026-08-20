@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import RepuesTopLogo from './RepuesTopLogo';
 import {
-  checkoutConversationQuoteApi, getAddressesApi, getConversationMessagesApi,
+  getConversationMessagesApi,
   getConversationQuoteApi, markConversationReadApi, reportConversationApi, resolveMediaUrl, sendConversationMessageApi,
 } from '../services/api';
 import {
@@ -17,7 +17,7 @@ import {
   QUOTE_VALIDITY_OPTIONS, QUOTE_WARRANTY_OPTIONS,
 } from '../utils/quoteFlow';
 import { buildQuotePdfBlob, quoteDocumentFilename } from '../utils/quoteDocument';
-import { helpCategoryPath, productPath, storePath } from '../routes/paths';
+import { checkoutPath, helpCategoryPath, productPath, storePath } from '../routes/paths';
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
@@ -72,11 +72,6 @@ export default function QuoteDetailModal({
   const [reportDetail, setReportDetail] = useState('');
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportSuccessOpen, setReportSuccessOpen] = useState(false);
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [addresses, setAddresses] = useState([]);
-  const [selectedAddressId, setSelectedAddressId] = useState('');
-  const [documentType, setDocumentType] = useState('BOLETA');
-  const [invoice, setInvoice] = useState({ rut: '', razonSocial: '', giro: '' });
 
   const requestMessage = useMemo(() => {
     const structured = messages.find((message) => /Solicitud de cotización por\s+/i.test(message.texto || ''));
@@ -144,16 +139,6 @@ export default function QuoteDetailModal({
     const interval = window.setInterval(refreshQuoteDocument, 8000);
     return () => window.clearInterval(interval);
   }, [quote?.id]);
-
-  useEffect(() => {
-    if (mode !== 'buyer' || !showCheckout || !user?.userId) return;
-    getAddressesApi(user.userId).then((items) => {
-      const list = Array.isArray(items) ? items : [];
-      setAddresses(list);
-      const main = list.find((item) => item.esPrincipal) || list[0];
-      if (main) setSelectedAddressId(String(main.id));
-    }).catch(() => setAddresses([]));
-  }, [mode, showCheckout, user?.userId]);
 
   if (!quote) return null;
 
@@ -298,47 +283,25 @@ export default function QuoteDetailModal({
     }
   };
 
-  const purchaseQuote = async () => {
-    if (!activeQuote || expired || !user?.userId) return;
-    const needsAddress = !String(activeQuote.condicionesEntrega || '').toLowerCase().includes('retiro');
-    if (needsAddress && !selectedAddressId) {
-      setStatusMessage({ type: 'error', text: 'Selecciona una dirección de envío antes de comprar.' });
-      return;
-    }
-    if (documentType === 'FACTURA' && (!invoice.rut.trim() || !invoice.razonSocial.trim() || !invoice.giro.trim())) {
-      setStatusMessage({ type: 'error', text: 'Completa RUT, razón social y giro para emitir factura.' });
-      return;
-    }
-    setIsSending(true);
-    try {
-      const order = await checkoutConversationQuoteApi(user.userId, {
-        productoId: quote.productoId,
-        precioUnitario: activeQuote.precioUnitario ?? activeQuote.precio,
-        cantidad: quantityFromLabel(activeQuote.cantidad || requested.requestedQty),
-        metodoEnvio: activeQuote.condicionesEntrega,
-        conversacionId: quote.id,
-        tipoDocumentoTributario: documentType,
-        facturaRut: documentType === 'FACTURA' ? invoice.rut : null,
-        facturaRazonSocial: documentType === 'FACTURA' ? invoice.razonSocial : null,
-        facturaGiro: documentType === 'FACTURA' ? invoice.giro : null,
-        direccionId: needsAddress ? Number(selectedAddressId) : null,
-      });
-      if (order?.urlPago) {
-        // plan_retorno_flow.md Fase 3: mismo respaldo que CartDrawer.jsx.
-        try {
-          sessionStorage.setItem('repuestop_last_successful_order', JSON.stringify(order));
-        } catch {
-          // El endpoint GET /pedidos/{id} sigue disponible como respaldo.
-        }
-        window.location.href = order.urlPago;
-        return;
-      }
-      sessionStorage.setItem('repuestop_last_successful_order', JSON.stringify(order));
-      window.location.assign('/compra-exitosa');
-    } catch (error) {
-      setStatusMessage({ type: 'error', text: error.message || 'No se pudo procesar la cotización.' });
-      setIsSending(false);
-    }
+  /**
+   * El pago de la cotizacion vive en /checkout, junto con el del carrito: antes este
+   * componente tenia su propia copia de direccion, documento tributario y llamada de
+   * checkout. Los datos de display viajan en el state para pintar la vista al instante;
+   * si se entra por URL directa, el checkout los recupera solo.
+   */
+  const goToQuoteCheckout = () => {
+    navigate(checkoutPath({ cotizacion: quote.id }), {
+      state: {
+        quoteContext: {
+          conversacionId: quote.id,
+          productoId: quote.productoId,
+          productoNombre: productName,
+          productoImagenUrl: productImage,
+          proveedorId: storeId,
+          tiendaNombre: storeName,
+        },
+      },
+    });
   };
 
   return (
@@ -492,7 +455,7 @@ export default function QuoteDetailModal({
         </form>
       </div>}
 
-      {quotePreviewOpen && activeQuote && <div className="quote-ws-dialog-backdrop" onClick={() => setQuotePreviewOpen(false)}><section className="quote-ws-quote-dialog quote-ws-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><FileText size={22} /><span><strong>Detalle de la cotización</strong><small><CalendarClock size={13} /> {quoteExpirationLabel(activeQuote, now)}</small></span></div><button type="button" onClick={() => setQuotePreviewOpen(false)}><X size={20} /></button></header><div className="quote-ws-dialog-body"><div className="quote-ws-preview-price"><small>Total cotizado</small><strong>{formatCLP(activeQuote.precioFinal ?? activeQuote.precio)}</strong></div><DataRow icon={Package} label="Cantidad" value={activeQuote.cantidad} /><DataRow icon={CheckCircle2} label="Disponibilidad" value={activeQuote.disponibilidad} /><DataRow icon={Truck} label="Entrega" value={activeQuote.condicionesEntrega} /><DataRow icon={ShieldCheck} label="Garantía" value={activeQuote.garantia} /><DataRow icon={FileText} label="Notas" value={activeQuote.notas} /><div className="quote-ws-preview-document"><button type="button" onClick={viewDocument}><Eye size={16} /> Ver PDF</button><button type="button" onClick={downloadDocument}><Download size={16} /> Descargar PDF</button></div>{mode === 'buyer' && !showCheckout && <button type="button" className="quote-ws-primary-button" disabled={expired || closed} onClick={() => setShowCheckout(true)}><ShoppingCart size={16} /> {expired ? 'Cotización vencida' : 'Comprar esta cotización'}</button>}{mode === 'buyer' && showCheckout && <div className="quote-checkout-box"><h4>Finalizar compra</h4>{!String(activeQuote.condicionesEntrega || '').toLowerCase().includes('retiro') && <label><span>Dirección de envío</span><select value={selectedAddressId} onChange={(event) => setSelectedAddressId(event.target.value)}><option value="">Selecciona una dirección</option>{addresses.map((address) => <option key={address.id} value={address.id}>{address.calleYNumero}{address.comunaNombre ? `, ${address.comunaNombre}` : ''}</option>)}</select></label>}<div className="quote-document-toggle"><button type="button" className={documentType === 'BOLETA' ? 'active' : ''} onClick={() => setDocumentType('BOLETA')}>Boleta</button><button type="button" className={documentType === 'FACTURA' ? 'active' : ''} onClick={() => setDocumentType('FACTURA')}>Factura</button></div>{documentType === 'FACTURA' && <div className="quote-invoice-fields"><input placeholder="RUT empresa" value={invoice.rut} onChange={(event) => setInvoice((value) => ({ ...value, rut: event.target.value }))} /><input placeholder="Razón social" value={invoice.razonSocial} onChange={(event) => setInvoice((value) => ({ ...value, razonSocial: event.target.value }))} /><input placeholder="Giro" value={invoice.giro} onChange={(event) => setInvoice((value) => ({ ...value, giro: event.target.value }))} /></div>}<button type="button" className="quote-ws-primary-button" onClick={purchaseQuote} disabled={isSending}>{isSending ? <Loader2 size={16} className="spin-icon" /> : <ShoppingCart size={16} />} Confirmar compra</button></div>}</div></section></div>}
+      {quotePreviewOpen && activeQuote && <div className="quote-ws-dialog-backdrop" onClick={() => setQuotePreviewOpen(false)}><section className="quote-ws-quote-dialog quote-ws-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><FileText size={22} /><span><strong>Detalle de la cotización</strong><small><CalendarClock size={13} /> {quoteExpirationLabel(activeQuote, now)}</small></span></div><button type="button" onClick={() => setQuotePreviewOpen(false)}><X size={20} /></button></header><div className="quote-ws-dialog-body"><div className="quote-ws-preview-price"><small>Total cotizado</small><strong>{formatCLP(activeQuote.precioFinal ?? activeQuote.precio)}</strong></div><DataRow icon={Package} label="Cantidad" value={activeQuote.cantidad} /><DataRow icon={CheckCircle2} label="Disponibilidad" value={activeQuote.disponibilidad} /><DataRow icon={Truck} label="Entrega" value={activeQuote.condicionesEntrega} /><DataRow icon={ShieldCheck} label="Garantía" value={activeQuote.garantia} /><DataRow icon={FileText} label="Notas" value={activeQuote.notas} /><div className="quote-ws-preview-document"><button type="button" onClick={viewDocument}><Eye size={16} /> Ver PDF</button><button type="button" onClick={downloadDocument}><Download size={16} /> Descargar PDF</button></div>{mode === 'buyer' && <button type="button" className="quote-ws-primary-button" disabled={expired || closed} onClick={goToQuoteCheckout}><ShoppingCart size={16} /> {expired ? 'Cotización vencida' : 'Comprar esta cotización'}</button>}</div></section></div>}
     </div>
   );
 }

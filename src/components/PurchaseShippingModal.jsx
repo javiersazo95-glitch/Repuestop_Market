@@ -2,7 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, Check, ShoppingCart, Truck, X } from 'lucide-react';
 import { parseShippingMethods, resolveShippingService, shippingMethodCost, shippingMethodPrice } from '../data/shippingMethods';
 
-export default function PurchaseShippingModal({ product, intent, onClose, onConfirm }) {
+/**
+ * `intent`: 'buy' (comprar ahora) | 'add' (añadir al carro) | 'update' (cambiar la
+ * entrega de una tienda ya en el carrito, desde /carrito). Solo cambia el copy del CTA.
+ */
+export default function PurchaseShippingModal({ product, intent, initialMethod = '', onClose, onConfirm }) {
   const availableMethods = useMemo(() => {
     const methods = parseShippingMethods(product?.metodosEnvio);
     return methods.length > 0 ? methods : ['Despacho a coordinar con la tienda'];
@@ -12,9 +16,10 @@ export default function PurchaseShippingModal({ product, intent, onClose, onConf
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setSelectedMethod(availableMethods.length === 1 ? availableMethods[0] : '');
+    if (initialMethod && availableMethods.includes(initialMethod)) setSelectedMethod(initialMethod);
+    else setSelectedMethod(availableMethods.length === 1 ? availableMethods[0] : '');
     setError('');
-  }, [availableMethods, product?.id, intent]);
+  }, [availableMethods, product?.id, intent, initialMethod]);
 
   if (!product || !intent) return null;
 
@@ -82,7 +87,9 @@ export default function PurchaseShippingModal({ product, intent, onClose, onConf
             disabled={submitting || !selectedMethod}
           >
             {intent === 'buy' ? <ShoppingCart /> : <Check />}
-            {submitting ? 'Agregando…' : intent === 'buy' ? 'Continuar al carrito' : 'Añadir al carro'}
+            {submitting
+              ? (intent === 'update' ? 'Guardando…' : 'Agregando…')
+              : intent === 'buy' ? 'Continuar al carrito' : intent === 'update' ? 'Guardar entrega' : 'Añadir al carro'}
             {!submitting && <ArrowRight />}
           </button>
         </footer>

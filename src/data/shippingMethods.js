@@ -39,6 +39,21 @@ export function shippingMethodPrice(method) {
   return String(method || '').match(/\(([^)]+)\)/)?.[1] || null;
 }
 
+/**
+ * El checkout del backend recibe UN `metodoEnvio` para todo el pedido, pero cada línea
+ * del carrito lleva el suyo. En `PedidoCheckoutCarritoSupport` el método de la línea
+ * tiene prioridad y este valor es solo el respaldo para las líneas que llegaron sin
+ * método, así que se manda cuando todas coinciden y vacío cuando hay mezcla.
+ *
+ * Concatenarlos ("A | B") era peligroso, no solo feo: para una línea sin costo de envío
+ * el backend hace `metodoEnvio.replaceAll("[^0-9]", "")` sobre este string, y con dos
+ * métodos con precio pegaba los dígitos de ambos ($4.500 + $3.990 -> 45003990).
+ */
+export function checkoutFallbackShippingMethod(items) {
+  const methods = [...new Set((items || []).map((item) => item.shippingMethod).filter(Boolean))];
+  return methods.length === 1 ? methods[0] : '';
+}
+
 /** Convierte el precio publicado en el método ("$4.500") a un número para el checkout. */
 export function shippingMethodCost(method) {
   const price = shippingMethodPrice(method);

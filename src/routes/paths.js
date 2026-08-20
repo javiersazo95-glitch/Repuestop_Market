@@ -8,6 +8,8 @@ export const ROUTES = {
   product: '/repuestos/:productId',
   stores: '/tiendas',
   store: '/tiendas/:storeId',
+  cart: '/carrito',
+  checkout: '/checkout',
   profile: '/perfil',
   profileTab: '/perfil/:tab',
   support: '/ayuda',
@@ -67,6 +69,14 @@ export function storePath(store) {
   if (!store) return ROUTES.stores;
   const id = store.id ?? store.proveedorId ?? store;
   return `${ROUTES.stores}/${toIdSlug(id, store.nombre || store.storeName)}`;
+}
+
+/**
+ * `/checkout` para el carrito, `/checkout?cotizacion=12` para pagar una cotización
+ * cerrada en el chat. El paso activo viaja aparte en `?paso=` y lo maneja la vista.
+ */
+export function checkoutPath({ cotizacion } = {}) {
+  return cotizacion ? `${ROUTES.checkout}?cotizacion=${encodeURIComponent(cotizacion)}` : ROUTES.checkout;
 }
 
 export function profilePath(tab = 'resumen') {

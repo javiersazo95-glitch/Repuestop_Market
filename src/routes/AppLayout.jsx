@@ -3,7 +3,7 @@ import { Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import AuthModal from '../components/AuthModal';
-import CartDrawer from '../components/CartDrawer';
+import CartAddedToast from '../components/CartAddedToast';
 import QuotationRequestModal from '../components/QuotationRequestModal';
 import { useAuth } from '../context/AuthContext';
 import { useMarketplace } from '../context/MarketplaceContext';
@@ -21,8 +21,7 @@ export default function AppLayout() {
   const [searchParams] = useSearchParams();
   const nav = useAppNavigation();
   const {
-    activeVehicle, cartCount, cartItems, cartError, dismissCartError, updateCartQuantity, removeFromCart, clearCart,
-    isCartOpen, openCart, closeCart,
+    activeVehicle, cartCount,
     isAuthModalOpen, openAuthModal, closeAuthModal,
     quoteProduct, closeQuote,
     searchQuery, setSearchQuery,
@@ -73,7 +72,7 @@ export default function AppLayout() {
         onOpenAdsWall={nav.goAdsWall}
         onOpenHelp={nav.goHelp}
         cartCount={cartCount}
-        onOpenCart={openCart}
+        onOpenCart={nav.goCart}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onSearchSubmit={submitSearch}
@@ -97,7 +96,10 @@ export default function AppLayout() {
         onClose={closeAuthModal}
         onOpenSellerRegister={nav.goSellerRegister}
         onLoginSuccess={() => {
-          if (!isCartOpen) {
+          // Si el usuario está comprando, iniciar sesión no debe sacarlo del flujo.
+          const enFlujoDeCompra = location.pathname.startsWith(ROUTES.cart)
+            || location.pathname.startsWith(ROUTES.checkout);
+          if (!enFlujoDeCompra) {
             const defaultTarget = location.pathname === ROUTES.adsWall ? profilePath('anuncios') : profilePath('resumen');
             navigate(redirectedFrom || defaultTarget, { replace: true });
           }
@@ -117,29 +119,8 @@ export default function AppLayout() {
         }}
       />
 
-      <CartDrawer
-        isOpen={isCartOpen}
-        onClose={closeCart}
-        cartItems={cartItems}
-        cartError={cartError}
-        onDismissCartError={dismissCartError}
-        onUpdateQuantity={updateCartQuantity}
-        onRemoveItem={removeFromCart}
-        onClearCart={clearCart}
-        activeVehicle={activeVehicle}
-        user={user}
-        isLoggedIn={isLoggedIn}
-        onOpenAuthModal={openAuthModal}
-        onOrderCreated={(order) => {
-          try {
-            sessionStorage.setItem('repuestop_last_successful_order', JSON.stringify(order));
-          } catch {
-            // El state de navegación mantiene disponible la confirmación en esta sesión.
-          }
-          closeCart();
-          navigate(ROUTES.purchaseSuccess, { state: { order } });
-        }}
-      />
+      <CartAddedToast />
+
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ROUTES, catalogPath, helpCategoryPath, helpContactPath, productPath, profilePath, storePath } from './paths';
+import { ROUTES, catalogPath, checkoutPath, helpCategoryPath, helpContactPath, productPath, profilePath, storePath } from './paths';
 
 /**
  * Navegación de alto nivel del marketplace. Los componentes de vista siguen
@@ -31,6 +31,8 @@ export function useAppNavigation() {
     goStores: () => navigate(ROUTES.stores),
     goStore,
     goProfile,
+    goCart: () => navigate(ROUTES.cart),
+    goCheckout: (options = {}) => navigate(checkoutPath(options)),
     goAbout: () => navigate(ROUTES.about),
     goAdsWall: () => navigate(ROUTES.adsWall),
     goSupport: () => navigate(ROUTES.support),

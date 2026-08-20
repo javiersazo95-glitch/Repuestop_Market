@@ -22,6 +22,8 @@ const TermsPage = lazy(() => import('../pages/TermsPage'));
 const PrivacyPage = lazy(() => import('../pages/PrivacyPage'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
 const AdsWallPage = lazy(() => import('../pages/AdsWallPage'));
+const CartPage = lazy(() => import('../pages/CartPage'));
+const CheckoutPage = lazy(() => import('../pages/CheckoutPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
 const SellerRegisterPage = lazy(() => import('../pages/SellerRegisterPage'));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'));
@@ -42,6 +44,13 @@ export default function AppRoutes() {
               <Route path={ROUTES.stores} element={<StoresPage />} />
               <Route path={ROUTES.store} element={<StorePage />} />
               <Route path={ROUTES.adsWall} element={<AdsWallPage />} />
+              {/* El carrito es público: un invitado tiene que poder revisarlo antes de
+                  iniciar sesión. El checkout sí exige sesión. */}
+              <Route path={ROUTES.cart} element={<CartPage />} />
+              <Route
+                path={ROUTES.checkout}
+                element={<RequireAuth><CheckoutPage /></RequireAuth>}
+              />
               <Route
                 path={ROUTES.purchaseSuccess}
                 element={<RequireAuth><PurchaseSuccessPage /></RequireAuth>}

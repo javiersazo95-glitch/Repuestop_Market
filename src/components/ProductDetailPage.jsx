@@ -48,7 +48,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const [plateMatchIndex, setPlateMatchIndex] = useState(null);
   const [purchaseIntent, setPurchaseIntent] = useState(null);
   const compatibilityItemRefs = useRef([]);
-  const { setActiveVehicle, openCart } = useMarketplace();
+  const { setActiveVehicle } = useMarketplace();
   const nav = useAppNavigation();
   const stock = Number(product.stock || 0);
   const pricingMode = String(product.pricingMode || '').toUpperCase();
@@ -186,10 +186,15 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   };
 
   const confirmPurchaseAction = async (shipping) => {
-    await onAddToCart(product, shipping);
-    const shouldOpenCart = purchaseIntent === 'buy';
+    const shouldGoToCart = purchaseIntent === 'buy';
+    // `addToCart` aplica el cambio optimista de forma sincrónica (antes de su primer
+    // await) y maneja sus propios errores dejándolos en `cartError`, que /carrito
+    // muestra. Por eso "Comprar ahora" salta al carrito de inmediato en vez de esperar
+    // el viaje al backend: el producto ya está en la lista cuando la vista se monta.
+    const pending = onAddToCart(product, shipping);
     setPurchaseIntent(null);
-    if (shouldOpenCart) openCart();
+    if (shouldGoToCart) nav.goCart();
+    else await pending;
   };
 
   return (
