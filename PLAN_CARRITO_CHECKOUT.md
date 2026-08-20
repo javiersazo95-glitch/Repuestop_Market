@@ -608,24 +608,53 @@ Sigue en pie que **no se puede reusar `/pedidos/checkout`**: ese flujo descuenta
 
 ---
 
-## 9. Pendiente: aceptación de términos en el registro
+## 9. Aceptación de términos ✅ PARCIAL (20-08-2026)
 
-Decidido el 19-08-2026: la aceptación explícita **no** va en cada compra (ningún
-marketplace local lo hace; es fricción en el paso donde más gente abandona). El checkout
-solo muestra el aviso previo al pago.
+> **La versión anterior de esta sección estaba equivocada** al decir que "nadie acepta
+> los términos en ningún punto de la web": `FounderRegistration.tsx` —el registro de
+> vendedor que monta `/vender`— sí tiene checkbox, validación y manda `acceptsTerms`. El
+> grep anterior miró `SellerRegisterModal.jsx`, que no se usa.
 
-Lo que falta, y es una tarea aparte:
+### Lo que ya existía en el backend
 
-- Hoy **nadie acepta los términos en ningún punto**: `AuthModal`, `SellerRegisterModal` y
-  `SellerRegisterPage` no piden aceptación (grep sin resultados).
-- La sección 2 de `COMPRADOR_TERMS` (`src/data/legalTexts.js`) dice que la aceptación
-  "se realizará mediante checkbox u otro mecanismo digital equivalente" y que RepuesTop
-  podrá registrar "fecha, hora, correo, RUT, versión del documento aceptado".
-- El checkbox que tenía el checkout no servía para eso: era estado local del componente,
-  no viajaba en el payload de `checkoutCartApi` ni quedaba guardado en ninguna parte.
-- Falta entonces: checkbox en el registro (comprador y vendedor), campo en el backend con
-  la versión aceptada (`LEGAL_VERSION`) y la fecha, y re-aceptación cuando la versión
-  cambie.
+Nada que crear: `Usuario` tiene `accepts_terms` y `terms_accepted_at`;
+`validarComprador` / `validarProveedor` llaman a `validarTerminos()`, que rechaza el
+registro si no viene `true`; y `AuthService` persiste ambos campos.
+
+### El bug que apareció al revisarlo
+
+**El registro de comprador de la web estaba roto.** `registerBuyerApi` mandaba `userName`
+y el backend exige `firstName` + `lastName`, además de `direccion` (con `comunaId` y
+`calleYNumero`) y `acceptsTerms`. Fallaba con `400 firstName es obligatorio` antes de
+llegar a la base. No lo trajo ningún pull: el DTO no se toca desde `a0949d4`.
+
+Resuelto: `registerBuyerApi` manda el contrato completo, y `AuthModal` suma el campo de
+dirección (con el autocompletado de §10, que resuelve el `comunaId` solo) y el checkbox
+de términos con enlaces a `/terminos` y `/privacidad`.
+
+**Verificado contra el backend real:** sin marcar el checkbox el envío se bloquea con
+"Debes aceptar los Términos y Condiciones para crear tu cuenta"; marcándolo, el registro
+responde `200` y queda en el log de `AuthService`.
+
+### Lo que falta: la versión del documento
+
+Decidido el 20-08-2026: **tabla de aceptaciones**, no un campo más.
+
+- Nueva tabla `aceptacion_terminos` (`usuario_id`, `documento` COMPRADOR|VENDEDOR|
+  PRIVACIDAD, `version`, `aceptado_en`, `ip`, `user_agent`), append-only.
+- `accepts_terms` / `terms_accepted_at` se quedan en `usuario` como caché de la última
+  aceptación: la app y el backend ya los leen y evitan un join en cada login.
+- El motivo de la tabla: un campo único se sobrescribe, y al cambiar la versión se pierde
+  la evidencia de qué aceptó cada persona al registrarse — que es justo lo que sirve ante
+  un reclamo. La sección 2 de `COMPRADOR_TERMS` pide registrar "fecha, hora, correo, RUT,
+  versión del documento aceptado".
+- El cliente manda qué versión mostró; **el backend compara con la vigente y rechaza si
+  hay desfase**. No se confía en el cliente para decidir cuál es la versión actual, o una
+  app sin actualizar seguiría registrando aceptaciones de un documento que ya no existe.
+- Re-aceptación: `/users/perfil` expone `requiereAceptarTerminos` cuando la versión
+  aceptada no es la vigente, y la UI la pide antes de dejar operar.
+- Web y app mandan `termsVersion` (`LEGAL_VERSION` en `src/data/legalTexts.js` y
+  `mobile/constants/legal-texts.ts`, hoy "19 de agosto de 2026").
 
 ---
 
