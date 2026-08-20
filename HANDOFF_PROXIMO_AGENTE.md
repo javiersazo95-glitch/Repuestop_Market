@@ -112,6 +112,48 @@ suscripciones/Fichas de anuncios sin backend en ninguna plataforma (§7), subór
 vendedor para el carrito multi-tienda (§8), y la aceptación de términos en el registro
 (§9) — hoy nadie los acepta en ningún punto de la web.
 
+## 1.d Sesión 2026-08-20 — aceptación de términos (§9) y toques al monorepo
+
+Esta sesión salió del repo web y tocó el monorepo (`C:\ProyectoRepuestopepuestop`,
+rama `dev`). Detalle completo en `PLAN_CARRITO_CHECKOUT.md` §9 y §10.
+
+1. **Historial de aceptaciones (LISTO)**. Tabla `RT_aceptacion_terminos` append-only con
+   documento (COMPRADOR | VENDEDOR | PRIVACIDAD), versión, fecha, IP, user agent y origen.
+   `RT_usuario.accepts_terms` / `terms_accepted_at` quedan como caché de la última.
+   La versión vigente la decide el backend (`repuestop.legal.version-vigente`); el cliente
+   informa cuál mostró y se rechaza si no coincide. IP y user agent salen SIEMPRE de la
+   petición HTTP, nunca del body: son evidencia.
+
+2. **Registro de comprador de la web arreglado (LISTO)**. Estaba roto: `registerBuyerApi`
+   mandaba `userName` y el backend exige `firstName` + `lastName`, `direccion` con
+   `comunaId` y `acceptsTerms`. Fallaba con 400 antes de tocar la base. Era un desfase
+   preexistente, no lo trajo ningún pull.
+
+3. **Autocompletado de direcciones (LISTO)**. `GET /ubicaciones/direcciones` (llegó en el
+   commit `d19381e` del monorepo) conectado al alta de dirección, que es el mismo
+   formulario del paso de entrega del checkout. El mapeo nombre → id vive en
+   `src/services/geoLookup.js`.
+
+4. **Aviso de re-aceptación (LISTO)**. `TermsReacceptanceModal`, con el texto legal
+   dentro del propio aviso.
+
+### Cómo verificar cambios en el backend Java
+
+**`mvn compile` NO alcanza: solo procesa `src/main`.** Railway despliega con
+`mvn package -DskipTests`, y `skipTests` salta la EJECUCIÓN de los tests pero no su
+COMPILACIÓN. Cambiar una firma en `src/main` y verificar con `mvn compile` deja pasar
+tests que ya no compilan, y el deploy revienta en `testCompile`.
+
+Pasó exactamente eso al sumar `AceptacionTerminosService` al constructor de `AuthService`
+(corregido en `4dd7b32`). **Verificar siempre con `mvn package -DskipTests`** o, como
+mínimo, `mvn test-compile`.
+
+Al correr la suite completa hay 14 fallos **preexistentes y ajenos**: 13 son ambientales
+(tests que levantan el contexto Spring y necesitan credenciales de Postgres) y 1 es real
+en `CorsProfilePropertiesTest`, que espera solo los tres subdominios de dev mientras la
+config también permite `localhost` y rangos de red local. Ninguno bloquea el deploy
+porque Railway no ejecuta tests.
+
 ## 2. Estado de Producción
 
 La plataforma web se encuentra **100% conectada al backend real, optimizada con TanStack Query, con soporte de pasarela Flow end-to-end, y protegida con code splitting y error boundaries** para despliegue productivo.
