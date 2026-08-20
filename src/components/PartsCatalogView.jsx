@@ -34,7 +34,6 @@ const sampleKeywords = ['Pastillas de freno', 'Filtro de aceite', 'Amortiguador'
 
 export default function PartsCatalogView({
   onBackToStore,
-  onAddToCart,
   onQuickView,
   onOpenQuote,
   activeVehicle: initialActiveVehicle,

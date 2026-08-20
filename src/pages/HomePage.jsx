@@ -10,7 +10,7 @@ import { useDocumentTitle } from '../routes/useDocumentTitle';
 export default function HomePage() {
   useDocumentTitle(null);
   const nav = useAppNavigation();
-  const { activeVehicle, setActiveVehicle, addToCart, openQuote } = useMarketplace();
+  const { activeVehicle, setActiveVehicle, openQuote } = useMarketplace();
 
   return (
     <>
@@ -27,7 +27,6 @@ export default function HomePage() {
 
       {/* 2. LATEST ADDED SPARE PARTS IN REAL-TIME */}
       <LatestAddedPartsSection
-        onAddToCart={addToCart}
         onQuickView={nav.goProduct}
         onOpenQuote={openQuote}
         onOpenCatalog={() => nav.goCatalog()}

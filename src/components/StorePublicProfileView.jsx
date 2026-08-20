@@ -34,7 +34,6 @@ const SEARCH_MODES = [
 export default function StorePublicProfileView({
   store,
   onBackToStores,
-  onAddToCart,
   onQuickView,
   onOpenQuote,
   activeVehicle: initialActiveVehicle,
@@ -768,7 +767,6 @@ export default function StorePublicProfileView({
                       key={prod.id}
                       product={prod}
                       onView={onQuickView}
-                      onAddToCart={onAddToCart}
                       fallbackCity={currentStore.ciudad || 'Santiago, RM'}
                     />
                   ))}

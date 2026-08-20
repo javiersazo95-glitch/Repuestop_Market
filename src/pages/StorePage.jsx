@@ -14,7 +14,7 @@ export default function StorePage() {
   const location = useLocation();
   const nav = useAppNavigation();
   const { user, role } = useAuth();
-  const { activeVehicle, addToCart, openQuote } = useMarketplace();
+  const { activeVehicle, openQuote } = useMarketplace();
 
   const storeId = parseIdSlug(storeParam);
   // La vista completa la ficha con GET /tiendas/{id}; desde el directorio llega
@@ -35,7 +35,6 @@ export default function StorePage() {
     <StorePublicProfileView
       store={store}
       onBackToStores={nav.goStores}
-      onAddToCart={addToCart}
       onQuickView={nav.goProduct}
       onOpenQuote={openQuote}
       activeVehicle={activeVehicle}
