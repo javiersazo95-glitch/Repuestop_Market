@@ -1,3 +1,4 @@
+import { LEGAL_VERSION_CODE } from '../data/legalTexts';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
 
 // El backend persiste rutas de R2 como `/api/v1/uploads/...`. En desarrollo el
@@ -197,6 +198,7 @@ export async function registerBuyerApi(buyerData) {
       phone: buyerData.phone || '',
       authProvider: buyerData.authProvider || 'EMAIL_PASSWORD',
       acceptsTerms: buyerData.acceptsTerms === true,
+      termsVersion: LEGAL_VERSION_CODE,
       direccion: {
         calleYNumero: buyerData.direccion?.calleYNumero || '',
         comunaId: buyerData.direccion?.comunaId ? Number(buyerData.direccion.comunaId) : null,
@@ -246,6 +248,18 @@ export async function logoutApi(token) {
 export async function getProfileApi() {
   return fetchApi('/users/perfil', {
     method: 'GET',
+  });
+}
+
+/**
+ * Registra que el usuario acepto la version vigente de los terminos. Se llama cuando el
+ * perfil devuelve `requiereAceptarTerminos: true`, o sea cuando cambio el documento
+ * desde la ultima vez que acepto.
+ */
+export async function acceptTermsApi() {
+  return fetchApi('/users/perfil/aceptar-terminos', {
+    method: 'POST',
+    body: JSON.stringify({ termsVersion: LEGAL_VERSION_CODE }),
   });
 }
 

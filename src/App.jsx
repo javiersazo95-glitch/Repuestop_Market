@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { MarketplaceProvider } from './context/MarketplaceContext';
 import AppRoutes from './routes/AppRoutes';
+import TermsReacceptanceModal from './components/TermsReacceptanceModal';
 import SystemErrorPage from './components/SystemErrorPage';
 
 const queryClient = new QueryClient({
@@ -67,6 +68,9 @@ export default function App() {
           <AuthProvider>
             <MarketplaceProvider>
               <AppRoutes />
+              {/* Va por encima de las rutas: el perfil vive fuera de AppLayout y el aviso
+                  tiene que alcanzarlo igual. */}
+              <TermsReacceptanceModal />
             </MarketplaceProvider>
           </AuthProvider>
         </BrowserRouter>

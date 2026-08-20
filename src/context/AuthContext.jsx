@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { loginApi, loginGoogleApi, logoutApi, getProfileApi, updateProfileApi, deleteAccountApi, registerBuyerApi, registerSellerApi, resolveMediaUrl } from '../services/api';
+import { loginApi, loginGoogleApi, logoutApi, getProfileApi, updateProfileApi, deleteAccountApi, registerBuyerApi, registerSellerApi, resolveMediaUrl, acceptTermsApi } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -240,6 +240,21 @@ export function AuthProvider({ children }) {
     }
   };
 
+  /**
+   * Acepta la version vigente de los terminos para un usuario que ya tiene cuenta. Al
+   * volver, baja la bandera en memoria para que el aviso no reaparezca sin tener que
+   * recargar el perfil completo.
+   */
+  const acceptTerms = async () => {
+    try {
+      await acceptTermsApi();
+      setUser((current) => (current ? { ...current, requiereAceptarTerminos: false } : current));
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
   const value = {
     user,
     token,
@@ -252,6 +267,7 @@ export function AuthProvider({ children }) {
     login,
     loginWithGoogle,
     logout,
+    acceptTerms,
     registerBuyer,
     registerSeller,
     updateProfile,

@@ -11,8 +11,19 @@
  * antes de publicar en produccion.
  */
 
-/** Fecha de la version vigente. Actualizar en cada cambio de texto. */
+/** Fecha de la version vigente, para mostrar en pantalla. */
 export const LEGAL_VERSION = '19 de agosto de 2026';
+
+/**
+ * Codigo estable de la misma version, el que viaja al backend y queda guardado en
+ * RT_aceptacion_terminos. Va aparte de LEGAL_VERSION porque comparar el texto largo en
+ * espanol entre web, app y backend es fragil: basta una tilde o un espacio distinto para
+ * que la comparacion falle y se le pida re-aceptar a todo el mundo.
+ *
+ * Debe coincidir con `repuestop.legal.version-vigente` del backend y con
+ * LEGAL_VERSION_CODE de la app.
+ */
+export const LEGAL_VERSION_CODE = '2026-08-19';
 
 export const COMPRADOR_TERMS = `1. IDENTIFICACIÓN DE LA PLATAFORMA
 RepuesTop es una plataforma de comercio electrónico, disponible como aplicación móvil y sitio web, administrada por la empresa titular de la plataforma, en adelante también "RepuesTop", "la Plataforma" o "la Empresa". Estos Términos regulan el registro, acceso y uso de la Plataforma por parte de compradores.

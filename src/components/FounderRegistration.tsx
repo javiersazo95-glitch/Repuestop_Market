@@ -15,6 +15,7 @@ import {
   type SellerSession, type SellerLookup, type VerificacionResponse,
 } from './founderApi';
 import { VENDEDOR_TERMS, PRIVACIDAD_POLICY } from './legalTexts';
+import { LEGAL_VERSION_CODE } from '../data/legalTexts';
 
 type LegalDoc = 'terms' | 'privacy';
 
@@ -329,6 +330,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
           codigoPostal: form.codigoPostal.trim() || undefined,
         },
         acceptsTerms: true,
+        termsVersion: LEGAL_VERSION_CODE,
         origin: 'SITIO_WEB',
       };
       if (authProvider === 'GOOGLE' && google) {
