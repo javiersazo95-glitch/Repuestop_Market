@@ -5,6 +5,7 @@ import {
   getPaisesApi, getRegionesApi, getComunasApi, saveAddressTypeMeta, updateProfileApi,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import AddressAutocompleteInput from './AddressAutocompleteInput';
 
 const EMPTY_FORM = { calleYNumero: '', codigoPostal: '', paisId: '', regionId: '', comunaId: '', tipoDireccion: 'PERSONAL' };
 
@@ -110,6 +111,57 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
     setForm(EMPTY_FORM);
     setRegiones([]);
     setComunas([]);
+  };
+
+  /**
+   * Al elegir una sugerencia, el autocompletado entrega los NOMBRES de comuna y region;
+   * el backend guarda ids. Se resuelve la cascada pais -> region -> comuna comparando
+   * nombres sin tildes ni mayusculas, y solo se rellena lo que calza: si el catalogo no
+   * tiene esa comuna, el usuario la elige a mano como antes.
+   */
+  const handleSuggestionLocation = async ({ comuna, region }) => {
+    const normaliza = (valor) => String(valor || '')
+      .normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+    if (!region && !comuna) return;
+
+    try {
+      let listaPaises = paises;
+      if (!listaPaises.length) {
+        listaPaises = await getPaisesApi();
+        listaPaises = Array.isArray(listaPaises) ? listaPaises : [];
+        setPaises(listaPaises);
+      }
+      const chile = listaPaises.find((pais) => normaliza(pais.nombre).includes('chile')) || listaPaises[0];
+      if (!chile) return;
+
+      const listaRegiones = await getRegionesApi(chile.id);
+      const regiones2 = Array.isArray(listaRegiones) ? listaRegiones : [];
+      setRegiones(regiones2);
+
+      const regionMatch = region
+        ? regiones2.find((item) => normaliza(item.nombre).includes(normaliza(region))
+          || normaliza(region).includes(normaliza(item.nombre)))
+        : null;
+
+      setForm((current) => ({
+        ...current,
+        paisId: String(chile.id),
+        regionId: regionMatch ? String(regionMatch.id) : current.regionId,
+      }));
+      if (!regionMatch) return;
+
+      const listaComunas = await getComunasApi(regionMatch.id);
+      const comunas2 = Array.isArray(listaComunas) ? listaComunas : [];
+      setComunas(comunas2);
+
+      const comunaMatch = comuna
+        ? comunas2.find((item) => normaliza(item.nombre) === normaliza(comuna))
+          || comunas2.find((item) => normaliza(item.nombre).includes(normaliza(comuna)))
+        : null;
+      if (comunaMatch) setForm((current) => ({ ...current, comunaId: String(comunaMatch.id) }));
+    } catch {
+      // Sin catalogo no se rellena nada: los selects siguen disponibles a mano.
+    }
   };
 
   const handlePaisChange = (paisId) => {
@@ -543,10 +595,12 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
 
             <div className="form-group">
               <label>Calle y número</label>
-              <input
-                type="text"
+              <AddressAutocompleteInput
                 value={form.calleYNumero}
-                onChange={(e) => setForm((current) => ({ ...current, calleYNumero: e.target.value }))}
+                onChange={(calleYNumero) => setForm((current) => ({ ...current, calleYNumero }))}
+                onSelectLocation={handleSuggestionLocation}
+                comuna={comunas.find((item) => String(item.id) === String(form.comunaId))?.nombre}
+                region={regiones.find((item) => String(item.id) === String(form.regionId))?.nombre}
                 placeholder="Av. Italia 1234, depto 5"
                 required
               />

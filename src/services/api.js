@@ -511,6 +511,18 @@ export async function setDefaultAddressApi(usuarioId, direccionId, options = {})
   }
 }
 
+/**
+ * Sugerencias de direccion para autocompletar (Photon / OpenStreetMap por detras,
+ * cacheado en el backend). Endpoint publico: tambien sirve sin sesion iniciada.
+ * Devuelve `{ direccion, comuna, region, latitud, longitud }`.
+ */
+export async function getDireccionSugerenciasApi(texto, { comuna, region, signal } = {}) {
+  const params = new URLSearchParams({ texto });
+  if (comuna) params.set('comuna', comuna);
+  if (region) params.set('region', region);
+  return fetchApi(`/ubicaciones/direcciones?${params.toString()}`, { method: 'GET', signal });
+}
+
 export async function getPaisesApi(options = {}) {
   return fetchApi('/geografia/paises', { method: 'GET', ...options });
 }

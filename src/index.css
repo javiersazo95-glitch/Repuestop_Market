@@ -14330,3 +14330,16 @@ input, select, textarea {
   .purchase-success-card { width: calc(100% - 24px); }
   .purchase-receipt-head { flex-direction: column; }
 }
+
+/* --- Autocompletado de direcciones (GET /ubicaciones/direcciones) --- */
+.address-autocomplete { position: relative; }
+.address-autocomplete > input { width: 100%; }
+.address-autocomplete-spinner { position: absolute; top: 50%; right: 11px; margin-top: -8px; color: var(--text-muted); pointer-events: none; }
+
+.address-autocomplete-list { position: absolute; z-index: 30; top: calc(100% + 4px); right: 0; left: 0; max-height: 232px; overflow-y: auto; margin: 0; padding: 4px; list-style: none; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--bg-white); box-shadow: var(--shadow-hover); }
+.address-autocomplete-list li + li { border-top: 1px solid var(--border-subtle); }
+.address-autocomplete-list button { display: flex; align-items: flex-start; gap: 9px; width: 100%; padding: 9px 10px; border-radius: 6px; text-align: left; background: transparent; }
+.address-autocomplete-list button:hover { background: #f1f5f9; }
+.address-autocomplete-list svg { flex: 0 0 auto; margin-top: 2px; color: var(--color-brand-blue); }
+.address-autocomplete-list strong { display: block; font-size: 12.5px; font-weight: 700; line-height: 1.35; color: var(--text-primary); }
+.address-autocomplete-list small { display: block; margin-top: 2px; font-size: 11px; color: var(--text-muted); }
