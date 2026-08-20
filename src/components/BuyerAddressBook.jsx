@@ -6,6 +6,7 @@ import {
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
+import { resolverUbicacionPorNombre } from '../services/geoLookup';
 
 const EMPTY_FORM = { calleYNumero: '', codigoPostal: '', paisId: '', regionId: '', comunaId: '', tipoDireccion: 'PERSONAL' };
 
@@ -114,54 +115,21 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
   };
 
   /**
-   * Al elegir una sugerencia, el autocompletado entrega los NOMBRES de comuna y region;
-   * el backend guarda ids. Se resuelve la cascada pais -> region -> comuna comparando
-   * nombres sin tildes ni mayusculas, y solo se rellena lo que calza: si el catalogo no
-   * tiene esa comuna, el usuario la elige a mano como antes.
+   * El autocompletado entrega NOMBRES de comuna y region; el backend guarda IDS. La
+   * traduccion vive en `resolverUbicacionPorNombre` porque el registro de comprador
+   * necesita exactamente lo mismo.
    */
   const handleSuggestionLocation = async ({ comuna, region }) => {
-    const normaliza = (valor) => String(valor || '')
-      .normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
-    if (!region && !comuna) return;
-
-    try {
-      let listaPaises = paises;
-      if (!listaPaises.length) {
-        listaPaises = await getPaisesApi();
-        listaPaises = Array.isArray(listaPaises) ? listaPaises : [];
-        setPaises(listaPaises);
-      }
-      const chile = listaPaises.find((pais) => normaliza(pais.nombre).includes('chile')) || listaPaises[0];
-      if (!chile) return;
-
-      const listaRegiones = await getRegionesApi(chile.id);
-      const regiones2 = Array.isArray(listaRegiones) ? listaRegiones : [];
-      setRegiones(regiones2);
-
-      const regionMatch = region
-        ? regiones2.find((item) => normaliza(item.nombre).includes(normaliza(region))
-          || normaliza(region).includes(normaliza(item.nombre)))
-        : null;
-
-      setForm((current) => ({
-        ...current,
-        paisId: String(chile.id),
-        regionId: regionMatch ? String(regionMatch.id) : current.regionId,
-      }));
-      if (!regionMatch) return;
-
-      const listaComunas = await getComunasApi(regionMatch.id);
-      const comunas2 = Array.isArray(listaComunas) ? listaComunas : [];
-      setComunas(comunas2);
-
-      const comunaMatch = comuna
-        ? comunas2.find((item) => normaliza(item.nombre) === normaliza(comuna))
-          || comunas2.find((item) => normaliza(item.nombre).includes(normaliza(comuna)))
-        : null;
-      if (comunaMatch) setForm((current) => ({ ...current, comunaId: String(comunaMatch.id) }));
-    } catch {
-      // Sin catalogo no se rellena nada: los selects siguen disponibles a mano.
-    }
+    const resuelto = await resolverUbicacionPorNombre({ comuna, region }, { paises });
+    if (resuelto.paises?.length) setPaises(resuelto.paises);
+    if (resuelto.regiones?.length) setRegiones(resuelto.regiones);
+    if (resuelto.comunas?.length) setComunas(resuelto.comunas);
+    setForm((current) => ({
+      ...current,
+      paisId: resuelto.paisId ? String(resuelto.paisId) : current.paisId,
+      regionId: resuelto.regionId ? String(resuelto.regionId) : current.regionId,
+      comunaId: resuelto.comunaId ? String(resuelto.comunaId) : current.comunaId,
+    }));
   };
 
   const handlePaisChange = (paisId) => {

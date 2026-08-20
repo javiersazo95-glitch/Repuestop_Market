@@ -178,15 +178,30 @@ export async function loginGoogleApi({ idToken }) {
   });
 }
 
+/**
+ * Registro de comprador. El contrato del backend (`validarComprador` en AuthService)
+ * exige firstName, lastName, email, password, `direccion` con comunaId y calleYNumero, y
+ * `acceptsTerms` en true. Mandaba `userName` y ningun otro de esos campos, asi que el
+ * registro fallaba con 400 antes de llegar al servidor de correo.
+ */
 export async function registerBuyerApi(buyerData) {
+  const nombreCompleto = String(buyerData.name || buyerData.userName || '').trim();
+  const partes = nombreCompleto.split(/\s+/);
   return fetchApi('/auth/register/buyer', {
     method: 'POST',
     body: JSON.stringify({
       email: buyerData.email.trim(),
       password: buyerData.password,
-      userName: buyerData.name || buyerData.userName,
+      firstName: buyerData.firstName || partes[0] || '',
+      lastName: buyerData.lastName || partes.slice(1).join(' ') || '',
       phone: buyerData.phone || '',
-      authProvider: 'EMAIL_PASSWORD',
+      authProvider: buyerData.authProvider || 'EMAIL_PASSWORD',
+      acceptsTerms: buyerData.acceptsTerms === true,
+      direccion: {
+        calleYNumero: buyerData.direccion?.calleYNumero || '',
+        comunaId: buyerData.direccion?.comunaId ? Number(buyerData.direccion.comunaId) : null,
+        codigoPostal: buyerData.direccion?.codigoPostal || '',
+      },
     }),
   });
 }

@@ -4,6 +4,9 @@ import {
   ShieldCheck, ArrowLeft, AlertCircle, CheckCircle2, UserPlus, LogIn, Check
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import AddressAutocompleteInput from './AddressAutocompleteInput';
+import { resolverUbicacionPorNombre } from '../services/geoLookup';
+import { ROUTES } from '../routes/paths';
 
 // ID de cliente OAuth de RepuesTop en Google Cloud (mismo usado por mobile/backoffice/vendedor_panel
 // y configurado en el backend vía repuestop.google.client-id). No es un secreto: los client IDs de
@@ -151,6 +154,12 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
   // Buyer Register Extra State
   const [buyerName, setBuyerName] = useState('');
   const [buyerPhone, setBuyerPhone] = useState('');
+  // El backend exige direccion (comunaId + calle) y aceptacion de terminos para crear
+  // la cuenta: `validarComprador` los valida antes de tocar la base.
+  const [buyerStreet, setBuyerStreet] = useState('');
+  const [buyerComuna, setBuyerComuna] = useState(null); // { id, nombre, region }
+  const [buyerComunaError, setBuyerComunaError] = useState('');
+  const [acceptsTerms, setAcceptsTerms] = useState(false);
   
   // UI status
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -252,10 +261,34 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     }
   };
 
+  /**
+   * El backend guarda la direccion por comunaId. Se resuelve desde el nombre que trae la
+   * sugerencia; si el catalogo no tiene esa comuna se avisa en vez de dejar al usuario
+   * chocar contra un 400 al enviar.
+   */
+  const resolverComunaDelRegistro = async ({ comuna, region }) => {
+    setBuyerComunaError('');
+    const resuelto = await resolverUbicacionPorNombre({ comuna, region });
+    if (resuelto.comunaId) {
+      setBuyerComuna({ id: resuelto.comunaId, nombre: resuelto.comunaNombre, region: resuelto.regionNombre });
+    } else {
+      setBuyerComuna(null);
+      setBuyerComunaError('No reconocimos esa comuna. Prueba con otra dirección cercana.');
+    }
+  };
+
   const handleBuyerRegisterSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password || !buyerName) {
       setErrorMessage('Por favor completa el nombre, correo y contraseña.');
+      return;
+    }
+    if (!buyerStreet.trim() || !buyerComuna?.id) {
+      setErrorMessage('Elige tu dirección desde las sugerencias para completar el registro.');
+      return;
+    }
+    if (!acceptsTerms) {
+      setErrorMessage('Debes aceptar los Términos y Condiciones para crear tu cuenta.');
       return;
     }
 
@@ -267,6 +300,8 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
       password,
       name: buyerName,
       phone: buyerPhone,
+      acceptsTerms,
+      direccion: { calleYNumero: buyerStreet.trim(), comunaId: buyerComuna.id },
     });
 
     setIsSubmitting(false);
@@ -579,6 +614,20 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
             </div>
 
             <div className="form-group">
+              <label>Dirección de despacho *</label>
+              <AddressAutocompleteInput
+                value={buyerStreet}
+                onChange={(valor) => { setBuyerStreet(valor); setBuyerComuna(null); }}
+                onSelectLocation={resolverComunaDelRegistro}
+                placeholder="Escribe tu calle y elige una sugerencia"
+                required
+              />
+              {buyerComuna
+                ? <small className="auth-address-hint is-ok"><Check size={13} /> {buyerComuna.nombre}{buyerComuna.region ? `, ${buyerComuna.region}` : ''}</small>
+                : <small className="auth-address-hint">{buyerComunaError || 'Elige una sugerencia para detectar tu comuna.'}</small>}
+            </div>
+
+            <div className="form-group">
               <label>Contraseña *</label>
               <div className="input-with-icon">
                 <Lock size={18} className="field-icon" />
@@ -598,6 +647,20 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                 </button>
               </div>
             </div>
+
+            {/* Aceptacion explicita: el backend la exige (`validarTerminos`) y la guarda
+                en `accepts_terms` / `terms_accepted_at`. */}
+            <label className="auth-terms">
+              <input
+                type="checkbox"
+                checked={acceptsTerms}
+                onChange={(e) => setAcceptsTerms(e.target.checked)}
+              />
+              <span>
+                He leído y acepto los <a href={ROUTES.terms} target="_blank" rel="noreferrer">Términos y Condiciones</a>
+                {' '}y la <a href={ROUTES.privacy} target="_blank" rel="noreferrer">Política de Privacidad</a>.
+              </span>
+            </label>
 
             <div className="auth-action-row gap-2">
               <button

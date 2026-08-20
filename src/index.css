@@ -14338,3 +14338,11 @@ input, select, textarea {
 .address-autocomplete-list svg { flex: 0 0 auto; margin-top: 2px; color: var(--color-brand-blue); }
 .address-autocomplete-list strong { display: block; font-size: 12.5px; font-weight: 700; line-height: 1.35; color: var(--text-primary); }
 .address-autocomplete-list small { display: block; margin-top: 2px; font-size: 11px; color: var(--text-muted); }
+
+/* --- Registro de comprador: direccion detectada y aceptacion de terminos --- */
+.auth-address-hint { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 11px; color: var(--text-muted); }
+.auth-address-hint.is-ok { font-weight: 700; color: var(--color-emerald-green); }
+
+.auth-terms { display: flex; align-items: flex-start; gap: 9px; margin: 4px 0 14px; font-size: 12px; line-height: 1.5; color: var(--text-secondary); cursor: pointer; }
+.auth-terms input { width: 16px; height: 16px; margin-top: 1px; flex: 0 0 auto; accent-color: var(--color-brand-blue); }
+.auth-terms a { font-weight: 700; color: var(--color-brand-blue); }
