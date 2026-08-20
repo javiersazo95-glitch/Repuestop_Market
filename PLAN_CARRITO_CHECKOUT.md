@@ -636,25 +636,47 @@ de términos con enlaces a `/terminos` y `/privacidad`.
 "Debes aceptar los Términos y Condiciones para crear tu cuenta"; marcándolo, el registro
 responde `200` y queda en el log de `AuthService`.
 
-### Lo que falta: la versión del documento
+### La versión del documento ✅ HECHA (20-08-2026)
 
-Decidido el 20-08-2026: **tabla de aceptaciones**, no un campo más.
+Implementado en el monorepo (commit `de9c24e`, rama `dev`).
 
-- Nueva tabla `aceptacion_terminos` (`usuario_id`, `documento` COMPRADOR|VENDEDOR|
-  PRIVACIDAD, `version`, `aceptado_en`, `ip`, `user_agent`), append-only.
-- `accepts_terms` / `terms_accepted_at` se quedan en `usuario` como caché de la última
-  aceptación: la app y el backend ya los leen y evitan un join en cada login.
-- El motivo de la tabla: un campo único se sobrescribe, y al cambiar la versión se pierde
-  la evidencia de qué aceptó cada persona al registrarse — que es justo lo que sirve ante
-  un reclamo. La sección 2 de `COMPRADOR_TERMS` pide registrar "fecha, hora, correo, RUT,
-  versión del documento aceptado".
-- El cliente manda qué versión mostró; **el backend compara con la vigente y rechaza si
-  hay desfase**. No se confía en el cliente para decidir cuál es la versión actual, o una
-  app sin actualizar seguiría registrando aceptaciones de un documento que ya no existe.
-- Re-aceptación: `/users/perfil` expone `requiereAceptarTerminos` cuando la versión
-  aceptada no es la vigente, y la UI la pide antes de dejar operar.
-- Web y app mandan `termsVersion` (`LEGAL_VERSION` en `src/data/legalTexts.js` y
-  `mobile/constants/legal-texts.ts`, hoy "19 de agosto de 2026").
+- Tabla `RT_aceptacion_terminos` append-only: `usuario_id`, `documento`
+  (COMPRADOR | VENDEDOR | PRIVACIDAD), `version`, `aceptado_en`, `ip`, `user_agent`,
+  `origen` (REGISTRO | REACEPTACION | BACKFILL). `accepts_terms` / `terms_accepted_at`
+  se quedan en `RT_usuario` como caché de la última aceptación.
+- La migración trae **backfill**: sin él, todos los usuarios existentes aparecerían como
+  "nunca aceptaron". Inserta las dos filas por usuario.
+- **La versión vigente la decide el backend** (`repuestop.legal.version-vigente`). El
+  cliente informa cuál mostró y se compara; si no coincide, se rechaza con un mensaje
+  que pide actualizar. Si no manda versión, se asume la vigente: bloquear ahí dejaría
+  sin registrarse a quien tenga la app desactualizada.
+- **IP y user agent salen de la petición HTTP, nunca del body.** Son evidencia.
+- `POST /users/perfil/aceptar-terminos` para re-aceptar sin recrear la cuenta, y
+  `requiereAceptarTerminos` en `PerfilUsuarioDTO`.
+- Web y app mandan `LEGAL_VERSION_CODE` (`2026-08-19`), un código estable aparte de
+  `LEGAL_VERSION` (`19 de agosto de 2026`): comparar el texto largo en español entre
+  tres plataformas es frágil, basta una tilde para pedirle re-aceptar a todo el mundo.
+- Web: `TermsReacceptanceModal` montado **sobre las rutas** en `App.jsx` (el perfil vive
+  fuera de `AppLayout`). Muestra el texto completo **dentro** del aviso en pestañas
+  —términos del rol y privacidad—, reusando `LegalDocument`. No lleva a otra pestaña:
+  la primera versión enlazaba a `/terminos` y el propio aviso terminaba tapando el texto
+  ahí. Sin botón de cerrar (seguir usando implica aceptar) pero con "Cerrar sesión" como
+  salida.
+
+**Un error que costó encontrar:** el botón decía "Acepto ambos documentos" pero solo se
+guardaba una fila; `DOCUMENTO_PRIVACIDAD` estaba definido y nunca se usaba. Apareció al
+revisar la base después de una prueba real. `registrarAceptacionCompleta()` escribe las
+dos filas y `requiereAceptar()` exige ambas.
+
+**Verificado en la base local** con los dos usuarios reales: comprador (`COMPRADOR` +
+`PRIVACIDAD`) y vendedor (`VENDEDOR` + `PRIVACIDAD`), con su IP y user agent. El registro
+por API guardó el `User-Agent` de la petición, que confirma el sellado del servidor.
+
+### Pendiente menor
+
+En dev, Flyway está deshabilitado (`spring.flyway.enabled=false`) y manda
+`ddl-auto=update`: la tabla la crea Hibernate y **el backfill no corre**. En local hay
+que ejecutarlo a mano; en producción lo aplica la migración.
 
 ---
 
