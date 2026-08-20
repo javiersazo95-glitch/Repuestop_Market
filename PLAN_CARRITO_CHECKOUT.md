@@ -17,7 +17,7 @@ la sección 1 es el inventario técnico de lo que ya existe.
 | Carrito de invitado | Se persiste en `localStorage` |
 | Totales | Un solo cálculo compartido en `MarketplaceContext`. **No** se usan los del endpoint del carrito: ver §1.3 |
 | "Comprar ahora" del quick view | Se unifica: todos los caminos pasan por selección de envío |
-| Suscripciones / Fichas de anuncios | **Fuera de este plan.** Ver §7: no existe backend, se revisa aparte |
+| Suscripciones / Fichas de anuncios | **Fuera de este plan.** Ver §7: el backend registra la compra pero no la cobra |
 
 ---
 
@@ -563,24 +563,48 @@ desaparece solo. "Comprar ahora" salta a `/carrito` y ahí el aviso **no** apare
 
 ## 7. Pendiente: suscripciones y Fichas de anuncios
 
-**Excluido de este plan a pedido del usuario ("lo revisamos después").** Lo que se sabe,
-para no volver a investigarlo:
+**Sigue fuera de este plan por decisión del usuario (20-08-2026: "dejar para después").**
 
-- No existe backend. En los 28 controladores de `backend/.../controller/` no hay entidad,
-  enum ni endpoint de anuncios, fichas ni suscripciones.
-- La web (`src/services/adsStorage.js`, 235 líneas) y la app móvil
-  (`mobile/services/ads-storage.ts`, 205 líneas) son **el mismo mock sobre
-  localStorage/AsyncStorage**. `rechargeTokensWithPack(pack, 'Webpay Plus')` solo suma
-  saldo local y escribe una transacción ficticia; no hay pago real en ninguna plataforma.
-- Los packs (`TOKEN_PACKS`: $4.990 / $9.990 / $19.900 / $39.990) y los costos de upgrade
-  (`UPGRADE_TOKEN_COSTS`: destacada 50, premium 120, empresarial 250) están duplicados
-  entre web y móvil.
-- **No se puede reusar `/pedidos/checkout`** para cobrarlos: ese flujo descuenta stock de
-  `ProveedorProducto`, calcula comisión de vendedor y genera liquidación. Un pack de
-  fichas no es un producto de un proveedor.
-- Lo que haría falta: entidad de saldo/suscripción, endpoint de compra que genere una
-  transacción Flow propia (`FlowPasarelaPago` ya existe y es reutilizable), y su webhook.
-  Recién con eso tiene sentido una línea de "servicio RepuesTop" en el checkout.
+> **Actualizado tras el pull del monorepo (commit `d19381e`, 20-08-2026).** La versión
+> anterior de esta sección decía que no existía backend. Eso ya no es exacto.
+
+### Lo que SÍ existe ahora
+
+- `POST /api/v1/fichas/compras` (`CompraFichaController`) — **registra** una compra de
+  fichas ya pagada para que quede en Administración Contable. El comprador se toma de la
+  sesión, nunca del body. Payload: `{ cantidadFichas, montoPagado, packNombre,
+  metodoPago, referenciaPago }`.
+- Entidad `CompraFicha`, `CompraFichaRepository`, `CompraFichaService` (con tests) y la
+  migración `V2026082001__create_compra_ficha_publicidad.sql`.
+- Vista de backoffice: `CompraFichaAdminDTO` y `ResumenComprasFichaDTO`, en el tab
+  Publicidad de Administración Contable.
+- `POST /anuncios/imagenes` y `POST /proveedores/{id}/anuncios/imagenes` — subida de
+  imágenes del anuncio a R2 (`AnuncioImagenService`). **Solo imágenes**, no CRUD.
+- En la app: `mobile/services/token-purchases.ts`, que reporta la compra con cola de
+  reintento offline (`@repuestop_compras_fichas_pendientes`, máximo 50).
+
+### Lo que SIGUE sin existir
+
+- **Cobro real.** No hay pasarela para fichas. `rechargeTokensWithPack` acredita el saldo
+  local y solo dispara el registro contable sin esperar respuesta; el "Webpay Plus" del
+  modal es una etiqueta, no un pago.
+- **Saldo en servidor.** `TOKENS_BALANCE_KEY` sigue en AsyncStorage: el saldo vive en el
+  dispositivo, se pierde al reinstalar y no se comparte entre la app y la web.
+- **Anuncios en servidor.** El CRUD sigue en almacenamiento local en ambas plataformas.
+- **Suscripciones.** No hay nada.
+
+### Qué haría falta para cobrarlas de verdad
+
+Saldo de fichas en servidor (hoy en el teléfono), un endpoint que genere la transacción
+Flow para un pack (`FlowPasarelaPago` ya existe y es reutilizable) y su webhook, que
+acredite el saldo al confirmarse el pago. `POST /fichas/compras` quedaría como lo que es:
+el asiento contable, no el cobro. Recién con eso tiene sentido una línea de "servicio
+RepuesTop" en el checkout.
+
+Sigue en pie que **no se puede reusar `/pedidos/checkout`**: ese flujo descuenta stock de
+`ProveedorProducto`, calcula comisión de vendedor y genera liquidación.
+
+---
 
 ---
 
@@ -624,3 +648,24 @@ suborden por vendedor**, cada una con su estado, su envío y su devolución. Eso
 
 Mientras tanto, la solución de la Fase 1.1d (método por línea + fallback vacío cuando hay
 mezcla) es correcta y no deja datos inventados en la base.
+
+---
+
+## 10. Autocompletado de direcciones (20-08-2026)
+
+El monorepo trajo `GET /api/v1/ubicaciones/direcciones?texto=&comuna=&region=`
+(`DireccionAutocompletadoService`, sobre Photon/OpenStreetMap con caché en memoria de 300
+entradas y mínimo de 3 caracteres). Quedó **público** en `SecurityConfig`.
+
+En la web se agregó `AddressAutocompleteInput.jsx` (debounce 400 ms y mínimo 3 caracteres,
+igual que `AddressAutocompleteField` de la app) y se conectó al campo "Calle y número" de
+`BuyerAddressBook`, que es el mismo formulario que monta el paso de entrega del checkout.
+
+El detalle no obvio: el endpoint devuelve **nombres** de comuna y región, y el backend
+guarda **ids**. `handleSuggestionLocation()` resuelve la cascada país → región → comuna
+comparando nombres normalizados (sin tildes ni mayúsculas) y solo rellena lo que calza; si
+el catálogo no tiene esa comuna, los selects siguen disponibles a mano.
+
+**Pendiente de verificación:** no se pudo probar contra el backend porque el proceso Java
+estaba detenido. Además hay que **recompilarlo** con el código recién traído: el endpoint
+no existe en un backend levantado desde el commit anterior.
