@@ -60,6 +60,58 @@ Pendiente conocido tras esta sesión: `/conversaciones/{id}/mediacion-imagenes`
 (adjuntar imagen al chat directo) sigue sin usarse en la web, y no hay aviso de
 mensajes nuevos del mediador fuera del expediente.
 
+## 1.c Sesión 2026-08-19 — carrito y checkout
+
+El carrito era un panel lateral (`CartDrawer`) que hacía de carrito, selector de
+dirección, selector de documento tributario y checkout, todo a la vez. Se reemplazó por
+un flujo con URL propia. Plan completo, decisiones y pendientes en
+`PLAN_CARRITO_CHECKOUT.md`; acá solo el resumen.
+
+1. **`/carrito` (LISTO)**. Líneas agrupadas por tienda, con el método de entrega por
+   grupo (el ítem del carrito ya guardaba `metodoEnvio` y `costoEnvioLocal` por línea, y
+   el backend cobra un envío por proveedor). Resumen fijo, aviso de stock bajo, y bloqueo
+   del avance si alguna línea no tiene método de entrega.
+
+2. **`/checkout` en pasos (LISTO)**. `entrega → documento → pago`, con el paso en la URL
+   (`?paso=`) para que el botón "atrás" del navegador funcione. Valida el RUT de factura
+   con `isValidRut`, que el drawer no hacía. Guarda `submittingRef` contra el doble clic.
+
+3. **Pago de cotizaciones (LISTO)**. `/checkout?cotizacion=ID` reemplazó la copia del
+   checkout que vivía dentro de `QuoteDetailModal` (dirección, documento y llamada
+   propias). Los datos de display viajan por `location.state` desde el chat, con respaldo
+   en `getBuyerConversationsApi` para la entrada por URL directa, porque
+   `checkoutConversationQuoteApi` necesita el `productoId` —que está en la conversación,
+   no en la cotización— y no existe endpoint para traer una conversación por id.
+
+4. **`/compra-exitosa` rediseñada (LISTO)**. Es un comprobante: cabecera de documento con
+   el número de pedido, y el seguimiento con los hitos `Pago confirmado → En preparación →
+   Entrega`. Usa el mismo `delivery-truck.webp` de la app (copiado a `src/assets/`), en
+   CSS puro.
+
+5. **`CartDrawer` eliminado**, junto con su CSS y con `isCartOpen`/`openCart`/`closeCart`.
+
+### Dos hallazgos que conviene no volver a descubrir
+
+- **El comprador no paga comisión.** `PedidoCheckoutCarritoSupport` deja
+  `comisionComprador` y `comisionPasarela` en cero: el total es `subtotal + costoEnvio`, y
+  el 10/7/5 % se le descuenta al vendedor. La app hace lo mismo (`buyerDisplayPrice` es
+  identidad y `flowFeeAmount()` devuelve 0). Los campos `comisionServicio` y
+  `totalEstimado` de `GET /carrito` **no sirven**: `CarritoService` deja la comisión
+  hardcodeada en cero y el total sin el envío. El cálculo único vive en
+  `calcularTotalesCarrito()` (`MarketplaceContext.jsx`).
+
+- **Bug de cobro corregido.** El drawer mandaba `metodoEnvio` como
+  `"Retiro en tienda | Envío dentro de la comuna ($4.500)"`. Cuando una línea no traía
+  costo, el backend hacía `metodoEnvio.replaceAll("[^0-9]", "")` sobre ese string y pegaba
+  los dígitos de ambos precios ($4.500 + $3.990 → **$45.003.990** de envío). Ahora
+  `checkoutFallbackShippingMethod()` manda el método solo si es único en todo el carrito, y
+  vacío cuando hay mezcla: el método de cada línea ya tiene prioridad en el backend.
+
+Pendientes que abrió esta sesión (detalle en `PLAN_CARRITO_CHECKOUT.md`):
+suscripciones/Fichas de anuncios sin backend en ninguna plataforma (§7), subórdenes por
+vendedor para el carrito multi-tienda (§8), y la aceptación de términos en el registro
+(§9) — hoy nadie los acepta en ningún punto de la web.
+
 ## 2. Estado de Producción
 
 La plataforma web se encuentra **100% conectada al backend real, optimizada con TanStack Query, con soporte de pasarela Flow end-to-end, y protegida con code splitting y error boundaries** para despliegue productivo.
