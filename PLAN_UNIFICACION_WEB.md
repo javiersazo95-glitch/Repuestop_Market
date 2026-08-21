@@ -359,28 +359,50 @@ certificado, una verificación de dominio que Vercel pida), sorprende acá y no 
 **Rollback**: devolverlo al proyecto antiguo. Igual de reversible que en producción, y sin
 usuarios mirando.
 
+**Hecho el 21-08-2026, sin incidentes.** Vercel no pidió ningún registro DNS ni
+verificación: reconoció el dominio y emitió el certificado. Los dos dominios del proyecto
+(`dev-repuestop.repuestop.cl` y `dev-repuestop-market.vercel.app`) quedaron en *Valid
+Configuration*. El catálogo empezó a traer datos en cuanto el dominio quedó activo, que es
+la señal de que el CORS calzó.
+
+El proyecto dev del sitio antiguo queda sin dominio pero **no se elimina**: se jubila en la
+Fase 4. Mientras exista, devolverle el dominio es cuestión de dos clics.
+
 ### 3.7 Verificar
 
 Primero en **dev**, que es el ambiente completo y no arriesga nada. Después, lo mínimo en el
 `*.vercel.app` de producción.
 
-**En `dev-repuestop.repuestop.cl` (contra `api-dev`):**
+**En `dev-repuestop.repuestop.cl` (contra `api-dev`)** — verificado el 21-08-2026:
 
-- [ ] La home carga y el catálogo trae productos reales del backend.
-- [ ] Consola del navegador sin errores de CORS.
+- [x] Catálogo con datos reales: *2008 repuestos*, 12 por página.
+- [x] Sin errores de CORS. Una llamada directa a `api-dev` devuelve **HTTP 401**, no un
+      bloqueo: la petición llega al backend y vuelve con respuesta real. Un fallo de CORS
+      lanzaría una excepción de red, no un status.
+- [x] Ficha de producto con URL id-slug (`/repuestos/5024-filtro-de-aceite-toyota-yaris-2019`).
+- [x] Carrito de invitado: persiste en `localStorage` (`repuestop_guest_cart_v1`) y los
+      totales cuadran — `$10.000` productos `+ $3.000` despacho `= $13.000`, **sin
+      comisión**, como manda la regla de `MarketplaceContext`.
+- [x] El carrito corta en *"Inicia sesión para continuar"* en vez de dejar entrar al checkout.
+- [x] `/nosotros` con el header y el footer del marketplace, H1 nuevo, cero "próximamente",
+      las cinco secciones y el ancla `#experiencias` cayendo a 24px.
+- [x] Las 15 rutas públicas responden 200, incluido `/perfil/pedidos` recargado (rewrite de
+      SPA) y las siete de `/ayuda`.
+- [x] `/postular-fundador` → `/vender`.
+- [x] `robots.txt` y `sitemap.xml`.
+- [x] Panel de vendedores → `dev-inventario`: verificado sobre el bundle (ver 3.4), que es
+      más fuerte que mirarlo en pantalla y no necesita sesión.
+
+Pendiente, porque necesita credenciales:
+
 - [ ] Login con correo y contraseña.
-- [ ] Login con Google (si falla solo este: origen no autorizado en 3.3).
-- [ ] Búsqueda por patente y filtro del catálogo.
-- [ ] Agregar al carrito y que el total cuadre (`subtotal + envío`, sin comisión).
+- [ ] Login con Google.
 - [ ] Checkout: los tres pasos, boleta y factura, hasta la pantalla de pago.
-- [ ] Si se prueba un pago: que el retorno caiga en `dev-repuestop…/compra-exitosa` y **no**
-      en `repuestop.cl` (valida 3.2b).
-- [ ] `/nosotros` con el header y el footer del marketplace, anclas cayendo bien.
-- [ ] `/ayuda` y `/ayuda/contacto`.
-- [ ] Una URL profunda **recargada con F5** (ej. `/perfil/pedidos`): valida el rewrite de SPA.
-- [ ] `/postular-fundador` redirige a `/vender`.
-- [ ] `/robots.txt` y `/sitemap.xml` responden.
-- [ ] Como vendedor, que el panel de inventario apunte a **`dev-inventario`**.
+- [ ] Un pago de prueba: que el retorno caiga en `dev-repuestop…/compra-exitosa`.
+
+**Nota de método**: el botón *"Añadir al carro"* abre primero un selector de método de
+envío con backdrop. Al automatizar, un segundo clic pega contra el backdrop y parece que
+la función está rota. No lo está.
 
 **En `repuestop-market.vercel.app` (contra `api` de producción):**
 
