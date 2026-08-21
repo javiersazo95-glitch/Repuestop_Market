@@ -251,8 +251,10 @@ operación grande: incluye 5 migraciones de esquema (`V2026082001` a `V202608210
 `Allow: /` y Google ya conocía el dominio por el sitio antiguo, así que **va a recrawlear y
 puede indexar el sitio roto**.
 
-Si va a estar así un tiempo, conviene poner `Disallow: /` en `public/robots.txt` hasta el
-lanzamiento. Es una línea, se revierte el día del launch. No se hizo en esta sesión.
+**Hecho**: `public/robots.txt` quedó en `Disallow: /`, con la configuración real comentada
+justo debajo y un bloque de cabecera que explica cómo revertirlo. **El día del lanzamiento
+hay que descomentarla**, o el sitio nunca se indexa. Es el único paso de SEO pendiente para
+el launch.
 
 Tampoco se envió el sitemap a Search Console, a propósito: hacerlo con el catálogo vacío
 haría que Google clasifique esas rutas como páginas pobres, y recuperar posiciones cuesta

@@ -1,11 +1,28 @@
+# ==========================================================================
+# BLOQUEO TEMPORAL — REVERTIR EL DIA DEL LANZAMIENTO
+#
+# El sitio esta en vivo en repuestop.cl pero todavia no se lanza: el catalogo
+# esta vacio y el backend de produccion esta apagado a proposito (ver
+# HANDOFF_PROXIMO_AGENTE.md seccion 3). Google ya conocia este dominio por el
+# sitio institucional anterior, asi que va a recrawlear igual; sin este bloqueo
+# indexaria un marketplace sin productos y con la API caida, y llegariamos al
+# lanzamiento arrastrando esa impresion.
+#
+# PARA LANZAR: borrar este bloque y las dos lineas de abajo, y descomentar la
+# configuracion real que viene despues. Es todo lo que hay que hacer aca.
+# ==========================================================================
 User-agent: *
-Allow: /
+Disallow: /
 
-# Rutas privadas o de un solo uso: no aportan nada al indice y algunas exigen sesion.
-Disallow: /perfil
-Disallow: /carrito
-Disallow: /checkout
-Disallow: /compra-exitosa
-Disallow: /404
-
-Sitemap: https://repuestop.cl/sitemap.xml
+# --- Configuracion real, activar en el lanzamiento ---
+# User-agent: *
+# Allow: /
+#
+# # Rutas privadas o de un solo uso: no aportan nada al indice y algunas exigen sesion.
+# Disallow: /perfil
+# Disallow: /carrito
+# Disallow: /checkout
+# Disallow: /compra-exitosa
+# Disallow: /404
+#
+# Sitemap: https://repuestop.cl/sitemap.xml
