@@ -582,73 +582,30 @@
   gap: 18px;
 }
 
+/* Panel base de la tarjeta: mismo lenguaje que los paneles del perfil
+   (.profile-panel-clean / .overview-widget-card en index.css). Fondo blanco,
+   borde tenue y sombra suave; el plan se distingue por el acento lateral y la
+   pildora, no tiñendo la tarjeta entera. */
 .ad-card {
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-  overflow: hidden;
-  transition: all 0.2s ease;
   position: relative;
-}
-
-.ad-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
-}
-
-/* VARIANTES DE TARJETAS SEGÚN TIER */
-/* 1. BÁSICA (Gratuita) */
-.ad-card.tier-basic {
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.75);
+  border-radius: 18px;
   background: #ffffff;
-  border-color: #e2e8f0;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+  transition: box-shadow .2s ease, border-color .2s ease, transform .2s ease;
 }
 
-/* 2. DESTACADA (Amarillo Suave) */
-.ad-card.tier-destacada {
-  background: #fffdf0;
-  border: 1.5px solid #fde047;
-  box-shadow: 0 4px 14px rgba(253, 224, 71, 0.2);
-}
+.ad-card:hover { transform: translateY(-2px); border-color: rgba(148, 163, 184, 0.55); box-shadow: 0 12px 28px -16px rgba(15, 23, 42, 0.22); }
 
-.ad-card.tier-destacada:hover {
-  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.15);
-  border-color: #facc15;
-}
+/* Acento vertical del plan, el mismo recurso de .profile-panel-title::before */
+.ad-card::before { content: ''; position: absolute; top: 14px; bottom: 14px; left: 0; width: 4px; border-radius: 0 4px 4px 0; background: linear-gradient(180deg, #cbd5e1, #e2e8f0); }
+.ad-card.tier-destacada::before { background: linear-gradient(180deg, #f59e0b, #fbbf24); }
+.ad-card.tier-premium::before { background: linear-gradient(180deg, #7c3aed, #a78bfa); }
+.ad-card.tier-empresarial::before { background: linear-gradient(180deg, #059669, #34d399); }
 
-/* 3. PREMIUM (Morado Suave) */
-.ad-card.tier-premium {
-  background: #fbf9ff;
-  border: 1.5px solid #c4b5fd;
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.08);
-}
-
-.ad-card.tier-premium:hover {
-  box-shadow: 0 8px 26px rgba(124, 58, 237, 0.16);
-  border-color: #a78bfa;
-}
-
-/* 4. EMPRESARIAL (Verde Esmeralda / Corporativo) */
-.ad-card.tier-empresarial {
-  background: #f7fdf9;
-  border: 1.5px solid #6ee7b7;
-  box-shadow: 0 4px 18px rgba(5, 150, 105, 0.1);
-}
-
-.ad-card.tier-empresarial::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #059669, #10b981, #0284c7);
-}
-
-.ad-card.tier-empresarial:hover {
-  box-shadow: 0 10px 30px rgba(5, 150, 105, 0.2);
-  border-color: #34d399;
-}
+/* El anuncio propio se marca, no se destaca: el dueño no puede contactarse a si mismo. */
+.ad-card.is-own-ad { border-color: rgba(37, 99, 235, 0.35); background: #fbfdff; }
 
 /* Estructura Interna de la Card */
 .ad-card-layout {
@@ -2255,3 +2212,51 @@
   background: #fecaca;
 }
 
+
+/* ==========================================================================
+   ESTADOS DEL MURAL Y PIEZAS DE LA TARJETA CONECTADA AL BACKEND
+   Mismo lenguaje visual que los paneles del perfil (index.css): panel blanco,
+   radio 18px, borde rgba(226,232,240,.75) y sombra suave.
+   ========================================================================== */
+
+/* Banda de aviso cuando se esta mostrando la cache en vez del backend */
+.ads-state-banner { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 12px 16px; border-radius: 14px; font-size: 13px; font-weight: 600; }
+.ads-state-warning { border: 1px solid rgba(245, 158, 11, .35); background: #fffbeb; color: #92400e; }
+.ads-state-banner svg { flex-shrink: 0; }
+.ads-state-retry { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 6px 12px; border: 1px solid rgba(146, 64, 14, .3); border-radius: 9px; background: #ffffff; color: #92400e; font-size: 12px; font-weight: 700; cursor: pointer; }
+.ads-state-retry:hover { background: #fef3c7; }
+
+.ads-results-loading { display: inline-flex; align-items: center; gap: 7px; color: #64748b; }
+
+/* Esqueleto de carga: ocupa el alto real de una tarjeta para que la grilla no salte */
+.ad-card-skeleton { height: 232px; border: 1px solid rgba(226, 232, 240, .75); border-radius: 18px; background: linear-gradient(100deg, #f8fafc 30%, #f1f5f9 50%, #f8fafc 70%); background-size: 220% 100%; animation: ads-skeleton-sweep 1.3s ease-in-out infinite; }
+@keyframes ads-skeleton-sweep { from { background-position: 180% 0; } to { background-position: -40% 0; } }
+
+/* Panel de estado vacio / error, en el formato de .profile-panel-clean */
+.ads-empty-panel { margin: 6px 0 18px; padding: 44px 28px; border: 1px solid rgba(226, 232, 240, .75); border-radius: 18px; background: #ffffff; box-shadow: 0 4px 18px rgba(15, 23, 42, .04); text-align: center; }
+.ads-empty-icon { display: inline-flex; align-items: center; justify-content: center; width: 62px; height: 62px; margin-bottom: 16px; border-radius: 50%; background: #f1f5f9; color: #94a3b8; }
+.ads-empty-icon-danger { background: #fef2f2; color: #ef4444; }
+.ads-empty-panel h3 { margin: 0 0 8px; color: #0f172a; font-size: 18px; font-weight: 800; }
+.ads-empty-panel p { max-width: 460px; margin: 0 auto 20px; color: #64748b; font-size: 13.5px; line-height: 1.6; }
+.ads-empty-panel .btn-ad-phone, .ads-empty-panel .btn-post-ad { display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto; }
+
+/* Fila superior de la tarjeta: categoria + distintivos */
+.ad-card-topline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+/* La categoria es un filtro con un clic, por eso es boton y no span */
+.ad-category-badge { padding: 0; border: 0; background: none; cursor: pointer; }
+.ad-category-badge:hover { color: #0f172a; text-decoration: underline; }
+
+.ad-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .01em; }
+.ad-chip-neutral { background: #f1f5f9; color: #475569; }
+.ad-chip-verified { background: #ecfdf5; color: #047857; }
+.ad-chip-own { background: #eff6ff; color: #1d4ed8; }
+.ad-chip-warning { background: #fffbeb; color: #b45309; }
+
+/* Anuncio sin fotos: el backend no obliga a subir imagenes */
+.ad-image-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 100%; height: 100%; min-height: 150px; border-radius: 12px; background: #f8fafc; color: #94a3b8; font-size: 12px; font-weight: 600; }
+
+/* Motivo por el que se bloqueo el contacto (anuncio propio) */
+.ad-block-notice { margin: 10px 0 0; padding: 9px 11px; border: 1px solid rgba(37, 99, 235, .2); border-radius: 11px; background: #eff6ff; color: #1e40af; font-size: 11.5px; line-height: 1.45; }
+
+.story-own-notice { margin: 0 0 10px; color: #e2e8f0; font-size: 12.5px; line-height: 1.45; }

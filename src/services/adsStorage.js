@@ -1,9 +1,42 @@
-// Servicio de almacenamiento y gestión de Anuncios y Monedero de Fichas RepuesTop
-import { INITIAL_CLASSIFIED_ADS } from '../data/automotiveAdsData';
+// Lectura del Mural de Anuncios y monedero de Fichas RepuesTop.
+//
+// El mural PUBLICO se lee del backend (`GET /anuncios`), igual que en el movil
+// (`mobile/services/ads-storage.ts`): localStorage queda solo como cache para
+// que la grilla no aparezca vacia mientras responde la red o si la red falla.
+//
+// La gestion de anuncios propios (crear / editar / borrar) sigue siendo local
+// hasta la fase B, por eso conserva su propia llave `repuestop_classified_ads`
+// separada de la cache del mural: si compartieran llave, refrescar el mural
+// borraria los borradores locales del panel de gestion.
+import { getPublicAdsApi, getPublicAdApi } from './api';
+import { adaptAd, adaptAds } from './adapters';
+import { isAdVisibleOnWall } from '../data/automotiveAdsData';
 
 const ADS_STORAGE_KEY = 'repuestop_classified_ads';
+const ADS_WALL_CACHE_KEY = 'repuestop_ads_wall_cache';
 const TOKENS_BALANCE_KEY = 'repuestop_fichas_balance';
 const TOKENS_HISTORY_KEY = 'repuestop_fichas_transactions';
+
+// Anuncios de demostracion que este proyecto tuvo sembrados antes de retirarlos.
+// Los navegadores que ya habian abierto el mural los tienen persistidos desde
+// antes, asi que vaciar INITIAL_CLASSIFIED_ADS no los borra por si solo: se
+// filtran aqui la primera vez que se lee el storage. Mismo patron que el movil.
+const SEED_AD_ID_PATTERN = /^ad-(emp|prem|dest|bas)-\d+$/;
+
+const dropSeedAds = (ads) => (Array.isArray(ads) ? ads : []).filter(
+  (ad) => ad && typeof ad.id === 'string' && !SEED_AD_ID_PATTERN.test(ad.id)
+);
+
+function readCache(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return dropSeedAds(parsed);
+  } catch {
+    return [];
+  }
+}
 
 // Packs de recarga de Fichas RepuesTop
 export const TOKEN_PACKS = [
@@ -73,18 +106,58 @@ export const UPGRADE_TOKEN_COSTS = {
 // GESTIÓN DE ANUNCIOS EN STORAGE
 // -------------------------------------------------------------
 
-export function getStoredAds() {
+/**
+ * Trae el mural desde el backend y refresca la cache.
+ *
+ * El backend ya filtra activo + APROBADO + no expirado, pero se vuelve a filtrar
+ * aca con `isAdVisibleOnWall()` porque la cache puede tener anuncios que
+ * caducaron o que fueron editados (editar un anuncio lo devuelve a PENDIENTE) desde
+ * la ultima vez que se leyo.
+ *
+ * Si la red falla, devuelve la cache y marca `fromCache` para que la vista pueda
+ * avisar que lo mostrado puede estar desactualizado, en vez de fingir que todo va bien.
+ */
+export async function fetchPublicAds({ signal } = {}) {
   try {
-    const raw = localStorage.getItem(ADS_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(ADS_STORAGE_KEY, JSON.stringify(INITIAL_CLASSIFIED_ADS));
-      return INITIAL_CLASSIFIED_ADS;
-    }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length ? parsed : INITIAL_CLASSIFIED_ADS;
-  } catch {
-    return INITIAL_CLASSIFIED_ADS;
+    const response = await getPublicAdsApi({ signal });
+    const ads = adaptAds(response).filter(isAdVisibleOnWall);
+    writeWallCache(ads);
+    return { ads, fromCache: false, error: null };
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error;
+    return { ads: readCache(ADS_WALL_CACHE_KEY).filter(isAdVisibleOnWall), fromCache: true, error };
   }
+}
+
+/** Ficha publica de un anuncio, ya adaptada. Lanza si el backend responde 404. */
+export async function fetchPublicAd(adId, { signal } = {}) {
+  return adaptAd(await getPublicAdApi(adId, { signal }));
+}
+
+// Evento propio: `repuestop_ads_updated` lo usa el panel de gestion para sus
+// anuncios locales, y mezclarlos haria que cada vista pise la lista de la otra.
+export const ADS_WALL_UPDATED_EVENT = 'repuestop_ads_wall_updated';
+
+function writeWallCache(ads) {
+  try {
+    localStorage.setItem(ADS_WALL_CACHE_KEY, JSON.stringify(ads));
+    window.dispatchEvent(new CustomEvent(ADS_WALL_UPDATED_EVENT, { detail: ads }));
+  } catch (err) {
+    console.warn('Error al guardar la cache del mural:', err);
+  }
+}
+
+/** Ultima copia conocida del mural. Sincrona, para pintar algo en el primer render. */
+export function getCachedWallAds() {
+  return readCache(ADS_WALL_CACHE_KEY).filter(isAdVisibleOnWall);
+}
+
+/**
+ * Anuncios del panel de gestion. Sigue siendo local: hasta la fase B, crear y
+ * editar no pasan por el backend.
+ */
+export function getStoredAds() {
+  return readCache(ADS_STORAGE_KEY);
 }
 
 export function saveStoredAds(ads) {

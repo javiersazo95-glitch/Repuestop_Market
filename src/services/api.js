@@ -988,3 +988,21 @@ export async function markNotificationReadApi(userId, notificationId) {
 export async function markAllNotificationsReadApi(userId) {
   return fetchApi(`/usuarios/${userId}/notificaciones/leidas`, { method: 'PUT' });
 }
+
+// -------------------------------------------------------------
+// MURAL DE ANUNCIOS
+// -------------------------------------------------------------
+
+/**
+ * Mural publico. El backend ya filtra por activo + APROBADO + no expirado
+ * (`AnuncioService.listarPublicos()`), asi que devuelve solo lo visible.
+ * No pagina: `AnuncioController` responde la lista completa.
+ */
+export async function getPublicAdsApi({ signal } = {}) {
+  return fetchApi('/anuncios', { method: 'GET', signal });
+}
+
+/** Ficha publica de un anuncio. Da 404 si esta pendiente, rechazado o vencido. */
+export async function getPublicAdApi(adId, { signal } = {}) {
+  return fetchApi(`/anuncios/${adId}`, { method: 'GET', signal });
+}

@@ -376,3 +376,66 @@ export function adaptPage(response, itemAdapter) {
     page: toNumber(response.currentPage ?? response.number) ?? 0,
   };
 }
+
+/**
+ * `AnuncioResponseDTO` -> anuncio del Mural.
+ *
+ * El backend fue modelado desde el cliente, asi que casi todos los campos ya
+ * vienen con el nombre que usa la UI. Lo que si hay que normalizar:
+ *
+ * - `rating` y `reviewsCount` llegan HARDCODEADOS en 5.0 y 0 desde
+ *   `AnuncioService.toResponse()`; no hay reseñas de anuncios en el backend.
+ *   Se descartan para no mostrar un 5.0 falso en todas las tarjetas.
+ * - las imagenes pueden venir como ruta relativa del servidor de archivos.
+ * - `agendaConfig` viene como `Map<String,Object>`; puede llegar vacio ({}).
+ */
+export function adaptAd(dto) {
+  if (!dto) return null;
+  const images = (Array.isArray(dto.images) ? dto.images : []).map(resolveMediaUrl).filter(Boolean);
+  const storyImages = (Array.isArray(dto.storyImages) ? dto.storyImages : []).map(resolveMediaUrl).filter(Boolean);
+  const agendaConfig = dto.agendaConfig && Object.keys(dto.agendaConfig).length > 0 ? dto.agendaConfig : null;
+
+  return {
+    id: String(dto.id),
+    tier: dto.tier || 'basica',
+    title: dto.title || '',
+    company: dto.company || '',
+    category: dto.category || '',
+    categoryLabel: dto.categoryLabel || '',
+    description: dto.description || '',
+    priceType: dto.priceType || 'quote',
+    priceText: dto.priceText || '',
+    priceValue: toNumber(dto.priceValue) ?? null,
+    region: dto.region || '',
+    commune: dto.commune || '',
+    address: dto.address || '',
+    phone: dto.phone || '',
+    whatsapp: dto.whatsapp || null,
+    openingHours: dto.openingHours || '',
+    images,
+    storyImages,
+    features: Array.isArray(dto.features) ? dto.features : [],
+    servicesOffered: Array.isArray(dto.servicesOffered) ? dto.servicesOffered : [],
+    is24Hours: dto.is24Hours === true,
+    hasOnlineBooking: dto.hasOnlineBooking === true,
+    agendaConfig,
+    agendaConfigId: dto.agendaConfigId || null,
+    agendaConfigName: dto.agendaConfigName || null,
+    agendaHours: dto.agendaHours || '',
+    ownerUserId: dto.ownerUserId ? String(dto.ownerUserId) : null,
+    ownerSellerId: dto.ownerSellerId ? String(dto.ownerSellerId) : null,
+    ownerSellerExternalId: dto.ownerSellerExternalId ? String(dto.ownerSellerExternalId) : null,
+    ownerEmail: dto.ownerEmail || null,
+    publishedAt: dto.publishedAt || null,
+    expiresAt: dto.expiresAt || null,
+    updatedAt: dto.updatedAt || null,
+    moderationStatus: dto.moderationStatus || 'PENDIENTE',
+    rejectionReason: dto.rejectionReason || null,
+    reviewedAt: dto.reviewedAt || null,
+    activo: dto.activo === true,
+  };
+}
+
+export function adaptAds(list) {
+  return (Array.isArray(list) ? list : []).map(adaptAd).filter(Boolean);
+}

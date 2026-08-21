@@ -23,7 +23,8 @@ export default function AdsFilterSidebar({
   only24Hours,
   setOnly24Hours,
   onResetFilters,
-  totalResults
+  totalResults,
+  categoryCounts = {}
 }) {
   return (
     <aside className="ads-filter-sidebar" aria-label="Filtros de Anuncios">
@@ -80,7 +81,7 @@ export default function AdsFilterSidebar({
                   <span className="text-sm leading-none" role="img" aria-hidden="true">{cat.emoji || '🔧'}</span>
                   <span>{cat.label}</span>
                 </span>
-                <span className="category-pill-count">{cat.count}</span>
+                <span className="category-pill-count">{categoryCounts[cat.id] ?? 0}</span>
               </button>
             );
           })}
@@ -115,7 +116,7 @@ export default function AdsFilterSidebar({
             onClick={() => setSelectedTier('premium')}
           >
             <Zap size={15} className="text-purple-600" />
-            <span>Premium (WhatsApp directo)</span>
+            <span>Premium (Historias)</span>
           </div>
 
           <div
@@ -123,7 +124,7 @@ export default function AdsFilterSidebar({
             onClick={() => setSelectedTier('destacada')}
           >
             <Star size={15} className="text-amber-500" />
-            <span>Destacada</span>
+            <span>Destacada (WhatsApp)</span>
           </div>
 
           <div

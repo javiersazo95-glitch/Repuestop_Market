@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import {
   MapPin, Phone, Clock, MessageCircle, Calendar,
-  Lock, CheckCircle2, Star, ShieldCheck, Tag, ExternalLink, Image as ImageIcon
+  Lock, ShieldCheck, Tag, CalendarClock, ImageOff, Image as ImageIcon, UserCheck
 } from 'lucide-react';
-import { AD_TIERS, SERVICE_CATEGORIES } from '../../data/automotiveAdsData';
+import { AD_TIERS, SERVICE_CATEGORIES, getAdExpiryInfo } from '../../data/automotiveAdsData';
+import { useAdOwnership } from './useAdOwnership';
 
 export default function AdCard({
   ad,
@@ -11,51 +12,68 @@ export default function AdCard({
   onSelectCategory
 }) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [blockNotice, setBlockNotice] = useState(null);
+  const { isOwn, blockIfOwnAd } = useAdOwnership();
 
   const categoryObj = SERVICE_CATEGORIES.find((c) => c.id === ad.category);
   const categoryEmoji = categoryObj?.emoji || '🔧';
 
   const tierConfig = AD_TIERS[ad.tier] || AD_TIERS.basica;
-  const isBasic = ad.tier === 'basica';
-  const isDestacada = ad.tier === 'destacada';
-  const isPremium = ad.tier === 'premium';
   const isEmpresarial = ad.tier === 'empresarial';
+  const isOwnAdCard = isOwn(ad);
 
-  // Limit images according to tier rules: basic & destacada max 2
+  // Las capacidades vienen del plan, no de una lista de tiers escrita a mano:
+  // el mismo tarifario que valida `AnuncioService` en el backend.
+  const canWhatsapp = Boolean(tierConfig.hasWhatsapp && ad.whatsapp);
+  // El plan da el derecho a agendar; la agenda solo queda activa cuando el dueño
+  // guardó una configuración horaria válida (`hasOnlineBooking` del backend).
+  const canBook = Boolean(tierConfig.hasBooking && ad.hasOnlineBooking);
+
+  const expiry = getAdExpiryInfo(ad);
+  const showExpiryChip = Boolean(expiry) && !expiry.isExpired && expiry.daysLeft <= 7;
+
   const maxAllowedImages = tierConfig.maxImages || 2;
-  const displayImages = (ad.images && ad.images.length > 0)
-    ? ad.images.slice(0, maxAllowedImages)
-    : ['https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80'];
+  const displayImages = (ad.images || []).slice(0, maxAllowedImages);
+  const currentImage = displayImages[activeImageIndex] || displayImages[0] || null;
 
-  const currentImage = displayImages[activeImageIndex] || displayImages[0];
+  const guard = (action, run) => {
+    const blocked = blockIfOwnAd(ad, action);
+    if (blocked) {
+      setBlockNotice(blocked.message);
+      return;
+    }
+    setBlockNotice(null);
+    run();
+  };
 
-  const handleWhatsAppClick = () => {
-    if (!ad.whatsapp || (!isPremium && !isEmpresarial)) return;
+  const handlePhoneClick = () => guard('call', () => {
+    if (ad.phone) window.location.href = `tel:${ad.phone.replace(/\s+/g, '')}`;
+  });
+
+  const handleWhatsAppClick = () => guard('whatsapp', () => {
     const text = encodeURIComponent(
       `Hola ${ad.company || ''}, vi su anuncio "${ad.title}" en el Mural de Anuncios de RepuesTop y deseo consultar por sus servicios.`
     );
-    window.open(`https://wa.me/${ad.whatsapp}?text=${text}`, '_blank', 'noopener,noreferrer');
-  };
+    window.open(`https://wa.me/${String(ad.whatsapp).replace(/[^0-9]/g, '')}?text=${text}`, '_blank', 'noopener,noreferrer');
+  });
 
-  const handlePhoneClick = () => {
-    if (ad.phone) {
-      window.location.href = `tel:${ad.phone.replace(/\s+/g, '')}`;
-    }
-  };
+  const handleBookingClick = () => guard('booking', () => onOpenBooking?.(ad));
 
   return (
-    <article className={`ad-card ${tierConfig.cardTheme}`} id={`ad-${ad.id}`}>
+    <article className={`ad-card ${tierConfig.cardTheme} ${isOwnAdCard ? 'is-own-ad' : ''}`} id={`ad-${ad.id}`}>
       <div className="ad-card-layout">
-        
+
         {/* Columna 1: Galería e Imagen Principal */}
         <div className="ad-card-gallery">
           <div className="ad-main-image-wrap">
-            <img
-              src={currentImage}
-              alt={ad.title}
-              className="ad-main-image"
-              loading="lazy"
-            />
+            {currentImage ? (
+              <img src={currentImage} alt={ad.title} className="ad-main-image" loading="lazy" />
+            ) : (
+              <div className="ad-image-empty">
+                <ImageOff size={22} />
+                <span>Sin fotos</span>
+              </div>
+            )}
             <span className={`ad-tier-pill pill-${ad.tier}`}>
               {tierConfig.badge}
             </span>
@@ -87,14 +105,38 @@ export default function AdCard({
 
         {/* Columna 2: Detalles del Servicio Automotriz */}
         <div className="ad-card-details">
-          <div className="ad-category-badge">
-            <span className="inline-flex items-center gap-1.5">
+          <div className="ad-card-topline">
+            <button
+              type="button"
+              className="ad-category-badge"
+              onClick={() => onSelectCategory?.(ad.category)}
+              title={`Ver solo ${ad.categoryLabel || categoryObj?.label || 'esta categoría'}`}
+            >
               <span>{categoryEmoji}</span>
-              <span>{ad.categoryLabel || categoryObj?.label || 'Mecánica'}</span>
-            </span>
+              <span>{ad.categoryLabel || categoryObj?.label || 'Servicio automotriz'}</span>
+            </button>
+
             {isEmpresarial && (
-              <span className="text-emerald-700 flex items-center gap-1 font-bold text-xs" title="Taller Certificado y Verificado">
-                • <ShieldCheck size={14} /> Taller Verificado
+              <span className="ad-chip ad-chip-verified" title="Taller certificado y verificado">
+                <ShieldCheck size={13} /> Taller verificado
+              </span>
+            )}
+
+            {ad.is24Hours && (
+              <span className="ad-chip ad-chip-neutral">
+                <Clock size={13} /> 24 horas
+              </span>
+            )}
+
+            {isOwnAdCard && (
+              <span className="ad-chip ad-chip-own">
+                <UserCheck size={13} /> Tu anuncio
+              </span>
+            )}
+
+            {showExpiryChip && (
+              <span className="ad-chip ad-chip-warning" title="El anuncio se retira del mural al vencer">
+                <CalendarClock size={13} /> {expiry.label}
               </span>
             )}
           </div>
@@ -103,21 +145,14 @@ export default function AdCard({
 
           <div className="ad-company-name">
             <strong>{ad.company}</strong>
-            {ad.rating && (
-              <span className="flex items-center gap-1 text-amber-500 text-xs font-bold">
-                <Star size={13} fill="currentColor" />
-                {ad.rating} ({ad.reviewsCount || 10})
-              </span>
-            )}
           </div>
 
           <p className="ad-card-description">{ad.description}</p>
 
-          {/* Información con Iconos Básicos */}
           <div className="ad-info-icons-grid">
             <div className="ad-info-item">
               <MapPin size={15} />
-              <span><strong>{ad.commune || 'Santiago'}:</strong> {ad.address}</span>
+              <span><strong>{ad.commune}:</strong> {ad.address}</span>
             </div>
 
             <div className="ad-info-item">
@@ -138,27 +173,25 @@ export default function AdCard({
             </div>
           </div>
 
-          {/* Tags de características */}
           {ad.features && ad.features.length > 0 && (
             <div className="ad-features-tags">
-              {ad.features.map((feat, i) => (
-                <span key={i} className="ad-feature-tag">
-                  ✓ {feat}
-                </span>
+              {ad.features.slice(0, tierConfig.maxTags || 2).map((feat, i) => (
+                <span key={i} className="ad-feature-tag">✓ {feat}</span>
               ))}
             </div>
           )}
         </div>
 
-        {/* Columna 3: Precio y Acciones según Tier */}
+        {/* Columna 3: Precio y Acciones según Plan */}
         <div className="ad-card-actions-col">
           <div className="ad-price-block">
-            <span className="ad-price-label">Tarifa / Presupuesto</span>
-            <div className="ad-price-amount">{ad.priceText}</div>
+            <span className="ad-price-label">
+              {ad.priceType === 'fixed' ? 'Tarifa' : 'Presupuesto'}
+            </span>
+            <div className="ad-price-amount">{ad.priceText || 'A convenir'}</div>
           </div>
 
           <div className="ad-buttons-stack">
-            {/* 1. Botón de Teléfono (disponible en todos los planes) */}
             <button
               type="button"
               className="btn-ad-phone"
@@ -169,50 +202,42 @@ export default function AdCard({
               <span>{ad.phone}</span>
             </button>
 
-            {/* 2. Botón de WhatsApp:
-                Habilitado en Premium y Empresarial.
-                Bloqueado en Básica y Destacada según requerimiento. */}
-            {(isPremium || isEmpresarial) ? (
-              <button
-                type="button"
-                className="btn-ad-whatsapp"
-                onClick={handleWhatsAppClick}
-              >
+            {canWhatsapp ? (
+              <button type="button" className="btn-ad-whatsapp" onClick={handleWhatsAppClick}>
                 <MessageCircle size={16} />
-                <span>WhatsApp Directo</span>
+                <span>WhatsApp directo</span>
               </button>
             ) : (
-              <div
-                className="btn-ad-locked"
-                title="Acceso directo a WhatsApp disponible en plan Premium y Empresarial"
-              >
+              <div className="btn-ad-locked" title={`El plan ${tierConfig.name} no incluye WhatsApp directo`}>
                 <Lock size={13} />
-                <span>WhatsApp bloqueado <small>(Plan {ad.tier === 'destacada' ? 'Destacado' : 'Básico'})</small></span>
+                <span>WhatsApp no disponible <small>(Plan {tierConfig.name})</small></span>
               </div>
             )}
 
-            {/* 3. Botón de Agendamiento en Plataforma:
-                Habilitado exclusivamente en Empresarial.
-                Bloqueado en Básica, Destacada y Premium según requerimiento. */}
-            {isEmpresarial ? (
-              <button
-                type="button"
-                className="btn-ad-booking"
-                onClick={() => onOpenBooking?.(ad)}
-              >
+            {canBook ? (
+              <button type="button" className="btn-ad-booking" onClick={handleBookingClick}>
                 <Calendar size={16} />
-                <span>Agendar Cita</span>
+                <span>Agendar cita</span>
               </button>
             ) : (
               <div
                 className="btn-ad-locked"
-                title="Agendamiento en línea disponible exclusivamente para talleres del Plan Empresarial"
+                title={isEmpresarial
+                  ? 'El taller aún no publicó sus horarios de atención en línea'
+                  : 'El agendamiento en línea es exclusivo del plan Empresarial'}
               >
                 <Lock size={13} />
-                <span>Agendamiento bloqueado <small>(Solo Empresarial)</small></span>
+                <span>
+                  {isEmpresarial ? 'Agenda no habilitada' : 'Agendamiento no disponible'}
+                  <small> ({isEmpresarial ? 'sin horarios publicados' : 'Solo Empresarial'})</small>
+                </span>
               </div>
             )}
           </div>
+
+          {blockNotice && (
+            <p className="ad-block-notice" role="status">{blockNotice}</p>
+          )}
         </div>
 
       </div>
