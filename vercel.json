@@ -1,5 +1,17 @@
 {
   "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "repuestop-market.vercel.app" }],
+      "destination": "https://repuestop.cl/$1",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "dev-repuestop-market.vercel.app" }],
+      "destination": "https://dev-repuestop.repuestop.cl/$1",
+      "permanent": true
+    },
     { "source": "/postular-fundador", "destination": "/vender", "permanent": true }
   ],
   "rewrites": [
