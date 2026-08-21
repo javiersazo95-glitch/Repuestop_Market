@@ -227,7 +227,7 @@ export default function Header({
             <span className="trust-item-plain"><Truck size={15} /> Envíos a todo Chile</span>
             <span className="trust-item-plain"><ShieldCheck size={15} /> Compra protegida</span>
             <button className="trust-item-plain utility-link" onClick={onOpenStores}>
-              <Store size={15} /> Más de 500 tiendas verificadas
+              <Store size={15} /> Tiendas verificadas
             </button>
           </div>
           <div className="trust-items-right-vivid">

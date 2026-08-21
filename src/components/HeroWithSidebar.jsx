@@ -118,7 +118,7 @@ export default function HeroWithSidebar({ activeVehicle, onSelectVehicle, onOpen
               </h1>
 
               <p className="hero-subtitle-main">
-                Ingresa tu patente y accede a miles de repuestos de cientos de vendedores verificados en todo Chile.
+                Ingresa tu patente y encuentra repuestos compatibles en tiendas verificadas de todo Chile.
               </p>
 
               {/* PRIMARY FEATURE: LICENSE PLATE SEARCH CONSOLE */}

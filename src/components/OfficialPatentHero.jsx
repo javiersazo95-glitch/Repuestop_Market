@@ -264,7 +264,7 @@ const DEFAULT_CATEGORY_PRIORITY = [
             <div className="light-intro-copy">
               <h1>Encuentra el<br />repuesto correcto<br /><span>en segundos</span></h1>
               <i aria-hidden="true" />
-              <p>Busca por patente, código OEM o nombre del repuesto y encuentra la mejor opción entre cientos de vendedores.</p>
+              <p>Busca por patente, código OEM o nombre del repuesto y compara opciones de tiendas verificadas, con el pago protegido hasta que recibas.</p>
               <ul>
                 <li><CheckCircle2 size={17} /> Repuestos originales y alternativos</li>
                 <li><CheckCircle2 size={17} /> Precios competitivos</li>
@@ -382,7 +382,7 @@ const DEFAULT_CATEGORY_PRIORITY = [
           )}
 
           <div className="light-trust-row">
-            <div><span className="trust-circle blue"><Users size={27} /></span><p><strong>538+ vendedores</strong><small>Tiendas verificadas</small></p></div>
+            <div><span className="trust-circle blue"><Users size={27} /></span><p><strong>Tiendas verificadas</strong><small>Documentos revisados por soporte</small></p></div>
             <div><span className="trust-circle green"><Truck size={27} /></span><p><strong>Envíos a todo Chile</strong><small>Rápido y seguro</small></p></div>
             <div><span className="trust-circle amber"><ShieldCheck size={27} /></span><p><strong>Repuestos originales<br />y alternativos</strong><small>Calidad garantizada</small></p></div>
             <div><span className="trust-circle purple"><ShieldCheck size={27} /></span><p><strong>Compra protegida</strong><small>Tu compra 100% segura</small></p></div>
