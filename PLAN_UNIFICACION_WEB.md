@@ -393,12 +393,20 @@ Primero en **dev**, que es el ambiente completo y no arriesga nada. Después, lo
 - [x] Panel de vendedores → `dev-inventario`: verificado sobre el bundle (ver 3.4), que es
       más fuerte que mirarlo en pantalla y no necesita sesión.
 
-Pendiente, porque necesita credenciales:
+Verificado con sesión real:
 
-- [ ] Login con correo y contraseña.
-- [ ] Login con Google.
-- [ ] Checkout: los tres pasos, boleta y factura, hasta la pantalla de pago.
-- [ ] Un pago de prueba: que el retorno caiga en `dev-repuestop…/compra-exitosa`.
+- [x] Login con Google, como comprador y como vendedor.
+- [x] Checkout completo con boleta.
+- [x] **Pago real en Flow**: el retorno cayó en
+      `dev-repuestop.repuestop.cl/compra-exitosa?status=success&orderId=9`, con el pedido
+      #000009 en Pagado / En preparación. Confirma que `WEB_BASE_URL` del backend dev está
+      bien y que el comprobante y el seguimiento funcionan.
+- [x] Totales del comprobante: $4.500 productos + envío sin costo (courier por pagar) =
+      $4.500 pagados, sin comisión.
+- [ ] Login con correo y contraseña — **no probado**, faltaban cuentas de prueba. Riesgo
+      bajo: el login con Google ya validó CORS, `fetchApi`, el JWT, la sesión y el rol de
+      vendedor; queda sin cubrir solo el endpoint de correo/contraseña, que es backend
+      identico en dev y prod y que esta migración no toca.
 
 **Nota de método**: el botón *"Añadir al carro"* abre primero un selector de método de
 envío con backdrop. Al automatizar, un segundo clic pega contra el backdrop y parece que
