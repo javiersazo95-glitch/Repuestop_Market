@@ -412,17 +412,36 @@ Verificado con sesión real:
 envío con backdrop. Al automatizar, un segundo clic pega contra el backdrop y parece que
 la función está rota. No lo está.
 
-**En `repuestop-market.vercel.app` (contra `api` de producción):**
+**Proyecto de producción `repuestop-market`** — creado el 21-08-2026,
+`https://repuestop-market.vercel.app`.
 
-- [ ] El catálogo trae productos del backend **de producción** (valida 3.2a y `VITE_API_URL`).
-- [ ] Login con correo y contraseña.
-- [ ] Como vendedor, que el panel de inventario apunte a **`inventario`**, sin el `dev-`.
-      Esto valida el arreglo de `vite.config.js`; es el error que no avisa.
-- [ ] Los headers de seguridad llegan:
+Esta vez no hizo falta el commit vacío: `main` es la rama por defecto del repo, así que
+Vercel la tomó sola y Branch Tracking quedó en `main` sin tocar nada.
 
-```bash
-curl -sI https://repuestop-market.vercel.app | grep -i "x-frame-options\|x-content-type\|referrer-policy\|strict-transport"
-```
+Verificado sobre el bundle desplegado, que da el espejo exacto de dev:
+
+| Cadena en `/assets/*.js` | dev | prod |
+|---|---|---|
+| `dev-inventario.repuestop.cl` | 1 | **0** ✔ |
+| `inventario.repuestop.cl` | 0 | **1** ✔ |
+| `api-dev.repuestop.cl` | 1 | **0** ✔ |
+| `api.repuestop.cl` | 0 | **1** ✔ |
+| `localhost:8080` | 0 | **0** ✔ |
+
+Es la prueba de que el arreglo de `vite.config.js` y las `VITE_API_URL` quedaron bien en
+los dos ambientes, sin necesitar sesión en ninguno.
+
+También verificado: los cuatro headers, el rewrite de SPA (`/perfil/pedidos` recargado da
+200), el redirect `/postular-fundador` → `/vender`, y `robots.txt` / `sitemap.xml`
+apuntando a `https://repuestop.cl` — correcto, porque son el destino final y no la URL de
+Vercel.
+
+Falta, y son los dos únicos toques a producción antes del corte:
+
+- [ ] Agregar `https://repuestop-market.vercel.app` a `CORS_ALLOWED_ORIGINS` (Railway prod).
+- [ ] Agregarlo a los orígenes autorizados en Google Cloud Console.
+- [ ] Con eso: catálogo con datos de producción y login. Nada más — el resto ya está probado
+      en dev.
 
 **Si algo de esto falla, no seguir al 3.8.**
 
@@ -455,6 +474,24 @@ con el repo.
 - [ ] **Quitar `https://repuestop-market.vercel.app` de `CORS_ALLOWED_ORIGINS`** en el
       backend de producción.
 - [ ] Quitar ese mismo origen de los autorizados en Google Cloud Console.
+- [ ] **Evitar que `repuestop-market.vercel.app` compita en Google.** Vercel marca
+      `noindex` en los deployments de *preview*, pero **no** en el alias de producción, así
+      que después del corte ese dominio seguiría sirviendo el sitio completo y Google puede
+      indexarlo como contenido duplicado de `repuestop.cl`. Se arregla agregando a
+      `vercel.json` un redirect condicionado por host:
+
+      ```json
+      {
+        "source": "/(.*)",
+        "has": [{ "type": "host", "value": "repuestop-market.vercel.app" }],
+        "destination": "https://repuestop.cl/$1",
+        "permanent": true
+      }
+      ```
+
+      **Va después del corte, no antes**: mientras se verifica, ese dominio tiene que servir
+      el sitio. El mismo problema aplica a `dev-repuestop-market.vercel.app`, aunque ahí
+      importa menos.
 - [ ] Search Console: enviar `https://repuestop.cl/sitemap.xml`. El sitio pasa de una landing
       de una página a un marketplace de muchas rutas; la indexación se rehace y las
       posiciones actuales se van a mover.
