@@ -445,24 +445,56 @@ Falta, y son los dos únicos toques a producción antes del corte:
 
 **Si algo de esto falla, no seguir al 3.8.**
 
-### 3.8 Mover el dominio
+### 3.8 Mover el dominio ✅ hecho el 21-08-2026
 
-Vercel no permite el mismo dominio en dos proyectos, así que hay **unos minutos de corte**.
-Hacerlo en horario de bajo tráfico.
+Vercel no permite el mismo dominio en dos proyectos, así que hay unos minutos de corte.
 
-1. Proyecto **antiguo de producción** → *Settings → Domains* → quitar `repuestop.cl` y
+1. Proyecto **antiguo de producción** → *Settings → Domains* → quitar `repuestop.cl`.
+   (`www.repuestop.cl` no existía: el sitio antiguo vivía solo en el ápex.)
+2. Proyecto **`repuestop-market`** → *Settings → Domains* → agregar `repuestop.cl` y
    `www.repuestop.cl`.
-2. Proyecto **`repuestop-market`** → *Settings → Domains* → agregar `repuestop.cl`, y
-   `www.repuestop.cl` como redirect al ápex.
-3. Si el DNS ya apunta a Vercel, no hay que tocar registros: el dominio solo cambia de
-   proyecto. Si Vercel pide verificación, seguir sus instrucciones de DNS.
-4. Esperar a que Vercel emita el certificado. Hasta que emita, HTTPS falla.
 
-**Rollback**: volver a mover el dominio al proyecto antiguo. No es instantáneo —hay que
-esperar el certificado otra vez—, por eso todo se verifica antes.
+**El modo de falla que costó unos minutos de caída, y que no estaba en ningún runbook:**
+al agregar los dos dominios, **Vercel configuró la redirección al revés por su cuenta** —
+dejó `repuestop.cl → 308 → www.repuestop.cl`—. Como `www` no existía en DNS, el resultado
+fue:
 
-**El proyecto dev del sitio antiguo no se toca en este paso.** Se jubila en la Fase 4, junto
-con el repo.
+```
+repuestop.cl      → HTTP 308 → https://www.repuestop.cl/
+www.repuestop.cl  → no resuelve
+```
+
+O sea, **el sitio caído**: todo visitante terminaba en un host inexistente. Se arregla
+solo en Vercel, sin tocar DNS: editar la fila del ápex y **quitarle la redirección**, y
+después poner `www` como redirect al ápex. Con el primer clic el sitio vuelve, porque el
+DNS del ápex ya resolvía.
+
+**Verificar siempre la dirección de la redirección después de agregar los dominios.** El
+ápex tiene que ser el canónico, no por gusto sino porque ya hay tres cosas apuntando ahí:
+`sitemap.xml` y `robots.txt` listan `https://repuestop.cl/`, `WEB_BASE_URL` en Railway es
+`https://repuestop.cl` (si el ápex redirige, cada retorno de Flow se come un salto extra),
+y el sitio antiguo estaba indexado en el ápex.
+
+`www.repuestop.cl` sí necesitó un registro nuevo, porque nunca había existido. El DNS vive
+en **Cloudflare**, y el CNAME tiene que ir con **Proxy en "DNS only" (nube gris)**: si
+queda proxeado, Vercel no valida el dominio y el TLS queda con doble proxy.
+
+**Estado verificado tras el corte:**
+
+| | |
+|---|---|
+| Ápex | HTTP 200, sirviendo el marketplace |
+| `www` | 307 → ápex |
+| CORS contra `api.repuestop.cl` | 200, `access-control-allow-origin: https://repuestop.cl` |
+| Headers | los cuatro (HSTS lo gestiona Vercel, ver 3.4) |
+| 14 rutas públicas | todas 200 |
+| `/postular-fundador` | → `/vender` |
+| `/compra-exitosa` | **200** — la URL que el retorno de Flow tenía rota ahora existe |
+| `/nosotros` | H1 nuevo, chrome del marketplace, un solo footer, cero "próximamente" |
+| Cifras de vendedores | ninguna |
+
+**Rollback** (ya no necesario, pero sigue disponible): devolver los dominios al proyecto
+antiguo, que no se elimina hasta la Fase 4.
 
 ### 3.9 Después del corte
 
@@ -506,7 +538,7 @@ con el repo.
              └→ 3.5 variables de entorno por proyecto
                  └→ 3.6 mover dev-repuestop (ensayo del corte)
                      └→ 3.7 VERIFICAR: todo en dev, lo clave en prod  ← si falla, se para acá
-                         └→ 3.8 mover el dominio
+                         └→ 3.8 mover el dominio (hecho)
                              └→ 3.9 limpieza y Search Console
 ```
 
