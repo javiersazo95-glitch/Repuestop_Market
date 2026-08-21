@@ -407,3 +407,61 @@ catch-all `authenticated()`. En esta sesión un usuario con rol `CLIENTE` **apro
 propios anuncios** y quedaron publicados. La moderación entera es evitable con una sesión
 cualquiera. Hay que cerrarlo en el backend antes de la fase B, que es la que expone
 publicar desde la web.
+
+
+### 4.7 Datos de prueba y arranque de la fase B
+
+**Los cuatro anuncios de prueba quedan en la base LOCAL a proposito**, uno por plan, para
+no tener que recrearlos al empezar la fase B. Todos son del usuario 5
+(`smkabdiel01@gmail.com`) y estan `APROBADO` + `activo`:
+
+| id | plan | para probar |
+|---|---|---|
+| 5 | basica | sin WhatsApp, sin fotos, sin agenda |
+| 6 | destacada | WhatsApp habilitado por plan, `is24Hours`, sin fotos |
+| 7 | premium | 3 fotos (tope 4), 2 `storyImages` -> carrusel de historias |
+| 8 | empresarial | 2 fotos, 1 historia, `hasOnlineBooking` con `agendaConfig` completo |
+
+Como los cuatro son del usuario 5, con esa sesion abierta el mural los marca "Tu anuncio" y
+bloquea llamar / escribir / agendar. Para ver la tarjeta como visitante hay que cerrar
+sesion o usar otra cuenta.
+
+**Aprobar anuncios nuevos en local ya NO se puede con una sesion normal.** Es la
+consecuencia directa del fix SEC-BACKEND-014: `PATCH /anuncios/{id}/approve` ahora exige
+`ROLE_SUPER_ADMIN` o `PERM_MEDIACION_CONFIANZA_OPERADOR`. Con una cuenta comun el backend
+responde 403. Para dejar visible un anuncio de prueba en local, o se usa una cuenta de
+backoffice, o se marca a mano:
+
+```sql
+UPDATE RT_anuncio SET estado_moderacion = 'APROBADO', activo = true, revisado_en = now()
+WHERE id = <id>;
+```
+
+**Antes de retomar, dos cosas del entorno local:**
+
+1. Reiniciar el backend: la instancia que quedo corriendo el 2026-08-21 todavia tiene el
+   codigo sin el fix de seguridad.
+2. Si se levanta contra una base nueva, revisar que `RT_anuncio` no traiga otra vez las
+   columnas en ingles (ver 4.6). Sintoma: publicar da 503.
+
+**El mural en produccion no funciona todavia, y es esperado.**
+`https://api.repuestop.cl/api/v1/anuncios` responde 404 y `api-dev` responde 200: el
+backend de anuncios sigue solo en `dev`. Con la fase A desplegada, repuestop.cl muestra el
+estado de error del mural en vez de los 14 demos que habia antes. Se arregla con el merge
+de `dev` -> `main` del backend, no tocando la web. Mientras tanto el sitio sigue bloqueado
+a indexacion y sin lanzar, asi que el impacto es bajo.
+
+**Lo primero de la fase B, en orden:**
+
+1. `POST`/`PUT`/`DELETE /anuncios` y `GET /anuncios/mios` en `api.js`, y reemplazar las
+   funciones locales de `adsStorage.js` (`createAdInStorage`, `updateAdInStorage`,
+   `deleteAdInStorage`) por las que hablan con el backend, copiando el flujo de
+   `mobile/services/ads-storage.ts`.
+2. Subida multipart a `POST /anuncios/imagenes` con `signal: AbortSignal.timeout(30000)`,
+   como manda CLAUDE.md.
+3. Toda la UI de moderacion en `AdsManagementSection`: estados PENDIENTE / APROBADO /
+   RECHAZADO con `rejectionReason`, vencimiento con `getAdExpiryInfo()` (ya portado), y
+   **el aviso de que editar devuelve el anuncio a revision y lo saca del mural** — incluido
+   antes de cobrar Fichas por subir de plan, porque el upgrade se hace via `PUT`.
+4. Recien cuando la escritura pase por el backend se pueden unificar las dos llaves de
+   localStorage (ver 4.6); antes no.
