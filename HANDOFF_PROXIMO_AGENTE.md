@@ -114,7 +114,8 @@ vendedor para el carrito multi-tienda (§8), y la aceptación de términos en el
 
 ## 1.d Sesión 2026-08-20 — aceptación de términos (§9) y toques al monorepo
 
-Esta sesión salió del repo web y tocó el monorepo (`C:\ProyectoRepuestopepuestop`,
+Esta sesión salió del repo web y tocó el monorepo (`C:\ProyectoRepuestop
+epuestop`,
 rama `dev`). Detalle completo en `PLAN_CARRITO_CHECKOUT.md` §9 y §10.
 
 1. **Historial de aceptaciones (LISTO)**. Tabla `RT_aceptacion_terminos` append-only con
@@ -321,10 +322,7 @@ POST   /api/v1/fichas/compras
 
 ### 4.4 Las cuatro fases propuestas
 
-**A — El mural lee del backend.** `GET /anuncios` y `/anuncios/{id}`, adaptador en
-`adapters.js`. Riesgo bajo, no toca escritura, valida el contrato completo. Decidir qué
-hacer con los 24 anuncios de demo de `INITIAL_CLASSIFIED_ADS`: desaparecen, salvo que se
-siembren en la base.
+**A — El mural lee del backend. CERRADA (sesión 2026-08-21, ver 4.6).**
 
 **B — Publicar y gestionar.** `POST`/`PUT`/`DELETE`, `GET /anuncios/mios` y la subida
 multipart con `AbortSignal.timeout(30000)` como manda CLAUDE.md. Acá entra toda la UI de
@@ -347,3 +345,65 @@ sesión.
 Mientras el mural siga en `localStorage`, queda fuera del `sitemap.xml` y del texto de
 `/nosotros` a propósito. Cuando la integración cierre, entran: son dos cambios chicos, ya
 está anotado dónde.
+
+
+### 4.6 Fase A cerrada — sesión 2026-08-21
+
+El mural (`AdsWallView`) lee `GET /anuncios` vía `fetchPublicAds()` en `adsStorage.js`,
+con `adaptAd()`/`adaptAds()` en `adapters.js`. Verificado contra el backend local con
+cuatro anuncios de prueba (uno por plan), aprobados y visibles.
+
+**Correcciones al diagnóstico de 4.2, para no volver a creerlo:**
+
+- `rating` y `reviewsCount` **sí existen** en `AnuncioResponseDTO`, pero
+  `AnuncioService.toResponse()` los devuelve **hardcodeados en `5.0` y `0`**. El adaptador
+  los descarta: mostrarlos era un 5.0 falso idéntico en todas las tarjetas.
+- El `id` **no llega como `Long`**: sale como `String` (`String.valueOf(a.getId())`).
+- Editar un anuncio no solo lo devuelve a `PENDIENTE`: `actualizar()` también hace
+  `setActivo(false)`. Y como el móvil sube de plan vía `PUT`, **gastar Fichas para promover
+  un anuncio lo saca del mural** hasta que moderación lo re-apruebe. Hay que advertirlo en
+  la UI antes de cobrar (fase B).
+- El móvil ya consumía el backend antes de esta sesión, así que las convenciones del
+  adaptador estaban fijadas: esta fase las copió, no las inventó.
+
+**Homologaciones con el móvil que había que hacer sí o sí:**
+
+- `AD_TIERS` tenía `destacada.hasWhatsapp: false` en la web y `true` en el móvil, y le
+  faltaba `maxTags`. Manda el móvil: `maxTags` (2/4/6/8) es exactamente lo que valida
+  `AnuncioService.validar()`, así que con los valores viejos el POST de la fase B habría
+  dado 400. WhatsApp y agenda ahora se gatean por `AD_TIERS[tier]` + `hasOnlineBooking`,
+  nunca por una lista de tiers escrita a mano.
+- `ownerSellerId` llega como `"ML-123"` y la sesión guarda `sellerId: 123`. Sin normalizar
+  el prefijo (`idKey()` en `automotiveAdsData.js`), `isOwnAd` nunca daba true y el dueño
+  podía llamarse a sí mismo.
+- Se portaron desde `mobile/constants/automotive-ads-data.ts`: `isOwnAd`, `hasAdOwner`,
+  `filterAdsOwnedBy`, `OWN_AD_BLOCK_MESSAGES`, `getAdExpiryInfo`, `AD_TIER_ORDER`,
+  `getUpgradableTiers`, `getTierActivatableFeatures`, `AD_FEATURE_TAGS`. Más un
+  `isAdVisibleOnWall()` propio de la web y el hook `useAdOwnership`.
+
+**Datos falsos retirados:** los 14 anuncios demo (el handoff decía 24), `COMPANY_STORIES`
+y el `count` fijo de `SERVICE_CATEGORIES` (24/8/5…), que ahora se calcula sobre los
+anuncios cargados. El carrusel de historias se arma con los anuncios que tienen
+`storyImages` y no se renderiza si no hay ninguno.
+
+**Dos llaves de storage, a propósito:** el mural cachea en `repuestop_ads_wall_cache` y
+emite `repuestop_ads_wall_updated`; el panel de gestión sigue local en
+`repuestop_classified_ads` con `repuestop_ads_updated`. Si compartieran llave, refrescar el
+mural borraría los borradores locales del perfil. Al cerrar la fase B esto se unifica.
+
+**Trampa de entorno que costó una hora:** publicar daba 503 en local. `RT_anuncio` tenía a
+la vez las columnas en inglés (`category`, `description`, `commune`) y en español
+(`categoria`, `descripcion`, `comuna`), todas `NOT NULL`: el entity solo escribe las
+españolas, así que todo INSERT violaba el `NOT NULL` de las otras y
+`GlobalExceptionHandler` lo traducía a un 503 genérico. Es exactamente lo que arregla
+`V2026082004__remove_legacy_english_anuncio_columns.sql`, pero la base local nunca corrió
+esa migración: la última entrada de `flyway_schema_history` era `2026081301` y `RT_anuncio`
+la había creado Hibernate con `ddl-auto=update`. Se aplicó el DROP a mano en local. En dev
+y prod Flyway sí corre, así que allá no pasa.
+
+**HALLAZGO DE SEGURIDAD, sin resolver:** `PATCH /anuncios/{id}/approve` y `/reject` no
+tienen `@PreAuthorize` ni chequeo de rol, y `SecurityConfig` solo los cubre con el
+catch-all `authenticated()`. En esta sesión un usuario con rol `CLIENTE` **aprobó sus
+propios anuncios** y quedaron publicados. La moderación entera es evitable con una sesión
+cualquiera. Hay que cerrarlo en el backend antes de la fase B, que es la que expone
+publicar desde la web.
