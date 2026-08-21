@@ -173,64 +173,57 @@ git checkout -b dev && git push -u origin dev && git checkout main
 De aquí en adelante el flujo queda igual que en los otros repos: se trabaja en `dev`, y a
 `main` se mergea lo que va a producción.
 
-### 3.2 Los backends (Railway) — antes de crear nada en Vercel
+### 3.2 Los backends (Railway) ✅ verificado el 21-08-2026
 
-Hay **dos instancias** del backend, y cada una tiene su propia configuración.
+**Los `.properties` no son la fuente de verdad de ninguno de los dos ambientes.**
+Ambas instancias de Railway corren con `SPRING_PROFILES_ACTIVE=prod`, así que
+`application-dev.properties` **nunca se carga** —ni siquiera en dev— y, además, las
+variables de entorno de Railway ganan sobre cualquier default `${VAR:fallback}` del
+archivo. Al razonar sobre configuración de ambientes hay que preguntar por la variable de
+Railway, no citar el `.properties`.
 
-**a) CORS.** El perfil de producción trae hoy (`application-prod.properties:27`):
+Estado encontrado:
 
-```
-https://repuestop.cl,https://www.repuestop.cl,https://inventario.repuestop.cl,https://backoffice.repuestop.cl
-```
+| Variable | Instancia dev (`api-dev`) | Instancia prod (`api`) |
+|---|---|---|
+| `SPRING_PROFILES_ACTIVE` | `prod` | `prod` |
+| `CORS_ALLOWED_ORIGINS` | seteada, endpoints de desarrollo | seteada, endpoints de producción |
+| `WEB_BASE_URL` | `https://dev-repuestop.repuestop.cl` — **ya estaba** | no existe → default `https://repuestop.cl` ✔ |
 
-`repuestop.cl` ya está, así que después del corte el market funciona sin tocar nada. Pero
-para **verificar el proyecto de producción antes de mover el dominio** hace falta agregar
-temporalmente su URL de Vercel:
+**No hubo que cambiar nada.** El ambiente dev ya estaba preparado para un frontend en
+`dev-repuestop.repuestop.cl` que todavía no existía; esta fase ocupa ese hueco.
 
-```
-…,https://repuestop-market.vercel.app
-```
+Dos cosas quedan pendientes para más adelante, no ahora:
 
-El backend usa `setAllowedOriginPatterns` (`SecurityConfig.java:190`), así que acepta
-comodines, aunque el comentario del archivo recomienda evitarlos en prod. **Quitar esa
-entrada después del corte** (paso 3.8).
+- **Paso 3.7**: agregar temporalmente la URL `*.vercel.app` del proyecto de producción a
+  `CORS_ALLOWED_ORIGINS` de la instancia prod, para poder verificar antes del corte.
+- **Paso 3.9**: quitarla después.
 
-En el backend **dev**, `dev-repuestop.repuestop.cl` ya está en la lista. Nada que hacer.
+Contexto de por qué `WEB_BASE_URL` importa: es a donde el backend manda al comprador
+**después de pagar en Flow** — `PagoController` construye
+`${WEB_BASE_URL}/compra-exitosa?status=success&orderId=…`. Hoy, en producción, esa URL
+está rota: `repuestop.cl` sirve la landing antigua, que no tiene `/compra-exitosa`, así
+que un pago real deja al comprador en una página que no existe. Mover el dominio
+**arregla** esto.
 
-**b) `WEB_BASE_URL` — acá hay un problema en el ambiente dev.**
+### 3.3 Google Cloud Console ✅ verificado el 21-08-2026
 
-Es a donde el backend manda al comprador **después de pagar en Flow**: `PagoController`
-construye `${WEB_BASE_URL}/compra-exitosa?status=success&orderId=…`.
+El login usa `google.accounts.id.initialize` (`AuthModal.jsx:29`) y Google valida el
+**origen exacto**. Un origen no autorizado no da error visible: el botón simplemente no
+hace nada, y el motivo (`origin is not allowed`) aparece solo en la consola.
 
-`application.properties:67` lo define como `${WEB_BASE_URL:https://repuestop.cl}` y
-**`application-dev.properties` no lo sobrescribe**. O sea: salvo que Railway tenga la
-variable seteada en la instancia de dev, **un pago de prueba en el ambiente de desarrollo
-manda al comprador a producción**. Verificar en Railway y, si falta:
+En el cliente OAuth `117201265366-…apps.googleusercontent.com`, *Orígenes autorizados de
+JavaScript*, quedó así:
 
-| Instancia | `WEB_BASE_URL` |
-|---|---|
-| Backend dev | `https://dev-repuestop.repuestop.cl` |
-| Backend prod | `https://repuestop.cl` (déjalo como está) |
+- `https://dev-repuestop.repuestop.cl` — ya estaba
+- `https://repuestop.cl` — ya estaba
+- `https://www.repuestop.cl` — **faltaba, se agregó**
 
-Segunda consecuencia: **hoy esa URL está rota en producción**. `repuestop.cl` sirve la
-landing antigua, que no tiene `/compra-exitosa`, así que un pago real desde la web deja al
-comprador en una página que no existe. Mover el dominio **arregla** esto.
+Ese `www` habría roto el login con Google en el momento exacto del corte de dominio, que
+es el peor momento para descubrirlo.
 
-### 3.3 Google Cloud Console — orígenes autorizados
-
-El login con Google usa `google.accounts.id.initialize` (`AuthModal.jsx:29`) y Google valida
-el **origen exacto**. Un origen no autorizado no da error claro: el botón simplemente no
-funciona.
-
-*APIs y servicios → Credenciales →* cliente OAuth `117201265366-…apps.googleusercontent.com`
-*→ Orígenes de JavaScript autorizados*:
-
-- `https://dev-repuestop.repuestop.cl` — nuevo, para el ambiente dev
-- `https://repuestop-market.vercel.app` — temporal, para verificar prod antes del corte
-- `https://repuestop.cl` y `https://www.repuestop.cl` — **confirmar que ya estén**. Deberían,
-  por el sitio antiguo, pero verificarlo antes del corte y no después.
-
-Los cambios de orígenes tardan unos minutos en propagar.
+Queda pendiente para el paso 3.7: agregar la URL `*.vercel.app` del proyecto de
+producción, para poder verificar el login antes del corte.
 
 ### 3.4 Los dos proyectos en Vercel
 
@@ -263,8 +256,60 @@ cancela el build y `exit 1` lo ejecuta**, al contrario del convenio de Unix.
 `vercel.json` está en el repo, así que los rewrites, los headers y el redirect aplican
 solos en ambos proyectos.
 
+En los build logs sale un `npm warn allow-scripts` por el `postinstall` de `core-js`. Es
+ruido: `core-js` llega transitivo por `jspdf → canvg` y ese script solo imprime un mensaje
+de financiamiento. El bundle sale idéntico.
+
 **El nombre del proyecto define la URL `*.vercel.app`** que hay que allowlistear en 3.2 y
 3.3. Elegirlo antes y no cambiarlo después.
+
+
+#### Proyecto dev ✅ creado y verificado el 21-08-2026
+
+Nombre real: **`dev-repuestop-market`** (no `repuestop-market-dev`). URL estable:
+`https://dev-repuestop-market.vercel.app`.
+
+Tres cosas que costaron y conviene no volver a descubrir:
+
+1. **El Production Branch ya no vive en *Settings → Git***. Vercel lo movió a
+   **Settings → Environments → Production → Branch Tracking**. Ahí se pone `dev`.
+2. **Redeploy no sirve para cambiar de rama.** Reconstruye *el mismo commit*
+   ("same source code as your current one"), así que si el único deployment vino de
+   `main`, Redeploy solo puede darte otro de `main`.
+3. **El Ignored Build Step no corre al guardarlo**, sino cuando llega un evento de push.
+   Hasta el primer push a `dev` parece que "no se toma", y está bien.
+
+La salida es un commit vacío en `dev` (`git commit --allow-empty`) para disparar el
+pipeline con la rama correcta.
+
+**Verificado sobre el bundle desplegado**, que es la prueba real de que el build salió de
+`dev` y con las variables puestas:
+
+| Cadena buscada en `/assets/*.js` | Encontrada |
+|---|---|
+| `dev-inventario.repuestop.cl` | 1 ✔ |
+| `inventario.repuestop.cl` (sin `dev-`) | 0 ✔ |
+| `api-dev.repuestop.cl` | 1 ✔ |
+| `api.repuestop.cl` | 0 ✔ |
+| `localhost:8080` | 0 ✔ |
+
+`__DEPLOY_BRANCH__` se resolvió a `'dev'` y el compilador eliminó la rama muerta del
+ternario, así que en el bundle queda una sola URL. Es la forma más directa de comprobar
+que `VERCEL_GIT_COMMIT_REF` y `VITE_API_URL` quedaron bien, sin necesidad de iniciar sesión.
+
+También verificado: SPA rewrite (`/perfil/pedidos` recargado da 200), redirect
+`/postular-fundador` → `/vender`, `robots.txt` y `sitemap.xml` respondiendo.
+
+**Sobre `Strict-Transport-Security`:** no llega, y **es lo esperado**. `repuestop.cl` hoy,
+con el mismo `vercel.json`, tampoco lo emite: Vercel gestiona HSTS en el edge e ignora esa
+entrada. Los otros cuatro headers sí llegan. No hay regresión respecto de lo que sirve
+producción hoy, que era el objetivo. La entrada se deja en `vercel.json` porque documenta
+la intención y no molesta.
+
+**El catálogo viene vacío con errores de CORS en la URL `*.vercel.app`, y también es lo
+esperado**: el CORS de dev permite `dev-repuestop.repuestop.cl`, no la URL de Vercel. Se
+resuelve solo al mover el dominio (3.6). No agregar la URL de Vercel al CORS: es trabajo
+que habría que deshacer.
 
 ### 3.5 Variables de entorno, por proyecto
 
@@ -295,14 +340,24 @@ agrega una forma de equivocarse.
 queda deshabilitado. No es así — `founderConfig.ts:32` trae el client ID real como fallback
 y `AuthModal.jsx:14` lo tiene hardcodeado. La variable peligrosa es `VITE_API_URL`.)*
 
-### 3.6 DNS de `dev-repuestop.repuestop.cl`
+### 3.6 Mover `dev-repuestop.repuestop.cl` — el ensayo del corte
 
-En el proyecto dev, *Settings → Domains* → agregar `dev-repuestop.repuestop.cl`. Vercel va a
-pedir un registro DNS (normalmente un `CNAME` a `cname.vercel-dns.com`) en el proveedor
-donde vive `repuestop.cl`. Es el mismo procedimiento que se usó para `dev-inventario` y
-`dev-backoffice`, así que el patrón ya está en el proveedor.
+**Ese dominio ya existe y ya funciona**: es el del proyecto dev del sitio antiguo, el que
+construye la rama `dev`. No hay DNS que configurar; el registro ya apunta a Vercel.
 
-**Esto no toca producción**: es un subdominio nuevo, `repuestop.cl` sigue intacto.
+Lo que hay que hacer es **moverlo de proyecto**, que es el mismo procedimiento del corte
+de producción del 3.8 — pero sobre el ambiente de desarrollo, donde no hay consecuencias.
+Sale gratis usarlo como ensayo: si algo del procedimiento sorprende (la espera del
+certificado, una verificación de dominio que Vercel pida), sorprende acá y no sobre
+`repuestop.cl`.
+
+1. Proyecto **dev del sitio antiguo** → *Settings → Domains* → quitar
+   `dev-repuestop.repuestop.cl`.
+2. Proyecto **`repuestop-market-dev`** → *Settings → Domains* → agregarlo.
+3. Esperar el certificado. Hasta que Vercel lo emita, HTTPS falla.
+
+**Rollback**: devolverlo al proyecto antiguo. Igual de reversible que en producción, y sin
+usuarios mirando.
 
 ### 3.7 Verificar
 
@@ -378,11 +433,11 @@ con el repo.
 
 ```
 3.1 crear rama dev
- └→ 3.2 backends (CORS prod temporal + WEB_BASE_URL en dev)
-     └→ 3.3 Google (orígenes autorizados)
+ └→ 3.2 backends (verificado: no habia que cambiar nada)
+     └→ 3.3 Google (verificado: faltaba www)
          └→ 3.4 crear los dos proyectos Vercel + Ignored Build Step
              └→ 3.5 variables de entorno por proyecto
-                 └→ 3.6 DNS de dev-repuestop
+                 └→ 3.6 mover dev-repuestop (ensayo del corte)
                      └→ 3.7 VERIFICAR: todo en dev, lo clave en prod  ← si falla, se para acá
                          └→ 3.8 mover el dominio
                              └→ 3.9 limpieza y Search Console
