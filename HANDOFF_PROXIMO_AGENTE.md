@@ -157,3 +157,191 @@ porque Railway no ejecuta tests.
 ## 2. Estado de Producción
 
 La plataforma web se encuentra **100% conectada al backend real, optimizada con TanStack Query, con soporte de pasarela Flow end-to-end, y protegida con code splitting y error boundaries** para despliegue productivo.
+
+---
+
+## 3. Sesión 2026-08-21 — unificación del dominio y catálogos de producción
+
+Sesión larga. Cerró las Fases 1, 2 y 3 de `PLAN_UNIFICACION_WEB.md` (ver ese archivo para
+el detalle) y destrabó producción con dos hotfixes de backend.
+
+### 3.1 Estado real de producción al cierre
+
+| Pieza | Estado |
+|---|---|
+| `repuestop.cl` | **sirve el marketplace**. Movido desde el sitio institucional antiguo. |
+| `www.repuestop.cl` | 307 → ápex. El ápex es el canónico. |
+| Proyecto Vercel prod | `repuestop-market`, rama `main` |
+| Proyecto Vercel dev | `dev-repuestop-market`, rama `dev` → `dev-repuestop.repuestop.cl` |
+| Backend prod | `main` en `225feca`. **APAGADO a propósito**: la página no se lanzó, así que estaba quemando recursos de Railway. |
+| Backend dev | `api-dev.repuestop.cl`, arriba. **Es el ambiente de trabajo.** |
+| Base de datos prod | geografía + catálogos cargados (ver 3.3) |
+
+**Mientras el backend esté apagado, `repuestop.cl` sirve la cáscara del marketplace sin
+datos**: catálogo vacío, login roto, todo lo que dependa de la API falla. Es aceptable
+porque no se ha lanzado, pero ver 3.5 sobre el riesgo de indexación.
+
+### 3.2 Cosas que costaron y no hay que volver a descubrir
+
+**Las dos instancias de Railway corren con `SPRING_PROFILES_ACTIVE=prod`.** Por lo tanto
+`application-dev.properties` **nunca se carga**, ni siquiera en el ambiente de desarrollo.
+Al razonar sobre configuración de ambientes, preguntar por la variable de Railway; no citar
+ese archivo como fuente de verdad. De acá salieron los dos bugs de producción de esta
+sesión.
+
+**Vercel movió el Production Branch de sitio.** Ya no está en *Settings → Git* sino en
+*Settings → Environments → Production → Branch Tracking*.
+
+**Redeploy no cambia de rama.** Reconstruye el mismo commit. Para desplegar otra rama hace
+falta un push nuevo; en su momento se usó un commit vacío.
+
+**El Ignored Build Step no corre al guardarlo**, solo cuando llega un push. Parece inerte
+hasta el primer push y está bien.
+
+**Al agregar dominios, Vercel configuró la redirección al revés por su cuenta** (ápex → www)
+y como `www` no existía en DNS, dejó el sitio caído unos minutos. Verificar siempre la
+dirección después de agregar dominios.
+
+**Vercel gestiona HSTS en el edge** e ignora `Strict-Transport-Security` de `vercel.json`.
+No es una regresión: `repuestop.cl` tampoco lo emitía antes.
+
+**El DNS vive en Cloudflare** y el CNAME de Vercel exige **Proxy en "DNS only"** (nube
+gris). Proxeado, Vercel no valida el dominio.
+
+### 3.3 Los dos hotfixes de backend, y por qué existieron
+
+Producción arrancó vacía de catálogos. La causa raíz de ambos casos fue la misma:
+`DevDataInitializer` estaba anotado `@Profile("dev")` **entero**, y ningún ambiente corre
+ese perfil.
+
+- **`V2026082150__seed_geografia_chile.sql`** (commit `8df9f32`): 1 país, 16 regiones, 346
+  comunas, con los mismos ids que dev. Desbloqueó el registro de tiendas, que se quedaba con
+  el selector de Región en "Cargando..." para siempre.
+- **`DevDataInitializer` → `DataInitializer`** (commit `225feca`): la clase ahora corre en
+  todos los ambientes; los datos de prueba (usuarios, tienda demo, productos, patentes mock)
+  quedaron tras un guard por perfil. Cargó 27.076 versiones de vehículo desde los CSV.
+
+Verificado en producción: 265 marcas de vehículo, 75 marcas de repuesto, 25 categorías,
+1/16/346 de geografía.
+
+**Consecuencia útil**: como la siembra ahora es automática, si la base de producción se
+recreara, los catálogos se recargan solos al arrancar. Lo que NO se recupera son los datos
+de usuario reales (cuentas, tiendas registradas).
+
+### 3.4 Pendientes abiertos
+
+**Error sin diagnosticar**: al registrar métodos de envío para publicar un producto, la web
+responde *"usuario no encontrado"*. **Bloquea publicar productos**, o sea que el catálogo de
+producción no puede llenarse. Sospecha sin verificar: mismo patrón que el 404 de
+`/auth/google` —un endpoint buscando un registro que en producción todavía no existe—,
+quizá la cuenta recién creada no tiene aún fila de proveedor asociada. Hay que mirarlo.
+
+**`main` está 23 commits atrás de `dev`.** No tiene `AnuncioController`,
+`AnuncioProveedorController`, `AgendamientoAnuncioController`, `CompraFichaController` ni
+`AceptacionTerminosService`, ni el fix `c30a45a` de la redirección post-pago de Flow. **La
+web que está en producción es más nueva que el backend que la atiende.** Ese merge es una
+operación grande: incluye 5 migraciones de esquema (`V2026082001` a `V2026082101`).
+
+**Fase 4 de `PLAN_UNIFICACION_WEB.md`** sin hacer: archivar el repo antiguo
+(`javiersazo95-glitch/Repuestop_web`) y borrar sus **dos** proyectos de Vercel.
+
+### 3.5 Riesgo de SEO mientras la página no se lanza
+
+`repuestop.cl` está en vivo, sin datos y con el backend apagado. `robots.txt` dice
+`Allow: /` y Google ya conocía el dominio por el sitio antiguo, así que **va a recrawlear y
+puede indexar el sitio roto**.
+
+Si va a estar así un tiempo, conviene poner `Disallow: /` en `public/robots.txt` hasta el
+lanzamiento. Es una línea, se revierte el día del launch. No se hizo en esta sesión.
+
+Tampoco se envió el sitemap a Search Console, a propósito: hacerlo con el catálogo vacío
+haría que Google clasifique esas rutas como páginas pobres, y recuperar posiciones cuesta
+más que indexar bien la primera vez. **Enviarlo cuando haya catálogo real.**
+
+Queda hecho el redirect anti-duplicado: `repuestop-market.vercel.app` y
+`dev-repuestop-market.vercel.app` hacen 308 a su dominio real.
+
+---
+
+## 4. Próxima fase — homologar el mural de anuncios con el backend
+
+Hoy `src/services/adsStorage.js` guarda anuncios, saldo de Fichas y transacciones en
+`localStorage`. La app móvil hace lo mismo con su `services/ads-storage`. **Ningún cliente
+consume el backend todavía**, así que quien integre primero fija las convenciones del
+adaptador; conviene que ambos acuerden el mismo mapeo.
+
+### 4.1 La buena noticia: el backend fue modelado desde el cliente
+
+El entity `Anuncio` usa nombres en inglés —`title`, `company`, `categoryLabel`, `priceText`,
+`storyImages`, `servicesOffered`, `is24Hours`, `hasOnlineBooking`, `agendaConfig`— que son
+exactamente los del objeto de `src/data/automotiveAdsData.js`. La homologación es sobre todo
+cambiar la capa de almacenamiento: `AdCard`, `AdsWallView`, `AdsFilterSidebar` y
+`StoriesViewerModal` deberían sobrevivir casi intactos.
+
+### 4.2 Lo que el backend agrega y la web no contempla
+
+| Concepto | Hoy en la web | En el backend |
+|---|---|---|
+| Moderación | no existe, aparece al instante | nace `PENDIENTE`; solo se ve si está `APROBADO` |
+| Rechazo | no existe | `RECHAZADO` + `rejectionReason` |
+| Expiración | no existe | `expiresAt` a 30 días |
+| `id` | string (`'ad-emp-01'`) | `Long` |
+| `rating` / `reviewsCount` | los muestra la tarjeta | **no existen** |
+
+`moderationStatus` es `PENDIENTE` | `APROBADO` | `RECHAZADO`. Son strings, no un enum Java,
+pero aplica la misma regla de CLAUDE.md: tienen que calzar exactos.
+
+**La trampa a diseñar desde el principio**: editar un anuncio lo devuelve a `PENDIENTE`
+(`AnuncioService.java:77`). Un vendedor que corrige un teléfono ve desaparecer su anuncio del
+mural. Si la UI no lo explica, llega como ticket de soporte.
+
+### 4.3 Endpoints disponibles
+
+```
+GET    /api/v1/anuncios                      publico; solo activo + APROBADO + no expirado
+GET    /api/v1/anuncios/{id}                 publico
+GET    /api/v1/anuncios/mios                 del dueño, cualquier estado
+POST   /api/v1/anuncios
+PUT    /api/v1/anuncios/{id}
+DELETE /api/v1/anuncios/{id}
+PATCH  /api/v1/anuncios/{id}/approve|reject  backoffice
+POST   /api/v1/anuncios/imagenes             multipart
+POST   /api/v1/proveedores/{id}/anuncios/imagenes
+POST   /api/v1/anuncios/agendamientos/anuncios/{anuncioId}
+GET    /api/v1/anuncios/agendamientos/mias
+GET    /api/v1/anuncios/agendamientos/anuncios/{anuncioId}
+PATCH  /api/v1/anuncios/agendamientos/{id}/estado
+POST   /api/v1/anuncios/agendamientos/notificaciones
+POST   /api/v1/fichas/compras
+```
+
+`/api/v1/anuncios` y `/api/v1/anuncios/*` ya están en el `permitAll` de `SecurityConfig`.
+
+### 4.4 Las cuatro fases propuestas
+
+**A — El mural lee del backend.** `GET /anuncios` y `/anuncios/{id}`, adaptador en
+`adapters.js`. Riesgo bajo, no toca escritura, valida el contrato completo. Decidir qué
+hacer con los 24 anuncios de demo de `INITIAL_CLASSIFIED_ADS`: desaparecen, salvo que se
+siembren en la base.
+
+**B — Publicar y gestionar.** `POST`/`PUT`/`DELETE`, `GET /anuncios/mios` y la subida
+multipart con `AbortSignal.timeout(30000)` como manda CLAUDE.md. Acá entra toda la UI de
+moderación.
+
+**C — Agendamiento.** Los cinco endpoints de `/anuncios/agendamientos`. Depende de B.
+
+**D — Fichas: BLOQUEADA.** El backend solo expone `POST /fichas/compras`. **No hay endpoint
+de saldo ni de consumo**, y la web muestra saldo e historial (`TokensWalletCard`) y gasta
+Fichas para promover (`UpgradeAdRankModal`). Hay que definirlo en el backend antes de tocar
+la web.
+
+### 4.5 Antes de empezar
+
+**El backend de anuncios solo existe en `dev`.** Trabajar contra `api-dev.repuestop.cl`. Si
+se integra y luego se despliega a producción sin el merge de `dev` → `main`, va a funcionar
+en dev y dar 404 en `repuestop.cl` — el mismo patrón que se diagnosticó dos veces en esta
+sesión.
+
+Mientras el mural siga en `localStorage`, queda fuera del `sitemap.xml` y del texto de
+`/nosotros` a propósito. Cuando la integración cierre, entran: son dos cambios chicos, ya
+está anotado dónde.

@@ -542,6 +542,15 @@ antiguo, que no se elimina hasta la Fase 4.
                              └→ 3.9 limpieza y Search Console
 ```
 
+## Estado al 21-08-2026
+
+**Fases 1, 2 y 3 cerradas.** `repuestop.cl` sirve el marketplace. El detalle de lo que
+paso en produccion —incluidos los dos hotfixes de backend que hubo que hacer, el error de
+metodos de envio que quedo abierto y el riesgo de SEO mientras la pagina no se lanza— esta
+en `HANDOFF_PROXIMO_AGENTE.md`, seccion 3.
+
+Queda solo la Fase 4.
+
 ## Fase 4 — Jubilar el repo antiguo
 
 1. Dejar el último commit con un `README` que diga dónde vive ahora el contenido.
