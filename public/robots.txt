@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Rutas privadas o de un solo uso: no aportan nada al indice y algunas exigen sesion.
+Disallow: /perfil
+Disallow: /carrito
+Disallow: /checkout
+Disallow: /compra-exitosa
+Disallow: /404
+
+Sitemap: https://repuestop.cl/sitemap.xml
