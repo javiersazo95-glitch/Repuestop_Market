@@ -1,15 +1,27 @@
 import { LEGAL_VERSION_CODE } from '../data/legalTexts';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
 
+const apiOrigin = () => API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+
+// Registros antiguos guardaron la URL ABSOLUTA del backend que subio el archivo,
+// asi que una foto cargada contra un backend local o de otro ambiente apunta a
+// ese host y no se ve desde otra build (y si el host quedo en http://, el
+// navegador la bloquea por contenido mixto). Del proxy propio solo importa la
+// ruta. Contraparte de `resolveImageUri()` en `mobile/utils/images.ts` y de
+// `AnuncioService.normalizarRutaImagen()`, que arregla el dato en el origen.
+const PROXY_ABSOLUTE_URL = /^https?:\/\/[^/]+(\/api\/v1\/uploads\/.*)$/i;
+
 // El backend persiste rutas de R2 como `/api/v1/uploads/...`. En desarrollo el
 // marketplace vive en otro origen (Vite), por eso las convertimos en URLs de la
-// API antes de entregarlas a un <img>. Las URLs absolutas y data/blob se preservan.
+// API antes de entregarlas a un <img>. Las URLs externas y data/blob se preservan.
 export function resolveMediaUrl(value) {
-  if (!value || typeof value !== 'string' || /^(https?:|data:|blob:)/i.test(value)) {
-    return value || null;
-  }
-  const apiOrigin = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
-  return `${apiOrigin}${value.startsWith('/') ? value : `/${value}`}`;
+  if (!value || typeof value !== 'string') return value || null;
+
+  const legacyProxyPath = value.match(PROXY_ABSOLUTE_URL);
+  if (legacyProxyPath) return `${apiOrigin()}${legacyProxyPath[1]}`;
+
+  if (/^(https?:|data:|blob:)/i.test(value)) return value;
+  return `${apiOrigin()}${value.startsWith('/') ? value : `/${value}`}`;
 }
 
 /**
@@ -23,8 +35,9 @@ export function resolveMediaUrl(value) {
  */
 export function toMediaPath(value) {
   if (!value || typeof value !== 'string') return null;
-  const apiOrigin = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
-  return value.startsWith(apiOrigin) ? value.slice(apiOrigin.length) : value;
+  const proxyPath = value.match(PROXY_ABSOLUTE_URL);
+  if (proxyPath) return proxyPath[1];
+  return value.startsWith(apiOrigin()) ? value.slice(apiOrigin().length) : value;
 }
 
 /**

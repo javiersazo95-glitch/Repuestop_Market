@@ -582,3 +582,36 @@ estado propio en el backend.
   cambia eso.
 - Las Fichas siguen sin backend (fase D bloqueada): el saldo, el historial y el cobro son
   locales del navegador.
+
+
+### 4.9 Rama de trabajo y cambios del backend del 2026-08-22
+
+**El trabajo del mural va en `dev`, no en `main`.** `dev` es la rama que tiene ambiente
+levantado (Vercel dev contra `api-dev.repuestop.cl`); produccion quedo con el backend
+apagado, asi que un deploy a `main` no se puede probar. El historial venia al reves (main
+como tronco y merges "traer main a dev"), y por eso la fase B se commiteo primero en `main`
+(334386b) y despues se trajo a `dev` con un merge. De aqui en adelante: commitear en `dev`,
+y recien llevar a `main` cuando el backend de anuncios llegue a produccion.
+
+**Consecuencia a no olvidar:** `main` tiene la fase A y la B pero NO el fix de rutas de
+imagen de mas abajo. Cuando se haga el merge `dev` -> `main`, va incluido.
+
+**Tres cambios del backend (rama `dev` del monorepo) que tocan esta fase:**
+
+1. `42d1be8` agrego `AnuncioService.normalizarRutaImagen()`: el backend ahora recorta el
+   host de las URLs del proxy propio al guardar Y al responder, y la migracion
+   `V2026082201__normalize_anuncio_image_paths.sql` arregla los registros viejos. Confirma
+   que guardar la ruta relativa (lo que hace `toMediaPath()` en la web) es lo correcto; el
+   cliente ya no es el unico que lo cuida.
+2. Del mismo commit sale un fix real para la web: `resolveImageUri()` del movil ahora
+   REARMA sobre el backend actual cualquier URL absoluta que apunte al proxy propio. La web
+   no lo hacia — `resolveMediaUrl()` dejaba pasar todo lo que empezara con `http`, asi que
+   una foto guardada por una build vieja apuntando a otro host se veia rota, y si el host
+   era `http://`, bloqueada por contenido mixto. Ya esta portado, con el mismo criterio: se
+   rearma solo lo que calza `https?://host/api/v1/uploads/...` y las URLs externas quedan
+   intactas.
+3. `selectManageableAds()` que agrego el movil NO hace falta en la web. Resuelve que la
+   cache del dispositivo es del equipo y no de la sesion, y por eso puede tener avisos de
+   otra cuenta; la web no cachea "mis anuncios" (`fetchMyAds()` solo lee del backend, que ya
+   viene acotado al token), asi que el problema no existe aca. Si alguna vez se le agrega
+   cache a esa lista, hay que traerse esta funcion.
