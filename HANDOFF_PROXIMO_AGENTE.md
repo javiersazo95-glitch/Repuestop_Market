@@ -573,11 +573,6 @@ estado propio en el backend.
 
 **Pendientes de esta fase:**
 
-- Falta ver un rechazo con datos reales (el motivo y su banda roja en la tarjeta). Exige
-  cuenta de backoffice o el UPDATE a mano de la seccion 4.7; con una cuenta normal
-  `reject` responde 403 (SEC-BACKEND-014).
-- Backend: darle a la baja lógica un estado propio para poder retirar el parche de
-  `repuestop_ads_deleted`.
 - Sigue en pie que el backend de anuncios solo existe en `dev` (sección 4.5): esta fase no
   cambia eso.
 - Las Fichas siguen sin backend (fase D bloqueada): el saldo, el historial y el cobro son
@@ -615,3 +610,40 @@ imagen de mas abajo. Cuando se haga el merge `dev` -> `main`, va incluido.
    otra cuenta; la web no cachea "mis anuncios" (`fetchMyAds()` solo lee del backend, que ya
    viene acotado al token), asi que el problema no existe aca. Si alguna vez se le agrega
    cache a esa lista, hay que traerse esta funcion.
+
+
+### 4.10 Cabos sueltos de la fase B, cerrados — sesión 2026-08-22
+
+**El rechazo, verificado con datos reales.** Se rechazó el id 9 a mano en la base local
+(`UPDATE ... estado_moderacion='RECHAZADO'` con motivo, ver 4.7) y la tarjeta responde como
+debía: sello rojo "Rechazado", el motivo textual dentro de la banda roja, el contador
+"Rechazados" en 1 y la pestaña de filtro dejando solo ese anuncio. Además se comprobó el
+ciclo que la propia tarjeta promete: **editar un anuncio rechazado lo devuelve a
+`PENDIENTE` y borra el motivo**, así que la corrección vuelve a la cola sin pasos extra. El
+anuncio quedó restaurado a `APROBADO`, igual que antes de la prueba.
+
+**La baja lógica ahora tiene estado propio en el backend, y el parche de la web se fue.**
+`AnuncioService.eliminar()` marca `moderationStatus = "ELIMINADO"` además de apagar
+`activo`, y ese estado se excluye de `listarMios()` y de `listarTodosAdmin()`. La fila se
+conserva para auditoría; lo que cambia es que deja de aparecer en todas las listas.
+
+Por qué hacía falta, y por qué también en la cola del backoffice: la baja solo apagaba
+`activo`, y como los anuncios en revisión también vienen con `activo=false`, el dado de baja
+volvía en `/anuncios/mios` indistinguible de uno pendiente. Peor: seguía en la cola de
+moderación y aprobarlo lo revivía — pasó de verdad en esta sesión con el id 9, que quedó
+visible en el mural público e invisible para su dueño.
+
+Con eso, `fetchMyAds()` de la web volvió a ser una línea: la llave `repuestop_ads_deleted`
+y sus dos helpers se eliminaron. La llave vieja se deja en los navegadores que la tengan
+(son datos del usuario, aunque ya nadie los lea).
+
+**Orden de despliegue, importante:** el backend `dev` tiene que subir ANTES que la web
+`dev`. Si sube primero la web, dar de baja un anuncio pendiente vuelve a hacerlo reaparecer
+al refrescar, porque el backend viejo lo sigue devolviendo. No es grave ni permanente, pero
+conviene evitarlo.
+
+**Lo único no verificado en vivo**: el `DELETE` contra el backend NUEVO. La instancia local
+que está corriendo todavía tiene el código anterior, y no se reinició porque no es de esta
+sesión. El comportamiento está cubierto por el test unitario
+(`laBajaLogicaMarcaElAnuncioYLoSacaDeLaListaDelDueno`) y `mvn package -DskipTests` pasa;
+falta confirmarlo con el backend levantado de nuevo.

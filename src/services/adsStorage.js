@@ -17,12 +17,6 @@ import { adaptAd, adaptAds, toAdRequestPayload } from './adapters';
 import { isAdVisibleOnWall } from '../data/automotiveAdsData';
 
 const ADS_WALL_CACHE_KEY = 'repuestop_ads_wall_cache';
-// Ids dados de baja desde este navegador. `DELETE /anuncios/{id}` es una baja
-// logica que solo apaga `activo` y conserva el `moderationStatus`, asi que el
-// anuncio sigue llegando en `GET /anuncios/mios` y es indistinguible de uno en
-// revision (los pendientes tambien vienen con `activo=false`). Sin esta lista,
-// borrar un anuncio pendiente lo haria reaparecer al refrescar el panel.
-const ADS_DELETED_KEY = 'repuestop_ads_deleted';
 const TOKENS_BALANCE_KEY = 'repuestop_fichas_balance';
 const TOKENS_HISTORY_KEY = 'repuestop_fichas_transactions';
 
@@ -165,47 +159,20 @@ export function getCachedWallAds() {
 // GESTIÓN DE MIS ANUNCIOS (contra el backend)
 // -------------------------------------------------------------
 
-function readDeletedAdIds() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(ADS_DELETED_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed.map(String) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeDeletedAdIds(ids) {
-  try {
-    localStorage.setItem(ADS_DELETED_KEY, JSON.stringify([...new Set(ids.map(String))]));
-  } catch (err) {
-    console.warn('Error al guardar los anuncios dados de baja:', err);
-  }
-}
-
 /**
  * Anuncios de la sesion en cualquier estado de moderacion, ya adaptados.
  *
  * No cachea: a diferencia del mural, aca importa mas ver el estado real de la
  * moderacion que tener algo pintado. Si la red falla, la vista muestra el error.
+ *
+ * Tampoco filtra los dados de baja: el backend ya no los devuelve (los marca
+ * `ELIMINADO` y los excluye de `/anuncios/mios`). Esta funcion llego a llevar una
+ * lista de ids borrados en `localStorage` porque la baja solo apagaba `activo` y
+ * quedaba idéntica a un anuncio en revision; era por navegador y se desincronizaba
+ * si moderacion aprobaba un anuncio ya dado de baja.
  */
 export async function fetchMyAds({ signal } = {}) {
-  const ads = adaptAds(await getMyAdsApi({ signal }));
-  const deleted = readDeletedAdIds();
-
-  // La marca local de baja solo vale mientras el anuncio siga apagado. Si el id
-  // ya no vuelve del backend, o si volvio con `activo=true`, la marca esta
-  // vencida: alguien de moderacion lo aprobo despues de la baja (el approve hace
-  // `setActivo(true)` sin mirar el estado anterior). Sin esto, el anuncio queda
-  // visible en el mural publico e invisible para su propio dueño, que es peor
-  // que no haber ocultado nada.
-  const stillDeleted = deleted.filter(
-    (id) => ads.some((ad) => ad.id === id && ad.activo !== true)
-  );
-  if (stillDeleted.length !== deleted.length) writeDeletedAdIds(stillDeleted);
-
-  return ads
-    .filter((ad) => !stillDeleted.includes(ad.id))
-    .sort((a, b) => Number(b.id) - Number(a.id));
+  return adaptAds(await getMyAdsApi({ signal })).sort((a, b) => Number(b.id) - Number(a.id));
 }
 
 /** Publica un anuncio. Nace PENDIENTE: no entra al mural hasta que lo aprueben. */
@@ -228,10 +195,9 @@ export async function updateAd(adId, ad) {
   return saved;
 }
 
-/** Baja logica en el backend + registro local para que no reaparezca en el panel. */
+/** Baja logica: el backend lo marca `ELIMINADO` y deja de listarlo. */
 export async function deleteAd(adId) {
   await deleteAdApi(adId);
-  writeDeletedAdIds([...readDeletedAdIds(), adId]);
   refreshWallCache();
 }
 
