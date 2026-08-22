@@ -1,19 +1,28 @@
-// Lectura del Mural de Anuncios y monedero de Fichas RepuesTop.
+// Mural de Anuncios y monedero de Fichas RepuesTop.
 //
-// El mural PUBLICO se lee del backend (`GET /anuncios`), igual que en el movil
-// (`mobile/services/ads-storage.ts`): localStorage queda solo como cache para
-// que la grilla no aparezca vacia mientras responde la red o si la red falla.
+// Todo el ciclo de vida del anuncio pasa por el backend, igual que en el movil
+// (`mobile/services/ads-storage.ts`): el mural publico por `GET /anuncios` y la
+// gestion propia por `GET /anuncios/mios` + POST / PUT / DELETE.
 //
-// La gestion de anuncios propios (crear / editar / borrar) sigue siendo local
-// hasta la fase B, por eso conserva su propia llave `repuestop_classified_ads`
-// separada de la cache del mural: si compartieran llave, refrescar el mural
-// borraria los borradores locales del panel de gestion.
-import { getPublicAdsApi, getPublicAdApi } from './api';
-import { adaptAd, adaptAds } from './adapters';
+// localStorage guarda solo dos cosas: la ultima copia del mural, para que la
+// grilla no aparezca vacia mientras responde la red, y el monedero de Fichas,
+// que sigue sin backend (no hay endpoint de saldo ni de consumo; ver la fase D
+// del handoff). La llave `repuestop_classified_ads` de la fase A quedo sin uso:
+// esos anuncios nunca existieron fuera del navegador.
+import {
+  getPublicAdsApi, getPublicAdApi, getMyAdsApi,
+  createAdApi, updateAdApi, deleteAdApi, uploadAdImagesApi, resolveMediaUrl
+} from './api';
+import { adaptAd, adaptAds, toAdRequestPayload } from './adapters';
 import { isAdVisibleOnWall } from '../data/automotiveAdsData';
 
-const ADS_STORAGE_KEY = 'repuestop_classified_ads';
 const ADS_WALL_CACHE_KEY = 'repuestop_ads_wall_cache';
+// Ids dados de baja desde este navegador. `DELETE /anuncios/{id}` es una baja
+// logica que solo apaga `activo` y conserva el `moderationStatus`, asi que el
+// anuncio sigue llegando en `GET /anuncios/mios` y es indistinguible de uno en
+// revision (los pendientes tambien vienen con `activo=false`). Sin esta lista,
+// borrar un anuncio pendiente lo haria reaparecer al refrescar el panel.
+const ADS_DELETED_KEY = 'repuestop_ads_deleted';
 const TOKENS_BALANCE_KEY = 'repuestop_fichas_balance';
 const TOKENS_HISTORY_KEY = 'repuestop_fichas_transactions';
 
@@ -134,8 +143,8 @@ export async function fetchPublicAd(adId, { signal } = {}) {
   return adaptAd(await getPublicAdApi(adId, { signal }));
 }
 
-// Evento propio: `repuestop_ads_updated` lo usa el panel de gestion para sus
-// anuncios locales, y mezclarlos haria que cada vista pise la lista de la otra.
+// Evento propio del mural: lo escucha `AdsWallView` para repintarse cuando otra
+// vista refresca la cache (por ejemplo al publicar o editar desde el perfil).
 export const ADS_WALL_UPDATED_EVENT = 'repuestop_ads_wall_updated';
 
 function writeWallCache(ads) {
@@ -152,42 +161,108 @@ export function getCachedWallAds() {
   return readCache(ADS_WALL_CACHE_KEY).filter(isAdVisibleOnWall);
 }
 
-/**
- * Anuncios del panel de gestion. Sigue siendo local: hasta la fase B, crear y
- * editar no pasan por el backend.
- */
-export function getStoredAds() {
-  return readCache(ADS_STORAGE_KEY);
-}
+// -------------------------------------------------------------
+// GESTIÓN DE MIS ANUNCIOS (contra el backend)
+// -------------------------------------------------------------
 
-export function saveStoredAds(ads) {
+function readDeletedAdIds() {
   try {
-    localStorage.setItem(ADS_STORAGE_KEY, JSON.stringify(ads));
-    window.dispatchEvent(new CustomEvent('repuestop_ads_updated', { detail: ads }));
-  } catch (err) {
-    console.warn('Error al guardar anuncios en localStorage:', err);
+    const parsed = JSON.parse(localStorage.getItem(ADS_DELETED_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
   }
 }
 
-export function createAdInStorage(newAd) {
-  const current = getStoredAds();
-  const updated = [newAd, ...current];
-  saveStoredAds(updated);
-  return updated;
+function writeDeletedAdIds(ids) {
+  try {
+    localStorage.setItem(ADS_DELETED_KEY, JSON.stringify([...new Set(ids.map(String))]));
+  } catch (err) {
+    console.warn('Error al guardar los anuncios dados de baja:', err);
+  }
 }
 
-export function updateAdInStorage(adId, fields) {
-  const current = getStoredAds();
-  const updated = current.map((ad) => (ad.id === adId ? { ...ad, ...fields } : ad));
-  saveStoredAds(updated);
-  return updated;
+/**
+ * Anuncios de la sesion en cualquier estado de moderacion, ya adaptados.
+ *
+ * No cachea: a diferencia del mural, aca importa mas ver el estado real de la
+ * moderacion que tener algo pintado. Si la red falla, la vista muestra el error.
+ */
+export async function fetchMyAds({ signal } = {}) {
+  const ads = adaptAds(await getMyAdsApi({ signal }));
+  const deleted = readDeletedAdIds();
+
+  // La marca local de baja solo vale mientras el anuncio siga apagado. Si el id
+  // ya no vuelve del backend, o si volvio con `activo=true`, la marca esta
+  // vencida: alguien de moderacion lo aprobo despues de la baja (el approve hace
+  // `setActivo(true)` sin mirar el estado anterior). Sin esto, el anuncio queda
+  // visible en el mural publico e invisible para su propio dueño, que es peor
+  // que no haber ocultado nada.
+  const stillDeleted = deleted.filter(
+    (id) => ads.some((ad) => ad.id === id && ad.activo !== true)
+  );
+  if (stillDeleted.length !== deleted.length) writeDeletedAdIds(stillDeleted);
+
+  return ads
+    .filter((ad) => !stillDeleted.includes(ad.id))
+    .sort((a, b) => Number(b.id) - Number(a.id));
 }
 
-export function deleteAdInStorage(adId) {
-  const current = getStoredAds();
-  const updated = current.filter((ad) => ad.id !== adId);
-  saveStoredAds(updated);
-  return updated;
+/** Publica un anuncio. Nace PENDIENTE: no entra al mural hasta que lo aprueben. */
+export async function createAd(ad) {
+  const created = adaptAd(await createAdApi(toAdRequestPayload(ad)));
+  refreshWallCache();
+  return created;
+}
+
+/**
+ * Guarda los cambios de un anuncio. Recibe el anuncio COMPLETO ya modificado,
+ * no solo los campos tocados: el PUT reemplaza todo (ver `updateAdApi`).
+ *
+ * Devuelve el anuncio a PENDIENTE y lo saca del mural, por eso se refresca la
+ * cache del mural: si estaba publicado, tiene que dejar de aparecer.
+ */
+export async function updateAd(adId, ad) {
+  const saved = adaptAd(await updateAdApi(adId, toAdRequestPayload(ad)));
+  refreshWallCache();
+  return saved;
+}
+
+/** Baja logica en el backend + registro local para que no reaparezca en el panel. */
+export async function deleteAd(adId) {
+  await deleteAdApi(adId);
+  writeDeletedAdIds([...readDeletedAdIds(), adId]);
+  refreshWallCache();
+}
+
+/** Sube fotos y devuelve sus URLs listas para mostrar. */
+export async function uploadAdImages(files) {
+  const response = await uploadAdImagesApi(files);
+  const uploaded = Array.isArray(response?.imagenes) ? response.imagenes : [];
+  return uploaded.map((item) => resolveMediaUrl(item?.url)).filter(Boolean);
+}
+
+/**
+ * Vuelve a leer el mural para que la cache no quede mostrando un anuncio que
+ * acaba de salir de circulacion. Es al margen de la accion del usuario: si falla,
+ * la vista del mural lo resuelve en su propia carga.
+ */
+function refreshWallCache() {
+  fetchPublicAds().catch(() => {});
+}
+
+/**
+ * Mensaje de error de un fallo del backend de anuncios.
+ *
+ * `GlobalExceptionHandler` responde `{ message, errors }`: `errors` trae el
+ * detalle campo por campo de las validaciones del DTO, y es lo unico que dice
+ * QUE dato quedo mal. El `message` generico ("La solicitud contiene datos
+ * invalidos") no le sirve a nadie.
+ */
+export function adErrorMessage(error, fallback = 'No se pudo completar la operación.') {
+  const detail = error?.data?.errors;
+  if (Array.isArray(detail) && detail.length > 0) return detail.join('\n');
+  return error?.message || fallback;
 }
 
 // -------------------------------------------------------------
@@ -276,9 +351,13 @@ export function rechargeTokensWithPack(pack, paymentMethod = 'Webpay Plus') {
   return newBalance;
 }
 
-// Descontar fichas al subir de rango un anuncio
-export function spendTokensForAdUpgrade(adId, adTitle, targetTier) {
-  const cost = UPGRADE_TOKEN_COSTS[targetTier] || 0;
+/**
+ * Cobra las Fichas del plan al publicar un anuncio nuevo (todavia no hay adId).
+ * Mismo tarifario que el upgrade, homologado con `spendTokensForNewAd` del movil:
+ * si publicar en un plan fuera gratis, nadie pagaria por subir de rango.
+ */
+export function spendTokensForNewAd(tier, adTitle) {
+  const cost = UPGRADE_TOKEN_COSTS[tier] || 0;
   const currentBalance = getTokensBalance();
 
   if (cost > 0 && currentBalance < cost) {
@@ -292,17 +371,45 @@ export function spendTokensForAdUpgrade(adId, adTitle, targetTier) {
     addTokenTransaction({
       type: 'debit',
       amount: cost,
-      description: `Upgrade de anuncio "${adTitle}" a rango ${targetTier.toUpperCase()}`,
-      adId
+      description: `Publicación de anuncio "${adTitle}" en plan ${tier.toUpperCase()}`
     });
   }
 
-  // Actualizar el anuncio en storage
-  updateAdInStorage(adId, {
-    tier: targetTier,
-    hasOnlineBooking: targetTier === 'empresarial',
-    upgradedAt: new Date().toISOString()
-  });
-
   return newBalance;
+}
+
+/**
+ * Sube de rango un anuncio y descuenta las Fichas.
+ *
+ * El cambio de plan viaja como un PUT normal, asi que el anuncio vuelve a
+ * PENDIENTE y desaparece del mural hasta que moderacion lo re-apruebe. Quien
+ * llame tiene que haberlo advertido antes de cobrar.
+ *
+ * Primero guarda y despues cobra: al reves, un PUT fallido dejaria al usuario sin
+ * fichas y con el anuncio en el plan viejo. Recibe el anuncio completo porque el
+ * PUT reemplaza todos los campos.
+ */
+export async function spendTokensForAdUpgrade(ad, targetTier) {
+  const cost = UPGRADE_TOKEN_COSTS[targetTier] || 0;
+  const currentBalance = getTokensBalance();
+
+  if (cost > 0 && currentBalance < cost) {
+    throw new Error(`Saldo insuficiente: tienes ${currentBalance} fichas y necesitas ${cost} fichas.`);
+  }
+
+  // El plan desbloquea la funcion, pero la agenda se activa recien cuando el
+  // socio guarda una configuracion horaria valida (fase C).
+  const saved = await updateAd(ad.id, { ...ad, tier: targetTier });
+
+  const newBalance = setTokensBalance(currentBalance - cost);
+  if (cost > 0) {
+    addTokenTransaction({
+      type: 'debit',
+      amount: cost,
+      description: `Upgrade de anuncio "${ad.title}" a rango ${targetTier.toUpperCase()}`,
+      adId: ad.id
+    });
+  }
+
+  return { ad: saved, balance: newBalance };
 }

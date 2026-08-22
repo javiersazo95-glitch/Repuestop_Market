@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Megaphone, Plus, Coins, Zap, Star, Crown, Edit3, Trash2,
-  Eye, CheckCircle2, AlertTriangle, ArrowUpRight, Search,
+  Megaphone, Plus, Zap, Edit3, Trash2, Eye, AlertTriangle, Search,
   Phone, MessageCircle, Calendar, MapPin, Tag, Clock, RefreshCw,
-  Layers, ShieldAlert
+  Layers, Loader2, CheckCircle2, Clock3, XCircle, CalendarClock
 } from 'lucide-react';
 import {
-  getStoredAds, deleteAdInStorage, getTokensBalance,
-  setTokensBalance, createAdInStorage, updateAdInStorage
+  fetchMyAds, deleteAd, adErrorMessage, getTokensBalance
 } from '../../services/adsStorage';
-import { AD_TIERS, SERVICE_CATEGORIES } from '../../data/automotiveAdsData';
+import {
+  AD_TIERS, AD_TIER_ORDER, AD_MODERATION_STATUS, AD_MODERATION_LABELS,
+  SERVICE_CATEGORIES, getAdExpiryInfo, getUpgradableTiers
+} from '../../data/automotiveAdsData';
 import TokensWalletCard from './TokensWalletCard';
 import RechargeTokensModal from './RechargeTokensModal';
 import UpgradeAdRankModal from './UpgradeAdRankModal';
@@ -18,107 +19,161 @@ import EditAdModal from './EditAdModal';
 import CreateAdModal from './CreateAdModal';
 import './ads-wall.css';
 
-export default function AdsManagementSection({
-  onNavigateToMural,
-  user
-}) {
-  const [ads, setAds] = useState(() => getStoredAds());
+const STATUS_ICONS = {
+  APROBADO: CheckCircle2,
+  PENDIENTE: Clock3,
+  RECHAZADO: XCircle
+};
+
+// Un anuncio esta realmente publicado solo si ademas de APROBADO sigue activo:
+// cualquier edicion posterior lo apaga hasta la nueva revision.
+const isLive = (ad) => ad.moderationStatus === AD_MODERATION_STATUS.APROBADO && ad.activo === true;
+
+const STATUS_FILTERS = [
+  { id: 'TODOS', label: 'Todos', match: () => true },
+  { id: 'APROBADO', label: 'Publicados', match: isLive },
+  { id: 'PENDIENTE', label: 'En revisión', match: (ad) => ad.moderationStatus === AD_MODERATION_STATUS.PENDIENTE },
+  { id: 'RECHAZADO', label: 'Rechazados', match: (ad) => ad.moderationStatus === AD_MODERATION_STATUS.RECHAZADO }
+];
+
+/**
+ * Panel de gestion de los anuncios propios.
+ *
+ * Lee `GET /anuncios/mios`, que es la unica fuente que devuelve un anuncio en
+ * cualquier estado de moderacion: `GET /anuncios` solo trae lo aprobado, vigente
+ * y activo, asi que ahi un anuncio en revision o rechazado no existe.
+ */
+export default function AdsManagementSection({ onNavigateToMural }) {
+  const [ads, setAds] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [tokensBalance, setTokensBalanceState] = useState(() => getTokensBalance());
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTierFilter, setSelectedTierFilter] = useState('TODOS');
+  const [statusFilter, setStatusFilter] = useState('TODOS');
+  const [tierFilter, setTierFilter] = useState('TODOS');
 
-  // Modales
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [adToUpgrade, setAdToUpgrade] = useState(null);
   const [adToEdit, setAdToEdit] = useState(null);
   const [adToDelete, setAdToDelete] = useState(null);
+  const [deleteError, setDeleteError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Escuchar eventos globales de sincronización
+  const loadAds = useCallback(async ({ signal } = {}) => {
+    setIsLoading(true);
+    try {
+      const list = await fetchMyAds({ signal });
+      setAds(list);
+      setLoadError(null);
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+      setLoadError(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const handleAdsUpdated = (e) => {
-      if (e.detail) setAds(e.detail);
-    };
+    const controller = new AbortController();
+    loadAds({ signal: controller.signal });
+    return () => controller.abort();
+  }, [loadAds]);
+
+  useEffect(() => {
     const handleTokensUpdated = (e) => {
       if (typeof e.detail === 'number') setTokensBalanceState(e.detail);
     };
-
-    window.addEventListener('repuestop_ads_updated', handleAdsUpdated);
     window.addEventListener('repuestop_tokens_updated', handleTokensUpdated);
-
-    return () => {
-      window.removeEventListener('repuestop_ads_updated', handleAdsUpdated);
-      window.removeEventListener('repuestop_tokens_updated', handleTokensUpdated);
-    };
+    return () => window.removeEventListener('repuestop_tokens_updated', handleTokensUpdated);
   }, []);
 
-  const handleRechargeSuccess = (newBalance) => {
-    setTokensBalanceState(newBalance);
+  const replaceAd = (saved) => {
+    setAds((current) => current.map((ad) => (ad.id === saved.id ? saved : ad)));
   };
 
-  const handleUpgradeSuccess = (adId, newTier, newBalance) => {
-    setTokensBalanceState(newBalance);
-    const updated = ads.map((ad) => (ad.id === adId ? { ...ad, tier: newTier, hasOnlineBooking: newTier === 'empresarial' } : ad));
-    setAds(updated);
-    setAdToUpgrade(null);
+  // No cierra el modal: `CreateAdModal` tiene que poder mostrar su pantalla de
+  // "quedó en revisión", que es donde se explica que el anuncio todavia no esta
+  // en el mural. Lo cierra el usuario, con su propio `onClose`.
+  const handleAdCreated = (created, balance) => {
+    setAds((current) => [created, ...current]);
+    setTokensBalanceState(balance);
   };
 
-  const handleAdCreated = (newAd) => {
-    const updated = createAdInStorage(newAd);
-    setAds(updated);
-    setIsCreateModalOpen(false);
+  const handleAdUpdated = (saved) => {
+    replaceAd(saved);
   };
 
-  const handleAdUpdated = (adId, updatedFields) => {
-    const updated = ads.map((ad) => (ad.id === adId ? { ...ad, ...updatedFields } : ad));
-    setAds(updated);
-    setAdToEdit(null);
+  const handleUpgradeSuccess = (saved, balance) => {
+    replaceAd(saved);
+    setTokensBalanceState(balance);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!adToDelete) return;
-    const updated = deleteAdInStorage(adToDelete.id);
-    setAds(updated);
-    setAdToDelete(null);
+    setIsDeleting(true);
+    setDeleteError('');
+    try {
+      await deleteAd(adToDelete.id);
+      setAds((current) => current.filter((ad) => ad.id !== adToDelete.id));
+      setAdToDelete(null);
+    } catch (error) {
+      setDeleteError(adErrorMessage(error, 'No se pudo dar de baja el anuncio.'));
+    } finally {
+      setIsDeleting(false);
+    }
   };
+
+  const counts = useMemo(() => ({
+    total: ads.length,
+    live: ads.filter(isLive).length,
+    pending: ads.filter((ad) => ad.moderationStatus === AD_MODERATION_STATUS.PENDIENTE).length,
+    rejected: ads.filter((ad) => ad.moderationStatus === AD_MODERATION_STATUS.RECHAZADO).length,
+    expiring: ads.filter((ad) => {
+      const expiry = getAdExpiryInfo(ad);
+      return isLive(ad) && expiry && !expiry.isExpired && expiry.daysLeft <= 7;
+    }).length
+  }), [ads]);
 
   const filteredAds = useMemo(() => {
-    let list = [...ads];
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter((ad) =>
-        (ad.title && ad.title.toLowerCase().includes(q)) ||
-        (ad.company && ad.company.toLowerCase().includes(q)) ||
-        (ad.commune && ad.commune.toLowerCase().includes(q))
+    const status = STATUS_FILTERS.find((item) => item.id === statusFilter) || STATUS_FILTERS[0];
+    const q = searchQuery.trim().toLowerCase();
+    return ads.filter((ad) => {
+      if (!status.match(ad)) return false;
+      if (tierFilter !== 'TODOS' && ad.tier !== tierFilter) return false;
+      if (!q) return true;
+      return [ad.title, ad.company, ad.commune].some(
+        (field) => field && field.toLowerCase().includes(q)
       );
-    }
-    if (selectedTierFilter !== 'TODOS') {
-      list = list.filter((ad) => ad.tier === selectedTierFilter);
-    }
-    return list;
-  }, [ads, searchQuery, selectedTierFilter]);
-
-  // Métricas
-  const totalAds = ads.length;
-  const activeEmpresariales = ads.filter((a) => a.tier === 'empresarial').length;
-  const activePremiums = ads.filter((a) => a.tier === 'premium').length;
-  const activeDestacados = ads.filter((a) => a.tier === 'destacada').length;
+    });
+  }, [ads, searchQuery, statusFilter, tierFilter]);
 
   return (
     <div className="profile-panel ads-management-panel">
-      {/* 1. Header del Panel de Gestión */}
       <div className="ads-mgmt-header">
         <div className="ads-mgmt-titles">
           <h2>
             <Megaphone size={24} className="text-amber-500" />
-            Gestión de Anuncios y Servicios Automotrices
+            Gestión de anuncios y servicios automotrices
           </h2>
           <p>
-            Administra tus publicaciones en el Mural de Anuncios, actualiza contactos, recarga Fichas RepuesTop y mejora el rango de tus avisos.
+            Administra tus publicaciones del Mural de Anuncios, revisa en qué estado está cada una y
+            mejora su plan con Fichas RepuesTop.
           </p>
         </div>
 
         <div className="ads-mgmt-actions">
+          <button
+            type="button"
+            className="btn-ad-phone inline-flex items-center gap-2"
+            onClick={() => loadAds()}
+            disabled={isLoading}
+            title="Volver a consultar el estado de moderación"
+          >
+            <RefreshCw size={16} className={isLoading ? 'spin-icon' : ''} />
+            <span>Actualizar</span>
+          </button>
+
           {onNavigateToMural && (
             <button
               type="button"
@@ -126,7 +181,7 @@ export default function AdsManagementSection({
               onClick={onNavigateToMural}
             >
               <Eye size={16} />
-              <span>Ver Mural Público</span>
+              <span>Ver mural público</span>
             </button>
           )}
 
@@ -136,45 +191,44 @@ export default function AdsManagementSection({
             onClick={() => setIsCreateModalOpen(true)}
           >
             <Plus size={18} />
-            <span>Publicar Nuevo Anuncio</span>
+            <span>Publicar nuevo anuncio</span>
           </button>
         </div>
       </div>
 
-      {/* 2. Monedero de Fichas RepuesTop */}
       <TokensWalletCard
         tokensBalance={tokensBalance}
         onOpenRechargeModal={() => setIsRechargeModalOpen(true)}
       />
 
-      {/* 3. Métricas Rápidas */}
+      {/* Las metricas siguen el estado de moderacion, que es lo que el usuario no
+          puede deducir mirando el mural: ahi solo se ve lo aprobado. */}
       <div className="ads-mgmt-stats-grid">
         <div className="mgmt-stat-card">
-          <span className="stat-label">Total Publicaciones</span>
-          <strong className="stat-number">{totalAds}</strong>
-          <small className="stat-sub">Anuncios en el mural</small>
+          <span className="stat-label">Publicados</span>
+          <strong className="stat-number">{counts.live}</strong>
+          <small className="stat-sub">Visibles en el mural</small>
         </div>
 
-        <div className="mgmt-stat-card stat-empresarial">
-          <span className="stat-label">Rango Empresarial</span>
-          <strong className="stat-number">{activeEmpresariales}</strong>
-          <small className="stat-sub">Con agendamiento activo</small>
+        <div className="mgmt-stat-card stat-pending">
+          <span className="stat-label">En revisión</span>
+          <strong className="stat-number">{counts.pending}</strong>
+          <small className="stat-sub">Esperando moderación</small>
         </div>
 
-        <div className="mgmt-stat-card stat-premium">
-          <span className="stat-label">Rango Premium</span>
-          <strong className="stat-number">{activePremiums}</strong>
-          <small className="stat-sub">Con WhatsApp directo</small>
+        <div className="mgmt-stat-card stat-rejected">
+          <span className="stat-label">Rechazados</span>
+          <strong className="stat-number">{counts.rejected}</strong>
+          <small className="stat-sub">Corrígelos y se revisan de nuevo</small>
         </div>
 
-        <div className="mgmt-stat-card stat-destacada">
-          <span className="stat-label">Rango Destacado</span>
-          <strong className="stat-number">{activeDestacados}</strong>
-          <small className="stat-sub">Visibilidad destacada</small>
+        <div className="mgmt-stat-card stat-expiring">
+          <span className="stat-label">Por vencer</span>
+          <strong className="stat-number">{counts.expiring}</strong>
+          <small className="stat-sub">Vencen dentro de 7 días</small>
         </div>
       </div>
 
-      {/* 4. Barra de Búsqueda y Filtros */}
       <div className="ads-mgmt-toolbar">
         <div className="mgmt-search-box">
           <Search size={15} />
@@ -187,146 +241,200 @@ export default function AdsManagementSection({
         </div>
 
         <div className="mgmt-filter-tabs">
-          <button
-            type="button"
-            className={`mgmt-filter-tab inline-flex items-center gap-1.5 ${selectedTierFilter === 'TODOS' ? 'active' : ''}`}
-            onClick={() => setSelectedTierFilter('TODOS')}
-          >
-            <Layers size={13} />
-            <span>Todos ({totalAds})</span>
-          </button>
-          <button
-            type="button"
-            className={`mgmt-filter-tab inline-flex items-center gap-1.5 ${selectedTierFilter === 'empresarial' ? 'active' : ''}`}
-            onClick={() => setSelectedTierFilter('empresarial')}
-          >
-            <Crown size={13} className="text-emerald-500" />
-            <span>Empresariales ({activeEmpresariales})</span>
-          </button>
-          <button
-            type="button"
-            className={`mgmt-filter-tab inline-flex items-center gap-1.5 ${selectedTierFilter === 'premium' ? 'active' : ''}`}
-            onClick={() => setSelectedTierFilter('premium')}
-          >
-            <Zap size={13} className="text-purple-500" />
-            <span>Premium ({activePremiums})</span>
-          </button>
-          <button
-            type="button"
-            className={`mgmt-filter-tab inline-flex items-center gap-1.5 ${selectedTierFilter === 'destacada' ? 'active' : ''}`}
-            onClick={() => setSelectedTierFilter('destacada')}
-          >
-            <Star size={13} className="text-amber-500" />
-            <span>Destacadas ({activeDestacados})</span>
-          </button>
-          <button
-            type="button"
-            className={`mgmt-filter-tab inline-flex items-center gap-1.5 ${selectedTierFilter === 'basica' ? 'active' : ''}`}
-            onClick={() => setSelectedTierFilter('basica')}
-          >
-            <ShieldAlert size={13} className="text-slate-400" />
-            <span>Básicas ({ads.filter((a) => a.tier === 'basica').length})</span>
-          </button>
+          {STATUS_FILTERS.map((filter) => {
+            const Icon = STATUS_ICONS[filter.id] || Layers;
+            const count = filter.id === 'TODOS'
+              ? counts.total
+              : ads.filter(filter.match).length;
+            return (
+              <button
+                type="button"
+                key={filter.id}
+                className={`mgmt-filter-tab inline-flex items-center gap-1.5 ${statusFilter === filter.id ? 'active' : ''}`}
+                onClick={() => setStatusFilter(filter.id)}
+              >
+                <Icon size={13} />
+                <span>{filter.label} ({count})</span>
+              </button>
+            );
+          })}
         </div>
+
+        <select
+          className="mgmt-tier-select"
+          value={tierFilter}
+          onChange={(e) => setTierFilter(e.target.value)}
+          aria-label="Filtrar por plan"
+        >
+          <option value="TODOS">Todos los planes</option>
+          {AD_TIER_ORDER.map((tierId) => (
+            <option key={tierId} value={tierId}>{AD_TIERS[tierId].name}</option>
+          ))}
+        </select>
       </div>
 
-      {/* 5. Listado de Anuncios en Gestión */}
       <div className="ads-mgmt-list">
-        {filteredAds.length > 0 ? (
-          filteredAds.map((ad) => {
-            const tierConfig = AD_TIERS[ad.tier] || AD_TIERS.basica;
-            const coverPhoto = ad.images?.[0] || 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=400&auto=format&fit=crop&q=80';
-            const catObj = SERVICE_CATEGORIES.find((c) => c.id === ad.category);
+        {isLoading && ads.length === 0 && (
+          <div className="ads-mgmt-state">
+            <Loader2 size={22} className="spin-icon" />
+            <p>Cargando tus anuncios…</p>
+          </div>
+        )}
 
-            return (
-              <div key={ad.id} className={`mgmt-ad-item ${tierConfig.cardTheme}`}>
-                <div className="mgmt-ad-left">
-                  <div className="mgmt-ad-thumb">
-                    <img src={coverPhoto} alt="" />
-                    <span className={`ad-tier-pill pill-${ad.tier}`}>
-                      {tierConfig.badge}
-                    </span>
-                  </div>
-
-                  <div className="mgmt-ad-info">
-                    <div className="mgmt-ad-meta-top">
-                      <span className="mgmt-ad-cat">
-                        {catObj?.emoji ? `${catObj.emoji} ` : ''}{ad.categoryLabel || catObj?.label || 'Mecánica'}
-                      </span>
-                      <span className="mgmt-ad-date">Publicado: {ad.publishedAt || 'Reciente'}</span>
-                    </div>
-
-                    <h4 className="mgmt-ad-title">{ad.title}</h4>
-
-                    <div className="mgmt-ad-icons-row">
-                      <span><MapPin size={13} /> {ad.commune}, {ad.address}</span>
-                      <span><Phone size={13} /> {ad.phone}</span>
-                      <span><Tag size={13} /> {ad.priceText}</span>
-                      {ad.hasOnlineBooking && (
-                        <span className="text-emerald-700 font-bold"><Calendar size={13} /> Agendamiento Activo</span>
-                      )}
-                      {ad.whatsapp && (ad.tier === 'premium' || ad.tier === 'empresarial') && (
-                        <span className="text-green-600 font-bold"><MessageCircle size={13} /> WhatsApp Activo</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mgmt-ad-actions">
-                  <button
-                    type="button"
-                    className="btn-mgmt-upgrade"
-                    onClick={() => setAdToUpgrade(ad)}
-                    title="Mejorar rango con Fichas RepuesTop"
-                  >
-                    <Zap size={15} />
-                    <span>Mejorar Rango</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn-mgmt-edit"
-                    onClick={() => setAdToEdit(ad)}
-                    title="Editar datos del anuncio"
-                  >
-                    <Edit3 size={15} />
-                    <span>Editar</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn-mgmt-delete"
-                    onClick={() => setAdToDelete(ad)}
-                    title="Eliminar anuncio"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center my-4">
-            <p className="text-slate-500 text-sm mb-4">No tienes anuncios que coincidan con la búsqueda.</p>
-            <button
-              type="button"
-              className="btn-post-ad mx-auto"
-              onClick={() => setIsCreateModalOpen(true)}
-            >
-              <Plus size={16} /> Publicar Nuevo Anuncio
+        {!isLoading && loadError && (
+          <div className="ads-mgmt-state is-error">
+            <AlertTriangle size={22} />
+            <p>{adErrorMessage(loadError, 'No pudimos cargar tus anuncios.')}</p>
+            <button type="button" className="btn-ad-phone" onClick={() => loadAds()}>
+              <RefreshCw size={14} /> Reintentar
             </button>
           </div>
         )}
+
+        {!isLoading && !loadError && filteredAds.length === 0 && (
+          <div className="ads-mgmt-state">
+            <Megaphone size={22} />
+            <p>
+              {ads.length === 0
+                ? 'Todavía no tienes anuncios publicados en el mural.'
+                : 'Ninguno de tus anuncios coincide con este filtro.'}
+            </p>
+            {ads.length === 0 && (
+              <button type="button" className="btn-post-ad" onClick={() => setIsCreateModalOpen(true)}>
+                <Plus size={16} /> Publicar nuevo anuncio
+              </button>
+            )}
+          </div>
+        )}
+
+        {filteredAds.map((ad) => {
+          const tierConfig = AD_TIERS[ad.tier] || AD_TIERS.basica;
+          // APROBADO pero apagado: lo apago la ultima edicion y espera la nueva
+          // revision. Se pinta como pendiente, no como publicado: el sello verde
+          // diciendo "en revision" es justo la contradiccion que confunde.
+          const isWaitingRecheck = ad.moderationStatus === AD_MODERATION_STATUS.APROBADO && !ad.activo;
+          const effectiveStatus = isWaitingRecheck ? AD_MODERATION_STATUS.PENDIENTE : ad.moderationStatus;
+          const status = AD_MODERATION_LABELS[effectiveStatus] || AD_MODERATION_LABELS.PENDIENTE;
+          const StatusIcon = STATUS_ICONS[effectiveStatus] || Clock3;
+          const expiry = getAdExpiryInfo(ad);
+          const catObj = SERVICE_CATEGORIES.find((c) => c.id === ad.category);
+          const coverPhoto = ad.images?.[0] || null;
+          const canUpgrade = getUpgradableTiers(ad.tier).length > 0;
+
+          return (
+            <div key={ad.id} className={`mgmt-ad-item ${tierConfig.cardTheme}`}>
+              <div className="mgmt-ad-left">
+                <div className="mgmt-ad-thumb">
+                  {coverPhoto
+                    ? <img src={coverPhoto} alt="" />
+                    : <span className="mgmt-ad-thumb-empty"><Megaphone size={20} /></span>}
+                  <span className={`ad-tier-pill pill-${ad.tier}`}>{tierConfig.badge}</span>
+                </div>
+
+                <div className="mgmt-ad-info">
+                  <div className="mgmt-ad-meta-top">
+                    <span className={`mgmt-status-pill tone-${status.tone}`}>
+                      <StatusIcon size={12} /> {status.label}
+                    </span>
+                    <span className="mgmt-ad-cat">
+                      {catObj?.emoji ? `${catObj.emoji} ` : ''}{ad.categoryLabel || catObj?.label || 'Servicio'}
+                    </span>
+                    {expiry && isLive(ad) && (
+                      <span className={`mgmt-ad-expiry ${expiry.isExpired || expiry.daysLeft <= 7 ? 'is-urgent' : ''}`}>
+                        <CalendarClock size={12} /> {expiry.label}
+                      </span>
+                    )}
+                  </div>
+
+                  <h4 className="mgmt-ad-title">{ad.title}</h4>
+
+                  <div className="mgmt-ad-icons-row">
+                    <span><MapPin size={13} /> {ad.commune}{ad.address ? `, ${ad.address}` : ''}</span>
+                    <span><Phone size={13} /> {ad.phone}</span>
+                    <span><Tag size={13} /> {ad.priceText}</span>
+                    {ad.is24Hours && <span><Clock size={13} /> 24 horas</span>}
+                    {ad.hasOnlineBooking && (
+                      <span className="text-emerald-700 font-bold"><Calendar size={13} /> Agenda activa</span>
+                    )}
+                    {ad.whatsapp && tierConfig.hasWhatsapp && (
+                      <span className="text-green-600 font-bold"><MessageCircle size={13} /> WhatsApp activo</span>
+                    )}
+                  </div>
+
+                  {ad.moderationStatus === AD_MODERATION_STATUS.RECHAZADO && (
+                    <div className="mgmt-ad-note tone-danger">
+                      <XCircle size={14} />
+                      <div>
+                        <strong>Moderación rechazó este anuncio.</strong>
+                        <p>{ad.rejectionReason || 'Sin motivo informado.'} Corrige los datos y se vuelve a revisar automáticamente al guardar.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {(ad.moderationStatus === AD_MODERATION_STATUS.PENDIENTE || isWaitingRecheck) && (
+                    <div className="mgmt-ad-note tone-warning">
+                      <Clock3 size={14} />
+                      <div>
+                        <strong>Esperando revisión.</strong>
+                        <p>No aparece en el Mural de Anuncios hasta que moderación lo apruebe. Te llega una notificación con el resultado.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {expiry?.isExpired && (
+                    <div className="mgmt-ad-note tone-danger">
+                      <CalendarClock size={14} />
+                      <div>
+                        <strong>Anuncio vencido.</strong>
+                        <p>Los anuncios duran 30 días en el mural. Edítalo y guárdalo para renovar su vigencia.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mgmt-ad-actions">
+                <button
+                  type="button"
+                  className="btn-mgmt-upgrade"
+                  onClick={() => setAdToUpgrade(ad)}
+                  disabled={!canUpgrade}
+                  title={canUpgrade ? 'Mejorar el plan con Fichas RepuesTop' : 'Ya está en el plan más alto'}
+                >
+                  <Zap size={15} />
+                  <span>Mejorar plan</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-mgmt-edit"
+                  onClick={() => setAdToEdit(ad)}
+                  title="Editar los datos del anuncio"
+                >
+                  <Edit3 size={15} />
+                  <span>Editar</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-mgmt-delete"
+                  onClick={() => { setDeleteError(''); setAdToDelete(ad); }}
+                  title="Dar de baja el anuncio"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* MODAL: Recargar Fichas */}
       <RechargeTokensModal
         isOpen={isRechargeModalOpen}
         onClose={() => setIsRechargeModalOpen(false)}
-        onRechargeSuccess={handleRechargeSuccess}
+        onRechargeSuccess={(newBalance) => setTokensBalanceState(newBalance)}
       />
 
-      {/* MODAL: Mejorar Rango de Anuncio */}
       {adToUpgrade && (
         <UpgradeAdRankModal
           ad={adToUpgrade}
@@ -337,7 +445,6 @@ export default function AdsManagementSection({
         />
       )}
 
-      {/* MODAL: Editar Anuncio */}
       {adToEdit && (
         <EditAdModal
           ad={adToEdit}
@@ -347,29 +454,38 @@ export default function AdsManagementSection({
         />
       )}
 
-      {/* MODAL: Publicar Anuncio */}
       <CreateAdModal
         isOpen={isCreateModalOpen}
+        tokensBalance={tokensBalance}
         onClose={() => setIsCreateModalOpen(false)}
         onAdCreated={handleAdCreated}
       />
 
-      {/* MODAL: Confirmar Eliminación */}
       {adToDelete && createPortal(
         <div className="booking-modal-overlay" role="dialog" aria-modal="true">
           <div className="booking-modal-card max-w-sm text-center">
             <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-3">
               <AlertTriangle size={24} />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 mb-1">¿Eliminar este anuncio?</h3>
-            <p className="text-xs text-slate-600 mb-6">
-              "{adToDelete.title}" será removido definitivamente del Mural de Anuncios.
+            <h3 className="text-lg font-bold text-slate-900 mb-1">¿Dar de baja este anuncio?</h3>
+            <p className="text-xs text-slate-600 mb-4">
+              "{adToDelete.title}" sale del Mural de Anuncios y deja de aparecer en tu gestión. No se puede
+              deshacer desde la web: para volver a publicarlo hay que crearlo de nuevo.
             </p>
+
+            {deleteError && (
+              <div className="ad-form-error mb-3">
+                <AlertTriangle size={14} />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
             <div className="flex justify-center gap-3">
               <button
                 type="button"
                 className="btn-ad-phone"
                 onClick={() => setAdToDelete(null)}
+                disabled={isDeleting}
               >
                 Cancelar
               </button>
@@ -377,8 +493,9 @@ export default function AdsManagementSection({
                 type="button"
                 className="btn-ad-phone bg-red-600 text-white hover:bg-red-700 border-none"
                 onClick={handleDeleteConfirm}
+                disabled={isDeleting}
               >
-                Sí, Eliminar
+                {isDeleting ? 'Dando de baja…' : 'Sí, dar de baja'}
               </button>
             </div>
           </div>

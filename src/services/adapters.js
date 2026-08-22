@@ -9,7 +9,8 @@
  */
 
 import { HEADER_CATEGORIES, SIDEBAR_CATEGORIES } from '../data/categories';
-import { resolveMediaUrl } from './api';
+import { AD_TIERS } from '../data/automotiveAdsData';
+import { resolveMediaUrl, toMediaPath } from './api';
 
 const normalizeNameKey = (value) => String(value || '').normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -438,4 +439,68 @@ export function adaptAd(dto) {
 
 export function adaptAds(list) {
   return (Array.isArray(list) ? list : []).map(adaptAd).filter(Boolean);
+}
+
+/**
+ * Anuncio de la UI -> `AnuncioRequestDTO`.
+ *
+ * El POST y el PUT comparten DTO, y `AnuncioService.aplicar()` escribe TODOS los
+ * campos: al editar hay que mandar el anuncio completo (fotos, historias y agenda
+ * incluidas) o se borran los que no viajen.
+ *
+ * Recorta las listas al tope del plan porque `AnuncioService.validar()` responde
+ * 400 si se pasan, y los topes cambian al mejorar o al cambiar de plan en el
+ * formulario. Es la misma tabla que `AD_TIERS`, replicada alli a proposito.
+ */
+export function toAdRequestPayload(ad) {
+  const tier = AD_TIERS[ad?.tier] ? ad.tier : 'basica';
+  const limits = AD_TIERS[tier];
+  const text = (value) => String(value ?? '').trim();
+  const list = (value, max) => (Array.isArray(value) ? value : []).filter(Boolean).slice(0, max);
+  const media = (value, max) => list(value, max).map(toMediaPath).filter(Boolean);
+
+  // El backend rechaza `hasOnlineBooking` sin una agenda configurada, y la agenda
+  // solo existe en el plan Empresarial. Sin configuracion valida, la reserva
+  // queda apagada aunque el plan la permita (la configura la fase C).
+  const agendaConfig = ad?.agendaConfig && Object.keys(ad.agendaConfig).length > 0 ? ad.agendaConfig : null;
+  const hasOnlineBooking = Boolean(ad?.hasOnlineBooking) && limits.hasBooking && Boolean(agendaConfig);
+  const priceType = ad?.priceType === 'fixed' ? 'fixed' : 'quote';
+  const priceValue = Number(ad?.priceValue);
+
+  return {
+    tier,
+    title: text(ad?.title),
+    company: text(ad?.company),
+    category: text(ad?.category),
+    categoryLabel: text(ad?.categoryLabel),
+    description: text(ad?.description),
+    priceType,
+    priceText: text(ad?.priceText),
+    // `@PositiveOrZero Long`: un texto o un negativo tiran 400. En "a cotizar" no
+    // hay monto que mandar.
+    priceValue: priceType === 'fixed' && Number.isFinite(priceValue) && priceValue >= 0
+      ? Math.round(priceValue)
+      : null,
+    region: text(ad?.region),
+    commune: text(ad?.commune),
+    address: text(ad?.address),
+    phone: text(ad?.phone),
+    // WhatsApp es una funcion del plan: mandarlo en uno que no lo incluye deja el
+    // dato guardado y la tarjeta igual no muestra el boton.
+    whatsapp: limits.hasWhatsapp ? (text(ad?.whatsapp).replace(/\D/g, '') || null) : null,
+    openingHours: text(ad?.openingHours),
+    images: media(ad?.images, limits.maxImages),
+    storyImages: media(ad?.storyImages, limits.maxStories),
+    features: list(ad?.features, limits.maxTags),
+    servicesOffered: list(ad?.servicesOffered, limits.maxTags),
+    is24Hours: ad?.is24Hours === true,
+    hasOnlineBooking,
+    agendaConfig: hasOnlineBooking ? agendaConfig : null,
+    agendaConfigId: ad?.agendaConfigId || null,
+    agendaConfigName: ad?.agendaConfigName || null,
+    agendaHours: text(ad?.agendaHours),
+    // Solo sirve al editar: al crear, el backend fija 30 dias y descarta cualquier
+    // fecha posterior a ese tope.
+    expiresAt: ad?.expiresAt || null,
+  };
 }

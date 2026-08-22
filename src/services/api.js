@@ -13,6 +13,21 @@ export function resolveMediaUrl(value) {
 }
 
 /**
+ * Inverso de `resolveMediaUrl`: deja la ruta relativa que guarda el backend.
+ *
+ * Lo que se muestra en pantalla es la URL absoluta que arma `resolveMediaUrl`,
+ * pero al reenviarla en un PUT quedaria persistida con el origen de este
+ * ambiente; un anuncio editado en local terminaria apuntando a localhost en
+ * produccion. Las URLs externas (http de otro dominio, data:, blob:) se dejan
+ * intactas: no son del proxy de archivos.
+ */
+export function toMediaPath(value) {
+  if (!value || typeof value !== 'string') return null;
+  const apiOrigin = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+  return value.startsWith(apiOrigin) ? value.slice(apiOrigin.length) : value;
+}
+
+/**
  * Custom error class for API errors
  */
 export class ApiError extends Error {
@@ -1005,4 +1020,57 @@ export async function getPublicAdsApi({ signal } = {}) {
 /** Ficha publica de un anuncio. Da 404 si esta pendiente, rechazado o vencido. */
 export async function getPublicAdApi(adId, { signal } = {}) {
   return fetchApi(`/anuncios/${adId}`, { method: 'GET', signal });
+}
+
+/**
+ * Anuncios de la sesion, en cualquier estado de moderacion (PENDIENTE, APROBADO
+ * o RECHAZADO) y tambien los vencidos. Es la unica lectura que ve un anuncio que
+ * todavia no esta publicado: `GET /anuncios` solo devuelve lo aprobado y vigente.
+ */
+export async function getMyAdsApi({ signal } = {}) {
+  return fetchApi('/anuncios/mios', { method: 'GET', signal });
+}
+
+/**
+ * Publica un anuncio. Nace `PENDIENTE` y con `activo=false`
+ * (`AnuncioService.crear()`): no aparece en el mural hasta que moderacion lo aprueba.
+ */
+export async function createAdApi(payload) {
+  return fetchApi('/anuncios', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+/**
+ * Reemplaza TODOS los campos del anuncio: `AnuncioService.aplicar()` escribe cada
+ * uno, asi que lo que no venga en el payload se pierde (las historias, la agenda
+ * y las fotos incluidas). Hay que mandar el anuncio completo, no solo lo editado.
+ *
+ * Ademas devuelve el anuncio a `PENDIENTE` y lo deja `activo=false`, o sea que lo
+ * saca del mural hasta que lo re-aprueben. La UI tiene que advertirlo antes.
+ */
+export async function updateAdApi(adId, payload) {
+  return fetchApi(`/anuncios/${adId}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+/**
+ * Baja logica: el backend solo hace `setActivo(false)` y conserva el
+ * `moderationStatus`, asi que el anuncio sigue llegando en `GET /anuncios/mios`.
+ * Quien lo consuma tiene que ocultarlo por su cuenta (ver `adsStorage.js`).
+ */
+export async function deleteAdApi(adId) {
+  return fetchApi(`/anuncios/${adId}`, { method: 'DELETE' });
+}
+
+/**
+ * Sube las fotos del anuncio a la carpeta Publicidad de R2 y devuelve
+ * `{ imagenes: [{ key, url }] }` con rutas relativas al proxy del backend.
+ * Timeout largo como manda CLAUDE.md: son varias imagenes de hasta 5MB.
+ */
+export async function uploadAdImagesApi(files) {
+  const formData = new FormData();
+  (files || []).forEach((file) => formData.append('imagenes', file));
+  return fetchApi('/anuncios/imagenes', {
+    method: 'POST',
+    body: formData,
+    signal: AbortSignal.timeout(30000),
+  });
 }
