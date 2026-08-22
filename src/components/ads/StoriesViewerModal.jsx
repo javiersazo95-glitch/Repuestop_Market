@@ -1,45 +1,62 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, CheckCircle2, MessageCircle, Calendar, Tag, ShieldCheck } from 'lucide-react';
+import { X, CheckCircle2, MessageCircle, Calendar, MapPin } from 'lucide-react';
+import { AD_TIERS, SERVICE_CATEGORIES } from '../../data/automotiveAdsData';
+import { useAdOwnership } from './useAdOwnership';
 
+const SLIDE_DURATION = 5000;
+
+/**
+ * Visor de historias de un anuncio. El backend solo guarda `storyImages`
+ * (una lista de URLs), no diapositivas con titulo y oferta propios, asi que
+ * cada foto se muestra con los datos del anuncio — igual que en el movil
+ * (`mobile/components/ads/StoriesViewerModal.tsx`).
+ */
 export default function StoriesViewerModal({
-  companyStory,
+  ad,
   onClose,
   onOpenBooking
 }) {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [blockNotice, setBlockNotice] = useState(null);
   const progressIntervalRef = useRef(null);
+  const { isOwn, blockIfOwnAd } = useAdOwnership();
 
-  const stories = companyStory?.stories || [];
-  const activeSlide = stories[currentSlideIndex] || stories[0];
-  const slideDuration = activeSlide?.duration || 5000;
+  const slides = ((ad?.storyImages?.length ? ad.storyImages : ad?.images) || []).filter(Boolean);
+  const activeSlide = slides[currentSlideIndex] || slides[0];
+
+  const tierConfig = AD_TIERS[ad?.tier] || AD_TIERS.basica;
+  const categoryObj = SERVICE_CATEGORIES.find((c) => c.id === ad?.category);
+  const canWhatsapp = Boolean(tierConfig.hasWhatsapp && ad?.whatsapp);
+  const canBook = Boolean(tierConfig.hasBooking && ad?.hasOnlineBooking);
 
   const goToNextSlide = useCallback(() => {
-    if (currentSlideIndex < stories.length - 1) {
+    if (currentSlideIndex < slides.length - 1) {
       setCurrentSlideIndex((prev) => prev + 1);
       setProgress(0);
     } else {
       onClose?.();
     }
-  }, [currentSlideIndex, stories.length, onClose]);
+  }, [currentSlideIndex, slides.length, onClose]);
 
   const goToPrevSlide = useCallback(() => {
-    if (currentSlideIndex > 0) {
-      setCurrentSlideIndex((prev) => prev - 1);
-      setProgress(0);
-    } else {
-      setProgress(0);
-    }
+    if (currentSlideIndex > 0) setCurrentSlideIndex((prev) => prev - 1);
+    setProgress(0);
   }, [currentSlideIndex]);
 
-  // Timer loop for active slide
   useEffect(() => {
-    if (!companyStory || isPaused) return;
+    setCurrentSlideIndex(0);
+    setProgress(0);
+  }, [ad?.id]);
+
+  // Avance automatico de la historia activa
+  useEffect(() => {
+    if (!ad || isPaused || slides.length === 0) return;
 
     const stepMs = 50;
-    const increment = (stepMs / slideDuration) * 100;
+    const increment = (stepMs / SLIDE_DURATION) * 100;
 
     progressIntervalRef.current = setInterval(() => {
       setProgress((prev) => {
@@ -54,9 +71,8 @@ export default function StoriesViewerModal({
     return () => {
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
     };
-  }, [companyStory, isPaused, slideDuration, goToNextSlide]);
+  }, [ad, isPaused, slides.length, goToNextSlide]);
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose?.();
@@ -71,27 +87,29 @@ export default function StoriesViewerModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose, goToNextSlide, goToPrevSlide]);
 
-  if (!companyStory || !activeSlide) return null;
+  if (!ad || !activeSlide) return null;
 
-  const handleWhatsAppClick = () => {
-    if (!companyStory.whatsapp) return;
+  const guard = (action, run) => {
+    const blocked = blockIfOwnAd(ad, action);
+    if (blocked) {
+      setBlockNotice(blocked.message);
+      return;
+    }
+    setBlockNotice(null);
+    run();
+  };
+
+  const handleWhatsAppClick = () => guard('whatsapp', () => {
     const msg = encodeURIComponent(
-      `Hola ${companyStory.companyName}, vi su anuncio en el Mural de Anuncios de RepuesTop sobre "${activeSlide.title}". ¿Podrían darme más información?`
+      `Hola ${ad.company}, vi su anuncio "${ad.title}" en el Mural de Anuncios de RepuesTop. ¿Podrían darme más información?`
     );
-    window.open(`https://wa.me/${companyStory.whatsapp}?text=${msg}`, '_blank', 'noopener,noreferrer');
-  };
+    window.open(`https://wa.me/${String(ad.whatsapp).replace(/[^0-9]/g, '')}?text=${msg}`, '_blank', 'noopener,noreferrer');
+  });
 
-  const handleBookingClick = () => {
+  const handleBookingClick = () => guard('booking', () => {
     onClose?.();
-    onOpenBooking?.({
-      company: companyStory.companyName,
-      title: activeSlide.title,
-      phone: companyStory.phone,
-      whatsapp: companyStory.whatsapp,
-      address: companyStory.address,
-      servicesOffered: [activeSlide.title, 'Mantención preventiva', 'Diagnóstico general']
-    });
-  };
+    onOpenBooking?.(ad);
+  });
 
   return createPortal(
     <div
@@ -101,7 +119,7 @@ export default function StoriesViewerModal({
       }}
       role="dialog"
       aria-modal="true"
-      aria-label={`Historias de ${companyStory.companyName}`}
+      aria-label={`Historias de ${ad.company}`}
     >
       <div
         className="stories-modal-content"
@@ -112,12 +130,12 @@ export default function StoriesViewerModal({
       >
         {/* Barras de progreso superiores */}
         <div className="story-progress-bars">
-          {stories.map((s, idx) => {
+          {slides.map((slide, idx) => {
             let width = '0%';
             if (idx < currentSlideIndex) width = '100%';
             else if (idx === currentSlideIndex) width = `${progress}%`;
             return (
-              <div key={s.id || idx} className="story-progress-segment">
+              <div key={`${slide}-${idx}`} className="story-progress-segment">
                 <div
                   className={`story-progress-fill ${idx < currentSlideIndex ? 'filled' : ''}`}
                   style={{ width }}
@@ -131,19 +149,19 @@ export default function StoriesViewerModal({
         <div className="story-top-bar">
           <div className="story-author-info">
             <img
-              src={companyStory.logo}
-              alt={companyStory.companyName}
+              src={slides[0]}
+              alt={ad.company}
               className="story-author-avatar"
             />
             <div className="story-author-details">
               <span className="story-author-name">
-                {companyStory.companyName}
-                {companyStory.verified && (
+                {ad.company}
+                {ad.tier === 'empresarial' && (
                   <CheckCircle2 size={14} className="text-blue-400" />
                 )}
               </span>
               <span className="story-author-time">
-                {companyStory.category} • Historia {currentSlideIndex + 1} de {stories.length}
+                {ad.categoryLabel || categoryObj?.label || 'Servicio automotriz'} • Historia {currentSlideIndex + 1} de {slides.length}
               </span>
             </div>
           </div>
@@ -159,11 +177,7 @@ export default function StoriesViewerModal({
         </div>
 
         {/* Imagen de fondo */}
-        <img
-          src={activeSlide.image}
-          alt={activeSlide.title}
-          className="story-image-bg"
-        />
+        <img src={activeSlide} alt={ad.title} className="story-image-bg" />
         <div className="story-image-overlay-gradient" />
 
         {/* Zonas táctiles para navegar */}
@@ -186,40 +200,36 @@ export default function StoriesViewerModal({
 
         {/* Contenido inferior de la historia */}
         <div className="story-bottom-content" onClick={(e) => e.stopPropagation()}>
-          {activeSlide.tag && (
-            <span className="story-tag-pill">{activeSlide.tag}</span>
+          <span className="story-tag-pill">{tierConfig.badge}</span>
+
+          <h3 className="story-slide-title">{ad.title}</h3>
+          <p className="story-slide-description">{ad.description}</p>
+
+          <div className="story-offer-banner">
+            <MapPin size={15} />
+            <span>{ad.commune}{ad.address ? ` • ${ad.address}` : ''}</span>
+          </div>
+
+          {isOwn(ad) && (
+            <p className="story-own-notice">Este anuncio es tuyo. Adminístralo desde Gestión de Anuncios.</p>
           )}
 
-          <h3 className="story-slide-title">{activeSlide.title}</h3>
-          <p className="story-slide-description">{activeSlide.description}</p>
-
-          {activeSlide.offer && (
-            <div className="story-offer-banner">
-              <Tag size={15} />
-              <span>{activeSlide.offer}</span>
-            </div>
-          )}
+          {blockNotice && <p className="story-own-notice">{blockNotice}</p>}
 
           <div className="story-actions-row">
-            {companyStory.whatsapp && (
-              <button
-                type="button"
-                className="story-btn-wsp"
-                onClick={handleWhatsAppClick}
-              >
+            {canWhatsapp && (
+              <button type="button" className="story-btn-wsp" onClick={handleWhatsAppClick}>
                 <MessageCircle size={17} />
                 WhatsApp
               </button>
             )}
 
-            <button
-              type="button"
-              className="story-btn-book"
-              onClick={handleBookingClick}
-            >
-              <Calendar size={17} />
-              Agendar Cita
-            </button>
+            {canBook && (
+              <button type="button" className="story-btn-book" onClick={handleBookingClick}>
+                <Calendar size={17} />
+                Agendar cita
+              </button>
+            )}
           </div>
         </div>
       </div>

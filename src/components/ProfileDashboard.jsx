@@ -1652,7 +1652,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
               {activeTab === 'anuncios' && (
                 <AdsManagementSection
-                  user={user}
                   onNavigateToMural={() => window.location.assign('/mural-anuncios')}
                 />
               )}

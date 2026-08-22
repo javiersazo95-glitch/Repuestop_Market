@@ -9,7 +9,8 @@
  */
 
 import { HEADER_CATEGORIES, SIDEBAR_CATEGORIES } from '../data/categories';
-import { resolveMediaUrl } from './api';
+import { AD_TIERS } from '../data/automotiveAdsData';
+import { resolveMediaUrl, toMediaPath } from './api';
 
 const normalizeNameKey = (value) => String(value || '').normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -374,5 +375,132 @@ export function adaptPage(response, itemAdapter) {
     total: toNumber(response.totalElements) ?? content.length,
     totalPages: toNumber(response.totalPages) ?? 1,
     page: toNumber(response.currentPage ?? response.number) ?? 0,
+  };
+}
+
+/**
+ * `AnuncioResponseDTO` -> anuncio del Mural.
+ *
+ * El backend fue modelado desde el cliente, asi que casi todos los campos ya
+ * vienen con el nombre que usa la UI. Lo que si hay que normalizar:
+ *
+ * - `rating` y `reviewsCount` llegan HARDCODEADOS en 5.0 y 0 desde
+ *   `AnuncioService.toResponse()`; no hay reseñas de anuncios en el backend.
+ *   Se descartan para no mostrar un 5.0 falso en todas las tarjetas.
+ * - las imagenes pueden venir como ruta relativa del servidor de archivos.
+ * - `agendaConfig` viene como `Map<String,Object>`; puede llegar vacio ({}).
+ */
+export function adaptAd(dto) {
+  if (!dto) return null;
+  const images = (Array.isArray(dto.images) ? dto.images : []).map(resolveMediaUrl).filter(Boolean);
+  const storyImages = (Array.isArray(dto.storyImages) ? dto.storyImages : []).map(resolveMediaUrl).filter(Boolean);
+  const agendaConfig = dto.agendaConfig && Object.keys(dto.agendaConfig).length > 0 ? dto.agendaConfig : null;
+
+  return {
+    id: String(dto.id),
+    tier: dto.tier || 'basica',
+    title: dto.title || '',
+    company: dto.company || '',
+    category: dto.category || '',
+    categoryLabel: dto.categoryLabel || '',
+    description: dto.description || '',
+    priceType: dto.priceType || 'quote',
+    priceText: dto.priceText || '',
+    priceValue: toNumber(dto.priceValue) ?? null,
+    region: dto.region || '',
+    commune: dto.commune || '',
+    address: dto.address || '',
+    phone: dto.phone || '',
+    whatsapp: dto.whatsapp || null,
+    openingHours: dto.openingHours || '',
+    images,
+    storyImages,
+    features: Array.isArray(dto.features) ? dto.features : [],
+    servicesOffered: Array.isArray(dto.servicesOffered) ? dto.servicesOffered : [],
+    is24Hours: dto.is24Hours === true,
+    hasOnlineBooking: dto.hasOnlineBooking === true,
+    agendaConfig,
+    agendaConfigId: dto.agendaConfigId || null,
+    agendaConfigName: dto.agendaConfigName || null,
+    agendaHours: dto.agendaHours || '',
+    ownerUserId: dto.ownerUserId ? String(dto.ownerUserId) : null,
+    ownerSellerId: dto.ownerSellerId ? String(dto.ownerSellerId) : null,
+    ownerSellerExternalId: dto.ownerSellerExternalId ? String(dto.ownerSellerExternalId) : null,
+    ownerEmail: dto.ownerEmail || null,
+    publishedAt: dto.publishedAt || null,
+    expiresAt: dto.expiresAt || null,
+    updatedAt: dto.updatedAt || null,
+    moderationStatus: dto.moderationStatus || 'PENDIENTE',
+    rejectionReason: dto.rejectionReason || null,
+    reviewedAt: dto.reviewedAt || null,
+    activo: dto.activo === true,
+  };
+}
+
+export function adaptAds(list) {
+  return (Array.isArray(list) ? list : []).map(adaptAd).filter(Boolean);
+}
+
+/**
+ * Anuncio de la UI -> `AnuncioRequestDTO`.
+ *
+ * El POST y el PUT comparten DTO, y `AnuncioService.aplicar()` escribe TODOS los
+ * campos: al editar hay que mandar el anuncio completo (fotos, historias y agenda
+ * incluidas) o se borran los que no viajen.
+ *
+ * Recorta las listas al tope del plan porque `AnuncioService.validar()` responde
+ * 400 si se pasan, y los topes cambian al mejorar o al cambiar de plan en el
+ * formulario. Es la misma tabla que `AD_TIERS`, replicada alli a proposito.
+ */
+export function toAdRequestPayload(ad) {
+  const tier = AD_TIERS[ad?.tier] ? ad.tier : 'basica';
+  const limits = AD_TIERS[tier];
+  const text = (value) => String(value ?? '').trim();
+  const list = (value, max) => (Array.isArray(value) ? value : []).filter(Boolean).slice(0, max);
+  const media = (value, max) => list(value, max).map(toMediaPath).filter(Boolean);
+
+  // El backend rechaza `hasOnlineBooking` sin una agenda configurada, y la agenda
+  // solo existe en el plan Empresarial. Sin configuracion valida, la reserva
+  // queda apagada aunque el plan la permita (la configura la fase C).
+  const agendaConfig = ad?.agendaConfig && Object.keys(ad.agendaConfig).length > 0 ? ad.agendaConfig : null;
+  const hasOnlineBooking = Boolean(ad?.hasOnlineBooking) && limits.hasBooking && Boolean(agendaConfig);
+  const priceType = ad?.priceType === 'fixed' ? 'fixed' : 'quote';
+  const priceValue = Number(ad?.priceValue);
+
+  return {
+    tier,
+    title: text(ad?.title),
+    company: text(ad?.company),
+    category: text(ad?.category),
+    categoryLabel: text(ad?.categoryLabel),
+    description: text(ad?.description),
+    priceType,
+    priceText: text(ad?.priceText),
+    // `@PositiveOrZero Long`: un texto o un negativo tiran 400. En "a cotizar" no
+    // hay monto que mandar.
+    priceValue: priceType === 'fixed' && Number.isFinite(priceValue) && priceValue >= 0
+      ? Math.round(priceValue)
+      : null,
+    region: text(ad?.region),
+    commune: text(ad?.commune),
+    address: text(ad?.address),
+    phone: text(ad?.phone),
+    // WhatsApp es una funcion del plan: mandarlo en uno que no lo incluye deja el
+    // dato guardado y la tarjeta igual no muestra el boton.
+    whatsapp: limits.hasWhatsapp ? (text(ad?.whatsapp).replace(/\D/g, '') || null) : null,
+    openingHours: text(ad?.openingHours),
+    images: media(ad?.images, limits.maxImages),
+    storyImages: media(ad?.storyImages, limits.maxStories),
+    features: list(ad?.features, limits.maxTags),
+    servicesOffered: list(ad?.servicesOffered, limits.maxTags),
+    is24Hours: ad?.is24Hours === true,
+    hasOnlineBooking,
+    agendaConfig: hasOnlineBooking ? agendaConfig : null,
+    agendaConfigId: ad?.agendaConfigId || null,
+    agendaConfigName: ad?.agendaConfigName || null,
+    agendaHours: text(ad?.agendaHours),
+    // Solo sirve al editar: al crear, el backend fija 30 dias y descarta cualquier
+    // fecha posterior a ese tope.
+    expiresAt: ad?.expiresAt || null,
   };
 }

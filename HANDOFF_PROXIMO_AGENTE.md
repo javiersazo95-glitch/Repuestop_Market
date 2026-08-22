@@ -114,7 +114,8 @@ vendedor para el carrito multi-tienda (§8), y la aceptación de términos en el
 
 ## 1.d Sesión 2026-08-20 — aceptación de términos (§9) y toques al monorepo
 
-Esta sesión salió del repo web y tocó el monorepo (`C:\ProyectoRepuestopepuestop`,
+Esta sesión salió del repo web y tocó el monorepo (`C:\ProyectoRepuestop
+epuestop`,
 rama `dev`). Detalle completo en `PLAN_CARRITO_CHECKOUT.md` §9 y §10.
 
 1. **Historial de aceptaciones (LISTO)**. Tabla `RT_aceptacion_terminos` append-only con
@@ -321,14 +322,10 @@ POST   /api/v1/fichas/compras
 
 ### 4.4 Las cuatro fases propuestas
 
-**A — El mural lee del backend.** `GET /anuncios` y `/anuncios/{id}`, adaptador en
-`adapters.js`. Riesgo bajo, no toca escritura, valida el contrato completo. Decidir qué
-hacer con los 24 anuncios de demo de `INITIAL_CLASSIFIED_ADS`: desaparecen, salvo que se
-siembren en la base.
+**A — El mural lee del backend. CERRADA (sesión 2026-08-21, ver 4.6).**
 
-**B — Publicar y gestionar.** `POST`/`PUT`/`DELETE`, `GET /anuncios/mios` y la subida
-multipart con `AbortSignal.timeout(30000)` como manda CLAUDE.md. Acá entra toda la UI de
-moderación.
+**B — Publicar y gestionar. CERRADA (sesión 2026-08-22, ver 4.8).** `POST`/`PUT`/`DELETE`,
+`GET /anuncios/mios`, la subida multipart y la UI de moderación.
 
 **C — Agendamiento.** Los cinco endpoints de `/anuncios/agendamientos`. Depende de B.
 
@@ -347,3 +344,241 @@ sesión.
 Mientras el mural siga en `localStorage`, queda fuera del `sitemap.xml` y del texto de
 `/nosotros` a propósito. Cuando la integración cierre, entran: son dos cambios chicos, ya
 está anotado dónde.
+
+
+### 4.6 Fase A cerrada — sesión 2026-08-21
+
+El mural (`AdsWallView`) lee `GET /anuncios` vía `fetchPublicAds()` en `adsStorage.js`,
+con `adaptAd()`/`adaptAds()` en `adapters.js`. Verificado contra el backend local con
+cuatro anuncios de prueba (uno por plan), aprobados y visibles.
+
+**Correcciones al diagnóstico de 4.2, para no volver a creerlo:**
+
+- `rating` y `reviewsCount` **sí existen** en `AnuncioResponseDTO`, pero
+  `AnuncioService.toResponse()` los devuelve **hardcodeados en `5.0` y `0`**. El adaptador
+  los descarta: mostrarlos era un 5.0 falso idéntico en todas las tarjetas.
+- El `id` **no llega como `Long`**: sale como `String` (`String.valueOf(a.getId())`).
+- Editar un anuncio no solo lo devuelve a `PENDIENTE`: `actualizar()` también hace
+  `setActivo(false)`. Y como el móvil sube de plan vía `PUT`, **gastar Fichas para promover
+  un anuncio lo saca del mural** hasta que moderación lo re-apruebe. Hay que advertirlo en
+  la UI antes de cobrar (fase B).
+- El móvil ya consumía el backend antes de esta sesión, así que las convenciones del
+  adaptador estaban fijadas: esta fase las copió, no las inventó.
+
+**Homologaciones con el móvil que había que hacer sí o sí:**
+
+- `AD_TIERS` tenía `destacada.hasWhatsapp: false` en la web y `true` en el móvil, y le
+  faltaba `maxTags`. Manda el móvil: `maxTags` (2/4/6/8) es exactamente lo que valida
+  `AnuncioService.validar()`, así que con los valores viejos el POST de la fase B habría
+  dado 400. WhatsApp y agenda ahora se gatean por `AD_TIERS[tier]` + `hasOnlineBooking`,
+  nunca por una lista de tiers escrita a mano.
+- `ownerSellerId` llega como `"ML-123"` y la sesión guarda `sellerId: 123`. Sin normalizar
+  el prefijo (`idKey()` en `automotiveAdsData.js`), `isOwnAd` nunca daba true y el dueño
+  podía llamarse a sí mismo.
+- Se portaron desde `mobile/constants/automotive-ads-data.ts`: `isOwnAd`, `hasAdOwner`,
+  `filterAdsOwnedBy`, `OWN_AD_BLOCK_MESSAGES`, `getAdExpiryInfo`, `AD_TIER_ORDER`,
+  `getUpgradableTiers`, `getTierActivatableFeatures`, `AD_FEATURE_TAGS`. Más un
+  `isAdVisibleOnWall()` propio de la web y el hook `useAdOwnership`.
+
+**Datos falsos retirados:** los 14 anuncios demo (el handoff decía 24), `COMPANY_STORIES`
+y el `count` fijo de `SERVICE_CATEGORIES` (24/8/5…), que ahora se calcula sobre los
+anuncios cargados. El carrusel de historias se arma con los anuncios que tienen
+`storyImages` y no se renderiza si no hay ninguno.
+
+**Dos llaves de storage, a propósito:** el mural cachea en `repuestop_ads_wall_cache` y
+emite `repuestop_ads_wall_updated`; el panel de gestión sigue local en
+`repuestop_classified_ads` con `repuestop_ads_updated`. Si compartieran llave, refrescar el
+mural borraría los borradores locales del perfil. Al cerrar la fase B esto se unifica.
+
+**Trampa de entorno que costó una hora:** publicar daba 503 en local. `RT_anuncio` tenía a
+la vez las columnas en inglés (`category`, `description`, `commune`) y en español
+(`categoria`, `descripcion`, `comuna`), todas `NOT NULL`: el entity solo escribe las
+españolas, así que todo INSERT violaba el `NOT NULL` de las otras y
+`GlobalExceptionHandler` lo traducía a un 503 genérico. Es exactamente lo que arregla
+`V2026082004__remove_legacy_english_anuncio_columns.sql`, pero la base local nunca corrió
+esa migración: la última entrada de `flyway_schema_history` era `2026081301` y `RT_anuncio`
+la había creado Hibernate con `ddl-auto=update`. Se aplicó el DROP a mano en local. En dev
+y prod Flyway sí corre, así que allá no pasa.
+
+**HALLAZGO DE SEGURIDAD, sin resolver:** `PATCH /anuncios/{id}/approve` y `/reject` no
+tienen `@PreAuthorize` ni chequeo de rol, y `SecurityConfig` solo los cubre con el
+catch-all `authenticated()`. En esta sesión un usuario con rol `CLIENTE` **aprobó sus
+propios anuncios** y quedaron publicados. La moderación entera es evitable con una sesión
+cualquiera. Hay que cerrarlo en el backend antes de la fase B, que es la que expone
+publicar desde la web.
+
+
+### 4.7 Datos de prueba y arranque de la fase B
+
+**Los cuatro anuncios de prueba quedan en la base LOCAL a proposito**, uno por plan, para
+no tener que recrearlos al empezar la fase B. Todos son del usuario 5
+(`smkabdiel01@gmail.com`) y estan `APROBADO` + `activo`:
+
+| id | plan | para probar |
+|---|---|---|
+| 5 | basica | sin WhatsApp, sin fotos, sin agenda |
+| 6 | destacada | WhatsApp habilitado por plan, `is24Hours`, sin fotos |
+| 7 | premium | 3 fotos (tope 4), 2 `storyImages` -> carrusel de historias |
+| 8 | empresarial | 2 fotos, 1 historia, `hasOnlineBooking` con `agendaConfig` completo |
+
+Desde la sesion del 2026-08-22 hay un quinto anuncio APROBADO, el **id 9** (plan destacada,
+con una foto real en R2), creado para verificar la escritura de la fase B. Sirve igual que
+los otros como dato de prueba.
+
+Como los cuatro son del usuario 5, con esa sesion abierta el mural los marca "Tu anuncio" y
+bloquea llamar / escribir / agendar. Para ver la tarjeta como visitante hay que cerrar
+sesion o usar otra cuenta.
+
+**Aprobar anuncios nuevos en local ya NO se puede con una sesion normal.** Es la
+consecuencia directa del fix SEC-BACKEND-014: `PATCH /anuncios/{id}/approve` ahora exige
+`ROLE_SUPER_ADMIN` o `PERM_MEDIACION_CONFIANZA_OPERADOR`. Con una cuenta comun el backend
+responde 403. Para dejar visible un anuncio de prueba en local, o se usa una cuenta de
+backoffice, o se marca a mano:
+
+```sql
+UPDATE RT_anuncio SET estado_moderacion = 'APROBADO', activo = true, revisado_en = now()
+WHERE id = <id>;
+```
+
+**Antes de retomar, dos cosas del entorno local:**
+
+1. Reiniciar el backend: la instancia que quedo corriendo el 2026-08-21 todavia tiene el
+   codigo sin el fix de seguridad.
+2. Si se levanta contra una base nueva, revisar que `RT_anuncio` no traiga otra vez las
+   columnas en ingles (ver 4.6). Sintoma: publicar da 503.
+
+**El mural en produccion no funciona todavia, y es esperado.**
+`https://api.repuestop.cl/api/v1/anuncios` responde 404 y `api-dev` responde 200: el
+backend de anuncios sigue solo en `dev`. Con la fase A desplegada, repuestop.cl muestra el
+estado de error del mural en vez de los 14 demos que habia antes. Se arregla con el merge
+de `dev` -> `main` del backend, no tocando la web. Mientras tanto el sitio sigue bloqueado
+a indexacion y sin lanzar, asi que el impacto es bajo.
+
+**Lo primero de la fase B, en orden:**
+
+1. `POST`/`PUT`/`DELETE /anuncios` y `GET /anuncios/mios` en `api.js`, y reemplazar las
+   funciones locales de `adsStorage.js` (`createAdInStorage`, `updateAdInStorage`,
+   `deleteAdInStorage`) por las que hablan con el backend, copiando el flujo de
+   `mobile/services/ads-storage.ts`.
+2. Subida multipart a `POST /anuncios/imagenes` con `signal: AbortSignal.timeout(30000)`,
+   como manda CLAUDE.md.
+3. Toda la UI de moderacion en `AdsManagementSection`: estados PENDIENTE / APROBADO /
+   RECHAZADO con `rejectionReason`, vencimiento con `getAdExpiryInfo()` (ya portado), y
+   **el aviso de que editar devuelve el anuncio a revision y lo saca del mural** — incluido
+   antes de cobrar Fichas por subir de plan, porque el upgrade se hace via `PUT`.
+4. Recien cuando la escritura pase por el backend se pueden unificar las dos llaves de
+   localStorage (ver 4.6); antes no.
+
+
+### 4.8 Fase B cerrada — sesión 2026-08-22
+
+Publicar, editar, dar de baja y subir de plan pasan por el backend, y el panel de
+gestión muestra el estado de moderación de cada anuncio.
+
+**Lo que se agregó, por capa:**
+
+- `api.js`: `getMyAdsApi`, `createAdApi`, `updateAdApi`, `deleteAdApi`,
+  `uploadAdImagesApi` (multipart con `AbortSignal.timeout(30000)`) y `toMediaPath()`,
+  el inverso de `resolveMediaUrl`.
+- `adapters.js`: `toAdRequestPayload()`, el anuncio de la UI -> `AnuncioRequestDTO`.
+- `adsStorage.js`: `fetchMyAds`, `createAd`, `updateAd`, `deleteAd`, `uploadAdImages`,
+  `adErrorMessage`, `spendTokensForNewAd`, y `spendTokensForAdUpgrade` ahora asíncrono.
+  Se fueron `getStoredAds` / `saveStoredAds` / `createAdInStorage` / `updateAdInStorage` /
+  `deleteAdInStorage`.
+- `AdForm.jsx` (nuevo): formulario único de publicar y editar.
+- `AdsManagementSection`, `CreateAdModal`, `EditAdModal`, `UpgradeAdRankModal` reescritos.
+- `ads-wall.css`: sección "FASE B" al final del archivo.
+
+**Las cuatro trampas del backend que definieron el diseño:**
+
+1. **El PUT reescribe todos los campos** (`AnuncioService.aplicar()`). Dos formularios
+   distintos para crear y editar significaban que editar borraba las historias y la
+   agenda, que el de edición no mandaba. Por eso hay un `AdForm` único que emite el
+   anuncio COMPLETO mezclado sobre el original, no solo los campos tocados.
+2. **Todo PUT vuelve a `PENDIENTE` + `activo=false`.** Editar un teléfono saca el anuncio
+   del mural, y como el upgrade de plan es un PUT, **pagar Fichas también lo saca**. Se
+   advierte en `EditAdModal` y en `UpgradeAdRankModal` antes de cobrar, y el panel pinta
+   ese estado como "En revisión" (el `moderationStatus` sigue diciendo APROBADO: un sello
+   verde con el texto "en revisión" es justo la contradicción que genera el ticket).
+3. **`DELETE` es baja lógica y no marca nada.** Solo apaga `activo` y conserva el
+   `moderationStatus`, así que el anuncio vuelve en `GET /anuncios/mios` idéntico a uno
+   pendiente (los pendientes también vienen con `activo=false`). Sin marca local, borrar
+   un anuncio pendiente lo hacía reaparecer al refrescar. Se resolvió con la llave
+   `repuestop_ads_deleted`. **Es por navegador: la solución de fondo es del backend**
+   (un estado propio, o excluirlos de `listarMios`). Anotado como pendiente.
+4. **`hasOnlineBooking` sin `agendaConfig` da 400** y la agenda solo existe en el plan
+   Empresarial. El formulario nunca lo enciende solo: el plan da el derecho y la agenda
+   se configura en la fase C. `toAdRequestPayload()` lo apaga si no hay configuración.
+
+**Otras decisiones:**
+
+- **Las dos llaves de `localStorage` se unificaron**, como decía 4.6 que había que hacer
+  al cerrar esta fase. `repuestop_classified_ads` quedó sin uso: no se borra desde el
+  código porque son datos del usuario, pero nada la lee. Quien tuviera borradores locales
+  del panel no los ve más — nunca existieron fuera de su navegador.
+- **Publicar ahora cuesta Fichas**, con el mismo tarifario de `UPGRADE_TOKEN_COSTS`,
+  homologado con `spendTokensForNewAd` del móvil. Antes se podía elegir Empresarial gratis
+  al publicar y solo se cobraba al mejorar el rango, que es el agujero obvio.
+- **Se retiraron los últimos datos falsos del módulo**: los seis `SAMPLE_PHOTO_PRESETS` de
+  Unsplash de `CreateAdModal` (ahora se suben fotos de verdad a R2) y la foto de archivo
+  que el panel usaba como miniatura de un anuncio sin imágenes.
+- **Dos campos dejaron de deducirse de texto libre**: `priceType` era `priceText`
+  conteniendo "cotiz" e `is24Hours` era `openingHours` conteniendo "24". Ahora son un
+  radio y un checkbox, que es lo que el backend guarda y el mural filtra.
+- El selector de planes del upgrade se arma con `getUpgradableTiers()`: antes eran tres
+  tarjetas fijas que dejaban "mejorar" a un plan igual o inferior al que ya tenía.
+
+**Verificación end to end contra el backend local**, con la sesión del usuario 5. Se creó
+el anuncio **id 9** ("Mecánica express a domicilio (prueba fase B)") y con él se ejercieron
+las cuatro escrituras:
+
+| Paso | Resultado |
+|---|---|
+| Subida multipart | La foto quedó en `Publicidad/Usuario_5_Comprador_Elias/` y se sirve por el proxy (`/api/v1/uploads/r2/...`); la miniatura carga en el formulario |
+| `POST` | id 9 nace `PENDIENTE` + `activo=false`, la imagen se guarda como ruta RELATIVA (`toMediaPath` funcionando), `whatsapp` null en plan básica, `priceValue` null en "a cotizar", `expiresAt` a 30 días |
+| `PUT` (editar) | Cambió el teléfono y **conservó la foto y las etiquetas**, que es lo que el PUT completo tenía que evitar perder |
+| `PUT` (subir de plan) | básica -> destacada, saldo 300 -> 250, transacción registrada, anuncio sigue `PENDIENTE` |
+| `DELETE` | Sale del panel; el backend lo deja `PENDIENTE` + `activo=false` (o sea, idéntico a uno en revisión, tal como se esperaba) y la llave `repuestop_ads_deleted` impide que reaparezca al pulsar Actualizar |
+
+También verificado en la UI: el tope de etiquetas del plan deshabilita el resto de los chips
+al llegar a 2/2 (que es lo que evita el 400), "Mejorar plan" sale deshabilitado solo en el
+anuncio empresarial, el plan básica no muestra la sección de Historias, y el upgrade ofrece
+únicamente los planes por encima del actual.
+
+**Un bug encontrado y corregido durante esta verificación**: el panel cerraba el modal al
+publicar, así que la pantalla de "tu anuncio quedó en revisión" —justo donde se explica que
+todavía no está en el mural— nunca alcanzaba a verse. Ahora el modal lo cierra el usuario.
+
+**Estado en que quedó la base local**: el anuncio id 9 quedó dado de baja (`PENDIENTE`,
+`activo=false`) y oculto por la llave local. Los cuatro anuncios de prueba (ids 5 a 8) no se
+tocaron. El saldo de Fichas de ese navegador quedó en 250.
+
+**Lo único no ejercido** es el cobro de Fichas al publicar (`spendTokensForNewAd`), porque la
+prueba se hizo en plan básica, que cuesta 0. El débito en sí es el mismo código que ya se
+verificó en el upgrade.
+
+**Aprobación verificada.** Se aprobó el id 9 desde backoffice y el panel lo muestra
+"Publicado" con sello verde, su foto y "Vence en 30 días"; el mural público pasó a cinco
+anuncios. Con eso queda ejercido el camino completo de moderación salvo el rechazo, que es
+lo único que falta ver con datos reales (el motivo de rechazo y su banda roja).
+
+**Un hueco del parche local que apareció justo ahí, y ya está tapado.** El id 9 se había
+dado de baja antes de aprobarlo, así que quedó en las dos listas a la vez: `activo=true` en
+el backend y marcado como borrado en `repuestop_ads_deleted`. Resultado: visible en el mural
+público e invisible para su propio dueño, que es peor que no haber ocultado nada. `approve`
+hace `setActivo(true)` sin mirar si el anuncio venía dado de baja, así que la marca local
+ahora solo vale mientras el anuncio siga apagado: si vuelve del backend con `activo=true`,
+`fetchMyAds()` la descarta. Es un motivo más para el pendiente de darle a la baja lógica un
+estado propio en el backend.
+
+**Pendientes de esta fase:**
+
+- Falta ver un rechazo con datos reales (el motivo y su banda roja en la tarjeta). Exige
+  cuenta de backoffice o el UPDATE a mano de la seccion 4.7; con una cuenta normal
+  `reject` responde 403 (SEC-BACKEND-014).
+- Backend: darle a la baja lógica un estado propio para poder retirar el parche de
+  `repuestop_ads_deleted`.
+- Sigue en pie que el backend de anuncios solo existe en `dev` (sección 4.5): esta fase no
+  cambia eso.
+- Las Fichas siguen sin backend (fase D bloqueada): el saldo, el historial y el cobro son
+  locales del navegador.

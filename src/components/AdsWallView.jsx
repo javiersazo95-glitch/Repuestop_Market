@@ -1,11 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
-  Megaphone, Plus, Sparkles, SlidersHorizontal, Search, RotateCcw,
-  CheckCircle2, Star, Calendar, MessageCircle, Info, ChevronRight, ChevronLeft, Layers,
-  LayoutDashboard, User
+  Megaphone, Plus, Search, RotateCcw, ChevronRight, ChevronLeft,
+  Loader2, WifiOff, AlertTriangle, RefreshCw
 } from 'lucide-react';
-import { SERVICE_CATEGORIES } from '../data/automotiveAdsData';
-import { getStoredAds, createAdInStorage } from '../services/adsStorage';
+import { AD_TIERS } from '../data/automotiveAdsData';
+import { fetchPublicAds, getCachedWallAds, ADS_WALL_UPDATED_EVENT } from '../services/adsStorage';
 import { useAuth } from '../context/AuthContext';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
@@ -14,24 +13,48 @@ import StoriesViewerModal from './ads/StoriesViewerModal';
 import AdCard from './ads/AdCard';
 import AdsFilterSidebar from './ads/AdsFilterSidebar';
 import AdAppointmentModal from './ads/AdAppointmentModal';
-import CreateAdModal from './ads/CreateAdModal';
 import './ads/ads-wall.css';
 
 export default function AdsWallView() {
-  const { isLoggedIn, user } = useAuth();
+  const { isLoggedIn } = useAuth();
   const { openAuthModal } = useMarketplace();
   const nav = useAppNavigation();
 
-  // State de los anuncios (sincronizado con localStorage)
-  const [adsList, setAdsList] = useState(() => getStoredAds());
+  // El mural vive en el backend; localStorage solo guarda la ultima copia para
+  // que la grilla no parpadee en vacio mientras responde la red.
+  const [adsList, setAdsList] = useState(() => getCachedWallAds());
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [isStale, setIsStale] = useState(false);
 
-  // Escuchar actualizaciones de anuncios
+  const loadAds = useCallback(async ({ signal } = {}) => {
+    setIsLoading(true);
+    try {
+      const { ads, fromCache, error } = await fetchPublicAds({ signal });
+      setAdsList(ads);
+      setIsStale(fromCache);
+      setLoadError(fromCache ? error : null);
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+      setLoadError(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadAds({ signal: controller.signal });
+    return () => controller.abort();
+  }, [loadAds]);
+
+  // Otra vista pudo refrescar la cache del mural (por ejemplo tras publicar).
   useEffect(() => {
     const handleAdsUpdated = (e) => {
-      if (e.detail) setAdsList(e.detail);
+      if (Array.isArray(e.detail)) setAdsList(e.detail);
     };
-    window.addEventListener('repuestop_ads_updated', handleAdsUpdated);
-    return () => window.removeEventListener('repuestop_ads_updated', handleAdsUpdated);
+    window.addEventListener(ADS_WALL_UPDATED_EVENT, handleAdsUpdated);
+    return () => window.removeEventListener(ADS_WALL_UPDATED_EVENT, handleAdsUpdated);
   }, []);
 
   // Estados de filtros
@@ -49,9 +72,8 @@ export default function AdsWallView() {
   const [pageSize, setPageSize] = useState(6);
 
   // Estados de Modales
-  const [selectedCompanyStory, setSelectedCompanyStory] = useState(null);
+  const [selectedAdForStories, setSelectedAdForStories] = useState(null);
   const [selectedAdForBooking, setSelectedAdForBooking] = useState(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Reset de página al cambiar filtros
   useEffect(() => {
@@ -68,7 +90,6 @@ export default function AdsWallView() {
     pageSize
   ]);
 
-  // Manejo de clic en "Publicar Anuncio"
   const handlePublishAdClick = () => {
     if (!isLoggedIn) {
       openAuthModal();
@@ -77,7 +98,6 @@ export default function AdsWallView() {
     }
   };
 
-  // Reset de Filtros
   const handleResetFilters = () => {
     setSearchQuery('');
     setSelectedCategory('TODAS');
@@ -94,7 +114,6 @@ export default function AdsWallView() {
   const filteredAds = useMemo(() => {
     let result = [...adsList];
 
-    // Búsqueda por texto
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter((ad) =>
@@ -106,37 +125,34 @@ export default function AdsWallView() {
       );
     }
 
-    // Filtro de Categoría
     if (selectedCategory !== 'TODAS') {
       result = result.filter((ad) => ad.category === selectedCategory);
     }
 
-    // Filtro de Tier / Plan
     if (selectedTier !== 'TODOS') {
       result = result.filter((ad) => ad.tier === selectedTier);
     }
 
-    // Filtro de Comuna
     if (selectedCommune !== 'Todas las comunas') {
       result = result.filter((ad) => ad.commune === selectedCommune);
     }
 
-    // Filtro: Solo con Agendamiento
+    // Agendamiento real: el plan da el derecho, `hasOnlineBooking` confirma que
+    // el taller publicó horarios. Filtrar solo por plan mostraba talleres que no
+    // aceptan reservas.
     if (onlyBooking) {
-      result = result.filter((ad) => ad.hasOnlineBooking || ad.tier === 'empresarial');
+      result = result.filter((ad) => AD_TIERS[ad.tier]?.hasBooking && ad.hasOnlineBooking);
     }
 
-    // Filtro: Solo con WhatsApp
+    // WhatsApp lo habilita el plan (Destacada en adelante), no una lista aparte.
     if (onlyWhatsapp) {
-      result = result.filter((ad) => (ad.tier === 'premium' || ad.tier === 'empresarial') && Boolean(ad.whatsapp));
+      result = result.filter((ad) => AD_TIERS[ad.tier]?.hasWhatsapp && Boolean(ad.whatsapp));
     }
 
-    // Filtro: 24 Horas
     if (only24Hours) {
       result = result.filter((ad) => ad.is24Hours);
     }
 
-    // Ordenación
     if (sortBy === 'precio-menor') {
       result.sort((a, b) => (a.priceValue || 0) - (b.priceValue || 0));
     } else if (sortBy === 'precio-mayor') {
@@ -144,7 +160,6 @@ export default function AdsWallView() {
     } else if (sortBy === 'recientes') {
       result.sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
     } else {
-      // Relevancia: Empresarial primero, luego Premium, luego Destacada, luego Básica
       const tierWeight = { empresarial: 4, premium: 3, destacada: 2, basica: 1 };
       result.sort((a, b) => (tierWeight[b.tier] || 0) - (tierWeight[a.tier] || 0));
     }
@@ -162,15 +177,25 @@ export default function AdsWallView() {
     sortBy
   ]);
 
-  // Paginación calculada
   const totalResults = filteredAds.length;
   const totalPages = Math.max(1, Math.ceil(totalResults / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalResults);
 
-  const paginatedAds = useMemo(() => {
-    return filteredAds.slice(startIndex, startIndex + pageSize);
-  }, [filteredAds, startIndex, pageSize]);
+  const paginatedAds = useMemo(
+    () => filteredAds.slice(startIndex, startIndex + pageSize),
+    [filteredAds, startIndex, pageSize]
+  );
+
+  // Los contadores del sidebar salen de los anuncios cargados: SERVICE_CATEGORIES
+  // trae un `count` de ejemplo que quedo obsoleto al leer el mural del backend.
+  const categoryCounts = useMemo(() => {
+    const counts = { TODAS: adsList.length };
+    for (const ad of adsList) {
+      counts[ad.category] = (counts[ad.category] || 0) + 1;
+    }
+    return counts;
+  }, [adsList]);
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
@@ -178,9 +203,8 @@ export default function AdsWallView() {
     document.getElementById('ads-results-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const handleAdCreated = (newAd) => {
-    setAdsList([newAd, ...adsList]);
-  };
+  const hasNoAdsAtAll = !isLoading && adsList.length === 0;
+  const showSkeleton = isLoading && adsList.length === 0;
 
   return (
     <main className="ads-wall-page">
@@ -222,15 +246,15 @@ export default function AdsWallView() {
         </div>
       </section>
 
-      {/* 2. Carrusel Superior de Historias / Logos de Empresas (Estilo Instagram) */}
+      {/* 2. Carrusel de historias, armado con los anuncios que tienen fotos de historia */}
       <AdsStoriesCarousel
-        onSelectCompanyStory={(story) => setSelectedCompanyStory(story)}
+        ads={adsList}
+        onSelectAd={(ad) => setSelectedAdForStories(ad)}
       />
 
       {/* 3. Contenedor Principal: Filtros a la Izquierda + Grid de Anuncios */}
       <div className="container ads-main-layout">
-        
-        {/* Barra Lateral de Filtros */}
+
         <AdsFilterSidebar
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -248,14 +272,30 @@ export default function AdsWallView() {
           setOnly24Hours={setOnly24Hours}
           onResetFilters={handleResetFilters}
           totalResults={filteredAds.length}
+          categoryCounts={categoryCounts}
         />
 
-        {/* Sección Central de Anuncios */}
         <section aria-label="Listado de Anuncios Clasificados">
-          {/* Barra de control de resultados y orden */}
+          {/* Aviso de datos en cache: lo mostrado puede estar desactualizado */}
+          {isStale && (
+            <div className="ads-state-banner ads-state-warning" role="status">
+              <WifiOff size={16} />
+              <span>
+                No pudimos contactar al servidor. Estás viendo la última copia guardada del mural.
+              </span>
+              <button type="button" className="ads-state-retry" onClick={() => loadAds()}>
+                <RefreshCw size={14} /> Reintentar
+              </button>
+            </div>
+          )}
+
           <div className="ads-results-bar" id="ads-results-top">
             <div className="ads-results-count">
-              Mostrando <strong>{totalResults === 0 ? 0 : `${startIndex + 1}-${endIndex}`}</strong> de <strong>{totalResults}</strong> anuncios disponibles
+              {isLoading ? (
+                <span className="ads-results-loading"><Loader2 size={14} className="spin-icon" /> Cargando anuncios…</span>
+              ) : (
+                <>Mostrando <strong>{totalResults === 0 ? 0 : `${startIndex + 1}-${endIndex}`}</strong> de <strong>{totalResults}</strong> anuncios disponibles</>
+              )}
             </div>
 
             <div className="ads-sort-group">
@@ -274,8 +314,32 @@ export default function AdsWallView() {
             </div>
           </div>
 
-          {/* Grid / Lista de Anuncios Paginados */}
-          {paginatedAds.length > 0 ? (
+          {showSkeleton ? (
+            <div className="ads-grid" aria-busy="true">
+              {[0, 1, 2].map((i) => <div key={i} className="ad-card-skeleton" />)}
+            </div>
+          ) : loadError && adsList.length === 0 ? (
+            <div className="ads-empty-panel">
+              <div className="ads-empty-icon ads-empty-icon-danger"><AlertTriangle size={30} /></div>
+              <h3>No pudimos cargar el mural</h3>
+              <p>{loadError.message || 'El servicio de anuncios no está respondiendo en este momento.'}</p>
+              <button type="button" className="btn-ad-phone" onClick={() => loadAds()}>
+                <RefreshCw size={15} /> Reintentar
+              </button>
+            </div>
+          ) : hasNoAdsAtAll ? (
+            <div className="ads-empty-panel">
+              <div className="ads-empty-icon"><Megaphone size={30} /></div>
+              <h3>Todavía no hay anuncios publicados</h3>
+              <p>
+                Los anuncios aparecen en el mural una vez que el equipo de moderación los aprueba.
+                Publica el tuyo y serás de los primeros en aparecer.
+              </p>
+              <button type="button" className="btn-post-ad" onClick={handlePublishAdClick}>
+                <Plus size={18} /> Publicar Anuncio
+              </button>
+            </div>
+          ) : paginatedAds.length > 0 ? (
             <>
               <div className="ads-grid">
                 {paginatedAds.map((ad) => (
@@ -288,7 +352,6 @@ export default function AdsWallView() {
                 ))}
               </div>
 
-              {/* Barra de Paginación */}
               <div className="directory-pagination-bar" aria-label="Navegación de páginas de anuncios">
                 <div className="pagination-info">
                   Página <strong>{currentPage}</strong> de <strong>{totalPages}</strong> ({totalResults} anuncios en total)
@@ -359,24 +422,15 @@ export default function AdsWallView() {
               </div>
             </>
           ) : (
-            /* Estado Vacío */
-            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center my-6">
-              <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search size={32} />
-              </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-2">
-                No se encontraron anuncios con estos filtros
-              </h3>
-              <p className="text-slate-500 text-sm max-w-md mx-auto mb-6">
-                Intenta ajustar la búsqueda, seleccionar otra comuna o restablecer los filtros para ver todos los servicios.
+            <div className="ads-empty-panel">
+              <div className="ads-empty-icon"><Search size={30} /></div>
+              <h3>No se encontraron anuncios con estos filtros</h3>
+              <p>
+                Intenta ajustar la búsqueda, seleccionar otra comuna o restablecer los filtros
+                para ver todos los servicios.
               </p>
-              <button
-                type="button"
-                className="btn-ad-phone mx-auto inline-flex items-center gap-2"
-                onClick={handleResetFilters}
-              >
-                <RotateCcw size={15} />
-                Restablecer todos los filtros
+              <button type="button" className="btn-ad-phone" onClick={handleResetFilters}>
+                <RotateCcw size={15} /> Restablecer todos los filtros
               </button>
             </div>
           )}
@@ -384,29 +438,22 @@ export default function AdsWallView() {
 
       </div>
 
-      {/* MODAL 1: Visor de Historias Tipo Instagram */}
-      {selectedCompanyStory && (
+      {/* MODAL 1: Visor de Historias */}
+      {selectedAdForStories && (
         <StoriesViewerModal
-          companyStory={selectedCompanyStory}
-          onClose={() => setSelectedCompanyStory(null)}
-          onOpenBooking={(companyData) => setSelectedAdForBooking(companyData)}
+          ad={selectedAdForStories}
+          onClose={() => setSelectedAdForStories(null)}
+          onOpenBooking={(adData) => setSelectedAdForBooking(adData)}
         />
       )}
 
-      {/* MODAL 2: Agendamiento de Citas (Para Plan Empresarial) */}
+      {/* MODAL 2: Agendamiento de Citas (Plan Empresarial con agenda publicada) */}
       {selectedAdForBooking && (
         <AdAppointmentModal
           adOrCompany={selectedAdForBooking}
           onClose={() => setSelectedAdForBooking(null)}
         />
       )}
-
-      {/* MODAL 3: Publicar Nuevo Anuncio */}
-      <CreateAdModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onAdCreated={handleAdCreated}
-      />
     </main>
   );
 }
