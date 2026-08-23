@@ -653,3 +653,57 @@ La exclusión de la cola del backoffice (`listarTodosAdmin()`) no se pudo ver de
 —esa ruta exige rol de backoffice— así que quedó cubierta con su propio test
 (`elAnuncioDadoDeBajaTampocoLlegaALaColaDelBackoffice`). Son 5 tests en verde y
 `mvn package -DskipTests` pasa.
+
+
+### 4.11 Fase C — agendamiento (lo que sigue)
+
+**Por qué es lo que sigue.** El plan Empresarial cobra 250 Fichas por la agenda en línea y
+hoy la web no la puede entregar: `hasOnlineBooking` solo se acepta con un `agendaConfig`
+válido (`AnuncioService.validar()`), y no hay ninguna UI para armarlo, así que
+`toAdRequestPayload()` lo manda siempre apagado. Y del lado del visitante,
+`AdAppointmentModal.jsx` es un formulario que **no llama a nada**: no tiene ni backend ni
+`localStorage`. Reservar una hora en la web hoy no guarda nada.
+
+**Endpoints** (todos bajo `/api/v1/anuncios/agendamientos`):
+
+```
+POST   /anuncios/{anuncioId}     reservar hora (visitante)
+GET    /anuncios/{anuncioId}     reservas de un anuncio (dueño)
+GET    /mias                     mis reservas (visitante)
+PATCH  /{id}/estado              confirmar / rechazar / cancelar
+POST   /notificaciones           recordatorios
+```
+
+`AnuncioAgendamientoService` (backend, rama `dev`) creció bastante en `9f6eae3` y `42d1be8`;
+conviene leerlo antes de asumir el contrato.
+
+**Referencia del móvil, que ya tiene el flujo completo y recién lo terminó** (commits
+`9f6eae3` y `42d1be8` del monorepo):
+
+- `mobile/components/ads/AgendaConfigModal.tsx` y `AgendaConfigsSection.tsx` — armar la agenda.
+- `mobile/components/ads/AppointmentsCalendarModal.tsx` — el calendario del dueño (es grande).
+- `mobile/components/ads/AdAppointmentModal.tsx` y `AppointmentSummaryPopup.tsx` — reservar.
+- `mobile/app/appointments-history.tsx` — historial.
+- `mobile/services/ads-storage.ts` — `getStoredAppointments`, `getAppointmentsForAd`,
+  `createAppointmentInStorage`, `updateAppointmentStatus`.
+
+**Forma de `agendaConfig`**, tal como la valida el backend: `startDay` y `endDay` (0-6),
+`slotMinutes` (15-120), `defaultHours` `{start,end}`, `sameHoursEveryDay`, `customHours` por
+día cuando es false, `breakEnabled` + `breakHours`, y `closedDays` (lista de 0-6). Cualquier
+cosa fuera de eso responde 400 con "La configuración de agenda no es válida". El anuncio de
+prueba **id 8 ya tiene un `agendaConfig` completo** para copiar la forma exacta.
+
+**Dónde entra en la web:**
+
+- `AdForm.jsx` — bloque de agenda, visible solo en plan Empresarial, que es lo que permite
+  encender `hasOnlineBooking`. Hoy `toAdRequestPayload()` lo apaga si no hay configuración:
+  esa regla se queda, lo que cambia es que ahora habrá configuración.
+- `AdAppointmentModal.jsx` — conectarlo al POST.
+- `AdsManagementSection.jsx` — las reservas recibidas, por anuncio.
+- `automotiveAdsData.js` — `CLOSED_APPOINTMENT_STATUSES` e `isClosedAppointment` ya están
+  portados de la fase A, esperando esta fase.
+- `adsStorage.js` y `adapters.js` — mismo patrón que la fase B: las llamadas en `api.js`, el
+  adaptador en `adapters.js`, y nada de `localStorage`.
+
+**Recordar:** se trabaja en `dev` (sección 4.9), y `npm run build` + `npm run lint` antes de
+commitear.
