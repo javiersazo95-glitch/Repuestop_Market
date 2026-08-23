@@ -327,7 +327,8 @@ POST   /api/v1/fichas/compras
 **B — Publicar y gestionar. CERRADA (sesión 2026-08-22, ver 4.8).** `POST`/`PUT`/`DELETE`,
 `GET /anuncios/mios`, la subida multipart y la UI de moderación.
 
-**C — Agendamiento.** Los cinco endpoints de `/anuncios/agendamientos`. Depende de B.
+**C — Agendamiento. CERRADA (sesión 2026-08-23, ver 4.12).** Los cinco endpoints de
+`/anuncios/agendamientos`.
 
 **D — Fichas: BLOQUEADA.** El backend solo expone `POST /fichas/compras`. **No hay endpoint
 de saldo ni de consumo**, y la web muestra saldo e historial (`TokensWalletCard`) y gasta
@@ -707,3 +708,96 @@ prueba **id 8 ya tiene un `agendaConfig` completo** para copiar la forma exacta.
 
 **Recordar:** se trabaja en `dev` (sección 4.9), y `npm run build` + `npm run lint` antes de
 commitear.
+
+
+### 4.12 Fase C cerrada — sesión 2026-08-23
+
+El agendamiento está completo y verificado contra el backend local. Los cinco endpoints de
+`/anuncios/agendamientos` se consumen desde la web; nada quedó en `localStorage`.
+
+**Archivos nuevos**
+
+- `src/data/agendaConfig.js` — port de `mobile/constants/agenda-config.ts`. Es el archivo
+  que hay que cuidar: su generación de bloques tiene que coincidir EXACTO con
+  `validarBloque()` de `AnuncioAgendamientoService`, o la web ofrece horarios que el POST
+  rechaza con 400 después de llenar todo el formulario.
+- `src/components/ads/AgendaScheduleEditor.jsx` — editor del horario, con vista previa de la
+  semana y de los bloques del primer día hábil.
+- `src/components/ads/AdAgendaModal.jsx` — la agenda de un anuncio vista por su dueño.
+
+**Decisiones que conviene no volver a discutir**
+
+1. **La agenda vive dentro del anuncio, no en una librería aparte.** El móvil tiene agendas
+   con nombre reutilizables entre avisos, pero las guarda en AsyncStorage del dispositivo
+   (`services/agenda-configs-storage.ts`): no hay endpoint de agendas. Replicarlo en la web
+   era volver a `localStorage`, justo lo que la fase B sacó. Lo único que se persiste es el
+   `agendaConfig` del anuncio, que es lo que el backend guarda igual.
+
+2. **La web siempre emite un `agendaConfigId`, aunque no tenga librería de agendas.** El
+   `AdAppointmentModal` del móvil descarta la agenda si ese campo viene vacío (sale temprano
+   antes de mirar `adOrCompany.agendaConfig`), así que un aviso publicado desde la web con la
+   agenda completa pero sin id se veía SIN días disponibles en la app. El backend no valida
+   ese campo, o sea que aceptaba el anuncio roto. Se genera `web-agc-<timestamp>-<rand>` en
+   `AdForm`. **Si alguna vez se saca, se rompe la web -> app.**
+
+3. **`GET /anuncios/agendamientos/anuncios/{id}` sirve para las dos cosas.** Al dueño le
+   devuelve su agenda completa; a cualquier otra sesión, solo los bloques futuros ocupados y
+   con los datos del cliente censurados. Por eso el modal de reserva tacha los horarios
+   tomados sin endpoint de disponibilidad aparte. Y `GET /mias` devuelve en UNA respuesta las
+   reservas de los dos roles (`findRelevantes()`), así que `AdsManagementSection` hace una
+   sola llamada y separa por `customerUserId`.
+
+4. **El correo del cliente no se pide.** `crear()` hace `setClienteEmail(user.getEmail())` e
+   ignora lo que venga en el request. El campo se muestra en solo lectura con el correo de la
+   sesión; un input editable era un dato que no se usa. Por lo mismo el modal exige sesión
+   iniciada y bloquea el anuncio propio ANTES de mostrar el formulario: las tres cosas
+   terminan en un error del backend recién al confirmar.
+
+5. **Los avisos van con `Promise.allSettled` y sin `await`.** Son tres: el correo a cliente y
+   taller (`/anuncios/agendamientos/notificaciones`) y las notificaciones in-app al cliente y
+   al proveedor. La reserva ya está guardada cuando se disparan; un fallo de correo no puede
+   verse como una reserva fallida.
+
+**Verificado en vivo (backend local, usuario 4 como visitante sobre el anuncio 8)**
+
+- Publicación de un anuncio Empresarial con agenda desde la web -> id 11 en la base con
+  `agenda_config_id = web-agc-1787494131832-592` y el `agenda_config` con la forma exacta que
+  valida el backend. Es la prueba del punto 2.
+- El `agendaConfig` del id 8 —que la web no creó— maneja bien la tira de fechas (salta
+  domingo y lunes) y los bloques (salta la colación 13:00-14:00). Dirección app -> web.
+- Reserva creada (id 1), con las dos notificaciones: la in-app al cliente y los DOS correos
+  salieron de verdad por Resend (log del backend). La notificación in-app al proveedor se
+  salta cuando el anuncio no tiene `proveedor_id` —el caso del id 8—, igual que en el móvil.
+- Aceptar desde la agenda del dueño: la reserva 2 quedó `accepted` y los botones desaparecen.
+- Cancelar desde "Mis reservas": la reserva 1 quedó `cancelled` y **el bloque de las 10:00
+  volvió a aparecer** en el modal de reserva. Reservar las 09:00 lo hizo desaparecer. Es la
+  constante `OCUPADOS` del backend (`pending` + `accepted`) funcionando de punta a punta.
+
+**Un bug de CSS que se introdujo y se corrigió en la misma sesión:** la tira de fechas
+scrollea sola, pero una pista de grid se dimensiona por su contenido más ancho, así que
+estiraba `.booking-form-grid` a 1462px y sacaba una barra horizontal en toda la tarjeta del
+modal. Se arregló con `minmax(0, 1fr)` en las dos declaraciones de la grilla. Si se agrega
+otro hijo que scrollee horizontalmente, es el mismo patrón.
+
+**Datos de prueba que quedan en la base LOCAL** (además de los de 4.7):
+
+| fila | qué es |
+|---|---|
+| anuncio 11 | Empresarial del usuario 4, con agenda creada desde la web, APROBADO a mano |
+| agendamiento 1 | anuncio 8, cliente 4, `cancelled` — sirve para ver una cita cerrada |
+| agendamiento 2 | anuncio 11, cliente 5, `accepted` — insertado por SQL, es la única forma de probar la vista del dueño sin la sesión del usuario 5 |
+| agendamiento 3 | anuncio 8, cliente 4, `pending` — ocupa el bloque de las 09:00 del 2026-08-25 |
+
+**Lo que NO se pudo verificar y por qué:** la censura de datos a un tercero
+(`listarPorAnuncio` con `redact`) necesita una reserva de un usuario distinto sobre un
+anuncio ajeno, y en local solo hay dos cuentas con anuncios. Es comportamiento del backend,
+no de la web, y tiene su propio test allá.
+
+**El baseline de lint de este archivo y de CLAUDE.md estaba desactualizado.** `npm run lint`
+daba **114** warnings antes de tocar nada, no 145. Después de la fase C son **107**: bajó
+porque el `AdAppointmentModal` viejo tenía imports muertos. Cero warnings en los archivos
+nuevos.
+
+**Lo que sigue:** la fase D (Fichas) sigue BLOQUEADA por el backend, sin endpoint de saldo ni
+de consumo. Y queda el hueco heredado: el plan Empresarial cobra 250 Fichas contra un
+monedero que solo existe en `localStorage`.

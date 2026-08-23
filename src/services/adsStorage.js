@@ -11,9 +11,15 @@
 // esos anuncios nunca existieron fuera del navegador.
 import {
   getPublicAdsApi, getPublicAdApi, getMyAdsApi,
-  createAdApi, updateAdApi, deleteAdApi, uploadAdImagesApi, resolveMediaUrl
+  createAdApi, updateAdApi, deleteAdApi, uploadAdImagesApi, resolveMediaUrl,
+  getAdAppointmentsApi, getMyAppointmentsApi, createAdAppointmentApi,
+  updateAdAppointmentStatusApi, sendAppointmentSummaryEmailsApi,
+  createUserNotificationApi, createProviderNotificationApi
 } from './api';
-import { adaptAd, adaptAds, toAdRequestPayload } from './adapters';
+import {
+  adaptAd, adaptAds, toAdRequestPayload,
+  adaptAppointment, adaptAppointments, toAppointmentRequestPayload
+} from './adapters';
 import { isAdVisibleOnWall } from '../data/automotiveAdsData';
 
 const ADS_WALL_CACHE_KEY = 'repuestop_ads_wall_cache';
@@ -378,4 +384,119 @@ export async function spendTokensForAdUpgrade(ad, targetTier) {
   }
 
   return { ad: saved, balance: newBalance };
+}
+
+// -------------------------------------------------------------
+// AGENDAMIENTO DE CITAS
+// -------------------------------------------------------------
+
+/**
+ * Reservas de un anuncio. La MISMA ruta sirve para dos cosas segun quien
+ * pregunte (ver `getAdAppointmentsApi`): al dueño le devuelve su agenda completa
+ * y a cualquier otro solo los bloques futuros ocupados, censurados.
+ *
+ * A diferencia del movil no hay respaldo local: `getAppointmentsForAd()` cae a
+ * la copia de AsyncStorage si la red falla, y ahi el riesgo es real —
+ * disponibilidad vieja significa ofrecer un bloque que ya no existe y comerse un
+ * 409 recien al confirmar. Aca se propaga el error y la vista lo dice.
+ */
+export async function fetchAdAppointments(adId, { signal } = {}) {
+  return adaptAppointments(await getAdAppointmentsApi(adId, { signal }));
+}
+
+/**
+ * Todas las reservas que tocan a la sesion, en una lista sola: el backend
+ * (`findRelevantes()`) mezcla las que uno pidio como cliente con las que le
+ * hicieron a sus anuncios. Se separan comparando `customerUserId` con el id de
+ * la sesion, que es el unico dato del DTO que distingue los dos roles.
+ */
+export async function fetchMyAppointments({ signal } = {}) {
+  return adaptAppointments(await getMyAppointmentsApi({ signal }));
+}
+
+/**
+ * Reserva una hora y devuelve la cita ya creada.
+ *
+ * No notifica: quien llama decide cuando disparar `notifyAppointmentCreated()`,
+ * porque los avisos no deben poder tumbar una reserva que el backend ya guardo.
+ */
+export async function createAdAppointment(adId, form) {
+  return adaptAppointment(await createAdAppointmentApi(adId, toAppointmentRequestPayload(form)));
+}
+
+/** Acepta, rechaza o cancela una reserva. Devuelve la cita con el estado nuevo. */
+export async function updateAppointmentStatus(appointmentId, status) {
+  return adaptAppointment(await updateAdAppointmentStatusApi(appointmentId, status));
+}
+
+/**
+ * Avisa la cita nueva al taller y al cliente: correo con el resumen para ambos y
+ * notificacion dentro de la plataforma para cada uno. Contraparte de
+ * `mobile/services/appointment-notifications.ts`.
+ *
+ * NUNCA lanza. La reserva ya quedo confirmada por el backend y un fallo de aviso
+ * no debe deshacerla ni mostrarse como si la cita hubiera fallado; por eso los
+ * tres envios van en paralelo con `allSettled` y el resultado es informativo.
+ *
+ * `dateLabel` llega ya formateado ("jueves 20 de agosto de 2026") porque el
+ * correo lo imprime tal cual: el backend no formatea fechas de este payload.
+ */
+export async function notifyAppointmentCreated({ appointment, ad, customerUserId, dateLabel }) {
+  // Los ids del backend son numericos. Un 'guest' o un id vacio darian un 404
+  // que no aporta nada, asi que esos avisos simplemente no se intentan.
+  const isNumericId = (value) => Boolean(value && /^\d+$/.test(String(value).trim()));
+
+  const notifyProvider = async () => {
+    if (!isNumericId(ad?.ownerSellerId)) return;
+    await createProviderNotificationApi(String(ad.ownerSellerId), {
+      tipo: 'AGENDAMIENTO_CITA',
+      titulo: 'Nueva reserva en tu agenda',
+      mensaje: `${appointment.customerName} reservó ${appointment.service} para el ${dateLabel} a las ${appointment.time} en "${ad.title}".`,
+      targetRoute: '/perfil',
+      targetParams: { adId: String(ad.id) },
+      // Idempotencia del lado del backend: si el aviso se reintenta, no duplica.
+      eventKey: `ad-appointment:${appointment.id}`
+    });
+  };
+
+  const notifyCustomer = async () => {
+    if (!isNumericId(customerUserId)) return;
+    await createUserNotificationApi(String(customerUserId), {
+      tipo: 'AGENDAMIENTO_CITA',
+      titulo: 'Tu cita quedó registrada',
+      mensaje: `${appointment.service} en ${ad?.company || ad?.title} el ${dateLabel} a las ${appointment.time}. Te avisaremos cuando el taller la confirme.`,
+      targetRoute: '/mural-anuncios',
+      targetParams: { adId: String(ad?.id ?? '') },
+      eventKey: `ad-appointment-customer:${appointment.id}`
+    });
+  };
+
+  const sendEmails = async () => {
+    await sendAppointmentSummaryEmailsApi({
+      reservaId: appointment.id,
+      avisoTitulo: ad?.title || appointment.adTitle,
+      empresa: ad?.company || '',
+      servicio: appointment.service,
+      fecha: dateLabel,
+      hora: appointment.time,
+      clienteNombre: appointment.customerName,
+      clienteCorreo: appointment.customerEmail,
+      clienteTelefono: appointment.customerPhone,
+      vehiculo: appointment.vehicleModel,
+      patente: appointment.vehiclePatent,
+      notas: appointment.notes,
+      direccion: [ad?.address, ad?.commune].filter(Boolean).join(', '),
+      tallerCorreo: ad?.ownerEmail,
+      tallerNombre: ad?.company
+    });
+  };
+
+  const [provider, customer, email] = await Promise.allSettled([
+    notifyProvider(), notifyCustomer(), sendEmails()
+  ]);
+
+  return {
+    inApp: provider.status === 'fulfilled' || customer.status === 'fulfilled',
+    email: email.status === 'fulfilled'
+  };
 }

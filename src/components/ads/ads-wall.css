@@ -1277,13 +1277,17 @@
 
 .booking-form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, 1fr) y no 1fr: una pista de grid se dimensiona por el contenido
+     mas ancho de la columna, asi que la tira de fechas del modal de reserva
+     —que scrollea sola— estiraba la pista a su ancho completo y sacaba una
+     barra horizontal en toda la tarjeta en vez de scrollear ella. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
 }
 
 @media (max-width: 540px) {
   .booking-form-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1945,7 +1949,9 @@
 
 .ads-mgmt-stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* auto-fit y no un numero fijo: la tarjeta de reservas es la quinta y con
+     `repeat(4, 1fr)` quedaba sola en una segunda fila. */
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
   gap: 14px;
   margin-bottom: 24px;
 }
@@ -2366,3 +2372,131 @@
 .ads-mgmt-state .btn-ad-phone, .ads-mgmt-state .btn-post-ad { display: inline-flex; align-items: center; gap: 7px; }
 
 .btn-mgmt-upgrade:disabled { background: #e2e8f0; color: #94a3b8; box-shadow: none; cursor: not-allowed; transform: none; }
+
+/* ============================================================
+   AGENDA DE CITAS (fase C)
+   Reutiliza el lenguaje del panel de perfil: las mismas pildoras de estado
+   (`.mgmt-status-pill.tone-*`), las mismas tarjetas y los mismos botones de
+   accion que la gestion de anuncios. Lo unico propio son la rejilla de bloques
+   horarios y la tira de fechas, que no existian.
+   ============================================================ */
+
+.mgmt-stat-card.stat-booking { border-left: 4px solid #059669; }
+.mgmt-status-pill.tone-muted { background: #f1f5f9; color: #475569; }
+
+/* --- Editor de agenda (AdForm) --- */
+.agenda-editor { margin-top: 12px; padding: 14px; border: 1px solid #d1fae5; border-radius: 12px; background: #f8fffc; }
+.agenda-editor-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 10px; }
+.agenda-editor .booking-field label { display: inline-flex; align-items: center; gap: 5px; }
+.agenda-editor .ad-check-row { margin-top: 10px; }
+
+.ad-tag-chip.is-closed-day { border-color: #fca5a5; background: #fef2f2; color: #b91c1c; text-decoration: line-through; }
+
+.agenda-day-hours { display: flex; flex-direction: column; gap: 7px; margin: 10px 0 4px; padding: 10px; border-radius: 10px; background: #ffffff; border: 1px solid #e2e8f0; }
+.agenda-day-hours-row { display: flex; align-items: center; gap: 8px; }
+.agenda-day-name { flex: 0 0 92px; font-size: 12px; font-weight: 700; color: #334155; }
+.agenda-day-sep { font-size: 11.5px; color: #94a3b8; }
+.agenda-day-hours-row input { flex: 1; min-width: 0; padding: 6px 9px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12.5px; }
+
+.agenda-preview { margin-top: 14px; padding: 12px; border-radius: 11px; background: #ffffff; border: 1px solid #e2e8f0; }
+.agenda-preview-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.agenda-preview-head strong { font-size: 12.5px; color: #0f172a; }
+.agenda-preview-head span { font-size: 11.5px; color: #64748b; }
+.agenda-preview-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.agenda-preview-day { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 9px; background: #ecfdf5; border: 1px solid #a7f3d0; text-align: center; }
+.agenda-preview-day.is-off { background: #f8fafc; border-color: #e2e8f0; }
+.agenda-preview-day-name { font-size: 11px; font-weight: 800; color: #047857; }
+.agenda-preview-day.is-off .agenda-preview-day-name { color: #94a3b8; }
+.agenda-preview-hours { font-size: 10.5px; font-weight: 600; color: #0f172a; }
+.agenda-preview-hours.is-off { color: #94a3b8; font-weight: 500; }
+.agenda-preview-slots { font-size: 10px; color: #64748b; }
+.agenda-preview-slots-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 11px; padding-top: 11px; border-top: 1px dashed #e2e8f0; }
+.agenda-preview-slots-label { font-size: 11.5px; font-weight: 700; color: #475569; }
+.agenda-preview-slots-more { font-size: 11px; color: #64748b; }
+
+/* --- Bloques horarios (reserva y vista previa) --- */
+.agenda-slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.agenda-slot-chip { padding: 9px 10px; border: 1px solid #cbd5e1; border-radius: 9px; background: #ffffff; color: #334155; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .15s ease; }
+.agenda-slot-chip:hover { border-color: #059669; color: #047857; }
+.agenda-slot-chip.active { border-color: #059669; background: #059669; color: #ffffff; box-shadow: 0 2px 8px rgba(5, 150, 105, .25); }
+.agenda-slot-chip.is-preview { cursor: default; padding: 5px 9px; font-size: 11px; font-weight: 600; background: #f1f5f9; }
+
+/* --- Tira de fechas del modal de reserva --- */
+.booking-date-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+.booking-date-chip { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 62px; padding: 8px 6px; border: 1px solid #cbd5e1; border-radius: 10px; background: #ffffff; cursor: pointer; transition: all .15s ease; }
+.booking-date-chip strong { font-size: 17px; font-weight: 900; color: #0f172a; line-height: 1.1; }
+.booking-date-weekday { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+.booking-date-month { font-size: 10px; color: #94a3b8; }
+.booking-date-chip.active { border-color: #059669; background: #ecfdf5; }
+.booking-date-chip.active strong, .booking-date-chip.active .booking-date-weekday { color: #047857; }
+.booking-date-long { font-weight: 500; color: #64748b; text-transform: none; }
+
+.booking-agenda-note { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 14px; padding: 8px 12px; border-radius: 9px; background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; font-size: 12px; font-weight: 600; }
+.booking-slots-state { display: flex; align-items: center; gap: 8px; padding: 12px; border-radius: 9px; background: #f8fafc; border: 1px dashed #cbd5e1; color: #64748b; font-size: 12.5px; }
+.booking-slots-state.is-empty { color: #b45309; background: #fffbeb; border-color: #fcd34d; }
+
+.booking-blocked-state { display: flex; flex-direction: column; align-items: center; gap: 9px; padding: 26px 18px; text-align: center; color: #475569; }
+.booking-blocked-state h4 { font-size: 16px; font-weight: 800; color: #0f172a; }
+.booking-blocked-state p { max-width: 400px; font-size: 12.5px; line-height: 1.5; }
+.booking-blocked-state > svg { color: #94a3b8; }
+
+/* --- Agenda del propietario (AdAgendaModal) --- */
+.agenda-modal-card { max-width: 760px; }
+.agenda-appointments-list { display: flex; flex-direction: column; gap: 10px; }
+.agenda-appointments-list.is-history { margin-top: 10px; opacity: .82; }
+
+.agenda-appointment { display: flex; gap: 13px; padding: 12px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; border-left: 4px solid #cbd5e1; }
+.agenda-appointment.tone-warning { border-left-color: #f59e0b; }
+.agenda-appointment.tone-success { border-left-color: #059669; }
+.agenda-appointment.tone-danger { border-left-color: #dc2626; }
+.agenda-appointment.tone-muted { border-left-color: #94a3b8; }
+
+.agenda-appointment-when { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 0 0 66px; padding: 6px; border-radius: 10px; background: #f8fafc; text-align: center; }
+.agenda-appointment-when strong { font-size: 20px; font-weight: 900; color: #0f172a; line-height: 1; }
+.agenda-appointment-when span { font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700; }
+.agenda-appointment-when em { margin-top: 3px; font-size: 10.5px; font-style: normal; font-weight: 700; color: #047857; }
+
+.agenda-appointment-body { flex: 1; min-width: 0; }
+.agenda-appointment-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 5px; }
+.agenda-appointment-eta { font-size: 11px; font-weight: 700; color: #64748b; }
+.agenda-appointment-body h5 { font-size: 13.5px; font-weight: 800; color: #0f172a; margin-bottom: 5px; }
+.agenda-appointment-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11.5px; color: #64748b; }
+.agenda-appointment-meta span, .agenda-appointment-meta a { display: inline-flex; align-items: center; gap: 4px; }
+.agenda-appointment-meta a { color: #047857; font-weight: 600; }
+.agenda-appointment-meta a:hover { text-decoration: underline; }
+.agenda-appointment-notes { display: flex; align-items: flex-start; gap: 5px; margin-top: 7px; padding: 7px 9px; border-radius: 8px; background: #f8fafc; font-size: 11.5px; line-height: 1.45; color: #475569; }
+.agenda-appointment-notes svg { flex-shrink: 0; margin-top: 2px; }
+
+.agenda-appointment-actions { display: flex; flex-direction: column; justify-content: center; gap: 7px; flex-shrink: 0; }
+.btn-agenda-accept { display: inline-flex; align-items: center; gap: 5px; padding: 8px 13px; border: none; border-radius: 8px; background: linear-gradient(135deg, #059669, #047857); color: #ffffff; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s ease; }
+.btn-agenda-accept:hover { transform: translateY(-1px); }
+.btn-agenda-accept:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; transform: none; }
+.btn-agenda-reject { display: inline-flex; align-items: center; gap: 5px; padding: 8px 13px; border: 1px solid #fca5a5; border-radius: 8px; background: #fee2e2; color: #dc2626; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s ease; }
+.btn-agenda-reject:hover { background: #fecaca; }
+.btn-agenda-reject:disabled { opacity: .55; cursor: not-allowed; }
+
+.agenda-closed-block { margin-top: 16px; padding-top: 14px; border-top: 1px solid #e2e8f0; }
+
+.btn-mgmt-agenda { display: flex; align-items: center; gap: 6px; padding: 8px 13px; border: 1px solid #a7f3d0; border-radius: 8px; background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s ease; }
+.btn-mgmt-agenda:hover { background: #d1fae5; }
+
+/* --- Mis reservas (cliente) --- */
+.my-appointments-block { margin-top: 26px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+.my-appointments-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; color: #0f172a; }
+.my-appointments-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.my-appointment-item { display: flex; align-items: center; gap: 13px; padding: 12px 14px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; border-left: 4px solid #cbd5e1; }
+.my-appointment-item.tone-warning { border-left-color: #f59e0b; }
+.my-appointment-item.tone-success { border-left-color: #059669; }
+.my-appointment-item.tone-danger { border-left-color: #dc2626; }
+.my-appointment-item.tone-muted { border-left-color: #94a3b8; }
+.my-appointment-main { flex: 1; min-width: 0; }
+.my-appointment-main h5 { font-size: 13.5px; font-weight: 800; color: #0f172a; margin-bottom: 5px; }
+.my-appointment-item .btn-mgmt-delete { gap: 5px; padding: 8px 12px; font-size: 12px; font-weight: 700; }
+.my-appointment-item .btn-mgmt-delete:disabled { opacity: .55; cursor: not-allowed; }
+
+@media (max-width: 640px) {
+  .agenda-preview-grid { grid-template-columns: repeat(4, 1fr); }
+  .agenda-appointment { flex-wrap: wrap; }
+  .agenda-appointment-actions { flex-direction: row; width: 100%; }
+  .my-appointment-item { flex-wrap: wrap; }
+}

@@ -6,12 +6,17 @@ import {
   Layers, Loader2, CheckCircle2, Clock3, XCircle, CalendarClock
 } from 'lucide-react';
 import {
-  fetchMyAds, deleteAd, adErrorMessage, getTokensBalance
+  fetchMyAds, deleteAd, adErrorMessage, getTokensBalance,
+  fetchMyAppointments, updateAppointmentStatus
 } from '../../services/adsStorage';
 import {
   AD_TIERS, AD_TIER_ORDER, AD_MODERATION_STATUS, AD_MODERATION_LABELS,
-  SERVICE_CATEGORIES, getAdExpiryInfo, getUpgradableTiers
+  SERVICE_CATEGORIES, getAdExpiryInfo, getUpgradableTiers,
+  APPOINTMENT_STATUS_META, isClosedAppointment
 } from '../../data/automotiveAdsData';
+import { formatAgendaDateLong, getTimeUntilLabel, toIsoDate } from '../../data/agendaConfig';
+import { useAuth } from '../../context/AuthContext';
+import AdAgendaModal from './AdAgendaModal';
 import TokensWalletCard from './TokensWalletCard';
 import RechargeTokensModal from './RechargeTokensModal';
 import UpgradeAdRankModal from './UpgradeAdRankModal';
@@ -44,7 +49,18 @@ const STATUS_FILTERS = [
  * y activo, asi que ahi un anuncio en revision o rechazado no existe.
  */
 export default function AdsManagementSection({ onNavigateToMural }) {
+  const { user } = useAuth();
   const [ads, setAds] = useState([]);
+  // `GET /anuncios/agendamientos/mias` devuelve en UNA respuesta las reservas de
+  // los dos roles: las que le hicieron a mis anuncios y las que yo pedi como
+  // cliente. Se separan por `customerUserId`, que es lo unico del DTO que
+  // distingue un rol del otro (y el backend impide reservar en el anuncio
+  // propio, asi que una cita nunca cae en las dos listas).
+  const [appointments, setAppointments] = useState([]);
+  const [appointmentsError, setAppointmentsError] = useState(null);
+  const [adForAgenda, setAdForAgenda] = useState(null);
+  const [cancellingId, setCancellingId] = useState(null);
+  const [cancelError, setCancelError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [tokensBalance, setTokensBalanceState] = useState(() => getTokensBalance());
@@ -74,11 +90,67 @@ export default function AdsManagementSection({ onNavigateToMural }) {
     }
   }, []);
 
+  /**
+   * Las reservas se cargan aparte de los anuncios a proposito: un fallo aca no
+   * puede dejar sin gestion de anuncios a quien nunca uso la agenda, asi que
+   * tiene su propio error y su propio estado.
+   */
+  const loadAppointments = useCallback(async ({ signal } = {}) => {
+    try {
+      setAppointments(await fetchMyAppointments({ signal }));
+      setAppointmentsError(null);
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+      setAppointmentsError(error);
+    }
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
     loadAds({ signal: controller.signal });
+    loadAppointments({ signal: controller.signal });
     return () => controller.abort();
-  }, [loadAds]);
+  }, [loadAds, loadAppointments]);
+
+  const sessionUserId = user?.userId ?? user?.id ?? user?.buyerId ?? null;
+
+  const { receivedByAd, myAppointments, pendingReceived } = useMemo(() => {
+    const mine = [];
+    const received = new Map();
+    appointments.forEach((appointment) => {
+      const isMine = sessionUserId != null
+        && String(appointment.customerUserId) === String(sessionUserId);
+      if (isMine) { mine.push(appointment); return; }
+      const list = received.get(appointment.adId) || [];
+      list.push(appointment);
+      received.set(appointment.adId, list);
+    });
+    return {
+      receivedByAd: received,
+      myAppointments: mine.sort((a, b) => b.date.localeCompare(a.date)),
+      pendingReceived: appointments.filter(
+        (item) => item.status === 'pending'
+          && (sessionUserId == null || String(item.customerUserId) !== String(sessionUserId))
+      ).length
+    };
+  }, [appointments, sessionUserId]);
+
+  const replaceAppointment = (saved) => {
+    setAppointments((current) => current.map((item) => (item.id === saved.id ? saved : item)));
+  };
+
+  /** Cancelar es exclusivo del cliente: el backend responde 403 al dueño. */
+  const handleCancelMyAppointment = async (appointment) => {
+    setCancellingId(appointment.id);
+    setCancelError('');
+    try {
+      replaceAppointment(await updateAppointmentStatus(appointment.id, 'cancelled'));
+    } catch (error) {
+      setCancelError(adErrorMessage(error, 'No se pudo cancelar la reserva.'));
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   useEffect(() => {
     const handleTokensUpdated = (e) => {
@@ -166,9 +238,9 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           <button
             type="button"
             className="btn-ad-phone inline-flex items-center gap-2"
-            onClick={() => loadAds()}
+            onClick={() => { loadAds(); loadAppointments(); }}
             disabled={isLoading}
-            title="Volver a consultar el estado de moderación"
+            title="Volver a consultar el estado de moderación y las reservas"
           >
             <RefreshCw size={16} className={isLoading ? 'spin-icon' : ''} />
             <span>Actualizar</span>
@@ -226,6 +298,14 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           <span className="stat-label">Por vencer</span>
           <strong className="stat-number">{counts.expiring}</strong>
           <small className="stat-sub">Vencen dentro de 7 días</small>
+        </div>
+
+        {/* La agenda es lo unico del panel que exige una respuesta con plazo:
+            una reserva sin contestar es un cliente esperando. */}
+        <div className="mgmt-stat-card stat-booking">
+          <span className="stat-label">Reservas por responder</span>
+          <strong className="stat-number">{pendingReceived}</strong>
+          <small className="stat-sub">Citas pedidas en tus anuncios</small>
         </div>
       </div>
 
@@ -320,6 +400,8 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           const catObj = SERVICE_CATEGORIES.find((c) => c.id === ad.category);
           const coverPhoto = ad.images?.[0] || null;
           const canUpgrade = getUpgradableTiers(ad.tier).length > 0;
+          const adAppointments = receivedByAd.get(ad.id) || [];
+          const adPending = adAppointments.filter((item) => item.status === 'pending').length;
 
           return (
             <div key={ad.id} className={`mgmt-ad-item ${tierConfig.cardTheme}`}>
@@ -354,7 +436,9 @@ export default function AdsManagementSection({ onNavigateToMural }) {
                     <span><Tag size={13} /> {ad.priceText}</span>
                     {ad.is24Hours && <span><Clock size={13} /> 24 horas</span>}
                     {ad.hasOnlineBooking && (
-                      <span className="text-emerald-700 font-bold"><Calendar size={13} /> Agenda activa</span>
+                      <span className="text-emerald-700 font-bold">
+                        <Calendar size={13} /> {ad.agendaHours || 'Agenda activa'}
+                      </span>
                     )}
                     {ad.whatsapp && tierConfig.hasWhatsapp && (
                       <span className="text-green-600 font-bold"><MessageCircle size={13} /> WhatsApp activo</span>
@@ -394,6 +478,20 @@ export default function AdsManagementSection({ onNavigateToMural }) {
               </div>
 
               <div className="mgmt-ad-actions">
+                {/* Solo tiene sentido con las reservas encendidas: sin agenda no
+                    hay nada que mostrar y el boton seria una puerta a un vacio. */}
+                {ad.hasOnlineBooking && (
+                  <button
+                    type="button"
+                    className="btn-mgmt-agenda"
+                    onClick={() => setAdForAgenda(ad)}
+                    title="Ver las reservas de este anuncio"
+                  >
+                    <CalendarClock size={15} />
+                    <span>Agenda{adPending > 0 ? ` (${adPending})` : ''}</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   className="btn-mgmt-upgrade"
@@ -428,6 +526,93 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           );
         })}
       </div>
+
+      {/* Las citas que uno PIDIO, no las que recibio. Sin esta lista quien
+          reserva desde el mural no tiene donde ver el estado ni cancelar, y
+          cancelar es exclusivo del cliente: el backend le responde 403 al
+          dueño del anuncio. */}
+      {(myAppointments.length > 0 || appointmentsError) && (
+        <div className="my-appointments-block">
+          <div className="ads-mgmt-titles">
+            <h3 className="my-appointments-title">
+              <CalendarClock size={18} className="text-emerald-600" />
+              Mis reservas de hora
+            </h3>
+            <p>Citas que pediste en anuncios del mural. El taller las confirma o las rechaza.</p>
+          </div>
+
+          {appointmentsError && (
+            <div className="ads-mgmt-state is-error">
+              <AlertTriangle size={20} />
+              <p>{adErrorMessage(appointmentsError, 'No pudimos cargar tus reservas.')}</p>
+              <button type="button" className="btn-ad-phone" onClick={() => loadAppointments()}>
+                <RefreshCw size={14} /> Reintentar
+              </button>
+            </div>
+          )}
+
+          {cancelError && (
+            <div className="ad-form-error">
+              <AlertTriangle size={15} />
+              <span>{cancelError}</span>
+            </div>
+          )}
+
+          <div className="my-appointments-list">
+            {myAppointments.map((appointment) => {
+              const meta = APPOINTMENT_STATUS_META[appointment.status] || APPOINTMENT_STATUS_META.pending;
+              const isClosed = isClosedAppointment(appointment.status);
+              const isPast = appointment.date < toIsoDate(new Date());
+              return (
+                <div key={appointment.id} className={`my-appointment-item tone-${meta.tone}`}>
+                  <div className="my-appointment-main">
+                    <div className="agenda-appointment-top">
+                      <span className={`mgmt-status-pill tone-${meta.tone}`}>{meta.longLabel}</span>
+                      {!isClosed && !isPast && (
+                        <span className="agenda-appointment-eta">
+                          {getTimeUntilLabel(appointment.date, appointment.time)}
+                        </span>
+                      )}
+                    </div>
+                    <h5>{appointment.service}</h5>
+                    <div className="agenda-appointment-meta">
+                      <span><Megaphone size={12} /> {appointment.adTitle}</span>
+                      <span><Calendar size={12} /> {formatAgendaDateLong(appointment.date)}</span>
+                      <span><Clock size={12} /> {appointment.time}</span>
+                    </div>
+                  </div>
+
+                  {/* El backend solo deja cancelar mientras siga pending o
+                      accepted (`OCUPADOS`); una cita ya cerrada da 400. */}
+                  {!isClosed && !isPast && (
+                    <button
+                      type="button"
+                      className="btn-mgmt-delete"
+                      disabled={cancellingId === appointment.id}
+                      onClick={() => handleCancelMyAppointment(appointment)}
+                      title="Cancelar esta reserva"
+                    >
+                      {cancellingId === appointment.id
+                        ? <Loader2 size={15} className="spin-icon" />
+                        : <XCircle size={15} />}
+                      <span>Cancelar</span>
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {adForAgenda && (
+        <AdAgendaModal
+          ad={adForAgenda}
+          appointments={receivedByAd.get(adForAgenda.id) || []}
+          onClose={() => setAdForAgenda(null)}
+          onAppointmentUpdated={replaceAppointment}
+        />
+      )}
 
       <RechargeTokensModal
         isOpen={isRechargeModalOpen}

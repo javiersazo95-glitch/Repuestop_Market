@@ -9,7 +9,7 @@
  */
 
 import { HEADER_CATEGORIES, SIDEBAR_CATEGORIES } from '../data/categories';
-import { AD_TIERS } from '../data/automotiveAdsData';
+import { AD_TIERS, APPOINTMENT_STATUSES } from '../data/automotiveAdsData';
 import { resolveMediaUrl, toMediaPath } from './api';
 
 const normalizeNameKey = (value) => String(value || '').normalize('NFD')
@@ -502,5 +502,82 @@ export function toAdRequestPayload(ad) {
     // Solo sirve al editar: al crear, el backend fija 30 dias y descarta cualquier
     // fecha posterior a ese tope.
     expiresAt: ad?.expiresAt || null,
+  };
+}
+
+/**
+ * `AnuncioAgendamientoResponseDTO` -> reserva de la UI.
+ *
+ * Casi todo llega con el nombre que usa la web porque el DTO fue modelado desde
+ * el cliente. Lo que hay que tener presente:
+ *
+ * - `time` NO es lo que se mando: el backend guarda solo la hora de inicio y
+ *   reconstruye la etiqueta como `inicio - inicio+slotMinutes` leyendo el
+ *   `agendaConfig` del anuncio. Si el socio cambia el largo del bloque, las
+ *   reservas viejas se re-etiquetan solas.
+ * - cuando quien pregunta no es ni el dueño ni el cliente, los datos personales
+ *   vienen censurados (strings vacios y nulls). `isRedacted` lo marca para que la
+ *   vista muestre "Horario reservado" en vez de una ficha vacia.
+ * - `id` y `adId` ya vienen como String desde el backend.
+ */
+export function adaptAppointment(dto) {
+  if (!dto) return null;
+  const services = Array.isArray(dto.services) ? dto.services.filter(Boolean) : [];
+
+  return {
+    id: String(dto.id),
+    adId: String(dto.adId),
+    adTitle: dto.adTitle || '',
+    service: dto.service || '',
+    services,
+    date: dto.date || '',
+    time: dto.time || '',
+    customerName: dto.customerName || '',
+    customerPhone: dto.customerPhone || '',
+    customerEmail: dto.customerEmail || '',
+    customerUserId: dto.customerUserId ? String(dto.customerUserId) : null,
+    vehiclePatent: dto.vehiclePatent || '',
+    vehicleModel: dto.vehicleModel || '',
+    notes: dto.notes || '',
+    status: APPOINTMENT_STATUSES.includes(dto.status) ? dto.status : 'pending',
+    createdAt: dto.createdAt || null,
+    isRedacted: !dto.customerName && !dto.customerUserId
+  };
+}
+
+export function adaptAppointments(list) {
+  return (Array.isArray(list) ? list : []).map(adaptAppointment).filter(Boolean);
+}
+
+/**
+ * Datos del formulario -> `AnuncioAgendamientoRequestDTO`.
+ *
+ * `time` viaja como la etiqueta completa ('09:00 - 10:00'): el `@Pattern` del DTO
+ * acepta las dos formas y el servicio se queda con lo anterior al guion. Se manda
+ * entera igual porque es lo que el movil manda y lo que el usuario eligio.
+ *
+ * `services` tiene tope de 8 en el DTO y `service` es el texto plano que ve el
+ * taller en el correo, no un campo derivado que el backend recalcule.
+ */
+export function toAppointmentRequestPayload(form) {
+  const text = (value) => String(value ?? '').trim();
+  const services = (Array.isArray(form?.services) ? form.services : [])
+    .map(text)
+    .filter(Boolean)
+    .slice(0, 8);
+
+  return {
+    service: text(form?.service) || services.join(' · '),
+    services,
+    date: text(form?.date),
+    time: text(form?.time),
+    customerName: text(form?.customerName),
+    customerPhone: text(form?.customerPhone),
+    // El backend lo pisa con el correo de la sesion, pero el DTO lo exige
+    // `@NotBlank @Email`: sin el, la reserva ni siquiera llega al servicio.
+    customerEmail: text(form?.customerEmail),
+    vehiclePatent: text(form?.vehiclePatent) || null,
+    vehicleModel: text(form?.vehicleModel) || null,
+    notes: text(form?.notes) || null
   };
 }

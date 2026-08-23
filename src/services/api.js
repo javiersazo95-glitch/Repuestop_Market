@@ -1087,3 +1087,98 @@ export async function uploadAdImagesApi(files) {
     signal: AbortSignal.timeout(30000),
   });
 }
+
+// -------------------------------------------------------------
+// AGENDAMIENTO DE ANUNCIOS
+// -------------------------------------------------------------
+
+/**
+ * Reservas de un anuncio. La respuesta depende de QUIEN pregunta
+ * (`AnuncioAgendamientoService.listarPorAnuncio()`):
+ *
+ * - el dueño del anuncio recibe todas las reservas, de cualquier fecha y estado,
+ *   con los datos completos del cliente. Es su agenda.
+ * - cualquier otra sesion recibe solo las futuras en `pending` o `accepted`, y
+ *   con los datos del cliente CENSURADOS (nombre, telefono, correo y patente
+ *   vienen vacios o en null). Sirve para saber que bloques estan tomados sin
+ *   exponer a quien reservo.
+ *
+ * O sea que el modal de reserva usa esta misma ruta para tachar los horarios
+ * ocupados: no hace falta un endpoint de disponibilidad aparte.
+ */
+export async function getAdAppointmentsApi(adId, { signal } = {}) {
+  return fetchApi(`/anuncios/agendamientos/anuncios/${adId}`, { method: 'GET', signal });
+}
+
+/**
+ * Reservas relevantes para la sesion: `findRelevantes()` trae tanto las que uno
+ * pidio como cliente como las que le hicieron a sus anuncios, en una sola lista.
+ * Se separan por `adId` contra los anuncios propios, no por un campo del DTO.
+ */
+export async function getMyAppointmentsApi({ signal } = {}) {
+  return fetchApi('/anuncios/agendamientos/mias', { method: 'GET', signal });
+}
+
+/**
+ * Reserva una hora. Exige sesion iniciada y falla con 400 si el anuncio no tiene
+ * las reservas encendidas, si esta vencido, si el bloque no pertenece al horario
+ * publicado, si ya paso, o si es tu propio anuncio.
+ *
+ * `customerEmail` viaja porque el DTO lo exige (`@NotBlank @Email`), pero el
+ * backend lo IGNORA: guarda siempre el correo de la sesion. No sirve para
+ * reservar a nombre de otro.
+ *
+ * Un 409 (`DuplicateResourceException`) significa que alguien tomo ese bloque
+ * mientras se llenaba el formulario; hay que recargar la disponibilidad.
+ */
+export async function createAdAppointmentApi(adId, payload) {
+  return fetchApi(`/anuncios/agendamientos/anuncios/${adId}`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+/**
+ * Responde o cancela una reserva. Quien puede hacer que esta partido:
+ * `accepted` y `rejected` solo el dueño del anuncio, y solo mientras siga
+ * `pending`; `cancelled` solo el cliente, y solo si todavia no se cerro.
+ * Cualquier otra combinacion responde 403.
+ */
+export async function updateAdAppointmentStatusApi(appointmentId, status) {
+  return fetchApi(`/anuncios/agendamientos/${appointmentId}/estado`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status })
+  });
+}
+
+/**
+ * Manda el resumen de la cita por correo al cliente y al taller. Es solo el
+ * despacho del mail: la reserva ya quedo guardada por el POST.
+ * `AgendamientoNotificacionService` lo envia con `enviarSeguro()`, asi que un
+ * fallo de correo no revienta la respuesta.
+ */
+export async function sendAppointmentSummaryEmailsApi(payload) {
+  return fetchApi('/anuncios/agendamientos/notificaciones', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+/** Crea una notificacion in-app para un usuario. Responde 204 sin cuerpo. */
+export async function createUserNotificationApi(userId, payload) {
+  return fetchApi(`/usuarios/${userId}/notificaciones`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+/**
+ * Igual que la anterior pero apuntando a un proveedor: el backend la entrega al
+ * usuario dueño de ese proveedor (`NotificationController.crearParaProveedor()`).
+ */
+export async function createProviderNotificationApi(proveedorId, payload) {
+  return fetchApi(`/proveedores/${proveedorId}/notificaciones`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}

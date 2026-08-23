@@ -1,11 +1,25 @@
 import React, { useMemo, useState } from 'react';
 import {
-  AlertCircle, Camera, Check, Clock, Coins, Film, Loader2, Plus, Trash2, X
+  AlertCircle, CalendarClock, Camera, Check, Clock, Coins, Film, Loader2, Plus, Trash2, X
 } from 'lucide-react';
 import {
   AD_TIERS, AD_TIER_ORDER, AD_FEATURE_TAGS, SERVICE_CATEGORIES, CHILE_COMMUNES
 } from '../../data/automotiveAdsData';
+import {
+  createDefaultAgendaConfig, normalizeAgendaConfig, toAgendaConfigPayload,
+  getAgendaSummaryText, validateAgendaConfig
+} from '../../data/agendaConfig';
 import { UPGRADE_TOKEN_COSTS, uploadAdImages, adErrorMessage } from '../../services/adsStorage';
+import AgendaScheduleEditor from './AgendaScheduleEditor';
+
+/**
+ * El movil identifica la agenda de un aviso por `agendaConfigId` y recien despues
+ * mira el `agendaConfig` que trae el anuncio (`mobile/components/ads/AdAppointmentModal.tsx`,
+ * en el efecto que resuelve la configuracion). Un aviso publicado desde la web con
+ * la agenda completa pero sin ese id se ve SIN dias disponibles en la app, aunque
+ * el backend lo haya aceptado: no valida ese campo. Por eso siempre se emite uno.
+ */
+const newAgendaConfigId = () => `web-agc-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
 
 /**
  * Formulario unico de publicacion y edicion de anuncios.
@@ -54,6 +68,16 @@ export default function AdForm({
   const [uploadTarget, setUploadTarget] = useState('');
   const [uploadError, setUploadError] = useState('');
 
+  // La agenda solo existe en el plan Empresarial. Se conserva en el estado
+  // aunque se baje de plan para no perderla si el socio vuelve a subir antes de
+  // guardar; lo que decide si viaja al backend es `bookingEnabled` + el plan.
+  const [bookingEnabled, setBookingEnabled] = useState(initialAd?.hasOnlineBooking === true);
+  const [agendaConfig, setAgendaConfig] = useState(
+    () => normalizeAgendaConfig(initialAd?.agendaConfig) || createDefaultAgendaConfig()
+  );
+  const [agendaConfigName, setAgendaConfigName] = useState(initialAd?.agendaConfigName || '');
+  const [agendaConfigId] = useState(initialAd?.agendaConfigId || newAgendaConfigId());
+
   const limits = AD_TIERS[tier] || AD_TIERS.basica;
   const tierCost = UPGRADE_TOKEN_COSTS[tier] || 0;
   const canAffordTier = mode !== 'create' || tokensBalance >= tierCost;
@@ -70,6 +94,12 @@ export default function AdForm({
   const visibleStories = storyImages.slice(0, limits.maxStories);
   const visibleFeatures = features.slice(0, limits.maxTags);
   const visibleServices = servicesOffered.slice(0, limits.maxTags);
+
+  // `AnuncioService.validar()` responde 400 si `hasOnlineBooking` viene encendido
+  // sin una agenda que pase `validarAgenda()`. Se bloquea el envio en vez de
+  // dejar que el backend lo rechace despues de subir las fotos.
+  const agendaErrors = limits.hasBooking && bookingEnabled ? validateAgendaConfig(agendaConfig) : [];
+  const hasAgendaErrors = agendaErrors.length > 0;
 
   const toggleFeature = (tag) => {
     setFeatures((current) => {
@@ -112,6 +142,9 @@ export default function AdForm({
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    if (hasAgendaErrors) return;
+
+    const bookingOn = limits.hasBooking && bookingEnabled;
     onSubmit?.({
       ...initialAd,
       tier,
@@ -133,7 +166,16 @@ export default function AdForm({
       features: visibleFeatures,
       servicesOffered: visibleServices,
       images: visibleImages,
-      storyImages: visibleStories
+      storyImages: visibleStories,
+      hasOnlineBooking: bookingOn,
+      // Se manda null al apagar las reservas para que el PUT limpie la agenda
+      // vieja: `aplicar()` reescribe el campo con lo que venga, no lo conserva.
+      agendaConfig: bookingOn ? toAgendaConfigPayload(agendaConfig) : null,
+      agendaConfigId: bookingOn ? agendaConfigId : null,
+      agendaConfigName: bookingOn
+        ? (agendaConfigName.trim() || `Agenda de ${company.trim() || title.trim() || 'mi taller'}`)
+        : null,
+      agendaHours: bookingOn ? getAgendaSummaryText(agendaConfig) : ''
     });
   };
 
@@ -473,6 +515,49 @@ export default function AdForm({
             {renderGallery('stories', visibleStories, limits.maxStories, 'Aparecen en el carrusel de historias, arriba del mural.')}
           </div>
         )}
+
+        {/* Agenda en linea: es lo que el plan Empresarial cobra aparte. Sin este
+            bloque el anuncio no puede encenderla, porque el backend exige la
+            configuracion horaria completa junto con `hasOnlineBooking`. */}
+        {limits.hasBooking && (
+          <div className="booking-field col-span-2">
+            <label><CalendarClock size={13} /> Agenda de citas en línea (plan {limits.name})</label>
+
+            <label className="ad-check-row">
+              <input
+                type="checkbox"
+                checked={bookingEnabled}
+                onChange={(e) => setBookingEnabled(e.target.checked)}
+              />
+              Recibir reservas de hora desde el mural
+            </label>
+
+            {bookingEnabled ? (
+              <>
+                <div className="booking-field" style={{ marginTop: 10 }}>
+                  <label>Nombre de la agenda (opcional)</label>
+                  <input
+                    type="text"
+                    maxLength={160}
+                    placeholder="Ej: Horario de taller"
+                    value={agendaConfigName}
+                    onChange={(e) => setAgendaConfigName(e.target.value)}
+                  />
+                  <small className="ad-upload-hint">
+                    Solo lo ves tú, para reconocer este horario en tu gestión.
+                  </small>
+                </div>
+
+                <AgendaScheduleEditor config={agendaConfig} onChange={setAgendaConfig} />
+              </>
+            ) : (
+              <small className="ad-upload-hint">
+                Con las reservas apagadas la tarjeta solo muestra teléfono y WhatsApp: nadie
+                puede pedir hora desde el mural.
+              </small>
+            )}
+          </div>
+        )}
       </div>
 
       {(uploadError || submitError) && (
@@ -489,7 +574,7 @@ export default function AdForm({
         <button
           type="submit"
           className="btn-post-ad"
-          disabled={isSubmitting || Boolean(uploadTarget) || !canAffordTier}
+          disabled={isSubmitting || Boolean(uploadTarget) || !canAffordTier || hasAgendaErrors}
         >
           {isSubmitting ? <Loader2 size={16} className="spin-icon" /> : <Plus size={16} />}
           {isSubmitting

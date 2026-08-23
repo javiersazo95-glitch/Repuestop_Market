@@ -333,14 +333,59 @@ export function isAdVisibleOnWall(ad) {
 }
 
 // -------------------------------------------------------------
-// AGENDAMIENTOS (se consumen en la fase C)
+// AGENDAMIENTOS
 // -------------------------------------------------------------
+
+/**
+ * Estados de una reserva. Son los mismos strings que valida el `@Pattern` de
+ * `AnuncioAgendamientoEstadoDTO` y que guarda `AnuncioAgendamiento.estado`:
+ * inventar uno hace que el PATCH responda 400.
+ */
+export const APPOINTMENT_STATUSES = ['pending', 'accepted', 'rejected', 'cancelled'];
 
 /** 'cancelled' la marca el cliente; 'rejected' la marca el taller. */
 export const CLOSED_APPOINTMENT_STATUSES = ['rejected', 'cancelled'];
 
 export function isClosedAppointment(status) {
   return CLOSED_APPOINTMENT_STATUSES.includes(status);
+}
+
+/**
+ * Estilo y textos de cada estado, en un solo lugar para toda la agenda.
+ * Port de `mobile/constants/appointment-status.ts`.
+ */
+export const APPOINTMENT_STATUS_META = {
+  pending: {
+    label: 'Pendiente',
+    longLabel: 'Pendiente de confirmación',
+    tone: 'warning'
+  },
+  accepted: {
+    label: 'Aceptada',
+    longLabel: 'Confirmada por el taller',
+    tone: 'success'
+  },
+  rejected: {
+    label: 'Rechazada',
+    longLabel: 'Rechazada por el taller',
+    tone: 'danger'
+  },
+  cancelled: {
+    label: 'Cancelada',
+    longLabel: 'Cancelada por el cliente',
+    tone: 'muted'
+  }
+};
+
+/**
+ * Los bloques que una reserva deja ocupados: `AnuncioAgendamientoService.crear()`
+ * choca contra `pending` y `accepted` (su constante `OCUPADOS`), asi que una
+ * reserva rechazada o cancelada libera el horario.
+ */
+export const BLOCKING_APPOINTMENT_STATUSES = ['pending', 'accepted'];
+
+export function blocksAppointmentSlot(status) {
+  return BLOCKING_APPOINTMENT_STATUSES.includes(status);
 }
 
 // -------------------------------------------------------------
