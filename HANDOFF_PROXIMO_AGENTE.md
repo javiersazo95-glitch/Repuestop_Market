@@ -642,8 +642,14 @@ y sus dos helpers se eliminaron. La llave vieja se deja en los navegadores que l
 al refrescar, porque el backend viejo lo sigue devolviendo. No es grave ni permanente, pero
 conviene evitarlo.
 
-**Lo único no verificado en vivo**: el `DELETE` contra el backend NUEVO. La instancia local
-que está corriendo todavía tiene el código anterior, y no se reinició porque no es de esta
-sesión. El comportamiento está cubierto por el test unitario
-(`laBajaLogicaMarcaElAnuncioYLoSacaDeLaListaDelDueno`) y `mvn package -DskipTests` pasa;
-falta confirmarlo con el backend levantado de nuevo.
+**Verificado en vivo con el backend reiniciado.** Se creó el anuncio de descarte id 10 en
+estado PENDIENTE —el caso exacto que el parche tapaba— y se dio de baja desde el botón del
+panel: el backend lo dejó `ELIMINADO` + `activo=false`, dejó de venir en `/anuncios/mios`,
+no reapareció al pulsar Actualizar y la llave `repuestop_ads_deleted` siguió vacía, o sea
+que ya nadie la escribe. El mural público no se movió. En la base local queda el id 10 como
+ELIMINADO; no estorba, justamente porque no aparece en ninguna lista.
+
+La exclusión de la cola del backoffice (`listarTodosAdmin()`) no se pudo ver desde la web
+—esa ruta exige rol de backoffice— así que quedó cubierta con su propio test
+(`elAnuncioDadoDeBajaTampocoLlegaALaColaDelBackoffice`). Son 5 tests en verde y
+`mvn package -DskipTests` pasa.
