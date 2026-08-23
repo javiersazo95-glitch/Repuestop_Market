@@ -1,4 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+// Las 218 reglas `founder-*` viven en esta hoja, que hasta ahora solo importaba
+// `AboutRepuesTopPage`. Como las rutas van en chunks perezosos, entrar directo a
+// /vender no cargaba nunca ese chunk y el registro se veia SIN estilos; pasando
+// antes por /nosotros la hoja quedaba inyectada y ahi si se veia bien. El
+// componente que necesita los estilos es este, asi que los pide el. Vite la
+// inyecta una sola vez aunque la importen las dos vistas.
+import '../about-repuestop.css';
+import OpeningHoursPicker from './ads/OpeningHoursPicker';
+import { createDefaultSchedule, formatOpeningHours } from '../data/openingHours';
 import {
   ArrowLeft, ArrowRight, Crown, Check, Eye, EyeOff, UploadCloud, FileText,
   UserRound, Store, ClipboardCheck, ShieldCheck, MailCheck, Sparkles, PartyPopper, X,
@@ -72,6 +81,12 @@ const EMPTY_FORM: FormState = {
 
 export default function FounderRegistration({ onBack }: { onBack: () => void }) {
   const [activePhase, setActivePhase] = useState(0);
+  // El horario de atencion de la tienda. `SellerRegistrationPayload` ya tenia
+  // `hours?` y el backend lo persiste en `Proveedor.hours`, pero la web nunca lo
+  // llenaba: una tienda registrada aca quedaba sin horario, mientras que la
+  // registrada desde la app si lo traia. Es el mismo selector de la app, asi que
+  // la cadena guardada es identica en las dos plataformas.
+  const [schedule, setSchedule] = useState(createDefaultSchedule);
   const [legal, setLegal] = useState<LegalDoc | null>(null);
 
   // Phase 0 — registro
@@ -329,6 +344,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
           calleYNumero: form.address.trim(),
           codigoPostal: form.codigoPostal.trim() || undefined,
         },
+        hours: formatOpeningHours(schedule) || undefined,
         acceptsTerms: true,
         termsVersion: LEGAL_VERSION_CODE,
         origin: 'SITIO_WEB',
@@ -456,6 +472,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
                   showPassword={showPassword} setShowPassword={setShowPassword}
                   regiones={regiones} comunas={comunas} geoError={geoError}
                   onRegionChange={(regionId) => setForm((f) => ({ ...f, regionId, comunaId: '' }))}
+                  schedule={schedule} onScheduleChange={setSchedule}
                   submitting={submitting} formError={formError}
                   onSubmit={handleSubmit}
                   onOpenLegal={setLegal}
@@ -598,6 +615,8 @@ type RegFormProps = {
   showPassword: boolean; setShowPassword: (v: boolean) => void;
   regiones: UbicacionOption[]; comunas: UbicacionOption[]; geoError: string;
   onRegionChange: (regionId: string) => void;
+  schedule: ReturnType<typeof createDefaultSchedule>;
+  onScheduleChange: (value: ReturnType<typeof createDefaultSchedule>) => void;
   submitting: boolean; formError: string; onSubmit: () => void;
   onOpenLegal: (doc: LegalDoc) => void;
   onEmailBlur: (email: string) => void; checkingEmail: boolean;
@@ -721,6 +740,12 @@ function RegistrationForm(p: RegFormProps) {
       </div>
 
       {p.geoError && <p className="founder-reg-hint-error">{p.geoError}</p>}
+
+      {/* Mismo selector que el registro de la app: dias y horas se eligen, no se
+          escriben, para que el texto guardado sea comparable entre plataformas. */}
+      <Field label="Horario de atención" hint="Elige los días y las horas en que atiendes.">
+        <OpeningHoursPicker schedule={p.schedule} onChange={p.onScheduleChange} />
+      </Field>
 
       <div className="founder-reg-terms">
         <input id="acceptsTerms" type="checkbox" checked={form.acceptsTerms}
