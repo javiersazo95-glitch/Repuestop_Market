@@ -21,9 +21,11 @@ import { UPGRADE_TOKEN_COSTS, uploadAdImages, adErrorMessage } from '../../servi
 import AgendaScheduleEditor from './AgendaScheduleEditor';
 
 /**
- * Contador de caracteres. Solo se muestra donde el tope realmente aprieta; en la
- * descripcion (5000) o la direccion (300) aparece recien cerca del limite, para
- * no llenar el formulario de "0/5000" que nadie va a alcanzar.
+ * Contador de caracteres. Existe porque el campo dejaba de aceptar texto sin
+ * decir por que: los `maxLength` estaban puestos pero eran invisibles.
+ *
+ * Con `always={false}` aparece recien al 80% del tope, para los campos donde el
+ * limite es holgado —la direccion— y un "0/300" permanente seria solo ruido.
  */
 function CharCount({ value, max, always = true }) {
   const usados = String(value || '').length;
@@ -32,6 +34,25 @@ function CharCount({ value, max, always = true }) {
     <small className={`char-count ${usados >= max ? 'is-full' : ''}`}>{usados}/{max}</small>
   );
 }
+
+/**
+ * Topes del formulario. El backend acepta mas (descripcion 5000, texto de precio
+ * 120, direccion 300), pero un cliente mas estricto es seguro: lo que se guarda
+ * sigue cabiendo. Se bajan porque el tope del DTO no es una medida editorial.
+ *
+ * La descripcion se muestra recortada a 2 lineas en la tarjeta del mural, y
+ * COMPLETA en el visor de historias y en el detalle del movil: 5000 caracteres
+ * son unas 70 lineas de telefono encima de una foto.
+ *
+ * El precio son dos campos distintos segun la modalidad: en "precio de
+ * referencia" se cuentan DIGITOS y en "a cotizar", caracteres de texto libre.
+ * Nueve digitos son $999.999.999 y ademas evitan el desborde: el backend recibe
+ * un Long y `Number()` de JS pierde precision pasando los 16 digitos.
+ */
+const MAX_DESCRIPTION = 500;
+const MAX_PRICE_DIGITS = 9;
+const MAX_PRICE_TEXT = 80;
+const MAX_ADDRESS = 300;
 
 /**
  * Telefono chileno: el prefijo +56 es fijo y solo se escriben los 9 digitos.
@@ -430,13 +451,13 @@ export default function AdForm({
           <label>Descripción del servicio *</label>
           <textarea
             rows={3}
-            maxLength={5000}
+            maxLength={MAX_DESCRIPTION}
             placeholder="Describe los trabajos que realizas, con qué equipos cuentas y qué garantías ofreces."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             required
           />
-          <CharCount value={description} max={5000} always={false} />
+          <CharCount value={description} max={MAX_DESCRIPTION} />
         </div>
 
         {/* El tipo de precio es un campo real del anuncio (`priceType`), no se
@@ -474,10 +495,11 @@ export default function AdForm({
             <input
               type="text"
               inputMode="numeric"
+              maxLength={MAX_PRICE_DIGITS}
               placeholder="Ej: 25000"
               value={priceValue}
               onChange={(e) => {
-                const digits = e.target.value.replace(/\D/g, '');
+                const digits = e.target.value.replace(/\D/g, '').slice(0, MAX_PRICE_DIGITS);
                 setPriceValue(digits);
                 setPriceText(digits ? `Desde $${Number(digits).toLocaleString('es-CL')}` : '');
               }}
@@ -486,14 +508,16 @@ export default function AdForm({
           ) : (
             <input
               type="text"
-              maxLength={120}
+              maxLength={MAX_PRICE_TEXT}
               placeholder="Ej: Según presupuesto"
               value={priceText}
               onChange={(e) => setPriceText(e.target.value)}
               required
             />
           )}
-          {priceType !== 'fixed' && <CharCount value={priceText} max={120} />}
+          {priceType === 'fixed'
+            ? <CharCount value={priceValue} max={MAX_PRICE_DIGITS} />
+            : <CharCount value={priceText} max={MAX_PRICE_TEXT} />}
         </div>
 
         <div className="booking-field">
@@ -534,8 +558,9 @@ export default function AdForm({
             region={regionNombre}
             placeholder="Ej: Av. Providencia 1240, Local 5"
             required
+            maxLength={MAX_ADDRESS}
           />
-          <CharCount value={address} max={300} always={false} />
+          <CharCount value={address} max={MAX_ADDRESS} always={false} />
         </div>
 
         <div className="booking-field">

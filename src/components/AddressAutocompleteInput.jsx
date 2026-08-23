@@ -15,7 +15,7 @@ const DEBOUNCE_MS = 400;
  * región/comuna lo hace quien use el componente, que es el que conoce sus listas.
  */
 export default function AddressAutocompleteInput({
-  value, onChange, onSelectLocation, comuna, region, placeholder, required, id,
+  value, onChange, onSelectLocation, comuna, region, placeholder, required, id, maxLength,
 }) {
   const [suggestions, setSuggestions] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -75,6 +75,9 @@ export default function AddressAutocompleteInput({
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         placeholder={placeholder}
         required={required}
+        // Opcional: solo lo aplica quien muestre un tope. Sin esto, un formulario
+        // podia pintar un contador "/300" que el campo no hacia cumplir.
+        maxLength={maxLength}
         autoComplete="off"
       />
       {searching && <Loader2 size={15} className="spin-icon address-autocomplete-spinner" />}
