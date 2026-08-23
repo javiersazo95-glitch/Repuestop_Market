@@ -1,16 +1,50 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle, CalendarClock, Camera, Check, Clock, Coins, Film, Loader2, Plus, Trash2, X
 } from 'lucide-react';
 import {
-  AD_TIERS, AD_TIER_ORDER, AD_FEATURE_TAGS, SERVICE_CATEGORIES, CHILE_COMMUNES
+  AD_TIERS, AD_TIER_ORDER, AD_FEATURE_TAGS, SERVICE_CATEGORIES
 } from '../../data/automotiveAdsData';
+import {
+  createDefaultSchedule, parseOpeningHours, formatOpeningHours, scheduleToAgendaConfig
+} from '../../data/openingHours';
+import { getRegionesApi, getComunasApi, getSellerStoreApi } from '../../services/api';
+import { resolverUbicacionPorNombre } from '../../services/geoLookup';
+import { useAuth } from '../../context/AuthContext';
+import AddressAutocompleteInput from '../AddressAutocompleteInput';
+import OpeningHoursPicker from './OpeningHoursPicker';
 import {
   createDefaultAgendaConfig, normalizeAgendaConfig, toAgendaConfigPayload,
   getAgendaSummaryText, validateAgendaConfig
 } from '../../data/agendaConfig';
 import { UPGRADE_TOKEN_COSTS, uploadAdImages, adErrorMessage } from '../../services/adsStorage';
 import AgendaScheduleEditor from './AgendaScheduleEditor';
+
+/**
+ * Contador de caracteres. Solo se muestra donde el tope realmente aprieta; en la
+ * descripcion (5000) o la direccion (300) aparece recien cerca del limite, para
+ * no llenar el formulario de "0/5000" que nadie va a alcanzar.
+ */
+function CharCount({ value, max, always = true }) {
+  const usados = String(value || '').length;
+  if (!always && usados < max * 0.8) return null;
+  return (
+    <small className={`char-count ${usados >= max ? 'is-full' : ''}`}>{usados}/{max}</small>
+  );
+}
+
+/**
+ * Telefono chileno: el prefijo +56 es fijo y solo se escriben los 9 digitos.
+ * Es lo mismo que hace el CreateAdModal del movil (`stripChileCountryCode` al
+ * abrir, `+56 ...` al enviar). El campo aceptaba letras y simbolos y viajaban
+ * tal cual al backend, que guarda 40 caracteres sin validar nada.
+ */
+const PHONE_DIGITS = 9;
+const soloDigitos = (valor) => String(valor || '').replace(/\D/g, '').slice(0, PHONE_DIGITS);
+const quitarPrefijo = (valor) => {
+  const digitos = String(valor || '').replace(/\D/g, '');
+  return (digitos.startsWith('56') ? digitos.slice(2) : digitos).slice(-PHONE_DIGITS);
+};
 
 /**
  * El movil identifica la agenda de un aviso por `agendaConfigId` y recien despues
@@ -53,12 +87,25 @@ export default function AdForm({
   const [priceValue, setPriceValue] = useState(
     initialAd?.priceValue ? String(initialAd.priceValue) : ''
   );
-  const [region, setRegion] = useState(initialAd?.region || 'Región Metropolitana');
-  const [commune, setCommune] = useState(initialAd?.commune || 'Providencia');
+  // Region y comuna salen del catalogo real (`/geografia/...`), igual que en
+  // `BuyerAddressBook` y que en el CreateAdModal del movil. Antes la region era un
+  // `<input>` de texto libre y la comuna una lista fija de 18 nombres que mezclaba
+  // Providencia y Ñuñoa con Viña, Concepcion, Antofagasta y Temuco, sin relacion
+  // con la region escrita. El anuncio guarda NOMBRES, no ids, asi que el catalogo
+  // se usa para elegir bien y se envia el nombre resuelto.
+  const [regiones, setRegiones] = useState([]);
+  const [comunas, setComunas] = useState([]);
+  const [regionId, setRegionId] = useState('');
+  const [comunaId, setComunaId] = useState('');
   const [address, setAddress] = useState(initialAd?.address || '');
-  const [phone, setPhone] = useState(initialAd?.phone || '');
-  const [whatsapp, setWhatsapp] = useState(initialAd?.whatsapp || '');
-  const [openingHours, setOpeningHours] = useState(initialAd?.openingHours || '');
+  const [phone, setPhone] = useState(() => quitarPrefijo(initialAd?.phone));
+  const [whatsapp, setWhatsapp] = useState(() => quitarPrefijo(initialAd?.whatsapp));
+  // El horario se elige, no se escribe. Si el anuncio traia una cadena que no
+  // calza con el formato del selector se cae al horario por defecto, en vez de
+  // mostrar controles que digan algo distinto de lo que hay guardado.
+  const [schedule, setSchedule] = useState(
+    () => parseOpeningHours(initialAd?.openingHours) || createDefaultSchedule()
+  );
   const [is24Hours, setIs24Hours] = useState(initialAd?.is24Hours === true);
   const [features, setFeatures] = useState(initialAd?.features || []);
   const [servicesOffered, setServicesOffered] = useState(initialAd?.servicesOffered || []);
@@ -77,6 +124,90 @@ export default function AdForm({
   );
   const [agendaConfigName, setAgendaConfigName] = useState(initialAd?.agendaConfigName || '');
   const [agendaConfigId] = useState(initialAd?.agendaConfigId || newAgendaConfigId());
+
+  const { user } = useAuth();
+  const regionNombre = regiones.find((r) => String(r.id) === String(regionId))?.nombre || '';
+  const comunaNombre = comunas.find((c) => String(c.id) === String(comunaId))?.nombre || '';
+
+  // Catalogo de regiones, una vez.
+  useEffect(() => {
+    const controller = new AbortController();
+    getRegionesApi(1, { signal: controller.signal })
+      .then((lista) => setRegiones(Array.isArray(lista) ? lista : []))
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+
+  // Comunas de la region elegida. Al cambiar de region la comuna se limpia:
+  // dejarla puesta es lo que producia pares imposibles como Metropolitana/Temuco.
+  useEffect(() => {
+    if (!regionId) { setComunas([]); return undefined; }
+    const controller = new AbortController();
+    getComunasApi(regionId, { signal: controller.signal })
+      .then((lista) => setComunas(Array.isArray(lista) ? lista : []))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [regionId]);
+
+  /** Deja seleccionados la region y la comuna que correspondan a esos nombres. */
+  const seleccionarPorNombre = useCallback(async (nombreRegion, nombreComuna) => {
+    const resuelto = await resolverUbicacionPorNombre({ region: nombreRegion, comuna: nombreComuna });
+    if (resuelto?.regiones?.length) setRegiones(resuelto.regiones);
+    if (resuelto?.comunas?.length) setComunas(resuelto.comunas);
+    if (resuelto?.regionId) setRegionId(String(resuelto.regionId));
+    if (resuelto?.comunaId) setComunaId(String(resuelto.comunaId));
+    return resuelto;
+  }, []);
+
+  // Al editar, el anuncio guarda los NOMBRES: hay que volver a ubicarlos en el
+  // catalogo para que los dos selectores queden en la opcion correcta.
+  useEffect(() => {
+    if (!initialAd?.commune) return;
+    seleccionarPorNombre(initialAd.region, initialAd.commune);
+  }, [initialAd?.region, initialAd?.commune, seleccionarPorNombre]);
+
+  /**
+   * Prellenado con los datos de la tienda, SOLO al publicar y solo sobre campos
+   * vacios: al editar, lo que el socio ya guardo manda. El taller del aviso puede
+   * ser otro local, asi que todo esto es editable.
+   *
+   * `GET /proveedores/{id}/tienda` trae nombre, telefono, direccion, region,
+   * comuna y el horario que se capturo en el registro de la app (`Proveedor.hours`).
+   */
+  useEffect(() => {
+    const sellerId = user?.sellerId;
+    if (mode !== 'create' || !sellerId) return undefined;
+    const controller = new AbortController();
+    let vigente = true;
+
+    getSellerStoreApi(sellerId, { signal: controller.signal })
+      .then((tienda) => {
+        if (!vigente || !tienda) return;
+        setCompany((actual) => actual || tienda.storeName || '');
+        setPhone((actual) => actual || quitarPrefijo(tienda.phone));
+        setAddress((actual) => actual || tienda.address || '');
+        const horario = parseOpeningHours(tienda.hours);
+        if (horario) setSchedule(horario);
+        if (tienda.comuna) seleccionarPorNombre(tienda.region, tienda.comuna);
+      })
+      .catch(() => {});
+
+    return () => { vigente = false; controller.abort(); };
+  }, [mode, user?.sellerId, seleccionarPorNombre]);
+
+  /**
+   * Al encender las reservas, la agenda parte del horario de atencion ya
+   * declarado en vez de un Lun-Vie generico. Es el mismo dato dicho dos veces:
+   * sin esto se podia publicar "Lun a Sab 09:00 a 20:00" con una agenda que solo
+   * ofrecia Mar a Vie hasta las 18:00. Solo siembra al activarla; despues el
+   * socio ajusta bloques y colacion sin que nada se los pise.
+   */
+  const handleBookingToggle = (activar) => {
+    setBookingEnabled(activar);
+    if (!activar || initialAd?.agendaConfig) return;
+    const sembrada = scheduleToAgendaConfig(schedule, agendaConfig);
+    if (sembrada) setAgendaConfig(sembrada);
+  };
 
   const limits = AD_TIERS[tier] || AD_TIERS.basica;
   const tierCost = UPGRADE_TOKEN_COSTS[tier] || 0;
@@ -156,12 +287,14 @@ export default function AdForm({
       priceType,
       priceText: priceText.trim(),
       priceValue: priceType === 'fixed' ? Number(priceValue.replace(/\D/g, '')) || 0 : null,
-      region: region.trim(),
-      commune,
+      // Se guardan los NOMBRES del catalogo, que es lo que el anuncio persiste.
+      region: regionNombre,
+      commune: comunaNombre,
       address: address.trim(),
-      phone: phone.trim(),
-      whatsapp: limits.hasWhatsapp ? whatsapp.trim() : '',
-      openingHours: openingHours.trim(),
+      // El prefijo lo pone el formulario; el campo solo tiene los 9 digitos.
+      phone: phone ? `+56 ${phone}` : '',
+      whatsapp: limits.hasWhatsapp && whatsapp ? `+56 ${whatsapp}` : '',
+      openingHours: is24Hours ? 'Atención 24 horas' : formatOpeningHours(schedule),
       is24Hours,
       features: visibleFeatures,
       servicesOffered: visibleServices,
@@ -268,6 +401,7 @@ export default function AdForm({
             onChange={(e) => setTitle(e.target.value)}
             required
           />
+          <CharCount value={title} max={160} />
         </div>
 
         <div className="booking-field">
@@ -280,6 +414,7 @@ export default function AdForm({
             onChange={(e) => setCompany(e.target.value)}
             required
           />
+          <CharCount value={company} max={180} />
         </div>
 
         <div className="booking-field">
@@ -301,6 +436,7 @@ export default function AdForm({
             onChange={(e) => setDescription(e.target.value)}
             required
           />
+          <CharCount value={description} max={5000} always={false} />
         </div>
 
         {/* El tipo de precio es un campo real del anuncio (`priceType`), no se
@@ -357,49 +493,65 @@ export default function AdForm({
               required
             />
           )}
+          {priceType !== 'fixed' && <CharCount value={priceText} max={120} />}
         </div>
 
         <div className="booking-field">
-          <label>Región</label>
-          <input
-            type="text"
-            maxLength={120}
-            value={region}
-            onChange={(e) => setRegion(e.target.value)}
-          />
+          <label>Región *</label>
+          <select
+            value={regionId}
+            onChange={(e) => { setRegionId(e.target.value); setComunaId(''); }}
+            required
+          >
+            <option value="">Selecciona una región</option>
+            {regiones.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+          </select>
         </div>
 
         <div className="booking-field">
           <label>Comuna *</label>
-          <select value={commune} onChange={(e) => setCommune(e.target.value)} required>
-            {CHILE_COMMUNES.filter((c) => c !== 'Todas las comunas').map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
+          <select
+            value={comunaId}
+            onChange={(e) => setComunaId(e.target.value)}
+            disabled={!regionId || comunas.length === 0}
+            required
+          >
+            <option value="">{regionId ? 'Selecciona una comuna' : 'Elige primero la región'}</option>
+            {comunas.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
           </select>
         </div>
 
+        {/* Sugerencias reales contra Photon/OSM, el mismo campo del alta de
+            direcciones y de la app. Al elegir una sugerencia se completan tambien
+            region y comuna, que es lo que evita el par imposible. */}
         <div className="booking-field col-span-2">
           <label>Dirección física *</label>
-          <input
-            type="text"
-            maxLength={300}
-            placeholder="Ej: Av. Providencia 1240, Local 5"
+          <AddressAutocompleteInput
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            onChange={setAddress}
+            onSelectLocation={({ comuna, region }) => seleccionarPorNombre(region, comuna)}
+            comuna={comunaNombre}
+            region={regionNombre}
+            placeholder="Ej: Av. Providencia 1240, Local 5"
             required
           />
+          <CharCount value={address} max={300} always={false} />
         </div>
 
         <div className="booking-field">
           <label>Teléfono de contacto *</label>
-          <input
-            type="tel"
-            maxLength={40}
-            placeholder="+56 9 8765 4321"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            required
-          />
+          <div className="phone-field">
+            <span className="phone-prefix">+56</span>
+            <input
+              type="tel"
+              inputMode="numeric"
+              placeholder="9 8765 4321"
+              value={phone}
+              onChange={(e) => setPhone(soloDigitos(e.target.value))}
+              required
+            />
+          </div>
+          <CharCount value={phone} max={PHONE_DIGITS} />
         </div>
 
         <div className="booking-field">
@@ -408,39 +560,36 @@ export default function AdForm({
               ? `(incluido en el plan ${limits.name})`
               : `(no disponible en el plan ${limits.name})`}
           </label>
-          <input
-            type="tel"
-            maxLength={40}
-            placeholder="+56 9 8765 4321"
-            value={limits.hasWhatsapp ? whatsapp : ''}
-            onChange={(e) => setWhatsapp(e.target.value)}
-            disabled={!limits.hasWhatsapp}
-          />
+          <div className={`phone-field ${limits.hasWhatsapp ? '' : 'is-disabled'}`}>
+            <span className="phone-prefix">+56</span>
+            <input
+              type="tel"
+              inputMode="numeric"
+              placeholder="9 8765 4321"
+              value={limits.hasWhatsapp ? whatsapp : ''}
+              onChange={(e) => setWhatsapp(soloDigitos(e.target.value))}
+              disabled={!limits.hasWhatsapp}
+            />
+          </div>
         </div>
 
         <div className="booking-field col-span-2">
-          <label>Horario de atención</label>
-          <input
-            type="text"
-            maxLength={300}
-            placeholder="Ej: Lun a Sáb 09:00 - 19:00"
-            value={openingHours}
-            onChange={(e) => setOpeningHours(e.target.value)}
-            disabled={is24Hours}
-          />
+          <label><Clock size={13} /> Horario de atención</label>
+
           {/* `is24Hours` es un campo propio y el mural filtra por él. Antes se
               adivinaba buscando "24" dentro del horario escrito a mano. */}
           <label className="ad-check-row">
             <input
               type="checkbox"
               checked={is24Hours}
-              onChange={(e) => {
-                setIs24Hours(e.target.checked);
-                if (e.target.checked) setOpeningHours('Atención 24 horas');
-              }}
+              onChange={(e) => setIs24Hours(e.target.checked)}
             />
-            <Clock size={13} /> Atiendo las 24 horas
+            Atiendo las 24 horas
           </label>
+
+          {is24Hours
+            ? <small className="ad-upload-hint">El anuncio se publica como “Atención 24 horas”.</small>
+            : <OpeningHoursPicker schedule={schedule} onChange={setSchedule} />}
         </div>
 
         <div className="booking-field col-span-2">
@@ -477,6 +626,7 @@ export default function AdForm({
               }}
               disabled={servicesOffered.length >= limits.maxTags}
             />
+            <CharCount value={serviceDraft} max={120} always={false} />
             <button
               type="button"
               className="btn-ad-phone"
@@ -527,7 +677,7 @@ export default function AdForm({
               <input
                 type="checkbox"
                 checked={bookingEnabled}
-                onChange={(e) => setBookingEnabled(e.target.checked)}
+                onChange={(e) => handleBookingToggle(e.target.checked)}
               />
               Recibir reservas de hora desde el mural
             </label>
@@ -543,6 +693,7 @@ export default function AdForm({
                     value={agendaConfigName}
                     onChange={(e) => setAgendaConfigName(e.target.value)}
                   />
+                  <CharCount value={agendaConfigName} max={160} always={false} />
                   <small className="ad-upload-hint">
                     Solo lo ves tú, para reconocer este horario en tu gestión.
                   </small>

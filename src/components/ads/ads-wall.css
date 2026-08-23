@@ -2473,3 +2473,56 @@
 .mgmt-ad-plan.plan-destacada { background: #fffbeb; color: #b45309; }
 .mgmt-ad-plan.plan-premium { background: #f5f3ff; color: #6d28d9; }
 .mgmt-ad-plan.plan-empresarial { background: #ecfdf5; color: #047857; }
+
+/* ============================================================
+   FORMULARIO DE ANUNCIO — contadores, telefono y horario
+   ============================================================ */
+
+/* Contador de caracteres. Va a la derecha bajo el campo para que no compita con
+   la etiqueta ni con el texto de ayuda. */
+.char-count { display: block; margin-top: 3px; text-align: right; font-size: 10.5px; color: #94a3b8; font-variant-numeric: tabular-nums; }
+.char-count.is-full { color: #b45309; font-weight: 700; }
+
+/* Telefono: el +56 es parte del campo, no del texto que el usuario escribe.
+   Antes era un input libre de 40 caracteres donde cabian letras y simbolos. */
+.phone-field { display: flex; align-items: stretch; border: 1px solid #cbd5e1; border-radius: 10px; background: #ffffff; overflow: hidden; }
+.phone-field:focus-within { border-color: #0066ff; }
+.phone-prefix { display: inline-flex; align-items: center; padding: 0 11px; background: #f1f5f9; color: #475569; font-size: 12.5px; font-weight: 700; border-right: 1px solid #e2e8f0; }
+.phone-field input { flex: 1; min-width: 0; border: none; outline: none; padding: 9px 11px; font-size: 13px; background: transparent; }
+.phone-field.is-disabled { background: #f8fafc; opacity: .7; }
+
+/* --- Selector de horario (port del registro de vendedor de la app) --- */
+.hours-picker { margin-top: 10px; padding: 14px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+
+.hours-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.hours-preset { padding: 8px 16px; border: 1px solid #0066ff; border-radius: 10px; background: #ffffff; color: #0066ff; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .15s ease; }
+.hours-preset:hover { background: #eff6ff; }
+.hours-preset.active { background: #0066ff; color: #ffffff; }
+
+.hours-block { padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; }
+.hours-block + .hours-block { margin-top: 10px; }
+.hours-block-head { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: #0f172a; }
+.hours-block-head strong { font-weight: 700; }
+.hours-block-head small { color: #94a3b8; font-weight: 500; }
+
+.hours-days { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0; }
+.hours-day { min-width: 52px; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 10px; background: #ffffff; color: #475569; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .15s ease; }
+.hours-day:hover { border-color: #0066ff; color: #0066ff; }
+.hours-day.active { background: #0066ff; border-color: #0066ff; color: #ffffff; }
+
+.hours-range { display: flex; gap: 12px; }
+.hours-range label { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.hours-range span { font-size: 11.5px; font-weight: 600; color: #64748b; }
+.hours-range select { padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 10px; background: #ffffff; font-size: 13px; color: #0f172a; }
+
+.hours-weekend-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+.hours-weekend-toggle input { accent-color: #0066ff; width: 17px; height: 17px; }
+
+/* El texto exacto con el que va a quedar publicado el aviso. */
+.hours-summary { display: flex; align-items: center; gap: 7px; margin-top: 12px; padding: 9px 12px; border-radius: 10px; background: #eff6ff; color: #0052cc; font-size: 12.5px; font-weight: 700; }
+.hours-summary.is-empty { background: #fffbeb; color: #b45309; font-weight: 600; }
+.hours-summary svg { flex-shrink: 0; }
+
+@media (max-width: 540px) {
+  .hours-range { flex-direction: column; gap: 8px; }
+}
