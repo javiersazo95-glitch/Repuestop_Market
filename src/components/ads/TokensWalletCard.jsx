@@ -1,56 +1,58 @@
 import React from 'react';
-import { Coins, Zap, Plus, Sparkles, ShieldCheck, ArrowUpRight, History } from 'lucide-react';
+import { Coins, Plus, History } from 'lucide-react';
 
+/**
+ * Saldo del Monedero de Fichas.
+ *
+ * Es una barra plana con el oscuro de la casa (`#0f172a`), no una tarjeta con
+ * degradado: la version anterior tenia un `linear-gradient` diagonal, un
+ * `radial-gradient` de 220px como brillo y un badge con `backdrop-filter`, tres
+ * recursos que no aparecen en ninguna otra vista del perfil. Destacaba, pero
+ * como una isla pegada de otra plataforma.
+ */
 export default function TokensWalletCard({
   tokensBalance,
   onOpenRechargeModal,
   onOpenHistoryModal
 }) {
   return (
-    <div className="tokens-wallet-card">
-      <div className="tokens-wallet-glow" />
-      <div className="tokens-wallet-inner">
-        <div className="tokens-wallet-left">
-          <div className="tokens-wallet-icon-badge">
-            <Coins size={26} className="text-amber-300" />
-          </div>
-          <div>
-            <div className="tokens-wallet-label">
-              <span>Monedero de Fichas RepuesTop</span>
-              <span className="tokens-live-tag">Saldo Activo</span>
-            </div>
-            <div className="tokens-wallet-amount">
-              <strong>{tokensBalance.toLocaleString('es-CL')}</strong>
-              <span>Fichas Disponibles</span>
-            </div>
-            <p className="tokens-wallet-hint">
-              Usa tus fichas para clasificar tus avisos en rango <strong>Destacado (50)</strong>, <strong>Premium (120)</strong> o <strong>Empresarial (250)</strong>.
-            </p>
+    <div className="tokens-wallet-bar">
+      <div className="tokens-wallet-identity">
+        <span className="tokens-wallet-icon">
+          <Coins size={20} />
+        </span>
+        <div>
+          <span className="tokens-wallet-label">Monedero de Fichas RepuesTop</span>
+          <div className="tokens-wallet-amount">
+            <strong>{tokensBalance.toLocaleString('es-CL')}</strong>
+            <span>Fichas disponibles</span>
           </div>
         </div>
+      </div>
 
-        <div className="tokens-wallet-right">
+      {/* El tarifario vive aca porque es la referencia que el socio necesita
+          justo antes de decidir si recarga. */}
+      <p className="tokens-wallet-rates">
+        Destacado <b>50</b> · Premium <b>120</b> · Empresarial <b>250</b>
+      </p>
+
+      <div className="tokens-wallet-actions">
+        <button type="button" className="btn-recharge-tokens" onClick={onOpenRechargeModal}>
+          <Plus size={16} />
+          <span>Recargar</span>
+        </button>
+
+        {onOpenHistoryModal && (
           <button
             type="button"
-            className="btn-recharge-tokens"
-            onClick={onOpenRechargeModal}
+            className="btn-token-history"
+            onClick={onOpenHistoryModal}
+            title="Ver historial de movimientos"
           >
-            <Plus size={18} />
-            <span>Recargar Fichas</span>
+            <History size={15} />
+            <span>Historial</span>
           </button>
-
-          {onOpenHistoryModal && (
-            <button
-              type="button"
-              className="btn-token-history"
-              onClick={onOpenHistoryModal}
-              title="Ver historial de movimientos"
-            >
-              <History size={15} />
-              <span>Historial</span>
-            </button>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );

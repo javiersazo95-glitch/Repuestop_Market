@@ -1440,60 +1440,6 @@
   to { opacity: 1; }
 }
 
-/* ==========================================================================
-   MONEDERO DE FICHAS REPUES-TOP & GESTIÓN DE ANUNCIOS
-   ========================================================================== */
-
-.tokens-wallet-card {
-  position: relative;
-  background: linear-gradient(135deg, #071934 0%, #0f2e5a 60%, #1e1b4b 100%);
-  border-radius: 16px;
-  padding: 22px 26px;
-  color: #ffffff;
-  overflow: hidden;
-  box-shadow: 0 8px 24px rgba(7, 25, 52, 0.2);
-  margin-bottom: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.tokens-wallet-glow {
-  position: absolute;
-  top: -40px;
-  right: -40px;
-  width: 220px;
-  height: 220px;
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.25) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-.tokens-wallet-inner {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
-  position: relative;
-  z-index: 2;
-}
-
-.tokens-wallet-left {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-}
-
-.tokens-wallet-icon-badge {
-  width: 58px;
-  height: 58px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
 
 .tokens-wallet-label {
   display: flex;
@@ -1504,16 +1450,6 @@
   margin-bottom: 2px;
 }
 
-.tokens-live-tag {
-  background: rgba(16, 185, 129, 0.2);
-  border: 1px solid #10b981;
-  color: #6ee7b7;
-  font-size: 10px;
-  padding: 1px 7px;
-  border-radius: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
 
 .tokens-wallet-amount {
   display: flex;
@@ -1534,21 +1470,6 @@
   font-weight: 600;
 }
 
-.tokens-wallet-hint {
-  font-size: 12px;
-  color: #94a3b8;
-  margin: 4px 0 0 0;
-}
-
-.tokens-wallet-hint strong {
-  color: #f1f5f9;
-}
-
-.tokens-wallet-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
 
 .btn-recharge-tokens {
   background: linear-gradient(135deg, #f59e0b, #d97706);
@@ -1947,61 +1868,11 @@
   align-items: center;
 }
 
-.ads-mgmt-stats-grid {
-  display: grid;
-  /* auto-fit y no un numero fijo: la tarjeta de reservas es la quinta y con
-     `repeat(4, 1fr)` quedaba sola en una segunda fila. */
-  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-  gap: 14px;
-  margin-bottom: 24px;
-}
 
 @media (max-width: 768px) {
-  .ads-mgmt-stats-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+
 }
 
-.mgmt-stat-card {
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  padding: 14px 16px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
-}
-
-.mgmt-stat-card .stat-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
-  display: block;
-}
-
-.mgmt-stat-card .stat-number {
-  font-size: 24px;
-  font-weight: 900;
-  color: #0f172a;
-  display: block;
-  margin: 4px 0 2px 0;
-}
-
-.mgmt-stat-card .stat-sub {
-  font-size: 11px;
-  color: #94a3b8;
-}
-
-.mgmt-stat-card.stat-empresarial {
-  border-left: 4px solid #059669;
-}
-
-.mgmt-stat-card.stat-premium {
-  border-left: 4px solid #7c3aed;
-}
-
-.mgmt-stat-card.stat-destacada {
-  border-left: 4px solid #f59e0b;
-}
 
 .ads-mgmt-toolbar {
   display: flex;
@@ -2111,19 +1982,18 @@
   object-fit: cover;
 }
 
-.mgmt-ad-thumb .ad-tier-pill {
-  top: 4px;
-  left: 4px;
-  font-size: 9px;
-  padding: 2px 6px;
-}
-
 .mgmt-ad-meta-top {
   display: flex;
-  gap: 10px;
+  /* `center` y no el `stretch` por defecto: las pildoras son etiquetas, y si un
+     hermano de la fila crece —la categoria envolviendose en dos lineas cuando el
+     panel es angosto— las estiraba a todas al alto de la fila. `wrap` para que
+     en pantallas chicas bajen en vez de apretarse. */
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
   font-size: 11px;
   color: #64748b;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .mgmt-ad-cat {
@@ -2337,11 +2207,6 @@
 .ad-empty-note { padding: 20px 4px 6px; text-align: center; color: #64748b; font-size: 13px; }
 .ad-empty-note p { margin: 0 0 16px; }
 
-/* ---- Panel de gestion: estado de cada anuncio ---- */
-
-.mgmt-stat-card.stat-pending { border-left: 4px solid #f59e0b; }
-.mgmt-stat-card.stat-rejected { border-left: 4px solid #dc2626; }
-.mgmt-stat-card.stat-expiring { border-left: 4px solid #0ea5e9; }
 
 .mgmt-tier-select { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 9px; background: #ffffff; color: #334155; font-size: 12.5px; font-weight: 600; cursor: pointer; }
 
@@ -2373,15 +2238,7 @@
 
 .btn-mgmt-upgrade:disabled { background: #e2e8f0; color: #94a3b8; box-shadow: none; cursor: not-allowed; transform: none; }
 
-/* ============================================================
-   AGENDA DE CITAS (fase C)
-   Reutiliza el lenguaje del panel de perfil: las mismas pildoras de estado
-   (`.mgmt-status-pill.tone-*`), las mismas tarjetas y los mismos botones de
-   accion que la gestion de anuncios. Lo unico propio son la rejilla de bloques
-   horarios y la tira de fechas, que no existian.
-   ============================================================ */
 
-.mgmt-stat-card.stat-booking { border-left: 4px solid #059669; }
 .mgmt-status-pill.tone-muted { background: #f1f5f9; color: #475569; }
 
 /* --- Editor de agenda (AdForm) --- */
@@ -2514,3 +2371,105 @@
 .tokens-history-amount { flex-shrink: 0; font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; }
 .tokens-history-item.is-credit .tokens-history-amount { color: #047857; }
 .tokens-history-item.is-debit .tokens-history-amount { color: #b91c1c; }
+
+/* ============================================================
+   GESTIÓN DE ANUNCIOS — ajuste de espacio y lenguaje visual
+   ============================================================
+   Tres problemas que esta seccion corrige, y que conviene no reintroducir:
+
+   1. El panel anulaba el padding de `.profile-panel` (26px) con `0` horizontal,
+      asi que todo su contenido iba de borde a borde. Era el unico panel del
+      perfil que lo hacia.
+   2. El monedero usaba degradado diagonal + un brillo radial de 220px +
+      `backdrop-filter`, tres recursos que no existen en ninguna otra vista.
+   3. Habia ocho radios distintos en una sola pantalla (8, 9, 10, 12, 14, 16, 20
+      y 999). Aca la escala es: 12px contenedores, 10px controles, 999px pildoras.
+   ============================================================ */
+
+/* 1. El espacio que faltaba. Hereda los 26px del panel de perfil en vez de
+   anularlos; solo se conserva el respiro extra abajo. */
+.ads-management-panel { padding: 26px 26px 34px; }
+
+/* 2. Monedero: barra plana con el oscuro de la casa (#0f172a, el mismo que usa
+   el resto del perfil), sin degradado, sin brillo y sin vidrio. */
+.tokens-wallet-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+  margin-bottom: 20px; padding: 18px 22px; border-radius: 12px; background: #0f172a; color: #ffffff;
+}
+.tokens-wallet-identity { display: flex; align-items: center; gap: 14px; }
+.tokens-wallet-icon { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 10px; background: rgba(255, 255, 255, .08); color: #ffffff; flex-shrink: 0; }
+.tokens-wallet-label { display: block; font-size: 12px; font-weight: 600; color: #94a3b8; }
+.tokens-wallet-amount { display: flex; align-items: baseline; gap: 7px; }
+/* En blanco y no en ambar: el numero ya destaca por tamaño sobre el fondo
+   oscuro, y el acento de color era parte de lo que lo hacia ver de plantilla. */
+.tokens-wallet-amount strong { font-size: 28px; font-weight: 800; letter-spacing: -.02em; color: #ffffff; }
+.tokens-wallet-amount span { font-size: 12.5px; color: #cbd5e1; }
+.tokens-wallet-rates { flex: 1; min-width: 190px; font-size: 12px; color: #94a3b8; text-align: center; }
+.tokens-wallet-rates b { color: #e2e8f0; font-weight: 700; }
+.tokens-wallet-actions { display: flex; align-items: center; gap: 8px; }
+
+.btn-recharge-tokens { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border: none; border-radius: 10px; background: #0066ff; color: #ffffff; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: background .15s ease; }
+.btn-recharge-tokens:hover { background: #0052cc; }
+.btn-token-history { display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border: 1px solid rgba(255, 255, 255, .18); border-radius: 10px; background: transparent; color: #e2e8f0; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background .15s ease; }
+.btn-token-history:hover { background: rgba(255, 255, 255, .08); }
+
+/* 3. Metricas: una banda con separadores finos, no cinco tarjetas con cinco
+   bordes de color. Ademas los numeros quedan alineados entre si, que con la
+   etiqueta larga a dos lineas no pasaba. */
+.ads-mgmt-stats {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; overflow: hidden;
+}
+.mgmt-stat { display: flex; flex-direction: column; gap: 1px; padding: 14px 16px; border-left: 1px solid #eef2f7; }
+.mgmt-stat:first-child { border-left: none; }
+.mgmt-stat strong { font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.mgmt-stat-label { font-size: 12px; font-weight: 700; color: #334155; }
+.mgmt-stat small { font-size: 11px; color: #94a3b8; }
+/* El tono es una marca fina sobre el numero, no un borde de color en la tarjeta. */
+.mgmt-stat strong { border-top: 2px solid transparent; padding-top: 6px; width: fit-content; }
+.mgmt-stat.tone-ok strong { border-top-color: #059669; }
+.mgmt-stat.tone-warn strong { border-top-color: #f59e0b; }
+.mgmt-stat.tone-bad strong { border-top-color: #dc2626; }
+.mgmt-stat.tone-info strong { border-top-color: #0ea5e9; }
+
+@media (max-width: 900px) {
+  .ads-mgmt-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mgmt-stat:nth-child(odd) { border-left: none; }
+  .mgmt-stat { border-top: 1px solid #eef2f7; }
+  .mgmt-stat:nth-child(-n+2) { border-top: none; }
+}
+
+/* El aviso de moderacion, ahora una linea sobre la lista en vez de un bloque de
+   75px repetido dentro de cada anuncio pendiente. */
+.ads-mgmt-pending-note { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 14px; padding: 10px 14px; border-radius: 10px; background: #fffbeb; border: 1px solid rgba(245, 158, 11, .3); color: #92400e; font-size: 12.5px; line-height: 1.45; }
+.ads-mgmt-pending-note svg { flex-shrink: 0; margin-top: 2px; }
+
+/* 4. Escala de radios unica en la vista. */
+.mgmt-ad-item { border-radius: 12px; }
+.ads-mgmt-state { border-radius: 12px; }
+.btn-mgmt-upgrade, .btn-mgmt-edit, .btn-mgmt-delete, .btn-mgmt-agenda,
+.btn-post-ad, .btn-ad-phone, .mgmt-tier-select, .mgmt-search-box input { border-radius: 10px; }
+.my-appointment-item, .agenda-appointment { border-radius: 12px; }
+.mgmt-ad-thumb { border-radius: 10px; }
+
+/* Un poco mas de aire entre las filas y dentro de ellas: el reclamo original era
+   justamente que los elementos quedaban pegados. */
+.ads-mgmt-list { gap: 14px; }
+.mgmt-ad-item { padding: 18px; }
+
+/* Plan del anuncio, en la fila de datos.
+   Vivia encima de la miniatura reusando `AD_TIERS[x].badge`, que esta escrito
+   para la tarjeta del mural: "👑 Empresarial Verificado" son 24 caracteres y
+   sobre una miniatura de 90x70 se partia en TRES lineas tapando el 64% de la
+   foto. Aca se usa `name` (una palabra) y hay ancho de sobra, asi que sirve para
+   cualquier etiqueta futura sin ajustar medidas.
+   Se lee como el estado y la categoria porque es el mismo tipo de dato; el color
+   lo distingue sin gritar. */
+.mgmt-ad-plan {
+  display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em;
+}
+.mgmt-ad-plan.plan-basica { background: #f1f5f9; color: #475569; }
+.mgmt-ad-plan.plan-destacada { background: #fffbeb; color: #b45309; }
+.mgmt-ad-plan.plan-premium { background: #f5f3ff; color: #6d28d9; }
+.mgmt-ad-plan.plan-empresarial { background: #ecfdf5; color: #047857; }

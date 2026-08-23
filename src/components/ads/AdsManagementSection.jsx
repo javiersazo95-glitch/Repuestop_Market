@@ -290,40 +290,23 @@ export default function AdsManagementSection({ onNavigateToMural }) {
         onOpenHistoryModal={() => setIsHistoryModalOpen(true)}
       />
 
-      {/* Las metricas siguen el estado de moderacion, que es lo que el usuario no
-          puede deducir mirando el mural: ahi solo se ve lo aprobado. */}
-      <div className="ads-mgmt-stats-grid">
-        <div className="mgmt-stat-card">
-          <span className="stat-label">Publicados</span>
-          <strong className="stat-number">{counts.live}</strong>
-          <small className="stat-sub">Visibles en el mural</small>
-        </div>
-
-        <div className="mgmt-stat-card stat-pending">
-          <span className="stat-label">En revisión</span>
-          <strong className="stat-number">{counts.pending}</strong>
-          <small className="stat-sub">Esperando moderación</small>
-        </div>
-
-        <div className="mgmt-stat-card stat-rejected">
-          <span className="stat-label">Rechazados</span>
-          <strong className="stat-number">{counts.rejected}</strong>
-          <small className="stat-sub">Corrígelos y se revisan de nuevo</small>
-        </div>
-
-        <div className="mgmt-stat-card stat-expiring">
-          <span className="stat-label">Por vencer</span>
-          <strong className="stat-number">{counts.expiring}</strong>
-          <small className="stat-sub">Vencen dentro de 7 días</small>
-        </div>
-
-        {/* La agenda es lo unico del panel que exige una respuesta con plazo:
-            una reserva sin contestar es un cliente esperando. */}
-        <div className="mgmt-stat-card stat-booking">
-          <span className="stat-label">Reservas por responder</span>
-          <strong className="stat-number">{pendingReceived}</strong>
-          <small className="stat-sub">Citas pedidas en tus anuncios</small>
-        </div>
+      {/* Una banda segmentada y no cinco tarjetas: eran cinco bordes de color y
+          cinco radios compitiendo, y la etiqueta mas larga se iba a dos lineas,
+          asi que los numeros ni siquiera quedaban alineados entre si. */}
+      <div className="ads-mgmt-stats">
+        {[
+          { label: 'Publicados', value: counts.live, hint: 'Visibles en el mural', tone: 'ok' },
+          { label: 'En revisión', value: counts.pending, hint: 'Esperando moderación', tone: 'warn' },
+          { label: 'Rechazados', value: counts.rejected, hint: 'Corrígelos y se revisan', tone: 'bad' },
+          { label: 'Por vencer', value: counts.expiring, hint: 'Dentro de 7 días', tone: 'info' },
+          { label: 'Reservas', value: pendingReceived, hint: 'Citas por responder', tone: 'ok' }
+        ].map((stat) => (
+          <div key={stat.label} className={`mgmt-stat tone-${stat.tone}`}>
+            <strong>{stat.value}</strong>
+            <span className="mgmt-stat-label">{stat.label}</span>
+            <small>{stat.hint}</small>
+          </div>
+        ))}
       </div>
 
       <div className="ads-mgmt-toolbar">
@@ -369,6 +352,18 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           ))}
         </select>
       </div>
+
+      {/* El aviso de moderacion, una sola vez. Antes se repetia dentro de cada
+          anuncio pendiente con el mismo texto palabra por palabra. */}
+      {counts.pending > 0 && (
+        <p className="ads-mgmt-pending-note">
+          <Clock3 size={14} />
+          <span>
+            Los anuncios <strong>en revisión</strong> no aparecen en el Mural hasta que moderación
+            los apruebe. Te llega una notificación con el resultado.
+          </span>
+        </p>
+      )}
 
       <div className="ads-mgmt-list">
         {isLoading && ads.length === 0 && (
@@ -427,7 +422,6 @@ export default function AdsManagementSection({ onNavigateToMural }) {
                   {coverPhoto
                     ? <img src={coverPhoto} alt="" />
                     : <span className="mgmt-ad-thumb-empty"><Megaphone size={20} /></span>}
-                  <span className={`ad-tier-pill pill-${ad.tier}`}>{tierConfig.badge}</span>
                 </div>
 
                 <div className="mgmt-ad-info">
@@ -435,6 +429,13 @@ export default function AdsManagementSection({ onNavigateToMural }) {
                     <span className={`mgmt-status-pill tone-${status.tone}`}>
                       <StatusIcon size={12} /> {status.label}
                     </span>
+                    {/* El plan va aca y no encima de la miniatura: `badge` esta
+                        escrito para la tarjeta del mural ("👑 Empresarial
+                        Verificado", 24 caracteres) y sobre una miniatura de 90px
+                        se partia en tres lineas tapando la foto. Aca se usa
+                        `name`, una palabra, y sin el "Verificado", que es una
+                        señal para el comprador y no para el dueño del anuncio. */}
+                    <span className={`mgmt-ad-plan plan-${ad.tier}`}>{tierConfig.name}</span>
                     <span className="mgmt-ad-cat">
                       {catObj?.emoji ? `${catObj.emoji} ` : ''}{ad.categoryLabel || catObj?.label || 'Servicio'}
                     </span>
@@ -468,16 +469,6 @@ export default function AdsManagementSection({ onNavigateToMural }) {
                       <div>
                         <strong>Moderación rechazó este anuncio.</strong>
                         <p>{ad.rejectionReason || 'Sin motivo informado.'} Corrige los datos y se vuelve a revisar automáticamente al guardar.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {(ad.moderationStatus === AD_MODERATION_STATUS.PENDIENTE || isWaitingRecheck) && (
-                    <div className="mgmt-ad-note tone-warning">
-                      <Clock3 size={14} />
-                      <div>
-                        <strong>Esperando revisión.</strong>
-                        <p>No aparece en el Mural de Anuncios hasta que moderación lo apruebe. Te llega una notificación con el resultado.</p>
                       </div>
                     </div>
                   )}
