@@ -1182,3 +1182,39 @@ export async function createProviderNotificationApi(proveedorId, payload) {
     body: JSON.stringify(payload)
   });
 }
+
+// -------------------------------------------------------------
+// MONEDERO DE FICHAS
+// -------------------------------------------------------------
+
+/**
+ * Saldo del monedero. El backend lo calcula sumando `RT_movimiento_ficha`, no lo
+ * guarda en una columna, asi que no hay dos numeros que puedan discrepar.
+ *
+ * Devuelve tambien `costosPorTier`: el tarifario de publicacion. Mientras la web
+ * lo replique a mano en `UPGRADE_TOKEN_COSTS`, cambiar un precio obliga a
+ * desplegar las tres plataformas a la vez.
+ *
+ * Ojo: esta llamada puede ESCRIBIR. La primera vez que una cuenta consulta su
+ * monedero, el backend le otorga el bono de bienvenida (idempotente por
+ * `event_key`, o sea que solo pasa una vez).
+ */
+export async function getFichasBalanceApi({ signal } = {}) {
+  return fetchApi('/fichas/saldo', { method: 'GET', signal });
+}
+
+/** Saldo + historial de movimientos, del mas nuevo al mas viejo. */
+export async function getFichasMovimientosApi({ signal } = {}) {
+  return fetchApi('/fichas/movimientos', { method: 'GET', signal });
+}
+
+/**
+ * Informa una compra de fichas ya pagada. El backend la registra para
+ * Administracion Contable Y acredita las fichas en el monedero.
+ *
+ * `referenciaPago` es la llave de idempotencia: si la misma referencia llega dos
+ * veces, la compra no se registra ni se acredita de nuevo.
+ */
+export async function registrarCompraFichasApi(payload) {
+  return fetchApi('/fichas/compras', { method: 'POST', body: JSON.stringify(payload) });
+}

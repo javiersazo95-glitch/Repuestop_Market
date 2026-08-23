@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, Coins, CheckCircle2, CreditCard, Landmark, ShieldCheck,
-  Zap, Sparkles, ArrowRight
+  Zap, Sparkles, ArrowRight, AlertCircle
 } from 'lucide-react';
-import { TOKEN_PACKS, rechargeTokensWithPack } from '../../services/adsStorage';
+import { TOKEN_PACKS, rechargeTokensWithPack, adErrorMessage } from '../../services/adsStorage';
 
 export default function RechargeTokensModal({
   isOpen,
@@ -16,25 +16,40 @@ export default function RechargeTokensModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [creditedAmount, setCreditedAmount] = useState(0);
+  const [errorMsg, setErrorMsg] = useState('');
 
   if (!isOpen) return null;
 
-  const handlePay = (e) => {
+  /**
+   * Registra la compra en el backend, que es quien acredita las Fichas.
+   *
+   * Antes esto sumaba el saldo en `localStorage` y no avisaba a nadie: la web
+   * NUNCA llamaba a `POST /fichas/compras`, asi que una recarga hecha desde el
+   * navegador no acreditaba nada real y ademas quedaba fuera de Administracion
+   * Contable. Si el registro falla no se muestra exito: esas Fichas no existen.
+   */
+  const handlePay = async (e) => {
     e.preventDefault();
     setIsProcessing(true);
-
-    setTimeout(() => {
-      const methodName = paymentMethod === 'webpay' ? 'Webpay Plus' : paymentMethod === 'transfer' ? 'Transferencia Bancaria' : 'Tarjeta de Crédito';
-      const updatedBalance = rechargeTokensWithPack(selectedPack, methodName);
+    setErrorMsg('');
+    const methodName = paymentMethod === 'webpay'
+      ? 'Webpay Plus'
+      : paymentMethod === 'transfer' ? 'Transferencia Bancaria' : 'Tarjeta de Crédito';
+    try {
+      const updatedBalance = await rechargeTokensWithPack(selectedPack, methodName);
       setCreditedAmount(selectedPack.totalTokens);
-      setIsProcessing(false);
       setIsSuccess(true);
       onRechargeSuccess?.(updatedBalance);
-    }, 1000);
+    } catch (error) {
+      setErrorMsg(adErrorMessage(error, 'No se pudo registrar la recarga. Intenta nuevamente.'));
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleClose = () => {
     setIsSuccess(false);
+    setErrorMsg('');
     onClose?.();
   };
 
@@ -171,6 +186,13 @@ export default function RechargeTokensModal({
                   <span>Pago protegido con encriptación SSL 256 bits y acreditación inmediata.</span>
                 </div>
               </div>
+
+              {errorMsg && (
+                <div className="ad-form-error">
+                  <AlertCircle size={16} />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
 
               <div className="booking-actions-row">
                 <button

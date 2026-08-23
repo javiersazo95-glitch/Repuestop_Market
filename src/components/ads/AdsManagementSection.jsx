@@ -6,7 +6,8 @@ import {
   Layers, Loader2, CheckCircle2, Clock3, XCircle, CalendarClock
 } from 'lucide-react';
 import {
-  fetchMyAds, deleteAd, adErrorMessage, getTokensBalance,
+  fetchMyAds, deleteAd, adErrorMessage,
+  getCachedTokensBalance, fetchTokensBalance, TOKENS_UPDATED_EVENT,
   fetchMyAppointments, updateAppointmentStatus
 } from '../../services/adsStorage';
 import {
@@ -17,6 +18,7 @@ import {
 import { formatAgendaDateLong, getTimeUntilLabel, toIsoDate } from '../../data/agendaConfig';
 import { useAuth } from '../../context/AuthContext';
 import AdAgendaModal from './AdAgendaModal';
+import TokensHistoryModal from './TokensHistoryModal';
 import TokensWalletCard from './TokensWalletCard';
 import RechargeTokensModal from './RechargeTokensModal';
 import UpgradeAdRankModal from './UpgradeAdRankModal';
@@ -63,7 +65,11 @@ export default function AdsManagementSection({ onNavigateToMural }) {
   const [cancelError, setCancelError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [tokensBalance, setTokensBalanceState] = useState(() => getTokensBalance());
+  // Arranca con la ultima copia local para no pintar un cero mientras responde
+  // la red, pero el saldo real lo trae `fetchTokensBalance()`: desde que el
+  // backend cobra, lo que diga el navegador es solo una referencia.
+  const [tokensBalance, setTokensBalanceState] = useState(() => getCachedTokensBalance());
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('TODOS');
   const [tierFilter, setTierFilter] = useState('TODOS');
@@ -156,8 +162,18 @@ export default function AdsManagementSection({ onNavigateToMural }) {
     const handleTokensUpdated = (e) => {
       if (typeof e.detail === 'number') setTokensBalanceState(e.detail);
     };
-    window.addEventListener('repuestop_tokens_updated', handleTokensUpdated);
-    return () => window.removeEventListener('repuestop_tokens_updated', handleTokensUpdated);
+    window.addEventListener(TOKENS_UPDATED_EVENT, handleTokensUpdated);
+    return () => window.removeEventListener(TOKENS_UPDATED_EVENT, handleTokensUpdated);
+  }, []);
+
+  // El saldo se consulta al montar. Ojo: esta lectura tambien es la que gatilla
+  // el bono de bienvenida del backend la primera vez que la cuenta entra aca.
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchTokensBalance({ signal: controller.signal })
+      .then(setTokensBalanceState)
+      .catch(() => {});
+    return () => controller.abort();
   }, []);
 
   const replaceAd = (saved) => {
@@ -271,6 +287,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
       <TokensWalletCard
         tokensBalance={tokensBalance}
         onOpenRechargeModal={() => setIsRechargeModalOpen(true)}
+        onOpenHistoryModal={() => setIsHistoryModalOpen(true)}
       />
 
       {/* Las metricas siguen el estado de moderacion, que es lo que el usuario no
@@ -613,6 +630,11 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           onAppointmentUpdated={replaceAppointment}
         />
       )}
+
+      <TokensHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+      />
 
       <RechargeTokensModal
         isOpen={isRechargeModalOpen}

@@ -12,6 +12,7 @@
 import {
   getPublicAdsApi, getPublicAdApi, getMyAdsApi,
   createAdApi, updateAdApi, deleteAdApi, uploadAdImagesApi, resolveMediaUrl,
+  getFichasBalanceApi, getFichasMovimientosApi, registrarCompraFichasApi,
   getAdAppointmentsApi, getMyAppointmentsApi, createAdAppointmentApi,
   updateAdAppointmentStatusApi, sendAppointmentSummaryEmailsApi,
   createUserNotificationApi, createProviderNotificationApi
@@ -24,7 +25,9 @@ import { isAdVisibleOnWall } from '../data/automotiveAdsData';
 
 const ADS_WALL_CACHE_KEY = 'repuestop_ads_wall_cache';
 const TOKENS_BALANCE_KEY = 'repuestop_fichas_balance';
-const TOKENS_HISTORY_KEY = 'repuestop_fichas_transactions';
+// La llave del historial local se retiro: el historial lo sirve el backend
+// (`GET /fichas/movimientos`). Los navegadores que la tengan escrita se la quedan
+// sin que nadie la lea; son datos del usuario.
 
 // Anuncios de demostracion que este proyecto tuvo sembrados antes de retirarlos.
 // Los navegadores que ya habian abierto el mural los tienen persistidos desde
@@ -240,150 +243,129 @@ export function adErrorMessage(error, fallback = 'No se pudo completar la operac
 // -------------------------------------------------------------
 // GESTIÓN DE MONEDERO Y FICHAS REPUES-TOP
 // -------------------------------------------------------------
+//
+// El saldo lo manda el backend (`GET /fichas/saldo`), que lo calcula sumando
+// `RT_movimiento_ficha`. Antes vivia en `localStorage` y el bono de bienvenida se
+// otorgaba aca mismo, asi que vaciar el navegador reponia 300 Fichas y publicar
+// un anuncio Empresarial cuesta 250.
+//
+// Y el gasto ya no se descuenta desde el cliente: el backend cobra dentro de
+// `AnuncioService.crear()` y `actualizar()`, en la misma transaccion que el
+// anuncio. Si el saldo no alcanza, el POST o el PUT responden 422 y el anuncio no
+// llega a existir, asi que no hay forma de publicar sin pagar ni de quedarse sin
+// Fichas por una publicacion que fallo a medias.
+//
+// De `localStorage` queda solo una copia del ultimo saldo conocido, para pintar
+// algo en el primer render sin esperar la red. Es SOLO para mostrar: se escribe
+// unicamente con lo que respondio el servidor, nunca con una resta hecha aca.
 
-export function getTokensBalance() {
+export const TOKENS_UPDATED_EVENT = 'repuestop_tokens_updated';
+
+/** Copia del ultimo saldo confirmado por el backend. Nunca es la fuente de verdad. */
+function cacheTokensBalance(balance) {
   try {
-    const raw = localStorage.getItem(TOKENS_BALANCE_KEY);
-    if (raw === null) {
-      // Saldo de bienvenida inicial (300 fichas para probar)
-      const initialBalance = 300;
-      localStorage.setItem(TOKENS_BALANCE_KEY, String(initialBalance));
-      return initialBalance;
-    }
-    return Number(raw) || 0;
+    localStorage.setItem(TOKENS_BALANCE_KEY, String(balance));
   } catch {
-    return 300;
+    // Sin cache igual se puede seguir: la fuente es el backend.
   }
-}
-
-export function setTokensBalance(amount) {
-  try {
-    const val = Math.max(0, Math.round(amount));
-    localStorage.setItem(TOKENS_BALANCE_KEY, String(val));
-    window.dispatchEvent(new CustomEvent('repuestop_tokens_updated', { detail: val }));
-    return val;
-  } catch {
-    return amount;
-  }
-}
-
-export function getTokenTransactions() {
-  try {
-    const raw = localStorage.getItem(TOKENS_HISTORY_KEY);
-    if (!raw) {
-      const initialHistory = [
-        {
-          id: 'tx-welcome',
-          type: 'credit',
-          amount: 300,
-          description: 'Bono de bienvenida Monedero RepuesTop',
-          date: new Date().toISOString()
-        }
-      ];
-      localStorage.setItem(TOKENS_HISTORY_KEY, JSON.stringify(initialHistory));
-      return initialHistory;
-    }
-    return JSON.parse(raw) || [];
-  } catch {
-    return [];
-  }
-}
-
-export function addTokenTransaction(tx) {
-  try {
-    const current = getTokenTransactions();
-    const updated = [
-      {
-        id: `tx-${Date.now()}`,
-        date: new Date().toISOString(),
-        ...tx
-      },
-      ...current
-    ];
-    localStorage.setItem(TOKENS_HISTORY_KEY, JSON.stringify(updated));
-    return updated;
-  } catch {
-    return [];
-  }
-}
-
-// Recargar saldo mediante un Pack de Fichas
-export function rechargeTokensWithPack(pack, paymentMethod = 'Webpay Plus') {
-  const currentBalance = getTokensBalance();
-  const newBalance = currentBalance + pack.totalTokens;
-  setTokensBalance(newBalance);
-
-  addTokenTransaction({
-    type: 'credit',
-    amount: pack.totalTokens,
-    description: `Recarga ${pack.name} (${pack.totalTokens} Fichas) - Pago con ${paymentMethod}`,
-    priceClp: pack.priceClp
-  });
-
-  return newBalance;
+  window.dispatchEvent(new CustomEvent(TOKENS_UPDATED_EVENT, { detail: balance }));
+  return balance;
 }
 
 /**
- * Cobra las Fichas del plan al publicar un anuncio nuevo (todavia no hay adId).
- * Mismo tarifario que el upgrade, homologado con `spendTokensForNewAd` del movil:
- * si publicar en un plan fuera gratis, nadie pagaria por subir de rango.
+ * Ultimo saldo conocido, sincrono, para el primer render.
+ *
+ * Arranca en 0 y no en 300: el bono de bienvenida lo otorga el backend, y pintar
+ * un saldo inventado mientras responde la red es prometer Fichas que pueden no
+ * existir. Lo reemplaza `fetchTokensBalance()` apenas contesta.
  */
-export function spendTokensForNewAd(tier, adTitle) {
-  const cost = UPGRADE_TOKEN_COSTS[tier] || 0;
-  const currentBalance = getTokensBalance();
-
-  if (cost > 0 && currentBalance < cost) {
-    throw new Error(`Saldo insuficiente: tienes ${currentBalance} fichas y necesitas ${cost} fichas.`);
+export function getCachedTokensBalance() {
+  try {
+    return Number(localStorage.getItem(TOKENS_BALANCE_KEY)) || 0;
+  } catch {
+    return 0;
   }
-
-  const newBalance = currentBalance - cost;
-  setTokensBalance(newBalance);
-
-  if (cost > 0) {
-    addTokenTransaction({
-      type: 'debit',
-      amount: cost,
-      description: `Publicación de anuncio "${adTitle}" en plan ${tier.toUpperCase()}`
-    });
-  }
-
-  return newBalance;
 }
 
 /**
- * Sube de rango un anuncio y descuenta las Fichas.
+ * Saldo real de la cuenta. Si la red falla devuelve la copia local, que puede
+ * estar desactualizada: quien necesite certeza —cobrar— no pregunta aca, deja
+ * que el backend rechace la operacion.
+ */
+export async function fetchTokensBalance({ signal } = {}) {
+  try {
+    const { saldo } = await getFichasBalanceApi({ signal });
+    return cacheTokensBalance(Number(saldo) || 0);
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error;
+    return getCachedTokensBalance();
+  }
+}
+
+const MOTIVO_LABELS = {
+  COMPRA: 'Recarga de Fichas',
+  BONO_BIENVENIDA: 'Bono de bienvenida Monedero RepuesTop',
+  PUBLICACION: 'Publicación de anuncio',
+  UPGRADE: 'Mejora de plan del anuncio'
+};
+
+/**
+ * Historial de movimientos, del mas nuevo al mas viejo.
  *
- * El cambio de plan viaja como un PUT normal, asi que el anuncio vuelve a
- * PENDIENTE y desaparece del mural hasta que moderacion lo re-apruebe. Quien
- * llame tiene que haberlo advertido antes de cobrar.
+ * El DTO trae `tipo` en mayusculas y la cantidad SIEMPRE positiva: el signo lo da
+ * el tipo. Se traduce a la forma que ya pintaba la UI (`credit` / `debit`) para
+ * no tener que tocar las vistas.
+ */
+export async function fetchTokenTransactions({ signal } = {}) {
+  const { saldo, movimientos } = await getFichasMovimientosApi({ signal });
+  cacheTokensBalance(Number(saldo) || 0);
+  return (Array.isArray(movimientos) ? movimientos : []).map((item) => ({
+    id: String(item.id),
+    type: item.tipo === 'CREDITO' ? 'credit' : 'debit',
+    amount: Number(item.cantidad) || 0,
+    description: item.descripcion || MOTIVO_LABELS[item.motivo] || 'Movimiento de Fichas',
+    date: item.fecha,
+    adId: item.anuncioId || null
+  }));
+}
+
+/**
+ * Registra la compra pagada y devuelve el saldo ya actualizado por el servidor.
  *
- * Primero guarda y despues cobra: al reves, un PUT fallido dejaria al usuario sin
- * fichas y con el anuncio en el plan viejo. Recibe el anuncio completo porque el
- * PUT reemplaza todos los campos.
+ * El credito lo aplica el backend al registrar la compra, asi que aca no se suma
+ * nada: sumarlo en el navegador es exactamente lo que hacia que los dos numeros
+ * se separaran. Si el registro falla, se propaga el error — esas Fichas todavia
+ * no existen y mostrarlas seria mentir.
+ *
+ * Esta llamada NO existia en la web: solo la hacia el movil, asi que hasta ahora
+ * toda recarga hecha desde el navegador era invisible para Administracion
+ * Contable, ademas de no acreditar nada.
+ */
+export async function rechargeTokensWithPack(pack, paymentMethod = 'Webpay Plus') {
+  await registrarCompraFichasApi({
+    cantidadFichas: pack.totalTokens,
+    montoPagado: pack.priceClp,
+    packNombre: pack.name,
+    metodoPago: paymentMethod,
+    // Identifica la compra: el backend la usa para no registrarla ni acreditarla
+    // dos veces si un reintento llega despues de que ya entro.
+    referenciaPago: `WEB-${pack.id}-${Date.now()}`
+  });
+  return fetchTokensBalance();
+}
+
+/**
+ * Sube de rango un anuncio y devuelve el anuncio guardado con el saldo que quedo.
+ *
+ * El PUT es el que cobra, dentro de su propia transaccion: si el saldo no alcanza
+ * responde 422 y el anuncio se queda en el plan viejo, asi que no hay nada que
+ * revertir aca. Esta funcion llego a descontar las Fichas por su cuenta, y como
+ * el descuento era local, un PUT fallido dejaba al usuario sin saldo y con el
+ * anuncio sin mejorar.
  */
 export async function spendTokensForAdUpgrade(ad, targetTier) {
-  const cost = UPGRADE_TOKEN_COSTS[targetTier] || 0;
-  const currentBalance = getTokensBalance();
-
-  if (cost > 0 && currentBalance < cost) {
-    throw new Error(`Saldo insuficiente: tienes ${currentBalance} fichas y necesitas ${cost} fichas.`);
-  }
-
-  // El plan desbloquea la funcion, pero la agenda se activa recien cuando el
-  // socio guarda una configuracion horaria valida (fase C).
   const saved = await updateAd(ad.id, { ...ad, tier: targetTier });
-
-  const newBalance = setTokensBalance(currentBalance - cost);
-  if (cost > 0) {
-    addTokenTransaction({
-      type: 'debit',
-      amount: cost,
-      description: `Upgrade de anuncio "${ad.title}" a rango ${targetTier.toUpperCase()}`,
-      adId: ad.id
-    });
-  }
-
-  return { ad: saved, balance: newBalance };
+  return { ad: saved, balance: await fetchTokensBalance() };
 }
 
 // -------------------------------------------------------------

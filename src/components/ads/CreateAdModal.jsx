@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Plus, ShieldCheck, Clock3 } from 'lucide-react';
 import { AD_TIERS } from '../../data/automotiveAdsData';
-import { createAd, spendTokensForNewAd, adErrorMessage } from '../../services/adsStorage';
+import { createAd, fetchTokensBalance, adErrorMessage } from '../../services/adsStorage';
 import AdForm from './AdForm';
 
 /**
@@ -24,19 +24,14 @@ export default function CreateAdModal({ isOpen, onClose, tokensBalance = 0, onAd
     setIsSubmitting(true);
     setSubmitError('');
     try {
-      // Primero se publica y despues se cobra: un POST fallido no puede dejar al
-      // usuario sin Fichas y sin anuncio.
+      // El cobro ya no se hace aca: `AnuncioService.crear()` descuenta las Fichas
+      // del plan en la misma transaccion que el anuncio. Si el saldo no alcanza
+      // responde 422 y el anuncio no llega a existir, asi que ese error entra por
+      // el mismo `catch` y se muestra en el formulario. Antes se cobraba en el
+      // navegador despues del POST, y ese descuento no significaba nada.
       const created = await createAd(draft);
-      let balance = tokensBalance;
-      try {
-        balance = spendTokensForNewAd(created.tier, created.title);
-      } catch (walletError) {
-        // El anuncio ya existe en el backend; el cobro es local y no se puede
-        // revertir alla. Se avisa, pero no se trata como un fallo de publicacion.
-        console.warn('El anuncio se publicó pero no se pudo descontar el saldo:', walletError);
-      }
       setCreatedAd(created);
-      onAdCreated?.(created, balance);
+      onAdCreated?.(created, await fetchTokensBalance());
     } catch (error) {
       setSubmitError(adErrorMessage(error, 'No se pudo publicar el anuncio.'));
     } finally {

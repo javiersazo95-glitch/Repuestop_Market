@@ -14,7 +14,12 @@ import { UPGRADE_TOKEN_COSTS, spendTokensForAdUpgrade, adErrorMessage } from '..
  * El cambio de plan viaja como un PUT normal (`spendTokensForAdUpgrade`), y todo
  * PUT devuelve el anuncio a `PENDIENTE` con `activo=false`: pagar Fichas por
  * mejorar el rango SACA el anuncio del mural hasta que lo re-aprueben. Se
- * advierte antes de cobrar, porque el cobro de Fichas no se revierte.
+ * advierte antes de confirmar.
+ *
+ * El cobro lo hace el backend dentro de ese mismo PUT, asi que ya no hace falta
+ * revertir nada si falla: sin saldo responde 422 y el anuncio se queda en el plan
+ * viejo. `hasEnoughTokens` es solo para no dejar intentar algo que va a fallar;
+ * la decision real la toma el servidor.
  *
  * Los planes se arman con `getUpgradableTiers()`: solo se ofrece lo que esta por
  * encima del plan actual, en vez de las tres tarjetas fijas que habia antes (que

@@ -2500,3 +2500,17 @@
   .agenda-appointment-actions { flex-direction: row; width: 100%; }
   .my-appointment-item { flex-wrap: wrap; }
 }
+
+/* --- Historial del Monedero de Fichas (fase D) --- */
+.tokens-history-card { max-width: 560px; }
+.tokens-history-list { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
+.tokens-history-item { display: flex; align-items: center; gap: 12px; padding: 11px 13px; border-radius: 11px; background: #ffffff; border: 1px solid #e2e8f0; }
+.tokens-history-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; }
+.tokens-history-item.is-credit .tokens-history-icon { background: #ecfdf5; color: #047857; }
+.tokens-history-item.is-debit .tokens-history-icon { background: #fef2f2; color: #b91c1c; }
+.tokens-history-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tokens-history-body strong { font-size: 12.5px; font-weight: 700; color: #0f172a; }
+.tokens-history-body span { font-size: 11px; color: #94a3b8; }
+.tokens-history-amount { flex-shrink: 0; font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.tokens-history-item.is-credit .tokens-history-amount { color: #047857; }
+.tokens-history-item.is-debit .tokens-history-amount { color: #b91c1c; }
