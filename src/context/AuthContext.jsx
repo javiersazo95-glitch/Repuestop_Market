@@ -152,7 +152,11 @@ export function AuthProvider({ children }) {
       const savedUserData = saveSession(response);
       return { success: true, user: savedUserData };
     } catch (error) {
-      return { success: false, error: error.message };
+      // El status viaja junto al mensaje: `/auth/google` responde 404 cuando no
+      // existe cuenta con ese correo, y esa es la unica situacion en la que tiene
+      // sentido ofrecer crearla. Distinguirla por el texto del error seria
+      // adivinar.
+      return { success: false, error: error.message, status: error.status ?? null };
     } finally {
       setIsLoading(false);
     }

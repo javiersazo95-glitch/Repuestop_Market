@@ -216,22 +216,35 @@ export async function loginGoogleApi({ idToken }) {
 export async function registerBuyerApi(buyerData) {
   const nombreCompleto = String(buyerData.name || buyerData.userName || '').trim();
   const partes = nombreCompleto.split(/\s+/);
+  const authProvider = buyerData.authProvider || 'EMAIL_PASSWORD';
+
   return fetchApi('/auth/register/buyer', {
     method: 'POST',
     body: JSON.stringify({
       email: buyerData.email.trim(),
-      password: buyerData.password,
+      password: buyerData.password || '',
       firstName: buyerData.firstName || partes[0] || '',
       lastName: buyerData.lastName || partes.slice(1).join(' ') || '',
       phone: buyerData.phone || '',
-      authProvider: buyerData.authProvider || 'EMAIL_PASSWORD',
+      authProvider,
+      // Con Google el backend NO se fia del correo del formulario: lo saca del
+      // idToken que verifica el mismo (`resolverEmailVerificado`), para que nadie
+      // registre una cuenta con un correo ajeno. Sin este campo el alta falla.
+      idToken: buyerData.idToken || null,
+      userProfileUrl: buyerData.userProfileUrl || null,
       acceptsTerms: buyerData.acceptsTerms === true,
       termsVersion: LEGAL_VERSION_CODE,
-      direccion: {
-        calleYNumero: buyerData.direccion?.calleYNumero || '',
-        comunaId: buyerData.direccion?.comunaId ? Number(buyerData.direccion.comunaId) : null,
-        codigoPostal: buyerData.direccion?.codigoPostal || '',
-      },
+      // El alta con Google puede venir SIN direccion, y entonces hay que MANDARLA
+      // NULA: `validarComprador()` solo se salta la validacion cuando el campo
+      // llega nulo, asi que un objeto con calle vacia y comuna nula —que es lo
+      // que se enviaba siempre— hace fallar el registro igual que antes.
+      direccion: buyerData.direccion?.comunaId
+        ? {
+          calleYNumero: buyerData.direccion.calleYNumero || '',
+          comunaId: Number(buyerData.direccion.comunaId),
+          codigoPostal: buyerData.direccion.codigoPostal || '',
+        }
+        : null,
     }),
   });
 }

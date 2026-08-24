@@ -14393,3 +14393,12 @@ input, select, textarea {
 .product-marketplace-own-store strong { display: block; font-size: 14px; font-weight: 700; color: #0f172a; }
 .product-marketplace-own-store p { margin: 3px 0 0; font-size: 12.5px; line-height: 17px; color: #64748b; }
 
+
+/* Alta con Google: la cuenta que Google entrego, para que la persona confirme
+   con cual se esta registrando antes de crearla. */
+.google-account-card { display: flex; align-items: center; gap: 13px; margin-bottom: 14px; padding: 13px 15px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+.google-account-card img, .google-account-initials { width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0; object-fit: cover; }
+.google-account-initials { display: inline-flex; align-items: center; justify-content: center; background: #0066ff; color: #ffffff; font-size: 19px; font-weight: 800; }
+.google-account-card strong { display: block; font-size: 15px; font-weight: 700; color: #0f172a; }
+.google-account-card span { font-size: 13px; color: #64748b; word-break: break-all; }
+.google-signup-note { margin-bottom: 14px; font-size: 12.5px; line-height: 18px; color: #64748b; }

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
+import { decodeGoogleIdToken } from '../utils/googleIdToken';
 import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import { ROUTES } from '../routes/paths';
 
@@ -154,6 +155,13 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
   // Buyer Register Extra State
   const [buyerName, setBuyerName] = useState('');
   const [buyerPhone, setBuyerPhone] = useState('');
+  /**
+   * Cuenta de Google que quiso entrar pero todavia no existe en RepuesTop. Guarda
+   * el idToken para reusarlo en el alta —el backend lo verifica y saca el correo
+   * de ahi— y el perfil ya decodificado, solo para mostrarlo.
+   */
+  const [googlePending, setGooglePending] = useState(null);
+  const [googleTermsAccepted, setGoogleTermsAccepted] = useState(false);
   // El backend exige direccion (comunaId + calle) y aceptacion de terminos para crear
   // la cuenta: `validarComprador` los valida antes de tocar la base.
   const [buyerStreet, setBuyerStreet] = useState('');
@@ -256,9 +264,74 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
         handleClose();
         onLoginSuccess?.();
       }, 1200);
-    } else {
-      setErrorMessage(result.error || 'No pudimos iniciar sesión con Google. Verifica que ya tengas una cuenta creada con este correo.');
+      return;
     }
+
+    // 404 es "no hay cuenta con este correo", la unica situacion en la que
+    // ofrecer crearla tiene sentido. Antes cualquier fallo terminaba en un
+    // mensaje que mandaba a la persona a registrarse por su cuenta, escribiendo
+    // de nuevo el nombre y el correo que Google ya habia entregado.
+    const perfil = result.status === 404 ? decodeGoogleIdToken(idToken) : null;
+    if (perfil) {
+      setGooglePending({ ...perfil, idToken });
+      setGoogleTermsAccepted(false);
+      setStep('google_signup');
+      return;
+    }
+
+    setErrorMessage(result.error || 'No pudimos iniciar sesión con Google. Intenta nuevamente.');
+  };
+
+  /**
+   * Alta con la cuenta de Google, sin formulario de identidad.
+   *
+   * Google entrega nombre, correo y foto; el telefono y la direccion no los da y
+   * ya eran opcionales en el registro por correo, asi que no se piden aca: la
+   * direccion se completa en el checkout, que no deja pagar sin una.
+   *
+   * Los TERMINOS si se piden con casilla explicita. No se pueden dar por
+   * aceptados: quedan registrados en `RT_aceptacion_terminos` con su version, y
+   * marcarlos por el usuario seria falsear ese registro.
+   */
+  const handleGoogleSignup = async () => {
+    if (!googlePending || !googleTermsAccepted) return;
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    const registro = await registerBuyer({
+      email: googlePending.email,
+      firstName: googlePending.firstName,
+      lastName: googlePending.lastName,
+      userProfileUrl: googlePending.picture,
+      authProvider: 'GOOGLE',
+      idToken: googlePending.idToken,
+      acceptsTerms: true,
+    });
+
+    if (!registro.success) {
+      setIsSubmitting(false);
+      setErrorMessage(registro.error || 'No pudimos crear tu cuenta con Google.');
+      return;
+    }
+
+    // El registro con Google no manda codigo de verificacion (el correo ya lo
+    // verifico el proveedor), pero no siempre devuelve sesion iniciada: se entra
+    // con el mismo idToken, que sigue vigente.
+    const acceso = await loginWithGoogle(googlePending.idToken);
+    setIsSubmitting(false);
+
+    if (!acceso.success) {
+      setErrorMessage('Creamos tu cuenta, pero no pudimos iniciar sesión. Vuelve a entrar con Google.');
+      setGooglePending(null);
+      setStep('login_form');
+      return;
+    }
+
+    setSuccessMessage('¡Listo! Tu cuenta quedó creada con Google.');
+    setTimeout(() => {
+      handleClose();
+      onLoginSuccess?.();
+    }, 1200);
   };
 
   /**
@@ -357,10 +430,68 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
             </>
           )}
 
-          {step === 'register_buyer' && (
+          {step === 'google_signup' && googlePending && (
+          <div className="auth-modal-body">
+            <div className="google-account-card">
+              {googlePending.picture
+                ? <img src={googlePending.picture} alt="" referrerPolicy="no-referrer" />
+                : <span className="google-account-initials">{(googlePending.nombre || googlePending.email).charAt(0).toUpperCase()}</span>}
+              <div>
+                <strong>{googlePending.nombre || 'Cuenta de Google'}</strong>
+                <span>{googlePending.email}</span>
+              </div>
+            </div>
+
+            <p className="google-signup-note">
+              No pedimos contraseña: entras siempre con Google. Tu dirección de despacho la
+              eliges al momento de comprar.
+            </p>
+
+            {/* Aceptacion explicita, igual que en el registro por correo: queda en
+                `RT_aceptacion_terminos` con su version, asi que marcarla por el
+                usuario seria falsear ese registro. */}
+            <label className="auth-terms">
+              <input
+                type="checkbox"
+                checked={googleTermsAccepted}
+                onChange={(e) => setGoogleTermsAccepted(e.target.checked)}
+              />
+              <span>
+                He leído y acepto los <a href={ROUTES.terms} target="_blank" rel="noreferrer">Términos y Condiciones</a>
+                {' '}y la <a href={ROUTES.privacy} target="_blank" rel="noreferrer">Política de Privacidad</a>.
+              </span>
+            </label>
+
+            <button
+              type="button"
+              className="btn-auth-primary"
+              disabled={!googleTermsAccepted || isSubmitting}
+              onClick={handleGoogleSignup}
+            >
+              {isSubmitting ? 'Creando tu cuenta...' : 'Crear mi cuenta'}
+            </button>
+
+            <button
+              type="button"
+              className="btn-auth-secondary"
+              onClick={() => { setGooglePending(null); setStep('login_form'); }}
+            >
+              Usar otro correo
+            </button>
+          </div>
+        )}
+
+        {step === 'register_buyer' && (
             <>
               <h2>Crear Cuenta de Comprador</h2>
               <p>Busca por patente, cotiza repuestos y recibe envíos garantizados a todo Chile.</p>
+            </>
+          )}
+
+          {step === 'google_signup' && (
+            <>
+              <h2>Crea tu cuenta con Google</h2>
+              <p>Ya tenemos tu nombre y tu correo. Solo falta que aceptes los términos.</p>
             </>
           )}
         </div>
