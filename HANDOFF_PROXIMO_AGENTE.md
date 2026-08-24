@@ -330,10 +330,9 @@ POST   /api/v1/fichas/compras
 **C — Agendamiento. CERRADA (sesión 2026-08-23, ver 4.12).** Los cinco endpoints de
 `/anuncios/agendamientos`.
 
-**D — Fichas: BLOQUEADA.** El backend solo expone `POST /fichas/compras`. **No hay endpoint
-de saldo ni de consumo**, y la web muestra saldo e historial (`TokensWalletCard`) y gasta
-Fichas para promover (`UpgradeAdRankModal`). Hay que definirlo en el backend antes de tocar
-la web.
+**D — Fichas. CERRADA (sesión 2026-08-23, ver 4.13).** Dejo de estar bloqueada: el backend
+gano `RT_movimiento_ficha` con saldo, historial y cobro dentro de `AnuncioService`, y los
+dos clientes se re-apuntaron. **Las cuatro fases del mural estan cerradas.**
 
 ### 4.5 Antes de empezar
 
@@ -801,3 +800,165 @@ nuevos.
 **Lo que sigue:** la fase D (Fichas) sigue BLOQUEADA por el backend, sin endpoint de saldo ni
 de consumo. Y queda el hueco heredado: el plan Empresarial cobra 250 Fichas contra un
 monedero que solo existe en `localStorage`.
+
+
+### 4.13 Fase D cerrada — sesión 2026-08-23
+
+**Las cuatro fases del mural están cerradas.** La D dejó de estar bloqueada: el
+backend ganó un monedero real y los dos clientes se re-apuntaron a él.
+
+#### Lo que faltaba, y por qué era grave
+
+Lo único que existía era `RT_compra_ficha`: el registro contable de una compra ya
+pagada, para el tab "Publicidad" de Administración Contable. Eso no es un
+monedero — sabe cuántas Fichas se compraron y nunca cuántas se gastaron. El saldo
+vivía en `localStorage` (web) y `AsyncStorage` (móvil), y **el bono de bienvenida
+de 300 Fichas se otorgaba ahí mismo**, así que vaciar el navegador o reinstalar la
+app lo reponía. Publicar un aviso Empresarial cuesta 250.
+
+Además la web **nunca llamaba a `POST /fichas/compras`** —solo lo hacía el móvil—,
+así que toda recarga hecha desde el navegador quedaba fuera de la contabilidad
+además de no acreditar nada.
+
+#### Backend (monorepo `dev`, commit `4e73881`)
+
+- `RT_movimiento_ficha`, append-only. El saldo es la SUMA de las filas, nunca una
+  columna guardada: no hay dos números que puedan discrepar. Los `CHECK` rechazan
+  cantidad negativa o tipo inventado.
+- `GET /fichas/saldo` y `GET /fichas/movimientos`. Exponen además el tarifario,
+  para que los clientes dejen de replicarlo a mano.
+- **No hay endpoint de consumo, a propósito.** El cobro vive dentro de
+  `AnuncioService.crear()` y `actualizar()`, en la misma transacción que el
+  anuncio: el cliente queda fuera del camino de la plata, no puede publicar sin
+  pagar, y si el saldo no alcanza la excepción deshace también el anuncio. Resulta
+  idempotente por el ESTADO y no por una llave — un reintento o crea otro anuncio
+  (y debe cobrar) o encuentra el tier ya aplicado (y cobra cero).
+- `actualizar()` lee el tier ANTES de `aplicar()`, que lo pisa, y solo cobra si el
+  plan SUBE. Corre en cada edición: sin esa comparación, corregir un teléfono
+  costaría 250 Fichas. Se cobra el precio completo del plan de destino, no la
+  diferencia — es lo que ya hacían los clientes; cambiarlo es decisión de producto.
+- `registrarCompra()` ahora acredita, y la migración trae backfill de las compras
+  ya pagadas.
+- El bono se otorga del lado del servidor la primera vez que la cuenta toca su
+  monedero, idempotente por `event_key`. **No se backfillea**: hacerlo masivo
+  obligaría a adivinar cuánto había gastado cada usuario en su dispositivo, que es
+  justo el dato que nunca existió en el servidor.
+
+#### Clientes
+
+- Móvil (`41ed844`): saldo e historial del backend; `spendTokensForNewAd` y
+  `spendTokensForAdUpgrade` dejaron de cobrar; **se eliminaron `setTokensBalance` y
+  `addTokenTransaction`** (una función pública para fijarse el propio saldo era el
+  agujero). AsyncStorage queda como copia de solo lectura del último saldo.
+- Web (`a28e3f0`): lo mismo, más el `POST /fichas/compras` que faltaba y un
+  `TokensHistoryModal` nuevo — el botón "Historial" existía en `TokensWalletCard`
+  pero nadie le pasaba el handler.
+
+#### Verificado en local, contra el backend real
+
+Bono otorgado una sola vez en tres consultas; Empresarial 300 → 50; edición sin
+cambio de plan 50 → 50; publicación sin saldo **422 con el anuncio deshecho**
+(confirmado por SQL, no solo por la respuesta); compra de 275 → 325 y sin duplicar
+al reintentar la misma referencia; upgrade a Destacada 325 → 275; bajar de plan
+275 → 275. La recarga desde la web quedó como `PUB-000002` con referencia `WEB-*`
+y acreditada. 380 tests con el baseline intacto de 14 fallos preexistentes.
+
+**La migración se aplicó a mano en local** porque el perfil `local` usa
+`ddl-auto=update` y NO ejecuta Flyway; el perfil `prod` sí, y es el que corre en
+Railway en los dos ambientes.
+
+
+### 4.14 Estado del despliegue — 2026-08-23
+
+**El backend de anuncios y fichas ya está en `api-dev.repuestop.cl`.** Verificado:
+`/anuncios` responde 200 y `/fichas/saldo` y `/fichas/movimientos` responden 401
+—existen y piden sesión— en vez de 404. Como Flyway corre al arrancar con el
+perfil `prod`, que el servicio esté arriba significa que `V2026082304` se aplicó.
+
+**La APK nueva ya está generada** con el móvil re-apuntado al monedero del backend.
+
+Con eso el orden de despliegue quedó respetado (backend → clientes) y **las pruebas
+manuales ya se pueden hacer contra un ambiente real**. La lista está al final de
+esta sección.
+
+**Producción sigue sin el backend de anuncios.** El merge `dev` → `main` del
+monorepo es lo que lo habilita; hasta entonces `repuestop.cl` muestra el mural en
+estado de error, que es lo esperado.
+
+#### Pruebas pendientes de hacer en dev
+
+Web: 1) borrar `repuestop_fichas_balance` de localStorage y recargar — el saldo
+debe volver igual, antes volvían 300; 2) el historial debe cuadrar con el saldo;
+3) una recarga debe aparecer en el tab Publicidad del backoffice —esa era la parte
+rota—; 4) publicar Empresarial descuenta 250; 5) **editar sin cambiar de plan NO
+descuenta**; 6) subir de Básica a Destacada descuenta 50; 7) con saldo bajo, los
+planes caros salen bloqueados.
+
+App: 8) **la misma cuenta debe mostrar el MISMO saldo que la web** — es la prueba
+que más importa, antes cada dispositivo tenía su propio número; 9) reinstalar no
+repone Fichas; 10) publicar desde la app se refleja en la web; 11) sin conexión
+muestra el último saldo conocido; 12) recargar sin red avisa que no se pudo
+confirmar, no muestra éxito.
+
+Mural: 13) aviso con agenda publicado desde la WEB debe mostrar días disponibles en
+la APP (era el bug de `agendaConfigId`); 14) al revés; 15) reservar desde una
+cuenta y aceptar desde la otra, con los dos correos.
+
+
+### 4.15 Formulario de publicación y gestión — sesión 2026-08-23
+
+Cinco commits en la web (`96d37af`, `a28e3f0`, `a3499d1`, `6970714`, `7c7efb6`,
+`e38b615`). Lo que conviene no volver a introducir:
+
+- **`.ads-management-panel` anulaba el padding de `.profile-panel`** con `0`
+  horizontal y era el único panel del perfil que lo hacía: todo iba de borde a
+  borde. Ahora lo hereda.
+- **El monedero era una tarjeta con degradado + brillo radial + `backdrop-filter`**,
+  tres recursos que no existen en ninguna otra vista. Es una barra plana `#0f172a`.
+- **Región era un `<input>` de texto libre y la comuna una lista fija de 18** que
+  mezclaba Providencia con Viña, Concepción, Antofagasta y Temuco. Ahora salen del
+  catálogo real y la comuna depende de la región. El anuncio guarda NOMBRES, así
+  que el catálogo se usa para elegir bien y se envía el nombre resuelto.
+- **El plan se pintaba encima de la miniatura** reusando `AD_TIERS[x].badge`, que
+  está escrito para la tarjeta del mural: "Empresarial Verificado" son 24
+  caracteres y sobre 90x70px se partía en tres líneas tapando el 64% de la foto.
+  Ahora usa `name` en la fila de datos. **`badge` sigue en uso en `AdCard`**.
+- **Teléfono y WhatsApp aceptaban letras y símbolos.** El `+56` es parte del campo
+  y solo se escriben los 9 dígitos, igual que el móvil.
+- **El precio de referencia no tenía tope**: `Number()` pierde precisión pasando
+  los 16 dígitos y el backend recibe un `Long` que se desborda a los 19. Queda en 9
+  dígitos; el texto de cotización en 80 y la descripción en 500. Los topes del
+  backend NO se tocaron: un cliente más estricto es seguro y bajarlos allá
+  obligaría a migrar avisos existentes.
+- `src/data/openingHours.js` es un port de `mobile/hooks/auth/useScheduleField.ts`
+  y **replica el FORMATO exacto** ("Lun a Vie 09:00 a 18:00"): `Proveedor.hours` es
+  una cadena suelta que comparten las tres plataformas. Vive en `src/data/` porque
+  lo usan el formulario de anuncios Y el registro de `/vender`.
+- Al encender las reservas **la agenda se siembra con el horario declarado**. El
+  aviso pide dos horarios sin obligar a que calcen: se podía publicar "Lun a Sáb
+  09:00 a 20:00" con una agenda que solo ofrecía Mar a Vie hasta las 18:00.
+
+**Bug de `/vender` corregido.** Entrar directo mostraba el registro SIN estilos y
+bastaba pasar antes por `/nosotros`: las 218 reglas `founder-*` viven en
+`about-repuestop.css`, que solo importaba `AboutRepuesTopPage`, y como las rutas
+van en chunks perezosos esa hoja nunca se inyectaba. Ahora la importa el componente
+que la necesita.
+
+**El registro de `/vender` ya captura el horario.** `SellerRegistrationPayload` ya
+tenía `hours?` y el backend lo persiste, pero la web nunca lo llenaba: una tienda
+registrada desde el sitio quedaba sin horario y la registrada desde el celular sí
+lo traía.
+
+#### Pendientes que quedaron anotados
+
+- **El filtro del mural** (`AdsFilterSidebar`) sigue con `CHILE_COMMUNES`, las 18
+  mezcladas. Es su último uso. Ahí el catálogo completo sería peor (346 comunas en
+  un desplegable); lo razonable es listar solo las que tienen anuncios, pero eso
+  cambia el comportamiento del mural.
+- **El horario y la agenda se siembran uno del otro pero no se resincronizan.** Si
+  se edita el horario sin tocar la agenda, vuelven a poder separarse. Cerrarlo del
+  todo sería derivar `openingHours` de la agenda cuando hay reservas encendidas.
+- **Dos tests del móvil en rojo, previos a esta sesión**:
+  `components/ads/__tests__/ads-flow.test.tsx` tiene un mock de anuncios escrito
+  para el modelo local que no guarda el id que devuelve el backend, así que
+  `getStoredAds()` no encuentra nada. No tiene que ver con Fichas.

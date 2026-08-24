@@ -561,9 +561,16 @@ desaparece solo. "Comprar ahora" salta a `/carrito` y ahí el aviso **no** apare
 
 ---
 
-## 7. Pendiente: suscripciones y Fichas de anuncios
+## 7. Fichas de anuncios ✅ CERRADO (23-08-2026)
 
-**Sigue fuera de este plan por decisión del usuario (20-08-2026: "dejar para después").**
+> **El monedero ya no es un pendiente.** Se cerró con la fase D del mural: el backend ganó
+> `RT_movimiento_ficha` (saldo como suma de movimientos), `GET /fichas/saldo` y
+> `/fichas/movimientos`, el cobro dentro de `AnuncioService` y el crédito al registrar la
+> compra. Web y móvil dejaron de descontar por su cuenta. El detalle está en
+> `HANDOFF_PROXIMO_AGENTE.md` §4.13. Lo de abajo queda como historial de por qué estaba
+> bloqueado.
+
+**Las suscripciones siguen fuera de este plan (20-08-2026: "dejar para después").**
 
 > **Actualizado tras el pull del monorepo (commit `d19381e`, 20-08-2026).** La versión
 > anterior de esta sección decía que no existía backend. Eso ya no es exacto.
