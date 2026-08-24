@@ -178,6 +178,8 @@ del monorepo y de la web, para no volver a abrir esos archivos.
 Cada fase cierra con `npm run build` + `npm run lint` (baseline **107 warnings**)
 y su propio commit en español.
 
+**Estado: fase 1 cerrada (`ee989dc`), fase 2 cerrada (`b772440`).**
+
 ### Fase 1 — Vigencia de la cotización desde `vigenteDesde` *(corrección, chica)*
 
 Backend ya desplegado. `getQuoteExpiration()` toma
@@ -187,10 +189,22 @@ Riesgo: nulo (fallback a `createdAt`). **1 archivo.**
 
 ### Fase 2 — "Ficha" → "Moneda" en el texto visible *(renombre, mecánica)*
 
-Solo cadenas de UI: componentes de `ads/`, `AdForm`, `AdsManagementSection`,
-`automotiveAdsData.js` (descripciones de plan), `helpContent.js` si aplica.
-**No se tocan** identificadores, claves de `localStorage`
-(`repuestop_fichas_balance`), endpoints (`/fichas/*`) ni nombres de tabla.
+Solo cadenas de UI. **No se tocan** identificadores, claves de `localStorage`
+(`repuestop_fichas_balance`), endpoints (`/fichas/*`), campos del DTO
+(`cantidadFichas`) ni nombres de tabla; queda anotado al inicio de
+`adsStorage.js` para que no se intente después.
+
+Cuidado al hacer el reemplazo: **"ficha" también significa "ficha de producto" y
+"ficha técnica del vehículo"** en ~15 archivos (`ProductDetailPage`,
+`AboutRepuesTopPage`, `helpContent.js`, `shippingMethods.js`, `index.css`…).
+Esos NO se tocan. La moneda solo aparece en `src/components/ads/*`,
+`src/services/adsStorage.js` y dos comentarios de `src/services/api.js`.
+
+**Hallazgo de la fase**: el `Pack Avanzado` tenía `priceClp: 19900` mientras se
+mostraba y se cobraba como `$19.990`. Ese campo es el `montoPagado` que viaja en
+`POST /fichas/compras`, así que cada Pack Avanzado vendido desde la web quedaba
+registrado en Administración Contable con **$90 menos**. El móvil siempre tuvo
+`19990`. Corregido.
 
 ### Fase 3 — El componente `RepuestopCoin` *(la pieza)*
 
