@@ -1021,7 +1021,7 @@ login y al editarlo descarta el cuerpo de la respuesta del PATCH.
 - **El historial no muestra "Monto pagado" ni "Total pagado".**
   `MovimientoFichaDTO` no trae el monto en pesos; en la app salen de un campo que
   nadie llena y muestran $0 siempre.
-- **El troquel de la moneda dice "FICHA"**, no "MONEDA. Es deliberado: prima que
+- **El troquel de la moneda dice "FICHA"**, no "MONEDA". Es deliberado: prima que
   la pieza sea idéntica en las dos plataformas. Si se cambia, se cambia en ambas.
 
 #### Estado de despliegue
