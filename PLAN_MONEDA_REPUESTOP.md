@@ -178,8 +178,8 @@ del monorepo y de la web, para no volver a abrir esos archivos.
 Cada fase cierra con `npm run build` + `npm run lint` (baseline **107 warnings**)
 y su propio commit en español.
 
-**Estado: fases 1 a 5 cerradas** — `ee989dc`, `b772440`, `e235d4e`, `5e7fdb6`,
-`02d4eab`.
+**Estado: LAS NUEVE FASES ESTÁN CERRADAS** — `ee989dc`, `b772440`, `e235d4e`,
+`5e7fdb6`, `02d4eab`, `f9b754c`, `7803441`, `e069706`, `a0823ad`.
 
 **Cómo verificar sin dejar rastro**: el panel real está en `/perfil/anuncios` con
 sesión de vendedor. Para probar la recarga sin registrar una compra en
@@ -270,9 +270,16 @@ números distintos para la misma compra. Ahora se fija al confirmarse la recarga
 
 ### Fase 6 — Detalle del movimiento en el historial
 
-Filas pulsables → hoja de detalle con los 6 campos. Requiere confirmar qué
-devuelve `fetchTokenTransactions()` (`priceClp`, `adId`) contra
-`GET /fichas/movimientos`.
+Filas pulsables → hoja de detalle, más el resumen del encabezado.
+
+**`MovimientoFichaDTO` no trae el monto en pesos** (solo `id`, `tipo`, `cantidad`,
+`motivo`, `descripcion`, `anuncioId` y `fecha`). La app muestra "Monto pagado" y
+"Total pagado" desde un campo opcional que quedó del monedero local y que hoy
+nadie llena: allá salen en $0 siempre. Acá se omiten.
+
+**El overlay del detalle va en `z-index: 100000`**: `.booking-modal-overlay` ya
+viene con 99999, así que cualquier número más bajo deja el detalle montado en el
+DOM pero tapado por el historial — se ve como si el clic no hiciera nada.
 
 ### Fase 7 — Activar las funciones recién desbloqueadas
 
@@ -281,19 +288,52 @@ captura el tier anterior ANTES de reemplazar el anuncio y abre `EditAdModal`;
 `AdForm` destaca la tarjeta de beneficios y marca `NUEVO` los interruptores
 nuevos. En web el salto es `scrollIntoView`, sin los 3 reintentos del móvil.
 
-### Fase 8 — Perfil incompleto y auto-compra *(la que más protege al usuario)*
+### Fase 8 — Perfil incompleto y auto-compra
 
-1. `missingPurchaseProfileFields()` web: bloquear **agregar al carro, cotizar y
-   pagar** cuando falte dirección o teléfono, con un enlace al perfil. Hace falta
-   porque desde `fae41ed` nacen cuentas Google sin esos datos.
-2. `isOwnStoreProduct()`: cortar la auto-compra y la auto-cotización en la ficha
-   de producto y en el carrito, como ya hace `useAdOwnership` con los anuncios.
+`isOwnStoreProduct()` corta la auto-compra en la ficha de producto: el buybox se
+reemplaza por un aviso. SEC-BACKEND-022 ya la rechaza, pero recién al pagar.
 
-### Fase 9 *(opcional, a decidir)* — Registro con Google para compradores
+**LA GUARDA DE TELÉFONO NO EXISTE, Y NO ES UN OLVIDO.** Se implementó y se
+descartó al probarla: **la web no sabe si el usuario tiene teléfono**.
+`PerfilUsuarioDTO` no expone `phone` y `/auth/login` tampoco lo devuelve; la web
+lo escribe en el registro y en la edición de perfil y nunca lo vuelve a leer, así
+que `user.phone` solo queda poblado si la persona editó su perfil en ESE
+navegador (merge optimista de `updateProfile`). La guarda habría bloqueado el
+checkout a TODOS. Está documentado en `src/utils/purchaseProfile.js`.
 
-Hoy el botón de Google en `AuthModal` **solo inicia sesión**. Con el backend
-nuevo se podría registrar sin pedir dirección ni teléfono, igual que la app. Es
-una funcionalidad nueva, no un arrastre.
+Por lo mismo, **la lista de "perfil completo" de `ProfileDashboard` da hoy un
+falso incompleto** a quien no editó su perfil en ese navegador.
+
+Y el teléfono importa menos de lo que parece: su único uso es que el vendedor vea
+al comprador (`PedidoResponseDTO.compradorTelefono`, en `OrderCard` y en
+`OrderDetailModal` como enlace `tel:`). No lo usa el pago, ni el login, ni ninguna
+notificación, y el backend **nunca** lo validó para compradores — el propio
+formulario de la web lo rotula "(opcional para envíos)".
+
+La DIRECCIÓN sí quedó cubierta sin tocar nada: el paso de entrega del checkout
+obliga a elegir una de la libreta y no deja avanzar sin ella.
+
+### Fase 9 — Registro con Google para compradores
+
+Cuando `/auth/google` responde **404** (no hay cuenta con ese correo), aparece un
+paso de confirmación con la cuenta de Google y el alta se hace ahí. Sin clave,
+teléfono ni dirección; con casilla de términos explícita.
+
+Dos cosas del contrato con el backend que no son evidentes:
+
+- **`validarComprador()` solo se salta la validación de dirección cuando el campo
+  llega NULO.** La web mandaba siempre un objeto con calle vacía y comuna nula, o
+  sea que el alta con Google habría fallado igual.
+- **El registro con Google DEBE llevar el `idToken`**: `resolverEmailVerificado()`
+  lo verifica contra Google y toma el correo de ahí, no del formulario, para que
+  nadie registre una cuenta con un correo ajeno.
+
+`decodeGoogleIdToken` lee el perfil del token SOLO para mostrarlo. Hay que
+decodificar los bytes como UTF-8 (`atob` devuelve bytes): si no, los nombres con
+tilde o con ñ llegan partidos.
+
+**Pendiente de prueba manual**: el alta real necesita una cuenta de Google que
+todavía no exista en RepuesTop.
 
 ---
 
@@ -320,3 +360,16 @@ cotizar, pagar) porque no tiene un checkout en pasos; la web sí, y ahí interru
 antes sería gratuito. La auto-compra (punto 2 de la fase 8) sí se corta temprano,
 en la ficha de producto, porque ahí el problema no es un dato faltante sino una
 acción que nunca va a poder completarse.
+
+---
+
+## 4. Lo que quedó pendiente
+
+1. **Exponer `phone` en `PerfilUsuarioDTO`** (backend). Sin eso la web no puede
+   exigir teléfono antes de comprar ni mostrar bien el checklist de perfil
+   completo. Es la única pieza de la fase 8 que quedó afuera.
+2. **Probar el alta con Google** con una cuenta que todavía no exista en
+   RepuesTop. Es lo único de las nueve fases que no se pudo verificar.
+3. Las pruebas manuales de la §4.14 del handoff (mural web ↔ app) siguen válidas:
+   ahora además conviene mirar que la moneda y el monedero se vean iguales en las
+   dos plataformas.
