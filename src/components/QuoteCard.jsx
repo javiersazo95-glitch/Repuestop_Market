@@ -1,8 +1,9 @@
 import React from 'react';
 import {
-  MessageSquare, Clock, CheckCircle2, XCircle, Send, User, ChevronRight
+  MessageSquare, Clock, CheckCircle2, XCircle, Send, User, ChevronRight, Lock, CalendarClock
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
+import { isQuoteExpired } from '../utils/quoteFlow';
 
 export const UNIFIED_QUOTE_STATUS = {
   PENDIENTE: { label: 'Pendiente de respuesta', icon: Clock, className: 'badge-amber' },
@@ -13,6 +14,8 @@ export const UNIFIED_QUOTE_STATUS = {
   accepted: { label: 'Aceptada', icon: CheckCircle2, className: 'badge-green' },
   RECHAZADA: { label: 'Rechazada', icon: XCircle, className: 'badge-red' },
   rejected: { label: 'Rechazada', icon: XCircle, className: 'badge-red' },
+  CERRADA: { label: 'Cerrada', icon: Lock, className: 'badge-slate' },
+  VENCIDA: { label: 'Cotización vencida', icon: CalendarClock, className: 'badge-red-outline' },
 };
 
 function formatCLP(value) {
@@ -53,7 +56,20 @@ export default function QuoteCard({
   const quoteIdShort = String(quote.id || '').slice(-6).toUpperCase();
   const activeQuote = quote.cotizacion || null;
   const dateStr = formatDate(quote.ultimoMensajeFecha || quote.createdAt || quote.fecha);
-  const rawStatus = activeQuote ? 'RESPONDIDA' : 'PENDIENTE';
+  /**
+   * El chip era `activeQuote ? 'RESPONDIDA' : 'PENDIENTE'`, o sea un binario
+   * sobre si existe la oferta: una cotizacion cerrada y vencida se veia igual
+   * que una oferta viva. `quote.estado` (CERRADA/ABIERTA) ya venia del backend
+   * —la vista del vendedor si lo lee— y `isQuoteExpired()` ya existia.
+   *
+   * El orden importa: cerrada gana sobre vencida porque es un estado
+   * definitivo, y ahi la vigencia deja de importar.
+   */
+  const rawStatus = quote.estado === 'CERRADA'
+    ? 'CERRADA'
+    : (activeQuote && isQuoteExpired(activeQuote))
+      ? 'VENCIDA'
+      : activeQuote ? 'RESPONDIDA' : 'PENDIENTE';
   const normStatus = String(rawStatus).toUpperCase();
 
   const customerName = quote.otroParticipanteNombre || quote.compradorNombre || quote.buyerName || (mode === 'buyer' ? 'Tienda RepuesTop' : 'Comprador RepuesTop');

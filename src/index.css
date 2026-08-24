@@ -4815,6 +4815,14 @@ input, select, textarea {
   border: 1px dashed #FCA5A5;
 }
 
+/* Estado definitivo y ya no accionable (cotizacion cerrada): gris, para que no
+   compita con los chips de color que si piden algo del usuario. */
+.badge-slate {
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px solid #CBD5E1;
+}
+
 /* --- PERSON ROW --- */
 .order-card-person-row {
   display: flex;
