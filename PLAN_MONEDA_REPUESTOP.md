@@ -363,13 +363,35 @@ acción que nunca va a poder completarse.
 
 ---
 
-## 4. Lo que quedó pendiente
+## 4. Estado de los pendientes
 
-1. **Exponer `phone` en `PerfilUsuarioDTO`** (backend). Sin eso la web no puede
-   exigir teléfono antes de comprar ni mostrar bien el checklist de perfil
-   completo. Es la única pieza de la fase 8 que quedó afuera.
-2. **Probar el alta con Google** con una cuenta que todavía no exista en
-   RepuesTop. Es lo único de las nueve fases que no se pudo verificar.
+1. **`phone` en `PerfilUsuarioDTO`: HECHO** (monorepo `8166ea8` + `61989c8`).
+   Sale de `Usuario.telefono`, que es el dato vivo — `Proveedor.telefonoContacto`
+   solo se llena al registrar la tienda y después nadie lo toca. Va **nulo** y no
+   `""` cuando no hay, normalizado en el origen (los dos registros y la
+   actualización de perfil).
+
+   **Corrección a lo que decía la fase 8**: la web SÍ podía saber el teléfono, por
+   `usuario.telefono` de la respuesta de login (`UsuarioDTO`), que es de donde lo
+   lee la app (`auth-registration.ts:178`). `ProfileDashboard` ya hacía
+   `user?.phone || user?.telefono`. El error fue de mi helper, que miraba solo
+   `phone`. Lo que sí faltaba era que `/auth/perfil` lo trajera, y eso ya está.
+   Si se quiere la guarda de teléfono en el checkout, va `user.phone ?? user.telefono`.
+
+   La app **no necesita cambios**: lee el teléfono del login y, al editarlo,
+   descarta el cuerpo de la respuesta del PATCH (solo mira `response.ok`).
+
+2. **Alta con Google: PROBADA** el 2026-08-24 contra el backend local.
+   Secuencia real: `POST /auth/google` → **404**, `POST /auth/register/buyer` →
+   **200**, `POST /auth/google` → **200**. Cuenta creada como comprador, con la
+   foto de Google, sin clave ni dirección.
+
+   Dos defectos que salieron de esa prueba y ya están corregidos (`04441ad`): el
+   cuerpo del paso estaba **dentro de `auth-modal-header`**, así que el encabezado
+   se pintaba al final; y el registro mandaba `phone: ''`.
+
+   **Falta verlo una vez más con otra cuenta sin registrar**, para confirmar la
+   maquetación corregida: el arreglo se comprobó leyendo el JSX, no en pantalla.
 3. Las pruebas manuales de la §4.14 del handoff (mural web ↔ app) siguen válidas:
    ahora además conviene mirar que la moneda y el monedero se vean iguales en las
    dos plataformas.
