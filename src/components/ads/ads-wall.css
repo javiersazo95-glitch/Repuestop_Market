@@ -2743,3 +2743,22 @@
 @media (max-width: 480px) {
   .tokens-history-summary { grid-template-columns: 1fr; }
 }
+
+/* --- Funciones recien desbloqueadas al mejorar de plan --- */
+
+/* El plan da el derecho, pero WhatsApp, las Historias y la Agenda siguen
+   apagados hasta que el socio los encienda y guarde. Sin destacarlos, alguien
+   que acaba de pagar 250 Monedas se va creyendo que ya esta todo listo. */
+.ad-unlocked-banner { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px; padding: 12px 14px; border: 1px solid #a7f3d0; border-radius: 12px; background: #ecfdf5; color: #065f46; }
+.ad-unlocked-banner svg { flex-shrink: 0; margin-top: 1px; color: #047857; }
+.ad-unlocked-banner strong { display: block; font-size: 13px; font-weight: 700; }
+.ad-unlocked-banner p { margin: 2px 0 0; font-size: 12.5px; line-height: 17px; color: #047857; }
+
+.booking-field.is-unlocked { padding: 10px 12px; border: 1.5px solid #34d399; border-radius: 12px; background: #f0fdf9; }
+.ad-nuevo-tag { display: inline-block; margin-left: 7px; padding: 1px 7px; border-radius: 999px; background: #047857; color: #ffffff; font-size: 9.5px; font-weight: 800; letter-spacing: .5px; vertical-align: middle; }
+
+/* Lo que se desbloqueo, en la pantalla de exito de la mejora de plan. */
+.upgrade-unlocked-box { max-width: 26rem; margin: 0 auto 18px; padding: 12px 14px; border: 1px solid #a7f3d0; border-radius: 12px; background: #ecfdf5; text-align: left; }
+.upgrade-unlocked-box strong { display: block; font-size: 12.5px; font-weight: 700; color: #065f46; }
+.upgrade-unlocked-box ul { margin: 6px 0 0; padding-left: 18px; }
+.upgrade-unlocked-box li { font-size: 12.5px; line-height: 18px; color: #047857; list-style: disc; }

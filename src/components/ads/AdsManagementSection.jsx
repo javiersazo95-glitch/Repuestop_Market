@@ -78,6 +78,10 @@ export default function AdsManagementSection({ onNavigateToMural }) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [adToUpgrade, setAdToUpgrade] = useState(null);
   const [adToEdit, setAdToEdit] = useState(null);
+  // Planes de origen y destino de la ultima mejora, para que el formulario pueda
+  // destacar SOLO lo que se acaba de desbloquear.
+  const [upgradedFromTier, setUpgradedFromTier] = useState(null);
+  const [upgradedToTier, setUpgradedToTier] = useState(null);
   const [adToDelete, setAdToDelete] = useState(null);
   const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -195,6 +199,27 @@ export default function AdsManagementSection({ onNavigateToMural }) {
   const handleUpgradeSuccess = (saved, balance) => {
     replaceAd(saved);
     setTokensBalanceState(balance);
+  };
+
+  /**
+   * "Activar mejoras": lleva del modal de mejora al formulario, ya sabiendo que
+   * funciones se acaban de desbloquear.
+   *
+   * El plan anterior lo entrega `UpgradeAdRankModal`, que lo congelo al montarse:
+   * para cuando se pulsa este boton, el anuncio de la lista ya quedo con el plan
+   * nuevo y la diferencia daria vacia.
+   */
+  const handleActivateFeatures = (saved, fromTier, toTier) => {
+    setUpgradedFromTier(fromTier);
+    setUpgradedToTier(toTier);
+    setAdToUpgrade(null);
+    setAdToEdit(saved);
+  };
+
+  const closeEditModal = () => {
+    setAdToEdit(null);
+    setUpgradedFromTier(null);
+    setUpgradedToTier(null);
   };
 
   const handleDeleteConfirm = async () => {
@@ -640,6 +665,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           onClose={() => setAdToUpgrade(null)}
           onOpenRechargeModal={() => setIsRechargeModalOpen(true)}
           onUpgradeSuccess={handleUpgradeSuccess}
+          onActivateFeatures={handleActivateFeatures}
         />
       )}
 
@@ -647,7 +673,9 @@ export default function AdsManagementSection({ onNavigateToMural }) {
         <EditAdModal
           ad={adToEdit}
           isOpen={Boolean(adToEdit)}
-          onClose={() => setAdToEdit(null)}
+          upgradedFromTier={upgradedFromTier}
+          upgradedToTier={upgradedToTier}
+          onClose={closeEditModal}
           onAdUpdated={handleAdUpdated}
         />
       )}

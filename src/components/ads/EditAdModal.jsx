@@ -13,7 +13,9 @@ import AdForm from './AdForm';
  * moderacion lo vuelva a aprobar. Se advierte antes de guardar: sin el aviso,
  * el vendedor ve desaparecer su anuncio y cree que se borro.
  */
-export default function EditAdModal({ ad, isOpen, onClose, onAdUpdated }) {
+export default function EditAdModal({
+  ad, isOpen, onClose, onAdUpdated, upgradedFromTier, upgradedToTier
+}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [savedAd, setSavedAd] = useState(null);
@@ -91,6 +93,8 @@ export default function EditAdModal({ ad, isOpen, onClose, onAdUpdated }) {
               initialAd={ad}
               isSubmitting={isSubmitting}
               submitError={submitError}
+              upgradedFromTier={upgradedFromTier}
+              upgradedToTier={upgradedToTier}
               onSubmit={handleSubmit}
               onCancel={handleClose}
             />

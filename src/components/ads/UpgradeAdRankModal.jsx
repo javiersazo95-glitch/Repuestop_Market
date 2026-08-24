@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, Zap, AlertCircle, AlertTriangle, Loader2, Clock3
+  X, Zap, AlertCircle, AlertTriangle, Loader2, Clock3, Sparkles
 } from 'lucide-react';
 import RepuestopCoin from './RepuestopCoin';
 import {
-  AD_TIERS, AD_MODERATION_STATUS, getUpgradableTiers, getTierActivatableFeatures
+  AD_TIERS, AD_MODERATION_STATUS, getUpgradableTiers, getTierActivatableFeatures,
+  getNewlyUnlockedFeatures
 } from '../../data/automotiveAdsData';
 import { UPGRADE_TOKEN_COSTS, spendTokensForAdUpgrade, adErrorMessage } from '../../services/adsStorage';
 
@@ -31,13 +32,27 @@ export default function UpgradeAdRankModal({
   tokensBalance,
   onClose,
   onOpenRechargeModal,
-  onUpgradeSuccess
+  onUpgradeSuccess,
+  onActivateFeatures
 }) {
   const upgradableTiers = getUpgradableTiers(ad?.tier || 'basica');
   const [selectedTargetTier, setSelectedTargetTier] = useState(upgradableTiers[0] || null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  /**
+   * Anuncio guardado por el PUT, para poder abrir el formulario con la version
+   * que quedo en el servidor y no con la que este modal recibio.
+   */
+  const [savedAd, setSavedAd] = useState(null);
+  /**
+   * Plan que tenia el anuncio ANTES de la mejora. Se congela al montar el modal:
+   * es el ultimo momento en que existe con certeza, porque `onUpgradeSuccess`
+   * reemplaza el anuncio en la lista del panel. Leerlo despues devolveria el
+   * plan nuevo, la diferencia daria vacia y el formulario se abriria sin avisar
+   * nada.
+   */
+  const [previousTier] = useState(ad?.tier || 'basica');
 
   if (!ad) return null;
 
@@ -45,6 +60,11 @@ export default function UpgradeAdRankModal({
   const targetCost = UPGRADE_TOKEN_COSTS[selectedTargetTier] || 0;
   const hasEnoughTokens = tokensBalance >= targetCost;
   const wasPublished = ad.moderationStatus === AD_MODERATION_STATUS.APROBADO && ad.activo === true;
+  // Lo que se gana con ESTA mejora, no todo lo que trae el plan nuevo: quien
+  // sube de Destacada a Premium ya tenia WhatsApp.
+  const unlockedFeatures = selectedTargetTier
+    ? getNewlyUnlockedFeatures(previousTier, selectedTargetTier)
+    : [];
 
   const handleConfirmUpgrade = async (e) => {
     e.preventDefault();
@@ -54,6 +74,7 @@ export default function UpgradeAdRankModal({
     setErrorMsg('');
     try {
       const { ad: saved, balance } = await spendTokensForAdUpgrade(ad, selectedTargetTier);
+      setSavedAd(saved);
       setIsSuccess(true);
       onUpgradeSuccess?.(saved, balance);
     } catch (err) {
@@ -224,13 +245,40 @@ export default function UpgradeAdRankModal({
             <p className="text-slate-600 text-sm max-w-md mx-auto mb-6">
               <strong>"{ad.title}"</strong> quedó en el plan{' '}
               <strong>{(AD_TIERS[selectedTargetTier] || currentConfig).name}</strong> y volvió a la cola de
-              moderación. Cuando lo aprueben vuelve al mural con los beneficios del plan nuevo; recuerda
-              editarlo para activar lo que se desbloqueó.
+              moderación. Cuando lo aprueben vuelve al mural con los beneficios del plan nuevo.
             </p>
 
-            <button type="button" className="btn-post-ad mx-auto" onClick={onClose}>
-              Entendido
-            </button>
+            {/* El plan da el derecho, pero WhatsApp, las Historias y la Agenda
+                siguen APAGADOS hasta que el socio los active y guarde. Decirselo
+                y dejarlo ahi era pedirle que se acordara solo: el boton lo lleva
+                al formulario, ya posicionado en lo que acaba de desbloquear. */}
+            {unlockedFeatures.length > 0 && (
+              <div className="upgrade-unlocked-box">
+                <strong>
+                  {unlockedFeatures.length === 1
+                    ? 'Desbloqueaste una función que tienes que encender:'
+                    : `Desbloqueaste ${unlockedFeatures.length} funciones que tienes que encender:`}
+                </strong>
+                <ul>
+                  {unlockedFeatures.map((feature) => <li key={feature}>{feature}</li>)}
+                </ul>
+              </div>
+            )}
+
+            <div className="booking-actions-row" style={{ justifyContent: 'center' }}>
+              <button type="button" className="btn-ad-phone" onClick={onClose}>
+                Más tarde
+              </button>
+              {unlockedFeatures.length > 0 && onActivateFeatures && (
+                <button
+                  type="button"
+                  className="btn-post-ad"
+                  onClick={() => onActivateFeatures(savedAd, previousTier, selectedTargetTier)}
+                >
+                  <Sparkles size={16} /> Activar mejoras
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

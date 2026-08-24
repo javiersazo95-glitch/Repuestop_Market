@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertCircle, CalendarClock, Camera, Check, Clock, Film, Loader2, Plus, Trash2, X
+  AlertCircle, CalendarClock, Camera, Check, Clock, Film, Loader2, Plus, Sparkles, Trash2, X
 } from 'lucide-react';
 import {
-  AD_TIERS, AD_TIER_ORDER, AD_FEATURE_TAGS, SERVICE_CATEGORIES
+  AD_TIERS, AD_TIER_ORDER, AD_FEATURE_TAGS, SERVICE_CATEGORIES, getNewlyUnlockedFeatures
 } from '../../data/automotiveAdsData';
 import {
   createDefaultSchedule, parseOpeningHours, formatOpeningHours, scheduleToAgendaConfig
@@ -77,6 +77,11 @@ const quitarPrefijo = (valor) => {
  */
 const newAgendaConfigId = () => `web-agc-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
 
+/** Marca la funcion que se acaba de desbloquear, para que salte a la vista. */
+function EtiquetaNueva() {
+  return <span className="ad-nuevo-tag">NUEVO</span>;
+}
+
 /**
  * Formulario unico de publicacion y edicion de anuncios.
  *
@@ -96,6 +101,8 @@ export default function AdForm({
   isSubmitting = false,
   submitError = '',
   submitLabel,
+  upgradedFromTier = null,
+  upgradedToTier = null,
   onSubmit,
   onCancel
 }) {
@@ -146,6 +153,37 @@ export default function AdForm({
   );
   const [agendaConfigName, setAgendaConfigName] = useState(initialAd?.agendaConfigName || '');
   const [agendaConfigId] = useState(initialAd?.agendaConfigId || newAgendaConfigId());
+
+  /**
+   * Funciones que se desbloquearon con la ULTIMA mejora de plan, no todas las
+   * del plan nuevo: quien sube de Destacada a Premium ya tenia WhatsApp, y
+   * listarselo como novedad lo manda a buscar algo que ya estaba encendido.
+   *
+   * Llega desde `UpgradeAdRankModal`, que congela el plan anterior al montarse.
+   * Sin ese dato el formulario se abre como una edicion cualquiera.
+   */
+  const unlockedFeatures = useMemo(
+    () => (upgradedToTier ? getNewlyUnlockedFeatures(upgradedFromTier || 'basica', upgradedToTier) : []),
+    [upgradedFromTier, upgradedToTier]
+  );
+  const esFuncionNueva = (nombre) => unlockedFeatures.includes(nombre);
+  /**
+   * Primera funcion recien desbloqueada dentro del formulario. Al entrar desde
+   * "Activar mejoras" el formulario se abre arriba del todo y los controles de
+   * esas funciones quedan mas abajo: sin llevar la vista hasta alla, el socio no
+   * tiene como saber que le falta un paso.
+   */
+  const primeraNuevaRef = useRef(null);
+
+  useEffect(() => {
+    if (unlockedFeatures.length === 0) return undefined;
+    // Un frame de gracia: el modal recien monto y las secciones todavia se estan
+    // acomodando, asi que la posicion del primer intento no sirve.
+    const id = setTimeout(() => {
+      primeraNuevaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 250);
+    return () => clearTimeout(id);
+  }, [unlockedFeatures.length]);
 
   const { user } = useAuth();
   const regionNombre = regiones.find((r) => String(r.id) === String(regionId))?.nombre || '';
@@ -375,6 +413,27 @@ export default function AdForm({
 
   return (
     <form onSubmit={handleSubmit}>
+      {/* El plan da el derecho, pero WhatsApp, las Historias y la Agenda siguen
+          APAGADOS hasta que el socio los encienda y guarde. Sin este aviso,
+          alguien que acaba de pagar 250 Monedas cree que ya esta todo listo. */}
+      {unlockedFeatures.length > 0 && (
+        <div className="ad-unlocked-banner">
+          <Sparkles size={17} />
+          <div>
+            <strong>
+              {unlockedFeatures.length === 1
+                ? `Desbloqueaste ${unlockedFeatures[0]}.`
+                : `Desbloqueaste ${unlockedFeatures.length} funciones nuevas.`}
+            </strong>
+            <p>
+              {unlockedFeatures.length === 1
+                ? 'Enciéndela aquí abajo y guarda los cambios para que quede activa.'
+                : 'Enciéndelas aquí abajo y guarda los cambios para que queden activas.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {mode === 'create' && (
         <div className="mb-4">
           <label className="ad-form-step-label">1. Plan de tu anuncio</label>
@@ -580,11 +639,15 @@ export default function AdForm({
           <CharCount value={phone} max={PHONE_DIGITS} />
         </div>
 
-        <div className="booking-field">
+        <div
+          className={`booking-field ${esFuncionNueva('WhatsApp directo') ? 'is-unlocked' : ''}`}
+          ref={unlockedFeatures[0] === 'WhatsApp directo' ? primeraNuevaRef : null}
+        >
           <label>
             WhatsApp {limits.hasWhatsapp
               ? `(incluido en el plan ${limits.name})`
               : `(no disponible en el plan ${limits.name})`}
+            {esFuncionNueva('WhatsApp directo') && <EtiquetaNueva />}
           </label>
           <div className={`phone-field ${limits.hasWhatsapp ? '' : 'is-disabled'}`}>
             <span className="phone-prefix">+56</span>
@@ -686,8 +749,14 @@ export default function AdForm({
         </div>
 
         {limits.maxStories > 0 && (
-          <div className="booking-field col-span-2">
-            <label>Historias ({visibleStories.length}/{limits.maxStories} del plan {limits.name})</label>
+          <div
+            className={`booking-field col-span-2 ${esFuncionNueva('Carrusel de Historias') ? 'is-unlocked' : ''}`}
+            ref={unlockedFeatures[0] === 'Carrusel de Historias' ? primeraNuevaRef : null}
+          >
+            <label>
+              Historias ({visibleStories.length}/{limits.maxStories} del plan {limits.name})
+              {esFuncionNueva('Carrusel de Historias') && <EtiquetaNueva />}
+            </label>
             {renderGallery('stories', visibleStories, limits.maxStories, 'Aparecen en el carrusel de historias, arriba del mural.')}
           </div>
         )}
@@ -696,8 +765,14 @@ export default function AdForm({
             bloque el anuncio no puede encenderla, porque el backend exige la
             configuracion horaria completa junto con `hasOnlineBooking`. */}
         {limits.hasBooking && (
-          <div className="booking-field col-span-2">
-            <label><CalendarClock size={13} /> Agenda de citas en línea (plan {limits.name})</label>
+          <div
+            className={`booking-field col-span-2 ${esFuncionNueva('Agenda de citas en línea') ? 'is-unlocked' : ''}`}
+            ref={unlockedFeatures[0] === 'Agenda de citas en línea' ? primeraNuevaRef : null}
+          >
+            <label>
+              <CalendarClock size={13} /> Agenda de citas en línea (plan {limits.name})
+              {esFuncionNueva('Agenda de citas en línea') && <EtiquetaNueva />}
+            </label>
 
             <label className="ad-check-row">
               <input

@@ -109,6 +109,19 @@ export function getTierActivatableFeatures(tier) {
   return features;
 }
 
+/**
+ * Lo que se DESBLOQUEA al pasar de un plan a otro, que no es lo mismo que todo
+ * lo que trae el plan nuevo: quien sube de Destacada a Premium ya tenia WhatsApp,
+ * y mostrarselo como novedad lo manda a buscar algo que ya estaba encendido.
+ *
+ * Contraparte de `getNewlyUnlockedFeatures()` en
+ * `mobile/constants/automotive-ads-data.ts`.
+ */
+export function getNewlyUnlockedFeatures(fromTier, toTier) {
+  const anteriores = new Set(getTierActivatableFeatures(fromTier));
+  return getTierActivatableFeatures(toTier).filter((feature) => !anteriores.has(feature));
+}
+
 export const AD_FEATURE_TAGS = [
   // Generales del negocio
   'Atención directa',
