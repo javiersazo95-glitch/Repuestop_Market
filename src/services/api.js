@@ -225,7 +225,10 @@ export async function registerBuyerApi(buyerData) {
       password: buyerData.password || '',
       firstName: buyerData.firstName || partes[0] || '',
       lastName: buyerData.lastName || partes.slice(1).join(' ') || '',
-      phone: buyerData.phone || '',
+      // Nulo y no cadena vacia cuando no hay telefono: es opcional, y `Usuario.telefono`
+      // guardaba "" en vez de null, con lo que "no tiene telefono" dejaba de ser
+      // distinguible mirando el campo. Se vio en el primer alta con Google.
+      phone: buyerData.phone?.trim() || null,
       authProvider,
       // Con Google el backend NO se fia del correo del formulario: lo saca del
       // idToken que verifica el mismo (`resolverEmailVerificado`), para que nadie

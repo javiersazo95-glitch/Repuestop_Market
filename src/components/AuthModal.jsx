@@ -430,58 +430,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
             </>
           )}
 
-          {step === 'google_signup' && googlePending && (
-          <div className="auth-modal-body">
-            <div className="google-account-card">
-              {googlePending.picture
-                ? <img src={googlePending.picture} alt="" referrerPolicy="no-referrer" />
-                : <span className="google-account-initials">{(googlePending.nombre || googlePending.email).charAt(0).toUpperCase()}</span>}
-              <div>
-                <strong>{googlePending.nombre || 'Cuenta de Google'}</strong>
-                <span>{googlePending.email}</span>
-              </div>
-            </div>
-
-            <p className="google-signup-note">
-              No pedimos contraseña: entras siempre con Google. Tu dirección de despacho la
-              eliges al momento de comprar.
-            </p>
-
-            {/* Aceptacion explicita, igual que en el registro por correo: queda en
-                `RT_aceptacion_terminos` con su version, asi que marcarla por el
-                usuario seria falsear ese registro. */}
-            <label className="auth-terms">
-              <input
-                type="checkbox"
-                checked={googleTermsAccepted}
-                onChange={(e) => setGoogleTermsAccepted(e.target.checked)}
-              />
-              <span>
-                He leído y acepto los <a href={ROUTES.terms} target="_blank" rel="noreferrer">Términos y Condiciones</a>
-                {' '}y la <a href={ROUTES.privacy} target="_blank" rel="noreferrer">Política de Privacidad</a>.
-              </span>
-            </label>
-
-            <button
-              type="button"
-              className="btn-auth-primary"
-              disabled={!googleTermsAccepted || isSubmitting}
-              onClick={handleGoogleSignup}
-            >
-              {isSubmitting ? 'Creando tu cuenta...' : 'Crear mi cuenta'}
-            </button>
-
-            <button
-              type="button"
-              className="btn-auth-secondary"
-              onClick={() => { setGooglePending(null); setStep('login_form'); }}
-            >
-              Usar otro correo
-            </button>
-          </div>
-        )}
-
-        {step === 'register_buyer' && (
+          {step === 'register_buyer' && (
             <>
               <h2>Crear Cuenta de Comprador</h2>
               <p>Busca por patente, cotiza repuestos y recibe envíos garantizados a todo Chile.</p>
@@ -698,6 +647,58 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               )}
             </div>
           </form>
+        )}
+
+        {/* STEP 2b: ALTA CON GOOGLE (cuando el correo todavia no tiene cuenta) */}
+        {step === 'google_signup' && googlePending && (
+          <div className="auth-modal-body">
+            <div className="google-account-card">
+              {googlePending.picture
+                ? <img src={googlePending.picture} alt="" referrerPolicy="no-referrer" />
+                : <span className="google-account-initials">{(googlePending.nombre || googlePending.email).charAt(0).toUpperCase()}</span>}
+              <div>
+                <strong>{googlePending.nombre || 'Cuenta de Google'}</strong>
+                <span>{googlePending.email}</span>
+              </div>
+            </div>
+
+            <p className="google-signup-note">
+              No pedimos contraseña: entras siempre con Google. Tu dirección de despacho la
+              eliges al momento de comprar.
+            </p>
+
+            {/* Aceptacion explicita, igual que en el registro por correo: queda en
+                `RT_aceptacion_terminos` con su version, asi que marcarla por el
+                usuario seria falsear ese registro. */}
+            <label className="auth-terms">
+              <input
+                type="checkbox"
+                checked={googleTermsAccepted}
+                onChange={(e) => setGoogleTermsAccepted(e.target.checked)}
+              />
+              <span>
+                He leído y acepto los <a href={ROUTES.terms} target="_blank" rel="noreferrer">Términos y Condiciones</a>
+                {' '}y la <a href={ROUTES.privacy} target="_blank" rel="noreferrer">Política de Privacidad</a>.
+              </span>
+            </label>
+
+            <button
+              type="button"
+              className="btn-auth-primary"
+              disabled={!googleTermsAccepted || isSubmitting}
+              onClick={handleGoogleSignup}
+            >
+              {isSubmitting ? 'Creando tu cuenta...' : 'Crear mi cuenta'}
+            </button>
+
+            <button
+              type="button"
+              className="btn-auth-secondary"
+              onClick={() => { setGooglePending(null); setStep('login_form'); }}
+            >
+              Usar otro correo
+            </button>
+          </div>
         )}
 
         {/* STEP 3: BUYER REGISTER FORM */}
