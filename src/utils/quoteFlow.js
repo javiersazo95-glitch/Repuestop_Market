@@ -94,9 +94,15 @@ export function quoteExpirationLabel(quote, now = Date.now()) {
   if (!expiresAt) return quote?.vigencia || 'Vigencia no informada';
   const remaining = expiresAt - now;
   if (remaining <= 0) return 'Cotización vencida';
-  const hours = Math.floor(remaining / 3600000);
-  const minutes = Math.max(1, Math.ceil((remaining % 3600000) / 60000));
-  return hours > 0 ? `Vence en ${hours} h ${minutes} min` : `Vence en ${minutes} min`;
+  // Se redondea UNA vez sobre el total y despues se reparte. Truncando las horas
+  // y redondeando aparte los minutos del resto, a falta de 23 h 59 min y medio el
+  // `ceil` subia los minutos a 60 sin tocar la hora: "Vence en 23 h 60 min". Pasaba
+  // en los segundos siguientes a cada emision, que es cuando el comprador mira.
+  const totalMinutes = Math.max(1, Math.ceil(remaining / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours <= 0) return `Vence en ${minutes} min`;
+  return minutes > 0 ? `Vence en ${hours} h ${minutes} min` : `Vence en ${hours} h`;
 }
 
 export function isQuoteExpired(quote) {
