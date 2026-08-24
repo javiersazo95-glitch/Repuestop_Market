@@ -67,11 +67,26 @@ function validityMilliseconds(validity = '') {
   return null;
 }
 
+/**
+ * Momento desde el que se cuenta la vigencia.
+ *
+ * La fila de la cotizacion es UNICA por conversacion y se REUTILIZA cada vez que
+ * el vendedor edita o vuelve a emitir su oferta, pero `createdAt` es inmutable:
+ * contar desde ahi hacia que una cotizacion reemitida dias despues llegara ya
+ * vencida al comprador, sin poder pagarla. Por eso el backend expone
+ * `vigenteDesde` (`CotizacionConversacionResponseDTO`, monorepo `fae41ed`), que
+ * es el `updatedAt` de la fila. El respaldo a `createdAt` cubre a los ambientes
+ * que todavia no tengan ese backend.
+ */
+function quoteIssuedAt(quote) {
+  return quote?.vigenteDesde || quote?.createdAt || '';
+}
+
 export function getQuoteExpiration(quote) {
   const duration = validityMilliseconds(quote?.vigencia);
-  const createdAt = new Date(quote?.createdAt || '').getTime();
-  if (!duration || Number.isNaN(createdAt)) return null;
-  return createdAt + duration;
+  const issuedAt = new Date(quoteIssuedAt(quote)).getTime();
+  if (!duration || Number.isNaN(issuedAt)) return null;
+  return issuedAt + duration;
 }
 
 export function quoteExpirationLabel(quote, now = Date.now()) {
