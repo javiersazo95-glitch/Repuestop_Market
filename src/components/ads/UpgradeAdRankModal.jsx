@@ -178,11 +178,19 @@ export default function UpgradeAdRankModal({
                 </div>
 
                 {/* Mejorar el plan da el derecho, no enciende la funcion: WhatsApp,
-                    las historias y la agenda se activan editando el anuncio. */}
+                    las historias y la agenda se activan editando el anuncio.
+
+                    Va `unlockedFeatures` (la DIFERENCIA entre los dos planes) y no
+                    todo lo que trae el plan destino: quien sube de Destacada a
+                    Premium ya tenia WhatsApp, y anunciarselo como novedad lo manda
+                    a encender algo que ya estaba encendido. Ademas es lo mismo que
+                    listan la pantalla de exito y el formulario, que ya usaban este
+                    calculo: antes el modal se contradecia a si mismo antes y
+                    despues de confirmar. */}
                 {selectedTargetTier && (
                   <p className="ad-upgrade-hint">
                     Después de mejorar el plan tienes que editar el anuncio para activar lo que se
-                    desbloquea ({getTierActivatableFeatures(selectedTargetTier).join(', ') || 'las nuevas fotos'}).
+                    desbloquea ({unlockedFeatures.join(', ') || 'las nuevas fotos'}).
                   </p>
                 )}
 
