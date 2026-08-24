@@ -1,10 +1,19 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, Coins, CheckCircle2, CreditCard, Landmark, ShieldCheck,
+  X, CheckCircle2, CreditCard, Landmark, ShieldCheck,
   Zap, Sparkles, ArrowRight, AlertCircle
 } from 'lucide-react';
 import { TOKEN_PACKS, rechargeTokensWithPack, adErrorMessage } from '../../services/adsStorage';
+import RepuestopCoin from './RepuestopCoin';
+import CoinDropAnimation from './CoinDropAnimation';
+
+/** Quien pidio menos movimiento en su sistema se salta la lluvia. */
+function prefiereMenosMovimiento() {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
 
 export default function RechargeTokensModal({
   isOpen,
@@ -14,9 +23,23 @@ export default function RechargeTokensModal({
   const [selectedPack, setSelectedPack] = useState(TOKEN_PACKS[1]); // Default al más popular (Medio)
   const [paymentMethod, setPaymentMethod] = useState('webpay');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  /**
+   * El pago confirmado no salta directo al comprobante: primero la lluvia de
+   * monedas toma el modal entero y recien despues aparece el resumen. Es el
+   * momento en que el usuario ve que su plata se convirtio en algo, y pasarlo
+   * por alto hace que la recarga se sienta como un formulario mas.
+   * 'lluvia' -> 'resumen' lo dispara el onFinish de la animacion.
+   */
+  const [fase, setFase] = useState('compra');
   const [creditedAmount, setCreditedAmount] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
+  /**
+   * Numero del comprobante. Se fija UNA vez, al confirmarse la recarga: estaba
+   * calculado con Math.random() dentro del render, asi que cambiaba en cada
+   * repintado y el usuario podia ver dos numeros distintos para la misma compra.
+   */
+  const [receiptId, setReceiptId] = useState('');
+  const isSuccess = fase === 'resumen';
 
   if (!isOpen) return null;
 
@@ -38,7 +61,8 @@ export default function RechargeTokensModal({
     try {
       const updatedBalance = await rechargeTokensWithPack(selectedPack, methodName);
       setCreditedAmount(selectedPack.totalTokens);
-      setIsSuccess(true);
+      setReceiptId(`RT-PAY-${Math.floor(100000 + Math.random() * 900000)}`);
+      setFase(prefiereMenosMovimiento() ? 'resumen' : 'lluvia');
       onRechargeSuccess?.(updatedBalance);
     } catch (error) {
       setErrorMsg(adErrorMessage(error, 'No se pudo registrar la recarga. Intenta nuevamente.'));
@@ -48,7 +72,7 @@ export default function RechargeTokensModal({
   };
 
   const handleClose = () => {
-    setIsSuccess(false);
+    setFase('compra');
     setErrorMsg('');
     onClose?.();
   };
@@ -68,7 +92,7 @@ export default function RechargeTokensModal({
             <div className="booking-modal-header">
               <div>
                 <h3>
-                  <Coins className="text-amber-500" size={24} />
+                  <RepuestopCoin size={30} face="front" />
                   Recargar Monedas RepuesTop
                 </h3>
                 <p>
@@ -93,16 +117,21 @@ export default function RechargeTokensModal({
                   return (
                     <div
                       key={pack.id}
-                      className={`token-pack-card ${isSelected ? 'selected' : ''} ${pack.highlight ? 'is-popular' : ''}`}
+                      className={`token-pack-card ${isSelected ? 'selected' : ''}`}
                       onClick={() => setSelectedPack(pack)}
+                      role="radio"
+                      aria-checked={isSelected}
+                      aria-label={`Pack ${pack.name}, ${pack.totalTokens} monedas, ${pack.priceFormatted}`}
                     >
                       {pack.tag && (
                         <div className={`pack-tag-pill ${pack.highlight ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
                           {pack.tag}
                         </div>
                       )}
+                      {isSelected && <CheckCircle2 size={18} className="token-pack-check" />}
                       <h4 className="pack-title">{pack.name}</h4>
                       <div className="pack-tokens-display">
+                        <RepuestopCoin size={34} face="front" />
                         <strong>{pack.totalTokens.toLocaleString('es-CL')}</strong>
                         <span>Monedas</span>
                       </div>
@@ -216,20 +245,20 @@ export default function RechargeTokensModal({
         ) : (
           /* Confirmación Exitosa */
           <div className="text-center py-6">
-            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 size={36} />
+            <div className="recharge-success-coin">
+              <RepuestopCoin size={92} face="front" />
             </div>
 
             <h3 className="text-2xl font-extrabold text-slate-900 mb-2">
-              ¡Recarga Exitosa!
+              ¡Gracias por confiar en RepuesTop!
             </h3>
 
             <p className="text-slate-600 text-sm max-w-md mx-auto mb-6">
-              Se han acreditado <strong className="text-emerald-700 font-bold">{creditedAmount.toLocaleString('es-CL')} Monedas RepuesTop</strong> a tu monedero de manera inmediata.
+              Se acreditaron <strong className="text-emerald-700 font-bold">{creditedAmount.toLocaleString('es-CL')} Monedas RepuesTop</strong> en tu monedero. Ya están disponibles para usar en tus avisos.
             </p>
 
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left max-w-md mx-auto mb-6 space-y-2 text-xs text-slate-700">
-              <div><strong>Transacción:</strong> <span className="font-mono text-slate-900">#RT-PAY-{Math.floor(100000 + Math.random() * 900000)}</span></div>
+              <div><strong>Transacción:</strong> <span className="font-mono text-slate-900">#{receiptId}</span></div>
               <div><strong>Pack Adquirido:</strong> {selectedPack.name}</div>
               <div><strong>Monto Pagado:</strong> {selectedPack.priceFormatted}</div>
               <div><strong>Fecha y Hora:</strong> {new Date().toLocaleString('es-CL')}</div>
@@ -242,6 +271,17 @@ export default function RechargeTokensModal({
             >
               Volver al Panel de Anuncios
             </button>
+          </div>
+        )}
+
+        {/* La lluvia toma el modal entero, por encima del formulario: es un
+            momento propio, no un adorno del comprobante. Al terminar cede el
+            paso al resumen. */}
+        {fase === 'lluvia' && (
+          <div className="coin-rain-layer">
+            <CoinDropAnimation active onFinish={() => setFase('resumen')} />
+            <h3>¡Listo!</h3>
+            <p>Estamos acreditando tus monedas…</p>
           </div>
         )}
       </div>

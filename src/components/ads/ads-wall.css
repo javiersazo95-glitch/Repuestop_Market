@@ -1567,9 +1567,13 @@
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
 }
 
-.token-pack-card.is-popular {
-  border-color: #c4b5fd;
-}
+/* El borde de color dice "seleccionado" y nada mas. El pack popular tambien
+   llevaba borde morado siempre y, por ir DESPUES en la hoja, le ganaba al del
+   seleccionado: se veian dos packs marcados a la vez y no se distinguia cual
+   estaba elegido. Que es el popular ya lo dice su pastilla. Mismo arreglo que
+   hizo la app en `fae41ed`. */
+
+.token-pack-check { position: absolute; top: 8px; right: 8px; color: #7c3aed; }
 
 .pack-tag-pill {
   position: absolute;
@@ -1591,8 +1595,14 @@
   margin: 6px 0 4px 0;
 }
 
+/* La moneda va centrada con el numero, no alineada a su linea base: un dibujo no
+   tiene linea base de texto y quedaba flotando respecto de la cifra. */
 .pack-tokens-display {
   margin: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
 }
 
 .pack-tokens-display strong {
@@ -1604,7 +1614,6 @@
 .pack-tokens-display span {
   font-size: 12px;
   color: #64748b;
-  margin-left: 4px;
   font-weight: 600;
 }
 
@@ -2634,3 +2643,63 @@
   .coin-info-perk { flex: 1 1 45%; padding: 8px 6px; }
   .coin-info-perk:nth-child(3) { border-left: none; }
 }
+
+/* --- Lluvia de Monedas al confirmar la recarga (CoinDropAnimation) --- */
+
+/* Toda la animacion es CSS: la corre el compositor del navegador, asi que la
+   caida no compite con el render de React mientras el modal se acomoda. Las
+   variaciones por moneda (tamano, retardo, giros, deriva) llegan como custom
+   properties en el style inline de cada una. */
+.coin-rain { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 20; }
+
+.coin-rain-item {
+  position: absolute; top: 0;
+  width: var(--coin-size); height: var(--coin-size);
+  perspective: 900px;
+  animation: coin-rain-fall var(--coin-dur) linear var(--coin-delay) both;
+}
+
+@keyframes coin-rain-fall {
+  0% { opacity: 0; transform: translate3d(0, calc(var(--coin-size) * -1), 0) rotate(var(--coin-balanceo)); }
+  4% { opacity: 1; }
+  100% { opacity: 1; transform: translate3d(var(--coin-deriva), calc(100vh + var(--coin-size)), 0) rotate(var(--coin-balanceo)); }
+}
+
+/* El giro monta las dos caras superpuestas y esconde la que queda de espaldas:
+   es lo que hace que se lea como una moneda de verdad y no como una calcomania
+   bajando. */
+.coin-rain-flip {
+  position: absolute; inset: 0; transform-style: preserve-3d;
+  animation: coin-rain-spin var(--coin-dur) linear var(--coin-delay) both;
+}
+@keyframes coin-rain-spin { from { transform: rotateY(0deg); } to { transform: rotateY(var(--coin-giro)); } }
+
+.coin-rain-face { position: absolute; inset: 0; backface-visibility: hidden; }
+.coin-rain-face.is-back { transform: rotateY(180deg); }
+
+/* La capa de la lluvia: un momento propio, no un adorno del comprobante.
+
+   Va `fixed` y no `absolute` dentro de la tarjeta a proposito: la tarjeta del
+   modal tiene `overflow-y: auto`, asi que un hijo absoluto con `inset: 0` se
+   estira a TODO el alto desplazable y el texto centrado queda a mitad del
+   scroll, fuera de la vista. Fija a la ventana ademas calza con el `100vh` de
+   la caida y cubre la pantalla entera, igual que en la app. */
+.coin-rain-layer {
+  position: fixed; inset: 0; z-index: 21;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; padding: 0 24px; text-align: center;
+  background: rgba(8, 17, 36, .92);
+}
+.coin-rain-layer h3 { margin: 0; font-size: 26px; font-weight: 800; color: #ffffff; }
+.coin-rain-layer p { margin: 0; font-size: 14px; color: #cbd5e1; }
+
+/* Quien pidio menos movimiento no ve la lluvia: el modal salta directo al
+   comprobante (lo decide el componente, aca solo se apagan las animaciones por
+   si alguna alcanza a montarse). */
+@media (prefers-reduced-motion: reduce) {
+  .coin-rain-item, .coin-rain-flip { animation: none; }
+  .coin-rain { display: none; }
+}
+
+/* --- Comprobante de la recarga --- */
+.recharge-success-coin { display: flex; justify-content: center; margin-bottom: 14px; }
