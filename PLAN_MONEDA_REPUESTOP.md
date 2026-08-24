@@ -178,8 +178,7 @@ del monorepo y de la web, para no volver a abrir esos archivos.
 Cada fase cierra con `npm run build` + `npm run lint` (baseline **107 warnings**)
 y su propio commit en español.
 
-**Estado: fase 1 cerrada (`ee989dc`), fase 2 cerrada (`b772440`), fase 3 cerrada
-(`e235d4e`).**
+**Estado: fases 1 a 4 cerradas** — `ee989dc`, `b772440`, `e235d4e`, `5e7fdb6`.
 
 ### Fase 1 — Vigencia de la cotización desde `vigenteDesde` *(corrección, chica)*
 
@@ -228,7 +227,23 @@ dentro de botones. Bajo 64px se oculta el wordmark.
 ### Fase 4 — Monedero e info de la moneda
 
 `TokensWalletCard` con la moneda, el botón `i` y `CoinInfoModal` (las dos caras +
-las 4 ventajas + los 2 bloques). **Depende de la respuesta a la pregunta A.**
+las 4 ventajas + los 2 bloques).
+
+Clases nuevas: `.tokens-wallet-card` (reemplaza a `.tokens-wallet-bar`, que ya no
+existe), `.tokens-wallet-top/-coin/-label-row/-active/-amount/-info-btn/-hint`,
+`.tokens-wallet-benefits/-benefit`, `.coin-info-*`. `.btn-recharge-tokens` y
+`.btn-token-history` se conservaron con estilos nuevos.
+
+Dos cosas propias de la web, que no tiene el ancho fijo del teléfono: bajo 620px
+el tarifario pasa a columna y bajo 480px las 4 ventajas de la lámina van en 2×2.
+El botón de Historial tampoco existe en la app (allá se abre desde un mosaico del
+encabezado); queda como acción secundaria junto a la recarga.
+
+**Cómo probar el monedero sin loguearse**: crear `src/pages/CoinPreviewPage.jsx`
+montando el componente suelto y una `<Route path="/__coin">` en `AppRoutes.jsx`,
+mirar en `localhost:5173/__coin` y borrar las dos cosas antes de commitear
+(`git checkout src/routes/AppRoutes.jsx`). El panel real vive detrás de una sesión
+de vendedor.
 
 ### Fase 5 — Recarga con lluvia de monedas
 
