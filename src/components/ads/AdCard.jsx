@@ -25,6 +25,11 @@ export default function AdCard({
   // Las capacidades vienen del plan, no de una lista de tiers escrita a mano:
   // el mismo tarifario que valida `AnuncioService` en el backend.
   const canWhatsapp = Boolean(tierConfig.hasWhatsapp && ad.whatsapp);
+  // Mismo desdoblamiento que la agenda de mas abajo: el plan da el derecho, el
+  // dueño lo enciende. Sin separarlos, un anuncio Premium sin numero cargado
+  // mostraba "WhatsApp no disponible (Plan Premium)", que es falso — Premium si
+  // lo incluye — y mandaba a mejorar un plan que ya estaba mejorado.
+  const whatsappPendingNumber = Boolean(tierConfig.hasWhatsapp && !ad.whatsapp);
   // El plan da el derecho a agendar; la agenda solo queda activa cuando el dueño
   // guardó una configuración horaria válida (`hasOnlineBooking` del backend).
   const canBook = Boolean(tierConfig.hasBooking && ad.hasOnlineBooking);
@@ -208,9 +213,17 @@ export default function AdCard({
                 <span>WhatsApp directo</span>
               </button>
             ) : (
-              <div className="btn-ad-locked" title={`El plan ${tierConfig.name} no incluye WhatsApp directo`}>
+              <div
+                className="btn-ad-locked"
+                title={whatsappPendingNumber
+                  ? 'El anuncio todavía no tiene un número de WhatsApp cargado'
+                  : `El plan ${tierConfig.name} no incluye WhatsApp directo`}
+              >
                 <Lock size={13} />
-                <span>WhatsApp no disponible <small>(Plan {tierConfig.name})</small></span>
+                <span>
+                  {whatsappPendingNumber ? 'WhatsApp no configurado' : 'WhatsApp no disponible'}
+                  <small> ({whatsappPendingNumber ? 'sin número cargado' : `Plan ${tierConfig.name}`})</small>
+                </span>
               </div>
             )}
 
