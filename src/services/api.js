@@ -363,6 +363,37 @@ export async function getBuyerOrderByIdApi(usuarioId, orderId, { signal } = {}) 
   return fetchApi(`/usuarios/${usuarioId}/pedidos/${orderId}`, { method: 'GET', signal });
 }
 
+/**
+ * Pide una intencion de pago NUEVA para un pedido que quedo en PENDIENTE y
+ * devuelve el `PedidoResponseDTO` con un `urlPago` fresco de Flow.
+ *
+ * Contraparte de `retryOrderPayment()` en `mobile/utils/orders.ts`. La web no lo
+ * usaba: sin esto, un pedido del CARRITO que quedaba pendiente era impagable,
+ * porque la idempotencia de `PedidoCheckoutCotizacionSupport` —que si renueva el
+ * `urlPago`— cuelga de `conversacion_id` y solo cubre a las cotizaciones.
+ *
+ * `PedidoPagoSupport.reintentarPago()` responde 409 si el pedido ya no esta
+ * PENDIENTE, y tambien si pasaron los 30 minutos de la ventana de pago, en cuyo
+ * caso ademas lo cancela y restaura el stock. Ese mensaje viene del backend y hay
+ * que mostrarlo tal cual: explica que el pedido quedo cancelado.
+ */
+export async function retryOrderPaymentApi(usuarioId, orderId) {
+  return fetchApi(`/usuarios/${usuarioId}/pedidos/${orderId}/reintentar-pago`, { method: 'POST' });
+}
+
+/**
+ * Fuerza la confirmacion del pago contra la pasarela y devuelve el pedido ya
+ * actualizado.
+ *
+ * En el movil esto se llama en un sondeo de 60 intentos cada 2s porque Flow se
+ * abre en un navegador incrustado y la pantalla nunca se destruye. En la web la
+ * pagina se va entera a Flow y vuelve a `?status=...&orderId=...`, asi que basta
+ * UNA llamada al volver: el sondeo no tendria donde correr.
+ */
+export async function confirmOrderPaymentApi(usuarioId, orderId) {
+  return fetchApi(`/usuarios/${usuarioId}/pedidos/${orderId}/confirmar-pago`, { method: 'POST' });
+}
+
 export async function getSellerOrdersApi(proveedorId, { signal } = {}) {
   // Igual que mobile: el backend pagina este historial y permite hasta 100 filas.
   // Se carga el lote máximo para que búsqueda y filtros operen sobre el historial visible completo.

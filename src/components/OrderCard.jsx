@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Clock, Wrench, Truck, PackageCheck, ShieldCheck, AlertCircle, XCircle,
   RotateCcw, FileText, User, Store, Package, Info, ChevronRight, Check,
-  Phone, MapPin, Boxes
+  Phone, MapPin, Boxes, Loader2
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
 import { getControlledOrderAction, isStorePickupOrder } from '../data/orderStatusFlow';
@@ -60,11 +60,13 @@ export default function OrderCard({
   mode = 'buyer',
   onSelectOrder,
   onUpdateStatus,
+  onRetryPayment,
   withdrawalDate,
 }) {
   const [showCommissionModal, setShowCommissionModal] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [isRetryingPayment, setIsRetryingPayment] = useState(false);
   const isSeller = mode === 'seller';
 
   if (!order) return null;
@@ -76,6 +78,8 @@ export default function OrderCard({
   // Normalización de campos según comprador vs vendedor
   const rawStatus = order.estado || order.status || 'PENDIENTE';
   const normStatus = String(rawStatus).toUpperCase();
+  // Solo el comprador paga, y solo mientras el pedido siga sin pagarse.
+  const canRetryPayment = !isSeller && normStatus === 'PENDIENTE' && Boolean(onRetryPayment);
   const deliveryTerms = String(order.courier || order.deliveryTerms || order.tipoEnvio || order.compradorDireccion || order.direccionEntrega || 'Despacho a domicilio');
   const isStorePickup = isStorePickupOrder(order);
   const displayStatus = normStatus === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : rawStatus;
@@ -332,6 +336,30 @@ export default function OrderCard({
             <span>Ver detalles completos</span>
             <ChevronRight size={15} />
           </button>
+          {/* Un pedido PENDIENTE es un pedido sin pagar: el comprador vuelve de
+              Flow justo a este listado, asi que el reintento va aca ademas del
+              detalle para no cobrarle un clic de mas. */}
+          {canRetryPayment && (
+            <button
+              type="button"
+              className="btn-order-action btn-action-blue"
+              disabled={isRetryingPayment}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isRetryingPayment) return;
+                setIsRetryingPayment(true);
+                setActionError('');
+                Promise.resolve(onRetryPayment(order))
+                  // El 409 del backend dice que el pedido expiro y quedo cancelado;
+                  // sin este catch quedaba como promesa rechazada sin mostrar nada.
+                  .catch((err) => setActionError(err?.message || 'No se pudo regenerar el intento de pago.'))
+                  .finally(() => setIsRetryingPayment(false));
+              }}
+            >
+              {isRetryingPayment ? <Loader2 size={14} className="spin-icon" /> : <RotateCcw size={14} />}
+              <span>{isRetryingPayment ? 'Abriendo pago…' : 'Retomar pago'}</span>
+            </button>
+          )}
           {renderStatusButton()}
         </div>
       </div>

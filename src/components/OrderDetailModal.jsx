@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {
   X, Clock, Wrench, Truck, PackageCheck, User, Store,
-  MapPin, Phone, Mail, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound
+  MapPin, Phone, Mail, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
+  RotateCcw, Loader2
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
 import { resolveShippingService } from '../data/shippingMethods';
@@ -53,6 +54,7 @@ export default function OrderDetailModal({
   mode = 'buyer',
   onClose,
   onUpdateStatus,
+  onRetryPayment,
 }) {
   const rawStatus = order?.estado || order?.status || 'PENDIENTE';
   const normStatus = String(rawStatus).toUpperCase();
@@ -60,10 +62,14 @@ export default function OrderDetailModal({
   const [addressCopied, setAddressCopied] = useState(false);
   const [pickupPin, setPickupPin] = useState('');
   const [statusError, setStatusError] = useState('');
+  const [isRetryingPayment, setIsRetryingPayment] = useState(false);
+  const [retryError, setRetryError] = useState('');
 
   if (!order) return null;
 
   const isSeller = mode === 'seller';
+  // Solo el comprador paga, y solo mientras el pedido siga sin pagarse.
+  const canRetryPayment = !isSeller && normStatus === 'PENDIENTE' && Boolean(onRetryPayment);
 
   const orderIdShort = String(order.id || '').slice(-6).toUpperCase();
   const items = order.items || [];
@@ -404,10 +410,38 @@ export default function OrderDetailModal({
         </div>
 
         <div className="order-modal-footer">
+          {/* El banner de pago fallido manda al comprador justo aca diciendole que
+              "revise el detalle para reintentar el pago", pero hasta ahora el
+              detalle no tenia con que. */}
+          {canRetryPayment && (
+            <button
+              type="button"
+              className="btn-auth-primary"
+              disabled={isRetryingPayment}
+              onClick={async () => {
+                if (isRetryingPayment) return;
+                setIsRetryingPayment(true);
+                setRetryError('');
+                try {
+                  await onRetryPayment(order);
+                } catch (err) {
+                  // El 409 del backend explica que el pedido expiro y quedo
+                  // cancelado: es informacion util, no un error generico.
+                  setRetryError(err?.message || 'No se pudo regenerar el intento de pago.');
+                } finally {
+                  setIsRetryingPayment(false);
+                }
+              }}
+            >
+              {isRetryingPayment ? <Loader2 size={16} className="spin-icon" /> : <RotateCcw size={16} />}
+              {isRetryingPayment ? 'Abriendo pago…' : 'Retomar pago'}
+            </button>
+          )}
           <button type="button" className="btn-auth-secondary" onClick={onClose}>
             Cerrar
           </button>
         </div>
+        {retryError && <p className="order-modal-retry-error">{retryError}</p>}
       </div>
     </div>
   );

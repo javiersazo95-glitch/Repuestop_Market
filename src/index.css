@@ -5794,6 +5794,18 @@ input, select, textarea {
   border-top: 1px solid var(--border-subtle);
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
+}
+
+/* El 409 de `reintentar-pago` explica que el pedido expiro y quedo cancelado, asi
+   que se muestra pegado al boton en vez de perderse en un toast. */
+.order-modal-retry-error {
+  margin: 0;
+  padding: 10px 24px 16px;
+  background: #f8fafc;
+  color: #b91c1c;
+  font-size: 13px;
+  text-align: right;
 }
 
 .clickable-activity-row:hover {

@@ -13,6 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
 import {
   getBuyerOrdersApi, getBuyerOrderByIdApi, getSellerOrdersApi, getFavoritesApi,
+  retryOrderPaymentApi, confirmOrderPaymentApi,
   getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getBuyerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
   updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi, updateSellerProductTopApi,
@@ -493,6 +494,25 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     return () => { active = false; };
   }, [paymentStatus, paymentOrderId, orders, effectiveUserId]);
 
+  /**
+   * Vuelta de Flow con el pago aprobado. El movil sondea `confirmar-pago` hasta 60
+   * veces porque nunca abandona la pantalla; aca la pagina se destruyo al saltar a
+   * Flow y volvio con el resultado en la URL, asi que una sola llamada basta para
+   * que el pedido deje de verse PENDIENTE sin esperar al webhook.
+   */
+  useEffect(() => {
+    if (paymentStatus !== 'success' || !paymentOrderId || !effectiveUserId) return undefined;
+    let active = true;
+    confirmOrderPaymentApi(effectiveUserId, paymentOrderId)
+      .then(() => {
+        if (active) queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
+      })
+      .catch(() => {
+        // El webhook de Flow actualiza igual el pedido; esto solo adelanta el refresco.
+      });
+    return () => { active = false; };
+  }, [paymentStatus, paymentOrderId, effectiveUserId, queryClient]);
+
   const favorites = favoritesQuery.data || [];
   const conversations = conversationsQuery.data || [];
   const storeInfo = storeInfoQuery.data || null;
@@ -527,6 +547,25 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       console.warn('No se pudo actualizar el estado del pedido:', err);
       throw err;
     }
+  };
+
+  /**
+   * "Retomar pago" de un pedido que quedo en PENDIENTE.
+   *
+   * Equivalente de `retryOrderPayment()` del movil, sin su sondeo: alla Flow se
+   * abre en un navegador incrustado y la pantalla sigue viva, asi que sondea
+   * `confirmar-pago` 60 veces. Aca la pagina se va ENTERA a Flow, asi que no hay
+   * donde sondear; la confirmacion se hace al volver, con el `?status=success`
+   * del efecto de mas abajo.
+   */
+  const handleRetryPayment = async (order) => {
+    const orderId = order?.id;
+    if (!effectiveUserId || !orderId) return;
+    const renewed = await retryOrderPaymentApi(effectiveUserId, orderId);
+    if (!renewed?.urlPago) {
+      throw new Error('No se recibió la URL de pago desde la pasarela.');
+    }
+    window.location.href = renewed.urlPago;
   };
 
   const handleSaveCatalogProduct = async (productId, updatedFields) => {
@@ -1410,7 +1449,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                       </div>
                     )}
                     <h2 className="profile-panel-title">Mis Pedidos</h2>
-                    {(orders || []).length === 0 ? <EmptyState label="Aún no has realizado pedidos." /> : <div className="profile-orders-cards-grid">{orders.map((order) => <OrderCard key={order.id} order={order} mode="buyer" onSelectOrder={(item) => setSelectedOrder(item)} onUpdateStatus={handleUpdateOrderStatus} />)}</div>}
+                    {(orders || []).length === 0 ? <EmptyState label="Aún no has realizado pedidos." /> : <div className="profile-orders-cards-grid">{orders.map((order) => <OrderCard key={order.id} order={order} mode="buyer" onSelectOrder={(item) => setSelectedOrder(item)} onUpdateStatus={handleUpdateOrderStatus} onRetryPayment={handleRetryPayment} />)}</div>}
                   </div>
                 )
               )}
@@ -2024,6 +2063,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           mode={isSeller ? 'seller' : 'buyer'}
           onClose={() => setSelectedOrder(null)}
           onUpdateStatus={handleUpdateOrderStatus}
+          onRetryPayment={isSeller ? undefined : handleRetryPayment}
         />
       )}
 
