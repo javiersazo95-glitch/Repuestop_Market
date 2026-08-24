@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, Zap, Coins, AlertCircle, AlertTriangle, Loader2, Clock3
+  X, Zap, AlertCircle, AlertTriangle, Loader2, Clock3
 } from 'lucide-react';
+import RepuestopCoin from './RepuestopCoin';
 import {
   AD_TIERS, AD_MODERATION_STATUS, getUpgradableTiers, getTierActivatableFeatures
 } from '../../data/automotiveAdsData';
@@ -140,7 +141,7 @@ export default function UpgradeAdRankModal({
                         </div>
                         <h4 className="choice-title">Plan {config.name}</h4>
                         <div className="choice-cost">
-                          <Coins size={15} />
+                          <RepuestopCoin size={15} />
                           <span>{cost} Monedas</span>
                         </div>
                         <ul className="choice-benefits">
@@ -168,7 +169,7 @@ export default function UpgradeAdRankModal({
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-slate-600">Tu saldo de Monedas RepuesTop:</span>
                     <strong className="flex items-center gap-1 text-slate-900">
-                      <Coins size={16} className="text-amber-500" />
+                      <RepuestopCoin size={18} />
                       {tokensBalance.toLocaleString('es-CL')} Monedas
                     </strong>
                   </div>

@@ -2526,3 +2526,24 @@
 @media (max-width: 540px) {
   .hours-range { flex-direction: column; gap: 8px; }
 }
+
+/* ============================================================
+   MONEDA REPUESTOP
+   Estilos del componente `RepuestopCoin`. El dibujo entero vive en el SVG; aca
+   solo va la caja que lo contiene y el bloque de marca que se superpone al
+   centro (emblema + wordmark), que es HTML para que el nombre sea texto real.
+   ============================================================ */
+
+.rt-coin { position: relative; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; vertical-align: middle; }
+.rt-coin svg { display: block; }
+
+/* El bloque de marca no debe interceptar clics: la moneda aparece dentro de
+   botones (recargar, mejorar plan) y un hijo capturando el puntero deja el
+   boton muerto justo en su centro. */
+.rt-coin-center { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.rt-coin-center img { object-fit: contain; display: block; }
+
+.rt-coin-wordmark { margin-top: 1px; font-weight: 800; letter-spacing: -.2px; color: #243442; white-space: nowrap; }
+.rt-coin-wordmark-accent { color: #0056BF; }
+/* El reverso va troquelado en el metal: gris parejo, sin el azul de marca. */
+.rt-coin-wordmark.is-grabado, .rt-coin-wordmark.is-grabado .rt-coin-wordmark-accent { color: #5b6a7d; }

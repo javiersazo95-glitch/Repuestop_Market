@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  AlertCircle, CalendarClock, Camera, Check, Clock, Coins, Film, Loader2, Plus, Trash2, X
+  AlertCircle, CalendarClock, Camera, Check, Clock, Film, Loader2, Plus, Trash2, X
 } from 'lucide-react';
 import {
   AD_TIERS, AD_TIER_ORDER, AD_FEATURE_TAGS, SERVICE_CATEGORIES
@@ -19,6 +19,7 @@ import {
 } from '../../data/agendaConfig';
 import { UPGRADE_TOKEN_COSTS, uploadAdImages, adErrorMessage } from '../../services/adsStorage';
 import AgendaScheduleEditor from './AgendaScheduleEditor';
+import RepuestopCoin from './RepuestopCoin';
 
 /**
  * Contador de caracteres. Existe porque el campo dejaba de aceptar texto sin
@@ -763,7 +764,7 @@ export default function AdForm({
 
       {mode === 'create' && !canAffordTier && (
         <p className="ad-form-balance-note">
-          <Coins size={13} /> El plan {limits.name} cuesta {tierCost} Monedas y tu saldo es de {tokensBalance}. Recarga o elige otro plan.
+          <RepuestopCoin size={16} /> El plan {limits.name} cuesta {tierCost} Monedas y tu saldo es de {tokensBalance}. Recarga o elige otro plan.
         </p>
       )}
     </form>
