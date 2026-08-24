@@ -178,7 +178,14 @@ del monorepo y de la web, para no volver a abrir esos archivos.
 Cada fase cierra con `npm run build` + `npm run lint` (baseline **107 warnings**)
 y su propio commit en español.
 
-**Estado: fases 1 a 4 cerradas** — `ee989dc`, `b772440`, `e235d4e`, `5e7fdb6`.
+**Estado: fases 1 a 5 cerradas** — `ee989dc`, `b772440`, `e235d4e`, `5e7fdb6`,
+`02d4eab`.
+
+**Cómo verificar sin dejar rastro**: el panel real está en `/perfil/anuncios` con
+sesión de vendedor. Para probar la recarga sin registrar una compra en
+Administración Contable, interceptar el `POST /fichas/compras` desde la consola
+(envolver `window.fetch` y devolver un 200 falso solo para esa URL), y restaurar
+`window.fetch` al terminar. El `GET` de saldo se deja pasar: es de solo lectura.
 
 ### Fase 1 — Vigencia de la cotización desde `vigenteDesde` *(corrección, chica)*
 
@@ -249,7 +256,17 @@ de vendedor.
 
 Máquina `compra → lluvia → resumen`, `CoinDropAnimation` en CSS/keyframes (no
 `Animated`), corrección del doble borde del pack popular + `checkmark`, y el copy
-nuevo del comprobante. Respetar `prefers-reduced-motion`.
+nuevo del comprobante. Con `prefers-reduced-motion` **el componente** salta
+directo al resumen: si solo se apagara la animación por CSS, la fase se quedaría
+esperando un `onFinish` que nunca llega.
+
+La capa de la lluvia va `position: fixed`, no `absolute`: `.recharge-modal-card`
+tiene `overflow-y: auto`, así que un hijo absoluto con `inset: 0` se estira a
+todo el alto desplazable y el texto centrado queda a mitad del scroll.
+
+**Hallazgo de la fase**: el número del comprobante se calculaba con
+`Math.random()` dentro del render, así que cambiaba en cada repintado — dos
+números distintos para la misma compra. Ahora se fija al confirmarse la recarga.
 
 ### Fase 6 — Detalle del movimiento en el historial
 
