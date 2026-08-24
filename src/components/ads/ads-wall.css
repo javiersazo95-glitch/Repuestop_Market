@@ -1471,47 +1471,6 @@
 }
 
 
-.btn-recharge-tokens {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: #ffffff;
-  border: none;
-  padding: 12px 22px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
-  transition: all 0.2s ease;
-}
-
-.btn-recharge-tokens:hover {
-  transform: translateY(-2px);
-  background: linear-gradient(135deg, #fbbf24, #d97706);
-  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
-}
-
-.btn-token-history {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 12px 16px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.btn-token-history:hover {
-  background: rgba(255, 255, 255, 0.18);
-}
-
 /* ==========================================================================
    MODAL DE RECARGA DE FICHAS & PACKS
    ========================================================================== */
@@ -2459,19 +2418,25 @@
 .tokens-wallet-benefit b { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tokens-wallet-benefit small { font-size: 11px; color: #d7e3f4; white-space: nowrap; }
 
-.tokens-wallet-actions { display: flex; align-items: stretch; gap: 8px; }
+/* Las acciones van al borde derecho y con el ancho de su contenido. En el movil
+   la tarjeta mide lo que el telefono, asi que un CTA a todo lo ancho es lo
+   correcto; en el panel de escritorio la tarjeta pasa de los 1300px y el mismo
+   boton estirado deja de leerse como boton y compite con el saldo, que es el
+   dato que tiene que mandar. */
+.tokens-wallet-actions { display: flex; align-items: stretch; justify-content: flex-end; gap: 8px; }
 
 /* El boton lleva el metal de la moneda, no un azul plano: sobre la tarjeta azul
    la plata es lo mas claro que hay, asi que no pierde fuerza como accion. */
 .btn-recharge-tokens {
-  position: relative; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-  padding: 10px 16px; border: none; border-radius: 12px;
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 9px 16px; border: none; border-radius: 12px;
   background: linear-gradient(135deg, #ffffff 0%, #eef3f9 50%, #ccd8e7 100%);
   color: #0f4aa8; font-size: 14px; font-weight: 800; cursor: pointer; transition: filter .15s ease;
 }
 .btn-recharge-tokens:hover { filter: brightness(1.04); }
-/* El chevron va fijo al borde derecho para que no desplace el centro del texto. */
-.btn-recharge-chevron { position: absolute; right: 14px; }
+/* El chevron va en el flujo: con el boton al ancho de su contenido, sacarlo del
+   flujo lo montaria sobre el texto. */
+.btn-recharge-chevron { margin-left: -2px; }
 .btn-token-history { display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border: 1px solid rgba(255, 255, 255, .28); border-radius: 12px; background: transparent; color: #e2ecf9; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background .15s ease; }
 .btn-token-history:hover { background: rgba(255, 255, 255, .1); }
 
@@ -2481,7 +2446,10 @@
   .tokens-wallet-benefits { flex-direction: column; gap: 10px; }
   .tokens-wallet-benefit + .tokens-wallet-benefit { border-left: none; }
   .tokens-wallet-benefit { padding: 0; }
-  .tokens-wallet-actions { flex-direction: column; }
+  /* En pantalla angosta la tarjeta vuelve a medir lo que el viewport: ahi el CTA
+     a todo lo ancho si corresponde, como en la app. */
+  .tokens-wallet-actions { flex-direction: column; justify-content: stretch; }
+  .btn-recharge-tokens { flex: 1 1 auto; }
   .btn-token-history { justify-content: center; }
 }
 
