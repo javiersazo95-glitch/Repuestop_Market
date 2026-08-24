@@ -390,7 +390,7 @@ export default function AdForm({
                   onClick={() => setTier(tierId)}
                 >
                   <span className="tier-option-badge" style={{ background: `${config.badgeColor}1a`, color: config.badgeColor }}>
-                    {cost > 0 ? `${cost} Fichas` : 'Gratis'}
+                    {cost > 0 ? `${cost} Monedas` : 'Gratis'}
                   </span>
                   <h4>{config.name}</h4>
                   <div className="tier-features-list">
@@ -756,14 +756,14 @@ export default function AdForm({
           {isSubmitting
             ? 'Enviando…'
             : submitLabel || (mode === 'create'
-              ? (tierCost > 0 ? `Publicar por ${tierCost} Fichas` : 'Publicar anuncio')
+              ? (tierCost > 0 ? `Publicar por ${tierCost} Monedas` : 'Publicar anuncio')
               : 'Guardar cambios')}
         </button>
       </div>
 
       {mode === 'create' && !canAffordTier && (
         <p className="ad-form-balance-note">
-          <Coins size={13} /> El plan {limits.name} cuesta {tierCost} Fichas y tu saldo es de {tokensBalance}. Recarga o elige otro plan.
+          <Coins size={13} /> El plan {limits.name} cuesta {tierCost} Monedas y tu saldo es de {tokensBalance}. Recarga o elige otro plan.
         </p>
       )}
     </form>

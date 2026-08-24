@@ -12,7 +12,7 @@ import { UPGRADE_TOKEN_COSTS, spendTokensForAdUpgrade, adErrorMessage } from '..
  * Subir de plan un anuncio.
  *
  * El cambio de plan viaja como un PUT normal (`spendTokensForAdUpgrade`), y todo
- * PUT devuelve el anuncio a `PENDIENTE` con `activo=false`: pagar Fichas por
+ * PUT devuelve el anuncio a `PENDIENTE` con `activo=false`: pagar Monedas por
  * mejorar el rango SACA el anuncio del mural hasta que lo re-aprueben. Se
  * advierte antes de confirmar.
  *
@@ -118,8 +118,8 @@ export default function UpgradeAdRankModal({
                     <strong>El cambio de plan pasa por revisión.</strong>
                     <p>
                       {wasPublished
-                        ? 'Cambiar de plan guarda el anuncio de nuevo, así que sale del Mural de Anuncios hasta que moderación apruebe la versión con el plan nuevo. Las Fichas se descuentan igual: no se devuelven si después editas.'
-                        : 'El anuncio queda con el plan nuevo y sigue en la cola de revisión. Las Fichas se descuentan al confirmar.'}
+                        ? 'Cambiar de plan guarda el anuncio de nuevo, así que sale del Mural de Anuncios hasta que moderación apruebe la versión con el plan nuevo. Las Monedas se descuentan igual: no se devuelven si después editas.'
+                        : 'El anuncio queda con el plan nuevo y sigue en la cola de revisión. Las Monedas se descuentan al confirmar.'}
                     </p>
                   </div>
                 </div>
@@ -141,7 +141,7 @@ export default function UpgradeAdRankModal({
                         <h4 className="choice-title">Plan {config.name}</h4>
                         <div className="choice-cost">
                           <Coins size={15} />
-                          <span>{cost} Fichas</span>
+                          <span>{cost} Monedas</span>
                         </div>
                         <ul className="choice-benefits">
                           <li>✓ Hasta {config.maxImages} fotos y {config.maxTags} etiquetas</li>
@@ -166,29 +166,29 @@ export default function UpgradeAdRankModal({
 
                 <div className="upgrade-balance-box">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-600">Tu saldo de Fichas RepuesTop:</span>
+                    <span className="text-slate-600">Tu saldo de Monedas RepuesTop:</span>
                     <strong className="flex items-center gap-1 text-slate-900">
                       <Coins size={16} className="text-amber-500" />
-                      {tokensBalance.toLocaleString('es-CL')} Fichas
+                      {tokensBalance.toLocaleString('es-CL')} Monedas
                     </strong>
                   </div>
 
                   <div className="flex justify-between items-center text-sm mt-1">
                     <span className="text-slate-600">Costo del cambio de plan:</span>
-                    <strong className="text-purple-700">{targetCost} Fichas</strong>
+                    <strong className="text-purple-700">{targetCost} Monedas</strong>
                   </div>
 
                   {!hasEnoughTokens && (
                     <div className="mt-3 pt-3 border-t border-amber-200 flex items-center justify-between gap-3">
                       <span className="text-xs text-amber-800 font-medium">
-                        Te faltan {targetCost - tokensBalance} Fichas para este plan.
+                        Te faltan {targetCost - tokensBalance} Monedas para este plan.
                       </span>
                       <button
                         type="button"
                         className="btn-ad-booking text-xs py-1.5 px-3 bg-amber-600 hover:bg-amber-700"
                         onClick={() => { onClose?.(); onOpenRechargeModal?.(); }}
                       >
-                        Recargar Fichas
+                        Recargar Monedas
                       </button>
                     </div>
                   )}
@@ -204,7 +204,7 @@ export default function UpgradeAdRankModal({
                     disabled={isProcessing || !hasEnoughTokens || !selectedTargetTier}
                   >
                     {isProcessing ? <Loader2 size={16} className="spin-icon" /> : <Zap size={16} />}
-                    {isProcessing ? 'Actualizando…' : `Mejorar por ${targetCost} Fichas`}
+                    {isProcessing ? 'Actualizando…' : `Mejorar por ${targetCost} Monedas`}
                   </button>
                 </div>
               </form>

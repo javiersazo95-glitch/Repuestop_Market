@@ -2,7 +2,7 @@ import React from 'react';
 import { Coins, Plus, History } from 'lucide-react';
 
 /**
- * Saldo del Monedero de Fichas.
+ * Saldo del Monedero de Monedas.
  *
  * Es una barra plana con el oscuro de la casa (`#0f172a`), no una tarjeta con
  * degradado: la version anterior tenia un `linear-gradient` diagonal, un
@@ -22,10 +22,10 @@ export default function TokensWalletCard({
           <Coins size={20} />
         </span>
         <div>
-          <span className="tokens-wallet-label">Monedero de Fichas RepuesTop</span>
+          <span className="tokens-wallet-label">Monedero de Monedas RepuesTop</span>
           <div className="tokens-wallet-amount">
             <strong>{tokensBalance.toLocaleString('es-CL')}</strong>
-            <span>Fichas disponibles</span>
+            <span>Monedas disponibles</span>
           </div>
         </div>
       </div>

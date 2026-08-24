@@ -1209,8 +1209,8 @@ export async function getFichasMovimientosApi({ signal } = {}) {
 }
 
 /**
- * Informa una compra de fichas ya pagada. El backend la registra para
- * Administracion Contable Y acredita las fichas en el monedero.
+ * Informa una compra de monedas ya pagada. El backend la registra para
+ * Administracion Contable Y acredita las monedas en el monedero.
  *
  * `referenciaPago` es la llave de idempotencia: si la misma referencia llega dos
  * veces, la compra no se registra ni se acredita de nuevo.

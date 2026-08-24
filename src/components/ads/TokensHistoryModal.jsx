@@ -6,7 +6,7 @@ import {
 import { fetchTokenTransactions, adErrorMessage } from '../../services/adsStorage';
 
 /**
- * Historial de movimientos del Monedero de Fichas.
+ * Historial de movimientos del Monedero de Monedas.
  *
  * `TokensWalletCard` ya tenia el boton de "Historial", pero nadie le pasaba el
  * handler y no habia a donde llevarlo: el historial vivia en `localStorage` y
@@ -45,7 +45,7 @@ export default function TokensHistoryModal({ isOpen, onClose }) {
       <div className="booking-modal-card tokens-history-card">
         <div className="booking-modal-header">
           <div>
-            <h3><History className="text-amber-500" size={22} /> Historial de Fichas</h3>
+            <h3><History className="text-amber-500" size={22} /> Historial de Monedas</h3>
             <p>Cada recarga y cada cobro de tus anuncios, del más reciente al más antiguo.</p>
           </div>
           <button
@@ -68,7 +68,7 @@ export default function TokensHistoryModal({ isOpen, onClose }) {
         {!isLoading && loadError && (
           <div className="ads-mgmt-state is-error">
             <AlertTriangle size={22} />
-            <p>{adErrorMessage(loadError, 'No pudimos cargar tu historial de Fichas.')}</p>
+            <p>{adErrorMessage(loadError, 'No pudimos cargar tu historial de Monedas.')}</p>
           </div>
         )}
 

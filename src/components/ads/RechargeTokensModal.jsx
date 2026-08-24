@@ -21,12 +21,12 @@ export default function RechargeTokensModal({
   if (!isOpen) return null;
 
   /**
-   * Registra la compra en el backend, que es quien acredita las Fichas.
+   * Registra la compra en el backend, que es quien acredita las Monedas.
    *
    * Antes esto sumaba el saldo en `localStorage` y no avisaba a nadie: la web
    * NUNCA llamaba a `POST /fichas/compras`, asi que una recarga hecha desde el
    * navegador no acreditaba nada real y ademas quedaba fuera de Administracion
-   * Contable. Si el registro falla no se muestra exito: esas Fichas no existen.
+   * Contable. Si el registro falla no se muestra exito: esas Monedas no existen.
    */
   const handlePay = async (e) => {
     e.preventDefault();
@@ -69,10 +69,10 @@ export default function RechargeTokensModal({
               <div>
                 <h3>
                   <Coins className="text-amber-500" size={24} />
-                  Recargar Fichas RepuesTop
+                  Recargar Monedas RepuesTop
                 </h3>
                 <p>
-                  Elige un pack de fichas para mejorar la visibilidad y rango de tus anuncios en el Mural Automotriz.
+                  Elige un pack de monedas para mejorar la visibilidad y rango de tus anuncios en el Mural Automotriz.
                 </p>
               </div>
               <button
@@ -104,11 +104,11 @@ export default function RechargeTokensModal({
                       <h4 className="pack-title">{pack.name}</h4>
                       <div className="pack-tokens-display">
                         <strong>{pack.totalTokens.toLocaleString('es-CL')}</strong>
-                        <span>Fichas</span>
+                        <span>Monedas</span>
                       </div>
                       {pack.bonus > 0 && (
                         <span className="pack-bonus-badge">
-                          +{pack.bonus} Fichas de Regalo
+                          +{pack.bonus} Monedas de Regalo
                         </span>
                       )}
                       <div className="pack-price">{pack.priceFormatted}</div>
@@ -175,7 +175,7 @@ export default function RechargeTokensModal({
               <div className="recharge-order-summary">
                 <div className="flex justify-between items-center text-sm mb-1">
                   <span className="text-slate-600">Pack seleccionado:</span>
-                  <strong className="text-slate-900">{selectedPack.name} ({selectedPack.totalTokens} Fichas)</strong>
+                  <strong className="text-slate-900">{selectedPack.name} ({selectedPack.totalTokens} Monedas)</strong>
                 </div>
                 <div className="flex justify-between items-center text-sm mb-2">
                   <span className="text-slate-600">Total a pagar:</span>
@@ -225,7 +225,7 @@ export default function RechargeTokensModal({
             </h3>
 
             <p className="text-slate-600 text-sm max-w-md mx-auto mb-6">
-              Se han acreditado <strong className="text-emerald-700 font-bold">{creditedAmount.toLocaleString('es-CL')} Fichas RepuesTop</strong> a tu monedero de manera inmediata.
+              Se han acreditado <strong className="text-emerald-700 font-bold">{creditedAmount.toLocaleString('es-CL')} Monedas RepuesTop</strong> a tu monedero de manera inmediata.
             </p>
 
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left max-w-md mx-auto mb-6 space-y-2 text-xs text-slate-700">

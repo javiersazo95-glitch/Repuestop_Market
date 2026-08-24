@@ -24,7 +24,7 @@ export default function CreateAdModal({ isOpen, onClose, tokensBalance = 0, onAd
     setIsSubmitting(true);
     setSubmitError('');
     try {
-      // El cobro ya no se hace aca: `AnuncioService.crear()` descuenta las Fichas
+      // El cobro ya no se hace aca: `AnuncioService.crear()` descuenta las Monedas
       // del plan en la misma transaccion que el anuncio. Si el saldo no alcanza
       // responde 422 y el anuncio no llega a existir, asi que ese error entra por
       // el mismo `catch` y se muestra en el formulario. Antes se cobraba en el

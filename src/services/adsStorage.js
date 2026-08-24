@@ -1,14 +1,22 @@
-// Mural de Anuncios y monedero de Fichas RepuesTop.
+// Mural de Anuncios y monedero de Monedas RepuesTop.
 //
 // Todo el ciclo de vida del anuncio pasa por el backend, igual que en el movil
 // (`mobile/services/ads-storage.ts`): el mural publico por `GET /anuncios` y la
 // gestion propia por `GET /anuncios/mios` + POST / PUT / DELETE.
 //
+// NOMBRES: de cara al usuario la moneda se llama "Moneda RepuesTop" desde el
+// commit `fae41ed` del monorepo, pero por dentro sigue siendo "ficha" en todas
+// partes — los endpoints (`/fichas/saldo`, `/fichas/movimientos`,
+// `/fichas/compras`), los campos del DTO (`cantidadFichas`), la tabla
+// (`RT_movimiento_ficha`) y la llave de localStorage. Renombrarlos NO es
+// cosmetico: rompe el contrato con el backend y le borra el saldo cacheado a
+// todo el que ya tenga la llave escrita. El renombre es solo texto visible.
+//
 // localStorage guarda solo dos cosas: la ultima copia del mural, para que la
-// grilla no aparezca vacia mientras responde la red, y el monedero de Fichas,
-// que sigue sin backend (no hay endpoint de saldo ni de consumo; ver la fase D
-// del handoff). La llave `repuestop_classified_ads` de la fase A quedo sin uso:
-// esos anuncios nunca existieron fuera del navegador.
+// grilla no aparezca vacia mientras responde la red, y una copia de solo lectura
+// del ultimo saldo confirmado por el servidor, para el primer render. La llave
+// `repuestop_classified_ads` de la fase A quedo sin uso: esos anuncios nunca
+// existieron fuera del navegador.
 import {
   getPublicAdsApi, getPublicAdApi, getMyAdsApi,
   createAdApi, updateAdApi, deleteAdApi, uploadAdImagesApi, resolveMediaUrl,
@@ -50,7 +58,7 @@ function readCache(key) {
   }
 }
 
-// Packs de recarga de Fichas RepuesTop
+// Packs de recarga de Monedas RepuesTop
 export const TOKEN_PACKS = [
   {
     id: 'pack-basico',
@@ -84,7 +92,12 @@ export const TOKEN_PACKS = [
     tokens: 600,
     bonus: 100,
     totalTokens: 700,
-    priceClp: 19900,
+    // 19990, no 19900: el pack SIEMPRE se mostro como "$19.990 CLP" en las dos
+    // plataformas, pero aca el monto que viaja en `POST /fichas/compras` salia de
+    // este campo, asi que cada Pack Avanzado vendido desde la web quedaba
+    // registrado en Administracion Contable con $90 menos de los que se cobraron.
+    // El movil tiene 19990 (`mobile/constants/automotive-ads-data.ts`).
+    priceClp: 19990,
     priceFormatted: '$19.990 CLP',
     tag: 'Empresarial',
     highlight: false,
@@ -106,7 +119,7 @@ export const TOKEN_PACKS = [
   }
 ];
 
-// Costo en Fichas RepuesTop para mejorar de rango un anuncio
+// Costo en Monedas RepuesTop para mejorar de rango un anuncio
 export const UPGRADE_TOKEN_COSTS = {
   basica: 0,
   destacada: 50,
@@ -246,14 +259,14 @@ export function adErrorMessage(error, fallback = 'No se pudo completar la operac
 //
 // El saldo lo manda el backend (`GET /fichas/saldo`), que lo calcula sumando
 // `RT_movimiento_ficha`. Antes vivia en `localStorage` y el bono de bienvenida se
-// otorgaba aca mismo, asi que vaciar el navegador reponia 300 Fichas y publicar
+// otorgaba aca mismo, asi que vaciar el navegador reponia 300 Monedas y publicar
 // un anuncio Empresarial cuesta 250.
 //
 // Y el gasto ya no se descuenta desde el cliente: el backend cobra dentro de
 // `AnuncioService.crear()` y `actualizar()`, en la misma transaccion que el
 // anuncio. Si el saldo no alcanza, el POST o el PUT responden 422 y el anuncio no
 // llega a existir, asi que no hay forma de publicar sin pagar ni de quedarse sin
-// Fichas por una publicacion que fallo a medias.
+// Monedas por una publicacion que fallo a medias.
 //
 // De `localStorage` queda solo una copia del ultimo saldo conocido, para pintar
 // algo en el primer render sin esperar la red. Es SOLO para mostrar: se escribe
@@ -276,7 +289,7 @@ function cacheTokensBalance(balance) {
  * Ultimo saldo conocido, sincrono, para el primer render.
  *
  * Arranca en 0 y no en 300: el bono de bienvenida lo otorga el backend, y pintar
- * un saldo inventado mientras responde la red es prometer Fichas que pueden no
+ * un saldo inventado mientras responde la red es prometer Monedas que pueden no
  * existir. Lo reemplaza `fetchTokensBalance()` apenas contesta.
  */
 export function getCachedTokensBalance() {
@@ -303,7 +316,7 @@ export async function fetchTokensBalance({ signal } = {}) {
 }
 
 const MOTIVO_LABELS = {
-  COMPRA: 'Recarga de Fichas',
+  COMPRA: 'Recarga de Monedas',
   BONO_BIENVENIDA: 'Bono de bienvenida Monedero RepuesTop',
   PUBLICACION: 'Publicación de anuncio',
   UPGRADE: 'Mejora de plan del anuncio'
@@ -323,7 +336,7 @@ export async function fetchTokenTransactions({ signal } = {}) {
     id: String(item.id),
     type: item.tipo === 'CREDITO' ? 'credit' : 'debit',
     amount: Number(item.cantidad) || 0,
-    description: item.descripcion || MOTIVO_LABELS[item.motivo] || 'Movimiento de Fichas',
+    description: item.descripcion || MOTIVO_LABELS[item.motivo] || 'Movimiento de Monedas',
     date: item.fecha,
     adId: item.anuncioId || null
   }));
@@ -334,7 +347,7 @@ export async function fetchTokenTransactions({ signal } = {}) {
  *
  * El credito lo aplica el backend al registrar la compra, asi que aca no se suma
  * nada: sumarlo en el navegador es exactamente lo que hacia que los dos numeros
- * se separaran. Si el registro falla, se propaga el error — esas Fichas todavia
+ * se separaran. Si el registro falla, se propaga el error — esas Monedas todavia
  * no existen y mostrarlas seria mentir.
  *
  * Esta llamada NO existia en la web: solo la hacia el movil, asi que hasta ahora
@@ -359,7 +372,7 @@ export async function rechargeTokensWithPack(pack, paymentMethod = 'Webpay Plus'
  *
  * El PUT es el que cobra, dentro de su propia transaccion: si el saldo no alcanza
  * responde 422 y el anuncio se queda en el plan viejo, asi que no hay nada que
- * revertir aca. Esta funcion llego a descontar las Fichas por su cuenta, y como
+ * revertir aca. Esta funcion llego a descontar las Monedas por su cuenta, y como
  * el descuento era local, un PUT fallido dejaba al usuario sin saldo y con el
  * anuncio sin mejorar.
  */

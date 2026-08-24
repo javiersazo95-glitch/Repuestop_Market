@@ -246,7 +246,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           </h2>
           <p>
             Administra tus publicaciones del Mural de Anuncios, revisa en qué estado está cada una y
-            mejora su plan con Fichas RepuesTop.
+            mejora su plan con Monedas RepuesTop.
           </p>
         </div>
 
@@ -505,7 +505,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
                   className="btn-mgmt-upgrade"
                   onClick={() => setAdToUpgrade(ad)}
                   disabled={!canUpgrade}
-                  title={canUpgrade ? 'Mejorar el plan con Fichas RepuesTop' : 'Ya está en el plan más alto'}
+                  title={canUpgrade ? 'Mejorar el plan con Monedas RepuesTop' : 'Ya está en el plan más alto'}
                 >
                   <Zap size={15} />
                   <span>Mejorar plan</span>

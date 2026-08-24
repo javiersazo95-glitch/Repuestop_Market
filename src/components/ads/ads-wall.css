@@ -2358,7 +2358,7 @@
   .my-appointment-item { flex-wrap: wrap; }
 }
 
-/* --- Historial del Monedero de Fichas (fase D) --- */
+/* --- Historial del Monedero de Monedas (fase D) --- */
 .tokens-history-card { max-width: 560px; }
 .tokens-history-list { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
 .tokens-history-item { display: flex; align-items: center; gap: 12px; padding: 11px 13px; border-radius: 11px; background: #ffffff; border: 1px solid #e2e8f0; }
