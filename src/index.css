@@ -14384,3 +14384,12 @@ input, select, textarea {
   .terms-reaccept > footer { flex-direction: column-reverse; align-items: stretch; }
   .terms-reaccept-accept { justify-content: center; }
 }
+
+/* El vendedor en su propia ficha: no puede comprarse ni cotizarse a si mismo.
+   Reutiliza el lenguaje del buybox (mismo radio y misma escala de texto) para no
+   parecer un cartel pegado encima. */
+.product-marketplace-own-store { display: flex; align-items: flex-start; gap: 11px; padding: 14px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+.product-marketplace-own-store svg { flex-shrink: 0; width: 20px; height: 20px; color: #475569; }
+.product-marketplace-own-store strong { display: block; font-size: 14px; font-weight: 700; color: #0f172a; }
+.product-marketplace-own-store p { margin: 3px 0 0; font-size: 12.5px; line-height: 17px; color: #64748b; }
+

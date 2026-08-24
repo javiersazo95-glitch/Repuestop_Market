@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle, ArrowLeft, BadgeCheck, Car, CheckCircle2, ChevronLeft, ChevronRight, CreditCard,
   Heart, Landmark, MapPin, MessageCircle, Package, Search, Send, ShieldCheck,
-  ShoppingCart, Star, Truck, Wrench, X
+  ShoppingCart, Star, Store, Truck, Wrench, X
 } from 'lucide-react';
 import { CATEGORY_IMAGE_BY_ID } from '../data/categories';
 import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
@@ -15,6 +15,7 @@ import { qk } from '../services/queryKeys';
 import StoreLogoBadge from './StoreLogoBadge';
 import RelatedProductsCarousel from './RelatedProductsCarousel';
 import PurchaseShippingModal from './PurchaseShippingModal';
+import { isOwnStoreProduct } from '../utils/purchaseProfile';
 
 // Compara el vehículo resuelto por patente contra un registro de compatibilidad
 // del repuesto. El modelo del vehículo puede traer la versión pegada (p.ej.
@@ -32,6 +33,9 @@ function vehicleMatchesCompatibility(vehicle, item) {
 
 export default function ProductDetailPage({ product, user, activeVehicle, onBack, onAddToCart, onOpenQuote, onOpenStore, onSelectProduct }) {
   const queryClient = useQueryClient();
+  // El vendedor llega a su propia ficha desde el catalogo como comprador, asi que
+  // esto NO depende del modo de la pantalla.
+  const isOwnProduct = isOwnStoreProduct(user?.sellerId, product.proveedorId);
   const images = (product.imagenes?.length
     ? product.imagenes
     : [product.imagen || CATEGORY_IMAGE_BY_ID[product.categoria]]).filter(Boolean);
@@ -300,7 +304,19 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
 
           <aside className="product-marketplace-buybox">
             <div className="product-marketplace-buy-status"><span><i /> {stock > 0 ? 'Disponible' : 'Sin stock'}</span><small>{stock} disponibles</small></div>
-            {quoteOnly ? (
+            {isOwnProduct ? (
+              /* SEC-BACKEND-022 rechaza la auto-compra, pero recien en el
+                 checkout: hasta ahi el vendedor podia agregar su propio producto
+                 al carro y hasta cotizarse a si mismo, y se enteraba al final.
+                 Se corta aca, como ya hace `useAdOwnership` con los anuncios. */
+              <div className="product-marketplace-own-store">
+                <Store />
+                <div>
+                  <strong>Este repuesto es de tu tienda</strong>
+                  <p>No puedes comprarlo ni cotizarlo. Para editarlo entra a "Productos" en tu panel.</p>
+                </div>
+              </div>
+            ) : quoteOnly ? (
               <>
                 <h2>Precio a cotizar</h2>
                 <p>Solicita el precio final y las alternativas de despacho directamente a la tienda.</p>
