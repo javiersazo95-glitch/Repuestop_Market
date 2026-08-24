@@ -962,3 +962,76 @@ lo traía.
   `components/ads/__tests__/ads-flow.test.tsx` tiene un mock de anuncios escrito
   para el modelo local que no guarda el id que devuelve el backend, así que
   `getStoredAds()` no encuentra nada. No tiene que ver con Fichas.
+
+
+### 4.16 Moneda RepuesTop y arrastre de `fae41ed` — sesión 2026-08-24
+
+**El detalle técnico completo está en `PLAN_MONEDA_REPUESTOP.md`**, que es la
+libreta de esta migración: qué trae el commit del monorepo, qué se portó, qué NO
+y por qué. Acá va solo lo que conviene saber sin abrir ese archivo.
+
+Nueve fases cerradas en la web (`ee989dc`, `b772440`, `e235d4e`, `5e7fdb6`,
+`02d4eab`, `f9b754c`, `7803441`, `e069706`, `a0823ad`, `04441ad`) y dos commits
+de backend en el monorepo (`8166ea8`, `61989c8`).
+
+#### Lo que cambió de cara al usuario
+
+- **"Ficha" pasó a llamarse "Moneda RepuesTop"** en todo el texto visible. Por
+  dentro NO cambió nada: endpoints `/fichas/*`, `cantidadFichas`,
+  `RT_movimiento_ficha` y la llave `repuestop_fichas_balance` siguen igual.
+  Renombrarlos rompe el contrato y le borra el saldo cacheado a quien la tenga.
+- La moneda ahora se **dibuja** (`RepuestopCoin.jsx`, SVG con dos caras), igual
+  que en la app. El monedero volvió a ser **tarjeta con degradado azul**, lo que
+  revierte a propósito el aplanado de la §4.15: la decisión nueva es que se vea
+  igual que en la app.
+- Recarga con lluvia de monedas, historial con detalle por movimiento, y
+  "Activar mejoras" tras subir de plan (lleva al formulario y marca `NUEVO` lo
+  que se acaba de desbloquear).
+- **Registro de compradores con Google** en la web, que antes solo iniciaba
+  sesión.
+
+#### Tres bugs de plata o de datos que aparecieron de paso
+
+1. **`Pack Avanzado` con `priceClp: 19900`** mientras se mostraba y cobraba
+   `$19.990`. Ese campo es el `montoPagado` de `POST /fichas/compras`, así que
+   cada pack vendido desde la web entraba a Administración Contable con **$90
+   menos**. El móvil siempre tuvo 19990. **Las compras ya registradas con el
+   monto viejo quedaron así**: si importa, se corrige en la base.
+2. **La cotización reemitida nacía vencida**: la web contaba la vigencia desde
+   `createdAt`, que es inmutable. Ahora usa `vigenteDesde`.
+3. **El teléfono se guardaba como `""`**, con lo que "no tiene teléfono" dejaba
+   de ser distinguible. Se normaliza a nulo en el origen.
+
+#### Sobre el teléfono, que quedó mal documentado en su momento
+
+`PerfilUsuarioDTO` ahora expone `phone` (sale de `Usuario.telefono`, que es el
+dato vivo; `Proveedor.telefonoContacto` solo se llena al registrar la tienda).
+
+Pero **la web ya podía saberlo antes**: viene en `usuario.telefono` de la
+respuesta de login (`UsuarioDTO`), que es de donde lo lee la app
+(`auth-registration.ts:178`). Si se quiere exigir teléfono antes de comprar, va
+`user.phone ?? user.telefono`. La app no necesita cambios: lee el teléfono del
+login y al editarlo descarta el cuerpo de la respuesta del PATCH.
+
+#### Lo que NO se hizo, a propósito
+
+- **No hay guarda de teléfono en el checkout.** Se implementó y se descartó al
+  probarla. La dirección sí está cubierta: el paso de entrega no deja avanzar sin
+  una de la libreta.
+- **El historial no muestra "Monto pagado" ni "Total pagado".**
+  `MovimientoFichaDTO` no trae el monto en pesos; en la app salen de un campo que
+  nadie llena y muestran $0 siempre.
+- **El troquel de la moneda dice "FICHA"**, no "MONEDA. Es deliberado: prima que
+  la pieza sea idéntica en las dos plataformas. Si se cambia, se cambia en ambas.
+
+#### Estado de despliegue
+
+Monorepo `dev` empujado hasta `61989c8`. **La web quedó commiteada pero NO
+empujada**: el orden es backend primero.
+
+#### Probado contra el backend local
+
+Mejora de plan de punta a punta (Básica → Destacada, saldo 300 → 250 cobrado por
+el backend), historial con su detalle, recarga con la lluvia, bloqueo de
+auto-compra, y el alta con Google dos veces
+(`/auth/google` 404 → `/auth/register/buyer` 200 → `/auth/google` 200).
