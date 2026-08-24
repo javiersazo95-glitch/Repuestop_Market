@@ -2370,7 +2370,10 @@
 /* --- Historial del Monedero de Monedas (fase D) --- */
 .tokens-history-card { max-width: 560px; }
 .tokens-history-list { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
-.tokens-history-item { display: flex; align-items: center; gap: 12px; padding: 11px 13px; border-radius: 11px; background: #ffffff; border: 1px solid #e2e8f0; }
+/* Las filas son botones: cada una abre el detalle del movimiento. */
+.tokens-history-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 13px; border-radius: 11px; background: #ffffff; border: 1px solid #e2e8f0; text-align: left; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.tokens-history-item:hover { background: #f8fafc; border-color: #0066ff; }
+.tokens-history-chevron { flex-shrink: 0; color: #94a3b8; }
 .tokens-history-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; }
 .tokens-history-item.is-credit .tokens-history-icon { background: #ecfdf5; color: #047857; }
 .tokens-history-item.is-debit .tokens-history-icon { background: #fef2f2; color: #b91c1c; }
@@ -2703,3 +2706,40 @@
 
 /* --- Comprobante de la recarga --- */
 .recharge-success-coin { display: flex; justify-content: center; margin-bottom: 14px; }
+
+/* --- Resumen y detalle del historial de Monedas --- */
+
+.tokens-history-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.tokens-history-summary > div { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 8px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+.tokens-history-summary b { font-size: 19px; font-weight: 800; color: #0f172a; font-variant-numeric: tabular-nums; }
+.tokens-history-summary span { font-size: 11px; color: #64748b; text-align: center; }
+
+/* En la fila la descripcion y la fecha van a UNA linea para que el historial se
+   lea de un vistazo; completas se ven en el detalle. */
+.tokens-history-body strong, .tokens-history-body span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* El detalle se monta sobre el historial, asi que tiene que quedar por encima de
+   su overlay. `.booking-modal-overlay` ya viene con z-index 99999: cualquier
+   valor "razonable" aca lo deja DEBAJO y el detalle se abre invisible, montado
+   en el DOM pero tapado por el historial. */
+.tokens-detail-overlay { z-index: 100000; }
+.tokens-detail-card { max-width: 460px; }
+.tokens-detail-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.tokens-history-icon.is-credit-icon { background: #ecfdf5; color: #047857; }
+.tokens-history-icon.is-debit-icon { background: #fef2f2; color: #b91c1c; }
+
+.tokens-detail-amount { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 14px; margin-bottom: 6px; border-radius: 14px; background: #f8fafc; }
+.tokens-detail-amount strong { font-size: 30px; line-height: 36px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.tokens-detail-amount.is-credit strong { color: #047857; }
+.tokens-detail-amount.is-debit strong { color: #b91c1c; }
+.tokens-detail-amount span { font-size: 12px; color: #64748b; }
+
+.tokens-detail-row { display: flex; flex-direction: column; gap: 2px; padding: 9px 0; border-bottom: 1px solid #e2e8f0; }
+.tokens-detail-row:last-child { border-bottom: none; }
+.tokens-detail-row > span { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .4px; }
+/* El valor nunca se recorta: para eso existe esta hoja. */
+.tokens-detail-row > strong { font-size: 14px; line-height: 19px; font-weight: 600; color: #0f172a; overflow-wrap: anywhere; }
+
+@media (max-width: 480px) {
+  .tokens-history-summary { grid-template-columns: 1fr; }
+}
