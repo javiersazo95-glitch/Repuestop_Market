@@ -178,7 +178,8 @@ del monorepo y de la web, para no volver a abrir esos archivos.
 Cada fase cierra con `npm run build` + `npm run lint` (baseline **107 warnings**)
 y su propio commit en español.
 
-**Estado: fase 1 cerrada (`ee989dc`), fase 2 cerrada (`b772440`).**
+**Estado: fase 1 cerrada (`ee989dc`), fase 2 cerrada (`b772440`), fase 3 cerrada
+(`e235d4e`).**
 
 ### Fase 1 — Vigencia de la cotización desde `vigenteDesde` *(corrección, chica)*
 
@@ -210,8 +211,19 @@ registrado en Administración Contable con **$90 menos**. El móvil siempre tuvo
 
 `src/components/ads/RepuestopCoin.jsx`, SVG inline con la geometría de §0.2,
 `useId()` para los `<defs>`, `role="img"` + `aria-label`, y el emblema desde
-`/repuestop_icon.png`. Se reemplazan los iconos `Coins` de lucide en el monedero,
-la recarga, el historial y la mejora de rango.
+`/repuestop_icon.png`. CSS al final de `ads-wall.css` (`.rt-coin*`).
+
+API: `<RepuestopCoin size={120} face="front|back" serial="RT-00001" />`.
+
+Los `Coins` de lucide se reemplazaron en `UpgradeAdRankModal` (costo del plan y
+saldo) y en `AdForm` (aviso de saldo insuficiente). Los que quedan en
+`TokensWalletCard`, `RechargeTokensModal` y `TokensHistoryModal` **se cambian en
+sus propias fases (4, 5 y 6)**, que reescriben esas vistas: cambiarlos acá sería
+trabajo que se bota.
+
+El bloque de marca del centro va en HTML sobre el SVG, no dentro, para que el
+wordmark sea texto real; lleva `pointer-events: none` porque la moneda aparece
+dentro de botones. Bajo 64px se oculta el wordmark.
 
 ### Fase 4 — Monedero e info de la moneda
 
