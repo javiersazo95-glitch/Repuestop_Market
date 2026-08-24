@@ -76,42 +76,49 @@ export default function TokensWalletCard({
         Usa tus monedas para potenciar la visibilidad de tus avisos.
       </p>
 
-      {/* Tarifario: es la referencia que el socio necesita justo antes de decidir
-          si recarga. */}
-      <div className="tokens-wallet-benefits">
-        {BENEFITS.map(({ Icon, label, cost, color }) => (
-          <div className="tokens-wallet-benefit" key={label}>
-            <Icon size={19} color={color} />
-            <span>
-              <b style={{ color }}>{label}</b>
-              <small>{cost} monedas</small>
-            </span>
-          </div>
-        ))}
-      </div>
+      {/* Tarifario y acciones en la misma fila: el tarifario es la referencia que
+          el socio necesita justo antes de decidir si recarga, y el boton queda
+          apoyado en el, no flotando solo sobre una franja de azul vacia. */}
+      <div className="tokens-wallet-bottom">
+        <div className="tokens-wallet-benefits">
+          {BENEFITS.map(({ Icon, label, cost, color }) => (
+            <div className="tokens-wallet-benefit" key={label}>
+              <Icon size={19} color={color} />
+              <span>
+                <b style={{ color }}>{label}</b>
+                <small>{cost} monedas</small>
+              </span>
+            </div>
+          ))}
+        </div>
 
-      <div className="tokens-wallet-actions">
-        {/* El boton lleva el metal de la moneda, no el ambar de antes: ese dorado
-            venia de cuando la moneda era dorada y sobre el azul era el unico
-            elemento fuera de la paleta. En plata sigue siendo lo mas claro de la
-            tarjeta, asi que no pierde fuerza como accion. */}
-        <button type="button" className="btn-recharge-tokens" onClick={onOpenRechargeModal}>
-          <RepuestopCoin size={30} face="front" />
-          <span>Recargar monedas</span>
-          <ChevronRight size={18} className="btn-recharge-chevron" />
-        </button>
+        {/* El historial va PRIMERO: la recarga termina en un chevron que apunta a
+            la derecha, asi que con el historial a su lado esa flecha apuntaba a
+            otro boton en vez de al borde. Ademas la accion primaria pesa mas en
+            la posicion terminal de la fila. */}
+        <div className="tokens-wallet-actions">
+          {onOpenHistoryModal && (
+            <button
+              type="button"
+              className="btn-token-history"
+              onClick={onOpenHistoryModal}
+              title="Ver historial de movimientos"
+            >
+              <History size={15} />
+              <span>Historial</span>
+            </button>
+          )}
 
-        {onOpenHistoryModal && (
-          <button
-            type="button"
-            className="btn-token-history"
-            onClick={onOpenHistoryModal}
-            title="Ver historial de movimientos"
-          >
-            <History size={15} />
-            <span>Historial</span>
+          {/* El boton lleva el metal de la moneda, no el ambar de antes: ese dorado
+              venia de cuando la moneda era dorada y sobre el azul era el unico
+              elemento fuera de la paleta. En plata sigue siendo lo mas claro de la
+              tarjeta, asi que no pierde fuerza como accion. */}
+          <button type="button" className="btn-recharge-tokens" onClick={onOpenRechargeModal}>
+            <RepuestopCoin size={30} face="front" />
+            <span>Recargar monedas</span>
+            <ChevronRight size={18} className="btn-recharge-chevron" />
           </button>
-        )}
+        </div>
       </div>
 
       <CoinInfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />

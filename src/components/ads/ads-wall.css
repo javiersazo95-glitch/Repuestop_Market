@@ -2407,10 +2407,19 @@
    claro llega a ~7:1 sin competir con el saldo en blanco. */
 .tokens-wallet-hint { margin-bottom: 14px; font-size: 12px; line-height: 16px; text-align: center; color: #d7e3f4; }
 
-.tokens-wallet-benefits {
-  display: flex; align-items: stretch; margin-bottom: 18px;
+/* Tarifario y acciones comparten fila: con las acciones en una fila propia
+   quedaba una franja de azul vacia a la izquierda del boton, y la tarjeta crecia
+   de alto para no mostrar nada. El filete separador va aca para que cruce todo
+   el ancho, tambien por debajo de los botones. */
+.tokens-wallet-bottom {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px;
   border-top: 1px solid rgba(255, 255, 255, .12); padding-top: 14px;
 }
+/* La base de 400px es el ancho con el que "Empresariales" y "250 monedas" entran
+   sin recortarse. Debajo de eso las acciones bajan solas a su propia linea, que
+   es preferible a un breakpoint de viewport: el ancho de esta tarjeta lo decide
+   la barra lateral del perfil, no la pantalla. */
+.tokens-wallet-benefits { flex: 1 1 400px; min-width: 0; display: flex; align-items: stretch; }
 .tokens-wallet-benefit { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 10px; }
 .tokens-wallet-benefit + .tokens-wallet-benefit { border-left: 1px solid rgba(255, 255, 255, .12); }
 .tokens-wallet-benefit svg { flex-shrink: 0; }
@@ -2418,12 +2427,11 @@
 .tokens-wallet-benefit b { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tokens-wallet-benefit small { font-size: 11px; color: #d7e3f4; white-space: nowrap; }
 
-/* Las acciones van al borde derecho y con el ancho de su contenido. En el movil
-   la tarjeta mide lo que el telefono, asi que un CTA a todo lo ancho es lo
-   correcto; en el panel de escritorio la tarjeta pasa de los 1300px y el mismo
-   boton estirado deja de leerse como boton y compite con el saldo, que es el
-   dato que tiene que mandar. */
-.tokens-wallet-actions { display: flex; align-items: stretch; justify-content: flex-end; gap: 8px; }
+/* Las acciones toman el ancho de su contenido. En el movil la tarjeta mide lo
+   que el telefono, asi que un CTA a todo lo ancho es lo correcto; en el panel de
+   escritorio la tarjeta pasa de los 1300px y el mismo boton estirado deja de
+   leerse como boton y compite con el saldo, que es el dato que tiene que mandar. */
+.tokens-wallet-actions { flex: 0 0 auto; margin-left: auto; display: flex; align-items: stretch; gap: 8px; }
 
 /* El boton lleva el metal de la moneda, no un azul plano: sobre la tarjeta azul
    la plata es lo mas claro que hay, asi que no pierde fuerza como accion. */
@@ -2446,9 +2454,10 @@
   .tokens-wallet-benefits { flex-direction: column; gap: 10px; }
   .tokens-wallet-benefit + .tokens-wallet-benefit { border-left: none; }
   .tokens-wallet-benefit { padding: 0; }
-  /* En pantalla angosta la tarjeta vuelve a medir lo que el viewport: ahi el CTA
-     a todo lo ancho si corresponde, como en la app. */
-  .tokens-wallet-actions { flex-direction: column; justify-content: stretch; }
+  /* En pantalla angosta no hay ancho para las dos cosas en una fila, y el CTA a
+     todo lo ancho si corresponde, como en la app. */
+  .tokens-wallet-bottom { flex-direction: column; align-items: stretch; gap: 14px; }
+  .tokens-wallet-actions { flex-direction: column; }
   .btn-recharge-tokens { flex: 1 1 auto; }
   .btn-token-history { justify-content: center; }
 }
