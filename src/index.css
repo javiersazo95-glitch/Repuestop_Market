@@ -5159,6 +5159,9 @@ input, select, textarea {
 .order-controlled-action-wrap { display: grid; justify-items: end; gap: 4px; }
 .order-controlled-error { max-width: 230px; color: #b42318; font-size: 10px; text-align: right; }
 .order-controlled-wait { display: inline-flex; align-items: center; gap: 6px; color: #315f99; font-size: 11px; font-weight: 750; }
+/* En el pie del modal el aviso ocupa el ancho que dejaba el boton, pero se lee como
+   estado y no como algo clickeable. */
+.order-controlled-wait--modal { flex: 1; justify-content: center; padding: 12px 16px; border: 1px solid #cfe0f5; border-radius: var(--radius-sm); background: #f2f7fd; font-size: 13px; }
 
 .btn-action-red {
   background: #dc2626;

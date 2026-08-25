@@ -600,7 +600,16 @@ export default function OrderDetailModal({
         <div className="order-modal-footer">
           {/* Acción principal del Vendedor */}
           {isSeller && controlledAction && !controlledAction.disabled && (
-            normStatus === 'EN_PREPARACION' && !isStorePickup ? (
+            // `waiting` no es una accion: es "ya hiciste tu parte, ahora le toca al
+            // comprador". Viene sin `nextStatus`, asi que pintarlo como boton primario
+            // dejaba uno que al clickearlo no hacia nada. La tarjeta del pedido ya lo
+            // resuelve con `.order-controlled-wait`; aca se usa el mismo aviso.
+            controlledAction.waiting ? (
+              <span className="order-controlled-wait order-controlled-wait--modal">
+                <Clock size={15} />
+                {controlledAction.label}
+              </span>
+            ) : normStatus === 'EN_PREPARACION' && !isStorePickup ? (
               <button
                 type="button"
                 className="btn-auth-primary"
