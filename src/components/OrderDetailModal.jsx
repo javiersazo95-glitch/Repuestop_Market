@@ -87,7 +87,7 @@ export default function OrderDetailModal({
   const canRetryPayment = !isSeller && normStatus === 'PENDIENTE' && Boolean(onRetryPayment);
   const paymentWindow = canRetryPayment ? orderPaymentWindow(order, now) : null;
   const canCancelOrder = !isSeller && normStatus === 'PENDIENTE' && Boolean(onCancelOrder);
-  const cancellationReason = normStatus === 'CANCELADO' ? cancellationReasonLabel(order) : null;
+  const cancellationReason = normStatus === 'CANCELADO' ? cancellationReasonLabel(order, isSeller ? 'seller' : 'buyer') : null;
   // La explicacion esta escrita para el comprador ("si pagaste, el reembolso...").
   // Al vendedor le basta la etiqueta: el motivo lo declaro el.
   const cancellationHint = cancellationReason && mode !== 'seller' ? cancellationReasonHint(order) : null;

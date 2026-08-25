@@ -103,7 +103,7 @@ export default function OrderCard({
   const canCancelOrder = !isSeller && normStatus === 'PENDIENTE' && Boolean(onCancelOrder);
   // Solo cuando el backend registro la causa. Los cancelados historicos no la
   // tienen y se quedan con "Cancelado" a secas, sin explicacion inventada.
-  const cancellationReason = normStatus === 'CANCELADO' ? cancellationReasonLabel(order) : null;
+  const cancellationReason = normStatus === 'CANCELADO' ? cancellationReasonLabel(order, isSeller ? 'seller' : 'buyer') : null;
   const deliveryTerms = String(order.courier || order.deliveryTerms || order.tipoEnvio || order.compradorDireccion || order.direccionEntrega || 'Despacho a domicilio');
   const isStorePickup = isStorePickupOrder(order);
   const displayStatus = normStatus === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : rawStatus;

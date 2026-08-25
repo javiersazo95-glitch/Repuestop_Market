@@ -14,13 +14,22 @@ export const CANCELLATION_REASON_LABELS = {
   PRODUCTO_NO_DISPONIBLE: 'Producto no disponible',
   IMPOSIBILIDAD_DESPACHO: 'Imposibilidad de despacho',
   BLOQUEO_VENDEDOR: 'La tienda no está disponible',
+  SOLICITUD_DEL_COMPRADOR: 'Cancelado por el comprador',
   OTRO: 'Otro motivo',
+};
+
+// El comprador viendo su propio pedido merece la version en primera persona; el
+// vendedor necesita saber que fue el comprador quien lo cancelo. Mismo codigo, dos
+// lecturas.
+const BUYER_FIRST_PERSON_LABELS = {
+  SOLICITUD_DEL_COMPRADOR: 'Cancelaste este pedido',
 };
 
 // Explicacion para el comprador, que es distinta de la etiqueta: dice que pasa
 // ahora, no solo que ocurrio. Solo se escriben las que tienen algo que agregar.
 export const CANCELLATION_REASON_HINTS = {
   EXPIRACION_PAGO: 'Venció el plazo de pago y la unidad volvió al stock. Puedes volver a comprarla.',
+  SOLICITUD_DEL_COMPRADOR: 'La unidad volvió al stock. Puedes comprarla de nuevo cuando quieras.',
   SIN_STOCK: 'La tienda se quedó sin unidades. Si pagaste, el reembolso ya está en curso.',
   BLOQUEO_VENDEDOR: 'Cancelamos el pedido para protegerte. Si pagaste, el reembolso ya está en curso.',
 };
@@ -33,10 +42,11 @@ export const CANCELLATION_REASON_HINTS = {
  * backend registrara la causa quedan asi a proposito, y la UI debe mostrar
  * "Cancelado" a secas en vez de inventar una explicacion.
  */
-export function cancellationReasonLabel(order) {
+export function cancellationReasonLabel(order, mode = 'buyer') {
   const code = order?.motivoCancelacion;
   if (!code) return null;
   if (code === 'OTRO') return order.detalleCancelacion || CANCELLATION_REASON_LABELS.OTRO;
+  if (mode === 'buyer' && BUYER_FIRST_PERSON_LABELS[code]) return BUYER_FIRST_PERSON_LABELS[code];
   return CANCELLATION_REASON_LABELS[code] || null;
 }
 
