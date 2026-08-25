@@ -377,11 +377,15 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                 <span><Truck /><p><b>Despacho a coordinar</b><small>La tienda informa el valor al confirmar tu pedido</small></p></span>
               )}
 
-              <span><Landmark /><p><b>Transferencia vía Khipu</b><small>Disponible como alternativa de pago</small></p></span>
+              {/* Khipu es un medio de pago igual que Flow: no va sobre el repuesto
+                  propio, que no se puede comprar. */}
+              {!isOwnProduct && (
+                <span><Landmark /><p><b>Transferencia vía Khipu</b><small>Disponible como alternativa de pago</small></p></span>
+              )}
             </div>
           </aside>
 
-          <section className="product-marketplace-info-grid">
+          <section className={`product-marketplace-info-grid${isOwnProduct ? ' is-own-product' : ''}`}>
             <article>
               <h2><Package /> Detalles del producto</h2>
               <dl>
@@ -415,11 +419,16 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                 <ChevronRight />
               </button>
             </article>
-            <article>
-              <h2><ShieldCheck /> Compra protegida</h2>
-              <p>Tu compra queda protegida y puedes pagar con Flow o Khipu según la alternativa disponible.</p>
-              <span className="product-marketplace-protected"><BadgeCheck /> Pago y despacho trazables</span>
-            </article>
+            {/* Ultima mencion a Flow que quedaba en la ficha. Al ocultarla el grid
+                pasa a dos columnas con `is-own-product`, porque son tres fijas y
+                si no queda un hueco a la derecha. */}
+            {!isOwnProduct && (
+              <article>
+                <h2><ShieldCheck /> Compra protegida</h2>
+                <p>Tu compra queda protegida y puedes pagar con Flow o Khipu según la alternativa disponible.</p>
+                <span className="product-marketplace-protected"><BadgeCheck /> Pago y despacho trazables</span>
+              </article>
+            )}
           </section>
         </section>
 
