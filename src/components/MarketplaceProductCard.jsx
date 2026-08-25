@@ -42,7 +42,7 @@ function getPartType(product) {
     : { label: 'Alternativo', icon: Sparkles, kind: 'alternative' };
 }
 
-export default function MarketplaceProductCard({ product, onView, fallbackCity }) {
+export default function MarketplaceProductCard({ product, onView, fallbackCity, isFavorite = false, onToggleFavorite }) {
   const category = product.categoria || 'motor';
   const price = Number(product.precio || 0);
   const oldPrice = Number(product.precioOriginal || 0);
@@ -66,6 +66,8 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity }
     || product.imageUrls?.[0]
     || CATEGORY_IMAGE_BY_ID[category];
 
+  const favoriteActive = Boolean(isFavorite || product.favorito || product.isFavorite);
+
   return (
     <article className="market-product-card">
       <div className="market-product-media" onClick={() => onView?.(product)}>
@@ -76,8 +78,16 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity }
           size={34}
         />
         {badgeLabel && <span className={`market-product-badge ${badgeKind}`}>{badgeLabel}</span>}
-        <button className="market-product-favorite" type="button" aria-label="Agregar a favoritos">
-          <Heart size={21} />
+        <button
+          className={`market-product-favorite ${favoriteActive ? 'is-active' : ''}`}
+          type="button"
+          aria-label={favoriteActive ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite?.(product);
+          }}
+        >
+          <Heart size={21} fill={favoriteActive ? '#ef4444' : 'none'} color={favoriteActive ? '#ef4444' : 'currentColor'} />
         </button>
       </div>
 

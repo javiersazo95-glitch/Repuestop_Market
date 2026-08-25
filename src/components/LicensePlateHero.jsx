@@ -6,7 +6,7 @@ import {
   ArrowRight, RefreshCw, AlertCircle, Sparkles, Store, Award, ChevronRight
 } from 'lucide-react';
 import { POPULAR_MARCAS, ANIOS_DISPONIBLES } from '../data/sampleVehicles';
-import { getVehicleBrandsApi, searchVehicleByPatenteApi } from '../services/api';
+import { getVehicleBrandsApi, searchVehicleByPatenteApi, createManualVehicleApi } from '../services/api';
 import { adaptVehicle } from '../services/adapters';
 
 export default function LicensePlateHero({ activeVehicle, onSelectVehicle, onOpenSellerModal }) {
@@ -70,15 +70,16 @@ export default function LicensePlateHero({ activeVehicle, onSelectVehicle, onOpe
     }
   };
 
-  const handleManualSearch = (e) => {
+  const handleManualSearch = async (e) => {
     e.preventDefault();
     if (!selectedMarca || !selectedAnio) {
       setErrorMsg('Selecciona al menos Marca y Año para buscar');
       return;
     }
     setErrorMsg('');
+    setIsSearching(true);
     const customVeh = {
-      patente: 'GEN-AUTO',
+      patente: 'MANUAL',
       marca: selectedMarca,
       modelo: selectedModelo || 'Todos los Modelos',
       anio: parseInt(selectedAnio),
@@ -88,7 +89,19 @@ export default function LicensePlateHero({ activeVehicle, onSelectVehicle, onOpe
       totalRepuestos: 410,
       imagen: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=600&q=80'
     };
-    onSelectVehicle(customVeh);
+    try {
+      const serverVeh = await createManualVehicleApi({
+        marca: selectedMarca,
+        modelo: selectedModelo || 'General',
+        anio: parseInt(selectedAnio),
+        patente: 'MANUAL',
+      });
+      onSelectVehicle(serverVeh ? adaptVehicle(serverVeh) : customVeh);
+    } catch {
+      onSelectVehicle(customVeh);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   return (

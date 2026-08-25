@@ -1,10 +1,18 @@
 import React from 'react';
 import {
-  Package, Tag, ChevronRight, Edit3, CheckCircle, AlertTriangle, XCircle, MessageCircleQuestion, Star, Loader2
+  Package, Tag, ChevronRight, Edit3, CheckCircle, AlertTriangle, XCircle, MessageCircleQuestion, Star, Loader2, Pause, Play
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
 
-export function StockBadge({ stock }) {
+export function StockBadge({ stock, isPaused }) {
+  if (isPaused) {
+    return (
+      <span className="order-status-badge badge-amber badge-size-small">
+        <Pause size={12} />
+        <span>Pausado</span>
+      </span>
+    );
+  }
   const numStock = Number(stock || 0);
   if (numStock <= 0) {
     return (
@@ -42,6 +50,8 @@ export default function CatalogCard({
   onOpenQuestions,
   onToggleTop,
   isUpdatingTop = false,
+  onTogglePause,
+  isUpdatingPause = false,
 }) {
   if (!product) return null;
 
@@ -59,12 +69,13 @@ export default function CatalogCard({
     || product.imagenes?.[0]?.url;
   const photo = resolveMediaUrl(rawPhoto);
   const isTop = Boolean(product.destacado ?? product.isTop);
+  const isPaused = Boolean(product.pausado || product.isPaused || product.activo === false);
 
   return (
-    <div className="order-card-container catalog-card-container" onClick={() => onSelectProduct && onSelectProduct(product)}>
+    <div className={`order-card-container catalog-card-container ${isPaused ? 'is-paused-card' : ''}`} onClick={() => onSelectProduct && onSelectProduct(product)}>
       <div className="catalog-image-stage">
         {photo ? (
-          <img src={photo} alt={title} className="catalog-product-image" />
+          <img src={photo} alt={title} className="catalog-product-image" style={isPaused ? { filter: 'grayscale(60%) opacity(0.8)' } : {}} />
         ) : (
           <div className="catalog-image-fallback">
             <Package size={46} />
@@ -73,7 +84,7 @@ export default function CatalogCard({
         )}
         <div className="catalog-image-overlay">
           <span className="catalog-category-pill"><Tag size={12} /> {category}</span>
-          <StockBadge stock={stock} />
+          <StockBadge stock={stock} isPaused={isPaused} />
         </div>
         {isTop && <span className="catalog-top-ribbon"><Star size={13} fill="currentColor" /> Producto Top</span>}
       </div>
@@ -108,7 +119,9 @@ export default function CatalogCard({
               <span className="product-card-original">{formatCLP(oldPrice)}</span>
             )}
           </div>
-          <span className="product-pricing">{stock} unidades disponibles</span>
+          <span className="product-pricing">
+            {isPaused ? 'Publicación en pausa' : `${stock} unidades disponibles`}
+          </span>
         </div>
       </div>
 
@@ -117,7 +130,7 @@ export default function CatalogCard({
         <button
           type="button"
           className={`catalog-top-toggle ${isTop ? 'is-active' : ''}`}
-          disabled={isUpdatingTop}
+          disabled={isUpdatingTop || isPaused}
           aria-pressed={isTop}
           title={isTop ? 'Quitar prioridad dentro de tu tienda' : 'Dar mayor visibilidad dentro de tu tienda'}
           onClick={(event) => {
@@ -129,17 +142,21 @@ export default function CatalogCard({
           <span>{isTop ? 'Producto Top' : 'Marcar como Top'}</span>
         </button>
 
-        <button
-          type="button"
-          className="btn-view-details"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (onSelectProduct) onSelectProduct(product);
-          }}
-        >
-          <span>Ver detalles completos</span>
-          <ChevronRight size={15} />
-        </button>
+        {onTogglePause && (
+          <button
+            type="button"
+            className={`btn-view-details ${isPaused ? 'btn-resume' : 'btn-pause'}`}
+            disabled={isUpdatingPause}
+            title={isPaused ? 'Reanudar publicación' : 'Pausar publicación temporalmente'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onTogglePause(product, !isPaused);
+            }}
+          >
+            {isUpdatingPause ? <Loader2 size={13} className="spin-icon" /> : isPaused ? <Play size={13} /> : <Pause size={13} />}
+            <span>{isPaused ? 'Reanudar' : 'Pausar'}</span>
+          </button>
+        )}
 
         <button
           type="button"
@@ -151,7 +168,7 @@ export default function CatalogCard({
           }}
         >
           <Edit3 size={13} />
-          <span>Editar / Stock</span>
+          <span>Editar</span>
         </button>
       </div>
     </div>

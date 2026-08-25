@@ -6,7 +6,7 @@ import {
 import {
   escalateMediationApi, getMediationChatApi, resolveMediationApi,
   sendConversationMessageApi, sendMediatorMessageApi, uploadMediationEvidenceApi,
-  resolveMediaUrl,
+  uploadMediationChatImageApi, resolveMediaUrl,
 } from '../services/api';
 import { MEDIATION_STATUS_LABELS, MEDIATION_STATUS_TONES } from '../data/mediationStatus';
 
@@ -275,6 +275,30 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
     }
   };
 
+  const handleChatImageSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !chat?.conversacion?.id || isSending) return;
+    if (!file.type.startsWith('image/')) {
+      setSendError('Solo se permiten imágenes (JPG o PNG).');
+      return;
+    }
+    if (file.size > MAX_EVIDENCE_SIZE) {
+      setSendError(`La imagen no puede pesar más de ${(MAX_EVIDENCE_SIZE / 1024 / 1024).toFixed(0)} MB.`);
+      return;
+    }
+    setIsSending(true);
+    setSendError('');
+    try {
+      const sent = await uploadMediationChatImageApi(chat.conversacion.id, file);
+      setMessages((previous) => [...previous, sent]);
+    } catch (error) {
+      setSendError(error.message || 'No se pudo enviar la imagen al chat.');
+    } finally {
+      setIsSending(false);
+      e.target.value = '';
+    }
+  };
+
   const submitMediatorMessage = async (event) => {
     event.preventDefault();
     const text = mediatorText.trim();
@@ -519,6 +543,11 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
                   rows={2}
                 />
                 <footer>
+                  <label className="dispute-attach-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '12px', color: '#64748b', padding: '4px 8px', borderRadius: '4px', background: '#f1f5f9' }} title="Adjuntar foto al chat">
+                    <ImageIcon size={14} color="#0066ff" />
+                    <span>Foto</span>
+                    <input type="file" accept="image/*" onChange={handleChatImageSelect} style={{ display: 'none' }} disabled={isSending || threadLocked} />
+                  </label>
                   <small>{messageText.length}/1000</small>
                   <button type="submit" disabled={isSending || !messageText.trim()}>
                     {isSending ? <Loader2 size={15} className="spin-icon" /> : <Send size={15} />} Enviar

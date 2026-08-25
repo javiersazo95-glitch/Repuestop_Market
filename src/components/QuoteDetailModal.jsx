@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, BadgeCheck, BadgeDollarSign, Bell, CalendarDays, CalendarClock,
   CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, CreditCard, Download, ExternalLink, Eye, FileText, Flag,
-  Headphones, Info, Loader2, Lock, MessageSquare, MoreHorizontal, Package,
-  Pencil, Send, ShieldCheck, ShoppingCart, Store, Truck, X,
+  Headphones, Image as ImageIcon, Info, Loader2, Lock, MessageSquare, MoreHorizontal, Package, Paperclip,
+  Pencil, Send, ShieldCheck, ShoppingCart, Store, Trash2, Truck, X,
 } from 'lucide-react';
 import RepuesTopLogo from './RepuesTopLogo';
 import {
   getConversationMessagesApi,
-  getConversationQuoteApi, markConversationReadApi, reportConversationApi, resolveMediaUrl, sendConversationMessageApi,
+  getConversationQuoteApi, markConversationReadApi, reportConversationApi, resolveMediaUrl,
+  sendConversationMessageApi, uploadConversationImageApi,
 } from '../services/api';
 import {
   isQuoteExpired, parseQuoteRequestMessage, quantityFromLabel,
@@ -72,6 +73,11 @@ export default function QuoteDetailModal({
   const [reportDetail, setReportDetail] = useState('');
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportSuccessOpen, setReportSuccessOpen] = useState(false);
+
+  const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [selectedImagePreview, setSelectedImagePreview] = useState(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = React.useRef(null);
 
   const requestMessage = useMemo(() => {
     const structured = messages.find((message) => /Solicitud de cotización por\s+/i.test(message.texto || ''));
@@ -237,19 +243,47 @@ export default function QuoteDetailModal({
     }
   };
 
+  const handleImageSelected = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setStatusMessage({ type: 'error', text: 'La imagen supera el límite de 10 MB.' });
+      return;
+    }
+    setSelectedImageFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setSelectedImagePreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const removeSelectedImage = () => {
+    setSelectedImageFile(null);
+    setSelectedImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const submitChatMessage = async (event) => {
     event.preventDefault();
     const text = chatMessage.trim();
-    if (!text) return;
+    if (!text && !selectedImageFile) return;
     setIsSending(true);
     try {
-      const sent = await sendConversationMessageApi(quote.id, text);
-      setMessages((previous) => [...previous, sent]);
-      setChatMessage('');
+      if (selectedImageFile) {
+        setIsUploadingImage(true);
+        const imageMsg = await uploadConversationImageApi(quote.id, selectedImageFile);
+        setMessages((previous) => [...previous, imageMsg]);
+        removeSelectedImage();
+      }
+      if (text) {
+        const sent = await sendConversationMessageApi(quote.id, text);
+        setMessages((previous) => [...previous, sent]);
+        setChatMessage('');
+      }
     } catch (error) {
-      setStatusMessage({ type: 'error', text: error.message || 'No se pudo enviar el mensaje.' });
+      setStatusMessage({ type: 'error', text: error.message || 'No se pudo enviar el mensaje o imagen.' });
     } finally {
       setIsSending(false);
+      setIsUploadingImage(false);
     }
   };
 
@@ -375,7 +409,63 @@ export default function QuoteDetailModal({
             {activeQuote && <div className={`quote-ws-message-row ${mode === 'seller' ? 'mine' : ''}`}><span className="quote-ws-message-avatar">{initials(storeName)}</span><div className="quote-ws-bubble quote-ws-document-bubble"><p>Te adjunto la propuesta comercial con todos los detalles de la cotización.</p><button type="button" className="quote-ws-file" onClick={viewDocument}><FileText size={25} /><span><strong>{documentName}</strong><small>PDF · Documento de cotización</small></span><Eye size={18} /></button><small>{formatDate(activeQuote.createdAt)}</small></div></div>}
           </div>
 
-          {!closed ? <form className="quote-ws-composer" onSubmit={submitChatMessage}><textarea value={chatMessage} onChange={(event) => setChatMessage(event.target.value)} placeholder="Escribe tu mensaje..." maxLength="1000" rows="2" /><div><span><Lock size={12} /> Tu conversación se mantiene segura y privada.</span><small>{chatMessage.length}/1000</small><button type="submit" disabled={isSending || !chatMessage.trim()}><Send size={17} /> Enviar</button></div></form> : <div className="quote-chat-closed"><Lock size={16} /> Esta conversación está cerrada.</div>}
+          {!closed ? (
+            <form className="quote-ws-composer" onSubmit={submitChatMessage}>
+              {selectedImagePreview && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: '#f1f5f9', borderRadius: '8px', marginBottom: '8px' }}>
+                  <img src={selectedImagePreview} alt="Vista previa" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {selectedImageFile?.name || 'Imagen adjunta'}
+                    </span>
+                    <small style={{ color: '#64748b', fontSize: '11px' }}>
+                      {(selectedImageFile?.size ? (selectedImageFile.size / 1024).toFixed(0) : '0')} KB
+                    </small>
+                  </div>
+                  <button type="button" onClick={removeSelectedImage} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }} title="Quitar imagen">
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleImageSelected}
+              />
+              <textarea
+                value={chatMessage}
+                onChange={(event) => setChatMessage(event.target.value)}
+                placeholder="Escribe tu mensaje o adjunta una imagen..."
+                maxLength="1000"
+                rows="2"
+              />
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isSending || Boolean(selectedImageFile)}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '5px 10px', fontSize: '12px', color: '#475569', cursor: 'pointer' }}
+                    title="Adjuntar imagen"
+                  >
+                    <Paperclip size={14} /> Adjuntar foto
+                  </button>
+                  <span><Lock size={12} /> Conversación segura y privada.</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <small>{chatMessage.length}/1000</small>
+                  <button type="submit" disabled={isSending || (!chatMessage.trim() && !selectedImageFile)}>
+                    {isSending ? <Loader2 size={16} className="spin-icon" /> : <Send size={16} />}
+                    <span>{isUploadingImage ? 'Subiendo...' : 'Enviar'}</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          ) : (
+            <div className="quote-chat-closed"><Lock size={16} /> Esta conversación está cerrada.</div>
+          )}
         </main>
 
         <aside className="quote-ws-right">

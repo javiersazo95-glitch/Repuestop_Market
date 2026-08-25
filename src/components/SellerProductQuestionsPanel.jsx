@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { CheckCircle2, Clock3, Inbox, MessageCircleQuestion, Package, Search, X } from 'lucide-react';
-import { resolveMediaUrl } from '../services/api';
+import { CheckCircle2, Clock3, Inbox, MessageCircleQuestion, Package, Search, Send, Loader2, X } from 'lucide-react';
+import { resolveMediaUrl, answerProductQuestionApi } from '../services/api';
 
 function questionProductId(question) {
   return String(question.productoId ?? question.productId ?? question.product?.id ?? question.producto?.id ?? '');
@@ -19,9 +19,20 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export default function SellerProductQuestionsPanel({ questions = [], products = [], loading, error, initialProductId, onClearProduct }) {
+export default function SellerProductQuestionsPanel({
+  questions = [],
+  products = [],
+  loading,
+  error,
+  initialProductId,
+  onClearProduct,
+  onQuestionAnswered,
+}) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
+  const [draftAnswers, setDraftAnswers] = useState({});
+  const [submittingIds, setSubmittingIds] = useState({});
+  const [actionError, setActionError] = useState(null);
   const selectedProductId = initialProductId ? String(initialProductId) : '';
 
   const productsById = useMemo(() => new Map(products.map((product) => [String(product.id), product])), [products]);
@@ -62,10 +73,26 @@ export default function SellerProductQuestionsPanel({ questions = [], products =
   const answeredCount = normalized.length - pendingCount;
   const selectedProduct = selectedProductId ? productsById.get(selectedProductId) : null;
 
+  const handleSendAnswer = async (productId, questionId) => {
+    const text = (draftAnswers[questionId] || '').trim();
+    if (!text) return;
+    setSubmittingIds((prev) => ({ ...prev, [questionId]: true }));
+    setActionError(null);
+    try {
+      await answerProductQuestionApi(productId, questionId, { respuesta: text });
+      setDraftAnswers((prev) => ({ ...prev, [questionId]: '' }));
+      if (onQuestionAnswered) onQuestionAnswered();
+    } catch (err) {
+      setActionError(err.message || 'No se pudo enviar la respuesta.');
+    } finally {
+      setSubmittingIds((prev) => ({ ...prev, [questionId]: false }));
+    }
+  };
+
   return (
     <section className="profile-panel seller-product-questions-panel">
       <div className="profile-panel-header-row seller-questions-heading">
-        <div><h2 className="profile-panel-title"><MessageCircleQuestion /> Preguntas de productos</h2><p>Revisa las consultas públicas recibidas en cada repuesto publicado.</p></div>
+        <div><h2 className="profile-panel-title"><MessageCircleQuestion /> Preguntas de productos</h2><p>Revisa las consultas públicas recibidas en cada repuesto publicado y responde a tus clientes.</p></div>
         <div className="seller-question-summary"><span><strong>{normalized.length}</strong>Total</span><span className="pending"><strong>{pendingCount}</strong>Pendientes</span><span className="answered"><strong>{answeredCount}</strong>Respondidas</span></div>
       </div>
 
@@ -76,7 +103,7 @@ export default function SellerProductQuestionsPanel({ questions = [], products =
         <div><button type="button" className={status === 'all' ? 'active' : ''} onClick={() => setStatus('all')}>Todas</button><button type="button" className={status === 'pending' ? 'active' : ''} onClick={() => setStatus('pending')}>Pendientes</button><button type="button" className={status === 'answered' ? 'active' : ''} onClick={() => setStatus('answered')}>Respondidas</button></div>
       </div>
 
-      {error && <div className="auth-alert alert-error"><X size={16} /><span>{error}</span></div>}
+      {(error || actionError) && <div className="auth-alert alert-error"><X size={16} /><span>{error || actionError}</span></div>}
       {loading ? <div className="profile-loading-state"><span>Cargando preguntas de los productos...</span></div> : groups.length === 0 ? (
         <div className="seller-questions-empty"><Inbox /><strong>No hay preguntas para mostrar</strong><span>{selectedProductId ? 'Este producto todavía no tiene consultas públicas.' : 'Las preguntas realizadas en tus productos aparecerán en esta sección.'}</span></div>
       ) : <div className="seller-question-product-groups">{groups.map(([productId, group]) => {
@@ -85,11 +112,71 @@ export default function SellerProductQuestionsPanel({ questions = [], products =
         const rawPhoto = product.imageUrls?.[0] || product.imagenUrl || product.photoUri;
         return <article className={`seller-question-product-group ${group.questions.some((question) => !question.answer) ? 'has-pending-questions' : ''}`} key={productId}>
           <header>{rawPhoto ? <img src={resolveMediaUrl(rawPhoto)} alt="" /> : <span><Package /></span>}<div><h3>{name}</h3><small>SKU: {product.skuProveedor || product.sku || 'No informado'}</small></div><b><MessageCircleQuestion /> {group.questions.length} {group.questions.length === 1 ? 'pregunta' : 'preguntas'}</b></header>
-          <div className="seller-question-list">{group.questions.map((question, index) => <div className="seller-question-item" key={question.id || index}>
-            <div className="seller-question-meta"><span className={question.answer ? 'answered' : 'pending'}>{question.answer ? <CheckCircle2 /> : <Clock3 />}{question.answer ? 'Respondida' : 'Pendiente'}</span><small>{question.compradorNombre || question.userName || question.usuarioNombre || question.authorName || 'Comprador'} · {formatDate(question.fechaPregunta || question.createdAt || question.fechaCreacion)}</small></div>
-            <strong>{question.text}</strong>
-            {question.answer ? <p><b>Respuesta de la tienda:</b> {question.answer}</p> : <p className="waiting-answer">Esta pregunta todavía espera una respuesta de la tienda.</p>}
-          </div>)}</div>
+          <div className="seller-question-list">{group.questions.map((question, index) => {
+            const qId = question.id || index;
+            const isSubmitting = submittingIds[qId];
+            return (
+              <div className="seller-question-item" key={qId}>
+                <div className="seller-question-meta">
+                  <span className={question.answer ? 'answered' : 'pending'}>
+                    {question.answer ? <CheckCircle2 size={13} /> : <Clock3 size={13} />}
+                    {question.answer ? 'Respondida' : 'Pendiente'}
+                  </span>
+                  <small>{question.compradorNombre || question.userName || question.usuarioNombre || question.authorName || 'Comprador'} · {formatDate(question.fechaPregunta || question.createdAt || question.fechaCreacion)}</small>
+                </div>
+                <strong>{question.text}</strong>
+                {question.answer ? (
+                  <p><b>Respuesta de la tienda:</b> {question.answer}</p>
+                ) : (
+                  <div style={{ marginTop: '10px' }}>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleSendAnswer(question.productId, question.id);
+                      }}
+                      style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
+                    >
+                      <input
+                        type="text"
+                        value={draftAnswers[qId] || ''}
+                        onChange={(e) => setDraftAnswers((prev) => ({ ...prev, [qId]: e.target.value }))}
+                        placeholder="Escribe la respuesta pública para el comprador..."
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '13px',
+                        }}
+                        disabled={isSubmitting}
+                      />
+                      <button
+                        type="submit"
+                        disabled={!draftAnswers[qId]?.trim() || isSubmitting}
+                        style={{
+                          backgroundColor: '#0066ff',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '8px 14px',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          opacity: !draftAnswers[qId]?.trim() || isSubmitting ? 0.6 : 1,
+                        }}
+                      >
+                        {isSubmitting ? <Loader2 size={15} className="spin-icon" /> : <Send size={15} />}
+                        <span>Responder</span>
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </div>
+            );
+          })}</div>
         </article>;
       })}</div>}
     </section>

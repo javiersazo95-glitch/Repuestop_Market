@@ -133,6 +133,15 @@ export default function OrderCard({
   const firstItemSku = firstItem.sku || firstItem.productSku || '';
   const firstItemPrice = Number(firstItem.precioUnitario || firstItem.precio || firstItem.unitPrice || 0);
   const firstItemQty = Number(firstItem.cantidad || firstItem.quantity || 1);
+  const firstItemStatus = String(firstItem?.estado || firstItem?.status || '').toUpperCase();
+  const isFirstItemCancelled = [
+    'CANCELADO_BLOQUEO_VENDEDOR',
+    'CANCELADO_VENDEDOR',
+    'CANCELADO_EXPIRACION_PAGO',
+    'CANCELADO_COMPRADOR',
+    'CANCELADO',
+    'CANCELLED'
+  ].includes(firstItemStatus);
 
   const itemsSubtotal = items.reduce((total, item) => total + (Number(item.precioUnitario || item.precio || item.unitPrice || 0) * Number(item.cantidad || item.quantity || 1)), 0);
   const subtotal = Number(order.subtotal || itemsSubtotal || order.total || 0);
@@ -290,7 +299,10 @@ export default function OrderCard({
             </div>
           )}
           <div className="product-copy">
-            <h4 className="product-title">{firstItemName}</h4>
+            <h4 className="product-title" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <span>{firstItemName}</span>
+              {isFirstItemCancelled && <span className="item-cancelled-badge">Cancelado</span>}
+            </h4>
             <span className="product-meta">
               {[firstItemBrand, firstItemSku ? `SKU ${firstItemSku}` : null].filter(Boolean).join(' · ')}
             </span>

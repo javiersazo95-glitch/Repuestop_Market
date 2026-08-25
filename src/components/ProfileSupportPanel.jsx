@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowLeft, ChevronRight, CircleAlert, Headphones, Inbox,
 import { getMyMediationsApi, getMyReportsApi, getMySupportTicketsApi } from '../services/api';
 import { MEDIATION_STATUS_LABELS } from '../data/mediationStatus';
 import MediationCaseView from './MediationCaseView';
+import SupportTicketDetailModal from './SupportTicketDetailModal';
 
 const STATUS_LABELS = {
   ABIERTO: 'Abierto', EN_PROCESO: 'En proceso', PENDIENTE_VENDEDOR: 'Pendiente de tu respuesta',
@@ -44,6 +45,7 @@ export default function ProfileSupportPanel({ user }) {
   const [stateFilter, setStateFilter] = useState('abiertos');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedTicketId, setSelectedTicketId] = useState(null);
   // El caso abierto vive en la URL (`/perfil/consultas?caso=<pedidoId>`) para que
   // el botón atrás del navegador cierre el expediente y el enlace sea compartible.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -129,6 +131,8 @@ export default function ProfileSupportPanel({ user }) {
         detalle: ticket.lastMessage || ticket.message || ticket.supportResponse || 'Sin detalle disponible.',
         numero: `#${ticket.externalId || ticket.id}`,
         fecha: ticket.createdAt,
+        onOpen: () => setSelectedTicketId(ticket.id),
+        accion: 'Ver consulta',
       })),
     ];
     return rows.sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
@@ -284,6 +288,16 @@ export default function ProfileSupportPanel({ user }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {selectedTicketId && (
+        <SupportTicketDetailModal
+          ticketId={selectedTicketId}
+          userId={userId}
+          user={user}
+          onClose={() => setSelectedTicketId(null)}
+          onUpdated={loadCases}
+        />
       )}
     </section>
   );
