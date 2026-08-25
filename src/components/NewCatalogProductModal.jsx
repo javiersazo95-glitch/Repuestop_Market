@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Check, ChevronDown, CircleDollarSign, ClipboardList, Image as ImageIcon, Images, ListChecks, Loader2, PackagePlus, Plus, Search, Tag, Trash2, Upload, X } from 'lucide-react';
+import CommissionSummaryCard from './CommissionSummaryCard';
 import {
   createSellerInventoryProductApi,
   getPartBrandsApi,
@@ -8,6 +9,8 @@ import {
   getVehicleBrandsApi,
   getVehicleModelsApi,
   getVehicleVersionsApi,
+  resolveMediaUrl,
+  toMediaPath,
   updateSellerInventoryProductApi,
 } from '../services/api';
 
@@ -75,6 +78,7 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
   const [versionModalError, setVersionModalError] = useState(null);
   const [isCustomPartBrand, setIsCustomPartBrand] = useState(false);
   const isEditing = Boolean(product?.id);
+  const [existingPhotos, setExistingPhotos] = useState([]);
   const [files, setFiles] = useState([]);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -104,6 +108,13 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
   useEffect(() => {
     setForm(initialForm(product));
     setFiles([]);
+    const existing = [];
+    if (product?.imageUrls && Array.isArray(product.imageUrls)) {
+      product.imageUrls.forEach((url) => { if (url) existing.push(url); });
+    } else if (product?.imagenUrl || product?.imageUrl) {
+      existing.push(product.imagenUrl || product.imageUrl);
+    }
+    setExistingPhotos(existing);
     setIsCustomPartBrand(false);
   }, [product]);
 
@@ -171,9 +182,11 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
     }
   };
 
+  const totalPhotosCount = existingPhotos.length + files.length;
+
   const handleFiles = (event) => {
     const incoming = Array.from(event.target.files || []).filter((file) => file.type.startsWith('image/'));
-    const allowed = incoming.slice(0, MAX_PHOTOS - files.length).map((file) => ({ file, preview: URL.createObjectURL(file) }));
+    const allowed = incoming.slice(0, MAX_PHOTOS - totalPhotosCount).map((file) => ({ file, preview: URL.createObjectURL(file) }));
     setFiles((previous) => [...previous, ...allowed]);
     event.target.value = '';
   };
@@ -182,6 +195,10 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
     URL.revokeObjectURL(previous[index].preview);
     return previous.filter((_, itemIndex) => itemIndex !== index);
   });
+
+  const removeExistingPhoto = (index) => {
+    setExistingPhotos((previous) => previous.filter((_, itemIndex) => itemIndex !== index));
+  };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -227,6 +244,24 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
     append('requiereChasis', form.requiresChassis);
     append('activo', true);
     compatibilityGroups.flatMap((group) => group.vehiculoCatalogoIds).forEach((id) => payload.append('vehiculoCatalogoIds', id));
+    // `existingPhotos` le dice al backend cuales de las fotos ya guardadas sobreviven.
+    // Sin este campo `reemplazarImagenes()` cae al modo antiguo (todo-o-nada) y basta
+    // con subir una foto nueva para que borre de R2 las anteriores. Por eso al editar se
+    // manda SIEMPRE, y con la lista vacia se manda una cadena vacia como marca explicita
+    // de "no conservar ninguna": un campo ausente y un campo vacio significan cosas
+    // distintas y el backend las distingue.
+    //
+    // Van como ruta relativa (`toMediaPath`) porque asi las arma el backend: si se
+    // reenvia la URL absoluta que se ve en pantalla, la comparacion no calza y la foto
+    // se borra igual.
+    if (isEditing) {
+      const keptPaths = existingPhotos.map(toMediaPath).filter(Boolean);
+      if (keptPaths.length > 0) {
+        keptPaths.forEach((url) => payload.append('existingPhotos', url));
+      } else {
+        payload.append('existingPhotos', '');
+      }
+    }
     files.forEach(({ file }) => payload.append('imagenes', file));
 
     try {
@@ -279,6 +314,12 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
               <CatalogField label="Stock disponible"><input type="number" min="0" max="99999" value={form.stock} onChange={(e) => update('stock', e.target.value)} required /></CatalogField>
               <CatalogField label="¿Requiere chasis?"><SearchableDropdown value={String(form.requiresChassis)} options={[{ value: 'false', label: 'No' }, { value: 'true', label: 'Sí, solo cotizar' }]} placeholder="Selecciona una opción" onChange={(value) => { const requiresChassis = value === 'true'; setForm((previous) => ({ ...previous, requiresChassis, pricingMode: requiresChassis ? 'QUOTE_ONLY' : previous.pricingMode })); }} /></CatalogField>
             </div>
+            {form.pricingMode === 'SHOW_PRICE' && (
+              <CommissionSummaryCard
+                basePrice={Number(form.price) || 0}
+                onApplySuggested={(suggestedPrice) => update('price', String(suggestedPrice))}
+              />
+            )}
           </section>
           <section className="catalog-product-section" id="catalog-compatibility">
             <div className="catalog-section-title-row"><h3><b>3</b> Compatibilidad</h3><button type="button" className="catalog-add-compatibility" onClick={() => update('compatibilities', [...form.compatibilities, emptyCompatibility()])}><Plus size={15} /> Agregar</button></div>
@@ -297,8 +338,26 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
           </section>
           <section className="catalog-product-section" id="catalog-media">
             <h3><b>4</b> Fotos <small>Opcional · hasta 4</small></h3>
-            <div className="catalog-photo-grid">{files.map(({ preview }, index) => <div className="catalog-photo-preview" key={preview}><img src={preview} alt={`Vista previa ${index + 1}`} /><button type="button" onClick={() => removeFile(index)} aria-label="Quitar foto"><X size={14} /></button></div>)}<label className="catalog-photo-upload"><Upload size={19} /><span>Agregar fotos<br /><small>{files.length}/4</small></span><input type="file" accept="image/*" multiple onChange={handleFiles} disabled={files.length >= MAX_PHOTOS} /></label></div>
-            {files.length === 0 && <p className="catalog-photo-note"><ImageIcon size={15} /> Si no agregas fotos, el producto se publicará con la imagen genérica de RepuesTop.</p>}
+            <div className="catalog-photo-grid">
+              {existingPhotos.map((photoUrl, index) => (
+                <div className="catalog-photo-preview" key={`existing-${photoUrl}-${index}`}>
+                  <img src={resolveMediaUrl(photoUrl)} alt={`Foto ${index + 1}`} />
+                  <button type="button" onClick={() => removeExistingPhoto(index)} aria-label="Quitar foto"><X size={14} /></button>
+                </div>
+              ))}
+              {files.map(({ preview }, index) => (
+                <div className="catalog-photo-preview" key={preview}>
+                  <img src={preview} alt={`Vista previa ${index + 1}`} />
+                  <button type="button" onClick={() => removeFile(index)} aria-label="Quitar foto"><X size={14} /></button>
+                </div>
+              ))}
+              <label className="catalog-photo-upload">
+                <Upload size={19} />
+                <span>Agregar fotos<br /><small>{totalPhotosCount}/4</small></span>
+                <input type="file" accept="image/*" multiple onChange={handleFiles} disabled={totalPhotosCount >= MAX_PHOTOS} />
+              </label>
+            </div>
+            {totalPhotosCount === 0 && <p className="catalog-photo-note"><ImageIcon size={15} /> Si no agregas fotos, el producto se publicará con la imagen genérica de RepuesTop.</p>}
           </section>
           <section className="catalog-product-section">
             <h3><b>5</b> Descripción y calidad</h3>

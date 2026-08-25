@@ -17,7 +17,11 @@ import {
   getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getBuyerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
   updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi, updateSellerProductTopApi,
-  saveConversationQuoteApi, sendConversationMessageApi
+  saveConversationQuoteApi, sendConversationMessageApi, requestBlockedAccountReviewApi,
+  cancelSellerOrderApi, registerOrderDispatchApi,
+  pauseSellerProductApi, resumeSellerProductApi, updateSellerShippingMethodsApi,
+  getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
+  getBuyerProductQuestionsApi
 } from '../services/api';
 import { qk } from '../services/queryKeys';
 import OrderCard from './OrderCard';
@@ -137,6 +141,7 @@ const BUYER_SIDEBAR_GROUPS = [
     items: [
       { id: 'pedidos', label: 'Mis pedidos', icon: Package },
       { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
+      { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
       { id: 'favoritos', label: 'Favoritos', icon: Heart }
     ]
   },
@@ -293,6 +298,13 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteAccountError, setDeleteAccountError] = useState(null);
 
+  const [showBlockedReviewModal, setShowBlockedReviewModal] = useState(false);
+  const [blockedReviewText, setBlockedReviewText] = useState('');
+  const [blockedReviewContact, setBlockedReviewContact] = useState('');
+  const [isSubmittingBlockedReview, setIsSubmittingBlockedReview] = useState(false);
+  const [blockedReviewSuccess, setBlockedReviewSuccess] = useState(false);
+  const [blockedReviewError, setBlockedReviewError] = useState(null);
+
   const inventoryPanelUrl = __DEPLOY_BRANCH__ === 'main'
     ? 'https://inventario.repuestop.cl'
     : 'https://dev-inventario.repuestop.cl';
@@ -408,6 +420,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // listado lo aporta React Query en `catalogQuery.error`.
   const [catalogActionError, setCatalogActionError] = useState(null);
   const [updatingTopProductId, setUpdatingTopProductId] = useState(null);
+  const [updatingPauseProductId, setUpdatingPauseProductId] = useState(null);
   const [questionsProductFilter, setQuestionsProductFilter] = useState(null);
   const [showNewProductModal, setShowNewProductModal] = useState(false);
 
@@ -441,12 +454,53 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     staleTime: 60 * 1000,
   });
 
+  const buyerQuestionsQuery = useQuery({
+    queryKey: ['buyerProductQuestions', effectiveUserId],
+    queryFn: ({ signal }) => getBuyerProductQuestionsApi({ signal }),
+    enabled: Boolean(!isSeller && effectiveUserId),
+    staleTime: 60 * 1000,
+  });
+
   const storeInfoQuery = useQuery({
     queryKey: qk.sellerStore(effectiveSellerId),
     queryFn: ({ signal }) => getSellerStoreApi(effectiveSellerId, { signal }),
     enabled: Boolean(isSeller && effectiveSellerId),
     staleTime: 5 * 60 * 1000,
   });
+
+  const isSellerBlocked = isSeller && Boolean(
+    user?.cuentaBloqueada ||
+    user?.sellerBlocked ||
+    user?.estado === 'BLOQUEADO' ||
+    storeInfoQuery.data?.cuentaBloqueada ||
+    storeInfoQuery.data?.estado === 'BLOQUEADO'
+  );
+  const blockReason = user?.motivoBloqueo || storeInfoQuery.data?.motivoBloqueo || 'Tu tienda se encuentra suspendida temporalmente por moderación.';
+
+  const handleSubmitBlockedReview = async (e) => {
+    e.preventDefault();
+    if (!blockedReviewText.trim()) {
+      setBlockedReviewError('Por favor describe el motivo o justificación de tu solicitud.');
+      return;
+    }
+    if (!effectiveSellerId) {
+      setBlockedReviewError('No se encontró el identificador de la tienda.');
+      return;
+    }
+    setIsSubmittingBlockedReview(true);
+    setBlockedReviewError(null);
+    try {
+      await requestBlockedAccountReviewApi(effectiveSellerId, {
+        mensaje: blockedReviewText.trim(),
+        contactoAlternativo: blockedReviewContact.trim(),
+      });
+      setBlockedReviewSuccess(true);
+    } catch (err) {
+      setBlockedReviewError(err?.message || 'No se pudo enviar la solicitud de revisión.');
+    } finally {
+      setIsSubmittingBlockedReview(false);
+    }
+  };
 
   const inventorySummaryQuery = useQuery({
     queryKey: qk.sellerInventorySummary(effectiveSellerId),
@@ -525,6 +579,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const productQuestions = productQuestionsQuery.data || [];
   const productQuestionsLoading = productQuestionsQuery.isLoading;
   const productQuestionsError = productQuestionsQuery.error?.message || '';
+  const buyerQuestions = buyerQuestionsQuery.data || [];
+  const buyerQuestionsLoading = buyerQuestionsQuery.isLoading;
+  const buyerQuestionsError = buyerQuestionsQuery.error?.message || '';
 
   const isLoadingData = isSeller ? (ordersQuery.isLoading || storeInfoQuery.isLoading) : ordersQuery.isLoading;
   const dataError = ordersQuery.error?.message || null;
@@ -576,6 +633,36 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const handleCancelOrder = async (order) => {
     if (!order?.id) return;
     await handleUpdateOrderStatus(order.id, 'CANCELADO');
+  };
+
+  /**
+   * Cancelación formal del vendedor con motivo (`POST /proveedores/{id}/pedidos/{id}/cancelacion`).
+   */
+  const handleCancelSellerOrder = async (order, { reasonCode, reasonDetail } = {}) => {
+    const orderId = order?.id;
+    if (!effectiveSellerId || !orderId) return;
+    const updated = await cancelSellerOrderApi(effectiveSellerId, orderId, { reasonCode, reasonDetail });
+    queryClient.invalidateQueries({ queryKey: qk.sellerOrders(effectiveSellerId) });
+    setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
+      ? { ...prev, ...updated, estado: 'CANCELADO', status: 'CANCELADO', motivoCancelacion: reasonCode, detalleCancelacion: reasonDetail }
+      : prev
+    );
+    return updated;
+  };
+
+  /**
+   * Registro de despacho por courier con número de seguimiento y comprobante opcional (`POST /pedidos/{id}/envio`).
+   */
+  const handleRegisterOrderDispatch = async (order, dispatchData) => {
+    const orderId = order?.id;
+    if (!orderId) return;
+    const updated = await registerOrderDispatchApi(orderId, dispatchData);
+    queryClient.invalidateQueries({ queryKey: qk.sellerOrders(effectiveSellerId) });
+    setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
+      ? { ...prev, ...updated, estado: 'ENVIADO', status: 'ENVIADO', courier: dispatchData.courier, trackingNumber: dispatchData.trackingNumber }
+      : prev
+    );
+    return updated;
   };
 
   const handleSaveCatalogProduct = async (productId, updatedFields) => {
@@ -706,6 +793,28 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     }
   };
 
+  const handleToggleProductPause = async (product, pause) => {
+    if (!user?.sellerId || !product?.id || updatingPauseProductId) return;
+    setUpdatingPauseProductId(product.id);
+    setCatalogActionError(null);
+    setCatalogTopFeedback('');
+    try {
+      if (pause) {
+        await pauseSellerProductApi(user.sellerId, product.id);
+        setCatalogTopFeedback('Publicación pausada: el producto no aparecerá en búsquedas públicas.');
+      } else {
+        await resumeSellerProductApi(user.sellerId, product.id);
+        setCatalogTopFeedback('Publicación reanudada: el producto vuelve a estar visible para compradores.');
+      }
+      queryClient.invalidateQueries({ queryKey: ['sellerInventory'] });
+      queryClient.invalidateQueries({ queryKey: qk.sellerInventorySummary(effectiveSellerId) });
+    } catch (error) {
+      setCatalogActionError(error.message || 'No se pudo cambiar el estado de la publicación.');
+    } finally {
+      setUpdatingPauseProductId(null);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     onBackToStore();
@@ -782,24 +891,34 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       payload.taxId = taxIdDraft;
     }
 
-    if (isSeller) {
-      // Nombre y RUT de la tienda ya no se editan desde este formulario (ver
-      // bloque de solo lectura más abajo): son datos de identidad que deben
-      // cambiarse a través de soporte, no con un input libre. La dirección
-      // comercial (address/comunaId) tampoco se envía desde acá: BuyerAddressBook
-      // ya la sincroniza directamente al guardar una dirección de despacho.
-      payload.shippingMethods = buildShippingMethodsString(shippingSelectionsDraft);
-    }
+    // Nombre y RUT de la tienda ya no se editan desde este formulario (ver
+    // bloque de solo lectura más abajo): son datos de identidad que deben
+    // cambiarse a través de soporte, no con un input libre. La dirección
+    // comercial (address/comunaId) tampoco se envía desde acá: BuyerAddressBook
+    // ya la sincroniza directamente al guardar una dirección de despacho.
+    //
+    // Los métodos de envío NO van en `payload`: `ActualizarPerfilRequestDTO` no
+    // tiene ese campo y el PATCH los descartaba en silencio. El único que los
+    // persiste es `PUT /proveedores/{id}/shipping-methods`.
+    const shippingMethodsDraft = isSeller
+      ? buildShippingMethodsString(shippingSelectionsDraft)
+      : null;
 
     let result;
     try {
       if (isSeller) {
         await updateStoreSpecialistBrandsApi(user.sellerId, specialistBrandIdsDraft);
+        if (shippingMethodsDraft) {
+          // Sin `.catch()`: si esto falla, el usuario tiene que enterarse. Antes se
+          // tragaba el error y el aviso de "actualizado correctamente" salía igual,
+          // que es justo el modo de falla silenciosa que este endpoint vino a cerrar.
+          await updateSellerShippingMethodsApi(user.sellerId, shippingMethodsDraft);
+        }
       }
       result = await updateProfile(payload);
     } catch (error) {
       setIsSaving(false);
-      setSaveStatus({ type: 'error', message: error?.message || 'No se pudieron actualizar las marcas especialistas.' });
+      setSaveStatus({ type: 'error', message: error?.message || 'No se pudo actualizar la información de la tienda.' });
       return;
     }
     setIsSaving(false);
@@ -1232,6 +1351,75 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             </div>
           )}
 
+          {isSellerBlocked && (
+            <div
+              className="seller-blocked-banner"
+              style={{
+                marginBottom: '20px',
+                padding: '16px 20px',
+                borderRadius: '12px',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '16px',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '280px' }}>
+                <div
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '10px',
+                    backgroundColor: '#fee2e2',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#dc2626',
+                    flexShrink: 0,
+                  }}
+                >
+                  <AlertTriangle size={22} />
+                </div>
+                <div>
+                  <strong style={{ display: 'block', color: '#991b1b', fontSize: '14.5px', fontWeight: 800 }}>
+                    Tu tienda se encuentra bloqueada
+                  </strong>
+                  <p style={{ margin: '3px 0 0', color: '#b91c1c', fontSize: '13px', lineHeight: 1.4 }}>
+                    {blockReason} Mientras esté suspendida no podrás recibir nuevos pedidos ni publicar productos.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-auth-primary"
+                style={{
+                  backgroundColor: '#dc2626',
+                  borderColor: '#b91c1c',
+                  padding: '9px 18px',
+                  fontSize: '13px',
+                  height: 'auto',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+                onClick={() => {
+                  setBlockedReviewError(null);
+                  setBlockedReviewSuccess(false);
+                  setBlockedReviewText('');
+                  setBlockedReviewContact('');
+                  setShowBlockedReviewModal(true);
+                }}
+              >
+                <Scale size={16} />
+                <span>Solicitar Revisión</span>
+              </button>
+            </div>
+          )}
+
           {isLoadingData ? (
             <div className="profile-panel"><LoadingRow /></div>
           ) : (
@@ -1464,6 +1652,73 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 )
               )}
 
+              {activeTab === 'mis_preguntas' && !isSeller && (
+                <div className="profile-panel">
+                  <div className="profile-panel-header-row">
+                    <div>
+                      <h2 className="profile-panel-title">
+                        <MessageCircleQuestion size={20} /> Mis Preguntas en Productos
+                      </h2>
+                      <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '13.5px' }}>
+                        Revisa las consultas que has realizado en las publicaciones de las tiendas y sus respuestas.
+                      </p>
+                    </div>
+                  </div>
+
+                  {buyerQuestionsError && (
+                    <div className="auth-alert alert-error" style={{ margin: '14px 0' }}>
+                      <X size={16} />
+                      <span>{buyerQuestionsError}</span>
+                    </div>
+                  )}
+
+                  {buyerQuestionsLoading ? (
+                    <LoadingRow />
+                  ) : buyerQuestions.length === 0 ? (
+                    <EmptyState label="Aún no has realizado preguntas en productos publicados." />
+                  ) : (
+                    <div className="seller-question-list" style={{ marginTop: '16px' }}>
+                      {buyerQuestions.map((q, idx) => {
+                        const hasAnswer = Boolean(q.respuesta || q.answer);
+                        return (
+                          <div className="seller-question-item" key={q.id || idx} style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', marginBottom: '12px' }}>
+                            <div className="seller-question-meta" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                              <span className={hasAnswer ? 'answered' : 'pending'} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, padding: '3px 8px', borderRadius: '6px', backgroundColor: hasAnswer ? '#dcfce7' : '#fef9c3', color: hasAnswer ? '#15803d' : '#a16207' }}>
+                                {hasAnswer ? <CheckCircle2 size={13} /> : <Clock size={13} />}
+                                {hasAnswer ? 'Respondida por la tienda' : 'Esperando respuesta'}
+                              </span>
+                              <small style={{ color: '#94a3b8', fontSize: '12px' }}>
+                                {q.fechaPregunta || q.createdAt ? new Date(q.fechaPregunta || q.createdAt).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
+                              </small>
+                            </div>
+                            <h4 style={{ margin: '0 0 6px', fontSize: '14.5px', color: '#1e293b' }}>
+                              {q.productoNombre || q.productName || q.producto?.nombrePublicado || 'Repuesto'}
+                            </h4>
+                            <p style={{ margin: '0 0 10px', fontSize: '13.5px', color: '#334155' }}>
+                              <strong>Tu pregunta:</strong> {q.pregunta || q.texto || q.question}
+                            </p>
+                            {hasAnswer ? (
+                              <div style={{ backgroundColor: '#f8fafc', borderLeft: '3px solid #0066ff', padding: '10px 14px', borderRadius: '0 8px 8px 0' }}>
+                                <strong style={{ display: 'block', fontSize: '12px', color: '#0066ff', marginBottom: '2px' }}>
+                                  Respuesta de {q.tiendaNombre || 'la tienda'}:
+                                </strong>
+                                <p style={{ margin: 0, fontSize: '13px', color: '#1e293b' }}>
+                                  {q.respuesta || q.answer}
+                                </p>
+                              </div>
+                            ) : (
+                              <p style={{ margin: 0, fontSize: '12.5px', color: '#94a3b8', fontStyle: 'italic' }}>
+                                La tienda aún no ha respondido tu consulta. Te notificaremos en cuanto haya una respuesta.
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {activeTab === 'favoritos' && !isSeller && (
                 <div className="profile-panel">
                   <h2 className="profile-panel-title">Repuestos Favoritos</h2>
@@ -1604,6 +1859,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                             }}
                             onToggleTop={handleToggleProductTop}
                             isUpdatingTop={updatingTopProductId === p.id}
+                            onTogglePause={handleToggleProductPause}
+                            isUpdatingPause={updatingPauseProductId === p.id}
                           />
                         ))}
                       </div>
@@ -1644,6 +1901,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   error={productQuestionsError}
                   initialProductId={questionsProductFilter}
                   onClearProduct={() => setQuestionsProductFilter(null)}
+                  onQuestionAnswered={() => queryClient.invalidateQueries({ queryKey: qk.sellerProductQuestions(effectiveSellerId) })}
                 />
               )}
 
@@ -2056,6 +2314,33 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                               </div>
                             </div>
                           )}
+                        {/* Card: Verificación y Estado Comercial */}
+                        {isSeller && (
+                          <div className="details-card-block store-section-card">
+                            <div className="details-card-header-row">
+                              <h3 className="section-subtitle">
+                                <span className="section-subtitle-icon"><ShieldCheck size={16} /></span>
+                                <span>Verificación Comercial y Adhesión</span>
+                              </h3>
+                            </div>
+                            <div className="details-info-grid">
+                              <div className="details-info-row">
+                                <span className="info-label">Estado de Verificación</span>
+                                <strong className="info-value" style={{ color: '#16a34a', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                  <CheckCircle2 size={15} />
+                                  <span>{storeInfo?.verificacionEstado || 'Tienda Verificada'}</span>
+                                </strong>
+                              </div>
+                              <div className="details-info-row">
+                                <span className="info-label">Contrato de Adhesión</span>
+                                <strong className="info-value" style={{ color: '#0066ff', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                  <CheckCircle2 size={15} />
+                                  <span>Términos y condiciones aceptados</span>
+                                </strong>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         </div>
                       </div>
                     </div>
@@ -2071,10 +2356,14 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         <OrderDetailModal
           order={selectedOrder}
           mode={isSeller ? 'seller' : 'buyer'}
+          sellerId={effectiveSellerId}
+          userId={userId}
           onClose={() => setSelectedOrder(null)}
           onUpdateStatus={handleUpdateOrderStatus}
           onRetryPayment={isSeller ? undefined : handleRetryPayment}
           onCancelOrder={isSeller ? undefined : handleCancelOrder}
+          onCancelSellerOrder={isSeller ? handleCancelSellerOrder : undefined}
+          onRegisterDispatch={isSeller ? handleRegisterOrderDispatch : undefined}
         />
       )}
 
@@ -2381,6 +2670,138 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           onClose={() => setShowNewProductModal(false)}
           onCreated={handleCatalogProductCreated}
         />
+      )}
+
+      {/* Modal de Solicitud de Revisión de Cuenta Bloqueada */}
+      {showBlockedReviewModal && (
+        <div className="order-modal-backdrop" onClick={() => setShowBlockedReviewModal(false)}>
+          <div className="order-modal-card" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="order-modal-header">
+              <div className="order-modal-header-left">
+                <div className="order-modal-icon-badge" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
+                  <Scale size={20} />
+                </div>
+                <div>
+                  <h3 className="order-modal-title">Solicitar Revisión de Cuenta</h3>
+                  <span className="order-modal-subtitle">
+                    Envía tus descargos o justificación al equipo de moderación
+                  </span>
+                </div>
+              </div>
+              <button className="order-modal-close-btn" onClick={() => setShowBlockedReviewModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {blockedReviewSuccess ? (
+              <div className="order-modal-body" style={{ padding: '24px', textAlign: 'center' }}>
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  backgroundColor: '#f0fdf4',
+                  color: '#16a34a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                }}>
+                  <CheckCircle2 size={32} />
+                </div>
+                <h4 style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px' }}>
+                  ¡Solicitud Enviada con Éxito!
+                </h4>
+                <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: 1.5, margin: '0 0 20px' }}>
+                  Tu solicitud ha sido registrada y está siendo revisada por el equipo de moderación de RepuesTop. Te contactaremos a la brevedad.
+                </p>
+                <button
+                  type="button"
+                  className="btn-auth-primary"
+                  onClick={() => setShowBlockedReviewModal(false)}
+                >
+                  Entendido
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitBlockedReview} className="order-modal-body" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {blockedReviewError && (
+                  <div className="auth-alert alert-error">
+                    <AlertTriangle size={16} />
+                    <span>{blockedReviewError}</span>
+                  </div>
+                )}
+
+                <div style={{ backgroundColor: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', color: '#475569' }}>
+                  <strong>Motivo actual:</strong> {blockReason}
+                </div>
+
+                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
+                    Motivo / Explicación de la solicitud *
+                  </label>
+                  <textarea
+                    required
+                    rows={4}
+                    maxLength={1000}
+                    placeholder="Explica detalladamente por qué consideras que tu cuenta debe ser desbloqueada..."
+                    value={blockedReviewText}
+                    onChange={(e) => setBlockedReviewText(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '13.5px',
+                      fontFamily: 'inherit',
+                      resize: 'vertical',
+                    }}
+                  />
+                  <small style={{ color: '#94a3b8', fontSize: '11px', textAlign: 'right' }}>
+                    {blockedReviewText.length} / 1000 caracteres
+                  </small>
+                </div>
+
+                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
+                    Teléfono o correo de contacto alternativo (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: +56 9 1234 5678 o contacto@tienda.cl"
+                    value={blockedReviewContact}
+                    onChange={(e) => setBlockedReviewContact(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '13.5px',
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
+                  <button
+                    type="button"
+                    className="btn-auth-secondary"
+                    onClick={() => setShowBlockedReviewModal(false)}
+                    disabled={isSubmittingBlockedReview}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-auth-primary"
+                    disabled={isSubmittingBlockedReview || !blockedReviewText.trim()}
+                    style={{ width: 'auto' }}
+                  >
+                    {isSubmittingBlockedReview ? 'Enviando...' : 'Enviar Solicitud'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
       )}
 
     </div>
