@@ -2583,6 +2583,40 @@ input, select, textarea {
   text-decoration: underline;
 }
 
+.role-recovery-toggle {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.btn-role-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-role-tab:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.btn-role-tab.active {
+  background: #eff6ff;
+  border-color: #0066ff;
+  color: #0066ff;
+}
+
 .input-with-icon {
   position: relative;
   display: flex;
@@ -5690,6 +5724,32 @@ input, select, textarea {
   padding: 8px;
   background: #f8fafc;
   border-radius: var(--radius-sm);
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.order-item-row--cancelled {
+  opacity: 0.65;
+  background: #fef2f2;
+  border: 1px dashed #fca5a5;
+}
+
+.order-item-row--cancelled .item-table-name {
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+.item-cancelled-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #dc2626;
+  background: #fee2e2;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+  text-decoration: none !important;
 }
 
 .item-table-img {
@@ -12955,6 +13015,18 @@ input, select, textarea {
 .quote-ws-report-success h3 { margin: 0; color: #17395e; font-size: 18px; }
 .quote-ws-report-success p { max-width: 300px; margin: 0 0 5px; color: #60778e; font-size: 11.5px; line-height: 1.5; }
 .quote-ws-report-success > button { width: 100%; }
+
+/* ============================================================
+   REPORTE CONTEXTUAL (ContextualReportButton)
+   El diálogo reutiliza las clases .quote-ws-report-* de arriba; acá solo van los
+   disparadores, que cambian según dónde se monte el botón.
+   ============================================================ */
+.contextual-report-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid #dfe6ee; border-radius: 8px; color: #7a8da1; background: transparent; font-size: 11px; font-weight: 700; cursor: pointer; transition: color .15s ease, border-color .15s ease; }
+.contextual-report-trigger:hover { color: #c2333d; border-color: #f0c4c7; background: #fdf4f5; }
+.product-marketplace-report-row { margin-top: 14px; display: flex; justify-content: flex-end; }
+.btn-ad-report { width: 100%; margin-top: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 10px; border: 1px solid #e2e8f0; border-radius: 8px; color: #8798aa; background: transparent; font-size: 10.5px; font-weight: 700; cursor: pointer; }
+.btn-ad-report:hover { color: #c2333d; border-color: #f0c4c7; background: #fdf4f5; }
+.contextual-report-error { margin: 4px 0 0; color: #c2333d; font-size: 11px; font-weight: 700; }
 
 /* Aumento tipográfico leve, compensado con menos espacio vertical para conservar una sola vista. */
 .quote-ws-account strong, .quote-ws-person strong, .quote-ws-product-head strong { font-size: 12.5px; }

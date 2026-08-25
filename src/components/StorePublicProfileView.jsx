@@ -11,6 +11,7 @@ import {
 import { NAVIGATION_CATEGORIES } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
+import ContextualReportButton from './ContextualReportButton';
 import { parseShippingMethods, resolveShippingService } from '../data/shippingMethods';
 import { getStoreProductsApi, getStoreProfileApi, searchVehicleByPatenteApi } from '../services/api';
 import { adaptPage, adaptProduct, adaptStore, adaptVehicle } from '../services/adapters';
@@ -394,6 +395,13 @@ export default function StorePublicProfileView({
                     <Share2 size={16} />
                     <span>{shareFeedback || 'Compartir'}</span>
                   </button>
+
+                  <ContextualReportButton
+                    tipoObjeto="TIENDA"
+                    objetoId={storeId}
+                    objetoTitulo={currentStore.nombre}
+                    className="btn-share-store"
+                  />
                 </div>
               </div>
             </div>

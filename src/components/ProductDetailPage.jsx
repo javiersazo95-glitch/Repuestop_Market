@@ -7,12 +7,16 @@ import {
 } from 'lucide-react';
 import { CATEGORY_IMAGE_BY_ID } from '../data/categories';
 import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
-import { createProductQuestionApi, getProductQuestionsApi, searchVehicleByPatenteApi } from '../services/api';
+import {
+  createProductQuestionApi, getProductQuestionsApi, searchVehicleByPatenteApi,
+  addFavoriteApi, removeFavoriteApi, checkIsFavoriteApi
+} from '../services/api';
 import { adaptVehicle } from '../services/adapters';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import { qk } from '../services/queryKeys';
 import StoreLogoBadge from './StoreLogoBadge';
+import ContextualReportButton from './ContextualReportButton';
 import RelatedProductsCarousel from './RelatedProductsCarousel';
 import PurchaseShippingModal from './PurchaseShippingModal';
 import { isOwnStoreProduct } from '../utils/purchaseProfile';
@@ -40,7 +44,36 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     ? product.imagenes
     : [product.imagen || CATEGORY_IMAGE_BY_ID[product.categoria]]).filter(Boolean);
   const [activeImage, setActiveImage] = useState(0);
-  const [favorite, setFavorite] = useState(false);
+  const [favorite, setFavorite] = useState(Boolean(product.favorito || product.isFavorite));
+
+  useEffect(() => {
+    if (user?.userId && product?.id) {
+      checkIsFavoriteApi(user.userId, product.id)
+        .then((res) => {
+          if (res && typeof res.esFavorito === 'boolean') {
+            setFavorite(res.esFavorito);
+          }
+        })
+        .catch(() => null);
+    }
+  }, [user?.userId, product?.id]);
+
+  const handleToggleFavorite = async () => {
+    const nextVal = !favorite;
+    setFavorite(nextVal);
+    if (!user?.userId) return;
+    try {
+      if (nextVal) {
+        await addFavoriteApi(user.userId, product.id);
+      } else {
+        await removeFavoriteApi(user.userId, product.id);
+      }
+      queryClient.invalidateQueries({ queryKey: qk.favorites(user.userId) });
+    } catch {
+      // Revert if failed
+      setFavorite(!nextVal);
+    }
+  };
   const [question, setQuestion] = useState('');
   const [questionError, setQuestionError] = useState('');
   const [compatibilityOpen, setCompatibilityOpen] = useState(false);
@@ -220,8 +253,8 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             <button
               className={`product-marketplace-favorite ${favorite ? 'active' : ''}`}
               type="button"
-              aria-label="Agregar a favoritos"
-              onClick={() => setFavorite((value) => !value)}
+              aria-label={favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+              onClick={handleToggleFavorite}
             >
               <Heart size={22} fill={favorite ? 'currentColor' : 'none'} />
             </button>
@@ -300,6 +333,18 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
               <span><CheckCircle2 /><b>Devoluciones fáciles</b><small>Hasta 30 días</small></span>
               <span><ShieldCheck /><b>Calidad garantizada</b><small>Productos verificados</small></span>
             </div>
+
+            {/* El propio componente se oculta si es contenido de la misma cuenta (el
+                backend lo rechaza) o si no hay sesion. */}
+            {!isOwnProduct && (
+              <div className="product-marketplace-report-row">
+                <ContextualReportButton
+                  tipoObjeto="PRODUCTO"
+                  objetoId={product.id}
+                  objetoTitulo={product.titulo}
+                />
+              </div>
+            )}
           </article>
 
           <aside className="product-marketplace-buybox">

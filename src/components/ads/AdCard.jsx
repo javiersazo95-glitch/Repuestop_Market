@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { AD_TIERS, SERVICE_CATEGORIES, getAdExpiryInfo } from '../../data/automotiveAdsData';
 import { useAdOwnership } from './useAdOwnership';
+import ContextualReportButton from '../ContextualReportButton';
 
 export default function AdCard({
   ad,
@@ -250,6 +251,17 @@ export default function AdCard({
 
           {blockNotice && (
             <p className="ad-block-notice" role="status">{blockNotice}</p>
+          )}
+
+          {/* No se ofrece sobre el aviso propio: `ReporteUsuarioService` responde
+              "No puedes reportar contenido de tu propia cuenta". */}
+          {!isOwnAdCard && (
+            <ContextualReportButton
+              tipoObjeto="ANUNCIO"
+              objetoId={ad.id}
+              objetoTitulo={ad.title}
+              className="btn-ad-report"
+            />
           )}
         </div>
 

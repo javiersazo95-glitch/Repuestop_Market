@@ -277,6 +277,74 @@ export async function getRecentSellersApi() {
   });
 }
 
+/**
+ * Envía un código de 6 dígitos al correo registrado para iniciar la recuperación de contraseña.
+ * @param {string} email Correo electrónico (o RUT en caso de tienda)
+ * @param {string} [rol] 'CLIENTE' o 'PROVEEDOR'
+ */
+export async function recoverPasswordSendCodeApi(email, rol = 'CLIENTE') {
+  return fetchApi('/auth/recover-password/send-code', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: String(email || '').trim().toLowerCase(),
+      rol: rol || 'CLIENTE',
+    }),
+  });
+}
+
+/**
+ * Valida que el código de 6 dígitos corresponda al correo indicado.
+ */
+export async function recoverPasswordVerifyCodeApi(email, code, rol = 'CLIENTE') {
+  return fetchApi('/auth/recover-password/verify-code', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: String(email || '').trim().toLowerCase(),
+      code: String(code || '').trim(),
+      rol: rol || 'CLIENTE',
+    }),
+  });
+}
+
+/**
+ * Restablece la contraseña del usuario tras validar el código.
+ */
+export async function recoverPasswordResetApi(email, code, newPassword, rol = 'CLIENTE') {
+  return fetchApi('/auth/recover-password/reset', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: String(email || '').trim().toLowerCase(),
+      code: String(code || '').trim(),
+      newPassword: String(newPassword || ''),
+      rol: rol || 'CLIENTE',
+    }),
+  });
+}
+
+/**
+ * Verificación rápida de disponibilidad de correo antes de crear cuenta.
+ * @returns {Promise<{exists: boolean, provider?: string, role?: string}>}
+ */
+export async function checkEmailAvailabilityApi(email) {
+  const trimmed = String(email || '').trim().toLowerCase();
+  return fetchApi(`/auth/check-email?email=${encodeURIComponent(trimmed)}`, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Envía solicitud de revisión cuando la cuenta del vendedor está bloqueada.
+ */
+export async function requestBlockedAccountReviewApi(proveedorId, { mensaje, contactoAlternativo } = {}) {
+  const finalMessage = [mensaje, contactoAlternativo ? `Contacto alternativo: ${contactoAlternativo}` : '']
+    .filter(Boolean)
+    .join(' | ');
+  return fetchApi(`/proveedores/${proveedorId}/cuenta-bloqueada/solicitud-revision`, {
+    method: 'POST',
+    body: JSON.stringify({ mensaje: finalMessage || 'Solicito revisión de cuenta bloqueada' }),
+  });
+}
+
 export async function logoutApi(token) {
   try {
     return await fetchApi('/auth/logout', {
@@ -829,6 +897,39 @@ export async function updateOrderStatusApi(orderId, estado, pin) {
 }
 
 /**
+ * Cancelación del pedido por parte de la tienda vendedora.
+ * Requiere un código de motivo formal (`MotivoCancelacionPedido`).
+ */
+export async function cancelSellerOrderApi(proveedorId, orderId, { reasonCode, reasonDetail } = {}) {
+  return fetchApi(`/proveedores/${proveedorId}/pedidos/${orderId}/cancelacion`, {
+    method: 'POST',
+    body: JSON.stringify({
+      reasonCode: String(reasonCode || 'OTRO').toUpperCase(),
+      reasonDetail: reasonDetail ? String(reasonDetail).trim() : null,
+    }),
+  });
+}
+
+/**
+ * Registra el despacho del pedido por courier con número de seguimiento y comprobante opcional.
+ */
+export async function registerOrderDispatchApi(orderId, { courier, trackingNumber, valorEnvio, comprobante } = {}) {
+  const formData = new FormData();
+  formData.append('courier', String(courier || '').trim());
+  formData.append('trackingNumber', String(trackingNumber || '').trim());
+  if (valorEnvio !== undefined && valorEnvio !== null && valorEnvio !== '') {
+    formData.append('valorEnvio', String(valorEnvio));
+  }
+  if (comprobante instanceof File || comprobante instanceof Blob) {
+    formData.append('comprobante', comprobante);
+  }
+  return fetchApi(`/pedidos/${orderId}/envio`, {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+/**
  * Marketplace Endpoints (Unificados con Spring Boot Backend)
  */
 
@@ -962,6 +1063,33 @@ export async function getMySupportTicketsApi(userId) {
   return fetchApi(`/support/tickets/mine/${userId}`, { method: 'GET' });
 }
 
+export async function getSupportTicketDetailApi(userId, ticketId) {
+  return fetchApi(`/support/tickets/mine/${userId}/${ticketId}`, { method: 'GET' });
+}
+
+export async function getSupportTicketMessagesApi(userId, ticketId) {
+  return fetchApi(`/support/tickets/mine/${userId}/${ticketId}/messages`, { method: 'GET' });
+}
+
+export async function sendSupportTicketMessageApi(userId, ticketId, { mensaje, autorNombre } = {}) {
+  return fetchApi(`/support/tickets/mine/${userId}/${ticketId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({
+      autorTipo: 'USUARIO',
+      autorNombre: autorNombre || 'Usuario',
+      mensaje: String(mensaje || '').trim(),
+    }),
+  });
+}
+
+export async function closeSupportTicketApi(userId, ticketId) {
+  return fetchApi(`/support/tickets/mine/${userId}/${ticketId}/close`, { method: 'PUT' });
+}
+
+export async function markSupportTicketReadApi(userId, ticketId) {
+  return fetchApi(`/support/tickets/mine/${userId}/${ticketId}/read`, { method: 'PUT' });
+}
+
 export async function createSupportTicketApi(ticket) {
   return fetchApi('/support/tickets', {
     method: 'POST',
@@ -976,10 +1104,26 @@ export async function createOrderClaimApi(userId, orderId, claim) {
   });
 }
 
+/** Califica los productos y la atención del vendedor para un pedido entregado/finalizado. */
+export async function rateOrderApi(userId, orderId, items) {
+  return fetchApi(`/usuarios/${userId}/pedidos/${orderId}/calificaciones`, {
+    method: 'POST',
+    body: JSON.stringify({ items }),
+  });
+}
+
 // Reportes y disputas reales del usuario (antes se adivinaban filtrando texto
 // libre de los tickets de soporte / el estado del pedido; ver ProfileSupportPanel).
 export async function getMyReportsApi(userId) {
   return fetchApi(`/usuarios/${userId}/reportes/mios`, { method: 'GET' });
+}
+
+/** Crea un reporte contextual (pedido, producto, tienda o usuario). */
+export async function createContextualReportApi(userId, { tipoObjeto, objetoId, motivo, descripcion }) {
+  return fetchApi(`/usuarios/${userId}/reportes`, {
+    method: 'POST',
+    body: JSON.stringify({ tipoObjeto, objetoId: Number(objetoId), motivo, descripcion }),
+  });
 }
 
 export async function getMyMediationsApi(userId) {
@@ -998,6 +1142,17 @@ export async function reportConversationApi(conversacionId, { motivo, descripcio
 // consume la app móvil, no hay nada nuevo del lado del backend.
 export async function getMediationChatApi(pedidoId) {
   return fetchApi(`/pedidos/${pedidoId}/mediacion-chat`, { method: 'GET' });
+}
+
+/** Sube una imagen al chat peer-to-peer de la mediación. */
+export async function uploadMediationChatImageApi(conversacionId, file) {
+  const formData = new FormData();
+  formData.append('imagen', file);
+  return fetchApi(`/conversaciones/${conversacionId}/mediacion-imagenes`, {
+    method: 'POST',
+    body: formData,
+    signal: AbortSignal.timeout(30000),
+  });
 }
 
 export async function escalateMediationApi(pedidoId, { motivo, descripcion, imagenes }) {
@@ -1062,6 +1217,10 @@ export async function markNotificationReadApi(userId, notificationId) {
 
 export async function markAllNotificationsReadApi(userId) {
   return fetchApi(`/usuarios/${userId}/notificaciones/leidas`, { method: 'PUT' });
+}
+
+export async function deleteReadNotificationsApi(userId) {
+  return fetchApi(`/usuarios/${userId}/notificaciones/leidas`, { method: 'DELETE' });
 }
 
 // -------------------------------------------------------------
@@ -1265,3 +1424,215 @@ export async function getFichasMovimientosApi({ signal } = {}) {
 export async function registrarCompraFichasApi(payload) {
   return fetchApi('/fichas/compras', { method: 'POST', body: JSON.stringify(payload) });
 }
+
+// -------------------------------------------------------------
+// FASE 4: HERRAMIENTAS DE VENDEDOR, INVENTARIO Y VERIFICACIÓN
+// -------------------------------------------------------------
+
+/**
+ * Responde una pregunta pública realizada sobre un producto del catálogo.
+ */
+export async function answerProductQuestionApi(productoId, preguntaId, payload) {
+  return fetchApi(`/inventario/productos/${productoId}/preguntas/${preguntaId}/respuesta`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Pausa temporalmente un producto del inventario para que no aparezca en búsquedas públicas.
+ */
+export async function pauseSellerProductApi(proveedorId, productoId) {
+  return fetchApi(`/proveedores/${proveedorId}/inventario/${productoId}/pausa`, {
+    method: 'POST',
+  });
+}
+
+/**
+ * Retoma o despausa un producto del inventario.
+ */
+export async function resumeSellerProductApi(proveedorId, productoId) {
+  return fetchApi(`/proveedores/${proveedorId}/inventario/${productoId}/retomar`, {
+    method: 'POST',
+  });
+}
+
+// No hay `GET /proveedores/{id}/shipping-methods`: PerfilProveedorController solo expone
+// el PUT. Habia un getter apuntando ahi que hubiera dado 405 (no 404, que era lo unico
+// que atajaba). Los metodos configurados llegan dentro de `GET /proveedores/{id}/tienda`.
+
+/**
+ * Actualiza los métodos de envío que acepta la tienda.
+ */
+export async function updateSellerShippingMethodsApi(proveedorId, shippingMethods) {
+  return fetchApi(`/proveedores/${proveedorId}/shipping-methods`, {
+    method: 'PUT',
+    body: JSON.stringify({ shippingMethods }),
+  });
+}
+
+/**
+ * Consulta el estado de verificación y revisión documental del proveedor.
+ */
+export async function getSellerVerificationStatusApi(proveedorId, { signal } = {}) {
+  try {
+    return await fetchApi(`/proveedores/${proveedorId}/verificacion`, { method: 'GET', signal });
+  } catch (err) {
+    if (err.status === 404) return null;
+    throw err;
+  }
+}
+
+/**
+ * Sube documentos de verificación comercial del proveedor (multipart).
+ */
+export async function submitSellerVerificationApi(proveedorId, formData) {
+  return fetchApi(`/proveedores/${proveedorId}/verificacion`, {
+    method: 'POST',
+    body: formData,
+    signal: AbortSignal.timeout(30000),
+  });
+}
+
+/**
+ * Actualiza documentos de verificación en caso de correcciones solicitadas.
+ */
+export async function updateSellerVerificationApi(proveedorId, formData) {
+  return fetchApi(`/proveedores/${proveedorId}/verificacion`, {
+    method: 'PUT',
+    body: formData,
+    signal: AbortSignal.timeout(30000),
+  });
+}
+
+/**
+ * Envía una apelación formal ante una verificación rechazada.
+ */
+export async function appealSellerVerificationApi(proveedorId, apelacion) {
+  return fetchApi(`/proveedores/${proveedorId}/verificacion/apelar`, {
+    method: 'POST',
+    body: JSON.stringify({ apelacion }),
+  });
+}
+
+/**
+ * Registra la aceptación del Contrato de Adhesión del proveedor.
+ */
+export async function acceptSellerAdhesionApi(proveedorId) {
+  return fetchApi(`/proveedores/${proveedorId}/adhesion`, {
+    method: 'POST',
+  });
+}
+
+// -------------------------------------------------------------
+// FASE 6: CHATS CON IMAGEN
+// -------------------------------------------------------------
+
+/**
+ * Sube una imagen al chat de conversación / cotización.
+ */
+export async function uploadConversationImageApi(conversacionId, file, { signal } = {}) {
+  const formData = new FormData();
+  formData.append('imagen', file);
+  return fetchApi(`/conversaciones/${conversacionId}/imagenes`, {
+    method: 'POST',
+    body: formData,
+    signal: signal || AbortSignal.timeout(30000),
+  });
+}
+
+// -------------------------------------------------------------
+// FASE 5: DESCUBRIMIENTO, VEHÍCULOS Y FAVORITOS
+// -------------------------------------------------------------
+
+/**
+ * Obtiene las preguntas públicas realizadas por el comprador autenticado.
+ */
+export async function getBuyerProductQuestionsApi({ signal } = {}) {
+  try {
+    const res = await fetchApi('/usuarios/me/preguntas-productos', { method: 'GET', signal });
+    return Array.isArray(res) ? res : (res?.content || []);
+  } catch (err) {
+    if (err.status === 404) return [];
+    throw err;
+  }
+}
+
+/**
+ * OJO: estas dos funciones TODAVIA NO LAS USA NINGUNA VISTA.
+ *
+ * Son la mitad de la busqueda por vehiculo (A16 del plan de paridad). En la app, elegir
+ * un vehiculo filtra el catalogo, la tienda y el directorio; en la web `activeVehicle`
+ * es decorativo (muestra "Compatible con {patente}" y nada mas), y su `catalogoId` se
+ * adapta pero no se consume.
+ *
+ * Quedan escritas a proposito para quien conecte la vista, pero A16 sigue PENDIENTE:
+ * que existan aca no significa que la funcion exista para el usuario. Conectarlas
+ * implica una segunda fuente de datos en PartsCatalogView, porque
+ * `/vehiculos-catalogo/{id}/repuestos` devuelve `RepuestoOfertaPageDTO` con las ofertas
+ * anidadas, no el listado plano de `/inventario/productos`.
+ */
+
+/**
+ * Consulta información detallada de vehículos en catálogo por sus IDs.
+ */
+export async function getInventoryVehicleCatalogsApi(ids, { signal } = {}) {
+  if (!ids || !ids.length) return [];
+  const params = new URLSearchParams({ ids: ids.join(',') });
+  return fetchApi(`/catalogos/inventario/vehiculo-catalogos?${params.toString()}`, { method: 'GET', signal });
+}
+
+/**
+ * Retorna las ofertas de repuestos compatibles con un vehiculo_catalogo específico.
+ */
+export async function getVehicleCatalogPartsApi(catalogoId, { categoriaId, marcaId, precioMin, precioMax, texto, page = 0, size = 20, signal } = {}) {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (categoriaId) params.set('categoriaId', String(categoriaId));
+  if (marcaId) params.set('marcaId', String(marcaId));
+  if (precioMin) params.set('precioMin', String(precioMin));
+  if (precioMax) params.set('precioMax', String(precioMax));
+  if (texto) params.set('texto', texto);
+  return fetchApi(`/vehiculos-catalogo/${catalogoId}/repuestos?${params.toString()}`, { method: 'GET', signal });
+}
+
+/**
+ * Registra o identifica un vehículo ingresado manualmente por el usuario.
+ */
+export async function createManualVehicleApi(data) {
+  return fetchApi('/vehiculos/manual', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Agrega un producto a la lista de favoritos del usuario.
+ */
+export async function addFavoriteApi(usuarioId, productoId) {
+  return fetchApi(`/usuarios/${usuarioId}/favoritos`, {
+    method: 'POST',
+    body: JSON.stringify({ proveedorProductoId: Number(productoId) }),
+  });
+}
+
+/**
+ * Elimina un producto de la lista de favoritos del usuario por su ID de favorito.
+ */
+export async function removeFavoriteApi(usuarioId, favoritoId) {
+  return fetchApi(`/usuarios/${usuarioId}/favoritos/${favoritoId}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Consulta si un producto específico está en los favoritos del usuario.
+ */
+export async function checkIsFavoriteApi(usuarioId, productoId, { signal } = {}) {
+  try {
+    return await fetchApi(`/usuarios/${usuarioId}/favoritos/productos/${productoId}`, { method: 'GET', signal });
+  } catch (err) {
+    if (err.status === 404) return { esFavorito: false };
+    throw err;
+  }
+}
+
