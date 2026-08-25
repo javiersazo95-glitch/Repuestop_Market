@@ -1104,12 +1104,19 @@ los cancelados históricos, que siguen sin motivo.
 No se pudo ejercitar la glosa contable: esos endpoints exigen rol de backoffice
 desde SEC-BACKEND-014.
 
-**Ojo con una inconsistencia PREEXISTENTE que se ve al expirar un pedido:** el
-ítem queda en `estado: ACTIVO` dentro de un pedido `CANCELADO`.
-`expirarPedidosVencidos()` marca el pedido y restaura el stock, pero nunca toca
-los ítems, a diferencia de la cancelación del vendedor. Hoy no rompe la UI porque
-el motivo que se muestra es el del pedido, pero
-`LiquidacionPedidoCalculator.itemsActivos()` los cuenta como activos.
+**El ítem que quedaba `ACTIVO` al expirar quedó corregido** (monorepo `91e280d`).
+`expirarPedidosVencidos()` marcaba el pedido y restauraba el stock pero no tocaba
+los ítems, y `LiquidacionPedidoCalculator.itemsActivos()` los contaba como vivos
+en la liquidación. Ahora pasan a `CANCELADO_EXPIRACION_PAGO`, un estado propio:
+usar `CANCELADO_VENDEDOR` le habría ensuciado las métricas al vendedor por algo
+que no decidió. Solo se tocan los ítems en `ACTIVO`, para no pisar los que otro
+vendedor ya había cancelado en un pedido multi-tienda.
+
+Ese estado es nuevo y **la APK desplegada no lo conoce**: su `isCancelled` compara
+contra `CANCELADO_VENDEDOR` y `CANCELADO_BLOQUEO_VENDEDOR`
+(`mobile/components/order-detail/order-detail-parts.tsx`), así que la fila del ítem
+no se verá tachada. Es cosmético —el pedido ya sale cancelado a nivel cabecera— y
+se corrige cuando el móvil sume el valor. La web no lee el estado del ítem.
 
 **Sigue pendiente publicar los minutos de la ventana de pago.**
 `PAYMENT_WINDOW_MINUTES` en `src/data/orderStatusFlow.js` es un **espejo** de
