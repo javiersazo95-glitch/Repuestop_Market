@@ -331,28 +331,33 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
               </>
             )}
 
-            <div className="product-marketplace-flow">
-              <div><small>Paga con</small><strong>flow</strong><span>Procesamos tu pago con Flow</span></div>
-              {!quoteOnly && Number(product.precio) > 0 && (
-                <div className="product-marketplace-installments">
-                  <p className="product-marketplace-installments-hint"><CreditCard /> Simula tus cuotas con Flow</p>
-                  <div className="product-marketplace-installments-grid">
-                    {[3, 6, 12].map((cuotas) => (
-                      <div key={cuotas}>
-                        <strong>{cuotas}x</strong>
-                        <span>${Math.ceil(Number(product.precio) / cuotas).toLocaleString('es-CL')}</span>
-                      </div>
-                    ))}
+            {/* Nada de esto aplica sobre el propio repuesto: el vendedor no puede
+                comprarlo, asi que la pasarela, la simulacion de cuotas y los logos
+                de tarjetas ofrecen un pago que la caja de arriba ya bloqueo. */}
+            {!isOwnProduct && (
+              <div className="product-marketplace-flow">
+                <div><small>Paga con</small><strong>flow</strong><span>Procesamos tu pago con Flow</span></div>
+                {!quoteOnly && Number(product.precio) > 0 && (
+                  <div className="product-marketplace-installments">
+                    <p className="product-marketplace-installments-hint"><CreditCard /> Simula tus cuotas con Flow</p>
+                    <div className="product-marketplace-installments-grid">
+                      {[3, 6, 12].map((cuotas) => (
+                        <div key={cuotas}>
+                          <strong>{cuotas}x</strong>
+                          <span>${Math.ceil(Number(product.precio) / cuotas).toLocaleString('es-CL')}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <small>Valor aproximado por cuota, sin interés. Confirma las condiciones finales al pagar con Flow.</small>
                   </div>
-                  <small>Valor aproximado por cuota, sin interés. Confirma las condiciones finales al pagar con Flow.</small>
+                )}
+                <div className="product-marketplace-card-brands" aria-label="Tarjetas aceptadas">
+                  <span className="payment-brand-logo payment-brand-visa" aria-label="Visa">VISA</span>
+                  <span className="payment-brand-logo payment-brand-mastercard" aria-label="Mastercard"><i /><i /><small>mastercard</small></span>
+                  <span className="payment-brand-logo payment-brand-redcompra" aria-label="Redcompra"><b>Red</b><b>compra</b></span>
                 </div>
-              )}
-              <div className="product-marketplace-card-brands" aria-label="Tarjetas aceptadas">
-                <span className="payment-brand-logo payment-brand-visa" aria-label="Visa">VISA</span>
-                <span className="payment-brand-logo payment-brand-mastercard" aria-label="Mastercard"><i /><i /><small>mastercard</small></span>
-                <span className="payment-brand-logo payment-brand-redcompra" aria-label="Redcompra"><b>Red</b><b>compra</b></span>
               </div>
-            </div>
+            )}
 
             <div className="product-marketplace-assurances">
               <span><ShieldCheck /><p><b>Compra segura y protegida</b><small>Tu información está 100% protegida</small></p></span>
