@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   X, Clock, Wrench, Truck, PackageCheck, User, Store,
   MapPin, Phone, Mail, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
-  RotateCcw, Loader2
+  RotateCcw, Loader2, XCircle
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
 import { resolveShippingService } from '../data/shippingMethods';
@@ -56,6 +56,7 @@ export default function OrderDetailModal({
   onClose,
   onUpdateStatus,
   onRetryPayment,
+  onCancelOrder,
 }) {
   const rawStatus = order?.estado || order?.status || 'PENDIENTE';
   const normStatus = String(rawStatus).toUpperCase();
@@ -65,6 +66,8 @@ export default function OrderDetailModal({
   const [statusError, setStatusError] = useState('');
   const [isRetryingPayment, setIsRetryingPayment] = useState(false);
   const [retryError, setRetryError] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [now, setNow] = useState(Date.now());
 
   // El reloj corre por minuto solo mientras haya un plazo de pago que mostrar.
@@ -81,6 +84,7 @@ export default function OrderDetailModal({
   // Solo el comprador paga, y solo mientras el pedido siga sin pagarse.
   const canRetryPayment = !isSeller && normStatus === 'PENDIENTE' && Boolean(onRetryPayment);
   const paymentWindow = canRetryPayment ? orderPaymentWindow(order, now) : null;
+  const canCancelOrder = !isSeller && normStatus === 'PENDIENTE' && Boolean(onCancelOrder);
   const cancellationReason = normStatus === 'CANCELADO' ? cancellationReasonLabel(order) : null;
   // La explicacion esta escrita para el comprador ("si pagaste, el reembolso...").
   // Al vendedor le basta la etiqueta: el motivo lo declaro el.
@@ -474,10 +478,39 @@ export default function OrderDetailModal({
               {isRetryingPayment ? 'Abriendo pago…' : 'Retomar pago'}
             </button>
           )}
+          {canCancelOrder && (
+            <button
+              type="button"
+              className="btn-auth-danger"
+              disabled={isCancelling}
+              onClick={async () => {
+                if (!confirmCancel) { setConfirmCancel(true); return; }
+                setIsCancelling(true);
+                setRetryError('');
+                try {
+                  await onCancelOrder(order);
+                  onClose?.();
+                } catch (err) {
+                  setRetryError(err?.message || 'No se pudo cancelar el pedido.');
+                } finally {
+                  setIsCancelling(false);
+                  setConfirmCancel(false);
+                }
+              }}
+            >
+              {isCancelling ? <Loader2 size={16} className="spin-icon" /> : <XCircle size={16} />}
+              {isCancelling ? 'Cancelando…' : confirmCancel ? 'Sí, cancelar el pedido' : 'Cancelar pedido'}
+            </button>
+          )}
           <button type="button" className="btn-auth-secondary" onClick={onClose}>
             Cerrar
           </button>
         </div>
+        {confirmCancel && !isCancelling && (
+          <p className="order-modal-retry-error">
+            El pedido se cancela y las unidades vuelven al stock. No se puede deshacer.
+          </p>
+        )}
         {retryError && <p className="order-modal-retry-error">{retryError}</p>}
       </div>
     </div>

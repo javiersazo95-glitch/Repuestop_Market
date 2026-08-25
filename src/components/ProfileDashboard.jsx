@@ -568,6 +568,16 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     window.location.href = renewed.urlPago;
   };
 
+  /**
+   * El comprador desiste de un pedido que todavia no paga. Va por la transicion de
+   * estado y no por el endpoint de cancelacion, que es del vendedor y exige motivo.
+   * El backend solo lo permite en PENDIENTE: ya pagado hay que reembolsar.
+   */
+  const handleCancelOrder = async (order) => {
+    if (!order?.id) return;
+    await handleUpdateOrderStatus(order.id, 'CANCELADO');
+  };
+
   const handleSaveCatalogProduct = async (productId, updatedFields) => {
     queryClient.invalidateQueries({ queryKey: qk.sellerInventory(user?.sellerId, { page: catalogPage, size: catalogPageSize, texto: catalogSearchTerm }) });
     setSelectedCatalogProduct((prev) =>
@@ -1449,7 +1459,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                       </div>
                     )}
                     <h2 className="profile-panel-title">Mis Pedidos</h2>
-                    {(orders || []).length === 0 ? <EmptyState label="Aún no has realizado pedidos." /> : <div className="profile-orders-cards-grid">{orders.map((order) => <OrderCard key={order.id} order={order} mode="buyer" onSelectOrder={(item) => setSelectedOrder(item)} onUpdateStatus={handleUpdateOrderStatus} onRetryPayment={handleRetryPayment} />)}</div>}
+                    {(orders || []).length === 0 ? <EmptyState label="Aún no has realizado pedidos." /> : <div className="profile-orders-cards-grid">{orders.map((order) => <OrderCard key={order.id} order={order} mode="buyer" onSelectOrder={(item) => setSelectedOrder(item)} onUpdateStatus={handleUpdateOrderStatus} onRetryPayment={handleRetryPayment} onCancelOrder={handleCancelOrder} />)}</div>}
                   </div>
                 )
               )}
@@ -2064,6 +2074,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           onClose={() => setSelectedOrder(null)}
           onUpdateStatus={handleUpdateOrderStatus}
           onRetryPayment={isSeller ? undefined : handleRetryPayment}
+          onCancelOrder={isSeller ? undefined : handleCancelOrder}
         />
       )}
 

@@ -62,12 +62,15 @@ export default function OrderCard({
   onSelectOrder,
   onUpdateStatus,
   onRetryPayment,
+  onCancelOrder,
   withdrawalDate,
 }) {
   const [showCommissionModal, setShowCommissionModal] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [actionError, setActionError] = useState('');
   const [isRetryingPayment, setIsRetryingPayment] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [now, setNow] = useState(Date.now());
   const isSeller = mode === 'seller';
 
@@ -94,6 +97,9 @@ export default function OrderCard({
   // Solo el comprador paga, y solo mientras el pedido siga sin pagarse.
   const canRetryPayment = !isSeller && normStatus === 'PENDIENTE' && Boolean(onRetryPayment);
   const paymentWindow = canRetryPayment ? orderPaymentWindow(order, now) : null;
+  // Solo mientras no se haya pagado: un pedido ya pagado necesita reembolso y eso
+  // pasa por el vendedor. Es la misma frontera que aplica el backend.
+  const canCancelOrder = !isSeller && normStatus === 'PENDIENTE' && Boolean(onCancelOrder);
   // Solo cuando el backend registro la causa. Los cancelados historicos no la
   // tienen y se quedan con "Cancelado" a secas, sin explicacion inventada.
   const cancellationReason = normStatus === 'CANCELADO' ? cancellationReasonLabel(order) : null;
@@ -392,6 +398,44 @@ export default function OrderCard({
               {isRetryingPayment ? <Loader2 size={14} className="spin-icon" /> : <RotateCcw size={14} />}
               <span>{isRetryingPayment ? 'Abriendo pago…' : 'Retomar pago'}</span>
             </button>
+          )}
+          {canCancelOrder && (
+            confirmCancel ? (
+              <span className="order-cancel-confirm">
+                <small>¿Cancelar?</small>
+                <button
+                  type="button"
+                  className="order-cancel-yes"
+                  disabled={isCancelling}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCancelling(true);
+                    setActionError('');
+                    Promise.resolve(onCancelOrder(order))
+                      .catch((err) => setActionError(err?.message || 'No se pudo cancelar el pedido.'))
+                      .finally(() => { setIsCancelling(false); setConfirmCancel(false); });
+                  }}
+                >
+                  {isCancelling ? <Loader2 size={13} className="spin-icon" /> : 'Sí, cancelar'}
+                </button>
+                <button
+                  type="button"
+                  className="order-cancel-no"
+                  onClick={(e) => { e.stopPropagation(); setConfirmCancel(false); }}
+                >
+                  No
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="btn-order-action btn-action-danger"
+                onClick={(e) => { e.stopPropagation(); setConfirmCancel(true); }}
+              >
+                <XCircle size={14} />
+                <span>Cancelar pedido</span>
+              </button>
+            )
           )}
           {renderStatusButton()}
         </div>

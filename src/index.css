@@ -5797,6 +5797,18 @@ input, select, textarea {
   gap: 10px;
 }
 
+/* Cancelar es destructivo: pide confirmacion en dos pasos en vez de dispararse al
+   primer clic, igual que el Alert de la app. */
+.btn-order-action.btn-action-danger { color: #B8261A; background: #FFF0F0; border: 1px solid #FECACA; }
+.btn-order-action.btn-action-danger:hover { background: #FFE4E4; }
+.order-cancel-confirm { display: inline-flex; align-items: center; gap: 6px; }
+.order-cancel-confirm small { color: #B8261A; font-size: 12px; font-weight: 700; }
+.order-cancel-yes { padding: 6px 10px; border: 0; border-radius: 8px; background: #B8261A; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+.order-cancel-no { padding: 6px 10px; border: 1px solid var(--border-subtle); border-radius: 8px; background: #fff; color: #475569; font-size: 12px; font-weight: 600; cursor: pointer; }
+.btn-auth-danger { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 10px; border: 1px solid #FECACA; background: #FFF0F0; color: #B8261A; font-size: 14px; font-weight: 700; cursor: pointer; }
+.btn-auth-danger:hover { background: #FFE4E4; }
+.btn-auth-danger:disabled { opacity: .6; cursor: not-allowed; }
+
 /* Motivo de cancelacion. En la tarjeta va como una linea sobria y en el detalle
    como bloque, porque ahi acompaña la explicacion de que pasa con el dinero. */
 .order-cancellation-reason {
