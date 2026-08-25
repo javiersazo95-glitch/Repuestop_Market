@@ -1095,12 +1095,21 @@ Dos cosas que casi se rompen y conviene no repetir:
   no ejecuta, el build pasaba igual: habría sido un fallo 15 sumado a los 14
   preexistentes.
 
-**Falta ejercitar `EXPIRACION_PAGO` en ejecución.** Se verificó el camino del
-vendedor de punta a punta (pedido #13 → `SIN_STOCK` / `VENDEDOR`, ítem con el
-código y la etiqueta legada intacta); el de expiración usa el mismo
-`marcarCancelado()` cambiando solo los valores del enum, pero no se vio correr.
-Tampoco se pudo ejercitar la glosa contable: esos endpoints exigen rol de
-backoffice desde SEC-BACKEND-014.
+**Los cuatro caminos quedaron ejercitados.** El del vendedor con el pedido #13
+(`SIN_STOCK` / `VENDEDOR`, ítem con el código y la etiqueta legada intacta), y el
+del job con el #14 (`EXPIRACION_PAGO` / `SISTEMA`, con el `canceladoEn` coincidiendo
+al milisegundo con la línea del log). En pantalla conviven los dos motivos junto a
+los cancelados históricos, que siguen sin motivo.
+
+No se pudo ejercitar la glosa contable: esos endpoints exigen rol de backoffice
+desde SEC-BACKEND-014.
+
+**Ojo con una inconsistencia PREEXISTENTE que se ve al expirar un pedido:** el
+ítem queda en `estado: ACTIVO` dentro de un pedido `CANCELADO`.
+`expirarPedidosVencidos()` marca el pedido y restaura el stock, pero nunca toca
+los ítems, a diferencia de la cancelación del vendedor. Hoy no rompe la UI porque
+el motivo que se muestra es el del pedido, pero
+`LiquidacionPedidoCalculator.itemsActivos()` los cuenta como activos.
 
 **Sigue pendiente publicar los minutos de la ventana de pago.**
 `PAYMENT_WINDOW_MINUTES` en `src/data/orderStatusFlow.js` es un **espejo** de
