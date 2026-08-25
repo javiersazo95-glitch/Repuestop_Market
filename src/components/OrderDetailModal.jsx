@@ -20,6 +20,10 @@ const SELLER_CANCEL_REASONS = [
   { code: 'OTRO', label: 'Otro motivo (especificar)' },
 ];
 
+// `Pedido.valorEnvioInformado` es NUMERIC(12,2): mas de 10 digitos enteros no entra en
+// la columna. Se corta en 9 en el formulario, que ya es un flete imposible.
+const MAX_SHIPPING_FEE_DIGITS = 9;
+
 const COMMON_COURIERS = [
   'Starken',
   'Chilexpress',
@@ -110,7 +114,6 @@ export default function OrderDetailModal({
   const [dispatchTrackingNumber, setDispatchTrackingNumber] = useState(order?.trackingNumber || '');
   const [dispatchShippingFee, setDispatchShippingFee] = useState(order?.shippingFee || '');
   const [dispatchVoucherFile, setDispatchVoucherFile] = useState(null);
-  const [dispatchVoucherPreview, setDispatchVoucherPreview] = useState(null);
   const [isRegisteringDispatch, setIsRegisteringDispatch] = useState(false);
   const [dispatchError, setDispatchError] = useState('');
 
@@ -290,17 +293,13 @@ export default function OrderDetailModal({
     }
   };
 
+  // Se muestra solo el nombre del archivo. La miniatura en base64 obligaba a leer la
+  // imagen completa en memoria para pintarla recortada dentro de una caja chica, y el
+  // comprobante no se revisa aca: se sube y se ve despues en el pedido.
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setDispatchVoucherFile(file);
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (ev) => setDispatchVoucherPreview(ev.target?.result || null);
-      reader.readAsDataURL(file);
-    } else {
-      setDispatchVoucherPreview(null);
-    }
   };
 
   return (
@@ -803,6 +802,7 @@ export default function OrderDetailModal({
                   <input
                     type="text"
                     required
+                    maxLength={120}
                     list="couriers-list"
                     placeholder="Ej: Starken, Chilexpress, Blue Express..."
                     value={dispatchCourier}
@@ -818,6 +818,7 @@ export default function OrderDetailModal({
                   <input
                     type="text"
                     required
+                    maxLength={120}
                     placeholder="Ej: 1234567890"
                     value={dispatchTrackingNumber}
                     onChange={(e) => setDispatchTrackingNumber(e.target.value)}
@@ -827,11 +828,11 @@ export default function OrderDetailModal({
                 <label className="order-subdialog-field">
                   <span>Valor del envío (opcional)</span>
                   <input
-                    type="number"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
                     placeholder="Ej: 4500"
                     value={dispatchShippingFee}
-                    onChange={(e) => setDispatchShippingFee(e.target.value)}
+                    onChange={(e) => setDispatchShippingFee(e.target.value.replace(/\D/g, '').slice(0, MAX_SHIPPING_FEE_DIGITS))}
                   />
                 </label>
 
@@ -842,10 +843,14 @@ export default function OrderDetailModal({
                     <span>{dispatchVoucherFile ? dispatchVoucherFile.name : 'Adjuntar foto o PDF del comprobante'}</span>
                     <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} />
                   </label>
-                  {dispatchVoucherPreview && (
-                    <div className="order-subdialog-filepreview">
-                      <img src={dispatchVoucherPreview} alt="Comprobante" />
-                    </div>
+                  {dispatchVoucherFile && (
+                    <button
+                      type="button"
+                      className="order-subdialog-fileclear"
+                      onClick={() => setDispatchVoucherFile(null)}
+                    >
+                      Quitar archivo
+                    </button>
                   )}
                 </div>
 
