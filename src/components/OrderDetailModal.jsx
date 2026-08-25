@@ -8,6 +8,7 @@ import { OrderStatusBadge } from './OrderCard';
 import { resolveShippingService } from '../data/shippingMethods';
 import { resolveMediaUrl } from '../services/api';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
+import ConfirmDialog from './ConfirmDialog';
 import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancellationReason';
 
 function initialsFromName(name) {
@@ -68,6 +69,7 @@ export default function OrderDetailModal({
   const [retryError, setRetryError] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelError, setCancelError] = useState('');
   const [now, setNow] = useState(Date.now());
 
   // El reloj corre por minuto solo mientras haya un plazo de pago que mostrar.
@@ -479,38 +481,38 @@ export default function OrderDetailModal({
             </button>
           )}
           {canCancelOrder && (
-            <button
-              type="button"
-              className="btn-auth-danger"
-              disabled={isCancelling}
-              onClick={async () => {
-                if (!confirmCancel) { setConfirmCancel(true); return; }
-                setIsCancelling(true);
-                setRetryError('');
-                try {
-                  await onCancelOrder(order);
-                  onClose?.();
-                } catch (err) {
-                  setRetryError(err?.message || 'No se pudo cancelar el pedido.');
-                } finally {
-                  setIsCancelling(false);
-                  setConfirmCancel(false);
-                }
-              }}
-            >
-              {isCancelling ? <Loader2 size={16} className="spin-icon" /> : <XCircle size={16} />}
-              {isCancelling ? 'Cancelando…' : confirmCancel ? 'Sí, cancelar el pedido' : 'Cancelar pedido'}
+            <button type="button" className="btn-auth-danger" onClick={() => setConfirmCancel(true)}>
+              <XCircle size={16} />
+              Cancelar pedido
             </button>
           )}
           <button type="button" className="btn-auth-secondary" onClick={onClose}>
             Cerrar
           </button>
         </div>
-        {confirmCancel && !isCancelling && (
-          <p className="order-modal-retry-error">
-            El pedido se cancela y las unidades vuelven al stock. No se puede deshacer.
-          </p>
-        )}
+        <ConfirmDialog
+          isOpen={confirmCancel}
+          title="¿Cancelar este pedido?"
+          message="Las unidades vuelven al stock y el pedido queda cancelado. Esta acción no se puede deshacer; si aún quieres el repuesto tendrás que comprarlo de nuevo."
+          confirmLabel="Sí, cancelar pedido"
+          cancelLabel="No, mantenerlo"
+          isBusy={isCancelling}
+          error={cancelError}
+          onCancel={() => { if (!isCancelling) { setConfirmCancel(false); setCancelError(''); } }}
+          onConfirm={async () => {
+            setIsCancelling(true);
+            setCancelError('');
+            try {
+              await onCancelOrder(order);
+              setConfirmCancel(false);
+              onClose?.();
+            } catch (err) {
+              setCancelError(err?.message || 'No se pudo cancelar el pedido.');
+            } finally {
+              setIsCancelling(false);
+            }
+          }}
+        />
         {retryError && <p className="order-modal-retry-error">{retryError}</p>}
       </div>
     </div>

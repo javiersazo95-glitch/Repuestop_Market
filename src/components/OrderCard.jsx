@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
+import ConfirmDialog from './ConfirmDialog';
 import { cancellationReasonLabel } from '../data/cancellationReason';
 
 export const UNIFIED_STATUS_CONFIG = {
@@ -400,46 +401,37 @@ export default function OrderCard({
             </button>
           )}
           {canCancelOrder && (
-            confirmCancel ? (
-              <span className="order-cancel-confirm">
-                <small>¿Cancelar?</small>
-                <button
-                  type="button"
-                  className="order-cancel-yes"
-                  disabled={isCancelling}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsCancelling(true);
-                    setActionError('');
-                    Promise.resolve(onCancelOrder(order))
-                      .catch((err) => setActionError(err?.message || 'No se pudo cancelar el pedido.'))
-                      .finally(() => { setIsCancelling(false); setConfirmCancel(false); });
-                  }}
-                >
-                  {isCancelling ? <Loader2 size={13} className="spin-icon" /> : 'Sí, cancelar'}
-                </button>
-                <button
-                  type="button"
-                  className="order-cancel-no"
-                  onClick={(e) => { e.stopPropagation(); setConfirmCancel(false); }}
-                >
-                  No
-                </button>
-              </span>
-            ) : (
-              <button
-                type="button"
-                className="btn-order-action btn-action-danger"
-                onClick={(e) => { e.stopPropagation(); setConfirmCancel(true); }}
-              >
-                <XCircle size={14} />
-                <span>Cancelar pedido</span>
-              </button>
-            )
+            <button
+              type="button"
+              className="btn-order-action btn-action-danger"
+              onClick={(e) => { e.stopPropagation(); setConfirmCancel(true); }}
+            >
+              <XCircle size={14} />
+              <span>Cancelar pedido</span>
+            </button>
           )}
           {renderStatusButton()}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmCancel}
+        title="¿Cancelar este pedido?"
+        message="Las unidades vuelven al stock y el pedido queda cancelado. Esta acción no se puede deshacer; si aún quieres el repuesto tendrás que comprarlo de nuevo."
+        confirmLabel="Sí, cancelar pedido"
+        cancelLabel="No, mantenerlo"
+        isBusy={isCancelling}
+        error={actionError}
+        onCancel={() => { if (!isCancelling) { setConfirmCancel(false); setActionError(''); } }}
+        onConfirm={() => {
+          setIsCancelling(true);
+          setActionError('');
+          Promise.resolve(onCancelOrder(order))
+            .then(() => setConfirmCancel(false))
+            .catch((err) => setActionError(err?.message || 'No se pudo cancelar el pedido.'))
+            .finally(() => setIsCancelling(false));
+        }}
+      />
 
       {/* Seller Commission Modal */}
       {showCommissionModal && (
