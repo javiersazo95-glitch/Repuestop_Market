@@ -1062,26 +1062,50 @@ la app Flow se abre incrustado y la pantalla sobrevive; en la web la página se 
 entera y vuelve con el resultado en `?status=...&orderId=...`, donde basta una
 sola llamada.
 
-#### PENDIENTE DE BACKEND — motivo de cancelación del pedido
+#### Motivo de cancelación del pedido — CERRADO (monorepo `19a6a06`)
 
 `PedidoResponseDTO` **no expone por qué se canceló un pedido**. El único campo es
 `cancelacionPorBloqueoVendedor`. Para el comprador, un pedido cancelado porque no
 alcanzó a pagar dentro de la ventana de 30 minutos se ve EXACTAMENTE IGUAL que uno
 cancelado por el vendedor o por un reembolso: dice "Cancelado" y nada más.
 
-Inferirlo en el cliente sería adivinar, así que **la web no puede arreglarlo
-sola**. Hace falta un campo en el DTO (algo como `motivoCancelacion`, con al menos
-`EXPIRACION_PAGO` / `VENDEDOR` / `REEMBOLSO`) que llene tanto
-`PedidoPagoSupport.reintentarPago()` como el job `expirarPedidosVencidos()`.
-Recién ahí la web puede decir "se canceló porque no se completó el pago" y ofrecer
-volver a comprar. Orden obligatorio: backend primero.
+Inferirlo en el cliente sería adivinar, así que la web no podía arreglarlo sola.
 
-Mientras tanto se cerró la mitad que sí depende de la web: el pedido pendiente
-ahora muestra cuánto queda de la ventana. Ojo con eso —
+**Se implementó en la misma sesión.** `Pedido` guarda `motivoCancelacion` y
+`canceladoPor` como enums, más `detalleCancelacion` (solo para `OTRO`) y
+`canceladoEn` — aparte de `updatedAt`, que se pisa en cada `@PreUpdate` y además
+es el reloj de la ventana de pago. Los cuatro caminos que cancelaban un pedido
+pasan por `Pedido.marcarCancelado()`, para que ninguno pueda dejar el estado sin
+su motivo. La web lo traduce en `src/data/cancellationReason.js`.
+
+**Se guarda el CÓDIGO, no la etiqueta.** El nivel ítem ya tenía la taxonomía pero
+`PedidoCancelacionSupport` persistía el texto renderizado y tiraba el código. Se
+corrigió: `motivo_cancelacion` quedó deprecada y la verdad vive en
+`motivo_cancelacion_codigo`. **El DTO sigue devolviendo la misma etiqueta de
+siempre** en `motivoCancelacion`, ahora derivada, porque la APK en producción la
+muestra tal cual y el código en crudo le pondría "SIN_STOCK" al comprador.
+
+Dos cosas que casi se rompen y conviene no repetir:
+
+- `LiquidacionPedidoCalculator.cancellationTooltip()` leía la columna de texto
+  para la glosa de Administración Contable. Al dejar de escribirse, toda
+  cancelación nueva habría quedado **sin motivo en la liquidación**. Ahora deriva
+  del código.
+- `PedidoServiceTest` afirmaba el texto guardado. Como `-DskipTests` compila pero
+  no ejecuta, el build pasaba igual: habría sido un fallo 15 sumado a los 14
+  preexistentes.
+
+**Falta ejercitar `EXPIRACION_PAGO` en ejecución.** Se verificó el camino del
+vendedor de punta a punta (pedido #13 → `SIN_STOCK` / `VENDEDOR`, ítem con el
+código y la etiqueta legada intacta); el de expiración usa el mismo
+`marcarCancelado()` cambiando solo los valores del enum, pero no se vio correr.
+Tampoco se pudo ejercitar la glosa contable: esos endpoints exigen rol de
+backoffice desde SEC-BACKEND-014.
+
+**Sigue pendiente publicar los minutos de la ventana de pago.**
 `PAYMENT_WINDOW_MINUTES` en `src/data/orderStatusFlow.js` es un **espejo** de
 `repuestop.pedido.expiracion.minutos` del `application.properties`, que no se
-expone por API. Si allá cambia, el contador miente. Publicarlo en el DTO junto
-con el motivo resolvería las dos cosas de una vez.
+expone por API. Si allá cambia, el contador de la web miente.
 
 #### Lo que se revisó y resultó estar bien
 
