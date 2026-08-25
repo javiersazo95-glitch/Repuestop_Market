@@ -1,13 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Car, Store, ChevronRight, X, Eye, EyeOff, Lock, Mail,
-  ShieldCheck, ArrowLeft, AlertCircle, CheckCircle2, UserPlus, LogIn, Check
+  ShieldCheck, ArrowLeft, AlertCircle, CheckCircle2, UserPlus, LogIn, Check,
+  KeyRound, RefreshCw, AlertTriangle, Building2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import { decodeGoogleIdToken } from '../utils/googleIdToken';
 import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import { ROUTES } from '../routes/paths';
+import {
+  recoverPasswordSendCodeApi,
+  recoverPasswordVerifyCodeApi,
+  recoverPasswordResetApi,
+  checkEmailAvailabilityApi,
+} from '../services/api';
 
 // ID de cliente OAuth de RepuesTop en Google Cloud (mismo usado por mobile/backoffice/vendedor_panel
 // y configurado en el backend vía repuestop.google.client-id). No es un secreto: los client IDs de
@@ -169,10 +176,33 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
   const [buyerComunaError, setBuyerComunaError] = useState('');
   const [acceptsTerms, setAcceptsTerms] = useState(false);
   
+  // Password Recovery State
+  const [recoverEmail, setRecoverEmail] = useState('');
+  const [recoverRole, setRecoverRole] = useState('CLIENTE'); // 'CLIENTE' | 'PROVEEDOR'
+  const [recoverCode, setRecoverCode] = useState('');
+  const [recoverNewPassword, setRecoverNewPassword] = useState('');
+  const [recoverConfirmPassword, setRecoverConfirmPassword] = useState('');
+  const [showRecoverPassword, setShowRecoverPassword] = useState(false);
+  const [recoverCooldown, setRecoverCooldown] = useState(0);
+  const [isResendingCode, setIsResendingCode] = useState(false);
+
+  // Email check state (Buyer Register)
+  const [emailTakenWarning, setEmailTakenWarning] = useState(null);
+  const [, setIsCheckingEmail] = useState(false);
+
   // UI status
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+
+  // Countdown timer for resending recovery code
+  useEffect(() => {
+    if (recoverCooldown <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setRecoverCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [recoverCooldown]);
 
   if (!isOpen) return null;
 
@@ -184,9 +214,21 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setPassword('');
     setBuyerName('');
     setBuyerPhone('');
+    setBuyerStreet('');
+    setBuyerComuna(null);
+    setBuyerComunaError('');
+    setAcceptsTerms(false);
     setErrorMessage(null);
     setSuccessMessage(null);
     setShowPassword(false);
+    setRecoverEmail('');
+    setRecoverRole('CLIENTE');
+    setRecoverCode('');
+    setRecoverNewPassword('');
+    setRecoverConfirmPassword('');
+    setShowRecoverPassword(false);
+    setRecoverCooldown(0);
+    setEmailTakenWarning(null);
   };
 
   const handleClose = () => {
@@ -210,6 +252,132 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
       return;
     }
     setStep('login_form');
+  };
+
+  const handleStartRecovery = () => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setRecoverRole(selectedRole === 'SELLER' ? 'PROVEEDOR' : 'CLIENTE');
+    setRecoverEmail(email ? email.trim() : '');
+    setRecoverCode('');
+    setRecoverNewPassword('');
+    setRecoverConfirmPassword('');
+    setStep('recover_email');
+  };
+
+  const handleSendRecoveryCode = async (e) => {
+    e.preventDefault();
+    const cleanEmail = recoverEmail.trim().toLowerCase();
+    if (!cleanEmail) {
+      setErrorMessage(recoverRole === 'PROVEEDOR'
+        ? 'Ingresa el RUT de tu tienda.'
+        : 'Ingresa tu correo electrónico registrado.');
+      return;
+    }
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    try {
+      const res = await recoverPasswordSendCodeApi(cleanEmail, recoverRole);
+      if (res?.email) setRecoverEmail(res.email);
+      setSuccessMessage('Código de recuperación enviado. Revisa tu bandeja de entrada o spam.');
+      setRecoverCooldown(60);
+      setStep('recover_code');
+    } catch (err) {
+      setErrorMessage(err.message || 'No se pudo enviar el código. Verifica el correo e inténtalo nuevamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResendRecoveryCode = async () => {
+    if (recoverCooldown > 0 || isResendingCode) return;
+    const cleanEmail = recoverEmail.trim().toLowerCase();
+    if (!cleanEmail) return;
+    setIsResendingCode(true);
+    setErrorMessage(null);
+    try {
+      await recoverPasswordSendCodeApi(cleanEmail, recoverRole);
+      setSuccessMessage('Nuevo código enviado. Revisa tu correo.');
+      setRecoverCooldown(60);
+    } catch (err) {
+      setErrorMessage(err.message || 'No pudimos reenviar el código.');
+    } finally {
+      setIsResendingCode(false);
+    }
+  };
+
+  const handleVerifyRecoveryCode = async (e) => {
+    e.preventDefault();
+    const cleanCode = recoverCode.trim();
+    if (!cleanCode || cleanCode.length !== 6) {
+      setErrorMessage('Ingresa el código de 6 dígitos que recibiste.');
+      return;
+    }
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    try {
+      await recoverPasswordVerifyCodeApi(recoverEmail.trim().toLowerCase(), cleanCode, recoverRole);
+      setSuccessMessage('Código verificado correctamente.');
+      setStep('recover_new_password');
+    } catch (err) {
+      setErrorMessage(err.message || 'Código inválido o expirado. Revisa tu correo o solicita uno nuevo.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!recoverNewPassword || recoverNewPassword.length < 6) {
+      setErrorMessage('La nueva contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+    if (recoverNewPassword !== recoverConfirmPassword) {
+      setErrorMessage('Las contraseñas no coinciden.');
+      return;
+    }
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    try {
+      await recoverPasswordResetApi(
+        recoverEmail.trim().toLowerCase(),
+        recoverCode.trim(),
+        recoverNewPassword,
+        recoverRole
+      );
+      setSuccessMessage('¡Contraseña restablecida exitosamente! Ya puedes iniciar sesión con tu nueva clave.');
+      setEmail(recoverEmail.trim().toLowerCase());
+      setPassword('');
+      setStep('login_form');
+    } catch (err) {
+      setErrorMessage(err.message || 'No se pudo restablecer la contraseña. Inténtalo de nuevo.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCheckEmailAvailability = async (emailToCheck) => {
+    const clean = String(emailToCheck || '').trim().toLowerCase();
+    if (!clean || !clean.includes('@') || !clean.includes('.')) {
+      setEmailTakenWarning(null);
+      return;
+    }
+    setIsCheckingEmail(true);
+    try {
+      const res = await checkEmailAvailabilityApi(clean);
+      if (res?.exists) {
+        setEmailTakenWarning('Este correo ya está registrado en RepuesTop.');
+      } else {
+        setEmailTakenWarning(null);
+      }
+    } catch {
+      setEmailTakenWarning(null);
+    } finally {
+      setIsCheckingEmail(false);
+    }
   };
 
   const isAccountNotFound = (result) => {
@@ -430,6 +598,40 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
             </>
           )}
 
+          {step === 'recover_email' && (
+            <>
+              <div className="selected-role-pill">
+                <span className={recoverRole === 'PROVEEDOR' ? 'pill-seller' : 'pill-buyer'}>
+                  <KeyRound size={14} /> Recuperar Contraseña ({recoverRole === 'PROVEEDOR' ? 'Tienda' : 'Comprador'})
+                </span>
+              </div>
+              <h2>Recuperar Contraseña</h2>
+              <p>{recoverRole === 'PROVEEDOR'
+                ? 'Ingresa el RUT de tu tienda y enviaremos un código de seguridad al correo registrado.'
+                : 'Ingresa el correo electrónico de tu cuenta para enviarte un código de seguridad.'}</p>
+            </>
+          )}
+
+          {step === 'recover_code' && (
+            <>
+              <div className="selected-role-pill">
+                <span className="pill-buyer"><ShieldCheck size={14} /> Paso 2 de 3 · Verificación</span>
+              </div>
+              <h2>Ingresa el Código</h2>
+              <p>Enviamos un código de 6 dígitos a <strong>{recoverEmail}</strong>.</p>
+            </>
+          )}
+
+          {step === 'recover_new_password' && (
+            <>
+              <div className="selected-role-pill">
+                <span className="pill-buyer"><Lock size={14} /> Paso 3 de 3 · Nueva Contraseña</span>
+              </div>
+              <h2>Crear Nueva Contraseña</h2>
+              <p>Ingresa tu nueva clave de acceso de al menos 6 caracteres.</p>
+            </>
+          )}
+
           {step === 'register_buyer' && (
             <>
               <h2>Crear Cuenta de Comprador</h2>
@@ -579,7 +781,14 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
             </div>
 
             <div className="form-secondary-actions">
-              <span className="forgot-password-link">¿Olvidaste tu contraseña?</span>
+              <button
+                type="button"
+                className="forgot-password-link"
+                style={{ background: 'none', border: 'none', padding: 0 }}
+                onClick={handleStartRecovery}
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
             </div>
 
             <div className="auth-action-row gap-2">
@@ -645,6 +854,216 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                   </button>
                 </p>
               )}
+            </div>
+          </form>
+        )}
+
+        {/* RECOVER PASSWORD STEP 1: EMAIL */}
+        {step === 'recover_email' && (
+          <form onSubmit={handleSendRecoveryCode} className="auth-modal-body">
+            <div className="form-group">
+              <label>Tipo de cuenta a recuperar</label>
+              <div className="role-recovery-toggle">
+                <button
+                  type="button"
+                  className={`btn-role-tab ${recoverRole === 'CLIENTE' ? 'active' : ''}`}
+                  onClick={() => setRecoverRole('CLIENTE')}
+                >
+                  <Car size={15} />
+                  <span>Comprador</span>
+                </button>
+                <button
+                  type="button"
+                  className={`btn-role-tab ${recoverRole === 'PROVEEDOR' ? 'active' : ''}`}
+                  onClick={() => setRecoverRole('PROVEEDOR')}
+                >
+                  <Store size={15} />
+                  <span>Tienda / Proveedor</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="form-group">
+              {/* Con rol PROVEEDOR el backend busca SOLO por RUT (`findByTaxId`), nunca
+                  por correo: ofrecer las dos opciones dejaba a la tienda con un
+                  "Proveedor no encontrado con el RUT ingresado" tras escribir su email. */}
+              <label>
+                {recoverRole === 'PROVEEDOR' ? 'RUT de la Tienda *' : 'Correo Electrónico Registrado *'}
+              </label>
+              <div className="input-with-icon">
+                {recoverRole === 'PROVEEDOR'
+                  ? <Building2 size={18} className="field-icon" />
+                  : <Mail size={18} className="field-icon" />}
+                <input
+                  type={recoverRole === 'PROVEEDOR' ? 'text' : 'email'}
+                  required
+                  autoFocus
+                  placeholder={recoverRole === 'PROVEEDOR' ? '76.123.456-7' : 'ejemplo@correo.com'}
+                  value={recoverEmail}
+                  onChange={(e) => setRecoverEmail(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="auth-action-row gap-2">
+              <button
+                type="button"
+                className="btn-auth-secondary"
+                onClick={() => { setErrorMessage(null); setStep('login_form'); }}
+              >
+                <ArrowLeft size={16} />
+                <span>Volver al Login</span>
+              </button>
+
+              <button
+                type="submit"
+                className="btn-auth-primary"
+                disabled={isSubmitting || !recoverEmail.trim()}
+              >
+                {isSubmitting ? (
+                  <span>Enviando código...</span>
+                ) : (
+                  <>
+                    <KeyRound size={18} />
+                    <span>Enviar Código</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* RECOVER PASSWORD STEP 2: CODE VERIFICATION */}
+        {step === 'recover_code' && (
+          <form onSubmit={handleVerifyRecoveryCode} className="auth-modal-body">
+            <div className="form-group">
+              <label>Código de verificación (6 dígitos) *</label>
+              <div className="input-with-icon">
+                <ShieldCheck size={18} className="field-icon" />
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  maxLength={6}
+                  placeholder="000000"
+                  value={recoverCode}
+                  onChange={(e) => setRecoverCode(e.target.value.replace(/\D/g, ''))}
+                  style={{ letterSpacing: '4px', fontSize: '18px', fontWeight: 'bold', textAlign: 'center' }}
+                />
+              </div>
+              <small className="auth-address-hint">Revisa también tu carpeta de spam o promociones.</small>
+            </div>
+
+            <div className="form-secondary-actions" style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+              <button
+                type="button"
+                className="link-btn"
+                onClick={handleResendRecoveryCode}
+                disabled={recoverCooldown > 0 || isResendingCode}
+              >
+                {isResendingCode ? (
+                  <><RefreshCw size={12} className="spin-icon" /> Reenviando...</>
+                ) : recoverCooldown > 0 ? (
+                  `Reenviar código en ${recoverCooldown}s`
+                ) : (
+                  '¿No recibiste el código? Reenviar'
+                )}
+              </button>
+            </div>
+
+            <div className="auth-action-row gap-2">
+              <button
+                type="button"
+                className="btn-auth-secondary"
+                onClick={() => { setErrorMessage(null); setStep('recover_email'); }}
+              >
+                <ArrowLeft size={16} />
+                <span>Cambiar Correo</span>
+              </button>
+
+              <button
+                type="submit"
+                className="btn-auth-primary"
+                disabled={isSubmitting || recoverCode.trim().length !== 6}
+              >
+                {isSubmitting ? (
+                  <span>Verificando...</span>
+                ) : (
+                  <>
+                    <CheckCircle2 size={18} />
+                    <span>Verificar Código</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* RECOVER PASSWORD STEP 3: NEW PASSWORD */}
+        {step === 'recover_new_password' && (
+          <form onSubmit={handleResetPasswordSubmit} className="auth-modal-body">
+            <div className="form-group">
+              <label>Nueva Contraseña (mínimo 6 caracteres) *</label>
+              <div className="input-with-icon">
+                <Lock size={18} className="field-icon" />
+                <input
+                  type={showRecoverPassword ? 'text' : 'password'}
+                  required
+                  autoFocus
+                  minLength={6}
+                  placeholder="Ingresa tu nueva contraseña"
+                  value={recoverNewPassword}
+                  onChange={(e) => setRecoverNewPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="btn-toggle-eye"
+                  onClick={() => setShowRecoverPassword(!showRecoverPassword)}
+                >
+                  {showRecoverPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Confirmar Nueva Contraseña *</label>
+              <div className="input-with-icon">
+                <Lock size={18} className="field-icon" />
+                <input
+                  type={showRecoverPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  placeholder="Repite tu nueva contraseña"
+                  value={recoverConfirmPassword}
+                  onChange={(e) => setRecoverConfirmPassword(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="auth-action-row gap-2">
+              <button
+                type="button"
+                className="btn-auth-secondary"
+                onClick={() => { setErrorMessage(null); setStep('login_form'); }}
+              >
+                <ArrowLeft size={16} />
+                <span>Cancelar</span>
+              </button>
+
+              <button
+                type="submit"
+                className="btn-auth-primary"
+                disabled={isSubmitting || !recoverNewPassword || !recoverConfirmPassword}
+              >
+                {isSubmitting ? (
+                  <span>Guardando...</span>
+                ) : (
+                  <>
+                    <Check size={18} />
+                    <span>Restablecer Contraseña</span>
+                  </>
+                )}
+              </button>
             </div>
           </form>
         )}
@@ -730,9 +1149,29 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                   required
                   placeholder="ejemplo@correo.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (emailTakenWarning) setEmailTakenWarning(null);
+                  }}
+                  onBlur={() => handleCheckEmailAvailability(email)}
                 />
               </div>
+              {emailTakenWarning && (
+                <div className="auth-alert alert-error" style={{ margin: '6px 0 0', padding: '8px 12px' }}>
+                  <AlertTriangle size={15} />
+                  <span>
+                    {emailTakenWarning}{' '}
+                    <button
+                      type="button"
+                      className="link-btn"
+                      style={{ color: '#991b1b', textDecoration: 'underline', fontWeight: 'bold' }}
+                      onClick={() => { setErrorMessage(null); setStep('login_form'); }}
+                    >
+                      Iniciar Sesión
+                    </button>
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="form-group">
