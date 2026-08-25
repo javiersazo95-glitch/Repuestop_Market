@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X, Clock, Wrench, Truck, PackageCheck, User, Store,
   MapPin, Phone, Mail, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
@@ -718,129 +719,74 @@ export default function OrderDetailModal({
         </div>
 
         {/* Modal de Cancelación por parte del Vendedor (A2, C1) */}
-        {showSellerCancelModal && (
-          <div className="order-modal-backdrop" onClick={() => setShowSellerCancelModal(false)}>
-            <div className="order-modal-card" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
-              <div className="order-modal-header">
-                <div className="order-modal-header-left">
-                  <div className="order-modal-icon-badge" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
-                    <XCircle size={20} />
-                  </div>
-                  <div>
-                    <h3 className="order-modal-title">Cancelar Pedido #{orderIdShort}</h3>
-                    <span className="order-modal-subtitle">Indica el motivo de la cancelación para el cliente</span>
-                  </div>
+        {showSellerCancelModal && createPortal(
+          <div className="commission-modal-backdrop order-subdialog-backdrop" onClick={() => !isCancellingSeller && setShowSellerCancelModal(false)}>
+            <form className="commission-modal-card order-subdialog-card" onSubmit={handleSellerCancelSubmit} onClick={(e) => e.stopPropagation()}>
+              <div className="commission-modal-header">
+                <div className="commission-icon-badge order-subdialog-badge-danger">
+                  <XCircle size={22} />
                 </div>
-                <button className="order-modal-close-btn" onClick={() => setShowSellerCancelModal(false)}>
-                  <X size={18} />
-                </button>
+                <div className="order-subdialog-heading">
+                  <h3>Cancelar pedido #{orderIdShort}</h3>
+                  <span>Indica el motivo de la cancelación para el cliente</span>
+                </div>
               </div>
 
-              <form onSubmit={handleSellerCancelSubmit} className="order-modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {sellerCancelError && (
-                  <div className="auth-alert alert-error">
-                    <AlertTriangle size={15} />
-                    <span>{sellerCancelError}</span>
-                  </div>
-                )}
+              {sellerCancelError && <p className="confirm-dialog-error">{sellerCancelError}</p>}
 
-                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
-                    Motivo de la cancelación *
-                  </label>
-                  <select
-                    value={sellerCancelReason}
-                    onChange={(e) => setSellerCancelReason(e.target.value)}
-                    style={{
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '13.5px',
-                      backgroundColor: '#ffffff',
-                    }}
-                  >
-                    {SELLER_CANCEL_REASONS.map((r) => (
-                      <option key={r.code} value={r.code}>{r.label}</option>
-                    ))}
-                  </select>
-                </div>
+              <label className="order-subdialog-field">
+                <span>Motivo de la cancelación *</span>
+                <select value={sellerCancelReason} onChange={(e) => setSellerCancelReason(e.target.value)}>
+                  {SELLER_CANCEL_REASONS.map((r) => (
+                    <option key={r.code} value={r.code}>{r.label}</option>
+                  ))}
+                </select>
+              </label>
 
-                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
-                    Detalle o explicación {sellerCancelReason === 'OTRO' ? '*' : '(opcional)'}
-                  </label>
-                  <textarea
-                    required={sellerCancelReason === 'OTRO'}
-                    rows={3}
-                    maxLength={300}
-                    placeholder={sellerCancelReason === 'OTRO' ? 'Escribe aquí la razón de la cancelación...' : 'Información adicional para el cliente...'}
-                    value={sellerCancelDetail}
-                    onChange={(e) => setSellerCancelDetail(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '13px',
-                      fontFamily: 'inherit',
-                      resize: 'none',
-                    }}
-                  />
-                </div>
+              <label className="order-subdialog-field">
+                <span>Detalle o explicación {sellerCancelReason === 'OTRO' ? '*' : '(opcional)'}</span>
+                <textarea
+                  required={sellerCancelReason === 'OTRO'}
+                  rows={3}
+                  maxLength={300}
+                  placeholder={sellerCancelReason === 'OTRO' ? 'Escribe aquí la razón de la cancelación...' : 'Información adicional para el cliente...'}
+                  value={sellerCancelDetail}
+                  onChange={(e) => setSellerCancelDetail(e.target.value)}
+                />
+              </label>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
-                  <button
-                    type="button"
-                    className="btn-auth-secondary"
-                    onClick={() => setShowSellerCancelModal(false)}
-                    disabled={isCancellingSeller}
-                  >
-                    Volver
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn-auth-danger"
-                    disabled={isCancellingSeller}
-                  >
-                    {isCancellingSeller ? 'Cancelando...' : 'Confirmar Cancelación'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
+              <div className="confirm-dialog-actions">
+                <button type="button" className="btn-auth-secondary" onClick={() => setShowSellerCancelModal(false)} disabled={isCancellingSeller}>
+                  Volver
+                </button>
+                <button type="submit" className="btn-auth-danger" disabled={isCancellingSeller}>
+                  {isCancellingSeller && <Loader2 size={16} className="spin-icon" />}
+                  {isCancellingSeller ? 'Cancelando...' : 'Confirmar cancelación'}
+                </button>
+              </div>
+            </form>
+          </div>,
+          document.body
         )}
 
         {/* Modal de Registro de Despacho (A3) */}
-        {showDispatchModal && (
-          <div className="order-modal-backdrop" onClick={() => setShowDispatchModal(false)}>
-            <div className="order-modal-card" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
-              <div className="order-modal-header">
-                <div className="order-modal-header-left">
-                  <div className="order-modal-icon-badge" style={{ backgroundColor: '#eff6ff', color: '#0066ff' }}>
-                    <Truck size={20} />
-                  </div>
-                  <div>
-                    <h3 className="order-modal-title">Registrar Despacho de Envío</h3>
-                    <span className="order-modal-subtitle">Pedido #{orderIdShort} · Destino: {order.compradorComuna || 'Chile'}</span>
-                  </div>
+        {showDispatchModal && createPortal(
+          <div className="commission-modal-backdrop order-subdialog-backdrop" onClick={() => !isRegisteringDispatch && setShowDispatchModal(false)}>
+            <form className="commission-modal-card order-subdialog-card" onSubmit={handleDispatchSubmit} onClick={(e) => e.stopPropagation()}>
+              <div className="commission-modal-header">
+                <div className="commission-icon-badge">
+                  <Truck size={22} />
                 </div>
-                <button className="order-modal-close-btn" onClick={() => setShowDispatchModal(false)}>
-                  <X size={18} />
-                </button>
+                <div className="order-subdialog-heading">
+                  <h3>Registrar despacho de envío</h3>
+                  <span>Pedido #{orderIdShort} · Destino: {order.compradorComuna || 'Chile'}</span>
+                </div>
               </div>
 
-              <form onSubmit={handleDispatchSubmit} className="order-modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {dispatchError && (
-                  <div className="auth-alert alert-error">
-                    <AlertTriangle size={15} />
-                    <span>{dispatchError}</span>
-                  </div>
-                )}
+              {dispatchError && <p className="confirm-dialog-error">{dispatchError}</p>}
 
-                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
-                    Empresa de transporte (Courier) *
-                  </label>
+                <label className="order-subdialog-field">
+                  <span>Empresa de transporte (courier) *</span>
                   <input
                     type="text"
                     required
@@ -848,127 +794,78 @@ export default function OrderDetailModal({
                     placeholder="Ej: Starken, Chilexpress, Blue Express..."
                     value={dispatchCourier}
                     onChange={(e) => setDispatchCourier(e.target.value)}
-                    style={{
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '13.5px',
-                    }}
                   />
                   <datalist id="couriers-list">
                     {COMMON_COURIERS.map((c) => <option key={c} value={c} />)}
                   </datalist>
-                </div>
+                </label>
 
-                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
-                    Número de Orden de Flete / Seguimiento *
-                  </label>
+                <label className="order-subdialog-field">
+                  <span>Número de orden de flete / seguimiento *</span>
                   <input
                     type="text"
                     required
                     placeholder="Ej: 1234567890"
                     value={dispatchTrackingNumber}
                     onChange={(e) => setDispatchTrackingNumber(e.target.value)}
-                    style={{
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '13.5px',
-                    }}
                   />
-                </div>
+                </label>
 
-                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
-                    Valor del envío (opcional)
-                  </label>
+                <label className="order-subdialog-field">
+                  <span>Valor del envío (opcional)</span>
                   <input
                     type="number"
                     min="0"
                     placeholder="Ej: 4500"
                     value={dispatchShippingFee}
                     onChange={(e) => setDispatchShippingFee(e.target.value)}
-                    style={{
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '13.5px',
-                    }}
                   />
-                </div>
+                </label>
 
-                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
-                    Comprobante de envío / Voucher (opcional)
-                  </label>
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: '1px dashed #94a3b8',
-                    backgroundColor: '#f8fafc',
-                    cursor: 'pointer',
-                  }}>
-                    <FileUp size={20} color="#0066ff" />
-                    <span style={{ fontSize: '12.5px', color: '#475569' }}>
-                      {dispatchVoucherFile ? dispatchVoucherFile.name : 'Adjuntar foto o PDF del comprobante'}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      onChange={handleFileChange}
-                      style={{ display: 'none' }}
-                    />
+                <div className="order-subdialog-field">
+                  <span>Comprobante de envío / voucher (opcional)</span>
+                  <label className="order-subdialog-filedrop">
+                    <FileUp size={20} />
+                    <span>{dispatchVoucherFile ? dispatchVoucherFile.name : 'Adjuntar foto o PDF del comprobante'}</span>
+                    <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} />
                   </label>
                   {dispatchVoucherPreview && (
-                    <div style={{ marginTop: '4px', maxHeight: '100px', overflow: 'hidden', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                      <img src={dispatchVoucherPreview} alt="Comprobante" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                    <div className="order-subdialog-filepreview">
+                      <img src={dispatchVoucherPreview} alt="Comprobante" />
                     </div>
                   )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
-                  <button
-                    type="button"
-                    className="btn-auth-secondary"
-                    onClick={() => setShowDispatchModal(false)}
-                    disabled={isRegisteringDispatch}
-                  >
-                    Cancelar
+                <div className="confirm-dialog-actions">
+                  <button type="button" className="btn-auth-secondary" onClick={() => setShowDispatchModal(false)} disabled={isRegisteringDispatch}>
+                    Volver
                   </button>
                   <button
                     type="submit"
                     className="btn-auth-primary"
                     disabled={isRegisteringDispatch || !dispatchCourier.trim() || !dispatchTrackingNumber.trim()}
                   >
-                    {isRegisteringDispatch ? 'Registrando...' : 'Confirmar Envío'}
+                    {isRegisteringDispatch && <Loader2 size={16} className="spin-icon" />}
+                    {isRegisteringDispatch ? 'Registrando...' : 'Confirmar envío'}
                   </button>
                 </div>
-              </form>
-            </div>
-          </div>
+            </form>
+          </div>,
+          document.body
         )}
 
         {/* Modal de Calificación de Pedido para el Comprador (A4) */}
-        {showRatingModal && (
-          <div className="order-modal-backdrop" onClick={() => setShowRatingModal(false)}>
-            <div className="order-modal-card" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
-              <div className="order-modal-header">
-                <div className="order-modal-header-left">
-                  <div className="order-modal-icon-badge" style={{ backgroundColor: '#fef3c7', color: '#d97706' }}>
-                    <Star size={20} />
-                  </div>
-                  <div>
-                    <h3 className="order-modal-title">Calificar Compra #{orderIdShort}</h3>
-                    <span className="order-modal-subtitle">Tu opinión ayuda a mantener la calidad en RepuesTop</span>
-                  </div>
+        {showRatingModal && createPortal(
+          <div className="commission-modal-backdrop order-subdialog-backdrop" onClick={() => !isSubmittingRating && setShowRatingModal(false)}>
+            <div className="commission-modal-card order-subdialog-card order-subdialog-card--wide" onClick={(e) => e.stopPropagation()}>
+              <div className="commission-modal-header">
+                <div className="commission-icon-badge order-subdialog-badge-star">
+                  <Star size={22} />
                 </div>
-                <button className="order-modal-close-btn" onClick={() => setShowRatingModal(false)}>
-                  <X size={18} />
-                </button>
+                <div className="order-subdialog-heading">
+                  <h3>Calificar compra #{orderIdShort}</h3>
+                  <span>Tu opinión ayuda a mantener la calidad en RepuesTop</span>
+                </div>
               </div>
 
               <form
@@ -999,74 +896,56 @@ export default function OrderDetailModal({
                     setIsSubmittingRating(false);
                   }
                 }}
-                className="order-modal-body"
-                style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}
+                className="order-subdialog-form"
               >
                 {ratingSuccess ? (
-                  <div style={{ textAlign: 'center', padding: '24px 0', color: '#16a34a' }}>
-                    <CheckCircle2 size={40} style={{ margin: '0 auto 12px' }} />
-                    <h4 style={{ margin: '0 0 6px', fontSize: '17px' }}>¡Muchas gracias por tu calificación!</h4>
-                    <p style={{ margin: 0, fontSize: '13.5px', color: '#475569' }}>Tus valoraciones fueron registradas con éxito.</p>
+                  <div className="order-subdialog-success">
+                    <CheckCircle2 size={40} />
+                    <h4>¡Muchas gracias por tu calificación!</h4>
+                    <p>Tus valoraciones fueron registradas con éxito.</p>
                   </div>
                 ) : (
                   <>
-                    {ratingError && (
-                      <div className="auth-alert alert-error">
-                        <AlertTriangle size={15} />
-                        <span>{ratingError}</span>
-                      </div>
-                    )}
+                    {ratingError && <p className="confirm-dialog-error">{ratingError}</p>}
 
                     {/* Calificación del Vendedor */}
-                    <div style={{ backgroundColor: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <label style={{ display: 'block', fontSize: '13.5px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>
-                        Atención y servicio de {sellerName}:
-                      </label>
-                      <div style={{ display: 'flex', gap: '6px' }}>
+                    <div className="order-rating-block">
+                      <span className="order-rating-label">Atención y servicio de {sellerName}</span>
+                      <div className="order-rating-stars">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <button
                             key={star}
                             type="button"
+                            className={`order-rating-star ${star <= sellerRating ? 'is-on' : ''}`}
+                            aria-label={`${star} de 5`}
                             onClick={() => setSellerRating(star)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
                           >
-                            <Star
-                              size={24}
-                              fill={star <= sellerRating ? '#f59e0b' : 'none'}
-                              color={star <= sellerRating ? '#f59e0b' : '#94a3b8'}
-                            />
+                            <Star size={24} fill={star <= sellerRating ? 'currentColor' : 'none'} />
                           </button>
                         ))}
                       </div>
                     </div>
 
                     {/* Calificación por Producto */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        Calidad de los repuestos
-                      </span>
+                    <div className="order-rating-products">
+                      <span className="order-rating-eyebrow">Calidad de los repuestos</span>
                       {items.map((item, idx) => {
                         const pId = item.productoId || item.id || idx;
                         const currentProductRating = productRatings[pId] || 5;
                         const pName = item.nombre || item.productName || item.name || 'Repuesto';
                         return (
-                          <div key={pId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                            <span style={{ fontSize: '13.5px', color: '#1e293b', maxWidth: '60%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {pName}
-                            </span>
-                            <div style={{ display: 'flex', gap: '4px' }}>
+                          <div key={pId} className="order-rating-product-row">
+                            <span className="order-rating-product-name">{pName}</span>
+                            <div className="order-rating-stars">
                               {[1, 2, 3, 4, 5].map((star) => (
                                 <button
                                   key={star}
                                   type="button"
+                                  className={`order-rating-star ${star <= currentProductRating ? 'is-on' : ''}`}
+                                  aria-label={`${star} de 5`}
                                   onClick={() => setProductRatings((prev) => ({ ...prev, [pId]: star }))}
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}
                                 >
-                                  <Star
-                                    size={18}
-                                    fill={star <= currentProductRating ? '#f59e0b' : 'none'}
-                                    color={star <= currentProductRating ? '#f59e0b' : '#94a3b8'}
-                                  />
+                                  <Star size={18} fill={star <= currentProductRating ? 'currentColor' : 'none'} />
                                 </button>
                               ))}
                             </div>
@@ -1075,21 +954,21 @@ export default function OrderDetailModal({
                       })}
                     </div>
 
-                    {/* Botones de acción */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                    <div className="confirm-dialog-actions">
                       <button type="button" className="btn-auth-secondary" onClick={() => setShowRatingModal(false)} disabled={isSubmittingRating}>
-                        Cancelar
+                        Volver
                       </button>
-                      <button type="submit" className="btn-auth-primary" disabled={isSubmittingRating} style={{ width: 'auto', padding: '0 20px' }}>
+                      <button type="submit" className="btn-auth-primary" disabled={isSubmittingRating}>
                         {isSubmittingRating ? <Loader2 size={16} className="spin-icon" /> : <Star size={16} />}
-                        <span>Guardar Calificación</span>
+                        <span>Guardar calificación</span>
                       </button>
                     </div>
                   </>
                 )}
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         <ConfirmDialog
