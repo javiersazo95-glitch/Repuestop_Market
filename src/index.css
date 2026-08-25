@@ -5882,6 +5882,9 @@ input, select, textarea {
    se veia sin fondo y con el contenido del pedido colandose por detras.
    ============================================================ */
 .order-subdialog-backdrop { z-index: 1400; }
+/* El detalle del ticket de soporte usa la misma caja que el detalle del pedido, solo
+   que mas angosta: es un hilo de mensajes, no una ficha con columnas. */
+.support-ticket-modal { max-width: 640px; }
 .order-subdialog-card { max-width: 470px; max-height: calc(100dvh - 48px); overflow-y: auto; }
 .order-subdialog-card--wide { max-width: 540px; }
 .order-subdialog-heading { display: flex; flex-direction: column; gap: 2px; }

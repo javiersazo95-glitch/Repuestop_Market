@@ -72,6 +72,7 @@ export default function OrderCard({
   const [isRetryingPayment, setIsRetryingPayment] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmAdvance, setConfirmAdvance] = useState(false);
   const [now, setNow] = useState(Date.now());
   const isSeller = mode === 'seller';
 
@@ -160,18 +161,26 @@ export default function OrderCard({
   const controlledAction = getControlledOrderAction(order, mode);
 
   // La app móvil solo permite avanzar al siguiente estado válido para cada rol.
-  const handleQuickStatusChange = async (e) => {
+  const handleQuickStatusChange = (e) => {
     e.stopPropagation();
     if (!onUpdateStatus || !controlledAction || controlledAction.waiting || controlledAction.disabled) return;
     if (controlledAction.requiresPin) {
       onSelectOrder?.(order);
       return;
     }
-    if (!window.confirm(`${controlledAction.title}\n\n${controlledAction.message}`)) return;
+    // Antes preguntaba con `window.confirm`, que en un navegador embebido devuelve
+    // `false` sin abrir nada: el boton quedaba mudo. Se pregunta con `ConfirmDialog`,
+    // que es lo que ya usa la cancelacion del comprador.
+    setActionError('');
+    setConfirmAdvance(true);
+  };
+
+  const runQuickStatusChange = async () => {
     setIsAdvancing(true);
     setActionError('');
     try {
       await onUpdateStatus(order.id, controlledAction.nextStatus);
+      setConfirmAdvance(false);
     } catch (error) {
       setActionError(error.message || 'No se pudo actualizar el pedido.');
     } finally {
@@ -425,6 +434,18 @@ export default function OrderCard({
           {renderStatusButton()}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmAdvance}
+        title={controlledAction?.title || '¿Confirmar?'}
+        message={controlledAction?.message || ''}
+        confirmLabel={controlledAction?.label || 'Confirmar'}
+        cancelLabel="Volver"
+        isBusy={isAdvancing}
+        error={actionError}
+        onCancel={() => { if (!isAdvancing) { setConfirmAdvance(false); setActionError(''); } }}
+        onConfirm={runQuickStatusChange}
+      />
 
       <ConfirmDialog
         isOpen={confirmCancel}

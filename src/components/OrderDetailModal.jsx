@@ -93,6 +93,7 @@ export default function OrderDetailModal({
   const [retryError, setRetryError] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmStatusAdvance, setConfirmStatusAdvance] = useState(false);
   const [cancelError, setCancelError] = useState('');
   const [now, setNow] = useState(Date.now());
 
@@ -209,6 +210,21 @@ export default function OrderDetailModal({
     }];
   })).values()];
 
+  // Avanza el estado de verdad. La confirmacion previa la pide `handleStatusSubmit`.
+  const runStatusUpdate = async (pin) => {
+    setIsUpdating(true);
+    setStatusError('');
+    try {
+      await onUpdateStatus(order.id, controlledAction.nextStatus, controlledAction.requiresPin ? pin : undefined);
+      setPickupPin('');
+      setConfirmStatusAdvance(false);
+    } catch (error) {
+      setStatusError(error.message || 'No se pudo actualizar el estado del pedido.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleStatusSubmit = async () => {
     if (!onUpdateStatus || !controlledAction?.nextStatus || controlledAction.disabled) return;
     const pin = pickupPin.trim();
@@ -216,18 +232,15 @@ export default function OrderDetailModal({
       setStatusError('Ingresa el código de retiro de 6 dígitos entregado al comprador.');
       return;
     }
-    if (!controlledAction.requiresPin
-      && !window.confirm(`${controlledAction.title}\n\n${controlledAction.message}`)) return;
-    setIsUpdating(true);
-    setStatusError('');
-    try {
-      await onUpdateStatus(order.id, controlledAction.nextStatus, controlledAction.requiresPin ? pin : undefined);
-      setPickupPin('');
-    } catch (error) {
-      setStatusError(error.message || 'No se pudo actualizar el estado del pedido.');
-    } finally {
-      setIsUpdating(false);
+    // Con PIN la confirmacion es el PIN mismo; sin PIN se pregunta con `ConfirmDialog`.
+    // Antes esto era un `window.confirm`, que en un navegador embebido devuelve `false`
+    // sin abrir nada: el boton quedaba mudo y parecia que no estaba cableado.
+    if (!controlledAction.requiresPin) {
+      setStatusError('');
+      setConfirmStatusAdvance(true);
+      return;
     }
+    await runStatusUpdate(pin);
   };
 
   const handleSellerCancelSubmit = async (e) => {
@@ -970,6 +983,18 @@ export default function OrderDetailModal({
           </div>,
           document.body
         )}
+
+        <ConfirmDialog
+          isOpen={confirmStatusAdvance}
+          title={controlledAction?.title || '¿Confirmar?'}
+          message={controlledAction?.message || ''}
+          confirmLabel={controlledAction?.label || 'Confirmar'}
+          cancelLabel="Volver"
+          isBusy={isUpdating}
+          error={statusError}
+          onCancel={() => { if (!isUpdating) { setConfirmStatusAdvance(false); setStatusError(''); } }}
+          onConfirm={() => runStatusUpdate(pickupPin.trim())}
+        />
 
         <ConfirmDialog
           isOpen={confirmCancel}

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import ConfirmDialog from './ConfirmDialog';
 import {
   X, Headphones, CheckCircle2, AlertTriangle, Send, Loader2, Lock, User, ShieldCheck
 } from 'lucide-react';
@@ -45,6 +46,7 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
   const [isSending, setIsSending] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [confirmClose, setConfirmClose] = useState(false);
   const messagesEndRef = useRef(null);
 
   const loadTicketData = async () => {
@@ -99,12 +101,18 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
 
   const handleCloseTicket = async () => {
     if (isClosing || isClosed) return;
-    if (!window.confirm('¿Estás seguro de que deseas dar por cerrada esta consulta de soporte?')) return;
+    // `window.confirm` no abre nada en un navegador embebido y devuelve `false`, con lo
+    // que el boton de cerrar la consulta quedaba mudo. Se confirma con `ConfirmDialog`.
+    if (!confirmClose) {
+      setConfirmClose(true);
+      return;
+    }
     setIsClosing(true);
     setActionError('');
     try {
       const updated = await closeSupportTicketApi(userId, ticketId);
       setTicket(updated);
+      setConfirmClose(false);
       onUpdated?.();
     } catch (err) {
       setActionError(err?.message || 'No se pudo cerrar la consulta.');
@@ -115,7 +123,7 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
 
   return (
     <div className="order-modal-backdrop" onClick={onClose}>
-      <div className="order-modal-card" style={{ maxWidth: '640px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+      <div className="order-modal-container support-ticket-modal" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="order-modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0' }}>
           <div className="order-modal-header-left">
@@ -282,6 +290,18 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmClose}
+        title="¿Dar por cerrada esta consulta?"
+        message="El ticket queda cerrado y no podrás seguir respondiendo en este hilo. Si el problema vuelve, tendrás que abrir una consulta nueva."
+        confirmLabel="Sí, cerrar consulta"
+        cancelLabel="No, seguir abierta"
+        isBusy={isClosing}
+        error={actionError}
+        onCancel={() => { if (!isClosing) { setConfirmClose(false); setActionError(''); } }}
+        onConfirm={handleCloseTicket}
+      />
     </div>
   );
 }
