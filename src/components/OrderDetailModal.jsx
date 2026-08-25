@@ -24,6 +24,15 @@ const SELLER_CANCEL_REASONS = [
 // la columna. Se corta en 9 en el formulario, que ya es un flete imposible.
 const MAX_SHIPPING_FEE_DIGITS = 9;
 
+// Numero de seguimiento. No se valida por empresa a proposito: los formatos cambian y
+// "Delivery propio" no tiene ninguno. Este es el superset que cubre a las que ofrecemos
+// -Chilexpress y Starken numericas de 9 a 12, Blue Express alfanumerica de ~10 a 13,
+// Correos de Chile nacional numerica e internacional tipo RR123456789CL-, y deja fuera
+// espacios y simbolos, que nunca son parte del codigo.
+const TRACKING_MIN_LENGTH = 6;
+const TRACKING_MAX_LENGTH = 30;
+const OTHER_COURIER = '__OTRO__';
+
 const COMMON_COURIERS = [
   'Starken',
   'Chilexpress',
@@ -110,7 +119,15 @@ export default function OrderDetailModal({
 
   // Seller Dispatch Modal State
   const [showDispatchModal, setShowDispatchModal] = useState(false);
-  const [dispatchCourier, setDispatchCourier] = useState(order?.courier || 'Starken');
+  // El courier se ELIGE de la lista; "Otro" abre un campo libre. Antes era un input con
+  // `<datalist>`, que el navegador pinta como una lista negra fuera del modal y ademas
+  // dejaba escribir cualquier cosa encima de la sugerencia.
+  const initialCourier = COMMON_COURIERS.includes(order?.courier) ? order.courier : (order?.courier ? OTHER_COURIER : 'Starken');
+  const [dispatchCourierChoice, setDispatchCourierChoice] = useState(initialCourier);
+  const [dispatchCourierOther, setDispatchCourierOther] = useState(
+    COMMON_COURIERS.includes(order?.courier) ? '' : (order?.courier || '')
+  );
+  const dispatchCourier = dispatchCourierChoice === OTHER_COURIER ? dispatchCourierOther : dispatchCourierChoice;
   const [dispatchTrackingNumber, setDispatchTrackingNumber] = useState(order?.trackingNumber || '');
   const [dispatchShippingFee, setDispatchShippingFee] = useState(order?.shippingFee || '');
   const [dispatchVoucherFile, setDispatchVoucherFile] = useState(null);
@@ -274,6 +291,10 @@ export default function OrderDetailModal({
     if (!onRegisterDispatch) return;
     if (!dispatchCourier.trim() || !dispatchTrackingNumber.trim()) {
       setDispatchError('Por favor completa la empresa de transporte y el número de seguimiento.');
+      return;
+    }
+    if (dispatchTrackingNumber.trim().length < TRACKING_MIN_LENGTH) {
+      setDispatchError(`El número de seguimiento debe tener al menos ${TRACKING_MIN_LENGTH} caracteres.`);
       return;
     }
     setIsRegisteringDispatch(true);
@@ -584,7 +605,8 @@ export default function OrderDetailModal({
                 type="button"
                 className="btn-auth-primary"
                 onClick={() => {
-                  setDispatchCourier(order?.courier || 'Starken');
+                  setDispatchCourierChoice(initialCourier);
+                  setDispatchCourierOther(COMMON_COURIERS.includes(order?.courier) ? '' : (order?.courier || ''));
                   setDispatchTrackingNumber(order?.trackingNumber || '');
                   setDispatchShippingFee(order?.shippingFee || '');
                   setDispatchError('');
@@ -799,18 +821,23 @@ export default function OrderDetailModal({
 
                 <label className="order-subdialog-field">
                   <span>Empresa de transporte (courier) *</span>
-                  <input
-                    type="text"
-                    required
-                    maxLength={120}
-                    list="couriers-list"
-                    placeholder="Ej: Starken, Chilexpress, Blue Express..."
-                    value={dispatchCourier}
-                    onChange={(e) => setDispatchCourier(e.target.value)}
-                  />
-                  <datalist id="couriers-list">
-                    {COMMON_COURIERS.map((c) => <option key={c} value={c} />)}
-                  </datalist>
+                  <select
+                    value={dispatchCourierChoice}
+                    onChange={(e) => setDispatchCourierChoice(e.target.value)}
+                  >
+                    {COMMON_COURIERS.map((c) => <option key={c} value={c}>{c}</option>)}
+                    <option value={OTHER_COURIER}>Otra (especificar)</option>
+                  </select>
+                  {dispatchCourierChoice === OTHER_COURIER && (
+                    <input
+                      type="text"
+                      required
+                      maxLength={120}
+                      placeholder="Nombre de la empresa de transporte"
+                      value={dispatchCourierOther}
+                      onChange={(e) => setDispatchCourierOther(e.target.value)}
+                    />
+                  )}
                 </label>
 
                 <label className="order-subdialog-field">
@@ -818,11 +845,16 @@ export default function OrderDetailModal({
                   <input
                     type="text"
                     required
-                    maxLength={120}
-                    placeholder="Ej: 1234567890"
+                    maxLength={TRACKING_MAX_LENGTH}
+                    placeholder="Ej: 990012345678"
                     value={dispatchTrackingNumber}
-                    onChange={(e) => setDispatchTrackingNumber(e.target.value)}
+                    onChange={(e) => setDispatchTrackingNumber(
+                      e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, TRACKING_MAX_LENGTH)
+                    )}
                   />
+                  <small className="order-subdialog-hint">
+                    Solo números y letras, sin espacios. Entre {TRACKING_MIN_LENGTH} y {TRACKING_MAX_LENGTH} caracteres.
+                  </small>
                 </label>
 
                 <label className="order-subdialog-field">
@@ -838,20 +870,24 @@ export default function OrderDetailModal({
 
                 <div className="order-subdialog-field">
                   <span>Comprobante de envío / voucher (opcional)</span>
-                  <label className="order-subdialog-filedrop">
-                    <FileUp size={20} />
-                    <span>{dispatchVoucherFile ? dispatchVoucherFile.name : 'Adjuntar foto o PDF del comprobante'}</span>
-                    <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} />
-                  </label>
-                  {dispatchVoucherFile && (
-                    <button
-                      type="button"
-                      className="order-subdialog-fileclear"
-                      onClick={() => setDispatchVoucherFile(null)}
-                    >
-                      Quitar archivo
-                    </button>
-                  )}
+                  <div className="order-subdialog-filedrop">
+                    <label>
+                      <FileUp size={20} />
+                      <span>{dispatchVoucherFile ? dispatchVoucherFile.name : 'Adjuntar foto o PDF del comprobante'}</span>
+                      <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} />
+                    </label>
+                    {dispatchVoucherFile && (
+                      <button
+                        type="button"
+                        className="order-subdialog-fileclear"
+                        aria-label="Quitar archivo"
+                        title="Quitar archivo"
+                        onClick={() => setDispatchVoucherFile(null)}
+                      >
+                        <X size={15} />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="confirm-dialog-actions">
@@ -861,7 +897,7 @@ export default function OrderDetailModal({
                   <button
                     type="submit"
                     className="btn-auth-primary"
-                    disabled={isRegisteringDispatch || !dispatchCourier.trim() || !dispatchTrackingNumber.trim()}
+                    disabled={isRegisteringDispatch || !dispatchCourier.trim() || dispatchTrackingNumber.trim().length < TRACKING_MIN_LENGTH}
                   >
                     {isRegisteringDispatch && <Loader2 size={16} className="spin-icon" />}
                     {isRegisteringDispatch ? 'Registrando...' : 'Confirmar envío'}
