@@ -8,6 +8,7 @@ import { OrderStatusBadge } from './OrderCard';
 import { resolveShippingService } from '../data/shippingMethods';
 import { resolveMediaUrl } from '../services/api';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
+import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancellationReason';
 
 function initialsFromName(name) {
   return String(name || '')
@@ -80,6 +81,10 @@ export default function OrderDetailModal({
   // Solo el comprador paga, y solo mientras el pedido siga sin pagarse.
   const canRetryPayment = !isSeller && normStatus === 'PENDIENTE' && Boolean(onRetryPayment);
   const paymentWindow = canRetryPayment ? orderPaymentWindow(order, now) : null;
+  const cancellationReason = normStatus === 'CANCELADO' ? cancellationReasonLabel(order) : null;
+  // La explicacion esta escrita para el comprador ("si pagaste, el reembolso...").
+  // Al vendedor le basta la etiqueta: el motivo lo declaro el.
+  const cancellationHint = cancellationReason && mode !== 'seller' ? cancellationReasonHint(order) : null;
 
   const orderIdShort = String(order.id || '').slice(-6).toUpperCase();
   const items = order.items || [];
@@ -418,6 +423,15 @@ export default function OrderDetailModal({
             </div>
           </div>
         </div>
+
+        {/* Antes el detalle decia solo "Cancelado": un pedido que expiro sin pagar
+            se veia identico a uno cancelado por el vendedor. */}
+        {cancellationReason && (
+          <div className="order-cancellation-block">
+            <strong>{cancellationReason}</strong>
+            {cancellationHint && <span>{cancellationHint}</span>}
+          </div>
+        )}
 
         {/* El plazo va sobre el boton: es la informacion que decide si conviene
             pagar ahora o si el pedido ya se perdio. */}

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
+import { cancellationReasonLabel } from '../data/cancellationReason';
 
 export const UNIFIED_STATUS_CONFIG = {
   PENDIENTE: { label: 'Pendiente de pago', icon: Clock, className: 'badge-amber', tone: 'amber' },
@@ -93,6 +94,9 @@ export default function OrderCard({
   // Solo el comprador paga, y solo mientras el pedido siga sin pagarse.
   const canRetryPayment = !isSeller && normStatus === 'PENDIENTE' && Boolean(onRetryPayment);
   const paymentWindow = canRetryPayment ? orderPaymentWindow(order, now) : null;
+  // Solo cuando el backend registro la causa. Los cancelados historicos no la
+  // tienen y se quedan con "Cancelado" a secas, sin explicacion inventada.
+  const cancellationReason = normStatus === 'CANCELADO' ? cancellationReasonLabel(order) : null;
   const deliveryTerms = String(order.courier || order.deliveryTerms || order.tipoEnvio || order.compradorDireccion || order.direccionEntrega || 'Despacho a domicilio');
   const isStorePickup = isStorePickupOrder(order);
   const displayStatus = normStatus === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : rawStatus;
@@ -335,6 +339,13 @@ export default function OrderCard({
             )}
           </div>
         </div>
+
+        {cancellationReason && (
+          <p className="order-cancellation-reason">
+            <XCircle size={13} />
+            <span>{cancellationReason}</span>
+          </p>
+        )}
 
         {/* El comprador no tenia como saber que existia un plazo: el pedido se
             cancelaba solo y la unidad volvia al stock sin aviso previo. */}

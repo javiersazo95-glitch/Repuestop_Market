@@ -5797,6 +5797,24 @@ input, select, textarea {
   gap: 10px;
 }
 
+/* Motivo de cancelacion. En la tarjeta va como una linea sobria y en el detalle
+   como bloque, porque ahi acompaña la explicacion de que pasa con el dinero. */
+.order-cancellation-reason {
+  display: flex; align-items: center; gap: 7px;
+  margin: 0 0 12px; padding: 8px 12px; border-radius: var(--radius-sm);
+  background: #FFF0F0; color: #B8261A; border: 1px solid #FECACA;
+  font-size: 12.5px; font-weight: 600;
+}
+.order-cancellation-reason svg { flex-shrink: 0; }
+
+.order-cancellation-block {
+  display: grid; gap: 4px;
+  margin: 0 24px 16px; padding: 12px 14px; border-radius: var(--radius-sm);
+  background: #FFF0F0; border: 1px solid #FECACA;
+}
+.order-cancellation-block strong { color: #B8261A; font-size: 13.5px; }
+.order-cancellation-block span { color: #7f1d1d; font-size: 12.5px; line-height: 1.45; }
+
 /* Plazo de pago de un pedido pendiente. Ambar mientras corre y rojo cuando vencio:
    el mismo par de tonos que ya usan los badges de estado. */
 .order-payment-window {
