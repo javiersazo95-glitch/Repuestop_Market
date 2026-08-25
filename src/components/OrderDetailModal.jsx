@@ -1020,7 +1020,7 @@ export default function OrderDetailModal({
                     {/* Calificación del Vendedor */}
                     <div style={{ backgroundColor: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                       <label style={{ display: 'block', fontSize: '13.5px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>
-                        Atención y servicio de {sellerNames[0] || 'la tienda vendedora'}:
+                        Atención y servicio de {sellerName}:
                       </label>
                       <div style={{ display: 'flex', gap: '6px' }}>
                         {[1, 2, 3, 4, 5].map((star) => (

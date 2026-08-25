@@ -2357,7 +2357,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           order={selectedOrder}
           mode={isSeller ? 'seller' : 'buyer'}
           sellerId={effectiveSellerId}
-          userId={userId}
+          userId={effectiveUserId}
           onClose={() => setSelectedOrder(null)}
           onUpdateStatus={handleUpdateOrderStatus}
           onRetryPayment={isSeller ? undefined : handleRetryPayment}

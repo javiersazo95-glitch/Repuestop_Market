@@ -303,6 +303,12 @@ export default function StorePublicProfileView({
   const endIndex = Math.min(sortedProducts.length, currentPage * itemsPerPage);
   const paginatedProducts = sortedProducts.slice(startIndex, endIndex);
 
+  // Los tres botones del paginador la llamaban sin que existiera: con mas de una pagina
+  // de repuestos, cualquier clic reventaba la vista de tienda con un ReferenceError.
+  const handlePageChange = (page) => {
+    setCurrentPage(Math.min(Math.max(1, page), totalPages));
+  };
+
   const toggleFollow = () => setIsFollowing(!isFollowing);
 
   const handleShare = async () => {
