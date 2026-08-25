@@ -1134,3 +1134,88 @@ expone por API. Si allá cambia, el contador de la web miente.
   backend es idempotente y devuelve el mismo pedido con un `urlPago` fresco.
 - **La app no tiene ninguna guarda propia** en `checkoutQuote()`; toda la
   protección vive en el backend.
+
+---
+
+### 4.18 Cancelación de pedidos y Flyway en local — sesión 2026-08-25
+
+#### El comprador ya puede cancelar su pedido no pagado
+
+**El botón "Cancelar pedido" de la app móvil nunca funcionó.** Llama a la
+transición genérica `PUT /pedidos/{id}/estado` a `CANCELADO`, y
+`validarAvanceControlado` solo le permitía al comprador `ENVIADO→ENTREGADO` y
+`ENTREGADO→FINALIZADO`. Cada intento moría en `InvalidStateTransitionException` y
+el usuario veía "No se pudo cancelar el pedido", que parece un problema de red. La
+UI del móvil y la regla del backend llevaban tiempo contradiciéndose.
+
+Ahora se permite `PENDIENTE → CANCELADO` pedido por el propio comprador
+(monorepo `94602b6`), la app reconoce los estados nuevos (`9ee2727`) y la web
+estrena el botón, que no existía (`f6dc87d`, `373c6e7`, `b6f2fc3`).
+
+**El corte en `PENDIENTE` es deliberado**: cancelar un `PAGADO` exige devolver la
+plata y ese pipeline vive en `PedidoCancelacionSupport`. Hay un test que fija esa
+frontera.
+
+**La cancelación relee el pedido con `SELECT ... FOR UPDATE`.** Es la única
+transición que compite con la pasarela: si el webhook de Flow confirma el pago en
+el mismo instante, el pedido quedaría `CANCELADO` con el cobro capturado. El lock
+va solo en ese camino.
+
+#### Los cuatro estados de ítem cancelado
+
+`ACTIVO`, `CANCELADO_VENDEDOR`, `CANCELADO_BLOQUEO_VENDEDOR`,
+`CANCELADO_EXPIRACION_PAGO` y `CANCELADO_COMPRADOR`. Se espejan en **tres**
+lugares y hay que tocarlos juntos:
+
+- `PedidoService.ITEM_ESTADO_*` (backend, fuente de verdad),
+- `LiquidacionPedidoCalculator.itemsActivos()` — **si un estado cancelado no se
+  excluye ahí, esos ítems entran a la liquidación como si estuvieran vivos**,
+- `CANCELLED_ITEM_STATUSES` en `mobile/components/order-detail/order-detail-parts.tsx`.
+
+Y las etiquetas del enum de motivo van en `src/data/cancellationReason.js` de la
+web. Agregar un valor al enum del backend y olvidar ese diccionario deja el motivo
+en blanco sin ningún error: pasó con `SOLICITUD_DEL_COMPRADOR`.
+
+#### FLYWAY: ojo, esto cambia cómo se prueban las migraciones
+
+**Hasta esta sesión Flyway estaba APAGADO en local** (`spring.flyway.enabled=false`
+en `application-dev.properties`, y el perfil local es `dev,local`). El esquema
+local lo construía entero Hibernate con `ddl-auto=update` desde las entidades, así
+que **ninguna migración se ejecutaba nunca antes de desplegar**. Una migración con
+los identificadores entre comillas se dio por validada porque el backend arrancó,
+cuando en realidad Flyway ni la miró.
+
+Ya está encendido en `application-local.properties` (monorepo `42eb796`), con
+`baseline-version=2026082304` porque la base ya tenía el esquema hecho y no tenía
+`flyway_schema_history`. El baseline solo aplica a un esquema no vacío sin
+historial: sobre una base nueva Flyway lo ignora y corre todo en orden.
+
+**Los backfills de las migraciones anteriores nunca corrieron en local** y no van a
+correr. En producción sí.
+
+#### TRAMPA ABIERTA: `ddl-auto=update` y los CHECK de los enums
+
+Con `ddl-auto=update`, Hibernate crea un `CHECK` por cada columna
+`@Enumerated(STRING)` **con los valores que el enum tenía al crear la columna**, y
+después NUNCA lo actualiza. Al sumar `COMPRADOR` a `OrigenCancelacionPedido`, el
+INSERT reventaba con `viola la restricción check rt_pedido_cancelado_por_check` y
+la API respondía **503**. Falla en runtime y lejos del enum que se cambió.
+
+`V2026082501` suelta esos checks recorriendo `pg_constraint` (el nombre lo elige
+Hibernate y cambia entre versiones), pero **no cierra la trampa**: Flyway corre
+antes del schema update, Hibernate puede recrear el check con los valores del
+momento, y el próximo valor que se agregue vuelve a romperlo.
+
+**El arreglo de fondo es `spring.jpa.hibernate.ddl-auto=validate` con Flyway como
+dueño del esquema.** Hoy los tres perfiles usan `update`, incluido prod por
+variable de entorno. Es decisión de infraestructura y quedó sin tomar.
+
+#### Lo que sigue faltando
+
+- **La web no tiene la cancelación del VENDEDOR.** El endpoint
+  `POST /proveedores/{id}/pedidos/{id}/cancelacion` existe y la app lo usa, pero un
+  grep por "cancelacion" en todo `src/` de la web no devuelve nada.
+- El motivo de cancelación **no se muestra en la app**, solo en la web.
+- Los minutos de la ventana de pago siguen sin exponerse por API:
+  `PAYMENT_WINDOW_MINUTES` en `src/data/orderStatusFlow.js` espeja
+  `repuestop.pedido.expiracion.minutos`.
