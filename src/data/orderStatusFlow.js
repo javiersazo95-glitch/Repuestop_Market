@@ -1,5 +1,43 @@
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
+/**
+ * Minutos que el comprador tiene para pagar un pedido antes de que el backend lo
+ * cancele y devuelva la unidad al stock.
+ *
+ * ESPEJO de `repuestop.pedido.expiracion.minutos` en el `application.properties`
+ * del backend, que es quien manda: `PedidoPagoSupport` compara contra
+ * `updatedAt + minutosExpiracion` y un job barre los vencidos cada 5 minutos. Ese
+ * valor NO se expone por API, asi que aca solo se puede espejar. Si alla se
+ * cambia, este numero miente y hay que actualizarlo; lo correcto de fondo es que
+ * el backend lo publique en el DTO del pedido.
+ */
+export const PAYMENT_WINDOW_MINUTES = 30;
+
+/**
+ * Cuanto le queda al comprador para pagar un pedido PENDIENTE.
+ *
+ * La cuenta va desde `updatedAt` y no desde `createdAt` porque cada reintento
+ * pide una intencion de pago nueva y reinicia la ventana (`reintentarPago()` hace
+ * `pedido.setUpdatedAt(now)`), igual que `vigenteDesde` en las cotizaciones.
+ *
+ * Devuelve `null` cuando no hay fecha utilizable, para no inventar un plazo.
+ */
+export function orderPaymentWindow(order, now = Date.now()) {
+  const updatedAt = new Date(order?.updatedAt || order?.fechaActualizacion || 0).getTime();
+  if (!Number.isFinite(updatedAt) || updatedAt <= 0) return null;
+
+  const remaining = updatedAt + PAYMENT_WINDOW_MINUTES * 60 * 1000 - now;
+  if (remaining <= 0) {
+    return { expired: true, minutes: 0, label: 'El plazo para pagar venció' };
+  }
+  const minutes = Math.max(1, Math.ceil(remaining / 60000));
+  return {
+    expired: false,
+    minutes,
+    label: `Te queda${minutes === 1 ? '' : 'n'} ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'} para pagar`,
+  };
+}
+
 export function normalizeOrderStatus(order) {
   const status = String(order?.estado || order?.status || 'PENDIENTE').toUpperCase();
   const aliases = {

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Clock, Wrench, Truck, PackageCheck, ShieldCheck, AlertCircle, XCircle,
   RotateCcw, FileText, User, Store, Package, Info, ChevronRight, Check,
   Phone, MapPin, Boxes, Loader2
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
-import { getControlledOrderAction, isStorePickupOrder } from '../data/orderStatusFlow';
+import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
 
 export const UNIFIED_STATUS_CONFIG = {
   PENDIENTE: { label: 'Pendiente de pago', icon: Clock, className: 'badge-amber', tone: 'amber' },
@@ -67,7 +67,19 @@ export default function OrderCard({
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [actionError, setActionError] = useState('');
   const [isRetryingPayment, setIsRetryingPayment] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const isSeller = mode === 'seller';
+
+  // El reloj corre por minuto, como en el chip de vigencia de las cotizaciones.
+  // Solo se monta si esta tarjeta muestra un plazo de pago.
+  const showsPaymentWindow = !isSeller
+    && String(order?.estado || order?.status || '').toUpperCase() === 'PENDIENTE'
+    && Boolean(onRetryPayment);
+  useEffect(() => {
+    if (!showsPaymentWindow) return undefined;
+    const timer = window.setInterval(() => setNow(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, [showsPaymentWindow]);
 
   if (!order) return null;
 
@@ -80,6 +92,7 @@ export default function OrderCard({
   const normStatus = String(rawStatus).toUpperCase();
   // Solo el comprador paga, y solo mientras el pedido siga sin pagarse.
   const canRetryPayment = !isSeller && normStatus === 'PENDIENTE' && Boolean(onRetryPayment);
+  const paymentWindow = canRetryPayment ? orderPaymentWindow(order, now) : null;
   const deliveryTerms = String(order.courier || order.deliveryTerms || order.tipoEnvio || order.compradorDireccion || order.direccionEntrega || 'Despacho a domicilio');
   const isStorePickup = isStorePickupOrder(order);
   const displayStatus = normStatus === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : rawStatus;
@@ -322,6 +335,15 @@ export default function OrderCard({
             )}
           </div>
         </div>
+
+        {/* El comprador no tenia como saber que existia un plazo: el pedido se
+            cancelaba solo y la unidad volvia al stock sin aviso previo. */}
+        {paymentWindow && (
+          <p className={`order-payment-window ${paymentWindow.expired ? 'is-expired' : ''}`}>
+            <Clock size={13} />
+            <span>{paymentWindow.label}</span>
+          </p>
+        )}
 
         {/* Bottom Actions Row */}
         <div className="order-card-actions">

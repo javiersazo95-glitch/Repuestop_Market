@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X, Clock, Wrench, Truck, PackageCheck, User, Store,
   MapPin, Phone, Mail, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
@@ -7,7 +7,7 @@ import {
 import { OrderStatusBadge } from './OrderCard';
 import { resolveShippingService } from '../data/shippingMethods';
 import { resolveMediaUrl } from '../services/api';
-import { getControlledOrderAction, isStorePickupOrder } from '../data/orderStatusFlow';
+import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
 
 function initialsFromName(name) {
   return String(name || '')
@@ -64,12 +64,22 @@ export default function OrderDetailModal({
   const [statusError, setStatusError] = useState('');
   const [isRetryingPayment, setIsRetryingPayment] = useState(false);
   const [retryError, setRetryError] = useState('');
+  const [now, setNow] = useState(Date.now());
+
+  // El reloj corre por minuto solo mientras haya un plazo de pago que mostrar.
+  const showsPaymentWindow = mode !== 'seller' && normStatus === 'PENDIENTE' && Boolean(onRetryPayment);
+  useEffect(() => {
+    if (!showsPaymentWindow) return undefined;
+    const timer = window.setInterval(() => setNow(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, [showsPaymentWindow]);
 
   if (!order) return null;
 
   const isSeller = mode === 'seller';
   // Solo el comprador paga, y solo mientras el pedido siga sin pagarse.
   const canRetryPayment = !isSeller && normStatus === 'PENDIENTE' && Boolean(onRetryPayment);
+  const paymentWindow = canRetryPayment ? orderPaymentWindow(order, now) : null;
 
   const orderIdShort = String(order.id || '').slice(-6).toUpperCase();
   const items = order.items || [];
@@ -408,6 +418,19 @@ export default function OrderDetailModal({
             </div>
           </div>
         </div>
+
+        {/* El plazo va sobre el boton: es la informacion que decide si conviene
+            pagar ahora o si el pedido ya se perdio. */}
+        {paymentWindow && (
+          <p className={`order-payment-window in-modal ${paymentWindow.expired ? 'is-expired' : ''}`}>
+            <Clock size={14} />
+            <span>
+              {paymentWindow.expired
+                ? 'El plazo para pagar venció. Este pedido se cancela y la unidad vuelve al stock; puedes volver a comprarla.'
+                : `${paymentWindow.label}. Pasado ese plazo el pedido se cancela y la unidad vuelve al stock.`}
+            </span>
+          </p>
+        )}
 
         <div className="order-modal-footer">
           {/* El banner de pago fallido manda al comprador justo aca diciendole que

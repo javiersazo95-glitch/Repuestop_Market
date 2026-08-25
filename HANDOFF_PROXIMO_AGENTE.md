@@ -1035,3 +1035,62 @@ Mejora de plan de punta a punta (Básica → Destacada, saldo 300 → 250 cobrad
 el backend), historial con su detalle, recarga con la lluvia, bloqueo de
 auto-compra, y el alta con Google dos veces
 (`/auth/google` 404 → `/auth/register/buyer` 200 → `/auth/google` 200).
+
+---
+
+### 4.17 Pasada de pruebas de flujo — sesión 2026-08-24
+
+Recorrido en el navegador sobre el backend local, con los arreglos que fue
+dejando. Lo que sigue es solo lo que no se deduce del diff.
+
+#### Pedido pendiente: lo que se cerró y lo que falta
+
+La web **no tenía ninguna forma de pagar un pedido que quedara en `PENDIENTE`**.
+`urlPago` existía en un solo lugar del código (el checkout) y el banner de pago
+fallido mandaba al comprador al detalle del pedido a "reintentar el pago", donde
+no había con qué. Se agregó "Retomar pago" contra
+`POST /usuarios/{id}/pedidos/{pedidoId}/reintentar-pago`, que el backend ya
+exponía y la app ya consumía.
+
+El caso grave eran los pedidos del **carrito**: la idempotencia que renueva el
+`urlPago` vive en `PedidoCheckoutCotizacionSupport` y cuelga de `conversacion_id`
+(UNIQUE desde `V2026072801`), así que solo cubre a las cotizaciones. Un pedido de
+carrito en `PENDIENTE` quedaba impagable hasta expirar.
+
+**No se portó el sondeo del móvil** (60 llamadas a `confirmar-pago` cada 2 s): en
+la app Flow se abre incrustado y la pantalla sobrevive; en la web la página se va
+entera y vuelve con el resultado en `?status=...&orderId=...`, donde basta una
+sola llamada.
+
+#### PENDIENTE DE BACKEND — motivo de cancelación del pedido
+
+`PedidoResponseDTO` **no expone por qué se canceló un pedido**. El único campo es
+`cancelacionPorBloqueoVendedor`. Para el comprador, un pedido cancelado porque no
+alcanzó a pagar dentro de la ventana de 30 minutos se ve EXACTAMENTE IGUAL que uno
+cancelado por el vendedor o por un reembolso: dice "Cancelado" y nada más.
+
+Inferirlo en el cliente sería adivinar, así que **la web no puede arreglarlo
+sola**. Hace falta un campo en el DTO (algo como `motivoCancelacion`, con al menos
+`EXPIRACION_PAGO` / `VENDEDOR` / `REEMBOLSO`) que llene tanto
+`PedidoPagoSupport.reintentarPago()` como el job `expirarPedidosVencidos()`.
+Recién ahí la web puede decir "se canceló porque no se completó el pago" y ofrecer
+volver a comprar. Orden obligatorio: backend primero.
+
+Mientras tanto se cerró la mitad que sí depende de la web: el pedido pendiente
+ahora muestra cuánto queda de la ventana. Ojo con eso —
+`PAYMENT_WINDOW_MINUTES` en `src/data/orderStatusFlow.js` es un **espejo** de
+`repuestop.pedido.expiracion.minutos` del `application.properties`, que no se
+expone por API. Si allá cambia, el contador miente. Publicarlo en el DTO junto
+con el motivo resolvería las dos cosas de una vez.
+
+#### Lo que se revisó y resultó estar bien
+
+- **Volver a pagar una cotización cuyo pedido se canceló está correcto.** Los 30
+  minutos son una ventana de reserva de stock, no una prohibición de comprar: al
+  expirar se restaura el stock y `PedidoCheckoutCotizacionSupport` suelta el
+  `conversacion_id` para permitir un pedido nuevo. La cotización sigue vigente por
+  su cuenta. Calza con la práctica del rubro.
+- **No hay pedidos duplicados** al reentrar al checkout de una cotización: el
+  backend es idempotente y devuelve el mismo pedido con un `urlPago` fresco.
+- **La app no tiene ninguna guarda propia** en `checkoutQuote()`; toda la
+  protección vive en el backend.
