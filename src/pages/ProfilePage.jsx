@@ -29,6 +29,11 @@ export default function ProfilePage() {
   const [searchParams] = useSearchParams();
   const paymentStatus = searchParams.get('status');
   const paymentOrderId = searchParams.get('orderId');
+  // Enlaces profundos de la campana de notificaciones: `?pedido=` abre el detalle del
+  // pedido y `?ticket=` la consulta de soporte. Sin esto la notificacion dejaba al
+  // usuario en la pestaña correcta pero sin abrir lo que le avisaron.
+  const deepLinkOrderId = searchParams.get('pedido');
+  const deepLinkTicketId = searchParams.get('ticket');
 
   const handleTabChange = useCallback((nextTab) => {
     navigate(profilePath(nextTab));
@@ -53,6 +58,8 @@ export default function ProfilePage() {
       <ProfileDashboard
         initialTab={tab}
         onTabChange={handleTabChange}
+        deepLinkOrderId={deepLinkOrderId}
+        deepLinkTicketId={deepLinkTicketId}
         onBackToStore={nav.goHome}
         paymentStatus={paymentStatus}
         paymentOrderId={paymentOrderId}

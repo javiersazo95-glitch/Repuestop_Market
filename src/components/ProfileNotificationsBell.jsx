@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Bell, CheckCheck, Loader2, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
   getNotificationsApi, getUnreadNotificationsCountApi, markAllNotificationsReadApi,
   markNotificationReadApi, deleteReadNotificationsApi
 } from '../services/api';
+import { notificationTargetPath } from '../data/notificationTargets';
 
 function formatTime(value) {
   if (!value) return '';
@@ -13,6 +15,7 @@ function formatTime(value) {
 export default function ProfileNotificationsBell({ user }) {
   const userId = user?.userId ?? user?.id;
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -36,6 +39,22 @@ export default function ProfileNotificationsBell({ user }) {
   }, [loadUnread]);
 
   const toggle = () => { setOpen((current) => !current); if (!open) loadItems(); };
+  /**
+   * Un clic marca la notificacion como leida Y lleva a donde ocurrio el hecho, que es
+   * para lo que existe. Antes solo marcaba: el usuario quedaba en la campana sin forma
+   * de llegar al pedido, la pregunta o el ticket.
+   *
+   * El destino se traduce porque el backend guarda las rutas de la APP MOVIL
+   * (`/order-detail`, `/quote-chat`...), que en la web no existen.
+   */
+  const openNotification = (item) => {
+    markRead(item);
+    const target = notificationTargetPath(item);
+    if (!target) return;
+    setOpen(false);
+    navigate(target);
+  };
+
   const markRead = async (item) => {
     if (item.leida || !userId) return;
     try {
@@ -82,7 +101,7 @@ export default function ProfileNotificationsBell({ user }) {
           )}
         </div>
       </div>
-      {loading ? <div className="profile-notifications-loading"><Loader2 size={16} className="spin-icon" /> Cargando...</div> : items.length === 0 ? <p className="profile-notifications-empty">No tienes notificaciones por ahora.</p> : <div className="profile-notifications-list">{items.map((item) => <button type="button" key={item.id} className={`profile-notification-item ${item.leida ? 'read' : 'unread'}`} onClick={() => markRead(item)}><span><strong>{item.titulo || 'Nueva notificación'}</strong><small>{item.mensaje}</small><time>{formatTime(item.createdAt)}</time></span>{!item.leida && <i />}</button>)}</div>}
+      {loading ? <div className="profile-notifications-loading"><Loader2 size={16} className="spin-icon" /> Cargando...</div> : items.length === 0 ? <p className="profile-notifications-empty">No tienes notificaciones por ahora.</p> : <div className="profile-notifications-list">{items.map((item) => <button type="button" key={item.id} className={`profile-notification-item ${item.leida ? 'read' : 'unread'}`} onClick={() => openNotification(item)}><span><strong>{item.titulo || 'Nueva notificación'}</strong><small>{item.mensaje}</small><time>{formatTime(item.createdAt)}</time></span>{!item.leida && <i />}</button>)}</div>}
     </div>}
   </div>;
 }

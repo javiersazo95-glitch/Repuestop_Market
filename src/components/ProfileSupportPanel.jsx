@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, ChevronRight, CircleAlert, Headphones, Inbox, Loader2, MessageSquare, Scale } from 'lucide-react';
 import { getMyMediationsApi, getMyReportsApi, getMySupportTicketsApi } from '../services/api';
@@ -35,7 +35,7 @@ function isClosed(status) {
   return CLOSED_STATUSES.includes(String(status || '').toUpperCase());
 }
 
-export default function ProfileSupportPanel({ user }) {
+export default function ProfileSupportPanel({ user, deepLinkTicketId }) {
   const userId = user?.userId ?? user?.id;
   const isSeller = Boolean(user?.sellerId);
   const [tickets, setTickets] = useState([]);
@@ -46,6 +46,15 @@ export default function ProfileSupportPanel({ user }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedTicketId, setSelectedTicketId] = useState(null);
+
+  // Notificacion de soporte: abre la consulta directo. Se marca para no reabrirla si el
+  // usuario la cierra y la URL sigue con `?ticket=`.
+  const openedTicketRef = useRef(null);
+  useEffect(() => {
+    if (!deepLinkTicketId || openedTicketRef.current === deepLinkTicketId) return;
+    openedTicketRef.current = deepLinkTicketId;
+    setSelectedTicketId(deepLinkTicketId);
+  }, [deepLinkTicketId]);
   // El caso abierto vive en la URL (`/perfil/consultas?caso=<pedidoId>`) para que
   // el botón atrás del navegador cierre el expediente y el enlace sea compartible.
   const [searchParams, setSearchParams] = useSearchParams();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -258,7 +258,7 @@ function EmptyState({ label }) {
   );
 }
 
-export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange, paymentStatus, paymentOrderId }) {
+export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange, paymentStatus, paymentOrderId, deepLinkOrderId, deepLinkTicketId }) {
   const { user, role, logout, updateProfile, refreshProfile, deleteAccount } = useAuth();
   // El centro de ayuda dejó de ser una pestaña del perfil: vive en /ayuda y se
   // navega hacia allá desde el sidebar y los accesos rápidos.
@@ -560,6 +560,17 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // primero en el listado ya cargado; si no aparece (recien creado, otra pestaña)
   // se trae por id directo con el endpoint nuevo.
   const [paymentBannerOrder, setPaymentBannerOrder] = useState(null);
+
+  // Notificacion de pedido: abre el detalle apenas la lista este cargada. Se usa una
+  // marca para no reabrirlo si el usuario lo cierra y la URL sigue teniendo `?pedido=`.
+  const openedDeepLinkRef = useRef(null);
+  useEffect(() => {
+    if (!deepLinkOrderId || openedDeepLinkRef.current === deepLinkOrderId) return;
+    const found = (orders || []).find((o) => String(o.id) === String(deepLinkOrderId));
+    if (!found) return;
+    openedDeepLinkRef.current = deepLinkOrderId;
+    setSelectedOrder(found);
+  }, [deepLinkOrderId, orders]);
   useEffect(() => {
     if (!paymentOrderId || !paymentStatus || paymentStatus === 'success') {
       setPaymentBannerOrder(null);
@@ -2040,7 +2051,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
 
               {activeTab === 'consultas' && (
-                <ProfileSupportPanel user={user} />
+                <ProfileSupportPanel user={user} deepLinkTicketId={deepLinkTicketId} />
               )}
 
               {(activeTab === 'tienda_datos' || activeTab === 'datos') && (
