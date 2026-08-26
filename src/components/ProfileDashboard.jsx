@@ -288,6 +288,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [showMediaModal, setShowMediaModal] = useState(null);
   const [mediaInput, setMediaInput] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
+  // `alert()` no abre nada en un navegador embebido: el archivo invalido se rechazaba
+  // en silencio y parecia que el boton no hacia nada. El aviso va dentro del modal.
+  const [mediaError, setMediaError] = useState('');
+  const [isSavingMedia, setIsSavingMedia] = useState(false);
   const [showCoverTemplatesModal, setShowCoverTemplatesModal] = useState(false);
   const [coverTemplates, setCoverTemplates] = useState([]);
   const [selectedCoverTemplateId, setSelectedCoverTemplateId] = useState(null);
@@ -359,12 +363,13 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setMediaError('');
     if (!file.type.startsWith('image/')) {
-      alert('Por favor selecciona un archivo de imagen válido (PNG, JPG, WEBP).');
+      setMediaError('Selecciona un archivo de imagen válido (PNG, JPG o WEBP).');
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      alert('La imagen no puede superar los 5 MB.');
+      setMediaError('La imagen no puede superar los 5 MB.');
       return;
     }
 
@@ -380,8 +385,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
   const handleSaveMediaUrl = async (e) => {
     e.preventDefault();
-    if (!mediaFile) return;
+    if (!mediaFile || isSavingMedia) return;
 
+    setIsSavingMedia(true);
+    setMediaError('');
     try {
       const uploaded = await uploadProfileImageApi(mediaFile);
       const uploadedUrl = resolveMediaUrl(uploaded.userProfileUrl);
@@ -389,10 +396,19 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       if (isSeller && effectiveSellerId) {
         queryClient.invalidateQueries({ queryKey: qk.sellerStore(effectiveSellerId) });
       }
-      setShowMediaModal(null);
+      closeMediaModal();
     } catch (error) {
-      alert(error?.message || 'No se pudo guardar la imagen.');
+      setMediaError(error?.message || 'No se pudo guardar la imagen.');
+    } finally {
+      setIsSavingMedia(false);
     }
+  };
+
+  const closeMediaModal = () => {
+    setShowMediaModal(null);
+    setMediaInput('');
+    setMediaFile(null);
+    setMediaError('');
   };
 
   const queryClient = useQueryClient();
@@ -2663,12 +2679,15 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 </div>
               )}
 
+              {mediaError && <p className="confirm-dialog-error">{mediaError}</p>}
+
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', paddingTop: '14px', borderTop: '1px solid var(--border-subtle)', marginTop: '4px' }}>
-                <button type="button" className="btn-auth-secondary" onClick={() => setShowMediaModal(null)}>
+                <button type="button" className="btn-auth-secondary" onClick={closeMediaModal} disabled={isSavingMedia}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn-auth-primary" disabled={!mediaFile} style={{ width: 'auto' }}>
-                  <Save size={16} /> Guardar Imagen
+                <button type="submit" className="btn-auth-primary" disabled={!mediaFile || isSavingMedia} style={{ width: 'auto' }}>
+                  {isSavingMedia ? <Loader2 size={16} className="spin-icon" /> : <Save size={16} />}
+                  {isSavingMedia ? 'Guardando…' : 'Guardar Imagen'}
                 </button>
               </div>
             </form>
