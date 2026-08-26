@@ -1219,3 +1219,65 @@ variable de entorno. Es decisión de infraestructura y quedó sin tomar.
 - Los minutos de la ventana de pago siguen sin exponerse por API:
   `PAYMENT_WINDOW_MINUTES` en `src/data/orderStatusFlow.js` espeja
   `repuestop.pedido.expiracion.minutos`.
+
+---
+
+### 4.19 Paridad app ↔ web: fases aplicadas y primeras pruebas — sesión 2026-08-25
+
+El plan completo está en `PLAN_PARIDAD_APP_WEB.md`. Se auditó comparando por **endpoint
+del backend**, no por pantallas: para cada capacidad se preguntó quién la consume (app /
+web / nadie). Eso evita los falsos negativos de comparar vistas, que es como se había
+mirado antes.
+
+Las 7 fases están aplicadas. De las pruebas alcanzaron a cerrarse **cinco**, todas
+contra el **backend local** (`localhost:8080`, perfil `dev,local`), no contra `api-dev`:
+
+1. A23 — fotos existentes al editar un producto (verificada también en R2)
+2. A9 — métodos de envío de la tienda
+3. A2 + C1 — cancelación del vendedor con motivo
+4. A3 — despacho con comprobante (el archivo llega a R2, `Comprobante_envio/Pedido_8/`)
+5. A4 — calificación del comprador y cierre del pedido
+
+**Sigue la prueba 6: tickets de soporte (A5 + B2).** Después quedan A6, A7, A10, A12,
+A13, A14, A15, A19, A24, A1 y A20.
+
+#### Cambio de backend (commit `3390139`)
+
+Es el único que necesitó tocar Java, y es el importante:
+`InventarioImagenSupport.reemplazarImagenes()` era **todo o nada**. Bastaba con subir
+UNA foto al editar un producto para que borrara de R2 las anteriores, sin vuelta atrás.
+Ahora `ProveedorProductoRequestDTO` acepta `existingPhotos` con las URLs que el cliente
+quiere conservar:
+
+- `existingPhotos == null` → comportamiento histórico intacto. La app móvil y la carga
+  masiva no mandan el campo, así que para ellas **no cambia nada**.
+- `existingPhotos != null` → borra solo lo que no está declarado y agrega las nuevas al
+  final (`guardarImagenes` acepta un `sortOrderInicial`; antes reiniciaba en 0 y dejaba
+  dos imágenes peleando por ser la primera).
+
+`construirUrlImagen()` se movió de `InventarioResponseMapper` a
+`InventarioImagenUrlResolver` como `public static`: las dos puntas tienen que armar
+**exactamente** la misma cadena o la comparación falla y se borra una foto que el
+vendedor quería conservar. Hay tres tests nuevos en `InventarioImagenSupportTest`.
+
+**Orden de despliegue: backend primero.** Si la web sale antes, manda `existingPhotos` a
+un backend que lo ignora y vuelve el borrado total.
+
+#### Lo que destaparon las pruebas
+
+Ocho bugs que no estaban en el plan, varios **preexistentes**. El detalle está en
+`PLAN_PARIDAD_APP_WEB.md` §7.1; lo que conviene recordar:
+
+- **`npx oxlint --deny no-undef src/`** encuentra los `ReferenceError` que ni el build ni
+  el lint ven. Había tres, cada uno reventaba una vista entera.
+- **`window.confirm` y `alert()` no funcionan en un navegador embebido.** Ya no queda
+  ninguno en `src/`.
+- **Clases de CSS inventadas** dejan modales sin fondo sin fallar en ninguna parte.
+
+#### Observación abierta
+
+Hay pedidos antiguos con el método de envío **concatenado** en `courier` (el #6 tiene
+`"Retiro en tienda | Envío dentro de la comuna ($3000)"`). Es dato viejo, no una
+regresión: el checkout actual usa `checkoutFallbackShippingMethod()`, que manda vacío si
+hay mezcla. Pero esos pedidos se ven contradictorios —dicen "Retiro en Tienda" y cobran
+envío— y no se ha medido cuántos son.

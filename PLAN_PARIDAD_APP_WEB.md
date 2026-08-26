@@ -412,3 +412,70 @@ Para certificar que el plan quedó ejecutado al 100% y sin regresiones, se debe 
   2. Verificar que los topes de caracteres (500 descripción, 80 precio/cotización) y formato de teléfono chileno funcionan defensivamente.
   3. Guardar el anuncio y confirmar que genera el `agendaConfigId` requerido por la app móvil.
 
+
+---
+
+## 7. Resultado de las pruebas (sesión del 2026-08-25)
+
+Se probó **contra el backend local** (`localhost:8080`, perfil `dev,local`), no contra
+`api-dev`. Cinco pruebas cerradas; el resto queda para la próxima sesión.
+
+| # | Capacidad | Estado |
+|---|---|---|
+| 1 | A23 — fotos existentes al editar un producto | ✅ aprobada (verificada también en R2) |
+| 2 | A9 — métodos de envío de la tienda | ✅ aprobada |
+| 3 | A2 + C1 — cancelación del vendedor con motivo | ✅ aprobada |
+| 4 | A3 — despacho con comprobante | ✅ aprobada (comprobante confirmado en R2) |
+| 5 | A4 — calificación del comprador y cierre del pedido | ✅ aprobada |
+
+**Siguiente: prueba 6 — tickets de soporte (A5 + B2).** El modal de detalle del ticket
+se corrigió junto con los demás (usaba `.order-modal-card`, que no existe) pero **no se
+ha visto renderizado todavía**. Después quedan A6, A7, A10, A12, A13, A14, A15, A19,
+A24, A1 y A20.
+
+### 7.1 Lo que las pruebas destaparon
+
+Ninguno de estos estaba en el plan. Salieron probando, y varios son **preexistentes**,
+no de las fases de paridad:
+
+1. **Tres `ReferenceError` que reventaban vistas enteras.** `userId` en
+   `ProfileDashboard` (moría cualquier detalle de pedido), `sellerNames` en el modal de
+   calificación, y `handlePageChange` en el paginador de la tienda pública (este venía
+   de `7af100d`). Ni `npm run build` ni `npm run lint` los detectan: son errores de
+   runtime y `no-undef` está apagado. **Se encuentran con
+   `npx oxlint --deny no-undef src/`**, que hoy deja limpio salvo globals del navegador.
+   Vale la pena correrlo al agregar props o handlers.
+2. **`window.confirm` y `alert()` no abren nada en un navegador embebido**: devuelven
+   `false`/`undefined` de inmediato, así que el código salía por el `return` y el botón
+   quedaba mudo. Pasaba en avanzar el estado del pedido (tarjeta y detalle), cerrar un
+   ticket de soporte y validar la foto de perfil. Todo migrado a `ConfirmDialog` y a
+   avisos inline. **Ya no queda ningún `alert()` ni `window.confirm()` en `src/`.**
+3. **Modales dibujados con clases que no existen en `index.css`**
+   (`.order-modal-card`, `-header-left`, `-title`, `-close-btn`): la tarjeta quedaba sin
+   fondo y el contenido de atrás se veía a través. Afectaba a los tres subdiálogos del
+   pedido y al detalle del ticket. Ahora usan `.commission-modal-*` por portal, como
+   `ConfirmDialog`, más una familia `.order-subdialog-*` que toma los colores del tema.
+4. **Campos del despacho sin tope.** `courier` y `trackingNumber` son `length = 120` y
+   `valorEnvioInformado` es `NUMERIC(12,2)`: un número largo **no entraba en la columna**
+   y el despacho se perdía al guardar. Acotados; el seguimiento además se restringe a
+   `A-Z0-9-` (6–30), el superset de los formatos de Chilexpress, Starken, Blue Express y
+   Correos de Chile.
+5. **Restricciones del backend que la UI no anticipaba**: la cancelación del vendedor
+   solo acepta `PENDIENTE`/`PAGADO`, y la calificación exige puntuar **todos** los ítems
+   y rechaza la segunda. Los botones ahora respetan esas fronteras en vez de mandar el
+   400 y mostrarlo como error del servidor.
+
+### 7.2 Observaciones abiertas (no bloquean)
+
+- **Pedidos históricos con el método de envío concatenado.** El pedido #6 tiene
+  `courier = "Retiro en tienda | Envío dentro de la comuna ($3000)"`: los dos métodos
+  pegados, justo lo que CLAUDE.md dice que nunca hay que hacer. Es **dato viejo, no una
+  regresión** — el checkout actual usa `checkoutFallbackShippingMethod()`, que manda
+  vacío si hay mezcla. Pero esos pedidos se ven contradictorios (dicen "Retiro en
+  Tienda" y cobran envío). Falta medir cuántos hay.
+- **`order.courier` casi nunca es un courier.** Suele traer el método de envío, así que
+  el `<select>` del despacho nunca calza con la lista. Por eso arranca en un placeholder.
+- **`no-undef` sigue apagado en el lint.** Habilitarlo con los globals del navegador
+  configurados dejaría esta clase de bug al alcance de `npm run lint`. Hoy el barrido da
+  cero reales, así que es el momento de activarlo sin arrastrar deuda. Pendiente de
+  decisión.
