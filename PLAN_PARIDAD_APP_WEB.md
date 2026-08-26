@@ -552,9 +552,13 @@ Cerradas 6 a 12: tickets de soporte, responder preguntas, pausar/retomar, favori
 mis preguntas del comprador, notificaciones y el chat de cotizacion. El flujo de compra
 se probo de punta a punta, incluido el pago de una cotizacion.
 
-**Quedan por probar**: A1/A20 (recuperar clave y validacion temprana de email), A8
-(cuenta bloqueada), A15 (imagenes en el chat de mediacion) y el flujo de verificacion
-con un estado distinto de APPROVED, que necesita cambiarlo desde el backoffice.
+**A1/A20 cerradas el 2026-08-26** contra el backend local, en los tres escenarios
+(comprador por correo, tienda por RUT y validacion temprana del correo en el registro).
+El detalle esta en `HANDOFF_PROXIMO_AGENTE.md` seccion 4.22.
+
+**Quedan por probar**: A8 (cuenta bloqueada), A15 (imagenes en el chat de mediacion) y
+el flujo de verificacion con un estado distinto de APPROVED, que necesita cambiarlo
+desde el backoffice.
 
 **A16 sigue sin cablear.** `getInventoryVehicleCatalogsApi` y `getVehicleCatalogPartsApi`
 existen en `api.js` y no las llama nadie.

@@ -1401,3 +1401,58 @@ para consultas de compatibilidad (`useProductDetailScreen.ts:711`).
 
 Ver CLAUDE.md. La regla es `error` y `npm run lint` devuelve exit 1 si aparece un
 identificador inexistente. Baseline de warnings: **114**.
+
+---
+
+### 4.22 A1/A20 recuperacion de clave y check-email — sesion 2026-08-26
+
+Probadas contra el backend LOCAL y cerradas: comprador por correo, tienda por RUT y el
+aviso de correo ya registrado en el registro de compradores. Con esto quedan por probar
+solo A8 (cuenta bloqueada), A15 y el flujo de verificacion con un estado distinto de
+APPROVED.
+
+#### El bug: `send-code` y `verify-code`/`reset` NO aceptan el mismo identificador
+
+`POST /auth/recover-password/send-code` con `rol=PROVEEDOR` resuelve la cuenta **solo
+por RUT** (`findByTaxId`, `AuthService:1712`) y **devuelve el correo registrado** en el
+campo `email`. Pero `verify-code` y `reset` resuelven **solo por email**
+(`findByEmail`, lineas 1767 y 1793). Son dos identificadores distintos y `AuthModal`
+guardaba los dos en el mismo estado: el paso 1 pisaba lo que el usuario habia escrito
+con el correo que respondia el backend.
+
+El camino feliz (correo -> codigo -> clave) funcionaba igual, asi que no se veia. Lo
+que rompia:
+
+- **"Reenviar codigo" siempre fallaba para tiendas**: reenviaba con el correo resuelto y
+  `send-code` lo pasaba por `normalizarRut()`, devolviendo 404 "Proveedor no encontrado
+  con el RUT ingresado". El cooldown de 60s empuja justo a ese boton.
+- **"Cambiar Correo"** devolvia al paso 1 con un email dentro del campo "RUT de la Tienda".
+- Entrando desde el login de vendedor se prellenaba el correo tipeado en el campo de RUT,
+  y el toggle Comprador/Tienda no limpiaba el campo.
+
+**El arreglo**: estado `recoverIdentifier` (lo que el usuario ESCRIBE, unico que acepta
+`send-code`) separado de `recoverEmail` (el correo que responde el backend, unico que
+aceptan `verify-code` y `reset`). Regla: **con rol PROVEEDOR son valores distintos y no
+se pueden mezclar.**
+
+#### Como se prueba en local (no es obvio)
+
+**El codigo de 6 digitos NO viene en la respuesta.** `repuestop.auth.expose-verification-code`
+de `application-local.properties` aplica solo al registro y al captador
+(`AuthService:1696`, `CaptadorService:61`), nunca a recuperacion. Sale de:
+
+1. Sin `RESEND_API_KEY`, el correo se simula y el HTML completo se imprime en la consola
+   del backend: buscar `[MOCK EMAIL] Detalles: ... Contenido:`.
+2. Con la clave llega el correo real, pero Resend en modo prueba solo entrega a la
+   direccion verificada; por eso el backend le quita el `+etiqueta` al destinatario.
+3. Siempre funciona: `SELECT email, password_reset_code, password_reset_expiry FROM
+   rt_usuario WHERE email='...'`.
+
+Otras dos trampas: **el limite es 10 peticiones por minuto por IP** sobre TODAS las rutas
+de auth juntas (`AuthRateLimitingFilter`), asi que iterar rapido da un 429 que parece un
+bug del flujo; y `reset` rechaza una clave igual a la actual ("La nueva contraseña no
+puede ser igual a la contraseña actual"), o sea que la prueba necesita una clave nueva
+de verdad.
+
+**Pendiente opcional de backend** (ya anotado en el plan §4): hoy la tienda recupera solo
+por RUT. Aceptar tambien el correo exige un fallback en `enviarCodigoRecuperacion`.
