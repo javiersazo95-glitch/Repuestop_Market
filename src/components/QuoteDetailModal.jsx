@@ -12,6 +12,7 @@ import {
   getConversationQuoteApi, markConversationReadApi, reportConversationApi, resolveMediaUrl,
   sendConversationMessageApi, uploadConversationImageApi,
 } from '../services/api';
+import { compressImageFile } from '../utils/imageCompression';
 import {
   isQuoteExpired, parseQuoteRequestMessage, quantityFromLabel,
   quoteExpirationLabel, QUOTE_AVAILABILITY_OPTIONS, QUOTE_DELIVERY_OPTIONS,
@@ -19,6 +20,18 @@ import {
 } from '../utils/quoteFlow';
 import { buildQuotePdfBlob, quoteDocumentFilename } from '../utils/quoteDocument';
 import { checkoutPath, helpCategoryPath, productPath, storePath } from '../routes/paths';
+
+// Tope del mensaje del chat. Una cotizacion se negocia con datos concretos -cantidad,
+// estado, despacho, precio-; 500 caracteres son un parrafo completo y obligan a ser
+// claro. La app usa 1000 y conviene alinearla.
+const MAX_CHAT_MESSAGE = 500;
+
+// Tope de imagenes por conversacion. Lo valida tambien `ConversacionService`, que es
+// donde el limite es real: esto solo evita que el usuario llegue al error.
+const MAX_CHAT_IMAGES = 10;
+
+// Peso maximo DESPUES de comprimir. Ver `imageCompression` para el porque del numero.
+const MAX_CHAT_IMAGE_BYTES = 3 * 1024 * 1024;
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
@@ -166,6 +179,19 @@ export default function QuoteDetailModal({
     : (user?.logoUrl || user?.userProfileUrl || user?.storeLogoUrl || user?.avatarUrl || quote?.proveedorLogoUrl || quote?.otroParticipanteFotoUrl || quote?.sellerLogoUrl || quote?.tiendaLogoUrl || quote?.logoUrl || activeQuote?.proveedorLogoUrl || activeQuote?.logoUrl);
   const storePhoto = resolveMediaUrl(rawStoreLogo);
   const expired = activeQuote ? isQuoteExpired(activeQuote) : false;
+  const imageCount = messages.filter((message) => message.imagenUrl).length;
+  /**
+   * El comprador no escribe hasta que el vendedor entra al hilo. Es la misma regla que
+   * la app (`quote-chat.tsx:218`): sin esto el comprador puede llenar la conversacion
+   * antes de que haya alguien del otro lado.
+   *
+   * Adjuntar fotos SI se permite desde el inicio, igual que en la app: al pedir la
+   * cotizacion muchas veces hay que mostrar la pieza.
+   */
+  const sellerHasReplied = messages.some((message) => (
+    String(message.emisorId ?? message.autorId ?? '') !== String(user?.userId ?? user?.id ?? '')
+  ));
+  const canWriteText = mode === 'seller' || Boolean(activeQuote) || sellerHasReplied;
   const closed = quote.estado === 'CERRADA';
   const documentName = quoteDocumentFilename(quote.id);
   const openProduct = () => navigate(productPath({ id: quote.productoId, titulo: productName }));
@@ -243,11 +269,18 @@ export default function QuoteDetailModal({
     }
   };
 
-  const handleImageSelected = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setStatusMessage({ type: 'error', text: 'La imagen supera el límite de 10 MB.' });
+  const handleImageSelected = async (e) => {
+    const original = e.target.files?.[0];
+    if (!original) return;
+    if (imageCount >= MAX_CHAT_IMAGES) {
+      setStatusMessage({ type: 'error', text: `Esta conversación ya alcanzó el máximo de ${MAX_CHAT_IMAGES} imágenes.` });
+      return;
+    }
+    // Se comprime ANTES de mirar el peso: una foto de celular pesa varios MB en crudo y
+    // pasaria el tope solo por no estar redimensionada.
+    const file = await compressImageFile(original);
+    if (file.size > MAX_CHAT_IMAGE_BYTES) {
+      setStatusMessage({ type: 'error', text: 'La imagen supera los 3 MB incluso comprimida. Prueba con otra.' });
       return;
     }
     setSelectedImageFile(file);
@@ -437,25 +470,28 @@ export default function QuoteDetailModal({
               <textarea
                 value={chatMessage}
                 onChange={(event) => setChatMessage(event.target.value)}
-                placeholder="Escribe tu mensaje o adjunta una imagen..."
-                maxLength="1000"
+                placeholder={canWriteText
+                  ? 'Escribe tu mensaje o adjunta una imagen...'
+                  : 'Podrás escribir cuando la tienda responda. Mientras tanto puedes adjuntar fotos de la pieza.'}
+                maxLength={MAX_CHAT_MESSAGE}
                 rows="2"
+                disabled={!canWriteText}
               />
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isSending || Boolean(selectedImageFile)}
+                    disabled={isSending || Boolean(selectedImageFile) || imageCount >= MAX_CHAT_IMAGES}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '5px 10px', fontSize: '12px', color: '#475569', cursor: 'pointer' }}
                     title="Adjuntar imagen"
                   >
-                    <Paperclip size={14} /> Adjuntar foto
+                    <Paperclip size={14} /> {imageCount >= MAX_CHAT_IMAGES ? `Máximo ${MAX_CHAT_IMAGES} fotos` : 'Adjuntar foto'}
                   </button>
                   <span><Lock size={12} /> Conversación segura y privada.</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <small>{chatMessage.length}/1000</small>
+                  <small>{chatMessage.length}/{MAX_CHAT_MESSAGE}</small>
                   <button type="submit" disabled={isSending || (!chatMessage.trim() && !selectedImageFile)}>
                     {isSending ? <Loader2 size={16} className="spin-icon" /> : <Send size={16} />}
                     <span>{isUploadingImage ? 'Subiendo...' : 'Enviar'}</span>
