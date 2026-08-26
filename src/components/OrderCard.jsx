@@ -437,6 +437,7 @@ export default function OrderCard({
 
       <ConfirmDialog
         isOpen={confirmAdvance}
+        tone="primary"
         title={controlledAction?.title || '¿Confirmar?'}
         message={controlledAction?.message || ''}
         confirmLabel={controlledAction?.label || 'Confirmar'}

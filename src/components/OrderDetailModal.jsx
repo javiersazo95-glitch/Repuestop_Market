@@ -136,7 +136,9 @@ export default function OrderDetailModal({
 
   // Buyer Rating Modal State (A4)
   const [showRatingModal, setShowRatingModal] = useState(false);
-  const [sellerRating, setSellerRating] = useState(5);
+  // Arranca en 0: precargar 5 estrellas es poner una opinion en boca del comprador y
+  // ademas hace que "Guardar" sea valido sin que haya tocado nada.
+  const [sellerRating, setSellerRating] = useState(0);
   const [productRatings, setProductRatings] = useState({});
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const [ratingError, setRatingError] = useState('');
@@ -173,6 +175,11 @@ export default function OrderDetailModal({
   // la segunda calificacion con "Este pedido ya ha sido calificado". Sin esta condicion el
   // boton seguia ahi despues de calificar y el reintento moria en un 400.
   const alreadyRated = items.some((item) => item.sellerRating != null || item.productRating != null);
+  // `PedidoPostVentaSupport` exige calificar TODOS los items del pedido: si falta uno
+  // responde "Debes calificar todos los productos del pedido". Se bloquea el envio
+  // hasta tenerlos, en vez de mandar el 400 y mostrarlo como error del servidor.
+  const ratingComplete = sellerRating > 0
+    && items.every((item) => Number(productRatings[item.productoId || item.id]) > 0);
   const canRateOrder = ['ENTREGADO', 'FINALIZADO', 'RECEIVED'].includes(normStatus) && !alreadyRated;
 
   const buyerName = order.compradorNombre || order.buyerName || order.usuarioNombre || 'Cliente RepuesTop';
@@ -230,14 +237,29 @@ export default function OrderDetailModal({
     }];
   })).values()];
 
+  const openRatingModal = () => {
+    setProductRatings({});
+    setSellerRating(0);
+    setRatingError('');
+    setRatingSuccess(false);
+    setShowRatingModal(true);
+  };
+
   // Avanza el estado de verdad. La confirmacion previa la pide `handleStatusSubmit`.
   const runStatusUpdate = async (pin) => {
     setIsUpdating(true);
     setStatusError('');
     try {
-      await onUpdateStatus(order.id, controlledAction.nextStatus, controlledAction.requiresPin ? pin : undefined);
+      const nextStatus = controlledAction.nextStatus;
+      await onUpdateStatus(order.id, nextStatus, controlledAction.requiresPin ? pin : undefined);
       setPickupPin('');
       setConfirmStatusAdvance(false);
+      // Igual que la app: apenas el comprador confirma que recibio, se le ofrece
+      // calificar. Es el unico momento en que tiene la compra fresca; si hay que ir a
+      // buscar el boton al detalle, no califica nadie. Se puede omitir con "Ahora no".
+      if (!isSeller && ['ENTREGADO', 'RECEIVED', 'FINALIZADO'].includes(String(nextStatus).toUpperCase())) {
+        openRatingModal();
+      }
     } catch (error) {
       setStatusError(error.message || 'No se pudo actualizar el estado del pedido.');
     } finally {
@@ -738,18 +760,7 @@ export default function OrderDetailModal({
             <button
               type="button"
               className="btn-auth-primary"
-              onClick={() => {
-                const initialProductRatings = {};
-                items.forEach((item) => {
-                  const pId = item.productoId || item.id;
-                  if (pId) initialProductRatings[pId] = 5;
-                });
-                setProductRatings(initialProductRatings);
-                setSellerRating(5);
-                setRatingError('');
-                setRatingSuccess(false);
-                setShowRatingModal(true);
-              }}
+              onClick={openRatingModal}
             >
               <Star size={16} />
               <span>Calificar Compra</span>
@@ -944,8 +955,8 @@ export default function OrderDetailModal({
                       const pId = item.productoId || item.id;
                       return {
                         productoId: Number(pId) || 0,
-                        sellerRating: Number(sellerRating) || 5,
-                        productRating: Number(productRatings[pId]) || 5,
+                        sellerRating: Number(sellerRating),
+                        productRating: Number(productRatings[pId]),
                       };
                     });
                     await rateOrderApi(effectiveUserId, order.id, itemsPayload);
@@ -971,9 +982,12 @@ export default function OrderDetailModal({
                   <>
                     {ratingError && <p className="confirm-dialog-error">{ratingError}</p>}
 
-                    {/* Calificación del Vendedor */}
-                    <div className="order-rating-block">
-                      <span className="order-rating-label">Atención y servicio de {sellerName}</span>
+                    {/* Vendedor */}
+                    <section className="order-rating-block">
+                      <header>
+                        <span className="order-rating-eyebrow">Vendedor</span>
+                        <strong className="order-rating-subject">{sellerName}</strong>
+                      </header>
                       <div className="order-rating-stars">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <button
@@ -983,23 +997,31 @@ export default function OrderDetailModal({
                             aria-label={`${star} de 5`}
                             onClick={() => setSellerRating(star)}
                           >
-                            <Star size={24} fill={star <= sellerRating ? 'currentColor' : 'none'} />
+                            <Star size={26} fill={star <= sellerRating ? 'currentColor' : 'none'} />
                           </button>
                         ))}
                       </div>
-                    </div>
+                    </section>
 
-                    {/* Calificación por Producto */}
+                    {/* Un bloque por repuesto */}
                     <div className="order-rating-products">
-                      <span className="order-rating-eyebrow">Calidad de los repuestos</span>
+                      <span className="order-rating-eyebrow">{items.length > 1 ? 'Los repuestos' : 'El repuesto'}</span>
                       {items.map((item, idx) => {
                         const pId = item.productoId || item.id || idx;
-                        const currentProductRating = productRatings[pId] || 5;
+                        const currentProductRating = productRatings[pId] || 0;
                         const pName = item.nombre || item.productName || item.name || 'Repuesto';
+                        const pPhoto = resolveMediaUrl(
+                          item.imagenUrl || item.imageUrl || (item.imageUrls && item.imageUrls[0])
+                        );
                         return (
                           <div key={pId} className="order-rating-product-row">
-                            <span className="order-rating-product-name">{pName}</span>
-                            <div className="order-rating-stars">
+                            <div className="order-rating-product-head">
+                              {pPhoto
+                                ? <img src={pPhoto} alt="" className="order-rating-product-thumb" />
+                                : <span className="order-rating-product-thumb order-rating-product-thumb--empty"><Package size={16} /></span>}
+                              <span className="order-rating-product-name" title={pName}>{pName}</span>
+                            </div>
+                            <div className="order-rating-stars order-rating-stars--sm">
                               {[1, 2, 3, 4, 5].map((star) => (
                                 <button
                                   key={star}
@@ -1008,7 +1030,7 @@ export default function OrderDetailModal({
                                   aria-label={`${star} de 5`}
                                   onClick={() => setProductRatings((prev) => ({ ...prev, [pId]: star }))}
                                 >
-                                  <Star size={18} fill={star <= currentProductRating ? 'currentColor' : 'none'} />
+                                  <Star size={20} fill={star <= currentProductRating ? 'currentColor' : 'none'} />
                                 </button>
                               ))}
                             </div>
@@ -1019,11 +1041,11 @@ export default function OrderDetailModal({
 
                     <div className="confirm-dialog-actions">
                       <button type="button" className="btn-auth-secondary" onClick={() => setShowRatingModal(false)} disabled={isSubmittingRating}>
-                        Volver
+                        Ahora no
                       </button>
-                      <button type="submit" className="btn-auth-primary" disabled={isSubmittingRating}>
+                      <button type="submit" className="btn-auth-primary" disabled={isSubmittingRating || !ratingComplete}>
                         {isSubmittingRating ? <Loader2 size={16} className="spin-icon" /> : <Star size={16} />}
-                        <span>Guardar calificación</span>
+                        <span>Enviar calificación</span>
                       </button>
                     </div>
                   </>
@@ -1036,6 +1058,7 @@ export default function OrderDetailModal({
 
         <ConfirmDialog
           isOpen={confirmStatusAdvance}
+          tone="primary"
           title={controlledAction?.title || '¿Confirmar?'}
           message={controlledAction?.message || ''}
           confirmLabel={controlledAction?.label || 'Confirmar'}
