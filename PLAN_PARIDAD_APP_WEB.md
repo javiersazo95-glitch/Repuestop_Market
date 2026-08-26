@@ -479,3 +479,44 @@ no de las fases de paridad:
   configurados dejaría esta clase de bug al alcance de `npm run lint`. Hoy el barrido da
   cero reales, así que es el momento de activarlo sin arrastrar deuda. Pendiente de
   decisión.
+
+### 7.3 A7 y A12: estaban marcadas IMPLEMENTADO y eran código muerto (2026-08-25)
+
+Al validar los commits subidos apareció que **A7 (verificación) y A12 (adhesión) nunca
+se cablearon**. Las cinco funciones de `api.js` estaban importadas en
+`ProfileDashboard` pero **nunca llamadas**; el lint (`no-unused-vars`) fue lo que lo
+delató. Una verificación anterior con `grep -rl` las dio por usadas porque el patrón
+coincidía con la propia **línea de import**: para saber si algo se usa hay que buscar
+`nombreFuncion(`, no `nombreFuncion`.
+
+Lo grave no era la ausencia sino la tarjeta que sí se renderizaba:
+
+```jsx
+<span>{storeInfo?.verificacionEstado || 'Tienda Verificada'}</span>
+<span>Términos y condiciones aceptados</span>
+```
+
+`TiendaResponseDTO` **no tiene** `verificacionEstado`, así que el respaldo se aplicaba
+siempre: cualquier vendedor —pendiente, rechazado o suspendido— veía un visto verde. La
+línea de adhesión estaba hardcodeada. No era una función faltante, era una afirmación
+falsa sobre el estado comercial del vendedor.
+
+**Cerrado** con `SellerVerificationCard.jsx`: estado real desde
+`GET /proveedores/{id}/verificacion`, envío (POST), corrección (PUT), apelación y
+aceptación del contrato. Los cuatro documentos usan las mismas etiquetas que la bandeja
+de validaciones del backoffice (`backoffice_sistema/backoffice/frontend`).
+
+De paso, dos cosas del hero:
+
+- **La etiqueta "Beneficio Tarifa Fundador Activo (5%)" salía para todo vendedor.** Se
+  asigna en el backoffice (`PATCH /backoffice/founders/{id}` → `Proveedor.fundador`) y
+  viaja en `TiendaResponseDTO.founder`; ahora la etiqueta depende de ese campo.
+- **Contraste del chip de estado**: `.profile-dashboard .store-status-chip` pisaba el
+  `color` a verde pálido, y `.chip-approved` aporta un degradado **claro**. El chip vive
+  sobre la foto de portada, así que cada estado lleva ahora su par color/fondo
+  translúcido oscuro. Además `EstadoTienda` tiene cuatro valores y solo se miraba
+  `APPROVED`: una tienda rechazada o suspendida se anunciaba como "en revisión".
+
+**A16 sigue pendiente** (`getInventoryVehicleCatalogsApi` y `getVehicleCatalogPartsApi`
+sin uso). El plan ya lo dice, pero conviene recordar que las dos funciones muertas
+siguen en `api.js`.
