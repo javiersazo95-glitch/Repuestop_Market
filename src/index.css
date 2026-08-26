@@ -14688,3 +14688,15 @@ input, select, textarea {
    por encima, para no gritar dentro de una cabecera que ya tiene foto, SKU y contador. */
 .seller-question-product-group > header h3 a { color: inherit; text-decoration: none; }
 .seller-question-product-group > header h3 a:hover { color: var(--color-brand-blue); text-decoration: underline; }
+
+/* Producto con la publicacion pausada. `.is-paused-card` estaba en el JSX desde que se
+   agrego pausar/retomar, pero sin ninguna regla detras: la tarjeta se veia identica a
+   una activa y el unico indicio era la etiqueta "Pausado". En una grilla de doce, eso
+   se pierde. Se atenua la tarjeta entera para que el estado se lea de un vistazo, sin
+   tocar los botones, que tienen que seguir usables para poder reanudar. */
+.catalog-card-container.is-paused-card { background: #fbfcfe; border-color: #dfe6ef; box-shadow: none; }
+.catalog-card-container.is-paused-card .catalog-image-stage { filter: grayscale(85%); opacity: .6; }
+.catalog-card-container.is-paused-card .catalog-card-heading,
+.catalog-card-container.is-paused-card .catalog-price-group,
+.catalog-card-container.is-paused-card .product-meta { opacity: .65; }
+.catalog-card-container.is-paused-card:hover .catalog-product-image { transform: none; }
