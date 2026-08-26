@@ -31,6 +31,11 @@ export const PROFILE_TABS = [
   'cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'tienda', 'tienda_datos',
   'anuncios',
   'acreditar_servicio',
+  // Bandeja del COMPRADOR con las preguntas que hizo. Es distinta de
+  // `preguntas_productos`, que es la del vendedor sobre sus propios repuestos. Estaba
+  // en el sidebar y con su panel implementado, pero faltaba aca: la ruta no se
+  // reconocia y `/perfil/mis_preguntas` caia en el 404.
+  'mis_preguntas',
 ];
 
 /** Slug legible para URLs de producto/tienda: "Pastillas de freno" -> "pastillas-de-freno" */
