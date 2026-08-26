@@ -2617,7 +2617,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   </span>
                 </div>
               </div>
-              <button className="order-modal-close-btn" onClick={() => setShowMediaModal(null)}>
+              <button type="button" className="btn-close-modal" onClick={closeMediaModal} aria-label="Cerrar">
                 <X size={18} />
               </button>
             </div>
@@ -2706,20 +2706,20 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       {/* Modal de Solicitud de Revisión de Cuenta Bloqueada */}
       {showBlockedReviewModal && (
         <div className="order-modal-backdrop" onClick={() => setShowBlockedReviewModal(false)}>
-          <div className="order-modal-card" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="order-modal-container blocked-review-modal" onClick={(e) => e.stopPropagation()}>
             <div className="order-modal-header">
-              <div className="order-modal-header-left">
+              <div className="order-modal-title-group">
                 <div className="order-modal-icon-badge" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
                   <Scale size={20} />
                 </div>
-                <div>
-                  <h3 className="order-modal-title">Solicitar Revisión de Cuenta</h3>
+                <div className="order-subdialog-heading">
+                  <h2>Solicitar revisión de cuenta</h2>
                   <span className="order-modal-subtitle">
                     Envía tus descargos o justificación al equipo de moderación
                   </span>
                 </div>
               </div>
-              <button className="order-modal-close-btn" onClick={() => setShowBlockedReviewModal(false)}>
+              <button type="button" className="btn-close-modal" onClick={() => setShowBlockedReviewModal(false)} aria-label="Cerrar">
                 <X size={18} />
               </button>
             </div>
