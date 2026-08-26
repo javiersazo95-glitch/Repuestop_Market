@@ -18,14 +18,13 @@ import {
   updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi, updateSellerProductTopApi,
   saveConversationQuoteApi, sendConversationMessageApi, requestBlockedAccountReviewApi,
-  getSellerAccountStatusApi,
   cancelSellerOrderApi, registerOrderDispatchApi,
   pauseSellerProductApi, resumeSellerProductApi, updateSellerShippingMethodsApi,
   getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
   getBuyerProductQuestionsApi
 } from '../services/api';
 import { qk } from '../services/queryKeys';
-import { claimReasonLabel } from '../data/claimReason';
+import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import OrderCard from './OrderCard';
 import OrderDetailModal from './OrderDetailModal';
 import CatalogCard from './CatalogCard';
@@ -517,41 +516,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fuente de verdad del bloqueo: `GET /proveedores/{id}/estado-cuenta`. Es el unico
-  // endpoint que lo informa y sobrevive a un refresco -- `GET /users/perfil` no trae
-  // ningun campo de bloqueo y pisa el `user` entero al montar (`AuthContext`), asi que
-  // el `sellerBlocked` que llega en el login se pierde en el primer F5.
-  //
-  // Antes esto miraba `user.cuentaBloqueada`, `user.estado === 'BLOQUEADO'` y
-  // `storeInfo.motivoBloqueo`: ninguno de esos nombres existe en las respuestas del
-  // backend (los reales son `sellerBlocked` / `sellerBlockReason` / `blockReason`), asi
-  // que el banner y todo lo que colgaba de el eran codigo muerto.
-  const accountStatusQuery = useQuery({
-    queryKey: qk.sellerAccountStatus(effectiveSellerId),
-    queryFn: ({ signal }) => getSellerAccountStatusApi(effectiveSellerId, { signal }),
-    enabled: Boolean(isSeller && effectiveSellerId),
-    staleTime: 60 * 1000,
-    refetchOnWindowFocus: true,
-    // Con la tienda bloqueada el propio `JwtAuthenticationFilter` responde 403 a este
-    // endpoint (no esta en su whitelist), asi que reintentar solo genera ruido: el
-    // respaldo es el `sellerBlocked` que trajo el login.
-    retry: false,
-  });
-
-  const isSellerBlocked = isSeller && Boolean(
-    accountStatusQuery.data?.sellerBlocked ?? user?.sellerBlocked
-  );
-  // `blockReason` NO es un motivo de bloqueo redactado: el backend copia ahi
-  // `Mediacion.motivo`, que a su vez es `Pedido.motivoReclamo`, o sea el CODIGO del
-  // reclamo que eligio el comprador (`MediacionChatService:84`). Sin traducirlo el
-  // vendedor leia "Motivo actual: incompatible".
-  const rawBlockReason = accountStatusQuery.data?.blockReason || user?.sellerBlockReason;
-  const blockReason = rawBlockReason
-    ? claimReasonLabel(rawBlockReason)
-    : 'Tu tienda se encuentra suspendida temporalmente por moderación.';
-  // Se dice de donde sale el motivo: es el reclamo que origino la mediacion, no una
-  // frase que alguien escribio sobre la tienda.
-  const blockReasonIsClaim = Boolean(rawBlockReason);
+  // El estado de bloqueo lo resuelve `useSellerBlocked`, que es la misma fuente que usan
+  // el header, el carrito y el centro de ayuda. Tenerlo resuelto en cada vista era como
+  // termino este bug la primera vez: cinco nombres de campo inventados, ninguno real.
+  const { isBlocked: isSellerBlocked, blockReason, blockReasonIsClaim } = useSellerBlocked();
 
   // Se ocultan las pestanas de operacion, no la navegacion entera: resumen, pedidos
   // (solo lectura), mi tienda/datos y Reportes/Disputa siguen accesibles. Disputa es

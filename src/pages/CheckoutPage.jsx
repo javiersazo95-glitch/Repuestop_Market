@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowLeft, Building2, Check, FileText, Loader2, MapPin, ReceiptText, Store,
+  AlertTriangle, ArrowLeft, Building2, Check, FileText, Loader2, Lock, MapPin, ReceiptText, Store,
 } from 'lucide-react';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,7 @@ import { formatRut, isValidRut } from '../services/adapters';
 import { isQuoteExpired, quantityFromLabel } from '../utils/quoteFlow';
 import { checkoutFallbackShippingMethod, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import { profilePath, ROUTES } from '../routes/paths';
+import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import BuyerAddressBook from '../components/BuyerAddressBook';
 import CheckoutSummaryPanel from '../components/CheckoutSummaryPanel';
 
@@ -30,6 +31,7 @@ function formatCLP(value) {
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
+  const { isBlocked: isBlockedAccount } = useSellerBlocked();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { cartItems, cartCount, cartTotals, clearCart } = useMarketplace();
@@ -293,6 +295,25 @@ export default function CheckoutPage() {
     if (step === 'pago') { pay(); return; }
     goStep(STEPS[stepIndex + 1].id);
   };
+
+  // Cuenta bloqueada: el backend responde 403 a todo el lado comprador. Se corta antes
+  // de que el usuario llene la direccion y el pago falle al final.
+  if (isBlockedAccount) {
+    return (
+      <main className="checkout-page">
+        <div className="cart-page-shell">
+          <div className="checkout-block">
+            <p className="checkout-error">
+              <Lock size={15} /> Tu cuenta está bloqueada: no puedes completar compras mientras se revisa tu caso.
+            </p>
+            <button type="button" className="checkout-summary-back" onClick={() => navigate(profilePath('resumen'))}>
+              <ArrowLeft size={15} /> Ir a mi perfil
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   if (!isQuoteMode && cartItems.length === 0 && !placing) return <Navigate to={ROUTES.cart} replace />;
 

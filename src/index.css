@@ -14683,6 +14683,12 @@ input, select, textarea {
 
 /* El detalle del ticket y la solicitud de revision de cuenta usan la caja del modal de
    pedido, mas angostas: son un hilo y un formulario corto, no una ficha con columnas. */
+.store-unavailable-panel { max-width: 520px; margin: 64px auto; padding: 32px 28px; text-align: center; background: var(--surface-card, #ffffff); border: 1px solid #e4eaf0; border-radius: 14px; }
+.store-unavailable-panel h2 { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: var(--text-primary); margin: 14px 0 8px; }
+.store-unavailable-panel p { font-size: 14px; line-height: 1.55; color: var(--text-secondary, #64748b); margin: 0 0 20px; }
+.store-unavailable-icon { display: inline-flex; align-items: center; justify-content: center; width: 62px; height: 62px; border-radius: 50%; background: #f1f5f9; color: #64748b; }
+.store-unavailable-loading { margin: 0; }
+
 .blocked-review-modal { max-width: 520px; }
 /* El badge del header se pintaba con `style={{ backgroundColor }}` inline y salia azul
    igual: `.order-modal-icon-badge` define `background: linear-gradient(...)`, o sea un

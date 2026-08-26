@@ -1,12 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Loader2, Package, Send, ShoppingBag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import {
   createOrderClaimApi, createSupportTicketApi, getBuyerOrdersApi, getSellerOrdersApi,
-  getSellerAccountStatusApi,
 } from '../../services/api';
-import { qk } from '../../services/queryKeys';
+import { useSellerBlocked } from '../../hooks/useSellerBlocked';
 import { CONTACT_TOPICS, HELP_ROLES, TICKET_CATEGORIES, contactTopic } from '../../data/helpContent';
 import { claimReasonPairs } from '../../data/claimReason';
 import { profilePath } from '../../routes/paths';
@@ -80,15 +78,7 @@ const BLOCKED_SELLER_TOPICS = ['blocked-account', 'account-security', 'general',
  */
 export default function HelpContactForm({ user, reportType, initialTopic = null, onTopicChange }) {
   const navigate = useNavigate();
-  const sellerId = reportType === HELP_ROLES.SELLER ? user?.sellerId : null;
-  const accountStatusQuery = useQuery({
-    queryKey: qk.sellerAccountStatus(sellerId),
-    queryFn: ({ signal }) => getSellerAccountStatusApi(sellerId, { signal }),
-    enabled: Boolean(sellerId),
-    staleTime: 60 * 1000,
-    retry: false,
-  });
-  const isBlockedSeller = Boolean(accountStatusQuery.data?.sellerBlocked ?? user?.sellerBlocked);
+  const { isBlocked: isBlockedSeller } = useSellerBlocked();
 
   const allTopics = CONTACT_TOPICS[reportType] || CONTACT_TOPICS[HELP_ROLES.BUYER];
   const topics = isBlockedSeller

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
 import { addCartItemApi, getCartApi, removeCartItemApi, resolveMediaUrl, updateCartItemApi } from '../services/api';
 import { useAuth } from './AuthContext';
+import { useSellerBlocked } from '../hooks/useSellerBlocked';
 
 const MarketplaceContext = createContext(null);
 
@@ -83,6 +84,7 @@ function mapServerCart(summary) {
  */
 export function MarketplaceProvider({ children }) {
   const { isLoggedIn, user } = useAuth();
+  const { isBlocked: isBlockedAccount } = useSellerBlocked();
   const userId = user?.userId ?? user?.id;
   const [activeVehicle, setActiveVehicle] = useState(() => {
     try {
@@ -219,6 +221,13 @@ export function MarketplaceProvider({ children }) {
   }, []);
 
   const addToCart = useCallback(async (product, options = {}) => {
+    // Cuenta bloqueada: el backend responde 403 a todo el lado comprador, asi que ni
+    // siquiera se hace el cambio optimista. Sin esto el producto entraba al carrito
+    // local, la peticion fallaba y el item desaparecia solo unos segundos despues.
+    if (isBlockedAccount) {
+      setCartError('Tu cuenta está bloqueada: no puedes comprar mientras se revisa tu caso.');
+      return null;
+    }
     const shippingMethod = options.shippingMethod || '';
     const shippingFee = Number(options.shippingFee || 0);
     const productIdStr = String(product.id);
@@ -282,7 +291,7 @@ export function MarketplaceProvider({ children }) {
         pendingAddsRef.current.delete(productIdStr);
       }
     }
-  }, [isLoggedIn, userId, queryClient, applyOptimisticCart]);
+  }, [isLoggedIn, userId, queryClient, applyOptimisticCart, isBlockedAccount]);
 
   const updateCartQuantity = useCallback((productId, newQty) => {
     const productIdStr = String(productId);
