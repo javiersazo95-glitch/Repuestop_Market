@@ -14700,3 +14700,8 @@ input, select, textarea {
 .catalog-card-container.is-paused-card .catalog-price-group,
 .catalog-card-container.is-paused-card .product-meta { opacity: .65; }
 .catalog-card-container.is-paused-card:hover .catalog-product-image { transform: none; }
+
+/* La tarjeta de un favorito ahora es un enlace al producto: hereda color y quita el
+   subrayado para que siga leyendose como tarjeta y no como texto de enlace. */
+.profile-product-card.is-clickable { display: block; color: inherit; text-decoration: none; cursor: pointer; }
+.profile-product-card.is-clickable:hover h4 { color: var(--color-brand-blue); }

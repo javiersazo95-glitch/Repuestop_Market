@@ -48,10 +48,12 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
 
   useEffect(() => {
     if (user?.userId && product?.id) {
+      // El backend responde `{ favorito: true }`. Antes se leia `res.esFavorito`, que no
+      // existe, asi que al volver a un producto ya guardado el corazon salia apagado.
       checkIsFavoriteApi(user.userId, product.id)
         .then((res) => {
-          if (res && typeof res.esFavorito === 'boolean') {
-            setFavorite(res.esFavorito);
+          if (res && typeof res.favorito === 'boolean') {
+            setFavorite(res.favorito);
           }
         })
         .catch(() => null);

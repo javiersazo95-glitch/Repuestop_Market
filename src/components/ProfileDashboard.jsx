@@ -43,8 +43,8 @@ import BuyerAddressBook from './BuyerAddressBook';
 import AdsManagementSection from './ads/AdsManagementSection';
 import AutomotiveServiceAccreditation from './AutomotiveServiceAccreditation';
 import { formatRut, isValidRut, isValidClPhone } from '../services/adapters';
-import { useNavigate } from 'react-router-dom';
-import { helpContactPath, ROUTES, storePath } from '../routes/paths';
+import { Link, useNavigate } from 'react-router-dom';
+import { helpContactPath, productPath, ROUTES, storePath } from '../routes/paths';
 
 const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
 
@@ -1773,10 +1773,18 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   ) : (
                     <div className="profile-products-grid">
                       {favorites.map((f, i) => (
-                        <div key={f.id} className="profile-product-card">
+                        // `imagenUrl` viene relativa al backend (`/api/v1/...`), asi que
+                        // sin `resolveMediaUrl` el navegador la pedia a :5173 y salia rota.
+                        // Y la tarjeta no llevaba a ninguna parte: un favorito existe justo
+                        // para volver al producto.
+                        <Link
+                          key={f.id}
+                          to={productPath({ id: f.proveedorProductoId, titulo: f.nombre })}
+                          className="profile-product-card is-clickable"
+                        >
                           {f.imagenUrl ? (
                             <div className="product-card-thumb-img">
-                              <img src={f.imagenUrl} alt="" />
+                              <img src={resolveMediaUrl(f.imagenUrl)} alt="" />
                             </div>
                           ) : (
                             <div className={`product-card-thumb thumb-${i % 4}`}>
@@ -1787,7 +1795,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                           <div className="product-card-price-row">
                             <strong>${formatCLP(f.precio)}</strong>
                           </div>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   )}
