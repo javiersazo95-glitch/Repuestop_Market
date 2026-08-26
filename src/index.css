@@ -836,7 +836,17 @@ input, select, textarea {
 .profile-dashboard .profile-hero-tags { display: flex; gap: 8px; }
 .profile-dashboard .tag-contrast { color: #9af4bb !important; background: rgba(4, 90, 43, .55) !important; border-color: rgba(74, 222, 128, .55) !important; }
 .profile-dashboard .founder-tag-contrast { color: #ffd264 !important; background: rgba(42, 28, 4, .68) !important; border-color: rgba(250, 204, 21, .6) !important; }
-.profile-dashboard .store-status-chip { color: #9af4bb; }
+/* El chip vive sobre la foto de portada, asi que necesita fondo propio oscuro. Antes
+   solo se pisaba el `color` a verde palido y quedaba encima del degradado CLARO de
+   `.chip-approved`: verde palido sobre casi blanco, ilegible. Cada estado lleva su
+   par color/fondo, en la misma familia translucida que `.tag-contrast`. */
+.profile-dashboard .store-status-chip { border: 1px solid transparent; backdrop-filter: blur(2px); }
+.profile-dashboard .store-status-chip.chip-approved { color: #9af4bb; background: rgba(4, 90, 43, .62); border-color: rgba(74, 222, 128, .55); box-shadow: none; }
+.profile-dashboard .store-status-chip.chip-approved svg { color: #9af4bb; }
+.profile-dashboard .store-status-chip.chip-pending { color: #ffd264; background: rgba(74, 47, 4, .62); border-color: rgba(250, 204, 21, .5); }
+.profile-dashboard .store-status-chip.chip-rejected { color: #ffc2bb; background: rgba(94, 18, 12, .62); border-color: rgba(248, 113, 113, .5); }
+.profile-dashboard .store-status-chip.chip-rejected svg { color: #ffc2bb; }
+.profile-dashboard .store-status-chip.chip-pending svg { color: #ffd264; }
 
 .profile-dashboard .btn-withdraw-money-hero,
 .profile-dashboard .btn-hero-cta {
@@ -14614,3 +14624,55 @@ input, select, textarea {
 .google-account-card strong { display: block; font-size: 15px; font-weight: 700; color: #0f172a; }
 .google-account-card span { font-size: 13px; color: #64748b; word-break: break-all; }
 .google-signup-note { margin-bottom: 14px; font-size: 12.5px; line-height: 18px; color: #64748b; }
+
+/* ============================================================
+   VERIFICACION COMERCIAL Y ADHESION DEL VENDEDOR (A7 / A12)
+   Estado real desde GET /proveedores/{id}/verificacion. Reutiliza los campos y el
+   adjunto de `.order-subdialog-*` para no estrenar una tercera familia de formulario.
+   ============================================================ */
+.verification-body { display: flex; flex-direction: column; gap: 14px; }
+.verification-loading { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; }
+
+.verification-status { display: flex; align-items: flex-start; gap: 11px; padding: 13px 15px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); background: var(--bg-page); }
+.verification-status > div { display: flex; flex-direction: column; gap: 2px; }
+.verification-status strong { font-size: 14px; font-weight: 800; color: var(--text-primary); }
+.verification-status span { font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; }
+.verification-status--approved { border-color: #8dd9ad; background: #f2fdf7; }
+.verification-status--approved > svg { color: #079455; }
+.verification-status--pending { border-color: #f3c85c; background: #fffaf0; }
+.verification-status--pending > svg { color: #b45309; }
+.verification-status--rejected { border-color: #fecaca; background: #fff5f5; }
+.verification-status--rejected > svg { color: #b8261a; }
+.verification-status--correction { border-color: #f3c85c; background: #fffaf0; }
+.verification-status--correction > svg { color: #b45309; }
+.verification-status--none > svg { color: var(--text-muted); }
+
+.verification-notes { padding: 11px 14px; border-left: 3px solid #f3c85c; background: #fffaf0; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.verification-notes-label { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px; }
+.verification-notes p { margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.45; }
+
+.verification-success { display: flex; align-items: center; gap: 7px; margin: 0; color: #15803d; font-size: 12.5px; font-weight: 600; }
+
+.verification-doc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.verification-doc-list li { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-size: 12.5px; color: var(--text-primary); }
+.verification-doc-list li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.verification-doc-list li small { flex-shrink: 0; font-size: 11px; color: var(--text-muted); }
+.verification-doc-list .doc-ok { color: #079455; flex-shrink: 0; }
+.verification-doc-list .doc-missing { color: var(--text-muted); flex-shrink: 0; }
+
+.verification-cta { width: auto; align-self: flex-start; min-height: 0; padding: 10px 18px; }
+.verification-form { display: flex; flex-direction: column; gap: 13px; padding: 15px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-page); }
+.verification-form .order-subdialog-filedrop { background: var(--bg-white); }
+
+.verification-adhesion { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 15px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+.verification-adhesion > div { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.verification-adhesion > div > svg { color: var(--color-brand-blue); flex-shrink: 0; }
+.verification-adhesion > div > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.verification-adhesion strong { font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
+.verification-adhesion span { font-size: 12px; color: var(--text-muted); }
+.verification-adhesion .btn-auth-secondary { width: auto; min-height: 0; padding: 9px 15px; flex-shrink: 0; }
+
+@media (max-width: 640px) {
+  .verification-adhesion { flex-direction: column; align-items: stretch; }
+  .verification-adhesion .btn-auth-secondary { width: 100%; }
+}

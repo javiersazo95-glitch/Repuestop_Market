@@ -32,6 +32,7 @@ import QuoteDetailModal from './QuoteDetailModal';
 import ProfileSupportPanel from './ProfileSupportPanel';
 import ProfileNotificationsBell from './ProfileNotificationsBell';
 import NewCatalogProductModal from './NewCatalogProductModal';
+import SellerVerificationCard from './SellerVerificationCard';
 import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
 import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
@@ -46,6 +47,15 @@ import { useNavigate } from 'react-router-dom';
 import { helpContactPath, ROUTES, storePath } from '../routes/paths';
 
 const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
+
+// `EstadoTienda` del backend. Es el estado de la TIENDA, distinto del de la revision
+// documental (`EstadoRevisionVerificacion`), que vive en SellerVerificationCard.
+const STORE_STATUS_CHIP = {
+  APPROVED: { label: 'Tienda verificada', className: 'chip-approved' },
+  PENDING_VERIFICATION: { label: 'Tienda en revisión', className: 'chip-pending' },
+  REJECTED: { label: 'Verificación rechazada', className: 'chip-rejected' },
+  SUSPENDED: { label: 'Tienda suspendida', className: 'chip-rejected' },
+};
 const BUYER_PROFILE_COVER_URL = import.meta.env.VITE_BUYER_PROFILE_COVER_URL
   || 'https://pub-650d4cc5c6be42bc9a81e878e6042ea6.r2.dev/Plantillas/Portadas_Perfil/comprador-default.png';
 
@@ -1262,10 +1272,13 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               <h1 className="facebook-hero-name">
                 {isSeller ? (storeInfo?.storeName || user?.storeName || displayName) : displayName}
               </h1>
-              {isSeller && (
-                <span className={`store-status-chip ${storeInfo?.status === 'APPROVED' ? 'chip-approved' : 'chip-pending'}`}>
+              {/* `EstadoTienda` tiene cuatro valores. Antes solo se miraba APPROVED y
+                  todo lo demas caia en "Tienda en Revision", asi que una tienda
+                  rechazada o suspendida se veia como si estuviera en tramite. */}
+              {isSeller && storeInfo?.status && (
+                <span className={`store-status-chip ${STORE_STATUS_CHIP[storeInfo.status]?.className || 'chip-pending'}`}>
                   <ShieldCheck size={13} />
-                  <span>{storeInfo?.status === 'APPROVED' ? 'Tienda Verificada' : 'Tienda en Revisión'}</span>
+                  <span>{STORE_STATUS_CHIP[storeInfo.status]?.label || 'Tienda en revisión'}</span>
                 </span>
               )}
             </div>
@@ -1278,7 +1291,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   <Clock size={13} /> Miembro desde {memberSince}
                 </span>
               )}
-              {isSeller && (
+              {/* Solo las tiendas marcadas como fundadoras en el backoffice
+                  (`PATCH /backoffice/founders/{id}` -> `Proveedor.fundador`, que viaja
+                  en `TiendaResponseDTO.founder`). Antes salía para TODO vendedor, así
+                  que cualquiera creía tener la tarifa del 5%. */}
+              {isSeller && storeInfo?.founder && (
                 <span className="hero-tag founder-tag-contrast">
                   <Crown size={14} strokeWidth={2.4} /> Beneficio Tarifa Fundador Activo (5%)
                 </span>
@@ -2345,33 +2362,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                               </div>
                             </div>
                           )}
-                        {/* Card: Verificación y Estado Comercial */}
-                        {isSeller && (
-                          <div className="details-card-block store-section-card">
-                            <div className="details-card-header-row">
-                              <h3 className="section-subtitle">
-                                <span className="section-subtitle-icon"><ShieldCheck size={16} /></span>
-                                <span>Verificación Comercial y Adhesión</span>
-                              </h3>
-                            </div>
-                            <div className="details-info-grid">
-                              <div className="details-info-row">
-                                <span className="info-label">Estado de Verificación</span>
-                                <strong className="info-value" style={{ color: '#16a34a', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                  <CheckCircle2 size={15} />
-                                  <span>{storeInfo?.verificacionEstado || 'Tienda Verificada'}</span>
-                                </strong>
-                              </div>
-                              <div className="details-info-row">
-                                <span className="info-label">Contrato de Adhesión</span>
-                                <strong className="info-value" style={{ color: '#0066ff', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                  <CheckCircle2 size={15} />
-                                  <span>Términos y condiciones aceptados</span>
-                                </strong>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                        {/* Verificación y adhesión: estado REAL desde
+                            `GET /proveedores/{id}/verificacion`. Antes eran dos líneas
+                            fijas que decían "Tienda Verificada" y "Términos aceptados"
+                            pasara lo que pasara. */}
+                        {isSeller && <SellerVerificationCard sellerId={effectiveSellerId} />}
                         </div>
                       </div>
                     </div>
