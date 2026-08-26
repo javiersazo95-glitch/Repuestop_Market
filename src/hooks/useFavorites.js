@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { addFavoriteApi, removeFavoriteApi, getFavoritesApi } from '../services/api';
+import { qk } from '../services/queryKeys';
 
 /**
  * Favoritos del comprador, compartidos por todas las vistas que pintan tarjetas.
@@ -14,6 +16,7 @@ import { addFavoriteApi, removeFavoriteApi, getFavoritesApi } from '../services/
  * de uno a otro.
  */
 export function useFavorites(userId) {
+  const queryClient = useQueryClient();
   // producto -> id del favorito
   const [byProduct, setByProduct] = useState(() => new Map());
   const [busyIds, setBusyIds] = useState(() => new Set());
@@ -58,6 +61,9 @@ export function useFavorites(userId) {
         const created = await addFavoriteApi(userId, productId);
         setByProduct((previous) => new Map(previous).set(productId, created?.id ?? true));
       }
+      // El panel de perfil lee la lista por React Query. Sin esto seguia mostrando el
+      // favorito borrado hasta recargar la pagina.
+      queryClient.invalidateQueries({ queryKey: qk.favorites(userId) });
     } catch {
       // Si falla, el corazon se queda como estaba: no se pinta un favorito que el
       // servidor no guardo.
@@ -68,7 +74,7 @@ export function useFavorites(userId) {
         return next;
       });
     }
-  }, [userId, byProduct, busyIds]);
+  }, [userId, byProduct, busyIds, queryClient]);
 
   return { isFavorite, toggleFavorite };
 }
