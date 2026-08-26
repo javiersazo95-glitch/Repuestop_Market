@@ -768,10 +768,21 @@ export async function getBuyerConversationsApi(usuarioId, { signal } = {}) {
   }
 }
 
-export async function createConversationApi(proveedorId, productoId) {
+/**
+ * Sin `forceNew`, el backend REUTILIZA la conversacion ABIERTA que ya exista para ese
+ * producto (`crearOObtenerConversacion`). Eso esta bien mientras la cotizacion siga
+ * viva, pero deja al comprador atrapado cuando vencio: pedia una nueva y le devolvian
+ * el hilo viejo. La condicion la decide quien llama, que es el unico que sabe si la
+ * oferta anterior sigue vigente.
+ */
+export async function createConversationApi(proveedorId, productoId, { forceNew = false } = {}) {
   return fetchApi('/conversaciones', {
     method: 'POST',
-    body: JSON.stringify({ proveedorId: Number(proveedorId), productoId: Number(productoId) }),
+    body: JSON.stringify({
+      proveedorId: Number(proveedorId),
+      productoId: Number(productoId),
+      forceNew: Boolean(forceNew),
+    }),
   });
 }
 
