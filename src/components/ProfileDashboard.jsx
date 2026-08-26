@@ -402,6 +402,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const sidebarGroups = isSeller ? SELLER_SIDEBAR_GROUPS : BUYER_SIDEBAR_GROUPS;
   const effectiveSellerId = user?.sellerId || user?.proveedorId || user?.tiendaId || user?.userId || user?.id;
   const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
+  const [ratingPromptOrderId, setRatingPromptOrderId] = useState(null);
 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedCatalogProduct, setSelectedCatalogProduct] = useState(null);
@@ -596,9 +597,18 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     try {
       const updatedOrder = await updateOrderStatusApi(orderId, newStatus, pin);
       queryClient.invalidateQueries({ queryKey: isSeller ? qk.sellerOrders(effectiveSellerId) : qk.buyerOrders(effectiveUserId) });
+      const merged = { ...updatedOrder, estado: updatedOrder?.estado || newStatus, status: updatedOrder?.status || newStatus };
       setSelectedOrder((prevSelected) => String(prevSelected?.id) === String(orderId)
-        ? { ...prevSelected, ...updatedOrder, estado: updatedOrder?.estado || newStatus, status: updatedOrder?.status || newStatus }
+        ? { ...prevSelected, ...merged }
         : prevSelected);
+      // Al confirmar la recepcion se ofrece calificar en el acto, igual que la app.
+      // Tiene que vivir aca y no en el modal porque el comprador suele marcar recibido
+      // desde la TARJETA del listado, sin haber abierto el detalle.
+      if (!isSeller && ['ENTREGADO', 'RECEIVED'].includes(String(newStatus).toUpperCase())) {
+        const base = orders.find((candidate) => String(candidate.id) === String(orderId)) || {};
+        setSelectedOrder({ ...base, ...merged });
+        setRatingPromptOrderId(orderId);
+      }
       return updatedOrder;
     } catch (err) {
       console.warn('No se pudo actualizar el estado del pedido:', err);
@@ -2362,6 +2372,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           onUpdateStatus={handleUpdateOrderStatus}
           onRetryPayment={isSeller ? undefined : handleRetryPayment}
           onCancelOrder={isSeller ? undefined : handleCancelOrder}
+          autoOpenRating={!isSeller && ratingPromptOrderId != null && String(selectedOrder.id) === String(ratingPromptOrderId)}
+          onRatingPromptShown={() => setRatingPromptOrderId(null)}
           onCancelSellerOrder={isSeller ? handleCancelSellerOrder : undefined}
           onRegisterDispatch={isSeller ? handleRegisterOrderDispatch : undefined}
         />

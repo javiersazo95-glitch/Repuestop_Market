@@ -95,6 +95,8 @@ export default function OrderDetailModal({
   onCancelOrder,
   onCancelSellerOrder,
   onRegisterDispatch,
+  autoOpenRating = false,
+  onRatingPromptShown,
 }) {
   const rawStatus = order?.estado || order?.status || 'PENDIENTE';
   const normStatus = String(rawStatus).toUpperCase();
@@ -122,11 +124,13 @@ export default function OrderDetailModal({
   // El courier se ELIGE de la lista; "Otro" abre un campo libre. Antes era un input con
   // `<datalist>`, que el navegador pinta como una lista negra fuera del modal y ademas
   // dejaba escribir cualquier cosa encima de la sugerencia.
-  const initialCourier = COMMON_COURIERS.includes(order?.courier) ? order.courier : (order?.courier ? OTHER_COURIER : 'Starken');
+  // Sin empresa conocida se arranca en el placeholder, no en "Otra": abriendo con
+  // "Otra" ya seleccionada el vendedor no se entera de que hay una lista debajo.
+  // (Ojo: `order.courier` suele traer el METODO de envio -"Envio fuera de la comuna"-,
+  // que no es un courier, asi que casi nunca calza con la lista.)
+  const initialCourier = COMMON_COURIERS.includes(order?.courier) ? order.courier : '';
   const [dispatchCourierChoice, setDispatchCourierChoice] = useState(initialCourier);
-  const [dispatchCourierOther, setDispatchCourierOther] = useState(
-    COMMON_COURIERS.includes(order?.courier) ? '' : (order?.courier || '')
-  );
+  const [dispatchCourierOther, setDispatchCourierOther] = useState('');
   const dispatchCourier = dispatchCourierChoice === OTHER_COURIER ? dispatchCourierOther : dispatchCourierChoice;
   const [dispatchTrackingNumber, setDispatchTrackingNumber] = useState(order?.trackingNumber || '');
   const [dispatchShippingFee, setDispatchShippingFee] = useState(order?.shippingFee || '');
@@ -143,6 +147,18 @@ export default function OrderDetailModal({
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const [ratingError, setRatingError] = useState('');
   const [ratingSuccess, setRatingSuccess] = useState(false);
+
+  // Cuando el pedido se marca recibido desde la TARJETA del listado, el modal ni
+  // existia: el padre lo abre despues y avisa por aca para ofrecer la calificacion.
+  useEffect(() => {
+    if (!autoOpenRating) return;
+    setProductRatings({});
+    setSellerRating(0);
+    setRatingError('');
+    setRatingSuccess(false);
+    setShowRatingModal(true);
+    onRatingPromptShown?.();
+  }, [autoOpenRating, onRatingPromptShown]);
 
   // El reloj corre por minuto solo mientras haya un plazo de pago que mostrar.
   const showsPaymentWindow = mode !== 'seller' && normStatus === 'PENDIENTE' && Boolean(onRetryPayment);
@@ -250,16 +266,12 @@ export default function OrderDetailModal({
     setIsUpdating(true);
     setStatusError('');
     try {
-      const nextStatus = controlledAction.nextStatus;
-      await onUpdateStatus(order.id, nextStatus, controlledAction.requiresPin ? pin : undefined);
+      await onUpdateStatus(order.id, controlledAction.nextStatus, controlledAction.requiresPin ? pin : undefined);
       setPickupPin('');
       setConfirmStatusAdvance(false);
-      // Igual que la app: apenas el comprador confirma que recibio, se le ofrece
-      // calificar. Es el unico momento en que tiene la compra fresca; si hay que ir a
-      // buscar el boton al detalle, no califica nadie. Se puede omitir con "Ahora no".
-      if (!isSeller && ['ENTREGADO', 'RECEIVED', 'FINALIZADO'].includes(String(nextStatus).toUpperCase())) {
-        openRatingModal();
-      }
+      // Ofrecer la calificacion no se decide aca: lo hace el padre via `autoOpenRating`,
+      // porque el comprador tambien puede marcar recibido desde la tarjeta del listado
+      // y ahi este modal ni existe. Un solo camino evita que se abra dos veces.
     } catch (error) {
       setStatusError(error.message || 'No se pudo actualizar el estado del pedido.');
     } finally {
@@ -621,9 +633,12 @@ export default function OrderDetailModal({
 
         <div className="order-modal-footer">
           {/* Acción principal del Vendedor */}
-          {isSeller && controlledAction && !controlledAction.disabled && (
+          {/* Accion principal del pedido. Vale para los DOS roles: estaba condicionada a
+              `isSeller`, asi que al comprador no le aparecian "Marcar recibido" ni
+              "Finalizar pedido" en el detalle, solo en la tarjeta del listado. */}
+          {controlledAction && !controlledAction.disabled && (
             // `waiting` no es una accion: es "ya hiciste tu parte, ahora le toca al
-            // comprador". Viene sin `nextStatus`, asi que pintarlo como boton primario
+            // otro". Viene sin `nextStatus`, asi que pintarlo como boton primario
             // dejaba uno que al clickearlo no hacia nada. La tarjeta del pedido ya lo
             // resuelve con `.order-controlled-wait`; aca se usa el mismo aviso.
             controlledAction.waiting ? (
@@ -631,13 +646,13 @@ export default function OrderDetailModal({
                 <Clock size={15} />
                 {controlledAction.label}
               </span>
-            ) : normStatus === 'EN_PREPARACION' && !isStorePickup ? (
+            ) : isSeller && normStatus === 'EN_PREPARACION' && !isStorePickup ? (
               <button
                 type="button"
                 className="btn-auth-primary"
                 onClick={() => {
                   setDispatchCourierChoice(initialCourier);
-                  setDispatchCourierOther(COMMON_COURIERS.includes(order?.courier) ? '' : (order?.courier || ''));
+                  setDispatchCourierOther('');
                   setDispatchTrackingNumber(order?.trackingNumber || '');
                   setDispatchShippingFee(order?.shippingFee || '');
                   setDispatchError('');
@@ -845,6 +860,7 @@ export default function OrderDetailModal({
                     value={dispatchCourierChoice}
                     onChange={(e) => setDispatchCourierChoice(e.target.value)}
                   >
+                    <option value="" disabled>Selecciona una empresa…</option>
                     {COMMON_COURIERS.map((c) => <option key={c} value={c}>{c}</option>)}
                     <option value={OTHER_COURIER}>Otra (especificar)</option>
                   </select>
