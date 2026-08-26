@@ -40,6 +40,7 @@ import SellerWithdrawalsPanel from './SellerWithdrawalsPanel';
 import SellerOrdersPanel from './SellerOrdersPanel';
 import BuyerAddressBook from './BuyerAddressBook';
 import AdsManagementSection from './ads/AdsManagementSection';
+import AutomotiveServiceAccreditation from './AutomotiveServiceAccreditation';
 import { formatRut, isValidRut, isValidClPhone } from '../services/adapters';
 import { useNavigate } from 'react-router-dom';
 import { helpContactPath, ROUTES, storePath } from '../routes/paths';
@@ -117,7 +118,8 @@ const SELLER_SIDEBAR_GROUPS = [
     items: [
       { id: 'tienda_datos', label: 'Mi tienda y datos', icon: Store },
       { id: 'retiros', label: 'Retirar dinero', icon: Wallet },
-      { id: 'anuncios', label: 'Gestión de anuncios', icon: Megaphone }
+      { id: 'anuncios', label: 'Gestión de anuncios', icon: Megaphone },
+      { id: 'acreditar_servicio', label: 'Acreditar servicio', icon: ShieldCheck }
     ]
   },
   {
@@ -149,7 +151,8 @@ const BUYER_SIDEBAR_GROUPS = [
     title: 'MI CUENTA',
     items: [
       { id: 'datos', label: 'Mis datos y perfil', icon: UserCog },
-      { id: 'anuncios', label: 'Gestión de anuncios', icon: Megaphone }
+      { id: 'anuncios', label: 'Gestión de anuncios', icon: Megaphone },
+      { id: 'acreditar_servicio', label: 'Acreditar servicio', icon: ShieldCheck }
     ]
   },
   {
@@ -1988,6 +1991,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   onNavigateToMural={() => window.location.assign('/mural-anuncios')}
                 />
               )}
+
+              {activeTab === 'acreditar_servicio' && <AutomotiveServiceAccreditation user={user} />}
 
               {activeTab === 'retiros' && isSeller && (
                 <SellerWithdrawalsPanel sellerId={user?.sellerId} sellerEmail={user?.email} />

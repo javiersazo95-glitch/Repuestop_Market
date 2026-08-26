@@ -1636,3 +1636,39 @@ export async function checkIsFavoriteApi(usuarioId, productoId, { signal } = {})
   }
 }
 
+// -------------------------------------------------------------
+// ACREDITACIÓN DE SERVICIO AUTOMOTRIZ
+// -------------------------------------------------------------
+
+/**
+ * Consulta el expediente de acreditación de servicio de la cuenta autenticada.
+ *
+ * Es un expediente INDEPENDIENTE de la verificación de la tienda
+ * (`getSellerVerificationStatusApi`): aunque el proveedor ya esté verificado,
+ * para publicar servicios debe presentar de nuevo los tres documentos.
+ * Devuelve `null` cuando todavía no hay solicitud presentada.
+ */
+export async function getAutomotiveServiceAccreditationApi({ signal } = {}) {
+  try {
+    return await fetchApi('/automotive-services/me', { method: 'GET', signal });
+  } catch (err) {
+    if (err.status === 404) return null;
+    throw err;
+  }
+}
+
+/**
+ * Envía el expediente de acreditación con sus tres documentos (multipart).
+ */
+export async function submitAutomotiveServiceAccreditationApi(data, files) {
+  const formData = new FormData();
+  formData.append('data', JSON.stringify({ ...data, canal: 'MARKETPLACE_WEB' }));
+  formData.append('identidad', files.identidad);
+  formData.append('inicioActividades', files.inicioActividades);
+  formData.append('patenteMunicipal', files.patenteMunicipal);
+  return fetchApi('/automotive-services/me', {
+    method: 'POST',
+    body: formData,
+    signal: AbortSignal.timeout(30000),
+  });
+}

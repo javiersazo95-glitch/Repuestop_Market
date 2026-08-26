@@ -30,6 +30,7 @@ export const PROFILE_TABS = [
   'resumen', 'pedidos', 'favoritos', 'datos', 'consultas',
   'cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'tienda', 'tienda_datos',
   'anuncios',
+  'acreditar_servicio',
 ];
 
 /** Slug legible para URLs de producto/tienda: "Pastillas de freno" -> "pastillas-de-freno" */
