@@ -1281,3 +1281,43 @@ Hay pedidos antiguos con el método de envío **concatenado** en `courier` (el #
 regresión: el checkout actual usa `checkoutFallbackShippingMethod()`, que manda vacío si
 hay mezcla. Pero esos pedidos se ven contradictorios —dicen "Retiro en Tienda" y cobran
 envío— y no se ha medido cuántos son.
+
+---
+
+### 4.20 Pendiente del BACKOFFICE: no refleja el ticket cerrado — 2026-08-26
+
+Detectado probando el cierre de tickets desde la web. **No es un bug del backend ni del
+marketplace**: los dos se comportan bien.
+
+**Síntoma**: un ticket que el usuario ya cerró sigue mostrando el compositor en el
+backoffice. El agente escribe, el mensaje aparece en su pantalla, y no llega ni por
+correo ni a la web del usuario.
+
+**Diagnóstico**: el backend **rechaza** correctamente esos mensajes.
+`TicketSoporteBackofficeService.sendMessage()` corta con
+`BusinessRuleViolationException("La consulta ya está finalizada y no admite nuevos
+mensajes")` sobre cualquier ticket en `RESUELTO`, `CERRADO` o `CANCELADO`. Verificado
+contra la base: el ticket 23 (`TCK-1787078752317`) quedó `CERRADO` con **un solo
+mensaje**, el original; ninguno de los que se escribieron después se persistió.
+
+O sea, el backoffice **no está mostrando el error del 4xx** y probablemente pinta el
+mensaje de forma optimista. El agente cree que respondió y no respondió: es el peor
+modo de falla posible para soporte.
+
+**Dónde tocar**: `backoffice_sistema/backoffice/frontend/src/modules/support/SupportTicketDetailModal.tsx`,
+que es el único que llama a `sendTicketMessage()` (`src/api/support.ts:159`).
+
+**Qué hace falta** (es exactamente lo que ya se hizo en el marketplace):
+
+1. Deshabilitar el compositor cuando el estado es `RESUELTO`/`CERRADO`/`CANCELADO`, y
+   mostrar en su lugar un aviso de que la consulta está cerrada.
+2. Surfacear el error si el POST falla igual, en vez de tragárselo.
+
+El estado ya viaja en la respuesta del ticket, así que no hace falta backend.
+
+**Ojo con el modelo, que no es obvio**: en un ticket de soporte normal **cerrar es
+exclusivamente del usuario**. `updateStatus` rechaza el cambio de estado con
+"El estado de los tickets de soporte cambia automáticamente al responder o al ser
+cerrados por el usuario", y solo lo permite en tickets de origen `QA`. Soporte no puede
+cerrar ni reabrir; si el flujo del backoffice necesita eso, es un cambio de reglas de
+negocio, no de UI.
