@@ -520,3 +520,27 @@ De paso, dos cosas del hero:
 **A16 sigue pendiente** (`getInventoryVehicleCatalogsApi` y `getVehicleCatalogPartsApi`
 sin uso). El plan ya lo dice, pero conviene recordar que las dos funciones muertas
 siguen en `api.js`.
+
+### 7.4 Notificaciones: navegación parcial — 2026-08-26
+
+La campana ahora navega al hacer clic (`src/data/notificationTargets.js`), pero **la
+cobertura no es completa** y se validó así a propósito para no frenar las pruebas.
+
+**Funciona de punta a punta** (lleva a la vista Y abre el elemento):
+
+- Pedido (`/order-detail`, `/mediation-chat` de backoffice) → `?pedido=` abre el modal.
+- Soporte (`/support-ticket-detail`) → `?ticket=` abre la consulta.
+- Producto (`/product-detail`) → ficha del repuesto.
+
+**Llega a la pestaña pero NO abre el elemento**: cotizaciones y anuncios. El traductor
+emite `?cotizacion=` y `?anuncio=`, pero **ninguna vista los lee**: solo `ProfilePage`
+baja `deepLinkOrderId` y `deepLinkTicketId`. Para cerrarlo hay que hacer lo mismo que
+con esos dos — leer el parámetro y pasarlo al panel correspondiente.
+
+**Sin verificar**: verificación de tienda y retiros, que solo apuntan a la pestaña y
+probablemente no necesiten más.
+
+Ojo también con el origen: el backend guarda las rutas de la APP en `targetRoute`. Si
+se agrega un tipo de notificación nuevo allá, hay que sumar su entrada al traductor o
+el clic no hará nada (devuelve `null` y solo marca como leída, que es el fallback
+deliberado).
