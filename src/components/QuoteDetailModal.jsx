@@ -191,7 +191,12 @@ export default function QuoteDetailModal({
   const sellerHasReplied = messages.some((message) => (
     String(message.emisorId ?? message.autorId ?? '') !== String(user?.userId ?? user?.id ?? '')
   ));
-  const canWriteText = mode === 'seller' || Boolean(activeQuote) || sellerHasReplied;
+  // Vencida o cerrada, el hilo deja de admitir mensajes: no tiene sentido negociar
+  // sobre una oferta que ya no se puede pagar. El backend ya bloquea la CERRADA; la
+  // vencida se decide aca, que es donde se interpreta `vigencia`.
+  const chatLocked = closed || expired;
+  const canWriteText = !chatLocked && (mode === 'seller' || Boolean(activeQuote) || sellerHasReplied);
+  const canAttach = !chatLocked && imageCount < MAX_CHAT_IMAGES;
   const closed = quote.estado === 'CERRADA';
   const documentName = quoteDocumentFilename(quote.id);
   const openProduct = () => navigate(productPath({ id: quote.productoId, titulo: productName }));
@@ -442,7 +447,7 @@ export default function QuoteDetailModal({
             {activeQuote && <div className={`quote-ws-message-row ${mode === 'seller' ? 'mine' : ''}`}><span className="quote-ws-message-avatar">{initials(storeName)}</span><div className="quote-ws-bubble quote-ws-document-bubble"><p>Te adjunto la propuesta comercial con todos los detalles de la cotización.</p><button type="button" className="quote-ws-file" onClick={viewDocument}><FileText size={25} /><span><strong>{documentName}</strong><small>PDF · Documento de cotización</small></span><Eye size={18} /></button><small>{formatDate(activeQuote.createdAt)}</small></div></div>}
           </div>
 
-          {!closed ? (
+          {!chatLocked ? (
             <form className="quote-ws-composer" onSubmit={submitChatMessage}>
               {selectedImagePreview && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: '#f1f5f9', borderRadius: '8px', marginBottom: '8px' }}>
@@ -482,13 +487,18 @@ export default function QuoteDetailModal({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isSending || Boolean(selectedImageFile) || imageCount >= MAX_CHAT_IMAGES}
+                    disabled={isSending || Boolean(selectedImageFile) || !canAttach}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '5px 10px', fontSize: '12px', color: '#475569', cursor: 'pointer' }}
                     title="Adjuntar imagen"
                   >
                     <Paperclip size={14} /> {imageCount >= MAX_CHAT_IMAGES ? `Máximo ${MAX_CHAT_IMAGES} fotos` : 'Adjuntar foto'}
                   </button>
-                  <span><Lock size={12} /> Conversación segura y privada.</span>
+                  <span>
+                    <Lock size={12} />
+                    {canWriteText
+                      ? 'Conversación segura y privada.'
+                      : `Hasta 3 MB y ${MAX_CHAT_IMAGES} fotos por conversación (${imageCount}/${MAX_CHAT_IMAGES}).`}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <small>{chatMessage.length}/{MAX_CHAT_MESSAGE}</small>
@@ -500,7 +510,12 @@ export default function QuoteDetailModal({
               </div>
             </form>
           ) : (
-            <div className="quote-chat-closed"><Lock size={16} /> Esta conversación está cerrada.</div>
+            <div className="quote-chat-closed">
+              <Lock size={16} />
+              {closed
+                ? 'Esta conversación está cerrada.'
+                : 'La cotización venció, así que este chat quedó cerrado. Puedes pedir una nueva desde la ficha del producto.'}
+            </div>
           )}
         </main>
 
@@ -511,7 +526,19 @@ export default function QuoteDetailModal({
             <DataRow icon={ShieldCheck} label="Estado" value="Publicado" />
             <DataRow icon={BadgeDollarSign} label="Precio cotizado" value={activeQuote ? formatCLP(activeQuote.precioFinal ?? activeQuote.precio) : 'Por definir'} />
             <button type="button" className="quote-ws-outline-button" onClick={openProduct}><ExternalLink size={15} /> Ver ficha completa</button>
-            {mode === 'buyer' && <button type="button" className="quote-ws-primary-button" onClick={() => setChatMessage('Necesito una modificación en la cotización: ')}><Pencil size={15} /> Solicitar modificación</button>}
+            {/* Pedir un ajuste escribe en el chat, asi que sigue la misma suerte: sin
+                chat no hay a quien pedirselo. */}
+            {mode === 'buyer' && (
+              <button
+                type="button"
+                className="quote-ws-primary-button"
+                disabled={!canWriteText}
+                title={chatLocked ? 'La cotización ya no admite cambios' : undefined}
+                onClick={() => setChatMessage('Necesito una modificación en la cotización: ')}
+              >
+                <Pencil size={15} /> Solicitar modificación
+              </button>
+            )}
           </section>
 
           <section className="quote-ws-side-card quote-ws-files-card">
