@@ -25,5 +25,7 @@ export const qk = {
   sellerInventorySummary: (sellerId) => ['sellerInventorySummary', sellerId],
   sellerProductQuestions: (sellerId) => ['sellerProductQuestions', sellerId],
   notifications: (userId) => ['notifications', userId],
+  /** Estado de bloqueo de la tienda (GET /proveedores/{id}/estado-cuenta). */
+  sellerAccountStatus: (sellerId) => ['sellerAccountStatus', sellerId],
   profile: () => ['profile'],
 };

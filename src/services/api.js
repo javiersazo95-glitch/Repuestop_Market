@@ -333,6 +333,22 @@ export async function checkEmailAvailabilityApi(email) {
 }
 
 /**
+ * Estado de bloqueo de la tienda. Es la UNICA fuente de verdad que sobrevive a un
+ * refresco: `GET /users/perfil` (PerfilUsuarioDTO) no trae ningun campo de bloqueo y
+ * pisa el `user` completo al montar, asi que el `sellerBlocked` del login se pierde.
+ *
+ * Devuelve `{ sellerBlocked, blockReason }`. El backend lo marca por dos vias:
+ * `proveedor.status` en 'suspended'/'rejected', o una mediacion con
+ * `cuentaBloqueada = true` (de ahi sale el motivo).
+ */
+export async function getSellerAccountStatusApi(proveedorId, { signal } = {}) {
+  return fetchApi(`/proveedores/${proveedorId}/estado-cuenta`, {
+    method: 'GET',
+    signal,
+  });
+}
+
+/**
  * Envía solicitud de revisión cuando la cuenta del vendedor está bloqueada.
  */
 export async function requestBlockedAccountReviewApi(proveedorId, { mensaje, contactoAlternativo } = {}) {

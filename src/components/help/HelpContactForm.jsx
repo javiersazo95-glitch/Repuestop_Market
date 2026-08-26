@@ -1,10 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Loader2, Package, Send, ShoppingBag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   createOrderClaimApi, createSupportTicketApi, getBuyerOrdersApi, getSellerOrdersApi,
+  getSellerAccountStatusApi,
 } from '../../services/api';
+import { qk } from '../../services/queryKeys';
 import { CONTACT_TOPICS, HELP_ROLES, TICKET_CATEGORIES, contactTopic } from '../../data/helpContent';
+import { claimReasonPairs } from '../../data/claimReason';
 import { profilePath } from '../../routes/paths';
 
 // Asuntos por tema. Viajan como `motivo` del ticket (texto libre, no enum), así
@@ -27,18 +31,18 @@ const SUBJECTS = {
   'seller-report': ['Otra tienda copió mis fotos o publicaciones', 'Publicación engañosa o producto falsificado', 'Comprador con conducta abusiva', 'Comprador que insiste en operar fuera de RepuesTop', 'Sospecha de fraude en un pedido', 'Otro'],
   'blocked-account': ['Solicitud de apelación de cuenta', 'Dudas sobre el motivo del bloqueo', 'Dificultades con una mediación en curso', 'Otro'],
 };
-const BUYER_CLAIMS = [
-  ['Pieza incompatible con mi vehículo/modelo', 'incompatible'], ['Pieza en mal estado / Defectuosa / Dañada', 'defective'],
-  ['El producto no ha llegado / Retraso en la entrega', 'not_received'], ['Me equivoqué de compra / Quiero cancelar el pedido', 'wrong_purchase'],
-  ['Producto incorrecto o incompleto (faltan piezas)', 'wrong_product'], ['Me arrepentí de la compra / Solicitar devolución', 'buyer_remorse'],
-  ['El vendedor tarda demasiado en preparar o enviar el producto', 'delay_preparation'], ['Fui a retirar y el local estaba cerrado', 'store_closed'],
-  ['El vendedor se niega a entregar el producto', 'refused_delivery'], ['No logro contactar al vendedor', 'no_contact'], ['Otro', 'other'],
-];
-const SELLER_CLAIMS = [
-  ['El comprador no responde o rechazó la entrega', 'buyer_no_response'], ['Problema con la empresa de transporte (Courier)', 'courier_issue'],
-  ['Error en la liquidación o procesamiento del pago', 'payout_issue'], ['Devolución de producto dañada o incompleta', 'disputed_return'],
-  ['Problema con el stock / No puedo procesar el pedido', 'out_of_stock'], ['El comprador no se ha presentado a retirar', 'buyer_no_show'], ['Otro', 'other'],
-];
+// Los textos viven en `src/data/claimReason.js`: el mismo codigo se muestra despues
+// como motivo del bloqueo en el panel del vendedor, y tenerlo escrito en dos lados
+// garantizaba que se separaran.
+const BUYER_CLAIMS = claimReasonPairs(
+  'incompatible', 'defective', 'not_received', 'wrong_purchase', 'wrong_product',
+  'buyer_remorse', 'delay_preparation', 'store_closed', 'refused_delivery',
+  'no_contact', 'other',
+);
+const SELLER_CLAIMS = claimReasonPairs(
+  'buyer_no_response', 'courier_issue', 'payout_issue', 'disputed_return',
+  'out_of_stock', 'buyer_no_show', 'other',
+);
 
 function normalizedStatus(order) {
   const value = String(order.status || order.estado || '').toUpperCase();
@@ -52,14 +56,22 @@ function orderClaimOptions(order, reportType) {
   const terms = String(order.deliveryTerms || order.terminosEntrega || order.shipping?.method || order.metodoEnvio || '').toLowerCase();
   const pickup = terms.includes('retiro') || terms.includes('tienda') || terms.includes('store_pickup');
   if (reportType === HELP_ROLES.SELLER) {
-    if (['pending', 'preparing'].includes(status)) return [['Error en la liquidación o procesamiento del pago', 'payout_issue'], ['Problema con el stock / No puedo procesar el pedido', 'out_of_stock'], ['Otro', 'other']];
-    if (status === 'sent') return pickup ? [['El comprador no se ha presentado a retirar', 'buyer_no_show'], ['Otro', 'other']] : [['Problema con la empresa de transporte (Courier)', 'courier_issue'], ['El comprador no responde o rechazó la entrega', 'buyer_no_response'], ['Otro', 'other']];
-    return [['Error en la liquidación o procesamiento del pago', 'payout_issue'], ['Devolución de producto dañada o incompleta', 'disputed_return'], ['Otro', 'other']];
+    if (['pending', 'preparing'].includes(status)) return claimReasonPairs('payout_issue', 'out_of_stock', 'other');
+    if (status === 'sent') return pickup ? claimReasonPairs('buyer_no_show', 'other') : claimReasonPairs('courier_issue', 'buyer_no_response', 'other');
+    return claimReasonPairs('payout_issue', 'disputed_return', 'other');
   }
-  if (['pending', 'preparing'].includes(status)) return [['Me equivoqué de compra / Quiero cancelar el pedido', 'wrong_purchase'], ['El vendedor tarda demasiado en preparar o enviar el producto', 'delay_preparation'], ['Otro', 'other']];
-  if (status === 'sent') return pickup ? [['Fui a retirar y el local estaba cerrado', 'store_closed'], ['El vendedor se niega a entregar el producto', 'refused_delivery'], ['No logro contactar al vendedor', 'no_contact'], ['Otro', 'other']] : [['El producto no ha llegado / Retraso en la entrega', 'not_received'], ['Otro', 'other']];
-  return [['Pieza incompatible con mi vehículo/modelo', 'incompatible'], ['Pieza en mal estado / Defectuosa / Dañada', 'defective'], ['Producto incorrecto o incompleto (faltan piezas)', 'wrong_product'], ['Me arrepentí de la compra / Solicitar devolución', 'buyer_remorse'], ['Otro', 'other']];
+  if (['pending', 'preparing'].includes(status)) return claimReasonPairs('wrong_purchase', 'delay_preparation', 'other');
+  if (status === 'sent') return pickup ? claimReasonPairs('store_closed', 'refused_delivery', 'no_contact', 'other') : claimReasonPairs('not_received', 'other');
+  return claimReasonPairs('incompatible', 'defective', 'wrong_product', 'buyer_remorse', 'other');
 }
+
+// Con la tienda bloqueada casi todos los temas pierden sentido: el vendedor no puede
+// despachar, publicar ni retirar dinero, asi que un ticket de "Retiros, pagos y
+// comisiones" solo consume a un agente para responderle que su cuenta esta bloqueada.
+// Se dejan los que SI aplican, empezando por la apelacion, que es la salida real.
+// Soporte queda abierto a proposito -`JwtAuthenticationFilter` lo permite siempre-
+// porque es el unico canal que le queda a una cuenta bloqueada.
+const BLOCKED_SELLER_TOPICS = ['blocked-account', 'account-security', 'general', 'info'];
 
 /**
  * Formulario de consulta o reclamo. Migrado desde SupportHelpPanel sin cambiar
@@ -68,7 +80,20 @@ function orderClaimOptions(order, reportType) {
  */
 export default function HelpContactForm({ user, reportType, initialTopic = null, onTopicChange }) {
   const navigate = useNavigate();
-  const topics = CONTACT_TOPICS[reportType] || CONTACT_TOPICS[HELP_ROLES.BUYER];
+  const sellerId = reportType === HELP_ROLES.SELLER ? user?.sellerId : null;
+  const accountStatusQuery = useQuery({
+    queryKey: qk.sellerAccountStatus(sellerId),
+    queryFn: ({ signal }) => getSellerAccountStatusApi(sellerId, { signal }),
+    enabled: Boolean(sellerId),
+    staleTime: 60 * 1000,
+    retry: false,
+  });
+  const isBlockedSeller = Boolean(accountStatusQuery.data?.sellerBlocked ?? user?.sellerBlocked);
+
+  const allTopics = CONTACT_TOPICS[reportType] || CONTACT_TOPICS[HELP_ROLES.BUYER];
+  const topics = isBlockedSeller
+    ? allTopics.filter((item) => BLOCKED_SELLER_TOPICS.includes(item.id))
+    : allTopics;
   // Un tema que no existe para este rol (por ejemplo `?tema=seller-products`
   // abierto con sesión de comprador) caería en un selector vacío: se ignora.
   const validInitialTopic = topics.some((item) => item.id === initialTopic) ? initialTopic : topics[0].id;
@@ -95,6 +120,15 @@ export default function HelpContactForm({ user, reportType, initialTopic = null,
     setSubject(''); setCustomSubject(''); setSelectedOrderId(''); setClaimType(''); setCustomClaimType(''); setTarget('');
     onTopicChange?.(topic);
   }, [topic]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // El estado de bloqueo llega despues del primer render: si el tema elegido ya no
+  // esta en la lista recortada, el selector quedaria mostrando un valor que no existe
+  // entre sus opciones (en blanco) y se enviaria igual al backend.
+  useEffect(() => {
+    if (!topics.some((item) => item.id === topic)) {
+      setTopic(topics[0].id);
+    }
+  }, [topics, topic]);
 
   useEffect(() => {
     if (!isOrdersTopic) return;
@@ -181,7 +215,11 @@ ${detail.trim()}`
           <select value={topic} onChange={(event) => setTopic(event.target.value)}>
             {topics.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
           </select>
-          <small>Sirve para derivar tu caso más rápido.</small>
+          <small>
+            {isBlockedSeller
+              ? 'Tu cuenta está bloqueada: solo puedes abrir los casos relacionados con eso.'
+              : 'Sirve para derivar tu caso más rápido.'}
+          </small>
         </label>
 
         {isOrdersTopic ? (

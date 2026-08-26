@@ -48,7 +48,13 @@ export function AuthProvider({ children }) {
           localStorage.setItem('repuestop_user', JSON.stringify(normalizedProfile));
         })
         .catch((err) => {
-          if (err?.status === 401 || err?.status === 403) {
+          // Solo el 401 significa "tu sesion ya no sirve". Un 403 es "estas autenticado
+          // pero no puedes entrar aqui", y con una tienda BLOQUEADA el backend responde
+          // 403 a todo lo que no este en la whitelist de `JwtAuthenticationFilter`,
+          // `/users/perfil` incluido. Tratarlo como 401 cerraba la sesion, mostraba el
+          // login, aceptaba las credenciales y volvia a cerrarla: un bucle sin salida
+          // justo para el usuario que necesita entrar a apelar.
+          if (err?.status === 401) {
             logoutLocal();
           }
         });
@@ -106,6 +112,13 @@ export function AuthProvider({ children }) {
       comuna: authResponse.comuna ?? baseUser.comuna,
       address: authResponse.address ?? baseUser.address,
       shippingMethods: authResponse.shippingMethods ?? baseUser.shippingMethods,
+      // `sellerBlocked` / `sellerBlockReason` / `sellerCanAppeal` viajan en la RAIZ de
+      // LoginResponseDTO, no dentro de `usuario`, asi que sin copiarlos aqui se perdian
+      // enteros. Son el respaldo del banner cuando `GET /proveedores/{id}/estado-cuenta`
+      // no esta disponible.
+      sellerBlocked: authResponse.sellerBlocked ?? baseUser.sellerBlocked,
+      sellerBlockReason: authResponse.sellerBlockReason ?? baseUser.sellerBlockReason,
+      sellerCanAppeal: authResponse.sellerCanAppeal ?? baseUser.sellerCanAppeal,
     });
 
     const assignedRole = baseUser.role || authResponse.role || preferredRole || 'BUYER';

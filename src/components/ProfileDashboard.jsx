@@ -18,12 +18,14 @@ import {
   updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi, updateSellerProductTopApi,
   saveConversationQuoteApi, sendConversationMessageApi, requestBlockedAccountReviewApi,
+  getSellerAccountStatusApi,
   cancelSellerOrderApi, registerOrderDispatchApi,
   pauseSellerProductApi, resumeSellerProductApi, updateSellerShippingMethodsApi,
   getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
   getBuyerProductQuestionsApi
 } from '../services/api';
 import { qk } from '../services/queryKeys';
+import { claimReasonLabel } from '../data/claimReason';
 import OrderCard from './OrderCard';
 import OrderDetailModal from './OrderDetailModal';
 import CatalogCard from './CatalogCard';
@@ -139,6 +141,23 @@ const SELLER_SIDEBAR_GROUPS = [
       { id: 'soporte', label: 'Centro de ayuda', icon: Headphones, href: ROUTES.support }
     ]
   }
+];
+
+// Con la tienda bloqueada el backend YA rechaza publicar productos
+// (`InventarioAccessSupport`), escribir en el chat (`ConversacionService`) y despachar
+// (`PedidoEnvioSupport`), asi que dejar estas pestanas a la vista solo produce errores.
+// Anuncios y retiros se ocultan por decision de producto: el backend no los bloquea, o
+// sea que siguen alcanzables desde la app o por API hasta que exista un guard alla.
+//
+// `pedidos` NO esta en la lista a proposito: queda visible en SOLO LECTURA. Un vendedor
+// que no ve lo que dejo pendiente tampoco entiende que esta colgando.
+const SELLER_BLOCKED_HIDDEN_TABS = [
+  'productos',
+  'cotizaciones',
+  'preguntas_productos',
+  'retiros',
+  'anuncios',
+  'acreditar_servicio',
 ];
 
 const BUYER_SIDEBAR_GROUPS = [
@@ -428,7 +447,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
   // Datos del perfil y rol
   const isSeller = role === 'SELLER';
-  const sidebarGroups = isSeller ? SELLER_SIDEBAR_GROUPS : BUYER_SIDEBAR_GROUPS;
+  const baseSidebarGroups = isSeller ? SELLER_SIDEBAR_GROUPS : BUYER_SIDEBAR_GROUPS;
   const effectiveSellerId = user?.sellerId || user?.proveedorId || user?.tiendaId || user?.userId || user?.id;
   const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
   const [ratingPromptOrderId, setRatingPromptOrderId] = useState(null);
@@ -498,14 +517,63 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fuente de verdad del bloqueo: `GET /proveedores/{id}/estado-cuenta`. Es el unico
+  // endpoint que lo informa y sobrevive a un refresco -- `GET /users/perfil` no trae
+  // ningun campo de bloqueo y pisa el `user` entero al montar (`AuthContext`), asi que
+  // el `sellerBlocked` que llega en el login se pierde en el primer F5.
+  //
+  // Antes esto miraba `user.cuentaBloqueada`, `user.estado === 'BLOQUEADO'` y
+  // `storeInfo.motivoBloqueo`: ninguno de esos nombres existe en las respuestas del
+  // backend (los reales son `sellerBlocked` / `sellerBlockReason` / `blockReason`), asi
+  // que el banner y todo lo que colgaba de el eran codigo muerto.
+  const accountStatusQuery = useQuery({
+    queryKey: qk.sellerAccountStatus(effectiveSellerId),
+    queryFn: ({ signal }) => getSellerAccountStatusApi(effectiveSellerId, { signal }),
+    enabled: Boolean(isSeller && effectiveSellerId),
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: true,
+    // Con la tienda bloqueada el propio `JwtAuthenticationFilter` responde 403 a este
+    // endpoint (no esta en su whitelist), asi que reintentar solo genera ruido: el
+    // respaldo es el `sellerBlocked` que trajo el login.
+    retry: false,
+  });
+
   const isSellerBlocked = isSeller && Boolean(
-    user?.cuentaBloqueada ||
-    user?.sellerBlocked ||
-    user?.estado === 'BLOQUEADO' ||
-    storeInfoQuery.data?.cuentaBloqueada ||
-    storeInfoQuery.data?.estado === 'BLOQUEADO'
+    accountStatusQuery.data?.sellerBlocked ?? user?.sellerBlocked
   );
-  const blockReason = user?.motivoBloqueo || storeInfoQuery.data?.motivoBloqueo || 'Tu tienda se encuentra suspendida temporalmente por moderación.';
+  // `blockReason` NO es un motivo de bloqueo redactado: el backend copia ahi
+  // `Mediacion.motivo`, que a su vez es `Pedido.motivoReclamo`, o sea el CODIGO del
+  // reclamo que eligio el comprador (`MediacionChatService:84`). Sin traducirlo el
+  // vendedor leia "Motivo actual: incompatible".
+  const rawBlockReason = accountStatusQuery.data?.blockReason || user?.sellerBlockReason;
+  const blockReason = rawBlockReason
+    ? claimReasonLabel(rawBlockReason)
+    : 'Tu tienda se encuentra suspendida temporalmente por moderación.';
+  // Se dice de donde sale el motivo: es el reclamo que origino la mediacion, no una
+  // frase que alguien escribio sobre la tienda.
+  const blockReasonIsClaim = Boolean(rawBlockReason);
+
+  // Se ocultan las pestanas de operacion, no la navegacion entera: resumen, pedidos
+  // (solo lectura), mi tienda/datos y Reportes/Disputa siguen accesibles. Disputa es
+  // justamente donde vive la mediacion que suele originar el bloqueo.
+  const sidebarGroups = useMemo(() => {
+    if (!isSellerBlocked) return baseSidebarGroups;
+    return baseSidebarGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => !SELLER_BLOCKED_HIDDEN_TABS.includes(item.id)),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [baseSidebarGroups, isSellerBlocked]);
+
+  // Ocultar la pestana no basta: la web navega por URL (`/perfil/productos`), asi que
+  // un enlace guardado o el boton atras entran igual. Al detectar el bloqueo se vuelve
+  // al resumen.
+  useEffect(() => {
+    if (isSellerBlocked && SELLER_BLOCKED_HIDDEN_TABS.includes(activeTab)) {
+      setActiveTab('resumen');
+    }
+  }, [isSellerBlocked, activeTab, setActiveTab]);
 
   const handleSubmitBlockedReview = async (e) => {
     e.preventDefault();
@@ -1671,6 +1739,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                     sellerId={user?.sellerId}
                     onSelectOrder={(order) => setSelectedOrder(order)}
                     onUpdateStatus={handleUpdateOrderStatus}
+                    readOnly={isSellerBlocked}
                   />
                 ) : (
                   <div className="profile-panel">
@@ -2425,8 +2494,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           onCancelOrder={isSeller ? undefined : handleCancelOrder}
           autoOpenRating={!isSeller && ratingPromptOrderId != null && String(selectedOrder.id) === String(ratingPromptOrderId)}
           onRatingPromptShown={() => setRatingPromptOrderId(null)}
-          onCancelSellerOrder={isSeller ? handleCancelSellerOrder : undefined}
-          onRegisterDispatch={isSeller ? handleRegisterOrderDispatch : undefined}
+          onCancelSellerOrder={isSeller && !isSellerBlocked ? handleCancelSellerOrder : undefined}
+          onRegisterDispatch={isSeller && !isSellerBlocked ? handleRegisterOrderDispatch : undefined}
+          readOnly={isSellerBlocked}
         />
       )}
 
@@ -2744,7 +2814,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           <div className="order-modal-container blocked-review-modal" onClick={(e) => e.stopPropagation()}>
             <div className="order-modal-header">
               <div className="order-modal-title-group">
-                <div className="order-modal-icon-badge" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
+                <div className="order-modal-icon-badge badge-moderation">
                   <Scale size={20} />
                 </div>
                 <div className="order-subdialog-heading">
@@ -2797,8 +2867,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   </div>
                 )}
 
-                <div style={{ backgroundColor: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', color: '#475569' }}>
-                  <strong>Motivo actual:</strong> {blockReason}
+                <div className="blocked-review-reason">
+                  <strong>{blockReasonIsClaim ? 'Reclamo que originó la mediación:' : 'Motivo actual:'}</strong>
+                  <span>{blockReason}</span>
                 </div>
 
                 <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
