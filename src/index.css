@@ -14705,3 +14705,12 @@ input, select, textarea {
    subrayado para que siga leyendose como tarjeta y no como texto de enlace. */
 .profile-product-card.is-clickable { display: block; color: inherit; text-decoration: none; cursor: pointer; }
 .profile-product-card.is-clickable:hover h4 { color: var(--color-brand-blue); }
+
+/* Cabecera del producto en "Mis preguntas" del comprador: miniatura + nombre que lleva
+   a la ficha. La pregunta se hace para decidir una compra, asi que tiene que haber
+   camino de vuelta al repuesto. */
+.buyer-question-product { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
+.buyer-question-product img { width: 42px; height: 42px; flex-shrink: 0; border: 1px solid var(--border-subtle); border-radius: 8px; object-fit: contain; background: var(--bg-white); }
+.buyer-question-product h4 { margin: 0; min-width: 0; font-size: 14.5px; color: #1e293b; }
+.buyer-question-product h4 a { color: inherit; text-decoration: none; }
+.buyer-question-product h4 a:hover { color: var(--color-brand-blue); text-decoration: underline; }

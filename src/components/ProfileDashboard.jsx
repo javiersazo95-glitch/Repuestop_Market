@@ -1737,9 +1737,25 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                                 {q.fechaPregunta || q.createdAt ? new Date(q.fechaPregunta || q.createdAt).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
                               </small>
                             </div>
-                            <h4 style={{ margin: '0 0 6px', fontSize: '14.5px', color: '#1e293b' }}>
-                              {q.productoNombre || q.productName || q.producto?.nombrePublicado || 'Repuesto'}
-                            </h4>
+                            {/* El producto con su foto y un enlace de vuelta: una pregunta
+                                sirve para decidir la compra, asi que desde aca hay que
+                                poder volver a la ficha. `ProductoPreguntaResponseDTO` ya
+                                trae nombre, imagen e id; antes solo se usaba el nombre.
+                                El SKU se omite a proposito: al comprador no le dice nada. */}
+                            <div className="buyer-question-product">
+                              {q.productoImagenUrl && (
+                                <img src={resolveMediaUrl(q.productoImagenUrl)} alt="" />
+                              )}
+                              <h4>
+                                {q.productoId ? (
+                                  <Link to={productPath({ id: q.productoId, titulo: q.productoNombre })}>
+                                    {q.productoNombre || q.productName || q.producto?.nombrePublicado || 'Repuesto'}
+                                  </Link>
+                                ) : (
+                                  q.productoNombre || q.productName || q.producto?.nombrePublicado || 'Repuesto'
+                                )}
+                              </h4>
+                            </div>
                             <p style={{ margin: '0 0 10px', fontSize: '13.5px', color: '#334155' }}>
                               <strong>Tu pregunta:</strong> {q.pregunta || q.texto || q.question}
                             </p>
