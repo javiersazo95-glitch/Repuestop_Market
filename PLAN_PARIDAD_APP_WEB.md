@@ -544,3 +544,19 @@ Ojo también con el origen: el backend guarda las rutas de la APP en `targetRout
 se agrega un tipo de notificación nuevo allá, hay que sumar su entrada al traductor o
 el clic no hará nada (devuelve `null` y solo marca como leída, que es el fallback
 deliberado).
+
+
+### 7.5 Segunda tanda de pruebas — 2026-08-26
+
+Cerradas 6 a 12: tickets de soporte, responder preguntas, pausar/retomar, favoritos,
+mis preguntas del comprador, notificaciones y el chat de cotizacion. El flujo de compra
+se probo de punta a punta, incluido el pago de una cotizacion.
+
+**Quedan por probar**: A1/A20 (recuperar clave y validacion temprana de email), A8
+(cuenta bloqueada), A15 (imagenes en el chat de mediacion) y el flujo de verificacion
+con un estado distinto de APPROVED, que necesita cambiarlo desde el backoffice.
+
+**A16 sigue sin cablear.** `getInventoryVehicleCatalogsApi` y `getVehicleCatalogPartsApi`
+existen en `api.js` y no las llama nadie.
+
+El detalle de lo que se arreglo esta en `HANDOFF_PROXIMO_AGENTE.md` seccion 4.21.

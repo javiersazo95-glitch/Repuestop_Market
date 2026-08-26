@@ -1321,3 +1321,83 @@ exclusivamente del usuario**. `updateStatus` rechaza el cambio de estado con
 cerrados por el usuario", y solo lo permite en tickets de origen `QA`. Soporte no puede
 cerrar ni reabrir; si el flujo del backoffice necesita eso, es un cambio de reglas de
 negocio, no de UI.
+
+
+---
+
+### 4.21 Pruebas de paridad 1 a 12 y limites del chat — sesion 2026-08-26
+
+Segunda tanda de pruebas sobre `PLAN_PARIDAD_APP_WEB.md`. **Doce cerradas**, incluido el
+flujo de compra completo (pedir cotizacion -> el vendedor cotiza -> pago).
+
+| # | Capacidad | Estado |
+|---|---|---|
+| 1-5 | Fotos al editar, metodos de envio, cancelacion del vendedor, despacho, calificacion | OK |
+| 6 | A5+B2 tickets de soporte | OK |
+| 7 | A6 responder preguntas (vendedor) | OK |
+| 8 | A10 pausar / retomar publicacion | OK |
+| 9 | A19 favoritos | OK |
+| 10 | A13 mis preguntas (comprador) | OK |
+| 11 | A24 notificaciones | OK parcial, ver plan 7.4 |
+| 12 | A14 chat de cotizacion | OK |
+
+**Faltan**: A1/A20 (recuperar clave y validacion de email), A8 (cuenta bloqueada), A15
+(imagenes en mediacion) y A16 (busqueda por catalogo de vehiculo, sin cablear).
+
+#### Lo que se arreglo, agrupado por causa
+
+**Cache de React Query sin invalidar** — tres veces el mismo patron: la accion se
+guardaba en el backend y la vista que lista no se enteraba hasta recargar. Paso con
+favoritos, con las preguntas del comprador y con las cotizaciones. **Regla: si una
+accion en una vista cambia datos que otra lista, hay que invalidar**, y la clave debe
+vivir en `queryKeys.js` -las escritas a mano en el componente son las que nadie invalida.
+
+**`window.confirm` y `alert()`** no abren nada en un navegador embebido: el boton queda
+mudo. Ya no queda ninguno en `src/`.
+
+**Clases de CSS inventadas** dejaban modales sin fondo. Y al ENVOLVER un elemento se
+rompen los selectores con `>`.
+
+**Campos sin tope** que la base si tenia: courier y tracking son `length = 120`,
+`valorEnvioInformado` es NUMERIC(12,2). Un valor largo se perdia al guardar.
+
+#### Limites del chat de cotizacion (nuevos)
+
+- Mensaje **500** caracteres (la app sigue en 1000, conviene alinearla).
+- Imagenes: **3 MB** y **10 por conversacion**, validado en `ConversacionService` ademas
+  del cliente. Antes no habia NADA: el unico tope era el multipart de Spring, 10 MB.
+- **Compresion antes de subir** (`src/utils/imageCompression.js`): 1600 px de lado mayor
+  y JPEG al 80%. Una foto de celular pasa de 3-8 MB a 200-400 KB. R2 son 10 GB
+  compartidos con productos, anuncios, perfiles y comprobantes; sin esto el chat solo se
+  comia el bucket con unas mil fotos.
+- El comprador **no escribe hasta que el vendedor responde**, misma regla que la app
+  (`quote-chat.tsx:218`), pero **si puede adjuntar fotos** desde el inicio.
+- Vencida o cerrada bloquea chat, adjuntos y "Solicitar modificacion".
+
+#### Cambios de backend de esta sesion
+
+Todos en el monorepo, rama `dev`, ya desplegados a `origin`:
+
+- `bd5d358` + `644ea7b` — agrupado de los correos de ticket (ventana de 10 min,
+  configurable) y la **zona horaria** de `ultimo_email_notificado_at`: se creo como
+  TIMESTAMP sin zona y Hibernate la leia 4 horas en el futuro, con lo que la ventana no
+  vencia nunca. Migraciones `V2026082604` y `V2026082605`.
+- `bc2b106` — constancia de cierre por correo e invitacion a cerrar en cada respuesta.
+- `8e2e864` — limites de imagen del chat.
+
+**Regla del ticket que no era obvia**: en un ticket de soporte normal **cerrar es
+exclusivamente del usuario**. `updateStatus` rechaza el cambio de estado salvo en
+tickets de origen QA, y `sendMessage` rechaza mensajes sobre un ticket finalizado.
+
+#### Cotizacion vencida: hilo nuevo
+
+`POST /conversaciones` reutiliza la conversacion ABIERTA del producto y solo mira el
+estado, no si la oferta sigue viva. Con la cotizacion vencida el comprador quedaba
+atrapado. El backend ya soportaba `forceNew`; ahora la web lo manda cuando la oferta
+anterior vencio. **La app movil tiene el mismo problema**: manda `forceNewBackend` solo
+para consultas de compatibilidad (`useProductDetailScreen.ts:711`).
+
+#### `no-undef` encendido
+
+Ver CLAUDE.md. La regla es `error` y `npm run lint` devuelve exit 1 si aparece un
+identificador inexistente. Baseline de warnings: **114**.
