@@ -191,13 +191,13 @@ export default function QuoteDetailModal({
   const sellerHasReplied = messages.some((message) => (
     String(message.emisorId ?? message.autorId ?? '') !== String(user?.userId ?? user?.id ?? '')
   ));
+  const closed = quote.estado === 'CERRADA';
   // Vencida o cerrada, el hilo deja de admitir mensajes: no tiene sentido negociar
   // sobre una oferta que ya no se puede pagar. El backend ya bloquea la CERRADA; la
   // vencida se decide aca, que es donde se interpreta `vigencia`.
   const chatLocked = closed || expired;
   const canWriteText = !chatLocked && (mode === 'seller' || Boolean(activeQuote) || sellerHasReplied);
   const canAttach = !chatLocked && imageCount < MAX_CHAT_IMAGES;
-  const closed = quote.estado === 'CERRADA';
   const documentName = quoteDocumentFilename(quote.id);
   const openProduct = () => navigate(productPath({ id: quote.productoId, titulo: productName }));
   const storeId = quote.proveedorId || quote.sellerId || user?.sellerId;
