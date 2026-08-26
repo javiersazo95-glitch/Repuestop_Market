@@ -119,6 +119,9 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     }),
     onSuccess: (created) => {
       queryClient.setQueryData(qk.productQuestions(product.id), (old = []) => [created, ...old]);
+      // Tambien la bandeja del comprador: se leia con staleTime de 60s, asi que la
+      // pregunta recien hecha no aparecia en el perfil hasta recargar la pagina.
+      queryClient.invalidateQueries({ queryKey: ['buyerProductQuestions'] });
       setQuestion('');
       setQuestionError('');
     },

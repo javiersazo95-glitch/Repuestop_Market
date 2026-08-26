@@ -485,7 +485,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   });
 
   const buyerQuestionsQuery = useQuery({
-    queryKey: ['buyerProductQuestions', effectiveUserId],
+    queryKey: qk.buyerProductQuestions(effectiveUserId),
     queryFn: ({ signal }) => getBuyerProductQuestionsApi({ signal }),
     enabled: Boolean(!isSeller && effectiveUserId),
     staleTime: 60 * 1000,
