@@ -14717,7 +14717,11 @@ input, select, textarea {
 
 /* Imagen del chat: la miniatura abre el visor. El vendedor necesita mirar la pieza en
    detalle y a veces guardarse la foto, no conformarse con la burbuja. */
-.quote-ws-image-open { position: relative; display: block; padding: 0; border: 0; background: none; cursor: zoom-in; line-height: 0; }
+/* La miniatura mantiene el tope que tenia `.quote-ws-bubble > img`: al envolver la
+   imagen en el boton dejo de ser hijo directo y ese selector con ">" dejo de aplicar,
+   con lo que una foto vertical ocupaba el chat entero. */
+.quote-ws-image-open { position: relative; display: block; width: fit-content; padding: 0; margin-bottom: 7px; border: 0; background: none; cursor: zoom-in; line-height: 0; }
+.quote-ws-image-open > img { display: block; max-width: 230px; max-height: 150px; border-radius: 8px; object-fit: cover; }
 .quote-ws-image-open > span { position: absolute; right: 6px; bottom: 6px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; background: rgba(15, 23, 42, .62); color: #fff; opacity: 0; transition: opacity .15s ease; }
 .quote-ws-image-open:hover > span { opacity: 1; }
 
