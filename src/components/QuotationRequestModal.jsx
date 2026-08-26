@@ -3,6 +3,7 @@ import {
   AlertCircle, BadgeCheck, BadgeDollarSign, Box, CheckCircle2, ChevronRight,
   CircleHelp, ClipboardList, FileText, LockKeyhole, Package, Send, Shield, Store, X,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   createConversationApi, resolveMediaUrl, sendConversationMessageApi,
 } from '../services/api';
@@ -24,6 +25,7 @@ export default function QuotationRequestModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [conversation, setConversation] = useState(null);
   const [submitError, setSubmitError] = useState('');
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -72,6 +74,10 @@ export default function QuotationRequestModal({
       const message = buildQuoteRequestMessage(formData);
       const sentMessage = await sendConversationMessageApi(createdConversation.id, message);
       setConversation({ ...createdConversation, ultimoMensaje: sentMessage?.texto || message });
+      // "Mis cotizaciones" lee las conversaciones por React Query con staleTime de 60s.
+      // Sin invalidar, la solicitud quedaba guardada en el backend pero no aparecia en
+      // el perfil hasta recargar, y parecia que no habia funcionado.
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
     } catch (error) {
       setSubmitError(error.message || 'No se pudo enviar la solicitud de cotización.');
     } finally {
