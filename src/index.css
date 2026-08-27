@@ -14700,6 +14700,20 @@ input, select, textarea {
 .store-unavailable-icon { display: inline-flex; align-items: center; justify-content: center; width: 62px; height: 62px; border-radius: 50%; background: #f1f5f9; color: #64748b; }
 .store-unavailable-loading { margin: 0; }
 
+/* Un contrato se lee: el visor de PDF del navegador gasta ancho en su barra y en las
+   miniaturas, asi que con la caja estandar de 760px el texto quedaba ilegible. Este
+   dialogo ocupa casi toda la ventana y el visor toma la altura sobrante. */
+.legal-doc-modal { max-width: none; width: min(1180px, 96vw); height: 92vh; max-height: 92vh; display: flex; flex-direction: column; }
+.legal-doc-viewer { flex: 1; min-height: 0; width: 100%; border: 0; background: #f1f5f9; }
+.legal-doc-fallback { padding: 28px; text-align: center; color: #64748b; font-size: 13.5px; }
+.legal-doc-text { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 28px; color: #334155; font-size: 13.5px; line-height: 1.6; }
+.legal-doc-text p { margin: 0 0 12px; }
+.legal-doc-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border-subtle, #e4eaf0); background: #fbfcfe; }
+/* Enlaces a los documentos legales bajo el contrato: es una fila de texto, no botones. */
+.verification-legal-links { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; color: #64748b; font-size: 12.5px; }
+.verification-legal-links svg { flex-shrink: 0; }
+.verification-legal-links .link-btn { color: var(--color-brand-blue, #0066ff); font-size: 12.5px; font-weight: 700; text-decoration: underline; }
+
 .blocked-review-modal { max-width: 520px; }
 /* El badge del header se pintaba con `style={{ backgroundColor }}` inline y salia azul
    igual: `.order-modal-icon-badge` define `background: linear-gradient(...)`, o sea un

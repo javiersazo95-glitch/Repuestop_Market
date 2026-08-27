@@ -132,6 +132,14 @@ export async function fetchApi(endpoint, options = {}) {
 
   try {
     const response = await fetch(url, config);
+
+    // Respuestas binarias (PDF). `fetchApi` lee texto cuando no es JSON, y eso corrompe
+    // un binario: se devuelve el Blob antes de tocar el cuerpo. Si la respuesta no es OK
+    // se sigue de largo para que el error se parsee y se maneje como cualquier otro.
+    if (options.asBlob && response.ok) {
+      return await response.blob();
+    }
+
     const contentType = response.headers.get('content-type');
     let data = null;
 
@@ -1495,6 +1503,21 @@ export async function updateSellerShippingMethodsApi(proveedorId, shippingMethod
   return fetchApi(`/proveedores/${proveedorId}/shipping-methods`, {
     method: 'PUT',
     body: JSON.stringify({ shippingMethods }),
+  });
+}
+
+/**
+ * Contrato de adhesión en PDF para leerlo ANTES de aceptarlo.
+ *
+ * Lo genera el backend con el mismo generador que produce el PDF firmado, asi que el
+ * vendedor lee exactamente lo que va a aceptar. El texto del contrato vive solo alla:
+ * traerlo al cliente seria una segunda version del mismo documento legal.
+ */
+export async function getSellerAdhesionPreviewApi(proveedorId, { signal } = {}) {
+  return fetchApi(`/proveedores/${proveedorId}/adhesion/preview`, {
+    method: 'GET',
+    asBlob: true,
+    signal,
   });
 }
 

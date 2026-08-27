@@ -24,6 +24,7 @@ import {
   getBuyerProductQuestionsApi
 } from '../services/api';
 import { qk } from '../services/queryKeys';
+import ShippingMethodsPicker from './ShippingMethodsPicker';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import OrderCard from './OrderCard';
 import OrderDetailModal from './OrderDetailModal';
@@ -36,7 +37,9 @@ import NewCatalogProductModal from './NewCatalogProductModal';
 import SellerVerificationCard from './SellerVerificationCard';
 import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
-import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
+import {
+  SHIPPING_METHOD_DEFS, parseShippingSelections, buildShippingMethodsString,
+} from '../data/shippingMethods';
 import VehicleBrandLogo from './VehicleBrandLogo';
 import SellerWithdrawalsPanel from './SellerWithdrawalsPanel';
 import SellerOrdersPanel from './SellerOrdersPanel';
@@ -65,37 +68,6 @@ const BUYER_PROFILE_COVER_URL = import.meta.env.VITE_BUYER_PROFILE_COVER_URL
 // Chilexpress, Retiro en Tienda") que no coincidía con este modelo y no validaba
 // nada; ahora se editan como checkboxes + precio opcional y se serializan al
 // mismo formato de string que ya consume el resto de la app.
-const SHIPPING_METHOD_DEFS = [
-  { id: 'retiro', label: 'Retiro en tienda', canonicalName: 'Retiro en tienda', hasPrice: false },
-  { id: 'dentro', label: 'Envío dentro de la comuna', canonicalName: 'Envío dentro de la comuna', hasPrice: true },
-  // "Fuera de la comuna" va por courier externo y el cliente paga el flete al
-  // recibir el envío: la tienda no fija un precio acá, por eso no lleva input
-  // de precio (a diferencia de "dentro de la comuna", que sí lo maneja la tienda).
-  { id: 'fuera', label: 'Envío fuera de la comuna', canonicalName: 'Envío fuera de la comuna', hasPrice: false, note: 'Por pagar en destino' },
-];
-
-function parseShippingSelections(rawMethods) {
-  const selections = Object.fromEntries(SHIPPING_METHOD_DEFS.map((def) => [def.id, { enabled: false, price: '' }]));
-  parseShippingMethods(rawMethods).forEach((method) => {
-    const canonicalName = resolveShippingService(method).name;
-    const def = SHIPPING_METHOD_DEFS.find((candidate) => candidate.canonicalName === canonicalName);
-    if (!def) return;
-    const price = shippingMethodPrice(method);
-    selections[def.id] = { enabled: true, price: price ? price.replace(/\D/g, '') : '' };
-  });
-  return selections;
-}
-
-function buildShippingMethodsString(selections) {
-  return SHIPPING_METHOD_DEFS
-    .filter((def) => selections[def.id]?.enabled)
-    .map((def) => {
-      if (!def.hasPrice) return def.label;
-      const digits = String(selections[def.id]?.price || '').replace(/\D/g, '');
-      return digits ? `${def.label} ($${Number(digits).toLocaleString('es-CL')})` : def.label;
-    })
-    .join(', ');
-}
 
 /** Deja pasar solo dígitos y, si estaba al inicio, un único "+" (prefijo de país). */
 function sanitizePhoneInput(rawValue) {
@@ -2217,46 +2189,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
                           <div className="form-group" style={{ marginTop: '16px' }}>
                             <label>Métodos de Envío Aceptados</label>
-                            <div className="shipping-methods-editor">
-                              {SHIPPING_METHOD_DEFS.map((def) => {
-                                const selection = shippingSelectionsDraft[def.id];
-                                return (
-                                  <label key={def.id} className={`shipping-method-option ${selection.enabled ? 'checked' : ''}`}>
-                                    <input
-                                      type="checkbox"
-                                      checked={selection.enabled}
-                                      onChange={(e) => setShippingSelectionsDraft((current) => ({
-                                        ...current,
-                                        [def.id]: { ...current[def.id], enabled: e.target.checked },
-                                      }))}
-                                    />
-                                    <span className="shipping-method-option-label">{def.label}</span>
-                                    {def.hasPrice && selection.enabled && (
-                                      <span className="shipping-method-price-input">
-                                        <span>$</span>
-                                        <input
-                                          type="text"
-                                          inputMode="numeric"
-                                          maxLength={7}
-                                          placeholder="Gratis"
-                                          value={selection.price}
-                                          onChange={(e) => {
-                                            const digits = e.target.value.replace(/\D/g, '');
-                                            setShippingSelectionsDraft((current) => ({
-                                              ...current,
-                                              [def.id]: { ...current[def.id], price: digits },
-                                            }));
-                                          }}
-                                        />
-                                      </span>
-                                    )}
-                                    {!def.hasPrice && def.note && selection.enabled && (
-                                      <span className="shipping-method-note-badge">{def.note}</span>
-                                    )}
-                                  </label>
-                                );
-                              })}
-                            </div>
+                            <ShippingMethodsPicker
+                              selections={shippingSelectionsDraft}
+                              onChange={setShippingSelectionsDraft}
+                            />
                             {formErrors.shippingMethods && <small className="field-error-text">{formErrors.shippingMethods}</small>}
                             <small className="form-helper-text">Elige los métodos que ofrece tu tienda. Deja el precio en blanco si es gratuito.</small>
                           </div>

@@ -562,8 +562,18 @@ huecos de visibilidad publica; el detalle esta en `HANDOFF_PROXIMO_AGENTE.md` se
 4.23, incluida la decision de que **el bloqueo es de cuenta completa** y lo que quedo
 pendiente en la app movil.
 
-**Quedan por probar**: A15 (imagenes en el chat de mediacion) y el flujo de verificacion
-con un estado distinto de APPROVED, que necesita cambiarlo desde el backoffice.
+**A15 cerrada el 2026-08-27.** La subida ya estaba implementada (esta linea y la de
+CLAUDE.md decian que faltaba, y era falso). Se probo desde los dos lados: previsualizacion
+antes de enviar, compresion al seleccionar, y los dos topes nuevos del servidor -3 MB y 10
+imagenes por conversacion-, con la imagen 11 rechazada por el backend.
+
+**Queda por probar**: el flujo de verificacion con un estado distinto de APPROVED, que
+necesita cambiarlo desde el backoffice. Ojo con lo que esa prueba NO cubre: hoy la
+verificacion **no bloquea nada** -ni `RetiroProveedorService` ni los servicios de
+inventario consultan `VerificacionProveedor`-, asi que una tienda en PENDING publica,
+vende y pide retiros igual que una aprobada. El estado es informativo.
+
+**A16 sigue sin cablear** y es implementacion, no prueba.
 
 **A16 sigue sin cablear.** `getInventoryVehicleCatalogsApi` y `getVehicleCatalogPartsApi`
 existen en `api.js` y no las llama nadie.

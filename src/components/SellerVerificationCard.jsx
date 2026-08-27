@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ShieldCheck, ShieldAlert, ShieldQuestion, Clock, FileUp, X,
-  Loader2, CheckCircle2, AlertTriangle, FileSignature,
+  Loader2, CheckCircle2, AlertTriangle, FileSignature, Eye, ScrollText,
 } from 'lucide-react';
 import {
   getSellerVerificationStatusApi,
@@ -9,7 +10,10 @@ import {
   updateSellerVerificationApi,
   appealSellerVerificationApi,
   acceptSellerAdhesionApi,
+  getSellerAdhesionPreviewApi,
+  resolveMediaUrl,
 } from '../services/api';
+import { VENDEDOR_TERMS, PRIVACIDAD_POLICY, LEGAL_VERSION } from '../data/legalTexts';
 
 /**
  * Verificación comercial y contrato de adhesión del vendedor (A7 y A12).
@@ -63,6 +67,11 @@ export default function SellerVerificationCard({ sellerId }) {
   const [isAppealing, setIsAppealing] = useState(false);
 
   const [isAcceptingAdhesion, setIsAcceptingAdhesion] = useState(false);
+  // Lectura del contrato antes de aceptarlo, y de los textos legales despues.
+  const [adhesionPreviewUrl, setAdhesionPreviewUrl] = useState('');
+  const [isLoadingAdhesion, setIsLoadingAdhesion] = useState(false);
+  const [adhesionError, setAdhesionError] = useState('');
+  const [legalDoc, setLegalDoc] = useState(null); // 'terms' | 'privacy'
 
   const load = useCallback(async (signal) => {
     if (!sellerId) return;
@@ -156,6 +165,28 @@ export default function SellerVerificationCard({ sellerId }) {
     }
   };
 
+  // El PDF se pide con el token (fetchApi), asi que no sirve un <iframe src>: se trae
+  // como Blob y se muestra por objectURL. Se revoca al cerrar para no dejarlo colgando.
+  const openAdhesionPreview = async () => {
+    if (isLoadingAdhesion) return;
+    setIsLoadingAdhesion(true);
+    setAdhesionError('');
+    try {
+      const blob = await getSellerAdhesionPreviewApi(sellerId);
+      setAdhesionPreviewUrl(URL.createObjectURL(blob));
+    } catch (err) {
+      setAdhesionError(err?.message || 'No pudimos abrir el contrato. Inténtalo nuevamente.');
+    } finally {
+      setIsLoadingAdhesion(false);
+    }
+  };
+
+  const closeAdhesionPreview = () => {
+    if (adhesionPreviewUrl) URL.revokeObjectURL(adhesionPreviewUrl);
+    setAdhesionPreviewUrl('');
+    setAdhesionError('');
+  };
+
   const handleAcceptAdhesion = async () => {
     if (isAcceptingAdhesion) return;
     setIsAcceptingAdhesion(true);
@@ -164,6 +195,7 @@ export default function SellerVerificationCard({ sellerId }) {
       const updated = await acceptSellerAdhesionApi(sellerId);
       setVerification(updated);
       setSuccessMessage('Contrato de adhesión aceptado.');
+      closeAdhesionPreview();
     } catch (err) {
       setFormError(err?.message || 'No se pudo registrar la aceptación del contrato.');
     } finally {
@@ -325,14 +357,120 @@ export default function SellerVerificationCard({ sellerId }) {
                 <span>{adhesionAccepted ? 'Aceptado' : 'Pendiente de aceptación'}</span>
               </div>
             </div>
-            {!adhesionAccepted && (
-              <button type="button" className="btn-auth-secondary" onClick={handleAcceptAdhesion} disabled={isAcceptingAdhesion}>
-                {isAcceptingAdhesion && <Loader2 size={16} className="spin-icon" />}
-                {isAcceptingAdhesion ? 'Registrando…' : 'Aceptar contrato'}
+            {/* Antes el unico boton era "Aceptar contrato" y aceptaba de inmediato: se
+                firmaba un documento que no habia forma de leer. Ahora primero se abre. */}
+            {adhesionAccepted ? (
+              <a
+                className="btn-auth-secondary"
+                href={resolveMediaUrl(verification?.adhesionContractDoc) || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Eye size={16} /> Ver contrato firmado
+              </a>
+            ) : (
+              <button type="button" className="btn-auth-secondary" onClick={openAdhesionPreview} disabled={isLoadingAdhesion}>
+                {isLoadingAdhesion ? <Loader2 size={16} className="spin-icon" /> : <Eye size={16} />}
+                {isLoadingAdhesion ? 'Abriendo…' : 'Leer y aceptar contrato'}
               </button>
             )}
           </div>
+
+          {adhesionError && (
+            <div className="auth-alert alert-error" style={{ marginTop: '10px' }}>
+              <AlertTriangle size={15} />
+              <span>{adhesionError}</span>
+            </div>
+          )}
+
+          {/* Los documentos legales quedaban sin acceso desde el panel: se aceptan en el
+              registro y despues no habia donde releerlos. */}
+          <div className="verification-legal-links">
+            <ScrollText size={15} />
+            <span>Documentos legales vigentes ({LEGAL_VERSION}):</span>
+            <button type="button" className="link-btn" onClick={() => setLegalDoc('terms')}>
+              Términos del vendedor
+            </button>
+            <button type="button" className="link-btn" onClick={() => setLegalDoc('privacy')}>
+              Política de privacidad
+            </button>
+          </div>
         </div>
+      )}
+
+      {/* Los dos dialogos salen por portal: la tarjeta vive dentro del panel, que tiene
+          sus propios contenedores con overflow, y ahi el overlay quedaria recortado. */}
+      {adhesionPreviewUrl && createPortal(
+        <div className="order-modal-backdrop" onClick={closeAdhesionPreview}>
+          <div className="order-modal-container legal-doc-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="order-modal-header">
+              <div className="order-modal-title-group">
+                <div className="order-modal-icon-badge"><FileSignature size={20} /></div>
+                <div className="order-subdialog-heading">
+                  <h2>Contrato de adhesión</h2>
+                  <span className="order-modal-subtitle">
+                    Léelo completo antes de aceptar. Es el mismo documento que quedará firmado.
+                  </span>
+                </div>
+              </div>
+              <button type="button" className="btn-close-modal" onClick={closeAdhesionPreview} aria-label="Cerrar">
+                <X size={18} />
+              </button>
+            </div>
+
+            <object className="legal-doc-viewer" data={adhesionPreviewUrl} type="application/pdf">
+              {/* Un navegador sin visor de PDF integrado no renderiza el <object>: se
+                  ofrece abrirlo aparte en vez de dejar un recuadro en blanco. */}
+              <p className="legal-doc-fallback">
+                Tu navegador no puede mostrar el PDF aquí.{' '}
+                <a href={adhesionPreviewUrl} target="_blank" rel="noopener noreferrer">Ábrelo en una pestaña nueva</a>.
+              </p>
+            </object>
+
+            <div className="legal-doc-actions">
+              <button type="button" className="btn-auth-secondary" onClick={closeAdhesionPreview}>
+                Cerrar
+              </button>
+              <button type="button" className="btn-auth-primary" onClick={handleAcceptAdhesion} disabled={isAcceptingAdhesion}>
+                {isAcceptingAdhesion && <Loader2 size={16} className="spin-icon" />}
+                {isAcceptingAdhesion ? 'Registrando…' : 'Acepto el contrato'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {legalDoc && createPortal(
+        <div className="order-modal-backdrop" onClick={() => setLegalDoc(null)}>
+          <div className="order-modal-container legal-doc-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="order-modal-header">
+              <div className="order-modal-title-group">
+                <div className="order-modal-icon-badge"><ScrollText size={20} /></div>
+                <div className="order-subdialog-heading">
+                  <h2>{legalDoc === 'privacy' ? 'Política de privacidad' : 'Términos y condiciones del vendedor'}</h2>
+                  <span className="order-modal-subtitle">Versión vigente: {LEGAL_VERSION}</span>
+                </div>
+              </div>
+              <button type="button" className="btn-close-modal" onClick={() => setLegalDoc(null)} aria-label="Cerrar">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="legal-doc-text">
+              {(legalDoc === 'privacy' ? PRIVACIDAD_POLICY : VENDEDOR_TERMS)
+                .split('\n\n')
+                .map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+            </div>
+
+            <div className="legal-doc-actions">
+              <button type="button" className="btn-auth-secondary" onClick={() => setLegalDoc(null)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

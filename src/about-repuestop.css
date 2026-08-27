@@ -1227,6 +1227,17 @@
 .repuestop-about-page .founder-field input, .repuestop-about-page .founder-field select, .repuestop-about-page .founder-field textarea, .repuestop-about-page .founder-reg-code, .repuestop-about-page .founder-reg-phone input, .repuestop-about-page .founder-reg-password input {
   width: 100%; padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px; font-size: .92rem; color: var(--navy); background: #fff; transition: border-color .2s, box-shadow .2s; }
 .repuestop-about-page .founder-field textarea { resize: vertical; font-family: inherit; }
+
+/* El selector de metodos de envio es compartido con el panel de la tienda y trae sus
+   propios estilos en index.css. La regla de arriba -`.founder-field input` con
+   `width: 100%` y padding- le pegaba al checkbox y al campo de precio: el checkbox se
+   estiraba a todo el ancho y empujaba la etiqueta fuera de la caja, una palabra por
+   linea. Se neutraliza aqui, en la hoja que causa el problema, para no tocar el
+   componente ni el panel. */
+.repuestop-about-page .shipping-method-option input[type="checkbox"] { width: 17px; height: 17px; padding: 0; border-radius: 4px; }
+.repuestop-about-page .shipping-method-price-input { width: auto; }
+.repuestop-about-page .shipping-method-price-input input { width: 72px; padding: 0; border: none; background: transparent; border-radius: 0; }
+.repuestop-about-page .shipping-method-price-input input:focus { box-shadow: none; border: none; }
 .repuestop-about-page .founder-field input:focus, .repuestop-about-page .founder-field select:focus, .repuestop-about-page .founder-field textarea:focus, .repuestop-about-page .founder-reg-code:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,102,255,.12); }
 .repuestop-about-page .founder-field input:disabled, .repuestop-about-page .founder-field select:disabled { background: var(--soft); color: var(--muted); cursor: not-allowed; }
 .repuestop-about-page .founder-field.has-error input, .repuestop-about-page .founder-field.has-error select { border-color: #de350b; }
