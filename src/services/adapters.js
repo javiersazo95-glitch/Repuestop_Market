@@ -323,8 +323,12 @@ export function adaptStore(dto, index = 0) {
       : [],
     fundador: Boolean(dto.founder),
     verificada: Boolean(dto.verified ?? dto.isVerified ?? true),
-    logoUrl: resolveMediaUrl(dto.logoUrl || dto.userProfileUrl) || '/tiensoft_logo.jpg',
+    // El logo NO cae a `/tiensoft_logo.jpg`: una tienda sin logo aparecia con la marca
+    // de otra empresa. Sin logo se pinta `.store-avatar-fallback`, que son las iniciales.
+    // La portada si conserva la imagen generica, que es decorativa y no identifica a nadie.
+    logoUrl: resolveMediaUrl(dto.logoUrl || dto.userProfileUrl) || null,
     coverUrl: resolveMediaUrl(dto.coverUrl) || '/tiensoft_cover.jpg',
+    responseTimeLabel: dto.responseTimeLabel || '',
   };
 }
 

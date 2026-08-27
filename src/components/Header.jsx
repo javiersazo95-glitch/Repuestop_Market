@@ -9,6 +9,7 @@ import { qk } from '../services/queryKeys';
 import { CATEGORY_VISUALS, HEADER_CATEGORIES } from '../data/categories';
 import RepuesTopLogo from './RepuesTopLogo';
 import { useAuth } from '../context/AuthContext';
+import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { getPartCategoriesApi, getPartSubcategoriesApi, getPublicProductsApi, resolveMediaUrl } from '../services/api';
 import CategoryIconTile from './CategoryIconTile';
 
@@ -41,6 +42,7 @@ export default function Header({
   const categoryButtonRefs = useRef(new Map());
   const subcategoryCardRefs = useRef(new Map());
   const { user, isLoggedIn, role, logout } = useAuth();
+  const { isBlocked: isBlockedAccount } = useSellerBlocked();
   const isSellerAccount = String(user?.role || role || '').toUpperCase() === 'SELLER'
     && Boolean(user?.sellerId);
   const inventoryPanelUrl = __DEPLOY_BRANCH__ === 'main'
@@ -304,16 +306,23 @@ export default function Header({
             )}
           </div>
 
-          <div className="header-divider" />
-          <button className="cart-trigger-box" onClick={onOpenCart}>
-            <div className="cart-badge-wrap">
-              <ShoppingCart size={24} />
-              {cartCount > 0 && <span className="cart-badge-num">{cartCount}</span>}
-            </div>
-            <div className="cart-meta">
-              <span className="cart-lbl">Mi carrito</span>
-            </div>
-          </button>
+          {/* Con la cuenta bloqueada el carrito no se muestra: el backend responde 403 a
+              todo el lado comprador, asi que el boton solo llevaria a un checkout que
+              falla sin explicar por que. */}
+          {!isBlockedAccount && (
+            <>
+              <div className="header-divider" />
+              <button className="cart-trigger-box" onClick={onOpenCart}>
+                <div className="cart-badge-wrap">
+                  <ShoppingCart size={24} />
+                  {cartCount > 0 && <span className="cart-badge-num">{cartCount}</span>}
+                </div>
+                <div className="cart-meta">
+                  <span className="cart-lbl">Mi carrito</span>
+                </div>
+              </button>
+            </>
+          )}
         </div>
       </div>
 

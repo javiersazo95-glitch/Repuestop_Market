@@ -8,12 +8,12 @@ import {
 import { CATEGORY_IMAGE_BY_ID } from '../data/categories';
 import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import {
-  createProductQuestionApi, getProductQuestionsApi, searchVehicleByPatenteApi,
-  addFavoriteApi, removeFavoriteApi, checkIsFavoriteApi
+  createProductQuestionApi, getProductQuestionsApi, searchVehicleByPatenteApi
 } from '../services/api';
 import { adaptVehicle } from '../services/adapters';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
+import { useFavorites } from '../hooks/useFavorites';
 import { qk } from '../services/queryKeys';
 import StoreLogoBadge from './StoreLogoBadge';
 import ContextualReportButton from './ContextualReportButton';
@@ -44,36 +44,14 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     ? product.imagenes
     : [product.imagen || CATEGORY_IMAGE_BY_ID[product.categoria]]).filter(Boolean);
   const [activeImage, setActiveImage] = useState(0);
-  const [favorite, setFavorite] = useState(Boolean(product.favorito || product.isFavorite));
+  // El estado del corazon sale del mismo hook que usa el catalogo. Antes esta pantalla
+  // llevaba su propio `useState` + `checkIsFavoriteApi`, y para BORRAR le pasaba el id
+  // del producto a `removeFavoriteApi`, que espera el id DEL FAVORITO: el DELETE moria,
+  // el catch revertia el corazon y no se podia quitar nada desde aca.
+  const { isFavorite, toggleFavorite } = useFavorites(user?.userId);
+  const favorite = isFavorite(product?.id);
 
-  useEffect(() => {
-    if (user?.userId && product?.id) {
-      checkIsFavoriteApi(user.userId, product.id)
-        .then((res) => {
-          if (res && typeof res.esFavorito === 'boolean') {
-            setFavorite(res.esFavorito);
-          }
-        })
-        .catch(() => null);
-    }
-  }, [user?.userId, product?.id]);
-
-  const handleToggleFavorite = async () => {
-    const nextVal = !favorite;
-    setFavorite(nextVal);
-    if (!user?.userId) return;
-    try {
-      if (nextVal) {
-        await addFavoriteApi(user.userId, product.id);
-      } else {
-        await removeFavoriteApi(user.userId, product.id);
-      }
-      queryClient.invalidateQueries({ queryKey: qk.favorites(user.userId) });
-    } catch {
-      // Revert if failed
-      setFavorite(!nextVal);
-    }
-  };
+  const handleToggleFavorite = () => toggleFavorite(product);
   const [question, setQuestion] = useState('');
   const [questionError, setQuestionError] = useState('');
   const [compatibilityOpen, setCompatibilityOpen] = useState(false);
@@ -141,6 +119,9 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     }),
     onSuccess: (created) => {
       queryClient.setQueryData(qk.productQuestions(product.id), (old = []) => [created, ...old]);
+      // Tambien la bandeja del comprador: se leia con staleTime de 60s, asi que la
+      // pregunta recien hecha no aparecia en el perfil hasta recargar la pagina.
+      queryClient.invalidateQueries({ queryKey: ['buyerProductQuestions'] });
       setQuestion('');
       setQuestionError('');
     },

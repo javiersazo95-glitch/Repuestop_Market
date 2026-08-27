@@ -177,6 +177,11 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
   const [acceptsTerms, setAcceptsTerms] = useState(false);
   
   // Password Recovery State
+  // `recoverIdentifier` es lo que el usuario ESCRIBE (correo del comprador o RUT de la
+  // tienda) y es lo unico que acepta `send-code`; `recoverEmail` es el correo registrado
+  // que responde el backend y el unico que aceptan `verify-code` y `reset`. Con rol
+  // PROVEEDOR son valores distintos: pisar uno con el otro rompia el reenvio.
+  const [recoverIdentifier, setRecoverIdentifier] = useState('');
   const [recoverEmail, setRecoverEmail] = useState('');
   const [recoverRole, setRecoverRole] = useState('CLIENTE'); // 'CLIENTE' | 'PROVEEDOR'
   const [recoverCode, setRecoverCode] = useState('');
@@ -228,6 +233,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setRecoverConfirmPassword('');
     setShowRecoverPassword(false);
     setRecoverCooldown(0);
+    setRecoverIdentifier('');
     setEmailTakenWarning(null);
   };
 
@@ -257,8 +263,12 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
   const handleStartRecovery = () => {
     setErrorMessage(null);
     setSuccessMessage(null);
-    setRecoverRole(selectedRole === 'SELLER' ? 'PROVEEDOR' : 'CLIENTE');
-    setRecoverEmail(email ? email.trim() : '');
+    const nextRole = selectedRole === 'SELLER' ? 'PROVEEDOR' : 'CLIENTE';
+    setRecoverRole(nextRole);
+    // Con rol tienda el campo pide el RUT: prellenarlo con el correo del login dejaba
+    // un email dentro de un campo de RUT.
+    setRecoverIdentifier(nextRole === 'PROVEEDOR' ? '' : (email ? email.trim() : ''));
+    setRecoverEmail('');
     setRecoverCode('');
     setRecoverNewPassword('');
     setRecoverConfirmPassword('');
@@ -267,8 +277,8 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
 
   const handleSendRecoveryCode = async (e) => {
     e.preventDefault();
-    const cleanEmail = recoverEmail.trim().toLowerCase();
-    if (!cleanEmail) {
+    const cleanIdentifier = recoverIdentifier.trim();
+    if (!cleanIdentifier) {
       setErrorMessage(recoverRole === 'PROVEEDOR'
         ? 'Ingresa el RUT de tu tienda.'
         : 'Ingresa tu correo electrónico registrado.');
@@ -278,8 +288,8 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setErrorMessage(null);
     setSuccessMessage(null);
     try {
-      const res = await recoverPasswordSendCodeApi(cleanEmail, recoverRole);
-      if (res?.email) setRecoverEmail(res.email);
+      const res = await recoverPasswordSendCodeApi(cleanIdentifier, recoverRole);
+      setRecoverEmail(res?.email || cleanIdentifier);
       setSuccessMessage('Código de recuperación enviado. Revisa tu bandeja de entrada o spam.');
       setRecoverCooldown(60);
       setStep('recover_code');
@@ -292,12 +302,14 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
 
   const handleResendRecoveryCode = async () => {
     if (recoverCooldown > 0 || isResendingCode) return;
-    const cleanEmail = recoverEmail.trim().toLowerCase();
-    if (!cleanEmail) return;
+    // Se reenvia con el identificador ORIGINAL: con rol PROVEEDOR el backend resuelve
+    // por RUT (`findByTaxId`) y el correo registrado le da 404.
+    const cleanIdentifier = recoverIdentifier.trim();
+    if (!cleanIdentifier) return;
     setIsResendingCode(true);
     setErrorMessage(null);
     try {
-      await recoverPasswordSendCodeApi(cleanEmail, recoverRole);
+      await recoverPasswordSendCodeApi(cleanIdentifier, recoverRole);
       setSuccessMessage('Nuevo código enviado. Revisa tu correo.');
       setRecoverCooldown(60);
     } catch (err) {
@@ -867,7 +879,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                 <button
                   type="button"
                   className={`btn-role-tab ${recoverRole === 'CLIENTE' ? 'active' : ''}`}
-                  onClick={() => setRecoverRole('CLIENTE')}
+                  onClick={() => { setRecoverRole('CLIENTE'); setRecoverIdentifier(''); setErrorMessage(null); }}
                 >
                   <Car size={15} />
                   <span>Comprador</span>
@@ -875,7 +887,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                 <button
                   type="button"
                   className={`btn-role-tab ${recoverRole === 'PROVEEDOR' ? 'active' : ''}`}
-                  onClick={() => setRecoverRole('PROVEEDOR')}
+                  onClick={() => { setRecoverRole('PROVEEDOR'); setRecoverIdentifier(''); setErrorMessage(null); }}
                 >
                   <Store size={15} />
                   <span>Tienda / Proveedor</span>
@@ -899,8 +911,8 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                   required
                   autoFocus
                   placeholder={recoverRole === 'PROVEEDOR' ? '76.123.456-7' : 'ejemplo@correo.com'}
-                  value={recoverEmail}
-                  onChange={(e) => setRecoverEmail(e.target.value)}
+                  value={recoverIdentifier}
+                  onChange={(e) => setRecoverIdentifier(e.target.value)}
                 />
               </div>
             </div>
@@ -918,7 +930,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               <button
                 type="submit"
                 className="btn-auth-primary"
-                disabled={isSubmitting || !recoverEmail.trim()}
+                disabled={isSubmitting || !recoverIdentifier.trim()}
               >
                 {isSubmitting ? (
                   <span>Enviando código...</span>
@@ -975,10 +987,10 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               <button
                 type="button"
                 className="btn-auth-secondary"
-                onClick={() => { setErrorMessage(null); setStep('recover_email'); }}
+                onClick={() => { setErrorMessage(null); setSuccessMessage(null); setStep('recover_email'); }}
               >
                 <ArrowLeft size={16} />
-                <span>Cambiar Correo</span>
+                <span>{recoverRole === 'PROVEEDOR' ? 'Cambiar RUT' : 'Cambiar Correo'}</span>
               </button>
 
               <button

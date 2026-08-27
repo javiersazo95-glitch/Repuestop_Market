@@ -7,7 +7,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 // inyecta una sola vez aunque la importen las dos vistas.
 import '../about-repuestop.css';
 import OpeningHoursPicker from './ads/OpeningHoursPicker';
+import ShippingMethodsPicker from './ShippingMethodsPicker';
 import { createDefaultSchedule, formatOpeningHours } from '../data/openingHours';
+import { defaultShippingSelections, buildShippingMethodsString } from '../data/shippingMethods';
 import {
   ArrowLeft, ArrowRight, Crown, Check, Eye, EyeOff, UploadCloud, FileText,
   UserRound, Store, ClipboardCheck, ShieldCheck, MailCheck, Sparkles, PartyPopper, X,
@@ -89,6 +91,9 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
   // registrada desde la app si lo traia. Es el mismo selector de la app, asi que
   // la cadena guardada es identica en las dos plataformas.
   const [schedule, setSchedule] = useState(createDefaultSchedule);
+  // Mismos metodos que pide el registro de la app (`useShippingField`), con "Retiro en
+  // tienda" marcado por defecto igual que alla.
+  const [shippingSelections, setShippingSelections] = useState(defaultShippingSelections);
   const [legal, setLegal] = useState<LegalDoc | null>(null);
 
   // Phase 0 — registro
@@ -117,6 +122,9 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
   const [blocked, setBlocked] = useState<string | null>(null);
   // true solo cuando la verificación ya fue APPROVED de verdad (no la fase 3 informativa antes de aprobar).
   const [alreadyApproved, setAlreadyApproved] = useState(false);
+
+  // Sesion ya iniciada en la web (el panel manda aca a la tienda sin aprobar).
+  const [bootstrappingSession, setBootstrappingSession] = useState(false);
 
   // Retomar postulación (correo/RUT ya registrados)
   const [showResume, setShowResume] = useState(false);
@@ -304,6 +312,42 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
     setPendingEmail(null);
   }
 
+  /**
+   * Levanta la sesion que ya existe en la web.
+   *
+   * El panel manda aca a la tienda que el backoffice todavia no aprueba, y sin esto caia
+   * en la fase 0 -"Crea tu cuenta"-: a un vendedor con sesion iniciada se le pedia
+   * registrarse otra vez. `resolveSellerSession` ya sabe ubicarlo en su fase, pero solo
+   * se ejecutaba cuando la autenticacion ocurria en esta pantalla (login, RUT o Google).
+   */
+  useEffect(() => {
+    if (session || bootstrappingSession) return;
+    const token = localStorage.getItem('repuestop_token');
+    if (!token) return;
+    let stored: any = null;
+    try {
+      stored = JSON.parse(localStorage.getItem('repuestop_user') || 'null');
+    } catch {
+      stored = null;
+    }
+    const sellerId = stored?.sellerId || stored?.proveedorId;
+    if (!sellerId) return;
+
+    setBootstrappingSession(true);
+    resolveSellerSession({
+      sellerId: String(sellerId),
+      token,
+      storeName: stored?.storeName || '',
+      founder: Boolean(stored?.founder),
+      sellerBlocked: Boolean(stored?.sellerBlocked),
+      sellerBlockReason: stored?.sellerBlockReason || '',
+    } as SellerSession)
+      // Si el estado no se puede leer se deja la pantalla como estaba: es preferible
+      // mostrar el registro a dejar al vendedor mirando un spinner eterno.
+      .catch(() => undefined)
+      .finally(() => setBootstrappingSession(false));
+  }, [session, bootstrappingSession]); // eslint-disable-line react-hooks/exhaustive-deps
+
   /* ------------------------- validación ------------------------- */
   function validate(): boolean {
     const e: Partial<Record<keyof FormState, string>> = {};
@@ -357,6 +401,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
           codigoPostal: form.codigoPostal.trim() || undefined,
         },
         hours: formatOpeningHours(schedule) || undefined,
+        shippingMethods: buildShippingMethodsString(shippingSelections) || undefined,
         acceptsTerms: true,
         termsVersion: LEGAL_VERSION_CODE,
         origin: 'SITIO_WEB',
@@ -487,6 +532,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
                   regiones={regiones} comunas={comunas} geoError={geoError}
                   onRegionChange={(regionId) => setForm((f) => ({ ...f, regionId, comunaId: '' }))}
                   schedule={schedule} onScheduleChange={setSchedule}
+                  shippingSelections={shippingSelections} onShippingChange={setShippingSelections}
                   submitting={submitting} formError={formError}
                   onSubmit={handleSubmit}
                   onOpenLegal={setLegal}
@@ -631,6 +677,8 @@ type RegFormProps = {
   onRegionChange: (regionId: string) => void;
   schedule: ReturnType<typeof createDefaultSchedule>;
   onScheduleChange: (value: ReturnType<typeof createDefaultSchedule>) => void;
+  shippingSelections: ReturnType<typeof defaultShippingSelections>;
+  onShippingChange: (value: ReturnType<typeof defaultShippingSelections>) => void;
   submitting: boolean; formError: string; onSubmit: () => void;
   onOpenLegal: (doc: LegalDoc) => void;
   onEmailBlur: (email: string) => void; checkingEmail: boolean;
@@ -765,6 +813,12 @@ function RegistrationForm(p: RegFormProps) {
           escriben, para que el texto guardado sea comparable entre plataformas. */}
       <Field label="Horario de atención" hint="Elige los días y las horas en que atiendes.">
         <OpeningHoursPicker schedule={p.schedule} onChange={p.onScheduleChange} />
+      </Field>
+
+      {/* Los pide el registro de la app y faltaban aca. Es el mismo selector que el panel
+          de la tienda, para que las dos escriban el CSV identico que espera el backend. */}
+      <Field as="div" label="Métodos de envío" hint="Elige los que ofrece tu tienda. Deja el precio en blanco si es gratuito.">
+        <ShippingMethodsPicker selections={p.shippingSelections} onChange={p.onShippingChange} />
       </Field>
 
       <div className="founder-reg-terms">
@@ -1384,15 +1438,22 @@ function LegalModal({ open, title, text, onClose }: {
 /* ==================================================================== *
  * Campo reutilizable
  * ==================================================================== */
-function Field({ label, required, error, hint, className, children }: {
-  label: string; required?: boolean; error?: string; hint?: string; className?: string; children: ReactNode;
+/**
+ * `as` existe porque este campo es un <label>: sirve para un input suelto, pero cuando el
+ * contenido trae SUS PROPIOS <label> -como el selector de metodos de envio- quedan
+ * etiquetas anidadas, que es HTML invalido y el navegador acomoda como puede. En ese caso
+ * se renderiza como <div>.
+ */
+function Field({ label, required, error, hint, className, children, as: Tag = 'label' }: {
+  label: string; required?: boolean; error?: string; hint?: string; className?: string;
+  children: ReactNode; as?: 'label' | 'div';
 }) {
   return (
-    <label className={`founder-field ${className ?? ''} ${error ? 'has-error' : ''}`}>
+    <Tag className={`founder-field ${className ?? ''} ${error ? 'has-error' : ''}`}>
       <span className="founder-field-label">{label}{required && <i className="founder-req">*</i>}</span>
       {children}
       {error ? <span className="founder-field-error">{error}</span>
         : hint ? <span className="founder-field-hint">{hint}</span> : null}
-    </label>
+    </Tag>
   );
 }

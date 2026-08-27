@@ -1281,3 +1281,279 @@ Hay pedidos antiguos con el método de envío **concatenado** en `courier` (el #
 regresión: el checkout actual usa `checkoutFallbackShippingMethod()`, que manda vacío si
 hay mezcla. Pero esos pedidos se ven contradictorios —dicen "Retiro en Tienda" y cobran
 envío— y no se ha medido cuántos son.
+
+---
+
+### 4.20 Pendiente del BACKOFFICE: no refleja el ticket cerrado — 2026-08-26
+
+Detectado probando el cierre de tickets desde la web. **No es un bug del backend ni del
+marketplace**: los dos se comportan bien.
+
+**Síntoma**: un ticket que el usuario ya cerró sigue mostrando el compositor en el
+backoffice. El agente escribe, el mensaje aparece en su pantalla, y no llega ni por
+correo ni a la web del usuario.
+
+**Diagnóstico**: el backend **rechaza** correctamente esos mensajes.
+`TicketSoporteBackofficeService.sendMessage()` corta con
+`BusinessRuleViolationException("La consulta ya está finalizada y no admite nuevos
+mensajes")` sobre cualquier ticket en `RESUELTO`, `CERRADO` o `CANCELADO`. Verificado
+contra la base: el ticket 23 (`TCK-1787078752317`) quedó `CERRADO` con **un solo
+mensaje**, el original; ninguno de los que se escribieron después se persistió.
+
+O sea, el backoffice **no está mostrando el error del 4xx** y probablemente pinta el
+mensaje de forma optimista. El agente cree que respondió y no respondió: es el peor
+modo de falla posible para soporte.
+
+**Dónde tocar**: `backoffice_sistema/backoffice/frontend/src/modules/support/SupportTicketDetailModal.tsx`,
+que es el único que llama a `sendTicketMessage()` (`src/api/support.ts:159`).
+
+**Qué hace falta** (es exactamente lo que ya se hizo en el marketplace):
+
+1. Deshabilitar el compositor cuando el estado es `RESUELTO`/`CERRADO`/`CANCELADO`, y
+   mostrar en su lugar un aviso de que la consulta está cerrada.
+2. Surfacear el error si el POST falla igual, en vez de tragárselo.
+
+El estado ya viaja en la respuesta del ticket, así que no hace falta backend.
+
+**Ojo con el modelo, que no es obvio**: en un ticket de soporte normal **cerrar es
+exclusivamente del usuario**. `updateStatus` rechaza el cambio de estado con
+"El estado de los tickets de soporte cambia automáticamente al responder o al ser
+cerrados por el usuario", y solo lo permite en tickets de origen `QA`. Soporte no puede
+cerrar ni reabrir; si el flujo del backoffice necesita eso, es un cambio de reglas de
+negocio, no de UI.
+
+
+---
+
+### 4.21 Pruebas de paridad 1 a 12 y limites del chat — sesion 2026-08-26
+
+Segunda tanda de pruebas sobre `PLAN_PARIDAD_APP_WEB.md`. **Doce cerradas**, incluido el
+flujo de compra completo (pedir cotizacion -> el vendedor cotiza -> pago).
+
+| # | Capacidad | Estado |
+|---|---|---|
+| 1-5 | Fotos al editar, metodos de envio, cancelacion del vendedor, despacho, calificacion | OK |
+| 6 | A5+B2 tickets de soporte | OK |
+| 7 | A6 responder preguntas (vendedor) | OK |
+| 8 | A10 pausar / retomar publicacion | OK |
+| 9 | A19 favoritos | OK |
+| 10 | A13 mis preguntas (comprador) | OK |
+| 11 | A24 notificaciones | OK parcial, ver plan 7.4 |
+| 12 | A14 chat de cotizacion | OK |
+
+**Faltan**: A1/A20 (recuperar clave y validacion de email), A8 (cuenta bloqueada), A15
+(imagenes en mediacion) y A16 (busqueda por catalogo de vehiculo, sin cablear).
+
+#### Lo que se arreglo, agrupado por causa
+
+**Cache de React Query sin invalidar** — tres veces el mismo patron: la accion se
+guardaba en el backend y la vista que lista no se enteraba hasta recargar. Paso con
+favoritos, con las preguntas del comprador y con las cotizaciones. **Regla: si una
+accion en una vista cambia datos que otra lista, hay que invalidar**, y la clave debe
+vivir en `queryKeys.js` -las escritas a mano en el componente son las que nadie invalida.
+
+**`window.confirm` y `alert()`** no abren nada en un navegador embebido: el boton queda
+mudo. Ya no queda ninguno en `src/`.
+
+**Clases de CSS inventadas** dejaban modales sin fondo. Y al ENVOLVER un elemento se
+rompen los selectores con `>`.
+
+**Campos sin tope** que la base si tenia: courier y tracking son `length = 120`,
+`valorEnvioInformado` es NUMERIC(12,2). Un valor largo se perdia al guardar.
+
+#### Limites del chat de cotizacion (nuevos)
+
+- Mensaje **500** caracteres (la app sigue en 1000, conviene alinearla).
+- Imagenes: **3 MB** y **10 por conversacion**, validado en `ConversacionService` ademas
+  del cliente. Antes no habia NADA: el unico tope era el multipart de Spring, 10 MB.
+- **Compresion antes de subir** (`src/utils/imageCompression.js`): 1600 px de lado mayor
+  y JPEG al 80%. Una foto de celular pasa de 3-8 MB a 200-400 KB. R2 son 10 GB
+  compartidos con productos, anuncios, perfiles y comprobantes; sin esto el chat solo se
+  comia el bucket con unas mil fotos.
+- El comprador **no escribe hasta que el vendedor responde**, misma regla que la app
+  (`quote-chat.tsx:218`), pero **si puede adjuntar fotos** desde el inicio.
+- Vencida o cerrada bloquea chat, adjuntos y "Solicitar modificacion".
+
+#### Cambios de backend de esta sesion
+
+Todos en el monorepo, rama `dev`, ya desplegados a `origin`:
+
+- `bd5d358` + `644ea7b` — agrupado de los correos de ticket (ventana de 10 min,
+  configurable) y la **zona horaria** de `ultimo_email_notificado_at`: se creo como
+  TIMESTAMP sin zona y Hibernate la leia 4 horas en el futuro, con lo que la ventana no
+  vencia nunca. Migraciones `V2026082604` y `V2026082605`.
+- `bc2b106` — constancia de cierre por correo e invitacion a cerrar en cada respuesta.
+- `8e2e864` — limites de imagen del chat.
+
+**Regla del ticket que no era obvia**: en un ticket de soporte normal **cerrar es
+exclusivamente del usuario**. `updateStatus` rechaza el cambio de estado salvo en
+tickets de origen QA, y `sendMessage` rechaza mensajes sobre un ticket finalizado.
+
+#### Cotizacion vencida: hilo nuevo
+
+`POST /conversaciones` reutiliza la conversacion ABIERTA del producto y solo mira el
+estado, no si la oferta sigue viva. Con la cotizacion vencida el comprador quedaba
+atrapado. El backend ya soportaba `forceNew`; ahora la web lo manda cuando la oferta
+anterior vencio. **La app movil tiene el mismo problema**: manda `forceNewBackend` solo
+para consultas de compatibilidad (`useProductDetailScreen.ts:711`).
+
+#### `no-undef` encendido
+
+Ver CLAUDE.md. La regla es `error` y `npm run lint` devuelve exit 1 si aparece un
+identificador inexistente. Baseline de warnings: **114**.
+
+---
+
+### 4.22 A1/A20 recuperacion de clave y check-email — sesion 2026-08-26
+
+Probadas contra el backend LOCAL y cerradas: comprador por correo, tienda por RUT y el
+aviso de correo ya registrado en el registro de compradores. Con esto quedan por probar
+solo A8 (cuenta bloqueada), A15 y el flujo de verificacion con un estado distinto de
+APPROVED.
+
+#### El bug: `send-code` y `verify-code`/`reset` NO aceptan el mismo identificador
+
+`POST /auth/recover-password/send-code` con `rol=PROVEEDOR` resuelve la cuenta **solo
+por RUT** (`findByTaxId`, `AuthService:1712`) y **devuelve el correo registrado** en el
+campo `email`. Pero `verify-code` y `reset` resuelven **solo por email**
+(`findByEmail`, lineas 1767 y 1793). Son dos identificadores distintos y `AuthModal`
+guardaba los dos en el mismo estado: el paso 1 pisaba lo que el usuario habia escrito
+con el correo que respondia el backend.
+
+El camino feliz (correo -> codigo -> clave) funcionaba igual, asi que no se veia. Lo
+que rompia:
+
+- **"Reenviar codigo" siempre fallaba para tiendas**: reenviaba con el correo resuelto y
+  `send-code` lo pasaba por `normalizarRut()`, devolviendo 404 "Proveedor no encontrado
+  con el RUT ingresado". El cooldown de 60s empuja justo a ese boton.
+- **"Cambiar Correo"** devolvia al paso 1 con un email dentro del campo "RUT de la Tienda".
+- Entrando desde el login de vendedor se prellenaba el correo tipeado en el campo de RUT,
+  y el toggle Comprador/Tienda no limpiaba el campo.
+
+**El arreglo**: estado `recoverIdentifier` (lo que el usuario ESCRIBE, unico que acepta
+`send-code`) separado de `recoverEmail` (el correo que responde el backend, unico que
+aceptan `verify-code` y `reset`). Regla: **con rol PROVEEDOR son valores distintos y no
+se pueden mezclar.**
+
+#### Como se prueba en local (no es obvio)
+
+**El codigo de 6 digitos NO viene en la respuesta.** `repuestop.auth.expose-verification-code`
+de `application-local.properties` aplica solo al registro y al captador
+(`AuthService:1696`, `CaptadorService:61`), nunca a recuperacion. Sale de:
+
+1. Sin `RESEND_API_KEY`, el correo se simula y el HTML completo se imprime en la consola
+   del backend: buscar `[MOCK EMAIL] Detalles: ... Contenido:`.
+2. Con la clave llega el correo real, pero Resend en modo prueba solo entrega a la
+   direccion verificada; por eso el backend le quita el `+etiqueta` al destinatario.
+3. Siempre funciona: `SELECT email, password_reset_code, password_reset_expiry FROM
+   rt_usuario WHERE email='...'`.
+
+Otras dos trampas: **el limite es 10 peticiones por minuto por IP** sobre TODAS las rutas
+de auth juntas (`AuthRateLimitingFilter`), asi que iterar rapido da un 429 que parece un
+bug del flujo; y `reset` rechaza una clave igual a la actual ("La nueva contraseña no
+puede ser igual a la contraseña actual"), o sea que la prueba necesita una clave nueva
+de verdad.
+
+**Pendiente opcional de backend** (ya anotado en el plan §4): hoy la tienda recupera solo
+por RUT. Aceptar tambien el correo exige un fallback en `enviarCodigoRecuperacion`.
+
+---
+
+### 4.23 A8 cuenta bloqueada: el bloqueo es de CUENTA COMPLETA — sesion 2026-08-26
+
+A8 cerrada y probada contra el backend local, bloqueando al proveedor 4 desde el
+backoffice por mediacion. Del plan de paridad quedan A15 y A16.
+
+#### La decision que no se deduce del codigo
+
+**Un vendedor bloqueado tampoco puede comprar.** No es "se bloquea el rol vendedor":
+`JwtAuthenticationFilter` responde 403 a TODO lo que no este en su whitelist, y el lado
+comprador -carrito, checkout, `/usuarios/{id}/pedidos`, favoritos- esta entero afuera.
+Se evaluo abrirlo y se decidio que no: el backend ya se comportaba asi, y un bloqueo
+suele nacer de una disputa de plata, donde dejar operar la misma cuenta del otro lado
+del mostrador es discutible.
+
+Consecuencia para los clientes: **los accesos de compra se esconden**, no se dejan a la
+vista para que fallen. En la web eso es el carrito del header, `/carrito`, `/checkout` y
+`addToCart`.
+
+#### La whitelist del filtro, y su forma
+
+Lo permitido a un bloqueado: **leer lo suyo y hablar con soporte.** Perfil
+(`GET /users/perfil`), estado de cuenta, su ficha de tienda, sus direcciones, los GET de
+`pedidos` / `inventario` / `conversaciones`, `/support/**`, la solicitud de revision y el
+logout. Todo lo demas, 403.
+
+**Las rutas nuevas se permiten SOLO en GET a proposito.** `/users/perfil` tambien atiende
+POST de foto y de aceptar terminos, y `/usuarios/{id}/direcciones` atiende POST; ambos
+cuelgan del mismo camino y siguen cortados. Hay test que lo pina.
+
+**`/users/perfil` fuera de la whitelist provocaba un bucle de login del que el bloqueado
+no podia salir**: `AuthContext` leia el 403 como sesion invalida, cerraba sesion y
+mostraba el login; el login funciona (ruta publica) pero el perfil siguiente daba 403 de
+nuevo. En la web se corrigio ademas la causa de fondo: **solo el 401 cierra sesion**, el
+403 es "autenticado pero sin acceso".
+
+#### Visibilidad publica: `ProveedorVisibilidadPublica`
+
+Directorio, ficha de tienda y catalogo filtraban cada uno por su cuenta con
+`status != 'suspended'`. Dos huecos:
+
+1. **El bloqueo por MEDIACION no se miraba**, y es el camino mas comun. No toca
+   `Proveedor.status`: `MediacionBackofficeService` marca `Mediacion.cuentaBloqueada` y
+   suspende la entidad **Tienda**, que es OTRA TABLA. El vendedor quedaba con el panel
+   bloqueado y la API cortada mientras el marketplace le seguia vendiendo.
+2. **`'rejected'` quedaba fuera**, aunque el filtro JWT ya lo trata como bloqueado.
+
+La regla vive ahora en `ProveedorVisibilidadPublica` (`Predicate` para las consultas
+paginadas, version sobre entidad para los detalles). La ficha publica responde **404 y no
+403**: un 403 confirmaria que ese id corresponde a una tienda sancionada. **El guard va en
+`TiendaPublicaController` y NO en `obtenerTienda()`**, que lo comparte el panel del propio
+vendedor: ponerlo en el servicio le volaba su propia tienda al bloqueado.
+
+#### El motivo del bloqueo es el CODIGO del reclamo
+
+`blockReason` no es una frase redactada por moderacion: el backend copia ahi
+`Mediacion.motivo`, que es `Pedido.motivoReclamo` (`MediacionChatService:84`), o sea el
+codigo que eligio el comprador. Se leia **"Motivo actual: incompatible"**. Se traduce con
+`src/data/claimReason.js`, que es la fuente unica de esos textos (`HelpContactForm` arma
+sus listas desde ahi), y se rotula como lo que es: el reclamo que origino la mediacion.
+
+**El backend no guarda en ninguna parte un motivo de bloqueo propio.** Si moderacion tiene
+que escribir una razon real, es columna nueva y migracion.
+
+#### La tienda de demostracion en `StorePublicProfileView`
+
+Al arreglar la visibilidad quedo a la vista: cuando `GET /tiendas/{id}` fallaba, la vista
+**inventaba una ficha completa** con nombre y **RUT `77.589.410-8`** de otra empresa. Se
+elimino junto con el resto de los datos afirmados sin leer nada ("Menos de 1 hora",
+"Desde marzo 2022", 264 publicaciones, "3 opciones" de envio) y con el logo de Tiensoft
+por defecto para cualquier tienda sin logo. Regla: **si el backend no lo mando, no se
+pinta.**
+
+#### Que falta en la APP MOVIL
+
+La app tiene el mismo desfase que tenia la web y **no se toco**:
+
+- **Su guard de pestañas exime las rutas de compra** (`isSellerShoppingPath`), pero el
+  backend las rechaza con 403. Con la opcion A aplicada le corresponde el mismo corte que
+  se hizo en la web: esconder carrito y checkout para la cuenta bloqueada.
+- **El polling de `estado-cuenta` (`app/_layout.tsx:120`) estaba muerto**: recibia 403
+  porque el endpoint no estaba en la whitelist. Con el fix ya responde, o sea que la app
+  recien ahora detecta bloqueo y desbloqueo en vivo. Conviene verificarlo.
+- Le llega la misma traduccion pendiente del motivo: mostrara el codigo crudo.
+
+#### Como se prueba
+
+Bloquear desde el backoffice por mediacion, o en local:
+`UPDATE rt_proveedor SET status='suspended' WHERE id=<id>;` (revertir con el status
+original, que depende de como quedo al aprobarse).
+
+Comprobaciones rapidas con el proveedor bloqueado:
+
+```
+curl -s "http://localhost:8080/api/v1/tiendas/publicas?size=50" | grep -c '"proveedorId":<id>'   # 0
+curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:8080/api/v1/tiendas/<id>"             # 404
+```
+
+**El filtro es codigo compilado: hay que reiniciar el backend**, no basta con recargar.

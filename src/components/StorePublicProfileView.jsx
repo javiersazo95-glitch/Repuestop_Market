@@ -6,7 +6,7 @@ import {
   ArrowLeft, X, CheckCircle2, RotateCcw, Truck, ChevronLeft, ChevronRight, ChevronDown,
   ShoppingCart, Car, Wrench, Layers, Building2, MessageSquare, AlertCircle,
   Heart, Share2, Image, PenLine, ArrowRight, HelpCircle,
-  CarFront, Barcode, CircleHelp, RefreshCw, Tag
+  CarFront, Barcode, CircleHelp, RefreshCw, Tag, Store as StoreIcon
 } from 'lucide-react';
 import { NAVIGATION_CATEGORIES } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
@@ -67,81 +67,61 @@ export default function StorePublicProfileView({
   const [itemsPerPage, setItemsPerPage] = useState(12);
 
   // Ficha pública de la tienda con TanStack Query
-  const { data: fetchedStore } = useQuery({
+  // El error NO se traga: si `GET /tiendas/{id}` falla hay que decirlo, no inventar una
+  // tienda. Antes devolvia null y el componente caia en un objeto de demostracion, asi
+  // que una tienda inexistente -o bloqueada, que ahora responde 404- se veia como una
+  // ficha normal con nombre y RUT de otra empresa.
+  const { data: fetchedStore, isLoading: storeLoading, isError: storeError } = useQuery({
     queryKey: qk.store(initialStoreId),
-    queryFn: async ({ signal }) => {
-      try {
-        const data = await getStoreProfileApi(initialStoreId, { signal });
-        return adaptStore(data);
-      } catch (err) {
-        console.warn('No se pudo cargar el perfil remoto de la tienda:', err);
-        return null;
-      }
-    },
+    queryFn: async ({ signal }) => adaptStore(await getStoreProfileApi(initialStoreId, { signal })),
     enabled: Boolean(initialStoreId),
+    retry: false,
   });
 
-  // Safe Store Object Resolution
+  // Normaliza lo que llega por `state` desde el directorio para pintar la cabecera
+  // mientras viaja la ficha completa. NO inventa valores: un dato que el backend no
+  // mando se muestra vacio, no con el de una tienda de ejemplo.
   const resolveStore = (inputStore) => {
-    if (!inputStore) return {
-      id: 'store-tiensoft',
-      nombre: 'Tiensoft AutoRepuestos',
-      rut: '77.589.410-8',
-      tipo: 'Importador y Distribuidor Directo',
-      ciudad: 'Santiago, RM',
-      totalPublicaciones: 0,
-      rating: 0,
-      especialidad: 'Toyota, Chevrolet, Nissan, Hyundai',
-      metodosEnvio: ['Retiro en tienda', 'Envío dentro de la comuna', 'Envío fuera de la comuna'],
-      logoUrl: '/tiensoft_logo.jpg',
-      coverUrl: '/tiensoft_cover.jpg'
-    };
-
-    if (typeof inputStore === 'string') {
-      return {
-        id: 'store-custom',
-        nombre: inputStore,
-        rut: '77.589.410-8',
-        tipo: 'Casa de Repuestos Multimarca',
-        ciudad: 'Santiago, RM',
-        totalPublicaciones: 0,
-        rating: 0,
-        especialidad: 'Toyota, Nissan, Hyundai',
-        metodosEnvio: ['Retiro en tienda', 'Envío dentro de la comuna'],
-        coverUrl: '/tiensoft_cover.jpg',
-        logoUrl: inputStore.toLowerCase().includes('tiensoft') ? '/tiensoft_logo.jpg' : null
-      };
-    }
-
+    if (!inputStore || typeof inputStore === 'string' || !inputStore.nombre) return null;
     return {
-      id: inputStore.id || 'store-1',
-      nombre: inputStore.nombre || inputStore.name || 'Tiensoft AutoRepuestos',
+      id: inputStore.id,
+      nombre: inputStore.nombre,
       rut: inputStore.rut || '',
-      tipo: inputStore.tipo || 'Casa de Repuestos Multimarca',
-      ciudad: inputStore.ciudad || 'Santiago, RM',
+      tipo: inputStore.tipo || '',
+      ciudad: inputStore.ciudad || '',
       totalPublicaciones: inputStore.totalPublicaciones ?? 0,
       rating: inputStore.rating ?? 0,
       reviewCount: inputStore.reviewCount ?? 0,
       responseRate: inputStore.responseRate ?? null,
+      responseTimeLabel: inputStore.responseTimeLabel || '',
+      verificadoFecha: inputStore.verificadoFecha || '',
       marcasEspecialistas: Array.isArray(inputStore.marcasEspecialistas) ? inputStore.marcasEspecialistas : [],
-      metodosEnvio: Array.isArray(inputStore.metodosEnvio) ? inputStore.metodosEnvio : ['Retiro en tienda'],
-      logoUrl: inputStore.logoUrl || '/tiensoft_logo.jpg',
-      coverUrl: inputStore.coverUrl || '/tiensoft_cover.jpg',
+      metodosEnvio: Array.isArray(inputStore.metodosEnvio) ? inputStore.metodosEnvio : [],
+      logoUrl: inputStore.logoUrl || null,
+      coverUrl: inputStore.coverUrl || null,
       descripcion: inputStore.descripcion || '',
       direccion: inputStore.direccion || '',
       telefono: inputStore.telefono || '',
       email: inputStore.email || '',
-      esOficial: !!inputStore.esOficial
+      esOficial: !!inputStore.esOficial,
     };
   };
 
-  const currentStore = fetchedStore || resolveStore(store);
+  // Mientras viaja la ficha se usa lo precargado del directorio, que son datos reales.
+  const previewStore = resolveStore(store);
+  // Si la ficha fallo, la precarga NO sirve de reemplazo: llegar desde un directorio ya
+  // cargado en otra pestana mostraria igual una tienda que el backend acaba de dejar de
+  // publicar. El 404 manda sobre lo que traiamos en la mano.
+  const currentStore = storeError ? null : (fetchedStore || previewStore);
+  // Sin ficha y sin precarga no hay nada que mostrar: o no existe, o dejo de ser
+  // publica (suspendida o bloqueada por mediacion, que responden 404).
+  const storeUnavailable = storeError || (!currentStore && !storeLoading);
   const storeId = currentStore?.id;
-  const rating = Number(currentStore.rating ?? 0);
-  const reviewCount = Number(currentStore.reviewCount ?? 0);
-  const responseRate = currentStore.responseRate != null ? Number(currentStore.responseRate) : null;
-  const shippingMethods = parseShippingMethods(currentStore.metodosEnvio);
-  const isVerified = currentStore.esOficial || rating >= 4.5;
+  const rating = Number(currentStore?.rating ?? 0);
+  const reviewCount = Number(currentStore?.reviewCount ?? 0);
+  const responseRate = currentStore?.responseRate != null ? Number(currentStore.responseRate) : null;
+  const shippingMethods = parseShippingMethods(currentStore?.metodosEnvio);
+  const isVerified = currentStore?.esOficial || rating >= 4.5;
 
   // Inventario real de la tienda con TanStack Query
   const {
@@ -335,6 +315,31 @@ export default function StorePublicProfileView({
     setOpenFilterSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  if (storeUnavailable || !currentStore) {
+    return (
+      <div className="store-public-profile-wrapper">
+        <div className="store-unavailable-panel">
+          {storeUnavailable ? (
+            <>
+              <span className="store-unavailable-icon"><StoreIcon size={30} /></span>
+              <h2>Esta tienda no está disponible</h2>
+              <p>
+                Puede que haya dejado de publicar en RepuesTop o que el enlace no
+                corresponda a ninguna tienda. Revisa el directorio para encontrar otras
+                tiendas con el repuesto que buscas.
+              </p>
+              <button type="button" className="btn-auth-primary" onClick={onBackToStores}>
+                Ver todas las tiendas
+              </button>
+            </>
+          ) : (
+            <p className="store-unavailable-loading">Cargando la tienda…</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="store-public-profile-wrapper">
       {/* 1. Header Banner & Store Info */}
@@ -442,7 +447,7 @@ export default function StorePublicProfileView({
               <span className="metric-icon-box"><Package size={22} /></span>
               <div className="metric-text-box">
                 <small>Productos publicados</small>
-                <strong>{Number(currentStore.totalPublicaciones ?? 264).toLocaleString('es-CL')}</strong>
+                <strong>{Number(currentStore.totalPublicaciones ?? 0).toLocaleString('es-CL')}</strong>
               </div>
             </div>
 
@@ -450,25 +455,33 @@ export default function StorePublicProfileView({
               <span className="metric-icon-box"><Truck size={22} /></span>
               <div className="metric-text-box">
                 <small>Envíos a todo Chile</small>
-                <strong>{shippingMethods.length ? `${shippingMethods.length} opciones` : '3 opciones'}</strong>
+                <strong>{shippingMethods.length ? `${shippingMethods.length} opciones` : 'Sin métodos declarados'}</strong>
               </div>
             </div>
 
-            <div className="metric-strip-item">
-              <span className="metric-icon-box"><Clock size={22} /></span>
-              <div className="metric-text-box">
-                <small>Tiempo de respuesta</small>
-                <strong>Menos de 1 hora</strong>
+            {/* Estas dos baldosas afirmaban "Menos de 1 hora" y "Desde marzo 2022" para
+                CUALQUIER tienda, sin leer ningun dato. Son promesas al comprador, asi
+                que ahora salen del backend (`responseTimeLabel`, `createdAt`) y si no
+                vienen, la baldosa no se pinta. */}
+            {currentStore.responseTimeLabel && (
+              <div className="metric-strip-item">
+                <span className="metric-icon-box"><Clock size={22} /></span>
+                <div className="metric-text-box">
+                  <small>Tiempo de respuesta</small>
+                  <strong>{currentStore.responseTimeLabel}</strong>
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="metric-strip-item">
-              <span className="metric-icon-box"><ShieldCheck size={22} /></span>
-              <div className="metric-text-box">
-                <small>{isVerified ? 'Tienda registrada' : 'Tienda acreditada'}</small>
-                <strong>Desde marzo 2022</strong>
+            {currentStore.verificadoFecha && (
+              <div className="metric-strip-item">
+                <span className="metric-icon-box"><ShieldCheck size={22} /></span>
+                <div className="metric-text-box">
+                  <small>{isVerified ? 'Tienda registrada' : 'Tienda acreditada'}</small>
+                  <strong>{currentStore.verificadoFecha}</strong>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

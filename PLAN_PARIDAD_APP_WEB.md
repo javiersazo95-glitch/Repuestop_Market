@@ -479,3 +479,103 @@ no de las fases de paridad:
   configurados dejaría esta clase de bug al alcance de `npm run lint`. Hoy el barrido da
   cero reales, así que es el momento de activarlo sin arrastrar deuda. Pendiente de
   decisión.
+
+### 7.3 A7 y A12: estaban marcadas IMPLEMENTADO y eran código muerto (2026-08-25)
+
+Al validar los commits subidos apareció que **A7 (verificación) y A12 (adhesión) nunca
+se cablearon**. Las cinco funciones de `api.js` estaban importadas en
+`ProfileDashboard` pero **nunca llamadas**; el lint (`no-unused-vars`) fue lo que lo
+delató. Una verificación anterior con `grep -rl` las dio por usadas porque el patrón
+coincidía con la propia **línea de import**: para saber si algo se usa hay que buscar
+`nombreFuncion(`, no `nombreFuncion`.
+
+Lo grave no era la ausencia sino la tarjeta que sí se renderizaba:
+
+```jsx
+<span>{storeInfo?.verificacionEstado || 'Tienda Verificada'}</span>
+<span>Términos y condiciones aceptados</span>
+```
+
+`TiendaResponseDTO` **no tiene** `verificacionEstado`, así que el respaldo se aplicaba
+siempre: cualquier vendedor —pendiente, rechazado o suspendido— veía un visto verde. La
+línea de adhesión estaba hardcodeada. No era una función faltante, era una afirmación
+falsa sobre el estado comercial del vendedor.
+
+**Cerrado** con `SellerVerificationCard.jsx`: estado real desde
+`GET /proveedores/{id}/verificacion`, envío (POST), corrección (PUT), apelación y
+aceptación del contrato. Los cuatro documentos usan las mismas etiquetas que la bandeja
+de validaciones del backoffice (`backoffice_sistema/backoffice/frontend`).
+
+De paso, dos cosas del hero:
+
+- **La etiqueta "Beneficio Tarifa Fundador Activo (5%)" salía para todo vendedor.** Se
+  asigna en el backoffice (`PATCH /backoffice/founders/{id}` → `Proveedor.fundador`) y
+  viaja en `TiendaResponseDTO.founder`; ahora la etiqueta depende de ese campo.
+- **Contraste del chip de estado**: `.profile-dashboard .store-status-chip` pisaba el
+  `color` a verde pálido, y `.chip-approved` aporta un degradado **claro**. El chip vive
+  sobre la foto de portada, así que cada estado lleva ahora su par color/fondo
+  translúcido oscuro. Además `EstadoTienda` tiene cuatro valores y solo se miraba
+  `APPROVED`: una tienda rechazada o suspendida se anunciaba como "en revisión".
+
+**A16 sigue pendiente** (`getInventoryVehicleCatalogsApi` y `getVehicleCatalogPartsApi`
+sin uso). El plan ya lo dice, pero conviene recordar que las dos funciones muertas
+siguen en `api.js`.
+
+### 7.4 Notificaciones: navegación parcial — 2026-08-26
+
+La campana ahora navega al hacer clic (`src/data/notificationTargets.js`), pero **la
+cobertura no es completa** y se validó así a propósito para no frenar las pruebas.
+
+**Funciona de punta a punta** (lleva a la vista Y abre el elemento):
+
+- Pedido (`/order-detail`, `/mediation-chat` de backoffice) → `?pedido=` abre el modal.
+- Soporte (`/support-ticket-detail`) → `?ticket=` abre la consulta.
+- Producto (`/product-detail`) → ficha del repuesto.
+
+**Llega a la pestaña pero NO abre el elemento**: cotizaciones y anuncios. El traductor
+emite `?cotizacion=` y `?anuncio=`, pero **ninguna vista los lee**: solo `ProfilePage`
+baja `deepLinkOrderId` y `deepLinkTicketId`. Para cerrarlo hay que hacer lo mismo que
+con esos dos — leer el parámetro y pasarlo al panel correspondiente.
+
+**Sin verificar**: verificación de tienda y retiros, que solo apuntan a la pestaña y
+probablemente no necesiten más.
+
+Ojo también con el origen: el backend guarda las rutas de la APP en `targetRoute`. Si
+se agrega un tipo de notificación nuevo allá, hay que sumar su entrada al traductor o
+el clic no hará nada (devuelve `null` y solo marca como leída, que es el fallback
+deliberado).
+
+
+### 7.5 Segunda tanda de pruebas — 2026-08-26
+
+Cerradas 6 a 12: tickets de soporte, responder preguntas, pausar/retomar, favoritos,
+mis preguntas del comprador, notificaciones y el chat de cotizacion. El flujo de compra
+se probo de punta a punta, incluido el pago de una cotizacion.
+
+**A1/A20 cerradas el 2026-08-26** contra el backend local, en los tres escenarios
+(comprador por correo, tienda por RUT y validacion temprana del correo en el registro).
+El detalle esta en `HANDOFF_PROXIMO_AGENTE.md` seccion 4.22.
+
+**A8 cerrada el 2026-08-26.** Se probo bloqueando al proveedor 4 desde el backoffice por
+mediacion. Destapo que el banner era codigo muerto, un bucle de login sin salida y dos
+huecos de visibilidad publica; el detalle esta en `HANDOFF_PROXIMO_AGENTE.md` seccion
+4.23, incluida la decision de que **el bloqueo es de cuenta completa** y lo que quedo
+pendiente en la app movil.
+
+**A15 cerrada el 2026-08-27.** La subida ya estaba implementada (esta linea y la de
+CLAUDE.md decian que faltaba, y era falso). Se probo desde los dos lados: previsualizacion
+antes de enviar, compresion al seleccionar, y los dos topes nuevos del servidor -3 MB y 10
+imagenes por conversacion-, con la imagen 11 rechazada por el backend.
+
+**Queda por probar**: el flujo de verificacion con un estado distinto de APPROVED, que
+necesita cambiarlo desde el backoffice. Ojo con lo que esa prueba NO cubre: hoy la
+verificacion **no bloquea nada** -ni `RetiroProveedorService` ni los servicios de
+inventario consultan `VerificacionProveedor`-, asi que una tienda en PENDING publica,
+vende y pide retiros igual que una aprobada. El estado es informativo.
+
+**A16 sigue sin cablear** y es implementacion, no prueba.
+
+**A16 sigue sin cablear.** `getInventoryVehicleCatalogsApi` y `getVehicleCatalogPartsApi`
+existen en `api.js` y no las llama nadie.
+
+El detalle de lo que se arreglo esta en `HANDOFF_PROXIMO_AGENTE.md` seccion 4.21.

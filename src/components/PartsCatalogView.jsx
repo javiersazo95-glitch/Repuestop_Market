@@ -18,6 +18,7 @@ import {
 import { getPartCategoriesApi, getPublicProductsApi, searchVehicleByPatenteApi, getAddressesApi } from '../services/api';
 import { adaptPage, adaptProduct, adaptVehicle } from '../services/adapters';
 import { useAuth } from '../context/AuthContext';
+import { useFavorites } from '../hooks/useFavorites';
 
 const normalizeNameKey = (value) => String(value || '').normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -67,6 +68,7 @@ export default function PartsCatalogView({
   // "Filtrar por mi comuna": solo repuestos de tiendas ubicadas en la misma
   // comuna registrada en el perfil del usuario logueado (comprador o vendedor).
   const { user, isLoggedIn } = useAuth();
+  const { isFavorite, toggleFavorite } = useFavorites(user?.userId);
   const [filterByMyComuna, setFilterByMyComuna] = useState(false);
   const [myComunaId, setMyComunaId] = useState(null);
   const [myComunaNombre, setMyComunaNombre] = useState('');
@@ -728,7 +730,13 @@ export default function PartsCatalogView({
               <>
                 <div className="parts-cards-grid-catalog">
                   {displayedProducts.map((prod) => (
-                    <MarketplaceProductCard key={prod.id} product={prod} onView={onQuickView} />
+                    <MarketplaceProductCard
+                      key={prod.id}
+                      product={prod}
+                      onView={onQuickView}
+                      isFavorite={isFavorite(prod.id)}
+                      onToggleFavorite={isLoggedIn ? toggleFavorite : undefined}
+                    />
                   ))}
                 </div>
 

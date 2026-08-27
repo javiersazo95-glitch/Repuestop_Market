@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import ConfirmDialog from './ConfirmDialog';
 import {
   X, Headphones, CheckCircle2, AlertTriangle, Send, Loader2, Lock, User, ShieldCheck
@@ -121,31 +122,29 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
     }
   };
 
-  return (
+  return createPortal(
     <div className="order-modal-backdrop" onClick={onClose}>
       <div className="order-modal-container support-ticket-modal" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="order-modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0' }}>
-          <div className="order-modal-header-left">
-            <div className="order-modal-icon-badge" style={{ backgroundColor: '#eff6ff', color: '#0066ff' }}>
+        <div className="order-modal-header">
+          <div className="order-modal-title-group">
+            <div className="order-modal-icon-badge">
               <Headphones size={20} />
             </div>
-            <div>
-              <h3 className="order-modal-title">
-                {ticket?.reason || ticket?.subject || `Consulta #${ticketId}`}
-              </h3>
+            <div className="order-subdialog-heading">
+              <h2>{ticket?.reason || ticket?.subject || `Consulta #${ticketId}`}</h2>
               <span className="order-modal-subtitle">
                 Ticket #{ticket?.externalId || ticketId} · {formatDate(ticket?.createdAt)}
               </span>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="order-modal-header-actions">
             {ticket && (
               <span className={`profile-ticket-status status-${String(ticket.status).toLowerCase()}`}>
                 {STATUS_LABELS[ticket.status] || ticket.status}
               </span>
             )}
-            <button className="order-modal-close-btn" onClick={onClose}>
+            <button type="button" className="btn-close-modal" onClick={onClose} aria-label="Cerrar">
               <X size={18} />
             </button>
           </div>
@@ -302,6 +301,7 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
         onCancel={() => { if (!isClosing) { setConfirmClose(false); setActionError(''); } }}
         onConfirm={handleCloseTicket}
       />
-    </div>
+    </div>,
+    document.body
   );
 }

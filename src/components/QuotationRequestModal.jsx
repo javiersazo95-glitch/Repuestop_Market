@@ -3,12 +3,46 @@ import {
   AlertCircle, BadgeCheck, BadgeDollarSign, Box, CheckCircle2, ChevronRight,
   CircleHelp, ClipboardList, FileText, LockKeyhole, Package, Send, Shield, Store, X,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
-  createConversationApi, resolveMediaUrl, sendConversationMessageApi,
+  createConversationApi, getBuyerConversationsApi, resolveMediaUrl, sendConversationMessageApi,
 } from '../services/api';
 import {
-  buildQuoteRequestMessage, QUOTE_DELIVERY_OPTIONS,
+  buildQuoteRequestMessage, isQuoteExpired, QUOTE_DELIVERY_OPTIONS,
 } from '../utils/quoteFlow';
+
+/**
+ * ¿Corresponde abrir un hilo nuevo en vez de seguir el que ya existe?
+ *
+ * Sí cuando la conversación abierta de ese producto tiene una cotización VENCIDA. No
+ * cuando la oferta sigue vigente: ahí reutilizar mantiene el historial junto, que es
+ * justo para lo que existe la reutilización.
+ *
+ * Se resuelve acá y no en el backend porque la vigencia se calcula desde `vigencia`,
+ * que es texto libre ("Válida por 24 horas"), y esa interpretación ya vive en
+ * `quoteFlow`. Duplicarla en Java sería el tipo de parseo de texto que el proyecto
+ * evita a propósito.
+ *
+ * Si la consulta falla, se devuelve `false`: ante la duda, el comportamiento de
+ * siempre.
+ */
+async function needsNewQuoteThread(user, providerId, productId) {
+  const userId = user?.userId || user?.id;
+  if (!userId) return false;
+  try {
+    const data = await getBuyerConversationsApi(userId);
+    const list = Array.isArray(data) ? data : (data?.content || []);
+    const open = list.find((conversation) => (
+      String(conversation.productoId) === String(productId)
+      && String(conversation.proveedorId) === String(providerId)
+      && String(conversation.estado).toUpperCase() === 'ABIERTA'
+    ));
+    if (!open) return false;
+    return Boolean(open.cotizacion && isQuoteExpired(open.cotizacion));
+  } catch {
+    return false;
+  }
+}
 
 const initialForm = (activeVehicle) => ({
   quantity: 1,
@@ -24,6 +58,7 @@ export default function QuotationRequestModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [conversation, setConversation] = useState(null);
   const [submitError, setSubmitError] = useState('');
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -68,10 +103,19 @@ export default function QuotationRequestModal({
     setIsSubmitting(true);
     setSubmitError('');
     try {
-      const createdConversation = await createConversationApi(providerId, product.id);
+      // El backend reutiliza la conversacion ABIERTA del producto si no se le pide otra
+      // cosa. Se pide una NUEVA cuando la oferta anterior ya no sirve -vencida- o
+      // cuando la unica que hay esta cerrada: en esos casos el comprador esta pidiendo
+      // otra cotizacion, no continuando la anterior.
+      const forceNew = await needsNewQuoteThread(user, providerId, product.id);
+      const createdConversation = await createConversationApi(providerId, product.id, { forceNew });
       const message = buildQuoteRequestMessage(formData);
       const sentMessage = await sendConversationMessageApi(createdConversation.id, message);
       setConversation({ ...createdConversation, ultimoMensaje: sentMessage?.texto || message });
+      // "Mis cotizaciones" lee las conversaciones por React Query con staleTime de 60s.
+      // Sin invalidar, la solicitud quedaba guardada en el backend pero no aparecia en
+      // el perfil hasta recargar, y parecia que no habia funcionado.
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
     } catch (error) {
       setSubmitError(error.message || 'No se pudo enviar la solicitud de cotización.');
     } finally {

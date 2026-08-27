@@ -3,22 +3,37 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, BadgeCheck, BadgeDollarSign, Bell, CalendarDays, CalendarClock,
   CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, CreditCard, Download, ExternalLink, Eye, FileText, Flag,
-  Headphones, Image as ImageIcon, Info, Loader2, Lock, MessageSquare, MoreHorizontal, Package, Paperclip,
+  Headphones, Image as ImageIcon, Info, Loader2, Lock, Maximize2, MessageSquare, MoreHorizontal, Package, Paperclip,
   Pencil, Send, ShieldCheck, ShoppingCart, Store, Trash2, Truck, X,
 } from 'lucide-react';
 import RepuesTopLogo from './RepuesTopLogo';
+import ChatImagePreview from './ChatImagePreview';
 import {
   getConversationMessagesApi,
   getConversationQuoteApi, markConversationReadApi, reportConversationApi, resolveMediaUrl,
   sendConversationMessageApi, uploadConversationImageApi,
 } from '../services/api';
+import { compressImageFile } from '../utils/imageCompression';
+import CommissionSummaryCard from './CommissionSummaryCard';
 import {
   isQuoteExpired, parseQuoteRequestMessage, quantityFromLabel,
-  quoteExpirationLabel, QUOTE_AVAILABILITY_OPTIONS, QUOTE_DELIVERY_OPTIONS,
+  quoteExpirationLabel, QUOTE_AVAILABILITY_OPTIONS,
   QUOTE_VALIDITY_OPTIONS, QUOTE_WARRANTY_OPTIONS,
 } from '../utils/quoteFlow';
 import { buildQuotePdfBlob, quoteDocumentFilename } from '../utils/quoteDocument';
 import { checkoutPath, helpCategoryPath, productPath, storePath } from '../routes/paths';
+
+// Tope del mensaje del chat. Una cotizacion se negocia con datos concretos -cantidad,
+// estado, despacho, precio-; 500 caracteres son un parrafo completo y obligan a ser
+// claro. La app usa 1000 y conviene alinearla.
+const MAX_CHAT_MESSAGE = 500;
+
+// Tope de imagenes por conversacion. Lo valida tambien `ConversacionService`, que es
+// donde el limite es real: esto solo evita que el usuario llegue al error.
+const MAX_CHAT_IMAGES = 10;
+
+// Peso maximo DESPUES de comprimir. Ver `imageCompression` para el porque del numero.
+const MAX_CHAT_IMAGE_BYTES = 3 * 1024 * 1024;
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
@@ -74,6 +89,10 @@ export default function QuoteDetailModal({
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportSuccessOpen, setReportSuccessOpen] = useState(false);
 
+  // La miniatura de la burbuja no alcanza para revisar una pieza: el vendedor necesita
+  // ver el detalle y a veces guardarse la foto. Se abre a pantalla completa con opcion
+  // de descarga.
+  const [viewerImage, setViewerImage] = useState(null);
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -100,12 +119,19 @@ export default function QuoteDetailModal({
     setUnitPrice(String(current?.precioUnitario ?? current?.precio ?? ''));
     setDiscount(String(current?.descuento ?? ''));
     setAvailability(current?.disponibilidad || 'Stock disponible');
-    setDeliveryTerms(current?.condicionesEntrega?.replace(/ \(costo:.*\)$/i, '') || 'Retiro en tienda');
+    // Sin cotizacion previa, la condicion es la que pidio el COMPRADOR. Antes caia en
+    // "Retiro en tienda" fijo, asi que el vendedor cotizaba sobre una condicion que el
+    // comprador no habia pedido.
+    setDeliveryTerms(
+      current?.condicionesEntrega?.replace(/ \(costo:.*\)$/i, '')
+      || requested.requestedDeliveryTerms
+      || 'Retiro en tienda'
+    );
     setDeliveryCost(current?.condicionesEntrega?.match(/costo:\s*\$?([\d.]+)/i)?.[1]?.replace(/\./g, '') || '');
     setWarranty(current?.garantia || '3 meses');
     setValidity(current?.vigencia || 'Valida por 24 horas');
     setResponseNotes(current?.notas || '');
-  }, [quote]);
+  }, [quote, requested.requestedDeliveryTerms]);
 
   useEffect(() => {
     if (!quote) return undefined;
@@ -166,7 +192,25 @@ export default function QuoteDetailModal({
     : (user?.logoUrl || user?.userProfileUrl || user?.storeLogoUrl || user?.avatarUrl || quote?.proveedorLogoUrl || quote?.otroParticipanteFotoUrl || quote?.sellerLogoUrl || quote?.tiendaLogoUrl || quote?.logoUrl || activeQuote?.proveedorLogoUrl || activeQuote?.logoUrl);
   const storePhoto = resolveMediaUrl(rawStoreLogo);
   const expired = activeQuote ? isQuoteExpired(activeQuote) : false;
+  const imageCount = messages.filter((message) => message.imagenUrl).length;
+  /**
+   * El comprador no escribe hasta que el vendedor entra al hilo. Es la misma regla que
+   * la app (`quote-chat.tsx:218`): sin esto el comprador puede llenar la conversacion
+   * antes de que haya alguien del otro lado.
+   *
+   * Adjuntar fotos SI se permite desde el inicio, igual que en la app: al pedir la
+   * cotizacion muchas veces hay que mostrar la pieza.
+   */
+  const sellerHasReplied = messages.some((message) => (
+    String(message.emisorId ?? message.autorId ?? '') !== String(user?.userId ?? user?.id ?? '')
+  ));
   const closed = quote.estado === 'CERRADA';
+  // Vencida o cerrada, el hilo deja de admitir mensajes: no tiene sentido negociar
+  // sobre una oferta que ya no se puede pagar. El backend ya bloquea la CERRADA; la
+  // vencida se decide aca, que es donde se interpreta `vigencia`.
+  const chatLocked = closed || expired;
+  const canWriteText = !chatLocked && (mode === 'seller' || Boolean(activeQuote) || sellerHasReplied);
+  const canAttach = !chatLocked && imageCount < MAX_CHAT_IMAGES;
   const documentName = quoteDocumentFilename(quote.id);
   const openProduct = () => navigate(productPath({ id: quote.productoId, titulo: productName }));
   const storeId = quote.proveedorId || quote.sellerId || user?.sellerId;
@@ -243,11 +287,18 @@ export default function QuoteDetailModal({
     }
   };
 
-  const handleImageSelected = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setStatusMessage({ type: 'error', text: 'La imagen supera el límite de 10 MB.' });
+  const handleImageSelected = async (e) => {
+    const original = e.target.files?.[0];
+    if (!original) return;
+    if (imageCount >= MAX_CHAT_IMAGES) {
+      setStatusMessage({ type: 'error', text: `Esta conversación ya alcanzó el máximo de ${MAX_CHAT_IMAGES} imágenes.` });
+      return;
+    }
+    // Se comprime ANTES de mirar el peso: una foto de celular pesa varios MB en crudo y
+    // pasaria el tope solo por no estar redimensionada.
+    const file = await compressImageFile(original);
+    if (file.size > MAX_CHAT_IMAGE_BYTES) {
+      setStatusMessage({ type: 'error', text: 'La imagen supera los 3 MB incluso comprimida. Prueba con otra.' });
       return;
     }
     setSelectedImageFile(file);
@@ -404,29 +455,19 @@ export default function QuoteDetailModal({
             {isLoadingMessages ? <div className="quote-messages-loading"><Loader2 size={20} className="spin-icon" /> Cargando conversación...</div> : messages.map((message) => {
               const isBuyer = Number(message.emisorId) === Number(quote.usuarioId);
               const mine = mode === 'buyer' ? isBuyer : !isBuyer;
-              return <div key={message.id} className={`quote-ws-message-row ${mine ? 'mine' : ''}`}><span className="quote-ws-message-avatar">{mine ? initials(user?.userName || user?.nombre) : initials(participantName)}</span><div className="quote-ws-bubble">{message.imagenUrl && <img src={resolveMediaUrl(message.imagenUrl)} alt="Adjunto" />}{message.texto && <p>{message.texto}</p>}<small>{formatDate(message.createdAt)} {mine ? '✓✓' : ''}</small></div></div>;
+              return <div key={message.id} className={`quote-ws-message-row ${mine ? 'mine' : ''}`}><span className="quote-ws-message-avatar">{mine ? initials(user?.userName || user?.nombre) : initials(participantName)}</span><div className="quote-ws-bubble">{message.imagenUrl && <button type="button" className="quote-ws-image-open" onClick={() => setViewerImage(resolveMediaUrl(message.imagenUrl))} title="Ver imagen completa"><img src={resolveMediaUrl(message.imagenUrl)} alt="Adjunto" /><span><Maximize2 size={15} /></span></button>}{message.texto && <p>{message.texto}</p>}<small>{formatDate(message.createdAt)} {mine ? '✓✓' : ''}</small></div></div>;
             })}
             {activeQuote && <div className={`quote-ws-message-row ${mode === 'seller' ? 'mine' : ''}`}><span className="quote-ws-message-avatar">{initials(storeName)}</span><div className="quote-ws-bubble quote-ws-document-bubble"><p>Te adjunto la propuesta comercial con todos los detalles de la cotización.</p><button type="button" className="quote-ws-file" onClick={viewDocument}><FileText size={25} /><span><strong>{documentName}</strong><small>PDF · Documento de cotización</small></span><Eye size={18} /></button><small>{formatDate(activeQuote.createdAt)}</small></div></div>}
           </div>
 
-          {!closed ? (
+          {!chatLocked ? (
             <form className="quote-ws-composer" onSubmit={submitChatMessage}>
-              {selectedImagePreview && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: '#f1f5f9', borderRadius: '8px', marginBottom: '8px' }}>
-                  <img src={selectedImagePreview} alt="Vista previa" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {selectedImageFile?.name || 'Imagen adjunta'}
-                    </span>
-                    <small style={{ color: '#64748b', fontSize: '11px' }}>
-                      {(selectedImageFile?.size ? (selectedImageFile.size / 1024).toFixed(0) : '0')} KB
-                    </small>
-                  </div>
-                  <button type="button" onClick={removeSelectedImage} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }} title="Quitar imagen">
-                    <X size={16} />
-                  </button>
-                </div>
-              )}
+              <ChatImagePreview
+                previewUrl={selectedImagePreview}
+                fileName={selectedImageFile?.name}
+                fileSize={selectedImageFile?.size}
+                onRemove={removeSelectedImage}
+              />
               <input
                 type="file"
                 accept="image/*"
@@ -437,25 +478,33 @@ export default function QuoteDetailModal({
               <textarea
                 value={chatMessage}
                 onChange={(event) => setChatMessage(event.target.value)}
-                placeholder="Escribe tu mensaje o adjunta una imagen..."
-                maxLength="1000"
+                placeholder={canWriteText
+                  ? 'Escribe tu mensaje o adjunta una imagen...'
+                  : 'Podrás escribir cuando la tienda responda. Mientras tanto puedes adjuntar fotos de la pieza.'}
+                maxLength={MAX_CHAT_MESSAGE}
                 rows="2"
+                disabled={!canWriteText}
               />
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isSending || Boolean(selectedImageFile)}
+                    disabled={isSending || Boolean(selectedImageFile) || !canAttach}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '5px 10px', fontSize: '12px', color: '#475569', cursor: 'pointer' }}
                     title="Adjuntar imagen"
                   >
-                    <Paperclip size={14} /> Adjuntar foto
+                    <Paperclip size={14} /> {imageCount >= MAX_CHAT_IMAGES ? `Máximo ${MAX_CHAT_IMAGES} fotos` : 'Adjuntar foto'}
                   </button>
-                  <span><Lock size={12} /> Conversación segura y privada.</span>
+                  <span>
+                    <Lock size={12} />
+                    {canWriteText
+                      ? 'Conversación segura y privada.'
+                      : `Hasta 3 MB y ${MAX_CHAT_IMAGES} fotos por conversación (${imageCount}/${MAX_CHAT_IMAGES}).`}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <small>{chatMessage.length}/1000</small>
+                  <small>{chatMessage.length}/{MAX_CHAT_MESSAGE}</small>
                   <button type="submit" disabled={isSending || (!chatMessage.trim() && !selectedImageFile)}>
                     {isSending ? <Loader2 size={16} className="spin-icon" /> : <Send size={16} />}
                     <span>{isUploadingImage ? 'Subiendo...' : 'Enviar'}</span>
@@ -464,7 +513,12 @@ export default function QuoteDetailModal({
               </div>
             </form>
           ) : (
-            <div className="quote-chat-closed"><Lock size={16} /> Esta conversación está cerrada.</div>
+            <div className="quote-chat-closed">
+              <Lock size={16} />
+              {closed
+                ? 'Esta conversación está cerrada.'
+                : 'La cotización venció, así que este chat quedó cerrado. Puedes pedir una nueva desde la ficha del producto.'}
+            </div>
           )}
         </main>
 
@@ -475,7 +529,19 @@ export default function QuoteDetailModal({
             <DataRow icon={ShieldCheck} label="Estado" value="Publicado" />
             <DataRow icon={BadgeDollarSign} label="Precio cotizado" value={activeQuote ? formatCLP(activeQuote.precioFinal ?? activeQuote.precio) : 'Por definir'} />
             <button type="button" className="quote-ws-outline-button" onClick={openProduct}><ExternalLink size={15} /> Ver ficha completa</button>
-            {mode === 'buyer' && <button type="button" className="quote-ws-primary-button" onClick={() => setChatMessage('Necesito una modificación en la cotización: ')}><Pencil size={15} /> Solicitar modificación</button>}
+            {/* Pedir un ajuste escribe en el chat, asi que sigue la misma suerte: sin
+                chat no hay a quien pedirselo. */}
+            {mode === 'buyer' && (
+              <button
+                type="button"
+                className="quote-ws-primary-button"
+                disabled={!canWriteText}
+                title={chatLocked ? 'La cotización ya no admite cambios' : undefined}
+                onClick={() => setChatMessage('Necesito una modificación en la cotización: ')}
+              >
+                <Pencil size={15} /> Solicitar modificación
+              </button>
+            )}
           </section>
 
           <section className="quote-ws-side-card quote-ws-files-card">
@@ -521,6 +587,15 @@ export default function QuoteDetailModal({
                   <label><span>Cantidad solicitada <Lock size={13} /></span><div className="quote-locked-field">{requested.requestedQty}<Lock size={15} /></div></label>
                 </div>
                 <label><span>Descuento o rebaja total (opcional)</span><div className="quote-editor-money-input"><i>$</i><input type="number" min="0" value={discount} onChange={(event) => setDiscount(event.target.value.replace(/[^0-9]/g, ''))} /></div><small>Dejar en 0 si no aplica descuento.</small></label>
+                {/* Mismo desglose y calculadora inversa que la carga de productos y la
+                    app: cotizar a ciegas es como el vendedor termina cobrando menos de
+                    lo que cree. `onApplySuggested` escribe el precio por unidad. */}
+                <CommissionSummaryCard
+                  basePrice={Number(unitPrice) || 0}
+                  isFounder={Boolean(user?.founder ?? user?.fundador)}
+                  suggestedContextLabel="por unidad"
+                  onApplySuggested={(value) => setUnitPrice(String(Math.round(value)))}
+                />
               </div>
               <aside className="quote-editor-total-card">
                 <span><small>Subtotal ({requested.requestedQty})</small><b>{formatCLP(subtotal)}</b></span>
@@ -531,7 +606,10 @@ export default function QuoteDetailModal({
 
             <div className="quote-editor-fields-grid">
               <label><span>Disponibilidad</span><select value={availability} onChange={(event) => setAvailability(event.target.value)}>{QUOTE_AVAILABILITY_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
-              <label><span>Condición de entrega</span><select value={deliveryTerms} onChange={(event) => setDeliveryTerms(event.target.value)}>{[...new Set([requested.requestedDeliveryTerms, ...QUOTE_DELIVERY_OPTIONS, 'Delivery local'])].map((option) => <option key={option}>{option}</option>)}</select></label>
+              {/* La condicion de entrega la eligio el COMPRADOR al pedir la cotizacion:
+                  el vendedor cotiza sobre esa condicion, no la cambia. Se muestra
+                  bloqueada igual que la cantidad, que ya funcionaba asi. */}
+              <label><span>Condición de entrega <Lock size={13} /></span><div className="quote-locked-field">{deliveryTerms}<Lock size={15} /></div></label>
               {['Delivery local', 'Envío dentro de la comuna'].includes(deliveryTerms) && <label><span>Costo del envío</span><div className="quote-editor-money-input"><i>$</i><input type="number" min="0" value={deliveryCost} onChange={(event) => setDeliveryCost(event.target.value.replace(/[^0-9]/g, ''))} required /></div></label>}
               <label><span>Garantía</span><select value={warranty} onChange={(event) => setWarranty(event.target.value)}>{QUOTE_WARRANTY_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
               <label><span>Vigencia</span><select value={validity} onChange={(event) => setValidity(event.target.value)}>{QUOTE_VALIDITY_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
@@ -544,6 +622,22 @@ export default function QuoteDetailModal({
           <footer className="quote-editor-footer"><button type="button" className="quote-editor-cancel" onClick={() => setQuoteEditorOpen(false)}>Cancelar</button><button className="quote-editor-submit" type="submit" disabled={isSending || closed}>{isSending ? <Loader2 size={18} className="spin-icon" /> : <Send size={18} />} {isSending ? 'Guardando...' : activeQuote ? 'Actualizar y enviar cotización' : 'Crear y enviar cotización'}</button></footer>
         </form>
       </div>}
+
+      {viewerImage && (
+        <div className="quote-ws-dialog-backdrop quote-ws-image-viewer" onClick={() => setViewerImage(null)}>
+          <div className="quote-ws-image-viewer-body" onClick={(event) => event.stopPropagation()}>
+            <header>
+              <a href={viewerImage} download target="_blank" rel="noreferrer">
+                <Download size={16} /> Descargar
+              </a>
+              <button type="button" onClick={() => setViewerImage(null)} aria-label="Cerrar">
+                <X size={20} />
+              </button>
+            </header>
+            <img src={viewerImage} alt="Adjunto de la conversación" />
+          </div>
+        </div>
+      )}
 
       {quotePreviewOpen && activeQuote && <div className="quote-ws-dialog-backdrop" onClick={() => setQuotePreviewOpen(false)}><section className="quote-ws-quote-dialog quote-ws-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><FileText size={22} /><span><strong>Detalle de la cotización</strong><small><CalendarClock size={13} /> {quoteExpirationLabel(activeQuote, now)}</small></span></div><button type="button" onClick={() => setQuotePreviewOpen(false)}><X size={20} /></button></header><div className="quote-ws-dialog-body"><div className="quote-ws-preview-price"><small>Total cotizado</small><strong>{formatCLP(activeQuote.precioFinal ?? activeQuote.precio)}</strong></div><DataRow icon={Package} label="Cantidad" value={activeQuote.cantidad} /><DataRow icon={CheckCircle2} label="Disponibilidad" value={activeQuote.disponibilidad} /><DataRow icon={Truck} label="Entrega" value={activeQuote.condicionesEntrega} /><DataRow icon={ShieldCheck} label="Garantía" value={activeQuote.garantia} /><DataRow icon={FileText} label="Notas" value={activeQuote.notas} /><div className="quote-ws-preview-document"><button type="button" onClick={viewDocument}><Eye size={16} /> Ver PDF</button><button type="button" onClick={downloadDocument}><Download size={16} /> Descargar PDF</button></div>{mode === 'buyer' && <button type="button" className="quote-ws-primary-button" disabled={expired || closed} onClick={goToQuoteCheckout}><ShoppingCart size={16} /> {expired ? 'Cotización vencida' : 'Comprar esta cotización'}</button>}</div></section></div>}
     </div>

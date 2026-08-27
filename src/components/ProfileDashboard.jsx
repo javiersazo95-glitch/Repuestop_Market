@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -24,6 +24,8 @@ import {
   getBuyerProductQuestionsApi
 } from '../services/api';
 import { qk } from '../services/queryKeys';
+import ShippingMethodsPicker from './ShippingMethodsPicker';
+import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import OrderCard from './OrderCard';
 import OrderDetailModal from './OrderDetailModal';
 import CatalogCard from './CatalogCard';
@@ -32,9 +34,12 @@ import QuoteDetailModal from './QuoteDetailModal';
 import ProfileSupportPanel from './ProfileSupportPanel';
 import ProfileNotificationsBell from './ProfileNotificationsBell';
 import NewCatalogProductModal from './NewCatalogProductModal';
+import SellerVerificationCard from './SellerVerificationCard';
 import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
-import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
+import {
+  SHIPPING_METHOD_DEFS, parseShippingSelections, buildShippingMethodsString,
+} from '../data/shippingMethods';
 import VehicleBrandLogo from './VehicleBrandLogo';
 import SellerWithdrawalsPanel from './SellerWithdrawalsPanel';
 import SellerOrdersPanel from './SellerOrdersPanel';
@@ -42,10 +47,19 @@ import BuyerAddressBook from './BuyerAddressBook';
 import AdsManagementSection from './ads/AdsManagementSection';
 import AutomotiveServiceAccreditation from './AutomotiveServiceAccreditation';
 import { formatRut, isValidRut, isValidClPhone } from '../services/adapters';
-import { useNavigate } from 'react-router-dom';
-import { helpContactPath, ROUTES, storePath } from '../routes/paths';
+import { Link, useNavigate } from 'react-router-dom';
+import { helpContactPath, productPath, ROUTES, storePath } from '../routes/paths';
 
 const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
+
+// `EstadoTienda` del backend. Es el estado de la TIENDA, distinto del de la revision
+// documental (`EstadoRevisionVerificacion`), que vive en SellerVerificationCard.
+const STORE_STATUS_CHIP = {
+  APPROVED: { label: 'Tienda verificada', className: 'chip-approved' },
+  PENDING_VERIFICATION: { label: 'Tienda en revisión', className: 'chip-pending' },
+  REJECTED: { label: 'Verificación rechazada', className: 'chip-rejected' },
+  SUSPENDED: { label: 'Tienda suspendida', className: 'chip-rejected' },
+};
 const BUYER_PROFILE_COVER_URL = import.meta.env.VITE_BUYER_PROFILE_COVER_URL
   || 'https://pub-650d4cc5c6be42bc9a81e878e6042ea6.r2.dev/Plantillas/Portadas_Perfil/comprador-default.png';
 
@@ -54,37 +68,6 @@ const BUYER_PROFILE_COVER_URL = import.meta.env.VITE_BUYER_PROFILE_COVER_URL
 // Chilexpress, Retiro en Tienda") que no coincidía con este modelo y no validaba
 // nada; ahora se editan como checkboxes + precio opcional y se serializan al
 // mismo formato de string que ya consume el resto de la app.
-const SHIPPING_METHOD_DEFS = [
-  { id: 'retiro', label: 'Retiro en tienda', canonicalName: 'Retiro en tienda', hasPrice: false },
-  { id: 'dentro', label: 'Envío dentro de la comuna', canonicalName: 'Envío dentro de la comuna', hasPrice: true },
-  // "Fuera de la comuna" va por courier externo y el cliente paga el flete al
-  // recibir el envío: la tienda no fija un precio acá, por eso no lleva input
-  // de precio (a diferencia de "dentro de la comuna", que sí lo maneja la tienda).
-  { id: 'fuera', label: 'Envío fuera de la comuna', canonicalName: 'Envío fuera de la comuna', hasPrice: false, note: 'Por pagar en destino' },
-];
-
-function parseShippingSelections(rawMethods) {
-  const selections = Object.fromEntries(SHIPPING_METHOD_DEFS.map((def) => [def.id, { enabled: false, price: '' }]));
-  parseShippingMethods(rawMethods).forEach((method) => {
-    const canonicalName = resolveShippingService(method).name;
-    const def = SHIPPING_METHOD_DEFS.find((candidate) => candidate.canonicalName === canonicalName);
-    if (!def) return;
-    const price = shippingMethodPrice(method);
-    selections[def.id] = { enabled: true, price: price ? price.replace(/\D/g, '') : '' };
-  });
-  return selections;
-}
-
-function buildShippingMethodsString(selections) {
-  return SHIPPING_METHOD_DEFS
-    .filter((def) => selections[def.id]?.enabled)
-    .map((def) => {
-      if (!def.hasPrice) return def.label;
-      const digits = String(selections[def.id]?.price || '').replace(/\D/g, '');
-      return digits ? `${def.label} ($${Number(digits).toLocaleString('es-CL')})` : def.label;
-    })
-    .join(', ');
-}
 
 /** Deja pasar solo dígitos y, si estaba al inicio, un único "+" (prefijo de país). */
 function sanitizePhoneInput(rawValue) {
@@ -129,6 +112,23 @@ const SELLER_SIDEBAR_GROUPS = [
       { id: 'soporte', label: 'Centro de ayuda', icon: Headphones, href: ROUTES.support }
     ]
   }
+];
+
+// Con la tienda bloqueada el backend YA rechaza publicar productos
+// (`InventarioAccessSupport`), escribir en el chat (`ConversacionService`) y despachar
+// (`PedidoEnvioSupport`), asi que dejar estas pestanas a la vista solo produce errores.
+// Anuncios y retiros se ocultan por decision de producto: el backend no los bloquea, o
+// sea que siguen alcanzables desde la app o por API hasta que exista un guard alla.
+//
+// `pedidos` NO esta en la lista a proposito: queda visible en SOLO LECTURA. Un vendedor
+// que no ve lo que dejo pendiente tampoco entiende que esta colgando.
+const SELLER_BLOCKED_HIDDEN_TABS = [
+  'productos',
+  'cotizaciones',
+  'preguntas_productos',
+  'retiros',
+  'anuncios',
+  'acreditar_servicio',
 ];
 
 const BUYER_SIDEBAR_GROUPS = [
@@ -248,7 +248,7 @@ function EmptyState({ label }) {
   );
 }
 
-export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange, paymentStatus, paymentOrderId }) {
+export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange, paymentStatus, paymentOrderId, deepLinkOrderId, deepLinkTicketId }) {
   const { user, role, logout, updateProfile, refreshProfile, deleteAccount } = useAuth();
   // El centro de ayuda dejó de ser una pestaña del perfil: vive en /ayuda y se
   // navega hacia allá desde el sidebar y los accesos rápidos.
@@ -418,7 +418,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
   // Datos del perfil y rol
   const isSeller = role === 'SELLER';
-  const sidebarGroups = isSeller ? SELLER_SIDEBAR_GROUPS : BUYER_SIDEBAR_GROUPS;
+  const baseSidebarGroups = isSeller ? SELLER_SIDEBAR_GROUPS : BUYER_SIDEBAR_GROUPS;
   const effectiveSellerId = user?.sellerId || user?.proveedorId || user?.tiendaId || user?.userId || user?.id;
   const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
   const [ratingPromptOrderId, setRatingPromptOrderId] = useState(null);
@@ -475,7 +475,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   });
 
   const buyerQuestionsQuery = useQuery({
-    queryKey: ['buyerProductQuestions', effectiveUserId],
+    queryKey: qk.buyerProductQuestions(effectiveUserId),
     queryFn: ({ signal }) => getBuyerProductQuestionsApi({ signal }),
     enabled: Boolean(!isSeller && effectiveUserId),
     staleTime: 60 * 1000,
@@ -488,14 +488,32 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     staleTime: 5 * 60 * 1000,
   });
 
-  const isSellerBlocked = isSeller && Boolean(
-    user?.cuentaBloqueada ||
-    user?.sellerBlocked ||
-    user?.estado === 'BLOQUEADO' ||
-    storeInfoQuery.data?.cuentaBloqueada ||
-    storeInfoQuery.data?.estado === 'BLOQUEADO'
-  );
-  const blockReason = user?.motivoBloqueo || storeInfoQuery.data?.motivoBloqueo || 'Tu tienda se encuentra suspendida temporalmente por moderación.';
+  // El estado de bloqueo lo resuelve `useSellerBlocked`, que es la misma fuente que usan
+  // el header, el carrito y el centro de ayuda. Tenerlo resuelto en cada vista era como
+  // termino este bug la primera vez: cinco nombres de campo inventados, ninguno real.
+  const { isBlocked: isSellerBlocked, blockReason, blockReasonIsClaim } = useSellerBlocked();
+
+  // Se ocultan las pestanas de operacion, no la navegacion entera: resumen, pedidos
+  // (solo lectura), mi tienda/datos y Reportes/Disputa siguen accesibles. Disputa es
+  // justamente donde vive la mediacion que suele originar el bloqueo.
+  const sidebarGroups = useMemo(() => {
+    if (!isSellerBlocked) return baseSidebarGroups;
+    return baseSidebarGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => !SELLER_BLOCKED_HIDDEN_TABS.includes(item.id)),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [baseSidebarGroups, isSellerBlocked]);
+
+  // Ocultar la pestana no basta: la web navega por URL (`/perfil/productos`), asi que
+  // un enlace guardado o el boton atras entran igual. Al detectar el bloqueo se vuelve
+  // al resumen.
+  useEffect(() => {
+    if (isSellerBlocked && SELLER_BLOCKED_HIDDEN_TABS.includes(activeTab)) {
+      setActiveTab('resumen');
+    }
+  }, [isSellerBlocked, activeTab, setActiveTab]);
 
   const handleSubmitBlockedReview = async (e) => {
     e.preventDefault();
@@ -550,6 +568,17 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // primero en el listado ya cargado; si no aparece (recien creado, otra pestaña)
   // se trae por id directo con el endpoint nuevo.
   const [paymentBannerOrder, setPaymentBannerOrder] = useState(null);
+
+  // Notificacion de pedido: abre el detalle apenas la lista este cargada. Se usa una
+  // marca para no reabrirlo si el usuario lo cierra y la URL sigue teniendo `?pedido=`.
+  const openedDeepLinkRef = useRef(null);
+  useEffect(() => {
+    if (!deepLinkOrderId || openedDeepLinkRef.current === deepLinkOrderId) return;
+    const found = (orders || []).find((o) => String(o.id) === String(deepLinkOrderId));
+    if (!found) return;
+    openedDeepLinkRef.current = deepLinkOrderId;
+    setSelectedOrder(found);
+  }, [deepLinkOrderId, orders]);
   useEffect(() => {
     if (!paymentOrderId || !paymentStatus || paymentStatus === 'success') {
       setPaymentBannerOrder(null);
@@ -1262,10 +1291,13 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               <h1 className="facebook-hero-name">
                 {isSeller ? (storeInfo?.storeName || user?.storeName || displayName) : displayName}
               </h1>
-              {isSeller && (
-                <span className={`store-status-chip ${storeInfo?.status === 'APPROVED' ? 'chip-approved' : 'chip-pending'}`}>
+              {/* `EstadoTienda` tiene cuatro valores. Antes solo se miraba APPROVED y
+                  todo lo demas caia en "Tienda en Revision", asi que una tienda
+                  rechazada o suspendida se veia como si estuviera en tramite. */}
+              {isSeller && storeInfo?.status && (
+                <span className={`store-status-chip ${STORE_STATUS_CHIP[storeInfo.status]?.className || 'chip-pending'}`}>
                   <ShieldCheck size={13} />
-                  <span>{storeInfo?.status === 'APPROVED' ? 'Tienda Verificada' : 'Tienda en Revisión'}</span>
+                  <span>{STORE_STATUS_CHIP[storeInfo.status]?.label || 'Tienda en revisión'}</span>
                 </span>
               )}
             </div>
@@ -1278,7 +1310,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   <Clock size={13} /> Miembro desde {memberSince}
                 </span>
               )}
-              {isSeller && (
+              {/* Solo las tiendas marcadas como fundadoras en el backoffice
+                  (`PATCH /backoffice/founders/{id}` -> `Proveedor.fundador`, que viaja
+                  en `TiendaResponseDTO.founder`). Antes salía para TODO vendedor, así
+                  que cualquiera creía tener la tarifa del 5%. */}
+              {isSeller && storeInfo?.founder && (
                 <span className="hero-tag founder-tag-contrast">
                   <Crown size={14} strokeWidth={2.4} /> Beneficio Tarifa Fundador Activo (5%)
                 </span>
@@ -1643,6 +1679,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                     sellerId={user?.sellerId}
                     onSelectOrder={(order) => setSelectedOrder(order)}
                     onUpdateStatus={handleUpdateOrderStatus}
+                    readOnly={isSellerBlocked}
                   />
                 ) : (
                   <div className="profile-panel">
@@ -1720,9 +1757,25 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                                 {q.fechaPregunta || q.createdAt ? new Date(q.fechaPregunta || q.createdAt).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
                               </small>
                             </div>
-                            <h4 style={{ margin: '0 0 6px', fontSize: '14.5px', color: '#1e293b' }}>
-                              {q.productoNombre || q.productName || q.producto?.nombrePublicado || 'Repuesto'}
-                            </h4>
+                            {/* El producto con su foto y un enlace de vuelta: una pregunta
+                                sirve para decidir la compra, asi que desde aca hay que
+                                poder volver a la ficha. `ProductoPreguntaResponseDTO` ya
+                                trae nombre, imagen e id; antes solo se usaba el nombre.
+                                El SKU se omite a proposito: al comprador no le dice nada. */}
+                            <div className="buyer-question-product">
+                              {q.productoImagenUrl && (
+                                <img src={resolveMediaUrl(q.productoImagenUrl)} alt="" />
+                              )}
+                              <h4>
+                                {q.productoId ? (
+                                  <Link to={productPath({ id: q.productoId, titulo: q.productoNombre })}>
+                                    {q.productoNombre || q.productName || q.producto?.nombrePublicado || 'Repuesto'}
+                                  </Link>
+                                ) : (
+                                  q.productoNombre || q.productName || q.producto?.nombrePublicado || 'Repuesto'
+                                )}
+                              </h4>
+                            </div>
                             <p style={{ margin: '0 0 10px', fontSize: '13.5px', color: '#334155' }}>
                               <strong>Tu pregunta:</strong> {q.pregunta || q.texto || q.question}
                             </p>
@@ -1756,10 +1809,18 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   ) : (
                     <div className="profile-products-grid">
                       {favorites.map((f, i) => (
-                        <div key={f.id} className="profile-product-card">
+                        // `imagenUrl` viene relativa al backend (`/api/v1/...`), asi que
+                        // sin `resolveMediaUrl` el navegador la pedia a :5173 y salia rota.
+                        // Y la tarjeta no llevaba a ninguna parte: un favorito existe justo
+                        // para volver al producto.
+                        <Link
+                          key={f.id}
+                          to={productPath({ id: f.proveedorProductoId, titulo: f.nombre })}
+                          className="profile-product-card is-clickable"
+                        >
                           {f.imagenUrl ? (
                             <div className="product-card-thumb-img">
-                              <img src={f.imagenUrl} alt="" />
+                              <img src={resolveMediaUrl(f.imagenUrl)} alt="" />
                             </div>
                           ) : (
                             <div className={`product-card-thumb thumb-${i % 4}`}>
@@ -1770,7 +1831,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                           <div className="product-card-price-row">
                             <strong>${formatCLP(f.precio)}</strong>
                           </div>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   )}
@@ -1999,7 +2060,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
 
               {activeTab === 'consultas' && (
-                <ProfileSupportPanel user={user} />
+                <ProfileSupportPanel user={user} deepLinkTicketId={deepLinkTicketId} />
               )}
 
               {(activeTab === 'tienda_datos' || activeTab === 'datos') && (
@@ -2128,46 +2189,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
                           <div className="form-group" style={{ marginTop: '16px' }}>
                             <label>Métodos de Envío Aceptados</label>
-                            <div className="shipping-methods-editor">
-                              {SHIPPING_METHOD_DEFS.map((def) => {
-                                const selection = shippingSelectionsDraft[def.id];
-                                return (
-                                  <label key={def.id} className={`shipping-method-option ${selection.enabled ? 'checked' : ''}`}>
-                                    <input
-                                      type="checkbox"
-                                      checked={selection.enabled}
-                                      onChange={(e) => setShippingSelectionsDraft((current) => ({
-                                        ...current,
-                                        [def.id]: { ...current[def.id], enabled: e.target.checked },
-                                      }))}
-                                    />
-                                    <span className="shipping-method-option-label">{def.label}</span>
-                                    {def.hasPrice && selection.enabled && (
-                                      <span className="shipping-method-price-input">
-                                        <span>$</span>
-                                        <input
-                                          type="text"
-                                          inputMode="numeric"
-                                          maxLength={7}
-                                          placeholder="Gratis"
-                                          value={selection.price}
-                                          onChange={(e) => {
-                                            const digits = e.target.value.replace(/\D/g, '');
-                                            setShippingSelectionsDraft((current) => ({
-                                              ...current,
-                                              [def.id]: { ...current[def.id], price: digits },
-                                            }));
-                                          }}
-                                        />
-                                      </span>
-                                    )}
-                                    {!def.hasPrice && def.note && selection.enabled && (
-                                      <span className="shipping-method-note-badge">{def.note}</span>
-                                    )}
-                                  </label>
-                                );
-                              })}
-                            </div>
+                            <ShippingMethodsPicker
+                              selections={shippingSelectionsDraft}
+                              onChange={setShippingSelectionsDraft}
+                            />
                             {formErrors.shippingMethods && <small className="field-error-text">{formErrors.shippingMethods}</small>}
                             <small className="form-helper-text">Elige los métodos que ofrece tu tienda. Deja el precio en blanco si es gratuito.</small>
                           </div>
@@ -2345,33 +2370,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                               </div>
                             </div>
                           )}
-                        {/* Card: Verificación y Estado Comercial */}
-                        {isSeller && (
-                          <div className="details-card-block store-section-card">
-                            <div className="details-card-header-row">
-                              <h3 className="section-subtitle">
-                                <span className="section-subtitle-icon"><ShieldCheck size={16} /></span>
-                                <span>Verificación Comercial y Adhesión</span>
-                              </h3>
-                            </div>
-                            <div className="details-info-grid">
-                              <div className="details-info-row">
-                                <span className="info-label">Estado de Verificación</span>
-                                <strong className="info-value" style={{ color: '#16a34a', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                  <CheckCircle2 size={15} />
-                                  <span>{storeInfo?.verificacionEstado || 'Tienda Verificada'}</span>
-                                </strong>
-                              </div>
-                              <div className="details-info-row">
-                                <span className="info-label">Contrato de Adhesión</span>
-                                <strong className="info-value" style={{ color: '#0066ff', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                  <CheckCircle2 size={15} />
-                                  <span>Términos y condiciones aceptados</span>
-                                </strong>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                        {/* Verificación y adhesión: estado REAL desde
+                            `GET /proveedores/{id}/verificacion`. Antes eran dos líneas
+                            fijas que decían "Tienda Verificada" y "Términos aceptados"
+                            pasara lo que pasara. */}
+                        {isSeller && <SellerVerificationCard sellerId={effectiveSellerId} />}
                         </div>
                       </div>
                     </div>
@@ -2395,8 +2398,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           onCancelOrder={isSeller ? undefined : handleCancelOrder}
           autoOpenRating={!isSeller && ratingPromptOrderId != null && String(selectedOrder.id) === String(ratingPromptOrderId)}
           onRatingPromptShown={() => setRatingPromptOrderId(null)}
-          onCancelSellerOrder={isSeller ? handleCancelSellerOrder : undefined}
-          onRegisterDispatch={isSeller ? handleRegisterOrderDispatch : undefined}
+          onCancelSellerOrder={isSeller && !isSellerBlocked ? handleCancelSellerOrder : undefined}
+          onRegisterDispatch={isSeller && !isSellerBlocked ? handleRegisterOrderDispatch : undefined}
+          readOnly={isSellerBlocked}
         />
       )}
 
@@ -2622,7 +2626,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   </span>
                 </div>
               </div>
-              <button className="order-modal-close-btn" onClick={() => setShowMediaModal(null)}>
+              <button type="button" className="btn-close-modal" onClick={closeMediaModal} aria-label="Cerrar">
                 <X size={18} />
               </button>
             </div>
@@ -2711,20 +2715,20 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       {/* Modal de Solicitud de Revisión de Cuenta Bloqueada */}
       {showBlockedReviewModal && (
         <div className="order-modal-backdrop" onClick={() => setShowBlockedReviewModal(false)}>
-          <div className="order-modal-card" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="order-modal-container blocked-review-modal" onClick={(e) => e.stopPropagation()}>
             <div className="order-modal-header">
-              <div className="order-modal-header-left">
-                <div className="order-modal-icon-badge" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
+              <div className="order-modal-title-group">
+                <div className="order-modal-icon-badge badge-moderation">
                   <Scale size={20} />
                 </div>
-                <div>
-                  <h3 className="order-modal-title">Solicitar Revisión de Cuenta</h3>
+                <div className="order-subdialog-heading">
+                  <h2>Solicitar revisión de cuenta</h2>
                   <span className="order-modal-subtitle">
                     Envía tus descargos o justificación al equipo de moderación
                   </span>
                 </div>
               </div>
-              <button className="order-modal-close-btn" onClick={() => setShowBlockedReviewModal(false)}>
+              <button type="button" className="btn-close-modal" onClick={() => setShowBlockedReviewModal(false)} aria-label="Cerrar">
                 <X size={18} />
               </button>
             </div>
@@ -2767,8 +2771,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   </div>
                 )}
 
-                <div style={{ backgroundColor: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', color: '#475569' }}>
-                  <strong>Motivo actual:</strong> {blockReason}
+                <div className="blocked-review-reason">
+                  <strong>{blockReasonIsClaim ? 'Reclamo que originó la mediación:' : 'Motivo actual:'}</strong>
+                  <span>{blockReason}</span>
                 </div>
 
                 <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { CheckCircle2, Clock3, Inbox, MessageCircleQuestion, Package, Search, Send, Loader2, X } from 'lucide-react';
 import { resolveMediaUrl, answerProductQuestionApi } from '../services/api';
+import { productPath } from '../routes/paths';
 
 function questionProductId(question) {
   return String(question.productoId ?? question.productId ?? question.product?.id ?? question.producto?.id ?? '');
@@ -108,10 +110,29 @@ export default function SellerProductQuestionsPanel({
         <div className="seller-questions-empty"><Inbox /><strong>No hay preguntas para mostrar</strong><span>{selectedProductId ? 'Este producto todavía no tiene consultas públicas.' : 'Las preguntas realizadas en tus productos aparecerán en esta sección.'}</span></div>
       ) : <div className="seller-question-product-groups">{groups.map(([productId, group]) => {
         const product = group.product || productsById.get(productId) || {};
-        const name = product.nombrePublicado || product.repuestoNombre || product.nombre || group.questions[0]?.productName || group.questions[0]?.productoNombre || 'Producto publicado';
-        const rawPhoto = product.imageUrls?.[0] || product.imagenUrl || product.photoUri;
+        // La PREGUNTA ya trae nombre, sku e imagen del producto (`ProductoPreguntaResponseDTO`).
+        // Antes solo se miraba el catalogo cargado en memoria, asi que un producto que no
+        // estuviera en esa pagina salia sin foto y con "SKU: No informado" aunque el
+        // backend los hubiera mandado.
+        const firstQuestion = group.questions[0] || {};
+        const name = product.nombrePublicado || product.repuestoNombre || product.nombre
+          || firstQuestion.productName || firstQuestion.productoNombre || 'Producto publicado';
+        const rawPhoto = product.imageUrls?.[0] || product.imagenUrl || product.photoUri || firstQuestion.productoImagenUrl;
+        const sku = product.skuProveedor || product.sku || firstQuestion.productoSku;
+        const href = productId && !String(productId).startsWith('unknown-')
+          ? productPath({ id: productId, titulo: name })
+          : null;
         return <article className={`seller-question-product-group ${group.questions.some((question) => !question.answer) ? 'has-pending-questions' : ''}`} key={productId}>
-          <header>{rawPhoto ? <img src={resolveMediaUrl(rawPhoto)} alt="" /> : <span><Package /></span>}<div><h3>{name}</h3><small>SKU: {product.skuProveedor || product.sku || 'No informado'}</small></div><b><MessageCircleQuestion /> {group.questions.length} {group.questions.length === 1 ? 'pregunta' : 'preguntas'}</b></header>
+          <header>
+            {rawPhoto ? <img src={resolveMediaUrl(rawPhoto)} alt="" /> : <span><Package /></span>}
+            <div>
+              {/* El vendedor necesita abrir la ficha para responder con datos a la vista
+                  (stock, precio, compatibilidades), asi que el nombre lleva al producto. */}
+              <h3>{href ? <Link to={href} title="Ver el producto publicado">{name}</Link> : name}</h3>
+              <small>SKU: {sku || 'No informado'}</small>
+            </div>
+            <b><MessageCircleQuestion /> {group.questions.length} {group.questions.length === 1 ? 'pregunta' : 'preguntas'}</b>
+          </header>
           <div className="seller-question-list">{group.questions.map((question, index) => {
             const qId = question.id || index;
             const isSubmitting = submittingIds[qId];

@@ -9,6 +9,8 @@ export const qk = {
   products: (filters) => ['products', filters || {}],
   product: (id) => ['products', id],
   productQuestions: (id) => ['products', id, 'questions'],
+  /** Bandeja del COMPRADOR con las preguntas que hizo (GET /usuarios/me/preguntas-productos). */
+  buyerProductQuestions: (userId) => ['buyerProductQuestions', userId],
   relatedProducts: (id) => ['products', id, 'related'],
   categoryCounts: () => ['categoryCounts'],
   categories: () => ['categories'],
@@ -23,5 +25,7 @@ export const qk = {
   sellerInventorySummary: (sellerId) => ['sellerInventorySummary', sellerId],
   sellerProductQuestions: (sellerId) => ['sellerProductQuestions', sellerId],
   notifications: (userId) => ['notifications', userId],
+  /** Estado de bloqueo de la tienda (GET /proveedores/{id}/estado-cuenta). */
+  sellerAccountStatus: (sellerId) => ['sellerAccountStatus', sellerId],
   profile: () => ['profile'],
 };

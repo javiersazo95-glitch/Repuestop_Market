@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   X, Clock, Wrench, Truck, PackageCheck, User, Store,
   MapPin, Phone, Mail, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
-  RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star
+  RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
 import { resolveShippingService } from '../data/shippingMethods';
@@ -97,6 +97,7 @@ export default function OrderDetailModal({
   onRegisterDispatch,
   autoOpenRating = false,
   onRatingPromptShown,
+  readOnly = false,
 }) {
   const rawStatus = order?.estado || order?.status || 'PENDIENTE';
   const normStatus = String(rawStatus).toUpperCase();
@@ -178,7 +179,11 @@ export default function OrderDetailModal({
   // Solo PENDIENTE y PAGADO: `PedidoCancelacionSupport` corta ahi ("Solo se pueden
   // cancelar pedidos pendientes") y con EN_PREPARACION el boton salia igual y el POST
   // moria en 400. Si el backend amplia la ventana, hay que ampliarla aca tambien.
-  const canSellerCancel = isSeller && ['PENDIENTE', 'PAGADO'].includes(normStatus) && Boolean(onCancelSellerOrder);
+  // Tienda bloqueada: el pedido se ve completo pero no se puede mover. `PedidoEnvioSupport`
+  // rechaza el despacho del lado del servidor, asi que dejar los botones solo produce un
+  // error a mitad de camino.
+  const sellerReadOnly = isSeller && readOnly;
+  const canSellerCancel = isSeller && !sellerReadOnly && ['PENDIENTE', 'PAGADO'].includes(normStatus) && Boolean(onCancelSellerOrder);
   const cancellationReason = normStatus === 'CANCELADO' ? cancellationReasonLabel(order, isSeller ? 'seller' : 'buyer') : null;
   // La explicacion esta escrita para el comprador ("si pagaste, el reembolso...").
   // Al vendedor le basta la etiqueta: el motivo lo declaro el.
@@ -636,7 +641,14 @@ export default function OrderDetailModal({
           {/* Accion principal del pedido. Vale para los DOS roles: estaba condicionada a
               `isSeller`, asi que al comprador no le aparecian "Marcar recibido" ni
               "Finalizar pedido" en el detalle, solo en la tarjeta del listado. */}
-          {controlledAction && !controlledAction.disabled && (
+          {sellerReadOnly && (
+            <span className="order-controlled-wait order-controlled-wait--modal">
+              <Lock size={15} />
+              Cuenta bloqueada: solo lectura
+            </span>
+          )}
+
+          {controlledAction && !controlledAction.disabled && !sellerReadOnly && (
             // `waiting` no es una accion: es "ya hiciste tu parte, ahora le toca al
             // otro". Viene sin `nextStatus`, asi que pintarlo como boton primario
             // dejaba uno que al clickearlo no hacia nada. La tarjeta del pedido ya lo

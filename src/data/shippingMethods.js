@@ -61,3 +61,56 @@ export function shippingMethodCost(method) {
   const numeric = Number(String(price).replace(/[^0-9]/g, ''));
   return Number.isFinite(numeric) ? numeric : 0;
 }
+
+/**
+ * Metodos que una tienda puede ofrecer, con el nombre EXACTO que espera el backend.
+ *
+ * `Tienda.shippingMethods` es una cadena CSV compartida por las tres plataformas, igual
+ * que `hours`: si un cliente escribe otra etiqueta, la misma tienda se ve distinta segun
+ * donde se mire y `resolveShippingService()` deja de reconocer el metodo. Es la
+ * contraparte de `SHIPPING_METHOD_OPTIONS` de `mobile/hooks/auth/useShippingField.ts`.
+ *
+ * "Fuera de la comuna" va por courier externo y lo paga el comprador al recibir, asi que
+ * la tienda no le fija precio: por eso no lleva input.
+ */
+export const SHIPPING_METHOD_DEFS = [
+  { id: 'retiro', label: 'Retiro en tienda', canonicalName: 'Retiro en tienda', hasPrice: false },
+  { id: 'dentro', label: 'Envío dentro de la comuna', canonicalName: 'Envío dentro de la comuna', hasPrice: true },
+  { id: 'fuera', label: 'Envío fuera de la comuna', canonicalName: 'Envío fuera de la comuna', hasPrice: false, note: 'Por pagar en destino' },
+];
+
+/** Estado vacio del selector, con `retiro` marcado como en la app. */
+export function defaultShippingSelections() {
+  const selections = Object.fromEntries(
+    SHIPPING_METHOD_DEFS.map((def) => [def.id, { enabled: false, price: '' }]),
+  );
+  selections.retiro.enabled = true;
+  return selections;
+}
+
+/** CSV del backend -> estado del selector. */
+export function parseShippingSelections(rawMethods) {
+  const selections = Object.fromEntries(
+    SHIPPING_METHOD_DEFS.map((def) => [def.id, { enabled: false, price: '' }]),
+  );
+  parseShippingMethods(rawMethods).forEach((method) => {
+    const canonicalName = resolveShippingService(method).name;
+    const def = SHIPPING_METHOD_DEFS.find((candidate) => candidate.canonicalName === canonicalName);
+    if (!def) return;
+    const price = shippingMethodPrice(method);
+    selections[def.id] = { enabled: true, price: price ? price.replace(/\D/g, '') : '' };
+  });
+  return selections;
+}
+
+/** Estado del selector -> CSV del backend. */
+export function buildShippingMethodsString(selections) {
+  return SHIPPING_METHOD_DEFS
+    .filter((def) => selections[def.id]?.enabled)
+    .map((def) => {
+      if (!def.hasPrice) return def.label;
+      const digits = String(selections[def.id]?.price || '').replace(/\D/g, '');
+      return digits ? `${def.label} ($${Number(digits).toLocaleString('es-CL')})` : def.label;
+    })
+    .join(', ');
+}

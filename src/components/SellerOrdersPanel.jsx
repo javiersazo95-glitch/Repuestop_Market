@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowDownUp, Banknote, CheckCircle2, ChevronDown, Clock3, Filter, Search,
-  ShoppingBag, SlidersHorizontal, X,
+  Lock, ShoppingBag, SlidersHorizontal, X,
 } from 'lucide-react';
 import OrderCard from './OrderCard';
 import { getSellerWithdrawalDetailApi, getSellerWithdrawalsApi } from '../services/api';
@@ -84,7 +84,10 @@ function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
 }
 
-export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder, onUpdateStatus }) {
+// `readOnly` = tienda bloqueada. Los pedidos se siguen viendo (el vendedor necesita
+// saber que dejo pendiente), pero no se puede avanzar ninguno: el backend rechaza el
+// despacho en `PedidoEnvioSupport` y el boton solo produciria un error.
+export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder, onUpdateStatus, readOnly = false }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [statuses, setStatuses] = useState([]);
@@ -174,12 +177,22 @@ export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder
         {activeFilterCount > 0 && <button type="button" className="seller-orders-clear-filters" onClick={() => { setStatuses([]); setSources([]); setDateFilter('all'); }}><X size={15} /> Limpiar filtros</button>}
       </section>}
 
+      {readOnly && (
+        <div className="seller-orders-readonly-note">
+          <Lock size={16} />
+          <span>
+            <strong>Solo lectura.</strong> Mientras tu tienda esté bloqueada puedes revisar
+            tus pedidos, pero no despacharlos ni cambiarles el estado.
+          </span>
+        </div>
+      )}
+
       <div className="seller-orders-list-heading">
         <div><h3>Pedidos visibles ({visibleOrders.length})</h3><span>{activeFilterCount ? 'Filtros aplicados' : 'Todos los pedidos'}</span></div>
         <label><ArrowDownUp size={16} /><span>Ordenar</span><select value={sortBy} onChange={(event) => setSortBy(event.target.value)}><option value="newest">Más nuevos primero</option><option value="oldest">Más antiguos primero</option></select></label>
       </div>
 
-      {!orders.length ? <div className="seller-orders-empty"><span><ShoppingBag size={27} /></span><strong>Aún no hay pedidos pagados</strong><p>Cuando un comprador complete un pago, el pedido aparecerá aquí con su detalle real.</p></div> : !visibleOrders.length ? <div className="seller-orders-empty"><span><SlidersHorizontal size={27} /></span><strong>No encontramos pedidos</strong><p>Ajusta la búsqueda o limpia los filtros para volver a ver tus pedidos.</p><button type="button" onClick={clearFilters}>Limpiar filtros</button></div> : <div className="profile-orders-cards-grid seller-orders-card-grid">{visibleOrders.map((order) => <OrderCard key={order.id} order={order} mode="seller" withdrawalDate={withdrawalDatesByOrder[String(order.id)]} onSelectOrder={onSelectOrder} onUpdateStatus={onUpdateStatus} />)}</div>}
+      {!orders.length ? <div className="seller-orders-empty"><span><ShoppingBag size={27} /></span><strong>Aún no hay pedidos pagados</strong><p>Cuando un comprador complete un pago, el pedido aparecerá aquí con su detalle real.</p></div> : !visibleOrders.length ? <div className="seller-orders-empty"><span><SlidersHorizontal size={27} /></span><strong>No encontramos pedidos</strong><p>Ajusta la búsqueda o limpia los filtros para volver a ver tus pedidos.</p><button type="button" onClick={clearFilters}>Limpiar filtros</button></div> : <div className="profile-orders-cards-grid seller-orders-card-grid">{visibleOrders.map((order) => <OrderCard key={order.id} order={order} mode="seller" withdrawalDate={withdrawalDatesByOrder[String(order.id)]} onSelectOrder={onSelectOrder} onUpdateStatus={readOnly ? undefined : onUpdateStatus} />)}</div>}
     </div>
   );
 }

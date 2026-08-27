@@ -132,6 +132,14 @@ export async function fetchApi(endpoint, options = {}) {
 
   try {
     const response = await fetch(url, config);
+
+    // Respuestas binarias (PDF). `fetchApi` lee texto cuando no es JSON, y eso corrompe
+    // un binario: se devuelve el Blob antes de tocar el cuerpo. Si la respuesta no es OK
+    // se sigue de largo para que el error se parsee y se maneje como cualquier otro.
+    if (options.asBlob && response.ok) {
+      return await response.blob();
+    }
+
     const contentType = response.headers.get('content-type');
     let data = null;
 
@@ -329,6 +337,22 @@ export async function checkEmailAvailabilityApi(email) {
   const trimmed = String(email || '').trim().toLowerCase();
   return fetchApi(`/auth/check-email?email=${encodeURIComponent(trimmed)}`, {
     method: 'GET',
+  });
+}
+
+/**
+ * Estado de bloqueo de la tienda. Es la UNICA fuente de verdad que sobrevive a un
+ * refresco: `GET /users/perfil` (PerfilUsuarioDTO) no trae ningun campo de bloqueo y
+ * pisa el `user` completo al montar, asi que el `sellerBlocked` del login se pierde.
+ *
+ * Devuelve `{ sellerBlocked, blockReason }`. El backend lo marca por dos vias:
+ * `proveedor.status` en 'suspended'/'rejected', o una mediacion con
+ * `cuentaBloqueada = true` (de ahi sale el motivo).
+ */
+export async function getSellerAccountStatusApi(proveedorId, { signal } = {}) {
+  return fetchApi(`/proveedores/${proveedorId}/estado-cuenta`, {
+    method: 'GET',
+    signal,
   });
 }
 
@@ -768,10 +792,21 @@ export async function getBuyerConversationsApi(usuarioId, { signal } = {}) {
   }
 }
 
-export async function createConversationApi(proveedorId, productoId) {
+/**
+ * Sin `forceNew`, el backend REUTILIZA la conversacion ABIERTA que ya exista para ese
+ * producto (`crearOObtenerConversacion`). Eso esta bien mientras la cotizacion siga
+ * viva, pero deja al comprador atrapado cuando vencio: pedia una nueva y le devolvian
+ * el hilo viejo. La condicion la decide quien llama, que es el unico que sabe si la
+ * oferta anterior sigue vigente.
+ */
+export async function createConversationApi(proveedorId, productoId, { forceNew = false } = {}) {
   return fetchApi('/conversaciones', {
     method: 'POST',
-    body: JSON.stringify({ proveedorId: Number(proveedorId), productoId: Number(productoId) }),
+    body: JSON.stringify({
+      proveedorId: Number(proveedorId),
+      productoId: Number(productoId),
+      forceNew: Boolean(forceNew),
+    }),
   });
 }
 
@@ -1468,6 +1503,21 @@ export async function updateSellerShippingMethodsApi(proveedorId, shippingMethod
   return fetchApi(`/proveedores/${proveedorId}/shipping-methods`, {
     method: 'PUT',
     body: JSON.stringify({ shippingMethods }),
+  });
+}
+
+/**
+ * Contrato de adhesión en PDF para leerlo ANTES de aceptarlo.
+ *
+ * Lo genera el backend con el mismo generador que produce el PDF firmado, asi que el
+ * vendedor lee exactamente lo que va a aceptar. El texto del contrato vive solo alla:
+ * traerlo al cliente seria una segunda version del mismo documento legal.
+ */
+export async function getSellerAdhesionPreviewApi(proveedorId, { signal } = {}) {
+  return fetchApi(`/proveedores/${proveedorId}/adhesion/preview`, {
+    method: 'GET',
+    asBlob: true,
+    signal,
   });
 }
 

@@ -1,7 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Loader2, ShoppingBag, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Loader2, Lock, ShoppingBag, X } from 'lucide-react';
 import { useMarketplace } from '../context/MarketplaceContext';
+import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useAuth } from '../context/AuthContext';
 import { getPublicProductApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
@@ -15,6 +16,7 @@ import PurchaseShippingModal from '../components/PurchaseShippingModal';
 export default function CartPage() {
   const navigate = useNavigate();
   const nav = useAppNavigation();
+  const { isBlocked: isBlockedAccount } = useSellerBlocked();
   const { isLoggedIn } = useAuth();
   const {
     cartItems, cartCount, cartTotals, cartError, dismissCartError,
@@ -93,6 +95,30 @@ export default function CartPage() {
     }
     navigate(ROUTES.checkout);
   };
+
+  // Cuenta bloqueada: el backend responde 403 a todo el lado comprador, asi que la
+  // compra no puede completarse. Se dice por que, en vez de dejar que falle sola.
+  if (isBlockedAccount) {
+    return (
+      <main className="cart-page">
+        <div className="cart-page-shell">
+          <div className="cart-empty">
+            <Lock size={40} strokeWidth={1.4} />
+            <h1>Tu cuenta está bloqueada</h1>
+            <p>
+              Mientras se revisa tu caso no puedes comprar en RepuesTop. Puedes enviar una
+              solicitud de revisión desde tu perfil.
+            </p>
+            <div className="cart-empty-actions">
+              <button type="button" className="cart-empty-primary" onClick={() => nav.goProfile('resumen')}>
+                Ir a mi perfil
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   if (cartItems.length === 0) {
     return (

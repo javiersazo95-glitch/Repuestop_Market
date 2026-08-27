@@ -836,7 +836,17 @@ input, select, textarea {
 .profile-dashboard .profile-hero-tags { display: flex; gap: 8px; }
 .profile-dashboard .tag-contrast { color: #9af4bb !important; background: rgba(4, 90, 43, .55) !important; border-color: rgba(74, 222, 128, .55) !important; }
 .profile-dashboard .founder-tag-contrast { color: #ffd264 !important; background: rgba(42, 28, 4, .68) !important; border-color: rgba(250, 204, 21, .6) !important; }
-.profile-dashboard .store-status-chip { color: #9af4bb; }
+/* El chip vive sobre la foto de portada, asi que necesita fondo propio oscuro. Antes
+   solo se pisaba el `color` a verde palido y quedaba encima del degradado CLARO de
+   `.chip-approved`: verde palido sobre casi blanco, ilegible. Cada estado lleva su
+   par color/fondo, en la misma familia translucida que `.tag-contrast`. */
+.profile-dashboard .store-status-chip { border: 1px solid transparent; backdrop-filter: blur(2px); }
+.profile-dashboard .store-status-chip.chip-approved { color: #9af4bb; background: rgba(4, 90, 43, .62); border-color: rgba(74, 222, 128, .55); box-shadow: none; }
+.profile-dashboard .store-status-chip.chip-approved svg { color: #9af4bb; }
+.profile-dashboard .store-status-chip.chip-pending { color: #ffd264; background: rgba(74, 47, 4, .62); border-color: rgba(250, 204, 21, .5); }
+.profile-dashboard .store-status-chip.chip-rejected { color: #ffc2bb; background: rgba(94, 18, 12, .62); border-color: rgba(248, 113, 113, .5); }
+.profile-dashboard .store-status-chip.chip-rejected svg { color: #ffc2bb; }
+.profile-dashboard .store-status-chip.chip-pending svg { color: #ffd264; }
 
 .profile-dashboard .btn-withdraw-money-hero,
 .profile-dashboard .btn-hero-cta {
@@ -4686,6 +4696,10 @@ input, select, textarea {
 .seller-orders-chip-group button.active { color: #0759ae; border-color: #69a6dc; background: #e8f4ff; box-shadow: inset 0 0 0 1px rgba(7,89,174,.08); }
 .seller-orders-chip-group button.quote.active { color: #6544c4; border-color: #a993e7; background: #f1edff; }
 .seller-orders-clear-filters { grid-column: 1 / -1; width: fit-content; display: flex; align-items: center; gap: 5px; padding: 5px 0; border: 0; color: #0871c9; background: transparent; font-size: 10.5px; font-weight: 800; cursor: pointer; }
+.seller-orders-readonly-note { display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px; margin-bottom: 14px; border: 1px solid #fcd34d; background: #fffbeb; border-radius: 10px; color: #92400e; font-size: 13px; line-height: 1.45; }
+.seller-orders-readonly-note svg { flex-shrink: 0; margin-top: 1px; }
+.seller-orders-readonly-note strong { font-weight: 800; }
+
 .seller-orders-list-heading { min-height: 43px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border-bottom: 1px solid #e4eaf0; }
 .seller-orders-list-heading > div { display: grid; gap: 2px; }
 .seller-orders-list-heading h3 { margin: 0; color: #243448; font-size: 13px; }
@@ -14614,3 +14628,150 @@ input, select, textarea {
 .google-account-card strong { display: block; font-size: 15px; font-weight: 700; color: #0f172a; }
 .google-account-card span { font-size: 13px; color: #64748b; word-break: break-all; }
 .google-signup-note { margin-bottom: 14px; font-size: 12.5px; line-height: 18px; color: #64748b; }
+
+/* ============================================================
+   VERIFICACION COMERCIAL Y ADHESION DEL VENDEDOR (A7 / A12)
+   Estado real desde GET /proveedores/{id}/verificacion. Reutiliza los campos y el
+   adjunto de `.order-subdialog-*` para no estrenar una tercera familia de formulario.
+   ============================================================ */
+.verification-body { display: flex; flex-direction: column; gap: 14px; }
+.verification-loading { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; }
+
+.verification-status { display: flex; align-items: flex-start; gap: 11px; padding: 13px 15px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); background: var(--bg-page); }
+.verification-status > div { display: flex; flex-direction: column; gap: 2px; }
+.verification-status strong { font-size: 14px; font-weight: 800; color: var(--text-primary); }
+.verification-status span { font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; }
+.verification-status--approved { border-color: #8dd9ad; background: #f2fdf7; }
+.verification-status--approved > svg { color: #079455; }
+.verification-status--pending { border-color: #f3c85c; background: #fffaf0; }
+.verification-status--pending > svg { color: #b45309; }
+.verification-status--rejected { border-color: #fecaca; background: #fff5f5; }
+.verification-status--rejected > svg { color: #b8261a; }
+.verification-status--correction { border-color: #f3c85c; background: #fffaf0; }
+.verification-status--correction > svg { color: #b45309; }
+.verification-status--none > svg { color: var(--text-muted); }
+
+.verification-notes { padding: 11px 14px; border-left: 3px solid #f3c85c; background: #fffaf0; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.verification-notes-label { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px; }
+.verification-notes p { margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.45; }
+
+.verification-success { display: flex; align-items: center; gap: 7px; margin: 0; color: #15803d; font-size: 12.5px; font-weight: 600; }
+
+.verification-doc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.verification-doc-list li { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-size: 12.5px; color: var(--text-primary); }
+.verification-doc-list li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.verification-doc-list li small { flex-shrink: 0; font-size: 11px; color: var(--text-muted); }
+.verification-doc-list .doc-ok { color: #079455; flex-shrink: 0; }
+.verification-doc-list .doc-missing { color: var(--text-muted); flex-shrink: 0; }
+
+.verification-cta { width: auto; align-self: flex-start; min-height: 0; padding: 10px 18px; }
+.verification-form { display: flex; flex-direction: column; gap: 13px; padding: 15px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-page); }
+.verification-form .order-subdialog-filedrop { background: var(--bg-white); }
+
+.verification-adhesion { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 15px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+.verification-adhesion > div { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.verification-adhesion > div > svg { color: var(--color-brand-blue); flex-shrink: 0; }
+.verification-adhesion > div > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.verification-adhesion strong { font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
+.verification-adhesion span { font-size: 12px; color: var(--text-muted); }
+.verification-adhesion .btn-auth-secondary { width: auto; min-height: 0; padding: 9px 15px; flex-shrink: 0; }
+
+@media (max-width: 640px) {
+  .verification-adhesion { flex-direction: column; align-items: stretch; }
+  .verification-adhesion .btn-auth-secondary { width: 100%; }
+}
+
+/* El detalle del ticket y la solicitud de revision de cuenta usan la caja del modal de
+   pedido, mas angostas: son un hilo y un formulario corto, no una ficha con columnas. */
+.chat-image-preview { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 8px; border-radius: 8px; background: #f1f5f9; }
+.chat-image-preview > img { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1; flex-shrink: 0; }
+.chat-image-preview > div { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.chat-image-preview > div > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #334155; font-size: 12px; font-weight: 600; }
+.chat-image-preview > div > small { color: #64748b; font-size: 11px; }
+/* `padding: 0` y `background: transparent` NO son decorativos: `.quote-ws-composer button`
+   y `.dispute-composer button` definen un boton azul con `padding: 9px 16px`, y sobre 26px
+   de ancho ese padding heredado aplasta el icono hasta hacerlo invisible. */
+.chat-image-preview > button { flex-shrink: 0; width: 26px; height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: #ef4444; cursor: pointer; }
+.chat-image-preview > button:hover { background: #fee2e2; }
+
+.store-unavailable-panel { max-width: 520px; margin: 64px auto; padding: 32px 28px; text-align: center; background: var(--surface-card, #ffffff); border: 1px solid #e4eaf0; border-radius: 14px; }
+.store-unavailable-panel h2 { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: var(--text-primary); margin: 14px 0 8px; }
+.store-unavailable-panel p { font-size: 14px; line-height: 1.55; color: var(--text-secondary, #64748b); margin: 0 0 20px; }
+.store-unavailable-icon { display: inline-flex; align-items: center; justify-content: center; width: 62px; height: 62px; border-radius: 50%; background: #f1f5f9; color: #64748b; }
+.store-unavailable-loading { margin: 0; }
+
+/* Un contrato se lee: el visor de PDF del navegador gasta ancho en su barra y en las
+   miniaturas, asi que con la caja estandar de 760px el texto quedaba ilegible. Este
+   dialogo ocupa casi toda la ventana y el visor toma la altura sobrante. */
+.legal-doc-modal { max-width: none; width: min(1180px, 96vw); height: 92vh; max-height: 92vh; display: flex; flex-direction: column; }
+.legal-doc-viewer { flex: 1; min-height: 0; width: 100%; border: 0; background: #f1f5f9; }
+.legal-doc-fallback { padding: 28px; text-align: center; color: #64748b; font-size: 13.5px; }
+.legal-doc-text { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 28px; color: #334155; font-size: 13.5px; line-height: 1.6; }
+.legal-doc-text p { margin: 0 0 12px; }
+.legal-doc-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border-subtle, #e4eaf0); background: #fbfcfe; }
+/* Enlaces a los documentos legales bajo el contrato: es una fila de texto, no botones. */
+.verification-legal-links { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; color: #64748b; font-size: 12.5px; }
+.verification-legal-links svg { flex-shrink: 0; }
+.verification-legal-links .link-btn { color: var(--color-brand-blue, #0066ff); font-size: 12.5px; font-weight: 700; text-decoration: underline; }
+
+.blocked-review-modal { max-width: 520px; }
+/* El badge del header se pintaba con `style={{ backgroundColor }}` inline y salia azul
+   igual: `.order-modal-icon-badge` define `background: linear-gradient(...)`, o sea un
+   background-IMAGE, y el color inline queda pintado por debajo del gradiente. Para
+   cambiarlo hay que pisar la propiedad corta, no el color. */
+.blocked-review-modal .order-modal-icon-badge { background: #fee2e2; color: #dc2626; box-shadow: 0 8px 18px rgba(220, 38, 38, .18); }
+/* El header general va de azul a lila; en un dialogo de moderacion desentona. */
+.blocked-review-modal .order-modal-header { background: linear-gradient(120deg, #fef2f2 0%, #fff8f8 55%, #ffffff 100%); border-bottom-color: #fecaca; }
+.blocked-review-reason { display: grid; gap: 3px; padding: 12px 14px; border-radius: 8px; background: #fff7ed; border: 1px solid #fed7aa; font-size: 13px; color: #7c2d12; }
+.blocked-review-reason strong { font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .3px; color: #9a3412; }
+/* Dentro del header del modal, el bloque de titulo apila h2 y subtitulo. */
+.order-modal-title-group .order-subdialog-heading h2 { font-family: var(--font-display); font-size: 17px; font-weight: 800; color: var(--text-primary); }
+
+/* El nombre del producto en la bandeja de preguntas lleva a su ficha. Se ve como el
+   titulo que ya era -no como un enlace azul subrayado- y solo se subraya al pasar
+   por encima, para no gritar dentro de una cabecera que ya tiene foto, SKU y contador. */
+.seller-question-product-group > header h3 a { color: inherit; text-decoration: none; }
+.seller-question-product-group > header h3 a:hover { color: var(--color-brand-blue); text-decoration: underline; }
+
+/* Producto con la publicacion pausada. `.is-paused-card` estaba en el JSX desde que se
+   agrego pausar/retomar, pero sin ninguna regla detras: la tarjeta se veia identica a
+   una activa y el unico indicio era la etiqueta "Pausado". En una grilla de doce, eso
+   se pierde. Se atenua la tarjeta entera para que el estado se lea de un vistazo, sin
+   tocar los botones, que tienen que seguir usables para poder reanudar. */
+.catalog-card-container.is-paused-card { background: #fbfcfe; border-color: #dfe6ef; box-shadow: none; }
+.catalog-card-container.is-paused-card .catalog-image-stage { filter: grayscale(85%); opacity: .6; }
+.catalog-card-container.is-paused-card .catalog-card-heading,
+.catalog-card-container.is-paused-card .catalog-price-group,
+.catalog-card-container.is-paused-card .product-meta { opacity: .65; }
+.catalog-card-container.is-paused-card:hover .catalog-product-image { transform: none; }
+
+/* La tarjeta de un favorito ahora es un enlace al producto: hereda color y quita el
+   subrayado para que siga leyendose como tarjeta y no como texto de enlace. */
+.profile-product-card.is-clickable { display: block; color: inherit; text-decoration: none; cursor: pointer; }
+.profile-product-card.is-clickable:hover h4 { color: var(--color-brand-blue); }
+
+/* Cabecera del producto en "Mis preguntas" del comprador: miniatura + nombre que lleva
+   a la ficha. La pregunta se hace para decidir una compra, asi que tiene que haber
+   camino de vuelta al repuesto. */
+.buyer-question-product { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
+.buyer-question-product img { width: 42px; height: 42px; flex-shrink: 0; border: 1px solid var(--border-subtle); border-radius: 8px; object-fit: contain; background: var(--bg-white); }
+.buyer-question-product h4 { margin: 0; min-width: 0; font-size: 14.5px; color: #1e293b; }
+.buyer-question-product h4 a { color: inherit; text-decoration: none; }
+.buyer-question-product h4 a:hover { color: var(--color-brand-blue); text-decoration: underline; }
+
+/* Imagen del chat: la miniatura abre el visor. El vendedor necesita mirar la pieza en
+   detalle y a veces guardarse la foto, no conformarse con la burbuja. */
+/* La miniatura mantiene el tope que tenia `.quote-ws-bubble > img`: al envolver la
+   imagen en el boton dejo de ser hijo directo y ese selector con ">" dejo de aplicar,
+   con lo que una foto vertical ocupaba el chat entero. */
+.quote-ws-image-open { position: relative; display: block; width: fit-content; padding: 0; margin-bottom: 7px; border: 0; background: none; cursor: zoom-in; line-height: 0; }
+.quote-ws-image-open > img { display: block; max-width: 230px; max-height: 150px; border-radius: 8px; object-fit: cover; }
+.quote-ws-image-open > span { position: absolute; right: 6px; bottom: 6px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; background: rgba(15, 23, 42, .62); color: #fff; opacity: 0; transition: opacity .15s ease; }
+.quote-ws-image-open:hover > span { opacity: 1; }
+
+.quote-ws-image-viewer { display: grid; place-items: center; padding: 24px; }
+.quote-ws-image-viewer-body { display: flex; flex-direction: column; gap: 10px; max-width: min(920px, 100%); max-height: 100%; }
+.quote-ws-image-viewer-body header { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.quote-ws-image-viewer-body header a { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-sm); background: var(--bg-white); color: var(--text-primary); font-size: 13px; font-weight: 700; text-decoration: none; }
+.quote-ws-image-viewer-body header button { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--bg-white); color: var(--text-primary); cursor: pointer; }
+.quote-ws-image-viewer-body img { min-height: 0; max-width: 100%; max-height: calc(100dvh - 130px); object-fit: contain; border-radius: var(--radius-md); background: var(--bg-white); }
