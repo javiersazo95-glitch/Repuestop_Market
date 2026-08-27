@@ -27,6 +27,8 @@ export type SellerRegistrationPayload = {
   direccion: DireccionPayload;
   hours?: string;
   shippingMethods?: string;
+  referral?: string;
+  referralChannel?: 'CASA_REPUESTOS';
   acceptsTerms: boolean;
   /** Le dice al backend que esta tienda se postuló desde la web, para enrutar bien el correo de resultado de verificación. */
   origin: 'SITIO_WEB';
@@ -113,6 +115,10 @@ export function registerSeller(payload: SellerRegistrationPayload): Promise<Regi
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+}
+
+export function validateReferral(value: string): Promise<{ valido: boolean; codigo?: string; captadorAlias?: string }> {
+  return request(`/referrals/validate?value=${encodeURIComponent(value)}`);
 }
 
 export function verifyRegistrationCode(email: string, code: string): Promise<RegistrationResponse> {

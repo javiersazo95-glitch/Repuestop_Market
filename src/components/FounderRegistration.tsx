@@ -14,7 +14,7 @@ import {
   RotateCcw, Search, KeyRound, AlertTriangle, Mail,
 } from 'lucide-react';
 import {
-  registerSeller, verifyRegistrationCode, resendRegistrationCode,
+  registerSeller, validateReferral, verifyRegistrationCode, resendRegistrationCode,
   fetchPaises, fetchRegiones, fetchComunas,
   uploadVerificacion, renderGoogleButton, renderGoogleResumeButton, googleEnabled,
   isPendingVerification, ApiError,
@@ -69,6 +69,7 @@ type FormState = {
   responsibleName: string; cargo: string; email: string; phone: string; password: string;
   storeName: string; taxId: string; giro: string; giroOtro: string;
   regionId: string; comunaId: string; address: string; codigoPostal: string;
+  referral: string;
   acceptsTerms: boolean;
 };
 
@@ -76,6 +77,7 @@ const EMPTY_FORM: FormState = {
   responsibleName: '', cargo: '', email: '', phone: '', password: '',
   storeName: '', taxId: '', giro: '', giroOtro: '',
   regionId: '', comunaId: '', address: '', codigoPostal: '',
+  referral: '',
   acceptsTerms: false,
 };
 
@@ -330,6 +332,16 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
     if (!validate()) return;
     setSubmitting(true);
     try {
+      const referral = form.referral.trim().toUpperCase();
+      if (referral) {
+        try {
+          const result = await validateReferral(referral);
+          if (!result.valido) throw new Error('El código no pertenece a un captador aprobado.');
+        } catch (error: any) {
+          setErrors((current) => ({ ...current, referral: error?.message || 'Código de referido inválido.' }));
+          return;
+        }
+      }
       const payload: SellerRegistrationPayload = {
         responsibleName: form.responsibleName.trim(),
         cargo: form.cargo.trim(),
@@ -348,6 +360,8 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
         acceptsTerms: true,
         termsVersion: LEGAL_VERSION_CODE,
         origin: 'SITIO_WEB',
+        referral: referral || undefined,
+        referralChannel: referral ? 'CASA_REPUESTOS' : undefined,
       };
       if (authProvider === 'GOOGLE' && google) {
         payload.idToken = google.idToken;
@@ -736,6 +750,12 @@ function RegistrationForm(p: RegFormProps) {
         <Field label="Código postal" hint="Opcional">
           <input value={form.codigoPostal} placeholder="Opcional"
             onChange={(e) => update('codigoPostal', e.target.value)} />
+        </Field>
+
+        <Field label="Código de referido" hint="Opcional" error={errors.referral} className="founder-reg-col-full">
+          <input value={form.referral} placeholder="Ej: RT-CAPTADOR-00001" maxLength={40}
+            autoCapitalize="characters" autoComplete="off"
+            onChange={(e) => update('referral', e.target.value.toUpperCase())} />
         </Field>
       </div>
 
