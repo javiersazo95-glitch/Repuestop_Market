@@ -105,6 +105,7 @@ export default function AutomotiveServiceAccreditation({ user }) {
     try {
       const saved = await submitAutomotiveServiceAccreditationApi({
         ...form,
+        referido: form.referido.trim().toUpperCase(),
         rutNegocio: formatRut(form.rutNegocio),
         regionId: Number(form.regionId),
         comunaId: Number(form.comunaId),
@@ -243,12 +244,14 @@ export default function AutomotiveServiceAccreditation({ user }) {
           </div>
 
           <div className="form-group">
-            <label>Código o enlace referido (opcional)</label>
+            <label>Código de referido (opcional)</label>
             <input
               type="text"
               value={form.referido}
-              onChange={(e) => handleChange('referido', e.target.value)}
-              placeholder="Código de quien te invitó"
+              onChange={(e) => handleChange('referido', e.target.value.toUpperCase())}
+              placeholder="Ej: RT-CAPTADOR-00001"
+              maxLength={40}
+              autoComplete="off"
             />
           </div>
 
