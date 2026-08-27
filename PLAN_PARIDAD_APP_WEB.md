@@ -348,13 +348,13 @@ Para certificar que el plan quedó ejecutado al 100% y sin regresiones, se debe 
 ---
 
 ### Módulo 4: Catálogo y Herramientas del Vendedor (Fase 4)
-- [ ] **TC-12 — Calculadora Inversa y Desglose de Comisiones (A22)**:
+- [x] **TC-12 — Calculadora Inversa y Desglose de Comisiones (A22)**:
   1. En la pestaña de catálogo del vendedor, pulsar "Agregar producto" o editar uno existente.
   2. En el bloque de precio, interactuar con la tarjeta `CommissionSummaryCard`:
      - Pestaña **Desglose por Precio**: cambiar el precio de venta y comprobar el cálculo de retención RepuesTop, pasarela Flow con IVA y monto a recibir.
      - Pestaña **Calculadora Inversa**: ingresar cuánto se desea recibir líquido (ej. $50.000) y verificar el cálculo automático del precio sugerido.
      - Presionar **"Fijar Precio"** y validar que el valor sugerido se traslada al input principal de precio.
-- [ ] **TC-13 — Fotos Existentes al Editar Productos (A23)**:
+- [x] **TC-13 — Fotos Existentes al Editar Productos (A23)**:
   1. Editar un producto que ya tenga imágenes cargadas.
   2. Validar que las fotos aparecen en miniaturas con el contador exacto (ej. "2/4 fotos").
   3. Eliminar una foto existente con el botón "X" y agregar una foto nueva.
@@ -577,6 +577,12 @@ y firma del contrato de adhesión persistido.
 - Campana `ProfileNotificationsBell` incluye cierre automático por clic exterior (Click Outside) y cambio de ruta (`useLocation`), además de borrado de leídas (`DELETE /usuarios/{id}/notificaciones/leidas`).
 - Sumado a `?pedido=` (`OrderDetailModal`) y `?ticket=` (`SupportTicketDetailModal`).
 
+**TC-12 / TC-13 / A22 / A23 (Catálogo 1:1, cálculo inverso, fotos y múltiples compatibilidades) cerrados el 2026-08-27.** Probados de punta a punta:
+- Creación y edición de repuestos con persistencia y eliminación selectiva de fotos.
+- Calculadora de comisiones con cálculo inverso y tasa fija de 5% para vendedores fundadores.
+- Edición y serialización de múltiples compatibilidades con marcas, modelos y versiones asociadas.
+- Visualización de la tarjeta de compatibilidades para el comprador en `ProductDetailPage` con chips exactos de versiones seleccionadas.
+
 **A16 sigue sin cablear** y es diferido (búsqueda por catálogo de vehículo).
 
-El detalle de lo que se arreglo esta en `HANDOFF_PROXIMO_AGENTE.md` seccion 4.24.
+El detalle de lo que se arreglo esta en `HANDOFF_PROXIMO_AGENTE.md` seccion 4.24 y 4.25.
