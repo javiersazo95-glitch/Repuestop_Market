@@ -51,8 +51,9 @@ export default function ProductPage() {
     queryKey: qk.product(productId),
     queryFn: ({ signal }) => fetchProductById(productId, signal),
     initialData,
+    initialDataUpdatedAt: 0,
     enabled: Boolean(productId),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 1000,
   });
 
   useDocumentTitle(product?.titulo || 'Repuesto');

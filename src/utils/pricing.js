@@ -1,3 +1,4 @@
+export const MAX_CATALOG_PRICE = 99999999;
 export const FLOW_RATE_BASE = 0.0289;
 export const FLOW_IVA = 0.19;
 export const FLOW_RATE_WITH_IVA = FLOW_RATE_BASE * (1 + FLOW_IVA);
@@ -5,7 +6,8 @@ export const FOUNDER_APP_RATE = 0.05;
 export const COMMISSION_IVA_INCLUDED = true;
 
 export function pricingFeeBreakdown(basePrice, isFounder = false) {
-  const price = Number(basePrice) || 0;
+  const rawPrice = Number(basePrice) || 0;
+  const price = Math.min(Math.max(0, rawPrice), MAX_CATALOG_PRICE);
   if (price <= 0) {
     return {
       rate: isFounder ? FOUNDER_APP_RATE : 0.10,
@@ -55,13 +57,13 @@ export function serviceFeeAmount(basePrice, isFounder = false) {
 }
 
 export function calculateSellerEarnings(basePrice, isFounder = false) {
-  const price = Number(basePrice) || 0;
+  const price = Math.min(Math.max(0, Number(basePrice) || 0), MAX_CATALOG_PRICE);
   if (price <= 0) return 0;
   return Math.max(0, price - serviceFeeAmount(price, isFounder));
 }
 
 export function calculateSimplePricingSummary(basePrice, isFounder = false) {
-  const price = Number(basePrice) || 0;
+  const price = Math.min(Math.max(0, Number(basePrice) || 0), MAX_CATALOG_PRICE);
   const breakdown = pricingFeeBreakdown(price, isFounder);
   const totalFees = breakdown.repuestopWithIva + breakdown.flowWithIva;
   const netEarnings = Math.max(0, price - totalFees);
@@ -73,15 +75,18 @@ export function calculateSimplePricingSummary(basePrice, isFounder = false) {
 }
 
 export function calculateSuggestedPrice(desiredAmount, isFounder = false) {
-  const target = Number(desiredAmount) || 0;
+  const target = Math.min(Math.max(0, Number(desiredAmount) || 0), MAX_CATALOG_PRICE);
   if (target <= 0) return 0;
   let low = target;
-  let high = Math.ceil(target / 0.8);
-  while (calculateSellerEarnings(high, isFounder) < target) high *= 2;
+  let high = Math.min(Math.ceil(target / 0.8), MAX_CATALOG_PRICE);
+  while (calculateSellerEarnings(high, isFounder) < target && high < MAX_CATALOG_PRICE) {
+    high = Math.min(high * 2, MAX_CATALOG_PRICE);
+    if (high >= MAX_CATALOG_PRICE) break;
+  }
   while (low < high) {
     const middle = Math.floor((low + high) / 2);
     if (calculateSellerEarnings(middle, isFounder) >= target) high = middle;
     else low = middle + 1;
   }
-  return low;
+  return Math.min(low, MAX_CATALOG_PRICE);
 }

@@ -1570,3 +1570,21 @@ curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:8080/api/v1/tiendas/<
    - Cierre automático ante eventos de navegación / cambio de ruta (`useLocation`).
    - Cierre automático al hacer clic fuera del componente (listener de `mousedown`/`touchstart`).
    - Soporte para eliminación masiva de notificaciones leídas (`DELETE /usuarios/{id}/notificaciones/leidas`).
+
+### 4.25 Sesión 2026-08-27 — Paridad de Catálogo 1:1, Límites de Entrada y Múltiples Compatibilidades con Versiones
+
+1. **Paridad de Comisión Fundador (5%) en Catálogo y Cotizaciones**:
+   - Se inyectó `isSellerFounder = Boolean(storeInfo?.founder ?? user?.founder ?? user?.fundador)` desde `ProfileDashboard.jsx` hacia `NewCatalogProductModal.jsx` y `QuoteDetailModal.jsx`.
+   - `CommissionSummaryCard.jsx` despliega el banner distintivo amarillo para vendedores fundadores: *"Beneficio Fundador: comisión RepuesTop fija de 5%, sin importar el monto."* y calcula tarifas con la tasa de 5% fija en lugar de la escala estándar (10%/7%/5%).
+2. **Límites de Caracteres y Prevención de Desbordamiento**:
+   - Se definió `MAX_CATALOG_PRICE = 99999999` (máximo $99.999.999 / 8 dígitos) en `src/utils/pricing.js`, evitando loops infinitos o congelamiento del navegador en la calculadora inversa (`calculateSuggestedPrice`).
+   - En `CommissionSummaryCard.jsx`, `NewCatalogProductModal.jsx` y `QuoteDetailModal.jsx` se aplicó `maxLength` y truncamiento estricto de 8 dígitos a todos los campos numéricos de precio, descuento y envío, y límites de texto en SKU (30), Marca repuesto (80), Motor (40), OEM (40), Búsqueda de categorías/versiones (80) y Descripción (1000).
+3. **Carga y Edición de Múltiples Compatibilidades en Catálogo**:
+   - `parseCompatibilitiesFromProduct(product)` en `NewCatalogProductModal.jsx` extrae todas las compatibilidades de `compatibilityGroupsJson` (o `compatibilityGroups`/`compatibilidad`), mapea sus `brandId` y precarga reactivamente los modelos de vehículos para cada entrada (`getVehicleModelsApi`).
+   - Al guardar, serializa todos los grupos con sus campos `marca`, `modelo`, `anioDesde`, `anioHasta`, `motor`, `referenciaOem`, `version`, `versionLabels` y `vehiculoCatalogoIds`.
+4. **Modal de Compatibilidades del Producto (`ProductDetailPage.jsx`)**:
+   - Rediseño de la tarjeta (`article` con `display: flex; flex-direction: column`): eliminación del cuadro verde con icono de auto, cabecera limpia con título y badge del vendedor, y grid uniforme de 5 campos (Marca, Modelo, Año, Motor y Ref. OEM en cajas estilizadas).
+   - Resolución exacta 1:1 de versiones seleccionadas por ID (`itemCatalogIds.map(id => ...)`): previene duplicados entre nombres cortos y largos, y muestra los chips reales elegidos por el vendedor (`GL CVT - 1.800 - Automática`, etc.) sin caer falsamente en *"Compatible con todas las versiones"*.
+5. **Invalidación de Caché Inmediata en Edición de Producto**:
+   - `handleCatalogProductSaved` en `ProfileDashboard.jsx` ahora invalida y remueve explícitamente `qk.product(pid)`, `compatVersionsForProduct` y `vehicleCatalogDetails`.
+   - `ProductPage.jsx` fue configurado con `initialDataUpdatedAt: 0` y `staleTime: 10000`, garantizando que cualquier compatibilidad nueva agregada por el vendedor se refleje de inmediato en la ficha pública del repuesto.

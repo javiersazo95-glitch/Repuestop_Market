@@ -19,6 +19,88 @@ const CURRENT_YEAR = new Date().getFullYear() + 2;
 const YEARS = Array.from({ length: CURRENT_YEAR - 1990 + 1 }, (_, index) => CURRENT_YEAR - index);
 
 const emptyCompatibility = () => ({ brandId: '', brand: '', model: '', yearFrom: '', yearTo: '', motor: '', oem: '', vehicleCatalogIds: [] });
+
+function parseCompatibilitiesFromProduct(product) {
+  if (!product) return [emptyCompatibility()];
+
+  if (product.compatibilityGroupsJson) {
+    try {
+      const groups = typeof product.compatibilityGroupsJson === 'string'
+        ? JSON.parse(product.compatibilityGroupsJson)
+        : product.compatibilityGroupsJson;
+      if (Array.isArray(groups) && groups.length > 0) {
+        return groups.map((g) => ({
+          ...emptyCompatibility(),
+          brandId: g.brandId ? String(g.brandId) : '',
+          brand: g.marca || g.brand || '',
+          model: g.modelo || g.model || '',
+          yearFrom: g.anioDesde != null ? String(g.anioDesde) : g.yearFrom != null ? String(g.yearFrom) : '',
+          yearTo: g.anioHasta != null ? String(g.anioHasta) : g.yearTo != null ? String(g.yearTo) : '',
+          motor: g.motor || g.engine || '',
+          oem: g.referenciaOem || g.oem || g.oemReference || '',
+          vehicleCatalogIds: Array.isArray(g.vehiculoCatalogoIds)
+            ? g.vehiculoCatalogoIds.map(String)
+            : Array.isArray(g.vehicleCatalogIds)
+              ? g.vehicleCatalogIds.map(String)
+              : [],
+        }));
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  if (Array.isArray(product.compatibilityGroups) && product.compatibilityGroups.length > 0) {
+    return product.compatibilityGroups.map((g) => ({
+      ...emptyCompatibility(),
+      brandId: g.brandId ? String(g.brandId) : '',
+      brand: g.marca || g.brand || '',
+      model: g.modelo || g.model || '',
+      yearFrom: g.anioDesde != null ? String(g.anioDesde) : g.yearFrom != null ? String(g.yearFrom) : '',
+      yearTo: g.anioHasta != null ? String(g.anioHasta) : g.yearTo != null ? String(g.yearTo) : '',
+      motor: g.motor || g.engine || '',
+      oem: g.referenciaOem || g.oem || g.oemReference || '',
+      vehicleCatalogIds: Array.isArray(g.vehiculoCatalogoIds)
+        ? g.vehiculoCatalogoIds.map(String)
+        : Array.isArray(g.vehicleCatalogIds)
+          ? g.vehicleCatalogIds.map(String)
+          : [],
+    }));
+  }
+
+  if (Array.isArray(product.compatibilidad) && product.compatibilidad.length > 0) {
+    return product.compatibilidad.map((c) => ({
+      ...emptyCompatibility(),
+      brand: c.marca || c.brand || '',
+      model: c.modelo || c.model || '',
+      yearFrom: c.anioInicio != null ? String(c.anioInicio) : c.anioDesde != null ? String(c.anioDesde) : '',
+      yearTo: c.anioFin != null ? String(c.anioFin) : c.anioHasta != null ? String(c.anioHasta) : '',
+      motor: c.motor || '',
+      oem: product.referenciaOem || product.oemCode || '',
+      vehicleCatalogIds: Array.isArray(c.vehiculoCatalogoIds)
+        ? c.vehiculoCatalogoIds.map(String)
+        : Array.isArray(c.vehicleCatalogIds)
+          ? c.vehicleCatalogIds.map(String)
+          : [],
+    }));
+  }
+
+  if (product.compatibilidadMarca || product.compatibilidadModelo) {
+    return [{
+      ...emptyCompatibility(),
+      brand: product.compatibilidadMarca || '',
+      model: product.compatibilidadModelo || '',
+      yearFrom: product.anioDesde != null ? String(product.anioDesde) : '',
+      yearTo: product.anioHasta != null ? String(product.anioHasta) : '',
+      motor: product.motor || '',
+      oem: product.referenciaOem || '',
+      vehicleCatalogIds: (product.vehiculoCatalogoIds || []).map(String),
+    }];
+  }
+
+  return [emptyCompatibility()];
+}
+
 const initialForm = (product = null) => ({
   name: product?.nombrePublicado || product?.repuestoNombre || product?.nombre || '',
   sku: product?.skuProveedor || product?.sku || product?.codigoSKU || '',
@@ -26,9 +108,12 @@ const initialForm = (product = null) => ({
   subcategory: product?.subcategoria || '',
   partBrand: product?.marcaRepuesto || product?.marca || product?.productBrand || '',
   pricingMode: product?.pricingMode || 'SHOW_PRICE',
-  price: product?.precio ?? '', stock: product?.stock ?? '1', requiresChassis: Boolean(product?.requiereChasis),
-  condition: product?.condicion || 'ORIGINAL', description: product?.descripcion || '',
-  compatibilities: [{ ...emptyCompatibility(), brand: product?.compatibilidadMarca || '', model: product?.compatibilidadModelo || '', yearFrom: product?.anioDesde ? String(product.anioDesde) : '', yearTo: product?.anioHasta ? String(product.anioHasta) : '', motor: product?.motor || '', oem: product?.referenciaOem || '', vehicleCatalogIds: (product?.vehiculoCatalogoIds || []).map(String) }],
+  price: product?.precio ?? '',
+  stock: product?.stock ?? '1',
+  requiresChassis: Boolean(product?.requiereChasis),
+  condition: product?.condicion || 'ORIGINAL',
+  description: product?.descripcion || '',
+  compatibilities: parseCompatibilitiesFromProduct(product),
 });
 
 function CatalogField({ label, optional, children }) {
@@ -54,7 +139,7 @@ function SearchableDropdown({ value, options, placeholder, onChange, disabled = 
       <span className={selected || value ? '' : 'catalog-search-select-placeholder'}>{selected?.label || value || placeholder}</span><ChevronDown size={16} />
     </button>
     {open && <div className="catalog-search-select-menu">
-      <div className="catalog-search-select-search"><Search size={15} /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar..." /></div>
+      <div className="catalog-search-select-search"><Search size={15} /><input autoFocus value={query} maxLength={80} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar..." /></div>
       <div className="catalog-search-select-options">
         {filtered.map((option) => <button type="button" key={option.value} className={String(option.value) === String(value) ? 'selected' : ''} onClick={() => { onChange(option.value); setOpen(false); }}><span>{option.label}</span>{String(option.value) === String(value) && <Check size={15} />}</button>)}
         {allowCustom && query.trim() && !options.some((option) => option.label.toLocaleLowerCase('es') === normalizedQuery) && <button type="button" className="catalog-search-select-custom" onClick={() => { onChange(query.trim()); setOpen(false); }}><span>Usar “{query.trim()}”</span><Plus size={15} /></button>}
@@ -65,7 +150,7 @@ function SearchableDropdown({ value, options, placeholder, onChange, disabled = 
   </div>;
 }
 
-export default function NewCatalogProductModal({ sellerId, product = null, onClose, onCreated }) {
+export default function NewCatalogProductModal({ sellerId, product = null, onClose, onCreated, isFounder = false }) {
   const [form, setForm] = useState(() => initialForm(product));
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
@@ -100,13 +185,22 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
             if (Array.isArray(filteredBrands)) setPartBrands(filteredBrands);
           }
         }
-        setForm((previous) => ({ ...previous, compatibilities: previous.compatibilities.map((item) => ({ ...item, brandId: vehicleBrandItems.find((brand) => brand.nombre === item.brand)?.id ? String(vehicleBrandItems.find((brand) => brand.nombre === item.brand).id) : item.brandId })) }));
       })
       .catch(() => setError('No se pudieron cargar todos los catálogos. Puedes completar los datos manualmente.'));
   }, []);
 
   useEffect(() => {
-    setForm(initialForm(product));
+    const initialCompatibilities = parseCompatibilitiesFromProduct(product);
+    const enrichedCompatibilities = initialCompatibilities.map((item) => {
+      if (item.brandId) return item;
+      const matched = vehicleBrands.find((brand) => brand.nombre?.trim().toLowerCase() === item.brand?.trim().toLowerCase());
+      return matched ? { ...item, brandId: String(matched.id), brand: matched.nombre } : item;
+    });
+
+    setForm({
+      ...initialForm(product),
+      compatibilities: enrichedCompatibilities,
+    });
     setFiles([]);
     const existing = [];
     if (product?.imageUrls && Array.isArray(product.imageUrls)) {
@@ -116,7 +210,19 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
     }
     setExistingPhotos(existing);
     setIsCustomPartBrand(false);
-  }, [product]);
+
+    enrichedCompatibilities.forEach((c) => {
+      if (c.brandId) {
+        getVehicleModelsApi(c.brandId)
+          .then((models) => {
+            setModelOptions((previous) => ({ ...previous, [c.brandId]: Array.isArray(models) ? models : [] }));
+          })
+          .catch(() => {
+            setModelOptions((previous) => ({ ...previous, [c.brandId]: [] }));
+          });
+      }
+    });
+  }, [product, vehicleBrands]);
 
   useEffect(() => () => files.forEach(({ preview }) => URL.revokeObjectURL(preview)), [files]);
 
@@ -211,15 +317,28 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
     const primary = form.compatibilities[0] || emptyCompatibility();
     const compatibilityGroups = form.compatibilities
       .filter((item) => item.brand || item.model || item.yearFrom || item.yearTo || item.motor || item.oem)
-      .map((item) => ({
-        marca: item.brand,
-        modelo: item.model,
-        anioDesde: item.yearFrom ? Number(item.yearFrom) : null,
-        anioHasta: item.yearTo ? Number(item.yearTo) : null,
-        motor: item.motor,
-        referenciaOem: item.oem,
-        vehiculoCatalogoIds: item.vehicleCatalogIds.map(Number).filter(Number.isFinite),
-      }));
+      .map((item) => {
+        const key = `${item.brand}|${item.model}|${item.yearFrom}|${item.yearTo}`;
+        const available = versionOptions[key] || [];
+        const selectedNames = (item.vehicleCatalogIds || [])
+          .map((id) => available.find((v) => String(v.id) === String(id))?.nombre)
+          .filter(Boolean);
+        const versionLabel = selectedNames.length > 0
+          ? selectedNames.join(', ')
+          : (item.version || (item.vehicleCatalogIds?.length ? `${item.vehicleCatalogIds.length} versiones` : ''));
+
+        return {
+          marca: item.brand,
+          modelo: item.model,
+          anioDesde: item.yearFrom ? Number(item.yearFrom) : null,
+          anioHasta: item.yearTo ? Number(item.yearTo) : null,
+          motor: item.motor,
+          referenciaOem: item.oem,
+          version: versionLabel,
+          versionLabels: selectedNames,
+          vehiculoCatalogoIds: item.vehicleCatalogIds.map(Number).filter(Number.isFinite),
+        };
+      });
     const payload = new FormData();
     const append = (key, value) => payload.append(key, String(value ?? ''));
     append('skuProveedor', form.sku.trim().toUpperCase());
@@ -296,11 +415,11 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
           <section className="catalog-product-section" id="catalog-basic">
             <h3><b>1</b> Información básica</h3>
             <div className="catalog-product-grid">
-              <CatalogField label="Nombre del producto"><input autoFocus value={form.name} onChange={(e) => update('name', e.target.value)} maxLength="80" placeholder="Ej. Pastillas de freno delanteras" required /></CatalogField>
-              <CatalogField label="SKU (código interno)"><input value={form.sku} onChange={(e) => update('sku', e.target.value.replace(/\s+/g, '').toUpperCase())} maxLength="30" placeholder="Ej. PFD1234" required /></CatalogField>
+              <CatalogField label="Nombre del producto"><input autoFocus value={form.name} onChange={(e) => update('name', e.target.value)} maxLength="120" placeholder="Ej. Pastillas de freno delanteras" required /></CatalogField>
+              <CatalogField label="SKU (código interno)"><input value={form.sku} onChange={(e) => update('sku', e.target.value.replace(/\s+/g, '').toUpperCase().slice(0, 30))} maxLength="30" placeholder="Ej. PFD1234" required /></CatalogField>
               <CatalogField label="Categoría"><SearchableDropdown value={form.category} options={categories.map((item) => ({ value: item.nombre, label: item.nombre }))} placeholder="Selecciona o busca una categoría" onChange={changeCategory} allowCustom emptyText="No encontramos esa categoría." /></CatalogField>
               <CatalogField label="Subcategoría" optional><SearchableDropdown value={form.subcategory} options={subcategories.map((item) => ({ value: item.nombre, label: item.nombre }))} placeholder={form.category ? 'Selecciona una subcategoría' : 'Selecciona primero una categoría'} onChange={(subcategory) => update('subcategory', String(subcategory))} disabled={!form.category || !subcategories.length} emptyText="No hay subcategorías disponibles." /></CatalogField>
-              <CatalogField label="Marca del repuesto">{isCustomPartBrand ? <div className="catalog-custom-brand-entry"><input autoFocus value={form.partBrand} onChange={(event) => update('partBrand', event.target.value)} placeholder="Escribe la marca del repuesto" required /><button type="button" onClick={() => { setIsCustomPartBrand(false); update('partBrand', ''); }}>Ver marcas</button></div> : <SearchableDropdown value={form.partBrand} options={partBrands.map((item) => ({ value: item.nombre, label: item.nombre }))} placeholder="Selecciona o busca una marca" onChange={(partBrand) => update('partBrand', String(partBrand))} emptyText="No encontramos esa marca." customOptionLabel="Otro: registrar una marca" onCustomOption={() => { setIsCustomPartBrand(true); update('partBrand', ''); }} />}</CatalogField>
+              <CatalogField label="Marca del repuesto">{isCustomPartBrand ? <div className="catalog-custom-brand-entry"><input autoFocus value={form.partBrand} maxLength="80" onChange={(event) => update('partBrand', event.target.value)} placeholder="Escribe la marca del repuesto" required /><button type="button" onClick={() => { setIsCustomPartBrand(false); update('partBrand', ''); }}>Ver marcas</button></div> : <SearchableDropdown value={form.partBrand} options={partBrands.map((item) => ({ value: item.nombre, label: item.nombre }))} placeholder="Selecciona o busca una marca" onChange={(partBrand) => update('partBrand', String(partBrand))} emptyText="No encontramos esa marca." customOptionLabel="Otro: registrar una marca" onCustomOption={() => { setIsCustomPartBrand(true); update('partBrand', ''); }} />}</CatalogField>
             </div>
           </section>
           <section className="catalog-product-section" id="catalog-pricing">
@@ -310,14 +429,43 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
               <button type="button" className={hasQuoteOnly ? 'active' : ''} onClick={() => update('pricingMode', 'QUOTE_ONLY')}><strong>Solo cotizar</strong><span>El comprador solicitará cotización</span></button>
             </div>
             <div className="catalog-product-grid compact">
-              <CatalogField label="Precio de venta" optional={hasQuoteOnly}><input type="number" min="0" disabled={hasQuoteOnly} value={hasQuoteOnly ? '' : form.price} onChange={(e) => update('price', e.target.value)} placeholder="0" required={!hasQuoteOnly} /></CatalogField>
-              <CatalogField label="Stock disponible"><input type="number" min="0" max="99999" value={form.stock} onChange={(e) => update('stock', e.target.value)} required /></CatalogField>
+              <CatalogField label="Precio de venta" optional={hasQuoteOnly}>
+                <input
+                  type="number"
+                  min="0"
+                  max="99999999"
+                  disabled={hasQuoteOnly}
+                  value={hasQuoteOnly ? '' : form.price}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
+                    const num = digits === '' ? '' : Math.min(Number(digits), 99999999);
+                    update('price', num === '' ? '' : String(num));
+                  }}
+                  placeholder="0"
+                  required={!hasQuoteOnly}
+                />
+              </CatalogField>
+              <CatalogField label="Stock disponible">
+                <input
+                  type="number"
+                  min="0"
+                  max="99999"
+                  value={form.stock}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 5);
+                    const num = digits === '' ? '' : Math.min(Number(digits), 99999);
+                    update('stock', num === '' ? '' : String(num));
+                  }}
+                  required
+                />
+              </CatalogField>
               <CatalogField label="¿Requiere chasis?"><SearchableDropdown value={String(form.requiresChassis)} options={[{ value: 'false', label: 'No' }, { value: 'true', label: 'Sí, solo cotizar' }]} placeholder="Selecciona una opción" onChange={(value) => { const requiresChassis = value === 'true'; setForm((previous) => ({ ...previous, requiresChassis, pricingMode: requiresChassis ? 'QUOTE_ONLY' : previous.pricingMode })); }} /></CatalogField>
             </div>
             {form.pricingMode === 'SHOW_PRICE' && (
               <CommissionSummaryCard
                 basePrice={Number(form.price) || 0}
-                onApplySuggested={(suggestedPrice) => update('price', String(suggestedPrice))}
+                isFounder={isFounder}
+                onApplySuggested={(suggestedPrice) => update('price', String(Math.min(suggestedPrice, 99999999)))}
               />
             )}
           </section>
@@ -331,8 +479,8 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
                 <CatalogField label="Año desde"><SearchableDropdown value={compatibility.yearFrom} options={YEARS.map((year) => ({ value: String(year), label: String(year) }))} placeholder="Selecciona un año" onChange={(yearFrom) => updateCompatibility(index, { yearFrom: String(yearFrom), yearTo: compatibility.yearTo && Number(compatibility.yearTo) < Number(yearFrom) ? '' : compatibility.yearTo, vehicleCatalogIds: [] })} /></CatalogField>
                 <CatalogField label="Año hasta"><SearchableDropdown value={compatibility.yearTo} options={YEARS.filter((year) => !compatibility.yearFrom || year >= Number(compatibility.yearFrom)).map((year) => ({ value: String(year), label: String(year) }))} placeholder="Selecciona un año" onChange={(yearTo) => updateCompatibility(index, { yearTo: String(yearTo), vehicleCatalogIds: [] })} /></CatalogField>
                 <CatalogField label="Versiones" optional><button type="button" className="catalog-versions-open-button" onClick={() => openVersions(index)} disabled={!compatibility.brand || !compatibility.model}><ListChecks size={16} /><span>Ver versiones disponibles</span><em>{compatibility.vehicleCatalogIds.length ? `${compatibility.vehicleCatalogIds.length} elegida${compatibility.vehicleCatalogIds.length === 1 ? '' : 's'}` : 'Opcional'}</em></button></CatalogField>
-                <CatalogField label="Motor" optional><input value={compatibility.motor} onChange={(e) => updateCompatibility(index, { motor: e.target.value })} placeholder="Ej. 2.0" /></CatalogField>
-                <CatalogField label="Referencia OEM" optional><input value={compatibility.oem} onChange={(e) => updateCompatibility(index, { oem: e.target.value.toUpperCase() })} placeholder="Ej. 04465-0K090" /></CatalogField>
+                <CatalogField label="Motor" optional><input value={compatibility.motor} maxLength="40" onChange={(e) => updateCompatibility(index, { motor: e.target.value.slice(0, 40) })} placeholder="Ej. 2.0" /></CatalogField>
+                <CatalogField label="Referencia OEM" optional><input value={compatibility.oem} maxLength="40" onChange={(e) => updateCompatibility(index, { oem: e.target.value.toUpperCase().slice(0, 40) })} placeholder="Ej. 04465-0K090" /></CatalogField>
               </div>
             </div>)}
           </section>
@@ -377,7 +525,7 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
             <section className="catalog-versions-modal" role="dialog" aria-modal="true" aria-label="Versiones disponibles" onMouseDown={(event) => event.stopPropagation()}>
               <header><div><span className="catalog-versions-modal-icon"><ListChecks size={20} /></span><div><h3>Versiones disponibles</h3><p>{compatibility.brand} · {compatibility.model}{compatibility.yearFrom ? ` · desde ${compatibility.yearFrom}` : ''}{compatibility.yearTo ? ` hasta ${compatibility.yearTo}` : ''}</p></div></div><button type="button" onClick={() => setVersionsModalIndex(null)} aria-label="Cerrar versiones"><X size={18} /></button></header>
               <div className="catalog-versions-selection-summary"><Check size={16} /><strong>{selectedIds.length}</strong> versión{selectedIds.length === 1 ? '' : 'es'} seleccionada{selectedIds.length === 1 ? '' : 's'}<button type="button" disabled={!selectedIds.length} onClick={() => updateCompatibility(versionsModalIndex, { vehicleCatalogIds: [] })}>Limpiar selección</button></div>
-              <div className="catalog-versions-search"><Search size={17} /><input autoFocus value={versionSearch} onChange={(event) => setVersionSearch(event.target.value)} placeholder="Buscar por versión, motor o transmisión..." /></div>
+              <div className="catalog-versions-search"><Search size={17} /><input autoFocus value={versionSearch} maxLength={80} onChange={(event) => setVersionSearch(event.target.value)} placeholder="Buscar por versión, motor o transmisión..." /></div>
               <div className="catalog-versions-list">{versionModalError ? <p className="catalog-versions-empty">{versionModalError}</p> : filteredVersions.length ? filteredVersions.map((version) => { const isSelected = selectedIds.includes(String(version.id)); return <button type="button" key={version.id} className={isSelected ? 'selected' : ''} onClick={() => updateCompatibility(versionsModalIndex, { vehicleCatalogIds: isSelected ? selectedIds.filter((id) => id !== String(version.id)) : [...selectedIds, String(version.id)] })}><span className="catalog-version-checkbox">{isSelected && <Check size={14} />}</span><span>{version.nombre}</span></button>; }) : <p className="catalog-versions-empty">No hay versiones para los filtros seleccionados.</p>}</div>
               <footer><button type="button" className="catalog-save-button" onClick={() => setVersionsModalIndex(null)}><Check size={16} /> Confirmar selección</button></footer>
             </section>

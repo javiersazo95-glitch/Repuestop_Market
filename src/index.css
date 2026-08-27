@@ -12316,16 +12316,21 @@ input, select, textarea {
 .product-compatibility-plate-banner.is-nomatch { color: #7c2d12; background: #fff1e8; }.product-compatibility-plate-banner.is-nomatch > svg { color: #e0762c; }.product-compatibility-plate-banner.is-nomatch span { color: #8a5236; }
 .product-compatibility-plate-banner.is-nomatch button { margin-top: 9px; padding: 0 14px; min-height: 36px; display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 9px; color: #fff; background: linear-gradient(135deg, #ff8a3d, #e35f16); font-size: 11.5px; font-weight: 800; cursor: pointer; }
 .product-compatibility-plate-banner.is-nomatch button svg { width: 14px; height: 14px; }
-.product-compatibility-modal-list { min-height: 260px; padding: 18px 20px; display: grid; align-content: start; gap: 11px; overflow-y: auto; scrollbar-width: thin; }
-.product-compatibility-modal-list article { min-height: 112px; padding: 16px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 14px; border: 1px solid #dce5f1; border-radius: 14px; background: #fff; box-shadow: 0 5px 15px rgba(27,53,91,.055); }
-.product-compatibility-car-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; color: #168455; background: #e5f8ed; }.product-compatibility-car-icon svg { width: 25px; height: 25px; }
-.product-compatibility-copy { min-width: 0; }.product-compatibility-copy h3 { margin: 0 0 10px; color: #17263d; font-size: 17px; }.product-compatibility-copy p { margin: 8px 0 0; display: flex; align-items: center; gap: 6px; color: #718096; font-size: 12px; }.product-compatibility-copy p svg { width: 15px; height: 15px; color: #3778d9; }.product-compatibility-copy p strong { color: #34465f; }
-/* Grid de 4 campos etiquetados (Marca, Modelo, Año, Versión) por cada vehículo
-   compatible, para que el calce quede explícito y no dependa solo del título. */
-.product-compatibility-fields { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px 12px; }
-.product-compatibility-fields > div { min-width: 0; padding: 6px 9px; display: grid; gap: 2px; border-radius: 8px; background: #f3f7fd; }
+.product-compatibility-modal-list { min-height: 260px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; scrollbar-width: thin; }
+.product-compatibility-modal-list article { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; border: 1px solid #dce5f1; border-radius: 14px; background: #fff; box-shadow: 0 4px 14px rgba(27,53,91,.04); }
+.product-compatibility-card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.product-compatibility-card-header h3 { margin: 0; color: #17263d; font-size: 17px; font-weight: 800; }
+.product-compatibility-fields { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px 12px; }
+.product-compatibility-fields > div { min-width: 0; padding: 7px 11px; display: grid; gap: 2px; border-radius: 8px; background: #f3f7fd; }
 .product-compatibility-fields span { color: #8290a3; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
-.product-compatibility-fields strong { min-width: 0; overflow: hidden; color: #1c2c45; font-size: 12.5px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.product-compatibility-fields strong { min-width: 0; overflow: hidden; color: #1c2c45; font-size: 13px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.product-compatibility-fields > div.is-full-width { grid-column: 1 / -1; }
+.product-compatibility-versions-section { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; border-top: 1px dashed #e2e8f0; }
+.compatibility-versions-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: #8290a3; }
+.compatibility-versions-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.compatibility-version-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 600; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; }
+.compatibility-version-chip.is-all { color: #166534; background: #f0fdf4; border-color: #bbf7d0; }
+.compatibility-version-chip.is-all svg { color: #16a34a; }
 .product-compatibility-seller-check { min-height: 31px; padding: 0 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 9px; color: #168153; background: #e8f8ee; font-size: 10px; font-weight: 800; white-space: nowrap; }.product-compatibility-seller-check svg { width: 15px; height: 15px; }
 /* Tarjeta que coincide con la patente ingresada por el comprador: se distingue
    del resto (que son vehículos de otros compradores) con borde y ribbon azules. */

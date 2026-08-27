@@ -1,14 +1,15 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle, ArrowLeft, BadgeCheck, Car, CheckCircle2, ChevronLeft, ChevronRight, CreditCard,
   Heart, Landmark, MapPin, MessageCircle, Package, Search, Send, ShieldCheck,
-  ShoppingCart, Star, Store, Truck, Wrench, X
+  ShoppingCart, Star, Store, Tag, Truck, Wrench, X
 } from 'lucide-react';
 import { CATEGORY_IMAGE_BY_ID } from '../data/categories';
 import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import {
-  createProductQuestionApi, getProductQuestionsApi, searchVehicleByPatenteApi
+  createProductQuestionApi, getProductQuestionsApi, searchVehicleByPatenteApi,
+  getInventoryVehicleCatalogsApi, getVehicleVersionsApi
 } from '../services/api';
 import { adaptVehicle } from '../services/adapters';
 import { useMarketplace } from '../context/MarketplaceContext';
@@ -99,6 +100,53 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
       .toLocaleLowerCase('es')
       .includes(query);
   });
+
+  const allVehicleCatalogIds = useMemo(() => {
+    const ids = new Set();
+    (compatibility || []).forEach((c) => {
+      (c.vehiculoCatalogoIds || []).forEach((id) => ids.add(Number(id)));
+    });
+    if (product.vehiculoCatalogoIds && Array.isArray(product.vehiculoCatalogoIds)) {
+      product.vehiculoCatalogoIds.forEach((id) => ids.add(Number(id)));
+    }
+    return Array.from(ids).filter((id) => Number.isFinite(id) && id > 0);
+  }, [compatibility, product.vehiculoCatalogoIds]);
+
+  const vehicleCatalogDetailsQuery = useQuery({
+    queryKey: ['vehicleCatalogDetails', allVehicleCatalogIds],
+    queryFn: ({ signal }) => getInventoryVehicleCatalogsApi(allVehicleCatalogIds, { signal }),
+    enabled: allVehicleCatalogIds.length > 0,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const vehicleCatalogDetails = Array.isArray(vehicleCatalogDetailsQuery.data) ? vehicleCatalogDetailsQuery.data : [];
+
+  const versionsQueries = useQuery({
+    queryKey: ['compatVersionsForProduct', product.id, compatibility],
+    queryFn: async () => {
+      const results = {};
+      await Promise.all((compatibility || []).map(async (c) => {
+        if (!c.marca || !c.modelo) return;
+        const key = `${c.marca}|${c.modelo}|${c.anioInicio || ''}|${c.anioFin || ''}`;
+        try {
+          const list = await getVehicleVersionsApi({
+            marca: c.marca,
+            modelo: c.modelo,
+            anioDesde: c.anioInicio,
+            anioHasta: c.anioFin,
+          });
+          results[key] = Array.isArray(list) ? list : [];
+        } catch {
+          results[key] = [];
+        }
+      }));
+      return results;
+    },
+    enabled: Boolean(compatibility && compatibility.length > 0),
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const versionsMap = versionsQueries.data || {};
 
   const { data: publicQuestions = [] } = useQuery({
     queryKey: qk.productQuestions(product.id),
@@ -527,28 +575,89 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
               </div>
             </div>
             <div className="product-compatibility-modal-list">
-              {visibleCompatibilities.length > 0 ? visibleCompatibilities.map((item, index) => (
-                <article
-                  key={`${item.marca}-${item.modelo}-${item.version}-${item.motor}-${index}`}
-                  ref={(node) => { compatibilityItemRefs.current[index] = node; }}
-                  className={index === plateMatchIndex ? 'is-plate-match' : ''}
-                >
-                  <span className="product-compatibility-car-icon"><Car /></span>
-                  <div className="product-compatibility-copy">
-                    <h3>{[item.marca, item.modelo].filter(Boolean).join(' ') || 'Vehículo compatible'}</h3>
+              {visibleCompatibilities.length > 0 ? visibleCompatibilities.map((item, index) => {
+                const itemCatalogIds = (item.vehiculoCatalogoIds || []).map(String);
+                const versionKey = `${item.marca}|${item.modelo}|${item.anioInicio || ''}|${item.anioFin || ''}`;
+                const availableCatalogVersions = versionsMap[versionKey] || [];
+
+                let resolvedVersions = [];
+                if (itemCatalogIds.length > 0) {
+                  resolvedVersions = itemCatalogIds.map((id, idx) => {
+                    const fromCatalog = availableCatalogVersions.find((v) => String(v.id) === String(id));
+                    if (fromCatalog?.nombre) return fromCatalog.nombre;
+                    if (fromCatalog?.version) return fromCatalog.version;
+
+                    const fromDetails = vehicleCatalogDetails.find((d) => String(d.id) === String(id));
+                    if (fromDetails) {
+                      const parts = [fromDetails.version, fromDetails.motor, fromDetails.transmision].filter(Boolean);
+                      if (parts.length > 0) return parts.join(' - ');
+                      if (fromDetails.nombre) return fromDetails.nombre;
+                    }
+
+                    if (Array.isArray(item.versionLabels) && item.versionLabels[idx]) {
+                      return item.versionLabels[idx];
+                    }
+
+                    return null;
+                  }).filter(Boolean);
+                } else if (item.version && !item.version.toLowerCase().includes('versiones') && item.version !== 'Todas' && item.version !== 'Todas las versiones') {
+                  resolvedVersions = item.version.split(',').map((s) => s.trim()).filter(Boolean);
+                }
+
+                const hasSpecificIds = itemCatalogIds.length > 0;
+
+                const yearDisplay = (item.anioInicio || item.anioFin)
+                  ? `${item.anioInicio || '—'}${item.anioFin && item.anioFin !== item.anioInicio ? `–${item.anioFin}` : ''}`
+                  : '—';
+
+                return (
+                  <article
+                    key={`${item.marca}-${item.modelo}-${item.version}-${item.motor}-${index}`}
+                    ref={(node) => { compatibilityItemRefs.current[index] = node; }}
+                    className={index === plateMatchIndex ? 'is-plate-match' : ''}
+                  >
+                    <header className="product-compatibility-card-header">
+                      <h3>{[item.marca, item.modelo].filter(Boolean).join(' ') || 'Vehículo compatible'}</h3>
+                      {index === plateMatchIndex
+                        ? <span className="product-compatibility-seller-check is-plate-match"><CheckCircle2 /> Es tu vehículo</span>
+                        : <span className="product-compatibility-seller-check"><CheckCircle2 /> Registrada por el vendedor</span>}
+                    </header>
+
                     <div className="product-compatibility-fields">
                       <div><span>Marca</span><strong>{item.marca || '—'}</strong></div>
                       <div><span>Modelo</span><strong>{item.modelo || '—'}</strong></div>
-                      <div><span>Año</span><strong>{(item.anioInicio || item.anioFin) ? `${item.anioInicio || '—'}${item.anioFin && item.anioFin !== item.anioInicio ? `–${item.anioFin}` : ''}` : '—'}</strong></div>
-                      <div><span>Versión</span><strong>{item.version || '—'}</strong></div>
+                      <div><span>Año</span><strong>{yearDisplay}</strong></div>
+                      <div><span>Motor</span><strong>{item.motor || 'No especificado'}</strong></div>
+                      <div className="is-full-width"><span>Ref. OEM</span><strong>{item.referenciaOem || product.oemCode || 'No informada'}</strong></div>
                     </div>
-                    {item.motor && <p><Wrench /> Motor: <strong>{item.motor}</strong></p>}
-                  </div>
-                  {index === plateMatchIndex
-                    ? <span className="product-compatibility-seller-check is-plate-match"><CheckCircle2 /> Es tu vehículo</span>
-                    : <span className="product-compatibility-seller-check"><CheckCircle2 /> Registrada por el vendedor</span>}
-                </article>
-              )) : (
+
+                    <div className="product-compatibility-versions-section">
+                      <span className="compatibility-versions-label">Versiones compatibles:</span>
+                      {resolvedVersions.length > 0 ? (
+                        <div className="compatibility-versions-chips">
+                          {resolvedVersions.map((v, vIndex) => (
+                            <span key={vIndex} className="compatibility-version-chip">
+                              {v}
+                            </span>
+                          ))}
+                        </div>
+                      ) : hasSpecificIds ? (
+                        <div className="compatibility-versions-chips">
+                          <span className="compatibility-version-chip">
+                            {itemCatalogIds.length} versión{itemCatalogIds.length === 1 ? '' : 'es'} seleccionada{itemCatalogIds.length === 1 ? '' : 's'}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="compatibility-versions-chips">
+                          <span className="compatibility-version-chip is-all">
+                            <CheckCircle2 size={12} /> {item.version || 'Compatible con todas las versiones'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                );
+              }) : (
                 <div className="product-compatibility-empty"><Search /><strong>No encontramos compatibilidades</strong><span>Prueba con otro término de búsqueda.</span></div>
               )}
             </div>

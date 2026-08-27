@@ -583,10 +583,10 @@ export default function QuoteDetailModal({
             <div className="quote-editor-pricing-layout">
               <div className="quote-editor-pricing-fields">
                 <div className="quote-editor-price-row">
-                  <label><span>Precio por unidad <Info size={13} /></span><div className="quote-editor-money-input"><i>$</i><input type="number" min="1" value={unitPrice} onChange={(event) => setUnitPrice(event.target.value.replace(/[^0-9]/g, ''))} required /></div></label>
+                  <label><span>Precio por unidad <Info size={13} /></span><div className="quote-editor-money-input"><i>$</i><input type="number" min="1" max="99999999" value={unitPrice} onChange={(event) => setUnitPrice(event.target.value.replace(/[^0-9]/g, '').slice(0, 8))} required /></div></label>
                   <label><span>Cantidad solicitada <Lock size={13} /></span><div className="quote-locked-field">{requested.requestedQty}<Lock size={15} /></div></label>
                 </div>
-                <label><span>Descuento o rebaja total (opcional)</span><div className="quote-editor-money-input"><i>$</i><input type="number" min="0" value={discount} onChange={(event) => setDiscount(event.target.value.replace(/[^0-9]/g, ''))} /></div><small>Dejar en 0 si no aplica descuento.</small></label>
+                <label><span>Descuento o rebaja total (opcional)</span><div className="quote-editor-money-input"><i>$</i><input type="number" min="0" max="99999999" value={discount} onChange={(event) => setDiscount(event.target.value.replace(/[^0-9]/g, '').slice(0, 8))} /></div><small>Dejar en 0 si no aplica descuento.</small></label>
                 {/* Mismo desglose y calculadora inversa que la carga de productos y la
                     app: cotizar a ciegas es como el vendedor termina cobrando menos de
                     lo que cree. `onApplySuggested` escribe el precio por unidad. */}
@@ -594,7 +594,7 @@ export default function QuoteDetailModal({
                   basePrice={Number(unitPrice) || 0}
                   isFounder={Boolean(user?.founder ?? user?.fundador)}
                   suggestedContextLabel="por unidad"
-                  onApplySuggested={(value) => setUnitPrice(String(Math.round(value)))}
+                  onApplySuggested={(value) => setUnitPrice(String(Math.min(Math.round(value), 99999999)))}
                 />
               </div>
               <aside className="quote-editor-total-card">
@@ -610,7 +610,7 @@ export default function QuoteDetailModal({
                   el vendedor cotiza sobre esa condicion, no la cambia. Se muestra
                   bloqueada igual que la cantidad, que ya funcionaba asi. */}
               <label><span>Condición de entrega <Lock size={13} /></span><div className="quote-locked-field">{deliveryTerms}<Lock size={15} /></div></label>
-              {['Delivery local', 'Envío dentro de la comuna'].includes(deliveryTerms) && <label><span>Costo del envío</span><div className="quote-editor-money-input"><i>$</i><input type="number" min="0" value={deliveryCost} onChange={(event) => setDeliveryCost(event.target.value.replace(/[^0-9]/g, ''))} required /></div></label>}
+              {['Delivery local', 'Envío dentro de la comuna'].includes(deliveryTerms) && <label><span>Costo del envío</span><div className="quote-editor-money-input"><i>$</i><input type="number" min="0" max="99999999" value={deliveryCost} onChange={(event) => setDeliveryCost(event.target.value.replace(/[^0-9]/g, '').slice(0, 8))} required /></div></label>}
               <label><span>Garantía</span><select value={warranty} onChange={(event) => setWarranty(event.target.value)}>{QUOTE_WARRANTY_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
               <label><span>Vigencia</span><select value={validity} onChange={(event) => setValidity(event.target.value)}>{QUOTE_VALIDITY_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
             </div>

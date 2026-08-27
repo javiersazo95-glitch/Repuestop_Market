@@ -17,15 +17,15 @@ export default function CommissionSummaryCard({
   const [calculatorMode, setCalculatorMode] = useState('standard');
   const [desiredNetInput, setDesiredNetInput] = useState('');
 
-  const price = Number(basePrice) || 0;
+  const price = Math.min(Number(basePrice) || 0, 99999999);
   if (price <= 0 && calculatorMode === 'standard') return null;
 
   const { totalFees, netEarnings, breakdown } = calculateSimplePricingSummary(price, isFounder);
-  const suggestedPriceForCurrentBase = calculateSuggestedPrice(price, isFounder);
+  const suggestedPriceForCurrentBase = Math.min(calculateSuggestedPrice(price, isFounder), 99999999);
 
   // Inverse calculator
-  const desiredNetNumeric = parseInt(String(desiredNetInput).replace(/\D/g, ''), 10) || 0;
-  const suggestedSalePriceFromNet = desiredNetNumeric > 0 ? calculateSuggestedPrice(desiredNetNumeric, isFounder) : 0;
+  const desiredNetNumeric = Math.min(parseInt(String(desiredNetInput).replace(/\D/g, ''), 10) || 0, 99999999);
+  const suggestedSalePriceFromNet = desiredNetNumeric > 0 ? Math.min(calculateSuggestedPrice(desiredNetNumeric, isFounder), 99999999) : 0;
 
   return (
     <div className="commission-summary-card" style={{
@@ -50,7 +50,7 @@ export default function CommissionSummaryCard({
           fontWeight: 600,
         }}>
           <Award size={15} />
-          <span>Beneficio Fundador: comisión RepuesTop fija del 5%, sin importar el monto.</span>
+          <span>Beneficio Fundador: comisión RepuesTop fija de 5%, sin importar el monto.</span>
         </div>
       )}
 
@@ -120,7 +120,7 @@ export default function CommissionSummaryCard({
             <input
               type="text"
               value={desiredNetInput}
-              onChange={(e) => setDesiredNetInput(e.target.value.replace(/\D/g, ''))}
+              onChange={(e) => setDesiredNetInput(e.target.value.replace(/\D/g, '').slice(0, 8))}
               placeholder="Ej: 45000"
               maxLength={8}
               style={{

@@ -641,6 +641,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     setSelectedQuote(found);
   }, [deepLinkQuoteId, conversations]);
   const storeInfo = storeInfoQuery.data || null;
+  const isSellerFounder = Boolean(storeInfo?.founder ?? user?.founder ?? user?.fundador);
   const inventorySummary = inventorySummaryQuery.data || null;
   const sellerProducts = catalogQuery.data?.content || [];
   const catalogTotalPages = catalogQuery.data?.totalPages ?? 0;
@@ -848,8 +849,18 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   };
 
   const handleCatalogProductSaved = (savedProduct) => {
+    const pid = savedProduct?.id || selectedCatalogProduct?.id;
+    setSelectedCatalogProduct(null);
     queryClient.invalidateQueries({ queryKey: ['sellerInventory'] });
     queryClient.invalidateQueries({ queryKey: qk.sellerInventorySummary(effectiveSellerId) });
+    if (pid) {
+      queryClient.invalidateQueries({ queryKey: qk.product(pid) });
+      queryClient.invalidateQueries({ queryKey: ['products', pid] });
+      queryClient.removeQueries({ queryKey: qk.product(pid) });
+    }
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ['compatVersionsForProduct'] });
+    queryClient.invalidateQueries({ queryKey: ['vehicleCatalogDetails'] });
   };
 
   const handleToggleProductTop = async (product, destacado) => {
@@ -2434,6 +2445,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         <NewCatalogProductModal
           product={selectedCatalogProduct}
           sellerId={user?.sellerId}
+          isFounder={isSellerFounder}
           onClose={() => setSelectedCatalogProduct(null)}
           onCreated={handleCatalogProductSaved}
         />
@@ -2443,6 +2455,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         <QuoteDetailModal
           quote={selectedQuote}
           mode={isSeller ? 'seller' : 'buyer'}
+          isFounder={isSellerFounder}
           onClose={() => {
             setSelectedQuote(null);
             openedQuoteDeepLinkRef.current = null;
@@ -2737,6 +2750,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       {showNewProductModal && isSeller && (
         <NewCatalogProductModal
           sellerId={user?.sellerId}
+          isFounder={isSellerFounder}
           onClose={() => setShowNewProductModal(false)}
           onCreated={handleCatalogProductCreated}
         />
