@@ -567,15 +567,16 @@ CLAUDE.md decian que faltaba, y era falso). Se probo desde los dos lados: previs
 antes de enviar, compresion al seleccionar, y los dos topes nuevos del servidor -3 MB y 10
 imagenes por conversacion-, con la imagen 11 rechazada por el backend.
 
-**Queda por probar**: el flujo de verificacion con un estado distinto de APPROVED, que
-necesita cambiarlo desde el backoffice. Ojo con lo que esa prueba NO cubre: hoy la
-verificacion **no bloquea nada** -ni `RetiroProveedorService` ni los servicios de
-inventario consultan `VerificacionProveedor`-, asi que una tienda en PENDING publica,
-vende y pide retiros igual que una aprobada. El estado es informativo.
+**A7/A12 (Verificación comercial y adhesión) cerrada el 2026-08-27.** Probada de punta a punta
+con cuenta `repuestop7@gmail.com`: subida de documentos a Cloudflare R2, lectura de PDF en Blob
+y firma del contrato de adhesión persistido.
 
-**A16 sigue sin cablear** y es implementacion, no prueba.
+**Deep links de notificaciones y gestión de campana (A24 & §7.4) cerrados el 2026-08-27.** Probados de punta a punta:
+- Conectado `?cotizacion=` en `ProfilePage` y `ProfileDashboard` para abrir directamente `QuoteDetailModal` al pinchar notificaciones de cotización, tanto para comprador (`/quote-chat`) como vendedor (`/(seller)/mensajes`).
+- Cierre del modal limpia reactivamente los query params (`setSearchParams`) permitiendo reingresos consecutivos sin bloqueo.
+- Campana `ProfileNotificationsBell` incluye cierre automático por clic exterior (Click Outside) y cambio de ruta (`useLocation`), además de borrado de leídas (`DELETE /usuarios/{id}/notificaciones/leidas`).
+- Sumado a `?pedido=` (`OrderDetailModal`) y `?ticket=` (`SupportTicketDetailModal`).
 
-**A16 sigue sin cablear.** `getInventoryVehicleCatalogsApi` y `getVehicleCatalogPartsApi`
-existen en `api.js` y no las llama nadie.
+**A16 sigue sin cablear** y es diferido (búsqueda por catálogo de vehículo).
 
-El detalle de lo que se arreglo esta en `HANDOFF_PROXIMO_AGENTE.md` seccion 4.21.
+El detalle de lo que se arreglo esta en `HANDOFF_PROXIMO_AGENTE.md` seccion 4.24.

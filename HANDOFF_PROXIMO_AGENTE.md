@@ -1557,3 +1557,16 @@ curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:8080/api/v1/tiendas/<
 ```
 
 **El filtro es codigo compilado: hay que reiniciar el backend**, no basta con recargar.
+
+### 4.24 Sesión 2026-08-27 — Deep Links de Notificaciones y Popover de Campana
+
+1. **Rutas de Notificación de Vendedor en `src/data/notificationTargets.js`**:
+   - Backend emitía `/(seller)/mensajes` para cotizaciones de tiendas, `/(seller)/pedidos` para pedidos y `/(seller)/productos`.
+   - Se agregaron las traducciones correspondientes a rutas web (`/perfil/cotizaciones?cotizacion=...`, `/perfil/pedidos?pedido=...`, etc.).
+2. **Sincronización React Router y Reapertura Consecutiva**:
+   - Se reemplazó `window.history.replaceState` por `setSearchParams` con `replace: true` mediante `handleClearDeepLink` en `ProfilePage.jsx`.
+   - Al cerrar los modales (`QuoteDetailModal`, `OrderDetailModal`, `SupportTicketDetailModal`), los query params se limpian formalmente en el router, permitiendo que clics consecutivos sobre la misma notificación abran el modal de inmediato.
+3. **Comportamiento del Popover `ProfileNotificationsBell.jsx`**:
+   - Cierre automático ante eventos de navegación / cambio de ruta (`useLocation`).
+   - Cierre automático al hacer clic fuera del componente (listener de `mousedown`/`touchstart`).
+   - Soporte para eliminación masiva de notificaciones leídas (`DELETE /usuarios/{id}/notificaciones/leidas`).

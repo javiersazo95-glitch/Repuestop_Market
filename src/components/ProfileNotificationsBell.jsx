@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Bell, CheckCheck, Loader2, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   getNotificationsApi, getUnreadNotificationsCountApi, markAllNotificationsReadApi,
   markNotificationReadApi, deleteReadNotificationsApi
@@ -15,6 +15,8 @@ function formatTime(value) {
 export default function ProfileNotificationsBell({ user }) {
   const userId = user?.userId ?? user?.id;
   const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+  const location = useLocation();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
@@ -37,6 +39,27 @@ export default function ProfileNotificationsBell({ user }) {
     const interval = window.setInterval(loadUnread, 60000);
     return () => window.clearInterval(interval);
   }, [loadUnread]);
+
+  // Cierra el popover si el usuario cambia de pestaña o ruta dentro del perfil
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname, location.search]);
+
+  // Cierra el popover al hacer clic fuera
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [open]);
 
   const toggle = () => { setOpen((current) => !current); if (!open) loadItems(); };
   /**
@@ -83,7 +106,7 @@ export default function ProfileNotificationsBell({ user }) {
 
   const hasReadItems = items.some((item) => item.leida);
 
-  return <div className="profile-notifications">
+  return <div className="profile-notifications" ref={containerRef}>
     <button type="button" className="profile-bell-button" aria-label="Notificaciones" aria-expanded={open} onClick={toggle}>
       <Bell size={18} />{unread > 0 && <span className="profile-bell-count">{unread > 99 ? '99+' : unread}</span>}
     </button>

@@ -27,8 +27,7 @@ export default function ProfilePage() {
   const nav = useAppNavigation();
   // plan_retorno_flow.md Fase 3: PagoController redirige aqui con
   // ?status=failure|pending&orderId=... cuando el pago no quedo aprobado. Se pasa a
-  // ProfileDashboard como prop en vez de que cada tab lea la URL por su cuenta.
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const paymentStatus = searchParams.get('status');
   const paymentOrderId = searchParams.get('orderId');
   // Enlaces profundos de la campana de notificaciones: `?pedido=` abre el detalle del
@@ -36,6 +35,15 @@ export default function ProfilePage() {
   // usuario en la pestaña correcta pero sin abrir lo que le avisaron.
   const deepLinkOrderId = searchParams.get('pedido');
   const deepLinkTicketId = searchParams.get('ticket');
+  const deepLinkQuoteId = searchParams.get('cotizacion');
+
+  const handleClearDeepLink = useCallback((paramKey) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete(paramKey);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   // Una tienda que el backoffice todavia no aprueba no tiene panel: su lugar es el flujo
   // de postulacion, que es donde sube documentos y ve en que fase va. Solo la aprobacion
@@ -75,6 +83,8 @@ export default function ProfilePage() {
         onTabChange={handleTabChange}
         deepLinkOrderId={deepLinkOrderId}
         deepLinkTicketId={deepLinkTicketId}
+        deepLinkQuoteId={deepLinkQuoteId}
+        onClearDeepLink={handleClearDeepLink}
         onBackToStore={nav.goHome}
         paymentStatus={paymentStatus}
         paymentOrderId={paymentOrderId}

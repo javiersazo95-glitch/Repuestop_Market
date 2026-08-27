@@ -35,7 +35,7 @@ function isClosed(status) {
   return CLOSED_STATUSES.includes(String(status || '').toUpperCase());
 }
 
-export default function ProfileSupportPanel({ user, deepLinkTicketId }) {
+export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDeepLink }) {
   const userId = user?.userId ?? user?.id;
   const isSeller = Boolean(user?.sellerId);
   const [tickets, setTickets] = useState([]);
@@ -51,7 +51,11 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId }) {
   // usuario la cierra y la URL sigue con `?ticket=`.
   const openedTicketRef = useRef(null);
   useEffect(() => {
-    if (!deepLinkTicketId || openedTicketRef.current === deepLinkTicketId) return;
+    if (!deepLinkTicketId) {
+      openedTicketRef.current = null;
+      return;
+    }
+    if (openedTicketRef.current === deepLinkTicketId) return;
     openedTicketRef.current = deepLinkTicketId;
     setSelectedTicketId(deepLinkTicketId);
   }, [deepLinkTicketId]);
@@ -304,7 +308,11 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId }) {
           ticketId={selectedTicketId}
           userId={userId}
           user={user}
-          onClose={() => setSelectedTicketId(null)}
+          onClose={() => {
+            setSelectedTicketId(null);
+            openedTicketRef.current = null;
+            onClearDeepLink?.('ticket');
+          }}
           onUpdated={loadCases}
         />
       )}

@@ -248,7 +248,7 @@ function EmptyState({ label }) {
   );
 }
 
-export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange, paymentStatus, paymentOrderId, deepLinkOrderId, deepLinkTicketId }) {
+export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange, paymentStatus, paymentOrderId, deepLinkOrderId, deepLinkTicketId, deepLinkQuoteId, onClearDeepLink }) {
   const { user, role, logout, updateProfile, refreshProfile, deleteAccount } = useAuth();
   // El centro de ayuda dejó de ser una pestaña del perfil: vive en /ayuda y se
   // navega hacia allá desde el sidebar y los accesos rápidos.
@@ -573,7 +573,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // marca para no reabrirlo si el usuario lo cierra y la URL sigue teniendo `?pedido=`.
   const openedDeepLinkRef = useRef(null);
   useEffect(() => {
-    if (!deepLinkOrderId || openedDeepLinkRef.current === deepLinkOrderId) return;
+    if (!deepLinkOrderId) {
+      openedDeepLinkRef.current = null;
+      return;
+    }
+    if (openedDeepLinkRef.current === deepLinkOrderId) return;
     const found = (orders || []).find((o) => String(o.id) === String(deepLinkOrderId));
     if (!found) return;
     openedDeepLinkRef.current = deepLinkOrderId;
@@ -618,6 +622,24 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
   const favorites = favoritesQuery.data || [];
   const conversations = conversationsQuery.data || [];
+
+  // Notificación de cotización: abre el detalle/chat apenas la lista esté cargada.
+  const openedQuoteDeepLinkRef = useRef(null);
+  useEffect(() => {
+    if (!deepLinkQuoteId) {
+      openedQuoteDeepLinkRef.current = null;
+      return;
+    }
+    if (openedQuoteDeepLinkRef.current === deepLinkQuoteId) return;
+    const found = (conversations || []).find((c) => (
+      String(c.id) === String(deepLinkQuoteId) ||
+      String(c.cotizacion?.id) === String(deepLinkQuoteId) ||
+      String(c.cotizacionId) === String(deepLinkQuoteId)
+    ));
+    if (!found) return;
+    openedQuoteDeepLinkRef.current = deepLinkQuoteId;
+    setSelectedQuote(found);
+  }, [deepLinkQuoteId, conversations]);
   const storeInfo = storeInfoQuery.data || null;
   const inventorySummary = inventorySummaryQuery.data || null;
   const sellerProducts = catalogQuery.data?.content || [];
@@ -2060,7 +2082,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
 
               {activeTab === 'consultas' && (
-                <ProfileSupportPanel user={user} deepLinkTicketId={deepLinkTicketId} />
+                <ProfileSupportPanel user={user} deepLinkTicketId={deepLinkTicketId} onClearDeepLink={onClearDeepLink} />
               )}
 
               {(activeTab === 'tienda_datos' || activeTab === 'datos') && (
@@ -2392,7 +2414,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           mode={isSeller ? 'seller' : 'buyer'}
           sellerId={effectiveSellerId}
           userId={effectiveUserId}
-          onClose={() => setSelectedOrder(null)}
+          onClose={() => {
+            setSelectedOrder(null);
+            openedDeepLinkRef.current = null;
+            onClearDeepLink?.('pedido');
+          }}
           onUpdateStatus={handleUpdateOrderStatus}
           onRetryPayment={isSeller ? undefined : handleRetryPayment}
           onCancelOrder={isSeller ? undefined : handleCancelOrder}
@@ -2417,7 +2443,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         <QuoteDetailModal
           quote={selectedQuote}
           mode={isSeller ? 'seller' : 'buyer'}
-          onClose={() => setSelectedQuote(null)}
+          onClose={() => {
+            setSelectedQuote(null);
+            openedQuoteDeepLinkRef.current = null;
+            onClearDeepLink?.('cotizacion');
+          }}
           onSendQuoteResponse={handleSendQuoteResponse}
           onMarkedRead={handleQuoteMarkedRead}
           user={user}

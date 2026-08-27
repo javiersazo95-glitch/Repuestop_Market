@@ -29,12 +29,29 @@ const TARGETS = {
   '/order-detail': (params) => (params?.orderId
     ? `${PROFILE('pedidos')}?pedido=${encodeURIComponent(params.orderId)}`
     : PROFILE('pedidos')),
+  '/(seller)/pedidos': (params) => (params?.orderId
+    ? `${PROFILE('pedidos')}?pedido=${encodeURIComponent(params.orderId)}`
+    : PROFILE('pedidos')),
+  '/seller/pedidos': (params) => (params?.orderId
+    ? `${PROFILE('pedidos')}?pedido=${encodeURIComponent(params.orderId)}`
+    : PROFILE('pedidos')),
 
   '/product-detail': (params) => (params?.productId
     ? productPath({ id: params.productId })
     : ROUTES.catalog),
+  '/(seller)/productos': () => PROFILE('productos'),
+  '/seller/productos': () => PROFILE('productos'),
 
   '/quote-chat': (params) => (params?.quoteId
+    ? `${PROFILE('cotizaciones')}?cotizacion=${encodeURIComponent(params.quoteId)}`
+    : PROFILE('cotizaciones')),
+  '/(seller)/mensajes': (params) => (params?.quoteId
+    ? `${PROFILE('cotizaciones')}?cotizacion=${encodeURIComponent(params.quoteId)}`
+    : PROFILE('cotizaciones')),
+  '/seller/mensajes': (params) => (params?.quoteId
+    ? `${PROFILE('cotizaciones')}?cotizacion=${encodeURIComponent(params.quoteId)}`
+    : PROFILE('cotizaciones')),
+  '/mensajes': (params) => (params?.quoteId
     ? `${PROFILE('cotizaciones')}?cotizacion=${encodeURIComponent(params.quoteId)}`
     : PROFILE('cotizaciones')),
 
@@ -58,8 +75,12 @@ const TARGETS = {
 
   '/withdrawals': () => PROFILE('retiros'),
   '/withdrawal-payments': () => PROFILE('retiros'),
+  '/(seller)/retiros': () => PROFILE('retiros'),
+  '/seller/retiros': () => PROFILE('retiros'),
 
   '/perfil': () => ROUTES.profile,
+  '/(seller)': () => ROUTES.profile,
+  '/seller': () => ROUTES.profile,
 };
 
 /**
