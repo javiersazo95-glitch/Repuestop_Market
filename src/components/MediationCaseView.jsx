@@ -9,11 +9,20 @@ import {
   uploadMediationChatImageApi, resolveMediaUrl,
 } from '../services/api';
 import { MEDIATION_STATUS_LABELS, MEDIATION_STATUS_TONES } from '../data/mediationStatus';
+import { claimReasonLabel } from '../data/claimReason';
+import compressImageFile from '../utils/imageCompression';
+import ChatImagePreview from './ChatImagePreview';
 
 const MAX_EVIDENCE_FILES = 5;
 const MAX_EVIDENCE_SIZE = 5 * 1024 * 1024;
 const MAX_REASON = 150;
 const MAX_DETAIL = 500;
+// Mismos topes que el chat de cotizaciones (`ConversacionService`): son dos hilos
+// equivalentes y no hay razon para que uno acepte el doble que el otro. El de 1000
+// caracteres que habia aqui no lo respaldaba nada: `validarTexto` del backend solo
+// rechazaba el texto vacio.
+const MAX_CHAT_MESSAGE = 500;
+const MAX_CHAT_IMAGE_SIZE = 3 * 1024 * 1024;
 
 // Entradas automaticas que el backend deja en el hilo del mediador: no son
 // mensajes de nadie, son asientos de la bitacora del caso.
@@ -154,6 +163,8 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState('');
+  const [pendingImage, setPendingImage] = useState(null);
+  const [pendingImagePreview, setPendingImagePreview] = useState('');
 
   // Hilo activo: con la otra parte o con el mediador de RepuesTop.
   const [activeThread, setActiveThread] = useState('parte');
@@ -261,13 +272,22 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
   const submitMessage = async (event) => {
     event.preventDefault();
     const text = messageText.trim();
-    if (!text || !chat?.conversacion?.id || isSending) return;
+    const conversacionId = chat?.conversacion?.id;
+    if ((!text && !pendingImage) || !conversacionId || isSending) return;
     setIsSending(true);
     setSendError('');
     try {
-      const sent = await sendConversationMessageApi(chat.conversacion.id, text);
-      setMessages((previous) => [...previous, sent]);
-      setMessageText('');
+      if (pendingImage) {
+        // Ya viene comprimida desde la seleccion (1600 px / JPEG 80).
+        const enviada = await uploadMediationChatImageApi(conversacionId, pendingImage);
+        setMessages((previous) => [...previous, enviada]);
+        discardPendingImage();
+      }
+      if (text) {
+        const sent = await sendConversationMessageApi(conversacionId, text);
+        setMessages((previous) => [...previous, sent]);
+        setMessageText('');
+      }
     } catch (error) {
       setSendError(error.message || 'No se pudo enviar el mensaje.');
     } finally {
@@ -275,28 +295,35 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
     }
   };
 
+  // Elegir la imagen ya NO la envia: queda en espera con su miniatura. En una disputa
+  // la foto es evidencia que le llega a la contraparte y no se puede deshacer, asi que
+  // subirla en el mismo gesto de abrir la galeria era un accidente esperando ocurrir.
   const handleChatImageSelect = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !chat?.conversacion?.id || isSending) return;
-    if (!file.type.startsWith('image/')) {
+    const original = e.target.files?.[0];
+    e.target.value = '';
+    if (!original || isSending) return;
+    if (!original.type.startsWith('image/')) {
       setSendError('Solo se permiten imágenes (JPG o PNG).');
       return;
     }
-    if (file.size > MAX_EVIDENCE_SIZE) {
-      setSendError(`La imagen no puede pesar más de ${(MAX_EVIDENCE_SIZE / 1024 / 1024).toFixed(0)} MB.`);
+    setSendError('');
+    // Se comprime al SELECCIONAR y no al enviar, igual que el chat de cotizaciones: asi
+    // la miniatura muestra el peso que realmente se va a subir, y una foto de celular de
+    // 4 MB que queda en 300 KB no se rechaza por su tamano original.
+    const file = await compressImageFile(original);
+    if (file.size > MAX_CHAT_IMAGE_SIZE) {
+      setSendError('La imagen supera los 3 MB incluso comprimida. Prueba con otra.');
       return;
     }
-    setIsSending(true);
-    setSendError('');
-    try {
-      const sent = await uploadMediationChatImageApi(chat.conversacion.id, file);
-      setMessages((previous) => [...previous, sent]);
-    } catch (error) {
-      setSendError(error.message || 'No se pudo enviar la imagen al chat.');
-    } finally {
-      setIsSending(false);
-      e.target.value = '';
-    }
+    if (pendingImagePreview) URL.revokeObjectURL(pendingImagePreview);
+    setPendingImage(file);
+    setPendingImagePreview(URL.createObjectURL(file));
+  };
+
+  const discardPendingImage = () => {
+    if (pendingImagePreview) URL.revokeObjectURL(pendingImagePreview);
+    setPendingImage(null);
+    setPendingImagePreview('');
   };
 
   const submitMediatorMessage = async (event) => {
@@ -399,7 +426,9 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
       <dl className="dispute-meta">
         <div>
           <dt>Motivo del reclamo</dt>
-          <dd>{chat?.motivo || 'No informado'}</dd>
+          {/* `motivo` es el CODIGO que eligio el comprador (`Pedido.motivoReclamo`), no
+              una frase: sin traducir, las dos partes y el mediador leian "incompatible". */}
+          <dd>{chat?.motivo ? claimReasonLabel(chat.motivo) : 'No informado'}</dd>
         </div>
         <div>
           <dt>Contraparte</dt>
@@ -535,11 +564,18 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
             ) : (
               <form className="dispute-composer" onSubmit={submitMessage}>
                 {sendError && <span className="dispute-inline-error">{sendError}</span>}
+                <ChatImagePreview
+                  previewUrl={pendingImagePreview}
+                  fileName={pendingImage?.name}
+                  fileSize={pendingImage?.size}
+                  hint="Se enviará al presionar Enviar"
+                  onRemove={discardPendingImage}
+                />
                 <textarea
                   value={messageText}
                   onChange={(event) => setMessageText(event.target.value)}
                   placeholder="Escribe tu mensaje para la otra parte..."
-                  maxLength={1000}
+                  maxLength={MAX_CHAT_MESSAGE}
                   rows={2}
                 />
                 <footer>
@@ -548,8 +584,8 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
                     <span>Foto</span>
                     <input type="file" accept="image/*" onChange={handleChatImageSelect} style={{ display: 'none' }} disabled={isSending || threadLocked} />
                   </label>
-                  <small>{messageText.length}/1000</small>
-                  <button type="submit" disabled={isSending || !messageText.trim()}>
+                  <small>{messageText.length}/{MAX_CHAT_MESSAGE}</small>
+                  <button type="submit" disabled={isSending || (!messageText.trim() && !pendingImage)}>
                     {isSending ? <Loader2 size={15} className="spin-icon" /> : <Send size={15} />} Enviar
                   </button>
                 </footer>

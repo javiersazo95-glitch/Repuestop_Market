@@ -7,6 +7,7 @@ import {
   Pencil, Send, ShieldCheck, ShoppingCart, Store, Trash2, Truck, X,
 } from 'lucide-react';
 import RepuesTopLogo from './RepuesTopLogo';
+import ChatImagePreview from './ChatImagePreview';
 import {
   getConversationMessagesApi,
   getConversationQuoteApi, markConversationReadApi, reportConversationApi, resolveMediaUrl,
@@ -461,22 +462,12 @@ export default function QuoteDetailModal({
 
           {!chatLocked ? (
             <form className="quote-ws-composer" onSubmit={submitChatMessage}>
-              {selectedImagePreview && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: '#f1f5f9', borderRadius: '8px', marginBottom: '8px' }}>
-                  <img src={selectedImagePreview} alt="Vista previa" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {selectedImageFile?.name || 'Imagen adjunta'}
-                    </span>
-                    <small style={{ color: '#64748b', fontSize: '11px' }}>
-                      {(selectedImageFile?.size ? (selectedImageFile.size / 1024).toFixed(0) : '0')} KB
-                    </small>
-                  </div>
-                  <button type="button" onClick={removeSelectedImage} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }} title="Quitar imagen">
-                    <X size={16} />
-                  </button>
-                </div>
-              )}
+              <ChatImagePreview
+                previewUrl={selectedImagePreview}
+                fileName={selectedImageFile?.name}
+                fileSize={selectedImageFile?.size}
+                onRemove={removeSelectedImage}
+              />
               <input
                 type="file"
                 accept="image/*"

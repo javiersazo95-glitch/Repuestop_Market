@@ -14683,6 +14683,17 @@ input, select, textarea {
 
 /* El detalle del ticket y la solicitud de revision de cuenta usan la caja del modal de
    pedido, mas angostas: son un hilo y un formulario corto, no una ficha con columnas. */
+.chat-image-preview { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 8px; border-radius: 8px; background: #f1f5f9; }
+.chat-image-preview > img { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1; flex-shrink: 0; }
+.chat-image-preview > div { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.chat-image-preview > div > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #334155; font-size: 12px; font-weight: 600; }
+.chat-image-preview > div > small { color: #64748b; font-size: 11px; }
+/* `padding: 0` y `background: transparent` NO son decorativos: `.quote-ws-composer button`
+   y `.dispute-composer button` definen un boton azul con `padding: 9px 16px`, y sobre 26px
+   de ancho ese padding heredado aplasta el icono hasta hacerlo invisible. */
+.chat-image-preview > button { flex-shrink: 0; width: 26px; height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: #ef4444; cursor: pointer; }
+.chat-image-preview > button:hover { background: #fee2e2; }
+
 .store-unavailable-panel { max-width: 520px; margin: 64px auto; padding: 32px 28px; text-align: center; background: var(--surface-card, #ffffff); border: 1px solid #e4eaf0; border-radius: 14px; }
 .store-unavailable-panel h2 { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: var(--text-primary); margin: 14px 0 8px; }
 .store-unavailable-panel p { font-size: 14px; line-height: 1.55; color: var(--text-secondary, #64748b); margin: 0 0 20px; }

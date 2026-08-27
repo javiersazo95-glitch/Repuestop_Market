@@ -1456,3 +1456,104 @@ de verdad.
 
 **Pendiente opcional de backend** (ya anotado en el plan §4): hoy la tienda recupera solo
 por RUT. Aceptar tambien el correo exige un fallback en `enviarCodigoRecuperacion`.
+
+---
+
+### 4.23 A8 cuenta bloqueada: el bloqueo es de CUENTA COMPLETA — sesion 2026-08-26
+
+A8 cerrada y probada contra el backend local, bloqueando al proveedor 4 desde el
+backoffice por mediacion. Del plan de paridad quedan A15 y A16.
+
+#### La decision que no se deduce del codigo
+
+**Un vendedor bloqueado tampoco puede comprar.** No es "se bloquea el rol vendedor":
+`JwtAuthenticationFilter` responde 403 a TODO lo que no este en su whitelist, y el lado
+comprador -carrito, checkout, `/usuarios/{id}/pedidos`, favoritos- esta entero afuera.
+Se evaluo abrirlo y se decidio que no: el backend ya se comportaba asi, y un bloqueo
+suele nacer de una disputa de plata, donde dejar operar la misma cuenta del otro lado
+del mostrador es discutible.
+
+Consecuencia para los clientes: **los accesos de compra se esconden**, no se dejan a la
+vista para que fallen. En la web eso es el carrito del header, `/carrito`, `/checkout` y
+`addToCart`.
+
+#### La whitelist del filtro, y su forma
+
+Lo permitido a un bloqueado: **leer lo suyo y hablar con soporte.** Perfil
+(`GET /users/perfil`), estado de cuenta, su ficha de tienda, sus direcciones, los GET de
+`pedidos` / `inventario` / `conversaciones`, `/support/**`, la solicitud de revision y el
+logout. Todo lo demas, 403.
+
+**Las rutas nuevas se permiten SOLO en GET a proposito.** `/users/perfil` tambien atiende
+POST de foto y de aceptar terminos, y `/usuarios/{id}/direcciones` atiende POST; ambos
+cuelgan del mismo camino y siguen cortados. Hay test que lo pina.
+
+**`/users/perfil` fuera de la whitelist provocaba un bucle de login del que el bloqueado
+no podia salir**: `AuthContext` leia el 403 como sesion invalida, cerraba sesion y
+mostraba el login; el login funciona (ruta publica) pero el perfil siguiente daba 403 de
+nuevo. En la web se corrigio ademas la causa de fondo: **solo el 401 cierra sesion**, el
+403 es "autenticado pero sin acceso".
+
+#### Visibilidad publica: `ProveedorVisibilidadPublica`
+
+Directorio, ficha de tienda y catalogo filtraban cada uno por su cuenta con
+`status != 'suspended'`. Dos huecos:
+
+1. **El bloqueo por MEDIACION no se miraba**, y es el camino mas comun. No toca
+   `Proveedor.status`: `MediacionBackofficeService` marca `Mediacion.cuentaBloqueada` y
+   suspende la entidad **Tienda**, que es OTRA TABLA. El vendedor quedaba con el panel
+   bloqueado y la API cortada mientras el marketplace le seguia vendiendo.
+2. **`'rejected'` quedaba fuera**, aunque el filtro JWT ya lo trata como bloqueado.
+
+La regla vive ahora en `ProveedorVisibilidadPublica` (`Predicate` para las consultas
+paginadas, version sobre entidad para los detalles). La ficha publica responde **404 y no
+403**: un 403 confirmaria que ese id corresponde a una tienda sancionada. **El guard va en
+`TiendaPublicaController` y NO en `obtenerTienda()`**, que lo comparte el panel del propio
+vendedor: ponerlo en el servicio le volaba su propia tienda al bloqueado.
+
+#### El motivo del bloqueo es el CODIGO del reclamo
+
+`blockReason` no es una frase redactada por moderacion: el backend copia ahi
+`Mediacion.motivo`, que es `Pedido.motivoReclamo` (`MediacionChatService:84`), o sea el
+codigo que eligio el comprador. Se leia **"Motivo actual: incompatible"**. Se traduce con
+`src/data/claimReason.js`, que es la fuente unica de esos textos (`HelpContactForm` arma
+sus listas desde ahi), y se rotula como lo que es: el reclamo que origino la mediacion.
+
+**El backend no guarda en ninguna parte un motivo de bloqueo propio.** Si moderacion tiene
+que escribir una razon real, es columna nueva y migracion.
+
+#### La tienda de demostracion en `StorePublicProfileView`
+
+Al arreglar la visibilidad quedo a la vista: cuando `GET /tiendas/{id}` fallaba, la vista
+**inventaba una ficha completa** con nombre y **RUT `77.589.410-8`** de otra empresa. Se
+elimino junto con el resto de los datos afirmados sin leer nada ("Menos de 1 hora",
+"Desde marzo 2022", 264 publicaciones, "3 opciones" de envio) y con el logo de Tiensoft
+por defecto para cualquier tienda sin logo. Regla: **si el backend no lo mando, no se
+pinta.**
+
+#### Que falta en la APP MOVIL
+
+La app tiene el mismo desfase que tenia la web y **no se toco**:
+
+- **Su guard de pestañas exime las rutas de compra** (`isSellerShoppingPath`), pero el
+  backend las rechaza con 403. Con la opcion A aplicada le corresponde el mismo corte que
+  se hizo en la web: esconder carrito y checkout para la cuenta bloqueada.
+- **El polling de `estado-cuenta` (`app/_layout.tsx:120`) estaba muerto**: recibia 403
+  porque el endpoint no estaba en la whitelist. Con el fix ya responde, o sea que la app
+  recien ahora detecta bloqueo y desbloqueo en vivo. Conviene verificarlo.
+- Le llega la misma traduccion pendiente del motivo: mostrara el codigo crudo.
+
+#### Como se prueba
+
+Bloquear desde el backoffice por mediacion, o en local:
+`UPDATE rt_proveedor SET status='suspended' WHERE id=<id>;` (revertir con el status
+original, que depende de como quedo al aprobarse).
+
+Comprobaciones rapidas con el proveedor bloqueado:
+
+```
+curl -s "http://localhost:8080/api/v1/tiendas/publicas?size=50" | grep -c '"proveedorId":<id>'   # 0
+curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:8080/api/v1/tiendas/<id>"             # 404
+```
+
+**El filtro es codigo compilado: hay que reiniciar el backend**, no basta con recargar.

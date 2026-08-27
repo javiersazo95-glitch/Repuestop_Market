@@ -556,9 +556,14 @@ se probo de punta a punta, incluido el pago de una cotizacion.
 (comprador por correo, tienda por RUT y validacion temprana del correo en el registro).
 El detalle esta en `HANDOFF_PROXIMO_AGENTE.md` seccion 4.22.
 
-**Quedan por probar**: A8 (cuenta bloqueada), A15 (imagenes en el chat de mediacion) y
-el flujo de verificacion con un estado distinto de APPROVED, que necesita cambiarlo
-desde el backoffice.
+**A8 cerrada el 2026-08-26.** Se probo bloqueando al proveedor 4 desde el backoffice por
+mediacion. Destapo que el banner era codigo muerto, un bucle de login sin salida y dos
+huecos de visibilidad publica; el detalle esta en `HANDOFF_PROXIMO_AGENTE.md` seccion
+4.23, incluida la decision de que **el bloqueo es de cuenta completa** y lo que quedo
+pendiente en la app movil.
+
+**Quedan por probar**: A15 (imagenes en el chat de mediacion) y el flujo de verificacion
+con un estado distinto de APPROVED, que necesita cambiarlo desde el backoffice.
 
 **A16 sigue sin cablear.** `getInventoryVehicleCatalogsApi` y `getVehicleCatalogPartsApi`
 existen en `api.js` y no las llama nadie.
