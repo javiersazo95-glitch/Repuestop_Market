@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Flag, X, Loader2, CheckCircle2 } from 'lucide-react';
 import { createContextualReportApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -28,23 +29,19 @@ const REASONS = {
   ],
   PRODUCTO: [
     'Producto no coincide con la descripción',
-    'Precio o stock engañoso',
-    'Producto falsificado',
-    'Compatibilidad incorrecta',
-    'Contenido prohibido',
+    'Precio incorrecto o engañoso',
+    'Sospecha de falsificación o estafa',
+    'Contenido inapropiado',
     'Otro motivo',
   ],
   ANUNCIO: [
-    'Publicidad engañosa',
-    'Servicio o promoción fraudulenta',
-    'Contenido inapropiado',
-    'Datos de contacto falsos',
-    'Publicación duplicada o spam',
+    'Anuncio engañoso o spam',
+    'Vendedor no responde o sospechoso',
+    'Contenido inapropiado o prohibido',
+    'Precio no corresponde',
     'Otro motivo',
   ],
 };
-
-const ENTITY_LABELS = { TIENDA: 'tienda', PRODUCTO: 'producto', ANUNCIO: 'anuncio' };
 
 export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTitulo, className, label }) {
   const { user } = useAuth();
@@ -56,7 +53,11 @@ export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTit
   const [errorMessage, setErrorMessage] = useState('');
 
   const reasons = REASONS[tipoObjeto];
-  const entityLabel = ENTITY_LABELS[tipoObjeto] || 'contenido';
+  const entityLabel = tipoObjeto === 'TIENDA'
+    ? 'tienda'
+    : tipoObjeto === 'PRODUCTO'
+      ? 'producto'
+      : 'anuncio';
 
   // El backend resuelve al reportado a partir del id, asi que uno invalido solo sirve para
   // gastar un 400. Y sin sesion no hay a quien atribuir el reporte.
@@ -108,7 +109,7 @@ export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTit
         <span>{label || 'Reportar'}</span>
       </button>
 
-      {isOpen && (
+      {isOpen && typeof document !== 'undefined' && createPortal(
         <div className="quote-ws-dialog-backdrop" onClick={close}>
           <form className="quote-ws-report-dialog" onSubmit={submit} onClick={(event) => event.stopPropagation()}>
             <header>
@@ -165,10 +166,11 @@ export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTit
               </button>
             </footer>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {successOpen && (
+      {successOpen && typeof document !== 'undefined' && createPortal(
         <div className="quote-ws-dialog-backdrop" onClick={() => setSuccessOpen(false)}>
           <section
             className="quote-ws-report-success"
@@ -182,7 +184,8 @@ export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTit
             <p>Hemos recibido tu reporte de manera confidencial y lo revisaremos a la brevedad.</p>
             <button type="button" onClick={() => setSuccessOpen(false)}>Entendido</button>
           </section>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

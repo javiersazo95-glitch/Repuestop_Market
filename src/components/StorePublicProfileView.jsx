@@ -8,6 +8,7 @@ import {
   Heart, Share2, Image, PenLine, ArrowRight, HelpCircle,
   CarFront, Barcode, CircleHelp, RefreshCw, Tag, Store as StoreIcon
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { NAVIGATION_CATEGORIES } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
@@ -40,6 +41,7 @@ export default function StorePublicProfileView({
   activeVehicle: initialActiveVehicle,
   onEditStore
 }) {
+  const { user } = useAuth();
   const initialStoreId = typeof store === 'string' ? null : store?.id;
 
   const [activeVehicle, setActiveVehicle] = useState(initialActiveVehicle);
@@ -48,6 +50,8 @@ export default function StorePublicProfileView({
   const [patentSearching, setPatentSearching] = useState(false);
   const [searchMode, setSearchMode] = useState('repuesto');
   const [inputValue, setInputValue] = useState(initialActiveVehicle?.patente || '');
+  const [logoError, setLogoError] = useState(false);
+  const [coverError, setCoverError] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [purchaseType, setPurchaseType] = useState('TODOS'); // 'TODOS' | 'DIRECTA' | 'COTIZACION'
@@ -122,6 +126,12 @@ export default function StorePublicProfileView({
   const responseRate = currentStore?.responseRate != null ? Number(currentStore.responseRate) : null;
   const shippingMethods = parseShippingMethods(currentStore?.metodosEnvio);
   const isVerified = currentStore?.esOficial || rating >= 4.5;
+  const isOwnStore = Boolean(
+    onEditStore ||
+    (user?.sellerId && String(user.sellerId) === String(storeId)) ||
+    (user?.userId && String(user.userId) === String(currentStore?.proveedorId || currentStore?.id)) ||
+    (user?.storeName && user.storeName === currentStore?.nombre)
+  );
 
   // Inventario real de la tienda con TanStack Query
   const {
@@ -345,20 +355,25 @@ export default function StorePublicProfileView({
       {/* 1. Header Banner & Store Info */}
       <div className="store-header-banner">
         <div className="store-cover-image">
-          {currentStore.coverUrl ? (
-            <img src={currentStore.coverUrl} alt="Portada de la tienda" />
+          {currentStore.coverUrl && !coverError ? (
+            <img
+              src={currentStore.coverUrl}
+              alt={`Portada de ${currentStore.nombre}`}
+              className="store-cover-backdrop-img"
+              onError={() => setCoverError(true)}
+            />
           ) : (
             <div className="store-cover-placeholder" />
           )}
           <div className="store-cover-overlay" />
 
           <div className="container store-header-actions-bar">
-            <button className="btn-back-stores" onClick={onBackToStores}>
+            <button className="btn-back-stores" onClick={onBackToStores} type="button">
               <ArrowLeft size={16} />
               <span>Volver a Tiendas</span>
             </button>
             {onEditStore && (
-              <button className="btn-edit-store-profile" onClick={onEditStore} title="Editar mi tienda">
+              <button className="btn-edit-store-profile" onClick={onEditStore} type="button" title="Editar mi tienda">
                 <PenLine size={15} />
                 <span>Editar tienda</span>
               </button>
@@ -368,11 +383,16 @@ export default function StorePublicProfileView({
           <div className="container store-hero-inner-container">
             <div className="store-hero-left">
               <div className="store-avatar-box">
-                {currentStore.logoUrl ? (
-                  <img src={currentStore.logoUrl} alt={currentStore.nombre} />
+                {currentStore.logoUrl && !logoError ? (
+                  <img
+                    src={currentStore.logoUrl}
+                    alt={currentStore.nombre}
+                    className="store-avatar-img"
+                    onError={() => setLogoError(true)}
+                  />
                 ) : (
-                  <div className="store-avatar-fallback">
-                    <Building2 size={36} />
+                  <div className="store-avatar-fallback" style={{ backgroundColor: currentStore.bgColor || '#0066ff' }}>
+                    <span>{currentStore.initials || 'RT'}</span>
                   </div>
                 )}
               </div>
@@ -397,23 +417,32 @@ export default function StorePublicProfileView({
                   <button
                     className={`btn-follow-store ${isFollowing ? 'following' : ''}`}
                     onClick={toggleFollow}
+                    type="button"
+                    title={isFollowing ? 'Dejar de seguir tienda' : 'Seguir tienda para recibir novedades'}
                   >
                     <Heart size={16} className={isFollowing ? 'fill-current' : ''} />
                     <span>{isFollowing ? 'Siguiendo tienda' : 'Seguir tienda'}</span>
                   </button>
 
-                  <button className="btn-share-store" onClick={handleShare}>
+                  <button className="btn-share-store" onClick={handleShare} type="button" title="Compartir enlace de la tienda">
                     <Share2 size={16} />
-                    <span>{shareFeedback || 'Compartir'}</span>
+                    <span>{shareFeedback === '¡Enlace copiado!' ? '¡Enlace copiado!' : 'Compartir'}</span>
                   </button>
 
                   <ContextualReportButton
                     tipoObjeto="TIENDA"
                     objetoId={storeId}
                     objetoTitulo={currentStore.nombre}
-                    className="btn-share-store"
+                    className="btn-report-store"
                   />
                 </div>
+
+                {shareFeedback && (
+                  <div className="store-action-toast-banner" role="status">
+                    <CheckCircle2 size={14} />
+                    <span>{shareFeedback}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -459,10 +488,6 @@ export default function StorePublicProfileView({
               </div>
             </div>
 
-            {/* Estas dos baldosas afirmaban "Menos de 1 hora" y "Desde marzo 2022" para
-                CUALQUIER tienda, sin leer ningun dato. Son promesas al comprador, asi
-                que ahora salen del backend (`responseTimeLabel`, `createdAt`) y si no
-                vienen, la baldosa no se pinta. */}
             {currentStore.responseTimeLabel && (
               <div className="metric-strip-item">
                 <span className="metric-icon-box"><Clock size={22} /></span>
@@ -486,19 +511,6 @@ export default function StorePublicProfileView({
         </div>
       </div>
 
-      {/* Persistent Banner so the user ALWAYS knows which store's inventory they are browsing */}
-      <div className="persistent-store-sticky-banner container">
-        <div className="persistent-store-inner">
-          {currentStore.logoUrl ? (
-            <img src={currentStore.logoUrl} alt={currentStore.nombre} className="sticky-banner-logo-mini" />
-          ) : (
-            <Building2 size={18} className="text-blue-600" />
-          )}
-          <span>Viendo únicamente el catálogo e inventario exclusivo de <strong>{currentStore.nombre}</strong> ({currentStore.rut})</span>
-          <span className="store-location-tag"><MapPin size={12} /> {currentStore.ciudad}</span>
-        </div>
-      </div>
-
       <div className="container catalog-main-container store-profile-search-stack">
         {/* 2. License Plate & Inventory Unified Filter Console inside Store View */}
         <div className="light-search-panel catalog-unified-search-panel">
@@ -512,6 +524,7 @@ export default function StorePublicProfileView({
                   aria-selected={searchMode === item.id}
                   className={searchMode === item.id ? 'active' : ''}
                   onClick={() => selectSearchMode(item.id)}
+                  type="button"
                 >
                   <Icon size={20} /> <span>{item.label}</span>
                 </button>
@@ -611,44 +624,6 @@ export default function StorePublicProfileView({
                   {item}
                 </button>
               ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 3. Store Search & Control Bar */}
-        <div className="catalog-control-bar store-inventory-control-bar">
-          <div className="store-inventory-search-title">
-            <span><Search size={29} /></span>
-            <p><strong>Buscar en el inventario de {currentStore.nombre}</strong><small>Más de {Number(currentStore.totalPublicaciones ?? 0).toLocaleString('es-CL')} repuestos disponibles</small></p>
-          </div>
-          <div className="store-inventory-search-body">
-            <div className="store-inventory-search-row">
-              <div className="search-bar-catalog-box">
-                <Search size={18} className="search-box-icon" />
-                <input
-                  type="text"
-                  placeholder="Filtrar por código OEM, repuesto, marca o modelo en esta tienda..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    if (searchMode === 'oem' || searchMode === 'repuesto') {
-                      setInputValue(e.target.value);
-                    }
-                  }}
-                  className="search-catalog-input"
-                />
-                {searchQuery && (
-                  <button
-                    className="btn-clear-search-dir"
-                    onClick={() => {
-                      setSearchQuery('');
-                      if (searchMode === 'oem' || searchMode === 'repuesto') setInputValue('');
-                    }}
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
             </div>
           </div>
         </div>

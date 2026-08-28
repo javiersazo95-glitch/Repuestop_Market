@@ -13439,22 +13439,23 @@ input, select, textarea {
 .store-cover-image {
   position: relative !important;
   width: 100% !important;
-  min-height: 230px !important;
+  min-height: 280px !important;
   background: linear-gradient(135deg, #0b234b 0%, #0d3268 50%, #071938 100%) !important;
-  padding-top: 50px !important;
-  padding-bottom: 50px !important;
+  padding-top: 55px !important;
+  padding-bottom: 55px !important;
   display: flex !important;
   align-items: center !important;
 }
 
-.store-cover-image img {
+.store-cover-backdrop-img {
   position: absolute !important;
   inset: 0 !important;
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
-  opacity: 0.35 !important;
+  opacity: 0.85 !important;
   display: block !important;
+  pointer-events: none !important;
 }
 
 .store-cover-placeholder {
@@ -13468,7 +13469,7 @@ input, select, textarea {
 .store-cover-overlay {
   position: absolute !important;
   inset: 0 !important;
-  background: linear-gradient(to right, rgba(11, 35, 75, 0.95) 0%, rgba(11, 35, 75, 0.85) 65%, rgba(7, 25, 56, 0.75) 100%) !important;
+  background: linear-gradient(135deg, rgba(8, 24, 48, 0.88) 0%, rgba(10, 32, 64, 0.72) 55%, rgba(6, 18, 38, 0.85) 100%) !important;
   pointer-events: none !important;
 }
 
@@ -13493,9 +13494,9 @@ input, select, textarea {
   align-items: center !important;
   gap: 6px !important;
   padding: 6px 14px !important;
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.18) !important;
   backdrop-filter: blur(8px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
   border-radius: 20px !important;
   color: #ffffff !important;
   font-size: 12px !important;
@@ -13505,7 +13506,7 @@ input, select, textarea {
 }
 
 .btn-back-stores:hover {
-  background: rgba(255, 255, 255, 0.25) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
 }
 
 .btn-edit-store-profile {
@@ -13530,6 +13531,13 @@ input, select, textarea {
   justify-content: space-between !important;
   gap: 24px !important;
   width: 100% !important;
+  background: rgba(11, 28, 56, 0.88) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 20px !important;
+  padding: 24px 30px !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4) !important;
 }
 
 .store-hero-left {
@@ -13541,20 +13549,26 @@ input, select, textarea {
 }
 
 .store-avatar-box {
-  width: 120px !important;
-  height: 120px !important;
+  width: 110px !important;
+  height: 110px !important;
   border-radius: 16px !important;
   background: #ffffff !important;
   border: 3.5px solid #ffffff !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
   overflow: hidden !important;
   flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-.store-avatar-box img {
+.store-avatar-box img,
+.store-avatar-img {
+  position: static !important;
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
+  display: block !important;
 }
 
 .store-avatar-fallback {
@@ -13565,6 +13579,10 @@ input, select, textarea {
   justify-content: center !important;
   background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
   color: #ffffff !important;
+  font-size: 38px !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.02em !important;
+  user-select: none !important;
 }
 
 .store-info-details {
@@ -13634,6 +13652,7 @@ input, select, textarea {
   align-items: center !important;
   gap: 10px !important;
   margin-top: 4px !important;
+  flex-wrap: wrap !important;
 }
 
 .btn-follow-store {
@@ -13677,6 +13696,41 @@ input, select, textarea {
 
 .btn-share-store:hover {
   background: #f1f5f9 !important;
+}
+
+.btn-report-store {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 8px 18px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  color: #475569 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-report-store:hover {
+  background: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+  color: #dc2626 !important;
+}
+
+.store-action-toast-banner {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px 14px !important;
+  background: #059669 !important;
+  color: #ffffff !important;
+  border-radius: 20px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  margin-top: 4px !important;
+  align-self: flex-start !important;
 }
 
 /* Rating Card on the Right */
