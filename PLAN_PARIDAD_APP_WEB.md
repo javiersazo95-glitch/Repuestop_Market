@@ -336,10 +336,11 @@ Para certificar que el plan quedó ejecutado al 100% y sin regresiones, se debe 
   1. Abrir un caso de mediación/disputa activo en `MediationCaseView`.
   2. En el compositor inferior, pulsar el botón de adjuntar foto, elegir una imagen y enviarla.
   3. Validar que la foto se visualiza en la conversación y permite hacer clic para ver en grande.
-- [ ] **TC-10 — Creación de Reporte Contextual (A18)**:
+- [x] **TC-10 — Creación de Reporte Contextual (A18)**:
   1. En el menú de opciones de una cotización o pedido, pulsar "Reportar".
-  2. Seleccionar el motivo del reporte e ingresar detalle adicional.
-  3. Enviar y comprobar el mensaje de confirmación confidencial.
+  2. En la ficha de producto, tienda o tarjeta de anuncio, pulsar "Reportar".
+  3. Seleccionar el motivo contextual correspondiente (Tienda, Producto o Anuncio) e ingresar detalle opcional.
+  4. Enviar y comprobar el mensaje de confirmación confidencial y la nota informativa de soporte/mediación.
 - [ ] **TC-11 — Limpieza de Notificaciones Leídas (A24 & B6)**:
   1. Abrir la campana de notificaciones en el perfil (`ProfileNotificationsBell`).
   2. Presionar "Limpiar leídas".
@@ -583,6 +584,13 @@ y firma del contrato de adhesión persistido.
 - Edición y serialización de múltiples compatibilidades con marcas, modelos y versiones asociadas.
 - Visualización de la tarjeta de compatibilidades para el comprador en `ProductDetailPage` con chips exactos de versiones seleccionadas.
 
+**TC-10 / A18 (Reportes contextuales 1:1 en Producto, Tienda y Anuncios) cerrado el 2026-08-28.** Probado y validado de punta a punta:
+- Renderizado global mediante `createPortal` en `document.body` evitando solapamientos con contenedores con `backdrop-filter` o `transform`.
+- Ficha de Producto: botón sutil `⚑ Reportar publicación` al pie de la columna de compra (`!isOwnProduct`), con motivos específicos de producto.
+- Ficha de Tienda: corrección de contraste en hero/portada, avatar con iniciales, banner duplicado eliminado, buscador unificado y exclusión estricta de auto-reporte en tienda propia (`!isOwnStore`).
+- Mural de Anuncios: exclusión estricta en avisos propios (`!isOwnAdCard`), 0 datos hardcodeados y motivos específicos de servicios automotrices.
+- Tipografía ampliada (título 18px, motivos 13.5px bold, textarea 13.5px) y tarjeta explicativa de seguridad/mediación para soporte.
+
 **A16 sigue sin cablear** y es diferido (búsqueda por catálogo de vehículo).
 
-El detalle de lo que se arreglo esta en `HANDOFF_PROXIMO_AGENTE.md` seccion 4.24 y 4.25.
+El detalle de lo que se arreglo esta en `HANDOFF_PROXIMO_AGENTE.md` seccion 4.24, 4.25 y 4.26.

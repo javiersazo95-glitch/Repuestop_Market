@@ -362,18 +362,6 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
               <span><CheckCircle2 /><b>Devoluciones fáciles</b><small>Hasta 30 días</small></span>
               <span><ShieldCheck /><b>Calidad garantizada</b><small>Productos verificados</small></span>
             </div>
-
-            {/* El propio componente se oculta si es contenido de la misma cuenta (el
-                backend lo rechaza) o si no hay sesion. */}
-            {!isOwnProduct && (
-              <div className="product-marketplace-report-row">
-                <ContextualReportButton
-                  tipoObjeto="PRODUCTO"
-                  objetoId={product.id}
-                  objetoTitulo={product.titulo}
-                />
-              </div>
-            )}
           </article>
 
           <aside className="product-marketplace-buybox">
@@ -457,6 +445,18 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                 <span><Landmark /><p><b>Transferencia vía Khipu</b><small>Disponible como alternativa de pago</small></p></span>
               )}
             </div>
+
+            {!isOwnProduct && (
+              <div className="product-marketplace-report-footer">
+                <ContextualReportButton
+                  tipoObjeto="PRODUCTO"
+                  objetoId={product.id}
+                  objetoTitulo={product.titulo}
+                  className="btn-product-report-link"
+                  label="Reportar publicación"
+                />
+              </div>
+            )}
           </aside>
 
           <section className={`product-marketplace-info-grid${isOwnProduct ? ' is-own-product' : ''}`}>

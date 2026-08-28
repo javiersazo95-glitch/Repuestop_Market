@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Flag, X, Loader2, CheckCircle2 } from 'lucide-react';
+import { Flag, X, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { createContextualReportApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -154,6 +154,16 @@ export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTit
                 />
                 <small>{detail.length}/500</small>
               </label>
+
+              <div className="contextual-report-help-card">
+                <ShieldCheck size={18} className="contextual-report-help-icon" />
+                <div>
+                  <strong>¿Qué sucederá con tu reporte?</strong>
+                  <p>
+                    Será revisado de forma confidencial por el equipo de soporte y servirá como antecedente e historial en caso de futuras mediaciones.
+                  </p>
+                </div>
+              </div>
 
               {errorMessage && <p className="contextual-report-error">{errorMessage}</p>}
             </div>

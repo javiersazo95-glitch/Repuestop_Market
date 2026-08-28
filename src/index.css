@@ -13114,9 +13114,63 @@ input, select, textarea {
 .contextual-report-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid #dfe6ee; border-radius: 8px; color: #7a8da1; background: transparent; font-size: 11px; font-weight: 700; cursor: pointer; transition: color .15s ease, border-color .15s ease; }
 .contextual-report-trigger:hover { color: #c2333d; border-color: #f0c4c7; background: #fdf4f5; }
 .product-marketplace-report-row { margin-top: 14px; display: flex; justify-content: flex-end; }
+.product-marketplace-report-footer {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: center;
+}
+.btn-product-report-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 0;
+  color: #64748b;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+.btn-product-report-link:hover {
+  color: #dc2626;
+  background: #fef2f2;
+}
 .btn-ad-report { width: 100%; margin-top: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 10px; border: 1px solid #e2e8f0; border-radius: 8px; color: #8798aa; background: transparent; font-size: 10.5px; font-weight: 700; cursor: pointer; }
 .btn-ad-report:hover { color: #c2333d; border-color: #f0c4c7; background: #fdf4f5; }
 .contextual-report-error { margin: 6px 0 0; color: #dc2626; font-size: 13px; font-weight: 700; }
+
+.contextual-report-help-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+.contextual-report-help-icon {
+  flex-shrink: 0;
+  color: #2563eb;
+  margin-top: 1px;
+}
+.contextual-report-help-card strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin-bottom: 2px;
+}
+.contextual-report-help-card p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #2563eb;
+}
 
 /* Aumento tipográfico leve, compensado con menos espacio vertical para conservar una sola vista. */
 .quote-ws-account strong, .quote-ws-person strong, .quote-ws-product-head strong { font-size: 12.5px; }

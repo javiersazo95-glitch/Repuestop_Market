@@ -128,9 +128,14 @@ export default function StorePublicProfileView({
   const isVerified = currentStore?.esOficial || rating >= 4.5;
   const isOwnStore = Boolean(
     onEditStore ||
-    (user?.sellerId && String(user.sellerId) === String(storeId)) ||
+    (user?.sellerId && (String(user.sellerId) === String(storeId) || String(user.sellerId) === String(currentStore?.proveedorId))) ||
+    (user?.storeId && (String(user.storeId) === String(storeId) || String(user.storeId) === String(currentStore?.proveedorId))) ||
+    (user?.tiendaId && (String(user.tiendaId) === String(storeId) || String(user.tiendaId) === String(currentStore?.proveedorId))) ||
+    (user?.proveedorId && (String(user.proveedorId) === String(storeId) || String(user.proveedorId) === String(currentStore?.proveedorId))) ||
     (user?.userId && String(user.userId) === String(currentStore?.proveedorId || currentStore?.id)) ||
-    (user?.storeName && user.storeName === currentStore?.nombre)
+    (user?.id && String(user.id) === String(currentStore?.proveedorId || currentStore?.id)) ||
+    (user?.storeName && currentStore?.nombre && user.storeName.toLowerCase().trim() === currentStore.nombre.toLowerCase().trim()) ||
+    (user?.nombreTienda && currentStore?.nombre && user.nombreTienda.toLowerCase().trim() === currentStore.nombre.toLowerCase().trim())
   );
 
   // Inventario real de la tienda con TanStack Query
@@ -429,12 +434,14 @@ export default function StorePublicProfileView({
                     <span>{shareFeedback === '¡Enlace copiado!' ? '¡Enlace copiado!' : 'Compartir'}</span>
                   </button>
 
-                  <ContextualReportButton
-                    tipoObjeto="TIENDA"
-                    objetoId={storeId}
-                    objetoTitulo={currentStore.nombre}
-                    className="btn-report-store"
-                  />
+                  {!isOwnStore && (
+                    <ContextualReportButton
+                      tipoObjeto="TIENDA"
+                      objetoId={storeId}
+                      objetoTitulo={currentStore.nombre}
+                      className="btn-report-store"
+                    />
+                  )}
                 </div>
 
                 {shareFeedback && (

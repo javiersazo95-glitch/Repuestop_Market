@@ -1588,3 +1588,23 @@ curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:8080/api/v1/tiendas/<
 5. **Invalidación de Caché Inmediata en Edición de Producto**:
    - `handleCatalogProductSaved` en `ProfileDashboard.jsx` ahora invalida y remueve explícitamente `qk.product(pid)`, `compatVersionsForProduct` y `vehicleCatalogDetails`.
    - `ProductPage.jsx` fue configurado con `initialDataUpdatedAt: 0` y `staleTime: 10000`, garantizando que cualquier compatibilidad nueva agregada por el vendedor se refleje de inmediato en la ficha pública del repuesto.
+
+### 4.26 Sesión 2026-08-28 — Reportes Contextuales 1:1, Limpieza de Perfil de Tienda y Consolidación de Mural de Anuncios
+
+1. **Diálogos de Reporte Contextual Globales (`ContextualReportButton.jsx`)**:
+   - Se montaron los modales de reporte y confirmación mediante `createPortal(..., document.body)` para evitar que quedaran atrapados dentro de contenedores con `backdrop-filter`, `transform` o `position: relative`.
+   - Se mejoró la tipografía y legibilidad de todos los reportes (título 18px, motivos 13.5px bold, altura 46px, textarea 13.5px y botones de 42px).
+   - Se incorporó la tarjeta explicativa con icono de escudo (`ShieldCheck`): *"¿Qué sucederá con tu reporte? Será revisado de forma confidencial por el equipo de soporte y servirá como antecedente e historial en caso de futuras mediaciones."*
+2. **Correcciones Integrales en Vista Pública de Tienda (`StorePublicProfileView.jsx`)**:
+   - **Aislamiento de Portada y Avatar**: Se eliminó la regla CSS genérica `.store-cover-image img` que expandía erróneamente la foto de perfil sobre todo el banner. Se crearon clases aisladas `.store-cover-backdrop-img` y `.store-avatar-img`, fijando el avatar dentro de `.store-avatar-box` con fallback estilizado de iniciales (ej. `R2`).
+   - **Hero de Alto Contraste**: Se encapsuló la información del perfil en una tarjeta flotante con glassmorphism oscuro (`rgba(11, 28, 56, 0.88)`), garantizando 100% de legibilidad sobre cualquier imagen de portada.
+   - **Eliminación de Redundancias**: Se removió el banner azul sticky repetitivo y el segundo buscador del catálogo, unificando la búsqueda en la consola interactiva por pestañas (*Repuesto*, *Patente*, *VIN*, *OEM*).
+   - **Exclusión de Auto-Reporte**: `isOwnStore` ahora valida exhaustivamente todos los identificadores de la sesión (`sellerId`, `storeId`, `tiendaId`, `userId`, `storeName`) para ocultar el botón *"Reportar"* en la tienda propia.
+3. **Reubicación del Botón de Reporte en Ficha de Producto (`ProductDetailPage.jsx`)**:
+   - Siguiendo el estándar de los marketplaces chilenos (Mercado Libre Chile), se retiró el botón del centro de la pantalla y se reubicó al pie de la columna lateral de compra como un enlace sutil `⚑ Reportar publicación` (`.btn-product-report-link`).
+4. **Verificación en Mural de Anuncios (`AdCard.jsx` / `AdsWallView.jsx`)**:
+   - Verificado que los anuncios propios con insignia *"Tu anuncio"* ocultan automáticamente el botón de reporte (`!isOwnAdCard`).
+   - Verificado que no existen anuncios mock/hardcodeados (`INITIAL_CLASSIFIED_ADS = []`); todos provienen del backend (`GET /api/v1/anuncios`).
+5. **Regla de Flujo Git en `CLAUDE.md`**:
+   - Registrada la regla obligatoria de no realizar commits ni `git push` a menos que el usuario lo solicite de manera explícita en su mensaje.
+
