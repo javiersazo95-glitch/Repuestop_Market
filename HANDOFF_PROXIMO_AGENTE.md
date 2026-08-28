@@ -1608,3 +1608,23 @@ curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:8080/api/v1/tiendas/<
 5. **Regla de Flujo Git en `CLAUDE.md`**:
    - Registrada la regla obligatoria de no realizar commits ni `git push` a menos que el usuario lo solicite de manera explícita en su mensaje.
 
+### 4.27 Sesión 2026-08-28 — Optimización de Imágenes en Chat y Evidencias de Mediación (`MediationCaseView.jsx`)
+
+1. **Compresión Asíncrona de Evidencias**:
+   - `pickEvidenceFiles` ahora ejecuta `compressImageFile(file)` (1600px / JPEG 80%) en cada archivo seleccionado antes de agregarlo al estado de evidencias (`mediatorFiles`, `files`).
+   - Reduce las fotos crudas de cámara de 5-8 MB a ~200-400 KB antes de subirse a Cloudflare R2, tanto en el hilo con el mediador como en los modales de escalación y resolución.
+   - `EvidencePicker` incluye indicador interactivo de compresión con spinner (`Loader2`).
+2. **Límites de Imágenes en Chat Directo**:
+   - Definido `MAX_CHAT_IMAGES = 10` y `MAX_CHAT_IMAGE_SIZE = 3 MB`.
+   - `handleChatImageSelect` bloquea la selección al alcanzar 10 fotos por conversación y el botón de adjuntar en el footer refleja el estado (`Máx. 10` / deshabilitado).
+3. **Visor de Imágenes / Lightbox a Pantalla Completa y Montaje Seguro con `createPortal`**:
+   - Incorporado estado `viewerImage` con renderizado lightbox montado en `document.body` mediante `createPortal`, evitando atrapamientos en stacking context del perfil.
+   - Barra flotante en vidrio oscuro (`backdrop-filter`) con `z-index: 99999`, título, botón de descarga y botón de cierre `X` con soporte para cerrar al pulsar la tecla `Esc` o clic en el fondo.
+   - Burbujas de chat directo con botón interactivo `.quote-ws-image-open` e icono `Maximize2` para ampliar las imágenes.
+   - Miniaturas de `EvidenceStrip` convertidas en botones interactivos (`.dispute-evidence-thumb-btn`) para examinar cualquier evidencia del expediente en alta resolución.
+4. **Corrección de Centrado en Miniaturas de Precarga**:
+   - Se forzó `padding: 0 !important; margin: 0 !important;` en `.dispute-evidence-thumbs li > button` para anular el padding heredado del composer general, logrando un centrado geométrico perfecto del icono de la `X`.
+5. **Corrección en Base de Datos Backend (`repuestop`)**:
+   - Se creó la migración Flyway `V2026082806__widen_mediacion_url_documento_to_text.sql` ensanchando `bo_mediacion.url_documento`, `nombre_documento` y `bo_mediacion_evidencia.url` a tipo `TEXT`, permitiendo acumular múltiples URLs de Cloudflare R2 sin límite de 500 caracteres.
+
+

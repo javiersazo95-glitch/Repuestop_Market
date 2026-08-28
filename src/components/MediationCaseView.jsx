@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
-  AlertTriangle, ArrowLeft, CheckCircle2, Image as ImageIcon, Loader2, Lock,
-  MessageSquare, Paperclip, RefreshCw, Scale, Send, ShieldAlert, X,
+  AlertTriangle, ArrowLeft, CheckCircle2, Download, Image as ImageIcon, Loader2, Lock,
+  Maximize2, MessageSquare, Paperclip, RefreshCw, Scale, Send, ShieldAlert, X,
 } from 'lucide-react';
 import {
   escalateMediationApi, getMediationChatApi, resolveMediationApi,
@@ -14,14 +15,12 @@ import compressImageFile from '../utils/imageCompression';
 import ChatImagePreview from './ChatImagePreview';
 
 const MAX_EVIDENCE_FILES = 5;
-const MAX_EVIDENCE_SIZE = 5 * 1024 * 1024;
 const MAX_REASON = 150;
 const MAX_DETAIL = 500;
 // Mismos topes que el chat de cotizaciones (`ConversacionService`): son dos hilos
-// equivalentes y no hay razon para que uno acepte el doble que el otro. El de 1000
-// caracteres que habia aqui no lo respaldaba nada: `validarTexto` del backend solo
-// rechazaba el texto vacio.
+// equivalentes y no hay razon para que uno acepte el doble que el otro.
 const MAX_CHAT_MESSAGE = 500;
+const MAX_CHAT_IMAGES = 10;
 const MAX_CHAT_IMAGE_SIZE = 3 * 1024 * 1024;
 
 // Entradas automaticas que el backend deja en el hilo del mediador: no son
@@ -65,11 +64,10 @@ function initials(name) {
 }
 
 /**
- * Valida tipo y peso antes de subir. El backend acepta hasta 10 MB por archivo
- * (spring.servlet.multipart.max-file-size), acá se corta en 5 MB para no
- * mandar fotos de cámara sin comprimir por una conexión móvil.
+ * Valida tipo, comprime la imagen (1600 px / JPEG 80%) y valida el peso final.
+ * Comprimir ANTES de guardar en el estado evita subir fotos crudas de 5-8 MB a Cloudflare R2.
  */
-function pickEvidenceFiles(incoming, currentCount, onError) {
+async function pickEvidenceFiles(incoming, currentCount, onError) {
   const files = Array.from(incoming || []);
   const accepted = [];
   for (const file of files) {
@@ -77,30 +75,42 @@ function pickEvidenceFiles(incoming, currentCount, onError) {
       onError(`Solo puedes adjuntar ${MAX_EVIDENCE_FILES} imágenes por solicitud.`);
       break;
     }
-    if (!file.type.startsWith('image/')) {
-      onError(`"${file.name}" no es una imagen.`);
+    if (!file.type?.startsWith('image/')) {
+      onError(`"${file.name}" no es una imagen válida (JPG o PNG).`);
       continue;
     }
-    if (file.size > MAX_EVIDENCE_SIZE) {
-      onError(`"${file.name}" pesa ${(file.size / 1024 / 1024).toFixed(1)} MB y el máximo es 5 MB.`);
+    const compressed = await compressImageFile(file);
+    if (compressed.size > MAX_CHAT_IMAGE_SIZE) {
+      onError(`"${file.name}" supera los 3 MB incluso comprimida. Prueba con otra.`);
       continue;
     }
-    accepted.push(file);
+    accepted.push(compressed);
   }
   return accepted;
 }
 
-/** Miniaturas de lo que se va a subir: sin previsualización el usuario no sabe si el archivo entró. */
+/** Miniaturas de lo que se va a subir con estado de compresión. */
 function EvidencePicker({ files, onAdd, onRemove, disabled }) {
+  const [isProcessing, setIsProcessing] = useState(false);
   const previews = useMemo(() => files.map((file) => URL.createObjectURL(file)), [files]);
   useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews]);
   const full = files.length >= MAX_EVIDENCE_FILES;
+
+  const handleFilesAdded = async (incoming) => {
+    if (!incoming.length) return;
+    setIsProcessing(true);
+    try {
+      await onAdd(incoming);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="dispute-evidence-picker">
       <div className="dispute-evidence-counter">
         <span><ImageIcon size={13} /> {files.length} de {MAX_EVIDENCE_FILES} imágenes</span>
-        <small>JPG o PNG · hasta 5 MB cada una</small>
+        <small>{isProcessing ? 'Optimizando imágenes...' : 'JPG o PNG · hasta 3 MB comprimida'}</small>
       </div>
 
       {files.length > 0 && (
@@ -109,26 +119,24 @@ function EvidencePicker({ files, onAdd, onRemove, disabled }) {
             <li key={`${file.name}-${index}`}>
               <img src={previews[index]} alt={file.name} />
               <button type="button" onClick={() => onRemove(index)} aria-label={`Quitar ${file.name}`}><X size={12} /></button>
-              <small title={file.name}>{(file.size / 1024 / 1024).toFixed(1)} MB</small>
+              <small title={file.name}>{(file.size / 1024).toFixed(0)} KB</small>
             </li>
           ))}
         </ul>
       )}
 
-      <label className={`dispute-evidence-drop ${disabled || full ? 'is-off' : ''}`}>
-        <Paperclip size={14} />
-        <span>{full ? 'Alcanzaste el máximo de imágenes' : 'Elegir imágenes desde tu equipo'}</span>
+      <label className={`dispute-evidence-drop ${disabled || full || isProcessing ? 'is-off' : ''}`}>
+        {isProcessing ? <Loader2 size={14} className="spin-icon" /> : <Paperclip size={14} />}
+        <span>{full ? 'Alcanzaste el máximo de imágenes' : isProcessing ? 'Comprimiendo imágenes...' : 'Elegir imágenes desde tu equipo'}</span>
         <input
           type="file"
           accept="image/*"
           multiple
-          disabled={disabled || full}
+          disabled={disabled || full || isProcessing}
           onChange={(event) => {
-            // Array.from ANTES de limpiar el input: `event.target.files` es una
-            // FileList viva y `value = ''` la deja en cero, asi que pasarla tal
-            // cual hacia que el archivo elegido nunca llegara al estado.
-            onAdd(Array.from(event.target.files || []));
+            const selected = Array.from(event.target.files || []);
             event.target.value = '';
+            void handleFilesAdded(selected);
           }}
         />
       </label>
@@ -136,18 +144,24 @@ function EvidencePicker({ files, onAdd, onRemove, disabled }) {
   );
 }
 
-/** Evidencia ya guardada en el caso (la que devuelve el backend, hasta ahora invisible en la web). */
-function EvidenceStrip({ title, items }) {
-  if (!items.length) return null;
+/** Evidencia ya guardada en el caso. Al hacer clic abre el visor modal para ver en grande. */
+function EvidenceStrip({ title, items, onOpenImage }) {
+  if (!items?.length) return null;
   return (
     <div className="dispute-evidence-strip">
       <small>{title} ({items.length})</small>
       <ul>
         {items.map((item, index) => (
           <li key={item.url || index}>
-            <a href={item.url} target="_blank" rel="noopener noreferrer" title={item.fileName || `Evidencia ${index + 1}`}>
+            <button
+              type="button"
+              className="dispute-evidence-thumb-btn"
+              onClick={() => onOpenImage?.(item.url)}
+              title={item.fileName || `Ver evidencia ${index + 1}`}
+            >
               <img src={item.url} alt={item.fileName || `Evidencia ${index + 1}`} loading="lazy" />
-            </a>
+              <span className="dispute-evidence-zoom-hint"><Maximize2 size={12} /></span>
+            </button>
           </li>
         ))}
       </ul>
@@ -165,6 +179,7 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
   const [sendError, setSendError] = useState('');
   const [pendingImage, setPendingImage] = useState(null);
   const [pendingImagePreview, setPendingImagePreview] = useState('');
+  const [viewerImage, setViewerImage] = useState(null);
 
   // Hilo activo: con la otra parte o con el mediador de RepuesTop.
   const [activeThread, setActiveThread] = useState('parte');
@@ -183,6 +198,11 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const threadRef = useRef(null);
+
+  const imageCount = useMemo(
+    () => messages.filter((m) => Boolean(m.imagenUrl)).length,
+    [messages]
+  );
 
   // `quiet` refresca sin desmontar la vista: se usa al cambiar de solapa, al
   // volver de una accion y con el boton Actualizar.
@@ -209,6 +229,15 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
     const node = threadRef.current;
     if (node) node.scrollTop = node.scrollHeight;
   }, [messages.length, loading, activeThread]);
+
+  useEffect(() => {
+    if (!viewerImage) return;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setViewerImage(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewerImage]);
 
   const estado = chat?.estadoMediacion;
   const statusTone = MEDIATION_STATUS_TONES[estado] || 'wait';
@@ -302,7 +331,11 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
     const original = e.target.files?.[0];
     e.target.value = '';
     if (!original || isSending) return;
-    if (!original.type.startsWith('image/')) {
+    if (imageCount >= MAX_CHAT_IMAGES) {
+      setSendError(`Esta conversación ya alcanzó el máximo de ${MAX_CHAT_IMAGES} imágenes.`);
+      return;
+    }
+    if (!original.type?.startsWith('image/')) {
       setSendError('Solo se permiten imágenes (JPG o PNG).');
       return;
     }
@@ -467,9 +500,9 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
       {(escalationEvidence.length > 0 || myEvidence.length > 0 || otherEvidence.length > 0) && (
         <section className="dispute-record is-evidence">
           <h3><Paperclip size={15} /> Evidencia del expediente</h3>
-          <EvidenceStrip title="Adjuntos del caso" items={escalationEvidence} />
-          <EvidenceStrip title="Mis evidencias" items={myEvidence} />
-          <EvidenceStrip title={`Aportada por ${mode === 'buyer' ? 'el vendedor' : 'el comprador'}`} items={otherEvidence} />
+          <EvidenceStrip title="Adjuntos del caso" items={escalationEvidence} onOpenImage={setViewerImage} />
+          <EvidenceStrip title="Mis evidencias" items={myEvidence} onOpenImage={setViewerImage} />
+          <EvidenceStrip title={`Aportada por ${mode === 'buyer' ? 'el vendedor' : 'el comprador'}`} items={otherEvidence} onOpenImage={setViewerImage} />
         </section>
       )}
 
@@ -546,7 +579,17 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
                   <div key={message.id} className={`dispute-msg ${mine ? 'is-mine' : ''}`}>
                     <span className="dispute-msg-author">{mine ? 'Tú' : (participantName || 'Contraparte')}</span>
                     <div className="dispute-msg-body">
-                      {message.imagenUrl && <img src={resolveMediaUrl(message.imagenUrl)} alt="Adjunto del mensaje" />}
+                      {message.imagenUrl && (
+                        <button
+                          type="button"
+                          className="quote-ws-image-open"
+                          onClick={() => setViewerImage(resolveMediaUrl(message.imagenUrl))}
+                          title="Ver imagen completa"
+                        >
+                          <img src={resolveMediaUrl(message.imagenUrl)} alt="Adjunto del mensaje" />
+                          <span><Maximize2 size={15} /></span>
+                        </button>
+                      )}
                       {message.texto && <p>{message.texto}</p>}
                     </div>
                     <time>{formatTime(message.createdAt)}</time>
@@ -579,10 +622,19 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
                   rows={2}
                 />
                 <footer>
-                  <label className="dispute-attach-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '12px', color: '#64748b', padding: '4px 8px', borderRadius: '4px', background: '#f1f5f9' }} title="Adjuntar foto al chat">
+                  <label
+                    className={`dispute-attach-btn ${imageCount >= MAX_CHAT_IMAGES ? 'is-disabled' : ''}`}
+                    title={imageCount >= MAX_CHAT_IMAGES ? `Máximo de ${MAX_CHAT_IMAGES} fotos alcanzado` : 'Adjuntar foto al chat'}
+                  >
                     <ImageIcon size={14} color="#0066ff" />
-                    <span>Foto</span>
-                    <input type="file" accept="image/*" onChange={handleChatImageSelect} style={{ display: 'none' }} disabled={isSending || threadLocked} />
+                    <span>{imageCount >= MAX_CHAT_IMAGES ? `Máx. ${MAX_CHAT_IMAGES}` : 'Foto'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleChatImageSelect}
+                      style={{ display: 'none' }}
+                      disabled={isSending || threadLocked || imageCount >= MAX_CHAT_IMAGES}
+                    />
                   </label>
                   <small>{messageText.length}/{MAX_CHAT_MESSAGE}</small>
                   <button type="submit" disabled={isSending || (!messageText.trim() && !pendingImage)}>
@@ -650,8 +702,8 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
                   <EvidencePicker
                     files={mediatorFiles}
                     disabled={isUploadingEvidence}
-                    onAdd={(incoming) => {
-                      const picked = pickEvidenceFiles(incoming, mediatorFiles.length, setMediatorError);
+                    onAdd={async (incoming) => {
+                      const picked = await pickEvidenceFiles(incoming, mediatorFiles.length, setMediatorError);
                       if (picked.length) setMediatorFiles((current) => [...current, ...picked]);
                     }}
                     onRemove={(index) => setMediatorFiles((current) => current.filter((_, i) => i !== index))}
@@ -672,7 +724,7 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
         )}
       </section>
 
-      {dialog && (
+      {dialog && typeof document !== 'undefined' && createPortal(
         <div className="dispute-dialog-backdrop" onClick={() => !isSubmitting && setDialog(null)}>
           <section
             className="dispute-dialog"
@@ -735,10 +787,10 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
                 <EvidencePicker
                   files={files}
                   disabled={isSubmitting}
-                  onAdd={(incoming) => {
+                  onAdd={async (incoming) => {
                     // La validacion corre en el handler, no dentro del updater:
                     // React puede invocar el updater dos veces y duplicaria el error.
-                    const picked = pickEvidenceFiles(incoming, files.length, setFormError);
+                    const picked = await pickEvidenceFiles(incoming, files.length, setFormError);
                     if (picked.length) setFiles((current) => [...current, ...picked]);
                   }}
                   onRemove={(index) => setFiles((current) => current.filter((_, i) => i !== index))}
@@ -760,7 +812,31 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
               </footer>
             </form>
           </section>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {viewerImage && typeof document !== 'undefined' && createPortal(
+        <div className="quote-ws-dialog-backdrop quote-ws-image-viewer" onClick={() => setViewerImage(null)}>
+          <div className="quote-ws-image-viewer-body" onClick={(event) => event.stopPropagation()}>
+            <header>
+              <div className="viewer-title">
+                <ImageIcon size={16} />
+                <span>Evidencia / Imagen adjunta</span>
+              </div>
+              <div className="viewer-actions">
+                <a href={viewerImage} download target="_blank" rel="noreferrer" className="viewer-btn-download" title="Descargar imagen original">
+                  <Download size={15} /> Descargar
+                </a>
+                <button type="button" onClick={() => setViewerImage(null)} className="viewer-btn-close" aria-label="Cerrar visor" title="Cerrar (Esc)">
+                  <X size={18} />
+                </button>
+              </div>
+            </header>
+            <img src={viewerImage} alt="Evidencia de la disputa" />
+          </div>
+        </div>,
+        document.body
       )}
     </article>
   );
