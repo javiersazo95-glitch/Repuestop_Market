@@ -29,5 +29,8 @@ export const qk = {
   sellerAccountStatus: (sellerId) => ['sellerAccountStatus', sellerId],
   /** Ofertas compatibles de repuestos para un vehiculo_catalogo (GET /vehiculos-catalogo/{id}/repuestos). */
   vehicleCompatibleProducts: (catalogoId, filters) => ['vehicleCatalogParts', catalogoId, filters || {}],
+  vehicleBrands: () => ['vehicleBrands'],
+  vehicleModels: (marcaId) => ['vehicleModels', marcaId],
+  vehicleVersions: (marca, modelo, anio) => ['vehicleVersions', { marca, modelo, anio }],
   profile: () => ['profile'],
 };

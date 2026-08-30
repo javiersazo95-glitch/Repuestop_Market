@@ -1608,6 +1608,8 @@ curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:8080/api/v1/tiendas/<
 5. **Regla de Flujo Git en `CLAUDE.md`**:
    - Registrada la regla obligatoria de no realizar commits ni `git push` a menos que el usuario lo solicite de manera explícita en su mensaje.
 
+---
+
 ### 4.27 Sesión 2026-08-28 — Optimización de Imágenes en Chat y Evidencias de Mediación (`MediationCaseView.jsx`)
 
 1. **Compresión Asíncrona de Evidencias**:
@@ -1638,9 +1640,27 @@ curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:8080/api/v1/tiendas/<
 3. **Conmutación Inteligente en Catálogo (`src/components/PartsCatalogView.jsx`)**:
    - Si `activeVehicle?.catalogoId` está presente y `onlyCompatible` es `true`, la consulta de TanStack Query ejecuta `getVehicleCatalogPartsApi` directamente contra el motor de compatibilidad relacional del backend.
    - En caso contrario, o si el usuario desmarca la opción, conmuta automáticamente a `getPublicProductsApi` (`GET /inventario/productos`).
-   - Se agregó el banner distintivo verde de calce verificado: *"Calce verificado por catálogo oficial para {marca} {modelo}"* con botón para alternar o limpiar.
+   - Se agregó el banner distintivo verde de compatibilidad verificada por catálogo oficial con botón para alternar o limpiar.
 4. **Soporte de Compatibilidad por `catalogoId` en Tienda Pública (`src/components/StorePublicProfileView.jsx`)**:
    - Se refinó la verificación de compatibilidad para evaluar `vehiculoCatalogoIds` contra `activeVehicle.catalogoId` además del emparejamiento por marca y modelo.
+
+---
+
+### 4.29 Sesión 2026-08-30 — Paridad 1:1 en Flujo de Identificación y Búsqueda Manual de Vehículo (`OfficialPatentHero.jsx`)
+
+1. **Transición In-Place sin Popups**:
+   - Al pulsar *"Editar o corregir datos"*, la tarjeta del Hero conmuta directamente a la pestaña *"Búsqueda manual"* pre-poblando los datos del vehículo actual. Al pulsar *"Consultar otro vehículo"*, se limpia la búsqueda y regresa a *"Buscar por patente"*.
+2. **Formulario en Cascada 1:1 con la App Móvil**:
+   - Campos estandarizados: `Patente (opcional)`, `Marca`, `Modelo`, `Año`, `Versión`, `Combustible` y `Nro Chasis (opcional)`.
+   - `Modelo` y `Versión` convertidos en selectores desplegables puros (`<select>`) alimentados por `GET /catalogos/inventario/marcas-vehiculo/{id}/modelos` y `GET /catalogos/inventario/versiones`.
+3. **Catálogo Oficial del SII para Tipos de Combustible**:
+   - Se auditaron los 25.300+ modelos de `catalogo_sii_2026_optimo.csv` en el backend, adoptando la nomenclatura oficial del SII: `Bencina`, `Diésel`, `Eléctrico`, `Híbrido Sin Recarga Exterior`, `Híbrido Recarga Exterior`, `Gas (GLP / GNC)`.
+4. **Opción A en Persistencia Manual (Prevención de 400 Bad Request)**:
+   - Si el usuario ingresa su patente: se valida y persiste mediante `POST /api/v1/vehiculos/manual` en la tabla `vehiculo_consultado` para indexar el vehículo en futuras búsquedas.
+   - Si no ingresa patente: se genera el vehículo en memoria para la sesión actual, permitiendo explorar repuestos compatibles sin ensuciar la base de datos con patentes falsas ni violar el límite de 8 caracteres (`@Size(max = 8)`).
+5. **Tooltips Informativos y Accesibilidad**:
+   - Tooltip informativo en `Nro Chasis (opcional)` y en `Patente (opcional)`.
+   - Eliminación del término "calce" en favor de "compatibilidad técnica exacta".
 
 
 
