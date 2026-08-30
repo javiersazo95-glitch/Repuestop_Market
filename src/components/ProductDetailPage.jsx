@@ -487,7 +487,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                     </li>
                   ))}
                 </ul>
-              ) : <p>Consulta a la tienda con tu patente o código OEM para confirmar el calce.</p>}
+              ) : <p>Consulta a la tienda con tu patente o código OEM para confirmar la compatibilidad.</p>}
               <button type="button" onClick={() => setCompatibilityOpen(true)}>
                 {compatibility.length > 2 ? `Ver todas las compatibilidades (${compatibility.length})` : compatibility.length > 0 ? 'Ver detalle de compatibilidad' : 'Ver compatibilidades'}
                 <ChevronRight />
@@ -561,7 +561,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                   <AlertTriangle />
                   <div>
                     <strong>Tu {plateVehicle.marca} {plateVehicle.modelo}{plateVehicle.anio ? ` (${plateVehicle.anio})` : ''} no figura entre las compatibilidades que registró el vendedor para este repuesto.</strong>
-                    <span>Evita comprar algo que no calce: revisa los repuestos que sí son compatibles con tu vehículo.</span>
+                    <span>Evita compras incompatibles: revisa los repuestos que sí son compatibles con tu vehículo.</span>
                     <button type="button" onClick={viewCompatibleProducts}>
                       Ver repuestos compatibles con mi vehículo <ChevronRight />
                     </button>
@@ -661,7 +661,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                 <div className="product-compatibility-empty"><Search /><strong>No encontramos compatibilidades</strong><span>Prueba con otro término de búsqueda.</span></div>
               )}
             </div>
-            <footer><ShieldCheck /><span>Confirma siempre el calce con tu patente o código OEM antes de comprar.</span><button type="button" onClick={() => setCompatibilityOpen(false)}>Entendido</button></footer>
+            <footer><ShieldCheck /><span>Confirma siempre la compatibilidad con tu patente o código OEM antes de comprar.</span><button type="button" onClick={() => setCompatibilityOpen(false)}>Entendido</button></footer>
           </section>
         </div>
       )}

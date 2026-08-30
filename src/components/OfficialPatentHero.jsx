@@ -10,10 +10,11 @@ import { CAROUSEL_CATEGORIES, NAVIGATION_CATEGORIES } from '../data/categories';
 import { POPULAR_MARCAS, ANIOS_DISPONIBLES } from '../data/sampleVehicles';
 import { getPartCategoriesApi, getPublicCategoryCountsApi, getPublicProductsApi, getVehicleBrandsApi, searchVehicleByPatenteApi } from '../services/api';
 import { adaptVehicle } from '../services/adapters';
+import { normalizePlate, sanitizePlateInput, isValidPlate } from '../utils/vehicleLookup';
 import CategoryIconTile from './CategoryIconTile';
 
 const SEARCH_MODES = [
-  { id: 'patente', label: 'Buscar por patente', icon: CarFront, placeholder: 'Ej: BB-CL-12' },
+  { id: 'patente', label: 'Buscar por patente', icon: CarFront, placeholder: 'Ingresa tu patente (ej: ABCD11)' },
   { id: 'oem', label: 'Buscar por código OEM', icon: Tag, placeholder: 'Ej: 04465-0D150' },
   { id: 'repuesto', label: 'Buscar por repuesto', icon: Search, placeholder: 'Ej: Pastillas de freno' },
   { id: 'vehiculo', label: 'Por vehículo (Año / Marca)', icon: Car, placeholder: 'Seleccionar vehículo' }
@@ -144,6 +145,31 @@ export default function OfficialPatentHero({
     if (searchMode === 'patente' && activeVehicle && (activeVehicle.patente || '').toUpperCase() === value.toUpperCase()) {
       setErrorMsg('');
       onOpenCatalog?.();
+      return;
+    }
+
+    if (searchMode === 'patente') {
+      const normalized = normalizePlate(value);
+      if (!isValidPlate(normalized)) {
+        setErrorMsg('Patente no válida. Formato: ABCD12 o BB-CL-12');
+        return;
+      }
+      setErrorMsg('');
+      setIsSearching(true);
+      try {
+        const result = adaptVehicle(await searchVehicleByPatenteApi(normalized));
+        if (result && !result.requiereIngresoManual && result.marca) {
+          onSelectVehicle(result);
+          setInputValue('');
+          onOpenCatalog?.();
+        } else {
+          setErrorMsg(result?.mensaje || 'No encontramos ese vehículo. Verifica la patente e intenta de nuevo.');
+        }
+      } catch (error) {
+        setErrorMsg(error.message || 'No se pudo consultar la patente. Intenta nuevamente.');
+      } finally {
+        setIsSearching(false);
+      }
       return;
     }
 
@@ -337,10 +363,12 @@ const DEFAULT_CATEGORY_PRIORITY = [
                         placeholder={mode.placeholder}
                         value={inputValue}
                         onChange={(event) => {
-                          setInputValue(searchMode === 'patente' ? event.target.value.toUpperCase() : event.target.value);
+                          const val = searchMode === 'patente' ? sanitizePlateInput(event.target.value) : event.target.value;
+                          setInputValue(val);
                           if (errorMsg) setErrorMsg('');
                         }}
                         onKeyDown={(event) => event.key === 'Enter' && handleSearch()}
+                        maxLength={searchMode === 'patente' ? 8 : 100}
                       />
                       {searchMode === 'patente' && <button type="button" className="plate-help"><CircleHelp size={14} /> ¿Dónde está mi patente?</button>}
                     </div>

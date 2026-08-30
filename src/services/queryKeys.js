@@ -27,5 +27,7 @@ export const qk = {
   notifications: (userId) => ['notifications', userId],
   /** Estado de bloqueo de la tienda (GET /proveedores/{id}/estado-cuenta). */
   sellerAccountStatus: (sellerId) => ['sellerAccountStatus', sellerId],
+  /** Ofertas compatibles de repuestos para un vehiculo_catalogo (GET /vehiculos-catalogo/{id}/repuestos). */
+  vehicleCompatibleProducts: (catalogoId, filters) => ['vehicleCatalogParts', catalogoId, filters || {}],
   profile: () => ['profile'],
 };

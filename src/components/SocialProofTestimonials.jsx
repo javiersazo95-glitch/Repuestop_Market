@@ -36,7 +36,7 @@ export default function SocialProofTestimonials() {
       ciudad: 'Viña del Mar, Valparaíso',
       avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=150&q=80',
       rating: 5,
-      comentario: 'Consultar el inventario por patente nos ahorró horas de llamadas a distribuidores. Encontramos amortiguadores KYB en stock directo de bodega con garantía de calce.',
+      comentario: 'Consultar el inventario por patente nos ahorró horas de llamadas a distribuidores. Encontramos amortiguadores KYB en stock directo de bodega con garantía de compatibilidad.',
       fecha: 'Hace 1 semana',
       patenteComprada: 'AA-123-BB',
       categoria: 'suspension'

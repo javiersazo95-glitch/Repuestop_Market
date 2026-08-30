@@ -398,6 +398,98 @@ export function adaptPage(response, itemAdapter) {
 }
 
 /**
+ * OfertaProveedorDTO + RepuestoOfertaDTO -> forma de adaptProduct.
+ * Mapea las ofertas compatibles de vehiculo-catalogo al modelo estándar de producto.
+ */
+export function adaptCompatibleOffer(spare, offer) {
+  if (!offer) return null;
+
+  const precio = toNumber(offer.precio) ?? 0;
+  const precioOriginal = toNumber(offer.precioAnterior);
+  const imagenes = Array.isArray(offer.imageUrls)
+    ? offer.imageUrls.filter(Boolean).map(resolveMediaUrl)
+    : [];
+
+  const soloCotizacion = offer.modoPrecio === 'COTIZACION' || offer.modoPrecio === 'QUOTE_ONLY' || offer.modoPrecio === 'COTIZAR' || precio <= 0;
+
+  return {
+    id: offer.proveedorProductoId || offer.id,
+    repuestoId: spare?.repuestoId,
+    titulo: offer.nombrePublicado || spare?.nombre || 'Repuesto compatible',
+    categoria: normalizeCategoryId(spare?.categoria),
+    categoriaNombre: spare?.categoria || '',
+    subcategoria: '',
+    categoriaId: null,
+    subcategoriaId: null,
+    oemCode: offer.referenciaOem || offer.skuProveedor || spare?.codigoInterno || '',
+    descripcion: '',
+    marca: spare?.marcaRepuesto || '',
+    precio,
+    precioOriginal,
+    descuento: calcularDescuento(precio, precioOriginal),
+    vendidos: 0,
+    vendedor: offer.proveedor || offer.storeName || 'Tienda RepuesTop',
+    proveedorId: offer.proveedorId,
+    ciudadVendedor: offer.comuna || '',
+    vendedorVerificado: Boolean(offer.sellerFounder) || spare?.nivelConfianza === 'VERIFICADO',
+    vendedorFundador: Boolean(offer.sellerFounder),
+    localFisico: Boolean(offer.sellerHours),
+    metodosEnvio: offer.sellerShippingMethods || '',
+    rating: toNumber(offer.rating),
+    reviewCount: toNumber(offer.ratingCount) ?? 0,
+    vendedorRating: toNumber(offer.rating),
+    vendedorReviewCount: toNumber(offer.ratingCount) ?? 0,
+    horarioVendedor: offer.sellerHours || '',
+    stock: toNumber(offer.stock) ?? 0,
+    condicion: offer.condicion || 'Nuevo OEM Original',
+    imagen: imagenes[0] || null,
+    imagenes,
+    logoTienda: resolveMediaUrl(offer.storeIconUrl),
+    requiereChasis: Boolean(offer.requiereChasis),
+    isTop: false,
+    pricingMode: soloCotizacion ? 'QUOTE_ONLY' : 'SHOW_PRICE',
+    soloCotizacion,
+    createdAt: null,
+    vehiculoCatalogoIds: [],
+    compatibilityGroupsJson: null,
+    compatibilidad: [{
+      marca: spare?.marcaRepuesto || '',
+      modelo: '',
+      version: '',
+      anioInicio: null,
+      anioFin: null,
+    }],
+    esUniversal: Boolean(offer.esUniversal || spare?.nivelConfianza === 'UNIVERSAL'),
+  };
+}
+
+/**
+ * Normaliza la respuesta paginada de `RepuestoOfertaPageDTO` proveniente de
+ * `GET /api/v1/vehiculos-catalogo/{id}/repuestos`, aplanando las ofertas de cada repuesto.
+ */
+export function adaptCompatibleOffersPage(response) {
+  if (!response) {
+    return { items: [], total: 0, totalPages: 0, page: 0 };
+  }
+
+  const spares = Array.isArray(response.content)
+    ? response.content
+    : Array.isArray(response) ? response : [];
+
+  const items = spares.flatMap((spare) => {
+    const offers = Array.isArray(spare.ofertas) ? spare.ofertas : [];
+    return offers.map((offer) => adaptCompatibleOffer(spare, offer));
+  }).filter(Boolean);
+
+  return {
+    items,
+    total: toNumber(response.totalElements) ?? items.length,
+    totalPages: toNumber(response.totalPages) ?? 1,
+    page: toNumber(response.currentPage ?? response.number) ?? 0,
+  };
+}
+
+/**
  * `AnuncioResponseDTO` -> anuncio del Mural.
  *
  * El backend fue modelado desde el cliente, asi que casi todos los campos ya

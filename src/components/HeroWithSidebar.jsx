@@ -222,7 +222,7 @@ export default function HeroWithSidebar({ activeVehicle, onSelectVehicle, onOpen
                 <div className="framed-badge-pill top">
                   <Award size={16} className="text-gold" />
                   <div>
-                    <strong>Calce Garantizado 100%</strong>
+                    <strong>Compatibilidad Garantizada 100%</strong>
                     <span>Piezas directas de fábrica</span>
                   </div>
                 </div>

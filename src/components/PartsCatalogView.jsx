@@ -15,8 +15,9 @@ import { qk } from '../services/queryKeys';
 import {
   NAVIGATION_CATEGORIES, CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID, HEADER_CATEGORIES
 } from '../data/categories';
-import { getPartCategoriesApi, getPublicProductsApi, searchVehicleByPatenteApi, getAddressesApi } from '../services/api';
-import { adaptPage, adaptProduct, adaptVehicle } from '../services/adapters';
+import { getPartCategoriesApi, getPublicProductsApi, getVehicleCatalogPartsApi, searchVehicleByPatenteApi, getAddressesApi } from '../services/api';
+import { adaptPage, adaptProduct, adaptCompatibleOffersPage, adaptVehicle } from '../services/adapters';
+import { normalizePlate, sanitizePlateInput, isValidPlate } from '../utils/vehicleLookup';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../hooks/useFavorites';
 
@@ -24,7 +25,7 @@ const normalizeNameKey = (value) => String(value || '').normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 const SEARCH_MODES = [
-  { id: 'patente', label: 'Buscar por patente', icon: CarFront, placeholder: 'Ej: BB-CL-12' },
+  { id: 'patente', label: 'Buscar por patente', icon: CarFront, placeholder: 'Ingresa tu patente (ej: ABCD11)' },
   { id: 'oem', label: 'Buscar por código OEM', icon: Tag, placeholder: 'Ej: 04465-0D150' },
   { id: 'repuesto', label: 'Buscar por repuesto', icon: Search, placeholder: 'Ej: Pastillas de freno, filtro de aceite, Bosch...' }
 ];
@@ -147,22 +148,44 @@ export default function PartsCatalogView({
     return matched?.id || initialCatalogFilter?.categoryId || undefined;
   }, [selectedCategory, backendCategories, initialCatalogFilter?.categoryId]);
 
+  // Si hay un vehículo activo con catalogoId del backend y el filtro de compatibilidad está encendido,
+  // consultamos el motor de cruce relacional /vehiculos-catalogo/{id}/repuestos directamente.
+  const isVehicleCatalogSearch = Boolean(onlyCompatible && activeVehicle?.catalogoId);
+
   // Consulta paginada real en el servidor
   const {
     data: catalogData = { items: [], total: 0, totalPages: 1, page: 0 },
     isLoading: productsLoading,
     error: productsQueryError,
   } = useQuery({
-    queryKey: qk.products({
-      page: currentPage - 1,
-      size: itemsPerPage,
-      texto: deferredSearchQuery?.trim() || undefined,
-      categoryId: activeCategoryId,
-      comunaId: activeComunaId,
-      sort: backendSort,
-      soloCotizacion: purchaseType === 'COTIZACION' ? true : purchaseType === 'DIRECTA' ? false : undefined,
-    }),
+    queryKey: isVehicleCatalogSearch
+      ? qk.vehicleCompatibleProducts(activeVehicle.catalogoId, {
+          page: currentPage - 1,
+          size: itemsPerPage,
+          texto: deferredSearchQuery?.trim() || undefined,
+          categoriaId: activeCategoryId,
+        })
+      : qk.products({
+          page: currentPage - 1,
+          size: itemsPerPage,
+          texto: deferredSearchQuery?.trim() || undefined,
+          categoryId: activeCategoryId,
+          comunaId: activeComunaId,
+          sort: backendSort,
+          soloCotizacion: purchaseType === 'COTIZACION' ? true : purchaseType === 'DIRECTA' ? false : undefined,
+        }),
     queryFn: async ({ signal }) => {
+      if (isVehicleCatalogSearch) {
+        const data = await getVehicleCatalogPartsApi(activeVehicle.catalogoId, {
+          page: currentPage - 1,
+          size: itemsPerPage,
+          texto: deferredSearchQuery?.trim() || undefined,
+          categoriaId: activeCategoryId,
+          signal,
+        });
+        return adaptCompatibleOffersPage(data);
+      }
+
       const data = await getPublicProductsApi({
         page: currentPage - 1,
         size: itemsPerPage,
@@ -259,14 +282,19 @@ export default function PartsCatalogView({
     setPatentError('');
 
     if (searchMode === 'patente') {
+      const normalized = normalizePlate(value);
+      if (!isValidPlate(normalized)) {
+        setPatentError('Patente no válida. Formato: ABCD12 o BB-CL-12');
+        return;
+      }
       setPatentSearching(true);
-      setPatentInput(value);
+      setPatentInput(normalized);
       try {
-        const resolved = adaptVehicle(await searchVehicleByPatenteApi(value));
+        const resolved = adaptVehicle(await searchVehicleByPatenteApi(normalized));
         if (resolved && !resolved.requiereIngresoManual && resolved.marca) {
           setActiveVehicle(resolved);
           setOnlyCompatible(true);
-          setInputValue(resolved.patente || value);
+          setInputValue(resolved.patente || normalized);
         } else {
           setActiveVehicle(null);
           setPatentError(resolved?.mensaje || 'No encontramos ese vehículo. Verifica la patente e intenta de nuevo.');
@@ -353,8 +381,8 @@ export default function PartsCatalogView({
         if (!hasBrand) return false;
       }
 
-      // 5. Active Garage Vehicle Compatibility Toggle
-      if (onlyCompatible && activeVehicle) {
+      // 5. Active Garage Vehicle Compatibility Toggle (fallback solo si no se consultó por catalogoId)
+      if (onlyCompatible && activeVehicle && !isVehicleCatalogSearch) {
         const matchesVehicle = (prod.compatibilidad || []).some(
           c => c.marca?.toLowerCase() === activeVehicle.marca?.toLowerCase() &&
                c.modelo?.toLowerCase() === activeVehicle.modelo?.toLowerCase()
@@ -374,7 +402,7 @@ export default function PartsCatalogView({
 
       return true;
     });
-  }, [products, selectedSubcategory, selectedCondition, selectedOrigin, selectedBrand, onlyCompatible, activeVehicle, onlyFastDelivery, maxPrice]);
+  }, [products, selectedSubcategory, selectedCondition, selectedOrigin, selectedBrand, onlyCompatible, activeVehicle, isVehicleCatalogSearch, onlyFastDelivery, maxPrice]);
 
   const startIndex = totalProducts === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const endIndex = Math.min(currentPage * itemsPerPage, totalProducts);
@@ -444,12 +472,14 @@ export default function PartsCatalogView({
                   <>Resultados para <span className="highlight-term">"{searchQuery}"</span></>
                 ) : appliedFilterLabel ? (
                   <>Catálogo: <span>{appliedFilterLabel}</span></>
+                ) : activeVehicle && onlyCompatible ? (
+                  <>Repuestos para <span>{activeVehicle.marca} {activeVehicle.modelo}</span></>
                 ) : (
                   <>Catálogo General de <span>Repuestos</span></>
                 )}
               </h1>
               <span className="catalog-context-counter">
-                {totalProducts} repuestos disponibles con calce y despacho garantizado
+                {totalProducts} repuestos disponibles con compatibilidad y despacho garantizado
               </span>
             </div>
           </div>
@@ -457,7 +487,7 @@ export default function PartsCatalogView({
           <div className="catalog-context-right">
             {activeVehicle ? (
               <div className="catalog-vehicle-badge-active">
-                <Car size={16} className="text-blue-500" />
+                <Car size={18} className="text-blue-500" />
                 <div className="vehicle-info-text">
                   <span className="vehicle-title">{activeVehicle.marca} {activeVehicle.modelo}</span>
                   <span className="vehicle-plate">{activeVehicle.patente}</span>
@@ -468,7 +498,7 @@ export default function PartsCatalogView({
                   onClick={() => setOnlyCompatible(!onlyCompatible)}
                   title="Filtrar solo repuestos compatibles con este vehículo"
                 >
-                  {onlyCompatible ? '✓ Solo compatibles' : 'Filtrar calce'}
+                  {onlyCompatible ? '✓ Solo compatibles' : 'Filtrar compatibles'}
                 </button>
                 <button
                   type="button"
@@ -477,22 +507,24 @@ export default function PartsCatalogView({
                   title="Quitar vehículo"
                   aria-label="Quitar vehículo"
                 >
-                  <X size={15} />
+                  <X size={16} />
                 </button>
               </div>
             ) : (
               <div className="catalog-quick-patente-bar">
-                <CarFront size={16} className="patente-icon" />
+                <CarFront size={18} className="patente-icon" />
                 <input
                   type="text"
-                  placeholder="Filtrar por patente (ej: BB-CL-12)"
+                  placeholder="Ingresa tu patente (ej: ABCD11)"
                   value={patentInput}
                   onChange={(e) => {
-                    setPatentInput(e.target.value.toUpperCase());
+                    const sanitized = sanitizePlateInput(e.target.value);
+                    setPatentInput(sanitized);
                     if (patentError) setPatentError('');
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && handleUnifiedSearch(patentInput)}
                   className="patente-quick-input"
+                  maxLength={8}
                 />
                 <button
                   type="button"
@@ -500,7 +532,7 @@ export default function PartsCatalogView({
                   onClick={() => handleUnifiedSearch(patentInput)}
                   disabled={patentSearching}
                 >
-                  {patentSearching ? <RefreshCw size={14} className="spin-icon" /> : 'Calce'}
+                  {patentSearching ? <RefreshCw size={15} className="spin-icon" /> : 'Buscar'}
                 </button>
                 {patentError && <span className="quick-patente-error">{patentError}</span>}
               </div>
@@ -513,7 +545,7 @@ export default function PartsCatalogView({
               disabled={comunaLookupStatus === 'loading'}
               title="Muestra repuestos de tiendas de tu comuna"
             >
-              <MapPin size={15} />
+              <MapPin size={17} />
               <span>{filterByMyComuna ? `En ${myComunaNombre || 'mi comuna'}` : 'Mi comuna'}</span>
             </button>
           </div>

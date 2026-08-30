@@ -1627,4 +1627,20 @@ curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:8080/api/v1/tiendas/<
 5. **Corrección en Base de Datos Backend (`repuestop`)**:
    - Se creó la migración Flyway `V2026082806__widen_mediacion_url_documento_to_text.sql` ensanchando `bo_mediacion.url_documento`, `nombre_documento` y `bo_mediacion_evidencia.url` a tipo `TEXT`, permitiendo acumular múltiples URLs de Cloudflare R2 sin límite de 500 caracteres.
 
+---
+
+### 4.28 Sesión 2026-08-29 — Búsqueda por Catálogo de Vehículo 1:1 (`PartsCatalogView.jsx` & A16)
+
+1. **Adaptadores y Aplanado de Ofertas (`src/services/adapters.js`)**:
+   - Se implementaron `adaptCompatibleOffer(spare, offer)` y `adaptCompatibleOffersPage(response)` para procesar `RepuestoOfertaPageDTO` (`GET /api/v1/vehiculos-catalogo/{catalogoId}/repuestos`), combinando la información del repuesto y la tienda (precios, stock, imágenes con `resolveMediaUrl`, calificaciones, insignias de fundador y modo de precio).
+2. **Query Key Centralizada (`src/services/queryKeys.js`)**:
+   - Se agregó `qk.vehicleCompatibleProducts(catalogoId, filters)`.
+3. **Conmutación Inteligente en Catálogo (`src/components/PartsCatalogView.jsx`)**:
+   - Si `activeVehicle?.catalogoId` está presente y `onlyCompatible` es `true`, la consulta de TanStack Query ejecuta `getVehicleCatalogPartsApi` directamente contra el motor de compatibilidad relacional del backend.
+   - En caso contrario, o si el usuario desmarca la opción, conmuta automáticamente a `getPublicProductsApi` (`GET /inventario/productos`).
+   - Se agregó el banner distintivo verde de calce verificado: *"Calce verificado por catálogo oficial para {marca} {modelo}"* con botón para alternar o limpiar.
+4. **Soporte de Compatibilidad por `catalogoId` en Tienda Pública (`src/components/StorePublicProfileView.jsx`)**:
+   - Se refinó la verificación de compatibilidad para evaluar `vehiculoCatalogoIds` contra `activeVehicle.catalogoId` además del emparejamiento por marca y modelo.
+
+
 

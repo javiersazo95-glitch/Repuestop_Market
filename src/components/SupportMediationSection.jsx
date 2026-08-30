@@ -9,7 +9,7 @@ export default function SupportMediationSection() {
       bg: '#eff6ff',
       border: '#bfdbfe',
       title: 'Pago Protegido en Custodia',
-      description: 'El dinero de tu compra queda protegido en custodia por RepuesTop.cl y solo se libera a la tienda una vez que recibes el repuesto y confirmas el calce perfecto.'
+      description: 'El dinero de tu compra queda protegido en custodia por RepuesTop.cl y solo se libera a la tienda una vez que recibes el repuesto y confirmas la compatibilidad perfecta.'
     },
     {
       icon: Scale,

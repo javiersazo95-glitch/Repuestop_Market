@@ -8,6 +8,7 @@ import {
 import { POPULAR_MARCAS, ANIOS_DISPONIBLES } from '../data/sampleVehicles';
 import { getVehicleBrandsApi, searchVehicleByPatenteApi, createManualVehicleApi } from '../services/api';
 import { adaptVehicle } from '../services/adapters';
+import { normalizePlate, sanitizePlateInput, isValidPlate } from '../utils/vehicleLookup';
 
 export default function LicensePlateHero({ activeVehicle, onSelectVehicle, onOpenSellerModal }) {
   const [searchTab, setSearchTab] = useState('patente'); // 'patente' | 'manual'
@@ -48,7 +49,13 @@ export default function LicensePlateHero({ activeVehicle, onSelectVehicle, onOpe
   const handlePatenteSearch = async (patenteToUse) => {
     const val = patenteToUse || inputPatente;
     if (!val || val.trim().length < 3) {
-      setErrorMsg('Por favor ingresa una patente válida (mínimo 3 caracteres)');
+      setErrorMsg('Por favor ingresa una patente válida (ej: BB-CL-12)');
+      return;
+    }
+
+    const normalized = normalizePlate(val);
+    if (!isValidPlate(normalized)) {
+      setErrorMsg('Patente no válida. Formato chileno: ABCD12 o BB-CL-12');
       return;
     }
 
@@ -56,10 +63,10 @@ export default function LicensePlateHero({ activeVehicle, onSelectVehicle, onOpe
     setIsSearching(true);
 
     try {
-      const result = adaptVehicle(await searchVehicleByPatenteApi(val.trim()));
+      const result = adaptVehicle(await searchVehicleByPatenteApi(normalized));
       if (result && !result.requiereIngresoManual && result.marca) {
         onSelectVehicle(result);
-        setInputPatente(result.patente || val.trim());
+        setInputPatente(result.patente || normalized);
       } else {
         setErrorMsg(result?.mensaje || 'No encontramos ese vehículo. Verifica la patente e intenta de nuevo.');
       }
@@ -155,14 +162,15 @@ export default function LicensePlateHero({ activeVehicle, onSelectVehicle, onOpe
                     <input
                       type="text"
                       className="license-plate-input"
-                      placeholder="BB · CL · 12"
+                      placeholder="Ej: ABCD11"
                       value={inputPatente}
                       onChange={(e) => {
-                        setInputPatente(e.target.value.toUpperCase());
+                        const val = sanitizePlateInput(e.target.value);
+                        setInputPatente(val);
                         if (errorMsg) setErrorMsg('');
                       }}
                       onKeyDown={(e) => e.key === 'Enter' && handlePatenteSearch()}
-                      maxLength={10}
+                      maxLength={8}
                     />
                   </div>
                   <div className="plate-rivet top-left"></div>
@@ -298,8 +306,8 @@ export default function LicensePlateHero({ activeVehicle, onSelectVehicle, onOpe
             <div className="trust-item">
               <ShieldCheck size={20} className="trust-icon" />
               <div>
-                <strong>100% Calce Garantizado</strong>
-                <p>Si no calza en tu auto, te devolvemos el dinero.</p>
+                <strong>100% Compatibilidad Garantizada</strong>
+                <p>Si no es compatible con tu auto, te devolvemos el dinero.</p>
               </div>
             </div>
             <div className="trust-item">

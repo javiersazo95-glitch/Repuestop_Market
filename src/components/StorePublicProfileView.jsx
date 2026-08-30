@@ -266,8 +266,13 @@ export default function StorePublicProfileView({
     // 4. Vehicle Compatibility
     if (onlyCompatible && activeVehicle) {
       const matchesVehicle = (prod.compatibilidad || []).some(
-        c => c.marca?.toLowerCase() === activeVehicle.marca?.toLowerCase() &&
-             c.modelo?.toLowerCase() === activeVehicle.modelo?.toLowerCase()
+        c => {
+          if (activeVehicle.catalogoId && Array.isArray(c.vehiculoCatalogoIds) && c.vehiculoCatalogoIds.includes(Number(activeVehicle.catalogoId))) {
+            return true;
+          }
+          return c.marca?.toLowerCase() === activeVehicle.marca?.toLowerCase() &&
+                 c.modelo?.toLowerCase() === activeVehicle.modelo?.toLowerCase();
+        }
       );
       if (!matchesVehicle) return false;
     }
@@ -603,7 +608,7 @@ export default function StorePublicProfileView({
                   onClick={() => setOnlyCompatible(!onlyCompatible)}
                   style={{ marginLeft: 'auto' }}
                 >
-                  {onlyCompatible ? '✓ Solo compatibles' : 'Filtrar calce'}
+                  {onlyCompatible ? '✓ Solo compatibles' : 'Filtrar compatibles'}
                 </button>
                 <button
                   type="button"

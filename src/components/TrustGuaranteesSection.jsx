@@ -24,7 +24,7 @@ export default function TrustGuaranteesSection() {
       color: '#059669',
       bg: '#ecfdf5',
       border: '#a7f3d0',
-      title: 'Garantía de Calce por Ficha Técnica',
+      title: 'Garantía de Compatibilidad por Ficha Técnica',
       description: 'Tu patente consulta la base de datos oficial del fabricante para asegurar un 100% de compatibilidad antes del despacho.'
     },
     {
