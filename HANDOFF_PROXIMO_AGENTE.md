@@ -1861,3 +1861,166 @@ compradores" y mencionan el tope de 2.
   end (se ejercitó sembrando el vehículo en `localStorage`).
 - Levantar el backend local requiere `BANK_DATA_ENCRYPTION_KEY`; sin ella el arranque muere
   con `AEADBadTagException: Tag mismatch!` al descifrar datos bancarios existentes.
+
+---
+
+### 4.32 Sesión 2026-08-31 (tarde) — Flujo de pedidos: cada rol ve su número y su plata
+
+Commits: backend `165a7ac`, `a212e48`, `a3fd1ec`, `ba1403e`; web `d651274`;
+backoffice_sistema `6226ada`. Los tres repos subidos, backoffice y backend primero.
+
+Salió de una prueba de TC-06 (ítems cancelados dentro de un pedido vivo) que destapó seis
+defectos en la ficha del pedido. **El backend ya mandaba casi todos los datos correctos; la
+web no los usaba.**
+
+#### El caso que lo destapó, y cómo montarlo
+
+No es cancelar un pedido —eso es TC-04—, es un pedido que **sobrevive con una línea caída**.
+La única forma de llegar ahí por la UI es un **carrito de dos tiendas**:
+`PedidoCancelacionSupport` solo toca los ítems del vendedor que cancela, y
+`cancelacionTotal` es falso si quedan ítems activos de otro. El pedido 21 de la base local es
+justo eso (vendedor 1 activo, vendedor 2 cancelado por `SIN_STOCK`).
+
+#### Los seis defectos
+
+1. **`Pedido #21` era el id de la tabla.** El backend ya traía los dos números correctos y
+   nadie los usaba: `numeroPedidoComprador` (secuencia POR COMPRADOR, la app ya la usa vía
+   `getOrderDisplayCode`) y `codigoVendedor` en el ítem (secuencia POR VENDEDOR). Del código
+   del vendedor se muestra **solo la cola** (`Venta #000017`): el prefijo lleva el id del
+   proveedor y existe para garantizar unicidad, no para leerse. Además el id era enumerable —
+   "#21" le decía a cualquier vendedor cuántos pedidos lleva el marketplace entero.
+2. **`local_delivery` crudo en pantalla.** Al traducirlo quedó repetido con el "Tipo de
+   Entrega" de dos líneas más abajo, así que el courier —que es información ADICIONAL al
+   método— pasó a su propia píldora y solo cuando existe.
+3. **El banner de reembolso lo veía quien no había cancelado nada.** `refundStatus` se leía
+   del pedido completo sin filtrar por vendedor.
+4. **El vendedor que canceló veía su "Monto Neto a Recibir" intacto** ($49.103 de plata que
+   no le iba a llegar): `subtotalVendedor` filtraba por `proveedorId` pero no por estado.
+   `LiquidacionPedidoCalculator.itemsActivos()` **sí** los excluía, o sea que la pantalla
+   contradecía al pago.
+5. **"Confirmar pedido" y "Cancelar Pedido" seguían ofreciéndose al vendedor sin líneas
+   vivas**, y al pulsarlos movía el pedido ENTERO, cambiándole el estado al otro vendedor.
+6. **El comprador veía "Total Pagado $92.990" sin una sola mención del reembolso.**
+   `montoReembolsado` y `totalActivo` los envía el backend desde siempre.
+
+#### Lo que apareció al validar y no estaba en el plan
+
+- **El checkout de COTIZACIÓN nunca asignaba `codigoVendedor`** — solo lo hacía el del
+  carrito. Toda venta nacida de una cotización quedaba sin código. Se detectó viendo un
+  "Venta #19" mezclado entre los "#0000xx" en el panel del vendedor.
+- **Un `||` se tragaba el cero.** `order.subtotal || itemsSubtotal || order.total` tomaba un
+  subtotal legítimo de $0 —el vendedor canceló todo lo suyo— como "no vino" y caía al cálculo
+  local, que devolvía el monto de la venta anulada: el neto salía $0 pero seguía descontando
+  −$6.902 de comisión. **Ojo con esta familia de bug**: cualquier `||` sobre un importe trata
+  el cero como ausente.
+- **La lista y el detalle mostraban cifras distintas** para el mismo pedido: el detalle ya
+  decía "Total Final $34.990" y la tarjeta seguía en $92.990.
+- **`no-undef` atajó un error real**: al separar courier de método quedó una referencia muerta
+  a `deliveryTerms`. Habría reventado la ficha entera en runtime y el build pasaba igual.
+
+Se agregó `src/data/orderIdentity.js` con la numeración por rol, la etiqueta de envío y la
+lista de estados cancelados, que estaba **copiada literal** en `OrderCard` y
+`OrderDetailModal`.
+
+#### Nuevo `codigoSoporte` ("PED-0000021")
+
+Ni el número del comprador ni el del vendedor sirven para soporte: el primero es su propia
+secuencia (dos compradores tienen ambos un "#3") y el segundo identifica la parte de un
+vendedor, no el pedido. Se expone uno por pedido y se muestra en el subtítulo del detalle.
+
+#### El prefijo `ML-` → `RTP-`: mucho más profundo de lo que parecía
+
+El identificador del vendedor empieza a ser visible para él, y "ML" se lee como MercadoLibre.
+**El problema de fondo no era el prefijo sino que estaba escrito a mano en SIETE lugares** sin
+constante compartida. Ahora todos derivan de `CodigoVendedor.PREFIJO`.
+
+**No puede ser "RT-" a secas**: el código de compartir de un producto ya es "RT-`<dígitos>`"
+("RT-7285") y `extraerIdDesdeCodigoCompartir` resuelve como producto cualquier "RT" seguido
+solo de números, así que "RT-1" sería ambiguo entre el vendedor 1 y el producto 1. "RTP-1"
+normaliza a "RTP1" y no pasa ese filtro.
+
+**El código NO vive solo en su columna, y eso casi se sube roto.** `codigoPedido()` de
+`MediacionChatService` **no** devuelve un `PED-<id>`: devuelve el código del vendedor, y ese
+string es la llave de `bo_mediacion.pedido_id`. Renombrar solo `rt_pedido_item` dejó huérfanas
+las tres mediaciones existentes, con el pedido 20 activo en mediación. Se detectó por casualidad,
+al ir a mirar cómo se armaba la llave para agregar el código de soporte.
+
+Se barrieron las **416 columnas de texto** del esquema. La migración `V2026083102` cubre
+`rt_pedido_item`, `rt_retiro`, `bo_mediacion` (`pedido_id`, `id_externo`, `titulo`) y
+`rt_notificacion.mensaje`.
+
+**Quedan a propósito con el prefijo viejo:**
+
+- `bo_mediacion.url_documento`, `bo_mediacion_evidencia.url` y `rt_mensaje.imagen_url`: el
+  código va dentro del **PATH de un objeto real en Cloudflare R2**
+  (`/api/v1/uploads/r2/Mediacion/MED-ML-1-PED-000003/...`). Reescribir la ruta en la base no
+  renombra el archivo allá: la dejaría apuntando a un objeto inexistente. Las subidas nuevas
+  usan el prefijo nuevo y ambos resuelven.
+- `bo_log_auditoria.detalle`, que es bitácora de lo que se hizo.
+
+#### `count(*) + 1` en los códigos correlativos
+
+Los códigos de venta y retiro se emitían con `count(*) + 1`. La columna es UNIQUE, así que la
+falla no es un número feo: es **un checkout caído en medio de un pago**. Dos problemas:
+
+1. **`count` no es la secuencia.** Cuenta filas —incluidas las que quedaron sin código— y BAJA
+   al borrarse una. Verificado en la base dentro de una transacción revertida: con un ítem del
+   vendedor 1 borrado, `count + 1` da 17 y **choca** con el `RTP-1-PED-000017` existente,
+   mientras `max + 1` da 18 y no choca.
+2. Dos checkouts simultáneos del mismo vendedor leían el mismo count.
+
+Se resuelve igual que `PedidoAccesoSupport.siguienteNumeroPedidoComprador`, que ya lo tenía
+resuelto para el número del comprador: lock de la fila del proveedor y **después** leer el
+máximo. La emisión quedó en un solo lugar, `CodigoVendedorSecuencia`, con 8 tests
+(`CodigoVendedorSecuenciaTest`). **Comprobado que el test sirve**: al revertir la
+implementación a leer antes de bloquear, fallan 2 de los 8.
+
+**Ojo**: `PedidoService` construye los supports de checkout **a mano** con `new`, no por
+inyección, así que cada dependencia nueva hay que pasarla también por su constructor. Y los
+dos tests que los construyen necesitaron el mock nuevo — eso solo lo agarra `mvn package`,
+`compile` no toca `src/test`.
+
+#### La app móvil no necesita cambios (verificado, no supuesto)
+
+Los tres puntos donde lee `refundStatus`:
+
+- `(buyer)/orders.tsx:157` — sin efecto: para el comprador se conserva si hay cualquier ítem
+  cancelado, y un pago `seller-cancel:` solo existe junto a uno.
+- `(seller)/pedidos.tsx:581` — sin efecto: esa rama ya exige
+  `items.every(status === 'CANCELADO_VENDEDOR')`.
+- `order-detail.tsx:109` — **es el arreglo**: al vendedor que no canceló nada deja de decirle
+  "Reembolso en proceso".
+
+`codigoSoporte` y `codigoVendedor` son aditivos: la app los ignora. **Pendiente para la app**:
+su vista de vendedor sigue cayendo a los últimos 6 del id; debería usar `codigoVendedor`.
+
+#### Verificado
+
+En el navegador, con las **tres cuentas** sobre el pedido 21: comprador `Pedido #16` con
+"Productos cancelados −$58.000" y "Total Final $34.990" en lista y detalle; vendedor 1
+`Venta #000017` sin banner de reembolso; vendedor 2 `Venta #000001` con subtotal y neto en $0,
+sin comisión fantasma y sin acciones. Migración aplicada y las dos mediaciones vuelven a
+resolver. `mvn package` ✅, 43 tests del área ✅, build web ✅, lint 0 errores / 98 warnings,
+`tsc -b` del backoffice ✅.
+
+#### Lo que queda: la Ruta B
+
+**El estado del pedido sigue siendo uno solo y compartido.** El vendedor 1 todavía puede mover
+a "En preparación" un pedido que también es del vendedor 2; solo se impidió que lo mueva quien
+ya no participa.
+
+Se evaluaron dos caminos y **se eligió el segundo**:
+
+- **Ruta A — partir el pedido en el checkout, como MercadoLibre.** El costo no está en crear N
+  pedidos: está en que **el pago es uno solo**. `Pago` tiene `pedido_id` y toda la cadena
+  asume 1:1 (retorno de Flow, reembolsos, conciliación contable, comprobante). Obliga a
+  re-probar el flujo de pago completo con la pasarela, que es lo único ya validado con plata
+  real. Arrastra mediación, liquidación, retiros y notificaciones. **Descartada** salvo que el
+  negocio pida separar la plata desde el pago.
+- **Ruta B — un pedido, estado por vendedor, como Falabella.** Estado a nivel de ítem (o una
+  tabla `pedido_proveedor`), transiciones por vendedor, y el estado global del pedido pasa a
+  ser **derivado**. No toca pagos ni contabilidad. Es §8 de `PLAN_CARRITO_CHECKOUT`.
+
+La lectura ya se comporta como si hubiera subórdenes: `PedidoResponseMapper.toResponse(pedido,
+proveedorId)` filtra los ítems y recalcula la liquidación completa del vendedor. **Falta la
+escritura.**
