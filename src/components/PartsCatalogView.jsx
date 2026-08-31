@@ -34,11 +34,11 @@ const CAROUSEL_PAGE_COUNT = Math.ceil(CAROUSEL_CATEGORIES.length / CAROUSEL_PAGE
  * ningun filtro aplicado. Es una consulta acotada; el catalogo paginado completo
  * NO se consulta hasta que el usuario elige un contexto.
  */
+// Los dos bloques de la vitrina son INDEPENDIENTES: 12 destacados y 12 recien publicados.
+// Antes el relleno descontaba (`SHOWCASE_SIZE - destacados.length`), asi que cada producto
+// Top le comia un lugar a los recien publicados y la pantalla mostraba 12 en total en vez
+// de 24. Son dos modulos distintos y cada uno tiene su propio cupo.
 const SHOWCASE_SIZE = 12;
-// Techo de destacados en la vitrina. Con el tope de 2 por vendedor el total crece lineal
-// con la cantidad de tiendas, que es justo lo que el negocio va a hacer crecer: sin techo,
-// la pantalla de entrada terminaria enviando cientos de tarjetas con imagenes.
-const SHOWCASE_FEATURED_MAX = 36;
 
 /**
  * Tope de resultados navegables por paginacion. Igual que MercadoLibre (que corta
@@ -508,28 +508,24 @@ export default function PartsCatalogView({
     data: showcase = { featured: [], filler: [] },
     isLoading: showcaseLoading,
   } = useQuery({
-    queryKey: qk.products({ vitrina: true, size: SHOWCASE_FEATURED_MAX }),
+    queryKey: qk.products({ vitrina: true, size: SHOWCASE_SIZE }),
     enabled: !hasActiveContext,
     staleTime: 1000 * 60 * 5,
     queryFn: async ({ signal }) => {
       const destacados = adaptPage(await getPublicProductsApi({
         page: 0,
-        size: SHOWCASE_FEATURED_MAX,
+        size: SHOWCASE_SIZE,
         soloDestacados: true,
         sort: 'createdAt,desc',
         signal,
       }), adaptProduct).items;
 
-      // Los Top los marca cada tienda a mano, asi que al principio son poquisimos y la
-      // pantalla de entrada del marketplace quedaria con dos tarjetas. Se completa con
-      // recien publicados hasta SHOWCASE_SIZE, y cada bloque lleva su propio titulo para
-      // que la etiqueta diga la verdad de lo que se esta mostrando.
-      if (destacados.length >= SHOWCASE_SIZE) {
-        return { featured: destacados, filler: [] };
-      }
+      // Se piden de mas para poder descartar los que ya salieron arriba sin quedarse
+      // corto: un Top es tambien un producto reciente, y sin este margen el bloque de
+      // "Recien publicados" terminaria con menos de 12 tarjetas.
       const recientes = adaptPage(await getPublicProductsApi({
         page: 0,
-        size: SHOWCASE_SIZE,
+        size: SHOWCASE_SIZE + destacados.length,
         sort: 'createdAt,desc',
         signal,
       }), adaptProduct).items;
@@ -538,7 +534,7 @@ export default function PartsCatalogView({
         featured: destacados,
         filler: recientes
           .filter((item) => !yaVisibles.has(item.id))
-          .slice(0, SHOWCASE_SIZE - destacados.length),
+          .slice(0, SHOWCASE_SIZE),
       };
     },
   });

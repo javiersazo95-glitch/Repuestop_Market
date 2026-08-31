@@ -252,6 +252,7 @@ export function adaptProduct(dto) {
     imagenes,
     logoTienda: resolveMediaUrl(dto.storeIconUrl),
     requiereChasis: Boolean(dto.requiereChasis),
+    esUniversal: Boolean(dto.esUniversal),
     isTop: Boolean(dto.destacado),
     pricingMode: dto.pricingMode || (precio > 0 ? 'SHOW_PRICE' : 'QUOTE_ONLY'),
     soloCotizacion: dto.pricingMode === 'COTIZACION' || dto.pricingMode === 'QUOTE_ONLY' || precio <= 0,

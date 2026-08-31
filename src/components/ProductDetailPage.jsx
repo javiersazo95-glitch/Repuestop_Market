@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle, ArrowLeft, BadgeCheck, Car, CheckCircle2, ChevronLeft, ChevronRight, CreditCard,
-  Heart, Landmark, MapPin, MessageCircle, Package, Search, Send, ShieldCheck,
+  Globe, Heart, Landmark, MapPin, MessageCircle, Package, Search, Send, ShieldCheck,
   ShoppingCart, Star, Store, Tag, Truck, Wrench, X
 } from 'lucide-react';
 import { CATEGORY_IMAGE_BY_ID } from '../data/categories';
@@ -73,6 +73,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const seller = typeof rawSeller === 'object' ? (rawSeller?.nombre || rawSeller?.razonSocial) : rawSeller;
   const sellerName = seller || 'Tienda verificada';
   const compatibility = product.compatibilidad || [];
+  const isUniversalPart = Boolean(product.esUniversal);
   const compatible = activeVehicle && compatibility.some((item) =>
     item.marca?.toLowerCase() === activeVehicle.marca?.toLowerCase()
     && item.modelo?.toLowerCase() === activeVehicle.modelo?.toLowerCase());
@@ -470,8 +471,20 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
               </dl>
             </article>
             <article>
-              <h2><Car /> Otras compatibilidades</h2>
-              {compatibility.length ? (
+              <h2><Car /> {isUniversalPart ? 'Compatibilidad' : 'Otras compatibilidades'}</h2>
+              {isUniversalPart ? (
+                /* Un repuesto universal NO declara vehiculos, asi que la lista de
+                   compatibilidades sale vacia y el modal decia "No encontramos
+                   compatibilidades": exactamente lo contrario de la verdad. El vendedor
+                   afirmo que sirve para cualquier vehiculo, y eso es lo que hay que decir. */
+                <p className="product-universal-note">
+                  <Globe />
+                  <span>
+                    Este repuesto es <strong>universal</strong>: el vendedor lo publicó como compatible
+                    con cualquier vehículo, así que no depende de la marca ni del modelo de tu auto.
+                  </span>
+                </p>
+              ) : compatibility.length ? (
                 <ul className="product-marketplace-compat-list">
                   {compatibility.slice(0, 2).map((item, index) => (
                     <li key={`${item.marca}-${item.modelo}-${index}`}>
@@ -488,10 +501,12 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                   ))}
                 </ul>
               ) : <p>Consulta a la tienda con tu patente o código OEM para confirmar la compatibilidad.</p>}
-              <button type="button" onClick={() => setCompatibilityOpen(true)}>
-                {compatibility.length > 2 ? `Ver todas las compatibilidades (${compatibility.length})` : compatibility.length > 0 ? 'Ver detalle de compatibilidad' : 'Ver compatibilidades'}
-                <ChevronRight />
-              </button>
+              {!isUniversalPart && (
+                <button type="button" onClick={() => setCompatibilityOpen(true)}>
+                  {compatibility.length > 2 ? `Ver todas las compatibilidades (${compatibility.length})` : compatibility.length > 0 ? 'Ver detalle de compatibilidad' : 'Ver compatibilidades'}
+                  <ChevronRight />
+                </button>
+              )}
             </article>
             {/* Ultima mencion a Flow que quedaba en la ficha. Al ocultarla el grid
                 pasa a dos columnas con `is-own-product`, porque son tres fijas y

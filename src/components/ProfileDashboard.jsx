@@ -875,8 +875,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         ? { ...previous, ...updated, destacado: Boolean(updated?.destacado ?? destacado) }
         : previous);
       setCatalogTopFeedback(destacado
-        ? 'Producto marcado como Top: tendrá prioridad en tu tienda y aparecerá en la vitrina de /repuestos.'
-        : 'El producto dejó de tener prioridad Top.');
+        ? 'Listo. Este producto ahora se muestra primero en tu tienda y en la portada de repuestos, donde lo ven todos los compradores.'
+        : 'Quitaste el destacado. El producto sigue publicado, pero ya no se muestra primero.');
     } catch (error) {
       setCatalogActionError(error.message || 'No se pudo actualizar el producto Top.');
     } finally {
@@ -1934,7 +1934,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
                   <div className="catalog-top-info">
                     <span className="catalog-top-info-icon"><Star size={17} fill="currentColor" /></span>
-                    <p><strong>Destaca tus productos estrella</strong><span>Un Producto Top recibe mayor visibilidad y prioridad dentro de tu tienda. Puedes activarlo o quitarlo directamente en cada tarjeta.</span></p>
+                    <p><strong>Destaca tus productos estrella</strong><span>Puedes elegir hasta 2 productos: se muestran primero en tu tienda y también en la portada de repuestos, donde los ven todos los compradores. Actívalo o quítalo desde cada tarjeta.</span></p>
                   </div>
 
                   {catalogTopFeedback && (
