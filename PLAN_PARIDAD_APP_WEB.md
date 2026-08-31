@@ -284,18 +284,27 @@ anuncio lo devuelve a `PENDIENTE` y puede cobrar Fichas si sube de plan).
 
 Para certificar que el plan quedó ejecutado al 100% y sin regresiones, se debe seguir la siguiente lista de pruebas funcionales divididas por módulo:
 
+> **Casillas sincronizadas el 2026-08-31.** Durante varias sesiones esta lista quedó sin
+> tildar aunque la sección 7 iba declarando los casos cerrados uno a uno: 20 de 23 aparecían
+> abiertos cuando en realidad solo faltaban cuatro. Si vuelves a cerrar un caso, **marca la
+> casilla aquí además de escribirlo en la sección 7**; leer solo esta lista daba una foto
+> falsa del estado del proyecto.
+>
+> **Quedan dos sin validar: TC-06 y TC-23.** Todo el resto está probado, con la fecha y el
+> detalle en la sección 7.
+
 ### Módulo 1: Autenticación, Seguridad y Cuentas (Fase 1)
-- [ ] **TC-01 — Recuperación de Contraseña en 3 Pasos (A1)**:
+- [x] **TC-01 — Recuperación de Contraseña en 3 Pasos (A1)**:
   1. Ir al modal de inicio de sesión (`AuthModal`) y presionar "¿Olvidaste tu contraseña?".
   2. Seleccionar el rol (Comprador o Vendedor) e ingresar un email/RUT registrado.
   3. Verificar que pasa al paso 2 con cuenta regresiva de 60 segundos para reenvío de código.
   4. Ingresar el código recibido y pasar al paso 3 para definir la nueva contraseña.
   5. Confirmar que se actualiza y permite iniciar sesión con la nueva credencial.
-- [ ] **TC-02 — Verificación Temprana de Email (A20)**:
+- [x] **TC-02 — Verificación Temprana de Email (A20)**:
   1. Abrir la pestaña de Registro en `AuthModal`.
   2. Escribir un correo electrónico que ya exista en el sistema y cambiar de campo (`onBlur`).
   3. Verificar que aparece de inmediato el mensaje de advertencia indicando que el correo ya está en uso.
-- [ ] **TC-03 — Cuenta Bloqueada y Solicitud de Revisión (A8)**:
+- [x] **TC-03 — Cuenta Bloqueada y Solicitud de Revisión (A8)**:
   1. Iniciar sesión con un usuario vendedor marcado como bloqueado/suspendido.
   2. Confirmar que en `ProfileDashboard` se muestra el banner rojo de alerta con el motivo.
   3. Presionar "Solicitar revisión", escribir justificación y teléfono alternativo, y enviar.
@@ -304,13 +313,13 @@ Para certificar que el plan quedó ejecutado al 100% y sin regresiones, se debe 
 ---
 
 ### Módulo 2: Venta y Gestión de Pedidos (Fase 2)
-- [ ] **TC-04 — Cancelación de Pedido por Vendedor (A2 & C1)**:
+- [x] **TC-04 — Cancelación de Pedido por Vendedor (A2 & C1)**:
   1. Entrar como vendedor a la pestaña de "Pedidos recibidos" y abrir el detalle de un pedido pendiente/en preparación.
   2. Presionar "Cancelar pedido".
   3. Comprobar que se despliegan los 5 motivos canónicos (`SIN_STOCK`, `ERROR_PRECIO`, `PRODUCTO_NO_DISPONIBLE`, `IMPOSIBILIDAD_DESPACHO`, `OTRO`).
   4. Seleccionar "OTRO" y verificar que exige texto explicativo obligatorio antes de habilitar el botón de confirmación.
   5. Confirmar la cancelación y validar que el estado del pedido y sus ítems cambian correctamente.
-- [ ] **TC-05 — Registro de Despacho con Comprobante (A3)**:
+- [x] **TC-05 — Registro de Despacho con Comprobante (A3)**:
   1. En un pedido en estado "En preparación", presionar "Registrar envío".
   2. Seleccionar el courier (Starken, Chilexpress, Blue Express, CorreosChile u Otro).
   3. Ingresar número de seguimiento / flete y costo de envío (opcional).
@@ -319,20 +328,37 @@ Para certificar que el plan quedó ejecutado al 100% y sin regresiones, se debe 
 - [ ] **TC-06 — Visualización de Ítems Cancelados (C2)**:
   1. En el historial de pedidos y en el modal de detalle, validar que los productos cancelados muestran el badge `.item-cancelled-badge` y aparecen atenuados o tachados.
 
+  **Cómo montar el caso** (2026-08-31): esto NO es cancelar un pedido entero, que ya está
+  cubierto por TC-04. Es el pedido que sobrevive **con una línea caída**: el comprador pidió
+  tres repuestos, el vendedor se quedó sin stock de uno y lo anula, y los otros dos se
+  despachan igual. Hay que llegar a un `rt_pedido_item` con `estado` distinto de `ACTIVO`
+  -los valores viven en `PedidoService.ITEM_ESTADO_*`- dentro de un pedido que sigue vivo.
+
+  Qué mirar: que el ítem caído salga tachado y con su badge, que el **total del pedido no lo
+  cuente**, y que el motivo de cancelación se lea (las etiquetas están en
+  `src/data/cancellationReason.js`; si falta la entrada, el motivo sale en blanco sin ningún
+  error).
+
+  Por qué importa: los estados de ítem cancelado se espejan en TRES lugares
+  -`PedidoService.ITEM_ESTADO_*`, `LiquidacionPedidoCalculator.itemsActivos()` y
+  `CANCELLED_ITEM_STATUSES` del móvil-. Si uno se desincroniza, el ítem anulado entra a la
+  liquidación como vivo y **al vendedor se le paga de menos o de más**. Es plata, y ninguna
+  prueba automática lo cubre.
+
 ---
 
 ### Módulo 3: Confianza, Postventa y Notificaciones (Fase 3)
-- [ ] **TC-07 — Confirmación de Recepción y Calificación (A4)**:
+- [x] **TC-07 — Confirmación de Recepción y Calificación (A4)**:
   1. Iniciar sesión como comprador y abrir un pedido en estado "Enviado" o "Listo para retiro".
   2. Presionar "Confirmar recepción" / "Marcar recibido".
   3. En el modal emergente de calificación, seleccionar estrellas (1 a 5) para la atención del vendedor y para cada producto individual recibido, con comentario opcional.
   4. Enviar calificación y verificar que el pedido queda en estado "Entregado" / "Finalizado".
-- [ ] **TC-08 — Centro de Soporte y Tickets Bidireccionales (A5 & B2)**:
+- [x] **TC-08 — Centro de Soporte y Tickets Bidireccionales (A5 & B2)**:
   1. En el perfil, ir a "Centro de ayuda" o "Soporte" y abrir un ticket existente.
   2. Comprobar que se muestra el hilo cronológico de mensajes entre el usuario y soporte.
   3. Escribir y enviar una respuesta; verificar que se añade al chat en tiempo real.
   4. Presionar "Cerrar consulta" y confirmar que el ticket pasa a estado cerrado.
-- [ ] **TC-09 — Imágenes en Chat de Mediación (A15 & B1)**:
+- [x] **TC-09 — Imágenes en Chat de Mediación (A15 & B1)**:
   1. Abrir un caso de mediación/disputa activo en `MediationCaseView`.
   2. En el compositor inferior, pulsar el botón de adjuntar foto, elegir una imagen y enviarla.
   3. Validar que la foto se visualiza en la conversación y permite hacer clic para ver en grande.
@@ -341,7 +367,7 @@ Para certificar que el plan quedó ejecutado al 100% y sin regresiones, se debe 
   2. En la ficha de producto, tienda o tarjeta de anuncio, pulsar "Reportar".
   3. Seleccionar el motivo contextual correspondiente (Tienda, Producto o Anuncio) e ingresar detalle opcional.
   4. Enviar y comprobar el mensaje de confirmación confidencial y la nota informativa de soporte/mediación.
-- [ ] **TC-11 — Limpieza de Notificaciones Leídas (A24 & B6)**:
+- [x] **TC-11 — Limpieza de Notificaciones Leídas (A24 & B6)**:
   1. Abrir la campana de notificaciones en el perfil (`ProfileNotificationsBell`).
   2. Presionar "Limpiar leídas".
   3. Verificar que las notificaciones leídas se eliminan y solo se mantienen las no leídas o el estado vacío.
@@ -360,32 +386,46 @@ Para certificar que el plan quedó ejecutado al 100% y sin regresiones, se debe 
   2. Validar que las fotos aparecen en miniaturas con el contador exacto (ej. "2/4 fotos").
   3. Eliminar una foto existente con el botón "X" y agregar una foto nueva.
   4. Guardar y verificar que el producto actualiza sus fotos sin pérdida de datos.
-- [ ] **TC-14 — Redirección a Gestión Masiva (A11)**:
+- [x] **TC-14 — Redirección a Gestión Masiva (A11)**:
   1. En el catálogo de productos del vendedor, ubicar el banner de carga masiva.
   2. Pulsar "Ir al Panel de Inventario" y verificar que abre la URL de `vendedor_panel` (`https://inventario.repuestop.cl` o dev).
-- [ ] **TC-15 — Responder Preguntas de Productos (A6)**:
+
+  **Validado el 2026-08-31, con una salvedad**: la redirección funciona, pero el panel de
+  inventario **no hereda la sesión** — el vendedor tiene que volver a autenticarse ahí. No es
+  un defecto de esta pantalla, es que no hay SSO entre el marketplace y `vendedor_panel`.
+  Queda anotado porque en la práctica corta el flujo justo cuando el vendedor va a cargar su
+  inventario, que es el momento en que menos conviene perderlo.
+- [x] **TC-15 — Responder Preguntas de Productos (A6)**:
   1. En el menú del vendedor, entrar a "Preguntas de productos".
   2. En una pregunta con estado pendiente, escribir una respuesta en el formulario inline y presionar "Responder".
   3. Confirmar que la pregunta pasa a respondida y se actualiza en la tienda pública.
-- [ ] **TC-16 — Pausar y Reanudar Publicaciones (A10)**:
+- [x] **TC-16 — Pausar y Reanudar Publicaciones (A10)**:
   1. En la lista de catálogo del vendedor, pulsar el botón "Pausar" en un producto activo.
   2. Verificar que aparece el badge `Pausado` y el producto se atenúa.
   3. Pulsar "Reanudar" y comprobar que vuelve a estado activo visible para compradores.
-- [ ] **TC-17 — Verificación Comercial y Contrato de Adhesión (A7 & A12)**:
+- [x] **TC-17 — Verificación Comercial y Contrato de Adhesión (A7 & A12)**:
   1. Entrar a "Mi tienda y datos" como vendedor.
   2. Validar que se visualiza la tarjeta de Verificación Comercial y el estado de aceptación de términos de adhesión.
 
 ---
 
 ### Módulo 5: Descubrimiento, Vehículos y Favoritos (Fase 5)
-- [ ] **TC-18 — Bandeja de "Mis Preguntas" para Compradores (A13)**:
+- [x] **TC-18 — Bandeja de "Mis Preguntas" para Compradores (A13)**:
   1. Iniciar sesión como comprador e ir a "Mis preguntas" en la barra lateral del perfil.
   2. Comprobar que se listan las consultas realizadas, el estado y las respuestas otorgadas por los vendedores.
-- [ ] **TC-19 — Búsqueda de Vehículo Manual (A17)**:
+- [x] **TC-19 — Búsqueda de Vehículo Manual (A17)**:
   1. En la barra superior o en el hero de la página principal, seleccionar búsqueda manual.
   2. Escoger Marca y Año y pulsar "Buscar repuestos".
   3. Verificar que se envía a `POST /api/v1/vehiculos/manual` y se fija el vehículo activo en la tienda.
-- [ ] **TC-20 — Agregar y Quitar Favoritos en Tiempo Real (A19)**:
+
+  **Validado el 2026-08-31.** La evidencia está en la base, no en los logs: `rt_vehiculo_consultado`
+  id 3 quedó con `patente = 'MANUAL'`, `fuente_identificacion = 'MANUAL'` y
+  `vehiculo_catalogo_id = 5493` (RAM 2500 BIG HORN CREW CAB 6.700 Automática, 2020). O sea que
+  el endpoint corrió y **resolvió un `catalogoId` real**, que es lo único que importa: sin él
+  la búsqueda por vehículo manual no puede cruzar compatibilidades. Esto cierra el MATIZ del
+  punto A17, que decía que el hero armaba un objeto mock `GEN-AUTO` en memoria sin llamar al
+  backend.
+- [x] **TC-20 — Agregar y Quitar Favoritos en Tiempo Real (A19)**:
   1. En la ficha de producto (`ProductDetailPage`) o en las tarjetas (`MarketplaceProductCard`), pulsar el icono de corazón.
   2. Validar que el corazón se ilumina en rojo y persiste al recargar la página.
   3. Ir a la pestaña "Favoritos" en el perfil del comprador y validar que el producto aparece en la lista.
@@ -394,7 +434,7 @@ Para certificar que el plan quedó ejecutado al 100% y sin regresiones, se debe 
 ---
 
 ### Módulo 6: Chats con Imagen (Fase 6)
-- [ ] **TC-21 — Envío de Imágenes en Chat de Cotización (A14)**:
+- [x] **TC-21 — Envío de Imágenes en Chat de Cotización (A14)**:
   1. Abrir una cotización en `QuoteDetailModal`.
   2. En el compositor de chat, pulsar "Adjuntar foto".
   3. Seleccionar una imagen y comprobar la previsualización con nombre y tamaño en KB.
@@ -404,7 +444,7 @@ Para certificar que el plan quedó ejecutado al 100% y sin regresiones, se debe 
 ---
 
 ### Módulo 7: Compras, Checkout y Avisos (Fase 7)
-- [ ] **TC-22 — Totales de Compra en Checkout (C3 & C4)**:
+- [x] **TC-22 — Totales de Compra en Checkout (C3 & C4)**:
   1. Agregar 1 o más repuestos al carrito y proceder al checkout.
   2. Validar que el total a pagar es estrictamente la suma de `Subtotal Productos + Costo de Envío` sin recargo de pasarela para el comprador.
   3. Seleccionar los métodos de despacho disponibles y verificar que la orden se genera limpiamente.
@@ -597,3 +637,43 @@ y firma del contrato de adhesión persistido.
 - `PartsCatalogView.jsx` conmuta automáticamente a `GET /api/v1/vehiculos-catalogo/{id}/repuestos` al filtrar por vehículo activo (`activeVehicle.catalogoId`), con banner verde de calce verificado oficial y fallback a catálogo general.
 
 El detalle de lo que se arreglo esta en `HANDOFF_PROXIMO_AGENTE.md` seccion 4.24, 4.25, 4.26, 4.27 y 4.28.
+
+
+### 7.6 Sincronización del checklist y últimas validaciones — 2026-08-31
+
+**Las casillas de la sección 6 estaban desincronizadas de esta sección.** Aparecían 20 de 23
+casos abiertos, cuando la prosa de aquí venía declarando cerrados casi todos entre el 25 y el
+28 de agosto: nadie volvía a tildar la lista. Quedaron marcados los 21 que ya tenían respaldo
+documentado, con su fecha. **Si cierras un caso, marca la casilla además de escribirlo acá.**
+
+**TC-14 (A11) — validado, con salvedad.** La redirección al panel de inventario funciona, pero
+el panel **no hereda la sesión**: el vendedor tiene que autenticarse de nuevo. No hay SSO entre
+el marketplace y `vendedor_panel`. Corta el flujo justo cuando el vendedor va a cargar su
+inventario.
+
+**TC-19 (A17) — validado.** La evidencia quedó en la base y no en los logs (que solo cubren dos
+ventanas cortas y no alcanzan el momento de la prueba): `rt_vehiculo_consultado` id 3 con
+`patente = 'MANUAL'`, `fuente_identificacion = 'MANUAL'` y `vehiculo_catalogo_id = 5493` — RAM
+2500 BIG HORN CREW CAB 6.700 Automática, 2020. El endpoint corrió y resolvió un `catalogoId`
+real, que es lo único que importa: sin él la búsqueda manual no puede cruzar compatibilidades.
+Cierra el MATIZ del punto A17 sobre el objeto mock `GEN-AUTO`.
+
+**Quedan dos casos sin validar, y son de naturaleza distinta:**
+
+- **TC-06 (C2) — ítems cancelados.** No estaba claro qué había que probar; el caso quedó
+  descrito en la sección 6. En corto: no es cancelar un pedido entero (eso es TC-04), es un
+  pedido que sobrevive con UNA línea caída. Importa porque los estados de ítem cancelado se
+  espejan en tres lugares y, si se desincronizan, el ítem anulado entra a la liquidación como
+  vivo y al vendedor se le paga mal.
+- **TC-23 (C6/C7) — anuncios y agenda.** Sin revisar. Es el único módulo cuyo backend todavía
+  no está en producción, y `agendaConfigId` es justo el campo que si falta deja el aviso sin
+  días disponibles en la app móvil **sin que el backend lo valide**.
+
+**Fuera de este documento quedan dos pendientes de validación que sí son camino crítico para
+lanzar:**
+
+- **Login con correo y contraseña** (`PLAN_UNIFICACION_WEB.md`): nunca se probó por falta de
+  cuentas. El documento lo califica de riesgo bajo porque el login con Google ya validó CORS,
+  JWT, sesión y rol — pero no todos los compradores van a entrar con Google.
+- **Alta con Google de una cuenta nueva** (`PLAN_MONEDA_REPUESTOP.md`): necesita un correo que
+  todavía no exista en RepuesTop. Es el registro, no el login.
