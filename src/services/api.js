@@ -986,7 +986,7 @@ export async function getStoreProductsApi(storeId, { page = 0, size = 12, texto,
   return fetchApi(`/tiendas/${storeId}/productos?${params.toString()}`, { method: 'GET' });
 }
 
-export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, comunaId, compatibilidadMarca, compatibilidadModelo, compatibilidadAnio, condicion, origen, sort = 'precio,asc', signal } = {}) {
+export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, soloDestacados, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, comunaId, compatibilidadMarca, compatibilidadModelo, compatibilidadAnio, condicion, origen, sort = 'precio,asc', signal } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size), sort });
   if (texto) params.set('texto', texto);
   if (patente) params.set('patente', patente);
@@ -997,6 +997,7 @@ export async function getPublicProductsApi({ page = 0, size = 12, texto, patente
   if (compatibilidadModelo) params.set('compatibilidadModelo', compatibilidadModelo);
   if (compatibilidadAnio) params.set('compatibilidadAnio', String(compatibilidadAnio));
   if (soloCotizacion !== undefined) params.set('soloCotizacion', String(soloCotizacion));
+  if (soloDestacados) params.set('soloDestacados', 'true');
   if (categoriaId) params.set('categoriaId', String(categoriaId));
   if (subcategoriaId) params.set('subcategoriaId', String(subcategoriaId));
   if (marcaId) params.set('marcaId', String(marcaId));

@@ -35,6 +35,10 @@ const CAROUSEL_PAGE_COUNT = Math.ceil(CAROUSEL_CATEGORIES.length / CAROUSEL_PAGE
  * NO se consulta hasta que el usuario elige un contexto.
  */
 const SHOWCASE_SIZE = 12;
+// Techo de destacados en la vitrina. Con el tope de 2 por vendedor el total crece lineal
+// con la cantidad de tiendas, que es justo lo que el negocio va a hacer crecer: sin techo,
+// la pantalla de entrada terminaria enviando cientos de tarjetas con imagenes.
+const SHOWCASE_FEATURED_MAX = 36;
 
 /**
  * Tope de resultados navegables por paginacion. Igual que MercadoLibre (que corta
@@ -216,7 +220,11 @@ export default function PartsCatalogView({
       case 'recientes': return 'createdAt,desc';
       case 'relevancia':
       default:
-        return 'updatedAt,desc';
+        // Al lanzar no hay ventas ni calificaciones, asi que el stock es la unica senal
+        // real que tiene el catalogo. Antes era `updatedAt,desc`, que ademas de no
+        // recomendar nada era casi lo mismo que "Mas Recientes": `updatedAt` se mueve con
+        // cualquier edicion del vendedor.
+        return 'stock,desc';
     }
   }, [sortBy]);
 
@@ -497,20 +505,41 @@ export default function PartsCatalogView({
   // Vitrina de entrada: una sola página corta de recién publicados. Reemplaza al grid
   // completo mientras no haya contexto, para que /repuestos no se vea vacía.
   const {
-    data: showcaseProducts = [],
+    data: showcase = { featured: [], filler: [] },
     isLoading: showcaseLoading,
   } = useQuery({
-    queryKey: qk.products({ vitrina: true, size: SHOWCASE_SIZE }),
+    queryKey: qk.products({ vitrina: true, size: SHOWCASE_FEATURED_MAX }),
     enabled: !hasActiveContext,
     staleTime: 1000 * 60 * 5,
     queryFn: async ({ signal }) => {
-      const data = await getPublicProductsApi({
+      const destacados = adaptPage(await getPublicProductsApi({
+        page: 0,
+        size: SHOWCASE_FEATURED_MAX,
+        soloDestacados: true,
+        sort: 'createdAt,desc',
+        signal,
+      }), adaptProduct).items;
+
+      // Los Top los marca cada tienda a mano, asi que al principio son poquisimos y la
+      // pantalla de entrada del marketplace quedaria con dos tarjetas. Se completa con
+      // recien publicados hasta SHOWCASE_SIZE, y cada bloque lleva su propio titulo para
+      // que la etiqueta diga la verdad de lo que se esta mostrando.
+      if (destacados.length >= SHOWCASE_SIZE) {
+        return { featured: destacados, filler: [] };
+      }
+      const recientes = adaptPage(await getPublicProductsApi({
         page: 0,
         size: SHOWCASE_SIZE,
         sort: 'createdAt,desc',
         signal,
-      });
-      return adaptPage(data, adaptProduct).items;
+      }), adaptProduct).items;
+      const yaVisibles = new Set(destacados.map((item) => item.id));
+      return {
+        featured: destacados,
+        filler: recientes
+          .filter((item) => !yaVisibles.has(item.id))
+          .slice(0, SHOWCASE_SIZE - destacados.length),
+      };
     },
   });
 
@@ -1219,37 +1248,63 @@ export default function PartsCatalogView({
           {/* Parts Cards Column (Right Grid) */}
           <main className="catalog-parts-main">
             {!hasActiveContext ? (
-              /* Vitrina acotada: una sola consulta de 12 recién publicados. El catálogo
-                 paginado (y su COUNT sobre todo el inventario) no se pide hasta que hay filtro. */
+              /* Vitrina acotada: los productos Top de las tiendas, completados con recién
+                 publicados mientras sean pocos. El catálogo paginado (y su COUNT sobre todo
+                 el inventario) no se pide hasta que hay filtro. */
               <div className="catalog-showcase-block">
-                <div className="catalog-showcase-block-header">
-                  <h2>Recién publicados</h2>
-                  <p>Una muestra del catálogo. Filtra por categoría, patente o busca por nombre para ver el resto.</p>
-                </div>
                 {showcaseLoading ? (
                   <div className="parts-cards-grid-catalog" aria-busy="true">
                     {Array.from({ length: SHOWCASE_SIZE }).map((_, i) => (
                       <ProductCardSkeleton key={i} />
                     ))}
                   </div>
-                ) : showcaseProducts.length > 0 ? (
-                  <div className="parts-cards-grid-catalog">
-                    {showcaseProducts.map((prod) => (
-                      <MarketplaceProductCard
-                        key={prod.id}
-                        product={prod}
-                        onView={onQuickView}
-                        isFavorite={isFavorite(prod.id)}
-                        onToggleFavorite={isLoggedIn ? toggleFavorite : undefined}
-                      />
-                    ))}
-                  </div>
-                ) : (
+                ) : showcase.featured.length === 0 && showcase.filler.length === 0 ? (
                   <div className="directory-empty-state">
                     <Wrench size={56} className="empty-icon-gray" />
                     <h3>Todavía no hay repuestos publicados</h3>
                     <p>Vuelve pronto: las tiendas verificadas están cargando su inventario.</p>
                   </div>
+                ) : (
+                  <>
+                    {showcase.featured.length > 0 && (
+                      <>
+                        <div className="catalog-showcase-block-header">
+                          <h2>Productos Top de las tiendas</h2>
+                          <p>Lo que cada tienda eligió destacar de su inventario.</p>
+                        </div>
+                        <div className="parts-cards-grid-catalog">
+                          {showcase.featured.map((prod) => (
+                            <MarketplaceProductCard
+                              key={prod.id}
+                              product={prod}
+                              onView={onQuickView}
+                              isFavorite={isFavorite(prod.id)}
+                              onToggleFavorite={isLoggedIn ? toggleFavorite : undefined}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {showcase.filler.length > 0 && (
+                      <>
+                        <div className="catalog-showcase-block-header">
+                          <h2>Recién publicados</h2>
+                          <p>Una muestra del catálogo. Filtra por categoría, patente o busca por nombre para ver el resto.</p>
+                        </div>
+                        <div className="parts-cards-grid-catalog">
+                          {showcase.filler.map((prod) => (
+                            <MarketplaceProductCard
+                              key={prod.id}
+                              product={prod}
+                              onView={onQuickView}
+                              isFavorite={isFavorite(prod.id)}
+                              onToggleFavorite={isLoggedIn ? toggleFavorite : undefined}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
                 )}
               </div>
             ) : productsLoading ? (

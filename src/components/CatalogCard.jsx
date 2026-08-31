@@ -132,7 +132,7 @@ export default function CatalogCard({
           className={`catalog-top-toggle ${isTop ? 'is-active' : ''}`}
           disabled={isUpdatingTop || isPaused}
           aria-pressed={isTop}
-          title={isTop ? 'Quitar prioridad dentro de tu tienda' : 'Dar mayor visibilidad dentro de tu tienda'}
+          title={isTop ? 'Quitar de tus productos Top' : 'Destacarlo en tu tienda y en la vitrina de repuestos (hasta 2)'}
           onClick={(event) => {
             event.stopPropagation();
             onToggleTop?.(product, !isTop);

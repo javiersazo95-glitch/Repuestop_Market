@@ -875,7 +875,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         ? { ...previous, ...updated, destacado: Boolean(updated?.destacado ?? destacado) }
         : previous);
       setCatalogTopFeedback(destacado
-        ? 'Producto marcado como Top: tendrá prioridad dentro de tu tienda.'
+        ? 'Producto marcado como Top: tendrá prioridad en tu tienda y aparecerá en la vitrina de /repuestos.'
         : 'El producto dejó de tener prioridad Top.');
     } catch (error) {
       setCatalogActionError(error.message || 'No se pudo actualizar el producto Top.');
