@@ -8,6 +8,7 @@ import {
 import { OrderStatusBadge } from './OrderCard';
 import { resolveShippingService } from '../data/shippingMethods';
 import { resolveMediaUrl, rateOrderApi } from '../services/api';
+import { activeOrderItems, deliveryCourierLabel, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
 import ConfirmDialog from './ConfirmDialog';
 import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancellationReason';
@@ -183,13 +184,18 @@ export default function OrderDetailModal({
   // rechaza el despacho del lado del servidor, asi que dejar los botones solo produce un
   // error a mitad de camino.
   const sellerReadOnly = isSeller && readOnly;
-  const canSellerCancel = isSeller && !sellerReadOnly && ['PENDIENTE', 'PAGADO'].includes(normStatus) && Boolean(onCancelSellerOrder);
+  // El vendedor que ya cancelo todas sus lineas no tiene nada que cancelar: el boton le
+  // ofrecia repetir una accion sobre una venta que ya no existe. Mismo criterio que
+  // `getControlledOrderAction`, que le oculta "Confirmar pedido" por la misma razon.
+  const canSellerCancel = isSeller && !sellerReadOnly && ['PENDIENTE', 'PAGADO'].includes(normStatus)
+    && Boolean(onCancelSellerOrder)
+    && (!Array.isArray(order?.items) || order.items.length === 0 || activeOrderItems(order).length > 0);
   const cancellationReason = normStatus === 'CANCELADO' ? cancellationReasonLabel(order, isSeller ? 'seller' : 'buyer') : null;
   // La explicacion esta escrita para el comprador ("si pagaste, el reembolso...").
   // Al vendedor le basta la etiqueta: el motivo lo declaro el.
   const cancellationHint = cancellationReason && mode !== 'seller' ? cancellationReasonHint(order) : null;
 
-  const orderIdShort = String(order.id || '').slice(-6).toUpperCase();
+  const orderIdShort = orderDisplayCode(order, isSeller ? 'seller' : 'buyer');
   const items = order.items || [];
 
   // `PedidoPostVentaSupport` solo acepta calificar pedidos ENTREGADO/FINALIZADO y rechaza
@@ -215,10 +221,13 @@ export default function OrderDetailModal({
     order.compradorComuna || order.comuna,
     order.compradorRegion || order.region,
   ].filter(Boolean).join(', ') || 'Dirección de envío no registrada';
-  const deliveryTerms = order.courier || order.deliveryTerms || order.tipoEnvio || 'Envío por coordinar';
+  // El courier es informacion ADICIONAL al metodo, no un reemplazo: la pildora lo muestra
+  // solo cuando existe, porque el recuadro de abajo ya dice el tipo de entrega y repetir la
+  // misma frase dos veces seguidas no aporta nada.
+  const deliveryCourier = deliveryCourierLabel(order);
   // Traduce el método de envío a español + ícono, con la misma lógica que la
   // ficha de producto usa para los métodos que declara la tienda.
-  const shippingService = resolveShippingService(deliveryTerms);
+  const shippingService = resolveShippingService(deliveryCourier || deliveryMethodLabel(order));
   const isStorePickup = isStorePickupOrder(order);
   const copyAddress = (e) => {
     e.stopPropagation();
@@ -228,10 +237,16 @@ export default function OrderDetailModal({
     });
   };
 
-  const subtotal = Number(order.subtotal || order.total || 0);
+  // `??` y no `||`: un subtotal de CERO es legitimo (el vendedor cancelo todas sus lineas)
+  // y con `||` se caia a `order.total`, o sea al monto de la venta anulada.
+  const subtotal = Number(order.subtotal ?? order.total ?? 0);
   const shippingFee = Number(order.shippingFee || order.costoEnvio || 0);
   const totalSeller = Number(order.totalVendedor ?? order.totalSeller ?? (subtotal * 0.93));
   const totalBuyer = Number(order.total || (subtotal + shippingFee));
+  // Los manda el backend y la web los ignoraba: `montoReembolsado` es lo que se devuelve por
+  // las lineas canceladas y `totalActivo` lo que queda realmente por pagar.
+  const refundAmount = Number(order.montoReembolsado || order.refundedAmount || 0);
+  const totalActive = Number(order.totalActivo ?? order.activeTotal ?? Math.max(0, totalBuyer - refundAmount));
 
   const commissionRate = order.commissionRate ? order.commissionRate * 100 : subtotal > 250000 ? 5 : subtotal > 100000 ? 7 : 10;
   const repuestopFee = order.commissionSeller || Math.round(subtotal * (commissionRate / 100) * 1.19);
@@ -372,9 +387,13 @@ export default function OrderDetailModal({
               <Package size={22} />
             </div>
             <div>
-              <h2>Detalles del Pedido #{orderIdShort}</h2>
+              <h2>{isSeller ? "Detalles de la Venta" : "Detalles del Pedido"} {orderIdShort}</h2>
               <span className="order-modal-subtitle">
                 {formatDate(order.createdAt || order.fecha)} · {order.source === 'quote' ? 'Cotización' : 'Carrito'}
+                {/* El numero de arriba es el de cada rol y NO identifica el pedido para un
+                    tercero: el del comprador es su propia secuencia y el del vendedor es su
+                    parte. Este es el unico que sirve para escribirle a soporte. */}
+                {order.codigoSoporte && <> · <span className="order-support-code">Código: {order.codigoSoporte}</span></>}
               </span>
             </div>
           </div>
@@ -462,13 +481,13 @@ export default function OrderDetailModal({
                 <Truck size={16} />
                 <span>Información de Entrega y Despacho</span>
               </h3>
-              <span className="delivery-badge-pill">{deliveryTerms}</span>
+              {deliveryCourier && <span className="delivery-badge-pill">{deliveryCourier}</span>}
             </div>
 
             <div className="delivery-info-grid">
               <div className="delivery-info-item">
                 <span className="info-label">Tipo de Entrega</span>
-                <strong className="info-value">{isStorePickup ? 'Retiro en Tienda' : 'Despacho a Domicilio'}</strong>
+                <strong className="info-value">{isStorePickup ? 'Retiro en Tienda' : deliveryMethodLabel(order)}</strong>
               </div>
 
               {!isStorePickup && (
@@ -524,15 +543,7 @@ export default function OrderDetailModal({
                   const qty = Number(item.cantidad || item.quantity || 1);
                   const price = Number(item.precioUnitario || item.precio || item.unitPrice || 0);
 
-                  const itemStatus = String(item.estado || item.status || '').toUpperCase();
-                  const isItemCancelled = [
-                    'CANCELADO_BLOQUEO_VENDEDOR',
-                    'CANCELADO_VENDEDOR',
-                    'CANCELADO_EXPIRACION_PAGO',
-                    'CANCELADO_COMPRADOR',
-                    'CANCELADO',
-                    'CANCELLED'
-                  ].includes(itemStatus);
+                  const isItemCancelled = isCancelledItem(item);
 
                   return (
                     <div key={item.id || i} className={`order-item-row ${isItemCancelled ? 'order-item-row--cancelled' : ''}`}>
@@ -586,10 +597,12 @@ export default function OrderDetailModal({
 
               {isSeller && (
                 <>
-                  <div className="financial-row deduction-row">
-                    <span>Comisión RepuesTop ({commissionRate}% + IVA)</span>
-                    <strong className="negative-text">-{formatCLP(repuestopFee)}</strong>
-                  </div>
+                  {repuestopFee > 0 && (
+                    <div className="financial-row deduction-row">
+                      <span>Comisión RepuesTop ({commissionRate}% + IVA)</span>
+                      <strong className="negative-text">-{formatCLP(repuestopFee)}</strong>
+                    </div>
+                  )}
                   {paymentProcessingFee > 0 && (
                     <div className="financial-row deduction-row">
                       <span>Procesador de pago</span>
@@ -599,10 +612,28 @@ export default function OrderDetailModal({
                 </>
               )}
 
+              {/* Al comprador se le cobró el pedido completo y se le devuelve lo cancelado.
+                  Antes solo se mostraba "Total Pagado" con el monto original, sin una sola
+                  mención del reembolso: la pantalla afirmaba que pagó por algo que ya no le
+                  va a llegar. `montoReembolsado` y `totalActivo` los calcula y envía el
+                  backend desde siempre; nadie los leía. */}
+              {!isSeller && refundAmount > 0 && (
+                <>
+                  <div className="financial-row deduction-row">
+                    <span>Productos cancelados</span>
+                    <strong className="negative-text">-{formatCLP(refundAmount)}</strong>
+                  </div>
+                  <div className="financial-row">
+                    <span>Total Pagado</span>
+                    <strong>{formatCLP(totalBuyer)}</strong>
+                  </div>
+                </>
+              )}
+
               <div className="financial-row total-highlight-row">
-                <span>{isSeller ? 'Monto Neto a Recibir' : 'Total Pagado'}</span>
+                <span>{isSeller ? 'Monto Neto a Recibir' : refundAmount > 0 ? 'Total Final' : 'Total Pagado'}</span>
                 <strong className="total-highlight-amount">
-                  {formatCLP(isSeller ? totalSeller : totalBuyer)}
+                  {formatCLP(isSeller ? totalSeller : refundAmount > 0 ? totalActive : totalBuyer)}
                 </strong>
               </div>
             </div>
@@ -860,7 +891,7 @@ export default function OrderDetailModal({
                 </div>
                 <div className="order-subdialog-heading">
                   <h3>Registrar despacho de envío</h3>
-                  <span>Pedido #{orderIdShort} · Destino: {order.compradorComuna || 'Chile'}</span>
+                  <span>Pedido {orderIdShort} · Destino: {order.compradorComuna || 'Chile'}</span>
                 </div>
               </div>
 

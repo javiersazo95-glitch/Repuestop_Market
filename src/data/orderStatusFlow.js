@@ -1,3 +1,5 @@
+import { activeOrderItems } from './orderIdentity';
+
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
 /**
@@ -72,6 +74,20 @@ export function sellerFinalizationAvailability(order, now = Date.now()) {
 export function getControlledOrderAction(order, mode) {
   const status = normalizeOrderStatus(order);
   const pickup = isStorePickupOrder(order);
+
+  // Un vendedor que ya no tiene lineas vivas en el pedido no tiene nada que preparar ni que
+  // despachar. Antes la accion se decidia SOLO por el estado del pedido, asi que el vendedor
+  // que cancelo su unica linea seguia viendo "Confirmar pedido" -y al pulsarlo movia el
+  // pedido entero a EN_PREPARACION, cambiandole el estado al OTRO vendedor, que si tenia algo
+  // que despachar-.
+  //
+  // El arreglo de fondo es el estado por vendedor (subordenes, seccion 8 de
+  // PLAN_CARRITO_CHECKOUT): mientras el estado sea uno solo y compartido, cualquiera de los
+  // dos lo mueve. Esto al menos impide que lo mueva quien ya no participa.
+  if (mode !== 'buyer' && Array.isArray(order?.items) && order.items.length > 0
+      && activeOrderItems(order).length === 0) {
+    return null;
+  }
 
   if (mode === 'buyer') {
     if (status === 'ENVIADO') {

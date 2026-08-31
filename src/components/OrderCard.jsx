@@ -5,6 +5,7 @@ import {
   Phone, MapPin, Boxes, Loader2
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
+import { deliveryCourierLabel, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
 import ConfirmDialog from './ConfirmDialog';
 import { cancellationReasonLabel } from '../data/cancellationReason';
@@ -105,11 +106,11 @@ export default function OrderCard({
   // Solo cuando el backend registro la causa. Los cancelados historicos no la
   // tienen y se quedan con "Cancelado" a secas, sin explicacion inventada.
   const cancellationReason = normStatus === 'CANCELADO' ? cancellationReasonLabel(order, isSeller ? 'seller' : 'buyer') : null;
-  const deliveryTerms = String(order.courier || order.deliveryTerms || order.tipoEnvio || order.compradorDireccion || order.direccionEntrega || 'Despacho a domicilio');
+  const deliveryTerms = deliveryCourierLabel(order) || deliveryMethodLabel(order);
   const isStorePickup = isStorePickupOrder(order);
   const displayStatus = normStatus === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : rawStatus;
 
-  const orderIdShort = String(order.id || '').slice(-6).toUpperCase();
+  const orderIdShort = orderDisplayCode(order, isSeller ? 'seller' : 'buyer');
   const orderDate = formatOrderDate(order.createdAt || order.fecha);
   const orderSource = order.source === 'quote' || order.origen === 'COTIZACION' ? 'Cotización' : 'Carrito';
 
@@ -126,7 +127,11 @@ export default function OrderCard({
     order.compradorRegion || order.region,
   ].filter(Boolean).join(', ');
   const shippingFee = Number(order.shippingFee || order.costoEnvio || 0);
-  const itemsCount = items.reduce((total, item) => total + Number(item.cantidad || item.quantity || 1), 0) || 1;
+  // Se cuentan las unidades VIVAS. Decir "2 productos" cuando uno ya no llega contradice al
+  // aviso de reembolso que esta dos lineas mas arriba en la misma tarjeta.
+  const countUnits = (list) => list.reduce((total, item) => total + Number(item.cantidad || item.quantity || 1), 0);
+  const itemsCount = countUnits(items.filter((item) => !isCancelledItem(item)));
+  const cancelledCount = countUnits(items.filter(isCancelledItem));
 
   const firstItemPhoto = resolveMediaUrl(firstItem.imagenUrl || firstItem.imageUrl || firstItem.productPhotoUri || (firstItem.imageUrls && firstItem.imageUrls[0]));
   const firstItemName = firstItem.nombre || firstItem.productName || firstItem.name || 'Repuesto de auto';
@@ -134,20 +139,23 @@ export default function OrderCard({
   const firstItemSku = firstItem.sku || firstItem.productSku || '';
   const firstItemPrice = Number(firstItem.precioUnitario || firstItem.precio || firstItem.unitPrice || 0);
   const firstItemQty = Number(firstItem.cantidad || firstItem.quantity || 1);
-  const firstItemStatus = String(firstItem?.estado || firstItem?.status || '').toUpperCase();
-  const isFirstItemCancelled = [
-    'CANCELADO_BLOQUEO_VENDEDOR',
-    'CANCELADO_VENDEDOR',
-    'CANCELADO_EXPIRACION_PAGO',
-    'CANCELADO_COMPRADOR',
-    'CANCELADO',
-    'CANCELLED'
-  ].includes(firstItemStatus);
+  const isFirstItemCancelled = isCancelledItem(firstItem);
 
-  const itemsSubtotal = items.reduce((total, item) => total + (Number(item.precioUnitario || item.precio || item.unitPrice || 0) * Number(item.cantidad || item.quantity || 1)), 0);
-  const subtotal = Number(order.subtotal || itemsSubtotal || order.total || 0);
+  // Solo las lineas vivas: una cancelada no suma a lo que el vendedor va a cobrar.
+  const itemsSubtotal = items
+    .filter((item) => !isCancelledItem(item))
+    .reduce((total, item) => total + (Number(item.precioUnitario || item.precio || item.unitPrice || 0) * Number(item.cantidad || item.quantity || 1)), 0);
+  // `??` y no `||`: un subtotal de CERO es un dato legitimo -el vendedor cancelo todo lo
+  // suyo- y con `||` se tomaba como "no vino" y se caia al calculo local, que devolvia el
+  // monto original. Asi el neto salia $0 pero los descuentos seguian cobrandose sobre la
+  // venta anulada.
+  const subtotal = Number(order.subtotal ?? itemsSubtotal ?? order.total ?? 0);
   const totalSeller = Number(order.totalVendedor ?? order.totalSeller ?? (subtotal * 0.93));
   const totalBuyer = Number(order.total || subtotal);
+  // Con un reembolso en curso la tarjeta se contradecia sola: el aviso de arriba anunciaba la
+  // devolucion y el pie seguia rotulando el cobro original como "Total". Peor aun, el detalle
+  // del MISMO pedido ya mostraba "Total Final": dos cifras distintas segun donde se mirara.
+  const totalActive = Number(order.totalActivo ?? order.activeTotal ?? Math.max(0, totalBuyer - refundAmount));
 
   // Cálculo de comisiones para el modal de información del vendedor
   const storedCommissionRate = Number(order.commissionRate ?? order.comisionTasaAplicada ?? 0);
@@ -156,7 +164,11 @@ export default function OrderCard({
   const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(subtotal * 0.025 * 1.19)));
   const totalDeductions = repuestopFee + paymentProcessingFee;
   const paymentFailed = String(order.paymentStatus || '').toLowerCase() === 'failed' && !['CANCELADO', 'CANCELLED'].includes(normStatus);
+  // `refundStatus` ya viene acotado por el backend a quien le concierne (al vendedor solo
+  // si alguno de SUS items quedo cancelado). Aca se agrega el monto, que antes no se decia:
+  // "Reembolso en proceso" sin cifra no le sirve a nadie.
   const hasRefund = ['REEMBOLSADO', 'REEMBOLSO_SOLICITADO'].includes(String(order.refundStatus || '').toUpperCase());
+  const refundAmount = Number(order.montoReembolsado || order.refundedAmount || 0);
 
   const controlledAction = getControlledOrderAction(order, mode);
 
@@ -215,7 +227,7 @@ export default function OrderCard({
         {/* Top Header Row */}
         <div className="order-card-header">
           <div className="order-card-title-group">
-            <h3 className="order-card-id">Pedido #{orderIdShort}</h3>
+            <h3 className="order-card-id">{isSeller ? "Venta" : "Pedido"} {orderIdShort}</h3>
             <span className="order-card-date-meta">
               {orderDate} · {orderSource}
             </span>
@@ -271,7 +283,7 @@ export default function OrderCard({
         {/* Chips informativos: llenan el espacio en blanco de la card con datos
             reales del pedido (cantidad de productos, envío, forma de entrega). */}
         <div className="order-card-info-chips">
-          <span className="order-info-chip"><Boxes size={13} /> {itemsCount} {itemsCount === 1 ? 'producto' : 'productos'}</span>
+          <span className="order-info-chip"><Boxes size={13} /> {itemsCount} {itemsCount === 1 ? 'producto' : 'productos'}{cancelledCount > 0 && ` · ${cancelledCount} cancelado${cancelledCount === 1 ? '' : 's'}`}</span>
           {isStorePickup ? (
             <span className="order-info-chip"><Store size={13} /> Retiro en tienda</span>
           ) : shippingFee > 0 ? (
@@ -294,7 +306,14 @@ export default function OrderCard({
         {hasRefund && (
           <div className="order-card-state-banner refund">
             <ShieldCheck size={18} />
-            <div><strong>{String(order.refundStatus).toUpperCase() === 'REEMBOLSADO' ? 'Reembolsado' : 'Reembolso en proceso'}</strong></div>
+            <div>
+              <strong>{String(order.refundStatus).toUpperCase() === 'REEMBOLSADO' ? 'Reembolsado' : 'Reembolso en proceso'}</strong>
+              {refundAmount > 0 && (
+                <span>{isSeller
+                  ? `Se anularon ${formatCLP(refundAmount)} de este pedido.`
+                  : `Se te devuelven ${formatCLP(refundAmount)} por los productos cancelados.`}</span>
+              )}
+            </div>
           </div>
         )}
 
@@ -332,10 +351,10 @@ export default function OrderCard({
           </div>
 
           <div className="total-info">
-            <span className="footer-label">{isSeller ? 'Neto a recibir' : 'Total'}</span>
+            <span className="footer-label">{isSeller ? 'Neto a recibir' : refundAmount > 0 ? 'Total final' : 'Total'}</span>
             <div className="total-amount-row">
               <strong className="total-amount">
-                {formatCLP(isSeller ? totalSeller : totalBuyer)}
+                {formatCLP(isSeller ? totalSeller : refundAmount > 0 ? totalActive : totalBuyer)}
               </strong>
               {isSeller && (
                 <button

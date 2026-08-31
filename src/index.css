@@ -5413,6 +5413,10 @@ input, select, textarea {
   color: var(--text-muted);
 }
 
+/* Codigo de soporte del pedido: se dicta o se pega en un correo, asi que va en monoespaciada
+   para que no se confundan 0 y O al leerlo. */
+.order-support-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 700; letter-spacing: 0.2px; color: var(--text-strong, #334155); }
+
 .order-modal-header-actions {
   display: flex;
   align-items: center;
