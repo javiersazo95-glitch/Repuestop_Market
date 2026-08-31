@@ -111,6 +111,7 @@ const initialForm = (product = null) => ({
   price: product?.precio ?? '',
   stock: product?.stock ?? '1',
   requiresChassis: Boolean(product?.requiereChasis),
+  isUniversal: Boolean(product?.esUniversal),
   condition: product?.condicion || 'ORIGINAL',
   description: product?.descripcion || '',
   compatibilities: parseCompatibilitiesFromProduct(product),
@@ -314,8 +315,11 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
     }
     setSaving(true);
     setError(null);
-    const primary = form.compatibilities[0] || emptyCompatibility();
-    const compatibilityGroups = form.compatibilities
+    // Un repuesto universal no declara vehiculos: la Specification del backend lo rescata
+    // con su `OR esUniversal`, y dejarle compatibilidad cargada lo haria aparecer DOS veces
+    // en la busqueda por patente (por universal y por el cruce relacional).
+    const primary = form.isUniversal ? emptyCompatibility() : (form.compatibilities[0] || emptyCompatibility());
+    const compatibilityGroups = form.isUniversal ? [] : form.compatibilities
       .filter((item) => item.brand || item.model || item.yearFrom || item.yearTo || item.motor || item.oem)
       .map((item) => {
         const key = `${item.brand}|${item.model}|${item.yearFrom}|${item.yearTo}`;
@@ -361,6 +365,7 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
     append('descripcion', form.description.trim());
     append('condicion', form.condition);
     append('requiereChasis', form.requiresChassis);
+    append('esUniversal', form.isUniversal);
     append('activo', true);
     compatibilityGroups.flatMap((group) => group.vehiculoCatalogoIds).forEach((id) => payload.append('vehiculoCatalogoIds', id));
     // `existingPhotos` le dice al backend cuales de las fotos ya guardadas sobreviven.
@@ -470,8 +475,11 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
             )}
           </section>
           <section className="catalog-product-section" id="catalog-compatibility">
-            <div className="catalog-section-title-row"><h3><b>3</b> Compatibilidad</h3><button type="button" className="catalog-add-compatibility" onClick={() => update('compatibilities', [...form.compatibilities, emptyCompatibility()])}><Plus size={15} /> Agregar</button></div>
-            {form.compatibilities.map((compatibility, index) => <div className="catalog-compatibility" key={index}>
+            <div className="catalog-section-title-row"><h3><b>3</b> Compatibilidad</h3>{!form.isUniversal && <button type="button" className="catalog-add-compatibility" onClick={() => update('compatibilities', [...form.compatibilities, emptyCompatibility()])}><Plus size={15} /> Agregar</button>}</div>
+            <div className="catalog-condition-row"><span>¿Es un repuesto universal?</span>{[false, true].map((value) => <button type="button" key={String(value)} className={form.isUniversal === value ? 'active' : ''} onClick={() => update('isUniversal', value)}><Check size={14} />{value ? 'Sí, sirve para cualquier vehículo' : 'No'}</button>)}</div>
+            {form.isUniversal
+              ? <p className="catalog-universal-hint">Aparecerá en las búsquedas de todos los vehículos, así que no necesita declarar marca ni modelo. Úsalo solo para aceites, lubricantes, accesorios y similares.</p>
+              : form.compatibilities.map((compatibility, index) => <div className="catalog-compatibility" key={index}>
               <div className="catalog-compatibility-heading"><strong>Compatibilidad {index + 1}</strong>{index > 0 && <button type="button" onClick={() => update('compatibilities', form.compatibilities.filter((_, itemIndex) => itemIndex !== index))} aria-label="Eliminar compatibilidad"><Trash2 size={15} /></button>}</div>
               <div className="catalog-product-grid compact">
                 <CatalogField label="Marca vehículo"><SearchableDropdown value={compatibility.brandId} options={vehicleBrands.map((brand) => ({ value: brand.id, label: brand.nombre }))} placeholder="Selecciona una marca" onChange={(brandId) => changeVehicleBrand(index, String(brandId))} emptyText="No encontramos esa marca." /></CatalogField>
