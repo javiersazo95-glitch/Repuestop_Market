@@ -18,6 +18,18 @@ function normalizeUserMedia(profile) {
     userProfileUrl: resolveMediaUrl(profile.userProfileUrl),
     logoUrl: resolveMediaUrl(profile.logoUrl),
     coverUrl: resolveMediaUrl(profile.coverUrl),
+    captadorCasaRepuestos: profile.captadorCasaRepuestos
+      ? {
+        ...profile.captadorCasaRepuestos,
+        fotoPerfil: resolveMediaUrl(profile.captadorCasaRepuestos.fotoPerfil),
+      }
+      : null,
+    captadorPublicidad: profile.captadorPublicidad
+      ? {
+        ...profile.captadorPublicidad,
+        fotoPerfil: resolveMediaUrl(profile.captadorPublicidad.fotoPerfil),
+      }
+      : null,
   };
 }
 

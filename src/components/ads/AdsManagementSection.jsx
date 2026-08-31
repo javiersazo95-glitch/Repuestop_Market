@@ -24,6 +24,7 @@ import RechargeTokensModal from './RechargeTokensModal';
 import UpgradeAdRankModal from './UpgradeAdRankModal';
 import EditAdModal from './EditAdModal';
 import CreateAdModal from './CreateAdModal';
+import CapturerContactCard from '../CapturerContactCard';
 import './ads-wall.css';
 
 const STATUS_ICONS = {
@@ -264,49 +265,53 @@ export default function AdsManagementSection({ onNavigateToMural }) {
   return (
     <div className="profile-panel ads-management-panel">
       <div className="ads-mgmt-header">
-        <div className="ads-mgmt-titles">
-          <h2>
-            <Megaphone size={24} className="text-amber-500" />
-            Gestión de anuncios y servicios automotrices
-          </h2>
-          <p>
-            Administra tus publicaciones del Mural de Anuncios, revisa en qué estado está cada una y
-            mejora su plan con Monedas RepuesTop.
-          </p>
-        </div>
+        <div className="ads-mgmt-header-main">
+          <div className="ads-mgmt-titles">
+            <h2>
+              <Megaphone size={24} className="text-amber-500" />
+              Gestión de anuncios y servicios automotrices
+            </h2>
+            <p>
+              Administra tus publicaciones del Mural de Anuncios, revisa en qué estado está cada una y
+              mejora su plan con Monedas RepuesTop.
+            </p>
+          </div>
 
-        <div className="ads-mgmt-actions">
-          <button
-            type="button"
-            className="btn-ad-phone inline-flex items-center gap-2"
-            onClick={() => { loadAds(); loadAppointments(); }}
-            disabled={isLoading}
-            title="Volver a consultar el estado de moderación y las reservas"
-          >
-            <RefreshCw size={16} className={isLoading ? 'spin-icon' : ''} />
-            <span>Actualizar</span>
-          </button>
-
-          {onNavigateToMural && (
+          <div className="ads-mgmt-actions">
             <button
               type="button"
               className="btn-ad-phone inline-flex items-center gap-2"
-              onClick={onNavigateToMural}
+              onClick={() => { loadAds(); loadAppointments(); }}
+              disabled={isLoading}
+              title="Volver a consultar el estado de moderación y las reservas"
             >
-              <Eye size={16} />
-              <span>Ver mural público</span>
+              <RefreshCw size={16} className={isLoading ? 'spin-icon' : ''} />
+              <span>Actualizar</span>
             </button>
-          )}
 
-          <button
-            type="button"
-            className="btn-post-ad inline-flex items-center gap-2"
-            onClick={() => setIsCreateModalOpen(true)}
-          >
-            <Plus size={18} />
-            <span>Publicar nuevo anuncio</span>
-          </button>
+            {onNavigateToMural && (
+              <button
+                type="button"
+                className="btn-ad-phone inline-flex items-center gap-2"
+                onClick={onNavigateToMural}
+              >
+                <Eye size={16} />
+                <span>Ver mural público</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              className="btn-post-ad inline-flex items-center gap-2"
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              <Plus size={18} />
+              <span>Publicar nuevo anuncio</span>
+            </button>
+          </div>
         </div>
+
+        <CapturerContactCard capturer={user?.captadorPublicidad} context="ads" />
       </div>
 
       <TokensWalletCard

@@ -3806,6 +3806,84 @@ input, select, textarea {
   box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
 }
 
+/* Contacto asignado: ocupa el riel de apoyo y conserva una jerarquía menor que
+   los KPIs y acciones operativas del resumen. */
+.capturer-contact-card {
+  min-width: 0;
+  border: 1px solid #dbe7f4;
+  border-radius: 11px;
+  background: #f8fbff;
+  color: #0f172a;
+}
+
+.capturer-contact-sidebar { padding: 14px 15px; }
+
+.capturer-contact-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  color: #5f7187;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.capturer-contact-heading svg { color: #0875eb; }
+
+.capturer-contact-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.capturer-contact-avatar {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #cbdced;
+  border-radius: 50%;
+  background: #eaf3ff;
+  color: #075fbd;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.capturer-contact-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.capturer-contact-copy { min-width: 0; flex: 1; display: grid; gap: 1px; }
+.capturer-contact-copy small { color: #708198; font-size: 10px; line-height: 1.25; }
+.capturer-contact-copy strong { overflow: hidden; color: #18324e; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+
+.capturer-contact-phone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 6px 8px;
+  border: 1px solid #c9dced;
+  border-radius: 8px;
+  background: #fff;
+  color: #075fbd;
+  font-size: 10.5px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.capturer-contact-phone:hover { border-color: #8db8e3; background: #f2f8ff; }
+.capturer-contact-sidebar .capturer-contact-body { flex-wrap: wrap; }
+.capturer-contact-sidebar .capturer-contact-phone { width: 100%; margin-top: 1px; }
+
+@media (max-width: 520px) {
+  .capturer-contact-body { flex-wrap: wrap; }
+  .capturer-contact-phone { width: 100%; }
+}
+
 .widget-header-row {
   display: flex;
   align-items: center;

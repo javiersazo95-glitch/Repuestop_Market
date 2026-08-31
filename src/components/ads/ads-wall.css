@@ -1807,10 +1807,17 @@
 .ads-mgmt-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 18px;
+  align-items: stretch;
+  gap: 24px;
   margin-bottom: 20px;
-  flex-wrap: wrap;
+}
+
+.ads-mgmt-header-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .ads-mgmt-titles h2 {
@@ -1834,11 +1841,26 @@
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
+  margin-top: 18px;
 }
 
+/* La tarjeta reutiliza SIN CAMBIOS la variante del Resumen. Estas reglas solo
+   reservan su columna dentro de la cabecera; no alteran su diseño interior. */
+.ads-mgmt-header > .capturer-contact-sidebar {
+  flex: 0 0 230px;
+  align-self: flex-start;
+}
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
+  .ads-mgmt-header { flex-wrap: wrap; }
+  .ads-mgmt-header > .capturer-contact-sidebar { flex: 1 1 100%; }
+}
 
+@media (max-width: 620px) {
+  .ads-mgmt-header { gap: 16px; }
+  .ads-mgmt-actions { width: 100%; }
+  .ads-mgmt-actions > button { flex: 1 1 auto; justify-content: center; }
 }
 
 

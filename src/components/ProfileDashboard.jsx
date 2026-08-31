@@ -46,6 +46,7 @@ import SellerOrdersPanel from './SellerOrdersPanel';
 import BuyerAddressBook from './BuyerAddressBook';
 import AdsManagementSection from './ads/AdsManagementSection';
 import AutomotiveServiceAccreditation from './AutomotiveServiceAccreditation';
+import CapturerContactCard from './CapturerContactCard';
 import { formatRut, isValidRut, isValidClPhone } from '../services/adapters';
 import { Link, useNavigate } from 'react-router-dom';
 import { helpContactPath, productPath, ROUTES, storePath } from '../routes/paths';
@@ -1617,6 +1618,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
                   {/* Columna lateral (widgets de apoyo) */}
                   <aside className="profile-overview-side-col">
+                    {isSeller && (
+                      <CapturerContactCard capturer={user?.captadorCasaRepuestos} context="store" />
+                    )}
+
                     {/* El resumen de compras se mantiene para compradores. El
                         rendimiento de la tienda no se muestra hasta contar con
                         datos reales del backend. */}
@@ -2892,4 +2897,3 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     </div>
   );
 }
-
