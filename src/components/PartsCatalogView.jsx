@@ -1,21 +1,23 @@
 import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
-  Search, Filter, SlidersHorizontal, ShieldCheck, MapPin, Star, Package,
-  Clock, ArrowRight, ArrowLeft, X, CheckCircle2, RotateCcw, Tag, Truck,
-  ChevronLeft, ChevronRight, ChevronDown, Eye, ShoppingCart, Car, Wrench, Layers, AlertCircle, Globe, MessageSquare, Info,
-  CarFront, Barcode, CircleHelp, RefreshCw
+  Search, Filter, SlidersHorizontal, ShieldCheck, MapPin,
+  ArrowRight, ArrowLeft, X, CheckCircle2, RotateCcw,
+  ChevronLeft, ChevronRight, ChevronDown, ShoppingCart, Car, Wrench, Layers, AlertCircle, Info, Tag, Globe,
+  CarFront, RefreshCw
 } from 'lucide-react';
-// CategoryIconTile y NAVIGATION_CATEGORIES se usaban sin estar importados, por lo que la
-// vista lanzaba ReferenceError al montarse (el ErrorBoundary la reemplazaba por completo).
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
 import ProductCardSkeleton from './skeletons/ProductCardSkeleton';
 import { qk } from '../services/queryKeys';
 import {
-  NAVIGATION_CATEGORIES, CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID, HEADER_CATEGORIES
+  NAVIGATION_CATEGORIES, CAROUSEL_CATEGORIES, HEADER_CATEGORIES
 } from '../data/categories';
-import { getPartCategoriesApi, getPublicProductsApi, getVehicleCatalogPartsApi, searchVehicleByPatenteApi, getAddressesApi } from '../services/api';
+import {
+  getPartCategoriesApi, getPublicProductsApi, getVehicleCatalogPartsApi, searchVehicleByPatenteApi,
+  getAddressesApi, getPublicCategoryCountsApi, getPartSubcategoriesApi, getPartBrandsApi,
+  getVehicleBrandsApi, getVehicleModelsApi, getPublicPartOriginsApi
+} from '../services/api';
 import { adaptPage, adaptProduct, adaptCompatibleOffersPage, adaptVehicle } from '../services/adapters';
 import { normalizePlate, sanitizePlateInput, isValidPlate } from '../utils/vehicleLookup';
 import { useAuth } from '../context/AuthContext';
@@ -24,20 +26,67 @@ import { useFavorites } from '../hooks/useFavorites';
 const normalizeNameKey = (value) => String(value || '').normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-const SEARCH_MODES = [
-  { id: 'patente', label: 'Buscar por patente', icon: CarFront, placeholder: 'Ingresa tu patente (ej: ABCD11)' },
-  { id: 'oem', label: 'Buscar por código OEM', icon: Tag, placeholder: 'Ej: 04465-0D150' },
-  { id: 'repuesto', label: 'Buscar por repuesto', icon: Search, placeholder: 'Ej: Pastillas de freno, filtro de aceite, Bosch...' }
+const CAROUSEL_PAGE_SIZE = 6;
+const CAROUSEL_PAGE_COUNT = Math.ceil(CAROUSEL_CATEGORIES.length / CAROUSEL_PAGE_SIZE);
+
+/**
+ * Cuantos repuestos se muestran en la vitrina de entrada, cuando todavia no hay
+ * ningun filtro aplicado. Es una consulta acotada; el catalogo paginado completo
+ * NO se consulta hasta que el usuario elige un contexto.
+ */
+const SHOWCASE_SIZE = 12;
+
+/**
+ * Tope de resultados navegables por paginacion. Igual que MercadoLibre (que corta
+ * cerca de los 2.000), la idea no es esconder inventario sino empujar a refinar:
+ * el OFFSET de Postgres se degrada en paginas profundas y nadie llega a la 800.
+ * El buscador y los filtros siguen alcanzando cualquier producto.
+ */
+const MAX_PAGINATED_RESULTS = 1000;
+
+const CATEGORY_COUNT_FORMATTER = new Intl.NumberFormat('es-CL');
+
+/**
+ * Tope del control de precio. `PRICE_CEILING` es a la vez el maximo del deslizador y el
+ * valor "sin tope": al llegar ahi no se manda `precioMax` y el filtro queda apagado, para
+ * no excluir en silencio los repuestos que valen mas que el maximo del control.
+ */
+const PRICE_CEILING = 1000000;
+const PRICE_STEP = 5000;
+const PRICE_PRESETS = [20000, 50000, 100000, 300000];
+
+/**
+ * Años ofrecidos en el filtro de compatibilidad. El backend compara el año contra el rango
+ * `anioDesde`/`anioHasta` del producto, asi que basta una lista descendente desde el año
+ * actual. Se corta en 1990 porque antes de eso el catalogo de compatibilidades no tiene datos.
+ */
+const COMPAT_YEARS = Array.from(
+  { length: new Date().getFullYear() - 1989 },
+  (_, index) => new Date().getFullYear() - index
+);
+
+/**
+ * Condicion tecnica ofrecida en el filtro. RepuesTop opera solo con tiendas verificadas que
+ * venden repuesto NUEVO, asi que la unica distincion util para el comprador es si la pieza es
+ * la del fabricante o un equivalente homologado.
+ *
+ * `InventarioValidationSupport.condicionValida` del backend todavia acepta ademas NUEVO, USADO
+ * y REACONDICIONADO. Hoy no hay ninguna publicacion con esos valores, pero si alguna se carga
+ * (por Excel o por el formulario del vendedor) quedaria fuera de las dos opciones de aqui: se
+ * seguiria viendo en el catalogo sin filtrar, pero no bajo ninguna condicion. Cerrar esa puerta
+ * es acotar la validacion alla, no ampliar esta lista.
+ */
+const PART_CONDITIONS = [
+  { value: 'ORIGINAL', label: 'Original', hint: 'Pieza nueva del fabricante del vehículo' },
+  { value: 'ALTERNATIVO', label: 'Alternativo', hint: 'Pieza nueva equivalente y homologada' },
 ];
 
-const samplePatentes = ['BB-CL-12', 'HG-89-21', 'AA-123-BB', 'JJ-TT-45'];
-const sampleOemCodes = ['04465-0D150', '90919-01253', '26300-35505', '15400-PLM-A02'];
-const sampleKeywords = ['Pastillas de freno', 'Filtro de aceite', 'Amortiguador', 'Bomba de agua'];
+const formatCLP = (value) => `$${Number(value || 0).toLocaleString('es-CL')}`;
 
 export default function PartsCatalogView({
   onBackToStore,
   onQuickView,
-  onOpenQuote,
+  onOpenQuote: _onOpenQuote,
   activeVehicle: initialActiveVehicle,
   initialCatalogFilter = null,
   initialSearchQuery = '',
@@ -55,16 +104,56 @@ export default function PartsCatalogView({
 
   const [selectedCategory, setSelectedCategory] = useState(initialCatalogFilter?.category || 'TODAS');
   const [selectedSubcategory, setSelectedSubcategory] = useState(initialCatalogFilter?.subcategory || 'TODAS');
-  const [selectedCondition, setSelectedCondition] = useState('TODOS');
-  const [selectedOrigin, setSelectedOrigin] = useState('TODOS');
-  const [selectedBrand, setSelectedBrand] = useState('TODAS');
-  const [purchaseType, setPurchaseType] = useState('TODOS'); // 'TODOS' | 'DIRECTA' | 'COTIZACION'
+  // Despacho rápido sigue fuera del panel: es el único de los filtros originales que no
+  // tiene campo en el backend, así que filtrarlo daría resultados falsos.
+  // Compatibilidad de vehículo elegida a mano (para quien no tiene la patente a mano).
+  // La marca se guarda con id y nombre: el catálogo de modelos se pide por id, pero el
+  // filtro del catálogo público compara por NOMBRE (`compatibilidadMarca`).
+  const [vehicleBrandId, setVehicleBrandId] = useState('');
+  const [vehicleBrandName, setVehicleBrandName] = useState('');
+  const [vehicleModel, setVehicleModel] = useState('');
+  const [vehicleYear, setVehicleYear] = useState('');
+  // Marca del repuesto (Bosch, Brembo, Valeo…). Es `marcaId` del endpoint, distinto de
+  // la marca del vehículo: una es quién fabrica la pieza y la otra para qué auto sirve.
+  const [partBrandId, setPartBrandId] = useState('');
+  // Condición técnica y origen de fabricación. Vuelven al panel ahora que el endpoint los
+  // acepta como parámetro: antes se filtraban en el cliente sobre la página actual, y además
+  // comparaban contra etiquetas ("Nuevo OEM Original") que el dato real nunca tuvo.
+  const [selectedCondition, setSelectedCondition] = useState('');
+  const [selectedOrigin, setSelectedOrigin] = useState('');
+  // Modalidad de compra como interruptor: encendido deja SOLO los que se venden a cotizacion.
+  // Antes eran tres opciones con un "Todos los Repuestos" que prometia ver el catalogo entero
+  // -justo lo que la vitrina evita- y que al tocarlo no cambiaba nada.
+  const [onlyQuoteOnly, setOnlyQuoteOnly] = useState(false);
   const [onlyCompatible, setOnlyCompatible] = useState(!!initialActiveVehicle);
-  const [onlyFastDelivery, setOnlyFastDelivery] = useState(false);
-  const [maxPrice, setMaxPrice] = useState(1000000);
+  const [minPrice, setMinPrice] = useState(0);
+  const [maxPrice, setMaxPrice] = useState(PRICE_CEILING);
+  // El deslizador se mueve contra un borrador local y solo se confirma al soltarlo:
+  // `maxPrice` viaja al servidor, asi que arrastrarlo dispararia una consulta por pixel.
+  const [priceDraft, setPriceDraft] = useState(PRICE_CEILING);
+  const [minPriceDraft, setMinPriceDraft] = useState('');
   const [sortBy, setSortBy] = useState('relevancia');
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [itemsPerPage, setItemsPerPage] = useState(12);
+
+  const [activeCarouselPage, setActiveCarouselPage] = useState(0);
+
+  const moveCategoryCarousel = (direction) => {
+    setActiveCarouselPage((page) => (page + direction + CAROUSEL_PAGE_COUNT) % CAROUSEL_PAGE_COUNT);
+  };
+
+  const visibleCarouselCategories = Array.from(
+    { length: CAROUSEL_PAGE_SIZE },
+    (_, index) => CAROUSEL_CATEGORIES[(activeCarouselPage * CAROUSEL_PAGE_SIZE + index) % CAROUSEL_CATEGORIES.length]
+  );
+
+  const selectCarouselCategory = (category) => {
+    const matchedHeader = HEADER_CATEGORIES.find((h) => h.id === category.id);
+    const targetCategory = matchedHeader ? matchedHeader.id : category.nombre;
+    setSelectedCategory(targetCategory);
+    setSelectedSubcategory('TODAS');
+    setCurrentPage(1);
+  };
 
   // "Filtrar por mi comuna": solo repuestos de tiendas ubicadas en la misma
   // comuna registrada en el perfil del usuario logueado (comprador o vendedor).
@@ -116,20 +205,23 @@ export default function PartsCatalogView({
     }
   };
 
+  // Solo se ofrecen ordenamientos que el backend sabe resolver: `mapSortableField()`
+  // acepta precio, createdAt, updatedAt y stock, y cualquier otro valor cae en silencio
+  // a `precio`. "Mas vendidos" y "Mayor descuento" se ordenaban despues en el cliente,
+  // o sea sobre las 12 filas de la pagina, no sobre el catalogo.
   const backendSort = useMemo(() => {
     switch (sortBy) {
       case 'precio-asc': return 'precio,asc';
       case 'precio-desc': return 'precio,desc';
-      case 'vendidos': return 'updatedAt,desc';
-      case 'descuento': return 'precio,asc';
+      case 'recientes': return 'createdAt,desc';
       case 'relevancia':
       default:
-        return 'createdAt,desc';
+        return 'updatedAt,desc';
     }
   }, [sortBy]);
 
   // Lista de categorías persistidas en el backend para resolver IDs reales
-  const { data: backendCategories = [] } = useQuery({
+  const { data: backendCategories = [], isFetched: categoriesFetched } = useQuery({
     queryKey: qk.categories(),
     queryFn: async ({ signal }) => {
       const list = await getPartCategoriesApi({ signal });
@@ -148,9 +240,166 @@ export default function PartsCatalogView({
     return matched?.id || initialCatalogFilter?.categoryId || undefined;
   }, [selectedCategory, backendCategories, initialCatalogFilter?.categoryId]);
 
+  // Las subcategorías del panel son nombres fijos de `HEADER_CATEGORIES`, pero el endpoint
+  // filtra por `subcategoriaId`. Se resuelve el id real contra el catálogo del backend para
+  // que el filtro lo aplique la base de datos y no el navegador sobre la página actual.
+  const { data: backendSubcategories = [], isFetched: subcategoriesFetched } = useQuery({
+    queryKey: qk.subcategories(activeCategoryId),
+    queryFn: async () => {
+      const list = await getPartSubcategoriesApi(activeCategoryId);
+      return Array.isArray(list) ? list : [];
+    },
+    enabled: Boolean(activeCategoryId),
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const activeSubcategoryId = useMemo(() => {
+    if (selectedSubcategory === 'TODAS') return initialCatalogFilter?.subcategoryId || undefined;
+    const matched = backendSubcategories.find(
+      (sub) => normalizeNameKey(sub.nombre) === normalizeNameKey(selectedSubcategory)
+    );
+    return matched?.id || initialCatalogFilter?.subcategoryId || undefined;
+  }, [selectedSubcategory, backendSubcategories, initialCatalogFilter?.subcategoryId]);
+
+  // Conteo real de publicaciones visibles por categoría. Es un GROUP BY agregado
+  // (`/inventario/productos/resumen-categorias`), no trae filas de productos.
+  const { data: categoryCounts = {} } = useQuery({
+    queryKey: qk.categoryCounts(),
+    queryFn: async () => {
+      try {
+        const items = await getPublicCategoryCountsApi();
+        const list = Array.isArray(items) ? items : [];
+        const byId = {};
+        list.forEach((item) => {
+          const matched = CAROUSEL_CATEGORIES.find(
+            (category) => normalizeNameKey(category.nombre) === normalizeNameKey(item.categoriaNombre)
+          );
+          if (matched) byId[matched.id] = Number(item.total || 0);
+        });
+        return byId;
+      } catch {
+        return {};
+      }
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Marcas de vehículo del catálogo real. Antes eran seis nombres escritos a mano, así que
+  // un Kia o un Suzuki no se podían filtrar aunque hubiera repuestos publicados para ellos.
+  const { data: vehicleBrands = [] } = useQuery({
+    queryKey: qk.vehicleBrands(),
+    queryFn: async ({ signal }) => {
+      const list = await getVehicleBrandsApi({ signal });
+      return Array.isArray(list) ? list : [];
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+
+  // Modelos de la marca elegida. Acota el filtro de compatibilidad sin volcar el catálogo
+  // completo de modelos, que es enorme.
+  const { data: vehicleModels = [] } = useQuery({
+    queryKey: qk.vehicleModels(vehicleBrandId),
+    queryFn: async () => {
+      const list = await getVehicleModelsApi(vehicleBrandId);
+      return Array.isArray(list) ? list : [];
+    },
+    enabled: Boolean(vehicleBrandId),
+    staleTime: 1000 * 60 * 60,
+  });
+
+  // Marcas de repuesto. El endpoint acota por NOMBRE de categoría, así que al haber una
+  // categoría elegida solo se ofrecen las marcas que fabrican piezas de esa familia.
+  const activeCategoryName = useMemo(() => {
+    if (selectedCategory === 'TODAS') return undefined;
+    const matched = backendCategories.find((c) => c.id === activeCategoryId);
+    return matched?.nombre || undefined;
+  }, [selectedCategory, backendCategories, activeCategoryId]);
+
+  const { data: partBrands = [] } = useQuery({
+    queryKey: qk.brands(activeCategoryName),
+    queryFn: async () => {
+      const list = await getPartBrandsApi(activeCategoryName);
+      return Array.isArray(list) ? list : [];
+    },
+    staleTime: 1000 * 60 * 30,
+  });
+
+  // Orígenes de fabricación presentes en el catálogo. `MarcaRepuesto.paisOrigen` es texto
+  // libre, así que la lista la sirve el backend ya descompuesta y deduplicada.
+  const { data: partOrigins = [] } = useQuery({
+    queryKey: qk.partOrigins(),
+    queryFn: async ({ signal }) => {
+      try {
+        const list = await getPublicPartOriginsApi({ signal });
+        return Array.isArray(list) ? list : [];
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 1000 * 60 * 30,
+  });
+
+  // Tamaño real del catálogo público, sumando el agregado por categoría. Evita pedir un
+  // COUNT(*) del listado solo para mostrar un número en la cabecera.
+  const totalPublicProducts = useMemo(
+    () => Object.values(categoryCounts).reduce((acc, value) => acc + (Number(value) || 0), 0),
+    [categoryCounts]
+  );
+
   // Si hay un vehículo activo con catalogoId del backend y el filtro de compatibilidad está encendido,
   // consultamos el motor de cruce relacional /vehiculos-catalogo/{id}/repuestos directamente.
   const isVehicleCatalogSearch = Boolean(onlyCompatible && activeVehicle?.catalogoId);
+
+  /**
+   * Compatibilidad enviada al servidor. Manda el vehículo activo (patente) cuando lo hay y
+   * no se resolvió por `catalogoId`; si no, mandan los selectores manuales del panel.
+   * El backend compara la marca por nombre en minúsculas, así que sirve tal cual venga del
+   * catálogo ("TOYOTA") o del cruce por patente ("Toyota").
+   */
+  const usaVehiculoActivo = Boolean(onlyCompatible && activeVehicle && !isVehicleCatalogSearch);
+  const compatibilidadMarca = usaVehiculoActivo
+    ? activeVehicle.marca || undefined
+    : vehicleBrandName || undefined;
+  const compatibilidadModelo = usaVehiculoActivo
+    ? activeVehicle.modelo || undefined
+    : vehicleModel || undefined;
+  const compatibilidadAnio = usaVehiculoActivo
+    ? activeVehicle.anio || undefined
+    : vehicleYear || undefined;
+
+  /**
+   * El catálogo paginado NO se consulta sin contexto. Entrar a /repuestos y disparar un
+   * scan + COUNT(*) sobre todo el inventario visible es lo que no escala a 20k productos,
+   * y además una pared de repuestos sin relación no le sirve a nadie. Sin contexto se
+   * muestra la vitrina de entrada (categorías con conteo real + destacados acotados).
+   */
+  const hasActiveContext = Boolean(
+    deferredSearchQuery?.trim()
+    || selectedCategory !== 'TODAS'
+    || activeCategoryId
+    || (onlyCompatible && activeVehicle)
+    || activeComunaId
+    || onlyQuoteOnly
+    || selectedCondition
+    || selectedOrigin
+    || vehicleBrandName
+    || vehicleModel
+    || vehicleYear
+    || partBrandId
+    || minPrice > 0
+    || maxPrice < PRICE_CEILING
+  );
+
+  /**
+   * Categoría y subcategoría llegan como nombre y se traducen a id contra el catálogo
+   * del backend. Sin esperar esa resolución, entrar por `/repuestos?categoria=aceite`
+   * disparaba primero la consulta SIN filtro (justo la que no queremos) y recién después
+   * la filtrada. Se espera a que el catálogo respondió; si el nombre no existe allá,
+   * `isFetched` igual libera la consulta y simplemente no se aplica ese filtro.
+   */
+  const filtersResolved =
+    (selectedCategory === 'TODAS' || categoriesFetched)
+    && (selectedSubcategory === 'TODAS' || !activeCategoryId || subcategoriesFetched);
 
   // Consulta paginada real en el servidor
   const {
@@ -164,16 +413,38 @@ export default function PartsCatalogView({
           size: itemsPerPage,
           texto: deferredSearchQuery?.trim() || undefined,
           categoriaId: activeCategoryId,
+          subcategoriaId: activeSubcategoryId,
+          marcaId: partBrandId || undefined,
+          condicion: selectedCondition || undefined,
+          origen: selectedOrigin || undefined,
+          comunaId: activeComunaId,
+          soloCotizacion: onlyQuoteOnly ? true : undefined,
+          precioMin: minPrice > 0 ? minPrice : undefined,
+          precioMax: maxPrice < PRICE_CEILING ? maxPrice : undefined,
         })
       : qk.products({
           page: currentPage - 1,
           size: itemsPerPage,
           texto: deferredSearchQuery?.trim() || undefined,
           categoryId: activeCategoryId,
+          subcategoriaId: activeSubcategoryId,
           comunaId: activeComunaId,
+          compatibilidadMarca,
+          compatibilidadModelo,
+          compatibilidadAnio,
+          marcaId: partBrandId || undefined,
+          condicion: selectedCondition || undefined,
+          origen: selectedOrigin || undefined,
+          precioMin: minPrice > 0 ? minPrice : undefined,
+          precioMax: maxPrice < PRICE_CEILING ? maxPrice : undefined,
           sort: backendSort,
-          soloCotizacion: purchaseType === 'COTIZACION' ? true : purchaseType === 'DIRECTA' ? false : undefined,
+          soloCotizacion: onlyQuoteOnly ? true : undefined,
         }),
+    enabled: hasActiveContext && filtersResolved,
+    // Al cambiar de pagina la queryKey cambia y, sin esto, `catalogData` cae al valor por
+    // defecto mientras llega la respuesta: `totalPages` valdria 1 por un instante y el clamp
+    // de mas abajo devolveria al usuario a la pagina 1. Ademas evita que el grid parpadee.
+    placeholderData: keepPreviousData,
     queryFn: async ({ signal }) => {
       if (isVehicleCatalogSearch) {
         const data = await getVehicleCatalogPartsApi(activeVehicle.catalogoId, {
@@ -181,6 +452,14 @@ export default function PartsCatalogView({
           size: itemsPerPage,
           texto: deferredSearchQuery?.trim() || undefined,
           categoriaId: activeCategoryId,
+          subcategoriaId: activeSubcategoryId,
+          marcaId: partBrandId || undefined,
+          condicion: selectedCondition || undefined,
+          origen: selectedOrigin || undefined,
+          comunaId: activeComunaId,
+          soloCotizacion: onlyQuoteOnly ? true : undefined,
+          precioMin: minPrice > 0 ? minPrice : undefined,
+          precioMax: maxPrice < PRICE_CEILING ? maxPrice : undefined,
           signal,
         });
         return adaptCompatibleOffersPage(data);
@@ -191,8 +470,17 @@ export default function PartsCatalogView({
         size: itemsPerPage,
         texto: deferredSearchQuery?.trim() || undefined,
         categoriaId: activeCategoryId,
+        subcategoriaId: activeSubcategoryId,
         comunaId: activeComunaId,
-        soloCotizacion: purchaseType === 'COTIZACION' ? true : purchaseType === 'DIRECTA' ? false : undefined,
+        compatibilidadMarca,
+        compatibilidadModelo,
+        compatibilidadAnio,
+        marcaId: partBrandId || undefined,
+        condicion: selectedCondition || undefined,
+        origen: selectedOrigin || undefined,
+        precioMin: minPrice > 0 ? minPrice : undefined,
+        precioMax: maxPrice < PRICE_CEILING ? maxPrice : undefined,
+        soloCotizacion: onlyQuoteOnly ? true : undefined,
         sort: backendSort,
         signal,
       });
@@ -206,17 +494,41 @@ export default function PartsCatalogView({
     },
   });
 
+  // Vitrina de entrada: una sola página corta de recién publicados. Reemplaza al grid
+  // completo mientras no haya contexto, para que /repuestos no se vea vacía.
+  const {
+    data: showcaseProducts = [],
+    isLoading: showcaseLoading,
+  } = useQuery({
+    queryKey: qk.products({ vitrina: true, size: SHOWCASE_SIZE }),
+    enabled: !hasActiveContext,
+    staleTime: 1000 * 60 * 5,
+    queryFn: async ({ signal }) => {
+      const data = await getPublicProductsApi({
+        page: 0,
+        size: SHOWCASE_SIZE,
+        sort: 'createdAt,desc',
+        signal,
+      });
+      return adaptPage(data, adaptProduct).items;
+    },
+  });
+
   const products = catalogData.items;
   const totalProducts = catalogData.total;
-  const totalPages = Math.max(1, catalogData.totalPages);
+  // Paginación acotada: se navegan hasta MAX_PAGINATED_RESULTS resultados. Más allá,
+  // el usuario debe refinar (categoría, patente, texto) en vez de pasar páginas.
+  const maxNavigablePages = Math.max(1, Math.ceil(MAX_PAGINATED_RESULTS / itemsPerPage));
+  const totalPages = Math.min(Math.max(1, catalogData.totalPages), maxNavigablePages);
+  const isResultSetTruncated = totalProducts > MAX_PAGINATED_RESULTS;
   const productsError = productsQueryError ? (productsQueryError.message || 'No se pudo cargar el catálogo de repuestos.') : null;
 
   const [openFilterSections, setOpenFilterSections] = useState({
-    purchase: true,
     category: true,
     subcategory: true,
+    vehicle: true,
     condition: true,
-    shipping: true,
+    price: true,
   });
   const [expandedCategories, setExpandedCategories] = useState({});
 
@@ -250,20 +562,44 @@ export default function PartsCatalogView({
     setCurrentPage(initialPage);
   }, [initialPage]);
 
-  const toggleFilterSection = (section) => {
-    setOpenFilterSections((current) => ({ ...current, [section]: !current[section] }));
+  // El borrador ya está en el render actual (cada `onChange` re-renderiza), así que
+  // confirmar es copiarlo tal cual al estado que alimenta la consulta.
+  // Bajar el máximo por debajo del mínimo dejaría un rango invertido (cero resultados sin
+  // explicación), así que el mínimo lo acompaña hacia abajo.
+  const applyMaxPrice = (value) => {
+    setMaxPrice(value);
+    if (minPrice > value) {
+      setMinPrice(value);
+      setMinPriceDraft(value > 0 ? String(value) : '');
+    }
   };
 
-  const currentSearchMode = SEARCH_MODES.find((m) => m.id === searchMode) || SEARCH_MODES[0];
+  const commitPriceDraft = () => applyMaxPrice(priceDraft);
 
-  const selectSearchMode = (modeId) => {
-    setSearchMode(modeId);
-    setPatentError('');
-    if (modeId === 'patente') {
-      setInputValue(activeVehicle?.patente || patentInput || '');
-    } else if (modeId === 'oem' || modeId === 'repuesto') {
-      setInputValue(searchQuery || '');
+  /**
+   * Precio mínimo. Se acota al techo y nunca puede superar al máximo vigente: un rango
+   * invertido devuelve cero resultados sin que se vea por qué, así que se corrige al vuelo
+   * y el campo se reescribe con el valor que efectivamente se aplicó.
+   */
+  const commitMinPrice = () => {
+    const parsed = Number(minPriceDraft);
+    if (!minPriceDraft.trim() || !Number.isFinite(parsed) || parsed <= 0) {
+      setMinPrice(0);
+      setMinPriceDraft('');
+      return;
     }
+    const applied = Math.min(Math.max(0, Math.round(parsed)), maxPrice, PRICE_CEILING);
+    setMinPrice(applied);
+    setMinPriceDraft(String(applied));
+  };
+
+  const applyPricePreset = (value) => {
+    setPriceDraft(value);
+    applyMaxPrice(value);
+  };
+
+  const toggleFilterSection = (section) => {
+    setOpenFilterSections((current) => ({ ...current, [section]: !current[section] }));
   };
 
   const handleUnifiedSearch = async (valToUse) => {
@@ -310,99 +646,49 @@ export default function PartsCatalogView({
     }
   };
 
-  // Filter options lists
-  const CONDITIONS = [
-    'TODOS',
-    'Nuevo OEM Original',
-    'Nuevo Alternativo Homologado',
-    'Usado Certificado Desarmaduría'
-  ];
-
-  const ORIGINS = [
-    'TODOS',
-    'Japón',
-    'Alemania',
-    'Brasil'
-  ];
-
-  const BRANDS = [
-    'TODAS',
-    'Toyota',
-    'Nissan',
-    'Hyundai',
-    'Chevrolet',
-    'Ford',
-    'Mazda'
-  ];
+  // La lista de marcas de repuesto se acota a la categoría elegida, así que al cambiar de
+  // categoría la marca seleccionada puede dejar de existir en el desplegable: si quedara
+  // puesta, el `marcaId` seguiría viajando y el filtro se vería vacío sin motivo visible.
+  useEffect(() => {
+    setPartBrandId('');
+  }, [activeCategoryName]);
 
   // Reset to page 1 when any filter changes.
   const previousFiltersRef = useRef(null);
   useEffect(() => {
     const signature = JSON.stringify([
-      deferredSearchQuery, selectedCategory, selectedSubcategory, selectedCondition, selectedOrigin,
-      selectedBrand, purchaseType, onlyCompatible, onlyFastDelivery, maxPrice, sortBy, itemsPerPage
+      deferredSearchQuery, selectedCategory, selectedSubcategory, vehicleBrandName, vehicleModel,
+      vehicleYear, partBrandId, selectedCondition, selectedOrigin, onlyQuoteOnly, onlyCompatible,
+      minPrice, maxPrice, sortBy, itemsPerPage
     ]);
     const previous = previousFiltersRef.current;
     previousFiltersRef.current = signature;
     if (previous === null || previous === signature) return;
     setCurrentPage(1);
   }, [
-    deferredSearchQuery, selectedCategory, selectedSubcategory, selectedCondition, selectedOrigin,
-    selectedBrand, purchaseType, onlyCompatible, onlyFastDelivery, maxPrice, sortBy, itemsPerPage
+    deferredSearchQuery, selectedCategory, selectedSubcategory, vehicleBrandName, vehicleModel,
+    vehicleYear, partBrandId, selectedCondition, selectedOrigin, onlyQuoteOnly, onlyCompatible,
+    minPrice, maxPrice, sortBy, itemsPerPage
   ]);
 
-  // Client-side refinements over the current server page (e.g. subcategory, condition, origin, compatibility)
-  const displayedProducts = useMemo(() => {
-    return products.filter((prod) => {
-      // 1. Subcategory Filter
-      if (selectedSubcategory !== 'TODAS') {
-        const matchSub = prod.subcategoria && (
-          normalizeNameKey(prod.subcategoria) === normalizeNameKey(selectedSubcategory) ||
-          prod.subcategoria.toLowerCase().trim() === selectedSubcategory.toLowerCase().trim()
-        );
-        if (!matchSub) return false;
-      }
+  /**
+   * Ya no queda ningún filtro de cliente: las dos ramas (catálogo general y compatibilidad por
+   * `catalogoId`) resuelven todo en la base de datos.
+   *
+   * No volver a agregar filtros aquí: operan sobre las filas de la página actual, así que el
+   * contador de arriba y los resultados dejan de coincidir apenas hay más de una página.
+   */
+  const displayedProducts = products;
 
-      // 2. Technical Condition Filter
-      if (selectedCondition !== 'TODOS' && prod.condicion && prod.condicion !== selectedCondition) {
-        return false;
-      }
-
-      // 3. Origin Filter
-      if (selectedOrigin !== 'TODOS' && prod.origen && prod.origen !== selectedOrigin) {
-        return false;
-      }
-
-      // 4. Brand Specialty Filter
-      if (selectedBrand !== 'TODAS') {
-        const hasBrand = (prod.compatibilidad || []).some(
-          c => c.marca?.toLowerCase() === selectedBrand.toLowerCase()
-        );
-        if (!hasBrand) return false;
-      }
-
-      // 5. Active Garage Vehicle Compatibility Toggle (fallback solo si no se consultó por catalogoId)
-      if (onlyCompatible && activeVehicle && !isVehicleCatalogSearch) {
-        const matchesVehicle = (prod.compatibilidad || []).some(
-          c => c.marca?.toLowerCase() === activeVehicle.marca?.toLowerCase() &&
-               c.modelo?.toLowerCase() === activeVehicle.modelo?.toLowerCase()
-        );
-        if (!matchesVehicle) return false;
-      }
-
-      // 6. Fast Delivery Toggle
-      if (onlyFastDelivery && prod.envioRapido === false) {
-        return false;
-      }
-
-      // 7. Max Price Filter
-      if (maxPrice < 1000000 && prod.precio > maxPrice) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [products, selectedSubcategory, selectedCondition, selectedOrigin, selectedBrand, onlyCompatible, activeVehicle, isVehicleCatalogSearch, onlyFastDelivery, maxPrice]);
+  // Una URL con `?pagina=9999` (o bajar de 36 a 12 por página) puede dejar la página actual
+  // fuera del tope navegable; se devuelve al último rango con resultados.
+  //
+  // Solo con datos ya cargados: durante un fetch `totalPages` puede no reflejar todavía el
+  // conjunto real, y corregir sobre ese valor transitorio expulsa de la página recién pedida.
+  useEffect(() => {
+    if (!hasActiveContext || productsLoading || totalProducts === 0) return;
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [hasActiveContext, productsLoading, totalProducts, currentPage, totalPages]);
 
   const startIndex = totalProducts === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const endIndex = Math.min(currentPage * itemsPerPage, totalProducts);
@@ -431,12 +717,19 @@ export default function PartsCatalogView({
     setInputValue('');
     setSelectedCategory('TODAS');
     setSelectedSubcategory('TODAS');
-    setSelectedCondition('TODOS');
-    setSelectedOrigin('TODOS');
-    setSelectedBrand('TODAS');
+    setVehicleBrandId('');
+    setVehicleBrandName('');
+    setVehicleModel('');
+    setVehicleYear('');
+    setPartBrandId('');
+    setSelectedCondition('');
+    setSelectedOrigin('');
+    setOnlyQuoteOnly(false);
     setOnlyCompatible(false);
-    setOnlyFastDelivery(false);
-    setMaxPrice(1000000);
+    setMinPrice(0);
+    setMinPriceDraft('');
+    setMaxPrice(PRICE_CEILING);
+    setPriceDraft(PRICE_CEILING);
     setSortBy('relevancia');
     setCurrentPage(1);
   };
@@ -473,13 +766,17 @@ export default function PartsCatalogView({
                 ) : appliedFilterLabel ? (
                   <>Catálogo: <span>{appliedFilterLabel}</span></>
                 ) : activeVehicle && onlyCompatible ? (
-                  <>Repuestos para <span>{activeVehicle.marca} {activeVehicle.modelo}</span></>
+                  <>Repuestos para <span>{activeVehicle.marca} {activeVehicle.modelo} {activeVehicle.version ? `• ${activeVehicle.version}` : ''}</span></>
                 ) : (
                   <>Catálogo General de <span>Repuestos</span></>
                 )}
               </h1>
               <span className="catalog-context-counter">
-                {totalProducts} repuestos disponibles con compatibilidad y despacho garantizado
+                {activeVehicle && onlyCompatible
+                  ? `${totalProducts} repuestos compatibles con tu vehículo y con despacho garantizado`
+                  : hasActiveContext
+                    ? `${totalProducts} repuestos disponibles en tiendas verificadas de Chile`
+                    : `${CATEGORY_COUNT_FORMATTER.format(totalPublicProducts)} repuestos publicados por tiendas verificadas de Chile`}
               </span>
             </div>
           </div>
@@ -490,7 +787,9 @@ export default function PartsCatalogView({
                 <Car size={18} className="text-blue-500" />
                 <div className="vehicle-info-text">
                   <span className="vehicle-title">{activeVehicle.marca} {activeVehicle.modelo}</span>
-                  <span className="vehicle-plate">{activeVehicle.patente}</span>
+                  {activeVehicle.patente && activeVehicle.patente !== 'MANUAL' && (
+                    <span className="vehicle-plate">{activeVehicle.patente}</span>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -515,7 +814,7 @@ export default function PartsCatalogView({
                 <CarFront size={18} className="patente-icon" />
                 <input
                   type="text"
-                  placeholder="Ingresa tu patente (ej: ABCD11)"
+                  placeholder="Ingresa tu patente (ej: ABCD-12)"
                   value={patentInput}
                   onChange={(e) => {
                     const sanitized = sanitizePlateInput(e.target.value);
@@ -538,42 +837,108 @@ export default function PartsCatalogView({
               </div>
             )}
 
-            <button
-              type="button"
-              className={`btn-comuna-toggle-pill ${filterByMyComuna ? 'active' : ''}`}
-              onClick={handleToggleComunaFilter}
-              disabled={comunaLookupStatus === 'loading'}
-              title="Muestra repuestos de tiendas de tu comuna"
-            >
-              <MapPin size={17} />
-              <span>{filterByMyComuna ? `En ${myComunaNombre || 'mi comuna'}` : 'Mi comuna'}</span>
-            </button>
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className={`btn-comuna-toggle-pill ${filterByMyComuna ? 'active' : ''}`}
+                onClick={handleToggleComunaFilter}
+                disabled={comunaLookupStatus === 'loading'}
+                title="Muestra repuestos de tiendas de tu comuna"
+              >
+                <MapPin size={17} />
+                <span>{filterByMyComuna ? `En ${myComunaNombre || 'mi comuna'}` : 'Mi comuna'}</span>
+              </button>
+              {comunaNotice && <div className="quick-patente-error">{comunaNotice}</div>}
+            </div>
           </div>
         </div>
       </div>
 
       <div className="container catalog-main-container">
-        {/* 2. Top Control Bar (Summary & Sort) */}
-        <div className="catalog-control-bar">
-          <div className="control-bar-left-group">
-            <div className="results-count-badge">
-              <span>Mostrando <strong>{displayedProducts.length}</strong> de {totalProducts} repuestos encontrados</span>
+        {/* Vitrina de entrada: sin contexto no se lista el catálogo, se ofrece por dónde entrar. */}
+        {!hasActiveContext && (
+          <section className="catalog-showcase-carousel-wrapper" aria-label="Explora por categorías">
+            <div className="catalog-showcase-carousel-header">
+              <h2>¿Qué repuesto necesitas?</h2>
+              <p>Ingresa tu patente para ver solo lo compatible con tu vehículo, o elige una categoría para empezar a filtrar.</p>
             </div>
-          </div>
+            <div className="category-showcase-carousel">
+              <button
+                type="button"
+                className="category-carousel-arrow previous"
+                onClick={() => moveCategoryCarousel(-1)}
+                aria-label="Ver categorías anteriores"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <div className="category-carousel-viewport">
+                <div className="category-carousel-track" key={activeCarouselPage}>
+                  {visibleCarouselCategories.map((category, index) => {
+                    const isSelected = selectedCategory === category.id || selectedCategory === category.nombre;
+                    return (
+                      <button
+                        key={`${activeCarouselPage}-${category.id}-${index}`}
+                        type="button"
+                        className={`category-showcase-card ${isSelected ? 'active-selected' : ''}`}
+                        data-category={category.id}
+                        onClick={() => selectCarouselCategory(category)}
+                      >
+                        <CategoryIconTile iconName={category.iconName} color={category.color} size={24} className="category-showcase-icon" />
+                        <strong>{category.nombre}</strong>
+                        <div className="category-showcase-image">
+                          <img src={category.image} alt="" />
+                        </div>
+                        <div className="category-showcase-footer">
+                          <span>
+                            {typeof categoryCounts[category.id] === 'number'
+                              ? `${CATEGORY_COUNT_FORMATTER.format(categoryCounts[category.id])} repuestos`
+                              : 'Ver repuestos'}
+                          </span>
+                          <i style={{ backgroundColor: category.color }}><ArrowRight size={18} /></i>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="category-carousel-arrow next"
+                onClick={() => moveCategoryCarousel(1)}
+                aria-label="Ver siguientes categorías"
+              >
+                <ArrowRight size={20} />
+              </button>
+            </div>
+          </section>
+        )}
 
-          <div className="control-bar-right-group">
-            <div className="sort-dropdown-box">
-              <span className="sort-label">Ordenar por:</span>
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sort-select-input">
-                <option value="relevancia">Recomendados / Relevancia</option>
-                <option value="precio-asc">Precio: Menor a Mayor</option>
-                <option value="precio-desc">Precio: Mayor a Menor</option>
-                <option value="vendidos">Más Vendidos</option>
-                <option value="descuento">Mayor Descuento</option>
-              </select>
+        {/* 2. Top Control Bar (Summary & Sort). Sin contexto no hay resultados que resumir ni ordenar. */}
+        {hasActiveContext && (
+          <div className="catalog-control-bar">
+            <div className="control-bar-left-group">
+              <div className="results-count-badge">
+                {activeVehicle && onlyCompatible ? (
+                  <span><strong>{totalProducts}</strong> repuestos compatibles con tu <strong>{activeVehicle.marca} {activeVehicle.modelo}</strong></span>
+                ) : (
+                  <span><strong>{totalProducts}</strong> repuestos encontrados</span>
+                )}
+              </div>
+            </div>
+
+            <div className="control-bar-right-group">
+              <div className="sort-dropdown-box">
+                <span className="sort-label">Ordenar por:</span>
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sort-select-input">
+                  <option value="relevancia">Recomendados</option>
+                  <option value="recientes">Más Recientes</option>
+                  <option value="precio-asc">Precio: Menor a Mayor</option>
+                  <option value="precio-desc">Precio: Mayor a Menor</option>
+                </select>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {appliedFilterLabel && <div className="catalog-applied-filter-notice">
           <Filter size={15} /><span>Filtro aplicado: <strong>{appliedFilterLabel}</strong></span>
@@ -598,34 +963,20 @@ export default function PartsCatalogView({
               </div>
             </div>
 
-            {/* Filter 0: Modalidad / Origen de Compra */}
-            <div className={`filter-section-group ${openFilterSections.purchase ? 'is-open' : 'is-collapsed'}`}>
-              <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('purchase')} aria-expanded={openFilterSections.purchase}>
-                <span className="filter-group-label"><ShoppingCart size={13} /> Modalidad de Compra</span><ChevronDown size={16} />
-              </button>
-              {openFilterSections.purchase && <div className="filter-options-list">
-                <button
-                  className={`filter-option-btn ${purchaseType === 'TODOS' ? 'active' : ''}`}
-                  onClick={() => setPurchaseType('TODOS')}
-                >
-                  <span className="filter-choice-dot">{purchaseType === 'TODOS' && <CheckCircle2 size={18} />}</span>
-                  <span className="filter-option-copy"><strong>Todos los Repuestos</strong><small>Ver todos los productos</small></span>
-                </button>
-                <button
-                  className={`filter-option-btn ${purchaseType === 'DIRECTA' ? 'active' : ''}`}
-                  onClick={() => setPurchaseType('DIRECTA')}
-                >
-                  <span className="filter-choice-dot">{purchaseType === 'DIRECTA' && <CheckCircle2 size={18} />}</span>
-                  <span className="filter-option-copy"><strong>Con Precio Directo</strong><small>Compra inmediata</small></span>
-                </button>
-                <button
-                  className={`filter-option-btn ${purchaseType === 'COTIZACION' ? 'active' : ''}`}
-                  onClick={() => setPurchaseType('COTIZACION')}
-                >
-                  <span className="filter-choice-dot">{purchaseType === 'COTIZACION' && <CheckCircle2 size={18} />}</span>
-                  <span className="filter-option-copy"><strong>Solo Bajo Cotización</strong><small>Requiere evaluación</small></span>
-                </button>
-              </div>}
+            {/* Filter 0: Modalidad de compra. Un interruptor, no tres opciones: el estado
+                neutro es no filtrar, y no necesita una opcion propia que lo diga. */}
+            <div className="filter-section-group">
+              <label className="checkbox-filter-label">
+                <input
+                  type="checkbox"
+                  checked={onlyQuoteOnly}
+                  onChange={(e) => setOnlyQuoteOnly(e.target.checked)}
+                />
+                <span>
+                  <strong>Solo a cotizar</strong>
+                  <small><ShoppingCart size={12} /> Piezas sin precio publicado, que se cotizan con la tienda.</small>
+                </span>
+              </label>
             </div>
 
             {/* Filter 1: Categoría del Repuesto */}
@@ -670,30 +1021,115 @@ export default function PartsCatalogView({
               </div>}
             </div>
 
-            {/* Filter 2: Condición / Estado Técnico */}
+            {/* Filter 4: Compatibilidad de vehículo (marca → modelo → año), para quien no
+                tiene la patente a mano. Viajan como compatibilidadMarca/Modelo/Anio. */}
+            <div className={`filter-section-group ${openFilterSections.vehicle ? 'is-open' : 'is-collapsed'}`}>
+              <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('vehicle')} aria-expanded={openFilterSections.vehicle}>
+                <span className="filter-group-label"><Car size={13} /> Compatibilidad de Vehículo</span><ChevronDown size={16} />
+              </button>
+              {openFilterSections.vehicle && <div className="filter-stacked-selects">
+                {activeVehicle && onlyCompatible && (
+                  <p className="filter-select-note">
+                    <Info size={12} /> Filtrando por tu {activeVehicle.marca} {activeVehicle.modelo}. Quítalo arriba para elegir otro a mano.
+                  </p>
+                )}
+                <label className="filter-select-field">
+                  <span>Marca</span>
+                  <select
+                    className="sidebar-select-input"
+                    value={vehicleBrandId}
+                    disabled={Boolean(activeVehicle && onlyCompatible)}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      const matched = vehicleBrands.find((b) => String(b.id) === id);
+                      setVehicleBrandId(id);
+                      setVehicleBrandName(matched?.nombre || '');
+                      // Cambiar de marca invalida el modelo elegido de la marca anterior.
+                      setVehicleModel('');
+                    }}
+                  >
+                    <option value="">Todas las marcas</option>
+                    {vehicleBrands.map((brand) => (
+                      <option key={brand.id} value={brand.id}>{brand.nombre}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="filter-select-field">
+                  <span>Modelo</span>
+                  <select
+                    className="sidebar-select-input"
+                    value={vehicleModel}
+                    disabled={!vehicleBrandId || Boolean(activeVehicle && onlyCompatible)}
+                    onChange={(e) => setVehicleModel(e.target.value)}
+                  >
+                    <option value="">{vehicleBrandId ? 'Todos los modelos' : 'Elige una marca primero'}</option>
+                    {vehicleModels.map((model) => (
+                      <option key={model.id} value={model.nombre}>{model.nombre}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="filter-select-field">
+                  <span>Año</span>
+                  <select
+                    className="sidebar-select-input"
+                    value={vehicleYear}
+                    disabled={Boolean(activeVehicle && onlyCompatible)}
+                    onChange={(e) => setVehicleYear(e.target.value)}
+                  >
+                    <option value="">Cualquier año</option>
+                    {COMPAT_YEARS.map((year) => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>}
+            </div>
+
+            {/* Filter 5: Marca del Repuesto (`marcaId`). Es quién fabrica la pieza. */}
+            <div className="filter-section-group compact-select-section">
+              <label className="filter-group-label"><Wrench size={13} /> Marca del Repuesto</label>
+              <select
+                value={partBrandId}
+                onChange={(e) => setPartBrandId(e.target.value)}
+                className="sidebar-select-input"
+              >
+                <option value="">
+                  {activeCategoryName ? `Todas las de ${activeCategoryName}` : 'Todas las marcas'}
+                </option>
+                {partBrands.map((brand) => (
+                  <option key={brand.id} value={brand.id}>{brand.nombre}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter 6: Condición Técnica. Viaja como `condicion`, con el vocabulario
+                exacto que valida el backend. */}
             <div className={`filter-section-group ${openFilterSections.condition ? 'is-open' : 'is-collapsed'}`}>
               <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('condition')} aria-expanded={openFilterSections.condition}>
                 <span className="filter-group-label"><ShieldCheck size={13} /> Condición Técnica</span><ChevronDown size={16} />
               </button>
               {openFilterSections.condition && <div className="filter-options-list">
-                {CONDITIONS.map((cond, conditionIndex) => (
+                <button
+                  className={`filter-option-btn ${selectedCondition === '' ? 'active' : ''}`}
+                  onClick={() => setSelectedCondition('')}
+                >
+                  <span className="filter-choice-dot">{selectedCondition === '' && <CheckCircle2 size={18} />}</span>
+                  <span className="filter-option-copy"><strong>Original y Alternativo</strong><small>Todo el catálogo es repuesto nuevo</small></span>
+                </button>
+                {PART_CONDITIONS.map((condition) => (
                   <button
-                    key={cond}
-                    className={`filter-option-btn ${selectedCondition === cond ? 'active' : ''}`}
-                    onClick={() => setSelectedCondition(cond)}
+                    key={condition.value}
+                    className={`filter-option-btn ${selectedCondition === condition.value ? 'active' : ''}`}
+                    onClick={() => setSelectedCondition(selectedCondition === condition.value ? '' : condition.value)}
                   >
-                    <span className="filter-condition-icon">{conditionIndex === 0 ? <CheckCircle2 size={14} /> : conditionIndex === 1 ? <Package size={14} /> : conditionIndex === 2 ? <ShieldCheck size={14} /> : <RotateCcw size={14} />}</span>
-                    <span className="filter-option-copy">
-                      <strong>{cond === 'TODOS' ? 'Todos los Estados' : cond}</strong>
-                      <small>{cond === 'TODOS' ? 'Mostrar todas las opciones' : cond === 'Nuevo OEM Original' ? 'Producto 100% original' : cond === 'Nuevo Alternativo Homologado' ? 'Alternativa de calidad' : 'Revisado y garantizado'}</small>
-                    </span>
-                    {selectedCondition === cond && <CheckCircle2 size={18} className="check-active" />}
+                    <span className="filter-choice-dot">{selectedCondition === condition.value && <CheckCircle2 size={18} />}</span>
+                    <span className="filter-option-copy"><strong>{condition.label}</strong><small>{condition.hint}</small></span>
                   </button>
                 ))}
               </div>}
             </div>
 
-            {/* Filter 3: Origen / Procedencia */}
+            {/* Filter 7: Origen de Fabricación. La lista la sirve el backend (`/origenes`). */}
             <div className="filter-section-group compact-select-section">
               <label className="filter-group-label"><Globe size={13} /> Origen / Fabricación</label>
               <select
@@ -701,39 +1137,75 @@ export default function PartsCatalogView({
                 onChange={(e) => setSelectedOrigin(e.target.value)}
                 className="sidebar-select-input"
               >
-                {ORIGINS.map((o) => (
-                  <option key={o} value={o}>{o === 'TODOS' ? 'Todos los Orígenes' : o}</option>
+                <option value="">Todos los orígenes</option>
+                {partOrigins.map((origin) => (
+                  <option key={origin} value={origin}>{origin}</option>
                 ))}
               </select>
             </div>
 
-            {/* Filter 4: Marca del Vehículo */}
-            <div className="filter-section-group compact-select-section">
-              <label className="filter-group-label"><Car size={13} /> Marca de Vehículo</label>
-              <select
-                value={selectedBrand}
-                onChange={(e) => setSelectedBrand(e.target.value)}
-                className="sidebar-select-input"
-              >
-                {BRANDS.map((b) => (
-                  <option key={b} value={b}>{b === 'TODAS' ? 'Todas las Marcas' : b}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filter 5: Opciones Rápidas */}
-            <div className={`filter-section-group ${openFilterSections.shipping ? 'is-open' : 'is-collapsed'}`}>
-              <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('shipping')} aria-expanded={openFilterSections.shipping}>
-                <span className="filter-group-label"><Truck size={13} /> Opciones de Despacho</span><ChevronDown size={16} />
+            {/* Filter 5: Precio Máximo. Viaja como `precioMax` al endpoint. */}
+            <div className={`filter-section-group ${openFilterSections.price ? 'is-open' : 'is-collapsed'}`}>
+              <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('price')} aria-expanded={openFilterSections.price}>
+                <span className="filter-group-label"><Tag size={13} /> Rango de Precio</span><ChevronDown size={16} />
               </button>
-              {openFilterSections.shipping && <label className="checkbox-filter-label">
+              {openFilterSections.price && <div className="filter-price-box">
+                <label className="filter-price-min">
+                  <span>Desde</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={PRICE_CEILING}
+                    step={1000}
+                    placeholder="$0"
+                    value={minPriceDraft}
+                    onChange={(e) => setMinPriceDraft(e.target.value)}
+                    onBlur={commitMinPrice}
+                    onKeyDown={(e) => { if (e.key === 'Enter') commitMinPrice(); }}
+                  />
+                </label>
+                <div className="filter-price-readout">
+                  <span>Hasta</span>
+                  <strong>{priceDraft >= PRICE_CEILING ? 'Sin tope' : formatCLP(priceDraft)}</strong>
+                </div>
                 <input
-                  type="checkbox"
-                  checked={onlyFastDelivery}
-                  onChange={(e) => setOnlyFastDelivery(e.target.checked)}
+                  type="range"
+                  className="filter-price-slider"
+                  min={0}
+                  max={PRICE_CEILING}
+                  step={PRICE_STEP}
+                  value={priceDraft}
+                  aria-label="Precio máximo"
+                  onChange={(e) => setPriceDraft(Number(e.target.value))}
+                  onPointerUp={commitPriceDraft}
+                  onKeyUp={commitPriceDraft}
+                  onBlur={commitPriceDraft}
                 />
-                <span><strong>Solo con Envío Rápido el mismo día</strong><small><Info size={12} /> Disponible en comunas seleccionadas.</small></span>
-              </label>}
+                <div className="filter-price-scale">
+                  <span>$0</span>
+                  <span>{formatCLP(PRICE_CEILING)}+</span>
+                </div>
+                <div className="filter-price-presets">
+                  {PRICE_PRESETS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className={`filter-price-chip ${maxPrice === preset ? 'active' : ''}`}
+                      onClick={() => applyPricePreset(preset)}
+                    >
+                      {formatCLP(preset)}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className={`filter-price-chip ${maxPrice >= PRICE_CEILING ? 'active' : ''}`}
+                    onClick={() => applyPricePreset(PRICE_CEILING)}
+                  >
+                    Sin tope
+                  </button>
+                </div>
+              </div>}
             </div>
 
             {/* Clear All Filters Button */}
@@ -746,7 +1218,41 @@ export default function PartsCatalogView({
 
           {/* Parts Cards Column (Right Grid) */}
           <main className="catalog-parts-main">
-            {productsLoading ? (
+            {!hasActiveContext ? (
+              /* Vitrina acotada: una sola consulta de 12 recién publicados. El catálogo
+                 paginado (y su COUNT sobre todo el inventario) no se pide hasta que hay filtro. */
+              <div className="catalog-showcase-block">
+                <div className="catalog-showcase-block-header">
+                  <h2>Recién publicados</h2>
+                  <p>Una muestra del catálogo. Filtra por categoría, patente o busca por nombre para ver el resto.</p>
+                </div>
+                {showcaseLoading ? (
+                  <div className="parts-cards-grid-catalog" aria-busy="true">
+                    {Array.from({ length: SHOWCASE_SIZE }).map((_, i) => (
+                      <ProductCardSkeleton key={i} />
+                    ))}
+                  </div>
+                ) : showcaseProducts.length > 0 ? (
+                  <div className="parts-cards-grid-catalog">
+                    {showcaseProducts.map((prod) => (
+                      <MarketplaceProductCard
+                        key={prod.id}
+                        product={prod}
+                        onView={onQuickView}
+                        isFavorite={isFavorite(prod.id)}
+                        onToggleFavorite={isLoggedIn ? toggleFavorite : undefined}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="directory-empty-state">
+                    <Wrench size={56} className="empty-icon-gray" />
+                    <h3>Todavía no hay repuestos publicados</h3>
+                    <p>Vuelve pronto: las tiendas verificadas están cargando su inventario.</p>
+                  </div>
+                )}
+              </div>
+            ) : productsLoading ? (
               <div className="parts-cards-grid-catalog" aria-busy="true">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <ProductCardSkeleton key={i} />
@@ -771,6 +1277,17 @@ export default function PartsCatalogView({
                     />
                   ))}
                 </div>
+
+                {isResultSetTruncated && (
+                  <div className="catalog-refine-notice">
+                    <Info size={16} />
+                    <span>
+                      Tu búsqueda tiene <strong>{CATEGORY_COUNT_FORMATTER.format(totalProducts)}</strong> resultados
+                      y se pueden recorrer los primeros {CATEGORY_COUNT_FORMATTER.format(MAX_PAGINATED_RESULTS)}.
+                      Afina con la categoría, tu patente o el nombre del repuesto para llegar al que buscas.
+                    </span>
+                  </div>
+                )}
 
                 {/* 4. Pagination Bar */}
                 <div className="directory-pagination-bar">

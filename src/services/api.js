@@ -986,10 +986,16 @@ export async function getStoreProductsApi(storeId, { page = 0, size = 12, texto,
   return fetchApi(`/tiendas/${storeId}/productos?${params.toString()}`, { method: 'GET' });
 }
 
-export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, comunaId, sort = 'precio,asc', signal } = {}) {
+export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, comunaId, compatibilidadMarca, compatibilidadModelo, compatibilidadAnio, condicion, origen, sort = 'precio,asc', signal } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size), sort });
   if (texto) params.set('texto', texto);
   if (patente) params.set('patente', patente);
+  // Compatibilidad de vehiculo resuelta en el servidor (Specification `compatibilidadVehiculo`,
+  // que ademas incluye los repuestos universales). Filtrar esto en el cliente sobre la pagina
+  // actual daria resultados falsos apenas el catalogo crezca.
+  if (compatibilidadMarca) params.set('compatibilidadMarca', compatibilidadMarca);
+  if (compatibilidadModelo) params.set('compatibilidadModelo', compatibilidadModelo);
+  if (compatibilidadAnio) params.set('compatibilidadAnio', String(compatibilidadAnio));
   if (soloCotizacion !== undefined) params.set('soloCotizacion', String(soloCotizacion));
   if (categoriaId) params.set('categoriaId', String(categoriaId));
   if (subcategoriaId) params.set('subcategoriaId', String(subcategoriaId));
@@ -997,6 +1003,8 @@ export async function getPublicProductsApi({ page = 0, size = 12, texto, patente
   if (precioMin) params.set('precioMin', String(precioMin));
   if (precioMax) params.set('precioMax', String(precioMax));
   if (comunaId) params.set('comunaId', String(comunaId));
+  if (condicion) params.set('condicion', condicion);
+  if (origen) params.set('origen', origen);
   return fetchApi(`/inventario/productos?${params.toString()}`, { method: 'GET', signal });
 }
 
@@ -1011,6 +1019,14 @@ export async function getPublicProductApi(productId, { signal } = {}) {
 
 export async function getPublicCategoryCountsApi() {
   return fetchApi('/inventario/productos/resumen-categorias', { method: 'GET' });
+}
+
+/**
+ * Paises de origen presentes hoy en el catalogo. `MarcaRepuesto.paisOrigen` es texto libre,
+ * asi que la lista tiene que venir del backend en vez de estar escrita en el cliente.
+ */
+export async function getPublicPartOriginsApi({ signal } = {}) {
+  return fetchApi('/inventario/productos/origenes', { method: 'GET', signal });
 }
 
 export async function getPartCategoriesApi() {
@@ -1635,9 +1651,14 @@ export async function getInventoryVehicleCatalogsApi(ids, { signal } = {}) {
 /**
  * Retorna las ofertas de repuestos compatibles con un vehiculo_catalogo específico.
  */
-export async function getVehicleCatalogPartsApi(catalogoId, { categoriaId, marcaId, precioMin, precioMax, texto, page = 0, size = 20, signal } = {}) {
+export async function getVehicleCatalogPartsApi(catalogoId, { categoriaId, subcategoriaId, marcaId, precioMin, precioMax, texto, condicion, origen, comunaId, soloCotizacion, page = 0, size = 20, signal } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (categoriaId) params.set('categoriaId', String(categoriaId));
+  if (subcategoriaId) params.set('subcategoriaId', String(subcategoriaId));
+  if (condicion) params.set('condicion', condicion);
+  if (origen) params.set('origen', origen);
+  if (comunaId) params.set('comunaId', String(comunaId));
+  if (soloCotizacion !== undefined) params.set('soloCotizacion', String(soloCotizacion));
   if (marcaId) params.set('marcaId', String(marcaId));
   if (precioMin) params.set('precioMin', String(precioMin));
   if (precioMax) params.set('precioMax', String(precioMax));

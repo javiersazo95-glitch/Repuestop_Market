@@ -9247,6 +9247,47 @@ input, select, textarea {
   color: #ffffff;
 }
 
+/* Category Showcase Carousel inside Catalog */
+.catalog-showcase-carousel-wrapper {
+  margin-bottom: 24px;
+}
+
+.catalog-showcase-carousel-header {
+  margin-bottom: 12px;
+}
+
+.catalog-showcase-carousel-header h2 {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 2px 0;
+}
+
+.catalog-showcase-carousel-header p {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.catalog-showcase-carousel-wrapper .category-showcase-carousel {
+  padding: 0;
+}
+
+.category-showcase-card.active-selected {
+  border-color: #0066ff !important;
+  box-shadow: 0 0 0 2.5px rgba(0, 102, 255, 0.25) !important;
+  background: #f0f7ff !important;
+}
+
+/* Vitrina de entrada del catalogo: lo que se ve en /repuestos sin ningun filtro. */
+.catalog-showcase-block { display: flex; flex-direction: column; gap: 14px; }
+.catalog-showcase-block-header h2 { font-size: 17px; font-weight: 800; color: #0f172a; margin: 0 0 2px 0; }
+.catalog-showcase-block-header p { font-size: 13px; color: #64748b; margin: 0; }
+
+/* Aviso de resultados topeados: invita a refinar en vez de paginar hasta el infinito. */
+.catalog-refine-notice { display: flex; align-items: flex-start; gap: 10px; margin: 18px 0 0; padding: 12px 14px; border: 1px solid #bfdbfe; border-radius: var(--radius-lg); background: #eff6ff; color: #1e40af; font-size: 13px; line-height: 1.5; }
+.catalog-refine-notice svg { flex-shrink: 0; margin-top: 1px; }
+
 .catalog-control-bar {
   background: #ffffff;
   border-radius: var(--radius-lg);
@@ -12536,6 +12577,34 @@ input, select, textarea {
 .catalog-advanced-filter-panel .checkbox-filter-label strong { color: #273957; font-size: 10.5px; }
 .catalog-advanced-filter-panel .checkbox-filter-label small { display: flex; align-items: center; gap: 5px; color: #71829d; font-size: 9px; }
 .catalog-advanced-filter-panel .checkbox-filter-label small svg { color: #1268f3; }
+/* Selectores apilados del panel de filtros (compatibilidad de vehiculo). */
+.filter-stacked-selects { display: flex; flex-direction: column; gap: 9px; margin-top: 9px; }
+.filter-select-field { display: flex; flex-direction: column; gap: 4px; }
+.filter-select-field > span { color: #71829d; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+.filter-select-field .sidebar-select-input { width: 100%; min-width: 0; }
+.filter-select-field .sidebar-select-input:disabled { color: #9aa8be; background: #f4f7fb; cursor: not-allowed; }
+.filter-select-note { display: flex; align-items: flex-start; gap: 6px; margin: 0 0 2px; padding: 7px 8px; border-radius: 7px; background: #eff6ff; color: #1e40af; font-size: 10px; line-height: 1.4; }
+.filter-select-note svg { flex-shrink: 0; margin-top: 1px; }
+.filter-price-min { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.filter-price-min > span { color: #71829d; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+.filter-price-min input { width: 108px; min-height: 34px; padding: 6px 9px; border: 1px solid #dce5f1; border-radius: 8px; background: #fff; color: #142342; font-size: 12px; font-weight: 700; text-align: right; }
+.filter-price-min input:focus { border-color: #1268f3; outline: none; }
+
+/* Control de precio maximo del panel de filtros del catalogo. */
+.filter-price-box { display: flex; flex-direction: column; gap: 9px; margin-top: 9px; }
+.filter-price-readout { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.filter-price-readout span { color: #71829d; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+.filter-price-readout strong { color: #142342; font-size: 15px; font-weight: 800; }
+.filter-price-slider { width: 100%; height: 4px; margin: 2px 0; padding: 0; border-radius: 999px; background: #dce5f1; appearance: none; -webkit-appearance: none; cursor: pointer; }
+.filter-price-slider:focus-visible { outline: 2px solid #1268f3; outline-offset: 4px; }
+.filter-price-slider::-webkit-slider-thumb { width: 17px; height: 17px; border: 3px solid #fff; border-radius: 50%; background: #1268f3; box-shadow: 0 2px 6px rgba(8, 91, 234, .35); appearance: none; -webkit-appearance: none; cursor: grab; }
+.filter-price-slider::-moz-range-thumb { width: 17px; height: 17px; border: 3px solid #fff; border-radius: 50%; background: #1268f3; box-shadow: 0 2px 6px rgba(8, 91, 234, .35); cursor: grab; }
+.filter-price-scale { display: flex; justify-content: space-between; color: #8a99b3; font-size: 9.5px; font-weight: 600; }
+.filter-price-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.filter-price-chip { padding: 6px 10px; border: 1px solid #dce5f1; border-radius: 999px; background: #fff; color: #44557a; font-size: 10.5px; font-weight: 700; cursor: pointer; transition: border-color .15s ease, background .15s ease, color .15s ease; }
+.filter-price-chip:hover { border-color: #b9cdea; background: #f5f9ff; }
+.filter-price-chip.active { border-color: #1268f3; background: #eaf2ff; color: #1050c4; }
+
 .catalog-advanced-filter-panel .btn-clear-all-filters-wide { min-height: 50px; border-radius: 10px; font-size: 12.5px; }
 
 @media (max-width: 1120px) {
