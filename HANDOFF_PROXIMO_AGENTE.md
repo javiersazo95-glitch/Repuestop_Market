@@ -1662,5 +1662,202 @@ curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:8080/api/v1/tiendas/<
    - Tooltip informativo en `Nro Chasis (opcional)` y en `Patente (opcional)`.
    - Eliminación del término "calce" en favor de "compatibilidad técnica exacta".
 
+---
 
+### 4.30 Sesión 2026-08-30 — Escalabilidad del Catálogo `/repuestos`: Gate de Contexto y Filtros en Servidor
 
+Commits: web `491d276`; backend `12f8f3a`, `aecd4b1`, `d921e07`. Ambas ramas `dev` subidas
+(backend primero).
+
+1. **El listado ya no se pide sin contexto (`PartsCatalogView.jsx`)**:
+   - Entrar a `/repuestos` disparaba un scan + `COUNT(*)` sobre todo el inventario visible.
+     `hasActiveContext` deja la consulta en `enabled: false` mientras no haya texto, categoría,
+     patente, comuna o algún filtro. Sin contexto se muestra una vitrina: carrusel de categorías
+     con los conteos reales de `GET /inventario/productos/resumen-categorias` (un `GROUP BY`, no
+     filas) y **una** página de 12 recién publicados.
+   - Es el patrón de MercadoLibre y Autoplanet: la ruta de listado nunca se renderiza sin contexto.
+2. **Todos los filtros pasaron a la base de datos**:
+   - Subcategoría (resolviendo nombre → `subcategoriaId`), marca del repuesto (`marcaId`, acotada
+     a la categoría elegida), rango de precio, condición, origen, modalidad y compatibilidad de
+     vehículo. Antes se aplicaban en el cliente sobre las 12 filas de la página actual.
+   - `displayedProducts` es hoy `products` a secas. **No volver a meter `.filter()` ahí.**
+3. **Controles retirados por no tener respaldo real**:
+   - "Más vendidos" y "Mayor descuento": `mapSortableField()` los hacía caer en silencio a
+     `precio` y luego se reordenaba solo la página visible. Despacho rápido: no tiene campo.
+4. **Backend — filtros nuevos en el catálogo público (`12f8f3a`)**:
+   - `soloCotizacion` llegaba al controlador y **se descartaba**: el filtro de modalidad devolvía
+     siempre el catálogo completo. Ahora se resuelve en la base.
+   - `condicion` y `origen` tenían campo (`ProveedorProducto.condicion`, `MarcaRepuesto.paisOrigen`)
+     pero no parámetro. El origen compara por coincidencia parcial porque `paisOrigen` es texto
+     libre y hay marcas como "Estados Unidos / Alemania".
+   - Nuevo `GET /inventario/productos/origenes`, con los países ya descompuestos y deduplicados.
+5. **Backend — condición acotada a ORIGINAL/ALTERNATIVO (`aecd4b1`)**:
+   - La regla ya estaba en los términos aceptados por el vendedor; la validación no la aplicaba.
+   - El default de `ProveedorProducto` pasó de `NUEVO` a `ORIGINAL` (campo y `@PrePersist`): sin
+     eso, un producto creado sin condición quedaba con un valor ya inválido e invisible al filtro.
+   - Cubierto por `InventarioValidationSupportCondicionTest` (7 casos, verificado que falla al
+     revertir la validación).
+6. **Backend — compatibilidad por patente (`d921e07`)**:
+   - Con patente resuelta la web consulta `/vehiculos-catalogo/{id}/repuestos`, que **ignoraba**
+     subcategoría, condición, origen, comuna y modalidad. Los cinco se agregaron a la query y al
+     `countQuery`.
+   - El `LEFT JOIN` a `rt_repuesto_compatibilidad` corre contra todos los catálogos equivalentes
+     (21 para el Yaris de prueba) y **multiplicaba filas**: FRENOS daba 4 filas para 2 productos.
+     Como Spring pagina sobre esas filas, `size=24` devolvía 23 tarjetas y el contador declaraba
+     34 sobre 32 reales. Pasó a `EXISTS`: una fila = un producto. Verificado en SQL que el
+     conjunto no cambia (0 perdidos, 0 agregados) y que el orden es idéntico.
+   - `nivelConfianza` pasó a un subquery que toma el **mejor** nivel entre las variantes.
+7. **Paginación**:
+   - Topada en 1.000 resultados navegables, con aviso que invita a refinar.
+   - `keepPreviousData` en la consulta. **Ojo**: sin eso, al cambiar de página `catalogData` cae a
+     su default (`totalPages: 1`) mientras llega la respuesta, y el clamp de `?pagina=9999`
+     devolvía al usuario a la página 1. La paginación quedó muerta un rato y ni el build ni el
+     lint lo notaron; solo se detecta recorriendo páginas en el navegador.
+
+**Verificado end-to-end** contra el backend local con la patente `ABCD11` (catalogoId 1): con
+patente 12+12+8 = 32 en tres páginas; sin patente 1→2→3→4 con la URL sincronizada; condición
+25/7, origen Alemania 10, a cotizar 4/28, todos coincidiendo con el backend.
+
+**Lo que queda**: ver los cuatro cabos del catálogo en la sección "Pendientes conocidos" de
+`CLAUDE.md` (orden por más vendidos, despacho rápido, `esUniversal` sin marcar, y `sort` en el
+endpoint de compatibilidad).
+
+---
+
+### 4.31 Sesión 2026-08-31 — Repuestos universales, agotados al final y vitrina de Productos Top
+
+Commits: backend `1e8ae23`, `10e5161`; web `4ae72f0`, `2cde97f` (+ los correctivos de esta
+misma sesión). Ambas ramas `dev` subidas, backend primero.
+
+#### 1. `esUniversal`: el diagnóstico heredado estaba equivocado
+
+La sección 4.30 dejó anotado que "los 64 productos de Compatibilidad multimarca tienen
+`compatibilidadMarca` nulo". **Es falso, y conviene no repetirlo**: `getCompatibility()` en
+`MarketplaceProductCard.jsx` devuelve el literal "Compatibilidad multimarca" cuando el
+producto no trae resumen de compatibilidad. Nunca existió un campo que dijera eso.
+
+El dato real en la base local: de 121 productos, **118 tienen `compatibilidad_marca`** y solo
+3 la tienen vacía — dos aceites y un kit de limpieza, o sea justo los que sí son universales.
+Ninguno tenía `es_universal = true` porque la columna nació en `V2026082803`, después de la
+carga.
+
+**No se hizo backfill** (decisión del usuario: el proyecto no está en producción). Lo que sí
+se cerró es el agujero estructural: **ningún camino de carga permitía declarar universal**.
+El Excel no tiene columna `es_universal` y el formulario web nunca mandaba el campo, así que
+todo producto creado desde la web quedaba en `false`. Se agregó el toggle en
+`NewCatalogProductModal` (sección 3), reusando `.catalog-condition-row`.
+
+Al marcarlo se manda la compatibilidad **vacía**: mandar las dos cosas haría aparecer el
+producto DOS veces en la búsqueda por patente, una por universal y otra por el cruce
+relacional.
+
+**La regla que NO hay que introducir**: inferir universal a partir de "no declaró marca".
+Convertiría cada fila mal llenada de un Excel en un producto que sale para TODOS los
+vehículos. Un falso positivo en la búsqueda por patente cuesta más que un falso negativo: es
+el diferenciador del producto y quema la confianza en toda la búsqueda.
+
+**Queda pendiente la columna `es_universal` en la plantilla Excel** (`InventarioExcelService`,
+17 columnas hoy). Mientras no exista, toda carga masiva sigue produciendo `false`.
+
+#### 2. Los agotados van al final de todo orden
+
+El catálogo público no filtraba por stock, así que con "Precio: Menor a Mayor" el producto más
+barato del inventario encabezaba aunque tuviera stock 0. Y el endpoint de compatibilidad por
+patente **sí** filtra `stock > 0`, de modo que el mismo producto aparecía sin patente y
+desaparecía con ella.
+
+`ProveedorProducto.ordenDisponibilidad` es una `@Formula("CASE WHEN stock > 0 THEN 0 ELSE 1 END")`
+de solo lectura, que `InventarioCatalogoPublicoService` antepone a todo orden pedido.
+Los agotados quedan al final sin alterar el criterio que eligió el comprador — ordenar por
+`stock` directamente lo destruiría.
+
+Va como fórmula y no como columna real para no mantenerla sincronizada con `stock` en cada
+venta, devolución y edición. **No necesita migración.**
+
+**El riesgo real era otro**: si Spring Data no resolviera una `@Formula` en el `Sort`,
+reventaría al ARMAR la consulta y se llevaría abajo el catálogo entero. Verificado que
+Hibernate genera `order by (CASE WHEN pp1_0.stock > 0 THEN 0 ELSE 1 END), pp1_0.precio`.
+
+No se filtran los agotados: la ficha sigue siendo válida y el vendedor puede reponer.
+
+#### 3. "Recomendados" pasó de `updatedAt,desc` a `stock,desc`
+
+Eran cuatro opciones de orden y dos hacían casi lo mismo: `updatedAt` se mueve con cualquier
+edición del vendedor, así que "Recomendados" era prácticamente "Más Recientes". Al lanzar no
+hay ventas ni calificaciones, y el stock es la única señal con datos reales.
+
+#### 4. Vitrina de `/repuestos`: Productos Top de las tiendas
+
+La marca "Producto Top" (`destacado`) ya existía completa —`PATCH /proveedores/{id}/productos/{productoId}/top`,
+el toggle en `CatalogCard`— pero solo ordenaba **dentro de la ficha de la tienda**.
+
+**Tope de 2 por tienda**, validado en `cambiarDestacadoProducto()`. Sin tope y siendo gratis,
+al llevar la marca a una vitrina compartida el incentivo se invierte: encerrada en la propia
+tienda, marcar todo no destaca nada y el único perjudicado es el vendedor; en un espacio
+común, a cada uno le conviene marcar su catálogo entero y en un mes la marca no significa
+nada. Se valida **solo al encender y solo si no estaba ya encendido**: repetir el PATCH sobre
+un producto que ya es Top no puede quedar bloqueado por el cupo que él mismo ocupa.
+
+**Filtro `soloDestacados`** en el catálogo público, resuelto en la base. Es filtro y **no**
+orden a propósito: ordenar por `destacado` dejaría todo el resto del catálogo detrás en orden
+arbitrario.
+
+**Índice PARCIAL** `V2026083101` sobre `destacado WHERE destacado`. Uno común no sirve: la
+columna es booleana y casi todo el catálogo está en `false`, así que el índice pesaría como la
+tabla y el planner lo ignoraría. Verificado que Postgres lo usa (`Index Scan using
+idx_proveedor_producto_destacado`).
+
+**Los dos bloques de la vitrina son independientes: 12 y 12.** La primera versión hacía que el
+relleno descontara (`SHOWCASE_SIZE - destacados.length`), así que cada Top le comía un lugar a
+los recién publicados y la pantalla mostraba 12 en total en vez de 24. Se piden
+`SHOWCASE_SIZE + destacados.length` recientes para poder descartar los que ya salieron arriba
+sin quedarse corto.
+
+**Por qué no solo Top**: los marca el vendedor a mano y rotan lentísimo por diseño (2 por
+tienda). Una portada hecha solo de eso muestra lo mismo semana tras semana y se lee como un
+sitio muerto. "Recién publicados" es la señal contraria y cambia todos los días.
+
+#### 5. Producto universal en la ficha: el modal decía lo contrario de la verdad
+
+Un repuesto universal no declara vehículos, así que la lista de compatibilidades sale vacía y
+el modal mostraba **"No encontramos compatibilidades"** — que se lee como "no le sirve a
+ningún auto" cuando el dato real es "le sirve a todos". En `ProductDetailPage`, con
+`esUniversal` el bloque pasa a afirmarlo directamente y **no se ofrece el modal**.
+
+`adaptProduct` no exponía `esUniversal`; ahora sí.
+
+**Ojo con `.product-universal-note`**: es `display: flex`, y el `<strong>` dentro del párrafo
+creaba items flex hermanos que se encogían por separado, dejando una palabra por línea. Todo
+el texto va dentro de UN `<span>`.
+
+#### 6. Los mensajes del Producto Top estaban escritos para informáticos
+
+Decían "aparecerá en la vitrina de /repuestos" — una ruta de código en un texto que lee un
+vendedor de repuestos. Reescritos en el aviso de la sección, en el mensaje de confirmación y
+en el tooltip del botón: hablan de "la portada de repuestos, donde lo ven todos los
+compradores" y mencionan el tope de 2.
+
+#### Verificado
+
+- **En dev** (`api-dev`, 2.058 productos): `soloDestacados=true` → 1 (antes del deploy
+  devolvía 2.058, o sea el parámetro ignorado — Spring descarta en silencio un `@RequestParam`
+  que no conoce, y esa es la firma de "código viejo"). Compone bien con los demás filtros
+  (`soloDestacados` + `condicion`: 1 + 0 = 1). Sin regresiones: condición 2025+33, modalidad
+  12+2046, origen 730, comuna 55; y los cinco filtros del endpoint de compatibilidad intactos.
+- **En local, en el navegador**: vitrina con 3 Top + 12 recientes sin repetidos; el tope
+  respetado por vendedor (proveedor 1 en 2, proveedor 2 en 1); producto 7285 guardado con
+  `es_universal = t` y `compatibilidad_marca` vacío desde el toggle nuevo; la ficha del
+  universal mostrando el aviso y sin el botón de compatibilidades.
+- **Los agotados al final no se pueden observar en dev**: no hay ni un producto con stock 0
+  (`sort=stock,asc` arranca en 3). Verificado en local con SQL sobre datos reales.
+
+#### Pendientes que deja esta sesión
+
+- Columna `es_universal` en la plantilla Excel (ver punto 1).
+- **Hay productos publicados en $0** en dev con stock: ids `3021` ("Bujía de Encendido Super
+  Plus", stock 48) y `4` ("Batería Bosh", stock 9). Encabezan cualquier orden por precio
+  ascendente.
+- El flujo de búsqueda por patente desde la UI con sesión iniciada sigue sin probarse end to
+  end (se ejercitó sembrando el vehículo en `localStorage`).
+- Levantar el backend local requiere `BANK_DATA_ENCRYPTION_KEY`; sin ella el arranque muere
+  con `AEADBadTagException: Tag mismatch!` al descifrar datos bancarios existentes.
