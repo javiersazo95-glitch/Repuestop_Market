@@ -2292,3 +2292,161 @@ Sin cambios respecto de la 4.33, menos el PIN: **liquidación y contabilidad por
 la vista de vendedor de la app móvil, que sigue cayendo a los últimos 6 del id en vez de usar
 `codigoVendedor`. El PIN por vendedor ya está resuelto de este lado; lo que falta allá es que
 `pedido.codigoRetiro` (el global, hoy redundante) deje de escribirse.
+
+### 4.35 Sesión 2026-09-01 (tarde) — Ruta B fase 3, parte 1: la plata por suborden
+
+**Sin commitear a pedido del usuario.** Solo backend.
+
+Se entró a hacer "liquidación y contabilidad por suborden" y el diagnóstico de partida resultó
+equivocado en su punto principal. Vale la pena dejarlo escrito, porque el próximo que lea la
+§4.34 va a llegar con la misma sospecha.
+
+#### El `.findFirst()` NO era el problema de plata
+
+`LiquidacionPedidoCalculator.proveedorItems()` resuelve el proveedor con `.findFirst()` sobre
+los ítems, y eso parecía plata mal asignada. **No lo es**: solo alimenta el DTO de LECTURA del
+backoffice; el pago real (`Retiro`) no lo llama nunca.
+
+Lo que sí produce es una fila engañosa. En un pedido de dos tiendas, `seller`, `sellerTaxId`,
+`sellerEmail` y `sellerLegalName` —**el titular de la cuenta bancaria**— salen del primer ítem,
+mientras los importes se calculan sobre las dos. La pantalla dice "Repuestos 2" con los montos
+sumados de las dos tiendas. El sistema no paga por ahí, pero la pantalla invita a hacerlo.
+**Sigue pendiente** (era el paso 3 y se dejó para otra sesión).
+
+#### Bug de plata 1: el envío se pagaba DOS VECES
+
+El de verdad, y no estaba en el archivo que se fue a mirar.
+
+RepuesTop no despacha nada: despacha cada vendedor y el comprador paga **un envío por
+proveedor**. El checkout ya lo cobra así (`costoEnvioPorProveedor` en
+`PedidoCheckoutCarritoSupport`), pero después **colapsaba el mapa en una suma** y guardaba solo
+`rt_pedido.costo_envio`, tirando el desglose.
+
+Sin el desglose, `RetiroProveedorService.calcularMontoPagarVendedor` le sumaba ese total **a
+cada vendedor**. Probado con un test que lo dice textual: **"Se pago 11000 de envio habiendo
+cobrado 5500"**.
+
+Y contaminaba además `CaptadorVentaCommissionService`, que calcula la comisión del captador
+sobre esa misma base.
+
+El arreglo guarda el envío en la suborden (`V2026090101`), que es donde corresponde: el envío
+es de la SUBORDEN, no de la línea —un vendedor con tres productos despacha un paquete y cobra
+un envío—.
+
+**Backfill: exacto solo donde no hay nada que repartir.** Un pedido de un vendedor recibe el
+total, que es suyo entero. Los de varias tiendas quedan en **NULL a propósito**: ese desglose
+no se puede reconstruir, y escribir un reparto inventado lo volvería indistinguible de un dato
+real. El cálculo cae a un reparto en partes iguales **solo en memoria** — aproximado por
+vendedor, pero mantiene la invariante que le importa a la caja: **no se paga más envío del que
+se cobró**. Lo que no se puede hacer nunca es caer al total del pedido, que es el bug.
+
+**Ojo con el divisor**: se cuenta desde los ÍTEMS del pedido, no desde las subórdenes. Un
+pedido sin filas daría `size()==0`, se dividiría por 1 y volveríamos a pagar el total a cada uno.
+
+#### Bug de plata 2: el retiro se bloqueaba con el estado DERIVADO
+
+`RetiroProveedorService.obtenerItemsPendientes` filtraba por
+`item.getPedido().getEstado() == FINALIZADO`, que es el derivado —el menos avanzado—. Un
+vendedor que ya cerró lo suyo **no podía cobrar hasta que el otro finalizara**, y si el otro no
+finalizaba nunca, no cobraba nunca.
+
+Es alcanzable en producción a los 3 días: la mayoría de los compradores no pulsa "finalizar",
+así que cada vendedor cierra el suyo cuando se le habilita, y entre que cierra el primero y el
+segundo el primero no puede cobrar.
+
+Ahora se mide contra su suborden, con **fallback al pedido si falta la fila**: fallar hacia "se
+puede retirar" es preferible a dejarle la plata bloqueada por una fila que falta.
+
+#### Bug 3, que destapó el arreglo: la pantalla contradecía al pago
+
+`PedidoResponseMapper` tenía una guarda `pedidoDeUnSoloVendedor` antes de sumar el envío al
+total del vendedor. Existía para no inflar el número, pero el precio era mostrarle **cero
+envío** al vendedor de un carrito multi-tienda. Desde que la liquidación le paga su parte de
+verdad, esa pantalla le muestra menos de lo que va a recibir.
+
+Con el desglose por suborden ya no hay que elegir entre un número inflado y uno en cero.
+
+**Y el primer intento de arreglarlo estuvo mal**, lo cual importa porque el error es fácil de
+repetir. Se sumó el envío a `totalRespuesta`, y **la web usa ese campo como "Subtotal
+Repuestos"** (`order.subtotal ?? order.total`). Resultado en pantalla: Subtotal $32.000, Envío
+$7.000, comisiones, y "Monto Neto a Recibir" $29.277 — **las líneas no daban el total**
+(32.000 + 7.000 − 2.723 = 36.277). El neto siempre estuvo bien; lo roto era el desglose.
+
+Lo correcto es **no tocar `total` y acotarle `costoEnvio` al vendedor**: el envío viaja en su
+propio campo y se suma una sola vez. Hay un test que fija la invariante
+(`elDesgloseDelVendedorCuadraYSuEnvioEsElDeSuSuborden`): `total + costoEnvio − comisiones`
+tiene que dar `totalVendedor`.
+
+#### Bug 4: los datos del despacho también eran del pedido
+
+`registrarEnvio` escribe courier, tracking, comprobante y valor informado **en el pedido y en
+la suborden**, así que `RT_pedido` conserva los del ÚLTIMO que despachó. El DTO se los mandaba
+al vendedor leyéndolos del pedido: **el vendedor 1 podía ver el tracking del vendedor 2.** Es
+la fase 1 a medio aplicar — movió las columnas a la suborden y el DTO siguió leyendo el pedido.
+
+#### Y tres campos más, de la misma familia
+
+Salieron de auditar el DTO campo por campo, a propósito, después de los anteriores:
+
+- **`montoReembolsado`**: sumaba los reembolsos de las dos tiendas. `refundStatus` sí venía
+  acotado desde la 4.32, el monto no. El vendedor que no canceló nada veía el reembolso del
+  otro. Los pagos `REEMBOLSADO` son del pedido entero y no se pueden repartir, así que para un
+  vendedor se leen sus ítems.
+- **`totalActivo`**: sumaba todos los ítems activos + la comisión del comprador + el envío
+  total. Para un vendedor ahora es el valor vivo de SUS líneas a secas; su neto —que sí incluye
+  su envío— viaja en `totalVendedor`. Hoy la web no se lo muestra al vendedor
+  (`isSeller ? totalSeller : totalActive`), pero se acotó igual.
+- **`cancelacionPorBloqueo`**: miraba los ítems de todos, así que al vendedor sano se le
+  encendía el aviso por la tienda bloqueada del otro.
+
+**Lección para el próximo**: cada vez que se agrega un campo a este DTO hay que preguntarse si
+es del pedido o del destinatario. Van cinco arreglos del mismo tipo en dos sesiones.
+
+#### Verificado en vivo, con el pedido 23
+
+Se creó una compra real de dos tiendas con delivery local y **montos distintos a propósito**
+($3.000 y $4.000): con montos iguales, "cada uno el suyo" y "el promedio" dan el mismo número
+y la prueba no distingue nada.
+
+- **Checkout**: la base guardó `3000.00` y `4000.00` por separado (no 3500/3500, que sería el
+  promedio, ni 7000 a cada uno, que era el bug). Suma = 7000 = lo que pagó el comprador.
+- **Pantalla del vendedor**, antes y después de reiniciar con el arreglo:
+  Repuestos 1 pasó de `total 29000 / totalVendedor 26277` (sin envío) a `32000 / 29277`;
+  Repuestos 2 quedó en `total 62000` = 58000 + **sus 4000**. Y `subordenes: null` en los dos,
+  o sea que el scoping de la fase 2 sigue intacto.
+- **Retiro**: con la suborden de Repuestos 1 en FINALIZADO y la de Repuestos 2 en ENTREGADO
+  (pedido en ENTREGADO), Repuestos 1 pudo retirar **$29.553** y Repuestos 2 vio **$0**. El
+  monto confirma el envío correcto: con los 7000 del pedido habrían sido $33.553.
+- Flyway: `2026090101 | costo envio por suborden | success = t`.
+
+El escenario del retiro se armó con UPDATE directo y **el pedido 23 se restauró a PAGADO**.
+
+- **Desglose del vendedor en pantalla**, después de corregir el primer intento: Subtotal
+  $29.000, Envío $3.000, comisiones, Neto $29.277 — y ahora **las líneas suman**.
+
+`mvn package` ✅ y **83 tests ✅** (6 nuevos). Comprobado que los tests sirven: al revertir cada
+arreglo fallan con el síntoma exacto.
+
+#### Por qué el retiro no se pudo probar por la UI
+
+**Hoy el flujo real no puede producir subórdenes divergentes en FINALIZADO.** Los tres caminos
+están cerrados: el vendedor necesita 3 días y el backend los exige de verdad
+(`PedidoEstadoSupport`, no es solo el botón deshabilitado); el comprador finaliza **todas** las
+vivas; y la mediación mete a **todas** las vivas porque la llave de `bo_mediacion` es una sola.
+
+Eso no vuelve teórico al bug —a los 3 días es real—, pero explica por qué hubo que simular el
+escenario.
+
+#### Lo que queda
+
+- **La fila del backoffice por vendedor** (el `.findFirst()` de arriba). Es el cambio más
+  grande porque parte una fila en N y cambia el contrato de un DTO del backoffice.
+- **Finalizar por tienda**: decidido en esta sesión que el comprador debería confirmar y
+  finalizar **cada tienda por separado**, como Falabella, en vez de cerrar todas de una vez.
+  Es coherente con la Ruta B y es lo que vuelve alcanzable el caso del retiro sin esperar 3
+  días. No se hizo.
+- La vista de vendedor de la app móvil (sigue cayendo a los últimos 6 del id en vez de
+  `codigoVendedor`; el grep confirma que solo `mobile/components/support/DisputesCenter.tsx`
+  lo usa hoy) y sacar `pedido.codigoRetiro`, redundante desde la fase 2.
+- **En producción NO hay pedidos de dos tiendas con despacho a domicilio**, así que no hay
+  plata pagada de más que reconciliar: el arreglo llega antes que el caso.
