@@ -2024,3 +2024,143 @@ Se evaluaron dos caminos y **se eligió el segundo**:
 La lectura ya se comporta como si hubiera subórdenes: `PedidoResponseMapper.toResponse(pedido,
 proveedorId)` filtra los ítems y recalcula la liquidación completa del vendedor. **Falta la
 escritura.**
+
+### 4.33 Sesión 2026-08-31 (noche) — Ruta B fase 1: estado del pedido por vendedor
+
+Commit: backend `e93cdbc`. **Solo backend; la web no se tocó.**
+
+Cierra la escritura que la 4.32 dejó pendiente: el estado del pedido era uno solo y
+compartido, así que en un carrito de dos tiendas el vendedor 1 movía el pedido del vendedor 2.
+
+#### Se eligió la tabla, no el estado por ítem
+
+`RT_pedido_proveedor`, una fila por `(pedido, proveedor)`, UNIQUE. El estado por ítem se
+descartó porque **un vendedor con tres líneas despacha UN paquete**: el courier, el tracking,
+el comprobante y el PIN son de la suborden, no de la línea, y habría que duplicarlos en N
+filas mantenidas iguales a mano.
+
+Eso también corrige el diagnóstico de la 4.32, que hablaba solo del estado. Son **siete**
+campos de `RT_pedido` que son del vendedor y se pisaban entre sí: `estado`, `courier`,
+`tracking_number`, `comprobante_envio_*`, `valor_envio_informado`, `codigo_retiro` y
+`updated_at` (que es el reloj de los 3 días para finalizar: cualquier movimiento del otro
+vendedor se lo reiniciaba a este).
+
+#### `pedido.estado` NO se eliminó: se deriva y se persiste
+
+Es la decisión que define el tamaño del cambio. Lo leen 25 archivos —contabilidad, comisiones
+del captador, mediación, el job de expiración, `sumTotalComisionCobrada`— más el backoffice y
+la app móvil, y varias consultas SQL filtran por esa columna. Materializarlo deja todo eso
+funcionando **sin tocar una línea**, y por eso la app móvil no necesitó cambios.
+
+La regla, sobre las subórdenes vivas (`PedidoSubordenSupport.derivar`):
+
+1. ninguna viva → `CANCELADO`;
+2. alguna `EN_MEDIACION` → `EN_MEDIACION` (la mediación es del pedido entero: la llave de
+   `bo_mediacion.pedido_id` es una sola);
+3. si no, **el estado MENOS avanzado**. El comprador ve "En preparación" hasta que despacha
+   el último vendedor. Es el modelo Falabella.
+
+`PENDIENTE` y `PAGADO` **no son estados del vendedor**: el pago es uno solo y cruza todas las
+vivas a la vez. Recién desde `PAGADO` cada vendedor maneja el suyo.
+
+**Ojo**: si un camino escribe `pedido.estado` sin escribir las subórdenes, el primer recálculo
+se lo borra. Pasó con la mediación (`crearReclamo`) y con la expiración de pagos; los dos
+tuvieron que marcar las subórdenes además del pedido.
+
+#### El sujeto de la transición
+
+`PedidoTransicionSupport` no se tocó: la misma tabla, aplicada ahora a la suborden. Lo que
+cambia es quién es el sujeto — vendedor → la suya; comprador y webhook de pago → todas las
+vivas. **La app móvil no manda `proveedorId` y funciona igual**, porque el sujeto se resuelve
+desde el solicitante.
+
+Camino de respaldo: un pedido sin subórdenes derivables (sin ítems, o con productos que
+perdieron al proveedor) cae al comportamiento de siempre sobre `pedido.estado`. Sin eso queda
+inmóvil, y lo destaparon 4 tests existentes.
+
+#### Dos bugs que aparecieron al hacerlo
+
+- **`registrarEnvio` validaba permisos contra `items.get(0)`.** Con dos tiendas, el vendedor
+  de la segunda línea recibía **403 al despachar lo suyo**. Ahora busca entre todos los ítems.
+- **La ventana de cancelación se medía sobre el pedido.** Si el otro vendedor ya había
+  confirmado —pedido en `EN_PREPARACION`— a este se le cerraba la cancelación con "Solo se
+  pueden cancelar pedidos pendientes" sin haber hecho nada. Es el mismo bug al revés y no
+  estaba anotado. Ahora se mide sobre su suborden.
+
+#### Lo que se descubrió probando en el navegador
+
+Dos fallos que **no** los agarró ningún test ni el build, y que salieron de mirar la pantalla:
+
+1. **La respuesta de la ESCRITURA no estaba scopeada.** `actualizarEstadoPedido` terminaba con
+   `toResponse(actualizado)` sin `proveedorId`. La lectura estaba acotada por vendedor desde
+   la 4.32, la escritura no. Y la web mezcla esa respuesta sobre lo que tiene en pantalla
+   (`{ ...prevSelected, ...merged }` en `ProfileDashboard`), así que **el vendedor confirmaba
+   su parte y de golpe le aparecía la línea de la otra tienda**. Con los ítems venían los
+   totales del comprador, su banner de reembolso y **su PIN de retiro**, que el mapper solo
+   adjunta cuando `proveedorId == null`. Se acotó en `actualizarEstadoPedido`, `registrarEnvio`
+   y `crearReclamo`; los otros tres `toResponse` sin scope son caminos solo del comprador.
+2. **El vendedor no veía su propio estado.** El DTO seguía mandando `pedido.getEstado()`, o sea
+   el derivado. El vendedor confirmaba, la suborden avanzaba en la base, y la pantalla seguía
+   diciendo "Pagado" con el botón "Confirmar pedido" puesto: lo pulsaba otra vez y nada.
+   **Esto estaba planificado para la fase 2 y fue un error de planificación**: sin ello la
+   fase 1 no es un intermedio usable, es una regresión visible. Se adelantó — cuando la
+   respuesta va a un vendedor, `estado` es el de su suborden. Todo lo demás del DTO ya venía
+   acotado a él desde la 4.32; el estado era lo único que no.
+
+#### Migración y datos existentes
+
+`V2026083103` crea la tabla y hace el backfill con un `INSERT ... SELECT` agrupado por
+`(pedido, proveedor)`. El estado se siembra con el del pedido, salvo que **todos** los ítems
+de ese vendedor estén cancelados: esa suborden nace `CANCELADO`. Los datos de envío se copian
+a todas las filas del pedido, que es exactamente lo que se venía mostrando.
+
+Se validó corriéndola dentro de una transacción revertida antes de aplicarla: **17 subórdenes
+sobre 16 pedidos**, con el 21 quedando `vendedor 1 → PAGADO` / `vendedor 2 → CANCELADO`.
+
+Más una red: `asegurarSubordenes()` crea al vuelo la fila que falte, por si un pedido se cuela
+entre la migración y el deploy.
+
+**Ojo con `asegurarSubordenes`**: recargar la lista en cada paso vuelve a consultar la tabla y
+pierde de vista un cambio recién escrito y sin flush. Los métodos que mueven subórdenes usan
+las sobrecargas que reciben la lista ya cargada. Se detectó con un test que fallaba.
+
+#### Verificado
+
+`mvn package` ✅. **54 tests ✅**, 11 nuevos (`PedidoSubordenSupportTest` con la regla de
+derivación, más dos de dos tiendas en `PedidoServiceTest`). **Comprobado que los tests sirven**:
+al revertir cada uno de los tres arreglos fallan con el síntoma exacto — `expected: <PAGADO>
+but was: <EN_PREPARACION>`, `expected: <1> but was: <2>` ítems, y `expected: <EN_PREPARACION>
+but was: <PAGADO>`.
+
+En el navegador, pedido 22 (carrito de dos tiendas, pagado por Flow):
+
+- las subórdenes las creó el **checkout** (`created_at` idéntico al del pedido) y el pago las
+  cruzó a `PAGADO` **a la vez**;
+- vendedor 1 confirma → su suborden `EN_PREPARACION`, la del vendedor 2 intacta, **el pedido
+  se queda en `PAGADO`**;
+- vendedor 2 ve su venta en "Pagado", ajena, y con "Cancelar Pedido" habilitado;
+- vendedor 2 confirma → el pedido avanza **solo entonces** a `EN_PREPARACION`.
+
+#### Trampas del área, confirmadas otra vez
+
+`PedidoService` construye los supports **a mano con `new`**: el repositorio nuevo hubo que
+pasarlo por su constructor y por el de los dos tests que lo instancian. Eso solo lo agarra
+`mvn package`, `compile` no toca `src/test`.
+
+El `estado` de la suborden es `@Enumerated(STRING)`, así que le aplica la trampa de
+`ddl-auto=update`: el CHECK queda congelado con los 8 valores de hoy.
+
+#### Lo que queda (fase 2, la web)
+
+- **La vista del comprador con dos tiendas sigue siendo un bloque único.** Ve el derivado, que
+  es correcto, pero no distingue qué tienda va más adelantada. Falta `subordenes[]` en el DTO
+  y un bloque por tienda en `OrderDetailModal`.
+- **El DTO sigue mandando el `updatedAt` del pedido.** La web lo usa para el contador de los
+  3 días antes de finalizar (`orderStatusFlow.js`), y el backend ya valida contra el reloj de
+  la suborden: en un pedido de dos tiendas el contador puede no cuadrar con lo que el servidor
+  acepta.
+- **PIN de retiro por vendedor** (hoy hay uno solo por pedido; se escribe duplicado en la
+  suborden a la espera), **liquidación y contabilidad por suborden**, y la vista de vendedor
+  de la app móvil, que sigue cayendo a los últimos 6 del id en vez de usar `codigoVendedor`.
+- `codigoVendedor` **no se movió** del ítem a propósito: ese string es la llave de
+  `bo_mediacion.pedido_id` y aparece dentro de paths de R2 (ver 4.32).
