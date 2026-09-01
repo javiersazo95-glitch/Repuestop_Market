@@ -28,12 +28,17 @@ export default function PurchaseShippingModal({ product, intent, initialMethod =
     // un despacho que no existe -- y el vendedor queda obligado a un envío que no presta.
     // A ese comprador le quedan el retiro en tienda y el envío fuera de la comuna.
     //
-    // Solo se descarta cuando SE SABE que la comuna es distinta. Sin comuna del comprador
-    // -invitado, o cuenta sin dirección cargada- se deja visible: esconderla ahí le quita
-    // una opción legitima a quien sí vive en la comuna y todavía no completó su perfil.
+    // Se exige coincidencia POSITIVA: sin comuna del comprador -invitado, o cuenta sin
+    // dirección cargada- tampoco se ofrece. Es una tarifa de excepción y no se puede cobrar
+    // sobre un supuesto; el costo de equivocarse lo paga el comprador, o el vendedor con un
+    // despacho que no presta. El precio es que un invitado que SÍ vive en la comuna no la ve
+    // hasta identificarse.
+    //
+    // Sin comuna del VENDEDOR no hay con qué comparar y la lista queda como viene: el dato
+    // falta del lado de la tienda y castigar al comprador por eso no arregla nada.
     const comunaComprador = normalizarComuna(user?.comuna);
     const comunaVendedor = normalizarComuna(product?.ciudadVendedor);
-    if (!comunaComprador || !comunaVendedor || comunaComprador === comunaVendedor) {
+    if (!comunaVendedor || (comunaComprador && comunaComprador === comunaVendedor)) {
       return disponibles;
     }
     const soloFuera = disponibles.filter(

@@ -2878,10 +2878,19 @@ la misma trampa que `handleSuggestionLocation`). El usuario se lee con `useAuth(
 modal y no por props, porque lo montan la ficha del producto y el carrito y la regla tiene que
 ser una sola.
 
-**Queda un hueco conocido**: sin comuna del comprador —invitado, o cuenta sin dirección
-cargada— el método se sigue mostrando. Esconderlo ahí le quitaría una opción legítima a quien sí
-vive en la comuna y todavía no completó su perfil. La barrera de verdad tendría que estar
-también en el backend, que hoy no valida la combinación.
+**Se exige coincidencia POSITIVA**: sin comuna del comprador —invitado, o cuenta sin dirección
+cargada— tampoco se ofrece. Es una tarifa de excepción y no se puede cobrar sobre un supuesto: el
+costo de equivocarse lo paga el comprador, o el vendedor con un despacho que no presta. **El
+precio es que un invitado que sí vive en la comuna no la ve hasta identificarse**, y ahí puede
+terminar eligiendo el envío fuera de la comuna, que es más caro. Si eso pesa más que el error,
+la salida no es relajar el filtro sino pedir la comuna antes de mostrar el modal.
+
+Sin comuna del VENDEDOR no hay con qué comparar y la lista queda intacta: el dato falta del lado
+de la tienda y castigar al comprador por eso no arregla nada.
+
+**Y esto es solo la web: el backend no valida la combinación.** Un cliente que mande "Envío
+dentro de la comuna" desde otra comuna sigue siendo aceptado en el checkout. La barrera de verdad
+va ahí.
 
 **2. El input del PIN de 6 dígitos.** Era un input genérico de 160px pegado al botón, sin
 etiqueta, que en el pie del modal se leía como un campo de búsqueda perdido. Ahora es
