@@ -2572,3 +2572,106 @@ Y salieron dos más:
   RepuesTop"**, que no es ninguna de las dos tiendas reales.
 - Dato, no código: **Repuestos 2 no tiene titular de cuenta bancaria cargado** en la base
   local, así que la boleta cae al nombre de la tienda.
+
+### 4.37 Sesión 2026-09-01 (noche) — la cancelación del comprador, por subordén
+
+**Commiteado**: `fc310ca` en el monorepo (backend), `179b72c` acá (web).
+
+#### El punto de partida: había botón, pero no servía
+
+`OrderDetailModal.jsx:179` lo mostraba solo en `PENDIENTE`, o sea **antes de pagar** — y un
+pedido sin pagar expira solo, así que en la práctica el comprador nunca tenía una cancelación
+real. Además pasaba por la transición genérica de estado, que cancela el **pedido entero** y no
+engancha ningún reembolso.
+
+La restricción estaba puesta a propósito (`PedidoEstadoSupport:265`, con su comentario): cancelar
+un `PAGADO` exige devolver la plata, y ese pipeline vive en `PedidoCancelacionSupport`. La razón
+era buena; el problema es que nadie lo enganchó nunca.
+
+Y había una asimetría fea: **el vendedor sí podía cancelar un `PAGADO` y disparar el reembolso.**
+El pipeline ya existía.
+
+Cómo lo resuelven acá: **Mercado Libre** deja cancelar hasta que el vendedor despacha, con
+reembolso automático; **Falabella**, mientras el pedido está "En preparación". Los dos cortan
+**después de pagar y hasta el despacho**.
+
+#### Lo que hay ahora
+
+`POST /pedidos/{pedidoId}/proveedores/{proveedorId}/cancelacion-comprador`, **por subordén**:
+cancelarle a una tienda no puede matar la compra de la otra. Si cae la última viva,
+`recalcularEstadoPedido` deja el pedido en `CANCELADO`.
+
+Ventana: `PENDIENTE`, `PAGADO` y `EN_PREPARACION`, medida sobre **su** subordén — que la otra
+tienda ya haya despachado no es asunto de esta compra. Se corta en `ENVIADO`, porque a partir de
+ahí no es cancelar sino devolver, que es otro flujo y no existe.
+
+Reusa el camino del vendedor: devuelve stock, pide el reembolso a la pasarela, es idempotente por
+la clave `buyer-cancel:proveedor:pedido` y, si la pasarela falla, **completa la cancelación igual**
+y deja el reembolso para revisión manual — dejarla a medias sería peor, porque el stock ya volvió
+y el comprador cree que canceló. El motivo no se le pregunta: es `SOLICITUD_DEL_COMPRADOR` por
+definición.
+
+En la web el botón va **dentro de la tarjeta de cada tienda**, no en el pie del modal: con dos
+tiendas, uno suelto abajo no dice a cuál le pega. Se eliminó el del pie junto con su estado y su
+diálogo, que quedaban muertos.
+
+#### Bug de plata: el reembolso repartía el envío por proporción
+
+En el camino que **ya estaba vivo** (el del vendedor). El monto se calculaba prorrateando el TOTAL
+del pedido por la proporción de los subtotales, y ese total trae los envíos de todas las tiendas
+adentro. El comprador paga un despacho **por proveedor**, así que repartirlo por proporción
+devuelve un número que no es el que puso:
+
+| Cancela | Devolvía | Correcto | Diferencia |
+|---|---|---|---|
+| Repuestos 1 ($29.000 + $3.000) | $31.333 | $32.000 | el comprador perdía $667 |
+| Repuestos 2 ($58.000 + $4.000) | $62.667 | $62.000 | los perdía RepuesTop |
+
+Es la misma confusión que la fase 3.1 sacó de la liquidación, escondida en el reembolso. Ahora es
+lo que esa tienda cobró —sus líneas más **su** envío, leído de la subordén con
+`PedidoSubordenSupport.costoEnvioDe`— y **lo comparten las dos cancelaciones**.
+
+**Ojo con una diferencia contra el pago**: acá NO se mira `tipoEnvio`. Se devuelve lo que el
+comprador puso, sin importar quién iba a recibirlo. Para un retiro en tienda `costoEnvioDe` da
+cero solo.
+
+#### `PENDIENTE` no significa "no se pagó"
+
+Lo levantó el usuario preguntando si un pendiente no debería reembolsar. Tiene razón: en
+`PedidoPagoSupport` el `Pago` se marca `APROBADO` y **se guarda antes** de mover el pedido a
+`PAGADO`, así que si algo falla entre esas dos escrituras queda un `PENDIENTE` con plata cobrada.
+Y la tabla de transiciones permite `CANCELADO -> PAGADO`, con un log que dice "pago exitoso
+tardío": ya sabían que pasa.
+
+Por eso **el reembolso se decide por el `Pago` en `APROBADO`, nunca por el estado del pedido**.
+Eso ya era así, pero era un acierto accidental; hay un test que lo fija
+(`unPendienteConPagoAprobadoIgualSeReembolsa`). No "optimizar" esto mirando el estado.
+
+#### Verificado en vivo
+
+Cancelando **Repuestos 2 del pedido 22**. Antes de confirmar, el modal mostraba **un solo botón**:
+Repuestos 1 estaba "Listo para retirar" (`ENVIADO`) y no lo ofrecía. Después: subordén 2 en
+`CANCELADO`, subordén 1 intacta en `ENVIADO`, el pedido vivo, el ítem en `CANCELADO_COMPRADOR` con
+$58.000 de reembolso y la pasarela aceptando la solicitud (`REEMBOLSO_SOLICITADO`, no error).
+
+El pedido 22 quedó con Repuestos 2 cancelado de forma permanente. **El 23 se dejó intacto a
+propósito**: es el fixture con los envíos de $3.000 y $4.000 y cancelarlo lo quema.
+
+De la prueba salió un arreglo de copy: el diálogo prometía devolver "su envío" también en un retiro
+en tienda.
+
+#### El Guardian marcó un falso positivo
+
+`authz-path-id-var` (high) sobre el `@PathVariable proveedorId`. No aplica: el `usuarioId` sale del
+JWT, lo primero que hace el método es `validarDuenoPedido`, y el `proveedorId` solo filtra ítems
+**dentro de ese pedido ya validado**. Un id que no está en el pedido deja la lista vacía y sale sin
+efectos.
+
+#### Qué queda
+
+De la fase 3: **finalizar por tienda**, la **vista de vendedor de la app móvil** y sacar
+`pedido.codigoRetiro`.
+
+Y de esta sesión: **`OrderCard` conserva su botón viejo**, que cancela el pedido completo y solo en
+`PENDIENTE`. Ahí no hay pago, así que no hay reembolso en juego, pero queda inconsistente con el
+modal.
