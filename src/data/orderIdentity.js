@@ -64,10 +64,26 @@ export function orderDisplayCode(order, mode = 'buyer') {
     const codigo = orderItems(order)
       .map((item) => String(item?.codigoVendedor || '').trim())
       .find(Boolean);
-    const cola = codigo ? codigo.split('-').pop() : '';
-    if (cola) return `#${cola}`;
+    const cola = sellerCodeShort(codigo);
+    if (cola) return cola;
   }
   return `#${String(order?.id ?? '').slice(-6).toUpperCase()}`;
+}
+
+/**
+ * La cola de un `codigoVendedor` (`RTP-1-PED-000020` -> `#000020`), lista para pintar.
+ *
+ * Vive aparte porque el codigo del vendedor no llega siempre dentro de un pedido: el panel
+ * de retiros lo recibe suelto, en `codigoExterno`. Ahi mostraba el id crudo del pedido
+ * ("Pedido #24"), que no es ninguno de los numeros que el vendedor conoce. Y la regla del
+ * prefijo -que lleva el id del proveedor y existe para la unicidad en la base, no para
+ * leerse- debe estar escrita UNA vez: en el backend estuvo repetida en siete sitios.
+ */
+export function sellerCodeShort(codigoVendedor) {
+  const codigo = String(codigoVendedor || '').trim();
+  if (!codigo) return '';
+  const cola = codigo.split('-').pop();
+  return cola ? `#${cola}` : '';
 }
 
 const DELIVERY_LABELS = {

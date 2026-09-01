@@ -9,6 +9,7 @@ import {
   getSellerWithdrawalDetailApi, getSellerWithdrawalsApi, updateSellerBankAccountApi,
 } from '../services/api';
 import { BANKS, findBankByCode } from '../data/banks';
+import { sellerCodeShort } from '../data/orderIdentity';
 import { formatRut, isValidRut } from '../services/adapters';
 
 const EMPTY_PENDING = { pedidos: [], totalARetirar: 0 };
@@ -73,7 +74,10 @@ function PendingOrderRow({ order }) {
     <article className="withdrawal-order-row">
       <div>
         <strong>{order.nombrePedido || order.nombre || 'Producto sin nombre'}</strong>
-        <span>Pedido #{order.pedidoId} · {formatDate(order.fecha, true)} · Cantidad vendida: {Number(order.cantidadVendida || 0)}</span>
+        {/* El numero que el vendedor conoce es SU `codigoVendedor`, no el id del pedido: el id
+            es interno y el comprador ademas ve otro numero distinto (su propia secuencia).
+            El backend ya lo manda en `codigoExterno`; se cae al id solo si falta. */}
+        <span>Pedido {sellerCodeShort(order.codigoExterno) || `#${order.pedidoId}`} · {formatDate(order.fecha, true)} · Cantidad vendida: {Number(order.cantidadVendida || 0)}</span>
       </div>
       <b>{formatCLP(order.valor)}</b>
     </article>
