@@ -2450,3 +2450,125 @@ escenario.
   lo usa hoy) y sacar `pedido.codigoRetiro`, redundante desde la fase 2.
 - **En producción NO hay pedidos de dos tiendas con despacho a domicilio**, así que no hay
   plata pagada de más que reconciliar: el arreglo llega antes que el caso.
+
+### 4.36 Sesión 2026-09-01 (tarde/noche) — Ruta B fase 3, parte 2: la fila del backoffice
+
+**Commiteado en el monorepo**: `34633dd` (migración), `fec8cb0` (fase 3.2), `f227fc4`
+(subtotal del comprador). Solo backend.
+
+#### Dónde vive el backoffice, que es lo primero que hay que saber
+
+`C:/ProyectoRepuestop/backoffice_sistema/backoffice/frontend`, repo aparte con remoto
+**`javiersazo95-glitch/backoffice_sistema`** (no el monorepo). El módulo es
+`src/modules/administration/`, y el archivo grande es `AdminFinancePage.tsx` (3.809 líneas).
+Hay además un `Backoffice_movil`.
+
+**Ninguno de los dos clientes llama a `/administration/orders`.** Los dos leen
+`/administration/bootstrap`. O sea que `PedidoAdminRespuestaDTO` **no tiene consumidores** y
+el DTO que se ve en pantalla es `AdministrationOrderDTO`. Ahí se concentra el contrato.
+
+#### La fila se partió en N, una por (pedido, vendedor)
+
+Antes era una por PEDIDO: `seller`, `sellerTaxId`, `sellerEmail` y `sellerLegalName` —el
+**titular de la cuenta bancaria**— salían del primer ítem vía `.findFirst()`, y los importes
+se calculaban sobre los ítems de todas las tiendas.
+
+Se partió, en vez de dejar una fila con desglose, porque **todo lo que cuelga de esa fila ya
+es por vendedor**: `getSettlements()` (en `utils.ts` del backoffice) deriva una liquidación
+por fila y las agrupa por `sellerEmail || sellerTaxId || seller` para **emitir la boleta o
+factura**, y la nómina BCI paga por vendedor. Una fila con desglose obligaba a reescribir esa
+parte igual. La suma de las N filas es idéntica a la fila anterior, así que **los KPIs del
+resumen no se mueven**.
+
+**El `.findFirst()` no se borró: se le acotó la entrada.** `resumenItems()` y
+`proveedorItems()` siguen mirando el primer ítem, pero reciben solo los de esa tienda.
+
+**Se agrupa por los ÍTEMS, no por las subórdenes.** Repararlas es `asegurarSubordenes()`, que
+ESCRIBE, y `getBootstrap` es `@Transactional(readOnly = true)`. La subordén se usa solo para
+lo que únicamente ella sabe —estado, reloj y envío— con respaldo al pedido si falta la fila.
+
+#### El id de la fila: `PED-0000023-P2`
+
+**No sirve `codigoVendedor`**: se emite por LÍNEA (`PedidoCheckoutCarritoSupport:312`), así que
+un vendedor con tres productos tiene tres códigos y ninguno identifica la subordén. El frontend
+usa `order.id` como clave de React, de selección, del mapa de liquidaciones (`LQ-<id>`), del
+historial y de `issuedDocuments`: repetirlo colapsa filas.
+
+Ojo: **ese id no puede pasar por `normalizeOrderId()`**, que borra los no-dígitos y pegaría el
+23 con el 2. Esa función solo debe seguir viendo `pedido.getId()` para el cruce con
+`Mediacion.pedidoId`.
+
+Los documentos tributarios se persisten contra **`retiroId`**, que ya es por vendedor, así que
+partir las filas **no huérfana ningún documento emitido**.
+
+#### Dos arreglos que destapó el cambio
+
+- **El estado de la fila era el DERIVADO** (el menos avanzado). Un vendedor que ya cerró lo
+  suyo salía "Preparando" hasta que la otra tienda terminara — y como las liquidaciones se
+  arman filtrando `status === 'Finalizado'`, **la suya no aparecía aunque su Retiro ya
+  estuviera habilitado desde la fase 3.1**. La misma fila se contradecía sola. Igual el reloj
+  de los 3 días, que se reiniciaba cuando se movía la otra tienda.
+
+- **`montoPagarVendedor` estaba en el DTO desde siempre y NUNCA se llenaba.** El backoffice
+  caía a `subtotal - descuentos`, que no incluye el envío: mostraba **menos de lo que la caja
+  transfiere**. Ahora se le pide el número a `RetiroProveedorService.calcularMontoPagarVendedor`,
+  el mismo método que emite el pago, en vez de recalcularlo.
+
+`PedidoSubordenSupport` se abrió a `public` **solo** para reusar `costoEnvioDe` desde
+`service.admin`; el resto de sus métodos sigue siendo de paquete.
+
+#### Verificado en el backoffice real
+
+Con la base local, entrando al panel: el pedido **22 muestra "Enviado" y "Preparando" en la
+misma compra** (antes las dos decían "Preparando"), el **21** deja el "Cancelado" solo en la
+tienda que canceló y ya no marca "Cancelado parcialmente" a la sana, y el **23** separa los
+envíos de $3.000 y $4.000. Cada fila abre la boleta con el RUT y el titular de SU tienda
+(`78.787.878-7 / Elias Elias` vs `87.878.787-8 / Repuestos 2`).
+
+Detalle que confirma que la matemática quedó por tienda: el monto de la boleta da **$276** y
+**$1.102**, que es el IVA de la comisión con la tasa propia de cada una — Repuestos 1 es
+fundador (5%) y Repuestos 2 va al 10%. Con la fila única no había forma de mostrar las dos.
+
+#### Y el mismo bug de desglose, del lado del COMPRADOR
+
+`PedidoResponseDTO` **no tenía campo `subtotal`** y la web hace `order.subtotal ?? order.total`.
+Al vendedor le calzaba de casualidad (su `total` ES su subtotal desde la 3.1); al comprador
+`total` trae el envío adentro, así que la pantalla decía **"Subtotal $94.000 + Envío $7.000 =
+Total $94.000"**.
+
+El campo es del DESTINATARIO: para el comprador son **todos** los ítems del pedido —el
+reembolso de lo cancelado se descuenta en su propia línea más abajo, así que el subtotal es el
+cobro original— y para un vendedor sus ítems vivos. La web no se tocó: ningún adaptador rearma
+el pedido, el DTO llega crudo al modal.
+
+**Van seis arreglos del mismo tipo en tres sesiones.** Cada campo de este DTO es del PEDIDO o
+del DESTINATARIO y hay que decidirlo AL AGREGARLO.
+
+#### El conflicto de Flyway del merge
+
+El commit `deb08a6` del socio trajo una segunda migración `V2026090101` y Flyway aborta el
+arranque. Se renumeró **la del socio** a `V2026090102`: la de `costo_envio_por_suborden` ya
+está aplicada y validada en la base local, y renombrarla la dejaría como versión faltante y con
+checksum ajeno. En dev no había ninguna de las dos aplicadas. **Quien ya la haya corrido en su
+base local tiene que borrar la fila 2026090101 de `flyway_schema_history`.**
+
+#### Qué falta
+
+De la fase 3 quedan tres: **finalizar por tienda** (hoy el comprador cierra todas las
+subórdenes de una vez), la **vista de vendedor de la app móvil** y sacar `pedido.codigoRetiro`.
+
+Y salieron dos más:
+
+- **El comprador no puede cancelar después de pagar.** El botón existe pero solo en
+  `PENDIENTE` (`OrderDetailModal.jsx:179`), respaldado por `PedidoEstadoSupport:265`. La razón
+  es buena —cancelar un pagado exige el pipeline de reembolso, que vive en
+  `PedidoCancelacionSupport`— pero la ventana es inútil: un pedido sin pagar expira solo. En
+  Chile, MercadoLibre deja cancelar hasta que el vendedor despacha y Falabella mientras está
+  "En preparación"; los dos cortan **después de pagar y hasta el despacho**. Y hay una
+  asimetría fea: **el vendedor sí puede cancelar un `PAGADO` y disparar el reembolso**. El
+  pipeline ya existe, falta engancharlo — y debe ser **por subordén**, o cancelarle a una
+  tienda mata la compra de la otra.
+- En la tarjeta de "Mis Pedidos" el vendedor de un carrito multi-tienda sale como **"Tienda
+  RepuesTop"**, que no es ninguna de las dos tiendas reales.
+- Dato, no código: **Repuestos 2 no tiene titular de cuenta bancaria cargado** en la base
+  local, así que la boleta cae al nombre de la tienda.
