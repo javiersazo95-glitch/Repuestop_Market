@@ -2675,3 +2675,123 @@ De la fase 3: **finalizar por tienda**, la **vista de vendedor de la app móvil*
 Y de esta sesión: **`OrderCard` conserva su botón viejo**, que cancela el pedido completo y solo en
 `PENDIENTE`. Ahí no hay pago, así que no hay reembolso en juego, pero queda inconsistente con el
 modal.
+
+### 4.38 Sesión 2026-09-01 (noche) — Ruta B fase 3, parte 3: finalizar por tienda
+
+**Sin commitear a pedido del usuario.** Backend + web.
+
+#### El "de una vez" no estaba en el botón
+
+Estaba en tres líneas de `PedidoEstadoSupport`, en cómo se elegía el sujeto de la acción:
+
+```java
+subordenSupport.subordenDelUsuario(subordenes, solicitanteId)
+        .orElseGet(() -> vivas.isEmpty() ? subordenes : vivas);
+```
+
+El vendedor se resuelve solo, porque su usuario mapea a su subordén. **El comprador caía
+siempre al `orElseGet`**, o sea a todas las vivas — y no porque se hubiera decidido así para
+él, sino porque no tenía forma de decir *cuál*. La máquina de estados, el PIN y
+`validarAvanceControlado` ya corrían POR SUBORDÉN dentro del bucle desde la fase 1. Lo único
+que faltaba era el sujeto.
+
+#### Lo que hay ahora
+
+**`proveedorId` opcional en `PUT /pedidos/{id}/estado`**, no un endpoint nuevo. La cancelación
+se fue a `POST .../cancelacion-comprador` porque traía un pipeline propio (stock, reembolso,
+idempotencia); confirmar y finalizar **son la transición genérica**, así que un endpoint aparte
+duplicaría `actualizarEstadoPedido` entero — justo el método que la §4.34 dejó como punto
+único.
+
+Dos reglas que hay que mantener:
+
+- **`proveedorId` es del COMPRADOR.** A un vendedor se le ignora, porque su subordén se
+  resuelve por su usuario y le gana antes de llegar ahí. Sin esa precedencia el campo sería la
+  vía para que una tienda le moviera el estado a la otra, que es exactamente lo que la Ruta B
+  vino a impedir. Hay test (`unVendedorNoMueveLaSubordenDeOtroMandandoSuId`).
+- **Nulo mantiene el alcance histórico** (todas las vivas). De eso dependen la app móvil, el
+  listado y el pedido de una sola tienda, que no mandan el campo. También con test.
+
+**Se partieron LAS DOS transiciones, no una.** Partir solo la recepción deja un callejón sin
+salida: con la tienda A en `ENTREGADO` y la B en `ENVIADO`, "finalizar" global apunta a las dos,
+`validarTransicion` rechaza `ENVIADO -> FINALIZADO` y el botón queda muerto hasta que llegue B.
+
+#### Qué le pasa al pedido con una tienda finalizada y la otra no
+
+Nada nuevo: `derivar` ya lo contestaba y **no se tocó**. `FINALIZADO` tiene avance 5, así que el
+pedido se queda en el estado de la otra y solo llega a `FINALIZADO` cuando cierran todas las
+vivas. **El timeline del comprador sigue mostrando el derivado y así se queda**: partirlo en dos
+convierte la pantalla en dos pedidos, que es el modelo descartado.
+
+Lo que esto destraba es el caso que la §4.35 tuvo que **simular con UPDATE porque la UI no podía
+producirlo**: el vendedor de la tienda ya cerrada retira su plata sin esperar a la otra. Los tres
+caminos que lo bloqueaban están descritos ahí; este cierra el del comprador.
+
+#### El reloj de los tres días ya estaba peor de lo que parecía
+
+Confirmar la recepción global **arrancaba el reloj de las dos tiendas en el mismo instante**,
+aunque una hubiera llegado una semana antes. Partir la recepción lo corrige solo, porque
+`@PreUpdate` mueve el `updatedAt` de la subordén tocada y de ninguna otra.
+
+#### Dos defectos de notificación que el cambio destapaba
+
+Los dos con el mismo mecanismo: **el aviso falso QUEMA la clave de deduplicación y el
+verdadero se descarta después como duplicado.** No es ruido, es un aviso perdido.
+
+- **`notificarPedidoRecibido` avisaba a TODOS los proveedores del pedido.** Confirmando la
+  tienda A, la B recibía "el comprador marcó como recibido" siendo falso, con la clave
+  `pedido-recibido:<pedido>:proveedor:<proveedor>` ya gastada. Ahora se acota a las que de
+  verdad se movieron; nulo conserva el alcance de antes.
+- **El aviso al comprador se disparaba con el estado PEDIDO, no con el derivado.** Confirmar A
+  decía "Pedido entregado" con B en viaje y quemaba `pedido-estado:<id>:ENTREGADO`. **Solo
+  cuando la acción viene acotada a una tienda** se usa el derivado; el camino del vendedor se
+  dejó intacto a propósito (también miente, pero es anterior a esto y tocarlo es otro alcance).
+
+#### Web
+
+- Con **más de una tienda** los botones viven **dentro de la tarjeta de cada tienda**, junto al
+  de cancelar, gobernados por `seller.subOrder.estado`. Los del pie se ocultan: uno suelto abajo
+  no dice a qué tienda le pega.
+- Con **una sola** (que son casi todos) el pie queda **igual que antes**. Es la acción principal
+  del comprador y meterla dentro de la tarjeta del vendedor la esconde sin resolver ninguna
+  ambigüedad. `showSubOrders` ya gatea así el badge, el tracking y el courier.
+- **`OrderCard` deja de ofrecer acciones en un pedido de varias tiendas.** Su botón mandaba la
+  transición sin `proveedorId`, o sea que **el split se puenteaba desde el listado**: el
+  comprador cerraba las dos tiendas de una. De paso se apagó ahí el "Cancelar pedido" viejo que
+  quedó anotado en la §4.37 — mismo agujero, mismo arreglo.
+- **El prompt de calificación se decide por el estado que DEVUELVE el backend**, no por el que
+  se pidió. `PedidoPostVentaSupport` exige calificar todos los ítems de un pedido
+  `ENTREGADO`/`FINALIZADO`; mirando `newStatus`, el modal se abría al confirmar la primera
+  tienda y el POST moría en 400.
+
+#### Y la fila del retiro mostraba el id crudo
+
+Salió de la prueba en vivo: la pantalla "Retirar dinero" decía **"Pedido #24"**, que no es
+ninguno de los números que existen — el vendedor conoce su `codigoVendedor` y el comprador su
+propia secuencia. **El backend ya lo mandaba** en `codigoExterno`; la web lo ignoraba. La regla
+de la cola (`RTP-1-PED-000020` -> `#000020`) se extrajo a `sellerCodeShort()` en
+`orderIdentity.js` en vez de repetirla: en el backend ese prefijo llegó a estar escrito en siete
+sitios.
+
+#### Verificado en vivo con el pedido 24
+
+Compra real de dos tiendas creada por el usuario, con los envíos separados en $3.000 y $4.000.
+Ambas subórdenes llevadas a `ENVIADO` y **confirmada solo Repuestos 1**, desde la web:
+
+- Subordén de Repuestos 1 en `ENTREGADO` y luego `FINALIZADO`; la de Repuestos 2 **intacta en
+  `ENVIADO`, con su `updated_at` sin mover**.
+- `rt_pedido.estado` se quedó en **`ENVIADO`**: el pedido no se dio por cerrado.
+- Existe `pedido-recibido:24:proveedor:1` y **no existe** el `:proveedor:2`. Tampoco se creó
+  `pedido-estado:24:ENTREGADO`.
+- **Repuestos 1 pudo retirar $29.553** con Repuestos 2 todavía en viaje. El monto confirma de
+  paso que la plata por subordén de la §4.35 sigue intacta: 29.000 + **sus 3.000** − comisiones.
+  Con los 7.000 del pedido habrían sido $33.553, que era el envío pagado dos veces.
+
+`mvn package` ✅ y **107 tests ✅** (4 nuevos). Web: `npm run build` ✅, `npm run lint` **98
+warnings / 0 errores**.
+
+#### Qué queda de la fase 3
+
+La **vista de vendedor de la app móvil** (cae a los últimos 6 del id en vez de `codigoVendedor`;
+vive en `repuestop/mobile` y es la única que no toca la web) y sacar **`pedido.codigoRetiro`**,
+redundante desde que el PIN vive en la subordén.
