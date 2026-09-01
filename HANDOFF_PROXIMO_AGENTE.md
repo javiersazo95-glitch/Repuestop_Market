@@ -2795,3 +2795,103 @@ warnings / 0 errores**.
 La **vista de vendedor de la app móvil** (cae a los últimos 6 del id en vez de `codigoVendedor`;
 vive en `repuestop/mobile` y es la única que no toca la web) y sacar **`pedido.codigoRetiro`**,
 redundante desde que el PIN vive en la subordén.
+
+### 4.39 Sesión 2026-09-01 (noche) — Ruta B fase 3, parte 4: el PIN de retiro por tienda
+
+**Backend + web.**
+
+#### La nota que decía "redundante" estaba equivocada
+
+El pendiente venía anotado como *"sacar `pedido.codigoRetiro`, redundante porque el PIN ya vive
+en la subordén"*. **No era redundante: era la fuente.** La subordén guardaba una *copia* —había
+tres sitios haciendo `suborden.setCodigoRetiro(pedido.getCodigoRetiro())`— y
+`validarEntregaRetiroEnTienda` medía contra el del pedido. La base lo confirmaba: en el pedido
+22, las dos tiendas compartían el `860797`.
+
+Lo que eso significa en la calle: **en un carrito de dos tiendas con retiro, el comprador le
+dicta a la primera el mismo código que abre la entrega de la segunda.** Cuando no hay courier
+que deje trazabilidad, ese PIN es la única prueba de que el pedido se entregó a la persona
+correcta, así que compartirlo entre tiendas lo vacía de sentido.
+
+Borrar la columna sin más habría dejado el sistema sin fuente del PIN. Hacerlo bien era generar
+uno por tienda.
+
+#### Ojo con el grep: `codigoRetiro` nombra DOS cosas
+
+Además del PIN de 6 dígitos, es el código de un **retiro de dinero** (`RTP-1-RET-000002`) en
+`RetiroSocio`, `RetiroAdminResponseDTO`, `RetiroProveedorAdminHelper` y
+`CodigoVendedorSecuencia.siguienteCodigoRetiro()`. Un grep a ciegas mezcla las dos familias y la
+segunda no tiene nada que ver.
+
+#### Lo que hay ahora
+
+`PedidoRetiroTiendaSupport.asegurarCodigoRetiro(pedido, suborden)` genera el PIN **en la
+subordén**, cuando esa tienda queda lista para retirar, y `validarEntregaRetiroEnTienda` lo mide
+contra el de **su** subordén. Ningún camino vuelve a copiar el del pedido.
+
+**`V2026090103` copia antes de borrar.** En la base local no hacía falta —los cuatro PIN
+históricos ya estaban replicados, porque `asegurarSubordenes` los venía sembrando al reparar
+filas—, pero producción puede diferir y un retiro ya anunciado al comprador no puede quedarse
+sin código válido. Recién después: `DROP COLUMN`.
+
+**Y borrar la columna obligó a sacar el campo de la entidad `Pedido`.** Con `ddl-auto=update`,
+un campo mapeado **RECREA** la columna que la migración acaba de borrar. Quedó un comentario en
+el modelo para que nadie lo re-declare.
+
+#### El campo plano del DTO, que es del móvil
+
+`PedidoResponseDTO.codigoRetiro` existe hoy solo para la app móvil, que lee ese campo y **no lee
+`subordenes[]`**. Ahora sale de las subordenes **vivas**: con una es el de esa tienda —casi todos
+los pedidos, y el móvil sigue igual que siempre—; **con varias va nulo a propósito**, porque el
+campo no dice de cuál tienda es y mandar uno hace que el comprador le dicte a una tienda el
+código de la otra. La web ya no lo necesita: pinta el de cada bloque desde `subordenes[]`.
+
+Es otra instancia de la regla de la §4.35: cada campo del DTO es del pedido o del destinatario.
+
+#### Verificado en vivo con el pedido 25
+
+Compra real de dos tiendas con retiro en tienda, con cada vendedor marcando "Listo para retirar":
+
+- `V2026090103` en `success = t` y **`rt_pedido.codigo_retiro` ya no existe** (0 filas en
+  `information_schema`).
+- Repuestos 1 → `790372`, Repuestos 2 → `644024`. **Distintos.**
+- Los PIN históricos (pedidos 7, 20 y 22) siguen en su subordén.
+- El comprador ve los dos códigos, cada uno bajo su tienda.
+
+`mvn package` ✅ y **110 tests ✅** (3 nuevos: PIN distinto por tienda, el PIN ajeno rechazado, y
+el campo plano en nulo con varias tiendas). Web: `build` ✅, `lint` 98 warnings / 0 errores.
+
+**El `mvn package` atrapó un `getCodigoRetiro()` roto en un TEST**, que `mvn compile` habría
+dejado pasar hasta el deploy. Es exactamente el caso que CLAUDE.md advierte.
+
+#### Dos arreglos que salieron de la prueba
+
+**1. "Envío dentro de la comuna" se ofrecía a compradores de otra comuna.** Es una tarifa
+intracomunal —la tienda reparte ella misma dentro de SU comuna—, así que ofrecerla a alguien de
+otra comuna le cobra $4.000 por un despacho que no existe y deja al vendedor obligado a un envío
+que no presta. La regla es: si el comprador no es de la comuna del vendedor, solo le quedan el
+retiro en tienda y el envío fuera de la comuna.
+
+`PurchaseShippingModal` filtra el método comparando `user.comuna` con `product.ciudadVendedor`,
+normalizadas sin tildes (el catálogo de geografía viene sin tildes y las direcciones con ellas,
+la misma trampa que `handleSuggestionLocation`). El usuario se lee con `useAuth()` DENTRO del
+modal y no por props, porque lo montan la ficha del producto y el carrito y la regla tiene que
+ser una sola.
+
+**Queda un hueco conocido**: sin comuna del comprador —invitado, o cuenta sin dirección
+cargada— el método se sigue mostrando. Esconderlo ahí le quitaría una opción legítima a quien sí
+vive en la comuna y todavía no completó su perfil. La barrera de verdad tendría que estar
+también en el backend, que hoy no valida la combinación.
+
+**2. El input del PIN de 6 dígitos.** Era un input genérico de 160px pegado al botón, sin
+etiqueta, que en el pie del modal se leía como un campo de búsqueda perdido. Ahora es
+`.order-pin-entry`: etiqueta, caja monoespaciada con `letter-spacing`, la ayuda de dónde sale el
+número, y el botón alineado con la caja y no con el bloque. Lleva `!important` en el input
+porque los estilos base de formulario ganan por especificidad y lo devolvían al alto de un input
+común.
+
+#### Con esto la fase 3 queda cerrada salvo el móvil
+
+Queda **la vista de vendedor de la app móvil**, que cae a los últimos 6 del id en vez de
+`codigoVendedor` y que además tendría que leer `subordenes[]` para mostrar un PIN por tienda.
+Vive en `repuestop/mobile` y es la única pendiente que no toca la web.
