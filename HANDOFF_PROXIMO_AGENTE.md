@@ -2904,3 +2904,72 @@ común.
 Queda **la vista de vendedor de la app móvil**, que cae a los últimos 6 del id en vez de
 `codigoVendedor` y que además tendría que leer `subordenes[]` para mostrar un PIN por tienda.
 Vive en `repuestop/mobile` y es la única pendiente que no toca la web.
+
+### 4.40 Sesión 2026-09-01 (noche) — Ruta B fase 3, parte 5: la app móvil
+
+**Solo `repuestop/mobile`.** Con esto la fase 3 queda cerrada.
+
+#### La vista de vendedor mostraba un número que no existe
+
+`getOrderDisplayCode(order, 'seller')` caía a `order.id.slice(-6)` **siempre**: el campo
+`codigoVendedor` no estaba en el tipo `BuyerOrderItem` ni en el mapeo, así que la rama de
+vendedor no tenía de dónde leerlo. El vendedor veía los últimos 6 dígitos del id interno, que no
+es ninguno de los números que existen en el sistema.
+
+Ahora lee `items[].codigoVendedor` y muestra solo la cola (`RTP-1-PED-000020` → `#000020`),
+igual que `orderDisplayCode()` de la web. **Las dos implementaciones tienen que coincidir**: si
+una cambia el formato, la misma venta se ve con dos números distintos según dónde se mire.
+
+Alcanza a las seis pantallas que lo usan: el panel del vendedor, sus pedidos, el detalle, la
+tarjeta de pedido, el chat de mediación y el centro de disputas.
+
+**Había un test que fijaba el bug**: *"mantiene el identificador interno para el vendedor"*,
+afirmando `#456789` sobre un id. Se reescribió; el caso del id crudo queda solo como respaldo
+para pedidos anteriores a la secuencia por vendedor.
+
+#### Una regresión que dejó la §4.39, ya en `dev`
+
+El PIN por tienda dejó `PedidoResponseDTO.codigoRetiro` en **nulo** para pedidos de varias
+tiendas —a propósito: no dice de cuál es—, y el móvil leía exactamente ese campo. Resultado: el
+comprador móvil se quedaba **sin código de retiro** en un pedido de dos tiendas.
+
+El móvil no conocía `subordenes[]` en absoluto. Ahora lo mapea a `BuyerOrder.subOrders` y el
+detalle pinta **una `PickupCodeCard` por tienda**, con el nombre de la tienda cuando hay más de
+una. Sin nombre, dos tarjetas iguales harían que el comprador le dictara a una tienda el código
+de la otra, que es justo lo que el PIN por tienda vino a impedir.
+
+**Ojo con el estado que filtra esas tarjetas**: es el de CADA subordén, no el del pedido. El del
+pedido es el derivado —el menos avanzado de las vivas—, así que con una tienda todavía en
+preparación el comprador no vería el código de la que ya está lista para retirar.
+
+Sin subordenes se cae al campo plano, que es lo que traen los pedidos históricos.
+
+#### El código de soporte
+
+`help.tsx` identificaba el pedido con el número del comprador o el del vendedor. Ninguno de los
+dos le sirve a soporte: son secuencias por cuenta, y dos clientes distintos tienen ambos su
+"pedido #1". El backend manda `codigoSoporte` (`PED-0000021`) justo para eso y el móvil lo
+ignoraba.
+
+Va **además** del número propio, no en su lugar: quitarle al usuario el número que reconoce lo
+haría dudar de si eligió el pedido correcto.
+
+#### Verificación
+
+`tsc --noEmit` limpio, `expo lint` **0 errores** (94 warnings preexistentes) y **12 tests en
+`utils/__tests__/orders.test.ts`** (6 nuevos: el código del vendedor, su mapeo, el respaldo al
+id, el PIN por tienda con el campo plano en nulo, el desglose vacío del vendedor y el código de
+soporte).
+
+Suite completa: **84 de 85 suites, 473 tests**. El único fallo es
+`components/ads/__tests__/appointments-calendar-modal.test.tsx`, **preexistente** y de la agenda
+de anuncios. Ojo: **la suite del móvil es inestable** — dos corridas seguidas dieron 9 y 1
+suites fallidos sin ningún cambio en medio. Conviene mirar QUÉ suite falla, no el número.
+
+#### Lo que queda del móvil, que no se hizo
+
+La app **no tiene la cancelación por subordén ni el finalizar por tienda**: sigue mandando la
+transición sin `proveedorId`, o sea que el comprador móvil cierra todas las tiendas de una vez.
+El backend lo acepta porque nulo mantiene el alcance histórico a propósito, así que no está
+roto — está atrasado respecto de la web. Es el mismo trabajo que las §4.38 y §4.37, aplicado a
+la app.
