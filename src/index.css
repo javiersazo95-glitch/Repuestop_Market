@@ -5255,6 +5255,29 @@ input, select, textarea {
    estado y no como algo clickeable. */
 .order-controlled-wait--modal { flex: 1; justify-content: center; padding: 12px 16px; border: 1px solid #cfe0f5; border-radius: var(--radius-sm); background: #f2f7fd; font-size: 13px; }
 
+/* Entrega de un retiro en tienda: el vendedor teclea el PIN de 6 digitos que le dicta el
+   comprador. Antes era un input generico de 160px pegado al boton, sin etiqueta, que en el
+   pie del modal se leia como un campo de busqueda perdido. `.order-pin-entry` lo agrupa con
+   su boton y le da el aire de un campo de codigo: casillas monoespaciadas y separadas. */
+.order-pin-entry { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.order-pin-field { display: flex; flex-direction: column; gap: 5px; }
+.order-pin-label { display: inline-flex; align-items: center; gap: 5px; color: #475569; font-size: 11.5px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
+/* `!important` porque `.order-modal-footer input` y los estilos base de formulario ganan por
+   especificidad y devuelven el campo al alto y la tipografia de un input comun. */
+.order-pin-field input { width: 158px !important; padding: 10px 12px !important; border: 1.5px solid #cbd5e1 !important; border-radius: var(--radius-sm); background: #fff; font-family: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, Consolas, monospace; font-size: 19px !important; font-weight: 700; text-align: center; letter-spacing: .34em; text-indent: .34em; color: #0f172a; }
+.order-pin-field input::placeholder { color: #cbd5e1; font-weight: 600; letter-spacing: .34em; }
+.order-pin-field input:focus { outline: none; border-color: var(--brand-blue, #1d6fe0) !important; box-shadow: 0 0 0 3px rgba(29, 111, 224, .16); }
+.order-pin-field small { color: #94a3b8; font-size: 11px; }
+/* El boton se alinea con la CAJA del input, no con el bloque completo: sin esto la etiqueta
+   de arriba lo empuja y queda flotando sobre el campo. */
+.order-pin-submit { margin-bottom: 18px; }
+
+@media (max-width: 560px) {
+  .order-pin-entry { width: 100%; }
+  .order-pin-field, .order-pin-field input { width: 100% !important; }
+  .order-pin-submit { margin-bottom: 0; width: 100%; justify-content: center; }
+}
+
 .btn-action-red {
   background: #dc2626;
   color: #ffffff;

@@ -340,9 +340,11 @@ export default function OrderDetailModal({
       // lo escribe el backend al despachar: con dos tiendas cada una genera el suyo y solo
       // cuando le toca, asi que la que todavia no despacha viene sin codigo.
       //
-      // Se cae a `order.codigoRetiro` SOLO con una tienda, para los pedidos anteriores a
-      // que el codigo se guardara en la suborden. Con dos, el del pedido no dice de quien
-      // es, y mostrar un PIN bajo la tienda equivocada es peor que no mostrar ninguno.
+      // Se cae a `order.codigoRetiro` SOLO con una tienda. Ese campo plano ya no sale de un
+      // PIN del pedido -no existe: cada tienda genera el suyo desde V2026090103- sino de la
+      // unica suborden viva, y el backend lo manda NULO cuando hay varias. Con dos, un codigo
+      // que no dice de quien es pinta un PIN bajo la tienda equivocada, que es peor que
+      // ninguno.
       pickupCode: subOrder?.codigoRetiro || (subOrders.length <= 1 ? order.codigoRetiro : null),
       logo: resolveMediaUrl(item.proveedorLogoUrl || item.sellerLogoUrl),
       phone: item.proveedorTelefono || item.sellerPhone || '',
@@ -884,21 +886,28 @@ export default function OrderDetailModal({
                 <span>Registrar Envío / Despacho</span>
               </button>
             ) : controlledAction.requiresPin ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <div className="input-with-icon" style={{ maxWidth: '160px' }}>
-                  <KeyRound size={15} className="field-icon" />
+              /* El PIN es la unica prueba de que se entrego a la persona correcta, asi que el
+                 campo se pinta como tal -- seis casillas monoespaciadas y una etiqueta que dice
+                 de donde sale el numero-, y no como un input suelto al lado del boton. */
+              <div className="order-pin-entry">
+                <label className="order-pin-field" htmlFor="order-pickup-pin">
+                  <span className="order-pin-label"><KeyRound size={13} /> Código de retiro</span>
                   <input
+                    id="order-pickup-pin"
                     type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     maxLength={6}
-                    placeholder="PIN 6 dígitos"
+                    placeholder="000000"
+                    aria-label="Código de retiro de 6 dígitos"
                     value={pickupPin}
                     onChange={(e) => setPickupPin(e.target.value.replace(/\D/g, ''))}
-                    style={{ textAlign: 'center', fontWeight: 'bold' }}
                   />
-                </div>
+                  <small>Te lo dicta el comprador al retirar</small>
+                </label>
                 <button
                   type="button"
-                  className="btn-auth-primary"
+                  className="btn-auth-primary order-pin-submit"
                   disabled={isUpdating || pickupPin.trim().length !== 6}
                   onClick={handleStatusSubmit}
                 >
