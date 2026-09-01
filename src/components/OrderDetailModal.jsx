@@ -114,6 +114,11 @@ export default function OrderDetailModal({
   const [isCancellingStore, setIsCancellingStore] = useState(false);
   const [storeCancelError, setStoreCancelError] = useState('');
   const [confirmStatusAdvance, setConfirmStatusAdvance] = useState(false);
+  // La tienda cuya recepcion/finalizacion el comprador esta confirmando. Igual que la
+  // cancelacion: es por subordén, asi que hay que saber CUAL y no solo que se pulso.
+  const [storeToAdvance, setStoreToAdvance] = useState(null);
+  const [isAdvancingStore, setIsAdvancingStore] = useState(false);
+  const [storeAdvanceError, setStoreAdvanceError] = useState('');
   const [now, setNow] = useState(Date.now());
 
   // Seller Cancelation Modal State
@@ -194,6 +199,38 @@ export default function OrderDetailModal({
     const estado = String(seller.subOrder?.estado || normStatus || '').toUpperCase();
     return CANCELLABLE_BY_BUYER.includes(estado);
   };
+  // Confirmar la recepcion y finalizar, POR TIENDA. Antes el comprador cerraba el pedido
+  // completo de una vez: confirmaba la recepcion de las dos tiendas aunque solo le hubiera
+  // llegado una. Ahora cada bloque mueve su propia subordén y el estado del pedido se sigue
+  // derivando en el backend (el menos avanzado de las vivas), que es lo que el timeline de
+  // arriba muestra.
+  //
+  // Solo con mas de una tienda: con una sola, la accion vive en el pie del modal como
+  // siempre. Es la accion principal del comprador y meterla dentro de la tarjeta del vendedor
+  // la esconde sin ganar nada, porque no hay ninguna ambiguedad que resolver.
+  const buyerStoreAction = (seller) => {
+    if (isSeller || !showSubOrders || !onUpdateStatus) return null;
+    if (!Number.isFinite(Number(seller?.id))) return null;
+    const estado = String(seller.subOrder?.estado || '').toUpperCase();
+    if (estado === 'ENVIADO') {
+      return {
+        nextStatus: 'ENTREGADO',
+        label: isStorePickup ? 'Confirmar retiro' : 'Confirmar recepción',
+        title: isStorePickup ? `¿Confirmar el retiro en ${seller.name}?` : `¿Confirmar lo que envió ${seller.name}?`,
+        message: `Confirma únicamente si ya tienes en tus manos los repuestos de ${seller.name}. El resto del pedido sigue su curso. Esta acción no se puede deshacer.`,
+      };
+    }
+    if (estado === 'ENTREGADO') {
+      return {
+        nextStatus: 'FINALIZADO',
+        label: 'Finalizar compra',
+        title: `¿Finalizar tu compra a ${seller.name}?`,
+        message: `Se cierra definitivamente lo de ${seller.name} y se habilita su pago. Las otras tiendas del pedido no se ven afectadas.`,
+      };
+    }
+    return null;
+  };
+
   // Solo PENDIENTE y PAGADO: `PedidoCancelacionSupport` corta ahi ("Solo se pueden
   // cancelar pedidos pendientes") y con EN_PREPARACION el boton salia igual y el POST
   // moria en 400. Si el backend amplia la ventana, hay que ampliarla aca tambien.
@@ -283,6 +320,9 @@ export default function OrderDetailModal({
   // Con UNA tienda -que son casi todos los pedidos- no se pinta nada nuevo: el desglose de
   // un solo bloque repite lo que la pildora de arriba ya dice.
   const showSubOrders = subOrders.length > 1;
+  // Con mas de una tienda, confirmar y finalizar dejan de vivir en el pie del modal: cada
+  // bloque tiene el suyo. Un boton suelto abajo no dice a que tienda le pega.
+  const buyerActionsPerStore = !isSeller && showSubOrders;
   const subOrderByStore = new Map(subOrders.map((sub) => [String(sub.proveedorId), sub]));
   // El orden manda: el del backend es el de creacion del checkout y es estable. Si las
   // tarjetas se ordenaran por los items, se reacomodarian solas segun lo que devuelva la BD.
@@ -571,6 +611,16 @@ export default function OrderDetailModal({
                       el comprador cancelaria la compra equivocada. Queda fuera de
                       `.participant-information-list` a proposito: esa regla usa `>` y mete a
                       sus hijos directos en un recuadro. */}
+                  {buyerStoreAction(seller) && (
+                    <button
+                      type="button"
+                      className="btn-auth-primary participant-cancel-btn"
+                      onClick={() => { setStoreAdvanceError(''); setStoreToAdvance(seller); }}
+                    >
+                      <PackageCheck size={14} />
+                      <span>{buyerStoreAction(seller).label}</span>
+                    </button>
+                  )}
                   {canBuyerCancelStore(seller) && (
                     <button
                       type="button"
@@ -807,7 +857,7 @@ export default function OrderDetailModal({
             </span>
           )}
 
-          {controlledAction && !controlledAction.disabled && !sellerReadOnly && (
+          {controlledAction && !controlledAction.disabled && !sellerReadOnly && !buyerActionsPerStore && (
             // `waiting` no es una accion: es "ya hiciste tu parte, ahora le toca al
             // otro". Viene sin `nextStatus`, asi que pintarlo como boton primario
             // dejaba uno que al clickearlo no hacia nada. La tarjeta del pedido ya lo
@@ -910,8 +960,11 @@ export default function OrderDetailModal({
             </button>
           )}
 
-          {/* Confirmar Recepción (Comprador) */}
-          {!isSeller && (normStatus === 'ENVIADO' || normStatus === 'LISTO_PARA_RETIRO' || normStatus === 'DISPATCHED') && (
+          {/* Confirmar Recepción (Comprador). Con mas de una tienda esto se reemplaza por el
+              boton de cada bloque: uno solo aca confirmaria las dos de una vez, que es
+              justo lo que la fase 3 vino a partir. */}
+          {!isSeller && !buyerActionsPerStore
+            && (normStatus === 'ENVIADO' || normStatus === 'LISTO_PARA_RETIRO' || normStatus === 'DISPATCHED') && (
             <button
               type="button"
               className="btn-auth-primary"
@@ -1246,6 +1299,35 @@ export default function OrderDetailModal({
           error={statusError}
           onCancel={() => { if (!isUpdating) { setConfirmStatusAdvance(false); setStatusError(''); } }}
           onConfirm={() => runStatusUpdate(pickupPin.trim())}
+        />
+
+        <ConfirmDialog
+          isOpen={Boolean(storeToAdvance)}
+          tone="primary"
+          title={buyerStoreAction(storeToAdvance || {})?.title || '¿Confirmar?'}
+          message={buyerStoreAction(storeToAdvance || {})?.message || ''}
+          confirmLabel={buyerStoreAction(storeToAdvance || {})?.label || 'Confirmar'}
+          cancelLabel="Volver"
+          isBusy={isAdvancingStore}
+          error={storeAdvanceError}
+          onCancel={() => { if (!isAdvancingStore) { setStoreToAdvance(null); setStoreAdvanceError(''); } }}
+          onConfirm={async () => {
+            const accion = buyerStoreAction(storeToAdvance || {});
+            if (!accion) return;
+            setIsAdvancingStore(true);
+            setStoreAdvanceError('');
+            try {
+              // El tercer argumento es el PIN y va vacio: el retiro en tienda solo lo exige
+              // cuando lo marca el VENDEDOR. Confirmandolo el comprador, el PIN no prueba
+              // nada que el propio comprador no este afirmando ya.
+              await onUpdateStatus(order.id, accion.nextStatus, undefined, storeToAdvance.id);
+              setStoreToAdvance(null);
+            } catch (err) {
+              setStoreAdvanceError(err?.message || 'No se pudo actualizar el estado de esta tienda.');
+            } finally {
+              setIsAdvancingStore(false);
+            }
+          }}
         />
 
         <ConfirmDialog

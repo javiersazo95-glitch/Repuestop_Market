@@ -665,9 +665,14 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     : BUYER_PROFILE_COVER_URL;
   const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' }) : null;
 
-  const handleUpdateOrderStatus = async (orderId, newStatus, pin) => {
+  /**
+   * `proveedorId` acota la transicion a UNA tienda: es como el comprador confirma la
+   * recepcion y finaliza tienda por tienda. Nulo mantiene el alcance de siempre (todas las
+   * subordenes vivas), que es lo que usan el pedido de una sola tienda y el listado.
+   */
+  const handleUpdateOrderStatus = async (orderId, newStatus, pin, proveedorId) => {
     try {
-      const updatedOrder = await updateOrderStatusApi(orderId, newStatus, pin);
+      const updatedOrder = await updateOrderStatusApi(orderId, newStatus, pin, proveedorId);
       queryClient.invalidateQueries({ queryKey: isSeller ? qk.sellerOrders(effectiveSellerId) : qk.buyerOrders(effectiveUserId) });
       const merged = { ...updatedOrder, estado: updatedOrder?.estado || newStatus, status: updatedOrder?.status || newStatus };
       setSelectedOrder((prevSelected) => String(prevSelected?.id) === String(orderId)
@@ -676,7 +681,14 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       // Al confirmar la recepcion se ofrece calificar en el acto, igual que la app.
       // Tiene que vivir aca y no en el modal porque el comprador suele marcar recibido
       // desde la TARJETA del listado, sin haber abierto el detalle.
-      if (!isSeller && ['ENTREGADO', 'RECEIVED'].includes(String(newStatus).toUpperCase())) {
+      //
+      // Se decide por el estado que DEVOLVIO el backend -el derivado-, no por el que se
+      // pidio: con la recepcion por tienda, confirmar la primera deja el pedido todavia en
+      // ENVIADO, y `PedidoPostVentaSupport` exige calificar TODOS los items de un pedido
+      // ENTREGADO/FINALIZADO. Mirando `newStatus` el modal se abria con la segunda tienda en
+      // viaje y el POST moria en 400.
+      const estadoResultante = String(updatedOrder?.estado || updatedOrder?.status || newStatus).toUpperCase();
+      if (!isSeller && ['ENTREGADO', 'RECEIVED'].includes(estadoResultante)) {
         const base = orders.find((candidate) => String(candidate.id) === String(orderId)) || {};
         setSelectedOrder({ ...base, ...merged });
         setRatingPromptOrderId(orderId);

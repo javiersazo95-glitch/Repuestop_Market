@@ -102,7 +102,14 @@ export default function OrderCard({
   const paymentWindow = canRetryPayment ? orderPaymentWindow(order, now) : null;
   // Solo mientras no se haya pagado: un pedido ya pagado necesita reembolso y eso
   // pasa por el vendedor. Es la misma frontera que aplica el backend.
-  const canCancelOrder = !isSeller && normStatus === 'PENDIENTE' && Boolean(onCancelOrder);
+  // Un pedido con mas de una tienda no se cierra ni se cancela desde la tarjeta: sus acciones
+  // son POR SUBORDEN y aca no hay forma de decir a cual le pegan. El boton de la tarjeta
+  // mandaba la transicion sin `proveedorId`, o sea que confirmaba la recepcion de TODAS las
+  // tiendas de una vez -- justo lo que la fase 3 partio en el modal-, y el de cancelar movia
+  // el pedido entero. Con mas de una tienda la tarjeta manda al detalle, que es donde estan
+  // los botones que sí saben de quien hablan.
+  const buyerMultiStore = !isSeller && Array.isArray(order?.subordenes) && order.subordenes.length > 1;
+  const canCancelOrder = !isSeller && !buyerMultiStore && normStatus === 'PENDIENTE' && Boolean(onCancelOrder);
   // Solo cuando el backend registro la causa. Los cancelados historicos no la
   // tienen y se quedan con "Cancelado" a secas, sin explicacion inventada.
   const cancellationReason = normStatus === 'CANCELADO' ? cancellationReasonLabel(order, isSeller ? 'seller' : 'buyer') : null;
@@ -202,6 +209,7 @@ export default function OrderCard({
 
   const renderStatusButton = () => {
     if (!onUpdateStatus || !controlledAction) return null;
+    if (buyerMultiStore) return null;
     if (controlledAction.waiting) {
       return <span className="order-controlled-wait"><Clock size={14} /> {controlledAction.label}</span>;
     }

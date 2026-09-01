@@ -924,10 +924,18 @@ export async function updateSellerBankAccountApi(proveedorId, payload) {
 
 // El backend expone PUT /pedidos/{pedidoId}/estado (PedidoController). Con PATCH
 // responde 405. El `pin` es opcional y solo lo exigen algunas transiciones de estado.
-export async function updateOrderStatusApi(orderId, estado, pin) {
+//
+// `proveedorId` acota la transicion a UNA tienda y es del COMPRADOR: es como confirma la
+// recepcion y finaliza tienda por tienda. Al vendedor el backend se lo ignora, porque su
+// subordén se resuelve sola por su usuario. Sin el campo la transicion alcanza a todas las
+// subordenes vivas, que es lo que siguen haciendo el pedido de una sola tienda y el movil.
+export async function updateOrderStatusApi(orderId, estado, pin, proveedorId) {
+  const payload = { estado };
+  if (pin) payload.pin = pin;
+  if (proveedorId != null) payload.proveedorId = Number(proveedorId);
   return fetchApi(`/pedidos/${orderId}/estado`, {
     method: 'PUT',
-    body: JSON.stringify(pin ? { estado, pin } : { estado }),
+    body: JSON.stringify(payload),
   });
 }
 
