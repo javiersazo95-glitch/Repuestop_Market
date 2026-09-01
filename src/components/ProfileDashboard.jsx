@@ -18,7 +18,7 @@ import {
   updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi, updateSellerProductTopApi,
   saveConversationQuoteApi, sendConversationMessageApi, requestBlockedAccountReviewApi,
-  cancelSellerOrderApi, registerOrderDispatchApi,
+  cancelSellerOrderApi, cancelBuyerSubOrderApi, registerOrderDispatchApi,
   pauseSellerProductApi, resumeSellerProductApi, updateSellerShippingMethodsApi,
   getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
   getBuyerProductQuestionsApi
@@ -715,6 +715,25 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const handleCancelOrder = async (order) => {
     if (!order?.id) return;
     await handleUpdateOrderStatus(order.id, 'CANCELADO');
+  };
+
+  /**
+   * El comprador cancela su compra a UNA tienda
+   * (`POST /pedidos/{id}/proveedores/{id}/cancelacion-comprador`).
+   *
+   * No se toca `estado` a mano en la copia local: con dos tiendas el pedido sigue vivo
+   * mientras quede una en pie, y quien decide eso es el backend. Se mezcla lo que
+   * respondió y listo.
+   */
+  const handleCancelBuyerSubOrder = async (order, proveedorId, { reasonDetail } = {}) => {
+    const orderId = order?.id;
+    if (!orderId || !proveedorId) return;
+    const updated = await cancelBuyerSubOrderApi(orderId, proveedorId, { reasonDetail });
+    queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
+    setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
+      ? { ...prev, ...updated }
+      : prev);
+    return updated;
   };
 
   /**
@@ -2438,6 +2457,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           onUpdateStatus={handleUpdateOrderStatus}
           onRetryPayment={isSeller ? undefined : handleRetryPayment}
           onCancelOrder={isSeller ? undefined : handleCancelOrder}
+          onCancelBuyerSubOrder={isSeller ? undefined : handleCancelBuyerSubOrder}
           autoOpenRating={!isSeller && ratingPromptOrderId != null && String(selectedOrder.id) === String(ratingPromptOrderId)}
           onRatingPromptShown={() => setRatingPromptOrderId(null)}
           onCancelSellerOrder={isSeller && !isSellerBlocked ? handleCancelSellerOrder : undefined}

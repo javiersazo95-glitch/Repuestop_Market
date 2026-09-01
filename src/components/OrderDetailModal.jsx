@@ -93,7 +93,7 @@ export default function OrderDetailModal({
   onClose,
   onUpdateStatus,
   onRetryPayment,
-  onCancelOrder,
+  onCancelBuyerSubOrder,
   onCancelSellerOrder,
   onRegisterDispatch,
   autoOpenRating = false,
@@ -108,10 +108,12 @@ export default function OrderDetailModal({
   const [statusError, setStatusError] = useState('');
   const [isRetryingPayment, setIsRetryingPayment] = useState(false);
   const [retryError, setRetryError] = useState('');
-  const [isCancelling, setIsCancelling] = useState(false);
-  const [confirmCancel, setConfirmCancel] = useState(false);
+  // La tienda que el comprador esta cancelando. Es por suborden, asi que hay que saber
+  // CUAL, no solo que se pulso "cancelar".
+  const [storeToCancel, setStoreToCancel] = useState(null);
+  const [isCancellingStore, setIsCancellingStore] = useState(false);
+  const [storeCancelError, setStoreCancelError] = useState('');
   const [confirmStatusAdvance, setConfirmStatusAdvance] = useState(false);
-  const [cancelError, setCancelError] = useState('');
   const [now, setNow] = useState(Date.now());
 
   // Seller Cancelation Modal State
@@ -176,7 +178,22 @@ export default function OrderDetailModal({
   // Solo el comprador paga, y solo mientras el pedido siga sin pagarse.
   const canRetryPayment = !isSeller && normStatus === 'PENDIENTE' && Boolean(onRetryPayment);
   const paymentWindow = canRetryPayment ? orderPaymentWindow(order, now) : null;
-  const canCancelOrder = !isSeller && normStatus === 'PENDIENTE' && Boolean(onCancelOrder);
+  // Hasta que la tienda despacha. Despues ya no es cancelar, es devolver -- que es otro
+  // flujo-. Es la misma ventana que usan Falabella ("En preparacion") y Mercado Libre
+  // (hasta que el vendedor despacha).
+  //
+  // Se mide contra el estado de SU suborden y no contra el del pedido: que la otra tienda
+  // ya haya despachado no tiene nada que ver con esta compra. Sin suborden -pedido de una
+  // sola tienda, o historico sin la fila- se cae al estado del pedido.
+  const CANCELLABLE_BY_BUYER = ['PENDIENTE', 'PAGADO', 'EN_PREPARACION'];
+  const canBuyerCancelStore = (seller) => {
+    // `seller.id` se cae al NOMBRE de la tienda cuando el item no trae `proveedorId`, y
+    // ese nombre no sirve como id en el endpoint. Sin id real no se ofrece el boton.
+    if (isSeller || !onCancelBuyerSubOrder) return false;
+    if (!Number.isFinite(Number(seller?.id))) return false;
+    const estado = String(seller.subOrder?.estado || normStatus || '').toUpperCase();
+    return CANCELLABLE_BY_BUYER.includes(estado);
+  };
   // Solo PENDIENTE y PAGADO: `PedidoCancelacionSupport` corta ahi ("Solo se pueden
   // cancelar pedidos pendientes") y con EN_PREPARACION el boton salia igual y el POST
   // moria en 400. Si el backend amplia la ventana, hay que ampliarla aca tambien.
@@ -549,6 +566,21 @@ export default function OrderDetailModal({
                       <div><KeyRound size={14} /><span><small>Código de retiro</small><strong style={{ fontSize: '15px', letterSpacing: '.12em' }}>{seller.pickupCode}</strong></span></div>
                     )}
                   </div>
+                  {/* La cancelacion va DENTRO de la tarjeta de la tienda y no en el pie del
+                      modal: con dos tiendas, un boton suelto abajo no dice a cual le pega, y
+                      el comprador cancelaria la compra equivocada. Queda fuera de
+                      `.participant-information-list` a proposito: esa regla usa `>` y mete a
+                      sus hijos directos en un recuadro. */}
+                  {canBuyerCancelStore(seller) && (
+                    <button
+                      type="button"
+                      className="btn-auth-danger participant-cancel-btn"
+                      onClick={() => { setStoreCancelError(''); setStoreToCancel(seller); }}
+                    >
+                      <XCircle size={14} />
+                      <span>{showSubOrders ? 'Cancelar esta compra' : 'Cancelar pedido'}</span>
+                    </button>
+                  )}
                 </article>
               ))}
             </div>
@@ -858,14 +890,6 @@ export default function OrderDetailModal({
             >
               {isRetryingPayment ? <Loader2 size={16} className="spin-icon" /> : <RotateCcw size={16} />}
               {isRetryingPayment ? 'Abriendo pago…' : 'Retomar pago'}
-            </button>
-          )}
-
-          {/* Cancelar pedido (Comprador) */}
-          {canCancelOrder && (
-            <button type="button" className="btn-auth-danger" onClick={() => setConfirmCancel(true)}>
-              <XCircle size={16} />
-              Cancelar pedido
             </button>
           )}
 
@@ -1225,25 +1249,27 @@ export default function OrderDetailModal({
         />
 
         <ConfirmDialog
-          isOpen={confirmCancel}
-          title="¿Cancelar este pedido?"
-          message="Las unidades vuelven al stock y el pedido queda cancelado. Esta acción no se puede deshacer; si aún quieres el repuesto tendrás que comprarlo de nuevo."
-          confirmLabel="Sí, cancelar pedido"
-          cancelLabel="No, mantenerlo"
-          isBusy={isCancelling}
-          error={cancelError}
-          onCancel={() => { if (!isCancelling) { setConfirmCancel(false); setCancelError(''); } }}
+          isOpen={Boolean(storeToCancel)}
+          title={showSubOrders ? `¿Cancelar tu compra a ${storeToCancel?.name || 'esta tienda'}?` : '¿Cancelar este pedido?'}
+          message={showSubOrders
+            ? `Se cancelan solo los repuestos de ${storeToCancel?.name || 'esta tienda'} y se te devuelve lo que pagaste por ellos${isStorePickup ? '' : ', incluido su envío'}. El resto del pedido sigue su curso. No se puede deshacer.`
+            : 'Las unidades vuelven al stock y se te devuelve lo que pagaste. Esta acción no se puede deshacer; si aún quieres el repuesto tendrás que comprarlo de nuevo.'}
+          confirmLabel="Sí, cancelar"
+          cancelLabel="No, mantenerla"
+          isBusy={isCancellingStore}
+          error={storeCancelError}
+          onCancel={() => { if (!isCancellingStore) { setStoreToCancel(null); setStoreCancelError(''); } }}
           onConfirm={async () => {
-            setIsCancelling(true);
-            setCancelError('');
+            setIsCancellingStore(true);
+            setStoreCancelError('');
             try {
-              await onCancelOrder(order);
-              setConfirmCancel(false);
+              await onCancelBuyerSubOrder(order, storeToCancel.id);
+              setStoreToCancel(null);
               onClose?.();
             } catch (err) {
-              setCancelError(err?.message || 'No se pudo cancelar el pedido.');
+              setStoreCancelError(err?.message || 'No se pudo cancelar la compra.');
             } finally {
-              setIsCancelling(false);
+              setIsCancellingStore(false);
             }
           }}
         />

@@ -932,6 +932,23 @@ export async function updateOrderStatusApi(orderId, estado, pin) {
 }
 
 /**
+ * El comprador cancela su compra a UNA tienda del pedido.
+ *
+ * Va por subordén y no por pedido: en un carrito de dos tiendas, cancelarle a una no
+ * puede matar la compra de la otra. El backend se encarga del reembolso y de dejar el
+ * pedido cancelado solo si cae la última tienda viva.
+ *
+ * El motivo no se pregunta: es `SOLICITUD_DEL_COMPRADOR` por definición. El detalle es
+ * opcional y solo sirve para que el vendedor sepa qué pasó.
+ */
+export async function cancelBuyerSubOrderApi(orderId, proveedorId, { reasonDetail } = {}) {
+  return fetchApi(`/pedidos/${orderId}/proveedores/${proveedorId}/cancelacion-comprador`, {
+    method: 'POST',
+    body: JSON.stringify({ reasonDetail: reasonDetail ? String(reasonDetail).trim() : null }),
+  });
+}
+
+/**
  * Cancelación del pedido por parte de la tienda vendedora.
  * Requiere un código de motivo formal (`MotivoCancelacionPedido`).
  */
