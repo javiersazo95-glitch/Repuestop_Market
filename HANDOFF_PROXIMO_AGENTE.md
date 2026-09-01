@@ -2164,3 +2164,131 @@ El `estado` de la suborden es `@Enumerated(STRING)`, así que le aplica la tramp
   de la app móvil, que sigue cayendo a los últimos 6 del id en vez de usar `codigoVendedor`.
 - `codigoVendedor` **no se movió** del ítem a propósito: ese string es la llave de
   `bo_mediacion.pedido_id` y aparece dentro de paths de R2 (ver 4.32).
+
+### 4.34 Sesión 2026-09-01 — Ruta B fase 2: la vista del comprador
+
+Commits: backend + web. Cierra lo que la 4.33 dejó anotado como fase 2.
+
+El comprador con dos tiendas veía un bloque único. Su estado —el derivado, el menos avanzado
+de las subórdenes vivas— era correcto, pero no le decía cuál de las dos iba más adelantada, y
+la lista de repuestos salía plana: **la fila del ítem no muestra la tienda**, así que no había
+forma de saber quién despachaba qué.
+
+#### `subordenes[]`, y solo para el comprador
+
+`PedidoSubordenResponseDTO` con siete campos: `proveedorId`, `nombreTienda`, `estado`,
+`courier`, `trackingNumber`, `codigoRetiro` y `updatedAt`.
+
+**Al vendedor se le manda `null` a propósito.** Todo su DTO está acotado a él desde la 4.32, y
+la web mezcla la respuesta sobre lo que ya tiene en pantalla (`{ ...prevSelected, ...merged }`
+en `ProfileDashboard`): mandarle la lista le pintaría la otra tienda dentro de su propia venta,
+que es exactamente el bug que la 4.33 arregló.
+
+Lo que **no** lleva, y por qué:
+
+- **Los ítems.** Ya vienen en `items[]` con su `proveedorId`; el cliente agrupa por ahí.
+  Duplicarlos es una segunda copia que se puede desincronizar de la primera.
+- **El subtotal por tienda.** Se calcula en el cliente. En el DTO sería un segundo total capaz
+  de contradecir a `total`, y el comprador paga uno solo.
+- **El motivo de cancelación.** No hay columna en `RT_pedido_proveedor`; el motivo vive en los
+  ítems. Agregarla es fase 3.
+
+Orden por id de suborden (el de creación del checkout). Sin un orden explícito los bloques se
+reordenan entre refrescos según lo que devuelva la BD.
+
+**Las canceladas se incluyen.** Omitirlas dejaría a los ítems de esa tienda sin bloque dueño, y
+además son la explicación del `montoReembolsado` que ya se muestra. El estado global no se
+contamina: `derivar()` ya las excluye.
+
+#### El cabo del `updatedAt`, resuelto en el backend
+
+La 4.33 lo dejó anotado: el DTO mandaba el `updatedAt` del PEDIDO y la web calcula desde ahí
+los 3 días antes de finalizar (`sellerFinalizationAvailability`), mientras el backend ya
+validaba contra el reloj de la suborden.
+
+Se arregló donde correspondía: **cuando `proveedorId != null`, `updatedAt` es el de su
+suborden**, igual que ya se hacía con `estado`. `orderStatusFlow.js` no se tocó. Y como ese
+campo lo lee el mismo DTO que consume la app móvil, allá el contador queda arreglado de paso.
+
+Ojo con el efecto de borde que NO ocurre: `orderPaymentWindow` (los 30 minutos para pagar)
+también lee `updatedAt`, pero corre en `PENDIENTE` y en modo comprador, donde `proveedorId` es
+nulo. No le llega.
+
+#### De paso, una consulta por fila que se fue
+
+`estadoParaElDestinatario` hacía su propio `findByPedidoIdAndProveedorId`, o sea **una consulta
+por cada fila** de la lista de ventas. Ahora hay una sola `findByPedidoId` al principio del
+mapper y de ahí salen el estado, el reloj y el desglose.
+
+#### La web, sin una sola clase CSS nueva
+
+Todo en `OrderDetailModal.jsx`:
+
+1. La tarjeta de la tienda (`sellers`, que ya existía) pasa a ser la tarjeta de la suborden:
+   badge de estado bajo el nombre y filas de Seguimiento / Courier con los datos de ESA
+   suborden. `ENVIADO` con retiro en tienda se muestra "Listo para retirar", igual que
+   `OrderCard`.
+2. Los repuestos se agrupan por tienda con un `.section-subtitle` por grupo.
+
+**Con UNA tienda no se pinta nada nuevo** (`showSubOrders` exige más de una): son casi todos
+los pedidos y el desglose de un solo bloque repite lo que la píldora de arriba ya dice.
+
+**El timeline de arriba no se tocó.** Sigue mostrando el derivado. Partirlo en dos convertiría
+la pantalla en dos pedidos, que es el modelo MercadoLibre descartado en la 4.32 — el pago es
+uno solo y `Pago.pedido_id` asume 1:1.
+
+Dos ajustes van en `style` inline, y no son decoración:
+
+- `.person-highlight-copy` es un flex column sin `align-items`, o sea `stretch`: sin
+  `alignSelf: 'flex-start'` la píldora se estira de lado a lado de la tarjeta.
+- `.section-subtitle` trae `margin-bottom: 6px` propio que, sumado al `gap` de
+  `.order-items-table`, dejaba el encabezado más cerca del grupo anterior que de sus filas.
+
+Y ojo con las filas nuevas de la lista de datos: `.participant-information-list` usa `>`
+(hijo directo). Envolverlas las deja sin recuadro.
+
+#### El PIN de retiro: el backend lo mandaba y NADIE lo pintaba
+
+Salió de mirar la pantalla, no del plan. `grep codigoRetiro` sobre `src/components/` y
+`src/pages/` daba **cero resultados**: el campo viajaba en el DTO desde siempre y ninguna vista
+lo mostraba, así que **el comprador no tenía de dónde leer su código** para dictárselo al
+vendedor. El retiro en tienda estaba cortado de su lado, en todos los pedidos, no solo en los
+de dos tiendas.
+
+Y la 4.33 se quedó corta en un punto: decía que el PIN "se escribe duplicado en la suborden".
+En los datos reales **ya es por vendedor**: el pedido 22 trae `860797` en la suborden de
+Repuestos 1 y `null` en la de Repuestos 2, porque el código se genera al despachar y solo la
+que despachó lo tiene.
+
+Se muestra en la tarjeta de la tienda, no en un recuadro global: con dos tiendas son dos
+códigos distintos y uno solo arriba no dice a cuál corresponde. Se cae a `order.codigoRetiro`
+**solo con una tienda**, para pedidos anteriores al backfill; con dos, el del pedido no dice de
+quién es, y pintarlo bajo la tienda equivocada es peor que no pintar nada.
+
+Es lo único de este cambio que también aplica al pedido de una sola tienda.
+
+#### Verificado
+
+`mvn package` ✅, **48 tests ✅** (2 nuevos). **Comprobado que los tests sirven**: al revertir
+cada arreglo fallan con el síntoma exacto — `expected: not <null>` para el desglose y
+`expected: <2026-08-28…> but was: <2026-09-01…>` para el reloj.
+
+`npm run build` ✅, `npm run lint` → **98 warnings, 0 errores** (baseline exacto).
+
+En el navegador, con el backend local:
+
+- **comprador, pedido 22** (dos tiendas, retiro en tienda): global "En preparación";
+  Repuestos 2 → "En preparación", Repuestos 1 → "Listo para retirar" con su PIN; ítems
+  agrupados bajo su encabezado;
+- **pedido 21** (suborden cancelada): Repuestos 2 con badge "Cancelado" y su ítem tachado, y el
+  global sigue "En preparación" porque la cancelada no participa;
+- **pedido 20** (una tienda): cero encabezados, cero badges, fila plana. Sin regresión, y el
+  PIN sí aparece;
+- **vendedor 1** por API: `estado: ENVIADO` (el suyo), `subordenes: null`, un solo ítem.
+
+#### Lo que queda (fase 3)
+
+Sin cambios respecto de la 4.33, menos el PIN: **liquidación y contabilidad por suborden**, y
+la vista de vendedor de la app móvil, que sigue cayendo a los últimos 6 del id en vez de usar
+`codigoVendedor`. El PIN por vendedor ya está resuelto de este lado; lo que falta allá es que
+`pedido.codigoRetiro` (el global, hoy redundante) deje de escribirse.

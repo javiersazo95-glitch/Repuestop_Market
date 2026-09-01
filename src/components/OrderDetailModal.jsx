@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, Clock, Wrench, Truck, PackageCheck, User, Store,
@@ -254,12 +254,39 @@ export default function OrderDetailModal({
 
   const timelineIndex = getTimelineIndex(normStatus);
   const controlledAction = getControlledOrderAction(order, mode);
+
+  // Ruta B fase 2: el avance de CADA tienda. El backend lo manda solo al comprador; al
+  // vendedor le llega `undefined` a proposito, porque su DTO esta acotado a el y esta lista
+  // le pintaria la otra tienda dentro de su propia venta.
+  //
+  // `estado` de arriba sigue siendo el DERIVADO -el menos avanzado de las subordenes vivas-
+  // y asi se queda: es la promesa que se le hace al comprador ("tu pedido esta completo
+  // cuando llego todo"). Esto es el desglose de esa unica cifra, no su reemplazo.
+  const subOrders = Array.isArray(order?.subordenes) ? order.subordenes : [];
+  // Con UNA tienda -que son casi todos los pedidos- no se pinta nada nuevo: el desglose de
+  // un solo bloque repite lo que la pildora de arriba ya dice.
+  const showSubOrders = subOrders.length > 1;
+  const subOrderByStore = new Map(subOrders.map((sub) => [String(sub.proveedorId), sub]));
+  // El orden manda: el del backend es el de creacion del checkout y es estable. Si las
+  // tarjetas se ordenaran por los items, se reacomodarian solas segun lo que devuelva la BD.
+  const subOrderIndex = new Map(subOrders.map((sub, i) => [String(sub.proveedorId), i]));
+
   const sellers = [...new Map(items.map((item) => {
     const name = item.proveedorNombre || item.sellerName || sellerName;
     const id = item.proveedorId || item.sellerId || name;
+    const subOrder = subOrderByStore.get(String(id));
     return [String(id), {
       id,
       name,
+      subOrder,
+      // El PIN que el comprador le dicta a ESTA tienda. Sale de la suborden, que es donde
+      // lo escribe el backend al despachar: con dos tiendas cada una genera el suyo y solo
+      // cuando le toca, asi que la que todavia no despacha viene sin codigo.
+      //
+      // Se cae a `order.codigoRetiro` SOLO con una tienda, para los pedidos anteriores a
+      // que el codigo se guardara en la suborden. Con dos, el del pedido no dice de quien
+      // es, y mostrar un PIN bajo la tienda equivocada es peor que no mostrar ninguno.
+      pickupCode: subOrder?.codigoRetiro || (subOrders.length <= 1 ? order.codigoRetiro : null),
       logo: resolveMediaUrl(item.proveedorLogoUrl || item.sellerLogoUrl),
       phone: item.proveedorTelefono || item.sellerPhone || '',
       email: item.proveedorEmail || item.sellerEmail || '',
@@ -271,7 +298,23 @@ export default function OrderDetailModal({
       giro: item.proveedorGiro || '',
       horario: item.proveedorHorario || '',
     }];
-  })).values()];
+  })).values()]
+    .sort((a, b) => (subOrderIndex.get(String(a.id)) ?? 0) - (subOrderIndex.get(String(b.id)) ?? 0));
+
+  // Los repuestos, agrupados por tienda cuando hay mas de una. Sin esto el comprador ve la
+  // lista plana y no tiene como saber quien le despacha cada cosa: la fila del item ni
+  // siquiera muestra la tienda.
+  const itemGroups = !showSubOrders
+    ? [{ key: 'all', title: null, items }]
+    : subOrders
+      .map((sub) => ({
+        key: String(sub.proveedorId),
+        title: sub.nombreTienda,
+        estado: sub.estado,
+        items: items.filter((item) => String(item.proveedorId ?? item.sellerId ?? '') === String(sub.proveedorId)),
+      }))
+      // Una tienda sin lineas visibles no aporta un encabezado vacio.
+      .filter((group) => group.items.length > 0);
 
   const openRatingModal = () => {
     setProductRatings({});
@@ -462,12 +505,49 @@ export default function OrderDetailModal({
                     <div className="person-highlight-copy">
                       <span className="person-highlight-eyebrow">Tienda Vendedora</span>
                       <h4 className="person-highlight-name">{seller.name}</h4>
+                      {/* El avance de ESTA tienda. Va aca y no en el timeline de arriba a
+                          proposito: el timeline muestra el derivado, que es el pedido
+                          completo. Partirlo en dos convertiria la pantalla en dos pedidos,
+                          que es justo el modelo que se descarto (el pago es uno solo). */}
+                      {/* El wrapper con `alignSelf` no es decoracion: `.person-highlight-copy`
+                          es un flex column sin `align-items`, o sea `stretch`, y sin esto la
+                          pildora se estira de lado a lado de la tarjeta. */}
+                      {showSubOrders && seller.subOrder?.estado && (
+                        <span style={{ alignSelf: 'flex-start', marginTop: '3px' }}>
+                          <OrderStatusBadge
+                            status={seller.subOrder.estado === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : seller.subOrder.estado}
+                            size="small"
+                          />
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="participant-information-list">
                     {seller.email && <a href={`mailto:${seller.email}`}><Mail size={14} /><span><small>Correo</small><strong>{seller.email}</strong></span></a>}
                     {seller.phone && <a href={`tel:${seller.phone}`}><Phone size={14} /><span><small>Teléfono</small><strong>{seller.phone}</strong></span></a>}
                     {seller.address && <div><MapPin size={14} /><span><small>Ubicación</small><strong>{seller.address}</strong></span></div>}
+                    {/* El courier y el tracking viven en `RT_pedido`, asi que el segundo
+                        vendedor en despachar sobrescribia los del primero y el comprador se
+                        quedaba con UN numero de seguimiento para dos paquetes. Los de la
+                        suborden son los que de verdad corresponden a esta tienda. Deben ir
+                        como hijos DIRECTOS: la regla de `.participant-information-list` usa
+                        `>`, y envolverlos los deja sin recuadro. */}
+                    {showSubOrders && seller.subOrder?.trackingNumber && (
+                      <div><Truck size={14} /><span><small>Seguimiento</small><strong>{seller.subOrder.trackingNumber}</strong></span></div>
+                    )}
+                    {showSubOrders && seller.subOrder?.courier && (
+                      <div><Package size={14} /><span><small>Courier</small><strong>{seller.subOrder.courier}</strong></span></div>
+                    )}
+                    {/* El codigo que el vendedor pide para entregar. El backend lo manda desde
+                        siempre y NINGUNA vista lo pintaba: el comprador no tenia de donde
+                        leerlo, asi que el retiro en tienda quedaba cortado de su lado. Va aca
+                        y no en un recuadro global porque con dos tiendas son dos codigos
+                        distintos, y uno solo arriba no dice a cual corresponde.
+                        Al vendedor no le llega -el mapper solo adjunta el PIN cuando no hay
+                        proveedorId- y ademas se excluye aca. */}
+                    {!isSeller && isStorePickup && seller.pickupCode && (
+                      <div><KeyRound size={14} /><span><small>Código de retiro</small><strong style={{ fontSize: '15px', letterSpacing: '.12em' }}>{seller.pickupCode}</strong></span></div>
+                    )}
                   </div>
                 </article>
               ))}
@@ -535,7 +615,21 @@ export default function OrderDetailModal({
               <p className="empty-text">No hay repuestos registrados en este pedido.</p>
             ) : (
               <div className="order-items-table">
-                {items.map((item, i) => {
+                {itemGroups.map((group) => (
+                  <Fragment key={group.key}>
+                  {/* Encabezado de tienda, solo con mas de una. `.order-items-table` es un
+                      flex column con `gap` y sin selectores de hijo directo, asi que
+                      intercalar un hermano no descoloca las filas. */}
+                  {group.title && (
+                    // `marginBottom: 0` porque `.section-subtitle` trae 6px propios: sumados al
+                    // `gap` de la tabla, el encabezado quedaba mas cerca del grupo anterior que
+                    // de sus propias filas.
+                    <h3 className="section-subtitle" style={{ marginBottom: 0 }}>
+                      <Store size={15} />
+                      <span>{group.title}</span>
+                    </h3>
+                  )}
+                  {group.items.map((item, i) => {
                   const photo = resolveMediaUrl(item.imagenUrl || item.imageUrl || item.productPhotoUri || (item.imageUrls && item.imageUrls[0]));
                   const name = item.nombre || item.productName || item.name || 'Repuesto de vehículo';
                   const brand = item.marca || item.productBrand || item.brand || '';
@@ -571,7 +665,9 @@ export default function OrderDetailModal({
                       </div>
                     </div>
                   );
-                })}
+                  })}
+                  </Fragment>
+                ))}
               </div>
             )}
           </div>
