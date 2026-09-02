@@ -21,7 +21,10 @@ function ProfileSkeleton() {
 }
 
 export default function ProfilePage() {
-  const { tab } = useParams();
+  // `/perfil/pedidos/:orderId` monta esta misma pagina. Cuando viene `orderId`, el panel
+  // muestra el DETALLE de ese pedido en lugar del listado -- misma pestaña, con su propio
+  // "atras" del navegador -- en vez de abrirlo como popup.
+  const { tab, orderId } = useParams();
   const navigate = useNavigate();
   useDocumentTitle('Mi cuenta');
   const nav = useAppNavigation();
@@ -72,14 +75,17 @@ export default function ProfilePage() {
     return <Navigate to={profilePath('resumen')} replace />;
   }
 
-  if (!PROFILE_TABS.includes(tab)) {
+  // `/perfil/pedidos/:orderId` no declara `:tab`, asi que `tab` llega vacio: sin esta guarda la
+  // ruta del detalle caia en el 404 antes de renderizar nada. Su pestaña es siempre "pedidos".
+  if (!orderId && !PROFILE_TABS.includes(tab)) {
     return <Navigate to={ROUTES.notFound} state={{ requestedPath: `${ROUTES.profile}/${tab}` }} replace />;
   }
 
   return (
     <Suspense fallback={<ProfileSkeleton />}>
       <ProfileDashboard
-        initialTab={tab}
+        initialTab={orderId ? 'pedidos' : tab}
+        detailOrderId={orderId}
         onTabChange={handleTabChange}
         deepLinkOrderId={deepLinkOrderId}
         deepLinkTicketId={deepLinkTicketId}

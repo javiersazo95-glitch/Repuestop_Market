@@ -27,7 +27,7 @@ import { qk } from '../services/queryKeys';
 import ShippingMethodsPicker from './ShippingMethodsPicker';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import OrderCard from './OrderCard';
-import OrderDetailModal from './OrderDetailModal';
+import OrderDetailView from './OrderDetailView';
 import CatalogCard from './CatalogCard';
 import QuoteCard from './QuoteCard';
 import QuoteDetailModal from './QuoteDetailModal';
@@ -49,7 +49,7 @@ import AutomotiveServiceAccreditation from './AutomotiveServiceAccreditation';
 import CapturerContactCard from './CapturerContactCard';
 import { formatRut, isValidRut, isValidClPhone } from '../services/adapters';
 import { Link, useNavigate } from 'react-router-dom';
-import { helpContactPath, productPath, ROUTES, storePath } from '../routes/paths';
+import { helpContactPath, productPath, profileOrderPath, ROUTES, storePath } from '../routes/paths';
 
 const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
 
@@ -249,7 +249,7 @@ function EmptyState({ label }) {
   );
 }
 
-export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange, paymentStatus, paymentOrderId, deepLinkOrderId, deepLinkTicketId, deepLinkQuoteId, onClearDeepLink }) {
+export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange, paymentStatus, paymentOrderId, deepLinkOrderId, deepLinkTicketId, deepLinkQuoteId, onClearDeepLink, detailOrderId }) {
   const { user, role, logout, updateProfile, refreshProfile, deleteAccount } = useAuth();
   // El centro de ayuda dejó de ser una pestaña del perfil: vive en /ayuda y se
   // navega hacia allá desde el sidebar y los accesos rápidos.
@@ -573,17 +573,23 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // Notificacion de pedido: abre el detalle apenas la lista este cargada. Se usa una
   // marca para no reabrirlo si el usuario lo cierra y la URL sigue teniendo `?pedido=`.
   const openedDeepLinkRef = useRef(null);
+  // `?pedido=<id>` es el enlace que genera la campana de notificaciones y viaja en correos ya
+  // enviados, asi que sigue funcionando: en vez de abrir el popup, REDIRIGE a la ruta del
+  // detalle. Se hace con `replace` para que el "atras" del navegador lleve al listado y no de
+  // vuelta a la URL con el parametro, que volveria a redirigir.
+  //
+  // No espera a que el pedido este en el listado: la ruta sabe cargarlo sola y esperar aqui
+  // dejaba la notificacion sin efecto mientras el listado no hubiera llegado.
   useEffect(() => {
     if (!deepLinkOrderId) {
       openedDeepLinkRef.current = null;
       return;
     }
     if (openedDeepLinkRef.current === deepLinkOrderId) return;
-    const found = (orders || []).find((o) => String(o.id) === String(deepLinkOrderId));
-    if (!found) return;
     openedDeepLinkRef.current = deepLinkOrderId;
-    setSelectedOrder(found);
-  }, [deepLinkOrderId, orders]);
+    onClearDeepLink?.('pedido');
+    navigate(profileOrderPath(deepLinkOrderId), { replace: true });
+  }, [deepLinkOrderId, navigate, onClearDeepLink]);
   useEffect(() => {
     if (!paymentOrderId || !paymentStatus || paymentStatus === 'success') {
       setPaymentBannerOrder(null);
@@ -736,6 +742,39 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
    * quedan: sin esto seguia ofreciendo "Calificar" en la tienda ya evaluada hasta cerrar y
    * reabrir el detalle.
    */
+  // El pedido que pide la URL. Sale del listado que el panel ya carga: no hace falta otra
+  // peticion, y asi el detalle y la lista miran SIEMPRE el mismo dato -- que es lo que hace que
+  // al volver del detalle la tarjeta ya muestre el estado nuevo.
+  // Abrir un pedido es NAVEGAR, no levantar un popup: asi el "atras" del navegador vuelve al
+  // listado, la URL se puede compartir y los dialogos que el detalle abre dejan de ser un modal
+  // encima de otro modal.
+  const openOrderDetail = (order) => {
+    if (!order?.id) return;
+    navigate(profileOrderPath(order.id));
+  };
+
+  const detailFromList = detailOrderId
+    ? (orders || []).find((candidate) => String(candidate.id) === String(detailOrderId))
+    : null;
+  // `selectedOrder` es el buffer donde los handlers escriben la respuesta del backend apenas
+  // llega (confirmar por tienda, cancelar, calificar). `invalidateQueries` refresca el listado,
+  // pero es asincrono: sin mezclarlo, la accion se veia con retraso -- o no se veia -- porque
+  // la pagina seguia leyendo la version vieja de la lista.
+  const detailOrder = !detailOrderId
+    ? null
+    : (selectedOrder && String(selectedOrder.id) === String(detailOrderId)
+      ? { ...detailFromList, ...selectedOrder }
+      : detailFromList);
+
+  useEffect(() => {
+    if (!detailOrderId) return;
+    if (selectedOrder && String(selectedOrder.id) === String(detailOrderId)) return;
+    if (detailFromList) setSelectedOrder(detailFromList);
+    // `selectedOrder` no va en las dependencias a proposito: cada actualizacion del buffer
+    // volveria a disparar el efecto y lo pisaria con la version vieja de la lista.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailOrderId, detailFromList]);
+
   const handleOrderRated = (updatedOrder) => {
     if (!updatedOrder?.id) return;
     queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
@@ -1756,12 +1795,42 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 </div>
               )}
 
-              {activeTab === 'pedidos' && (
+              {/* `/perfil/pedidos/:orderId`: el detalle ocupa el lugar del listado, dentro del
+                  panel. Mientras el pedido se esta cargando se muestra el aviso en vez de la
+                  lista, para que no parpadee el listado antes del detalle. */}
+              {activeTab === 'pedidos' && detailOrderId ? (
+                detailOrder ? (
+                  <OrderDetailView
+                    layout="page"
+                    order={detailOrder}
+                    mode={isSeller ? 'seller' : 'buyer'}
+                    sellerId={effectiveSellerId}
+                    userId={effectiveUserId}
+                    onClose={() => navigate(`${ROUTES.profile}/pedidos`)}
+                    onUpdateStatus={handleUpdateOrderStatus}
+                    onRetryPayment={isSeller ? undefined : handleRetryPayment}
+                    onCancelOrder={isSeller ? undefined : handleCancelOrder}
+                    onCancelBuyerSubOrder={isSeller ? undefined : handleCancelBuyerSubOrder}
+                    autoOpenRating={!isSeller && ratingPromptOrderId != null && String(detailOrder.id) === String(ratingPromptOrderId)}
+                    onRatingPromptShown={() => setRatingPromptOrderId(null)}
+                    onOrderRated={handleOrderRated}
+                    onCancelSellerOrder={isSeller && !isSellerBlocked ? handleCancelSellerOrder : undefined}
+                    onRegisterDispatch={isSeller && !isSellerBlocked ? handleRegisterOrderDispatch : undefined}
+                    readOnly={isSellerBlocked}
+                  />
+                ) : (
+                  <div className="profile-panel">
+                    {ordersQuery.isLoading
+                      ? <EmptyState label="Cargando el pedido…" />
+                      : <EmptyState label="No encontramos ese pedido en tu cuenta." />}
+                  </div>
+                )
+              ) : activeTab === 'pedidos' && (
                 isSeller ? (
                   <SellerOrdersPanel
                     orders={orders || []}
                     sellerId={user?.sellerId}
-                    onSelectOrder={(order) => setSelectedOrder(order)}
+                    onSelectOrder={openOrderDetail}
                     onUpdateStatus={handleUpdateOrderStatus}
                     readOnly={isSellerBlocked}
                   />
@@ -1797,7 +1866,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                       </div>
                     )}
                     <h2 className="profile-panel-title">Mis Pedidos</h2>
-                    {(orders || []).length === 0 ? <EmptyState label="Aún no has realizado pedidos." /> : <div className="profile-orders-cards-grid">{orders.map((order) => <OrderCard key={order.id} order={order} mode="buyer" onSelectOrder={(item) => setSelectedOrder(item)} onUpdateStatus={handleUpdateOrderStatus} onRetryPayment={handleRetryPayment} onCancelOrder={handleCancelOrder} />)}</div>}
+                    {(orders || []).length === 0 ? <EmptyState label="Aún no has realizado pedidos." /> : <div className="profile-orders-cards-grid">{orders.map((order) => <OrderCard key={order.id} order={order} mode="buyer" onSelectOrder={openOrderDetail} onUpdateStatus={handleUpdateOrderStatus} onRetryPayment={handleRetryPayment} onCancelOrder={handleCancelOrder} />)}</div>}
                   </div>
                 )
               )}
@@ -2469,30 +2538,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           )}
         </main>
       </div>
-
-      {selectedOrder && (
-        <OrderDetailModal
-          order={selectedOrder}
-          mode={isSeller ? 'seller' : 'buyer'}
-          sellerId={effectiveSellerId}
-          userId={effectiveUserId}
-          onClose={() => {
-            setSelectedOrder(null);
-            openedDeepLinkRef.current = null;
-            onClearDeepLink?.('pedido');
-          }}
-          onUpdateStatus={handleUpdateOrderStatus}
-          onRetryPayment={isSeller ? undefined : handleRetryPayment}
-          onCancelOrder={isSeller ? undefined : handleCancelOrder}
-          onCancelBuyerSubOrder={isSeller ? undefined : handleCancelBuyerSubOrder}
-          autoOpenRating={!isSeller && ratingPromptOrderId != null && String(selectedOrder.id) === String(ratingPromptOrderId)}
-          onRatingPromptShown={() => setRatingPromptOrderId(null)}
-          onOrderRated={handleOrderRated}
-          onCancelSellerOrder={isSeller && !isSellerBlocked ? handleCancelSellerOrder : undefined}
-          onRegisterDispatch={isSeller && !isSellerBlocked ? handleRegisterOrderDispatch : undefined}
-          readOnly={isSellerBlocked}
-        />
-      )}
 
       {selectedCatalogProduct && (
         <NewCatalogProductModal

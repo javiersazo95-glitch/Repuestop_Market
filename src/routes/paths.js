@@ -12,6 +12,10 @@ export const ROUTES = {
   checkout: '/checkout',
   profile: '/perfil',
   profileTab: '/perfil/:tab',
+  // El detalle de un pedido es una PAGINA, no un popup: asi el "atras" del navegador funciona,
+  // el pedido se puede enlazar y compartir, y los dialogos que abre (cancelar con motivo,
+  // registrar despacho, calificar) dejan de ser un modal sobre otro modal.
+  profileOrder: '/perfil/pedidos/:orderId',
   support: '/ayuda',
   helpContact: '/ayuda/contacto',
   helpAllFaqs: '/ayuda/preguntas-frecuentes',
@@ -26,6 +30,11 @@ export const ROUTES = {
 };
 
 // Pestañas válidas del panel de perfil; cada una es una URL (`/perfil/pedidos`).
+/** `/perfil/pedidos/{id}`, el detalle de un pedido dentro del panel. */
+export function profileOrderPath(orderId) {
+  return `/perfil/pedidos/${encodeURIComponent(String(orderId ?? ''))}`;
+}
+
 export const PROFILE_TABS = [
   'resumen', 'pedidos', 'favoritos', 'datos', 'consultas',
   'cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'tienda', 'tienda_datos',

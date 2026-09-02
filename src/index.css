@@ -5313,6 +5313,18 @@ input, select, textarea {
 /* El avance por tienda dentro de la TARJETA del listado. Es el puente con el detalle: sin el,
    la lista muestra un solo estado -- el derivado, el menos avanzado -- y al abrir aparecen dos
    tiendas en puntos distintos sin que nada lo anticipara. */
+/* El detalle del pedido como PAGINA. Reusa el header y el footer del modal -- son los mismos
+   elementos -- y solo cambia la caja: sin alto maximo ni scroll propio, porque quien scrollea
+   es la pagina, y sin la sombra flotante de un dialogo. */
+.order-page-container { background: var(--bg-white); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); display: flex; flex-direction: column; overflow: hidden; }
+.order-page-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+/* El boton de volver ocupa el lugar del icono del modal: es la salida principal de la pagina y
+   tiene que estar donde el ojo empieza a leer. */
+.order-page-back { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: #fff; color: #0f172a; cursor: pointer; flex-shrink: 0; }
+.order-page-back:hover { background: #f1f5f9; }
+/* El pie de una pagina no flota: se apoya al final del contenido. */
+.order-page-container .order-modal-footer { position: static; }
+
 .order-card-substores { display: flex; flex-direction: column; gap: 6px; padding: 10px 0 0; border-top: 1px dashed var(--border-subtle); }
 .order-card-substore { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .order-card-substore-name { color: #475569; font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -3173,3 +3173,56 @@ Alcance real si se decide hacer: columna nueva y migración, envío del vehícul
 checkout de web y móvil, campo en el DTO y su mapper, UI en la vista del vendedor, y un valor
 nuevo en `MotivoCancelacionPedido` (hoy no hay incompatibilidad). Toca el checkout, que es el
 camino de la plata, así que merece su propia sesión.
+
+### 4.43 Sesión 2026-09-02 — el detalle del pedido deja de ser un popup (web)
+
+El detalle se abría como modal, y desde ahí salían más modales: cancelar con motivo, registrar
+despacho, calificar, los `ConfirmDialog`. **Popup sobre popup.** Ahora es una página con su
+propia URL: `/perfil/pedidos/:orderId`, dentro del panel de perfil.
+
+Lo que se gana no es solo estético: **el "atrás" del navegador funciona, la URL se puede
+compartir y recargar en el detalle ya no devuelve al listado vacío.**
+
+#### Cómo se hizo, que es lo que importa para no romperlo
+
+**NO se partió el componente en dos.** `OrderDetailModal.jsx` tenía ~1.550 líneas y unos 25
+`useState` — los diálogos, la calificación, el PIN, la tienda en curso —, y repartirlos entre
+una "vista" y un "contenedor" es exactamente donde se rompen las cosas ya validadas. En vez de
+eso hay **un solo `OrderDetailView` con una prop `layout`**: lo único que cambia entre `modal` y
+`page` es el chrome — velo y portal contra cabecera con botón de volver.
+
+**La ruta monta el MISMO `ProfilePage`**, no una página nueva. Así el detalle reutiliza todos
+los handlers del panel (avanzar estado, cancelar por tienda, calificar, despachar) sin duplicar
+una línea, y lee el pedido del listado que el panel ya carga.
+
+#### Tres trampas
+
+- **`ProfilePage` valida el `tab` contra `PROFILE_TABS` y manda al 404 si no calza.** La ruta
+  nueva declara `:orderId`, no `:tab`, así que `tab` llegaba vacío y **la página caía en el 404
+  antes de renderizar nada**. La guarda se salta cuando hay `orderId`.
+- **La ruta va declarada ANTES de `/perfil/:tab`.** Si no, `pedidos/25` casa con la ruta de
+  pestaña tomando "pedidos" como tab y el id se pierde.
+- **`selectedOrder` sigue existiendo como buffer.** Los handlers escriben ahí la respuesta del
+  backend apenas llega; `invalidateQueries` refresca el listado pero es asíncrono, así que sin
+  mezclar ese buffer la acción se veía con retraso. El detalle es
+  `{ ...delListado, ...selectedOrder }`, y un efecto lo siembra al entrar a la ruta — porque si
+  está vacío, los `setSelectedOrder` de los handlers no tienen a quién actualizar.
+
+#### Compatibilidad
+
+**`?pedido=<id>` sigue funcionando**: lo genera la campana de notificaciones y viaja en correos
+ya enviados. Ahora redirige a la ruta con `replace`, para que el "atrás" no devuelva al
+parámetro y vuelva a redirigir en bucle.
+
+#### Lo que NO cambió
+
+**Los subdiálogos siguen siendo modales**, y está bien: piden un dato y se cierran. Lo que
+desaparece es el modal SOBRE modal. **El móvil no se tocó**: `app/order-detail.tsx` ya era una
+pantalla con su botón de volver.
+
+`OrderDetailModal.jsx` se eliminó: dejar dos caminos al mismo detalle es garantía de que uno se
+quede atrás.
+
+Verificado en el navegador: clic en la tarjeta → `/perfil/pedidos/25`, contenido completo,
+"Volver a mis pedidos" → listado, atrás del navegador → listado renderizado, y URL directa carga
+sin pasar por la lista. `build` ✅, `lint` **96 warnings / 0 errores**.

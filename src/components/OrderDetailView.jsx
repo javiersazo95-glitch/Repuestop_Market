@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, Clock, Wrench, Truck, PackageCheck, User, Store, ChevronDown,
+  X, Clock, Wrench, Truck, PackageCheck, User, Store, ChevronDown, ArrowLeft,
   MapPin, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
   RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock
 } from 'lucide-react';
@@ -217,9 +217,22 @@ function getTimelineIndex(status) {
   return 0; // PENDIENTE / PAGADO
 }
 
-export default function OrderDetailModal({
+/**
+ * El detalle de un pedido, en modal o como pagina.
+ *
+ * Es UN solo componente con dos envoltorios y no dos componentes: aca viven ~25 `useState`
+ * -- los dialogos de cancelacion y despacho, la calificacion, el PIN, la tienda en curso --, y
+ * repartirlos entre una vista y un contenedor es exactamente donde se rompen las cosas que ya
+ * estan validadas. Lo unico que cambia entre `layout="modal"` y `layout="page"` es el chrome:
+ * velo y portal contra cabecera con boton de volver.
+ *
+ * Los subdialogos siguen siendo modales en los dos casos. Son interrupciones legitimas -- piden
+ * un dato y se cierran --; lo que desaparece en `page` es el modal SOBRE modal.
+ */
+export default function OrderDetailView({
   order,
   mode = 'buyer',
+  layout = 'modal',
   sellerId,
   userId,
   onClose,
@@ -675,15 +688,24 @@ export default function OrderDetailModal({
   // bordes de la pantalla se ven sin oscurecer -- que es exactamente lo que pasaba montandolo
   // dentro del arbol del panel de perfil. Subir la opacidad no lo arregla: el problema no es el
   // color, es que la caja no cubre la ventana.
-  return createPortal(
-    <div className="order-modal-backdrop" onClick={onClose}>
-      <div className="order-modal-container" onClick={(e) => e.stopPropagation()}>
+  const isPage = layout === 'page';
+
+  const contenido = (
+      <div className={isPage ? 'order-page-container' : 'order-modal-container'} onClick={isPage ? undefined : (e) => e.stopPropagation()}>
         {/* Header */}
         <div className="order-modal-header">
           <div className="order-modal-title-group">
-            <div className="order-modal-icon-badge">
-              <Package size={22} />
-            </div>
+            {/* En pagina el icono cede su lugar al boton de volver: es la salida principal y
+                tiene que estar donde el ojo empieza a leer. En modal la salida es la X. */}
+            {isPage ? (
+              <button type="button" className="order-page-back" onClick={onClose} aria-label="Volver">
+                <ArrowLeft size={20} />
+              </button>
+            ) : (
+              <div className="order-modal-icon-badge">
+                <Package size={22} />
+              </div>
+            )}
             <div>
               <h2>{isSeller ? "Detalles de la Venta" : "Detalles del Pedido"} {orderIdShort}</h2>
               <span className="order-modal-subtitle">
@@ -697,13 +719,15 @@ export default function OrderDetailModal({
           </div>
           <div className="order-modal-header-actions">
             <OrderStatusBadge status={rawStatus} size="medium" />
-            <button type="button" className="btn-close-modal" onClick={onClose}>
-              <X size={20} />
-            </button>
+            {!isPage && (
+              <button type="button" className="btn-close-modal" onClick={onClose}>
+                <X size={20} />
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="order-modal-body">
+        <div className={isPage ? 'order-page-body' : 'order-modal-body'}>
           {/* Timeline Step-by-Step Progress Bar */}
           <div className="order-timeline-card">
             <h3 className="section-subtitle">Estado del Pedido</h3>
@@ -1170,7 +1194,7 @@ export default function OrderDetailModal({
           )}
 
           <button type="button" className="btn-auth-secondary" onClick={onClose}>
-            Cerrar
+            {isPage ? 'Volver a mis pedidos' : 'Cerrar'}
           </button>
         </div>
 
@@ -1541,6 +1565,17 @@ export default function OrderDetailModal({
         />
         {retryError && <p className="order-modal-retry-error">{retryError}</p>}
       </div>
+  );
+
+  if (isPage) return contenido;
+
+  // Por PORTAL a `document.body`. El velo es `position: fixed`, pero un ancestro con
+  // `transform`, `filter` o `backdrop-filter` se convierte en su bloque contenedor: el `fixed`
+  // deja de medirse contra la ventana y tiñe solo una zona central, dejando los bordes de la
+  // pantalla sin oscurecer. Subir la opacidad no lo arregla -- la caja no cubre la ventana.
+  return createPortal(
+    <div className="order-modal-backdrop" onClick={onClose}>
+      {contenido}
     </div>,
     document.body
   );

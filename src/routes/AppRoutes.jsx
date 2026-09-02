@@ -75,6 +75,18 @@ export default function AppRoutes() {
             <Route path={ROUTES.sellerRegister} element={<SellerRegisterPage />} />
 
             <Route path={ROUTES.profile} element={<Navigate to={`${ROUTES.profile}/resumen`} replace />} />
+            {/* Monta el MISMO ProfilePage: el detalle vive dentro del panel y asi reusa todos
+                sus handlers -- avanzar estado, cancelar por tienda, calificar -- sin duplicar
+                una linea. Va ANTES de `/perfil/:tab`, porque si no `pedidos/123` casaria con la
+                ruta de pestaña tomando "pedidos" como tab y el id se perderia. */}
+            <Route
+              path={ROUTES.profileOrder}
+              element={(
+                <RequireAuth>
+                  <ProfilePage />
+                </RequireAuth>
+              )}
+            />
             <Route
               path={ROUTES.profileTab}
               element={(
