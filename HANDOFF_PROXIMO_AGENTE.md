@@ -3063,3 +3063,78 @@ las dos tiendas, justo por el filtro de la §4.39. Dos efectos: **el filtro de c
 probar mientras siga así** —hay que devolverla a Penco / Región del Biobío—, y las direcciones
 que se ven en pedidos viejos cambiaron, porque salen de la tienda actual y no de una copia
 guardada en el pedido.
+
+### 4.42 Sesión 2026-09-02 — el detalle del pedido, rediseñado en web y app
+
+La misma información vivía en tres o cuatro tarjetas que se pisaban, así que para saber **qué le
+compró a una tienda, cómo le llega, cuánto costó y si puede cancelarla**, el comprador tenía que
+cruzarlas a ojo. Ahora hay **un bloque por tienda** con todo lo suyo dentro, más "Entrega" arriba
+y el resumen abajo. Es el modelo de Mercado Libre (un paquete por vendedor) y Falabella (el
+estado junto al producto).
+
+Aplica a **todo el modo comprador**, con una tienda o con cinco: dos diseños según cuántas
+tiendas tenga el pedido obligan a reaprender la pantalla. **Al vendedor no se le tocó nada** —
+necesita la tarjeta del comprador con su dirección para despachar.
+
+#### Lo que el rediseño destapó
+
+Casi todos los hallazgos vinieron de mirar la pantalla, no el código:
+
+- **`totalActivo` sumaba el envío del pedido completo**, incluido el de la tienda cancelada, que
+  ya no despacha y cuyo envío se devolvió. $36.000 donde debía decir $32.000. Es el mismo error
+  que la fase 3.1 sacó de la liquidación y la 4.37 del reembolso.
+- **`storeInfo` del móvil se cargaba solo de `items[0].sellerId`**: con dos tiendas mostraba el
+  horario y la dirección de una para las dos. En un retiro, eso manda al comprador al local
+  equivocado.
+- **El método de envío salía concatenado** ("Envío dentro de la comuna ($3.000), Envío dentro de
+  la comuna ($4.000)") en las dos plataformas: es texto libre del checkout y se pintaba como si
+  fuera un dato del pedido. El costo real viaja por subordén; el DTO ahora expone `costoEnvio`.
+- **El SKU y la referencia OEM mostraban el mismo valor**: `adaptProduct` colapsa
+  `referenciaOem`, `skuProveedor` y `codigoInterno` en `oemCode`, que sirve para "un código, el
+  que haya" pero no como fuente de dos filas distintas.
+
+#### La calificación, que no era un cambio visual
+
+Se pidió bajar el botón a cada tienda y resultó que `calificarPedido` lo impedía por cuatro
+reglas: exigía **todos** los ítems del pedido, rechazaba si alguno ya tenía nota, medía el estado
+contra el pedido (el derivado) y **pedía calificar ítems cancelados** — con lo que un pedido con
+una tienda cancelada era literalmente incalificable.
+
+**El contrato del endpoint no cambió**: cada `proveedorProducto` ya dice de quién es, así que el
+alcance se deduce de los productos enviados. Mandar todos sigue calificando el pedido entero.
+
+#### Tres trampas de front que costaron una iteración cada una
+
+- **`Alert.alert` con botones no existe en Expo web.** El diálogo no aparece, la promesa nunca se
+  resuelve y el botón queda mudo sin ningún error. La app ya tenía el patrón resuelto en
+  `(buyer)/orders.tsx`; este camino no lo seguía.
+- **`position: fixed` roto por un ancestro.** El velo del modal web teñía solo una zona central y
+  dejaba los bordes sin oscurecer: un ancestro con `transform`/`filter` se vuelve su bloque
+  contenedor. Subir la opacidad no lo arregla — el problema no es el color, es que la caja no
+  cubre la ventana. Se montó por `createPortal`, como ya hacían sus propios subdiálogos.
+- **`loadingDetails` en las dependencias de su propio `useEffect`.** `setLoading(true)`
+  re-ejecutaba el efecto, el cleanup marcaba la respuesta como cancelada y el `finally` nunca
+  apagaba el "Cargando…". El endpoint respondía 200 todo el tiempo.
+
+#### Qué se decidió mostrar y qué no
+
+- **El documento tributario va en el RESUMEN**, no por producto ni por tienda: es uno por pedido
+  (`Pago.pedido_id` es 1:1). Repetirlo por línea sugeriría que se emiten varios.
+- **La garantía bajó a la ficha técnica del repuesto.** Estaba en la tarjeta de envío, que no es
+  su sitio: es del repuesto, no del despacho.
+- **Dirección y horario del local van en el bloque de su tienda**, juntos: son los dos datos que
+  deciden si el comprador puede ir hoy, y con dos tiendas no son los mismos.
+- **La tienda cancelada se conserva atenuada y sin acciones**: es el comprobante de cuánto se
+  devolvió.
+- **El timeline sigue mostrando el estado derivado.**
+
+#### Verificación
+
+Backend: `mvn package` ✅ y **119 tests** ✅ (5 nuevos entre el total vigente y la calificación por
+tienda). Web: `build` ✅, `lint` 98 warnings / 0 errores. Móvil: `tsc` limpio, `expo lint` 0
+errores, **86 de 87 suites y 489 tests** — el fallo es `appointments-calendar-modal`,
+preexistente.
+
+Verificado en vivo con los pedidos 24, 25 y 26: bloques por tienda, cancelación con reembolso de
+$62.000, calificación de una tienda y después la otra, y el retiro en tienda con la dirección y
+el horario de cada local.
