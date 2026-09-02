@@ -2,13 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, Clock, Wrench, Truck, PackageCheck, User, Store, ChevronDown,
-  MapPin, Phone, Mail, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
+  MapPin, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
   RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
-import { activeOrderItems, deliveryCourierLabel, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
+import { activeOrderItems, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
 import { Link } from 'react-router-dom';
 import { productPath } from '../routes/paths';
@@ -186,15 +186,6 @@ const COMMON_COURIERS = [
   'Delivery Propio / Directo',
 ];
 
-function initialsFromName(name) {
-  return String(name || '')
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase() || '?';
-}
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
@@ -429,10 +420,8 @@ export default function OrderDetailModal({
   const canRateOrder = RATEABLE.includes(normStatus) && !alreadyRated;
 
   const buyerName = order.compradorNombre || order.buyerName || order.usuarioNombre || 'Cliente RepuesTop';
-  const buyerEmail = order.compradorEmail || order.buyerEmail || order.email || '—';
   const buyerPhone = order.compradorTelefono || order.buyerPhone || order.telefono || '—';
   const buyerRut = order.facturaRut || order.compradorRut || order.taxId || order.rutEmpresa || '—';
-  const buyerAvatar = resolveMediaUrl(order.compradorFotoPerfil || order.buyerAvatar || order.buyerAvatarUrl);
 
   const sellerName = order.vendedorNombre || order.sellerName || order.nombreTienda || 'Tienda RepuesTop';
   const deliveryAddress = [
@@ -480,7 +469,6 @@ export default function OrderDetailModal({
   const showSubOrders = subOrders.length > 1;
   // Con mas de una tienda, confirmar y finalizar dejan de vivir en el pie del modal: cada
   // bloque tiene el suyo. Un boton suelto abajo no dice a que tienda le pega.
-  const buyerActionsPerStore = !isSeller && showSubOrders;
   const subOrderByStore = new Map(subOrders.map((sub) => [String(sub.proveedorId), sub]));
   // El orden manda: el del backend es el de creacion del checkout y es estable. Si las
   // tarjetas se ordenaran por los items, se reacomodarian solas segun lo que devuelva la BD.
@@ -567,6 +555,12 @@ export default function OrderDetailModal({
     };
   }).filter((block) => block.items.length > 0);
 
+
+  // Desde que el detalle del comprador se arma por bloques -- con UNA tienda o con cinco --, sus
+  // acciones viven siempre dentro del bloque de su tienda. La condicion miraba `showSubOrders`,
+  // que es `> 1`, asi que en un pedido de una sola tienda el boton global sobrevivia y mandaba
+  // la transicion sin `proveedorId`.
+  const buyerActionsPerStore = groupedByStore && !isSeller && storeBlocks.length > 0;
 
   const openRatingModal = (block = null) => {
     setStoreToRate(block);
@@ -734,129 +728,23 @@ export default function OrderDetailModal({
             </div>
           </div>
 
-          {/* La tarjeta del comprador y las de las tiendas son del VENDEDOR: el necesita a quien
-              le despacha. Al comprador esa informacion se le reparte donde le sirve -- su
-              direccion en "Entrega", cada tienda dentro de su bloque -- en vez de repetirla en
-              tarjetas que hay que cruzar a ojo. */}
-          {isSeller && (
-          <section className="order-participants-section" aria-labelledby="order-participants-title">
-            <h3 id="order-participants-title"><User size={17} /> Participantes del pedido</h3>
-            <div className="order-participants-grid">
-              <article className="details-card-block person-highlight-card participant-card buyer-participant-card">
-                <div className="person-highlight-header">
-                  <div className="person-highlight-avatar">
-                    {buyerAvatar ? <img src={buyerAvatar} alt={buyerName} /> : <><User size={20} /><span>{initialsFromName(buyerName)}</span></>}
-                  </div>
-                  <div className="person-highlight-copy">
-                    <span className="person-highlight-eyebrow">Comprador</span>
-                    <h4 className="person-highlight-name">{buyerName}</h4>
-                  </div>
-                </div>
-                <div className="participant-information-list">
-                  <a href={`mailto:${buyerEmail}`}><Mail size={14} /><span><small>Correo</small><strong>{buyerEmail}</strong></span></a>
-                  <a href={`tel:${buyerPhone}`}><Phone size={14} /><span><small>Teléfono</small><strong>{buyerPhone}</strong></span></a>
-                  {!isStorePickup && <div><MapPin size={14} /><span><small>Dirección de entrega</small><strong>{deliveryAddress}</strong></span></div>}
-                  {(order.tipoDocumentoTributario || order.tipoDocumento || order.documentType) && (
-                    <div><FileText size={14} /><span><small>Documento</small><strong>{String(order.tipoDocumentoTributario || order.tipoDocumento || order.documentType).toUpperCase() === 'FACTURA' ? `Factura · RUT ${buyerRut}` : 'Boleta electrónica'}</strong></span></div>
-                  )}
-                </div>
-              </article>
-
-              {sellers.map((seller) => (
-                <article className="details-card-block person-highlight-card participant-card seller-participant-card" key={seller.id}>
-                  <div className="person-highlight-header">
-                    <div className="person-highlight-avatar seller-avatar">
-                      {seller.logo ? <img src={seller.logo} alt={seller.name} /> : <><Store size={20} /><span>{initialsFromName(seller.name)}</span></>}
-                    </div>
-                    <div className="person-highlight-copy">
-                      <span className="person-highlight-eyebrow">Tienda Vendedora</span>
-                      <h4 className="person-highlight-name">{seller.name}</h4>
-                      {/* El avance de ESTA tienda. Va aca y no en el timeline de arriba a
-                          proposito: el timeline muestra el derivado, que es el pedido
-                          completo. Partirlo en dos convertiria la pantalla en dos pedidos,
-                          que es justo el modelo que se descarto (el pago es uno solo). */}
-                      {/* El wrapper con `alignSelf` no es decoracion: `.person-highlight-copy`
-                          es un flex column sin `align-items`, o sea `stretch`, y sin esto la
-                          pildora se estira de lado a lado de la tarjeta. */}
-                      {showSubOrders && seller.subOrder?.estado && (
-                        <span style={{ alignSelf: 'flex-start', marginTop: '3px' }}>
-                          <OrderStatusBadge
-                            status={seller.subOrder.estado === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : seller.subOrder.estado}
-                            size="small"
-                          />
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="participant-information-list">
-                    {seller.email && <a href={`mailto:${seller.email}`}><Mail size={14} /><span><small>Correo</small><strong>{seller.email}</strong></span></a>}
-                    {seller.phone && <a href={`tel:${seller.phone}`}><Phone size={14} /><span><small>Teléfono</small><strong>{seller.phone}</strong></span></a>}
-                    {seller.address && <div><MapPin size={14} /><span><small>Ubicación</small><strong>{seller.address}</strong></span></div>}
-                    {/* El courier y el tracking viven en `RT_pedido`, asi que el segundo
-                        vendedor en despachar sobrescribia los del primero y el comprador se
-                        quedaba con UN numero de seguimiento para dos paquetes. Los de la
-                        suborden son los que de verdad corresponden a esta tienda. Deben ir
-                        como hijos DIRECTOS: la regla de `.participant-information-list` usa
-                        `>`, y envolverlos los deja sin recuadro. */}
-                    {showSubOrders && seller.subOrder?.trackingNumber && (
-                      <div><Truck size={14} /><span><small>Seguimiento</small><strong>{seller.subOrder.trackingNumber}</strong></span></div>
-                    )}
-                    {showSubOrders && seller.subOrder?.courier && (
-                      <div><Package size={14} /><span><small>Courier</small><strong>{seller.subOrder.courier}</strong></span></div>
-                    )}
-                    {/* El codigo que el vendedor pide para entregar. El backend lo manda desde
-                        siempre y NINGUNA vista lo pintaba: el comprador no tenia de donde
-                        leerlo, asi que el retiro en tienda quedaba cortado de su lado. Va aca
-                        y no en un recuadro global porque con dos tiendas son dos codigos
-                        distintos, y uno solo arriba no dice a cual corresponde.
-                        Al vendedor no le llega -el mapper solo adjunta el PIN cuando no hay
-                        proveedorId- y ademas se excluye aca. */}
-                    {!isSeller && isStorePickup && seller.pickupCode && (
-                      <div><KeyRound size={14} /><span><small>Código de retiro</small><strong style={{ fontSize: '15px', letterSpacing: '.12em' }}>{seller.pickupCode}</strong></span></div>
-                    )}
-                  </div>
-                  {/* La cancelacion va DENTRO de la tarjeta de la tienda y no en el pie del
-                      modal: con dos tiendas, un boton suelto abajo no dice a cual le pega, y
-                      el comprador cancelaria la compra equivocada. Queda fuera de
-                      `.participant-information-list` a proposito: esa regla usa `>` y mete a
-                      sus hijos directos en un recuadro. */}
-                  {!groupedByStore && buyerStoreAction(seller) && (
-                    <button
-                      type="button"
-                      className="btn-auth-primary participant-cancel-btn"
-                      onClick={() => { setStoreAdvanceError(''); setStoreToAdvance(seller); }}
-                    >
-                      <PackageCheck size={14} />
-                      <span>{buyerStoreAction(seller).label}</span>
-                    </button>
-                  )}
-                  {!groupedByStore && canBuyerCancelStore(seller) && (
-                    <button
-                      type="button"
-                      className="btn-auth-danger participant-cancel-btn"
-                      onClick={() => { setStoreCancelError(''); setStoreToCancel(seller); }}
-                    >
-                      <XCircle size={14} />
-                      <span>{showSubOrders ? 'Cancelar esta compra' : 'Cancelar pedido'}</span>
-                    </button>
-                  )}
-                </article>
-              ))}
-            </div>
-          </section>
-          )}
 
           {/* A donde va el pedido y a quien. Una sola tarjeta, para el comprador: antes esto
               estaba partido entre su propia tarjeta de "participante" y el bloque de entrega,
               que ademas repetia el metodo de envio del pedido -- que con dos tiendas es la
               concatenacion de los dos y no significa nada. */}
-          {!isStorePickup && (
+          {(
             <div className="details-card-block order-delivery-summary">
               <h3 className="section-subtitle">
                 <MapPin size={16} />
                 <span>{isSeller ? 'Despachar a' : 'Entrega'}</span>
               </h3>
               <div className="order-delivery-summary-rows">
+                {/* En un retiro en tienda NO hay direccion de despacho, pero el bloque se monta
+                    igual: es donde el vendedor ve a quien le entrega y el comprador su propio
+                    documento. Ocultarlo entero dejaba al vendedor de un retiro sin un solo dato
+                    de la persona que va a ir a buscar el repuesto. */}
+                {!isStorePickup && (
                 <div className="order-delivery-summary-row">
                   <MapPin size={14} />
                   <span>{deliveryAddress}</span>
@@ -870,6 +758,7 @@ export default function OrderDetailModal({
                     {addressCopied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
                   </button>
                 </div>
+                )}
                 <div className="order-delivery-summary-row">
                   <User size={14} />
                   <span>{buyerName}{buyerPhone && buyerPhone !== '—' ? ` · ${buyerPhone}` : ''}</span>
@@ -922,7 +811,11 @@ export default function OrderDetailModal({
                             {/* Lo justo para llegar o llamar. El correo se omite a proposito:
                                 para escribirle a la tienda estan el chat y el centro de ayuda,
                                 y una tarjeta por dato era lo que hacia ilegible la pantalla. */}
-                            {(block.address || block.phone) && (
+                            {/* Solo para el COMPRADOR: es el contacto de la tienda a la que le
+                                compro. Al vendedor esta es su propia tienda, asi que repetirle
+                                su direccion y su telefono ocupa el lugar donde deberia estar la
+                                informacion del comprador -- que vive en el bloque de arriba. */}
+                            {!isSeller && (block.address || block.phone) && (
                               <small>{[block.address, block.phone].filter(Boolean).join(' · ')}</small>
                             )}
                           </span>
