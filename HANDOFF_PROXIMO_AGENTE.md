@@ -3138,3 +3138,38 @@ preexistente.
 Verificado en vivo con los pedidos 24, 25 y 26: bloques por tienda, cancelación con reembolso de
 $62.000, calificación de una tienda y después la otra, y el retiro en tienda con la dirección y
 el horario de cada local.
+
+#### 4.42.1 — la vista del vendedor, homologada
+
+El vendedor se quedaba con la vista antigua mientras el comprador tenía la nueva, así que la
+misma pantalla hablaba dos idiomas. Ahora comparte la estructura: **"Despachar a"** (el
+comprador y su dirección) y **"Tu venta"**, un bloque único —su pedido es siempre de una tienda,
+la suya— con sus repuestos, su envío con su costo, su seguimiento y su comprobante.
+
+**Sus acciones siguen en el pie**, no en el bloque: el vendedor despacha con un diálogo propio y
+cancela con motivo formal, que no son las acciones por tienda del comprador.
+
+**La trampa: al vendedor `subordenes` le llega NULO a propósito.** Su bloque salía sin
+seguimiento, sin courier y con el envío en cero. Los datos se leen del pedido, que para él ya
+viene acotado a lo suyo desde la fase 3.1, y en el móvil se le sintetiza una subordén con eso.
+
+**Y al sacar `ShippingDetailsCard` el comprador perdía el comprobante de envío**, que solo se
+abría desde ahí. Se movió a la fila de entrega de su bloque.
+
+Se eliminó el JSX muerto en vez de dejarlo tras un `false &&`, y con él las variables que
+quedaron huérfanas (`Fragment`, `itemGroups`, `shippingService`, `deliveryCourier`,
+`resolveShippingService`). Los baselines vuelven a su valor: **web 98 warnings, móvil 94**.
+
+#### Propuesta anotada: los datos del vehículo para el vendedor
+
+Surgió la idea de mostrarle al vendedor el vehículo del comprador, para validar compatibilidad y
+poder cancelar por incompatibilidad. **Hoy no es posible sin trabajo de fondo**: ni `rt_pedido`,
+ni `rt_pedido_item`, ni `rt_carrito_item` guardan una sola columna de patente o vehículo —
+verificado contra la base. `VehiculoConsultado` existe pero es el registro de consultas de
+patente y solo se usa en el seed de desarrollo; nunca se liga a la compra. El vehículo activo
+vive en el cliente mientras se navega el catálogo y **se pierde en el checkout**.
+
+Alcance real si se decide hacer: columna nueva y migración, envío del vehículo activo desde el
+checkout de web y móvil, campo en el DTO y su mapper, UI en la vista del vendedor, y un valor
+nuevo en `MotivoCancelacionPedido` (hoy no hay incompatibilidad). Toca el checkout, que es el
+camino de la plata, así que merece su propia sesión.
