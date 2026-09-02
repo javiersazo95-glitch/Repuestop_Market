@@ -701,7 +701,7 @@ suborden por vendedor**, cada una con su estado, su envío y su devolución. Eso
   `updateOrderStatusApi`, la liquidación (`LiquidacionPedidoCalculator`), los retiros y
   el módulo de mediación para que apunten a la suborden.
 - Web: `CheckoutPage` manda `envios: [{ proveedorId, metodoEnvio, costoEnvio }]` en vez del
-  `metodoEnvio` único; `OrderCard`/`OrderDetailModal` pintan una suborden por tienda.
+  `metodoEnvio` único; `OrderCard`/`OrderDetailView` pintan una suborden por tienda. (El detalle dejó de ser un modal el 2026-09-02: es la página `/perfil/pedidos/:orderId`.)
 - App móvil: `app/(buyer)/cart.tsx`, `orders.tsx` y `order-detail.tsx` en paralelo.
 
 Mientras tanto, la solución de la Fase 1.1d (método por línea + fallback vacío cuando hay

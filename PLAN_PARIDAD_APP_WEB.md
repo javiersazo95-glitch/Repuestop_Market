@@ -2,6 +2,13 @@
 
 **Estado:** FASE 0 COMPLETADA (Verificación sin código). Fecha: 2026-08-25. Rama: `dev`.
 
+> **Nota de rutas (2026-09-02).** Este documento cita `src/components/OrderDetailModal.jsx` en
+> los registros de varias fases. **Ese archivo ya no existe**: el detalle del pedido dejó de ser
+> un modal y es la página `/perfil/pedidos/:orderId`, con el componente en
+> `src/components/OrderDetailView.jsx`. Las menciones de abajo se conservan como historial de lo
+> que se hizo en cada fase; para tocar el código, el archivo es `OrderDetailView.jsx`. Ver la
+> sección 4.43 de `HANDOFF_PROXIMO_AGENTE.md`.
+
 Fuentes:
 - Web: este repo (`src/services/api.js` y componentes en `src/`).
 - App: `C:/ProyectoRepuestop/repuestop/mobile`.
@@ -79,7 +86,7 @@ Tres cubetas:
 | # | Capacidad | Endpoint Backend / Módulo | Estado | Evidencia (archivo:línea) | Archivo web a tocar |
 |---|---|---|---|---|---|
 | A1 | **Recuperar contraseña** | `POST /auth/recover-password/{send-code,verify-code,reset}` | **IMPLEMENTADO (Fase 1)** | Backend: `AuthController.java:321,332,343`<br>Mobile: `mobile/app/(auth)/recover-password.tsx`<br>Web: Flujo completo en 3 pasos (email -> código 6 dígitos con cooldown -> nueva clave) en `AuthModal.jsx`. | `src/services/api.js`<br>`src/components/AuthModal.jsx` |
-| A2 | **Cancelar pedido (vendedor)** | `POST /proveedores/{id}/pedidos/{id}/cancelacion` | **IMPLEMENTADO (Fase 2)** | Backend: `PedidoController.java:212`<br>Mobile: `mobile/app/(seller)/order-detail.tsx:210`<br>Web: Implementado `cancelSellerOrderApi` en `api.js` y modal con selector de motivos (`MotivoCancelacionPedido`) y detalle en `OrderDetailModal.jsx` y `ProfileDashboard.jsx`. El botón se ofrece solo en `PENDIENTE` y `PAGADO`: `PedidoCancelacionSupport:115` corta ahí y con `EN_PREPARACION` el POST moría en 400. | `src/services/api.js`<br>`src/components/OrderDetailModal.jsx`<br>`src/components/ProfileDashboard.jsx` |
+| A2 | **Cancelar pedido (vendedor)** | `POST /proveedores/{id}/pedidos/{id}/cancelacion` | **IMPLEMENTADO (Fase 2)** | Backend: `PedidoController.java:212`<br>Mobile: `mobile/app/(seller)/order-detail.tsx:210`<br>Web: Implementado `cancelSellerOrderApi` en `api.js` y modal con selector de motivos (`MotivoCancelacionPedido`) y detalle en `OrderDetailView.jsx` (antes `OrderDetailModal.jsx`) y `ProfileDashboard.jsx`. El botón se ofrece solo en `PENDIENTE` y `PAGADO`: `PedidoCancelacionSupport:115` corta ahí y con `EN_PREPARACION` el POST moría en 400. | `src/services/api.js`<br>`src/components/OrderDetailView.jsx`<br>`src/components/ProfileDashboard.jsx` |
 | A3 | **Marcar enviado con comprobante** | `POST /pedidos/{id}/envio` (multipart) | **IMPLEMENTADO (Fase 2)** | Backend: `PedidoController.java:291`<br>Mobile: `mobile/components/order-detail/seller-action-modal.tsx:142`<br>Web: Implementado `registerOrderDispatchApi` multipart en `api.js` y modal de despacho con courier, N° seguimiento, costo y comprobante (foto/PDF) en `OrderDetailModal.jsx`. | `src/services/api.js`<br>`src/components/OrderDetailModal.jsx`<br>`src/components/ProfileDashboard.jsx` |
 | A4 | **Confirmar recepción y calificación (comprador)** | `POST /usuarios/{u}/pedidos/{p}/calificaciones` | **IMPLEMENTADO (Fase 3)** | Backend: `PedidoController.java:383`<br>Mobile: `mobile/components/order-detail/buyer-action-bar.tsx:64`<br>Web: Implementado `rateOrderApi` en `api.js` y modal interactivo de calificación con estrellas para vendedor y cada producto en `OrderDetailModal.jsx`. | `src/services/api.js`<br>`src/components/OrderDetailModal.jsx` |
 | A5 | **Detalle y mensajes de ticket de soporte** | `/support/tickets/mine/{u}/{t}`, `/messages`, `/close`, `/read` | **IMPLEMENTADO (Fase 3)** | Backend: `TicketSoporteController.java:99,112,124,135`<br>Mobile: `mobile/app/(seller)/support.tsx:135`, `support-detail.tsx:82`<br>Web: Implementados `getSupportTicketDetailApi`, `getSupportTicketMessagesApi`, `sendSupportTicketMessageApi`, `closeSupportTicketApi` y modal completo `SupportTicketDetailModal.jsx` en `ProfileSupportPanel.jsx`. | `src/services/api.js`<br>`src/components/SupportTicketDetailModal.jsx`<br>`src/components/ProfileSupportPanel.jsx` |
