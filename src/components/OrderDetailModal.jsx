@@ -1,17 +1,159 @@
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, Clock, Wrench, Truck, PackageCheck, User, Store,
+  X, Clock, Wrench, Truck, PackageCheck, User, Store, ChevronDown,
   MapPin, Phone, Mail, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
   RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
 import { resolveShippingService } from '../data/shippingMethods';
-import { resolveMediaUrl, rateOrderApi } from '../services/api';
+import { resolveMediaUrl, rateOrderApi, getPublicProductApi } from '../services/api';
+import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, deliveryCourierLabel, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
+import { Link } from 'react-router-dom';
+import { productPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
 import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancellationReason';
+
+/**
+ * Una linea de repuesto dentro del bloque de su tienda, con la ficha tecnica desplegable.
+ *
+ * La ficha NO viaja en el pedido: el pedido guarda lo que se compro (nombre, marca, SKU,
+ * precio), no las especificaciones del producto. Se pide al abrir, igual que hace la app
+ * (`ProductItem` de `order-detail-parts.tsx`), y solo entonces: en un pedido de varias lineas,
+ * traerlas todas de entrada serian N peticiones que casi nadie va a mirar.
+ *
+ * Si el producto ya no existe -- lo dio de baja el vendedor -- se muestra lo que trae el
+ * pedido y nada mas. Es un detalle opcional, no puede romper la pantalla.
+ */
+function OrderProductRow({ item, onNavigate }) {
+  const [expanded, setExpanded] = useState(false);
+  const [details, setDetails] = useState(null);
+  const [specsState, setSpecsState] = useState('idle');
+  const [descExpanded, setDescExpanded] = useState(false);
+  // Que la peticion ya se hizo va en un ref y NO en el estado: con `details`/`loading` en las
+  // dependencias del efecto, `setLoading(true)` lo re-ejecutaba, el cleanup del anterior
+  // marcaba la respuesta como cancelada y el `finally` nunca apagaba el "Cargando...". La
+  // ficha se quedaba girando para siempre aunque el endpoint respondiera 200.
+  const fetchedRef = useRef(false);
+
+  const photo = resolveMediaUrl(item.imagenUrl || item.imageUrl || item.productPhotoUri || (item.imageUrls && item.imageUrls[0]));
+  const name = item.nombre || item.productName || item.name || 'Repuesto de vehículo';
+  const brand = item.marca || item.productBrand || item.brand || '';
+  const sku = item.sku || item.productSku || '';
+  const qty = Number(item.cantidad || item.quantity || 1);
+  const price = Number(item.precioUnitario || item.precio || item.unitPrice || 0);
+  const cancelled = isCancelledItem(item);
+  const refunded = Number(item.montoReembolsado ?? item.refundedAmount ?? 0);
+  const productId = item.productoId || item.productId || item.id;
+
+  useEffect(() => {
+    if (!expanded || !productId || fetchedRef.current) return undefined;
+    fetchedRef.current = true;
+    let cancelado = false;
+    setSpecsState('loading');
+    getPublicProductApi(productId)
+      .then((dto) => {
+        if (cancelado) return;
+        setDetails(adaptProduct(dto));
+        setSpecsState('done');
+      })
+      // Un repuesto dado de baja por el vendedor ya no responde. Es un detalle opcional: se
+      // avisa y se sigue mostrando lo que el pedido guarda, no se rompe la fila.
+      .catch(() => { if (!cancelado) setSpecsState('error'); });
+    return () => { cancelado = true; };
+  }, [expanded, productId]);
+
+  const specs = [
+    ['Categoría', details?.categoriaNombre || item.categoria || item.productCategory || null],
+    // El SKU del vendedor, que es el mismo que se ve en la fila cerrada. La referencia OEM va
+    // aparte y SOLO si existe: con `oemCode` -- que colapsa referenciaOem, skuProveedor y
+    // codigoInterno en el primero que haya -- las dos filas mostraban el mismo valor.
+    ['SKU', details?.skuProveedor || sku || null],
+    ['Condición', details?.condicion || null],
+    ['Compatibilidad', details?.compatibilidades?.[0]
+      ? [details.compatibilidades[0].marca, details.compatibilidades[0].modelo].filter(Boolean).join(' ')
+      : null],
+    ['Referencia OEM', details?.referenciaOem || null],
+  ].filter(([, value]) => Boolean(value));
+
+  // El nombre es un enlace a la ficha del producto, para volver a comprarlo. Por eso la fila
+  // ya NO puede ser un boton: un `<a>` dentro de un `<button>` es HTML invalido y el navegador
+  // decide solo cual de los dos clics gana. El desplegable tiene su propio boton, con area de
+  // toque de 34px -- un chevron de 16 es un blanco demasiado chico en un telefono.
+  const productLink = productId ? productPath({ id: productId, titulo: name }) : null;
+
+  return (
+    <div className={`order-item-row order-item-row--expandable ${cancelled ? 'order-item-row--cancelled' : ''}`}>
+      <div className="order-item-row-main">
+        {photo
+          ? <img src={photo} alt={name} className="item-table-img" />
+          : <div className="item-table-fallback"><Package size={20} /></div>}
+        <div className="item-table-info">
+          <div className="order-item-row-title">
+            {productLink ? (
+              <Link to={productLink} className="item-table-name order-item-row-link" onClick={onNavigate}>
+                {name}
+              </Link>
+            ) : (
+              <strong className="item-table-name">{name}</strong>
+            )}
+            {cancelled && <span className="item-cancelled-badge">Cancelado</span>}
+          </div>
+          <span className="item-table-meta">
+            {[brand, sku ? `SKU ${sku}` : null].filter(Boolean).join(' · ')}
+          </span>
+          {cancelled && refunded > 0 && (
+            <span className="order-item-row-refund">Reembolso {formatCLP(refunded)}</span>
+          )}
+        </div>
+        <div className="item-table-pricing">
+          <span className="item-qty">x{qty}</span>
+          <strong className="item-subtotal">{formatCLP(price * qty)}</strong>
+        </div>
+        <button
+          type="button"
+          className="order-item-row-toggle"
+          onClick={() => setExpanded((prev) => !prev)}
+          aria-expanded={expanded}
+          aria-label={expanded ? 'Ocultar ficha técnica' : 'Ver ficha técnica'}
+        >
+          <ChevronDown size={16} className={`order-item-row-chevron ${expanded ? 'is-open' : ''}`} />
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="order-item-specs">
+          {specsState === 'loading' ? (
+            <span className="order-item-specs-loading"><Loader2 size={13} className="spin-icon" /> Cargando ficha técnica…</span>
+          ) : specsState === 'error' || specs.length === 0 ? (
+            <span className="order-item-specs-loading">Este repuesto ya no tiene ficha publicada.</span>
+          ) : (
+            <dl className="order-item-specs-grid">
+              {specs.map(([label, value]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {/* La descripcion se corta a dos lineas: son textos de largo libre que el vendedor
+              escribe, y uno largo empuja la accion de la tienda fuera de la pantalla. */}
+          {details?.descripcion && (
+            <div className="order-item-specs-desc">
+              <p className={descExpanded ? '' : 'is-clamped'}>{details.descripcion}</p>
+              <button type="button" onClick={() => setDescExpanded((prev) => !prev)}>
+                {descExpanded ? 'ver menos' : 'ver más'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const SELLER_CANCEL_REASONS = [
   { code: 'SIN_STOCK', label: 'Sin stock disponible' },
@@ -98,6 +240,7 @@ export default function OrderDetailModal({
   onRegisterDispatch,
   autoOpenRating = false,
   onRatingPromptShown,
+  onOrderRated,
   readOnly = false,
 }) {
   const rawStatus = order?.estado || order?.status || 'PENDIENTE';
@@ -151,6 +294,9 @@ export default function OrderDetailModal({
   const [showRatingModal, setShowRatingModal] = useState(false);
   // Arranca en 0: precargar 5 estrellas es poner una opinion en boca del comprador y
   // ademas hace que "Guardar" sea valido sin que haya tocado nada.
+  // La tienda que se esta calificando. La nota es POR TIENDA: con dos vendedores, una sola
+  // estrella no dice a cual se le puso.
+  const [storeToRate, setStoreToRate] = useState(null);
   const [sellerRating, setSellerRating] = useState(0);
   const [productRatings, setProductRatings] = useState({});
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
@@ -256,12 +402,32 @@ export default function OrderDetailModal({
   // la segunda calificacion con "Este pedido ya ha sido calificado". Sin esta condicion el
   // boton seguia ahi despues de calificar y el reintento moria en un 400.
   const alreadyRated = items.some((item) => item.sellerRating != null || item.productRating != null);
+  const RATEABLE = ['ENTREGADO', 'FINALIZADO', 'RECEIVED'];
+  // Calificable POR TIENDA: sus lineas vivas, sin nota todavia, y su subordén ya entregada. Se
+  // mide contra el estado de la subordén y no contra el del pedido, que es el DERIVADO -- el
+  // menos avanzado --: con una tienda entregada y otra en viaje no se podia calificar ninguna.
+  const canRateStore = (block) => {
+    if (isSeller || !block) return false;
+    const vivos = (block.items || []).filter((item) => !isCancelledItem(item));
+    if (vivos.length === 0) return false;
+    if (vivos.some((item) => item.sellerRating != null || item.productRating != null)) return false;
+    return RATEABLE.includes(String(block.estado || normStatus || '').toUpperCase());
+  };
   // `PedidoPostVentaSupport` exige calificar TODOS los items del pedido: si falta uno
   // responde "Debes calificar todos los productos del pedido". Se bloquea el envio
   // hasta tenerlos, en vez de mandar el 400 y mostrarlo como error del servidor.
+  // Los repuestos que entran en la calificacion abierta: los de esa tienda, o todos cuando se
+  // califica el pedido entero (una sola tienda, o desde la tarjeta del listado). Los CANCELADOS
+  // se excluyen: el comprador nunca los recibio y el backend ya dejo de pedirlos.
+  //
+  // Va ANTES de `ratingComplete`, que lo usa. `no-undef` no ve un const leido antes de su
+  // declaracion -- la variable existe -- y la pantalla revienta al abrirse con "Cannot access
+  // before initialization".
+  const ratingItems = (storeToRate ? storeToRate.items : items).filter((item) => !isCancelledItem(item));
   const ratingComplete = sellerRating > 0
-    && items.every((item) => Number(productRatings[item.productoId || item.id]) > 0);
-  const canRateOrder = ['ENTREGADO', 'FINALIZADO', 'RECEIVED'].includes(normStatus) && !alreadyRated;
+    && ratingItems.length > 0
+    && ratingItems.every((item) => Number(productRatings[item.productoId || item.id]) > 0);
+  const canRateOrder = RATEABLE.includes(normStatus) && !alreadyRated;
 
   const buyerName = order.compradorNombre || order.buyerName || order.usuarioNombre || 'Cliente RepuesTop';
   const buyerEmail = order.compradorEmail || order.buyerEmail || order.email || '—';
@@ -360,6 +526,47 @@ export default function OrderDetailModal({
   })).values()]
     .sort((a, b) => (subOrderIndex.get(String(a.id)) ?? 0) - (subOrderIndex.get(String(b.id)) ?? 0));
 
+  // Un BLOQUE por tienda: sus repuestos, su entrega, su plata y sus acciones, todo junto.
+  //
+  // Antes eso vivia en tres tarjetas separadas -"Participantes", "Repuestos en el Pedido" y
+  // "Entrega y Despacho"-, asi que para saber que le compro a una tienda, como le llega y si
+  // puede cancelarla, el comprador tenia que cruzar tres bloques a ojo. Es como lo resuelven
+  // Mercado Libre (un paquete por vendedor) y Falabella (el estado al lado del producto).
+  //
+  // Aplica a TODO el modo comprador, con una tienda o con cinco: dejar dos diseños distintos
+  // segun cuantas tiendas tenga el pedido obliga al usuario a reaprender la pantalla. Con una
+  // sola es un unico bloque, que es exactamente lo que necesita.
+  //
+  // Al VENDEDOR no se le toca nada: su DTO ya viene acotado a el -- no tiene con quien agrupar --
+  // y ademas necesita la tarjeta del comprador con la direccion para despachar.
+  const groupedByStore = !isSeller;
+  const storeBlocks = !groupedByStore ? [] : sellers.map((seller) => {
+    const storeItems = items.filter(
+      (item) => String(item.proveedorId ?? item.sellerId ?? '') === String(seller.id),
+    );
+    // El subtotal cuenta solo las lineas VIVAS: una cancelada ya se reembolso y sumarla
+    // prometeria un cobro que no existe. Se usa `??` y no `||` porque un cero es legitimo.
+    const subtotalStore = storeItems
+      .filter((item) => !isCancelledItem(item))
+      .reduce((sum, item) => sum + Number(item.precioUnitario ?? item.precio ?? item.unitPrice ?? 0)
+        * Number(item.cantidad ?? item.quantity ?? 1), 0);
+    const refundStore = storeItems.reduce(
+      (sum, item) => sum + Number(item.montoReembolsado ?? item.refundedAmount ?? 0), 0);
+    const estado = String(seller.subOrder?.estado || '').toUpperCase();
+    const isCancelledStore = estado === 'CANCELADO';
+    return {
+      ...seller,
+      items: storeItems,
+      estado,
+      isCancelledStore,
+      subtotalStore,
+      refundStore,
+      // El envio de ESTA tienda, que el backend manda en la suborden. El del pedido es la SUMA
+      // de todas: mostrarlo por tienda cobraria de mas en cada bloque.
+      shippingStore: Number(seller.subOrder?.costoEnvio ?? 0),
+    };
+  }).filter((block) => block.items.length > 0);
+
   // Los repuestos, agrupados por tienda cuando hay mas de una. Sin esto el comprador ve la
   // lista plana y no tiene como saber quien le despacha cada cosa: la fila del item ni
   // siquiera muestra la tienda.
@@ -375,7 +582,8 @@ export default function OrderDetailModal({
       // Una tienda sin lineas visibles no aporta un encabezado vacio.
       .filter((group) => group.items.length > 0);
 
-  const openRatingModal = () => {
+  const openRatingModal = (block = null) => {
+    setStoreToRate(block);
     setProductRatings({});
     setSellerRating(0);
     setRatingError('');
@@ -479,7 +687,15 @@ export default function OrderDetailModal({
     setDispatchVoucherFile(file);
   };
 
-  return (
+  // Por PORTAL a `document.body`, igual que los subdialogos de mas abajo.
+  //
+  // El velo es `position: fixed`, pero un ancestro con `transform`, `filter` o `backdrop-filter`
+  // se convierte en su bloque contenedor: el `fixed` deja de medirse contra la ventana y pasa a
+  // medirse contra ESE elemento. El sintoma es que el velo tiñe solo una zona central y los
+  // bordes de la pantalla se ven sin oscurecer -- que es exactamente lo que pasaba montandolo
+  // dentro del arbol del panel de perfil. Subir la opacidad no lo arregla: el problema no es el
+  // color, es que la caja no cubre la ventana.
+  return createPortal(
     <div className="order-modal-backdrop" onClick={onClose}>
       <div className="order-modal-container" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
@@ -532,6 +748,11 @@ export default function OrderDetailModal({
             </div>
           </div>
 
+          {/* La tarjeta del comprador y las de las tiendas son del VENDEDOR: el necesita a quien
+              le despacha. Al comprador esa informacion se le reparte donde le sirve -- su
+              direccion en "Entrega", cada tienda dentro de su bloque -- en vez de repetirla en
+              tarjetas que hay que cruzar a ojo. */}
+          {isSeller && (
           <section className="order-participants-section" aria-labelledby="order-participants-title">
             <h3 id="order-participants-title"><User size={17} /> Participantes del pedido</h3>
             <div className="order-participants-grid">
@@ -613,7 +834,7 @@ export default function OrderDetailModal({
                       el comprador cancelaria la compra equivocada. Queda fuera de
                       `.participant-information-list` a proposito: esa regla usa `>` y mete a
                       sus hijos directos en un recuadro. */}
-                  {buyerStoreAction(seller) && (
+                  {!groupedByStore && buyerStoreAction(seller) && (
                     <button
                       type="button"
                       className="btn-auth-primary participant-cancel-btn"
@@ -623,7 +844,7 @@ export default function OrderDetailModal({
                       <span>{buyerStoreAction(seller).label}</span>
                     </button>
                   )}
-                  {canBuyerCancelStore(seller) && (
+                  {!groupedByStore && canBuyerCancelStore(seller) && (
                     <button
                       type="button"
                       className="btn-auth-danger participant-cancel-btn"
@@ -637,8 +858,47 @@ export default function OrderDetailModal({
               ))}
             </div>
           </section>
+          )}
+
+          {/* A donde va el pedido y a quien. Una sola tarjeta, para el comprador: antes esto
+              estaba partido entre su propia tarjeta de "participante" y el bloque de entrega,
+              que ademas repetia el metodo de envio del pedido -- que con dos tiendas es la
+              concatenacion de los dos y no significa nada. */}
+          {groupedByStore && !isStorePickup && (
+            <div className="details-card-block order-delivery-summary">
+              <h3 className="section-subtitle"><MapPin size={16} /><span>Entrega</span></h3>
+              <div className="order-delivery-summary-rows">
+                <div className="order-delivery-summary-row">
+                  <MapPin size={14} />
+                  <span>{deliveryAddress}</span>
+                  <button
+                    type="button"
+                    className="order-delivery-copy"
+                    onClick={copyAddress}
+                    title="Copiar dirección"
+                    aria-label="Copiar dirección"
+                  >
+                    {addressCopied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                  </button>
+                </div>
+                <div className="order-delivery-summary-row">
+                  <User size={14} />
+                  <span>{buyerName}{buyerPhone && buyerPhone !== '—' ? ` · ${buyerPhone}` : ''}</span>
+                </div>
+                {(order.tipoDocumentoTributario || order.tipoDocumento || order.documentType) && (
+                  <div className="order-delivery-summary-row">
+                    <FileText size={14} />
+                    <span>{String(order.tipoDocumentoTributario || order.tipoDocumento || order.documentType).toUpperCase() === 'FACTURA'
+                      ? `Factura · RUT ${buyerRut}`
+                      : 'Boleta electrónica'}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Delivery Details Block */}
+          {!groupedByStore && (
           <div className="details-card-block delivery-details-block">
             <div className="delivery-block-header">
               <h3 className="section-subtitle">
@@ -672,6 +932,9 @@ export default function OrderDetailModal({
                 </div>
               )}
 
+              {/* Estos dos son del pedido y `RT_pedido` conserva los del ULTIMO que despacho.
+                  Al comprador se le muestran dentro del bloque de cada tienda, que son los
+                  suyos; aca queda solo la vista del vendedor, donde son los de su propia venta. */}
               {order.trackingNumber && (
                 <div className="delivery-info-item">
                   <span className="info-label">N° de Seguimiento</span>
@@ -687,8 +950,138 @@ export default function OrderDetailModal({
               )}
             </div>
           </div>
+          )}
+
+          {/* Un bloque por tienda: sus repuestos, su entrega, su plata y sus acciones juntos.
+              Es la vista del comprador cuando compro a varias tiendas. */}
+          {groupedByStore && (
+            <div className="details-card-block order-products-block">
+              <h3 className="section-subtitle">
+                <Store size={16} />
+                <span>Tu compra{storeBlocks.length > 1 ? ` (${storeBlocks.length} tiendas)` : ''}</span>
+              </h3>
+
+              <div className="order-store-blocks">
+                {storeBlocks.map((block) => {
+                  const accion = buyerStoreAction(block);
+                  const puedeCancelar = canBuyerCancelStore(block);
+                  return (
+                    <article
+                      key={block.id}
+                      className={`order-store-block ${block.isCancelledStore ? 'order-store-block--cancelled' : ''}`}
+                    >
+                      <header className="order-store-block-head">
+                        <span className="order-store-block-name">
+                          {block.logo
+                            ? <img src={block.logo} alt="" className="order-store-block-logo" />
+                            : <Store size={15} />}
+                          <span className="order-store-block-identity">
+                            <strong>{block.name}</strong>
+                            {/* Lo justo para llegar o llamar. El correo se omite a proposito:
+                                para escribirle a la tienda estan el chat y el centro de ayuda,
+                                y una tarjeta por dato era lo que hacia ilegible la pantalla. */}
+                            {(block.address || block.phone) && (
+                              <small>{[block.address, block.phone].filter(Boolean).join(' · ')}</small>
+                            )}
+                          </span>
+                        </span>
+                        {block.estado && (
+                          <OrderStatusBadge
+                            status={block.estado === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : block.estado}
+                            size="small"
+                          />
+                        )}
+                      </header>
+
+                      <div className="order-items-table">
+                        {block.items.map((item, i) => (
+                          <OrderProductRow key={item.id || i} item={item} onNavigate={onClose} />
+                        ))}
+                      </div>
+
+                      {/* Como llega LO DE ESTA TIENDA. El seguimiento y el PIN son suyos: el
+                          pedido guarda los del ultimo que despacho y el codigo es por tienda. */}
+                      <div className="order-store-block-delivery">
+                        <span>
+                          <Truck size={13} />
+                          {isStorePickup ? 'Retiro en tienda' : deliveryMethodLabel(order)}
+                          {!isStorePickup && block.shippingStore > 0 && (
+                            <strong className="order-store-block-amount">{formatCLP(block.shippingStore)}</strong>
+                          )}
+                        </span>
+                        {block.subOrder?.trackingNumber && (
+                          <span><Package size={13} /> Seguimiento: <strong>{block.subOrder.trackingNumber}</strong>
+                            {block.subOrder.courier ? ` · ${block.subOrder.courier}` : ''}</span>
+                        )}
+                        {isStorePickup && block.pickupCode && !block.isCancelledStore && (
+                          <span className="order-store-block-pin">
+                            <KeyRound size={13} /> Código de retiro:
+                            <strong>{block.pickupCode}</strong>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* El envio se dice UNA vez, en la fila de la entrega de arriba: repetirlo
+                          aca hacia leer dos cobros distintos por el mismo despacho. */}
+                      <div className="order-store-block-totals">
+                        {block.isCancelledStore ? (
+                          <span className="order-store-block-refund">
+                            Cancelado · Reembolso {formatCLP(block.refundStore)}
+                          </span>
+                        ) : (
+                          <span>Repuestos <strong>{formatCLP(block.subtotalStore)}</strong></span>
+                        )}
+                      </div>
+
+                      {/* Las acciones de ESTA tienda, dentro de su bloque. Un boton al pie del
+                          modal no diria a cual le pega. Una tienda cancelada no ofrece ninguna:
+                          el bloque queda solo como comprobante de lo que se devolvio. */}
+                      {!block.isCancelledStore && (accion || puedeCancelar || canRateStore(block)) && (
+                        <div className="order-store-block-actions">
+                          {/* La calificacion tambien es POR TIENDA: se evalua a ese vendedor con
+                              SUS repuestos. Un boton global calificaba a "Tienda RepuesTop" -- un
+                              nombre generico -- y mezclaba los productos de las dos. */}
+                          {canRateStore(block) && (
+                            <button
+                              type="button"
+                              className="btn-auth-secondary"
+                              onClick={() => openRatingModal(block)}
+                            >
+                              <Star size={14} />
+                              <span>Calificar</span>
+                            </button>
+                          )}
+                          {accion && (
+                            <button
+                              type="button"
+                              className="btn-auth-primary"
+                              onClick={() => { setStoreAdvanceError(''); setStoreToAdvance(block); }}
+                            >
+                              <PackageCheck size={14} />
+                              <span>{accion.label}</span>
+                            </button>
+                          )}
+                          {puedeCancelar && (
+                            <button
+                              type="button"
+                              className="btn-auth-danger"
+                              onClick={() => { setStoreCancelError(''); setStoreToCancel(block); }}
+                            >
+                              <XCircle size={14} />
+                              <span>Cancelar esta compra</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Items / Products Table with C2 item cancellation support */}
+          {!groupedByStore && (
           <div className="details-card-block order-products-block">
             <h3 className="section-subtitle">
               <Package size={16} />
@@ -755,6 +1148,7 @@ export default function OrderDetailModal({
               </div>
             )}
           </div>
+          )}
 
           {/* Financial Breakdown Section */}
           <div className="details-card-block financial-summary-block">
@@ -996,11 +1390,13 @@ export default function OrderDetailModal({
           )}
 
           {/* Calificar Compra (Comprador) */}
-          {!isSeller && canRateOrder && (
+          {/* Con bloques por tienda la calificacion vive en cada uno: un boton al pie no dice
+              a que vendedor se le esta poniendo la nota. */}
+          {!isSeller && !groupedByStore && canRateOrder && (
             <button
               type="button"
               className="btn-auth-primary"
-              onClick={openRatingModal}
+              onClick={() => openRatingModal()}
             >
               <Star size={16} />
               <span>Calificar Compra</span>
@@ -1178,7 +1574,9 @@ export default function OrderDetailModal({
                   <Star size={22} />
                 </div>
                 <div className="order-subdialog-heading">
-                  <h3>Calificar compra #{orderIdShort}</h3>
+                  {/* `orderDisplayCode` YA devuelve el numero con su almohadilla, asi que el
+                      texto no debe agregar otra: salia "Calificar compra # #19". */}
+                  <h3>{storeToRate ? `Calificar a ${storeToRate.name}` : `Calificar compra ${orderIdShort}`}</h3>
                   <span>Tu opinión ayuda a mantener la calidad en RepuesTop</span>
                 </div>
               </div>
@@ -1192,7 +1590,9 @@ export default function OrderDetailModal({
                   try {
                     const effectiveUserId = userId || order?.compradorId || order?.usuarioId;
                     if (!effectiveUserId) throw new Error('No se pudo identificar tu cuenta de usuario.');
-                    const itemsPayload = items.map((item) => {
+                    // Solo los repuestos de la tienda calificada, y sin los cancelados. El
+                    // backend deduce de aqui a que tienda corresponde la nota.
+                    const itemsPayload = ratingItems.map((item) => {
                       const pId = item.productoId || item.id;
                       return {
                         productoId: Number(pId) || 0,
@@ -1200,7 +1600,12 @@ export default function OrderDetailModal({
                         productRating: Number(productRatings[pId]),
                       };
                     });
-                    await rateOrderApi(effectiveUserId, order.id, itemsPayload);
+                    const actualizado = await rateOrderApi(effectiveUserId, order.id, itemsPayload);
+                    // El pedido en pantalla tiene que quedarse con las notas recien puestas: sin
+                    // esto, `canRateStore` seguia viendo los items sin calificar y el boton
+                    // "Calificar" se quedaba en la tarjeta hasta cerrar y reabrir el modal.
+                    // El backend devuelve el pedido completo, asi que se mezcla tal cual.
+                    if (actualizado) onOrderRated?.(actualizado);
                     setRatingSuccess(true);
                     setTimeout(() => {
                       setShowRatingModal(false);
@@ -1227,7 +1632,11 @@ export default function OrderDetailModal({
                     <section className="order-rating-block">
                       <header>
                         <span className="order-rating-eyebrow">Vendedor</span>
-                        <strong className="order-rating-subject">{sellerName}</strong>
+                        {/* La tienda que se esta calificando. `sellerName` se cae a "Tienda
+                            RepuesTop" cuando el pedido no trae un nombre unico -- que es
+                            justamente el caso de dos vendedores --, asi que el comprador ponia
+                            estrellas sin saber a quien. */}
+                        <strong className="order-rating-subject">{storeToRate?.name || sellerName}</strong>
                       </header>
                       <div className="order-rating-stars">
                         {[1, 2, 3, 4, 5].map((star) => (
@@ -1246,8 +1655,8 @@ export default function OrderDetailModal({
 
                     {/* Un bloque por repuesto */}
                     <div className="order-rating-products">
-                      <span className="order-rating-eyebrow">{items.length > 1 ? 'Los repuestos' : 'El repuesto'}</span>
-                      {items.map((item, idx) => {
+                      <span className="order-rating-eyebrow">{ratingItems.length > 1 ? 'Los repuestos' : 'El repuesto'}</span>
+                      {ratingItems.map((item, idx) => {
                         const pId = item.productoId || item.id || idx;
                         const currentProductRating = productRatings[pId] || 0;
                         const pName = item.nombre || item.productName || item.name || 'Repuesto';
@@ -1366,6 +1775,7 @@ export default function OrderDetailModal({
         />
         {retryError && <p className="order-modal-retry-error">{retryError}</p>}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

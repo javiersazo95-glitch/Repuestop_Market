@@ -5255,6 +5255,103 @@ input, select, textarea {
    estado y no como algo clickeable. */
 .order-controlled-wait--modal { flex: 1; justify-content: center; padding: 12px 16px; border: 1px solid #cfe0f5; border-radius: var(--radius-sm); background: #f2f7fd; font-size: 13px; }
 
+/* Bloques por tienda del detalle del pedido (comprador, pedido de varias tiendas).
+   Cada bloque junta lo que antes vivia en tres tarjetas separadas -participantes, repuestos y
+   entrega-: que compro, a quien, en que va, como llega, cuanto costo y que puede hacer. Es el
+   modelo de Mercado Libre (un paquete por vendedor) y Falabella (el estado junto al producto). */
+/* "Entrega": a donde va el pedido y a quien, una sola vez. Reemplaza para el comprador la
+   tarjeta de "participante" mas el bloque de despacho, que repetian los mismos datos y ademas
+   mostraban el metodo de envio del PEDIDO -- que con dos tiendas es la concatenacion de los dos
+   y no significa nada. */
+.order-delivery-summary-rows { display: flex; flex-direction: column; gap: 7px; }
+.order-delivery-summary-row { display: flex; align-items: center; gap: 8px; color: #334155; font-size: 13px; }
+.order-delivery-summary-row > svg { color: #94a3b8; flex-shrink: 0; }
+.order-delivery-summary-row > span { flex: 1; min-width: 0; }
+/* Icono discreto, no un boton con texto: copiar la direccion es una comodidad, no la accion
+   principal de la pantalla, y como boton competia con los de cada tienda. */
+.order-delivery-copy { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 1px solid var(--border-subtle); border-radius: 6px; background: #fff; color: #64748b; cursor: pointer; flex-shrink: 0; }
+.order-delivery-copy:hover { background: #f1f5f9; color: #0f172a; }
+
+/* La identidad de la tienda: nombre y, debajo, lo justo para llegar o llamar. */
+.order-store-block-identity { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.order-store-block-identity strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.order-store-block-identity small { color: #94a3b8; font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Fila de repuesto con ficha tecnica desplegable, como en la app. La fila entera es el boton:
+   un chevron de 16px es un blanco demasiado chico para tocar en un telefono. */
+.order-item-row--expandable { flex-direction: column; align-items: stretch; gap: 0; }
+.order-item-row-main { display: flex; align-items: center; gap: 12px; width: 100%; }
+/* El desplegable tiene su propio boton porque el nombre es un enlace, y un `<a>` dentro de un
+   `<button>` es HTML invalido. 34px de area de toque: el chevron mide 16 y solo no se acierta. */
+.order-item-row-toggle { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 8px; background: none; color: #94a3b8; cursor: pointer; flex-shrink: 0; }
+.order-item-row-toggle:hover { background: #f1f5f9; color: #0f172a; }
+.order-item-row-link { color: inherit; text-decoration: none; font-weight: 700; }
+.order-item-row-link:hover { color: var(--brand-blue, #1d6fe0); text-decoration: underline; }
+.order-item-row-title { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.order-item-row-refund { color: #B8261A; font-size: 11.5px; font-weight: 700; }
+.order-item-row-chevron { color: #94a3b8; flex-shrink: 0; transition: transform .18s ease; }
+.order-item-row-chevron.is-open { transform: rotate(180deg); }
+
+.order-item-specs { margin-top: 10px; padding: 10px 12px; border-radius: var(--radius-sm); background: #f8fafc; border: 1px solid var(--border-subtle); }
+.order-item-specs-loading { display: inline-flex; align-items: center; gap: 6px; color: #64748b; font-size: 12px; }
+/* Una fila por dato: etiqueta al inicio, valor pegado al borde derecho. Antes era un grid con
+   `auto-fit`, que repartia en 3 columnas o en 1 segun el ancho disponible -- asi que la misma
+   ficha se veia distinta en una fila normal y en una cancelada, que tiene menos ancho util. */
+.order-item-specs-grid { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.order-item-specs-grid > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.order-item-specs-grid dt { color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: .02em; flex-shrink: 0; }
+.order-item-specs-grid dd { margin: 0; color: #0f172a; font-size: 12.5px; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+
+.order-item-specs-desc { margin: 10px 0 0; color: #64748b; font-size: 12.5px; line-height: 1.5; }
+.order-item-specs-desc p { margin: 0; }
+/* `-webkit-line-clamp` sigue siendo la unica forma con soporte real de cortar por LINEAS y no
+   por caracteres, que es lo que importa cuando el texto lo escribe el vendedor. */
+.order-item-specs-desc p.is-clamped { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.order-item-specs-desc button { margin-top: 3px; padding: 0; border: 0; background: none; color: var(--brand-blue, #1d6fe0); font-size: 12px; font-weight: 700; cursor: pointer; }
+.order-item-specs-desc button:hover { text-decoration: underline; }
+
+.order-store-blocks { display: flex; flex-direction: column; gap: 14px; }
+.order-store-block { border: 1px solid var(--border-subtle); border-radius: var(--radius-md, 12px); background: #fff; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.order-store-block-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.order-store-block-name { display: inline-flex; align-items: center; gap: 8px; color: #0f172a; font-size: 14px; min-width: 0; }
+.order-store-block-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.order-store-block-logo { width: 26px; height: 26px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+
+/* La entrega de ESTA tienda. Fondo propio para que se lea como un dato del bloque y no como
+   una fila mas de la lista de repuestos que tiene encima. */
+.order-store-block-delivery { display: flex; flex-direction: column; gap: 5px; padding: 9px 11px; border-radius: var(--radius-sm); background: #f8fafc; color: #475569; font-size: 12.5px; }
+/* Cada dato en su fila y el monto al borde derecho: el costo del despacho es una CIFRA y tiene
+   que caer en la misma columna que el resto de los importes del bloque, o el ojo la lee como
+   parte del texto. El `margin-left:auto` del strong es lo que la empuja. */
+.order-store-block-delivery > span { display: flex; align-items: center; gap: 6px; }
+/* Solo el MONTO se va al borde. El numero de seguimiento y el PIN llevan texto detras, asi
+   que empujarlos partiria la frase en dos mitades separadas por el ancho de la tarjeta. */
+.order-store-block-delivery .order-store-block-amount { margin-left: auto; color: #0f172a; }
+.order-store-block-delivery strong { color: #0f172a; }
+.order-store-block-pin strong { font-size: 15px; letter-spacing: .12em; color: var(--brand-blue, #1d6fe0); }
+
+.order-store-block-totals { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 18px; color: #475569; font-size: 12.5px; }
+.order-store-block-totals strong { color: #0f172a; font-size: 13.5px; }
+
+/* Los botones se alinean a la derecha, como el pie del modal, para que la vista no quede con
+   dos criterios distintos de alineacion en la misma pantalla. */
+.order-store-block-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.order-store-block-actions .btn-auth-primary,
+.order-store-block-actions .btn-auth-danger { width: auto; min-height: 0; padding: 9px 14px; font-size: 13px; }
+
+/* Una tienda cancelada se conserva atenuada y SIN acciones: es el comprobante de cuanto se
+   devolvio. Si desapareciera, el comprador no tendria donde ver el monto del reembolso. */
+.order-store-block--cancelled { background: #fcfcfd; border-color: #e7e9ee; }
+.order-store-block--cancelled .order-store-block-name strong { color: #64748b; }
+.order-store-block-refund { color: #B8261A; font-weight: 700; font-size: 13px; }
+
+@media (max-width: 560px) {
+  .order-store-block-totals { justify-content: space-between; }
+  .order-store-block-actions { justify-content: stretch; }
+  .order-store-block-actions .btn-auth-primary,
+  .order-store-block-actions .btn-auth-danger { flex: 1; justify-content: center; }
+}
+
 /* Entrega de un retiro en tienda: el vendedor teclea el PIN de 6 digitos que le dicta el
    comprador. Antes era un input generico de 160px pegado al boton, sin etiqueta, que en el
    pie del modal se leia como un campo de busqueda perdido. `.order-pin-entry` lo agrupa con
@@ -5374,7 +5471,10 @@ input, select, textarea {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.65);
+  /* El velo tiene que teñir igual sobre CUALQUIER pantalla. Con 0.65 se veia azul oscuro
+     abriendo el pedido desde una vista de fondo oscuro y casi blanco desde /perfil/pedidos,
+     que es claro: el mismo modal parecia dos modales distintos. */
+  background: rgba(15, 23, 42, 0.78);
   backdrop-filter: blur(5px);
   z-index: 1000;
   display: flex;

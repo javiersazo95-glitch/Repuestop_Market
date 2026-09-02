@@ -730,6 +730,21 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   };
 
   /**
+   * Deja el pedido de la pantalla con las calificaciones recien guardadas.
+   *
+   * La nota es POR TIENDA, asi que despues de calificar una el modal tiene que saber cuales
+   * quedan: sin esto seguia ofreciendo "Calificar" en la tienda ya evaluada hasta cerrar y
+   * reabrir el detalle.
+   */
+  const handleOrderRated = (updatedOrder) => {
+    if (!updatedOrder?.id) return;
+    queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
+    setSelectedOrder((prev) => (prev && String(prev.id) === String(updatedOrder.id)
+      ? { ...prev, ...updatedOrder }
+      : prev));
+  };
+
+  /**
    * El comprador cancela su compra a UNA tienda
    * (`POST /pedidos/{id}/proveedores/{id}/cancelacion-comprador`).
    *
@@ -2472,6 +2487,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           onCancelBuyerSubOrder={isSeller ? undefined : handleCancelBuyerSubOrder}
           autoOpenRating={!isSeller && ratingPromptOrderId != null && String(selectedOrder.id) === String(ratingPromptOrderId)}
           onRatingPromptShown={() => setRatingPromptOrderId(null)}
+          onOrderRated={handleOrderRated}
           onCancelSellerOrder={isSeller && !isSellerBlocked ? handleCancelSellerOrder : undefined}
           onRegisterDispatch={isSeller && !isSellerBlocked ? handleRegisterOrderDispatch : undefined}
           readOnly={isSellerBlocked}
