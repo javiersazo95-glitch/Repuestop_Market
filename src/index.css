@@ -5310,6 +5310,13 @@ input, select, textarea {
 .order-item-specs-desc button { margin-top: 3px; padding: 0; border: 0; background: none; color: var(--brand-blue, #1d6fe0); font-size: 12px; font-weight: 700; cursor: pointer; }
 .order-item-specs-desc button:hover { text-decoration: underline; }
 
+/* El avance por tienda dentro de la TARJETA del listado. Es el puente con el detalle: sin el,
+   la lista muestra un solo estado -- el derivado, el menos avanzado -- y al abrir aparecen dos
+   tiendas en puntos distintos sin que nada lo anticipara. */
+.order-card-substores { display: flex; flex-direction: column; gap: 6px; padding: 10px 0 0; border-top: 1px dashed var(--border-subtle); }
+.order-card-substore { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.order-card-substore-name { color: #475569; font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .order-store-blocks { display: flex; flex-direction: column; gap: 14px; }
 .order-store-block { border: 1px solid var(--border-subtle); border-radius: var(--radius-md, 12px); background: #fff; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
 .order-store-block-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }

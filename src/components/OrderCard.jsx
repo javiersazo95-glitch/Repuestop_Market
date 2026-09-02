@@ -292,6 +292,12 @@ export default function OrderCard({
             reales del pedido (cantidad de productos, envío, forma de entrega). */}
         <div className="order-card-info-chips">
           <span className="order-info-chip"><Boxes size={13} /> {itemsCount} {itemsCount === 1 ? 'producto' : 'productos'}{cancelledCount > 0 && ` · ${cancelledCount} cancelado${cancelledCount === 1 ? '' : 's'}`}</span>
+          {/* Cuantas tiendas hay detras. La tarjeta mostraba UN estado y UN producto, asi que
+              al abrir el detalle aparecian dos tiendas con estados distintos sin ningun aviso
+              previo: el salto entre la lista y el detalle no lo anticipaba nada. */}
+          {buyerMultiStore && (
+            <span className="order-info-chip"><Store size={13} /> {order.subordenes.length} tiendas</span>
+          )}
           {isStorePickup ? (
             <span className="order-info-chip"><Store size={13} /> Retiro en tienda</span>
           ) : shippingFee > 0 ? (
@@ -348,6 +354,23 @@ export default function OrderCard({
             </span>
           </div>
         </div>
+
+        {/* El avance de cada tienda. Sin esto la tarjeta resumia dos estados distintos en el
+            derivado -- el menos avanzado --, asi que un pedido con una tienda ya entregada y otra
+            en preparacion se leia entero como "En preparacion". */}
+        {buyerMultiStore && (
+          <div className="order-card-substores">
+            {order.subordenes.map((sub) => (
+              <span key={sub.proveedorId} className="order-card-substore">
+                <span className="order-card-substore-name">{sub.nombreTienda}</span>
+                <OrderStatusBadge
+                  status={sub.estado === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : sub.estado}
+                  size="small"
+                />
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Footer Row with Delivery and Price */}
         <div className="order-card-footer">
