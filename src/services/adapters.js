@@ -224,6 +224,12 @@ export function adaptProduct(dto) {
     categoriaId: toNumber(dto.categoriaId),
     subcategoriaId: toNumber(dto.subcategoriaId),
     oemCode: dto.referenciaOem || dto.skuProveedor || dto.codigoInterno || '',
+    // Los dos por separado ADEMAS de `oemCode`, que los colapsa en uno: son datos distintos y
+    // mostrarlos como si fueran el mismo hace que la ficha repita el valor en "SKU" y en
+    // "Referencia OEM". `oemCode` se conserva porque lo usan las vistas que solo quieren "un
+    // codigo, el que haya".
+    skuProveedor: dto.skuProveedor || dto.codigoInterno || '',
+    referenciaOem: dto.referenciaOem || '',
     descripcion: dto.descripcion || '',
     marca: dto.marcaRepuesto || dto.marca || dto.productBrand || dto.brand || dto.fabricante || dto.manufacturer || '',
     precio,
