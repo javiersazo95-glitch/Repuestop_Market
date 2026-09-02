@@ -2973,3 +2973,66 @@ transición sin `proveedorId`, o sea que el comprador móvil cierra todas las ti
 El backend lo acepta porque nulo mantiene el alcance histórico a propósito, así que no está
 roto — está atrasado respecto de la web. Es el mismo trabajo que las §4.38 y §4.37, aplicado a
 la app.
+
+### 4.41 Sesión 2026-09-01 (noche) — la Ruta B llega a la app móvil
+
+**Solo `repuestop/mobile`.** Es el trabajo de las §4.37 y §4.38 aplicado a la app: la
+cancelación por subordén y el finalizar por tienda.
+
+#### El punto de partida: atrasada, no rota
+
+La app mandaba la transición **sin `proveedorId`**, así que el comprador móvil cerraba todas
+las tiendas de una vez. El backend lo aceptaba porque nulo mantiene el alcance histórico a
+propósito, de modo que no había error visible: había una acción que hacía de más.
+
+Y no tenía la cancelación por subordén en absoluto — usaba la transición genérica a `cancelled`,
+que mueve el pedido entero y no engancha ningún reembolso. Es exactamente el estado del que
+partió la web en la §4.37.
+
+#### Capa de datos
+
+`updateBuyerOrderStatus` acepta un cuarto argumento `proveedorId` y `cancelBuyerSubOrder` es
+nueva, contra `POST /pedidos/{id}/proveedores/{id}/cancelacion-comprador`. Las mismas dos reglas
+del backend: el campo es del COMPRADOR —a un vendedor se le ignora— y nulo mantiene el alcance
+histórico, del que depende el pedido de una sola tienda.
+
+#### La sección "Tus tiendas"
+
+El detalle del móvil no tenía tarjetas de tienda: solo una lista plana de productos y, desde la
+§4.40, las tarjetas de PIN sueltas. Ahora hay un `SubOrdersCard` con **una tarjeta por tienda**
+—estado, seguimiento, su PIN y sus botones (confirmar / finalizar / cancelar)—, que **solo se
+pinta con más de una**. Con una sola no hay ambigüedad que resolver y una sección de un bloque
+es ruido: ahí el PIN sigue en su tarjeta suelta y las acciones donde estaban.
+
+Es la misma decisión que la web tomó en la §4.38, por la misma razón: un botón suelto no dice a
+qué tienda le pega.
+
+**El timeline sigue mostrando el estado derivado** —el del pedido completo— y así se queda.
+
+#### En la lista, las acciones se OCULTAN con varias tiendas
+
+`(buyer)/orders.tsx` tenía "Marcar recibido" / "Finalizar pedido" y "Cancelar pedido" actuando
+sobre el pedido entero. Con varias tiendas **el split se puenteaba desde la lista**: el comprador
+cerraba las dos de una. Es el mismo agujero que la web tapó en `OrderCard`.
+
+Se ocultan en vez de deshabilitarse: un botón muerto sin explicación se lee como una falla, y la
+tarjeta completa ya lleva al detalle.
+
+#### Dos detalles que cuestan un bug si se hacen distinto
+
+- **`busySellerId` en vez de un booleano.** Con un solo flag de "cargando", pulsar en una tienda
+  dejaba los botones de la otra girando.
+- **La calificación se decide por el estado que DEVUELVE el backend**, no por el que se pidió.
+  Con varias tiendas, confirmar la primera deja el pedido todavía en `ENVIADO` y el POST de
+  calificaciones responde 400: exige todos los ítems de un pedido `ENTREGADO`/`FINALIZADO`. Es
+  el mismo arreglo que la web necesitó en `handleUpdateOrderStatus`.
+
+#### Verificación
+
+`tsc --noEmit` limpio, `expo lint` **0 errores** (94 warnings preexistentes), **15 tests en
+`utils/__tests__/orders.test.ts`** (3 nuevos: el `proveedorId` en la transición, su omisión sin
+tienda, y el endpoint de cancelación). Suite completa **84 de 85 suites, 476 tests**; el único
+fallo sigue siendo `appointments-calendar-modal.test.tsx`, preexistente.
+
+**No se probó en un dispositivo.** Lo verificado es la capa de datos y los tipos; la sección
+nueva no pasó por una corrida real de la app.
