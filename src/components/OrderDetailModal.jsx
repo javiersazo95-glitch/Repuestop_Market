@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, Clock, Wrench, Truck, PackageCheck, User, Store, ChevronDown,
@@ -6,7 +6,6 @@ import {
   RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
-import { resolveShippingService } from '../data/shippingMethods';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, deliveryCourierLabel, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
@@ -441,13 +440,6 @@ export default function OrderDetailModal({
     order.compradorComuna || order.comuna,
     order.compradorRegion || order.region,
   ].filter(Boolean).join(', ') || 'Dirección de envío no registrada';
-  // El courier es informacion ADICIONAL al metodo, no un reemplazo: la pildora lo muestra
-  // solo cuando existe, porque el recuadro de abajo ya dice el tipo de entrega y repetir la
-  // misma frase dos veces seguidas no aporta nada.
-  const deliveryCourier = deliveryCourierLabel(order);
-  // Traduce el método de envío a español + ícono, con la misma lógica que la
-  // ficha de producto usa para los métodos que declara la tienda.
-  const shippingService = resolveShippingService(deliveryCourier || deliveryMethodLabel(order));
   const isStorePickup = isStorePickupOrder(order);
   const copyAddress = (e) => {
     e.stopPropagation();
@@ -539,8 +531,8 @@ export default function OrderDetailModal({
   //
   // Al VENDEDOR no se le toca nada: su DTO ya viene acotado a el -- no tiene con quien agrupar --
   // y ademas necesita la tarjeta del comprador con la direccion para despachar.
-  const groupedByStore = !isSeller;
-  const storeBlocks = !groupedByStore ? [] : sellers.map((seller) => {
+  const groupedByStore = true;
+  const storeBlocks = sellers.map((seller) => {
     const storeItems = items.filter(
       (item) => String(item.proveedorId ?? item.sellerId ?? '') === String(seller.id),
     );
@@ -552,7 +544,13 @@ export default function OrderDetailModal({
         * Number(item.cantidad ?? item.quantity ?? 1), 0);
     const refundStore = storeItems.reduce(
       (sum, item) => sum + Number(item.montoReembolsado ?? item.refundedAmount ?? 0), 0);
-    const estado = String(seller.subOrder?.estado || '').toUpperCase();
+    // Al VENDEDOR el backend no le manda `subordenes` -- su respuesta esta acotada a el y esa
+    // lista le pintaria la otra tienda dentro de su propia venta --, asi que sus datos se leen
+    // del pedido, que para el YA viene acotado a lo suyo desde la fase 3.1: su estado, su
+    // envio, su courier y su tracking. Sin este respaldo su bloque salia sin seguimiento y con
+    // el envio en cero.
+    const subOrder = seller.subOrder;
+    const estado = String(subOrder?.estado || (isSeller ? normStatus : '')).toUpperCase();
     const isCancelledStore = estado === 'CANCELADO';
     return {
       ...seller,
@@ -561,26 +559,14 @@ export default function OrderDetailModal({
       isCancelledStore,
       subtotalStore,
       refundStore,
-      // El envio de ESTA tienda, que el backend manda en la suborden. El del pedido es la SUMA
-      // de todas: mostrarlo por tienda cobraria de mas en cada bloque.
-      shippingStore: Number(seller.subOrder?.costoEnvio ?? 0),
+      trackingStore: subOrder?.trackingNumber || (isSeller ? order.trackingNumber : null),
+      courierStore: subOrder?.courier || (isSeller ? order.courier : null),
+      // El envio de ESTA tienda. El del pedido es la SUMA de todas, asi que solo sirve de
+      // respaldo para el vendedor, donde ya viene acotado al suyo.
+      shippingStore: Number(subOrder?.costoEnvio ?? (isSeller ? shippingFee : 0)),
     };
   }).filter((block) => block.items.length > 0);
 
-  // Los repuestos, agrupados por tienda cuando hay mas de una. Sin esto el comprador ve la
-  // lista plana y no tiene como saber quien le despacha cada cosa: la fila del item ni
-  // siquiera muestra la tienda.
-  const itemGroups = !showSubOrders
-    ? [{ key: 'all', title: null, items }]
-    : subOrders
-      .map((sub) => ({
-        key: String(sub.proveedorId),
-        title: sub.nombreTienda,
-        estado: sub.estado,
-        items: items.filter((item) => String(item.proveedorId ?? item.sellerId ?? '') === String(sub.proveedorId)),
-      }))
-      // Una tienda sin lineas visibles no aporta un encabezado vacio.
-      .filter((group) => group.items.length > 0);
 
   const openRatingModal = (block = null) => {
     setStoreToRate(block);
@@ -864,9 +850,12 @@ export default function OrderDetailModal({
               estaba partido entre su propia tarjeta de "participante" y el bloque de entrega,
               que ademas repetia el metodo de envio del pedido -- que con dos tiendas es la
               concatenacion de los dos y no significa nada. */}
-          {groupedByStore && !isStorePickup && (
+          {!isStorePickup && (
             <div className="details-card-block order-delivery-summary">
-              <h3 className="section-subtitle"><MapPin size={16} /><span>Entrega</span></h3>
+              <h3 className="section-subtitle">
+                <MapPin size={16} />
+                <span>{isSeller ? 'Despachar a' : 'Entrega'}</span>
+              </h3>
               <div className="order-delivery-summary-rows">
                 <div className="order-delivery-summary-row">
                   <MapPin size={14} />
@@ -897,60 +886,9 @@ export default function OrderDetailModal({
             </div>
           )}
 
-          {/* Delivery Details Block */}
-          {!groupedByStore && (
-          <div className="details-card-block delivery-details-block">
-            <div className="delivery-block-header">
-              <h3 className="section-subtitle">
-                <Truck size={16} />
-                <span>Información de Entrega y Despacho</span>
-              </h3>
-              {deliveryCourier && <span className="delivery-badge-pill">{deliveryCourier}</span>}
-            </div>
-
-            <div className="delivery-info-grid">
-              <div className="delivery-info-item">
-                <span className="info-label">Tipo de Entrega</span>
-                <strong className="info-value">{isStorePickup ? 'Retiro en Tienda' : deliveryMethodLabel(order)}</strong>
-              </div>
-
-              {!isStorePickup && (
-                <div className="delivery-info-item full-width">
-                  <span className="info-label">Dirección de Destino</span>
-                  <div className="address-copy-row">
-                    <strong className="info-value address-text">{deliveryAddress}</strong>
-                    <button
-                      type="button"
-                      className="btn-copy-address"
-                      onClick={copyAddress}
-                      title="Copiar dirección completa"
-                    >
-                      {addressCopied ? <CheckCircle2 size={15} className="text-emerald" /> : <Copy size={15} />}
-                      <span>{addressCopied ? '¡Copiado!' : 'Copiar'}</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Estos dos son del pedido y `RT_pedido` conserva los del ULTIMO que despacho.
-                  Al comprador se le muestran dentro del bloque de cada tienda, que son los
-                  suyos; aca queda solo la vista del vendedor, donde son los de su propia venta. */}
-              {order.trackingNumber && (
-                <div className="delivery-info-item">
-                  <span className="info-label">N° de Seguimiento</span>
-                  <strong className="info-value">{order.trackingNumber}</strong>
-                </div>
-              )}
-
-              {order.courier && (
-                <div className="delivery-info-item">
-                  <span className="info-label">Courier de Transporte</span>
-                  <strong className="info-value">{order.courier}</strong>
-                </div>
-              )}
-            </div>
-          </div>
-          )}
+          {/* Delivery Details Block. Ya no se monta para nadie: el metodo y su costo viven en el
+              bloque de la venta, y la direccion del comprador en "Entrega". Se conserva el
+              codigo por si hiciera falta volver a una vista plana. */}
 
           {/* Un bloque por tienda: sus repuestos, su entrega, su plata y sus acciones juntos.
               Es la vista del comprador cuando compro a varias tiendas. */}
@@ -958,7 +896,11 @@ export default function OrderDetailModal({
             <div className="details-card-block order-products-block">
               <h3 className="section-subtitle">
                 <Store size={16} />
-                <span>Tu compra{storeBlocks.length > 1 ? ` (${storeBlocks.length} tiendas)` : ''}</span>
+                <span>
+                  {isSeller
+                    ? 'Tu venta'
+                    : `Tu compra${storeBlocks.length > 1 ? ` (${storeBlocks.length} tiendas)` : ''}`}
+                </span>
               </h3>
 
               <div className="order-store-blocks">
@@ -1009,9 +951,9 @@ export default function OrderDetailModal({
                             <strong className="order-store-block-amount">{formatCLP(block.shippingStore)}</strong>
                           )}
                         </span>
-                        {block.subOrder?.trackingNumber && (
-                          <span><Package size={13} /> Seguimiento: <strong>{block.subOrder.trackingNumber}</strong>
-                            {block.subOrder.courier ? ` · ${block.subOrder.courier}` : ''}</span>
+                        {block.trackingStore && (
+                          <span><Package size={13} /> Seguimiento: <strong>{block.trackingStore}</strong>
+                            {block.courierStore ? ` · ${block.courierStore}` : ''}</span>
                         )}
                         {isStorePickup && block.pickupCode && !block.isCancelledStore && (
                           <span className="order-store-block-pin">
@@ -1036,7 +978,7 @@ export default function OrderDetailModal({
                       {/* Las acciones de ESTA tienda, dentro de su bloque. Un boton al pie del
                           modal no diria a cual le pega. Una tienda cancelada no ofrece ninguna:
                           el bloque queda solo como comprobante de lo que se devolvio. */}
-                      {!block.isCancelledStore && (accion || puedeCancelar || canRateStore(block)) && (
+                      {!isSeller && !block.isCancelledStore && (accion || puedeCancelar || canRateStore(block)) && (
                         <div className="order-store-block-actions">
                           {/* La calificacion tambien es POR TIENDA: se evalua a ese vendedor con
                               SUS repuestos. Un boton global calificaba a "Tienda RepuesTop" -- un
@@ -1080,75 +1022,6 @@ export default function OrderDetailModal({
             </div>
           )}
 
-          {/* Items / Products Table with C2 item cancellation support */}
-          {!groupedByStore && (
-          <div className="details-card-block order-products-block">
-            <h3 className="section-subtitle">
-              <Package size={16} />
-              <span>Repuestos en el Pedido ({items.length})</span>
-            </h3>
-
-            {items.length === 0 ? (
-              <p className="empty-text">No hay repuestos registrados en este pedido.</p>
-            ) : (
-              <div className="order-items-table">
-                {itemGroups.map((group) => (
-                  <Fragment key={group.key}>
-                  {/* Encabezado de tienda, solo con mas de una. `.order-items-table` es un
-                      flex column con `gap` y sin selectores de hijo directo, asi que
-                      intercalar un hermano no descoloca las filas. */}
-                  {group.title && (
-                    // `marginBottom: 0` porque `.section-subtitle` trae 6px propios: sumados al
-                    // `gap` de la tabla, el encabezado quedaba mas cerca del grupo anterior que
-                    // de sus propias filas.
-                    <h3 className="section-subtitle" style={{ marginBottom: 0 }}>
-                      <Store size={15} />
-                      <span>{group.title}</span>
-                    </h3>
-                  )}
-                  {group.items.map((item, i) => {
-                  const photo = resolveMediaUrl(item.imagenUrl || item.imageUrl || item.productPhotoUri || (item.imageUrls && item.imageUrls[0]));
-                  const name = item.nombre || item.productName || item.name || 'Repuesto de vehículo';
-                  const brand = item.marca || item.productBrand || item.brand || '';
-                  const sku = item.sku || item.productSku || '';
-                  const qty = Number(item.cantidad || item.quantity || 1);
-                  const price = Number(item.precioUnitario || item.precio || item.unitPrice || 0);
-
-                  const isItemCancelled = isCancelledItem(item);
-
-                  return (
-                    <div key={item.id || i} className={`order-item-row ${isItemCancelled ? 'order-item-row--cancelled' : ''}`}>
-                      {photo ? (
-                        <img src={photo} alt={name} className="item-table-img" />
-                      ) : (
-                        <div className="item-table-fallback">
-                          <Package size={20} />
-                        </div>
-                      )}
-                      <div className="item-table-info">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <strong className="item-table-name">{name}</strong>
-                          {isItemCancelled && (
-                            <span className="item-cancelled-badge">Cancelado</span>
-                          )}
-                        </div>
-                        <span className="item-table-meta">
-                          {[brand ? `Marca: ${brand}` : null, sku ? `SKU: ${sku}` : null].filter(Boolean).join(' · ')}
-                        </span>
-                      </div>
-                      <div className="item-table-pricing">
-                        <span className="item-qty">x{qty}</span>
-                        <strong className="item-subtotal">{formatCLP(price * qty)}</strong>
-                      </div>
-                    </div>
-                  );
-                  })}
-                  </Fragment>
-                ))}
-              </div>
-            )}
-          </div>
-          )}
 
           {/* Financial Breakdown Section */}
           <div className="details-card-block financial-summary-block">
