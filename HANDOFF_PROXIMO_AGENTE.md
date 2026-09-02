@@ -3027,6 +3027,15 @@ tarjeta completa ya lleva al detalle.
   calificaciones responde 400: exige todos los ítems de un pedido `ENTREGADO`/`FINALIZADO`. Es
   el mismo arreglo que la web necesitó en `handleUpdateOrderStatus`.
 
+#### "Por confirmar", que salió de mirar la pantalla
+
+El badge de cada tienda decía **"Pendiente" sobre un pedido ya pagado**, contradiciendo a la
+barra de arriba en la misma pantalla. La causa es que `mapBackendStatus` colapsa `PENDIENTE` y
+`PAGADO` en un solo `'pending'` —es preexistente y lo comparte toda la app—, así que la tarjeta
+no podía distinguirlos. Con el pago aprobado ahora dice **"Por confirmar"**: este badge es de la
+TIENDA, y lo que falta ahí es que acepte el pedido. Con el pago fallido o realmente pendiente
+sigue diciendo "Pendiente".
+
 #### Verificación
 
 `tsc --noEmit` limpio, `expo lint` **0 errores** (94 warnings preexistentes), **15 tests en
@@ -3034,5 +3043,23 @@ tarjeta completa ya lleva al detalle.
 tienda, y el endpoint de cancelación). Suite completa **84 de 85 suites, 476 tests**; el único
 fallo sigue siendo `appointments-calendar-modal.test.tsx`, preexistente.
 
-**No se probó en un dispositivo.** Lo verificado es la capa de datos y los tipos; la sección
-nueva no pasó por una corrida real de la app.
+**Probado a medias.** La sección "Tus tiendas" se verificó en pantalla con el pedido 26 (dos
+tiendas, ambas en `PAGADO`): se pinta con las dos tarjetas y sus botones de cancelar. **Las
+acciones no se ejercitaron**: confirmar y finalizar por tienda, la cancelación y el
+comportamiento de la lista quedaron pendientes de probar.
+
+#### Los fixtures quedaron en este punto
+
+- **Pedido 25**: dos tiendas, retiro en tienda, ambas en `ENVIADO` con PIN `790372` (Repuestos 1)
+  y `644024` (Repuestos 2). Sirve para confirmar/finalizar por tienda.
+- **Pedido 26**: dos tiendas, despacho a domicilio, ambas en `PAGADO`, envíos **$3.000 y $4.000**
+  separados. Sirve para la cancelación: al cancelar Repuestos 2 debe devolver **$62.000** —sus
+  líneas más **sus** $4.000—, no una proporción del total.
+- **Pedido 23**: intacto, es el fixture original de los envíos $3.000/$4.000 de la §4.35.
+
+**Ojo con un dato que se movió: Repuestos 2 está ahora en Temuco**, la misma comuna que Repuestos
+1 y que el comprador. Hubo que moverla para poder armar el pedido 26 con envío intracomunal en
+las dos tiendas, justo por el filtro de la §4.39. Dos efectos: **el filtro de comuna no se puede
+probar mientras siga así** —hay que devolverla a Penco / Región del Biobío—, y las direcciones
+que se ven en pedidos viejos cambiaron, porque salen de la tienda actual y no de una copia
+guardada en el pedido.
