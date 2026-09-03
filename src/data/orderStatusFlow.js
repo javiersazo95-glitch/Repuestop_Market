@@ -57,8 +57,23 @@ export function isStorePickupOrder(order) {
   return shipping.includes('retiro') || shipping.includes('tienda') || shipping.includes('store_pickup');
 }
 
+/**
+ * Cuando el vendedor puede cerrar la venta y cobrar.
+ *
+ * El reloj es `entregadoAt` -- la fecha en que SU subordén quedo entregada, escrita una sola
+ * vez --, no `updatedAt`: ese lo pisa cualquier escritura a la fila (registrar el tracking,
+ * corregir el envio), asi que el contador se reiniciaba solo y la pantalla prometia un plazo
+ * distinto del que el backend aplica. Se cae a `updatedAt` unicamente para las subordenes
+ * historicas que la migracion V2026090201 no alcanzo a sellar, que es exactamente lo que esta
+ * pantalla venia usando para todas.
+ *
+ * Ya no es la unica forma de cerrar: `PedidoAutoCierreJob` lo hace solo cuando vence el mismo
+ * plazo. Este boton sigue existiendo para el vendedor que quiere cobrar apenas puede.
+ */
 export function sellerFinalizationAvailability(order, now = Date.now()) {
-  const updatedAt = new Date(order?.updatedAt || order?.fechaActualizacion || 0).getTime();
+  const updatedAt = new Date(
+    order?.entregadoAt || order?.updatedAt || order?.fechaActualizacion || 0,
+  ).getTime();
   if (!Number.isFinite(updatedAt) || updatedAt <= 0) {
     return { enabled: false, label: 'Disponible 3 días después de la recepción' };
   }

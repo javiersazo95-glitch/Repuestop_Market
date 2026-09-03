@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   X, Clock, Wrench, Truck, PackageCheck, User, Store, ChevronDown, ArrowLeft,
   MapPin, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
-  RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock
+  RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock, ExternalLink, Timer
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi } from '../services/api';
@@ -14,6 +14,8 @@ import { Link } from 'react-router-dom';
 import { productPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
 import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancellationReason';
+import { carrierTracking } from '../data/carrierTracking';
+import { storeAutoCloseNotice } from '../data/orderDeadlines';
 
 /**
  * Una linea de repuesto dentro del bloque de su tienda, con la ficha tecnica desplegable.
@@ -562,6 +564,12 @@ export default function OrderDetailView({
       refundStore,
       trackingStore: subOrder?.trackingNumber || (isSeller ? order.trackingNumber : null),
       courierStore: subOrder?.courier || (isSeller ? order.courier : null),
+      // Los dos relojes de ESTA tienda, con los que se anuncia lo que el backend va a hacer
+      // solo. Al vendedor le llegan planos en el pedido, que desde la fase 3.1 ya viene
+      // acotado a el; al comprador, uno por subordén. Los del pedido NO sirven para el
+      // comprador: son los de la tienda mas atrasada del carrito.
+      updatedAtStore: subOrder?.updatedAt || (isSeller ? order.updatedAt : null),
+      entregadoAtStore: subOrder?.entregadoAt || (isSeller ? order.entregadoAt : null),
       // El envio de ESTA tienda. El del pedido es la SUMA de todas, asi que solo sirve de
       // respaldo para el vendedor, donde ya viene acotado al suyo.
       shippingStore: Number(subOrder?.costoEnvio ?? (isSeller ? shippingFee : 0)),
@@ -868,10 +876,30 @@ export default function OrderDetailView({
                             <strong className="order-store-block-amount">{formatCLP(block.shippingStore)}</strong>
                           )}
                         </span>
-                        {block.trackingStore && (
-                          <span><Package size={13} /> Seguimiento: <strong>{block.trackingStore}</strong>
-                            {block.courierStore ? ` · ${block.courierStore}` : ''}</span>
-                        )}
+                        {block.trackingStore && (() => {
+                          // El enlace directo al portal del courier. `carrierTracking` devuelve
+                          // null seguido -- el nombre del courier es texto libre que escribe el
+                          // vendedor --, asi que el numero se muestra IGUAL sin enlace: es el
+                          // dato, el boton es la comodidad.
+                          const carrier = carrierTracking(block.courierStore, block.trackingStore);
+                          return (
+                            <span>
+                              <Package size={13} /> Seguimiento: <strong>{block.trackingStore}</strong>
+                              {block.courierStore ? ` · ${block.courierStore}` : ''}
+                              {carrier && (
+                                <a
+                                  className="order-store-block-tracklink"
+                                  href={carrier.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  Ver en {carrier.name}
+                                  <ExternalLink size={12} />
+                                </a>
+                              )}
+                            </span>
+                          );
+                        })()}
                         {isStorePickup && block.pickupCode && !block.isCancelledStore && (
                           <span className="order-store-block-pin">
                             <KeyRound size={13} /> Código de retiro:
@@ -879,6 +907,34 @@ export default function OrderDetailView({
                           </span>
                         )}
                       </div>
+
+                      {/* Lo que va a pasar SOLO si nadie hace nada. Desde `PedidoAutoCierreJob`
+                          el pedido ya no espera un clic: a los 10 dias se da por recibido y 72
+                          horas despues del "entregado" se cierra y se le paga al vendedor.
+                          Anunciarlo no es cortesia -- sin el aviso, el comprador se entera de
+                          que perdio la ventana para reclamar cuando ya la perdio, que es justo
+                          lo que el cierre automatico viene a evitar.
+
+                          Al vendedor no se le muestra: para el, el plazo ya lo dice su boton de
+                          finalizar (`sellerFinalizationAvailability`), y el aviso esta escrito
+                          para quien tiene que decidir si reclama. */}
+                      {!isSeller && !block.isCancelledStore && (() => {
+                        const aviso = storeAutoCloseNotice({
+                          estado: block.estado,
+                          updatedAt: block.updatedAtStore,
+                          entregadoAt: block.entregadoAtStore,
+                          isStorePickup,
+                        });
+                        if (!aviso) return null;
+                        return (
+                          <div className={`order-store-block-deadline ${aviso.urgent ? 'order-store-block-deadline--urgent' : ''}`}>
+                            <Timer size={13} />
+                            <span>
+                              <strong>{aviso.label}.</strong> {aviso.detail}
+                            </span>
+                          </div>
+                        );
+                      })()}
 
                       {/* El envio se dice UNA vez, en la fila de la entrega de arriba: repetirlo
                           aca hacia leer dos cobros distintos por el mismo despacho. */}

@@ -3226,3 +3226,182 @@ quede atrás.
 Verificado en el navegador: clic en la tarjeta → `/perfil/pedidos/25`, contenido completo,
 "Volver a mis pedidos" → listado, atrás del navegador → listado renderizado, y URL directa carga
 sin pasar por la lista. `build` ✅, `lint` **96 warnings / 0 errores**.
+
+### 4.44 Sesión 2026-09-02 (tarde) — el pedido se cierra solo y la plata se libera
+
+**El problema, en una línea: si el comprador no volvía a entrar, el vendedor no cobraba nunca.**
+
+El único camino a `ENTREGADO` era que el comprador pulsara "Confirmar recepción", y el único
+camino a `FINALIZADO` —el estado contra el que `RetiroProveedorService` mide si puede retirar
+su plata— era que alguien pulsara "Finalizar" tres días después. En e-commerce la mayoría no
+vuelve a entrar después de recibir el paquete. **No había ningún job**: el único `@Scheduled`
+sobre pedidos era `expirarPedidosVencidos`, que solo barre `PENDIENTE`.
+
+Se implementó la mitad barata de un plan más grande (ventana de veto de 48h con el vendedor
+reportando la entrega). Lo que quedó fuera y por qué está al final.
+
+#### Backend
+
+**El reloj es una columna nueva, no `updatedAt`.** `rt_pedido_proveedor.entregado_at`
+(`V2026090201`), escrita UNA vez al entrar a `ENTREGADO`. `@PreUpdate` pisa `updated_at` con
+cualquier escritura a la fila —tracking, comprobante, costo de envío—, así que un job
+desatendido que mueve plata sobre ese campo reinicia plazos solo. La validación manual de los
+tres días venía usando `updatedAt` y arrastraba el mismo defecto.
+
+**El sellado vive en `PedidoSubordenSupport.guardar()`**, que es por donde pasan todas las
+escrituras de subórdenes. Va ahí y no en cada llamador a propósito: la lista de bugs de este
+dominio es siempre la misma —"un camino escribió el estado y se olvidó de escribir X"—, ya pasó
+con `pedido.estado`, con el PIN y con el costo de envío. Un camino nuevo queda sellado sin
+saber que el campo existe.
+
+**Dos reglas, ambas por subordén** (`PedidoAutoCierreSupport`):
+1. `ENVIADO` sin novedad 10 días → `ENTREGADO`.
+2. `ENTREGADO` 72 horas → `FINALIZADO`, y el saldo queda disponible.
+
+**Por qué un plazo único y no uno por modalidad de envío.** El plan pedía 48h para delivery
+local y 8 días para courier. Hoy es inaplicable: **`tipo_envio` es columna del PEDIDO, no de la
+subordén**, y `PedidoCheckoutCarritoSupport` la deriva colapsando el carrito entero —si una
+línea tiene delivery local, el pedido completo queda `local_delivery` aunque la otra tienda
+despache por Starken—. Discriminar el plazo sobre ese dato le aplica a una tienda el reloj de
+la otra. Separarlos exige antes mover `tipo_envio` a la subordén.
+
+**Lo que el job nunca toca**: subórdenes `EN_MEDIACION`, pedidos `EN_MEDIACION`, y `store_pickup`
+(ahí el PIN es la única prueba de entrega y el paquete puede seguir en el mostrador). Un
+`tipoEnvio` nulo también queda fuera: la comparación con NULL en SQL no es verdadera, y es la
+lectura correcta —de un pedido sin modalidad declarada no se sabe si alguien despachó—.
+
+**`PedidoAutoCierreJob` es un bean APARTE, y esa es la decisión de diseño del cambio.**
+`expirarPedidosVencidos` corre todo el barrido en UNA transacción con try/catch por pedido, y
+ese patrón miente: la excepción marca la transacción rollback-only, el `catch` imprime el error,
+el barrido sigue como si nada y al final revienta el commit entero —ninguno de los pedidos
+buenos se guarda—. Acá cada subordén atraviesa el proxy de Spring y abre su propia transacción.
+**Meter estos métodos dentro de `PedidoService` no sirve**: una self-invocation no pasa por el
+proxy y volveríamos a tener una sola transacción.
+
+Corre a los 15 de cada hora, desfasado de `expirarPedidosVencidos` (cada 5) y de la
+sincronización de mediaciones (cada 10). Es idempotente: cada paso revalida estado y plazo antes
+de tocar nada —entre el listado y el proceso pasan minutos, y ahí el comprador pudo confirmar o
+reclamar— y las notificaciones se deduplican por clave.
+
+Plazos configurables: `repuestop.pedido.autorecepcion.dias=10`,
+`.autorecepcion.aviso.dias=7`, `.autofinalizacion.dias=3`.
+
+#### El bug de mediación que esto destapó (y que ya estaba vivo)
+
+**`MediacionBackofficeService` escribía `pedido.estado` sin escribir las subórdenes.** Al
+resolver un caso (`resolveCase`, `reactivateAccount`, regla 2A de `blockAccount`) el pedido
+pasaba a `ENTREGADO` pero la subordén se quedaba `EN_MEDIACION` para siempre. Como el retiro de
+dinero mide la subordén, **resolver a favor del vendedor le dejaba el caso cerrado en pantalla y
+el dinero retenido de forma permanente**. Y `derivar` devolvía el pedido a `EN_MEDIACION` en el
+primer recálculo, deshaciendo también lo que sí se había escrito.
+
+Lo mismo al ENTRAR (`initMediation`): sin subórdenes en mediación, el primer recálculo devolvía
+el pedido a `ENVIADO` —y el barrido nuevo podría haber dado por recibido un pedido en disputa—.
+Arreglado con `marcarSubordenesEnMediacion()` y `cerrarSubordenesEnMediacion()`.
+
+#### Notificaciones
+
+Tres nuevas en `PedidoNotificacionSupport`, con la tienda dentro de la clave de deduplicación:
+aviso al comprador al día 7 ("en 3 días lo damos por recibido"), aviso de auto-recepción, y
+aviso al vendedor de que su saldo quedó disponible. **El aviso previo no es cortesía**: sin él,
+el comprador se entera de que perdió la ventana para reclamar cuando ya la perdió, que es justo
+lo que el cierre automático viene a evitar.
+
+#### DTO
+
+`entregadoAt` se expone **acotado al destinatario**, igual que `estado`, `updatedAt`, el envío y
+el despacho (van seis campos con la misma regla; ver 4.35): para un vendedor es el de SU
+subordén, para el comprador el de la última tienda que entregó. Además viaja por tienda en
+`subordenes[].entregadoAt`.
+
+#### Web
+
+- **`sellerFinalizationAvailability` ahora cuenta desde `entregadoAt`**, con respaldo a
+  `updatedAt` solo para las subórdenes históricas que la migración no alcanzó a sellar. Antes
+  contaba siempre sobre `updatedAt`: la pantalla prometía un plazo y el servidor aplicaba otro.
+- **`src/data/orderDeadlines.js`** — nuevo. `storeAutoCloseNotice()` traduce estado + relojes de
+  UNA subordén al aviso que ve el comprador. **Los plazos son un ESPEJO** de las properties del
+  backend, que no las expone por API — mismo caso que `PAYMENT_WINDOW_MINUTES`.
+- **Banner de plazo en cada bloque de tienda de `OrderDetailView`**: ámbar mientras corre, rojo
+  cuando queda poco. Solo para el comprador: al vendedor el plazo ya se lo dice su botón de
+  finalizar, y el aviso está escrito para quien tiene que decidir si reclama.
+- **`src/data/carrierTracking.js`** — nuevo. Enlace directo al portal de Starken, Chilexpress,
+  Blue Express y CorreosChile. **El nombre del courier es texto libre** que escribe el vendedor
+  (`registrarEnvio` lo guarda tal cual), así que el match es por subcadena y devuelve `null` con
+  frecuencia: **la UI siempre sigue mostrando el número aunque no haya enlace**.
+
+#### Móvil
+
+Se portó lo mismo, con los archivos espejo de la web:
+
+- **`mobile/utils/carrier-tracking.ts`** y **`mobile/utils/order-deadlines.ts`** — copias de
+  `src/data/carrierTracking.js` y `src/data/orderDeadlines.js`. **Las dos listas de couriers y
+  los dos juegos de plazos tienen que coincidir**, o el mismo despacho se ve con enlace en un
+  cliente y sin él en el otro, y el mismo pedido promete plazos distintos según dónde se mire.
+- **`utils/orders.ts` tiraba `sub.updatedAt`**: el campo viajaba en el DTO desde la fase 2 y el
+  mapeo no lo copiaba. Sin él no se puede anunciar el plazo de auto-recepción, que corre por
+  tienda. Ahora se mapean `updatedAt` y `entregadoAt` por subordén, más `entregadoAt` del
+  pedido.
+- **`SubOrdersCard`**: banner de plazo y botón "Ver en \<Courier\>" (`Linking.openURL`) dentro de
+  la tarjeta de cada tienda, mismos colores que la web —ámbar corriendo, rojo cuando queda poco.
+- **La subordén sintética del vendedor** (`app/order-detail.tsx`) también lleva los dos relojes:
+  para él el pedido ya viene acotado a lo suyo desde la fase 3.1.
+
+#### PENDIENTE: el número del pedido en las notificaciones del comprador
+
+Detectado probando esta sesión. El comprador ve **"Pedido #21"** en su listado y le llegó una
+notificación que le hablaba de **"RTP-1-PED-000022"** — un código que en su pantalla no existe.
+
+Son tres números distintos para el mismo pedido, cada uno con su dueño (ver la 4.32 y
+`src/data/orderIdentity.js`): `numeroPedidoComprador` (`#21`, secuencia por comprador),
+`codigoVendedor` (`RTP-1-PED-000022`, secuencia por vendedor) y `codigoSoporte`
+(`PED-0000026`, para un tercero).
+
+- **Corregido acá**: `notificarAutoRecepcion` y `notificarAutoRecepcionProxima` usaban
+  `getCodigoVendedorParaNotificacion()` para avisarle al COMPRADOR. Ahora hay
+  `getCodigoCompradorParaNotificacion()`. `notificarAutoFinalizacion` ya estaba bien: va al
+  vendedor, y ahí el código del vendedor es el correcto.
+- **Sigue pendiente y es preexistente**: `notificarEstadoPedido` le manda al comprador
+  `"PED-" + %07d` —el código de SOPORTE— en todos los avisos de cambio de estado. En la misma
+  campana conviven "Pedido enviado — Tu pedido PED-0000026" y el listado que dice "#21".
+  **Hay que barrer `PedidoNotificacionSupport` entero decidiendo, aviso por aviso, quién es el
+  destinatario**, igual que se hizo con los campos del DTO en la 4.35. Es la misma clase de
+  error: un dato correcto para un rol mostrado al otro.
+
+Ojo al reprobar: la clave de deduplicación (`auto-recepcion:<pedido>:proveedor:<prov>`) ya está
+quemada para el pedido que se usó de prueba, así que el texto corregido se ve en la SIGUIENTE
+auto-recepción, no reenviando la misma.
+
+#### Lo que quedó fuera, a propósito
+
+- **La ventana de veto de 48h** (el vendedor reporta "entregado por Uber/courier" y el comprador
+  confirma o veta). Es el pedazo caro: migración, endpoint con subida de comprobante, UI de
+  vendedor y comprador en dos clientes, y una superficie de fraude nueva —"el vendedor declara
+  entregado sin entregar"—. Con el plazo único, los pedidos ya no se congelan sin ella.
+- **PIN para `local_delivery`**: depende de mover `tipo_envio` a la subordén.
+- **`LiquidacionPedidoCalculator.proveedorItems()`** sigue con el `.findFirst()` de 4.35: la fila
+  de lectura del backoffice muestra el titular bancario de una sola tienda con los montos de las
+  dos.
+
+#### Verificación
+
+`mvnw package -DskipTests` ✅ — los dos tests que instancian constructores a mano necesitaban los
+parámetros nuevos. **78 tests del área de pedidos + mediación, 0 fallos**, con 7 nuevos en
+`PedidoAutoCierreSupportTest` (plazo exacto, exclusión de mediación, sin `entregadoAt`, y la
+subordén que cambió de estado entre el listado y el proceso). El **contexto de Spring levanta**
+contra el Postgres local, así que las tres `@Query` nuevas parsean y validan contra el modelo. La
+migración se corrió contra `repuestop_db` dentro de un `BEGIN … ROLLBACK`: sintaxis OK, el
+backfill tocaría 2 filas locales, no quedó nada aplicado. Web: `build` ✅, `lint` **96 warnings /
+0 errores**; la lógica de `orderDeadlines` y `carrierTracking` verificada caso por caso en Node.
+Móvil: `tsc --noEmit` sin errores nuevos (queda el preexistente de `react-test-renderer`) y la
+suite completa en **87/88 suites, 498/501 tests** — el único fallo es
+`components/ads/__tests__/appointments-calendar-modal.test.tsx`, el real y preexistente que ya
+documenta CLAUDE.md. Hay 9 casos nuevos en `mobile/utils/__tests__/order-deadlines.test.ts`.
+
+**Lo que NO está verificado**: el banner no se vio renderizado contra un pedido real —ni en web
+ni en dispositivo; llegar ahí pide backend arriba y sesión iniciada—, y el job no se observó
+corriendo en un ambiente.
+
+> **Ojo al desplegar**: en la primera pasada tras el deploy, todo pedido en `ENVIADO` con más de
+> 10 días se auto-recibe de golpe (tope de 200 por regla), y 3 días después se finaliza. Si hay
+> backlog en `dev`, conviene subir `autorecepcion.dias` para el primer deploy y bajarlo después.
