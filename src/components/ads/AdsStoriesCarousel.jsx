@@ -61,7 +61,7 @@ export default function AdsStoriesCarousel({ ads = [], onSelectAd }) {
                       src={avatar}
                       alt={ad.company}
                       className="story-avatar-img"
-                      loading="lazy"
+                      decoding="async"
                     />
                     {ad.tier === 'empresarial' && (
                       <span className="story-verified-badge" title="Empresa verificada">

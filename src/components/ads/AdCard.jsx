@@ -1,46 +1,42 @@
 import React, { useState } from 'react';
 import {
-  MapPin, Phone, Clock, MessageCircle, Calendar,
-  Lock, ShieldCheck, Tag, CalendarClock, ImageOff, Image as ImageIcon, UserCheck
+  MapPin, Phone, Clock, MessageCircle, Calendar, Star, ShieldCheck,
+  CheckCircle2, CalendarClock, UserCheck, ChevronDown, Tag, Zap
 } from 'lucide-react';
 import { AD_TIERS, SERVICE_CATEGORIES, getAdExpiryInfo } from '../../data/automotiveAdsData';
 import { useAdOwnership } from './useAdOwnership';
 import ContextualReportButton from '../ContextualReportButton';
 
-export default function AdCard({
-  ad,
-  onOpenBooking,
-  onSelectCategory
-}) {
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
+/** Distintivo visual de cada plan en el mural (1:1 con mobile/components/ads/AdCard.tsx). */
+const TIER_THEME = {
+  basica: {},
+  destacada: { badge: { label: 'Destacado', color: '#d97706', Icon: Star } },
+  premium: { badge: { label: 'Premium', color: '#7c3aed', Icon: Zap } },
+  empresarial: { badge: { label: 'Taller Verificado', color: '#059669', Icon: ShieldCheck } },
+};
+
+const FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80';
+
+export default function AdCard({ ad, onOpenBooking, onSelectCategory }) {
   const [blockNotice, setBlockNotice] = useState(null);
+  const [showDetail, setShowDetail] = useState(false);
   const { isOwn, blockIfOwnAd } = useAdOwnership();
 
   const categoryObj = SERVICE_CATEGORIES.find((c) => c.id === ad.category);
-  const categoryEmoji = categoryObj?.emoji || '🔧';
-
   const tierConfig = AD_TIERS[ad.tier] || AD_TIERS.basica;
+  const theme = TIER_THEME[ad.tier] || TIER_THEME.basica;
   const isEmpresarial = ad.tier === 'empresarial';
   const isOwnAdCard = isOwn(ad);
 
-  // Las capacidades vienen del plan, no de una lista de tiers escrita a mano:
-  // el mismo tarifario que valida `AnuncioService` en el backend.
   const canWhatsapp = Boolean(tierConfig.hasWhatsapp && ad.whatsapp);
-  // Mismo desdoblamiento que la agenda de mas abajo: el plan da el derecho, el
-  // dueño lo enciende. Sin separarlos, un anuncio Premium sin numero cargado
-  // mostraba "WhatsApp no disponible (Plan Premium)", que es falso — Premium si
-  // lo incluye — y mandaba a mejorar un plan que ya estaba mejorado.
-  const whatsappPendingNumber = Boolean(tierConfig.hasWhatsapp && !ad.whatsapp);
-  // El plan da el derecho a agendar; la agenda solo queda activa cuando el dueño
-  // guardó una configuración horaria válida (`hasOnlineBooking` del backend).
   const canBook = Boolean(tierConfig.hasBooking && ad.hasOnlineBooking);
 
   const expiry = getAdExpiryInfo(ad);
   const showExpiryChip = Boolean(expiry) && !expiry.isExpired && expiry.daysLeft <= 7;
 
-  const maxAllowedImages = tierConfig.maxImages || 2;
-  const displayImages = (ad.images || []).slice(0, maxAllowedImages);
-  const currentImage = displayImages[activeImageIndex] || displayImages[0] || null;
+  const [coverSrc, setCoverSrc] = useState((ad.images && ad.images[0]) || FALLBACK_IMAGE);
+  const features = (ad.features || []).slice(0, tierConfig.maxTags || 8);
 
   const guard = (action, run) => {
     const blocked = blockIfOwnAd(ad, action);
@@ -65,206 +61,139 @@ export default function AdCard({
 
   const handleBookingClick = () => guard('booking', () => onOpenBooking?.(ad));
 
+  const TierIcon = theme.badge?.Icon;
+
   return (
     <article className={`ad-card ${tierConfig.cardTheme} ${isOwnAdCard ? 'is-own-ad' : ''}`} id={`ad-${ad.id}`}>
-      <div className="ad-card-layout">
+      {/* Imagen de portada con distintivos */}
+      <div className="ad-card-media">
+        <img
+          src={coverSrc}
+          alt={ad.title}
+          className="ad-card-cover"
+          decoding="async"
+          onError={() => { if (coverSrc !== FALLBACK_IMAGE) setCoverSrc(FALLBACK_IMAGE); }}
+        />
 
-        {/* Columna 1: Galería e Imagen Principal */}
-        <div className="ad-card-gallery">
-          <div className="ad-main-image-wrap">
-            {currentImage ? (
-              <img src={currentImage} alt={ad.title} className="ad-main-image" loading="lazy" />
-            ) : (
-              <div className="ad-image-empty">
-                <ImageOff size={22} />
-                <span>Sin fotos</span>
-              </div>
-            )}
-            <span className={`ad-tier-pill pill-${ad.tier}`}>
-              {tierConfig.badge}
-            </span>
+        {theme.badge && (
+          <span className="ad-tier-badge" style={{ backgroundColor: theme.badge.color }}>
+            {TierIcon && <TierIcon size={13} />}
+            {theme.badge.label}
+          </span>
+        )}
 
-            {displayImages.length > 1 && (
-              <span className="ad-image-counter">
-                <ImageIcon size={12} />
-                {activeImageIndex + 1}/{displayImages.length}
-              </span>
-            )}
-          </div>
+        {isOwnAdCard && (
+          <span className="ad-own-badge">
+            <UserCheck size={12} /> Tu anuncio
+          </span>
+        )}
 
-          {displayImages.length > 1 && (
-            <div className="ad-thumbnails-row">
-              {displayImages.map((img, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  className={`ad-thumb-btn ${activeImageIndex === idx ? 'active' : ''}`}
-                  onClick={() => setActiveImageIndex(idx)}
-                  aria-label={`Ver foto ${idx + 1}`}
-                >
-                  <img src={img} alt="" />
-                </button>
-              ))}
-            </div>
+        {!isOwnAdCard && (
+          <ContextualReportButton
+            tipoObjeto="ANUNCIO"
+            objetoId={ad.id}
+            objetoTitulo={ad.title}
+            className="ad-card-report"
+          />
+        )}
+
+        {ad.commune && (
+          <span className="ad-location-pill">
+            <MapPin size={11} /> {ad.commune}
+          </span>
+        )}
+      </div>
+
+      {/* Contenido */}
+      <div className="ad-card-body">
+        <div className="ad-card-toprow">
+          <button
+            type="button"
+            className="ad-category-chip"
+            onClick={() => onSelectCategory?.(ad.category)}
+            title={`Ver solo ${ad.categoryLabel || categoryObj?.label || 'esta categoría'}`}
+          >
+            {ad.categoryLabel || categoryObj?.label || 'Servicio automotriz'}
+          </button>
+
+          {ad.is24Hours && (
+            <span className="ad-mini-chip"><Clock size={12} /> 24 horas</span>
+          )}
+          {showExpiryChip && (
+            <span className="ad-mini-chip is-warning"><CalendarClock size={12} /> {expiry.label}</span>
           )}
         </div>
 
-        {/* Columna 2: Detalles del Servicio Automotriz */}
-        <div className="ad-card-details">
-          <div className="ad-card-topline">
-            <button
-              type="button"
-              className="ad-category-badge"
-              onClick={() => onSelectCategory?.(ad.category)}
-              title={`Ver solo ${ad.categoryLabel || categoryObj?.label || 'esta categoría'}`}
-            >
-              <span>{categoryEmoji}</span>
-              <span>{ad.categoryLabel || categoryObj?.label || 'Servicio automotriz'}</span>
+        <h3 className="ad-card-title">{ad.title}</h3>
+
+        <div className="ad-card-company">
+          <span>{ad.company}</span>
+          {isEmpresarial && (
+            <span className="ad-company-check" title="Taller verificado">
+              <CheckCircle2 size={12} />
+            </span>
+          )}
+        </div>
+
+        {features.length > 0 && (
+          <div className="ad-features-grid">
+            {features.map((feat, i) => (
+              <span key={i} className="ad-feature-item">
+                <CheckCircle2 size={11} /> {feat}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {showDetail && (
+          <div className="ad-card-detail-panel">
+            {ad.description && <p className="ad-card-desc">{ad.description}</p>}
+            <div className="ad-detail-lines">
+              {ad.address && (
+                <span><MapPin size={13} /> {ad.address}</span>
+              )}
+              <span><Tag size={13} /> {ad.priceText || 'Precio a convenir'}</span>
+              {ad.phone && <span><Phone size={13} /> {ad.phone}</span>}
+            </div>
+          </div>
+        )}
+
+        <div className="ad-card-footer">
+          <div className="ad-hours">
+            <Clock size={14} />
+            <span>{ad.openingHours || 'Consultar horario'}</span>
+          </div>
+
+          <div className="ad-actions">
+            <button type="button" className="ad-pill ad-pill-phone" onClick={handlePhoneClick}>
+              <Phone size={13} /> Teléfono
             </button>
 
-            {isEmpresarial && (
-              <span className="ad-chip ad-chip-verified" title="Taller certificado y verificado">
-                <ShieldCheck size={13} /> Taller verificado
-              </span>
+            {canWhatsapp && (
+              <button type="button" className="ad-pill ad-pill-wsp" onClick={handleWhatsAppClick}>
+                <MessageCircle size={13} /> WhatsApp
+              </button>
             )}
 
-            {ad.is24Hours && (
-              <span className="ad-chip ad-chip-neutral">
-                <Clock size={13} /> 24 horas
-              </span>
+            {canBook && (
+              <button type="button" className="ad-pill ad-pill-agenda" onClick={handleBookingClick}>
+                <Calendar size={13} /> Agendar
+              </button>
             )}
 
-            {isOwnAdCard && (
-              <span className="ad-chip ad-chip-own">
-                <UserCheck size={13} /> Tu anuncio
-              </span>
-            )}
-
-            {showExpiryChip && (
-              <span className="ad-chip ad-chip-warning" title="El anuncio se retira del mural al vencer">
-                <CalendarClock size={13} /> {expiry.label}
-              </span>
-            )}
-          </div>
-
-          <h3 className="ad-card-title">{ad.title}</h3>
-
-          <div className="ad-company-name">
-            <strong>{ad.company}</strong>
-          </div>
-
-          <p className="ad-card-description">{ad.description}</p>
-
-          <div className="ad-info-icons-grid">
-            <div className="ad-info-item">
-              <MapPin size={15} />
-              <span><strong>{ad.commune}:</strong> {ad.address}</span>
-            </div>
-
-            <div className="ad-info-item">
-              <Phone size={15} />
-              <span><strong>Teléfono:</strong> {ad.phone}</span>
-            </div>
-
-            {ad.openingHours && (
-              <div className="ad-info-item">
-                <Clock size={15} />
-                <span><strong>Horario:</strong> {ad.openingHours}</span>
-              </div>
-            )}
-
-            <div className="ad-info-item">
-              <Tag size={15} />
-              <span><strong>Precio:</strong> {ad.priceText || 'A convenir'}</span>
-            </div>
-          </div>
-
-          {ad.features && ad.features.length > 0 && (
-            <div className="ad-features-tags">
-              {ad.features.slice(0, tierConfig.maxTags || 2).map((feat, i) => (
-                <span key={i} className="ad-feature-tag">✓ {feat}</span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Columna 3: Precio y Acciones según Plan */}
-        <div className="ad-card-actions-col">
-          <div className="ad-price-block">
-            <span className="ad-price-label">
-              {ad.priceType === 'fixed' ? 'Tarifa' : 'Presupuesto'}
-            </span>
-            <div className="ad-price-amount">{ad.priceText || 'A convenir'}</div>
-          </div>
-
-          <div className="ad-buttons-stack">
             <button
               type="button"
-              className="btn-ad-phone"
-              onClick={handlePhoneClick}
-              title={`Llamar a ${ad.phone}`}
+              className={`ad-pill-detail ${showDetail ? 'is-open' : ''}`}
+              onClick={() => setShowDetail((v) => !v)}
+              aria-expanded={showDetail}
+              aria-label={showDetail ? 'Ocultar ficha del aviso' : 'Ver ficha del aviso'}
             >
-              <Phone size={15} />
-              <span>{ad.phone}</span>
+              <ChevronDown size={16} />
             </button>
-
-            {canWhatsapp ? (
-              <button type="button" className="btn-ad-whatsapp" onClick={handleWhatsAppClick}>
-                <MessageCircle size={16} />
-                <span>WhatsApp directo</span>
-              </button>
-            ) : (
-              <div
-                className="btn-ad-locked"
-                title={whatsappPendingNumber
-                  ? 'El anuncio todavía no tiene un número de WhatsApp cargado'
-                  : `El plan ${tierConfig.name} no incluye WhatsApp directo`}
-              >
-                <Lock size={13} />
-                <span>
-                  {whatsappPendingNumber ? 'WhatsApp no configurado' : 'WhatsApp no disponible'}
-                  <small> ({whatsappPendingNumber ? 'sin número cargado' : `Plan ${tierConfig.name}`})</small>
-                </span>
-              </div>
-            )}
-
-            {canBook ? (
-              <button type="button" className="btn-ad-booking" onClick={handleBookingClick}>
-                <Calendar size={16} />
-                <span>Agendar cita</span>
-              </button>
-            ) : (
-              <div
-                className="btn-ad-locked"
-                title={isEmpresarial
-                  ? 'El taller aún no publicó sus horarios de atención en línea'
-                  : 'El agendamiento en línea es exclusivo del plan Empresarial'}
-              >
-                <Lock size={13} />
-                <span>
-                  {isEmpresarial ? 'Agenda no habilitada' : 'Agendamiento no disponible'}
-                  <small> ({isEmpresarial ? 'sin horarios publicados' : 'Solo Empresarial'})</small>
-                </span>
-              </div>
-            )}
           </div>
-
-          {blockNotice && (
-            <p className="ad-block-notice" role="status">{blockNotice}</p>
-          )}
-
-          {/* No se ofrece sobre el aviso propio: `ReporteUsuarioService` responde
-              "No puedes reportar contenido de tu propia cuenta". */}
-          {!isOwnAdCard && (
-            <ContextualReportButton
-              tipoObjeto="ANUNCIO"
-              objetoId={ad.id}
-              objetoTitulo={ad.title}
-              className="btn-ad-report"
-            />
-          )}
         </div>
 
+        {blockNotice && <p className="ad-block-notice" role="status">{blockNotice}</p>}
       </div>
     </article>
   );
