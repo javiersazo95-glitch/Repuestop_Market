@@ -33,3 +33,39 @@ export function isValidPlate(plate) {
   const normalized = normalizePlate(plate);
   return PLATE_PATTERN.test(normalized);
 }
+
+/** "Toyota Yaris 2020", listo para mostrar el vehículo identificado. */
+export function formatVehicleLabel(vehicle) {
+  if (!vehicle) return '';
+  return [vehicle.marca, vehicle.modelo, vehicle.anio > 0 ? String(vehicle.anio) : '']
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+}
+
+/**
+ * Consulta el vehículo asociado a una patente usando el mismo endpoint que la
+ * búsqueda por patente del home (`GET /vehiculos/patente/{patente}`, contraparte
+ * de `mobile/utils/vehicle-lookup.ts`). Devuelve `null` cuando la patente no
+ * existe y relanza el error 401 para que la UI pida iniciar sesión.
+ */
+export async function lookupVehicleByPlate(plate, { searchVehicleByPatenteApi } = {}) {
+  const normalized = normalizePlate(plate);
+  if (!isValidPlate(normalized)) return null;
+  if (typeof searchVehicleByPatenteApi !== 'function') {
+    throw new Error('lookupVehicleByPlate necesita searchVehicleByPatenteApi');
+  }
+
+  const data = await searchVehicleByPatenteApi(normalized);
+  if (!data || !data.marca) return null;
+
+  return {
+    patente: data.patente || normalized,
+    marca: data.marca,
+    modelo: data.modelo || '',
+    anio: Number(data.anio) || 0,
+    version: data.version || '',
+    combustible: data.tipoCombustible || data.combustible || undefined,
+    transmision: data.transmision || data.transmission || undefined,
+  };
+}
