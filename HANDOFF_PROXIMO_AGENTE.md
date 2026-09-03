@@ -3568,3 +3568,66 @@ mismo preexistente de siempre, `appointments-calendar-modal.test.tsx`; los 3 cas
 **No verificado en vivo**: el flujo completo (declarar → banner del comprador → confirmar o
 vetar → auto-confirmación a las 48h) no se probó contra el ambiente local con datos reales
 todavía, a diferencia del resto de esta sesión.
+
+### 4.46 Sesión 2026-09-03 (tarde), continuación — cuatro ajustes de la prueba en vivo
+
+Se probó el flujo completo de la 4.45 con tres pedidos reales, cada uno con un courier
+distinto, y aparecieron cuatro cosas que la sesión anterior no cubría.
+
+**1. Auto-recepción por modalidad de envío.** `PedidoAutoCierreSupport.autoRecibir` usaba un
+solo plazo (`repuestop.pedido.autorecepcion.dias=10`) para cualquier subordén en `ENVIADO`,
+pero un despacho dentro de la comuna (delivery propio, Uber, Didi, PedidosYa) casi siempre
+llega el mismo día — el banner "te lo daremos por recibido en 10 días" confundía. Se agregó
+`repuestop.pedido.autorecepcion.local.dias=2`; `PedidoProveedorRepository` filtra por
+`tipoEnvio` (`courier_por_pagar` vs `local_delivery`) para elegir la consulta correcta, y
+`PedidoAutoCierreSupport.autoRecibirLocal` corre con el plazo corto. Web/móvil:
+`storeAutoCloseNotice`/`order-deadlines.ts` reciben `isLocalDelivery` y usan
+`AUTO_RECEPTION_LOCAL_DAYS`. El número (2 días) salió de revisar cómo lo manejan otros
+marketplaces chilenos, con aprobación del usuario.
+
+Misma limitación de siempre (ver 4.44): `tipoEnvio` es columna del PEDIDO, no de la subordén,
+y el checkout la deriva colapsando el carrito entero — en un carrito de dos tiendas con
+modalidades mixtas el plazo local se le podría aplicar por error a una tienda que en realidad
+va por courier nacional. El usuario aceptó la salvedad explícitamente en vez de bloquear el
+fix en el refactor de mover `tipoEnvio` a la subordén.
+
+**2. Catálogos de courier separados.** El selector del modal de despacho
+(`OrderDetailView.jsx`) mostraba siempre `COMMON_COURIERS` (Starken, Chilexpress...) sin
+importar la modalidad. Se separó en `LOCAL_COURIERS = ['Delivery Propio / Directo', 'Uber',
+'Didi', 'PedidosYa']` y `NATIONAL_COURIERS` (Starken, Chilexpress, Blue Express, Correos de
+Chile, Varmontt, Pullman Cargo, Transportes Chevalier, TVP Transporte, Fletes/Transporte de
+carga), elegidas según `isLocalDispatch = order?.tipoEnvio === 'local_delivery'` — el mismo
+booleano que ya existía para el aviso de auto-recepción, reusado en vez de duplicado.
+
+**3. Despacho local sin tracking ni comprobante obligatorio.**
+`PedidoEnvioSupport.registrarEnvio` exigía `trackingNumber` sin condición; ahora
+`validarTexto(trackingNumber, ...)` corre solo `if (envioFueraDeLaComuna)`, y
+`pedido.setTrackingNumber(...)` queda protegido contra null/blank. La web espeja la regla en
+el modal: dentro de la comuna, tracking y comprobante quedan opcionales (con hint
+"(opcional)" en el label); fuera de la comuna siguen obligatorios, comprobante incluido (esa
+validación de comprobante no existía en el cliente antes de esta sesión, aunque el backend ya
+la exigía).
+
+**4. La comuna del comprador se perdía sola — dos bugs de capas distintas.**
+
+- **Backend**: `AuthService.obtenerPerfilPorEmail` (detrás de `GET /users/perfil`, que el
+  frontend llama en cada carga de la app para revalidar la sesión) nunca poblaba
+  `comuna`/`region`/`address` para el rol `CLIENTE` — la rama solo escribía los campos de
+  factura. Cualquier recarga de página borraba en silencio la comuna que `login` acababa de
+  dejar bien puesta. Fix: `adjuntarDireccionComprador`, espejo de `adjuntarDireccionEntrega`
+  (la que ya usaba la rama `PROVEEDOR`), reusando `direccionActualComprador` (prefiere la
+  dirección `esPrincipal`).
+- **Web**: `AuthContext.handleTokenRefreshed` hacía solo `setToken(e.detail.token)`,
+  descartando el resto del payload del evento `repuestop:token_refreshed` — el primer refresh
+  automático de la sesión pisaba comuna/región/dirección con lo que trajera ese evento
+  parcial. Ahora pasa por `saveSession(e.detail)`, la misma función de merge que usan
+  login/register.
+
+**Verificación**: backend 122/122 tests
+(`PedidoAutoCierreSupportTest,PedidoServiceTest,PedidoEnvioSupportTest,
+PedidoEntregaDeclaradaSupportTest,PedidoSubordenSupportTest,MediacionBackofficeServiceTest,
+PedidoNotificacionSupportTest,AuthServiceTest`), `mvn package` ✅. Web: `build` ✅, `lint` en
+83 warnings (mismo baseline, sin warnings nuevos). Móvil: `tsc --noEmit` limpio, `jest`
+504/507 (mismo fallo preexistente de siempre). Probado en vivo contra la base local con 3
+pedidos reales: despacho sin tracking en envío local, banner de veto con los dos botones,
+confirmación y disputa (la disputa efectivamente movió el pedido a "En mediación").
