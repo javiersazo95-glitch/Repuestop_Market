@@ -3347,6 +3347,42 @@ Se portó lo mismo, con los archivos espejo de la web:
 - **La subordén sintética del vendedor** (`app/order-detail.tsx`) también lleva los dos relojes:
   para él el pedido ya viene acotado a lo suyo desde la fase 3.1.
 
+#### FIX (2026-09-03, validando la sesión anterior): `bo_mediacion.pedido_id` no se resolvía
+
+Al probar la prueba 5 del plan de validación (resolver un caso y comprobar que la subordén
+sale de `EN_MEDIACION`), el pedido y la subordén NO se movieron pese a que el backoffice
+mostró el caso como `RESUELTA`. La causa era un bug **preexistente**, no introducido en la
+sesión anterior, pero que dejaba mi propio fix (`cerrarSubordenesEnMediacion`) sin ejecutarse
+nunca.
+
+`bo_mediacion.pedido_id` guarda el **codigo_vendedor** (`RTP-1-PED-000016`), no el id del
+pedido. Cinco sitios de `MediacionBackofficeService` (`initMediation`, `blockAccount`,
+`getProperBuyerName`, `getProperStage`, y `actualizarEstadoPedidoTrasResolucion`) intentaban
+recuperar el pedido con `getPedidoId().replaceAll("[^\d]", "")` y `Long.parseLong(...)` --
+sacandole solo los digitos al texto. Sobre `"RTP-1-PED-000016"` eso da `"1000016"`: el `1`
+del prefijo del proveedor se pega a la cola del vendedor, y el resultado **nunca es el id
+real del pedido**. `pedidoRepository.findById(1000016)` no encuentra nada y, como todo
+colgaba de un `.ifPresent()` o un `if (pedido != null)`, el fallo era **silencioso**: sin
+excepcion, sin log, sin ningun indicio de que la resolucion no habia hecho nada.
+
+El helper correcto **ya existia en la misma clase**, `resolvePedidoByOrderId()` -- usado para
+pintar el detalle del caso en el backoffice, pero nunca reutilizado por las cinco funciones
+que cambian estado. Resuelve primero por `codigoVendedor` exacto
+(`pedidoItemRepository.findByCodigoVendedor`) y solo si eso falla cae al parseo numerico,
+que sigue siendo correcto para el formato legado (`"PED-0000020"`, sin el prefijo del
+proveedor). Los cinco sitios ahora lo usan.
+
+**Sin este fix, ningun caso de mediacion resuelto a favor del vendedor liberaba la plata**:
+la subordén se quedaba en `EN_MEDIACION` para siempre, exactamente el bug que mi cambio de
+`cerrarSubordenesEnMediacion` decia arreglar pero que nunca llegaba a ejecutarse.
+
+**Validado de punta a punta contra el ambiente local**: pedido nuevo (comprador) -> reclamo
+(subordén y pedido a `EN_MEDIACION`, confirmado en el detalle web) -> `initMediation` desde
+el backoffice (crea la fila de `bo_mediacion` en `ESPERANDO_VENDEDOR`, la sincronizacion
+programada la levanta) -> resolver el caso -> la subordén sale de `EN_MEDIACION` a
+`ENTREGADO` con `entregado_at` sellado en el momento exacto de la resolucion, y
+`rt_pedido.estado` queda consistente. `mvn package` y los 78 tests del area en verde.
+
 #### PENDIENTE: el número del pedido en las notificaciones del comprador
 
 Detectado probando esta sesión. El comprador ve **"Pedido #21"** en su listado y le llegó una
