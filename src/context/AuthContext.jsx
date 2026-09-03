@@ -78,7 +78,18 @@ export function AuthProvider({ children }) {
     const handleUnauthorized = () => logoutLocal();
     const handleExpired = () => logoutLocal();
     const handleTokenRefreshed = (e) => {
-      if (e.detail?.token) setToken(e.detail.token);
+      if (!e.detail?.token) return;
+      // El refresh trae el mismo payload que login/registro (comuna, region, direccion,
+      // shippingMethods...), pero antes solo se actualizaba el token. Si esos datos
+      // faltaban al iniciar sesion -o cambiaron despues, como una comuna agregada mas
+      // tarde- el usuario cacheado quedaba desactualizado en localStorage hasta el
+      // proximo login manual: nada volvia a escribir `repuestop_user`. `saveSession` ya
+      // hace el merge correcto para login/registro; se reusa aca en vez de duplicarlo.
+      //
+      // Sin `preferredRole`: el refresh siempre trae `role` (raiz y dentro de `usuario`),
+      // asi que agregar `role` al closure solo agregaria una dependencia stale a este
+      // efecto -que corre una sola vez, al montar- sin cambiar el resultado.
+      saveSession(e.detail);
     };
     const handleStorage = (e) => {
       if (e.key === 'repuestop_token') {
