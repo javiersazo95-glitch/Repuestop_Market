@@ -58,7 +58,22 @@ function readCache(key) {
   }
 }
 
-// Packs de recarga de Monedas RepuesTop
+/** Valor nominal validado por el backend para cada Moneda RepuesTop. */
+export const TOKEN_VALUE_CLP = 50;
+
+/** Precios comerciales de los planes por cada período de 30 días. */
+export const AD_TIER_PRICES_CLP = {
+  basica: 4990,
+  destacada: 9990,
+  premium: 19990,
+  empresarial: 39990
+};
+
+export function tokensForClp(priceClp) {
+  return Math.ceil(priceClp / TOKEN_VALUE_CLP);
+}
+
+// Packs oficiales: el backend exige montoPagado === cantidadFichas * $50 CLP.
 export const TOKEN_PACKS = [
   {
     id: 'pack-basico',
@@ -66,66 +81,70 @@ export const TOKEN_PACKS = [
     tokens: 100,
     bonus: 0,
     totalTokens: 100,
-    priceClp: 4990,
-    priceFormatted: '$4.990 CLP',
+    priceClp: 5000,
+    priceFormatted: '$5.000 CLP',
     tag: 'Inicial',
     highlight: false,
-    description: 'Ideal para destacar 2 anuncios en el mural.',
+    description: '100 monedas a $50 CLP cada una.',
     color: '#64748b'
   },
   {
     id: 'pack-medio',
     name: 'Pack Medio',
-    tokens: 250,
-    bonus: 25,
-    totalTokens: 275,
-    priceClp: 9990,
-    priceFormatted: '$9.990 CLP',
-    tag: 'Más Popular',
+    tokens: 200,
+    bonus: 0,
+    totalTokens: 200,
+    priceClp: 10000,
+    priceFormatted: '$10.000 CLP',
+    tag: 'Destacado',
     highlight: true,
-    description: 'Perfecto para clasificar en Plan Premium con WhatsApp directo.',
+    description: 'Cubre un anuncio Destacado por 30 días.',
     color: '#7c3aed'
   },
   {
     id: 'pack-avanzado',
     name: 'Pack Avanzado',
-    tokens: 600,
-    bonus: 100,
-    totalTokens: 700,
-    // 19990, no 19900: el pack SIEMPRE se mostro como "$19.990 CLP" en las dos
-    // plataformas, pero aca el monto que viaja en `POST /fichas/compras` salia de
-    // este campo, asi que cada Pack Avanzado vendido desde la web quedaba
-    // registrado en Administracion Contable con $90 menos de los que se cobraron.
-    // El movil tiene 19990 (`mobile/constants/automotive-ads-data.ts`).
-    priceClp: 19990,
-    priceFormatted: '$19.990 CLP',
-    tag: 'Empresarial',
+    tokens: 400,
+    bonus: 0,
+    totalTokens: 400,
+    priceClp: 20000,
+    priceFormatted: '$20.000 CLP',
+    tag: 'Premium',
     highlight: false,
-    description: 'Accede a Plan Empresarial con agendamiento de citas en línea.',
+    description: 'Cubre un anuncio Premium por 30 días.',
     color: '#059669'
   },
   {
     id: 'pack-extra',
     name: 'Pack Extra Pro',
-    tokens: 1500,
-    bonus: 350,
-    totalTokens: 1850,
-    priceClp: 39990,
-    priceFormatted: '$39.990 CLP',
-    tag: 'Máximo Ahorro',
+    tokens: 800,
+    bonus: 0,
+    totalTokens: 800,
+    priceClp: 40000,
+    priceFormatted: '$40.000 CLP',
+    tag: 'Empresarial',
     highlight: false,
-    description: 'Para talleres y redes automotrices con múltiples avisos permanentes.',
+    description: 'Cubre un anuncio Empresarial por 30 días.',
     color: '#d97706'
   }
 ];
 
 // Costo en Monedas RepuesTop para mejorar de rango un anuncio
 export const UPGRADE_TOKEN_COSTS = {
-  basica: 0,
-  destacada: 50,
-  premium: 120,
-  empresarial: 250
+  basica: tokensForClp(AD_TIER_PRICES_CLP.basica),
+  destacada: tokensForClp(AD_TIER_PRICES_CLP.destacada),
+  premium: tokensForClp(AD_TIER_PRICES_CLP.premium),
+  empresarial: tokensForClp(AD_TIER_PRICES_CLP.empresarial)
 };
+
+/** El backend es la fuente final del tarifario; conserva los valores locales como fallback. */
+function syncTierCosts(costosPorTier) {
+  if (!costosPorTier || typeof costosPorTier !== 'object') return;
+  for (const tier of Object.keys(UPGRADE_TOKEN_COSTS)) {
+    const cost = Number(costosPorTier[tier]);
+    if (Number.isInteger(cost) && cost >= 0) UPGRADE_TOKEN_COSTS[tier] = cost;
+  }
+}
 
 // -------------------------------------------------------------
 // GESTIÓN DE ANUNCIOS EN STORAGE
@@ -307,7 +326,8 @@ export function getCachedTokensBalance() {
  */
 export async function fetchTokensBalance({ signal } = {}) {
   try {
-    const { saldo } = await getFichasBalanceApi({ signal });
+    const { saldo, costosPorTier } = await getFichasBalanceApi({ signal });
+    syncTierCosts(costosPorTier);
     return cacheTokensBalance(Number(saldo) || 0);
   } catch (error) {
     if (error?.name === 'AbortError') throw error;
@@ -330,7 +350,8 @@ const MOTIVO_LABELS = {
  * no tener que tocar las vistas.
  */
 export async function fetchTokenTransactions({ signal } = {}) {
-  const { saldo, movimientos } = await getFichasMovimientosApi({ signal });
+  const { saldo, movimientos, costosPorTier } = await getFichasMovimientosApi({ signal });
+  syncTierCosts(costosPorTier);
   cacheTokensBalance(Number(saldo) || 0);
   return (Array.isArray(movimientos) ? movimientos : []).map((item) => ({
     id: String(item.id),
@@ -354,12 +375,13 @@ export async function fetchTokenTransactions({ signal } = {}) {
  * toda recarga hecha desde el navegador era invisible para Administracion
  * Contable, ademas de no acreditar nada.
  */
-export async function rechargeTokensWithPack(pack, paymentMethod = 'Webpay Plus') {
+export async function rechargeTokensWithPack(pack, paymentMethod = 'Webpay Plus', origin = 'ANUNCIOS') {
   await registrarCompraFichasApi({
     cantidadFichas: pack.totalTokens,
     montoPagado: pack.priceClp,
     packNombre: pack.name,
     metodoPago: paymentMethod,
+    origen: String(origin || 'ANUNCIOS').toUpperCase(),
     // Identifica la compra: el backend la usa para no registrarla ni acreditarla
     // dos veces si un reintento llega despues de que ya entro.
     referenciaPago: `WEB-${pack.id}-${Date.now()}`

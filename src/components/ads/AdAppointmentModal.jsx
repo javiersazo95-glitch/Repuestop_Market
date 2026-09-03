@@ -32,7 +32,7 @@ import {
  *    bloques se calculan con la misma logica que `validarBloque()`
  *    (`src/data/agendaConfig.js`) y los ocupados se leen del backend.
  */
-export default function AdAppointmentModal({ adOrCompany, onClose }) {
+export default function AdAppointmentModal({ adOrCompany, onClose, onBooked }) {
   const { user } = useAuth();
   const { isOwn } = useAdOwnership();
 
@@ -159,6 +159,9 @@ export default function AdAppointmentModal({ adOrCompany, onClose }) {
 
       setConfirmedAppointment(appointment);
       setStep('success');
+      // Reagendamiento: quien abrió el modal cancela la hora anterior recién
+      // ahora, cuando la nueva ya quedó reservada.
+      onBooked?.(appointment);
 
       // Avisos al taller y al cliente. Van despues de mostrar el exito y sin
       // await: la reserva ya esta guardada y un fallo de correo o de campanita

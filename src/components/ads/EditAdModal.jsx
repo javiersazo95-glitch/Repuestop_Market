@@ -55,34 +55,37 @@ export default function EditAdModal({
       <div className="create-ad-modal-card">
         {!savedAd ? (
           <>
-            <div className="booking-modal-header">
-              <div>
-                <h3>
-                  <Edit3 className="text-blue-600" size={22} />
-                  Editar anuncio
-                </h3>
-                <p>
-                  Plan actual: <strong className="uppercase">{tierConfig.name}</strong>. Para cambiar de plan
-                  usa "Mejorar rango".
-                </p>
+            <div className="create-ad-modal-header">
+              <div className="create-ad-header-main">
+                <span className="create-ad-modal-icon edit-mode-icon"><Edit3 size={18} /></span>
+                <div className="create-ad-header-text">
+                  <div className="create-ad-header-topline">
+                    <span className="create-ad-modal-eyebrow">Mural Automotriz</span>
+                    <span className="create-ad-header-badge plan-badge">Plan {tierConfig.name}</span>
+                  </div>
+                  <h3>Editar anuncio publicado</h3>
+                  <p>
+                    Modifica los datos de tu aviso. Para cambiar de categoría de visibilidad usa "Mejorar rango".
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
-                className="story-close-btn"
-                style={{ background: '#f1f5f9', color: '#0f172a' }}
+                className="create-ad-close-btn"
                 onClick={handleClose}
+                aria-label="Cerrar modal"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="ad-moderation-warning">
-              <AlertTriangle size={18} />
+            <div className="ad-moderation-warning create-ad-edit-warning">
+              <AlertTriangle size={17} />
               <div>
                 <strong>Guardar cambios devuelve el anuncio a revisión.</strong>
                 <p>
                   {wasPublished
-                    ? 'Tu anuncio va a salir del Mural de Anuncios hasta que moderación apruebe la nueva versión. Si es un cambio menor, conviene juntarlo con el resto de las correcciones y guardar una sola vez.'
+                    ? 'Tu anuncio saldrá temporalmente del Mural hasta que moderación apruebe la nueva versión.'
                     : 'El anuncio vuelve a la cola de revisión con los datos corregidos.'}
                 </p>
               </div>

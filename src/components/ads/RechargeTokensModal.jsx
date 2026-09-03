@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, CheckCircle2, CreditCard, Landmark, ShieldCheck,
-  Zap, Sparkles, ArrowRight, AlertCircle
+  AlertCircle
 } from 'lucide-react';
 import { TOKEN_PACKS, rechargeTokensWithPack, adErrorMessage } from '../../services/adsStorage';
 import RepuestopCoin from './RepuestopCoin';
@@ -18,7 +18,8 @@ function prefiereMenosMovimiento() {
 export default function RechargeTokensModal({
   isOpen,
   onClose,
-  onRechargeSuccess
+  onRechargeSuccess,
+  origin = 'ANUNCIOS'
 }) {
   const [selectedPack, setSelectedPack] = useState(TOKEN_PACKS[1]); // Default al más popular (Medio)
   const [paymentMethod, setPaymentMethod] = useState('webpay');
@@ -59,7 +60,7 @@ export default function RechargeTokensModal({
       ? 'Webpay Plus'
       : paymentMethod === 'transfer' ? 'Transferencia Bancaria' : 'Tarjeta de Crédito';
     try {
-      const updatedBalance = await rechargeTokensWithPack(selectedPack, methodName);
+      const updatedBalance = await rechargeTokensWithPack(selectedPack, methodName, origin);
       setCreditedAmount(selectedPack.totalTokens);
       setReceiptId(`RT-PAY-${Math.floor(100000 + Math.random() * 900000)}`);
       setFase(prefiereMenosMovimiento() ? 'resumen' : 'lluvia');
@@ -79,7 +80,7 @@ export default function RechargeTokensModal({
 
   return createPortal(
     <div
-      className="booking-modal-overlay"
+      className="booking-modal-overlay recharge-modal-overlay"
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
       }}
@@ -89,33 +90,37 @@ export default function RechargeTokensModal({
       <div className="recharge-modal-card">
         {!isSuccess ? (
           <>
-            <div className="booking-modal-header">
-              <div>
-                <h3>
-                  <RepuestopCoin size={30} face="front" />
-                  Recargar Monedas RepuesTop
-                </h3>
-                <p>
-                  Elige un pack de monedas para mejorar la visibilidad y rango de tus anuncios en el Mural Automotriz.
-                </p>
+            <div className="recharge-modal-header">
+              <div className="recharge-modal-title-row">
+                <span className="recharge-modal-coin"><RepuestopCoin size={42} face="front" /></span>
+                <div>
+                  <span className="recharge-modal-eyebrow">MONEDERO REPUESTOP</span>
+                  <h3>Recargar Monedas RepuesTop</h3>
+                  <p>Para anuncios y productos Top <i /> <strong>1 moneda = $50 CLP</strong></p>
+                </div>
               </div>
               <button
                 type="button"
-                className="story-close-btn"
-                style={{ background: '#f1f5f9', color: '#0f172a' }}
+                className="recharge-modal-close"
                 onClick={handleClose}
+                aria-label="Cerrar recarga"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handlePay}>
+            <form className="recharge-modal-form" onSubmit={handlePay}>
               {/* Selector de Packs */}
+              <div className="recharge-section-heading">
+                <span>1</span>
+                <div><strong>Selecciona un pack</strong><small>El valor siempre es $50 CLP por moneda</small></div>
+              </div>
               <div className="token-packs-grid">
                 {TOKEN_PACKS.map((pack) => {
                   const isSelected = selectedPack.id === pack.id;
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={pack.id}
                       className={`token-pack-card ${isSelected ? 'selected' : ''}`}
                       onClick={() => setSelectedPack(pack)}
@@ -123,12 +128,12 @@ export default function RechargeTokensModal({
                       aria-checked={isSelected}
                       aria-label={`Pack ${pack.name}, ${pack.totalTokens} monedas, ${pack.priceFormatted}`}
                     >
-                      {pack.tag && (
-                        <div className={`pack-tag-pill ${pack.highlight ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
-                          {pack.tag}
-                        </div>
-                      )}
-                      {isSelected && <CheckCircle2 size={18} className="token-pack-check" />}
+                      <div className="pack-top-row">
+                        <span className={`pack-tag-pill ${pack.highlight ? 'is-featured' : ''}`}>{pack.tag}</span>
+                        {isSelected
+                          ? <CheckCircle2 size={20} className="token-pack-check" />
+                          : <span className="token-pack-radio" aria-hidden="true" />}
+                      </div>
                       <h4 className="pack-title">{pack.name}</h4>
                       <div className="pack-tokens-display">
                         <RepuestopCoin size={34} face="front" />
@@ -142,16 +147,17 @@ export default function RechargeTokensModal({
                       )}
                       <div className="pack-price">{pack.priceFormatted}</div>
                       <p className="pack-desc">{pack.description}</p>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
 
               {/* Selector de Método de Pago */}
               <div className="payment-method-section">
-                <label className="text-xs font-bold text-slate-700 block mb-2 uppercase">
-                  Método de Pago Seguro
-                </label>
+                <div className="recharge-section-heading">
+                  <span>2</span>
+                  <div><strong>Método de pago seguro</strong><small>Selecciona cómo quieres pagar</small></div>
+                </div>
                 <div className="payment-methods-row">
                   <label className={`payment-radio-card ${paymentMethod === 'webpay' ? 'active' : ''}`}>
                     <input
@@ -202,15 +208,17 @@ export default function RechargeTokensModal({
 
               {/* Resumen del Pedido */}
               <div className="recharge-order-summary">
-                <div className="flex justify-between items-center text-sm mb-1">
-                  <span className="text-slate-600">Pack seleccionado:</span>
-                  <strong className="text-slate-900">{selectedPack.name} ({selectedPack.totalTokens} Monedas)</strong>
+                <div className="recharge-summary-main">
+                  <div>
+                    <span>Pack seleccionado</span>
+                    <strong>{selectedPack.name} · {selectedPack.totalTokens} Monedas</strong>
+                  </div>
+                  <div className="recharge-summary-total">
+                    <span>Total a pagar</span>
+                    <strong>{selectedPack.priceFormatted}</strong>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center text-sm mb-2">
-                  <span className="text-slate-600">Total a pagar:</span>
-                  <strong className="text-emerald-700 text-lg font-extrabold">{selectedPack.priceFormatted}</strong>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-500 pt-2 border-t border-slate-200">
+                <div className="recharge-secure-note">
                   <ShieldCheck size={14} className="text-emerald-600" />
                   <span>Pago protegido con encriptación SSL 256 bits y acreditación inmediata.</span>
                 </div>
@@ -223,10 +231,10 @@ export default function RechargeTokensModal({
                 </div>
               )}
 
-              <div className="booking-actions-row">
+              <div className="recharge-actions-row">
                 <button
                   type="button"
-                  className="btn-ad-phone"
+                  className="recharge-cancel-btn"
                   onClick={handleClose}
                   disabled={isProcessing}
                 >
@@ -237,27 +245,27 @@ export default function RechargeTokensModal({
                   className="btn-recharge-submit"
                   disabled={isProcessing}
                 >
-                  {isProcessing ? 'Procesando recarga...' : `Pagar ${selectedPack.priceFormatted} y Recargar`}
+                  {isProcessing ? 'Procesando recarga…' : `Pagar ${selectedPack.priceFormatted}`}
                 </button>
               </div>
             </form>
           </>
         ) : (
           /* Confirmación Exitosa */
-          <div className="text-center py-6">
+          <div className="recharge-success-view">
             <div className="recharge-success-coin">
               <RepuestopCoin size={92} face="front" />
             </div>
 
-            <h3 className="text-2xl font-extrabold text-slate-900 mb-2">
+            <h3>
               ¡Gracias por confiar en RepuesTop!
             </h3>
 
-            <p className="text-slate-600 text-sm max-w-md mx-auto mb-6">
-              Se acreditaron <strong className="text-emerald-700 font-bold">{creditedAmount.toLocaleString('es-CL')} Monedas RepuesTop</strong> en tu monedero. Ya están disponibles para usar en tus avisos.
+            <p>
+              Se acreditaron <strong>{creditedAmount.toLocaleString('es-CL')} Monedas RepuesTop</strong> en tu monedero. Ya están disponibles para usar en {origin === 'INVENTARIO' ? 'tus productos Top' : 'tus avisos'}.
             </p>
 
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left max-w-md mx-auto mb-6 space-y-2 text-xs text-slate-700">
+            <div className="recharge-voucher">
               <div><strong>Transacción:</strong> <span className="font-mono text-slate-900">#{receiptId}</span></div>
               <div><strong>Pack Adquirido:</strong> {selectedPack.name}</div>
               <div><strong>Monto Pagado:</strong> {selectedPack.priceFormatted}</div>
@@ -266,10 +274,10 @@ export default function RechargeTokensModal({
 
             <button
               type="button"
-              className="btn-post-ad mx-auto"
+              className="btn-recharge-submit"
               onClick={handleClose}
             >
-              Volver al Panel de Anuncios
+              {origin === 'INVENTARIO' ? 'Volver a Producto Top' : 'Volver al Panel de Anuncios'}
             </button>
           </div>
         )}

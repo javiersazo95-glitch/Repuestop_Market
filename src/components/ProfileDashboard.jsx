@@ -16,7 +16,7 @@ import {
   retryOrderPaymentApi, confirmOrderPaymentApi,
   getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getBuyerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
   updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi,
-  getStoreCoverTemplatesApi, selectStoreCoverTemplateApi, updateSellerProductTopApi,
+  getStoreCoverTemplatesApi, selectStoreCoverTemplateApi,
   saveConversationQuoteApi, sendConversationMessageApi, requestBlockedAccountReviewApi,
   cancelSellerOrderApi, cancelBuyerSubOrderApi, registerOrderDispatchApi,
   pauseSellerProductApi, resumeSellerProductApi, updateSellerShippingMethodsApi,
@@ -29,10 +29,13 @@ import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import OrderCard from './OrderCard';
 import OrderDetailView from './OrderDetailView';
 import CatalogCard from './CatalogCard';
+import ProductTopManagementModal from './ProductTopManagementModal';
+import ProductTopBadge from './ProductTopBadge';
 import QuoteCard from './QuoteCard';
 import QuoteDetailModal from './QuoteDetailModal';
 import ProfileSupportPanel from './ProfileSupportPanel';
 import ProfileNotificationsBell from './ProfileNotificationsBell';
+import HeaderWalletButton from './HeaderWalletButton';
 import NewCatalogProductModal from './NewCatalogProductModal';
 import SellerVerificationCard from './SellerVerificationCard';
 import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
@@ -45,7 +48,6 @@ import SellerWithdrawalsPanel from './SellerWithdrawalsPanel';
 import SellerOrdersPanel from './SellerOrdersPanel';
 import BuyerAddressBook from './BuyerAddressBook';
 import AdsManagementSection from './ads/AdsManagementSection';
-import AutomotiveServiceAccreditation from './AutomotiveServiceAccreditation';
 import CapturerContactCard from './CapturerContactCard';
 import { formatRut, isValidRut, isValidClPhone } from '../services/adapters';
 import { Link, useNavigate } from 'react-router-dom';
@@ -102,8 +104,7 @@ const SELLER_SIDEBAR_GROUPS = [
     items: [
       { id: 'tienda_datos', label: 'Mi tienda y datos', icon: Store },
       { id: 'retiros', label: 'Retirar dinero', icon: Wallet },
-      { id: 'anuncios', label: 'Gestión de anuncios', icon: Megaphone },
-      { id: 'acreditar_servicio', label: 'Acreditar servicio', icon: ShieldCheck }
+      { id: 'anuncios', label: 'Gestión de anuncios', icon: Megaphone }
     ]
   },
   {
@@ -129,7 +130,6 @@ const SELLER_BLOCKED_HIDDEN_TABS = [
   'preguntas_productos',
   'retiros',
   'anuncios',
-  'acreditar_servicio',
 ];
 
 const BUYER_SIDEBAR_GROUPS = [
@@ -152,8 +152,7 @@ const BUYER_SIDEBAR_GROUPS = [
     title: 'MI CUENTA',
     items: [
       { id: 'datos', label: 'Mis datos y perfil', icon: UserCog },
-      { id: 'anuncios', label: 'Gestión de anuncios', icon: Megaphone },
-      { id: 'acreditar_servicio', label: 'Acreditar servicio', icon: ShieldCheck }
+      { id: 'anuncios', label: 'Gestión de anuncios', icon: Megaphone }
     ]
   },
   {
@@ -426,6 +425,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedCatalogProduct, setSelectedCatalogProduct] = useState(null);
+  const [selectedTopProduct, setSelectedTopProduct] = useState(null);
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [quoteFilter, setQuoteFilter] = useState('all');
   const [quoteSearch, setQuoteSearch] = useState('');
@@ -949,25 +949,19 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     queryClient.invalidateQueries({ queryKey: ['vehicleCatalogDetails'] });
   };
 
-  const handleToggleProductTop = async (product, destacado) => {
+  const handleToggleProductTop = (product) => {
     if (!user?.sellerId || !product?.id || updatingTopProductId) return;
-    setUpdatingTopProductId(product.id);
     setCatalogActionError(null);
     setCatalogTopFeedback('');
-    try {
-      const updated = await updateSellerProductTopApi(user.sellerId, product.id, destacado);
-      queryClient.invalidateQueries({ queryKey: ['sellerInventory'] });
-      setSelectedCatalogProduct((previous) => previous?.id === product.id
-        ? { ...previous, ...updated, destacado: Boolean(updated?.destacado ?? destacado) }
-        : previous);
-      setCatalogTopFeedback(destacado
-        ? 'Listo. Este producto ahora se muestra primero en tu tienda y en la portada de repuestos, donde lo ven todos los compradores.'
-        : 'Quitaste el destacado. El producto sigue publicado, pero ya no se muestra primero.');
-    } catch (error) {
-      setCatalogActionError(error.message || 'No se pudo actualizar el producto Top.');
-    } finally {
-      setUpdatingTopProductId(null);
-    }
+    setSelectedTopProduct(product);
+  };
+
+  const handleProductTopUpdated = (updated, message) => {
+    setUpdatingTopProductId(null);
+    setCatalogTopFeedback(`${message} El repuesto tendrá prioridad en las búsquedas.`);
+    queryClient.invalidateQueries({ queryKey: ['sellerInventory'] });
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+    setSelectedCatalogProduct((previous) => previous?.id === updated?.id ? { ...previous, ...updated } : previous);
   };
 
   const handleToggleProductPause = async (product, pause) => {
@@ -1354,6 +1348,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               {isSeller ? <Store size={13} /> : <ShoppingBag size={13} />}
               <span>{isSeller ? 'Proveedor' : 'Comprador'}</span>
             </div>
+            <HeaderWalletButton variant="topbar" />
             <ProfileNotificationsBell user={user} />
             <button className="btn-topbar-logout" onClick={handleLogout}>
               <LogOut size={15} />
@@ -2053,8 +2048,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   </div>
 
                   <div className="catalog-top-info">
-                    <span className="catalog-top-info-icon"><Star size={17} fill="currentColor" /></span>
-                    <p><strong>Destaca tus productos estrella</strong><span>Puedes elegir hasta 2 productos: se muestran primero en tu tienda y también en la portada de repuestos, donde los ven todos los compradores. Actívalo o quítalo desde cada tarjeta.</span></p>
+                    <ProductTopBadge compact className="catalog-top-info-badge" />
+                    <p><strong>Destaca tus productos Top Ventas</strong><span>Las primeras 2 activaciones son gratis. Puedes mantener hasta 10 productos Top; la insignia y la prioridad duran 30 días y luego puedes renovarlas con Monedas.</span></p>
                   </div>
 
                   {catalogTopFeedback && (
@@ -2205,8 +2200,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   onNavigateToMural={() => window.location.assign('/mural-anuncios')}
                 />
               )}
-
-              {activeTab === 'acreditar_servicio' && <AutomotiveServiceAccreditation user={user} />}
 
               {activeTab === 'retiros' && isSeller && (
                 <SellerWithdrawalsPanel sellerId={user?.sellerId} sellerEmail={user?.email} />
@@ -2546,6 +2539,15 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           isFounder={isSellerFounder}
           onClose={() => setSelectedCatalogProduct(null)}
           onCreated={handleCatalogProductSaved}
+        />
+      )}
+
+      {selectedTopProduct && (
+        <ProductTopManagementModal
+          product={selectedTopProduct}
+          sellerId={user?.sellerId}
+          onClose={() => setSelectedTopProduct(null)}
+          onUpdated={handleProductTopUpdated}
         />
       )}
 

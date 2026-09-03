@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
+import ProductTopBadge from './ProductTopBadge';
 import ProductCardSkeleton from './skeletons/ProductCardSkeleton';
 import { qk } from '../services/queryKeys';
 import {
@@ -1265,7 +1266,7 @@ export default function PartsCatalogView({
                     {showcase.featured.length > 0 && (
                       <>
                         <div className="catalog-showcase-block-header">
-                          <h2>Productos Top de las tiendas</h2>
+                          <h2><ProductTopBadge compact className="catalog-showcase-top-badge" /> Productos Top de las tiendas</h2>
                           <p>Lo que cada tienda eligió destacar de su inventario.</p>
                         </div>
                         <div className="parts-cards-grid-catalog">

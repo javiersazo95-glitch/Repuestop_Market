@@ -36,7 +36,7 @@ export default function CoinInfoModal({ isOpen, onClose }) {
         <div className="booking-modal-header">
           <div>
             <h3>Moneda RepuesTop</h3>
-            <p>La moneda oficial con la que se potencian los avisos del mural.</p>
+            <p>La moneda oficial para anuncios y productos Top · 1 moneda = $50 CLP.</p>
           </div>
           <button
             type="button"

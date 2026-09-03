@@ -23,7 +23,6 @@ import StoriesViewerModal from './ads/StoriesViewerModal';
 import AdCard from './ads/AdCard';
 import AdsFilterModal from './ads/AdsFilterModal';
 import AdAppointmentModal from './ads/AdAppointmentModal';
-import { HeroCarArt, HeroWorkshopArt } from './ads/AdsHeroArt';
 import './ads/ads-wall.css';
 import './ads/ads-wall-redesign.css';
 
@@ -331,8 +330,6 @@ export default function AdsWallView() {
       <section className="ads-hero">
         <div className="ads-hero-bg" aria-hidden="true">
           <span className="ads-hero-photo" />
-          <HeroCarArt className="ads-hero-art ads-hero-art--car" />
-          <HeroWorkshopArt className="ads-hero-art ads-hero-art--shop" />
           <span className="ads-hero-dots ads-hero-dots--tl" />
           <span className="ads-hero-dots ads-hero-dots--tr" />
           <span className="ads-hero-dots ads-hero-dots--bl" />
