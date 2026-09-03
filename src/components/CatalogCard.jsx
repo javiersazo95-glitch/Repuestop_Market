@@ -1,8 +1,10 @@
 import React from 'react';
 import {
-  Package, Tag, ChevronRight, Edit3, CheckCircle, AlertTriangle, XCircle, MessageCircleQuestion, Star, Loader2, Pause, Play
+  Package, Tag, ChevronRight, Edit3, CheckCircle, AlertTriangle, XCircle, MessageCircleQuestion, Trophy, Loader2, Pause, Play
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
+import ProductTopBadge from './ProductTopBadge';
+import { getProductTopStatus, topExpiryDateLabel } from '../utils/productTop';
 
 export function StockBadge({ stock, isPaused }) {
   if (isPaused) {
@@ -68,7 +70,9 @@ export default function CatalogCard({
     || product.photoUri
     || product.imagenes?.[0]?.url;
   const photo = resolveMediaUrl(rawPhoto);
-  const isTop = Boolean(product.destacado ?? product.isTop);
+  const topStatus = getProductTopStatus(product);
+  const isTop = topStatus.state === 'active';
+  const topExpired = topStatus.state === 'expired';
   const isPaused = Boolean(product.pausado || product.isPaused || product.activo === false);
 
   return (
@@ -86,7 +90,8 @@ export default function CatalogCard({
           <span className="catalog-category-pill"><Tag size={12} /> {category}</span>
           <StockBadge stock={stock} isPaused={isPaused} />
         </div>
-        {isTop && <span className="catalog-top-ribbon"><Star size={13} fill="currentColor" /> Producto Top</span>}
+        {isTop && <ProductTopBadge compact className="catalog-product-top-badge" />}
+        {topExpired && <span className="catalog-top-expired">Top vencido {topExpiryDateLabel(topStatus) && `· ${topExpiryDateLabel(topStatus)}`}</span>}
       </div>
 
       <div className="catalog-card-content">
@@ -132,14 +137,14 @@ export default function CatalogCard({
           className={`catalog-top-toggle ${isTop ? 'is-active' : ''}`}
           disabled={isUpdatingTop || isPaused}
           aria-pressed={isTop}
-          title={isTop ? 'Dejar de destacar este producto' : 'Mostrarlo primero en tu tienda y en la portada de repuestos (puedes elegir hasta 2)'}
+          title={isTop ? 'Revisar vigencia o agregar 30 días' : topExpired ? 'Renovar la insignia Top por 30 días' : 'Activar insignia y prioridad por 30 días'}
           onClick={(event) => {
             event.stopPropagation();
-            onToggleTop?.(product, !isTop);
+            onToggleTop?.(product);
           }}
         >
-          {isUpdatingTop ? <Loader2 size={14} className="spin-icon" /> : <Star size={14} fill={isTop ? 'currentColor' : 'none'} />}
-          <span>{isTop ? 'Producto Top' : 'Marcar como Top'}</span>
+          {isUpdatingTop ? <Loader2 size={14} className="spin-icon" /> : <Trophy size={14} />}
+          <span>{isTop ? `Gestionar Top · ${topStatus.daysLeft || '—'} días` : topExpired ? 'Renovar Producto Top' : 'Marcar como Top'}</span>
         </button>
 
         {onTogglePause && (

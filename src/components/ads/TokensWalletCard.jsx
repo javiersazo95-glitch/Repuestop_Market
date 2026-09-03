@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Star, Gem, Building2, ChevronRight, History, Info } from 'lucide-react';
 import RepuestopCoin from './RepuestopCoin';
 import CoinInfoModal from './CoinInfoModal';
+import { UPGRADE_TOKEN_COSTS } from '../../services/adsStorage';
 
 /**
  * Saldo del Monedero de Monedas RepuesTop.
@@ -25,9 +26,9 @@ import CoinInfoModal from './CoinInfoModal';
  */
 
 const BENEFITS = [
-  { Icon: Star, label: 'Destacadas', cost: 50, color: '#fbbf24' },
-  { Icon: Gem, label: 'Premium', cost: 120, color: '#ddd6fe' },
-  { Icon: Building2, label: 'Empresariales', cost: 250, color: '#6ee7b7' }
+  { Icon: Star, label: 'Destacadas', tier: 'destacada', color: '#fbbf24' },
+  { Icon: Gem, label: 'Premium', tier: 'premium', color: '#ddd6fe' },
+  { Icon: Building2, label: 'Empresariales', tier: 'empresarial', color: '#6ee7b7' }
 ];
 
 export default function TokensWalletCard({
@@ -81,12 +82,12 @@ export default function TokensWalletCard({
           apoyado en el, no flotando solo sobre una franja de azul vacia. */}
       <div className="tokens-wallet-bottom">
         <div className="tokens-wallet-benefits">
-          {BENEFITS.map(({ Icon, label, cost, color }) => (
+          {BENEFITS.map(({ Icon, label, tier, color }) => (
             <div className="tokens-wallet-benefit" key={label}>
               <Icon size={19} color={color} />
               <span>
                 <b style={{ color }}>{label}</b>
-                <small>{cost} monedas</small>
+                <small>{UPGRADE_TOKEN_COSTS[tier]} monedas</small>
               </span>
             </div>
           ))}

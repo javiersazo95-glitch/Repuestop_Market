@@ -9,6 +9,7 @@ import { qk } from '../services/queryKeys';
 import { CATEGORY_VISUALS, HEADER_CATEGORIES } from '../data/categories';
 import RepuesTopLogo from './RepuesTopLogo';
 import { useAuth } from '../context/AuthContext';
+import HeaderWalletButton from './HeaderWalletButton';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { getPartCategoriesApi, getPartSubcategoriesApi, getPublicProductsApi, resolveMediaUrl } from '../services/api';
 import CategoryIconTile from './CategoryIconTile';
@@ -305,6 +306,13 @@ export default function Header({
               </div>
             )}
           </div>
+
+          {isLoggedIn && (
+            <>
+              <div className="header-divider" />
+              <HeaderWalletButton variant="header" />
+            </>
+          )}
 
           {/* Con la cuenta bloqueada el carrito no se muestra: el backend responde 403 a
               todo el lado comprador, asi que el boton solo llevaria a un checkout que

@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { NAVIGATION_CATEGORIES } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
+import { isProductTopActive } from '../utils/productTop';
 import ContextualReportButton from './ContextualReportButton';
 import { parseShippingMethods, resolveShippingService } from '../data/shippingMethods';
 import { getStoreProductsApi, getStoreProfileApi, searchVehicleByPatenteApi } from '../services/api';
@@ -291,6 +292,8 @@ export default function StorePublicProfileView({
 
   // Sorting Logic
   const sortedProducts = [...filteredProducts].sort((a, b) => {
+    const topPriority = Number(isProductTopActive(b)) - Number(isProductTopActive(a));
+    if (topPriority) return topPriority;
     if (sortBy === 'precio-asc') return a.precio - b.precio;
     if (sortBy === 'precio-desc') return b.precio - a.precio;
     if (sortBy === 'vendidos') return (b.vendidos || 0) - (a.vendidos || 0);

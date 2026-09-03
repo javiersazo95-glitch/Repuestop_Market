@@ -2,13 +2,14 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Megaphone, Plus, Zap, Edit3, Trash2, Eye, AlertTriangle, Search,
-  Phone, MessageCircle, Calendar, MapPin, Tag, Clock, RefreshCw,
-  Layers, Loader2, CheckCircle2, Clock3, XCircle, CalendarClock
+  Calendar, Clock, RefreshCw,
+  Loader2, CheckCircle2, Clock3, XCircle, CalendarClock, Lock, ChevronRight, PackageOpen,
+  GraduationCap
 } from 'lucide-react';
 import {
   fetchMyAds, deleteAd, adErrorMessage,
   getCachedTokensBalance, fetchTokensBalance, TOKENS_UPDATED_EVENT,
-  fetchMyAppointments, updateAppointmentStatus
+  fetchMyAppointments, updateAppointmentStatus, fetchPublicAd
 } from '../../services/adsStorage';
 import {
   AD_TIERS, AD_TIER_ORDER, AD_MODERATION_STATUS, AD_MODERATION_LABELS,
@@ -16,16 +17,32 @@ import {
   APPOINTMENT_STATUS_META, isClosedAppointment
 } from '../../data/automotiveAdsData';
 import { formatAgendaDateLong, getTimeUntilLabel, toIsoDate } from '../../data/agendaConfig';
+import { groupAppointmentsByTime } from '../../utils/appointmentHistory';
 import { useAuth } from '../../context/AuthContext';
+import { useAutomotiveAccreditation } from '../../hooks/useAutomotiveAccreditation';
+import { AccreditationPill } from './AccreditationPill';
+import AccreditationModal from './AccreditationModal';
+import AdsTutorialModal from './AdsTutorialModal';
 import AdAgendaModal from './AdAgendaModal';
+import AppointmentsHistoryModal from './AppointmentsHistoryModal';
+import AdAppointmentModal from './AdAppointmentModal';
 import TokensHistoryModal from './TokensHistoryModal';
-import TokensWalletCard from './TokensWalletCard';
 import RechargeTokensModal from './RechargeTokensModal';
 import UpgradeAdRankModal from './UpgradeAdRankModal';
 import EditAdModal from './EditAdModal';
 import CreateAdModal from './CreateAdModal';
 import CapturerContactCard from '../CapturerContactCard';
 import './ads-wall.css';
+
+// Mensaje del gate de publicación según el estado del expediente de servicio
+// automotriz. Publicar un anuncio exige el expediente APROBADO (lo valida
+// `AnuncioService` en el backend); acá solo se explica y se evita el intento.
+const ACCREDITATION_GATE_MESSAGE = {
+  SIN_SOLICITUD: 'Acredita tu servicio automotriz para publicar anuncios en el Mural.',
+  PENDIENTE: 'Tu acreditación está en revisión. Podrás publicar cuando quede aprobada.',
+  POR_CORREGIR: 'Tu acreditación tiene observaciones. Corrígelas para poder publicar.',
+  RECHAZADO: 'Tu acreditación fue rechazada. Revisa las observaciones y vuelve a enviarla.'
+};
 
 const STATUS_ICONS = {
   APROBADO: CheckCircle2,
@@ -53,6 +70,9 @@ const STATUS_FILTERS = [
  */
 export default function AdsManagementSection({ onNavigateToMural }) {
   const { user } = useAuth();
+  const accreditation = useAutomotiveAccreditation(Boolean(user));
+  const [isAccreditationOpen, setIsAccreditationOpen] = useState(false);
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [ads, setAds] = useState([]);
   // `GET /anuncios/agendamientos/mias` devuelve en UNA respuesta las reservas de
   // los dos roles: las que le hicieron a mis anuncios y las que yo pedi como
@@ -62,6 +82,10 @@ export default function AdsManagementSection({ onNavigateToMural }) {
   const [appointments, setAppointments] = useState([]);
   const [appointmentsError, setAppointmentsError] = useState(null);
   const [adForAgenda, setAdForAgenda] = useState(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  // Reagendar: se abre `AdAppointmentModal` con el anuncio de la cita a mover y,
+  // al confirmar la nueva hora, la anterior queda `cancelled`.
+  const [rebookState, setRebookState] = useState(null); // { ad, appointmentId } | 'loading'
   const [cancellingId, setCancellingId] = useState(null);
   const [cancelError, setCancelError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -148,6 +172,58 @@ export default function AdsManagementSection({ onNavigateToMural }) {
 
   const replaceAppointment = (saved) => {
     setAppointments((current) => current.map((item) => (item.id === saved.id ? saved : item)));
+  };
+
+  // Próximas citas (recibidas + pedidas) para el distintivo del botón "Historial
+  // de citas". No cerradas y con fecha/bloque aún por venir.
+  const upcomingAppointmentsCount = useMemo(
+    () => groupAppointmentsByTime(appointments).upcoming.length,
+    [appointments]
+  );
+
+  // El gate de publicación: sin expediente aprobado no se abre el formulario.
+  // Mientras carga la acreditación se deja pasar para no bloquear en falso; el
+  // backend sigue siendo la autoridad final.
+  const isAccredited = accreditation.isLoading || accreditation.isApproved;
+  const gateMessage = ACCREDITATION_GATE_MESSAGE[accreditation.status]
+    || ACCREDITATION_GATE_MESSAGE.SIN_SOLICITUD;
+  // La primera Básica de la cuenta no cobra Monedas (lo decide el backend). Si ya
+  // hay una Básica publicada, el período gratis ya se usó.
+  const hasUsedBasicFreePeriod = useMemo(
+    () => ads.some((ad) => ad.tier === 'basica'),
+    [ads]
+  );
+
+  const handleOpenCreate = () => {
+    if (accreditation.isLoading || accreditation.isApproved) {
+      setIsCreateModalOpen(true);
+      return;
+    }
+    setIsAccreditationOpen(true);
+  };
+
+  const handleRebook = async (appointment) => {
+    setRebookState('loading');
+    try {
+      const ad = await fetchPublicAd(appointment.adId);
+      setRebookState({ ad, appointmentId: appointment.id });
+    } catch (error) {
+      setRebookState(null);
+      setCancelError(adErrorMessage(error, 'El anuncio de esta cita ya no está disponible para reagendar.'));
+    }
+  };
+
+  const handleRebooked = async () => {
+    const previousId = rebookState?.appointmentId;
+    // La hora anterior se cancela recién cuando la nueva quedó reservada.
+    if (previousId) {
+      try {
+        await updateAppointmentStatus(previousId, 'cancelled');
+      } catch {
+        // Si la cancelación falla se refleja igual al recargar la lista.
+      }
+    }
+    loadAppointments();
   };
 
   /** Cancelar es exclusivo del cliente: el backend responde 403 al dueño. */
@@ -266,63 +342,113 @@ export default function AdsManagementSection({ onNavigateToMural }) {
     <div className="profile-panel ads-management-panel">
       <div className="ads-mgmt-header">
         <div className="ads-mgmt-header-main">
-          <div className="ads-mgmt-titles">
-            <h2>
-              <Megaphone size={24} className="text-amber-500" />
-              Gestión de anuncios y servicios automotrices
-            </h2>
-            <p>
-              Administra tus publicaciones del Mural de Anuncios, revisa en qué estado está cada una y
-              mejora su plan con Monedas RepuesTop.
-            </p>
-          </div>
+          <div className="ads-mgmt-titles-row">
+            <div className="ads-mgmt-titles">
+              <h2>
+                <span className="ads-mgmt-h2-ic"><Megaphone size={20} /></span>
+                Gestión de anuncios
+              </h2>
+              <p>
+                Publica servicios automotrices en el Mural, responde las reservas de hora que te
+                hacen y administra tus Monedas RepuesTop, todo desde un solo lugar.
+              </p>
+            </div>
 
-          <div className="ads-mgmt-actions">
-            <button
-              type="button"
-              className="btn-ad-phone inline-flex items-center gap-2"
-              onClick={() => { loadAds(); loadAppointments(); }}
-              disabled={isLoading}
-              title="Volver a consultar el estado de moderación y las reservas"
-            >
-              <RefreshCw size={16} className={isLoading ? 'spin-icon' : ''} />
-              <span>Actualizar</span>
-            </button>
+            <div className="ads-mgmt-titles-actions">
+              <div className="ads-mgmt-actions-row">
+                <button
+                  type="button"
+                  className="ads-mgmt-refresh"
+                  onClick={() => { loadAds(); loadAppointments(); }}
+                  disabled={isLoading}
+                  title="Volver a consultar el estado de moderación y las reservas"
+                >
+                  <RefreshCw size={15} className={isLoading ? 'spin-icon' : ''} />
+                  <span>Actualizar</span>
+                </button>
 
-            {onNavigateToMural && (
+                {/* Estado del expediente de servicio automotriz, compacto. Es el
+                    requisito para publicar: abre el formulario o muestra los datos
+                    ya validados. */}
+                {!accreditation.isLoading && (
+                  <AccreditationPill
+                    status={accreditation.status}
+                    businessName={accreditation.businessName}
+                    reviewNotes={accreditation.reviewNotes}
+                    profile={accreditation.profile}
+                    onOpen={() => setIsAccreditationOpen(true)}
+                  />
+                )}
+              </div>
+
+              {/* Tutorial: pasos para acreditar y publicar + beneficios del Mural. */}
               <button
                 type="button"
-                className="btn-ad-phone inline-flex items-center gap-2"
-                onClick={onNavigateToMural}
+                className="ads-mgmt-tutorial"
+                onClick={() => setIsTutorialOpen(true)}
               >
-                <Eye size={16} />
-                <span>Ver mural público</span>
+                <GraduationCap size={15} />
+                <span>Tutorial: cómo publicar y sus beneficios</span>
               </button>
-            )}
-
-            <button
-              type="button"
-              className="btn-post-ad inline-flex items-center gap-2"
-              onClick={() => setIsCreateModalOpen(true)}
-            >
-              <Plus size={18} />
-              <span>Publicar nuevo anuncio</span>
-            </button>
+            </div>
           </div>
         </div>
 
         <CapturerContactCard capturer={user?.captadorPublicidad} context="ads" />
       </div>
 
-      <TokensWalletCard
-        tokensBalance={tokensBalance}
-        onOpenRechargeModal={() => setIsRechargeModalOpen(true)}
-        onOpenHistoryModal={() => setIsHistoryModalOpen(true)}
-      />
+      {/* Accesos rápidos a lo ancho, equivalente web de las "action tiles" de
+          la app. Van en su propia fila —no dentro de la cabecera— para que no
+          compitan por el ancho con la tarjeta del captador. */}
+      <div className="ads-mgmt-tiles">
+        {onNavigateToMural && (
+          <button type="button" className="ads-tile" onClick={onNavigateToMural}>
+            <span className="ads-tile-ic"><Eye size={18} /></span>
+            <span className="ads-tile-body">
+              <strong>Mural público</strong>
+              <em>Ver cómo te ven los clientes</em>
+            </span>
+            <ChevronRight size={15} className="ads-tile-arrow" />
+          </button>
+        )}
 
-      {/* Una banda segmentada y no cinco tarjetas: eran cinco bordes de color y
-          cinco radios compitiendo, y la etiqueta mas larga se iba a dos lineas,
-          asi que los numeros ni siquiera quedaban alineados entre si. */}
+        <button type="button" className="ads-tile" onClick={() => setIsHistoryOpen(true)}>
+          <span className="ads-tile-ic">
+            <CalendarClock size={18} />
+            {upcomingAppointmentsCount > 0 && <i className="ads-tile-badge">{upcomingAppointmentsCount}</i>}
+          </span>
+          <span className="ads-tile-body">
+            <strong>Historial de citas</strong>
+            <em>Revisa todas tus reservas</em>
+          </span>
+          <ChevronRight size={15} className="ads-tile-arrow" />
+        </button>
+
+        <button type="button" className="ads-tile" onClick={() => setIsHistoryModalOpen(true)}>
+          <span className="ads-tile-ic"><Clock3 size={18} /></span>
+          <span className="ads-tile-body">
+            <strong>Historial de Monedas</strong>
+            <em>Consulta tus movimientos</em>
+          </span>
+          <ChevronRight size={15} className="ads-tile-arrow" />
+        </button>
+
+        <button
+          type="button"
+          className={`ads-tile ${isAccredited ? 'is-primary' : 'is-locked'}`}
+          onClick={handleOpenCreate}
+          title={isAccredited ? undefined : gateMessage}
+        >
+          <span className="ads-tile-ic">{isAccredited ? <Plus size={18} /> : <Lock size={16} />}</span>
+          <span className="ads-tile-body">
+            <strong>{isAccredited ? 'Publicar anuncio' : 'Acreditar para publicar'}</strong>
+            <em>{isAccredited ? 'Crea un nuevo anuncio rápidamente' : 'Acredita tu servicio para el Mural'}</em>
+          </span>
+          <ChevronRight size={15} className="ads-tile-arrow" />
+        </button>
+      </div>
+
+      {/* Banda de métricas: 5 segmentos con la marca de color sobre el número. */}
       <div className="ads-mgmt-stats">
         {[
           { label: 'Publicados', value: counts.live, hint: 'Visibles en el mural', tone: 'ok' },
@@ -352,7 +478,6 @@ export default function AdsManagementSection({ onNavigateToMural }) {
 
         <div className="mgmt-filter-tabs">
           {STATUS_FILTERS.map((filter) => {
-            const Icon = STATUS_ICONS[filter.id] || Layers;
             const count = filter.id === 'TODOS'
               ? counts.total
               : ads.filter(filter.match).length;
@@ -360,11 +485,10 @@ export default function AdsManagementSection({ onNavigateToMural }) {
               <button
                 type="button"
                 key={filter.id}
-                className={`mgmt-filter-tab inline-flex items-center gap-1.5 ${statusFilter === filter.id ? 'active' : ''}`}
+                className={`mgmt-filter-tab ${statusFilter === filter.id ? 'active' : ''}`}
                 onClick={() => setStatusFilter(filter.id)}
               >
-                <Icon size={13} />
-                <span>{filter.label} ({count})</span>
+                {filter.label} ({count})
               </button>
             );
           })}
@@ -395,174 +519,191 @@ export default function AdsManagementSection({ onNavigateToMural }) {
         </p>
       )}
 
-      <div className="ads-mgmt-list">
-        {isLoading && ads.length === 0 && (
-          <div className="ads-mgmt-state">
-            <Loader2 size={22} className="spin-icon" />
-            <p>Cargando tus anuncios…</p>
-          </div>
-        )}
-
-        {!isLoading && loadError && (
-          <div className="ads-mgmt-state is-error">
-            <AlertTriangle size={22} />
-            <p>{adErrorMessage(loadError, 'No pudimos cargar tus anuncios.')}</p>
-            <button type="button" className="btn-ad-phone" onClick={() => loadAds()}>
-              <RefreshCw size={14} /> Reintentar
-            </button>
-          </div>
-        )}
-
-        {!isLoading && !loadError && filteredAds.length === 0 && (
-          <div className="ads-mgmt-state">
-            <Megaphone size={22} />
-            <p>
-              {ads.length === 0
-                ? 'Todavía no tienes anuncios publicados en el mural.'
-                : 'Ninguno de tus anuncios coincide con este filtro.'}
-            </p>
-            {ads.length === 0 && (
-              <button type="button" className="btn-post-ad" onClick={() => setIsCreateModalOpen(true)}>
-                <Plus size={16} /> Publicar nuevo anuncio
-              </button>
+      <div className="ads-mgmt-table-wrap">
+        <table className="ads-mgmt-table">
+          <thead>
+            <tr>
+              <th>Anuncio</th>
+              <th>Plan</th>
+              <th>Estado</th>
+              <th>Publicado el</th>
+              <th>Vence el</th>
+              <th>Reservas</th>
+              <th className="col-actions">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading && ads.length === 0 && (
+              <tr className="mgmt-table-msg">
+                <td colSpan={7}>
+                  <div className="ads-mgmt-state">
+                    <Loader2 size={22} className="spin-icon" />
+                    <p>Cargando tus anuncios…</p>
+                  </div>
+                </td>
+              </tr>
             )}
-          </div>
-        )}
 
-        {filteredAds.map((ad) => {
-          const tierConfig = AD_TIERS[ad.tier] || AD_TIERS.basica;
-          // APROBADO pero apagado: lo apago la ultima edicion y espera la nueva
-          // revision. Se pinta como pendiente, no como publicado: el sello verde
-          // diciendo "en revision" es justo la contradiccion que confunde.
-          const isWaitingRecheck = ad.moderationStatus === AD_MODERATION_STATUS.APROBADO && !ad.activo;
-          const effectiveStatus = isWaitingRecheck ? AD_MODERATION_STATUS.PENDIENTE : ad.moderationStatus;
-          const status = AD_MODERATION_LABELS[effectiveStatus] || AD_MODERATION_LABELS.PENDIENTE;
-          const StatusIcon = STATUS_ICONS[effectiveStatus] || Clock3;
-          const expiry = getAdExpiryInfo(ad);
-          const catObj = SERVICE_CATEGORIES.find((c) => c.id === ad.category);
-          const coverPhoto = ad.images?.[0] || null;
-          const canUpgrade = getUpgradableTiers(ad.tier).length > 0;
-          const adAppointments = receivedByAd.get(ad.id) || [];
-          const adPending = adAppointments.filter((item) => item.status === 'pending').length;
+            {!isLoading && loadError && (
+              <tr className="mgmt-table-msg">
+                <td colSpan={7}>
+                  <div className="ads-mgmt-state is-error">
+                    <AlertTriangle size={22} />
+                    <p>{adErrorMessage(loadError, 'No pudimos cargar tus anuncios.')}</p>
+                    <button type="button" className="btn-ad-phone" onClick={() => loadAds()}>
+                      <RefreshCw size={14} /> Reintentar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            )}
 
-          return (
-            <div key={ad.id} className={`mgmt-ad-item ${tierConfig.cardTheme}`}>
-              <div className="mgmt-ad-left">
-                <div className="mgmt-ad-thumb">
-                  {coverPhoto
-                    ? <img src={coverPhoto} alt="" />
-                    : <span className="mgmt-ad-thumb-empty"><Megaphone size={20} /></span>}
-                </div>
-
-                <div className="mgmt-ad-info">
-                  <div className="mgmt-ad-meta-top">
-                    <span className={`mgmt-status-pill tone-${status.tone}`}>
-                      <StatusIcon size={12} /> {status.label}
-                    </span>
-                    {/* El plan va aca y no encima de la miniatura: `badge` esta
-                        escrito para la tarjeta del mural ("👑 Empresarial
-                        Verificado", 24 caracteres) y sobre una miniatura de 90px
-                        se partia en tres lineas tapando la foto. Aca se usa
-                        `name`, una palabra, y sin el "Verificado", que es una
-                        señal para el comprador y no para el dueño del anuncio. */}
-                    <span className={`mgmt-ad-plan plan-${ad.tier}`}>{tierConfig.name}</span>
-                    <span className="mgmt-ad-cat">
-                      {catObj?.emoji ? `${catObj.emoji} ` : ''}{ad.categoryLabel || catObj?.label || 'Servicio'}
-                    </span>
-                    {expiry && isLive(ad) && (
-                      <span className={`mgmt-ad-expiry ${expiry.isExpired || expiry.daysLeft <= 7 ? 'is-urgent' : ''}`}>
-                        <CalendarClock size={12} /> {expiry.label}
-                      </span>
+            {!isLoading && !loadError && filteredAds.length === 0 && (
+              <tr className="mgmt-table-msg">
+                <td colSpan={7}>
+                  <div className="ads-mgmt-state">
+                    <span className="ads-mgmt-empty-art"><PackageOpen size={26} /></span>
+                    <strong>
+                      {ads.length === 0
+                        ? 'Aún no tienes anuncios'
+                        : 'Ningún anuncio coincide con este filtro'}
+                    </strong>
+                    <p>
+                      {ads.length === 0
+                        ? 'Comienza publicando tu primer anuncio y llega a más clientes.'
+                        : 'Prueba con otro estado o plan.'}
+                    </p>
+                    {ads.length === 0 && (
+                      <button type="button" className="btn-post-ad" onClick={handleOpenCreate}>
+                        {isAccredited ? <Plus size={16} /> : <Lock size={14} />}
+                        <span>{isAccredited ? 'Publicar mi primer anuncio' : 'Acreditar para publicar'}</span>
+                      </button>
                     )}
                   </div>
+                </td>
+              </tr>
+            )}
 
-                  <h4 className="mgmt-ad-title">{ad.title}</h4>
+            {filteredAds.map((ad) => {
+              const tierConfig = AD_TIERS[ad.tier] || AD_TIERS.basica;
+              // APROBADO pero apagado: lo apago la ultima edicion y espera la
+              // nueva revision. Se pinta como pendiente, no como publicado.
+              const isWaitingRecheck = ad.moderationStatus === AD_MODERATION_STATUS.APROBADO && !ad.activo;
+              const effectiveStatus = isWaitingRecheck ? AD_MODERATION_STATUS.PENDIENTE : ad.moderationStatus;
+              const status = AD_MODERATION_LABELS[effectiveStatus] || AD_MODERATION_LABELS.PENDIENTE;
+              const StatusIcon = STATUS_ICONS[effectiveStatus] || Clock3;
+              const expiry = getAdExpiryInfo(ad);
+              const catObj = SERVICE_CATEGORIES.find((c) => c.id === ad.category);
+              const coverPhoto = ad.images?.[0] || null;
+              const canUpgrade = getUpgradableTiers(ad.tier).length > 0;
+              const adAppointments = receivedByAd.get(ad.id) || [];
+              const adPending = adAppointments.filter((item) => item.status === 'pending').length;
+              const isRejected = ad.moderationStatus === AD_MODERATION_STATUS.RECHAZADO;
 
-                  <div className="mgmt-ad-icons-row">
-                    <span><MapPin size={13} /> {ad.commune}{ad.address ? `, ${ad.address}` : ''}</span>
-                    <span><Phone size={13} /> {ad.phone}</span>
-                    <span><Tag size={13} /> {ad.priceText}</span>
-                    {ad.is24Hours && <span><Clock size={13} /> 24 horas</span>}
-                    {ad.hasOnlineBooking && (
-                      <span className="text-emerald-700 font-bold">
-                        <Calendar size={13} /> {ad.agendaHours || 'Agenda activa'}
+              return (
+                <React.Fragment key={ad.id}>
+                  <tr className="mgmt-ad-row">
+                    <td className="col-ad">
+                      <div className="mgmt-ad-cell">
+                        <span className="mgmt-ad-thumb">
+                          {coverPhoto
+                            ? <img src={coverPhoto} alt="" />
+                            : <span className="mgmt-ad-thumb-empty"><Megaphone size={16} /></span>}
+                        </span>
+                        <span className="mgmt-ad-cell-txt">
+                          <strong>{ad.title}</strong>
+                          <small>
+                            {catObj?.emoji ? `${catObj.emoji} ` : ''}
+                            {ad.categoryLabel || catObj?.label || 'Servicio'} · {ad.commune}
+                          </small>
+                        </span>
+                      </div>
+                    </td>
+                    <td><span className={`mgmt-ad-plan plan-${ad.tier}`}>{tierConfig.name}</span></td>
+                    <td>
+                      <span
+                        className={`mgmt-status-pill tone-${status.tone}`}
+                        title={isRejected ? (ad.rejectionReason || 'Sin motivo informado.') : undefined}
+                      >
+                        <StatusIcon size={11} /> {status.label}
                       </span>
-                    )}
-                    {ad.whatsapp && tierConfig.hasWhatsapp && (
-                      <span className="text-green-600 font-bold"><MessageCircle size={13} /> WhatsApp activo</span>
-                    )}
-                  </div>
-
-                  {ad.moderationStatus === AD_MODERATION_STATUS.RECHAZADO && (
-                    <div className="mgmt-ad-note tone-danger">
-                      <XCircle size={14} />
-                      <div>
-                        <strong>Moderación rechazó este anuncio.</strong>
-                        <p>{ad.rejectionReason || 'Sin motivo informado.'} Corrige los datos y se vuelve a revisar automáticamente al guardar.</p>
+                    </td>
+                    <td className="col-date">{ad.publishedAt || '—'}</td>
+                    <td className="col-date">
+                      {expiry
+                        ? <span className={expiry.isExpired || expiry.daysLeft <= 7 ? 'is-urgent' : ''}>{expiry.label}</span>
+                        : '—'}
+                    </td>
+                    <td className="col-bookings">
+                      {ad.hasOnlineBooking ? (
+                        <button type="button" className="mgmt-bookings-link" onClick={() => setAdForAgenda(ad)}>
+                          {adAppointments.length}{adPending > 0 ? ` · ${adPending} pend.` : ''}
+                        </button>
+                      ) : '—'}
+                    </td>
+                    <td className="col-actions">
+                      <div className="mgmt-ad-actions">
+                        <button
+                          type="button"
+                          className="btn-mgmt-icon"
+                          onClick={() => setAdToUpgrade(ad)}
+                          disabled={!canUpgrade}
+                          title={canUpgrade ? 'Mejorar el plan con Monedas RepuesTop' : 'Ya está en el plan más alto'}
+                        >
+                          <Zap size={15} />
+                        </button>
+                        {ad.hasOnlineBooking && (
+                          <button
+                            type="button"
+                            className="btn-mgmt-icon"
+                            onClick={() => setAdForAgenda(ad)}
+                            title="Ver las reservas de este anuncio"
+                          >
+                            <CalendarClock size={15} />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="btn-mgmt-icon"
+                          onClick={() => setAdToEdit(ad)}
+                          title={isRejected ? 'Corregir y reenviar' : 'Editar el anuncio'}
+                        >
+                          <Edit3 size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-mgmt-icon is-danger"
+                          onClick={() => { setDeleteError(''); setAdToDelete(ad); }}
+                          title="Dar de baja el anuncio"
+                        >
+                          <Trash2 size={15} />
+                        </button>
                       </div>
-                    </div>
+                    </td>
+                  </tr>
+
+                  {(isRejected || expiry?.isExpired) && (
+                    <tr className="mgmt-ad-note-row">
+                      <td colSpan={7}>
+                        <div className="mgmt-ad-note tone-danger">
+                          {isRejected ? <XCircle size={14} /> : <CalendarClock size={14} />}
+                          <div>
+                            <strong>{isRejected ? 'Moderación rechazó este anuncio.' : 'Anuncio vencido.'}</strong>
+                            <p>
+                              {isRejected
+                                ? `${ad.rejectionReason || 'Sin motivo informado.'} Corrige los datos y se vuelve a revisar automáticamente al guardar.`
+                                : 'Los anuncios duran 30 días en el mural. Edítalo y guárdalo para renovar su vigencia.'}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
                   )}
-
-                  {expiry?.isExpired && (
-                    <div className="mgmt-ad-note tone-danger">
-                      <CalendarClock size={14} />
-                      <div>
-                        <strong>Anuncio vencido.</strong>
-                        <p>Los anuncios duran 30 días en el mural. Edítalo y guárdalo para renovar su vigencia.</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="mgmt-ad-actions">
-                {/* Solo tiene sentido con las reservas encendidas: sin agenda no
-                    hay nada que mostrar y el boton seria una puerta a un vacio. */}
-                {ad.hasOnlineBooking && (
-                  <button
-                    type="button"
-                    className="btn-mgmt-agenda"
-                    onClick={() => setAdForAgenda(ad)}
-                    title="Ver las reservas de este anuncio"
-                  >
-                    <CalendarClock size={15} />
-                    <span>Agenda{adPending > 0 ? ` (${adPending})` : ''}</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  className="btn-mgmt-upgrade"
-                  onClick={() => setAdToUpgrade(ad)}
-                  disabled={!canUpgrade}
-                  title={canUpgrade ? 'Mejorar el plan con Monedas RepuesTop' : 'Ya está en el plan más alto'}
-                >
-                  <Zap size={15} />
-                  <span>Mejorar plan</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="btn-mgmt-edit"
-                  onClick={() => setAdToEdit(ad)}
-                  title="Editar los datos del anuncio"
-                >
-                  <Edit3 size={15} />
-                  <span>Editar</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="btn-mgmt-delete"
-                  onClick={() => { setDeleteError(''); setAdToDelete(ad); }}
-                  title="Dar de baja el anuncio"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            </div>
-          );
-        })}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       {/* Las citas que uno PIDIO, no las que recibio. Sin esta lista quien
@@ -688,9 +829,41 @@ export default function AdsManagementSection({ onNavigateToMural }) {
       <CreateAdModal
         isOpen={isCreateModalOpen}
         tokensBalance={tokensBalance}
+        accreditationProfile={accreditation.profile}
+        hasUsedBasicFreePeriod={hasUsedBasicFreePeriod}
         onClose={() => setIsCreateModalOpen(false)}
         onAdCreated={handleAdCreated}
       />
+
+      {isTutorialOpen && <AdsTutorialModal onClose={() => setIsTutorialOpen(false)} />}
+
+      {isAccreditationOpen && (
+        <AccreditationModal
+          user={user}
+          onSaved={() => accreditation.refresh()}
+          onClose={() => { setIsAccreditationOpen(false); accreditation.refresh(); }}
+        />
+      )}
+
+      {isHistoryOpen && (
+        <AppointmentsHistoryModal
+          ads={ads}
+          appointments={appointments}
+          sessionUserId={sessionUserId}
+          userEmail={user?.email || ''}
+          onClose={() => setIsHistoryOpen(false)}
+          onAppointmentUpdated={replaceAppointment}
+          onRebook={handleRebook}
+        />
+      )}
+
+      {rebookState && rebookState !== 'loading' && (
+        <AdAppointmentModal
+          adOrCompany={rebookState.ad}
+          onBooked={handleRebooked}
+          onClose={() => setRebookState(null)}
+        />
+      )}
 
       {adToDelete && createPortal(
         <div className="booking-modal-overlay" role="dialog" aria-modal="true">

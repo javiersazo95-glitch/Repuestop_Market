@@ -20,6 +20,8 @@ import StoreLogoBadge from './StoreLogoBadge';
 import ContextualReportButton from './ContextualReportButton';
 import RelatedProductsCarousel from './RelatedProductsCarousel';
 import PurchaseShippingModal from './PurchaseShippingModal';
+import ProductTopBadge from './ProductTopBadge';
+import { isProductTopActive } from '../utils/productTop';
 import { isOwnStoreProduct } from '../utils/purchaseProfile';
 
 // Compara el vehículo resuelto por patente contra un registro de compatibilidad
@@ -88,6 +90,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const shippingMethods = parseShippingMethods(product.metodosEnvio);
   // El distintivo "Más vendido" solo aparece cuando el producto registra ventas.
   const isBestSeller = Number(product.vendidos || 0) > 0;
+  const isTopProduct = isProductTopActive(product);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const descriptionText = product.descripcion
     || 'Repuesto publicado por una tienda verificada en RepuesTop. Consulta la compatibilidad antes de completar tu compra.';
@@ -279,6 +282,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
 
         <section className="product-marketplace-layout">
           <article className={`product-marketplace-gallery ${images.length > 1 ? '' : 'single-image'}`}>
+            {isTopProduct && <ProductTopBadge className="product-detail-top-badge" />}
             {isBestSeller && <span className="product-marketplace-ranking">Más vendido</span>}
             <button
               className={`product-marketplace-favorite ${favorite ? 'active' : ''}`}

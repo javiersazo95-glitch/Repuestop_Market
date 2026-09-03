@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Plus, ShieldCheck, Clock3 } from 'lucide-react';
 import { AD_TIERS } from '../../data/automotiveAdsData';
 import { createAd, fetchTokensBalance, adErrorMessage } from '../../services/adsStorage';
 import AdForm from './AdForm';
+import RechargeTokensModal from './RechargeTokensModal';
 
 /**
  * Publicar un anuncio en el Mural.
@@ -13,10 +14,23 @@ import AdForm from './AdForm';
  * exito lo dice explicitamente; prometer que "ya esta visible" y que el usuario
  * no lo encuentre en el mural es lo que termina en un ticket de soporte.
  */
-export default function CreateAdModal({ isOpen, onClose, tokensBalance = 0, onAdCreated }) {
+export default function CreateAdModal({
+  isOpen,
+  onClose,
+  tokensBalance = 0,
+  accreditationProfile = null,
+  hasUsedBasicFreePeriod = false,
+  onAdCreated
+}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [createdAd, setCreatedAd] = useState(null);
+  const [rechargeOpen, setRechargeOpen] = useState(false);
+  const [currentBalance, setCurrentBalance] = useState(tokensBalance);
+
+  useEffect(() => {
+    if (isOpen) setCurrentBalance(tokensBalance);
+  }, [isOpen, tokensBalance]);
 
   if (!isOpen) return null;
 
@@ -42,6 +56,7 @@ export default function CreateAdModal({ isOpen, onClose, tokensBalance = 0, onAd
   const handleClose = () => {
     setCreatedAd(null);
     setSubmitError('');
+    setRechargeOpen(false);
     onClose?.();
   };
 
@@ -55,66 +70,96 @@ export default function CreateAdModal({ isOpen, onClose, tokensBalance = 0, onAd
       <div className="create-ad-modal-card">
         {!createdAd ? (
           <>
-            <div className="booking-modal-header">
-              <div>
-                <h3>
-                  <Plus className="text-amber-500" size={22} />
-                  Publicar anuncio en el Mural Automotriz
-                </h3>
-                <p>
-                  Ofrece tus servicios de taller, mecánica, detailing o asistencia a los conductores de la zona.
-                </p>
+            <div className="create-ad-modal-header">
+              <div className="create-ad-header-main">
+                <span className="create-ad-modal-icon"><Plus size={18} /></span>
+                <div className="create-ad-header-text">
+                  <div className="create-ad-header-topline">
+                    <span className="create-ad-modal-eyebrow">Mural Automotriz</span>
+                    <span className="create-ad-header-badge">Nuevo Anuncio</span>
+                  </div>
+                  <h3>Publicar anuncio de servicio</h3>
+                  <p>
+                    Ofrece tus servicios de taller, mecánica, detailing o asistencia a conductores de tu zona.
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
-                className="story-close-btn"
-                style={{ background: '#f1f5f9', color: '#0f172a' }}
+                className="create-ad-close-btn"
                 onClick={handleClose}
+                aria-label="Cerrar modal"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="ad-moderation-notice">
+            <div className="ad-moderation-notice create-ad-review-note">
               <ShieldCheck size={16} />
               <span>
-                Todos los anuncios pasan por revisión antes de publicarse. Vas a poder seguir el estado
-                desde esta misma pantalla y te avisamos cuando quede aprobado.
+                Todos los anuncios pasan por revisión antes de publicarse en el Mural. Te notificaremos cuando esté activo.
               </span>
             </div>
 
             <AdForm
               mode="create"
-              tokensBalance={tokensBalance}
+              tokensBalance={currentBalance}
+              accreditationProfile={accreditationProfile}
+              hasUsedBasicFreePeriod={hasUsedBasicFreePeriod}
               isSubmitting={isSubmitting}
               submitError={submitError}
               onSubmit={handleSubmit}
               onCancel={handleClose}
+              onOpenRecharge={() => setRechargeOpen(true)}
             />
           </>
         ) : (
-          <div className="text-center py-6">
-            <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Clock3 size={36} />
+          <div className="create-ad-success">
+            <button type="button" className="create-ad-success-close" onClick={handleClose} aria-label="Cerrar">
+              <X size={18} />
+            </button>
+
+            <div className="create-ad-success-visual">
+              <span className="create-ad-success-rings" aria-hidden="true" />
+              <span className="create-ad-success-icon"><Clock3 size={34} /></span>
             </div>
 
-            <h3 className="text-2xl font-extrabold text-slate-900 mb-2">
-              Tu anuncio quedó en revisión
-            </h3>
-
-            <p className="text-slate-600 text-sm max-w-md mx-auto mb-6">
-              Publicaste <strong>"{createdAd.title}"</strong> en el plan{' '}
-              <strong>{(AD_TIERS[createdAd.tier] || AD_TIERS.basica).name}</strong>. Todavía no aparece en
-              el Mural de Anuncios: primero lo revisa el equipo de moderación. Cuando quede aprobado te
-              llega una notificación y lo vas a ver publicado en tu gestión de anuncios.
+            <span className="create-ad-success-status">PENDIENTE DE VALIDACIÓN</span>
+            <h3>Tu anuncio quedó en revisión</h3>
+            <p>
+              Publicaste <strong>“{createdAd.title}”</strong> en el plan{' '}
+              <strong>{(AD_TIERS[createdAd.tier] || AD_TIERS.basica).name}</strong>. Nuestro equipo lo revisará antes de mostrarlo en el Mural.
             </p>
 
-            <button type="button" className="btn-post-ad mx-auto" onClick={handleClose}>
-              Entendido
+            <div className="create-ad-success-summary">
+              <div><span>Publicación</span><strong>{createdAd.title}</strong></div>
+              <div><span>Plan seleccionado</span><strong>{(AD_TIERS[createdAd.tier] || AD_TIERS.basica).name}</strong></div>
+            </div>
+
+            <div className="create-ad-success-flow" aria-label="Proceso de publicación">
+              <div className="is-done"><i>1</i><span><strong>Enviado</strong><small>Recibimos tu anuncio</small></span></div>
+              <b />
+              <div className="is-current"><i>2</i><span><strong>En revisión</strong><small>Validación del equipo</small></span></div>
+              <b />
+              <div><i>3</i><span><strong>Publicado</strong><small>Visible en el Mural</small></span></div>
+            </div>
+
+            <div className="create-ad-success-note">
+              Te enviaremos una notificación cuando sea aprobado o si necesitas realizar alguna corrección.
+            </div>
+
+            <button type="button" className="create-ad-success-action" onClick={handleClose}>
+              Entendido, volver a Gestión de Anuncios
             </button>
           </div>
         )}
       </div>
+      <RechargeTokensModal
+        isOpen={rechargeOpen}
+        origin="ANUNCIOS"
+        onClose={() => setRechargeOpen(false)}
+        onRechargeSuccess={setCurrentBalance}
+      />
     </div>,
     document.body
   );

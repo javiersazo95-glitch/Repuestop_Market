@@ -1,38 +1,40 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, CalendarClock, Check, XCircle, Phone, Mail, Car, StickyNote,
-  Loader2, AlertTriangle, CalendarDays
+  X, CalendarClock, CalendarDays, Check, XCircle, Phone, Mail, Car, StickyNote,
+  Loader2, AlertTriangle, ChevronLeft, ChevronRight, ArrowLeft, Hash, Wrench,
+  Clock, MessageSquare
 } from 'lucide-react';
 import { APPOINTMENT_STATUS_META, isClosedAppointment } from '../../data/automotiveAdsData';
 import {
-  formatAgendaDateLong, getTimeUntilLabel, parseIsoDate, toIsoDate
+  WEEKDAYS, formatAgendaDateLong, getTimeUntilLabel, parseIsoDate, toIsoDate,
+  weekdayIndexFromDate, formatAgendaMonthLabel
 } from '../../data/agendaConfig';
 import { updateAppointmentStatus, adErrorMessage } from '../../services/adsStorage';
 
 /**
  * Agenda de un anuncio, vista por su dueño: las reservas que le hicieron y la
- * respuesta a cada una.
+ * respuesta a cada una. Dos pestañas —Solicitudes y Calendario— más una vista de
+ * detalle por cita, como en `mobile/components/ads/AdAgendaModal.tsx`.
  *
  * Recibe las citas ya cargadas por `AdsManagementSection` en vez de pedirlas por
  * su cuenta: `GET /anuncios/agendamientos/mias` ya devuelve TODAS las reservas
- * que tocan a la sesion —las de todos sus anuncios y las que hizo como cliente—
- * en una sola respuesta (`findRelevantes()`), asi que abrir la agenda de cada
- * anuncio con su propio GET seria pedir de nuevo lo mismo.
+ * que tocan a la sesión en una sola respuesta.
  *
  * Solo se puede responder una reserva `pending`: el backend rechaza con 400
- * cualquier intento sobre una ya resuelta, y `cancelled` esta reservado al
- * cliente. Por eso las acciones desaparecen apenas la cita se cierra.
+ * cualquier intento sobre una ya resuelta, y `cancelled` está reservado al
+ * cliente.
  */
 export default function AdAgendaModal({ ad, appointments, onClose, onAppointmentUpdated }) {
+  const [tab, setTab] = useState('solicitudes'); // 'solicitudes' | 'calendario'
+  const [detailId, setDetailId] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
   const [actionError, setActionError] = useState('');
   const [showClosed, setShowClosed] = useState(false);
+  const [monthCursor, setMonthCursor] = useState(() => new Date());
 
   const todayIso = toIsoDate(new Date());
 
-  // Las proximas primero: la agenda se usa para saber que viene, no para
-  // revisar el historial. Las cerradas y las pasadas quedan detras del toggle.
   const { upcoming, closed } = useMemo(() => {
     const sorted = [...appointments].sort(
       (a, b) => (a.date === b.date ? a.time.localeCompare(b.time) : a.date.localeCompare(b.date))
@@ -44,6 +46,10 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
   }, [appointments, todayIso]);
 
   const pendingCount = upcoming.filter((item) => item.status === 'pending').length;
+  const nextAppointment = upcoming[0] || null;
+  const detailAppointment = detailId
+    ? appointments.find((item) => item.id === detailId) || null
+    : null;
 
   const handleRespond = async (appointment, status) => {
     setUpdatingId(appointment.id);
@@ -57,7 +63,7 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
     }
   };
 
-  const renderAppointment = (appointment) => {
+  const renderAppointment = (appointment, { compact = false } = {}) => {
     const meta = APPOINTMENT_STATUS_META[appointment.status] || APPOINTMENT_STATUS_META.pending;
     const canRespond = appointment.status === 'pending' && appointment.date >= todayIso;
     const isBusy = updatingId === appointment.id;
@@ -78,28 +84,37 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
             </span>
           </div>
 
-          <h5>{appointment.service || 'Servicio no informado'}</h5>
+          <h5>
+            {(appointment.services?.length ? appointment.services.join(', ') : appointment.service)
+              || 'Servicio no informado'}
+          </h5>
 
-          <div className="agenda-appointment-meta">
-            <span><strong>{appointment.customerName}</strong></span>
-            {appointment.customerPhone && (
-              <a href={`tel:${appointment.customerPhone}`}><Phone size={12} /> {appointment.customerPhone}</a>
-            )}
-            {appointment.customerEmail && (
-              <a href={`mailto:${appointment.customerEmail}`}><Mail size={12} /> {appointment.customerEmail}</a>
-            )}
-            {(appointment.vehiclePatent || appointment.vehicleModel) && (
-              <span>
-                <Car size={12} /> {[appointment.vehiclePatent, appointment.vehicleModel].filter(Boolean).join(' · ')}
-              </span>
-            )}
-          </div>
+          {!compact && (
+            <div className="agenda-appointment-meta">
+              <span><strong>{appointment.customerName || 'Cliente'}</strong></span>
+              {appointment.customerPhone && (
+                <a href={`tel:${appointment.customerPhone}`}><Phone size={12} /> {appointment.customerPhone}</a>
+              )}
+              {appointment.customerEmail && (
+                <a href={`mailto:${appointment.customerEmail}`}><Mail size={12} /> {appointment.customerEmail}</a>
+              )}
+              {(appointment.vehiclePatent || appointment.vehicleModel) && (
+                <span>
+                  <Car size={12} /> {[appointment.vehiclePatent, appointment.vehicleModel].filter(Boolean).join(' · ')}
+                </span>
+              )}
+            </div>
+          )}
 
-          {appointment.notes && (
+          {!compact && appointment.notes && (
             <p className="agenda-appointment-notes">
               <StickyNote size={12} /> {appointment.notes}
             </p>
           )}
+
+          <button type="button" className="agenda-appointment-detail-link" onClick={() => setDetailId(appointment.id)}>
+            Ver detalle
+          </button>
         </div>
 
         {canRespond && (
@@ -122,6 +137,119 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
             </button>
           </div>
         )}
+      </div>
+    );
+  };
+
+  const renderDetail = (appointment) => {
+    const meta = APPOINTMENT_STATUS_META[appointment.status] || APPOINTMENT_STATUS_META.pending;
+    const canRespond = appointment.status === 'pending' && appointment.date >= todayIso;
+    const isBusy = updatingId === appointment.id;
+    const services = appointment.services?.length ? appointment.services.join(', ') : appointment.service;
+
+    return (
+      <div className="agenda-detail">
+        <button type="button" className="btn-ad-phone" onClick={() => setDetailId(null)}>
+          <ArrowLeft size={14} /> Volver
+        </button>
+
+        <span className={`mgmt-status-pill tone-${meta.tone}`} style={{ marginTop: 12 }}>{meta.longLabel || meta.label}</span>
+
+        <div className="agenda-detail-rows">
+          <DetailRow Icon={Hash} label="Código" value={appointment.id} />
+          <DetailRow Icon={Wrench} label="Servicio(s)" value={services} />
+          <DetailRow Icon={CalendarDays} label="Día" value={formatAgendaDateLong(appointment.date)} />
+          <DetailRow Icon={Clock} label="Bloque" value={appointment.time} />
+          <DetailRow Icon={Phone} label="Teléfono" value={appointment.customerPhone} href={appointment.customerPhone ? `tel:${appointment.customerPhone}` : null} />
+          <DetailRow Icon={Mail} label="Correo" value={appointment.customerEmail} href={appointment.customerEmail ? `mailto:${appointment.customerEmail}` : null} />
+          <DetailRow Icon={Car} label="Vehículo" value={appointment.vehicleModel} />
+          <DetailRow Icon={Hash} label="Patente" value={appointment.vehiclePatent} />
+          <DetailRow Icon={MessageSquare} label="Comentarios" value={appointment.notes} />
+        </div>
+
+        {canRespond && (
+          <div className="agenda-appointment-actions">
+            <button
+              type="button"
+              className="btn-agenda-accept"
+              disabled={isBusy}
+              onClick={() => handleRespond(appointment, 'accepted')}
+            >
+              {isBusy ? <Loader2 size={14} className="spin-icon" /> : <Check size={14} />} Aceptar
+            </button>
+            <button
+              type="button"
+              className="btn-agenda-reject"
+              disabled={isBusy}
+              onClick={() => handleRespond(appointment, 'rejected')}
+            >
+              <XCircle size={14} /> Rechazar
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderCalendar = () => {
+    const year = monthCursor.getFullYear();
+    const month = monthCursor.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const leading = weekdayIndexFromDate(new Date(year, month, 1));
+
+    const countByIso = new Map();
+    appointments.forEach((item) => {
+      if (isClosedAppointment(item.status)) return;
+      countByIso.set(item.date, (countByIso.get(item.date) || 0) + 1);
+    });
+
+    const cells = [];
+    for (let i = 0; i < leading; i += 1) cells.push(null);
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const iso = toIsoDate(new Date(year, month, day));
+      cells.push({ iso, day, count: countByIso.get(iso) || 0, isPast: iso < todayIso, isToday: iso === todayIso });
+    }
+
+    return (
+      <div>
+        <div className="appt-cal-controls">
+          <div className="appt-cal-month">
+            <button type="button" onClick={() => setMonthCursor(new Date(year, month - 1, 1))} aria-label="Mes anterior">
+              <ChevronLeft size={16} />
+            </button>
+            <strong>{formatAgendaMonthLabel(monthCursor)}</strong>
+            <button type="button" onClick={() => setMonthCursor(new Date(year, month + 1, 1))} aria-label="Mes siguiente">
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div className="appt-cal-grid appt-cal-weekdays">
+          {WEEKDAYS.map((weekday) => <span key={weekday.id}>{weekday.short}</span>)}
+        </div>
+        <div className="appt-cal-grid appt-cal-days">
+          {cells.map((cell, index) => {
+            if (!cell) return <span key={`e-${index}`} className="appt-cal-cell is-empty" />;
+            return (
+              <div
+                key={cell.iso}
+                className={[
+                  'appt-cal-cell',
+                  cell.isPast ? 'is-past' : '',
+                  cell.isToday ? 'is-today' : '',
+                  cell.count > 0 ? 'has-items' : ''
+                ].filter(Boolean).join(' ')}
+              >
+                <span className="appt-cal-num">{cell.day}</span>
+                {cell.count > 0 && (
+                  <span className="appt-cal-dots">
+                    <i className="dot dot-recibidas">{cell.count}</i>
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   };
@@ -159,34 +287,93 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
           </div>
         )}
 
-        {upcoming.length === 0 ? (
-          <div className="ads-mgmt-state">
-            <CalendarDays size={22} />
-            <p>
-              Todavía no hay reservas próximas en este anuncio. Cuando alguien pida hora
-              desde el mural, te aparece acá y te llega una notificación.
-            </p>
-          </div>
+        {detailAppointment ? (
+          renderDetail(detailAppointment)
         ) : (
-          <div className="agenda-appointments-list">{upcoming.map(renderAppointment)}</div>
-        )}
+          <>
+            <div className="appt-seg" style={{ marginBottom: 14 }}>
+              <button
+                type="button"
+                className={tab === 'solicitudes' ? 'active' : ''}
+                onClick={() => setTab('solicitudes')}
+              >
+                Solicitudes{pendingCount > 0 ? ` (${pendingCount})` : ''}
+              </button>
+              <button
+                type="button"
+                className={tab === 'calendario' ? 'active' : ''}
+                onClick={() => setTab('calendario')}
+              >
+                Calendario
+              </button>
+            </div>
 
-        {closed.length > 0 && (
-          <div className="agenda-closed-block">
-            <button
-              type="button"
-              className="btn-ad-phone"
-              onClick={() => setShowClosed((current) => !current)}
-            >
-              {showClosed ? 'Ocultar' : 'Ver'} historial ({closed.length})
-            </button>
-            {showClosed && (
-              <div className="agenda-appointments-list is-history">{closed.map(renderAppointment)}</div>
+            {tab === 'calendario' ? (
+              renderCalendar()
+            ) : (
+              <>
+                {nextAppointment && (
+                  <div className="agenda-next-card">
+                    <span className="agenda-next-tag">Próxima cita</span>
+                    <strong>{formatAgendaDateLong(nextAppointment.date)} · {nextAppointment.time}</strong>
+                    <span>
+                      {(nextAppointment.services?.length ? nextAppointment.services.join(', ') : nextAppointment.service) || 'Servicio no informado'}
+                      {nextAppointment.customerName ? ` — ${nextAppointment.customerName}` : ''}
+                    </span>
+                  </div>
+                )}
+
+                {upcoming.length === 0 ? (
+                  <div className="ads-mgmt-state">
+                    <CalendarDays size={22} />
+                    <p>
+                      Todavía no hay reservas próximas en este anuncio. Cuando alguien pida hora
+                      desde el mural, te aparece acá y te llega una notificación.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="agenda-appointments-list">
+                    {upcoming.map((appointment) => renderAppointment(appointment))}
+                  </div>
+                )}
+
+                {closed.length > 0 && (
+                  <div className="agenda-closed-block">
+                    <button
+                      type="button"
+                      className="btn-ad-phone"
+                      onClick={() => setShowClosed((current) => !current)}
+                    >
+                      {showClosed ? 'Ocultar' : 'Ver'} historial ({closed.length})
+                    </button>
+                    {showClosed && (
+                      <div className="agenda-appointments-list is-history">
+                        {closed.map((appointment) => renderAppointment(appointment))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
-          </div>
+          </>
         )}
       </div>
     </div>,
     document.body
+  );
+}
+
+function DetailRow({ Icon, label, value, href }) {
+  const text = (value || '').toString().trim();
+  return (
+    <div className="agenda-detail-row">
+      <Icon size={14} />
+      <div>
+        <span>{label}</span>
+        {href && text
+          ? <a href={href}>{text}</a>
+          : <strong>{text || '—'}</strong>}
+      </div>
+    </div>
   );
 }

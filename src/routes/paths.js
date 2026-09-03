@@ -39,7 +39,6 @@ export const PROFILE_TABS = [
   'resumen', 'pedidos', 'favoritos', 'datos', 'consultas',
   'cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'tienda', 'tienda_datos',
   'anuncios',
-  'acreditar_servicio',
   // Bandeja del COMPRADOR con las preguntas que hizo. Es distinta de
   // `preguntas_productos`, que es la del vendedor sobre sus propios repuestos. Estaba
   // en el sidebar y con su panel implementado, pero faltaba aca: la ruta no se

@@ -1,7 +1,9 @@
 import React from 'react';
 import { Heart, MapPin, PackageCheck, ShieldCheck, Sparkles, Star, Store, Tag } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
+import ProductTopBadge from './ProductTopBadge';
 import { CATEGORY_COLOR_BY_ID, CATEGORY_ICON_BY_ID, CATEGORY_IMAGE_BY_ID } from '../data/categories';
+import { isProductTopActive } from '../utils/productTop';
 
 const CATEGORY_LABELS = {
   frenos: 'Frenos',
@@ -48,9 +50,9 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
   const oldPrice = Number(product.precioOriginal || 0);
   const isOffer = Number(product.descuento || 0) > 0;
   const isNew = String(product.condicion || '').toLowerCase().includes('nuevo');
-  const isTop = Boolean(product.isTop || product.destacado);
-  const badgeLabel = isOffer ? '🔥 Oferta' : isTop ? '★ Top' : isNew ? '✦ Nuevo' : null;
-  const badgeKind = isOffer ? 'offer' : isTop ? 'top' : 'new';
+  const isTop = isProductTopActive(product);
+  const badgeLabel = isOffer ? '🔥 Oferta' : isNew ? '✦ Nuevo' : null;
+  const badgeKind = isOffer ? 'offer' : 'new';
   const city = product.ciudad || product.ciudadVendedor || fallbackCity || 'Santiago, RM';
   const partBrand = getPartBrand(product);
   const partType = getPartType(product);
@@ -77,6 +79,7 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
           image={productImage}
           size={34}
         />
+        {isTop && <ProductTopBadge compact className="market-product-top-badge" />}
         {badgeLabel && <span className={`market-product-badge ${badgeKind}`}>{badgeLabel}</span>}
         <button
           className={`market-product-favorite ${favoriteActive ? 'is-active' : ''}`}

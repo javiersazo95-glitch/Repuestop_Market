@@ -765,11 +765,15 @@ export async function getSellerInventorySummaryApi(proveedorId, { signal } = {})
   return fetchApi(`/proveedores/${proveedorId}/inventario/resumen`, { method: 'GET', signal });
 }
 
-export async function updateSellerProductTopApi(proveedorId, productId, destacado) {
+export async function updateSellerProductTopApi(proveedorId, productId, destacado, renovar = false) {
   return fetchApi(`/proveedores/${proveedorId}/inventario/${productId}/top`, {
     method: 'PATCH',
-    body: JSON.stringify({ destacado: Boolean(destacado) }),
+    body: JSON.stringify({ destacado: Boolean(destacado), renovar: Boolean(renovar) }),
   });
+}
+
+export async function getSellerProductTopSummaryApi(proveedorId, { signal } = {}) {
+  return fetchApi(`/proveedores/${proveedorId}/inventario/top/resumen`, { method: 'GET', signal });
 }
 
 export async function getSellerConversationsApi(proveedorId, { signal } = {}) {

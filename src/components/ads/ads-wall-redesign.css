@@ -45,15 +45,16 @@
   z-index: 0;
 }
 
-/* Fotografía duotono opcional: si existe /ads-wall-hero-bg.png se pinta detrás;
-   si no existe el navegador no muestra nada (no hay icono roto). */
+/* Fotografía duotono: SUV a la izquierda y vehículo en elevador a la derecha.
+   El centro desvanecido mantiene la lectura del contenido principal. */
 .ads-hero-photo {
   position: absolute;
   inset: 0;
   background-image: url('/ads-wall-hero-bg.png');
-  background-size: cover;
+  background-size: 100% auto;
   background-position: center;
-  opacity: 0.55;
+  background-repeat: no-repeat;
+  opacity: 0.88;
 }
 
 /* Tramas de puntos */
@@ -88,18 +89,6 @@
   opacity: 0.45;
 }
 
-/* Vehículos duotono de los costados */
-.ads-hero-art {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-46%);
-  width: clamp(230px, 25vw, 390px);
-  height: auto;
-  opacity: 0.5;
-}
-.ads-hero-art--car { left: -4%; }
-.ads-hero-art--shop { right: -3%; }
-
 /* Franja azul superior: banda sólida con el corte diagonal del arte */
 .ads-hero-band {
   position: absolute;
@@ -131,16 +120,16 @@
 /* Arcos azules: el grande de la derecha y la curva sólida inferior izquierda */
 .ads-hero-arc { position: absolute; border-radius: 50%; }
 .ads-hero-arc--right {
-  top: -18%;
-  right: -45%;
-  width: 62%;
+  top: -12%;
+  right: -44%;
+  width: 46%;
   aspect-ratio: 1;
-  border: 48px solid var(--hero-blue);
+  border: 32px solid var(--hero-blue);
 }
 .ads-hero-arc--left {
-  left: -13%;
-  bottom: -34%;
-  width: 26%;
+  left: -11%;
+  bottom: -30%;
+  width: 18%;
   aspect-ratio: 1;
   background: var(--hero-blue);
 }
@@ -149,12 +138,12 @@
 .ads-hero-inner {
   position: relative;
   z-index: 2;
-  padding-top: clamp(24px, 3.4vw, 46px);
-  padding-bottom: clamp(16px, 2vw, 26px);
+  padding-top: clamp(8px, 0.8vw, 12px);
+  padding-bottom: clamp(6px, 0.6vw, 9px);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
 }
 
 /* Marco con la esquina redondeada del arte */
@@ -162,11 +151,11 @@
   position: relative;
   width: 100%;
   max-width: 1020px;
-  padding: clamp(22px, 3vw, 40px) clamp(18px, 3.4vw, 54px) clamp(20px, 2.4vw, 32px);
-  border: 2px solid rgba(27, 79, 214, 0.42);
-  border-bottom: none;
-  border-radius: 44px 44px 0 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.62));
+  padding: clamp(10px, 1vw, 14px) clamp(18px, 3vw, 44px);
+  border: 2px solid rgba(27, 79, 214, 0.28);
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 30px 70px -34px rgba(11, 27, 71, 0.28);
   text-align: center;
 }
 /* Las tres barras diagonales de la esquina superior derecha */
@@ -187,7 +176,7 @@
   align-items: center;
   justify-content: center;
   gap: 0 9px;
-  font-size: clamp(11px, 1.05vw, 17px);
+  font-size: clamp(10px, 0.8vw, 13px);
   font-weight: 800;
   letter-spacing: 0.01em;
   color: var(--hero-navy);
@@ -199,9 +188,9 @@
 
 /* Titular */
 .ads-hero-title {
-  margin: clamp(4px, 0.6vw, 10px) 0 0;
-  font-size: clamp(30px, 5.3vw, 82px);
-  line-height: 0.98;
+  margin: clamp(2px, 0.3vw, 5px) 0 0;
+  font-size: clamp(24px, 2.8vw, 36px);
+  line-height: 1;
   font-weight: 900;
   letter-spacing: -0.025em;
   color: var(--hero-navy);
@@ -210,16 +199,16 @@
 .ads-hero-title span { display: block; color: var(--hero-blue); }
 
 .ads-hero-sub {
-  margin: clamp(8px, 1.1vw, 16px) 0 0;
-  font-size: clamp(13px, 1.35vw, 21px);
-  line-height: 1.45;
+  margin: clamp(3px, 0.4vw, 5px) 0 0;
+  font-size: clamp(11.5px, 0.85vw, 13px);
+  line-height: 1.32;
   color: #3B4A63;
 }
 .ads-hero-sub b { color: var(--hero-blue); font-weight: 800; }
 
 /* Los 4 distintivos, separados por líneas verticales */
 .ads-hero-perks {
-  margin: clamp(14px, 2vw, 26px) auto 0;
+  margin: clamp(5px, 0.6vw, 8px) auto 0;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -229,7 +218,7 @@
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 4px clamp(12px, 1.8vw, 26px);
+  padding: 2px clamp(11px, 1.5vw, 22px);
   border-right: 1px solid rgba(27, 79, 214, 0.16);
 }
 .ads-hero-perk:last-child { border-right: none; }
@@ -237,7 +226,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: clamp(38px, 3vw, 50px);
+  width: clamp(32px, 2.3vw, 38px);
   aspect-ratio: 1;
   flex-shrink: 0;
   border: 1.5px solid rgba(27, 79, 214, 0.35);
@@ -267,10 +256,10 @@
 .ads-searchbar {
   width: 100%;
   max-width: 880px;
-  margin: clamp(16px, 2.2vw, 30px) auto 0;
-  padding: clamp(10px, 1vw, 14px);
+  margin: clamp(6px, 0.7vw, 8px) auto 0;
+  padding: clamp(7px, 0.6vw, 9px);
   background: #fff;
-  border-radius: 22px;
+  border-radius: 18px;
   box-shadow: 0 20px 46px -24px rgba(11, 27, 71, 0.35);
 }
 .ads-searchbar-row {
@@ -283,7 +272,7 @@
   align-items: center;
   gap: 9px;
   padding: 0 12px;
-  min-height: 52px;
+  min-height: 43px;
   border: 1px solid #E3EAF5;
   border-radius: 13px;
   background: #F5F8FD;
@@ -317,7 +306,7 @@
   align-items: center;
   justify-content: center;
   gap: 9px;
-  min-height: 52px;
+  min-height: 43px;
   padding: 0 clamp(16px, 1.8vw, 26px);
   border: none;
   border-radius: 13px;
@@ -335,13 +324,13 @@
 
 /* Línea de confianza, dentro de la tarjeta blanca */
 .ads-trust-line {
-  margin: 12px 0 4px;
+  margin: 5px 0 1px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 4px 10px;
-  font-size: 13.5px;
+  font-size: 12px;
   color: #5A6B86;
 }
 .ads-trust-line svg { color: var(--hero-blue); }
@@ -351,13 +340,13 @@
 .ads-hero-utility {
   width: 100%;
   max-width: 880px;
-  margin: 12px auto 0;
+  margin: 6px auto 0;
   display: flex;
   gap: 10px;
 }
 .ads-hero-utility .ads-search-input-wrap input {
-  min-height: 44px;
-  padding: 10px 84px 10px 38px;
+  min-height: 38px;
+  padding: 7px 84px 7px 38px;
   border-color: rgba(27, 79, 214, 0.18);
   background: rgba(255, 255, 255, 0.75);
   font-size: 13.5px;
@@ -372,7 +361,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 44px;
+  min-height: 38px;
   padding: 0 15px;
   border: 1px solid rgba(27, 79, 214, 0.22);
   border-radius: 12px;
@@ -415,7 +404,7 @@
   background: var(--ads-primary);
   color: #fff;
   border: none;
-  padding: 11px 20px;
+  padding: 8px 20px;
   border-radius: 12px;
   font-weight: 700;
   font-size: 14px;
@@ -436,7 +425,7 @@
   background: #fff;
   color: var(--hero-blue, var(--ads-primary));
   border: 1px solid currentColor;
-  padding: 11px 18px;
+  padding: 8px 18px;
   border-radius: 12px;
   font-weight: 700;
   font-size: 14px;
@@ -452,7 +441,7 @@
 .ads-hero-catstrip {
   position: relative;
   z-index: 2;
-  padding-bottom: clamp(14px, 2vw, 26px);
+  padding-bottom: clamp(5px, 0.7vw, 8px);
 }
 .ads-catstrip-track {
   display: flex;
@@ -467,9 +456,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 5px;
   width: clamp(104px, 9vw, 136px);
-  padding: 8px 10px;
+  padding: 5px 10px;
   border: none;
   border-right: 1px solid rgba(27, 79, 214, 0.16);
   background: none;
@@ -478,6 +467,7 @@
 }
 .ads-catstrip-item:last-child { border-right: none; }
 .ads-catstrip-item svg { stroke-width: 1.7; }
+.ads-catstrip-item svg { width: 18px; height: 18px; }
 .ads-catstrip-item span {
   font-size: clamp(9.5px, 0.72vw, 11.5px);
   font-weight: 800;
@@ -1208,9 +1198,13 @@
 }
 
 @media (max-width: 760px) {
+  .ads-hero-photo {
+    background-size: auto 100%;
+    opacity: 0.28;
+  }
   .ads-hero-frame {
-    padding: 24px 16px 20px;
-    border-radius: 26px 26px 0 0;
+    padding: 20px 14px 20px;
+    border-radius: 20px;
   }
   .ads-hero-mark, .ads-hero-shape, .ads-hero-dots--tr, .ads-hero-dots--tl { display: none; }
   .ads-hero-arc--right { top: auto; bottom: -18%; right: -46%; width: 96%; border-width: 34px; }

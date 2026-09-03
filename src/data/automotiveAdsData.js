@@ -35,7 +35,7 @@ export const AD_TIERS = {
   basica: {
     id: 'basica',
     name: 'Básica',
-    badge: 'Gratuito',
+    badge: 'Básico',
     badgeColor: '#64748b',
     maxImages: 2,
     maxTags: 2,
@@ -43,7 +43,9 @@ export const AD_TIERS = {
     hasWhatsapp: false,
     hasBooking: false,
     cardTheme: 'tier-basic',
-    description: 'Publicación estándar con hasta 2 fotos, datos de contacto telefónico y dirección.'
+    // El primer anuncio Básico de la cuenta no cobra Monedas: lo decide el backend
+    // (`AnuncioService.crear()` -> `existsByPropietarioIdAndTier(user, "basica")`).
+    description: 'Primer período de 30 días gratis; luego 100 Monedas ($5.000 CLP) por período. Hasta 2 fotos, contacto telefónico y dirección.'
   },
   destacada: {
     id: 'destacada',

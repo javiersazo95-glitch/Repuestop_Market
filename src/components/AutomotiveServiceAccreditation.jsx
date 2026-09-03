@@ -38,7 +38,7 @@ const ESTADO_LABEL = {
  * porque la revisión la hace otro equipo y sobre otro registro del backend
  * (`/automotive-services/me`).
  */
-export default function AutomotiveServiceAccreditation({ user }) {
+export default function AutomotiveServiceAccreditation({ user, embedded = false, onSaved }) {
   const [record, setRecord] = useState(null);
   const [form, setForm] = useState({ ...EMPTY_FORM, responsable: user?.userName || user?.nombre || '' });
   const [files, setFiles] = useState(EMPTY_FILES);
@@ -113,6 +113,7 @@ export default function AutomotiveServiceAccreditation({ user }) {
       setRecord(saved || null);
       setFiles(EMPTY_FILES);
       setSuccess('Expediente enviado. Te avisaremos cuando sea revisado.');
+      onSaved?.(saved || null);
     } catch (err) {
       setError(err.message || 'No se pudo enviar la acreditación.');
     } finally {
@@ -121,28 +122,32 @@ export default function AutomotiveServiceAccreditation({ user }) {
   };
 
   if (loading) {
-    return (
-      <div className="profile-panel">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b' }}>
-          <Loader2 size={18} className="spin-icon" /> Cargando acreditación...
-        </div>
+    const spinner = (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b' }}>
+        <Loader2 size={18} className="spin-icon" /> Cargando acreditación...
       </div>
     );
+    return embedded ? spinner : <div className="profile-panel">{spinner}</div>;
   }
 
+  const Wrapper = embedded ? React.Fragment : 'div';
+  const wrapperProps = embedded ? {} : { className: 'profile-panel' };
+
   return (
-    <div className="profile-panel">
-      <div className="profile-panel-header-row">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <ShieldCheck size={26} style={{ color: '#2563eb' }} />
-          <div>
-            <h3 className="profile-panel-title" style={{ margin: 0 }}>Acreditar servicio automotriz</h3>
-            <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-              Este expediente es independiente de los documentos de tu tienda.
-            </p>
+    <Wrapper {...wrapperProps}>
+      {!embedded && (
+        <div className="profile-panel-header-row">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <ShieldCheck size={26} style={{ color: '#2563eb' }} />
+            <div>
+              <h3 className="profile-panel-title" style={{ margin: 0 }}>Acreditar servicio automotriz</h3>
+              <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                Este expediente es independiente de los documentos de tu tienda.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {record && (
         <div style={{ margin: '18px 0', padding: '14px', borderRadius: '10px', background: '#eff6ff', border: '1px solid #cfe0fb' }}>
@@ -277,6 +282,6 @@ export default function AutomotiveServiceAccreditation({ user }) {
           </div>
         </form>
       )}
-    </div>
+    </Wrapper>
   );
 }
