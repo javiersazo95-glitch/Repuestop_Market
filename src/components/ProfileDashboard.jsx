@@ -18,7 +18,7 @@ import {
   updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi, updateSellerProductTopApi,
   saveConversationQuoteApi, sendConversationMessageApi, requestBlockedAccountReviewApi,
-  cancelSellerOrderApi, cancelBuyerSubOrderApi, registerOrderDispatchApi,
+  cancelSellerOrderApi, cancelBuyerSubOrderApi, registerOrderDispatchApi, declareOrderDeliveryApi, createOrderClaimApi,
   pauseSellerProductApi, resumeSellerProductApi, updateSellerShippingMethodsApi,
   getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
   getBuyerProductQuestionsApi
@@ -827,6 +827,46 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     queryClient.invalidateQueries({ queryKey: qk.sellerOrders(effectiveSellerId) });
     setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
       ? { ...prev, ...updated, estado: 'ENVIADO', status: 'ENVIADO', courier: dispatchData.courier, trackingNumber: dispatchData.trackingNumber }
+      : prev
+    );
+    return updated;
+  };
+
+  /**
+   * El vendedor reporta que un courier externo (Uber Flash, Didi, un fletero propio) ya
+   * entrego el pedido (`POST /pedidos/{id}/entrega-declarada`). Arranca la ventana de veto de
+   * 48 horas: el pedido NO cambia de estado -sigue "Enviado"-, asi que a diferencia del resto
+   * de los handlers de esta pantalla no hay un `estado`/`status` que forzar en el merge; con
+   * lo que devuelve el backend (`entregaDeclaradaAt`) alcanza para que el banner aparezca.
+   */
+  const handleDeclareOrderDelivery = async (order) => {
+    const orderId = order?.id;
+    if (!orderId) return;
+    const updated = await declareOrderDeliveryApi(orderId);
+    queryClient.invalidateQueries({ queryKey: qk.sellerOrders(effectiveSellerId) });
+    setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
+      ? { ...prev, ...updated }
+      : prev
+    );
+    return updated;
+  };
+
+  /**
+   * El comprador vetea una entrega que el vendedor declaro: abre un reclamo con motivo fijo
+   * `not_received`, el mismo que ya reconoce `MediacionBackofficeService` para clasificar el
+   * caso. Un solo tap y sin pedirle que retipee nada -el comprador ya dijo con el boton mismo
+   * que no la recibio-, a diferencia del reclamo libre de "Reportes/Disputa".
+   */
+  const handleDisputeDeclaredDelivery = async (order) => {
+    const orderId = order?.id;
+    if (!orderId) return;
+    const updated = await createOrderClaimApi(effectiveUserId, orderId, {
+      motivo: 'not_received',
+      descripcion: 'El vendedor reportó que el pedido fue entregado, pero no lo recibí.',
+    });
+    queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
+    setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
+      ? { ...prev, ...updated }
       : prev
     );
     return updated;
@@ -1816,6 +1856,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                     onOrderRated={handleOrderRated}
                     onCancelSellerOrder={isSeller && !isSellerBlocked ? handleCancelSellerOrder : undefined}
                     onRegisterDispatch={isSeller && !isSellerBlocked ? handleRegisterOrderDispatch : undefined}
+                    onDeclareDelivery={isSeller && !isSellerBlocked ? handleDeclareOrderDelivery : undefined}
+                    onDisputeDeclaredDelivery={isSeller ? undefined : handleDisputeDeclaredDelivery}
                     readOnly={isSellerBlocked}
                   />
                 ) : (

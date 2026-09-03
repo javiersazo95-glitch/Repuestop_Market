@@ -990,6 +990,19 @@ export async function registerOrderDispatchApi(orderId, { courier, trackingNumbe
 }
 
 /**
+ * El vendedor reporta que un courier externo (Uber Flash, Didi, un fletero propio) ya
+ * entrego el pedido. Arranca la ventana de veto de 48 horas: el comprador puede confirmarla
+ * o vetarla (abrir un reclamo); si no responde, el backend la confirma sola.
+ *
+ * No cambia el estado del pedido -sigue "Enviado" hasta que se resuelve de una de esas tres
+ * formas-, asi que la respuesta trae `entregaDeclaradaAt` y con eso la pantalla arma el
+ * banner de veto (ver `storeAutoCloseNotice` en `data/orderDeadlines.js`).
+ */
+export async function declareOrderDeliveryApi(orderId) {
+  return fetchApi(`/pedidos/${orderId}/entrega-declarada`, { method: 'POST' });
+}
+
+/**
  * Marketplace Endpoints (Unificados con Spring Boot Backend)
  */
 

@@ -5254,6 +5254,12 @@ input, select, textarea {
 /* En el pie del modal el aviso ocupa el ancho que dejaba el boton, pero se lee como
    estado y no como algo clickeable. */
 .order-controlled-wait--modal { flex: 1; justify-content: center; padding: 12px 16px; border: 1px solid #cfe0f5; border-radius: var(--radius-sm); background: #f2f7fd; font-size: 13px; }
+/* El vendedor esperando al comprador, mas el atajo opcional de reportar una entrega por
+   courier externo debajo -- no reemplaza la espera, la acelera. */
+.order-controlled-wait-group { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.order-controlled-wait--veto { background: #fff8e8; border-color: #f6dfae; color: #8a5b12; }
+.order-declare-delivery { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.order-declare-delivery-btn { width: auto; min-height: 0; padding: 9px 14px; font-size: 12.5px; }
 
 /* Bloques por tienda del detalle del pedido (comprador, pedido de varias tiendas).
    Cada bloque junta lo que antes vivia en tres tarjetas separadas -participantes, repuestos y
@@ -5360,6 +5366,15 @@ input, select, textarea {
 .order-store-block-deadline strong { color: #6d4409; }
 .order-store-block-deadline--urgent { background: #fdeceb; border-color: #f3c2bd; color: #9b3025; }
 .order-store-block-deadline--urgent strong { color: #7e2016; }
+/* La ventana de veto: el vendedor ya dijo que entrego y el comprador tiene que responder, no
+   solo mirar un plazo. Mismo fondo ambar/rojo que `.order-store-block-deadline`, con el texto
+   y los dos botones apilados en vez de una sola linea. */
+.order-store-block-veto { align-items: flex-start; }
+.order-store-block-veto-body { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.order-store-block-veto-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.order-store-block-veto-actions .btn-auth-primary,
+.order-store-block-veto-actions .btn-auth-danger,
+.order-store-block-veto-btn { width: auto; min-height: 0; padding: 7px 12px; font-size: 12.5px; }
 
 .order-store-block-totals { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 18px; color: #475569; font-size: 12.5px; }
 .order-store-block-totals strong { color: #0f172a; font-size: 13.5px; }

@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import {
   X, Clock, Wrench, Truck, PackageCheck, User, Store, ChevronDown, ArrowLeft,
   MapPin, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
-  RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock, ExternalLink, Timer
+  RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock, ExternalLink, Timer,
+  ThumbsUp, ThumbsDown, Send
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi } from '../services/api';
@@ -177,7 +178,22 @@ const TRACKING_MIN_LENGTH = 6;
 const TRACKING_MAX_LENGTH = 30;
 const OTHER_COURIER = '__OTRO__';
 
-const COMMON_COURIERS = [
+// Dos listas, no una: el desplegable mezclaba couriers nacionales (para envio FUERA de la
+// comuna) con un pedido que en realidad es DENTRO de la comuna, y el vendedor no tenia forma
+// de anotar que lo llevo un repartidor propio o una app tipo Uber -- Starken no se hace cargo
+// de una entrega a la vuelta de la esquina.
+//
+// `courier` sigue siendo texto libre en el backend (`PedidoEnvioSupport.registrarEnvio`), asi
+// que estas listas son solo la comodidad del desplegable; el vendedor igual puede escribir
+// cualquier cosa con "Otra".
+const LOCAL_COURIERS = [
+  'Delivery Propio / Directo',
+  'Uber',
+  'Didi',
+  'PedidosYa',
+];
+
+const NATIONAL_COURIERS = [
   'Starken',
   'Chilexpress',
   'Blue Express',
@@ -185,7 +201,11 @@ const COMMON_COURIERS = [
   'Varmontt',
   'Pullman Cargo',
   'Transportes Chevalier',
-  'Delivery Propio / Directo',
+  'TVP Transporte',
+  // Distinto de un courier de paqueteria: es transporte de carga para zonas rurales o de
+  // dificil acceso que los couriers de arriba no cubren (Patagonia, zonas australes). Va al
+  // final a proposito, como respaldo cuando ninguno de los anteriores llega.
+  'Fletes / Transporte de carga',
 ];
 
 
@@ -243,6 +263,8 @@ export default function OrderDetailView({
   onCancelBuyerSubOrder,
   onCancelSellerOrder,
   onRegisterDispatch,
+  onDeclareDelivery,
+  onDisputeDeclaredDelivery,
   autoOpenRating = false,
   onRatingPromptShown,
   onOrderRated,
@@ -269,6 +291,20 @@ export default function OrderDetailView({
   const [storeAdvanceError, setStoreAdvanceError] = useState('');
   const [now, setNow] = useState(Date.now());
 
+  // La ventana de veto de 48 horas: el vendedor declaro que un courier externo ya entrego el
+  // pedido, y el comprador confirma o vetea desde el propio banner del bloque -no hay un modal
+  // aparte, porque el contexto ya es claro (el vendedor acaba de avisar) y pedirle que lo
+  // retipee en un formulario es friccion de mas sobre un caso que ya esta resuelto en su
+  // cabeza. `busyDeliveryVetoId` es por tienda: solo esa se deshabilita mientras la accion
+  // esta en vuelo.
+  const [busyDeliveryVetoId, setBusyDeliveryVetoId] = useState(null);
+  // `{ blockId, message } | null`: el error va con SU tienda, porque `busyDeliveryVetoId` ya
+  // se limpio para cuando hay que mostrarlo y de otra forma no habria como saber a cual de los
+  // bloques le pertenece.
+  const [deliveryVetoError, setDeliveryVetoError] = useState(null);
+  const [isDeclaringDelivery, setIsDeclaringDelivery] = useState(false);
+  const [declareDeliveryError, setDeclareDeliveryError] = useState('');
+
   // Seller Cancelation Modal State
   const [showSellerCancelModal, setShowSellerCancelModal] = useState(false);
   const [sellerCancelReason, setSellerCancelReason] = useState('SIN_STOCK');
@@ -285,7 +321,12 @@ export default function OrderDetailView({
   // "Otra" ya seleccionada el vendedor no se entera de que hay una lista debajo.
   // (Ojo: `order.courier` suele traer el METODO de envio -"Envio fuera de la comuna"-,
   // que no es un courier, asi que casi nunca calza con la lista.)
-  const initialCourier = COMMON_COURIERS.includes(order?.courier) ? order.courier : '';
+  //
+  // La lista depende del tipo de envio del PEDIDO, no de una preferencia del vendedor: un
+  // despacho local no lo hace Starken, y uno fuera de la comuna no lo hace Uber.
+  const isLocalDispatch = order?.tipoEnvio === 'local_delivery';
+  const dispatchCouriers = isLocalDispatch ? LOCAL_COURIERS : NATIONAL_COURIERS;
+  const initialCourier = dispatchCouriers.includes(order?.courier) ? order.courier : '';
   const [dispatchCourierChoice, setDispatchCourierChoice] = useState(initialCourier);
   const [dispatchCourierOther, setDispatchCourierOther] = useState('');
   const dispatchCourier = dispatchCourierChoice === OTHER_COURIER ? dispatchCourierOther : dispatchCourierChoice;
@@ -570,6 +611,7 @@ export default function OrderDetailView({
       // comprador: son los de la tienda mas atrasada del carrito.
       updatedAtStore: subOrder?.updatedAt || (isSeller ? order.updatedAt : null),
       entregadoAtStore: subOrder?.entregadoAt || (isSeller ? order.entregadoAt : null),
+      entregaDeclaradaAtStore: subOrder?.entregaDeclaradaAt || (isSeller ? order.entregaDeclaradaAt : null),
       // El envio de ESTA tienda. El del pedido es la SUMA de todas, asi que solo sirve de
       // respaldo para el vendedor, donde ya viene acotado al suyo.
       shippingStore: Number(subOrder?.costoEnvio ?? (isSeller ? shippingFee : 0)),
@@ -582,6 +624,57 @@ export default function OrderDetailView({
   // que es `> 1`, asi que en un pedido de una sola tienda el boton global sobrevivia y mandaba
   // la transicion sin `proveedorId`.
   const buyerActionsPerStore = groupedByStore && !isSeller && storeBlocks.length > 0;
+
+  // El comprador confirma la entrega que declaro el vendedor: mismo `onUpdateStatus` de
+  // siempre, con el `proveedorId` de ESA tienda -- no pasa por `storeToAdvance`/el modal de
+  // confirmacion generico, porque el contexto ya es claro (el vendedor acaba de avisar que
+  // entrego) y un modal aparte encima del banner seria un paso de mas sobre algo que el
+  // comprador ya decidio al tocar el boton.
+  const handleConfirmDeliveredVeto = async (block) => {
+    if (!onUpdateStatus || busyDeliveryVetoId) return;
+    setDeliveryVetoError(null);
+    setBusyDeliveryVetoId(block.id);
+    try {
+      await onUpdateStatus(order.id, 'ENTREGADO', undefined, block.id);
+    } catch (error) {
+      setDeliveryVetoError({ blockId: block.id, message: error.message || 'No se pudo confirmar la recepción.' });
+    } finally {
+      setBusyDeliveryVetoId(null);
+    }
+  };
+
+  // El comprador vetea: un solo tap abre el reclamo con motivo `not_received`. Sin pedirle
+  // que retipee nada -ya lo dijo con el boton mismo-, a diferencia del reclamo libre de
+  // "Reportes/Disputa".
+  const handleDisputeDeliveredVeto = async (block) => {
+    if (!onDisputeDeclaredDelivery || busyDeliveryVetoId) return;
+    setDeliveryVetoError(null);
+    setBusyDeliveryVetoId(block.id);
+    try {
+      await onDisputeDeclaredDelivery(order);
+    } catch (error) {
+      setDeliveryVetoError({ blockId: block.id, message: error.message || 'No se pudo registrar tu respuesta.' });
+    } finally {
+      setBusyDeliveryVetoId(null);
+    }
+  };
+
+  // El vendedor reporta que un courier externo (Uber Flash, Didi, un fletero propio) ya
+  // entrego el pedido. No cambia el estado -sigue "Enviado"-: solo arranca la ventana de veto
+  // del comprador. `PedidoEntregaDeclaradaSupport` es idempotente, asi que un reclic devuelve
+  // un error legible en vez de reiniciarle el plazo al comprador.
+  const handleDeclareDelivery = async () => {
+    if (!onDeclareDelivery || isDeclaringDelivery) return;
+    setDeclareDeliveryError('');
+    setIsDeclaringDelivery(true);
+    try {
+      await onDeclareDelivery(order);
+    } catch (error) {
+      setDeclareDeliveryError(error.message || 'No se pudo reportar la entrega.');
+    } finally {
+      setIsDeclaringDelivery(false);
+    }
+  };
 
   const openRatingModal = (block = null) => {
     setStoreToRate(block);
@@ -654,11 +747,32 @@ export default function OrderDetailView({
   const handleDispatchSubmit = async (e) => {
     e.preventDefault();
     if (!onRegisterDispatch) return;
-    if (!dispatchCourier.trim() || !dispatchTrackingNumber.trim()) {
-      setDispatchError('Por favor completa la empresa de transporte y el número de seguimiento.');
+    if (!dispatchCourier.trim()) {
+      setDispatchError('Por favor selecciona la empresa de transporte.');
       return;
     }
-    if (dispatchTrackingNumber.trim().length < TRACKING_MIN_LENGTH) {
+    // El seguimiento y el comprobante son obligatorios SOLO fuera de la comuna -ahi son la
+    // unica prueba de que el paquete salio-. Dentro de la comuna (delivery propio, Uber,
+    // Didi, PedidosYa) muchas veces no existe un codigo ni un voucher formal que reportar; el
+    // backend (`PedidoEnvioSupport.registrarEnvio`) ya no los exige para ese caso, asi que el
+    // formulario tampoco puede seguir bloqueando el envio por ellos.
+    if (!isLocalDispatch) {
+      if (!dispatchTrackingNumber.trim()) {
+        setDispatchError('Por favor completa el número de seguimiento.');
+        return;
+      }
+      if (dispatchTrackingNumber.trim().length < TRACKING_MIN_LENGTH) {
+        setDispatchError(`El número de seguimiento debe tener al menos ${TRACKING_MIN_LENGTH} caracteres.`);
+        return;
+      }
+      // El backend ya lo exigia para este caso; sin este chequeo, el vendedor llenaba todo el
+      // formulario y el error recien le aparecia despues de enviarlo.
+      if (!dispatchVoucherFile) {
+        setDispatchError('Adjunta el comprobante de envío: es obligatorio para despachos fuera de la comuna.');
+        return;
+      }
+    } else if (dispatchTrackingNumber.trim() && dispatchTrackingNumber.trim().length < TRACKING_MIN_LENGTH) {
+      // Si el vendedor SI escribio algo, que tenga sentido -- pero no se le exige que escriba.
       setDispatchError(`El número de seguimiento debe tener al menos ${TRACKING_MIN_LENGTH} caracteres.`);
       return;
     }
@@ -667,7 +781,7 @@ export default function OrderDetailView({
     try {
       await onRegisterDispatch(order, {
         courier: dispatchCourier.trim(),
-        trackingNumber: dispatchTrackingNumber.trim(),
+        trackingNumber: dispatchTrackingNumber.trim() || undefined,
         valorEnvio: dispatchShippingFee ? Number(dispatchShippingFee) : undefined,
         comprobante: dispatchVoucherFile || undefined,
       });
@@ -923,9 +1037,49 @@ export default function OrderDetailView({
                           estado: block.estado,
                           updatedAt: block.updatedAtStore,
                           entregadoAt: block.entregadoAtStore,
+                          entregaDeclaradaAt: block.entregaDeclaradaAtStore,
                           isStorePickup,
+                          // `isLocalDispatch` ya se calcula mas arriba para el modal de
+                          // despacho del vendedor (misma pregunta: `tipoEnvio === 'local_delivery'`).
+                          isLocalDelivery: isLocalDispatch,
                         });
                         if (!aviso) return null;
+                        // `delivery_veto` no es solo informativo: el vendedor ya dijo que
+                        // entrego, y el comprador tiene que responder, no solo mirar un plazo.
+                        if (aviso.kind === 'delivery_veto') {
+                          const busy = busyDeliveryVetoId === block.id;
+                          return (
+                            <div className={`order-store-block-deadline order-store-block-veto ${aviso.urgent ? 'order-store-block-deadline--urgent' : ''}`}>
+                              <Timer size={13} />
+                              <div className="order-store-block-veto-body">
+                                <span><strong>{aviso.label}.</strong> {aviso.detail}</span>
+                                <div className="order-store-block-veto-actions">
+                                  <button
+                                    type="button"
+                                    className="btn-auth-primary order-store-block-veto-btn"
+                                    disabled={busy}
+                                    onClick={() => handleConfirmDeliveredVeto(block)}
+                                  >
+                                    {busy ? <Loader2 size={13} className="spin-icon" /> : <ThumbsUp size={13} />}
+                                    <span>Sí, la recibí</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn-auth-danger order-store-block-veto-btn"
+                                    disabled={busy}
+                                    onClick={() => handleDisputeDeliveredVeto(block)}
+                                  >
+                                    {busy ? <Loader2 size={13} className="spin-icon" /> : <ThumbsDown size={13} />}
+                                    <span>No la he recibido</span>
+                                  </button>
+                                </div>
+                                {deliveryVetoError?.blockId === block.id && (
+                                  <p className="confirm-dialog-error">{deliveryVetoError.message}</p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
                         return (
                           <div className={`order-store-block-deadline ${aviso.urgent ? 'order-store-block-deadline--urgent' : ''}`}>
                             <Timer size={13} />
@@ -1105,10 +1259,38 @@ export default function OrderDetailView({
             // dejaba uno que al clickearlo no hacia nada. La tarjeta del pedido ya lo
             // resuelve con `.order-controlled-wait`; aca se usa el mismo aviso.
             controlledAction.waiting ? (
-              <span className="order-controlled-wait order-controlled-wait--modal">
-                <Clock size={15} />
-                {controlledAction.label}
-              </span>
+              <div className="order-controlled-wait-group">
+                <span className="order-controlled-wait order-controlled-wait--modal">
+                  <Clock size={15} />
+                  {controlledAction.label}
+                </span>
+                {/* Atajo opcional: el vendedor no TIENE que esperar a que el comprador
+                    confirme -- si un courier externo (Uber Flash, Didi, un fletero propio) ya
+                    entrego, puede reportarlo y arrancar la ventana de veto de 48 horas en vez
+                    de quedarse esperando el plazo largo por defecto. No aplica a retiro en
+                    tienda: ahi el PIN ya resuelve la entrega al instante. */}
+                {isSeller && !isStorePickup && onDeclareDelivery && (
+                  order?.entregaDeclaradaAt ? (
+                    <span className="order-controlled-wait order-controlled-wait--modal order-controlled-wait--veto">
+                      <Send size={15} />
+                      Reportaste la entrega. Esperando confirmación del comprador o el vencimiento del plazo.
+                    </span>
+                  ) : (
+                    <div className="order-declare-delivery">
+                      <button
+                        type="button"
+                        className="btn-auth-secondary order-declare-delivery-btn"
+                        disabled={isDeclaringDelivery}
+                        onClick={handleDeclareDelivery}
+                      >
+                        {isDeclaringDelivery ? <Loader2 size={15} className="spin-icon" /> : <Send size={15} />}
+                        <span>Marcar como recibida{order?.courier ? ` (vía ${order.courier})` : ''}</span>
+                      </button>
+                      {declareDeliveryError && <p className="confirm-dialog-error">{declareDeliveryError}</p>}
+                    </div>
+                  )
+                )}
+              </div>
             ) : isSeller && normStatus === 'EN_PREPARACION' && !isStorePickup ? (
               <button
                 type="button"
@@ -1328,7 +1510,7 @@ export default function OrderDetailView({
                     onChange={(e) => setDispatchCourierChoice(e.target.value)}
                   >
                     <option value="" disabled>Selecciona una empresa…</option>
-                    {COMMON_COURIERS.map((c) => <option key={c} value={c}>{c}</option>)}
+                    {dispatchCouriers.map((c) => <option key={c} value={c}>{c}</option>)}
                     <option value={OTHER_COURIER}>Otra (especificar)</option>
                   </select>
                   {dispatchCourierChoice === OTHER_COURIER && (
@@ -1344,19 +1526,21 @@ export default function OrderDetailView({
                 </label>
 
                 <label className="order-subdialog-field">
-                  <span>Número de orden de flete / seguimiento *</span>
+                  <span>Número de orden de flete / seguimiento{isLocalDispatch ? ' (opcional)' : ' *'}</span>
                   <input
                     type="text"
-                    required
+                    required={!isLocalDispatch}
                     maxLength={TRACKING_MAX_LENGTH}
-                    placeholder="Ej: 990012345678"
+                    placeholder={isLocalDispatch ? 'Si tienes un código o referencia del viaje' : 'Ej: 990012345678'}
                     value={dispatchTrackingNumber}
                     onChange={(e) => setDispatchTrackingNumber(
                       e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, TRACKING_MAX_LENGTH)
                     )}
                   />
                   <small className="order-subdialog-hint">
-                    Solo números y letras, sin espacios. Entre {TRACKING_MIN_LENGTH} y {TRACKING_MAX_LENGTH} caracteres.
+                    {isLocalDispatch
+                      ? `Con delivery propio o una app como Uber no siempre hay un código formal: déjalo en blanco si no aplica. Si escribes algo, entre ${TRACKING_MIN_LENGTH} y ${TRACKING_MAX_LENGTH} caracteres.`
+                      : `Solo números y letras, sin espacios. Entre ${TRACKING_MIN_LENGTH} y ${TRACKING_MAX_LENGTH} caracteres.`}
                   </small>
                 </label>
 
@@ -1372,7 +1556,7 @@ export default function OrderDetailView({
                 </label>
 
                 <div className="order-subdialog-field">
-                  <span>Comprobante de envío / voucher (opcional)</span>
+                  <span>Comprobante de envío / voucher{isLocalDispatch ? ' (opcional)' : ' *'}</span>
                   <div className="order-subdialog-filedrop">
                     <label>
                       <FileUp size={20} />
@@ -1400,7 +1584,17 @@ export default function OrderDetailView({
                   <button
                     type="submit"
                     className="btn-auth-primary"
-                    disabled={isRegisteringDispatch || !dispatchCourier.trim() || dispatchTrackingNumber.trim().length < TRACKING_MIN_LENGTH}
+                    disabled={
+                      isRegisteringDispatch
+                      || !dispatchCourier.trim()
+                      || (isLocalDispatch
+                        // Dentro de la comuna el campo es opcional, pero si escribio algo tiene
+                        // que ser un codigo con sentido, no dos caracteres sueltos.
+                        ? Boolean(dispatchTrackingNumber.trim()) && dispatchTrackingNumber.trim().length < TRACKING_MIN_LENGTH
+                        // Fuera de la comuna, seguimiento y comprobante son obligatorios --
+                        // mismo criterio que `handleDispatchSubmit` y que el backend.
+                        : dispatchTrackingNumber.trim().length < TRACKING_MIN_LENGTH || !dispatchVoucherFile)
+                    }
                   >
                     {isRegisteringDispatch && <Loader2 size={16} className="spin-icon" />}
                     {isRegisteringDispatch ? 'Registrando...' : 'Confirmar envío'}

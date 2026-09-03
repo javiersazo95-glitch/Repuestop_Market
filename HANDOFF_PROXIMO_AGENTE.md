@@ -3441,3 +3441,130 @@ corriendo en un ambiente.
 > **Ojo al desplegar**: en la primera pasada tras el deploy, todo pedido en `ENVIADO` con más de
 > 10 días se auto-recibe de golpe (tope de 200 por regla), y 3 días después se finaliza. Si hay
 > backlog en `dev`, conviene subir `autorecepcion.dias` para el primer deploy y bajarlo después.
+
+### 4.45 Sesión 2026-09-03 (tarde) — la ventana de veto de 48 horas
+
+La mitad cara del plan original de auto-cierre (sección 4.44), que se había dejado fuera a
+propósito: el vendedor puede reportar que un courier externo (Uber Flash, Didi, un fletero
+propio) ya entregó, y el comprador tiene 48 horas para confirmarlo o vetarlo antes de que el
+sistema lo dé por recibido solo.
+
+**Decisiones tomadas con el usuario antes de picar código** (dos preguntas, dos respuestas):
+sin foto/comprobante en esta pasada (solo el flag + notificación + ventana), y "No la he
+recibido" abre el reclamo en un solo tap con motivo fijo `not_received`, sin pedirle al
+comprador que retipee nada en un formulario.
+
+#### El diseño que evita el bloqueador de `tipo_envio`
+
+La sesión anterior (4.44) documentó que `tipo_envio` es columna del PEDIDO, no de la
+subordén, y que el checkout la deriva colapsando el carrito entero — por eso el plazo de
+auto-cierre es único y no por modalidad. Ese mismo bloqueador aplicaba al plan original de
+veto (vía B local_delivery vs. vía C courier, con reglas distintas por modalidad).
+
+**Se evitó por completo**: la acción de "declarar entrega" no necesita saber la modalidad de
+envío de la subordén. Es la MISMA acción (mismo endpoint, mismo botón) para cualquier
+subordén en `ENVIADO` que no sea `store_pickup` — ahí el PIN ya es la confirmación
+presencial. No hace falta tocar `tipo_envio` para nada.
+
+#### Backend
+
+**La subordén NO cambia de estado al declararse.** Sigue en `ENVIADO`: lo único que escribe
+`PedidoEntregaDeclaradaSupport.declararEntrega()` es `entrega_declarada_at`
+(`V2026090301__entrega_declarada_por_suborden.sql`). De ahí en más hay tres caminos, y
+**ninguno necesitó código nuevo** porque ya existían:
+
+1. el comprador confirma → el mismo `PUT /pedidos/{id}/estado` a `ENTREGADO` de siempre;
+2. el comprador veta → el mismo `POST /pedidos/{id}/reclamo` de siempre, con motivo
+   `not_received` (que `MediacionBackofficeService.blockAccount` ya reconocía por substring,
+   desde antes de esta sesión);
+3. si no responde, `PedidoAutoCierreJob` la confirma sola.
+
+Lo único genuinamente nuevo en el backend es (1) el endpoint para declarar la entrega y (2)
+la regla del punto 3 del job.
+
+**`POST /pedidos/{pedidoId}/entrega-declarada`** — nueva clase `PedidoEntregaDeclaradaSupport`,
+mismo patrón de autorización que `PedidoEnvioSupport.registrarEnvio` (resuelve el vendedor
+por email entre TODOS los items, no `items.get(0)`, para no fallar en un carrito de dos
+tiendas). Es **idempotente**: si ya hay una declaración pendiente, un reclic devuelve un
+error legible en vez de extenderle el plazo al comprador — sellar dos veces le regalaría al
+vendedor un veto más largo del que le corresponde.
+
+**`PedidoAutoCierreSupport.confirmarEntregaDeclarada()`** — cuarta regla del job (además de
+auto-finalización, auto-recepción y el aviso previo), medida contra `entregaDeclaradaAt` con
+un plazo en HORAS (`repuestop.pedido.entregadeclarada.veto.horas=48`), no en días. Corre
+*antes* que la auto-recepción de 10 días en `PedidoAutoCierreJob.barrer()`: si una subordén
+calificara para las dos reglas a la vez, es la del veto la que corresponde. No hace falta que
+se excluyan entre sí — ambas mueven la MISMA transición (`ENVIADO → ENTREGADO`), así que
+`vigente()` descarta sola a la que llegue segunda.
+
+**DTOs**: `entregaDeclaradaAt` se expone acotado al destinatario (mismo patrón que
+`entregadoAt` de la 4.44), tanto en la raíz del pedido como por tienda en `subordenes[]`. A
+diferencia de `entregadoAt` — que una vez sellado sigue siendo válido para siempre —,
+`entregaDeclaradaAt` se filtra por `estado == ENVIADO` antes de exponerse: el campo nunca se
+borra en la base, así que sin ese filtro una tienda ya confirmada o finalizada seguiría
+mostrando el banner de veto con una fecha vieja.
+
+**Test nuevo**: `PedidoEntregaDeclaradaSupportTest` (autorización, retiro en tienda excluido,
+idempotencia, cuenta bloqueada) y 4 casos nuevos en `PedidoAutoCierreSupportTest` (confirma
+vencido el plazo, no antes, sin declaración no hace nada, no toca un pedido en mediación).
+
+#### Web y móvil
+
+Mismo patrón en los dos clientes, con `storeAutoCloseNotice`/`orderDeadlines` extendido con
+un tercer `kind: 'delivery_veto'` que manda sobre el informativo mientras esté pendiente:
+
+- **Comprador**: banner interactivo (no solo informativo) con dos botones — "Sí, la recibí"
+  llama la MISMA acción de confirmar recepción de siempre; "No la he recibido" abre el
+  reclamo en un tap con motivo fijo. Ninguno de los dos pasa por un modal de confirmación
+  aparte: el contexto ya es claro (el vendedor acaba de avisar) y un diálogo encima sería un
+  paso de más.
+- **Vendedor**: un botón secundario junto al aviso de "esperando al comprador" — no lo
+  reemplaza, lo acelera. Una vez declarada la entrega, el botón se cambia por un aviso de
+  "esperando confirmación".
+
+**Web**: el botón vive en el footer del modal (junto al `controlledAction.waiting` existente,
+mismo lugar que "Registrar Envío"), porque el endpoint no necesita `proveedorId` — se resuelve
+por email igual que el despacho, así que no hace falta que sea por-bloque como el resto de las
+acciones del comprador.
+
+**Móvil**: mismo lugar — junto al `waitingBuyerBanner` de `app/order-detail.tsx`, no dentro de
+`SubOrdersCard` (que para el vendedor sintetiza una sola tienda de todas formas).
+
+`ProfileDashboard.jsx` gana dos handlers nuevos (`handleDeclareOrderDelivery`,
+`handleDisputeDeclaredDelivery`), mismo patrón de `invalidateQueries` + merge en
+`selectedOrder` que ya usaban `handleCancelSellerOrder`/`handleRegisterOrderDispatch`.
+`useOrderDetailScreen.ts` (móvil) gana tres: `confirmDeclaredDelivery` (reusa
+`ejecutarAvance` pero SIN el `confirmar()` de `advanceSubOrder`), `disputeDeclaredDelivery`,
+`declareDelivery`.
+
+#### Hallazgo sin resolver, fuera de alcance de esta sesión
+
+Revisando `buyerStoreAction()` en `OrderDetailView.jsx` para decidir dónde enganchar el botón
+del comprador, apareció una posible inconsistencia: esa función retorna `null` cuando
+`!showSubOrders` (`subOrders.length <= 1`), pero `buyerActionsPerStore` — que suprime el botón
+del pie del modal — es `true` para cualquier pedido con `storeBlocks.length > 0` (prácticamente
+siempre). Si existiera un pedido con **exactamente una** subordén (sin ninguna cancelada de
+por medio), el comprador podría quedarse sin ningún botón de "Confirmar recepción" visible.
+
+**No se confirmó en vivo**: no había en la base local ningún pedido con exactamente una
+subordén total en `ENVIADO` para probarlo (el único candidato de una sola tienda VIVA tenía
+una segunda subordén cancelada, que sí cuenta para `subOrders.length`, así que el caso no se
+reprodujo). El nuevo banner de veto de esta sesión NO hereda este problema — se construyó a
+propósito sin depender de `buyerStoreAction`, con sus propios botones "Sí, la recibí" / "No la
+he recibido" llamando directo a `onUpdateStatus`/`onDisputeDeclaredDelivery`. Vale la pena
+verificarlo con un pedido real de una sola tienda antes de asumir que está bien.
+
+#### Verificación
+
+`mvn package` ✅. **94 tests del área de pedidos, 0 fallos** (11 nuevos: 6 en
+`PedidoEntregaDeclaradaSupportTest`, 4 en `PedidoAutoCierreSupportTest`, más los 6 de
+`PedidoNotificacionSupportTest` de más temprano en la sesión). El contexto de Spring levanta
+limpio contra Postgres local. Web: `build` ✅, `lint` sin errores nuevos en los archivos
+tocados. Móvil: `tsc --noEmit` sin errores nuevos (el preexistente de `react-test-renderer`
+sigue igual), suite **88 suites (87 pasan), 504 tests (501 pasan)** — el único fallo es el
+mismo preexistente de siempre, `appointments-calendar-modal.test.tsx`; los 3 casos nuevos de
+`order-deadlines.test.ts` para `delivery_veto` pasan.
+
+**No verificado en vivo**: el flujo completo (declarar → banner del comprador → confirmar o
+vetar → auto-confirmación a las 48h) no se probó contra el ambiente local con datos reales
+todavía, a diferencia del resto de esta sesión.
