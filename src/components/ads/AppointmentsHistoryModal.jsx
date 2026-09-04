@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, CalendarClock, CalendarDays, Check, XCircle, Loader2, AlertTriangle,
-  Phone, Mail, Car, StickyNote, RotateCcw, Megaphone, Clock
+  Phone, Mail, Car, StickyNote, RotateCcw, Megaphone, Clock, Settings
 } from 'lucide-react';
 import { APPOINTMENT_STATUS_META, isClosedAppointment } from '../../data/automotiveAdsData';
 import {
@@ -13,6 +13,7 @@ import {
 } from '../../utils/appointmentHistory';
 import { updateAppointmentStatus, adErrorMessage } from '../../services/adsStorage';
 import AppointmentsCalendarModal from './AppointmentsCalendarModal';
+import AgendaConfigsSection from './AgendaConfigsSection';
 
 /**
  * Gestión de citas en una sola vista: las reservas que la cuenta pidió en otros
@@ -32,11 +33,13 @@ export default function AppointmentsHistoryModal({
   onAppointmentUpdated,
   onRebook
 }) {
-  const [segment, setSegment] = useState('recibidas'); // 'pedidas' | 'recibidas'
+  const [segment, setSegment] = useState('recibidas'); // 'pedidas' | 'recibidas' | 'agenda'
   const [showHistory, setShowHistory] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState('');
+
+  const businessAds = useMemo(() => ads.filter((ad) => ad.tier === 'empresarial'), [ads]);
 
   const identity = useMemo(
     () => ({ userId: sessionUserId, email: userEmail }),
@@ -189,6 +192,18 @@ export default function AppointmentsHistoryModal({
     );
   };
 
+  const renderAgendaPanel = () => (
+    <div className="appt-agenda-panel">
+      <p className="appt-agenda-intro">
+        Estas agendas se comparten con la app: crea una y elígela al publicar un
+        aviso <strong>Empresarial</strong> para recibir citas.
+      </p>
+      <AgendaConfigsSection
+        configIdsInUse={businessAds.map((ad) => ad.agendaConfigId).filter(Boolean)}
+      />
+    </div>
+  );
+
   return createPortal(
     <>
       <div
@@ -239,30 +254,41 @@ export default function AppointmentsHistoryModal({
               >
                 Pedidas ({bookedGroups.upcoming.length})
               </button>
-            </div>
-
-            <div className="appt-history-toolbar-right">
               <button
                 type="button"
-                className={`appt-toggle ${showHistory ? 'active' : ''}`}
-                onClick={() => setShowHistory((current) => !current)}
+                className={segment === 'agenda' ? 'active' : ''}
+                onClick={() => setSegment('agenda')}
               >
-                {showHistory ? 'Ver próximas' : `Ver historial (${groups.past.length})`}
-              </button>
-              <button type="button" className="btn-ad-phone" onClick={() => setIsCalendarOpen(true)}>
-                <CalendarDays size={15} /> <span>Ver calendario</span>
+                <Settings size={13} /> Configuración de agenda
               </button>
             </div>
+
+            {segment !== 'agenda' && (
+              <div className="appt-history-toolbar-right">
+                <button
+                  type="button"
+                  className={`appt-toggle ${showHistory ? 'active' : ''}`}
+                  onClick={() => setShowHistory((current) => !current)}
+                >
+                  {showHistory ? 'Ver próximas' : `Ver historial (${groups.past.length})`}
+                </button>
+                <button type="button" className="btn-ad-phone" onClick={() => setIsCalendarOpen(true)}>
+                  <CalendarDays size={15} /> <span>Ver calendario</span>
+                </button>
+              </div>
+            )}
           </div>
 
-          {actionError && (
+          {actionError && segment !== 'agenda' && (
             <div className="ad-form-error">
               <AlertTriangle size={15} />
               <span>{actionError}</span>
             </div>
           )}
 
-          {list.length === 0 ? (
+          {segment === 'agenda' ? (
+            renderAgendaPanel()
+          ) : list.length === 0 ? (
             <div className="ads-mgmt-state">
               <CalendarDays size={22} />
               <p>

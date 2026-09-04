@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { ShieldCheck, UploadCloud, Loader2, Check, AlertCircle } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ShieldCheck, UploadCloud, Loader2, Check, AlertCircle, ImagePlus, Building2 } from 'lucide-react';
 import {
   getPaisesApi, getRegionesApi, getComunasApi,
   getAutomotiveServiceAccreditationApi, submitAutomotiveServiceAccreditationApi,
+  updateAutomotiveServiceLogoApi, resolveMediaUrl,
 } from '../services/api';
+import { uploadAdImages } from '../services/adsStorage';
 import { formatRut, isValidRut } from '../services/adapters';
 
 const EMPTY_FORM = {
@@ -32,6 +34,49 @@ const ESTADO_LABEL = {
 };
 
 /**
+ * Selector de logo de la empresa: círculo con la imagen actual (o un icono) y un
+ * botón para reemplazarla. Sube el archivo por el mismo endpoint que las fotos de
+ * anuncios y entrega la URL ya resuelta.
+ */
+function LogoPicker({ value, onPick, busy, error, caption }) {
+  const inputRef = useRef(null);
+  return (
+    <div className="acc-logo-field">
+      <span className="acc-logo-preview">
+        {value
+          ? <img src={value} alt="Logo de la empresa" />
+          : <Building2 size={26} />}
+        {busy && <span className="acc-logo-spinner"><Loader2 size={16} className="spin-icon" /></span>}
+      </span>
+      <div className="acc-logo-copy">
+        <strong>Logo de tu empresa</strong>
+        <span>{caption || 'Se muestra en la tarjeta del Mural y en la ficha de tus anuncios. PNG o JPG, cuadrado se ve mejor.'}</span>
+        <button
+          type="button"
+          className="btn-auth-secondary acc-logo-btn"
+          disabled={busy}
+          onClick={() => inputRef.current?.click()}
+        >
+          <ImagePlus size={15} /> {value ? 'Cambiar logo' : 'Subir logo'}
+        </button>
+        {error && <span className="acc-logo-error"><AlertCircle size={13} /> {error}</span>}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) onPick(file);
+        }}
+      />
+    </div>
+  );
+}
+
+/**
  * Acreditación del servicio automotriz: expediente legal INDEPENDIENTE de los
  * documentos de la tienda. Aunque la cuenta ya sea vendedora y tenga su tienda
  * validada, para publicar servicios debe subir de nuevo estos tres documentos,
@@ -49,11 +94,20 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Logo de la empresa. Se puede cargar antes de enviar el expediente y también
+  // cambiar cuando ya está APROBADO (ahí el formulario queda en modo consulta).
+  const [logoUrl, setLogoUrl] = useState('');
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState('');
+
   useEffect(() => {
     // Sin expediente presentado el getter devuelve null, y el formulario se
     // abre en blanco.
     getAutomotiveServiceAccreditationApi()
-      .then((data) => setRecord(data || null))
+      .then((data) => {
+        setRecord(data || null);
+        if (data?.logoUrl) setLogoUrl(resolveMediaUrl(data.logoUrl) || data.logoUrl);
+      })
       .catch((err) => setError(err.message || 'No se pudo cargar tu acreditación.'))
       .finally(() => setLoading(false));
 
@@ -76,12 +130,34 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
 
   const estado = record?.estado || 'SIN_SOLICITUD';
   const editable = EDITABLE_STATES.includes(estado);
+  const isApproved = estado === 'APROBADO';
 
   const handleChange = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
   const handleRegionChange = (regionId) => setForm((current) => ({ ...current, regionId, comunaId: '' }));
 
   const handleFileChange = (key, file) => setFiles((current) => ({ ...current, [key]: file }));
+
+  // Sube la imagen y deja la URL en estado. Cuando el expediente ya está
+  // aprobado, además persiste el cambio de inmediato con el PATCH dedicado.
+  const handleLogoPick = async (file) => {
+    setLogoBusy(true);
+    setLogoError('');
+    try {
+      const [url] = await uploadAdImages([file]);
+      if (!url) throw new Error('No se pudo procesar la imagen.');
+      setLogoUrl(url);
+      if (!editable) {
+        const saved = await updateAutomotiveServiceLogoApi(url);
+        setRecord(saved || record);
+        onSaved?.(saved || record);
+      }
+    } catch (err) {
+      setLogoError(err.message || 'No se pudo subir el logo.');
+    } finally {
+      setLogoBusy(false);
+    }
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -105,6 +181,7 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
     try {
       const saved = await submitAutomotiveServiceAccreditationApi({
         ...form,
+        logoUrl: logoUrl || null,
         referido: form.referido.trim().toUpperCase(),
         rutNegocio: formatRut(form.rutNegocio),
         regionId: Number(form.regionId),
@@ -164,14 +241,32 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
       {error && <div className="auth-alert alert-error" style={{ margin: '12px 0' }}><AlertCircle size={16} /><span>{error}</span></div>}
       {success && <div className="auth-alert alert-success" style={{ margin: '12px 0' }}><Check size={16} /><span>{success}</span></div>}
 
-      {estado === 'APROBADO' && (
-        <p style={{ marginTop: '16px', fontSize: '13.5px', fontWeight: 700, color: '#166534' }}>
-          Tu servicio está aprobado: ya puedes comprar monedas y publicar múltiples anuncios.
-        </p>
+      {isApproved && (
+        <>
+          <p style={{ marginTop: '16px', fontSize: '13.5px', fontWeight: 700, color: '#166534' }}>
+            Tu servicio está aprobado: ya puedes comprar monedas y publicar múltiples anuncios.
+          </p>
+          {/* El logo se puede cambiar aunque el expediente esté cerrado. */}
+          <LogoPicker
+            value={logoUrl}
+            onPick={handleLogoPick}
+            busy={logoBusy}
+            error={logoError}
+            caption="Este logo aparece en tus anuncios del Mural. Puedes cambiarlo cuando quieras."
+          />
+        </>
       )}
 
       {editable && (
         <form onSubmit={handleSubmit} style={{ marginTop: '18px' }}>
+          {/* El logo va al inicio: es lo primero que verá el cliente en el Mural. */}
+          <LogoPicker
+            value={logoUrl}
+            onPick={handleLogoPick}
+            busy={logoBusy}
+            error={logoError}
+          />
+
           <div className="form-grid-2">
             <div className="form-group">
               <label>Nombre del negocio</label>

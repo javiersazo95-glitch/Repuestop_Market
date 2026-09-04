@@ -49,6 +49,8 @@ import SellerOrdersPanel from './SellerOrdersPanel';
 import BuyerAddressBook from './BuyerAddressBook';
 import AdsManagementSection from './ads/AdsManagementSection';
 import CapturerContactCard from './CapturerContactCard';
+import ProfileFavoritesPanel from './ProfileFavoritesPanel';
+import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { formatRut, isValidRut, isValidClPhone } from '../services/adapters';
 import { Link, useNavigate } from 'react-router-dom';
 import { helpContactPath, productPath, profileOrderPath, ROUTES, storePath } from '../routes/paths';
@@ -628,6 +630,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   }, [paymentStatus, paymentOrderId, effectiveUserId, queryClient]);
 
   const favorites = favoritesQuery.data || [];
+  const { savedAds: savedFavoriteAds, savedStores: savedFavoriteStores } = useSavedMarketplaceItems(effectiveUserId);
+  const favoritesTotal = favorites.length + savedFavoriteAds.length + savedFavoriteStores.length;
   const conversations = conversationsQuery.data || [];
 
   // Notificación de cotización: abre el detalle/chat apenas la lista esté cargada.
@@ -1280,12 +1284,12 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       },
       {
         id: 'favoritos', tone: 'purple', icon: Heart, label: 'Favoritos guardados',
-        value: favorites?.length ?? 0,
+        value: favoritesTotal,
         actionLabel: 'Ver favoritos', onClick: () => setActiveTab('favoritos'),
       },
     ];
   }, [isSeller, inventorySummary, sellerProducts, orders, storeInfo, ordersThisMonthTotal,
-      shippingOrdersCount, quoteSummary.total, favorites, setActiveTab]);
+      shippingOrdersCount, quoteSummary.total, favoritesTotal, setActiveTab]);
 
   const overviewActions = useMemo(() => {
     if (isSeller) {
@@ -1992,40 +1996,12 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
 
               {activeTab === 'favoritos' && !isSeller && (
-                <div className="profile-panel">
-                  <h2 className="profile-panel-title">Repuestos Favoritos</h2>
-                  {(favorites || []).length === 0 ? (
-                    <EmptyState label="Aún no has guardado repuestos favoritos." />
-                  ) : (
-                    <div className="profile-products-grid">
-                      {favorites.map((f, i) => (
-                        // `imagenUrl` viene relativa al backend (`/api/v1/...`), asi que
-                        // sin `resolveMediaUrl` el navegador la pedia a :5173 y salia rota.
-                        // Y la tarjeta no llevaba a ninguna parte: un favorito existe justo
-                        // para volver al producto.
-                        <Link
-                          key={f.id}
-                          to={productPath({ id: f.proveedorProductoId, titulo: f.nombre })}
-                          className="profile-product-card is-clickable"
-                        >
-                          {f.imagenUrl ? (
-                            <div className="product-card-thumb-img">
-                              <img src={resolveMediaUrl(f.imagenUrl)} alt="" />
-                            </div>
-                          ) : (
-                            <div className={`product-card-thumb thumb-${i % 4}`}>
-                              <Package size={26} />
-                            </div>
-                          )}
-                          <h4>{f.nombre}</h4>
-                          <div className="product-card-price-row">
-                            <strong>${formatCLP(f.precio)}</strong>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <ProfileFavoritesPanel
+                  userId={effectiveUserId}
+                  productFavorites={favorites}
+                  isLoading={favoritesQuery.isLoading}
+                  error={favoritesQuery.error}
+                />
               )}
 
               {activeTab === 'tienda' && isSeller && (

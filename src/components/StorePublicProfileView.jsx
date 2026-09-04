@@ -17,6 +17,8 @@ import ContextualReportButton from './ContextualReportButton';
 import { parseShippingMethods, resolveShippingService } from '../data/shippingMethods';
 import { getStoreProductsApi, getStoreProfileApi, searchVehicleByPatenteApi } from '../services/api';
 import { adaptPage, adaptProduct, adaptStore, adaptVehicle } from '../services/adapters';
+import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
+import { useMarketplace } from '../context/MarketplaceContext';
 
 // El backend acota el tamaño de página a 100; esta vista filtra y pagina en cliente.
 const STORE_PRODUCTS_FETCH_SIZE = 100;
@@ -43,6 +45,7 @@ export default function StorePublicProfileView({
   onEditStore
 }) {
   const { user } = useAuth();
+  const { openAuthModal } = useMarketplace();
   const initialStoreId = typeof store === 'string' ? null : store?.id;
 
   const [activeVehicle, setActiveVehicle] = useState(initialActiveVehicle);
@@ -63,9 +66,9 @@ export default function StorePublicProfileView({
   const [onlyCompatible, setOnlyCompatible] = useState(!!initialActiveVehicle);
   const [sortBy, setSortBy] = useState('relevancia');
 
-  const [isFollowing, setIsFollowing] = useState(false);
   const [shareFeedback, setShareFeedback] = useState('');
   const [openFilterSections, setOpenFilterSections] = useState({ purchase: true, category: true, condition: true });
+  const { isStoreSaved, toggleStore } = useSavedMarketplaceItems(user?.userId ?? user?.id);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -312,8 +315,6 @@ export default function StorePublicProfileView({
     setCurrentPage(Math.min(Math.max(1, page), totalPages));
   };
 
-  const toggleFollow = () => setIsFollowing(!isFollowing);
-
   const handleShare = async () => {
     const shareData = {
       title: currentStore.nombre,
@@ -428,13 +429,16 @@ export default function StorePublicProfileView({
 
                 <div className="store-action-buttons">
                   <button
-                    className={`btn-follow-store ${isFollowing ? 'following' : ''}`}
-                    onClick={toggleFollow}
+                    className={`btn-follow-store ${isStoreSaved(currentStore.id) ? 'following' : ''}`}
+                    onClick={() => {
+                      if (!user) { openAuthModal(); return; }
+                      toggleStore(currentStore);
+                    }}
                     type="button"
-                    title={isFollowing ? 'Dejar de seguir tienda' : 'Seguir tienda para recibir novedades'}
+                    title={isStoreSaved(currentStore.id) ? 'Quitar tienda de favoritos' : 'Guardar tienda en favoritos'}
                   >
-                    <Heart size={16} className={isFollowing ? 'fill-current' : ''} />
-                    <span>{isFollowing ? 'Siguiendo tienda' : 'Seguir tienda'}</span>
+                    <Heart size={16} className={isStoreSaved(currentStore.id) ? 'fill-current' : ''} />
+                    <span>{isStoreSaved(currentStore.id) ? 'Tienda guardada' : 'Guardar tienda'}</span>
                   </button>
 
                   <button className="btn-share-store" onClick={handleShare} type="button" title="Compartir enlace de la tienda">

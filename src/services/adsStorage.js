@@ -19,7 +19,7 @@
 // existieron fuera del navegador.
 import {
   getPublicAdsApi, getPublicAdApi, getMyAdsApi,
-  createAdApi, updateAdApi, deleteAdApi, uploadAdImagesApi, resolveMediaUrl,
+  createAdApi, updateAdApi, updateAdAgendaApi, deleteAdApi, uploadAdImagesApi, resolveMediaUrl,
   getFichasBalanceApi, getFichasMovimientosApi, registrarCompraFichasApi,
   getAdAppointmentsApi, getMyAppointmentsApi, createAdAppointmentApi,
   updateAdAppointmentStatusApi, sendAppointmentSummaryEmailsApi,
@@ -30,6 +30,7 @@ import {
   adaptAppointment, adaptAppointments, toAppointmentRequestPayload
 } from './adapters';
 import { isAdVisibleOnWall } from '../data/automotiveAdsData';
+import { toAgendaConfigPayload, getAgendaSummaryText } from '../data/agendaConfig';
 
 const ADS_WALL_CACHE_KEY = 'repuestop_ads_wall_cache';
 const TOKENS_BALANCE_KEY = 'repuestop_fichas_balance';
@@ -232,6 +233,26 @@ export async function createAd(ad) {
  */
 export async function updateAd(adId, ad) {
   const saved = adaptAd(await updateAdApi(adId, toAdRequestPayload(ad)));
+  refreshWallCache();
+  return saved;
+}
+
+/**
+ * Ajusta SOLO la agenda de un anuncio empresarial (`PATCH /anuncios/{id}/agenda`).
+ * No manda el anuncio completo ni lo devuelve a moderacion: sigue publicado.
+ * `bookingEnabled` false apaga las reservas; `config` puede ser la configuracion
+ * de agenda de la UI (se serializa con `toAgendaConfigPayload`).
+ */
+export async function updateAdAgenda(adId, { bookingEnabled, config, agendaConfigId, agendaConfigName }) {
+  const on = Boolean(bookingEnabled && config);
+  const payload = {
+    hasOnlineBooking: on,
+    agendaConfig: on ? toAgendaConfigPayload(config) : null,
+    agendaConfigId: on ? (agendaConfigId || `web-agc-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`) : null,
+    agendaConfigName: on ? (agendaConfigName || 'Agenda de mi taller') : null,
+    agendaHours: on ? getAgendaSummaryText(config) : '',
+  };
+  const saved = adaptAd(await updateAdAgendaApi(adId, payload));
   refreshWallCache();
   return saved;
 }

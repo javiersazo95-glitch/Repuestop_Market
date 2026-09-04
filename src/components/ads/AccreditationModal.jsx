@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { X, ShieldCheck } from 'lucide-react';
+import { X, ShieldCheck, CalendarClock } from 'lucide-react';
 import AutomotiveServiceAccreditation from '../AutomotiveServiceAccreditation';
 
 /**
@@ -14,8 +14,8 @@ import AutomotiveServiceAccreditation from '../AutomotiveServiceAccreditation';
 
 const STEPS = [
   {
-    title: 'Completa los datos de tu negocio',
-    detail: 'Nombre, RUT, giro, responsable y la región/comuna donde atiendes.'
+    title: 'Sube el logo y los datos de tu negocio',
+    detail: 'El logo de tu empresa aparece en la tarjeta del Mural y en la ficha del anuncio. Luego: nombre, RUT, giro, responsable y la región/comuna donde atiendes.'
   },
   {
     title: 'Adjunta los tres documentos',
@@ -27,7 +27,7 @@ const STEPS = [
   },
   {
     title: 'Publica en el Mural',
-    detail: 'Con el expediente aprobado quedan habilitadas la compra de Monedas y la publicación de anuncios.'
+    detail: 'Con el expediente aprobado quedan habilitadas la compra de Monedas y la publicación de anuncios. El logo se puede cambiar cuando quieras desde este mismo apartado.'
   }
 ];
 
@@ -66,6 +66,15 @@ export default function AccreditationModal({ user, onClose, onSaved }) {
             </li>
           ))}
         </ol>
+
+        <div className="acc-agenda-hint">
+          <CalendarClock size={16} />
+          <span>
+            ¿Vas a publicar un anuncio <strong>Empresarial</strong>? Necesitas tener una
+            <strong> agenda configurada</strong> para recibir citas. La creas al publicar el
+            anuncio o después en <strong>Historial de citas → Configuración de agenda</strong>.
+          </span>
+        </div>
 
         <AutomotiveServiceAccreditation
           user={user}

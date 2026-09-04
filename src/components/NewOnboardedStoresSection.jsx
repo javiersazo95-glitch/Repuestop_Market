@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext';
 import MarketplaceSellerCard from './MarketplaceSellerCard';
 import { adaptPage, adaptStore } from '../services/adapters';
 import { resolveShippingService } from '../data/shippingMethods';
+import { useMarketplace } from '../context/MarketplaceContext';
+import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 
 // Se mantiene el nombre exportado porque StoresDirectoryView ya lo consume; la
 // tabla vive ahora en src/data/shippingMethods.js, compartida con la card del
@@ -15,6 +17,8 @@ export const getShippingIconConfig = resolveShippingService;
 
 export default function NewOnboardedStoresSection({ onOpenStores, onSelectStore }) {
   const { user } = useAuth();
+  const { openAuthModal } = useMarketplace();
+  const { isStoreSaved, toggleStore } = useSavedMarketplaceItems(user?.userId ?? user?.id);
 
   const { data: stores = [] } = useQuery({
     queryKey: qk.stores({ size: 5 }),
@@ -71,7 +75,19 @@ export default function NewOnboardedStoresSection({ onOpenStores, onSelectStore 
             : store;
           const avatarPhoto = syncedStore.logoUrl || syncedStore.userProfileUrl || syncedStore.imagenUrl;
 
-          return <MarketplaceSellerCard key={syncedStore.id} store={syncedStore} avatarPhoto={avatarPhoto} onView={onSelectStore} />;
+          return (
+            <MarketplaceSellerCard
+              key={syncedStore.id}
+              store={syncedStore}
+              avatarPhoto={avatarPhoto}
+              onView={onSelectStore}
+              isFavorite={isStoreSaved(syncedStore.id)}
+              onToggleFavorite={(storeData) => {
+                if (!user) { openAuthModal(); return; }
+                toggleStore(storeData);
+              }}
+            />
+          );
         })}
       </div>
     </section>

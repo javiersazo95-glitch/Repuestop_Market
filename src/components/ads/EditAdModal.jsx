@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Edit3, AlertTriangle, Clock3 } from 'lucide-react';
+import { X, Edit3, CheckCircle2, AlertTriangle, Clock3 } from 'lucide-react';
 import { AD_TIERS, AD_MODERATION_STATUS } from '../../data/automotiveAdsData';
 import { updateAd, adErrorMessage } from '../../services/adsStorage';
 import AdForm from './AdForm';
@@ -8,10 +8,10 @@ import AdForm from './AdForm';
 /**
  * Editar un anuncio ya publicado.
  *
- * `AnuncioService.actualizar()` deja el anuncio en `PENDIENTE` y `activo=false`
- * en CADA guardado, asi que corregir un telefono lo saca del mural hasta que
- * moderacion lo vuelva a aprobar. Se advierte antes de guardar: sin el aviso,
- * el vendedor ve desaparecer su anuncio y cree que se borro.
+ * La moderación es solo para la primera publicación: `AnuncioService.actualizar()`
+ * mantiene APROBADO/activo un aviso ya aprobado que su dueño edita, así que los
+ * cambios entran directo al Mural. Solo los avisos que todavía no pasaron
+ * revisión (PENDIENTE / rechazados) siguen en la cola tras editarlos.
  */
 export default function EditAdModal({
   ad, isOpen, onClose, onAdUpdated, upgradedFromTier, upgradedToTier
@@ -79,15 +79,20 @@ export default function EditAdModal({
               </button>
             </div>
 
-            <div className="ad-moderation-warning create-ad-edit-warning">
-              <AlertTriangle size={17} />
+            <div className={`ad-moderation-warning create-ad-edit-warning ${wasPublished ? 'is-ok' : ''}`}>
+              {wasPublished ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />}
               <div>
-                <strong>Guardar cambios devuelve el anuncio a revisión.</strong>
-                <p>
-                  {wasPublished
-                    ? 'Tu anuncio saldrá temporalmente del Mural hasta que moderación apruebe la nueva versión.'
-                    : 'El anuncio vuelve a la cola de revisión con los datos corregidos.'}
-                </p>
+                {wasPublished ? (
+                  <>
+                    <strong>Los cambios se publican al instante.</strong>
+                    <p>Tu anuncio ya está aprobado: al guardar, la nueva versión queda visible en el Mural sin pasar de nuevo por revisión.</p>
+                  </>
+                ) : (
+                  <>
+                    <strong>El anuncio sigue en la cola de revisión.</strong>
+                    <p>Todavía no pasó su primera aprobación; se revisa con los datos corregidos y luego queda visible.</p>
+                  </>
+                )}
               </div>
             </div>
 
@@ -102,27 +107,30 @@ export default function EditAdModal({
               onCancel={handleClose}
             />
           </>
-        ) : (
-          <div className="text-center py-6">
-            <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Clock3 size={36} />
+        ) : (() => {
+          const savedPublished = savedAd.moderationStatus === AD_MODERATION_STATUS.APROBADO && savedAd.activo === true;
+          return (
+            <div className="upgrade-success">
+              <div className={`upgrade-success-icon ${savedPublished ? 'is-ok' : ''}`}>
+                {savedPublished ? <CheckCircle2 size={34} /> : <Clock3 size={34} />}
+              </div>
+
+              <h3>{savedPublished ? 'Cambios publicados' : 'Cambios guardados, en revisión'}</h3>
+
+              <p>
+                {savedPublished
+                  ? <>Actualizamos <strong>"{savedAd.title}"</strong> en el Mural. La nueva versión ya está visible para los clientes.</>
+                  : <>Guardamos la nueva versión de <strong>"{savedAd.title}"</strong>. Como todavía no pasó su primera aprobación, te avisamos cuando quede publicado.</>}
+              </p>
+
+              <div className="upgrade-actions-row is-centered">
+                <button type="button" className="upgrade-confirm-btn" onClick={handleClose}>
+                  Entendido
+                </button>
+              </div>
             </div>
-
-            <h3 className="text-2xl font-extrabold text-slate-900 mb-2">
-              Cambios guardados, en revisión
-            </h3>
-
-            <p className="text-slate-600 text-sm max-w-md mx-auto mb-6">
-              Guardamos la nueva versión de <strong>"{savedAd.title}"</strong>. Como cada edición se revisa
-              antes de publicarse, el anuncio no está visible en el mural en este momento. Te avisamos
-              cuando quede aprobado.
-            </p>
-
-            <button type="button" className="btn-post-ad mx-auto" onClick={handleClose}>
-              Entendido
-            </button>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </div>,
     document.body

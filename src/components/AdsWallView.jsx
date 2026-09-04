@@ -1,10 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   Megaphone, Plus, Search, RotateCcw, Loader2, WifiOff, AlertTriangle,
-  RefreshCw, SlidersHorizontal, X, Car, MapPin, Wrench, Building2, Grid3x3,
-  CheckCircle2, ShieldCheck, Sparkles, Handshake, TrendingUp, Settings,
-  Zap, CircleDot, Truck, SprayCan, Snowflake, KeyRound, ClipboardCheck,
-  Bike, Home, Package, LayoutGrid
+  RefreshCw, SlidersHorizontal, X, Car, MapPin, Settings, ChevronDown,
+  ArrowUpDown, ShieldCheck, Zap, Star, CheckCircle2
 } from 'lucide-react';
 import { AD_TIERS, SERVICE_CATEGORIES, CHILE_COMMUNES } from '../data/automotiveAdsData';
 import { fetchPublicAds, getCachedWallAds, ADS_WALL_UPDATED_EVENT } from '../services/adsStorage';
@@ -18,6 +16,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
+import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
+import { getCategoryIcon } from './ads/categoryIcons';
 import AdsStoriesCarousel from './ads/AdsStoriesCarousel';
 import StoriesViewerModal from './ads/StoriesViewerModal';
 import AdCard from './ads/AdCard';
@@ -30,43 +30,31 @@ const PAGE_SIZE = 12;
 const ALL_TAGS = 'Todos los servicios';
 
 const SUGGESTION_META = {
-  servicio: { Icon: Wrench, hint: 'Servicio' },
-  taller: { Icon: Building2, hint: 'Taller' },
-  categoria: { Icon: Grid3x3, hint: 'Categoría' },
+  servicio: { Icon: Search, hint: 'Servicio' },
+  taller: { Icon: Search, hint: 'Taller' },
+  categoria: { Icon: Settings, hint: 'Categoría' },
   comuna: { Icon: MapPin, hint: 'Comuna' },
 };
 
-// Icono por especialidad para la tira de categorías del hero (equivalente web de
-// la franja de iconos del arte del banner).
-const CATEGORY_ICON = {
-  TODAS: LayoutGrid,
-  mecanica: Wrench,
-  'electricidad-electronica': Zap,
-  neumaticos: CircleDot,
-  'asistencia-vehicular': Truck,
-  'carroceria-pintura': SprayCan,
-  'estetica-automotriz': Sparkles,
-  climatizacion: Snowflake,
-  'cerrajeria-seguridad': KeyRound,
-  'servicios-inspeccion': ClipboardCheck,
-  motos: Bike,
-  'camiones-maquinaria': Truck,
-  'compra-venta-arriendo': Car,
-  'servicios-domicilio': Home,
-  'otros-servicios': Package,
-};
+const SORT_OPTIONS = [
+  { value: 'relevancia', label: 'Más relevantes' },
+  { value: 'recientes', label: 'Más recientes' },
+  { value: 'precio-menor', label: 'Precio: menor a mayor' },
+  { value: 'precio-mayor', label: 'Precio: mayor a menor' },
+];
 
-const HERO_PERKS = [
-  { Icon: Search, title: 'ENCUENTRA', sub: 'rápido y fácil' },
-  { Icon: Megaphone, title: 'PUBLICA', sub: 'tu servicio' },
-  { Icon: Handshake, title: 'CONECTA', sub: 'con clientes' },
-  { Icon: TrendingUp, title: 'HAZ CRECER', sub: 'tu negocio' },
+// Motivos para elegir RepuesTop (bloque estático del sidebar).
+const WHY_REPUESTOP = [
+  { Icon: Megaphone, title: 'Publica gratis', sub: 'Sin comisiones ni costos ocultos.' },
+  { Icon: ShieldCheck, title: 'Servicios verificados', sub: 'Los proveedores pasan por un proceso de verificación.' },
+  { Icon: Zap, title: 'Atención rápida', sub: 'Responde y agenda en minutos.' },
 ];
 
 export default function AdsWallView() {
   const { isLoggedIn, user } = useAuth();
   const { openAuthModal } = useMarketplace();
   const nav = useAppNavigation();
+  const { isAdSaved, toggleAd } = useSavedMarketplaceItems(user?.userId ?? user?.id);
 
   const userComuna = (user?.comuna || '').trim();
 
@@ -164,19 +152,6 @@ export default function AdsWallView() {
   );
   const showSuggestions = isSearchFocused && searchSuggestions.length > 0;
 
-  // Etiquetas de servicio realmente presentes en el mural: alimenta el 3er
-  // selector del banner ("Todos los servicios").
-  const serviceTagOptions = useMemo(() => {
-    const set = new Set();
-    for (const ad of adsList) {
-      for (const tag of [...(ad.features || []), ...(ad.servicesOffered || [])]) {
-        const clean = (tag || '').trim();
-        if (clean) set.add(clean);
-      }
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'));
-  }, [adsList]);
-
   const isNearbyActive = Boolean(userComuna)
     && selectedCommune.toLocaleLowerCase('es') === userComuna.toLocaleLowerCase('es');
 
@@ -231,6 +206,11 @@ export default function AdsWallView() {
     setSearchInput(label);
     setSearchQuery(label);
     setIsSearchFocused(false);
+  };
+
+  const handleSelectCategory = (catId) => {
+    setSelectedCategory(catId);
+    scrollToResults();
   };
 
   const searchByPlate = async () => {
@@ -324,377 +304,374 @@ export default function AdsWallView() {
   const hasNoAdsAtAll = !isLoading && adsList.length === 0;
   const showSkeleton = isLoading && adsList.length === 0;
 
+  const sidebarCategories = [
+    { id: 'TODAS', label: 'Todas las categorías' },
+    ...SERVICE_CATEGORIES.filter((cat) => cat.id !== 'TODAS'),
+  ];
+
   return (
     <main className="ads-wall-page">
-      {/* 1. Hero del mural: arte del banner reconstruido en HTML + buscador real */}
-      <section className="ads-hero">
-        <div className="ads-hero-bg" aria-hidden="true">
-          <span className="ads-hero-photo" />
-          <span className="ads-hero-dots ads-hero-dots--tl" />
-          <span className="ads-hero-dots ads-hero-dots--tr" />
-          <span className="ads-hero-dots ads-hero-dots--bl" />
-          <span className="ads-hero-band" />
-          <span className="ads-hero-shape ads-hero-shape--a" />
-          <span className="ads-hero-shape ads-hero-shape--b" />
-          <span className="ads-hero-arc ads-hero-arc--right" />
-          <span className="ads-hero-arc ads-hero-arc--left" />
-        </div>
-
-        <div className="container ads-hero-inner">
-          <div className="ads-hero-frame">
-            <span className="ads-hero-mark" aria-hidden="true" />
-
-            <p className="ads-hero-eyebrow">
-              <b className="tick tick-green">///</b>
-              <span>TODO LO QUE TU AUTO NECESITA,</span>
-              <b className="hl">EN UN SOLO LUGAR</b>
-              <b className="tick tick-blue">///</b>
-            </p>
-
-            <h1 className="ads-hero-title">
-              MURAL DE ANUNCIOS
-              <span>AUTOMOTRICES</span>
-            </h1>
-
-            <p className="ads-hero-sub">
-              Encuentra servicios y soluciones para tu vehículo.<br />
-              Publica, <b>conecta</b> y <b>haz crecer</b> tu negocio.
-            </p>
-
-            <div className="ads-hero-perks">
-              {HERO_PERKS.map(({ Icon, title, sub }) => (
-                <div className="ads-hero-perk" key={title}>
-                  <span className="ads-hero-perk-ic"><Icon size={20} /></span>
-                  <span className="ads-hero-perk-txt">
-                    <strong>{title}</strong>
-                    <em>{sub}</em>
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Barra de búsqueda: misma composición que el arte del banner */}
-            <div className="ads-searchbar">
-              <div className="ads-searchbar-row">
-                <label className="ads-sb-field">
-                  <MapPin size={18} />
-                  <select
-                    value={selectedCommune}
-                    onChange={(e) => setSelectedCommune(e.target.value)}
-                    aria-label="Región o comuna"
-                  >
-                    {CHILE_COMMUNES.map((c) => (
-                      <option key={c} value={c}>{c === 'Todas las comunas' ? 'Todas las regiones' : c}</option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="ads-sb-field">
-                  <Settings size={18} />
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    aria-label="Categoría"
-                  >
-                    {SERVICE_CATEGORIES.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.id === 'TODAS' ? 'Todas las categorías' : cat.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="ads-sb-field">
-                  <Car size={18} />
-                  <select
-                    value={selectedServiceTag}
-                    onChange={(e) => setSelectedServiceTag(e.target.value)}
-                    aria-label="Servicio"
-                  >
-                    <option value={ALL_TAGS}>{ALL_TAGS}</option>
-                    {serviceTagOptions.map((tag) => (
-                      <option key={tag} value={tag}>{tag}</option>
-                    ))}
-                  </select>
-                </label>
-
-                <button type="button" className="ads-sb-submit" onClick={scrollToResults}>
-                  <Search size={18} /> <span>Buscar servicios</span>
-                </button>
-              </div>
-
-              <p className="ads-trust-line">
-                <ShieldCheck size={15} />
-                <span>Servicios verificados</span>
-                <i aria-hidden="true">•</i>
-                <span>Contacto directo</span>
-                <i aria-hidden="true">•</i>
-                <span>Publicaciones destacadas</span>
-              </p>
-            </div>
-
-            {/* Utilidades: texto libre, filtros avanzados y búsqueda por patente */}
-            <div className="ads-hero-utility" ref={searchBoxRef}>
-                  <div className="ads-search-input-wrap">
-                    <Search size={17} className="ads-search-input-icon" />
-                    <input
-                      type="text"
-                      placeholder="Busca por nombre de taller, servicio o palabra clave…"
-                      value={searchInput}
-                      onChange={(e) => setSearchInput(e.target.value)}
-                      onFocus={() => setIsSearchFocused(true)}
-                    />
-                    {userComuna && (
-                      <button
-                        type="button"
-                        className={`ads-nearby-btn ${isNearbyActive ? 'active' : ''}`}
-                        onClick={toggleNearby}
-                        title={isNearbyActive ? `Quitar filtro de ${userComuna}` : `Filtrar por mi comuna: ${userComuna}`}
-                      >
-                        <MapPin size={16} />
-                      </button>
-                    )}
-                    {searchInput && (
-                      <button
-                        type="button"
-                        className="ads-search-clear"
-                        onClick={() => { setSearchInput(''); setSearchQuery(''); }}
-                        aria-label="Limpiar búsqueda"
-                      >
-                        <X size={15} />
-                      </button>
-                    )}
-
-                    {showSuggestions && (
-                      <div className="ads-suggestions">
-                        {searchSuggestions.map((s) => {
-                          const meta = SUGGESTION_META[s.type] || SUGGESTION_META.servicio;
-                          const MetaIcon = meta.Icon;
-                          return (
-                            <button
-                              key={`${s.type}-${s.label}`}
-                              type="button"
-                              className="ads-suggestion-row"
-                              onClick={() => handleSelectSuggestion(s.label)}
-                            >
-                              <MetaIcon size={15} />
-                              <span className="ads-suggestion-text">{s.label}</span>
-                              <span className="ads-suggestion-hint">{meta.hint}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
+      <div className="container ads-wall-shell">
+        {/* 1. Barra de filtros (equivalente a la fila de filtros del marketplace) */}
+        <div className="ads-filterbar">
+          <div className="ads-search-input-wrap ads-fb-search" ref={searchBoxRef}>
+            <Search size={17} className="ads-search-input-icon" />
+            <input
+              type="text"
+              placeholder="¿Qué servicio o repuesto necesitas?"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+            />
+            {userComuna && (
               <button
                 type="button"
-                className={`ads-util-btn ${advancedFiltersCount > 0 ? 'active' : ''}`}
-                onClick={() => setIsFilterOpen(true)}
+                className={`ads-nearby-btn ${isNearbyActive ? 'active' : ''}`}
+                onClick={toggleNearby}
+                title={isNearbyActive ? `Quitar filtro de ${userComuna}` : `Filtrar por mi comuna: ${userComuna}`}
               >
-                <SlidersHorizontal size={15} />
-                <span>Más filtros</span>
-                {advancedFiltersCount > 0 && (
-                  <span className="ads-filter-btn-badge">{advancedFiltersCount}</span>
-                )}
+                <MapPin size={16} />
               </button>
-
+            )}
+            {searchInput && (
               <button
                 type="button"
-                className={`ads-util-btn ${searchMode === 'plate' ? 'active' : ''}`}
-                aria-pressed={searchMode === 'plate'}
-                onClick={() => {
-                  setSearchMode((mode) => (mode === 'plate' ? 'service' : 'plate'));
-                  setPlateVehicle(null);
-                  setPlateError('');
-                }}
+                className="ads-search-clear"
+                onClick={() => { setSearchInput(''); setSearchQuery(''); }}
+                aria-label="Limpiar búsqueda"
               >
-                <Car size={15} /> <span>Buscar por patente</span>
+                <X size={15} />
               </button>
-            </div>
+            )}
 
-            {searchMode === 'plate' && (
-              <div className="ads-plate-area">
-                <p className="ads-plate-hint">
-                  Ingresa tu patente y mostraremos talleres que atienden tu marca, incluidos los multimarca.
-                </p>
-                <div className="ads-plate-row">
-                  <div className="ads-search-input-wrap">
-                    <Car size={17} className="ads-search-input-icon" />
-                    <input
-                      type="text"
-                      placeholder="Ej: AB·CD·12"
-                      value={plateQuery}
-                      maxLength={8}
-                      onChange={(e) => {
-                        setPlateQuery(e.target.value.toUpperCase());
-                        setPlateVehicle(null);
-                        setPlateError('');
-                      }}
-                      onKeyDown={(e) => e.key === 'Enter' && searchByPlate()}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    className="ads-plate-btn"
-                    onClick={searchByPlate}
-                    disabled={isPlateSearching}
-                  >
-                    {isPlateSearching ? <Loader2 size={16} className="spin-icon" /> : 'Buscar'}
-                  </button>
-                </div>
-                {plateVehicle && (
-                  <div className="ads-plate-vehicle">
-                    <CheckCircle2 size={16} />
-                    <div>
-                      <strong>Vehículo identificado</strong>
-                      <span>{formatVehicleLabel(plateVehicle)} · {plateVehicle.patente}</span>
-                    </div>
-                  </div>
-                )}
-                <p className={`ads-plate-result ${plateError ? 'is-error' : ''}`}>
-                  {plateError
-                    || (plateVehicle
-                      ? 'Mostrando talleres especialistas y servicios multimarca compatibles.'
-                      : 'La patente se usa solo para identificar la marca de tu vehículo.')}
-                </p>
+            {showSuggestions && (
+              <div className="ads-suggestions">
+                {searchSuggestions.map((s) => {
+                  const meta = SUGGESTION_META[s.type] || SUGGESTION_META.servicio;
+                  const MetaIcon = meta.Icon;
+                  return (
+                    <button
+                      key={`${s.type}-${s.label}`}
+                      type="button"
+                      className="ads-suggestion-row"
+                      onClick={() => handleSelectSuggestion(s.label)}
+                    >
+                      <MetaIcon size={15} />
+                      <span className="ads-suggestion-text">{s.label}</span>
+                      <span className="ads-suggestion-hint">{meta.hint}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          <div className="ads-hero-cta">
-            <button type="button" className="btn-post-ad" onClick={handlePublishAdClick}>
-              <Plus size={18} /> <span>Publicar Anuncio</span>
-            </button>
-            {isLoggedIn && (
-              <button
-                type="button"
-                className="btn-manage-ads"
-                onClick={() => nav.goProfile('anuncios')}
-              >
-                <Megaphone size={15} /> <span>Gestión de Anuncios</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Tira de categorías con icono (equivalente a la franja del arte) */}
-        <div className="ads-hero-catstrip">
-          <div className="container ads-catstrip-track">
-            {SERVICE_CATEGORIES.map((cat) => {
-              const CatIcon = CATEGORY_ICON[cat.id] || Wrench;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  className={`ads-catstrip-item ${selectedCategory === cat.id ? 'active' : ''}`}
-                  onClick={() => { setSelectedCategory(cat.id); scrollToResults(); }}
+          <div className="ads-fb-chips">
+            <label className="ads-fb-chip">
+              <MapPin size={17} />
+              <span className="ads-fb-chip-body">
+                <em>Ubicación</em>
+                <select
+                  value={selectedCommune}
+                  onChange={(e) => setSelectedCommune(e.target.value)}
+                  aria-label="Ubicación"
                 >
-                  <CatIcon size={20} />
-                  <span>{cat.label}</span>
-                </button>
-              );
-            })}
+                  {CHILE_COMMUNES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </span>
+              <ChevronDown size={15} className="ads-fb-chip-caret" />
+            </label>
+
+            <label className="ads-fb-chip">
+              <Settings size={17} />
+              <span className="ads-fb-chip-body">
+                <em>Categoría</em>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  aria-label="Categoría"
+                >
+                  {SERVICE_CATEGORIES.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.id === 'TODAS' ? 'Todas las categorías' : cat.label}
+                    </option>
+                  ))}
+                </select>
+              </span>
+              <ChevronDown size={15} className="ads-fb-chip-caret" />
+            </label>
+
+            <button
+              type="button"
+              className={`ads-fb-toggle ${only24Hours ? 'active' : ''}`}
+              aria-pressed={only24Hours}
+              onClick={() => setOnly24Hours((v) => !v)}
+            >
+              <Zap size={15} /> <span>Urgente</span>
+            </button>
+
+            <button
+              type="button"
+              className={`ads-fb-toggle ${sortBy === 'relevancia' ? 'active' : ''}`}
+              aria-pressed={sortBy === 'relevancia'}
+              onClick={() => setSortBy((s) => (s === 'relevancia' ? 'recientes' : 'relevancia'))}
+            >
+              <Star size={15} /> <span>Mejor valorados</span>
+            </button>
+
+            <button
+              type="button"
+              className={`ads-fb-toggle ${advancedFiltersCount > 0 ? 'active' : ''}`}
+              onClick={() => setIsFilterOpen(true)}
+            >
+              <SlidersHorizontal size={15} />
+              <span>Más filtros</span>
+              {advancedFiltersCount > 0 && (
+                <span className="ads-filter-btn-badge">{advancedFiltersCount}</span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              className={`ads-fb-toggle ${searchMode === 'plate' ? 'active' : ''}`}
+              aria-pressed={searchMode === 'plate'}
+              onClick={() => {
+                setSearchMode((mode) => (mode === 'plate' ? 'service' : 'plate'));
+                setPlateVehicle(null);
+                setPlateError('');
+              }}
+            >
+              <Car size={15} /> <span>Buscar por patente</span>
+            </button>
           </div>
         </div>
-      </section>
+
+        {searchMode === 'plate' && (
+          <div className="ads-plate-area ads-plate-area--bar">
+            <p className="ads-plate-hint">
+              Ingresa tu patente y mostraremos talleres que atienden tu marca, incluidos los multimarca.
+            </p>
+            <div className="ads-plate-row">
+              <div className="ads-search-input-wrap">
+                <Car size={17} className="ads-search-input-icon" />
+                <input
+                  type="text"
+                  placeholder="Ej: AB·CD·12"
+                  value={plateQuery}
+                  maxLength={8}
+                  onChange={(e) => {
+                    setPlateQuery(e.target.value.toUpperCase());
+                    setPlateVehicle(null);
+                    setPlateError('');
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && searchByPlate()}
+                />
+              </div>
+              <button
+                type="button"
+                className="ads-plate-btn"
+                onClick={searchByPlate}
+                disabled={isPlateSearching}
+              >
+                {isPlateSearching ? <Loader2 size={16} className="spin-icon" /> : 'Buscar'}
+              </button>
+            </div>
+            {plateVehicle && (
+              <div className="ads-plate-vehicle">
+                <CheckCircle2 size={16} />
+                <div>
+                  <strong>Vehículo identificado</strong>
+                  <span>{formatVehicleLabel(plateVehicle)} · {plateVehicle.patente}</span>
+                </div>
+              </div>
+            )}
+            <p className={`ads-plate-result ${plateError ? 'is-error' : ''}`}>
+              {plateError
+                || (plateVehicle
+                  ? 'Mostrando talleres especialistas y servicios multimarca compatibles.'
+                  : 'La patente se usa solo para identificar la marca de tu vehículo.')}
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* 2. Carrusel de historias */}
       <AdsStoriesCarousel ads={adsList} onSelectAd={(ad) => setSelectedAdForStories(ad)} />
 
-      <div className="container ads-wall-main">
-        {/* 3. Barra de resultados */}
-        <div className="ads-results-bar" id="ads-results-top">
-          <span className="ads-results-count">
-            {isLoading && adsList.length === 0 ? (
-              <><Loader2 size={14} className="spin-icon" /> Cargando anuncios…</>
-            ) : (
-              <>
-                Mostrando <strong>{visibleAds.length}</strong>
-                {hasMoreAds ? <> de <strong>{filteredAds.length}</strong></> : null} anuncios disponibles
-              </>
-            )}
-          </span>
-          {(activeFiltersCount > 0 || searchQuery.trim()) && (
-            <button type="button" className="ads-results-clear" onClick={handleResetFilters}>
-              <RotateCcw size={13} /> Limpiar filtros
-            </button>
-          )}
-        </div>
+      {/* 3. Layout de 2 columnas: sidebar + grilla */}
+      <div className="container ads-layout">
+        <aside className="ads-sidebar">
+          <div className="ads-sidebar-block">
+            <h3 className="ads-sidebar-title">Categorías</h3>
+            <ul className="ads-sidebar-cats">
+              {sidebarCategories.map((cat) => {
+                const CatIcon = getCategoryIcon(cat.id);
+                return (
+                  <li key={cat.id}>
+                    <button
+                      type="button"
+                      className={`ads-sidebar-cat ${selectedCategory === cat.id ? 'active' : ''}`}
+                      onClick={() => handleSelectCategory(cat.id)}
+                    >
+                      <CatIcon size={17} />
+                      <span>{cat.label}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
 
-        {/* Aviso de datos en cache */}
-        {isStale && (
-          <div className="ads-state-banner ads-state-warning" role="status">
-            <WifiOff size={16} />
-            <span>No pudimos contactar al servidor. Estás viendo la última copia guardada del mural.</span>
-            <button type="button" className="ads-state-retry" onClick={() => loadAds()}>
-              <RefreshCw size={14} /> Reintentar
+          <div className="ads-provider-card">
+            <h3>¿Eres Proveedor de Servicios?</h3>
+            <p>Únete a RepuesTop y llega a miles de clientes todos los días.</p>
+            <button type="button" className="ads-provider-cta" onClick={handlePublishAdClick}>
+              <Plus size={16} /> Publica gratis
             </button>
-          </div>
-        )}
-
-        {/* 5. Grilla de anuncios / estados */}
-        {showSkeleton ? (
-          <div className="ads-grid" aria-busy="true">
-            {[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="ad-card-skeleton" />)}
-          </div>
-        ) : loadError && adsList.length === 0 ? (
-          <div className="ads-empty-panel">
-            <div className="ads-empty-icon ads-empty-icon-danger"><AlertTriangle size={30} /></div>
-            <h3>No pudimos cargar el mural</h3>
-            <p>{loadError.message || 'El servicio de anuncios no está respondiendo en este momento.'}</p>
-            <button type="button" className="btn-post-ad" onClick={() => loadAds()}>
-              <RefreshCw size={15} /> Reintentar
-            </button>
-          </div>
-        ) : hasNoAdsAtAll ? (
-          <div className="ads-empty-panel">
-            <div className="ads-empty-icon"><Megaphone size={30} /></div>
-            <h3>Todavía no hay anuncios publicados</h3>
-            <p>
-              Los anuncios aparecen en el mural una vez que el equipo de moderación los aprueba.
-              Publica el tuyo y serás de los primeros en aparecer.
-            </p>
-            <button type="button" className="btn-post-ad" onClick={handlePublishAdClick}>
-              <Plus size={18} /> Publicar Anuncio
-            </button>
-          </div>
-        ) : visibleAds.length > 0 ? (
-          <>
-            <div className="ads-grid">
-              {visibleAds.map((ad) => (
-                <AdCard
-                  key={ad.id}
-                  ad={ad}
-                  onOpenBooking={(adData) => setSelectedAdForBooking(adData)}
-                  onSelectCategory={(catId) => setSelectedCategory(catId)}
-                />
-              ))}
-            </div>
-
-            {hasMoreAds && (
+            {isLoggedIn && (
               <button
                 type="button"
-                className="ads-load-more"
-                onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                className="ads-provider-link"
+                onClick={() => nav.goProfile('anuncios')}
               >
-                Cargar más ({filteredAds.length - visibleAds.length} restantes)
+                <Megaphone size={14} /> Gestión de Anuncios
               </button>
             )}
-          </>
-        ) : (
-          <div className="ads-empty-panel">
-            <div className="ads-empty-icon"><Search size={30} /></div>
-            <h3>No se encontraron anuncios con estos filtros</h3>
-            <p>
-              Intenta ajustar la búsqueda, seleccionar otra comuna o restablecer los filtros
-              para ver todos los servicios.
-            </p>
-            <button type="button" className="ads-state-retry" onClick={handleResetFilters}>
-              <RotateCcw size={15} /> Restablecer todos los filtros
-            </button>
           </div>
-        )}
+
+          <div className="ads-why-block">
+            <h3 className="ads-sidebar-title">¿Por qué elegir RepuesTop?</h3>
+            <ul className="ads-why-list">
+              {WHY_REPUESTOP.map(({ Icon, title, sub }) => (
+                <li key={title}>
+                  <span className="ads-why-ic"><Icon size={16} /></span>
+                  <span className="ads-why-txt">
+                    <strong>{title}</strong>
+                    <em>{sub}</em>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </aside>
+
+        <section className="ads-main-col">
+          <div className="ads-main-head" id="ads-results-top">
+            <div className="ads-main-head-text">
+              <h2>Servicios automotrices destacados</h2>
+              <p>Encuentra expertos cerca de ti</p>
+            </div>
+            <label className="ads-sort-field">
+              <ArrowUpDown size={15} />
+              <span>Ordenar por:</span>
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Ordenar por">
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="ads-results-bar">
+            <span className="ads-results-count">
+              {isLoading && adsList.length === 0 ? (
+                <><Loader2 size={14} className="spin-icon" /> Cargando anuncios…</>
+              ) : (
+                <>
+                  Mostrando <strong>{visibleAds.length}</strong>
+                  {hasMoreAds ? <> de <strong>{filteredAds.length}</strong></> : null} anuncios disponibles
+                </>
+              )}
+            </span>
+            {(activeFiltersCount > 0 || searchQuery.trim()) && (
+              <button type="button" className="ads-results-clear" onClick={handleResetFilters}>
+                <RotateCcw size={13} /> Limpiar filtros
+              </button>
+            )}
+          </div>
+
+          {/* Aviso de datos en cache */}
+          {isStale && (
+            <div className="ads-state-banner ads-state-warning" role="status">
+              <WifiOff size={16} />
+              <span>No pudimos contactar al servidor. Estás viendo la última copia guardada del mural.</span>
+              <button type="button" className="ads-state-retry" onClick={() => loadAds()}>
+                <RefreshCw size={14} /> Reintentar
+              </button>
+            </div>
+          )}
+
+          {/* Grilla de anuncios / estados */}
+          {showSkeleton ? (
+            <div className="ads-grid" aria-busy="true">
+              {[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="ad-card-skeleton" />)}
+            </div>
+          ) : loadError && adsList.length === 0 ? (
+            <div className="ads-empty-panel">
+              <div className="ads-empty-icon ads-empty-icon-danger"><AlertTriangle size={30} /></div>
+              <h3>No pudimos cargar el mural</h3>
+              <p>{loadError.message || 'El servicio de anuncios no está respondiendo en este momento.'}</p>
+              <button type="button" className="btn-post-ad" onClick={() => loadAds()}>
+                <RefreshCw size={15} /> Reintentar
+              </button>
+            </div>
+          ) : hasNoAdsAtAll ? (
+            <div className="ads-empty-panel">
+              <div className="ads-empty-icon"><Megaphone size={30} /></div>
+              <h3>Todavía no hay anuncios publicados</h3>
+              <p>
+                Los anuncios aparecen en el mural una vez que el equipo de moderación los aprueba.
+                Publica el tuyo y serás de los primeros en aparecer.
+              </p>
+              <button type="button" className="btn-post-ad" onClick={handlePublishAdClick}>
+                <Plus size={18} /> Publicar Anuncio
+              </button>
+            </div>
+          ) : visibleAds.length > 0 ? (
+            <>
+              <div className="ads-grid">
+                {visibleAds.map((ad) => (
+                  <AdCard
+                    key={ad.id}
+                    ad={ad}
+                    onOpenDetail={(adData) => nav.goAdDetail(adData)}
+                    onOpenBooking={(adData) => setSelectedAdForBooking(adData)}
+                    onSelectCategory={(catId) => setSelectedCategory(catId)}
+                    isFavorite={isAdSaved(ad.id)}
+                    onToggleFavorite={(adData) => {
+                      if (!isLoggedIn) { openAuthModal(); return; }
+                      toggleAd(adData);
+                    }}
+                  />
+                ))}
+              </div>
+
+              {hasMoreAds && (
+                <button
+                  type="button"
+                  className="ads-load-more"
+                  onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                >
+                  Cargar más ({filteredAds.length - visibleAds.length} restantes)
+                </button>
+              )}
+            </>
+          ) : (
+            <div className="ads-empty-panel">
+              <div className="ads-empty-icon"><Search size={30} /></div>
+              <h3>No se encontraron anuncios con estos filtros</h3>
+              <p>
+                Intenta ajustar la búsqueda, seleccionar otra comuna o restablecer los filtros
+                para ver todos los servicios.
+              </p>
+              <button type="button" className="ads-state-retry" onClick={handleResetFilters}>
+                <RotateCcw size={15} /> Restablecer todos los filtros
+              </button>
+            </div>
+          )}
+        </section>
       </div>
 
       {/* Modales */}

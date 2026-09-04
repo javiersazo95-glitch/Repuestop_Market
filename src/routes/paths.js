@@ -24,6 +24,7 @@ export const ROUTES = {
   privacy: '/privacidad',
   about: '/nosotros',
   adsWall: '/mural-anuncios',
+  adDetail: '/mural-anuncios/:adId',
   sellerRegister: '/vender',
   purchaseSuccess: '/compra-exitosa',
   notFound: '/404',
@@ -77,6 +78,13 @@ export function productPath(product) {
   if (!product) return ROUTES.catalog;
   const id = product.id ?? product.productoId ?? product;
   return `${ROUTES.catalog}/${toIdSlug(id, product.titulo || product.nombre)}`;
+}
+
+/** `/mural-anuncios/45-alineacion-y-balanceo-3d` -> id 45. */
+export function adDetailPath(ad) {
+  if (!ad) return ROUTES.adsWall;
+  const id = ad.id ?? ad;
+  return `${ROUTES.adsWall}/${toIdSlug(id, ad.title)}`;
 }
 
 export function storePath(store) {

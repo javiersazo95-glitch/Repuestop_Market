@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ROUTES, catalogPath, checkoutPath, helpCategoryPath, helpContactPath, productPath, profilePath, storePath } from './paths';
+import { ROUTES, adDetailPath, catalogPath, checkoutPath, helpCategoryPath, helpContactPath, productPath, profilePath, storePath } from './paths';
 
 /**
  * Navegación de alto nivel del marketplace. Los componentes de vista siguen
@@ -24,6 +24,12 @@ export function useAppNavigation() {
     navigate(storePath(store), { state: { store } });
   }, [navigate]);
 
+  const goAdDetail = useCallback((ad) => {
+    // El anuncio viaja en el state para pintar la ficha al instante; por URL
+    // directa la página lo recupera del backend por id.
+    navigate(adDetailPath(ad), { state: { ad } });
+  }, [navigate]);
+
   return useMemo(() => ({
     goHome: () => navigate(ROUTES.home),
     goCatalog: (filter = null, extra = {}) => navigate(catalogPath(filter, extra)),
@@ -35,6 +41,7 @@ export function useAppNavigation() {
     goCheckout: (options = {}) => navigate(checkoutPath(options)),
     goAbout: () => navigate(ROUTES.about),
     goAdsWall: () => navigate(ROUTES.adsWall),
+    goAdDetail,
     goSupport: () => navigate(ROUTES.support),
     goSellerRegister: () => navigate(ROUTES.sellerRegister),
     // El centro de ayuda es una vista propia: misma URL para invitados y para
@@ -44,6 +51,6 @@ export function useAppNavigation() {
     goHelpContact: (topicId) => navigate(helpContactPath(topicId)),
     goTerms: () => navigate(ROUTES.terms),
     goPrivacy: () => navigate(ROUTES.privacy),
-  }), [navigate, goProduct, goStore, goProfile]);
+  }), [navigate, goProduct, goStore, goProfile, goAdDetail]);
 }
 

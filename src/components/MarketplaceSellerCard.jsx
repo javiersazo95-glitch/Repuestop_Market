@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Clock, MapPin, Package, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Clock, Heart, MapPin, Package, ShieldCheck } from 'lucide-react';
 import VehicleBrandLogo from './VehicleBrandLogo';
 import { parseShippingMethods, resolveShippingService } from '../data/shippingMethods';
 
@@ -7,7 +7,7 @@ function initials(name) {
   return String(name || 'RT').split(/\s+/).slice(0, 2).map((word) => word[0]).join('').toUpperCase();
 }
 
-export default function MarketplaceSellerCard({ store, avatarPhoto, onView }) {
+export default function MarketplaceSellerCard({ store, avatarPhoto, onView, isFavorite = false, onToggleFavorite }) {
   const rating = Number(store.rating ?? 0);
   const publications = Number(store.totalPublicaciones ?? 0);
   const averageResponseTime = store.averageResponseTime || store.tiempoPromedioRespuesta || '15 min';
@@ -18,6 +18,17 @@ export default function MarketplaceSellerCard({ store, avatarPhoto, onView }) {
 
   return (
     <article className="market-seller-card">
+      {onToggleFavorite && (
+        <button
+          className={`market-seller-favorite ${isFavorite ? 'is-active' : ''}`}
+          type="button"
+          aria-label={isFavorite ? 'Quitar tienda de favoritos' : 'Guardar tienda en favoritos'}
+          aria-pressed={isFavorite}
+          onClick={() => onToggleFavorite(store)}
+        >
+          <Heart size={19} fill={isFavorite ? 'currentColor' : 'none'} />
+        </button>
+      )}
       {store.coverUrl && (
         <div
           className="market-seller-cover"

@@ -1796,19 +1796,128 @@
 .choice-benefits {
   list-style: none;
   padding: 0;
-  margin: 0;
-  font-size: 11px;
+  margin: 6px 0 0;
+  font-size: 11.5px;
   color: #475569;
   line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
+.choice-benefits li { position: relative; padding-left: 13px; }
+.choice-benefits li::before { content: '•'; position: absolute; left: 2px; color: #94a3b8; }
+
+/* Cabecera de cada tarjeta de plan (paleta del móvil) */
+.upgrade-section-label { margin: 4px 0 10px; font-size: 12.5px; font-weight: 700; color: #334155; }
+.upgrade-choice-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.upgrade-choice-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px;
+}
+.upgrade-choice-cost {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11.5px; font-weight: 800; color: #0f172a; white-space: nowrap;
+}
+.upgrade-choice-price { margin: 0 0 6px; font-size: 12px; font-weight: 800; }
+.upgrade-choice-includes { margin: 0; font-size: 11px; color: #64748b; }
 
 .upgrade-balance-box {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 14px 18px;
-  margin-bottom: 20px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
+.upgrade-balance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: #475569;
+}
+.upgrade-balance-row strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+}
+.upgrade-balance-row strong.is-cost { color: var(--ads-primary, #0056BF); }
+.upgrade-balance-short {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid #fde68a;
+  font-size: 12px;
+  font-weight: 600;
+  color: #92400e;
+}
+.upgrade-recharge-btn {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 12px;
+  background: #d97706;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.upgrade-recharge-btn:hover { background: #b45309; }
+
+.upgrade-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.upgrade-actions-row.is-centered { justify-content: center; }
+.upgrade-cancel-btn {
+  border: 1px solid var(--ads-border, #D9E0E7);
+  background: #fff;
+  color: #475569;
+  border-radius: 10px;
+  padding: 11px 18px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.upgrade-cancel-btn:hover { border-color: #94a3b8; }
+.upgrade-confirm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 10px;
+  padding: 11px 20px;
+  background: var(--ads-primary, #0056BF);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.upgrade-confirm-btn:hover:not(:disabled) { background: var(--ads-primary-dark, #00459A); }
+.upgrade-confirm-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Pantalla de éxito del modal Mejorar aviso */
+.upgrade-success { text-align: center; padding: 12px 4px 6px; }
+.upgrade-success-icon {
+  width: 60px; height: 60px; margin: 0 auto 14px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: #fef3c7; color: #d97706;
+}
+.upgrade-success-icon.is-ok { background: #d1fae5; color: #059669; }
+.upgrade-success h3 { margin: 0 0 8px; font-size: 20px; font-weight: 850; color: #0f172a; }
+.upgrade-success p { margin: 0 auto 16px; max-width: 26rem; font-size: 13px; line-height: 1.55; color: #475569; }
 
 /* ==========================================================================
    PANEL DE GESTIÓN DE ANUNCIOS (LISTA Y METRICAS)
@@ -2206,8 +2315,23 @@
 .ad-moderation-warning svg { flex-shrink: 0; margin-top: 1px; }
 .ad-moderation-warning strong { display: block; font-size: 13px; }
 .ad-moderation-warning p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.5; }
+.ad-moderation-warning.is-ok { border-color: rgba(5, 150, 105, .35); background: #ecfdf5; color: #065f46; }
+.ad-moderation-warning.is-ok svg { color: #059669; }
 
-.ad-upgrade-hint { margin: 12px 0 0; color: #64748b; font-size: 12px; line-height: 1.5; }
+.ad-upgrade-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 12px 0 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  color: #5b21b6;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ad-upgrade-hint svg { flex-shrink: 0; margin-top: 1px; color: #7c3aed; }
 .ad-empty-note { padding: 20px 4px 6px; text-align: center; color: #64748b; font-size: 13px; }
 .ad-empty-note p { margin: 0 0 16px; }
 
@@ -2501,6 +2625,175 @@
 .steps-legend-body { display: flex; flex-direction: column; gap: 1px; font-size: 12px; line-height: 1.45; color: #475569; }
 .steps-legend-body strong { font-size: 12.5px; font-weight: 700; color: #0f172a; }
 .create-ad-steps { margin: 12px 0 4px; padding: 12px 14px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+
+/* Selector de logo de la empresa en la acreditación automotriz. */
+.acc-logo-field {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 4px 0 18px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+.acc-logo-preview {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #dbe3ec;
+  color: #94a3b8;
+}
+.acc-logo-preview img { width: 100%; height: 100%; object-fit: cover; }
+.acc-logo-spinner {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.7);
+  color: #0066ff;
+}
+.acc-logo-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.acc-logo-copy strong { font-size: 13px; font-weight: 800; color: #0f172a; }
+.acc-logo-copy > span { font-size: 11.5px; line-height: 1.4; color: #64748b; }
+.acc-logo-btn { align-self: flex-start; margin-top: 4px; width: auto; padding: 7px 13px; font-size: 12.5px; }
+.acc-logo-error { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: #dc2626; }
+
+.acc-agenda-hint {
+  display: flex;
+  gap: 9px;
+  margin: 12px 0 4px;
+  padding: 11px 13px;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  background: #fffbeb;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #92400e;
+}
+.acc-agenda-hint svg { flex-shrink: 0; color: #d97706; margin-top: 1px; }
+.acc-agenda-hint strong { font-weight: 800; }
+
+/* Panel "Configuración de agenda" dentro de Historial de citas. */
+.appt-agenda-panel { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+.appt-agenda-intro {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #cfe0fb;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #1e3a8a;
+}
+.appt-seg button svg { margin-right: 3px; vertical-align: -2px; }
+
+/* --- Sección de agendas con nombre (port de mobile AgendaConfigsSection) --- */
+.agenda-configs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--ads-border, #D9E0E7);
+  border-radius: 14px;
+  background: #fff;
+}
+.agenda-cfg-head { display: flex; align-items: center; gap: 10px; }
+.agenda-cfg-head-ic {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; border-radius: 11px;
+  background: var(--ads-primary-light, #EAF2FF); color: var(--ads-primary, #0056BF); flex-shrink: 0;
+}
+.agenda-cfg-head-txt { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.agenda-cfg-head-txt strong { font-size: 13.5px; font-weight: 800; color: #0f172a; }
+.agenda-cfg-head-txt span { font-size: 11.5px; line-height: 1.4; color: #64748b; }
+.agenda-cfg-add {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; border: none; border-radius: 11px;
+  background: var(--ads-primary, #0056BF); color: #fff; cursor: pointer; flex-shrink: 0;
+}
+.agenda-cfg-loading { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #64748b; padding: 10px 2px; }
+
+.agenda-cfg-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 20px 14px; border-radius: 12px;
+  border: 1px dashed rgba(0, 86, 191, 0.4);
+  background: var(--ads-primary-light, #EAF2FF);
+  color: #64748b; font-size: 12px; line-height: 1.45; text-align: center; cursor: pointer;
+}
+.agenda-cfg-empty > svg { color: var(--ads-primary, #0056BF); }
+.agenda-cfg-empty-cta { display: inline-flex; align-items: center; gap: 5px; color: var(--ads-primary, #0056BF); font-weight: 800; }
+
+.agenda-cfg-list { display: flex; flex-direction: column; gap: 8px; }
+.agenda-cfg-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 12px; border: 1px solid var(--ads-border, #D9E0E7); border-radius: 12px; background: #F7F9FB;
+}
+.agenda-cfg-row-ic {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 11px;
+  background: var(--ads-primary-light, #EAF2FF); color: var(--ads-primary, #0056BF); flex-shrink: 0;
+}
+.agenda-cfg-row-main {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+  border: none; background: none; text-align: left; cursor: pointer; padding: 0;
+}
+.agenda-cfg-row-title {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13.5px; font-weight: 800; color: #0f172a;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.agenda-cfg-inuse {
+  font-style: normal; font-size: 10px; font-weight: 800;
+  padding: 2px 7px; border-radius: 999px; background: #ecfdf5; color: #059669;
+}
+.agenda-cfg-row-summary { font-size: 11.5px; color: #64748b; line-height: 1.35; }
+.agenda-cfg-row-slots { font-size: 11px; font-weight: 800; color: #059669; }
+.agenda-cfg-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border: none; border-radius: 10px;
+  background: var(--ads-primary-light, #EAF2FF); color: var(--ads-primary, #0056BF); cursor: pointer; flex-shrink: 0;
+}
+.agenda-cfg-icon.is-danger { background: #fee2e2; color: #dc2626; }
+
+/* Selector de agenda dentro del formulario de anuncio */
+.ad-agenda-picker { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.ad-agenda-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 16px; border-radius: 12px; text-align: center; cursor: pointer;
+  border: 1px dashed rgba(5, 150, 105, 0.5); background: #ecfdf5;
+  font-size: 12px; line-height: 1.45; color: #475569;
+}
+.ad-agenda-empty > svg { color: #059669; }
+.ad-agenda-empty-cta { display: inline-flex; align-items: center; gap: 5px; color: #059669; font-weight: 800; }
+.ad-agenda-option {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 11px 12px; border: 1px solid var(--ads-border, #D9E0E7); border-radius: 12px;
+  background: #fff; cursor: pointer;
+}
+.ad-agenda-option.active { border-color: #059669; background: #f0fdf4; }
+.ad-agenda-option input { margin-top: 3px; accent-color: #059669; }
+.ad-agenda-option-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ad-agenda-option-body strong { font-size: 13px; font-weight: 800; color: #0f172a; }
+.ad-agenda-option-body em { font-style: normal; font-size: 11.5px; color: #64748b; }
+.ad-agenda-option-slots { color: #059669 !important; font-weight: 700; }
+.ad-agenda-add-link {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 5px;
+  border: none; background: none; color: #059669; font-size: 12px; font-weight: 800; cursor: pointer; padding: 4px 0;
+}
+
+/* Modal crear/editar agenda */
+.agenda-config-modal-card { max-width: 640px; }
+.agenda-config-modal-body { padding: 4px 2px; display: flex; flex-direction: column; gap: 14px; max-height: 64vh; overflow-y: auto; }
+.agenda-config-modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding-top: 14px; border-top: 1px solid var(--ads-border, #D9E0E7); }
 
 /* Pestañas de estado: texto plano con subrayado en la activa (no píldoras). */
 .mgmt-filter-tabs { gap: 4px; align-items: center; }
@@ -3009,6 +3302,7 @@
 .upgrade-unlocked-box strong { display: block; font-size: 12.5px; font-weight: 700; color: #065f46; }
 .upgrade-unlocked-box ul { margin: 6px 0 0; padding-left: 18px; }
 .upgrade-unlocked-box li { font-size: 12.5px; line-height: 18px; color: #047857; list-style: disc; }
+.upgrade-unlocked-cta { margin: 8px 0 0; font-size: 11.5px; line-height: 1.5; color: #065f46; }
 
 /* ==========================================================================
    PUBLICAR Y EDITAR ANUNCIO — Diseño Web Profesional y Balanceado

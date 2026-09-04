@@ -13,6 +13,8 @@ import { getPublicStoresApi } from '../services/api';
 import { adaptPage, adaptStore } from '../services/adapters';
 import MarketplaceSellerCard from './MarketplaceSellerCard';
 import StoreCardSkeleton from './skeletons/StoreCardSkeleton';
+import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
+import { useMarketplace } from '../context/MarketplaceContext';
 
 /**
  * /tiendas/publicas topea `size` en 100. Antes ese tope se pedía SIEMPRE (una
@@ -51,6 +53,8 @@ function uniqueOptions(values) {
 
 export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   const { user } = useAuth();
+  const { openAuthModal } = useMarketplace();
+  const { isStoreSaved, toggleStore } = useSavedMarketplaceItems(user?.userId ?? user?.id);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get('texto') || '');
@@ -423,6 +427,11 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                         store={store}
                         avatarPhoto={avatarPhoto}
                         onView={onSelectStore}
+                        isFavorite={isStoreSaved(store.id)}
+                        onToggleFavorite={(storeData) => {
+                          if (!user) { openAuthModal(); return; }
+                          toggleStore(storeData);
+                        }}
                       />
                     );
                   })}

@@ -15737,6 +15737,37 @@ input, select, textarea {
 .profile-product-card.is-clickable { display: block; color: inherit; text-decoration: none; cursor: pointer; }
 .profile-product-card.is-clickable:hover h4 { color: var(--color-brand-blue); }
 
+/* Centro unificado de favoritos: replica las tarjetas del catálogo, mural y
+   directorio, pero las organiza dentro del ancho disponible del perfil. */
+.favorites-hub { padding: 0; overflow: hidden; }
+.favorites-hero { padding: 27px 30px; display: flex; align-items: center; justify-content: space-between; gap: 24px; color: #fff; background: radial-gradient(circle at 82% 10%, rgba(75,145,255,.42), transparent 30%), linear-gradient(125deg,#071b3d,#0b4fb5 64%,#0874e7); }
+.favorites-eyebrow { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 7px; color: #bdd7ff; font-size: 10.5px; font-weight: 900; letter-spacing: .12em; }
+.favorites-hero h2 { margin: 0; color: #fff; font-size: clamp(25px,3vw,34px); font-weight: 900; letter-spacing: -.035em; }
+.favorites-hero p { margin: 5px 0 0; color: #dbeafe; font-size: 13.5px; }
+.favorites-total { width: 90px; height: 74px; flex: 0 0 auto; display: grid; place-content: center; border: 1px solid rgba(255,255,255,.2); border-radius: 17px; background: rgba(255,255,255,.11); backdrop-filter: blur(9px); text-align: center; }
+.favorites-total strong { font-size: 27px; line-height: 1; }.favorites-total span { margin-top: 5px; color: #dbeafe; font-size: 10.5px; font-weight: 700; }
+.favorites-toolbar { padding: 16px 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid #e7edf5; background: #fff; }
+.favorites-tabs { display: flex; align-items: center; gap: 5px; overflow-x: auto; scrollbar-width: none; }.favorites-tabs::-webkit-scrollbar { display: none; }
+.favorites-tabs button { min-height: 38px; padding: 7px 11px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: 10px; color: #627086; background: transparent; font-size: 12px; font-weight: 800; white-space: nowrap; cursor: pointer; }
+.favorites-tabs button small { min-width: 20px; height: 20px; display: grid; place-items: center; border-radius: 10px; color: #718096; background: #edf2f7; font-size: 9.5px; }
+.favorites-tabs button.is-active { border-color: #cfe0fd; color: #075cca; background: #eff6ff; }.favorites-tabs button.is-active small { color: #fff; background: #1268f3; }
+.favorites-search { width: min(260px,32%); min-width: 190px; height: 40px; padding: 0 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #dce4ef; border-radius: 11px; color: #8090a5; background: #f8fafc; }
+.favorites-search:focus-within { border-color: #7eb1ff; box-shadow: 0 0 0 3px rgba(18,104,243,.1); background: #fff; }.favorites-search input { width: 100%; min-width: 0; border: 0; outline: 0; color: #17233b; background: transparent; font: inherit; font-size: 12px; }
+.favorites-sections { padding: 24px; display: grid; gap: 30px; background: #f7f9fc; }
+.favorites-section { min-width: 0; }.favorites-section-heading { margin-bottom: 13px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.favorites-section-heading h3 { margin: 0; color: #102a4e; font-size: 17px; font-weight: 900; }.favorites-section-heading p { margin: 3px 0 0; color: #78869a; font-size: 11.5px; }.favorites-section-heading > span { min-width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #dbe7f6; border-radius: 9px; color: #1268f3; background: #fff; font-size: 11px; font-weight: 900; }
+.favorites-cards-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 15px; align-items: stretch; }.favorites-card-wrap { position: relative; min-width: 0; }.favorites-card-wrap > .market-product-card { height: 100%; }
+.favorites-removing { position: absolute; z-index: 8; inset: 0; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 15px; color: #526174; background: rgba(255,255,255,.9); backdrop-filter: blur(2px); font-size: 11px; font-weight: 800; }
+.favorites-empty { min-height: 180px; padding: 24px; display: grid; place-items: center; align-content: center; border: 1px dashed #cbd8e9; border-radius: 16px; background: #fff; text-align: center; }
+.favorites-empty > span { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; color: #1268f3; background: #edf5ff; }.favorites-empty h3 { margin: 9px 0 3px; color: #173052; font-size: 14px; }.favorites-empty p { max-width: 380px; margin: 0; color: #738197; font-size: 11.5px; line-height: 1.5; }.favorites-empty button { margin-top: 12px; padding: 8px 13px; border: 0; border-radius: 9px; color: #fff; background: #1268f3; font-size: 11px; font-weight: 800; cursor: pointer; }
+.favorites-no-results,.favorites-loading { min-height: 100px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px dashed #d7e0eb; border-radius: 14px; color: #718096; background: #fff; font-size: 12px; }.favorites-loading { margin: 24px; }.favorites-error { margin: 15px 22px 0; padding: 10px 12px; border-radius: 10px; color: #b4232a; background: #fff1f2; font-size: 12px; }
+
+.market-seller-card { position: relative; }
+.market-seller-favorite { position: absolute; z-index: 5; top: 11px; right: 11px; width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.78); border-radius: 50%; color: #334155; background: rgba(255,255,255,.94); box-shadow: 0 5px 13px rgba(15,34,66,.18); cursor: pointer; transition: transform .16s ease,color .16s ease; }.market-seller-favorite:hover { transform: scale(1.06); color: #e11d48; }.market-seller-favorite.is-active { color: #e11d48; background: #fff1f5; }
+
+@media (max-width: 1100px) { .favorites-cards-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 720px) { .favorites-hero { padding: 22px 18px; }.favorites-total { width: 76px; height: 66px; }.favorites-toolbar { padding: 12px; align-items: stretch; flex-direction: column; }.favorites-search { width: 100%; min-width: 0; }.favorites-sections { padding: 16px 12px; gap: 24px; }.favorites-cards-grid { grid-template-columns: 1fr; }.favorites-section-heading p { display: none; } }
+
 /* Cabecera del producto en "Mis preguntas" del comprador: miniatura + nombre que lleva
    a la ficha. La pregunta se hace para decidir una compra, asi que tiene que haber
    camino de vuelta al repuesto. */

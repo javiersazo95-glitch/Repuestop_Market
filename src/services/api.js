@@ -1365,6 +1365,16 @@ export async function updateAdApi(adId, payload) {
 }
 
 /**
+ * Ajuste puntual de la agenda de un anuncio empresarial (`PATCH /anuncios/{id}/agenda`).
+ * A diferencia del PUT completo, NO devuelve el anuncio a moderacion ni lo saca
+ * del mural: el proveedor solo esta afinando sus horarios de reserva.
+ * `payload`: { hasOnlineBooking, agendaConfig, agendaConfigId, agendaConfigName, agendaHours }.
+ */
+export async function updateAdAgendaApi(adId, payload) {
+  return fetchApi(`/anuncios/${adId}/agenda`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+/**
  * Baja logica: el backend solo hace `setActivo(false)` y conserva el
  * `moderationStatus`, asi que el anuncio sigue llegando en `GET /anuncios/mios`.
  * Quien lo consuma tiene que ocultarlo por su cuenta (ver `adsStorage.js`).
@@ -1785,4 +1795,41 @@ export async function submitAutomotiveServiceAccreditationApi(data, files) {
     body: formData,
     signal: AbortSignal.timeout(30000),
   });
+}
+
+/**
+ * Cambia solo el logo de la empresa, sin reabrir el expediente. Recibe la URL ya
+ * subida (con `uploadAdImagesApi`). Espejo de `/me/telefono`.
+ */
+export async function updateAutomotiveServiceLogoApi(logoUrl) {
+  return fetchApi('/automotive-services/me/logo', {
+    method: 'PATCH',
+    body: JSON.stringify({ logoUrl: logoUrl || null }),
+  });
+}
+
+// -------------------------------------------------------------
+// AGENDAS CON NOMBRE (sincronizadas web + móvil, `/api/v1/agenda-configs`)
+// -------------------------------------------------------------
+
+/** Lista las agendas con nombre de la cuenta autenticada. */
+export async function fetchAgendaConfigsApi({ signal } = {}) {
+  return fetchApi('/agenda-configs', { method: 'GET', signal });
+}
+
+/**
+ * Crea o actualiza una agenda (upsert por `id` del cliente). `config` es el shape
+ * de `AgendaConfig` que usa la UI: { id, name, startDay, endDay, closedDays,
+ * sameHoursEveryDay, defaultHours, customHours, breakEnabled, breakHours, slotMinutes }.
+ */
+export async function upsertAgendaConfigApi(config) {
+  const { id, ...rest } = config || {};
+  return fetchApi(`/agenda-configs/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(rest),
+  });
+}
+
+export async function deleteAgendaConfigApi(id) {
+  return fetchApi(`/agenda-configs/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }

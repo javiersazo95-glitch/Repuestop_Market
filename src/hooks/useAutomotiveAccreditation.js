@@ -53,6 +53,7 @@ export function useAutomotiveAccreditation(enabled = true) {
     isLoading,
     reviewNotes: String(record?.notasRevision || ''),
     businessName: String(record?.nombreNegocio || ''),
+    logoUrl: String(record?.logoUrl || ''),
     captadorAlias: record?.captadorAlias || '',
     // Los datos del negocio validado solo se exponen con el expediente aprobado:
     // antes no hay nada verificado que precargar en el formulario del aviso.
@@ -63,6 +64,7 @@ export function useAutomotiveAccreditation(enabled = true) {
           commune: String(record?.comuna || ''),
           address: String(record?.direccion || ''),
           phone: String(record?.telefono || ''),
+          logoUrl: String(record?.logoUrl || ''),
         }
       : null,
     refresh: () => load(),

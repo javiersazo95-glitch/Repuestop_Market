@@ -1,25 +1,27 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertCircle, CalendarClock, Camera, Check, ChevronLeft, ChevronRight, Clock3, Eye,
-  Film, Heart, Loader2, LockKeyhole, MessageCircle, Plus, Sparkles, Trash2, TrendingUp, UserPlus, X
+  AlertCircle, CalendarClock, Camera, Car, Check, ChevronLeft, ChevronRight, Clock3, Eye,
+  Film, Heart, Loader2, LockKeyhole, MessageCircle, Plus, PlusCircle, Sparkles, Trash2, TrendingUp, UserPlus, X
 } from 'lucide-react';
 import {
   AD_TIERS, AD_TIER_ORDER, AD_FEATURE_TAGS, SERVICE_CATEGORIES, getNewlyUnlockedFeatures
 } from '../../data/automotiveAdsData';
 import {
-  createDefaultSchedule, parseOpeningHours, formatOpeningHours, scheduleToAgendaConfig
+  createDefaultSchedule, parseOpeningHours, formatOpeningHours
 } from '../../data/openingHours';
-import { getRegionesApi, getComunasApi, getSellerStoreApi } from '../../services/api';
+import { getRegionesApi, getComunasApi, getSellerStoreApi, getVehicleBrandsApi } from '../../services/api';
+import {
+  getAgendaConfigs, getCachedAgendaConfigs, subscribeToAgendaConfigsUpdates,
+} from '../../services/agendaConfigsStorage';
+import AgendaConfigModal from './AgendaConfigModal';
 import { resolverUbicacionPorNombre } from '../../services/geoLookup';
 import { useAuth } from '../../context/AuthContext';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import OpeningHoursPicker from './OpeningHoursPicker';
 import {
-  createDefaultAgendaConfig, normalizeAgendaConfig, toAgendaConfigPayload,
-  getAgendaSummaryText, validateAgendaConfig
+  toAgendaConfigPayload, getAgendaSummaryText, getAgendaWeeklySlotsCount, validateAgendaConfig
 } from '../../data/agendaConfig';
 import { AD_TIER_PRICES_CLP, UPGRADE_TOKEN_COSTS, uploadAdImages, adErrorMessage } from '../../services/adsStorage';
-import AgendaScheduleEditor from './AgendaScheduleEditor';
 import RepuestopCoin from './RepuestopCoin';
 
 /**
@@ -69,21 +71,12 @@ const quitarPrefijo = (valor) => {
   return (digitos.startsWith('56') ? digitos.slice(2) : digitos).slice(-PHONE_DIGITS);
 };
 
-/**
- * El movil identifica la agenda de un aviso por `agendaConfigId` y recien despues
- * mira el `agendaConfig` que trae el anuncio (`mobile/components/ads/AdAppointmentModal.tsx`,
- * en el efecto que resuelve la configuracion). Un aviso publicado desde la web con
- * la agenda completa pero sin ese id se ve SIN dias disponibles en la app, aunque
- * el backend lo haya aceptado: no valida ese campo. Por eso siempre se emite uno.
- */
-const newAgendaConfigId = () => `web-agc-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
-
 /** Marca la funcion que se acaba de desbloquear, para que salte a la vista. */
 function EtiquetaNueva() {
   return <span className="ad-nuevo-tag">NUEVO</span>;
 }
 
-const AD_FORM_STEPS = ['Plan', 'Aviso', 'Contacto'];
+const AD_FORM_STEPS = ['Plan', 'Aviso', 'Beneficios del plan'];
 const WHY_PUBLISH_REASONS = [
   { Icon: Eye, title: 'Más visibilidad', text: 'Aparece frente a miles de conductores.' },
   { Icon: UserPlus, title: 'Nuevos clientes', text: 'Recibe consultas de personas interesadas.' },
@@ -155,24 +148,67 @@ export default function AdForm({
   const [is24Hours, setIs24Hours] = useState(initialAd?.is24Hours === true);
   const [features, setFeatures] = useState(initialAd?.features || []);
   const [servicesOffered, setServicesOffered] = useState(initialAd?.servicesOffered || []);
+  // Marcas que atiende el taller. Vacío = atiende todas.
+  const [specialistBrands, setSpecialistBrands] = useState(() => (
+    Array.isArray(initialAd?.specialistBrands)
+      ? initialAd.specialistBrands
+        .map((brand) => typeof brand === 'string' ? brand.trim() : String(brand?.nombre || brand?.name || '').trim())
+        .filter(Boolean)
+      : []
+  ));
+  const [brandCatalog, setBrandCatalog] = useState([]);
+  const [brandDraft, setBrandDraft] = useState('');
   const [serviceDraft, setServiceDraft] = useState('');
   const [images, setImages] = useState(initialAd?.images || []);
   const [storyImages, setStoryImages] = useState(initialAd?.storyImages || []);
   const [uploadTarget, setUploadTarget] = useState('');
   const [uploadError, setUploadError] = useState('');
-  const [step, setStep] = useState(mode === 'create' ? 0 : 1);
+  // En creación se parte del plan. Al editar se parte del contenido, salvo que
+  // se venga de una mejora de plan: ahí se va directo a "Beneficios del plan"
+  // (etapa 3), que es donde se enciende lo recién desbloqueado.
+  const [step, setStep] = useState(mode === 'create' ? 0 : (upgradedToTier ? 2 : 1));
   const [stepError, setStepError] = useState('');
   const scrollRef = useRef(null);
 
-  // La agenda solo existe en el plan Empresarial. Se conserva en el estado
-  // aunque se baje de plan para no perderla si el socio vuelve a subir antes de
-  // guardar; lo que decide si viaja al backend es `bookingEnabled` + el plan.
+  // La agenda solo existe en el plan Empresarial. Se elige de las agendas con
+  // nombre guardadas (sincronizadas con la app); lo que decide si viaja al
+  // backend es `bookingEnabled` + el plan + una agenda elegida.
   const [bookingEnabled, setBookingEnabled] = useState(initialAd?.hasOnlineBooking === true);
-  const [agendaConfig, setAgendaConfig] = useState(
-    () => normalizeAgendaConfig(initialAd?.agendaConfig) || createDefaultAgendaConfig()
+  const [agendaConfigs, setAgendaConfigs] = useState(() => getCachedAgendaConfigs());
+  const [agendaConfigId, setAgendaConfigId] = useState(initialAd?.agendaConfigId || '');
+  const [isAgendaModalOpen, setIsAgendaModalOpen] = useState(false);
+
+  const selectedAgendaConfig = useMemo(
+    () => agendaConfigs.find((c) => c.id === agendaConfigId) || null,
+    [agendaConfigs, agendaConfigId]
   );
-  const [agendaConfigName, setAgendaConfigName] = useState(initialAd?.agendaConfigName || '');
-  const [agendaConfigId] = useState(initialAd?.agendaConfigId || newAgendaConfigId());
+
+  useEffect(() => {
+    let active = true;
+    getAgendaConfigs().then((list) => { if (active) setAgendaConfigs(list); }).catch(() => {});
+    const unsubscribe = subscribeToAgendaConfigsUpdates((list) => { if (active) setAgendaConfigs(list); });
+    return () => { active = false; unsubscribe(); };
+  }, []);
+
+  // Si hay una sola agenda y no se eligió ninguna, se preselecciona.
+  useEffect(() => {
+    if (!bookingEnabled || agendaConfigId) return;
+    if (agendaConfigs.length === 1) setAgendaConfigId(agendaConfigs[0].id);
+  }, [bookingEnabled, agendaConfigId, agendaConfigs]);
+
+  useEffect(() => {
+    let active = true;
+    getVehicleBrandsApi()
+      .then((list) => {
+        if (!active) return;
+        const names = (Array.isArray(list) ? list : [])
+          .map((b) => (typeof b === 'string' ? b : b?.nombre || b?.name || ''))
+          .filter(Boolean);
+        setBrandCatalog([...new Set(names)].sort((a, b) => a.localeCompare(b, 'es')));
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   /**
    * Funciones que se desbloquearon con la ULTIMA mejora de plan, no todas las
@@ -283,19 +319,7 @@ export default function AdForm({
     return () => { vigente = false; controller.abort(); };
   }, [mode, user?.sellerId, prefill?.commune, seleccionarPorNombre]);
 
-  /**
-   * Al encender las reservas, la agenda parte del horario de atencion ya
-   * declarado en vez de un Lun-Vie generico. Es el mismo dato dicho dos veces:
-   * sin esto se podia publicar "Lun a Sab 09:00 a 20:00" con una agenda que solo
-   * ofrecia Mar a Vie hasta las 18:00. Solo siembra al activarla; despues el
-   * socio ajusta bloques y colacion sin que nada se los pise.
-   */
-  const handleBookingToggle = (activar) => {
-    setBookingEnabled(activar);
-    if (!activar || initialAd?.agendaConfig) return;
-    const sembrada = scheduleToAgendaConfig(schedule, agendaConfig);
-    if (sembrada) setAgendaConfig(sembrada);
-  };
+  const handleBookingToggle = (activar) => setBookingEnabled(activar);
 
   const limits = AD_TIERS[tier] || AD_TIERS.basica;
   const tierCost = mode === 'create' && tier === 'basica' && !hasUsedBasicFreePeriod
@@ -317,21 +341,23 @@ export default function AdForm({
   const visibleServices = servicesOffered.slice(0, limits.maxTags);
 
   // `AnuncioService.validar()` responde 400 si `hasOnlineBooking` viene encendido
-  // sin una agenda que pase `validarAgenda()`. Se bloquea el envio en vez de
-  // dejar que el backend lo rechace despues de subir las fotos.
-  const agendaErrors = limits.hasBooking && bookingEnabled ? validateAgendaConfig(agendaConfig) : [];
+  // sin una agenda válida. Con el selector, "válida" = hay una agenda elegida y
+  // su horario pasa `validateAgendaConfig`.
+  const agendaErrors = limits.hasBooking && bookingEnabled
+    ? (selectedAgendaConfig
+      ? validateAgendaConfig(selectedAgendaConfig)
+      : ['Elige una agenda para recibir citas (o créala con "Nueva agenda").'])
+    : [];
   const hasAgendaErrors = agendaErrors.length > 0;
-  // Lo obligatorio de la etapa 1: Aviso (contenido del servicio)
+  // Etapa 2 ("Aviso") junta TODO lo obligatorio: contenido + contacto + ubicación.
+  // La etapa 3 son solo los extras del plan y no tiene campos obligatorios (salvo
+  // la agenda si el usuario enciende las reservas, que se valida aparte).
   const contentMissing = [
     !category && 'la categoría',
     !title.trim() && 'el título',
     !description.trim() && 'la descripción',
     !(priceType === 'fixed' ? priceValue.trim() : priceText.trim()) && 'el precio o detalle de cotización',
     visibleImages.length === 0 && 'al menos una foto',
-  ].filter(Boolean);
-
-  // Lo obligatorio de la etapa 2: Detalles (contacto y ubicación)
-  const detailsMissing = [
     !company.trim() && 'el nombre del taller o empresa',
     !regionId && 'la región',
     !comunaId && 'la comuna',
@@ -339,7 +365,7 @@ export default function AdForm({
     phone.replace(/\D/g, '').length !== PHONE_DIGITS && 'un teléfono de 9 dígitos',
   ].filter(Boolean);
 
-  const stepMissing = step === 1 ? contentMissing : step === 2 ? detailsMissing : [];
+  const stepMissing = step === 1 ? contentMissing : [];
 
   const toggleFeature = (tag) => {
     setFeatures((current) => {
@@ -354,6 +380,21 @@ export default function AdForm({
     if (!value || servicesOffered.includes(value) || servicesOffered.length >= limits.maxTags) return;
     setServicesOffered([...servicesOffered, value]);
     setServiceDraft('');
+  };
+
+  const addSpecialistBrand = (rawValue = brandDraft) => {
+    const typed = String(rawValue || '').trim();
+    if (!typed) return;
+    // Si coincide con el catálogo conservamos su escritura oficial (por ejemplo,
+    // "Mercedes-Benz"). Las marcas libres siguen permitidas para talleres de nicho.
+    const catalogMatch = brandCatalog.find((brand) => brand.localeCompare(typed, 'es', { sensitivity: 'base' }) === 0);
+    const value = catalogMatch || typed;
+    setSpecialistBrands((current) => {
+      const exists = current.some((brand) => brand.localeCompare(value, 'es', { sensitivity: 'base' }) === 0);
+      if (exists || current.length >= 20) return current;
+      return [...current, value];
+    });
+    setBrandDraft('');
   };
 
   const handleUpload = async (event, target) => {
@@ -445,13 +486,7 @@ export default function AdForm({
     event.preventDefault();
     if (contentMissing.length > 0) {
       setStep(1);
-      setStepError(`Completa el contenido del aviso: falta ${contentMissing.join(', ')}.`);
-      scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-    if (detailsMissing.length > 0) {
-      setStep(2);
-      setStepError(`Completa los detalles de contacto y ubicación: falta ${detailsMissing.join(', ')}.`);
+      setStepError(`Completa el aviso: falta ${contentMissing.join(', ')}.`);
       scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -462,7 +497,7 @@ export default function AdForm({
       return;
     }
 
-    const bookingOn = limits.hasBooking && bookingEnabled;
+    const bookingOn = limits.hasBooking && bookingEnabled && Boolean(selectedAgendaConfig);
     onSubmit?.({
       ...initialAd,
       tier,
@@ -483,15 +518,14 @@ export default function AdForm({
       is24Hours,
       features: visibleFeatures,
       servicesOffered: visibleServices,
+      specialistBrands,
       images: visibleImages,
       storyImages: visibleStories,
       hasOnlineBooking: bookingOn,
-      agendaConfig: bookingOn ? toAgendaConfigPayload(agendaConfig) : null,
-      agendaConfigId: bookingOn ? agendaConfigId : null,
-      agendaConfigName: bookingOn
-        ? (agendaConfigName.trim() || `Agenda de ${company.trim() || title.trim() || 'mi taller'}`)
-        : null,
-      agendaHours: bookingOn ? getAgendaSummaryText(agendaConfig) : ''
+      agendaConfig: bookingOn ? toAgendaConfigPayload(selectedAgendaConfig) : null,
+      agendaConfigId: bookingOn ? selectedAgendaConfig.id : null,
+      agendaConfigName: bookingOn ? selectedAgendaConfig.name : null,
+      agendaHours: bookingOn ? getAgendaSummaryText(selectedAgendaConfig) : ''
     });
   };
 
@@ -566,30 +600,39 @@ export default function AdForm({
             {step === 0
               ? 'Elige el plan de tu anuncio'
               : step === 1
-                ? 'Contenido del aviso'
-                : 'Detalles del aviso'}
+                ? 'Datos del aviso'
+                : `Beneficios de tu plan ${limits.name}`}
           </h4>
           <p>
             {step === 0
               ? 'Define la visibilidad y las herramientas que tendrá tu publicación durante 30 días.'
               : step === 1
-                ? 'Solo lo necesario para publicar: qué ofreces, a qué precio y con qué fotos.'
-                : 'Ubicación, datos de contacto, horario y funciones adicionales de tu plan.'}
+                ? 'Todo lo necesario para publicar: qué ofreces, precio, fotos, contacto, ubicación y horario.'
+                : 'Solo los extras que suma tu plan: etiquetas, WhatsApp, carrusel de historias y agenda de citas.'}
           </p>
         </div>
 
-        {unlockedFeatures.length > 0 && (
+        {unlockedFeatures.length > 0 && step === 2 && (
           <div className="ad-unlocked-banner">
             <Sparkles size={17} />
             <div>
               <strong>
                 {unlockedFeatures.length === 1
-                  ? `Desbloqueaste ${unlockedFeatures[0]}.`
-                  : `Desbloqueaste ${unlockedFeatures.length} funciones nuevas.`}
+                  ? `Con el plan ${limits.name} desbloqueaste: ${unlockedFeatures[0]}.`
+                  : `Con el plan ${limits.name} desbloqueaste ${unlockedFeatures.length} funciones: ${unlockedFeatures.join(', ')}.`}
               </strong>
               <p>
-                Enciéndelas aquí abajo y guarda los cambios para que queden activas.
+                Marcada con <span className="ad-nuevo-tag">NUEVO</span> aquí abajo. Enciéndela y guarda para que quede activa.
               </p>
+            </div>
+          </div>
+        )}
+        {unlockedFeatures.length > 0 && step === 1 && (
+          <div className="ad-unlocked-banner">
+            <Sparkles size={17} />
+            <div>
+              <strong>Desbloqueaste {unlockedFeatures.join(', ')} con tu nuevo plan.</strong>
+              <p>Pasa a la etapa <b>Beneficios del plan</b> para encenderla.</p>
             </div>
           </div>
         )}
@@ -667,8 +710,8 @@ export default function AdForm({
           <div className="ad-step-panel ad-step-content">
             {mode === 'edit' && (
               <div className="ad-section-header">
-                <h5>1. Contenido del servicio</h5>
-                <p>Modifica el título, categoría, modalidad de cobro y fotos de tu aviso.</p>
+                <h5>Datos del aviso</h5>
+                <p>Título, categoría, precio, fotos, contacto, ubicación y horario.</p>
               </div>
             )}
             <div className="ad-form-grid booking-form-grid">
@@ -784,20 +827,7 @@ export default function AdForm({
                 </div>
                 {renderGallery('images', visibleImages, limits.maxImages, 'Formatos: JPG, PNG o WEBP, hasta 5MB por foto. Sube al menos una foto para publicar tu anuncio.')}
               </div>
-            </div>
-          </div>
-        )}
 
-        {/* ETAPA 2: DETALLES */}
-        {step === 2 && (
-          <div className="ad-step-panel ad-step-details">
-            {mode === 'edit' && (
-              <div className="ad-section-header">
-                <h5>2. Ubicación, contacto y herramientas del plan</h5>
-                <p>Datos de tu local, teléfonos, horarios y beneficios activos.</p>
-              </div>
-            )}
-            <div className="ad-form-grid booking-form-grid">
               <div className="ad-field booking-field">
                 <div className="ad-field-header">
                   <label htmlFor="ad-company">Nombre del taller o empresa *</label>
@@ -881,50 +911,6 @@ export default function AdForm({
                 />
               </div>
 
-              <div
-                className={`ad-field booking-field col-span-2 ${esFuncionNueva('WhatsApp directo') ? 'is-unlocked' : ''}`}
-                ref={unlockedFeatures[0] === 'WhatsApp directo' ? primeraNuevaRef : null}
-              >
-                <div className="ad-field-header">
-                  <label htmlFor="ad-whatsapp">
-                    <MessageCircle size={14} /> WhatsApp directo
-                    {limits.hasWhatsapp
-                      ? ` (plan ${limits.name})`
-                      : ` (disponible en Destacada, Premium o Empresarial)`}
-                    {esFuncionNueva('WhatsApp directo') && <EtiquetaNueva />}
-                  </label>
-                  {limits.hasWhatsapp && <CharCount value={whatsapp} max={PHONE_DIGITS} />}
-                </div>
-                {limits.hasWhatsapp ? (
-                  <div className="ad-field-with-actions">
-                    <div className="phone-field">
-                      <span className="phone-prefix">+56</span>
-                      <input
-                        id="ad-whatsapp"
-                        type="tel"
-                        inputMode="numeric"
-                        placeholder="9 8765 4321"
-                        value={whatsapp}
-                        onChange={(e) => setWhatsapp(soloDigitos(e.target.value))}
-                      />
-                    </div>
-                    {phone && whatsapp !== phone && (
-                      <button
-                        type="button"
-                        className="btn-copy-phone"
-                        onClick={() => setWhatsapp(phone)}
-                      >
-                        Usar el mismo teléfono
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <small className="ad-upload-hint">
-                    Permite a los conductores iniciar chat directo por WhatsApp contigo desde el aviso en el mural.
-                  </small>
-                )}
-              </div>
-
               <div className="ad-field booking-field col-span-2">
                 <div className="ad-field-header">
                   <label><Clock3 size={14} /> Horario de atención</label>
@@ -942,28 +928,6 @@ export default function AdForm({
                 ) : (
                   <OpeningHoursPicker schedule={schedule} onChange={setSchedule} />
                 )}
-              </div>
-
-              <div className="ad-field booking-field col-span-2">
-                <div className="ad-field-header">
-                  <label>Etiquetas del anuncio ({visibleFeatures.length}/{limits.maxTags} del plan {limits.name})</label>
-                </div>
-                <div className="ad-tag-picker">
-                  {AD_FEATURE_TAGS.map((tag) => {
-                    const selected = visibleFeatures.includes(tag);
-                    return (
-                      <button
-                        type="button"
-                        key={tag}
-                        className={`ad-tag-chip ${selected ? 'active' : ''}`}
-                        disabled={!selected && visibleFeatures.length >= limits.maxTags}
-                        onClick={() => toggleFeature(tag)}
-                      >
-                        {selected && <Check size={11} />} {tag}
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
 
               <div className="ad-field booking-field col-span-2">
@@ -1010,6 +974,142 @@ export default function AdForm({
                 )}
               </div>
 
+              <div className="ad-field booking-field col-span-2">
+                <div className="ad-field-header">
+                  <label><Car size={14} /> Marcas que atiendes ({specialistBrands.length}/20, opcional)</label>
+                </div>
+                <div className="ad-chip-input">
+                  <input
+                    type="text"
+                    list="ad-brand-catalog"
+                    placeholder="Ej: Toyota"
+                    value={brandDraft}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setBrandDraft(value);
+                      // Seleccionar una opción del datalist debe registrarla al instante;
+                      // antes quedaba escrita en el input pero nunca entraba a la lista.
+                      const exact = brandCatalog.find((brand) => brand.localeCompare(value.trim(), 'es', { sensitivity: 'base' }) === 0);
+                      if (exact) addSpecialistBrand(exact);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter') return;
+                      e.preventDefault();
+                      addSpecialistBrand(e.currentTarget.value);
+                    }}
+                    onBlur={(e) => addSpecialistBrand(e.currentTarget.value)}
+                    disabled={specialistBrands.length >= 20}
+                  />
+                  <datalist id="ad-brand-catalog">
+                    {brandCatalog
+                      .filter((b) => !specialistBrands.includes(b))
+                      .map((b) => <option key={b} value={b} />)}
+                  </datalist>
+                  <button
+                    type="button"
+                    className="btn-ad-phone"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => addSpecialistBrand()}
+                    disabled={!brandDraft.trim() || specialistBrands.length >= 20}
+                  >
+                    <Plus size={14} /> Agregar
+                  </button>
+                </div>
+                <small className="ad-upload-hint">
+                  Selecciona una sugerencia o escribe una marca y presiona Agregar. Déjalo vacío si atiendes todas las marcas.
+                </small>
+                {specialistBrands.length > 0 && (
+                  <div className="ad-tag-picker" style={{ marginTop: '8px' }}>
+                    {specialistBrands.map((brand) => (
+                      <span key={brand} className="ad-tag-chip active">
+                        <Car size={11} /> {brand}
+                        <button
+                          type="button"
+                          aria-label={`Quitar ${brand}`}
+                          onClick={() => setSpecialistBrands(specialistBrands.filter((b) => b !== brand))}
+                        >
+                          <X size={11} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ETAPA 3: BENEFICIOS DEL PLAN — solo los extras que suma el plan elegido */}
+        {step === 2 && (
+          <div className="ad-step-panel ad-step-details">
+            <div className="ad-section-header">
+              <h5>Beneficios de tu plan {limits.name}</h5>
+              <p>Solo lo que suma tu plan: etiquetas, WhatsApp directo, carrusel de historias y agenda de citas.</p>
+            </div>
+            <div className="ad-form-grid booking-form-grid">
+              <div className="ad-field booking-field col-span-2">
+                <div className="ad-field-header">
+                  <label>
+                    Etiquetas del anuncio ({visibleFeatures.length}/{limits.maxTags} del plan {limits.name})
+                  </label>
+                </div>
+                <p className="ad-upload-hint">Aparecen como distintivos en tu tarjeta del mural.</p>
+                <div className="ad-tag-picker">
+                  {AD_FEATURE_TAGS.map((tag) => {
+                    const selected = visibleFeatures.includes(tag);
+                    return (
+                      <button
+                        type="button"
+                        key={tag}
+                        className={`ad-tag-chip ${selected ? 'active' : ''}`}
+                        disabled={!selected && visibleFeatures.length >= limits.maxTags}
+                        onClick={() => toggleFeature(tag)}
+                      >
+                        {selected && <Check size={11} />} {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {limits.hasWhatsapp && (
+                <div
+                  className={`ad-field booking-field col-span-2 ${esFuncionNueva('WhatsApp directo') ? 'is-unlocked' : ''}`}
+                  ref={unlockedFeatures[0] === 'WhatsApp directo' ? primeraNuevaRef : null}
+                >
+                  <div className="ad-field-header">
+                    <label htmlFor="ad-whatsapp">
+                      <MessageCircle size={14} /> WhatsApp directo (plan {limits.name})
+                      {esFuncionNueva('WhatsApp directo') && <EtiquetaNueva />}
+                    </label>
+                    <CharCount value={whatsapp} max={PHONE_DIGITS} />
+                  </div>
+                  <p className="ad-upload-hint">Los clientes abren un chat contigo desde el aviso. Déjalo vacío para no mostrar el botón.</p>
+                  <div className="ad-field-with-actions">
+                    <div className="phone-field">
+                      <span className="phone-prefix">+56</span>
+                      <input
+                        id="ad-whatsapp"
+                        type="tel"
+                        inputMode="numeric"
+                        placeholder="9 8765 4321"
+                        value={whatsapp}
+                        onChange={(e) => setWhatsapp(soloDigitos(e.target.value))}
+                      />
+                    </div>
+                    {phone && whatsapp !== phone && (
+                      <button
+                        type="button"
+                        className="btn-copy-phone"
+                        onClick={() => setWhatsapp(phone)}
+                      >
+                        Usar el mismo teléfono
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {limits.maxStories > 0 && (
                 <div
                   className={`ad-field booking-field col-span-2 ${esFuncionNueva('Carrusel de Historias') ? 'is-unlocked' : ''}`}
@@ -1017,11 +1117,11 @@ export default function AdForm({
                 >
                   <div className="ad-field-header">
                     <label>
-                      Historias ({visibleStories.length}/{limits.maxStories} del plan {limits.name})
+                      Carrusel de historias ({visibleStories.length}/{limits.maxStories} del plan {limits.name})
                       {esFuncionNueva('Carrusel de Historias') && <EtiquetaNueva />}
                     </label>
                   </div>
-                  {renderGallery('stories', visibleStories, limits.maxStories, 'Aparecen en el carrusel de historias en la parte superior del mural.')}
+                  {renderGallery('stories', visibleStories, limits.maxStories, 'Fotos destacadas que aparecen en el carrusel de la parte superior del mural.')}
                 </div>
               )}
 
@@ -1037,6 +1137,14 @@ export default function AdForm({
                     </label>
                   </div>
 
+                  <div className="ad-form-error" style={{ background: '#fffbeb', borderColor: '#fde68a', color: '#92400e' }}>
+                    <CalendarClock size={15} />
+                    <span>
+                      El plan Empresarial <strong>necesita una agenda</strong> para recibir citas.
+                      Las agendas se comparten con la app.
+                    </span>
+                  </div>
+
                   <label className="ad-check-row">
                     <input
                       type="checkbox"
@@ -1047,27 +1155,48 @@ export default function AdForm({
                   </label>
 
                   {bookingEnabled ? (
-                    <>
-                      <div className="ad-field" style={{ marginTop: 10 }}>
-                        <div className="ad-field-header">
-                          <label htmlFor="ad-agenda-name">Nombre de la agenda (opcional)</label>
-                          <CharCount value={agendaConfigName} max={160} always={false} />
-                        </div>
-                        <input
-                          id="ad-agenda-name"
-                          type="text"
-                          maxLength={160}
-                          placeholder="Ej: Horario de taller principal"
-                          value={agendaConfigName}
-                          onChange={(e) => setAgendaConfigName(e.target.value)}
-                        />
-                        <small className="ad-upload-hint">
-                          Identifica este horario en tu panel de administración.
-                        </small>
-                      </div>
-
-                      <AgendaScheduleEditor config={agendaConfig} onChange={setAgendaConfig} />
-                    </>
+                    <div className="ad-agenda-picker">
+                      {agendaConfigs.length === 0 ? (
+                        <button
+                          type="button"
+                          className="ad-agenda-empty"
+                          onClick={() => setIsAgendaModalOpen(true)}
+                        >
+                          <CalendarClock size={20} />
+                          <span>Todavía no tienes una agenda. Créala (días, jornada y duración de los bloques) para poder recibir citas.</span>
+                          <span className="ad-agenda-empty-cta"><PlusCircle size={15} /> Crear configuración de agenda</span>
+                        </button>
+                      ) : (
+                        <>
+                          <p className="ad-upload-hint">Elige la agenda para este aviso:</p>
+                          {agendaConfigs.map((cfg) => (
+                            <label
+                              key={cfg.id}
+                              className={`ad-agenda-option ${agendaConfigId === cfg.id ? 'active' : ''}`}
+                            >
+                              <input
+                                type="radio"
+                                name="ad-agenda-config"
+                                checked={agendaConfigId === cfg.id}
+                                onChange={() => setAgendaConfigId(cfg.id)}
+                              />
+                              <span className="ad-agenda-option-body">
+                                <strong>{cfg.name}</strong>
+                                <em>{getAgendaSummaryText(cfg)}</em>
+                                <em className="ad-agenda-option-slots">{getAgendaWeeklySlotsCount(cfg)} bloques por semana</em>
+                              </span>
+                            </label>
+                          ))}
+                          <button
+                            type="button"
+                            className="ad-agenda-add-link"
+                            onClick={() => setIsAgendaModalOpen(true)}
+                          >
+                            <PlusCircle size={14} /> Crear otra agenda
+                          </button>
+                        </>
+                      )}
+                    </div>
                   ) : (
                     <small className="ad-upload-hint">
                       Con las reservas apagadas, el aviso solo muestra contacto por teléfono y WhatsApp.
@@ -1148,6 +1277,16 @@ export default function AdForm({
           )}
         </div>
       </div>
+
+      <AgendaConfigModal
+        isOpen={isAgendaModalOpen}
+        onClose={() => setIsAgendaModalOpen(false)}
+        onSaved={(list) => {
+          setAgendaConfigs(list);
+          // Selecciona la recién creada (la más nueva por updatedAt).
+          if (list[0]) setAgendaConfigId(list[0].id);
+        }}
+      />
     </form>
   );
 }

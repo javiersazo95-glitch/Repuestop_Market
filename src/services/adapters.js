@@ -522,6 +522,9 @@ export function adaptAd(dto) {
     tier: dto.tier || 'basica',
     title: dto.title || '',
     company: dto.company || '',
+    // Logo de la empresa: viene del expediente de servicio automotriz del dueño,
+    // no del anuncio. Puede ser ruta relativa del servidor de archivos.
+    companyLogo: resolveMediaUrl(dto.companyLogo) || null,
     category: dto.category || '',
     categoryLabel: dto.categoryLabel || '',
     description: dto.description || '',
@@ -538,6 +541,9 @@ export function adaptAd(dto) {
     storyImages,
     features: Array.isArray(dto.features) ? dto.features : [],
     servicesOffered: Array.isArray(dto.servicesOffered) ? dto.servicesOffered : [],
+    // Las marcas forman parte del expediente del anuncio y deben sobrevivir a la
+    // adaptación para mostrarse tanto en la tarjeta como en el resumen de empresa.
+    specialistBrands: Array.isArray(dto.specialistBrands) ? dto.specialistBrands.filter(Boolean) : [],
     is24Hours: dto.is24Hours === true,
     hasOnlineBooking: dto.hasOnlineBooking === true,
     agendaConfig,
@@ -614,6 +620,7 @@ export function toAdRequestPayload(ad) {
     storyImages: media(ad?.storyImages, limits.maxStories),
     features: list(ad?.features, limits.maxTags),
     servicesOffered: list(ad?.servicesOffered, limits.maxTags),
+    specialistBrands: list(ad?.specialistBrands, 20),
     is24Hours: ad?.is24Hours === true,
     hasOnlineBooking,
     agendaConfig: hasOnlineBooking ? agendaConfig : null,

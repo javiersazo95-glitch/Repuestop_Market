@@ -1,14 +1,36 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, Zap, AlertCircle, AlertTriangle, Loader2, Clock3, Sparkles
+  X, Zap, Star, ShieldCheck, AlertCircle, AlertTriangle, Loader2, Sparkles, Clock3, CheckCircle2
 } from 'lucide-react';
 import RepuestopCoin from './RepuestopCoin';
 import {
-  AD_TIERS, AD_MODERATION_STATUS, getUpgradableTiers, getTierActivatableFeatures,
+  AD_TIERS, AD_MODERATION_STATUS, getUpgradableTiers,
   getNewlyUnlockedFeatures
 } from '../../data/automotiveAdsData';
-import { UPGRADE_TOKEN_COSTS, spendTokensForAdUpgrade, adErrorMessage } from '../../services/adsStorage';
+import { AD_TIER_PRICES_CLP, UPGRADE_TOKEN_COSTS, spendTokensForAdUpgrade, adErrorMessage } from '../../services/adsStorage';
+
+/** Contenido de cada plan destino (1:1 con mobile/components/ads/UpgradeAdRankModal.tsx). */
+const TIER_OPTIONS = {
+  destacada: {
+    label: 'Destacada', planName: 'Plan Destacado', Icon: Star,
+    accent: '#b45309', tagBg: '#fef3c7', includesFrom: 'Básica',
+    highlight: 'WhatsApp directo',
+    rest: ['Tarjeta amarillo suave con etiqueta ⭐ Destacado', 'Mayor posicionamiento'],
+  },
+  premium: {
+    label: 'Premium', planName: 'Plan Premium', Icon: Zap,
+    accent: '#7c3aed', tagBg: '#ede9fe', includesFrom: 'Destacada',
+    highlight: 'Imágenes en Carrusel de Historias',
+    rest: ['Tarjeta morada destacada', 'Hasta 4 fotos en galería'],
+  },
+  empresarial: {
+    label: 'Empresarial', planName: 'Plan Empresarial', Icon: ShieldCheck,
+    accent: '#059669', tagBg: '#d1fae5', includesFrom: 'Premium',
+    highlight: 'Agendamiento de citas en línea',
+    rest: ['Sello Taller Verificado', 'Carrusel de Historias ampliado (hasta 4 fotos)'],
+  },
+};
 
 /**
  * Subir de plan un anuncio.
@@ -97,12 +119,11 @@ export default function UpgradeAdRankModal({
             <div className="booking-modal-header">
               <div>
                 <h3>
-                  <Zap className="text-purple-600" size={24} />
+                  <Zap size={22} style={{ color: '#7c3aed' }} />
                   Mejorar el plan del anuncio
                 </h3>
                 <p>
-                  <strong>"{ad.title}"</strong> — plan actual:{' '}
-                  <span className="font-bold text-slate-900">{currentConfig.name}</span>
+                  <strong>"{ad.title}"</strong> — plan actual: <strong>{currentConfig.name}</strong>
                 </p>
               </div>
               <button
@@ -128,49 +149,63 @@ export default function UpgradeAdRankModal({
                   Este anuncio ya está en <strong>{currentConfig.name}</strong>, el plan más alto del
                   mural. No hay nada que mejorar.
                 </p>
-                <button type="button" className="btn-post-ad mx-auto" onClick={onClose}>
+                <button type="button" className="upgrade-confirm-btn" onClick={onClose}>
                   Cerrar
                 </button>
               </div>
             ) : (
               <form onSubmit={handleConfirmUpgrade}>
-                <div className="ad-moderation-warning">
-                  <AlertTriangle size={18} />
+                <div className={`ad-moderation-warning ${wasPublished ? 'is-ok' : ''}`}>
+                  {wasPublished ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
                   <div>
-                    <strong>El cambio de plan pasa por revisión.</strong>
-                    <p>
-                      {wasPublished
-                        ? 'Cambiar de plan guarda el anuncio de nuevo, así que sale del Mural de Anuncios hasta que moderación apruebe la versión con el plan nuevo. Las Monedas se descuentan igual: no se devuelven si después editas.'
-                        : 'El anuncio queda con el plan nuevo y sigue en la cola de revisión. Las Monedas se descuentan al confirmar.'}
-                    </p>
+                    {wasPublished ? (
+                      <>
+                        <strong>El plan nuevo se aplica al instante.</strong>
+                        <p>Tu anuncio ya está aprobado: al confirmar, se publica con el plan nuevo sin volver a revisión. Las Monedas se descuentan al confirmar.</p>
+                      </>
+                    ) : (
+                      <>
+                        <strong>El anuncio sigue en la cola de revisión.</strong>
+                        <p>Aún no pasó su primera aprobación; queda con el plan nuevo y se revisa. Las Monedas se descuentan al confirmar.</p>
+                      </>
+                    )}
                   </div>
                 </div>
 
+                <p className="upgrade-section-label">Selecciona el nuevo rango para tu anuncio:</p>
+
                 <div className="upgrade-tiers-grid">
                   {upgradableTiers.map((tierId) => {
-                    const config = AD_TIERS[tierId];
+                    const opt = TIER_OPTIONS[tierId] || TIER_OPTIONS.destacada;
                     const cost = UPGRADE_TOKEN_COSTS[tierId] || 0;
+                    const isSelected = selectedTargetTier === tierId;
+                    const OptIcon = opt.Icon;
                     return (
                       <button
                         type="button"
                         key={tierId}
-                        className={`upgrade-tier-choice ${selectedTargetTier === tierId ? `choice-${tierId} selected` : ''}`}
+                        className={`upgrade-tier-choice ${isSelected ? 'selected' : ''}`}
+                        style={isSelected ? { borderColor: opt.accent, background: `${opt.tagBg}66` } : undefined}
                         onClick={() => setSelectedTargetTier(tierId)}
                       >
-                        <div className="choice-badge" style={{ background: `${config.badgeColor}1a`, color: config.badgeColor }}>
-                          {config.badge}
+                        <div className="upgrade-choice-head">
+                          <span className="upgrade-choice-tag" style={{ background: opt.tagBg, color: opt.accent }}>
+                            <OptIcon size={11} /> {opt.label}
+                          </span>
+                          <span className="upgrade-choice-cost">
+                            <RepuestopCoin size={14} /> {cost} Monedas
+                          </span>
                         </div>
-                        <h4 className="choice-title">Plan {config.name}</h4>
-                        <div className="choice-cost">
-                          <RepuestopCoin size={15} />
-                          <span>{cost} Monedas</span>
-                        </div>
+                        <h4 className="choice-title">{opt.planName}</h4>
+                        <p className="upgrade-choice-price" style={{ color: opt.accent }}>
+                          ${(AD_TIER_PRICES_CLP[tierId] || cost * 50).toLocaleString('es-CL')} CLP por 30 días
+                        </p>
+                        <p className="upgrade-choice-includes">Incluye todo lo de {opt.includesFrom}, y además:</p>
                         <ul className="choice-benefits">
-                          <li>✓ Hasta {config.maxImages} fotos y {config.maxTags} etiquetas</li>
-                          {config.maxStories > 0 && <li>✓ Hasta {config.maxStories} historias</li>}
-                          {getTierActivatableFeatures(tierId).map((feature) => (
-                            <li key={feature}>✓ {feature}</li>
-                          ))}
+                          <li>
+                            <strong style={{ color: opt.accent }}>{opt.highlight}</strong>
+                          </li>
+                          {opt.rest.map((line) => <li key={line}>{line}</li>)}
                         </ul>
                       </button>
                     );
@@ -189,33 +224,27 @@ export default function UpgradeAdRankModal({
                     despues de confirmar. */}
                 {selectedTargetTier && (
                   <p className="ad-upgrade-hint">
-                    Después de mejorar el plan tienes que editar el anuncio para activar lo que se
-                    desbloquea ({unlockedFeatures.join(', ') || 'las nuevas fotos'}).
+                    <Sparkles size={14} /> Después de mejorar el plan tienes que editar el anuncio para
+                    activar lo que se desbloquea ({unlockedFeatures.join(', ') || 'las nuevas fotos'}).
                   </p>
                 )}
 
                 <div className="upgrade-balance-box">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-600">Tu saldo de Monedas RepuesTop:</span>
-                    <strong className="flex items-center gap-1 text-slate-900">
-                      <RepuestopCoin size={18} />
-                      {tokensBalance.toLocaleString('es-CL')} Monedas
-                    </strong>
+                  <div className="upgrade-balance-row">
+                    <span>Tu saldo de Monedas RepuesTop</span>
+                    <strong><RepuestopCoin size={16} /> {tokensBalance.toLocaleString('es-CL')}</strong>
                   </div>
-
-                  <div className="flex justify-between items-center text-sm mt-1">
-                    <span className="text-slate-600">Costo del cambio de plan:</span>
-                    <strong className="text-purple-700">{targetCost} Monedas</strong>
+                  <div className="upgrade-balance-row">
+                    <span>Costo del cambio de plan</span>
+                    <strong className="is-cost"><RepuestopCoin size={16} /> {targetCost}</strong>
                   </div>
 
                   {!hasEnoughTokens && (
-                    <div className="mt-3 pt-3 border-t border-amber-200 flex items-center justify-between gap-3">
-                      <span className="text-xs text-amber-800 font-medium">
-                        Te faltan {targetCost - tokensBalance} Monedas para este plan.
-                      </span>
+                    <div className="upgrade-balance-short">
+                      <span>Te faltan {targetCost - tokensBalance} Monedas para este plan.</span>
                       <button
                         type="button"
-                        className="btn-ad-booking text-xs py-1.5 px-3 bg-amber-600 hover:bg-amber-700"
+                        className="upgrade-recharge-btn"
                         onClick={() => { onClose?.(); onOpenRechargeModal?.(); }}
                       >
                         Recargar Monedas
@@ -224,13 +253,13 @@ export default function UpgradeAdRankModal({
                   )}
                 </div>
 
-                <div className="booking-actions-row">
-                  <button type="button" className="btn-ad-phone" onClick={onClose} disabled={isProcessing}>
+                <div className="upgrade-actions-row">
+                  <button type="button" className="upgrade-cancel-btn" onClick={onClose} disabled={isProcessing}>
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="btn-post-ad"
+                    className="upgrade-confirm-btn"
                     disabled={isProcessing || !hasEnoughTokens || !selectedTargetTier}
                   >
                     {isProcessing ? <Loader2 size={16} className="spin-icon" /> : <Zap size={16} />}
@@ -240,47 +269,54 @@ export default function UpgradeAdRankModal({
               </form>
             )}
           </>
-        ) : (
-          <div className="text-center py-6">
-            <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Clock3 size={36} />
+        ) : (() => {
+          const savedPublished = savedAd
+            ? savedAd.moderationStatus === AD_MODERATION_STATUS.APROBADO && savedAd.activo === true
+            : wasPublished;
+          const targetName = (AD_TIERS[selectedTargetTier] || currentConfig).name;
+          return (
+          <div className="upgrade-success">
+            <div className={`upgrade-success-icon ${savedPublished ? 'is-ok' : ''}`}>
+              {savedPublished ? <CheckCircle2 size={34} /> : <Clock3 size={34} />}
             </div>
 
-            <h3 className="text-2xl font-extrabold text-slate-900 mb-2">
-              Plan actualizado, en revisión
-            </h3>
+            <h3>{savedPublished ? 'Plan actualizado' : 'Plan actualizado, en revisión'}</h3>
 
-            <p className="text-slate-600 text-sm max-w-md mx-auto mb-6">
-              <strong>"{ad.title}"</strong> quedó en el plan{' '}
-              <strong>{(AD_TIERS[selectedTargetTier] || currentConfig).name}</strong> y volvió a la cola de
-              moderación. Cuando lo aprueben vuelve al mural con los beneficios del plan nuevo.
+            <p>
+              <strong>"{ad.title}"</strong> quedó en el plan <strong>{targetName}</strong>.{' '}
+              {savedPublished
+                ? 'La nueva versión ya está visible en el Mural con los beneficios del plan nuevo.'
+                : 'Como aún no pasa su primera aprobación, vuelve al Mural cuando lo revisen.'}
             </p>
 
-            {/* El plan da el derecho, pero WhatsApp, las Historias y la Agenda
-                siguen APAGADOS hasta que el socio los active y guarde. Decirselo
-                y dejarlo ahi era pedirle que se acordara solo: el boton lo lleva
-                al formulario, ya posicionado en lo que acaba de desbloquear. */}
             {unlockedFeatures.length > 0 && (
               <div className="upgrade-unlocked-box">
                 <strong>
                   {unlockedFeatures.length === 1
-                    ? 'Desbloqueaste una función que tienes que encender:'
-                    : `Desbloqueaste ${unlockedFeatures.length} funciones que tienes que encender:`}
+                    ? 'Función nueva que tienes que encender:'
+                    : `${unlockedFeatures.length} funciones nuevas que tienes que encender:`}
                 </strong>
                 <ul>
                   {unlockedFeatures.map((feature) => <li key={feature}>{feature}</li>)}
                 </ul>
+                {onActivateFeatures && (
+                  <p className="upgrade-unlocked-cta">
+                    "Activar mejoras" te lleva directo a la etapa <b>Beneficios del plan</b> del
+                    formulario, con {unlockedFeatures.length === 1 ? 'esa función' : 'esas funciones'} marcada
+                    {unlockedFeatures.length === 1 ? '' : 's'} como <span className="ad-nuevo-tag">NUEVO</span>.
+                  </p>
+                )}
               </div>
             )}
 
-            <div className="booking-actions-row" style={{ justifyContent: 'center' }}>
-              <button type="button" className="btn-ad-phone" onClick={onClose}>
+            <div className="upgrade-actions-row is-centered">
+              <button type="button" className="upgrade-cancel-btn" onClick={onClose}>
                 Más tarde
               </button>
               {unlockedFeatures.length > 0 && onActivateFeatures && (
                 <button
                   type="button"
-                  className="btn-post-ad"
+                  className="upgrade-confirm-btn"
                   onClick={() => onActivateFeatures(savedAd, previousTier, selectedTargetTier)}
                 >
                   <Sparkles size={16} /> Activar mejoras
@@ -288,7 +324,8 @@ export default function UpgradeAdRankModal({
               )}
             </div>
           </div>
-        )}
+          );
+        })()}
       </div>
     </div>,
     document.body
