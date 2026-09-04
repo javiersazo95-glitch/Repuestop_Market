@@ -445,7 +445,7 @@ export default function OfficialPatentHero({
   };
 
   return (
-    <section className="light-home-hero">
+    <section className="light-home-hero" id="patent-search-hero">
       <div className="container light-home-layout">
         {/* Left Category Sidebar */}
         <aside className="light-category-sidebar">

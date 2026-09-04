@@ -2018,22 +2018,10 @@ input, select, textarea {
 .reference-footer-column h2 svg { width: 36px; height: 36px; padding: 7px; color: #146cff; }
 .reference-footer-column h2::after { content: ''; position: absolute; bottom: 0; left: 48px; width: 38px; height: 3px; border-radius: 3px; background: #146cff; }
 .reference-footer-column ul { display: grid; gap: 11px; list-style: none; }
-.reference-footer-column li button { width: 100%; display: grid; grid-template-columns: 30px minmax(0, 1fr) 14px; align-items: center; gap: 8px; color: #e9eef7; text-align: left; font-size: 13px; line-height: 1.25; }
-.reference-footer-column li button > svg:first-child { width: 26px; color: #126aff; stroke-width: 1.7; }
-.reference-footer-column li button:hover { color: #6da5ff; }
+.reference-footer-column li a, .reference-footer-column li button { width: 100%; display: grid; grid-template-columns: 30px minmax(0, 1fr) 14px; align-items: center; gap: 8px; color: #e9eef7; text-align: left; font-size: 13px; line-height: 1.25; text-decoration: none; }
+.reference-footer-column li a > svg:first-child, .reference-footer-column li button > svg:first-child { width: 26px; color: #126aff; stroke-width: 1.7; }
+.reference-footer-column li a:hover, .reference-footer-column li button:hover { color: #6da5ff; }
 .reference-footer-column .footer-link-chevron { justify-self: end; width: 15px; color: #a8b4c7; }
-.reference-support-column li { margin-bottom: 5px; }
-.reference-support-column li button { grid-template-columns: 30px 1fr; align-items: flex-start; }
-.reference-support-column li button span { display: flex; flex-direction: column; gap: 3px; }
-.reference-support-column li button strong { font-size: 13px; color: #fff; }
-.reference-support-column li button small { color: #c8d2e0; font-size: 11.5px; line-height: 1.35; }
-
-.reference-contact-list { display: grid; }
-.reference-contact-list button { min-height: 80px; padding: 0 0 14px; margin-bottom: 14px; display: grid; grid-template-columns: 46px 1fr; gap: 12px; align-items: center; border-bottom: 1px solid rgba(141, 163, 194, .18); color: #e7edf7; text-align: left; }
-.reference-contact-list button svg { width: 46px; height: 46px; padding: 12px; border: 1px solid #135bc7; border-radius: 50%; color: #2378ff; }
-.reference-contact-list span { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
-.reference-contact-list strong { color: #fff; font-size: 13px; }
-.footer-payments h3 { margin: 18px 0; color: #fff; font-size: 15px; font-weight: 500; }
 .flow-payment { display: flex; align-items: center; gap: 14px; }
 .flow-payment > b { color: #17d1c4; font-size: 36px; letter-spacing: -2px; }
 .flow-payment span { display: flex; flex-direction: column; gap: 3px; color: #d7e0ed; font-size: 11px; line-height: 1.3; }
@@ -2048,13 +2036,19 @@ input, select, textarea {
 .reference-footer-bottom { min-height: 105px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 30px; border-top: 1px solid rgba(141, 163, 194, .20); color: #d2dbe7; font-size: 12px; }
 .reference-footer-bottom p { line-height: 1.5; }
 .reference-footer-bottom nav { display: flex; gap: 28px; }
-.reference-footer-bottom nav button { color: #d2dbe7; font-size: 12px; white-space: nowrap; }
-.reference-footer-bottom nav button:hover { color: #2b7dff; }
+.reference-footer-bottom nav a { display: inline-flex; align-items: center; gap: 6px; color: #d2dbe7; font-size: 12px; white-space: nowrap; text-decoration: none; }
+.reference-footer-bottom nav a:hover { color: #2b7dff; }
 .footer-socials { justify-self: end; display: flex; align-items: center; gap: 10px; }
 .footer-socials > span { margin-right: 3px; font-size: 12px; }
 .footer-socials a { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(153, 174, 205, .45); border-radius: 50%; color: #fff; }
 .footer-socials a:hover { border-color: #2780ff; color: #2780ff; }
 .footer-socials svg { width: 18px; }
+
+.reference-footer-seals { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px 30px; padding: 18px 0 22px; border-top: 1px solid rgba(141, 163, 194, .14); }
+.footer-seal { display: flex; align-items: center; gap: 12px; }
+.footer-seal > svg { width: 34px; height: 34px; padding: 8px; flex: 0 0 auto; border: 1px solid rgba(19, 91, 199, .55); border-radius: 9px; color: #2378ff; }
+.footer-seal span { display: flex; flex-direction: column; gap: 3px; color: #d7e0ed; font-size: 11px; line-height: 1.3; }
+.footer-seal strong { color: #fff; font-size: 12px; }
 
 /* Compact variant: preserve the footer's five-column structure without demo content. */
 .reference-footer { margin-top: 40px; padding-top: 30px; }
@@ -2071,23 +2065,16 @@ input, select, textarea {
 .reference-footer-column h2 svg { width: 30px; height: 30px; padding: 6px; }
 .reference-footer-column h2::after { left: 42px; width: 30px; height: 2px; }
 .reference-footer-column ul { gap: 8px; }
-.reference-footer-column li button { grid-template-columns: 23px minmax(0, 1fr) 12px; gap: 6px; font-size: 11.5px; }
-.reference-footer-column li button > svg:first-child { width: 21px; }
-.reference-support-column li { margin-bottom: 1px; }
-.reference-support-column li button strong { font-size: 12px; }
-.reference-support-column li button small { font-size: 10.5px; }
-.reference-contact-list button { min-height: 52px; margin-bottom: 8px; padding-bottom: 8px; grid-template-columns: 34px 1fr; gap: 9px; }
-.reference-contact-list button svg { width: 34px; height: 34px; padding: 9px; }
-.reference-contact-list span { font-size: 10.5px; }
-.reference-contact-list strong { font-size: 12px; }
+.reference-footer-column li a, .reference-footer-column li button { grid-template-columns: 23px minmax(0, 1fr) 12px; gap: 6px; font-size: 11.5px; }
+.reference-footer-column li a > svg:first-child, .reference-footer-column li button > svg:first-child { width: 21px; }
 .reference-footer-bottom { min-height: 70px; gap: 20px; font-size: 11px; }
 .reference-footer-bottom nav { gap: 20px; }
-.reference-footer-bottom nav button { font-size: 11px; }
+.reference-footer-bottom nav a { font-size: 11px; }
 .reference-footer-security { justify-self: end; color: #77a8ff; font-size: 11px; }
 
 @media (max-width: 1250px) {
-  .reference-footer-grid { grid-template-columns: 1.3fr 1fr 1fr; }
-  .reference-contact-column { grid-column: 2 / 4; }
+  .reference-footer-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .reference-footer-brand { grid-column: 1 / -1; }
   .reference-footer-bottom { grid-template-columns: 1fr; justify-items: center; padding: 26px 0; text-align: center; }
   .footer-socials { justify-self: center; }
 }
@@ -2095,9 +2082,10 @@ input, select, textarea {
 @media (max-width: 760px) {
   .reference-footer { margin-top: 30px; padding-top: 28px; border-radius: 10px 10px 0 0; }
   .reference-footer-grid { grid-template-columns: 1fr; gap: 20px; }
-  .reference-contact-column { grid-column: auto; }
+  .reference-footer-brand { grid-column: auto; }
   .reference-footer-column h2 { margin-top: 8px; }
   .reference-footer-bottom nav { flex-wrap: wrap; justify-content: center; gap: 12px 20px; }
+  .reference-footer-seals { flex-direction: column; align-items: flex-start; gap: 14px; }
 }
 
 /* ==========================================================================

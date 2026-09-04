@@ -5,7 +5,6 @@ import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
 import { COMPRADOR_TERMS, VENDEDOR_TERMS } from '../data/legalTexts';
 import { HELP_ROLES, resolveReportType } from '../data/helpContent';
-import { useAppNavigation } from '../routes/useAppNavigation';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 
 /**
@@ -14,7 +13,6 @@ import { useDocumentTitle } from '../routes/useDocumentTitle';
  */
 export default function TermsPage() {
   useDocumentTitle('Términos y condiciones');
-  const nav = useAppNavigation();
   const { user, role } = useAuth();
   const reportType = resolveReportType(role, user);
   const [tab, setTab] = useState(reportType === HELP_ROLES.SELLER ? 'vendedor' : 'comprador');
@@ -48,15 +46,7 @@ export default function TermsPage() {
         )}
       </main>
 
-      <Footer
-        onOpenSellerModal={nav.goSellerRegister}
-        onOpenStores={nav.goStores}
-        onOpenCatalog={() => nav.goCatalog()}
-        onOpenAdsWall={nav.goAdsWall}
-        onOpenHelp={nav.goHelp}
-        onOpenTerms={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        onOpenPrivacy={nav.goPrivacy}
-      />
+      <Footer />
     </div>
   );
 }

@@ -81,15 +81,7 @@ export default function AppLayout() {
 
       <Outlet />
 
-      <Footer
-        onOpenSellerModal={nav.goSellerRegister}
-        onOpenStores={nav.goStores}
-        onOpenCatalog={() => nav.goCatalog()}
-        onOpenAdsWall={nav.goAdsWall}
-        onOpenHelp={nav.goHelp}
-        onOpenTerms={nav.goTerms}
-        onOpenPrivacy={nav.goPrivacy}
-      />
+      <Footer />
 
       <AuthModal
         isOpen={isAuthModalOpen}

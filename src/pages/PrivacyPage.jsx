@@ -3,13 +3,11 @@ import HelpHeader from '../components/help/HelpHeader';
 import LegalDocument from '../components/help/LegalDocument';
 import Footer from '../components/Footer';
 import { PRIVACIDAD_POLICY, PRIVACIDAD_WEB_EXTRA } from '../data/legalTexts';
-import { useAppNavigation } from '../routes/useAppNavigation';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 
 /** Política de privacidad, con las secciones propias del sitio web al final. */
 export default function PrivacyPage() {
   useDocumentTitle('Política de privacidad');
-  const nav = useAppNavigation();
 
   return (
     <div className="help-center-page">
@@ -24,15 +22,7 @@ export default function PrivacyPage() {
         />
       </main>
 
-      <Footer
-        onOpenSellerModal={nav.goSellerRegister}
-        onOpenStores={nav.goStores}
-        onOpenCatalog={() => nav.goCatalog()}
-        onOpenAdsWall={nav.goAdsWall}
-        onOpenHelp={nav.goHelp}
-        onOpenTerms={nav.goTerms}
-        onOpenPrivacy={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-      />
+      <Footer />
     </div>
   );
 }

@@ -2,7 +2,6 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import HelpHeader from '../components/help/HelpHeader';
 import Footer from '../components/Footer';
-import { useAppNavigation } from '../routes/useAppNavigation';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 
 /**
@@ -12,7 +11,6 @@ import { useDocumentTitle } from '../routes/useDocumentTitle';
  */
 export default function HelpCenterPage() {
   useDocumentTitle('Centro de ayuda');
-  const nav = useAppNavigation();
 
   return (
     <div className="help-center-page">
@@ -22,17 +20,7 @@ export default function HelpCenterPage() {
         <Outlet />
       </main>
 
-      <Footer
-        onOpenSellerModal={nav.goSellerRegister}
-        onOpenStores={nav.goStores}
-        onOpenCatalog={() => nav.goCatalog()}
-        onOpenAdsWall={nav.goAdsWall}
-        // Ya estamos en el centro de ayuda: el enlace del footer sube al inicio
-        // en vez de navegar a la misma ruta.
-        onOpenHelp={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        onOpenTerms={nav.goTerms}
-        onOpenPrivacy={nav.goPrivacy}
-      />
+      <Footer />
     </div>
   );
 }
