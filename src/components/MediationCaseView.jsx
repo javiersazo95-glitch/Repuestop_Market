@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  AlertTriangle, ArrowLeft, CheckCircle2, Download, Image as ImageIcon, Loader2, Lock,
+  AlertTriangle, ArrowLeft, CheckCircle2, Download, Image as ImageIcon, Info, Loader2, Lock,
   Maximize2, MessageSquare, Paperclip, RefreshCw, Scale, Send, ShieldAlert, X,
 } from 'lucide-react';
 import {
@@ -456,6 +456,17 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
         <span className={`dispute-seal seal-${statusTone}`}>{MEDIATION_STATUS_LABELS[estado] || estado || 'En curso'}</span>
       </header>
 
+      <p className="dispute-help-banner">
+        <Info size={15} />
+        <span>
+          {isClosed
+            ? 'Este caso ya está cerrado: podés revisar toda la conversación y la evidencia, pero ya no se puede escribir.'
+            : isPaused
+              ? 'Un mediador de RepuesTop está revisando este caso. Mientras tanto, escribile a él en la pestaña "Con el mediador"; la conversación directa queda pausada.'
+              : `Acá podés conversar directamente con ${mode === 'buyer' ? 'el vendedor' : 'el comprador'} para resolver el problema. Si no llegan a un acuerdo, usá "Solicitar mediador" para que RepuesTop intervenga.`}
+        </span>
+      </p>
+
       <dl className="dispute-meta">
         <div>
           <dt>Motivo del reclamo</dt>
@@ -508,12 +519,18 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
 
       {!isClosed && (
         <div className="dispute-actions">
-          <button type="button" className="dispute-btn" disabled={chat?.escalado} onClick={() => openDialog('escalate')}>
-            <ShieldAlert size={15} /> {chat?.escalado ? 'Mediador ya solicitado' : 'Solicitar mediador'}
-          </button>
-          <button type="button" className="dispute-btn is-primary" onClick={() => openDialog('resolve')}>
-            <CheckCircle2 size={15} /> Marcar como resuelta
-          </button>
+          <div className="dispute-action-choice">
+            <button type="button" className="dispute-btn" disabled={chat?.escalado} onClick={() => openDialog('escalate')}>
+              <ShieldAlert size={15} /> {chat?.escalado ? 'Mediador ya solicitado' : 'Solicitar mediador'}
+            </button>
+            <small>¿No llegan a un acuerdo? Un mediador de RepuesTop revisa el caso.</small>
+          </div>
+          <div className="dispute-action-choice">
+            <button type="button" className="dispute-btn is-primary" onClick={() => openDialog('resolve')}>
+              <CheckCircle2 size={15} /> Marcar como resuelta
+            </button>
+            <small>Úsalo cuando ya se solucionó el problema con la otra parte.</small>
+          </div>
         </div>
       )}
 
@@ -569,7 +586,11 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
 
             <div className="dispute-thread" ref={threadRef}>
               {messages.length === 0 ? (
-                <p className="dispute-thread-empty"><MessageSquare size={18} /> Todavía no hay mensajes en este expediente.</p>
+                <p className="dispute-thread-empty">
+                  <MessageSquare size={20} />
+                  <strong>Todavía no hay mensajes</strong>
+                  <span>Escribí abajo para contarle a {mode === 'buyer' ? 'el vendedor' : 'el comprador'} qué pasó y buscar una solución.</span>
+                </p>
               ) : messages.map((message) => {
                 if (message.tipo === 'system') {
                   return <p key={message.id} className="dispute-system-note">{message.texto}</p>;
@@ -656,7 +677,11 @@ export default function MediationCaseView({ pedidoId, user, mode = 'buyer', onCl
 
             <div className="dispute-thread" ref={threadRef}>
               {mediatorThread.length === 0 ? (
-                <p className="dispute-thread-empty"><MessageSquare size={18} /> El mediador todavía no registró movimientos.</p>
+                <p className="dispute-thread-empty">
+                  <MessageSquare size={20} />
+                  <strong>El mediador todavía no registró movimientos</strong>
+                  <span>Contale acá el problema y adjuntá evidencia si la tenés; un mediador de RepuesTop va a revisar el caso.</span>
+                </p>
               ) : mediatorThread.map((entry) => {
                 if (LOG_ENTRY_TYPES.has(entry.type)) {
                   return (
