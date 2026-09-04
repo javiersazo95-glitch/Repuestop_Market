@@ -3631,3 +3631,117 @@ PedidoNotificacionSupportTest,AuthServiceTest`), `mvn package` ✅. Web: `build`
 504/507 (mismo fallo preexistente de siempre). Probado en vivo contra la base local con 3
 pedidos reales: despacho sin tracking en envío local, banner de veto con los dos botones,
 confirmación y disputa (la disputa efectivamente movió el pedido a "En mediación").
+
+
+### 4.47 Sesión 2026-09-03 (noche) — el footer: enlaces reales y filtros que sí filtran
+
+Solo web. El footer tenía cinco columnas en las que **cinco botones distintos llevaban al
+mismo `/ayuda`**, las cuatro categorías populares llamaban a `openCatalog()` sin argumentos
+(o sea, al catálogo genérico), y `AppLayout` le pasaba un `onOpenSellerModal` que el
+componente nunca desestructuraba: prop muerta desde siempre.
+
+**1. Los enlaces pasan a ser `<a>` (`Link`), no botones.** Se indexan, se abren con clic
+central y el navegador muestra el destino. **Ojo con el CSS**: todas las reglas apuntaban a
+`.reference-footer-column li button` y a `.reference-footer-bottom nav button`. Cambiar la
+etiqueta sin ampliar los selectores a `li a` / `nav a` deja la columna sin grilla, sin color
+y sin chevron — es la trampa del `>` y de los selectores por etiqueta que ya está anotada en
+CLAUDE.md, pero aplicada a `button` en vez de a `>`.
+
+**2. El id de categoría del enlace tiene que existir en `HEADER_CATEGORIES`, y si no existe
+FALLA EN SILENCIO.** La propuesta original pedía `/repuestos?categoria=aceites`. Ese id no
+existe en `HEADER_CATEGORIES` (`src/data/categories.js`): ahí están `aceite` y `filtros`, y
+`aceites` solo vive en `CATEGORY_GRID_ITEMS`, que es la grilla decorativa del home.
+
+Lo que pasa con un id que no calza es lo peor posible: `PartsCatalogView` traduce el id a un
+id real del backend comparando NOMBRES (línea ~242), no encuentra nada y deja
+`activeCategoryId = undefined`; pero `hasActiveContext` **sí** se enciende, porque le basta
+con `selectedCategory !== 'TODAS'`. Resultado: la consulta sale sin `categoriaId`, el usuario
+ve el inventario completo y arriba un chip que le promete una categoría. Nada falla, nada se
+loguea.
+
+Verificado en vivo contra el backend local mirando el tráfico:
+
+| Enlace | Petición real |
+|---|---|
+| `?categoria=frenos` | `GET /inventario/productos?...&categoriaId=1` |
+| `?categoria=filtros` | `...&categoriaId=35` |
+| `?categoria=aceites` | `...&sort=stock,desc` — **sin `categoriaId`** |
+
+**Antes de estrenar un enlace de categoría hay que comprobar el id contra
+`HEADER_CATEGORIES` y mirar la petición, no la pantalla.**
+
+**3. Cuatro columnas en vez de cinco.** Se eliminan "Soporte y Mediación" y "Atención al
+Cliente" (los cinco `/ayuda`) y quedan: Explorar Repuestos, Categorías Populares, Vende en
+RepuesTop y Ayuda y Confianza. Con eso se enlazan por fin rutas que existían sin acceso desde
+el footer: `/nosotros`, `/ayuda/preguntas-frecuentes`, `/ayuda/politicas` (destino de
+"Garantía legal 6 meses") y `/perfil/pedidos`.
+
+La grilla no se rehízo: ya era de cinco espacios (marca + 4). En ≤1250px la marca pasa a
+`grid-column: 1 / -1` y las cuatro columnas quedan parejas, en vez del `3 + 1` ragged que
+salía con las reglas viejas.
+
+**4. `/perfil/pedidos` va con un candado.** Está detrás de `RequireAuth`, que a un invitado
+lo devuelve al home con `requireAuth: true` y el login abierto. Sin el candado el enlace
+parece roto.
+
+**5. La columna de vendedores tiene TRES enlaces, y es a propósito.** Se descartaron los dos
+que parecían obvios:
+
+- **`/perfil/resumen` como "Portal del Vendedor"**: para un invitado termina en el home con
+  el modal de login, y para un comprador logueado abre su propio panel de comprador con una
+  etiqueta que dice "vendedor".
+- **`/ayuda/tienda`**: todas sus FAQ tienen `roles: [SELLER]`, así que un invitado ve la
+  página vacía. El propio `helpContent.js` oculta esa categoría de los listados por eso
+  mismo.
+
+Y **`/vender` no sirve dos veces**: es directamente el formulario de registro
+(`SellerRegisterPage` monta `FounderRegistration`), no una landing con secciones, así que no
+hay un `#beneficios` al que apuntar. Quedan `/vender`, `/mural-anuncios` y
+`/ayuda/contacto?tema=info` (tema válido para invitado, y su lista de asuntos ya trae
+"Quiero vender en RepuesTop"). Si alguna vez se quiere una columna de cinco, lo que falta no
+es un enlace: es una landing `/vender-en-repuestop`.
+
+**6. Los sellos de pago dicen Flow.** La propuesta pedía Webpay Plus (Transbank) y Redcompra.
+La pasarela contratada es **Flow** — es lo que ve el comprador en `CheckoutSummaryPanel` y lo
+que descuenta `CommissionSummaryCard` —, así que poner marcas de terceros habría sido
+inconsistente con el checkout y uso de marca ajena. El bloque reusa `.flow-payment`, que ya
+estaba en `index.css` huérfana de una versión anterior del footer.
+
+**7. El Footer ya no recibe props.** Resuelve todo con `paths.js` + `useLocation`. Se monta
+en cuatro sitios (`AppLayout`, `HelpCenterPage`, `TermsPage`, `PrivacyPage`) y **cada página
+legal tenía su propio override** para que el enlace a su propia ruta subiera al inicio en vez
+de navegar a donde ya estás. Eso quedó genérico dentro del Footer: si el `to` coincide con el
+`pathname`, `preventDefault` + scroll al tope. Cuidado al agregar props nuevas: el patrón
+ahora es que el Footer se resuelva solo.
+
+**8. `scrollIntoView` no mueve nada en navegadores embebidos.** "Buscar por patente" hace
+scroll al hero del home (se le agregó `id="patent-search-hero"` a `OfficialPatentHero`).
+La primera versión usaba `scrollIntoView({behavior:'smooth'})` y no pasaba absolutamente
+nada — ni con `behavior` instantáneo. `window.scrollTo({top: rect.top + scrollY})` sí
+funciona y es lo que quedó. (Aparte: **`behavior: 'smooth'` es un no-op** en ese navegador,
+también con `window.scrollTo`; el scroll instantáneo sí se aplica. Eso afecta a la
+verificación, no al usuario real.)
+
+**Nada de desarmadurías.** El negocio son tiendas oficiales que venden repuestos NUEVOS, así
+que la copia del footer no las menciona. La palabra sigue viva en `AuthModal` (×2),
+`StoreLogoBadge`, `StorePublicProfileView` y `StoresDirectoryView`; en otros siete
+componentes también aparece pero **esos siete están muertos** (no los importa nadie):
+`HeroWithSidebar`, `LicensePlateHero`, `PromoGridBanners`, `SellerBanner`,
+`SellerRegisterModal`, `SupportMediationSection` y `TrustGuaranteesSection`. Limpiar los
+cuatro vivos quedó pendiente.
+
+**Verificación**: `npm run build` ✅. `npx oxlint`: **0 errores, 80 warnings**. Ojo — el
+baseline que decían CLAUDE.md (96) y la sección 4.46 (83) estaba desactualizado: se midió con
+`git stash` antes y después del cambio y dio 80 → 80. **80 es el número real al 2026-09-03.**
+Probado en el navegador contra el backend local: los 18 enlaces con su `href`, ninguna ruta
+en 404, los `categoriaId` de la tabla de arriba, el botón de patente llamando `scrollTo` a la
+posición exacta del hero (285px) desde el home y navegando a `/` desde `/tiendas`, el enlace
+a `/ayuda` subiendo al inicio sin navegar cuando ya estás ahí, cero errores de consola y sin
+desborde horizontal atribuible al footer (hay 4px en móvil, pero se mantienen con el footer
+oculto: son preexistentes).
+
+**No hubo captura de pantalla**: el panel del navegador devolvía una imagen en blanco en cada
+intento aunque la página estuviera cargada. La verificación es por medición del DOM y por
+tráfico de red.
+
+Commit: `fa5ed40` en `dev`, subido a `origin/dev`.
