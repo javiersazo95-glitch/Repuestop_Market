@@ -21,7 +21,7 @@ import {
   cancelSellerOrderApi, cancelBuyerSubOrderApi, registerOrderDispatchApi, declareOrderDeliveryApi, createOrderClaimApi,
   pauseSellerProductApi, resumeSellerProductApi, updateSellerShippingMethodsApi,
   getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
-  getBuyerProductQuestionsApi
+  getBuyerProductQuestionsApi, createSystemFeedbackApi, getMySystemFeedbackApi
 } from '../services/api';
 import { qk } from '../services/queryKeys';
 import ShippingMethodsPicker from './ShippingMethodsPicker';
@@ -306,6 +306,13 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteAccountError, setDeleteAccountError] = useState(null);
+  const [feedbackTab, setFeedbackTab] = useState('nuevo');
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackHistory, setFeedbackHistory] = useState([]);
+  const [feedbackStatus, setFeedbackStatus] = useState(null);
+  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
+  const [isLoadingFeedbackHistory, setIsLoadingFeedbackHistory] = useState(false);
 
   const [showBlockedReviewModal, setShowBlockedReviewModal] = useState(false);
   const [blockedReviewText, setBlockedReviewText] = useState('');
@@ -1050,6 +1057,41 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     onBackToStore();
   };
 
+  const loadFeedbackHistory = async () => {
+    setIsLoadingFeedbackHistory(true);
+    try {
+      setFeedbackHistory(await getMySystemFeedbackApi());
+    } catch (error) {
+      setFeedbackStatus({ type: 'error', message: error?.message || 'No pudimos cargar tu historial de feedback.' });
+    } finally {
+      setIsLoadingFeedbackHistory(false);
+    }
+  };
+
+  const openFeedback = () => {
+    setFeedbackStatus(null);
+    setActiveTab('feedback');
+    loadFeedbackHistory();
+  };
+
+  const handleSendFeedback = async (event) => {
+    event.preventDefault();
+    if (!feedbackRating || !feedbackText.trim() || isSendingFeedback) return;
+    setIsSendingFeedback(true);
+    setFeedbackStatus(null);
+    try {
+      await createSystemFeedbackApi({ calificacion: feedbackRating, comentario: feedbackText.trim() });
+      setFeedbackRating(0);
+      setFeedbackText('');
+      setFeedbackStatus({ type: 'success', message: 'Gracias por tu feedback. Lo recibimos correctamente.' });
+      await loadFeedbackHistory();
+    } catch (error) {
+      setFeedbackStatus({ type: 'error', message: error?.message || 'No pudimos enviar tu feedback. Inténtalo nuevamente.' });
+    } finally {
+      setIsSendingFeedback(false);
+    }
+  };
+
   // Mismas reglas que ya existen en el resto de la app: el chequeo de dígito
   // verificador del RUT es el que usa Retirar dinero (src/services/adapters.js),
   // y el celular sigue el formato chileno estándar (9 + 8 dígitos).
@@ -1551,17 +1593,14 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               </div>
             ))}
 
-            <button
-              type="button"
-              className="profile-nav-item profile-nav-delete"
-              onClick={() => {
-                setDeleteAccountError(null);
-                setShowDeleteAccountModal(true);
-              }}
-            >
-              <Trash2 size={17} />
-              <span>Eliminar cuenta</span>
-            </button>
+            <div className="profile-nav-final-actions">
+              <button type="button" className={`profile-nav-item profile-nav-feedback ${activeTab === 'feedback' ? 'active' : ''}`} onClick={openFeedback}>
+                <MessageSquare size={17} /><span>Dejar feedback</span>
+              </button>
+              <button type="button" className="profile-nav-item profile-nav-delete" onClick={() => { setDeleteAccountError(null); setShowDeleteAccountModal(true); }}>
+                <Trash2 size={17} /><span>Eliminar cuenta</span>
+              </button>
+            </div>
           </nav>
         </aside>
 
@@ -2225,6 +2264,28 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
               {activeTab === 'consultas' && (
                 <ProfileSupportPanel user={user} deepLinkTicketId={deepLinkTicketId} onClearDeepLink={onClearDeepLink} />
+              )}
+
+              {activeTab === 'feedback' && (
+                <section className="profile-panel profile-feedback-panel" aria-labelledby="profile-feedback-title">
+                  <div className="profile-panel-header-row"><div><h2 id="profile-feedback-title" className="profile-panel-title"><MessageSquare size={19} /> Dejar feedback</h2><p>Tu opinión nos ayuda a mejorar RepuesTop.</p></div></div>
+                  <div className="profile-feedback-tabs" role="tablist" aria-label="Feedback del sistema">
+                    <button type="button" role="tab" aria-selected={feedbackTab === 'nuevo'} className={feedbackTab === 'nuevo' ? 'active' : ''} onClick={() => setFeedbackTab('nuevo')}>Dejar comentario</button>
+                    <button type="button" role="tab" aria-selected={feedbackTab === 'historial'} className={feedbackTab === 'historial' ? 'active' : ''} onClick={() => { setFeedbackTab('historial'); loadFeedbackHistory(); }}>Mi historial</button>
+                  </div>
+                  {feedbackTab === 'nuevo' ? (
+                    <form className="profile-feedback-form" onSubmit={handleSendFeedback}>
+                      <fieldset className="profile-feedback-rating"><legend>¿Cómo calificarías el sistema?</legend><div>{[1, 2, 3, 4, 5].map((value) => <button key={value} type="button" className={value <= feedbackRating ? 'selected' : ''} onClick={() => setFeedbackRating(value)} aria-label={`${value} de 5 estrellas`}><Star size={22} fill="currentColor" /></button>)}</div></fieldset>
+                      <label htmlFor="profile-feedback-message">Tu comentario<textarea id="profile-feedback-message" value={feedbackText} onChange={(event) => setFeedbackText(event.target.value)} placeholder="Escribe aquí tu sugerencia, comentario o problema que encontraste..." maxLength={1500} required /></label>
+                      <div className="profile-feedback-footer"><span>{feedbackText.length}/1500</span><button type="submit" className="btn-auth-primary" disabled={!feedbackRating || !feedbackText.trim() || isSendingFeedback}>{isSendingFeedback ? <Loader2 size={16} className="spin-icon" /> : <Send size={16} />}{isSendingFeedback ? 'Enviando...' : 'Enviar feedback'}</button></div>
+                    </form>
+                  ) : (
+                    <div className="profile-feedback-history">
+                      {isLoadingFeedbackHistory ? <p> Cargando tu historial…</p> : feedbackHistory.length === 0 ? <p>Aún no has registrado feedback.</p> : feedbackHistory.map((item) => <article key={item.id}><div><span className="profile-feedback-stars">{'★'.repeat(item.calificacion)}{'☆'.repeat(5 - item.calificacion)}</span><time>{item.fechaCreacion ? new Date(item.fechaCreacion).toLocaleDateString('es-CL') : ''}</time></div><p>{item.comentario}</p></article>)}
+                    </div>
+                  )}
+                  {feedbackStatus && <p className={`profile-feedback-status ${feedbackStatus.type}`}>{feedbackStatus.message}</p>}
+                </section>
               )}
 
               {(activeTab === 'tienda_datos' || activeTab === 'datos') && (

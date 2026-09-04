@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Inbox, ArrowRight } from 'lucide-react';
+import { Loader2, Inbox, ArrowRight, Award } from 'lucide-react';
 import MarketplaceProductCard from './MarketplaceProductCard';
 import { getPublicProductsApi } from '../services/api';
 import { adaptPage, adaptLatestPart } from '../services/adapters';
@@ -38,7 +38,7 @@ export default function LatestAddedPartsSection({ onQuickView, onOpenCatalog }) 
       <div className="section-title-header-flex">
         <div className="title-left-group">
           <div className="title-badge-pulse">
-            <span className="pulse-dot"></span>
+            <span className="pulse-dot" aria-hidden="true"><Award size={15} /></span>
             <span>REPUESTOS DESTACADOS</span>
           </div>
           <h2>Top repuestos con mejores precios</h2>

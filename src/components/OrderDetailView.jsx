@@ -225,10 +225,10 @@ function formatDate(value) {
 }
 
 const TIMELINE_STEPS = [
-  { key: 'PENDIENTE', label: 'Pendiente', icon: Clock },
-  { key: 'EN_PREPARACION', label: 'En preparación', icon: Wrench },
-  { key: 'ENVIADO', label: 'Enviado', icon: Truck },
-  { key: 'FINALIZADO', label: 'Entregado/Finalizado', icon: PackageCheck },
+  { key: 'PENDIENTE', label: 'Pendiente', icon: Clock, description: 'Recibimos tu pago y el pedido está a la espera de que la tienda lo confirme.' },
+  { key: 'EN_PREPARACION', label: 'En preparación', icon: Wrench, description: 'La tienda está reuniendo y preparando los repuestos de este pedido.' },
+  { key: 'ENVIADO', label: 'Enviado', icon: Truck, description: 'El pedido ya fue despachado o está en ruta hacia su destino.' },
+  { key: 'FINALIZADO', label: 'Entregado/Finalizado', icon: PackageCheck, description: 'El pedido fue recibido y el proceso de compra quedó finalizado.' },
 ];
 
 function getTimelineIndex(status) {
@@ -273,6 +273,7 @@ export default function OrderDetailView({
   const rawStatus = order?.estado || order?.status || 'PENDIENTE';
   const normStatus = String(rawStatus).toUpperCase();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedTimelineStep, setSelectedTimelineStep] = useState(null);
   const [addressCopied, setAddressCopied] = useState(false);
   const [pickupPin, setPickupPin] = useState('');
   const [statusError, setStatusError] = useState('');
@@ -510,6 +511,9 @@ export default function OrderDetailView({
   const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(subtotal * 0.025 * 1.19)));
 
   const timelineIndex = getTimelineIndex(normStatus);
+  const visibleTimelineStep = TIMELINE_STEPS.find((step) => step.key === selectedTimelineStep)
+    || TIMELINE_STEPS[timelineIndex];
+  const VisibleTimelineIcon = visibleTimelineStep.icon;
   const controlledAction = getControlledOrderAction(order, mode);
 
   // Ruta B fase 2: el avance de CADA tienda. El backend lo manda solo al comprador; al
@@ -850,27 +854,38 @@ export default function OrderDetailView({
         </div>
 
         <div className={isPage ? 'order-page-body' : 'order-modal-body'}>
-          {/* Timeline Step-by-Step Progress Bar */}
+          {/* El mismo progreso se muestra al comprador y al vendedor. Cada hito es
+              seleccionable para explicar qué ocurre en esa etapa. */}
           <div className="order-timeline-card">
             <h3 className="section-subtitle">Estado del Pedido</h3>
-            <div className="order-timeline-steps">
+            <div
+              className="order-timeline-steps"
+              style={{ '--timeline-completion': (timelineIndex / (TIMELINE_STEPS.length - 1)) * 100 }}
+            >
               {TIMELINE_STEPS.map((step, idx) => {
                 const StepIcon = step.icon;
-                const isCompleted = idx <= timelineIndex;
+                const isPast = idx < timelineIndex;
                 const isCurrent = idx === timelineIndex;
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={step.key}
-                    className={`timeline-step-item ${isCompleted ? 'step-completed' : ''} ${isCurrent ? 'step-current' : ''}`}
+                    className={`timeline-step-item ${isPast ? 'step-past' : ''} ${isCurrent ? 'step-current' : ''}`}
+                    onClick={() => setSelectedTimelineStep(step.key)}
+                    aria-pressed={visibleTimelineStep.key === step.key}
+                    aria-describedby="order-timeline-tooltip"
                   >
                     <div className="step-icon-wrapper">
                       <StepIcon size={16} />
                     </div>
                     <span className="step-label">{step.label}</span>
-                    {idx < TIMELINE_STEPS.length - 1 && <div className="step-line" />}
-                  </div>
+                  </button>
                 );
               })}
+            </div>
+            <div id="order-timeline-tooltip" className="order-timeline-tooltip" role="tooltip">
+              <VisibleTimelineIcon size={15} aria-hidden="true" />
+              <span><strong>{visibleTimelineStep.label}:</strong> {visibleTimelineStep.description}</span>
             </div>
           </div>
 

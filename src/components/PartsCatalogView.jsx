@@ -8,15 +8,14 @@ import {
 } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
-import ProductTopBadge from './ProductTopBadge';
 import ProductCardSkeleton from './skeletons/ProductCardSkeleton';
 import { qk } from '../services/queryKeys';
 import {
   NAVIGATION_CATEGORIES, CAROUSEL_CATEGORIES, HEADER_CATEGORIES
 } from '../data/categories';
 import {
-  getPartCategoriesApi, getPublicProductsApi, getVehicleCatalogPartsApi, searchVehicleByPatenteApi,
-  getAddressesApi, getPublicCategoryCountsApi, getPartSubcategoriesApi, getPartBrandsApi,
+  getPartCategoriesApi, getPublicProductsApi, getVehicleCatalogPartsApi, searchVehicleByPatenteApi, getAddressesApi,
+  getPartSubcategoriesApi, getPartBrandsApi,
   getVehicleBrandsApi, getVehicleModelsApi, getPublicPartOriginsApi
 } from '../services/api';
 import { adaptPage, adaptProduct, adaptCompatibleOffersPage, adaptVehicle } from '../services/adapters';
@@ -35,10 +34,9 @@ const CAROUSEL_PAGE_COUNT = Math.ceil(CAROUSEL_CATEGORIES.length / CAROUSEL_PAGE
  * ningun filtro aplicado. Es una consulta acotada; el catalogo paginado completo
  * NO se consulta hasta que el usuario elige un contexto.
  */
-// Los dos bloques de la vitrina son INDEPENDIENTES: 12 destacados y 12 recien publicados.
-// Antes el relleno descontaba (`SHOWCASE_SIZE - destacados.length`), asi que cada producto
-// Top le comia un lugar a los recien publicados y la pantalla mostraba 12 en total en vez
-// de 24. Son dos modulos distintos y cada uno tiene su propio cupo.
+// La vitrina inicial combina publicaciones Top y recientes en una sola grilla.
+// Los productos Top se anteponen al entrar con “Recomendados”; después se completa
+// con el orden que corresponde al filtro seleccionado.
 const SHOWCASE_SIZE = 12;
 
 /**
@@ -89,13 +87,13 @@ const PART_CONDITIONS = [
 const formatCLP = (value) => `$${Number(value || 0).toLocaleString('es-CL')}`;
 
 export default function PartsCatalogView({
-  onBackToStore,
   onQuickView,
   onOpenQuote: _onOpenQuote,
   activeVehicle: initialActiveVehicle,
   initialCatalogFilter = null,
   initialSearchQuery = '',
   initialPage = 1,
+  onVehicleChange,
   onNavigationStateChange,
 }) {
   const [activeVehicle, setActiveVehicle] = useState(initialActiveVehicle);
@@ -160,14 +158,12 @@ export default function PartsCatalogView({
     setCurrentPage(1);
   };
 
-  // "Filtrar por mi comuna": solo repuestos de tiendas ubicadas en la misma
-  // comuna registrada en el perfil del usuario logueado (comprador o vendedor).
   const { user, isLoggedIn } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites(user?.userId);
   const [filterByMyComuna, setFilterByMyComuna] = useState(false);
   const [myComunaId, setMyComunaId] = useState(null);
   const [myComunaNombre, setMyComunaNombre] = useState('');
-  const [comunaLookupStatus, setComunaLookupStatus] = useState('idle'); // idle | loading | ready | no-comuna | error
+  const [comunaLookupStatus, setComunaLookupStatus] = useState('idle');
   const [comunaNotice, setComunaNotice] = useState('');
   const activeComunaId = filterByMyComuna ? myComunaId : null;
 
@@ -177,36 +173,29 @@ export default function PartsCatalogView({
       setComunaNotice('');
       return;
     }
-
     if (!isLoggedIn || !user?.userId) {
-      setComunaNotice('Debes iniciar sesión y registrar una comuna desde tu perfil para usar este filtro.');
+      setComunaNotice('Inicia sesión y registra una comuna en tu perfil para usar este filtro.');
       return;
     }
-
     if (myComunaId) {
       setFilterByMyComuna(true);
-      setComunaNotice('');
       return;
     }
-
     setComunaLookupStatus('loading');
-    setComunaNotice('');
     try {
       const addresses = await getAddressesApi(user.userId);
-      const list = Array.isArray(addresses) ? addresses : [];
-      const principal = list.find((addr) => addr.esPrincipal) || list[0];
-      if (principal?.comunaId) {
-        setMyComunaId(principal.comunaId);
-        setMyComunaNombre(principal.comunaNombre || '');
-        setFilterByMyComuna(true);
-        setComunaLookupStatus('ready');
-      } else {
-        setComunaLookupStatus('no-comuna');
-        setComunaNotice('Primero debes registrar una comuna desde tu perfil para poder usar este filtro.');
+      const principal = (Array.isArray(addresses) ? addresses : []).find((address) => address.esPrincipal) || addresses?.[0];
+      if (!principal?.comunaId) {
+        setComunaNotice('Registra una comuna en tu perfil para usar este filtro.');
+        return;
       }
+      setMyComunaId(principal.comunaId);
+      setMyComunaNombre(principal.comunaNombre || 'mi comuna');
+      setFilterByMyComuna(true);
     } catch (err) {
-      setComunaLookupStatus('error');
-      setComunaNotice(err.message || 'No pudimos verificar tu comuna registrada. Intenta nuevamente.');
+      setComunaNotice(err.message || 'No pudimos obtener tu comuna.');
+    } finally {
+      setComunaLookupStatus('idle');
     }
   };
 
@@ -270,29 +259,6 @@ export default function PartsCatalogView({
     return matched?.id || initialCatalogFilter?.subcategoryId || undefined;
   }, [selectedSubcategory, backendSubcategories, initialCatalogFilter?.subcategoryId]);
 
-  // Conteo real de publicaciones visibles por categoría. Es un GROUP BY agregado
-  // (`/inventario/productos/resumen-categorias`), no trae filas de productos.
-  const { data: categoryCounts = {} } = useQuery({
-    queryKey: qk.categoryCounts(),
-    queryFn: async () => {
-      try {
-        const items = await getPublicCategoryCountsApi();
-        const list = Array.isArray(items) ? items : [];
-        const byId = {};
-        list.forEach((item) => {
-          const matched = CAROUSEL_CATEGORIES.find(
-            (category) => normalizeNameKey(category.nombre) === normalizeNameKey(item.categoriaNombre)
-          );
-          if (matched) byId[matched.id] = Number(item.total || 0);
-        });
-        return byId;
-      } catch {
-        return {};
-      }
-    },
-    staleTime: 1000 * 60 * 5,
-  });
-
   // Marcas de vehículo del catálogo real. Antes eran seis nombres escritos a mano, así que
   // un Kia o un Suzuki no se podían filtrar aunque hubiera repuestos publicados para ellos.
   const { data: vehicleBrands = [] } = useQuery({
@@ -348,13 +314,6 @@ export default function PartsCatalogView({
     staleTime: 1000 * 60 * 30,
   });
 
-  // Tamaño real del catálogo público, sumando el agregado por categoría. Evita pedir un
-  // COUNT(*) del listado solo para mostrar un número en la cabecera.
-  const totalPublicProducts = useMemo(
-    () => Object.values(categoryCounts).reduce((acc, value) => acc + (Number(value) || 0), 0),
-    [categoryCounts]
-  );
-
   // Si hay un vehículo activo con catalogoId del backend y el filtro de compatibilidad está encendido,
   // consultamos el motor de cruce relacional /vehiculos-catalogo/{id}/repuestos directamente.
   const isVehicleCatalogSearch = Boolean(onlyCompatible && activeVehicle?.catalogoId);
@@ -386,8 +345,8 @@ export default function PartsCatalogView({
     deferredSearchQuery?.trim()
     || selectedCategory !== 'TODAS'
     || activeCategoryId
-    || (onlyCompatible && activeVehicle)
     || activeComunaId
+    || (onlyCompatible && activeVehicle)
     || onlyQuoteOnly
     || selectedCondition
     || selectedOrigin
@@ -503,39 +462,42 @@ export default function PartsCatalogView({
     },
   });
 
-  // Vitrina de entrada: una sola página corta de recién publicados. Reemplaza al grid
-  // completo mientras no haya contexto, para que /repuestos no se vea vacía.
+  // Vitrina inicial: una única sección de recién publicados. La recomendación por
+  // defecto antepone los productos Top, sin separarlos en otro bloque visual.
   const {
-    data: showcase = { featured: [], filler: [] },
+    data: showcase = { items: [] },
     isLoading: showcaseLoading,
   } = useQuery({
-    queryKey: qk.products({ vitrina: true, size: SHOWCASE_SIZE }),
+    queryKey: qk.products({ vitrina: true, size: SHOWCASE_SIZE, sort: backendSort, topFirst: sortBy === 'relevancia' }),
     enabled: !hasActiveContext,
     staleTime: 1000 * 60 * 5,
     queryFn: async ({ signal }) => {
+      if (sortBy !== 'relevancia') {
+        const data = await getPublicProductsApi({
+          page: 0,
+          size: SHOWCASE_SIZE * 2,
+          sort: backendSort,
+          signal,
+        });
+        return { items: adaptPage(data, adaptProduct).items };
+      }
+
       const destacados = adaptPage(await getPublicProductsApi({
         page: 0,
         size: SHOWCASE_SIZE,
         soloDestacados: true,
-        sort: 'createdAt,desc',
+        sort: backendSort,
         signal,
       }), adaptProduct).items;
-
-      // Se piden de mas para poder descartar los que ya salieron arriba sin quedarse
-      // corto: un Top es tambien un producto reciente, y sin este margen el bloque de
-      // "Recien publicados" terminaria con menos de 12 tarjetas.
       const recientes = adaptPage(await getPublicProductsApi({
         page: 0,
         size: SHOWCASE_SIZE + destacados.length,
-        sort: 'createdAt,desc',
+        sort: backendSort,
         signal,
       }), adaptProduct).items;
-      const yaVisibles = new Set(destacados.map((item) => item.id));
+      const idsTop = new Set(destacados.map((item) => item.id));
       return {
-        featured: destacados,
-        filler: recientes
-          .filter((item) => !yaVisibles.has(item.id))
-          .slice(0, SHOWCASE_SIZE),
+        items: [...destacados, ...recientes.filter((item) => !idsTop.has(item.id)).slice(0, SHOWCASE_SIZE)],
       };
     },
   });
@@ -655,6 +617,7 @@ export default function PartsCatalogView({
         const resolved = adaptVehicle(await searchVehicleByPatenteApi(normalized));
         if (resolved && !resolved.requiereIngresoManual && resolved.marca) {
           setActiveVehicle(resolved);
+          onVehicleChange?.(resolved);
           setOnlyCompatible(true);
           setInputValue(resolved.patente || normalized);
         } else {
@@ -777,116 +740,66 @@ export default function PartsCatalogView({
 
   return (
     <div className="parts-catalog-view-wrapper">
-      {/* 1. Sleek Compact Catalog Context Bar */}
-      <div className="catalog-context-header">
-        <div className="container catalog-context-container">
-          <div className="catalog-context-left">
-            <button className="catalog-breadcrumb-back" onClick={onBackToStore} type="button">
-              <ArrowLeft size={16} />
-              <span>Volver</span>
-            </button>
-            <div className="catalog-context-title-group">
-              <h1 className="catalog-context-title">
-                {searchQuery ? (
-                  <>Resultados para <span className="highlight-term">"{searchQuery}"</span></>
-                ) : appliedFilterLabel ? (
-                  <>Catálogo: <span>{appliedFilterLabel}</span></>
-                ) : activeVehicle && onlyCompatible ? (
-                  <>Repuestos para <span>{activeVehicle.marca} {activeVehicle.modelo} {activeVehicle.version ? `• ${activeVehicle.version}` : ''}</span></>
-                ) : (
-                  <>Catálogo General de <span>Repuestos</span></>
-                )}
-              </h1>
-              <span className="catalog-context-counter">
-                {activeVehicle && onlyCompatible
-                  ? `${totalProducts} repuestos compatibles con tu vehículo y con despacho garantizado`
-                  : hasActiveContext
-                    ? `${totalProducts} repuestos disponibles en tiendas verificadas de Chile`
-                    : `${CATEGORY_COUNT_FORMATTER.format(totalPublicProducts)} repuestos publicados por tiendas verificadas de Chile`}
-              </span>
-            </div>
-          </div>
-
-          <div className="catalog-context-right">
-            {activeVehicle ? (
-              <div className="catalog-vehicle-badge-active">
-                <Car size={18} className="text-blue-500" />
-                <div className="vehicle-info-text">
-                  <span className="vehicle-title">{activeVehicle.marca} {activeVehicle.modelo}</span>
-                  {activeVehicle.patente && activeVehicle.patente !== 'MANUAL' && (
-                    <span className="vehicle-plate">{activeVehicle.patente}</span>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  className={`btn-compat-toggle-pill ${onlyCompatible ? 'active' : ''}`}
-                  onClick={() => setOnlyCompatible(!onlyCompatible)}
-                  title="Filtrar solo repuestos compatibles con este vehículo"
-                >
-                  {onlyCompatible ? '✓ Solo compatibles' : 'Filtrar compatibles'}
-                </button>
-                <button
-                  type="button"
-                  className="btn-vehicle-clear"
-                  onClick={() => { setActiveVehicle(null); setOnlyCompatible(false); }}
-                  title="Quitar vehículo"
-                  aria-label="Quitar vehículo"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            ) : (
-              <div className="catalog-quick-patente-bar">
-                <CarFront size={18} className="patente-icon" />
-                <input
-                  type="text"
-                  placeholder="Ingresa tu patente (ej: ABCD-12)"
-                  value={patentInput}
-                  onChange={(e) => {
-                    const sanitized = sanitizePlateInput(e.target.value);
-                    setPatentInput(sanitized);
-                    if (patentError) setPatentError('');
-                  }}
-                  onKeyDown={(e) => e.key === 'Enter' && handleUnifiedSearch(patentInput)}
-                  className="patente-quick-input"
-                  maxLength={8}
-                />
-                <button
-                  type="button"
-                  className="btn-quick-patente-submit"
-                  onClick={() => handleUnifiedSearch(patentInput)}
-                  disabled={patentSearching}
-                >
-                  {patentSearching ? <RefreshCw size={15} className="spin-icon" /> : 'Buscar'}
-                </button>
-                {patentError && <span className="quick-patente-error">{patentError}</span>}
-              </div>
-            )}
-
-            <div style={{ position: 'relative' }}>
-              <button
-                type="button"
-                className={`btn-comuna-toggle-pill ${filterByMyComuna ? 'active' : ''}`}
-                onClick={handleToggleComunaFilter}
-                disabled={comunaLookupStatus === 'loading'}
-                title="Muestra repuestos de tiendas de tu comuna"
-              >
-                <MapPin size={17} />
-                <span>{filterByMyComuna ? `En ${myComunaNombre || 'mi comuna'}` : 'Mi comuna'}</span>
-              </button>
-              {comunaNotice && <div className="quick-patente-error">{comunaNotice}</div>}
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="container catalog-main-container">
-        {/* Vitrina de entrada: sin contexto no se lista el catálogo, se ofrece por dónde entrar. */}
-        {!hasActiveContext && (
-          <section className="catalog-showcase-carousel-wrapper" aria-label="Explora por categorías">
+        <section className="catalog-showcase-carousel-wrapper" aria-label="Explora por categorías">
             <div className="catalog-showcase-carousel-header">
-              <h2>¿Qué repuesto necesitas?</h2>
-              <p>Ingresa tu patente para ver solo lo compatible con tu vehículo, o elige una categoría para empezar a filtrar.</p>
+              <div>
+                <h2>¿Qué repuesto necesitas?</h2>
+                <p>Ingresa tu patente para ver solo lo compatible con tu vehículo, o elige una categoría para empezar a filtrar.</p>
+              </div>
+              <div className="catalog-showcase-patente-control">
+                {activeVehicle ? (
+                  <div className="catalog-showcase-vehicle-filter">
+                    <Car size={18} />
+                    <span><strong>{activeVehicle.marca} {activeVehicle.modelo}</strong>{activeVehicle.patente && activeVehicle.patente !== 'MANUAL' ? ` · ${activeVehicle.patente}` : ''}</span>
+                    <button
+                      type="button"
+                      onClick={() => { setActiveVehicle(null); onVehicleChange?.(null); setOnlyCompatible(false); setPatentInput(''); }}
+                      title="Quitar filtro de vehículo"
+                    >
+                      <X size={15} /> Quitar filtro
+                    </button>
+                  </div>
+                ) : (
+                  <div className="catalog-quick-patente-bar">
+                    <CarFront size={18} className="patente-icon" />
+                    <input
+                      type="text"
+                      placeholder="Ingresa tu patente (ej: ABCD-12)"
+                      value={patentInput}
+                      onChange={(e) => {
+                        const sanitized = sanitizePlateInput(e.target.value);
+                        setPatentInput(sanitized);
+                        if (patentError) setPatentError('');
+                      }}
+                      onKeyDown={(e) => e.key === 'Enter' && handleUnifiedSearch(patentInput)}
+                      className="patente-quick-input"
+                      maxLength={8}
+                    />
+                    <button
+                      type="button"
+                      className="btn-quick-patente-submit"
+                      onClick={() => handleUnifiedSearch(patentInput)}
+                      disabled={patentSearching}
+                    >
+                      {patentSearching ? <RefreshCw size={15} className="spin-icon" /> : 'Buscar'}
+                    </button>
+                    {patentError && <span className="quick-patente-error">{patentError}</span>}
+                  </div>
+                )}
+              </div>
+              <div className="catalog-showcase-comuna-control">
+                <button
+                  type="button"
+                  className={`btn-comuna-toggle-pill ${filterByMyComuna ? 'active' : ''}`}
+                  onClick={handleToggleComunaFilter}
+                  disabled={comunaLookupStatus === 'loading'}
+                >
+                  <MapPin size={17} />
+                  <span>{comunaLookupStatus === 'loading' ? 'Buscando comuna…' : filterByMyComuna ? `En ${myComunaNombre || 'mi comuna'}` : 'Mi comuna'}</span>
+                </button>
+                {comunaNotice && <span className="quick-patente-error">{comunaNotice}</span>}
+              </div>
             </div>
             <div className="category-showcase-carousel">
               <button
@@ -905,23 +818,14 @@ export default function PartsCatalogView({
                       <button
                         key={`${activeCarouselPage}-${category.id}-${index}`}
                         type="button"
-                        className={`category-showcase-card ${isSelected ? 'active-selected' : ''}`}
+                        className={`category-showcase-card category-catalog-card ${isSelected ? 'active-selected' : ''}`}
                         data-category={category.id}
                         onClick={() => selectCarouselCategory(category)}
                       >
-                        <CategoryIconTile iconName={category.iconName} color={category.color} size={24} className="category-showcase-icon" />
-                        <strong>{category.nombre}</strong>
                         <div className="category-showcase-image">
                           <img src={category.image} alt="" />
                         </div>
-                        <div className="category-showcase-footer">
-                          <span>
-                            {typeof categoryCounts[category.id] === 'number'
-                              ? `${CATEGORY_COUNT_FORMATTER.format(categoryCounts[category.id])} repuestos`
-                              : 'Ver repuestos'}
-                          </span>
-                          <i style={{ backgroundColor: category.color }}><ArrowRight size={18} /></i>
-                        </div>
+                        <strong>{category.nombre}</strong>
                       </button>
                     );
                   })}
@@ -936,8 +840,7 @@ export default function PartsCatalogView({
                 <ArrowRight size={20} />
               </button>
             </div>
-          </section>
-        )}
+        </section>
 
         {/* 2. Top Control Bar (Summary & Sort). Sin contexto no hay resultados que resumir ni ordenar. */}
         {hasActiveContext && (
@@ -1028,7 +931,19 @@ export default function PartsCatalogView({
                         <CategoryIconTile iconName={cat.iconName} color={cat.color} size={9} className="filter-category-icon" />
                         <span className="filter-option-copy"><strong>{cat.nombre}</strong></span>
                       </button>
-                      <button type="button" className="filter-subcategory-toggle" aria-label={`Mostrar subcategorías de ${cat.nombre}`} onClick={() => setExpandedCategories((current) => ({ ...current, [cat.id]: !current[cat.id] }))}>
+                      <button
+                        type="button"
+                        className="filter-subcategory-toggle"
+                        aria-label={`Mostrar subcategorías de ${cat.nombre}`}
+                        onClick={() => {
+                          const willExpand = !expandedCategories[cat.id];
+                          setExpandedCategories((current) => ({ ...current, [cat.id]: willExpand }));
+                          if (willExpand) {
+                            setSelectedCategory(cat.id);
+                            setSelectedSubcategory('TODAS');
+                          }
+                        }}
+                      >
                         <ChevronDown size={16} className={expanded ? 'is-open' : ''} />
                       </button>
                     </div>
@@ -1037,7 +952,8 @@ export default function PartsCatalogView({
                         const isSubSelected = selectedSubcategory === subcategory;
                         return (
                           <button type="button" key={subcategory} className={`filter-subcategory-option ${isSubSelected ? 'active' : ''}`} onClick={() => { setSelectedCategory(cat.id); setSelectedSubcategory(isSubSelected ? 'TODAS' : subcategory); }}>
-                            <span className="filter-subcategory-node" />{subcategory}{isSubSelected && <CheckCircle2 size={15} />}
+                            <span className="filter-subcategory-checkbox" aria-hidden="true" />
+                            <span className="filter-subcategory-text">{subcategory}</span>
                           </button>
                         );
                       })}
@@ -1245,9 +1161,8 @@ export default function PartsCatalogView({
           {/* Parts Cards Column (Right Grid) */}
           <main className="catalog-parts-main">
             {!hasActiveContext ? (
-              /* Vitrina acotada: los productos Top de las tiendas, completados con recién
-                 publicados mientras sean pocos. El catálogo paginado (y su COUNT sobre todo
-                 el inventario) no se pide hasta que hay filtro. */
+              /* Vitrina acotada: una sola sección. En “Recomendados”, los productos Top
+                 ocupan los primeros lugares y el resto sigue el orden del backend. */
               <div className="catalog-showcase-block">
                 {showcaseLoading ? (
                   <div className="parts-cards-grid-catalog" aria-busy="true">
@@ -1255,7 +1170,7 @@ export default function PartsCatalogView({
                       <ProductCardSkeleton key={i} />
                     ))}
                   </div>
-                ) : showcase.featured.length === 0 && showcase.filler.length === 0 ? (
+                ) : showcase.items.length === 0 ? (
                   <div className="directory-empty-state">
                     <Wrench size={56} className="empty-icon-gray" />
                     <h3>Todavía no hay repuestos publicados</h3>
@@ -1263,44 +1178,32 @@ export default function PartsCatalogView({
                   </div>
                 ) : (
                   <>
-                    {showcase.featured.length > 0 && (
-                      <>
-                        <div className="catalog-showcase-block-header">
-                          <h2><ProductTopBadge compact className="catalog-showcase-top-badge" /> Productos Top de las tiendas</h2>
-                          <p>Lo que cada tienda eligió destacar de su inventario.</p>
-                        </div>
-                        <div className="parts-cards-grid-catalog">
-                          {showcase.featured.map((prod) => (
-                            <MarketplaceProductCard
-                              key={prod.id}
-                              product={prod}
-                              onView={onQuickView}
-                              isFavorite={isFavorite(prod.id)}
-                              onToggleFavorite={isLoggedIn ? toggleFavorite : undefined}
-                            />
-                          ))}
-                        </div>
-                      </>
-                    )}
-                    {showcase.filler.length > 0 && (
-                      <>
-                        <div className="catalog-showcase-block-header">
-                          <h2>Recién publicados</h2>
-                          <p>Una muestra del catálogo. Filtra por categoría, patente o busca por nombre para ver el resto.</p>
-                        </div>
-                        <div className="parts-cards-grid-catalog">
-                          {showcase.filler.map((prod) => (
-                            <MarketplaceProductCard
-                              key={prod.id}
-                              product={prod}
-                              onView={onQuickView}
-                              isFavorite={isFavorite(prod.id)}
-                              onToggleFavorite={isLoggedIn ? toggleFavorite : undefined}
-                            />
-                          ))}
-                        </div>
-                      </>
-                    )}
+                    <div className="catalog-showcase-block-header">
+                      <div>
+                        <h2>Recién publicados</h2>
+                        <p>Una muestra del catálogo. Filtra por categoría, patente o busca por nombre para ver el resto.</p>
+                      </div>
+                      <div className="sort-dropdown-box catalog-showcase-sort">
+                        <span className="sort-label">Ordenar por:</span>
+                        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sort-select-input" aria-label="Ordenar recién publicados">
+                          <option value="relevancia">Recomendados</option>
+                          <option value="recientes">Más recientes</option>
+                          <option value="precio-asc">Precio: menor a mayor</option>
+                          <option value="precio-desc">Precio: mayor a menor</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="parts-cards-grid-catalog">
+                      {showcase.items.map((prod) => (
+                        <MarketplaceProductCard
+                          key={prod.id}
+                          product={prod}
+                          onView={onQuickView}
+                          isFavorite={isFavorite(prod.id)}
+                          onToggleFavorite={isLoggedIn ? toggleFavorite : undefined}
+                        />
+                      ))}
+                    </div>
                   </>
                 )}
               </div>

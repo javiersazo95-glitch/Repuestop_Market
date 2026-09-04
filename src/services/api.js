@@ -1191,6 +1191,22 @@ export async function createSupportTicketApi(ticket) {
   });
 }
 
+/** Feedback autenticado sobre la experiencia general de la plataforma. */
+export async function createSystemFeedbackApi({ calificacion, comentario }) {
+  return fetchApi('/feedback', {
+    method: 'POST',
+    body: JSON.stringify({ calificacion, comentario }),
+  });
+}
+
+export async function getMySystemFeedbackApi() {
+  return fetchApi('/feedback/mine', { method: 'GET' });
+}
+
+export async function getPublicSystemFeedbackApi() {
+  return fetchApi('/feedback/public', { method: 'GET' });
+}
+
 export async function createOrderClaimApi(userId, orderId, claim) {
   return fetchApi(`/usuarios/${userId}/pedidos/${orderId}/reclamo`, {
     method: 'POST',

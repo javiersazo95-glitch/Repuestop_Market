@@ -39,7 +39,7 @@ export function profileOrderPath(orderId) {
 export const PROFILE_TABS = [
   'resumen', 'pedidos', 'favoritos', 'datos', 'consultas',
   'cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'tienda', 'tienda_datos',
-  'anuncios',
+  'anuncios', 'feedback',
   // Bandeja del COMPRADOR con las preguntas que hizo. Es distinta de
   // `preguntas_productos`, que es la del vendedor sobre sus propios repuestos. Estaba
   // en el sidebar y con su panel implementado, pero faltaba aca: la ruta no se
@@ -154,6 +154,5 @@ export function catalogFilterFromParams(searchParams) {
     page: Math.max(1, Number(searchParams.get('pagina') || 1) || 1),
   };
 }
-
 
 

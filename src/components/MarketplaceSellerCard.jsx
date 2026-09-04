@@ -1,13 +1,17 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Clock, Heart, MapPin, Package, ShieldCheck } from 'lucide-react';
 import VehicleBrandLogo from './VehicleBrandLogo';
 import { parseShippingMethods, resolveShippingService } from '../data/shippingMethods';
+import { getStoreProductsApi } from '../services/api';
+import { adaptPage, adaptProduct } from '../services/adapters';
+import { qk } from '../services/queryKeys';
 
 function initials(name) {
   return String(name || 'RT').split(/\s+/).slice(0, 2).map((word) => word[0]).join('').toUpperCase();
 }
 
-export default function MarketplaceSellerCard({ store, avatarPhoto, onView, isFavorite = false, onToggleFavorite }) {
+export default function MarketplaceSellerCard({ store, avatarPhoto, onView, isFavorite = false, onToggleFavorite, vehicleBrand = null }) {
   const rating = Number(store.rating ?? 0);
   const publications = Number(store.totalPublicaciones ?? 0);
   const averageResponseTime = store.averageResponseTime || store.tiempoPromedioRespuesta || '15 min';
@@ -15,6 +19,22 @@ export default function MarketplaceSellerCard({ store, avatarPhoto, onView, isFa
   const shippingMethods = parseShippingMethods(store.metodosEnvio);
   const specialistBrands = Array.isArray(store.marcasEspecialistas) ? store.marcasEspecialistas : [];
   const averageDispatchTime = store.averageDispatchTime || store.tiempoPromedioDespacho || '24 h';
+  const normalizedVehicleBrand = String(vehicleBrand || '').trim().toLowerCase();
+  const { data: vehicleBrandProducts, isLoading: vehicleBrandStockLoading } = useQuery({
+    queryKey: qk.storeProducts(store.id, { vehicleBrand: normalizedVehicleBrand, size: 100 }),
+    queryFn: async ({ signal }) => {
+      const data = await getStoreProductsApi(store.id, { page: 0, size: 100, signal });
+      const items = adaptPage(data, adaptProduct).items;
+      return items.filter((product) => (product.compatibilidad || []).some(
+        (compatibility) => String(compatibility.marca || '').trim().toLowerCase() === normalizedVehicleBrand
+      ));
+    },
+    enabled: Boolean(normalizedVehicleBrand && store.id),
+    staleTime: 1000 * 60 * 5,
+  });
+  const visiblePublications = normalizedVehicleBrand
+    ? (vehicleBrandStockLoading ? null : (vehicleBrandProducts?.length || 0))
+    : publications;
 
   return (
     <article className="market-seller-card">
@@ -55,7 +75,7 @@ export default function MarketplaceSellerCard({ store, avatarPhoto, onView, isFa
       <div className="market-seller-divider" />
 
       <div className="market-seller-metrics">
-        <div><Package size={15} /><p><strong>{publications.toLocaleString('es-CL')}</strong><small>Repuestos</small></p></div>
+        <div><Package size={15} /><p><strong>{visiblePublications === null ? '…' : visiblePublications.toLocaleString('es-CL')}</strong><small>{normalizedVehicleBrand ? `Para ${vehicleBrand}` : 'Repuestos'}</small></p></div>
         <div><Clock size={15} /><p><strong>{averageResponseTime}</strong><small>Tiempo de respuesta</small></p></div>
         <div><Clock size={15} /><p><strong>{averageDispatchTime}</strong><small>Tiempo promedio de despacho</small></p></div>
         <div className="market-seller-specialist-brands">

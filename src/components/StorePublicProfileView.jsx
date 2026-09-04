@@ -608,7 +608,7 @@ export default function StorePublicProfileView({
             {activeVehicle && (
               <div className="light-active-vehicle">
                 <CheckCircle2 size={17} />
-                <span>Vehículo activo: <strong>{activeVehicle.marca} {activeVehicle.modelo} ({activeVehicle.patente})</strong></span>
+                <span>Estás viendo solo repuestos compatibles con tu <strong>{activeVehicle.marca} {activeVehicle.modelo} ({activeVehicle.patente})</strong> en esta tienda.</span>
                 <button
                   type="button"
                   className={`btn-toggle-compat-mini ${onlyCompatible ? 'active' : ''}`}

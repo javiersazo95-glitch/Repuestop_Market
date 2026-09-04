@@ -9,7 +9,7 @@ import { useDocumentTitle } from '../routes/useDocumentTitle';
 export default function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const nav = useAppNavigation();
-  const { activeVehicle, openQuote, searchQuery, setSearchQuery } = useMarketplace();
+  const { activeVehicle, setActiveVehicle, openQuote, searchQuery, setSearchQuery } = useMarketplace();
 
   const { filter, query, page } = useMemo(
     () => catalogFilterFromParams(searchParams),
@@ -66,6 +66,7 @@ export default function CatalogPage() {
       initialCatalogFilter={filter}
       initialSearchQuery={query}
       initialPage={page}
+      onVehicleChange={setActiveVehicle}
       onNavigationStateChange={syncUrl}
     />
   );

@@ -175,6 +175,7 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
           <header>
             <button type="button" onClick={closeCase}><ArrowLeft size={13} /> Todos mis casos</button>
             <h2>Disputas <b>{disputes.length}</b></h2>
+            <p className="dispute-rail-hint">Elegí un caso para ver la conversación y la evidencia.</p>
           </header>
           <ul>
             {disputes.map((mediation) => {

@@ -3,14 +3,15 @@ import { useSearchParams } from 'react-router-dom';
 import {
   Building2, Search, Filter, SlidersHorizontal, MapPin, ShieldCheck,
   Star, ArrowLeft, X, CheckCircle2, RotateCcw,
-  Store, Tag, Truck, Bike, ChevronLeft, ChevronRight, ChevronDown, Car
+  Store, Tag, Truck, Bike, ChevronLeft, ChevronRight, ChevronDown, Car, CarFront, RefreshCw
 } from 'lucide-react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
 import { useAuth } from '../context/AuthContext';
-import { getPublicStoresApi } from '../services/api';
-import { adaptPage, adaptStore } from '../services/adapters';
+import { getAddressesApi, getPublicStoresApi, searchVehicleByPatenteApi } from '../services/api';
+import { adaptPage, adaptStore, adaptVehicle } from '../services/adapters';
+import { normalizePlate, sanitizePlateInput, isValidPlate } from '../utils/vehicleLookup';
 import MarketplaceSellerCard from './MarketplaceSellerCard';
 import StoreCardSkeleton from './skeletons/StoreCardSkeleton';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
@@ -53,7 +54,7 @@ function uniqueOptions(values) {
 
 export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   const { user } = useAuth();
-  const { openAuthModal } = useMarketplace();
+  const { openAuthModal, activeVehicle, setActiveVehicle } = useMarketplace();
   const { isStoreSaved, toggleStore } = useSavedMarketplaceItems(user?.userId ?? user?.id);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -67,6 +68,57 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   const [openFilterSections, setOpenFilterSections] = useState({ business: true, shipping: true });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(6);
+  const [patentInput, setPatentInput] = useState(activeVehicle?.patente || '');
+  const [patentError, setPatentError] = useState('');
+  const [patentSearching, setPatentSearching] = useState(false);
+  const [myComunaLoading, setMyComunaLoading] = useState(false);
+  const [comunaNotice, setComunaNotice] = useState('');
+
+  const handlePatentSearch = async () => {
+    const patent = normalizePlate(patentInput);
+    if (!isValidPlate(patent)) {
+      setPatentError('Ingresa una patente válida (ej: ABCD12).');
+      return;
+    }
+    setPatentSearching(true);
+    setPatentError('');
+    try {
+      const vehicle = adaptVehicle(await searchVehicleByPatenteApi(patent));
+      if (!vehicle?.marca || vehicle.requiereIngresoManual) {
+        setPatentError(vehicle?.mensaje || 'No encontramos ese vehículo.');
+        return;
+      }
+      setActiveVehicle(vehicle);
+      setPatentInput(vehicle.patente || patent);
+      setSelectedBrand(vehicle.marca);
+    } catch (err) {
+      setPatentError(err.message || 'No se pudo consultar la patente.');
+    } finally {
+      setPatentSearching(false);
+    }
+  };
+
+  const handleMyComuna = async () => {
+    if (!user?.userId) {
+      setComunaNotice('Inicia sesión y registra una comuna en tu perfil para usar este filtro.');
+      return;
+    }
+    setMyComunaLoading(true);
+    setComunaNotice('');
+    try {
+      const addresses = await getAddressesApi(user.userId);
+      const principal = (Array.isArray(addresses) ? addresses : []).find((address) => address.esPrincipal) || addresses?.[0];
+      if (!principal?.comunaNombre) {
+        setComunaNotice('Registra una comuna en tu perfil para usar este filtro.');
+        return;
+      }
+      setSelectedComuna(principal.comunaNombre);
+    } catch (err) {
+      setComunaNotice(err.message || 'No pudimos obtener tu comuna.');
+    } finally {
+      setMyComunaLoading(false);
+    }
+  };
 
   // Debounce de 400ms para evitar una petición por cada tecla presionada.
   // La comuna se sincroniza junto al texto porque los dos viajan al backend.
@@ -137,7 +189,17 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
     selectedGiro !== 'TODAS' ||
     selectedShipping !== 'TODAS' ||
     selectedBrand !== 'TODAS' ||
+    Boolean(activeVehicle?.marca) ||
     (sortBy !== 'relevancia' && sortBy !== 'recientes');
+  const hasActiveStoreContext = Boolean(
+    searchQuery.trim()
+    || selectedGiro !== 'TODAS'
+    || selectedComuna !== 'TODAS'
+    || selectedShipping !== 'TODAS'
+    || selectedBrand !== 'TODAS'
+    || activeVehicle?.marca
+    || sortBy !== 'relevancia'
+  );
 
   const isLoading = hasLocalFilters ? poolLoading : pageLoading;
   const queryError = hasLocalFilters ? poolQueryError : pageQueryError;
@@ -177,8 +239,12 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
       const brands = (store.marcasEspecialistas || []).map(b => (b.nombre || '').toLowerCase());
       if (!brands.includes(selectedBrand.toLowerCase())) return false;
     }
+    if (activeVehicle?.marca) {
+      const brands = (store.marcasEspecialistas || []).map((brand) => (brand.nombre || '').toLowerCase());
+      if (!brands.includes(activeVehicle.marca.toLowerCase())) return false;
+    }
     return true;
-  }), [poolStores, selectedGiro, selectedShipping, selectedBrand]);
+  }), [poolStores, selectedGiro, selectedShipping, selectedBrand, activeVehicle?.marca]);
 
   const sortedPoolStores = useMemo(() => [...filteredPoolStores].sort((a, b) => {
     if (sortBy === '+publicaciones') return (b.totalPublicaciones || 0) - (a.totalPublicaciones || 0);
@@ -202,7 +268,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   // Reset to Page 1 on any filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedGiro, selectedComuna, selectedShipping, selectedBrand, sortBy, itemsPerPage]);
+  }, [searchQuery, selectedGiro, selectedComuna, selectedShipping, selectedBrand, activeVehicle?.marca, sortBy, itemsPerPage]);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -220,6 +286,8 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
     setSelectedComuna('TODAS');
     setSelectedShipping('TODAS');
     setSelectedBrand('TODAS');
+    setActiveVehicle(null);
+    setPatentInput('');
     setSortBy('relevancia');
     setCurrentPage(1);
   };
@@ -293,26 +361,39 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
             )}
           </div>
 
-          <div className="control-bar-right-group">
-            <div className="results-count-badge">
-              <span>Mostrando <strong>{totalElements}</strong> tiendas encontradas</span>
-              {poolMayBeIncomplete && (
-                <small className="results-count-note">
-                  Puede haber más resultados: afina la búsqueda o la comuna para verlos todos.
-                </small>
-              )}
-            </div>
-
-            <div className="sort-dropdown-box">
-              <span className="sort-label">Ordenar:</span>
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sort-select-input">
-                <option value="relevancia">Recomendados / Relevancia</option>
-                <option value="+publicaciones">Más Publicaciones en Stock</option>
-                <option value="rating">Mejor Calificación (Rating)</option>
-                <option value="recientes">Ingresadas Recientemente</option>
-              </select>
+          <div className="directory-vehicle-filters">
+            {activeVehicle ? (
+              <div className="directory-active-vehicle">
+                <Car size={16} />
+                <span><strong>{activeVehicle.marca} {activeVehicle.modelo}</strong> · {activeVehicle.patente}</span>
+                <button type="button" onClick={() => { setActiveVehicle(null); setSelectedBrand('TODAS'); setPatentInput(''); }}>
+                  <X size={14} /> Quitar filtro
+                </button>
+              </div>
+            ) : (
+              <div className="directory-patente-search">
+                <CarFront size={16} />
+                <input
+                  value={patentInput}
+                  onChange={(e) => { setPatentInput(sanitizePlateInput(e.target.value)); setPatentError(''); }}
+                  onKeyDown={(e) => e.key === 'Enter' && handlePatentSearch()}
+                  placeholder="Buscar por patente"
+                  maxLength={8}
+                />
+                <button type="button" onClick={handlePatentSearch} disabled={patentSearching}>
+                  {patentSearching ? <RefreshCw size={15} className="spin-icon" /> : 'Buscar'}
+                </button>
+                {patentError && <small>{patentError}</small>}
+              </div>
+            )}
+            <div className="directory-my-comuna-wrap">
+              <button type="button" className={`directory-my-comuna ${selectedComuna !== 'TODAS' ? 'active' : ''}`} onClick={handleMyComuna} disabled={myComunaLoading}>
+                <MapPin size={16} /> {myComunaLoading ? 'Buscando…' : selectedComuna !== 'TODAS' ? `En ${selectedComuna}` : 'Mi comuna'}
+              </button>
+              {comunaNotice && <small>{comunaNotice}</small>}
             </div>
           </div>
+
         </div>
 
         {/* 3. Main 2-Column Content Layout (Sidebar Filters + Stores Grid) */}
@@ -403,6 +484,28 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
 
           {/* Stores Cards Column (Right Grid) */}
           <main className="directory-stores-main">
+            <div className="directory-stores-section-header">
+              <div>
+                <h2>Tiendas recién publicadas</h2>
+                {hasActiveStoreContext ? (
+                  <p>
+                    Mostrando <strong>{totalElements}</strong> tiendas encontradas.
+                    {poolMayBeIncomplete && ' Puede haber más resultados: afina la búsqueda o la comuna para verlos todos.'}
+                  </p>
+                ) : (
+                  <p>Explora tiendas verificadas y encuentra la especialista ideal para tus repuestos.</p>
+                )}
+              </div>
+              <div className="sort-dropdown-box directory-stores-sort">
+                <span className="sort-label">Ordenar por:</span>
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sort-select-input" aria-label="Ordenar tiendas">
+                  <option value="relevancia">Recomendados</option>
+                  <option value="+publicaciones">Más publicaciones en stock</option>
+                  <option value="rating">Mejor calificación</option>
+                  <option value="recientes">Ingresadas recientemente</option>
+                </select>
+              </div>
+            </div>
             {isLoading ? (
               <div className="stores-cards-grid-directory" aria-busy="true">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -432,6 +535,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                           if (!user) { openAuthModal(); return; }
                           toggleStore(storeData);
                         }}
+                        vehicleBrand={activeVehicle?.marca || null}
                       />
                     );
                   })}
