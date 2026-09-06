@@ -16,6 +16,10 @@ export const ROUTES = {
   // el pedido se puede enlazar y compartir, y los dialogos que abre (cancelar con motivo,
   // registrar despacho, calificar) dejan de ser un modal sobre otro modal.
   profileOrder: '/perfil/pedidos/:orderId',
+  // "Mis compras" del vendedor: los pedidos donde el vendedor es el COMPRADOR. Se ven con la
+  // misma UI que el comprador; el detalle tiene su propia ruta para no mezclarse con el de
+  // "Pedidos recibidos" (donde es el vendedor).
+  profilePurchase: '/perfil/compras/:orderId',
   support: '/ayuda',
   helpContact: '/ayuda/contacto',
   helpAllFaqs: '/ayuda/preguntas-frecuentes',
@@ -36,9 +40,14 @@ export function profileOrderPath(orderId) {
   return `/perfil/pedidos/${encodeURIComponent(String(orderId ?? ''))}`;
 }
 
+/** `/perfil/compras/{id}`, el detalle de una compra del vendedor (lo ve como comprador). */
+export function profilePurchasePath(orderId) {
+  return `/perfil/compras/${encodeURIComponent(String(orderId ?? ''))}`;
+}
+
 export const PROFILE_TABS = [
-  'resumen', 'pedidos', 'favoritos', 'datos', 'consultas',
-  'cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'tienda', 'tienda_datos',
+  'resumen', 'pedidos', 'compras', 'favoritos', 'datos', 'consultas',
+  'cotizaciones', 'mis_cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'tienda', 'tienda_datos',
   'anuncios', 'feedback',
   // Bandeja del COMPRADOR con las preguntas que hizo. Es distinta de
   // `preguntas_productos`, que es la del vendedor sobre sus propios repuestos. Estaba

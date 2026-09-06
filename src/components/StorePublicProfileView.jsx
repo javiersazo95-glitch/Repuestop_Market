@@ -15,7 +15,7 @@ import MarketplaceProductCard from './MarketplaceProductCard';
 import { isProductTopActive } from '../utils/productTop';
 import ContextualReportButton from './ContextualReportButton';
 import { parseShippingMethods, resolveShippingService } from '../data/shippingMethods';
-import { getStoreProductsApi, getStoreProfileApi, searchVehicleByPatenteApi } from '../services/api';
+import { getAddressesApi, getStoreProductsApi, getStoreProfileApi, searchVehicleByPatenteApi } from '../services/api';
 import { adaptPage, adaptProduct, adaptStore, adaptVehicle } from '../services/adapters';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useMarketplace } from '../context/MarketplaceContext';
@@ -25,17 +25,6 @@ const STORE_PRODUCTS_FETCH_SIZE = 100;
 const STORE_FILTER_BRANDS = ['TODAS', 'Toyota', 'Nissan', 'Hyundai', 'Chevrolet', 'Kia', 'Mazda', 'Suzuki', 'Mitsubishi'];
 const STORE_FILTER_CONDITIONS = ['TODOS', 'Nuevo OEM Original', 'Nuevo Alternativo Homologado', 'Usado Certificado Desarmaduría'];
 
-const samplePatentes = ['BB-CL-12', 'HG-89-21', 'AA-123-BB'];
-const sampleOemCodes = ['04465-0D150', '90919-01253', '26300-35505'];
-const sampleKeywords = ['Pastillas de freno', 'Filtro de aceite', 'Amortiguador'];
-
-const SEARCH_MODES = [
-  { id: 'repuesto', label: 'Repuesto o Categoría', icon: Search, placeholder: 'Ej. Pastillas de freno, Filtro de aceite...' },
-  { id: 'patente', label: 'Por Patente', icon: CarFront, placeholder: 'Ej. BB-CL-12 o BBCL12' },
-  { id: 'vin', label: 'Por Chasis / VIN', icon: Barcode, placeholder: 'Ej. 1HGCR2F83HA000000 (17 caracteres)' },
-  { id: 'oem', label: 'Código OEM', icon: Tag, placeholder: 'Ej. 04465-02220' },
-];
-
 export default function StorePublicProfileView({
   store,
   onBackToStores,
@@ -44,7 +33,7 @@ export default function StorePublicProfileView({
   activeVehicle: initialActiveVehicle,
   onEditStore
 }) {
-  const { user } = useAuth();
+  const { user, isLoggedIn } = useAuth();
   const { openAuthModal } = useMarketplace();
   const initialStoreId = typeof store === 'string' ? null : store?.id;
 
@@ -52,7 +41,6 @@ export default function StorePublicProfileView({
   const [patentInput, setPatentInput] = useState('');
   const [patentError, setPatentError] = useState('');
   const [patentSearching, setPatentSearching] = useState(false);
-  const [searchMode, setSearchMode] = useState('repuesto');
   const [inputValue, setInputValue] = useState(initialActiveVehicle?.patente || '');
   const [logoError, setLogoError] = useState(false);
   const [coverError, setCoverError] = useState(false);
@@ -65,6 +53,13 @@ export default function StorePublicProfileView({
   const [selectedBrand, setSelectedBrand] = useState('TODAS');
   const [onlyCompatible, setOnlyCompatible] = useState(!!initialActiveVehicle);
   const [sortBy, setSortBy] = useState('relevancia');
+
+  // Filtro "Mi comuna", igual que en el catálogo: resuelve la comuna del perfil del usuario
+  // y deja solo los repuestos publicados en esa zona.
+  const [filterByMyComuna, setFilterByMyComuna] = useState(false);
+  const [myComunaNombre, setMyComunaNombre] = useState('');
+  const [comunaLookupStatus, setComunaLookupStatus] = useState('idle');
+  const [comunaNotice, setComunaNotice] = useState('');
 
   const [shareFeedback, setShareFeedback] = useState('');
   const [openFilterSections, setOpenFilterSections] = useState({ purchase: true, category: true, condition: true });
@@ -165,7 +160,6 @@ export default function StorePublicProfileView({
   const storeProductsTotal = productsPageData?.total || 0;
   const productsError = productsQueryError ? (productsQueryError.message || 'No se pudo cargar el catálogo de esta tienda.') : null;
 
-  const currentSearchMode = SEARCH_MODES.find((m) => m.id === searchMode) || SEARCH_MODES[0];
 
   const handleResetFilters = () => {
     setSelectedCategory('TODAS');
@@ -183,63 +177,72 @@ export default function StorePublicProfileView({
     setCurrentPage(1);
   };
 
-  const selectSearchMode = (modeId) => {
-    setSearchMode(modeId);
-    setPatentError('');
-    if (modeId === 'patente') {
-      setInputValue(activeVehicle?.patente || patentInput || '');
-    } else if (modeId === 'vin') {
-      setInputValue(patentInput || '');
-    } else if (modeId === 'oem' || modeId === 'repuesto') {
-      setInputValue(searchQuery || '');
+  // Mismo comportamiento que el catálogo: toma la comuna del perfil y filtra los repuestos
+  // a esa zona. Sin sesión o sin comuna registrada, deja un aviso en vez de activarse.
+  const handleToggleComunaFilter = async () => {
+    if (filterByMyComuna) {
+      setFilterByMyComuna(false);
+      setComunaNotice('');
+      return;
+    }
+    if (!isLoggedIn || !(user?.userId ?? user?.id)) {
+      setComunaNotice('Inicia sesión y registra una comuna en tu perfil para usar este filtro.');
+      return;
+    }
+    if (myComunaNombre) {
+      setFilterByMyComuna(true);
+      return;
+    }
+    setComunaLookupStatus('loading');
+    try {
+      const addresses = await getAddressesApi(user.userId ?? user.id);
+      const principal = (Array.isArray(addresses) ? addresses : []).find((address) => address.esPrincipal) || addresses?.[0];
+      if (!principal?.comunaNombre) {
+        setComunaNotice('Registra una comuna en tu perfil para usar este filtro.');
+        return;
+      }
+      setMyComunaNombre(principal.comunaNombre);
+      setFilterByMyComuna(true);
+    } catch (err) {
+      setComunaNotice(err.message || 'No pudimos obtener tu comuna.');
+    } finally {
+      setComunaLookupStatus('idle');
     }
   };
 
+  // Búsqueda por patente, igual que el catálogo: resuelve el vehículo y deja el filtro de
+  // compatibilidad activo para esta tienda.
   const handleUnifiedSearch = async (valToUse) => {
     const value = (valToUse !== undefined ? valToUse : inputValue).trim();
     if (!value) {
-      if (searchMode === 'patente') {
-        setPatentError('Ingresa una patente válida (ej. BB-CL-12)');
-      } else if (searchMode === 'vin') {
-        setPatentError('Ingresa los 17 caracteres del VIN');
-      } else if (searchMode === 'oem') {
-        setPatentError('Ingresa un código OEM (ej. 04465-0D150)');
-      } else {
-        setPatentError('Ingresa un término para buscar repuestos');
-      }
+      setPatentError('Ingresa una patente válida (ej. BB-CL-12)');
       return;
     }
-
     setPatentError('');
-
-    if (searchMode === 'patente' || searchMode === 'vin') {
-      setPatentSearching(true);
-      setPatentInput(value);
-      try {
-        const resolved = adaptVehicle(await searchVehicleByPatenteApi(value));
-        if (resolved && !resolved.requiereIngresoManual && resolved.marca) {
-          setActiveVehicle(resolved);
-          setOnlyCompatible(true);
-          setInputValue(resolved.patente || value);
-        } else {
-          setActiveVehicle(null);
-          setPatentError(resolved?.mensaje || 'No encontramos ese vehículo. Verifica la patente o VIN e intenta de nuevo.');
-        }
-      } catch (err) {
+    setPatentSearching(true);
+    setPatentInput(value);
+    try {
+      const resolved = adaptVehicle(await searchVehicleByPatenteApi(value));
+      if (resolved && !resolved.requiereIngresoManual && resolved.marca) {
+        setActiveVehicle(resolved);
+        setOnlyCompatible(true);
+        setInputValue(resolved.patente || value);
+      } else {
         setActiveVehicle(null);
-        setPatentError(err.message || 'No se pudo consultar la patente o VIN. Intenta nuevamente.');
-      } finally {
-        setPatentSearching(false);
+        setPatentError(resolved?.mensaje || 'No encontramos ese vehículo. Verifica la patente e intenta de nuevo.');
       }
-    } else if (searchMode === 'oem' || searchMode === 'repuesto') {
-      setSearchQuery(value);
+    } catch (err) {
+      setActiveVehicle(null);
+      setPatentError(err.message || 'No se pudo consultar la patente. Intenta nuevamente.');
+    } finally {
+      setPatentSearching(false);
     }
   };
 
   // Reset to page 1 when any filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCategory, selectedCondition, selectedBrand, onlyCompatible, activeVehicle, sortBy, itemsPerPage]);
+  }, [searchQuery, selectedCategory, selectedCondition, selectedBrand, onlyCompatible, activeVehicle, sortBy, itemsPerPage, filterByMyComuna, myComunaNombre]);
 
   // Filtering Logic
   const filteredProducts = storeProducts.filter((prod) => {
@@ -290,6 +293,14 @@ export default function StorePublicProfileView({
       if (!isQuoteOnly) return false;
     }
 
+    // 6. Mi comuna: la tienda tiene una sola ubicación, así que el filtro deja pasar
+    // todo si esa comuna coincide con la del usuario y nada si no — el mismo criterio de
+    // ubicación que el catálogo, aplicado a la única zona de la tienda.
+    if (filterByMyComuna && myComunaNombre) {
+      const zona = String(prod.comuna || prod.ciudad || currentStore?.ciudad || '').toLowerCase();
+      if (!zona.includes(myComunaNombre.toLowerCase())) return false;
+    }
+
     return true;
   });
 
@@ -299,7 +310,10 @@ export default function StorePublicProfileView({
     if (topPriority) return topPriority;
     if (sortBy === 'precio-asc') return a.precio - b.precio;
     if (sortBy === 'precio-desc') return b.precio - a.precio;
-    if (sortBy === 'vendidos') return (b.vendidos || 0) - (a.vendidos || 0);
+    if (sortBy === 'recientes') {
+      const fecha = (p) => new Date(p.fechaPublicacion || p.createdAt || p.fechaCreacion || 0).getTime() || 0;
+      return fecha(b) - fecha(a);
+    }
     return 0;
   });
 
@@ -531,132 +545,108 @@ export default function StorePublicProfileView({
       </div>
 
       <div className="container catalog-main-container store-profile-search-stack">
-        {/* 2. License Plate & Inventory Unified Filter Console inside Store View */}
-        <div className="light-search-panel catalog-unified-search-panel">
-          <div className="light-search-tabs" role="tablist" aria-label="Tipos de búsqueda">
-            {SEARCH_MODES.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  role="tab"
-                  aria-selected={searchMode === item.id}
-                  className={searchMode === item.id ? 'active' : ''}
-                  onClick={() => selectSearchMode(item.id)}
-                  type="button"
-                >
-                  <Icon size={20} /> <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
+        {/* 2. Cabecera al estilo del catálogo: título, búsqueda por patente y "Mi comuna". */}
+        <section className="catalog-showcase-carousel-wrapper store-catalog-toolbar-wrapper" aria-label="Buscar en esta tienda">
+          <div className="catalog-showcase-carousel-header">
+            <div>
+              <h2>Repuestos de {currentStore.nombre}</h2>
+              <p>Ingresa tu patente para ver solo lo compatible con tu vehículo en esta tienda.</p>
+            </div>
 
-          <div className={`light-search-form ${searchMode !== 'patente' ? 'mode-no-country' : ''}`}>
-            <div className="light-input-row">
-              {searchMode === 'patente' && (
-                <button className="country-selector" type="button">
-                  <span>🇨🇱</span><strong>CHILE</strong><ChevronRight size={14} />
-                </button>
-              )}
-              <div className="light-query-field">
-                <input
-                  type="text"
-                  placeholder={currentSearchMode.placeholder}
-                  value={inputValue}
-                  onChange={(event) => {
-                    const val = searchMode === 'patente' || searchMode === 'vin' || searchMode === 'oem'
-                      ? event.target.value.toUpperCase()
-                      : event.target.value;
-                    setInputValue(val);
-                    if (searchMode === 'oem' || searchMode === 'repuesto') {
-                      setSearchQuery(val);
-                    }
-                    if (patentError) setPatentError('');
-                  }}
-                  onKeyDown={(event) => event.key === 'Enter' && handleUnifiedSearch()}
-                />
-                {searchMode === 'patente' && (
-                  <button type="button" className="plate-help">
-                    <CircleHelp size={14} /> ¿Dónde está mi patente?
+            <div className="catalog-showcase-patente-control">
+              {activeVehicle ? (
+                <div className="catalog-showcase-vehicle-filter">
+                  <Car size={18} />
+                  <span><strong>{activeVehicle.marca} {activeVehicle.modelo}</strong>{activeVehicle.patente && activeVehicle.patente !== 'MANUAL' ? ` · ${activeVehicle.patente}` : ''}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveVehicle(null); setOnlyCompatible(false); setInputValue(''); setPatentInput(''); }}
+                    title="Quitar filtro de vehículo"
+                  >
+                    <X size={15} /> Quitar filtro
                   </button>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="catalog-quick-patente-bar">
+                  <CarFront size={18} className="patente-icon" />
+                  <input
+                    type="text"
+                    placeholder="Ingresa tu patente (ej: ABCD-12)"
+                    value={inputValue}
+                    onChange={(e) => {
+                      setInputValue(e.target.value.toUpperCase());
+                      if (patentError) setPatentError('');
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleUnifiedSearch(inputValue)}
+                    className="patente-quick-input"
+                    maxLength={8}
+                  />
+                  <button
+                    type="button"
+                    className="btn-quick-patente-submit"
+                    onClick={() => handleUnifiedSearch(inputValue)}
+                    disabled={patentSearching}
+                  >
+                    {patentSearching ? <RefreshCw size={15} className="spin-icon" /> : 'Buscar'}
+                  </button>
+                  {patentError && <span className="quick-patente-error">{patentError}</span>}
+                </div>
+              )}
             </div>
 
-            <button
-              className="light-primary-search"
-              onClick={() => handleUnifiedSearch()}
-              disabled={patentSearching}
-              type="button"
-            >
-              {patentSearching ? <RefreshCw size={21} className="spin-icon" /> : <Search size={22} />}
-              {searchMode === 'patente'
-                ? `Buscar vehículo en ${currentStore.nombre}`
-                : searchMode === 'vin'
-                  ? 'Buscar por VIN'
-                  : searchMode === 'oem'
-                    ? `Buscar por código OEM en ${currentStore.nombre}`
-                    : `Buscar repuestos en ${currentStore.nombre}`}
-            </button>
-
-            {patentError && (
-              <div className="light-search-error">
-                <AlertCircle size={14} /> {patentError}
-              </div>
-            )}
-
-            {activeVehicle && (
-              <div className="light-active-vehicle">
-                <CheckCircle2 size={17} />
-                <span>Estás viendo solo repuestos compatibles con tu <strong>{activeVehicle.marca} {activeVehicle.modelo} ({activeVehicle.patente})</strong> en esta tienda.</span>
-                <button
-                  type="button"
-                  className={`btn-toggle-compat-mini ${onlyCompatible ? 'active' : ''}`}
-                  onClick={() => setOnlyCompatible(!onlyCompatible)}
-                  style={{ marginLeft: 'auto' }}
-                >
-                  {onlyCompatible ? '✓ Solo compatibles' : 'Filtrar compatibles'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setActiveVehicle(null); setOnlyCompatible(false); }}
-                  style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '2px 6px' }}
-                  title="Quitar vehículo"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            )}
-
-            <div className="popular-searches">
-              <span>
-                {searchMode === 'patente'
-                  ? 'Patentes populares:'
-                  : searchMode === 'oem'
-                    ? 'Códigos OEM sugeridos:'
-                    : searchMode === 'vin'
-                      ? 'Ejemplos VIN:'
-                      : 'Búsquedas populares:'}
-              </span>
-              {(searchMode === 'patente' ? samplePatentes : searchMode === 'oem' ? sampleOemCodes : sampleKeywords).map((item) => (
-                <button key={item} type="button" onClick={() => { setInputValue(item); handleUnifiedSearch(item); }}>
-                  {item}
-                </button>
-              ))}
+            <div className="catalog-showcase-comuna-control">
+              <button
+                type="button"
+                className={`btn-comuna-toggle-pill ${filterByMyComuna ? 'active' : ''}`}
+                onClick={handleToggleComunaFilter}
+                disabled={comunaLookupStatus === 'loading'}
+              >
+                <MapPin size={17} />
+                <span>{comunaLookupStatus === 'loading' ? 'Buscando comuna…' : filterByMyComuna ? `En ${myComunaNombre || 'mi comuna'}` : 'Mi comuna'}</span>
+              </button>
+              {comunaNotice && <span className="quick-patente-error">{comunaNotice}</span>}
             </div>
           </div>
-        </div>
 
-        <div className="store-results-toolbar">
-          <span>Mostrando <strong>{sortedProducts.length}</strong> repuestos de {currentStore.nombre}</span>
-          <label>Ordenar por:
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-              <option value="relevancia">Recomendados / Relevancia</option>
-              <option value="precio-asc">Precio: Menor a Mayor</option>
-              <option value="precio-desc">Precio: Mayor a Menor</option>
-              <option value="vendidos">Más Vendidos</option>
-            </select>
-          </label>
+          {activeVehicle && (
+            <div className="light-active-vehicle store-active-vehicle-inline">
+              <CheckCircle2 size={17} />
+              <span>Estás viendo solo repuestos compatibles con tu <strong>{activeVehicle.marca} {activeVehicle.modelo} ({activeVehicle.patente})</strong> en esta tienda.</span>
+              <button
+                type="button"
+                className={`btn-toggle-compat-mini ${onlyCompatible ? 'active' : ''}`}
+                onClick={() => setOnlyCompatible(!onlyCompatible)}
+                style={{ marginLeft: 'auto' }}
+              >
+                {onlyCompatible ? '✓ Solo compatibles' : 'Filtrar compatibles'}
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* 3. Barra de control: resumen + orden, igual que el catálogo. */}
+        <div className="catalog-control-bar">
+          <div className="control-bar-left-group">
+            <div className="results-count-badge">
+              {activeVehicle && onlyCompatible ? (
+                <span><strong>{sortedProducts.length}</strong> repuestos compatibles con tu <strong>{activeVehicle.marca} {activeVehicle.modelo}</strong></span>
+              ) : (
+                <span><strong>{sortedProducts.length}</strong> repuestos de {currentStore.nombre}</span>
+              )}
+            </div>
+          </div>
+
+          <div className="control-bar-right-group">
+            <div className="sort-dropdown-box">
+              <span className="sort-label">Ordenar por:</span>
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sort-select-input">
+                <option value="relevancia">Recomendados</option>
+                <option value="recientes">Más recientes</option>
+                <option value="precio-asc">Precio: menor a mayor</option>
+                <option value="precio-desc">Precio: mayor a menor</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* 4. 2-Column Content Layout (Sidebar + Grid) */}

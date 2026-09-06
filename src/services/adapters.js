@@ -269,6 +269,11 @@ export function adaptProduct(dto) {
     vehiculoCatalogoIds: dto.vehiculoCatalogoIds || [],
     compatibilityGroupsJson: dto.compatibilityGroupsJson || null,
     compatibilidad,
+    brandOrigin: dto.brandOrigin || '',
+    brandQuality: dto.brandQuality || '',
+    brandDescription: dto.brandDescription || '',
+    brandLogoUrl: dto.brandLogoUrl || null,
+    brandSourceUrl: dto.brandSourceUrl || null,
   };
 }
 
