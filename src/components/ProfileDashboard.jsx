@@ -7,7 +7,7 @@ import {
   Clock, ShieldCheck, Building2, PackageCheck, Loader2, Inbox, ChevronLeft, ChevronRight, Search,
   CreditCard, Phone, Mail, ArrowUpRight, Sliders, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Boxes, Plus, MessageCircleQuestion, Scale, Headphones, Wallet, Info, Crown,
-  CheckCircle, Send, Megaphone, Lightbulb, CheckCircle2, Circle, Lock
+  CheckCircle, Send, Megaphone, Lightbulb, CheckCircle2, Circle, Lock, ShoppingCart
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
@@ -18,7 +18,7 @@ import {
   updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi,
   saveConversationQuoteApi, sendConversationMessageApi, requestBlockedAccountReviewApi,
-  cancelSellerOrderApi, cancelBuyerSubOrderApi, registerOrderDispatchApi, declareOrderDeliveryApi, createOrderClaimApi,
+  cancelSellerOrderApi, cancelBuyerSubOrderApi, registerOrderDispatchApi, registerSaleReceiptApi, declareOrderDeliveryApi, createOrderClaimApi,
   pauseSellerProductApi, resumeSellerProductApi, updateSellerShippingMethodsApi,
   getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
   getBuyerProductQuestionsApi, createSystemFeedbackApi, getMySystemFeedbackApi
@@ -53,7 +53,7 @@ import ProfileFavoritesPanel from './ProfileFavoritesPanel';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { formatRut, isValidRut, isValidClPhone } from '../services/adapters';
 import { Link, useNavigate } from 'react-router-dom';
-import { helpContactPath, productPath, profileOrderPath, ROUTES, storePath } from '../routes/paths';
+import { helpContactPath, productPath, profileOrderPath, profilePurchasePath, ROUTES, storePath } from '../routes/paths';
 
 const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
 
@@ -99,6 +99,18 @@ const SELLER_SIDEBAR_GROUPS = [
       { id: 'productos', label: 'Productos', icon: Package },
       { id: 'cotizaciones', label: 'Cotizaciones', icon: ReceiptText },
       { id: 'preguntas_productos', label: 'Preguntas de productos', icon: MessageCircleQuestion }
+    ]
+  },
+  {
+    // Un vendedor tambien es comprador: aca tiene el mismo grupo que ve un comprador en su
+    // perfil. El backend solo le impide comprarse a si mismo; todo lo demas (comprar a otras
+    // tiendas, pedir cotizaciones, preguntar en productos ajenos, guardar favoritos) es igual.
+    title: 'MIS COMPRAS',
+    items: [
+      { id: 'compras', label: 'Mis compras', icon: ShoppingCart },
+      { id: 'mis_cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
+      { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
+      { id: 'favoritos', label: 'Favoritos', icon: Heart }
     ]
   },
   {
@@ -250,7 +262,7 @@ function EmptyState({ label }) {
   );
 }
 
-export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange, paymentStatus, paymentOrderId, deepLinkOrderId, deepLinkTicketId, deepLinkQuoteId, onClearDeepLink, detailOrderId }) {
+export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange, paymentStatus, paymentOrderId, deepLinkOrderId, deepLinkTicketId, deepLinkQuoteId, onClearDeepLink, detailOrderId, detailPurchaseId }) {
   const { user, role, logout, updateProfile, refreshProfile, deleteAccount } = useAuth();
   // El centro de ayuda dejó de ser una pestaña del perfil: vive en /ayuda y se
   // navega hacia allá desde el sidebar y los accesos rápidos.
@@ -467,13 +479,27 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     staleTime: 60 * 1000,
   });
 
+  // "Mis compras" del vendedor: los pedidos donde ES el comprador. Misma clave y forma que
+  // el listado del comprador -- para un no-vendedor este query queda deshabilitado porque
+  // `ordersQuery` ya trae esos mismos datos con esa misma clave.
+  const purchasesQuery = useQuery({
+    queryKey: qk.buyerOrders(effectiveUserId),
+    queryFn: async ({ signal }) => {
+      const res = await getBuyerOrdersApi(effectiveUserId, { signal });
+      return res?.content || (Array.isArray(res) ? res : []);
+    },
+    enabled: Boolean(isSeller && effectiveUserId),
+    staleTime: 60 * 1000,
+  });
+
   const favoritesQuery = useQuery({
     queryKey: qk.favorites(effectiveUserId),
     queryFn: async ({ signal }) => {
       const res = await getFavoritesApi(effectiveUserId, { signal });
       return Array.isArray(res) ? res : (res?.content || []);
     },
-    enabled: Boolean(!isSeller && effectiveUserId),
+    // Tambien para el vendedor: los favoritos son parte de su experiencia de comprador.
+    enabled: Boolean(effectiveUserId),
     staleTime: 60 * 1000,
   });
 
@@ -487,7 +513,18 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const buyerQuestionsQuery = useQuery({
     queryKey: qk.buyerProductQuestions(effectiveUserId),
     queryFn: ({ signal }) => getBuyerProductQuestionsApi({ signal }),
-    enabled: Boolean(!isSeller && effectiveUserId),
+    // Tambien para el vendedor: son las preguntas que hizo EL en productos de otras tiendas
+    // (el backend las resuelve por el JWT), distintas de las que recibe en sus propios productos.
+    enabled: Boolean(effectiveUserId),
+    staleTime: 60 * 1000,
+  });
+
+  // "Mis cotizaciones" del vendedor: las conversaciones de cotizacion donde el es el
+  // COMPRADOR. Para un no-vendedor `conversationsQuery` ya trae estas mismas.
+  const buyerConversationsQuery = useQuery({
+    queryKey: qk.conversations(effectiveUserId, false),
+    queryFn: ({ signal }) => getBuyerConversationsApi(effectiveUserId, { signal }),
+    enabled: Boolean(isSeller && effectiveUserId),
     staleTime: 60 * 1000,
   });
 
@@ -572,6 +609,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   });
 
   const orders = ordersQuery.data || [];
+  // Para el vendedor, sus compras salen del query aparte; para el comprador son las mismas.
+  const purchases = isSeller ? (purchasesQuery.data || []) : orders;
 
   // plan_retorno_flow.md Fase 3: PagoController redirige aqui con
   // ?status=pending|failure&orderId=... cuando el pago no quedo aprobado. Se busca
@@ -640,6 +679,13 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const { savedAds: savedFavoriteAds, savedStores: savedFavoriteStores } = useSavedMarketplaceItems(effectiveUserId);
   const favoritesTotal = favorites.length + savedFavoriteAds.length + savedFavoriteStores.length;
   const conversations = conversationsQuery.data || [];
+  // Cotizaciones donde el usuario es el COMPRADOR. Para el vendedor salen del query aparte;
+  // para el comprador son las mismas de arriba. `quotesAsBuyer` decide con que set y en que
+  // modo se pinta el panel de cotizaciones (el vendedor lo ve en modo comprador solo en la
+  // pestaña "Mis cotizaciones").
+  const buyerConversations = isSeller ? (buyerConversationsQuery.data || []) : conversations;
+  const quotesAsBuyer = !isSeller || activeTab === 'mis_cotizaciones';
+  const activeQuoteSource = quotesAsBuyer && isSeller ? buyerConversations : conversations;
 
   // Notificación de cotización: abre el detalle/chat apenas la lista esté cargada.
   const openedQuoteDeepLinkRef = useRef(null);
@@ -718,6 +764,32 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   };
 
   /**
+   * Igual que `handleUpdateOrderStatus` pero con semantica de COMPRADOR: lo usa el vendedor
+   * cuando gestiona una de sus compras desde "Mis compras". Refresca la lista de compras y
+   * ofrece calificar al recibir, sin importar que `isSeller` sea true.
+   */
+  const handlePurchaseUpdateStatus = async (orderId, newStatus, pin, proveedorId) => {
+    try {
+      const updatedOrder = await updateOrderStatusApi(orderId, newStatus, pin, proveedorId);
+      queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
+      const merged = { ...updatedOrder, estado: updatedOrder?.estado || newStatus, status: updatedOrder?.status || newStatus };
+      setSelectedOrder((prevSelected) => String(prevSelected?.id) === String(orderId)
+        ? { ...prevSelected, ...merged }
+        : prevSelected);
+      const estadoResultante = String(updatedOrder?.estado || updatedOrder?.status || newStatus).toUpperCase();
+      if (['ENTREGADO', 'RECEIVED'].includes(estadoResultante)) {
+        const base = purchases.find((candidate) => String(candidate.id) === String(orderId)) || {};
+        setSelectedOrder({ ...base, ...merged });
+        setRatingPromptOrderId(orderId);
+      }
+      return updatedOrder;
+    } catch (err) {
+      console.warn('No se pudo actualizar el estado de la compra:', err);
+      throw err;
+    }
+  };
+
+  /**
    * "Retomar pago" de un pedido que quedo en PENDIENTE.
    *
    * Equivalente de `retryOrderPayment()` del movil, sin su sondeo: alla Flow se
@@ -730,6 +802,22 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     const orderId = order?.id;
     if (!effectiveUserId || !orderId) return;
     const renewed = await retryOrderPaymentApi(effectiveUserId, orderId);
+
+    // Si es un token mock de prueba o local, simula la confirmación inmediata sin redireccionar fuera
+    const isMock = Boolean(renewed?.urlPago && /mock_flow_token_/i.test(renewed.urlPago));
+    if (isMock) {
+      try {
+        const confirmed = await confirmOrderPaymentApi(effectiveUserId, orderId);
+        queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
+        if (confirmed && selectedOrder && String(selectedOrder.id) === String(orderId)) {
+          setSelectedOrder(confirmed);
+        }
+        return;
+      } catch (err) {
+        console.warn('Error confirmando pago simulado al retomar:', err);
+      }
+    }
+
     if (!renewed?.urlPago) {
       throw new Error('No se recibió la URL de pago desde la pasarela.');
     }
@@ -764,27 +852,39 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     navigate(profileOrderPath(order.id));
   };
 
-  const detailFromList = detailOrderId
-    ? (orders || []).find((candidate) => String(candidate.id) === String(detailOrderId))
+  // El vendedor abre una de SUS compras: mismo patron, otra ruta y otra lista de origen.
+  const openPurchaseDetail = (order) => {
+    if (!order?.id) return;
+    navigate(profilePurchasePath(order.id));
+  };
+
+  // El detalle abierto: puede ser un pedido recibido (`detailOrderId`) o una compra
+  // (`detailPurchaseId`). Solo uno llega a la vez.
+  const activeDetailId = detailOrderId || detailPurchaseId;
+  const detailIsPurchase = Boolean(detailPurchaseId);
+  const detailSourceList = detailIsPurchase ? purchases : orders;
+
+  const detailFromList = activeDetailId
+    ? (detailSourceList || []).find((candidate) => String(candidate.id) === String(activeDetailId))
     : null;
   // `selectedOrder` es el buffer donde los handlers escriben la respuesta del backend apenas
   // llega (confirmar por tienda, cancelar, calificar). `invalidateQueries` refresca el listado,
   // pero es asincrono: sin mezclarlo, la accion se veia con retraso -- o no se veia -- porque
   // la pagina seguia leyendo la version vieja de la lista.
-  const detailOrder = !detailOrderId
+  const detailOrder = !activeDetailId
     ? null
-    : (selectedOrder && String(selectedOrder.id) === String(detailOrderId)
+    : (selectedOrder && String(selectedOrder.id) === String(activeDetailId)
       ? { ...detailFromList, ...selectedOrder }
       : detailFromList);
 
   useEffect(() => {
-    if (!detailOrderId) return;
-    if (selectedOrder && String(selectedOrder.id) === String(detailOrderId)) return;
+    if (!activeDetailId) return;
+    if (selectedOrder && String(selectedOrder.id) === String(activeDetailId)) return;
     if (detailFromList) setSelectedOrder(detailFromList);
     // `selectedOrder` no va en las dependencias a proposito: cada actualizacion del buffer
     // volveria a disparar el efecto y lo pisaria con la version vieja de la lista.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detailOrderId, detailFromList]);
+  }, [activeDetailId, detailFromList]);
 
   const handleOrderRated = (updatedOrder) => {
     if (!updatedOrder?.id) return;
@@ -838,6 +938,23 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     queryClient.invalidateQueries({ queryKey: qk.sellerOrders(effectiveSellerId) });
     setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
       ? { ...prev, ...updated, estado: 'ENVIADO', status: 'ENVIADO', courier: dispatchData.courier, trackingNumber: dispatchData.trackingNumber }
+      : prev
+    );
+    return updated;
+  };
+
+  /**
+   * El vendedor sube la boleta / factura de su venta (`POST /pedidos/{id}/boleta-venta`).
+   * Es obligatoria para confirmar el pedido: el modal de confirmación la exige y, tras
+   * subirla, dispara la transición a EN_PREPARACION con `handleUpdateOrderStatus`.
+   */
+  const handleRegisterSaleReceipt = async (order, file) => {
+    const orderId = order?.id;
+    if (!orderId || !file) return;
+    const updated = await registerSaleReceiptApi(orderId, file);
+    queryClient.invalidateQueries({ queryKey: qk.sellerOrders(effectiveSellerId) });
+    setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
+      ? { ...prev, ...updated }
       : prev
     );
     return updated;
@@ -902,9 +1019,15 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     return savedQuote;
   };
 
-  const handleQuoteMarkedRead = useCallback((quoteId) => {
-    queryClient.invalidateQueries({ queryKey: qk.conversations(isSeller ? effectiveSellerId : effectiveUserId, isSeller) });
-  }, [isSeller, effectiveSellerId, effectiveUserId, queryClient]);
+  const handleQuoteMarkedRead = useCallback(() => {
+    // Refresca el set que corresponde: cuando el vendedor mira "Mis cotizaciones" es el
+    // listado del comprador, no el suyo.
+    queryClient.invalidateQueries({
+      queryKey: quotesAsBuyer
+        ? qk.conversations(effectiveUserId, false)
+        : qk.conversations(isSeller ? effectiveSellerId : effectiveUserId, isSeller),
+    });
+  }, [quotesAsBuyer, isSeller, effectiveSellerId, effectiveUserId, queryClient]);
 
   // La dirección Comercial principal de BuyerAddressBook se sincroniza con
   // RT_tienda al guardarse (ver BuyerAddressBook.jsx); esto refresca storeInfo
@@ -934,7 +1057,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
   const quoteConversations = useMemo(() => {
     const query = quoteSearch.trim().toLowerCase();
-    return (conversations || [])
+    return (activeQuoteSource || [])
       .filter((conversation) => !conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion')
       .filter((conversation) => {
         if (quoteFilter === 'pending') return !conversation.cotizacion;
@@ -952,10 +1075,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         const rightTime = new Date(right.ultimoMensajeFecha || right.updatedAt || 0).getTime() || 0;
         return quoteSort === 'newest' ? rightTime - leftTime : leftTime - rightTime;
       });
-  }, [conversations, quoteFilter, quoteSearch, quoteSort]);
+  }, [activeQuoteSource, quoteFilter, quoteSearch, quoteSort]);
 
   const quoteSummary = useMemo(() => {
-    const quoteOnly = (conversations || []).filter((conversation) => (
+    const quoteOnly = (activeQuoteSource || []).filter((conversation) => (
       !conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion'
     ));
     return {
@@ -964,7 +1087,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       sent: quoteOnly.filter((conversation) => Boolean(conversation.cotizacion)).length,
       unread: quoteOnly.reduce((total, conversation) => total + Number(conversation.mensajesNoLeidos || 0), 0),
     };
-  }, [conversations]);
+  }, [activeQuoteSource]);
 
   const handleCatalogSearchSubmit = (e) => {
     e.preventDefault();
@@ -1873,35 +1996,41 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 </div>
               )}
 
-              {/* `/perfil/pedidos/:orderId`: el detalle ocupa el lugar del listado, dentro del
-                  panel. Mientras el pedido se esta cargando se muestra el aviso en vez de la
-                  lista, para que no parpadee el listado antes del detalle. */}
-              {activeTab === 'pedidos' && detailOrderId ? (
+              {/* `/perfil/pedidos/:orderId` y `/perfil/compras/:orderId`: el detalle ocupa el
+                  lugar del listado, dentro del panel. Una compra del vendedor se ve SIEMPRE en
+                  modo comprador. */}
+              {(activeTab === 'pedidos' || activeTab === 'compras') && activeDetailId ? (
                 detailOrder ? (
-                  <OrderDetailView
-                    layout="page"
-                    order={detailOrder}
-                    mode={isSeller ? 'seller' : 'buyer'}
-                    sellerId={effectiveSellerId}
-                    userId={effectiveUserId}
-                    onClose={() => navigate(`${ROUTES.profile}/pedidos`)}
-                    onUpdateStatus={handleUpdateOrderStatus}
-                    onRetryPayment={isSeller ? undefined : handleRetryPayment}
-                    onCancelOrder={isSeller ? undefined : handleCancelOrder}
-                    onCancelBuyerSubOrder={isSeller ? undefined : handleCancelBuyerSubOrder}
-                    autoOpenRating={!isSeller && ratingPromptOrderId != null && String(detailOrder.id) === String(ratingPromptOrderId)}
-                    onRatingPromptShown={() => setRatingPromptOrderId(null)}
-                    onOrderRated={handleOrderRated}
-                    onCancelSellerOrder={isSeller && !isSellerBlocked ? handleCancelSellerOrder : undefined}
-                    onRegisterDispatch={isSeller && !isSellerBlocked ? handleRegisterOrderDispatch : undefined}
-                    onDeclareDelivery={isSeller && !isSellerBlocked ? handleDeclareOrderDelivery : undefined}
-                    onDisputeDeclaredDelivery={isSeller ? undefined : handleDisputeDeclaredDelivery}
-                    readOnly={isSellerBlocked}
-                  />
+                  (() => {
+                    const asBuyerView = detailIsPurchase || !isSeller;
+                    return (
+                      <OrderDetailView
+                        layout="page"
+                        order={detailOrder}
+                        mode={asBuyerView ? 'buyer' : 'seller'}
+                        sellerId={effectiveSellerId}
+                        userId={effectiveUserId}
+                        onClose={() => navigate(detailIsPurchase ? `${ROUTES.profile}/compras` : `${ROUTES.profile}/pedidos`)}
+                        onUpdateStatus={detailIsPurchase ? handlePurchaseUpdateStatus : handleUpdateOrderStatus}
+                        onRetryPayment={asBuyerView ? handleRetryPayment : undefined}
+                        onCancelOrder={asBuyerView ? handleCancelOrder : undefined}
+                        onCancelBuyerSubOrder={asBuyerView ? handleCancelBuyerSubOrder : undefined}
+                        autoOpenRating={asBuyerView && ratingPromptOrderId != null && String(detailOrder.id) === String(ratingPromptOrderId)}
+                        onRatingPromptShown={() => setRatingPromptOrderId(null)}
+                        onOrderRated={handleOrderRated}
+                        onCancelSellerOrder={!asBuyerView && !isSellerBlocked ? handleCancelSellerOrder : undefined}
+                        onRegisterDispatch={!asBuyerView && !isSellerBlocked ? handleRegisterOrderDispatch : undefined}
+                        onRegisterSaleReceipt={!asBuyerView && !isSellerBlocked ? handleRegisterSaleReceipt : undefined}
+                        onDeclareDelivery={!asBuyerView && !isSellerBlocked ? handleDeclareOrderDelivery : undefined}
+                        onDisputeDeclaredDelivery={asBuyerView ? handleDisputeDeclaredDelivery : undefined}
+                        readOnly={!asBuyerView && isSellerBlocked}
+                      />
+                    );
+                  })()
                 ) : (
                   <div className="profile-panel">
-                    {ordersQuery.isLoading
-                      ? <EmptyState label="Cargando el pedido…" />
+                    {(detailIsPurchase ? purchasesQuery.isLoading : ordersQuery.isLoading)
+                      ? <EmptyState label={detailIsPurchase ? 'Cargando la compra…' : 'Cargando el pedido…'} />
                       : <EmptyState label="No encontramos ese pedido en tu cuenta." />}
                   </div>
                 )
@@ -1912,6 +2041,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                     sellerId={user?.sellerId}
                     onSelectOrder={openOrderDetail}
                     onUpdateStatus={handleUpdateOrderStatus}
+                    onRegisterSaleReceipt={isSellerBlocked ? undefined : handleRegisterSaleReceipt}
                     readOnly={isSellerBlocked}
                   />
                 ) : (
@@ -1951,7 +2081,37 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 )
               )}
 
-              {activeTab === 'mis_preguntas' && !isSeller && (
+              {/* "Mis compras" del vendedor: los pedidos donde ES el comprador, con la MISMA
+                  vista que un comprador (tarjetas + detalle en modo buyer). */}
+              {activeTab === 'compras' && isSeller && !activeDetailId && (
+                <div className="profile-panel">
+                  <h2 className="profile-panel-title"><ShoppingCart size={20} /> Mis compras</h2>
+                  <p style={{ margin: '4px 0 16px', color: '#64748b', fontSize: '13.5px' }}>
+                    Los repuestos que has comprado a otras tiendas. Se gestionan igual que cualquier compra.
+                  </p>
+                  {purchasesQuery.isLoading
+                    ? <EmptyState label="Cargando tus compras…" />
+                    : (purchases || []).length === 0
+                      ? <EmptyState label="Aún no has comprado repuestos a otras tiendas." />
+                      : (
+                        <div className="profile-orders-cards-grid">
+                          {purchases.map((order) => (
+                            <OrderCard
+                              key={order.id}
+                              order={order}
+                              mode="buyer"
+                              onSelectOrder={openPurchaseDetail}
+                              onUpdateStatus={handlePurchaseUpdateStatus}
+                              onRetryPayment={handleRetryPayment}
+                              onCancelOrder={handleCancelOrder}
+                            />
+                          ))}
+                        </div>
+                      )}
+                </div>
+              )}
+
+              {activeTab === 'mis_preguntas' && (
                 <div className="profile-panel">
                   <div className="profile-panel-header-row">
                     <div>
@@ -2034,7 +2194,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 </div>
               )}
 
-              {activeTab === 'favoritos' && !isSeller && (
+              {activeTab === 'favoritos' && (
                 <ProfileFavoritesPanel
                   userId={effectiveUserId}
                   productFavorites={favorites}
@@ -2200,16 +2360,16 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 />
               )}
 
-              {activeTab === 'cotizaciones' && (
+              {(activeTab === 'cotizaciones' || (isSeller && activeTab === 'mis_cotizaciones')) && (
                 <div className="profile-panel seller-quotes-panel">
                   <div className="seller-quotes-heading">
                     <div>
-                      <span className="seller-quotes-eyebrow"><ReceiptText size={14} /> {isSeller ? 'Centro de cotizaciones' : 'Conversaciones de cotización'}</span>
-                      <h2 className="profile-panel-title">{isSeller ? 'Cotizaciones de compradores' : 'Mis cotizaciones'}</h2>
-                      <p>{isSeller ? 'Revisa solicitudes, responde con tus condiciones comerciales y mantén cada oferta vinculada a su conversación.' : 'Revisa las respuestas de las tiendas, conversa y consulta cada propuesta con su vigencia y condiciones.'}</p>
+                      <span className="seller-quotes-eyebrow"><ReceiptText size={14} /> {quotesAsBuyer ? 'Conversaciones de cotización' : 'Centro de cotizaciones'}</span>
+                      <h2 className="profile-panel-title">{quotesAsBuyer ? 'Mis cotizaciones' : 'Cotizaciones de compradores'}</h2>
+                      <p>{quotesAsBuyer ? 'Revisa las respuestas de las tiendas, conversa y consulta cada propuesta con su vigencia y condiciones.' : 'Revisa solicitudes, responde con tus condiciones comerciales y mantén cada oferta vinculada a su conversación.'}</p>
                     </div>
                     <div className="seller-quotes-heading-actions">
-                      {isSeller && <span className="seller-quotes-total-badge">{quoteSummary.total} {quoteSummary.total === 1 ? 'solicitud' : 'solicitudes'}</span>}
+                      {!quotesAsBuyer && <span className="seller-quotes-total-badge">{quoteSummary.total} {quoteSummary.total === 1 ? 'solicitud' : 'solicitudes'}</span>}
                       <button type="button" className="seller-quotes-sort" onClick={() => setQuoteSort((current) => current === 'newest' ? 'oldest' : 'newest')}>
                         <Sliders size={15} /> {quoteSort === 'newest' ? 'Más recientes' : 'Más antiguas'}
                       </button>
@@ -2224,7 +2384,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   </div>
 
                   <div className="seller-quotes-toolbar">
-                    <label className="seller-quotes-search"><Search size={15} /><input value={quoteSearch} onChange={(event) => setQuoteSearch(event.target.value)} placeholder="Buscar comprador, producto o cotización..." />{quoteSearch && <button type="button" onClick={() => setQuoteSearch('')} aria-label="Limpiar búsqueda"><X size={13} /></button>}</label>
+                    <label className="seller-quotes-search"><Search size={15} /><input value={quoteSearch} onChange={(event) => setQuoteSearch(event.target.value)} placeholder={quotesAsBuyer ? 'Buscar tienda, producto o cotización...' : 'Buscar comprador, producto o cotización...'} />{quoteSearch && <button type="button" onClick={() => setQuoteSearch('')} aria-label="Limpiar búsqueda"><X size={13} /></button>}</label>
                     <div className="seller-quotes-filters" role="group" aria-label="Filtrar cotizaciones">
                       {[['all', 'Todas'], ['pending', 'Sin responder'], ['sent', 'Enviadas'], ['unread', 'Sin leer']].map(([value, label]) => (
                         <button key={value} type="button" className={quoteFilter === value ? 'active' : ''} onClick={() => setQuoteFilter(value)}>{label}</button>
@@ -2233,7 +2393,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   </div>
 
                   {quoteSummary.total === 0 ? (
-                    <EmptyState label="Aún no tienes solicitudes de cotización." />
+                    <EmptyState label={quotesAsBuyer ? 'Aún no has pedido cotizaciones a otras tiendas.' : 'Aún no tienes solicitudes de cotización.'} />
                   ) : quoteConversations.length === 0 ? (
                     <EmptyState label="No encontramos cotizaciones con esos filtros." />
                   ) : (
@@ -2242,7 +2402,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                         <QuoteCard
                           key={c.id}
                           quote={c}
-                          mode={isSeller ? 'seller' : 'buyer'}
+                          mode={quotesAsBuyer ? 'buyer' : 'seller'}
                           onSelectQuote={(item) => setSelectedQuote(item)}
                           onQuickRespond={(item) => setSelectedQuote(item)}
                         />
@@ -2633,7 +2793,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       {selectedQuote && (
         <QuoteDetailModal
           quote={selectedQuote}
-          mode={isSeller ? 'seller' : 'buyer'}
+          mode={quotesAsBuyer ? 'buyer' : 'seller'}
           isFounder={isSellerFounder}
           onClose={() => {
             setSelectedQuote(null);

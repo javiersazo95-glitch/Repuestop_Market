@@ -87,7 +87,7 @@ function formatCLP(value) {
 // `readOnly` = tienda bloqueada. Los pedidos se siguen viendo (el vendedor necesita
 // saber que dejo pendiente), pero no se puede avanzar ninguno: el backend rechaza el
 // despacho en `PedidoEnvioSupport` y el boton solo produciria un error.
-export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder, onUpdateStatus, readOnly = false }) {
+export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder, onUpdateStatus, onRegisterSaleReceipt, readOnly = false }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [statuses, setStatuses] = useState([]);
@@ -192,7 +192,7 @@ export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder
         <label><ArrowDownUp size={16} /><span>Ordenar</span><select value={sortBy} onChange={(event) => setSortBy(event.target.value)}><option value="newest">Más nuevos primero</option><option value="oldest">Más antiguos primero</option></select></label>
       </div>
 
-      {!orders.length ? <div className="seller-orders-empty"><span><ShoppingBag size={27} /></span><strong>Aún no hay pedidos pagados</strong><p>Cuando un comprador complete un pago, el pedido aparecerá aquí con su detalle real.</p></div> : !visibleOrders.length ? <div className="seller-orders-empty"><span><SlidersHorizontal size={27} /></span><strong>No encontramos pedidos</strong><p>Ajusta la búsqueda o limpia los filtros para volver a ver tus pedidos.</p><button type="button" onClick={clearFilters}>Limpiar filtros</button></div> : <div className="profile-orders-cards-grid seller-orders-card-grid">{visibleOrders.map((order) => <OrderCard key={order.id} order={order} mode="seller" withdrawalDate={withdrawalDatesByOrder[String(order.id)]} onSelectOrder={onSelectOrder} onUpdateStatus={readOnly ? undefined : onUpdateStatus} />)}</div>}
+      {!orders.length ? <div className="seller-orders-empty"><span><ShoppingBag size={27} /></span><strong>Aún no hay pedidos pagados</strong><p>Cuando un comprador complete un pago, el pedido aparecerá aquí con su detalle real.</p></div> : !visibleOrders.length ? <div className="seller-orders-empty"><span><SlidersHorizontal size={27} /></span><strong>No encontramos pedidos</strong><p>Ajusta la búsqueda o limpia los filtros para volver a ver tus pedidos.</p><button type="button" onClick={clearFilters}>Limpiar filtros</button></div> : <div className="profile-orders-cards-grid seller-orders-card-grid">{visibleOrders.map((order) => <OrderCard key={order.id} order={order} mode="seller" withdrawalDate={withdrawalDatesByOrder[String(order.id)]} onSelectOrder={onSelectOrder} onUpdateStatus={readOnly ? undefined : onUpdateStatus} onRegisterSaleReceipt={readOnly ? undefined : onRegisterSaleReceipt} />)}</div>}
     </div>
   );
 }

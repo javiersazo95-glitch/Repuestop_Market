@@ -1,5 +1,5 @@
 import React, { useCallback, lazy, Suspense } from 'react';
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PROFILE_TABS, profilePath, ROUTES } from '../routes/paths';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
@@ -25,6 +25,10 @@ export default function ProfilePage() {
   // muestra el DETALLE de ese pedido en lugar del listado -- misma pestaña, con su propio
   // "atras" del navegador -- en vez de abrirlo como popup.
   const { tab, orderId } = useParams();
+  const { pathname } = useLocation();
+  // `/perfil/compras/:orderId` y `/perfil/pedidos/:orderId` nombran el param igual; se
+  // distinguen por el path para saber si el detalle se ve como comprador o como vendedor.
+  const isPurchaseDetail = Boolean(orderId) && pathname.startsWith('/perfil/compras/');
   const navigate = useNavigate();
   useDocumentTitle('Mi cuenta');
   const nav = useAppNavigation();
@@ -90,8 +94,9 @@ export default function ProfilePage() {
   return (
     <Suspense fallback={<ProfileSkeleton />}>
       <ProfileDashboard
-        initialTab={orderId ? 'pedidos' : tab}
-        detailOrderId={orderId}
+        initialTab={orderId ? (isPurchaseDetail ? 'compras' : 'pedidos') : tab}
+        detailOrderId={isPurchaseDetail ? undefined : orderId}
+        detailPurchaseId={isPurchaseDetail ? orderId : undefined}
         onTabChange={handleTabChange}
         deepLinkOrderId={deepLinkOrderId}
         deepLinkTicketId={deepLinkTicketId}

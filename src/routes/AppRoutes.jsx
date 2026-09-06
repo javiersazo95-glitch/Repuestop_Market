@@ -89,6 +89,16 @@ export default function AppRoutes() {
                 </RequireAuth>
               )}
             />
+            {/* Mismo ProfilePage: el detalle de una compra del vendedor. Va antes de
+                `/perfil/:tab` por la misma razón que `profileOrder`. */}
+            <Route
+              path={ROUTES.profilePurchase}
+              element={(
+                <RequireAuth>
+                  <ProfilePage />
+                </RequireAuth>
+              )}
+            />
             <Route
               path={ROUTES.profileTab}
               element={(

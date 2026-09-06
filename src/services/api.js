@@ -994,6 +994,28 @@ export async function registerOrderDispatchApi(orderId, { courier, trackingNumbe
 }
 
 /**
+ * El vendedor sube (o reemplaza) la boleta / factura de su venta. Es obligatoria para
+ * confirmar el pedido (el backend rechaza el paso a EN_PREPARACION sin ella).
+ */
+export async function registerSaleReceiptApi(orderId, file) {
+  const formData = new FormData();
+  formData.append('boleta', file);
+  return fetchApi(`/pedidos/${orderId}/boleta-venta`, {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+/**
+ * URL de descarga de un solo uso (5 min) para la boleta de venta. El comprador debe indicar
+ * la tienda con `proveedorId`; al vendedor se le resuelve la suya. Devuelve `{ url }`.
+ */
+export async function getSaleReceiptUrlApi(orderId, { proveedorId } = {}) {
+  const query = proveedorId != null ? `?proveedorId=${Number(proveedorId)}` : '';
+  return fetchApi(`/pedidos/${orderId}/boleta-venta-url${query}`, { method: 'GET' });
+}
+
+/**
  * El vendedor reporta que un courier externo (Uber Flash, Didi, un fletero propio) ya
  * entrego el pedido. Arranca la ventana de veto de 48 horas: el comprador puede confirmarla
  * o vetarla (abrir un reclamo); si no responde, el backend la confirma sola.

@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowLeft, Building2, Check, FileText, Loader2, Lock, MapPin, ReceiptText, Store,
+  AlertTriangle, ArrowLeft, Building2, ChevronRight, CreditCard, FileText, Loader2, Lock, MapPin, ReceiptText, Sparkles, Store, User,
 } from 'lucide-react';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAuth } from '../context/AuthContext';
 import {
-  checkoutCartApi, checkoutConversationQuoteApi, getAddressesApi,
+  checkoutCartApi, checkoutConversationQuoteApi, confirmOrderPaymentApi, getAddressesApi,
   getBuyerConversationsApi, getConversationQuoteApi, resolveMediaUrl,
 } from '../services/api';
 import { formatRut, isValidRut } from '../services/adapters';
@@ -19,7 +19,6 @@ import CheckoutSummaryPanel from '../components/CheckoutSummaryPanel';
 
 const STEPS = [
   { id: 'entrega', label: 'Entrega' },
-  { id: 'documento', label: 'Documento' },
   { id: 'pago', label: 'Pago' },
 ];
 
@@ -52,7 +51,9 @@ export default function CheckoutPage() {
   const [quoteError, setQuoteError] = useState('');
 
   const requestedStep = searchParams.get('paso');
-  const step = STEPS.some((entry) => entry.id === requestedStep) ? requestedStep : 'entrega';
+  // Compatibilidad hacia atrás: si la URL o el historial apuntan a 'documento', se normaliza a 'pago'
+  const normalizedStep = requestedStep === 'documento' ? 'pago' : requestedStep;
+  const step = STEPS.some((entry) => entry.id === normalizedStep) ? normalizedStep : 'entrega';
   const stepIndex = STEPS.findIndex((entry) => entry.id === step);
 
   const [addresses, setAddresses] = useState([]);
@@ -60,7 +61,7 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [addressBookOpen, setAddressBookOpen] = useState(false);
 
-  const [documentType, setDocumentType] = useState('');
+  const [documentType, setDocumentType] = useState(user?.facturaRut ? 'FACTURA' : 'BOLETA');
   const [invoice, setInvoice] = useState({
     rut: user?.facturaRut || '',
     razonSocial: user?.facturaRazonSocial || '',
@@ -72,6 +73,8 @@ export default function CheckoutPage() {
   // dispararía la guarda de "carrito vacío" y devolvería al usuario a /carrito en vez de
   // dejarlo llegar a la confirmación.
   const [placing, setPlacing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('SIMULACION');
+  const [paymentProcessingStatus, setPaymentProcessingStatus] = useState('');
   const submittingRef = useRef(false);
 
   // Espejo de `quoteContext` para leerlo dentro del efecto sin ponerlo en sus
@@ -223,18 +226,16 @@ export default function CheckoutPage() {
   const rutValid = isValidRut(invoice.rut);
   const stepComplete = {
     entrega: !needsAddress || Boolean(selectedAddressId),
-    documento: Boolean(documentType) && (documentType !== 'FACTURA' || rutValid),
-    pago: true,
+    pago: Boolean(paymentMethod) && (documentType !== 'FACTURA' || rutValid),
   };
 
   // Lo que falta para avanzar, dicho antes de que la persona haga clic: el botón se
   // deshabilita, pero un botón apagado sin explicación es igual de frustrante.
   const missingForStep = {
-    entrega: 'Selecciona una dirección para continuar.',
-    documento: documentType
+    entrega: 'Selecciona una dirección de entrega para continuar.',
+    pago: documentType === 'FACTURA' && !rutValid
       ? 'Ingresa un RUT válido para emitir la factura.'
-      : 'Elige si necesitas boleta o factura.',
-    pago: '',
+      : '',
   }[step];
 
   const pay = async () => {
@@ -242,6 +243,7 @@ export default function CheckoutPage() {
     submittingRef.current = true;
     setPlacing(true);
     setError('');
+    setPaymentProcessingStatus('Generando el pedido…');
     try {
       const order = isQuoteMode
         ? await checkoutConversationQuoteApi(userId, {
@@ -267,9 +269,39 @@ export default function CheckoutPage() {
       // Una cotización no toca el carrito: vaciarlo acá borraría productos que la
       // persona dejó guardados para después.
       if (!isQuoteMode) clearCart();
-      // plan_retorno_flow.md Fase 3: el pedido se guarda ANTES de saltar a Flow para que
-      // PurchaseSuccessPage tenga el detalle al volver; si el storage falla, el respaldo
-      // es GET /pedidos/{id} con el ?orderId= de la URL de retorno.
+
+      // ¿Debe simularse el pago?
+      // Se simula si el usuario eligió SIMULACION o si el urlPago contiene token mock de prueba
+      const isMockToken = Boolean(order?.urlPago && /mock_flow_token_/i.test(order.urlPago));
+      const shouldSimulate = paymentMethod === 'SIMULACION' || isMockToken;
+
+      if (shouldSimulate && order?.id) {
+        setPaymentProcessingStatus('Simulando confirmación de pago…');
+        let finalOrder = order;
+        try {
+          const confirmed = await confirmOrderPaymentApi(userId, order.id);
+          if (confirmed) {
+            finalOrder = { ...confirmed, isSimulatedPayment: true };
+          } else {
+            finalOrder = { ...order, estado: 'PAGADO', isSimulatedPayment: true };
+          }
+        } catch (confirmErr) {
+          console.warn('Confirmación directa de pago simulado omitida, usando fallback:', confirmErr);
+          finalOrder = { ...order, estado: 'PAGADO', isSimulatedPayment: true };
+        }
+
+        try {
+          sessionStorage.setItem(LAST_SUCCESSFUL_ORDER_KEY, JSON.stringify(finalOrder));
+        } catch {
+          // El state de navegación mantiene la confirmación disponible en esta sesión.
+        }
+
+        setPaymentProcessingStatus('¡Pago aprobado con éxito!');
+        navigate(ROUTES.purchaseSuccess, { state: { order: finalOrder, isSimulated: true } });
+        return;
+      }
+
+      // Si no es simulación y trae urlPago de Flow real, redirige a la pasarela
       try {
         sessionStorage.setItem(LAST_SUCCESSFUL_ORDER_KEY, JSON.stringify(order));
       } catch {
@@ -284,6 +316,7 @@ export default function CheckoutPage() {
       setError(submitError.message || 'No se pudo generar el pedido. Intenta nuevamente.');
       submittingRef.current = false;
       setPlacing(false);
+      setPaymentProcessingStatus('');
     }
   };
 
@@ -339,198 +372,326 @@ export default function CheckoutPage() {
   return (
     <main className="checkout-page">
       <div className="cart-page-shell">
-        <header className="cart-page-head">
-          {isQuoteMode
-            ? <Link className="cart-page-back" to={profilePath('cotizaciones')}><ArrowLeft size={16} /> Volver a mis cotizaciones</Link>
-            : <Link className="cart-page-back" to={ROUTES.cart}><ArrowLeft size={16} /> Volver al carrito</Link>}
-          <h1>{isQuoteMode ? 'Pagar cotización' : 'Finalizar compra'}</h1>
-        </header>
+        <header className="cart-page-head checkout-shopify-header">
+          <div className="checkout-shopify-header-top">
+            {isQuoteMode
+              ? <Link className="cart-page-back" to={profilePath('cotizaciones')}><ArrowLeft size={16} /> Volver a mis cotizaciones</Link>
+              : <Link className="cart-page-back" to={ROUTES.cart}><ArrowLeft size={16} /> Volver al carrito</Link>}
+            <h1>{isQuoteMode ? 'Pagar cotización' : 'Finalizar compra'}</h1>
+          </div>
 
-        <ol className="checkout-steps">
-          {STEPS.map((entry, index) => {
-            const state = index < stepIndex ? 'is-done' : index === stepIndex ? 'is-active' : '';
-            return (
-              <li key={entry.id} className={`checkout-step ${state}`}>
-                <button
-                  type="button"
-                  onClick={() => index < stepIndex && goStep(entry.id)}
-                  disabled={index >= stepIndex}
-                >
-                  <span className="checkout-step-num">
-                    {index < stepIndex ? <Check size={13} /> : index + 1}
-                  </span>
-                  {entry.label}
-                </button>
-              </li>
-            );
-          })}
-        </ol>
+          <nav className="shopify-breadcrumb-nav" aria-label="Progreso de la compra">
+            <Link
+              to={isQuoteMode ? profilePath('cotizaciones') : ROUTES.cart}
+              className="shopify-breadcrumb-link"
+            >
+              {isQuoteMode ? 'Cotización' : 'Carrito'}
+            </Link>
+            <ChevronRight size={13} className="shopify-breadcrumb-sep" />
+
+            <button
+              type="button"
+              className={`shopify-breadcrumb-step ${step === 'entrega' ? 'is-active' : 'is-completed'}`}
+              onClick={() => goStep('entrega')}
+            >
+              Entrega
+            </button>
+            <ChevronRight size={13} className="shopify-breadcrumb-sep" />
+
+            <button
+              type="button"
+              className={`shopify-breadcrumb-step ${step === 'pago' ? 'is-active' : ''}`}
+              onClick={() => stepComplete.entrega && goStep('pago')}
+              disabled={!stepComplete.entrega}
+            >
+              Pago y facturación
+            </button>
+          </nav>
+        </header>
 
         <div className="cart-page-layout">
           <div className="checkout-main">
             {step === 'entrega' && (
-              <section className="checkout-block" aria-labelledby="checkout-entrega-title">
-                <h2 id="checkout-entrega-title"><MapPin size={16} /> ¿Dónde recibes tu pedido?</h2>
-
-                {needsAddress ? (
-                  <>
-                    {addressesLoading ? (
-                      <p className="checkout-block-loading"><Loader2 size={15} className="spin-icon" /> Cargando tus direcciones…</p>
-                    ) : addresses.length > 0 ? (
-                      <div className="checkout-address-list" role="radiogroup" aria-label="Direcciones guardadas">
-                        {addresses.map((address) => (
-                          <label key={address.id} className={String(address.id) === String(selectedAddressId) ? 'is-selected' : ''}>
-                            <input
-                              type="radio"
-                              name="checkout-address"
-                              value={address.id}
-                              checked={String(address.id) === String(selectedAddressId)}
-                              onChange={(event) => setSelectedAddressId(event.target.value)}
-                            />
-                            <span className="checkout-address-body">
-                              <strong>{address.calleYNumero}</strong>
-                              <small>{address.comunaNombre}{address.regionNombre ? `, ${address.regionNombre}` : ''}</small>
-                            </span>
-                            {address.esPrincipal && <em className="checkout-address-tag">Principal</em>}
-                          </label>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="checkout-block-empty"><AlertTriangle size={15} /> Todavía no tienes direcciones guardadas.</p>
-                    )}
-
-                    <button
-                      type="button"
-                      className="checkout-inline-link"
-                      onClick={() => setAddressBookOpen((open) => !open)}
-                    >
-                      {addressBookOpen ? 'Ocultar mis direcciones' : 'Agregar o editar direcciones'}
-                    </button>
-
-                    {(addressBookOpen || (!addressesLoading && addresses.length === 0)) && (
-                      <div className="checkout-address-book"><BuyerAddressBook usuarioId={userId} /></div>
-                    )}
-                  </>
-                ) : (
-                  <p className="checkout-block-note">
-                    Todos los productos son retiro en tienda, así que no necesitamos una dirección de despacho.
-                    Coordina el retiro con cada vendedor desde el detalle del pedido.
-                  </p>
-                )}
-
-                {isQuoteMode && (
-                  <p className="checkout-block-note checkout-quote-terms">
-                    <FileText size={14} /> La entrega ya está acordada en la cotización:
-                    {' '}<strong>{quoteLine.shippingMethod || 'a coordinar con la tienda'}</strong>.
-                  </p>
-                )}
-
-                <div className="checkout-delivery-recap">
-                  {groups.map((group) => {
-                    const service = resolveShippingService(group.shippingMethod);
-                    const price = shippingMethodPrice(group.shippingMethod);
-                    return (
-                      <div key={group.key}>
-                        <span><Store size={14} /> {group.vendedor || 'Tienda RepuesTop'}</span>
-                        <strong>{service.label}{price ? ` · ${price}` : ''}</strong>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
-            {step === 'documento' && (
-              <section className="checkout-block cart-document-section" aria-labelledby="checkout-doc-title">
-                <div className="cart-document-heading">
-                  <ReceiptText size={17} />
-                  <div>
-                    <strong id="checkout-doc-title">¿Necesitas boleta o factura?</strong>
-                    <small>Esta información se enviará a la tienda para emitir tu documento.</small>
+              <div className="checkout-main-flow">
+                <section className="checkout-block checkout-contact-card" aria-label="Información de contacto">
+                  <div className="checkout-contact-header">
+                    <span className="checkout-contact-title">
+                      <User size={15} /> Información de contacto
+                    </span>
+                    <span className="checkout-contact-user">
+                      {user?.email || user?.nombreCompleto || 'Usuario RepuesTop'}
+                    </span>
                   </div>
-                </div>
+                  <p className="checkout-contact-note">
+                    Recibirás la confirmación del pedido y comprobante de compra en esta cuenta.
+                  </p>
+                </section>
 
-                <div className="cart-document-options">
-                  <label className={documentType === 'BOLETA' ? 'selected' : ''}>
-                    <input type="radio" name="checkout-document" value="BOLETA" checked={documentType === 'BOLETA'} onChange={(event) => setDocumentType(event.target.value)} />
-                    <ReceiptText /><span><strong>Boleta</strong><small>Compra personal</small></span>
-                  </label>
-                  <label className={documentType === 'FACTURA' ? 'selected' : ''}>
-                    <input type="radio" name="checkout-document" value="FACTURA" checked={documentType === 'FACTURA'} onChange={(event) => setDocumentType(event.target.value)} />
-                    <Building2 /><span><strong>Factura</strong><small>Compra empresa</small></span>
-                  </label>
-                </div>
+                <section className="checkout-block" aria-labelledby="checkout-entrega-title">
+                  <h2 id="checkout-entrega-title"><MapPin size={16} /> ¿Dónde recibes tu pedido?</h2>
 
-                {documentType === 'FACTURA' && (
-                  <div className="cart-invoice-fields">
-                    <label>
-                      <span>RUT empresa *</span>
-                      <input
-                        value={invoice.rut}
-                        onChange={(event) => setInvoice((current) => ({ ...current, rut: formatRut(event.target.value) }))}
-                        placeholder="76.123.456-7"
-                        inputMode="text"
-                      />
-                      {invoice.rut && !rutValid && <small className="checkout-field-error">El RUT no es válido.</small>}
-                    </label>
-                    <label>
-                      <span>Razón social</span>
-                      <input value={invoice.razonSocial} onChange={(event) => setInvoice((current) => ({ ...current, razonSocial: event.target.value }))} placeholder="Nombre de la empresa" />
-                    </label>
-                    <label>
-                      <span>Giro</span>
-                      <input value={invoice.giro} onChange={(event) => setInvoice((current) => ({ ...current, giro: event.target.value }))} placeholder="Actividad comercial" />
-                    </label>
+                  {needsAddress ? (
+                    <>
+                      {addressesLoading ? (
+                        <p className="checkout-block-loading"><Loader2 size={15} className="spin-icon" /> Cargando tus direcciones…</p>
+                      ) : addresses.length > 0 ? (
+                        <div className="checkout-address-list" role="radiogroup" aria-label="Direcciones guardadas">
+                          {addresses.map((address) => (
+                            <label key={address.id} className={String(address.id) === String(selectedAddressId) ? 'is-selected' : ''}>
+                              <input
+                                type="radio"
+                                name="checkout-address"
+                                value={address.id}
+                                checked={String(address.id) === String(selectedAddressId)}
+                                onChange={(event) => setSelectedAddressId(event.target.value)}
+                              />
+                              <span className="checkout-address-body">
+                                <strong>{address.calleYNumero}</strong>
+                                <small>{address.comunaNombre}{address.regionNombre ? `, ${address.regionNombre}` : ''}</small>
+                              </span>
+                              {address.esPrincipal && <em className="checkout-address-tag">Principal</em>}
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="checkout-block-empty"><AlertTriangle size={15} /> Todavía no tienes direcciones guardadas.</p>
+                      )}
+
+                      <button
+                        type="button"
+                        className="checkout-inline-link"
+                        onClick={() => setAddressBookOpen((open) => !open)}
+                      >
+                        {addressBookOpen ? 'Ocultar mis direcciones' : 'Agregar o editar direcciones'}
+                      </button>
+
+                      {(addressBookOpen || (!addressesLoading && addresses.length === 0)) && (
+                        <div className="checkout-address-book"><BuyerAddressBook usuarioId={userId} /></div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="checkout-block-note">
+                      Todos los productos son retiro en tienda, así que no necesitamos una dirección de despacho.
+                      Coordina el retiro con cada vendedor desde el detalle del pedido.
+                    </p>
+                  )}
+
+                  {isQuoteMode && (
+                    <p className="checkout-block-note checkout-quote-terms">
+                      <FileText size={14} /> La entrega ya está acordada en la cotización:
+                      {' '}<strong>{quoteLine.shippingMethod || 'a coordinar con la tienda'}</strong>.
+                    </p>
+                  )}
+
+                  <div className="checkout-delivery-recap">
+                    {groups.map((group) => {
+                      const service = resolveShippingService(group.shippingMethod);
+                      const price = shippingMethodPrice(group.shippingMethod);
+                      return (
+                        <div key={group.key}>
+                          <span><Store size={14} /> {group.vendedor || 'Tienda RepuesTop'}</span>
+                          <strong>{service.label}{price ? ` · ${price}` : ''}</strong>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
-              </section>
+                </section>
+              </div>
             )}
 
             {step === 'pago' && (
-              <section className="checkout-block" aria-labelledby="checkout-pago-title">
-                <h2 id="checkout-pago-title">Revisa antes de pagar</h2>
+              <div className="checkout-main-flow">
+                {/* Shopify Recap Box con botones 'Cambiar' para contacto, dirección y método */}
+                <div className="shopify-recap-box" aria-label="Resumen de datos de entrega">
+                  <div className="shopify-recap-row">
+                    <span className="shopify-recap-label">Contacto</span>
+                    <span className="shopify-recap-value">{user?.email || user?.nombreCompleto || 'Usuario RepuesTop'}</span>
+                    <button type="button" className="shopify-recap-action" onClick={() => goStep('entrega')}>
+                      Cambiar
+                    </button>
+                  </div>
 
-                <dl className="checkout-recap">
-                  <div>
-                    <dt>Entrega</dt>
-                    <dd>
+                  <div className="shopify-recap-divider" />
+
+                  <div className="shopify-recap-row">
+                    <span className="shopify-recap-label">Enviar a</span>
+                    <span className="shopify-recap-value">
                       {needsAddress
                         ? (() => {
                           const address = addresses.find((item) => String(item.id) === String(selectedAddressId));
-                          return address ? `${address.calleYNumero}, ${address.comunaNombre}` : 'Dirección seleccionada';
+                          return address ? `${address.calleYNumero}, ${address.comunaNombre}${address.regionNombre ? `, ${address.regionNombre}` : ''}` : 'Dirección seleccionada';
                         })()
-                        : 'Retiro en tienda'}
-                    </dd>
+                        : 'Retiro en tienda (coordinar con vendedor)'}
+                    </span>
+                    <button type="button" className="shopify-recap-action" onClick={() => goStep('entrega')}>
+                      Cambiar
+                    </button>
                   </div>
-                  <div>
-                    <dt>Documento</dt>
-                    <dd>{documentType === 'FACTURA' ? `Factura · ${invoice.rut}` : 'Boleta'}</dd>
-                  </div>
-                </dl>
 
-                <div className="checkout-recap-lines">
-                  {groups.map((group) => (
-                    <div key={group.key} className="checkout-recap-store">
-                      <h3><Store size={14} /> {group.vendedor || 'Tienda RepuesTop'}</h3>
-                      {group.items.map((item) => (
-                        <p key={item.id}>
-                          <span>{item.quantity} × {item.titulo}</span>
-                          <strong>{formatCLP(item.precio * item.quantity)}</strong>
-                        </p>
-                      ))}
-                    </div>
-                  ))}
+                  <div className="shopify-recap-divider" />
+
+                  <div className="shopify-recap-row">
+                    <span className="shopify-recap-label">Método</span>
+                    <span className="shopify-recap-value">{shippingLabel}</span>
+                    <button type="button" className="shopify-recap-action" onClick={() => goStep('entrega')}>
+                      Cambiar
+                    </button>
+                  </div>
                 </div>
 
-                {/* Sin checkbox por compra: la aceptación explícita se pide una sola vez
-                    al registrarse (donde el backend puede guardar fecha y versión del
-                    documento, como exige la sección 2 de los Términos). Acá va solo el
-                    aviso previo al pago, que es el patrón de los marketplaces locales. */}
-                <p className="checkout-terms-note">
-                  Al pagar aceptas los <Link to={ROUTES.terms} target="_blank" rel="noreferrer">Términos y Condiciones</Link> y
-                  la <Link to={ROUTES.privacy} target="_blank" rel="noreferrer">Política de Privacidad</Link> de RepuesTop.
-                </p>
-              </section>
+                {/* Métodos de Pago con selector de Simulación */}
+                <section className="checkout-block" aria-labelledby="checkout-pago-title">
+                  <div className="shopify-section-header">
+                    <h2 id="checkout-pago-title"><CreditCard size={16} /> Método de pago</h2>
+                    <p className="shopify-section-subtitle">
+                      <Lock size={13} /> Todas las transacciones son seguras y están encriptadas.
+                    </p>
+                  </div>
+
+                  <div className="checkout-payment-options-grid" role="radiogroup" aria-label="Métodos de pago">
+                    <label className={`checkout-payment-card-option ${paymentMethod === 'SIMULACION' ? 'is-selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="SIMULACION"
+                        checked={paymentMethod === 'SIMULACION'}
+                        onChange={() => setPaymentMethod('SIMULACION')}
+                      />
+                      <div className="checkout-payment-card-body">
+                        <div className="checkout-payment-card-header">
+                          <strong>Simulación de Pago</strong>
+                          <span className="checkout-badge-test"><Sparkles size={12} /> Modo Pruebas</span>
+                        </div>
+                        <p>Simula la confirmación y aprobación instantánea del pago sin cobro real, ideal para pruebas completas.</p>
+                      </div>
+                    </label>
+
+                    <label className={`checkout-payment-card-option ${paymentMethod === 'FLOW' ? 'is-selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="FLOW"
+                        checked={paymentMethod === 'FLOW'}
+                        onChange={() => setPaymentMethod('FLOW')}
+                      />
+                      <div className="checkout-payment-card-body">
+                        <div className="checkout-payment-card-header">
+                          <strong>Pasarela Flow</strong>
+                          <span className="checkout-badge-flow">Webpay / Tarjetas</span>
+                        </div>
+                        <p>Redirige a Flow para pago con tarjetas bancarias (crédito, débito o sandbox).</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  {paymentMethod === 'SIMULACION' && (
+                    <div className="checkout-simulation-alert">
+                      <Sparkles size={16} />
+                      <span>
+                        <strong>Modo simulación activo:</strong> Al pagar, el pedido se confirmará y pasará al estado <strong>PAGADO</strong> automáticamente para verificar el flujo de compra y preparación.
+                      </span>
+                    </div>
+                  )}
+                </section>
+
+                {/* Datos de Facturación (Boleta o Factura) */}
+                <section className="checkout-block" aria-labelledby="checkout-billing-title">
+                  <div className="shopify-section-header">
+                    <h2 id="checkout-billing-title"><ReceiptText size={16} /> Datos de facturación</h2>
+                    <p className="shopify-section-subtitle">
+                      Selecciona el documento tributario que emitirá el vendedor para tu compra.
+                    </p>
+                  </div>
+
+                  <div className="cart-document-options">
+                    <label className={documentType === 'BOLETA' ? 'selected' : ''}>
+                      <input
+                        type="radio"
+                        name="checkout-document"
+                        value="BOLETA"
+                        checked={documentType === 'BOLETA'}
+                        onChange={(event) => setDocumentType(event.target.value)}
+                      />
+                      <ReceiptText size={20} />
+                      <span>
+                        <strong>Boleta electrónica</strong>
+                        <small>Compra personal / Consumidor final</small>
+                      </span>
+                    </label>
+                    <label className={documentType === 'FACTURA' ? 'selected' : ''}>
+                      <input
+                        type="radio"
+                        name="checkout-document"
+                        value="FACTURA"
+                        checked={documentType === 'FACTURA'}
+                        onChange={(event) => setDocumentType(event.target.value)}
+                      />
+                      <Building2 size={20} />
+                      <span>
+                        <strong>Factura electrónica</strong>
+                        <small>Requiere datos tributarios de empresa</small>
+                      </span>
+                    </label>
+                  </div>
+
+                  {documentType === 'FACTURA' && (
+                    <div className="cart-invoice-fields">
+                      <label>
+                        <span>RUT empresa *</span>
+                        <input
+                          value={invoice.rut}
+                          onChange={(event) => setInvoice((current) => ({ ...current, rut: formatRut(event.target.value) }))}
+                          placeholder="76.123.456-7"
+                          inputMode="text"
+                        />
+                        {invoice.rut && !rutValid && <small className="checkout-field-error">El RUT no es válido.</small>}
+                      </label>
+                      <label>
+                        <span>Razón social</span>
+                        <input
+                          value={invoice.razonSocial}
+                          onChange={(event) => setInvoice((current) => ({ ...current, razonSocial: event.target.value }))}
+                          placeholder="Nombre de la empresa"
+                        />
+                      </label>
+                      <label>
+                        <span>Giro</span>
+                        <input
+                          value={invoice.giro}
+                          onChange={(event) => setInvoice((current) => ({ ...current, giro: event.target.value }))}
+                          placeholder="Actividad comercial"
+                        />
+                      </label>
+                    </div>
+                  )}
+                </section>
+
+                {/* Revisión de Productos por Tienda */}
+                <section className="checkout-block" aria-labelledby="checkout-review-title">
+                  <h2 id="checkout-review-title" className="checkout-subheading-sm">
+                    Revisión de productos
+                  </h2>
+
+                  <div className="checkout-recap-lines">
+                    {groups.map((group) => (
+                      <div key={group.key} className="checkout-recap-store">
+                        <h3><Store size={14} /> {group.vendedor || 'Tienda RepuesTop'}</h3>
+                        {group.items.map((item) => (
+                          <p key={item.id}>
+                            <span>{item.quantity} × {item.titulo}</span>
+                            <strong>{formatCLP(item.precio * item.quantity)}</strong>
+                          </p>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="checkout-terms-note">
+                    Al pagar aceptas los <Link to={ROUTES.terms} target="_blank" rel="noreferrer">Términos y Condiciones</Link> y
+                    la <Link to={ROUTES.privacy} target="_blank" rel="noreferrer">Política de Privacidad</Link> de RepuesTop.
+                  </p>
+                </section>
+              </div>
             )}
 
             {error && <p className="checkout-error"><AlertTriangle size={15} /> {error}</p>}
@@ -542,21 +703,23 @@ export default function CheckoutPage() {
             costoEnvio={totals.costoEnvio}
             total={totals.total}
             shippingLabel={shippingLabel}
-            ctaLabel={step === 'pago' ? `Pagar ${formatCLP(totals.total)}` : 'Continuar'}
+            ctaLabel={
+              step === 'pago'
+                ? (paymentProcessingStatus || (paymentMethod === 'SIMULACION' ? `Simular y pagar ${formatCLP(totals.total)}` : `Pagar ${formatCLP(totals.total)}`))
+                : 'Continuar con el pago'
+            }
             onCta={advance}
-            ctaDisabled={!stepComplete[step]}
+            ctaDisabled={!stepComplete[step] || placing}
             ctaLoading={placing}
             warning={stepComplete[step] ? '' : missingForStep}
           >
-            {/* El "volver" va pegado al CTA y no al pie del formulario: ahí es donde la
-                persona está mirando cuando decide retroceder. */}
-            {stepIndex > 0 && (
+            {step === 'pago' && (
               <button
                 type="button"
                 className="checkout-summary-back"
-                onClick={() => goStep(STEPS[stepIndex - 1].id)}
+                onClick={() => goStep('entrega')}
               >
-                <ArrowLeft size={15} /> Volver a {STEPS[stepIndex - 1].label.toLowerCase()}
+                <ArrowLeft size={15} /> Volver a entrega
               </button>
             )}
           </CheckoutSummaryPanel>

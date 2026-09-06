@@ -4,16 +4,17 @@ import {
   X, Clock, Wrench, Truck, PackageCheck, User, Store, ChevronDown, ArrowLeft,
   MapPin, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
   RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock, ExternalLink, Timer,
-  ThumbsUp, ThumbsDown, Send
+  ThumbsUp, ThumbsDown, Send, ReceiptText, FileCheck, Download
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
-import { resolveMediaUrl, rateOrderApi, getPublicProductApi } from '../services/api';
+import { resolveMediaUrl, rateOrderApi, getPublicProductApi, getSaleReceiptUrlApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
 import { Link } from 'react-router-dom';
 import { productPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
+import SaleReceiptModal from './SaleReceiptModal';
 import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancellationReason';
 import { carrierTracking } from '../data/carrierTracking';
 import { storeAutoCloseNotice } from '../data/orderDeadlines';
@@ -263,6 +264,7 @@ export default function OrderDetailView({
   onCancelBuyerSubOrder,
   onCancelSellerOrder,
   onRegisterDispatch,
+  onRegisterSaleReceipt,
   onDeclareDelivery,
   onDisputeDeclaredDelivery,
   autoOpenRating = false,
@@ -336,6 +338,13 @@ export default function OrderDetailView({
   const [dispatchVoucherFile, setDispatchVoucherFile] = useState(null);
   const [isRegisteringDispatch, setIsRegisteringDispatch] = useState(false);
   const [dispatchError, setDispatchError] = useState('');
+
+  // Boleta de venta. El modal (SaleReceiptModal) se abre al confirmar el pedido (obligatoria)
+  // o desde la sección "Despachar a" para cargarla en un pedido ya confirmado / histórico
+  // (`receiptUploadOnly`, sin disparar la transición de estado).
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptUploadOnly, setReceiptUploadOnly] = useState(false);
+  const [receiptViewBusy, setReceiptViewBusy] = useState(null);
 
   // Buyer Rating Modal State (A4)
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -619,6 +628,10 @@ export default function OrderDetailView({
       // El envio de ESTA tienda. El del pedido es la SUMA de todas, asi que solo sirve de
       // respaldo para el vendedor, donde ya viene acotado al suyo.
       shippingStore: Number(subOrder?.costoEnvio ?? (isSeller ? shippingFee : 0)),
+      // La boleta de venta de ESTA tienda. Para el vendedor viene plana en el pedido (ya
+      // acotado a lo suyo); para el comprador, por subordén.
+      boletaVentaDisponible: subOrder?.boletaVentaDisponible ?? (isSeller ? order.boletaVentaDisponible : false),
+      boletaVentaNombre: subOrder?.boletaVentaNombre || (isSeller ? order.boletaVentaNombre : null),
     };
   }).filter((block) => block.items.length > 0);
 
@@ -628,6 +641,22 @@ export default function OrderDetailView({
   // que es `> 1`, asi que en un pedido de una sola tienda el boton global sobrevivia y mandaba
   // la transicion sin `proveedorId`.
   const buyerActionsPerStore = groupedByStore && !isSeller && storeBlocks.length > 0;
+
+  // Datos de la venta para el modal de boleta: la tienda del vendedor (su único bloque vivo),
+  // lo que le compraron y su envío. El formateo y el "copiar datos" viven en SaleReceiptModal.
+  const receiptBlock = isSeller
+    ? (storeBlocks.find((b) => !b.isCancelledStore) || storeBlocks[0] || null)
+    : null;
+
+  // Sube la boleta y, si el modal se abrió desde "Confirmar pedido" (no en `receiptUploadOnly`),
+  // encadena la transición a EN_PREPARACION.
+  const submitSaleReceipt = async (file) => {
+    if (!onRegisterSaleReceipt) return;
+    await onRegisterSaleReceipt(order, file);
+    if (!receiptUploadOnly && onUpdateStatus) {
+      await onUpdateStatus(order.id, 'EN_PREPARACION');
+    }
+  };
 
   // El comprador confirma la entrega que declaro el vendedor: mismo `onUpdateStatus` de
   // siempre, con el `proveedorId` de ESA tienda -- no pasa por `storeToAdvance`/el modal de
@@ -719,10 +748,35 @@ export default function OrderDetailView({
     // sin abrir nada: el boton quedaba mudo y parecia que no estaba cableado.
     if (!controlledAction.requiresPin) {
       setStatusError('');
+      // Confirmar un pedido recien pagado exige la boleta de venta: en vez del
+      // ConfirmDialog simple se abre el modal de boleta, que la sube y recien ahi avanza
+      // el estado. El backend tambien rechaza la transicion sin boleta.
+      if (isSeller && controlledAction.nextStatus === 'EN_PREPARACION' && onRegisterSaleReceipt
+          && !order.boletaVentaDisponible) {
+        setReceiptUploadOnly(false);
+        setShowReceiptModal(true);
+        return;
+      }
       setConfirmStatusAdvance(true);
       return;
     }
     await runStatusUpdate(pin);
+  };
+
+  // Abre la boleta en una pestana nueva con una URL de un solo uso. `proveedorId` solo lo
+  // manda el comprador (para el vendedor el backend resuelve su propia suborden).
+  const handleViewReceipt = async (proveedorId = null) => {
+    const key = proveedorId ?? 'self';
+    if (receiptViewBusy) return;
+    setReceiptViewBusy(key);
+    try {
+      const { url } = await getSaleReceiptUrlApi(order.id, proveedorId != null ? { proveedorId } : {});
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      /* el enlace es una comodidad: si falla, el usuario reintenta */
+    } finally {
+      setReceiptViewBusy(null);
+    }
   };
 
   const handleSellerCancelSubmit = async (e) => {
@@ -939,6 +993,53 @@ export default function OrderDetailView({
                       : 'Boleta electrónica'}</span>
                   </div>
                 )}
+
+                {/* Estado de la boleta de venta. Para el vendedor es su centro de acción
+                    (ver / cargar); para el comprador de una sola tienda, el enlace de
+                    descarga. En multi-tienda el comprador la ve en cada bloque de tienda. */}
+                {(isSeller || subOrders.length <= 1) && (() => {
+                  const disponible = Boolean(order.boletaVentaDisponible);
+                  const cerrado = ['CANCELADO', 'FINALIZADO'].includes(normStatus);
+                  if (!disponible && !isSeller) return null;
+                  if (!disponible && cerrado) return null;
+                  return (
+                    <div className={`order-delivery-summary-row order-boleta-row ${disponible ? 'is-ready' : 'is-pending'}`}>
+                      {disponible ? <FileCheck size={14} /> : <ReceiptText size={14} />}
+                      <span>
+                        {disponible
+                          ? 'Boleta de venta cargada'
+                          : normStatus === 'PAGADO' || normStatus === 'PENDIENTE'
+                            ? 'Boleta de venta pendiente — regístrala al confirmar el pedido'
+                            : 'Boleta de venta pendiente — adjúntala para dejar la venta documentada'}
+                      </span>
+                      {disponible ? (
+                        <button
+                          type="button"
+                          className="order-boleta-link"
+                          disabled={receiptViewBusy === 'self'}
+                          onClick={() => handleViewReceipt(isSeller ? null : (subOrders[0]?.proveedorId ?? null))}
+                        >
+                          {receiptViewBusy === 'self'
+                            ? <Loader2 size={13} className="spin-icon" />
+                            : (isSeller ? <ExternalLink size={13} /> : <Download size={13} />)}
+                          <span>{isSeller ? 'Ver' : 'Descargar'}</span>
+                        </button>
+                      ) : isSeller && onRegisterSaleReceipt && !cerrado ? (
+                        <button
+                          type="button"
+                          className="order-boleta-link is-cta"
+                          onClick={() => {
+                            setReceiptUploadOnly(true);
+                            setShowReceiptModal(true);
+                          }}
+                        >
+                          <FileUp size={13} />
+                          <span>Cargar boleta</span>
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -1040,6 +1141,24 @@ export default function OrderDetailView({
                           <span className="order-store-block-pin">
                             <KeyRound size={13} /> Código de retiro:
                             <strong>{block.pickupCode}</strong>
+                          </span>
+                        )}
+                        {/* La boleta de venta de ESTA tienda. Al comprador solo se le ofrece
+                            si ya existe; para el vendedor la fila vive en "Despachar a". */}
+                        {!isSeller && block.boletaVentaDisponible && !block.isCancelledStore && (
+                          <span className="order-store-block-boleta">
+                            <FileCheck size={13} /> Boleta de venta
+                            <button
+                              type="button"
+                              className="order-store-block-tracklink"
+                              disabled={receiptViewBusy === block.id}
+                              onClick={() => handleViewReceipt(block.id)}
+                            >
+                              {receiptViewBusy === block.id
+                                ? <Loader2 size={12} className="spin-icon" />
+                                : <Download size={12} />}
+                              Descargar
+                            </button>
                           </span>
                         )}
                       </div>
@@ -1625,6 +1744,19 @@ export default function OrderDetailView({
             </form>
           </div>,
           document.body
+        )}
+
+        {/* Popup de boleta de venta. Obligatorio al confirmar un pedido recién pagado;
+            en modo `receiptUploadOnly` solo sube el archivo (pedido ya confirmado). */}
+        {showReceiptModal && (
+          <SaleReceiptModal
+            order={order}
+            items={receiptBlock?.items || []}
+            shipping={receiptBlock?.shippingStore || 0}
+            uploadOnly={receiptUploadOnly}
+            onSubmit={submitSaleReceipt}
+            onClose={() => setShowReceiptModal(false)}
+          />
         )}
 
         {/* Modal de Calificación de Pedido para el Comprador (A4) */}

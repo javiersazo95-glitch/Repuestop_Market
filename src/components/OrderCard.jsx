@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import {
   Clock, Wrench, Truck, PackageCheck, ShieldCheck, AlertCircle, XCircle,
   RotateCcw, FileText, User, Store, Package, Info, ChevronRight, Check,
-  Phone, MapPin, Boxes, Loader2
+  Phone, MapPin, Boxes, Loader2, ReceiptText, FileCheck
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
 import { deliveryCourierLabel, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
 import ConfirmDialog from './ConfirmDialog';
+import SaleReceiptModal from './SaleReceiptModal';
 import { cancellationReasonLabel } from '../data/cancellationReason';
 
 export const UNIFIED_STATUS_CONFIG = {
@@ -65,6 +66,7 @@ export default function OrderCard({
   onUpdateStatus,
   onRetryPayment,
   onCancelOrder,
+  onRegisterSaleReceipt,
   withdrawalDate,
 }) {
   const [showCommissionModal, setShowCommissionModal] = useState(false);
@@ -74,6 +76,7 @@ export default function OrderCard({
   const [isCancelling, setIsCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmAdvance, setConfirmAdvance] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [now, setNow] = useState(Date.now());
   const isSeller = mode === 'seller';
 
@@ -179,6 +182,13 @@ export default function OrderCard({
 
   const controlledAction = getControlledOrderAction(order, mode);
 
+  // Recordatorio de boleta de venta, solo para el vendedor. El backend la exige para
+  // confirmar el pedido; el chip/banner cambia de estado cuando ya está cargada.
+  const boletaRelevant = isSeller
+    && ['PAGADO', 'EN_PREPARACION', 'ENVIADO', 'ENTREGADO'].includes(normStatus);
+  const boletaLoaded = boletaRelevant && Boolean(order.boletaVentaDisponible);
+  const boletaPending = boletaRelevant && !order.boletaVentaDisponible;
+
   // La app móvil solo permite avanzar al siguiente estado válido para cada rol.
   const handleQuickStatusChange = (e) => {
     e.stopPropagation();
@@ -191,7 +201,19 @@ export default function OrderCard({
     // `false` sin abrir nada: el boton quedaba mudo. Se pregunta con `ConfirmDialog`,
     // que es lo que ya usa la cancelacion del comprador.
     setActionError('');
+    // Confirmar un pedido recién pagado exige la boleta de venta: se abre el mismo popup
+    // de datos + adjunto que el detalle, no el ConfirmDialog simple.
+    if (isSeller && controlledAction.nextStatus === 'EN_PREPARACION' && onRegisterSaleReceipt
+        && !order.boletaVentaDisponible) {
+      setShowReceiptModal(true);
+      return;
+    }
     setConfirmAdvance(true);
+  };
+
+  const submitSaleReceipt = async (file) => {
+    await onRegisterSaleReceipt(order, file);
+    await onUpdateStatus(order.id, 'EN_PREPARACION');
   };
 
   const runQuickStatusChange = async () => {
@@ -308,6 +330,9 @@ export default function OrderCard({
           {isSeller && deliveryAddress && !isStorePickup && (
             <span className="order-info-chip address"><MapPin size={13} /> {deliveryAddress}</span>
           )}
+          {boletaLoaded && (
+            <span className="order-info-chip boleta-ok"><FileCheck size={13} /> Boleta cargada</span>
+          )}
         </div>
 
         {paymentFailed && (
@@ -327,6 +352,18 @@ export default function OrderCard({
                   ? `Se anularon ${formatCLP(refundAmount)} de este pedido.`
                   : `Se te devuelven ${formatCLP(refundAmount)} por los productos cancelados.`}</span>
               )}
+            </div>
+          </div>
+        )}
+
+        {boletaPending && (
+          <div className="order-card-state-banner boleta-pending">
+            <ReceiptText size={18} />
+            <div>
+              <strong>Boleta de venta pendiente</strong>
+              <span>{normStatus === 'PAGADO'
+                ? 'Regístrala para confirmar el pedido.'
+                : 'Adjúntala desde el detalle para dejar la venta documentada.'}</span>
             </div>
           </div>
         )}
@@ -484,6 +521,16 @@ export default function OrderCard({
           {renderStatusButton()}
         </div>
       </div>
+
+      {showReceiptModal && (
+        <SaleReceiptModal
+          order={order}
+          items={items}
+          shipping={shippingFee}
+          onSubmit={submitSaleReceipt}
+          onClose={() => setShowReceiptModal(false)}
+        />
+      )}
 
       <ConfirmDialog
         isOpen={confirmAdvance}

@@ -2,10 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle, ArrowLeft, BadgeCheck, Car, CheckCircle2, ChevronLeft, ChevronRight, CreditCard,
-  Globe, Heart, Landmark, MapPin, MessageCircle, Package, Search, Send, ShieldCheck,
+  Globe, Heart, Info, Landmark, MapPin, MessageCircle, Package, Search, Send, ShieldCheck,
   ShoppingCart, Star, Store, Tag, Truck, Wrench, X
 } from 'lucide-react';
 import { CATEGORY_IMAGE_BY_ID } from '../data/categories';
+import ProductBrandMark from './ProductBrandMark';
+import ProductBrandModal from './ProductBrandModal';
 import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import {
   createProductQuestionApi, getProductQuestionsApi, searchVehicleByPatenteApi,
@@ -59,6 +61,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const [questionError, setQuestionError] = useState('');
   const [compatibilityOpen, setCompatibilityOpen] = useState(false);
   const [compatibilitySearch, setCompatibilitySearch] = useState('');
+  const [brandModalOpen, setBrandModalOpen] = useState(false);
   const [plateInput, setPlateInput] = useState('');
   const [plateSearching, setPlateSearching] = useState(false);
   const [plateError, setPlateError] = useState('');
@@ -82,6 +85,30 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const category = product.categoriaNombre || product.categoria || 'Repuestos';
   const condition = product.condicion || 'Original';
   const city = product.ciudadVendedor || 'Chile';
+
+  const explicitBrand = String(
+    product.marca ||
+    product.marcaRepuesto ||
+    product.productBrand ||
+    product.brand ||
+    product.fabricante ||
+    ''
+  ).trim();
+
+  const brandName = useMemo(() => {
+    if (explicitBrand && explicitBrand.toLowerCase() !== 'genérico' && explicitBrand.toLowerCase() !== 'generico') {
+      return explicitBrand;
+    }
+    const title = String(product.titulo || product.nombrePublicado || product.nombre || '').toLowerCase();
+    const knownBrands = [
+      'Brembo', 'Bosch', 'Valeo', 'Hella', 'Mann-Filter', 'Mann', 'Continental', 'Philips',
+      'Osram', 'Denso', 'NGK', 'Castrol', 'Mobil', 'Monroe', 'SKF', 'Mahle', 'Delphi',
+      'Depo', 'TYC', 'Febi', 'Bilstein', 'Gates', 'KYB', 'Aisin', 'ATE', 'Dayco', 'TRW',
+      'Toyota', 'Chevrolet', 'Nissan', 'Hyundai', 'Ford', 'BMW', 'Audi', 'Volkswagen',
+      'Kia', 'Peugeot', 'Renault', 'Fiat', 'Suzuki', 'Subaru', 'Mazda', 'Honda', 'Jeep', 'Volvo'
+    ];
+    return knownBrands.find((b) => title.includes(b.toLowerCase())) || explicitBrand || 'Original';
+  }, [explicitBrand, product.titulo, product.nombrePublicado, product.nombre]);
   // Reputación real de la tienda. Antes la ficha mostraba "4.8" y "+5 años"
   // fijos en el código para cualquier vendedor.
   const sellerRating = Number(product.vendedorRating ?? 0);
@@ -319,8 +346,22 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
               <span className="product-marketplace-verified"><BadgeCheck size={18} /> Producto verificado</span>
             </div>
             <div className="product-marketplace-brand">
-              <span>{category}</span>
-              {product.marca && <span>Marca: <b>{product.marca}</b></span>}
+              <span className="product-marketplace-category-tag">{category}</span>
+              {brandName && (
+                <button
+                  type="button"
+                  className="product-marketplace-brand-pill"
+                  onClick={() => setBrandModalOpen(true)}
+                  title={`Ver información y procedencia de la marca ${brandName}`}
+                  aria-label={`Ver información y procedencia de la marca ${brandName}`}
+                >
+                  <ProductBrandMark brand={brandName} logoUrl={product.brandLogoUrl} size={26} />
+                  <span className="product-marketplace-brand-pill-text">
+                    Marca: <strong>{brandName}</strong>
+                  </span>
+                  <Info size={14} className="product-marketplace-brand-pill-icon" />
+                </button>
+              )}
             </div>
             {compatible && <div className="product-marketplace-match"><CheckCircle2 size={18} /> Compatible con tu {activeVehicle.marca} {activeVehicle.modelo}</div>}
             <div className="product-marketplace-code">Código OEM / SKU: <strong>{product.oemCode || product.sku || 'No informado'}</strong></div>
@@ -470,6 +511,23 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
               <dl>
                 <div><dt>Categoría</dt><dd>{category}</dd></div>
                 <div><dt>Subcategoría</dt><dd>{product.subcategoria || 'No especificada'}</dd></div>
+                {brandName && (
+                  <div>
+                    <dt>Marca</dt>
+                    <dd>
+                      <button
+                        type="button"
+                        className="product-marketplace-brand-link-btn"
+                        onClick={() => setBrandModalOpen(true)}
+                        title={`Ver información y procedencia de la marca ${brandName}`}
+                      >
+                        <ProductBrandMark brand={brandName} logoUrl={product.brandLogoUrl} size={20} />
+                        <span>{brandName}</span>
+                        <Info size={13} />
+                      </button>
+                    </dd>
+                  </div>
+                )}
                 <div><dt>OEM / SKU</dt><dd>{product.oemCode || product.sku || 'No informado'}</dd></div>
                 <div><dt>Condición</dt><dd><span>{condition}</span></dd></div>
               </dl>
@@ -690,6 +748,13 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
         intent={purchaseIntent}
         onClose={() => setPurchaseIntent(null)}
         onConfirm={confirmPurchaseAction}
+      />
+
+      <ProductBrandModal
+        isOpen={brandModalOpen}
+        onClose={() => setBrandModalOpen(false)}
+        brand={brandName}
+        product={product}
       />
     </main>
   );

@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, FileText, MapPin, Package, ReceiptText, ShoppingBag, Truck, XCircle } from 'lucide-react';
+import { Check, FileText, MapPin, Package, ReceiptText, ShoppingBag, Sparkles, Truck, XCircle } from 'lucide-react';
 import deliveryTruck from '../assets/delivery-truck.webp';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { getBuyerOrderByIdApi, resolveMediaUrl } from '../services/api';
+import { confirmOrderPaymentApi, getBuyerOrderByIdApi, resolveMediaUrl } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { profilePath, ROUTES } from '../routes/paths';
 
@@ -39,15 +39,29 @@ export default function PurchaseSuccessPage() {
   const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
 
   useEffect(() => {
-    if (storedOrder || !orderIdFromUrl || !effectiveUserId || isFailure) return;
+    if (!effectiveUserId || isFailure) return undefined;
+    const targetOrderId = orderIdFromUrl || storedOrder?.id;
+    if (!targetOrderId) return undefined;
+
     let active = true;
-    getBuyerOrderByIdApi(effectiveUserId, orderIdFromUrl)
-      .then((data) => { if (active) setFetchedOrder(data); })
-      .catch(() => {});
+    if (!storedOrder && orderIdFromUrl) {
+      confirmOrderPaymentApi(effectiveUserId, orderIdFromUrl)
+        .catch(() => getBuyerOrderByIdApi(effectiveUserId, orderIdFromUrl))
+        .then((data) => { if (active && data) setFetchedOrder(data); })
+        .catch(() => {});
+      return () => { active = false; };
+    }
+
+    if (storedOrder && storedOrder.estado === 'PENDIENTE') {
+      confirmOrderPaymentApi(effectiveUserId, storedOrder.id)
+        .then((updated) => { if (active && updated) setFetchedOrder(updated); })
+        .catch(() => {});
+    }
     return () => { active = false; };
   }, [storedOrder, orderIdFromUrl, effectiveUserId, isFailure]);
 
   const order = storedOrder || fetchedOrder;
+  const isSimulated = Boolean(location.state?.isSimulated || order?.isSimulatedPayment || /mock|simulaci/i.test(order?.metodoPagoDetalle || ''));
 
   if (isFailure) {
     return (
@@ -95,32 +109,36 @@ export default function PurchaseSuccessPage() {
       <section className="purchase-success-card" aria-labelledby="purchase-success-title">
         <header className="purchase-receipt-head">
           <div>
-            <span className="purchase-receipt-label">Comprobante de compra</span>
+            <div className="purchase-receipt-tags">
+              <span className="purchase-receipt-label">Comprobante de compra</span>
+              {isSimulated && (
+                <span className="purchase-simulated-tag"><Sparkles size={11} /> Pago simulado (Pruebas)</span>
+              )}
+            </div>
             <h1 id="purchase-success-title">Pedido #{orderNumber}</h1>
             <p>{orderDate}</p>
           </div>
           <span className="purchase-receipt-state"><Check size={13} strokeWidth={3} /> Pagado</span>
         </header>
 
-        {/* Seguimiento del pedido con sus hitos, como el de los marketplaces locales. El
-            camión de la app va sobre el hito actual y avanza un tramo corto de ida y
-            vuelta: cruzar la pantalla entera dejaba la banda medio vacía y hacía ver el
-            pedido más lejos de lo que está. CSS puro y respeta `prefers-reduced-motion`. */}
+        {/* Simulación del pedido viajando a su destino por una carretera continua */}
         <div className="purchase-journey">
+          <div className="purchase-journey-header">
+            <span className="purchase-journey-badge">
+              <Truck size={15} /> Tu pedido va viajando a su destino
+            </span>
+            <span className="purchase-journey-destination">
+              <MapPin size={13} /> {isPickup ? 'Retiro en tienda' : (address || 'Despacho a domicilio')}
+            </span>
+          </div>
           <div className="purchase-journey-track" aria-hidden="true">
-            <span className="journey-road" />
-            <span className="journey-dot is-done" />
-            <span className="journey-dot is-current" />
-            <span className="journey-dot" />
+            <div className="journey-road">
+              <span className="journey-road-lines" />
+            </div>
             <img className="journey-truck" src={deliveryTruck} alt="" />
           </div>
-          <ol className="purchase-journey-stops">
-            <li className="is-done">Pago confirmado</li>
-            <li className="is-current">En preparación</li>
-            <li>{isPickup ? 'Listo para retiro' : 'Entrega'}</li>
-          </ol>
           <p className="purchase-journey-note">
-            La tienda ya fue notificada y está preparando tu pedido. Te avisamos cuando lo despache.
+            La tienda ya fue notificada y está preparando tu pedido. Te avisamos cuando esté en viaje.
           </p>
         </div>
 
