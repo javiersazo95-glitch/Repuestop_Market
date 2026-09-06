@@ -15,7 +15,7 @@ function formatCLP(value) {
  *
  * `items` debe venir ya acotado a la tienda del vendedor (las líneas canceladas se filtran
  * aquí). `onSubmit(file)` sube la boleta y — salvo en `uploadOnly` — encadena la confirmación;
- * si resuelve sin lanzar, el modal se cierra.
+ * si resuelve sin lanzar, muestra la confirmación al vendedor.
  */
 export default function SaleReceiptModal({
   order,
@@ -29,6 +29,7 @@ export default function SaleReceiptModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
 
   if (!order) return null;
 
@@ -88,11 +89,29 @@ export default function SaleReceiptModal({
     setError('');
     try {
       await onSubmit(file);
-      onClose?.();
+      if (uploadOnly) {
+        onClose?.();
+        return;
+      }
+      setConfirmed(true);
+      setSubmitting(false);
     } catch (err) {
       setError(err?.message || 'No se pudo registrar la boleta de venta.');
       setSubmitting(false);
     }
+  };
+
+  const handleFileChange = (event) => {
+    const selected = event.target.files?.[0];
+    if (!selected) return;
+    if (selected.type !== 'application/pdf' || !selected.name.toLowerCase().endsWith('.pdf')) {
+      setFile(null);
+      setError('La boleta debe ser un archivo PDF.');
+      event.target.value = '';
+      return;
+    }
+    setError('');
+    setFile(selected);
   };
 
   return createPortal(
@@ -113,6 +132,16 @@ export default function SaleReceiptModal({
 
         {error && <p className="confirm-dialog-error">{error}</p>}
 
+        {confirmed ? (
+          <div className="order-receipt-data">
+            <div className="order-receipt-data-head">
+              <span>Pedido confirmado</span>
+            </div>
+            <p className="order-receipt-hint">
+              ¡Gracias por enviar la boleta o factura! El comprador fue notificado por correo y ya puedes procesar el pedido.
+            </p>
+          </div>
+        ) : <>
         <div className="order-receipt-data">
           <div className="order-receipt-data-head">
             <span>Datos de la venta</span>
@@ -160,7 +189,7 @@ export default function SaleReceiptModal({
           </div>
           <p className="order-receipt-hint">
             Emite la boleta o factura por este monto en tu sistema y adjunta el archivo
-            (PDF o imagen). La comisión de RepuesTop se descuenta aparte y no va en el documento.
+            en PDF. La comisión de RepuesTop se descuenta aparte y no va en el documento.
           </p>
         </div>
 
@@ -169,11 +198,11 @@ export default function SaleReceiptModal({
           <div className="order-subdialog-filedrop">
             <label>
               <FileUp size={20} />
-              <span>{file ? file.name : 'Adjuntar PDF o imagen de la boleta'}</span>
+              <span>{file ? file.name : 'Adjuntar PDF de la boleta'}</span>
               <input
                 type="file"
-                accept="image/*,application/pdf"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) setFile(f); }}
+                accept="application/pdf,.pdf"
+                onChange={handleFileChange}
               />
             </label>
             {file && (
@@ -189,17 +218,24 @@ export default function SaleReceiptModal({
             )}
           </div>
         </div>
+        </>}
 
         <div className="confirm-dialog-actions">
-          <button type="button" className="btn-auth-secondary" onClick={() => onClose?.()} disabled={submitting}>
-            Volver
-          </button>
-          <button type="submit" className="btn-auth-primary" disabled={submitting || !file}>
-            {submitting && <Loader2 size={16} className="spin-icon" />}
-            {submitting
-              ? (uploadOnly ? 'Guardando...' : 'Confirmando...')
-              : (uploadOnly ? 'Guardar boleta' : 'Confirmar pedido con boleta')}
-          </button>
+          {confirmed ? (
+            <button type="button" className="btn-auth-primary" onClick={() => onClose?.()}>
+              Entendido
+            </button>
+          ) : <>
+            <button type="button" className="btn-auth-secondary" onClick={() => onClose?.()} disabled={submitting}>
+              Volver
+            </button>
+            <button type="submit" className="btn-auth-primary" disabled={submitting || !file}>
+              {submitting && <Loader2 size={16} className="spin-icon" />}
+              {submitting
+                ? (uploadOnly ? 'Guardando...' : 'Confirmando...')
+                : (uploadOnly ? 'Guardar boleta' : 'Confirmar pedido con boleta')}
+            </button>
+          </>}
         </div>
       </form>
     </div>,

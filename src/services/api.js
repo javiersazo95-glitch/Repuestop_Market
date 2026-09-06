@@ -998,6 +998,11 @@ export async function registerOrderDispatchApi(orderId, { courier, trackingNumbe
  * confirmar el pedido (el backend rechaza el paso a EN_PREPARACION sin ella).
  */
 export async function registerSaleReceiptApi(orderId, file) {
+  if (!(file instanceof File)
+    || file.type !== 'application/pdf'
+    || !file.name.toLowerCase().endsWith('.pdf')) {
+    throw new Error('La boleta debe ser un archivo PDF.');
+  }
   const formData = new FormData();
   formData.append('boleta', file);
   return fetchApi(`/pedidos/${orderId}/boleta-venta`, {
