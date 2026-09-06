@@ -803,6 +803,13 @@ export default function OrderDetailView({
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.type !== 'application/pdf' || !file.name.toLowerCase().endsWith('.pdf')) {
+      setDispatchVoucherFile(null);
+      setDispatchError('El comprobante debe ser un archivo PDF.');
+      e.target.value = '';
+      return;
+    }
+    setDispatchError('');
     setDispatchVoucherFile(file);
   };
 
@@ -1571,12 +1578,12 @@ export default function OrderDetailView({
                 </label>
 
                 <div className="order-subdialog-field">
-                  <span>Comprobante de envío / voucher{isLocalDispatch ? ' (opcional)' : ' *'}</span>
+                  <span>Comprobante de envío en PDF{isLocalDispatch ? ' (opcional)' : ' *'}</span>
                   <div className="order-subdialog-filedrop">
                     <label>
                       <FileUp size={20} />
-                      <span>{dispatchVoucherFile ? dispatchVoucherFile.name : 'Adjuntar foto o PDF del comprobante'}</span>
-                      <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} />
+                      <span>{dispatchVoucherFile ? dispatchVoucherFile.name : 'Adjuntar PDF del comprobante'}</span>
+                      <input type="file" accept="application/pdf,.pdf" onChange={handleFileChange} />
                     </label>
                     {dispatchVoucherFile && (
                       <button
