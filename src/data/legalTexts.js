@@ -272,10 +272,13 @@ Para consultas o solicitudes relativas a datos personales, privacidad o ejercici
  * ni el reclamo ante la autoridad. PENDIENTE DE REVISION LEGAL.
  */
 export const PRIVACIDAD_WEB_EXTRA = `14. COOKIES Y ALMACENAMIENTO LOCAL EN EL SITIO WEB
-El sitio web de RepuesTop utiliza cookies y almacenamiento local del navegador para mantener la sesion iniciada, recordar el vehiculo consultado, conservar el carrito de compras y registrar preferencias de uso.
-Estas tecnologias son necesarias para el funcionamiento de la Plataforma: sin ellas no es posible iniciar sesion, comprar ni mantener el estado de la navegacion.
-El usuario puede bloquear o eliminar las cookies desde la configuracion de su navegador, considerando que en ese caso algunas funciones de la Plataforma podrian dejar de operar correctamente.
+RepuesTop utiliza cookies y almacenamiento local para mantener la sesión iniciada, proteger la cuenta, conservar el carrito y recordar las preferencias esenciales. Estas tecnologías necesarias son indispensables para la operación y seguridad de la Plataforma.
+
+Las tecnologías de preferencias no esenciales, analítica y marketing son opcionales. Se mantienen desactivadas hasta que el usuario otorgue una autorización libre, informada, específica e inequívoca mediante el aviso de cookies. El usuario puede aceptar todas, conservar solo las necesarias o seleccionar categorías, sin casillas opcionales preseleccionadas.
+
+El usuario puede retirar su autorización para las categorías opcionales en cualquier momento desde la configuración de cookies que habilite la Plataforma. El retiro no afecta la licitud del tratamiento realizado antes de ese momento. No se venden datos personales mediante estas tecnologías.
+
+Este esquema considera la Ley N° 21.719, que regula la protección y el tratamiento de datos personales y entra en vigencia el 1 de diciembre de 2026. RepuesTop actualizará esta política si cambian las obligaciones aplicables o la configuración tecnológica del sitio.
 
 15. RECLAMOS ANTE LA AUTORIDAD
 Sin perjuicio de los canales de contacto de RepuesTop, el usuario podra presentar reclamos ante el Servicio Nacional del Consumidor (SERNAC) y, en materia de datos personales, ante la autoridad de control que la normativa chilena determine conforme a la Ley N 19.628 y a la Ley N 21.719 cuando resulte exigible.`;
-

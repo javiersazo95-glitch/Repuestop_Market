@@ -253,6 +253,12 @@ export const HELP_CATEGORIES = [
     topicId: { [HELP_ROLES.BUYER]: 'info', [HELP_ROLES.SELLER]: 'info' },
     faqs: [
       {
+        q: 'Política de cookies',
+        a: 'RepuesTop utiliza tecnologías estrictamente necesarias para mantener la sesión, proteger la cuenta, conservar el carrito y hacer funcionar el sitio. También puede utilizar cookies de preferencias, analítica o marketing, pero estas categorías opcionales se mantienen desactivadas hasta que las autorices de forma libre, informada, específica e inequívoca. Puedes aceptar todas, conservar solo las necesarias o elegir cada categoría desde el aviso de cookies. La Ley N° 21.719, que moderniza la protección de datos personales en Chile, entra en vigencia el 1 de diciembre de 2026. Antes y después de esa fecha, puedes retirar tu consentimiento para tecnologías opcionales; al hacerlo, no se afecta la licitud del tratamiento realizado previamente. No utilizamos las cookies opcionales para vender datos personales. Las cookies necesarias no se pueden desactivar porque son indispensables para prestar el servicio y dar seguridad a las transacciones.',
+        roles: ALL_ROLES,
+        topicId: 'general',
+      },
+      {
         q: '¿RepuesTop vende directamente los repuestos?',
         a: 'RepuesTop conecta compradores con vendedores de repuestos. La plataforma te ayuda a encontrar, cotizar y comprar.',
         roles: ALL_ROLES,
@@ -379,7 +385,6 @@ export function highlightedFaqs(reportType, limit = 5) {
     .flatMap((category) => faqsForRole(category, reportType).map((faq) => ({ ...faq, categoria: category.slug })))
     .slice(0, limit);
 }
-
 
 
 

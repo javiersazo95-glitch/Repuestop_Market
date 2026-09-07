@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, MessageSquare } from 'lucide-react';
+import { ChevronRight, Cookie, MessageSquare } from 'lucide-react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import HelpFaqAccordion from '../../components/help/HelpFaqAccordion';
 import HelpSidebar from '../../components/help/HelpSidebar';
@@ -42,6 +42,15 @@ export default function HelpCategoryView() {
               </div>
             </header>
             <HelpFaqAccordion faqs={faqs} />
+            {category.slug === 'politicas' && (
+              <button
+                type="button"
+                className="help-cookie-settings"
+                onClick={() => window.dispatchEvent(new Event('repuestop:manage-cookies'))}
+              >
+                <Cookie size={16} /> Administrar mis cookies
+              </button>
+            )}
           </section>
 
           <section className="help-still-stuck">
@@ -64,4 +73,3 @@ export default function HelpCategoryView() {
     </>
   );
 }
-

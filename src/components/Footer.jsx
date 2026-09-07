@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  ChevronRight, Compass, CreditCard, Disc3, FileText, Filter, Headphones,
+  ChevronRight, Compass, Disc3, FileText, Filter, Headphones,
   Lock, Megaphone, MessageSquare, PackageSearch, Search, ShieldCheck, Store, Tag,
   Truck, Users
 } from 'lucide-react';
@@ -101,8 +101,11 @@ export default function Footer() {
           <p>El marketplace automotriz para encontrar repuestos nuevos, comparar opciones y comprar con seguridad.</p>
 
           <div className="footer-trust-points">
-            <div><ShieldCheck /><span><strong>Compra 100% segura</strong>Protegemos tu compra en cada paso.</span></div>
             <div><Truck /><span><strong>Envíos a todo Chile</strong>Entregas rápidas y seguras donde estés.</span></div>
+            <div className="footer-flow-point">
+              <b>flow</b>
+              <span><strong>Pagos procesados por Flow</strong>Crédito y débito</span>
+            </div>
           </div>
         </section>
 
@@ -146,7 +149,7 @@ export default function Footer() {
           <Link to={ROUTES.terms} onClick={handleSameRoute(ROUTES.terms)}><FileText size={13} /> Términos y Condiciones</Link>
           <Link to={ROUTES.privacy} onClick={handleSameRoute(ROUTES.privacy)}><ShieldCheck size={13} /> Política de Privacidad</Link>
           <Link to={helpCategoryPath('politicas')} onClick={handleSameRoute(helpCategoryPath('politicas'))}>
-            <FileText size={13} /> Garantía legal 6 meses
+            <FileText size={13} /> Políticas de cookies
           </Link>
         </nav>
         <span className="reference-footer-security">
@@ -154,17 +157,6 @@ export default function Footer() {
         </span>
       </div>
 
-      {/* La pasarela es Flow: es lo mismo que ve el comprador en el checkout. No
-          se muestran marcas de terceros (Transbank, Redcompra) que no son la
-          pasarela contratada. */}
-      <div className="container reference-footer-seals">
-        <span className="flow-payment">
-          <b>flow</b>
-          <span><strong>Pagos procesados por Flow</strong>Crédito y débito</span>
-        </span>
-        <span className="footer-seal"><Truck /><span><strong>Envíos a todo Chile</strong>Despacho y retiro en tienda</span></span>
-        <span className="footer-seal"><CreditCard /><span><strong>Tiendas verificadas</strong>Identidad y datos validados</span></span>
-      </div>
     </footer>
   );
 }
