@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  AlertCircle, CalendarDays, CheckCircle2, CreditCard, Eye, EyeOff, History, Info,
+  AlertCircle, AlertTriangle, CalendarDays, CheckCircle2, CreditCard, Eye, EyeOff, History, Info,
   Landmark, Loader2, Mail, Package, Save, User, Wallet, X,
 } from 'lucide-react';
 import {
@@ -67,6 +67,23 @@ function isCompleteBankAccount(account) {
 function WithdrawalStatus({ status }) {
   const config = STATUS_CONFIG[String(status || '').toUpperCase()] || { label: status || 'Sin estado', className: 'other' };
   return <span className={`withdrawal-status ${config.className}`}>{config.label}</span>;
+}
+
+/**
+ * El deposito rebotó en el banco. Lo importante no es el chip rojo -que ya estaba- sino decirle
+ * al vendedor por qué y qué hacer: sus pedidos volvieron a estar disponibles, pero no le va a
+ * llegar nada hasta que corrija sus datos bancarios y lo solicite de nuevo.
+ */
+function WithdrawalRejectedNotice({ motivo }) {
+  return (
+    <div className="withdrawal-rejected-notice">
+      <AlertTriangle size={15} />
+      <div>
+        <strong>El depósito no se pudo realizar{motivo ? `: ${motivo}` : '.'}</strong>
+        <span>Tus pedidos volvieron a quedar disponibles. Revisa tus datos bancarios y solicita el retiro nuevamente.</span>
+      </div>
+    </div>
+  );
 }
 
 function PendingOrderRow({ order }) {
@@ -289,7 +306,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
         </div>
       ) : (
         <div className="withdrawal-history-list">
-          {history.length ? history.map((withdrawal) => <article key={withdrawal.retiroId} className="withdrawal-history-card"><div className="withdrawal-history-top"><div><small>{withdrawal.codigoExterno || `RET-${String(withdrawal.retiroId).padStart(6, '0')}`}</small><span>Solicitado el {formatDate(withdrawal.fechaSolicitud, true)}</span></div><WithdrawalStatus status={withdrawal.estado} /></div><strong>{formatCLP(withdrawal.montoTotal)}</strong><div className="withdrawal-history-meta"><span><Package size={15} /> {withdrawal.cantidadPedidos} {Number(withdrawal.cantidadPedidos) === 1 ? 'pedido' : 'pedidos'}</span><span><CalendarDays size={15} /> Pago estimado: {formatDate(withdrawal.fechaEfectiva)}</span></div><button type="button" onClick={() => openDetail(withdrawal.retiroId)} disabled={detailLoading}><Eye size={16} /> Ver detalle del retiro</button></article>) : <div className="withdrawal-empty history"><span><History size={25} /></span><strong>Aún no tienes retiros solicitados</strong><p>Cuando solicites un retiro, aparecerá aquí.</p></div>}
+          {history.length ? history.map((withdrawal) => <article key={withdrawal.retiroId} className="withdrawal-history-card"><div className="withdrawal-history-top"><div><small>{withdrawal.codigoExterno || `RET-${String(withdrawal.retiroId).padStart(6, '0')}`}</small><span>Solicitado el {formatDate(withdrawal.fechaSolicitud, true)}</span></div><WithdrawalStatus status={withdrawal.estado} /></div><strong>{formatCLP(withdrawal.montoTotal)}</strong><div className="withdrawal-history-meta"><span><Package size={15} /> {withdrawal.cantidadPedidos} {Number(withdrawal.cantidadPedidos) === 1 ? 'pedido' : 'pedidos'}</span><span><CalendarDays size={15} /> Pago estimado: {formatDate(withdrawal.fechaEfectiva)}</span></div>{String(withdrawal.estado || '').toUpperCase() === 'RECHAZADO' && <WithdrawalRejectedNotice motivo={withdrawal.motivoRechazo} />}<button type="button" onClick={() => openDetail(withdrawal.retiroId)} disabled={detailLoading}><Eye size={16} /> Ver detalle del retiro</button></article>) : <div className="withdrawal-empty history"><span><History size={25} /></span><strong>Aún no tienes retiros solicitados</strong><p>Cuando solicites un retiro, aparecerá aquí.</p></div>}
         </div>
       )}
 
@@ -297,7 +314,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
 
       {showConfirmation && bankAccount && <ModalShell title="Confirmar retiro" subtitle="Revisa la cuenta antes de enviar la solicitud." icon={Wallet} onClose={() => !submitting && setShowConfirmation(false)}><div className="withdrawal-confirm-body"><div className="withdrawal-confirm-amount"><span>Monto a solicitar</span><strong>{formatCLP(pending.totalARetirar)}</strong></div><dl><div><dt>Nombre</dt><dd>{bankAccount.bankAccountHolderName}</dd></div><div><dt>RUT</dt><dd>{bankAccount.bankAccountRut}</dd></div><div><dt>Banco</dt><dd>{bankAccount.bankName}</dd></div><div><dt>Tipo de cuenta</dt><dd>{formatAccountType(bankAccount.bankAccountType)}</dd></div><div><dt>Número de cuenta</dt><dd className="withdrawal-confirm-account-number"><span>{revealAccountNumber ? formatAccountNumber(bankAccount.bankAccountNumber) : maskAccountNumber(bankAccount.bankAccountNumber)}</span><button type="button" className="withdrawal-toggle-reveal" onClick={() => setRevealAccountNumber((current) => !current)} title={revealAccountNumber ? 'Ocultar número de cuenta' : 'Mostrar número de cuenta'}>{revealAccountNumber ? <EyeOff size={14} /> : <Eye size={14} />}</button></dd></div></dl><p><Info size={16} /> Confirma que estos datos son correctos. La solicitud no podrá modificarse después de enviarla.</p><footer><button type="button" className="btn-auth-secondary" onClick={() => setShowConfirmation(false)} disabled={submitting}>Cancelar</button><button type="button" className="btn-auth-primary" onClick={submitWithdrawal} disabled={submitting}>{submitting ? <Loader2 size={16} className="spin-icon" /> : <CheckCircle2 size={16} />}{submitting ? 'Solicitando...' : 'Confirmar solicitud'}</button></footer></div></ModalShell>}
 
-      {(detail || detailLoading) && <ModalShell title="Detalle del retiro" subtitle={detail?.codigoExterno || (detail ? `RET-${String(detail.retiroId).padStart(6, '0')}` : 'Cargando información...')} icon={History} onClose={() => !detailLoading && setDetail(null)} wide>{detailLoading ? <div className="withdrawal-loading"><Loader2 size={20} className="spin-icon" /> Cargando detalle...</div> : <div className="withdrawal-detail-body"><div className="withdrawal-detail-summary"><WithdrawalStatus status={detail.estado} /><span><CalendarDays size={15} /> Pago estimado: {formatDate(detail.fechaEfectiva)}</span></div><div className="withdrawal-detail-orders">{(detail.pedidos || []).map((order) => <PendingOrderRow key={order.pedidoId} order={order} />)}</div><div className="withdrawal-detail-total"><span>Total</span><strong>{formatCLP(detail.montoTotal)}</strong></div></div>}</ModalShell>}
+      {(detail || detailLoading) && <ModalShell title="Detalle del retiro" subtitle={detail?.codigoExterno || (detail ? `RET-${String(detail.retiroId).padStart(6, '0')}` : 'Cargando información...')} icon={History} onClose={() => !detailLoading && setDetail(null)} wide>{detailLoading ? <div className="withdrawal-loading"><Loader2 size={20} className="spin-icon" /> Cargando detalle...</div> : <div className="withdrawal-detail-body"><div className="withdrawal-detail-summary"><WithdrawalStatus status={detail.estado} /><span><CalendarDays size={15} /> Pago estimado: {formatDate(detail.fechaEfectiva)}</span></div>{String(detail.estado || '').toUpperCase() === 'RECHAZADO' && <WithdrawalRejectedNotice motivo={detail.motivoRechazo} />}<div className="withdrawal-detail-orders">{(detail.pedidos || []).map((order) => <PendingOrderRow key={order.pedidoId} order={order} />)}</div><div className="withdrawal-detail-total"><span>Total</span><strong>{formatCLP(detail.montoTotal)}</strong></div></div>}</ModalShell>}
     </div>
   );
 }
