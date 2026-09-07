@@ -1573,6 +1573,14 @@ export async function getFichasPacksApi() {
   return fetchApi('/fichas/packs', { method: 'GET' });
 }
 
+/**
+ * Arranca el cobro de una recarga. Devuelve `{ url, token }`: la URL es la de la pasarela, a
+ * donde hay que mandar al usuario. No acredita nada.
+ */
+export async function iniciarRecargaFichasApi(payload) {
+  return fetchApi('/fichas/recargas', { method: 'POST', body: JSON.stringify(payload) });
+}
+
 export async function registrarCompraFichasApi(payload) {
   return fetchApi('/fichas/compras', { method: 'POST', body: JSON.stringify(payload) });
 }

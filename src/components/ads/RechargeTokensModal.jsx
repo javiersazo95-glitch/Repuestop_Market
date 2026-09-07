@@ -1,24 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, CheckCircle2, CreditCard, Landmark, ShieldCheck,
+  X, CheckCircle2, ShieldCheck,
   AlertCircle
 } from 'lucide-react';
-import { fetchTokenPacks, rechargeTokensWithPack, adErrorMessage } from '../../services/adsStorage';
+import { fetchTokenPacks, iniciarRecargaApi, adErrorMessage } from '../../services/adsStorage';
 import RepuestopCoin from './RepuestopCoin';
-import CoinDropAnimation from './CoinDropAnimation';
-
-/** Quien pidio menos movimiento en su sistema se salta la lluvia. */
-function prefiereMenosMovimiento() {
-  return typeof window !== 'undefined'
-    && typeof window.matchMedia === 'function'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
 
 export default function RechargeTokensModal({
   isOpen,
   onClose,
-  onRechargeSuccess,
   origin = 'ANUNCIOS'
 }) {
   // El catalogo lo sirve el backend: antes estaba fijo aca y en la app, con el precio en dos
@@ -27,25 +18,8 @@ export default function RechargeTokensModal({
   const [packsLoading, setPacksLoading] = useState(false);
   const [packsError, setPacksError] = useState('');
   const [selectedPack, setSelectedPack] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('webpay');
   const [isProcessing, setIsProcessing] = useState(false);
-  /**
-   * El pago confirmado no salta directo al comprobante: primero la lluvia de
-   * monedas toma el modal entero y recien despues aparece el resumen. Es el
-   * momento en que el usuario ve que su plata se convirtio en algo, y pasarlo
-   * por alto hace que la recarga se sienta como un formulario mas.
-   * 'lluvia' -> 'resumen' lo dispara el onFinish de la animacion.
-   */
-  const [fase, setFase] = useState('compra');
-  const [creditedAmount, setCreditedAmount] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
-  /**
-   * Numero del comprobante. Se fija UNA vez, al confirmarse la recarga: estaba
-   * calculado con Math.random() dentro del render, asi que cambiaba en cada
-   * repintado y el usuario podia ver dos numeros distintos para la misma compra.
-   */
-  const [receiptId, setReceiptId] = useState('');
-  const isSuccess = fase === 'resumen';
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -71,34 +45,30 @@ export default function RechargeTokensModal({
   /**
    * Registra la compra en el backend, que es quien acredita las Monedas.
    *
-   * Antes esto sumaba el saldo en `localStorage` y no avisaba a nadie: la web
-   * NUNCA llamaba a `POST /fichas/compras`, asi que una recarga hecha desde el
-   * navegador no acreditaba nada real y ademas quedaba fuera de Administracion
-   * Contable. Si el registro falla no se muestra exito: esas Monedas no existen.
+   * Crea la intencion de pago y manda al usuario a Flow.
+   *
+   * Ya no acredita ni muestra exito: las Monedas entran cuando el webhook confirma que el
+   * dinero llego, no cuando el navegador dice que pago. El usuario sale de esta pagina y
+   * vuelve por la pagina puente del backend a `/perfil/anuncios?status=success`, con la
+   * lluvia de monedas ya del lado del panel.
    */
   const handlePay = async (e) => {
     e.preventDefault();
     if (!selectedPack) return;
     setIsProcessing(true);
     setErrorMsg('');
-    const methodName = paymentMethod === 'webpay'
-      ? 'Webpay Plus'
-      : paymentMethod === 'transfer' ? 'Transferencia Bancaria' : 'Tarjeta de Crédito';
     try {
-      const updatedBalance = await rechargeTokensWithPack(selectedPack, methodName, origin);
-      setCreditedAmount(selectedPack.totalTokens);
-      setReceiptId(`RT-PAY-${Math.floor(100000 + Math.random() * 900000)}`);
-      setFase(prefiereMenosMovimiento() ? 'resumen' : 'lluvia');
-      onRechargeSuccess?.(updatedBalance);
+      const { url } = await iniciarRecargaApi(selectedPack.id, origin);
+      if (!url) throw new Error('La pasarela no devolvio una URL de pago.');
+      // Redireccion dura, no window.open: es la misma pestana la que va a Flow y vuelve.
+      window.location.href = url;
     } catch (error) {
-      setErrorMsg(adErrorMessage(error, 'No se pudo registrar la recarga. Intenta nuevamente.'));
-    } finally {
+      setErrorMsg(adErrorMessage(error, 'No pudimos iniciar el pago. Intenta nuevamente.'));
       setIsProcessing(false);
     }
   };
 
   const handleClose = () => {
-    setFase('compra');
     setErrorMsg('');
     onClose?.();
   };
@@ -113,8 +83,6 @@ export default function RechargeTokensModal({
       aria-modal="true"
     >
       <div className="recharge-modal-card">
-        {!isSuccess ? (
-          <>
             <div className="recharge-modal-header">
               <div className="recharge-modal-title-row">
                 <span className="recharge-modal-coin"><RepuestopCoin size={42} face="front" /></span>
@@ -179,57 +147,13 @@ export default function RechargeTokensModal({
                 })}
               </div>
 
-              {/* Selector de Método de Pago */}
-              <div className="payment-method-section">
-                <div className="recharge-section-heading">
-                  <span>2</span>
-                  <div><strong>Método de pago seguro</strong><small>Selecciona cómo quieres pagar</small></div>
-                </div>
-                <div className="payment-methods-row">
-                  <label className={`payment-radio-card ${paymentMethod === 'webpay' ? 'active' : ''}`}>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="webpay"
-                      checked={paymentMethod === 'webpay'}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                    />
-                    <CreditCard size={18} className="text-red-500" />
-                    <div>
-                      <strong>Webpay Plus / Débito</strong>
-                      <small>Redcompra y bancos nacionales</small>
-                    </div>
-                  </label>
-
-                  <label className={`payment-radio-card ${paymentMethod === 'credit' ? 'active' : ''}`}>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="credit"
-                      checked={paymentMethod === 'credit'}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                    />
-                    <CreditCard size={18} className="text-blue-500" />
-                    <div>
-                      <strong>Tarjeta de Crédito</strong>
-                      <small>Hasta 3 cuotas sin interés</small>
-                    </div>
-                  </label>
-
-                  <label className={`payment-radio-card ${paymentMethod === 'transfer' ? 'active' : ''}`}>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="transfer"
-                      checked={paymentMethod === 'transfer'}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                    />
-                    <Landmark size={18} className="text-emerald-600" />
-                    <div>
-                      <strong>Transferencia Bancaria</strong>
-                      <small>Acreditación instantánea</small>
-                    </div>
-                  </label>
+              {/* El medio de pago se elige DENTRO de Flow: ofrecerlo aca era pura
+                  decoracion, porque ninguna de las tres opciones cobraba nada. */}
+              <div className="recharge-section-heading">
+                <span>2</span>
+                <div>
+                  <strong>Pago seguro con Flow</strong>
+                  <small>Te llevamos a Flow para pagar con Webpay, tarjeta o transferencia</small>
                 </div>
               </div>
 
@@ -276,49 +200,6 @@ export default function RechargeTokensModal({
                 </button>
               </div>
             </form>
-          </>
-        ) : (
-          /* Confirmación Exitosa */
-          <div className="recharge-success-view">
-            <div className="recharge-success-coin">
-              <RepuestopCoin size={92} face="front" />
-            </div>
-
-            <h3>
-              ¡Gracias por confiar en RepuesTop!
-            </h3>
-
-            <p>
-              Se acreditaron <strong>{creditedAmount.toLocaleString('es-CL')} Monedas RepuesTop</strong> en tu monedero. Ya están disponibles para usar en {origin === 'INVENTARIO' ? 'tus productos Top' : 'tus avisos'}.
-            </p>
-
-            <div className="recharge-voucher">
-              <div><strong>Transacción:</strong> <span className="font-mono text-slate-900">#{receiptId}</span></div>
-              <div><strong>Pack Adquirido:</strong> {selectedPack?.name}</div>
-              <div><strong>Monto Pagado:</strong> {selectedPack?.priceFormatted}</div>
-              <div><strong>Fecha y Hora:</strong> {new Date().toLocaleString('es-CL')}</div>
-            </div>
-
-            <button
-              type="button"
-              className="btn-recharge-submit"
-              onClick={handleClose}
-            >
-              {origin === 'INVENTARIO' ? 'Volver a Producto Top' : 'Volver al Panel de Anuncios'}
-            </button>
-          </div>
-        )}
-
-        {/* La lluvia toma el modal entero, por encima del formulario: es un
-            momento propio, no un adorno del comprobante. Al terminar cede el
-            paso al resumen. */}
-        {fase === 'lluvia' && (
-          <div className="coin-rain-layer">
-            <CoinDropAnimation active onFinish={() => setFase('resumen')} />
-            <h3>¡Listo!</h3>
-            <p>Estamos acreditando tus monedas…</p>
-          </div>
-        )}
       </div>
     </div>,
     document.body

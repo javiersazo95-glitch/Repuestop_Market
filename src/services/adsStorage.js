@@ -20,7 +20,7 @@
 import {
   getPublicAdsApi, getPublicAdApi, getMyAdsApi,
   createAdApi, updateAdApi, updateAdAgendaApi, deleteAdApi, uploadAdImagesApi, resolveMediaUrl,
-  getFichasBalanceApi, getFichasMovimientosApi, getFichasPacksApi, registrarCompraFichasApi,
+  getFichasBalanceApi, getFichasMovimientosApi, getFichasPacksApi, iniciarRecargaFichasApi,
   getAdAppointmentsApi, getMyAppointmentsApi, createAdAppointmentApi,
   updateAdAppointmentStatusApi, sendAppointmentSummaryEmailsApi,
   createUserNotificationApi, createProviderNotificationApi
@@ -353,31 +353,17 @@ export async function fetchTokenTransactions({ signal } = {}) {
 }
 
 /**
- * Registra la compra pagada y devuelve el saldo ya actualizado por el servidor.
+ * Arranca el cobro de una recarga y devuelve la URL de la pasarela.
  *
- * El credito lo aplica el backend al registrar la compra, asi que aca no se suma
- * nada: sumarlo en el navegador es exactamente lo que hacia que los dos numeros
- * se separaran. Si el registro falla, se propaga el error — esas Monedas todavia
- * no existen y mostrarlas seria mentir.
- *
- * Esta llamada NO existia en la web: solo la hacia el movil, asi que hasta ahora
- * toda recarga hecha desde el navegador era invisible para Administracion
- * Contable, ademas de no acreditar nada.
+ * Reemplaza a `rechargeTokensWithPack`, que registraba la compra directamente: el backend le
+ * creia al cliente que habia pagado. Ahora esta funcion no acredita nada -- crea la intencion
+ * y el usuario se va a Flow; las Monedas entran cuando el webhook confirma.
  */
-export async function rechargeTokensWithPack(pack, paymentMethod = 'Webpay Plus', origin = 'ANUNCIOS') {
-  await registrarCompraFichasApi({
-    // El backend valida el precio y las Monedas contra ESTE pack del catalogo.
-    packId: pack.id,
-    cantidadFichas: pack.totalTokens,
-    montoPagado: pack.priceClp,
-    packNombre: pack.name,
-    metodoPago: paymentMethod,
+export async function iniciarRecargaApi(packId, origin = 'ANUNCIOS') {
+  return iniciarRecargaFichasApi({
+    packId,
     origen: String(origin || 'ANUNCIOS').toUpperCase(),
-    // Identifica la compra: el backend la usa para no registrarla ni acreditarla
-    // dos veces si un reintento llega despues de que ya entro.
-    referenciaPago: `WEB-${pack.id}-${Date.now()}`
   });
-  return fetchTokensBalance();
 }
 
 /**
