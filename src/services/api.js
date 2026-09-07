@@ -1568,6 +1568,11 @@ export async function getFichasMovimientosApi({ signal } = {}) {
  * `referenciaPago` es la llave de idempotencia: si la misma referencia llega dos
  * veces, la compra no se registra ni se acredita de nuevo.
  */
+/** Catalogo de packs de Monedas. Unica fuente de verdad del precio. */
+export async function getFichasPacksApi() {
+  return fetchApi('/fichas/packs', { method: 'GET' });
+}
+
 export async function registrarCompraFichasApi(payload) {
   return fetchApi('/fichas/compras', { method: 'POST', body: JSON.stringify(payload) });
 }

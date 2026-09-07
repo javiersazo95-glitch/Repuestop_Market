@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, CheckCircle2, CreditCard, Landmark, ShieldCheck,
   AlertCircle
 } from 'lucide-react';
-import { TOKEN_PACKS, rechargeTokensWithPack, adErrorMessage } from '../../services/adsStorage';
+import { fetchTokenPacks, rechargeTokensWithPack, adErrorMessage } from '../../services/adsStorage';
 import RepuestopCoin from './RepuestopCoin';
 import CoinDropAnimation from './CoinDropAnimation';
 
@@ -21,7 +21,12 @@ export default function RechargeTokensModal({
   onRechargeSuccess,
   origin = 'ANUNCIOS'
 }) {
-  const [selectedPack, setSelectedPack] = useState(TOKEN_PACKS[1]); // Default al más popular (Medio)
+  // El catalogo lo sirve el backend: antes estaba fijo aca y en la app, con el precio en dos
+  // archivos que nadie garantizaba sincronizados.
+  const [packs, setPacks] = useState([]);
+  const [packsLoading, setPacksLoading] = useState(false);
+  const [packsError, setPacksError] = useState('');
+  const [selectedPack, setSelectedPack] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('webpay');
   const [isProcessing, setIsProcessing] = useState(false);
   /**
@@ -42,6 +47,25 @@ export default function RechargeTokensModal({
   const [receiptId, setReceiptId] = useState('');
   const isSuccess = fase === 'resumen';
 
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    let cancelled = false;
+    setPacksLoading(true);
+    setPacksError('');
+    fetchTokenPacks()
+      .then((lista) => {
+        if (cancelled) return;
+        setPacks(lista);
+        // Se preselecciona el pack destacado; si ninguno lo esta, el primero.
+        setSelectedPack(lista.find((pack) => pack.highlight) || lista[0] || null);
+      })
+      .catch((error) => {
+        if (!cancelled) setPacksError(adErrorMessage(error, 'No pudimos cargar los packs. Intenta nuevamente.'));
+      })
+      .finally(() => { if (!cancelled) setPacksLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   /**
@@ -54,6 +78,7 @@ export default function RechargeTokensModal({
    */
   const handlePay = async (e) => {
     e.preventDefault();
+    if (!selectedPack) return;
     setIsProcessing(true);
     setErrorMsg('');
     const methodName = paymentMethod === 'webpay'
@@ -115,9 +140,11 @@ export default function RechargeTokensModal({
                 <span>1</span>
                 <div><strong>Selecciona un pack</strong><small>El valor siempre es $50 CLP por moneda</small></div>
               </div>
+              {packsLoading && <p className="recharge-packs-state">Cargando packs…</p>}
+              {packsError && <p className="recharge-packs-state is-error">{packsError}</p>}
               <div className="token-packs-grid">
-                {TOKEN_PACKS.map((pack) => {
-                  const isSelected = selectedPack.id === pack.id;
+                {packs.map((pack) => {
+                  const isSelected = selectedPack?.id === pack.id;
                   return (
                     <button
                       type="button"
@@ -211,11 +238,11 @@ export default function RechargeTokensModal({
                 <div className="recharge-summary-main">
                   <div>
                     <span>Pack seleccionado</span>
-                    <strong>{selectedPack.name} · {selectedPack.totalTokens} Monedas</strong>
+                    <strong>{selectedPack?.name} · {selectedPack?.totalTokens} Monedas</strong>
                   </div>
                   <div className="recharge-summary-total">
                     <span>Total a pagar</span>
-                    <strong>{selectedPack.priceFormatted}</strong>
+                    <strong>{selectedPack?.priceFormatted}</strong>
                   </div>
                 </div>
                 <div className="recharge-secure-note">
@@ -243,9 +270,9 @@ export default function RechargeTokensModal({
                 <button
                   type="submit"
                   className="btn-recharge-submit"
-                  disabled={isProcessing}
+                  disabled={isProcessing || !selectedPack}
                 >
-                  {isProcessing ? 'Procesando recarga…' : `Pagar ${selectedPack.priceFormatted}`}
+                  {isProcessing ? 'Procesando recarga…' : `Pagar ${selectedPack?.priceFormatted ?? ''}`}
                 </button>
               </div>
             </form>
@@ -267,8 +294,8 @@ export default function RechargeTokensModal({
 
             <div className="recharge-voucher">
               <div><strong>Transacción:</strong> <span className="font-mono text-slate-900">#{receiptId}</span></div>
-              <div><strong>Pack Adquirido:</strong> {selectedPack.name}</div>
-              <div><strong>Monto Pagado:</strong> {selectedPack.priceFormatted}</div>
+              <div><strong>Pack Adquirido:</strong> {selectedPack?.name}</div>
+              <div><strong>Monto Pagado:</strong> {selectedPack?.priceFormatted}</div>
               <div><strong>Fecha y Hora:</strong> {new Date().toLocaleString('es-CL')}</div>
             </div>
 

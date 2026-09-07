@@ -17095,3 +17095,7 @@ input, select, textarea {
 .withdrawal-rejected-notice > div { display: flex; flex-direction: column; gap: 3px; }
 .withdrawal-rejected-notice strong { font-size: 12.5px; font-weight: 800; color: #8c1d13; }
 .withdrawal-rejected-notice span { font-size: 12px; color: #7a4a44; line-height: 1.45; }
+
+/* Estado del catalogo de packs mientras el backend responde. */
+.recharge-packs-state { margin: 0 0 10px; font-size: 12.5px; color: var(--text-muted); }
+.recharge-packs-state.is-error { color: #b8261a; font-weight: 700; }

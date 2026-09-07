@@ -20,7 +20,7 @@
 import {
   getPublicAdsApi, getPublicAdApi, getMyAdsApi,
   createAdApi, updateAdApi, updateAdAgendaApi, deleteAdApi, uploadAdImagesApi, resolveMediaUrl,
-  getFichasBalanceApi, getFichasMovimientosApi, registrarCompraFichasApi,
+  getFichasBalanceApi, getFichasMovimientosApi, getFichasPacksApi, registrarCompraFichasApi,
   getAdAppointmentsApi, getMyAppointmentsApi, createAdAppointmentApi,
   updateAdAppointmentStatusApi, sendAppointmentSummaryEmailsApi,
   createUserNotificationApi, createProviderNotificationApi
@@ -74,61 +74,29 @@ export function tokensForClp(priceClp) {
   return Math.ceil(priceClp / TOKEN_VALUE_CLP);
 }
 
-// Packs oficiales: el backend exige montoPagado === cantidadFichas * $50 CLP.
-export const TOKEN_PACKS = [
-  {
-    id: 'pack-basico',
-    name: 'Pack Básico',
-    tokens: 100,
-    bonus: 0,
-    totalTokens: 100,
-    priceClp: 5000,
-    priceFormatted: '$5.000 CLP',
-    tag: 'Inicial',
-    highlight: false,
-    description: '100 monedas a $50 CLP cada una.',
-    color: '#64748b'
-  },
-  {
-    id: 'pack-medio',
-    name: 'Pack Medio',
-    tokens: 200,
-    bonus: 0,
-    totalTokens: 200,
-    priceClp: 10000,
-    priceFormatted: '$10.000 CLP',
-    tag: 'Destacado',
-    highlight: true,
-    description: 'Cubre un anuncio Destacado por 30 días.',
-    color: '#7c3aed'
-  },
-  {
-    id: 'pack-avanzado',
-    name: 'Pack Avanzado',
-    tokens: 400,
-    bonus: 0,
-    totalTokens: 400,
-    priceClp: 20000,
-    priceFormatted: '$20.000 CLP',
-    tag: 'Premium',
-    highlight: false,
-    description: 'Cubre un anuncio Premium por 30 días.',
-    color: '#059669'
-  },
-  {
-    id: 'pack-extra',
-    name: 'Pack Extra Pro',
-    tokens: 800,
-    bonus: 0,
-    totalTokens: 800,
-    priceClp: 40000,
-    priceFormatted: '$40.000 CLP',
-    tag: 'Empresarial',
-    highlight: false,
-    description: 'Cubre un anuncio Empresarial por 30 días.',
-    color: '#d97706'
-  }
-];
+/**
+ * El catalogo de packs lo sirve el backend (`GET /fichas/packs`): antes vivia fijo aca y en
+ * `mobile/constants/automotive-ads-data.ts`, con el precio escrito en dos archivos que nadie
+ * garantizaba sincronizados.
+ *
+ * Se mapea a la forma que ya usaba la pantalla para no tocar el render.
+ */
+export async function fetchTokenPacks() {
+  const packs = await getFichasPacksApi();
+  return (Array.isArray(packs) ? packs : []).map((pack) => ({
+    id: pack.id,
+    name: pack.nombre,
+    tokens: Number(pack.monedas) || 0,
+    bonus: Number(pack.bonus) || 0,
+    totalTokens: Number(pack.totalMonedas) || 0,
+    priceClp: Number(pack.precioClp) || 0,
+    priceFormatted: `$${Number(pack.precioClp || 0).toLocaleString('es-CL')} CLP`,
+    tag: pack.etiqueta || '',
+    highlight: Boolean(pack.destacado),
+    description: pack.descripcion || '',
+    color: pack.color || '#64748b',
+  }));
+}
 
 // Costo en Monedas RepuesTop para mejorar de rango un anuncio
 export const UPGRADE_TOKEN_COSTS = {
@@ -398,6 +366,8 @@ export async function fetchTokenTransactions({ signal } = {}) {
  */
 export async function rechargeTokensWithPack(pack, paymentMethod = 'Webpay Plus', origin = 'ANUNCIOS') {
   await registrarCompraFichasApi({
+    // El backend valida el precio y las Monedas contra ESTE pack del catalogo.
+    packId: pack.id,
     cantidadFichas: pack.totalTokens,
     montoPagado: pack.priceClp,
     packNombre: pack.name,
