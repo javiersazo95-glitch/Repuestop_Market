@@ -6602,8 +6602,11 @@ input, select, textarea {
 .order-boleta-link.is-cta { color: #b45309; border-color: #fcd9a8; background: #fff7ec; }
 .order-boleta-link.is-cta:hover:not(:disabled) { background: #fdecd0; }
 .order-boleta-link:disabled { opacity: .6; cursor: default; }
-.order-store-block-boleta { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: #15803d; }
+.order-store-block-boleta { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: #15803d; }
 .order-store-block-boleta > svg { flex-shrink: 0; }
+/* La boleta es el unico enlace del bloque que el comprador necesita despues de la entrega
+   -- para la garantia de 6 meses o un reclamo --, asi que pesa mas que el de seguimiento. */
+.order-store-block-boletalink { padding: 5px 12px; font-size: 12.5px; gap: 5px; }
 
 .order-card-state-banner.boleta-pending { color: #b45309; border-color: #fcd9a8; background: #fff7ec; }
 .order-info-chip.boleta-ok { color: #15803d; }
@@ -17062,3 +17065,25 @@ input, select, textarea {
   background: #1e293b;
 }
 
+
+/* Visor de la boleta de venta (SaleReceiptViewerModal). El PDF llega como blob y se
+   previsualiza dentro del modal; la caja es mas alta que un subdialogo normal porque
+   tiene que mostrar una pagina carta completa sin que el usuario haga scroll dentro
+   del <object>. */
+.order-receipt-viewer-card { max-width: 1100px; width: min(1100px, calc(100vw - 40px)); }
+/* El visor de PDF del navegador se lleva ~300px en su panel de miniaturas y ajusta el zoom
+   al ancho que le quede: con la caja angosta el documento salia al 45% y no se leia. */
+.order-receipt-viewer-frame { position: relative; height: min(72vh, 880px); min-height: 320px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: #f5f6f8; overflow: hidden; }
+.order-receipt-viewer-frame > object { width: 100%; height: 100%; border: 0; }
+.order-receipt-viewer-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; height: 100%; padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px; }
+.order-receipt-viewer-state .btn-auth-secondary { width: auto; min-height: 0; padding: 9px 16px; display: inline-flex; align-items: center; gap: 6px; }
+.order-receipt-viewer-actions { flex-wrap: wrap; }
+.order-receipt-viewer-actions .btn-auth-secondary { display: inline-flex; align-items: center; gap: 6px; }
+/* El "Descargar" es un <a download> y no un <button>: el boton primario le presta la
+   pinta, pero un ancla no hereda el centrado que el boton trae por defecto. */
+.order-receipt-viewer-download { width: auto; min-height: 0; padding: 10px 18px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+@media (max-width: 640px) {
+  .order-receipt-viewer-frame { height: min(62vh, 460px); }
+  .order-receipt-viewer-actions { justify-content: stretch; }
+  .order-receipt-viewer-actions > * { flex: 1 1 auto; justify-content: center; }
+}

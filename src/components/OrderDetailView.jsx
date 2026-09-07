@@ -4,10 +4,10 @@ import {
   X, Clock, Wrench, Truck, PackageCheck, User, Store, ChevronDown, ArrowLeft,
   MapPin, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
   RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock, ExternalLink, Timer,
-  ThumbsUp, ThumbsDown, Send, ReceiptText, FileCheck, Download
+  ThumbsUp, ThumbsDown, Send, ReceiptText, FileCheck, FileSearch
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
-import { resolveMediaUrl, rateOrderApi, getPublicProductApi, getSaleReceiptUrlApi } from '../services/api';
+import { resolveMediaUrl, rateOrderApi, getPublicProductApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
@@ -15,6 +15,7 @@ import { Link } from 'react-router-dom';
 import { productPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
+import SaleReceiptViewerModal from './SaleReceiptViewerModal';
 import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancellationReason';
 import { carrierTracking } from '../data/carrierTracking';
 import { storeAutoCloseNotice } from '../data/orderDeadlines';
@@ -344,7 +345,9 @@ export default function OrderDetailView({
   // (`receiptUploadOnly`, sin disparar la transición de estado).
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptUploadOnly, setReceiptUploadOnly] = useState(false);
-  const [receiptViewBusy, setReceiptViewBusy] = useState(null);
+  // El visor de la boleta ya cargada (`SaleReceiptViewerModal`): guarda de que tienda es,
+  // porque en un carrito de varias el comprador pide la de cada subordén.
+  const [receiptViewer, setReceiptViewer] = useState(null);
 
   // Buyer Rating Modal State (A4)
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -765,18 +768,12 @@ export default function OrderDetailView({
 
   // Abre la boleta en una pestana nueva con una URL de un solo uso. `proveedorId` solo lo
   // manda el comprador (para el vendedor el backend resuelve su propia suborden).
-  const handleViewReceipt = async (proveedorId = null) => {
-    const key = proveedorId ?? 'self';
-    if (receiptViewBusy) return;
-    setReceiptViewBusy(key);
-    try {
-      const { url } = await getSaleReceiptUrlApi(order.id, proveedorId != null ? { proveedorId } : {});
-      if (url) window.open(url, '_blank', 'noopener,noreferrer');
-    } catch {
-      /* el enlace es una comodidad: si falla, el usuario reintenta */
-    } finally {
-      setReceiptViewBusy(null);
-    }
+  // Abre el visor. Antes esto pedía el token y hacía `window.open`: el token es de un solo
+  // uso -- así que "descargar" desde el visor del navegador ya no tenía archivo que pedir -- y
+  // el `open` después del `await` queda fuera del gesto del usuario, así que los bloqueadores
+  // de popup lo mataban sin aviso. Pedir el token y traer el PDF ahora es tarea del modal.
+  const handleViewReceipt = (proveedorId = null, storeName = null) => {
+    setReceiptViewer({ proveedorId, storeName });
   };
 
   const handleSellerCancelSubmit = async (e) => {
@@ -995,12 +992,13 @@ export default function OrderDetailView({
                 )}
 
                 {/* Estado de la boleta de venta. Para el vendedor es su centro de acción
-                    (ver / cargar); para el comprador de una sola tienda, el enlace de
-                    descarga. En multi-tienda el comprador la ve en cada bloque de tienda. */}
-                {(isSeller || subOrders.length <= 1) && (() => {
+                    (ver / cargar). Al COMPRADOR no se le muestra aca: su boleta vive en el
+                    bloque de su tienda, que es de donde cuelga -- una por subordén --, y
+                    duplicarla en pedidos de una sola tienda le ofrecia el mismo documento
+                    dos veces en la misma pantalla. */}
+                {isSeller && (() => {
                   const disponible = Boolean(order.boletaVentaDisponible);
                   const cerrado = ['CANCELADO', 'FINALIZADO'].includes(normStatus);
-                  if (!disponible && !isSeller) return null;
                   if (!disponible && cerrado) return null;
                   return (
                     <div className={`order-delivery-summary-row order-boleta-row ${disponible ? 'is-ready' : 'is-pending'}`}>
@@ -1016,13 +1014,10 @@ export default function OrderDetailView({
                         <button
                           type="button"
                           className="order-boleta-link"
-                          disabled={receiptViewBusy === 'self'}
-                          onClick={() => handleViewReceipt(isSeller ? null : (subOrders[0]?.proveedorId ?? null))}
+                          onClick={() => handleViewReceipt()}
                         >
-                          {receiptViewBusy === 'self'
-                            ? <Loader2 size={13} className="spin-icon" />
-                            : (isSeller ? <ExternalLink size={13} /> : <Download size={13} />)}
-                          <span>{isSeller ? 'Ver' : 'Descargar'}</span>
+                          <FileSearch size={13} />
+                          <span>Ver y descargar</span>
                         </button>
                       ) : isSeller && onRegisterSaleReceipt && !cerrado ? (
                         <button
@@ -1150,14 +1145,11 @@ export default function OrderDetailView({
                             <FileCheck size={13} /> Boleta de venta
                             <button
                               type="button"
-                              className="order-store-block-tracklink"
-                              disabled={receiptViewBusy === block.id}
-                              onClick={() => handleViewReceipt(block.id)}
+                              className="order-store-block-tracklink order-store-block-boletalink"
+                              onClick={() => handleViewReceipt(block.id, block.name)}
                             >
-                              {receiptViewBusy === block.id
-                                ? <Loader2 size={12} className="spin-icon" />
-                                : <Download size={12} />}
-                              Descargar
+                              <FileSearch size={14} />
+                              Ver y descargar
                             </button>
                           </span>
                         )}
@@ -1756,6 +1748,18 @@ export default function OrderDetailView({
             uploadOnly={receiptUploadOnly}
             onSubmit={submitSaleReceipt}
             onClose={() => setShowReceiptModal(false)}
+          />
+        )}
+
+        {/* Visor de la boleta ya cargada. Lo abren tanto el vendedor como el comprador:
+            previsualiza el PDF y lo deja descargar sin gastar un segundo token. */}
+        {receiptViewer && (
+          <SaleReceiptViewerModal
+            orderId={order.id}
+            proveedorId={receiptViewer.proveedorId}
+            orderCode={orderIdShort}
+            storeName={receiptViewer.storeName}
+            onClose={() => setReceiptViewer(null)}
           />
         )}
 
