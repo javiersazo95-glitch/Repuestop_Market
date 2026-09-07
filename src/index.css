@@ -15461,7 +15461,10 @@ input, select, textarea {
   border: 1px solid #e2e8f0 !important;
   box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06) !important;
   display: grid !important;
-  grid-template-columns: repeat(4, 1fr) !important;
+  /* minmax(0, 1fr) en vez de 1fr: sin el 0 explícito, un item con contenido ancho
+     (como el carrusel de marcas) fuerza a la columna a crecer por encima de su
+     cuarto del ancho y deforma toda la franja. */
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   padding: 16px 20px !important;
 }
 
@@ -15472,6 +15475,9 @@ input, select, textarea {
   border-right: 1px solid #e2e8f0 !important;
   padding-right: 16px !important;
   padding-left: 16px !important;
+  /* Deja que el carrusel de marcas se encoja/recorte en vez de forzar la columna
+     del grid (repeat(4, 1fr)) a crecer con el contenido. */
+  min-width: 0 !important;
 }
 
 .metric-strip-item:first-child {
@@ -15483,6 +15489,26 @@ input, select, textarea {
   padding-right: 8px !important;
 }
 
+@media (max-width: 640px) {
+  /* 4 columnas parejas dejaban ~76px por celda: apenas cabían el ícono y la
+     etiqueta, sin espacio real para el carrusel de marcas (ni para el resto).
+     En pantallas chicas se pasa a 2 columnas para que cada celda respire. */
+  .store-metrics-strip-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    row-gap: 14px !important;
+  }
+  .metric-strip-item {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+  .metric-strip-item:nth-child(2n) {
+    border-right: none !important;
+  }
+  .metric-strip-item:nth-child(2n+1) {
+    padding-left: 0 !important;
+  }
+}
+
 .metric-icon-box {
   color: #0066ff !important;
   flex-shrink: 0 !important;
@@ -15491,6 +15517,41 @@ input, select, textarea {
 .metric-text-box {
   display: flex !important;
   flex-direction: column !important;
+  min-width: 0 !important;
+}
+
+/* Carrusel de marcas especialistas: una sola fila que se desliza en vez de
+   envolver a varias líneas (eso deformaba la franja blanca de métricas). */
+.specialist-brands-track {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 6px !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  scroll-snap-type: x proximity !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  padding-bottom: 2px !important;
+}
+
+.specialist-brands-track::-webkit-scrollbar {
+  display: none !important;
+}
+
+.specialist-brand-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex: 0 0 auto !important;
+  scroll-snap-align: start !important;
+  padding: 3px 10px !important;
+  border-radius: 999px !important;
+  background: #eff6ff !important;
+  border: 1px solid #dbeafe !important;
+  color: #0f172a !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
 }
 
 .metric-text-box small {

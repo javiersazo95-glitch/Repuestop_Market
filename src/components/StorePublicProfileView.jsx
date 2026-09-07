@@ -566,7 +566,14 @@ export default function StorePublicProfileView({
                 <span className="metric-icon-box"><Tag size={22} /></span>
                 <div className="metric-text-box">
                   <small>Marcas especialistas</small>
-                  <strong title={specialistBrands.join(', ')}>{specialistBrands.join(' · ')}</strong>
+                  {/* Carrusel horizontal: con muchas marcas, unirlas en un solo texto
+                      (join) envolvía a varias líneas y deformaba la franja blanca.
+                      Ahora cada marca es un chip en una fila que se desliza. */}
+                  <div className="specialist-brands-track" title={specialistBrands.join(', ')}>
+                    {specialistBrands.map((brand, index) => (
+                      <span key={`${brand}-${index}`} className="specialist-brand-chip">{brand}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
