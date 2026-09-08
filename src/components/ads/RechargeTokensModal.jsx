@@ -221,6 +221,7 @@ export default function RechargeTokensModal({
                       onChange={(e) => setDocumento((prev) => ({ ...prev, rut: formatRut(e.target.value) }))}
                       onBlur={() => setRutTocado(true)}
                       placeholder="12.345.678-9"
+                      maxLength={12}
                       aria-invalid={rutTocado && !rutValido}
                       className={rutTocado && !rutValido ? 'is-invalid' : ''}
                     />
@@ -239,6 +240,7 @@ export default function RechargeTokensModal({
                       value={documento.razonSocial}
                       onChange={(e) => setDocumento((prev) => ({ ...prev, razonSocial: e.target.value }))}
                       placeholder="Repuestos SpA"
+                      maxLength={180}
                     />
                   </label>
                   <label className="recharge-doc-field">
@@ -248,6 +250,7 @@ export default function RechargeTokensModal({
                       value={documento.giro}
                       onChange={(e) => setDocumento((prev) => ({ ...prev, giro: e.target.value }))}
                       placeholder="Venta de repuestos automotrices"
+                      maxLength={150}
                     />
                   </label>
                 </div>

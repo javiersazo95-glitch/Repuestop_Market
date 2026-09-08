@@ -643,6 +643,7 @@ export default function CheckoutPage() {
                           onChange={(event) => setInvoice((current) => ({ ...current, rut: formatRut(event.target.value) }))}
                           placeholder="76.123.456-7"
                           inputMode="text"
+                          maxLength={12}
                         />
                         {invoice.rut && !rutValid && <small className="checkout-field-error">El RUT no es válido.</small>}
                       </label>
@@ -652,6 +653,7 @@ export default function CheckoutPage() {
                           value={invoice.razonSocial}
                           onChange={(event) => setInvoice((current) => ({ ...current, razonSocial: event.target.value }))}
                           placeholder="Nombre de la empresa"
+                          maxLength={180}
                         />
                       </label>
                       <label>
@@ -660,6 +662,7 @@ export default function CheckoutPage() {
                           value={invoice.giro}
                           onChange={(event) => setInvoice((current) => ({ ...current, giro: event.target.value }))}
                           placeholder="Actividad comercial"
+                          maxLength={150}
                         />
                       </label>
                     </div>
