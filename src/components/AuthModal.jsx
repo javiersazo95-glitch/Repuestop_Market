@@ -536,6 +536,10 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
       setErrorMessage('Por favor completa el nombre, correo y contraseña.');
       return;
     }
+    if (buyerName.trim().split(/\s+/).length < 2) {
+      setErrorMessage('Ingresa tu nombre y apellido para crear la cuenta.');
+      return;
+    }
     if (!buyerStreet.trim() || !buyerComuna?.id) {
       setErrorMessage('Elige tu dirección desde las sugerencias para completar el registro.');
       return;

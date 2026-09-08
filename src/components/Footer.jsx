@@ -6,8 +6,9 @@ import {
   Truck, Users
 } from 'lucide-react';
 import {
-  ROUTES, catalogPath, helpCategoryPath, helpContactPath, profilePath,
+  ROUTES, buyerProfilePath, catalogPath, helpCategoryPath, helpContactPath,
 } from '../routes/paths';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * Los enlaces del footer son `<a>` reales (`Link`), no botones: así se indexan,
@@ -44,12 +45,11 @@ const SELLER_LINKS = [
   ['¿Quieres vender? Escríbenos', MessageSquare, helpContactPath('info')],
 ];
 
-// `/perfil/pedidos` está detrás de `RequireAuth`: a un invitado lo devuelve al
+// El acceso a las compras está detrás de `RequireAuth`: a un invitado lo devuelve al
 // home con el login abierto. El candado lo avisa antes de que parezca roto.
 const SUPPORT_LINKS = [
   ['Centro de Ayuda', Headphones, ROUTES.support, false],
   ['Preguntas frecuentes', MessageSquare, ROUTES.helpAllFaqs, false],
-  ['Mis pedidos', PackageSearch, profilePath('pedidos'), true],
   ['Contactar soporte', Headphones, helpContactPath(), false],
   ['Quiénes somos', Users, ROUTES.about, false],
 ];
@@ -57,6 +57,15 @@ const SUPPORT_LINKS = [
 export default function Footer() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const buyerPurchasesLabel = String(user?.role || user?.rol || '').toUpperCase() === 'SELLER'
+    ? 'Mis compras'
+    : 'Mis pedidos';
+  const supportLinks = [
+    ...SUPPORT_LINKS.slice(0, 2),
+    [buyerPurchasesLabel, PackageSearch, buyerProfilePath(user, 'purchases'), true],
+    ...SUPPORT_LINKS.slice(2),
+  ];
 
   // Enlazar a la ruta en la que ya estamos no navega a ningún lado y deja al
   // usuario mirando la misma pantalla sin moverse: en ese caso se sube al inicio.
@@ -138,7 +147,7 @@ export default function Footer() {
         <section className="reference-footer-column">
           <h2><Headphones /> Ayuda y Confianza</h2>
           <ul>
-            {SUPPORT_LINKS.map(([label, Icon, to, requiresAuth]) => renderLink(label, Icon, to, requiresAuth))}
+            {supportLinks.map(([label, Icon, to, requiresAuth]) => renderLink(label, Icon, to, requiresAuth))}
           </ul>
         </section>
       </div>

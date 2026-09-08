@@ -5,6 +5,8 @@ import MarketplaceProductCard from './MarketplaceProductCard';
 import { getPartCategoriesApi, getPublicProductsApi } from '../services/api';
 import { adaptPage, adaptProduct } from '../services/adapters';
 import { qk } from '../services/queryKeys';
+import { useAuth } from '../context/AuthContext';
+import { useFavorites } from '../hooks/useFavorites';
 
 const RELATED_FETCH_SIZE = 24;
 const RELATED_MAX_ITEMS = 12;
@@ -36,6 +38,8 @@ async function resolveCategoryId(product) {
 export default function RelatedProductsCarousel({ product, onSelectProduct }) {
   const trackRef = useRef(null);
   const [arrows, setArrows] = useState({ previous: false, next: false });
+  const { user, isLoggedIn } = useAuth();
+  const { isFavorite, toggleFavorite } = useFavorites(user?.userId ?? user?.id);
 
   const { data: { items = [], scope = null } = {}, isLoading: loading } = useQuery({
     queryKey: qk.relatedProducts(product.id),
@@ -129,6 +133,8 @@ export default function RelatedProductsCarousel({ product, onSelectProduct }) {
                 product={item}
                 onView={() => onSelectProduct?.(item)}
                 fallbackCity={item.ciudadVendedor}
+                isFavorite={isFavorite(item.id)}
+                onToggleFavorite={isLoggedIn ? toggleFavorite : undefined}
               />
             </div>
           ))}

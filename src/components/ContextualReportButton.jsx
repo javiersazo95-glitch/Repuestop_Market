@@ -104,6 +104,7 @@ export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTit
         className={className || 'contextual-report-trigger'}
         onClick={() => setIsOpen(true)}
         title={`Reportar ${entityLabel}`}
+        aria-label={label || `Reportar ${entityLabel}`}
       >
         <Flag size={15} />
         <span>{label || 'Reportar'}</span>

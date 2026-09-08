@@ -3,6 +3,8 @@ import { Loader2, Inbox, ArrowRight, Award } from 'lucide-react';
 import MarketplaceProductCard from './MarketplaceProductCard';
 import { getPublicProductsApi } from '../services/api';
 import { adaptPage, adaptLatestPart } from '../services/adapters';
+import { useAuth } from '../context/AuthContext';
+import { useFavorites } from '../hooks/useFavorites';
 
 const LATEST_PARTS_COUNT = 5;
 
@@ -10,6 +12,8 @@ export default function LatestAddedPartsSection({ onQuickView, onOpenCatalog }) 
   const [parts, setParts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { user, isLoggedIn } = useAuth();
+  const { isFavorite, toggleFavorite } = useFavorites(user?.userId ?? user?.id);
 
   // Feed real de las últimas publicaciones: GET /api/v1/inventario/productos
   // ordenado por fecha de creación descendente (endpoint público).
@@ -77,7 +81,13 @@ export default function LatestAddedPartsSection({ onQuickView, onOpenCatalog }) 
 
       <div className="latest-parts-grid-4">
         {parts.map(part => (
-          <MarketplaceProductCard key={part.id} product={part} onView={onQuickView} />
+          <MarketplaceProductCard
+            key={part.id}
+            product={part}
+            onView={onQuickView}
+            isFavorite={isFavorite(part.id)}
+            onToggleFavorite={isLoggedIn ? toggleFavorite : undefined}
+          />
         ))}
       </div>
     </section>

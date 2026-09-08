@@ -21,7 +21,8 @@ import {
   cancelSellerOrderApi, cancelBuyerSubOrderApi, registerOrderDispatchApi, registerSaleReceiptApi, declareOrderDeliveryApi, createOrderClaimApi,
   pauseSellerProductApi, resumeSellerProductApi, updateSellerShippingMethodsApi,
   getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
-  getBuyerProductQuestionsApi, createSystemFeedbackApi, getMySystemFeedbackApi
+  getBuyerProductQuestionsApi, createSystemFeedbackApi, getMySystemFeedbackApi,
+  getAccountClosureSummaryApi, requestAccountClosureApi, reactivateAccountApi
 } from '../services/api';
 import { qk } from '../services/queryKeys';
 import ShippingMethodsPicker from './ShippingMethodsPicker';
@@ -263,7 +264,7 @@ function EmptyState({ label }) {
 }
 
 export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange, paymentStatus, paymentOrderId, deepLinkOrderId, deepLinkTicketId, deepLinkQuoteId, onClearDeepLink, detailOrderId, detailPurchaseId }) {
-  const { user, role, logout, updateProfile, refreshProfile, deleteAccount } = useAuth();
+  const { user, role, logout, updateProfile, refreshProfile } = useAuth();
   // El centro de ayuda dejó de ser una pestaña del perfil: vive en /ayuda y se
   // navega hacia allá desde el sidebar y los accesos rápidos.
   const navigate = useNavigate();
@@ -318,6 +319,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteAccountError, setDeleteAccountError] = useState(null);
+  const [accountClosureStep, setAccountClosureStep] = useState('retain');
+  const [accountClosureReason, setAccountClosureReason] = useState('');
+  const [accountClosureSummary, setAccountClosureSummary] = useState(null);
   const [feedbackTab, setFeedbackTab] = useState('nuevo');
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackText, setFeedbackText] = useState('');
@@ -1183,19 +1187,29 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     onBackToStore();
   };
 
-  const handleDeleteAccount = async () => {
+  const closureProfile = isSeller ? 'PROVEEDOR' : 'COMPRADOR';
+  const handleClosureSummary = async () => {
     setIsDeletingAccount(true);
     setDeleteAccountError(null);
-    const result = await deleteAccount();
-    setIsDeletingAccount(false);
-
-    if (!result.success) {
-      setDeleteAccountError(result.error || 'No se pudo eliminar la cuenta. Inténtalo nuevamente.');
-      return;
-    }
-
-    setShowDeleteAccountModal(false);
-    onBackToStore();
+    try {
+      setAccountClosureSummary(await getAccountClosureSummaryApi(closureProfile));
+      setAccountClosureStep('summary');
+    } catch (error) { setDeleteAccountError(error.message || 'No pudimos revisar tus operaciones.'); }
+    finally { setIsDeletingAccount(false); }
+  };
+  const handleAccountClosure = async (action) => {
+    setIsDeletingAccount(true); setDeleteAccountError(null);
+    try {
+      const result = await requestAccountClosureApi({ perfil: closureProfile, action, reason: accountClosureReason });
+      setAccountClosureSummary(result); setAccountClosureStep('done');
+    } catch (error) { setDeleteAccountError(error.message || 'No pudimos guardar tu solicitud.'); }
+    finally { setIsDeletingAccount(false); }
+  };
+  const handleReactivateAccount = async () => {
+    setIsDeletingAccount(true); setDeleteAccountError(null);
+    try { await reactivateAccountApi(closureProfile); setShowDeleteAccountModal(false); }
+    catch (error) { setDeleteAccountError(error.message || 'No pudimos reactivar tu cuenta.'); }
+    finally { setIsDeletingAccount(false); }
   };
 
   const loadFeedbackHistory = async () => {
@@ -1738,8 +1752,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               <button type="button" className={`profile-nav-item profile-nav-feedback ${activeTab === 'feedback' ? 'active' : ''}`} onClick={openFeedback}>
                 <MessageSquare size={17} /><span>Dejar feedback</span>
               </button>
-              <button type="button" className="profile-nav-item profile-nav-delete" onClick={() => { setDeleteAccountError(null); setShowDeleteAccountModal(true); }}>
-                <Trash2 size={17} /><span>Eliminar cuenta</span>
+              <button type="button" className="profile-nav-item profile-nav-delete" onClick={() => { setDeleteAccountError(null); setAccountClosureReason(''); setAccountClosureSummary(null); setAccountClosureStep('retain'); setShowDeleteAccountModal(true); }}>
+                <Trash2 size={17} /><span>Cerrar cuenta</span>
               </button>
             </div>
           </nav>
@@ -2839,32 +2853,27 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             onClick={(event) => event.stopPropagation()}
           >
             <div className="delete-account-icon" aria-hidden="true"><AlertTriangle size={25} /></div>
-            <h2 id="delete-account-title">¿Eliminar tu cuenta?</h2>
-            <p>
-              Esta acción desactivará tu cuenta y eliminará tus credenciales de acceso. Esta operación no se puede deshacer.
-            </p>
+            <h2 id="delete-account-title">{accountClosureStep === 'retain' ? 'Antes de irte' : accountClosureStep === 'reason' ? 'Cuéntanos el motivo' : accountClosureStep === 'summary' ? 'Revisa tus operaciones' : accountClosureStep === 'decision' ? 'Elige qué hacer' : 'Solicitud registrada'}</h2>
             {deleteAccountError && (
               <div className="auth-alert alert-error"><span>{deleteAccountError}</span></div>
             )}
-            <div className="delete-account-actions">
-              <button
-                type="button"
-                className="btn-auth-secondary"
-                onClick={() => setShowDeleteAccountModal(false)}
-                disabled={isDeletingAccount}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="btn-delete-account-confirm"
-                onClick={handleDeleteAccount}
-                disabled={isDeletingAccount}
-              >
-                <Trash2 size={16} />
-                {isDeletingAccount ? 'Eliminando cuenta...' : 'Sí, eliminar cuenta'}
-              </button>
-            </div>
+            {accountClosureStep === 'retain' && <>
+              <p>Conserva tu historial de pedidos, comprobantes y favoritos. Estamos mejorando cobertura y despachos, y siempre puedes desactivar sin perder tu información.</p>
+              <div className="delete-account-actions"><button type="button" className="btn-auth-secondary" onClick={() => setShowDeleteAccountModal(false)}>Conservar mi cuenta</button><button type="button" className="btn-delete-account-confirm" onClick={() => setAccountClosureStep('reason')}>Continuar con el cierre</button></div>
+            </>}
+            {accountClosureStep === 'reason' && <>
+              <p>Selecciona un motivo para continuar.</p>
+              <div className="account-closure-reasons">{['No uso la cuenta', 'No encontré lo que buscaba', 'Tuve una mala experiencia', 'Privacidad', 'Otro'].map(reason => <label key={reason}><input type="radio" name="account-closure-reason" checked={accountClosureReason === reason} onChange={() => setAccountClosureReason(reason)} /> {reason}</label>)}</div>
+              <div className="delete-account-actions"><button type="button" className="btn-auth-secondary" onClick={() => setAccountClosureStep('retain')}>Volver</button><button type="button" className="btn-delete-account-confirm" disabled={!accountClosureReason || isDeletingAccount} onClick={handleClosureSummary}>{isDeletingAccount ? 'Revisando...' : 'Ver mis operaciones'}</button></div>
+            </>}
+            {accountClosureStep === 'summary' && accountClosureSummary && <>
+              <p>Estas son las operaciones que requieren seguimiento antes del cierre.</p>
+              {accountClosureSummary.items?.length ? <div className="account-closure-items">{accountClosureSummary.items.map(item => <div className={item.blocking ? 'account-closure-item is-blocking' : 'account-closure-item'} key={item.id}><strong>{item.type} · {item.status}</strong><span>{item.detail}</span></div>)}</div> : <p className="account-closure-empty">No tienes operaciones pendientes.</p>}
+              {accountClosureSummary.deletionBlocked && <div className="auth-alert alert-error"><span>{accountClosureSummary.blockingMessage}</span></div>}
+              <div className="delete-account-actions"><button type="button" className="btn-auth-secondary" onClick={() => setAccountClosureStep('reason')}>Volver</button>{!accountClosureSummary.deletionBlocked && <button type="button" className="btn-delete-account-confirm" onClick={() => setAccountClosureStep('decision')}>Continuar</button>}</div>
+            </>}
+            {accountClosureStep === 'decision' && <div className="account-closure-decisions"><section><h3>Desactivar</h3><p>Deja de operar, conserva tus datos y podrás reactivarla.</p><button type="button" className="btn-auth-secondary" disabled={isDeletingAccount} onClick={() => handleAccountClosure('DEACTIVATE')}>Desactivar cuenta</button></section><section><h3>Eliminar</h3><p>Queda desactivada 30 días. Puedes reactivarla durante ese plazo; luego se anonimiza definitivamente.</p><button type="button" className="btn-delete-account-confirm" disabled={isDeletingAccount} onClick={() => handleAccountClosure('SCHEDULE_DELETION')}>{isDeletingAccount ? 'Guardando...' : 'Programar eliminación'}</button></section></div>}
+            {accountClosureStep === 'done' && <><p>{accountClosureSummary?.status === 'DELETION_SCHEDULED' ? 'La eliminación quedó programada para dentro de 30 días.' : 'Tu cuenta quedó desactivada y sus datos se conservaron.'}</p><div className="delete-account-actions"><button type="button" className="btn-auth-secondary" disabled={isDeletingAccount} onClick={handleReactivateAccount}>Reactivar ahora</button><button type="button" className="btn-delete-account-confirm" onClick={() => setShowDeleteAccountModal(false)}>Entendido</button></div></>}
           </section>
         </div>
       )}

@@ -4,7 +4,7 @@ import deliveryTruck from '../assets/delivery-truck.webp';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { confirmOrderPaymentApi, getBuyerOrderByIdApi, resolveMediaUrl } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { profilePath, ROUTES } from '../routes/paths';
+import { buyerProfilePath, ROUTES } from '../routes/paths';
 
 const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
 
@@ -37,6 +37,10 @@ export default function PurchaseSuccessPage() {
   const storedOrder = useMemo(() => location.state?.order || readStoredOrder(), [location.state]);
   const [fetchedOrder, setFetchedOrder] = useState(null);
   const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
+  const buyerPurchasesPath = buyerProfilePath(user, 'purchases');
+  const buyerPurchasesLabel = String(user?.role || user?.rol || '').toUpperCase() === 'SELLER'
+    ? 'Mis compras'
+    : 'Mis pedidos';
 
   useEffect(() => {
     if (!effectiveUserId || isFailure) return undefined;
@@ -70,10 +74,10 @@ export default function PurchaseSuccessPage() {
           <div className="purchase-success-hero">
             <div className="purchase-success-icon" style={{ background: '#fef2f2', color: '#b91c1c' }}><XCircle /></div>
             <h1 id="purchase-failure-title">Tu pago no pudo procesarse</h1>
-            <p>El pago fue rechazado o cancelado. Puedes reintentarlo desde Mis pedidos.</p>
+            <p>El pago fue rechazado o cancelado. Puedes reintentarlo desde {buyerPurchasesLabel}.</p>
           </div>
           <div className="purchase-success-actions">
-            <button type="button" className="purchase-success-primary" onClick={() => navigate(profilePath('pedidos'))}>Ir a Mis pedidos</button>
+            <button type="button" className="purchase-success-primary" onClick={() => navigate(buyerPurchasesPath)}>Ir a {buyerPurchasesLabel}</button>
             <button type="button" className="purchase-success-secondary" onClick={() => navigate(ROUTES.catalog)}>Seguir comprando</button>
           </div>
         </section>
@@ -193,7 +197,7 @@ export default function PurchaseSuccessPage() {
                   donde las ponen los marketplaces locales y donde ya está mirando quien
                   acaba de revisar el total. */}
               <div className="purchase-success-actions">
-                <button type="button" className="purchase-success-primary" onClick={() => navigate(profilePath('pedidos'))}>Ver detalle del pedido</button>
+                <button type="button" className="purchase-success-primary" onClick={() => navigate(buyerPurchasesPath)}>Ver detalle del pedido</button>
                 <button type="button" className="purchase-success-secondary" onClick={() => navigate(ROUTES.catalog)}>Seguir comprando</button>
               </div>
             </aside>
@@ -201,9 +205,9 @@ export default function PurchaseSuccessPage() {
         ) : (
           <div className="purchase-success-missing">
             <ShoppingBag />
-            <p>Tu compra fue confirmada. Puedes consultar todos sus datos en Mis pedidos.</p>
+            <p>Tu compra fue confirmada. Puedes consultar todos sus datos en {buyerPurchasesLabel}.</p>
             <div className="purchase-success-actions">
-              <button type="button" className="purchase-success-primary" onClick={() => navigate(profilePath('pedidos'))}>Ver detalle del pedido</button>
+              <button type="button" className="purchase-success-primary" onClick={() => navigate(buyerPurchasesPath)}>Ver detalle del pedido</button>
               <button type="button" className="purchase-success-secondary" onClick={() => navigate(ROUTES.catalog)}>Seguir comprando</button>
             </div>
           </div>

@@ -99,7 +99,11 @@ export default function RepuestopCoin({
   const id = (nombre) => `${nombre}-${uid}`;
 
   const muestraWordmark = size >= MIN_SIZE_FOR_WORDMARK;
-  const logoWidth = size * (muestraWordmark ? 0.4 : 0.46);
+  // En 14–32 px las leyendas del aro se reducen a trazos ilegibles y compiten
+  // con el emblema. Se conserva el metal y el aro azul, pero se simplifica el
+  // troquel para que siga reconociéndose claramente como Moneda RepuesTop.
+  const isCompact = size < 40;
+  const logoWidth = size * (muestraWordmark ? 0.4 : isCompact ? 0.58 : 0.46);
 
   const etiqueta = esFrente
     ? `Moneda RepuesTop, cara frontal: ${COIN_LEGENDS.frontArc} ${COIN_LEGENDS.frontLabel}`
@@ -197,20 +201,22 @@ export default function RepuestopCoin({
 
         {esFrente ? (
           <>
-            <text fill="#ffffff" fontSize="17" fontWeight="bold" letterSpacing="4.2" textAnchor="middle">
-              <textPath href={`#${id('arcoSuperior')}`} startOffset="50%">
-                {COIN_LEGENDS.frontArc}
-              </textPath>
-            </text>
+            {!isCompact && <>
+              <text fill="#ffffff" fontSize="17" fontWeight="bold" letterSpacing="4.2" textAnchor="middle">
+                <textPath href={`#${id('arcoSuperior')}`} startOffset="50%">
+                  {COIN_LEGENDS.frontArc}
+                </textPath>
+              </text>
 
-            <text fill="#dbe4ef" fontSize="16" fontWeight="bold" letterSpacing="6" textAnchor="middle">
-              <textPath href={`#${id('arcoInferior')}`} startOffset="50%">
-                {COIN_LEGENDS.frontLabel}
-              </textPath>
-            </text>
+              <text fill="#dbe4ef" fontSize="16" fontWeight="bold" letterSpacing="6" textAnchor="middle">
+                <textPath href={`#${id('arcoInferior')}`} startOffset="50%">
+                  {COIN_LEGENDS.frontLabel}
+                </textPath>
+              </text>
 
-            <Estrella cx={100 - RING_MID} cy={100} r={7} fill="#eef2f7" />
-            <Estrella cx={100 + RING_MID} cy={100} r={7} fill="#eef2f7" />
+              <Estrella cx={100 - RING_MID} cy={100} r={7} fill="#eef2f7" />
+              <Estrella cx={100 + RING_MID} cy={100} r={7} fill="#eef2f7" />
+            </>}
           </>
         ) : (
           <>
