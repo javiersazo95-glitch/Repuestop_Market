@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, ChevronRight, CircleAlert, Headphones, Inbox, Loader2, MessageSquare, Scale } from 'lucide-react';
+import { AlertTriangle, ChevronRight, CircleAlert, Headphones, Inbox, Loader2, MessageSquare, Scale } from 'lucide-react';
 import { getMyMediationsApi, getMyReportsApi, getMySupportTicketsApi } from '../services/api';
 import { MEDIATION_STATUS_LABELS } from '../data/mediationStatus';
 import MediationCaseView from './MediationCaseView';
@@ -163,41 +163,13 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
   };
   const abiertos = cases.filter((item) => !isClosed(item.status)).length;
 
-  // Con un caso abierto el panel pasa a maestro-detalle: riel de disputas a la
-  // izquierda y expediente a la derecha, dentro del mismo espacio del perfil.
-  // Antes esto montaba un chat a pantalla completa con su propia barra superior,
-  // que duplicaba la navegación y dejaba media pantalla vacía.
+  // Con un caso abierto el panel muestra SOLO el expediente, a todo el ancho del perfil.
+  // Antes había un riel de disputas a la izquierda que repetía la lista de "Todos mis
+  // casos" y robaba ~250 px al contenido que de verdad importa: la conversación y la
+  // evidencia. Se vuelve a la lista con el botón "Casos" del propio expediente.
   if (openCaseId) {
-    const disputes = mediations.filter((mediation) => mediation.pedidoIdReal);
     return (
       <section className="profile-panel profile-cases-panel dispute-workspace">
-        <nav className="dispute-rail" aria-label="Mis disputas">
-          <header>
-            <button type="button" onClick={closeCase}><ArrowLeft size={13} /> Todos mis casos</button>
-            <h2>Disputas <b>{disputes.length}</b></h2>
-            <p className="dispute-rail-hint">Elegí un caso para ver la conversación y la evidencia.</p>
-          </header>
-          <ul>
-            {disputes.map((mediation) => {
-              const active = String(mediation.pedidoIdReal) === String(openCaseId);
-              return (
-                <li key={mediation.id}>
-                  <button
-                    type="button"
-                    className={active ? 'active' : ''}
-                    aria-current={active ? 'true' : undefined}
-                    onClick={() => openCase(mediation.pedidoIdReal)}
-                  >
-                    <span>{MEDIATION_STATUS_LABELS[mediation.status] || mediation.status || 'En mediación'}</span>
-                    <strong>{mediation.title || `Pedido ${mediation.orderId || mediation.pedidoIdReal}`}</strong>
-                    <time>{formatDate(mediation.createdAt)}</time>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
         <MediationCaseView
           key={openCaseId}
           pedidoId={openCaseId}
@@ -205,6 +177,27 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
           mode={isSeller ? 'seller' : 'buyer'}
           onClose={closeCase}
           onChanged={loadCases}
+        />
+      </section>
+    );
+  }
+
+  // El detalle de una consulta de soporte también ocupa el panel completo, como el
+  // expediente de disputa: es una conversación, no un modal encima de la lista.
+  if (selectedTicketId) {
+    return (
+      <section className="profile-panel profile-cases-panel dispute-workspace">
+        <SupportTicketDetailModal
+          key={selectedTicketId}
+          ticketId={selectedTicketId}
+          userId={userId}
+          user={user}
+          onClose={() => {
+            setSelectedTicketId(null);
+            openedTicketRef.current = null;
+            onClearDeepLink?.('ticket');
+          }}
+          onUpdated={loadCases}
         />
       </section>
     );
@@ -304,19 +297,6 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
         </ul>
       )}
 
-      {selectedTicketId && (
-        <SupportTicketDetailModal
-          ticketId={selectedTicketId}
-          userId={userId}
-          user={user}
-          onClose={() => {
-            setSelectedTicketId(null);
-            openedTicketRef.current = null;
-            onClearDeepLink?.('ticket');
-          }}
-          onUpdated={loadCases}
-        />
-      )}
     </section>
   );
 }

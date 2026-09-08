@@ -5286,6 +5286,14 @@ input, select, textarea {
   border: 1px solid #DDD6FE;
 }
 
+/* "En disputa" (partes negociando directo, antes de pedir un mediador). Naranja para
+   separarlo del morado de "En mediación" y del ámbar de "Pendiente / En preparación". */
+.badge-orange {
+  background: #FFF1E6;
+  color: #C2410C;
+  border: 1px solid #FED7AA;
+}
+
 .badge-red {
   background: #FFF0F0;
   color: #B8261A;
@@ -5949,6 +5957,20 @@ input, select, textarea {
   gap: 12px;
 }
 
+/* Pedido en disputa: la píldora de estado lleva a la conversación de la mediación. */
+.order-status-badge-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #5b3ad6;
+  cursor: pointer;
+}
+.order-status-badge-link:hover { opacity: .85; }
+.order-status-badge-link > svg { flex-shrink: 0; }
+
 .btn-close-modal {
   width: 32px;
   height: 32px;
@@ -6534,6 +6556,26 @@ input, select, textarea {
   justify-content: flex-end;
   gap: 10px;
 }
+
+/* "¿Tienes un reclamo?" abre una disputa: no es la accion principal del pie, asi que se
+   ancla a la izquierda -- separada del resto -- y con un tinte de alerta suave. */
+.order-claim-trigger { margin-right: auto; color: #B8261A; border-color: #FECACA; }
+.order-claim-trigger:hover { background: #FFF0F0; }
+.order-page-container .order-modal-footer { flex-wrap: wrap; }
+
+/* Pedido finalizado: el plazo para reclamar ya venció. Se ancla a la izquierda como el
+   botón que reemplaza. */
+.order-claim-closed {
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 340px;
+  color: #64748b;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.order-claim-closed > svg { flex: 0 0 auto; }
 
 /* Cancelar es destructivo: pide confirmacion en dos pasos en vez de dispararse al
    primer clic, igual que el Alert de la app. */
@@ -14750,40 +14792,13 @@ input, select, textarea {
 .dispute-workspace {
   padding: 0;
   overflow: hidden;
-  display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
-  align-items: stretch;
   border-radius: 14px;
+  border: 1px solid #e6ebf1;
   box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
 }
 
-/* --- Riel de disputas (maestro) --- */
-.dispute-rail { border-right: 1px solid #e6ebf1; background: #f7f9fc; display: flex; flex-direction: column; min-width: 0; }
-.dispute-rail > header { padding: 16px 16px 13px; border-bottom: 1px solid #e6ebf1; }
-.dispute-rail > header button {
-  display: inline-flex; align-items: center; gap: 5px; margin-bottom: 10px;
-  padding: 0; border: 0; background: none; cursor: pointer;
-  color: #5d6b7d; font-size: 11.5px; font-weight: 700;
-}
-.dispute-rail > header button:hover { color: var(--color-brand-blue, #0066ff); }
-.dispute-rail > header h2 { margin: 0; display: flex; align-items: center; gap: 7px; color: #14213a; font-size: 15px; font-weight: 800; }
-.dispute-rail > header h2 b { padding: 1px 7px; border-radius: 20px; background: #e8f0ff; color: #0b5fd0; font-size: 11px; font-weight: 800; }
-.dispute-rail-hint { margin: 6px 0 0; color: #7a8798; font-size: 11.5px; line-height: 1.4; }
-.dispute-rail ul { margin: 0; padding: 8px; list-style: none; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
-.dispute-rail li button {
-  width: 100%; padding: 11px 12px; display: grid; gap: 4px;
-  border: 1px solid transparent; border-radius: 10px; background: none;
-  text-align: left; cursor: pointer; font: inherit; transition: all .15s ease;
-}
-.dispute-rail li button:hover { background: #eef2f7; }
-.dispute-rail li button.active { border-color: #cfe0fb; background: #fff; box-shadow: 0 2px 8px rgba(11, 95, 208, .12); }
-.dispute-rail li button > span { color: #7a8798; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
-.dispute-rail li button.active > span { color: #0b5fd0; }
-.dispute-rail li button > strong { color: #1b2434; font-size: 12.5px; font-weight: 700; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.dispute-rail li button > time { color: #93a0b0; font-size: 10px; font-variant-numeric: tabular-nums; }
-
 /* --- Expediente (detalle) --- */
-.dispute-file { min-width: 0; display: flex; flex-direction: column; background: #fff; }
+.dispute-chat { min-width: 0; display: flex; flex-direction: column; background: #fff; }
 .dispute-file-loading {
   min-height: 260px; padding: 24px; grid-column: 1 / -1;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
@@ -14792,51 +14807,157 @@ input, select, textarea {
 .dispute-file-loading.is-error { color: #a92a35; }
 .dispute-file-loading button { padding: 8px 14px; border: 1px solid #d3dae2; border-radius: 8px; background: #fff; color: #33445c; font-size: 12px; font-weight: 700; cursor: pointer; }
 
-.dispute-file-head { padding: 16px 20px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid #e6ebf1; }
-.dispute-back { display: none; align-items: center; gap: 5px; padding: 6px 9px; border: 1px solid #d3dae2; border-radius: 8px; background: #fff; color: #45566d; font-size: 11px; font-weight: 700; cursor: pointer; }
-.dispute-back:hover { border-color: #9fb0c4; color: #1b2434; }
-.dispute-folio { min-width: 0; flex: 1; display: grid; gap: 1px; }
-.dispute-folio small { color: #7a8798; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; }
-.dispute-folio strong {
-  color: #1b2434; font-size: 17px; font-weight: 800; letter-spacing: .01em;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+/* --- Cabecera del chat de la disputa (peer + estado + acciones rápidas) --- */
+.dispute-chat-head {
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid #e6ebf1;
+  background: #fbfcfe;
 }
-.dispute-seal { flex-shrink: 0; padding: 6px 12px; border: 1px solid; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.dispute-back { display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px; border: 1px solid #d3dae2; border-radius: 8px; background: #fff; color: #45566d; font-size: 11.5px; font-weight: 700; cursor: pointer; transition: border-color .15s ease, color .15s ease; }
+.dispute-back:hover { border-color: #9fb0c4; color: #1b2434; }
+
+.dispute-chat-peer { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.dispute-chat-avatar {
+  width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; overflow: hidden;
+  border-radius: 50%; border: 1px solid #d3dae2; background: #eef2f7; color: #45566d;
+}
+.dispute-chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.dispute-chat-peer-id { min-width: 0; display: grid; gap: 1px; }
+.dispute-chat-peer-id strong { color: #172033; font-size: 13.5px; font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dispute-chat-peer-id small { color: #7a8798; font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.dispute-chat-head-right { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+.dispute-seal { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: 1px solid; border-radius: 20px; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.dispute-seal::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .dispute-seal.seal-wait { border-color: #f0dba3; color: #8a6300; background: #fdf8ec; }
 .dispute-seal.seal-alert { border-color: #e6b3ac; color: #a4342a; background: #fdf1f0; }
+.dispute-seal.seal-mediation { border-color: #cdbef2; color: #5b3ad6; background: #f4f0ff; }
 .dispute-seal.seal-done { border-color: #a7d9be; color: #0c6b40; background: #eef8f2; }
+.dispute-chat-refresh { width: 32px; height: 32px; flex-shrink: 0; display: grid; place-items: center; border: 1px solid #d3dae2; border-radius: 8px; background: #fff; color: #5d6b7d; cursor: pointer; }
+.dispute-chat-refresh:hover:not(:disabled) { border-color: #9fb0c4; color: #1b2434; }
+.dispute-chat-refresh:disabled { color: #a3adba; cursor: progress; }
+.dispute-claim-link { display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px; border: 1px solid #cfe0fb; border-radius: 8px; background: #f4f8ff; color: #0b5fd0; font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.dispute-claim-link:hover { border-color: #9fc4f6; background: #eaf2ff; }
 
-/* Leyenda que explica, en una linea, que es este panel y que se espera hacer
-   en el segun su estado (en curso / pausado por mediador / cerrado). */
-.dispute-help-banner {
-  margin: 0; padding: 12px 20px;
-  display: flex; align-items: flex-start; gap: 9px;
-  border-bottom: 1px solid #e6ebf1; background: #f5f9ff;
-  color: #2b4a75; font-size: 12.5px; line-height: 1.5;
+/* --- Contexto del pedido: qué producto se reclama, dentro del propio chat --- */
+.dispute-order-strip { padding: 9px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #e6ebf1; background: #fff; }
+.dispute-order-strip-thumb { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; overflow: hidden; border: 1px solid #e2e7ee; border-radius: 8px; background: #f4f6f9; color: #8a95a4; }
+.dispute-order-strip-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.dispute-order-strip-copy { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.dispute-order-strip-copy strong { color: #172033; font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dispute-order-strip-copy small { color: #7a8798; font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.dispute-claim-order { display: flex; align-items: center; gap: 11px; padding: 11px; border: 1px solid #e6ebf1; border-radius: 10px; background: #f8fafc; }
+.dispute-claim-order-thumb { width: 52px; height: 52px; flex-shrink: 0; display: grid; place-items: center; overflow: hidden; border: 1px solid #e2e7ee; border-radius: 9px; background: #fff; color: #8a95a4; }
+.dispute-claim-order-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.dispute-claim-order > div { min-width: 0; display: grid; gap: 2px; }
+.dispute-claim-order strong { color: #172033; font-size: 12.5px; font-weight: 700; }
+.dispute-claim-order small { color: #7a8798; font-size: 10.5px; }
+
+/* ============================================================
+   CHAT DE SOPORTE TÉCNICO
+   Reutiliza la caja del chat de disputa (.dispute-chat*) y añade la identidad
+   de "Soporte RepuesTop", la fila de datos del ticket y la tarjeta de apertura.
+   ============================================================ */
+.support-chat .dispute-chat-head { background: linear-gradient(180deg, #f4f8ff, #fbfcfe); }
+.support-agent-avatar {
+  border: 0 !important;
+  background: linear-gradient(135deg, #1672ed, #0b53c9) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(11, 95, 208, .3);
 }
-.dispute-help-banner svg { flex-shrink: 0; margin-top: 1px; color: #0b5fd0; }
 
-.dispute-meta { margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #e6ebf1; }
-.dispute-meta > div { padding: 13px 20px; display: grid; gap: 4px; min-width: 0; }
-.dispute-meta > div + div { border-left: 1px solid #eceff3; }
-.dispute-meta dt { color: #7a8798; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
-.dispute-meta dd { margin: 0; color: #1b2434; font-size: 12.5px; font-weight: 650; line-height: 1.35; }
-.dispute-meta dd em { display: block; color: #7a8798; font-size: 10.5px; font-style: normal; font-weight: 600; text-transform: capitalize; }
+.support-chat-meta {
+  padding: 9px 16px;
+  display: flex; flex-wrap: wrap; gap: 7px;
+  border-bottom: 1px solid #e6ebf1;
+  background: #fff;
+}
+.support-chat-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 9px; border-radius: 999px;
+  border: 1px solid #dbe6f5; background: #f2f7ff;
+  color: #315b93; font-size: 10.5px; font-weight: 700;
+}
+.support-chat-chip > svg { flex-shrink: 0; opacity: .8; }
+/* El tema elegido por el usuario: el chip principal, resaltado. */
+.support-chat-chip--tema { border-color: #bcd0ee; background: #eaf2ff; color: #1b4f8f; }
 
-.dispute-statement { margin: 0; padding: 13px 20px; border-bottom: 1px solid #e6ebf1; color: #33445c; font-size: 12.5px; line-height: 1.55; }
-.dispute-statement span { display: block; margin-bottom: 3px; color: #7a8798; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+/* Burbuja de soporte: se distingue de la contraparte de una disputa con un tinte
+   propio y su cinta de identidad. */
+.support-msg-staff .dispute-msg-author { display: inline-flex; align-items: center; gap: 4px; color: #0b5fd0; }
+.support-msg-staff .dispute-msg-body {
+  border-color: #dbe6f5;
+  background: #fff;
+  border-left: 3px solid #1672ed;
+  border-radius: 4px 12px 12px 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+}
 
-.dispute-record { margin: 12px 20px 0; padding: 13px 16px; border-radius: 10px; border-left: 3px solid transparent; }
-.dispute-record h3 { margin: 0 0 6px; display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 800; }
-.dispute-record p { margin: 0 0 4px; color: #33445c; font-size: 11.5px; line-height: 1.5; }
-.dispute-record p:last-child { margin-bottom: 0; }
-.dispute-record-note { color: #6d7a8b !important; font-style: italic; }
-.dispute-record.is-escalated { border-left-color: #d8b45e; background: #fdfaf3; }
-.dispute-record.is-escalated h3 { color: #8a6300; }
-.dispute-record.is-resolved { border-left-color: #8ac2a2; background: #f6fbf8; }
-.dispute-record.is-resolved h3 { color: #0c6b40; }
-.dispute-record.is-evidence { border-left-color: #b9c4d2; background: #fafbfc; }
-.dispute-record.is-evidence h3 { color: #33445c; }
+/* "Marcar resuelta" vive junto al header, en verde, con su texto para que se entienda. */
+.support-resolve-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 11px;
+  border: 1px solid #a7d9be; border-radius: 8px;
+  background: #f1faf4; color: #0c6b40;
+  font-size: 11.5px; font-weight: 750; cursor: pointer; white-space: nowrap;
+  transition: border-color .15s ease, background .15s ease, color .15s ease;
+}
+.support-resolve-btn:hover:not(:disabled) { border-color: #7cc79f; background: #e6f5ec; color: #0a5733; }
+.support-resolve-btn:disabled { border-color: #dbe6df; background: #f3f6f4; color: #9fb0a7; cursor: progress; }
+.support-resolve-btn > svg { flex-shrink: 0; }
+
+/* --- Solapas (solo tras pedir mediador): chat directo archivado / hilo del mediador --- */
+.dispute-chat-tabs { padding: 8px 12px; display: flex; gap: 6px; border-bottom: 1px solid #e6ebf1; background: #f7f9fc; }
+.dispute-chat-tabs > button { flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 10px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: #5d6b7d; font-size: 11.5px; font-weight: 750; cursor: pointer; transition: all .15s ease; }
+.dispute-chat-tabs > button:hover { color: #1b2434; }
+.dispute-chat-tabs > button.active { border-color: #d7e2f2; background: #fff; color: #0b5fd0; box-shadow: 0 1px 4px rgba(15, 23, 42, .1); }
+.dispute-chat-tabs > button.is-mediator.active { color: #5b3ad6; border-color: #ddd2f7; }
+.dispute-chat-tabs > button b { padding: 1px 6px; border-radius: 20px; background: #e4e9f0; color: #5d6b7d; font-size: 10px; }
+.dispute-chat-tabs > button.active b { background: #e8f0ff; color: #0b5fd0; }
+.dispute-chat-tabs > button.is-mediator.active b { background: #efe9ff; color: #5b3ad6; }
+
+/* --- Cuerpo del chat --- */
+.dispute-chat-body { display: flex; flex-direction: column; min-height: 0; }
+.dispute-frozen-notice { margin: 0; padding: 10px 16px; display: flex; align-items: center; gap: 7px; border-bottom: 1px solid #e6ebf1; background: #f6f4ff; color: #5b3ad6; font-size: 11.5px; line-height: 1.45; }
+.dispute-frozen-notice svg { flex-shrink: 0; }
+
+.dispute-resolved-banner { margin: 0; padding: 12px 16px; display: flex; align-items: flex-start; gap: 9px; border-bottom: 1px solid #e6ebf1; background: #f1faf4; color: #0c6b40; }
+.dispute-resolved-banner > svg { flex-shrink: 0; margin-top: 1px; }
+.dispute-resolved-banner strong { display: block; font-size: 12.5px; font-weight: 800; }
+.dispute-resolved-banner p { margin: 3px 0 0; color: #33604a; font-size: 11.5px; line-height: 1.5; }
+
+/* Fila de acciones arriba del hilo (fase de disputa directa): pedir mediador / resolver. */
+.dispute-chat-actions { padding: 10px 16px; display: flex; gap: 10px; border-bottom: 1px solid #e6ebf1; background: #fafbfc; }
+.dispute-chat-actions > button { flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 10px; border: 1px solid #d7dde6; border-radius: 10px; background: #fff; color: #33445c; font-size: 11.5px; font-weight: 750; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.dispute-chat-actions > button:hover { border-color: #9fb0c4; background: #f4f7fb; }
+.dispute-chat-action-icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; }
+.dispute-chat-action-icon.is-help { color: #5b3ad6; background: #f1ecff; }
+.dispute-chat-action-icon.is-resolve { color: #0c6b40; background: #e7f6ed; }
+
+/* --- Resumen plegable dentro del hilo del mediador --- */
+.dispute-mediator-summary-toggle { width: 100%; padding: 11px 16px; display: flex; align-items: center; gap: 10px; border: 0; border-bottom: 1px solid #e6ebf1; background: #f7f5ff; text-align: left; cursor: pointer; font: inherit; }
+.dispute-mediator-summary-toggle:hover { background: #f1edff; }
+.dispute-mediator-summary-copy { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.dispute-mediator-summary-copy strong { color: #3f2ea6; font-size: 12.5px; font-weight: 800; }
+.dispute-mediator-summary-copy small { color: #7a7396; font-size: 10.5px; }
+.dispute-mediator-summary-chevron { flex-shrink: 0; color: #5b3ad6; transition: transform .15s ease; }
+.dispute-mediator-summary-chevron.is-open { transform: rotate(180deg); }
+.dispute-mediator-summary { padding: 12px 16px; border-bottom: 1px solid #e6ebf1; background: #fbfaff; }
+.dispute-mediator-summary p { margin: 0 0 5px; color: #33445c; font-size: 11.5px; line-height: 1.5; }
+.dispute-mediator-summary p:last-child { margin-bottom: 0; }
+.dispute-mediator-summary-evidence { margin-top: 9px; padding-top: 9px; border-top: 1px dashed #e2e0ee; }
+
+/* --- Modal "Ver detalle del reclamo" (reusa la caja de .dispute-dialog) --- */
+.dispute-claim-dialog { width: min(420px, 100%); }
+.dispute-claim-dialog-body { padding: 14px 20px 18px; display: grid; gap: 12px; }
+.dispute-claim-field { display: grid; gap: 3px; }
+.dispute-claim-field > span { color: #7a8798; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.dispute-claim-field > strong { color: #1b2434; font-size: 12.5px; font-weight: 700; line-height: 1.4; }
+.dispute-claim-field > p { margin: 0; padding: 10px 12px; border-radius: 9px; border: 1px solid #e6ebf1; background: #f8fafc; color: #33445c; font-size: 12px; line-height: 1.5; }
+
+.dispute-record-note { color: #6d7a8b; font-style: italic; }
 
 .dispute-evidence-strip { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 10px; align-items: start; }
 .dispute-evidence-strip + .dispute-evidence-strip { margin-top: 7px; padding-top: 7px; border-top: 1px dashed #e2e7ee; }
@@ -14854,9 +14975,6 @@ input, select, textarea {
 .dispute-attach-btn:hover:not(.is-disabled) { background: #f1f5f9; border-color: #cbd5e1; color: #1e293b; }
 .dispute-attach-btn.is-disabled { opacity: .55; cursor: not-allowed; }
 
-.dispute-actions { padding: 14px 20px; display: flex; flex-wrap: wrap; gap: 20px; border-bottom: 1px solid #e6ebf1; background: #fafbfc; }
-.dispute-action-choice { display: grid; gap: 6px; }
-.dispute-action-choice small { max-width: 220px; color: #7a8798; font-size: 10.5px; line-height: 1.4; }
 .dispute-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   padding: 10px 16px; border: 1px solid #cfd7e0; border-radius: 9px; background: #fff;
@@ -14870,29 +14988,6 @@ input, select, textarea {
    azul y se seguia leyendo como activo. */
 .dispute-btn:disabled { border-color: #e1e6ec; background: #f1f3f6; color: #a3adba; cursor: not-allowed; box-shadow: none; }
 
-/* --- Solapas de legajo: conversacion directa / hilo con el mediador --- */
-.dispute-tabs { padding: 10px 20px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #e6ebf1; background: #fff; }
-.dispute-tabs > div[role="tablist"] { display: flex; gap: 6px; padding: 3px; border-radius: 11px; background: #f1f4f9; }
-.dispute-tabs button[role="tab"] {
-  padding: 8px 14px;
-  display: inline-flex; align-items: center; gap: 7px;
-  border: 0; border-radius: 8px;
-  background: none; color: #5d6b7d; font-size: 12px; font-weight: 700; cursor: pointer;
-  transition: all .15s ease;
-}
-.dispute-tabs button[role="tab"]:hover { color: #1b2434; }
-.dispute-tabs button[role="tab"].active { background: #fff; color: #0b5fd0; box-shadow: 0 1px 4px rgba(15, 23, 42, .12); }
-.dispute-tabs button[role="tab"] b { padding: 1px 6px; border-radius: 20px; background: #e4e9f0; color: #5d6b7d; font-size: 10px; font-weight: 700; }
-.dispute-tabs button[role="tab"].active b { background: #e8f0ff; color: #0b5fd0; }
-.dispute-refresh {
-  padding: 7px 12px; margin-bottom: 8px;
-  display: inline-flex; align-items: center; gap: 5px;
-  border: 1px solid #e6ebf1; border-radius: 8px; background: #fff;
-  color: #5d6b7d; font-size: 11px; font-weight: 700; cursor: pointer;
-}
-.dispute-refresh:hover:not(:disabled) { border-color: #9fb0c4; color: #1b2434; }
-.dispute-refresh:disabled { color: #a3adba; cursor: progress; }
-
 /* Asientos automaticos de la bitacora (solicitud de mediador, evidencia
    adjuntada): no son mensajes de nadie, se leen como registro del caso. */
 .dispute-log-entry {
@@ -14902,7 +14997,6 @@ input, select, textarea {
 }
 .dispute-log-entry span { display: block; margin-bottom: 2px; color: #8a95a4; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; font-variant-numeric: tabular-nums; }
 
-.dispute-thread-avatar.is-mediator { border-color: #bcd6f7; background: #f2f8ff; color: #0b5fd0; }
 
 /* Bandeja de evidencia del hilo del mediador: el envio es un POST aparte del
    mensaje, asi que tiene su propio boton. */
@@ -14910,18 +15004,15 @@ input, select, textarea {
 .dispute-evidence-tray > .dispute-btn { justify-self: start; }
 
 /* --- Hilo de conversacion --- */
-.dispute-thread-block { min-height: 0; display: flex; flex-direction: column; }
-.dispute-thread-head { padding: 12px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #e6ebf1; background: #fafbfc; }
 .dispute-thread-avatar {
-  width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center;
+  width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center;
   border: 1px solid #d3dae2; border-radius: 50%; overflow: hidden;
   background: #eef2f7; color: #45566d; font-size: 11px; font-weight: 800;
 }
 .dispute-thread-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.dispute-thread-head strong { display: block; color: #1b2434; font-size: 13px; font-weight: 750; }
-.dispute-thread-head small { display: flex; align-items: center; gap: 4px; color: #7a8798; font-size: 10.5px; }
+.dispute-thread-avatar.is-mediator { border-color: #ddd2f7; background: #f2ecff; color: #5b3ad6; }
 
-.dispute-thread { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; max-height: 360px; min-height: 180px; overflow-y: auto; background: #fcfcfd; }
+.dispute-thread { flex: 1; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; max-height: min(52vh, 460px); min-height: 220px; overflow-y: auto; background: #fcfcfd; }
 .dispute-thread-empty {
   margin: auto; display: flex; flex-direction: column; align-items: center; gap: 4px;
   max-width: 280px; text-align: center; color: #97a3b2;
@@ -15025,25 +15116,15 @@ input, select, textarea {
 .dispute-dialog-error { margin: 0; padding: 9px 11px; display: flex; align-items: flex-start; gap: 7px; border: 1px solid #e3b3ad; border-radius: 9px; background: #fdf1f0; color: #a4342a; font-size: 11.5px; line-height: 1.45; }
 .dispute-dialog form footer { display: flex; justify-content: flex-end; gap: 8px; }
 
-@media (max-width: 1080px) {
-  .dispute-workspace { grid-template-columns: 190px minmax(0, 1fr); }
-  .dispute-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dispute-meta > div:nth-child(3) { border-left: 0; }
-  .dispute-meta > div:nth-child(n+3) { border-top: 1px solid #eceff3; }
+@media (max-width: 620px) {
+  .dispute-chat-actions { flex-direction: column; }
+  .dispute-chat-head { flex-wrap: wrap; }
+  .dispute-chat-head-right { width: 100%; justify-content: flex-start; }
 }
 
 @media (max-width: 760px) {
-  .dispute-workspace { grid-template-columns: 1fr; border-radius: 0; }
-  /* En movil el riel desaparece: manda el expediente abierto y se vuelve a la
-     lista con el boton "Casos", no con una columna que robaria media pantalla. */
-  .dispute-rail { display: none; }
-  .dispute-back { display: inline-flex; }
-  .dispute-meta { grid-template-columns: 1fr; }
-  .dispute-meta > div + div { border-left: 0; border-top: 1px solid #eceff3; }
-  .dispute-file-head, .dispute-help-banner, .dispute-meta > div, .dispute-statement, .dispute-record, .dispute-actions, .dispute-tabs, .dispute-thread, .dispute-thread-head, .dispute-composer { padding-inline: 14px; }
-  .dispute-record { margin-inline: 14px; }
-  .dispute-tabs button[role="tab"] { padding-inline: 10px; font-size: 11px; }
-  .dispute-actions { flex-direction: column; gap: 14px; }
+  .dispute-workspace { border-radius: 0; }
+  .dispute-chat-head, .dispute-chat-tabs, .dispute-chat-actions, .dispute-thread, .dispute-composer, .dispute-mediator-summary, .dispute-mediator-summary-toggle, .dispute-frozen-notice, .dispute-resolved-banner { padding-inline: 14px; }
   .dispute-evidence-strip { grid-template-columns: 1fr; gap: 5px; }
   .dispute-msg { max-width: 90%; }
 }

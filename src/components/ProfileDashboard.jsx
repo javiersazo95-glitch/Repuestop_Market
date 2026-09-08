@@ -1000,6 +1000,24 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     return updated;
   };
 
+  /**
+   * El comprador abre un reclamo libre desde el detalle del pedido ("¿Tienes un reclamo?").
+   * Mismo endpoint que el veto de entrega declarada (`POST /usuarios/{id}/pedidos/{id}/reclamo`),
+   * pero con el motivo y la descripcion que eligio en el modal. El pedido queda "En disputa"
+   * (chat directo con la tienda); solo pasa a "En mediación" si luego se pide un mediador.
+   */
+  const handleCreateOrderClaim = async (order, { motivo, descripcion }) => {
+    const orderId = order?.id;
+    if (!orderId) return;
+    const updated = await createOrderClaimApi(effectiveUserId, orderId, { motivo, descripcion });
+    queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
+    setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
+      ? { ...prev, ...updated }
+      : prev
+    );
+    return updated;
+  };
+
   const handleSaveCatalogProduct = async (productId, updatedFields) => {
     queryClient.invalidateQueries({ queryKey: qk.sellerInventory(user?.sellerId, { page: catalogPage, size: catalogPageSize, texto: catalogSearchTerm }) });
     setSelectedCatalogProduct((prev) =>
@@ -2023,6 +2041,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                         onRegisterSaleReceipt={!asBuyerView && !isSellerBlocked ? handleRegisterSaleReceipt : undefined}
                         onDeclareDelivery={!asBuyerView && !isSellerBlocked ? handleDeclareOrderDelivery : undefined}
                         onDisputeDeclaredDelivery={asBuyerView ? handleDisputeDeclaredDelivery : undefined}
+                        onCreateClaim={asBuyerView ? handleCreateOrderClaim : undefined}
+                        onOpenDispute={() => navigate(`${ROUTES.profile}/consultas?caso=${detailOrder.id}`)}
                         readOnly={!asBuyerView && isSellerBlocked}
                       />
                     );

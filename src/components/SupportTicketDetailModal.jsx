@@ -1,15 +1,15 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ConfirmDialog from './ConfirmDialog';
 import {
-  X, Headphones, CheckCircle2, AlertTriangle, Send, Loader2, Lock, User, ShieldCheck
+  ArrowLeft, Headphones, CheckCircle2, AlertTriangle, Send, Loader2, Lock, ShieldCheck,
+  Monitor, Smartphone, Tag, Clock, RefreshCw, Package,
 } from 'lucide-react';
 import {
   getSupportTicketDetailApi,
   getSupportTicketMessagesApi,
   sendSupportTicketMessageApi,
   closeSupportTicketApi,
-  markSupportTicketReadApi
+  markSupportTicketReadApi,
 } from '../services/api';
 
 const STATUS_LABELS = {
@@ -22,6 +22,20 @@ const STATUS_LABELS = {
   CANCELADO: 'Cancelado',
 };
 
+// El sello reutiliza los tonos del expediente de disputa (ámbar / rojo / verde).
+const STATUS_TONE = {
+  ABIERTO: 'wait',
+  EN_PROCESO: 'mediation',
+  PENDIENTE_VENDEDOR: 'wait',
+  PENDIENTE_COMPRADOR: 'wait',
+  SLA_VENCIDO: 'alert',
+  CANCELADO: 'alert',
+  RESUELTO: 'done',
+  CERRADO: 'done',
+};
+
+const PLATFORM_LABELS = { SITIO_WEB: 'Sitio web', APP_MOBILE: 'App móvil' };
+
 function formatTime(value) {
   if (!value) return '';
   return new Date(value).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
@@ -30,11 +44,7 @@ function formatTime(value) {
 function formatDate(value) {
   if (!value) return 'Sin fecha';
   return new Date(value).toLocaleDateString('es-CL', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 }
 
@@ -42,17 +52,18 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
   const [ticket, setTicket] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [actionError, setActionError] = useState('');
   const [confirmClose, setConfirmClose] = useState(false);
-  const messagesEndRef = useRef(null);
+  const threadRef = useRef(null);
 
-  const loadTicketData = async () => {
+  const loadTicketData = async ({ quiet = false } = {}) => {
     if (!ticketId || !userId) return;
-    setLoading(true);
+    if (quiet) setIsRefreshing(true); else setLoading(true);
     setError('');
     try {
       const [ticketData, messagesData] = await Promise.all([
@@ -63,21 +74,38 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
       setMessages(Array.isArray(messagesData) ? messagesData : (messagesData?.content || []));
       markSupportTicketReadApi(userId, ticketId).catch(() => {});
     } catch (err) {
-      setError(err?.message || 'No se pudo cargar el detalle de la consulta.');
+      if (!quiet) setError(err?.message || 'No se pudo cargar el detalle de la consulta.');
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    loadTicketData();
-  }, [ticketId, userId]);
+  useEffect(() => { loadTicketData(); }, [ticketId, userId]);
 
+  // El hilo arranca abajo, como cualquier chat.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const node = threadRef.current;
+    if (node) node.scrollTop = node.scrollHeight;
+  }, [messages.length, loading]);
 
-  const isClosed = ['RESUELTO', 'CERRADO', 'CANCELADO'].includes(String(ticket?.status || '').toUpperCase());
+  const status = String(ticket?.status || '').toUpperCase();
+  const isClosed = ['RESUELTO', 'CERRADO', 'CANCELADO'].includes(status);
+  const statusTone = STATUS_TONE[status] || 'wait';
+  // El "tema" del ticket es lo que el usuario eligió en el formulario (su motivo). Se muestra
+  // como título; nunca una etiqueta fija.
+  const platformLabel = ticket?.platform ? (PLATFORM_LABELS[ticket.platform] || ticket.platform) : null;
+
+  const chips = useMemo(() => {
+    const list = [];
+    // El tema es lo que el usuario eligió en el formulario de ayuda (su motivo real),
+    // nunca una etiqueta fija.
+    if (ticket?.reason) list.push({ icon: Tag, text: `Tema · ${ticket.reason}`, strong: true });
+    if (ticket?.orderId) list.push({ icon: Package, text: `Pedido ${ticket.orderId}` });
+    if (platformLabel) list.push({ icon: platformLabel === 'App móvil' ? Smartphone : Monitor, text: platformLabel });
+    if (ticket?.sla) list.push({ icon: Clock, text: `Respuesta en ${String(ticket.sla).toLowerCase()}` });
+    return list;
+  }, [ticket?.reason, ticket?.orderId, platformLabel, ticket?.sla]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -102,12 +130,7 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
 
   const handleCloseTicket = async () => {
     if (isClosing || isClosed) return;
-    // `window.confirm` no abre nada en un navegador embebido y devuelve `false`, con lo
-    // que el boton de cerrar la consulta quedaba mudo. Se confirma con `ConfirmDialog`.
-    if (!confirmClose) {
-      setConfirmClose(true);
-      return;
-    }
+    if (!confirmClose) { setConfirmClose(true); return; }
     setIsClosing(true);
     setActionError('');
     try {
@@ -122,173 +145,138 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
     }
   };
 
-  return createPortal(
-    <div className="order-modal-backdrop" onClick={onClose}>
-      <div className="order-modal-container support-ticket-modal" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="order-modal-header">
-          <div className="order-modal-title-group">
-            <div className="order-modal-icon-badge">
-              <Headphones size={20} />
-            </div>
-            <div className="order-subdialog-heading">
-              <h2>{ticket?.reason || ticket?.subject || `Consulta #${ticketId}`}</h2>
-              <span className="order-modal-subtitle">
-                Ticket #{ticket?.externalId || ticketId} · {formatDate(ticket?.createdAt)}
-              </span>
-            </div>
-          </div>
-          <div className="order-modal-header-actions">
-            {ticket && (
-              <span className={`profile-ticket-status status-${String(ticket.status).toLowerCase()}`}>
-                {STATUS_LABELS[ticket.status] || ticket.status}
-              </span>
-            )}
-            <button type="button" className="btn-close-modal" onClick={onClose} aria-label="Cerrar">
-              <X size={18} />
-            </button>
-          </div>
-        </div>
+  return (
+    <article className="dispute-chat support-chat">
+      <header className="dispute-chat-head">
+        <button type="button" className="dispute-back" onClick={onClose} title="Volver a mis casos">
+          <ArrowLeft size={15} /> Casos
+        </button>
 
-        {/* Body */}
-        <div className="order-modal-body" style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {loading ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0', gap: '10px', color: '#64748b' }}>
-              <Loader2 size={20} className="spin-icon" />
-              <span>Cargando mensajes del ticket...</span>
-            </div>
-          ) : error ? (
-            <div className="auth-alert alert-error">
-              <AlertTriangle size={16} />
-              <span>{error}</span>
-            </div>
-          ) : (
-            <>
-              {/* Initial description block */}
-              {ticket?.description && (
-                <div style={{ backgroundColor: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', color: '#334155' }}>
-                  <strong style={{ display: 'block', color: '#0f172a', marginBottom: '4px', fontSize: '12.5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    Descripción inicial
-                  </strong>
-                  <p style={{ margin: 0, lineHeight: 1.5 }}>{ticket.description}</p>
-                </div>
-              )}
+        <span className="dispute-chat-peer">
+          <span className="dispute-chat-avatar support-agent-avatar"><Headphones size={17} /></span>
+          <span className="dispute-chat-peer-id">
+            <strong>Soporte RepuesTop</strong>
+            <small>Ticket #{ticket?.externalId || ticketId} · {formatDate(ticket?.createdAt || ticket?.fechaCreacion)}</small>
+          </span>
+        </span>
 
-              {/* Messages Thread */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
-                {messages.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', padding: '20px 0' }}>
-                    No hay mensajes adicionales en este ticket.
-                  </p>
-                ) : (
-                  messages.map((msg, index) => {
-                    const isStaff = String(msg.autorTipo).toUpperCase() === 'SOPORTE' || String(msg.senderRole).toUpperCase() === 'SOPORTE';
-                    return (
-                      <div
-                        key={msg.id || index}
-                        style={{
-                          alignSelf: isStaff ? 'flex-start' : 'flex-end',
-                          maxWidth: '85%',
-                          backgroundColor: isStaff ? '#f1f5f9' : '#0066ff',
-                          color: isStaff ? '#1e293b' : '#ffffff',
-                          padding: '10px 14px',
-                          borderRadius: '12px',
-                          borderBottomLeftRadius: isStaff ? '2px' : '12px',
-                          borderBottomRightRadius: isStaff ? '12px' : '2px',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px', fontSize: '11.5px', opacity: 0.85 }}>
-                          {isStaff ? <ShieldCheck size={13} /> : <User size={13} />}
-                          <strong>{msg.autorNombre || (isStaff ? 'Soporte RepuesTop' : 'Tú')}</strong>
-                          <span>·</span>
-                          <time>{formatTime(msg.createdAt || msg.fecha)}</time>
-                        </div>
-                        <p style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.4, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-                          {msg.mensaje || msg.texto}
-                        </p>
-                      </div>
-                    );
-                  })
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            </>
+        <span className="dispute-chat-head-right">
+          {ticket && (
+            <span className={`dispute-seal seal-${statusTone}`}>{STATUS_LABELS[status] || ticket.status}</span>
           )}
+          <button
+            type="button"
+            className="dispute-chat-refresh"
+            onClick={() => loadTicketData({ quiet: true })}
+            disabled={isRefreshing || loading}
+            title="Actualizar la conversación"
+            aria-label="Actualizar"
+          >
+            {isRefreshing ? <Loader2 size={14} className="spin-icon" /> : <RefreshCw size={14} />}
+          </button>
+          {ticket && !isClosed && (
+            <button
+              type="button"
+              className="support-resolve-btn"
+              onClick={handleCloseTicket}
+              disabled={isClosing}
+              title="Marca la consulta como resuelta y cierra el ticket"
+            >
+              {isClosing ? <Loader2 size={14} className="spin-icon" /> : <CheckCircle2 size={15} />}
+              <span>{isClosing ? 'Cerrando…' : 'Marcar resuelta'}</span>
+            </button>
+          )}
+        </span>
+      </header>
+
+      {chips.length > 0 && (
+        <div className="support-chat-meta">
+          {chips.map((chip, i) => {
+            const ChipIcon = chip.icon;
+            return (
+              <span key={i} className={`support-chat-chip ${chip.strong ? 'support-chat-chip--tema' : ''}`}>
+                <ChipIcon size={12} /> {chip.text}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="dispute-file-loading">
+          <Loader2 size={20} className="spin-icon" /> Cargando la conversación…
+        </div>
+      ) : error ? (
+        <div className="dispute-file-loading is-error">
+          <AlertTriangle size={20} /> {error}
+          <button type="button" onClick={onClose}>Volver a mis casos</button>
+        </div>
+      ) : (
+        <div className="dispute-chat-body">
+          <div className="dispute-thread" ref={threadRef}>
+            {messages.length === 0 && !ticket?.supportResponse ? (
+              <p className="dispute-thread-empty">
+                <Headphones size={20} />
+                <strong>Sin respuestas todavía</strong>
+                <span>El equipo de soporte revisará tu consulta y te responderá por aquí.</span>
+              </p>
+            ) : (
+              messages.map((msg, index) => {
+                const isStaff = String(msg.autorTipo || msg.senderRole || '').toUpperCase() === 'SOPORTE';
+                return (
+                  <div key={msg.id || index} className={`dispute-msg ${isStaff ? '' : 'is-mine'} ${isStaff ? 'support-msg-staff' : ''}`}>
+                    <span className="dispute-msg-author">
+                      {isStaff ? <ShieldCheck size={11} /> : null}
+                      {isStaff ? (msg.autorNombre || 'Soporte RepuesTop') : 'Tú'}
+                    </span>
+                    <div className="dispute-msg-body">
+                      <p>{msg.mensaje || msg.texto}</p>
+                    </div>
+                    <time>{formatTime(msg.createdAt || msg.fecha)}</time>
+                  </div>
+                );
+              })
+            )}
+
+            {/* Respuesta consolidada de soporte cuando no viaja como mensaje del hilo. */}
+            {messages.length === 0 && ticket?.supportResponse && (
+              <div className="dispute-msg support-msg-staff">
+                <span className="dispute-msg-author"><ShieldCheck size={11} /> Soporte RepuesTop</span>
+                <div className="dispute-msg-body"><p>{ticket.supportResponse}</p></div>
+                <time>{formatTime(ticket.respondedAt)}</time>
+              </div>
+            )}
+          </div>
 
           {actionError && (
-            <div className="auth-alert alert-error">
-              <AlertTriangle size={15} />
-              <span>{actionError}</span>
-            </div>
+            <p className="dispute-inline-error" style={{ margin: '0 16px 8px' }}>{actionError}</p>
           )}
-        </div>
 
-        {/* Footer / Reply Composer */}
-        <div style={{ padding: '14px 20px', borderTop: '1px solid #e2e8f0', backgroundColor: '#ffffff', borderRadius: '0 0 12px 12px' }}>
           {isClosed ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-              <span style={{ fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Lock size={14} /> Este ticket se encuentra cerrado.
-              </span>
-              <button type="button" className="btn-auth-secondary" onClick={onClose}>
-                Cerrar
-              </button>
-            </div>
+            <p className="dispute-thread-closed">
+              <Lock size={14} /> Este ticket está {(STATUS_LABELS[status] || 'cerrado').toLowerCase()}. Si el problema
+              vuelve, abre una consulta nueva desde el Centro de ayuda.
+            </p>
           ) : (
-            <form onSubmit={handleSendMessage} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  placeholder="Escribe una respuesta para el equipo de soporte..."
+              <form className="dispute-composer" onSubmit={handleSendMessage}>
+                <textarea
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  disabled={isSending || loading}
-                  style={{
-                    flex: 1,
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '13.5px',
-                  }}
+                  placeholder="Escribe una respuesta para el equipo de soporte…"
+                  rows={2}
+                  maxLength={1000}
+                  disabled={isSending}
                 />
-                <button
-                  type="submit"
-                  className="btn-auth-primary"
-                  disabled={isSending || !replyText.trim() || loading}
-                  style={{ width: 'auto', padding: '0 16px' }}
-                >
-                  {isSending ? <Loader2 size={16} className="spin-icon" /> : <Send size={16} />}
-                </button>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <button
-                  type="button"
-                  onClick={handleCloseTicket}
-                  disabled={isClosing}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#64748b',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '4px 0',
-                  }}
-                >
-                  <CheckCircle2 size={13} />
-                  <span>{isClosing ? 'Cerrando...' : 'Dar por resuelta esta consulta'}</span>
-                </button>
-                <button type="button" className="btn-auth-secondary" onClick={onClose} style={{ padding: '6px 14px', fontSize: '13px' }}>
-                  Cerrar
-                </button>
-              </div>
-            </form>
+                <footer>
+                  <small>El equipo de soporte responde en horario hábil.</small>
+                  <button type="submit" disabled={isSending || !replyText.trim()}>
+                    {isSending ? <Loader2 size={15} className="spin-icon" /> : <Send size={15} />} Enviar
+                  </button>
+                </footer>
+              </form>
           )}
         </div>
-      </div>
+      )}
 
       <ConfirmDialog
         isOpen={confirmClose}
@@ -301,7 +289,6 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
         onCancel={() => { if (!isClosing) { setConfirmClose(false); setActionError(''); } }}
         onConfirm={handleCloseTicket}
       />
-    </div>,
-    document.body
+    </article>
   );
 }

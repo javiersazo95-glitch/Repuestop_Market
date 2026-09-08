@@ -26,6 +26,7 @@ export const UNIFIED_STATUS_CONFIG = {
   finished: { label: 'Finalizado', icon: ShieldCheck, className: 'badge-emerald', tone: 'green' },
   EN_MEDIACION: { label: 'En mediación', icon: AlertCircle, className: 'badge-purple', tone: 'purple' },
   mediation: { label: 'En mediación', icon: AlertCircle, className: 'badge-purple', tone: 'purple' },
+  EN_DISPUTA: { label: 'En disputa', icon: AlertCircle, className: 'badge-orange', tone: 'orange' },
   CANCELADO: { label: 'Cancelado', icon: XCircle, className: 'badge-red', tone: 'red' },
   cancelled: { label: 'Cancelado', icon: XCircle, className: 'badge-red', tone: 'red' },
   RETOMAR: { label: 'Retomar pago', icon: RotateCcw, className: 'badge-red-outline', tone: 'red' },
@@ -46,9 +47,24 @@ function formatOrderDate(value) {
   });
 }
 
-export function OrderStatusBadge({ status, size = 'medium' }) {
-  const normalizedStatus = String(status || 'PENDIENTE').toUpperCase();
-  const config = UNIFIED_STATUS_CONFIG[status] || UNIFIED_STATUS_CONFIG[normalizedStatus] || UNIFIED_STATUS_CONFIG.PENDIENTE;
+// Un pedido en reclamo vive SIEMPRE en `EN_MEDIACION` a nivel de enum del pedido, pero para
+// el usuario son dos etapas distintas: "En disputa" mientras las partes negocian directo
+// (`Mediacion.estado === ESPERANDO_VENDEDOR`) y "En mediación" recién cuando se solicita un
+// mediador de RepuesTop (`ESCALADO` / `EN_MEDIACION`). Ese sub-estado viaja en el pedido como
+// `estadoMediacion` / `mediationStatus`.
+export function orderStatusKey(status, mediationStatus) {
+  const norm = String(status || 'PENDIENTE').toUpperCase();
+  if ((norm === 'EN_MEDIACION' || norm === 'MEDIATION')
+      && String(mediationStatus || '').toUpperCase() === 'ESPERANDO_VENDEDOR') {
+    return 'EN_DISPUTA';
+  }
+  return status;
+}
+
+export function OrderStatusBadge({ status, size = 'medium', mediationStatus }) {
+  const resolved = orderStatusKey(status, mediationStatus);
+  const normalizedStatus = String(resolved || 'PENDIENTE').toUpperCase();
+  const config = UNIFIED_STATUS_CONFIG[resolved] || UNIFIED_STATUS_CONFIG[normalizedStatus] || UNIFIED_STATUS_CONFIG.PENDIENTE;
   const Icon = config.icon;
 
   return (
@@ -268,7 +284,7 @@ export default function OrderCard({
               </span>
             )}
           </div>
-          <OrderStatusBadge status={displayStatus} size="small" />
+          <OrderStatusBadge status={displayStatus} size="small" mediationStatus={order.estadoMediacion || order.mediationStatus} />
         </div>
 
         {/* Persona Row (Buyer vs Seller profile) */}
@@ -403,6 +419,7 @@ export default function OrderCard({
                 <OrderStatusBadge
                   status={sub.estado === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : sub.estado}
                   size="small"
+                  mediationStatus={order.estadoMediacion || order.mediationStatus}
                 />
               </span>
             ))}

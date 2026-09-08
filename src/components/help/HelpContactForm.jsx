@@ -130,9 +130,12 @@ export default function HelpContactForm({ user, reportType, initialTopic = null,
       .catch(() => setOrders([]));
   }, [isOrdersTopic, reportType, user?.sellerId, user?.userId, user?.id]);
 
+  // `finished` (FINALIZADO) queda fuera: tras el cierre del pedido el plazo para reclamar ya
+  // venció (lo anuncia el aviso de auto-cierre mientras está ENTREGADO). Un `mediation` ya
+  // tiene un caso abierto y un `cancelled` no tiene nada que reclamar.
   const availableOrders = orders.filter((order) => {
     const status = normalizedStatus(order);
-    return !['mediation', 'cancelled'].includes(status) && !order.claimReason && !order.motivoReclamo;
+    return !['mediation', 'cancelled', 'finished'].includes(status) && !order.claimReason && !order.motivoReclamo;
   });
   const finalSubject = subject === 'other' ? customSubject.trim() : subject;
   const finalClaim = claimType === 'other' ? customClaimType.trim() : claimType;
@@ -226,7 +229,7 @@ ${detail.trim()}`
                 </option>
               ))}
             </select>
-            <small>Selecciona la compra asociada a tu consulta o reclamo.</small>
+            <small>Selecciona la compra asociada a tu consulta o reclamo. Los pedidos finalizados no aparecen: una vez cerrados ya no se puede abrir un reclamo.</small>
           </label>
         ) : (
           <label>
@@ -301,7 +304,9 @@ ${detail.trim()}`
       </button>
 
       {isOrdersTopic && availableOrders.length === 0 && (
-        <div className="support-no-orders"><Package /> No tienes pedidos disponibles para reclamo.</div>
+        <div className="support-no-orders">
+          <Package /> No tienes pedidos disponibles para reclamo. Los pedidos cancelados, finalizados o con un reclamo en curso no se pueden reclamar.
+        </div>
       )}
     </form>
   );

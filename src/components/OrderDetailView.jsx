@@ -4,7 +4,7 @@ import {
   X, Clock, Wrench, Truck, PackageCheck, User, Store, ChevronDown, ArrowLeft,
   MapPin, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
   RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock, ExternalLink, Timer,
-  ThumbsUp, ThumbsDown, Send, ReceiptText, FileCheck, FileSearch
+  ThumbsUp, ThumbsDown, Send, ReceiptText, FileCheck, FileSearch, ShieldAlert
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi } from '../services/api';
@@ -17,6 +17,7 @@ import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
 import SaleReceiptViewerModal from './SaleReceiptViewerModal';
 import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancellationReason';
+import { claimReasonPairs } from '../data/claimReason';
 import { carrierTracking } from '../data/carrierTracking';
 import { storeAutoCloseNotice } from '../data/orderDeadlines';
 
@@ -159,6 +160,23 @@ function OrderProductRow({ item, onNavigate }) {
   );
 }
 
+// Motivos de reclamo que se le ofrecen al COMPRADOR segun en que punto va el pedido.
+// Misma logica que `orderClaimOptions` (rama comprador) de `HelpContactForm`: el codigo
+// viaja como `motivo` y el backend lo copia a `Mediacion.motivo`. Los textos son unicos y
+// viven en `src/data/claimReason.js`.
+function buyerClaimReasons(normStatus, isStorePickup) {
+  const status = String(normStatus || '').toUpperCase();
+  if (['PENDIENTE', 'PAGADO', 'EN_PREPARACION'].includes(status)) {
+    return claimReasonPairs('wrong_purchase', 'delay_preparation', 'other');
+  }
+  if (['ENVIADO', 'LISTO_PARA_RETIRO', 'DISPATCHED'].includes(status)) {
+    return isStorePickup
+      ? claimReasonPairs('store_closed', 'refused_delivery', 'no_contact', 'other')
+      : claimReasonPairs('not_received', 'other');
+  }
+  return claimReasonPairs('incompatible', 'defective', 'wrong_product', 'buyer_remorse', 'other');
+}
+
 const SELLER_CANCEL_REASONS = [
   { code: 'SIN_STOCK', label: 'Sin stock disponible' },
   { code: 'ERROR_PRECIO', label: 'Error en el precio publicado' },
@@ -268,6 +286,8 @@ export default function OrderDetailView({
   onRegisterSaleReceipt,
   onDeclareDelivery,
   onDisputeDeclaredDelivery,
+  onCreateClaim,
+  onOpenDispute,
   autoOpenRating = false,
   onRatingPromptShown,
   onOrderRated,
@@ -308,6 +328,17 @@ export default function OrderDetailView({
   const [deliveryVetoError, setDeliveryVetoError] = useState(null);
   const [isDeclaringDelivery, setIsDeclaringDelivery] = useState(false);
   const [declareDeliveryError, setDeclareDeliveryError] = useState('');
+
+  // Modal de reclamo del comprador ("¿Tienes un reclamo?"). Abre una disputa
+  // (`PedidoPostVentaSupport.crearReclamo`): el pedido queda "En disputa" y arranca el chat
+  // con la tienda. Es un reclamo libre -- motivo + descripcion --, a diferencia del veto de
+  // entrega declarada, que ya trae el motivo fijo.
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [claimReasonCode, setClaimReasonCode] = useState('');
+  const [claimDetail, setClaimDetail] = useState('');
+  const [claimCustomReason, setClaimCustomReason] = useState('');
+  const [isSubmittingClaim, setIsSubmittingClaim] = useState(false);
+  const [claimError, setClaimError] = useState('');
 
   // Seller Cancelation Modal State
   const [showSellerCancelModal, setShowSellerCancelModal] = useState(false);
@@ -527,6 +558,51 @@ export default function OrderDetailView({
     || TIMELINE_STEPS[timelineIndex];
   const VisibleTimelineIcon = visibleTimelineStep.icon;
   const controlledAction = getControlledOrderAction(order, mode);
+
+  // Sub-estado de la mediacion (`ESPERANDO_VENDEDOR` -> "En disputa"; `ESCALADO` /
+  // `EN_MEDIACION` -> "En mediación"). El pedido siempre queda en `EN_MEDIACION` a nivel de
+  // enum; esta es la etapa que se le muestra al usuario.
+  const mediationStatus = order.estadoMediacion || order.mediationStatus || null;
+
+  // "¿Tienes un reclamo?": solo el comprador, y solo si el pedido no tiene ya un reclamo
+  // abierto, no esta cancelado y NO esta finalizado. Al abrirlo el pedido queda "En disputa"
+  // (backend: `Pedido.estado = EN_MEDIACION`, `Mediacion.estado = ESPERANDO_VENDEDOR`); si no
+  // hay acuerdo, cualquiera de las partes puede pedir un mediador y ahi pasa a "En mediación".
+  //
+  // Una vez FINALIZADO el plazo para reclamar ya venció: el pedido se cerró y se le pagó al
+  // vendedor. Es lo que anuncia `storeAutoCloseNotice` mientras está ENTREGADO ("Después del
+  // cierre ya no podrás abrir un reclamo"). Aquí se corta el acceso y se explica el motivo.
+  const CLAIM_CLOSED_STATES = ['FINALIZADO', 'FINISHED'];
+  const hasOpenClaim = Boolean(order.motivoReclamo || order.claimReason || order.descripcionReclamo);
+  const claimWindowClosed = !isSeller
+    && Boolean(onCreateClaim)
+    && !hasOpenClaim
+    && CLAIM_CLOSED_STATES.includes(normStatus);
+  const canOpenClaim = !isSeller
+    && Boolean(onCreateClaim)
+    && !['CANCELADO', 'EN_MEDIACION', 'MEDIATION', ...CLAIM_CLOSED_STATES].includes(normStatus)
+    && !hasOpenClaim;
+  const claimReasons = buyerClaimReasons(normStatus, isStorePickup);
+  const claimFinalReason = claimReasonCode === 'other' ? claimCustomReason.trim() : claimReasonCode;
+  const canSubmitClaim = Boolean(claimFinalReason)
+    && claimDetail.trim().length > 0
+    && claimDetail.trim().length <= 500;
+
+  const handleClaimSubmit = async (e) => {
+    e.preventDefault();
+    if (!onCreateClaim || isSubmittingClaim || !canSubmitClaim) return;
+    setIsSubmittingClaim(true);
+    setClaimError('');
+    try {
+      await onCreateClaim(order, { motivo: claimFinalReason, descripcion: claimDetail.trim() });
+      setShowClaimModal(false);
+      onClose?.();
+    } catch (err) {
+      setClaimError(err?.message || 'No se pudo iniciar el reclamo.');
+    } finally {
+      setIsSubmittingClaim(false);
+    }
+  };
 
   // Ruta B fase 2: el avance de CADA tienda. El backend lo manda solo al comprador; al
   // vendedor le llega `undefined` a proposito, porque su DTO esta acotado a el y esta lista
@@ -902,7 +978,19 @@ export default function OrderDetailView({
             </div>
           </div>
           <div className="order-modal-header-actions">
-            <OrderStatusBadge status={rawStatus} size="medium" />
+            {normStatus === 'EN_MEDIACION' && onOpenDispute ? (
+              <button
+                type="button"
+                className="order-status-badge-link"
+                onClick={onOpenDispute}
+                title="Abrir la conversación de la disputa"
+              >
+                <OrderStatusBadge status={rawStatus} size="medium" mediationStatus={mediationStatus} />
+                <ExternalLink size={13} />
+              </button>
+            ) : (
+              <OrderStatusBadge status={rawStatus} size="medium" mediationStatus={mediationStatus} />
+            )}
             {!isPage && (
               <button type="button" className="btn-close-modal" onClick={onClose}>
                 <X size={20} />
@@ -1088,6 +1176,7 @@ export default function OrderDetailView({
                           <OrderStatusBadge
                             status={block.estado === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : block.estado}
                             size="small"
+                            mediationStatus={mediationStatus}
                           />
                         )}
                       </header>
@@ -1564,10 +1653,100 @@ export default function OrderDetailView({
             </button>
           )}
 
+          {canOpenClaim && (
+            <button
+              type="button"
+              className="btn-auth-secondary order-claim-trigger"
+              onClick={() => {
+                setClaimReasonCode('');
+                setClaimCustomReason('');
+                setClaimDetail('');
+                setClaimError('');
+                setShowClaimModal(true);
+              }}
+            >
+              <ShieldAlert size={16} />
+              <span>¿Tienes un reclamo?</span>
+            </button>
+          )}
+
+          {claimWindowClosed && (
+            <span className="order-claim-closed">
+              <Lock size={14} />
+              Este pedido está finalizado: el plazo para abrir un reclamo ya venció.
+            </span>
+          )}
+
           <button type="button" className="btn-auth-secondary" onClick={onClose}>
             {isPage ? 'Volver a mis pedidos' : 'Cerrar'}
           </button>
         </div>
+
+        {/* Modal de reclamo del comprador. Inicia una disputa: el pedido queda "En disputa" y
+            se abre un chat directo con la tienda. Si no hay acuerdo, cualquiera de las partes
+            puede solicitar un mediador y recien ahi pasa a "En mediación". */}
+        {showClaimModal && createPortal(
+          <div className="commission-modal-backdrop order-subdialog-backdrop" onClick={() => !isSubmittingClaim && setShowClaimModal(false)}>
+            <form className="commission-modal-card order-subdialog-card" onSubmit={handleClaimSubmit} onClick={(e) => e.stopPropagation()}>
+              <div className="commission-modal-header">
+                <div className="commission-icon-badge order-subdialog-badge-danger">
+                  <ShieldAlert size={22} />
+                </div>
+                <div className="order-subdialog-heading">
+                  <h3>Iniciar un reclamo · Pedido {orderIdShort}</h3>
+                  <span>El pedido quedará <strong>en disputa</strong> y se abrirá un chat con la tienda para resolverlo. Si no hay acuerdo, podrás solicitar un mediador de RepuesTop.</span>
+                </div>
+              </div>
+
+              {claimError && <p className="confirm-dialog-error">{claimError}</p>}
+
+              <label className="order-subdialog-field">
+                <span>Motivo del reclamo *</span>
+                <select value={claimReasonCode} onChange={(e) => setClaimReasonCode(e.target.value)}>
+                  <option value="" disabled>Selecciona un motivo…</option>
+                  {claimReasons.map(([label, code]) => (
+                    <option key={code} value={code}>{label}</option>
+                  ))}
+                </select>
+              </label>
+
+              {claimReasonCode === 'other' && (
+                <label className="order-subdialog-field">
+                  <span>Especifica el motivo *</span>
+                  <input
+                    type="text"
+                    maxLength={100}
+                    placeholder="Escribe el motivo de tu reclamo"
+                    value={claimCustomReason}
+                    onChange={(e) => setClaimCustomReason(e.target.value)}
+                  />
+                </label>
+              )}
+
+              <label className="order-subdialog-field">
+                <span>Cuéntanos qué pasó *</span>
+                <textarea
+                  rows={4}
+                  maxLength={500}
+                  placeholder="Describe el problema con el mayor detalle posible…"
+                  value={claimDetail}
+                  onChange={(e) => setClaimDetail(e.target.value)}
+                />
+              </label>
+
+              <div className="confirm-dialog-actions">
+                <button type="button" className="btn-auth-secondary" onClick={() => setShowClaimModal(false)} disabled={isSubmittingClaim}>
+                  Volver
+                </button>
+                <button type="submit" className="btn-auth-danger" disabled={isSubmittingClaim || !canSubmitClaim}>
+                  {isSubmittingClaim && <Loader2 size={16} className="spin-icon" />}
+                  {isSubmittingClaim ? 'Iniciando…' : 'Iniciar reclamo'}
+                </button>
+              </div>
+            </form>
+          </div>,
+          document.body
+        )}
 
         {/* Modal de Cancelación por parte del Vendedor (A2, C1) */}
         {showSellerCancelModal && createPortal(
