@@ -5,6 +5,7 @@ import RepuestopCoin from './RepuestopCoin';
 import TokensWalletCard from './TokensWalletCard';
 import RechargeTokensModal from './RechargeTokensModal';
 import TokensHistoryModal from './TokensHistoryModal';
+import CoinDropAnimation from './CoinDropAnimation';
 import { AD_TIERS, AD_TIER_ORDER } from '../../data/automotiveAdsData';
 import { UPGRADE_TOKEN_COSTS } from '../../services/adsStorage';
 import { profilePath } from '../../routes/paths';
@@ -46,8 +47,24 @@ function StepList({ steps }) {
   );
 }
 
-export default function WalletModal({ balance = 0, isSeller = false, onClose }) {
+/** Quien pidio menos movimiento en su sistema se salta la lluvia. */
+function prefiereMenosMovimiento() {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+export default function WalletModal({
+  balance = 0,
+  isSeller = false,
+  celebrar = false,
+  onCelebracionLista,
+  onClose,
+}) {
   const [isRechargeOpen, setIsRechargeOpen] = useState(false);
+  // La lluvia solo corre si se llego aca volviendo de un pago, y nunca para quien pidio
+  // menos movimiento: a ese se le muestra el saldo ya actualizado y nada mas.
+  const [lloviendo, setLloviendo] = useState(celebrar && !prefiereMenosMovimiento());
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   return createPortal(
@@ -142,6 +159,20 @@ export default function WalletModal({ balance = 0, isSeller = false, onClose }) 
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
       />
+
+      {/* La lluvia toma la pantalla entera por encima del monedero: es un momento propio,
+          no un adorno del saldo. Al terminar cede el paso al monedero con el saldo ya
+          acreditado. */}
+      {lloviendo && (
+        <div className="coin-rain-layer">
+          <CoinDropAnimation
+            active
+            onFinish={() => { setLloviendo(false); onCelebracionLista?.(); }}
+          />
+          <h3>¡Listo!</h3>
+          <p>Tus Monedas RepuesTop ya están acreditadas.</p>
+        </div>
+      )}
     </div>,
     document.body
   );
