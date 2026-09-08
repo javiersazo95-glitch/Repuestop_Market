@@ -12,10 +12,9 @@ import { FileCheck, Download, ExternalLink, Loader2, RotateCcw } from 'lucide-re
  * Se descarga el PDF a un blob y desde ahi se previsualiza y se guarda, en vez de mandar al
  * navegador a la URL del backend, por tres razones concretas:
  *
- *  1. El token de descarga es de UN SOLO USO y dura 5 minutos (el backend hace `remove` al
- *     servirlo). Con un `window.open` el token se gasta en la vista y "descargar" desde el
- *     visor del navegador ya no puede volver a pedir el archivo. Con el blob, un token sirve
- *     para ver Y para guardar.
+ *  1. El enlace del backend dura 5 minutos y, en cuanto se abre por primera vez, un minuto
+ *     mas. Con el blob un solo enlace sirve para ver Y para guardar sin depender de esa
+ *     ventana, y sin pedirle el archivo al backend una vez por cada cosa que el usuario haga.
  *  2. `window.open` despues de un `await` queda fuera del gesto del usuario y los bloqueadores
  *     de popup lo matan sin aviso -- en Safari e iOS casi siempre. Abrir un modal no.
  *  3. El backend responde `Content-Disposition: inline` sin extension: el navegador guardaba un
@@ -72,7 +71,10 @@ export default function PrivateDocumentViewerModal({
   }, [loadUrl, attempt]);
 
   return createPortal(
-    <div className="commission-modal-backdrop order-subdialog-backdrop" onClick={() => onClose?.()}>
+    <div
+      className="commission-modal-backdrop order-subdialog-backdrop private-document-viewer-backdrop"
+      onClick={() => onClose?.()}
+    >
       <div
         className="commission-modal-card order-subdialog-card order-receipt-viewer-card"
         onClick={(event) => event.stopPropagation()}
