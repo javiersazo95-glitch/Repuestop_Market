@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { addFavoriteApi, removeFavoriteApi, getFavoritesApi } from '../services/api';
 import { qk } from '../services/queryKeys';
 
@@ -17,26 +17,21 @@ import { qk } from '../services/queryKeys';
  */
 export function useFavorites(userId) {
   const queryClient = useQueryClient();
-  // producto -> id del favorito
-  const [byProduct, setByProduct] = useState(() => new Map());
   const [busyIds, setBusyIds] = useState(() => new Set());
-
-  useEffect(() => {
-    if (!userId) {
-      setByProduct(new Map());
-      return undefined;
-    }
-    const controller = new AbortController();
-    getFavoritesApi(userId, { signal: controller.signal })
-      .then((data) => {
-        const list = Array.isArray(data) ? data : (data?.content || []);
-        setByProduct(new Map(list
-          .filter((item) => item?.proveedorProductoId != null)
-          .map((item) => [String(item.proveedorProductoId), item.id])));
-      })
-      .catch(() => null);
-    return () => controller.abort();
-  }, [userId]);
+  const favoritesQuery = useQuery({
+    queryKey: qk.favorites(userId),
+    queryFn: async ({ signal }) => {
+      const data = await getFavoritesApi(userId, { signal });
+      return Array.isArray(data) ? data : (data?.content || []);
+    },
+    enabled: Boolean(userId),
+    staleTime: 60 * 1000,
+  });
+  // La misma query se comparte entre catálogo, detalle y favoritos. Así, al
+  // guardar desde cualquiera de ellos, todos los corazones se actualizan.
+  const byProduct = useMemo(() => new Map((favoritesQuery.data || [])
+    .filter((item) => item?.proveedorProductoId != null)
+    .map((item) => [String(item.proveedorProductoId), item.id])), [favoritesQuery.data]);
 
   const isFavorite = useCallback(
     (productId) => byProduct.has(String(productId)),
@@ -52,14 +47,15 @@ export function useFavorites(userId) {
     try {
       if (favoriteId != null) {
         await removeFavoriteApi(userId, favoriteId);
-        setByProduct((previous) => {
-          const next = new Map(previous);
-          next.delete(productId);
-          return next;
-        });
+        queryClient.setQueryData(qk.favorites(userId), (previous = []) => (
+          previous.filter((item) => String(item?.proveedorProductoId) !== productId)
+        ));
       } else {
         const created = await addFavoriteApi(userId, productId);
-        setByProduct((previous) => new Map(previous).set(productId, created?.id ?? true));
+        queryClient.setQueryData(qk.favorites(userId), (previous = []) => [
+          ...previous,
+          { ...created, id: created?.id ?? true, proveedorProductoId: productId },
+        ]);
       }
       // El panel de perfil lee la lista por React Query. Sin esto seguia mostrando el
       // favorito borrado hasta recargar la pagina.

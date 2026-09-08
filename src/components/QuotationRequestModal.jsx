@@ -10,6 +10,7 @@ import {
 import {
   buildQuoteRequestMessage, isQuoteExpired, QUOTE_DELIVERY_OPTIONS,
 } from '../utils/quoteFlow';
+import { buyerProfilePath } from '../routes/paths';
 
 /**
  * ¿Corresponde abrir un hilo nuevo en vez de seguir el que ya existe?
@@ -159,7 +160,7 @@ export default function QuotationRequestModal({
               <CheckCircle2 size={54} />
               <h3>¡Cotización solicitada correctamente!</h3>
               <p>Quedó creada la conversación #{conversation.id}. Podrás revisar la propuesta, su vigencia y responder desde <strong>Mis cotizaciones</strong>.</p>
-              <a className="btn-submit-ticket" href="/perfil/cotizaciones">Ir a mis cotizaciones <ChevronRight size={17} /></a>
+              <a className="btn-submit-ticket" href={buyerProfilePath(user, 'quotes')}>Ir a mis cotizaciones <ChevronRight size={17} /></a>
               <button className="btn-auth-secondary" type="button" onClick={onClose}>Seguir viendo productos</button>
             </div>
           ) : (

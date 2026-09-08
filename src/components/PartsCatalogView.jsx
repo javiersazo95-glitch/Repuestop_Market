@@ -160,7 +160,7 @@ export default function PartsCatalogView({
   };
 
   const { user, isLoggedIn } = useAuth();
-  const { isFavorite, toggleFavorite } = useFavorites(user?.userId);
+  const { isFavorite, toggleFavorite } = useFavorites(user?.userId ?? user?.id);
   const [filterByMyComuna, setFilterByMyComuna] = useState(false);
   const [myComunaId, setMyComunaId] = useState(null);
   const [myComunaNombre, setMyComunaNombre] = useState('');

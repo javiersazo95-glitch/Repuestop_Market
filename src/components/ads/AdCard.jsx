@@ -8,6 +8,9 @@ import { getCategoryIcon } from './categoryIcons';
 import { useAdOwnership } from './useAdOwnership';
 import ContextualReportButton from '../ContextualReportButton';
 import VehicleBrandLogo from '../VehicleBrandLogo';
+// La tarjeta también se muestra en Favoritos. Cargar su diseño aquí evita que
+// dependa de que el usuario haya visitado antes el Mural de anuncios.
+import './ads-wall-redesign.css';
 
 /** Distintivo visual de cada plan en el mural (1:1 con mobile/components/ads/AdCard.tsx). */
 const TIER_THEME = {

@@ -53,7 +53,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   // llevaba su propio `useState` + `checkIsFavoriteApi`, y para BORRAR le pasaba el id
   // del producto a `removeFavoriteApi`, que espera el id DEL FAVORITO: el DELETE moria,
   // el catch revertia el corazon y no se podia quitar nada desde aca.
-  const { isFavorite, toggleFavorite } = useFavorites(user?.userId);
+  const { isFavorite, toggleFavorite } = useFavorites(user?.userId ?? user?.id);
   const favorite = isFavorite(product?.id);
 
   const handleToggleFavorite = () => toggleFavorite(product);

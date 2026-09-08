@@ -551,13 +551,21 @@
   z-index: 3;
   width: 32px;
   height: 32px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid rgba(226, 232, 240, 0.9);
   background: rgba(255, 255, 255, 0.94);
   border-radius: 50%;
+  color: #64748b;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+  cursor: pointer;
+  transition: transform .16s ease, color .16s ease, border-color .16s ease, background .16s ease;
 }
+.ad-card-report span { display: none; }
+.ad-card-report:hover { transform: scale(1.06); border-color: #fecaca; color: #dc2626; background: #fff1f2; }
+.ad-card-report:focus-visible { outline: 3px solid rgba(220, 38, 38, .22); outline-offset: 2px; }
 
 .ad-card-favorite {
   position: absolute;

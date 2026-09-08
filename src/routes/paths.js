@@ -114,6 +114,22 @@ export function profilePath(tab = 'resumen') {
   return `${ROUTES.profile}/${tab || 'resumen'}`;
 }
 
+/**
+ * Destino de una operación hecha COMO COMPRADOR. Una tienda conserva ambas
+ * experiencias en su perfil: `pedidos` y `cotizaciones` son sus bandejas de
+ * vendedor, mientras que `compras` y `mis_cotizaciones` son las propias.
+ */
+export function buyerProfilePath(user, operation) {
+  const isSeller = String(user?.role || user?.rol || '').toUpperCase() === 'SELLER';
+  const tabs = {
+    purchases: isSeller ? 'compras' : 'pedidos',
+    quotes: isSeller ? 'mis_cotizaciones' : 'cotizaciones',
+    questions: 'mis_preguntas',
+    favorites: 'favoritos',
+  };
+  return profilePath(tabs[operation] || 'resumen');
+}
+
 /** `/ayuda/pedidos`. Sin slug devuelve la portada del centro de ayuda. */
 export function helpCategoryPath(slug) {
   return slug ? `${ROUTES.support}/${slug}` : ROUTES.support;
@@ -163,5 +179,4 @@ export function catalogFilterFromParams(searchParams) {
     page: Math.max(1, Number(searchParams.get('pagina') || 1) || 1),
   };
 }
-
 

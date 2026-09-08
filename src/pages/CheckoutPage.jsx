@@ -12,7 +12,7 @@ import {
 import { formatRut, isValidRut } from '../services/adapters';
 import { isQuoteExpired, quantityFromLabel } from '../utils/quoteFlow';
 import { checkoutFallbackShippingMethod, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
-import { profilePath, ROUTES } from '../routes/paths';
+import { buyerProfilePath, profilePath, ROUTES } from '../routes/paths';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import BuyerAddressBook from '../components/BuyerAddressBook';
 import CheckoutSummaryPanel from '../components/CheckoutSummaryPanel';
@@ -33,6 +33,7 @@ export default function CheckoutPage() {
   const { isBlocked: isBlockedAccount } = useSellerBlocked();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const buyerQuotesPath = buyerProfilePath(user, 'quotes');
   const { cartItems, cartCount, cartTotals, clearCart } = useMarketplace();
   const userId = user?.userId ?? user?.id;
 
@@ -359,7 +360,7 @@ export default function CheckoutPage() {
           ) : (
             <div className="checkout-block">
               <p className="checkout-error"><AlertTriangle size={15} /> {quoteError || 'No encontramos esta cotización.'}</p>
-              <button type="button" className="checkout-summary-back" onClick={() => navigate(profilePath('cotizaciones'))}>
+              <button type="button" className="checkout-summary-back" onClick={() => navigate(buyerQuotesPath)}>
                 <ArrowLeft size={15} /> Volver a mis cotizaciones
               </button>
             </div>
@@ -375,14 +376,14 @@ export default function CheckoutPage() {
         <header className="cart-page-head checkout-shopify-header">
           <div className="checkout-shopify-header-top">
             {isQuoteMode
-              ? <Link className="cart-page-back" to={profilePath('cotizaciones')}><ArrowLeft size={16} /> Volver a mis cotizaciones</Link>
+              ? <Link className="cart-page-back" to={buyerQuotesPath}><ArrowLeft size={16} /> Volver a mis cotizaciones</Link>
               : <Link className="cart-page-back" to={ROUTES.cart}><ArrowLeft size={16} /> Volver al carrito</Link>}
             <h1>{isQuoteMode ? 'Pagar cotización' : 'Finalizar compra'}</h1>
           </div>
 
           <nav className="shopify-breadcrumb-nav" aria-label="Progreso de la compra">
             <Link
-              to={isQuoteMode ? profilePath('cotizaciones') : ROUTES.cart}
+              to={isQuoteMode ? buyerQuotesPath : ROUTES.cart}
               className="shopify-breadcrumb-link"
             >
               {isQuoteMode ? 'Cotización' : 'Carrito'}

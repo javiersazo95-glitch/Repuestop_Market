@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Megaphone, Plus, Zap, Edit3, Trash2, Eye, AlertTriangle, Search,
-  Calendar, Clock, RefreshCw,
+  RefreshCw,
   Loader2, CheckCircle2, Clock3, XCircle, CalendarClock, Lock, ChevronRight, PackageOpen,
   GraduationCap
 } from 'lucide-react';
@@ -14,9 +14,7 @@ import {
 import {
   AD_TIERS, AD_TIER_ORDER, AD_MODERATION_STATUS, AD_MODERATION_LABELS,
   SERVICE_CATEGORIES, getAdExpiryInfo, getUpgradableTiers,
-  APPOINTMENT_STATUS_META, isClosedAppointment
 } from '../../data/automotiveAdsData';
-import { formatAgendaDateLong, getTimeUntilLabel, toIsoDate } from '../../data/agendaConfig';
 import { groupAppointmentsByTime } from '../../utils/appointmentHistory';
 import { useAuth } from '../../context/AuthContext';
 import { useAutomotiveAccreditation } from '../../hooks/useAutomotiveAccreditation';
@@ -80,14 +78,11 @@ export default function AdsManagementSection({ onNavigateToMural }) {
   // distingue un rol del otro (y el backend impide reservar en el anuncio
   // propio, asi que una cita nunca cae en las dos listas).
   const [appointments, setAppointments] = useState([]);
-  const [appointmentsError, setAppointmentsError] = useState(null);
   const [adForAgenda, setAdForAgenda] = useState(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   // Reagendar: se abre `AdAppointmentModal` con el anuncio de la cita a mover y,
   // al confirmar la nueva hora, la anterior queda `cancelled`.
   const [rebookState, setRebookState] = useState(null); // { ad, appointmentId } | 'loading'
-  const [cancellingId, setCancellingId] = useState(null);
-  const [cancelError, setCancelError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   // Arranca con la ultima copia local para no pintar un cero mientras responde
@@ -127,16 +122,13 @@ export default function AdsManagementSection({ onNavigateToMural }) {
 
   /**
    * Las reservas se cargan aparte de los anuncios a proposito: un fallo aca no
-   * puede dejar sin gestion de anuncios a quien nunca uso la agenda, asi que
-   * tiene su propio error y su propio estado.
+   * puede dejar sin gestion de anuncios a quien nunca uso la agenda.
    */
   const loadAppointments = useCallback(async ({ signal } = {}) => {
     try {
       setAppointments(await fetchMyAppointments({ signal }));
-      setAppointmentsError(null);
     } catch (error) {
       if (error?.name === 'AbortError') return;
-      setAppointmentsError(error);
     }
   }, []);
 
@@ -149,20 +141,18 @@ export default function AdsManagementSection({ onNavigateToMural }) {
 
   const sessionUserId = user?.userId ?? user?.id ?? user?.buyerId ?? null;
 
-  const { receivedByAd, myAppointments, pendingReceived } = useMemo(() => {
-    const mine = [];
+  const { receivedByAd, pendingReceived } = useMemo(() => {
     const received = new Map();
     appointments.forEach((appointment) => {
       const isMine = sessionUserId != null
         && String(appointment.customerUserId) === String(sessionUserId);
-      if (isMine) { mine.push(appointment); return; }
+      if (isMine) return;
       const list = received.get(appointment.adId) || [];
       list.push(appointment);
       received.set(appointment.adId, list);
     });
     return {
       receivedByAd: received,
-      myAppointments: mine.sort((a, b) => b.date.localeCompare(a.date)),
       pendingReceived: appointments.filter(
         (item) => item.status === 'pending'
           && (sessionUserId == null || String(item.customerUserId) !== String(sessionUserId))
@@ -207,9 +197,8 @@ export default function AdsManagementSection({ onNavigateToMural }) {
     try {
       const ad = await fetchPublicAd(appointment.adId);
       setRebookState({ ad, appointmentId: appointment.id });
-    } catch (error) {
+    } catch {
       setRebookState(null);
-      setCancelError(adErrorMessage(error, 'El anuncio de esta cita ya no está disponible para reagendar.'));
     }
   };
 
@@ -224,19 +213,6 @@ export default function AdsManagementSection({ onNavigateToMural }) {
       }
     }
     loadAppointments();
-  };
-
-  /** Cancelar es exclusivo del cliente: el backend responde 403 al dueño. */
-  const handleCancelMyAppointment = async (appointment) => {
-    setCancellingId(appointment.id);
-    setCancelError('');
-    try {
-      replaceAppointment(await updateAppointmentStatus(appointment.id, 'cancelled'));
-    } catch (error) {
-      setCancelError(adErrorMessage(error, 'No se pudo cancelar la reserva.'));
-    } finally {
-      setCancellingId(null);
-    }
   };
 
   useEffect(() => {
@@ -705,84 +681,6 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           </tbody>
         </table>
       </div>
-
-      {/* Las citas que uno PIDIO, no las que recibio. Sin esta lista quien
-          reserva desde el mural no tiene donde ver el estado ni cancelar, y
-          cancelar es exclusivo del cliente: el backend le responde 403 al
-          dueño del anuncio. */}
-      {(myAppointments.length > 0 || appointmentsError) && (
-        <div className="my-appointments-block">
-          <div className="ads-mgmt-titles">
-            <h3 className="my-appointments-title">
-              <CalendarClock size={18} className="text-emerald-600" />
-              Mis reservas de hora
-            </h3>
-            <p>Citas que pediste en anuncios del mural. El taller las confirma o las rechaza.</p>
-          </div>
-
-          {appointmentsError && (
-            <div className="ads-mgmt-state is-error">
-              <AlertTriangle size={20} />
-              <p>{adErrorMessage(appointmentsError, 'No pudimos cargar tus reservas.')}</p>
-              <button type="button" className="btn-ad-phone" onClick={() => loadAppointments()}>
-                <RefreshCw size={14} /> Reintentar
-              </button>
-            </div>
-          )}
-
-          {cancelError && (
-            <div className="ad-form-error">
-              <AlertTriangle size={15} />
-              <span>{cancelError}</span>
-            </div>
-          )}
-
-          <div className="my-appointments-list">
-            {myAppointments.map((appointment) => {
-              const meta = APPOINTMENT_STATUS_META[appointment.status] || APPOINTMENT_STATUS_META.pending;
-              const isClosed = isClosedAppointment(appointment.status);
-              const isPast = appointment.date < toIsoDate(new Date());
-              return (
-                <div key={appointment.id} className={`my-appointment-item tone-${meta.tone}`}>
-                  <div className="my-appointment-main">
-                    <div className="agenda-appointment-top">
-                      <span className={`mgmt-status-pill tone-${meta.tone}`}>{meta.longLabel}</span>
-                      {!isClosed && !isPast && (
-                        <span className="agenda-appointment-eta">
-                          {getTimeUntilLabel(appointment.date, appointment.time)}
-                        </span>
-                      )}
-                    </div>
-                    <h5>{appointment.service}</h5>
-                    <div className="agenda-appointment-meta">
-                      <span><Megaphone size={12} /> {appointment.adTitle}</span>
-                      <span><Calendar size={12} /> {formatAgendaDateLong(appointment.date)}</span>
-                      <span><Clock size={12} /> {appointment.time}</span>
-                    </div>
-                  </div>
-
-                  {/* El backend solo deja cancelar mientras siga pending o
-                      accepted (`OCUPADOS`); una cita ya cerrada da 400. */}
-                  {!isClosed && !isPast && (
-                    <button
-                      type="button"
-                      className="btn-mgmt-delete"
-                      disabled={cancellingId === appointment.id}
-                      onClick={() => handleCancelMyAppointment(appointment)}
-                      title="Cancelar esta reserva"
-                    >
-                      {cancellingId === appointment.id
-                        ? <Loader2 size={15} className="spin-icon" />
-                        : <XCircle size={15} />}
-                      <span>Cancelar</span>
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {adForAgenda && (
         <AdAgendaModal

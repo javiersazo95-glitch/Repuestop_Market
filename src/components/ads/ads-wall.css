@@ -2465,25 +2465,10 @@
 .btn-mgmt-agenda { display: flex; align-items: center; gap: 6px; padding: 8px 13px; border: 1px solid #a7f3d0; border-radius: 8px; background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s ease; }
 .btn-mgmt-agenda:hover { background: #d1fae5; }
 
-/* --- Mis reservas (cliente) --- */
-.my-appointments-block { margin-top: 26px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
-.my-appointments-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; color: #0f172a; }
-.my-appointments-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
-.my-appointment-item { display: flex; align-items: center; gap: 13px; padding: 12px 14px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; border-left: 4px solid #cbd5e1; }
-.my-appointment-item.tone-warning { border-left-color: #f59e0b; }
-.my-appointment-item.tone-success { border-left-color: #059669; }
-.my-appointment-item.tone-danger { border-left-color: #dc2626; }
-.my-appointment-item.tone-muted { border-left-color: #94a3b8; }
-.my-appointment-main { flex: 1; min-width: 0; }
-.my-appointment-main h5 { font-size: 13.5px; font-weight: 800; color: #0f172a; margin-bottom: 5px; }
-.my-appointment-item .btn-mgmt-delete { gap: 5px; padding: 8px 12px; font-size: 12px; font-weight: 700; }
-.my-appointment-item .btn-mgmt-delete:disabled { opacity: .55; cursor: not-allowed; }
-
 @media (max-width: 640px) {
   .agenda-preview-grid { grid-template-columns: repeat(4, 1fr); }
   .agenda-appointment { flex-wrap: wrap; }
   .agenda-appointment-actions { flex-direction: row; width: 100%; }
-  .my-appointment-item { flex-wrap: wrap; }
 }
 
 /* --- Historial del Monedero de Monedas (fase D) --- */

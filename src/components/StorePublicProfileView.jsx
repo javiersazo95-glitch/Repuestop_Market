@@ -18,6 +18,7 @@ import { parseShippingMethods, resolveShippingService } from '../data/shippingMe
 import { getAddressesApi, getStoreProductsApi, getStoreProfileApi, searchVehicleByPatenteApi } from '../services/api';
 import { adaptPage, adaptProduct, adaptStore, adaptVehicle } from '../services/adapters';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
+import { useFavorites } from '../hooks/useFavorites';
 import { useMarketplace } from '../context/MarketplaceContext';
 import TextSearchWithSuggestions from './TextSearchWithSuggestions';
 
@@ -66,6 +67,7 @@ export default function StorePublicProfileView({
   const [openFilterSections, setOpenFilterSections] = useState({ purchase: true, category: true, condition: true });
   const [expandedCategories, setExpandedCategories] = useState({});
   const { isStoreSaved, toggleStore } = useSavedMarketplaceItems(user?.userId ?? user?.id);
+  const { isFavorite, toggleFavorite } = useFavorites(user?.userId ?? user?.id);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -811,6 +813,8 @@ export default function StorePublicProfileView({
                       product={prod}
                       onView={onQuickView}
                       fallbackCity={currentStore.ciudad || 'Santiago, RM'}
+                      isFavorite={isFavorite(prod.id)}
+                      onToggleFavorite={isLoggedIn ? toggleFavorite : undefined}
                     />
                   ))}
                 </div>

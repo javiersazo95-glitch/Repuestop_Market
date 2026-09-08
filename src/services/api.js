@@ -411,6 +411,18 @@ export async function deleteAccountApi(userId) {
   return fetchApi(`/auth/users/${userId}`, { method: 'DELETE' });
 }
 
+export async function getAccountClosureSummaryApi(perfil) {
+  return fetchApi(`/auth/account-closure?perfil=${encodeURIComponent(perfil)}`, { method: 'GET' });
+}
+
+export async function requestAccountClosureApi({ perfil, action, reason }) {
+  return fetchApi('/auth/account-closure', { method: 'POST', body: JSON.stringify({ perfil, action, reason }) });
+}
+
+export async function reactivateAccountApi(perfil) {
+  return fetchApi(`/auth/account-closure/reactivate?perfil=${encodeURIComponent(perfil)}`, { method: 'POST' });
+}
+
 /** Sube el logo/avatar del perfil. Las portadas se eligen desde plantillas R2. */
 export async function uploadProfileImageApi(file) {
   const token = localStorage.getItem('repuestop_token');
