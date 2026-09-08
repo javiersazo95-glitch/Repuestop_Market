@@ -6614,6 +6614,10 @@ input, select, textarea {
    se veia sin fondo y con el contenido del pedido colandose por detras.
    ============================================================ */
 .order-subdialog-backdrop { z-index: 1400; }
+/* El visor de un documento es siempre la hoja mas profunda: nada se abre encima. Necesita
+   ganarle a `.tokens-detail-overlay` (100000), que es desde donde lo abre el monedero; con el
+   1400 heredado la boleta se dibujaba detras de los popups. */
+.private-document-viewer-backdrop { z-index: 100001; }
 /* El detalle del ticket de soporte usa la misma caja que el detalle del pedido, solo
    que mas angosta: es un hilo de mensajes, no una ficha con columnas. */
 .support-ticket-modal { max-width: 640px; }

@@ -1600,6 +1600,11 @@ export async function getRechargeReceiptUrlApi(compraId) {
   return fetchApi(`/fichas/compras/${compraId}/documento-url`, { method: 'GET' });
 }
 
+/** Que documento sugerirle al comprador y con que datos prellenar el formulario. */
+export async function getDatosDocumentoRecargaApi({ signal } = {}) {
+  return fetchApi('/fichas/recargas/datos-documento', { method: 'GET', signal });
+}
+
 export async function iniciarRecargaFichasApi(payload) {
   return fetchApi('/fichas/recargas', { method: 'POST', body: JSON.stringify(payload) });
 }
