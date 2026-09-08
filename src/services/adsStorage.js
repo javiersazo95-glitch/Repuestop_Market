@@ -348,7 +348,17 @@ export async function fetchTokenTransactions({ signal } = {}) {
     amount: Number(item.cantidad) || 0,
     description: item.descripcion || MOTIVO_LABELS[item.motivo] || 'Movimiento de Monedas',
     date: item.fecha,
-    adId: item.anuncioId || null
+    adId: item.anuncioId || null,
+    purchaseId: item.compraId || null,
+    // El documento tributario de la recarga, cuando RepuesTop ya lo emitio. Los movimientos
+    // que no son recargas -- y las recargas viejas, sin compra asociada -- no lo traen.
+    receipt: item.documentoDisponible
+      ? {
+          type: item.documentoTipo || null,
+          folio: item.documentoFolio || null,
+          date: item.documentoFecha || null
+        }
+      : null
   }));
 }
 

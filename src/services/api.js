@@ -1577,6 +1577,17 @@ export async function getFichasPacksApi() {
  * Arranca el cobro de una recarga. Devuelve `{ url, token }`: la URL es la de la pasarela, a
  * donde hay que mandar al usuario. No acredita nada.
  */
+/**
+ * Enlace de un solo uso para ver y descargar el documento tributario de una recarga.
+ *
+ * Es el equivalente de `getSaleReceiptUrlApi` para el documento #3 (la boleta o factura que
+ * RepuesTop emite por la compra de Monedas). El backend comprueba que la compra sea del usuario
+ * autenticado antes de emitir el token.
+ */
+export async function getRechargeReceiptUrlApi(compraId) {
+  return fetchApi(`/fichas/compras/${compraId}/documento-url`, { method: 'GET' });
+}
+
 export async function iniciarRecargaFichasApi(payload) {
   return fetchApi('/fichas/recargas', { method: 'POST', body: JSON.stringify(payload) });
 }

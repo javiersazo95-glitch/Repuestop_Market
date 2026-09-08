@@ -3280,6 +3280,11 @@
 /* El valor nunca se recorta: para eso existe esta hoja. */
 .tokens-detail-row > strong { font-size: 14px; line-height: 19px; font-weight: 600; color: #0f172a; overflow-wrap: anywhere; }
 
+/* Ver la boleta o factura de la recarga. La ultima fila pierde su borde, asi que el separador
+   lo pone este bloque para que el boton no quede pegado al dato de arriba. */
+.tokens-detail-actions { margin-top: 14px; padding-top: 14px; border-top: 1px solid #e2e8f0; }
+.tokens-detail-actions .btn-auth-primary { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+
 @media (max-width: 480px) {
   .tokens-history-summary { grid-template-columns: 1fr; }
 }

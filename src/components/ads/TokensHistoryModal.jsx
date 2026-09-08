@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, History, ArrowDownLeft, ArrowUpRight, Loader2, AlertTriangle, Coins, ChevronRight
+  X, History, ArrowDownLeft, ArrowUpRight, Loader2, AlertTriangle, Coins, ChevronRight, FileText
 } from 'lucide-react';
 import { fetchTokenTransactions, adErrorMessage } from '../../services/adsStorage';
+import { getRechargeReceiptUrlApi } from '../../services/api';
+import PrivateDocumentViewerModal from '../PrivateDocumentViewerModal';
 
 /**
  * Historial de movimientos del Monedero de Monedas.
@@ -17,12 +19,16 @@ import { fetchTokenTransactions, adErrorMessage } from '../../services/adsStorag
  * `fae41ed`): en la lista la descripcion y la fecha se recortan a una linea para
  * que el historial se lea de un vistazo, y el detalle es donde se ven completas.
  *
+ * El detalle de una recarga es ademas donde el comprador ve y descarga su boleta o factura
+ * (documento #3: lo emite RepuesTop, que en la compra de Monedas es vendedor directo). Va aca y
+ * no en una pantalla aparte porque este es el lugar al que vuelve a buscarla, y porque el
+ * vinculo movimiento -> compra ya existia en la base.
+ *
  * QUE NO SE MUESTRA, Y POR QUE: la app tiene ademas una fila "Monto pagado" y un
- * resumen "Total pagado", pero `MovimientoFichaDTO` no trae el monto en pesos
- * (id, tipo, cantidad, motivo, descripcion, anuncioId y fecha, nada mas). Alla
- * salen de un campo opcional que quedo del monedero local y que hoy nadie llena,
- * asi que muestran $0 siempre. Aca se omiten en vez de portar una fila que no se
- * puede llenar; si algun dia el DTO expone el monto, se agregan.
+ * resumen "Total pagado", pero `MovimientoFichaDTO` no trae el monto en pesos.
+ * Alla salen de un campo opcional que quedo del monedero local y que hoy nadie
+ * llena, asi que muestran $0 siempre. Aca se omiten en vez de portar una fila que
+ * no se puede llenar; si algun dia el DTO expone el monto, se agregan.
  */
 
 function formatDateTime(iso) {
@@ -167,8 +173,20 @@ export default function TokensHistoryModal({ isOpen, onClose }) {
  * de los datos del registro.
  */
 function TransactionDetail({ transaction, onClose }) {
+  /** Guarda la compra y no el movimiento: el visor sobrevive a que se cierre el detalle. */
+  const [receiptFor, setReceiptFor] = useState(null);
+
+  const loadReceiptUrl = useCallback(
+    () => getRechargeReceiptUrlApi(receiptFor?.purchaseId),
+    [receiptFor],
+  );
+
   if (!transaction) return null;
   const isCredit = transaction.type === 'credit';
+  const receipt = transaction.receipt;
+  // Sin `purchaseId` no hay a que pedirle el documento, por mas que el backend lo marque.
+  const canOpenReceipt = Boolean(receipt && transaction.purchaseId);
+  const receiptLabel = receipt?.type === 'FACTURA' ? 'factura' : 'boleta';
 
   return (
     <div
@@ -211,7 +229,40 @@ function TransactionDetail({ transaction, onClose }) {
         <DetailRow label="Movimiento" value={isCredit ? 'Ingreso al monedero' : 'Descuento del monedero'} />
         {transaction.adId && <DetailRow label="Aviso asociado" value={`#${transaction.adId}`} />}
         <DetailRow label="N.º de registro" value={transaction.id} />
+
+        {receipt && (
+          <>
+            <DetailRow
+              label="Documento tributario"
+              value={`${receipt.type === 'FACTURA' ? 'Factura' : 'Boleta'}${receipt.folio ? ` N.º ${receipt.folio}` : ''}`}
+            />
+            {receipt.date && <DetailRow label="Emitido el" value={formatDate(receipt.date)} />}
+          </>
+        )}
+
+        {canOpenReceipt && (
+          <div className="tokens-detail-actions">
+            <button
+              type="button"
+              className="btn-auth-primary"
+              onClick={() => setReceiptFor({ purchaseId: transaction.purchaseId, label: receiptLabel })}
+            >
+              <FileText size={15} />
+              <span>Ver mi {receiptLabel}</span>
+            </button>
+          </div>
+        )}
       </div>
+
+      {receiptFor && (
+        <PrivateDocumentViewerModal
+          loadUrl={loadReceiptUrl}
+          title={receiptFor.label === 'factura' ? 'Factura de tu recarga' : 'Boleta de tu recarga'}
+          subtitle="Compra de Monedas RepuesTop"
+          fileName={`${receiptFor.label}-recarga-${receiptFor.purchaseId}.pdf`}
+          onClose={() => setReceiptFor(null)}
+        />
+      )}
     </div>
   );
 }

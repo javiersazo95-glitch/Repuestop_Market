@@ -78,6 +78,10 @@ const TARGETS = {
   '/(seller)/retiros': () => PROFILE('retiros'),
   '/seller/retiros': () => PROFILE('retiros'),
 
+  // El monedero de Monedas. En la app es una pantalla propia (`app/wallet.tsx`); en la web vive
+  // dentro del panel de anuncios, que es donde estan el saldo y el historial.
+  '/wallet': () => PROFILE('anuncios'),
+
   '/perfil': () => ROUTES.profile,
   '/(seller)': () => ROUTES.profile,
   '/seller': () => ROUTES.profile,
