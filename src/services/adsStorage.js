@@ -23,7 +23,8 @@ import {
   getFichasBalanceApi, getFichasMovimientosApi, getFichasPacksApi, iniciarRecargaFichasApi,
   getAdAppointmentsApi, getMyAppointmentsApi, createAdAppointmentApi,
   updateAdAppointmentStatusApi, sendAppointmentSummaryEmailsApi,
-  createUserNotificationApi, createProviderNotificationApi
+  createUserNotificationApi, createProviderNotificationApi,
+  getDatosDocumentoRecargaApi,
 } from './api';
 import {
   adaptAd, adaptAds, toAdRequestPayload,
@@ -369,11 +370,33 @@ export async function fetchTokenTransactions({ signal } = {}) {
  * creia al cliente que habia pagado. Ahora esta funcion no acredita nada -- crea la intencion
  * y el usuario se va a Flow; las Monedas entran cuando el webhook confirma.
  */
-export async function iniciarRecargaApi(packId, origin = 'ANUNCIOS') {
+export async function iniciarRecargaApi(packId, origin = 'ANUNCIOS', documento = null) {
   return iniciarRecargaFichasApi({
     packId,
     origen: String(origin || 'ANUNCIOS').toUpperCase(),
+    // El backend valida el RUT con modulo 11 antes de cobrar y corta si no sirve: una factura
+    // que no se puede emitir despues del cobro obliga a devolver la plata.
+    ...(documento?.tipo ? { tipoDocumento: documento.tipo } : {}),
+    ...(documento?.rut ? { facturaRut: documento.rut } : {}),
+    ...(documento?.razonSocial ? { facturaRazonSocial: documento.razonSocial } : {}),
+    ...(documento?.giro ? { facturaGiro: documento.giro } : {}),
   });
+}
+
+/**
+ * Con que datos llega prellenado el paso del documento tributario.
+ *
+ * Lo arma el backend y no cada cliente: juntar la tienda con el perfil del comprador por
+ * separado en la web y en la app es como terminan sugiriendo cosas distintas.
+ */
+export async function fetchDatosDocumentoRecarga({ signal } = {}) {
+  const datos = await getDatosDocumentoRecargaApi({ signal });
+  return {
+    tipoSugerido: datos?.tipoSugerido === 'FACTURA' ? 'FACTURA' : 'BOLETA',
+    rut: datos?.rut || '',
+    razonSocial: datos?.razonSocial || '',
+    giro: datos?.giro || '',
+  };
 }
 
 /**

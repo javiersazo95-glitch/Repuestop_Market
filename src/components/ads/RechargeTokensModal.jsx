@@ -4,7 +4,8 @@ import {
   X, CheckCircle2, ShieldCheck,
   AlertCircle
 } from 'lucide-react';
-import { fetchTokenPacks, iniciarRecargaApi, adErrorMessage } from '../../services/adsStorage';
+import { fetchTokenPacks, fetchDatosDocumentoRecarga, iniciarRecargaApi, adErrorMessage } from '../../services/adsStorage';
+import { formatRut, isValidRut } from '../../services/adapters';
 import RepuestopCoin from './RepuestopCoin';
 
 export default function RechargeTokensModal({
@@ -20,6 +21,13 @@ export default function RechargeTokensModal({
   const [selectedPack, setSelectedPack] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  /**
+   * Que documento tributario pide el comprador. Arranca en FACTURA cuando tiene tienda con RUT
+   * registrado: quien recarga Monedas casi siempre es un vendedor con giro que necesita el
+   * credito fiscal del IVA, y dejarlo en boleta por descuido le cuesta plata.
+   */
+  const [documento, setDocumento] = useState({ tipo: 'BOLETA', rut: '', razonSocial: '', giro: '' });
+  const [rutTocado, setRutTocado] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -40,7 +48,28 @@ export default function RechargeTokensModal({
     return () => { cancelled = true; };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const controller = new AbortController();
+    fetchDatosDocumentoRecarga({ signal: controller.signal })
+      .then((datos) => setDocumento({
+        tipo: datos.tipoSugerido,
+        rut: datos.rut ? formatRut(datos.rut) : '',
+        razonSocial: datos.razonSocial,
+        giro: datos.giro,
+      }))
+      // Que no se pueda prellenar no debe impedir recargar: queda en boleta y el usuario elige.
+      .catch(() => {});
+    return () => controller.abort();
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const pideFactura = documento.tipo === 'FACTURA';
+  // Se valida con modulo 11 en el cliente para avisar mientras escribe; el backend lo vuelve a
+  // validar antes de cobrar, que es donde de verdad importa.
+  const rutValido = !pideFactura || isValidRut(documento.rut);
+  const faltaRazonSocial = pideFactura && !documento.razonSocial.trim();
 
   /**
    * Registra la compra en el backend, que es quien acredita las Monedas.
@@ -55,10 +84,15 @@ export default function RechargeTokensModal({
   const handlePay = async (e) => {
     e.preventDefault();
     if (!selectedPack) return;
+    if (pideFactura && !isValidRut(documento.rut)) {
+      setRutTocado(true);
+      setErrorMsg('Revisa el RUT: no es válido.');
+      return;
+    }
     setIsProcessing(true);
     setErrorMsg('');
     try {
-      const { url } = await iniciarRecargaApi(selectedPack.id, origin);
+      const { url } = await iniciarRecargaApi(selectedPack.id, origin, documento);
       if (!url) throw new Error('La pasarela no devolvio una URL de pago.');
       // Redireccion dura, no window.open: es la misma pestana la que va a Flow y vuelve.
       window.location.href = url;
@@ -147,10 +181,82 @@ export default function RechargeTokensModal({
                 })}
               </div>
 
+              {/* El documento se pregunta ANTES de cobrar: una factura mal pedida obliga a
+                  anular y re-emitir, y si el RUT no sirve hay que devolver la plata. */}
+              <div className="recharge-section-heading">
+                <span>2</span>
+                <div>
+                  <strong>Documento tributario</strong>
+                  <small>Con factura puedes usar el IVA como crédito fiscal</small>
+                </div>
+              </div>
+              <div className="recharge-doc-choice" role="radiogroup" aria-label="Tipo de documento">
+                {['BOLETA', 'FACTURA'].map((tipo) => (
+                  <button
+                    type="button"
+                    key={tipo}
+                    role="radio"
+                    aria-checked={documento.tipo === tipo}
+                    className={`recharge-doc-option ${documento.tipo === tipo ? 'selected' : ''}`}
+                    onClick={() => setDocumento((prev) => ({ ...prev, tipo }))}
+                  >
+                    <strong>{tipo === 'BOLETA' ? 'Boleta' : 'Factura'}</strong>
+                    <small>
+                      {tipo === 'BOLETA'
+                        ? 'Para consumidor final'
+                        : 'Necesita tu RUT de empresa'}
+                    </small>
+                  </button>
+                ))}
+              </div>
+
+              {pideFactura && (
+                <div className="recharge-doc-fields">
+                  <label className="recharge-doc-field">
+                    <span>RUT *</span>
+                    <input
+                      type="text"
+                      inputMode="text"
+                      value={documento.rut}
+                      onChange={(e) => setDocumento((prev) => ({ ...prev, rut: formatRut(e.target.value) }))}
+                      onBlur={() => setRutTocado(true)}
+                      placeholder="12.345.678-9"
+                      aria-invalid={rutTocado && !rutValido}
+                      className={rutTocado && !rutValido ? 'is-invalid' : ''}
+                    />
+                    {rutTocado && !rutValido && (
+                      <small className="recharge-doc-error">
+                        {documento.rut.trim()
+                          ? 'Ese RUT no es válido: revisa el dígito verificador.'
+                          : 'El RUT es obligatorio para emitir una factura.'}
+                      </small>
+                    )}
+                  </label>
+                  <label className="recharge-doc-field">
+                    <span>Razón social *</span>
+                    <input
+                      type="text"
+                      value={documento.razonSocial}
+                      onChange={(e) => setDocumento((prev) => ({ ...prev, razonSocial: e.target.value }))}
+                      placeholder="Repuestos SpA"
+                    />
+                  </label>
+                  <label className="recharge-doc-field">
+                    <span>Giro</span>
+                    <input
+                      type="text"
+                      value={documento.giro}
+                      onChange={(e) => setDocumento((prev) => ({ ...prev, giro: e.target.value }))}
+                      placeholder="Venta de repuestos automotrices"
+                    />
+                  </label>
+                </div>
+              )}
+
               {/* El medio de pago se elige DENTRO de Flow: ofrecerlo aca era pura
                   decoracion, porque ninguna de las tres opciones cobraba nada. */}
               <div className="recharge-section-heading">
-                <span>2</span>
+                <span>3</span>
                 <div>
                   <strong>Pago seguro con Flow</strong>
                   <small>Te llevamos a Flow para pagar con Webpay, tarjeta o transferencia</small>
@@ -194,7 +300,9 @@ export default function RechargeTokensModal({
                 <button
                   type="submit"
                   className="btn-recharge-submit"
-                  disabled={isProcessing || !selectedPack}
+                  // Con una factura incompleta el backend cortaria igual, pero recien al
+                  // apretar: es mejor que el boton diga que falta algo antes de intentarlo.
+                  disabled={isProcessing || !selectedPack || !rutValido || faltaRazonSocial}
                 >
                   {isProcessing ? 'Procesando recarga…' : `Pagar ${selectedPack?.priceFormatted ?? ''}`}
                 </button>
