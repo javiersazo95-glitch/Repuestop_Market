@@ -2841,7 +2841,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             <div className="delete-account-icon" aria-hidden="true"><AlertTriangle size={25} /></div>
             <h2 id="delete-account-title">¿Eliminar tu cuenta?</h2>
             <p>
-              Esta acción desactivará tu cuenta y eliminará tus credenciales de acceso. Esta operación no se puede deshacer.
+              Cerraremos y anonimizaremos tu cuenta solo si no tienes operaciones pendientes. Si hay pedidos pagados, despachos, mediaciones o retiros en curso, mantendremos tu acceso para que puedas resolverlos y te explicaremos qué falta antes de permitir el cierre.
             </p>
             {deleteAccountError && (
               <div className="auth-alert alert-error"><span>{deleteAccountError}</span></div>
