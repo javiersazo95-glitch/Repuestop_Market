@@ -29,18 +29,21 @@ export default function HeaderWalletButton({ variant = 'header' }) {
   const [celebrar, setCelebrar] = useState(false);
 
   // Al volver de la pasarela, la pagina puente del backend aterriza en
-  // `/perfil/anuncios?status=success`. Ahi se abre el monedero con la lluvia de monedas:
+  // `/perfil/anuncios?recarga=exitosa`. Ahi se abre el monedero con la lluvia de monedas:
   // es el momento en que el usuario ve que su plata se convirtio en algo, y hasta ahora
   // volvia a una pantalla cualquiera sin ninguna senal de que la recarga habia entrado.
   useEffect(() => {
     if (!isLoggedIn || celebracionReclamada) return;
+    // Parametro PROPIO de la recarga, no el `status=success` que trae tambien el retorno de
+    // un pedido: este boton vive en la cabecera global, asi que con el parametro compartido
+    // celebraba tambien al volver de comprar repuestos.
     const params = new URLSearchParams(window.location.search);
-    if (params.get('status') !== 'success') return;
+    if (params.get('recarga') !== 'exitosa') return;
     celebracionReclamada = true;
     setCelebrar(true);
     setIsOpen(true);
     // Se limpia el parametro para que recargar la pagina no vuelva a celebrar.
-    params.delete('status');
+    params.delete('recarga');
     const query = params.toString();
     window.history.replaceState({}, '', window.location.pathname + (query ? `?${query}` : ''));
   }, [isLoggedIn]);
