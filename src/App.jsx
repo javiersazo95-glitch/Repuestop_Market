@@ -6,6 +6,7 @@ import { MarketplaceProvider } from './context/MarketplaceContext';
 import AppRoutes from './routes/AppRoutes';
 import TermsReacceptanceModal from './components/TermsReacceptanceModal';
 import SystemErrorPage from './components/SystemErrorPage';
+import CookieConsentBanner from './components/CookieConsentBanner';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,6 +72,7 @@ export default function App() {
               {/* Va por encima de las rutas: el perfil vive fuera de AppLayout y el aviso
                   tiene que alcanzarlo igual. */}
               <TermsReacceptanceModal />
+              <CookieConsentBanner />
             </MarketplaceProvider>
           </AuthProvider>
         </BrowserRouter>

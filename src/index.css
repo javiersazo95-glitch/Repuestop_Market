@@ -66,6 +66,34 @@ input, select, textarea {
   padding: 0 20px;
 }
 
+/* Consentimiento de cookies: las categorías opcionales no se seleccionan por defecto. */
+.cookie-consent { position: fixed; right: 24px; bottom: 24px; z-index: 10050; width: min(600px, calc(100vw - 32px)); padding: 20px 52px 18px 20px; border: 1px solid #c8d7ed; border-radius: 16px; color: #20314d; background: #fff; box-shadow: 0 20px 55px rgba(5, 24, 57, .26); }
+.cookie-consent-copy { display: flex; align-items: flex-start; gap: 12px; }
+.cookie-consent-copy > svg { width: 28px; height: 28px; flex: 0 0 auto; padding: 6px; border-radius: 8px; color: #fff; background: #126aff; }
+.cookie-consent h2 { margin: 0 0 5px; color: #0d2145; font-size: 15px; }
+.cookie-consent p { margin: 0; color: #52647d; font-size: 12px; line-height: 1.55; }
+.cookie-consent p a { color: #075bd8; font-weight: 700; }
+.cookie-consent-options { display: grid; gap: 8px; margin: 16px 0 0; padding: 12px; border: 1px solid #d9e4f3; border-radius: 10px; }
+.cookie-consent-options legend { padding: 0 5px; color: #304663; font-size: 12px; font-weight: 800; }
+.cookie-consent-options label { display: flex; align-items: flex-start; gap: 8px; color: #5a6b82; font-size: 11px; line-height: 1.4; }
+.cookie-consent-options input { width: 15px; height: 15px; margin-top: 1px; accent-color: #0969ed; }
+.cookie-consent-options strong { display: block; color: #20314d; }
+.cookie-consent-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.cookie-consent-actions button, .help-cookie-settings { min-height: 34px; padding: 0 12px; border-radius: 8px; font-size: 12px; font-weight: 800; }
+.cookie-consent-settings, .cookie-consent-reject { border: 1px solid #bfd0e8; color: #365372; background: #fff; }
+.cookie-consent-settings { margin-right: auto; display: inline-flex; align-items: center; gap: 6px; }
+.cookie-consent-accept { color: #fff; background: #0969ed; }
+.cookie-consent-close { position: absolute; top: 10px; right: 10px; display: grid; width: 28px; height: 28px; place-items: center; border-radius: 7px; color: #50647e; }
+.cookie-consent-close:hover { color: #0d2145; background: #edf4fc; }
+.help-cookie-settings { display: inline-flex; align-items: center; gap: 7px; margin-top: 16px; color: #075bd8; background: #eaf3ff; }
+
+@media (max-width: 600px) {
+  .cookie-consent { right: 16px; bottom: 16px; padding: 18px 42px 16px 16px; }
+  .cookie-consent-actions { justify-content: stretch; }
+  .cookie-consent-settings { width: 100%; margin-right: 0; }
+  .cookie-consent-reject, .cookie-consent-accept { flex: 1; }
+}
+
 /* Shared contextual visual — used instead of mismatched stock photos
    anywhere a category/product/part needs a visual (grid, cards, cart, etc).
    With a reference photo it shows the photo + a small colored icon badge;
@@ -2309,6 +2337,8 @@ input, select, textarea {
 .footer-trust-points svg { width: 50px; height: 50px; padding: 13px; flex: 0 0 auto; border-radius: 9px; color: #fff; background: linear-gradient(145deg, #12418c, #06307d); box-shadow: 0 7px 18px rgba(0, 67, 185, .24); }
 .footer-trust-points span { display: flex; flex-direction: column; color: #cfd8e7; font-size: 12.5px; line-height: 1.35; }
 .footer-trust-points strong { margin-bottom: 3px; color: #fff; font-size: 13px; }
+.footer-trust-points .footer-flow-point { align-items: center; }
+.footer-flow-point > b { min-width: 50px; color: #17d1c4; font-size: 30px; letter-spacing: -2px; line-height: 1; }
 
 
 .reference-footer-column h2 { position: relative; min-height: 62px; margin: 12px 0 23px; display: flex; align-items: flex-start; gap: 12px; color: #fff; font-family: var(--font-display); font-size: 18px; font-weight: 700; white-space: nowrap; }
@@ -2319,10 +2349,6 @@ input, select, textarea {
 .reference-footer-column li a > svg:first-child, .reference-footer-column li button > svg:first-child { width: 26px; color: #126aff; stroke-width: 1.7; }
 .reference-footer-column li a:hover, .reference-footer-column li button:hover { color: #6da5ff; }
 .reference-footer-column .footer-link-chevron { justify-self: end; width: 15px; color: #a8b4c7; }
-.flow-payment { display: flex; align-items: center; gap: 14px; }
-.flow-payment > b { color: #17d1c4; font-size: 36px; letter-spacing: -2px; }
-.flow-payment span { display: flex; flex-direction: column; gap: 3px; color: #d7e0ed; font-size: 11px; line-height: 1.3; }
-.flow-payment strong { color: #fff; font-size: 12px; }
 .payment-methods { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 20px; }
 .payment-methods b { padding: 7px 6px; border-radius: 3px; color: #08265d; background: #fff; font-family: Arial, sans-serif; font-size: 9px; }
 .payment-methods b:nth-child(2) { color: #f8b400; background: #1d1d1d; }
@@ -2340,12 +2366,6 @@ input, select, textarea {
 .footer-socials a { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(153, 174, 205, .45); border-radius: 50%; color: #fff; }
 .footer-socials a:hover { border-color: #2780ff; color: #2780ff; }
 .footer-socials svg { width: 18px; }
-
-.reference-footer-seals { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px 30px; padding: 18px 0 22px; border-top: 1px solid rgba(141, 163, 194, .14); }
-.footer-seal { display: flex; align-items: center; gap: 12px; }
-.footer-seal > svg { width: 34px; height: 34px; padding: 8px; flex: 0 0 auto; border: 1px solid rgba(19, 91, 199, .55); border-radius: 9px; color: #2378ff; }
-.footer-seal span { display: flex; flex-direction: column; gap: 3px; color: #d7e0ed; font-size: 11px; line-height: 1.3; }
-.footer-seal strong { color: #fff; font-size: 12px; }
 
 /* Compact variant: preserve the footer's five-column structure without demo content. */
 .reference-footer { margin-top: 40px; padding-top: 30px; }
@@ -2382,7 +2402,6 @@ input, select, textarea {
   .reference-footer-brand { grid-column: auto; }
   .reference-footer-column h2 { margin-top: 8px; }
   .reference-footer-bottom nav { flex-wrap: wrap; justify-content: center; gap: 12px 20px; }
-  .reference-footer-seals { flex-direction: column; align-items: flex-start; gap: 14px; }
 }
 
 /* ==========================================================================
@@ -9993,6 +10012,19 @@ input, select, textarea {
 
 .catalog-showcase-comuna-control { position: relative; }
 
+.catalog-text-search { position: relative; height: 42px; min-width: 245px; display: inline-flex; align-items: center; gap: 8px; padding: 0 11px; border: 1.5px solid #cbd5e1; border-radius: 22px; color: #0066ff; background: #fff; box-shadow: 0 2px 8px rgba(15, 23, 42, .04); }
+.catalog-text-search:focus-within { border-color: #0066ff; box-shadow: 0 0 0 3px rgba(0, 102, 255, .12); }
+.catalog-text-search input { min-width: 0; flex: 1; border: 0; outline: 0; color: #0f172a; background: transparent; font-size: 13px; font-weight: 700; }
+.catalog-text-search input::placeholder { color: #94a3b8; font-weight: 600; }
+.catalog-text-search > button { display: grid; width: 22px; height: 22px; place-items: center; border-radius: 50%; color: #64748b; }
+.catalog-text-search > button:hover { color: #0f172a; background: #eaf1fb; }
+.catalog-text-search-suggestions { position: absolute; z-index: 40; top: calc(100% + 7px); right: 0; left: 0; overflow: hidden; margin: 0; padding: 5px; border: 1px solid #d8e3f1; border-radius: 11px; background: #fff; box-shadow: 0 14px 30px rgba(22, 49, 86, .18); list-style: none; }
+.catalog-text-search-suggestions li + li { border-top: 1px solid #edf1f6; }
+.catalog-text-search-suggestions button { width: 100%; padding: 8px 9px; display: grid; gap: 2px; border-radius: 7px; text-align: left; }
+.catalog-text-search-suggestions button:hover { background: #edf5ff; }
+.catalog-text-search-suggestions span { color: #76869d; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .35px; }
+.catalog-text-search-suggestions strong { overflow: hidden; color: #1d2d47; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+
 .directory-vehicle-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .directory-patente-search, .directory-active-vehicle, .directory-my-comuna {
   min-height: 40px; display: inline-flex; align-items: center; gap: 7px;
@@ -12580,7 +12612,8 @@ input, select, textarea {
   .catalog-showcase-carousel-header { align-items: stretch; }
   .catalog-showcase-patente-control,
   .catalog-showcase-patente-control .catalog-quick-patente-bar,
-  .catalog-showcase-vehicle-filter { width: 100%; }
+  .catalog-showcase-vehicle-filter,
+  .catalog-text-search { width: 100%; }
   .catalog-showcase-patente-control .patente-quick-input { min-width: 0; flex: 1; width: auto; }
   .catalog-showcase-vehicle-filter { justify-content: space-between; }
   .catalog-showcase-vehicle-filter > span { overflow: hidden; text-overflow: ellipsis; }
@@ -13405,7 +13438,19 @@ input, select, textarea {
 /* La cabecera de la tienda reusa las clases del carrusel del catálogo pero sin carrusel:
    se le quitan los márgenes que reservaban ese espacio. */
 .store-catalog-toolbar-wrapper { margin-bottom: 0; }
-.store-catalog-toolbar-wrapper .catalog-showcase-carousel-header { margin-bottom: 0; }
+.store-catalog-toolbar-wrapper .catalog-showcase-carousel-header { justify-content: flex-end; margin-bottom: 0; }
+.store-catalog-filter-controls, .catalog-showcase-search-controls { width: min(100%, 1080px); display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
+.catalog-post-category-filters { margin: 22px 0 4px auto; }
+.store-catalog-filter-controls > .catalog-text-search, .catalog-showcase-search-controls > .catalog-text-search { flex: 1 1 360px; }
+.catalog-vehicle-location-filters { min-width: 0; display: flex; align-items: center; gap: 12px; padding-left: 16px; border-left: 1px solid #d9e3f0; }
+.store-catalog-filter-controls .catalog-showcase-patente-control { flex: 0 1 auto; }
+.store-catalog-filter-controls .catalog-showcase-comuna-control, .catalog-vehicle-location-filters .catalog-showcase-comuna-control { display: flex; align-items: center; }
+.store-catalog-results-heading { margin: 0 0 18px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.store-catalog-results-heading h2 { margin: 0 0 3px; color: #0f172a; font-size: 17px; font-weight: 800; }
+.store-catalog-results-heading p { margin: 0; color: #64748b; font-size: 13px; }
+.store-catalog-filter-feedback { display: block; margin-top: 7px; color: #52647c; font-size: 12px; }
+.store-catalog-filter-feedback strong { color: #0f172a; }
+.store-catalog-sort { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; margin-top: 23px; color: #475569; font-size: 13px; font-weight: 700; }
 .store-active-vehicle-inline { margin-top: 12px; }
 .store-public-profile-wrapper .patent-filter-box-bar { display: grid; grid-template-columns: minmax(300px, .82fr) minmax(520px, 1.45fr); gap: 22px; padding: 21px 28px; border-color: #d9e3f1; border-radius: 16px; box-shadow: 0 9px 22px rgba(21, 49, 87, .07); }
 .store-public-profile-wrapper .patent-filter-header-title { min-width: 0; padding-right: 22px; border-right: 1px solid #e1e7f0; }
@@ -13457,6 +13502,13 @@ input, select, textarea {
   .store-public-profile-wrapper .store-metrics-row > div:nth-child(2) { border-right: 0; }
   .store-public-profile-wrapper .store-metrics-row > div { min-height: 58px; }
   .store-public-profile-wrapper .patent-filter-box-bar, .store-public-profile-wrapper .store-inventory-control-bar { padding: 18px; }
+  .store-catalog-filter-controls, .catalog-showcase-search-controls { width: 100%; align-items: stretch; flex-direction: column; }
+  .catalog-vehicle-location-filters { width: 100%; padding-left: 0; border-top: 1px solid #d9e3f0; border-left: 0; padding-top: 12px; flex-wrap: wrap; }
+  .store-catalog-filter-controls .catalog-showcase-patente-control,
+  .store-catalog-filter-controls .catalog-showcase-comuna-control { width: 100%; }
+  .store-catalog-filter-controls .catalog-showcase-comuna-control .btn-comuna-toggle-pill { width: 100%; justify-content: center; }
+  .store-catalog-results-heading { align-items: stretch; flex-direction: column; }
+  .store-catalog-sort { justify-content: space-between; margin-top: 0; }
   .store-inventory-search-row { grid-template-columns: 1fr; }
   .store-results-toolbar { align-items: stretch; flex-direction: column; }
   .store-results-toolbar label { justify-content: space-between; }
@@ -15029,15 +15081,21 @@ input, select, textarea {
 .store-cover-backdrop-img {
   position: absolute !important;
   inset: 0 !important;
+  z-index: 1 !important;
   width: 100% !important;
   height: 100% !important;
+  /* `cover` llena el 100% del ancho y alto del banner (recorta solo el excedente):
+     con las fotos panorámicas reales de las plantillas, esto es lo que hace que la
+     imagen se vea de borde a borde en la vista pública. */
   object-fit: cover !important;
-  /* El sujeto de las plantillas está en la banda central-alta: este encuadre evita
-     cortarlo en las más anchas. */
-  object-position: center 32% !important;
+  /* El contenido principal de las plantillas está centrado y algo más abajo del
+     medio: este encuadre evita cortarlo al recortar los costados. */
+  object-position: center 55% !important;
   opacity: 1 !important;
   display: block !important;
   pointer-events: none !important;
+  /* Realce de estudio: un punto más de contraste y saturación. */
+  filter: saturate(1.08) contrast(1.05) !important;
 }
 
 .store-cover-placeholder {
@@ -15051,12 +15109,14 @@ input, select, textarea {
 .store-cover-overlay {
   position: absolute !important;
   inset: 0 !important;
+  z-index: 2 !important;
   /* El nombre y las acciones ya van sobre una tarjeta de vidrio oscura, así que el velo
      solo tiene que unificar tonalmente las 6 plantillas y dar contraste a la barra
-     superior (Volver / Editar) y a la franja de métricas. Un scrim parejo suave + una
-     viñeta arriba y abajo: la imagen se sigue viendo con cualquiera de las 6. */
+     superior (Volver / Editar) y a la franja de métricas. Una viñeta radial suave
+     con el centro casi limpio deja la imagen visible y bien iluminada. */
   background:
-    linear-gradient(180deg, rgba(7, 18, 38, 0.55) 0%, rgba(7, 18, 38, 0.28) 26%, rgba(7, 18, 38, 0.28) 62%, rgba(7, 18, 38, 0.6) 100%) !important;
+    radial-gradient(120% 90% at 50% 42%, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 48%, rgba(3, 12, 28, 0.18) 100%),
+    linear-gradient(180deg, rgba(7, 18, 38, 0.5) 0%, rgba(7, 18, 38, 0.22) 26%, rgba(7, 18, 38, 0.22) 62%, rgba(7, 18, 38, 0.58) 100%) !important;
   pointer-events: none !important;
 }
 
@@ -15122,13 +15182,12 @@ input, select, textarea {
   justify-content: space-between !important;
   gap: 24px !important;
   width: 100% !important;
-  background: rgba(11, 28, 56, 0.88) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.18) !important;
-  border-radius: 20px !important;
+  /* Sin placa: antes era un rectángulo (opaco o vidrio) del ancho completo que
+     tapaba el banner sin importar la transparencia. Ahora la info flota directo
+     sobre la foto — el avatar, los botones y la tarjeta de calificación ya tienen
+     su propio fondo sólido, y el texto suelto usa un difuminado angosto detrás
+     (ver .store-info-details) en vez de una caja grande. */
   padding: 24px 30px !important;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4) !important;
 }
 
 .store-hero-left {
@@ -15181,6 +15240,13 @@ input, select, textarea {
   flex-direction: column !important;
   gap: 8px !important;
   color: #ffffff !important;
+  /* Difuminado angosto solo detrás del texto (no una caja del ancho completo):
+     se desvanece hacia los lados y arriba/abajo, así solo oscurece justo donde
+     hace falta contraste y el resto del banner queda despejado. */
+  background: radial-gradient(120% 150% at 0% 50%, rgba(2, 8, 20, 0.55) 0%, rgba(2, 8, 20, 0.32) 45%, rgba(2, 8, 20, 0) 80%) !important;
+  padding: 14px 26px 14px 4px !important;
+  margin: -14px 0 -14px -4px !important;
+  border-radius: 14px !important;
 }
 
 .store-title-badge-row {
@@ -15196,6 +15262,7 @@ input, select, textarea {
   color: #ffffff !important;
   margin: 0 !important;
   letter-spacing: -0.01em !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65) !important;
 }
 
 .badge-official-store {
@@ -15211,21 +15278,23 @@ input, select, textarea {
 }
 
 .store-description-text {
-  color: rgba(255, 255, 255, 0.9) !important;
+  color: rgba(255, 255, 255, 0.94) !important;
   font-size: 13.5px !important;
   line-height: 1.4 !important;
   margin: 0 !important;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6) !important;
 }
 
 .store-subtitle-meta {
   display: flex !important;
   align-items: center !important;
   gap: 10px !important;
-  color: rgba(255, 255, 255, 0.85) !important;
+  color: rgba(255, 255, 255, 0.92) !important;
   font-size: 12.5px !important;
   font-weight: 500 !important;
   margin: 0 !important;
   flex-wrap: wrap !important;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6) !important;
 }
 
 .meta-item {
@@ -15395,7 +15464,10 @@ input, select, textarea {
   border: 1px solid #e2e8f0 !important;
   box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06) !important;
   display: grid !important;
-  grid-template-columns: repeat(4, 1fr) !important;
+  /* minmax(0, 1fr) en vez de 1fr: sin el 0 explícito, un item con contenido ancho
+     (como el carrusel de marcas) fuerza a la columna a crecer por encima de su
+     cuarto del ancho y deforma toda la franja. */
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   padding: 16px 20px !important;
 }
 
@@ -15406,6 +15478,9 @@ input, select, textarea {
   border-right: 1px solid #e2e8f0 !important;
   padding-right: 16px !important;
   padding-left: 16px !important;
+  /* Deja que el carrusel de marcas se encoja/recorte en vez de forzar la columna
+     del grid (repeat(4, 1fr)) a crecer con el contenido. */
+  min-width: 0 !important;
 }
 
 .metric-strip-item:first-child {
@@ -15417,6 +15492,26 @@ input, select, textarea {
   padding-right: 8px !important;
 }
 
+@media (max-width: 640px) {
+  /* 4 columnas parejas dejaban ~76px por celda: apenas cabían el ícono y la
+     etiqueta, sin espacio real para el carrusel de marcas (ni para el resto).
+     En pantallas chicas se pasa a 2 columnas para que cada celda respire. */
+  .store-metrics-strip-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    row-gap: 14px !important;
+  }
+  .metric-strip-item {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+  .metric-strip-item:nth-child(2n) {
+    border-right: none !important;
+  }
+  .metric-strip-item:nth-child(2n+1) {
+    padding-left: 0 !important;
+  }
+}
+
 .metric-icon-box {
   color: #0066ff !important;
   flex-shrink: 0 !important;
@@ -15425,6 +15520,41 @@ input, select, textarea {
 .metric-text-box {
   display: flex !important;
   flex-direction: column !important;
+  min-width: 0 !important;
+}
+
+/* Carrusel de marcas especialistas: una sola fila que se desliza en vez de
+   envolver a varias líneas (eso deformaba la franja blanca de métricas). */
+.specialist-brands-track {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 6px !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  scroll-snap-type: x proximity !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  padding-bottom: 2px !important;
+}
+
+.specialist-brands-track::-webkit-scrollbar {
+  display: none !important;
+}
+
+.specialist-brand-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex: 0 0 auto !important;
+  scroll-snap-align: start !important;
+  padding: 3px 10px !important;
+  border-radius: 999px !important;
+  background: #eff6ff !important;
+  border: 1px solid #dbeafe !important;
+  color: #0f172a !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
 }
 
 .metric-text-box small {

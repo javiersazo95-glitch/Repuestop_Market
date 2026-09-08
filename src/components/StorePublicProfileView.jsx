@@ -19,11 +19,11 @@ import { getAddressesApi, getStoreProductsApi, getStoreProfileApi, searchVehicle
 import { adaptPage, adaptProduct, adaptStore, adaptVehicle } from '../services/adapters';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useMarketplace } from '../context/MarketplaceContext';
+import TextSearchWithSuggestions from './TextSearchWithSuggestions';
 
 // El backend acota el tamaño de página a 100; esta vista filtra y pagina en cliente.
 const STORE_PRODUCTS_FETCH_SIZE = 100;
 const STORE_FILTER_BRANDS = ['TODAS', 'Toyota', 'Nissan', 'Hyundai', 'Chevrolet', 'Kia', 'Mazda', 'Suzuki', 'Mitsubishi'];
-const STORE_FILTER_CONDITIONS = ['TODOS', 'Nuevo OEM Original', 'Nuevo Alternativo Homologado', 'Usado Certificado Desarmaduría'];
 
 export default function StorePublicProfileView({
   store,
@@ -46,10 +46,11 @@ export default function StorePublicProfileView({
   const [coverError, setCoverError] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [purchaseType, setPurchaseType] = useState('TODOS'); // 'TODOS' | 'DIRECTA' | 'COTIZACION'
+  const [onlyQuoteOnly, setOnlyQuoteOnly] = useState(false);
 
   const [selectedCategory, setSelectedCategory] = useState('TODAS');
-  const [selectedCondition, setSelectedCondition] = useState('TODOS');
+  const [selectedSubcategory, setSelectedSubcategory] = useState('TODAS');
+  const [selectedCondition, setSelectedCondition] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('TODAS');
   const [onlyCompatible, setOnlyCompatible] = useState(!!initialActiveVehicle);
   const [sortBy, setSortBy] = useState('relevancia');
@@ -63,6 +64,7 @@ export default function StorePublicProfileView({
 
   const [shareFeedback, setShareFeedback] = useState('');
   const [openFilterSections, setOpenFilterSections] = useState({ purchase: true, category: true, condition: true });
+  const [expandedCategories, setExpandedCategories] = useState({});
   const { isStoreSaved, toggleStore } = useSavedMarketplaceItems(user?.userId ?? user?.id);
 
   // Pagination state
@@ -124,6 +126,10 @@ export default function StorePublicProfileView({
   const reviewCount = Number(currentStore?.reviewCount ?? 0);
   const responseRate = currentStore?.responseRate != null ? Number(currentStore.responseRate) : null;
   const shippingMethods = parseShippingMethods(currentStore?.metodosEnvio);
+  const specialistBrands = (currentStore?.marcasEspecialistas || [])
+    .map((brand) => typeof brand === 'string' ? brand : (brand?.nombre || brand?.name || ''))
+    .filter(Boolean);
+  const hasSpecialistBrands = specialistBrands.length > 0;
   const isVerified = currentStore?.esOficial || rating >= 4.5;
   const isOwnStore = Boolean(
     onEditStore ||
@@ -158,17 +164,25 @@ export default function StorePublicProfileView({
 
   const storeProducts = productsPageData?.items || [];
   const storeProductsTotal = productsPageData?.total || 0;
+  const textSearchSuggestions = [
+    ...NAVIGATION_CATEGORIES.map((category) => ({ label: category.nombre, type: 'category' })),
+    ...storeProducts.map((product) => ({ label: product.titulo, type: 'product' })),
+  ].filter((item) => item.label);
   const productsError = productsQueryError ? (productsQueryError.message || 'No se pudo cargar el catálogo de esta tienda.') : null;
 
 
   const handleResetFilters = () => {
     setSelectedCategory('TODAS');
-    setSelectedCondition('TODOS');
+    setSelectedSubcategory('TODAS');
+    setSelectedCondition('');
     setSelectedBrand('TODAS');
-    setPurchaseType('TODOS');
+    setOnlyQuoteOnly(false);
     setOnlyCompatible(false);
     setSearchQuery('');
     setInputValue('');
+    setPatentInput('');
+    setFilterByMyComuna(false);
+    setComunaNotice('');
     setSortBy('relevancia');
     setCurrentPage(1);
   };
@@ -242,7 +256,7 @@ export default function StorePublicProfileView({
   // Reset to page 1 when any filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCategory, selectedCondition, selectedBrand, onlyCompatible, activeVehicle, sortBy, itemsPerPage, filterByMyComuna, myComunaNombre]);
+  }, [searchQuery, selectedCategory, selectedSubcategory, selectedCondition, selectedBrand, onlyCompatible, activeVehicle, sortBy, itemsPerPage, filterByMyComuna, myComunaNombre]);
 
   // Filtering Logic
   const filteredProducts = storeProducts.filter((prod) => {
@@ -265,8 +279,13 @@ export default function StorePublicProfileView({
       if (!matchCatId && !matchCatNombre) return false;
     }
 
+    if (selectedSubcategory !== 'TODAS') {
+      const productSubcategory = String(prod.subcategoria || prod.subcategoriaNombre || '').toLowerCase();
+      if (productSubcategory !== selectedSubcategory.toLowerCase()) return false;
+    }
+
     // 3. Technical Condition
-    if (selectedCondition !== 'TODOS' && prod.condicion && prod.condicion !== selectedCondition) {
+    if (selectedCondition && prod.condicion && prod.condicion !== selectedCondition) {
       return false;
     }
 
@@ -285,10 +304,7 @@ export default function StorePublicProfileView({
     }
 
     // 5. Purchase Type / Modalidad Filter (Precio Directo vs Solo Cotización)
-    if (purchaseType === 'DIRECTA') {
-      const isQuoteOnly = prod.soloCotizacion || !prod.precio || prod.precio === 0;
-      if (isQuoteOnly) return false;
-    } else if (purchaseType === 'COTIZACION') {
+    if (onlyQuoteOnly) {
       const isQuoteOnly = prod.soloCotizacion || !prod.precio || prod.precio === 0;
       if (!isQuoteOnly) return false;
     }
@@ -303,6 +319,19 @@ export default function StorePublicProfileView({
 
     return true;
   });
+
+  // El contador es una respuesta a una búsqueda, no un dato que deba ocupar
+  // espacio al abrir el catálogo sin ninguna condición aplicada.
+  const hasAppliedFilters = Boolean(
+    searchQuery.trim() ||
+    (activeVehicle && onlyCompatible) ||
+    filterByMyComuna ||
+    onlyQuoteOnly ||
+    selectedCategory !== 'TODAS' ||
+    selectedSubcategory !== 'TODAS' ||
+    selectedCondition !== 'TODOS' ||
+    selectedBrand !== 'TODAS'
+  );
 
   // Sorting Logic
   const sortedProducts = [...filteredProducts].sort((a, b) => {
@@ -501,10 +530,11 @@ export default function StorePublicProfileView({
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Bottom Metrics Card Strip */}
-        <div className="container store-metrics-strip-container">
-          <div className="store-metrics-strip-card">
+      {/* Bottom Metrics Card Strip */}
+      <div className="container store-metrics-strip-container">
+        <div className="store-metrics-strip-card">
             <div className="metric-strip-item">
               <span className="metric-icon-box"><Package size={22} /></span>
               <div className="metric-text-box">
@@ -531,6 +561,23 @@ export default function StorePublicProfileView({
               </div>
             )}
 
+            {hasSpecialistBrands && (
+              <div className="metric-strip-item">
+                <span className="metric-icon-box"><Tag size={22} /></span>
+                <div className="metric-text-box">
+                  <small>Marcas especialistas</small>
+                  {/* Carrusel horizontal: con muchas marcas, unirlas en un solo texto
+                      (join) envolvía a varias líneas y deformaba la franja blanca.
+                      Ahora cada marca es un chip en una fila que se desliza. */}
+                  <div className="specialist-brands-track" title={specialistBrands.join(', ')}>
+                    {specialistBrands.map((brand, index) => (
+                      <span key={`${brand}-${index}`} className="specialist-brand-chip">{brand}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {currentStore.verificadoFecha && (
               <div className="metric-strip-item">
                 <span className="metric-icon-box"><ShieldCheck size={22} /></span>
@@ -542,69 +589,43 @@ export default function StorePublicProfileView({
             )}
           </div>
         </div>
-      </div>
 
       <div className="container catalog-main-container store-profile-search-stack">
-        {/* 2. Cabecera al estilo del catálogo: título, búsqueda por patente y "Mi comuna". */}
+        {/* Filtros rápidos del inventario. El título vive junto a los resultados. */}
         <section className="catalog-showcase-carousel-wrapper store-catalog-toolbar-wrapper" aria-label="Buscar en esta tienda">
           <div className="catalog-showcase-carousel-header">
-            <div>
-              <h2>Repuestos de {currentStore.nombre}</h2>
-              <p>Ingresa tu patente para ver solo lo compatible con tu vehículo en esta tienda.</p>
-            </div>
-
-            <div className="catalog-showcase-patente-control">
-              {activeVehicle ? (
-                <div className="catalog-showcase-vehicle-filter">
-                  <Car size={18} />
-                  <span><strong>{activeVehicle.marca} {activeVehicle.modelo}</strong>{activeVehicle.patente && activeVehicle.patente !== 'MANUAL' ? ` · ${activeVehicle.patente}` : ''}</span>
-                  <button
-                    type="button"
-                    onClick={() => { setActiveVehicle(null); setOnlyCompatible(false); setInputValue(''); setPatentInput(''); }}
-                    title="Quitar filtro de vehículo"
-                  >
-                    <X size={15} /> Quitar filtro
-                  </button>
+            <div className="store-catalog-filter-controls">
+              <TextSearchWithSuggestions
+                value={searchQuery}
+                onChange={setSearchQuery}
+                suggestions={textSearchSuggestions}
+                placeholder="Buscar en esta tienda"
+              />
+              <div className="catalog-vehicle-location-filters">
+                <div className="catalog-showcase-patente-control">
+                {activeVehicle ? (
+                  <div className="catalog-showcase-vehicle-filter">
+                    <Car size={18} />
+                    <span><strong>{activeVehicle.marca} {activeVehicle.modelo}</strong>{activeVehicle.patente && activeVehicle.patente !== 'MANUAL' ? ` · ${activeVehicle.patente}` : ''}</span>
+                    <button type="button" onClick={() => { setActiveVehicle(null); setOnlyCompatible(false); setInputValue(''); setPatentInput(''); }} title="Quitar filtro de vehículo"><X size={15} /> Quitar filtro</button>
+                  </div>
+                ) : (
+                  <div className="catalog-quick-patente-bar">
+                    <CarFront size={18} className="patente-icon" />
+                    <input type="text" placeholder="Ingresa tu patente (ej: ABCD-12)" value={inputValue} onChange={(e) => { setInputValue(e.target.value.toUpperCase()); if (patentError) setPatentError(''); }} onKeyDown={(e) => e.key === 'Enter' && handleUnifiedSearch(inputValue)} className="patente-quick-input" maxLength={8} />
+                    <button type="button" className="btn-quick-patente-submit" onClick={() => handleUnifiedSearch(inputValue)} disabled={patentSearching}>{patentSearching ? <RefreshCw size={15} className="spin-icon" /> : 'Buscar'}</button>
+                    {patentError && <span className="quick-patente-error">{patentError}</span>}
+                  </div>
+                )}
                 </div>
-              ) : (
-                <div className="catalog-quick-patente-bar">
-                  <CarFront size={18} className="patente-icon" />
-                  <input
-                    type="text"
-                    placeholder="Ingresa tu patente (ej: ABCD-12)"
-                    value={inputValue}
-                    onChange={(e) => {
-                      setInputValue(e.target.value.toUpperCase());
-                      if (patentError) setPatentError('');
-                    }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleUnifiedSearch(inputValue)}
-                    className="patente-quick-input"
-                    maxLength={8}
-                  />
-                  <button
-                    type="button"
-                    className="btn-quick-patente-submit"
-                    onClick={() => handleUnifiedSearch(inputValue)}
-                    disabled={patentSearching}
-                  >
-                    {patentSearching ? <RefreshCw size={15} className="spin-icon" /> : 'Buscar'}
+                <div className="catalog-showcase-comuna-control">
+                  <button type="button" className={`btn-comuna-toggle-pill ${filterByMyComuna ? 'active' : ''}`} onClick={handleToggleComunaFilter} disabled={comunaLookupStatus === 'loading'}>
+                    <MapPin size={17} />
+                    <span>{comunaLookupStatus === 'loading' ? 'Buscando comuna…' : filterByMyComuna ? `En ${myComunaNombre || 'mi comuna'}` : 'Mi comuna'}</span>
                   </button>
-                  {patentError && <span className="quick-patente-error">{patentError}</span>}
+                  {comunaNotice && <span className="quick-patente-error">{comunaNotice}</span>}
                 </div>
-              )}
-            </div>
-
-            <div className="catalog-showcase-comuna-control">
-              <button
-                type="button"
-                className={`btn-comuna-toggle-pill ${filterByMyComuna ? 'active' : ''}`}
-                onClick={handleToggleComunaFilter}
-                disabled={comunaLookupStatus === 'loading'}
-              >
-                <MapPin size={17} />
-                <span>{comunaLookupStatus === 'loading' ? 'Buscando comuna…' : filterByMyComuna ? `En ${myComunaNombre || 'mi comuna'}` : 'Mi comuna'}</span>
-              </button>
-              {comunaNotice && <span className="quick-patente-error">{comunaNotice}</span>}
+              </div>
             </div>
           </div>
 
@@ -624,32 +645,7 @@ export default function StorePublicProfileView({
           )}
         </section>
 
-        {/* 3. Barra de control: resumen + orden, igual que el catálogo. */}
-        <div className="catalog-control-bar">
-          <div className="control-bar-left-group">
-            <div className="results-count-badge">
-              {activeVehicle && onlyCompatible ? (
-                <span><strong>{sortedProducts.length}</strong> repuestos compatibles con tu <strong>{activeVehicle.marca} {activeVehicle.modelo}</strong></span>
-              ) : (
-                <span><strong>{sortedProducts.length}</strong> repuestos de {currentStore.nombre}</span>
-              )}
-            </div>
-          </div>
-
-          <div className="control-bar-right-group">
-            <div className="sort-dropdown-box">
-              <span className="sort-label">Ordenar por:</span>
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sort-select-input">
-                <option value="relevancia">Recomendados</option>
-                <option value="recientes">Más recientes</option>
-                <option value="precio-asc">Precio: menor a mayor</option>
-                <option value="precio-desc">Precio: mayor a menor</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* 4. 2-Column Content Layout (Sidebar + Grid) */}
+        {/* 3. Layout de dos columnas: filtros y resultados de la tienda. */}
         <div className="catalog-content-grid store-catalog-main-content-grid">
           {/* Left Technical Filters Sidebar */}
           <aside className="catalog-sidebar-filters catalog-advanced-filter-panel store-advanced-filter-panel">
@@ -664,34 +660,12 @@ export default function StorePublicProfileView({
               </div>
             </div>
 
-            {/* Filter 0: Modalidad de Compra */}
-            <div className={`filter-section-group ${openFilterSections.purchase ? 'is-open' : 'is-collapsed'}`}>
-              <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('purchase')} aria-expanded={openFilterSections.purchase}>
-                <span className="filter-group-label"><ShoppingCart size={13} /> Modalidad de Compra</span><ChevronDown size={16} />
-              </button>
-              {openFilterSections.purchase && <div className="filter-options-list">
-                <button
-                  className={`filter-option-btn ${purchaseType === 'TODOS' ? 'active' : ''}`}
-                  onClick={() => setPurchaseType('TODOS')}
-                >
-                  <span className="filter-choice-dot">{purchaseType === 'TODOS' && <CheckCircle2 size={18} />}</span>
-                  <span className="filter-option-copy"><strong>Todos los Repuestos</strong><small>Ver todo el inventario</small></span>
-                </button>
-                <button
-                  className={`filter-option-btn ${purchaseType === 'DIRECTA' ? 'active' : ''}`}
-                  onClick={() => setPurchaseType('DIRECTA')}
-                >
-                  <span className="filter-choice-dot">{purchaseType === 'DIRECTA' && <CheckCircle2 size={18} />}</span>
-                  <span className="filter-option-copy"><strong>Con Precio Directo</strong><small>Compra inmediata</small></span>
-                </button>
-                <button
-                  className={`filter-option-btn ${purchaseType === 'COTIZACION' ? 'active' : ''}`}
-                  onClick={() => setPurchaseType('COTIZACION')}
-                >
-                  <span className="filter-choice-dot">{purchaseType === 'COTIZACION' && <CheckCircle2 size={18} />}</span>
-                  <span className="filter-option-copy"><strong>Solo Bajo Cotización</strong><small>Requiere evaluación</small></span>
-                </button>
-              </div>}
+            {/* Misma modalidad de compra que el catálogo general. */}
+            <div className="filter-section-group">
+              <label className="checkbox-filter-label">
+                <input type="checkbox" checked={onlyQuoteOnly} onChange={(event) => setOnlyQuoteOnly(event.target.checked)} />
+                <span><strong>Solo a cotizar</strong><small><ShoppingCart size={12} /> Piezas sin precio publicado, que se cotizan con la tienda.</small></span>
+              </label>
             </div>
 
             {/* Filter 1: Categorías */}
@@ -708,17 +682,49 @@ export default function StorePublicProfileView({
                   <span className="filter-option-copy"><strong>Todas las Categorías</strong><small>Explorar el catálogo completo</small></span>
                   {selectedCategory === 'TODAS' && <CheckCircle2 size={14} className="check-active" />}
                 </button>
-                {NAVIGATION_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.id}
-                    className={`filter-option-btn ${selectedCategory === cat.id ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory(selectedCategory === cat.id ? 'TODAS' : cat.id)}
-                  >
-                    <CategoryIconTile iconName={cat.iconName} color={cat.color} size={9} className="filter-category-icon" />
-                    <span className="filter-option-copy"><strong>{cat.nombre}</strong></span>
-                    {selectedCategory === cat.id ? <CheckCircle2 size={18} className="check-active" /> : <ChevronRight size={16} className="filter-option-chevron" />}
-                  </button>
-                ))}
+                {NAVIGATION_CATEGORIES.map((cat) => {
+                  const isSelected = selectedCategory === cat.id;
+                  const isExpanded = expandedCategories[cat.id] || isSelected;
+                  return (
+                    <div className="filter-category-tree" key={cat.id}>
+                      <div className={`filter-option-btn ${isSelected ? 'active' : ''}`}>
+                        <button
+                          type="button"
+                          className="filter-category-main-action"
+                          onClick={() => { setSelectedCategory(isSelected ? 'TODAS' : cat.id); setSelectedSubcategory('TODAS'); }}
+                        >
+                          <CategoryIconTile iconName={cat.iconName} color={cat.color} size={9} className="filter-category-icon" />
+                          <span className="filter-option-copy"><strong>{cat.nombre}</strong></span>
+                        </button>
+                        {Array.isArray(cat.subcategories) && cat.subcategories.length > 0 && (
+                          <button
+                            type="button"
+                            className="filter-subcategory-toggle"
+                            aria-label={`Mostrar subcategorías de ${cat.nombre}`}
+                            aria-expanded={isExpanded}
+                            onClick={() => {
+                              setExpandedCategories((current) => ({ ...current, [cat.id]: !isExpanded }));
+                              if (!isExpanded) { setSelectedCategory(cat.id); setSelectedSubcategory('TODAS'); }
+                            }}
+                          >
+                            <ChevronDown size={16} className={isExpanded ? 'is-open' : ''} />
+                          </button>
+                        )}
+                      </div>
+                      {isExpanded && Array.isArray(cat.subcategories) && (
+                        <div className="filter-subcategory-branch">
+                          {cat.subcategories.map((subcategory) => {
+                            const isSubSelected = selectedSubcategory === subcategory;
+                            return <button type="button" key={subcategory} className={`filter-subcategory-option ${isSubSelected ? 'active' : ''}`} onClick={() => { setSelectedCategory(cat.id); setSelectedSubcategory(isSubSelected ? 'TODAS' : subcategory); }}>
+                              <span className="filter-subcategory-checkbox" aria-hidden="true" />
+                              <span className="filter-subcategory-text">{subcategory}</span>
+                            </button>;
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>}
             </div>
 
@@ -728,14 +734,18 @@ export default function StorePublicProfileView({
                 <span className="filter-group-label"><ShieldCheck size={13} /> Condición Técnica</span><ChevronDown size={16} />
               </button>
               {openFilterSections.condition && <div className="filter-options-list">
-                {STORE_FILTER_CONDITIONS.map((cond, index) => (
+                <button className={`filter-option-btn ${selectedCondition === '' ? 'active' : ''}`} onClick={() => setSelectedCondition('')}>
+                  <span className="filter-choice-dot">{selectedCondition === '' && <CheckCircle2 size={18} />}</span>
+                  <span className="filter-option-copy"><strong>Original y Alternativo</strong><small>Todo el catálogo de la tienda</small></span>
+                </button>
+                {['ORIGINAL', 'ALTERNATIVO'].map((cond) => (
                   <button
                     key={cond}
                     className={`filter-option-btn ${selectedCondition === cond ? 'active' : ''}`}
-                    onClick={() => setSelectedCondition(cond)}
+                    onClick={() => setSelectedCondition(selectedCondition === cond ? '' : cond)}
                   >
-                    <span className="filter-condition-icon">{index === 0 ? <CheckCircle2 size={14} /> : index === 1 ? <Package size={14} /> : index === 2 ? <ShieldCheck size={14} /> : <RotateCcw size={14} />}</span>
-                    <span className="filter-option-copy"><strong>{cond === 'TODOS' ? 'Todos los Estados' : cond}</strong><small>{cond === 'TODOS' ? 'Mostrar todas las opciones' : index === 1 ? 'Producto 100% original' : index === 2 ? 'Alternativa de calidad' : 'Revisado y garantizado'}</small></span>
+                    <span className="filter-choice-dot">{selectedCondition === cond && <CheckCircle2 size={18} />}</span>
+                    <span className="filter-option-copy"><strong>{cond === 'ORIGINAL' ? 'Original' : 'Alternativo'}</strong><small>{cond === 'ORIGINAL' ? 'Pieza nueva del fabricante' : 'Pieza nueva equivalente y homologada'}</small></span>
                     {selectedCondition === cond && <CheckCircle2 size={14} className="check-active" />}
                   </button>
                 ))}
@@ -758,6 +768,28 @@ export default function StorePublicProfileView({
 
           {/* Right Parts Grid */}
           <main className="catalog-parts-main">
+            <header className="store-catalog-results-heading">
+              <div>
+                <h2>Repuestos de {currentStore.nombre}</h2>
+                <p>Explora el inventario disponible de esta tienda o filtra por la patente de tu vehículo.</p>
+                {hasAppliedFilters && <span className="store-catalog-filter-feedback">
+                  {activeVehicle && onlyCompatible ? (
+                    <><strong>{sortedProducts.length}</strong> repuestos compatibles con tu <strong>{activeVehicle.marca} {activeVehicle.modelo}</strong></>
+                  ) : (
+                    <><strong>{sortedProducts.length}</strong> repuestos encontrados</>
+                  )}
+                </span>}
+              </div>
+              <label className="store-catalog-sort">
+                <span>Ordenar por:</span>
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sort-select-input">
+                  <option value="relevancia">Recomendados</option>
+                  <option value="recientes">Más recientes</option>
+                  <option value="precio-asc">Precio: menor a mayor</option>
+                  <option value="precio-desc">Precio: mayor a menor</option>
+                </select>
+              </label>
+            </header>
             {productsLoading ? (
               <div className="directory-empty-state">
                 <Package size={56} className="empty-icon-gray" />

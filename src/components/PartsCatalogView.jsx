@@ -22,6 +22,7 @@ import { adaptPage, adaptProduct, adaptCompatibleOffersPage, adaptVehicle } from
 import { normalizePlate, sanitizePlateInput, isValidPlate } from '../utils/vehicleLookup';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../hooks/useFavorites';
+import TextSearchWithSuggestions from './TextSearchWithSuggestions';
 
 const normalizeNameKey = (value) => String(value || '').normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -738,6 +739,45 @@ export default function PartsCatalogView({
     setSelectedSubcategory('TODAS');
   };
 
+  const renderCatalogSearchControls = () => (
+    <div className="catalog-showcase-search-controls catalog-post-category-filters">
+      <TextSearchWithSuggestions
+        value={searchQuery}
+        onChange={setSearchQuery}
+        suggestions={[
+          ...NAVIGATION_CATEGORIES.map((category) => ({ label: category.nombre, type: 'category' })),
+          ...products.map((product) => ({ label: product.titulo, type: 'product' })),
+        ].filter((item) => item.label)}
+        placeholder="Buscar repuestos"
+      />
+      <div className="catalog-vehicle-location-filters">
+        <div className="catalog-showcase-patente-control">
+          {activeVehicle ? (
+            <div className="catalog-showcase-vehicle-filter">
+              <Car size={18} />
+              <span><strong>{activeVehicle.marca} {activeVehicle.modelo}</strong>{activeVehicle.patente && activeVehicle.patente !== 'MANUAL' ? ` · ${activeVehicle.patente}` : ''}</span>
+              <button type="button" onClick={() => { setActiveVehicle(null); onVehicleChange?.(null); setOnlyCompatible(false); setPatentInput(''); }} title="Quitar filtro de vehículo"><X size={15} /> Quitar filtro</button>
+            </div>
+          ) : (
+            <div className="catalog-quick-patente-bar">
+              <CarFront size={18} className="patente-icon" />
+              <input type="text" placeholder="Ingresa tu patente (ej: ABCD-12)" value={patentInput} onChange={(e) => { const sanitized = sanitizePlateInput(e.target.value); setPatentInput(sanitized); if (patentError) setPatentError(''); }} onKeyDown={(e) => e.key === 'Enter' && handleUnifiedSearch(patentInput)} className="patente-quick-input" maxLength={8} />
+              <button type="button" className="btn-quick-patente-submit" onClick={() => handleUnifiedSearch(patentInput)} disabled={patentSearching}>{patentSearching ? <RefreshCw size={15} className="spin-icon" /> : 'Buscar'}</button>
+              {patentError && <span className="quick-patente-error">{patentError}</span>}
+            </div>
+          )}
+        </div>
+        <div className="catalog-showcase-comuna-control">
+          <button type="button" className={`btn-comuna-toggle-pill ${filterByMyComuna ? 'active' : ''}`} onClick={handleToggleComunaFilter} disabled={comunaLookupStatus === 'loading'}>
+            <MapPin size={17} />
+            <span>{comunaLookupStatus === 'loading' ? 'Buscando comuna…' : filterByMyComuna ? `En ${myComunaNombre || 'mi comuna'}` : 'Mi comuna'}</span>
+          </button>
+          {comunaNotice && <span className="quick-patente-error">{comunaNotice}</span>}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="parts-catalog-view-wrapper">
       <div className="container catalog-main-container">
@@ -746,59 +786,6 @@ export default function PartsCatalogView({
               <div>
                 <h2>¿Qué repuesto necesitas?</h2>
                 <p>Ingresa tu patente para ver solo lo compatible con tu vehículo, o elige una categoría para empezar a filtrar.</p>
-              </div>
-              <div className="catalog-showcase-patente-control">
-                {activeVehicle ? (
-                  <div className="catalog-showcase-vehicle-filter">
-                    <Car size={18} />
-                    <span><strong>{activeVehicle.marca} {activeVehicle.modelo}</strong>{activeVehicle.patente && activeVehicle.patente !== 'MANUAL' ? ` · ${activeVehicle.patente}` : ''}</span>
-                    <button
-                      type="button"
-                      onClick={() => { setActiveVehicle(null); onVehicleChange?.(null); setOnlyCompatible(false); setPatentInput(''); }}
-                      title="Quitar filtro de vehículo"
-                    >
-                      <X size={15} /> Quitar filtro
-                    </button>
-                  </div>
-                ) : (
-                  <div className="catalog-quick-patente-bar">
-                    <CarFront size={18} className="patente-icon" />
-                    <input
-                      type="text"
-                      placeholder="Ingresa tu patente (ej: ABCD-12)"
-                      value={patentInput}
-                      onChange={(e) => {
-                        const sanitized = sanitizePlateInput(e.target.value);
-                        setPatentInput(sanitized);
-                        if (patentError) setPatentError('');
-                      }}
-                      onKeyDown={(e) => e.key === 'Enter' && handleUnifiedSearch(patentInput)}
-                      className="patente-quick-input"
-                      maxLength={8}
-                    />
-                    <button
-                      type="button"
-                      className="btn-quick-patente-submit"
-                      onClick={() => handleUnifiedSearch(patentInput)}
-                      disabled={patentSearching}
-                    >
-                      {patentSearching ? <RefreshCw size={15} className="spin-icon" /> : 'Buscar'}
-                    </button>
-                    {patentError && <span className="quick-patente-error">{patentError}</span>}
-                  </div>
-                )}
-              </div>
-              <div className="catalog-showcase-comuna-control">
-                <button
-                  type="button"
-                  className={`btn-comuna-toggle-pill ${filterByMyComuna ? 'active' : ''}`}
-                  onClick={handleToggleComunaFilter}
-                  disabled={comunaLookupStatus === 'loading'}
-                >
-                  <MapPin size={17} />
-                  <span>{comunaLookupStatus === 'loading' ? 'Buscando comuna…' : filterByMyComuna ? `En ${myComunaNombre || 'mi comuna'}` : 'Mi comuna'}</span>
-                </button>
-                {comunaNotice && <span className="quick-patente-error">{comunaNotice}</span>}
               </div>
             </div>
             <div className="category-showcase-carousel">
@@ -840,6 +827,7 @@ export default function PartsCatalogView({
                 <ArrowRight size={20} />
               </button>
             </div>
+            {renderCatalogSearchControls()}
         </section>
 
         {/* 2. Top Control Bar (Summary & Sort). Sin contexto no hay resultados que resumir ni ordenar. */}
