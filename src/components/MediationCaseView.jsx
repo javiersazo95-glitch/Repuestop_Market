@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, Download, FileText, Image as ImageIcon,
-  Loader2, Lock, Maximize2, MessageSquare, Package, Paperclip, RefreshCw, Scale, Send, ShieldAlert, Store, User, X,
+  AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, Download, FileText, Image as ImageIcon,
+  Loader2, Lock, Maximize2, MessageSquare, Package, Paperclip, RefreshCw, Scale, Send, ShieldAlert, Store, User, Wallet, X,
 } from 'lucide-react';
 import {
   escalateMediationApi, getMediationChatApi, resolveMediationApi,
@@ -57,6 +57,93 @@ function formatTime(value) {
 function formatDate(value) {
   if (!value) return 'Sin fecha';
   return new Date(value).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function refundStatusLabel(estado) {
+  switch (String(estado || '').toUpperCase()) {
+    case 'REEMBOLSADO': return 'Reembolso acreditado';
+    case 'REEMBOLSO_SOLICITADO': return 'Solicitado a la pasarela (Flow)';
+    case 'REEMBOLSO_RECHAZADO':
+    case 'REEMBOLSO_ERROR': return 'En revisión con nuestro equipo';
+    default: return 'En proceso';
+  }
+}
+
+function buyerRefundSteps(chat, codigo) {
+  const monto = Number(chat?.montoReembolso || 0);
+  const pct = Number(chat?.porcentajeReembolso) || 100;
+  const montoTxt = `$${monto.toLocaleString('es-CL')}`;
+  return [
+    `El reembolso del ${pct}% de tu compra en la tienda (${montoTxt}) fue solicitado a la pasarela de pagos (Flow).`,
+    'Se acreditará automáticamente en el mismo medio de pago que usaste al comprar, en un plazo estimado de 5 a 10 días hábiles.',
+    `Puedes seguir el estado en "Mis pedidos" → detalle del pedido ${codigo}.`,
+    'Cuando el reembolso se concrete recibirás un comprobante por correo electrónico.',
+  ];
+}
+
+/**
+ * Disparador compacto (una fila) que abre el detalle de la resolución al centro de
+ * la pantalla. Pensado para no ocupar espacio en móvil: la resolución y los pasos
+ * del reembolso viven en el modal, no en el hilo.
+ */
+function ResolutionDetailButton({ chat, mode, onOpen }) {
+  const hasRefund = mode === 'buyer' && chat?.resolucionFavor === 'COMPRADOR' && Number(chat?.montoReembolso || 0) > 0;
+  if (!chat?.motivoResolucion && !hasRefund) return null;
+  return (
+    <button type="button" className="dispute-resolution-trigger" onClick={onOpen}>
+      <span className="dispute-resolution-trigger-icon">{hasRefund ? <Wallet size={14} /> : <Scale size={14} />}</span>
+      <span className="dispute-resolution-trigger-copy">
+        <strong>{hasRefund ? 'Resolución y seguimiento del reembolso' : 'Ver resolución de la disputa'}</strong>
+        {hasRefund && <small>{refundStatusLabel(chat?.estadoReembolso)}</small>}
+      </span>
+      <ChevronRight size={16} />
+    </button>
+  );
+}
+
+function ResolutionDetailDialog({ chat, mode, codigo, onClose }) {
+  if (typeof document === 'undefined') return null;
+  const hasRefund = mode === 'buyer' && chat?.resolucionFavor === 'COMPRADOR' && Number(chat?.montoReembolso || 0) > 0;
+  const steps = hasRefund ? buyerRefundSteps(chat, codigo) : [];
+  return createPortal(
+    <div className="dispute-dialog-backdrop" onClick={onClose}>
+      <section
+        className="dispute-dialog dispute-claim-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Resolución de la disputa"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header>
+          <div>
+            <small>Pedido {codigo}</small>
+            <h2>Resolución de la disputa</h2>
+          </div>
+          <button type="button" aria-label="Cerrar" onClick={onClose}><X size={16} /></button>
+        </header>
+        <div className="dispute-claim-dialog-body">
+          {chat?.motivoResolucion && (
+            <div className="dispute-claim-field">
+              <span>Veredicto</span>
+              <p style={{ whiteSpace: 'pre-line' }}>{chat.motivoResolucion}</p>
+            </div>
+          )}
+          {hasRefund && (
+            <div className="dispute-claim-field">
+              <span>Seguimiento de tu reembolso</span>
+              <span className="dispute-refund-status">{refundStatusLabel(chat?.estadoReembolso)}</span>
+              <ol className="dispute-mediator-steps" style={{ marginTop: 8 }}>
+                {steps.map((step, index) => (
+                  <li key={index}><span>{index + 1}</span>{step}</li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </div>
+      </section>
+    </div>,
+    document.body
+  );
 }
 
 
@@ -188,6 +275,7 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
   // Modal con el motivo y la descripción del reclamo (se abre desde la cabecera del chat,
   // igual que "Ver detalle del reclamo" en la app móvil).
   const [showClaimDetail, setShowClaimDetail] = useState(false);
+  const [showResolutionDetail, setShowResolutionDetail] = useState(false);
   // Resumen del caso plegado dentro del hilo del mediador (motivo, evidencia).
   const [mediatorSummaryOpen, setMediatorSummaryOpen] = useState(false);
 
@@ -209,10 +297,13 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
 
   const threadRef = useRef(null);
 
-  const imageCount = useMemo(
-    () => messages.filter((m) => Boolean(m.imagenUrl)).length,
+  const chatImages = useMemo(
+    () => messages
+      .filter((m) => Boolean(m.imagenUrl))
+      .map((m) => ({ url: resolveMediaUrl(m.imagenUrl) })),
     [messages]
   );
+  const imageCount = chatImages.length;
 
   // `quiet` refresca sin desmontar la vista: se usa al cambiar de solapa, al
   // volver de una accion y con el boton Actualizar.
@@ -434,7 +525,7 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
       return;
     }
     if (dialog === 'resolve' && !reason.trim()) {
-      setFormError('Contá cómo se resolvió para dejarlo registrado en el expediente.');
+      setFormError('Cuenta cómo se resolvió para dejarlo registrado en el expediente.');
       return;
     }
 
@@ -556,18 +647,26 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
           <CheckCircle2 size={16} />
           <div>
             <strong>{estado === 'RESUELTA' ? 'Disputa resuelta' : 'Caso cerrado'}</strong>
-            {chat?.motivoResolucion && <p>{chat.motivoResolucion}</p>}
+            {chat?.motivoResolucion && <p className="dispute-resolved-banner-reason">{chat.motivoResolucion}</p>}
+            {(chat?.motivoResolucion
+              || (mode === 'buyer' && chat?.resolucionFavor === 'COMPRADOR' && Number(chat?.montoReembolso || 0) > 0)) && (
+              <button type="button" className="dispute-resolved-banner-link" onClick={() => setShowResolutionDetail(true)}>
+                Ver resolución completa
+                {mode === 'buyer' && chat?.resolucionFavor === 'COMPRADOR' && Number(chat?.montoReembolso || 0) > 0
+                  ? ' y seguimiento del reembolso' : ''}
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      {/* Acciones de la disputa directa, arriba del hilo. "¿Necesitás ayuda?" abre solicitar
+      {/* Acciones de la disputa directa, arriba del hilo. "¿Necesitas ayuda?" abre solicitar
           mediador; al confirmarlo este chat queda archivado y pasa a ser la pestaña "Chat". */}
       {!threadLocked && (
         <div className="dispute-chat-actions">
           <button type="button" onClick={() => openDialog('escalate')}>
             <span className="dispute-chat-action-icon is-help"><Scale size={16} /></span>
-            <span>¿Necesitás ayuda?</span>
+            <span>¿Necesitas ayuda?</span>
           </button>
           <button type="button" onClick={() => openDialog('resolve')}>
             <span className="dispute-chat-action-icon is-resolve"><CheckCircle2 size={16} /></span>
@@ -584,86 +683,149 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
             </p>
           )}
 
-          <div className="dispute-thread" ref={threadRef}>
-              {messages.length === 0 ? (
-                <p className="dispute-thread-empty">
-                  <MessageSquare size={20} />
-                  <strong>Todavía no hay mensajes</strong>
-                  <span>Escribí abajo para contarle a {mode === 'buyer' ? 'el vendedor' : 'el comprador'} qué pasó y buscar una solución.</span>
-                </p>
-              ) : messages.map((message) => {
-                if (message.tipo === 'system') {
-                  return <p key={message.id} className="dispute-system-note">{message.texto}</p>;
-                }
-                const mine = Number(message.emisorId) === Number(user?.userId ?? user?.id);
-                return (
-                  <div key={message.id} className={`dispute-msg ${mine ? 'is-mine' : ''}`}>
-                    <span className="dispute-msg-author">{mine ? 'Tú' : (participantName || 'Contraparte')}</span>
-                    <div className="dispute-msg-body">
-                      {message.imagenUrl && (
-                        <button
-                          type="button"
-                          className="quote-ws-image-open"
-                          onClick={() => setViewerImage(resolveMediaUrl(message.imagenUrl))}
-                          title="Ver imagen completa"
-                        >
-                          <img src={resolveMediaUrl(message.imagenUrl)} alt="Adjunto del mensaje" />
-                          <span><Maximize2 size={15} /></span>
-                        </button>
-                      )}
-                      {message.texto && <p>{message.texto}</p>}
-                    </div>
-                    <time>{formatTime(message.createdAt)}</time>
+          {/* Mismo layout que el hilo del mediador: guía + reclamo a la izquierda,
+              chat acotado al centro, fotos a la derecha. */}
+          <div className="dispute-mediator-layout">
+            <aside className="dispute-mediator-rail is-guide">
+              <ResolutionDetailButton chat={chat} mode={mode} onOpen={() => setShowResolutionDetail(true)} />
+              <div className="dispute-rail-card">
+                <h4><MessageSquare size={13} /> Chat directo</h4>
+                <p>Aquí te pones de acuerdo con {mode === 'buyer' ? 'el vendedor' : 'el comprador'}. Si no llegan a una solución, puedes sumar un mediador de RepuesTop.</p>
+              </div>
+
+              <div className="dispute-rail-card">
+                <h4><FileText size={13} /> El reclamo</h4>
+                <dl className="dispute-summary-fields">
+                  <div className="dispute-summary-field">
+                    <dt>Motivo del reclamo</dt>
+                    <dd>{chat?.motivo ? claimReasonLabel(chat.motivo) : 'No informado'}</dd>
                   </div>
-                );
-              })}
+                  <div className="dispute-summary-field">
+                    <dt>Detalle de lo ocurrido</dt>
+                    <dd className="is-detail">{chat?.descripcion || 'Sin detalle registrado'}</dd>
+                  </div>
+                </dl>
+                {(chat?.motivo || chat?.descripcion) && (
+                  <button type="button" className="dispute-claim-link" onClick={() => setShowClaimDetail(true)}>
+                    <FileText size={13} /> Ver ficha completa
+                  </button>
+                )}
+              </div>
+
+              {!threadLocked && (
+                <div className="dispute-rail-card">
+                  <h4><CheckCircle2 size={13} /> Qué puedes hacer</h4>
+                  <ol className="dispute-mediator-steps">
+                    <li><span>1</span> Escríbele a la otra parte y propón cómo resolverlo.</li>
+                    <li><span>2</span> Adjunta fotos con el botón <b>Foto</b> si ayudan a explicar el problema.</li>
+                    <li><span>3</span> ¿Sin acuerdo? Usa <b>¿Necesitas ayuda?</b> para pedir un mediador.</li>
+                  </ol>
+                </div>
+              )}
+            </aside>
+
+            <div className="dispute-mediator-center">
+              <div className="dispute-thread" ref={threadRef}>
+                {messages.length === 0 ? (
+                  <p className="dispute-thread-empty">
+                    <MessageSquare size={20} />
+                    <strong>Todavía no hay mensajes</strong>
+                    <span>Escribe abajo para contarle a {mode === 'buyer' ? 'el vendedor' : 'el comprador'} qué pasó y buscar una solución.</span>
+                  </p>
+                ) : messages.map((message) => {
+                  if (message.tipo === 'system') {
+                    return <p key={message.id} className="dispute-system-note">{message.texto}</p>;
+                  }
+                  const mine = Number(message.emisorId) === Number(user?.userId ?? user?.id);
+                  return (
+                    <div key={message.id} className={`dispute-msg ${mine ? 'is-mine' : ''}`}>
+                      <span className="dispute-msg-author">{mine ? 'Tú' : (participantName || 'Contraparte')}</span>
+                      <div className="dispute-msg-body">
+                        {message.imagenUrl && (
+                          <button
+                            type="button"
+                            className="quote-ws-image-open"
+                            onClick={() => setViewerImage(resolveMediaUrl(message.imagenUrl))}
+                            title="Ver imagen completa"
+                          >
+                            <img src={resolveMediaUrl(message.imagenUrl)} alt="Adjunto del mensaje" />
+                            <span><Maximize2 size={15} /></span>
+                          </button>
+                        )}
+                        {message.texto && <p>{message.texto}</p>}
+                      </div>
+                      <time>{formatTime(message.createdAt)}</time>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {threadLocked ? (
+                <p className="dispute-thread-closed">
+                  <Lock size={14} /> {isPaused
+                    ? 'La conversación directa está archivada: el caso sigue con el mediador de RepuesTop.'
+                    : `Este caso está ${String(MEDIATION_STATUS_LABELS[estado] || 'cerrado').toLowerCase()}; ya no admite mensajes.`}
+                </p>
+              ) : (
+                <form className="dispute-composer" onSubmit={submitMessage}>
+                  <span className="dispute-composer-label"><MessageSquare size={12} /> Mensaje para {mode === 'buyer' ? 'el vendedor' : 'el comprador'}</span>
+                  {sendError && <span className="dispute-inline-error">{sendError}</span>}
+                  <ChatImagePreview
+                    previewUrl={pendingImagePreview}
+                    fileName={pendingImage?.name}
+                    fileSize={pendingImage?.size}
+                    hint="Se enviará al presionar Enviar"
+                    onRemove={discardPendingImage}
+                  />
+                  <textarea
+                    value={messageText}
+                    onChange={(event) => setMessageText(event.target.value)}
+                    placeholder="Escribe tu mensaje para la otra parte..."
+                    maxLength={MAX_CHAT_MESSAGE}
+                    rows={2}
+                  />
+                  <footer>
+                    <label
+                      className={`dispute-attach-btn ${imageCount >= MAX_CHAT_IMAGES ? 'is-disabled' : ''}`}
+                      title={imageCount >= MAX_CHAT_IMAGES ? `Máximo de ${MAX_CHAT_IMAGES} fotos alcanzado` : 'Adjuntar foto al chat'}
+                    >
+                      <ImageIcon size={14} color="#0066ff" />
+                      <span>{imageCount >= MAX_CHAT_IMAGES ? `Máx. ${MAX_CHAT_IMAGES}` : 'Foto'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleChatImageSelect}
+                        style={{ display: 'none' }}
+                        disabled={isSending || threadLocked || imageCount >= MAX_CHAT_IMAGES}
+                      />
+                    </label>
+                    <small>{messageText.length}/{MAX_CHAT_MESSAGE}</small>
+                    <button type="submit" disabled={isSending || (!messageText.trim() && !pendingImage)}>
+                      {isSending ? <Loader2 size={15} className="spin-icon" /> : <Send size={15} />} Enviar
+                    </button>
+                  </footer>
+                </form>
+              )}
             </div>
 
-            {threadLocked ? (
-              <p className="dispute-thread-closed">
-                <Lock size={14} /> {isPaused
-                  ? 'La conversación directa está archivada: el caso sigue con el mediador de RepuesTop.'
-                  : `Este caso está ${String(MEDIATION_STATUS_LABELS[estado] || 'cerrado').toLowerCase()}; ya no admite mensajes.`}
-              </p>
-            ) : (
-              <form className="dispute-composer" onSubmit={submitMessage}>
-                {sendError && <span className="dispute-inline-error">{sendError}</span>}
-                <ChatImagePreview
-                  previewUrl={pendingImagePreview}
-                  fileName={pendingImage?.name}
-                  fileSize={pendingImage?.size}
-                  hint="Se enviará al presionar Enviar"
-                  onRemove={discardPendingImage}
-                />
-                <textarea
-                  value={messageText}
-                  onChange={(event) => setMessageText(event.target.value)}
-                  placeholder="Escribe tu mensaje para la otra parte..."
-                  maxLength={MAX_CHAT_MESSAGE}
-                  rows={2}
-                />
-                <footer>
-                  <label
-                    className={`dispute-attach-btn ${imageCount >= MAX_CHAT_IMAGES ? 'is-disabled' : ''}`}
-                    title={imageCount >= MAX_CHAT_IMAGES ? `Máximo de ${MAX_CHAT_IMAGES} fotos alcanzado` : 'Adjuntar foto al chat'}
-                  >
-                    <ImageIcon size={14} color="#0066ff" />
-                    <span>{imageCount >= MAX_CHAT_IMAGES ? `Máx. ${MAX_CHAT_IMAGES}` : 'Foto'}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleChatImageSelect}
-                      style={{ display: 'none' }}
-                      disabled={isSending || threadLocked || imageCount >= MAX_CHAT_IMAGES}
-                    />
-                  </label>
-                  <small>{messageText.length}/{MAX_CHAT_MESSAGE}</small>
-                  <button type="submit" disabled={isSending || (!messageText.trim() && !pendingImage)}>
-                    {isSending ? <Loader2 size={15} className="spin-icon" /> : <Send size={15} />} Enviar
-                  </button>
-                </footer>
-              </form>
-            )}
+            <aside className="dispute-mediator-rail is-evidence">
+              <section className="dispute-mediator-evidence-panel">
+                <header>
+                  <span><ImageIcon size={14} /> Fotos del chat</span>
+                  <small>{chatImages.length} de {MAX_CHAT_IMAGES}</small>
+                </header>
+                {chatImages.length > 0 ? (
+                  <div className="dispute-mediator-evidence-lists">
+                    <EvidenceStrip title="Compartidas en esta conversación" items={chatImages} onOpenImage={setViewerImage} />
+                  </div>
+                ) : (
+                  <p className="dispute-mediator-evidence-empty">
+                    <ImageIcon size={14} /> Todavía no hay fotos. Adjunta con el botón <b>Foto</b> del mensaje.
+                  </p>
+                )}
+              </section>
+            </aside>
+          </div>
         </div>
       ) : (
         <div className="dispute-chat-body is-mediator">
@@ -676,97 +838,169 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
             <span className="dispute-thread-avatar is-mediator"><Scale size={15} /></span>
             <span className="dispute-mediator-summary-copy">
               <strong>Resumen de la mediación</strong>
-              <small>Solo vos y el mediador ven este hilo · {MEDIATION_STATUS_LABELS[estado] || 'En mediación'}</small>
+              <small>Solo tú y el mediador ven este hilo · {MEDIATION_STATUS_LABELS[estado] || 'En mediación'}</small>
             </span>
             <ChevronDown size={16} className={`dispute-mediator-summary-chevron ${mediatorSummaryOpen ? 'is-open' : ''}`} />
           </button>
 
           {mediatorSummaryOpen && (
             <div className="dispute-mediator-summary">
-              {chat?.motivoEscalacion && <p><b>Motivo:</b> {chat.motivoEscalacion}</p>}
-              {chat?.descripcionEscalacion && <p>{chat.descripcionEscalacion}</p>}
-              {chat?.escaladoPor && <p className="dispute-record-note">Solicitado por {chat.escaladoPor}</p>}
-              {(escalationEvidence.length > 0 || myEvidence.length > 0 || otherEvidence.length > 0) && (
-                <div className="dispute-mediator-summary-evidence">
-                  <EvidenceStrip title="Adjuntos del caso" items={escalationEvidence} onOpenImage={setViewerImage} />
-                  <EvidenceStrip title="Mis evidencias" items={myEvidence} onOpenImage={setViewerImage} />
-                  <EvidenceStrip title={`Aportada por ${mode === 'buyer' ? 'el vendedor' : 'el comprador'}`} items={otherEvidence} onOpenImage={setViewerImage} />
-                </div>
+              {(chat?.motivoEscalacion || chat?.descripcionEscalacion) ? (
+                <dl className="dispute-summary-fields">
+                  <div className="dispute-summary-field">
+                    <dt>Motivo de la solicitud</dt>
+                    <dd>{chat?.motivoEscalacion || 'No informado'}</dd>
+                  </div>
+                  <div className="dispute-summary-field">
+                    <dt>Detalle de lo ocurrido</dt>
+                    <dd className="is-detail">{chat?.descripcionEscalacion || 'Sin detalle registrado'}</dd>
+                  </div>
+                </dl>
+              ) : (
+                <p className="dispute-record-note">Sin resumen registrado todavía.</p>
+              )}
+              {chat?.escaladoPor && (
+                <p className="dispute-record-note">Solicitado por {chat.escaladoPor}</p>
               )}
             </div>
           )}
 
-            <div className="dispute-thread" ref={threadRef}>
-              {mediatorThread.length === 0 ? (
-                <p className="dispute-thread-empty">
-                  <MessageSquare size={20} />
-                  <strong>El mediador todavía no registró movimientos</strong>
-                  <span>Contale acá el problema y adjuntá evidencia si la tenés; un mediador de RepuesTop va a revisar el caso.</span>
-                </p>
-              ) : mediatorThread.map((entry) => {
-                if (LOG_ENTRY_TYPES.has(entry.type)) {
+          {/* Tres columnas: guía a la izquierda, chat acotado al centro, evidencia
+              a la derecha. En pantallas chicas se apilan en ese mismo orden. */}
+          <div className="dispute-mediator-layout">
+            <aside className="dispute-mediator-rail is-guide">
+              <ResolutionDetailButton chat={chat} mode={mode} onOpen={() => setShowResolutionDetail(true)} />
+              <div className="dispute-rail-card">
+                <h4><MessageSquare size={13} /> ¿Qué es este hilo?</h4>
+                <p>Es tu canal privado con el equipo de RepuesTop. La otra parte no ve lo que escribes ni lo que adjuntas aquí.</p>
+              </div>
+              {!mediatorClosed && (
+                <div className="dispute-rail-card">
+                  <h4><CheckCircle2 size={13} /> Qué tienes que hacer</h4>
+                  <ol className="dispute-mediator-steps">
+                    <li><span>1</span> Adjunta en el panel de evidencia las fotos que respalden tu reclamo.</li>
+                    <li><span>2</span> Cuéntale al mediador qué pasó en el mensaje de abajo.</li>
+                    <li><span>3</span> Espera la respuesta: el mediador revisa el caso y contesta en este hilo.</li>
+                  </ol>
+                </div>
+              )}
+              <p className="dispute-rail-tip">
+                <ShieldAlert size={12} /> Cuantas más pruebas aportes, más rápido se resuelve.
+              </p>
+            </aside>
+
+            <div className="dispute-mediator-center">
+              <div className="dispute-thread" ref={threadRef}>
+                {mediatorThread.length === 0 ? (
+                  <p className="dispute-thread-empty">
+                    <MessageSquare size={20} />
+                    <strong>El mediador todavía no registró movimientos</strong>
+                    <span>Cuéntale aquí el problema y adjunta evidencia si la tienes; un mediador de RepuesTop revisará el caso.</span>
+                  </p>
+                ) : mediatorThread.map((entry) => {
+                  if (LOG_ENTRY_TYPES.has(entry.type)) {
+                    return (
+                      <p key={entry.id} className="dispute-log-entry">
+                        <span>{formatDate(entry.date)} · {formatTime(entry.date)}</span>
+                        {entry.text}
+                      </p>
+                    );
+                  }
+                  const mine = entry.senderRole === ownRole;
                   return (
-                    <p key={entry.id} className="dispute-log-entry">
-                      <span>{formatDate(entry.date)} · {formatTime(entry.date)}</span>
-                      {entry.text}
-                    </p>
+                    <div key={entry.id} className={`dispute-msg ${mine ? 'is-mine' : ''}`}>
+                      <span className="dispute-msg-author">{mine ? 'Tú' : (entry.author || 'Mediador RepuesTop')}</span>
+                      <div className="dispute-msg-body"><p>{entry.text}</p></div>
+                      <time>{formatTime(entry.date)}</time>
+                    </div>
                   );
-                }
-                const mine = entry.senderRole === ownRole;
-                return (
-                  <div key={entry.id} className={`dispute-msg ${mine ? 'is-mine' : ''}`}>
-                    <span className="dispute-msg-author">{mine ? 'Tú' : (entry.author || 'Mediador RepuesTop')}</span>
-                    <div className="dispute-msg-body"><p>{entry.text}</p></div>
-                    <time>{formatTime(entry.date)}</time>
-                  </div>
-                );
-              })}
+                })}
+              </div>
+
+              {mediatorClosed ? (
+                <p className="dispute-thread-closed"><Lock size={14} /> El mediador cerró este hilo; ya no admite mensajes ni evidencia.</p>
+              ) : (
+                <form className="dispute-composer is-mediator" onSubmit={submitMediatorMessage}>
+                  <span className="dispute-composer-label"><Scale size={12} /> Mensaje para el mediador</span>
+                  {mediatorError && <span className="dispute-inline-error">{mediatorError}</span>}
+                  <textarea
+                    value={mediatorText}
+                    onChange={(event) => setMediatorText(event.target.value)}
+                    placeholder="Escribe al mediador de RepuesTop..."
+                    maxLength={1000}
+                    rows={2}
+                  />
+                  <footer>
+                    <small>{mediatorText.length}/1000</small>
+                    <button type="submit" disabled={isSendingMediator || !mediatorText.trim()}>
+                      {isSendingMediator ? <Loader2 size={15} className="spin-icon" /> : <Send size={15} />} Enviar
+                    </button>
+                  </footer>
+                </form>
+              )}
             </div>
 
-            {mediatorClosed ? (
-              <p className="dispute-thread-closed"><Lock size={14} /> El mediador cerró este hilo; ya no admite mensajes ni evidencia.</p>
-            ) : (
-              <form className="dispute-composer is-mediator" onSubmit={submitMediatorMessage}>
-                {mediatorError && <span className="dispute-inline-error">{mediatorError}</span>}
-                <textarea
-                  value={mediatorText}
-                  onChange={(event) => setMediatorText(event.target.value)}
-                  placeholder="Escribe al mediador de RepuesTop..."
-                  maxLength={1000}
-                  rows={2}
-                />
-                <footer>
-                  <small>{mediatorText.length}/1000</small>
-                  <button type="submit" disabled={isSendingMediator || !mediatorText.trim()}>
-                    {isSendingMediator ? <Loader2 size={15} className="spin-icon" /> : <Send size={15} />} Enviar
-                  </button>
-                </footer>
+            <aside className="dispute-mediator-rail is-evidence">
+              <section className="dispute-mediator-evidence-panel">
+                <header>
+                  <span><Paperclip size={14} /> Evidencia del expediente</span>
+                  <small>
+                    {myEvidence.length + otherEvidence.length + escalationEvidence.length === 0
+                      ? 'Sin imágenes por ahora'
+                      : `${myEvidence.length + otherEvidence.length + escalationEvidence.length} ${myEvidence.length + otherEvidence.length + escalationEvidence.length === 1 ? 'imagen' : 'imágenes'}`}
+                  </small>
+                </header>
 
-                {/* Adjuntar es un envío aparte del mensaje: el backend lo registra
-                    como aporte de evidencia al expediente, no como archivo del chat. */}
-                <div className="dispute-evidence-tray">
-                  <EvidencePicker
-                    files={mediatorFiles}
-                    disabled={isUploadingEvidence}
-                    onAdd={async (incoming) => {
-                      const picked = await pickEvidenceFiles(incoming, mediatorFiles.length, setMediatorError);
-                      if (picked.length) setMediatorFiles((current) => [...current, ...picked]);
-                    }}
-                    onRemove={(index) => setMediatorFiles((current) => current.filter((_, i) => i !== index))}
-                  />
-                  <button
-                    type="button"
-                    className="dispute-btn"
-                    disabled={isUploadingEvidence || mediatorFiles.length === 0}
-                    onClick={submitMediatorEvidence}
-                  >
-                    {isUploadingEvidence ? <Loader2 size={15} className="spin-icon" /> : <Paperclip size={15} />}
-                    {isUploadingEvidence ? 'Subiendo...' : 'Enviar evidencia al expediente'}
-                  </button>
-                </div>
-              </form>
-            )}
+                {(escalationEvidence.length > 0 || myEvidence.length > 0 || otherEvidence.length > 0) ? (
+                  <div className="dispute-mediator-evidence-lists">
+                    <EvidenceStrip title="Adjuntos del caso" items={escalationEvidence} onOpenImage={setViewerImage} />
+                    <EvidenceStrip title="Mis evidencias" items={myEvidence} onOpenImage={setViewerImage} />
+                    <EvidenceStrip title={`Aportada por ${mode === 'buyer' ? 'el vendedor' : 'el comprador'}`} items={otherEvidence} onOpenImage={setViewerImage} />
+                  </div>
+                ) : (
+                  <p className="dispute-mediator-evidence-empty">
+                    <ImageIcon size={14} /> Todavía no adjuntaste imágenes. Suma fotos del repuesto, del embalaje o de la conversación.
+                  </p>
+                )}
+
+                {!mediatorClosed && (
+                  <div className="dispute-mediator-evidence-add">
+                    <EvidencePicker
+                      files={mediatorFiles}
+                      disabled={isUploadingEvidence}
+                      onAdd={async (incoming) => {
+                        const picked = await pickEvidenceFiles(incoming, mediatorFiles.length, setMediatorError);
+                        if (picked.length) setMediatorFiles((current) => [...current, ...picked]);
+                      }}
+                      onRemove={(index) => setMediatorFiles((current) => current.filter((_, i) => i !== index))}
+                    />
+                    <button
+                      type="button"
+                      className="dispute-btn is-primary"
+                      disabled={isUploadingEvidence || mediatorFiles.length === 0}
+                      onClick={submitMediatorEvidence}
+                    >
+                      {isUploadingEvidence ? <Loader2 size={15} className="spin-icon" /> : <Paperclip size={15} />}
+                      {isUploadingEvidence
+                        ? 'Subiendo...'
+                        : `Enviar ${mediatorFiles.length || ''} al expediente`.replace('  ', ' ')}
+                    </button>
+                    {mediatorError && <span className="dispute-inline-error">{mediatorError}</span>}
+                  </div>
+                )}
+              </section>
+            </aside>
+          </div>
         </div>
+      )}
+
+      {showResolutionDetail && (
+        <ResolutionDetailDialog
+          chat={chat}
+          mode={mode}
+          codigo={codigo}
+          onClose={() => setShowResolutionDetail(false)}
+        />
       )}
 
       {showClaimDetail && typeof document !== 'undefined' && createPortal(
@@ -846,7 +1080,7 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
 
             <p className="dispute-dialog-lead">
               {dialog === 'escalate'
-                ? 'Un mediador de RepuesTop va a revisar el caso. Al enviarlo, la conversación directa con la otra parte queda pausada.'
+                ? 'Un mediador de RepuesTop revisará el caso. Al enviarlo, la conversación directa con la otra parte queda pausada.'
                 : 'Queda registrado en el expediente que llegaron a un acuerdo y el pedido pasa a entregado.'}
             </p>
 
@@ -880,7 +1114,7 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
                     value={detail}
                     maxLength={MAX_DETAIL}
                     onChange={(event) => setDetail(event.target.value)}
-                    placeholder="Contá qué pasó hasta ahora y qué esperás que resuelva el mediador"
+                    placeholder="Cuenta qué pasó hasta ahora y qué esperas que resuelva el mediador"
                   />
                 </label>
               )}
