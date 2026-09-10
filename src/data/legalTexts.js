@@ -74,11 +74,22 @@ El comprador podrá solicitar factura cuando corresponda. El vendedor deberá cu
 Si el vendedor no emite el documento tributario correspondiente, RepuesTop podrá notificarlo, solicitar regularización y adoptar medidas de soporte, mediación o sanción según la gravedad y reiteración del incumplimiento.
 
 11. CAMBIOS, DEVOLUCIONES, RETRACTO Y GARANTÍA
-Los cambios, devoluciones, retractos, garantías y reembolsos se regirán por la normativa chilena aplicable, por las condiciones informadas por el vendedor y por las reglas operativas de RepuesTop.
-El comprador podrá solicitar devolución o reclamo por producto defectuoso, incorrecto, incompatible, no recibido o por otros motivos permitidos por la ley o por la Plataforma.
-Si el producto fue comprado por error del comprador, la cancelación y reembolso antes del envío podrá gestionarse conforme al estado del pedido. Si el producto ya fue entregado, la solución dependerá de la normativa aplicable, las condiciones del vendedor, el estado del producto y la mediación correspondiente.
-Si el vendedor recomendó una pieza incompatible, el comprador podrá solicitar devolución o mediación acompañando evidencia suficiente.
-El comprador deberá entregar evidencia cuando corresponda, incluyendo fotografías, videos, boleta, guía de despacho, comprobantes, conversaciones o informes relacionados.
+Los cambios, devoluciones, retractos, garantías y reembolsos se regirán por la normativa chilena aplicable (Ley N° 19.496 y Ley N° 21.398), por las condiciones informadas por el vendedor y por las reglas operativas de RepuesTop.
+
+A. DERECHO A RETRACTO LEGAL (COMPRAS A DISTANCIA / MEDIOS ELECTRÓNICOS):
+Conforme al artículo 3° bis letra b) de la Ley N° 19.496, tratándose de compras realizadas a través de la Plataforma, el comprador persona natural podrá poner término unilateralmente al contrato (retracto) dentro del plazo de diez (10) días corridos contados desde la recepción física del producto.
+Para ejercer válidamente el derecho a retracto se deberán cumplir copulativamente las siguientes condiciones:
+1. El producto debe ser restituido nuevo, sin uso, en su empaque y caja original de fábrica sellada, con todos sus manuales, etiquetas, sellos de seguridad y accesorios completos.
+2. No procederá el derecho a retracto si el repuesto ha sido manipulado, armado, conectado, probado o instalado en un vehículo, o si presenta signos de montaje mecánico, residuos de combustible, lubricantes o grasa.
+3. Exclusiones por naturaleza del bien (Art. 3 bis Ley 19.496): Dada su extrema sensibilidad técnica a daños por sobrecargas, problemas de masa o fallas eléctricas preexistentes en el vehículo del comprador, quedan expresamente excluidos del retracto una vez desellados o abiertos: sensores (oxígeno, flujo de aire, ABS, etc.), módulos de control o ECUs, bobinas de encendido, alternadores, arrancadores y cualquier componente eléctrico o electrónico. Asimismo, se excluyen repuestos fabricados, adaptados o importados a pedido especial del cliente o configurados con codificación única de chasis (VIN).
+4. Costos de flete: Los gastos de despacho y flete derivados de la devolución por retracto voluntario serán de cargo exclusivo del comprador.
+5. Procedimiento: El comprador deberá ingresar su solicitud dentro del plazo de 10 días a través del botón de reclamo o mediación del pedido en la Plataforma, adjuntando fotografías del producto y de su empaque sellado. Los fondos en custodia no serán liberados al vendedor ni reembolsados al comprador hasta que el vendedor reciba e inspeccione físicamente la integridad del producto devuelto.
+
+B. GARANTÍA LEGAL (6 MESES):
+Conforme al artículo 21 de la Ley N° 19.496 (modificado por la Ley N° 21.398), cuando el producto presente fallas, defectos de fabricación, deficiencias de calidad o resulte incompatible por indicación o recomendación errónea atribuible al vendedor, el comprador tendrá derecho, dentro del plazo de seis (6) meses desde la recepción, a optar entre: (a) la reparación gratuita, (b) la reposición del producto, o (c) la devolución total del dinero pagado. En estos casos de garantía legal por falla comprobada, los costos de traslado o flete para la devolución correrán por cuenta del vendedor.
+
+C. RECLAMOS Y CANCELACIONES:
+Si el comprador adquirió un producto por error, podrá solicitar la cancelación antes de que el pedido sea despachado. Una vez despachado o entregado, la solicitud se tramitará exclusivamente de acuerdo con las reglas de retracto o mediación señaladas precedentemente.
 
 12. RECLAMOS Y MEDIACIÓN
 Después de realizar un pago, el comprador podrá iniciar un reclamo desde el detalle del pedido o mediante el botón de ayuda disponible en la Plataforma.
@@ -176,10 +187,17 @@ Las modalidades podrán incluir retiro en tienda, delivery local o envío a regi
 El plazo máximo operativo de despacho será de 48 horas, salvo que el vendedor informe otro plazo y RepuesTop lo permita. Si el vendedor no despacha dentro del plazo, el comprador podrá iniciar reclamo.
 
 12. GARANTÍA, DEVOLUCIÓN Y RETRACTO
-El vendedor deberá cumplir la garantía legal y demás obligaciones que establezca la normativa chilena aplicable.
-El vendedor deberá revisar inicialmente las solicitudes de devolución. Si no responde, responde insuficientemente o existe controversia, el mediador podrá intervenir y adoptar acciones dentro de la Plataforma.
-El vendedor podrá solicitar devolución física del producto antes de reembolsar cuando corresponda. Si la pieza está en mal estado, es incorrecta, defectuosa o incompatible por responsabilidad del vendedor, este deberá asumir los costos de devolución conforme a la normativa y a la resolución de mediación.
-Si el producto fue instalado, usado o manipulado, el caso se evaluará según la normativa aplicable, las condiciones informadas, la evidencia y la naturaleza del reclamo.
+El vendedor deberá cumplir rigurosamente con la garantía legal y demás obligaciones de protección al consumidor establecidas en la Ley N° 19.496 y la Ley N° 21.398.
+
+A. DERECHO A RETRACTO (10 DÍAS CORRIDOS):
+El vendedor reconoce que el comprador persona natural tiene derecho a retractarse de su compra dentro del plazo legal de diez (10) días corridos desde la entrega, sujeto a las condiciones de admisibilidad: producto nuevo, sin uso, en su empaque original sellado y con exclusión de componentes eléctricos o electrónicos abiertos/desellados, o repuestos a pedido especial.
+En caso de retracto admisible, el vendedor deberá colaborar diligentemente en la recepción e inspección física del repuesto devuelto. Una vez confirmada la integridad del bien, el vendedor lo notificará en la Plataforma para proceder a la liberación del reembolso correspondiente al comprador desde los fondos en custodia.
+
+B. GARANTÍA LEGAL DE SEIS (6) MESES:
+El vendedor es el único y directo responsable de responder por la garantía legal de seis (6) meses (Art. 21 Ley N° 19.496) frente al comprador cuando el repuesto presente defectos de fabricación o vicios ocultos. Si la pieza resulta defectuosa, fallada o incompatible por error de la tienda, el vendedor deberá asumir íntegramente los costos de traslado/devolución y ofrecer al cliente la opción de reparación, reposición o reembolso.
+
+C. EVALUACIÓN Y MEDIACIÓN:
+El vendedor deberá revisar con prontitud las solicitudes de devolución. Si el vendedor no responde en los plazos fijados o surge controversia sobre el estado del producto (por ejemplo, si fue instalado, dañado o manipulado indebidamente), el mediador de RepuesTop intervendrá para resolver la disputa sobre la base de la evidencia técnica y documental aportada.
 
 13. RECLAMOS Y MEDIACIÓN
 El vendedor podrá solicitar ayuda u orientación mediante el flujo de soporte o mediación disponible en la Plataforma.
