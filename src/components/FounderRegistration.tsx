@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+﻿import { useEffect, useRef, useState, type ReactNode } from 'react';
 // Las 218 reglas `founder-*` viven en esta hoja, que hasta ahora solo importaba
 // `AboutRepuesTopPage`. Como las rutas van en chunks perezosos, entrar directo a
 // /vender no cargaba nunca ese chunk y el registro se veia SIN estilos; pasando
@@ -25,8 +25,9 @@ import {
   type UbicacionOption, type GoogleProfile, type SellerRegistrationPayload,
   type SellerSession, type SellerLookup, type VerificacionResponse,
 } from './founderApi';
-import { VENDEDOR_TERMS, PRIVACIDAD_POLICY } from './legalTexts';
-import { LEGAL_VERSION_CODE } from '../data/legalTexts';
+// Un solo archivo para el texto y para la version: el registro de aceptacion prueba QUE se
+// acepto, y con dos fuentes la constancia apunta a un documento que no es el que se mostro.
+import { VENDEDOR_TERMS, PRIVACIDAD_POLICY, LEGAL_VERSION_CODE } from '../data/legalTexts';
 
 type LegalDoc = 'terms' | 'privacy';
 
