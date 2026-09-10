@@ -9,7 +9,7 @@ import { ROUTES } from '../../routes/paths';
 const STEPS = [
   ['Recibimos tu caso', 'Queda registrado con un número de seguimiento.'],
   ['Lo revisa el equipo', 'Un agente evalúa el contexto y, si aplica, contacta a la otra parte.'],
-  ['Te respondemos', 'La respuesta llega a tu correo y queda en Reportes y disputas.'],
+  ['Te respondemos', 'La respuesta llega a tu correo y queda en Reportes / Chats con vendedor.'],
 ];
 
 /** Formulario de consulta o reclamo en su propia ruta, con `?tema=` opcional. */
@@ -106,6 +106,5 @@ export default function HelpContactView() {
     </>
   );
 }
-
 
 

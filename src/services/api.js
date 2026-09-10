@@ -1287,10 +1287,31 @@ export async function reportConversationApi(conversacionId, { motivo, descripcio
   });
 }
 
-// Chat de mediación de un pedido (Fase 6a): reusa el mismo endpoint que ya
-// consume la app móvil, no hay nada nuevo del lado del backend.
-export async function getMediationChatApi(pedidoId) {
-  return fetchApi(`/pedidos/${pedidoId}/mediacion-chat`, { method: 'GET' });
+// `proveedorId` (opcional): la tienda del pedido con la que es el chat. Solo hace
+// falta en pedidos de varias tiendas; si se omite el backend usa la primera.
+function proveedorQuery(proveedorId) {
+  return proveedorId != null && proveedorId !== '' ? `?proveedorId=${proveedorId}` : '';
+}
+function appendProveedor(formData, proveedorId) {
+  if (proveedorId != null && proveedorId !== '') formData.append('proveedorId', String(proveedorId));
+}
+
+export async function getMediationChatApi(pedidoId, proveedorId) {
+  return fetchApi(`/pedidos/${pedidoId}/mediacion-chat${proveedorQuery(proveedorId)}`, { method: 'GET' });
+}
+
+/** Inicia explícitamente el chat postventa comprador-vendedor. */
+export async function startSellerChatApi(pedidoId, proveedorId) {
+  return fetchApi(`/pedidos/${pedidoId}/chat-vendedor${proveedorQuery(proveedorId)}`, { method: 'POST' });
+}
+
+/**
+ * Lista los chats con vendedor del usuario (con o sin mediación asociada).
+ * `rol` = 'comprador' | 'vendedor' acota al perfil activo; sin rol devuelve ambos.
+ */
+export async function getMySellerChatsApi(userId, rol) {
+  const query = rol ? `?rol=${rol}` : '';
+  return fetchApi(`/usuarios/${userId}/chats-vendedor${query}`, { method: 'GET' });
 }
 
 /** Sube una imagen al chat peer-to-peer de la mediación. */
@@ -1304,10 +1325,11 @@ export async function uploadMediationChatImageApi(conversacionId, file) {
   });
 }
 
-export async function escalateMediationApi(pedidoId, { motivo, descripcion, imagenes }) {
+export async function escalateMediationApi(pedidoId, { motivo, descripcion, imagenes, proveedorId }) {
   const formData = new FormData();
   formData.append('motivo', motivo);
   formData.append('descripcion', descripcion);
+  appendProveedor(formData, proveedorId);
   (imagenes || []).forEach((file) => formData.append('imagenes', file));
   // Timeout mas largo que el default de fetchApi (15s): son varias imagenes.
   return fetchApi(`/pedidos/${pedidoId}/mediacion-escalar`, {
@@ -1332,9 +1354,10 @@ export async function resolveMediationApi(pedidoId, { motivoResolucion, evidenci
 // getMediationChatApi (`mensajesMediadorComprador` / `mensajesMediadorVendedor`
 // segun el rol). El backend recibe `mensaje` como @RequestParam, asi que va
 // como FormData igual que el resto de los endpoints de mediacion.
-export async function sendMediatorMessageApi(pedidoId, mensaje) {
+export async function sendMediatorMessageApi(pedidoId, mensaje, proveedorId) {
   const formData = new FormData();
   formData.append('mensaje', mensaje);
+  appendProveedor(formData, proveedorId);
   return fetchApi(`/pedidos/${pedidoId}/mediacion-mensajes`, {
     method: 'POST',
     body: formData,
@@ -1342,8 +1365,9 @@ export async function sendMediatorMessageApi(pedidoId, mensaje) {
 }
 
 /** Aporta evidencia al expediente durante la mediacion (endpoint aparte del mensaje). */
-export async function uploadMediationEvidenceApi(pedidoId, imagenes) {
+export async function uploadMediationEvidenceApi(pedidoId, imagenes, proveedorId) {
   const formData = new FormData();
+  appendProveedor(formData, proveedorId);
   (imagenes || []).forEach((file) => formData.append('imagenes', file));
   return fetchApi(`/pedidos/${pedidoId}/mediacion-evidencias`, {
     method: 'POST',

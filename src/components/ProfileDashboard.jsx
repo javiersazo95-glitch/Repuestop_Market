@@ -6,7 +6,7 @@ import {
   MessageSquare, LogOut, Star, Layers, TrendingUp, Truck, Check, Pencil, Save, X,
   Clock, ShieldCheck, Building2, PackageCheck, Loader2, Inbox, ChevronLeft, ChevronRight, Search,
   CreditCard, Phone, Mail, ArrowUpRight, Sliders, Sparkles, Camera, Upload, Image as ImageIcon,
-  Trash2, AlertTriangle, ReceiptText, Boxes, Plus, MessageCircleQuestion, Scale, Headphones, Wallet, Info, Crown,
+  Trash2, AlertTriangle, ReceiptText, Boxes, Plus, MessageCircleQuestion, Headphones, Wallet, Info, Crown,
   CheckCircle, Send, Megaphone, Lightbulb, CheckCircle2, Circle, Lock, ShoppingCart
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -35,6 +35,7 @@ import ProductTopBadge from './ProductTopBadge';
 import QuoteCard from './QuoteCard';
 import QuoteDetailModal from './QuoteDetailModal';
 import ProfileSupportPanel from './ProfileSupportPanel';
+import SellerChatsView from './SellerChatsView';
 import ProfileNotificationsBell from './ProfileNotificationsBell';
 import HeaderWalletButton from './HeaderWalletButton';
 import NewCatalogProductModal from './NewCatalogProductModal';
@@ -99,7 +100,8 @@ const SELLER_SIDEBAR_GROUPS = [
       { id: 'pedidos', label: 'Pedidos recibidos', icon: ShoppingBag },
       { id: 'productos', label: 'Productos', icon: Package },
       { id: 'cotizaciones', label: 'Cotizaciones', icon: ReceiptText },
-      { id: 'preguntas_productos', label: 'Preguntas de productos', icon: MessageCircleQuestion }
+      { id: 'preguntas_productos', label: 'Preguntas de productos', icon: MessageCircleQuestion },
+      { id: 'chats_compradores', label: 'Chats con compradores', icon: MessageSquare }
     ]
   },
   {
@@ -111,6 +113,7 @@ const SELLER_SIDEBAR_GROUPS = [
       { id: 'compras', label: 'Mis compras', icon: ShoppingCart },
       { id: 'mis_cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
       { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
+      { id: 'chats_vendedor', label: 'Chats con vendedor', icon: MessageSquare },
       { id: 'favoritos', label: 'Favoritos', icon: Heart }
     ]
   },
@@ -125,7 +128,7 @@ const SELLER_SIDEBAR_GROUPS = [
   {
     title: 'SOPORTE',
     items: [
-      { id: 'consultas', label: 'Reportes/Disputa', icon: Scale },
+      { id: 'consultas', label: 'Reportes/Soporte', icon: MessageSquare },
       { id: 'soporte', label: 'Centro de ayuda', icon: Headphones, href: ROUTES.support }
     ]
   }
@@ -160,6 +163,7 @@ const BUYER_SIDEBAR_GROUPS = [
       { id: 'pedidos', label: 'Mis pedidos', icon: Package },
       { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
       { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
+      { id: 'chats_vendedor', label: 'Chats con vendedor', icon: MessageSquare },
       { id: 'favoritos', label: 'Favoritos', icon: Heart }
     ]
   },
@@ -173,7 +177,7 @@ const BUYER_SIDEBAR_GROUPS = [
   {
     title: 'SOPORTE',
     items: [
-      { id: 'consultas', label: 'Reportes/Disputa', icon: Scale },
+      { id: 'consultas', label: 'Reportes/Soporte', icon: MessageSquare },
       { id: 'soporte', label: 'Centro de ayuda', icon: Headphones, href: ROUTES.support }
     ]
   }
@@ -2056,7 +2060,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                         onDeclareDelivery={!asBuyerView && !isSellerBlocked ? handleDeclareOrderDelivery : undefined}
                         onDisputeDeclaredDelivery={asBuyerView ? handleDisputeDeclaredDelivery : undefined}
                         onCreateClaim={asBuyerView ? handleCreateOrderClaim : undefined}
-                        onOpenDispute={() => navigate(`${ROUTES.profile}/consultas?caso=${detailOrder.id}`)}
+                        onOpenDispute={(proveedorId) => {
+                          const params = new URLSearchParams({ caso: String(detailOrder.id) });
+                          if (proveedorId != null && proveedorId !== '') params.set('tienda', String(proveedorId));
+                          navigate(`${ROUTES.profile}/chats_vendedor?${params.toString()}`);
+                        }}
                         readOnly={!asBuyerView && isSellerBlocked}
                       />
                     );
@@ -2458,6 +2466,14 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
               {activeTab === 'consultas' && (
                 <ProfileSupportPanel user={user} deepLinkTicketId={deepLinkTicketId} onClearDeepLink={onClearDeepLink} />
+              )}
+
+              {activeTab === 'chats_vendedor' && (
+                <SellerChatsView user={user} mode="buyer" />
+              )}
+
+              {activeTab === 'chats_compradores' && isSeller && (
+                <SellerChatsView user={user} mode="seller" />
               )}
 
               {activeTab === 'feedback' && (

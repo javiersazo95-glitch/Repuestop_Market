@@ -49,6 +49,9 @@ export const PROFILE_TABS = [
   'resumen', 'pedidos', 'compras', 'favoritos', 'datos', 'consultas',
   'cotizaciones', 'mis_cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'tienda', 'tienda_datos',
   'anuncios', 'feedback',
+  // "Chats con vendedor" (sección Mis compras) y "Chats con compradores" (sección Ventas):
+  // cada uno su vista propia (SellerChatsView), antes eran una pestaña dentro de consultas.
+  'chats_vendedor', 'chats_compradores',
   // Bandeja del COMPRADOR con las preguntas que hizo. Es distinta de
   // `preguntas_productos`, que es la del vendedor sobre sus propios repuestos. Estaba
   // en el sidebar y con su panel implementado, pero faltaba aca: la ruta no se

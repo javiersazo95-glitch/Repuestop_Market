@@ -73,7 +73,7 @@ export default function HelpSidebar({ currentSlug = null }) {
               {caseCount === 1 ? 'caso abierto' : 'casos abiertos'}
             </p>
             <Link className="help-side-link" to={profilePath('consultas')}>
-              Ver reportes y disputas <ChevronRight size={14} />
+              Ver reportes y chats con vendedor <ChevronRight size={14} />
             </Link>
           </section>
         )
@@ -129,5 +129,4 @@ export default function HelpSidebar({ currentSlug = null }) {
     </aside>
   );
 }
-
 

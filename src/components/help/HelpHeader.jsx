@@ -1,17 +1,17 @@
 import React from 'react';
-import { ArrowUpRight, ChevronLeft, LogIn, Store, UserRound } from 'lucide-react';
+import { ChevronLeft, LogIn, Store, UserRound } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { HELP_ROLES, resolveReportType } from '../../data/helpContent';
-import { profilePath, ROUTES, storePath } from '../../routes/paths';
+import { profilePath, ROUTES } from '../../routes/paths';
 
 /**
  * Barra propia del centro de ayuda. La vista vive fuera de `AppLayout` (no usa
  * el Header del marketplace) porque se entra desde muchos puntos distintos y
  * debe verse igual en todos: sin buscador de repuestos ni carrito.
  *
- * La acción de la derecha depende de la sesión: el vendedor va a su tienda
- * pública, el comprador a su perfil y el invitado al login.
+ * La acción de la derecha depende de la sesión: usuarios autenticados vuelven a
+ * su perfil y los invitados van al login.
  */
 export default function HelpHeader() {
   const navigate = useNavigate();
@@ -22,6 +22,12 @@ export default function HelpHeader() {
 
   // `AppLayout` abre el AuthModal cuando la navegación trae `requireAuth`.
   const goLogin = () => navigate(ROUTES.home, { state: { requireAuth: true } });
+  const goBack = () => {
+    // El centro de ayuda puede abrirse desde cualquier vista del perfil. Conservamos
+    // exactamente ese origen en vez de enviarlo siempre al marketplace.
+    if (window.history.length > 1) navigate(-1);
+    else navigate(ROUTES.home);
+  };
 
   return (
     <header className="help-header">
@@ -32,9 +38,9 @@ export default function HelpHeader() {
         </Link>
 
         <div className="help-header-actions">
-          <button type="button" className="help-header-back" onClick={() => navigate(ROUTES.home)}>
+          <button type="button" className="help-header-back" onClick={goBack}>
             <ChevronLeft size={16} />
-            <span>Volver a la tienda</span>
+            <span>Regresar</span>
           </button>
 
           {isGuest && (
@@ -44,18 +50,11 @@ export default function HelpHeader() {
             </button>
           )}
 
-          {isSeller && user?.sellerId && (
-            <a
-              className="help-header-cta"
-              href={storePath({ id: user.sellerId, nombre: user?.storeName })}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Se abre en una pestaña nueva: es como los compradores ven tu tienda."
-            >
+          {isSeller && (
+            <button type="button" className="help-header-cta" onClick={() => navigate(profilePath('resumen'))}>
               <Store size={16} />
-              <span>Visitar mi tienda</span>
-              <ArrowUpRight size={14} />
-            </a>
+              <span>Ir a mi perfil</span>
+            </button>
           )}
 
           {!isGuest && !isSeller && (
@@ -76,4 +75,3 @@ export default function HelpHeader() {
     </header>
   );
 }
-

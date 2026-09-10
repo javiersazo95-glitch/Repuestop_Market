@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertTriangle, ChevronRight, CircleAlert, Headphones, Inbox, Loader2, MessageSquare, Scale } from 'lucide-react';
-import { getMyMediationsApi, getMyReportsApi, getMySupportTicketsApi } from '../services/api';
-import { MEDIATION_STATUS_LABELS } from '../data/mediationStatus';
+import { AlertTriangle, ChevronRight, CircleAlert, Headphones, Inbox, Loader2, MessageSquare } from 'lucide-react';
+import { getMyReportsApi, getMySupportTicketsApi } from '../services/api';
 import MediationCaseView from './MediationCaseView';
 import SupportTicketDetailModal from './SupportTicketDetailModal';
 
@@ -19,10 +18,9 @@ const CLOSED_STATUSES = ['RESUELTO', 'CERRADO', 'CANCELADO', 'RESUELTA', 'CERRAD
 const AREAS = [
   { id: 'todos', label: 'Todos', icon: Inbox },
   { id: 'reportes', label: 'Reportes', icon: AlertTriangle },
-  { id: 'disputas', label: 'Disputas', icon: Scale },
   { id: 'soporte', label: 'Soporte técnico', icon: Headphones },
 ];
-const AREA_LABELS = { reportes: 'Reporte', disputas: 'Disputa', soporte: 'Soporte' };
+const AREA_LABELS = { reportes: 'Reporte', soporte: 'Soporte' };
 const STATE_FILTERS = [['abiertos', 'Abiertos'], ['cerrados', 'Resueltos'], ['todos', 'Todos']];
 
 function formatDate(value) {
@@ -40,7 +38,6 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
   const isSeller = Boolean(user?.sellerId);
   const [tickets, setTickets] = useState([]);
   const [reports, setReports] = useState([]);
-  const [mediations, setMediations] = useState([]);
   const [activeArea, setActiveArea] = useState('todos');
   const [stateFilter, setStateFilter] = useState('abiertos');
   const [loading, setLoading] = useState(true);
@@ -63,11 +60,6 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
   // el botón atrás del navegador cierre el expediente y el enlace sea compartible.
   const [searchParams, setSearchParams] = useSearchParams();
   const openCaseId = searchParams.get('caso');
-  const openCase = (pedidoIdReal) => {
-    const next = new URLSearchParams(searchParams);
-    next.set('caso', String(pedidoIdReal));
-    setSearchParams(next);
-  };
   const closeCase = () => {
     const next = new URLSearchParams(searchParams);
     next.delete('caso');
@@ -79,16 +71,14 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
     setLoading(true);
     setError('');
     try {
-      const [ticketsRes, reportsRes, mediationsRes] = await Promise.all([
+      const [ticketsRes, reportsRes] = await Promise.all([
         getMySupportTicketsApi(userId),
         getMyReportsApi(userId),
-        getMyMediationsApi(userId),
       ]);
       setTickets(toList(ticketsRes));
       setReports(toList(reportsRes));
-      setMediations(toList(mediationsRes));
     } catch (requestError) {
-      setError(requestError.message || 'No se pudieron cargar tus reportes y disputas.');
+      setError(requestError.message || 'No se pudieron cargar tus reportes y consultas.');
     } finally {
       setLoading(false);
     }
@@ -120,21 +110,6 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
         numero: report.idExterno || report.id,
         fecha: report.fechaCreacion,
       })),
-      ...mediations.map((mediation) => ({
-        key: `m-${mediation.id}`,
-        area: 'disputas',
-        status: mediation.status || 'EN_MEDIACION',
-        estado: MEDIATION_STATUS_LABELS[mediation.status] || mediation.displayStatus || mediation.status || 'En mediación',
-        titulo: mediation.title || `Pedido ${mediation.orderId || ''}`,
-        detalle: mediation.reason || mediation.nextAction || 'Caso de mediación registrado.',
-        numero: mediation.orderId ? `Pedido ${mediation.orderId}` : null,
-        fecha: mediation.createdAt,
-        // Las apelaciones de cuenta bloqueada usan la misma tabla de mediaciones
-        // pero no tienen un pedido real detrás (pedidoIdReal null): no hay chat
-        // que abrir, así que la fila queda solo informativa.
-        onOpen: mediation.pedidoIdReal ? () => openCase(mediation.pedidoIdReal) : null,
-        accion: mediation.pedidoIdReal ? 'Ver chat' : null,
-      })),
       ...supportTickets.map((ticket) => ({
         key: `t-${ticket.id}`,
         area: 'soporte',
@@ -149,7 +124,7 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
       })),
     ];
     return rows.sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
-  }, [reports, mediations, supportTickets]);
+  }, [reports, supportTickets]);
 
   const byArea = activeArea === 'todos' ? cases : cases.filter((item) => item.area === activeArea);
   const visibles = byArea.filter((item) => (
@@ -158,15 +133,12 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
   const counts = {
     todos: cases.length,
     reportes: reports.length,
-    disputas: mediations.length,
     soporte: supportTickets.length,
   };
   const abiertos = cases.filter((item) => !isClosed(item.status)).length;
 
-  // Con un caso abierto el panel muestra SOLO el expediente, a todo el ancho del perfil.
-  // Antes había un riel de disputas a la izquierda que repetía la lista de "Todos mis
-  // casos" y robaba ~250 px al contenido que de verdad importa: la conversación y la
-  // evidencia. Se vuelve a la lista con el botón "Casos" del propio expediente.
+  // Compat: las notificaciones de mediación siguen apuntando a esta vista con `?caso=`.
+  // Si llega ese parámetro, se abre el expediente a pantalla completa.
   if (openCaseId) {
     return (
       <section className="profile-panel profile-cases-panel dispute-workspace">
@@ -207,14 +179,14 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
     <section className="profile-panel profile-cases-panel">
       <div className="profile-cases-header">
         <div>
-          <h2 className="profile-panel-title">Reportes y Disputas</h2>
-          <p>Consulta el seguimiento de tus casos separados por área de atención.</p>
+          <h2 className="profile-panel-title">Reportes/Soporte</h2>
+          <p>Consulta tus reportes a usuarios y tus consultas al equipo de soporte.</p>
         </div>
         <span>{abiertos} {abiertos === 1 ? 'caso abierto' : 'casos abiertos'} de {cases.length}</span>
       </div>
 
       <div className="profile-cases-toolbar">
-        <nav className="profile-cases-pills" aria-label="Áreas de reportes y disputas">
+        <nav className="profile-cases-pills" aria-label="Áreas de reportes y soporte">
           {AREAS.map((area) => {
             const Icon = area.icon;
             return (
@@ -300,4 +272,3 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
     </section>
   );
 }
-

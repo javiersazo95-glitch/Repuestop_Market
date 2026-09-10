@@ -4,10 +4,10 @@ import {
   X, Clock, Wrench, Truck, PackageCheck, User, Store, ChevronDown, ArrowLeft,
   MapPin, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
   RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock, ExternalLink, Timer,
-  ThumbsUp, ThumbsDown, Send, ReceiptText, FileCheck, FileSearch, ShieldAlert
+  ThumbsUp, ThumbsDown, Send, ReceiptText, FileCheck, FileSearch, ShieldAlert, MessageCircle, Info
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
-import { resolveMediaUrl, rateOrderApi, getPublicProductApi } from '../services/api';
+import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
@@ -326,6 +326,10 @@ export default function OrderDetailView({
   // se limpio para cuando hay que mostrarlo y de otra forma no habria como saber a cual de los
   // bloques le pertenece.
   const [deliveryVetoError, setDeliveryVetoError] = useState(null);
+  const [showMediatorInfo, setShowMediatorInfo] = useState(false);
+  const [showStoreChatPicker, setShowStoreChatPicker] = useState(false);
+  const [chatStoreId, setChatStoreId] = useState(null);
+  const [chatStartError, setChatStartError] = useState('');
   const [isDeclaringDelivery, setIsDeclaringDelivery] = useState(false);
   const [declareDeliveryError, setDeclareDeliveryError] = useState('');
 
@@ -553,21 +557,30 @@ export default function OrderDetailView({
   const repuestopFee = order.commissionSeller || Math.round(subtotal * (commissionRate / 100) * 1.19);
   const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(subtotal * 0.025 * 1.19)));
 
-  const timelineIndex = getTimelineIndex(normStatus);
+  // En un carrito multitienda no sirve tomar el estado agregado sin validarlo: la barra
+  // representa la promesa completa al comprador y debe quedarse en el pedido que aún va más
+  // atrás. Solo llega al último hito cuando todas las subórdenes activas lo alcanzaron.
+  const timelineSubOrders = !isSeller && Array.isArray(order?.subordenes) ? order.subordenes : [];
+  const activeTimelineStatuses = timelineSubOrders
+    .map((subOrder) => String(subOrder?.estado || subOrder?.status || '').toUpperCase())
+    .filter((status) => status && !['CANCELADO', 'CANCELLED'].includes(status));
+  const tracksSlowestStore = timelineSubOrders.length > 1 && activeTimelineStatuses.length > 0;
+  const timelineIndex = tracksSlowestStore
+    ? Math.min(...activeTimelineStatuses.map(getTimelineIndex))
+    : getTimelineIndex(normStatus);
   const visibleTimelineStep = TIMELINE_STEPS.find((step) => step.key === selectedTimelineStep)
     || TIMELINE_STEPS[timelineIndex];
   const VisibleTimelineIcon = visibleTimelineStep.icon;
   const controlledAction = getControlledOrderAction(order, mode);
 
-  // Sub-estado de la mediacion (`ESPERANDO_VENDEDOR` -> "En disputa"; `ESCALADO` /
-  // `EN_MEDIACION` -> "En mediación"). El pedido siempre queda en `EN_MEDIACION` a nivel de
-  // enum; esta es la etapa que se le muestra al usuario.
+  // Estado de la mediacion, si existe: solo hay `EN_MEDIACION` / `RESUELTA` / `CERRADA`.
+  // El pedido llega a `EN_MEDIACION` unicamente cuando se solicita un mediador.
   const mediationStatus = order.estadoMediacion || order.mediationStatus || null;
 
-  // "¿Tienes un reclamo?": solo el comprador, y solo si el pedido no tiene ya un reclamo
-  // abierto, no esta cancelado y NO esta finalizado. Al abrirlo el pedido queda "En disputa"
-  // (backend: `Pedido.estado = EN_MEDIACION`, `Mediacion.estado = ESPERANDO_VENDEDOR`); si no
-  // hay acuerdo, cualquiera de las partes puede pedir un mediador y ahi pasa a "En mediación".
+  // "Hablar con la tienda": solo el comprador, y solo si el pedido no esta cancelado ni
+  // finalizado. Abre el chat postventa; NO cambia el estado del pedido. El pedido pasa a
+  // "En mediación" solo si luego, durante los 10 días hábiles desde la recepción, alguna de las
+  // partes solicita un mediador desde el chat.
   //
   // Una vez FINALIZADO el plazo para reclamar ya venció: el pedido se cerró y se le pagó al
   // vendedor. Es lo que anuncia `storeAutoCloseNotice` mientras está ENTREGADO ("Después del
@@ -940,6 +953,32 @@ export default function OrderDetailView({
     setDispatchVoucherFile(file);
   };
 
+  const startSellerChat = async (proveedorId) => {
+    if (chatStoreId) return;
+    setChatStoreId(proveedorId ?? 'single-store');
+    setChatStartError('');
+    try {
+      await startSellerChatApi(order.id, proveedorId);
+      setShowStoreChatPicker(false);
+      onOpenDispute?.(proveedorId);
+    } catch (error) {
+      const message = error?.message || 'No se pudo abrir el chat con el vendedor.';
+      setChatStartError(message);
+      setClaimError(message);
+    } finally {
+      setChatStoreId(null);
+    }
+  };
+
+  const handleSellerChatClick = () => {
+    setChatStartError('');
+    if (showSubOrders) {
+      setShowStoreChatPicker(true);
+      return;
+    }
+    void startSellerChat();
+  };
+
   // Por PORTAL a `document.body`, igual que los subdialogos de mas abajo.
   //
   // El velo es `position: fixed`, pero un ancestro con `transform`, `filter` o `backdrop-filter`
@@ -978,6 +1017,29 @@ export default function OrderDetailView({
             </div>
           </div>
           <div className="order-modal-header-actions">
+            {!isSeller && !['CANCELADO'].includes(normStatus) && onOpenDispute && (
+              <div className="order-chat-header-control">
+                <div className="order-chat-header-row">
+                  <button
+                    type="button"
+                    className="order-chat-header-button"
+                    onClick={handleSellerChatClick}
+                    title="Chatear con vendedor"
+                  >
+                    <MessageCircle size={16} /> Chatear con vendedor
+                  </button>
+                  <button
+                    type="button"
+                    className="order-chat-info-button"
+                    aria-label="Información sobre la ayuda del mediador"
+                    aria-expanded={showMediatorInfo}
+                    onClick={() => setShowMediatorInfo((visible) => !visible)}
+                  ><Info size={16} /></button>
+                </div>
+                {showMediatorInfo && <p className="order-chat-mediator-info">Puedes conversar con el vendedor en cualquier momento. La ayuda de un mediador se habilita al recibir el producto y estará disponible durante los 10 días hábiles siguientes.</p>}
+              </div>
+            )}
+            <div className="order-status-header-control">
             {normStatus === 'EN_MEDIACION' && onOpenDispute ? (
               <button
                 type="button"
@@ -991,6 +1053,7 @@ export default function OrderDetailView({
             ) : (
               <OrderStatusBadge status={rawStatus} size="medium" mediationStatus={mediationStatus} />
             )}
+            </div>
             {!isPage && (
               <button type="button" className="btn-close-modal" onClick={onClose}>
                 <X size={20} />
@@ -1004,6 +1067,11 @@ export default function OrderDetailView({
               seleccionable para explicar qué ocurre en esa etapa. */}
           <div className="order-timeline-card">
             <h3 className="section-subtitle">Estado del Pedido</h3>
+            {tracksSlowestStore && (
+              <p className="order-timeline-multistore-note">
+                <Info size={14} /> Esta barra sigue el pedido que va más atrás y se completará cuando todas las tiendas con pedidos vigentes finalicen.
+              </p>
+            )}
             <div
               className="order-timeline-steps"
               style={{ '--timeline-completion': (timelineIndex / (TIMELINE_STEPS.length - 1)) * 100 }}
@@ -1653,34 +1721,76 @@ export default function OrderDetailView({
             </button>
           )}
 
-          {canOpenClaim && (
-            <button
-              type="button"
-              className="btn-auth-secondary order-claim-trigger"
-              onClick={() => {
-                setClaimReasonCode('');
-                setClaimCustomReason('');
-                setClaimDetail('');
-                setClaimError('');
-                setShowClaimModal(true);
-              }}
-            >
-              <ShieldAlert size={16} />
-              <span>¿Tienes un reclamo?</span>
-            </button>
-          )}
-
-          {claimWindowClosed && (
-            <span className="order-claim-closed">
-              <Lock size={14} />
-              Este pedido está finalizado: el plazo para abrir un reclamo ya venció.
-            </span>
-          )}
-
           <button type="button" className="btn-auth-secondary" onClick={onClose}>
             {isPage ? 'Volver a mis pedidos' : 'Cerrar'}
           </button>
         </div>
+
+        {/* En una compra multitienda el chat debe quedar ligado a UNA tienda. El backend ya
+            recibe proveedorId; este selector evita que el comprador abra la conversación de
+            otra tienda por accidente. */}
+        {showStoreChatPicker && createPortal(
+          <div className="commission-modal-backdrop order-subdialog-backdrop" onClick={() => !chatStoreId && setShowStoreChatPicker(false)}>
+            <section className="commission-modal-card order-subdialog-card order-store-chat-picker" role="dialog" aria-modal="true" aria-labelledby="store-chat-picker-title" onClick={(e) => e.stopPropagation()}>
+              <div className="commission-modal-header">
+                <div className="commission-icon-badge"><MessageCircle size={22} /></div>
+                <div className="order-subdialog-heading">
+                  <h3 id="store-chat-picker-title">¿Con qué tienda quieres hablar?</h3>
+                  <span>Elige la tienda según el repuesto que compraste.</span>
+                </div>
+                <button type="button" className="order-store-chat-picker-close" onClick={() => setShowStoreChatPicker(false)} aria-label="Cerrar selector de tienda"><X size={19} /></button>
+              </div>
+
+              {chatStartError && <p className="confirm-dialog-error">{chatStartError}</p>}
+
+              <div className="order-store-chat-picker-list">
+                {storeBlocks.map((block) => {
+                  const openingChat = chatStoreId === block.id;
+                  return (
+                    <article key={block.id} className="order-store-chat-picker-item">
+                      <div className="order-store-chat-picker-store">
+                        {block.logo
+                          ? <img src={block.logo} alt="" className="order-store-chat-picker-avatar" />
+                          : <span className="order-store-chat-picker-avatar order-store-chat-picker-avatar--fallback"><Store size={17} /></span>}
+                        <strong>{block.name}</strong>
+                      </div>
+                      <div className="order-store-chat-picker-products">
+                        {block.items.map((item, index) => {
+                          const productName = item.nombre || item.productName || item.name || 'Repuesto de vehículo';
+                          const productPhoto = resolveMediaUrl(item.imagenUrl || item.imageUrl || item.productPhotoUri || item.imageUrls?.[0]);
+                          const brand = item.marca || item.productBrand || item.brand || '';
+                          const sku = item.sku || item.productSku || '';
+                          const quantity = Number(item.cantidad || item.quantity || 1);
+                          const unitPrice = Number(item.precioUnitario || item.precio || item.unitPrice || 0);
+                          return (
+                            <div key={item.id || item.productoId || index} className="order-store-chat-picker-product">
+                              {productPhoto
+                                ? <img src={productPhoto} alt="" />
+                                : <span><Package size={14} /></span>}
+                              <div className="order-store-chat-picker-product-copy">
+                                <strong>{productName}</strong>
+                                {(brand || sku) && <span>{[brand, sku ? `SKU ${sku}` : null].filter(Boolean).join(' · ')}</span>}
+                              </div>
+                              <div className="order-store-chat-picker-product-price">
+                                <span>x{quantity}</span>
+                                <strong>{formatCLP(unitPrice * quantity)}</strong>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <button type="button" className="btn-auth-primary order-store-chat-picker-action" disabled={Boolean(chatStoreId)} onClick={() => void startSellerChat(block.id)}>
+                        {openingChat ? <Loader2 size={15} className="spin-icon" /> : <MessageCircle size={15} />}
+                        <span>{openingChat ? 'Abriendo chat...' : 'Chatear'}</span>
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          </div>,
+          document.body,
+        )}
 
         {/* Modal de reclamo del comprador. Inicia una disputa: el pedido queda "En disputa" y
             se abre un chat directo con la tienda. Si no hay acuerdo, cualquiera de las partes
@@ -1693,8 +1803,8 @@ export default function OrderDetailView({
                   <ShieldAlert size={22} />
                 </div>
                 <div className="order-subdialog-heading">
-                  <h3>Iniciar un reclamo · Pedido {orderIdShort}</h3>
-                  <span>El pedido quedará <strong>en disputa</strong> y se abrirá un chat con la tienda para resolverlo. Si no hay acuerdo, podrás solicitar un mediador de RepuesTop.</span>
+                  <h3>Hablar con la tienda · Pedido {orderIdShort}</h3>
+                  <span>Se abrirá un chat con la tienda para resolver el problema. Si no hay acuerdo, podrás solicitar un mediador una vez recibido el producto y durante los 10 días hábiles siguientes.</span>
                 </div>
               </div>
 

@@ -298,7 +298,7 @@ export default function Header({
                   {isSellerAccount && (
                     <button className="dropdown-item" onClick={openInventoryPanel}><Package size={15} /> Panel de inventario</button>
                   )}
-                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.('consultas'); }}><MessageSquare size={15} /> Reportes/Disputa</button>
+                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.('consultas'); }}><MessageSquare size={15} /> Reportes/ Chats con vendedor</button>
                   <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenHelp?.(); }}><HelpCircle size={15} /> Soporte</button>
                   <div className="dropdown-divider" />
                   <button className="dropdown-item logout-item" onClick={handleLogout}><LogOut size={15} /> Cerrar sesión</button>

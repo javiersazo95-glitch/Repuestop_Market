@@ -5259,6 +5259,85 @@ input, select, textarea {
   border-radius: 14px;
 }
 
+/* En compras de varias tiendas el estado general puede esconder avances distintos.
+   Este acceso abre el desglose sin volver a cargar la tarjeta con una fila por tienda. */
+.order-store-statuses-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.order-store-statuses-trigger:hover { background: #dbeafe; border-color: #93c5fd; }
+.order-store-statuses-trigger:focus-visible,
+.order-store-statuses-close:focus-visible { outline: 3px solid rgba(37, 99, 235, .3); outline-offset: 2px; }
+
+.order-store-statuses-backdrop {
+  position: fixed;
+  z-index: 1100;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, .45);
+}
+.order-store-statuses-modal {
+  width: min(100%, 390px);
+  border: 1px solid #dbe5f0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 22px 60px rgba(15, 23, 42, .25);
+  overflow: hidden;
+}
+.order-store-statuses-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.order-store-statuses-modal-header h4 { margin: 0; color: #0f172a; font-size: 16px; }
+.order-store-statuses-modal-header p { margin: 4px 0 0; color: #64748b; font-size: 12.5px; line-height: 1.4; }
+.order-store-statuses-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.order-store-statuses-close:hover { background: #f1f5f9; color: #0f172a; }
+.order-store-statuses-list { display: flex; flex-direction: column; padding: 8px 18px 14px; }
+.order-store-statuses-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #eef2f7;
+}
+.order-store-statuses-item:last-child { border-bottom: 0; }
+.order-store-statuses-name { display: inline-flex; align-items: center; gap: 8px; min-width: 0; color: #334155; font-size: 13px; font-weight: 700; }
+.order-store-statuses-name svg { color: #64748b; flex-shrink: 0; }
+.order-store-statuses-avatar { width: 30px; height: 30px; border: 1px solid #dbe5f0; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.order-store-statuses-avatar--fallback { display: inline-flex; align-items: center; justify-content: center; background: #eff6ff; color: #2563eb; }
+
 .badge-amber {
   background: #FFF7E6;
   color: #9A5A00;
@@ -5966,6 +6045,38 @@ input, select, textarea {
   gap: 12px;
 }
 
+/* El acceso al chat vive sobre el estado: queda visible sin competir con las acciones del pie. */
+.order-chat-header-control { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.order-chat-header-row { display: inline-flex; align-items: center; gap: 5px; }
+.order-chat-header-button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: #2563EB; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; padding: 3px; }
+.order-chat-header-button:hover { text-decoration: underline; }
+.order-chat-info-button { display: inline-flex; align-items: center; justify-content: center; width: 25px; height: 25px; border: 1px solid #BFDBFE; border-radius: 999px; background: #EFF6FF; color: #2563EB; cursor: pointer; }
+.order-chat-mediator-info { max-width: 300px; margin: 0; padding: 8px 10px; border-radius: 8px; background: #EFF6FF; color: #334155; font-size: 12px; line-height: 1.4; text-align: left; }
+.order-status-header-control { display: inline-flex; }
+
+/* Selector previo al chat para pedidos con varias tiendas. Muestra la identidad de la
+   tienda y los repuestos que le pertenecen antes de abrir la conversación correcta. */
+.order-store-chat-picker { width: min(100%, 560px); }
+.order-store-chat-picker .commission-modal-header { position: relative; padding-right: 45px; }
+.order-store-chat-picker-close { position: absolute; top: 14px; right: 14px; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #64748b; cursor: pointer; }
+.order-store-chat-picker-close:hover { background: #f1f5f9; color: #0f172a; }
+.order-store-chat-picker-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.order-store-chat-picker-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 16px; padding: 13px; border: 1px solid #dbe5f0; border-radius: 12px; background: #fff; }
+.order-store-chat-picker-store { display: inline-flex; align-items: center; gap: 9px; min-width: 0; color: #0f172a; font-size: 14px; }
+.order-store-chat-picker-store strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.order-store-chat-picker-avatar { width: 36px; height: 36px; border: 1px solid #dbe5f0; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.order-store-chat-picker-avatar--fallback { display: inline-flex; align-items: center; justify-content: center; background: #eff6ff; color: #2563eb; }
+.order-store-chat-picker-products { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 7px; }
+.order-store-chat-picker-product { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 8px; border-radius: 9px; background: #f8fafc; color: #475569; font-size: 12.5px; }
+.order-store-chat-picker-product > img, .order-store-chat-picker-product > span:first-child { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border: 1px solid #e2e8f0; border-radius: 8px; object-fit: cover; background: #fff; color: #94a3b8; flex-shrink: 0; }
+.order-store-chat-picker-product-copy { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.order-store-chat-picker-product-copy strong { overflow: hidden; color: #334155; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.order-store-chat-picker-product-copy span { overflow: hidden; color: #64748b; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.order-store-chat-picker-product-price { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; color: #64748b; font-size: 11px; white-space: nowrap; }
+.order-store-chat-picker-product-price strong { color: #1d4ed8; font-size: 12.5px; }
+.order-store-chat-picker-action { align-self: center; min-height: 34px; padding: 8px 12px; font-size: 12px; }
+@media (max-width: 520px) { .order-store-chat-picker-item { grid-template-columns: 1fr; } .order-store-chat-picker-action { justify-self: stretch; } }
+
 /* Pedido en disputa: la píldora de estado lleva a la conversación de la mediación. */
 .order-status-badge-link {
   display: inline-flex;
@@ -6024,6 +6135,23 @@ input, select, textarea {
   gap: 8px;
   margin-bottom: 6px;
 }
+
+/* En compras de varias tiendas la barra representa el avance global, no el de una
+   tienda aislada. El aviso evita interpretar el último hito como cierre prematuro. */
+.order-timeline-multistore-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: -4px 0 0;
+  padding: 8px 10px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #365a88;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+.order-timeline-multistore-note svg { flex-shrink: 0; margin-top: 1px; color: #2563eb; }
 
 .order-timeline-steps {
   --timeline-completion: 0;
@@ -14024,6 +14152,26 @@ input, select, textarea {
 .case-row .profile-ticket-status { justify-self: start; }
 .profile-cases-empty { min-height: 190px; }
 
+/* Fila de "Chats con vendedor" / "Chats con compradores": miniatura del producto en vez de sello. */
+.case-row.seller-chat-row { grid-template-columns: 52px minmax(0,1fr) auto auto; }
+.seller-chat-thumb { width: 52px; height: 52px; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f1f5f9; border: 1px solid #e4eaf2; color: #0066ff; }
+.seller-chat-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.seller-chat-counterpart { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.seller-chat-counterpart strong { flex: 0 1 auto; min-width: 0; }
+.seller-chat-order-status { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; border: 1px solid currentColor; border-radius: 999px; padding: 3px 7px; font-size: 10.5px; font-weight: 700; line-height: 1.15; white-space: nowrap; }
+.seller-chat-order-status.status-pending { color: #a16207; background: #fffbeb; border-color: #fcd34d; }
+.seller-chat-order-status.status-preparing { color: #9a5b0a; background: #fff7e8; border-color: #f2c77f; }
+.seller-chat-order-status.status-sent { color: #1d5fcc; background: #eff6ff; border-color: #93c5fd; }
+.seller-chat-order-status.status-completed { color: #15803d; background: #f0fdf4; border-color: #86efac; }
+.seller-chat-order-status.status-mediation { color: #6d28d9; background: #f5f3ff; border-color: #c4b5fd; }
+.case-row-main strong svg { vertical-align: -2px; color: #0066ff; }
+.seller-chat-mediator { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 10.5px; font-weight: 700; }
+.seller-chat-mediator.tone-ok { color: #0e7038; }
+.seller-chat-mediator.tone-done { color: #6d3df5; }
+.seller-chat-mediator.tone-muted { color: #94a3b8; }
+.seller-chat-unread { min-width: 18px; padding: 1px 6px; border-radius: 999px; background: #0066ff; color: #fff; font-size: 10px; font-weight: 800; text-align: center; }
+@media (max-width: 800px) { .case-row.seller-chat-row { grid-template-columns: 52px 1fr; } }
+
 @media (max-width: 800px) {
   .profile-cases-header { align-items: flex-start; flex-direction: column; }.profile-cases-toolbar { align-items: stretch; flex-direction: column; }.profile-cases-filter { justify-content: stretch; }.profile-cases-filter > button { flex: 1; }
   .case-row { grid-template-columns: 1fr; align-items: start; gap: 8px; }.case-row-main strong, .case-row-main p { white-space: normal; }.case-row-action { justify-content: flex-end; }.case-row .profile-ticket-status { justify-self: start; }
@@ -15029,7 +15177,7 @@ input, select, textarea {
   background: #dcfce7; color: #15803d; font-size: 10.5px; font-weight: 800;
 }
 .dispute-claim-dialog-body .dispute-mediator-steps li { color: #33507a; }
-.dispute-claim-dialog-body .dispute-mediator-steps li span { background: #dbeafe; color: #1d4ed8; }
+.dispute-claim-dialog-body .dispute-mediator-steps li > span { background: #dbeafe; color: #1d4ed8; }
 
 .dispute-resolved-banner-reason {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
@@ -15051,11 +15199,13 @@ input, select, textarea {
   display: grid; grid-template-columns: 20px 1fr; align-items: start; gap: 9px;
   color: #4a4364; font-size: 11.5px; line-height: 1.45;
 }
-.dispute-mediator-steps li span {
+.dispute-mediator-steps li > span {
   display: grid; place-items: center; width: 20px; height: 20px;
   border-radius: 50%; background: #ece6ff; color: #5b3ad6;
   font-size: 10.5px; font-weight: 800;
 }
+.dispute-mediator-steps li > div { min-width: 0; }
+.dispute-mediator-steps li b { color: #3f2ea6; font-weight: 800; }
 
 /* --- Panel de evidencia (columna derecha) --- */
 .dispute-mediator-evidence-panel { display: grid; gap: 10px; }

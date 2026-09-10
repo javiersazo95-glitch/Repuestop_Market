@@ -253,7 +253,7 @@ function EvidenceStrip({ title, items, onOpenImage }) {
   );
 }
 
-export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'buyer', onClose, onChanged }) {
+export default function MediationCaseView({ pedidoId, proveedorId, user, mode: modeProp = "buyer", onClose, onChanged }) {
   const [chat, setChat] = useState(null);
   // El rol REAL en esta disputa no se puede sacar de si el usuario tiene tienda: una tienda
   // también compra. El backend ya resolvió la otra parte y el id del comprador en
@@ -288,7 +288,8 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
   const [isUploadingEvidence, setIsUploadingEvidence] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [dialog, setDialog] = useState(null); // 'escalate' | 'resolve'
+  const [dialog, setDialog] = useState(null); // 'escalate'
+  const [showMediatorLockedInfo, setShowMediatorLockedInfo] = useState(false);
   const [reason, setReason] = useState('');
   const [detail, setDetail] = useState('');
   const [files, setFiles] = useState([]);
@@ -311,7 +312,7 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
     if (quiet) setIsRefreshing(true); else setLoading(true);
     setLoadError('');
     try {
-      const data = await getMediationChatApi(pedidoId);
+      const data = await getMediationChatApi(pedidoId, proveedorId);
       setChat(data);
       setMessages(data?.mensajes || []);
     } catch (error) {
@@ -322,7 +323,7 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
     }
   };
 
-  useEffect(() => { void load(); }, [pedidoId]);
+  useEffect(() => { void load(); }, [pedidoId, proveedorId]);
 
   // El hilo arranca abajo, como cualquier chat: sin esto hay que scrollear a
   // mano para ver el último mensaje en un caso largo.
@@ -343,6 +344,10 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
   const estado = chat?.estadoMediacion;
   const statusTone = MEDIATION_STATUS_TONES[estado] || 'wait';
   const isClosed = chat?.chatCerrado || estado === 'RESUELTA' || estado === 'CERRADA';
+  const orderReceived = ['ENTREGADO', 'RECEIVED', 'FINALIZADO', 'FINISHED'].includes(String(chat?.estadoPedido || '').toUpperCase());
+  const mediatorLockedMessage = orderReceived
+    ? 'La ayuda del mediador se puede solicitar durante los 10 días hábiles posteriores a la recepción del producto. Ese plazo ya venció. Puedes seguir conversando con la otra parte.'
+    : 'La ayuda del mediador estará disponible cuando el producto sea recibido. Desde ese momento tendrás 10 días hábiles para solicitarla.';
   // Al escalar, el backend cierra la conversacion directa (EstadoConversacion.CERRADA)
   // y rechaza mensajes nuevos con "la conversacion directa esta pausada". Se bloquea
   // el compositor acá para no dejar escribir algo que va a fallar al enviar.
@@ -481,7 +486,7 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
     setIsSendingMediator(true);
     setMediatorError('');
     try {
-      await sendMediatorMessageApi(pedidoId, text);
+      await sendMediatorMessageApi(pedidoId, text, proveedorId);
       setMediatorText('');
       // El endpoint devuelve solo el mensaje creado; el hilo que ve cada parte
       // lo arma el backend filtrando por rol, asi que se relee el expediente.
@@ -498,7 +503,7 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
     setIsUploadingEvidence(true);
     setMediatorError('');
     try {
-      const data = await uploadMediationEvidenceApi(pedidoId, mediatorFiles);
+      const data = await uploadMediationEvidenceApi(pedidoId, mediatorFiles, proveedorId);
       setMediatorFiles([]);
       if (data?.conversacion) {
         setChat(data);
@@ -518,29 +523,21 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
     event.preventDefault();
     if (isSubmitting) return;
 
-    if (dialog === 'escalate' && (!reason.trim() || !detail.trim())) {
+    if (!reason.trim() || !detail.trim()) {
       // El backend valida ambos campos (validarTexto en MediacionChatService),
       // así que el detalle no es opcional aunque lo parezca.
       setFormError('Completa el motivo y el detalle: el mediador necesita los dos para tomar el caso.');
-      return;
-    }
-    if (dialog === 'resolve' && !reason.trim()) {
-      setFormError('Cuenta cómo se resolvió para dejarlo registrado en el expediente.');
       return;
     }
 
     setIsSubmitting(true);
     setFormError('');
     try {
-      if (dialog === 'escalate') {
-        await escalateMediationApi(pedidoId, { motivo: reason.trim(), descripcion: detail.trim(), imagenes: files });
-        // El chat con la otra parte queda archivado: el seguimiento pasa al hilo del
-        // mediador, así que se abre esa pestaña directamente (igual que la app móvil).
-        setActiveThread('mediador');
-        setMediatorSummaryOpen(true);
-      } else {
-        await resolveMediationApi(pedidoId, { motivoResolucion: reason.trim(), evidencias: files });
-      }
+      await escalateMediationApi(pedidoId, { motivo: reason.trim(), descripcion: detail.trim(), imagenes: files, proveedorId });
+      // El chat con la otra parte queda archivado: el seguimiento pasa al hilo del
+      // mediador, así que se abre esa pestaña directamente (igual que la app móvil).
+      setActiveThread('mediador');
+      setMediatorSummaryOpen(true);
       setDialog(null);
       await load();
       onChanged?.();
@@ -664,14 +661,27 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
           mediador; al confirmarlo este chat queda archivado y pasa a ser la pestaña "Chat". */}
       {!threadLocked && (
         <div className="dispute-chat-actions">
-          <button type="button" onClick={() => openDialog('escalate')}>
-            <span className="dispute-chat-action-icon is-help"><Scale size={16} /></span>
-            <span>¿Necesitas ayuda?</span>
+          <button
+            type="button"
+            className={chat?.mediadorDisponible ? '' : 'is-locked'}
+            aria-disabled={!chat?.mediadorDisponible}
+            onClick={() => chat?.mediadorDisponible ? openDialog('escalate') : setShowMediatorLockedInfo(true)}
+          >
+            <span className="dispute-chat-action-icon is-help">
+              {chat?.mediadorDisponible ? <Scale size={16} /> : <Lock size={16} />}
+            </span>
+            <span>Solicitar ayuda de un mediador</span>
           </button>
-          <button type="button" onClick={() => openDialog('resolve')}>
-            <span className="dispute-chat-action-icon is-resolve"><CheckCircle2 size={16} /></span>
-            <span>Marcar como resuelta</span>
-          </button>
+        </div>
+      )}
+      {showMediatorLockedInfo && (
+        <div className="commission-modal-backdrop" onClick={() => setShowMediatorLockedInfo(false)}>
+          <div className="commission-modal-card dispute-locked-modal" onClick={(e) => e.stopPropagation()}>
+            <span className="commission-icon-badge"><Lock size={22} /></span>
+            <h3>Mediador no disponible</h3>
+            <p>{mediatorLockedMessage}</p>
+            <button type="button" className="btn-auth-primary" onClick={() => setShowMediatorLockedInfo(false)}>Entendido</button>
+          </div>
         </div>
       )}
 
@@ -689,8 +699,8 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
             <aside className="dispute-mediator-rail is-guide">
               <ResolutionDetailButton chat={chat} mode={mode} onOpen={() => setShowResolutionDetail(true)} />
               <div className="dispute-rail-card">
-                <h4><MessageSquare size={13} /> Chat directo</h4>
-                <p>Aquí te pones de acuerdo con {mode === 'buyer' ? 'el vendedor' : 'el comprador'}. Si no llegan a una solución, puedes sumar un mediador de RepuesTop.</p>
+                <h4><MessageSquare size={13} /> Chat con {mode === 'buyer' ? 'vendedor' : 'comprador'}</h4>
+                <p>Aquí te pones de acuerdo con {mode === 'buyer' ? 'el vendedor' : 'el comprador'}. Tras recibir el producto, tendrás 10 días hábiles para solicitar un mediador si no llegan a una solución.</p>
               </div>
 
               <div className="dispute-rail-card">
@@ -716,9 +726,9 @@ export default function MediationCaseView({ pedidoId, user, mode: modeProp = 'bu
                 <div className="dispute-rail-card">
                   <h4><CheckCircle2 size={13} /> Qué puedes hacer</h4>
                   <ol className="dispute-mediator-steps">
-                    <li><span>1</span> Escríbele a la otra parte y propón cómo resolverlo.</li>
-                    <li><span>2</span> Adjunta fotos con el botón <b>Foto</b> si ayudan a explicar el problema.</li>
-                    <li><span>3</span> ¿Sin acuerdo? Usa <b>¿Necesitas ayuda?</b> para pedir un mediador.</li>
+                    <li><span>1</span><div>Escríbele a la otra parte y propón cómo resolverlo.</div></li>
+                    <li><span>2</span><div>Adjunta fotos con el botón <b>Foto</b> si ayudan a explicar el problema.</div></li>
+                    <li><span>3</span><div>Al recibir el producto se habilitan <b>10 días hábiles</b> para solicitar ayuda de un mediador si no hay acuerdo.</div></li>
                   </ol>
                 </div>
               )}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Clock, Wrench, Truck, PackageCheck, ShieldCheck, AlertCircle, XCircle,
   RotateCcw, FileText, User, Store, Package, Info, ChevronRight, Check,
-  Phone, MapPin, Boxes, Loader2, ReceiptText, FileCheck
+  Phone, MapPin, Boxes, Loader2, ReceiptText, FileCheck, ListChecks
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
 import { deliveryCourierLabel, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
@@ -26,7 +26,6 @@ export const UNIFIED_STATUS_CONFIG = {
   finished: { label: 'Finalizado', icon: ShieldCheck, className: 'badge-emerald', tone: 'green' },
   EN_MEDIACION: { label: 'En mediación', icon: AlertCircle, className: 'badge-purple', tone: 'purple' },
   mediation: { label: 'En mediación', icon: AlertCircle, className: 'badge-purple', tone: 'purple' },
-  EN_DISPUTA: { label: 'En disputa', icon: AlertCircle, className: 'badge-orange', tone: 'orange' },
   CANCELADO: { label: 'Cancelado', icon: XCircle, className: 'badge-red', tone: 'red' },
   cancelled: { label: 'Cancelado', icon: XCircle, className: 'badge-red', tone: 'red' },
   RETOMAR: { label: 'Retomar pago', icon: RotateCcw, className: 'badge-red-outline', tone: 'red' },
@@ -47,22 +46,15 @@ function formatOrderDate(value) {
   });
 }
 
-// Un pedido en reclamo vive SIEMPRE en `EN_MEDIACION` a nivel de enum del pedido, pero para
-// el usuario son dos etapas distintas: "En disputa" mientras las partes negocian directo
-// (`Mediacion.estado === ESPERANDO_VENDEDOR`) y "En mediación" recién cuando se solicita un
-// mediador de RepuesTop (`ESCALADO` / `EN_MEDIACION`). Ese sub-estado viaja en el pedido como
-// `estadoMediacion` / `mediationStatus`.
-export function orderStatusKey(status, mediationStatus) {
-  const norm = String(status || 'PENDIENTE').toUpperCase();
-  if ((norm === 'EN_MEDIACION' || norm === 'MEDIATION')
-      && String(mediationStatus || '').toUpperCase() === 'ESPERANDO_VENDEDOR') {
-    return 'EN_DISPUTA';
-  }
+// El pedido solo llega a `EN_MEDIACION` cuando se solicitó un mediador de RepuesTop.
+// Ya no existe la etapa previa "En disputa", así que el badge se deriva directo del
+// estado del pedido sin mirar el sub-estado de la mediación.
+export function orderStatusKey(status) {
   return status;
 }
 
-export function OrderStatusBadge({ status, size = 'medium', mediationStatus }) {
-  const resolved = orderStatusKey(status, mediationStatus);
+export function OrderStatusBadge({ status, size = 'medium' }) {
+  const resolved = status;
   const normalizedStatus = String(resolved || 'PENDIENTE').toUpperCase();
   const config = UNIFIED_STATUS_CONFIG[resolved] || UNIFIED_STATUS_CONFIG[normalizedStatus] || UNIFIED_STATUS_CONFIG.PENDIENTE;
   const Icon = config.icon;
@@ -93,6 +85,7 @@ export default function OrderCard({
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmAdvance, setConfirmAdvance] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [showStoreStatuses, setShowStoreStatuses] = useState(false);
   const [now, setNow] = useState(Date.now());
   const isSeller = mode === 'seller';
 
@@ -106,6 +99,15 @@ export default function OrderCard({
     const timer = window.setInterval(() => setNow(Date.now()), 60000);
     return () => window.clearInterval(timer);
   }, [showsPaymentWindow]);
+
+  useEffect(() => {
+    if (!showStoreStatuses) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setShowStoreStatuses(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [showStoreStatuses]);
 
   if (!order) return null;
 
@@ -128,6 +130,12 @@ export default function OrderCard({
   // el pedido entero. Con mas de una tienda la tarjeta manda al detalle, que es donde estan
   // los botones que sí saben de quien hablan.
   const buyerMultiStore = !isSeller && Array.isArray(order?.subordenes) && order.subordenes.length > 1;
+  // Las subórdenes traen el avance, pero la identidad visual de la tienda llega en sus
+  // ítems. Se indexa una vez para que el selector de estados muestre la foto correcta.
+  const storeProfileById = new Map(items.map((item) => [String(item.proveedorId ?? item.sellerId ?? ''), {
+    logo: resolveMediaUrl(item.proveedorLogoUrl || item.sellerLogoUrl || item.storeLogoUrl),
+    name: item.proveedorNombre || item.sellerName || item.nombreTienda,
+  }]));
   const canCancelOrder = !isSeller && !buyerMultiStore && normStatus === 'PENDIENTE' && Boolean(onCancelOrder);
   // Solo cuando el backend registro la causa. Los cancelados historicos no la
   // tienen y se quedan con "Cancelado" a secas, sin explicacion inventada.
@@ -284,7 +292,23 @@ export default function OrderCard({
               </span>
             )}
           </div>
-          <OrderStatusBadge status={displayStatus} size="small" mediationStatus={order.estadoMediacion || order.mediationStatus} />
+          {buyerMultiStore ? (
+            <button
+              type="button"
+              className="order-store-statuses-trigger"
+              onClick={(event) => {
+                event.stopPropagation();
+                setShowStoreStatuses(true);
+              }}
+              aria-haspopup="dialog"
+              aria-expanded={showStoreStatuses}
+            >
+              <ListChecks size={14} />
+              <span>Ver estados</span>
+            </button>
+          ) : (
+            <OrderStatusBadge status={displayStatus} size="small" mediationStatus={order.estadoMediacion || order.mediationStatus} />
+          )}
         </div>
 
         {/* Persona Row (Buyer vs Seller profile) */}
@@ -408,24 +432,6 @@ export default function OrderCard({
           </div>
         </div>
 
-        {/* El avance de cada tienda. Sin esto la tarjeta resumia dos estados distintos en el
-            derivado -- el menos avanzado --, asi que un pedido con una tienda ya entregada y otra
-            en preparacion se leia entero como "En preparacion". */}
-        {buyerMultiStore && (
-          <div className="order-card-substores">
-            {order.subordenes.map((sub) => (
-              <span key={sub.proveedorId} className="order-card-substore">
-                <span className="order-card-substore-name">{sub.nombreTienda}</span>
-                <OrderStatusBadge
-                  status={sub.estado === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : sub.estado}
-                  size="small"
-                  mediationStatus={order.estadoMediacion || order.mediationStatus}
-                />
-              </span>
-            ))}
-          </div>
-        )}
-
         {/* Footer Row with Delivery and Price */}
         <div className="order-card-footer">
           <div className="delivery-info">
@@ -538,6 +544,59 @@ export default function OrderCard({
           {renderStatusButton()}
         </div>
       </div>
+
+      {showStoreStatuses && (
+        <div
+          className="order-store-statuses-backdrop"
+          role="presentation"
+          onClick={() => setShowStoreStatuses(false)}
+        >
+          <section
+            className="order-store-statuses-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`order-store-statuses-title-${order.id}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="order-store-statuses-modal-header">
+              <div>
+                <h4 id={`order-store-statuses-title-${order.id}`}>Estado de tus pedidos</h4>
+                <p>Cada tienda gestiona su pedido por separado.</p>
+              </div>
+              <button
+                type="button"
+                className="order-store-statuses-close"
+                onClick={() => setShowStoreStatuses(false)}
+                aria-label="Cerrar estados de pedidos"
+              >
+                <XCircle size={19} />
+              </button>
+            </header>
+            <div className="order-store-statuses-list">
+              {order.subordenes.map((sub, index) => {
+                const storeProfile = storeProfileById.get(String(sub.proveedorId ?? sub.sellerId ?? ''));
+                const storeName = sub.nombreTienda || storeProfile?.name || 'Tienda RepuesTop';
+                const storeLogo = resolveMediaUrl(sub.proveedorLogoUrl || sub.sellerLogoUrl || sub.logoUrl || storeProfile?.logo);
+                return (
+                <div key={sub.proveedorId || sub.id || index} className="order-store-statuses-item">
+                  <span className="order-store-statuses-name">
+                    {storeLogo
+                      ? <img src={storeLogo} alt="" className="order-store-statuses-avatar" />
+                      : <span className="order-store-statuses-avatar order-store-statuses-avatar--fallback"><Store size={14} /></span>}
+                    <span>{storeName}</span>
+                  </span>
+                  <OrderStatusBadge
+                    status={sub.estado === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : sub.estado}
+                    size="small"
+                    mediationStatus={order.estadoMediacion || order.mediationStatus}
+                  />
+                </div>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      )}
 
       {showReceiptModal && (
         <SaleReceiptModal

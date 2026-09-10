@@ -99,6 +99,14 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   };
 
   const handleMyComuna = async () => {
+    // Es un interruptor: si el filtro ya está aplicado, el mismo control lo quita.
+    // Antes volvía a pedir la dirección y reaplicaba la misma comuna, dejando al usuario
+    // sin una salida rápida hacia el directorio completo.
+    if (selectedComuna !== 'TODAS') {
+      setSelectedComuna('TODAS');
+      setComunaNotice('');
+      return;
+    }
     if (!user?.userId) {
       setComunaNotice('Inicia sesión y registra una comuna en tu perfil para usar este filtro.');
       return;
@@ -387,8 +395,8 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
               </div>
             )}
             <div className="directory-my-comuna-wrap">
-              <button type="button" className={`directory-my-comuna ${selectedComuna !== 'TODAS' ? 'active' : ''}`} onClick={handleMyComuna} disabled={myComunaLoading}>
-                <MapPin size={16} /> {myComunaLoading ? 'Buscando…' : selectedComuna !== 'TODAS' ? `En ${selectedComuna}` : 'Mi comuna'}
+              <button type="button" className={`directory-my-comuna ${selectedComuna !== 'TODAS' ? 'active' : ''}`} onClick={handleMyComuna} disabled={myComunaLoading} aria-pressed={selectedComuna !== 'TODAS'} title={selectedComuna !== 'TODAS' ? 'Quitar filtro de comuna' : 'Filtrar por mi comuna'}>
+                <MapPin size={16} /> {myComunaLoading ? 'Buscando…' : selectedComuna !== 'TODAS' ? `Quitar: ${selectedComuna}` : 'Mi comuna'}
               </button>
               {comunaNotice && <small>{comunaNotice}</small>}
             </div>
