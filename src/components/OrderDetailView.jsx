@@ -4,7 +4,8 @@ import {
   X, Clock, Wrench, Truck, PackageCheck, User, Store, ChevronDown, ArrowLeft,
   MapPin, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
   RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock, ExternalLink, Timer,
-  ThumbsUp, ThumbsDown, Send, ReceiptText, FileCheck, FileSearch, ShieldAlert, MessageCircle, Info
+  ThumbsUp, ThumbsDown, Send, ReceiptText, FileCheck, FileSearch, ShieldAlert, MessageCircle, Info,
+  Wallet, Undo2
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi } from '../services/api';
@@ -19,7 +20,7 @@ import SaleReceiptViewerModal from './SaleReceiptViewerModal';
 import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancellationReason';
 import { claimReasonPairs } from '../data/claimReason';
 import { carrierTracking } from '../data/carrierTracking';
-import { storeAutoCloseNotice } from '../data/orderDeadlines';
+import { fundsReleaseNotice, retractionNotice, storeAutoCloseNotice } from '../data/orderDeadlines';
 
 /**
  * Una linea de repuesto dentro del bloque de su tienda, con la ficha tecnica desplegable.
@@ -1373,6 +1374,27 @@ export default function OrderDetailView({
                         return (
                           <div className={`order-store-block-deadline ${aviso.urgent ? 'order-store-block-deadline--urgent' : ''}`}>
                             <Timer size={13} />
+                            <span>
+                              <strong>{aviso.label}.</strong> {aviso.detail}
+                            </span>
+                          </div>
+                        );
+                      })()}
+
+                      {/* V1 — El reloj del retracto, y su contraparte para el vendedor.
+                          Van FUERA del bloque de arriba porque sobreviven al cierre del pedido:
+                          la venta se finaliza a los 3 dias y el derecho del comprador dura 10.
+                          Un aviso que se apagara con el cierre le diria que perdio un plazo que
+                          todavia tiene, y al vendedor le dejaria la plata ausente del monto a
+                          retirar sin ninguna explicacion. */}
+                      {!block.isCancelledStore && (() => {
+                        const aviso = isSeller
+                          ? fundsReleaseNotice({ status: block.estado, entregadoAt: block.entregadoAtStore })
+                          : retractionNotice({ status: block.estado, entregadoAt: block.entregadoAtStore });
+                        if (!aviso) return null;
+                        return (
+                          <div className={`order-store-block-deadline ${aviso.urgent ? 'order-store-block-deadline--urgent' : ''}`}>
+                            {isSeller ? <Wallet size={13} /> : <Undo2 size={13} />}
                             <span>
                               <strong>{aviso.label}.</strong> {aviso.detail}
                             </span>

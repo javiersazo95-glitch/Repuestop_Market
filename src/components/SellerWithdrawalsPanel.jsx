@@ -12,7 +12,7 @@ import { BANKS, findBankByCode } from '../data/banks';
 import { sellerCodeShort } from '../data/orderIdentity';
 import { formatRut, isValidRut } from '../services/adapters';
 
-const EMPTY_PENDING = { pedidos: [], totalARetirar: 0 };
+const EMPTY_PENDING = { pedidos: [], totalARetirar: 0, retenidos: [], totalRetenido: 0 };
 const ACCOUNT_TYPES = [
   { value: 'corriente', label: 'Cuenta corriente' },
   { value: 'ahorro', label: 'Cuenta de ahorro' },
@@ -95,6 +95,9 @@ function PendingOrderRow({ order }) {
             es interno y el comprador ademas ve otro numero distinto (su propia secuencia).
             El backend ya lo manda en `codigoExterno`; se cae al id solo si falta. */}
         <span>Pedido {sellerCodeShort(order.codigoExterno) || `#${order.pedidoId}`} · {formatDate(order.fecha, true)} · Cantidad vendida: {Number(order.cantidadVendida || 0)}</span>
+        {/* V1: la fecha exacta, no solo "en custodia". Es la diferencia entre una plata que se
+            esta esperando y una que parece perdida. */}
+        {order.disponibleDesde && <span className="withdrawal-order-held">Disponible para retiro el {formatDate(order.disponibleDesde)}</span>}
       </div>
       <b>{formatCLP(order.valor)}</b>
     </article>
@@ -220,7 +223,13 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
         getSellerPendingWithdrawalsApi(sellerId),
         getSellerWithdrawalsApi(sellerId),
       ]);
-      setPending({ pedidos: pendingData?.pedidos || [], totalARetirar: Number(pendingData?.totalARetirar || 0) });
+      setPending({
+        pedidos: pendingData?.pedidos || [],
+        totalARetirar: Number(pendingData?.totalARetirar || 0),
+        // V1: lo que sigue en custodia por el retracto del comprador. Va aparte del total.
+        retenidos: pendingData?.retenidos || [],
+        totalRetenido: Number(pendingData?.totalRetenido || 0),
+      });
       setHistory(Array.isArray(historyData) ? historyData : []);
     } catch (loadError) {
       setError(loadError.message || 'No se pudo cargar la información de retiros.');
@@ -300,7 +309,16 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
           <div className="withdrawal-info-banner"><Info size={19} /><span>El depósito de los fondos se hace todos los jueves. Aquí aparecen tus pedidos finalizados que aún no has retirado.</span></div>
           {withdrawalInProgress && <div className="withdrawal-alert warning"><AlertCircle size={18} /><span>Tienes una solicitud en curso por {formatCLP(withdrawalInProgress.montoTotal)}, programada para el {formatDate(withdrawalInProgress.fechaEfectiva)}. Podrás solicitar otra cuando se efectúe el pago.</span></div>}
           <div className="withdrawal-content-grid">
-            <section className="withdrawal-pending-list"><h3>Pedidos pendientes <span>{pending.pedidos.length}</span></h3>{pending.pedidos.length ? pending.pedidos.map((order) => <PendingOrderRow key={order.pedidoId} order={order} />) : <div className="withdrawal-empty"><span><Wallet size={25} /></span><strong>No tienes pedidos pendientes de retiro</strong><p>Cuando tengas pedidos finalizados, aparecerán aquí.</p></div>}</section>
+            <section className="withdrawal-pending-list"><h3>Pedidos pendientes <span>{pending.pedidos.length}</span></h3>{pending.pedidos.length ? pending.pedidos.map((order) => <PendingOrderRow key={order.pedidoId} order={order} />) : <div className="withdrawal-empty"><span><Wallet size={25} /></span><strong>No tienes pedidos pendientes de retiro</strong><p>Cuando tengas pedidos finalizados, aparecerán aquí.</p></div>}
+              {/* V1 — Ventas cerradas cuya plata sigue en custodia por el retracto del comprador.
+                  NO suman al total: no se pueden retirar todavia. Pero tienen que verse, porque un
+                  vendedor que finalizo la venta y no encuentra su plata asume que la perdio. */}
+              {pending.retenidos.length > 0 && (
+                <>
+                  <div className="withdrawal-info-banner"><Info size={19} /><span>{formatCLP(pending.totalRetenido)} en custodia. Por ley el comprador tiene 10 días corridos desde que recibe el repuesto para retractarse, y durante ese plazo los fondos no se liberan. Vencido, se suman solos a lo que puedes retirar.</span></div>
+                  {pending.retenidos.map((order) => <PendingOrderRow key={`retenido-${order.pedidoId}`} order={order} />)}
+                </>
+              )}</section>
             <aside className="withdrawal-total-card"><span>Total a retirar</span><strong>{formatCLP(pending.totalARetirar)}</strong><small>{pending.pedidos.length} {pending.pedidos.length === 1 ? 'pedido disponible' : 'pedidos disponibles'}</small><button type="button" onClick={startWithdrawal} disabled={!pending.pedidos.length || submitting || Boolean(withdrawalInProgress)}><Wallet size={17} />{withdrawalInProgress ? 'Retiro en curso' : 'Solicitar retiro'}</button><p>Se depositará en la cuenta bancaria registrada.</p></aside>
           </div>
         </div>

@@ -11878,6 +11878,9 @@ input, select, textarea {
 .withdrawal-order-row strong { overflow: hidden; color: #1e293b; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
 .withdrawal-order-row span { color: #75869a; font-size: 10.5px; line-height: 1.35; }
 .withdrawal-order-row b { flex: 0 0 auto; color: #075985; font-size: 13px; }
+/* V1: la fecha en que esta venta sale de custodia. En el azul de la marca y no en el gris
+   del resto de la linea, porque es la respuesta a "donde esta mi plata". */
+.withdrawal-order-row span.withdrawal-order-held { color: #075985; font-weight: 700; }
 .withdrawal-total-card { position: sticky; top: 88px; display: grid; gap: 7px; padding: 20px; border: 1px solid #bfe2d2; border-radius: 15px; background: linear-gradient(150deg, #f5fffa, #ecfdf5); box-shadow: 0 10px 24px rgba(5, 150, 105, .08); }
 .withdrawal-total-card > span { color: #47766a; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
 .withdrawal-total-card > strong { color: #065f46; font-size: 27px; line-height: 1.1; }

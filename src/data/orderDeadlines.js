@@ -43,6 +43,21 @@ export const AUTO_RECEPTION_DAYS = 10;
 export const AUTO_RECEPTION_LOCAL_DAYS = 2;
 export const AUTO_FINALIZATION_DAYS = 3;
 export const DELIVERY_VETO_WINDOW_HOURS = 48;
+/**
+ * V1 — Dias corridos que el comprador conserva para retractarse desde la recepcion fisica
+ * (Art. 3 bis letra b, Ley 19.496), y que los terminos prometen.
+ *
+ * **No sustituye a `AUTO_FINALIZATION_DAYS`, corre en paralelo.** El pedido se cierra a los 3
+ * dias -- se califica, se contabiliza, se cierra el ciclo tributario -- y el retracto sigue
+ * vivo 7 dias mas. Son dos relojes distintos sobre el mismo `entregadoAt`.
+ */
+export const RETRACTION_DAYS = 10;
+/**
+ * Dias que la plata del vendedor sigue en custodia. Espejo de
+ * `repuestop.retiro.retencion.retracto.dias` del backend: el retracto mas un dia de margen por
+ * el barrido horario del job.
+ */
+export const FUNDS_RELEASE_DAYS = 11;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
@@ -132,10 +147,69 @@ export function storeAutoCloseNotice(
       label: left
         ? `Se cierra en ${left}`
         : 'Se cierra en las próximas horas',
-      detail: 'Revisa que los repuestos calcen. Después del cierre ya no podrás abrir un reclamo.',
+      // V1: antes decia "Despues del cierre ya no podras abrir un reclamo", que es falso
+      // -- FINALIZADO -> EN_MEDIACION es una transicion valida -- y ademas contradecia el
+      // retracto, que dura 10 dias y sobrevive al cierre.
+      detail: 'Revisa que los repuestos calcen. El cierre da la entrega por conforme, pero tu plazo de retracto sigue corriendo.',
       urgent: remaining <= DAY_MS,
     };
   }
 
   return null;
+}
+
+/**
+ * V1 — Hasta cuando este comprador puede retractarse de esta compra.
+ *
+ * Va aparte de `storeAutoCloseNotice` porque **sobrevive al cierre del pedido**: la venta se
+ * finaliza a los 3 dias y el derecho sigue vivo hasta el 10. Un aviso que se apagara junto con
+ * el cierre le estaria diciendo al comprador que perdio un plazo que todavia tiene.
+ *
+ * Devuelve `null` cuando ya vencio o cuando no hay `entregadoAt` -- subordenes anteriores a la
+ * migracion que lo sello: prometer una fecha que el servidor no va a respetar es peor que no
+ * decir nada.
+ *
+ * Contraparte de `retractionNotice` en `mobile/utils/order-deadlines.ts`.
+ */
+export function retractionNotice({ status, entregadoAt }, now = Date.now()) {
+  if (status !== 'ENTREGADO' && status !== 'FINALIZADO') return null;
+
+  const deliveredAt = toTime(entregadoAt);
+  if (!deliveredAt) return null;
+
+  const remaining = deliveredAt + RETRACTION_DAYS * DAY_MS - now;
+  if (remaining <= 0) return null;
+
+  const left = remainingLabel(remaining);
+  return {
+    kind: 'retraction',
+    label: left ? `Puedes retractarte por ${left}` : 'Tu plazo de retracto vence hoy',
+    detail: 'Si el repuesto está sin usar y en su empaque original sellado, puedes devolverlo desde el botón de reclamo. No aplica a componentes eléctricos o electrónicos ya desellados ni a piezas pedidas a medida, y el flete de la devolución es de tu cargo.',
+    urgent: remaining <= 2 * DAY_MS,
+  };
+}
+
+/**
+ * V1 — Cuando el vendedor va a poder retirar la plata de esta venta.
+ *
+ * La contraparte de `retractionNotice`: mientras el comprador puede retractarse, los fondos no
+ * salen de custodia. Antes el vendedor no tenia ningun aviso y su plata simplemente no aparecia
+ * en el monto a retirar.
+ */
+export function fundsReleaseNotice({ status, entregadoAt }, now = Date.now()) {
+  if (status !== 'ENTREGADO' && status !== 'FINALIZADO') return null;
+
+  const deliveredAt = toTime(entregadoAt);
+  if (!deliveredAt) return null;
+
+  const remaining = deliveredAt + FUNDS_RELEASE_DAYS * DAY_MS - now;
+  if (remaining <= 0) return null;
+
+  const left = remainingLabel(remaining);
+  return {
+    kind: 'funds_release',
+    label: left ? `Podrás retirar esta venta en ${left}` : 'Podrás retirar esta venta en las próximas horas',
+    detail: 'Los fondos quedan en custodia mientras el comprador conserva su derecho a retracto. Vencido el plazo, el monto se suma a lo que puedes retirar.',
+    urgent: false,
+  };
 }
