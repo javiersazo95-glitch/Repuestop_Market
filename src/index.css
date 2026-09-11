@@ -11869,18 +11869,379 @@ input, select, textarea {
 .withdrawal-alert.success { color: #087443; border-color: #b9e4cd; background: #effaf4; }
 .withdrawal-info-banner { color: #075985; border-color: #bae0f4; background: #eff9ff; }
 .withdrawal-management { display: grid; gap: 16px; }
+
+/* Tarjetas KPI de resumen financiero superior */
+.withdrawal-kpis-bar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.withdrawal-kpi-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+}
+.withdrawal-kpi-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 11px;
+}
+.withdrawal-kpi-card.kpi-available { border-color: #bbf7d0; background: #fcfdfc; }
+.withdrawal-kpi-card.kpi-available .withdrawal-kpi-icon { color: #059669; background: #ecfdf5; }
+.withdrawal-kpi-card.kpi-held { border-color: #bfdbfe; background: #fafcff; }
+.withdrawal-kpi-card.kpi-held .withdrawal-kpi-icon { color: #2563eb; background: #eff6ff; }
+.withdrawal-kpi-card.kpi-total { border-color: #cbd5e1; background: #fff; }
+.withdrawal-kpi-card.kpi-total .withdrawal-kpi-icon { color: #475569; background: #f1f5f9; }
+.withdrawal-kpi-info { display: grid; gap: 2px; min-width: 0; }
+.withdrawal-kpi-info > span { color: #64748b; font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.02em; }
+.withdrawal-kpi-info > strong { color: #0f172a; font-size: 20px; font-weight: 850; line-height: 1.15; }
+.withdrawal-kpi-info > small { color: #718096; font-size: 11px; }
+
+/* Aviso de retiro en proceso */
+.withdrawal-in-progress-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 15px 17px;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  background: #fffdf5;
+  color: #92400e;
+}
+.withdrawal-in-progress-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 9px;
+  color: #b45309;
+  background: #fef3c7;
+}
+.withdrawal-in-progress-content { display: grid; gap: 4px; font-size: 12px; line-height: 1.45; }
+.withdrawal-in-progress-content strong { font-size: 13px; color: #78350f; }
+.withdrawal-in-progress-content p { margin: 0; color: #92400e; }
+.withdrawal-in-progress-content small { color: #b45309; font-size: 11px; }
+
 .withdrawal-content-grid { display: grid; grid-template-columns: minmax(0, 1fr) 260px; align-items: start; gap: 18px; }
-.withdrawal-pending-list { min-width: 0; display: grid; gap: 9px; }
-.withdrawal-pending-list h3 { display: flex; align-items: center; gap: 7px; margin: 0 0 3px; color: #1e293b; font-size: 14px; }
-.withdrawal-pending-list h3 span { min-width: 22px; padding: 3px 6px; border-radius: 999px; color: #075985; background: #e0f2fe; font-size: 10px; text-align: center; }
-.withdrawal-order-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 14px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
-.withdrawal-order-row > div { min-width: 0; display: grid; gap: 4px; }
-.withdrawal-order-row strong { overflow: hidden; color: #1e293b; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
-.withdrawal-order-row span { color: #75869a; font-size: 10.5px; line-height: 1.35; }
-.withdrawal-order-row b { flex: 0 0 auto; color: #075985; font-size: 13px; }
-/* V1: la fecha en que esta venta sale de custodia. En el azul de la marca y no en el gris
-   del resto de la linea, porque es la respuesta a "donde esta mi plata". */
-.withdrawal-order-row span.withdrawal-order-held { color: #075985; font-weight: 700; }
+.withdrawal-pending-columns { display: grid; gap: 18px; min-width: 0; }
+
+/* Tarjetas de sección (Disponibles y En Custodia) */
+.withdrawal-section-card {
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.03);
+}
+.withdrawal-available-card { border-top: 3px solid #059669; }
+.withdrawal-held-card { border-top: 3px solid #2563eb; }
+
+.withdrawal-section-header {
+  padding: 16px 18px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fafbfc;
+}
+.withdrawal-section-title-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.withdrawal-section-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 9px;
+}
+.withdrawal-section-icon.available-icon { color: #059669; background: #ecfdf5; }
+.withdrawal-section-icon.held-icon { color: #2563eb; background: #eff6ff; }
+.withdrawal-section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.withdrawal-section-title-row h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 14.5px;
+  font-weight: 850;
+}
+.withdrawal-section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.withdrawal-section-badge.available-badge { color: #166534; background: #dcfce7; border: 1px solid #bbf7d0; }
+.withdrawal-section-badge.held-badge { color: #1e40af; background: #dbeafe; border: 1px solid #bfdbfe; }
+.withdrawal-section-header p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.withdrawal-section-orders {
+  padding: 14px 16px;
+  display: grid;
+  gap: 9px;
+}
+
+.withdrawal-empty-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 16px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+}
+.withdrawal-empty-inline svg { color: #94a3b8; flex: 0 0 auto; }
+.withdrawal-empty-inline strong { display: block; color: #334155; font-size: 12.5px; }
+.withdrawal-empty-inline p { margin: 2px 0 0; font-size: 11px; color: #64748b; }
+
+/* Fila de pedido */
+.withdrawal-order-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 15px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.withdrawal-order-row:hover {
+  background: #fafbfc;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+.withdrawal-order-row.is-held {
+  border-left: 3px solid #3b82f6;
+}
+.withdrawal-order-row.is-available {
+  border-left: 3px solid #10b981;
+}
+.withdrawal-order-main {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.withdrawal-order-main strong {
+  overflow: hidden;
+  color: #1e293b;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.withdrawal-order-meta {
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.withdrawal-countdown-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  width: fit-content;
+  margin-top: 2px;
+}
+.withdrawal-countdown-badge.pending-days {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+.withdrawal-countdown-badge.tomorrow {
+  color: #854d0e;
+  background: #fefce8;
+  border: 1px solid #fef08a;
+}
+.withdrawal-countdown-badge.today {
+  color: #065f46;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+}
+.withdrawal-countdown-badge.ready {
+  color: #166534;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+.withdrawal-ready-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #059669;
+  font-size: 11px;
+  font-weight: 750;
+  margin-top: 2px;
+}
+.withdrawal-order-amount-box {
+  display: grid;
+  text-align: right;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+.withdrawal-order-amount-box b {
+  color: #0f172a;
+  font-size: 14.5px;
+  font-weight: 850;
+}
+.withdrawal-order-amount-box small {
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+/* Botón Ver más pedidos */
+.withdrawal-view-more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  margin-top: 4px;
+  padding: 9px 14px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 9px;
+  background: #f8fafc;
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.withdrawal-view-more-btn:hover {
+  background: #f0f9ff;
+  border-color: #7dd3fc;
+  color: #0284c7;
+}
+.withdrawal-view-more-btn.held-btn {
+  color: #1d4ed8;
+}
+.withdrawal-view-more-btn.held-btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+
+/* Nota de ciclo de pago en tarjeta lateral */
+.withdrawal-cycle-pill {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  margin-top: 5px;
+  border: 1px solid #a7f3d0;
+  border-radius: 10px;
+  background: rgba(5, 150, 105, 0.07);
+  color: #065f46;
+}
+.withdrawal-cycle-pill svg { flex: 0 0 auto; color: #059669; }
+.withdrawal-cycle-pill > div { display: grid; gap: 1px; min-width: 0; }
+.withdrawal-cycle-pill span { font-size: 9.5px; color: #047857; font-weight: 750; text-transform: uppercase; letter-spacing: 0.02em; }
+.withdrawal-cycle-pill strong { font-size: 11.5px; font-weight: 850; color: #064e3b; text-transform: capitalize; }
+
+/* Modal de listado completo de pedidos */
+.withdrawal-orders-modal-body {
+  display: grid;
+  gap: 12px;
+  padding: 16px 20px 20px;
+  max-height: calc(85vh - 120px);
+  overflow-y: auto;
+}
+.withdrawal-modal-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.withdrawal-modal-search:focus-within {
+  border-color: var(--color-brand-blue);
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+}
+.withdrawal-modal-search svg { color: #64748b; flex: 0 0 auto; }
+.withdrawal-modal-search input {
+  border: 0;
+  outline: 0;
+  width: 100%;
+  font-size: 12px;
+  font: inherit;
+  color: #0f172a;
+  background: transparent;
+}
+.withdrawal-search-clear {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 4px;
+  color: #94a3b8;
+  background: transparent;
+  cursor: pointer;
+}
+.withdrawal-search-clear:hover { color: #334155; }
+.withdrawal-modal-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: #64748b;
+  padding: 0 4px;
+}
+.withdrawal-modal-meta-row strong { color: #0f172a; }
+.withdrawal-modal-orders-scroll {
+  display: grid;
+  gap: 8px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.withdrawal-empty-search {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 30px 16px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  color: #94a3b8;
+  text-align: center;
+}
+.withdrawal-empty-search p { margin: 0; font-size: 12px; }
+.withdrawal-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+.withdrawal-modal-footer .btn-auth-primary { width: auto; padding: 9px 20px; }
 .withdrawal-total-card { position: sticky; top: 88px; display: grid; gap: 7px; padding: 20px; border: 1px solid #bfe2d2; border-radius: 15px; background: linear-gradient(150deg, #f5fffa, #ecfdf5); box-shadow: 0 10px 24px rgba(5, 150, 105, .08); }
 .withdrawal-total-card > span { color: #47766a; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
 .withdrawal-total-card > strong { color: #065f46; font-size: 27px; line-height: 1.1; }
@@ -11971,6 +12332,7 @@ input, select, textarea {
   .seller-withdrawals-panel { padding: 18px 14px; }
   .withdrawal-heading { align-items: flex-start; flex-direction: column; }
   .withdrawal-bank-button { width: 100%; justify-content: center; }
+  .withdrawal-kpis-bar { grid-template-columns: 1fr; }
   .withdrawal-content-grid, .withdrawal-history-list { grid-template-columns: 1fr; }
   .withdrawal-total-card { position: static; grid-row: 1; }
   .withdrawal-bank-form { grid-template-columns: 1fr; }
