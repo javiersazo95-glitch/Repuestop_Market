@@ -14,6 +14,7 @@ import { isQuoteExpired, quantityFromLabel } from '../utils/quoteFlow';
 import { checkoutFallbackShippingMethod, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import { buyerProfilePath, profilePath, ROUTES } from '../routes/paths';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
+import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import BuyerAddressBook from '../components/BuyerAddressBook';
 import CheckoutSummaryPanel from '../components/CheckoutSummaryPanel';
 
@@ -30,7 +31,9 @@ function formatCLP(value) {
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const { isBlocked: isBlockedAccount } = useSellerBlocked();
+  const { isBlocked: isSellerBlockedAccount } = useSellerBlocked();
+  const { isBlocked: isBuyerBlockedAccount } = useBuyerBlocked();
+  const isBlockedAccount = isSellerBlockedAccount || isBuyerBlockedAccount;
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const buyerQuotesPath = buyerProfilePath(user, 'quotes');

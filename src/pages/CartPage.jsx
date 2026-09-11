@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, Loader2, Lock, ShoppingBag, X } from 'lucide-react';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
+import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import { useAuth } from '../context/AuthContext';
 import { getPublicProductApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
@@ -16,7 +17,9 @@ import PurchaseShippingModal from '../components/PurchaseShippingModal';
 export default function CartPage() {
   const navigate = useNavigate();
   const nav = useAppNavigation();
-  const { isBlocked: isBlockedAccount } = useSellerBlocked();
+  const { isBlocked: isSellerBlockedAccount } = useSellerBlocked();
+  const { isBlocked: isBuyerBlockedAccount } = useBuyerBlocked();
+  const isBlockedAccount = isSellerBlockedAccount || isBuyerBlockedAccount;
   const { isLoggedIn } = useAuth();
   const {
     cartItems, cartCount, cartTotals, cartError, dismissCartError,

@@ -7,7 +7,7 @@ import {
   Clock, ShieldCheck, Building2, PackageCheck, Loader2, Inbox, ChevronLeft, ChevronRight, Search,
   CreditCard, Phone, Mail, ArrowUpRight, Sliders, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Boxes, Plus, MessageCircleQuestion, Headphones, Wallet, Info, Crown,
-  CheckCircle, Send, Megaphone, Lightbulb, CheckCircle2, Circle, Lock, ShoppingCart
+  CheckCircle, Send, Megaphone, Lightbulb, CheckCircle2, Circle, Lock, ShoppingCart, Scale
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
@@ -17,7 +17,7 @@ import {
   getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getBuyerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
   updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi,
-  saveConversationQuoteApi, sendConversationMessageApi, requestBlockedAccountReviewApi,
+  saveConversationQuoteApi, sendConversationMessageApi, requestBlockedAccountReviewApi, requestBuyerBlockedAccountReviewApi,
   cancelSellerOrderApi, cancelBuyerSubOrderApi, registerOrderDispatchApi, registerSaleReceiptApi, declareOrderDeliveryApi, createOrderClaimApi,
   pauseSellerProductApi, resumeSellerProductApi, updateSellerShippingMethodsApi,
   getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
@@ -27,6 +27,7 @@ import {
 import { qk } from '../services/queryKeys';
 import ShippingMethodsPicker from './ShippingMethodsPicker';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
+import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import OrderCard from './OrderCard';
 import OrderDetailView from './OrderDetailView';
 import CatalogCard from './CatalogCard';
@@ -147,6 +148,21 @@ const SELLER_BLOCKED_HIDDEN_TABS = [
   'cotizaciones',
   'preguntas_productos',
   'retiros',
+  'anuncios',
+];
+
+// Contraparte para comprador bloqueado. A diferencia del vendedor (que conserva
+// pestanas de solo lectura), aqui se ocultan TODAS las de operacion: el backend
+// rechaza con 403 cualquier compra, cotizacion, pregunta o chat del lado comprador
+// mientras la cuenta este suspendida. Solo quedan "Resumen" (donde vive el aviso y
+// la solicitud de revision) y "Soporte", igual que el vendedor.
+const BUYER_BLOCKED_HIDDEN_TABS = [
+  'pedidos',
+  'cotizaciones',
+  'mis_preguntas',
+  'chats_vendedor',
+  'favoritos',
+  'datos',
   'anuncios',
 ];
 
@@ -450,6 +466,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const baseSidebarGroups = isSeller ? SELLER_SIDEBAR_GROUPS : BUYER_SIDEBAR_GROUPS;
   const effectiveSellerId = user?.sellerId || user?.proveedorId || user?.tiendaId || user?.userId || user?.id;
   const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
+  const effectiveBuyerId = user?.buyerId || user?.compradorId;
   const [ratingPromptOrderId, setRatingPromptOrderId] = useState(null);
 
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -546,20 +563,30 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // El estado de bloqueo lo resuelve `useSellerBlocked`, que es la misma fuente que usan
   // el header, el carrito y el centro de ayuda. Tenerlo resuelto en cada vista era como
   // termino este bug la primera vez: cinco nombres de campo inventados, ninguno real.
-  const { isBlocked: isSellerBlocked, blockReason, blockReasonIsClaim } = useSellerBlocked();
+  const { isBlocked: isSellerBlocked, blockReason: sellerBlockReason, blockReasonIsClaim } = useSellerBlocked();
+  const { isBlocked: isBuyerBlocked, blockReason: buyerBlockReason } = useBuyerBlocked();
+  // Un usuario esta bloqueado por un lado u otro, nunca ambos a la vez en la
+  // practica (son dos suspensiones independientes en el backend).
+  const blockReason = isSellerBlocked ? sellerBlockReason : buyerBlockReason;
 
-  // Se ocultan las pestanas de operacion, no la navegacion entera: resumen, pedidos
-  // (solo lectura), mi tienda/datos y Reportes/Disputa siguen accesibles. Disputa es
-  // justamente donde vive la mediacion que suele originar el bloqueo.
+  // Se ocultan las pestanas de operacion, no la navegacion entera: resumen y
+  // Reportes/Soporte siguen accesibles (para el vendedor ademas pedidos en solo
+  // lectura). Soporte es justamente donde vive la mediacion que suele originar el
+  // bloqueo.
   const sidebarGroups = useMemo(() => {
-    if (!isSellerBlocked) return baseSidebarGroups;
+    const hiddenTabs = isSellerBlocked
+      ? SELLER_BLOCKED_HIDDEN_TABS
+      : isBuyerBlocked
+        ? BUYER_BLOCKED_HIDDEN_TABS
+        : null;
+    if (!hiddenTabs) return baseSidebarGroups;
     return baseSidebarGroups
       .map((group) => ({
         ...group,
-        items: group.items.filter((item) => !SELLER_BLOCKED_HIDDEN_TABS.includes(item.id)),
+        items: group.items.filter((item) => !hiddenTabs.includes(item.id)),
       }))
       .filter((group) => group.items.length > 0);
-  }, [baseSidebarGroups, isSellerBlocked]);
+  }, [baseSidebarGroups, isSellerBlocked, isBuyerBlocked]);
 
   // Ocultar la pestana no basta: la web navega por URL (`/perfil/productos`), asi que
   // un enlace guardado o el boton atras entran igual. Al detectar el bloqueo se vuelve
@@ -568,12 +595,35 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     if (isSellerBlocked && SELLER_BLOCKED_HIDDEN_TABS.includes(activeTab)) {
       setActiveTab('resumen');
     }
-  }, [isSellerBlocked, activeTab, setActiveTab]);
+    if (isBuyerBlocked && BUYER_BLOCKED_HIDDEN_TABS.includes(activeTab)) {
+      setActiveTab('resumen');
+    }
+  }, [isSellerBlocked, isBuyerBlocked, activeTab, setActiveTab]);
 
   const handleSubmitBlockedReview = async (e) => {
     e.preventDefault();
     if (!blockedReviewText.trim()) {
       setBlockedReviewError('Por favor describe el motivo o justificación de tu solicitud.');
+      return;
+    }
+    if (isBuyerBlocked) {
+      if (!effectiveBuyerId) {
+        setBlockedReviewError('No se encontró el identificador de tu cuenta.');
+        return;
+      }
+      setIsSubmittingBlockedReview(true);
+      setBlockedReviewError(null);
+      try {
+        await requestBuyerBlockedAccountReviewApi(effectiveBuyerId, {
+          mensaje: blockedReviewText.trim(),
+          contactoAlternativo: blockedReviewContact.trim(),
+        });
+        setBlockedReviewSuccess(true);
+      } catch (err) {
+        setBlockedReviewError(err?.message || 'No se pudo enviar la solicitud de revisión.');
+      } finally {
+        setIsSubmittingBlockedReview(false);
+      }
       return;
     }
     if (!effectiveSellerId) {
@@ -1772,7 +1822,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             </div>
           )}
 
-          {isSellerBlocked && (
+          {(isSellerBlocked || isBuyerBlocked) && (
             <div
               className="seller-blocked-banner"
               style={{
@@ -1806,10 +1856,12 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 </div>
                 <div>
                   <strong style={{ display: 'block', color: '#991b1b', fontSize: '14.5px', fontWeight: 800 }}>
-                    Tu tienda se encuentra bloqueada
+                    {isSellerBlocked ? 'Tu tienda se encuentra bloqueada' : 'Tu cuenta se encuentra suspendida'}
                   </strong>
                   <p style={{ margin: '3px 0 0', color: '#b91c1c', fontSize: '13px', lineHeight: 1.4 }}>
-                    {blockReason} Mientras esté suspendida no podrás recibir nuevos pedidos ni publicar productos.
+                    {blockReason} {isSellerBlocked
+                      ? 'Mientras esté suspendida no podrás recibir nuevos pedidos ni publicar productos.'
+                      : 'Mientras esté suspendida no podrás comprar, cotizar ni usar el resto de las funciones de la cuenta.'}
                   </p>
                 </div>
               </div>
@@ -2469,11 +2521,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
 
               {activeTab === 'chats_vendedor' && (
-                <SellerChatsView user={user} mode="buyer" />
+                <SellerChatsView user={user} mode="buyer" orders={isSeller ? purchasesQuery.data : ordersQuery.data} />
               )}
 
               {activeTab === 'chats_compradores' && isSeller && (
-                <SellerChatsView user={user} mode="seller" />
+                <SellerChatsView user={user} mode="seller" orders={ordersQuery.data} />
               )}
 
               {activeTab === 'feedback' && (

@@ -11,6 +11,7 @@ import RepuesTopLogo from './RepuesTopLogo';
 import { useAuth } from '../context/AuthContext';
 import HeaderWalletButton from './HeaderWalletButton';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
+import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import { getPartCategoriesApi, getPartSubcategoriesApi, getPublicProductsApi, resolveMediaUrl } from '../services/api';
 import CategoryIconTile from './CategoryIconTile';
 
@@ -43,7 +44,9 @@ export default function Header({
   const categoryButtonRefs = useRef(new Map());
   const subcategoryCardRefs = useRef(new Map());
   const { user, isLoggedIn, role, logout } = useAuth();
-  const { isBlocked: isBlockedAccount } = useSellerBlocked();
+  const { isBlocked: isSellerBlockedAccount } = useSellerBlocked();
+  const { isBlocked: isBuyerBlockedAccount } = useBuyerBlocked();
+  const isBlockedAccount = isSellerBlockedAccount || isBuyerBlockedAccount;
   const isSellerAccount = String(user?.role || role || '').toUpperCase() === 'SELLER'
     && Boolean(user?.sellerId);
   const inventoryPanelUrl = __DEPLOY_BRANCH__ === 'main'

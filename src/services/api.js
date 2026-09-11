@@ -369,6 +369,30 @@ export async function requestBlockedAccountReviewApi(proveedorId, { mensaje, con
   });
 }
 
+/**
+ * Contraparte de getSellerAccountStatusApi para el lado comprador. Devuelve
+ * `{ buyerBlocked, blockReason }`.
+ */
+export async function getBuyerAccountStatusApi(compradorId, { signal } = {}) {
+  return fetchApi(`/compradores/${compradorId}/estado-cuenta`, {
+    method: 'GET',
+    signal,
+  });
+}
+
+/**
+ * Envía solicitud de revisión cuando la cuenta del comprador está bloqueada.
+ */
+export async function requestBuyerBlockedAccountReviewApi(compradorId, { mensaje, contactoAlternativo } = {}) {
+  const finalMessage = [mensaje, contactoAlternativo ? `Contacto alternativo: ${contactoAlternativo}` : '']
+    .filter(Boolean)
+    .join(' | ');
+  return fetchApi(`/compradores/${compradorId}/cuenta-bloqueada/solicitud-revision`, {
+    method: 'POST',
+    body: JSON.stringify({ mensaje: finalMessage || 'Solicito revisión de cuenta bloqueada' }),
+  });
+}
+
 export async function logoutApi(token) {
   try {
     return await fetchApi('/auth/logout', {

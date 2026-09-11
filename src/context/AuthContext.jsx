@@ -142,6 +142,11 @@ export function AuthProvider({ children }) {
       sellerBlocked: authResponse.sellerBlocked ?? baseUser.sellerBlocked,
       sellerBlockReason: authResponse.sellerBlockReason ?? baseUser.sellerBlockReason,
       sellerCanAppeal: authResponse.sellerCanAppeal ?? baseUser.sellerCanAppeal,
+      // Mismo caso que arriba pero para el comprador: tambien viajan en la RAIZ de
+      // LoginResponseDTO.
+      buyerBlocked: authResponse.buyerBlocked ?? baseUser.buyerBlocked,
+      buyerBlockReason: authResponse.buyerBlockReason ?? baseUser.buyerBlockReason,
+      buyerCanAppeal: authResponse.buyerCanAppeal ?? baseUser.buyerCanAppeal,
     });
 
     const assignedRole = baseUser.role || authResponse.role || preferredRole || 'BUYER';
