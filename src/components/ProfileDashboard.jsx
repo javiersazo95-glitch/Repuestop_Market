@@ -5,9 +5,9 @@ import {
   ArrowLeft, LayoutGrid, Package, Heart, UserCog, Store, ShoppingBag,
   MessageSquare, LogOut, Star, Layers, TrendingUp, Truck, Check, Save, X,
   Clock, ShieldCheck, Building2, PackageCheck, Loader2, Inbox, ChevronLeft, ChevronRight, Search,
-  ArrowUpRight, Sliders, Sparkles, Camera, Upload, Image as ImageIcon,
+  ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Boxes, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
-  CheckCircle, Send, Megaphone, CheckCircle2, ShoppingCart, Scale
+  CheckCircle, Megaphone, CheckCircle2, ShoppingCart, Scale
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
@@ -17,6 +17,7 @@ import ProfileAccountDataPanel from './ProfileAccountDataPanel';
 import ProfileSummaryPanel from './ProfileSummaryPanel';
 import ProfileFeedbackPanel from './ProfileFeedbackPanel';
 import ProfileOrdersPanel from './ProfileOrdersPanel';
+import ProfileQuotesPanel from './ProfileQuotesPanel';
 import {
   getBuyerOrdersApi, getSellerOrdersApi, getFavoritesApi,
   confirmOrderPaymentApi,
@@ -34,7 +35,6 @@ import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import CatalogCard from './CatalogCard';
 import ProductTopManagementModal from './ProductTopManagementModal';
 import ProductTopBadge from './ProductTopBadge';
-import QuoteCard from './QuoteCard';
 import QuoteDetailModal from './QuoteDetailModal';
 import ProfileSupportPanel from './ProfileSupportPanel';
 import SellerChatsView from './SellerChatsView';
@@ -397,9 +397,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [selectedCatalogProduct, setSelectedCatalogProduct] = useState(null);
   const [selectedTopProduct, setSelectedTopProduct] = useState(null);
   const [selectedQuote, setSelectedQuote] = useState(null);
-  const [quoteFilter, setQuoteFilter] = useState('all');
-  const [quoteSearch, setQuoteSearch] = useState('');
-  const [quoteSort, setQuoteSort] = useState('newest');
 
   // Catálogo: paginado en el servidor
   const [catalogPage, setCatalogPage] = useState(0);
@@ -660,28 +657,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     if (embeddedCount !== undefined && embeddedCount !== null) return Number(embeddedCount) || 0;
     return productQuestions.filter((question) => String(question.productoId ?? question.productId ?? question.product?.id ?? question.producto?.id ?? '') === String(product.id)).length;
   };
-
-  const quoteConversations = useMemo(() => {
-    const query = quoteSearch.trim().toLowerCase();
-    return (activeQuoteSource || [])
-      .filter((conversation) => !conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion')
-      .filter((conversation) => {
-        if (quoteFilter === 'pending') return !conversation.cotizacion;
-        if (quoteFilter === 'sent') return Boolean(conversation.cotizacion);
-        if (quoteFilter === 'unread') return Number(conversation.mensajesNoLeidos || 0) > 0;
-        return true;
-      })
-      .filter((conversation) => {
-        if (!query) return true;
-        return [conversation.id, conversation.otroParticipanteNombre, conversation.productoNombre, conversation.ultimoMensaje]
-          .some((value) => String(value || '').toLowerCase().includes(query));
-      })
-      .sort((left, right) => {
-        const leftTime = new Date(left.ultimoMensajeFecha || left.updatedAt || 0).getTime() || 0;
-        const rightTime = new Date(right.ultimoMensajeFecha || right.updatedAt || 0).getTime() || 0;
-        return quoteSort === 'newest' ? rightTime - leftTime : leftTime - rightTime;
-      });
-  }, [activeQuoteSource, quoteFilter, quoteSearch, quoteSort]);
 
   const quoteSummary = useMemo(() => {
     const quoteOnly = (activeQuoteSource || []).filter((conversation) => (
@@ -1550,55 +1525,12 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
 
               {(activeTab === 'cotizaciones' || (isSeller && activeTab === 'mis_cotizaciones')) && (
-                <div className="profile-panel seller-quotes-panel">
-                  <div className="seller-quotes-heading">
-                    <div>
-                      <span className="seller-quotes-eyebrow"><ReceiptText size={14} /> {quotesAsBuyer ? 'Conversaciones de cotización' : 'Centro de cotizaciones'}</span>
-                      <h2 className="profile-panel-title">{quotesAsBuyer ? 'Mis cotizaciones' : 'Cotizaciones de compradores'}</h2>
-                      <p>{quotesAsBuyer ? 'Revisa las respuestas de las tiendas, conversa y consulta cada propuesta con su vigencia y condiciones.' : 'Revisa solicitudes, responde con tus condiciones comerciales y mantén cada oferta vinculada a su conversación.'}</p>
-                    </div>
-                    <div className="seller-quotes-heading-actions">
-                      {!quotesAsBuyer && <span className="seller-quotes-total-badge">{quoteSummary.total} {quoteSummary.total === 1 ? 'solicitud' : 'solicitudes'}</span>}
-                      <button type="button" className="seller-quotes-sort" onClick={() => setQuoteSort((current) => current === 'newest' ? 'oldest' : 'newest')}>
-                        <Sliders size={15} /> {quoteSort === 'newest' ? 'Más recientes' : 'Más antiguas'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="seller-quotes-summary">
-                    <article><MessageSquare size={18} /><span><strong>{quoteSummary.total}</strong>Total</span></article>
-                    <article className="is-pending"><Clock size={18} /><span><strong>{quoteSummary.pending}</strong>Por responder</span></article>
-                    <article className="is-sent"><Send size={18} /><span><strong>{quoteSummary.sent}</strong>Ofertas enviadas</span></article>
-                    <article className="is-unread"><Inbox size={18} /><span><strong>{quoteSummary.unread}</strong>Mensajes sin leer</span></article>
-                  </div>
-
-                  <div className="seller-quotes-toolbar">
-                    <label className="seller-quotes-search"><Search size={15} /><input value={quoteSearch} onChange={(event) => setQuoteSearch(event.target.value)} placeholder={quotesAsBuyer ? 'Buscar tienda, producto o cotización...' : 'Buscar comprador, producto o cotización...'} />{quoteSearch && <button type="button" onClick={() => setQuoteSearch('')} aria-label="Limpiar búsqueda"><X size={13} /></button>}</label>
-                    <div className="seller-quotes-filters" role="group" aria-label="Filtrar cotizaciones">
-                      {[['all', 'Todas'], ['pending', 'Sin responder'], ['sent', 'Enviadas'], ['unread', 'Sin leer']].map(([value, label]) => (
-                        <button key={value} type="button" className={quoteFilter === value ? 'active' : ''} onClick={() => setQuoteFilter(value)}>{label}</button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {quoteSummary.total === 0 ? (
-                    <EmptyState label={quotesAsBuyer ? 'Aún no has pedido cotizaciones a otras tiendas.' : 'Aún no tienes solicitudes de cotización.'} />
-                  ) : quoteConversations.length === 0 ? (
-                    <EmptyState label="No encontramos cotizaciones con esos filtros." />
-                  ) : (
-                    <div className="profile-orders-cards-grid seller-quotes-grid">
-                      {quoteConversations.map((c) => (
-                        <QuoteCard
-                          key={c.id}
-                          quote={c}
-                          mode={quotesAsBuyer ? 'buyer' : 'seller'}
-                          onSelectQuote={(item) => setSelectedQuote(item)}
-                          onQuickRespond={(item) => setSelectedQuote(item)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <ProfileQuotesPanel
+                  quotesAsBuyer={quotesAsBuyer}
+                  quoteSummary={quoteSummary}
+                  activeQuoteSource={activeQuoteSource}
+                  onSelectQuote={setSelectedQuote}
+                />
               )}
 
               {activeTab === 'anuncios' && (
@@ -1877,7 +1809,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         isOpen={showBlockedReviewModal}
         onClose={() => setShowBlockedReviewModal(false)}
         isBuyerBlocked={isBuyerBlocked}
-        isSellerBlocked={isSellerBlocked}
         blockReason={blockReason}
         blockReasonIsClaim={blockReasonIsClaim}
         effectiveSellerId={effectiveSellerId}
