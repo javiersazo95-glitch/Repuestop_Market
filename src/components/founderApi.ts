@@ -30,6 +30,8 @@ export type SellerRegistrationPayload = {
   referral?: string;
   referralChannel?: 'CASA_REPUESTOS';
   acceptsTerms: boolean;
+  /** Version de los terminos aceptados (LEGAL_VERSION_CODE), para el registro append-only de RT_aceptacion_terminos. */
+  termsVersion?: string;
   /** Le dice al backend que esta tienda se postuló desde la web, para enrutar bien el correo de resultado de verificación. */
   origin: 'SITIO_WEB';
 };
