@@ -11,13 +11,14 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
+import BlockedAccountReviewModal from './BlockedAccountReviewModal';
 import {
   getBuyerOrdersApi, getBuyerOrderByIdApi, getSellerOrdersApi, getFavoritesApi,
   retryOrderPaymentApi, confirmOrderPaymentApi,
   getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getBuyerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
   updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl, getVehicleBrandsApi, updateStoreSpecialistBrandsApi,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi,
-  saveConversationQuoteApi, sendConversationMessageApi, requestBlockedAccountReviewApi, requestBuyerBlockedAccountReviewApi,
+  saveConversationQuoteApi, sendConversationMessageApi,
   cancelSellerOrderApi, cancelBuyerSubOrderApi, registerOrderDispatchApi, registerSaleReceiptApi, declareOrderDeliveryApi, createOrderClaimApi,
   pauseSellerProductApi, resumeSellerProductApi, updateSellerShippingMethodsApi,
   getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
@@ -351,11 +352,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [isLoadingFeedbackHistory, setIsLoadingFeedbackHistory] = useState(false);
 
   const [showBlockedReviewModal, setShowBlockedReviewModal] = useState(false);
-  const [blockedReviewText, setBlockedReviewText] = useState('');
-  const [blockedReviewContact, setBlockedReviewContact] = useState('');
-  const [isSubmittingBlockedReview, setIsSubmittingBlockedReview] = useState(false);
-  const [blockedReviewSuccess, setBlockedReviewSuccess] = useState(false);
-  const [blockedReviewError, setBlockedReviewError] = useState(null);
 
   const inventoryPanelUrl = __DEPLOY_BRANCH__ === 'main'
     ? 'https://inventario.repuestop.cl'
@@ -599,51 +595,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       setActiveTab('resumen');
     }
   }, [isSellerBlocked, isBuyerBlocked, activeTab, setActiveTab]);
-
-  const handleSubmitBlockedReview = async (e) => {
-    e.preventDefault();
-    if (!blockedReviewText.trim()) {
-      setBlockedReviewError('Por favor describe el motivo o justificación de tu solicitud.');
-      return;
-    }
-    if (isBuyerBlocked) {
-      if (!effectiveBuyerId) {
-        setBlockedReviewError('No se encontró el identificador de tu cuenta.');
-        return;
-      }
-      setIsSubmittingBlockedReview(true);
-      setBlockedReviewError(null);
-      try {
-        await requestBuyerBlockedAccountReviewApi(effectiveBuyerId, {
-          mensaje: blockedReviewText.trim(),
-          contactoAlternativo: blockedReviewContact.trim(),
-        });
-        setBlockedReviewSuccess(true);
-      } catch (err) {
-        setBlockedReviewError(err?.message || 'No se pudo enviar la solicitud de revisión.');
-      } finally {
-        setIsSubmittingBlockedReview(false);
-      }
-      return;
-    }
-    if (!effectiveSellerId) {
-      setBlockedReviewError('No se encontró el identificador de la tienda.');
-      return;
-    }
-    setIsSubmittingBlockedReview(true);
-    setBlockedReviewError(null);
-    try {
-      await requestBlockedAccountReviewApi(effectiveSellerId, {
-        mensaje: blockedReviewText.trim(),
-        contactoAlternativo: blockedReviewContact.trim(),
-      });
-      setBlockedReviewSuccess(true);
-    } catch (err) {
-      setBlockedReviewError(err?.message || 'No se pudo enviar la solicitud de revisión.');
-    } finally {
-      setIsSubmittingBlockedReview(false);
-    }
-  };
 
   const inventorySummaryQuery = useQuery({
     queryKey: qk.sellerInventorySummary(effectiveSellerId),
@@ -1879,13 +1830,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   alignItems: 'center',
                   gap: '6px',
                 }}
-                onClick={() => {
-                  setBlockedReviewError(null);
-                  setBlockedReviewSuccess(false);
-                  setBlockedReviewText('');
-                  setBlockedReviewContact('');
-                  setShowBlockedReviewModal(true);
-                }}
+                onClick={() => setShowBlockedReviewModal(true)}
               >
                 <Scale size={16} />
                 <span>Solicitar Revisión</span>
@@ -3193,137 +3138,16 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       )}
 
       {/* Modal de Solicitud de Revisión de Cuenta Bloqueada */}
-      {showBlockedReviewModal && (
-        <div className="order-modal-backdrop" onClick={() => setShowBlockedReviewModal(false)}>
-          <div className="order-modal-container blocked-review-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="order-modal-header">
-              <div className="order-modal-title-group">
-                <div className="order-modal-icon-badge badge-moderation">
-                  <Scale size={20} />
-                </div>
-                <div className="order-subdialog-heading">
-                  <h2>Solicitar revisión de cuenta</h2>
-                  <span className="order-modal-subtitle">
-                    Envía tus descargos o justificación al equipo de moderación
-                  </span>
-                </div>
-              </div>
-              <button type="button" className="btn-close-modal" onClick={() => setShowBlockedReviewModal(false)} aria-label="Cerrar">
-                <X size={18} />
-              </button>
-            </div>
-
-            {blockedReviewSuccess ? (
-              <div className="order-modal-body" style={{ padding: '24px', textAlign: 'center' }}>
-                <div style={{
-                  width: '56px',
-                  height: '56px',
-                  borderRadius: '50%',
-                  backgroundColor: '#f0fdf4',
-                  color: '#16a34a',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 16px',
-                }}>
-                  <CheckCircle2 size={32} />
-                </div>
-                <h4 style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px' }}>
-                  ¡Solicitud Enviada con Éxito!
-                </h4>
-                <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: 1.5, margin: '0 0 20px' }}>
-                  Tu solicitud ha sido registrada y está siendo revisada por el equipo de moderación de RepuesTop. Te contactaremos a la brevedad.
-                </p>
-                <button
-                  type="button"
-                  className="btn-auth-primary"
-                  onClick={() => setShowBlockedReviewModal(false)}
-                >
-                  Entendido
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmitBlockedReview} className="order-modal-body" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {blockedReviewError && (
-                  <div className="auth-alert alert-error">
-                    <AlertTriangle size={16} />
-                    <span>{blockedReviewError}</span>
-                  </div>
-                )}
-
-                <div className="blocked-review-reason">
-                  <strong>{blockReasonIsClaim ? 'Reclamo que originó la mediación:' : 'Motivo actual:'}</strong>
-                  <span>{blockReason}</span>
-                </div>
-
-                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
-                    Motivo / Explicación de la solicitud *
-                  </label>
-                  <textarea
-                    required
-                    rows={4}
-                    maxLength={1000}
-                    placeholder="Explica detalladamente por qué consideras que tu cuenta debe ser desbloqueada..."
-                    value={blockedReviewText}
-                    onChange={(e) => setBlockedReviewText(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '13.5px',
-                      fontFamily: 'inherit',
-                      resize: 'vertical',
-                    }}
-                  />
-                  <small style={{ color: '#94a3b8', fontSize: '11px', textAlign: 'right' }}>
-                    {blockedReviewText.length} / 1000 caracteres
-                  </small>
-                </div>
-
-                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
-                    Teléfono o correo de contacto alternativo (opcional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ej: +56 9 1234 5678 o contacto@tienda.cl"
-                    value={blockedReviewContact}
-                    onChange={(e) => setBlockedReviewContact(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '13.5px',
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
-                  <button
-                    type="button"
-                    className="btn-auth-secondary"
-                    onClick={() => setShowBlockedReviewModal(false)}
-                    disabled={isSubmittingBlockedReview}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn-auth-primary"
-                    disabled={isSubmittingBlockedReview || !blockedReviewText.trim()}
-                    style={{ width: 'auto' }}
-                  >
-                    {isSubmittingBlockedReview ? 'Enviando...' : 'Enviar Solicitud'}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
+      <BlockedAccountReviewModal
+        isOpen={showBlockedReviewModal}
+        onClose={() => setShowBlockedReviewModal(false)}
+        isBuyerBlocked={isBuyerBlocked}
+        isSellerBlocked={isSellerBlocked}
+        blockReason={blockReason}
+        blockReasonIsClaim={blockReasonIsClaim}
+        effectiveSellerId={effectiveSellerId}
+        effectiveBuyerId={effectiveBuyerId}
+      />
 
     </div>
   );
