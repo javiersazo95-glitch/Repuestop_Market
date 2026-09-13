@@ -620,7 +620,7 @@ function GoogleGIcon() {
 }
 
 function MethodChooser({ googleRef, googleMsg, onManual, remountKey }: {
-  googleRef: React.RefObject<HTMLDivElement>; googleMsg: string; onManual: () => void; remountKey: number;
+  googleRef: React.RefObject<HTMLDivElement | null>; googleMsg: string; onManual: () => void; remountKey: number;
 }) {
   return (
     <div className="founder-reg-card">
