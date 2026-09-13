@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, LayoutGrid, Package, Heart, UserCog, Store, ShoppingBag,
-  MessageSquare, LogOut, Star, Layers, TrendingUp, Truck, Check, Save, X,
-  Clock, ShieldCheck, Building2, PackageCheck, Loader2, Inbox, Search,
+  MessageSquare, LogOut, Star, TrendingUp, Truck, Check, Save, X,
+  Clock, ShieldCheck, PackageCheck, Loader2, Inbox, Search,
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
   Megaphone, CheckCircle2, ShoppingCart, Scale
@@ -19,6 +19,8 @@ import ProfileFeedbackPanel from './ProfileFeedbackPanel';
 import ProfileOrdersPanel from './ProfileOrdersPanel';
 import ProfileQuotesPanel from './ProfileQuotesPanel';
 import ProfileCatalogPanel from './ProfileCatalogPanel';
+import ProfileMyQuestionsPanel from './ProfileMyQuestionsPanel';
+import ProfileStoreSummaryPanel from './ProfileStoreSummaryPanel';
 import {
   getBuyerOrdersApi, getSellerOrdersApi, getFavoritesApi,
   confirmOrderPaymentApi,
@@ -27,8 +29,7 @@ import {
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi,
   saveConversationQuoteApi, sendConversationMessageApi,
   pauseSellerProductApi, resumeSellerProductApi,
-  getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
-  getBuyerProductQuestionsApi
+  getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi
 } from '../services/api';
 import { qk } from '../services/queryKeys';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
@@ -45,8 +46,8 @@ import SellerWithdrawalsPanel from './SellerWithdrawalsPanel';
 import AdsManagementSection from './ads/AdsManagementSection';
 import ProfileFavoritesPanel from './ProfileFavoritesPanel';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
-import { Link, useNavigate } from 'react-router-dom';
-import { productPath, ROUTES, storePath } from '../routes/paths';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES, storePath } from '../routes/paths';
 
 export const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
 
@@ -455,15 +456,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     staleTime: 60 * 1000,
   });
 
-  const buyerQuestionsQuery = useQuery({
-    queryKey: qk.buyerProductQuestions(effectiveUserId),
-    queryFn: ({ signal }) => getBuyerProductQuestionsApi({ signal }),
-    // Tambien para el vendedor: son las preguntas que hizo EL en productos de otras tiendas
-    // (el backend las resuelve por el JWT), distintas de las que recibe en sus propios productos.
-    enabled: Boolean(effectiveUserId),
-    staleTime: 60 * 1000,
-  });
-
   // "Mis cotizaciones" del vendedor: las conversaciones de cotizacion donde el es el
   // COMPRADOR. Para un no-vendedor `conversationsQuery` ya trae estas mismas.
   const buyerConversationsQuery = useQuery({
@@ -604,9 +596,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const productQuestions = productQuestionsQuery.data || [];
   const productQuestionsLoading = productQuestionsQuery.isLoading;
   const productQuestionsError = productQuestionsQuery.error?.message || '';
-  const buyerQuestions = buyerQuestionsQuery.data || [];
-  const buyerQuestionsLoading = buyerQuestionsQuery.isLoading;
-  const buyerQuestionsError = buyerQuestionsQuery.error?.message || '';
 
   const isLoadingData = isSeller ? (ordersQuery.isLoading || storeInfoQuery.isLoading) : ordersQuery.isLoading;
   const dataError = ordersQuery.error?.message || null;
@@ -1275,86 +1264,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               />
 
               {activeTab === 'mis_preguntas' && (
-                <div className="profile-panel">
-                  <div className="profile-panel-header-row">
-                    <div>
-                      <h2 className="profile-panel-title">
-                        <MessageCircleQuestion size={20} /> Mis Preguntas en Productos
-                      </h2>
-                      <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '13.5px' }}>
-                        Revisa las consultas que has realizado en las publicaciones de las tiendas y sus respuestas.
-                      </p>
-                    </div>
-                  </div>
-
-                  {buyerQuestionsError && (
-                    <div className="auth-alert alert-error" style={{ margin: '14px 0' }}>
-                      <X size={16} />
-                      <span>{buyerQuestionsError}</span>
-                    </div>
-                  )}
-
-                  {buyerQuestionsLoading ? (
-                    <LoadingRow />
-                  ) : buyerQuestions.length === 0 ? (
-                    <EmptyState label="Aún no has realizado preguntas en productos publicados." />
-                  ) : (
-                    <div className="seller-question-list" style={{ marginTop: '16px' }}>
-                      {buyerQuestions.map((q, idx) => {
-                        const hasAnswer = Boolean(q.respuesta || q.answer);
-                        return (
-                          <div className="seller-question-item" key={q.id || idx} style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', marginBottom: '12px' }}>
-                            <div className="seller-question-meta" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                              <span className={hasAnswer ? 'answered' : 'pending'} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, padding: '3px 8px', borderRadius: '6px', backgroundColor: hasAnswer ? '#dcfce7' : '#fef9c3', color: hasAnswer ? '#15803d' : '#a16207' }}>
-                                {hasAnswer ? <CheckCircle2 size={13} /> : <Clock size={13} />}
-                                {hasAnswer ? 'Respondida por la tienda' : 'Esperando respuesta'}
-                              </span>
-                              <small style={{ color: '#94a3b8', fontSize: '12px' }}>
-                                {q.fechaPregunta || q.createdAt ? new Date(q.fechaPregunta || q.createdAt).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
-                              </small>
-                            </div>
-                            {/* El producto con su foto y un enlace de vuelta: una pregunta
-                                sirve para decidir la compra, asi que desde aca hay que
-                                poder volver a la ficha. `ProductoPreguntaResponseDTO` ya
-                                trae nombre, imagen e id; antes solo se usaba el nombre.
-                                El SKU se omite a proposito: al comprador no le dice nada. */}
-                            <div className="buyer-question-product">
-                              {q.productoImagenUrl && (
-                                <img src={resolveMediaUrl(q.productoImagenUrl)} alt="" />
-                              )}
-                              <h4>
-                                {q.productoId ? (
-                                  <Link to={productPath({ id: q.productoId, titulo: q.productoNombre })}>
-                                    {q.productoNombre || q.productName || q.producto?.nombrePublicado || 'Repuesto'}
-                                  </Link>
-                                ) : (
-                                  q.productoNombre || q.productName || q.producto?.nombrePublicado || 'Repuesto'
-                                )}
-                              </h4>
-                            </div>
-                            <p style={{ margin: '0 0 10px', fontSize: '13.5px', color: '#334155' }}>
-                              <strong>Tu pregunta:</strong> {q.pregunta || q.texto || q.question}
-                            </p>
-                            {hasAnswer ? (
-                              <div style={{ backgroundColor: '#f8fafc', borderLeft: '3px solid #0066ff', padding: '10px 14px', borderRadius: '0 8px 8px 0' }}>
-                                <strong style={{ display: 'block', fontSize: '12px', color: '#0066ff', marginBottom: '2px' }}>
-                                  Respuesta de {q.tiendaNombre || 'la tienda'}:
-                                </strong>
-                                <p style={{ margin: 0, fontSize: '13px', color: '#1e293b' }}>
-                                  {q.respuesta || q.answer}
-                                </p>
-                              </div>
-                            ) : (
-                              <p style={{ margin: 0, fontSize: '12.5px', color: '#94a3b8', fontStyle: 'italic' }}>
-                                La tienda aún no ha respondido tu consulta. Te notificaremos en cuanto haya una respuesta.
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                <ProfileMyQuestionsPanel effectiveUserId={effectiveUserId} />
               )}
 
               {activeTab === 'favoritos' && (
@@ -1367,36 +1277,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
 
               {activeTab === 'tienda' && isSeller && (
-                <div className="profile-panel">
-                  <h2 className="profile-panel-title">Mi Tienda</h2>
-                  {storeInfo ? (
-                    <div className="profile-store-card">
-                      <div className="store-card-header">
-                        <div className="store-card-icon"><Building2 size={22} /></div>
-                        <div>
-                          <strong>{storeInfo.storeName || displayName}</strong>
-                          <span>{[storeInfo.comuna, storeInfo.region].filter(Boolean).join(', ') || 'Ubicación no registrada'}</span>
-                        </div>
-                      </div>
-                      <div className="store-card-stats">
-                        <div><Layers size={14} /> {inventorySummary?.total ?? 0} productos</div>
-                        <div><Star size={14} /> {storeInfo.rating ? Number(storeInfo.rating).toFixed(1) : '—'} calificación ({storeInfo.reviewCount ?? 0})</div>
-                      </div>
-                      {storeInfo.shippingMethods && (
-                        <div className="seller-shipping-row" style={{ borderTop: 'none', paddingTop: 0, marginTop: 4 }}>
-                          <Truck size={14} className="shipping-truck-icon" />
-                          <div className="shipping-methods-pills">
-                            {String(storeInfo.shippingMethods).split(',').map((m, i) => (
-                              <span key={i} className="shipping-method-pill">{m.trim()}</span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <EmptyState label="No se pudo cargar la información de tu tienda." />
-                  )}
-                </div>
+                <ProfileStoreSummaryPanel
+                  storeInfo={storeInfo}
+                  displayName={displayName}
+                  inventorySummary={inventorySummary}
+                />
               )}
 
               {activeTab === 'productos' && isSeller && (
