@@ -86,10 +86,14 @@ export function sellerCodeShort(codigoVendedor) {
   return cola ? `#${cola}` : '';
 }
 
+// La clave real que manda el backend es "courier_por_pagar" (ver
+// PedidoCheckoutCarritoSupport.java), no "shipping" -- esa clave nunca existio en la base de
+// datos, asi que TODO pedido fuera de la comuna caia al generico "Despacho a coordinar" en vez
+// de mostrar su metodo real.
 const DELIVERY_LABELS = {
   local_delivery: 'Despacho a domicilio',
   store_pickup: 'Retiro en tienda',
-  shipping: 'Envío por courier',
+  courier_por_pagar: 'Envío fuera de la comuna',
 };
 
 /**

@@ -145,6 +145,7 @@ function WithdrawalRejectedNotice({ motivo }) {
 
 function PendingOrderRow({ order, isHeld = false, isInDetail = false }) {
   const countdown = isHeld ? getRemainingDaysInfo(order.disponibleDesde) : null;
+  const reembolso = Number(order.montoReembolsoMediacion || 0);
 
   return (
     <article className={`withdrawal-order-row ${isHeld ? 'is-held' : 'is-available'}`}>
@@ -166,6 +167,14 @@ function PendingOrderRow({ order, isHeld = false, isInDetail = false }) {
             <span>Listo para retiro</span>
           </div>
         ) : null}
+        {/* El monto ya viene neto del reembolso desde el backend (calcularMontoPagarVendedor);
+            sin este aviso el vendedor veia un monto mas bajo que su venta sin ninguna
+            explicacion y pensaba que el calculo estaba mal. */}
+        {reembolso > 0 && (
+          <span className="withdrawal-refund-note">
+            Incluye descuento por reembolso de mediación: -{formatCLP(reembolso)}
+          </span>
+        )}
       </div>
       <div className="withdrawal-order-amount-box">
         <b>{formatCLP(order.valor)}</b>
@@ -738,6 +747,11 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                   <WithdrawalStatus status={withdrawal.estado} />
                 </div>
                 <strong>{formatCLP(withdrawal.montoTotal)}</strong>
+                {Number(withdrawal.montoReembolsoMediacion || 0) > 0 && (
+                  <span className="withdrawal-refund-note">
+                    Este monto incluye un descuento por reembolso de mediación: -{formatCLP(withdrawal.montoReembolsoMediacion)}
+                  </span>
+                )}
                 <div className="withdrawal-history-meta">
                   <span><Package size={15} /> {withdrawal.cantidadPedidos} {Number(withdrawal.cantidadPedidos) === 1 ? 'pedido' : 'pedidos'}</span>
                   <span><CalendarDays size={15} /> Pago estimado: {formatDate(withdrawal.fechaEfectiva)}</span>
@@ -856,6 +870,11 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                   <PendingOrderRow key={order.pedidoId} order={order} isInDetail={true} />
                 ))}
               </div>
+              {Number(detail.montoReembolsoMediacion || 0) > 0 && (
+                <p className="withdrawal-refund-note">
+                  Este retiro incluye un descuento por reembolso de mediación de {formatCLP(detail.montoReembolsoMediacion)}.
+                </p>
+              )}
               <div className="withdrawal-detail-total">
                 <span>Total</span>
                 <strong>{formatCLP(detail.montoTotal)}</strong>

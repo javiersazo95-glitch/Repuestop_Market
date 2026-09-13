@@ -365,7 +365,10 @@ export default function OrderCard({
           ) : shippingFee > 0 ? (
             <span className="order-info-chip"><Truck size={13} /> Envío: {formatCLP(shippingFee)}</span>
           ) : (
-            <span className="order-info-chip"><Truck size={13} /> Despacho a domicilio</span>
+            // "courier_por_pagar" (envio fuera de la comuna) siempre llega con costo 0 -es "por
+            // pagar", se desconoce al comprar-, asi que caer aca no significa que sea despacho
+            // local: antes esta rama SIEMPRE decia "Despacho a domicilio" sin mirar `tipoEnvio`.
+            <span className="order-info-chip"><Truck size={13} /> {deliveryMethodLabel(order)}</span>
           )}
           {isSeller && deliveryAddress && !isStorePickup && (
             <span className="order-info-chip address"><MapPin size={13} /> {deliveryAddress}</span>

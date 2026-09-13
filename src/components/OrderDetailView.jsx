@@ -1116,6 +1116,15 @@ export default function OrderDetailView({
                 <span>{isSeller ? 'Despachar a' : 'Entrega'}</span>
               </h3>
               <div className="order-delivery-summary-rows">
+                {/* El metodo de envio (Retiro en tienda / Envio dentro de la comuna / Envio
+                    fuera de la comuna). Vive en `tipoEnvio` del PEDIDO, asi que aunque el
+                    carrito tenga varias tiendas el valor es el mismo en todos lados -- es el
+                    mismo campo que ya se lee mas abajo en el bloque por tienda -- y mostrarlo
+                    aca no repite texto libre concatenado, que es lo que este bloque evitaba. */}
+                <div className="order-delivery-summary-row">
+                  <Truck size={14} />
+                  <span>{isStorePickup ? 'Retiro en tienda' : deliveryMethodLabel(order)}</span>
+                </div>
                 {/* En un retiro en tienda NO hay direccion de despacho, pero el bloque se monta
                     igual: es donde el vendedor ve a quien le entrega y el comprador su propio
                     documento. Ocultarlo entero dejaba al vendedor de un retiro sin un solo dato
@@ -1495,18 +1504,28 @@ export default function OrderDetailView({
                       <strong className="negative-text">-{formatCLP(paymentProcessingFee)}</strong>
                     </div>
                   )}
+                  {/* `totalSeller` ya viene neto del reembolso desde el backend
+                      (RetiroProveedorService / PedidoResponseMapper): un veredicto de mediacion
+                      le devuelve plata al comprador sin cancelar el item, asi que sin esta linea
+                      el vendedor veia "Monto Neto a Recibir" mas bajo sin ninguna explicacion. */}
+                  {refundAmount > 0 && (
+                    <div className="financial-row deduction-row">
+                      <span>Reembolso por mediación</span>
+                      <strong className="negative-text">-{formatCLP(refundAmount)}</strong>
+                    </div>
+                  )}
                 </>
               )}
 
-              {/* Al comprador se le cobró el pedido completo y se le devuelve lo cancelado.
-                  Antes solo se mostraba "Total Pagado" con el monto original, sin una sola
-                  mención del reembolso: la pantalla afirmaba que pagó por algo que ya no le
-                  va a llegar. `montoReembolsado` y `totalActivo` los calcula y envía el
-                  backend desde siempre; nadie los leía. */}
+              {/* Al comprador se le cobró el pedido completo y se le devuelve lo cancelado o lo
+                  resuelto por mediación. Antes solo se mostraba "Total Pagado" con el monto
+                  original, sin una sola mención del reembolso: la pantalla afirmaba que pagó por
+                  algo que ya no le va a llegar. `montoReembolsado` y `totalActivo` los calcula y
+                  envía el backend desde siempre; nadie los leía. */}
               {!isSeller && refundAmount > 0 && (
                 <>
                   <div className="financial-row deduction-row">
-                    <span>Productos cancelados</span>
+                    <span>Reembolso</span>
                     <strong className="negative-text">-{formatCLP(refundAmount)}</strong>
                   </div>
                   <div className="financial-row">
