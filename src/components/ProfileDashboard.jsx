@@ -4,10 +4,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, LayoutGrid, Package, Heart, UserCog, Store, ShoppingBag,
   MessageSquare, LogOut, Star, Layers, TrendingUp, Truck, Check, Save, X,
-  Clock, ShieldCheck, Building2, PackageCheck, Loader2, Inbox, ChevronLeft, ChevronRight, Search,
-  ArrowUpRight, Sliders, Sparkles, Camera, Upload, Image as ImageIcon,
-  Trash2, AlertTriangle, ReceiptText, Boxes, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
-  CheckCircle, Send, Megaphone, CheckCircle2, ShoppingCart, Scale
+  Clock, ShieldCheck, Building2, PackageCheck, Loader2, Inbox, Search,
+  ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
+  Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
+  Megaphone, CheckCircle2, ShoppingCart, Scale
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
@@ -16,14 +16,16 @@ import AccountClosureModal from './AccountClosureModal';
 import ProfileAccountDataPanel from './ProfileAccountDataPanel';
 import ProfileSummaryPanel from './ProfileSummaryPanel';
 import ProfileFeedbackPanel from './ProfileFeedbackPanel';
+import ProfileOrdersPanel from './ProfileOrdersPanel';
+import ProfileQuotesPanel from './ProfileQuotesPanel';
+import ProfileCatalogPanel from './ProfileCatalogPanel';
 import {
-  getBuyerOrdersApi, getBuyerOrderByIdApi, getSellerOrdersApi, getFavoritesApi,
-  retryOrderPaymentApi, confirmOrderPaymentApi,
+  getBuyerOrdersApi, getSellerOrdersApi, getFavoritesApi,
+  confirmOrderPaymentApi,
   getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getBuyerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
-  updateOrderStatusApi, uploadProfileImageApi, resolveMediaUrl,
+  uploadProfileImageApi, resolveMediaUrl,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi,
   saveConversationQuoteApi, sendConversationMessageApi,
-  cancelSellerOrderApi, cancelBuyerSubOrderApi, registerOrderDispatchApi, registerSaleReceiptApi, declareOrderDeliveryApi, createOrderClaimApi,
   pauseSellerProductApi, resumeSellerProductApi,
   getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
   getBuyerProductQuestionsApi
@@ -31,12 +33,7 @@ import {
 import { qk } from '../services/queryKeys';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
-import OrderCard from './OrderCard';
-import OrderDetailView from './OrderDetailView';
-import CatalogCard from './CatalogCard';
 import ProductTopManagementModal from './ProductTopManagementModal';
-import ProductTopBadge from './ProductTopBadge';
-import QuoteCard from './QuoteCard';
 import QuoteDetailModal from './QuoteDetailModal';
 import ProfileSupportPanel from './ProfileSupportPanel';
 import SellerChatsView from './SellerChatsView';
@@ -45,14 +42,13 @@ import HeaderWalletButton from './HeaderWalletButton';
 import NewCatalogProductModal from './NewCatalogProductModal';
 import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
 import SellerWithdrawalsPanel from './SellerWithdrawalsPanel';
-import SellerOrdersPanel from './SellerOrdersPanel';
 import AdsManagementSection from './ads/AdsManagementSection';
 import ProfileFavoritesPanel from './ProfileFavoritesPanel';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { Link, useNavigate } from 'react-router-dom';
-import { productPath, profileOrderPath, profilePurchasePath, ROUTES, storePath } from '../routes/paths';
+import { productPath, ROUTES, storePath } from '../routes/paths';
 
-const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
+export const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
 
 // `EstadoTienda` del backend. Es el estado de la TIENDA, distinto del de la revision
 // documental (`EstadoRevisionVerificacion`), que vive en SellerVerificationCard.
@@ -235,7 +231,7 @@ function OrderStatusIcon({ estado }) {
   );
 }
 
-function LoadingRow() {
+export function LoadingRow() {
   return (
     <div className="profile-loading-state">
       <Loader2 size={18} className="spin-icon" />
@@ -397,15 +393,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const effectiveSellerId = user?.sellerId || user?.proveedorId || user?.tiendaId || user?.userId || user?.id;
   const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
   const effectiveBuyerId = user?.buyerId || user?.compradorId;
-  const [ratingPromptOrderId, setRatingPromptOrderId] = useState(null);
-
-  const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedCatalogProduct, setSelectedCatalogProduct] = useState(null);
   const [selectedTopProduct, setSelectedTopProduct] = useState(null);
   const [selectedQuote, setSelectedQuote] = useState(null);
-  const [quoteFilter, setQuoteFilter] = useState('all');
-  const [quoteSearch, setQuoteSearch] = useState('');
-  const [quoteSort, setQuoteSort] = useState('newest');
 
   // Catálogo: paginado en el servidor
   const [catalogPage, setCatalogPage] = useState(0);
@@ -555,50 +545,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // Para el vendedor, sus compras salen del query aparte; para el comprador son las mismas.
   const purchases = isSeller ? (purchasesQuery.data || []) : orders;
 
-  // plan_retorno_flow.md Fase 3: PagoController redirige aqui con
-  // ?status=pending|failure&orderId=... cuando el pago no quedo aprobado. Se busca
-  // primero en el listado ya cargado; si no aparece (recien creado, otra pestaña)
-  // se trae por id directo con el endpoint nuevo.
-  const [paymentBannerOrder, setPaymentBannerOrder] = useState(null);
-
-  // Notificacion de pedido: abre el detalle apenas la lista este cargada. Se usa una
-  // marca para no reabrirlo si el usuario lo cierra y la URL sigue teniendo `?pedido=`.
-  const openedDeepLinkRef = useRef(null);
-  // `?pedido=<id>` es el enlace que genera la campana de notificaciones y viaja en correos ya
-  // enviados, asi que sigue funcionando: en vez de abrir el popup, REDIRIGE a la ruta del
-  // detalle. Se hace con `replace` para que el "atras" del navegador lleve al listado y no de
-  // vuelta a la URL con el parametro, que volveria a redirigir.
-  //
-  // No espera a que el pedido este en el listado: la ruta sabe cargarlo sola y esperar aqui
-  // dejaba la notificacion sin efecto mientras el listado no hubiera llegado.
-  useEffect(() => {
-    if (!deepLinkOrderId) {
-      openedDeepLinkRef.current = null;
-      return;
-    }
-    if (openedDeepLinkRef.current === deepLinkOrderId) return;
-    openedDeepLinkRef.current = deepLinkOrderId;
-    onClearDeepLink?.('pedido');
-    navigate(profileOrderPath(deepLinkOrderId), { replace: true });
-  }, [deepLinkOrderId, navigate, onClearDeepLink]);
-  useEffect(() => {
-    if (!paymentOrderId || !paymentStatus || paymentStatus === 'success') {
-      setPaymentBannerOrder(null);
-      return undefined;
-    }
-    const found = orders.find((o) => String(o.id) === String(paymentOrderId));
-    if (found) {
-      setPaymentBannerOrder(found);
-      return undefined;
-    }
-    if (!effectiveUserId) return undefined;
-    let active = true;
-    getBuyerOrderByIdApi(effectiveUserId, paymentOrderId)
-      .then((order) => { if (active) setPaymentBannerOrder(order); })
-      .catch(() => {});
-    return () => { active = false; };
-  }, [paymentStatus, paymentOrderId, orders, effectiveUserId]);
-
   /**
    * Vuelta de Flow con el pago aprobado. El movil sondea `confirmar-pago` hasta 60
    * veces porque nunca abandona la pantalla; aca la pagina se destruyo al saltar a
@@ -676,291 +622,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
    * recepcion y finaliza tienda por tienda. Nulo mantiene el alcance de siempre (todas las
    * subordenes vivas), que es lo que usan el pedido de una sola tienda y el listado.
    */
-  const handleUpdateOrderStatus = async (orderId, newStatus, pin, proveedorId) => {
-    try {
-      const updatedOrder = await updateOrderStatusApi(orderId, newStatus, pin, proveedorId);
-      queryClient.invalidateQueries({ queryKey: isSeller ? qk.sellerOrders(effectiveSellerId) : qk.buyerOrders(effectiveUserId) });
-      const merged = { ...updatedOrder, estado: updatedOrder?.estado || newStatus, status: updatedOrder?.status || newStatus };
-      setSelectedOrder((prevSelected) => String(prevSelected?.id) === String(orderId)
-        ? { ...prevSelected, ...merged }
-        : prevSelected);
-      // Al confirmar la recepcion se ofrece calificar en el acto, igual que la app.
-      // Tiene que vivir aca y no en el modal porque el comprador suele marcar recibido
-      // desde la TARJETA del listado, sin haber abierto el detalle.
-      //
-      // Se decide por el estado que DEVOLVIO el backend -el derivado-, no por el que se
-      // pidio: con la recepcion por tienda, confirmar la primera deja el pedido todavia en
-      // ENVIADO, y `PedidoPostVentaSupport` exige calificar TODOS los items de un pedido
-      // ENTREGADO/FINALIZADO. Mirando `newStatus` el modal se abria con la segunda tienda en
-      // viaje y el POST moria en 400.
-      const estadoResultante = String(updatedOrder?.estado || updatedOrder?.status || newStatus).toUpperCase();
-      if (!isSeller && ['ENTREGADO', 'RECEIVED'].includes(estadoResultante)) {
-        const base = orders.find((candidate) => String(candidate.id) === String(orderId)) || {};
-        setSelectedOrder({ ...base, ...merged });
-        setRatingPromptOrderId(orderId);
-      }
-      return updatedOrder;
-    } catch (err) {
-      console.warn('No se pudo actualizar el estado del pedido:', err);
-      throw err;
-    }
-  };
-
-  /**
-   * Igual que `handleUpdateOrderStatus` pero con semantica de COMPRADOR: lo usa el vendedor
-   * cuando gestiona una de sus compras desde "Mis compras". Refresca la lista de compras y
-   * ofrece calificar al recibir, sin importar que `isSeller` sea true.
-   */
-  const handlePurchaseUpdateStatus = async (orderId, newStatus, pin, proveedorId) => {
-    try {
-      const updatedOrder = await updateOrderStatusApi(orderId, newStatus, pin, proveedorId);
-      queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
-      const merged = { ...updatedOrder, estado: updatedOrder?.estado || newStatus, status: updatedOrder?.status || newStatus };
-      setSelectedOrder((prevSelected) => String(prevSelected?.id) === String(orderId)
-        ? { ...prevSelected, ...merged }
-        : prevSelected);
-      const estadoResultante = String(updatedOrder?.estado || updatedOrder?.status || newStatus).toUpperCase();
-      if (['ENTREGADO', 'RECEIVED'].includes(estadoResultante)) {
-        const base = purchases.find((candidate) => String(candidate.id) === String(orderId)) || {};
-        setSelectedOrder({ ...base, ...merged });
-        setRatingPromptOrderId(orderId);
-      }
-      return updatedOrder;
-    } catch (err) {
-      console.warn('No se pudo actualizar el estado de la compra:', err);
-      throw err;
-    }
-  };
-
-  /**
-   * "Retomar pago" de un pedido que quedo en PENDIENTE.
-   *
-   * Equivalente de `retryOrderPayment()` del movil, sin su sondeo: alla Flow se
-   * abre en un navegador incrustado y la pantalla sigue viva, asi que sondea
-   * `confirmar-pago` 60 veces. Aca la pagina se va ENTERA a Flow, asi que no hay
-   * donde sondear; la confirmacion se hace al volver, con el `?status=success`
-   * del efecto de mas abajo.
-   */
-  const handleRetryPayment = async (order) => {
-    const orderId = order?.id;
-    if (!effectiveUserId || !orderId) return;
-    const renewed = await retryOrderPaymentApi(effectiveUserId, orderId);
-
-    // Si es un token mock de prueba o local, simula la confirmación inmediata sin redireccionar fuera
-    const isMock = Boolean(renewed?.urlPago && /mock_flow_token_/i.test(renewed.urlPago));
-    if (isMock) {
-      try {
-        const confirmed = await confirmOrderPaymentApi(effectiveUserId, orderId);
-        queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
-        if (confirmed && selectedOrder && String(selectedOrder.id) === String(orderId)) {
-          setSelectedOrder(confirmed);
-        }
-        return;
-      } catch (err) {
-        console.warn('Error confirmando pago simulado al retomar:', err);
-      }
-    }
-
-    if (!renewed?.urlPago) {
-      throw new Error('No se recibió la URL de pago desde la pasarela.');
-    }
-    window.location.href = renewed.urlPago;
-  };
-
-  /**
-   * El comprador desiste de un pedido que todavia no paga. Va por la transicion de
-   * estado y no por el endpoint de cancelacion, que es del vendedor y exige motivo.
-   * El backend solo lo permite en PENDIENTE: ya pagado hay que reembolsar.
-   */
-  const handleCancelOrder = async (order) => {
-    if (!order?.id) return;
-    await handleUpdateOrderStatus(order.id, 'CANCELADO');
-  };
-
-  /**
-   * Deja el pedido de la pantalla con las calificaciones recien guardadas.
-   *
-   * La nota es POR TIENDA, asi que despues de calificar una el modal tiene que saber cuales
-   * quedan: sin esto seguia ofreciendo "Calificar" en la tienda ya evaluada hasta cerrar y
-   * reabrir el detalle.
-   */
-  // El pedido que pide la URL. Sale del listado que el panel ya carga: no hace falta otra
-  // peticion, y asi el detalle y la lista miran SIEMPRE el mismo dato -- que es lo que hace que
-  // al volver del detalle la tarjeta ya muestre el estado nuevo.
-  // Abrir un pedido es NAVEGAR, no levantar un popup: asi el "atras" del navegador vuelve al
-  // listado, la URL se puede compartir y los dialogos que el detalle abre dejan de ser un modal
-  // encima de otro modal.
-  const openOrderDetail = (order) => {
-    if (!order?.id) return;
-    navigate(profileOrderPath(order.id));
-  };
-
-  // El vendedor abre una de SUS compras: mismo patron, otra ruta y otra lista de origen.
-  const openPurchaseDetail = (order) => {
-    if (!order?.id) return;
-    navigate(profilePurchasePath(order.id));
-  };
-
-  // El detalle abierto: puede ser un pedido recibido (`detailOrderId`) o una compra
-  // (`detailPurchaseId`). Solo uno llega a la vez.
-  const activeDetailId = detailOrderId || detailPurchaseId;
-  const detailIsPurchase = Boolean(detailPurchaseId);
-  const detailSourceList = detailIsPurchase ? purchases : orders;
-
-  const detailFromList = activeDetailId
-    ? (detailSourceList || []).find((candidate) => String(candidate.id) === String(activeDetailId))
-    : null;
-  // `selectedOrder` es el buffer donde los handlers escriben la respuesta del backend apenas
-  // llega (confirmar por tienda, cancelar, calificar). `invalidateQueries` refresca el listado,
-  // pero es asincrono: sin mezclarlo, la accion se veia con retraso -- o no se veia -- porque
-  // la pagina seguia leyendo la version vieja de la lista.
-  const detailOrder = !activeDetailId
-    ? null
-    : (selectedOrder && String(selectedOrder.id) === String(activeDetailId)
-      ? { ...detailFromList, ...selectedOrder }
-      : detailFromList);
-
-  useEffect(() => {
-    if (!activeDetailId) return;
-    if (selectedOrder && String(selectedOrder.id) === String(activeDetailId)) return;
-    if (detailFromList) setSelectedOrder(detailFromList);
-    // `selectedOrder` no va en las dependencias a proposito: cada actualizacion del buffer
-    // volveria a disparar el efecto y lo pisaria con la version vieja de la lista.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDetailId, detailFromList]);
-
-  const handleOrderRated = (updatedOrder) => {
-    if (!updatedOrder?.id) return;
-    queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
-    setSelectedOrder((prev) => (prev && String(prev.id) === String(updatedOrder.id)
-      ? { ...prev, ...updatedOrder }
-      : prev));
-  };
-
-  /**
-   * El comprador cancela su compra a UNA tienda
-   * (`POST /pedidos/{id}/proveedores/{id}/cancelacion-comprador`).
-   *
-   * No se toca `estado` a mano en la copia local: con dos tiendas el pedido sigue vivo
-   * mientras quede una en pie, y quien decide eso es el backend. Se mezcla lo que
-   * respondió y listo.
-   */
-  const handleCancelBuyerSubOrder = async (order, proveedorId, { reasonDetail } = {}) => {
-    const orderId = order?.id;
-    if (!orderId || !proveedorId) return;
-    const updated = await cancelBuyerSubOrderApi(orderId, proveedorId, { reasonDetail });
-    queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
-    setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
-      ? { ...prev, ...updated }
-      : prev);
-    return updated;
-  };
-
-  /**
-   * Cancelación formal del vendedor con motivo (`POST /proveedores/{id}/pedidos/{id}/cancelacion`).
-   */
-  const handleCancelSellerOrder = async (order, { reasonCode, reasonDetail } = {}) => {
-    const orderId = order?.id;
-    if (!effectiveSellerId || !orderId) return;
-    const updated = await cancelSellerOrderApi(effectiveSellerId, orderId, { reasonCode, reasonDetail });
-    queryClient.invalidateQueries({ queryKey: qk.sellerOrders(effectiveSellerId) });
-    setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
-      ? { ...prev, ...updated, estado: 'CANCELADO', status: 'CANCELADO', motivoCancelacion: reasonCode, detalleCancelacion: reasonDetail }
-      : prev
-    );
-    return updated;
-  };
-
-  /**
-   * Registro de despacho por courier con número de seguimiento y comprobante opcional (`POST /pedidos/{id}/envio`).
-   */
-  const handleRegisterOrderDispatch = async (order, dispatchData) => {
-    const orderId = order?.id;
-    if (!orderId) return;
-    const updated = await registerOrderDispatchApi(orderId, dispatchData);
-    queryClient.invalidateQueries({ queryKey: qk.sellerOrders(effectiveSellerId) });
-    setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
-      ? { ...prev, ...updated, estado: 'ENVIADO', status: 'ENVIADO', courier: dispatchData.courier, trackingNumber: dispatchData.trackingNumber }
-      : prev
-    );
-    return updated;
-  };
-
-  /**
-   * El vendedor sube la boleta / factura de su venta (`POST /pedidos/{id}/boleta-venta`).
-   * Es obligatoria para confirmar el pedido: el modal de confirmación la exige y, tras
-   * subirla, dispara la transición a EN_PREPARACION con `handleUpdateOrderStatus`.
-   */
-  const handleRegisterSaleReceipt = async (order, file) => {
-    const orderId = order?.id;
-    if (!orderId || !file) return;
-    const updated = await registerSaleReceiptApi(orderId, file);
-    queryClient.invalidateQueries({ queryKey: qk.sellerOrders(effectiveSellerId) });
-    setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
-      ? { ...prev, ...updated }
-      : prev
-    );
-    return updated;
-  };
-
-  /**
-   * El vendedor reporta que un courier externo (Uber Flash, Didi, un fletero propio) ya
-   * entrego el pedido (`POST /pedidos/{id}/entrega-declarada`). Arranca la ventana de veto de
-   * 48 horas: el pedido NO cambia de estado -sigue "Enviado"-, asi que a diferencia del resto
-   * de los handlers de esta pantalla no hay un `estado`/`status` que forzar en el merge; con
-   * lo que devuelve el backend (`entregaDeclaradaAt`) alcanza para que el banner aparezca.
-   */
-  const handleDeclareOrderDelivery = async (order) => {
-    const orderId = order?.id;
-    if (!orderId) return;
-    const updated = await declareOrderDeliveryApi(orderId);
-    queryClient.invalidateQueries({ queryKey: qk.sellerOrders(effectiveSellerId) });
-    setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
-      ? { ...prev, ...updated }
-      : prev
-    );
-    return updated;
-  };
-
-  /**
-   * El comprador vetea una entrega que el vendedor declaro: abre un reclamo con motivo fijo
-   * `not_received`, el mismo que ya reconoce `MediacionBackofficeService` para clasificar el
-   * caso. Un solo tap y sin pedirle que retipee nada -el comprador ya dijo con el boton mismo
-   * que no la recibio-, a diferencia del reclamo libre de "Reportes/Disputa".
-   */
-  const handleDisputeDeclaredDelivery = async (order) => {
-    const orderId = order?.id;
-    if (!orderId) return;
-    const updated = await createOrderClaimApi(effectiveUserId, orderId, {
-      motivo: 'not_received',
-      descripcion: 'El vendedor reportó que el pedido fue entregado, pero no lo recibí.',
-    });
-    queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
-    setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
-      ? { ...prev, ...updated }
-      : prev
-    );
-    return updated;
-  };
-
-  /**
-   * El comprador abre un reclamo libre desde el detalle del pedido ("¿Tienes un reclamo?").
-   * Mismo endpoint que el veto de entrega declarada (`POST /usuarios/{id}/pedidos/{id}/reclamo`),
-   * pero con el motivo y la descripcion que eligio en el modal. El pedido queda "En disputa"
-   * (chat directo con la tienda); solo pasa a "En mediación" si luego se pide un mediador.
-   */
-  const handleCreateOrderClaim = async (order, { motivo, descripcion }) => {
-    const orderId = order?.id;
-    if (!orderId) return;
-    const updated = await createOrderClaimApi(effectiveUserId, orderId, { motivo, descripcion });
-    queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
-    setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
-      ? { ...prev, ...updated }
-      : prev
-    );
-    return updated;
-  };
-
   const handleSaveCatalogProduct = async (productId, updatedFields) => {
     queryClient.invalidateQueries({ queryKey: qk.sellerInventory(user?.sellerId, { page: catalogPage, size: catalogPageSize, texto: catalogSearchTerm }) });
     setSelectedCatalogProduct((prev) =>
@@ -995,28 +656,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     if (embeddedCount !== undefined && embeddedCount !== null) return Number(embeddedCount) || 0;
     return productQuestions.filter((question) => String(question.productoId ?? question.productId ?? question.product?.id ?? question.producto?.id ?? '') === String(product.id)).length;
   };
-
-  const quoteConversations = useMemo(() => {
-    const query = quoteSearch.trim().toLowerCase();
-    return (activeQuoteSource || [])
-      .filter((conversation) => !conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion')
-      .filter((conversation) => {
-        if (quoteFilter === 'pending') return !conversation.cotizacion;
-        if (quoteFilter === 'sent') return Boolean(conversation.cotizacion);
-        if (quoteFilter === 'unread') return Number(conversation.mensajesNoLeidos || 0) > 0;
-        return true;
-      })
-      .filter((conversation) => {
-        if (!query) return true;
-        return [conversation.id, conversation.otroParticipanteNombre, conversation.productoNombre, conversation.ultimoMensaje]
-          .some((value) => String(value || '').toLowerCase().includes(query));
-      })
-      .sort((left, right) => {
-        const leftTime = new Date(left.ultimoMensajeFecha || left.updatedAt || 0).getTime() || 0;
-        const rightTime = new Date(right.ultimoMensajeFecha || right.updatedAt || 0).getTime() || 0;
-        return quoteSort === 'newest' ? rightTime - leftTime : leftTime - rightTime;
-      });
-  }, [activeQuoteSource, quoteFilter, quoteSearch, quoteSort]);
 
   const quoteSummary = useMemo(() => {
     const quoteOnly = (activeQuoteSource || []).filter((conversation) => (
@@ -1282,7 +921,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         detail: `Pedido #${ord.id} - ${orderTitle(ord)}`,
         date: ord.createdAt || ord.fecha || Date.now() - 86400000,
         badgeClass: 'badge-emerald',
-        action: () => { setSelectedOrder(ord); }
+        action: () => setActiveTab('pedidos')
       });
     });
 
@@ -1616,126 +1255,24 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 />
               )}
 
-              {/* `/perfil/pedidos/:orderId` y `/perfil/compras/:orderId`: el detalle ocupa el
-                  lugar del listado, dentro del panel. Una compra del vendedor se ve SIEMPRE en
-                  modo comprador. */}
-              {(activeTab === 'pedidos' || activeTab === 'compras') && activeDetailId ? (
-                detailOrder ? (
-                  (() => {
-                    const asBuyerView = detailIsPurchase || !isSeller;
-                    return (
-                      <OrderDetailView
-                        layout="page"
-                        order={detailOrder}
-                        mode={asBuyerView ? 'buyer' : 'seller'}
-                        sellerId={effectiveSellerId}
-                        userId={effectiveUserId}
-                        onClose={() => navigate(detailIsPurchase ? `${ROUTES.profile}/compras` : `${ROUTES.profile}/pedidos`)}
-                        onUpdateStatus={detailIsPurchase ? handlePurchaseUpdateStatus : handleUpdateOrderStatus}
-                        onRetryPayment={asBuyerView ? handleRetryPayment : undefined}
-                        onCancelOrder={asBuyerView ? handleCancelOrder : undefined}
-                        onCancelBuyerSubOrder={asBuyerView ? handleCancelBuyerSubOrder : undefined}
-                        autoOpenRating={asBuyerView && ratingPromptOrderId != null && String(detailOrder.id) === String(ratingPromptOrderId)}
-                        onRatingPromptShown={() => setRatingPromptOrderId(null)}
-                        onOrderRated={handleOrderRated}
-                        onCancelSellerOrder={!asBuyerView && !isSellerBlocked ? handleCancelSellerOrder : undefined}
-                        onRegisterDispatch={!asBuyerView && !isSellerBlocked ? handleRegisterOrderDispatch : undefined}
-                        onRegisterSaleReceipt={!asBuyerView && !isSellerBlocked ? handleRegisterSaleReceipt : undefined}
-                        onDeclareDelivery={!asBuyerView && !isSellerBlocked ? handleDeclareOrderDelivery : undefined}
-                        onDisputeDeclaredDelivery={asBuyerView ? handleDisputeDeclaredDelivery : undefined}
-                        onCreateClaim={asBuyerView ? handleCreateOrderClaim : undefined}
-                        onOpenDispute={(proveedorId) => {
-                          const params = new URLSearchParams({ caso: String(detailOrder.id) });
-                          if (proveedorId != null && proveedorId !== '') params.set('tienda', String(proveedorId));
-                          navigate(`${ROUTES.profile}/chats_vendedor?${params.toString()}`);
-                        }}
-                        readOnly={!asBuyerView && isSellerBlocked}
-                      />
-                    );
-                  })()
-                ) : (
-                  <div className="profile-panel">
-                    {(detailIsPurchase ? purchasesQuery.isLoading : ordersQuery.isLoading)
-                      ? <EmptyState label={detailIsPurchase ? 'Cargando la compra…' : 'Cargando el pedido…'} />
-                      : <EmptyState label="No encontramos ese pedido en tu cuenta." />}
-                  </div>
-                )
-              ) : activeTab === 'pedidos' && (
-                isSeller ? (
-                  <SellerOrdersPanel
-                    orders={orders || []}
-                    sellerId={user?.sellerId}
-                    onSelectOrder={openOrderDetail}
-                    onUpdateStatus={handleUpdateOrderStatus}
-                    onRegisterSaleReceipt={isSellerBlocked ? undefined : handleRegisterSaleReceipt}
-                    readOnly={isSellerBlocked}
-                  />
-                ) : (
-                  <div className="profile-panel">
-                    {paymentStatus && paymentStatus !== 'success' && (
-                      <div
-                        style={{
-                          display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20,
-                          padding: '14px 16px', borderRadius: 12,
-                          background: paymentStatus === 'pending' ? '#fffbeb' : '#fef2f2',
-                          border: `1px solid ${paymentStatus === 'pending' ? '#fcd34d' : '#fca5a5'}`,
-                        }}
-                      >
-                        <AlertTriangle size={18} color={paymentStatus === 'pending' ? '#b45309' : '#b91c1c'} style={{ flexShrink: 0, marginTop: 2 }} />
-                        <div style={{ flex: 1 }}>
-                          <strong>{paymentStatus === 'pending' ? 'Estamos confirmando tu pago' : 'Tu pago no pudo procesarse'}</strong>
-                          <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: '#4b5563' }}>
-                            {paymentStatus === 'pending'
-                              ? 'En unos minutos verás el estado actualizado en este pedido.'
-                              : 'Revisa el detalle del pedido para reintentar el pago.'}
-                          </p>
-                        </div>
-                        {paymentBannerOrder && (
-                          <button
-                            type="button"
-                            className="btn-view-details"
-                            onClick={() => setSelectedOrder(paymentBannerOrder)}
-                          >
-                            Ver pedido
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    <h2 className="profile-panel-title">Mis Pedidos</h2>
-                    {(orders || []).length === 0 ? <EmptyState label="Aún no has realizado pedidos." /> : <div className="profile-orders-cards-grid">{orders.map((order) => <OrderCard key={order.id} order={order} mode="buyer" onSelectOrder={openOrderDetail} onUpdateStatus={handleUpdateOrderStatus} onRetryPayment={handleRetryPayment} onCancelOrder={handleCancelOrder} />)}</div>}
-                  </div>
-                )
-              )}
-
-              {/* "Mis compras" del vendedor: los pedidos donde ES el comprador, con la MISMA
-                  vista que un comprador (tarjetas + detalle en modo buyer). */}
-              {activeTab === 'compras' && isSeller && !activeDetailId && (
-                <div className="profile-panel">
-                  <h2 className="profile-panel-title"><ShoppingCart size={20} /> Mis compras</h2>
-                  <p style={{ margin: '4px 0 16px', color: '#64748b', fontSize: '13.5px' }}>
-                    Los repuestos que has comprado a otras tiendas. Se gestionan igual que cualquier compra.
-                  </p>
-                  {purchasesQuery.isLoading
-                    ? <EmptyState label="Cargando tus compras…" />
-                    : (purchases || []).length === 0
-                      ? <EmptyState label="Aún no has comprado repuestos a otras tiendas." />
-                      : (
-                        <div className="profile-orders-cards-grid">
-                          {purchases.map((order) => (
-                            <OrderCard
-                              key={order.id}
-                              order={order}
-                              mode="buyer"
-                              onSelectOrder={openPurchaseDetail}
-                              onUpdateStatus={handlePurchaseUpdateStatus}
-                              onRetryPayment={handleRetryPayment}
-                              onCancelOrder={handleCancelOrder}
-                            />
-                          ))}
-                        </div>
-                      )}
-                </div>
-              )}
+              <ProfileOrdersPanel
+                activeTab={activeTab}
+                isSeller={isSeller}
+                isSellerBlocked={isSellerBlocked}
+                user={user}
+                effectiveUserId={effectiveUserId}
+                effectiveSellerId={effectiveSellerId}
+                orders={orders}
+                purchases={purchases}
+                ordersLoading={ordersQuery.isLoading}
+                purchasesLoading={purchasesQuery.isLoading}
+                detailOrderId={detailOrderId}
+                detailPurchaseId={detailPurchaseId}
+                deepLinkOrderId={deepLinkOrderId}
+                onClearDeepLink={onClearDeepLink}
+                paymentStatus={paymentStatus}
+                paymentOrderId={paymentOrderId}
+              />
 
               {activeTab === 'mis_preguntas' && (
                 <div className="profile-panel">
@@ -1863,115 +1400,34 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
 
               {activeTab === 'productos' && isSeller && (
-                <div className="profile-panel">
-                  <div className="profile-panel-header-row">
-                    <h2 className="profile-panel-title">
-                      Catálogo Publicado {catalogTotalElements > 0 && <span className="catalog-total-badge">{catalogTotalElements}</span>}
-                    </h2>
-                    <div className="catalog-header-actions">
-                      <form className="catalog-search-form" onSubmit={handleCatalogSearchSubmit}>
-                        <Search size={14} />
-                        <input
-                          type="text"
-                          placeholder="Buscar por nombre o SKU..."
-                          value={catalogSearchInput}
-                          onChange={(e) => setCatalogSearchInput(e.target.value)}
-                        />
-                      </form>
-                      <button type="button" className="catalog-add-product-button" onClick={() => setShowNewProductModal(true)}>
-                        <Plus size={16} /> Agregar producto
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="catalog-bulk-inventory-notice">
-                    <div className="catalog-bulk-inventory-icon"><Boxes size={19} /></div>
-                    <p><strong>¿Necesitas cargar o editar muchos productos?</strong><span>Para cargas masivas y ediciones masivas de tu inventario, ingresa al Panel de inventario.</span></p>
-                    <a href={inventoryPanelUrl} target="_blank" rel="noreferrer">Ir al panel <ArrowUpRight size={15} /></a>
-                  </div>
-
-                  <div className="catalog-top-info">
-                    <ProductTopBadge compact className="catalog-top-info-badge" />
-                    <p><strong>Destaca tus productos Top Ventas</strong><span>Las primeras 2 activaciones son gratis. Puedes mantener hasta 10 productos Top; la insignia y la prioridad duran 30 días y luego puedes renovarlas con Monedas.</span></p>
-                  </div>
-
-                  {catalogTopFeedback && (
-                    <div className="catalog-top-feedback"><CheckCircle size={15} /> {catalogTopFeedback}</div>
-                  )}
-
-                  <div className="catalog-range-filter">
-                    <span>Mostrar por página:</span>
-                    {CATALOG_PAGE_SIZE_OPTIONS.map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        className={`catalog-range-pill ${catalogPageSize === size ? 'active' : ''}`}
-                        onClick={() => handleCatalogPageSizeChange(size)}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-
-                  {catalogError && (
-                    <div className="auth-alert alert-error" style={{ margin: '0 0 16px' }}>
-                      <X size={16} />
-                      <span>{catalogError}</span>
-                    </div>
-                  )}
-
-                  {isCatalogLoading ? (
-                    <LoadingRow />
-                  ) : (sellerProducts || []).length === 0 ? (
-                    <EmptyState label={catalogSearchTerm ? `Sin resultados para "${catalogSearchTerm}".` : 'Aún no has publicado productos en tu catálogo.'} />
-                  ) : (
-                    <>
-                      <div className="profile-orders-cards-grid seller-catalog-grid">
-                        {sellerProducts.map((p) => (
-                          <CatalogCard
-                            key={p.id}
-                            product={p}
-                            questionCount={questionCountForProduct(p)}
-                            onSelectProduct={(item) => setSelectedCatalogProduct(item)}
-                            onQuickEditStock={(item) => setSelectedCatalogProduct(item)}
-                            onOpenQuestions={(item) => {
-                              setQuestionsProductFilter(item.id);
-                              setActiveTab('preguntas_productos');
-                            }}
-                            onToggleTop={handleToggleProductTop}
-                            isUpdatingTop={updatingTopProductId === p.id}
-                            onTogglePause={handleToggleProductPause}
-                            isUpdatingPause={updatingPauseProductId === p.id}
-                          />
-                        ))}
-                      </div>
-
-                      {catalogTotalPages > 1 && (
-                        <div className="catalog-pagination">
-                          <button
-                            type="button"
-                            className="catalog-page-btn"
-                            disabled={catalogPage === 0}
-                            onClick={() => setCatalogPage((p) => Math.max(0, p - 1))}
-                          >
-                            <ChevronLeft size={16} /> Anterior
-                          </button>
-                          <span className="catalog-page-indicator">
-                            Página {catalogPage + 1} de {catalogTotalPages}
-                          </span>
-                          <button
-                            type="button"
-                            className="catalog-page-btn"
-                            disabled={catalogPage >= catalogTotalPages - 1}
-                            onClick={() => setCatalogPage((p) => Math.min(catalogTotalPages - 1, p + 1))}
-                          >
-                            Siguiente <ChevronRight size={16} />
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
+                <ProfileCatalogPanel
+                  sellerProducts={sellerProducts}
+                  catalogTotalElements={catalogTotalElements}
+                  catalogTotalPages={catalogTotalPages}
+                  isCatalogLoading={isCatalogLoading}
+                  catalogError={catalogError}
+                  catalogTopFeedback={catalogTopFeedback}
+                  catalogSearchInput={catalogSearchInput}
+                  setCatalogSearchInput={setCatalogSearchInput}
+                  catalogSearchTerm={catalogSearchTerm}
+                  onSearchSubmit={handleCatalogSearchSubmit}
+                  catalogPage={catalogPage}
+                  setCatalogPage={setCatalogPage}
+                  catalogPageSize={catalogPageSize}
+                  onPageSizeChange={handleCatalogPageSizeChange}
+                  inventoryPanelUrl={inventoryPanelUrl}
+                  questionCountForProduct={questionCountForProduct}
+                  onSelectProduct={(item) => setSelectedCatalogProduct(item)}
+                  onOpenQuestionsForProduct={(productId) => {
+                    setQuestionsProductFilter(productId);
+                    setActiveTab('preguntas_productos');
+                  }}
+                  onAddProduct={() => setShowNewProductModal(true)}
+                  onToggleTop={handleToggleProductTop}
+                  updatingTopProductId={updatingTopProductId}
+                  onTogglePause={handleToggleProductPause}
+                  updatingPauseProductId={updatingPauseProductId}
+                />
               )}
 
               {activeTab === 'preguntas_productos' && isSeller && (
@@ -1987,55 +1443,12 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
 
               {(activeTab === 'cotizaciones' || (isSeller && activeTab === 'mis_cotizaciones')) && (
-                <div className="profile-panel seller-quotes-panel">
-                  <div className="seller-quotes-heading">
-                    <div>
-                      <span className="seller-quotes-eyebrow"><ReceiptText size={14} /> {quotesAsBuyer ? 'Conversaciones de cotización' : 'Centro de cotizaciones'}</span>
-                      <h2 className="profile-panel-title">{quotesAsBuyer ? 'Mis cotizaciones' : 'Cotizaciones de compradores'}</h2>
-                      <p>{quotesAsBuyer ? 'Revisa las respuestas de las tiendas, conversa y consulta cada propuesta con su vigencia y condiciones.' : 'Revisa solicitudes, responde con tus condiciones comerciales y mantén cada oferta vinculada a su conversación.'}</p>
-                    </div>
-                    <div className="seller-quotes-heading-actions">
-                      {!quotesAsBuyer && <span className="seller-quotes-total-badge">{quoteSummary.total} {quoteSummary.total === 1 ? 'solicitud' : 'solicitudes'}</span>}
-                      <button type="button" className="seller-quotes-sort" onClick={() => setQuoteSort((current) => current === 'newest' ? 'oldest' : 'newest')}>
-                        <Sliders size={15} /> {quoteSort === 'newest' ? 'Más recientes' : 'Más antiguas'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="seller-quotes-summary">
-                    <article><MessageSquare size={18} /><span><strong>{quoteSummary.total}</strong>Total</span></article>
-                    <article className="is-pending"><Clock size={18} /><span><strong>{quoteSummary.pending}</strong>Por responder</span></article>
-                    <article className="is-sent"><Send size={18} /><span><strong>{quoteSummary.sent}</strong>Ofertas enviadas</span></article>
-                    <article className="is-unread"><Inbox size={18} /><span><strong>{quoteSummary.unread}</strong>Mensajes sin leer</span></article>
-                  </div>
-
-                  <div className="seller-quotes-toolbar">
-                    <label className="seller-quotes-search"><Search size={15} /><input value={quoteSearch} onChange={(event) => setQuoteSearch(event.target.value)} placeholder={quotesAsBuyer ? 'Buscar tienda, producto o cotización...' : 'Buscar comprador, producto o cotización...'} />{quoteSearch && <button type="button" onClick={() => setQuoteSearch('')} aria-label="Limpiar búsqueda"><X size={13} /></button>}</label>
-                    <div className="seller-quotes-filters" role="group" aria-label="Filtrar cotizaciones">
-                      {[['all', 'Todas'], ['pending', 'Sin responder'], ['sent', 'Enviadas'], ['unread', 'Sin leer']].map(([value, label]) => (
-                        <button key={value} type="button" className={quoteFilter === value ? 'active' : ''} onClick={() => setQuoteFilter(value)}>{label}</button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {quoteSummary.total === 0 ? (
-                    <EmptyState label={quotesAsBuyer ? 'Aún no has pedido cotizaciones a otras tiendas.' : 'Aún no tienes solicitudes de cotización.'} />
-                  ) : quoteConversations.length === 0 ? (
-                    <EmptyState label="No encontramos cotizaciones con esos filtros." />
-                  ) : (
-                    <div className="profile-orders-cards-grid seller-quotes-grid">
-                      {quoteConversations.map((c) => (
-                        <QuoteCard
-                          key={c.id}
-                          quote={c}
-                          mode={quotesAsBuyer ? 'buyer' : 'seller'}
-                          onSelectQuote={(item) => setSelectedQuote(item)}
-                          onQuickRespond={(item) => setSelectedQuote(item)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <ProfileQuotesPanel
+                  quotesAsBuyer={quotesAsBuyer}
+                  quoteSummary={quoteSummary}
+                  activeQuoteSource={activeQuoteSource}
+                  onSelectQuote={setSelectedQuote}
+                />
               )}
 
               {activeTab === 'anuncios' && (
@@ -2314,7 +1727,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         isOpen={showBlockedReviewModal}
         onClose={() => setShowBlockedReviewModal(false)}
         isBuyerBlocked={isBuyerBlocked}
-        isSellerBlocked={isSellerBlocked}
         blockReason={blockReason}
         blockReasonIsClaim={blockReasonIsClaim}
         effectiveSellerId={effectiveSellerId}

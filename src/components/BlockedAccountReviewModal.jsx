@@ -13,7 +13,6 @@ export default function BlockedAccountReviewModal({
   isOpen,
   onClose,
   isBuyerBlocked,
-  isSellerBlocked,
   blockReason,
   blockReasonIsClaim,
   effectiveSellerId,
