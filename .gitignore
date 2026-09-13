@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Resultados locales del Audit Kit (C:/ProyectoRepuestop/audit-kit)
+audit-runs/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
