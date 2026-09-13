@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { Sentry } from '../sentry.js';
 
 export default class RouteErrorBoundary extends React.Component {
   constructor(props) {
@@ -13,6 +14,8 @@ export default class RouteErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('RouteErrorBoundary caught an error:', error, errorInfo);
+    // No-op si Sentry.init() nunca corrio (sin VITE_SENTRY_DSN, como en dev local).
+    Sentry.captureException(error, { extra: { componentStack: errorInfo?.componentStack } });
   }
 
   handleRetry = () => {
