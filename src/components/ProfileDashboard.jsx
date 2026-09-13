@@ -4,10 +4,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, LayoutGrid, Package, Heart, UserCog, Store, ShoppingBag,
   MessageSquare, LogOut, Star, Layers, TrendingUp, Truck, Check, Save, X,
-  Clock, ShieldCheck, Building2, PackageCheck, Loader2, Inbox, ChevronLeft, ChevronRight, Search,
+  Clock, ShieldCheck, Building2, PackageCheck, Loader2, Inbox, Search,
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
-  Trash2, AlertTriangle, ReceiptText, Boxes, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
-  CheckCircle, Megaphone, CheckCircle2, ShoppingCart, Scale
+  Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
+  Megaphone, CheckCircle2, ShoppingCart, Scale
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
@@ -18,6 +18,7 @@ import ProfileSummaryPanel from './ProfileSummaryPanel';
 import ProfileFeedbackPanel from './ProfileFeedbackPanel';
 import ProfileOrdersPanel from './ProfileOrdersPanel';
 import ProfileQuotesPanel from './ProfileQuotesPanel';
+import ProfileCatalogPanel from './ProfileCatalogPanel';
 import {
   getBuyerOrdersApi, getSellerOrdersApi, getFavoritesApi,
   confirmOrderPaymentApi,
@@ -32,9 +33,7 @@ import {
 import { qk } from '../services/queryKeys';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
-import CatalogCard from './CatalogCard';
 import ProductTopManagementModal from './ProductTopManagementModal';
-import ProductTopBadge from './ProductTopBadge';
 import QuoteDetailModal from './QuoteDetailModal';
 import ProfileSupportPanel from './ProfileSupportPanel';
 import SellerChatsView from './SellerChatsView';
@@ -49,7 +48,7 @@ import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { Link, useNavigate } from 'react-router-dom';
 import { productPath, ROUTES, storePath } from '../routes/paths';
 
-const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
+export const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
 
 // `EstadoTienda` del backend. Es el estado de la TIENDA, distinto del de la revision
 // documental (`EstadoRevisionVerificacion`), que vive en SellerVerificationCard.
@@ -232,7 +231,7 @@ function OrderStatusIcon({ estado }) {
   );
 }
 
-function LoadingRow() {
+export function LoadingRow() {
   return (
     <div className="profile-loading-state">
       <Loader2 size={18} className="spin-icon" />
@@ -1401,115 +1400,34 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
 
               {activeTab === 'productos' && isSeller && (
-                <div className="profile-panel">
-                  <div className="profile-panel-header-row">
-                    <h2 className="profile-panel-title">
-                      Catálogo Publicado {catalogTotalElements > 0 && <span className="catalog-total-badge">{catalogTotalElements}</span>}
-                    </h2>
-                    <div className="catalog-header-actions">
-                      <form className="catalog-search-form" onSubmit={handleCatalogSearchSubmit}>
-                        <Search size={14} />
-                        <input
-                          type="text"
-                          placeholder="Buscar por nombre o SKU..."
-                          value={catalogSearchInput}
-                          onChange={(e) => setCatalogSearchInput(e.target.value)}
-                        />
-                      </form>
-                      <button type="button" className="catalog-add-product-button" onClick={() => setShowNewProductModal(true)}>
-                        <Plus size={16} /> Agregar producto
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="catalog-bulk-inventory-notice">
-                    <div className="catalog-bulk-inventory-icon"><Boxes size={19} /></div>
-                    <p><strong>¿Necesitas cargar o editar muchos productos?</strong><span>Para cargas masivas y ediciones masivas de tu inventario, ingresa al Panel de inventario.</span></p>
-                    <a href={inventoryPanelUrl} target="_blank" rel="noreferrer">Ir al panel <ArrowUpRight size={15} /></a>
-                  </div>
-
-                  <div className="catalog-top-info">
-                    <ProductTopBadge compact className="catalog-top-info-badge" />
-                    <p><strong>Destaca tus productos Top Ventas</strong><span>Las primeras 2 activaciones son gratis. Puedes mantener hasta 10 productos Top; la insignia y la prioridad duran 30 días y luego puedes renovarlas con Monedas.</span></p>
-                  </div>
-
-                  {catalogTopFeedback && (
-                    <div className="catalog-top-feedback"><CheckCircle size={15} /> {catalogTopFeedback}</div>
-                  )}
-
-                  <div className="catalog-range-filter">
-                    <span>Mostrar por página:</span>
-                    {CATALOG_PAGE_SIZE_OPTIONS.map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        className={`catalog-range-pill ${catalogPageSize === size ? 'active' : ''}`}
-                        onClick={() => handleCatalogPageSizeChange(size)}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-
-                  {catalogError && (
-                    <div className="auth-alert alert-error" style={{ margin: '0 0 16px' }}>
-                      <X size={16} />
-                      <span>{catalogError}</span>
-                    </div>
-                  )}
-
-                  {isCatalogLoading ? (
-                    <LoadingRow />
-                  ) : (sellerProducts || []).length === 0 ? (
-                    <EmptyState label={catalogSearchTerm ? `Sin resultados para "${catalogSearchTerm}".` : 'Aún no has publicado productos en tu catálogo.'} />
-                  ) : (
-                    <>
-                      <div className="profile-orders-cards-grid seller-catalog-grid">
-                        {sellerProducts.map((p) => (
-                          <CatalogCard
-                            key={p.id}
-                            product={p}
-                            questionCount={questionCountForProduct(p)}
-                            onSelectProduct={(item) => setSelectedCatalogProduct(item)}
-                            onQuickEditStock={(item) => setSelectedCatalogProduct(item)}
-                            onOpenQuestions={(item) => {
-                              setQuestionsProductFilter(item.id);
-                              setActiveTab('preguntas_productos');
-                            }}
-                            onToggleTop={handleToggleProductTop}
-                            isUpdatingTop={updatingTopProductId === p.id}
-                            onTogglePause={handleToggleProductPause}
-                            isUpdatingPause={updatingPauseProductId === p.id}
-                          />
-                        ))}
-                      </div>
-
-                      {catalogTotalPages > 1 && (
-                        <div className="catalog-pagination">
-                          <button
-                            type="button"
-                            className="catalog-page-btn"
-                            disabled={catalogPage === 0}
-                            onClick={() => setCatalogPage((p) => Math.max(0, p - 1))}
-                          >
-                            <ChevronLeft size={16} /> Anterior
-                          </button>
-                          <span className="catalog-page-indicator">
-                            Página {catalogPage + 1} de {catalogTotalPages}
-                          </span>
-                          <button
-                            type="button"
-                            className="catalog-page-btn"
-                            disabled={catalogPage >= catalogTotalPages - 1}
-                            onClick={() => setCatalogPage((p) => Math.min(catalogTotalPages - 1, p + 1))}
-                          >
-                            Siguiente <ChevronRight size={16} />
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
+                <ProfileCatalogPanel
+                  sellerProducts={sellerProducts}
+                  catalogTotalElements={catalogTotalElements}
+                  catalogTotalPages={catalogTotalPages}
+                  isCatalogLoading={isCatalogLoading}
+                  catalogError={catalogError}
+                  catalogTopFeedback={catalogTopFeedback}
+                  catalogSearchInput={catalogSearchInput}
+                  setCatalogSearchInput={setCatalogSearchInput}
+                  catalogSearchTerm={catalogSearchTerm}
+                  onSearchSubmit={handleCatalogSearchSubmit}
+                  catalogPage={catalogPage}
+                  setCatalogPage={setCatalogPage}
+                  catalogPageSize={catalogPageSize}
+                  onPageSizeChange={handleCatalogPageSizeChange}
+                  inventoryPanelUrl={inventoryPanelUrl}
+                  questionCountForProduct={questionCountForProduct}
+                  onSelectProduct={(item) => setSelectedCatalogProduct(item)}
+                  onOpenQuestionsForProduct={(productId) => {
+                    setQuestionsProductFilter(productId);
+                    setActiveTab('preguntas_productos');
+                  }}
+                  onAddProduct={() => setShowNewProductModal(true)}
+                  onToggleTop={handleToggleProductTop}
+                  updatingTopProductId={updatingTopProductId}
+                  onTogglePause={handleToggleProductPause}
+                  updatingPauseProductId={updatingPauseProductId}
+                />
               )}
 
               {activeTab === 'preguntas_productos' && isSeller && (
