@@ -21,7 +21,6 @@ import { qk } from '../services/queryKeys';
 import StoreLogoBadge from './StoreLogoBadge';
 import ContextualReportButton from './ContextualReportButton';
 import RelatedProductsCarousel from './RelatedProductsCarousel';
-import PurchaseShippingModal from './PurchaseShippingModal';
 import ProductTopBadge from './ProductTopBadge';
 import { isProductTopActive } from '../utils/productTop';
 import { isOwnStoreProduct } from '../utils/purchaseProfile';
@@ -67,7 +66,6 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const [plateError, setPlateError] = useState('');
   const [plateVehicle, setPlateVehicle] = useState(null);
   const [plateMatchIndex, setPlateMatchIndex] = useState(null);
-  const [purchaseIntent, setPurchaseIntent] = useState(null);
   const compatibilityItemRefs = useRef([]);
   const { setActiveVehicle } = useMarketplace();
   const nav = useAppNavigation();
@@ -282,16 +280,17 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     questionMutation.mutate(text);
   };
 
-  const confirmPurchaseAction = async (shipping) => {
-    const shouldGoToCart = purchaseIntent === 'buy';
-    // `addToCart` aplica el cambio optimista de forma sincrónica (antes de su primer
-    // await) y maneja sus propios errores dejándolos en `cartError`, que /carrito
-    // muestra. Por eso "Comprar ahora" salta al carrito de inmediato en vez de esperar
-    // el viaje al backend: el producto ya está en la lista cuando la vista se monta.
-    const pending = onAddToCart(product, shipping);
-    setPurchaseIntent(null);
-    if (shouldGoToCart) nav.goCart();
-    else await pending;
+  // El método de entrega ya no se pide acá: se elige por tienda en el checkout, donde
+  // además se puede pedir la dirección si hace falta. `addToCart` aplica el cambio
+  // optimista de forma sincrónica (antes de su primer await), así que "Comprar ahora"
+  // salta al carrito de inmediato en vez de esperar el viaje al backend.
+  const buyNow = () => {
+    onAddToCart(product);
+    nav.goCart();
+  };
+
+  const addToCartNow = async () => {
+    await onAddToCart(product);
   };
 
   return (
@@ -434,8 +433,8 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
               <>
                 <div className="product-marketplace-price">${Number(product.precio).toLocaleString('es-CL')} <small>CLP</small></div>
                 <p>IVA incluido</p>
-                <button className="product-marketplace-primary" type="button" disabled={!stock} onClick={() => setPurchaseIntent('buy')}><ShoppingCart /> Comprar ahora</button>
-                <button className="product-marketplace-secondary" type="button" disabled={!stock} onClick={() => setPurchaseIntent('add')}><Package /> Añadir al carro</button>
+                <button className="product-marketplace-primary" type="button" disabled={!stock} onClick={buyNow}><ShoppingCart /> Comprar ahora</button>
+                <button className="product-marketplace-secondary" type="button" disabled={!stock} onClick={addToCartNow}><Package /> Añadir al carro</button>
               </>
             )}
 
@@ -742,13 +741,6 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
           </section>
         </div>
       )}
-
-      <PurchaseShippingModal
-        product={product}
-        intent={purchaseIntent}
-        onClose={() => setPurchaseIntent(null)}
-        onConfirm={confirmPurchaseAction}
-      />
 
       <ProductBrandModal
         isOpen={brandModalOpen}

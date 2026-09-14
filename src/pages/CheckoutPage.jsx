@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowLeft, Building2, ChevronRight, CreditCard, FileText, Loader2, Lock, MapPin, ReceiptText, Sparkles, Store, User,
+  AlertTriangle, ArrowLeft, Building2, ChevronRight, CreditCard, FileText, Loader2, Lock, MapPin, Package, ReceiptText, Sparkles, Store, Truck, User, X,
 } from 'lucide-react';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAuth } from '../context/AuthContext';
 import {
   checkoutCartApi, checkoutConversationQuoteApi, confirmOrderPaymentApi, getAddressesApi,
-  getBuyerConversationsApi, getConversationQuoteApi, resolveMediaUrl,
+  getBuyerConversationsApi, getConversationQuoteApi, getPublicProductApi, resolveMediaUrl,
 } from '../services/api';
-import { formatRut, isValidRut } from '../services/adapters';
+import { adaptProduct, formatRut, isValidRut } from '../services/adapters';
 import { isQuoteExpired, quantityFromLabel } from '../utils/quoteFlow';
 import { checkoutFallbackShippingMethod, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import { buyerProfilePath, profilePath, ROUTES } from '../routes/paths';
@@ -17,6 +17,7 @@ import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import BuyerAddressBook from '../components/BuyerAddressBook';
 import CheckoutSummaryPanel from '../components/CheckoutSummaryPanel';
+import PurchaseShippingModal from '../components/PurchaseShippingModal';
 
 const STEPS = [
   { id: 'entrega', label: 'Entrega' },
@@ -37,7 +38,7 @@ export default function CheckoutPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const buyerQuotesPath = buyerProfilePath(user, 'quotes');
-  const { cartItems, cartCount, cartTotals, clearCart } = useMarketplace();
+  const { cartItems, cartCount, cartTotals, clearCart, updateCartShipping } = useMarketplace();
   const userId = user?.userId ?? user?.id;
 
   const location = useLocation();
@@ -167,9 +168,11 @@ export default function CheckoutPage() {
     ? { subtotal: quoteLine?.total || 0, costoEnvio: 0, total: quoteLine?.total || 0 }
     : cartTotals;
 
-  // Retiro en tienda no necesita dirección de despacho.
+  // Retiro en tienda no necesita dirección de despacho. Un ítem sin método todavía
+  // elegido no cuenta para ningún lado: recién se sabe si hace falta dirección cuando
+  // el comprador termina de elegir cómo recibe cada tienda.
   const needsAddress = useMemo(() => lineItems.some((item) => (
-    resolveShippingService(item.shippingMethod).name !== 'Retiro en tienda'
+    item.shippingMethod && resolveShippingService(item.shippingMethod).name !== 'Retiro en tienda'
   )), [lineItems]);
 
   const groups = useMemo(() => {
@@ -183,6 +186,37 @@ export default function CheckoutPage() {
     });
     return [...byStore.values()];
   }, [lineItems]);
+
+  // El método de entrega se elige acá, por tienda, en vez de al agregar el producto al
+  // carrito: recién en este paso tiene sentido preguntar (ya se sabe si hace falta
+  // dirección) y evita interrumpir el "añadir al carro" con una pregunta que no es
+  // necesaria hasta este punto. Mismo mecanismo que usaba /carrito: se piden los
+  // métodos reales de la tienda (`metodosEnvio`, que el ítem del carrito no trae) recién
+  // al abrir el selector, y se guardan con `updateCartShipping`.
+  const [shippingEditor, setShippingEditor] = useState(null);
+
+  const openShippingEditor = useCallback(async (group) => {
+    setShippingEditor({ group, product: null, loading: true, error: '' });
+    try {
+      const dto = await getPublicProductApi(group.items[0].id);
+      setShippingEditor({ group, product: adaptProduct(dto), loading: false, error: '' });
+    } catch {
+      setShippingEditor({
+        group,
+        product: null,
+        loading: false,
+        error: 'No pudimos cargar las formas de entrega de esta tienda. Intenta nuevamente.',
+      });
+    }
+  }, []);
+
+  const confirmShipping = async ({ shippingMethod, shippingFee }) => {
+    const { group } = shippingEditor;
+    await updateCartShipping(group.items.map((item) => item.id), { shippingMethod, shippingFee });
+    setShippingEditor(null);
+  };
+
+  const allShippingChosen = isQuoteMode || groups.every((group) => Boolean(group.shippingMethod));
 
   const shippingLabel = useMemo(() => {
     const services = lineItems
@@ -229,14 +263,16 @@ export default function CheckoutPage() {
 
   const rutValid = isValidRut(invoice.rut);
   const stepComplete = {
-    entrega: !needsAddress || Boolean(selectedAddressId),
+    entrega: allShippingChosen && (!needsAddress || Boolean(selectedAddressId)),
     pago: Boolean(paymentMethod) && (documentType !== 'FACTURA' || rutValid),
   };
 
   // Lo que falta para avanzar, dicho antes de que la persona haga clic: el botón se
   // deshabilita, pero un botón apagado sin explicación es igual de frustrante.
   const missingForStep = {
-    entrega: 'Selecciona una dirección de entrega para continuar.',
+    entrega: !allShippingChosen
+      ? 'Elige cómo recibir los productos de cada tienda para continuar.'
+      : 'Selecciona una dirección de entrega para continuar.',
     pago: documentType === 'FACTURA' && !rutValid
       ? 'Ingresa un RUT válido para emitir la factura.'
       : '',
@@ -431,10 +467,67 @@ export default function CheckoutPage() {
                   </p>
                 </section>
 
+                {!isQuoteMode && (
+                  <section className="checkout-block" aria-labelledby="checkout-shipping-title">
+                    <h2 id="checkout-shipping-title"><Truck size={16} /> ¿Cómo quieres recibir cada pedido?</h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {groups.map((group) => {
+                        const service = group.shippingMethod ? resolveShippingService(group.shippingMethod) : null;
+                        const ShippingIcon = service?.icon;
+                        const price = group.shippingMethod ? shippingMethodPrice(group.shippingMethod) : null;
+                        return (
+                          <div key={group.key} className="cart-store-group">
+                            <div className="cart-store-head">
+                              <div className="cart-store-id">
+                                <span className="cart-store-avatar"><Store size={15} /></span>
+                                <strong>{group.vendedor || 'Tienda RepuesTop'}</strong>
+                              </div>
+                              <div className={`cart-store-shipping ${group.shippingMethod ? '' : 'is-missing'}`}>
+                                {group.shippingMethod ? (
+                                  <span className="cart-store-shipping-value" style={{ '--shipping-color': service.color }}>
+                                    <ShippingIcon size={15} />
+                                    {service.label}
+                                    {price && <em>{price}</em>}
+                                  </span>
+                                ) : (
+                                  <span className="cart-store-shipping-value">Elige cómo recibirlo</span>
+                                )}
+                                <button type="button" onClick={() => openShippingEditor(group)}>
+                                  {group.shippingMethod ? 'Cambiar' : 'Elegir entrega'}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="cart-store-lines">
+                              {group.items.map((item) => (
+                                <div key={item.id} className="cart-line">
+                                  <div className="cart-line-media">
+                                    {item.imagen ? <img src={item.imagen} alt="" loading="lazy" /> : <Package size={20} />}
+                                  </div>
+                                  <div className="cart-line-info">
+                                    <h3>{item.titulo}</h3>
+                                    <p className="cart-line-meta">
+                                      <span>{item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'}</span>
+                                      {item.marca && <span>{item.marca}</span>}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                )}
+
                 <section className="checkout-block" aria-labelledby="checkout-entrega-title">
                   <h2 id="checkout-entrega-title"><MapPin size={16} /> ¿Dónde recibes tu pedido?</h2>
 
-                  {needsAddress ? (
+                  {!allShippingChosen ? (
+                    <p className="checkout-block-note">
+                      Elige primero, arriba, cómo recibes los productos de cada tienda.
+                    </p>
+                  ) : needsAddress ? (
                     <>
                       {addressesLoading ? (
                         <p className="checkout-block-loading"><Loader2 size={15} className="spin-icon" /> Cargando tus direcciones…</p>
@@ -486,19 +579,6 @@ export default function CheckoutPage() {
                       {' '}<strong>{quoteLine.shippingMethod || 'a coordinar con la tienda'}</strong>.
                     </p>
                   )}
-
-                  <div className="checkout-delivery-recap">
-                    {groups.map((group) => {
-                      const service = resolveShippingService(group.shippingMethod);
-                      const price = shippingMethodPrice(group.shippingMethod);
-                      return (
-                        <div key={group.key}>
-                          <span><Store size={14} /> {group.vendedor || 'Tienda RepuesTop'}</span>
-                          <strong>{service.label}{price ? ` · ${price}` : ''}</strong>
-                        </div>
-                      );
-                    })}
-                  </div>
                 </section>
               </div>
             )}
@@ -732,6 +812,28 @@ export default function CheckoutPage() {
           </CheckoutSummaryPanel>
         </div>
       </div>
+
+      {shippingEditor?.loading && (
+        <div className="cart-shipping-loading" role="status">
+          <Loader2 size={18} className="spin-icon" /> Cargando formas de entrega…
+        </div>
+      )}
+
+      {shippingEditor?.error && (
+        <div className="cart-page-alert is-floating" role="alert">
+          <AlertTriangle size={15} />
+          <span>{shippingEditor.error}</span>
+          <button type="button" onClick={() => setShippingEditor(null)} aria-label="Cerrar aviso"><X size={14} /></button>
+        </div>
+      )}
+
+      <PurchaseShippingModal
+        product={shippingEditor?.product || null}
+        intent={shippingEditor?.product ? 'update' : null}
+        initialMethod={shippingEditor?.group?.shippingMethod || ''}
+        onClose={() => setShippingEditor(null)}
+        onConfirm={confirmShipping}
+      />
     </main>
   );
 }
