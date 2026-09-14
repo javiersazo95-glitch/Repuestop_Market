@@ -17292,7 +17292,7 @@ input, select, textarea {
 .purchase-success-missing svg { width: 32px; height: 32px; color: #cbd5e1; }
 
 /* --- Aviso de producto agregado (reemplaza la apertura del drawer) --- */
-.cart-added-toast { position: fixed; top: 96px; right: 20px; z-index: 70; width: 300px; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-white); box-shadow: var(--shadow-hover); animation: rp-toast-in 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+.cart-added-toast { position: fixed; top: 96px; right: 20px; z-index: 110; width: 300px; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-white); box-shadow: var(--shadow-hover); animation: rp-toast-in 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
 
 @keyframes rp-toast-in {
   from { opacity: 0; transform: translateY(-8px); }

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowLeft, Building2, ChevronRight, CreditCard, FileText, Loader2, Lock, MapPin, ReceiptText, Sparkles, Store, Truck, User, X,
+  AlertTriangle, ArrowLeft, Building2, ChevronRight, CreditCard, FileText, Loader2, Lock, MapPin, Package, ReceiptText, Sparkles, Store, Truck, User, X,
 } from 'lucide-react';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAuth } from '../context/AuthContext';
@@ -496,6 +496,22 @@ export default function CheckoutPage() {
                                   {group.shippingMethod ? 'Cambiar' : 'Elegir entrega'}
                                 </button>
                               </div>
+                            </div>
+                            <div className="cart-store-lines">
+                              {group.items.map((item) => (
+                                <div key={item.id} className="cart-line">
+                                  <div className="cart-line-media">
+                                    {item.imagen ? <img src={item.imagen} alt="" loading="lazy" /> : <Package size={20} />}
+                                  </div>
+                                  <div className="cart-line-info">
+                                    <h3>{item.titulo}</h3>
+                                    <p className="cart-line-meta">
+                                      <span>{item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'}</span>
+                                      {item.marca && <span>{item.marca}</span>}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         );

@@ -1,18 +1,15 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Loader2, Lock, ShoppingBag, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Lock, ShoppingBag, X } from 'lucide-react';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import { useAuth } from '../context/AuthContext';
-import { getPublicProductApi } from '../services/api';
-import { adaptProduct } from '../services/adapters';
-import { resolveShippingService, shippingMethodCost } from '../data/shippingMethods';
+import { resolveShippingService } from '../data/shippingMethods';
 import { ROUTES } from '../routes/paths';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import CartStoreGroup from '../components/CartStoreGroup';
 import CheckoutSummaryPanel from '../components/CheckoutSummaryPanel';
-import PurchaseShippingModal from '../components/PurchaseShippingModal';
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -23,27 +20,16 @@ export default function CartPage() {
   const { isLoggedIn } = useAuth();
   const {
     cartItems, cartCount, cartTotals, cartError, dismissCartError,
-    updateCartQuantity, updateCartShipping, removeFromCart,
+    updateCartQuantity, removeFromCart,
     activeVehicle, openAuthModal,
   } = useMarketplace();
-
-  // Editor de entrega: se abre desde el encabezado de una tienda y necesita los métodos
-  // reales del producto (`metodosEnvio`), que el ítem del carrito no trae. Por eso el
-  // detalle se pide recién al abrirlo, y no para todo el carrito al entrar.
-  const [shippingEditor, setShippingEditor] = useState(null);
 
   const groups = useMemo(() => {
     const byStore = new Map();
     cartItems.forEach((item) => {
       const key = String(item.proveedorId || item.vendedor || item.id);
       if (!byStore.has(key)) {
-        byStore.set(key, {
-          key,
-          proveedorId: item.proveedorId,
-          vendedor: item.vendedor,
-          items: [],
-          shippingMethod: item.shippingMethod || '',
-        });
+        byStore.set(key, { key, proveedorId: item.proveedorId, vendedor: item.vendedor, items: [] });
       }
       byStore.get(key).items.push(item);
     });
@@ -51,6 +37,8 @@ export default function CartPage() {
   }, [cartItems]);
 
   // Solo se usa cuando el costo de envío es 0: si hay monto, el resumen muestra el monto.
+  // El método de entrega todavía no se elige acá (se pregunta por tienda en el
+  // checkout), así que acá casi siempre da "Por definir".
   const shippingLabel = useMemo(() => {
     const services = cartItems
       .map((item) => item.shippingMethod)
@@ -64,30 +52,6 @@ export default function CartPage() {
     if (services.some((name) => name === 'Envío fuera de la comuna')) return 'Por pagar';
     return 'Sin costo';
   }, [cartItems]);
-
-  const openShippingEditor = useCallback(async (group) => {
-    setShippingEditor({ group, product: null, loading: true, error: '' });
-    try {
-      const dto = await getPublicProductApi(group.items[0].id);
-      setShippingEditor({ group, product: adaptProduct(dto), loading: false, error: '' });
-    } catch {
-      setShippingEditor({
-        group,
-        product: null,
-        loading: false,
-        error: 'No pudimos cargar las formas de entrega de esta tienda. Intenta nuevamente.',
-      });
-    }
-  }, []);
-
-  const confirmShipping = async ({ shippingMethod }) => {
-    const { group } = shippingEditor;
-    await updateCartShipping(group.items.map((item) => item.id), {
-      shippingMethod,
-      shippingFee: shippingMethodCost(shippingMethod),
-    });
-    setShippingEditor(null);
-  };
 
   const goToCheckout = () => {
     if (!isLoggedIn) {
@@ -171,7 +135,6 @@ export default function CartPage() {
                 activeVehicle={activeVehicle}
                 onUpdateQuantity={updateCartQuantity}
                 onRemove={removeFromCart}
-                onChangeShipping={openShippingEditor}
               />
             ))}
           </div>
@@ -187,28 +150,6 @@ export default function CartPage() {
           />
         </div>
       </div>
-
-      {shippingEditor?.loading && (
-        <div className="cart-shipping-loading" role="status">
-          <Loader2 size={18} className="spin-icon" /> Cargando formas de entrega…
-        </div>
-      )}
-
-      {shippingEditor?.error && (
-        <div className="cart-page-alert is-floating" role="alert">
-          <AlertTriangle size={15} />
-          <span>{shippingEditor.error}</span>
-          <button type="button" onClick={() => setShippingEditor(null)} aria-label="Cerrar aviso"><X size={14} /></button>
-        </div>
-      )}
-
-      <PurchaseShippingModal
-        product={shippingEditor?.product || null}
-        intent={shippingEditor?.product ? 'update' : null}
-        initialMethod={shippingEditor?.group?.shippingMethod || ''}
-        onClose={() => setShippingEditor(null)}
-        onConfirm={confirmShipping}
-      />
     </main>
   );
 }
