@@ -226,10 +226,18 @@ export async function updateAdAgenda(adId, { bookingEnabled, config, agendaConfi
   return saved;
 }
 
-/** Baja logica: el backend lo marca `ELIMINADO` y deja de listarlo. */
+/**
+ * Baja logica: el backend lo marca `ELIMINADO` y deja de listarlo.
+ *
+ * Si el anuncio seguia PENDIENTE (nunca llego a publicarse), el backend
+ * devuelve las Monedas cobradas en el mismo DELETE. Se refresca el saldo aca
+ * para que el monedero lo muestre al toque, en vez de esperar a que la
+ * pantalla se vuelva a montar.
+ */
 export async function deleteAd(adId) {
   await deleteAdApi(adId);
   refreshWallCache();
+  fetchTokensBalance().catch(() => {});
 }
 
 /** Sube fotos y devuelve sus URLs listas para mostrar. */

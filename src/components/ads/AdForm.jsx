@@ -1230,6 +1230,7 @@ export default function AdForm({
           )}
           {step < 2 ? (
             <button
+              key="ad-form-next"
               type="button"
               className="btn-post-ad"
               onClick={goToNextStep}
@@ -1239,6 +1240,7 @@ export default function AdForm({
             </button>
           ) : (
             <button
+              key="ad-form-submit"
               type="submit"
               className="btn-post-ad"
               disabled={isSubmitting || Boolean(uploadTarget) || !canAffordTier || hasAgendaErrors}
