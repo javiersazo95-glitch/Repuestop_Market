@@ -10,7 +10,7 @@ import { formatRut, isValidRut } from '../services/adapters';
 
 const EMPTY_FORM = {
   nombreNegocio: '', rutNegocio: '', giro: '', responsable: '',
-  regionId: '', comunaId: '', direccion: '', referido: '',
+  regionId: '', comunaId: '', direccion: '', telefono: '', referido: '',
 };
 
 const EMPTY_FILES = { identidad: null, inicioActividades: null, patenteMunicipal: null };
@@ -32,6 +32,14 @@ const ESTADO_LABEL = {
   RECHAZADO: 'Rechazado',
   APROBADO: 'Aprobado',
 };
+
+// El backend recibe los nueve dígitos nacionales y normaliza el valor al
+// formato `+56 123456789`. La interfaz deja el prefijo fijo para evitar que se
+// duplique al pegar o escribir el número.
+const normalizeChileanPhone = (value = '') => value
+  .replace(/\D/g, '')
+  .replace(/^56(?=\d{9}$)/, '')
+  .slice(0, 9);
 
 /**
  * Selector de logo de la empresa: círculo con la imagen actual (o un icono) y un
@@ -85,7 +93,11 @@ function LogoPicker({ value, onPick, busy, error, caption }) {
  */
 export default function AutomotiveServiceAccreditation({ user, embedded = false, onSaved }) {
   const [record, setRecord] = useState(null);
-  const [form, setForm] = useState({ ...EMPTY_FORM, responsable: user?.userName || user?.nombre || '' });
+  const [form, setForm] = useState({
+    ...EMPTY_FORM,
+    responsable: user?.userName || user?.nombre || '',
+    telefono: normalizeChileanPhone(user?.phone || user?.telefono),
+  });
   const [files, setFiles] = useState(EMPTY_FILES);
   const [regiones, setRegiones] = useState([]);
   const [comunas, setComunas] = useState([]);
@@ -164,6 +176,10 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
 
     if (!isValidRut(form.rutNegocio)) {
       setError('El RUT del negocio no es válido.');
+      return;
+    }
+    if (form.telefono.length !== 9) {
+      setError('Ingresa un teléfono chileno de 9 dígitos.');
       return;
     }
     // Los tres documentos se piden en cada envío, incluso al corregir: el
@@ -341,6 +357,25 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
               onChange={(e) => handleChange('direccion', e.target.value)}
               placeholder="Av. Italia 1234"
             />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="automotive-service-phone">Teléfono de contacto</label>
+            <div className="phone-field">
+              <span className="phone-prefix" aria-label="Chile">🇨🇱 +56</span>
+              <input
+                id="automotive-service-phone"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
+                value={form.telefono}
+                onChange={(e) => handleChange('telefono', normalizeChileanPhone(e.target.value))}
+                placeholder="9 1234 5678"
+                maxLength={9}
+                required
+              />
+            </div>
+            <small>Ingresa los 9 dígitos, sin el prefijo +56.</small>
           </div>
 
           <div className="form-group">
