@@ -50,8 +50,6 @@ export default function CartPage() {
     return [...byStore.values()];
   }, [cartItems]);
 
-  const missingShipping = cartItems.some((item) => !item.shippingMethod);
-
   // Solo se usa cuando el costo de envío es 0: si hay monto, el resumen muestra el monto.
   const shippingLabel = useMemo(() => {
     const services = cartItems
@@ -186,8 +184,6 @@ export default function CartPage() {
             shippingLabel={shippingLabel}
             ctaLabel={isLoggedIn ? 'Continuar la compra' : 'Inicia sesión para continuar'}
             onCta={goToCheckout}
-            ctaDisabled={missingShipping}
-            warning={missingShipping ? 'Elige cómo recibir los productos de cada tienda para continuar.' : ''}
           />
         </div>
       </div>
