@@ -1,4 +1,5 @@
 import { LEGAL_VERSION_CODE } from '../data/legalTexts';
+import { compressImageFile } from '../utils/imageCompression';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
 
 const apiOrigin = () => API_BASE_URL.replace(/\/api\/v1\/?$/, '');
@@ -451,7 +452,7 @@ export async function reactivateAccountApi(perfil) {
 export async function uploadProfileImageApi(file) {
   const token = localStorage.getItem('repuestop_token');
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', await compressImageFile(file));
   const response = await fetch(`${API_BASE_URL}/users/perfil/foto`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -1493,7 +1494,8 @@ export async function deleteAdApi(adId) {
  */
 export async function uploadAdImagesApi(files) {
   const formData = new FormData();
-  (files || []).forEach((file) => formData.append('imagenes', file));
+  const comprimidas = await Promise.all((files || []).map((file) => compressImageFile(file)));
+  comprimidas.forEach((file) => formData.append('imagenes', file));
   return fetchApi('/anuncios/imagenes', {
     method: 'POST',
     body: formData,

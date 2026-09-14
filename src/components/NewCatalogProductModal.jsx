@@ -13,6 +13,7 @@ import {
   toMediaPath,
   updateSellerInventoryProductApi,
 } from '../services/api';
+import { compressImageFile } from '../utils/imageCompression';
 
 const MAX_PHOTOS = 4;
 const CURRENT_YEAR = new Date().getFullYear() + 2;
@@ -386,7 +387,8 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
         payload.append('existingPhotos', '');
       }
     }
-    files.forEach(({ file }) => payload.append('imagenes', file));
+    const fotosComprimidas = await Promise.all(files.map(({ file }) => compressImageFile(file)));
+    fotosComprimidas.forEach((file) => payload.append('imagenes', file));
 
     try {
       const savedProduct = isEditing
