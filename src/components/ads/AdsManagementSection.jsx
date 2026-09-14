@@ -223,8 +223,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
     return () => window.removeEventListener(TOKENS_UPDATED_EVENT, handleTokensUpdated);
   }, []);
 
-  // El saldo se consulta al montar. Ojo: esta lectura tambien es la que gatilla
-  // el bono de bienvenida del backend la primera vez que la cuenta entra aca.
+  // El saldo se consulta al montar y no crea movimientos en el monedero.
   useEffect(() => {
     const controller = new AbortController();
     fetchTokensBalance({ signal: controller.signal })

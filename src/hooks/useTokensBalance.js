@@ -12,8 +12,7 @@ import {
  * `TOKENS_UPDATED_EVENT`, que `adsStorage` emite cada vez que el backend confirma
  * un saldo nuevo (recarga, cobro de publicación o de mejora de plan).
  *
- * OJO: la primera lectura de `fetchTokensBalance()` es también la que gatilla el
- * bono de bienvenida del backend, así que solo se llama con sesión iniciada.
+ * Solo se consulta con sesión iniciada para no pedir el monedero de un visitante.
  */
 export function useTokensBalance(enabled = true) {
   const [balance, setBalance] = useState(() => getCachedTokensBalance());

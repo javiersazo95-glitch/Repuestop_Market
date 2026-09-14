@@ -267,9 +267,9 @@ export function adErrorMessage(error, fallback = 'No se pudo completar la operac
 // -------------------------------------------------------------
 //
 // El saldo lo manda el backend (`GET /fichas/saldo`), que lo calcula sumando
-// `RT_movimiento_ficha`. Antes vivia en `localStorage` y el bono de bienvenida se
-// otorgaba aca mismo, asi que vaciar el navegador reponia 300 Monedas y publicar
-// un anuncio Empresarial cuesta 250.
+// `RT_movimiento_ficha`. Antes vivia en `localStorage`, lo que permitia alterar
+// el saldo al vaciar el navegador. Las cuentas nuevas ahora comienzan con 0
+// Monedas hasta que exista un movimiento de crédito real.
 //
 // Y el gasto ya no se descuenta desde el cliente: el backend cobra dentro de
 // `AnuncioService.crear()` y `actualizar()`, en la misma transaccion que el
@@ -297,9 +297,8 @@ function cacheTokensBalance(balance) {
 /**
  * Ultimo saldo conocido, sincrono, para el primer render.
  *
- * Arranca en 0 y no en 300: el bono de bienvenida lo otorga el backend, y pintar
- * un saldo inventado mientras responde la red es prometer Monedas que pueden no
- * existir. Lo reemplaza `fetchTokensBalance()` apenas contesta.
+ * Arranca en 0: no se muestra un saldo inventado mientras responde la red. Lo
+ * reemplaza `fetchTokensBalance()` apenas contesta.
  */
 export function getCachedTokensBalance() {
   try {

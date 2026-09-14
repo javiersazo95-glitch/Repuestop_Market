@@ -1610,9 +1610,8 @@ export async function createProviderNotificationApi(proveedorId, payload) {
  * lo replique a mano en `UPGRADE_TOKEN_COSTS`, cambiar un precio obliga a
  * desplegar las tres plataformas a la vez.
  *
- * Ojo: esta llamada puede ESCRIBIR. La primera vez que una cuenta consulta su
- * monedero, el backend le otorga el bono de bienvenida (idempotente por
- * `event_key`, o sea que solo pasa una vez).
+ * Esta consulta es de solo lectura: las cuentas nuevas comienzan con saldo cero
+ * hasta que compren Monedas o reciban un crédito explícito.
  */
 export async function getFichasBalanceApi({ signal } = {}) {
   return fetchApi('/fichas/saldo', { method: 'GET', signal });
