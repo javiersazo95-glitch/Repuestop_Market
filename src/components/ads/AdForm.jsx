@@ -4,7 +4,7 @@ import {
   Film, Heart, Loader2, LockKeyhole, MessageCircle, Plus, PlusCircle, Sparkles, Trash2, TrendingUp, UserPlus, X
 } from 'lucide-react';
 import {
-  AD_TIERS, AD_TIER_ORDER, AD_FEATURE_TAGS, SERVICE_CATEGORIES, getNewlyUnlockedFeatures
+  AD_TIERS, AD_TIER_ORDER, SERVICE_CATEGORIES, getNewlyUnlockedFeatures
 } from '../../data/automotiveAdsData';
 import {
   createDefaultSchedule, parseOpeningHours, formatOpeningHours
@@ -146,7 +146,9 @@ export default function AdForm({
     () => parseOpeningHours(initialAd?.openingHours) || createDefaultSchedule()
   );
   const [is24Hours, setIs24Hours] = useState(initialAd?.is24Hours === true);
-  const [features, setFeatures] = useState(initialAd?.features || []);
+  // Las etiquetas existentes se conservan al editar; en creación ya no se
+  // seleccionan en la etapa 3 para no duplicar los servicios manuales del paso 2.
+  const [features] = useState(initialAd?.features || []);
   const [servicesOffered, setServicesOffered] = useState(initialAd?.servicesOffered || []);
   // Marcas que atiende el taller. Vacío = atiende todas.
   const [specialistBrands, setSpecialistBrands] = useState(() => (
@@ -367,14 +369,6 @@ export default function AdForm({
 
   const stepMissing = step === 1 ? contentMissing : [];
 
-  const toggleFeature = (tag) => {
-    setFeatures((current) => {
-      if (current.includes(tag)) return current.filter((item) => item !== tag);
-      if (current.length >= limits.maxTags) return current;
-      return [...current, tag];
-    });
-  };
-
   const addService = () => {
     const value = serviceDraft.trim();
     if (!value || servicesOffered.includes(value) || servicesOffered.length >= limits.maxTags) return;
@@ -484,6 +478,13 @@ export default function AdForm({
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    // El navegador puede disparar un submit nativo al presionar Enter en un
+    // campo del aviso. No se debe crear ni mandar a revisión hasta que la
+    // persona llegue explícitamente a la etapa 3 y pulse su botón final.
+    if (step !== 2) {
+      setStepError('Completa esta etapa y presiona Siguiente para revisar los beneficios antes de enviar el anuncio.');
+      return;
+    }
     if (contentMissing.length > 0) {
       setStep(1);
       setStepError(`Completa el aviso: falta ${contentMissing.join(', ')}.`);
@@ -1044,34 +1045,9 @@ export default function AdForm({
           <div className="ad-step-panel ad-step-details">
             <div className="ad-section-header">
               <h5>Beneficios de tu plan {limits.name}</h5>
-              <p>Solo lo que suma tu plan: etiquetas, WhatsApp directo, carrusel de historias y agenda de citas.</p>
+              <p>Solo lo que suma tu plan: WhatsApp directo, carrusel de historias y agenda de citas.</p>
             </div>
             <div className="ad-form-grid booking-form-grid">
-              <div className="ad-field booking-field col-span-2">
-                <div className="ad-field-header">
-                  <label>
-                    Etiquetas del anuncio ({visibleFeatures.length}/{limits.maxTags} del plan {limits.name})
-                  </label>
-                </div>
-                <p className="ad-upload-hint">Aparecen como distintivos en tu tarjeta del mural.</p>
-                <div className="ad-tag-picker">
-                  {AD_FEATURE_TAGS.map((tag) => {
-                    const selected = visibleFeatures.includes(tag);
-                    return (
-                      <button
-                        type="button"
-                        key={tag}
-                        className={`ad-tag-chip ${selected ? 'active' : ''}`}
-                        disabled={!selected && visibleFeatures.length >= limits.maxTags}
-                        onClick={() => toggleFeature(tag)}
-                      >
-                        {selected && <Check size={11} />} {tag}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
               {limits.hasWhatsapp && (
                 <div
                   className={`ad-field booking-field col-span-2 ${esFuncionNueva('WhatsApp directo') ? 'is-unlocked' : ''}`}
@@ -1271,7 +1247,7 @@ export default function AdForm({
               {isSubmitting
                 ? 'Enviando…'
                 : submitLabel || (mode === 'create'
-                  ? (tierCost > 0 ? `Publicar por ${tierCost} Monedas` : 'Publicar anuncio')
+                  ? (tierCost > 0 ? `Enviar a revisión por ${tierCost} Monedas` : 'Enviar a revisión')
                   : 'Guardar cambios')}
             </button>
           )}
