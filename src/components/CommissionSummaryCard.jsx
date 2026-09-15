@@ -50,7 +50,7 @@ export default function CommissionSummaryCard({
           fontWeight: 600,
         }}>
           <Award size={15} />
-          <span>Beneficio Fundador: comisión RepuesTop fija de 5%, sin importar el monto.</span>
+          <span>Beneficio Fundador: comisión RepuesTop fija de 5% + IVA, sin importar el monto.</span>
         </div>
       )}
 
@@ -194,6 +194,12 @@ export default function CommissionSummaryCard({
             <strong style={{ color: '#0066ff', fontSize: '15px' }}>{formatCLP(netEarnings)}</strong>
           </div>
 
+          {/* Row 3: Abono estimado */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '3px 0', fontSize: '11.5px', color: '#64748b' }}>
+            <span>Abono estimado:</span>
+            <span style={{ fontWeight: 500, color: '#334155' }}>11 días tras entrega (sin reclamos)</span>
+          </div>
+
           {/* Toggle Accordion */}
           <button
             type="button"
@@ -230,7 +236,7 @@ export default function CommissionSummaryCard({
               fontSize: '12px',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#475569' }}>Comisión RepuesTop ({Math.round(breakdown.rate * 100)}% IVA incl.):</span>
+                <span style={{ color: '#475569' }}>Comisión RepuesTop ({Math.round(breakdown.rate * 100)}% + IVA):</span>
                 <strong style={{ color: '#334155' }}>-{formatCLP(breakdown.repuestopWithIva)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '11px', paddingLeft: '8px' }}>

@@ -15,8 +15,8 @@ import MarketplaceProductCard from './MarketplaceProductCard';
 import { isProductTopActive } from '../utils/productTop';
 import ContextualReportButton from './ContextualReportButton';
 import { parseShippingMethods, resolveShippingService } from '../data/shippingMethods';
-import { getAddressesApi, getStoreProductsApi, getStoreProfileApi, searchVehicleByPatenteApi } from '../services/api';
-import { adaptPage, adaptProduct, adaptStore, adaptVehicle } from '../services/adapters';
+import { getAddressesApi, getStoreProductsApi, getStoreProfileApi, getVehicleCatalogPartsApi, searchVehicleByPatenteApi } from '../services/api';
+import { adaptCompatibleOffersPage, adaptPage, adaptProduct, adaptStore, adaptVehicle } from '../services/adapters';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useFavorites } from '../hooks/useFavorites';
 import { useMarketplace } from '../context/MarketplaceContext';
@@ -166,6 +166,34 @@ export default function StorePublicProfileView({
 
   const storeProducts = productsPageData?.items || [];
   const storeProductsTotal = productsPageData?.total || 0;
+
+  // Compatibilidad por patente: en vez de reimplementar en JS la resolucion de
+  // compatibilidad (que ya le fallo dos veces a esta vista -- esUniversal e ids como
+  // string), se consulta el mismo endpoint relacional que usan el catalogo general
+  // (PartsCatalogView) y la app (`loadCompatibleProductsByCatalogoPage` en
+  // app/store/[id].tsx): busca por vehiculo_catalogo en TODO el marketplace y se
+  // acota a esta tienda por `proveedorId`, igual que hace la app.
+  const wantsVehicleCompat = Boolean(onlyCompatible && activeVehicle?.catalogoId);
+  const { data: compatibleOffersData, isLoading: compatibleOffersLoading } = useQuery({
+    queryKey: qk.vehicleCompatibleProducts(activeVehicle?.catalogoId, { storeId }),
+    queryFn: async ({ signal }) => {
+      const firstPage = adaptCompatibleOffersPage(
+        await getVehicleCatalogPartsApi(activeVehicle.catalogoId, { page: 0, size: STORE_PRODUCTS_FETCH_SIZE, signal })
+      );
+      const remainingPages = await Promise.all(
+        Array.from({ length: Math.max(0, firstPage.totalPages - 1) }, (_, index) => (
+          getVehicleCatalogPartsApi(activeVehicle.catalogoId, { page: index + 1, size: STORE_PRODUCTS_FETCH_SIZE, signal })
+            .then(adaptCompatibleOffersPage)
+        ))
+      );
+      return [firstPage, ...remainingPages]
+        .flatMap((page) => page.items)
+        .filter((item) => String(item.proveedorId) === String(storeId));
+    },
+    enabled: wantsVehicleCompat && Boolean(storeId),
+  });
+
+  const compatibleStoreProducts = compatibleOffersData || [];
   const textSearchSuggestions = [
     ...NAVIGATION_CATEGORIES.map((category) => ({ label: category.nombre, type: 'category' })),
     ...storeProducts.map((product) => ({ label: product.titulo, type: 'product' })),
@@ -261,7 +289,7 @@ export default function StorePublicProfileView({
   }, [searchQuery, selectedCategory, selectedSubcategory, selectedCondition, selectedBrand, onlyCompatible, activeVehicle, sortBy, itemsPerPage, filterByMyComuna, myComunaNombre]);
 
   // Filtering Logic
-  const filteredProducts = storeProducts.filter((prod) => {
+  const filteredProducts = (wantsVehicleCompat ? compatibleStoreProducts : storeProducts).filter((prod) => {
     // 1. Text Search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
@@ -292,14 +320,32 @@ export default function StorePublicProfileView({
     }
 
     // 4. Vehicle Compatibility
-    if (onlyCompatible && activeVehicle) {
+    // Si `wantsVehicleCompat` esta activo, `prod` ya salio de la lista que resolvio el
+    // backend (mismo endpoint relacional que el catalogo general y la app): no hay que
+    // reevaluarla aca con la heuristica de abajo, que es solo el respaldo para cuando el
+    // vehiculo activo no tiene `catalogoId` (ingreso manual). Un repuesto `esUniversal`
+    // le sirve a cualquier vehiculo -- la misma regla con la que el catalogo general lo
+    // rescata via `OR esUniversal` en la Specification del backend.
+    if (!wantsVehicleCompat && onlyCompatible && activeVehicle && !prod.esUniversal) {
       const matchesVehicle = (prod.compatibilidad || []).some(
         c => {
-          if (activeVehicle.catalogoId && Array.isArray(c.vehiculoCatalogoIds) && c.vehiculoCatalogoIds.includes(Number(activeVehicle.catalogoId))) {
+          // El backend a veces manda los ids del grupo como string (vienen de un JSON
+          // guardado con el picker de compatibilidad) y activeVehicle.catalogoId como
+          // number: comparar sin normalizar los deja siempre distintos (`"1019" !== 1019`)
+          // y el `includes` nunca encuentra nada.
+          if (activeVehicle.catalogoId && Array.isArray(c.vehiculoCatalogoIds)
+              && c.vehiculoCatalogoIds.map(String).includes(String(activeVehicle.catalogoId))) {
             return true;
           }
+          // `activeVehicle.modelo` viene de adaptVehicle() como "modelo version" (ej.
+          // "Yaris 1.5 GLI"), pero lo que declara el vendedor suele ser solo el modelo
+          // base (ej. "Yaris"): una igualdad estricta nunca calza. Se compara por
+          // inclusion en cualquier sentido, como hace el backend con su LIKE.
+          const grupoModelo = c.modelo?.toLowerCase() || '';
+          const vehiculoModelo = activeVehicle.modelo?.toLowerCase() || '';
           return c.marca?.toLowerCase() === activeVehicle.marca?.toLowerCase() &&
-                 c.modelo?.toLowerCase() === activeVehicle.modelo?.toLowerCase();
+                 Boolean(grupoModelo) && Boolean(vehiculoModelo) &&
+                 (vehiculoModelo.includes(grupoModelo) || grupoModelo.includes(vehiculoModelo));
         }
       );
       if (!matchesVehicle) return false;
@@ -792,7 +838,7 @@ export default function StorePublicProfileView({
                 </select>
               </label>
             </header>
-            {productsLoading ? (
+            {productsLoading || (wantsVehicleCompat && compatibleOffersLoading) ? (
               <div className="directory-empty-state">
                 <Package size={56} className="empty-icon-gray" />
                 <h3>Cargando catálogo de la tienda…</h3>

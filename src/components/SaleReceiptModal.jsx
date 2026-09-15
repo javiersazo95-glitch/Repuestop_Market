@@ -53,15 +53,16 @@ export default function SaleReceiptModal({
   const shippingValue = Number(shipping || 0);
   const totalToDocument = productsTotal + shippingValue;
 
-  const documentLine = docType === 'FACTURA'
-    ? `Factura · RUT ${buyerRut || '—'}${order.facturaRazonSocial ? ` · ${order.facturaRazonSocial}` : ''}${order.facturaGiro ? ` · ${order.facturaGiro}` : ''}`
-    : 'Boleta electrónica';
+  const documentLine = docType === 'FACTURA' ? 'Factura electrónica' : 'Boleta electrónica';
 
   const summaryText = [
     `Pedido ${orderCode}`,
     `Fecha: ${new Date(order.createdAt || order.fecha || Date.now()).toLocaleDateString('es-CL')}`,
     `Cliente: ${buyerName}${buyerPhone ? ` · ${buyerPhone}` : ''}`,
     `Documento: ${documentLine}`,
+    docType === 'FACTURA' ? `RUT: ${buyerRut || '—'}` : null,
+    docType === 'FACTURA' && order.facturaRazonSocial ? `Razón social: ${order.facturaRazonSocial}` : null,
+    docType === 'FACTURA' && order.facturaGiro ? `Giro: ${order.facturaGiro}` : null,
     deliveryAddress ? `Despacho: ${deliveryAddress}` : null,
     '',
     'Detalle:',
@@ -153,6 +154,9 @@ export default function SaleReceiptModal({
           <dl className="order-receipt-fields">
             <div><dt>Cliente</dt><dd>{buyerName}{buyerPhone ? ` · ${buyerPhone}` : ''}</dd></div>
             <div><dt>Documento</dt><dd>{documentLine}</dd></div>
+            {docType === 'FACTURA' && <div><dt>RUT</dt><dd>{buyerRut || '—'}</dd></div>}
+            {docType === 'FACTURA' && order.facturaRazonSocial && <div><dt>Razón social</dt><dd>{order.facturaRazonSocial}</dd></div>}
+            {docType === 'FACTURA' && order.facturaGiro && <div><dt>Giro</dt><dd>{order.facturaGiro}</dd></div>}
             {deliveryAddress && <div><dt>Despacho</dt><dd>{deliveryAddress}</dd></div>}
           </dl>
 
