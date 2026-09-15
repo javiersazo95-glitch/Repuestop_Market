@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Truck, ShieldCheck, Store, HelpCircle, Search, ShoppingCart, User,
   ChevronDown, ChevronRight, X, LogOut, LayoutDashboard, MessageSquare, Menu,
@@ -13,7 +14,13 @@ import HeaderWalletButton from './HeaderWalletButton';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import { getPartCategoriesApi, getPartSubcategoriesApi, getPublicProductsApi, resolveMediaUrl } from '../services/api';
+import { productPath } from '../routes/paths';
 import CategoryIconTile from './CategoryIconTile';
+
+// Mínimo de caracteres antes de consultar sugerencias: menos que eso trae
+// demasiado ruido del backend para un autocompletado.
+const SEARCH_SUGGEST_MIN_LENGTH = 2;
+const SEARCH_SUGGEST_DEBOUNCE_MS = 300;
 
 export default function Header({
   cartCount,
@@ -38,11 +45,17 @@ export default function Header({
   const [highlightedSubcategory, setHighlightedSubcategory] = useState('');
   const [subcategoryInventory, setSubcategoryInventory] = useState({});
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [productSuggestions, setProductSuggestions] = useState([]);
+  const [isSuggestOpen, setIsSuggestOpen] = useState(false);
+  const [isSuggestLoading, setIsSuggestLoading] = useState(false);
   const categorySearchInputRef = useRef(null);
   const categoryMenuRef = useRef(null);
   const userMenuRef = useRef(null);
+  const searchConsoleRef = useRef(null);
+  const suggestDebounceRef = useRef(null);
   const categoryButtonRefs = useRef(new Map());
   const subcategoryCardRefs = useRef(new Map());
+  const navigate = useNavigate();
   const { user, isLoggedIn, role, logout } = useAuth();
   const { isBlocked: isSellerBlockedAccount } = useSellerBlocked();
   const { isBlocked: isBuyerBlockedAccount } = useBuyerBlocked();
@@ -176,13 +189,16 @@ export default function Header({
   const searchSelectionLockRef = useRef(false);
 
   useEffect(() => {
-    if (!showCategoryMenu && !showUserMenu) return;
+    if (!showCategoryMenu && !showUserMenu && !isSuggestOpen) return;
     const handleClickOutside = (event) => {
       if (showCategoryMenu && categoryMenuRef.current && !categoryMenuRef.current.contains(event.target)) {
         setShowCategoryMenu(false);
       }
       if (showUserMenu && userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setShowUserMenu(false);
+      }
+      if (isSuggestOpen && searchConsoleRef.current && !searchConsoleRef.current.contains(event.target)) {
+        setIsSuggestOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -191,7 +207,43 @@ export default function Header({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [showCategoryMenu, showUserMenu]);
+  }, [showCategoryMenu, showUserMenu, isSuggestOpen]);
+
+  // Sugerencias de repuesto/código OEM mientras se escribe en la barra del header:
+  // el mismo endpoint público de catálogo (`texto=`) ya matchea nombre y OEM en el backend.
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query.length < SEARCH_SUGGEST_MIN_LENGTH) {
+      setProductSuggestions([]);
+      setIsSuggestLoading(false);
+      return undefined;
+    }
+
+    setIsSuggestLoading(true);
+    const controller = new AbortController();
+    if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
+    suggestDebounceRef.current = setTimeout(async () => {
+      try {
+        const page = await getPublicProductsApi({ texto: query, page: 0, size: 5, signal: controller.signal });
+        setProductSuggestions(Array.isArray(page?.content) ? page.content : []);
+      } catch {
+        setProductSuggestions([]);
+      } finally {
+        setIsSuggestLoading(false);
+      }
+    }, SEARCH_SUGGEST_DEBOUNCE_MS);
+
+    return () => {
+      controller.abort();
+      if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
+    };
+  }, [searchQuery]);
+
+  const goToSuggestion = (product) => {
+    setIsSuggestOpen(false);
+    setSearchQuery('');
+    navigate(productPath(product));
+  };
 
   const handleCategoryMouseEnter = (categoryId) => {
     if (searchSelectionLockRef.current) return;
@@ -252,27 +304,59 @@ export default function Header({
           <RepuesTopLogo height={66} />
         </button>
 
-        <form className="header-search-console" onSubmit={(event) => { event.preventDefault(); onSearchSubmit(); }}>
-          <div className="search-input-wrapper">
-            <input
-              type="text"
-              className="search-input-main"
-              placeholder="Ingresa tu patente, código OEM o repuesto"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-            />
-            {searchQuery && (
-              <button type="button" className="btn-clear-text" onClick={() => setSearchQuery('')} aria-label="Limpiar búsqueda">
-                <X size={15} />
-              </button>
-            )}
-            <ChevronDown size={16} className="header-search-chevron" />
-          </div>
-          <button type="submit" className="btn-search-blue">
-            <Search size={20} />
-            <span>Buscar repuestos</span>
-          </button>
-        </form>
+        <div ref={searchConsoleRef} className="header-search-console-wrap">
+          <form
+            className="header-search-console"
+            onSubmit={(event) => { event.preventDefault(); setIsSuggestOpen(false); onSearchSubmit(); }}
+          >
+            <div className="search-input-wrapper">
+              <input
+                type="text"
+                className="search-input-main"
+                placeholder="Ingresa tu patente, código OEM o repuesto"
+                value={searchQuery}
+                onChange={(event) => { setSearchQuery(event.target.value); setIsSuggestOpen(true); }}
+                onFocus={() => searchQuery.trim().length >= SEARCH_SUGGEST_MIN_LENGTH && setIsSuggestOpen(true)}
+                onKeyDown={(event) => event.key === 'Escape' && setIsSuggestOpen(false)}
+                autoComplete="off"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={isSuggestOpen}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="btn-clear-text"
+                  onClick={() => { setSearchQuery(''); setIsSuggestOpen(false); }}
+                  aria-label="Limpiar búsqueda"
+                >
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+            <button type="submit" className="btn-search-blue">
+              <Search size={20} />
+              <span>Buscar repuestos</span>
+            </button>
+          </form>
+
+          {isSuggestOpen && searchQuery.trim().length >= SEARCH_SUGGEST_MIN_LENGTH && (
+            <ul className="header-search-suggestions" role="listbox">
+              {isSuggestLoading && <li className="header-search-suggest-status">Buscando coincidencias…</li>}
+              {!isSuggestLoading && productSuggestions.length === 0 && (
+                <li className="header-search-suggest-status">Sin coincidencias. Presiona Enter para buscar “{searchQuery.trim()}”.</li>
+              )}
+              {!isSuggestLoading && productSuggestions.map((product) => (
+                <li key={product.id}>
+                  <button type="button" onMouseDown={(event) => { event.preventDefault(); goToSuggestion(product); }}>
+                    <span className="header-search-suggest-name">{product.nombrePublicado || product.repuestoNombre}</span>
+                    {product.referenciaOem && <span className="header-search-suggest-oem">OEM {product.referenciaOem}</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <div className="header-user-group">
           <div ref={userMenuRef} className={`user-login-box ${isLoggedIn ? 'logged-in' : ''}`} onClick={handleUserBoxClick}>
@@ -301,7 +385,7 @@ export default function Header({
                   {isSellerAccount && (
                     <button className="dropdown-item" onClick={openInventoryPanel}><Package size={15} /> Panel de inventario</button>
                   )}
-                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.('consultas'); }}><MessageSquare size={15} /> Reportes/ Chats con vendedor</button>
+                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.('consultas'); }}><MessageSquare size={15} /> Reportes / Chats con vendedor</button>
                   <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenHelp?.(); }}><HelpCircle size={15} /> Soporte</button>
                   <div className="dropdown-divider" />
                   <button className="dropdown-item logout-item" onClick={handleLogout}><LogOut size={15} /> Cerrar sesión</button>

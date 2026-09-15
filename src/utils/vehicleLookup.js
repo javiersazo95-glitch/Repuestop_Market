@@ -69,3 +69,33 @@ export async function lookupVehicleByPlate(plate, { searchVehicleByPatenteApi } 
     transmision: data.transmision || data.transmission || undefined,
   };
 }
+
+const RECENT_PLATES_KEY = 'repuestop_recent_plates';
+const RECENT_PLATES_MAX = 5;
+
+/**
+ * Últimas patentes consultadas desde este navegador, más reciente primero.
+ * Reemplaza el listado fijo de "patentes de prueba" del hero de búsqueda.
+ */
+export function getRecentPlates() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECENT_PLATES_KEY) || '[]');
+    return Array.isArray(raw) ? raw.filter((plate) => isValidPlate(plate)) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Registra una patente consultada con éxito, sin duplicados, tope de 5. */
+export function addRecentPlate(plate) {
+  const normalized = normalizePlate(plate);
+  if (!isValidPlate(normalized)) return getRecentPlates();
+
+  const next = [normalized, ...getRecentPlates().filter((item) => item !== normalized)].slice(0, RECENT_PLATES_MAX);
+  try {
+    localStorage.setItem(RECENT_PLATES_KEY, JSON.stringify(next));
+  } catch {
+    // localStorage puede fallar en modo privado; el historial simplemente no persiste.
+  }
+  return next;
+}

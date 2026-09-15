@@ -302,8 +302,7 @@
   position: sticky;
   top: 16px;
 }
-.ads-sidebar-block,
-.ads-why-block {
+.ads-sidebar-block {
   background: #fff;
   border: 1px solid var(--ads-border);
   border-radius: 14px;
@@ -344,21 +343,85 @@
 
 /* Tarjeta promo del proveedor */
 .ads-provider-card {
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(160deg, #0B1B47 0%, #0056BF 100%);
   color: #fff;
-  border-radius: 14px;
-  padding: 18px 16px;
-  box-shadow: 0 12px 26px -14px rgba(11, 27, 71, 0.55);
+  border-radius: 16px;
+  padding: 20px 18px;
+  box-shadow: 0 16px 32px -16px rgba(11, 27, 71, 0.6);
 }
-.ads-provider-card h3 { margin: 0 0 6px; font-size: 15px; font-weight: 800; }
-.ads-provider-card p { margin: 0 0 12px; font-size: 12.5px; line-height: 1.5; color: rgba(255, 255, 255, 0.82); }
+.ads-provider-glow {
+  position: absolute;
+  top: -60px;
+  right: -50px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.45) 0%, rgba(56, 189, 248, 0) 70%);
+  pointer-events: none;
+}
+.ads-provider-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  margin-bottom: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #7dd3fc;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ads-provider-card h3 { position: relative; margin: 0 0 6px; font-size: 16px; font-weight: 800; line-height: 1.25; }
+.ads-provider-card p { position: relative; margin: 0 0 14px; font-size: 12.5px; line-height: 1.5; color: rgba(255, 255, 255, 0.78); }
+
+.ads-provider-plans {
+  position: relative;
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+}
+.ads-provider-plans li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+}
+.ads-provider-plans li:not(:last-child) { border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.plan-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: #94a3b8; }
+.ads-provider-plans li[data-tier='basica'] .plan-dot { background: #cbd5e1; }
+.ads-provider-plans li[data-tier='destacada'] .plan-dot { background: #fbbf24; }
+.ads-provider-plans li[data-tier='premium'] .plan-dot { background: #c4b5fd; }
+.ads-provider-plans li[data-tier='empresarial'] .plan-dot { background: #6ee7b7; }
+.plan-name { font-size: 12px; font-weight: 700; color: #fff; }
+.plan-price {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  text-align: right;
+}
+.plan-price em { display: block; font-style: normal; font-size: 10px; font-weight: 600; color: rgba(255, 255, 255, 0.65); }
+
 .ads-provider-cta {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 7px;
   width: 100%;
   justify-content: center;
-  padding: 10px 14px;
+  padding: 11px 14px;
   border: none;
   border-radius: 10px;
   background: #fff;
@@ -366,10 +429,12 @@
   font-size: 13.5px;
   font-weight: 800;
   cursor: pointer;
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.35);
   transition: transform 0.15s ease;
 }
 .ads-provider-cta:hover { transform: translateY(-1px); }
 .ads-provider-link {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -387,23 +452,24 @@
 }
 .ads-provider-link:hover { background: rgba(255, 255, 255, 0.12); }
 
-/* Bloque "¿Por qué elegir?" */
-.ads-why-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
-.ads-why-list li { display: flex; align-items: flex-start; gap: 10px; }
-.ads-why-ic {
+.ads-provider-trust {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+.ads-provider-trust span {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  flex-shrink: 0;
-  border-radius: 9px;
-  background: var(--ads-primary-light);
-  color: var(--ads-primary);
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
 }
-.ads-why-txt { display: flex; flex-direction: column; line-height: 1.35; }
-.ads-why-txt strong { font-size: 12.5px; font-weight: 800; color: var(--ads-text); }
-.ads-why-txt em { font-style: normal; font-size: 11.5px; color: var(--ads-muted); }
+.ads-provider-trust svg { color: #7dd3fc; flex-shrink: 0; }
 
 /* ---------- 4. Columna principal ---------- */
 .ads-main-col { display: flex; flex-direction: column; gap: 14px; }
@@ -758,26 +824,34 @@ button.ad-meta-item:hover { color: var(--ads-primary); }
   flex-direction: column;
   gap: 6px;
 }
-/* Fila de acciones directas (igual que mobile AdCard). */
+/* Fila de acciones directas (igual que mobile AdCard). Teléfono, WhatsApp y
+   Agendar (cuando corresponda) siempre van en una sola fila, nunca apilados. */
 .ad-card-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
 }
 .ad-pill {
   display: inline-flex;
+  flex: 1 1 0;
+  min-width: 0;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  gap: 4px;
   height: 30px;
-  padding: 0 11px;
+  padding: 0 6px;
   border: none;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
   transition: filter 0.15s ease;
 }
+.ad-pill svg { flex-shrink: 0; }
 .ad-pill:hover { filter: brightness(0.96); }
 .ad-pill-phone { background: rgba(0, 86, 191, 0.12); color: var(--ads-primary); }
 .ad-pill-wsp { background: #25D366; color: #fff; }

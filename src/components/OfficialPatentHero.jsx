@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
 import {
   Search, CheckCircle2, RefreshCw, AlertCircle, ChevronRight, Store,
-  CarFront, Tag, Users, Truck, ShieldCheck, Car,
+  CarFront, Users, Truck, ShieldCheck, Car,
   ArrowLeft, ArrowRight, CircleHelp, Wrench, PenLine, RotateCcw
 } from 'lucide-react';
 import { CAROUSEL_CATEGORIES, NAVIGATION_CATEGORIES } from '../data/categories';
@@ -18,14 +18,14 @@ import {
   createManualVehicleApi
 } from '../services/api';
 import { adaptVehicle } from '../services/adapters';
-import { normalizePlate, sanitizePlateInput, isValidPlate } from '../utils/vehicleLookup';
+import { normalizePlate, sanitizePlateInput, isValidPlate, getRecentPlates, addRecentPlate } from '../utils/vehicleLookup';
 import CategoryIconTile from './CategoryIconTile';
 
+// La búsqueda por código OEM o nombre de repuesto vive ahora en la barra del
+// header (con sugerencias en vivo); este panel solo resuelve el vehículo.
 const SEARCH_MODES = [
   { id: 'patente', label: 'Buscar por patente', icon: CarFront, placeholder: 'Ingresa tu patente (ej: ABCD11)' },
   { id: 'manual', label: 'Búsqueda manual', icon: Wrench, placeholder: 'Seleccionar marca y modelo' },
-  { id: 'oem', label: 'Buscar por código OEM', icon: Tag, placeholder: 'Ej: 04465-0D150' },
-  { id: 'repuesto', label: 'Buscar por repuesto', icon: Search, placeholder: 'Ej: Pastillas de freno' }
 ];
 
 const CAROUSEL_PAGE_SIZE = 6;
@@ -53,6 +53,7 @@ export default function OfficialPatentHero({
   const [isSearching, setIsSearching] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [activeCarouselPage, setActiveCarouselPage] = useState(0);
+  const [recentPlates, setRecentPlates] = useState(() => getRecentPlates());
 
   // Manual vehicle search cascading state (identical 1:1 to mobile app)
   const [manualPlate, setManualPlate] = useState('');
@@ -66,8 +67,6 @@ export default function OfficialPatentHero({
   const [manualChassis, setManualChassis] = useState('');
 
   const mode = SEARCH_MODES.find((item) => item.id === searchMode) || SEARCH_MODES[0];
-  const POPULAR_SEARCH_TERMS = ['Pastillas de freno', 'Filtro de aceite', 'Amortiguadores', 'Bujías', 'Baterías'];
-  const SAMPLE_PATENTES = ['ABCD11', 'BB-CL-12', 'HG-89-21'];
 
   const categoryNameKey = (value) => String(value || '').normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -303,12 +302,6 @@ export default function OfficialPatentHero({
       return;
     }
 
-    if (searchMode === 'oem' || searchMode === 'repuesto') {
-      setErrorMsg('');
-      onOpenCatalog?.(null, { q: value });
-      return;
-    }
-
     if (searchMode === 'patente') {
       const normalized = normalizePlate(value);
       if (!isValidPlate(normalized)) {
@@ -325,6 +318,7 @@ export default function OfficialPatentHero({
           onSelectVehicle(result);
           setInputValue('');
           setErrorMsg('');
+          setRecentPlates(addRecentPlate(normalized));
         } else {
           setErrorMsg(result?.mensaje || 'No encontramos ese vehículo. Verifica la patente o usa búsqueda manual.');
         }
@@ -342,12 +336,7 @@ export default function OfficialPatentHero({
     setErrorMsg('');
   };
 
-  const handlePopularTermClick = (term) => {
-    setErrorMsg('');
-    onOpenCatalog?.(null, { q: term });
-  };
-
-  const handleSamplePlateClick = (plate) => {
+  const handleRecentPlateClick = (plate) => {
     setInputValue(plate);
     setErrorMsg('');
     handleSearch(plate);
@@ -786,23 +775,12 @@ export default function OfficialPatentHero({
                       </>
                     )}
 
-                    {searchMode === 'patente' && (
+                    {searchMode === 'patente' && recentPlates.length > 0 && (
                       <div className="popular-searches">
-                        <span>Patentes de prueba:</span>
-                        {SAMPLE_PATENTES.map((plate) => (
-                          <button key={plate} type="button" onClick={() => handleSamplePlateClick(plate)}>
+                        <span>Últimas patentes consultadas:</span>
+                        {recentPlates.map((plate) => (
+                          <button key={plate} type="button" onClick={() => handleRecentPlateClick(plate)}>
                             {plate}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {(searchMode === 'oem' || searchMode === 'repuesto') && (
-                      <div className="popular-searches">
-                        <span>Búsquedas populares:</span>
-                        {POPULAR_SEARCH_TERMS.map((term) => (
-                          <button key={term} type="button" onClick={() => handlePopularTermClick(term)}>
-                            {term}
                           </button>
                         ))}
                       </div>

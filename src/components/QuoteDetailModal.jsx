@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, BadgeCheck, BadgeDollarSign, Bell, CalendarDays, CalendarClock,
+  ArrowLeft, BadgeCheck, BadgeDollarSign, CalendarDays, CalendarClock,
   CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, CreditCard, Download, ExternalLink, Eye, FileText, Flag,
   Headphones, Image as ImageIcon, Info, Loader2, Lock, Maximize2, MessageSquare, MoreHorizontal, Package, Paperclip,
   Pencil, Send, ShieldCheck, ShoppingCart, Store, Trash2, Truck, X,
@@ -191,6 +191,7 @@ export default function QuoteDetailModal({
     ? (quote?.otroParticipanteFotoUrl || quote?.proveedorLogoUrl || quote?.sellerLogoUrl || quote?.tiendaLogoUrl || quote?.logoUrl || quote?.proveedorFotoUrl || quote?.logoTienda || quote?.imagenUrl || activeQuote?.proveedorLogoUrl || activeQuote?.logoUrl || user?.logoUrl || user?.userProfileUrl || user?.storeLogoUrl)
     : (user?.logoUrl || user?.userProfileUrl || user?.storeLogoUrl || user?.avatarUrl || quote?.proveedorLogoUrl || quote?.otroParticipanteFotoUrl || quote?.sellerLogoUrl || quote?.tiendaLogoUrl || quote?.logoUrl || activeQuote?.proveedorLogoUrl || activeQuote?.logoUrl);
   const storePhoto = resolveMediaUrl(rawStoreLogo);
+  const myPhoto = resolveMediaUrl(user?.userProfileUrl || user?.logoUrl || user?.storeLogoUrl || user?.avatarUrl);
   const expired = activeQuote ? isQuoteExpired(activeQuote) : false;
   const imageCount = messages.filter((message) => message.imagenUrl).length;
   /**
@@ -393,7 +394,7 @@ export default function QuoteDetailModal({
     <div className="quote-workspace" role="dialog" aria-modal="true" aria-label={`Chat de cotización ${quoteIdShort}`}>
       <header className="quote-ws-topbar">
         <button type="button" className="quote-ws-brand" onClick={onClose} aria-label="Volver al perfil"><RepuesTopLogo height={44} /></button>
-        <div className="quote-ws-account"><Bell size={20} /><span>{initials(user?.userName || user?.nombre || participantName)}</span><div><strong>{user?.userName || user?.nombre || 'Mi cuenta'}</strong><small>{mode === 'seller' ? 'Vendedor' : 'Comprador'}</small></div><button type="button" onClick={onClose}><X size={18} /></button></div>
+        <div className="quote-ws-account"><span className="quote-ws-account-avatar">{myPhoto ? <img src={myPhoto} alt="" referrerPolicy="no-referrer" /> : initials(user?.userName || user?.nombre || participantName)}</span><div><strong>{user?.userName || user?.nombre || 'Mi cuenta'}</strong><small>{mode === 'seller' ? 'Vendedor' : 'Comprador'}</small></div><button type="button" onClick={onClose}><X size={18} /></button></div>
       </header>
 
       {statusMessage && <div className={`quote-ws-toast ${statusMessage.type}`}><span>{statusMessage.text}</span><button type="button" onClick={() => setStatusMessage(null)}><X size={15} /></button></div>}

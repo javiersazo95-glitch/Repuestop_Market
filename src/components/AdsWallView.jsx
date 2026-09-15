@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   Megaphone, Plus, Search, RotateCcw, Loader2, WifiOff, AlertTriangle,
   RefreshCw, SlidersHorizontal, X, Car, MapPin, Settings, ChevronDown,
-  ArrowUpDown, ShieldCheck, Zap, Star, CheckCircle2
+  ArrowUpDown, ShieldCheck, Zap, Star, CheckCircle2, Sparkles
 } from 'lucide-react';
 import { AD_TIERS, SERVICE_CATEGORIES, CHILE_COMMUNES } from '../data/automotiveAdsData';
 import { fetchPublicAds, getCachedWallAds, ADS_WALL_UPDATED_EVENT } from '../services/adsStorage';
@@ -43,11 +43,14 @@ const SORT_OPTIONS = [
   { value: 'precio-mayor', label: 'Precio: mayor a menor' },
 ];
 
-// Motivos para elegir RepuesTop (bloque estático del sidebar).
-const WHY_REPUESTOP = [
-  { Icon: Megaphone, title: 'Publica gratis', sub: 'Sin comisiones ni costos ocultos.' },
-  { Icon: ShieldCheck, title: 'Servicios verificados', sub: 'Los proveedores pasan por un proceso de verificación.' },
-  { Icon: Zap, title: 'Atención rápida', sub: 'Responde y agenda en minutos.' },
+// Planes de publicación para proveedores (bloque estático del sidebar).
+// Precios en CLP por período de 30 días; deben reflejar AD_TIER_PRICES_CLP
+// (src/services/adsStorage.js), fuente de verdad final del tarifario.
+const PROVIDER_PLANS = [
+  { tier: 'basica', name: 'Básica', priceLabel: 'Gratis 30 días', note: 'luego $4.990/30 días' },
+  { tier: 'destacada', name: 'Destacada', priceLabel: 'desde $9.990', note: '/ 30 días' },
+  { tier: 'premium', name: 'Premium', priceLabel: 'desde $19.990', note: '/ 30 días' },
+  { tier: 'empresarial', name: 'Empresarial', priceLabel: 'desde $39.990', note: '/ 30 días' },
 ];
 
 export default function AdsWallView() {
@@ -525,10 +528,23 @@ export default function AdsWallView() {
           </div>
 
           <div className="ads-provider-card">
-            <h3>¿Eres Proveedor de Servicios?</h3>
-            <p>Únete a RepuesTop y llega a miles de clientes todos los días.</p>
+            <div className="ads-provider-glow" aria-hidden="true" />
+            <span className="ads-provider-eyebrow"><Sparkles size={13} /> Para proveedores</span>
+            <h3>Haz crecer tu taller o tienda</h3>
+            <p>Publica tus servicios y conecta cada día con clientes que buscan repuestos y talleres cerca de ellos.</p>
+
+            <ul className="ads-provider-plans">
+              {PROVIDER_PLANS.map(({ tier, name, priceLabel, note }) => (
+                <li key={tier} data-tier={tier}>
+                  <span className="plan-dot" />
+                  <span className="plan-name">{name}</span>
+                  <span className="plan-price">{priceLabel} <em>{note}</em></span>
+                </li>
+              ))}
+            </ul>
+
             <button type="button" className="ads-provider-cta" onClick={handlePublishAdClick}>
-              <Plus size={16} /> Publica gratis
+              <Plus size={16} /> Publica tu primer anuncio gratis
             </button>
             {isLoggedIn && (
               <button
@@ -536,24 +552,14 @@ export default function AdsWallView() {
                 className="ads-provider-link"
                 onClick={() => nav.goProfile('anuncios')}
               >
-                <Megaphone size={14} /> Gestión de Anuncios
+                <Megaphone size={14} /> Gestión de anuncios
               </button>
             )}
-          </div>
 
-          <div className="ads-why-block">
-            <h3 className="ads-sidebar-title">¿Por qué elegir RepuesTop?</h3>
-            <ul className="ads-why-list">
-              {WHY_REPUESTOP.map(({ Icon, title, sub }) => (
-                <li key={title}>
-                  <span className="ads-why-ic"><Icon size={16} /></span>
-                  <span className="ads-why-txt">
-                    <strong>{title}</strong>
-                    <em>{sub}</em>
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <div className="ads-provider-trust">
+              <span><ShieldCheck size={13} /> Proveedores verificados</span>
+              <span><Zap size={13} /> Respuesta rápida</span>
+            </div>
           </div>
         </aside>
 
