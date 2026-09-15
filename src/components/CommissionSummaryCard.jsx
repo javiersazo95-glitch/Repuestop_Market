@@ -194,6 +194,12 @@ export default function CommissionSummaryCard({
             <strong style={{ color: '#0066ff', fontSize: '15px' }}>{formatCLP(netEarnings)}</strong>
           </div>
 
+          {/* Row 3: Abono estimado */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '3px 0', fontSize: '11.5px', color: '#64748b' }}>
+            <span>Abono estimado:</span>
+            <span style={{ fontWeight: 500, color: '#334155' }}>11 días tras entrega (sin reclamos)</span>
+          </div>
+
           {/* Toggle Accordion */}
           <button
             type="button"

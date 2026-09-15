@@ -69,7 +69,7 @@ const REPORT_REASONS = [
 ];
 
 export default function QuoteDetailModal({
-  quote, mode = 'seller', user, onClose, onSendQuoteResponse, onMarkedRead,
+  quote, mode = 'seller', isFounder = false, user, onClose, onSendQuoteResponse, onMarkedRead,
 }) {
   const navigate = useNavigate();
   const [localQuote, setLocalQuote] = useState(quote?.cotizacion || null);
@@ -592,7 +592,7 @@ export default function QuoteDetailModal({
                     lo que cree. `onApplySuggested` escribe el precio por unidad. */}
                 <CommissionSummaryCard
                   basePrice={Number(unitPrice) || 0}
-                  isFounder={Boolean(user?.founder ?? user?.fundador)}
+                  isFounder={Boolean(isFounder ?? user?.founder ?? user?.fundador)}
                   suggestedContextLabel="por unidad"
                   onApplySuggested={(value) => setUnitPrice(String(Math.min(Math.round(value), 99999999)))}
                 />
