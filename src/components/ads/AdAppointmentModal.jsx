@@ -32,7 +32,7 @@ import {
  *    bloques se calculan con la misma logica que `validarBloque()`
  *    (`src/data/agendaConfig.js`) y los ocupados se leen del backend.
  */
-export default function AdAppointmentModal({ adOrCompany, onClose, onBooked }) {
+export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isRescheduling = false }) {
   const { user } = useAuth();
   const { isOwn } = useAdOwnership();
 
@@ -133,13 +133,42 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked }) {
       : [...current, service].slice(0, 8)));
   };
 
+  // Lista de campos obligatorios del formulario aun sin completar, en el orden
+  // en que aparecen. Se usa para decirle al usuario exactamente que falta en
+  // vez de solo deshabilitar el boton sin explicacion.
+  const getMissingFieldLabels = () => {
+    const missing = [];
+    if (selectedServices.length === 0) missing.push('el servicio que necesitas');
+    if (!appointmentDate) missing.push('el día de la cita');
+    if (!appointmentTime) missing.push('el bloque horario');
+    if (!userName.trim()) missing.push('tu nombre completo');
+    if (!userPhone.trim()) missing.push('tu teléfono de contacto');
+    return missing;
+  };
+
   const canSubmit = isLoggedIn && !isOwnAd && agendaConfig
     && selectedServices.length > 0 && appointmentDate && appointmentTime
     && userName.trim() && userPhone.trim();
 
+  // Limpia el aviso de campos faltantes apenas el usuario empieza a corregirlo,
+  // para que no quede un mensaje obsoleto mientras completa el formulario.
+  useEffect(() => {
+    setSubmitError('');
+  }, [selectedServices, appointmentDate, appointmentTime, userName, userPhone]);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!canSubmit || isSubmitting) return;
+    if (isSubmitting) return;
+
+    if (!canSubmit) {
+      const missing = getMissingFieldLabels();
+      setSubmitError(
+        missing.length > 0
+          ? `Antes de ${isRescheduling ? 'reagendar' : 'confirmar'}, completa: ${missing.join(', ')}.`
+          : `No se pudo ${isRescheduling ? 'reagendar' : 'confirmar'} la cita. Revisa el formulario.`
+      );
+      return;
+    }
 
     setIsSubmitting(true);
     setSubmitError('');
@@ -205,7 +234,7 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked }) {
               <div>
                 <h3>
                   <Calendar className="text-emerald-600" size={22} />
-                  Agendar cita en línea
+                  {isRescheduling ? 'Reagendar cita' : 'Agendar cita en línea'}
                 </h3>
                 <p>
                   <strong>{adOrCompany.company || adOrCompany.title}</strong> • {adOrCompany.commune || 'Santiago'}
@@ -420,42 +449,66 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked }) {
                   <button type="button" className="btn-ad-phone" onClick={onClose} disabled={isSubmitting}>
                     Cancelar
                   </button>
-                  <button type="submit" className="btn-ad-booking" disabled={!canSubmit || isSubmitting}>
+                  <button
+                    type="submit"
+                    className={`btn-ad-booking ${!canSubmit ? 'is-incomplete' : ''}`}
+                    disabled={isSubmitting}
+                    aria-disabled={!canSubmit}
+                  >
                     {isSubmitting ? <Loader2 size={16} className="spin-icon" /> : <Calendar size={16} />}
-                    {isSubmitting ? 'Reservando…' : 'Confirmar agendamiento'}
+                    {isSubmitting
+                      ? (isRescheduling ? 'Reagendando…' : 'Reservando…')
+                      : (isRescheduling ? 'Confirmar reagendamiento' : 'Confirmar agendamiento')}
                   </button>
                 </div>
               </form>
             )}
           </>
         ) : (
-          <div className="text-center py-6">
-            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 size={36} />
+          <div className="booking-success">
+            <div className="booking-success-icon">
+              <CheckCircle2 size={32} />
             </div>
 
-            <h3 className="text-2xl font-extrabold text-slate-900 mb-2">
-              ¡Tu hora quedó reservada!
+            <h3 className="booking-success-title">
+              {isRescheduling ? '¡Tu cita fue reagendada!' : '¡Tu hora quedó reservada!'}
             </h3>
 
-            <p className="text-slate-600 text-sm max-w-md mx-auto mb-6">
-              La solicitud llegó a <strong>{adOrCompany.company || adOrCompany.title}</strong>.
-              Queda <strong>pendiente</strong> hasta que el taller la confirme, y te avisamos por correo.
+            <p className="booking-success-subtitle">
+              {isRescheduling
+                ? <>La nueva hora se envió a <strong>{adOrCompany.company || adOrCompany.title}</strong> y la anterior quedó cancelada.</>
+                : <>La solicitud llegó a <strong>{adOrCompany.company || adOrCompany.title}</strong>.</>}
+              {' '}Queda <strong>pendiente</strong> hasta que el taller la confirme, y te avisamos por correo.
             </p>
 
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left max-w-md mx-auto mb-6 space-y-2 text-xs text-slate-700">
-              <div><strong>N° de reserva:</strong> <span className="text-emerald-700 font-mono font-bold text-sm">{confirmedAppointment?.id}</span></div>
-              <div><strong>Servicio:</strong> {confirmedAppointment?.service}</div>
-              <div><strong>Fecha y hora:</strong> {dateLabel} a las {confirmedAppointment?.time}</div>
-              <div className="flex items-start gap-1">
-                <MapPin size={13} className="mt-0.5 flex-shrink-0" />
-                <span>{[adOrCompany.address, adOrCompany.commune].filter(Boolean).join(', ') || 'Dirección no informada'}</span>
+            <dl className="booking-success-details">
+              <div className="booking-success-row">
+                <dt><ShieldCheck size={14} /> N° de reserva</dt>
+                <dd className="mono">{confirmedAppointment?.id}</dd>
               </div>
-              <div><strong>Contacto del taller:</strong> {adOrCompany.phone}</div>
-              <div><strong>A nombre de:</strong> {confirmedAppointment?.customerName} ({confirmedAppointment?.customerPhone})</div>
-            </div>
+              <div className="booking-success-row">
+                <dt><Car size={14} /> Servicio</dt>
+                <dd>{confirmedAppointment?.service}</dd>
+              </div>
+              <div className="booking-success-row">
+                <dt><Calendar size={14} /> Fecha y hora</dt>
+                <dd>{dateLabel} a las {confirmedAppointment?.time}</dd>
+              </div>
+              <div className="booking-success-row">
+                <dt><MapPin size={14} /> Dirección</dt>
+                <dd>{[adOrCompany.address, adOrCompany.commune].filter(Boolean).join(', ') || 'Dirección no informada'}</dd>
+              </div>
+              <div className="booking-success-row">
+                <dt><Phone size={14} /> Contacto del taller</dt>
+                <dd>{adOrCompany.phone}</dd>
+              </div>
+              <div className="booking-success-row">
+                <dt><LogIn size={14} /> A nombre de</dt>
+                <dd>{confirmedAppointment?.customerName} · {confirmedAppointment?.customerPhone}</dd>
+              </div>
+            </dl>
 
-            <p className="text-[11px] text-slate-500 max-w-md mx-auto mb-4">
+            <p className="booking-success-footnote">
               Puedes ver el estado de esta cita y cancelarla desde <strong>Mis reservas</strong>, en tu perfil.
             </p>
 

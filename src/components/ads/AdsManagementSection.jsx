@@ -759,6 +759,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           adOrCompany={rebookState.ad}
           onBooked={handleRebooked}
           onClose={() => setRebookState(null)}
+          isRescheduling
         />
       )}
 
