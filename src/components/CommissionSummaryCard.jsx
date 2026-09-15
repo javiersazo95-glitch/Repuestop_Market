@@ -50,7 +50,7 @@ export default function CommissionSummaryCard({
           fontWeight: 600,
         }}>
           <Award size={15} />
-          <span>Beneficio Fundador: comisión RepuesTop fija de 5%, sin importar el monto.</span>
+          <span>Beneficio Fundador: comisión RepuesTop fija de 5% + IVA, sin importar el monto.</span>
         </div>
       )}
 
@@ -236,7 +236,7 @@ export default function CommissionSummaryCard({
               fontSize: '12px',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#475569' }}>Comisión RepuesTop ({Math.round(breakdown.rate * 100)}% IVA incl.):</span>
+                <span style={{ color: '#475569' }}>Comisión RepuesTop ({Math.round(breakdown.rate * 100)}% + IVA):</span>
                 <strong style={{ color: '#334155' }}>-{formatCLP(breakdown.repuestopWithIva)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '11px', paddingLeft: '8px' }}>

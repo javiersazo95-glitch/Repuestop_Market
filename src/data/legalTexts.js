@@ -167,10 +167,9 @@ Las cotizaciones enviadas por chat tendrán el plazo de validez configurado por 
 
 8. VENTAS, PAGOS, COMISIÓN Y LIQUIDACIÓN
 Las ventas iniciadas en RepuesTop deberán pagarse dentro de la Plataforma. Se prohíbe indicar al comprador que pague por fuera, compartir datos de contacto externos o utilizar el chat para evitar comisiones.
-RepuesTop podrá cobrar al vendedor una comisión por uso de la Plataforma, intermediación tecnológica, procesamiento, soporte, seguimiento, reclamos y mediación. La comisión comercial inicial será de 5% más IVA calculada sobre el valor del producto, salvo que el anexo comercial o pantalla de liquidación informe otra condición.
-RepuesTop podrá cobrar también una tarifa de servicio al comprador. El detalle aplicable deberá informarse al comprador antes del pago y al vendedor en su liquidación o panel correspondiente.
-RepuesTop asumirá el costo de la pasarela de pago salvo modificación informada en la Plataforma o documentos comerciales aplicables.
-El dinero podrá ser retenido hasta que el comprador confirme recepción del pedido, hasta que se cumpla el flujo operativo de liberación o hasta que se resuelva el reclamo o mediación correspondiente.
+RepuesTop cobrará al vendedor una comisión por uso de la Plataforma, intermediación tecnológica, procesamiento, soporte, seguimiento, reclamos y mediación. La estructura de comisiones estándar de RepuesTop es escalonada y se calcula sobre el valor neto de los productos vendidos más el 19% de IVA correspondiente: 10% más IVA para ventas hasta .000; 7% más IVA para ventas entre .001 y .000; y 5% más IVA para ventas superiores a .000 (o una tarifa fija preferencial de 5% más IVA para Vendedores con condición de Tienda Fundadora). RepuesTop emitirá mensualmente Factura Electrónica por las comisiones y su IVA para que el vendedor lo utilice como crédito fiscal.
+El costo de recaudación y procesamiento de pagos vía pasarela electrónica (Flow: 2,89% más IVA, total 3,4391%) es de cargo del vendedor y se deducirá al liquidar la venta.
+La liquidación de los fondos estará disponible para su retiro por parte del vendedor a los 11 días transcurridos desde la entrega física confirmada del pedido al comprador, siempre que no existan reclamos, devoluciones, mediaciones pendientes o sospechas de fraude.
 
 9. RETENCIÓN DE PAGOS Y RECLAMOS GRAVES
 RepuesTop podrá retener pagos ante sospecha de fraude, incumplimiento, reclamo, venta de producto falsificado o ilegal, falta de entrega, documentación inconsistente, apelación en curso, bloqueo de cuenta o cualquier circunstancia que razonablemente requiera revisión.

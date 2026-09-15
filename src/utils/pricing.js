@@ -3,7 +3,8 @@ export const FLOW_RATE_BASE = 0.0289;
 export const FLOW_IVA = 0.19;
 export const FLOW_RATE_WITH_IVA = FLOW_RATE_BASE * (1 + FLOW_IVA);
 export const FOUNDER_APP_RATE = 0.05;
-export const COMMISSION_IVA_INCLUDED = true;
+// Si es false, el porcentaje es neto y el IVA (19%) se cobra adicional al vendedor (% + IVA)
+export const COMMISSION_IVA_INCLUDED = false;
 
 export function pricingFeeBreakdown(basePrice, isFounder = false) {
   const rawPrice = Number(basePrice) || 0;
