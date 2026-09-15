@@ -22,6 +22,20 @@ export function initSentry() {
     // 'production'.
     environment: __DEPLOY_BRANCH__,
     sendDefaultPii: false,
+    // Pestaña abierta desde antes de un deploy: pide un chunk con el hash viejo, que ya
+    // no existe. No es un defecto del código -- pasa en CADA despliegue y ya se maneja
+    // recargando (ver utils/staleDeploy.js), así que reportarlo solo gasta la cuota del
+    // plan gratis, compartida entre los tres proyectos.
+    // Solo los mensajes inequívocos de "chunk que ya no existe". El TypeError de
+    // `.default` que produce el mismo caso NO se filtra aquí: suelto es demasiado
+    // genérico y taparía bugs reales -- ese lo descarta RouteErrorBoundary, que puede
+    // mirar el componentStack para confirmar que reventó dentro de un lazy.
+    ignoreErrors: [
+      /failed to fetch dynamically imported module/i,
+      /error loading dynamically imported module/i,
+      /importing a module script failed/i,
+      /failed to load module script/i,
+    ],
   });
 }
 
