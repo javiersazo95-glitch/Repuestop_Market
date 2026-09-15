@@ -594,10 +594,10 @@ export default function QuoteDetailModal({
                     app: cotizar a ciegas es como el vendedor termina cobrando menos de
                     lo que cree. `onApplySuggested` escribe el precio por unidad. */}
                 <CommissionSummaryCard
-                  basePrice={Number(unitPrice) || 0}
+                  basePrice={finalPrice}
                   isFounder={Boolean(isFounder ?? user?.founder ?? user?.fundador)}
                   suggestedContextLabel="por unidad"
-                  onApplySuggested={(value) => setUnitPrice(String(Math.min(Math.round(value), 99999999)))}
+                  onApplySuggested={(value) => setUnitPrice(String(Math.min(Math.ceil((value + normalizedDiscount) / quantity), 99999999)))}
                 />
               </div>
               <aside className="quote-editor-total-card">

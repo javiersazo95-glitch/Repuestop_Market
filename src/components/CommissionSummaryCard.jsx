@@ -202,7 +202,7 @@ export default function CommissionSummaryCard({
               textAlign: 'left',
             }}
           >
-            <span style={{ color: '#64748b' }}>Costos totales de la venta:</span>
+            <span style={{ color: '#0066ff', fontWeight: 600 }}>Costos totales de la venta:</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <strong style={{ color: '#ef4444' }}>-{formatCLP(totalFees)}</strong>
               {showDetails ? <ChevronUp size={14} color="#64748b" /> : <ChevronDown size={14} color="#64748b" />}
