@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
 import {
@@ -6,7 +6,8 @@ import {
   ArrowLeft, X, CheckCircle2, RotateCcw, Truck, ChevronLeft, ChevronRight, ChevronDown,
   ShoppingCart, Car, Wrench, Layers, Building2, MessageSquare, AlertCircle,
   Heart, Share2, Image, PenLine, ArrowRight, HelpCircle,
-  CarFront, Barcode, CircleHelp, RefreshCw, Tag, Store as StoreIcon
+  CarFront, Barcode, CircleHelp, RefreshCw, Tag, Store as StoreIcon,
+  MessageCircle, Send, Mail, Link2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { NAVIGATION_CATEGORIES } from '../data/categories';
@@ -64,6 +65,8 @@ export default function StorePublicProfileView({
   const [comunaNotice, setComunaNotice] = useState('');
 
   const [shareFeedback, setShareFeedback] = useState('');
+  const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+  const shareMenuRef = useRef(null);
   const [openFilterSections, setOpenFilterSections] = useState({ purchase: true, category: true, condition: true });
   const [expandedCategories, setExpandedCategories] = useState({});
   const { isStoreSaved, toggleStore } = useSavedMarketplaceItems(user?.userId ?? user?.id);
@@ -406,25 +409,54 @@ export default function StorePublicProfileView({
     setCurrentPage(Math.min(Math.max(1, page), totalPages));
   };
 
-  const handleShare = async () => {
-    const shareData = {
-      title: currentStore.nombre,
-      text: `Mira los repuestos de ${currentStore.nombre} en RepuesTop`,
-      url: window.location.href,
-    };
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-        setShareFeedback('Compartido');
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        setShareFeedback('Enlace copiado');
+  // Cierra el menú de compartir al hacer clic fuera, mismo patrón que los demás
+  // dropdowns del header.
+  useEffect(() => {
+    if (!isShareMenuOpen) return undefined;
+    const handleClickOutside = (event) => {
+      if (shareMenuRef.current && !shareMenuRef.current.contains(event.target)) {
+        setIsShareMenuOpen(false);
       }
-    } catch {
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isShareMenuOpen]);
+
+  const shareText = `Mira los repuestos de ${currentStore?.nombre || 'esta tienda'} en RepuesTop`;
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+
+  const closeShareMenuAnd = (action) => {
+    setIsShareMenuOpen(false);
+    action();
+  };
+
+  const shareViaWhatsapp = () => closeShareMenuAnd(() => {
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`, '_blank', 'noopener,noreferrer');
+  });
+
+  const shareViaMessenger = () => closeShareMenuAnd(() => {
+    // Deep link nativo: abre la app de Messenger en el celular. En escritorio, sin un
+    // app_id de Meta registrado, no hay un dialogo web equivalente que funcione siempre.
+    window.open(`fb-messenger://share/?link=${encodeURIComponent(shareUrl)}`, '_blank', 'noopener,noreferrer');
+  });
+
+  const shareViaEmail = () => closeShareMenuAnd(() => {
+    window.location.href = `mailto:?subject=${encodeURIComponent(currentStore?.nombre || 'RepuesTop')}&body=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`;
+  });
+
+  const handleCopyLink = () => closeShareMenuAnd(async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
       setShareFeedback('Enlace copiado');
+    } catch {
+      setShareFeedback('No se pudo copiar el enlace');
     }
     setTimeout(() => setShareFeedback(''), 2500);
-  };
+  });
 
   const toggleFilterSection = (section) => {
     setOpenFilterSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -532,10 +564,44 @@ export default function StorePublicProfileView({
                     <span>{isStoreSaved(currentStore.id) ? 'Tienda guardada' : 'Guardar tienda'}</span>
                   </button>
 
-                  <button className="btn-share-store" onClick={handleShare} type="button" title="Compartir enlace de la tienda">
-                    <Share2 size={16} />
-                    <span>{shareFeedback === '¡Enlace copiado!' ? '¡Enlace copiado!' : 'Compartir'}</span>
-                  </button>
+                  <div className="store-share-wrap" ref={shareMenuRef}>
+                    <button
+                      className="btn-share-store"
+                      onClick={() => setIsShareMenuOpen((open) => !open)}
+                      type="button"
+                      title="Compartir enlace de la tienda"
+                      aria-haspopup="menu"
+                      aria-expanded={isShareMenuOpen}
+                    >
+                      <Share2 size={16} />
+                      <span>Compartir</span>
+                    </button>
+
+                    {isShareMenuOpen && (
+                      <ul className="store-share-menu" role="menu">
+                        <li role="none">
+                          <button type="button" role="menuitem" className="store-share-option whatsapp" onClick={shareViaWhatsapp}>
+                            <MessageCircle size={16} /> WhatsApp
+                          </button>
+                        </li>
+                        <li role="none">
+                          <button type="button" role="menuitem" className="store-share-option messenger" onClick={shareViaMessenger}>
+                            <Send size={16} /> Messenger
+                          </button>
+                        </li>
+                        <li role="none">
+                          <button type="button" role="menuitem" className="store-share-option email" onClick={shareViaEmail}>
+                            <Mail size={16} /> Email
+                          </button>
+                        </li>
+                        <li role="none">
+                          <button type="button" role="menuitem" className="store-share-option copy" onClick={handleCopyLink}>
+                            <Link2 size={16} /> Copiar enlace
+                          </button>
+                        </li>
+                      </ul>
+                    )}
+                  </div>
 
                   {!isOwnStore && (
                     <ContextualReportButton

@@ -15314,7 +15314,7 @@ input, select, textarea {
 .quote-ws-chat-header { padding: 0 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #dfe7ef; }
 .quote-ws-person { min-width: 0; display: flex; align-items: center; gap: 10px; }
 .quote-ws-person > span, .quote-ws-message-avatar { flex: 0 0 auto; width: 40px; height: 40px; display: grid; place-items: center; overflow: hidden; border-radius: 50%; color: #fff; background: linear-gradient(145deg, #79b8fc, #3c75bb); font-size: 11px; font-weight: 900; }
-.quote-ws-person img { width: 100%; height: 100%; object-fit: cover; }
+.quote-ws-person img, .quote-ws-message-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .quote-ws-person > div { min-width: 0; display: grid; gap: 2px; }
 .quote-ws-person strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .quote-ws-person small { display: flex; align-items: center; gap: 5px; color: #6e8198; font-size: 9px; }
@@ -16410,6 +16410,47 @@ input, select, textarea {
 .btn-share-store:hover {
   background: #f1f5f9 !important;
 }
+
+.store-share-wrap {
+  position: relative;
+}
+
+.store-share-menu {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 200px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 14px 30px -10px rgba(15, 23, 42, 0.25);
+}
+
+.store-share-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.store-share-option:hover { background: #f1f5f9; }
+.store-share-option svg { flex-shrink: 0; }
+.store-share-option.whatsapp svg { color: #25D366; }
+.store-share-option.messenger svg { color: #0084FF; }
+.store-share-option.email svg { color: #ea580c; }
+.store-share-option.copy svg { color: #64748b; }
 
 .btn-report-store {
   display: inline-flex !important;

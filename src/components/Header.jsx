@@ -313,7 +313,7 @@ export default function Header({
               <input
                 type="text"
                 className="search-input-main"
-                placeholder="Ingresa tu patente, código OEM o repuesto"
+                placeholder="Ingresa el nombre del repuesto o código OEM"
                 value={searchQuery}
                 onChange={(event) => { setSearchQuery(event.target.value); setIsSuggestOpen(true); }}
                 onFocus={() => searchQuery.trim().length >= SEARCH_SUGGEST_MIN_LENGTH && setIsSuggestOpen(true)}
