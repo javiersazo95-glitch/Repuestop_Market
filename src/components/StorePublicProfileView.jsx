@@ -292,10 +292,18 @@ export default function StorePublicProfileView({
     }
 
     // 4. Vehicle Compatibility
-    if (onlyCompatible && activeVehicle) {
+    // Un repuesto `esUniversal` le sirve a cualquier vehiculo -- es la misma regla con la
+    // que el catalogo general lo rescata via `OR esUniversal` en la Specification del
+    // backend, aunque no tenga ninguna compatibilidad declarada.
+    if (onlyCompatible && activeVehicle && !prod.esUniversal) {
       const matchesVehicle = (prod.compatibilidad || []).some(
         c => {
-          if (activeVehicle.catalogoId && Array.isArray(c.vehiculoCatalogoIds) && c.vehiculoCatalogoIds.includes(Number(activeVehicle.catalogoId))) {
+          // El backend a veces manda los ids del grupo como string (vienen de un JSON
+          // guardado con el picker de compatibilidad) y activeVehicle.catalogoId como
+          // number: comparar sin normalizar los deja siempre distintos (`"1019" !== 1019`)
+          // y el `includes` nunca encuentra nada.
+          if (activeVehicle.catalogoId && Array.isArray(c.vehiculoCatalogoIds)
+              && c.vehiculoCatalogoIds.map(String).includes(String(activeVehicle.catalogoId))) {
             return true;
           }
           return c.marca?.toLowerCase() === activeVehicle.marca?.toLowerCase() &&
