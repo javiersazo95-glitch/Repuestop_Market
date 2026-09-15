@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Tag, Calculator, ChevronDown, ChevronUp, Award, Sparkles, Check } from 'lucide-react';
-import { calculateSimplePricingSummary, calculateSuggestedPrice } from '../utils/pricing';
+import { calculateSimplePricingSummary, calculateSuggestedPrice, FLOW_RATE_BASE } from '../utils/pricing';
 
 function formatCLP(amount) {
   const safe = typeof amount === 'number' && !Number.isNaN(amount) ? Math.max(0, Math.round(amount)) : 0;
   return `$${new Intl.NumberFormat('es-CL').format(safe)}`;
 }
+
+const FLOW_RATE_LABEL = `${(FLOW_RATE_BASE * 100).toFixed(2).replace('.', ',')}%`;
 
 export default function CommissionSummaryCard({
   basePrice = 0,
@@ -182,11 +184,30 @@ export default function CommissionSummaryCard({
         </div>
       ) : (
         <>
-          {/* Row 1: Costo total */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '3px 0' }}>
-            <span style={{ color: '#64748b' }}>Costo total por venta (Plataforma + Pago):</span>
-            <strong style={{ color: '#ef4444' }}>-{formatCLP(totalFees)}</strong>
-          </div>
+          {/* Row 1: Costo total, tambien es el toggle del desglose */}
+          <button
+            type="button"
+            onClick={() => setShowDetails((prev) => !prev)}
+            style={{
+              display: 'flex',
+              width: '100%',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              margin: '3px 0',
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              font: 'inherit',
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ color: '#64748b' }}>Costos totales de la venta:</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <strong style={{ color: '#ef4444' }}>-{formatCLP(totalFees)}</strong>
+              {showDetails ? <ChevronUp size={14} color="#64748b" /> : <ChevronDown size={14} color="#64748b" />}
+            </span>
+          </button>
 
           {/* Row 2: Líquido a recibir */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 0', paddingTop: '4px' }}>
@@ -200,30 +221,7 @@ export default function CommissionSummaryCard({
             <span style={{ fontWeight: 500, color: '#334155' }}>11 días tras entrega (sin reclamos)</span>
           </div>
 
-          {/* Toggle Accordion */}
-          <button
-            type="button"
-            onClick={() => setShowDetails((prev) => !prev)}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: '6px 0 0 0',
-              marginTop: '6px',
-              borderTop: '1px solid #e2e8f0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              color: '#0066ff',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 600,
-            }}
-          >
-            {showDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            <span>{showDetails ? 'Ocultar desglose' : 'Ver desglose de comisión e impuestos'}</span>
-          </button>
-
-          {/* Expanded details */}
+          {/* Expanded details (el toggle vive en la Row 1, arriba) */}
           {showDetails && (
             <div style={{
               marginTop: '8px',
@@ -243,7 +241,7 @@ export default function CommissionSummaryCard({
                 <span>↳ Neto comisión: {formatCLP(breakdown.repuestopNet)} | IVA (19%): {formatCLP(breakdown.repuestopIva)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#475569' }}>Procesamiento Flow (Pasarela + IVA):</span>
+                <span style={{ color: '#475569' }}>Procesamiento Flow ({FLOW_RATE_LABEL} + IVA):</span>
                 <strong style={{ color: '#334155' }}>-{formatCLP(breakdown.flowWithIva)}</strong>
               </div>
             </div>
