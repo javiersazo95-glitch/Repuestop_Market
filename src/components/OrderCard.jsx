@@ -363,12 +363,18 @@ export default function OrderCard({
           {isStorePickup ? (
             <span className="order-info-chip"><Store size={13} /> Retiro en tienda</span>
           ) : shippingFee > 0 ? (
-            <span className="order-info-chip"><Truck size={13} /> {deliveryMethodLabel(order)}: {formatCLP(shippingFee)}</span>
+            // `deliveryTerms` (linea 143) prueba primero `order.courier`/`order.deliveryTerms`
+            // antes de caer a `tipoEnvio`: ese es el mismo orden que usa el footer "Entrega" de
+            // esta card (linea 443), y evita mostrar "Despacho a domicilio" por defecto en
+            // pedidos multi-tienda, donde `tipoEnvio` es una columna del PEDIDO completo (no de
+            // la subordén) y puede no corresponder a la tienda con costo de envio (ver
+            // orderDeadlines.js).
+            <span className="order-info-chip"><Truck size={13} /> {deliveryTerms}: {formatCLP(shippingFee)}</span>
           ) : (
             // "courier_por_pagar" (envio fuera de la comuna) siempre llega con costo 0 -es "por
             // pagar", se desconoce al comprar-, asi que caer aca no significa que sea despacho
             // local: antes esta rama SIEMPRE decia "Despacho a domicilio" sin mirar `tipoEnvio`.
-            <span className="order-info-chip"><Truck size={13} /> {deliveryMethodLabel(order)}</span>
+            <span className="order-info-chip"><Truck size={13} /> {deliveryTerms}</span>
           )}
           {isSeller && deliveryAddress && !isStorePickup && (
             <span className="order-info-chip address"><MapPin size={13} /> {deliveryAddress}</span>

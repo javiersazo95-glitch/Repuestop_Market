@@ -546,7 +546,7 @@ export default function OrderDetailView({
   // `??` y no `||`: un subtotal de CERO es legitimo (el vendedor cancelo todas sus lineas)
   // y con `||` se caia a `order.total`, o sea al monto de la venta anulada.
   const subtotal = Number(order.subtotal ?? order.total ?? 0);
-  const shippingFee = Number(order.shippingFee || order.costoEnvio || 0);
+  const shippingFee = Number(String(order.shippingFee ?? order.costoEnvio ?? 0).replace(/[^0-9]/g, '')) || 0;
   const totalSeller = Number(order.totalVendedor ?? order.totalSeller ?? (subtotal * 0.93));
   const totalBuyer = Number(order.total || (subtotal + shippingFee));
   // Los manda el backend y la web los ignoraba: `montoReembolsado` es lo que se devuelve por

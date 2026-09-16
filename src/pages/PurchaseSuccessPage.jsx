@@ -97,7 +97,7 @@ export default function PurchaseSuccessPage() {
   const subtotal = items.reduce((sum, item) => (
     sum + Number(item.precioUnitario || item.precio || item.unitPrice || 0) * Number(item.cantidad || item.quantity || 1)
   ), 0);
-  const shippingFee = Number(order?.costoEnvio || order?.shippingFee || 0);
+  const shippingFee = Number(String(order?.costoEnvio ?? order?.shippingFee ?? 0).replace(/[^0-9]/g, '')) || 0;
   const total = Number(order?.total || subtotal + shippingFee);
   const documentType = String(order?.tipoDocumentoTributario || order?.documentType || 'BOLETA').toUpperCase();
   const orderDate = (() => {
