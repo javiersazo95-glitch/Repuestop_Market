@@ -433,6 +433,34 @@ export default function ProfileAccountDataPanel({
                     </div>
                   )}
                 </div>
+                {isSeller && (
+                  <div className="details-info-list store-shipping-methods-row" style={{ marginTop: '18px' }}>
+                    <div className="details-info-row">
+                      <span className="info-label">Métodos de Envío Registrados</span>
+                      <div className="shipping-methods-pills" style={{ marginTop: '6px', gap: '8px' }}>
+                        {String(storeInfo?.shippingMethods || 'Retiro en tienda, Envío dentro de la comuna, Envío fuera de la comuna')
+                          .split(',')
+                          .map((m, idx) => {
+                            const method = m.trim();
+                            const config = getShippingIconConfig(method);
+                            const Icon = config.icon;
+                            return (
+                              <span
+                                key={idx}
+                                className="shipping-method-pill"
+                                style={{ color: config.color, backgroundColor: config.bg, borderColor: config.color, display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', fontWeight: 700 }}
+                                title={config.label}
+                              >
+                                <Icon size={14} />
+                                <span>{method}</span>
+                              </span>
+                            );
+                          })}
+                      </div>
+                      <small className="form-helper-text">La tarifa local se usa automáticamente al crear cotizaciones y pedidos.</small>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Un solo botón no justifica una tarjeta completa del mismo peso
@@ -456,41 +484,6 @@ export default function ProfileAccountDataPanel({
                   <span>Ubicación y Logística de Despacho</span>
                 </h3>
                 <BuyerAddressBook usuarioId={user?.userId} onCommercialAddressSynced={refreshStoreInfoAfterAddressSync} />
-                {isSeller && (
-                  <div className="details-info-list store-shipping-methods-row">
-                    <div className="details-info-row">
-                      <span className="info-label">Métodos de Envío Registrados</span>
-                      <div className="shipping-methods-pills" style={{ marginTop: '6px', gap: '8px' }}>
-                        {String(storeInfo?.shippingMethods || 'Retiro en tienda, Envío dentro de la comuna, Envío fuera de la comuna')
-                          .split(',')
-                          .map((m, idx) => {
-                            const config = getShippingIconConfig(m.trim());
-                            const Icon = config.icon;
-                            return (
-                              <span
-                                key={idx}
-                                className="shipping-method-pill"
-                                style={{
-                                  color: config.color,
-                                  backgroundColor: config.bg,
-                                  borderColor: config.color,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  padding: '4px 10px',
-                                  fontWeight: 700
-                                }}
-                                title={config.label}
-                              >
-                                <Icon size={14} />
-                                <span>{config.name}</span>
-                              </span>
-                            );
-                          })}
-                      </div>
-                    </div>
-                  </div>
-                )}
               {/* Verificación y adhesión: estado REAL desde
                   `GET /proveedores/{id}/verificacion`. Antes eran dos líneas
                   fijas que decían "Tienda Verificada" y "Términos aceptados"

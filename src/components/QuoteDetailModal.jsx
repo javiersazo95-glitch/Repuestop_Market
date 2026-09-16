@@ -22,6 +22,7 @@ import {
 } from '../utils/quoteFlow';
 import { buildQuotePdfBlob, quoteDocumentFilename } from '../utils/quoteDocument';
 import { checkoutPath, helpCategoryPath, productPath, storePath } from '../routes/paths';
+import { parseShippingMethods, resolveShippingService, shippingMethodCost } from '../data/shippingMethods';
 
 // Tope del mensaje del chat. Una cotizacion se negocia con datos concretos -cantidad,
 // estado, despacho, precio-; 500 caracteres son un parrafo completo y obligan a ser
@@ -112,6 +113,16 @@ export default function QuoteDetailModal({
   const [warranty, setWarranty] = useState('3 meses');
   const [validity, setValidity] = useState('Valida por 24 horas');
   const [responseNotes, setResponseNotes] = useState('');
+  const localShippingCost = useMemo(() => {
+    const methods = parseShippingMethods(quote?.sellerShippingMethods || user?.shippingMethods);
+    const localMethod = methods.find((method) => resolveShippingService(method).name === 'Envío dentro de la comuna');
+    return shippingMethodCost(localMethod);
+  }, [quote?.sellerShippingMethods, user?.shippingMethods]);
+  const quoteShippingCost = useMemo(() => {
+    const savedCost = activeQuote?.condicionesEntrega?.match(/costo:\s*\$?([\d.]+)/i)?.[1]?.replace(/\./g, '');
+    return Number(savedCost || 0);
+  }, [activeQuote?.condicionesEntrega]);
+  const isLocalDelivery = ['Delivery local', 'Envío dentro de la comuna'].includes(deliveryTerms);
 
   useEffect(() => {
     const current = quote?.cotizacion;
@@ -127,11 +138,12 @@ export default function QuoteDetailModal({
       || requested.requestedDeliveryTerms
       || 'Retiro en tienda'
     );
-    setDeliveryCost(current?.condicionesEntrega?.match(/costo:\s*\$?([\d.]+)/i)?.[1]?.replace(/\./g, '') || '');
+    const savedCost = current?.condicionesEntrega?.match(/costo:\s*\$?([\d.]+)/i)?.[1]?.replace(/\./g, '');
+    setDeliveryCost(savedCost || (['Delivery local', 'Envío dentro de la comuna'].includes(requested.requestedDeliveryTerms) && localShippingCost ? String(localShippingCost) : ''));
     setWarranty(current?.garantia || '3 meses');
     setValidity(current?.vigencia || 'Valida por 24 horas');
     setResponseNotes(current?.notas || '');
-  }, [quote, requested.requestedDeliveryTerms]);
+  }, [quote, requested.requestedDeliveryTerms, localShippingCost]);
 
   useEffect(() => {
     if (!quote) return undefined;
@@ -349,8 +361,8 @@ export default function QuoteDetailModal({
     setStatusMessage(null);
     try {
       let normalizedDelivery = deliveryTerms;
-      if (['Delivery local', 'Envío dentro de la comuna'].includes(deliveryTerms) && deliveryCost) {
-        normalizedDelivery += ` (costo: ${formatCLP(deliveryCost)})`;
+      if (['Delivery local', 'Envío dentro de la comuna'].includes(deliveryTerms) && localShippingCost) {
+        normalizedDelivery += ` (costo: ${formatCLP(localShippingCost)})`;
       }
       const payload = {
         precio: finalPrice, cantidad: requested.requestedQty, disponibilidad: availability,
@@ -603,7 +615,8 @@ export default function QuoteDetailModal({
               <aside className="quote-editor-total-card">
                 <span><small>Subtotal ({requested.requestedQty})</small><b>{formatCLP(subtotal)}</b></span>
                 <span><small>Descuento o rebaja</small><b className="discount">−{formatCLP(normalizedDiscount)}</b></span>
-                <div><strong>Precio final</strong><b>{formatCLP(finalPrice)}</b></div>
+                {isLocalDelivery && <span><small>Despacho dentro de la comuna</small><b>{formatCLP(localShippingCost)}</b></span>}
+                <div><strong>Total a pagar</strong><b>{formatCLP(finalPrice + (isLocalDelivery ? localShippingCost : 0))}</b></div>
               </aside>
             </div>
 
@@ -613,7 +626,7 @@ export default function QuoteDetailModal({
                   el vendedor cotiza sobre esa condicion, no la cambia. Se muestra
                   bloqueada igual que la cantidad, que ya funcionaba asi. */}
               <label><span>Condición de entrega <Lock size={13} /></span><div className="quote-locked-field">{deliveryTerms}<Lock size={15} /></div></label>
-              {['Delivery local', 'Envío dentro de la comuna'].includes(deliveryTerms) && <label><span>Costo del envío</span><div className="quote-editor-money-input"><i>$</i><input type="number" min="0" max="99999999" value={deliveryCost} onChange={(event) => setDeliveryCost(event.target.value.replace(/[^0-9]/g, '').slice(0, 8))} required /></div></label>}
+              {['Delivery local', 'Envío dentro de la comuna'].includes(deliveryTerms) && <label><span>Costo del envío local configurado</span><div className="quote-locked-field">{deliveryCost ? formatCLP(deliveryCost) : 'Sin tarifa configurada'}<Lock size={15} /></div><small>Se obtiene desde los métodos de envío de Mi tienda y datos.</small></label>}
               <label><span>Garantía</span><select value={warranty} onChange={(event) => setWarranty(event.target.value)}>{QUOTE_WARRANTY_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
               <label><span>Vigencia</span><select value={validity} onChange={(event) => setValidity(event.target.value)}>{QUOTE_VALIDITY_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
             </div>
@@ -642,8 +655,7 @@ export default function QuoteDetailModal({
         </div>
       )}
 
-      {quotePreviewOpen && activeQuote && <div className="quote-ws-dialog-backdrop" onClick={() => setQuotePreviewOpen(false)}><section className="quote-ws-quote-dialog quote-ws-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><FileText size={22} /><span><strong>Detalle de la cotización</strong><small><CalendarClock size={13} /> {quoteExpirationLabel(activeQuote, now)}</small></span></div><button type="button" onClick={() => setQuotePreviewOpen(false)}><X size={20} /></button></header><div className="quote-ws-dialog-body"><div className="quote-ws-preview-price"><small>Total cotizado</small><strong>{formatCLP(activeQuote.precioFinal ?? activeQuote.precio)}</strong></div><DataRow icon={Package} label="Cantidad" value={activeQuote.cantidad} /><DataRow icon={CheckCircle2} label="Disponibilidad" value={activeQuote.disponibilidad} /><DataRow icon={Truck} label="Entrega" value={activeQuote.condicionesEntrega} /><DataRow icon={ShieldCheck} label="Garantía" value={activeQuote.garantia} /><DataRow icon={FileText} label="Notas" value={activeQuote.notas} /><div className="quote-ws-preview-document"><button type="button" onClick={viewDocument}><Eye size={16} /> Ver PDF</button><button type="button" onClick={downloadDocument}><Download size={16} /> Descargar PDF</button></div>{mode === 'buyer' && <button type="button" className="quote-ws-primary-button" disabled={expired || closed} onClick={goToQuoteCheckout}><ShoppingCart size={16} /> {expired ? 'Cotización vencida' : 'Comprar esta cotización'}</button>}</div></section></div>}
+      {quotePreviewOpen && activeQuote && <div className="quote-ws-dialog-backdrop" onClick={() => setQuotePreviewOpen(false)}><section className="quote-ws-quote-dialog quote-ws-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><FileText size={22} /><span><strong>Detalle de la cotización</strong><small><CalendarClock size={13} /> {quoteExpirationLabel(activeQuote, now)}</small></span></div><button type="button" onClick={() => setQuotePreviewOpen(false)}><X size={20} /></button></header><div className="quote-ws-dialog-body"><div className="quote-ws-preview-price"><small>Total cotizado</small><strong>{formatCLP(Number(activeQuote.precioFinal ?? activeQuote.precio ?? 0) + quoteShippingCost)}</strong></div><DataRow icon={Package} label="Cantidad" value={activeQuote.cantidad} /><DataRow icon={CheckCircle2} label="Disponibilidad" value={activeQuote.disponibilidad} /><DataRow icon={Truck} label="Entrega" value={activeQuote.condicionesEntrega} />{quoteShippingCost > 0 && <DataRow icon={CreditCard} label="Despacho" value={formatCLP(quoteShippingCost)} />}<DataRow icon={ShieldCheck} label="Garantía" value={activeQuote.garantia} /><DataRow icon={FileText} label="Notas" value={activeQuote.notas} /><div className="quote-ws-preview-document"><button type="button" onClick={viewDocument}><Eye size={16} /> Ver PDF</button><button type="button" onClick={downloadDocument}><Download size={16} /> Descargar PDF</button></div>{mode === 'buyer' && <button type="button" className="quote-ws-primary-button" disabled={expired || closed} onClick={goToQuoteCheckout}><ShoppingCart size={16} /> {expired ? 'Cotización vencida' : 'Comprar esta cotización'}</button>}</div></section></div>}
     </div>
   );
 }
-

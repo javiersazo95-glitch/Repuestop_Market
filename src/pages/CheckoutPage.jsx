@@ -153,7 +153,7 @@ export default function CheckoutPage() {
       quantity: cantidad,
       total,
       shippingMethod: quote.condicionesEntrega || '',
-      shippingFee: 0,
+      shippingFee: Number(quote.condicionesEntrega?.match(/costo:\s*\$?([\d.]+)/i)?.[1]?.replace(/\./g, '') || 0),
     };
   }, [quote, quoteContext, conversacionId]);
 
@@ -162,10 +162,10 @@ export default function CheckoutPage() {
     [isQuoteMode, quoteLine, cartItems]
   );
   const itemCount = isQuoteMode ? (quoteLine?.quantity || 0) : cartCount;
-  // El envío de una cotización va acordado dentro de `condicionesEntrega` y lo liquida el
-  // backend; acá no se recalcula, se muestra el precio cerrado con el vendedor.
+  // El backend fija el costo local desde los métodos de la tienda y lo devuelve dentro
+  // de `condicionesEntrega`; aquí se desglosa para que el resumen coincida con el pedido.
   const totals = isQuoteMode
-    ? { subtotal: quoteLine?.total || 0, costoEnvio: 0, total: quoteLine?.total || 0 }
+    ? { subtotal: quoteLine?.total || 0, costoEnvio: quoteLine?.shippingFee || 0, total: (quoteLine?.total || 0) + (quoteLine?.shippingFee || 0) }
     : cartTotals;
 
   // Retiro en tienda no necesita dirección de despacho. Un ítem sin método todavía
