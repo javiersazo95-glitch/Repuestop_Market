@@ -55,6 +55,12 @@ export default function ProductBrandMark({ brand = '', logoUrl = '', size = 28, 
           src={currentSrc}
           alt={`Logo de ${cleanBrand}`}
           className="product-brand-mark-img"
+          // Los SVG locales solo traen `viewBox` (sin `width`/`height` propios): dentro de
+          // un contenedor flex, el ancho intrinseco de un <img> SVG asi puede resolver a
+          // 0px (visto en producción con Mobil, Bosch, etc. -- la imagen carga bien,
+          // `naturalWidth` es correcto, pero el layout la deja en 0px de ancho). Fijar el
+          // tamaño en pixeles evita depender de ese calculo.
+          style={{ width: `${Math.round(size * 0.84)}px`, height: `${Math.round(size * 0.84)}px` }}
           onError={handleImageError}
           loading="eager"
         />

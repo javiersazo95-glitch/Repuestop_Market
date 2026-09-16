@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, BadgeCheck, BadgeDollarSign, CalendarDays, CalendarClock,
-  CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, CreditCard, Download, ExternalLink, Eye, FileText, Flag,
+  AlertTriangle, ArrowLeft, BadgeCheck, BadgeDollarSign, CalendarDays, CalendarClock,
+  CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, ClipboardList, CreditCard, Download, ExternalLink, Eye, FileText, Flag,
   Headphones, Image as ImageIcon, Info, Loader2, Lock, Maximize2, MessageSquare, MoreHorizontal, Package, Paperclip,
   Pencil, Send, ShieldCheck, ShoppingCart, Store, Tag, Trash2, Truck, X,
 } from 'lucide-react';
@@ -16,7 +16,7 @@ import {
 import { compressImageFile } from '../utils/imageCompression';
 import CommissionSummaryCard from './CommissionSummaryCard';
 import {
-  isQuoteExpired, parseQuoteRequestMessage, quantityFromLabel,
+  buildQuoteRequestMessage, isQuoteExpired, parseQuoteRequestMessage, quantityFromLabel,
   quoteExpirationLabel, QUOTE_AVAILABILITY_OPTIONS,
   QUOTE_VALIDITY_OPTIONS, QUOTE_WARRANTY_OPTIONS,
 } from '../utils/quoteFlow';
@@ -89,6 +89,10 @@ export default function QuoteDetailModal({
   const [reportDetail, setReportDetail] = useState('');
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportSuccessOpen, setReportSuccessOpen] = useState(false);
+  const [modificationOpen, setModificationOpen] = useState(false);
+  const [modificationForm, setModificationForm] = useState(null);
+  const [modificationSubmitting, setModificationSubmitting] = useState(false);
+  const [modificationError, setModificationError] = useState('');
 
   // La miniatura de la burbuja no alcanza para revisar una pieza: el vendedor necesita
   // ver el detalle y a veces guardarse la foto. Se abre a pantalla completa con opcion
@@ -101,7 +105,11 @@ export default function QuoteDetailModal({
   const chatTextareaRef = React.useRef(null);
 
   const requestMessage = useMemo(() => {
-    const structured = messages.find((message) => /Solicitud de cotización por\s+/i.test(message.texto || ''));
+    // El ULTIMO mensaje estructurado, no el primero: "Solicitar modificación" manda uno
+    // nuevo a la misma conversacion, y el resumen de arriba ("Cantidad solicitada", etc.)
+    // tiene que reflejar el pedido vigente, no el original.
+    const structured = [...messages].reverse()
+      .find((message) => /Solicitud de cotización por\s+/i.test(message.texto || ''));
     return structured?.texto || quote?.ultimoMensaje || '';
   }, [messages, quote?.ultimoMensaje]);
   const requested = useMemo(() => parseQuoteRequestMessage(requestMessage), [requestMessage]);
@@ -118,6 +126,12 @@ export default function QuoteDetailModal({
     const methods = parseShippingMethods(quote?.sellerShippingMethods || user?.shippingMethods);
     const localMethod = methods.find((method) => resolveShippingService(method).name === 'Envío dentro de la comuna');
     return shippingMethodCost(localMethod);
+  }, [quote?.sellerShippingMethods, user?.shippingMethods]);
+  // Metodos de envio de la tienda para el popup de "Solicitar modificación": mismo origen
+  // que `localShippingCost`, asi que no hace falta volver a pedir el producto completo.
+  const modificationShippingOptions = useMemo(() => {
+    const methods = parseShippingMethods(quote?.sellerShippingMethods || user?.shippingMethods);
+    return [...new Set(methods.map((method) => resolveShippingService(method).name))];
   }, [quote?.sellerShippingMethods, user?.shippingMethods]);
   const quoteShippingCost = useMemo(() => {
     const savedCost = activeQuote?.condicionesEntrega?.match(/costo:\s*\$?([\d.]+)/i)?.[1]?.replace(/\./g, '');
@@ -352,6 +366,55 @@ export default function QuoteDetailModal({
     }
   };
 
+  // "Solicitar modificación" reabre el popup con el pedido ACTUAL (no el original) para
+  // que el comprador lo ajuste. Antes solo precargaba el textarea del chat con una frase
+  // fija, sin mostrar los datos que ya habia pedido ni dejar editarlos.
+  const openModificationRequest = () => {
+    const matchedShipping = modificationShippingOptions.find(
+      (option) => option.toLowerCase() === requested.requestedDeliveryTerms.toLowerCase(),
+    );
+    setModificationForm({
+      quantity: quantityFromLabel(requested.requestedQty),
+      shippingMethod: matchedShipping || modificationShippingOptions[0] || '',
+      chassis: requested.requestedChassis || '',
+      notes: requested.requestedNotes || '',
+    });
+    setModificationError('');
+    setModificationOpen(true);
+  };
+
+  const updateModificationField = (field, value) => {
+    setModificationForm((previous) => ({ ...previous, [field]: value }));
+  };
+
+  const submitModificationRequest = async (event) => {
+    event.preventDefault();
+    if (!modificationForm?.shippingMethod) {
+      setModificationError('Selecciona el método de envío que necesitas.');
+      return;
+    }
+    setModificationSubmitting(true);
+    setModificationError('');
+    try {
+      // Dos mensajes: el estructurado (lo que el "Cantidad solicitada"/"Método de envío
+      // solicitado" de arriba parsean para mostrar el pedido vigente) y uno generico atras,
+      // para que a la tienda le quede clarísimo en el chat que hay algo nuevo que revisar.
+      const structuredMessage = buildQuoteRequestMessage(modificationForm);
+      const sentStructured = await sendConversationMessageApi(quote.id, structuredMessage);
+      const sentNotice = await sendConversationMessageApi(
+        quote.id,
+        'Te envié una nueva solicitud de cotización, revísala 🙂',
+      );
+      setMessages((previous) => [...previous, sentStructured, sentNotice]);
+      setModificationOpen(false);
+      setStatusMessage({ type: 'success', text: 'Tu solicitud de modificación fue enviada.' });
+    } catch (error) {
+      setModificationError(error.message || 'No se pudo enviar la modificación. Intenta nuevamente.');
+    } finally {
+      setModificationSubmitting(false);
+    }
+  };
+
   const submitQuote = async (event) => {
     event.preventDefault();
     if (finalPrice <= 0) {
@@ -556,11 +619,7 @@ export default function QuoteDetailModal({
                 title={chatLocked
                   ? 'La cotización ya no admite cambios'
                   : !canWriteText ? 'Podrás escribir cuando la tienda responda' : undefined}
-                onClick={() => {
-                  setChatMessage('Necesito una modificación en la cotización: ');
-                  chatTextareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  chatTextareaRef.current?.focus();
-                }}
+                onClick={openModificationRequest}
               >
                 <Pencil size={15} /> Solicitar modificación
               </button>
@@ -660,6 +719,95 @@ export default function QuoteDetailModal({
             </header>
             <img src={viewerImage} alt="Adjunto de la conversación" />
           </div>
+        </div>
+      )}
+
+      {modificationOpen && modificationForm && (
+        <div className="modal-backdrop quote-request-backdrop" onClick={() => setModificationOpen(false)}>
+          <section
+            className="quote-request-modal quote-ws-modification-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modification-request-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="modal-close-btn quote-request-close"
+              type="button"
+              onClick={() => setModificationOpen(false)}
+              aria-label="Cerrar"
+            >
+              <X size={28} />
+            </button>
+
+            <header className="quote-request-header">
+              <div className="quote-request-header-icon"><Pencil className="quote-request-header-file" size={30} /></div>
+              <div className="quote-request-header-copy">
+                <span>COTIZACIÓN CON LA TIENDA</span>
+                <h2 id="modification-request-title">Solicitar modificación</h2>
+                <p>Ajusta los datos de tu solicitud. La tienda recibirá una notificación con el pedido actualizado.</p>
+              </div>
+            </header>
+
+            <div className="quote-request-content">
+              <form className="quote-request-form" onSubmit={submitModificationRequest}>
+                <div className="quote-request-section-title">
+                  <ClipboardList size={22} />
+                  <div><strong>Detalle de tu solicitud</strong><small>Estos datos quedarán visibles para el vendedor.</small></div>
+                </div>
+
+                <div className="quote-request-grid">
+                  <label>
+                    <span>Cantidad</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={modificationForm.quantity}
+                      onChange={(event) => updateModificationField('quantity', event.target.value)}
+                      required
+                    />
+                  </label>
+                  <label>
+                    <span>Método de envío *</span>
+                    <select
+                      value={modificationForm.shippingMethod}
+                      onChange={(event) => updateModificationField('shippingMethod', event.target.value)}
+                      required
+                    >
+                      <option value="">Selecciona una opción</option>
+                      {modificationShippingOptions.map((option) => <option key={option}>{option}</option>)}
+                    </select>
+                  </label>
+                </div>
+
+                <label>
+                  <span>Patente o chasis (opcional)</span>
+                  <input
+                    value={modificationForm.chassis}
+                    onChange={(event) => updateModificationField('chassis', event.target.value.toUpperCase())}
+                    placeholder="Ej. BBCL12 o VIN"
+                  />
+                </label>
+                <label>
+                  <span>Nota para el vendedor (opcional)</span>
+                  <textarea
+                    rows="3"
+                    value={modificationForm.notes}
+                    onChange={(event) => updateModificationField('notes', event.target.value)}
+                    maxLength="500"
+                    placeholder="Marca preferida, urgencia u otra información útil..."
+                  />
+                </label>
+
+                {modificationError && <div className="modal-form-error"><AlertTriangle size={16} /><span>{modificationError}</span></div>}
+
+                <button type="submit" disabled={modificationSubmitting} className="btn-submit-ticket">
+                  <Send size={20} />
+                  <span>{modificationSubmitting ? 'Enviando…' : 'Guardar y enviar a la tienda'}</span>
+                </button>
+              </form>
+            </div>
+          </section>
         </div>
       )}
 
