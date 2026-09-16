@@ -9,8 +9,8 @@ function formatCLP(value) {
  * Resumen de la compra. Vive aparte porque lo comparten /carrito y /checkout: si cada
  * vista armara el suyo, tarde o temprano mostrarían totales distintos.
  *
- * Los montos llegan calculados desde `cartTotals` (MarketplaceContext). El comprador
- * paga subtotal + envío, sin comisión: ver el comentario de `calcularTotalesCarrito`.
+ * Los montos llegan calculados desde `cartTotals` (MarketplaceContext). El despacho se
+ * cobra al comprador y forma parte de la base de las comisiones del vendedor.
  */
 export default function CheckoutSummaryPanel({
   itemCount, subtotal, costoEnvio, total, shippingLabel,

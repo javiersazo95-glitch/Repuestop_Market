@@ -33,14 +33,12 @@ function readGuestCart() {
  * Totales de la compra, en un solo lugar para que el carrito, el checkout y el resumen
  * no puedan discrepar entre sí.
  *
- * El comprador paga subtotal + envío, sin recargo: `PedidoCheckoutCarritoSupport` deja
- * `comisionComprador` y `comisionPasarela` en cero (la comisión del 10/7/5% se le
- * descuenta al vendedor), y en la app móvil `buyerDisplayPrice` es identidad y
- * `flowFeeAmount()` devuelve 0.
+ * El comprador paga subtotal + envío. El envío es parte de la venta gravada: el backend
+ * calcula la tarifa de servicio, su IVA y la comisión de Flow sobre esa suma y las
+ * descuenta de la liquidación del vendedor.
  *
- * Los campos `comisionServicio` y `totalEstimado` que devuelve GET /carrito NO se usan
- * como fuente: `CarritoService` deja la comisión hardcodeada en cero y el total sin el
- * envío, así que mostrarlos daría un total más bajo que el que se cobra.
+ * La UI conserva este cálculo a partir de las líneas para que el carrito de invitado y
+ * el autenticado muestren exactamente el mismo despacho por proveedor.
  *
  * El costo de envío se cuenta UNA vez por proveedor, igual que el checkout del backend
  * (`costoEnvioPorProveedor.putIfAbsent`).
