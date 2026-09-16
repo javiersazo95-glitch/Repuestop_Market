@@ -119,6 +119,17 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isR
       availableSlots.some((slot) => slot.label === current) ? current : '');
   }, [availableSlots]);
 
+  // Limpia el aviso de campos faltantes apenas el usuario empieza a corregirlo,
+  // para que no quede un mensaje obsoleto mientras completa el formulario.
+  //
+  // Va aca arriba y no despues del `return null`: ahi quedaba condicionado a que
+  // hubiera anuncio, y el render sin anuncio registraba un hook menos que el resto
+  // ("Rendered fewer hooks than expected", que revienta la pantalla entera). Solo
+  // depende de estado local, asi que subirlo no cambia cuando corre.
+  useEffect(() => {
+    setSubmitError('');
+  }, [selectedServices, appointmentDate, appointmentTime, userName, userPhone]);
+
   if (!adOrCompany) return null;
 
   const offeredServices = Array.isArray(adOrCompany.servicesOffered)
@@ -149,12 +160,6 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isR
   const canSubmit = isLoggedIn && !isOwnAd && agendaConfig
     && selectedServices.length > 0 && appointmentDate && appointmentTime
     && userName.trim() && userPhone.trim();
-
-  // Limpia el aviso de campos faltantes apenas el usuario empieza a corregirlo,
-  // para que no quede un mensaje obsoleto mientras completa el formulario.
-  useEffect(() => {
-    setSubmitError('');
-  }, [selectedServices, appointmentDate, appointmentTime, userName, userPhone]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
