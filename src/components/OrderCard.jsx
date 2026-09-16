@@ -160,7 +160,7 @@ export default function OrderCard({
     order.compradorComuna || order.comuna,
     order.compradorRegion || order.region,
   ].filter(Boolean).join(', ');
-  const shippingFee = Number(order.shippingFee || order.costoEnvio || 0);
+  const shippingFee = Number(String(order.shippingFee ?? order.costoEnvio ?? 0).replace(/[^0-9]/g, '')) || 0;
   // Se cuentan las unidades VIVAS. Decir "2 productos" cuando uno ya no llega contradice al
   // aviso de reembolso que esta dos lineas mas arriba en la misma tarjeta.
   const countUnits = (list) => list.reduce((total, item) => total + Number(item.cantidad || item.quantity || 1), 0);
@@ -363,7 +363,7 @@ export default function OrderCard({
           {isStorePickup ? (
             <span className="order-info-chip"><Store size={13} /> Retiro en tienda</span>
           ) : shippingFee > 0 ? (
-            <span className="order-info-chip"><Truck size={13} /> Envío: {formatCLP(shippingFee)}</span>
+            <span className="order-info-chip"><Truck size={13} /> {deliveryMethodLabel(order)}: {formatCLP(shippingFee)}</span>
           ) : (
             // "courier_por_pagar" (envio fuera de la comuna) siempre llega con costo 0 -es "por
             // pagar", se desconoce al comprar-, asi que caer aca no significa que sea despacho
