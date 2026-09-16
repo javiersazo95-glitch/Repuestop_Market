@@ -21,6 +21,7 @@ export default function SaleReceiptModal({
   order,
   items = [],
   shipping = 0,
+  discount = 0,
   uploadOnly = false,
   onSubmit,
   onClose,
@@ -51,7 +52,8 @@ export default function SaleReceiptModal({
   const qtyOf = (it) => Number(it.cantidad ?? it.quantity ?? 1);
   const productsTotal = cleanItems.reduce((sum, it) => sum + unitOf(it) * qtyOf(it), 0);
   const shippingValue = Number(shipping || 0);
-  const totalToDocument = productsTotal + shippingValue;
+  const discountValue = Number(discount || 0);
+  const totalToDocument = Math.max(0, productsTotal + shippingValue - discountValue);
 
   const documentLine = docType === 'FACTURA' ? 'Factura electrónica' : 'Boleta electrónica';
 
@@ -73,6 +75,7 @@ export default function SaleReceiptModal({
     '',
     `Productos: ${formatCLP(productsTotal)}`,
     shippingValue > 0 ? `Envío: ${formatCLP(shippingValue)}` : null,
+    discountValue > 0 ? `Descuento: -${formatCLP(discountValue)}` : null,
     `Total a documentar al comprador: ${formatCLP(totalToDocument)}`,
   ].filter((l) => l !== null).join('\n');
 
@@ -186,6 +189,7 @@ export default function SaleReceiptModal({
           <div className="order-receipt-totals">
             <span><span>Productos</span><strong>{formatCLP(productsTotal)}</strong></span>
             {shippingValue > 0 && <span><span>Envío</span><strong>{formatCLP(shippingValue)}</strong></span>}
+            {discountValue > 0 && <span><span>Descuento</span><strong className="order-receipt-discount">-{formatCLP(discountValue)}</strong></span>}
             <span className="order-receipt-total-main">
               <span>Total a documentar al comprador</span>
               <strong>{formatCLP(totalToDocument)}</strong>

@@ -161,6 +161,7 @@ export default function OrderCard({
     order.compradorRegion || order.region,
   ].filter(Boolean).join(', ');
   const shippingFee = Number(String(order.shippingFee ?? order.costoEnvio ?? 0).replace(/[^0-9]/g, '')) || 0;
+  const discount = Number(String(order.descuento ?? 0).replace(/[^0-9]/g, '')) || 0;
   // Se cuentan las unidades VIVAS. Decir "2 productos" cuando uno ya no llega contradice al
   // aviso de reembolso que esta dos lineas mas arriba en la misma tarjeta.
   const countUnits = (list) => list.reduce((total, item) => total + Number(item.cantidad || item.quantity || 1), 0);
@@ -612,6 +613,7 @@ export default function OrderCard({
           order={order}
           items={items}
           shipping={shippingFee}
+          discount={discount}
           onSubmit={submitSaleReceipt}
           onClose={() => setShowReceiptModal(false)}
         />

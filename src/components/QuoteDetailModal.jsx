@@ -4,7 +4,7 @@ import {
   ArrowLeft, BadgeCheck, BadgeDollarSign, CalendarDays, CalendarClock,
   CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, CreditCard, Download, ExternalLink, Eye, FileText, Flag,
   Headphones, Image as ImageIcon, Info, Loader2, Lock, Maximize2, MessageSquare, MoreHorizontal, Package, Paperclip,
-  Pencil, Send, ShieldCheck, ShoppingCart, Store, Trash2, Truck, X,
+  Pencil, Send, ShieldCheck, ShoppingCart, Store, Tag, Trash2, Truck, X,
 } from 'lucide-react';
 import RepuesTopLogo from './RepuesTopLogo';
 import ChatImagePreview from './ChatImagePreview';
@@ -616,7 +616,7 @@ export default function QuoteDetailModal({
                 <CommissionSummaryCard
                   basePrice={finalPrice + (isLocalDelivery ? localShippingCost : 0)}
                   isFounder={Boolean(isFounder ?? user?.founder ?? user?.fundador)}
-                  suggestedContextLabel="por unidad"
+                  suggestedContextLabel="Precio sugerido a COBRAR para recibir este líquido (no es lo que vas a publicar ni recibir tal cual; al presionar Aplicar se ajusta el precio por unidad):"
                   onApplySuggested={(value) => setUnitPrice(String(Math.min(Math.ceil((Math.max(0, value - (isLocalDelivery ? localShippingCost : 0)) + normalizedDiscount) / quantity), 99999999)))}
                 />
               </div>
@@ -663,7 +663,7 @@ export default function QuoteDetailModal({
         </div>
       )}
 
-      {quotePreviewOpen && activeQuote && <div className="quote-ws-dialog-backdrop" onClick={() => setQuotePreviewOpen(false)}><section className="quote-ws-quote-dialog quote-ws-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><FileText size={22} /><span><strong>Detalle de la cotización</strong><small><CalendarClock size={13} /> {quoteExpirationLabel(activeQuote, now)}</small></span></div><button type="button" onClick={() => setQuotePreviewOpen(false)}><X size={20} /></button></header><div className="quote-ws-dialog-body"><div className="quote-ws-preview-price"><small>Total cotizado</small><strong>{formatCLP(Number(activeQuote.precioFinal ?? activeQuote.precio ?? 0) + quoteShippingCost)}</strong></div><DataRow icon={Package} label="Cantidad" value={activeQuote.cantidad} /><DataRow icon={CheckCircle2} label="Disponibilidad" value={activeQuote.disponibilidad} /><DataRow icon={Truck} label="Entrega" value={activeQuote.condicionesEntrega} />{quoteShippingCost > 0 && <DataRow icon={CreditCard} label="Despacho" value={formatCLP(quoteShippingCost)} />}<DataRow icon={ShieldCheck} label="Garantía" value={activeQuote.garantia} /><DataRow icon={FileText} label="Notas" value={activeQuote.notas} /><div className="quote-ws-preview-document"><button type="button" onClick={viewDocument}><Eye size={16} /> Ver PDF</button><button type="button" onClick={downloadDocument}><Download size={16} /> Descargar PDF</button></div>{mode === 'buyer' && <button type="button" className="quote-ws-primary-button" disabled={expired || closed} onClick={goToQuoteCheckout}><ShoppingCart size={16} /> {expired ? 'Cotización vencida' : 'Comprar esta cotización'}</button>}</div></section></div>}
+      {quotePreviewOpen && activeQuote && <div className="quote-ws-dialog-backdrop" onClick={() => setQuotePreviewOpen(false)}><section className="quote-ws-quote-dialog quote-ws-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><FileText size={22} /><span><strong>Detalle de la cotización</strong><small><CalendarClock size={13} /> {quoteExpirationLabel(activeQuote, now)}</small></span></div><button type="button" onClick={() => setQuotePreviewOpen(false)}><X size={20} /></button></header><div className="quote-ws-dialog-body"><div className="quote-ws-preview-price"><small>Total cotizado</small><strong>{formatCLP(Number(activeQuote.precioFinal ?? activeQuote.precio ?? 0) + quoteShippingCost)}</strong></div><DataRow icon={Package} label="Cantidad" value={activeQuote.cantidad} /><DataRow icon={CheckCircle2} label="Disponibilidad" value={activeQuote.disponibilidad} /><DataRow icon={Truck} label="Entrega" value={activeQuote.condicionesEntrega} />{quoteShippingCost > 0 && <DataRow icon={CreditCard} label="Despacho" value={formatCLP(quoteShippingCost)} />}{Number(activeQuote.descuento) > 0 && <DataRow icon={Tag} label="Descuento" value={`-${formatCLP(activeQuote.descuento)}`} />}<DataRow icon={ShieldCheck} label="Garantía" value={activeQuote.garantia} /><DataRow icon={FileText} label="Notas" value={activeQuote.notas} /><div className="quote-ws-preview-document"><button type="button" onClick={viewDocument}><Eye size={16} /> Ver PDF</button><button type="button" onClick={downloadDocument}><Download size={16} /> Descargar PDF</button></div>{mode === 'buyer' && <button type="button" className="quote-ws-primary-button" disabled={expired || closed} onClick={goToQuoteCheckout}><ShoppingCart size={16} /> {expired ? 'Cotización vencida' : 'Comprar esta cotización'}</button>}</div></section></div>}
     </div>
   );
 }

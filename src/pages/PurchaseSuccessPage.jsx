@@ -98,7 +98,8 @@ export default function PurchaseSuccessPage() {
     sum + Number(item.precioUnitario || item.precio || item.unitPrice || 0) * Number(item.cantidad || item.quantity || 1)
   ), 0);
   const shippingFee = Number(String(order?.costoEnvio ?? order?.shippingFee ?? 0).replace(/[^0-9]/g, '')) || 0;
-  const total = Number(order?.total || subtotal + shippingFee);
+  const discount = Number(String(order?.descuento ?? 0).replace(/[^0-9]/g, '')) || 0;
+  const total = Number(order?.total || subtotal + shippingFee - discount);
   const documentType = String(order?.tipoDocumentoTributario || order?.documentType || 'BOLETA').toUpperCase();
   const orderDate = (() => {
     const raw = order?.fechaCreacion || order?.createdAt || order?.fecha;
@@ -189,6 +190,7 @@ export default function PurchaseSuccessPage() {
               </div>
               <div className="purchase-success-totals">
                 <div><span>Productos</span><strong>{formatCLP(subtotal)}</strong></div>
+                {discount > 0 && <div><span>Descuento</span><strong className="purchase-success-discount">−{formatCLP(discount)}</strong></div>}
                 <div><span>Envío</span><strong>{shippingFee ? formatCLP(shippingFee) : 'Sin costo'}</strong></div>
                 <div className="purchase-success-total"><span>Total pagado</span><strong>{formatCLP(total)}</strong></div>
               </div>

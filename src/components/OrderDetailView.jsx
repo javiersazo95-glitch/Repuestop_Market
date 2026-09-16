@@ -547,8 +547,9 @@ export default function OrderDetailView({
   // y con `||` se caia a `order.total`, o sea al monto de la venta anulada.
   const subtotal = Number(order.subtotal ?? order.total ?? 0);
   const shippingFee = Number(String(order.shippingFee ?? order.costoEnvio ?? 0).replace(/[^0-9]/g, '')) || 0;
+  const discount = Number(String(order.descuento ?? 0).replace(/[^0-9]/g, '')) || 0;
   const totalSeller = Number(order.totalVendedor ?? order.totalSeller ?? (subtotal * 0.93));
-  const totalBuyer = Number(order.total || (subtotal + shippingFee));
+  const totalBuyer = Number(order.total || (subtotal + shippingFee - discount));
   // Los manda el backend y la web los ignoraba: `montoReembolsado` es lo que se devuelve por
   // las lineas canceladas y `totalActivo` lo que queda realmente por pagar.
   const refundAmount = Number(order.montoReembolsado || order.refundedAmount || 0);
@@ -1489,6 +1490,12 @@ export default function OrderDetailView({
                   <strong>{formatCLP(shippingFee)}</strong>
                 </div>
               )}
+              {!isSeller && discount > 0 && (
+                <div className="financial-row deduction-row">
+                  <span>Descuento</span>
+                  <strong className="negative-text">-{formatCLP(discount)}</strong>
+                </div>
+              )}
 
               {isSeller && (
                 <>
@@ -2075,6 +2082,7 @@ export default function OrderDetailView({
             order={order}
             items={receiptBlock?.items || []}
             shipping={receiptBlock?.shippingStore || 0}
+            discount={discount}
             uploadOnly={receiptUploadOnly}
             onSubmit={submitSaleReceipt}
             onClose={() => setShowReceiptModal(false)}
