@@ -17566,6 +17566,10 @@ input, select, textarea {
 .auth-terms a { font-weight: 700; color: var(--color-brand-blue); }
 
 /* --- Aviso de re-aceptacion de terminos (cambio de version del documento) --- */
+/* El aviso del contrato de adhesion BLOQUEA el panel y no tiene boton de cerrar, asi que
+   tiene que ganarle al banner de cookies (z-index 10050): ahi abajo el banner le tapaba
+   justo el boton de aceptar y dejaba al vendedor sin poder firmar ni salir. */
+.adhesion-modal-backdrop { z-index: 10060; }
 .terms-reaccept-backdrop { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 20px; background: rgba(15, 23, 42, 0.62); }
 .terms-reaccept { display: flex; flex-direction: column; width: min(680px, 100%); max-height: min(86vh, 780px); padding: 20px 22px 18px; border: 1px solid var(--border-subtle); border-top: 3px solid var(--color-brand-blue); border-radius: var(--radius-md); background: var(--bg-white); box-shadow: var(--shadow-hover); }
 

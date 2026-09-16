@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext';
 import { MarketplaceProvider } from './context/MarketplaceContext';
 import AppRoutes from './routes/AppRoutes';
 import TermsReacceptanceModal from './components/TermsReacceptanceModal';
+import SellerAdhesionModal from './components/SellerAdhesionModal';
 import SystemErrorPage from './components/SystemErrorPage';
 import CookieConsentBanner from './components/CookieConsentBanner';
 
@@ -72,6 +73,7 @@ export default function App() {
               {/* Va por encima de las rutas: el perfil vive fuera de AppLayout y el aviso
                   tiene que alcanzarlo igual. */}
               <TermsReacceptanceModal />
+              <SellerAdhesionModal />
               <CookieConsentBanner />
             </MarketplaceProvider>
           </AuthProvider>
