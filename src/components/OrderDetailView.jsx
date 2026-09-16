@@ -555,9 +555,14 @@ export default function OrderDetailView({
   const refundAmount = Number(order.montoReembolsado || order.refundedAmount || 0);
   const totalActive = Number(order.totalActivo ?? order.activeTotal ?? Math.max(0, totalBuyer - refundAmount));
 
-  const commissionRate = order.commissionRate ? order.commissionRate * 100 : subtotal > 250000 ? 5 : subtotal > 100000 ? 7 : 10;
-  const repuestopFee = order.commissionSeller || Math.round(subtotal * (commissionRate / 100) * 1.19);
-  const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(subtotal * 0.025 * 1.19)));
+  // La comision se cobra sobre productos menos descuento mas envio local, igual que en el
+  // checkout y en la liquidacion real (RetiroProveedorService.baseComisiones / backend
+  // PedidoResponseMapper). Este calculo es solo respaldo para cuando el backend no manda
+  // `commissionSeller`/`comisionPasarela` -- en el caso normal se usa el valor real del backend.
+  const commissionBase = Math.max(0, subtotal - discount + shippingFee);
+  const commissionRate = order.commissionRate ? order.commissionRate * 100 : commissionBase > 250000 ? 5 : commissionBase > 100000 ? 7 : 10;
+  const repuestopFee = order.commissionSeller || Math.round(commissionBase * (commissionRate / 100) * 1.19);
+  const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(commissionBase * 0.025 * 1.19)));
 
   // En un carrito multitienda no sirve tomar el estado agregado sin validarlo: la barra
   // representa la promesa completa al comprador y debe quedarse en el pedido que aún va más
@@ -1490,9 +1495,9 @@ export default function OrderDetailView({
                   <strong>{formatCLP(shippingFee)}</strong>
                 </div>
               )}
-              {!isSeller && discount > 0 && (
+              {discount > 0 && (
                 <div className="financial-row deduction-row">
-                  <span>Descuento</span>
+                  <span>Descuento{isSeller ? ' aplicado' : ''}</span>
                   <strong className="negative-text">-{formatCLP(discount)}</strong>
                 </div>
               )}

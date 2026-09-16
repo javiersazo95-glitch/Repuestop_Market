@@ -6,12 +6,19 @@ export default function ProductBrandMark({ brand = '', logoUrl = '', size = 28, 
   const initials = getBrandInitials(cleanBrand);
   const brandColor = getBrandColor(cleanBrand);
 
-  const initialLogo = logoUrl || getBrandLogoUrl(cleanBrand);
+  // `getBrandLogoUrl` prioriza el SVG local garantizado (si la marca es conocida) por
+  // sobre `logoUrl`: antes `logoUrl` (que suele venir de `product.brandLogoUrl`, el
+  // favicon de Google que arma `POPULAR_BRANDS_GUIDANCE`) le ganaba siempre al SVG local,
+  // asi que marcas como "Mobil" -que SI tienen `/brand-logos/mobil.svg`- mostraban el
+  // favicon de 32x32 con fondo blanco de Google, que a tamano de icono se ve casi en
+  // blanco. `logoUrl` solo deberia usarse como respaldo para marcas sin SVG local ni
+  // entrada en el catalogo.
+  const initialLogo = getBrandLogoUrl(cleanBrand, { brandLogoUrl: logoUrl });
   const [currentSrc, setCurrentSrc] = useState(initialLogo);
   const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
-    const next = logoUrl || getBrandLogoUrl(cleanBrand);
+    const next = getBrandLogoUrl(cleanBrand, { brandLogoUrl: logoUrl });
     setCurrentSrc(next);
     setImageFailed(false);
   }, [cleanBrand, logoUrl]);
