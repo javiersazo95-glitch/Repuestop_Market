@@ -10,7 +10,8 @@ import {
 import {
   buildQuoteRequestMessage, isQuoteExpired, QUOTE_DELIVERY_OPTIONS,
 } from '../utils/quoteFlow';
-import { buyerProfilePath } from '../routes/paths';
+import { buyerProfilePath, profilePath } from '../routes/paths';
+import { parseShippingMethods, resolveShippingService, shippingMethodsForLocation } from '../data/shippingMethods';
 
 /**
  * ¿Corresponde abrir un hilo nuevo en vez de seguir el que ya existe?
@@ -79,6 +80,15 @@ export default function QuotationRequestModal({
   );
   const providerId = product.proveedorId ?? product.sellerId ?? product.vendedor?.id;
   const requiresChassis = Boolean(product.requiereChasis || product.requiresChassis);
+  const buyerCommune = user?.comuna;
+  const sellerCommune = product.ciudadVendedor || product.comunaVendedor || product.storeCommune;
+  const configuredShippingMethods = parseShippingMethods(product.metodosEnvio);
+  const shippingOptions = [...new Set(shippingMethodsForLocation(
+    configuredShippingMethods.length ? configuredShippingMethods : QUOTE_DELIVERY_OPTIONS,
+    buyerCommune,
+    sellerCommune,
+  ).map((method) => resolveShippingService(method).name))];
+  const needsLocation = Boolean(isLoggedIn && user && !String(buyerCommune || '').trim());
 
   const updateField = (field, value) => setFormData((previous) => ({ ...previous, [field]: value }));
 
@@ -155,7 +165,15 @@ export default function QuotationRequestModal({
             </div>
           </article>
 
-          {conversation ? (
+          {needsLocation ? (
+            <div className="quote-request-success">
+              <AlertCircle size={54} />
+              <h3>Registra tu dirección para cotizar</h3>
+              <p>Necesitamos tu comuna para ofrecer únicamente los métodos de envío disponibles entre tu ubicación y la de la tienda.</p>
+              <button className="btn-submit-ticket" type="button" onClick={() => window.location.assign(profilePath('datos'))}>Registrar dirección <ChevronRight size={17} /></button>
+              <button className="btn-auth-secondary" type="button" onClick={onClose}>Cancelar</button>
+            </div>
+          ) : conversation ? (
             <div className="quote-request-success">
               <CheckCircle2 size={54} />
               <h3>¡Cotización solicitada correctamente!</h3>
@@ -169,7 +187,7 @@ export default function QuotationRequestModal({
 
               <div className="quote-request-grid">
                 <label><span>Cantidad</span><input type="number" min="1" max={Math.max(1, Number(product.stock || 99))} value={formData.quantity} onChange={(event) => updateField('quantity', event.target.value)} required /></label>
-                <label><span>Método de envío *</span><select value={formData.shippingMethod} onChange={(event) => updateField('shippingMethod', event.target.value)} required><option value="">Selecciona una opción</option>{QUOTE_DELIVERY_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
+                <label><span>Método de envío *</span><select value={formData.shippingMethod} onChange={(event) => updateField('shippingMethod', event.target.value)} required><option value="">Selecciona una opción</option>{shippingOptions.map((option) => <option key={option}>{option}</option>)}</select><small>{shippingOptions.length ? 'Opciones disponibles según las comunas de comprador y tienda.' : 'La tienda no tiene un método compatible para esta ubicación.'}</small></label>
               </div>
 
               <label><span className="quote-request-label-with-help">Patente o chasis {requiresChassis ? '*' : '(opcional)'} <CircleHelp size={16} /></span><input value={formData.chassis} onChange={(event) => updateField('chassis', event.target.value.toUpperCase())} required={requiresChassis} placeholder="Ej. BBCL12 o VIN" /></label>
@@ -177,7 +195,7 @@ export default function QuotationRequestModal({
 
               {submitError && <div className="modal-form-error"><AlertCircle size={16} /><span>{submitError}</span></div>}
 
-              <button type="submit" disabled={isSubmitting} className="btn-submit-ticket"><Send size={24} /><span>{isSubmitting ? 'Enviando solicitud...' : 'Enviar solicitud de cotización'}</span></button>
+              <button type="submit" disabled={isSubmitting || shippingOptions.length === 0} className="btn-submit-ticket"><Send size={24} /><span>{isSubmitting ? 'Enviando solicitud...' : 'Enviar solicitud de cotización'}</span></button>
               {!isLoggedIn && <p className="quote-request-login-hint"><LockKeyhole size={15} /> Necesitas iniciar sesión para enviar tu solicitud y guardar la conversación.</p>}
             </form>
           )}

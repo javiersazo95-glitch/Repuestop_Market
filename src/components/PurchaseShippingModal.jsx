@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, Check, ShoppingCart, Truck, X } from 'lucide-react';
-import { parseShippingMethods, resolveShippingService, shippingMethodCost, shippingMethodPrice } from '../data/shippingMethods';
+import { parseShippingMethods, resolveShippingService, shippingMethodCost, shippingMethodPrice, shippingMethodsForLocation } from '../data/shippingMethods';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { profilePath } from '../routes/paths';
 
 /** Sin tildes ni mayúsculas: el catálogo de geografía viene sin tildes y las direcciones con ellas. */
 function normalizarComuna(valor) {
@@ -20,34 +22,14 @@ export default function PurchaseShippingModal({ product, intent, initialMethod =
   // El usuario se lee aca y no se recibe por props: el modal lo montan la ficha del producto
   // y el carrito, y la regla de la comuna tiene que ser la misma en los dos.
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const buyerCommune = normalizarComuna(user?.comuna);
+  const sellerCommune = normalizarComuna(product?.ciudadVendedor || product?.comunaVendedor);
   const availableMethods = useMemo(() => {
     const methods = parseShippingMethods(product?.metodosEnvio);
     const disponibles = methods.length > 0 ? methods : ['Despacho a coordinar con la tienda'];
-    // El "Envío dentro de la comuna" es una tarifa intracomunal: la tienda la reparte ella
-    // misma dentro de SU comuna. Ofrecerla a un comprador de otra comuna le cobra $4.000 por
-    // un despacho que no existe -- y el vendedor queda obligado a un envío que no presta.
-    // A ese comprador le quedan el retiro en tienda y el envío fuera de la comuna.
-    //
-    // Se exige coincidencia POSITIVA: sin comuna del comprador -invitado, o cuenta sin
-    // dirección cargada- tampoco se ofrece. Es una tarifa de excepción y no se puede cobrar
-    // sobre un supuesto; el costo de equivocarse lo paga el comprador, o el vendedor con un
-    // despacho que no presta. El precio es que un invitado que SÍ vive en la comuna no la ve
-    // hasta identificarse.
-    //
-    // Sin comuna del VENDEDOR no hay con qué comparar y la lista queda como viene: el dato
-    // falta del lado de la tienda y castigar al comprador por eso no arregla nada.
-    const comunaComprador = normalizarComuna(user?.comuna);
-    const comunaVendedor = normalizarComuna(product?.ciudadVendedor);
-    if (!comunaVendedor || (comunaComprador && comunaComprador === comunaVendedor)) {
-      return disponibles;
-    }
-    const soloFuera = disponibles.filter(
-      (method) => resolveShippingService(method).name !== 'Envío dentro de la comuna',
-    );
-    // Si la tienda no ofreciera nada mas, se deja la lista original: dejar al comprador sin
-    // ninguna forma de recibir el producto es peor que ofrecerle una que habra que coordinar.
-    return soloFuera.length > 0 ? soloFuera : disponibles;
-  }, [product?.metodosEnvio, product?.ciudadVendedor, user?.comuna]);
+    return shippingMethodsForLocation(disponibles, buyerCommune, sellerCommune);
+  }, [product?.metodosEnvio, buyerCommune, sellerCommune]);
   const [selectedMethod, setSelectedMethod] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -59,6 +41,16 @@ export default function PurchaseShippingModal({ product, intent, initialMethod =
   }, [availableMethods, product?.id, intent, initialMethod]);
 
   if (!product || !intent) return null;
+
+  if (!buyerCommune) return (
+    <div className="purchase-shipping-backdrop" role="presentation" onMouseDown={onClose}>
+      <section className="purchase-shipping-modal" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
+        <header><span><Truck /></span><div><h2>Registra tu dirección para continuar</h2><p>Necesitamos tu comuna para mostrarte métodos de despacho válidos.</p></div></header>
+        <div className="purchase-shipping-product"><strong>Sin comuna registrada</strong><span>La disponibilidad depende de tu ubicación.</span></div>
+        <footer><button type="button" onClick={onClose}>Cancelar</button><button type="button" className="purchase-shipping-confirm" onClick={() => navigate(profilePath('datos'))}>Registrar dirección</button></footer>
+      </section>
+    </div>
+  );
 
   const submit = async () => {
     if (!selectedMethod) {

@@ -24,6 +24,7 @@ import RelatedProductsCarousel from './RelatedProductsCarousel';
 import ProductTopBadge from './ProductTopBadge';
 import { isProductTopActive } from '../utils/productTop';
 import { isOwnStoreProduct } from '../utils/purchaseProfile';
+import { profilePath } from '../routes/paths';
 
 // Compara el vehículo resuelto por patente contra un registro de compatibilidad
 // del repuesto. El modelo del vehículo puede traer la versión pegada (p.ej.
@@ -64,6 +65,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const [plateInput, setPlateInput] = useState('');
   const [plateSearching, setPlateSearching] = useState(false);
   const [plateError, setPlateError] = useState('');
+  const [locationRequired, setLocationRequired] = useState(false);
   const [plateVehicle, setPlateVehicle] = useState(null);
   const [plateMatchIndex, setPlateMatchIndex] = useState(null);
   const compatibilityItemRefs = useRef([]);
@@ -285,11 +287,19 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   // optimista de forma sincrónica (antes de su primer await), así que "Comprar ahora"
   // salta al carrito de inmediato en vez de esperar el viaje al backend.
   const buyNow = () => {
+    if (user && !String(user.comuna || '').trim()) {
+      setLocationRequired(true);
+      return;
+    }
     onAddToCart(product);
     nav.goCart();
   };
 
   const addToCartNow = async () => {
+    if (user && !String(user.comuna || '').trim()) {
+      setLocationRequired(true);
+      return;
+    }
     await onAddToCart(product);
   };
 
@@ -427,7 +437,10 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
               <>
                 <h2>Precio a cotizar</h2>
                 <p>Solicita el precio final y las alternativas de despacho directamente a la tienda.</p>
-                <button className="product-marketplace-primary quote" type="button" onClick={() => onOpenQuote(product)}><MessageCircle /> Cotizar con la tienda</button>
+                <button className="product-marketplace-primary quote" type="button" onClick={() => {
+                  if (user && !String(user.comuna || '').trim()) setLocationRequired(true);
+                  else onOpenQuote(product);
+                }}><MessageCircle /> Cotizar con la tienda</button>
               </>
             ) : (
               <>
@@ -748,6 +761,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
         brand={brandName}
         product={product}
       />
+      {locationRequired && <div className="purchase-shipping-backdrop" role="presentation" onMouseDown={() => setLocationRequired(false)}><section className="purchase-shipping-modal" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}><header><span><MapPin /></span><div><h2>Registra tu dirección para continuar</h2><p>Necesitamos tu comuna para mostrarte opciones de despacho válidas.</p></div></header><div className="purchase-shipping-product"><strong>Tu comuna define el despacho</strong><span>El envío local solo se ofrece dentro de la misma comuna.</span></div><footer><button type="button" onClick={() => setLocationRequired(false)}>Cancelar</button><button type="button" className="purchase-shipping-confirm" onClick={() => window.location.assign(profilePath('datos'))}>Registrar dirección</button></footer></section></div>}
     </main>
   );
 }

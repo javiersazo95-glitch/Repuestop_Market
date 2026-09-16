@@ -14,6 +14,31 @@ export function parseShippingMethods(methods) {
   return String(methods || '').split(',').map((method) => method.trim()).filter(Boolean);
 }
 
+function normalizeCommune(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es').trim();
+}
+
+/**
+ * Restringe las alternativas de despacho a la ubicación real de ambas partes.
+ * Retiro siempre se puede ofrecer; el envío local sólo dentro de la misma comuna
+ * y el envío fuera sólo entre comunas distintas. Sin comuna verificable no se
+ * ofrecen despachos, para no cotizar ni cobrar una modalidad imposible.
+ */
+export function shippingMethodsForLocation(methods, buyerCommune, sellerCommune) {
+  const buyer = normalizeCommune(buyerCommune);
+  const seller = normalizeCommune(sellerCommune);
+  const options = parseShippingMethods(methods);
+  if (!buyer || !seller) return options.filter((method) => resolveShippingService(method).name === 'Retiro en tienda');
+  const sameCommune = buyer === seller;
+  return options.filter((method) => {
+    const name = resolveShippingService(method).name;
+    if (name === 'Retiro en tienda') return true;
+    if (name === 'Envío dentro de la comuna') return sameCommune;
+    if (name === 'Envío fuera de la comuna') return !sameCommune;
+    return false;
+  });
+}
+
 /**
  * Ícono, etiqueta canónica y color de un método de envío.
  * `color`/`bg` los usan las vistas que pintan el método como pastilla de color.
