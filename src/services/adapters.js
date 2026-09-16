@@ -272,7 +272,7 @@ export function adaptProduct(dto) {
     brandOrigin: dto.brandOrigin || '',
     brandQuality: dto.brandQuality || '',
     brandDescription: dto.brandDescription || '',
-    brandLogoUrl: dto.brandLogoUrl || null,
+    brandLogoUrl: resolveMediaUrl(dto.brandLogoUrl) || null,
     brandSourceUrl: dto.brandSourceUrl || null,
   };
 }

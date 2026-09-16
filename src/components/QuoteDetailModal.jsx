@@ -98,6 +98,7 @@ export default function QuoteDetailModal({
   const [selectedImagePreview, setSelectedImagePreview] = useState(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = React.useRef(null);
+  const chatTextareaRef = React.useRef(null);
 
   const requestMessage = useMemo(() => {
     const structured = messages.find((message) => /Solicitud de cotización por\s+/i.test(message.texto || ''));
@@ -491,6 +492,7 @@ export default function QuoteDetailModal({
                 onChange={handleImageSelected}
               />
               <textarea
+                ref={chatTextareaRef}
                 value={chatMessage}
                 onChange={(event) => setChatMessage(event.target.value)}
                 placeholder={canWriteText
@@ -551,8 +553,14 @@ export default function QuoteDetailModal({
                 type="button"
                 className="quote-ws-primary-button"
                 disabled={!canWriteText}
-                title={chatLocked ? 'La cotización ya no admite cambios' : undefined}
-                onClick={() => setChatMessage('Necesito una modificación en la cotización: ')}
+                title={chatLocked
+                  ? 'La cotización ya no admite cambios'
+                  : !canWriteText ? 'Podrás escribir cuando la tienda responda' : undefined}
+                onClick={() => {
+                  setChatMessage('Necesito una modificación en la cotización: ');
+                  chatTextareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  chatTextareaRef.current?.focus();
+                }}
               >
                 <Pencil size={15} /> Solicitar modificación
               </button>
@@ -606,10 +614,10 @@ export default function QuoteDetailModal({
                     app: cotizar a ciegas es como el vendedor termina cobrando menos de
                     lo que cree. `onApplySuggested` escribe el precio por unidad. */}
                 <CommissionSummaryCard
-                  basePrice={finalPrice}
+                  basePrice={finalPrice + (isLocalDelivery ? localShippingCost : 0)}
                   isFounder={Boolean(isFounder ?? user?.founder ?? user?.fundador)}
                   suggestedContextLabel="por unidad"
-                  onApplySuggested={(value) => setUnitPrice(String(Math.min(Math.ceil((value + normalizedDiscount) / quantity), 99999999)))}
+                  onApplySuggested={(value) => setUnitPrice(String(Math.min(Math.ceil((Math.max(0, value - (isLocalDelivery ? localShippingCost : 0)) + normalizedDiscount) / quantity), 99999999)))}
                 />
               </div>
               <aside className="quote-editor-total-card">
