@@ -1325,6 +1325,25 @@ export async function getMediationChatApi(pedidoId, proveedorId) {
   return fetchApi(`/pedidos/${pedidoId}/mediacion-chat${proveedorQuery(proveedorId)}`, { method: 'GET' });
 }
 
+/**
+ * Paso 1 del checklist del vendedor: confirma stock y condiciones de entrega.
+ * Ver docs/planes/plan_validacion_compatibilidad_pedido.md en el monorepo.
+ */
+export async function confirmOrderStockDeliveryApi(pedidoId) {
+  return fetchApi(`/pedidos/${pedidoId}/confirmaciones/stock-entrega`, { method: 'POST' });
+}
+
+/**
+ * Paso 2: confirma la compatibilidad de los repuestos con el vehículo del comprador.
+ * Sin `pedidoItemIds` confirma todos los ítems del vendedor en ese pedido.
+ */
+export async function confirmOrderCompatibilityApi(pedidoId, pedidoItemIds) {
+  return fetchApi(`/pedidos/${pedidoId}/confirmaciones/compatibilidad`, {
+    method: 'POST',
+    body: JSON.stringify({ pedidoItemIds: pedidoItemIds ?? null }),
+  });
+}
+
 /** Inicia explícitamente el chat postventa comprador-vendedor. */
 export async function startSellerChatApi(pedidoId, proveedorId) {
   return fetchApi(`/pedidos/${pedidoId}/chat-vendedor${proveedorQuery(proveedorId)}`, { method: 'POST' });

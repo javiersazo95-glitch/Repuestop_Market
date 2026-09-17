@@ -14988,6 +14988,33 @@ input, select, textarea {
 .cart-document-section { margin: 12px 0; padding: 12px; border: 1px solid #dbe6f4; border-radius: 12px; background: #fff; }
 .cart-document-heading { display: flex; align-items: flex-start; gap: 8px; }.cart-document-heading > svg { flex: 0 0 auto; color: #1268f3; }.cart-document-heading div { display: grid; gap: 2px; }.cart-document-heading strong { color: #173253; font-size: 12px; }.cart-document-heading small { color: #7b899d; font-size: 10px; line-height: 1.35; }
 .cart-document-options { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }.cart-document-options label { min-height: 52px; padding: 8px; display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 7px; border: 1px solid #dfe5ee; border-radius: 10px; cursor: pointer; }.cart-document-options label.selected { border-color: #1268f3; background: #f1f7ff; }.cart-document-options input { width: 15px; height: 15px; accent-color: #1268f3; }.cart-document-options svg { width: 17px; color: #4c6f9c; }.cart-document-options span { display: grid; gap: 1px; }.cart-document-options strong { color: #213650; font-size: 11.5px; }.cart-document-options small { color: #8895a7; font-size: 9.5px; }
+/* Checklist de confirmacion del vendedor (plan_validacion_compatibilidad_pedido). */
+.seller-checklist { margin: 14px 0; padding: 14px; border: 1px solid #d6e0ed; border-radius: 10px; background: #fbfdff; }
+.seller-checklist-head h3 { margin: 0 0 4px; font-size: 14px; color: #1d2e45; }
+.seller-checklist-head p { margin: 0 0 12px; font-size: 11.5px; color: #52647a; line-height: 1.45; }
+.seller-checklist-step { padding: 10px 0; border-top: 1px solid #e6edf6; }
+.seller-checklist-step:first-of-type { border-top: 0; }
+.seller-checklist-step.is-locked { opacity: .5; }
+.seller-checklist-step-head { display: flex; align-items: center; gap: 8px; }
+.seller-checklist-step-head strong { font-size: 12.5px; color: #1d2e45; }
+.seller-checklist-step-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #e6edf6; color: #52647a; font-size: 11px; font-weight: 750; flex: 0 0 auto; }
+.seller-checklist-step.is-done .seller-checklist-step-num { background: #dcfce7; color: #15803d; }
+.seller-checklist-step-body { margin-top: 9px; display: grid; gap: 9px; }
+.seller-checklist-hint { margin: 0; font-size: 11.5px; color: #52647a; line-height: 1.45; }
+.seller-checklist-action { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: 100%; }
+.seller-checklist-vehicle { display: flex; align-items: center; gap: 7px; padding: 8px 10px; border-radius: 8px; background: #eef4ff; color: #1d2e45; font-size: 11.5px; }
+.seller-checklist-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.seller-checklist-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 1px solid #e6edf6; border-radius: 8px; background: #fff; }
+.seller-checklist-item-name { font-size: 12px; color: #1d2e45; }
+.seller-checklist-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+.seller-checklist-badge.tone-ok { background: #dcfce7; color: #15803d; }
+.seller-checklist-badge.tone-alerta { background: #fee2e2; color: #b91c1c; }
+.seller-checklist-badge.tone-neutro { background: #f1f5f9; color: #52647a; }
+.seller-checklist-warning { padding: 10px 12px; border: 1px solid #fecaca; border-radius: 8px; background: #fff5f5; display: grid; gap: 8px; }
+.seller-checklist-warning p { margin: 0; font-size: 11.5px; color: #7f1d1d; line-height: 1.45; }
+.seller-checklist-message { margin: 0; padding: 8px 10px; border-left: 3px solid #fca5a5; background: #fff; color: #52647a; font-size: 11.5px; line-height: 1.5; }
+.seller-checklist-warning-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.seller-checklist-warning-actions button { display: inline-flex; align-items: center; gap: 6px; }
 .checkout-vehicle-active { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border: 1px solid #d6e0ed; border-radius: 8px; background: #fbfdff; cursor: pointer; }.checkout-vehicle-active span { display: grid; gap: 2px; }.checkout-vehicle-active strong { color: #1d2e45; font-size: 12.5px; }.checkout-vehicle-active small { color: #52647a; font-size: 11px; }
 .cart-invoice-fields { margin-top: 10px; display: grid; gap: 7px; }.cart-invoice-fields label { display: grid; gap: 4px; }.cart-invoice-fields label > span { color: #52647a; font-size: 10.5px; font-weight: 750; }.cart-invoice-fields input { width: 100%; min-height: 38px; padding: 0 10px; border: 1px solid #d6e0ed; border-radius: 8px; color: #1d2e45; background: #fbfdff; font-size: 12px; outline: 0; }.cart-invoice-fields input:focus { border-color: #67a2fa; box-shadow: 0 0 0 3px rgba(18,104,243,.09); }
 
