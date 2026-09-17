@@ -319,8 +319,15 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  * Dias restantes antes de que el anuncio venza. Los anuncios antiguos no guardan
  * `expiresAt`, asi que se calcula desde `publishedAt` + AD_DURATION_DAYS.
  * Devuelve null si no hay ninguna fecha utilizable.
+ *
+ * Un anuncio que sigue EN REVISION (PENDIENTE) todavia no cuenta con ningun
+ * vencimiento: nunca estuvo visible en el Mural, asi que "vence en X dias" o
+ * "Vencido" es informacion falsa que solo confunde al dueño mientras espera la
+ * aprobacion. El vencimiento siempre parte desde que el anuncio se publica
+ * (queda APROBADO), no desde que se crea o se reenvia a revision.
  */
 export function getAdExpiryInfo(ad) {
+  if (ad?.moderationStatus && ad.moderationStatus !== AD_MODERATION_STATUS.APROBADO) return null;
   const expiryMs = ad?.expiresAt
     ? new Date(ad.expiresAt).getTime()
     : ad?.publishedAt

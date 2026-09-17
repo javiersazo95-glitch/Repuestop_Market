@@ -1479,6 +1479,15 @@ export async function updateAdAgendaApi(adId, payload) {
 }
 
 /**
+ * Agrega 30 dias de vigencia al anuncio (`POST /anuncios/{id}/renovar`), cobrando
+ * en el mismo request la tarifa de su tier actual. A diferencia de `updateAdApi`
+ * no toca moderacion ni contenido: el anuncio no vuelve a PENDIENTE.
+ */
+export async function renewAdApi(adId) {
+  return fetchApi(`/anuncios/${adId}/renovar`, { method: 'POST' });
+}
+
+/**
  * Baja logica: el backend solo hace `setActivo(false)` y conserva el
  * `moderationStatus`, asi que el anuncio sigue llegando en `GET /anuncios/mios`.
  * Quien lo consuma tiene que ocultarlo por su cuenta (ver `adsStorage.js`).

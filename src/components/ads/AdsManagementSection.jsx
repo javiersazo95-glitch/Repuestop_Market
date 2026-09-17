@@ -27,6 +27,7 @@ import AdAppointmentModal from './AdAppointmentModal';
 import TokensHistoryModal from './TokensHistoryModal';
 import RechargeTokensModal from './RechargeTokensModal';
 import UpgradeAdRankModal from './UpgradeAdRankModal';
+import RenewAdModal from './RenewAdModal';
 import EditAdModal from './EditAdModal';
 import CreateAdModal from './CreateAdModal';
 import CapturerContactCard from '../CapturerContactCard';
@@ -97,6 +98,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
   const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [adToUpgrade, setAdToUpgrade] = useState(null);
+  const [adToRenew, setAdToRenew] = useState(null);
   const [adToEdit, setAdToEdit] = useState(null);
   // Planes de origen y destino de la ultima mejora, para que el formulario pueda
   // destacar SOLO lo que se acaba de desbloquear.
@@ -249,6 +251,11 @@ export default function AdsManagementSection({ onNavigateToMural }) {
   };
 
   const handleUpgradeSuccess = (saved, balance) => {
+    replaceAd(saved);
+    setTokensBalanceState(balance);
+  };
+
+  const handleRenewSuccess = (saved, balance) => {
     replaceAd(saved);
     setTokensBalanceState(balance);
   };
@@ -627,6 +634,16 @@ export default function AdsManagementSection({ onNavigateToMural }) {
                         >
                           <Zap size={15} />
                         </button>
+                        {ad.moderationStatus === AD_MODERATION_STATUS.APROBADO && (
+                          <button
+                            type="button"
+                            className="btn-mgmt-icon"
+                            onClick={() => setAdToRenew(ad)}
+                            title="Agregar 30 días con Monedas RepuesTop"
+                          >
+                            <Clock3 size={15} />
+                          </button>
+                        )}
                         {ad.hasOnlineBooking && (
                           <button
                             type="button"
@@ -667,7 +684,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
                             <p>
                               {isRejected
                                 ? `${ad.rejectionReason || 'Sin motivo informado.'} Corrige los datos y se vuelve a revisar automáticamente al guardar.`
-                                : 'Los anuncios duran 30 días en el mural. Edítalo y guárdalo para renovar su vigencia.'}
+                                : 'Los anuncios duran 30 días en el mural. Usa el botón de reloj para agregar 30 días con Monedas RepuesTop.'}
                             </p>
                           </div>
                         </div>
@@ -709,6 +726,16 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           onOpenRechargeModal={() => setIsRechargeModalOpen(true)}
           onUpgradeSuccess={handleUpgradeSuccess}
           onActivateFeatures={handleActivateFeatures}
+        />
+      )}
+
+      {adToRenew && (
+        <RenewAdModal
+          ad={adToRenew}
+          tokensBalance={tokensBalance}
+          onClose={() => setAdToRenew(null)}
+          onOpenRechargeModal={() => setIsRechargeModalOpen(true)}
+          onRenewSuccess={handleRenewSuccess}
         />
       )}
 

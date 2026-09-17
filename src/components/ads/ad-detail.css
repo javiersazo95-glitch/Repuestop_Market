@@ -44,16 +44,6 @@
   justify-content: space-between;
   gap: 16px;
 }
-.ad-detail-tier {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
-  border-radius: 999px;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-}
 .ad-detail-title {
   margin: 12px 0 8px;
   font-size: 30px;
