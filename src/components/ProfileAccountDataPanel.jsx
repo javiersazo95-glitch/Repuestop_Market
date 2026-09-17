@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  Building2, Camera, Check, CreditCard, Image as ImageIcon, Info, Lock, Mail,
+  AlertCircle, Building2, Camera, Check, CreditCard, FileText, Image as ImageIcon, Info, Lock, Mail,
   Pencil, Phone, Save, Search, Truck, Wallet, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -56,12 +56,26 @@ export default function ProfileAccountDataPanel({
   const [isSaving, setIsSaving] = useState(false);
   const [nameDraft, setNameDraft] = useState(user?.userName || user?.nombre || '');
   const [phoneDraft, setPhoneDraft] = useState(user?.phone || user?.telefono || '');
-  const [taxIdDraft, setTaxIdDraft] = useState(user?.taxId || '');
+  const [taxIdDraft, setTaxIdDraft] = useState(
+    isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || '')
+  );
+  const [facturaRazonSocialDraft, setFacturaRazonSocialDraft] = useState(user?.facturaRazonSocial || '');
+  const [facturaGiroDraft, setFacturaGiroDraft] = useState(user?.facturaGiro || '');
   const [shippingSelectionsDraft, setShippingSelectionsDraft] = useState(() => parseShippingSelections(''));
   const [specialistBrandIdsDraft, setSpecialistBrandIdsDraft] = useState([]);
   const [availableVehicleBrands, setAvailableVehicleBrands] = useState([]);
   const [showSpecialistBrandsModal, setShowSpecialistBrandsModal] = useState(false);
   const [specialistBrandSearch, setSpecialistBrandSearch] = useState('');
+
+  useEffect(() => {
+    if (!isEditing) {
+      setNameDraft(user?.userName || user?.nombre || '');
+      setPhoneDraft(user?.phone || user?.telefono || '');
+      setTaxIdDraft(isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || ''));
+      setFacturaRazonSocialDraft(user?.facturaRazonSocial || '');
+      setFacturaGiroDraft(user?.facturaGiro || '');
+    }
+  }, [user, storeInfo, isSeller, isEditing]);
 
   // Direcciones: `RT_tienda` se actualiza sola al guardar en BuyerAddressBook.jsx;
   // esto refresca storeInfo en el perfil para que los datos de la tienda se vean
@@ -82,26 +96,34 @@ export default function ProfileAccountDataPanel({
     return () => { cancelled = true; };
   }, [isSeller, isEditing, availableVehicleBrands.length]);
 
+  // Validación reactiva en vivo para feedback inmediato
+  const cleanRut = String(taxIdDraft || '').replace(/[^0-9kK]/g, '').toUpperCase();
+  const isRutEmpty = cleanRut.length === 0;
+  const isRutValid = isRutEmpty || isValidRut(taxIdDraft);
+  const isRutInvalid = !isRutEmpty && !isValidRut(taxIdDraft);
+
+  const isNameValid = nameDraft.trim().length >= 2;
+  const isPhoneValid = !phoneDraft.trim() || isValidClPhone(phoneDraft);
+  const isProfileFormValid = isNameValid && isPhoneValid && (isSeller || isRutValid);
+
   // Mismas reglas que ya existen en el resto de la app: el chequeo de dígito
   // verificador del RUT es el que usa Retirar dinero (src/services/adapters.js),
   // y el celular sigue el formato chileno estándar (9 + 8 dígitos).
   const validateProfileForm = () => {
     const errors = {};
 
-    if (nameDraft.trim().length < 2) {
+    if (!isNameValid) {
       errors.name = 'Ingresa un nombre válido.';
     }
 
-    if (phoneDraft.trim() && !isValidClPhone(phoneDraft)) {
+    if (!isPhoneValid) {
       errors.phone = 'Ingresa un celular chileno válido, ej: +56 9 1234 5678.';
     }
 
-    if (!isSeller) {
-      if (!taxIdDraft.trim()) {
-        errors.taxId = 'Ingresa tu RUT.';
-      } else if (!isValidRut(taxIdDraft)) {
-        errors.taxId = 'El RUT ingresado no es válido.';
-      }
+    if (!isSeller && isRutInvalid) {
+      errors.taxId = cleanRut.length < 8
+        ? 'RUT incompleto (ingresa al menos 8 caracteres con dígito verificador).'
+        : 'El RUT ingresado no es válido (revisa el dígito verificador).';
     }
 
     if (isSeller) {
@@ -130,12 +152,16 @@ export default function ProfileAccountDataPanel({
     setSaveStatus(null);
 
     const payload = {
-      userName: nameDraft,
-      phone: phoneDraft,
+      userName: nameDraft.trim(),
+      phone: phoneDraft.trim(),
     };
 
     if (!isSeller) {
-      payload.taxId = taxIdDraft;
+      const cleanRut = taxIdDraft.trim();
+      payload.facturaRut = cleanRut;
+      payload.taxId = cleanRut;
+      payload.facturaRazonSocial = facturaRazonSocialDraft.trim();
+      payload.facturaGiro = facturaGiroDraft.trim();
     }
 
     // Nombre y RUT de la tienda ya no se editan desde este formulario (ver
@@ -199,7 +225,9 @@ export default function ProfileAccountDataPanel({
                 setFormErrors({});
                 setNameDraft(user?.userName || user?.nombre || '');
                 setPhoneDraft(user?.phone || user?.telefono || '');
-                setTaxIdDraft(storeInfo?.taxId || user?.taxId || '');
+                setTaxIdDraft(isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || ''));
+                setFacturaRazonSocialDraft(user?.facturaRazonSocial || '');
+                setFacturaGiroDraft(user?.facturaGiro || '');
                 setShippingSelectionsDraft(parseShippingSelections(storeInfo?.shippingMethods));
                 setSpecialistBrandIdsDraft((storeInfo?.marcasEspecialistas || []).map((brand) => String(brand.id)));
               }}
@@ -228,12 +256,35 @@ export default function ProfileAccountDataPanel({
                 <input
                   type="text"
                   value={nameDraft}
-                  onChange={(e) => setNameDraft(e.target.value)}
+                  onChange={(e) => {
+                    setNameDraft(e.target.value);
+                    if (formErrors.name) {
+                      setFormErrors((prev) => {
+                        const { name, ...rest } = prev;
+                        return rest;
+                      });
+                    }
+                  }}
                   maxLength={80}
                   required
-                  className={formErrors.name ? 'input-invalid' : ''}
+                  className={
+                    formErrors.name || (nameDraft.trim().length > 0 && !isNameValid)
+                      ? 'input-invalid has-error'
+                      : (nameDraft.trim().length >= 2)
+                      ? 'has-success'
+                      : ''
+                  }
                 />
-                {formErrors.name && <small className="field-error-text">{formErrors.name}</small>}
+                {nameDraft.trim().length > 0 && !isNameValid && (
+                  <small className="auth-field-error">
+                    <AlertCircle size={13} /> Ingresa un nombre válido (mínimo 2 caracteres).
+                  </small>
+                )}
+                {formErrors.name && !nameDraft.trim() && (
+                  <small className="auth-field-error">
+                    <AlertCircle size={13} /> {formErrors.name}
+                  </small>
+                )}
               </div>
               <div className="form-group">
                 <label>
@@ -244,32 +295,131 @@ export default function ProfileAccountDataPanel({
                   type="tel"
                   inputMode="tel"
                   value={phoneDraft}
-                  onChange={(e) => setPhoneDraft(sanitizePhoneInput(e.target.value))}
+                  onChange={(e) => {
+                    setPhoneDraft(sanitizePhoneInput(e.target.value));
+                    if (formErrors.phone) {
+                      setFormErrors((prev) => {
+                        const { phone, ...rest } = prev;
+                        return rest;
+                      });
+                    }
+                  }}
                   placeholder="+56 9 1234 5678"
                   maxLength={20}
-                  className={formErrors.phone ? 'input-invalid' : ''}
+                  className={
+                    formErrors.phone || (phoneDraft.trim() && !isPhoneValid)
+                      ? 'input-invalid has-error'
+                      : (phoneDraft.trim() && isPhoneValid)
+                      ? 'has-success'
+                      : ''
+                  }
                 />
-                {formErrors.phone && <small className="field-error-text">{formErrors.phone}</small>}
-                <small className="form-helper-text">Solo números y, al inicio, el signo + (código de país).</small>
+                {phoneDraft.trim() && !isPhoneValid && (
+                  <small className="auth-field-error">
+                    <AlertCircle size={13} /> Ingresa un celular chileno válido (ej: +56 9 1234 5678).
+                  </small>
+                )}
+                {phoneDraft.trim() && isPhoneValid && (
+                  <small className="auth-field-success">
+                    <Check size={13} /> Celular válido
+                  </small>
+                )}
+                {!phoneDraft.trim() && (
+                  <small className="form-helper-text">Solo números y, al inicio, el signo + (código de país).</small>
+                )}
+                {formErrors.phone && !phoneDraft.trim() && (
+                  <small className="auth-field-error">
+                    <AlertCircle size={13} /> {formErrors.phone}
+                  </small>
+                )}
               </div>
             </div>
             {!isSeller && (
-              <div className="form-group">
-                <label>
-                  RUT / Identificador Fiscal
-                  <span className="char-counter">{taxIdDraft.length}/12</span>
-                </label>
-                <input
-                  type="text"
-                  value={taxIdDraft}
-                  onChange={(e) => setTaxIdDraft(formatRut(e.target.value))}
-                  placeholder="12.345.678-K"
-                  maxLength={12}
-                  required
-                  className={formErrors.taxId ? 'input-invalid' : ''}
-                />
-                {formErrors.taxId && <small className="field-error-text">{formErrors.taxId}</small>}
-              </div>
+              <>
+                <div className="form-section-title" style={{ marginTop: '20px' }}>Datos para Facturación (Opcional)</div>
+                <small className="form-helper-text" style={{ marginBottom: '12px', display: 'block' }}>
+                  Guarda estos datos para no tener que escribirlos cada vez que elijas &ldquo;Factura&rdquo; al pagar.
+                </small>
+                <div className="form-group">
+                  <label>
+                    RUT para Facturación
+                    <span className="char-counter">{taxIdDraft.length}/12</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={taxIdDraft}
+                    onChange={(e) => {
+                      setTaxIdDraft(formatRut(e.target.value));
+                      if (formErrors.taxId) {
+                        setFormErrors((prev) => {
+                          const { taxId, ...rest } = prev;
+                          return rest;
+                        });
+                      }
+                    }}
+                    placeholder="12.345.678-K"
+                    maxLength={12}
+                    className={
+                      (formErrors.taxId || isRutInvalid)
+                        ? 'input-invalid has-error'
+                        : (cleanRut.length >= 8 && isValidRut(taxIdDraft))
+                        ? 'has-success'
+                        : ''
+                    }
+                  />
+                  {isRutEmpty && (
+                    <small className="form-helper-text">Opcional. Si lo completas, se validará el dígito verificador.</small>
+                  )}
+                  {cleanRut.length > 0 && cleanRut.length < 8 && (
+                    <small className="auth-field-error">
+                      <AlertCircle size={13} /> RUT incompleto (ingresa al menos 8 caracteres con dígito verificador).
+                    </small>
+                  )}
+                  {cleanRut.length >= 8 && !isValidRut(taxIdDraft) && (
+                    <small className="auth-field-error">
+                      <AlertCircle size={13} /> El RUT ingresado no es válido (revisa el dígito verificador).
+                    </small>
+                  )}
+                  {cleanRut.length >= 8 && isValidRut(taxIdDraft) && (
+                    <small className="auth-field-success">
+                      <Check size={13} /> RUT válido
+                    </small>
+                  )}
+                  {formErrors.taxId && isRutEmpty && (
+                    <small className="auth-field-error">
+                      <AlertCircle size={13} /> {formErrors.taxId}
+                    </small>
+                  )}
+                </div>
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label>
+                      Razón Social
+                      <span className="char-counter">{facturaRazonSocialDraft.length}/180</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={facturaRazonSocialDraft}
+                      onChange={(e) => setFacturaRazonSocialDraft(e.target.value)}
+                      placeholder="Ej. Comercial Repuestos SpA"
+                      maxLength={180}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>
+                      Giro Comercial
+                      <span className="char-counter">{facturaGiroDraft.length}/150</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={facturaGiroDraft}
+                      onChange={(e) => setFacturaGiroDraft(e.target.value)}
+                      placeholder="Ej. Venta de repuestos automotrices"
+                      maxLength={150}
+                    />
+                  </div>
+                </div>
+              </>
             )}
 
             {/* La dirección comercial de despacho (con región/comuna) ya se
@@ -351,10 +501,27 @@ export default function ProfileAccountDataPanel({
                 así que repetirla acá adentro era el mismo widget dos veces. */}
 
             <div className="profile-data-form-actions" style={{ marginTop: '20px' }}>
-              <button type="button" className="btn-auth-secondary" onClick={() => { setIsEditing(false); setFormErrors({}); }}>
+              <button
+                type="button"
+                className="btn-auth-secondary"
+                onClick={() => {
+                  setIsEditing(false);
+                  setFormErrors({});
+                  setNameDraft(user?.userName || user?.nombre || '');
+                  setPhoneDraft(user?.phone || user?.telefono || '');
+                  setTaxIdDraft(isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || ''));
+                  setFacturaRazonSocialDraft(user?.facturaRazonSocial || '');
+                  setFacturaGiroDraft(user?.facturaGiro || '');
+                }}
+              >
                 Cancelar
               </button>
-              <button type="submit" className="btn-auth-primary" disabled={isSaving} style={{ width: 'auto' }}>
+              <button
+                type="submit"
+                className="btn-auth-primary"
+                disabled={isSaving || !isProfileFormValid}
+                style={{ width: 'auto' }}
+              >
                 <Save size={16} /> {isSaving ? 'Guardando...' : 'Guardar Información'}
               </button>
             </div>
@@ -401,8 +568,8 @@ export default function ProfileAccountDataPanel({
                     </div>
                   )}
                   <div className="details-info-row">
-                    <span className="info-label">RUT / Identificador Fiscal</span>
-                    <strong className="info-value">{storeInfo?.taxId || user?.taxId || '—'}</strong>
+                    <span className="info-label">{isSeller ? 'RUT de la Tienda' : 'RUT (Facturación)'}</span>
+                    <strong className="info-value">{isSeller ? (storeInfo?.taxId || user?.taxId || '—') : (user?.facturaRut || user?.taxId || '—')}</strong>
                   </div>
                   {!isSeller && (
                     <div className="details-info-row">
@@ -422,6 +589,18 @@ export default function ProfileAccountDataPanel({
                     <span className="info-label"><Phone size={13} /> Teléfono Móvil</span>
                     <strong className="info-value">{user?.phone || user?.telefono || '—'}</strong>
                   </div>
+                  {!isSeller && (
+                    <>
+                      <div className="details-info-row">
+                        <span className="info-label"><FileText size={13} /> Razón Social (Facturación)</span>
+                        <strong className="info-value">{user?.facturaRazonSocial || '—'}</strong>
+                      </div>
+                      <div className="details-info-row">
+                        <span className="info-label"><FileText size={13} /> Giro Comercial (Facturación)</span>
+                        <strong className="info-value">{user?.facturaGiro || '—'}</strong>
+                      </div>
+                    </>
+                  )}
                   {isSeller && (
                     <div className="details-info-row details-info-row-wide">
                       <span className="info-label">Marcas especialistas</span>
