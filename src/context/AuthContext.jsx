@@ -6,10 +6,9 @@ const AuthContext = createContext(null);
 function normalizeUserMedia(profile) {
   if (!profile) return profile;
   const rawRole = String(profile.role || profile.rol || '').toUpperCase();
-  // userId identifica la cuenta; sellerId/proveedorId identifica la tienda. No son
-  // intercambiables y las rutas /proveedores/{id} siempre requieren el segundo.
+  // userId identifica la cuenta; sellerId/proveedorId identifica la tienda; buyerId/compradorId identifica al comprador.
   const sellerId = profile.sellerId ?? profile.proveedorId ?? profile.tiendaId ?? null;
-  const buyerId = profile.buyerId ?? profile.compradorId ?? profile.userId ?? profile.id;
+  const buyerId = profile.buyerId ?? profile.compradorId ?? null;
   return {
     ...profile,
     role: profile.role || (rawRole === 'SELLER' ? 'SELLER' : 'BUYER'),
