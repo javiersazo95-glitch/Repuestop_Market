@@ -280,6 +280,25 @@ export async function registerSellerApi(sellerData) {
   });
 }
 
+export async function verifyRegisterEmailApi(email, code) {
+  return fetchApi('/auth/register/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: String(email || '').trim().toLowerCase(),
+      code: String(code || '').trim(),
+    }),
+  });
+}
+
+export async function resendRegisterCodeApi(email) {
+  return fetchApi('/auth/register/resend-code', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: String(email || '').trim().toLowerCase(),
+    }),
+  });
+}
+
 export async function getRecentSellersApi() {
   return fetchApi('/auth/recent-sellers', {
     method: 'GET',

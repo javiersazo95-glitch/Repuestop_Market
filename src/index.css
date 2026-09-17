@@ -2889,8 +2889,10 @@ input, select, textarea {
 }
 
 .btn-auth-primary:disabled {
-  opacity: 0.7;
+  opacity: 0.45;
   cursor: not-allowed;
+  filter: grayscale(0.15);
+  box-shadow: none;
 }
 
 .btn-auth-secondary {
@@ -17594,6 +17596,113 @@ input, select, textarea {
 .auth-terms { display: flex; align-items: flex-start; gap: 9px; margin: 4px 0 14px; font-size: 12px; line-height: 1.5; color: var(--text-secondary); cursor: pointer; }
 .auth-terms input { width: 16px; height: 16px; margin-top: 1px; flex: 0 0 auto; accent-color: var(--color-brand-blue); }
 .auth-terms a { font-weight: 700; color: var(--color-brand-blue); }
+
+/* --- Mensajes de validación activa en AuthModal --- */
+.auth-field-error {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.auth-field-success {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.auth-field-warning {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: #d97706;
+  font-weight: 600;
+}
+
+.auth-field-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.input-with-icon.has-error input,
+input.has-error {
+  border-color: #ef4444 !important;
+  background-color: #fffbfb !important;
+}
+
+.input-with-icon.has-success input,
+input.has-success {
+  border-color: #86efac !important;
+}
+
+.password-strength-container {
+  margin-top: 6px;
+}
+
+.password-strength-meter {
+  display: flex;
+  gap: 4px;
+  height: 4px;
+  width: 100%;
+}
+
+.password-strength-meter .bar {
+  flex: 1;
+  border-radius: 2px;
+  background: #e2e8f0;
+  transition: background 0.25s ease;
+}
+
+.password-strength-meter.strength-1 .bar:nth-child(1) {
+  background: #ef4444;
+}
+
+.password-strength-meter.strength-2 .bar:nth-child(-n+2) {
+  background: #f59e0b;
+}
+
+.password-strength-meter.strength-3 .bar:nth-child(-n+3) {
+  background: #10b981;
+}
+
+.password-strength-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.password-strength-meta .char-counter {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.auth-validation-summary {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  margin: 10px 0 2px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #64748b;
+}
 
 /* --- Aviso de re-aceptacion de terminos (cambio de version del documento) --- */
 /* El aviso del contrato de adhesion BLOQUEA el panel y no tiene boton de cerrar, asi que

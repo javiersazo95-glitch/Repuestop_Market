@@ -137,7 +137,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
   const [selectedRole, setSelectedRole] = useState('BUYER'); // 'BUYER' | 'SELLER'
   const [isRegistrationFlow, setIsRegistrationFlow] = useState(false);
   
-  const { login, loginWithGoogle, registerBuyer } = useAuth();
+  const { login, loginWithGoogle, registerBuyer, verifyRegisterEmail, resendRegisterCode } = useAuth();
 
   // Form State
   const [email, setEmail] = useState('');
@@ -183,12 +183,56 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
 
   // Email check state (Buyer Register)
   const [emailTakenWarning, setEmailTakenWarning] = useState(null);
-  const [, setIsCheckingEmail] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [emailIsAvailable, setEmailIsAvailable] = useState(null);
+  const [buyerTouched, setBuyerTouched] = useState({
+    name: false,
+    email: false,
+    phone: false,
+    password: false,
+    address: false,
+  });
+
+  // Validaciones reactivas para registro de comprador
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const isNameValid = buyerName.trim().split(/\s+/).filter(Boolean).length >= 2;
+  const isEmailFormatValid = emailRegex.test(email.trim());
+  const isEmailValid = isEmailFormatValid && !emailTakenWarning;
+  const isPasswordLengthValid = password.length >= 6 && password.length <= 32;
+  const isAddressValid = Boolean(buyerStreet.trim().length > 0 && buyerComuna?.id);
+
+  const getPasswordStrength = (pwd) => {
+    if (!pwd || pwd.length < 6) return { score: 1, label: 'Débil', color: '#ef4444' };
+    let score = 1;
+    const hasLetters = /[a-zA-Z]/.test(pwd);
+    const hasNumbers = /\d/.test(pwd);
+    const hasSpecial = /[^a-zA-Z0-9]/.test(pwd);
+    if (pwd.length >= 6 && hasLetters && hasNumbers) score = 2;
+    if (pwd.length >= 8 && ((hasLetters && hasNumbers && hasSpecial) || pwd.length >= 10)) score = 3;
+
+    if (score === 3) return { score: 3, label: 'Segura', color: '#10b981' };
+    if (score === 2) return { score: 2, label: 'Aceptable', color: '#f59e0b' };
+    return { score: 1, label: 'Mínimo 6 car.', color: '#ef4444' };
+  };
+  const passwordStrength = getPasswordStrength(password);
+
+  const isBuyerFormValid = Boolean(
+    isNameValid &&
+    isEmailValid &&
+    isPasswordLengthValid &&
+    isAddressValid &&
+    acceptsTerms
+  );
 
   // UI status
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+
+  // Register Email Verification State
+  const [registerVerifyCode, setRegisterVerifyCode] = useState('');
+  const [registerCooldown, setRegisterCooldown] = useState(0);
+  const [isResendingRegisterCode, setIsResendingRegisterCode] = useState(false);
 
   // Countdown timer for resending recovery code
   useEffect(() => {
@@ -198,6 +242,15 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     }, 1000);
     return () => window.clearInterval(timer);
   }, [recoverCooldown]);
+
+  // Countdown timer for resending registration code
+  useEffect(() => {
+    if (registerCooldown <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setRegisterCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [registerCooldown]);
 
   if (!isOpen) return null;
 
@@ -228,6 +281,12 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setRecoverCooldown(0);
     setRecoverIdentifier('');
     setEmailTakenWarning(null);
+    setEmailIsAvailable(null);
+    setIsCheckingEmail(false);
+    setBuyerTouched({ name: false, email: false, phone: false, password: false, address: false });
+    setRegisterVerifyCode('');
+    setRegisterCooldown(0);
+    setIsResendingRegisterCode(false);
   };
 
   const handleClose = () => {
@@ -366,8 +425,9 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
 
   const handleCheckEmailAvailability = async (emailToCheck) => {
     const clean = String(emailToCheck || '').trim().toLowerCase();
-    if (!clean || !clean.includes('@') || !clean.includes('.')) {
+    if (!clean || !emailRegex.test(clean)) {
       setEmailTakenWarning(null);
+      setEmailIsAvailable(null);
       return;
     }
     setIsCheckingEmail(true);
@@ -375,11 +435,14 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
       const res = await checkEmailAvailabilityApi(clean);
       if (res?.exists) {
         setEmailTakenWarning('Este correo ya está registrado en RepuesTop.');
+        setEmailIsAvailable(false);
       } else {
         setEmailTakenWarning(null);
+        setEmailIsAvailable(true);
       }
     } catch {
       setEmailTakenWarning(null);
+      setEmailIsAvailable(null);
     } finally {
       setIsCheckingEmail(false);
     }
@@ -532,20 +595,29 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
 
   const handleBuyerRegisterSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password || !buyerName) {
-      setErrorMessage('Por favor completa el nombre, correo y contraseña.');
-      return;
-    }
-    if (buyerName.trim().split(/\s+/).length < 2) {
-      setErrorMessage('Ingresa tu nombre y apellido para crear la cuenta.');
-      return;
-    }
-    if (!buyerStreet.trim() || !buyerComuna?.id) {
-      setErrorMessage('Elige tu dirección desde las sugerencias para completar el registro.');
-      return;
-    }
-    if (!acceptsTerms) {
-      setErrorMessage('Debes aceptar los Términos y Condiciones para crear tu cuenta.');
+    setBuyerTouched({ name: true, email: true, phone: true, password: true, address: true });
+
+    const cleanName = buyerName.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = buyerPhone.trim();
+    const cleanPassword = password;
+
+    if (!isBuyerFormValid) {
+      if (!cleanName || !cleanEmail || !cleanPassword) {
+        setErrorMessage('Por favor completa todos los campos obligatorios.');
+      } else if (!isEmailFormatValid) {
+        setErrorMessage('Ingresa un correo electrónico válido.');
+      } else if (emailTakenWarning) {
+        setErrorMessage('Este correo ya está registrado en RepuesTop. Inicia sesión.');
+      } else if (!isNameValid) {
+        setErrorMessage('Ingresa tu nombre y apellido separados por un espacio.');
+      } else if (!isPasswordLengthValid) {
+        setErrorMessage('La contraseña debe tener al menos 6 caracteres.');
+      } else if (!isAddressValid) {
+        setErrorMessage('Elige tu dirección desde las sugerencias para detectar tu comuna.');
+      } else if (!acceptsTerms) {
+        setErrorMessage('Debes aceptar los Términos y Condiciones para crear tu cuenta.');
+      }
       return;
     }
 
@@ -553,10 +625,10 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setErrorMessage(null);
 
     const result = await registerBuyer({
-      email,
-      password,
-      name: buyerName,
-      phone: buyerPhone,
+      email: cleanEmail,
+      password: cleanPassword,
+      name: cleanName,
+      phone: cleanPhone || undefined,
       acceptsTerms,
       direccion: { calleYNumero: buyerStreet.trim(), comunaId: buyerComuna.id },
     });
@@ -564,12 +636,65 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setIsSubmitting(false);
 
     if (result.success) {
+      if (result.data?.pendingEmailVerification) {
+        setRegisterVerifyCode('');
+        setRegisterCooldown(60);
+        setSuccessMessage('¡Cuenta creada! Enviamos un código de 6 dígitos a tu correo para activar tu cuenta.');
+        setStep('register_verify_email');
+        return;
+      }
       setSuccessMessage('¡Cuenta creada exitosamente! Sesión iniciada como Comprador.');
       setTimeout(() => {
         handleClose();
+        onLoginSuccess?.();
       }, 1200);
     } else {
       setErrorMessage(result.error || 'Error al registrar la cuenta. Inténtalo nuevamente.');
+    }
+  };
+
+  const handleVerifyRegisterCode = async (e) => {
+    e.preventDefault();
+    const cleanCode = registerVerifyCode.trim();
+    if (!cleanCode || cleanCode.length !== 6) {
+      setErrorMessage('Ingresa el código de 6 dígitos que enviamos a tu correo.');
+      return;
+    }
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    try {
+      const res = await verifyRegisterEmail(email.trim().toLowerCase(), cleanCode);
+      if (res.success) {
+        setSuccessMessage('¡Correo verificado con éxito! Bienvenido a RepuesTop.');
+        setTimeout(() => {
+          handleClose();
+          onLoginSuccess?.();
+        }, 1200);
+      } else {
+        setErrorMessage(res.error || 'Código incorrecto o expirado. Revisa tu correo o solicita uno nuevo.');
+      }
+    } catch (err) {
+      setErrorMessage(err.message || 'No se pudo verificar el código. Inténtalo de nuevo.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResendRegisterCode = async () => {
+    if (registerCooldown > 0 || isResendingRegisterCode) return;
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) return;
+    setIsResendingRegisterCode(true);
+    setErrorMessage(null);
+    try {
+      await resendRegisterCode(cleanEmail);
+      setSuccessMessage('Nuevo código enviado. Revisa tu bandeja de entrada o spam.');
+      setRegisterCooldown(60);
+    } catch (err) {
+      setErrorMessage(err.message || 'No pudimos reenviar el código. Inténtalo de nuevo.');
+    } finally {
+      setIsResendingRegisterCode(false);
     }
   };
 
@@ -652,6 +777,16 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
             <>
               <h2>Crear Cuenta de Comprador</h2>
               <p>Busca por patente, cotiza repuestos y recibe envíos garantizados a todo Chile.</p>
+            </>
+          )}
+
+          {step === 'register_verify_email' && (
+            <>
+              <div className="selected-role-pill">
+                <span className="pill-buyer"><ShieldCheck size={14} /> Paso 2 de 2 · Activación de Cuenta</span>
+              </div>
+              <h2>Verifica tu Correo</h2>
+              <p>Enviamos un código de 6 dígitos a <strong>{email}</strong>.</p>
             </>
           )}
 
@@ -1111,6 +1246,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                 <input
                   type="text"
                   required
+                  maxLength={80}
                   autoComplete="given-name"
                   placeholder="Ingresa tu nombre"
                   value={googlePending.firstName || ''}
@@ -1125,6 +1261,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                 <input
                   type="text"
                   required
+                  maxLength={80}
                   autoComplete="family-name"
                   placeholder="Ingresa tu apellido"
                   value={googlePending.lastName || ''}
@@ -1182,28 +1319,77 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               <input
                 type="text"
                 required
+                maxLength={80}
                 placeholder="Ej: Juan Pérez"
                 value={buyerName}
+                className={((buyerTouched.name && !buyerName.trim()) || (buyerName.trim().length > 0 && !isNameValid)) ? 'has-error' : (isNameValid ? 'has-success' : '')}
                 onChange={(e) => setBuyerName(e.target.value)}
+                onBlur={() => setBuyerTouched((prev) => ({ ...prev, name: true }))}
               />
+              {buyerTouched.name && !buyerName.trim() && (
+                <small className="auth-field-error">
+                  <AlertCircle size={13} /> El nombre y apellido son obligatorios.
+                </small>
+              )}
+              {buyerName.trim().length > 0 && !isNameValid && (
+                <small className="auth-field-error">
+                  <AlertCircle size={13} /> Ingresa tu nombre y apellido separados por un espacio.
+                </small>
+              )}
+              {isNameValid && (
+                <small className="auth-field-success">
+                  <Check size={13} /> Nombre completo válido
+                </small>
+              )}
             </div>
 
             <div className="form-group">
               <label>Correo Electrónico *</label>
-              <div className="input-with-icon">
+              <div className={`input-with-icon ${(buyerTouched.email && !email.trim()) || (email.trim().length > 0 && !isEmailFormatValid) || emailTakenWarning ? 'has-error' : (isEmailValid && emailIsAvailable ? 'has-success' : '')}`}>
                 <Mail size={18} className="field-icon" />
                 <input
                   type="email"
                   required
+                  maxLength={120}
                   placeholder="ejemplo@correo.com"
                   value={email}
                   onChange={(e) => {
-                    setEmail(e.target.value);
+                    const val = e.target.value;
+                    setEmail(val);
                     if (emailTakenWarning) setEmailTakenWarning(null);
+                    setEmailIsAvailable(null);
+                    if (emailRegex.test(val.trim())) {
+                      handleCheckEmailAvailability(val);
+                    }
                   }}
-                  onBlur={() => handleCheckEmailAvailability(email)}
+                  onBlur={() => {
+                    setBuyerTouched((prev) => ({ ...prev, email: true }));
+                    if (email.trim() && emailRegex.test(email.trim())) {
+                      handleCheckEmailAvailability(email);
+                    }
+                  }}
                 />
               </div>
+              {buyerTouched.email && !email.trim() && (
+                <small className="auth-field-error">
+                  <AlertCircle size={13} /> El correo electrónico es obligatorio.
+                </small>
+              )}
+              {email.trim().length > 0 && !isEmailFormatValid && (
+                <small className="auth-field-error">
+                  <AlertCircle size={13} /> Ingresa un correo electrónico válido (ej: nombre@correo.com).
+                </small>
+              )}
+              {isCheckingEmail && (
+                <small className="auth-field-hint">
+                  <RefreshCw size={12} className="spin-icon" /> Comprobando disponibilidad...
+                </small>
+              )}
+              {isEmailFormatValid && emailIsAvailable && !emailTakenWarning && (
+                <small className="auth-field-success">
+                  <Check size={13} /> Correo disponible
+                </small>
+              )}
               {emailTakenWarning && (
                 <div className="auth-alert alert-error" style={{ margin: '6px 0 0', padding: '8px 12px' }}>
                   <AlertTriangle size={15} />
@@ -1226,36 +1412,61 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               <label>Teléfono (opcional para envíos)</label>
               <input
                 type="tel"
+                maxLength={15}
                 placeholder="+56 9 1234 5678"
                 value={buyerPhone}
-                onChange={(e) => setBuyerPhone(e.target.value)}
+                onChange={(e) => setBuyerPhone(e.target.value.replace(/[^\d+ ]/g, ''))}
+                onBlur={() => setBuyerTouched((prev) => ({ ...prev, phone: true }))}
               />
+              {buyerPhone.trim().length > 0 && buyerPhone.replace(/\D/g, '').length < 8 && (
+                <small className="auth-field-warning">
+                  <AlertCircle size={13} /> Se recomienda ingresar el número completo (ej: +56 9 1234 5678).
+                </small>
+              )}
             </div>
 
             <div className="form-group">
               <label>Dirección de despacho *</label>
               <AddressAutocompleteInput
                 value={buyerStreet}
-                onChange={(valor) => { setBuyerStreet(valor); setBuyerComuna(null); }}
+                onChange={(valor) => {
+                  setBuyerStreet(valor);
+                  setBuyerComuna(null);
+                  setBuyerTouched((prev) => ({ ...prev, address: true }));
+                }}
                 onSelectLocation={resolverComunaDelRegistro}
                 placeholder="Escribe tu calle y elige una sugerencia"
+                maxLength={160}
                 required
               />
-              {buyerComuna
-                ? <small className="auth-address-hint is-ok"><Check size={13} /> {buyerComuna.nombre}{buyerComuna.region ? `, ${buyerComuna.region}` : ''}</small>
-                : <small className="auth-address-hint">{buyerComunaError || 'Elige una sugerencia para detectar tu comuna.'}</small>}
+              {buyerComuna ? (
+                <small className="auth-address-hint is-ok">
+                  <Check size={13} /> {buyerComuna.nombre}{buyerComuna.region ? `, ${buyerComuna.region}` : ''}
+                </small>
+              ) : buyerStreet.trim().length > 0 ? (
+                <small className="auth-field-warning">
+                  <AlertCircle size={13} /> Elige una sugerencia de la lista para detectar tu comuna de despacho.
+                </small>
+              ) : (
+                <small className="auth-address-hint">
+                  {buyerComunaError || 'Escribe tu calle y elige una sugerencia de la lista.'}
+                </small>
+              )}
             </div>
 
             <div className="form-group">
               <label>Contraseña *</label>
-              <div className="input-with-icon">
+              <div className={`input-with-icon ${(buyerTouched.password && !password) || (password.length > 0 && !isPasswordLengthValid) ? 'has-error' : (isPasswordLengthValid ? 'has-success' : '')}`}>
                 <Lock size={18} className="field-icon" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
-                  placeholder="Crea una contraseña segura"
+                  minLength={6}
+                  maxLength={32}
+                  placeholder="Crea una contraseña segura (mín. 6 caracteres)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onBlur={() => setBuyerTouched((prev) => ({ ...prev, password: true }))}
                 />
                 <button
                   type="button"
@@ -1265,6 +1476,40 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+
+              {password.length > 0 && (
+                <div className="password-strength-container">
+                  <div className={`password-strength-meter strength-${passwordStrength.score}`}>
+                    <div className="bar" />
+                    <div className="bar" />
+                    <div className="bar" />
+                  </div>
+                  <div className="password-strength-meta">
+                    <small style={{ color: passwordStrength.color, fontWeight: 600 }}>
+                      Seguridad: {passwordStrength.label}
+                    </small>
+                    <small className="char-counter">
+                      {password.length}/6 mín.
+                    </small>
+                  </div>
+                </div>
+              )}
+
+              {buyerTouched.password && !password && (
+                <small className="auth-field-error">
+                  <AlertCircle size={13} /> La contraseña es obligatoria.
+                </small>
+              )}
+              {password.length > 0 && !isPasswordLengthValid && (
+                <small className="auth-field-error">
+                  <AlertCircle size={13} /> La contraseña debe tener al menos 6 caracteres (llevas {password.length}/6).
+                </small>
+              )}
+              {isPasswordLengthValid && (
+                <small className="auth-field-success">
+                  <Check size={13} /> Longitud válida
+                </small>
+              )}
             </div>
 
             {/* Aceptacion explicita: el backend la exige (`validarTerminos`) y la guarda
@@ -1281,6 +1526,24 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               </span>
             </label>
 
+            {!isBuyerFormValid && (
+              <div className="auth-validation-summary">
+                {!isNameValid ? (
+                  <span><AlertCircle size={13} /> Falta ingresar nombre y apellido</span>
+                ) : !isEmailFormatValid ? (
+                  <span><AlertCircle size={13} /> Falta ingresar un correo electrónico válido</span>
+                ) : emailTakenWarning ? (
+                  <span><AlertCircle size={13} /> El correo ya está registrado en RepuesTop</span>
+                ) : !isAddressValid ? (
+                  <span><AlertCircle size={13} /> Falta seleccionar tu dirección desde las sugerencias</span>
+                ) : !isPasswordLengthValid ? (
+                  <span><AlertCircle size={13} /> La contraseña debe tener al menos 6 caracteres ({password.length}/6)</span>
+                ) : !acceptsTerms ? (
+                  <span><AlertCircle size={13} /> Debes aceptar los Términos y Condiciones</span>
+                ) : null}
+              </div>
+            )}
+
             <div className="auth-action-row gap-2">
               <button
                 type="button"
@@ -1294,7 +1557,8 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               <button
                 type="submit"
                 className="btn-auth-primary"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !isBuyerFormValid}
+                title={!isBuyerFormValid ? "Completa todos los campos obligatorios para activar este botón" : undefined}
               >
                 {isSubmitting ? (
                   <span>Registrando...</span>
@@ -1302,6 +1566,72 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                   <>
                     <UserPlus size={18} />
                     <span>Crear Mi Cuenta</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* STEP 4: REGISTER EMAIL VERIFICATION */}
+        {step === 'register_verify_email' && (
+          <form onSubmit={handleVerifyRegisterCode} className="auth-modal-body">
+            <div className="form-group">
+              <label>Código de verificación (6 dígitos) *</label>
+              <div className="input-with-icon">
+                <ShieldCheck size={18} className="field-icon" />
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  maxLength={6}
+                  placeholder="000000"
+                  value={registerVerifyCode}
+                  onChange={(e) => setRegisterVerifyCode(e.target.value.replace(/\D/g, ''))}
+                  style={{ letterSpacing: '4px', fontSize: '18px', fontWeight: 'bold', textAlign: 'center' }}
+                />
+              </div>
+              <small className="auth-address-hint">Revisa también tu carpeta de spam o promociones.</small>
+            </div>
+
+            <div className="form-secondary-actions" style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+              <button
+                type="button"
+                className="link-btn"
+                onClick={handleResendRegisterCode}
+                disabled={registerCooldown > 0 || isResendingRegisterCode}
+              >
+                {isResendingRegisterCode ? (
+                  <><RefreshCw size={12} className="spin-icon" /> Reenviando...</>
+                ) : registerCooldown > 0 ? (
+                  `Reenviar código en ${registerCooldown}s`
+                ) : (
+                  '¿No recibiste el código? Reenviar'
+                )}
+              </button>
+            </div>
+
+            <div className="auth-action-row gap-2">
+              <button
+                type="button"
+                className="btn-auth-secondary"
+                onClick={() => { setErrorMessage(null); setSuccessMessage(null); setStep('register_buyer'); }}
+              >
+                <ArrowLeft size={16} />
+                <span>Volver a Editar</span>
+              </button>
+
+              <button
+                type="submit"
+                className="btn-auth-primary"
+                disabled={isSubmitting || registerVerifyCode.trim().length !== 6}
+              >
+                {isSubmitting ? (
+                  <span>Verificando...</span>
+                ) : (
+                  <>
+                    <CheckCircle2 size={18} />
+                    <span>Activar Cuenta</span>
                   </>
                 )}
               </button>

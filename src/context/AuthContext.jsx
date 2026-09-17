@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { loginApi, loginGoogleApi, logoutApi, getProfileApi, updateProfileApi, deleteAccountApi, registerBuyerApi, registerSellerApi, resolveMediaUrl, acceptTermsApi } from '../services/api';
+import { loginApi, loginGoogleApi, logoutApi, getProfileApi, updateProfileApi, deleteAccountApi, registerBuyerApi, registerSellerApi, verifyRegisterEmailApi, resendRegisterCodeApi, resolveMediaUrl, acceptTermsApi } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -233,6 +233,30 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const verifyRegisterEmail = async (email, code) => {
+    setIsLoading(true);
+    try {
+      const response = await verifyRegisterEmailApi(email, code);
+      if (response.token || response.accessToken) {
+        saveSession(response, 'BUYER');
+      }
+      return { success: true, data: response };
+    } catch (error) {
+      return { success: false, error: error.message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resendRegisterCode = async (email) => {
+    try {
+      const response = await resendRegisterCodeApi(email);
+      return { success: true, data: response };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
   const logout = async () => {
     if (token) {
       await logoutApi(token);
@@ -315,6 +339,8 @@ export function AuthProvider({ children }) {
     acceptTerms,
     registerBuyer,
     registerSeller,
+    verifyRegisterEmail,
+    resendRegisterCode,
     updateProfile,
     refreshProfile,
     deleteAccount,
