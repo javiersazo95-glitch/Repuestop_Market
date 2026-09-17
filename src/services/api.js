@@ -1497,9 +1497,10 @@ export async function deleteAdApi(adId) {
 }
 
 /**
- * Sube las fotos del anuncio a la carpeta Publicidad de R2 y devuelve
- * `{ imagenes: [{ key, url }] }` con rutas relativas al proxy del backend.
- * Timeout largo como manda CLAUDE.md: son varias imagenes de hasta 5MB.
+ * Sube las fotos del anuncio a la carpeta Media de R2 (se llamaba Publicidad hasta
+ * que se detecto que varios bloqueadores de anuncios bloquean esa palabra en la
+ * URL) y devuelve `{ imagenes: [{ key, url }] }` con rutas relativas al proxy del
+ * backend. Timeout largo como manda CLAUDE.md: son varias imagenes de hasta 5MB.
  */
 export async function uploadAdImagesApi(files) {
   const formData = new FormData();
