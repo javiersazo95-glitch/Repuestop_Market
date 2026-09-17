@@ -32,6 +32,11 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
   const [actionError, setActionError] = useState('');
   const [showClosed, setShowClosed] = useState(false);
   const [monthCursor, setMonthCursor] = useState(() => new Date());
+  // Día tocado en el calendario: al principio el grillado no hacía nada al
+  // hacer click en un día con reservas (el punto morado era solo decorativo),
+  // así que quien administraba el anuncio no tenía forma de ver el detalle
+  // desde esa pestaña.
+  const [selectedDateIso, setSelectedDateIso] = useState(null);
 
   const todayIso = toIsoDate(new Date());
 
@@ -210,15 +215,32 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
       cells.push({ iso, day, count: countByIso.get(iso) || 0, isPast: iso < todayIso, isToday: iso === todayIso });
     }
 
+    // Las reservas cerradas (rechazadas/canceladas) no llevan punto en el
+    // grillado —arriba solo se cuentan las abiertas—, pero si el dueño ya
+    // tocó ese día antes de que se cerraran igual se muestran acá.
+    const appointmentsForSelectedDate = selectedDateIso
+      ? appointments
+        .filter((item) => item.date === selectedDateIso)
+        .sort((a, b) => a.time.localeCompare(b.time))
+      : [];
+
     return (
       <div>
         <div className="appt-cal-controls">
           <div className="appt-cal-month">
-            <button type="button" onClick={() => setMonthCursor(new Date(year, month - 1, 1))} aria-label="Mes anterior">
+            <button
+              type="button"
+              onClick={() => { setMonthCursor(new Date(year, month - 1, 1)); setSelectedDateIso(null); }}
+              aria-label="Mes anterior"
+            >
               <ChevronLeft size={16} />
             </button>
             <strong>{formatAgendaMonthLabel(monthCursor)}</strong>
-            <button type="button" onClick={() => setMonthCursor(new Date(year, month + 1, 1))} aria-label="Mes siguiente">
+            <button
+              type="button"
+              onClick={() => { setMonthCursor(new Date(year, month + 1, 1)); setSelectedDateIso(null); }}
+              aria-label="Mes siguiente"
+            >
               <ChevronRight size={16} />
             </button>
           </div>
@@ -230,15 +252,28 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
         <div className="appt-cal-grid appt-cal-days">
           {cells.map((cell, index) => {
             if (!cell) return <span key={`e-${index}`} className="appt-cal-cell is-empty" />;
+            const isSelected = cell.iso === selectedDateIso;
+            const isClickable = cell.count > 0;
             return (
               <div
                 key={cell.iso}
+                role={isClickable ? 'button' : undefined}
+                tabIndex={isClickable ? 0 : undefined}
+                aria-pressed={isClickable ? isSelected : undefined}
                 className={[
                   'appt-cal-cell',
                   cell.isPast ? 'is-past' : '',
                   cell.isToday ? 'is-today' : '',
-                  cell.count > 0 ? 'has-items' : ''
+                  cell.count > 0 ? 'has-items' : '',
+                  isSelected ? 'is-selected' : ''
                 ].filter(Boolean).join(' ')}
+                onClick={isClickable ? () => setSelectedDateIso((current) => (current === cell.iso ? null : cell.iso)) : undefined}
+                onKeyDown={isClickable ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedDateIso((current) => (current === cell.iso ? null : cell.iso));
+                  }
+                } : undefined}
               >
                 <span className="appt-cal-num">{cell.day}</span>
                 {cell.count > 0 && (
@@ -250,6 +285,22 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
             );
           })}
         </div>
+
+        {selectedDateIso && (
+          <div className="agenda-appointments-list" style={{ marginTop: 14 }}>
+            <p className="ad-upload-hint" style={{ marginBottom: 8 }}>
+              {formatAgendaDateLong(selectedDateIso)}
+            </p>
+            {appointmentsForSelectedDate.length === 0 ? (
+              <div className="ads-mgmt-state">
+                <CalendarDays size={22} />
+                <p>No hay reservas para este día.</p>
+              </div>
+            ) : (
+              appointmentsForSelectedDate.map((appointment) => renderAppointment(appointment))
+            )}
+          </div>
+        )}
       </div>
     );
   };

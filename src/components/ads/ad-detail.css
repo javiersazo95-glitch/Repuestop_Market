@@ -134,6 +134,7 @@
 }
 .ad-detail-nav {
   position: absolute;
+  z-index: 2;
   bottom: 14px;
   display: inline-flex;
   align-items: center;
@@ -152,6 +153,7 @@
 .ad-detail-nav.next { right: 66px; }
 .ad-detail-counter {
   position: absolute;
+  z-index: 2;
   right: 16px;
   bottom: 22px;
   padding: 5px 11px;
@@ -163,6 +165,7 @@
 }
 .ad-detail-report {
   position: absolute !important;
+  z-index: 2;
   top: 12px;
   right: 12px;
   width: 34px;
