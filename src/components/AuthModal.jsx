@@ -153,6 +153,11 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
    * de ahi— y el perfil ya decodificado, solo para mostrarlo.
    */
   const [googlePending, setGooglePending] = useState(null);
+  // Que campos pedirle al usuario se decide UNA sola vez, con lo que Google entrego
+  // en el idToken. Si se recalcula en cada render contra `googlePending.firstName`/
+  // `lastName` -que el propio input va llenando-, el campo se autodesmonta apenas se
+  // escribe el primer caracter: la condicion que lo mostraba pasa a ser falsa.
+  const [googleMissingFields, setGoogleMissingFields] = useState({ firstName: false, lastName: false });
   const [googleTermsAccepted, setGoogleTermsAccepted] = useState(false);
   // El backend exige direccion (comunaId + calle) y aceptacion de terminos para crear
   // la cuenta: `validarComprador` los valida antes de tocar la base.
@@ -209,6 +214,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setBuyerComunaError('');
     setAcceptsTerms(false);
     setGooglePending(null);
+    setGoogleMissingFields({ firstName: false, lastName: false });
     setGoogleTermsAccepted(false);
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -441,6 +447,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     const perfil = result.status === 404 ? decodeGoogleIdToken(idToken) : null;
     if (perfil) {
       setGooglePending({ ...perfil, idToken });
+      setGoogleMissingFields({ firstName: !perfil.firstName?.trim(), lastName: !perfil.lastName?.trim() });
       setGoogleTermsAccepted(false);
       setStep('google_signup');
       return;
@@ -1098,7 +1105,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
             {/* Algunas cuentas de Google no publican `family_name` (por ejemplo,
                 perfiles con un solo nombre). El esquema de comprador sí exige ambos
                 datos, así que los completamos explícitamente antes de enviar. */}
-            {!googlePending.firstName?.trim() && (
+            {googleMissingFields.firstName && (
               <div className="form-group">
                 <label>Nombre *</label>
                 <input
@@ -1112,7 +1119,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                 <small className="auth-address-hint">Google no entregó este dato y es necesario para tu perfil.</small>
               </div>
             )}
-            {!googlePending.lastName?.trim() && (
+            {googleMissingFields.lastName && (
               <div className="form-group">
                 <label>Apellido *</label>
                 <input
