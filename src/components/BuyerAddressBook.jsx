@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapPin, Plus, Trash2, Pencil, X, Loader2, Check, Star, User, Store } from 'lucide-react';
+import { MapPin, Plus, Trash2, Pencil, X, Loader2, Check, Star, User, Store, Home, Building2, Package } from 'lucide-react';
 import {
   getAddressesApi, createAddressApi, updateAddressApi, deleteAddressApi, setDefaultAddressApi,
   getPaisesApi, getRegionesApi, getComunasApi, saveAddressTypeMeta, updateProfileApi,
@@ -106,13 +106,23 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
     }
   };
 
-  const closeForm = () => {
+  const closeForm = (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
     setFormOpen(false);
     setEditingId(null);
     setForm(EMPTY_FORM);
     setRegiones([]);
     setComunas([]);
   };
+
+  useEffect(() => {
+    if (!formOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') closeForm();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [formOpen]);
 
   /**
    * El autocompletado entrega NOMBRES de comuna y region; el backend guarda IDS. La
@@ -195,13 +205,14 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
     }
   };
 
+  const isSeller = role === 'SELLER';
   const despachoCount = addresses.filter((a) => (a.tipoDireccion || a.tipo) === 'DESPACHO').length;
 
   const handleToggleType = async (address) => {
     const currentType = (address.tipoDireccion || address.tipo) === 'DESPACHO' ? 'DESPACHO' : 'PERSONAL';
     const newType = currentType === 'DESPACHO' ? 'PERSONAL' : 'DESPACHO';
 
-    if (currentType === 'DESPACHO' && despachoCount <= 1) {
+    if (isSeller && currentType === 'DESPACHO' && despachoCount <= 1) {
       setError('Debes tener al menos una dirección comercial de despacho registrada. Agrega otra antes de cambiar esta.');
       return;
     }
@@ -227,7 +238,7 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
 
   const handleDelete = async (address) => {
     const tipo = (address.tipoDireccion || address.tipo) === 'DESPACHO' ? 'DESPACHO' : 'PERSONAL';
-    if (tipo === 'DESPACHO' && despachoCount <= 1) {
+    if (isSeller && tipo === 'DESPACHO' && despachoCount <= 1) {
       setError('Debes tener al menos una dirección comercial de despacho registrada. No puedes eliminar la última.');
       return;
     }
@@ -290,22 +301,29 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
     <div className="buyer-address-book">
       <div className="buyer-address-book-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-color, #0f172a)' }}>Libreta de Direcciones</h4>
+          <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-color, #0f172a)' }}>
+            {isSeller ? 'Direcciones de Entrega' : 'Libreta de Direcciones'}
+          </h4>
           <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-            Registra tus direcciones personales de compras o las direcciones comerciales de despacho.
+            {isSeller
+              ? 'Por defecto tus compras se entregan en la dirección oficial de tu tienda. Puedes agregar direcciones alternativas de entrega.'
+              : 'Registra tus direcciones para la entrega de tus pedidos.'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button type="button" className="btn-add-address" onClick={() => openAddForm('DESPACHO')} style={{ background: '#2563eb', borderColor: '#2563eb', color: '#fff' }} title="Agregar dirección comercial de despacho">
-            <Plus size={15} /> <Store size={13} /> Agregar Comercial
-          </button>
-          <button type="button" className="btn-add-address" onClick={() => openAddForm('PERSONAL')} title="Agregar dirección personal">
-            <Plus size={15} /> <User size={13} /> Agregar Personal
+          <button
+            type="button"
+            className="btn-add-address"
+            onClick={() => openAddForm('PERSONAL')}
+            style={{ background: '#2563eb', borderColor: '#2563eb', color: '#fff' }}
+            title={isSeller ? 'Agregar dirección alternativa de entrega' : 'Agregar nueva dirección de entrega'}
+          >
+            <Plus size={15} /> {isSeller ? 'Agregar dirección alternativa' : 'Agregar dirección'}
           </button>
         </div>
       </div>
 
-      {addresses.length > 0 && (
+      {addresses.length > 1 && (
         <div className="address-filter-pills" style={{ display: 'flex', gap: '8px', margin: '14px 0 10px' }}>
           <button
             type="button"
@@ -342,7 +360,8 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
               gap: '4px'
             }}
           >
-            <Store size={12} /> Comercial / Despacho ({despachoCount})
+            {isSeller ? <Store size={12} /> : <Building2 size={12} />}
+            {isSeller ? `Tienda oficial (${despachoCount})` : `Trabajo / Taller (${despachoCount})`}
           </button>
           <button
             type="button"
@@ -362,7 +381,8 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
               gap: '4px'
             }}
           >
-            <User size={12} /> Personales ({personalCount})
+            {isSeller ? <User size={12} /> : <Home size={12} />}
+            {isSeller ? `Alternativas (${personalCount})` : `Casa / Particular (${personalCount})`}
           </button>
         </div>
       )}
@@ -376,7 +396,9 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
           <MapPin size={24} style={{ color: '#94a3b8', marginBottom: '6px' }} />
           <span style={{ display: 'block', fontSize: '13px', color: '#64748b' }}>
             {addresses.length === 0
-              ? 'Aún no tienes direcciones registradas. Agrega tu primera dirección personal o comercial.'
+              ? (isSeller
+                ? 'Aún no tienes direcciones registradas. Agrega tu primera dirección personal o de bodega.'
+                : 'Aún no tienes direcciones registradas. Agrega tu primera dirección de entrega.')
               : 'No hay direcciones registradas en esta categoría.'}
           </span>
         </div>
@@ -392,12 +414,18 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
                 disabled={principalSaving}
               >
                 {!dropdownPrincipal && <option value="">Selecciona una dirección</option>}
-                {dropdownAddresses.map((address) => (
-                  <option key={address.id} value={address.id}>
-                    {(address.tipoDireccion || address.tipo) === 'DESPACHO' ? '[Comercial] ' : '[Personal] '}
-                    {address.calleYNumero} · {address.comunaNombre}
-                  </option>
-                ))}
+                {dropdownAddresses.map((address) => {
+                  const isDesp = (address.tipoDireccion || address.tipo) === 'DESPACHO';
+                  const prefix = isSeller
+                    ? (isDesp ? '[Tienda oficial] ' : '[Alternativa] ')
+                    : (isDesp ? '[Trabajo/Taller] ' : '[Casa] ');
+                  return (
+                    <option key={address.id} value={address.id}>
+                      {prefix}
+                      {address.calleYNumero} · {address.comunaNombre}
+                    </option>
+                  );
+                })}
               </select>
               <small>Se usará por defecto para cotizaciones y pedidos.</small>
             </div>
@@ -407,39 +435,53 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
             {displayAddresses.map((address) => {
               const isPrincipal = address.esPrincipal || String(address.id) === String(principalAddress?.id);
               const isDespacho = (address.tipoDireccion || address.tipo) === 'DESPACHO';
-              const isLastDespacho = isDespacho && despachoCount <= 1;
+              const isLastDespacho = isSeller && isDespacho && despachoCount <= 1;
               return (
                 <li key={address.id} className={isPrincipal ? 'is-principal' : ''} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', borderRadius: '12px', border: isPrincipal ? '1.5px solid #3b82f6' : '1px solid #e2e8f0', background: '#fff', marginBottom: '8px' }}>
                   <span className="buyer-address-icon" style={{ background: isDespacho ? '#eff6ff' : '#ecfdf5', color: isDespacho ? '#2563eb' : '#059669', padding: '8px', borderRadius: '10px', display: 'grid', placeItems: 'center' }}>
-                    {isDespacho ? <Store size={18} /> : <User size={18} />}
+                    {isSeller
+                      ? (isDespacho ? <Store size={18} /> : <MapPin size={18} />)
+                      : (isDespacho ? <Building2 size={18} /> : <Home size={18} />)}
                   </span>
                   <div className="buyer-address-copy" style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
                       <strong style={{ fontSize: '14px', color: '#0f172a' }}>{address.calleYNumero}</strong>
-                      {isDespacho ? (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleType(address)}
-                          disabled={isLastDespacho}
-                          title={isLastDespacho
-                            ? 'Debes tener al menos una dirección comercial de despacho. Agrega otra antes de cambiar esta.'
-                            : 'Haz clic para cambiar a Dirección Personal'}
-                          style={{
-                            background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px',
-                            cursor: isLastDespacho ? 'not-allowed' : 'pointer', opacity: isLastDespacho ? 0.7 : 1
-                          }}
-                        >
-                          <Store size={10} /> Comercial / Despacho{isLastDespacho ? ' (mínima)' : ''}
-                        </button>
+                      {isSeller ? (
+                        isDespacho ? (
+                          <span
+                            style={{
+                              background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px'
+                            }}
+                          >
+                            <Store size={11} /> Tienda oficial (Retiro, Despacho y Devoluciones)
+                          </span>
+                        ) : (
+                          <span
+                            style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            <MapPin size={11} /> Dirección alternativa de entrega
+                          </span>
+                        )
                       ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleType(address)}
-                          title="Haz clic para cambiar a Dirección Comercial"
-                          style={{ background: '#d1fae5', color: '#065f46', border: '1px solid #a7f3d0', padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'pointer' }}
-                        >
-                          <User size={10} /> Personal (Representante)
-                        </button>
+                        isDespacho ? (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleType(address)}
+                            title="Haz clic para cambiar a Casa / Particular"
+                            style={{ background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'pointer' }}
+                          >
+                            <Building2 size={10} /> Trabajo / Taller
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleType(address)}
+                            title="Haz clic para cambiar a Trabajo / Taller"
+                            style={{ background: '#d1fae5', color: '#065f46', border: '1px solid #a7f3d0', padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'pointer' }}
+                          >
+                            <Home size={10} /> Casa / Particular
+                          </button>
+                        )
                       )}
                       {isPrincipal && (
                         <span className="buyer-address-principal-badge" style={{ background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
@@ -451,21 +493,29 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
                     {address.codigoPostal && <span className="buyer-address-zip" style={{ display: 'block', fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>Código postal: {address.codigoPostal}</span>}
                   </div>
                   <div className="buyer-address-actions" style={{ display: 'flex', gap: '6px' }}>
-                    <button type="button" onClick={() => openEditForm(address)} title="Editar dirección" style={{ padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', color: '#475569' }}>
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(address)}
-                      disabled={deletingId === address.id || isLastDespacho}
-                      title={isLastDespacho ? 'No puedes eliminar tu única dirección comercial de despacho' : 'Eliminar dirección'}
-                      style={{
-                        padding: '6px 8px', borderRadius: '6px', border: '1px solid #fee2e2', background: '#fff1f2', color: '#e11d48',
-                        cursor: isLastDespacho ? 'not-allowed' : 'pointer', opacity: isLastDespacho ? 0.5 : 1
-                      }}
-                    >
-                      {deletingId === address.id ? <Loader2 size={14} className="spin-icon" /> : <Trash2 size={14} />}
-                    </button>
+                    {!(isSeller && (isDespacho || address.id === 0)) ? (
+                      <>
+                        <button type="button" onClick={() => openEditForm(address)} title="Editar dirección" style={{ padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', color: '#475569' }}>
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(address)}
+                          disabled={deletingId === address.id}
+                          title="Eliminar dirección"
+                          style={{
+                            padding: '6px 8px', borderRadius: '6px', border: '1px solid #fee2e2', background: '#fff1f2', color: '#e11d48',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {deletingId === address.id ? <Loader2 size={14} className="spin-icon" /> : <Trash2 size={14} />}
+                        </button>
+                      </>
+                    ) : (
+                      <span style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '4px 6px' }}>
+                        Gestionada en tu tienda
+                      </span>
+                    )}
                   </div>
                 </li>
               );
@@ -478,57 +528,74 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
         <div className="buyer-address-form-backdrop" onClick={closeForm}>
           <div className="buyer-address-form" onClick={(e) => e.stopPropagation()}>
             <div className="buyer-address-form-header">
-              <h4>{editingId ? 'Editar dirección' : 'Nueva dirección'}</h4>
-              <button type="button" onClick={closeForm} aria-label="Cerrar"><X size={18} /></button>
+              <h4>{editingId ? (isSeller ? 'Editar dirección alternativa' : 'Editar dirección') : (isSeller ? 'Nueva dirección alternativa' : 'Nueva dirección')}</h4>
+              <button
+                type="button"
+                className="btn-close-modal"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  closeForm(e);
+                }}
+                aria-label="Cerrar"
+                title="Cerrar"
+                style={{ cursor: 'pointer', position: 'relative', zIndex: 10 }}
+              >
+                <X size={18} style={{ pointerEvents: 'none' }} />
+              </button>
             </div>
 
             {formError && <div className="auth-alert alert-error" style={{ margin: '0 0 12px' }}><X size={16} /><span>{formError}</span></div>}
 
-            <div className="form-group" style={{ marginBottom: '14px' }}>
-              <label style={{ fontWeight: 600, fontSize: '13px', display: 'block', marginBottom: '6px' }}>Tipo de Dirección</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={() => setForm((curr) => ({ ...curr, tipoDireccion: 'PERSONAL' }))}
-                  style={{
-                    padding: '10px',
-                    borderRadius: '8px',
-                    border: form.tipoDireccion === 'PERSONAL' ? '2px solid #059669' : '1px solid #cbd5e1',
-                    background: form.tipoDireccion === 'PERSONAL' ? '#ecfdf5' : '#fff',
-                    color: form.tipoDireccion === 'PERSONAL' ? '#047857' : '#475569',
-                    fontWeight: 600,
-                    fontSize: '12.5px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <User size={14} /> Personal (Representante)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setForm((curr) => ({ ...curr, tipoDireccion: 'DESPACHO' }))}
-                  style={{
-                    padding: '10px',
-                    borderRadius: '8px',
-                    border: form.tipoDireccion === 'DESPACHO' ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                    background: form.tipoDireccion === 'DESPACHO' ? '#eff6ff' : '#fff',
-                    color: form.tipoDireccion === 'DESPACHO' ? '#1d4ed8' : '#475569',
-                    fontWeight: 600,
-                    fontSize: '12.5px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <Store size={14} /> Comercial / Despacho
-                </button>
+            {!isSeller && (
+              <div className="form-group" style={{ marginBottom: '14px' }}>
+                <label style={{ fontWeight: 600, fontSize: '13px', display: 'block', marginBottom: '6px' }}>Tipo de dirección</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setForm((curr) => ({ ...curr, tipoDireccion: 'PERSONAL' }))}
+                    style={{
+                      padding: '10px',
+                      borderRadius: '8px',
+                      border: form.tipoDireccion === 'PERSONAL' ? '2px solid #059669' : '1px solid #cbd5e1',
+                      background: form.tipoDireccion === 'PERSONAL' ? '#ecfdf5' : '#fff',
+                      color: form.tipoDireccion === 'PERSONAL' ? '#047857' : '#475569',
+                      fontWeight: 600,
+                      fontSize: '12.5px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Home size={14} />
+                    <span>Casa / Particular</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm((curr) => ({ ...curr, tipoDireccion: 'DESPACHO' }))}
+                    style={{
+                      padding: '10px',
+                      borderRadius: '8px',
+                      border: form.tipoDireccion === 'DESPACHO' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                      background: form.tipoDireccion === 'DESPACHO' ? '#eff6ff' : '#fff',
+                      color: form.tipoDireccion === 'DESPACHO' ? '#1d4ed8' : '#475569',
+                      fontWeight: 600,
+                      fontSize: '12.5px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Building2 size={14} />
+                    <span>Trabajo / Taller</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {!editingId && (
               <div className="form-grid-2">

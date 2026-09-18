@@ -37,6 +37,7 @@ export default function CheckoutPage() {
   const isBlockedAccount = isSellerBlockedAccount || isBuyerBlockedAccount;
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const isSeller = user?.role === 'SELLER';
   const buyerQuotesPath = buyerProfilePath(user, 'quotes');
   const { activeVehicle, cartItems, cartCount, cartTotals, clearCart, updateCartShipping } = useMarketplace();
   const userId = user?.userId ?? user?.id;
@@ -576,7 +577,14 @@ export default function CheckoutPage() {
                                 <strong>{address.calleYNumero}</strong>
                                 <small>{address.comunaNombre}{address.regionNombre ? `, ${address.regionNombre}` : ''}</small>
                               </span>
-                              {address.esPrincipal && <em className="checkout-address-tag">Principal</em>}
+                              {address.esPrincipal && (
+                                <em
+                                  className="checkout-address-tag"
+                                  style={isSeller ? { background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe' } : undefined}
+                                >
+                                  {isSeller ? 'Dirección de tu tienda' : 'Principal'}
+                                </em>
+                              )}
                             </label>
                           ))}
                         </div>
@@ -589,7 +597,9 @@ export default function CheckoutPage() {
                         className="checkout-inline-link"
                         onClick={() => setAddressBookOpen((open) => !open)}
                       >
-                        {addressBookOpen ? 'Ocultar mis direcciones' : 'Agregar o editar direcciones'}
+                        {addressBookOpen
+                          ? 'Ocultar opciones de dirección'
+                          : (isSeller ? '+ Enviar a otra dirección' : 'Agregar o editar direcciones')}
                       </button>
 
                       {(addressBookOpen || (!addressesLoading && addresses.length === 0)) && (

@@ -2,14 +2,19 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertCircle, Building2, Camera, Check, CreditCard, FileText, Image as ImageIcon, Info, Lock, Mail,
-  Pencil, Phone, Save, Search, Truck, Wallet, X,
+  AlertCircle, Building2, Camera, Check, CreditCard, FileText, Image as ImageIcon, Info, Loader2, Lock, Mail,
+  MapPin, Package, Pencil, Phone, Save, Search, Store, Truck, Wallet, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getVehicleBrandsApi, updateStoreSpecialistBrandsApi, updateSellerShippingMethodsApi } from '../services/api';
+import {
+  getVehicleBrandsApi, updateStoreSpecialistBrandsApi, updateSellerShippingMethodsApi,
+  getRegionesApi, getComunasApi, getPaisesApi,
+} from '../services/api';
 import { qk } from '../services/queryKeys';
 import ShippingMethodsPicker from './ShippingMethodsPicker';
 import BuyerAddressBook from './BuyerAddressBook';
+import AddressAutocompleteInput from './AddressAutocompleteInput';
+import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import VehicleBrandLogo from './VehicleBrandLogo';
 import SellerVerificationCard from './SellerVerificationCard';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
@@ -66,6 +71,14 @@ export default function ProfileAccountDataPanel({
   const [availableVehicleBrands, setAvailableVehicleBrands] = useState([]);
   const [showSpecialistBrandsModal, setShowSpecialistBrandsModal] = useState(false);
   const [specialistBrandSearch, setSpecialistBrandSearch] = useState('');
+  const [storeAddressDraft, setStoreAddressDraft] = useState(storeInfo?.address || user?.address || '');
+  const [storeRegionIdDraft, setStoreRegionIdDraft] = useState('');
+  const [storeComunaIdDraft, setStoreComunaIdDraft] = useState('');
+  const [storeComunaDraft, setStoreComunaDraft] = useState(storeInfo?.comuna || user?.comuna || '');
+  const [storeRegionDraft, setStoreRegionDraft] = useState(storeInfo?.region || user?.region || '');
+  const [sellerRegiones, setSellerRegiones] = useState([]);
+  const [sellerComunas, setSellerComunas] = useState([]);
+  const [sellerGeoLoading, setSellerGeoLoading] = useState(false);
 
   useEffect(() => {
     if (!isEditing) {
@@ -74,12 +87,51 @@ export default function ProfileAccountDataPanel({
       setTaxIdDraft(isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || ''));
       setFacturaRazonSocialDraft(user?.facturaRazonSocial || '');
       setFacturaGiroDraft(user?.facturaGiro || '');
+      setStoreAddressDraft(storeInfo?.address || user?.address || '');
+      setStoreComunaDraft(storeInfo?.comuna || user?.comuna || '');
+      setStoreRegionDraft(storeInfo?.region || user?.region || '');
     }
   }, [user, storeInfo, isSeller, isEditing]);
 
-  // Direcciones: `RT_tienda` se actualiza sola al guardar en BuyerAddressBook.jsx;
-  // esto refresca storeInfo en el perfil para que los datos de la tienda se vean
-  // al tiro sin esperar a un reload completo de la pagina.
+  useEffect(() => {
+    if (!isSeller || !isEditing) return;
+    let cancelled = false;
+    const currentComuna = storeInfo?.comuna || user?.comuna || '';
+    const currentRegion = storeInfo?.region || user?.region || '';
+    setSellerGeoLoading(true);
+    resolverUbicacionPorNombre({ comuna: currentComuna, region: currentRegion })
+      .then((res) => {
+        if (cancelled) return;
+        if (res.regiones?.length) setSellerRegiones(res.regiones);
+        if (res.comunas?.length) setSellerComunas(res.comunas);
+        if (res.regionId) setStoreRegionIdDraft(String(res.regionId));
+        if (res.comunaId) setStoreComunaIdDraft(String(res.comunaId));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setSellerGeoLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [isSeller, isEditing, storeInfo?.comuna, storeInfo?.region, user?.comuna, user?.region]);
+
+  const handleStoreRegionChange = (regionId) => {
+    setStoreRegionIdDraft(regionId);
+    setStoreComunaIdDraft('');
+    setStoreComunaDraft('');
+    const selectedRegion = sellerRegiones.find((r) => String(r.id) === String(regionId));
+    setStoreRegionDraft(selectedRegion?.nombre || '');
+    if (!regionId) {
+      setSellerComunas([]);
+      return;
+    }
+    setSellerGeoLoading(true);
+    getComunasApi(regionId)
+      .then((data) => setSellerComunas(Array.isArray(data) ? data : []))
+      .catch(() => setSellerComunas([]))
+      .finally(() => setSellerGeoLoading(false));
+  };
+
+  // Sincronización con React Query para la tienda
   const refreshStoreInfoAfterAddressSync = useCallback(() => {
     if (!isSeller || !effectiveSellerId) return;
     queryClient.invalidateQueries({ queryKey: qk.sellerStore(effectiveSellerId) });
@@ -127,8 +179,9 @@ export default function ProfileAccountDataPanel({
     }
 
     if (isSeller) {
-      // La dirección comercial (con región/comuna) ya no se valida acá: se
-      // edita y se valida una sola vez en BuyerAddressBook, más abajo.
+      if (!storeAddressDraft.trim()) {
+        errors.storeAddress = 'Ingresa la dirección comercial de la tienda.';
+      }
       const hasShippingMethod = SHIPPING_METHOD_DEFS.some((def) => shippingSelectionsDraft[def.id]?.enabled);
       if (!hasShippingMethod) {
         errors.shippingMethods = 'Selecciona al menos un método de envío.';
@@ -162,13 +215,24 @@ export default function ProfileAccountDataPanel({
       payload.taxId = cleanRut;
       payload.facturaRazonSocial = facturaRazonSocialDraft.trim();
       payload.facturaGiro = facturaGiroDraft.trim();
+    } else {
+      if (storeAddressDraft.trim()) {
+        payload.address = storeAddressDraft.trim();
+      }
+      if (storeComunaIdDraft) {
+        payload.comunaId = Number(storeComunaIdDraft);
+      }
+      if (storeRegionDraft) {
+        payload.region = storeRegionDraft;
+      }
+      if (storeComunaDraft) {
+        payload.city = storeComunaDraft;
+      }
     }
 
-    // Nombre y RUT de la tienda ya no se editan desde este formulario (ver
+    // Nombre y RUT de la tienda no se editan desde este formulario (ver
     // bloque de solo lectura más abajo): son datos de identidad que deben
-    // cambiarse a través de soporte, no con un input libre. La dirección
-    // comercial (address/comunaId) tampoco se envía desde acá: BuyerAddressBook
-    // ya la sincroniza directamente al guardar una dirección de despacho.
+    // cambiarse a través de soporte.
     //
     // Los métodos de envío NO van en `payload`: `ActualizarPerfilRequestDTO` no
     // tiene ese campo y el PATCH los descartaba en silencio. El único que los
@@ -422,13 +486,6 @@ export default function ProfileAccountDataPanel({
               </>
             )}
 
-            {/* La dirección comercial de despacho (con región/comuna) ya se
-                edita una sola vez, más abajo, en "Gestión de Direcciones" — ese
-                widget sincroniza automáticamente comuna/región con la tienda al
-                guardar (ver refreshStoreInfoAfterAddressSync). Repetirla acá
-                arriba como un segundo input de texto libre era una segunda fuente
-                de verdad para el mismo dato, y confundía cuál mandaba. */}
-
             {isSeller && (
               <>
                 <div className="form-section-title" style={{ marginTop: '20px' }}>Datos de la Tienda</div>
@@ -456,6 +513,83 @@ export default function ProfileAccountDataPanel({
                   <button type="button" className="form-helper-inline-link" onClick={() => { setIsEditing(false); navigate(helpContactPath()); }}>
                     Centro de ayuda
                   </button>.
+                </small>
+
+                {/* DIRECCIÓN COMERCIAL OFICIAL DE LA TIENDA */}
+                <div className="form-section-title" style={{ marginTop: '20px' }}>
+                  Dirección Comercial de la Tienda
+                </div>
+                <div className="form-group">
+                  <label>
+                    Calle y Número
+                    <span className="char-counter">{storeAddressDraft.length}/180</span>
+                  </label>
+                  <AddressAutocompleteInput
+                    value={storeAddressDraft}
+                    onChange={setStoreAddressDraft}
+                    onSelectLocation={async (loc) => {
+                      if (loc?.comuna || loc?.region) {
+                        try {
+                          const resolved = await resolverUbicacionPorNombre(loc);
+                          if (resolved.regiones?.length) setSellerRegiones(resolved.regiones);
+                          if (resolved.comunas?.length) setSellerComunas(resolved.comunas);
+                          if (resolved.regionId) {
+                            setStoreRegionIdDraft(String(resolved.regionId));
+                            const r = (resolved.regiones || []).find((x) => String(x.id) === String(resolved.regionId));
+                            if (r) setStoreRegionDraft(r.nombre);
+                          }
+                          if (resolved.comunaId) {
+                            setStoreComunaIdDraft(String(resolved.comunaId));
+                            const c = (resolved.comunas || []).find((x) => String(x.id) === String(resolved.comunaId));
+                            if (c) setStoreComunaDraft(c.nombre);
+                          }
+                        } catch (err) {
+                          console.warn('Error resolviendo ubicación geográfica:', err);
+                        }
+                      }
+                    }}
+                    comuna={storeComunaDraft}
+                    region={storeRegionDraft}
+                    placeholder="Ej. Av. Marathon 1234"
+                    maxLength={180}
+                  />
+                  {formErrors.storeAddress && <small className="field-error-text">{formErrors.storeAddress}</small>}
+                </div>
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label>Región {sellerGeoLoading && !sellerRegiones.length && <Loader2 size={12} className="spin-icon" />}</label>
+                    <select
+                      value={storeRegionIdDraft}
+                      onChange={(e) => handleStoreRegionChange(e.target.value)}
+                    >
+                      <option value="">Selecciona una región</option>
+                      {sellerRegiones.map((reg) => (
+                        <option key={reg.id} value={reg.id}>{reg.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Comuna {sellerGeoLoading && storeRegionIdDraft && <Loader2 size={12} className="spin-icon" />}</label>
+                    <select
+                      value={storeComunaIdDraft}
+                      onChange={(e) => {
+                        setStoreComunaIdDraft(e.target.value);
+                        const com = sellerComunas.find((c) => String(c.id) === String(e.target.value));
+                        setStoreComunaDraft(com?.nombre || '');
+                      }}
+                      disabled={!storeRegionIdDraft || sellerGeoLoading}
+                    >
+                      <option value="">
+                        {!storeRegionIdDraft ? 'Primero selecciona una región' : sellerGeoLoading ? 'Cargando comunas...' : 'Selecciona una comuna'}
+                      </option>
+                      {sellerComunas.map((com) => (
+                        <option key={com.id} value={com.id}>{com.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <small className="form-helper-text">
+                  Esta es la dirección física oficial de tu tienda: punto único para catálogo público, retiros presenciales de clientes, despachos de pedidos y recepción de devoluciones.
                 </small>
 
                 <div className="form-group" style={{ marginTop: '16px' }}>
@@ -512,6 +646,9 @@ export default function ProfileAccountDataPanel({
                   setTaxIdDraft(isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || ''));
                   setFacturaRazonSocialDraft(user?.facturaRazonSocial || '');
                   setFacturaGiroDraft(user?.facturaGiro || '');
+                  setStoreAddressDraft(storeInfo?.address || user?.address || '');
+                  setStoreComunaDraft(storeInfo?.comuna || user?.comuna || '');
+                  setStoreRegionDraft(storeInfo?.region || user?.region || '');
                 }}
               >
                 Cancelar
@@ -655,19 +792,109 @@ export default function ProfileAccountDataPanel({
                 </div>
               )}
 
-              {/* Logística y Ubicación: contiene la libreta de direcciones,
-                  mucho más densa que el resto. */}
+              {/* Ubicación y Logística: para el vendedor se consolida en la dirección comercial oficial
+                  de la tienda (punto único para catálogo, retiros, despachos y devoluciones).
+                  Para el comprador se muestra su libreta de direcciones guardadas. */}
               <div className="details-card-block store-section-card">
                 <h3 className="section-subtitle">
                   <span className="section-subtitle-icon icon-amber"><Truck size={16} /></span>
-                  <span>Ubicación y Logística de Despacho</span>
+                  <span>{isSeller ? 'Ubicación y Logística Comercial' : 'Ubicación y Direcciones de Entrega'}</span>
                 </h3>
-                <BuyerAddressBook usuarioId={user?.userId} onCommercialAddressSynced={refreshStoreInfoAfterAddressSync} />
-              {/* Verificación y adhesión: estado REAL desde
-                  `GET /proveedores/{id}/verificacion`. Antes eran dos líneas
-                  fijas que decían "Tienda Verificada" y "Términos aceptados"
-                  pasara lo que pasara. */}
-              {isSeller && <SellerVerificationCard sellerId={effectiveSellerId} />}
+
+                {isSeller && (
+                  <div className="store-official-address-card" style={{
+                    padding: '18px 20px',
+                    borderRadius: '12px',
+                    border: '1.5px solid #bfdbfe',
+                    background: '#f8faff',
+                    marginBottom: '18px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '14px',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <div style={{
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '10px',
+                          background: '#2563eb',
+                          color: '#fff',
+                          display: 'grid',
+                          placeItems: 'center',
+                          flexShrink: 0
+                        }}>
+                          <Store size={22} />
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <h4 style={{ margin: 0, fontSize: '15.5px', fontWeight: 700, color: '#0f172a' }}>
+                              Dirección Comercial de la Tienda
+                            </h4>
+                            <span style={{
+                              background: '#dbeafe',
+                              color: '#1e40af',
+                              border: '1px solid #bfdbfe',
+                              padding: '3px 10px',
+                              borderRadius: '12px',
+                              fontSize: '11px',
+                              fontWeight: 700
+                            }}>
+                              Punto de Retiro, Despacho y Devoluciones
+                            </span>
+                          </div>
+                          <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>
+                            {storeInfo?.address || user?.address || 'Dirección comercial no registrada'}
+                          </p>
+                          <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#64748b' }}>
+                            {[storeInfo?.comuna || user?.comuna, storeInfo?.region || user?.region].filter(Boolean).join(', ') || 'Comuna y región no registradas'}
+                          </p>
+                          {storeInfo?.hours && (
+                            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#475569' }}>
+                              Horario de atención: {storeInfo.hours}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {!isEditing && (
+                        <button
+                          type="button"
+                          className="details-card-link-button"
+                          onClick={() => setIsEditing(true)}
+                          style={{ alignSelf: 'flex-start' }}
+                        >
+                          <Pencil size={13} /> Editar tienda
+                        </button>
+                      )}
+                    </div>
+
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+                      gap: '10px',
+                      paddingTop: '12px',
+                      borderTop: '1px solid #e2e8f0',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#334155' }}>
+                        <Store size={15} color="#2563eb" style={{ flexShrink: 0 }} />
+                        <span>Ficha pública en el catálogo</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#334155' }}>
+                        <Truck size={15} color="#2563eb" style={{ flexShrink: 0 }} />
+                        <span>Retiros de clientes y transportistas</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#334155' }}>
+                        <Package size={15} color="#2563eb" style={{ flexShrink: 0 }} />
+                        <span>Recepción de cambios y devoluciones</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!isSeller && (
+                  <BuyerAddressBook usuarioId={user?.userId} onCommercialAddressSynced={refreshStoreInfoAfterAddressSync} />
+                )}
+                {isSeller && <SellerVerificationCard sellerId={effectiveSellerId} />}
               </div>
             </div>
           </div>
