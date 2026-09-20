@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { ChevronLeft, ChevronRight, Sparkles, CheckCircle2 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Sparkles, CheckCircle2, Building2 } from 'lucide-react';
 import { SERVICE_CATEGORIES } from '../../data/automotiveAdsData';
 
 /**
@@ -10,6 +10,11 @@ import { SERVICE_CATEGORIES } from '../../data/automotiveAdsData';
  */
 export default function AdsStoriesCarousel({ ads = [], onSelectAd }) {
   const trackRef = useRef(null);
+  // Fotos viejas subidas antes de renombrar la carpeta de R2 (ver
+  // CloudflareR2Service#getOrCreateFolderForAnuncio) siguen con "Publicidad" en
+  // la URL, y varios bloqueadores de anuncios las bloquean por defecto. Sin este
+  // fallback, la imagen fallaba en silencio y dejaba el aro vacio.
+  const [failedAvatars, setFailedAvatars] = useState(() => new Set());
 
   const storyAds = ads.filter((ad) => (ad.storyImages?.length || 0) > 0);
 
@@ -57,12 +62,19 @@ export default function AdsStoriesCarousel({ ads = [], onSelectAd }) {
                   title={`Ver historias de ${ad.company}`}
                 >
                   <div className="story-ring-container">
-                    <img
-                      src={avatar}
-                      alt={ad.company}
-                      className="story-avatar-img"
-                      decoding="async"
-                    />
+                    {avatar && !failedAvatars.has(ad.id) ? (
+                      <img
+                        src={avatar}
+                        alt={ad.company}
+                        className="story-avatar-img"
+                        decoding="async"
+                        onError={() => setFailedAvatars((current) => new Set(current).add(ad.id))}
+                      />
+                    ) : (
+                      <span className="story-avatar-fallback" aria-hidden="true">
+                        <Building2 size={26} />
+                      </span>
+                    )}
                     {ad.tier === 'empresarial' && (
                       <span className="story-verified-badge" title="Empresa verificada">
                         <CheckCircle2 size={12} strokeWidth={3} />

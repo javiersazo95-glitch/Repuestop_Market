@@ -27,6 +27,7 @@ export type SellerRegistrationPayload = {
   direccion: DireccionPayload;
   hours?: string;
   shippingMethods?: string;
+  specialistBrandIds?: number[];
   referral?: string;
   referralChannel?: 'CASA_REPUESTOS';
   acceptsTerms: boolean;
@@ -153,6 +154,16 @@ export function fetchRegiones(paisId: string): Promise<UbicacionOption[]> {
 
 export function fetchComunas(regionId: string): Promise<UbicacionOption[]> {
   return request<UbicacionOption[]>(`/geografia/regiones/${encodeURIComponent(regionId)}/comunas`);
+}
+
+/* ------------------------------------------------------------------ *
+ * Catálogo de Marcas de Vehículo
+ * ------------------------------------------------------------------ */
+
+export type VehicleBrandOption = { id: number; nombre: string };
+
+export function fetchVehicleBrands(): Promise<VehicleBrandOption[]> {
+  return request<VehicleBrandOption[]>('/catalogos/inventario/marcas-vehiculo');
 }
 
 /* ------------------------------------------------------------------ *

@@ -8,7 +8,9 @@ import {
   Wallet, Undo2
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
-import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi } from '../services/api';
+import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi,
+  confirmOrderStockDeliveryApi, confirmOrderCompatibilityApi } from '../services/api';
+import SellerConfirmationChecklist from './SellerConfirmationChecklist';
 import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
@@ -380,6 +382,10 @@ export default function OrderDetailView({
   // o desde la sección "Despachar a" para cargarla en un pedido ya confirmado / histórico
   // (`receiptUploadOnly`, sin disparar la transición de estado).
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  // Checklist de confirmación del vendedor. Cada confirmación devuelve el pedido completo,
+  // así que se guarda el checklist devuelto en vez de pedirle un refresh al padre: el resto
+  // del detalle no cambia con estas acciones.
+  const [checklistLocal, setChecklistLocal] = useState(null);
   const [receiptUploadOnly, setReceiptUploadOnly] = useState(false);
   // El visor de la boleta ya cargada (`SaleReceiptViewerModal`): guarda de que tienda es,
   // porque en un carrito de varias el comprador pide la de cada subordén.
@@ -578,6 +584,21 @@ export default function OrderDetailView({
   const visibleTimelineStep = TIMELINE_STEPS.find((step) => step.key === selectedTimelineStep)
     || TIMELINE_STEPS[timelineIndex];
   const VisibleTimelineIcon = visibleTimelineStep.icon;
+  const checklistActual = checklistLocal ?? order?.checklistVendedor ?? null;
+  const orderConChecklist = checklistLocal
+    ? { ...order, checklistVendedor: checklistLocal }
+    : order;
+
+  const handleConfirmStock = async () => {
+    const actualizado = await confirmOrderStockDeliveryApi(order.id);
+    setChecklistLocal(actualizado?.checklistVendedor ?? null);
+  };
+
+  const handleConfirmCompatibility = async (pedidoItemIds) => {
+    const actualizado = await confirmOrderCompatibilityApi(order.id, pedidoItemIds);
+    setChecklistLocal(actualizado?.checklistVendedor ?? null);
+  };
+
   const controlledAction = getControlledOrderAction(order, mode);
 
   // Estado de la mediacion, si existe: solo hay `EN_MEDIACION` / `RESUELTA` / `CERRADA`.
@@ -850,6 +871,13 @@ export default function OrderDetailView({
       // Confirmar un pedido recien pagado exige la boleta de venta: en vez del
       // ConfirmDialog simple se abre el modal de boleta, que la sube y recien ahi avanza
       // el estado. El backend tambien rechaza la transicion sin boleta.
+      // Los dos pasos previos van antes que la boleta: emitir el documento y recién ahí
+      // descubrir una incompatibilidad obliga a una nota de crédito.
+      if (isSeller && controlledAction.nextStatus === 'EN_PREPARACION' && checklistActual
+          && (!checklistActual.stockEntregaConfirmadaAt || !checklistActual.compatibilidadConfirmadaAt)) {
+        setStatusError('Completa los pasos de "Confirmar pedido" antes de preparar el pedido.');
+        return;
+      }
       if (isSeller && controlledAction.nextStatus === 'EN_PREPARACION' && onRegisterSaleReceipt
           && !order.boletaVentaDisponible) {
         setReceiptUploadOnly(false);
@@ -1161,6 +1189,20 @@ export default function OrderDetailView({
                       ? `Factura · RUT ${buyerRut}`
                       : 'Boleta electrónica'}</span>
                   </div>
+                )}
+
+                {isSeller && controlledAction?.nextStatus === 'EN_PREPARACION' && checklistActual && (
+                  <SellerConfirmationChecklist
+                    order={orderConChecklist}
+                    isStorePickup={isStorePickup}
+                    onConfirmStock={handleConfirmStock}
+                    onConfirmCompatibility={handleConfirmCompatibility}
+                    onOpenBuyerChat={onOpenDispute ? () => startSellerChat(sellerId) : undefined}
+                    onUploadReceipt={() => {
+                      setReceiptUploadOnly(true);
+                      setShowReceiptModal(true);
+                    }}
+                  />
                 )}
 
                 {/* Estado de la boleta de venta. Para el vendedor es su centro de acción

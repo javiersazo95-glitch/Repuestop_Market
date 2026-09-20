@@ -17,13 +17,6 @@ import { useSavedMarketplaceItems } from '../../hooks/useSavedMarketplaceItems';
 import VehicleBrandLogo from '../VehicleBrandLogo';
 import './ad-detail.css';
 
-const TIER_META = {
-  basica: { label: 'Básico', color: '#64748b' },
-  destacada: { label: 'Destacado', color: '#d97706' },
-  premium: { label: 'Premium', color: '#7c3aed' },
-  empresarial: { label: 'Empresarial', color: '#7c3aed' },
-};
-
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=1200&auto=format&fit=crop&q=80';
 
@@ -56,7 +49,6 @@ export default function AdDetailView({ ad, onBack }) {
   const isOwnAd = isOwn(ad);
 
   const tierConfig = AD_TIERS[ad.tier] || AD_TIERS.basica;
-  const tierMeta = TIER_META[ad.tier] || TIER_META.basica;
   const isEmpresarial = ad.tier === 'empresarial';
   const categoryObj = SERVICE_CATEGORIES.find((c) => c.id === ad.category);
   const categoryLabel = ad.categoryLabel || categoryObj?.label || 'Servicio automotriz';
@@ -90,7 +82,6 @@ export default function AdDetailView({ ad, onBack }) {
   // Ficha de la empresa que publica: solo se listan los datos disponibles.
   const memberSince = formatMonthYear(ad.publishedAt);
   const companyFacts = [
-    { Icon: BadgeCheck, label: 'Plan', value: isEmpresarial ? `${tierMeta.label} · Verificado` : tierMeta.label },
     { Icon: Tag, label: 'Rubro', value: categoryLabel },
     { Icon: MapPin, label: 'Dirección', value: locationText },
     { Icon: Phone, label: 'Teléfono', value: ad.phone },
@@ -168,9 +159,6 @@ export default function AdDetailView({ ad, onBack }) {
           <div className="ad-detail-main">
             <div className="ad-detail-headrow">
               <div>
-                <span className="ad-detail-tier" style={{ background: tierMeta.color }}>
-                  <CategoryIcon size={13} /> {tierMeta.label}
-                </span>
                 <h1 className="ad-detail-title">{ad.title}</h1>
                 <div className="ad-detail-submeta">
                   <span className="ad-detail-cat">
@@ -294,7 +282,7 @@ export default function AdDetailView({ ad, onBack }) {
                       {ad.company || 'Proveedor RepuesTop'}
                       {isEmpresarial && <BadgeCheck size={15} />}
                     </strong>
-                    <span>{isEmpresarial ? 'Taller verificado por RepuesTop' : `Anuncio ${tierMeta.label}`}</span>
+                    {isEmpresarial && <span>Taller verificado por RepuesTop</span>}
                   </div>
                 </div>
                 {specialistBrands.length > 0 && (
@@ -357,7 +345,7 @@ export default function AdDetailView({ ad, onBack }) {
                     {ad.company || 'Proveedor RepuesTop'}
                     {isEmpresarial && <BadgeCheck size={15} />}
                   </strong>
-                  <span>{isEmpresarial ? 'Taller verificado' : tierMeta.label}</span>
+                  {isEmpresarial && <span>Taller verificado</span>}
                 </div>
               </div>
 

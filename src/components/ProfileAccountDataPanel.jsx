@@ -1,15 +1,20 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  Building2, Camera, Check, CreditCard, Image as ImageIcon, Info, Lock, Mail,
-  Pencil, Phone, Save, Search, Truck, Wallet, X,
+  AlertCircle, Building2, Camera, Check, CreditCard, FileText, Image as ImageIcon, Info, Loader2, Lock, Mail,
+  MapPin, Package, Pencil, Phone, Save, Search, Store, Truck, Wallet, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getVehicleBrandsApi, updateStoreSpecialistBrandsApi, updateSellerShippingMethodsApi } from '../services/api';
+import {
+  getVehicleBrandsApi, updateStoreSpecialistBrandsApi, updateSellerShippingMethodsApi,
+  getRegionesApi, getComunasApi, getPaisesApi,
+} from '../services/api';
 import { qk } from '../services/queryKeys';
 import ShippingMethodsPicker from './ShippingMethodsPicker';
 import BuyerAddressBook from './BuyerAddressBook';
+import AddressAutocompleteInput from './AddressAutocompleteInput';
+import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import VehicleBrandLogo from './VehicleBrandLogo';
 import SellerVerificationCard from './SellerVerificationCard';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
@@ -56,20 +61,75 @@ export default function ProfileAccountDataPanel({
   const [isSaving, setIsSaving] = useState(false);
   const [nameDraft, setNameDraft] = useState(user?.userName || user?.nombre || '');
   const [phoneDraft, setPhoneDraft] = useState(user?.phone || user?.telefono || '');
-  const [taxIdDraft, setTaxIdDraft] = useState(user?.taxId || '');
+  const [taxIdDraft, setTaxIdDraft] = useState(
+    isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || '')
+  );
+  const [facturaRazonSocialDraft, setFacturaRazonSocialDraft] = useState(user?.facturaRazonSocial || '');
+  const [facturaGiroDraft, setFacturaGiroDraft] = useState(user?.facturaGiro || '');
   const [shippingSelectionsDraft, setShippingSelectionsDraft] = useState(() => parseShippingSelections(''));
   const [specialistBrandIdsDraft, setSpecialistBrandIdsDraft] = useState([]);
   const [availableVehicleBrands, setAvailableVehicleBrands] = useState([]);
   const [showSpecialistBrandsModal, setShowSpecialistBrandsModal] = useState(false);
   const [specialistBrandSearch, setSpecialistBrandSearch] = useState('');
+  const [storeAddressDraft, setStoreAddressDraft] = useState(storeInfo?.address || user?.address || '');
+  const [storeRegionIdDraft, setStoreRegionIdDraft] = useState('');
+  const [storeComunaIdDraft, setStoreComunaIdDraft] = useState('');
+  const [storeComunaDraft, setStoreComunaDraft] = useState(storeInfo?.comuna || user?.comuna || '');
+  const [storeRegionDraft, setStoreRegionDraft] = useState(storeInfo?.region || user?.region || '');
+  const [sellerRegiones, setSellerRegiones] = useState([]);
+  const [sellerComunas, setSellerComunas] = useState([]);
+  const [sellerGeoLoading, setSellerGeoLoading] = useState(false);
 
-  // Direcciones: `RT_tienda` se actualiza sola al guardar en BuyerAddressBook.jsx;
-  // esto refresca storeInfo en el perfil para que los datos de la tienda se vean
-  // al tiro sin esperar a un reload completo de la pagina.
-  const refreshStoreInfoAfterAddressSync = useCallback(() => {
-    if (!isSeller || !effectiveSellerId) return;
-    queryClient.invalidateQueries({ queryKey: qk.sellerStore(effectiveSellerId) });
-  }, [isSeller, effectiveSellerId, queryClient]);
+  useEffect(() => {
+    if (!isEditing) {
+      setNameDraft(user?.userName || user?.nombre || '');
+      setPhoneDraft(user?.phone || user?.telefono || '');
+      setTaxIdDraft(isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || ''));
+      setFacturaRazonSocialDraft(user?.facturaRazonSocial || '');
+      setFacturaGiroDraft(user?.facturaGiro || '');
+      setStoreAddressDraft(storeInfo?.address || user?.address || '');
+      setStoreComunaDraft(storeInfo?.comuna || user?.comuna || '');
+      setStoreRegionDraft(storeInfo?.region || user?.region || '');
+    }
+  }, [user, storeInfo, isSeller, isEditing]);
+
+  useEffect(() => {
+    if (!isSeller || !isEditing) return;
+    let cancelled = false;
+    const currentComuna = storeInfo?.comuna || user?.comuna || '';
+    const currentRegion = storeInfo?.region || user?.region || '';
+    setSellerGeoLoading(true);
+    resolverUbicacionPorNombre({ comuna: currentComuna, region: currentRegion })
+      .then((res) => {
+        if (cancelled) return;
+        if (res.regiones?.length) setSellerRegiones(res.regiones);
+        if (res.comunas?.length) setSellerComunas(res.comunas);
+        if (res.regionId) setStoreRegionIdDraft(String(res.regionId));
+        if (res.comunaId) setStoreComunaIdDraft(String(res.comunaId));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setSellerGeoLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [isSeller, isEditing, storeInfo?.comuna, storeInfo?.region, user?.comuna, user?.region]);
+
+  const handleStoreRegionChange = (regionId) => {
+    setStoreRegionIdDraft(regionId);
+    setStoreComunaIdDraft('');
+    setStoreComunaDraft('');
+    const selectedRegion = sellerRegiones.find((r) => String(r.id) === String(regionId));
+    setStoreRegionDraft(selectedRegion?.nombre || '');
+    if (!regionId) {
+      setSellerComunas([]);
+      return;
+    }
+    setSellerGeoLoading(true);
+    getComunasApi(regionId)
+      .then((data) => setSellerComunas(Array.isArray(data) ? data : []))
+      .catch(() => setSellerComunas([]))
+      .finally(() => setSellerGeoLoading(false));
+  };
 
   useEffect(() => {
     if (!isSeller || !isEditing || availableVehicleBrands.length) return;
@@ -82,31 +142,40 @@ export default function ProfileAccountDataPanel({
     return () => { cancelled = true; };
   }, [isSeller, isEditing, availableVehicleBrands.length]);
 
+  // Validación reactiva en vivo para feedback inmediato
+  const cleanRut = String(taxIdDraft || '').replace(/[^0-9kK]/g, '').toUpperCase();
+  const isRutEmpty = cleanRut.length === 0;
+  const isRutValid = isRutEmpty || isValidRut(taxIdDraft);
+  const isRutInvalid = !isRutEmpty && !isValidRut(taxIdDraft);
+
+  const isNameValid = nameDraft.trim().length >= 2;
+  const isPhoneValid = !phoneDraft.trim() || isValidClPhone(phoneDraft);
+  const isProfileFormValid = isNameValid && isPhoneValid && (isSeller || isRutValid);
+
   // Mismas reglas que ya existen en el resto de la app: el chequeo de dígito
   // verificador del RUT es el que usa Retirar dinero (src/services/adapters.js),
   // y el celular sigue el formato chileno estándar (9 + 8 dígitos).
   const validateProfileForm = () => {
     const errors = {};
 
-    if (nameDraft.trim().length < 2) {
+    if (!isNameValid) {
       errors.name = 'Ingresa un nombre válido.';
     }
 
-    if (phoneDraft.trim() && !isValidClPhone(phoneDraft)) {
+    if (!isPhoneValid) {
       errors.phone = 'Ingresa un celular chileno válido, ej: +56 9 1234 5678.';
     }
 
-    if (!isSeller) {
-      if (!taxIdDraft.trim()) {
-        errors.taxId = 'Ingresa tu RUT.';
-      } else if (!isValidRut(taxIdDraft)) {
-        errors.taxId = 'El RUT ingresado no es válido.';
-      }
+    if (!isSeller && isRutInvalid) {
+      errors.taxId = cleanRut.length < 8
+        ? 'RUT incompleto (ingresa al menos 8 caracteres con dígito verificador).'
+        : 'El RUT ingresado no es válido (revisa el dígito verificador).';
     }
 
     if (isSeller) {
-      // La dirección comercial (con región/comuna) ya no se valida acá: se
-      // edita y se valida una sola vez en BuyerAddressBook, más abajo.
+      if (!storeAddressDraft.trim()) {
+        errors.storeAddress = 'Ingresa la dirección comercial de la tienda.';
+      }
       const hasShippingMethod = SHIPPING_METHOD_DEFS.some((def) => shippingSelectionsDraft[def.id]?.enabled);
       if (!hasShippingMethod) {
         errors.shippingMethods = 'Selecciona al menos un método de envío.';
@@ -130,19 +199,34 @@ export default function ProfileAccountDataPanel({
     setSaveStatus(null);
 
     const payload = {
-      userName: nameDraft,
-      phone: phoneDraft,
+      userName: nameDraft.trim(),
+      phone: phoneDraft.trim(),
     };
 
     if (!isSeller) {
-      payload.taxId = taxIdDraft;
+      const cleanRut = taxIdDraft.trim();
+      payload.facturaRut = cleanRut;
+      payload.taxId = cleanRut;
+      payload.facturaRazonSocial = facturaRazonSocialDraft.trim();
+      payload.facturaGiro = facturaGiroDraft.trim();
+    } else {
+      if (storeAddressDraft.trim()) {
+        payload.address = storeAddressDraft.trim();
+      }
+      if (storeComunaIdDraft) {
+        payload.comunaId = Number(storeComunaIdDraft);
+      }
+      if (storeRegionDraft) {
+        payload.region = storeRegionDraft;
+      }
+      if (storeComunaDraft) {
+        payload.city = storeComunaDraft;
+      }
     }
 
-    // Nombre y RUT de la tienda ya no se editan desde este formulario (ver
+    // Nombre y RUT de la tienda no se editan desde este formulario (ver
     // bloque de solo lectura más abajo): son datos de identidad que deben
-    // cambiarse a través de soporte, no con un input libre. La dirección
-    // comercial (address/comunaId) tampoco se envía desde acá: BuyerAddressBook
-    // ya la sincroniza directamente al guardar una dirección de despacho.
+    // cambiarse a través de soporte.
     //
     // Los métodos de envío NO van en `payload`: `ActualizarPerfilRequestDTO` no
     // tiene ese campo y el PATCH los descartaba en silencio. El único que los
@@ -199,7 +283,9 @@ export default function ProfileAccountDataPanel({
                 setFormErrors({});
                 setNameDraft(user?.userName || user?.nombre || '');
                 setPhoneDraft(user?.phone || user?.telefono || '');
-                setTaxIdDraft(storeInfo?.taxId || user?.taxId || '');
+                setTaxIdDraft(isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || ''));
+                setFacturaRazonSocialDraft(user?.facturaRazonSocial || '');
+                setFacturaGiroDraft(user?.facturaGiro || '');
                 setShippingSelectionsDraft(parseShippingSelections(storeInfo?.shippingMethods));
                 setSpecialistBrandIdsDraft((storeInfo?.marcasEspecialistas || []).map((brand) => String(brand.id)));
               }}
@@ -228,12 +314,35 @@ export default function ProfileAccountDataPanel({
                 <input
                   type="text"
                   value={nameDraft}
-                  onChange={(e) => setNameDraft(e.target.value)}
+                  onChange={(e) => {
+                    setNameDraft(e.target.value);
+                    if (formErrors.name) {
+                      setFormErrors((prev) => {
+                        const { name, ...rest } = prev;
+                        return rest;
+                      });
+                    }
+                  }}
                   maxLength={80}
                   required
-                  className={formErrors.name ? 'input-invalid' : ''}
+                  className={
+                    formErrors.name || (nameDraft.trim().length > 0 && !isNameValid)
+                      ? 'input-invalid has-error'
+                      : (nameDraft.trim().length >= 2)
+                      ? 'has-success'
+                      : ''
+                  }
                 />
-                {formErrors.name && <small className="field-error-text">{formErrors.name}</small>}
+                {nameDraft.trim().length > 0 && !isNameValid && (
+                  <small className="auth-field-error">
+                    <AlertCircle size={13} /> Ingresa un nombre válido (mínimo 2 caracteres).
+                  </small>
+                )}
+                {formErrors.name && !nameDraft.trim() && (
+                  <small className="auth-field-error">
+                    <AlertCircle size={13} /> {formErrors.name}
+                  </small>
+                )}
               </div>
               <div className="form-group">
                 <label>
@@ -244,40 +353,132 @@ export default function ProfileAccountDataPanel({
                   type="tel"
                   inputMode="tel"
                   value={phoneDraft}
-                  onChange={(e) => setPhoneDraft(sanitizePhoneInput(e.target.value))}
+                  onChange={(e) => {
+                    setPhoneDraft(sanitizePhoneInput(e.target.value));
+                    if (formErrors.phone) {
+                      setFormErrors((prev) => {
+                        const { phone, ...rest } = prev;
+                        return rest;
+                      });
+                    }
+                  }}
                   placeholder="+56 9 1234 5678"
                   maxLength={20}
-                  className={formErrors.phone ? 'input-invalid' : ''}
+                  className={
+                    formErrors.phone || (phoneDraft.trim() && !isPhoneValid)
+                      ? 'input-invalid has-error'
+                      : (phoneDraft.trim() && isPhoneValid)
+                      ? 'has-success'
+                      : ''
+                  }
                 />
-                {formErrors.phone && <small className="field-error-text">{formErrors.phone}</small>}
-                <small className="form-helper-text">Solo números y, al inicio, el signo + (código de país).</small>
+                {phoneDraft.trim() && !isPhoneValid && (
+                  <small className="auth-field-error">
+                    <AlertCircle size={13} /> Ingresa un celular chileno válido (ej: +56 9 1234 5678).
+                  </small>
+                )}
+                {phoneDraft.trim() && isPhoneValid && (
+                  <small className="auth-field-success">
+                    <Check size={13} /> Celular válido
+                  </small>
+                )}
+                {!phoneDraft.trim() && (
+                  <small className="form-helper-text">Solo números y, al inicio, el signo + (código de país).</small>
+                )}
+                {formErrors.phone && !phoneDraft.trim() && (
+                  <small className="auth-field-error">
+                    <AlertCircle size={13} /> {formErrors.phone}
+                  </small>
+                )}
               </div>
             </div>
             {!isSeller && (
-              <div className="form-group">
-                <label>
-                  RUT / Identificador Fiscal
-                  <span className="char-counter">{taxIdDraft.length}/12</span>
-                </label>
-                <input
-                  type="text"
-                  value={taxIdDraft}
-                  onChange={(e) => setTaxIdDraft(formatRut(e.target.value))}
-                  placeholder="12.345.678-K"
-                  maxLength={12}
-                  required
-                  className={formErrors.taxId ? 'input-invalid' : ''}
-                />
-                {formErrors.taxId && <small className="field-error-text">{formErrors.taxId}</small>}
-              </div>
+              <>
+                <div className="form-section-title" style={{ marginTop: '20px' }}>Datos para Facturación (Opcional)</div>
+                <small className="form-helper-text" style={{ marginBottom: '12px', display: 'block' }}>
+                  Guarda estos datos para no tener que escribirlos cada vez que elijas &ldquo;Factura&rdquo; al pagar.
+                </small>
+                <div className="form-group">
+                  <label>
+                    RUT para Facturación
+                    <span className="char-counter">{taxIdDraft.length}/12</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={taxIdDraft}
+                    onChange={(e) => {
+                      setTaxIdDraft(formatRut(e.target.value));
+                      if (formErrors.taxId) {
+                        setFormErrors((prev) => {
+                          const { taxId, ...rest } = prev;
+                          return rest;
+                        });
+                      }
+                    }}
+                    placeholder="12.345.678-K"
+                    maxLength={12}
+                    className={
+                      (formErrors.taxId || isRutInvalid)
+                        ? 'input-invalid has-error'
+                        : (cleanRut.length >= 8 && isValidRut(taxIdDraft))
+                        ? 'has-success'
+                        : ''
+                    }
+                  />
+                  {isRutEmpty && (
+                    <small className="form-helper-text">Opcional. Si lo completas, se validará el dígito verificador.</small>
+                  )}
+                  {cleanRut.length > 0 && cleanRut.length < 8 && (
+                    <small className="auth-field-error">
+                      <AlertCircle size={13} /> RUT incompleto (ingresa al menos 8 caracteres con dígito verificador).
+                    </small>
+                  )}
+                  {cleanRut.length >= 8 && !isValidRut(taxIdDraft) && (
+                    <small className="auth-field-error">
+                      <AlertCircle size={13} /> El RUT ingresado no es válido (revisa el dígito verificador).
+                    </small>
+                  )}
+                  {cleanRut.length >= 8 && isValidRut(taxIdDraft) && (
+                    <small className="auth-field-success">
+                      <Check size={13} /> RUT válido
+                    </small>
+                  )}
+                  {formErrors.taxId && isRutEmpty && (
+                    <small className="auth-field-error">
+                      <AlertCircle size={13} /> {formErrors.taxId}
+                    </small>
+                  )}
+                </div>
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label>
+                      Razón Social
+                      <span className="char-counter">{facturaRazonSocialDraft.length}/180</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={facturaRazonSocialDraft}
+                      onChange={(e) => setFacturaRazonSocialDraft(e.target.value)}
+                      placeholder="Ej. Comercial Repuestos SpA"
+                      maxLength={180}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>
+                      Giro Comercial
+                      <span className="char-counter">{facturaGiroDraft.length}/150</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={facturaGiroDraft}
+                      onChange={(e) => setFacturaGiroDraft(e.target.value)}
+                      placeholder="Ej. Venta de repuestos automotrices"
+                      maxLength={150}
+                    />
+                  </div>
+                </div>
+              </>
             )}
-
-            {/* La dirección comercial de despacho (con región/comuna) ya se
-                edita una sola vez, más abajo, en "Gestión de Direcciones" — ese
-                widget sincroniza automáticamente comuna/región con la tienda al
-                guardar (ver refreshStoreInfoAfterAddressSync). Repetirla acá
-                arriba como un segundo input de texto libre era una segunda fuente
-                de verdad para el mismo dato, y confundía cuál mandaba. */}
 
             {isSeller && (
               <>
@@ -306,6 +507,83 @@ export default function ProfileAccountDataPanel({
                   <button type="button" className="form-helper-inline-link" onClick={() => { setIsEditing(false); navigate(helpContactPath()); }}>
                     Centro de ayuda
                   </button>.
+                </small>
+
+                {/* DIRECCIÓN COMERCIAL OFICIAL DE LA TIENDA */}
+                <div className="form-section-title" style={{ marginTop: '20px' }}>
+                  Dirección Comercial de la Tienda
+                </div>
+                <div className="form-group">
+                  <label>
+                    Calle y Número
+                    <span className="char-counter">{storeAddressDraft.length}/180</span>
+                  </label>
+                  <AddressAutocompleteInput
+                    value={storeAddressDraft}
+                    onChange={setStoreAddressDraft}
+                    onSelectLocation={async (loc) => {
+                      if (loc?.comuna || loc?.region) {
+                        try {
+                          const resolved = await resolverUbicacionPorNombre(loc);
+                          if (resolved.regiones?.length) setSellerRegiones(resolved.regiones);
+                          if (resolved.comunas?.length) setSellerComunas(resolved.comunas);
+                          if (resolved.regionId) {
+                            setStoreRegionIdDraft(String(resolved.regionId));
+                            const r = (resolved.regiones || []).find((x) => String(x.id) === String(resolved.regionId));
+                            if (r) setStoreRegionDraft(r.nombre);
+                          }
+                          if (resolved.comunaId) {
+                            setStoreComunaIdDraft(String(resolved.comunaId));
+                            const c = (resolved.comunas || []).find((x) => String(x.id) === String(resolved.comunaId));
+                            if (c) setStoreComunaDraft(c.nombre);
+                          }
+                        } catch (err) {
+                          console.warn('Error resolviendo ubicación geográfica:', err);
+                        }
+                      }
+                    }}
+                    comuna={storeComunaDraft}
+                    region={storeRegionDraft}
+                    placeholder="Ej. Av. Marathon 1234"
+                    maxLength={180}
+                  />
+                  {formErrors.storeAddress && <small className="field-error-text">{formErrors.storeAddress}</small>}
+                </div>
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label>Región {sellerGeoLoading && !sellerRegiones.length && <Loader2 size={12} className="spin-icon" />}</label>
+                    <select
+                      value={storeRegionIdDraft}
+                      onChange={(e) => handleStoreRegionChange(e.target.value)}
+                    >
+                      <option value="">Selecciona una región</option>
+                      {sellerRegiones.map((reg) => (
+                        <option key={reg.id} value={reg.id}>{reg.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Comuna {sellerGeoLoading && storeRegionIdDraft && <Loader2 size={12} className="spin-icon" />}</label>
+                    <select
+                      value={storeComunaIdDraft}
+                      onChange={(e) => {
+                        setStoreComunaIdDraft(e.target.value);
+                        const com = sellerComunas.find((c) => String(c.id) === String(e.target.value));
+                        setStoreComunaDraft(com?.nombre || '');
+                      }}
+                      disabled={!storeRegionIdDraft || sellerGeoLoading}
+                    >
+                      <option value="">
+                        {!storeRegionIdDraft ? 'Primero selecciona una región' : sellerGeoLoading ? 'Cargando comunas...' : 'Selecciona una comuna'}
+                      </option>
+                      {sellerComunas.map((com) => (
+                        <option key={com.id} value={com.id}>{com.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <small className="form-helper-text">
+                  Esta es la dirección física oficial de tu tienda: punto único para catálogo público, retiros presenciales de clientes, despachos de pedidos y recepción de devoluciones.
                 </small>
 
                 <div className="form-group" style={{ marginTop: '16px' }}>
@@ -351,10 +629,30 @@ export default function ProfileAccountDataPanel({
                 así que repetirla acá adentro era el mismo widget dos veces. */}
 
             <div className="profile-data-form-actions" style={{ marginTop: '20px' }}>
-              <button type="button" className="btn-auth-secondary" onClick={() => { setIsEditing(false); setFormErrors({}); }}>
+              <button
+                type="button"
+                className="btn-auth-secondary"
+                onClick={() => {
+                  setIsEditing(false);
+                  setFormErrors({});
+                  setNameDraft(user?.userName || user?.nombre || '');
+                  setPhoneDraft(user?.phone || user?.telefono || '');
+                  setTaxIdDraft(isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || ''));
+                  setFacturaRazonSocialDraft(user?.facturaRazonSocial || '');
+                  setFacturaGiroDraft(user?.facturaGiro || '');
+                  setStoreAddressDraft(storeInfo?.address || user?.address || '');
+                  setStoreComunaDraft(storeInfo?.comuna || user?.comuna || '');
+                  setStoreRegionDraft(storeInfo?.region || user?.region || '');
+                }}
+              >
                 Cancelar
               </button>
-              <button type="submit" className="btn-auth-primary" disabled={isSaving} style={{ width: 'auto' }}>
+              <button
+                type="submit"
+                className="btn-auth-primary"
+                disabled={isSaving || !isProfileFormValid}
+                style={{ width: 'auto' }}
+              >
                 <Save size={16} /> {isSaving ? 'Guardando...' : 'Guardar Información'}
               </button>
             </div>
@@ -401,8 +699,8 @@ export default function ProfileAccountDataPanel({
                     </div>
                   )}
                   <div className="details-info-row">
-                    <span className="info-label">RUT / Identificador Fiscal</span>
-                    <strong className="info-value">{storeInfo?.taxId || user?.taxId || '—'}</strong>
+                    <span className="info-label">{isSeller ? 'RUT de la Tienda' : 'RUT (Facturación)'}</span>
+                    <strong className="info-value">{isSeller ? (storeInfo?.taxId || user?.taxId || '—') : (user?.facturaRut || user?.taxId || '—')}</strong>
                   </div>
                   {!isSeller && (
                     <div className="details-info-row">
@@ -422,6 +720,18 @@ export default function ProfileAccountDataPanel({
                     <span className="info-label"><Phone size={13} /> Teléfono Móvil</span>
                     <strong className="info-value">{user?.phone || user?.telefono || '—'}</strong>
                   </div>
+                  {!isSeller && (
+                    <>
+                      <div className="details-info-row">
+                        <span className="info-label"><FileText size={13} /> Razón Social (Facturación)</span>
+                        <strong className="info-value">{user?.facturaRazonSocial || '—'}</strong>
+                      </div>
+                      <div className="details-info-row">
+                        <span className="info-label"><FileText size={13} /> Giro Comercial (Facturación)</span>
+                        <strong className="info-value">{user?.facturaGiro || '—'}</strong>
+                      </div>
+                    </>
+                  )}
                   {isSeller && (
                     <div className="details-info-row details-info-row-wide">
                       <span className="info-label">Marcas especialistas</span>
@@ -476,19 +786,109 @@ export default function ProfileAccountDataPanel({
                 </div>
               )}
 
-              {/* Logística y Ubicación: contiene la libreta de direcciones,
-                  mucho más densa que el resto. */}
+              {/* Ubicación y Logística: para el vendedor se consolida en la dirección comercial oficial
+                  de la tienda (punto único para catálogo, retiros, despachos y devoluciones).
+                  Para el comprador se muestra su libreta de direcciones guardadas. */}
               <div className="details-card-block store-section-card">
                 <h3 className="section-subtitle">
                   <span className="section-subtitle-icon icon-amber"><Truck size={16} /></span>
-                  <span>Ubicación y Logística de Despacho</span>
+                  <span>{isSeller ? 'Ubicación y Logística Comercial' : 'Ubicación y Direcciones de Entrega'}</span>
                 </h3>
-                <BuyerAddressBook usuarioId={user?.userId} onCommercialAddressSynced={refreshStoreInfoAfterAddressSync} />
-              {/* Verificación y adhesión: estado REAL desde
-                  `GET /proveedores/{id}/verificacion`. Antes eran dos líneas
-                  fijas que decían "Tienda Verificada" y "Términos aceptados"
-                  pasara lo que pasara. */}
-              {isSeller && <SellerVerificationCard sellerId={effectiveSellerId} />}
+
+                {isSeller && (
+                  <div className="store-official-address-card" style={{
+                    padding: '18px 20px',
+                    borderRadius: '12px',
+                    border: '1.5px solid #bfdbfe',
+                    background: '#f8faff',
+                    marginBottom: '18px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '14px',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <div style={{
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '10px',
+                          background: '#2563eb',
+                          color: '#fff',
+                          display: 'grid',
+                          placeItems: 'center',
+                          flexShrink: 0
+                        }}>
+                          <Store size={22} />
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <h4 style={{ margin: 0, fontSize: '15.5px', fontWeight: 700, color: '#0f172a' }}>
+                              Dirección Comercial de la Tienda
+                            </h4>
+                            <span style={{
+                              background: '#dbeafe',
+                              color: '#1e40af',
+                              border: '1px solid #bfdbfe',
+                              padding: '3px 10px',
+                              borderRadius: '12px',
+                              fontSize: '11px',
+                              fontWeight: 700
+                            }}>
+                              Punto de Retiro, Despacho y Devoluciones
+                            </span>
+                          </div>
+                          <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>
+                            {storeInfo?.address || user?.address || 'Dirección comercial no registrada'}
+                          </p>
+                          <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#64748b' }}>
+                            {[storeInfo?.comuna || user?.comuna, storeInfo?.region || user?.region].filter(Boolean).join(', ') || 'Comuna y región no registradas'}
+                          </p>
+                          {storeInfo?.hours && (
+                            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#475569' }}>
+                              Horario de atención: {storeInfo.hours}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {!isEditing && (
+                        <button
+                          type="button"
+                          className="details-card-link-button"
+                          onClick={() => setIsEditing(true)}
+                          style={{ alignSelf: 'flex-start' }}
+                        >
+                          <Pencil size={13} /> Editar tienda
+                        </button>
+                      )}
+                    </div>
+
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+                      gap: '10px',
+                      paddingTop: '12px',
+                      borderTop: '1px solid #e2e8f0',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#334155' }}>
+                        <Store size={15} color="#2563eb" style={{ flexShrink: 0 }} />
+                        <span>Ficha pública en el catálogo</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#334155' }}>
+                        <Truck size={15} color="#2563eb" style={{ flexShrink: 0 }} />
+                        <span>Retiros de clientes y transportistas</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#334155' }}>
+                        <Package size={15} color="#2563eb" style={{ flexShrink: 0 }} />
+                        <span>Recepción de cambios y devoluciones</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!isSeller && (
+                  <BuyerAddressBook usuarioId={user?.userId} />
+                )}
+                {isSeller && <SellerVerificationCard sellerId={effectiveSellerId} />}
               </div>
             </div>
           </div>

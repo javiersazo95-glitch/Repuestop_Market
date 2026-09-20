@@ -10,7 +10,7 @@ import {
 import {
   buildQuoteRequestMessage, isQuoteExpired, QUOTE_DELIVERY_OPTIONS,
 } from '../utils/quoteFlow';
-import { buyerProfilePath, profilePath } from '../routes/paths';
+import { buyerProfilePath } from '../routes/paths';
 import { parseShippingMethods, resolveShippingService, shippingMethodsForLocation } from '../data/shippingMethods';
 
 /**
@@ -88,8 +88,6 @@ export default function QuotationRequestModal({
     buyerCommune,
     sellerCommune,
   ).map((method) => resolveShippingService(method).name))];
-  const needsLocation = Boolean(isLoggedIn && user && !String(buyerCommune || '').trim());
-
   const updateField = (field, value) => setFormData((previous) => ({ ...previous, [field]: value }));
 
   const handleSubmit = async (event) => {
@@ -165,15 +163,7 @@ export default function QuotationRequestModal({
             </div>
           </article>
 
-          {needsLocation ? (
-            <div className="quote-request-success">
-              <AlertCircle size={54} />
-              <h3>Registra tu dirección para cotizar</h3>
-              <p>Necesitamos tu comuna para ofrecer únicamente los métodos de envío disponibles entre tu ubicación y la de la tienda.</p>
-              <button className="btn-submit-ticket" type="button" onClick={() => window.location.assign(profilePath('datos'))}>Registrar dirección <ChevronRight size={17} /></button>
-              <button className="btn-auth-secondary" type="button" onClick={onClose}>Cancelar</button>
-            </div>
-          ) : conversation ? (
+          {conversation ? (
             <div className="quote-request-success">
               <CheckCircle2 size={54} />
               <h3>¡Cotización solicitada correctamente!</h3>
@@ -190,7 +180,7 @@ export default function QuotationRequestModal({
                 <label><span>Método de envío *</span><select value={formData.shippingMethod} onChange={(event) => updateField('shippingMethod', event.target.value)} required><option value="">Selecciona una opción</option>{shippingOptions.map((option) => <option key={option}>{option}</option>)}</select><small>{shippingOptions.length ? 'Opciones disponibles según las comunas de comprador y tienda.' : 'La tienda no tiene un método compatible para esta ubicación.'}</small></label>
               </div>
 
-              <label><span className="quote-request-label-with-help">Patente o chasis {requiresChassis ? '*' : '(opcional)'} <CircleHelp size={16} /></span><input value={formData.chassis} onChange={(event) => updateField('chassis', event.target.value.toUpperCase())} required={requiresChassis} placeholder="Ej. BBCL12 o VIN" /></label>
+              <label><span className="quote-request-label-with-help">Patente o chasis {requiresChassis ? '*' : '(opcional)'} <CircleHelp size={16} /></span><input value={formData.chassis} onChange={(event) => updateField('chassis', event.target.value.toUpperCase())} required={requiresChassis} maxLength={17} placeholder="Ej. BBCL12 o VIN" /></label>
               <label><span>Nota para el vendedor (opcional)</span><textarea rows="3" value={formData.notes} onChange={(event) => updateField('notes', event.target.value)} maxLength="500" placeholder="Marca preferida, urgencia u otra información útil..." /><small className="quote-request-counter">{formData.notes.length}/500</small></label>
 
               {submitError && <div className="modal-form-error"><AlertCircle size={16} /><span>{submitError}</span></div>}

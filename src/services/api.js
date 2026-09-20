@@ -198,21 +198,27 @@ export async function fetchApi(endpoint, options = {}) {
 /**
  * Auth API endpoints
  */
-export async function loginApi({ email, password }) {
+export async function loginApi({ email, password, reactivateAccount, acceptsTerms }) {
   return fetchApi('/auth/login', {
     method: 'POST',
     body: JSON.stringify({
       email: email.trim(),
       password,
       authProvider: 'EMAIL_PASSWORD',
+      reactivateAccount: Boolean(reactivateAccount),
+      acceptsTerms: Boolean(acceptsTerms),
     }),
   });
 }
 
-export async function loginGoogleApi({ idToken }) {
+export async function loginGoogleApi({ idToken, reactivateAccount, acceptsTerms }) {
   return fetchApi('/auth/google', {
     method: 'POST',
-    body: JSON.stringify({ idToken }),
+    body: JSON.stringify({
+      idToken,
+      reactivateAccount: Boolean(reactivateAccount),
+      acceptsTerms: Boolean(acceptsTerms),
+    }),
   });
 }
 
@@ -275,7 +281,27 @@ export async function registerSellerApi(sellerData) {
       comuna: sellerData.comuna || sellerData.ciudad,
       address: sellerData.address || '',
       shippingMethods: sellerData.shippingMethods || 'Starken, Chilexpress, Retiro en Tienda',
+      specialistBrandIds: sellerData.specialistBrandIds || undefined,
       authProvider: 'EMAIL_PASSWORD',
+    }),
+  });
+}
+
+export async function verifyRegisterEmailApi(email, code) {
+  return fetchApi('/auth/register/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: String(email || '').trim().toLowerCase(),
+      code: String(code || '').trim(),
+    }),
+  });
+}
+
+export async function resendRegisterCodeApi(email) {
+  return fetchApi('/auth/register/resend-code', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: String(email || '').trim().toLowerCase(),
     }),
   });
 }
@@ -1325,6 +1351,25 @@ export async function getMediationChatApi(pedidoId, proveedorId) {
   return fetchApi(`/pedidos/${pedidoId}/mediacion-chat${proveedorQuery(proveedorId)}`, { method: 'GET' });
 }
 
+/**
+ * Paso 1 del checklist del vendedor: confirma stock y condiciones de entrega.
+ * Ver docs/planes/plan_validacion_compatibilidad_pedido.md en el monorepo.
+ */
+export async function confirmOrderStockDeliveryApi(pedidoId) {
+  return fetchApi(`/pedidos/${pedidoId}/confirmaciones/stock-entrega`, { method: 'POST' });
+}
+
+/**
+ * Paso 2: confirma la compatibilidad de los repuestos con el vehículo del comprador.
+ * Sin `pedidoItemIds` confirma todos los ítems del vendedor en ese pedido.
+ */
+export async function confirmOrderCompatibilityApi(pedidoId, pedidoItemIds) {
+  return fetchApi(`/pedidos/${pedidoId}/confirmaciones/compatibilidad`, {
+    method: 'POST',
+    body: JSON.stringify({ pedidoItemIds: pedidoItemIds ?? null }),
+  });
+}
+
 /** Inicia explícitamente el chat postventa comprador-vendedor. */
 export async function startSellerChatApi(pedidoId, proveedorId) {
   return fetchApi(`/pedidos/${pedidoId}/chat-vendedor${proveedorQuery(proveedorId)}`, { method: 'POST' });
@@ -1479,6 +1524,15 @@ export async function updateAdAgendaApi(adId, payload) {
 }
 
 /**
+ * Agrega 30 dias de vigencia al anuncio (`POST /anuncios/{id}/renovar`), cobrando
+ * en el mismo request la tarifa de su tier actual. A diferencia de `updateAdApi`
+ * no toca moderacion ni contenido: el anuncio no vuelve a PENDIENTE.
+ */
+export async function renewAdApi(adId) {
+  return fetchApi(`/anuncios/${adId}/renovar`, { method: 'POST' });
+}
+
+/**
  * Baja logica: el backend solo hace `setActivo(false)` y conserva el
  * `moderationStatus`, asi que el anuncio sigue llegando en `GET /anuncios/mios`.
  * Quien lo consuma tiene que ocultarlo por su cuenta (ver `adsStorage.js`).
@@ -1488,9 +1542,10 @@ export async function deleteAdApi(adId) {
 }
 
 /**
- * Sube las fotos del anuncio a la carpeta Publicidad de R2 y devuelve
- * `{ imagenes: [{ key, url }] }` con rutas relativas al proxy del backend.
- * Timeout largo como manda CLAUDE.md: son varias imagenes de hasta 5MB.
+ * Sube las fotos del anuncio a la carpeta Media de R2 (se llamaba Publicidad hasta
+ * que se detecto que varios bloqueadores de anuncios bloquean esa palabra en la
+ * URL) y devuelve `{ imagenes: [{ key, url }] }` con rutas relativas al proxy del
+ * backend. Timeout largo como manda CLAUDE.md: son varias imagenes de hasta 5MB.
  */
 export async function uploadAdImagesApi(files) {
   const formData = new FormData();

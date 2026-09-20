@@ -37,8 +37,9 @@ export default function CheckoutPage() {
   const isBlockedAccount = isSellerBlockedAccount || isBuyerBlockedAccount;
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const isSeller = user?.role === 'SELLER';
   const buyerQuotesPath = buyerProfilePath(user, 'quotes');
-  const { cartItems, cartCount, cartTotals, clearCart, updateCartShipping } = useMarketplace();
+  const { activeVehicle, cartItems, cartCount, cartTotals, clearCart, updateCartShipping } = useMarketplace();
   const userId = user?.userId ?? user?.id;
 
   const location = useLocation();
@@ -262,8 +263,13 @@ export default function CheckoutPage() {
   };
 
   const rutValid = isValidRut(invoice.rut);
+  // Un vendedor sin ninguna direccion propia guardada no queda trabado aca: el backend
+  // ya sabe usar la direccion de su tienda como respaldo al armar el pedido
+  // (PedidoCheckoutCarritoSupport/CotizacionSupport), asi que no hace falta forzarlo a
+  // agregar una direccion solo para destrabar el boton.
+  const sellerWithoutSavedAddress = isSeller && !addressesLoading && addresses.length === 0;
   const stepComplete = {
-    entrega: allShippingChosen && (!needsAddress || Boolean(selectedAddressId)),
+    entrega: allShippingChosen && (!needsAddress || Boolean(selectedAddressId) || sellerWithoutSavedAddress),
     pago: Boolean(paymentMethod) && (documentType !== 'FACTURA' || rutValid),
   };
 
@@ -277,6 +283,34 @@ export default function CheckoutPage() {
       ? 'Ingresa un RUT válido para emitir la factura.'
       : '',
   }[step];
+
+  // Vehiculo del comprador (opcional). Si llego al checkout desde una busqueda por
+  // patente, el vehiculo ya esta en el contexto y solo se confirma; si no, puede
+  // declararlo a mano. Alimenta la validacion de compatibilidad que hace el vendedor
+  // antes de preparar el pedido (docs/planes/plan_validacion_compatibilidad_pedido.md).
+  const [useActiveVehicle, setUseActiveVehicle] = useState(true);
+  const [vehicleForm, setVehicleForm] = useState({ patente: '', marca: '', modelo: '', anio: '' });
+  const hasActiveVehicle = Boolean(activeVehicle?.marca || activeVehicle?.patente);
+  const showVehicleForm = !hasActiveVehicle || !useActiveVehicle;
+
+  const checkoutVehicle = useMemo(() => {
+    if (hasActiveVehicle && useActiveVehicle) {
+      return {
+        patente: activeVehicle.patente || null,
+        vehiculoCatalogoId: activeVehicle.catalogoId || null,
+        marca: activeVehicle.marca || null,
+        modelo: activeVehicle.modelo || null,
+        anio: activeVehicle.anio || null,
+      };
+    }
+    const patente = vehicleForm.patente.trim();
+    const marca = vehicleForm.marca.trim();
+    const modelo = vehicleForm.modelo.trim();
+    const anio = Number(vehicleForm.anio) || null;
+    // Sin ningun dato no se manda nada: el backend lo registra como NO_INFORMADO.
+    if (!patente && !marca && !modelo && !anio) return null;
+    return { patente: patente || null, marca: marca || null, modelo: modelo || null, anio };
+  }, [activeVehicle, hasActiveVehicle, useActiveVehicle, vehicleForm]);
 
   const pay = async () => {
     if (submittingRef.current) return;
@@ -296,15 +330,17 @@ export default function CheckoutPage() {
           facturaRut: documentType === 'FACTURA' ? invoice.rut.trim() : null,
           facturaRazonSocial: documentType === 'FACTURA' ? invoice.razonSocial.trim() : null,
           facturaGiro: documentType === 'FACTURA' ? invoice.giro.trim() : null,
-          direccionId: needsAddress ? Number(selectedAddressId) : null,
+          direccionId: needsAddress && selectedAddressId ? Number(selectedAddressId) : null,
+          vehiculo: checkoutVehicle,
         })
         : await checkoutCartApi(userId, {
-          direccionId: needsAddress ? String(selectedAddressId) : '',
+          direccionId: needsAddress && selectedAddressId ? String(selectedAddressId) : '',
           metodoEnvio: checkoutFallbackShippingMethod(cartItems),
           tipoDocumentoTributario: documentType,
           facturaRut: documentType === 'FACTURA' ? invoice.rut.trim() : '',
           facturaRazonSocial: documentType === 'FACTURA' ? invoice.razonSocial.trim() : '',
           facturaGiro: documentType === 'FACTURA' ? invoice.giro.trim() : '',
+          vehiculo: checkoutVehicle,
         });
       // Una cotización no toca el carrito: vaciarlo acá borraría productos que la
       // persona dejó guardados para después.
@@ -546,7 +582,14 @@ export default function CheckoutPage() {
                                 <strong>{address.calleYNumero}</strong>
                                 <small>{address.comunaNombre}{address.regionNombre ? `, ${address.regionNombre}` : ''}</small>
                               </span>
-                              {address.esPrincipal && <em className="checkout-address-tag">Principal</em>}
+                              {address.esPrincipal && (
+                                <em
+                                  className="checkout-address-tag"
+                                  style={isSeller ? { background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe' } : undefined}
+                                >
+                                  {isSeller ? 'Dirección de tu tienda' : 'Principal'}
+                                </em>
+                              )}
                             </label>
                           ))}
                         </div>
@@ -559,7 +602,9 @@ export default function CheckoutPage() {
                         className="checkout-inline-link"
                         onClick={() => setAddressBookOpen((open) => !open)}
                       >
-                        {addressBookOpen ? 'Ocultar mis direcciones' : 'Agregar o editar direcciones'}
+                        {addressBookOpen
+                          ? 'Ocultar opciones de dirección'
+                          : (isSeller ? '+ Enviar a otra dirección' : 'Agregar o editar direcciones')}
                       </button>
 
                       {(addressBookOpen || (!addressesLoading && addresses.length === 0)) && (
@@ -622,6 +667,73 @@ export default function CheckoutPage() {
                     </button>
                   </div>
                 </div>
+
+                <section className="checkout-block" aria-labelledby="checkout-vehiculo-title">
+                  <div className="shopify-section-header">
+                    <h2 id="checkout-vehiculo-title">¿Para qué vehículo es? <small>(opcional)</small></h2>
+                    <p className="shopify-section-subtitle">
+                      Nos ayuda a que el vendedor confirme que la pieza calza con tu auto y evita devoluciones.
+                    </p>
+                  </div>
+
+                  {hasActiveVehicle && (
+                    <label className="checkout-vehicle-active">
+                      <input
+                        type="checkbox"
+                        checked={useActiveVehicle}
+                        onChange={(event) => setUseActiveVehicle(event.target.checked)}
+                      />
+                      <span>
+                        <strong>
+                          {[activeVehicle.marca, activeVehicle.modelo, activeVehicle.anio].filter(Boolean).join(' ')}
+                        </strong>
+                        {activeVehicle.patente && <small>Patente {activeVehicle.patente}</small>}
+                      </span>
+                    </label>
+                  )}
+
+                  {showVehicleForm && (
+                    <div className="cart-invoice-fields">
+                      <label>
+                        <span>Patente</span>
+                        <input
+                          value={vehicleForm.patente}
+                          onChange={(event) => setVehicleForm((current) => ({ ...current, patente: event.target.value.toUpperCase() }))}
+                          placeholder="ABCD12"
+                          maxLength={12}
+                        />
+                      </label>
+                      <label>
+                        <span>Marca</span>
+                        <input
+                          value={vehicleForm.marca}
+                          onChange={(event) => setVehicleForm((current) => ({ ...current, marca: event.target.value }))}
+                          placeholder="Toyota"
+                          maxLength={80}
+                        />
+                      </label>
+                      <label>
+                        <span>Modelo</span>
+                        <input
+                          value={vehicleForm.modelo}
+                          onChange={(event) => setVehicleForm((current) => ({ ...current, modelo: event.target.value }))}
+                          placeholder="Yaris"
+                          maxLength={120}
+                        />
+                      </label>
+                      <label>
+                        <span>Año</span>
+                        <input
+                          value={vehicleForm.anio}
+                          onChange={(event) => setVehicleForm((current) => ({ ...current, anio: event.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                          placeholder="2018"
+                          inputMode="numeric"
+                          maxLength={4}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </section>
 
                 {/* Métodos de Pago con selector de Simulación */}
                 <section className="checkout-block" aria-labelledby="checkout-pago-title">

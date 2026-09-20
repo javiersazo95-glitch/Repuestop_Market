@@ -19,7 +19,7 @@
 // existieron fuera del navegador.
 import {
   getPublicAdsApi, getPublicAdApi, getMyAdsApi,
-  createAdApi, updateAdApi, updateAdAgendaApi, deleteAdApi, uploadAdImagesApi, resolveMediaUrl,
+  createAdApi, updateAdApi, updateAdAgendaApi, deleteAdApi, renewAdApi, uploadAdImagesApi, resolveMediaUrl,
   getFichasBalanceApi, getFichasMovimientosApi, getFichasPacksApi, iniciarRecargaFichasApi,
   getAdAppointmentsApi, getMyAppointmentsApi, createAdAppointmentApi,
   updateAdAppointmentStatusApi, sendAppointmentSummaryEmailsApi,
@@ -336,7 +336,8 @@ const MOTIVO_LABELS = {
   COMPRA: 'Recarga de Monedas',
   BONO_BIENVENIDA: 'Bono de bienvenida Monedero RepuesTop',
   PUBLICACION: 'Publicación de anuncio',
-  UPGRADE: 'Mejora de plan del anuncio'
+  UPGRADE: 'Mejora de plan del anuncio',
+  RENOVACION: 'Renovación de vigencia del anuncio'
 };
 
 /**
@@ -417,6 +418,19 @@ export async function fetchDatosDocumentoRecarga({ signal } = {}) {
  */
 export async function spendTokensForAdUpgrade(ad, targetTier) {
   const saved = await updateAd(ad.id, { ...ad, tier: targetTier });
+  return { ad: saved, balance: await fetchTokensBalance() };
+}
+
+/**
+ * Agrega 30 dias de vigencia al anuncio, cobrando la tarifa de su tier actual.
+ *
+ * A diferencia de `spendTokensForAdUpgrade` NO es un PUT: `POST /anuncios/{id}/renovar`
+ * solo mueve `expiresAt` y cobra, sin tocar contenido ni moderacion, asi que un anuncio
+ * ya aprobado sigue aprobado y no vuelve a la cola de revision.
+ */
+export async function renewAd(ad) {
+  const saved = adaptAd(await renewAdApi(ad.id));
+  refreshWallCache();
   return { ad: saved, balance: await fetchTokensBalance() };
 }
 

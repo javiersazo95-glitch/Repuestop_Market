@@ -33,7 +33,12 @@ export default function AppLayout() {
   const redirectedFrom = location.state?.from;
   useEffect(() => {
     if (location.state?.requireAuth && !isLoggedIn) openAuthModal();
-  }, [location.state, isLoggedIn, openAuthModal]);
+    // `openAuthModal` sale del value memoizado de MarketplaceContext y cambia de
+    // referencia cada vez que `isAuthModalOpen` cambia (ver su useMemo). Si entra
+    // en este array, cerrar el modal recalcula esa referencia, este efecto se
+    // repite, `location.state.requireAuth` sigue en true y el modal se reabre
+    // solo -- se cierra y aparece de nuevo al instante.
+  }, [location.state, isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sincronizar el buscador global con la ruta: si el usuario no está en el catálogo,
   // el input del header se limpia automáticamente para una nueva búsqueda fresca.

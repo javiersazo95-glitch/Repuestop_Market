@@ -1,15 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { loginApi, loginGoogleApi, logoutApi, getProfileApi, updateProfileApi, deleteAccountApi, registerBuyerApi, registerSellerApi, resolveMediaUrl, acceptTermsApi } from '../services/api';
+import { loginApi, loginGoogleApi, logoutApi, getProfileApi, updateProfileApi, deleteAccountApi, registerBuyerApi, registerSellerApi, verifyRegisterEmailApi, resendRegisterCodeApi, resolveMediaUrl, acceptTermsApi } from '../services/api';
 
 const AuthContext = createContext(null);
 
 function normalizeUserMedia(profile) {
   if (!profile) return profile;
   const rawRole = String(profile.role || profile.rol || '').toUpperCase();
-  // userId identifica la cuenta; sellerId/proveedorId identifica la tienda. No son
-  // intercambiables y las rutas /proveedores/{id} siempre requieren el segundo.
+  // userId identifica la cuenta; sellerId/proveedorId identifica la tienda; buyerId/compradorId identifica al comprador.
   const sellerId = profile.sellerId ?? profile.proveedorId ?? profile.tiendaId ?? null;
-  const buyerId = profile.buyerId ?? profile.compradorId ?? profile.userId ?? profile.id;
+  const buyerId = profile.buyerId ?? profile.compradorId ?? null;
   return {
     ...profile,
     role: profile.role || (rawRole === 'SELLER' ? 'SELLER' : 'BUYER'),
@@ -171,10 +170,19 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('repuestop_role');
   };
 
-  const login = async ({ email, password, preferredRole = 'BUYER' }) => {
+  const login = async ({ email, password, preferredRole = 'BUYER', reactivateAccount = false, acceptsTerms = false }) => {
     setIsLoading(true);
     try {
-      const response = await loginApi({ email, password });
+      const response = await loginApi({ email, password, reactivateAccount, acceptsTerms });
+      if (response?.deletionScheduled) {
+        return {
+          success: false,
+          deletionScheduled: true,
+          daysRemaining: response.daysRemaining,
+          scheduledDeletionAt: response.scheduledDeletionAt,
+          user: response.usuario,
+        };
+      }
       const savedUserData = saveSession(response, preferredRole);
       return { success: true, user: savedUserData };
     } catch (error) {
@@ -186,10 +194,23 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const loginWithGoogle = async (idToken) => {
+  const loginWithGoogle = async (idToken, options = {}) => {
     setIsLoading(true);
     try {
-      const response = await loginGoogleApi({ idToken });
+      const response = await loginGoogleApi({
+        idToken,
+        reactivateAccount: Boolean(options.reactivateAccount),
+        acceptsTerms: Boolean(options.acceptsTerms),
+      });
+      if (response?.deletionScheduled) {
+        return {
+          success: false,
+          deletionScheduled: true,
+          daysRemaining: response.daysRemaining,
+          scheduledDeletionAt: response.scheduledDeletionAt,
+          user: response.usuario,
+        };
+      }
       const savedUserData = saveSession(response);
       return { success: true, user: savedUserData };
     } catch (error) {
@@ -230,6 +251,30 @@ export function AuthProvider({ children }) {
       return { success: false, error: error.message };
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const verifyRegisterEmail = async (email, code) => {
+    setIsLoading(true);
+    try {
+      const response = await verifyRegisterEmailApi(email, code);
+      if (response.token || response.accessToken) {
+        saveSession(response, 'BUYER');
+      }
+      return { success: true, data: response };
+    } catch (error) {
+      return { success: false, error: error.message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resendRegisterCode = async (email) => {
+    try {
+      const response = await resendRegisterCodeApi(email);
+      return { success: true, data: response };
+    } catch (error) {
+      return { success: false, error: error.message };
     }
   };
 
@@ -315,6 +360,8 @@ export function AuthProvider({ children }) {
     acceptTerms,
     registerBuyer,
     registerSeller,
+    verifyRegisterEmail,
+    resendRegisterCode,
     updateProfile,
     refreshProfile,
     deleteAccount,

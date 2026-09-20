@@ -10,9 +10,11 @@ import RepuesTopLogo from './RepuesTopLogo';
 import ChatImagePreview from './ChatImagePreview';
 import {
   getConversationMessagesApi,
-  getConversationQuoteApi, markConversationReadApi, reportConversationApi, resolveMediaUrl,
+  getConversationQuoteApi, getSellerStoreApi, getStoreProfileApi,
+  markConversationReadApi, reportConversationApi, resolveMediaUrl,
   sendConversationMessageApi, uploadConversationImageApi,
 } from '../services/api';
+import { adaptStore } from '../services/adapters';
 import { compressImageFile } from '../utils/imageCompression';
 import CommissionSummaryCard from './CommissionSummaryCard';
 import {
@@ -70,9 +72,35 @@ const REPORT_REASONS = [
 ];
 
 export default function QuoteDetailModal({
-  quote, mode = 'seller', isFounder = false, user, onClose, onSendQuoteResponse, onMarkedRead,
+  quote, mode = 'seller', isFounder = false, user, storeInfo, onClose, onSendQuoteResponse, onMarkedRead,
 }) {
   const navigate = useNavigate();
+  const storeId = quote?.proveedorId || quote?.sellerId || user?.sellerId;
+  const [storeDetails, setStoreDetails] = useState(() => (
+    storeInfo ? adaptStore(storeInfo) : null
+  ));
+
+  useEffect(() => {
+    if (storeInfo && (mode === 'seller' || String(storeInfo.id || storeInfo.proveedorId || storeInfo.sellerId) === String(storeId))) {
+      setStoreDetails(adaptStore(storeInfo));
+      return;
+    }
+    if (!storeId) return;
+    let cancelled = false;
+    const fetcher = mode === 'seller'
+      ? getSellerStoreApi(storeId)
+      : getStoreProfileApi(storeId).catch(() => getSellerStoreApi(storeId));
+
+    fetcher
+      .then((data) => {
+        if (!cancelled && data) {
+          setStoreDetails(adaptStore(data));
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [storeId, storeInfo, mode]);
+
   const [localQuote, setLocalQuote] = useState(quote?.cotizacion || null);
   const activeQuote = localQuote || quote?.cotizacion || null;
   const [messages, setMessages] = useState([]);
@@ -241,7 +269,6 @@ export default function QuoteDetailModal({
   const canAttach = !chatLocked && imageCount < MAX_CHAT_IMAGES;
   const documentName = quoteDocumentFilename(quote.id);
   const openProduct = () => navigate(productPath({ id: quote.productoId, titulo: productName }));
-  const storeId = quote.proveedorId || quote.sellerId || user?.sellerId;
   const openStore = () => {
     if (!storeId) return;
     navigate(storePath({ id: storeId, nombre: storeName }));
@@ -277,15 +304,46 @@ export default function QuoteDetailModal({
     }
   };
 
-  const createDocumentBlob = () => buildQuotePdfBlob({
-    conversationId: quote.id,
-    quote: activeQuote,
-    productName,
-    storeName,
-    buyerName,
-    vehicleConsulted: requested.requestedChassis,
-    storeLogoUrl: storePhoto,
-  });
+  const resolveStoreDetails = async () => {
+    if (storeDetails) return storeDetails;
+    if (storeInfo) {
+      const adapted = adaptStore(storeInfo);
+      setStoreDetails(adapted);
+      return adapted;
+    }
+    if (!storeId) return null;
+    try {
+      const raw = mode === 'seller'
+        ? await getSellerStoreApi(storeId)
+        : await getStoreProfileApi(storeId).catch(() => getSellerStoreApi(storeId));
+      if (raw) {
+        const adapted = adaptStore(raw);
+        setStoreDetails(adapted);
+        return adapted;
+      }
+    } catch {}
+    return null;
+  };
+
+  const createDocumentBlob = async () => {
+    const details = await resolveStoreDetails();
+    return buildQuotePdfBlob({
+      conversationId: quote.id,
+      quote: activeQuote,
+      productName,
+      storeName: details?.nombre || details?.storeName || storeName,
+      storeTaxId: details?.rut || details?.taxId || (mode === 'seller' ? user?.taxId : ''),
+      storeGiro: details?.tipo || details?.giro || details?.especialidad || '',
+      storeAddress: details?.direccion || details?.address || '',
+      storeCity: details?.ciudad || [details?.comuna, details?.region].filter(Boolean).join(', ') || '',
+      storePhone: details?.telefono || details?.phone || (mode === 'seller' ? (user?.phone || user?.telefono) : ''),
+      storeEmail: details?.email || (mode === 'seller' ? user?.email : ''),
+      storeHours: details?.horario || details?.hours || '',
+      buyerName,
+      vehicleConsulted: requested.requestedChassis,
+      storeLogoUrl: details?.logoUrl || storePhoto,
+    });
+  };
 
   const viewDocument = async () => {
     if (!activeQuote) return;

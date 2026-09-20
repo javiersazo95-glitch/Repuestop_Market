@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 // Las 218 reglas `founder-*` viven en esta hoja, que hasta ahora solo importaba
 // `AboutRepuesTopPage`. Como las rutas van en chunks perezosos, entrar directo a
 // /vender no cargaba nunca ese chunk y el registro se veia SIN estilos; pasando
@@ -8,6 +8,7 @@
 import '../about-repuestop.css';
 import OpeningHoursPicker from './ads/OpeningHoursPicker';
 import ShippingMethodsPicker from './ShippingMethodsPicker';
+import SpecialistBrandsManager, { type VehicleBrandOption } from './SpecialistBrandsManager';
 import { createDefaultSchedule, formatOpeningHours } from '../data/openingHours';
 import { defaultShippingSelections, buildShippingMethodsString } from '../data/shippingMethods';
 import {
@@ -95,6 +96,8 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
   // Mismos metodos que pide el registro de la app (`useShippingField`), con "Retiro en
   // tienda" marcado por defecto igual que alla.
   const [shippingSelections, setShippingSelections] = useState(defaultShippingSelections);
+  // Marcas especialistas de la tienda, idéntico al registro mobile (`useRegisterProviderScreen`)
+  const [specialistBrands, setSpecialistBrands] = useState<VehicleBrandOption[]>([]);
   const [legal, setLegal] = useState<LegalDoc | null>(null);
 
   // Phase 0 — registro
@@ -403,6 +406,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
         },
         hours: formatOpeningHours(schedule) || undefined,
         shippingMethods: buildShippingMethodsString(shippingSelections) || undefined,
+        specialistBrandIds: specialistBrands.length ? specialistBrands.map((b) => b.id) : undefined,
         acceptsTerms: true,
         termsVersion: LEGAL_VERSION_CODE,
         origin: 'SITIO_WEB',
@@ -534,6 +538,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
                   onRegionChange={(regionId) => setForm((f) => ({ ...f, regionId, comunaId: '' }))}
                   schedule={schedule} onScheduleChange={setSchedule}
                   shippingSelections={shippingSelections} onShippingChange={setShippingSelections}
+                  specialistBrands={specialistBrands} onSpecialistBrandsChange={setSpecialistBrands}
                   submitting={submitting} formError={formError}
                   onSubmit={handleSubmit}
                   onOpenLegal={setLegal}
@@ -680,6 +685,8 @@ type RegFormProps = {
   onScheduleChange: (value: ReturnType<typeof createDefaultSchedule>) => void;
   shippingSelections: ReturnType<typeof defaultShippingSelections>;
   onShippingChange: (value: ReturnType<typeof defaultShippingSelections>) => void;
+  specialistBrands: VehicleBrandOption[];
+  onSpecialistBrandsChange: (brands: VehicleBrandOption[]) => void;
   submitting: boolean; formError: string; onSubmit: () => void;
   onOpenLegal: (doc: LegalDoc) => void;
   onEmailBlur: (email: string) => void; checkingEmail: boolean;
@@ -820,6 +827,15 @@ function RegistrationForm(p: RegFormProps) {
           de la tienda, para que las dos escriban el CSV identico que espera el backend. */}
       <Field as="div" label="Métodos de envío" hint="Elige los que ofrece tu tienda. Deja el precio en blanco si es gratuito.">
         <ShippingMethodsPicker selections={p.shippingSelections} onChange={p.onShippingChange} />
+      </Field>
+
+      {/* Marcas especialistas: idéntico al registro de la app y sincronizado con el backend */}
+      <Field as="div" label="Marcas especialistas" hint="Selecciona las marcas vehiculares en las que tu tienda se especializa para destacarlas en el catálogo.">
+        <SpecialistBrandsManager
+          selectionOnly
+          initialBrands={p.specialistBrands}
+          onBrandsChange={p.onSpecialistBrandsChange}
+        />
       </Field>
 
       <div className="founder-reg-terms">
