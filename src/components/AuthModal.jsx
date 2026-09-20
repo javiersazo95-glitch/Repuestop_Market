@@ -224,6 +224,10 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     acceptsTerms
   );
 
+  // Scheduled Deletion State
+  const [scheduledDeletionData, setScheduledDeletionData] = useState(null);
+  const [reactivateTermsAccepted, setReactivateTermsAccepted] = useState(false);
+
   // UI status
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -269,6 +273,8 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setGooglePending(null);
     setGoogleMissingFields({ firstName: false, lastName: false });
     setGoogleTermsAccepted(false);
+    setScheduledDeletionData(null);
+    setReactivateTermsAccepted(false);
     setErrorMessage(null);
     setSuccessMessage(null);
     setShowPassword(false);
@@ -477,6 +483,15 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
         handleClose();
         onLoginSuccess?.();
       }, 1200);
+    } else if (result.deletionScheduled) {
+      setScheduledDeletionData({
+        daysRemaining: result.daysRemaining,
+        scheduledDeletionAt: result.scheduledDeletionAt,
+        user: result.user,
+        authType: 'EMAIL_PASSWORD',
+      });
+      setReactivateTermsAccepted(false);
+      setStep('deletion_scheduled_feedback');
     } else if (isAccountNotFound(result)) {
       setIsRegistrationFlow(true);
       setErrorMessage('No encontramos una cuenta con este correo. Elige cómo quieres crearla.');
@@ -503,6 +518,19 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
       return;
     }
 
+    if (result.deletionScheduled) {
+      setScheduledDeletionData({
+        daysRemaining: result.daysRemaining,
+        scheduledDeletionAt: result.scheduledDeletionAt,
+        user: result.user,
+        authType: 'GOOGLE',
+        idToken,
+      });
+      setReactivateTermsAccepted(false);
+      setStep('deletion_scheduled_feedback');
+      return;
+    }
+
     // 404 es "no hay cuenta con este correo", la unica situacion en la que
     // ofrecer crearla tiene sentido. Antes cualquier fallo terminaba en un
     // mensaje que mandaba a la persona a registrarse por su cuenta, escribiendo
@@ -517,6 +545,43 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     }
 
     setErrorMessage(result.error || 'No pudimos iniciar sesión con Google. Intenta nuevamente.');
+  };
+
+  const handleReactivateSubmit = async () => {
+    if (!reactivateTermsAccepted) {
+      setErrorMessage('Debes aceptar los Términos y Condiciones y el Contrato de Servicio para reactivar tu cuenta.');
+      return;
+    }
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      let result;
+      if (scheduledDeletionData?.authType === 'GOOGLE') {
+        result = await loginWithGoogle(scheduledDeletionData.idToken, {
+          reactivateAccount: true,
+          acceptsTerms: true,
+        });
+      } else {
+        result = await login({
+          email,
+          password,
+          preferredRole: selectedRole,
+          reactivateAccount: true,
+          acceptsTerms: true,
+        });
+      }
+      if (result.success) {
+        setSuccessMessage('¡Cuenta reactivada exitosamente! Has iniciado sesión.');
+        setTimeout(() => {
+          handleClose();
+          onLoginSuccess?.();
+        }, 1200);
+      } else {
+        setErrorMessage(result.error || 'No se pudo reactivar la cuenta. Inténtalo nuevamente.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   /**
@@ -796,6 +861,18 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               <p>Confirma tus datos y acepta los términos para crear tu cuenta.</p>
             </>
           )}
+
+          {step === 'deletion_scheduled_feedback' && (
+            <>
+              <div className="selected-role-pill">
+                <span className="pill-seller" style={{ background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' }}>
+                  <AlertTriangle size={14} /> Cuenta Programada para Eliminación
+                </span>
+              </div>
+              <h2>Recuperación de Cuenta</h2>
+              <p>Tu cuenta se encuentra en período de gracia antes de su eliminación definitiva.</p>
+            </>
+          )}
         </div>
 
         {/* Error / Success Notifications */}
@@ -904,6 +981,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                   type="email"
                   required
                   placeholder="ejemplo@correo.com"
+                  maxLength={254}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
@@ -913,11 +991,13 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
             <div className="form-group">
               <label>Contraseña *</label>
               <div className="input-with-icon">
+                <Mail size={18} className="field-icon" style={{ display: 'none' }} />
                 <Lock size={18} className="field-icon" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   placeholder="Ingresa tu contraseña"
+                  maxLength={128}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -1007,6 +1087,84 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               )}
             </div>
           </form>
+        )}
+
+        {/* STEP: DELETION SCHEDULED FEEDBACK & REACTIVATION */}
+        {step === 'deletion_scheduled_feedback' && (
+          <div className="auth-modal-body">
+            <div style={{
+              background: '#fffbeb',
+              border: '1px solid #fde68a',
+              borderRadius: '12px',
+              padding: '20px',
+              textAlign: 'center',
+              marginBottom: '16px',
+            }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                background: '#fef3c7',
+                color: '#b45309',
+                marginBottom: '12px',
+              }}>
+                <AlertTriangle size={26} />
+              </div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#92400e', margin: '0 0 8px' }}>
+                Faltan {scheduledDeletionData?.daysRemaining ?? 30} días para la eliminación definitiva
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#78350f', margin: 0, lineHeight: 1.5 }}>
+                Tienes un periodo de gracia de 30 días para recuperar tu cuenta. Si deseas conservarla y volver a utilizar los servicios de RepuesTop, puedes cancelar la eliminación e iniciar sesión nuevamente aceptando los términos y condiciones.
+              </p>
+            </div>
+
+            <label className="auth-terms" style={{ marginBottom: '20px' }}>
+              <input
+                type="checkbox"
+                checked={reactivateTermsAccepted}
+                onChange={(e) => setReactivateTermsAccepted(e.target.checked)}
+              />
+              <span>
+                Acepto expresamente reactivar mi cuenta, los <a href={ROUTES.terms} target="_blank" rel="noreferrer">Términos y Condiciones</a>
+                {', '}el <a href={ROUTES.terms} target="_blank" rel="noreferrer">Contrato de Servicio</a>
+                {' '}y la <a href={ROUTES.privacy} target="_blank" rel="noreferrer">Política de Privacidad</a>.
+              </span>
+            </label>
+
+            <div className="auth-action-row gap-2">
+              <button
+                type="button"
+                className="btn-auth-secondary"
+                onClick={() => {
+                  setScheduledDeletionData(null);
+                  setReactivateTermsAccepted(false);
+                  setStep('login_form');
+                }}
+                disabled={isSubmitting}
+              >
+                <span>Cancelar</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn-auth-primary"
+                disabled={!reactivateTermsAccepted || isSubmitting}
+                onClick={handleReactivateSubmit}
+              >
+                {isSubmitting ? (
+                  <span>Reactivando cuenta...</span>
+                ) : (
+                  <>
+                    <LogIn size={18} />
+                    <span>Iniciar sesión nuevamente</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         )}
 
         {/* RECOVER PASSWORD STEP 1: EMAIL */}

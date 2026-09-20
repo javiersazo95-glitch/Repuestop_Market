@@ -170,10 +170,19 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('repuestop_role');
   };
 
-  const login = async ({ email, password, preferredRole = 'BUYER' }) => {
+  const login = async ({ email, password, preferredRole = 'BUYER', reactivateAccount = false, acceptsTerms = false }) => {
     setIsLoading(true);
     try {
-      const response = await loginApi({ email, password });
+      const response = await loginApi({ email, password, reactivateAccount, acceptsTerms });
+      if (response?.deletionScheduled) {
+        return {
+          success: false,
+          deletionScheduled: true,
+          daysRemaining: response.daysRemaining,
+          scheduledDeletionAt: response.scheduledDeletionAt,
+          user: response.usuario,
+        };
+      }
       const savedUserData = saveSession(response, preferredRole);
       return { success: true, user: savedUserData };
     } catch (error) {
@@ -185,10 +194,23 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const loginWithGoogle = async (idToken) => {
+  const loginWithGoogle = async (idToken, options = {}) => {
     setIsLoading(true);
     try {
-      const response = await loginGoogleApi({ idToken });
+      const response = await loginGoogleApi({
+        idToken,
+        reactivateAccount: Boolean(options.reactivateAccount),
+        acceptsTerms: Boolean(options.acceptsTerms),
+      });
+      if (response?.deletionScheduled) {
+        return {
+          success: false,
+          deletionScheduled: true,
+          daysRemaining: response.daysRemaining,
+          scheduledDeletionAt: response.scheduledDeletionAt,
+          user: response.usuario,
+        };
+      }
       const savedUserData = saveSession(response);
       return { success: true, user: savedUserData };
     } catch (error) {

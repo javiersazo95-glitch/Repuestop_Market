@@ -1408,6 +1408,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           onSendQuoteResponse={handleSendQuoteResponse}
           onMarkedRead={handleQuoteMarkedRead}
           user={user}
+          storeInfo={storeInfo}
         />
       )}
 

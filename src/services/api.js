@@ -198,21 +198,27 @@ export async function fetchApi(endpoint, options = {}) {
 /**
  * Auth API endpoints
  */
-export async function loginApi({ email, password }) {
+export async function loginApi({ email, password, reactivateAccount, acceptsTerms }) {
   return fetchApi('/auth/login', {
     method: 'POST',
     body: JSON.stringify({
       email: email.trim(),
       password,
       authProvider: 'EMAIL_PASSWORD',
+      reactivateAccount: Boolean(reactivateAccount),
+      acceptsTerms: Boolean(acceptsTerms),
     }),
   });
 }
 
-export async function loginGoogleApi({ idToken }) {
+export async function loginGoogleApi({ idToken, reactivateAccount, acceptsTerms }) {
   return fetchApi('/auth/google', {
     method: 'POST',
-    body: JSON.stringify({ idToken }),
+    body: JSON.stringify({
+      idToken,
+      reactivateAccount: Boolean(reactivateAccount),
+      acceptsTerms: Boolean(acceptsTerms),
+    }),
   });
 }
 
@@ -275,6 +281,7 @@ export async function registerSellerApi(sellerData) {
       comuna: sellerData.comuna || sellerData.ciudad,
       address: sellerData.address || '',
       shippingMethods: sellerData.shippingMethods || 'Starken, Chilexpress, Retiro en Tienda',
+      specialistBrandIds: sellerData.specialistBrandIds || undefined,
       authProvider: 'EMAIL_PASSWORD',
     }),
   });
