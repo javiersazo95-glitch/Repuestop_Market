@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { getAccountClosureSummaryApi, requestAccountClosureApi, reactivateAccountApi } from '../services/api';
 
 /**
@@ -10,6 +11,7 @@ import { getAccountClosureSummaryApi, requestAccountClosureApi, reactivateAccoun
  * el backend.
  */
 export default function AccountClosureModal({ isOpen, onClose, isSeller }) {
+  const { logout } = useAuth();
   const [step, setStep] = useState('retain');
   const [reason, setReason] = useState('');
   const [summary, setSummary] = useState(null);
@@ -72,10 +74,21 @@ export default function AccountClosureModal({ isOpen, onClose, isSeller }) {
     }
   };
 
+  const handleDoneAccept = async () => {
+    if (summary?.status === 'DELETION_SCHEDULED') {
+      try {
+        await logout();
+      } catch {
+        // Continuar con el cierre de modal si logout falla localmente
+      }
+    }
+    onClose();
+  };
+
   return (
     <div
       className="order-modal-backdrop delete-account-backdrop"
-      onClick={() => !isBusy && onClose()}
+      onClick={() => !isBusy && (step === 'done' && summary?.status === 'DELETION_SCHEDULED' ? handleDoneAccept() : onClose())}
     >
       <section
         className="delete-account-modal"
@@ -105,7 +118,7 @@ export default function AccountClosureModal({ isOpen, onClose, isSeller }) {
           <div className="delete-account-actions"><button type="button" className="btn-auth-secondary" onClick={() => setStep('reason')}>Volver</button>{!summary.deletionBlocked && <button type="button" className="btn-delete-account-confirm" onClick={() => setStep('decision')}>Continuar</button>}</div>
         </>}
         {step === 'decision' && <div className="account-closure-decisions"><section><h3>Desactivar</h3><p>Deja de operar, conserva tus datos y podrás reactivarla.</p><button type="button" className="btn-auth-secondary" disabled={isBusy} onClick={() => handleAccountClosure('DEACTIVATE')}>Desactivar cuenta</button></section><section><h3>Eliminar</h3><p>Queda desactivada 30 días. Puedes reactivarla durante ese plazo; luego se anonimiza definitivamente.</p><button type="button" className="btn-delete-account-confirm" disabled={isBusy} onClick={() => handleAccountClosure('SCHEDULE_DELETION')}>{isBusy ? 'Guardando...' : 'Programar eliminación'}</button></section></div>}
-        {step === 'done' && <><p>{summary?.status === 'DELETION_SCHEDULED' ? 'La eliminación quedó programada para dentro de 30 días.' : 'Tu cuenta quedó desactivada y sus datos se conservaron.'}</p><div className="delete-account-actions"><button type="button" className="btn-auth-secondary" disabled={isBusy} onClick={handleReactivateAccount}>Reactivar ahora</button><button type="button" className="btn-delete-account-confirm" onClick={onClose}>Entendido</button></div></>}
+        {step === 'done' && <><p>{summary?.status === 'DELETION_SCHEDULED' ? 'La eliminación quedó programada para dentro de 30 días.' : 'Tu cuenta quedó desactivada y sus datos se conservaron.'}</p><div className="delete-account-actions">{summary?.status !== 'DELETION_SCHEDULED' && <button type="button" className="btn-auth-secondary" disabled={isBusy} onClick={handleReactivateAccount}>Reactivar ahora</button>}<button type="button" className="btn-delete-account-confirm" onClick={handleDoneAccept}>{summary?.status === 'DELETION_SCHEDULED' ? 'Aceptar y cerrar sesión' : 'Entendido'}</button></div></>}
       </section>
     </div>
   );
