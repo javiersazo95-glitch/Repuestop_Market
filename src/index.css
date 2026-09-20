@@ -1065,18 +1065,6 @@ input, select, textarea {
   .profile-dashboard .quick-actions-grid-v2 { grid-template-columns: 1fr; }
 }
 
-/* La portada del comprador es una imagen fija (comprador-default.png, 2000x667)
-   en vez de subida por el usuario, asi que en lugar de recortarla con
-   background-size: cover contra un alto fijo, se adapta el alto del contenedor
-   a su proporcion real (~3:1) para que entre completa y sin deformarse. Va
-   despues de la media query de 640px (misma especificidad, gana por orden) para
-   pisar tambien el alto fijo de mobile. */
-.buyer-profile-dashboard .facebook-cover-hero-container,
-.buyer-profile-dashboard .facebook-cover-banner {
-  height: auto;
-  aspect-ratio: 2000 / 667;
-}
-
 .feature-info-card {
   background: #ffffff;
   border-radius: var(--radius-lg);

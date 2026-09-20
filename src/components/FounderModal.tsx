@@ -4,8 +4,8 @@ import { Crown, X, Clock, ShieldCheck, CheckCircle2, Sparkles, ArrowRight, Perce
 const BENEFITS = [
   { icon: Percent, gradient: 'linear-gradient(135deg, #0056bf, #10c8e8)', title: '5% de comisión por un año', text: 'Una tasa preferencial de solo 5% garantizada durante todo tu primer año en la plataforma.' },
   { icon: Award, gradient: 'linear-gradient(135deg, #071b45, #0056bf)', title: 'Distintivo en publicaciones', text: 'Un sello oficial de "Fundador" que destaca tu tienda y genera mayor confianza con compradores.' },
-  { icon: Radar, gradient: 'linear-gradient(135deg, #7257ff, #10c8e8)', title: 'Mayor visibilidad en RepuesTop', text: 'Tus repuestos aparecen destacados en las búsquedas por patente tanto en la web como en la app móvil Android.' },
-  { icon: Rocket, gradient: 'linear-gradient(135deg, #ffb800, #ff8a00)', title: 'Ecosistema Web y Móvil sincronizado', text: 'Gestiona stock masivo, cotizaciones y pedidos sincronizados en tiempo real desde el panel web y la app móvil.' }
+  { icon: Radar, gradient: 'linear-gradient(135deg, #7257ff, #10c8e8)', title: 'Mayor visibilidad en RepuesTop', text: 'Tus repuestos aparecen destacados en las búsquedas por patente dentro de la plataforma web.' },
+  { icon: Rocket, gradient: 'linear-gradient(135deg, #ffb800, #ff8a00)', title: 'Panel de gestión en tiempo real', text: 'Gestiona stock masivo, cotizaciones y pedidos desde tu panel de vendedor, sincronizado al instante con la vitrina pública.' }
 ];
 
 export default function FounderModal({ isOpen, onClose, onApply }: { isOpen: boolean; onClose: () => void; onApply: () => void }) {

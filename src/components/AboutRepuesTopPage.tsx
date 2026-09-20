@@ -93,14 +93,14 @@ function Reveal({
 
 function HeroLiveTicker() {
   const tickerItems = [
-    { icon: <Search size={15} />, text: 'Búsqueda de alta precisión por Patente chilena (2000 - 2026)' },
-    { icon: <Smartphone size={15} />, text: 'Plataforma Web y App Android en Google Play sincronizadas' },
-    { icon: <CreditCard size={15} />, text: 'Paga en hasta 12 cuotas sin interés con Webpay Plus y Flow' },
-    { icon: <ShieldCheck size={15} />, text: '3 días de fondos retenidos tras entrega para validar que calza' },
-    { icon: <MessageSquareQuote size={15} />, text: 'Cotizaciones formales y chat en vivo con vendedores' },
-    { icon: <Truck size={15} />, text: 'Retiro en tienda con PIN $0 o despacho con tracking a todo Chile' },
-    { icon: <Users size={15} />, text: 'Equipo de mediadores humanos en caso de fallas o discrepancias' },
-    { icon: <Wrench size={15} />, text: 'Mural público de servicios mecánicos, scanner y talleres' },
+    { icon: <Search size={15} />, text: 'Búsqueda exacta por Patente chilena (modelos 2000 a 2026)' },
+    { icon: <Store size={15} />, text: 'Conecta con cientos de casas de repuestos verificadas' },
+    { icon: <CreditCard size={15} />, text: 'Paga en cuotas sin interés con Webpay y Flow' },
+    { icon: <ShieldCheck size={15} />, text: '3 días de fondos protegidos tras la entrega para probar tu repuesto' },
+    { icon: <MessageSquareQuote size={15} />, text: 'Cotizaciones formales y chat en vivo con los vendedores' },
+    { icon: <Truck size={15} />, text: 'Retiro en tienda con PIN $0 o despacho con seguimiento a todo Chile' },
+    { icon: <Users size={15} />, text: 'Equipo de mediación que te apoya si una pieza no calza o falla' },
+    { icon: <Wrench size={15} />, text: 'Mural público de talleres mecánicos, scanner y mantenciones' },
   ];
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -128,7 +128,7 @@ function HeroLiveTicker() {
 }
 
 // -------------------------------------------------------------
-// Modal de Descarga de App Android
+// Modal de Información de App Móvil
 // -------------------------------------------------------------
 
 function AndroidDownloadModal({
@@ -149,11 +149,12 @@ function AndroidDownloadModal({
         <div className="modal-icon-badge">
           <AndroidLogoSvg />
         </div>
-        <span className="modal-eyebrow">Google Play Store · Android</span>
-        <h2>Descarga RepuesTop en tu teléfono</h2>
+        <span className="modal-eyebrow">Próximamente para Android</span>
+        <h2>La app de RepuesTop está en camino</h2>
         <p>
-          Lleva en tu bolsillo todo el ecosistema: búsqueda por patente, notificaciones push cuando tu
-          pedido cambie de estado, chat directo con vendedores y el PIN digital de retiro seguro.
+          Mientras se publica en Google Play Store, puedes usar exactamente las mismas funciones
+          desde la plataforma web en tu computador o en el navegador de tu celular: buscar por patente,
+          cotizar con tiendas, pagar seguro y retirar con tu PIN, sin instalar nada.
         </p>
 
         <div className="modal-app-details">
@@ -163,31 +164,19 @@ function AndroidDownloadModal({
           </div>
           <div className="app-detail-item">
             <strong>Compatibilidad</strong>
-            <span>Android 7.0 o superior</span>
+            <span>Para cualquier teléfono Android</span>
           </div>
           <div className="app-detail-item">
-            <strong>Desarrollador</strong>
-            <span>Corebit SpA / RepuesTop Chile</span>
+            <strong>Plataforma oficial</strong>
+            <span>RepuesTop Chile</span>
           </div>
           <div className="app-detail-item">
-            <strong>Sincronización</strong>
-            <span>100% en tiempo real con la web</span>
+            <strong>Mientras tanto</strong>
+            <span>Web 100% disponible en tu computador o celular</span>
           </div>
         </div>
 
         <div className="modal-actions-row">
-          <a
-            href="https://play.google.com/store"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="button button-playstore"
-          >
-            <GooglePlaySvg />
-            <div className="btn-play-text">
-              <small>Disponible en</small>
-              <strong>Google Play</strong>
-            </div>
-          </a>
           <button type="button" className="button button-outline" onClick={onClose}>
             Continuar en la Web
           </button>
@@ -195,7 +184,7 @@ function AndroidDownloadModal({
 
         <div className="modal-ios-note">
           <Clock size={14} />
-          <span>¿Usas iPhone? La versión para iOS se encuentra actualmente en desarrollo y llegará pronto.</span>
+          <span>La plataforma web cubre todas las funciones para compradores y casas de repuestos desde cualquier dispositivo.</span>
         </div>
       </div>
     </div>
@@ -235,12 +224,12 @@ export default function AboutRepuesTopPage({
 
   // Metadatos SEO de la página
   useEffect(() => {
-    document.title = 'Sobre RepuesTop | Marketplace Automotriz y App Móvil Sincronizada';
+    document.title = 'Sobre RepuesTop | Marketplace Automotriz Chileno';
     const metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) {
       metaDesc.setAttribute(
         'content',
-        'Conoce RepuesTop: Búsqueda por patente chilena sin margen de error, compra protegida, cuotas sin interés, cotizaciones por chat, tiendas verificadas y app Android en Google Play.'
+        'Conoce RepuesTop: Búsqueda por patente chilena sin margen de error, compra protegida, cuotas sin interés, cotizaciones por chat y casas de repuestos verificadas.'
       );
     }
   }, []);
@@ -259,96 +248,96 @@ export default function AboutRepuesTopPage({
       icon: <Search className="feat-ico-blue" />,
       title: 'Búsqueda por Patente de Alta Precisión',
       badge: 'Cero errores',
-      desc: 'Ingresas la patente chilena y completamos marca, modelo, año, motor, versión y transmisión con homologación oficial SII (2000-2026), garantizando repuestos 100% compatibles.',
-      benefit: 'Ahorras tiempo y eliminas el riesgo de compras equivocadas.',
+      desc: 'Ingresas la patente de tu auto y el sistema identifica de inmediato marca, modelo, año, motor y versión según los registros oficiales del SII (desde el 2000 al 2026), para que solo veas repuestos que realmente le sirven a tu vehículo.',
+      benefit: 'Ahorras tiempo y compras con la seguridad de que el repuesto va a calzar.',
     },
     {
       id: 2,
       icon: <Store className="feat-ico-violet" />,
-      title: 'Cientos de Casas de Repuestos y Desarmadurías',
+      title: 'Cientos de Casas de Repuestos en un Solo Lugar',
       badge: 'Todo Chile',
-      desc: 'Conectamos con una red verificada de comercios automotrices: repuestos nuevos originales (OEM), marcas alternativas de alta gama y piezas de desarme legal con procedencia garantizada.',
-      benefit: 'Compara precios y disponibilidad real sin recorrer la calle 10 de Julio.',
+      desc: 'Reunimos a las mejores casas de repuestos del país en una sola vitrina: piezas originales de fábrica y alternativas de primera calidad con stock real y garantía.',
+      benefit: 'Cotiza y compara precios al instante sin tener que recorrer tienda por tienda.',
     },
     {
       id: 3,
       icon: <CreditCard className="feat-ico-emerald" />,
-      title: 'Paga en Cuotas Sin Interés & +30 Medios',
-      badge: 'Flow / Webpay',
-      desc: 'Aceptamos tarjetas de crédito en cuotas sin interés, tarjetas de débito Redcompra, prepago (Mach, Tenpo, Copec Pay) y transferencias directas con emisión de boleta o factura.',
-      benefit: 'Flexibilidad de pago respaldada por la principal pasarela de Chile.',
+      title: 'Paga en Cuotas Sin Interés y Medios Seguros',
+      badge: 'Webpay y Flow',
+      desc: 'Aceptamos tarjetas de crédito en cuotas sin interés, tarjetas de débito, Mach, Tenpo y transferencias seguras, con boleta o factura oficial para tu compra.',
+      benefit: 'Paga de forma cómoda y protegida por la principal pasarela de pagos de Chile.',
     },
     {
       id: 4,
       icon: <MessageSquareQuote className="feat-ico-cyan" />,
       title: 'Cotizaciones Formales por Chat en Vivo',
-      badge: 'En tiempo real',
-      desc: 'Habla directamente con los vendedores, pide fotos de la pieza y recibe una cotización formal con descuento, garantía detallada y botón para pagar en 1 solo clic.',
-      benefit: 'Trato directo y personalizado con respaldo y registro legal de la oferta.',
+      badge: 'Trato directo',
+      desc: 'Conversa directamente con la casa de repuestos, pide fotos de la pieza y recibe una cotización clara con precio final, garantía y botón para pagar directamente.',
+      benefit: 'Atención personalizada y respaldo por escrito de cada precio y condición.',
     },
     {
       id: 5,
       icon: <HelpCircleIcon className="feat-ico-amber" />,
-      title: 'Preguntas y Respuestas Públicas',
+      title: 'Preguntas y Respuestas sobre el Repuesto',
       badge: 'Comunidad',
-      desc: '¿Tienes dudas sobre el lado, conector o versión? Pregunta en la ficha del repuesto; las respuestas quedan públicas para beneficio de todos los dueños del mismo modelo.',
-      benefit: 'Compras con total certeza técnica y transparencia absoluta.',
+      desc: '¿Tienes dudas sobre el lado, conector o modelo? Pregunta en la publicación del repuesto; la tienda te responde y la respuesta queda visible para todos los conductores.',
+      benefit: 'Compras con total claridad y resuelves cualquier duda antes de pagar.',
     },
     {
       id: 6,
       icon: <Truck className="feat-ico-orange" />,
-      title: 'Logística Multimodal y Transparente',
+      title: 'Diferentes Opciones de Envío y Entrega',
       badge: 'Retiro $0 o despacho',
-      desc: 'Elige entre retiro en tienda con PIN de seguridad sin costo adicional, despacho local dentro de tu comuna o courier nacional por pagar (Starken, Chilexpress) con tracking.',
-      benefit: 'Tú decides si quieres ahorrar en flete o recibir en la puerta de tu taller.',
+      desc: 'Elige retirar en el local de la casa de repuestos sin costo con tu código de seguridad, pedir despacho local rápido si estás en la misma comuna o envío a todo Chile por courier con seguimiento.',
+      benefit: 'Tú eliges cómo y cuándo recibir tus piezas de la forma más conveniente.',
     },
     {
       id: 7,
       icon: <LockKeyhole className="feat-ico-green" />,
-      title: 'Pago Protegido (Resguardo de 3 Días)',
-      badge: 'Garantía real',
-      desc: 'Tus fondos permanecen custodiados y no se transfieren a la tienda hasta 3 días después de recibida la pieza, dándote margen suficiente para instalar y probar que calza.',
-      benefit: 'Comprar repuestos deja de ser una apuesta; tu dinero está resguardado.',
+      title: 'Pago Protegido (3 Días de Resguardo)',
+      badge: 'Garantía total',
+      desc: 'Tu dinero no se entrega a la tienda hasta 3 días después de que recibes el repuesto. Así tienes tiempo suficiente para probarlo en tu auto o en el taller mecánico.',
+      benefit: 'Tu compra está 100% protegida; si no es lo que pediste, tu dinero está a salvo.',
     },
     {
       id: 8,
       icon: <ShieldCheck className="feat-ico-indigo" />,
-      title: 'Equipo de Mediación Humana en Fallas',
+      title: 'Equipo de Mediación en Caso de Problemas',
       badge: 'Personas reales',
-      desc: 'Si un repuesto no calza o presenta defectos de fábrica y no hay acuerdo con el vendedor, un mediador humano imparcial abre un expediente, evalúa fotos y ejecuta el reembolso.',
-      benefit: 'Sin llamadas eternas ni bots: resolvemos tu reclamo con evidencias.',
+      desc: 'Si una pieza viene con fallas o no calza y no llegas a acuerdo con la tienda, una persona de nuestro equipo interviene, revisa las fotos y gestiona la solución o la devolución de tu dinero.',
+      benefit: 'Nunca quedas solo: resolvemos cualquier problema de forma justa y rápida.',
     },
     {
       id: 9,
       icon: <Users className="feat-ico-teal" />,
-      title: 'Apoyo de Captadores Automotrices',
+      title: 'Apoyo de Captadores de Repuestos',
       badge: 'Búsqueda asistida',
-      desc: '¿Buscas una pieza difícil, descontinuada o de un modelo escaso? Nuestro equipo de captadores automotrices rastrea almacenes físicos y redes de desarmadurías por ti.',
-      benefit: 'Encontramos ese repuesto que nadie más tiene disponible.',
+      desc: '¿Buscas una pieza difícil de encontrar o descontinuada? Nuestro equipo de captadores te ayuda a rastrearla directamente consultando con casas de repuestos de todo el país.',
+      benefit: 'Encontramos ese repuesto que te ha costado conseguir en el mercado.',
     },
     {
       id: 10,
       icon: <Wrench className="feat-ico-rose" />,
-      title: 'Mural Público de Servicios Automotrices',
+      title: 'Mural Público de Servicios Mecánicos',
       badge: 'Talleres y mecánicos',
-      desc: 'Vitrina integral para talleres mecánicos, scanner automotriz, frenos, desabolladura, pintura y mantención por kilometraje con acreditación técnica y reserva de citas.',
-      benefit: 'Encuentra el especialista ideal para instalar el repuesto que compraste.',
+      desc: 'Encuentra talleres mecánicos, especialistas en scanner, frenos, desabolladura y mantenciones por comuna, con reseñas reales de clientes y opción de agendar tu hora.',
+      benefit: 'El mecánico o taller ideal para instalar los repuestos que compraste.',
     },
     {
       id: 11,
       icon: <AlertCircle className="feat-ico-red" />,
-      title: 'Sistema de Reportes y Moderación Continua',
+      title: 'Sistema de Reportes y Tiendas Verificadas',
       badge: 'Comunidad segura',
-      desc: 'Herramientas de reporte comunitario y revisión activa de soporte para suspender publicaciones dudosas, comercios irregulares o malas prácticas comerciales.',
-      benefit: 'Operas en un entorno limpio, auditado y transparente.',
+      desc: 'Todas las casas de repuestos pasan por revisión de documentos comerciales. Además, los usuarios pueden reportar cualquier publicación irregular para mantener un mercado confiable.',
+      benefit: 'Compras con total tranquilidad en tiendas reales y establecidas.',
     },
     {
       id: 12,
       icon: <Layers className="feat-ico-blue2" />,
-      title: 'Equipo de Ingenieros en Mejora Continua',
-      badge: 'Desarrollo chileno',
-      desc: 'Nuestra plataforma es creada y evolucionada permanentemente por un equipo multidisciplinario de ingenieros de software y expertos del rubro automotriz nacional.',
-      benefit: 'Plataforma estable 24/7, segura, rápida y en constante evolución.',
+      title: 'Equipo de Ingenieros Trabajando para Ti',
+      badge: 'Mejora continua',
+      desc: 'Un equipo de ingenieros chilenos trabaja todos los días en la plataforma para que funcione de forma rápida, segura y sin interrupciones, pensando siempre en tu satisfacción.',
+      benefit: 'Una plataforma moderna, estable y en constante evolución.',
     },
   ];
 
@@ -357,26 +346,29 @@ export default function AboutRepuesTopPage({
   // -------------------------------------------------------------
   const galleryItems = {
     stores: {
-      title: 'Directorio de Tiendas y Desarmadurías',
-      tag: 'Red Comercial',
-      desc: 'Explora locales físicos y desarmadurías verificadas con dirección, horario de atención, reputación con estrellas y catálogo disponible para retiro inmediato.',
-      image: '/about-assets/store-directory-hero-v6.webp',
-      actionText: 'Ver tiendas verificadas',
+      title: 'Directorio de Casas de Repuestos',
+      tag: 'Locales Verificados',
+      desc: 'Encuentra locales comerciales de repuestos con su dirección exacta, horarios de atención, teléfonos, reputación y disponibilidad de piezas para retiro o despacho.',
+      image: '/about-assets/tiendas-real.png',
+      isReal: true,
+      actionText: 'Ver casas de repuestos',
       onAction: handleStores,
     },
     services: {
       title: 'Mural de Servicios Automotrices',
-      tag: 'Talleres y Especialistas',
-      desc: 'Conecta con mecánicos acreditados, especialistas en frenos, scanner multimarca, aire acondicionado y desabolladura con agenda de citas y reseñas reales.',
-      image: '/about-assets/ads-wall-hero-mechanic.png',
-      actionText: 'Explorar mural de servicios',
+      tag: 'Talleres y Mecánicos',
+      desc: 'Conecta con mecánicos profesionales y talleres para scanner, frenos, mantenciones y reparaciones, revisando su experiencia y agendando tu atención.',
+      image: '/about-assets/mural-real.png',
+      isReal: true,
+      actionText: 'Ver mural de servicios',
       onAction: handleAdsWall,
     },
     quotes: {
-      title: 'Cotizaciones Formales en Chat',
+      title: 'Catálogo y Cotizaciones Formales',
       tag: 'Trato Directo',
-      desc: 'Recibe ofertas directas de los vendedores con precio neto, porcentaje de descuento, garantía y botón directo para pagar con Flow sin salir del chat.',
-      image: '/about-assets/seller-quotes-hero.png',
+      desc: 'Busca por patente o categoría y recibe ofertas directas de los vendedores con precio neto, descuento, garantía y botón directo para pagar con Flow.',
+      image: '/about-assets/catalogo-real.png',
+      isReal: true,
       actionText: 'Ir a buscar y cotizar',
       onAction: handleCatalog,
     },
@@ -384,39 +376,44 @@ export default function AboutRepuesTopPage({
       title: 'Preguntas y Respuestas Técnicas',
       tag: 'Transparencia',
       desc: 'Consulta dudas específicas de compatibilidad antes de pagar. El vendedor recibe alerta inmediata y la respuesta queda registrada públicamente.',
-      image: '/about-assets/seller-questions-hero.png',
+      image: '/about-assets/qa-real.png',
+      isReal: true,
       actionText: 'Explorar catálogo',
       onAction: handleCatalog,
     },
     orders: {
-      title: 'Timeline y Seguimiento de Pedidos',
-      tag: 'Trazabilidad Total',
-      desc: 'Visualiza cada paso de tu compra: Pagado, En preparación, Listo para retiro con PIN de 6 dígitos o En camino con courier y número de seguimiento.',
+      title: 'Seguimiento Paso a Paso de tu Pedido',
+      tag: 'Control Total',
+      desc: 'Revisa en qué etapa está tu compra: Pagado, En preparación, Listo para retirar con tu PIN de seguridad o En camino con empresa de despacho y número de seguimiento.',
       image: '/about-assets/orders-hero-v2.png',
+      isReal: false,
       actionText: 'Comprar con respaldo',
       onAction: handleCatalog,
     },
     mediation: {
       title: 'Equipo de Mediación Imparcial',
-      tag: 'Resolución de Disputas',
-      desc: 'Si una pieza presenta problemas o no calza, un mediador humano de RepuesTop revisa el expediente fotográfico y resuelve con fondos retenidos.',
+      tag: 'Resolución de Problemas',
+      desc: 'Si una pieza presenta problemas o no calza, una persona de nuestro equipo revisa las fotos y antecedentes para resolver de forma justa con tus fondos protegidos.',
       image: '/about-assets/mediator-profile.webp',
+      isReal: false,
       actionText: 'Conocer centro de ayuda',
       onAction: onContact,
     },
     reports: {
       title: 'Centro de Soporte y Seguridad',
-      tag: 'Confianza y Ética',
-      desc: 'Sistema de tickets con agentes humanos y reportes comunitarios para fiscalizar publicaciones y mantener la máxima transparencia del mercado.',
-      image: '/about-assets/reports-hero.png',
+      tag: 'Atención y Respaldo',
+      desc: 'Atención personalizada con personas reales para responder tus consultas y revisar reportes de la comunidad para que compres con total tranquilidad.',
+      image: '/about-assets/soporte-real.png',
+      isReal: true,
       actionText: 'Contactar a soporte',
       onAction: onContact,
     },
     logistics: {
-      title: 'Logística Multimodal a Todo Chile',
-      tag: 'Entregas Garantizadas',
-      desc: 'Retiro en tienda sin costo con código PIN seguro, flete comunal express o despacho por courier a cualquier región del país.',
+      title: 'Entregas y Despachos a Todo Chile',
+      tag: 'Opciones Cómodas',
+      desc: 'Retiro en el local de la tienda sin costo con código PIN seguro, despacho local rápido o envío por courier a cualquier ciudad del país.',
       image: '/about-assets/delivery-truck.webp',
+      isReal: false,
       actionText: 'Buscar repuestos ahora',
       onAction: handleCatalog,
     },
@@ -430,35 +427,35 @@ export default function AboutRepuesTopPage({
   const faqs = [
     {
       q: '¿Cómo funciona la búsqueda por patente y qué tan precisa es?',
-      a: 'Al ingresar la patente de tu vehículo, nuestro sistema consulta la base oficial del parque automotriz chileno y homologaciones del SII (desde el año 2000 al 2026). Detectamos marca, modelo, año exacto, versión y cilindrada. Así, el catálogo se filtra únicamente con repuestos 100% compatibles, evitando que compres una pieza equivocada.',
+      a: 'Al ingresar la patente de tu vehículo, nuestro sistema consulta la información oficial del SII (modelos desde el año 2000 al 2026). Detectamos marca, modelo, año exacto, versión y motor. Así, el catálogo te muestra únicamente los repuestos que le sirven a tu auto, evitando errores de compra.',
     },
     {
-      q: '¿Cómo descargo la aplicación móvil y qué ventajas tiene frente a la web?',
-      a: 'La aplicación móvil de RepuesTop está disponible para Android en Google Play Store. Ambas plataformas están 100% sincronizadas en la nube: si buscas o guardas en la web, aparece en tu teléfono. La app añade notificaciones push al instante de cada cambio en tu pedido, cámara para enviar fotos al chat de cotización y tu PIN de retiro digital en el bolsillo.',
+      q: '¿Existe una app móvil o solo puedo comprar desde la web?',
+      a: 'Hoy RepuesTop funciona 100% desde la plataforma web, optimizada para computador y celular: puedes buscar por patente, cotizar por chat, pagar y mostrar tu PIN de retiro sin instalar nada. La app para Android está en desarrollo; cuando esté lista, podrás ingresar con tu misma cuenta y tener todo sincronizado.',
     },
     {
       q: '¿Cómo funciona el resguardo de fondos de 3 días (Pago Protegido)?',
-      a: 'Cuando compras en RepuesTop a través de Webpay o Flow, el vendedor no recibe tu dinero de inmediato. Los fondos quedan retenidos de manera segura en la cuenta de custodia de la plataforma durante los 3 días posteriores a la entrega física. Durante este plazo puedes probar e instalar el repuesto con total tranquilidad.',
+      a: 'Cuando compras en RepuesTop a través de Webpay o Flow, la casa de repuestos no recibe el dinero de inmediato. Los fondos quedan retenidos de manera segura en la plataforma durante 3 días después de que recibes el repuesto. Así tienes tiempo para probar que calce e instalarlo con tranquilidad.',
     },
     {
       q: '¿Qué ocurre si el repuesto llega dañado, con fallas o no calza?',
-      a: 'A diferencia de compras informales por redes sociales, en RepuesTop cuentas con un equipo de Mediación Humana. Puedes abrir una disputa desde el Centro de Ayuda; un mediador imparcial de nuestro equipo revisará las fotos, mensajes y especificaciones técnicas. Mientras el caso se revisa, los fondos permanecen congelados y, si no calza, gestionamos tu reembolso total.',
+      a: 'En RepuesTop cuentas con un equipo de mediación con personas reales. Puedes abrir un caso desde el Centro de Ayuda; un mediador revisará las fotos y los mensajes con la tienda. Mientras se revisa, tu dinero sigue protegido y, si el repuesto no correspondía o tiene fallas, gestionamos la devolución de tu dinero.',
     },
     {
       q: '¿Puedo pagar en cuotas sin interés y solicitar Factura para mi taller o empresa?',
-      a: 'Sí. A través de la integración oficial con Webpay Plus y Flow, puedes pagar con tarjetas de crédito en cuotas sin interés según las promociones de tu banco emisor. Además, al momento del checkout puedes elegir entre Boleta electrónica o Factura comercial con RUT de empresa y giro tributario.',
+      a: 'Sí. A través de Webpay Plus y Flow, puedes pagar con tarjetas de crédito en cuotas sin interés según las condiciones de tu banco. Además, al momento de pagar puedes elegir Boleta o Factura con RUT de empresa para tu taller o negocio.',
     },
     {
       q: '¿Cómo funciona el retiro en tienda con PIN de 6 dígitos?',
-      a: 'Si eliges "Retiro en tienda ($0 costo)", el sistema genera un PIN único digital de 6 dígitos en tu cuenta y app. Al ir al local de la casa de repuestos, muestras tu PIN; el vendedor lo digita en su panel para validar la entrega. Así nadie más puede retirar tu compra y la recepción queda firmada digitalmente.',
+      a: 'Si eliges "Retiro en tienda ($0 costo)", el sistema genera un PIN de 6 dígitos en tu cuenta. Al ir al local de la casa de repuestos, le das ese código al vendedor; él lo ingresa en su pantalla para confirmar la entrega. Así nadie más puede retirar tu compra.',
     },
     {
       q: '¿Qué es el Mural Público de Servicios Automotrices y qué ofrece?',
-      a: 'El Mural de Anuncios es nuestra vitrina para conectar a conductores con mecánicos y talleres profesionales acreditados en Chile. Puedes buscar servicios por comuna (scanner automotriz, frenos, desabolladura y pintura, aire acondicionado, etc.), revisar credenciales técnicas y coordinar citas de atención.',
+      a: 'El Mural de Servicios es una vitrina para conectar a conductores con mecánicos y talleres profesionales en Chile. Puedes buscar por comuna especialistas en scanner, frenos, desabolladura y pintura o mantenciones, revisar opiniones de otros clientes y solicitar una hora.',
     },
     {
-      q: '¿Cómo puedo incorporar mi casa de repuestos o desarmaduría como Tienda Fundadora?',
-      a: 'Puedes postular directamente haciendo clic en "Quiero ser tienda fundadora". Los primeros comercios asociados disfrutan de una comisión preferencial y fija del 5% durante todo su primer año, soporte para carga masiva de inventario en Excel/CSV, panel de ventas y un distintivo oficial de tienda verificada.',
+      q: '¿Cómo puedo incorporar mi casa de repuestos como Tienda Fundadora?',
+      a: 'Puedes postular directamente haciendo clic en "Quiero ser tienda fundadora". Las primeras casas de repuestos asociadas disfrutan de una comisión preferencial y fija del 5% durante todo su primer año, apoyo para subir sus repuestos desde Excel, panel de control de ventas y el distintivo oficial de tienda verificada.',
     },
   ];
 
@@ -495,7 +492,7 @@ export default function AboutRepuesTopPage({
                   </span>
                 </div>
                 <span className="hero-ecosystem-tag">
-                  <Sparkles size={14} /> Ecosistema Web & App Móvil Sincronizadas
+                  <Sparkles size={14} /> Plataforma Web 100% Operativa
                 </span>
               </div>
 
@@ -518,16 +515,16 @@ export default function AboutRepuesTopPage({
                   type="button"
                   className="platform-card platform-android"
                   onClick={() => setDownloadModalOpen(true)}
-                  title="Ver información de descarga en Google Play Store"
+                  title="Ver estado de la app Android"
                 >
                   <div className="platform-card-icon">
                     <GooglePlaySvg />
                   </div>
                   <div className="platform-card-meta">
                     <small>App para Android</small>
-                    <strong>Google Play Store</strong>
+                    <strong>Próximamente en Google Play</strong>
                   </div>
-                  <span className="platform-status-badge is-live">Disponible</span>
+                  <span className="platform-status-badge is-soon">En desarrollo</span>
                 </button>
 
                 <div className="platform-card platform-web">
@@ -565,7 +562,7 @@ export default function AboutRepuesTopPage({
                   onClick={() => setDownloadModalOpen(true)}
                 >
                   <Download size={18} />
-                  <span>Descargar App Android</span>
+                  <span>App Android (en camino)</span>
                 </button>
                 <button type="button" className="button button-outline-glow" onClick={onOpenSeller}>
                   <Crown size={18} />
@@ -575,13 +572,13 @@ export default function AboutRepuesTopPage({
 
               <div className="hero-trust-subtext">
                 <span>
-                  <CheckCircle2 size={15} /> Pagos protegidos con Flow / Webpay
+                  <CheckCircle2 size={15} /> Pagos protegidos con Webpay y Flow
                 </span>
                 <span>
                   <CheckCircle2 size={15} /> Boleta o Factura automática
                 </span>
                 <span>
-                  <CheckCircle2 size={15} /> 100% Tiendas auditadas
+                  <CheckCircle2 size={15} /> 100% Casas de repuestos verificadas
                 </span>
               </div>
             </div>
@@ -590,8 +587,8 @@ export default function AboutRepuesTopPage({
             <div className="about-hero-visual">
               <div className="hero-visual-card">
                 <img
-                  src="/about-assets/repuestop-web-mobile-hero.png"
-                  alt="Plataforma Web y Aplicación Móvil Android de RepuesTop"
+                  src="/about-assets/repuestop-web-home-real.png"
+                  alt="Captura real de la plataforma web de RepuesTop"
                   className="hero-device-image"
                 />
                 <div className="hero-device-scanline" aria-hidden="true" />
@@ -609,6 +606,15 @@ export default function AboutRepuesTopPage({
                     <small>3 días de fondos en custodia</small>
                   </div>
                 </div>
+                <div className="hero-mobile-peek">
+                  <img
+                    src="/about-assets/app-movil-real.png"
+                    alt="Vista previa real de la app Android de RepuesTop, actualmente en desarrollo"
+                  />
+                  <span className="hero-mobile-peek-badge">
+                    <Smartphone size={12} /> App Android · En desarrollo
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -621,73 +627,73 @@ export default function AboutRepuesTopPage({
           <div className="about-section-shell metrics-grid">
             <Reveal as="div" className="metric-box" delay={0}>
               <span className="metric-number">+100</span>
-              <strong>Casas de Repuestos y Desarmadurías</strong>
-              <p>Locales auditados con RUT, patente comercial e historial verificado.</p>
+              <strong>Casas de Repuestos Verificadas</strong>
+              <p>Locales comerciales con RUT, patente e historial comercial al día.</p>
             </Reveal>
 
             <Reveal as="div" className="metric-box" delay={60}>
               <span className="metric-number">2000–2026</span>
-              <strong>Parque Automotriz Homologado</strong>
-              <p>Ficha técnica oficial SII para marcas tradicionales y vehículos chinos.</p>
+              <strong>Años de Vehículos en Chile</strong>
+              <p>Información oficial del SII para autos de marcas tradicionales y marcas chinas.</p>
             </Reveal>
 
             <Reveal as="div" className="metric-box" delay={120}>
               <span className="metric-number">3 Días</span>
-              <strong>De Fondos en Custodia Segura</strong>
-              <p>El dinero se libera tras la entrega física si confirmas conformidad.</p>
+              <strong>De Fondos Protegidos</strong>
+              <p>Tu dinero se libera a la tienda solo después de que recibes y pruebas el repuesto.</p>
             </Reveal>
 
             <Reveal as="div" className="metric-box" delay={180}>
               <span className="metric-number">100%</span>
               <strong>Mediación Humana Imparcial</strong>
-              <p>Personas reales revisan evidencias fotográficas ante cualquier falla.</p>
+              <p>Nuestro equipo revisa cada caso con fotos si el repuesto llega con fallas.</p>
             </Reveal>
           </div>
         </section>
 
         {/* =========================================================
-            BLOQUE 3: ECOSISTEMA SINCRONIZADO (Web + App Android)
+            BLOQUE 3: UNA WEB, DOS EXPERIENCIAS (Comprador + Vendedor)
         ========================================================= */}
         <section className="about-sync-section" id="ecosistema">
           <div className="about-section-shell">
             <Reveal as="div" className="section-header-center">
               <span className="section-eyebrow">
-                <RefreshCw size={14} /> Sincronización en Tiempo Real
+                <RefreshCw size={14} /> Capturas reales de la plataforma
               </span>
-              <h2>Una sola cuenta. Dos experiencias perfectamente sincronizadas.</h2>
+              <h2>Una sola plataforma, pensada para compradores y casas de repuestos.</h2>
               <p>
-                Todo lo que haces en la web se actualiza al instante en la aplicación móvil Android y
-                viceversa: carrito de compras, cotizaciones por chat, seguimiento de pedidos y preguntas.
+                Nada de mockups ni fotos genéricas: así se ve RepuesTop hoy mismo. Cada usuario tiene su
+                propio panel, con pedidos, cotizaciones y catálogo siempre al día.
               </p>
             </Reveal>
 
             <div className="sync-cards-duo">
-              {/* Tarjeta 1: La Web */}
+              {/* Tarjeta 1: Comprador */}
               <Reveal as="article" className="sync-platform-card web-card" delay={0}>
                 <div className="sync-card-badge">
-                  <Zap size={16} /> En tu Computador o Navegador
+                  <Zap size={16} /> Panel del Comprador
                 </div>
-                <h3>Plataforma Web Operativa</h3>
+                <h3>Compra, cotiza y sigue tus pedidos</h3>
                 <p>
-                  Ideal para talleres mecánicos, compras de oficina y cotización intensiva de múltiples
-                  piezas a la vez con pantalla ancha.
+                  Un panel claro donde ves el estado real de tus compras, cotizaciones y repuestos
+                  guardados, todo con la misma cuenta.
                 </p>
                 <ul className="sync-card-feature-list">
                   <li>
-                    <Check size={16} /> <strong>Carrito multi-tienda:</strong> Compra a varios proveedores en una sola transacción.
+                    <Check size={16} /> <strong>Resumen de compras:</strong> Pedidos, envíos en camino y cotizaciones activas en un solo lugar.
                   </li>
                   <li>
-                    <Check size={16} /> <strong>Ficha técnica profunda:</strong> Comparación de dimensiones, números de parte OEM y compatibilidades.
+                    <Check size={16} /> <strong>Cotizaciones formales:</strong> Chat directo con la tienda y respuesta con precio y garantía.
+                  </li>
+                  <li>
+                    <Check size={16} /> <strong>Favoritos y repetición de compra:</strong> Guarda repuestos para tu vehículo y vuelve a comprarlos fácil.
                   </li>
                   <li>
                     <Check size={16} /> <strong>Factura para empresas:</strong> Ingreso de RUT y razón social para crédito fiscal IVA.
                   </li>
-                  <li>
-                    <Check size={16} /> <strong>Panel de proveedor:</strong> Carga masiva de inventario por planillas Excel/CSV.
-                  </li>
                 </ul>
                 <div className="sync-card-image-box">
-                  <img src="/about-assets/repuestop-web-home.png" alt="Marketplace web de RepuesTop" />
+                  <img src="/about-assets/comprador-panel-real.png" alt="Captura real del panel de comprador de RepuesTop" />
                 </div>
                 <button type="button" className="button button-outline" onClick={handleCatalog}>
                   <span>Explorar marketplace web</span>
@@ -695,40 +701,40 @@ export default function AboutRepuesTopPage({
                 </button>
               </Reveal>
 
-              {/* Tarjeta 2: La App Android */}
+              {/* Tarjeta 2: Vendedor */}
               <Reveal as="article" className="sync-platform-card mobile-card" delay={90}>
                 <div className="sync-card-badge android-badge">
-                  <GooglePlaySvg /> En tu Teléfono Android
+                  <Store size={16} /> Panel de la Casa de Repuestos
                 </div>
-                <h3>App Móvil en Google Play</h3>
+                <h3>Gestiona tus repuestos de forma rápida</h3>
                 <p>
-                  Pensada para la calle, el taller y la desarmaduría: responde cotizaciones al instante y
-                  recibe alertas push directas.
+                  Publica productos uno a uno o carga masivamente tu catálogo desde Excel, con cálculo
+                  automático de tu ganancia y stock siempre visible al público.
                 </p>
                 <ul className="sync-card-feature-list">
                   <li>
-                    <Check size={16} /> <strong>Avisos push inmediatos:</strong> Notificaciones cuando un vendedor cotiza o tu pedido avanza.
+                    <Check size={16} /> <strong>Carga fácil desde Excel:</strong> Sube tu catálogo completo de repuestos en minutos.
                   </li>
                   <li>
-                    <Check size={16} /> <strong>Cámara integrada:</strong> Sube fotos de la muestra rota directo al chat de la tienda.
+                    <Check size={16} /> <strong>Comisión transparente:</strong> Ves el monto exacto a recibir antes de publicar cada repuesto.
                   </li>
                   <li>
-                    <Check size={16} /> <strong>PIN digital en el bolsillo:</strong> Muestra tu código de 6 dígitos en el mesón de la tienda en 2 segundos.
+                    <Check size={16} /> <strong>Compatibilidad por vehículo:</strong> Asocia la pieza al modelo o márcala como universal.
                   </li>
                   <li>
-                    <Check size={16} /> <strong>Chat en tiempo real:</strong> Negocia descuentos y garantías dondequiera que estés.
+                    <Check size={16} /> <strong>Control de inventario:</strong> Repuestos activos, stock disponible y ventas al día.
                   </li>
                 </ul>
                 <div className="sync-card-image-box">
-                  <img src="/about-assets/comprador-web-mobile.png" alt="App móvil de RepuesTop para Android" />
+                  <img src="/about-assets/vendedor-panel-real.png" alt="Captura real del panel de gestión de repuestos de RepuesTop" />
                 </div>
                 <button
                   type="button"
                   className="button button-primary-glow"
-                  onClick={() => setDownloadModalOpen(true)}
+                  onClick={onOpenSeller}
                 >
-                  <Download size={16} />
-                  <span>Obtener en Google Play Store</span>
+                  <Crown size={16} />
+                  <span>Quiero vender en RepuesTop</span>
                 </button>
               </Reveal>
             </div>
@@ -742,7 +748,7 @@ export default function AboutRepuesTopPage({
           <div className="about-section-shell">
             <Reveal as="div" className="section-header-center">
               <span className="section-eyebrow">
-                <Award size={14} /> Ventajas Competitivas
+                <Award size={14} /> Ventajas del Sistema
               </span>
               <h2>Por qué RepuesTop es la forma más segura de comprar repuestos</h2>
               <p>
@@ -777,11 +783,11 @@ export default function AboutRepuesTopPage({
           <div className="about-section-shell">
             <Reveal as="div" className="section-header-center">
               <span className="section-eyebrow">
-                <Eye size={14} /> Conoce el Sistema en Vivo
+                <Eye size={14} /> Conoce el Sistema por Dentro
               </span>
-              <h2>Imágenes reales. Flujos reales. Cero sorpresas.</h2>
+              <h2>Imágenes reales. Pantallas reales. Cero sorpresas.</h2>
               <p>
-                Haz clic en cada módulo para previsualizar cómo se ve y funciona la plataforma por dentro
+                Haz clic en cada sección para ver cómo luce la plataforma y qué herramientas tendrás a mano
                 antes de realizar tu primera compra o publicación.
               </p>
             </Reveal>
@@ -796,7 +802,7 @@ export default function AboutRepuesTopPage({
                 onClick={() => setActiveGalleryId('stores')}
               >
                 <Store size={16} />
-                <span>Directorio Tiendas</span>
+                <span>Casas de Repuestos</span>
               </button>
 
               <button
@@ -829,7 +835,7 @@ export default function AboutRepuesTopPage({
                 onClick={() => setActiveGalleryId('qa')}
               >
                 <HelpCircleIcon size={16} />
-                <span>Preguntas Q&A</span>
+                <span>Preguntas sobre Repuestos</span>
               </button>
 
               <button
@@ -840,7 +846,7 @@ export default function AboutRepuesTopPage({
                 onClick={() => setActiveGalleryId('orders')}
               >
                 <PackageCheck size={16} />
-                <span>Seguimiento Pedidos</span>
+                <span>Seguimiento de Pedidos</span>
               </button>
 
               <button
@@ -851,7 +857,7 @@ export default function AboutRepuesTopPage({
                 onClick={() => setActiveGalleryId('mediation')}
               >
                 <ShieldCheck size={16} />
-                <span>Equipo Mediación</span>
+                <span>Equipo de Mediación</span>
               </button>
 
               <button
@@ -862,7 +868,7 @@ export default function AboutRepuesTopPage({
                 onClick={() => setActiveGalleryId('reports')}
               >
                 <AlertCircle size={16} />
-                <span>Soporte & Reportes</span>
+                <span>Soporte y Seguridad</span>
               </button>
 
               <button
@@ -873,7 +879,7 @@ export default function AboutRepuesTopPage({
                 onClick={() => setActiveGalleryId('logistics')}
               >
                 <Truck size={16} />
-                <span>Logística & Envíos</span>
+                <span>Opciones de Envío</span>
               </button>
             </div>
 
@@ -887,11 +893,11 @@ export default function AboutRepuesTopPage({
                 <div className="gallery-highlights-list">
                   <div className="highlight-item">
                     <CheckCircle2 size={16} />
-                    <span>Datos actualizados en tiempo real por el backend.</span>
+                    <span>Stock y precios siempre actualizados al instante en la plataforma.</span>
                   </div>
                   <div className="highlight-item">
                     <CheckCircle2 size={16} />
-                    <span>Interfaz idéntica en versión web y en la app Android.</span>
+                    <span>Optimizada para computador y celular, sin instalar nada.</span>
                   </div>
                   <div className="highlight-item">
                     <CheckCircle2 size={16} />
@@ -910,10 +916,12 @@ export default function AboutRepuesTopPage({
               <div className="gallery-visual-column">
                 <div className="gallery-image-frame">
                   <img src={currentGallery.image} alt={currentGallery.title} />
-                  <div className="gallery-live-badge">
-                    <span className="live-dot" />
-                    <span>Módulo operativo</span>
-                  </div>
+                  {currentGallery.isReal && (
+                    <div className="gallery-live-badge">
+                      <span className="live-dot" />
+                      <span>Captura real de la plataforma</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -921,7 +929,7 @@ export default function AboutRepuesTopPage({
         </section>
 
         {/* =========================================================
-            BLOQUE 6: EXPERIENCIA DUAL (Comprador vs. Proveedor)
+            BLOQUE 6: EXPERIENCIA DUAL (Comprador vs. Casa de Repuestos)
         ========================================================= */}
         <section className="about-audience-section" id="experiencias">
           <div className="about-section-shell">
@@ -949,7 +957,7 @@ export default function AboutRepuesTopPage({
                 onClick={() => setAudienceTab('seller')}
               >
                 <Store size={18} />
-                <span>Soy tienda o desarmaduría</span>
+                <span>Soy casa de repuestos</span>
               </button>
             </div>
 
@@ -957,13 +965,13 @@ export default function AboutRepuesTopPage({
             {audienceTab === 'buyer' && (
               <div className="audience-panel-grid buyer-theme">
                 <div className="audience-copy-col">
-                  <span className="audience-badge">Para particulares, talleres mecánicos y flotas</span>
+                  <span className="audience-badge">Para conductores, talleres mecánicos y empresas</span>
                   <h3>Compra con la certeza de que el repuesto calza y tu dinero está a salvo</h3>
                   <p>
-                    Olvida las llamadas a ciegas y los pagos por transferencia a cuentas desconocidas.
-                    En RepuesTop buscas por la patente de tu vehículo, comparas precios entre tiendas
-                    formales, pagas en cuotas con Webpay y tienes 3 días tras recibir la pieza para validar
-                    su funcionamiento.
+                    Olvida las llamadas a ciegas y las transferencias a cuentas desconocidas sin garantía.
+                    En RepuesTop buscas por la patente de tu vehículo, comparas precios entre casas de repuestos
+                    verificadas, pagas en cuotas con Webpay y tienes 3 días tras recibir la pieza para validar
+                    que funcione a la perfección.
                   </p>
 
                   <div className="audience-steps-mini">
@@ -971,7 +979,7 @@ export default function AboutRepuesTopPage({
                       <b>1</b>
                       <div>
                         <strong>Ingresa la patente</strong>
-                        <small>El sistema filtra el catálogo automáticamente.</small>
+                        <small>El sistema filtra el catálogo automáticamente según tu vehículo.</small>
                       </div>
                     </div>
                     <div className="step-mini-item">
@@ -985,7 +993,7 @@ export default function AboutRepuesTopPage({
                       <b>3</b>
                       <div>
                         <strong>Recibe con respaldo</strong>
-                        <small>Retira con PIN $0 o recibe con courier. Fondos retenidos por 3 días.</small>
+                        <small>Retira con PIN $0 o recibe con courier. Fondos protegidos por 3 días.</small>
                       </div>
                     </div>
                   </div>
@@ -1001,21 +1009,21 @@ export default function AboutRepuesTopPage({
                       onClick={() => setDownloadModalOpen(true)}
                     >
                       <GooglePlaySvg />
-                      <span>Descargar app Android</span>
+                      <span>App Android (en camino)</span>
                     </button>
                   </div>
                 </div>
 
                 <div className="audience-media-col">
                   <img
-                    src="/about-assets/comprador-como-funciona.png"
-                    alt="Experiencia para compradores en RepuesTop"
+                    src="/about-assets/comprador-panel-real.png"
+                    alt="Captura real del panel de comprador de RepuesTop"
                   />
                 </div>
               </div>
             )}
 
-            {/* Contenido Proveedor */}
+            {/* Contenido Casa de Repuestos */}
             {audienceTab === 'seller' && (
               <div className="audience-panel-grid seller-theme">
                 <div className="audience-copy-col">
@@ -1024,31 +1032,31 @@ export default function AboutRepuesTopPage({
                   </span>
                   <h3>Vende tus repuestos a clientes con intención real y comisión fija del 5%</h3>
                   <p>
-                    Multiplica tus ventas conectando con miles de usuarios que buscan repuestos específicos
-                    para su patente. Carga tu stock masivo en Excel, responde oportunidades por chat,
-                    controla despachos y retira tu dinero con liquidaciones transparentes.
+                    Aumenta tus ventas conectando con miles de conductores y talleres que buscan repuestos específicos
+                    para su vehículo. Carga tu lista de repuestos desde Excel, responde cotizaciones por chat,
+                    gestiona tus envíos y recibe tus pagos puntuales sin riesgos.
                   </p>
 
                   <div className="audience-steps-mini">
                     <div className="step-mini-item">
                       <b>1</b>
                       <div>
-                        <strong>5% de comisión fundador</strong>
-                        <small>Tasa fija preferencial garantizada durante el primer año.</small>
+                        <strong>5% de comisión de tienda fundadora</strong>
+                        <small>Comisión preferencial fija garantizada durante todo tu primer año.</small>
                       </div>
                     </div>
                     <div className="step-mini-item">
                       <b>2</b>
                       <div>
-                        <strong>Carga masiva Excel/CSV</strong>
-                        <small>Sube miles de repuestos y compatibilidades en minutos.</small>
+                        <strong>Carga fácil desde Excel</strong>
+                        <small>Sube tu catálogo completo de repuestos en minutos sin ingresar uno por uno.</small>
                       </div>
                     </div>
                     <div className="step-mini-item">
                       <b>3</b>
                       <div>
-                        <strong>Calculadora de margen neto</strong>
-                        <small>Define precios de lista sabiendo exactamente cuánto vas a ganar.</small>
+                        <strong>Calculadora de ganancia clara</strong>
+                        <small>Fija tus precios de venta sabiendo exactamente cuánto vas a recibir por cada repuesto.</small>
                       </div>
                     </div>
                   </div>
@@ -1067,8 +1075,8 @@ export default function AboutRepuesTopPage({
 
                 <div className="audience-media-col">
                   <img
-                    src="/about-assets/vendedor-web-mobile.png"
-                    alt="Experiencia para vendedores y proveedores en RepuesTop"
+                    src="/about-assets/vendedor-panel-real.png"
+                    alt="Captura real del panel de gestión de repuestos de RepuesTop"
                   />
                 </div>
               </div>
@@ -1084,37 +1092,37 @@ export default function AboutRepuesTopPage({
             <div className="trust-framework-card">
               <div className="framework-copy">
                 <span className="section-eyebrow">
-                  <ShieldCheck size={14} /> Estándar de Confianza Nacional
+                  <ShieldCheck size={14} /> Respaldo y Confianza en Chile
                 </span>
-                <h2>Cumplimiento legal, tributario y de protección al consumidor</h2>
+                <h2>Cumplimiento legal, tributario y de protección al comprador</h2>
                 <p>
                   Construimos RepuesTop bajo la normativa chilena vigente para que operes con el mismo
-                  respaldo que ofrecen las grandes empresas del retail internacional.
+                  respaldo que ofrecen las grandes empresas del país.
                 </p>
 
                 <div className="framework-pillars-grid">
                   <div className="pillar-box">
                     <Receipt className="pillar-icon" />
                     <strong>Boleta y Factura Oficial</strong>
-                    <p>Emisión autorizada por el SII con respaldo contable y crédito fiscal para empresas.</p>
+                    <p>Emisión autorizada por el SII con respaldo contable para personas y talleres.</p>
                   </div>
 
                   <div className="pillar-box">
                     <ShieldCheck className="pillar-icon" />
                     <strong>Garantía SERNAC (6 Meses)</strong>
-                    <p>Respaldo legal según la Ley del Consumidor en repuestos nuevos ante defectos de fábrica.</p>
+                    <p>Respaldo legal según la Ley del Consumidor en repuestos nuevos ante cualquier falla de fábrica.</p>
                   </div>
 
                   <div className="pillar-box">
                     <LockKeyhole className="pillar-icon" />
-                    <strong>Cifrado Bancario SSL</strong>
-                    <p>Las transacciones viajan directamente por Webpay/Flow; no almacenamos datos de tarjetas.</p>
+                    <strong>Pagos 100% Seguros</strong>
+                    <p>Pagas directamente con Webpay y Flow con respaldo bancario oficial; nadie accede a los datos de tu tarjeta.</p>
                   </div>
 
                   <div className="pillar-box">
                     <FileCheck className="pillar-icon" />
-                    <strong>Comercios Verificados</strong>
-                    <p>Auditamos cédula, patente municipal, RUT y domicilio comercial de cada proveedor.</p>
+                    <strong>Tiendas Verificadas</strong>
+                    <p>Revisamos la documentación comercial y tributaria de cada casa de repuestos antes de habilitarla.</p>
                   </div>
                 </div>
               </div>
@@ -1122,7 +1130,7 @@ export default function AboutRepuesTopPage({
               <div className="framework-seal-box">
                 <img src="/about-assets/repuestop-icon.jpg" alt="Sello de garantía RepuesTop" />
                 <strong>Compromiso RepuesTop Chile</strong>
-                <p>Plataforma chilena desarrollada por ingenieros comprometidos con la transparencia automotriz.</p>
+                <p>Plataforma chilena desarrollada por ingenieros comprometidos con la transparencia y el rubro automotriz.</p>
                 <div className="chile-origin-pill">
                   <MapPin size={14} />
                   <span>Diseñado y operado en Santiago, Chile</span>
@@ -1194,10 +1202,10 @@ export default function AboutRepuesTopPage({
                 <span className="section-eyebrow color-white">
                   <Sparkles size={14} /> Empieza Hoy Mismo
                 </span>
-                <h2>El futuro de los repuestos automotrices en Chile ya comenzó</h2>
+                <h2>La forma más fácil y segura de comprar repuestos en Chile</h2>
                 <p>
-                  Únete a miles de conductores y tiendas que ya compran y venden con total seguridad,
-                  garantía y trazabilidad.
+                  Únete a miles de conductores y casas de repuestos que ya operan con total tranquilidad,
+                  garantía y respaldo.
                 </p>
 
                 <div className="final-cta-buttons-row">
@@ -1206,29 +1214,17 @@ export default function AboutRepuesTopPage({
                     <span>Buscar repuesto por patente</span>
                   </button>
 
-                  <button
-                    type="button"
-                    className="button button-playstore-white"
-                    onClick={() => setDownloadModalOpen(true)}
-                  >
-                    <GooglePlaySvg />
-                    <div className="btn-play-text">
-                      <small>Disponible en</small>
-                      <strong>Google Play</strong>
-                    </div>
-                  </button>
-
                   <button type="button" className="button button-ghost-white" onClick={onOpenSeller}>
                     <Crown size={18} />
-                    <span>Sumar mi tienda (5% comisión)</span>
+                    <span>Sumar mi casa de repuestos (5% comisión)</span>
                   </button>
                 </div>
               </div>
 
               <div className="final-cta-device-preview">
                 <img
-                  src="/about-assets/repuestop-web-mobile-hero.png"
-                  alt="RepuesTop web y móvil"
+                  src="/about-assets/vendedor-panel-real.png"
+                  alt="Captura real del panel de gestión para casas de repuestos de RepuesTop"
                 />
               </div>
             </div>
