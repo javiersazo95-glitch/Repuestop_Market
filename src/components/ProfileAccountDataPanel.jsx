@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -130,12 +130,6 @@ export default function ProfileAccountDataPanel({
       .catch(() => setSellerComunas([]))
       .finally(() => setSellerGeoLoading(false));
   };
-
-  // Sincronización con React Query para la tienda
-  const refreshStoreInfoAfterAddressSync = useCallback(() => {
-    if (!isSeller || !effectiveSellerId) return;
-    queryClient.invalidateQueries({ queryKey: qk.sellerStore(effectiveSellerId) });
-  }, [isSeller, effectiveSellerId, queryClient]);
 
   useEffect(() => {
     if (!isSeller || !isEditing || availableVehicleBrands.length) return;
@@ -892,7 +886,7 @@ export default function ProfileAccountDataPanel({
                 )}
 
                 {!isSeller && (
-                  <BuyerAddressBook usuarioId={user?.userId} onCommercialAddressSynced={refreshStoreInfoAfterAddressSync} />
+                  <BuyerAddressBook usuarioId={user?.userId} />
                 )}
                 {isSeller && <SellerVerificationCard sellerId={effectiveSellerId} />}
               </div>

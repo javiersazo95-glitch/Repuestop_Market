@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { MapPin, Plus, Trash2, Pencil, X, Loader2, Check, Star, User, Store, Home, Building2, Package } from 'lucide-react';
 import {
   getAddressesApi, createAddressApi, updateAddressApi, deleteAddressApi, setDefaultAddressApi,
-  getPaisesApi, getRegionesApi, getComunasApi, saveAddressTypeMeta, updateProfileApi,
+  getPaisesApi, getRegionesApi, getComunasApi, saveAddressTypeMeta,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
@@ -11,18 +11,20 @@ import { resolverUbicacionPorNombre } from '../services/geoLookup';
 const EMPTY_FORM = { calleYNumero: '', codigoPostal: '', paisId: '', regionId: '', comunaId: '', tipoDireccion: 'PERSONAL' };
 
 /**
- * Libreta de direcciones del usuario (Comprador o Tienda): agregar, editar, eliminar y elegir
+ * Libreta de direcciones de ENTREGA del usuario: agregar, editar, eliminar y elegir
  * cuál usar como principal. Clasifica cada dirección como 'PERSONAL' o 'DESPACHO'.
  *
- * Para una cuenta Proveedor, la dirección Comercial principal de esta libreta
- * ES la dirección oficial de la tienda (RT_tienda.direccion_id): cada vez que
- * cambia, se sincroniza vía PATCH /users/perfil (misma ruta que "Editar
- * Información") para que la ficha pública, el filtro de comuna del catálogo y
- * el bloque "Dirección Comercial de Tienda" del perfil siempre muestren el
- * mismo dato, en vez de dos direcciones desconectadas entre sí.
+ * La dirección comercial oficial de una tienda es un dato aparte
+ * (RT_tienda.direccion_id, editable solo desde "Datos de la Tienda" en el perfil) y
+ * esta libreta nunca la lee ni la escribe: son dos cosas distintas -adónde despacha
+ * la tienda vs. adónde quiere que LE llegue algo el usuario al comprar-, igual que en
+ * cualquier marketplace (MercadoLibre, Falabella). Cuando quien compra es una cuenta
+ * Proveedor sin direcciones propias, el formulario ofrece un botón para copiar la
+ * dirección de su tienda como PUNTO DE PARTIDA (ver `handleUseStoreAddress`): es una
+ * decisión explícita del usuario, no una sincronización automática en el backend.
  */
-export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced }) {
-  const { role } = useAuth();
+export default function BuyerAddressBook({ usuarioId }) {
+  const { role, user } = useAuth();
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -41,30 +43,12 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
   const [comunas, setComunas] = useState([]);
   const [geoLoading, setGeoLoading] = useState(false);
 
-  const syncStoreAddress = (list) => {
-    if (role !== 'SELLER') return;
-    const despacho = list.filter((a) => (a.tipoDireccion || a.tipo) === 'DESPACHO');
-    const despachoPrincipal = despacho.find((a) => a.esPrincipal) || despacho[0];
-    if (!despachoPrincipal) return;
-    updateProfileApi({ address: despachoPrincipal.calleYNumero, comunaId: despachoPrincipal.comunaId })
-      .then(() => onCommercialAddressSynced?.())
-      .catch(() => {
-        // Si falla la sincronización no bloqueamos la libreta de direcciones
-        // (que ya se guardó bien); "Dirección Comercial de Tienda" solo se
-        // queda desactualizada hasta el próximo cambio exitoso.
-      });
-  };
-
   const loadAddresses = () => {
     if (!usuarioId) return;
     setLoading(true);
     setError('');
     getAddressesApi(usuarioId)
-      .then((data) => {
-        const list = Array.isArray(data) ? data : [];
-        setAddresses(list);
-        syncStoreAddress(list);
-      })
+      .then((data) => setAddresses(Array.isArray(data) ? data : []))
       .catch((err) => setError(err.message || 'No se pudieron cargar tus direcciones.'))
       .finally(() => setLoading(false));
   };
@@ -140,6 +124,20 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
       regionId: resuelto.regionId ? String(resuelto.regionId) : current.regionId,
       comunaId: resuelto.comunaId ? String(resuelto.comunaId) : current.comunaId,
     }));
+  };
+
+  /**
+   * Copia la dirección oficial de la tienda (el mismo dato que ve en "Datos de la
+   * Tienda") como punto de partida del formulario. Es una accion explicita del
+   * usuario -no una sincronizacion automatica del backend- asi que puede editarla
+   * antes de guardar, o no tocar el boton si prefiere escribir la suya de cero.
+   */
+  const handleUseStoreAddress = async () => {
+    if (!user?.address) return;
+    setForm((current) => ({ ...current, calleYNumero: user.address }));
+    if (user.comuna || user.region) {
+      await handleSuggestionLocation({ comuna: user.comuna, region: user.region });
+    }
   };
 
   const handlePaisChange = (paisId) => {
@@ -546,6 +544,31 @@ export default function BuyerAddressBook({ usuarioId, onCommercialAddressSynced 
             </div>
 
             {formError && <div className="auth-alert alert-error" style={{ margin: '0 0 12px' }}><X size={16} /><span>{formError}</span></div>}
+
+            {isSeller && !editingId && user?.address && (
+              <button
+                type="button"
+                onClick={handleUseStoreAddress}
+                style={{
+                  width: '100%',
+                  marginBottom: '14px',
+                  padding: '10px',
+                  borderRadius: '8px',
+                  border: '1px dashed #93c5fd',
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  fontWeight: 600,
+                  fontSize: '12.5px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Store size={14} /> Usar la dirección de mi tienda como base
+              </button>
+            )}
 
             {!isSeller && (
               <div className="form-group" style={{ marginBottom: '14px' }}>
