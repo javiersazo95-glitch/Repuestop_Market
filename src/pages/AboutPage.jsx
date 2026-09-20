@@ -12,6 +12,9 @@ export default function AboutPage() {
       onBack={nav.goHome}
       onContact={nav.goSupport}
       onOpenSeller={nav.goSellerRegister}
+      onOpenCatalog={nav.goCatalog}
+      onOpenStores={nav.goStores}
+      onOpenAdsWall={nav.goAdsWall}
     />
   );
 }
