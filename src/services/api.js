@@ -281,6 +281,7 @@ export async function registerSellerApi(sellerData) {
       comuna: sellerData.comuna || sellerData.ciudad,
       address: sellerData.address || '',
       shippingMethods: sellerData.shippingMethods || 'Starken, Chilexpress, Retiro en Tienda',
+      specialistBrandIds: sellerData.specialistBrandIds || undefined,
       authProvider: 'EMAIL_PASSWORD',
     }),
   });

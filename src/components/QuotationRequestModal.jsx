@@ -190,7 +190,7 @@ export default function QuotationRequestModal({
                 <label><span>Método de envío *</span><select value={formData.shippingMethod} onChange={(event) => updateField('shippingMethod', event.target.value)} required><option value="">Selecciona una opción</option>{shippingOptions.map((option) => <option key={option}>{option}</option>)}</select><small>{shippingOptions.length ? 'Opciones disponibles según las comunas de comprador y tienda.' : 'La tienda no tiene un método compatible para esta ubicación.'}</small></label>
               </div>
 
-              <label><span className="quote-request-label-with-help">Patente o chasis {requiresChassis ? '*' : '(opcional)'} <CircleHelp size={16} /></span><input value={formData.chassis} onChange={(event) => updateField('chassis', event.target.value.toUpperCase())} required={requiresChassis} placeholder="Ej. BBCL12 o VIN" /></label>
+              <label><span className="quote-request-label-with-help">Patente o chasis {requiresChassis ? '*' : '(opcional)'} <CircleHelp size={16} /></span><input value={formData.chassis} onChange={(event) => updateField('chassis', event.target.value.toUpperCase())} required={requiresChassis} maxLength={17} placeholder="Ej. BBCL12 o VIN" /></label>
               <label><span>Nota para el vendedor (opcional)</span><textarea rows="3" value={formData.notes} onChange={(event) => updateField('notes', event.target.value)} maxLength="500" placeholder="Marca preferida, urgencia u otra información útil..." /><small className="quote-request-counter">{formData.notes.length}/500</small></label>
 
               {submitError && <div className="modal-form-error"><AlertCircle size={16} /><span>{submitError}</span></div>}
