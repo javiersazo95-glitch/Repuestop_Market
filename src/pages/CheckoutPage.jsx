@@ -263,8 +263,13 @@ export default function CheckoutPage() {
   };
 
   const rutValid = isValidRut(invoice.rut);
+  // Un vendedor sin ninguna direccion propia guardada no queda trabado aca: el backend
+  // ya sabe usar la direccion de su tienda como respaldo al armar el pedido
+  // (PedidoCheckoutCarritoSupport/CotizacionSupport), asi que no hace falta forzarlo a
+  // agregar una direccion solo para destrabar el boton.
+  const sellerWithoutSavedAddress = isSeller && !addressesLoading && addresses.length === 0;
   const stepComplete = {
-    entrega: allShippingChosen && (!needsAddress || Boolean(selectedAddressId)),
+    entrega: allShippingChosen && (!needsAddress || Boolean(selectedAddressId) || sellerWithoutSavedAddress),
     pago: Boolean(paymentMethod) && (documentType !== 'FACTURA' || rutValid),
   };
 
@@ -325,11 +330,11 @@ export default function CheckoutPage() {
           facturaRut: documentType === 'FACTURA' ? invoice.rut.trim() : null,
           facturaRazonSocial: documentType === 'FACTURA' ? invoice.razonSocial.trim() : null,
           facturaGiro: documentType === 'FACTURA' ? invoice.giro.trim() : null,
-          direccionId: needsAddress ? Number(selectedAddressId) : null,
+          direccionId: needsAddress && selectedAddressId ? Number(selectedAddressId) : null,
           vehiculo: checkoutVehicle,
         })
         : await checkoutCartApi(userId, {
-          direccionId: needsAddress ? String(selectedAddressId) : '',
+          direccionId: needsAddress && selectedAddressId ? String(selectedAddressId) : '',
           metodoEnvio: checkoutFallbackShippingMethod(cartItems),
           tipoDocumentoTributario: documentType,
           facturaRut: documentType === 'FACTURA' ? invoice.rut.trim() : '',
