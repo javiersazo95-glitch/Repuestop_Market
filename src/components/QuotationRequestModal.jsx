@@ -10,7 +10,7 @@ import {
 import {
   buildQuoteRequestMessage, isQuoteExpired, QUOTE_DELIVERY_OPTIONS,
 } from '../utils/quoteFlow';
-import { buyerProfilePath, profilePath } from '../routes/paths';
+import { buyerProfilePath } from '../routes/paths';
 import { parseShippingMethods, resolveShippingService, shippingMethodsForLocation } from '../data/shippingMethods';
 
 /**
@@ -88,8 +88,6 @@ export default function QuotationRequestModal({
     buyerCommune,
     sellerCommune,
   ).map((method) => resolveShippingService(method).name))];
-  const needsLocation = Boolean(isLoggedIn && user && !String(buyerCommune || '').trim());
-
   const updateField = (field, value) => setFormData((previous) => ({ ...previous, [field]: value }));
 
   const handleSubmit = async (event) => {
@@ -165,15 +163,7 @@ export default function QuotationRequestModal({
             </div>
           </article>
 
-          {needsLocation ? (
-            <div className="quote-request-success">
-              <AlertCircle size={54} />
-              <h3>Registra tu dirección para cotizar</h3>
-              <p>Necesitamos tu comuna para ofrecer únicamente los métodos de envío disponibles entre tu ubicación y la de la tienda.</p>
-              <button className="btn-submit-ticket" type="button" onClick={() => window.location.assign(profilePath('datos'))}>Registrar dirección <ChevronRight size={17} /></button>
-              <button className="btn-auth-secondary" type="button" onClick={onClose}>Cancelar</button>
-            </div>
-          ) : conversation ? (
+          {conversation ? (
             <div className="quote-request-success">
               <CheckCircle2 size={54} />
               <h3>¡Cotización solicitada correctamente!</h3>
