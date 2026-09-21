@@ -824,7 +824,10 @@ export default function AboutRepuesTopPage({
                 onClick={() => setActiveGalleryId('quotes')}
               >
                 <MessageSquareQuote size={16} />
-                <span>Cotizaciones & Chat</span>
+                {/* `&amp;` y no `&` suelto: los dos renderizan lo mismo, pero el ampersand
+                    crudo en texto JSX rompe el parser de semgrep y dejaba este archivo
+                    entero (800+ lineas) fuera del analisis estatico. */}
+                <span>Cotizaciones &amp; Chat</span>
               </button>
 
               <button
