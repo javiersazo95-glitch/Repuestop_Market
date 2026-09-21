@@ -5,11 +5,10 @@ import {
   MapPin, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
   RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock, ExternalLink, Timer,
   ThumbsUp, ThumbsDown, Send, ReceiptText, FileCheck, FileSearch, ShieldAlert, MessageCircle, Info,
-  Wallet, Undo2
+  Wallet, Undo2, Car
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
-import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi,
-  confirmOrderStockDeliveryApi, confirmOrderCompatibilityApi } from '../services/api';
+import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
@@ -381,10 +380,6 @@ export default function OrderDetailView({
   // o desde la sección "Despachar a" para cargarla en un pedido ya confirmado / histórico
   // (`receiptUploadOnly`, sin disparar la transición de estado).
   const [showReceiptModal, setShowReceiptModal] = useState(false);
-  // Checklist de confirmación del vendedor. Cada confirmación devuelve el pedido completo,
-  // así que se guarda el checklist devuelto en vez de pedirle un refresh al padre: el resto
-  // del detalle no cambia con estas acciones.
-  const [checklistLocal, setChecklistLocal] = useState(null);
   const [receiptUploadOnly, setReceiptUploadOnly] = useState(false);
   // El visor de la boleta ya cargada (`SaleReceiptViewerModal`): guarda de que tienda es,
   // porque en un carrito de varias el comprador pide la de cada subordén.
@@ -583,20 +578,6 @@ export default function OrderDetailView({
   const visibleTimelineStep = TIMELINE_STEPS.find((step) => step.key === selectedTimelineStep)
     || TIMELINE_STEPS[timelineIndex];
   const VisibleTimelineIcon = visibleTimelineStep.icon;
-  const checklistActual = checklistLocal ?? order?.checklistVendedor ?? null;
-  const orderConChecklist = checklistLocal
-    ? { ...order, checklistVendedor: checklistLocal }
-    : order;
-
-  const handleConfirmStock = async () => {
-    const actualizado = await confirmOrderStockDeliveryApi(order.id);
-    setChecklistLocal(actualizado?.checklistVendedor ?? null);
-  };
-
-  const handleConfirmCompatibility = async (pedidoItemIds) => {
-    const actualizado = await confirmOrderCompatibilityApi(order.id, pedidoItemIds);
-    setChecklistLocal(actualizado?.checklistVendedor ?? null);
-  };
 
   const controlledAction = getControlledOrderAction(order, mode);
 
@@ -867,20 +848,17 @@ export default function OrderDetailView({
     // sin abrir nada: el boton quedaba mudo y parecia que no estaba cableado.
     if (!controlledAction.requiresPin) {
       setStatusError('');
-      // Confirmar un pedido recien pagado exige los 3 pasos de "Confirmar pedido"
-      // (stock/entrega, compatibilidad, boleta), en ese orden: emitir la boleta antes y
-      // recien ahi descubrir una incompatibilidad obliga a una nota de credito. Un solo
-      // boton en la pagina -- este -- abre el modal que guia los pasos que falten; ya no
-      // hay un boton de paso 1 aparte compitiendo con este.
-      if (isSeller && controlledAction.nextStatus === 'EN_PREPARACION' && checklistActual) {
-        const checklistCompleto = checklistActual.stockEntregaConfirmadaAt
-          && checklistActual.compatibilidadConfirmadaAt;
-        if (!checklistCompleto || !order.boletaVentaDisponible) {
-          setReceiptUploadOnly(false);
-          setShowReceiptModal(true);
-          return;
-        }
-      } else if (isSeller && controlledAction.nextStatus === 'EN_PREPARACION' && onRegisterSaleReceipt
+      // Confirmar un pedido recien pagado exige la boleta de venta: en vez del
+      // ConfirmDialog simple se abre el modal de boleta, que la sube y recien ahi avanza
+      // el estado. El backend tambien rechaza la transicion sin boleta.
+      //
+      // El checklist de compatibilidad (stock/entrega + compatibilidad, ver
+      // docs/planes/plan_validacion_compatibilidad_pedido.md) dejo de ser un paso
+      // obligatorio para avanzar: con los tres pasos de punta a punta, el vendedor no
+      // entendia por donde seguir en su primer pedido. El vehiculo y los resultados de
+      // compatibilidad se muestran solo como informacion en la tarjeta de datos del
+      // comprador; `REPUESTOP_PEDIDO_CHECKLIST_EXIGIR` vuelve a estar apagado.
+      if (isSeller && controlledAction.nextStatus === 'EN_PREPARACION' && onRegisterSaleReceipt
           && !order.boletaVentaDisponible) {
         setReceiptUploadOnly(false);
         setShowReceiptModal(true);
@@ -1184,6 +1162,29 @@ export default function OrderDetailView({
                   <User size={14} />
                   <span>{buyerName}{buyerPhone && buyerPhone !== '—' ? ` · ${buyerPhone}` : ''}</span>
                 </div>
+                {/* Dato informativo, solo para el vendedor: no gatilla ningun paso ni bloquea
+                    nada. El comprador lo declaro opcionalmente en el checkout; aca solo se
+                    muestra para que el vendedor pueda mirarlo antes de despachar, sin el
+                    checklist de confirmacion de por medio (docs/planes/
+                    plan_validacion_compatibilidad_pedido.md). */}
+                {isSeller && (() => {
+                  const tieneVehiculo = order.vehiculoOrigen && order.vehiculoOrigen !== 'NO_INFORMADO';
+                  return (
+                    <div className={`order-delivery-summary-row ${tieneVehiculo ? 'order-vehicle-row' : 'order-vehicle-row is-empty'}`}>
+                      <Car size={14} />
+                      {tieneVehiculo ? (
+                        <span>
+                          <strong>
+                            {[order.vehiculoMarca, order.vehiculoModelo, order.vehiculoVersion, order.vehiculoAnio].filter(Boolean).join(' ')}
+                          </strong>
+                          {order.vehiculoPatente ? ` · Patente ${order.vehiculoPatente}` : ''}
+                        </span>
+                      ) : (
+                        <span>Vehículo: sin información</span>
+                      )}
+                    </div>
+                  );
+                })()}
                 {(order.tipoDocumentoTributario || order.tipoDocumento || order.documentType) && (
                   <div className="order-delivery-summary-row">
                     <FileText size={14} />
@@ -1227,14 +1228,7 @@ export default function OrderDetailView({
                           <FileSearch size={13} />
                           <span>Ver y descargar</span>
                         </button>
-                      ) : isSeller && onRegisterSaleReceipt && !cerrado
-                          // Con checklist y el pedido aun sin confirmar, la boleta SOLO se
-                          // carga desde el popup de "Confirmar pedido" -- un atajo aca abria
-                          // el mismo modal en `uploadOnly`, saltandose los pasos 1 y 2 por
-                          // completo. Sin checklist (pedidos viejos) o ya confirmado sin
-                          // boleta (caso raro, de antes de este feature) el atajo se conserva:
-                          // no hay otro lugar desde donde adjuntarla.
-                          && !(checklistActual && (normStatus === 'PAGADO' || normStatus === 'PENDIENTE')) ? (
+                      ) : isSeller && onRegisterSaleReceipt && !cerrado ? (
                         <button
                           type="button"
                           className="order-boleta-link is-cta"
@@ -2124,21 +2118,17 @@ export default function OrderDetailView({
         )}
 
         {/* Popup de boleta de venta. Obligatorio al confirmar un pedido recién pagado;
-            en modo `receiptUploadOnly` solo sube el archivo (pedido ya confirmado). */}
+            en modo `receiptUploadOnly` solo sube el archivo (pedido ya confirmado).
+            Sin `sellerChecklist`: los pasos de stock/entrega y compatibilidad dejaron
+            de ser un gate aca (ver handleStatusSubmit); el vehiculo y la compatibilidad
+            ahora son solo informativos en la tarjeta de datos del comprador. */}
         {showReceiptModal && (
           <SaleReceiptModal
-            order={orderConChecklist}
+            order={order}
             items={receiptBlock?.items || []}
             shipping={receiptBlock?.shippingStore || 0}
             discount={discount}
             uploadOnly={receiptUploadOnly}
-            sellerChecklist={!receiptUploadOnly ? checklistActual : null}
-            isStorePickup={isStorePickup}
-            onConfirmStock={handleConfirmStock}
-            onConfirmCompatibility={handleConfirmCompatibility}
-            onOpenBuyerChat={onOpenDispute
-              ? (draftMessage) => startSellerChat(sellerId, draftMessage)
-              : undefined}
             onSubmit={submitSaleReceipt}
             onClose={() => setShowReceiptModal(false)}
           />

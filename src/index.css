@@ -5791,6 +5791,9 @@ input, select, textarea {
    y no significa nada. */
 .order-delivery-summary-rows { display: flex; flex-direction: column; gap: 7px; }
 .order-delivery-summary-row { display: flex; align-items: center; gap: 8px; color: #334155; font-size: 13px; }
+.order-vehicle-row { padding: 6px 10px; border-radius: 8px; background: #eef4ff; color: #1d2e45; }
+.order-vehicle-row strong { font-weight: 700; }
+.order-vehicle-row.is-empty { background: transparent; padding: 0; color: #64748b; font-style: italic; }
 .order-delivery-summary-row > svg { color: #94a3b8; flex-shrink: 0; }
 .order-delivery-summary-row > span { flex: 1; min-width: 0; }
 /* Icono discreto, no un boton con texto: copiar la direccion es una comodidad, no la accion
