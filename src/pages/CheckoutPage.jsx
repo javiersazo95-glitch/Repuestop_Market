@@ -291,7 +291,10 @@ export default function CheckoutPage() {
   const [useActiveVehicle, setUseActiveVehicle] = useState(true);
   const [vehicleForm, setVehicleForm] = useState({ patente: '', marca: '', modelo: '', anio: '' });
   const hasActiveVehicle = Boolean(activeVehicle?.marca || activeVehicle?.patente);
-  const showVehicleForm = !hasActiveVehicle || !useActiveVehicle;
+  // Sin match por patente, el formulario manual parte plegado: es opcional y cuatro
+  // campos abiertos por defecto competian por atencion con el resto del checkout.
+  const [vehicleFormOpen, setVehicleFormOpen] = useState(false);
+  const showVehicleForm = hasActiveVehicle ? !useActiveVehicle : vehicleFormOpen;
 
   const checkoutVehicle = useMemo(() => {
     if (hasActiveVehicle && useActiveVehicle) {
@@ -630,41 +633,30 @@ export default function CheckoutPage() {
 
             {step === 'pago' && (
               <div className="checkout-main-flow">
-                {/* Shopify Recap Box con botones 'Cambiar' para contacto, dirección y método */}
+                {/* Resumen de solo lectura: la navegacion real ya la da el breadcrumb de
+                    arriba (Carrito > Entrega > Pago y facturacion). Botones "Cambiar" que
+                    repetian esa misma vuelta atras, uno por fila, no aportaban nada aparte
+                    de confundir. "Enviar a" y "Metodo" tambien se fusionaron en una sola
+                    fila: para retiro en tienda mostraban el mismo dato dos veces. */}
                 <div className="shopify-recap-box" aria-label="Resumen de datos de entrega">
                   <div className="shopify-recap-row">
                     <span className="shopify-recap-label">Contacto</span>
                     <span className="shopify-recap-value">{user?.email || user?.nombreCompleto || 'Usuario RepuesTop'}</span>
-                    <button type="button" className="shopify-recap-action" onClick={() => goStep('entrega')}>
-                      Cambiar
-                    </button>
                   </div>
 
                   <div className="shopify-recap-divider" />
 
                   <div className="shopify-recap-row">
-                    <span className="shopify-recap-label">Enviar a</span>
+                    <span className="shopify-recap-label">Entrega</span>
                     <span className="shopify-recap-value">
                       {needsAddress
                         ? (() => {
                           const address = addresses.find((item) => String(item.id) === String(selectedAddressId));
-                          return address ? `${address.calleYNumero}, ${address.comunaNombre}${address.regionNombre ? `, ${address.regionNombre}` : ''}` : 'Dirección seleccionada';
+                          const direccion = address ? `${address.calleYNumero}, ${address.comunaNombre}${address.regionNombre ? `, ${address.regionNombre}` : ''}` : 'Dirección seleccionada';
+                          return `${direccion} · ${shippingLabel}`;
                         })()
-                        : 'Retiro en tienda (coordinar con vendedor)'}
+                        : 'Retiro en tienda'}
                     </span>
-                    <button type="button" className="shopify-recap-action" onClick={() => goStep('entrega')}>
-                      Cambiar
-                    </button>
-                  </div>
-
-                  <div className="shopify-recap-divider" />
-
-                  <div className="shopify-recap-row">
-                    <span className="shopify-recap-label">Método</span>
-                    <span className="shopify-recap-value">{shippingLabel}</span>
-                    <button type="button" className="shopify-recap-action" onClick={() => goStep('entrega')}>
-                      Cambiar
-                    </button>
                   </div>
                 </div>
 
@@ -690,6 +682,16 @@ export default function CheckoutPage() {
                         {activeVehicle.patente && <small>Patente {activeVehicle.patente}</small>}
                       </span>
                     </label>
+                  )}
+
+                  {!hasActiveVehicle && (
+                    <button
+                      type="button"
+                      className="checkout-vehicle-toggle"
+                      onClick={() => setVehicleFormOpen((current) => !current)}
+                    >
+                      {vehicleFormOpen ? '- Ocultar' : '+ Agregar los datos de mi vehículo'}
+                    </button>
                   )}
 
                   {showVehicleForm && (
