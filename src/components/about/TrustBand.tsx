@@ -21,10 +21,10 @@ export default function TrustBand() {
           <Reveal className="rt-trust-spot" delay={80}>
             <figure className="rt-crop rt-crop--shield">
               <img
-                src="/about-assets/help-center-hero.png"
+                src="/about-assets/help-center-hero.webp"
                 alt=""
-                width={1254}
-                height={1254}
+                width={640}
+                height={640}
                 loading="lazy"
                 decoding="async"
               />

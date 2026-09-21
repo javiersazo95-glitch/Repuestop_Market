@@ -15,7 +15,7 @@ export default function FinalCtaSection({
           scrim, que sobre esa mitad es practicamente opaco. */}
       <img
         className="rt-cta__bg"
-        src="/about-assets/nosotros.jpg"
+        src="/about-assets/nosotros.webp"
         alt=""
         width={1672}
         height={941}

@@ -93,6 +93,7 @@ export default function AboutRepuesTopPage({
           onStores={handleStores}
           onAdsWall={handleAdsWall}
           onContact={onContact}
+          onOpenSeller={onOpenSeller}
         />
         <CoverageBand />
         <TrustBand />

@@ -113,7 +113,7 @@ export default function HeroSection({
         <Reveal className="rt-hero-stage" delay={90}>
           <img
             className="rt-hero-shot"
-            src="/about-assets/repuestop-web-home-real.png"
+            src="/about-assets/repuestop-web-home-real.webp"
             alt="Pantalla real del marketplace de RepuesTop con la búsqueda por patente"
             width={1176}
             height={832}
@@ -140,7 +140,7 @@ export default function HeroSection({
 
           <img
             className="rt-hero-phone"
-            src="/about-assets/app-movil-real.png"
+            src="/about-assets/app-movil-real.webp"
             alt=""
             width={466}
             height={920}

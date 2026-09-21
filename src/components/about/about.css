@@ -86,10 +86,11 @@
 
 .rt-about section[id] { scroll-margin-top: calc(var(--rt-header-offset) + 16px); }
 
-.rt-about h1,
-.rt-about h2,
-.rt-about h3,
-.rt-about h4 {
+/* Los estilos base van envueltos en `:where()` para que pesen 0 y cualquier
+   clase de componente les gane. Sin eso, `.rt-about h2` (0,1,1) ganaba a
+   `.rt-brands__title` (0,1,0) y el titulillo de la franja de marcas salia con
+   el tamano de un h2 de seccion. */
+:where(.rt-about) :where(h1, h2, h3, h4) {
   font-family: var(--font-display, inherit);
   color: var(--rt-ink);
   letter-spacing: -0.028em;
@@ -98,12 +99,12 @@
   text-wrap: balance;
 }
 
-.rt-about h1 { font-size: var(--rt-fs-display); line-height: 1.06; letter-spacing: -0.035em; }
-.rt-about h2 { font-size: var(--rt-fs-h2); line-height: 1.12; }
-.rt-about h3 { font-size: var(--rt-fs-h3); line-height: 1.25; }
-.rt-about h4 { font-size: var(--rt-fs-h4); line-height: 1.35; }
+:where(.rt-about) :where(h1) { font-size: var(--rt-fs-display); line-height: 1.06; letter-spacing: -0.035em; }
+:where(.rt-about) :where(h2) { font-size: var(--rt-fs-h2); line-height: 1.12; }
+:where(.rt-about) :where(h3) { font-size: var(--rt-fs-h3); line-height: 1.25; }
+:where(.rt-about) :where(h4) { font-size: var(--rt-fs-h4); line-height: 1.35; }
 
-.rt-about p {
+:where(.rt-about) :where(p) {
   margin: 0;
   font-size: var(--rt-fs-body);
   line-height: 1.6;
@@ -111,8 +112,8 @@
   text-wrap: pretty;
 }
 
-.rt-about ul { margin: 0; padding: 0; list-style: none; }
-.rt-about img { display: block; max-width: 100%; height: auto; }
+:where(.rt-about) :where(ul, ol) { margin: 0; padding: 0; list-style: none; }
+:where(.rt-about) :where(img) { display: block; max-width: 100%; height: auto; }
 /* `:where()` deja este reset con especificidad 0: si no, `.rt-about button`
    (0,1,1) le ganaba a `.rt-btn--primary` (0,1,0) y los botones primarios salian
    con el color del texto del cuerpo en vez de blanco. */
@@ -314,6 +315,15 @@
   align-items: center;
 }
 
+/* `min-width: 0` en los hijos de rejilla: sin esto el `nowrap` del ticker
+   levanta el min-content de la columna y el h1 se sale del contenedor. */
+.rt-hero-copy,
+.rt-community__body,
+.rt-panel__copy,
+.rt-coverage-copy,
+.rt-faq-aside,
+.rt-faq-list { min-width: 0; }
+
 .rt-hero-copy > * + * { margin-top: var(--rt-s5); }
 .rt-hero-copy .rt-eyebrow { margin-bottom: 0; }
 .rt-hero h1 { max-width: 20ch; }
@@ -334,6 +344,7 @@
   font-weight: 600;
   color: var(--rt-ink-2);
   max-width: 100%;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -1243,9 +1254,6 @@ button.rt-platform:hover { border-color: var(--rt-blue-600); transform: translat
   .rt-hero-chip, .rt-hero-phone { display: none; }
 
   .rt-faq-aside { position: static; }
-  /* La tarjeta de ayuda pasa despues del acordeon cuando todo se apila. */
-  .rt-faq-grid { display: flex; flex-direction: column; }
-  .rt-faq-help { order: 3; margin-top: var(--rt-s6); }
 
   .rt-preview-grid { grid-template-columns: 1fr; }
 

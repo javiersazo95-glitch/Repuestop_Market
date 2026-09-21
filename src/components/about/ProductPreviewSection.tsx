@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
-  ArrowRight, CheckCircle2, CircleHelp, Headphones, MessageSquareQuote, MonitorSmartphone,
-  PackageCheck, Route, ShieldCheck, Store, Truck, Wrench,
+  ArrowRight, CheckCircle2, CircleHelp, Headphones, LayoutDashboard, MessageSquareQuote,
+  MonitorSmartphone, PackageCheck, Route, ShieldCheck, Store, Truck, Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Reveal from './Reveal';
@@ -26,7 +26,7 @@ interface Module {
   crop?: string;
   isReal: boolean;
   actionText: string;
-  action: 'catalog' | 'stores' | 'adsWall' | 'contact';
+  action: 'catalog' | 'stores' | 'adsWall' | 'contact' | 'seller';
   highlights: [string, string];
 }
 
@@ -38,7 +38,7 @@ const MODULES: Module[] = [
     tag: 'De la patente a tu puerta',
     title: 'Cuatro pasos, sin llamadas a ciegas',
     desc: 'Buscas por patente o de forma manual, confirmas tu vehículo, revisas los repuestos compatibles y compras o pides una cotización formal. Todo desde el mismo lugar.',
-    image: '/about-assets/como-funciona.jpg',
+    image: '/about-assets/como-funciona.webp',
     width: 1672,
     height: 941,
     crop: 'rt-crop--howto',
@@ -51,13 +51,49 @@ const MODULES: Module[] = [
     ],
   },
   {
+    id: 'buyer-panel',
+    Icon: LayoutDashboard,
+    tab: 'Panel del comprador',
+    tag: 'Tu cuenta',
+    title: 'Compra, cotiza y sigue tus pedidos',
+    desc: 'Un panel claro donde ves el estado real de tus compras, cotizaciones y repuestos guardados, todo con la misma cuenta.',
+    image: '/about-assets/comprador-panel-real.webp',
+    width: 1176,
+    height: 832,
+    isReal: true,
+    actionText: 'Explorar marketplace',
+    action: 'catalog',
+    highlights: [
+      'Pedidos, envíos en camino y cotizaciones activas en un solo lugar.',
+      'Favoritos por vehículo y datos de facturación para tu taller o empresa.',
+    ],
+  },
+  {
+    id: 'seller-panel',
+    Icon: Store,
+    tab: 'Panel de la tienda',
+    tag: 'Para casas de repuestos',
+    title: 'Gestiona tus repuestos de forma rápida',
+    desc: 'Publica productos uno a uno o carga masivamente tu catálogo desde Excel, con cálculo automático de tu ganancia y stock siempre visible al público.',
+    image: '/about-assets/vendedor-panel-real.webp',
+    width: 1096,
+    height: 782,
+    isReal: true,
+    actionText: 'Quiero vender en RepuesTop',
+    action: 'seller',
+    highlights: [
+      'Ves el monto exacto a recibir antes de publicar cada repuesto.',
+      'Compatibilidad por vehículo, control de inventario y ventas al día.',
+    ],
+  },
+  {
     id: 'stores',
     Icon: Store,
     tab: 'Casas de repuestos',
     tag: 'Locales verificados',
     title: 'Directorio de Casas de Repuestos',
     desc: 'Encuentra locales comerciales de repuestos con su dirección exacta, horarios de atención, teléfonos, reputación y disponibilidad de piezas para retiro o despacho.',
-    image: '/about-assets/tiendas-real.png',
+    image: '/about-assets/tiendas-real.webp',
     width: 1096,
     height: 782,
     isReal: true,
@@ -75,7 +111,7 @@ const MODULES: Module[] = [
     tag: 'Talleres y mecánicos',
     title: 'Mural de Servicios Automotrices',
     desc: 'Conecta con mecánicos profesionales y talleres para scanner, frenos, mantenciones y reparaciones, revisando su experiencia y agendando tu atención.',
-    image: '/about-assets/mural-real.png',
+    image: '/about-assets/mural-real.webp',
     width: 1096,
     height: 782,
     isReal: true,
@@ -93,7 +129,7 @@ const MODULES: Module[] = [
     tag: 'Trato directo',
     title: 'Cotizaciones Formales por Chat',
     desc: 'Solicita el precio de un repuesto directo a la tienda y recibe una oferta formal con documento PDF adjunto, todo dentro de un chat privado ligado a esa cotización.',
-    image: '/about-assets/cotizacion-real.png',
+    image: '/about-assets/cotizacion-real.webp',
     width: 1096,
     height: 782,
     isReal: true,
@@ -111,9 +147,9 @@ const MODULES: Module[] = [
     tag: 'Transparencia',
     title: 'Preguntas y Respuestas Técnicas',
     desc: 'Consulta dudas específicas de compatibilidad antes de pagar. El vendedor recibe alerta inmediata y la respuesta queda registrada públicamente.',
-    image: '/about-assets/qa-real.png',
-    width: 1496,
-    height: 592,
+    image: '/about-assets/qa-real.webp',
+    width: 1200,
+    height: 475,
     ratio: '16 / 7',
     isReal: true,
     actionText: 'Explorar catálogo',
@@ -130,7 +166,7 @@ const MODULES: Module[] = [
     tag: 'Control total',
     title: 'Seguimiento Paso a Paso de tu Pedido',
     desc: 'Revisa en qué etapa está tu compra: Pagado, En preparación, Listo para retirar con tu PIN de seguridad o En camino con empresa de despacho y número de seguimiento.',
-    image: '/about-assets/orders-hero-v2.png',
+    image: '/about-assets/orders-hero-v2.webp',
     width: 512,
     height: 341,
     ratio: '3 / 2',
@@ -168,7 +204,7 @@ const MODULES: Module[] = [
     tag: 'Atención y respaldo',
     title: 'Centro de Soporte y Seguridad',
     desc: 'Atención personalizada con personas reales para responder tus consultas y revisar reportes de la comunidad para que compres con total tranquilidad.',
-    image: '/about-assets/soporte-real.png',
+    image: '/about-assets/soporte-real.webp',
     width: 1096,
     height: 782,
     isReal: true,
@@ -205,16 +241,24 @@ export default function ProductPreviewSection({
   onStores,
   onAdsWall,
   onContact,
+  onOpenSeller,
 }: {
   onCatalog: () => void;
   onStores: () => void;
   onAdsWall: () => void;
   onContact: () => void;
+  onOpenSeller: () => void;
 }) {
   const [active, setActive] = useState(0);
   const { register, onKeyDown } = useRovingTabs(MODULES.length, setActive);
 
-  const actions = { catalog: onCatalog, stores: onStores, adsWall: onAdsWall, contact: onContact };
+  const actions = {
+    catalog: onCatalog,
+    stores: onStores,
+    adsWall: onAdsWall,
+    contact: onContact,
+    seller: onOpenSeller,
+  };
   const current = MODULES[active];
 
   return (

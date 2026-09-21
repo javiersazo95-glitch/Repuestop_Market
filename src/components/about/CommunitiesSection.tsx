@@ -94,7 +94,7 @@ export default function CommunitiesSection({
               <Reveal as="article" className="rt-community" key={community.id} delay={index * 90}>
                 <figure className={`rt-crop rt-community__photo ${community.crop}`}>
                   <img
-                    src="/about-assets/nosotros.jpg"
+                    src="/about-assets/nosotros.webp"
                     alt={community.photoAlt}
                     width={1672}
                     height={941}

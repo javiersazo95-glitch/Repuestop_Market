@@ -39,7 +39,7 @@ export default function CoverageBand() {
         <Reveal className="rt-coverage-media" delay={90}>
           <figure className="rt-crop rt-crop--coverage">
             <img
-              src="/about-assets/compradores.jpg"
+              src="/about-assets/compradores.webp"
               alt="Vehículo y repuestos con la cordillera de fondo"
               width={1672}
               height={941}
