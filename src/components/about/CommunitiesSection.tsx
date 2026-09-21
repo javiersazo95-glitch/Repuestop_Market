@@ -1,62 +1,56 @@
-import { ArrowRight, Check, Crown, ShoppingBag, Store, Users } from 'lucide-react';
+import { ArrowRight, Calculator, Crown, LockKeyhole, Package, Search, ShoppingBag, Store, Truck, Users, FileSpreadsheet } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Reveal from './Reveal';
+import { BrowserFrame } from './Frame';
 
 interface Community {
-  id: string;
-  crop: string;
-  photoAlt: string;
+  id: 'buyers' | 'sellers';
+  media: { kind: 'crop'; crop: string; src: string; alt: string } | { kind: 'shot'; src: string; alt: string };
   Icon: LucideIcon;
   tag: string;
   founderTag?: string;
   title: string;
-  lead: string;
-  checks: { label: string; text: string }[];
-  steps: { title: string; text: string }[];
+  line: string;
+  perks: { Icon: LucideIcon; label: string }[];
   cta: { label: string; Icon: LucideIcon; primary: boolean };
 }
 
 const COMMUNITIES: Community[] = [
   {
     id: 'buyers',
-    crop: 'rt-crop--buyers',
-    photoAlt: 'Dos clientas revisando repuestos en RepuesTop desde su celular',
+    media: {
+      kind: 'crop',
+      crop: 'rt-crop--buyers',
+      src: '/about-assets/nosotros.webp',
+      alt: 'Dos clientas revisando repuestos en RepuesTop desde su celular',
+    },
     Icon: ShoppingBag,
     tag: 'Para conductores y talleres',
-    title: 'Compra con la certeza de que el repuesto calza y tu dinero está a salvo',
-    lead: 'Olvida las llamadas a ciegas y las transferencias a cuentas desconocidas. Buscas por la patente de tu vehículo, comparas precios entre casas de repuestos verificadas y tienes 3 días tras recibir la pieza para validar que funcione.',
-    checks: [
-      { label: 'Resumen de compras.', text: 'Pedidos, envíos en camino y cotizaciones activas en un solo lugar.' },
-      { label: 'Cotizaciones formales.', text: 'Chat directo con la tienda y respuesta con precio y garantía.' },
-      { label: 'Favoritos y repetición de compra.', text: 'Guarda repuestos para tu vehículo y vuelve a comprarlos fácil.' },
-      { label: 'Factura para empresas.', text: 'Ingreso de RUT y razón social para crédito fiscal IVA.' },
-    ],
-    steps: [
-      { title: 'Ingresa la patente', text: 'El sistema filtra el catálogo automáticamente según tu vehículo.' },
-      { title: 'Cotiza o compra directo', text: 'Habla con la tienda por chat o paga en cuotas sin interés.' },
-      { title: 'Recibe con respaldo', text: 'Retira con PIN $0 o recibe con courier. Fondos protegidos por 3 días.' },
+    title: 'Compra sabiendo que calza',
+    line: 'Buscas por patente, comparas tiendas verificadas y tienes 3 días para probar la pieza.',
+    perks: [
+      { Icon: Search, label: 'Patente exacta' },
+      { Icon: LockKeyhole, label: 'Pago protegido' },
+      { Icon: Truck, label: 'Retiro $0' },
     ],
     cta: { label: 'Explorar marketplace', Icon: ArrowRight, primary: false },
   },
   {
     id: 'sellers',
-    crop: 'rt-crop--sellers',
-    photoAlt: 'Vendedor de una casa de repuestos mostrando su panel de gestión en RepuesTop',
+    media: {
+      kind: 'shot',
+      src: '/about-assets/shot-tiendas.webp',
+      alt: 'Vitrina de casas de repuestos verificadas en RepuesTop',
+    },
     Icon: Store,
     tag: 'Para casas de repuestos',
-    founderTag: 'Campaña Tiendas Fundadoras',
-    title: 'Vende a clientes con intención real y comisión fija del 5%',
-    lead: 'Conecta con conductores y talleres que buscan repuestos específicos para su vehículo. Carga tu lista desde Excel, responde cotizaciones por chat, gestiona tus envíos y recibe tus pagos puntuales sin riesgos.',
-    checks: [
-      { label: 'Carga fácil desde Excel.', text: 'Sube tu catálogo completo de repuestos en minutos.' },
-      { label: 'Comisión transparente.', text: 'Ves el monto exacto a recibir antes de publicar cada repuesto.' },
-      { label: 'Compatibilidad por vehículo.', text: 'Asocia la pieza al modelo o márcala como universal.' },
-      { label: 'Control de inventario.', text: 'Repuestos activos, stock disponible y ventas al día.' },
-    ],
-    steps: [
-      { title: '5% de comisión de tienda fundadora', text: 'Comisión preferencial fija garantizada durante todo tu primer año.' },
-      { title: 'Carga fácil desde Excel', text: 'Sube tu catálogo completo de repuestos en minutos sin ingresar uno por uno.' },
-      { title: 'Calculadora de ganancia clara', text: 'Fija tus precios sabiendo exactamente cuánto vas a recibir por cada repuesto.' },
+    founderTag: 'Tienda fundadora',
+    title: 'Vende con comisión fija del 5%',
+    line: 'Subes tu Excel, ves cuánto recibes antes de publicar y cobras puntual.',
+    perks: [
+      { Icon: FileSpreadsheet, label: 'Carga por Excel' },
+      { Icon: Calculator, label: 'Ganancia clara' },
+      { Icon: Package, label: 'Stock al día' },
     ],
     cta: { label: 'Quiero ser tienda fundadora', Icon: Crown, primary: true },
   },
@@ -69,7 +63,7 @@ export default function CommunitiesSection({
   onCatalog: () => void;
   onOpenSeller: () => void;
 }) {
-  const actions: Record<string, () => void> = { buyers: onCatalog, sellers: onOpenSeller };
+  const actions: Record<Community['id'], () => void> = { buyers: onCatalog, sellers: onOpenSeller };
 
   return (
     <section className="rt-band" id="ecosistema" aria-labelledby="rt-communities-title">
@@ -78,75 +72,53 @@ export default function CommunitiesSection({
           <span className="rt-eyebrow">
             <Users size={14} /> Una plataforma, dos comunidades
           </span>
-          <h2 id="rt-communities-title">
-            Hecha para quienes mantienen a Chile en movimiento
-          </h2>
-          <p>
-            Cada perfil tiene su propio panel, con pedidos, cotizaciones y catálogo siempre al día.
-            Nada de mockups: así se ve RepuesTop hoy mismo.
-          </p>
+          <h2 id="rt-communities-title">Hecha para quienes mantienen a Chile en movimiento</h2>
         </Reveal>
 
         <div className="rt-communities-grid">
-          {COMMUNITIES.map((community, index) => {
-            const CtaIcon = community.cta.Icon;
+          {COMMUNITIES.map((c, index) => {
+            const CtaIcon = c.cta.Icon;
             return (
-              <Reveal as="article" className="rt-community" key={community.id} delay={index * 90}>
-                <figure className={`rt-crop rt-community__photo ${community.crop}`}>
-                  <img
-                    src="/about-assets/nosotros.webp"
-                    alt={community.photoAlt}
-                    width={1672}
-                    height={941}
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </figure>
+              <Reveal as="article" className="rt-community" key={c.id} delay={index * 90}>
+                {c.media.kind === 'crop' ? (
+                  <figure className={`rt-crop rt-community__photo ${c.media.crop}`}>
+                    <img src={c.media.src} alt={c.media.alt} width={1672} height={941} loading="lazy" decoding="async" />
+                  </figure>
+                ) : (
+                  <div className="rt-community__shot">
+                    <BrowserFrame url="repuestop.cl/tiendas">
+                      <img src={c.media.src} alt={c.media.alt} width={1440} height={900} loading="lazy" decoding="async" />
+                    </BrowserFrame>
+                  </div>
+                )}
 
                 <div className="rt-community__body">
                   <div className="rt-community__tags">
-                    <span className="rt-tag">
-                      <community.Icon size={14} /> {community.tag}
-                    </span>
-                    {community.founderTag && (
-                      <span className="rt-tag rt-tag--founder">
-                        <Crown size={14} /> {community.founderTag}
-                      </span>
+                    <span className="rt-tag"><c.Icon size={14} /> {c.tag}</span>
+                    {c.founderTag && (
+                      <span className="rt-tag rt-tag--founder"><Crown size={14} /> {c.founderTag}</span>
                     )}
                   </div>
 
-                  <h3>{community.title}</h3>
-                  <p>{community.lead}</p>
+                  <h3>{c.title}</h3>
+                  <p>{c.line}</p>
 
-                  <ul className="rt-checks">
-                    {community.checks.map((check) => (
-                      <li key={check.label}>
-                        <Check size={16} />
-                        <span>
-                          <strong>{check.label}</strong> {check.text}
-                        </span>
+                  <ul className="rt-perks">
+                    {c.perks.map((p) => (
+                      <li key={p.label}>
+                        <span className="rt-perks__icon"><p.Icon size={18} /></span>
+                        <span>{p.label}</span>
                       </li>
                     ))}
                   </ul>
 
-                  <ol className="rt-steps">
-                    {community.steps.map((step, stepIndex) => (
-                      <li key={step.title}>
-                        <b>{stepIndex + 1}</b>
-                        <span>
-                          <strong>{step.title}.</strong> {step.text}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-
                   <button
                     type="button"
-                    className={`rt-btn ${community.cta.primary ? 'rt-btn--primary' : 'rt-btn--outline'}`}
-                    onClick={actions[community.id]}
+                    className={`rt-btn ${c.cta.primary ? 'rt-btn--primary' : 'rt-btn--outline'}`}
+                    onClick={actions[c.id]}
                   >
                     <CtaIcon size={18} />
-                    <span>{community.cta.label}</span>
+                    <span>{c.cta.label}</span>
                   </button>
                 </div>
               </Reveal>

@@ -15,15 +15,10 @@ export default function CoverageBand() {
 
           <h2 id="rt-coverage-title">Juntos mantenemos a Chile en movimiento</h2>
 
-          <p>
-            Creemos en una movilidad más simple, transparente y conectada. Por eso acercamos a
-            quienes necesitan repuestos con quienes los tienen, sin importar en qué ciudad estén.
-          </p>
-
           <ul className="rt-coverage-stats">
             {COVERAGE_STATS.map(({ Icon, value, label }) => (
               <li key={value}>
-                <Icon size={22} />
+                <Icon size={20} />
                 <strong>{value}</strong>
                 <span>{label}</span>
               </li>
@@ -38,21 +33,14 @@ export default function CoverageBand() {
 
         <Reveal className="rt-coverage-media" delay={90}>
           <figure className="rt-crop rt-crop--coverage">
-            <img
-              src="/about-assets/compradores.webp"
-              alt="Vehículo y repuestos con la cordillera de fondo"
-              width={1672}
-              height={941}
-              loading="lazy"
-              decoding="async"
-            />
+            <img src="/about-assets/compradores.webp" alt="Vehículo y repuestos con la cordillera de fondo" width={1672} height={941} loading="lazy" decoding="async" />
           </figure>
 
           <div className="rt-coverage-glass">
             <Truck size={22} />
             <div>
               <strong>Envíos a todo Chile</strong>
-              <small>Courier con seguimiento o retiro en tienda con PIN</small>
+              <small>Courier con seguimiento o retiro con PIN</small>
             </div>
           </div>
         </Reveal>

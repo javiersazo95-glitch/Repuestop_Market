@@ -1,10 +1,10 @@
-import { Award, Sparkles } from 'lucide-react';
+import { Award } from 'lucide-react';
 import Reveal from './Reveal';
+import { BrowserFrame } from './Frame';
 import { ADVANTAGES } from './data';
 
-const TIER_A = ADVANTAGES.filter((item) => item.tier === 'a');
-const TIER_B = ADVANTAGES.filter((item) => item.tier === 'b');
-const TIER_C = ADVANTAGES.filter((item) => item.tier === 'c');
+const CARDS = ADVANTAGES.filter((a) => a.tier === 'card');
+const ROWS = ADVANTAGES.filter((a) => a.tier === 'row');
 
 export default function FeaturesSection() {
   return (
@@ -12,67 +12,55 @@ export default function FeaturesSection() {
       <div className="rt-shell">
         <Reveal className="rt-head rt-head--center">
           <span className="rt-eyebrow">
-            <Award size={14} /> Ventajas del sistema
+            <Award size={14} /> Por qué RepuesTop
           </span>
-          <h2 id="rt-features-title">
-            Por qué RepuesTop es la forma más segura de comprar repuestos
-          </h2>
-          <p>
-            Diseñamos cada función para erradicar las malas experiencias del rubro: piezas que no
-            calzan, tiendas sin respaldo, pagos informales y falta de garantía.
-          </p>
+          <h2 id="rt-features-title">La forma más segura de comprar repuestos</h2>
         </Reveal>
 
-        {/* Las tres que resuelven las objeciones principales: calce, dinero y
-            qué pasa si algo sale mal. */}
-        <div className="rt-feat-tierA">
-          {TIER_A.map((feat, index) => (
+        {/* Bento: la primera tarjeta ocupa el doble de ancho y jerarquiza sin
+            necesidad de escribir mas texto. */}
+        <div className="rt-bento">
+          {CARDS.map((feat, index) => (
             <Reveal
               as="article"
-              className="rt-featA"
+              className={`rt-bento-card${index === 0 ? ' rt-card--glow' : ''}`}
               key={feat.id}
-              delay={index * 70}
+              delay={Math.min(index * 60, 240)}
             >
-              <span className="rt-feat-icon" data-accent={feat.accent}>
-                <feat.Icon size={26} />
-              </span>
-              <span className="rt-badge" data-accent={feat.accent}>{feat.badge}</span>
-              <h3>{feat.title}</h3>
-              <p>{feat.desc}</p>
-              <p className="rt-featA__foot" data-accent={feat.accent}>
-                <Sparkles size={14} />
-                <span>{feat.benefit}</span>
-              </p>
+              <div className="rt-bento-card__art">
+                {feat.artFrame === 'browser' ? (
+                  <BrowserFrame url="repuestop.cl">
+                    <img src={feat.art} alt={feat.artAlt} width={1440} height={900} loading="lazy" decoding="async" />
+                  </BrowserFrame>
+                ) : (
+                  <img src={feat.art} alt={feat.artAlt} loading="lazy" decoding="async" />
+                )}
+              </div>
+
+              <div className="rt-bento-card__copy">
+                <span className="rt-feat-icon" data-accent={feat.accent}>
+                  <feat.Icon size={20} />
+                </span>
+                <h3>{feat.title}</h3>
+                <p>{feat.line}</p>
+              </div>
             </Reveal>
           ))}
         </div>
 
-        <div className="rt-feat-tierB">
-          {TIER_B.map((feat, index) => (
-            <Reveal as="article" className="rt-featB" key={feat.id} delay={index * 60}>
-              <span className="rt-feat-icon" data-accent={feat.accent}>
-                <feat.Icon size={22} />
-              </span>
-              <span className="rt-badge" data-accent={feat.accent}>{feat.badge}</span>
-              <h4>{feat.title}</h4>
-              <p>{feat.desc}</p>
-            </Reveal>
-          ))}
-        </div>
-
-        <div className="rt-feat-tierC">
-          {TIER_C.map((feat) => (
-            <div className="rt-featC" key={feat.id}>
+        <ul className="rt-feat-rows">
+          {ROWS.map((feat) => (
+            <li className="rt-feat-row" key={feat.id}>
               <span className="rt-feat-icon" data-accent={feat.accent}>
                 <feat.Icon size={18} />
               </span>
               <div>
                 <strong>{feat.title}</strong>
-                <span>{feat.benefit}</span>
+                <span>{feat.line}</span>
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
     </section>
   );

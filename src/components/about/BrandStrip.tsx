@@ -19,7 +19,7 @@ export default function BrandStrip() {
     <section className="rt-brands rt-band--muted" aria-labelledby="rt-brands-title">
       <div className="rt-shell">
         <h2 id="rt-brands-title" className="rt-brands__title">
-          Repuestos y marcas que ya conoces
+          Las marcas que ya conoces
         </h2>
       </div>
 
@@ -28,11 +28,6 @@ export default function BrandStrip() {
         <Track duplicate />
       </div>
 
-      <div className="rt-shell">
-        <p className="rt-brands__note">
-          Marcas referenciales de repuestos disponibles en el catálogo de RepuesTop.
-        </p>
-      </div>
     </section>
   );
 }

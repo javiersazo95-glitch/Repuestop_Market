@@ -11,6 +11,7 @@ import CoverageBand from './about/CoverageBand';
 import TrustBand from './about/TrustBand';
 import FaqSection from './about/FaqSection';
 import FinalCtaSection from './about/FinalCtaSection';
+import PaymentsStrip from './about/PaymentsStrip';
 import './about/about.css';
 
 interface AboutRepuesTopPageProps {
@@ -97,6 +98,7 @@ export default function AboutRepuesTopPage({
         />
         <CoverageBand />
         <TrustBand />
+        <PaymentsStrip />
         <FaqSection onContact={onContact} />
         <FinalCtaSection onCatalog={handleCatalog} onOpenSeller={onOpenSeller} />
       </main>

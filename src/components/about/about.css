@@ -429,14 +429,12 @@ button.rt-platform:hover { border-color: var(--rt-blue-600); transform: translat
   background: var(--rt-surface);
 }
 
-.rt-hero-phone {
+.rt-hero-phone-wrap {
   position: absolute;
-  right: -3%;
-  bottom: -9%;
-  width: 21%;
-  min-width: 96px;
-  border-radius: var(--rt-r-md);
-  box-shadow: var(--rt-shadow-lg);
+  right: -4%;
+  bottom: -10%;
+  width: 22%;
+  min-width: 104px;
 }
 
 .rt-hero-chip {
@@ -615,6 +613,37 @@ button.rt-platform:hover { border-color: var(--rt-blue-600); transform: translat
 /* La version anterior ponia el <strong> en una columna estrecha propia y las
    etiquetas se partian en dos lineas ("Resumen de / compras:"). Aqui etiqueta
    y descripcion son un solo parrafo. */
+.rt-perks {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--rt-s3);
+  padding: var(--rt-s4) 0;
+  border-block: 1px solid var(--rt-line);
+}
+.rt-perks li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--rt-s2);
+  text-align: center;
+  font-size: var(--rt-fs-xs);
+  font-weight: 700;
+  color: var(--rt-ink);
+  line-height: 1.3;
+}
+.rt-perks__icon {
+  display: grid;
+  place-items: center;
+  width: 40px; height: 40px;
+  border-radius: var(--rt-r-sm);
+  background: var(--rt-blue-50);
+  color: var(--rt-blue-700);
+}
+
+/* La captura de la tarjeta de vendedores se recorta a la zona util. */
+.rt-community__shot { padding: var(--rt-s5) var(--rt-s5) 0; }
+.rt-community__shot .rt-browser { box-shadow: var(--rt-shadow-sm); }
+
 .rt-checks { display: grid; gap: var(--rt-s3); }
 .rt-checks li {
   display: grid;
@@ -790,14 +819,59 @@ button.rt-platform:hover { border-color: var(--rt-blue-600); transform: translat
   align-items: start;
 }
 
-.rt-tabrail {
+.rt-tabrail-wrap {
   position: sticky;
   top: calc(var(--rt-header-offset) + 16px);
-  z-index: 1;                    /* por debajo del header sticky del sitio */
+  z-index: 1;
+  min-width: 0;
+}
+
+.rt-tabrail {
+  --rt-tab-h: 52px;
+  --rt-tab-gap: var(--rt-s2);
+  --rt-tabs-visible: 8;          /* hasta "Seguimiento de pedidos" */
+  --rt-rail-fade: 44px;
+
   display: flex;
   flex-direction: column;
-  gap: var(--rt-s2);
+  gap: var(--rt-tab-gap);
+
+  /* 8 * 52 + 7 * 8 = 472px exactos */
+  max-height: calc(var(--rt-tabs-visible) * var(--rt-tab-h)
+                 + (var(--rt-tabs-visible) - 1) * var(--rt-tab-gap));
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  overscroll-behavior: contain;  /* la rueda no arrastra la pagina */
 }
+.rt-tabrail::-webkit-scrollbar { display: none; }
+
+/* Degradado inferior: la unica senal de que hay mas. Se pinta sobre la caja
+   del scroller, asi que no se desplaza al hacer scroll. */
+.rt-tabrail[data-scroll='start'],
+.rt-tabrail[data-scroll='middle'] {
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - var(--rt-rail-fade)), transparent 100%);
+          mask-image: linear-gradient(180deg, #000 calc(100% - var(--rt-rail-fade)), transparent 100%);
+}
+.rt-tabrail[data-scroll='middle'] {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 var(--rt-rail-fade),
+                        #000 calc(100% - var(--rt-rail-fade)), transparent 100%);
+          mask-image: linear-gradient(180deg, transparent 0, #000 var(--rt-rail-fade),
+                        #000 calc(100% - var(--rt-rail-fade)), transparent 100%);
+}
+
+.rt-tabrail-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: var(--rt-s3);
+  font-size: var(--rt-fs-xs);
+  font-weight: 700;
+  color: var(--rt-ink-3);
+}
+.rt-tabrail-more svg { animation: rt-nudge 1.8s ease-in-out infinite; }
+@keyframes rt-nudge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
 
 .rt-tab {
   display: grid;
@@ -805,7 +879,8 @@ button.rt-platform:hover { border-color: var(--rt-blue-600); transform: translat
   gap: var(--rt-s3);
   align-items: center;
   width: 100%;
-  min-height: 52px;
+  flex: 0 0 var(--rt-tab-h, 52px);
+  min-height: 0;
   padding: var(--rt-s3) var(--rt-s4);
   text-align: left;
   border: 1px solid transparent;
@@ -818,6 +893,7 @@ button.rt-platform:hover { border-color: var(--rt-blue-600); transform: translat
   cursor: pointer;
   transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
 }
+.rt-tab > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rt-tab:hover { background: var(--rt-surface-muted); color: var(--rt-ink); }
 .rt-tab[aria-selected='true'] {
   background: var(--rt-surface);
@@ -841,7 +917,7 @@ button.rt-platform:hover { border-color: var(--rt-blue-600); transform: translat
   grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
   gap: clamp(20px, 2.5vw, 36px);
   align-items: center;
-  min-height: 520px;             /* sin esto la pagina salta al cambiar de tab */
+  min-height: 430px;             /* sin esto la pagina salta al cambiar de tab */
   padding: clamp(20px, 2.5vw, 32px);
   border: 1px solid var(--rt-line);
   border-radius: var(--rt-r-xl);
@@ -1228,6 +1304,186 @@ button.rt-platform:hover { border-color: var(--rt-blue-600); transform: translat
 .rt-modal .rt-btn { width: 100%; }
 
 /* ==========================================================================
+   MARCOS DE NAVEGADOR Y TELEFONO
+   --------------------------------------------------------------------------
+   Una captura suelta parece un mockup; dentro de un marco se lee como software
+   que existe. El marco va en CSS y no quemado en el pixel, para que escale y
+   se pueda ajustar sin recapturar.
+   ========================================================================== */
+
+.rt-browser {
+  margin: 0;
+  border-radius: var(--rt-r-lg);
+  border: 1px solid var(--rt-line);
+  background: var(--rt-surface);
+  box-shadow: var(--rt-shadow-lg);
+  overflow: hidden;
+}
+
+.rt-browser__bar {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--rt-s4);
+  align-items: center;
+  height: 36px;
+  padding-inline: var(--rt-s4);
+  background: var(--rt-surface-muted);
+  border-bottom: 1px solid var(--rt-line);
+}
+
+.rt-browser__dots { display: flex; gap: 6px; }
+.rt-browser__dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--rt-line-strong); }
+
+.rt-browser__url {
+  justify-self: start;
+  padding: 3px 12px;
+  border-radius: var(--rt-r-pill);
+  background: var(--rt-surface);
+  border: 1px solid var(--rt-line);
+  font-size: 0.6875rem;
+  color: var(--rt-ink-3);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rt-browser img { width: 100%; height: auto; }
+
+.rt-phone {
+  position: relative;
+  margin: 0;
+  padding: 7px;
+  border-radius: 32px;
+  background: var(--rt-navy-900);
+  box-shadow: var(--rt-shadow-lg), inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+.rt-phone img { width: 100%; height: auto; border-radius: 25px; }
+.rt-phone__notch {
+  position: absolute;
+  top: 13px; left: 50%;
+  transform: translateX(-50%);
+  width: 84px; height: 18px;
+  border-radius: var(--rt-r-pill);
+  background: var(--rt-navy-900);
+  z-index: 1;
+}
+
+/* ==========================================================================
+   BENTO DE VENTAJAS
+   ========================================================================== */
+
+.rt-bento {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--rt-s5);
+}
+
+.rt-bento-card {
+  grid-column: span 2;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--rt-line);
+  border-radius: var(--rt-r-lg);
+  background: var(--rt-surface);
+  box-shadow: var(--rt-shadow-sm);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.rt-bento-card:hover { transform: translateY(-4px); box-shadow: var(--rt-shadow-md); }
+
+/* Reparto 4+2 / 2+2+2 / 6: la primera y la ultima van apaisadas, para que no
+   quede una tarjeta suelta con media fila vacia al lado. */
+.rt-bento-card:first-child { grid-column: span 4; }
+.rt-bento-card:last-child { grid-column: span 6; }
+.rt-bento-card:first-child,
+.rt-bento-card:last-child { flex-direction: row-reverse; align-items: center; }
+.rt-bento-card:first-child .rt-bento-card__art,
+.rt-bento-card:last-child .rt-bento-card__art {
+  flex: 1 1 52%;
+  padding: var(--rt-s5) var(--rt-s5) var(--rt-s5) 0;
+}
+.rt-bento-card:first-child .rt-bento-card__copy,
+.rt-bento-card:last-child .rt-bento-card__copy { flex: 1 1 48%; }
+.rt-bento-card:last-child .rt-bento-card__art > img { max-height: 150px; }
+
+.rt-bento-card__art {
+  display: grid;
+  place-items: center;
+  padding: var(--rt-s5) var(--rt-s5) 0;
+  min-height: 0;
+}
+.rt-bento-card__art > img { max-height: 190px; width: auto; object-fit: contain; }
+
+.rt-bento-card__copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rt-s2);
+  padding: var(--rt-s5) var(--rt-s6) var(--rt-s6);
+}
+.rt-bento-card__copy .rt-feat-icon { width: 40px; height: 40px; margin-bottom: var(--rt-s2); }
+.rt-bento-card__copy h3 { font-size: var(--rt-fs-h4); }
+.rt-bento-card__copy p { font-size: var(--rt-fs-sm); }
+
+/* Solo una tarjeta lleva borde con gradiente: si todo brilla, nada brilla. */
+.rt-card--glow { position: relative; }
+.rt-card--glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--rt-blue-600), var(--rt-accent-violet), transparent 65%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* --- Las otras seis ventajas: una linea cada una --- */
+.rt-feat-rows {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--rt-s2) var(--rt-s7);
+  margin-top: var(--rt-s8);
+  padding-top: var(--rt-s6);
+  border-top: 1px solid var(--rt-line);
+}
+.rt-feat-row {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: var(--rt-s3);
+  align-items: center;
+  padding: var(--rt-s3) 0;
+}
+.rt-feat-row .rt-feat-icon { width: 34px; height: 34px; border-radius: var(--rt-r-sm); }
+.rt-feat-row strong { display: block; font-size: var(--rt-fs-sm); color: var(--rt-ink); line-height: 1.3; }
+.rt-feat-row span { display: block; font-size: var(--rt-fs-xs); color: var(--rt-ink-3); line-height: 1.4; }
+
+/* ==========================================================================
+   MEDIOS DE PAGO
+   ========================================================================== */
+
+.rt-payments { padding-block: var(--rt-s8); background: var(--rt-surface); border-top: 1px solid var(--rt-line); }
+.rt-payments__inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--rt-s5); }
+.rt-payments__title { font-size: var(--rt-fs-sm); font-weight: 700; color: var(--rt-ink); }
+.rt-payments__list { display: flex; flex-wrap: wrap; gap: var(--rt-s3); }
+.rt-payments__list li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rt-s2);
+  padding: 8px 16px;
+  border-radius: var(--rt-r-pill);
+  border: 1px solid var(--rt-line);
+  background: var(--rt-surface-muted);
+  font-size: var(--rt-fs-xs);
+  font-weight: 700;
+  color: var(--rt-ink-2);
+}
+.rt-payments__list svg { color: var(--rt-blue-600); }
+
+/* ==========================================================================
    RESPONSIVE
    ========================================================================== */
 
@@ -1237,7 +1493,11 @@ button.rt-platform:hover { border-color: var(--rt-blue-600); transform: translat
 }
 
 @media (max-width: 1199px) {
-  .rt-preview-grid { grid-template-columns: 260px minmax(0, 1fr); }
+  .rt-preview-grid { grid-template-columns: 268px minmax(0, 1fr); }
+  .rt-bento-card:first-child,
+  .rt-bento-card:last-child { flex-direction: column; }
+  .rt-bento-card:first-child .rt-bento-card__art,
+  .rt-bento-card:last-child .rt-bento-card__art { padding: var(--rt-s5) var(--rt-s5) 0; }
   .rt-feat-tierB { grid-template-columns: repeat(2, 1fr); }
   .rt-panel { grid-template-columns: 1fr; min-height: 0; }
   .rt-panel__copy { order: 2; }
@@ -1259,8 +1519,13 @@ button.rt-platform:hover { border-color: var(--rt-blue-600); transform: translat
 
   /* El rail vertical pasa a carril horizontal con snap. Los 8 tabs ya no se
      desbordan fuera de la pantalla como en la version anterior. */
+  .rt-tabrail-wrap { position: static; }
+  .rt-tabrail-more { display: none; }
   .rt-tabrail {
-    position: static;
+    /* el cap vertical no aplica al carril horizontal */
+    max-height: none;
+    overflow-y: hidden;
+    -webkit-mask-image: none; mask-image: none;
     flex-direction: row;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
@@ -1274,6 +1539,8 @@ button.rt-platform:hover { border-color: var(--rt-blue-600); transform: translat
   .rt-tab {
     flex: 0 0 auto;
     width: auto;
+    flex: 0 0 auto;
+    min-height: 52px;
     scroll-snap-align: start;
     border-left-width: 1px;
     border-bottom: 3px solid transparent;
@@ -1283,6 +1550,10 @@ button.rt-platform:hover { border-color: var(--rt-blue-600); transform: translat
 
 @media (max-width: 899px) {
   .rt-metrics { grid-template-columns: repeat(2, 1fr); margin-top: -40px; }
+  .rt-bento-card { grid-column: span 3; }
+  .rt-bento-card:first-child,
+  .rt-bento-card:last-child { grid-column: span 6; }
+  .rt-feat-rows { grid-template-columns: repeat(2, 1fr); }
   .rt-trust-pillars { grid-template-columns: repeat(2, 1fr); }
   .rt-feat-tierA { grid-template-columns: 1fr; }
   .rt-cta__scrim {
@@ -1292,6 +1563,9 @@ button.rt-platform:hover { border-color: var(--rt-blue-600); transform: translat
 
 @media (max-width: 639px) {
   .rt-about { --rt-gutter: 16px; }
+  .rt-bento-card, .rt-bento-card:first-child { grid-column: span 6; }
+  .rt-feat-rows { grid-template-columns: 1fr; }
+  .rt-payments__inner { flex-direction: column; align-items: flex-start; }
   .rt-metrics { grid-template-columns: 1fr; }
   .rt-feat-tierB { grid-template-columns: 1fr; }
   .rt-trust-pillars { grid-template-columns: 1fr; }
