@@ -78,6 +78,8 @@ input, select, textarea {
 .cookie-consent-options label { display: flex; align-items: flex-start; gap: 8px; color: #5a6b82; font-size: 11px; line-height: 1.4; }
 .cookie-consent-options input { width: 15px; height: 15px; margin-top: 1px; accent-color: #0969ed; }
 .cookie-consent-options strong { display: block; color: #20314d; }
+/* El detalle del aviso paso de ser una lista de casillas a parrafos informativos: misma densidad que tenian los `label`, que si no heredan el tamano generico de `.cookie-consent p` y se ven mas grandes. */
+.cookie-consent-options p { color: #5a6b82; font-size: 11px; line-height: 1.4; }
 .cookie-consent-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .cookie-consent-actions button, .help-cookie-settings { min-height: 34px; padding: 0 12px; border-radius: 8px; font-size: 12px; font-weight: 800; }
 .cookie-consent-settings, .cookie-consent-reject { border: 1px solid #bfd0e8; color: #365372; background: #fff; }

@@ -289,11 +289,15 @@ Para consultas o solicitudes relativas a datos personales, privacidad o ejercici
  * ni el reclamo ante la autoridad. PENDIENTE DE REVISION LEGAL.
  */
 export const PRIVACIDAD_WEB_EXTRA = `14. COOKIES Y ALMACENAMIENTO LOCAL EN EL SITIO WEB
-RepuesTop utiliza cookies y almacenamiento local para mantener la sesión iniciada, proteger la cuenta, conservar el carrito y recordar las preferencias esenciales. Estas tecnologías necesarias son indispensables para la operación y seguridad de la Plataforma.
+RepuesTop utiliza almacenamiento local en el navegador únicamente para operar la Plataforma: mantener la sesión iniciada, proteger la cuenta, conservar el carrito y el pedido en curso, y recordar el vehículo y las patentes consultadas para mostrar repuestos compatibles. Todas estas tecnologías son necesarias para prestar el servicio que el usuario solicita.
 
-Las tecnologías de preferencias no esenciales, analítica y marketing son opcionales. Se mantienen desactivadas hasta que el usuario otorgue una autorización libre, informada, específica e inequívoca mediante el aviso de cookies. El usuario puede aceptar todas, conservar solo las necesarias o seleccionar categorías, sin casillas opcionales preseleccionadas.
+El sitio no utiliza cookies ni tecnologías de publicidad, marketing, analítica de audiencia, elaboración de perfiles ni seguimiento entre sitios. No hay rastreadores de terceros incorporados y no se venden ni ceden datos personales mediante estas tecnologías.
 
-El usuario puede retirar su autorización para las categorías opcionales en cualquier momento desde la configuración de cookies que habilite la Plataforma. El retiro no afecta la licitud del tratamiento realizado antes de ese momento. No se venden datos personales mediante estas tecnologías.
+RepuesTop utiliza un servicio externo de monitoreo de errores para detectar y corregir fallas de la Plataforma. Ese servicio recibe el detalle técnico del error y la ruta del sitio donde ocurrió, con los identificadores numéricos y los datos sensibles de la dirección removidos antes del envío. No recibe datos de contacto, datos bancarios, contraseñas ni grabaciones de la sesión del usuario. El tratamiento se funda en el interés legítimo de mantener la seguridad, la disponibilidad y el correcto funcionamiento del servicio, y no en el consentimiento. Los servidores de este proveedor se encuentran fuera de Chile, conforme a lo indicado en la sección sobre transferencias internacionales.
+
+Al no existir tecnologías opcionales, la Plataforma no solicita una autorización de cookies: muestra un aviso informativo con el detalle de lo que se almacena, consultable en cualquier momento desde la sección de cookies del Centro de Ayuda. Si en el futuro RepuesTop incorpora tecnologías de analítica, marketing o perfilamiento, estas se mantendrán desactivadas hasta que el usuario otorgue una autorización libre, informada, específica e inequívoca, sin casillas preseleccionadas y revocable en cualquier momento.
+
+El usuario puede además eliminar en cualquier momento el almacenamiento local desde la configuración de su navegador; hacerlo cerrará su sesión y vaciará el carrito.
 
 Este esquema considera la Ley N° 21.719, que regula la protección y el tratamiento de datos personales y entra en vigencia el 1 de diciembre de 2026. RepuesTop actualizará esta política si cambian las obligaciones aplicables o la configuración tecnológica del sitio.
 
