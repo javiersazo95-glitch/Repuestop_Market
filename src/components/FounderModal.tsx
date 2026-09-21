@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Crown, X, Clock, ShieldCheck, CheckCircle2, Sparkles, ArrowRight, Percent, Award, Radar, Rocket } from 'lucide-react';
+// Sus reglas `founder-modal-*` estan en esta hoja; se importa aqui para no
+// depender de que la vista que lo monta la haya cargado antes.
+import '../styles/founder.css';
 
 const BENEFITS = [
   { icon: Percent, gradient: 'linear-gradient(135deg, #0056bf, #10c8e8)', title: '5% de comisión por un año', text: 'Una tasa preferencial de solo 5% garantizada durante todo tu primer año en la plataforma.' },

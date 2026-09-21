@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-// Las 218 reglas `founder-*` viven en esta hoja, que hasta ahora solo importaba
-// `AboutRepuesTopPage`. Como las rutas van en chunks perezosos, entrar directo a
-// /vender no cargaba nunca ese chunk y el registro se veia SIN estilos; pasando
-// antes por /nosotros la hoja quedaba inyectada y ahi si se veia bien. El
-// componente que necesita los estilos es este, asi que los pide el. Vite la
-// inyecta una sola vez aunque la importen las dos vistas.
-import '../about-repuestop.css';
+// Las reglas `founder-*` viven en esta hoja, que es suya y del FounderModal.
+// La importa el componente que las necesita: las rutas van en chunks perezosos,
+// asi que depender de que otra vista la inyectara dejaba /vender sin estilos.
+// Vite la inyecta una sola vez aunque la importen las dos vistas.
+import '../styles/founder.css';
 import OpeningHoursPicker from './ads/OpeningHoursPicker';
 import ShippingMethodsPicker from './ShippingMethodsPicker';
 import SpecialistBrandsManager, { type VehicleBrandOption } from './SpecialistBrandsManager';
