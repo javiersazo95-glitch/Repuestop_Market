@@ -13,23 +13,36 @@ export const siteConfig = {
   },
 };
 
+// La URL base la resuelve `services/apiBaseUrl`, que es el origen unico para toda la app.
+// Antes esta funcion tenia su propio fallback a https://api.repuestop.cl, y un deploy sin
+// VITE_API_URL dejaba `/vender` escribiendo en PRODUCCION mientras el resto de la web
+// hablaba con localhost.
+export { API_BASE_URL as API_URL } from '../services/apiBaseUrl';
+
 /**
- * Obtiene la URL base del backend RepuesTop garantizando HTTPS en entornos de producción.
+ * Client ID de Google OAuth para web. Sin esto, el botón de Google queda deshabilitado.
+ *
+ * No es un secreto -- por diseño viaja al navegador --, pero sí es configuración por
+ * ambiente: quien despliegue debe definir `VITE_GOOGLE_CLIENT_ID`. El literal de abajo
+ * queda solo como red para el desarrollo local; en un despliegue real se avisa, porque
+ * compartir un client id entre dev y producción impide restringir los orígenes
+ * autorizados de cada uno por separado en la consola de Google.
  */
-function resolveApiUrl(): string {
-  const customUrl = env.VITE_API_URL?.trim();
-  if (customUrl) return customUrl;
-  
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return 'https://api.repuestop.cl/api/v1';
+const GOOGLE_CLIENT_ID_DEV = '117201265366-ao32ed2314d1ncce1qt47biide1ij62r.apps.googleusercontent.com';
+
+function resolveGoogleClientId(): string {
+  const configurado = env.VITE_GOOGLE_CLIENT_ID?.trim();
+  if (configurado) return configurado;
+
+  const esLocal = typeof window === 'undefined'
+    || ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+  if (!esLocal) {
+    console.error('[config] Falta VITE_GOOGLE_CLIENT_ID en este despliegue; se usa el client id de desarrollo.');
   }
-  return 'http://localhost:8080/api/v1';
+  return GOOGLE_CLIENT_ID_DEV;
 }
 
-export const API_URL: string = resolveApiUrl();
-
-/** Client ID de Google OAuth para web. Sin esto, el botón de Google queda deshabilitado. */
-export const GOOGLE_CLIENT_ID: string = env.VITE_GOOGLE_CLIENT_ID || '117201265366-ao32ed2314d1ncce1qt47biide1ij62r.apps.googleusercontent.com';
+export const GOOGLE_CLIENT_ID: string = resolveGoogleClientId();
 
 export function trackEvent(event: string, detail?: string) {
   window.dispatchEvent(new CustomEvent('repuestop:analytics', { detail: { event, detail } }));

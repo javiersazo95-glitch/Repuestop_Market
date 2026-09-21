@@ -7,6 +7,7 @@ import {
 } from '../services/api';
 import { uploadAdImages } from '../services/adsStorage';
 import { formatRut, isValidRut } from '../services/adapters';
+import { validateUpload, FILE_LIMITS } from '../utils/fileValidation';
 
 const EMPTY_FORM = {
   nombreNegocio: '', rutNegocio: '', giro: '', responsable: '',
@@ -148,11 +149,29 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
 
   const handleRegionChange = (regionId) => setForm((current) => ({ ...current, regionId, comunaId: '' }));
 
-  const handleFileChange = (key, file) => setFiles((current) => ({ ...current, [key]: file }));
+  // Acepta PDF o imagen, con tope de 10 MB. Antes no comprobaba nada y el archivo se
+  // adjuntaba tal cual, de modo que el fallo por tamano aparecia recien al enviar todo
+  // el expediente, con los demas documentos ya subidos.
+  const handleFileChange = (key, file) => {
+    const problema = validateUpload(file, {
+      maxBytes: FILE_LIMITS.DOCUMENT, accept: 'image-or-pdf', label: 'El documento',
+    });
+    if (problema) {
+      setError(problema);
+      return;
+    }
+    setError('');
+    setFiles((current) => ({ ...current, [key]: file }));
+  };
 
   // Sube la imagen y deja la URL en estado. Cuando el expediente ya está
   // aprobado, además persiste el cambio de inmediato con el PATCH dedicado.
   const handleLogoPick = async (file) => {
+    const problemaLogo = validateUpload(file, { maxBytes: FILE_LIMITS.IMAGE, accept: 'image', label: 'El logo' });
+    if (problemaLogo) {
+      setLogoError(problemaLogo);
+      return;
+    }
     setLogoBusy(true);
     setLogoError('');
     try {

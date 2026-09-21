@@ -89,8 +89,24 @@ export class ApiError extends Error {
   }
 }
 
+/** Tope de espera, igual que el de `fetchApi`. Sin esto una respuesta que nunca llega dejaba el formulario de `/vender` en "enviando" para siempre. */
+const TIMEOUT_MS = 15000;
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, init);
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...init,
+      // Respeta un signal propio si quien llama ya trajo el suyo (una subida de
+      // documentos necesita mas de 15s).
+      signal: init.signal ?? AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (e: any) {
+    if (e?.name === 'TimeoutError' || e?.name === 'AbortError') {
+      throw new ApiError('El servidor tardó demasiado en responder. Intenta nuevamente.', 0);
+    }
+    throw new ApiError('No pudimos conectar con el servidor. Revisa tu conexión.', 0);
+  }
   const text = await res.text();
   let data: any = null;
   try {
@@ -196,6 +212,9 @@ export function uploadVerificacion(
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: form,
+    // Hasta cuatro documentos en una sola peticion: los 15s por defecto se quedan cortos,
+    // igual que en las subidas de imagen que pasan por fetchApi.
+    signal: AbortSignal.timeout(60000),
   });
 }
 

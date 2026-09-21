@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import { decodeGoogleIdToken } from '../utils/googleIdToken';
+import { GOOGLE_CLIENT_ID } from './founderConfig';
 import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import { ROUTES } from '../routes/paths';
 import {
@@ -19,7 +20,11 @@ import {
 // ID de cliente OAuth de RepuesTop en Google Cloud (mismo usado por mobile/backoffice/vendedor_panel
 // y configurado en el backend vía repuestop.google.client-id). No es un secreto: los client IDs de
 // Google son públicos por diseño, la validación real ocurre en el backend contra el idToken firmado.
-const GOOGLE_CLIENT_ID = '117201265366-ao32ed2314d1ncce1qt47biide1ij62r.apps.googleusercontent.com';
+//
+// Se importa de `founderConfig` (ver el bloque de imports) en vez de repetir el literal: estaba
+// escrito dos veces, y solo la otra copia admitía `VITE_GOOGLE_CLIENT_ID`, así que apuntar dev y
+// producción a client ids distintos -- que es lo que permite restringir los orígenes autorizados
+// de cada uno -- arreglaba el registro de vendedor y dejaba este modal con el id de siempre.
 
 // Google Identity Services mantiene una única configuración global por página.
 // React puede montar efectos dos veces en desarrollo y el modal puede abrirse muchas

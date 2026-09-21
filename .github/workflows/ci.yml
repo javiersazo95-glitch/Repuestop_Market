@@ -10,8 +10,13 @@ jobs:
   build-lint-typecheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # Las acciones van fijadas al SHA y no al tag: un tag lo puede reapuntar en
+      # silencio quien publica la accion, y el pipeline pasaria a ejecutar otro codigo
+      # sin que cambie nada en este repo. El comentario deja legible que version es,
+      # porque un SHA suelto no se puede leer. Para actualizarlas: resolver el tag nuevo
+      # a su SHA y cambiar las dos cosas a la vez.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 al 2026-07-16
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 al 2025-04-02
         with:
           node-version: 20
           cache: npm

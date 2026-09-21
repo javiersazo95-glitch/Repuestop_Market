@@ -1,8 +1,8 @@
 import { LEGAL_VERSION_CODE } from '../data/legalTexts';
 import { compressImageFile } from '../utils/imageCompression';
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
-
-const apiOrigin = () => API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+// La URL base vive en un modulo aparte porque founderApi.ts tambien la necesita y antes
+// cada uno resolvia la suya, con fallbacks que apuntaban a ambientes distintos.
+import { API_BASE_URL, apiOrigin } from './apiBaseUrl';
 
 // Registros antiguos guardaron la URL ABSOLUTA del backend que subio el archivo,
 // asi que una foto cargada contra un backend local o de otro ambiente apunta a
@@ -163,9 +163,17 @@ export async function fetchApi(endpoint, options = {}) {
       if (response.status === 401 && token && !endpoint.includes('/auth/login')) {
         window.dispatchEvent(new CustomEvent('repuestop:unauthorized'));
       }
-      const errorMessage =
-        (typeof data === 'object' && (data?.message || data?.error)) ||
-        (typeof data === 'string' ? data : `Error HTTP ${response.status}`);
+      // Los 4xx son errores de negocio y su mensaje esta escrito para el usuario
+      // ("No hay stock suficiente"), asi que se muestra tal cual. Los 5xx NO: ahi el
+      // backend puede devolver el texto de una excepcion con nombres de tabla, de
+      // restriccion o una traza, y eso termina pintado en la pantalla del comprador.
+      // Para esos se usa un texto propio y el detalle queda en `data` para el log.
+      const esFalloDelServidor = response.status >= 500;
+      const errorMessage = esFalloDelServidor
+        ? 'El servidor no pudo procesar la solicitud. Intenta nuevamente en unos minutos.'
+        : (typeof data === 'object' && (data?.message || data?.error))
+          || (typeof data === 'string' && data)
+          || `Error HTTP ${response.status}`;
       throw new ApiError(errorMessage, response.status, data);
     }
 
