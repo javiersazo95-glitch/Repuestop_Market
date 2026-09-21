@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, FileText, MapPin, Package, ReceiptText, ShoppingBag, Sparkles, Truck, XCircle } from 'lucide-react';
+import { AlertTriangle, Check, FileText, MapPin, Package, ReceiptText, ShoppingBag, Sparkles, Truck, XCircle } from 'lucide-react';
 import deliveryTruck from '../assets/delivery-truck.webp';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { confirmOrderPaymentApi, getBuyerOrderByIdApi, resolveMediaUrl } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { normalizeOrderStatus } from '../data/orderStatusFlow';
 import { buyerProfilePath, ROUTES } from '../routes/paths';
 
 const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
@@ -64,8 +65,19 @@ export default function PurchaseSuccessPage() {
     return () => { active = false; };
   }, [storedOrder, orderIdFromUrl, effectiveUserId, isFailure]);
 
-  const order = storedOrder || fetchedOrder;
+  // El pedido más fresco manda: `fetchedOrder` es el que devolvió la confirmación de pago
+  // del efecto de arriba, así que si existe ya refleja el estado real y `storedOrder`
+  // (la copia que dejó el checkout) está desactualizado.
+  const order = fetchedOrder || storedOrder;
   const isSimulated = Boolean(location.state?.isSimulated || order?.isSimulatedPayment || /mock|simulaci/i.test(order?.metodoPagoDetalle || ''));
+
+  // El sello del comprobante sale del estado que manda el backend, no de haber llegado a
+  // esta pantalla. Un pedido que se queda en PENDIENTE (la pasarela no aprobó, o el
+  // comprador abandonó el pago) aparecía igual como "Pagado". PAGADO y cualquier estado
+  // posterior -- EN_PREPARACION, ENVIADO, ENTREGADO, FINALIZADO -- sí implican cobro hecho.
+  const orderStatus = order ? normalizeOrderStatus(order) : null;
+  const isPendingPayment = orderStatus === 'PENDIENTE';
+  const isCancelled = orderStatus === 'CANCELADO';
 
   if (isFailure) {
     return (
@@ -115,7 +127,9 @@ export default function PurchaseSuccessPage() {
         <header className="purchase-receipt-head">
           <div>
             <div className="purchase-receipt-tags">
-              <span className="purchase-receipt-label">Comprobante de compra</span>
+              <span className="purchase-receipt-label">
+                {isPendingPayment ? 'Resumen del pedido' : 'Comprobante de compra'}
+              </span>
               {isSimulated && (
                 <span className="purchase-simulated-tag"><Sparkles size={11} /> Pago simulado (Pruebas)</span>
               )}
@@ -123,10 +137,32 @@ export default function PurchaseSuccessPage() {
             <h1 id="purchase-success-title">Pedido #{orderNumber}</h1>
             <p>{orderDate}</p>
           </div>
-          <span className="purchase-receipt-state"><Check size={13} strokeWidth={3} /> Pagado</span>
+          {isPendingPayment && (
+            <span className="purchase-receipt-state is-pending"><AlertTriangle size={13} /> Pago pendiente</span>
+          )}
+          {isCancelled && (
+            <span className="purchase-receipt-state is-cancelled"><XCircle size={13} /> Cancelado</span>
+          )}
+          {!isPendingPayment && !isCancelled && (
+            <span className="purchase-receipt-state"><Check size={13} strokeWidth={3} /> Pagado</span>
+          )}
         </header>
 
-        {/* Simulación del pedido viajando a su destino por una carretera continua */}
+        {isPendingPayment && (
+          <p className="purchase-pending-notice">
+            <AlertTriangle size={15} />
+            <span>
+              Todavía no recibimos la confirmación del pago, así que este pedido <strong>no está pagado</strong>.
+              Reserva el stock por un plazo limitado y puedes reintentar el pago desde {buyerPurchasesLabel}.
+            </span>
+          </p>
+        )}
+
+        {/* Simulación del pedido viajando a su destino por una carretera continua.
+            Solo cuando el pedido está pagado: mientras no lo esté, la tienda no recibió
+            nada que preparar, y este bloque contradecía al aviso de "no está pagado" que
+            aparece justo encima. */}
+        {!isPendingPayment && !isCancelled && (
         <div className="purchase-journey">
           <div className="purchase-journey-header">
             <span className="purchase-journey-badge">
@@ -146,6 +182,7 @@ export default function PurchaseSuccessPage() {
             La tienda ya fue notificada y está preparando tu pedido. Te avisamos cuando esté en viaje.
           </p>
         </div>
+        )}
 
         {order ? (
           <div className="purchase-success-content">
