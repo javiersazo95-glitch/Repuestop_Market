@@ -364,10 +364,10 @@ export default function AboutRepuesTopPage({
       onAction: handleAdsWall,
     },
     quotes: {
-      title: 'Catálogo y Cotizaciones Formales',
+      title: 'Cotizaciones Formales por Chat',
       tag: 'Trato Directo',
-      desc: 'Busca por patente o categoría y recibe ofertas directas de los vendedores con precio neto, descuento, garantía y botón directo para pagar con Flow.',
-      image: '/about-assets/catalogo-real.png',
+      desc: 'Solicita el precio de un repuesto directo a la tienda y recibe una oferta formal con documento PDF adjunto, todo dentro de un chat privado ligado a esa cotización.',
+      image: '/about-assets/cotizacion-real.png',
       isReal: true,
       actionText: 'Ir a buscar y cotizar',
       onAction: handleCatalog,
