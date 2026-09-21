@@ -29,6 +29,7 @@ import {
 // Un solo archivo para el texto y para la version: el registro de aceptacion prueba QUE se
 // acepto, y con dos fuentes la constancia apunta a un documento que no es el que se mostro.
 import { VENDEDOR_TERMS, PRIVACIDAD_POLICY, LEGAL_VERSION_CODE } from '../data/legalTexts';
+import { sanitizeWebsiteUrl } from '../utils/websiteUrl';
 
 type LegalDoc = 'terms' | 'privacy';
 
@@ -1199,22 +1200,6 @@ const DOC_FIELDS: { key: DocKey; label: string; hint: string; required: boolean 
 ];
 
 const COMMENT_MAX = 100;
-
-/**
- * Sanea y valida una URL de sitio web o red social.
- * Antepone https:// si carece de esquema y rechaza esquemas peligrosos como javascript: o data:.
- */
-function sanitizeWebsiteUrl(rawUrl: string): string | undefined {
-  const clean = rawUrl.trim();
-  if (!clean) return undefined;
-  if (/^(javascript|data|vbscript):/i.test(clean)) {
-    return undefined;
-  }
-  if (!/^https?:\/\//i.test(clean)) {
-    return `https://${clean}`;
-  }
-  return clean;
-}
 
 function DocumentsUpload({ session, notice, onDone }: { session: Session; notice?: string | null; onDone: () => void }) {
   const [files, setFiles] = useState<Record<DocKey, File | null>>({

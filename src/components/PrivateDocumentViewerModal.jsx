@@ -45,9 +45,20 @@ export default function PrivateDocumentViewerModal({
       try {
         const { url } = (await loadUrl()) || {};
         if (!url) throw new Error('No se pudo obtener el documento.');
-        const response = await fetch(url);
+        const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
         if (!response.ok) throw new Error('El enlace del documento expiró. Vuelve a intentarlo.');
-        const blob = await response.blob();
+
+        // El tipo del blob se FIJA a PDF en vez de heredar el Content-Type de la
+        // respuesta. `<object type="application/pdf">` ya acotaba la previsualizacion,
+        // pero los botones de "Abrir en pestana" y "Descargar" usan el blob crudo: si el
+        // origen devolviera text/html o image/svg+xml, window.open lo ejecutaria como
+        // documento en el origen del blob, con acceso a la sesion guardada. Aca solo se
+        // esperan PDF emitidos por el backend, asi que cualquier otra cosa es un error.
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType && !/application\/(pdf|octet-stream)/i.test(contentType)) {
+          throw new Error('El documento no tiene el formato esperado.');
+        }
+        const blob = new Blob([await response.arrayBuffer()], { type: 'application/pdf' });
         if (cancelled) return;
         objectUrl = URL.createObjectURL(blob);
         setState({ status: 'ready', url: objectUrl, error: '' });

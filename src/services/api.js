@@ -566,6 +566,20 @@ function getLocalAddressKey(usuarioId) {
   return `repuestop_user_addresses_${usuarioId || 'guest'}`;
 }
 
+/**
+ * ¿El backend simplemente no tiene este recurso, o no hay red?
+ *
+ * Solo en esos dos casos tiene sentido que las direcciones caigan a la copia local:
+ * 404 es un backend antiguo sin el endpoint, y 0 es el navegador sin conexion.
+ *
+ * El 500 se EXCLUYE a proposito. Antes entraba aqui, y eso convertia un error del
+ * servidor en un "direccion guardada": la persona veia la confirmacion, el dato quedaba
+ * solo en su navegador y nunca llegaba a la base. Un 500 tiene que verse.
+ */
+function backendSinEsteRecurso(err) {
+  return err?.status === 404 || err?.status === 0;
+}
+
 function getLocalAddresses(usuarioId) {
   try {
     const raw = localStorage.getItem(getLocalAddressKey(usuarioId));
@@ -643,7 +657,7 @@ export async function getAddressesApi(usuarioId, options = {}) {
     });
     return combined;
   } catch (err) {
-    if (err.status === 404 || err.status === 0 || err.status === 500) {
+    if (backendSinEsteRecurso(err)) {
       return getLocalAddresses(usuarioId).map((item) => ({ ...item, tipoDireccion: resolveAddressType(usuarioId, item) }));
     }
     throw err;
@@ -666,7 +680,7 @@ export async function createAddressApi(usuarioId, payload, options = {}) {
     }
     return newAddress;
   } catch (err) {
-    if (err.status === 404 || err.status === 0 || err.status === 500) {
+    if (backendSinEsteRecurso(err)) {
       const local = getLocalAddresses(usuarioId);
       const isFirst = local.length === 0;
       const tipo = payload?.tipoDireccion || 'PERSONAL';
@@ -708,7 +722,7 @@ export async function updateAddressApi(usuarioId, direccionId, payload, options 
     saveLocalAddresses(usuarioId, local);
     return updatedAddress;
   } catch (err) {
-    if (err.status === 404 || err.status === 0 || err.status === 500) {
+    if (backendSinEsteRecurso(err)) {
       let local = getLocalAddresses(usuarioId);
       const tipo = payload?.tipoDireccion || 'PERSONAL';
       saveAddressTypeMeta(usuarioId, direccionId, payload.calleYNumero, tipo);
@@ -740,7 +754,7 @@ export async function deleteAddressApi(usuarioId, direccionId, options = {}) {
     saveLocalAddresses(usuarioId, local);
     return result;
   } catch (err) {
-    if (err.status === 404 || err.status === 0 || err.status === 500) {
+    if (backendSinEsteRecurso(err)) {
       let local = getLocalAddresses(usuarioId);
       local = local.filter((item) => String(item.id) !== String(direccionId));
       if (local.length > 0 && !local.some((item) => item.esPrincipal)) {
@@ -757,7 +771,7 @@ export async function setDefaultAddressApi(usuarioId, direccionId, options = {})
   try {
     return await fetchApi(`/usuarios/${usuarioId}/direcciones/${direccionId}/principal`, { method: 'PATCH', ...options });
   } catch (err) {
-    if (err.status === 404 || err.status === 0 || err.status === 500) {
+    if (backendSinEsteRecurso(err)) {
       let local = getLocalAddresses(usuarioId);
       local = local.map((item) => ({
         ...item,
