@@ -4,7 +4,9 @@ import { useAppNavigation } from '../routes/useAppNavigation';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 
 export default function AboutPage() {
-  useDocumentTitle('Quiénes somos');
+  // Fuente unica del titulo: antes el componente hijo tambien lo escribia y,
+  // como sus efectos corren primero, ese valor nunca llegaba a verse.
+  useDocumentTitle('Sobre RepuesTop');
   const nav = useAppNavigation();
 
   return (
