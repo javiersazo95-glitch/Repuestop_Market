@@ -1,13 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, Car, CheckCircle2, Copy, FileText, Loader2, MessageSquare, Package } from 'lucide-react';
+import { AlertTriangle, Car, CheckCircle2, Copy, Loader2, MessageSquare, Package } from 'lucide-react';
 
 /**
- * Checklist de confirmación del vendedor: los tres pasos previos a preparar el pedido.
- * Solo lo ve el vendedor — el backend lo emite detrás de un guard por `proveedorId`.
+ * Pasos 1 y 2 de "Confirmar pedido" (stock/entrega y compatibilidad). Se embebe dentro de
+ * `SaleReceiptModal`, que agrega el paso 3 (boleta) y el envío final: los tres pasos viven en
+ * un solo modal con un solo botón de avance, no como tarjeta suelta en la página con botones
+ * propios compitiendo con el de "Confirmar pedido".
  *
- * Vive en su propio archivo y no dentro de `OrderDetailView` (2.300+ líneas) para que el
- * flujo sea revisable. El estado de cada paso lo calcula el backend y llega en
- * `order.checklistVendedor`: los clientes no vuelven a espejar las reglas.
+ * Solo lo ve el vendedor — el backend lo emite detrás de un guard por `proveedorId`. El estado
+ * de cada paso lo calcula el backend y llega en `order.checklistVendedor`: los clientes no
+ * vuelven a espejar las reglas.
  *
  * Ver docs/planes/plan_validacion_compatibilidad_pedido.md en el monorepo.
  */
@@ -16,7 +18,7 @@ const ETIQUETA_RESULTADO = {
   UNIVERSAL: { texto: 'Sirve para cualquier vehículo', tono: 'ok' },
   COMPATIBLE: { texto: 'Compatible', tono: 'ok' },
   NO_COINCIDE: { texto: 'No coincide', tono: 'alerta' },
-  SIN_DATOS: { texto: 'No pudimos confirmarlo', tono: 'neutro' },
+  SIN_DATOS: { texto: 'Sin información', tono: 'neutro' },
 };
 
 function descripcionVehiculo(order) {
@@ -46,7 +48,6 @@ export default function SellerConfirmationChecklist({
   onConfirmStock,
   onConfirmCompatibility,
   onOpenBuyerChat,
-  onUploadReceipt,
 }) {
   const checklist = order?.checklistVendedor;
   const [busyStep, setBusyStep] = useState(null);
@@ -68,7 +69,6 @@ export default function SellerConfirmationChecklist({
 
   const stockListo = Boolean(checklist.stockEntregaConfirmadaAt);
   const compatibilidadLista = Boolean(checklist.compatibilidadConfirmadaAt);
-  const boletaLista = Boolean(checklist.boletaCargada);
 
   const ejecutar = async (paso, accion) => {
     setBusyStep(paso);
@@ -93,15 +93,7 @@ export default function SellerConfirmationChecklist({
   };
 
   return (
-    <section className="seller-checklist" aria-label="Confirmar pedido">
-      <header className="seller-checklist-head">
-        <h3>Confirmar pedido</h3>
-        <p>
-          Estos tres pasos son solo para ti: el comprador no los ve. Revisar la compatibilidad
-          antes de emitir la boleta evita devoluciones y notas de crédito.
-        </p>
-      </header>
-
+    <div className="seller-checklist" aria-label="Pasos previos a la boleta">
       <Paso numero="1" titulo="Stock y entrega" listo={stockListo}>
         <p className="seller-checklist-hint">
           {isStorePickup
@@ -126,7 +118,7 @@ export default function SellerConfirmationChecklist({
             {order?.vehiculoOrigen && order.vehiculoOrigen !== 'NO_INFORMADO'
               ? <>Vehículo del comprador: <strong>{descripcionVehiculo(order)}</strong>
                 {order?.vehiculoPatente ? ` · ${order.vehiculoPatente}` : ''}</>
-              : 'El comprador no informó su vehículo. Confirma según tu criterio.'}
+              : 'Sin información del vehículo. Confirma según tu criterio.'}
           </span>
         </div>
 
@@ -165,7 +157,11 @@ export default function SellerConfirmationChecklist({
                 <span>{copiado ? 'Mensaje copiado' : 'Copiar mensaje'}</span>
               </button>
               {onOpenBuyerChat && (
-                <button type="button" className="btn-auth-secondary" onClick={onOpenBuyerChat}>
+                <button
+                  type="button"
+                  className="btn-auth-secondary"
+                  onClick={() => onOpenBuyerChat(mensajeParaComprador)}
+                >
                   <MessageSquare size={14} />
                   <span>Abrir chat con el comprador</span>
                 </button>
@@ -189,27 +185,7 @@ export default function SellerConfirmationChecklist({
         </button>
       </Paso>
 
-      <Paso
-        numero="3"
-        titulo="Boleta o factura"
-        listo={boletaLista}
-        bloqueado={!stockListo || !compatibilidadLista}
-      >
-        <p className="seller-checklist-hint">
-          Súbela al final, cuando ya confirmaste que la venta va: así evitas tener que emitir una
-          nota de crédito si el pedido se cae.
-        </p>
-        <button
-          type="button"
-          className="btn-auth-primary seller-checklist-action"
-          onClick={onUploadReceipt}
-        >
-          <FileText size={15} />
-          <span>Subir boleta o factura</span>
-        </button>
-      </Paso>
-
       {error && <p className="confirm-dialog-error">{error}</p>}
-    </section>
+    </div>
   );
 }

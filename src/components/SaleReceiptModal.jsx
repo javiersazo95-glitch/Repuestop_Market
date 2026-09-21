@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ReceiptText, Copy, CheckCircle2, FileUp, X, Loader2 } from 'lucide-react';
 import { isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
+import SellerConfirmationChecklist from './SellerConfirmationChecklist';
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
@@ -23,6 +24,11 @@ export default function SaleReceiptModal({
   shipping = 0,
   discount = 0,
   uploadOnly = false,
+  sellerChecklist = null,
+  isStorePickup = false,
+  onConfirmStock,
+  onConfirmCompatibility,
+  onOpenBuyerChat,
   onSubmit,
   onClose,
 }) {
@@ -33,6 +39,15 @@ export default function SaleReceiptModal({
   const [confirmed, setConfirmed] = useState(false);
 
   if (!order) return null;
+
+  // Pasos 1 y 2 del checklist del vendedor, cuando el modal se abrió desde "Confirmar pedido"
+  // (no en `uploadOnly`, que es recargar la boleta de un pedido ya confirmado). Gatillan la
+  // sección de la boleta: sin esto, subir el archivo antes de revisar stock/compatibilidad
+  // dejaba la boleta emitida antes de descubrir una incompatibilidad -- justo lo que este
+  // orden de pasos existe para evitar.
+  const stockListo = sellerChecklist ? Boolean(sellerChecklist.stockEntregaConfirmadaAt) : true;
+  const compatibilidadLista = sellerChecklist ? Boolean(sellerChecklist.compatibilidadConfirmadaAt) : true;
+  const checklistCompleto = stockListo && compatibilidadLista;
 
   const orderCode = orderDisplayCode(order, 'seller');
   const buyerName = order.compradorNombre || order.buyerName || order.usuarioNombre || 'Cliente RepuesTop';
@@ -126,13 +141,29 @@ export default function SaleReceiptModal({
             <ReceiptText size={22} />
           </div>
           <div className="order-subdialog-heading">
-            <h3>{uploadOnly ? 'Cargar boleta de venta' : 'Registrar boleta de venta'}</h3>
+            <h3>{sellerChecklist ? 'Confirmar pedido' : uploadOnly ? 'Cargar boleta de venta' : 'Registrar boleta de venta'}</h3>
             <span>
               Pedido {orderCode}
               {!uploadOnly && ' · obligatoria para confirmar'}
             </span>
           </div>
         </div>
+
+        {sellerChecklist && !confirmed && (
+          <>
+            <p className="order-receipt-hint">
+              Estos pasos son solo para ti: el comprador no los ve. Revisar la compatibilidad
+              antes de emitir la boleta evita devoluciones y notas de crédito.
+            </p>
+            <SellerConfirmationChecklist
+              order={order}
+              isStorePickup={isStorePickup}
+              onConfirmStock={onConfirmStock}
+              onConfirmCompatibility={onConfirmCompatibility}
+              onOpenBuyerChat={onOpenBuyerChat}
+            />
+          </>
+        )}
 
         {error && <p className="confirm-dialog-error">{error}</p>}
 
@@ -144,6 +175,14 @@ export default function SaleReceiptModal({
             <p className="order-receipt-hint">
               ¡Gracias por enviar la boleta o factura! El comprador fue notificado por correo y ya puedes procesar el pedido.
             </p>
+          </div>
+        ) : <>
+        {sellerChecklist && !checklistCompleto ? (
+          <div className="seller-checklist-step is-locked">
+            <div className="seller-checklist-step-head">
+              <span className="seller-checklist-step-num">3</span>
+              <strong>Boleta o factura</strong>
+            </div>
           </div>
         ) : <>
         <div className="order-receipt-data">
@@ -227,6 +266,7 @@ export default function SaleReceiptModal({
           </div>
         </div>
         </>}
+        </>}
 
         <div className="confirm-dialog-actions">
           {confirmed ? (
@@ -237,12 +277,18 @@ export default function SaleReceiptModal({
             <button type="button" className="btn-auth-secondary" onClick={() => onClose?.()} disabled={submitting}>
               Volver
             </button>
-            <button type="submit" className="btn-auth-primary" disabled={submitting || !file}>
-              {submitting && <Loader2 size={16} className="spin-icon" />}
-              {submitting
-                ? (uploadOnly ? 'Guardando...' : 'Confirmando...')
-                : (uploadOnly ? 'Guardar boleta' : 'Confirmar pedido con boleta')}
-            </button>
+            {sellerChecklist && !checklistCompleto ? (
+              <button type="button" className="btn-auth-primary" disabled>
+                {!stockListo ? 'Completa el paso 1 para seguir' : 'Completa el paso 2 para seguir'}
+              </button>
+            ) : (
+              <button type="submit" className="btn-auth-primary" disabled={submitting || !file}>
+                {submitting && <Loader2 size={16} className="spin-icon" />}
+                {submitting
+                  ? (uploadOnly ? 'Guardando...' : 'Confirmando...')
+                  : (uploadOnly ? 'Guardar boleta' : 'Confirmar y preparar pedido')}
+              </button>
+            )}
           </>}
         </div>
       </form>

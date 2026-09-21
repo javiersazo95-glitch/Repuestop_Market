@@ -395,10 +395,12 @@ export default function ProfileOrdersPanel({
                 onDeclareDelivery={!asBuyerView && !isSellerBlocked ? handleDeclareOrderDelivery : undefined}
                 onDisputeDeclaredDelivery={asBuyerView ? handleDisputeDeclaredDelivery : undefined}
                 onCreateClaim={asBuyerView ? handleCreateOrderClaim : undefined}
-                onOpenDispute={(proveedorId) => {
+                onOpenDispute={(proveedorId, draftMessage) => {
                   const params = new URLSearchParams({ caso: String(detailOrder.id) });
                   if (proveedorId != null && proveedorId !== '') params.set('tienda', String(proveedorId));
-                  navigate(`${ROUTES.profile}/chats_vendedor?${params.toString()}`);
+                  navigate(`${ROUTES.profile}/chats_vendedor?${params.toString()}`, {
+                    state: draftMessage ? { draftMessage } : undefined,
+                  });
                 }}
                 readOnly={!asBuyerView && isSellerBlocked}
               />

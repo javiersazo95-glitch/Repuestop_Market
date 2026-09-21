@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { ChevronRight, CircleAlert, Clock, Inbox, Loader2, MessageSquare, Package, PackageCheck, ShieldCheck, ShoppingBag, Store, Truck, User, Wrench } from 'lucide-react';
 import { getBuyerOrdersApi, getMySellerChatsApi, getSellerOrdersApi, resolveMediaUrl, startSellerChatApi } from '../services/api';
 import { MEDIATION_STATUS_LABELS } from '../data/mediationStatus';
@@ -83,8 +83,12 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
   const [startChatError, setStartChatError] = useState('');
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const openCaseId = searchParams.get('caso');
   const openCaseTienda = searchParams.get('tienda');
+  // Viene del checklist del vendedor ("Avisar al comprador"): un mensaje ya armado para no
+  // obligarlo a copiar y pegar. Por `state`, no por query param, para no dejarlo en la URL.
+  const openCaseDraftMessage = location.state?.draftMessage || '';
   const openCase = (orderId, proveedorId) => {
     const next = new URLSearchParams(searchParams);
     next.set('caso', String(orderId));
@@ -284,6 +288,7 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
           proveedorId={openCaseTienda || undefined}
           user={user}
           mode={mode}
+          initialDraft={openCaseDraftMessage}
           onClose={closeCase}
           onChanged={load}
         />

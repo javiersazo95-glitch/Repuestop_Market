@@ -10,7 +10,6 @@ import {
 import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi,
   confirmOrderStockDeliveryApi, confirmOrderCompatibilityApi } from '../services/api';
-import SellerConfirmationChecklist from './SellerConfirmationChecklist';
 import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
@@ -868,17 +867,20 @@ export default function OrderDetailView({
     // sin abrir nada: el boton quedaba mudo y parecia que no estaba cableado.
     if (!controlledAction.requiresPin) {
       setStatusError('');
-      // Confirmar un pedido recien pagado exige la boleta de venta: en vez del
-      // ConfirmDialog simple se abre el modal de boleta, que la sube y recien ahi avanza
-      // el estado. El backend tambien rechaza la transicion sin boleta.
-      // Los dos pasos previos van antes que la boleta: emitir el documento y recién ahí
-      // descubrir una incompatibilidad obliga a una nota de crédito.
-      if (isSeller && controlledAction.nextStatus === 'EN_PREPARACION' && checklistActual
-          && (!checklistActual.stockEntregaConfirmadaAt || !checklistActual.compatibilidadConfirmadaAt)) {
-        setStatusError('Completa los pasos de "Confirmar pedido" antes de preparar el pedido.');
-        return;
-      }
-      if (isSeller && controlledAction.nextStatus === 'EN_PREPARACION' && onRegisterSaleReceipt
+      // Confirmar un pedido recien pagado exige los 3 pasos de "Confirmar pedido"
+      // (stock/entrega, compatibilidad, boleta), en ese orden: emitir la boleta antes y
+      // recien ahi descubrir una incompatibilidad obliga a una nota de credito. Un solo
+      // boton en la pagina -- este -- abre el modal que guia los pasos que falten; ya no
+      // hay un boton de paso 1 aparte compitiendo con este.
+      if (isSeller && controlledAction.nextStatus === 'EN_PREPARACION' && checklistActual) {
+        const checklistCompleto = checklistActual.stockEntregaConfirmadaAt
+          && checklistActual.compatibilidadConfirmadaAt;
+        if (!checklistCompleto || !order.boletaVentaDisponible) {
+          setReceiptUploadOnly(false);
+          setShowReceiptModal(true);
+          return;
+        }
+      } else if (isSeller && controlledAction.nextStatus === 'EN_PREPARACION' && onRegisterSaleReceipt
           && !order.boletaVentaDisponible) {
         setReceiptUploadOnly(false);
         setShowReceiptModal(true);
@@ -988,14 +990,14 @@ export default function OrderDetailView({
     setDispatchVoucherFile(file);
   };
 
-  const startSellerChat = async (proveedorId) => {
+  const startSellerChat = async (proveedorId, draftMessage) => {
     if (chatStoreId) return;
     setChatStoreId(proveedorId ?? 'single-store');
     setChatStartError('');
     try {
       await startSellerChatApi(order.id, proveedorId);
       setShowStoreChatPicker(false);
-      onOpenDispute?.(proveedorId);
+      onOpenDispute?.(proveedorId, draftMessage);
     } catch (error) {
       const message = error?.message || 'No se pudo abrir el chat con el vendedor.';
       setChatStartError(message);
@@ -1191,19 +1193,11 @@ export default function OrderDetailView({
                   </div>
                 )}
 
-                {isSeller && controlledAction?.nextStatus === 'EN_PREPARACION' && checklistActual && (
-                  <SellerConfirmationChecklist
-                    order={orderConChecklist}
-                    isStorePickup={isStorePickup}
-                    onConfirmStock={handleConfirmStock}
-                    onConfirmCompatibility={handleConfirmCompatibility}
-                    onOpenBuyerChat={onOpenDispute ? () => startSellerChat(sellerId) : undefined}
-                    onUploadReceipt={() => {
-                      setReceiptUploadOnly(true);
-                      setShowReceiptModal(true);
-                    }}
-                  />
-                )}
+                {/* El checklist de "Confirmar pedido" (stock/entrega, compatibilidad) ya no
+                    vive aca como tarjeta con botones propios: se embebe dentro de
+                    `SaleReceiptModal`, que abre el unico boton "Confirmar pedido" de mas
+                    abajo. Dos botones grandes en la misma pagina -- uno por paso, otro para
+                    el pedido completo -- confundian sobre cual apretar primero. */}
 
                 {/* Estado de la boleta de venta. Para el vendedor es su centro de acción
                     (ver / cargar). Al COMPRADOR no se le muestra aca: su boleta vive en el
@@ -1233,7 +1227,14 @@ export default function OrderDetailView({
                           <FileSearch size={13} />
                           <span>Ver y descargar</span>
                         </button>
-                      ) : isSeller && onRegisterSaleReceipt && !cerrado ? (
+                      ) : isSeller && onRegisterSaleReceipt && !cerrado
+                          // Con checklist y el pedido aun sin confirmar, la boleta SOLO se
+                          // carga desde el popup de "Confirmar pedido" -- un atajo aca abria
+                          // el mismo modal en `uploadOnly`, saltandose los pasos 1 y 2 por
+                          // completo. Sin checklist (pedidos viejos) o ya confirmado sin
+                          // boleta (caso raro, de antes de este feature) el atajo se conserva:
+                          // no hay otro lugar desde donde adjuntarla.
+                          && !(checklistActual && (normStatus === 'PAGADO' || normStatus === 'PENDIENTE')) ? (
                         <button
                           type="button"
                           className="order-boleta-link is-cta"
@@ -2126,11 +2127,18 @@ export default function OrderDetailView({
             en modo `receiptUploadOnly` solo sube el archivo (pedido ya confirmado). */}
         {showReceiptModal && (
           <SaleReceiptModal
-            order={order}
+            order={orderConChecklist}
             items={receiptBlock?.items || []}
             shipping={receiptBlock?.shippingStore || 0}
             discount={discount}
             uploadOnly={receiptUploadOnly}
+            sellerChecklist={!receiptUploadOnly ? checklistActual : null}
+            isStorePickup={isStorePickup}
+            onConfirmStock={handleConfirmStock}
+            onConfirmCompatibility={handleConfirmCompatibility}
+            onOpenBuyerChat={onOpenDispute
+              ? (draftMessage) => startSellerChat(sellerId, draftMessage)
+              : undefined}
             onSubmit={submitSaleReceipt}
             onClose={() => setShowReceiptModal(false)}
           />

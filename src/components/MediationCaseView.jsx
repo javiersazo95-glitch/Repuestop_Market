@@ -253,7 +253,7 @@ function EvidenceStrip({ title, items, onOpenImage }) {
   );
 }
 
-export default function MediationCaseView({ pedidoId, proveedorId, user, mode: modeProp = "buyer", onClose, onChanged }) {
+export default function MediationCaseView({ pedidoId, proveedorId, user, mode: modeProp = "buyer", initialDraft = '', onClose, onChanged }) {
   const [chat, setChat] = useState(null);
   // El rol REAL en esta disputa no se puede sacar de si el usuario tiene tienda: una tienda
   // también compra. El backend ya resolvió la otra parte y el id del comprador en
@@ -266,7 +266,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [messageText, setMessageText] = useState('');
+  const [messageText, setMessageText] = useState(initialDraft);
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState('');
   const [pendingImage, setPendingImage] = useState(null);
