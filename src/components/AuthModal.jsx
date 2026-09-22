@@ -173,11 +173,16 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
   
   // Password Recovery State
   // `recoverIdentifier` es lo que el usuario ESCRIBE (correo del comprador o RUT de la
-  // tienda) y es lo unico que acepta `send-code`; `recoverEmail` es el correo registrado
-  // que responde el backend y el unico que aceptan `verify-code` y `reset`. Con rol
-  // PROVEEDOR son valores distintos: pisar uno con el otro rompia el reenvio.
+  // tienda) y es lo unico que acepta `send-code`; `recoverSolicitudId` es el identificador
+  // OPACO que responde el backend y el unico que aceptan `verify-code` y `reset`.
+  //
+  // Antes ese segundo valor era el correo registrado del titular. El backend dejo de
+  // devolverlo (SEC-MARKET-016 / SEC-BACKEND-125): con rol PROVEEDOR el identificador es un
+  // RUT, y los RUT chilenos son secuenciales, asi que entregaba el correo de cualquier
+  // vendedor sin ninguna prueba de posesion. El token es base64 url-safe, de un solo uso,
+  // dura 15 minutos, distingue mayusculas y NO se normaliza nunca.
   const [recoverIdentifier, setRecoverIdentifier] = useState('');
-  const [recoverEmail, setRecoverEmail] = useState('');
+  const [recoverSolicitudId, setRecoverSolicitudId] = useState('');
   const [recoverRole, setRecoverRole] = useState('CLIENTE'); // 'CLIENTE' | 'PROVEEDOR'
   const [recoverCode, setRecoverCode] = useState('');
   const [recoverNewPassword, setRecoverNewPassword] = useState('');
@@ -283,7 +288,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setErrorMessage(null);
     setSuccessMessage(null);
     setShowPassword(false);
-    setRecoverEmail('');
+    setRecoverSolicitudId('');
     setRecoverRole('CLIENTE');
     setRecoverCode('');
     setRecoverNewPassword('');
@@ -331,7 +336,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     // Con rol tienda el campo pide el RUT: prellenarlo con el correo del login dejaba
     // un email dentro de un campo de RUT.
     setRecoverIdentifier(nextRole === 'PROVEEDOR' ? '' : (email ? email.trim() : ''));
-    setRecoverEmail('');
+    setRecoverSolicitudId('');
     setRecoverCode('');
     setRecoverNewPassword('');
     setRecoverConfirmPassword('');
@@ -352,8 +357,10 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setSuccessMessage(null);
     try {
       const res = await recoverPasswordSendCodeApi(cleanIdentifier, recoverRole);
-      setRecoverEmail(res?.email || cleanIdentifier);
-      setSuccessMessage('Código de recuperación enviado. Revisa tu bandeja de entrada o spam.');
+      setRecoverSolicitudId(res?.solicitudId || '');
+      // Texto condicional a proposito: decir "te enviamos un codigo" confirma que el
+      // identificador existe, y con RUT eso es el oraculo de enumeracion que se acaba de cerrar.
+      setSuccessMessage('Si el identificador está registrado, enviamos un código al correo asociado. Revisa tu bandeja de entrada o spam.');
       setRecoverCooldown(60);
       setStep('recover_code');
     } catch (err) {
@@ -372,8 +379,11 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setIsResendingCode(true);
     setErrorMessage(null);
     try {
-      await recoverPasswordSendCodeApi(cleanIdentifier, recoverRole);
-      setSuccessMessage('Nuevo código enviado. Revisa tu correo.');
+      // El reenvio emite un solicitudId NUEVO e invalida el anterior: hay que pisar el
+      // guardado o el usuario tipea el codigo nuevo contra un identificador ya muerto.
+      const res = await recoverPasswordSendCodeApi(cleanIdentifier, recoverRole);
+      if (res?.solicitudId) setRecoverSolicitudId(res.solicitudId);
+      setSuccessMessage('Si el identificador está registrado, enviamos un código nuevo al correo asociado.');
       setRecoverCooldown(60);
     } catch (err) {
       setErrorMessage(err.message || 'No pudimos reenviar el código.');
@@ -393,7 +403,10 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setErrorMessage(null);
     setSuccessMessage(null);
     try {
-      await recoverPasswordVerifyCodeApi(recoverEmail.trim().toLowerCase(), cleanCode, recoverRole);
+      // Sin `.trim().toLowerCase()`: normalizar el token opaco lo vuelve irresoluble y el
+      // backend responde "codigo invalido o expiro", que manda a buscar el problema al lado
+      // equivocado.
+      await recoverPasswordVerifyCodeApi(recoverSolicitudId, cleanCode, recoverRole);
       setSuccessMessage('Código verificado correctamente.');
       setStep('recover_new_password');
     } catch (err) {
@@ -418,13 +431,15 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setSuccessMessage(null);
     try {
       await recoverPasswordResetApi(
-        recoverEmail.trim().toLowerCase(),
+        recoverSolicitudId,
         recoverCode.trim(),
         recoverNewPassword,
         recoverRole
       );
       setSuccessMessage('¡Contraseña restablecida exitosamente! Ya puedes iniciar sesión con tu nueva clave.');
-      setEmail(recoverEmail.trim().toLowerCase());
+      // El prefill ya no puede salir del token. Solo aplica a CLIENTE, donde el identificador
+      // que la persona escribio ES su correo; con PROVEEDOR es un RUT y no sirve de correo.
+      if (recoverRole !== 'PROVEEDOR') setEmail(recoverIdentifier.trim().toLowerCase());
       setPassword('');
       setStep('login_form');
     } catch (err) {
@@ -829,7 +844,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                 <span className="pill-buyer"><ShieldCheck size={14} /> Paso 2 de 3 · Verificación</span>
               </div>
               <h2>Ingresa el Código</h2>
-              <p>Enviamos un código de 6 dígitos a <strong>{recoverEmail}</strong>.</p>
+              <p>Si el identificador está registrado, enviamos un código de 6 dígitos al correo asociado.</p>
             </>
           )}
 

@@ -918,7 +918,10 @@ function ResumeCard({ prefill, onResolved, onClose }: {
   // Olvidé mi contraseña (solo disponible vía RUT, igual que el backend)
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotStage, setForgotStage] = useState<'send' | 'code' | 'newpass'>('send');
-  const [forgotEmail, setForgotEmail] = useState<string | null>(null);
+  // Identificador OPACO de la solicitud de recuperacion, no el correo. `send-code` dejo de
+  // devolver el correo del titular (SEC-MARKET-016): con un RUT -- secuencial en Chile --
+  // cualquiera obtenia el correo de cualquier vendedor. Es de un solo uso y dura 15 minutos.
+  const [forgotSolicitudId, setForgotSolicitudId] = useState<string | null>(null);
   const [forgotCode, setForgotCode] = useState('');
   const [forgotNewPassword, setForgotNewPassword] = useState('');
   const [forgotBusy, setForgotBusy] = useState(false);
@@ -1017,7 +1020,7 @@ function ResumeCard({ prefill, onResolved, onClose }: {
     setForgotBusy(true);
     try {
       const res = await sendSellerRecoverCode(taxId.trim());
-      setForgotEmail(res.email);
+      setForgotSolicitudId(res.solicitudId);
       setForgotStage('code');
     } catch (e: any) {
       setForgotError(e?.message || 'No pudimos enviar el código.');
@@ -1028,10 +1031,10 @@ function ResumeCard({ prefill, onResolved, onClose }: {
 
   async function handleVerifyForgot() {
     setForgotError('');
-    if (!forgotEmail || forgotCode.length !== 6) return;
+    if (!forgotSolicitudId || forgotCode.length !== 6) return;
     setForgotBusy(true);
     try {
-      await verifySellerRecoverCode(forgotEmail, forgotCode);
+      await verifySellerRecoverCode(forgotSolicitudId, forgotCode);
       setForgotStage('newpass');
     } catch (e: any) {
       setForgotError(e?.message || 'El código no es válido o expiró.');
@@ -1042,11 +1045,11 @@ function ResumeCard({ prefill, onResolved, onClose }: {
 
   async function handleResetForgot() {
     setForgotError('');
-    if (!forgotEmail) return;
+    if (!forgotSolicitudId) return;
     if (forgotNewPassword.length < 8) { setForgotError('Mínimo 8 caracteres'); return; }
     setForgotBusy(true);
     try {
-      await resetSellerPassword(forgotEmail, forgotCode, forgotNewPassword);
+      await resetSellerPassword(forgotSolicitudId, forgotCode, forgotNewPassword);
       const session = await loginSellerByTaxId(taxId.trim(), forgotNewPassword);
       await onResolved(session);
     } catch (e: any) {
@@ -1112,12 +1115,20 @@ function ResumeCard({ prefill, onResolved, onClose }: {
               </button>
               {/* El enlace se muestra a todos, tambien a quien se registro con Google.
                   Ocultarselo exigiria saber su `authProvider`, que es justo el dato que se dejo
-                  de pedir: seria recrear el oraculo dentro del cliente. Para una cuenta de Google
-                  el backend no ramifica -- `enviarCodigoRecuperacion` solo busca al usuario y
-                  manda el codigo al correo registrado --, asi que el flujo termina dandole una
-                  contrasena a esa cuenta, que es un resultado legitimo y con prueba de posesion. */}
+                  de pedir: seria recrear el oraculo dentro del cliente.
+                  Que pasa si la usa una cuenta de Google: desde SEC-BACKEND-128 el backend la
+                  RECHAZA con un mensaje explicito ("esta cuenta ingresa con Google"), que es el
+                  que se pinta en `forgotError`. No queda en callejon sin salida, porque el boton
+                  de Google esta en esta misma pantalla. (El comentario anterior decia que el
+                  flujo terminaba dandole una contrasena: era cierto cuando se verifico, y ese
+                  cambio del backend lo invalido.) */}
               <button type="button" className="founder-reg-link founder-reg-forgot"
-                onClick={() => { setForgotOpen(true); setForgotStage('send'); setForgotError(''); }}>
+                onClick={() => {
+                  setForgotOpen(true); setForgotStage('send'); setForgotError('');
+                  // Se descarta la solicitud anterior: volver al paso 1 emite una nueva y deja
+                  // muerta la vieja, asi que conservarla solo sirve para fallar mas tarde.
+                  setForgotSolicitudId(null); setForgotCode('');
+                }}>
                 <KeyRound size={13} /> Olvidé mi contraseña
               </button>
 
@@ -1142,7 +1153,10 @@ function ResumeCard({ prefill, onResolved, onClose }: {
           )}
           {forgotStage === 'code' && (
             <>
-              <p>Te enviamos un código de 6 dígitos a <strong>{forgotEmail}</strong>.</p>
+              {/* No se nombra el correo: el backend dejo de decirlo a proposito, y mostrar a
+                  quien fue -- o distinguir "existe" de "no existe" -- reabre la enumeracion por
+                  RUT que este cambio cierra. El texto es condicional. */}
+              <p>Si el RUT está registrado, enviamos un código de 6 dígitos al correo asociado a esa tienda.</p>
               <input className="founder-reg-code" inputMode="numeric" maxLength={6} placeholder="000000"
                 value={forgotCode} onChange={(e) => setForgotCode(e.target.value.replace(/\D/g, '').slice(0, 6))} />
               {forgotError && <p className="founder-reg-hint-error">{forgotError}</p>}

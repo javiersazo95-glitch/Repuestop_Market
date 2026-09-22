@@ -325,6 +325,13 @@ export async function getRecentSellersApi() {
  * @param {string} email Correo electrónico (o RUT en caso de tienda)
  * @param {string} [rol] 'CLIENTE' o 'PROVEEDOR'
  */
+/**
+ * Pide el codigo de recuperacion. Devuelve `{ message, solicitudId }`; el `solicitudId` es
+ * lo que hay que guardar y pasar a verify-code y reset. YA NO devuelve el correo del
+ * titular. El `message` del backend es deliberadamente condicional ("si el identificador
+ * esta registrado"): cualquier texto que distinga "existe" de "no existe" reabre el
+ * oraculo de enumeracion por RUT.
+ */
 export async function recoverPasswordSendCodeApi(email, rol = 'CLIENTE') {
   return fetchApi('/auth/recover-password/send-code', {
     method: 'POST',
@@ -336,13 +343,24 @@ export async function recoverPasswordSendCodeApi(email, rol = 'CLIENTE') {
 }
 
 /**
- * Valida que el código de 6 dígitos corresponda al correo indicado.
+ * Valida el codigo de 6 digitos contra la SOLICITUD, no contra un correo.
+ *
+ * `solicitudId` es el identificador opaco que devuelve `send-code` (SEC-BACKEND-125 /
+ * SEC-MARKET-016). Antes se mandaba el correo del titular, que el backend devolvia a cambio
+ * de un RUT: como los RUT chilenos son secuenciales, eso entregaba el correo de cualquier
+ * vendedor sin prueba de posesion.
+ *
+ * OJO: al token NO se le aplica `.toLowerCase()`. Es base64 url-safe y distingue
+ * mayusculas; normalizarlo lo vuelve irresoluble y el backend responde "codigo invalido o
+ * expiro", que apunta al lado equivocado del problema.
+ *
+ * `rol` se sigue mandando: el backend lo valida contra la cuenta resuelta.
  */
-export async function recoverPasswordVerifyCodeApi(email, code, rol = 'CLIENTE') {
+export async function recoverPasswordVerifyCodeApi(solicitudId, code, rol = 'CLIENTE') {
   return fetchApi('/auth/recover-password/verify-code', {
     method: 'POST',
     body: JSON.stringify({
-      email: String(email || '').trim().toLowerCase(),
+      solicitudId: String(solicitudId || ''),
       code: String(code || '').trim(),
       rol: rol || 'CLIENTE',
     }),
@@ -352,11 +370,11 @@ export async function recoverPasswordVerifyCodeApi(email, code, rol = 'CLIENTE')
 /**
  * Restablece la contraseña del usuario tras validar el código.
  */
-export async function recoverPasswordResetApi(email, code, newPassword, rol = 'CLIENTE') {
+export async function recoverPasswordResetApi(solicitudId, code, newPassword, rol = 'CLIENTE') {
   return fetchApi('/auth/recover-password/reset', {
     method: 'POST',
     body: JSON.stringify({
-      email: String(email || '').trim().toLowerCase(),
+      solicitudId: String(solicitudId || ''),
       code: String(code || '').trim(),
       newPassword: String(newPassword || ''),
       rol: rol || 'CLIENTE',

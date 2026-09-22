@@ -313,8 +313,15 @@ export async function fetchVerificacionStatus(sellerId: string, token: string): 
   }
 }
 
-/** Envía un código de recuperación. Con rol PROVEEDOR, `identifier` debe ser el RUT de la tienda (así lo espera el backend). Retorna el correo real al que se envió. */
-export function sendSellerRecoverCode(taxId: string): Promise<{ message: string; email: string }> {
+/**
+ * Envía un código de recuperación. Con rol PROVEEDOR el backend espera el RUT de la tienda en
+ * el campo `email` (resuelve por `findByTaxId`), así que el request NO cambia.
+ *
+ * Devuelve `{ message, solicitudId }`. Antes declaraba `email` y el backend mandaba el correo
+ * real del titular a cambio de un RUT: los RUT chilenos son secuenciales, así que eso exponía
+ * el correo de cualquier vendedor sin prueba de posesión (SEC-MARKET-016 / SEC-BACKEND-125).
+ */
+export function sendSellerRecoverCode(taxId: string): Promise<{ message: string; solicitudId: string }> {
   return request('/auth/recover-password/send-code', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -322,19 +329,20 @@ export function sendSellerRecoverCode(taxId: string): Promise<{ message: string;
   });
 }
 
-export function verifySellerRecoverCode(email: string, code: string): Promise<{ message: string }> {
+/** El token es base64 url-safe y distingue mayúsculas: se manda tal cual, sin normalizar. */
+export function verifySellerRecoverCode(solicitudId: string, code: string): Promise<{ message: string }> {
   return request('/auth/recover-password/verify-code', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, rol: 'PROVEEDOR', code }),
+    body: JSON.stringify({ solicitudId, rol: 'PROVEEDOR', code }),
   });
 }
 
-export function resetSellerPassword(email: string, code: string, newPassword: string): Promise<{ message: string }> {
+export function resetSellerPassword(solicitudId: string, code: string, newPassword: string): Promise<{ message: string }> {
   return request('/auth/recover-password/reset', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, rol: 'PROVEEDOR', code, newPassword }),
+    body: JSON.stringify({ solicitudId, rol: 'PROVEEDOR', code, newPassword }),
   });
 }
 
