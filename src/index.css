@@ -5013,6 +5013,107 @@ input, select, textarea {
   width: 100%;
 }
 
+/* ---- Filtro por categoria y secciones del catalogo del vendedor ---- */
+
+.catalog-category-filter {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.catalog-category-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #64748b;
+  padding-top: 5px;
+  white-space: nowrap;
+}
+
+/* Un vendedor puede tener muchas categorias: las fichas se envuelven en vez de
+   desbordarse, igual que el resto de los filtros del panel. */
+.catalog-category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+
+.catalog-category-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.catalog-category-chip:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.catalog-category-chip.active {
+  background: #0066ff;
+  border-color: #0066ff;
+  color: #ffffff;
+}
+
+.catalog-category-chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: #eef2f7;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.catalog-category-chip.active .catalog-category-chip-count {
+  background: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+
+.catalog-category-section + .catalog-category-section {
+  margin-top: 26px;
+}
+
+.catalog-category-section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
+}
+
+.catalog-category-section-header h3 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.catalog-category-section-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
 .catalog-range-filter {
   display: flex;
   align-items: center;
@@ -9429,6 +9530,10 @@ input, select, textarea {
 
 /* PAGINATION CONTROL BAR */
 .directory-pagination-bar {
+  /* `overflow: hidden` no: recortaria los botones. Lo que se necesita es que el contenido
+     pueda encogerse y envolverse dentro del ancho de la tarjeta. */
+  max-width: 100%;
+  min-width: 0;
   margin-top: 24px;
   background: #ffffff;
   border-radius: var(--radius-lg);
@@ -9458,6 +9563,8 @@ input, select, textarea {
   align-items: center;
   gap: 20px;
   flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .per-page-selector {
@@ -9485,6 +9592,21 @@ input, select, textarea {
   display: flex;
   align-items: center;
   gap: 6px;
+  /* Los numeros van acotados en JS (PaginationBar), pero el wrap es la red de seguridad:
+     sin el, cualquier combinacion que devuelva mas botones de los que caben se sale del
+     contenedor por la derecha en vez de bajar a la linea siguiente. */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 100%;
+  min-width: 0;
+  row-gap: 8px;
+}
+
+.pagination-dots {
+  padding: 0 4px;
+  color: #94a3b8;
+  font-weight: 800;
+  user-select: none;
 }
 
 .btn-page-nav {
@@ -11523,6 +11645,20 @@ input, select, textarea {
     text-align: center;
   }
 
+  /* En movil los botones se centran y el "Anterior/Siguiente" pierde la etiqueta larga:
+     con la flecha basta y la fila cabe sin envolverse dos veces. */
+  .page-buttons-list {
+    justify-content: center;
+  }
+
+  .btn-page-nav span {
+    display: none;
+  }
+
+  .btn-page-nav {
+    padding: 7px 10px;
+  }
+
   .catalog-control-bar,
   .directory-control-bar {
     flex-direction: column;
@@ -13337,6 +13473,9 @@ input, select, textarea {
 .catalog-sidebar-filters .btn-clear-all-filters-wide { min-height: 44px; margin: 0; border: 0; border-radius: 8px; color: #fff; background: linear-gradient(135deg, #0966f4, #1f55ec); box-shadow: 0 7px 14px rgba(8, 91, 234, .22); font-size: 12px; }
 .catalog-sidebar-filters .btn-clear-all-filters-wide:hover { color: #fff; background: linear-gradient(135deg, #0759df, #1646d9); }
 .filter-security-note { display: flex; align-items: center; justify-content: center; gap: 6px; margin: -3px 0 0; color: #71819d; font-size: 10.5px; font-weight: 600; }
+/* Aviso bajo el selector de marca de vehiculo cuando la patente activa ya la define. */
+.filter-hint-inline { display: block; margin-top: 5px; color: #71819d; font-size: 10.5px; font-weight: 600; line-height: 1.35; }
+.sidebar-select-input:disabled { opacity: .55; cursor: not-allowed; }
 
 @media (max-width: 1120px) {
   .catalog-content-grid { grid-template-columns: 290px minmax(0, 1fr); gap: 16px; }

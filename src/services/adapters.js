@@ -12,6 +12,29 @@ import { HEADER_CATEGORIES, SIDEBAR_CATEGORIES } from '../data/categories';
 import { AD_TIERS, APPOINTMENT_STATUSES } from '../data/automotiveAdsData';
 import { resolveMediaUrl, toMediaPath } from './api';
 
+/**
+ * El backend no guarda filas de imagen para los productos sin foto: al leerlos les pone una
+ * URL generica fija (`InventarioImagenUrlResolver.urlGenerica()`), que es una lamina gris con
+ * la leyenda "SIN FOTO". Como llega igual que una foto de verdad, las vistas la mostraban tal
+ * cual y el catalogo quedaba lleno de laminas grises, tapando el respaldo que ya existia: la
+ * foto referencial de la categoria (`CATEGORY_IMAGE_BY_ID`).
+ *
+ * Aca se descarta para que ese respaldo vuelva a entrar. Se compara por nombre de archivo y
+ * no por la URL completa porque el bucket cambia entre ambientes.
+ */
+const GENERIC_IMAGE_FILE = 'imagen-generica';
+
+export function isGenericProductImage(url) {
+  return typeof url === 'string' && url.toLowerCase().includes(GENERIC_IMAGE_FILE);
+}
+
+/** Fotos reales del producto: sin la generica y sin vacios. */
+function realProductImages(urls) {
+  return (Array.isArray(urls) ? urls : [])
+    .filter((url) => Boolean(url) && !isGenericProductImage(url))
+    .map(resolveMediaUrl);
+}
+
 const normalizeNameKey = (value) => String(value || '').normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -205,9 +228,7 @@ export function adaptProduct(dto) {
   const precio = toNumber(dto.precio) ?? 0;
   const precioOriginal = toNumber(dto.precioAnterior);
   const compatibilidad = mapCompatibilidad(dto);
-  const imagenes = Array.isArray(dto.imageUrls)
-    ? dto.imageUrls.filter(Boolean).map(resolveMediaUrl)
-    : [];
+  const imagenes = realProductImages(dto.imageUrls);
 
   return {
     id: dto.id,
@@ -351,6 +372,12 @@ export function adaptStore(dto, index = 0) {
     marcasEspecialistas: Array.isArray(dto.marcasEspecialistas)
       ? dto.marcasEspecialistas.map((marca) => ({ id: marca.id, nombre: marca.nombre })).filter((marca) => marca.nombre)
       : [],
+    // Marcas de vehiculo con repuestos publicados por esta tienda, calculadas por el
+    // backend sobre TODO su inventario (no sobre la pagina cargada). Alimenta el selector
+    // "Marca de Vehiculo" de la ficha, que antes ofrecia ocho marcas escritas a mano.
+    marcasVehiculoDisponibles: Array.isArray(dto.marcasVehiculoDisponibles)
+      ? dto.marcasVehiculoDisponibles.filter(Boolean)
+      : [],
     fundador: Boolean(dto.founder),
     verificada: Boolean(dto.verified ?? dto.isVerified ?? true),
     // El logo NO cae a `/tiensoft_logo.jpg`: una tienda sin logo aparecia con la marca
@@ -421,9 +448,7 @@ export function adaptCompatibleOffer(spare, offer) {
 
   const precio = toNumber(offer.precio) ?? 0;
   const precioOriginal = toNumber(offer.precioAnterior);
-  const imagenes = Array.isArray(offer.imageUrls)
-    ? offer.imageUrls.filter(Boolean).map(resolveMediaUrl)
-    : [];
+  const imagenes = realProductImages(offer.imageUrls);
 
   const soloCotizacion = offer.modoPrecio === 'COTIZACION' || offer.modoPrecio === 'QUOTE_ONLY' || offer.modoPrecio === 'COTIZAR' || precio <= 0;
 
@@ -433,7 +458,10 @@ export function adaptCompatibleOffer(spare, offer) {
     titulo: offer.nombrePublicado || spare?.nombre || 'Repuesto compatible',
     categoria: normalizeCategoryId(spare?.categoria),
     categoriaNombre: spare?.categoria || '',
-    subcategoria: '',
+    // Viene de `RepuestoOfertaDTO.subcategoria`. Antes quedaba vacia y el filtro de
+    // subcategoria de la ficha de tienda dejaba la vitrina en cero apenas habia una
+    // patente activa: comparaba el nombre elegido contra un string vacio.
+    subcategoria: spare?.subcategoria || '',
     categoriaId: null,
     subcategoriaId: null,
     oemCode: offer.referenciaOem || offer.skuProveedor || spare?.codigoInterno || '',

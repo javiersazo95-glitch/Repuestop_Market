@@ -25,6 +25,8 @@ export const qk = {
   conversations: (id, isSeller) => ['conversations', isSeller ? 'seller' : 'buyer', id],
   sellerInventory: (sellerId, filters) => ['sellerInventory', sellerId, filters || {}],
   sellerInventorySummary: (sellerId) => ['sellerInventorySummary', sellerId],
+  /** Categorias presentes en el inventario del vendedor, para el filtro del panel. */
+  sellerInventoryCategories: (sellerId) => ['sellerInventoryCategories', sellerId],
   sellerProductQuestions: (sellerId) => ['sellerProductQuestions', sellerId],
   notifications: (userId) => ['notifications', userId],
   /** Estado de bloqueo de la tienda (GET /proveedores/{id}/estado-cuenta). */

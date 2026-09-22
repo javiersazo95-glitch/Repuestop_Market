@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import {
   Building2, Search, Filter, SlidersHorizontal, MapPin, ShieldCheck,
   Star, ArrowLeft, X, CheckCircle2, RotateCcw,
-  Store, Tag, Truck, Bike, ChevronLeft, ChevronRight, ChevronDown, Car, CarFront, RefreshCw
+  Store, Tag, Truck, Bike, ChevronRight, ChevronDown, Car, CarFront, RefreshCw
 } from 'lucide-react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
@@ -14,6 +14,7 @@ import { adaptPage, adaptStore, adaptVehicle } from '../services/adapters';
 import { normalizePlate, sanitizePlateInput, isValidPlate } from '../utils/vehicleLookup';
 import MarketplaceSellerCard from './MarketplaceSellerCard';
 import StoreCardSkeleton from './skeletons/StoreCardSkeleton';
+import PaginationBar from './PaginationBar';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useMarketplace } from '../context/MarketplaceContext';
 
@@ -90,7 +91,10 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
       }
       setActiveVehicle(vehicle);
       setPatentInput(vehicle.patente || patent);
-      setSelectedBrand(vehicle.marca);
+      // NO se toca `selectedBrand`: ese filtro es por "marcas especialistas", una lista que
+      // el vendedor declara a mano y que no dice nada de su stock. Aplicarlo al resolver la
+      // patente escondia del directorio a tiendas con cientos de repuestos para esa marca
+      // solo porque no se habian declarado especialistas en ella.
     } catch (err) {
       setPatentError(err.message || 'No se pudo consultar la patente.');
     } finally {
@@ -147,6 +151,12 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   }, [searchQuery, selectedComuna, setSearchParams]);
 
   const backendComuna = selectedComuna !== 'TODAS' ? selectedComuna : undefined;
+  // La compatibilidad con el vehiculo la resuelve el servidor: es el unico que ve el
+  // inventario completo de cada tienda y el que sabe cuales repuestos son universales.
+  // `catalogoId` cuando la patente se resolvio contra el catalogo (el caso normal); la marca
+  // queda de respaldo para un vehiculo ingresado a mano, que no tiene fila en el catalogo.
+  const backendCatalogoId = activeVehicle?.catalogoId || undefined;
+  const backendMarcaVehiculo = backendCatalogoId ? undefined : (activeVehicle?.marca || undefined);
 
   // Página real: paginada por el servidor con texto + comuna. Es la fuente
   // por defecto mientras no haya un filtro u orden que el backend no resuelve.
@@ -155,9 +165,10 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
     isLoading: pageLoading,
     error: pageQueryError,
   } = useQuery({
-    queryKey: qk.stores({ page: currentPage, size: itemsPerPage, texto: debouncedSearchQuery, comuna: backendComuna }),
+    queryKey: qk.stores({ page: currentPage, size: itemsPerPage, texto: debouncedSearchQuery, comuna: backendComuna, marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId }),
     queryFn: ({ signal }) => getPublicStoresApi({
-      page: currentPage - 1, size: itemsPerPage, texto: debouncedSearchQuery, comuna: backendComuna, signal,
+      page: currentPage - 1, size: itemsPerPage, texto: debouncedSearchQuery, comuna: backendComuna,
+      marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, signal,
     }),
     select: (data) => adaptPage(data, adaptStore),
     placeholderData: keepPreviousData,
@@ -170,9 +181,10 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
     isLoading: poolLoading,
     error: poolQueryError,
   } = useQuery({
-    queryKey: qk.stores({ pool: true, texto: debouncedSearchQuery, comuna: backendComuna }),
+    queryKey: qk.stores({ pool: true, texto: debouncedSearchQuery, comuna: backendComuna, marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId }),
     queryFn: ({ signal }) => getPublicStoresApi({
-      page: 0, size: FILTER_POOL_SIZE, texto: debouncedSearchQuery, comuna: backendComuna, signal,
+      page: 0, size: FILTER_POOL_SIZE, texto: debouncedSearchQuery, comuna: backendComuna,
+      marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, signal,
     }),
     select: (data) => adaptPage(data, adaptStore).items,
     placeholderData: keepPreviousData,
@@ -193,11 +205,12 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   // resuelve el servidor en `pageQuery`, así que no cuentan aquí. "recientes"
   // no reordena nada: el orden por defecto del backend ya es el más reciente
   // primero, así que equivale a no aplicar ningún orden en el cliente.
+  // `activeVehicle` ya NO fuerza el modo pool: la compatibilidad la resuelve el servidor
+  // junto con la paginacion, asi que no hay que traerse 100 tiendas para filtrarlas aca.
   const hasLocalFilters =
     selectedGiro !== 'TODAS' ||
     selectedShipping !== 'TODAS' ||
     selectedBrand !== 'TODAS' ||
-    Boolean(activeVehicle?.marca) ||
     (sortBy !== 'relevancia' && sortBy !== 'recientes');
   const hasActiveStoreContext = Boolean(
     searchQuery.trim()
@@ -247,12 +260,8 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
       const brands = (store.marcasEspecialistas || []).map(b => (b.nombre || '').toLowerCase());
       if (!brands.includes(selectedBrand.toLowerCase())) return false;
     }
-    if (activeVehicle?.marca) {
-      const brands = (store.marcasEspecialistas || []).map((brand) => (brand.nombre || '').toLowerCase());
-      if (!brands.includes(activeVehicle.marca.toLowerCase())) return false;
-    }
     return true;
-  }), [poolStores, selectedGiro, selectedShipping, selectedBrand, activeVehicle?.marca]);
+  }), [poolStores, selectedGiro, selectedShipping, selectedBrand]);
 
   const sortedPoolStores = useMemo(() => [...filteredPoolStores].sort((a, b) => {
     if (sortBy === '+publicaciones') return (b.totalPublicaciones || 0) - (a.totalPublicaciones || 0);
@@ -544,66 +553,24 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                           toggleStore(storeData);
                         }}
                         vehicleBrand={activeVehicle?.marca || null}
+                        vehicleResolved={Boolean(activeVehicle?.catalogoId)}
                       />
                     );
                   })}
                 </div>
 
-                {/* 4. Pagination Bar */}
-                <div className="directory-pagination-bar">
-                  <div className="pagination-info">
-                    <span>
-                      Mostrando del <strong>{startIndex + 1}</strong> al <strong>{endIndex}</strong> de <strong>{totalElements}</strong> tiendas (Página {currentPage} de {totalPages})
-                    </span>
-                  </div>
-
-                  <div className="pagination-controls-group">
-                    <div className="per-page-selector">
-                      <span>Ver:</span>
-                      <select
-                        value={itemsPerPage}
-                        onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                        className="select-per-page"
-                      >
-                        <option value={6}>6 tiendas</option>
-                        <option value={12}>12 tiendas</option>
-                        <option value={24}>24 tiendas</option>
-                      </select>
-                    </div>
-
-                    <div className="page-buttons-list">
-                      <button
-                        className="btn-page-nav"
-                        disabled={currentPage === 1}
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        title="Página Anterior"
-                      >
-                        <ChevronLeft size={16} />
-                        <span>Anterior</span>
-                      </button>
-
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                        <button
-                          key={pageNum}
-                          className={`btn-page-number ${currentPage === pageNum ? 'active' : ''}`}
-                          onClick={() => handlePageChange(pageNum)}
-                        >
-                          {pageNum}
-                        </button>
-                      ))}
-
-                      <button
-                        className="btn-page-nav"
-                        disabled={currentPage === totalPages}
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        title="Página Siguiente"
-                      >
-                        <span>Siguiente</span>
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <PaginationBar
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                  rangeStart={startIndex + 1}
+                  rangeEnd={endIndex}
+                  totalItems={totalElements}
+                  itemLabel="tiendas"
+                  itemsPerPage={itemsPerPage}
+                  onItemsPerPageChange={setItemsPerPage}
+                  perPageOptions={[6, 12, 24]}
+                />
               </>
             ) : (
               /* Empty Filter State */

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
-  ArrowRight, BarChart3, Box, Building2, CheckCircle2, ChevronDown,
-  Clock3, Gift, Headphones, HeartHandshake, LockKeyhole, MapPin,
-  Search, ShieldCheck, ShoppingCart, Sparkles, Store, Truck, Users, Wrench,
+  ArrowRight, BadgeCheck, BarChart3, BellRing, Box, Boxes, Building2, CalendarCheck, CarFront,
+  CheckCircle2, ChevronDown, Clock3, Coins, Gift, Headphones, HeartHandshake, Info, LocateFixed,
+  LockKeyhole, MapPin, Megaphone, MonitorSmartphone, MousePointerClick, Percent, RefreshCw,
+  ScanLine, Search, ShieldCheck, ShoppingCart, Sparkles, Store, Truck, Users, Wallet, Wrench,
 } from 'lucide-react';
 import Reveal from './about/Reveal';
 import './about/about.css';
@@ -28,13 +29,95 @@ const BENEFITS: { Icon: LucideIcon; title: string; text: string }[] = [
   { Icon: BarChart3, title: 'Haz crecer tu negocio', text: 'Más visibilidad y ventas para tu casa de repuestos.' },
 ];
 
-const FAQS: [string, string][] = [
-  ['¿Cómo comprar un repuesto en RepuesTop?', 'Solo debes buscar el repuesto que necesitas, comparar las opciones de nuestros proveedores verificados y realizar tu compra o solicitud de cotización. Es rápido, fácil y seguro.'],
-  ['¿Es seguro comprar en RepuesTop?', 'Sí. Trabajamos con proveedores verificados y pagos protegidos para que puedas comprar con tranquilidad.'],
-  ['¿Cómo puedo ser parte como casa de repuestos?', 'Crea tu cuenta de proveedor y completa el proceso de verificación para comenzar a publicar tu catálogo.'],
-  ['¿En qué regiones funciona RepuesTop?', 'RepuesTop conecta compradores y casas de repuestos en las 16 regiones de Chile.'],
-  ['¿Qué formas de pago están disponibles?', 'Puedes pagar a través de las alternativas habilitadas en la plataforma, de forma segura y respaldada.'],
-  ['¿Cómo puedo contactar al soporte?', 'Nuestro equipo está disponible desde el Centro de Ayuda para resolver tus dudas.'],
+/**
+ * Preguntas frecuentes, en cuatro grupos.
+ *
+ * Antes eran una lista sola de nueve preguntas: el acordeon medía 815px mientras la columna
+ * de al lado medía 425, y esos 390px de aire eran lo unico que se veia a la derecha del
+ * bloque. Repartidas, ningun grupo pasa de cinco preguntas y la columna de apoyo deja de
+ * quedar corta. Cada grupo lleva ademas SU captura: la pantalla que responde ese tipo de
+ * duda, no una ilustracion decorativa repetida en las cuatro pestañas.
+ */
+interface FaqGroup {
+  id: string;
+  label: string;
+  Icon: LucideIcon;
+  image: string;
+  alt: string;
+  /** Tamaño real del archivo: no todas las capturas tienen la misma proporcion. */
+  width: number;
+  height: number;
+  caption: string;
+  items: [string, string][];
+}
+
+const FAQ_GROUPS: FaqGroup[] = [
+  {
+    id: 'generales',
+    label: 'Generales',
+    Icon: Info,
+    image: '/about-assets/home-real.webp',
+    alt: 'Portada de RepuesTop, con el buscador por patente y el carrusel de categorías de repuestos',
+    width: 1096,
+    height: 822,
+    caption: 'Portada de RepuesTop',
+    items: [
+      ['¿Qué es RepuesTop?', 'Un marketplace chileno de repuestos automotrices. Escribes la patente de tu vehículo y RepuesTop cruza tu auto con el inventario de cientos de casas de repuestos para mostrarte solo las piezas que le calzan, con precio, stock y tienda a la vista.'],
+      ['¿En qué regiones funciona RepuesTop?', 'RepuesTop conecta compradores y casas de repuestos en las 16 regiones de Chile. Puedes filtrar por comuna y elegir retiro en tienda o despacho a todo el país.'],
+      ['¿RepuesTop tiene aplicación móvil?', 'La app Android está en camino a Google Play. Es la misma cuenta y los mismos datos que la web: buscas en el computador y sigues la cotización desde el celular. Mientras tanto, la versión web funciona completa desde el navegador del teléfono.'],
+      ['¿Cómo puedo contactar al soporte?', 'Desde el Centro de Ayuda, donde están las respuestas por tema y el formulario para escribirnos. Si tienes cuenta, además puedes seguir el estado de tu caso.'],
+    ],
+  },
+  {
+    id: 'uso',
+    label: 'Uso del sistema',
+    Icon: MousePointerClick,
+    image: '/about-assets/repuesto-real.webp',
+    alt: 'Ficha de un repuesto en RepuesTop, con precio, compatibilidad, tienda vendedora y formas de pago',
+    width: 1096,
+    height: 782,
+    caption: 'Ficha de un repuesto',
+    items: [
+      ['¿Cómo compro un repuesto?', 'Buscas por patente o por nombre, comparas las ofertas de las tiendas verificadas y eliges. Si el repuesto tiene precio publicado puedes comprarlo al instante; si no, pides una cotización y la tienda te responde por chat.'],
+      ['¿Para qué sirve buscar por patente?', 'Para no equivocarte de pieza. Con la patente identificamos marca, modelo, año y versión de tu vehículo, y filtramos el catálogo: ves solo lo compatible, incluidos los repuestos universales, y no una lista genérica que tendrías que revisar a mano.'],
+      ['¿Qué pasa si un repuesto no muestra precio?', 'Significa que la tienda lo vende solo a cotización. Pides el precio desde la misma ficha y queda una conversación con el vendedor donde puedes acordar condiciones, plazos y despacho antes de pagar.'],
+      ['¿Cómo publico mi catálogo como casa de repuestos?', 'Creas tu cuenta de tienda, subes los documentos que acreditan tu negocio y, una vez aprobada, publicas tu inventario desde el panel de vendedor. Publicar no tiene costo ni límite de productos.'],
+      ['¿Cómo encuentro un taller cerca de mí?', 'En el Mural de Anuncios. Desde la app puedes filtrar los talleres especialistas en la marca de tu vehículo y ver a cuántos kilómetros está cada uno de tu ubicación, además de escribir por WhatsApp o reservar hora.'],
+    ],
+  },
+  {
+    id: 'cobros',
+    label: 'Cobros',
+    Icon: Wallet,
+    image: '/about-assets/monedas-real.webp',
+    alt: 'Monedero de Monedas RepuesTop, con el saldo disponible y el costo en Monedas de cada tipo de anuncio',
+    width: 1096,
+    height: 782,
+    caption: 'Monedero de Monedas RepuesTop',
+    items: [
+      ['¿Cuánto cuesta usar RepuesTop?', 'Nada. Buscar por patente, comparar, pedir cotizaciones y comprar es gratis para cualquier persona, y publicar tu catálogo como casa de repuestos tampoco tiene costo. La plataforma cobra una tarifa de servicio solo sobre las ventas concretadas: 5% durante los primeros 3 meses desde el lanzamiento y 8% después.'],
+      ['¿Cuándo se cobra la tarifa de servicio?', 'Solo cuando una venta se concreta, y se descuenta de esa misma venta. No hay suscripción, ni cobro por publicar, ni costo por recibir cotizaciones: si no vendes, no pagas nada.'],
+      ['¿Qué son las Monedas RepuesTop?', 'Son el saldo interno de la plataforma y son totalmente opcionales. Cada Moneda equivale a $50 CLP y sirven para dos cosas: impulsar un repuesto al posicionamiento Top Ventas y publicar o subir de plan un anuncio en el Mural. Tus 2 primeros repuestos Top y tu primer anuncio Básico no cuestan Monedas.'],
+      ['¿Qué formas de pago están disponibles?', 'Pagas con tarjeta de crédito, débito o Redcompra a través de Flow, con la opción de simular cuotas antes de confirmar, o por transferencia vía Khipu según la alternativa que habilite la tienda. Los datos de tu tarjeta se ingresan solo en la pasarela, nunca en RepuesTop.'],
+    ],
+  },
+  {
+    id: 'seguridad',
+    label: 'Seguridad',
+    Icon: ShieldCheck,
+    image: '/about-assets/seguridad-real.webp',
+    alt: 'Centro de seguridad de RepuesTop, con las respuestas sobre compra protegida, mediación y cuidado de la cuenta',
+    width: 1096,
+    height: 782,
+    caption: 'Centro de seguridad',
+    items: [
+      ['¿Cómo sé que una casa de repuestos es confiable?', 'Por el sello de Tienda Verificada: validamos su identidad y sus datos tributarios al registrarse, antes de dejarla publicar. En su perfil público ves además su catálogo, sus métodos de envío, su comuna y las evaluaciones de otros compradores.'],
+      ['¿Cómo protege RepuesTop mi compra?', 'El pago se procesa por la pasarela dentro de la plataforma y queda asociado a tu pedido, con su estado y su historial. Si algo sale mal puedes abrir un reclamo desde el detalle del pedido y el caso pasa a nuestro equipo de mediación.'],
+      ['¿Qué pasa si el repuesto no llega o no corresponde?', 'Abres un reclamo desde el pedido. Ambas partes pueden exponer su versión y adjuntar fotos en el chat del caso, y si no hay acuerdo lo resuelve un mediador de RepuesTop revisando la evidencia. Puedes seguir el estado desde tu perfil.'],
+      ['¿Por qué no debo pagar ni coordinar fuera de la plataforma?', 'Un pago hecho por transferencia directa, fuera del flujo de compra, no queda registrado en RepuesTop: no genera pedido, no tiene seguimiento y no podemos mediar si el repuesto no llega o no es el correcto. Si un vendedor te insiste en pagar por fuera, repórtalo.'],
+      ['¿RepuesTop me va a pedir mi contraseña o los datos de mi tarjeta?', 'Nunca. No pedimos tu contraseña por correo, chat ni teléfono, y los datos de tu tarjeta se ingresan únicamente en la pasarela de pago. Cualquier mensaje que te los pida, aunque parezca de RepuesTop, es un intento de fraude.'],
+    ],
+  },
 ];
 
 const BUYER_POINTS = [
@@ -51,12 +134,199 @@ const SELLER_POINTS = [
   'Haz crecer tu negocio',
 ];
 
-const DIRECTORY_POINTS = [
-  'Filtros por región y especialidad',
-  'Información de contacto',
-  'Opiniones y valoraciones',
-  'Horarios y ubicación',
+/**
+ * Los cuatro modulos de "Pantallas reales, resultados reales".
+ *
+ * Las cuatro imagenes son capturas de la plataforma con datos de prueba, no maquetas: la
+ * seccion promete pantallas reales y antes mostraba un mockup ilustrado con la marca escrita
+ * mal ("RepuestoTop") y tiendas inventadas. `action` dispara la navegacion del boton; el
+ * `nav` solo cambia de panel.
+ */
+interface PlatformModule {
+  id: string;
+  Icon: LucideIcon;
+  nav: string;
+  title: string;
+  desc: string;
+  points: string[];
+  cta: string;
+  action: 'stores' | 'catalog' | 'seller';
+  image: string;
+  width: number;
+  height: number;
+  alt: string;
+  badge: [string, string];
+  /** Pieza secundaria que se superpone a la captura. Hoy solo la usa cotizaciones, para
+   *  mostrar ademas el PDF que genera la plataforma. */
+  extra?: { image: string; width: number; height: number; alt: string };
+}
+
+const PLATFORM_MODULES: PlatformModule[] = [
+  {
+    id: 'directorio',
+    Icon: Building2,
+    nav: 'Directorio de casas de repuestos',
+    title: 'Directorio de Casas de Repuestos',
+    desc: 'Encuentra casas de repuestos verificadas en todo Chile, con su información, especialidades y valoraciones de otros clientes.',
+    points: [
+      'Filtros por región y especialidad',
+      'Información de contacto',
+      'Opiniones y valoraciones',
+      'Horarios y ubicación',
+    ],
+    cta: 'Ver directorio',
+    action: 'stores',
+    image: '/about-assets/directorio-real.webp',
+    width: 1096,
+    height: 782,
+    alt: 'Directorio de casas de repuestos de RepuesTop, con filtros por giro, comuna y método de envío',
+    badge: ['Casas de repuestos', 'reales y verificadas'],
+  },
+  {
+    id: 'busqueda',
+    Icon: Search,
+    nav: 'Búsqueda de productos',
+    title: 'Búsqueda de Productos por Patente',
+    desc: 'Ingresas la patente y el catálogo queda filtrado a los repuestos que le sirven a tu auto, con precio, stock y tienda a la vista.',
+    points: [
+      'Compatibilidad resuelta por patente',
+      'Precio y stock reales de cada tienda',
+      'Filtros por categoría, condición y comuna',
+      'Repuestos universales incluidos',
+    ],
+    cta: 'Buscar repuestos',
+    action: 'catalog',
+    image: '/about-assets/busqueda-real.webp',
+    width: 1096,
+    height: 782,
+    alt: 'Catálogo de RepuesTop filtrado por la patente de un Toyota Yaris, mostrando los repuestos compatibles',
+    badge: ['Solo repuestos', 'compatibles con tu auto'],
+  },
+  {
+    id: 'cotizaciones',
+    Icon: ShoppingCart,
+    nav: 'Comparación de cotizaciones',
+    title: 'Comparación de Cotizaciones',
+    desc: 'Cada tienda responde con una oferta formal: precio, método de envío y PDF dentro del chat, para que compares con todo a la vista.',
+    points: [
+      'Oferta formal con precio cerrado',
+      'Documento PDF de la cotización',
+      'Chat privado con la tienda',
+      'Historial de todas tus solicitudes',
+    ],
+    cta: 'Pedir una cotización',
+    action: 'catalog',
+    image: '/about-assets/cotizacion-real.webp',
+    width: 1096,
+    height: 782,
+    alt: 'Chat de una cotización en RepuesTop, con la oferta formal y el PDF adjunto',
+    badge: ['Ofertas formales,', 'no promesas por teléfono'],
+    extra: {
+      image: '/about-assets/cotizacion-pdf-real.webp',
+      width: 620,
+      height: 877,
+      alt: 'PDF de la cotización N° 13 generado por RepuesTop, con el detalle, el total y las condiciones',
+    },
+  },
+  {
+    id: 'negocio',
+    Icon: BarChart3,
+    nav: 'Gestión de tu negocio',
+    title: 'Gestión de tu Negocio',
+    desc: 'Publica uno a uno o carga tu catálogo completo desde Excel, y mantén stock y precios al día desde un solo panel.',
+    points: [
+      'Carga masiva desde Excel',
+      'Stock y precios editables al vuelo',
+      'Compatibilidad por vehículo',
+      'Métricas de tu inventario',
+    ],
+    cta: 'Quiero vender en RepuesTop',
+    action: 'seller',
+    image: '/about-assets/vendedor-panel-real.webp',
+    width: 1096,
+    height: 782,
+    alt: 'Panel de gestión de inventario de una tienda en RepuesTop, con sus productos, stock y precios',
+    badge: ['Tu inventario', 'siempre al día'],
+  },
 ];
+
+/**
+ * Los tres pasos de la busqueda por patente. Es el diferencial del producto y la vista no lo
+ * contaba en ninguna parte: se explicaba "compara y cotiza" como cualquier marketplace.
+ */
+const PLATE_STEPS: { Icon: LucideIcon; title: string; text: string }[] = [
+  {
+    Icon: CarFront,
+    title: 'Escribes tu patente',
+    text: 'Seis caracteres, los mismos que van en tu vehículo. Sin manuales ni números de pieza.',
+  },
+  {
+    Icon: ScanLine,
+    title: 'Identificamos tu vehículo',
+    text: 'Marca, modelo, año y versión quedan confirmados antes de que veas un solo precio.',
+  },
+  {
+    Icon: Boxes,
+    title: 'Ves solo lo que le calza',
+    text: 'Cruzamos tu auto con el inventario de cientos de casas de repuestos y filtramos el resto.',
+  },
+];
+
+/** Ventajas del Mural de Anuncios para quien busca un taller. */
+const MURAL_POINTS = [
+  'Talleres, grúas, vulcanizaciones y estética automotriz',
+  'Con precio desde, horario y comuna a la vista',
+  'WhatsApp directo o reserva de hora sin llamar',
+  'Puedes buscar por patente y ver solo lo compatible',
+];
+
+/**
+ * Como se financia la plataforma. Es lo unico que se cobra, y la vista no lo decia en
+ * ninguna parte: un comprador no tiene forma de saber que usarla no le cuesta nada.
+ */
+const PRICING_CARDS: { Icon: LucideIcon; tag: string; title: string; text: string; points: string[] }[] = [
+  {
+    Icon: Users,
+    tag: 'Para quien compra',
+    title: 'Gratis, siempre',
+    text: 'Buscar por patente, comparar, pedir cotizaciones y comprar no tiene ningún costo.',
+    points: ['Sin suscripción', 'Sin costo por cotizar', 'Sin límite de búsquedas'],
+  },
+  {
+    Icon: Percent,
+    tag: 'Para quien vende',
+    title: 'Comisión solo al vender',
+    text: 'Publicar tu catálogo es gratis. La tarifa de servicio se cobra únicamente sobre las ventas concretadas.',
+    points: ['5% los primeros 3 meses desde el lanzamiento', 'Después, 8% por venta', 'Si no vendes, no pagas nada'],
+  },
+  {
+    Icon: Coins,
+    tag: 'Opcional',
+    title: 'Monedas RepuesTop',
+    text: 'Solo si quieres más visibilidad: impulsar un repuesto a Top Ventas o publicar en el Mural de Anuncios.',
+    points: ['Se compran cuando las necesitas', 'Nunca son obligatorias', 'Tu primer anuncio Básico es gratis'],
+  },
+];
+
+/** Por que conviene tener la app ademas de la web. */
+const APP_POINTS = [
+  'Una sola cuenta para el celular y el computador',
+  'Tus cotizaciones y pedidos sincronizados al instante',
+  'La misma búsqueda por patente en los dos lados',
+  'Avisos cuando una tienda responde tu cotización',
+];
+
+/** Marca de Google Play, en sus colores oficiales. */
+function GooglePlayMark() {
+  return (
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" aria-hidden="true">
+      <path d="M3.6 2.5a1.5 1.5 0 0 0-.4 1.1v16.8c0 .4.2.8.4 1.1l9.6-9.5-9.6-9.5Z" fill="#2196F3" />
+      <path d="M16.4 8.7 13.2 12l3.2 3.3 3.6-2c1-.6 1-1.6 0-2.2l-3.6-2.4Z" fill="#FFC107" />
+      <path d="M3.6 21.5c.5.5 1.4.6 2.2.1l10.6-6.1-3.2-3.5-9.6 9.5Z" fill="#4CAF50" />
+      <path d="M16.4 8.7 5.8 2.6c-.8-.5-1.7-.4-2.2.1l9.6 9.3 3.2-3.3Z" fill="#F44336" />
+    </svg>
+  );
+}
 
 function CheckList({ items }: { items: string[] }) {
   return (
@@ -108,10 +378,21 @@ export default function AboutRepuesTopPage({
   onOpenSeller,
   onOpenCatalog,
   onOpenStores,
+  onOpenAdsWall,
 }: AboutRepuesTopPageProps) {
-  const [openFaq, setOpenFaq] = useState(0);
+  // La pregunta abierta se guarda por grupo, no por indice suelto: si fuera un indice global,
+  // cambiar de pestaña dejaria abierta "la tercera" del grupo nuevo sin que nadie la pidiera.
+  const [activeFaqGroup, setActiveFaqGroup] = useState(0);
+  const [openFaq, setOpenFaq] = useState('generales-0');
+  // Los cuatro botones de "Pantallas reales" ahora cambian de panel. Antes los tres ultimos
+  // navegaban fuera de la pagina, asi que el unico modulo que se podia ver era el directorio.
+  const [activeModule, setActiveModule] = useState(0);
+  const currentFaqGroup = FAQ_GROUPS[activeFaqGroup];
   const goCatalog = onOpenCatalog || onBack;
   const goStores = onOpenStores || onBack;
+  const goAdsWall = onOpenAdsWall || onBack;
+  const moduleActions = { stores: goStores, catalog: goCatalog, seller: onOpenSeller };
+  const currentModule = PLATFORM_MODULES[activeModule];
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="description"]');
@@ -147,7 +428,7 @@ export default function AboutRepuesTopPage({
                 Tu auto sigue en<br />buenas manos
                 <svg viewBox="0 0 40 46" aria-hidden="true"><path d="M6 2c14 4 24 14 25 30" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><path d="M24 30h8v-9" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" transform="rotate(38 30 28)" /></svg>
               </p>
-              <img src="/about-reference/hero-devices.png" alt="RepuesTop en computador y teléfono junto a distintos repuestos" width="1448" height="1086" fetchPriority="high" />
+              <img src="/about-assets/hero-devices-real.webp" alt="RepuesTop abierto en un computador, mostrando la portada con el buscador por patente, y en un teléfono con la búsqueda por patente de la app" width="1448" height="1086" fetchPriority="high" />
             </div>
           </div>
         </section>
@@ -165,6 +446,56 @@ export default function AboutRepuesTopPage({
                   <span><Icon aria-hidden="true" /></span>
                   <div><strong>{value}</strong><small>{label}</small></div>
                 </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="rt-section rt-plate" id="patente" aria-labelledby="rt-plate-title">
+          <div className="rt-shell">
+            <Reveal as="header" className="rt-section-head">
+              <p className="rt-kicker">Lo que nos hace distintos</p>
+              <h2 id="rt-plate-title">Tu patente filtra el catálogo por ti</h2>
+              <p>Escribes seis caracteres y RepuesTop cruza tu vehículo con el inventario de cientos de casas de repuestos de todo Chile. Lo que aparece en pantalla ya viene filtrado: solo piezas que le calzan a tu auto, con su precio, su stock y la tienda que las tiene.</p>
+            </Reveal>
+
+            <div className="rt-plate__grid">
+              <ol className="rt-plate__steps">
+                {PLATE_STEPS.map(({ Icon, title, text }, index) => (
+                  <Reveal as="li" key={title} delay={index * 90}>
+                    <span className="rt-plate__step-icon"><Icon aria-hidden="true" /></span>
+                    <div>
+                      <h3><i>{index + 1}</i>{title}</h3>
+                      <p>{text}</p>
+                    </div>
+                  </Reveal>
+                ))}
+              </ol>
+
+              <Reveal className="rt-plate__visual" delay={120}>
+                <span className="rt-plate__badge" aria-hidden="true"><i>CL</i><b>ABCD11</b></span>
+                <img
+                  src="/about-assets/busqueda-real.webp"
+                  alt="Catálogo de RepuesTop filtrado por la patente de un Toyota Yaris"
+                  width={1096}
+                  height={782}
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span className="rt-plate__float"><CheckCircle2 aria-hidden="true" /> Solo compatibles<br />con tu vehículo</span>
+              </Reveal>
+            </div>
+
+            <div className="rt-plate__facts">
+              {([
+                [Building2, 'Cientos de casas de repuestos', 'Un solo lugar para consultarle a todas a la vez, sin llamar una por una.'],
+                [Search, 'Cero piezas que no calzan', 'La compatibilidad la resuelve el sistema, no tu memoria ni el vendedor.'],
+                [Sparkles, 'También los universales', 'Las piezas que sirven a cualquier vehículo aparecen igual, no se pierden.'],
+              ] as [LucideIcon, string, string][]).map(([Icon, title, text], index) => (
+                <Reveal as="article" className="rt-plate__fact" key={title} delay={index * 70}>
+                  <span><Icon aria-hidden="true" /></span>
+                  <div><h3>{title}</h3><p>{text}</p></div>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -229,25 +560,199 @@ export default function AboutRepuesTopPage({
               <p>Así se ve RepuesTop por dentro. Una experiencia moderna, intuitiva y pensada para ahorrar tiempo.</p>
             </Reveal>
             <div className="rt-platform__layout">
-              <nav className="rt-platform__nav" aria-label="Funciones de la plataforma">
-                <button className="is-active" type="button" onClick={goStores}><Building2 aria-hidden="true" />Directorio de casas de repuestos</button>
-                <button type="button" onClick={goCatalog}><Search aria-hidden="true" />Búsqueda de productos</button>
-                <button type="button" onClick={goCatalog}><ShoppingCart aria-hidden="true" />Comparación de cotizaciones</button>
-                <button type="button" onClick={onOpenSeller}><BarChart3 aria-hidden="true" />Gestión de tu negocio</button>
-              </nav>
-              <article className="rt-platform__panel">
+              <div className="rt-platform__nav" role="tablist" aria-label="Funciones de la plataforma">
+                {PLATFORM_MODULES.map((module, index) => (
+                  <button
+                    key={module.id}
+                    type="button"
+                    role="tab"
+                    id={`rt-platform-tab-${module.id}`}
+                    aria-controls={`rt-platform-panel-${module.id}`}
+                    aria-selected={index === activeModule}
+                    tabIndex={index === activeModule ? 0 : -1}
+                    className={index === activeModule ? 'is-active' : undefined}
+                    onClick={() => setActiveModule(index)}
+                  >
+                    <module.Icon aria-hidden="true" />{module.nav}
+                  </button>
+                ))}
+              </div>
+              <article
+                className="rt-platform__panel"
+                role="tabpanel"
+                id={`rt-platform-panel-${currentModule.id}`}
+                aria-labelledby={`rt-platform-tab-${currentModule.id}`}
+              >
                 <div className="rt-platform__copy">
-                  <h3>Directorio de Casas de Repuestos</h3>
-                  <p>Encuentra casas de repuestos verificadas en todo Chile, con su información, especialidades y valoraciones de otros clientes.</p>
-                  <CheckList items={DIRECTORY_POINTS} />
-                  <button className="rt-btn rt-btn--primary" type="button" onClick={goStores}>Ver directorio <ArrowRight aria-hidden="true" /></button>
+                  <h3>{currentModule.title}</h3>
+                  <p>{currentModule.desc}</p>
+                  <CheckList items={currentModule.points} />
+                  <button
+                    className="rt-btn rt-btn--primary"
+                    type="button"
+                    onClick={moduleActions[currentModule.action]}
+                  >
+                    {currentModule.cta} <ArrowRight aria-hidden="true" />
+                  </button>
                 </div>
                 <span className="rt-platform__shot">
-                  <img src="/about-reference/directory.png" alt="Directorio de casas de repuestos en RepuesTop" width="1448" height="1086" loading="lazy" />
+                  <img
+                    key={currentModule.id}
+                    src={currentModule.image}
+                    alt={currentModule.alt}
+                    width={currentModule.width}
+                    height={currentModule.height}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  {currentModule.extra && (
+                    <img
+                      className="rt-platform__doc"
+                      key={`${currentModule.id}-doc`}
+                      src={currentModule.extra.image}
+                      alt={currentModule.extra.alt}
+                      width={currentModule.extra.width}
+                      height={currentModule.extra.height}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  )}
                 </span>
-                <span className="rt-platform__verified"><CheckCircle2 aria-hidden="true" /> Casas de repuestos<br />reales y verificadas</span>
+                <span className="rt-platform__verified">
+                  <CheckCircle2 aria-hidden="true" />
+                  {currentModule.badge[0]}<br />{currentModule.badge[1]}
+                </span>
               </article>
             </div>
+          </div>
+        </section>
+
+        <section className="rt-apps" id="app" aria-labelledby="rt-apps-title">
+          <div className="rt-shell rt-apps__grid">
+            <div className="rt-apps__copy">
+              <p className="rt-kicker">Celular y computador, la misma cuenta</p>
+              <h2 id="rt-apps-title">Búscalo en el computador,<br />síguelo desde el celular</h2>
+              <p>RepuesTop es la misma plataforma en los dos lados. Buscas por patente en la web, guardas el repuesto y sigues la cotización desde el teléfono: es una sola cuenta y los mismos datos, no dos sistemas distintos.</p>
+              <CheckList items={APP_POINTS} />
+              <div className="rt-apps__actions">
+                <span className="rt-store-badge" role="note">
+                  <GooglePlayMark />
+                  <span><small>Muy pronto en</small><strong>Google Play</strong></span>
+                </span>
+                <button className="rt-btn rt-btn--primary" type="button" onClick={goCatalog}>
+                  <MonitorSmartphone aria-hidden="true" /> Usar la versión web
+                </button>
+              </div>
+              <p className="rt-apps__note"><BellRing aria-hidden="true" /> La app Android está en camino. Mientras tanto, la versión web funciona completa desde el navegador del celular.</p>
+            </div>
+
+            <Reveal className="rt-apps__visual" delay={110}>
+              <img
+                className="rt-apps__web"
+                src="/about-assets/busqueda-real.webp"
+                alt="RepuesTop en el navegador del computador, con el catálogo filtrado por patente"
+                width={1096}
+                height={782}
+                loading="lazy"
+                decoding="async"
+              />
+              <img
+                className="rt-apps__phone"
+                src="/about-assets/shot-app-patente.webp"
+                alt="La app de RepuesTop en un teléfono, buscando por la misma patente"
+                width={390}
+                height={844}
+                loading="lazy"
+                decoding="async"
+              />
+              <span className="rt-apps__sync"><RefreshCw aria-hidden="true" /> Misma cuenta,<br />mismos datos</span>
+            </Reveal>
+          </div>
+        </section>
+
+        <section className="rt-section rt-mural" id="mural" aria-labelledby="rt-mural-title">
+          <div className="rt-shell">
+            <Reveal as="header" className="rt-section-head">
+              <p className="rt-kicker"><Megaphone aria-hidden="true" /> Mural de Anuncios</p>
+              <h2 id="rt-mural-title">El repuesto es la mitad: alguien tiene que instalarlo</h2>
+              <p>El Mural reúne talleres mecánicos, eléctricos, vulcanizaciones, grúas y estética automotriz de todo Chile. Cada anuncio muestra precio desde, horario, comuna y las marcas en las que ese taller es especialista.</p>
+            </Reveal>
+
+            <div className="rt-mural__grid">
+              <Reveal className="rt-mural__visual">
+                <img
+                  src="/about-assets/mural-real.webp"
+                  alt="Mural de Anuncios de RepuesTop con talleres de distintas regiones"
+                  width={1096}
+                  height={782}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </Reveal>
+
+              <div className="rt-mural__copy">
+                <CheckList items={MURAL_POINTS} />
+
+                {/* El diferencial del Mural en el celular: el filtro por marca especialista y
+                    la distancia real desde donde estas parado. */}
+                <article className="rt-mural__mobile">
+                  <h3><LocateFixed aria-hidden="true" /> Desde el celular, aún mejor</h3>
+                  <ul>
+                    <li>
+                      <span><BadgeCheck aria-hidden="true" /></span>
+                      <div><strong>Filtra por tu marca</strong><small>Solo los talleres especialistas en la marca de tu vehículo.</small></div>
+                    </li>
+                    <li>
+                      <span><LocateFixed aria-hidden="true" /></span>
+                      <div><strong>Ordenados por cercanía</strong><small>Cada taller muestra a cuántos kilómetros está de donde estás.</small></div>
+                    </li>
+                    <li>
+                      <span><CalendarCheck aria-hidden="true" /></span>
+                      <div><strong>Reserva hora al toque</strong><small>Agenda o escribe por WhatsApp sin salir de la app.</small></div>
+                    </li>
+                  </ul>
+                </article>
+
+                <button className="rt-btn rt-btn--primary" type="button" onClick={goAdsWall}>
+                  Ver el Mural de Anuncios <ArrowRight aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rt-section rt-pricing" id="precios" aria-labelledby="rt-pricing-title">
+          <div className="rt-shell">
+            <Reveal as="header" className="rt-section-head">
+              <p className="rt-kicker">Sin suscripciones ni costos ocultos</p>
+              <h2 id="rt-pricing-title">Usar RepuesTop es <span>100% gratis</span></h2>
+              <p>Para el público no cuesta nada: ni buscar, ni comparar, ni cotizar, ni comprar. Y para las casas de repuestos, publicar el catálogo tampoco. La plataforma se financia con la tarifa de servicio de cada venta y con las Monedas, que son opcionales.</p>
+            </Reveal>
+
+            <div className="rt-pricing__grid">
+              {PRICING_CARDS.map(({ Icon, tag, title, text, points }, index) => (
+                <Reveal as="article" className="rt-pricing__card" key={title} delay={index * 80}>
+                  <span className="rt-pricing__icon"><Icon aria-hidden="true" /></span>
+                  <p className="rt-pricing__tag">{tag}</p>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                  <ul>
+                    {points.map((point) => (
+                      <li key={point}><CheckCircle2 aria-hidden="true" />{point}</li>
+                    ))}
+                  </ul>
+                </Reveal>
+              ))}
+            </div>
+
+            <Reveal className="rt-pricing__note">
+              <ShieldCheck aria-hidden="true" />
+              <p>
+                <strong>Nunca te vamos a cobrar por usar la plataforma.</strong> Las Monedas RepuesTop
+                sirven para destacar un repuesto o publicar en el Mural, y se compran solo cuando
+                decides usarlas.
+              </p>
+            </Reveal>
           </div>
         </section>
 
@@ -299,44 +804,102 @@ export default function AboutRepuesTopPage({
           </div>
         </section>
 
-        <section className="rt-section rt-faq" aria-labelledby="rt-faq-title">
-          <div className="rt-shell rt-faq__grid">
-            <div className="rt-faq__intro">
-              <h2 id="rt-faq-title">Preguntas frecuentes</h2>
-              <p>Resolvemos las dudas más comunes sobre cómo funciona RepuesTop.</p>
-              <div className="rt-faq__contact">
-                <span><Headphones aria-hidden="true" /></span>
-                <h3>¿Aún tienes preguntas?</h3>
-                <p>Nuestro equipo está listo para ayudarte.</p>
-                <button className="rt-btn rt-btn--primary" type="button" onClick={onContact}>Contáctanos</button>
-              </div>
+        <section className="rt-section rt-faq" id="preguntas" aria-labelledby="rt-faq-title">
+          <div className="rt-shell">
+            <Reveal as="header" className="rt-section-head">
+              <p className="rt-kicker">Preguntas frecuentes</p>
+              <h2 id="rt-faq-title">Todo lo que suelen preguntarnos</h2>
+              <p>Cuatro grupos: qué es RepuesTop, cómo se usa, qué se cobra y cómo te protege. Cada uno con la pantalla real que lo responde.</p>
+            </Reveal>
+
+            <div className="rt-faq__tabs" role="tablist" aria-label="Grupos de preguntas frecuentes">
+              {FAQ_GROUPS.map((group, index) => (
+                <button
+                  key={group.id}
+                  type="button"
+                  role="tab"
+                  id={`rt-faq-tab-${group.id}`}
+                  aria-controls={`rt-faq-group-${group.id}`}
+                  aria-selected={index === activeFaqGroup}
+                  tabIndex={index === activeFaqGroup ? 0 : -1}
+                  className={index === activeFaqGroup ? 'is-active' : undefined}
+                  onClick={() => {
+                    setActiveFaqGroup(index);
+                    setOpenFaq(`${group.id}-0`);
+                  }}
+                >
+                  <group.Icon aria-hidden="true" />
+                  {group.label}
+                  <small>{group.items.length}</small>
+                </button>
+              ))}
             </div>
-            <div className="rt-accordion">
-              {FAQS.map(([question, answer], index) => {
-                const open = openFaq === index;
-                return (
-                  <article className={open ? 'is-open' : ''} key={question}>
-                    <button
-                      type="button"
-                      aria-expanded={open}
-                      aria-controls={`rt-faq-panel-${index}`}
-                      id={`rt-faq-button-${index}`}
-                      onClick={() => setOpenFaq(open ? -1 : index)}
-                    >
-                      {question}<ChevronDown aria-hidden="true" />
-                    </button>
-                    <div
-                      className="rt-accordion__panel"
-                      id={`rt-faq-panel-${index}`}
-                      role="region"
-                      aria-labelledby={`rt-faq-button-${index}`}
-                      hidden={!open}
-                    >
-                      <p>{answer}</p>
-                    </div>
-                  </article>
-                );
-              })}
+
+            <div
+              className="rt-faq__grid"
+              role="tabpanel"
+              id={`rt-faq-group-${currentFaqGroup.id}`}
+              aria-labelledby={`rt-faq-tab-${currentFaqGroup.id}`}
+            >
+              {/* La captura se estira para ocupar el alto que sobra (ver about.css): asi la
+                  columna nunca queda mas corta que el acordeon, que era justamente el hueco
+                  que se veia cuando las nueve preguntas iban en una sola lista. */}
+              <aside className="rt-faq__aside">
+                <p className="rt-faq__tag"><ScanLine aria-hidden="true" />Pantalla real · {currentFaqGroup.caption}</p>
+                <figure className="rt-faq__shot">
+                  <img
+                    key={currentFaqGroup.id}
+                    src={currentFaqGroup.image}
+                    alt={currentFaqGroup.alt}
+                    width={currentFaqGroup.width}
+                    height={currentFaqGroup.height}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </figure>
+              </aside>
+
+              <div className="rt-faq__list">
+                <div className="rt-accordion">
+                {currentFaqGroup.items.map(([question, answer], index) => {
+                  const key = `${currentFaqGroup.id}-${index}`;
+                  const open = openFaq === key;
+                  return (
+                    <article className={open ? 'is-open' : ''} key={question}>
+                      <button
+                        type="button"
+                        aria-expanded={open}
+                        aria-controls={`rt-faq-panel-${key}`}
+                        id={`rt-faq-button-${key}`}
+                        onClick={() => setOpenFaq(open ? '' : key)}
+                      >
+                        {question}<ChevronDown aria-hidden="true" />
+                      </button>
+                      <div
+                        className="rt-accordion__panel"
+                        id={`rt-faq-panel-${key}`}
+                        role="region"
+                        aria-labelledby={`rt-faq-button-${key}`}
+                        hidden={!open}
+                      >
+                        <p>{answer}</p>
+                      </div>
+                    </article>
+                  );
+                })}
+                </div>
+
+                {/* Va despues de la lista y no al lado de la imagen: es la salida natural de
+                    quien llego al final sin encontrar su pregunta. */}
+                <div className="rt-faq__contact">
+                  <span><Headphones aria-hidden="true" /></span>
+                  <div>
+                    <h3>¿Aún tienes preguntas?</h3>
+                    <p>Nuestro equipo responde en el Centro de Ayuda.</p>
+                  </div>
+                  <button className="rt-btn rt-btn--primary" type="button" onClick={onContact}>Contáctanos</button>
+                </div>
+              </div>
             </div>
           </div>
         </section>

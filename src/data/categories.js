@@ -348,6 +348,110 @@ export const POPULAR_CATEGORIES = [
  * Asocia dinámicamente cualquier categoría/subcategoría recibida del backend con
  * su imagen de alta resolución, icono de Lucide, color de marca y miniaturas PNG.
  */
+/**
+ * Indice plano de las fotos de pieza que ya existen en `/category-parts/*-subcategories/`,
+ * por nombre de subcategoria normalizado ("filtro de aceite" -> filtro-aceite.png).
+ *
+ * Se arma desde `subcategoryImages`, que es la misma fuente que usa el panel de categorias,
+ * asi que no hay una segunda lista que mantener.
+ */
+/**
+ * Piezas que el vendedor nombra distinto a la taxonomia. Todas apuntan a imagenes que ya
+ * existen en `/category-parts/`; no se agrega ningun archivo nuevo.
+ */
+const PART_IMAGE_ALIASES = {
+  'Kit de Distribucion': '/category-parts/distribution-subcategories/cadenas-distribucion.png',
+  'Kit de Embrague': '/category-parts/clutch-subcategories/kit-embragues.png',
+  'Liquido de Freno': '/category-parts/brakes-subcategories/bomba-freno.png',
+  'Liquido Refrigerante': '/category-parts/cooling-subcategories/deposito-radiador.png',
+  Ampolleta: '/category-parts/accessories-subcategories/iluminacion.png',
+  Bateria: '/category-parts/electrical-subcategories/fusibles-rele.png',
+  'Faro Delantero': '/category-parts/body-subcategories/focos-delanteros.png',
+  'Manilla Exterior': '/category-parts/body-subcategories/manillas.png',
+};
+
+const PART_IMAGE_BY_SUBCATEGORY = (() => {
+  const index = new Map();
+  // HEADER_CATEGORIES es la fuente cruda: ahi viven las ~25 familias con sus
+  // `subcategoryImages`, incluidas embrague, distribucion y correas.
+  HEADER_CATEGORIES.forEach((category) => {
+    Object.entries(category.subcategoryImages || {}).forEach(([nombre, image]) => {
+      const key = normalizePartKey(nombre);
+      if (key && !index.has(key)) index.set(key, image);
+    });
+  });
+  Object.entries(PART_IMAGE_ALIASES).forEach(([nombre, image]) => {
+    const key = normalizePartKey(nombre);
+    if (key) index.set(key, image);
+  });
+  // De mas especifico a menos: "filtro de aceite" tiene que ganarle a "aceite" cuando el
+  // titulo dice las dos cosas.
+  return [...index.entries()].sort((a, b) => b[0].length - a[0].length);
+})();
+
+/** minusculas, sin acentos y sin plurales simples, para comparar titulos con subcategorias. */
+function normalizePartKey(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** "amortiguadores" y "amortiguador" tienen que calzar igual. */
+function singular(word) {
+  if (word.length > 4 && word.endsWith('es')) return word.slice(0, -2);
+  if (word.length > 3 && word.endsWith('s')) return word.slice(0, -1);
+  return word;
+}
+
+function tokens(value) {
+  return normalizePartKey(value).split(' ').filter(Boolean).map(singular);
+}
+
+/**
+ * Foto de LA PIEZA que nombra el titulo, no de su categoria.
+ *
+ * Una publicacion sin foto propia caia en la imagen de la categoria, asi que en el catalogo
+ * salian cuatro tarjetas distintas con el mismo auto azul y tres con el mismo motor: se lee
+ * como un error del filtro, no como "esta tienda no subio foto". Aca se busca la pieza
+ * concreta dentro de la libreria que ya existe (`/category-parts/`).
+ *
+ * Devuelve `null` cuando no hay nada suficientemente parecido; el llamador decide el
+ * respaldo. El TITULO manda sobre la subcategoria declarada por el vendedor: es lo que lee
+ * el comprador en la tarjeta, y la subcategoria a veces viene mal cargada (hay un "Filtro de
+ * aceite" clasificado en "Espejos").
+ */
+export function getPartImage(...candidates) {
+  for (const candidate of candidates) {
+    const texto = normalizePartKey(candidate);
+    if (!texto) continue;
+
+    // 1. Coincidencia directa: el nombre de la subcategoria aparece en el texto.
+    const exacta = PART_IMAGE_BY_SUBCATEGORY.find(([key]) => texto.includes(key));
+    if (exacta) return exacta[1];
+
+    // 2. Por palabras, tolerando plurales ("Amortiguador de Maletero" -> "Amortiguadores").
+    const palabras = new Set(tokens(candidate));
+    let mejor = null;
+    let mejorPuntaje = 0;
+    PART_IMAGE_BY_SUBCATEGORY.forEach(([key, image]) => {
+      const claves = tokens(key);
+      const aciertos = claves.filter((palabra) => palabras.has(palabra)).length;
+      // Se exige acertar TODAS las palabras de la subcategoria: con una sola coincidencia
+      // "Liquido de Freno" se llevaria la foto de "Piola Freno de Mano".
+      if (aciertos === claves.length && aciertos > mejorPuntaje) {
+        mejorPuntaje = aciertos;
+        mejor = image;
+      }
+    });
+    if (mejor) return mejor;
+  }
+  return null;
+}
+
 export function getCategoryVisuals(categoryOrName) {
   if (!categoryOrName) {
     return { iconName: 'Cog', color: '#f97316', image: '/cat_motor.jpg' };

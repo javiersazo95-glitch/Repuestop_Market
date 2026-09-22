@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
-  ArrowUpRight, Boxes, CheckCircle, ChevronLeft, ChevronRight, Plus, Search, X,
+  ArrowUpRight, Boxes, CheckCircle, ChevronLeft, ChevronRight, Layers, Plus, Search, X,
 } from 'lucide-react';
 import CatalogCard from './CatalogCard';
 import ProductTopBadge from './ProductTopBadge';
@@ -25,6 +25,10 @@ export default function ProfileCatalogPanel({
   catalogSearchInput,
   setCatalogSearchInput,
   catalogSearchTerm,
+  catalogCategories,
+  catalogTotalInventory,
+  catalogCategoryId,
+  onCategoryChange,
   onSearchSubmit,
   catalogPage,
   setCatalogPage,
@@ -40,6 +44,48 @@ export default function ProfileCatalogPanel({
   onTogglePause,
   updatingPauseProductId,
 }) {
+  const categories = Array.isArray(catalogCategories) ? catalogCategories : [];
+  const activeCategory = categories.find(
+    (category) => String(category.categoriaId) === String(catalogCategoryId)
+  );
+  // El contador de "Todas" es el inventario completo, NO `catalogTotalElements`: ese ya viene
+  // acotado por el filtro activo, asi que al elegir una categoria "Todas" mostraba el mismo
+  // numero que la categoria elegida. Si el resumen aun no llego, se suma lo de las fichas.
+  const totalTodasCategorias = catalogTotalInventory
+    ?? categories.reduce((total, category) => total + Number(category.total || 0), 0);
+
+  /**
+   * Productos de la pagina agrupados por categoria, en secciones.
+   *
+   * El backend ya ordena el inventario por nombre de categoria, asi que cada grupo sale
+   * contiguo y no hay que reordenar nada aca: basta con recorrer la pagina en orden y abrir
+   * una seccion cada vez que cambia la categoria. Los productos sin categoria van al final,
+   * juntos, en vez de repartirse en secciones sueltas.
+   */
+  const productSections = useMemo(() => {
+    const sections = [];
+    const byKey = new Map();
+
+    (sellerProducts || []).forEach((product) => {
+      const id = product.categoriaId ?? null;
+      const key = id === null ? 'sin-categoria' : String(id);
+      let section = byKey.get(key);
+      if (!section) {
+        section = {
+          key,
+          categoriaId: id,
+          nombre: product.categoria || 'Sin categoria asignada',
+          products: [],
+        };
+        byKey.set(key, section);
+        sections.push(section);
+      }
+      section.products.push(product);
+    });
+
+    return sections;
+  }, [sellerProducts]);
+
   return (
     <div className="profile-panel">
       <div className="profile-panel-header-row">
@@ -77,6 +123,37 @@ export default function ProfileCatalogPanel({
         <div className="catalog-top-feedback"><CheckCircle size={15} /> {catalogTopFeedback}</div>
       )}
 
+      {categories.length > 0 && (
+        <div className="catalog-category-filter">
+          <span className="catalog-category-filter-label"><Layers size={14} /> Categoría:</span>
+          <div className="catalog-category-chips">
+            <button
+              type="button"
+              className={`catalog-category-chip ${!catalogCategoryId ? 'active' : ''}`}
+              aria-pressed={!catalogCategoryId}
+              onClick={() => onCategoryChange(null)}
+            >
+              Todas <span className="catalog-category-chip-count">{totalTodasCategorias}</span>
+            </button>
+            {categories.map((category) => {
+              const isActive = String(category.categoriaId) === String(catalogCategoryId);
+              return (
+                <button
+                  key={category.categoriaId}
+                  type="button"
+                  className={`catalog-category-chip ${isActive ? 'active' : ''}`}
+                  aria-pressed={isActive}
+                  onClick={() => onCategoryChange(category.categoriaId)}
+                >
+                  {category.categoriaNombre}
+                  <span className="catalog-category-chip-count">{category.total}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="catalog-range-filter">
         <span>Mostrar por página:</span>
         {CATALOG_PAGE_SIZE_OPTIONS.map((size) => (
@@ -101,25 +178,42 @@ export default function ProfileCatalogPanel({
       {isCatalogLoading ? (
         <LoadingRow />
       ) : (sellerProducts || []).length === 0 ? (
-        <EmptyState label={catalogSearchTerm ? `Sin resultados para "${catalogSearchTerm}".` : 'Aún no has publicado productos en tu catálogo.'} />
+        <EmptyState label={
+          catalogSearchTerm
+            ? `Sin resultados para "${catalogSearchTerm}"${activeCategory ? ` en ${activeCategory.categoriaNombre}` : ''}.`
+            : activeCategory
+              ? `No tienes productos en ${activeCategory.categoriaNombre}.`
+              : 'Aún no has publicado productos en tu catálogo.'
+        } />
       ) : (
         <>
-          <div className="profile-orders-cards-grid seller-catalog-grid">
-            {sellerProducts.map((p) => (
-              <CatalogCard
-                key={p.id}
-                product={p}
-                questionCount={questionCountForProduct(p)}
-                onSelectProduct={onSelectProduct}
-                onQuickEditStock={onSelectProduct}
-                onOpenQuestions={(item) => onOpenQuestionsForProduct(item.id)}
-                onToggleTop={onToggleTop}
-                isUpdatingTop={updatingTopProductId === p.id}
-                onTogglePause={onTogglePause}
-                isUpdatingPause={updatingPauseProductId === p.id}
-              />
-            ))}
-          </div>
+          {productSections.map((section) => (
+            <section className="catalog-category-section" key={section.key}>
+              <header className="catalog-category-section-header">
+                <h3>{section.nombre}</h3>
+                <span className="catalog-category-section-count">
+                  {section.products.length} {section.products.length === 1 ? 'producto' : 'productos'}
+                </span>
+              </header>
+
+              <div className="profile-orders-cards-grid seller-catalog-grid">
+                {section.products.map((p) => (
+                  <CatalogCard
+                    key={p.id}
+                    product={p}
+                    questionCount={questionCountForProduct(p)}
+                    onSelectProduct={onSelectProduct}
+                    onQuickEditStock={onSelectProduct}
+                    onOpenQuestions={(item) => onOpenQuestionsForProduct(item.id)}
+                    onToggleTop={onToggleTop}
+                    isUpdatingTop={updatingTopProductId === p.id}
+                    onTogglePause={onTogglePause}
+                    isUpdatingPause={updatingPauseProductId === p.id}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
 
           {catalogTotalPages > 1 && (
             <div className="catalog-pagination">

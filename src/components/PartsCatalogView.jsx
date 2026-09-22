@@ -3,7 +3,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   Search, Filter, SlidersHorizontal, ShieldCheck, MapPin,
   ArrowRight, ArrowLeft, X, CheckCircle2, RotateCcw,
-  ChevronLeft, ChevronRight, ChevronDown, ShoppingCart, Car, Wrench, Layers, AlertCircle, Info, Tag, Globe,
+  ChevronDown, ShoppingCart, Car, Wrench, Layers, AlertCircle, Info, Tag, Globe,
   CarFront, RefreshCw
 } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
@@ -23,6 +23,7 @@ import { normalizePlate, sanitizePlateInput, isValidPlate } from '../utils/vehic
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../hooks/useFavorites';
 import TextSearchWithSuggestions from './TextSearchWithSuggestions';
+import PaginationBar from './PaginationBar';
 
 const normalizeNameKey = (value) => String(value || '').normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -1232,89 +1233,17 @@ export default function PartsCatalogView({
                   </div>
                 )}
 
-                {/* 4. Pagination Bar */}
-                <div className="directory-pagination-bar">
-                  <div className="pagination-info">
-                    <span>
-                      Mostrando del <strong>{startIndex}</strong> al <strong>{endIndex}</strong> de <strong>{totalProducts}</strong> repuestos (Página {currentPage} de {totalPages})
-                    </span>
-                  </div>
-
-                  <div className="pagination-controls-group">
-                    <div className="per-page-selector">
-                      <span>Ver:</span>
-                      <select
-                        value={itemsPerPage}
-                        onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                        className="select-per-page"
-                      >
-                        <option value={12}>12 por página</option>
-                        <option value={24}>24 por página</option>
-                        <option value={36}>36 por página</option>
-                      </select>
-                    </div>
-
-                    <div className="page-buttons-list">
-                      <button
-                        className="btn-page-nav"
-                        disabled={currentPage === 1}
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        title="Página Anterior"
-                      >
-                        <ChevronLeft size={16} />
-                        <span>Anterior</span>
-                      </button>
-
-                      {totalPages <= 7 ? (
-                        Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                          <button
-                            key={pageNum}
-                            className={`btn-page-number ${currentPage === pageNum ? 'active' : ''}`}
-                            onClick={() => handlePageChange(pageNum)}
-                          >
-                            {pageNum}
-                          </button>
-                        ))
-                      ) : (
-                        (() => {
-                          const pages = [];
-                          pages.push(1);
-                          if (currentPage > 3) pages.push('dots-prev');
-                          const start = Math.max(2, currentPage - 1);
-                          const end = Math.min(totalPages - 1, currentPage + 1);
-                          for (let p = start; p <= end; p++) pages.push(p);
-                          if (currentPage < totalPages - 2) pages.push('dots-next');
-                          if (totalPages > 1) pages.push(totalPages);
-
-                          return pages.map((item, idx) => {
-                            if (typeof item === 'string') {
-                              return <span key={`${item}-${idx}`} className="pagination-dots" style={{ padding: '0 6px', color: '#94a3b8' }}>…</span>;
-                            }
-                            return (
-                              <button
-                                key={item}
-                                className={`btn-page-number ${currentPage === item ? 'active' : ''}`}
-                                onClick={() => handlePageChange(item)}
-                              >
-                                {item}
-                              </button>
-                            );
-                          });
-                        })()
-                      )}
-
-                      <button
-                        className="btn-page-nav"
-                        disabled={currentPage === totalPages}
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        title="Página Siguiente"
-                      >
-                        <span>Siguiente</span>
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <PaginationBar
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                  rangeStart={startIndex}
+                  rangeEnd={endIndex}
+                  totalItems={totalProducts}
+                  itemLabel="repuestos"
+                  itemsPerPage={itemsPerPage}
+                  onItemsPerPageChange={setItemsPerPage}
+                />
               </>
             ) : (
               /* Empty Filter State */

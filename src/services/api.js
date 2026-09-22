@@ -818,10 +818,22 @@ export async function updateCartItemApi(usuarioId, itemId, payload) {
   return fetchApi(`/usuarios/${usuarioId}/carrito/items/${itemId}`, { method: 'PUT', body: JSON.stringify(payload) });
 }
 
-export async function getSellerInventoryApi(proveedorId, { page = 0, size = 12, texto, signal } = {}) {
+export async function getSellerInventoryApi(proveedorId, { page = 0, size = 12, texto, categoriaId, signal } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (texto) params.set('texto', texto);
+  // La categoria la filtra el servidor: el inventario viene paginado, asi que acotarlo en el
+  // navegador solo dejaria los de esa categoria que cayeron en la pagina actual.
+  if (categoriaId) params.set('categoriaId', String(categoriaId));
   return fetchApi(`/proveedores/${proveedorId}/inventario?${params.toString()}`, { method: 'GET', signal });
+}
+
+/**
+ * Categorias que el vendedor tiene publicadas, con su conteo
+ * (`[{ categoriaId, categoriaNombre, total }]`). Alimenta el filtro por categoria del panel
+ * de productos; se piden aparte del listado para que las opciones no cambien al filtrar.
+ */
+export async function getSellerInventoryCategoriesApi(proveedorId, { signal } = {}) {
+  return fetchApi(`/proveedores/${proveedorId}/inventario/categorias`, { method: 'GET', signal });
 }
 
 export async function getSellerInventorySummaryApi(proveedorId, { signal } = {}) {
@@ -1100,10 +1112,18 @@ export async function declareOrderDeliveryApi(orderId) {
  * Marketplace Endpoints (Unificados con Spring Boot Backend)
  */
 
-export async function getPublicStoresApi({ page = 0, size = 12, texto, comuna, signal } = {}) {
+export async function getPublicStoresApi({ page = 0, size = 12, texto, comuna, marcaVehiculo, catalogoId, signal } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (texto) params.set('texto', texto);
   if (comuna) params.set('comuna', comuna);
+  // Marca del vehiculo resuelto por patente: el backend deja solo las tiendas con stock que
+  // le sirva a ese auto (universales incluidos) y devuelve `productCount` con ese mismo
+  // criterio. Es lo que pinta el "N Para {marca}" de cada card.
+  if (marcaVehiculo) params.set('marcaVehiculo', marcaVehiculo);
+  // Con el vehiculo ya resuelto en catalogo, `catalogoId` manda sobre `marcaVehiculo`: el
+  // conteo sale del mismo cruce relacional que despues usa la ficha de la tienda, asi que la
+  // card no promete 264 repuestos para terminar mostrando 9.
+  if (catalogoId) params.set('catalogoId', String(catalogoId));
   return fetchApi(`/tiendas/publicas?${params.toString()}`, { method: 'GET', signal });
 }
 
@@ -1111,11 +1131,16 @@ export async function getStoreProfileApi(storeId) {
   return fetchApi(`/tiendas/${storeId}`, { method: 'GET' });
 }
 
-export async function getStoreProductsApi(storeId, { page = 0, size = 12, texto, categoriaId } = {}) {
+export async function getStoreProductsApi(storeId, { page = 0, size = 12, texto, categoriaId, marca, signal } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (texto) params.set('texto', texto);
   if (categoriaId) params.set('categoriaId', String(categoriaId));
-  return fetchApi(`/tiendas/${storeId}/productos?${params.toString()}`, { method: 'GET' });
+  // `marca` es la marca de VEHICULO, no la del repuesto: el backend la resuelve como filtro
+  // de compatibilidad, asi que el resultado incluye ademas los repuestos universales.
+  if (marca) params.set('marca', marca);
+  // El `signal` llegaba y se descartaba: al cambiar de tienda rapido quedaban peticiones
+  // vivas que ya no le sirven a nadie.
+  return fetchApi(`/tiendas/${storeId}/productos?${params.toString()}`, { method: 'GET', signal });
 }
 
 export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, soloDestacados, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, comunaId, compatibilidadMarca, compatibilidadModelo, compatibilidadAnio, condicion, origen, sort = 'precio,asc', signal } = {}) {
@@ -1892,7 +1917,7 @@ export async function getInventoryVehicleCatalogsApi(ids, { signal } = {}) {
 /**
  * Retorna las ofertas de repuestos compatibles con un vehiculo_catalogo específico.
  */
-export async function getVehicleCatalogPartsApi(catalogoId, { categoriaId, subcategoriaId, marcaId, precioMin, precioMax, texto, condicion, origen, comunaId, soloCotizacion, page = 0, size = 20, signal } = {}) {
+export async function getVehicleCatalogPartsApi(catalogoId, { categoriaId, subcategoriaId, marcaId, precioMin, precioMax, texto, condicion, origen, comunaId, soloCotizacion, proveedorId, page = 0, size = 20, signal } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (categoriaId) params.set('categoriaId', String(categoriaId));
   if (subcategoriaId) params.set('subcategoriaId', String(subcategoriaId));
@@ -1904,6 +1929,9 @@ export async function getVehicleCatalogPartsApi(catalogoId, { categoriaId, subca
   if (precioMin) params.set('precioMin', String(precioMin));
   if (precioMax) params.set('precioMax', String(precioMax));
   if (texto) params.set('texto', texto);
+  // Acota el cruce a una tienda. La ficha publica lo usa para no traerse las ofertas
+  // compatibles de todo el marketplace y descartarlas despues en el navegador.
+  if (proveedorId) params.set('proveedorId', String(proveedorId));
   return fetchApi(`/vehiculos-catalogo/${catalogoId}/repuestos?${params.toString()}`, { method: 'GET', signal });
 }
 

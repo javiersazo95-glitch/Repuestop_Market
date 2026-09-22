@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES, adDetailPath, catalogPath, checkoutPath, helpCategoryPath, helpContactPath, productPath, profilePath, storePath } from './paths';
 
 /**
@@ -9,6 +9,19 @@ import { ROUTES, adDetailPath, catalogPath, checkoutPath, helpCategoryPath, help
  */
 export function useAppNavigation() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  /**
+   * Vuelve a la pantalla anterior, y al inicio cuando no hay ninguna.
+   *
+   * `location.key` vale 'default' solo en la primera entrada del historial de la app: es el
+   * caso de quien llega por un enlace directo o desde Google. Ahi `navigate(-1)` sacaria al
+   * usuario del sitio -o no haria nada-, asi que se manda al inicio.
+   */
+  const goBack = useCallback(() => {
+    if (location.key && location.key !== 'default') navigate(-1);
+    else navigate(ROUTES.home);
+  }, [navigate, location.key]);
 
   const goProfile = useCallback((tab = 'resumen') => {
     navigate(profilePath(typeof tab === 'string' ? tab : 'resumen'));
@@ -32,6 +45,7 @@ export function useAppNavigation() {
 
   return useMemo(() => ({
     goHome: () => navigate(ROUTES.home),
+    goBack,
     goCatalog: (filter = null, extra = {}) => navigate(catalogPath(filter, extra)),
     goProduct,
     goStores: () => navigate(ROUTES.stores),
@@ -51,6 +65,6 @@ export function useAppNavigation() {
     goHelpContact: (topicId) => navigate(helpContactPath(topicId)),
     goTerms: () => navigate(ROUTES.terms),
     goPrivacy: () => navigate(ROUTES.privacy),
-  }), [navigate, goProduct, goStore, goProfile, goAdDetail]);
+  }), [navigate, goProduct, goStore, goProfile, goAdDetail, goBack]);
 }
 

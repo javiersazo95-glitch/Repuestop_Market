@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Disc3, Cog, ArrowUpDown, Lightbulb, Droplets, Zap, CarFront, CircleDot, Package, Wind, ThermometerSun, KeyRound, Fuel, Gauge, CircleGauge, Recycle, GitFork, Layers, Filter, Cable, Snowflake, Radar, Box } from 'lucide-react';
 
 const ICONS = { Disc3, Cog, ArrowUpDown, Lightbulb, Droplets, Zap, CarFront, CircleDot, Wind, ThermometerSun, KeyRound, Fuel, Gauge, CircleGauge, Recycle, GitFork, Layers, Filter, Cable, Snowflake, Radar, Box };
@@ -20,13 +20,29 @@ function darken(hex, amount = 0.35) {
  * colorful even when the photo itself is dark. Falls back to a flat colored
  * gradient + centered icon when no photo is available for that category.
  */
-export default function CategoryIconTile({ iconName, color = '#0066ff', image, size = 32, className = '' }) {
+export default function CategoryIconTile({ iconName, color = '#0066ff', image, fallbackImage, size = 32, className = '' }) {
   const Icon = ICONS[iconName] || Package;
+  // Una foto que no carga (archivo borrado del bucket, URL vieja, sin conexion) dejaba el
+  // icono de imagen rota del navegador dentro de la tarjeta. Al fallar se intenta primero con
+  // `fallbackImage` -la foto referencial de la categoria- y recien despues se cae al mosaico
+  // de color. `image` en las dependencias: al cambiar de producto hay que reintentar.
+  const [src, setSrc] = useState(image);
+  useEffect(() => { setSrc(image); }, [image]);
 
-  if (image) {
+  const handleError = () => {
+    setSrc(fallbackImage && src !== fallbackImage ? fallbackImage : null);
+  };
+
+  if (src) {
     return (
       <div className={`category-icon-tile has-photo ${className}`}>
-        <img src={image} alt="" className="category-tile-photo" loading="lazy" />
+        <img
+          src={src}
+          alt=""
+          className="category-tile-photo"
+          loading="lazy"
+          onError={handleError}
+        />
         <span className="category-tile-badge" style={{ background: color }}>
           <Icon size={Math.round(size * 0.55)} strokeWidth={1.8} />
         </span>

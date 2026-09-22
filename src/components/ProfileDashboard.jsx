@@ -24,7 +24,8 @@ import ProfileStoreSummaryPanel from './ProfileStoreSummaryPanel';
 import {
   getBuyerOrdersApi, getSellerOrdersApi, getFavoritesApi,
   confirmOrderPaymentApi,
-  getSellerInventoryApi, getSellerInventorySummaryApi, getSellerConversationsApi, getBuyerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
+  getSellerInventoryApi,
+  getSellerInventoryCategoriesApi, getSellerInventorySummaryApi, getSellerConversationsApi, getBuyerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
   uploadProfileImageApi, resolveMediaUrl,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi,
   saveConversationQuoteApi, sendConversationMessageApi,
@@ -403,6 +404,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [catalogPageSize, setCatalogPageSize] = useState(CATALOG_PAGE_SIZE_OPTIONS[0]);
   const [catalogSearchInput, setCatalogSearchInput] = useState('');
   const [catalogSearchTerm, setCatalogSearchTerm] = useState('');
+  // Filtro por categoria del catalogo. `null` = todas. Viaja al servidor junto con la
+  // pagina: el inventario esta paginado, asi que filtrarlo en el navegador solo dejaria los
+  // productos de esa categoria que cayeron en la pagina que se esta mirando.
+  const [catalogCategoryId, setCatalogCategoryId] = useState(null);
   const [catalogTopFeedback, setCatalogTopFeedback] = useState('');
   // Errores de acciones sobre el catálogo (marcar Top). El error de carga del
   // listado lo aporta React Query en `catalogQuery.error`.
@@ -520,10 +525,26 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   });
 
   const catalogQuery = useQuery({
-    queryKey: qk.sellerInventory(user?.sellerId, { page: catalogPage, size: catalogPageSize, texto: catalogSearchTerm }),
-    queryFn: ({ signal }) => getSellerInventoryApi(user.sellerId, { page: catalogPage, size: catalogPageSize, texto: catalogSearchTerm || undefined, signal }),
+    queryKey: qk.sellerInventory(user?.sellerId, { page: catalogPage, size: catalogPageSize, texto: catalogSearchTerm, categoriaId: catalogCategoryId }),
+    queryFn: ({ signal }) => getSellerInventoryApi(user.sellerId, {
+      page: catalogPage,
+      size: catalogPageSize,
+      texto: catalogSearchTerm || undefined,
+      categoriaId: catalogCategoryId || undefined,
+      signal,
+    }),
     enabled: Boolean(isSeller && activeTab === 'productos' && user?.sellerId),
     staleTime: 60 * 1000,
+  });
+
+  // Opciones del filtro por categoria. Van aparte del listado a proposito: si salieran de la
+  // pagina cargada, al elegir una categoria desaparecerian todas las demas y no se podria
+  // cambiar de filtro sin limpiarlo antes.
+  const catalogCategoriesQuery = useQuery({
+    queryKey: qk.sellerInventoryCategories(user?.sellerId),
+    queryFn: ({ signal }) => getSellerInventoryCategoriesApi(user.sellerId, { signal }),
+    enabled: Boolean(isSeller && activeTab === 'productos' && user?.sellerId),
+    staleTime: 5 * 60 * 1000,
   });
 
   const productQuestionsQuery = useQuery({
@@ -589,6 +610,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const isSellerFounder = Boolean(storeInfo?.founder ?? user?.founder ?? user?.fundador);
   const inventorySummary = inventorySummaryQuery.data || null;
   const sellerProducts = catalogQuery.data?.content || [];
+  const catalogCategories = catalogCategoriesQuery.data || [];
   const catalogTotalPages = catalogQuery.data?.totalPages ?? 0;
   const catalogTotalElements = catalogQuery.data?.totalElements ?? 0;
   const isCatalogLoading = catalogQuery.isLoading;
@@ -612,7 +634,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
    * subordenes vivas), que es lo que usan el pedido de una sola tienda y el listado.
    */
   const handleSaveCatalogProduct = async (productId, updatedFields) => {
-    queryClient.invalidateQueries({ queryKey: qk.sellerInventory(user?.sellerId, { page: catalogPage, size: catalogPageSize, texto: catalogSearchTerm }) });
+    queryClient.invalidateQueries({ queryKey: qk.sellerInventory(user?.sellerId, { page: catalogPage, size: catalogPageSize, texto: catalogSearchTerm, categoriaId: catalogCategoryId }) });
     setSelectedCatalogProduct((prev) =>
       prev && prev.id === productId ? { ...prev, ...updatedFields } : prev
     );
@@ -669,11 +691,22 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     setCatalogPage(0);
   };
 
+  // Volver a la primera pagina es obligatorio: quedarse en la pagina 4 de "todas" al filtrar
+  // una categoria con dos productos mostraria un listado vacio sin explicacion.
+  const handleCatalogCategoryChange = (categoriaId) => {
+    setCatalogCategoryId((current) => (String(current ?? '') === String(categoriaId ?? '') ? null : categoriaId));
+    setCatalogPage(0);
+  };
+
   const handleCatalogProductCreated = () => {
     setCatalogPage(0);
     setCatalogSearchInput('');
     setCatalogSearchTerm('');
+    setCatalogCategoryId(null);
     queryClient.invalidateQueries({ queryKey: ['sellerInventory'] });
+    // El producto nuevo puede estrenar una categoria: sin esto el filtro no la ofreceria
+    // hasta que caduque su staleTime.
+    queryClient.invalidateQueries({ queryKey: qk.sellerInventoryCategories(effectiveSellerId) });
     queryClient.invalidateQueries({ queryKey: qk.sellerInventorySummary(effectiveSellerId) });
   };
 
@@ -1295,6 +1328,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   catalogSearchInput={catalogSearchInput}
                   setCatalogSearchInput={setCatalogSearchInput}
                   catalogSearchTerm={catalogSearchTerm}
+                  catalogCategories={catalogCategories}
+                  catalogTotalInventory={inventorySummary?.total}
+                  catalogCategoryId={catalogCategoryId}
+                  onCategoryChange={handleCatalogCategoryChange}
                   onSearchSubmit={handleCatalogSearchSubmit}
                   catalogPage={catalogPage}
                   setCatalogPage={setCatalogPage}

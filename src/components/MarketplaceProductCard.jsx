@@ -2,7 +2,7 @@ import React from 'react';
 import { Heart, MapPin, PackageCheck, ShieldCheck, Sparkles, Star, Store, Tag } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
 import ProductTopBadge from './ProductTopBadge';
-import { CATEGORY_COLOR_BY_ID, CATEGORY_ICON_BY_ID, CATEGORY_IMAGE_BY_ID } from '../data/categories';
+import { CATEGORY_COLOR_BY_ID, CATEGORY_ICON_BY_ID, CATEGORY_IMAGE_BY_ID, getPartImage } from '../data/categories';
 import { isProductTopActive } from '../utils/productTop';
 
 const CATEGORY_LABELS = {
@@ -61,12 +61,19 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
   const storeLogo = product.logoTienda || product.storeIconUrl || product.tiendaLogo || null;
   const stock = Number(product.stock ?? product.stockAvailable ?? 0);
   const rating = Number(product.rating || product.calificacion || 4.8);
-  // La foto registrada por la tienda siempre tiene prioridad. La imagen de la
-  // categoría solo es el respaldo para publicaciones que aún no tienen foto.
+  // La foto registrada por la tienda siempre tiene prioridad.
+  //
+  // Para las publicaciones sin foto el respaldo es la imagen de LA PIEZA que nombra el
+  // título (`getPartImage`), no la de su categoría: con la de categoría, cuatro repuestos
+  // de carrocería distintos salían con el mismo auto azul y tres de motor con el mismo
+  // bloque, y una grilla de fotos repetidas se lee como un error del filtro. La de
+  // categoría queda como último recurso para títulos que no se parecen a nada.
+  const referenceImage = getPartImage(product.titulo, product.subcategoria, product.categoriaNombre)
+    || CATEGORY_IMAGE_BY_ID[category];
   const productImage = product.imagen
     || product.imagenes?.[0]
     || product.imageUrls?.[0]
-    || CATEGORY_IMAGE_BY_ID[category];
+    || referenceImage;
 
   const favoriteActive = Boolean(isFavorite || product.favorito || product.isFavorite);
 
@@ -77,6 +84,7 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
           iconName={CATEGORY_ICON_BY_ID[category]}
           color={CATEGORY_COLOR_BY_ID[category]}
           image={productImage}
+          fallbackImage={referenceImage}
           size={34}
         />
         {isTop && <ProductTopBadge compact className="market-product-top-badge" />}

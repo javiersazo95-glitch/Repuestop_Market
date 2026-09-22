@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
 import {
   Search, SlidersHorizontal, ShieldCheck, MapPin, Star, Package, Clock,
-  ArrowLeft, X, CheckCircle2, RotateCcw, Truck, ChevronLeft, ChevronRight, ChevronDown,
+  ArrowLeft, X, CheckCircle2, RotateCcw, Truck, ChevronDown,
   ShoppingCart, Car, Wrench, Layers, Building2, MessageSquare, AlertCircle,
   Heart, Share2, Image, PenLine, ArrowRight, HelpCircle,
   CarFront, Barcode, CircleHelp, RefreshCw, Tag, Store as StoreIcon,
@@ -17,15 +17,16 @@ import { isProductTopActive } from '../utils/productTop';
 import ContextualReportButton from './ContextualReportButton';
 import { parseShippingMethods, resolveShippingService } from '../data/shippingMethods';
 import { getAddressesApi, getStoreProductsApi, getStoreProfileApi, getVehicleCatalogPartsApi, searchVehicleByPatenteApi } from '../services/api';
+import { isValidPlate, normalizePlate } from '../utils/vehicleLookup';
 import { adaptCompatibleOffersPage, adaptPage, adaptProduct, adaptStore, adaptVehicle } from '../services/adapters';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useFavorites } from '../hooks/useFavorites';
 import { useMarketplace } from '../context/MarketplaceContext';
 import TextSearchWithSuggestions from './TextSearchWithSuggestions';
+import PaginationBar from './PaginationBar';
 
 // El backend acota el tamaño de página a 100; esta vista filtra y pagina en cliente.
 const STORE_PRODUCTS_FETCH_SIZE = 100;
-const STORE_FILTER_BRANDS = ['TODAS', 'Toyota', 'Nissan', 'Hyundai', 'Chevrolet', 'Kia', 'Mazda', 'Suzuki', 'Mitsubishi'];
 
 export default function StorePublicProfileView({
   store,
@@ -33,6 +34,7 @@ export default function StorePublicProfileView({
   onQuickView,
   onOpenQuote,
   activeVehicle: initialActiveVehicle,
+  onVehicleChange,
   onEditStore
 }) {
   const { user, isLoggedIn } = useAuth();
@@ -106,6 +108,7 @@ export default function StorePublicProfileView({
       responseTimeLabel: inputStore.responseTimeLabel || '',
       verificadoFecha: inputStore.verificadoFecha || '',
       marcasEspecialistas: Array.isArray(inputStore.marcasEspecialistas) ? inputStore.marcasEspecialistas : [],
+      marcasVehiculoDisponibles: Array.isArray(inputStore.marcasVehiculoDisponibles) ? inputStore.marcasVehiculoDisponibles : [],
       metodosEnvio: Array.isArray(inputStore.metodosEnvio) ? inputStore.metodosEnvio : [],
       logoUrl: inputStore.logoUrl || null,
       coverUrl: inputStore.coverUrl || null,
@@ -154,10 +157,18 @@ export default function StorePublicProfileView({
     isLoading: productsLoading,
     error: productsQueryError
   } = useQuery({
-    queryKey: qk.storeProducts(storeId, { size: STORE_PRODUCTS_FETCH_SIZE }),
+    queryKey: qk.storeProducts(storeId, { size: STORE_PRODUCTS_FETCH_SIZE, marca: selectedBrand !== 'TODAS' ? selectedBrand : undefined }),
     queryFn: async ({ signal }) => {
       try {
-        const data = await getStoreProductsApi(storeId, { page: 0, size: STORE_PRODUCTS_FETCH_SIZE, signal });
+        const data = await getStoreProductsApi(storeId, {
+          page: 0,
+          size: STORE_PRODUCTS_FETCH_SIZE,
+          // La marca de vehiculo la resuelve el backend (`GET /tiendas/{id}/productos?marca=`),
+          // que es el unico que ve el inventario completo. Filtrarla en el cliente era, de
+          // hecho, no filtrarla: `selectedBrand` no se leia en ninguna parte del filtrado.
+          marca: selectedBrand !== 'TODAS' ? selectedBrand : undefined,
+          signal,
+        });
         return adaptPage(data, adaptProduct);
       } catch (err) {
         console.warn('No se pudo cargar el inventario de la tienda:', err);
@@ -172,36 +183,48 @@ export default function StorePublicProfileView({
 
   // Compatibilidad por patente: en vez de reimplementar en JS la resolucion de
   // compatibilidad (que ya le fallo dos veces a esta vista -- esUniversal e ids como
-  // string), se consulta el mismo endpoint relacional que usan el catalogo general
-  // (PartsCatalogView) y la app (`loadCompatibleProductsByCatalogoPage` en
-  // app/store/[id].tsx): busca por vehiculo_catalogo en TODO el marketplace y se
-  // acota a esta tienda por `proveedorId`, igual que hace la app.
+  // string), se consulta el mismo endpoint relacional que usa el catalogo general
+  // (PartsCatalogView), acotado a esta tienda con `proveedorId`.
   const wantsVehicleCompat = Boolean(onlyCompatible && activeVehicle?.catalogoId);
-  const { data: compatibleOffersData, isLoading: compatibleOffersLoading } = useQuery({
-    queryKey: qk.vehicleCompatibleProducts(activeVehicle?.catalogoId, { storeId }),
+  const { data: compatibleOffersData, isLoading: compatibleOffersLoading, error: compatibleOffersError } = useQuery({
+    queryKey: qk.vehicleCompatibleProducts(activeVehicle?.catalogoId, { proveedorId: storeId }),
     queryFn: async ({ signal }) => {
-      const firstPage = adaptCompatibleOffersPage(
-        await getVehicleCatalogPartsApi(activeVehicle.catalogoId, { page: 0, size: STORE_PRODUCTS_FETCH_SIZE, signal })
-      );
+      // `proveedorId` lo aplica el backend. Antes se pedia pagina por pagina TODO el
+      // marketplace compatible con el vehiculo y se descartaba aca lo que no era de esta
+      // tienda: se traian miles de ofertas para mostrar unas decenas, y el tope de 100 por
+      // pagina se gastaba en ofertas ajenas, asi que una tienda chica podia quedar sin
+      // ningun repuesto visible pese a tener stock compatible.
+      const fetchPage = (page) => getVehicleCatalogPartsApi(activeVehicle.catalogoId, {
+        page,
+        size: STORE_PRODUCTS_FETCH_SIZE,
+        proveedorId: storeId,
+        signal,
+      }).then(adaptCompatibleOffersPage);
+
+      const firstPage = await fetchPage(0);
       const remainingPages = await Promise.all(
-        Array.from({ length: Math.max(0, firstPage.totalPages - 1) }, (_, index) => (
-          getVehicleCatalogPartsApi(activeVehicle.catalogoId, { page: index + 1, size: STORE_PRODUCTS_FETCH_SIZE, signal })
-            .then(adaptCompatibleOffersPage)
-        ))
+        Array.from({ length: Math.max(0, firstPage.totalPages - 1) }, (_, index) => fetchPage(index + 1))
       );
-      return [firstPage, ...remainingPages]
-        .flatMap((page) => page.items)
-        .filter((item) => String(item.proveedorId) === String(storeId));
+      return [firstPage, ...remainingPages].flatMap((page) => page.items);
     },
     enabled: wantsVehicleCompat && Boolean(storeId),
   });
 
   const compatibleStoreProducts = compatibleOffersData || [];
+  // Marcas que la tienda realmente cubre. Cuando el backend no las manda (ficha aun en
+  // vuelo) el selector queda solo con "Todas": es preferible a ofrecer marcas inventadas.
+  const storeVehicleBrands = Array.isArray(currentStore?.marcasVehiculoDisponibles)
+    ? currentStore.marcasVehiculoDisponibles
+    : [];
   const textSearchSuggestions = [
     ...NAVIGATION_CATEGORIES.map((category) => ({ label: category.nombre, type: 'category' })),
     ...storeProducts.map((product) => ({ label: product.titulo, type: 'product' })),
   ].filter((item) => item.label);
-  const productsError = productsQueryError ? (productsQueryError.message || 'No se pudo cargar el catálogo de esta tienda.') : null;
+  // El fallo del cruce por patente tambien es un error de catálogo: sin esto la vista
+  // mostraba el vacío de "no hay repuestos con estos filtros" cuando en realidad la
+  // consulta de compatibilidad se cayó, y el usuario cambiaba la patente en vano.
+  const catalogQueryError = wantsVehicleCompat ? compatibleOffersError : productsQueryError;
+  const productsError = catalogQueryError ? (catalogQueryError.message || 'No se pudo cargar el catálogo de esta tienda.') : null;
 
 
   const handleResetFilters = () => {
@@ -261,35 +284,59 @@ export default function StorePublicProfileView({
   // compatibilidad activo para esta tienda.
   const handleUnifiedSearch = async (valToUse) => {
     const value = (valToUse !== undefined ? valToUse : inputValue).trim();
-    if (!value) {
+    // Misma validación que el hero y el directorio: la patente viaja normalizada (sin
+    // guiones ni espacios y en mayúsculas) y un formato inválido se avisa aquí en vez de
+    // gastar una consulta que vuelve como 404 genérico.
+    const normalized = normalizePlate(value);
+    if (!isValidPlate(normalized)) {
       setPatentError('Ingresa una patente válida (ej. BB-CL-12)');
       return;
     }
     setPatentError('');
     setPatentSearching(true);
-    setPatentInput(value);
+    setPatentInput(normalized);
     try {
-      const resolved = adaptVehicle(await searchVehicleByPatenteApi(value));
+      const resolved = adaptVehicle(await searchVehicleByPatenteApi(normalized));
       if (resolved && !resolved.requiereIngresoManual && resolved.marca) {
         setActiveVehicle(resolved);
         setOnlyCompatible(true);
-        setInputValue(resolved.patente || value);
+        setInputValue(resolved.patente || normalized);
+        // El vehículo va también al garage compartido, igual que en el catálogo y en el
+        // directorio. Sin esto la patente recién ingresada se perdía al abrir un repuesto y
+        // volver, y no servía para la siguiente tienda.
+        onVehicleChange?.(resolved);
       } else {
         setActiveVehicle(null);
+        onVehicleChange?.(null);
         setPatentError(resolved?.mensaje || 'No encontramos ese vehículo. Verifica la patente e intenta de nuevo.');
       }
     } catch (err) {
       setActiveVehicle(null);
+      onVehicleChange?.(null);
       setPatentError(err.message || 'No se pudo consultar la patente. Intenta nuevamente.');
     } finally {
       setPatentSearching(false);
     }
   };
 
+  // El garage vive por encima del router: si cambia desde otra vista (o al volver atrás con
+  // una patente ya resuelta), la ficha tiene que reflejarlo. `useState` solo lee el valor de
+  // montaje, así que sin esto la tienda se quedaba filtrando por el vehículo anterior.
+  useEffect(() => {
+    setActiveVehicle(initialActiveVehicle);
+    setOnlyCompatible(Boolean(initialActiveVehicle));
+    setInputValue(initialActiveVehicle?.patente || '');
+  }, [initialActiveVehicle]);
+
   // Reset to page 1 when any filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedCategory, selectedSubcategory, selectedCondition, selectedBrand, onlyCompatible, activeVehicle, sortBy, itemsPerPage, filterByMyComuna, myComunaNombre]);
+
+  // El filtro de vehiculo esta realmente actuando sobre la grilla: manda tanto para el
+  // encabezado de resultados como para la metrica de la cabecera, que antes seguia anunciando
+  // el inventario completo de la tienda.
+  const vehicleFilterActive = Boolean(activeVehicle && onlyCompatible);
 
   // Filtering Logic
   const filteredProducts = (wantsVehicleCompat ? compatibleStoreProducts : storeProducts).filter((prod) => {
@@ -346,9 +393,18 @@ export default function StorePublicProfileView({
           // inclusion en cualquier sentido, como hace el backend con su LIKE.
           const grupoModelo = c.modelo?.toLowerCase() || '';
           const vehiculoModelo = activeVehicle.modelo?.toLowerCase() || '';
-          return c.marca?.toLowerCase() === activeVehicle.marca?.toLowerCase() &&
+          const mismoModelo = c.marca?.toLowerCase() === activeVehicle.marca?.toLowerCase() &&
                  Boolean(grupoModelo) && Boolean(vehiculoModelo) &&
                  (vehiculoModelo.includes(grupoModelo) || grupoModelo.includes(vehiculoModelo));
+          if (!mismoModelo) return false;
+          // El rango de años que declaró el vendedor también manda: sin esto un juego de
+          // pastillas para un Yaris 2005-2008 se ofrecía para un Yaris 2021. Un grupo sin
+          // años declarados se sigue aceptando, que es como lo trata el resto del catalogo.
+          const anio = Number(activeVehicle.anio) || 0;
+          if (!anio) return true;
+          if (c.anioInicio && anio < Number(c.anioInicio)) return false;
+          if (c.anioFin && anio > Number(c.anioFin)) return false;
+          return true;
         }
       );
       if (!matchesVehicle) return false;
@@ -375,12 +431,12 @@ export default function StorePublicProfileView({
   // espacio al abrir el catálogo sin ninguna condición aplicada.
   const hasAppliedFilters = Boolean(
     searchQuery.trim() ||
-    (activeVehicle && onlyCompatible) ||
+    vehicleFilterActive ||
     filterByMyComuna ||
     onlyQuoteOnly ||
     selectedCategory !== 'TODAS' ||
     selectedSubcategory !== 'TODAS' ||
-    selectedCondition !== 'TODOS' ||
+    Boolean(selectedCondition) ||
     selectedBrand !== 'TODAS'
   );
 
@@ -651,9 +707,12 @@ export default function StorePublicProfileView({
         <div className="store-metrics-strip-card">
             <div className="metric-strip-item">
               <span className="metric-icon-box"><Package size={22} /></span>
+              {/* Con una patente activa esta metrica tiene que hablar del mismo universo que
+                  la grilla. Mostrar el inventario completo mientras abajo se listan 9
+                  repuestos compatibles se lee como que el filtro esta roto. */}
               <div className="metric-text-box">
-                <small>Productos publicados</small>
-                <strong>{Number(currentStore.totalPublicaciones ?? 0).toLocaleString('es-CL')}</strong>
+                <small>{vehicleFilterActive ? 'Compatibles con tu vehículo' : 'Productos publicados'}</small>
+                <strong>{(vehicleFilterActive ? sortedProducts.length : Number(currentStore.totalPublicaciones ?? 0)).toLocaleString('es-CL')}</strong>
               </div>
             </div>
 
@@ -721,7 +780,7 @@ export default function StorePublicProfileView({
                   <div className="catalog-showcase-vehicle-filter">
                     <Car size={18} />
                     <span><strong>{activeVehicle.marca} {activeVehicle.modelo}</strong>{activeVehicle.patente && activeVehicle.patente !== 'MANUAL' ? ` · ${activeVehicle.patente}` : ''}</span>
-                    <button type="button" onClick={() => { setActiveVehicle(null); setOnlyCompatible(false); setInputValue(''); setPatentInput(''); }} title="Quitar filtro de vehículo"><X size={15} /> Quitar filtro</button>
+                    <button type="button" onClick={() => { setActiveVehicle(null); onVehicleChange?.(null); setOnlyCompatible(false); setInputValue(''); setPatentInput(''); }} title="Quitar filtro de vehículo"><X size={15} /> Quitar filtro</button>
                   </div>
                 ) : (
                   <div className="catalog-quick-patente-bar">
@@ -868,9 +927,15 @@ export default function StorePublicProfileView({
 
             <div className="filter-section-group compact-select-section">
               <label className="filter-group-label"><Car size={13} /> Marca de Vehículo</label>
-              <select value={selectedBrand} onChange={(event) => setSelectedBrand(event.target.value)} className="sidebar-select-input">
-                {STORE_FILTER_BRANDS.map((brand) => <option key={brand} value={brand}>{brand === 'TODAS' ? 'Todas las Marcas' : brand}</option>)}
+              <select
+                value={selectedBrand}
+                onChange={(event) => setSelectedBrand(event.target.value)}
+                className="sidebar-select-input"
+                disabled={wantsVehicleCompat}
+              >
+                {['TODAS', ...storeVehicleBrands].map((brand) => <option key={brand} value={brand}>{brand === 'TODAS' ? 'Todas las Marcas' : brand}</option>)}
               </select>
+              {wantsVehicleCompat && <small className="filter-hint-inline">La patente activa ya define la marca del vehículo.</small>}
             </div>
 
             <button className="btn-clear-all-filters-wide" onClick={handleApplyStoreFilters}>
@@ -887,7 +952,7 @@ export default function StorePublicProfileView({
                 <h2>Repuestos de {currentStore.nombre}</h2>
                 <p>Explora el inventario disponible de esta tienda o filtra por la patente de tu vehículo.</p>
                 {hasAppliedFilters && <span className="store-catalog-filter-feedback">
-                  {activeVehicle && onlyCompatible ? (
+                  {vehicleFilterActive ? (
                     <><strong>{sortedProducts.length}</strong> repuestos compatibles con tu <strong>{activeVehicle.marca} {activeVehicle.modelo}</strong></>
                   ) : (
                     <><strong>{sortedProducts.length}</strong> repuestos encontrados</>
@@ -931,59 +996,17 @@ export default function StorePublicProfileView({
                   ))}
                 </div>
 
-                {/* Pagination */}
-                <div className="directory-pagination-bar">
-                  <div className="pagination-info">
-                    <span>
-                      Mostrando del <strong>{startIndex + 1}</strong> al <strong>{endIndex}</strong> de <strong>{sortedProducts.length}</strong> repuestos (Página {currentPage} de {totalPages})
-                    </span>
-                  </div>
-
-                  <div className="pagination-controls-group">
-                    <div className="per-page-selector">
-                      <span>Ver:</span>
-                      <select
-                        value={itemsPerPage}
-                        onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                        className="select-per-page"
-                      >
-                        <option value={12}>12 por página</option>
-                        <option value={24}>24 por página</option>
-                        <option value={36}>36 por página</option>
-                      </select>
-                    </div>
-
-                    <div className="page-buttons-list">
-                      <button
-                        className="btn-page-nav"
-                        disabled={currentPage === 1}
-                        onClick={() => handlePageChange(currentPage - 1)}
-                      >
-                        <ChevronLeft size={16} />
-                        <span>Anterior</span>
-                      </button>
-
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                        <button
-                          key={pageNum}
-                          className={`btn-page-number ${currentPage === pageNum ? 'active' : ''}`}
-                          onClick={() => handlePageChange(pageNum)}
-                        >
-                          {pageNum}
-                        </button>
-                      ))}
-
-                      <button
-                        className="btn-page-nav"
-                        disabled={currentPage === totalPages}
-                        onClick={() => handlePageChange(currentPage + 1)}
-                      >
-                        <span>Siguiente</span>
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <PaginationBar
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                  rangeStart={startIndex + 1}
+                  rangeEnd={endIndex}
+                  totalItems={sortedProducts.length}
+                  itemLabel="repuestos"
+                  itemsPerPage={itemsPerPage}
+                  onItemsPerPageChange={setItemsPerPage}
+                />
               </>
             ) : (
               <div className="directory-empty-state">

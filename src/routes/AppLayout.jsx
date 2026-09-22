@@ -69,10 +69,9 @@ export default function AppLayout() {
     <div className="repuestop-high-trust-app">
       {isAboutPage ? (
         <AboutHeader
+          onBack={nav.goBack}
           onHome={nav.goHome}
-          onCatalog={() => nav.goCatalog()}
           onSeller={nav.goSellerRegister}
-          onHelp={nav.goHelp}
           onLogin={openAuthModal}
         />
       ) : <Header

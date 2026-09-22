@@ -5,7 +5,7 @@ import {
   Globe, Heart, Info, Landmark, MapPin, MessageCircle, Package, Search, Send, ShieldCheck,
   ShoppingCart, Star, Store, Tag, Truck, Wrench, X
 } from 'lucide-react';
-import { CATEGORY_IMAGE_BY_ID } from '../data/categories';
+import { CATEGORY_IMAGE_BY_ID, getPartImage } from '../data/categories';
 import ProductBrandMark from './ProductBrandMark';
 import ProductBrandModal from './ProductBrandModal';
 import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
@@ -44,9 +44,13 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   // El vendedor llega a su propia ficha desde el catalogo como comprador, asi que
   // esto NO depende del modo de la pantalla.
   const isOwnProduct = isOwnStoreProduct(user?.sellerId, product.proveedorId);
+  // Mismo respaldo que la tarjeta del catalogo: la foto de la pieza que nombra el titulo
+  // antes que la de su categoria, para no abrir la ficha de un espejo con la foto de un auto.
   const images = (product.imagenes?.length
     ? product.imagenes
-    : [product.imagen || CATEGORY_IMAGE_BY_ID[product.categoria]]).filter(Boolean);
+    : [product.imagen
+      || getPartImage(product.titulo, product.subcategoria, product.categoriaNombre)
+      || CATEGORY_IMAGE_BY_ID[product.categoria]]).filter(Boolean);
   const [activeImage, setActiveImage] = useState(0);
   // El estado del corazon sale del mismo hook que usa el catalogo. Antes esta pantalla
   // llevaba su propio `useState` + `checkIsFavoriteApi`, y para BORRAR le pasaba el id
