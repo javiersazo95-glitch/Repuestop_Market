@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import AboutHeader from '../components/about/AboutHeader';
 import AuthModal from '../components/AuthModal';
 import CartAddedToast from '../components/CartAddedToast';
 import QuotationRequestModal from '../components/QuotationRequestModal';
@@ -27,6 +28,7 @@ export default function AppLayout() {
     searchQuery, setSearchQuery,
   } = useMarketplace();
   const { isLoggedIn, user } = useAuth();
+  const isAboutPage = location.pathname === ROUTES.about;
 
   // Una ruta protegida redirige aquí marcando `requireAuth`: abrimos el login y
   // recordamos a dónde quería ir el usuario.
@@ -65,7 +67,15 @@ export default function AppLayout() {
 
   return (
     <div className="repuestop-high-trust-app">
-      <Header
+      {isAboutPage ? (
+        <AboutHeader
+          onHome={nav.goHome}
+          onCatalog={() => nav.goCatalog()}
+          onSeller={nav.goSellerRegister}
+          onHelp={nav.goHelp}
+          onLogin={openAuthModal}
+        />
+      ) : <Header
         activeVehicle={activeVehicle}
         onOpenAuthModal={openAuthModal}
         onOpenSellerModal={nav.goSellerRegister}
@@ -82,7 +92,7 @@ export default function AppLayout() {
         setSearchQuery={setSearchQuery}
         onSearchSubmit={submitSearch}
         onSelectCategory={(filter) => nav.goCatalog(filter)}
-      />
+      />}
 
       <Outlet />
 
@@ -121,5 +131,4 @@ export default function AppLayout() {
     </div>
   );
 }
-
 
