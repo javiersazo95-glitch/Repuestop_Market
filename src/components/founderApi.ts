@@ -272,9 +272,18 @@ export async function loginSellerWithGoogle(idToken: string): Promise<SellerSess
   return extractSellerSession(data);
 }
 
-export type SellerLookup = { found: boolean; maskedEmail?: string | null; authProvider?: string | null };
+/**
+ * El endpoint responde SOLO `{found}`.
+ *
+ * `maskedEmail` y `authProvider` se quitaron del tipo a proposito (SEC-MARKET-015). El servidor
+ * sigue declarandolos en su DTO como `null` para no romper clientes viejos, pero declararlos aqui
+ * invita a volver a leerlos, que es lo que dejo muerto el reingreso cuando el servidor dejo de
+ * poblarlos. El RUT chileno es secuencial, asi que con esos dos campos el padron completo de
+ * tiendas era enumerable con correo parcial y metodo de registro.
+ */
+export type SellerLookup = { found: boolean };
 
-/** Búsqueda pública y de solo lectura por RUT: confirma si existe una tienda y con qué método se registró, sin exponer el correo completo. */
+/** Búsqueda pública y de solo lectura por RUT: confirma únicamente si ese RUT ya tiene tienda, para ofrecer "retomar postulación". */
 export function lookupSellerByTaxId(taxId: string): Promise<SellerLookup> {
   return request<SellerLookup>(`/auth/seller-lookup?taxId=${encodeURIComponent(taxId)}`);
 }

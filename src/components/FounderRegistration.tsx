@@ -948,7 +948,10 @@ function ResumeCard({ prefill, onResolved, onClose }: {
   }, []);
 
   useEffect(() => {
-    if (mode !== 'rut' || !lookup?.found || lookup.authProvider !== 'GOOGLE' || !googleRef.current) return;
+    // Ya no se condiciona a `lookup.authProvider === 'GOOGLE'`: el servidor dejo de decir con
+    // que metodo se registro la tienda (SEC-MARKET-015), asi que el boton se monta siempre que
+    // haya una tienda encontrada y es la persona quien elige su via de ingreso.
+    if (mode !== 'rut' || !lookup?.found || !googleRef.current) return;
     renderGoogleResumeButton(googleRef.current, async (session) => {
       setGoogleBusy(true);
       setGoogleError('');
@@ -1080,9 +1083,21 @@ function ResumeCard({ prefill, onResolved, onClose }: {
             </div>
           </Field>
 
-          {lookup?.found && lookup.authProvider === 'EMAIL_PASSWORD' && (
+          {/* Una sola rama que ofrece las DOS vias de ingreso.
+              Antes habia dos bloques excluyentes, cada uno condicionado a `lookup.authProvider`,
+              y el correo enmascarado se pintaba como confirmacion. El servidor dejo de mandar
+              esos dos campos (SEC-MARKET-015: permitian recorrer RUTs y saber a quien atacar por
+              contrasena y a quien por Google), asi que con `authProvider` en null las dos ramas
+              quedaban falsas y, como `found` seguia siendo true, no se pintaba NADA ni habia
+              error: el reingreso quedaba sin salida.
+              Mostrar las dos opciones es ademas mejor que preguntarle al servidor cual
+              corresponde: asi no lo dice nunca, ni a un atacante ni a nadie. La persona sabe con
+              que se registro. */}
+          {lookup?.found && (
             <>
-              <p className="founder-reg-hint-ok">Encontramos tu tienda · {lookup.maskedEmail}</p>
+              <p className="founder-reg-hint-ok">
+                Encontramos tu tienda. Continúa con tu contraseña o con Google, según cómo la registraste.
+              </p>
               <Field label="Contraseña" error={loginError}>
                 <div className="founder-reg-password">
                   <input type={showPassword ? 'text' : 'password'} value={password}
@@ -1095,16 +1110,17 @@ function ResumeCard({ prefill, onResolved, onClose }: {
               <button className="button founder-reg-submit" onClick={handleLoginByTaxId} disabled={loggingIn}>
                 {loggingIn ? 'Ingresando...' : 'Continuar postulación'}
               </button>
+              {/* El enlace se muestra a todos, tambien a quien se registro con Google.
+                  Ocultarselo exigiria saber su `authProvider`, que es justo el dato que se dejo
+                  de pedir: seria recrear el oraculo dentro del cliente. Para una cuenta de Google
+                  el backend no ramifica -- `enviarCodigoRecuperacion` solo busca al usuario y
+                  manda el codigo al correo registrado --, asi que el flujo termina dandole una
+                  contrasena a esa cuenta, que es un resultado legitimo y con prueba de posesion. */}
               <button type="button" className="founder-reg-link founder-reg-forgot"
                 onClick={() => { setForgotOpen(true); setForgotStage('send'); setForgotError(''); }}>
                 <KeyRound size={13} /> Olvidé mi contraseña
               </button>
-            </>
-          )}
 
-          {lookup?.found && lookup.authProvider === 'GOOGLE' && (
-            <>
-              <p className="founder-reg-hint-ok">Encontramos tu tienda · {lookup.maskedEmail} · registrada con Google</p>
               <div key={googleRemountKey} ref={googleRef} className="founder-reg-google-btn" />
               {googleBusy && <p className="founder-reg-hint-ok">Ingresando...</p>}
               {googleError && <p className="founder-reg-hint-error">{googleError}</p>}
