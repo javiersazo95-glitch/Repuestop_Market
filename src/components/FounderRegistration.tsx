@@ -1116,12 +1116,12 @@ function ResumeCard({ prefill, onResolved, onClose }: {
               {/* El enlace se muestra a todos, tambien a quien se registro con Google.
                   Ocultarselo exigiria saber su `authProvider`, que es justo el dato que se dejo
                   de pedir: seria recrear el oraculo dentro del cliente.
-                  Que pasa si la usa una cuenta de Google: desde SEC-BACKEND-128 el backend la
-                  RECHAZA con un mensaje explicito ("esta cuenta ingresa con Google"), que es el
-                  que se pinta en `forgotError`. No queda en callejon sin salida, porque el boton
-                  de Google esta en esta misma pantalla. (El comentario anterior decia que el
-                  flujo terminaba dandole una contrasena: era cierto cuando se verifico, y ese
-                  cambio del backend lo invalido.) */}
+                  Que pasa si la usa una cuenta de Google: el backend responde 200 como a
+                  cualquiera y le manda el aviso POR CORREO, no por la respuesta HTTP (el mensaje
+                  explicito de SEC-BACKEND-128 revelaba el proveedor y se retiro). Desde el cliente
+                  ese caso es indistinguible a proposito, asi que no se detecta: lo cubre la nota
+                  permanente del paso del codigo. El boton de Google esta en esta misma pantalla.
+                  Este comentario ya se corrigio dos veces; comprobar el backend antes de fiarse. */}
               <button type="button" className="founder-reg-link founder-reg-forgot"
                 onClick={() => {
                   setForgotOpen(true); setForgotStage('send'); setForgotError('');
@@ -1157,6 +1157,10 @@ function ResumeCard({ prefill, onResolved, onClose }: {
                   quien fue -- o distinguir "existe" de "no existe" -- reabre la enumeracion por
                   RUT que este cambio cierra. El texto es condicional. */}
               <p>Si el RUT está registrado, enviamos un código de 6 dígitos al correo asociado a esa tienda.</p>
+              {/* Ver la nota equivalente en AuthModal: la pantalla no puede asumir que siempre
+                  llega un codigo. Ni el RUT equivocado ni la cuenta de Google producen ya un error
+                  en la respuesta, y detectarlos exigiria el dato que se dejo de pedir. */}
+              <p className="founder-reg-hint">¿No te llega el código? Revisa la carpeta de spam. Y si tu cuenta ingresa con Google, te enviamos un correo explicándote cómo entrar: vuelve y usa «Continuar con Google».</p>
               <input className="founder-reg-code" inputMode="numeric" maxLength={6} placeholder="000000"
                 value={forgotCode} onChange={(e) => setForgotCode(e.target.value.replace(/\D/g, '').slice(0, 6))} />
               {forgotError && <p className="founder-reg-hint-error">{forgotError}</p>}

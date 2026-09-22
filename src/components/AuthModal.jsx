@@ -845,6 +845,15 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               </div>
               <h2>Ingresa el Código</h2>
               <p>Si el identificador está registrado, enviamos un código de 6 dígitos al correo asociado.</p>
+              {/* Nota PERMANENTE, sin condicionar a nada. Esta pantalla ya no puede dar por hecho
+                  que siempre llega un codigo, y hay dos casos en que no llega: quien se equivoco de
+                  identificador -- el backend ya no devuelve error, para no confirmar si existe -- y
+                  una cuenta que ingresa con Google, a la que el aviso le llega por correo y no por
+                  la respuesta HTTP. Detectar cualquiera de los dos exigiria saber si la cuenta
+                  existe o con que proveedor entra, que es justo el dato que se dejo de pedir: seria
+                  recrear el oraculo dentro del cliente. Un solo texto, mostrado siempre, cubre los
+                  dos sin revelar nada. */}
+              <p>¿No te llega el código? Revisa la carpeta de spam. Y si tu cuenta ingresa con Google, te enviamos un correo explicándote cómo entrar: vuelve y usa «Continuar con Google».</p>
             </>
           )}
 
