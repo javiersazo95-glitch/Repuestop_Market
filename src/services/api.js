@@ -1,8 +1,8 @@
 import { LEGAL_VERSION_CODE } from '../data/legalTexts';
 import { compressImageFile } from '../utils/imageCompression';
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
-
-const apiOrigin = () => API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+// La URL base vive en un modulo aparte porque founderApi.ts tambien la necesita y antes
+// cada uno resolvia la suya, con fallbacks que apuntaban a ambientes distintos.
+import { API_BASE_URL, apiOrigin } from './apiBaseUrl';
 
 // Registros antiguos guardaron la URL ABSOLUTA del backend que subio el archivo,
 // asi que una foto cargada contra un backend local o de otro ambiente apunta a
@@ -163,9 +163,17 @@ export async function fetchApi(endpoint, options = {}) {
       if (response.status === 401 && token && !endpoint.includes('/auth/login')) {
         window.dispatchEvent(new CustomEvent('repuestop:unauthorized'));
       }
-      const errorMessage =
-        (typeof data === 'object' && (data?.message || data?.error)) ||
-        (typeof data === 'string' ? data : `Error HTTP ${response.status}`);
+      // Los 4xx son errores de negocio y su mensaje esta escrito para el usuario
+      // ("No hay stock suficiente"), asi que se muestra tal cual. Los 5xx NO: ahi el
+      // backend puede devolver el texto de una excepcion con nombres de tabla, de
+      // restriccion o una traza, y eso termina pintado en la pantalla del comprador.
+      // Para esos se usa un texto propio y el detalle queda en `data` para el log.
+      const esFalloDelServidor = response.status >= 500;
+      const errorMessage = esFalloDelServidor
+        ? 'El servidor no pudo procesar la solicitud. Intenta nuevamente en unos minutos.'
+        : (typeof data === 'object' && (data?.message || data?.error))
+          || (typeof data === 'string' && data)
+          || `Error HTTP ${response.status}`;
       throw new ApiError(errorMessage, response.status, data);
     }
 
@@ -317,6 +325,13 @@ export async function getRecentSellersApi() {
  * @param {string} email Correo electrónico (o RUT en caso de tienda)
  * @param {string} [rol] 'CLIENTE' o 'PROVEEDOR'
  */
+/**
+ * Pide el codigo de recuperacion. Devuelve `{ message, solicitudId }`; el `solicitudId` es
+ * lo que hay que guardar y pasar a verify-code y reset. YA NO devuelve el correo del
+ * titular. El `message` del backend es deliberadamente condicional ("si el identificador
+ * esta registrado"): cualquier texto que distinga "existe" de "no existe" reabre el
+ * oraculo de enumeracion por RUT.
+ */
 export async function recoverPasswordSendCodeApi(email, rol = 'CLIENTE') {
   return fetchApi('/auth/recover-password/send-code', {
     method: 'POST',
@@ -328,13 +343,24 @@ export async function recoverPasswordSendCodeApi(email, rol = 'CLIENTE') {
 }
 
 /**
- * Valida que el código de 6 dígitos corresponda al correo indicado.
+ * Valida el codigo de 6 digitos contra la SOLICITUD, no contra un correo.
+ *
+ * `solicitudId` es el identificador opaco que devuelve `send-code` (SEC-BACKEND-125 /
+ * SEC-MARKET-016). Antes se mandaba el correo del titular, que el backend devolvia a cambio
+ * de un RUT: como los RUT chilenos son secuenciales, eso entregaba el correo de cualquier
+ * vendedor sin prueba de posesion.
+ *
+ * OJO: al token NO se le aplica `.toLowerCase()`. Es base64 url-safe y distingue
+ * mayusculas; normalizarlo lo vuelve irresoluble y el backend responde "codigo invalido o
+ * expiro", que apunta al lado equivocado del problema.
+ *
+ * `rol` se sigue mandando: el backend lo valida contra la cuenta resuelta.
  */
-export async function recoverPasswordVerifyCodeApi(email, code, rol = 'CLIENTE') {
+export async function recoverPasswordVerifyCodeApi(solicitudId, code, rol = 'CLIENTE') {
   return fetchApi('/auth/recover-password/verify-code', {
     method: 'POST',
     body: JSON.stringify({
-      email: String(email || '').trim().toLowerCase(),
+      solicitudId: String(solicitudId || ''),
       code: String(code || '').trim(),
       rol: rol || 'CLIENTE',
     }),
@@ -344,11 +370,11 @@ export async function recoverPasswordVerifyCodeApi(email, code, rol = 'CLIENTE')
 /**
  * Restablece la contraseña del usuario tras validar el código.
  */
-export async function recoverPasswordResetApi(email, code, newPassword, rol = 'CLIENTE') {
+export async function recoverPasswordResetApi(solicitudId, code, newPassword, rol = 'CLIENTE') {
   return fetchApi('/auth/recover-password/reset', {
     method: 'POST',
     body: JSON.stringify({
-      email: String(email || '').trim().toLowerCase(),
+      solicitudId: String(solicitudId || ''),
       code: String(code || '').trim(),
       newPassword: String(newPassword || ''),
       rol: rol || 'CLIENTE',
@@ -566,6 +592,20 @@ function getLocalAddressKey(usuarioId) {
   return `repuestop_user_addresses_${usuarioId || 'guest'}`;
 }
 
+/**
+ * ¿El backend simplemente no tiene este recurso, o no hay red?
+ *
+ * Solo en esos dos casos tiene sentido que las direcciones caigan a la copia local:
+ * 404 es un backend antiguo sin el endpoint, y 0 es el navegador sin conexion.
+ *
+ * El 500 se EXCLUYE a proposito. Antes entraba aqui, y eso convertia un error del
+ * servidor en un "direccion guardada": la persona veia la confirmacion, el dato quedaba
+ * solo en su navegador y nunca llegaba a la base. Un 500 tiene que verse.
+ */
+function backendSinEsteRecurso(err) {
+  return err?.status === 404 || err?.status === 0;
+}
+
 function getLocalAddresses(usuarioId) {
   try {
     const raw = localStorage.getItem(getLocalAddressKey(usuarioId));
@@ -643,7 +683,7 @@ export async function getAddressesApi(usuarioId, options = {}) {
     });
     return combined;
   } catch (err) {
-    if (err.status === 404 || err.status === 0 || err.status === 500) {
+    if (backendSinEsteRecurso(err)) {
       return getLocalAddresses(usuarioId).map((item) => ({ ...item, tipoDireccion: resolveAddressType(usuarioId, item) }));
     }
     throw err;
@@ -666,7 +706,7 @@ export async function createAddressApi(usuarioId, payload, options = {}) {
     }
     return newAddress;
   } catch (err) {
-    if (err.status === 404 || err.status === 0 || err.status === 500) {
+    if (backendSinEsteRecurso(err)) {
       const local = getLocalAddresses(usuarioId);
       const isFirst = local.length === 0;
       const tipo = payload?.tipoDireccion || 'PERSONAL';
@@ -708,7 +748,7 @@ export async function updateAddressApi(usuarioId, direccionId, payload, options 
     saveLocalAddresses(usuarioId, local);
     return updatedAddress;
   } catch (err) {
-    if (err.status === 404 || err.status === 0 || err.status === 500) {
+    if (backendSinEsteRecurso(err)) {
       let local = getLocalAddresses(usuarioId);
       const tipo = payload?.tipoDireccion || 'PERSONAL';
       saveAddressTypeMeta(usuarioId, direccionId, payload.calleYNumero, tipo);
@@ -740,7 +780,7 @@ export async function deleteAddressApi(usuarioId, direccionId, options = {}) {
     saveLocalAddresses(usuarioId, local);
     return result;
   } catch (err) {
-    if (err.status === 404 || err.status === 0 || err.status === 500) {
+    if (backendSinEsteRecurso(err)) {
       let local = getLocalAddresses(usuarioId);
       local = local.filter((item) => String(item.id) !== String(direccionId));
       if (local.length > 0 && !local.some((item) => item.esPrincipal)) {
@@ -757,7 +797,7 @@ export async function setDefaultAddressApi(usuarioId, direccionId, options = {})
   try {
     return await fetchApi(`/usuarios/${usuarioId}/direcciones/${direccionId}/principal`, { method: 'PATCH', ...options });
   } catch (err) {
-    if (err.status === 404 || err.status === 0 || err.status === 500) {
+    if (backendSinEsteRecurso(err)) {
       let local = getLocalAddresses(usuarioId);
       local = local.map((item) => ({
         ...item,

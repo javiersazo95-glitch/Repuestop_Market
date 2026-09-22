@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { loginApi, loginGoogleApi, logoutApi, getProfileApi, updateProfileApi, deleteAccountApi, registerBuyerApi, registerSellerApi, verifyRegisterEmailApi, resendRegisterCodeApi, resolveMediaUrl, acceptTermsApi } from '../services/api';
+import { clearSessionData } from '../utils/sessionCleanup';
 
 const AuthContext = createContext(null);
 
@@ -165,9 +166,10 @@ export function AuthProvider({ children }) {
     setUser(null);
     setToken(null);
     setRole('BUYER');
-    localStorage.removeItem('repuestop_token');
-    localStorage.removeItem('repuestop_user');
-    localStorage.removeItem('repuestop_role');
+    // Barre TODO lo que guardó la sesión, no solo el token. Antes quedaban en el
+    // navegador las direcciones, las patentes consultadas, el carrito y el último pedido
+    // con su dirección de entrega, así que en un equipo compartido los veía el siguiente.
+    clearSessionData();
   };
 
   const login = async ({ email, password, preferredRole = 'BUYER', reactivateAccount = false, acceptsTerms = false }) => {

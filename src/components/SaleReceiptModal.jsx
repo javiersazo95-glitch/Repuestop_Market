@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ReceiptText, Copy, CheckCircle2, FileUp, X, Loader2 } from 'lucide-react';
 import { isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
 import SellerConfirmationChecklist from './SellerConfirmationChecklist';
+import { validateUpload, FILE_LIMITS } from '../utils/fileValidation';
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
@@ -126,6 +127,15 @@ export default function SaleReceiptModal({
     if (selected.type !== 'application/pdf' || !selected.name.toLowerCase().endsWith('.pdf')) {
       setFile(null);
       setError('La boleta debe ser un archivo PDF.');
+      event.target.value = '';
+      return;
+    }
+    // El tamano no se comprobaba: un PDF escaneado de decenas de MB se subia entero y
+    // fallaba al final, con un error del servidor que no explicaba nada.
+    const excedeTamano = validateUpload(selected, { maxBytes: FILE_LIMITS.DOCUMENT, label: 'La boleta' });
+    if (excedeTamano) {
+      setFile(null);
+      setError(excedeTamano);
       event.target.value = '';
       return;
     }

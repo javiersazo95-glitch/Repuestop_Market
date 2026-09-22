@@ -78,6 +78,8 @@ input, select, textarea {
 .cookie-consent-options label { display: flex; align-items: flex-start; gap: 8px; color: #5a6b82; font-size: 11px; line-height: 1.4; }
 .cookie-consent-options input { width: 15px; height: 15px; margin-top: 1px; accent-color: #0969ed; }
 .cookie-consent-options strong { display: block; color: #20314d; }
+/* El detalle del aviso paso de ser una lista de casillas a parrafos informativos: misma densidad que tenian los `label`, que si no heredan el tamano generico de `.cookie-consent p` y se ven mas grandes. */
+.cookie-consent-options p { color: #5a6b82; font-size: 11px; line-height: 1.4; }
 .cookie-consent-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .cookie-consent-actions button, .help-cookie-settings { min-height: 34px; padding: 0 12px; border-radius: 8px; font-size: 12px; font-weight: 800; }
 .cookie-consent-settings, .cookie-consent-reject { border: 1px solid #bfd0e8; color: #365372; background: #fff; }
@@ -17658,6 +17660,11 @@ input, select, textarea {
 .purchase-receipt-head h1 { margin: 5px 0 3px; font-family: var(--font-display); font-size: 26px; font-weight: 800; letter-spacing: -0.4px; font-variant-numeric: tabular-nums; color: var(--text-primary); }
 .purchase-receipt-head p { font-size: 12.5px; color: var(--text-muted); }
 .purchase-receipt-state { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; padding: 5px 11px; border: 1px solid #a7f3d0; border-radius: var(--radius-full); background: #ecfdf5; font-size: 12px; font-weight: 800; color: #047857; }
+/* El sello verde es solo para un pedido efectivamente pagado. Un pedido que sigue PENDIENTE o que quedo CANCELADO usa la misma caja con la paleta que corresponde, para que el estado se lea de un vistazo y no haya un "Pagado" verde sobre una compra sin cobrar. */
+.purchase-receipt-state.is-pending { border-color: #fde68a; background: #fffbeb; color: #b45309; }
+.purchase-receipt-state.is-cancelled { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+.purchase-pending-notice { display: flex; align-items: flex-start; gap: 9px; margin: 12px 0 0; padding: 11px 14px; border: 1px solid #fed7aa; border-left: 3px solid #f97316; border-radius: var(--radius-sm); background: #fff7ed; font-size: 12.5px; line-height: 1.5; color: #9a3412; }
+.purchase-pending-notice svg { flex: 0 0 auto; margin-top: 2px; color: #f97316; }
 
 /* --- Trayecto del pedido: el camion es informacion, no adorno --- */
 .purchase-journey { padding: 18px 20px 16px; border: 1px solid var(--border-subtle); border-top: 0; background: var(--bg-white); }

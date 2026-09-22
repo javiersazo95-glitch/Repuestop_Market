@@ -5,7 +5,7 @@ import { helpCategoryPath } from '../routes/paths';
 
 const CONSENT_KEY = 'repuestop_cookie_consent_v1';
 
-const initialConsent = () => {
+const leerRegistro = () => {
   try {
     return JSON.parse(localStorage.getItem(CONSENT_KEY) || 'null');
   } catch {
@@ -14,41 +14,66 @@ const initialConsent = () => {
 };
 
 /**
- * Consentimiento explícito y granular preparado para la Ley 21.719, vigente
- * desde el 1 de diciembre de 2026. Las categorías opcionales empiezan apagadas.
+ * Qué se guarda hoy en el navegador y para qué. Es la lista real, no una promesa:
+ * si alguien agrega almacenamiento nuevo, va aquí.
+ */
+const ALMACENAMIENTO = [
+  ['Sesión y seguridad', 'Te mantiene con la sesión iniciada y protege tu cuenta entre pestañas.'],
+  ['Carrito y compra', 'Conserva lo que agregaste y el último pedido mientras dura la compra.'],
+  ['Tu vehículo', 'Recuerda la patente y el vehículo activo para mostrarte repuestos compatibles.'],
+  ['Diagnóstico de errores', 'Si algo falla, se envía el error a nuestro proveedor de monitoreo para poder arreglarlo. No se envían datos de contacto, ni bancarios, ni grabaciones de tu sesión.'],
+];
+
+/**
+ * Aviso de almacenamiento local.
+ *
+ * ANTES era un consentimiento granular con cuatro categorías (necesarias, preferencias,
+ * analítica y marketing) y **ninguna hacía nada**: la selección se guardaba en
+ * `repuestop_cookie_consent_v1` y ningún otro módulo leía esa clave. Se le prometía a la
+ * persona un control que no existía, y la política de privacidad lo repetía por escrito.
+ *
+ * Hoy el sitio no tiene analítica ni marketing: no hay Google Analytics, ni píxel de Meta,
+ * ni ningún rastreador de terceros -- el `connect-src` de la CSP solo admite la API, Google
+ * Sign-In y el monitoreo de errores --. Todo lo que se guarda es necesario para operar, y
+ * el monitoreo de errores no escribe nada en el dispositivo. Con eso no queda ninguna
+ * categoría opcional real, así que el aviso es informativo y no un formulario de
+ * consentimiento falso.
+ *
+ * **Si algún día entra un rastreador de verdad**, esto vuelve a ser un consentimiento con
+ * casillas: hay que reponer las categorías, que empiecen apagadas y, sobre todo, que algo
+ * LEA esta clave antes de inicializar nada. La plomería se conserva por eso.
  */
 export default function CookieConsentBanner() {
-  const [savedConsent] = useState(initialConsent);
-  const [isOpen, setIsOpen] = useState(Boolean(!savedConsent));
-  const [showSettings, setShowSettings] = useState(false);
-  const [preferences, setPreferences] = useState(Boolean(savedConsent?.preferences));
-  const [analytics, setAnalytics] = useState(Boolean(savedConsent?.analytics));
-  const [marketing, setMarketing] = useState(Boolean(savedConsent?.marketing));
+  const [registro] = useState(leerRegistro);
+  const [isOpen, setIsOpen] = useState(Boolean(!registro));
+  const [showDetail, setShowDetail] = useState(false);
 
   useEffect(() => {
-    const openSettings = () => {
-      const current = initialConsent();
-      setPreferences(Boolean(current?.preferences));
-      setAnalytics(Boolean(current?.analytics));
-      setMarketing(Boolean(current?.marketing));
-      setShowSettings(true);
+    // Entrada desde el centro de ayuda ("Gestionar cookies"). Reabre el aviso con el
+    // detalle desplegado, que es la forma de consultarlo después de haberlo cerrado.
+    const abrir = () => {
+      setShowDetail(true);
       setIsOpen(true);
     };
-    window.addEventListener('repuestop:manage-cookies', openSettings);
-    return () => window.removeEventListener('repuestop:manage-cookies', openSettings);
+    window.addEventListener('repuestop:manage-cookies', abrir);
+    return () => window.removeEventListener('repuestop:manage-cookies', abrir);
   }, []);
 
   if (!isOpen) return null;
 
-  const save = (selection) => {
-    localStorage.setItem(CONSENT_KEY, JSON.stringify({
-      necessary: true,
-      preferences: Boolean(selection.preferences),
-      analytics: Boolean(selection.analytics),
-      marketing: Boolean(selection.marketing),
-      updatedAt: new Date().toISOString(),
-      version: 1,
-    }));
+  const cerrar = () => {
+    try {
+      localStorage.setItem(CONSENT_KEY, JSON.stringify({
+        necessary: true,
+        acknowledgedAt: new Date().toISOString(),
+        // v2: el registro dejó de ser una selección de categorías y pasó a ser el acuse
+        // de haber visto el aviso. Se conserva la MISMA clave para que a quien ya lo
+        // cerró no le vuelva a aparecer.
+        version: 2,
+      }));
+    } catch {
+      // Modo privado o almacenamiento bloqueado: el aviso reaparecerá, que es lo correcto.
+    }
     setIsOpen(false);
   };
 
@@ -57,36 +82,31 @@ export default function CookieConsentBanner() {
       <div className="cookie-consent-copy">
         <Cookie aria-hidden="true" />
         <div>
-          <h2 id="cookie-consent-title">Tu privacidad, tus decisiones</h2>
+          <h2 id="cookie-consent-title">Cómo usamos el almacenamiento de tu navegador</h2>
           <p>
-            Usamos tecnologías necesarias para que RepuesTop funcione. Las cookies opcionales solo se activan con tu autorización.
-            Revisa el detalle en nuestra <Link to={helpCategoryPath('politicas')}>Política de cookies</Link>.
+            RepuesTop guarda en tu navegador solo lo necesario para que el sitio funcione: tu sesión, tu
+            carrito y el vehículo que estés consultando. No usamos cookies de publicidad ni rastreadores
+            de terceros. Revisa el detalle en nuestra <Link to={helpCategoryPath('politicas')}>Política de cookies</Link>.
           </p>
         </div>
       </div>
 
-      {showSettings && (
+      {showDetail && (
         <fieldset className="cookie-consent-options">
-          <legend>Configura tus preferencias</legend>
-          <label><input type="checkbox" checked disabled /> <span><strong>Necesarias</strong>Inicio de sesión, seguridad, carrito y preferencias esenciales. Siempre activas.</span></label>
-          <label><input type="checkbox" checked={preferences} onChange={(event) => setPreferences(event.target.checked)} /> <span><strong>Preferencias</strong>Recuerdan opciones no esenciales de navegación.</span></label>
-          <label><input type="checkbox" checked={analytics} onChange={(event) => setAnalytics(event.target.checked)} /> <span><strong>Analítica</strong>Ayudan a medir y mejorar el uso del sitio.</span></label>
-          <label><input type="checkbox" checked={marketing} onChange={(event) => setMarketing(event.target.checked)} /> <span><strong>Marketing</strong>Permiten mostrar comunicaciones o publicidad más relevante.</span></label>
+          <legend>Qué se guarda y para qué</legend>
+          {ALMACENAMIENTO.map(([titulo, detalle]) => (
+            <p key={titulo}><strong>{titulo}</strong>{detalle}</p>
+          ))}
         </fieldset>
       )}
 
       <div className="cookie-consent-actions">
-        <button type="button" className="cookie-consent-settings" onClick={() => setShowSettings(!showSettings)} aria-expanded={showSettings}>
-          <Settings2 size={15} /> {showSettings ? 'Ocultar configuración' : 'Configurar'}
+        <button type="button" className="cookie-consent-settings" onClick={() => setShowDetail(!showDetail)} aria-expanded={showDetail}>
+          <Settings2 size={15} /> {showDetail ? 'Ocultar detalle' : 'Ver detalle'}
         </button>
-        <button type="button" className="cookie-consent-reject" onClick={() => save({})}>Solo necesarias</button>
-        {showSettings ? (
-          <button type="button" className="cookie-consent-accept" onClick={() => save({ preferences, analytics, marketing })}>Guardar selección</button>
-        ) : (
-          <button type="button" className="cookie-consent-accept" onClick={() => save({ preferences: true, analytics: true, marketing: true })}>Aceptar todas</button>
-        )}
+        <button type="button" className="cookie-consent-accept" onClick={cerrar}>Entendido</button>
       </div>
-      <button type="button" className="cookie-consent-close" onClick={() => save({})} aria-label="Cerrar y conservar solo cookies necesarias"><X size={16} /></button>
+      <button type="button" className="cookie-consent-close" onClick={cerrar} aria-label="Cerrar el aviso"><X size={16} /></button>
     </section>
   );
 }

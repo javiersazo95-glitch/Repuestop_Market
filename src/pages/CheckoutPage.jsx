@@ -11,6 +11,7 @@ import {
 } from '../services/api';
 import { adaptProduct, formatRut, isValidRut } from '../services/adapters';
 import { isQuoteExpired, quantityFromLabel } from '../utils/quoteFlow';
+import { normalizeOrderStatus } from '../data/orderStatusFlow';
 import { checkoutFallbackShippingMethod, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import { buyerProfilePath, profilePath, ROUTES } from '../routes/paths';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
@@ -25,6 +26,22 @@ const STEPS = [
 ];
 
 const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
+
+/**
+ * ¿Se ofrece el método de pago "Simulación" en este ambiente?
+ *
+ * Es un método de PRUEBAS: no cobra nada, solo pide al backend que confirme el pedido.
+ * En los ambientes de desarrollo el backend levanta con la pasarela en modo mock y esa
+ * confirmación aprueba el pago, que es justo lo que se quiere para probar el flujo
+ * completo sin tarjeta. En producción el modo mock está apagado a propósito
+ * (`FlowPasarelaPago`, que aborta el arranque si faltan las llaves de Flow), así que
+ * elegirlo deja el pedido sin pagar. Por eso la opción solo existe fuera de `main`.
+ *
+ * `__DEPLOY_BRANCH__` lo inyecta vite.config.js con la rama del deploy; Vite lo sustituye
+ * por una constante al construir, de modo que en el bundle de producción esta rama
+ * desaparece entera y la tarjeta de pruebas ni siquiera viaja al cliente.
+ */
+const SIMULATED_PAYMENT_ENABLED = __DEPLOY_BRANCH__ !== 'main';
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
@@ -79,7 +96,11 @@ export default function CheckoutPage() {
   // dispararía la guarda de "carrito vacío" y devolvería al usuario a /carrito en vez de
   // dejarlo llegar a la confirmación.
   const [placing, setPlacing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('SIMULACION');
+  // Flow es el método por defecto en TODOS los ambientes: es el único que cobra de
+  // verdad. En desarrollo tampoco hace falta elegir "Simulación" para probar, porque el
+  // backend en modo mock devuelve un `urlPago` con token `mock_flow_token_` y más abajo
+  // `isMockToken` ya dispara la confirmación simulada igual.
+  const [paymentMethod, setPaymentMethod] = useState('FLOW');
   const [paymentProcessingStatus, setPaymentProcessingStatus] = useState('');
   const submittingRef = useRef(false);
 
@@ -359,15 +380,19 @@ export default function CheckoutPage() {
         let finalOrder = order;
         try {
           const confirmed = await confirmOrderPaymentApi(userId, order.id);
-          if (confirmed) {
-            finalOrder = { ...confirmed, isSimulatedPayment: true };
-          } else {
-            finalOrder = { ...order, estado: 'PAGADO', isSimulatedPayment: true };
-          }
+          if (confirmed) finalOrder = confirmed;
         } catch (confirmErr) {
-          console.warn('Confirmación directa de pago simulado omitida, usando fallback:', confirmErr);
-          finalOrder = { ...order, estado: 'PAGADO', isSimulatedPayment: true };
+          // El pedido ya existe; que la confirmación falle no lo invalida. La pantalla de
+          // confirmación vuelve a pedirla sola cuando el pedido sigue PENDIENTE.
+          console.warn('No se pudo confirmar el pago simulado:', confirmErr);
         }
+
+        // Quién decide si está pagado es el backend contra la pasarela, nunca el cliente.
+        // Antes se escribía `estado: 'PAGADO'` a mano cuando la confirmación no llegaba, y
+        // el comprador terminaba con un comprobante "Pagado" sobre un pedido que nunca se
+        // cobró y que el job de expiración iba a cancelar.
+        const pagoConfirmado = normalizeOrderStatus(finalOrder) !== 'PENDIENTE';
+        if (pagoConfirmado) finalOrder = { ...finalOrder, isSimulatedPayment: true };
 
         try {
           sessionStorage.setItem(LAST_SUCCESSFUL_ORDER_KEY, JSON.stringify(finalOrder));
@@ -375,8 +400,8 @@ export default function CheckoutPage() {
           // El state de navegación mantiene la confirmación disponible en esta sesión.
         }
 
-        setPaymentProcessingStatus('¡Pago aprobado con éxito!');
-        navigate(ROUTES.purchaseSuccess, { state: { order: finalOrder, isSimulated: true } });
+        setPaymentProcessingStatus(pagoConfirmado ? '¡Pago aprobado con éxito!' : 'El pedido quedó pendiente de pago');
+        navigate(ROUTES.purchaseSuccess, { state: { order: finalOrder, isSimulated: pagoConfirmado } });
         return;
       }
 
@@ -747,22 +772,24 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="checkout-payment-options-grid" role="radiogroup" aria-label="Métodos de pago">
-                    <label className={`checkout-payment-card-option ${paymentMethod === 'SIMULACION' ? 'is-selected' : ''}`}>
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="SIMULACION"
-                        checked={paymentMethod === 'SIMULACION'}
-                        onChange={() => setPaymentMethod('SIMULACION')}
-                      />
-                      <div className="checkout-payment-card-body">
-                        <div className="checkout-payment-card-header">
-                          <strong>Simulación de Pago</strong>
-                          <span className="checkout-badge-test"><Sparkles size={12} /> Modo Pruebas</span>
+                    {SIMULATED_PAYMENT_ENABLED && (
+                      <label className={`checkout-payment-card-option ${paymentMethod === 'SIMULACION' ? 'is-selected' : ''}`}>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="SIMULACION"
+                          checked={paymentMethod === 'SIMULACION'}
+                          onChange={() => setPaymentMethod('SIMULACION')}
+                        />
+                        <div className="checkout-payment-card-body">
+                          <div className="checkout-payment-card-header">
+                            <strong>Simulación de Pago</strong>
+                            <span className="checkout-badge-test"><Sparkles size={12} /> Modo Pruebas</span>
+                          </div>
+                          <p>Simula la confirmación y aprobación instantánea del pago sin cobro real, ideal para pruebas completas.</p>
                         </div>
-                        <p>Simula la confirmación y aprobación instantánea del pago sin cobro real, ideal para pruebas completas.</p>
-                      </div>
-                    </label>
+                      </label>
+                    )}
 
                     <label className={`checkout-payment-card-option ${paymentMethod === 'FLOW' ? 'is-selected' : ''}`}>
                       <input
@@ -782,7 +809,7 @@ export default function CheckoutPage() {
                     </label>
                   </div>
 
-                  {paymentMethod === 'SIMULACION' && (
+                  {SIMULATED_PAYMENT_ENABLED && paymentMethod === 'SIMULACION' && (
                     <div className="checkout-simulation-alert">
                       <Sparkles size={16} />
                       <span>

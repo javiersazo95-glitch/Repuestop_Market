@@ -22,6 +22,7 @@ import {
   toAgendaConfigPayload, getAgendaSummaryText, getAgendaWeeklySlotsCount, validateAgendaConfig
 } from '../../data/agendaConfig';
 import { AD_TIER_PRICES_CLP, UPGRADE_TOKEN_COSTS, uploadAdImages, adErrorMessage } from '../../services/adsStorage';
+import { validateUpload, FILE_LIMITS } from '../../utils/fileValidation';
 import RepuestopCoin from './RepuestopCoin';
 
 /**
@@ -402,10 +403,21 @@ export default function AdForm({
     const room = max - currentList.length;
     if (room <= 0) return;
 
+    const aSubir = files.slice(0, room);
+    // Antes no se comprobaba nada aqui: una foto de 200 MB se enviaba entera y el fallo
+    // aparecia al final de la subida, como un error generico del servidor.
+    const invalido = aSubir.map((file) => validateUpload(file, {
+      maxBytes: FILE_LIMITS.IMAGE, accept: 'image', label: `"${file.name}"`,
+    })).find(Boolean);
+    if (invalido) {
+      setUploadError(invalido);
+      return;
+    }
+
     setUploadTarget(target);
     setUploadError('');
     try {
-      const urls = await uploadAdImages(files.slice(0, room));
+      const urls = await uploadAdImages(aSubir);
       if (isStories) setStoryImages([...currentList, ...urls].slice(0, max));
       else setImages([...currentList, ...urls].slice(0, max));
     } catch (error) {

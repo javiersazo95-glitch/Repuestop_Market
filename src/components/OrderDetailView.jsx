@@ -21,6 +21,7 @@ import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancell
 import { claimReasonPairs } from '../data/claimReason';
 import { carrierTracking } from '../data/carrierTracking';
 import { fundsReleaseNotice, retractionNotice, storeAutoCloseNotice } from '../data/orderDeadlines';
+import { validateUpload, FILE_LIMITS } from '../utils/fileValidation';
 
 /**
  * Una linea de repuesto dentro del bloque de su tienda, con la ficha tecnica desplegable.
@@ -961,6 +962,13 @@ export default function OrderDetailView({
     if (file.type !== 'application/pdf' || !file.name.toLowerCase().endsWith('.pdf')) {
       setDispatchVoucherFile(null);
       setDispatchError('El comprobante debe ser un archivo PDF.');
+      e.target.value = '';
+      return;
+    }
+    const excedeTamano = validateUpload(file, { maxBytes: FILE_LIMITS.DOCUMENT, label: 'El comprobante' });
+    if (excedeTamano) {
+      setDispatchVoucherFile(null);
+      setDispatchError(excedeTamano);
       e.target.value = '';
       return;
     }

@@ -27,6 +27,7 @@ import {
 // Un solo archivo para el texto y para la version: el registro de aceptacion prueba QUE se
 // acepto, y con dos fuentes la constancia apunta a un documento que no es el que se mostro.
 import { VENDEDOR_TERMS, PRIVACIDAD_POLICY, LEGAL_VERSION_CODE } from '../data/legalTexts';
+import { sanitizeWebsiteUrl } from '../utils/websiteUrl';
 
 type LegalDoc = 'terms' | 'privacy';
 
@@ -915,7 +916,10 @@ function ResumeCard({ prefill, onResolved, onClose }: {
   // Olvidé mi contraseña (solo disponible vía RUT, igual que el backend)
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotStage, setForgotStage] = useState<'send' | 'code' | 'newpass'>('send');
-  const [forgotEmail, setForgotEmail] = useState<string | null>(null);
+  // Identificador OPACO de la solicitud de recuperacion, no el correo. `send-code` dejo de
+  // devolver el correo del titular (SEC-MARKET-016): con un RUT -- secuencial en Chile --
+  // cualquiera obtenia el correo de cualquier vendedor. Es de un solo uso y dura 15 minutos.
+  const [forgotSolicitudId, setForgotSolicitudId] = useState<string | null>(null);
   const [forgotCode, setForgotCode] = useState('');
   const [forgotNewPassword, setForgotNewPassword] = useState('');
   const [forgotBusy, setForgotBusy] = useState(false);
@@ -945,7 +949,10 @@ function ResumeCard({ prefill, onResolved, onClose }: {
   }, []);
 
   useEffect(() => {
-    if (mode !== 'rut' || !lookup?.found || lookup.authProvider !== 'GOOGLE' || !googleRef.current) return;
+    // Ya no se condiciona a `lookup.authProvider === 'GOOGLE'`: el servidor dejo de decir con
+    // que metodo se registro la tienda (SEC-MARKET-015), asi que el boton se monta siempre que
+    // haya una tienda encontrada y es la persona quien elige su via de ingreso.
+    if (mode !== 'rut' || !lookup?.found || !googleRef.current) return;
     renderGoogleResumeButton(googleRef.current, async (session) => {
       setGoogleBusy(true);
       setGoogleError('');
@@ -1011,7 +1018,7 @@ function ResumeCard({ prefill, onResolved, onClose }: {
     setForgotBusy(true);
     try {
       const res = await sendSellerRecoverCode(taxId.trim());
-      setForgotEmail(res.email);
+      setForgotSolicitudId(res.solicitudId);
       setForgotStage('code');
     } catch (e: any) {
       setForgotError(e?.message || 'No pudimos enviar el código.');
@@ -1022,10 +1029,10 @@ function ResumeCard({ prefill, onResolved, onClose }: {
 
   async function handleVerifyForgot() {
     setForgotError('');
-    if (!forgotEmail || forgotCode.length !== 6) return;
+    if (!forgotSolicitudId || forgotCode.length !== 6) return;
     setForgotBusy(true);
     try {
-      await verifySellerRecoverCode(forgotEmail, forgotCode);
+      await verifySellerRecoverCode(forgotSolicitudId, forgotCode);
       setForgotStage('newpass');
     } catch (e: any) {
       setForgotError(e?.message || 'El código no es válido o expiró.');
@@ -1036,11 +1043,11 @@ function ResumeCard({ prefill, onResolved, onClose }: {
 
   async function handleResetForgot() {
     setForgotError('');
-    if (!forgotEmail) return;
+    if (!forgotSolicitudId) return;
     if (forgotNewPassword.length < 8) { setForgotError('Mínimo 8 caracteres'); return; }
     setForgotBusy(true);
     try {
-      await resetSellerPassword(forgotEmail, forgotCode, forgotNewPassword);
+      await resetSellerPassword(forgotSolicitudId, forgotCode, forgotNewPassword);
       const session = await loginSellerByTaxId(taxId.trim(), forgotNewPassword);
       await onResolved(session);
     } catch (e: any) {
@@ -1077,9 +1084,21 @@ function ResumeCard({ prefill, onResolved, onClose }: {
             </div>
           </Field>
 
-          {lookup?.found && lookup.authProvider === 'EMAIL_PASSWORD' && (
+          {/* Una sola rama que ofrece las DOS vias de ingreso.
+              Antes habia dos bloques excluyentes, cada uno condicionado a `lookup.authProvider`,
+              y el correo enmascarado se pintaba como confirmacion. El servidor dejo de mandar
+              esos dos campos (SEC-MARKET-015: permitian recorrer RUTs y saber a quien atacar por
+              contrasena y a quien por Google), asi que con `authProvider` en null las dos ramas
+              quedaban falsas y, como `found` seguia siendo true, no se pintaba NADA ni habia
+              error: el reingreso quedaba sin salida.
+              Mostrar las dos opciones es ademas mejor que preguntarle al servidor cual
+              corresponde: asi no lo dice nunca, ni a un atacante ni a nadie. La persona sabe con
+              que se registro. */}
+          {lookup?.found && (
             <>
-              <p className="founder-reg-hint-ok">Encontramos tu tienda · {lookup.maskedEmail}</p>
+              <p className="founder-reg-hint-ok">
+                Encontramos tu tienda. Continúa con tu contraseña o con Google, según cómo la registraste.
+              </p>
               <Field label="Contraseña" error={loginError}>
                 <div className="founder-reg-password">
                   <input type={showPassword ? 'text' : 'password'} value={password}
@@ -1092,16 +1111,25 @@ function ResumeCard({ prefill, onResolved, onClose }: {
               <button className="button founder-reg-submit" onClick={handleLoginByTaxId} disabled={loggingIn}>
                 {loggingIn ? 'Ingresando...' : 'Continuar postulación'}
               </button>
+              {/* El enlace se muestra a todos, tambien a quien se registro con Google.
+                  Ocultarselo exigiria saber su `authProvider`, que es justo el dato que se dejo
+                  de pedir: seria recrear el oraculo dentro del cliente.
+                  Que pasa si la usa una cuenta de Google: el backend responde 200 como a
+                  cualquiera y le manda el aviso POR CORREO, no por la respuesta HTTP (el mensaje
+                  explicito de SEC-BACKEND-128 revelaba el proveedor y se retiro). Desde el cliente
+                  ese caso es indistinguible a proposito, asi que no se detecta: lo cubre la nota
+                  permanente del paso del codigo. El boton de Google esta en esta misma pantalla.
+                  Este comentario ya se corrigio dos veces; comprobar el backend antes de fiarse. */}
               <button type="button" className="founder-reg-link founder-reg-forgot"
-                onClick={() => { setForgotOpen(true); setForgotStage('send'); setForgotError(''); }}>
+                onClick={() => {
+                  setForgotOpen(true); setForgotStage('send'); setForgotError('');
+                  // Se descarta la solicitud anterior: volver al paso 1 emite una nueva y deja
+                  // muerta la vieja, asi que conservarla solo sirve para fallar mas tarde.
+                  setForgotSolicitudId(null); setForgotCode('');
+                }}>
                 <KeyRound size={13} /> Olvidé mi contraseña
               </button>
-            </>
-          )}
 
-          {lookup?.found && lookup.authProvider === 'GOOGLE' && (
-            <>
-              <p className="founder-reg-hint-ok">Encontramos tu tienda · {lookup.maskedEmail} · registrada con Google</p>
               <div key={googleRemountKey} ref={googleRef} className="founder-reg-google-btn" />
               {googleBusy && <p className="founder-reg-hint-ok">Ingresando...</p>}
               {googleError && <p className="founder-reg-hint-error">{googleError}</p>}
@@ -1123,7 +1151,14 @@ function ResumeCard({ prefill, onResolved, onClose }: {
           )}
           {forgotStage === 'code' && (
             <>
-              <p>Te enviamos un código de 6 dígitos a <strong>{forgotEmail}</strong>.</p>
+              {/* No se nombra el correo: el backend dejo de decirlo a proposito, y mostrar a
+                  quien fue -- o distinguir "existe" de "no existe" -- reabre la enumeracion por
+                  RUT que este cambio cierra. El texto es condicional. */}
+              <p>Si el RUT está registrado, enviamos un código de 6 dígitos al correo asociado a esa tienda.</p>
+              {/* Ver la nota equivalente en AuthModal: la pantalla no puede asumir que siempre
+                  llega un codigo. Ni el RUT equivocado ni la cuenta de Google producen ya un error
+                  en la respuesta, y detectarlos exigiria el dato que se dejo de pedir. */}
+              <p className="founder-reg-hint">¿No te llega el código? Revisa la carpeta de spam. Y si tu cuenta ingresa con Google, te enviamos un correo explicándote cómo entrar: vuelve y usa «Continuar con Google».</p>
               <input className="founder-reg-code" inputMode="numeric" maxLength={6} placeholder="000000"
                 value={forgotCode} onChange={(e) => setForgotCode(e.target.value.replace(/\D/g, '').slice(0, 6))} />
               {forgotError && <p className="founder-reg-hint-error">{forgotError}</p>}
@@ -1197,22 +1232,6 @@ const DOC_FIELDS: { key: DocKey; label: string; hint: string; required: boolean 
 ];
 
 const COMMENT_MAX = 100;
-
-/**
- * Sanea y valida una URL de sitio web o red social.
- * Antepone https:// si carece de esquema y rechaza esquemas peligrosos como javascript: o data:.
- */
-function sanitizeWebsiteUrl(rawUrl: string): string | undefined {
-  const clean = rawUrl.trim();
-  if (!clean) return undefined;
-  if (/^(javascript|data|vbscript):/i.test(clean)) {
-    return undefined;
-  }
-  if (!/^https?:\/\//i.test(clean)) {
-    return `https://${clean}`;
-  }
-  return clean;
-}
 
 function DocumentsUpload({ session, notice, onDone }: { session: Session; notice?: string | null; onDone: () => void }) {
   const [files, setFiles] = useState<Record<DocKey, File | null>>({

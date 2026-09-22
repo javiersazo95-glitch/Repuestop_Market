@@ -13,6 +13,7 @@ import {
   getSellerAdhesionPreviewApi,
   resolveMediaUrl,
 } from '../services/api';
+import { sanitizeWebsiteUrl } from '../utils/websiteUrl';
 import { VENDEDOR_TERMS, PRIVACIDAD_POLICY, LEGAL_VERSION } from '../data/legalTexts';
 
 /**
@@ -123,12 +124,20 @@ export default function SellerVerificationCard({ sellerId }) {
       return;
     }
 
+    // El enlace se sanea ANTES de enviarlo: lo abre un operador del backoffice desde su
+    // consola, así que un esquema ejecutable escrito aquí acabaría corriendo allá.
+    const sanitizedUrl = websiteUrl.trim() ? sanitizeWebsiteUrl(websiteUrl) : undefined;
+    if (websiteUrl.trim() && !sanitizedUrl) {
+      setFormError('El enlace no es válido. Usa una dirección web como https://instagram.com/tu-tienda.');
+      return;
+    }
+
     setIsSubmitting(true);
     setFormError('');
     try {
       const payload = new FormData();
       chosen.forEach((doc) => payload.append(doc.field, files[doc.field]));
-      if (websiteUrl.trim()) payload.append('websiteOrSocialUrl', websiteUrl.trim());
+      if (sanitizedUrl) payload.append('websiteOrSocialUrl', sanitizedUrl);
 
       const updated = isCorrection
         ? await updateSellerVerificationApi(sellerId, payload)

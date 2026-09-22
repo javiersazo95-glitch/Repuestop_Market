@@ -105,7 +105,9 @@ async function urlToDataUrl(url) {
     return imageElementToDataUrl(url);
   }
   try {
-    const response = await fetch(url);
+    // Con tope de espera: sin el, una imagen cuyo host no responde dejaba colgada la
+    // generacion del PDF de la cotizacion sin limite y sin error.
+    const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
     if (!response.ok) throw new Error(`No se pudo cargar la imagen (${response.status})`);
     const blob = await response.blob();
     const objectUrl = URL.createObjectURL(blob);
