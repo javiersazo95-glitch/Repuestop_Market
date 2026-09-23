@@ -18760,6 +18760,26 @@ input.has-success {
 html[data-phone-desktop] .mobile-app-notice { width: calc(1280px / var(--phone-banner-factor)); zoom: var(--phone-banner-factor); }
 html[data-phone-desktop], html[data-phone-desktop] body { overflow-x: clip; }
 
+/* Phone-sized desktop view: improve the smallest copy without changing grids or controls. */
+html[data-phone-desktop] .light-category-sidebar-heading p { font-size: 13px; }
+html[data-phone-desktop] .light-category-sidebar li button { font-size: 15px; }
+html[data-phone-desktop] .light-seller-card strong { font-size: 14px; }
+html[data-phone-desktop] .light-seller-card small,
+html[data-phone-desktop] .light-seller-card b { font-size: 12px; }
+html[data-phone-desktop] .light-intro-copy > p { font-size: 17px; }
+html[data-phone-desktop] .light-intro-copy li { font-size: 15px; }
+html[data-phone-desktop] .light-search-tabs button { font-size: 14px; }
+html[data-phone-desktop] .light-benefits-strip small { font-size: 13px; }
+html[data-phone-desktop] .market-product-card .part-title { font-size: 15px; }
+html[data-phone-desktop] .market-product-card .price-main-bold { font-size: 19px; }
+html[data-phone-desktop] .market-product-content h3 { font-size: 14px; }
+html[data-phone-desktop] .market-product-compatibility,
+html[data-phone-desktop] .market-product-store-name { font-size: 12px; }
+html[data-phone-desktop] .market-product-price strong { font-size: 17px; }
+html[data-phone-desktop] .market-product-detail { font-size: 12px; }
+html[data-phone-desktop] .product-marketplace-description { font-size: 16px; }
+html[data-phone-desktop] .product-marketplace-info-grid p { font-size: 15px; }
+
 /* Estado del catalogo de packs mientras el backend responde. */
 .recharge-packs-state { margin: 0 0 10px; font-size: 12.5px; color: var(--text-muted); }
 .recharge-packs-state.is-error { color: #b8261a; font-weight: 700; }
