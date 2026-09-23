@@ -306,14 +306,16 @@ function BankAccountModal({ sellerId, initialAccount, fallbackEmail, onClose, on
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const accountDigits = form.accountNumber.replace(/\D/g, '');
+    // H16: se limpian solo espacios, puntos y guiones. Antes `\D` borraba tambien las letras y
+    // "12AB5678" se enviaba como "125678": otra cuenta. El backend valida lo mismo.
+    const accountDigits = form.accountNumber.replace(/[\s.-]/g, '');
     const rutClean = form.rut.replace(/[^0-9kK]/g, '').toUpperCase();
     const nextErrors = {};
     if (!selectedBank) nextErrors.bankCode = 'Selecciona el banco de tu cuenta.';
     if (!form.holderName.trim()) nextErrors.holderName = 'Ingresa el nombre del titular.';
     if (!isValidRut(form.rut)) nextErrors.rut = 'Ingresa un RUT válido.';
     if (!form.accountType) nextErrors.accountType = 'Selecciona el tipo de cuenta.';
-    if (accountDigits.length < 6) nextErrors.accountNumber = 'Ingresa un número de cuenta válido.';
+    if (!/^\d{6,20}$/.test(accountDigits)) nextErrors.accountNumber = 'El número de cuenta debe tener solo dígitos (6 a 20), sin letras.';
     if (form.notificationEmail && !/^\S+@\S+\.\S+$/.test(form.notificationEmail.trim())) nextErrors.notificationEmail = 'Ingresa un email válido.';
     if (selectedBank?.requiresAlias && (!form.aliasType || !form.aliasValue.trim())) nextErrors.aliasValue = `${selectedBank.label} requiere un alias registrado.`;
     setErrors(nextErrors);
