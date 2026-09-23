@@ -224,6 +224,14 @@ export default function OrderCard({
       onSelectOrder?.(order);
       return;
     }
+    // Fuera de la comuna el envio se registra con seguimiento y comprobante, que viven en el
+    // detalle (POST /envio). El ConfirmDialog de abajo lo marcaba ENVIADO sin ninguno de los dos
+    // (H15); el backend ya lo rechaza, asi que se lleva al vendedor directo al formulario.
+    // En la vista del vendedor `tipoEnvio` es el de SU tienda (H8).
+    if (isSeller && controlledAction.nextStatus === 'ENVIADO' && order.tipoEnvio === 'courier_por_pagar') {
+      onSelectOrder?.(order);
+      return;
+    }
     // Antes preguntaba con `window.confirm`, que en un navegador embebido devuelve
     // `false` sin abrir nada: el boton quedaba mudo. Se pregunta con `ConfirmDialog`,
     // que es lo que ya usa la cancelacion del comprador.
