@@ -10,7 +10,7 @@ import {
 import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
-import { activeOrderItems, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
+import { activeOrderItems, isCancelledItem, orderDeliverySummary, orderDisplayCode, subOrderDeliveryLabel, subOrderDeliveryMethod } from '../data/orderIdentity';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
 import { Link } from 'react-router-dom';
 import { productPath } from '../routes/paths';
@@ -733,6 +733,10 @@ export default function OrderDetailView({
       // acotado a lo suyo); para el comprador, por subordén.
       boletaVentaDisponible: subOrder?.boletaVentaDisponible ?? (isSeller ? order.boletaVentaDisponible : false),
       boletaVentaNombre: subOrder?.boletaVentaNombre || (isSeller ? order.boletaVentaNombre : null),
+      // Como entrega ESTA tienda (H8). Con subordén manda la suya; sin ella (vista del vendedor,
+      // historicos) el del pedido, que para el vendedor ya viene acotado a lo suyo.
+      deliveryLabelStore: subOrderDeliveryLabel(subOrder, order),
+      isPickupStore: subOrder?.tipoEnvio ? subOrderDeliveryMethod(subOrder, order) === 'store_pickup' : isStorePickup,
     };
   }).filter((block) => block.items.length > 0);
 
@@ -1122,7 +1126,12 @@ export default function OrderDetailView({
             </div>
             <div id="order-timeline-tooltip" className="order-timeline-tooltip" role="tooltip">
               <VisibleTimelineIcon size={15} aria-hidden="true" />
-              <span><strong>{visibleTimelineStep.label}:</strong> {visibleTimelineStep.description}</span>
+              <span><strong>{visibleTimelineStep.label}:</strong> {visibleTimelineStep.key === 'PENDIENTE' && normStatus === 'PENDIENTE'
+                // El paso "Pendiente" cubre PAGADO y PENDIENTE, y "Recibimos tu pago" solo es verdad en el primero.
+                ? 'Todavía no recibimos tu pago. Retómalo antes de que venza el plazo, o el pedido se cancelará.'
+                : visibleTimelineStep.key === 'PENDIENTE' && normStatus === 'CANCELADO'
+                  ? 'Este pedido fue cancelado.'
+                  : visibleTimelineStep.description}</span>
             </div>
           </div>
 
@@ -1145,7 +1154,7 @@ export default function OrderDetailView({
                     aca no repite texto libre concatenado, que es lo que este bloque evitaba. */}
                 <div className="order-delivery-summary-row">
                   <Truck size={14} />
-                  <span>{isStorePickup ? 'Retiro en tienda' : deliveryMethodLabel(order)}</span>
+                  <span>{orderDeliverySummary(order)}</span>
                 </div>
                 {/* En un retiro en tienda NO hay direccion de despacho, pero el bloque se monta
                     igual: es donde el vendedor ve a quien le entrega y el comprador su propio
@@ -1303,7 +1312,7 @@ export default function OrderDetailView({
                         </span>
                         {block.estado && (
                           <OrderStatusBadge
-                            status={block.estado === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : block.estado}
+                            status={block.estado === 'ENVIADO' && block.isPickupStore ? 'LISTO_RETIRO' : block.estado}
                             size="small"
                             mediationStatus={mediationStatus}
                           />
@@ -1321,8 +1330,8 @@ export default function OrderDetailView({
                       <div className="order-store-block-delivery">
                         <span>
                           <Truck size={13} />
-                          {isStorePickup ? 'Retiro en tienda' : deliveryMethodLabel(order)}
-                          {!isStorePickup && block.shippingStore > 0 && (
+                          {block.isPickupStore ? 'Retiro en tienda' : block.deliveryLabelStore}
+                          {!block.isPickupStore && block.shippingStore > 0 && (
                             <strong className="order-store-block-amount">{formatCLP(block.shippingStore)}</strong>
                           )}
                         </span>
@@ -1350,7 +1359,7 @@ export default function OrderDetailView({
                             </span>
                           );
                         })()}
-                        {isStorePickup && block.pickupCode && !block.isCancelledStore && (
+                        {block.isPickupStore && block.pickupCode && !block.isCancelledStore && (
                           <span className="order-store-block-pin">
                             <KeyRound size={13} /> Código de retiro:
                             <strong>{block.pickupCode}</strong>
@@ -1593,7 +1602,7 @@ export default function OrderDetailView({
               )}
 
               <div className="financial-row total-highlight-row">
-                <span>{isSeller ? 'Monto Neto a Recibir' : refundAmount > 0 ? 'Total Final' : 'Total Pagado'}</span>
+                <span>{isSeller ? 'Monto Neto a Recibir' : refundAmount > 0 ? 'Total Final' : normStatus === 'PENDIENTE' ? 'Total a pagar' : normStatus === 'CANCELADO' ? 'Total' : 'Total Pagado'}</span>
                 <strong className="total-highlight-amount">
                   {formatCLP(isSeller ? totalSeller : refundAmount > 0 ? totalActive : totalBuyer)}
                 </strong>

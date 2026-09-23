@@ -91,7 +91,9 @@ export function sellerCodeShort(codigoVendedor) {
 // datos, asi que TODO pedido fuera de la comuna caia al generico "Despacho a coordinar" en vez
 // de mostrar su metodo real.
 const DELIVERY_LABELS = {
-  local_delivery: 'Despacho a domicilio',
+  // Mismo texto que el checkout: "Despacho a domicilio" no dice si es dentro o fuera de la
+  // comuna, y el comprador lo confundia con el envio por pagar.
+  local_delivery: 'Envío dentro de la comuna',
   store_pickup: 'Retiro en tienda',
   courier_por_pagar: 'Envío fuera de la comuna',
 };
@@ -106,6 +108,34 @@ const DELIVERY_LABELS = {
 export function deliveryMethodLabel(order) {
   const tipo = String(order?.tipoEnvio || '').trim().toLowerCase();
   return DELIVERY_LABELS[tipo] || 'Despacho a coordinar';
+}
+
+/**
+ * El metodo de ESTA tienda. Desde H8 cada subordén trae el suyo (`subordenes[].tipoEnvio`): en un
+ * carrito de varias tiendas una puede despachar dentro de la comuna y otra fuera. Los pedidos
+ * anteriores no lo traen y caen al del pedido.
+ */
+export function subOrderDeliveryMethod(subOrder, order) {
+  return String(subOrder?.tipoEnvio || order?.tipoEnvio || '').trim().toLowerCase();
+}
+
+export function subOrderDeliveryLabel(subOrder, order) {
+  return deliveryMethodLabel({ tipoEnvio: subOrderDeliveryMethod(subOrder, order) });
+}
+
+/**
+ * Lo que el comprador eligio, tal cual lo eligio en el checkout. Con varias tiendas lista los
+ * metodos distintos ("Envío dentro de la comuna · Envío fuera de la comuna") en vez de pintar
+ * uno solo para todas. Nunca el courier: "Starken" dice quien lleva el paquete, no como se
+ * compro.
+ */
+export function orderDeliverySummary(order) {
+  const subOrders = Array.isArray(order?.subordenes) ? order.subordenes : [];
+  if (subOrders.length > 1) {
+    const labels = [...new Set(subOrders.map((sub) => subOrderDeliveryLabel(sub, order)))];
+    return labels.join(' · ');
+  }
+  return deliveryMethodLabel(subOrders.length === 1 ? { tipoEnvio: subOrderDeliveryMethod(subOrders[0], order) } : order);
 }
 
 /**

@@ -235,10 +235,20 @@ export default function CheckoutPage() {
   const confirmShipping = async ({ shippingMethod, shippingFee }) => {
     const { group } = shippingEditor;
     await updateCartShipping(group.items.map((item) => item.id), { shippingMethod, shippingFee });
+    setEntregaPorRevisar((prev) => {
+      if (!prev.has(group.key)) return prev;
+      const next = new Set(prev);
+      next.delete(group.key);
+      return next;
+    });
     setShippingEditor(null);
   };
 
-  const allShippingChosen = isQuoteMode || groups.every((group) => Boolean(group.shippingMethod));
+  // Tiendas cuyo despacho quedo elegido para OTRA comuna: el comprador cambio a una direccion de
+  // otra comuna despues de elegir la entrega. Dentro/fuera de la comuna depende de la direccion,
+  // asi que hay que volver a elegir (el retiro en tienda no se toca).
+  const [entregaPorRevisar, setEntregaPorRevisar] = useState(() => new Set());
+  const allShippingChosen = isQuoteMode || groups.every((group) => Boolean(group.shippingMethod) && !entregaPorRevisar.has(group.key));
 
   const shippingLabel = useMemo(() => {
     const services = lineItems
@@ -248,8 +258,11 @@ export default function CheckoutPage() {
     if (services.length === 0) return 'Por definir';
     if (services.every((name) => name === 'Retiro en tienda')) return 'Retiro en tienda';
     if (services.some((name) => name === 'Envío fuera de la comuna')) return 'Por pagar';
+    // El despacho dentro de la comuna tiene costo: decir "Sin costo" junto a un total que lo
+    // incluye contradecia el propio resumen.
+    if (Number(totals.costoEnvio) > 0) return formatCLP(totals.costoEnvio);
     return 'Sin costo';
-  }, [lineItems]);
+  }, [lineItems, totals.costoEnvio]);
 
   const loadAddresses = useCallback(() => {
     if (!userId) return;
@@ -265,9 +278,24 @@ export default function CheckoutPage() {
       .finally(() => setAddressesLoading(false));
   }, [userId]);
 
+  // Se cargan desde el inicio, no recien cuando hace falta direccion: la comuna de la direccion
+  // elegida decide que metodos de despacho se ofrecen (dentro/fuera de la comuna).
   useEffect(() => {
-    if (needsAddress && userId) loadAddresses();
-  }, [needsAddress, userId, loadAddresses]);
+    if (userId) loadAddresses();
+  }, [userId, loadAddresses]);
+
+  const selectedCommune = addresses.find((address) => String(address.id) === String(selectedAddressId))?.comunaNombre || '';
+  const comunaAnteriorRef = useRef('');
+  useEffect(() => {
+    const actual = String(selectedCommune).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    const anterior = comunaAnteriorRef.current;
+    comunaAnteriorRef.current = actual;
+    if (!anterior || !actual || anterior === actual) return;
+    const aRevisar = groups
+      .filter((group) => group.shippingMethod && resolveShippingService(group.shippingMethod).name !== 'Retiro en tienda')
+      .map((group) => group.key);
+    if (aRevisar.length > 0) setEntregaPorRevisar((prev) => new Set([...prev, ...aRevisar]));
+  }, [selectedCommune, groups]);
 
   // Se parte de los params actuales en vez de escribir un objeto nuevo: pasarle
   // `{ paso: id }` a setSearchParams reemplaza TODA la query, y eso borraba el
@@ -546,8 +574,10 @@ export default function CheckoutPage() {
                                 <span className="cart-store-avatar"><Store size={15} /></span>
                                 <strong>{group.vendedor || 'Tienda RepuesTop'}</strong>
                               </div>
-                              <div className={`cart-store-shipping ${group.shippingMethod ? '' : 'is-missing'}`}>
-                                {group.shippingMethod ? (
+                              <div className={`cart-store-shipping ${group.shippingMethod && !entregaPorRevisar.has(group.key) ? '' : 'is-missing'}`}>
+                                {entregaPorRevisar.has(group.key) ? (
+                                  <span className="cart-store-shipping-value" role="alert">Tu dirección está en otra comuna: vuelve a elegir la entrega</span>
+                                ) : group.shippingMethod ? (
                                   <span className="cart-store-shipping-value" style={{ '--shipping-color': service.color }}>
                                     <ShippingIcon size={15} />
                                     {service.label}
@@ -557,7 +587,7 @@ export default function CheckoutPage() {
                                   <span className="cart-store-shipping-value">Elige cómo recibirlo</span>
                                 )}
                                 <button type="button" onClick={() => openShippingEditor(group)}>
-                                  {group.shippingMethod ? 'Cambiar' : 'Elegir entrega'}
+                                  {group.shippingMethod && !entregaPorRevisar.has(group.key) ? 'Cambiar' : 'Elegir entrega'}
                                 </button>
                               </div>
                             </div>
@@ -972,6 +1002,7 @@ export default function CheckoutPage() {
         product={shippingEditor?.product || null}
         intent={shippingEditor?.product ? 'update' : null}
         initialMethod={shippingEditor?.group?.shippingMethod || ''}
+        buyerCommune={selectedCommune}
         onClose={() => setShippingEditor(null)}
         onConfirm={confirmShipping}
       />

@@ -5,7 +5,7 @@ import {
   Phone, MapPin, Boxes, Loader2, ReceiptText, FileCheck, ListChecks
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
-import { deliveryCourierLabel, deliveryMethodLabel, isCancelledItem, orderDisplayCode } from '../data/orderIdentity';
+import { isCancelledItem, orderDeliverySummary, orderDisplayCode } from '../data/orderIdentity';
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
@@ -140,7 +140,9 @@ export default function OrderCard({
   // Solo cuando el backend registro la causa. Los cancelados historicos no la
   // tienen y se quedan con "Cancelado" a secas, sin explicacion inventada.
   const cancellationReason = normStatus === 'CANCELADO' ? cancellationReasonLabel(order, isSeller ? 'seller' : 'buyer') : null;
-  const deliveryTerms = deliveryCourierLabel(order) || deliveryMethodLabel(order);
+  // Lo que el comprador eligio en el checkout, por tienda (H8). El courier ("Starken") es otro
+  // dato: dice quien lleva el paquete, no como se compro.
+  const deliveryTerms = orderDeliverySummary(order);
   const isStorePickup = isStorePickupOrder(order);
   const displayStatus = normStatus === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : rawStatus;
 
@@ -275,6 +277,8 @@ export default function OrderCard({
       </div>
     );
   };
+
+  const statusButton = renderStatusButton();
 
   return (
     <>
@@ -551,8 +555,14 @@ export default function OrderCard({
               <span>Cancelar pedido</span>
             </button>
           )}
-          {renderStatusButton()}
+          {statusButton}
         </div>
+        {/* El error del "Retomar pago" (el 409 de la ventana vencida, que dice que el pedido
+            quedo cancelado) solo se pintaba junto al boton de avance de estado, y un pedido
+            PENDIENTE del comprador no lo tiene: el clic no mostraba nada. */}
+        {!statusButton && actionError && (
+          <small className="order-controlled-error" role="alert">{actionError}</small>
+        )}
       </div>
 
       {showStoreStatuses && (

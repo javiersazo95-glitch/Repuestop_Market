@@ -6,6 +6,7 @@ import { confirmOrderPaymentApi, getBuyerOrderByIdApi, resolveMediaUrl } from '.
 import { useAuth } from '../context/AuthContext';
 import { normalizeOrderStatus } from '../data/orderStatusFlow';
 import { buyerProfilePath, ROUTES } from '../routes/paths';
+import { orderDeliverySummary } from '../data/orderIdentity';
 
 const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
 
@@ -104,7 +105,11 @@ export default function PurchaseSuccessPage() {
     order?.compradorComuna || order?.comuna,
     order?.compradorRegion || order?.region,
   ].filter(Boolean).join(', ');
-  const shippingMethod = order?.courier || order?.deliveryTerms || order?.tipoEnvio || 'Entrega por coordinar';
+  // `tipoEnvio` es la clave interna del backend (`local_delivery`, `courier_por_pagar`...): nunca se
+  // muestra cruda, pasa por la misma traduccion que usa el detalle del pedido.
+  const shippingMethod = order?.tipoEnvio || (Array.isArray(order?.subordenes) && order.subordenes.length > 0)
+    ? orderDeliverySummary(order)
+    : (order?.courier || order?.deliveryTerms || 'Entrega por coordinar');
   const isPickup = /retiro|tienda|store_pickup/i.test(shippingMethod);
   const subtotal = items.reduce((sum, item) => (
     sum + Number(item.precioUnitario || item.precio || item.unitPrice || 0) * Number(item.cantidad || item.quantity || 1)
@@ -229,7 +234,7 @@ export default function PurchaseSuccessPage() {
                 <div><span>Productos</span><strong>{formatCLP(subtotal)}</strong></div>
                 {discount > 0 && <div><span>Descuento</span><strong className="purchase-success-discount">−{formatCLP(discount)}</strong></div>}
                 <div><span>Envío</span><strong>{shippingFee ? formatCLP(shippingFee) : 'Sin costo'}</strong></div>
-                <div className="purchase-success-total"><span>Total pagado</span><strong>{formatCLP(total)}</strong></div>
+                <div className="purchase-success-total"><span>{isPendingPayment ? 'Total a pagar' : isCancelled ? 'Total' : 'Total pagado'}</span><strong>{formatCLP(total)}</strong></div>
               </div>
 
               {/* Las acciones viven al pie del resumen, no sueltas bajo la página: es

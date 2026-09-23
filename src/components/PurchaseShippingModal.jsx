@@ -18,12 +18,14 @@ function normalizarComuna(valor) {
  * `intent`: 'buy' (comprar ahora) | 'add' (añadir al carro) | 'update' (cambiar la
  * entrega de una tienda ya en el carrito, desde /carrito). Solo cambia el copy del CTA.
  */
-export default function PurchaseShippingModal({ product, intent, initialMethod = '', onClose, onConfirm }) {
+export default function PurchaseShippingModal({ product, intent, initialMethod = '', buyerCommune: buyerCommuneProp, onClose, onConfirm }) {
   // El usuario se lee aca y no se recibe por props: el modal lo montan la ficha del producto
   // y el carrito, y la regla de la comuna tiene que ser la misma en los dos.
   const { user } = useAuth();
   const navigate = useNavigate();
-  const buyerCommune = normalizarComuna(user?.comuna);
+  // En el checkout manda la comuna de la DIRECCION ELEGIDA, no la del perfil: se despacha a esa
+  // direccion, y la regla dentro/fuera de la comuna la vuelve a validar el backend (EnvioComunaRegla).
+  const buyerCommune = normalizarComuna(buyerCommuneProp || user?.comuna);
   const sellerCommune = normalizarComuna(product?.ciudadVendedor || product?.comunaVendedor);
   const availableMethods = useMemo(() => {
     const methods = parseShippingMethods(product?.metodosEnvio);
