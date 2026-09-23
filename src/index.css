@@ -18120,6 +18120,13 @@ input.has-success {
 .legal-doc-text { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 28px; color: #334155; font-size: 13.5px; line-height: 1.6; }
 .legal-doc-text p { margin: 0 0 12px; }
 .legal-doc-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border-subtle, #e4eaf0); background: #fbfcfe; }
+/* Contrato de adhesion: mismas medidas que el modal del panel vendedor. Sin esto la casilla quedaba
+   pegada al borde izquierdo y los botones heredaban el ancho de los formularios de acceso. */
+.legal-doc-modal .terms-checkbox-box { margin: 12px 20px 0; font-size: 13.5px; color: #0f172a; cursor: pointer; }
+.legal-doc-actions .btn-auth-primary,
+.legal-doc-actions .btn-auth-secondary { width: auto; min-width: 0; padding: 13.5px 24px; border-radius: 14px; font-size: 13.2px; font-weight: 600; }
+.legal-doc-actions .btn-auth-secondary { background: #fff; border: 1px solid var(--border-subtle, #e4eaf0); color: #0f172a; }
+.legal-doc-actions .btn-auth-secondary:hover { background: #f8fafc; }
 /* Enlaces a los documentos legales bajo el contrato: es una fila de texto, no botones. */
 .verification-legal-links { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; color: #64748b; font-size: 12.5px; }
 .verification-legal-links svg { flex-shrink: 0; }
