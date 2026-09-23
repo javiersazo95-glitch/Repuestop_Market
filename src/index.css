@@ -18337,6 +18337,14 @@ input.has-success {
   vertical-align: middle;
 }
 
+/* Las reglas generales de los chips y de la tabla añaden padding a todos los
+   span descendientes. En este icono consumían todo el espacio del logo. */
+.product-marketplace-brand .product-brand-mark,
+.product-marketplace-info-grid dd .product-brand-mark {
+  box-sizing: border-box;
+  padding: 0;
+}
+
 .product-brand-mark-img {
   width: 100%;
   height: 100%;
@@ -18344,6 +18352,7 @@ input.has-success {
   max-height: 84%;
   object-fit: contain;
   display: block;
+  flex: none;
 }
 
 .product-brand-mark-initials {
