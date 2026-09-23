@@ -8,6 +8,7 @@ import TermsReacceptanceModal from './components/TermsReacceptanceModal';
 import SellerAdhesionModal from './components/SellerAdhesionModal';
 import SystemErrorPage from './components/SystemErrorPage';
 import CookieConsentBanner from './components/CookieConsentBanner';
+import MobileAppNotice from './components/MobileAppNotice';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,6 +70,7 @@ export default function App() {
         <BrowserRouter>
           <AuthProvider>
             <MarketplaceProvider>
+              <MobileAppNotice />
               <AppRoutes />
               {/* Va por encima de las rutas: el perfil vive fuera de AppLayout y el aviso
                   tiene que alcanzarlo igual. */}
