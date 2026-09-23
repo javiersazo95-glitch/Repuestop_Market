@@ -496,7 +496,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
           <h1>Únete como <em>tienda fundadora</em> de RepuesTop</h1>
           <p className="founder-reg-lead">
             Completa tu registro y sigue las 4 fases para activar tu tienda con beneficios de fundador:
-            5% de comisión fija, distintivo oficial y mayor visibilidad.
+            5% de comisión fija durante tus primeros 3 meses (primeras 100 tiendas aprobadas), distintivo oficial y mayor visibilidad.
           </p>
           <Timeline activePhase={activePhase} />
 
@@ -1411,7 +1411,7 @@ function ApprovedInfo({ approved, onHome }: { approved: boolean; onHome: () => v
         <h2>¡Tu tienda ya está aprobada!</h2>
         <p>
           Tu cuenta de tienda fundadora ya fue validada por nuestro equipo. Ingresa al <strong>panel de vendedores</strong> para
-          cargar tu inventario y empezar a vender con 5% de comisión fija.
+          cargar tu inventario y empezar a vender. Si tu tienda está entre las primeras 100 aprobadas, tendrás 5% de comisión fija durante tus primeros 3 meses.
         </p>
         <a className="button founder-reg-submit" href={PANEL_VENDEDORES_URL}>
           Ir al panel de vendedores <ArrowRight size={18} />
@@ -1426,7 +1426,7 @@ function ApprovedInfo({ approved, onHome }: { approved: boolean; onHome: () => v
       <h2>Último paso: aprobación e ingreso</h2>
       <p>
         Cuando el equipo apruebe tu tienda, recibirás un correo con el acceso al <strong>panel de vendedores</strong>,
-        donde podrás cargar tu inventario y empezar a vender como tienda fundadora con 5% de comisión fija.
+        donde podrás cargar tu inventario y empezar a vender. Las primeras 100 tiendas aprobadas tienen 5% de comisión fija durante sus primeros 3 meses.
       </p>
       <ul className="founder-reg-checklist">
         <li><Check size={16} /> Distintivo oficial de Fundador en tus publicaciones.</li>

@@ -12,7 +12,7 @@
  */
 
 /** Fecha de la version vigente, para mostrar en pantalla. */
-export const LEGAL_VERSION = '10 de septiembre de 2026';
+export const LEGAL_VERSION = '24 de septiembre de 2026';
 
 /**
  * Codigo estable de la misma version, el que viaja al backend y queda guardado en
@@ -23,7 +23,7 @@ export const LEGAL_VERSION = '10 de septiembre de 2026';
  * Debe coincidir con `repuestop.legal.version-vigente` del backend y con
  * LEGAL_VERSION_CODE de la app.
  */
-export const LEGAL_VERSION_CODE = '2026-09-10';
+export const LEGAL_VERSION_CODE = '2026-09-24';
 
 export const COMPRADOR_TERMS = `1. IDENTIFICACIÓN DE LA PLATAFORMA
 RepuesTop es una plataforma de comercio electrónico, disponible como aplicación móvil y sitio web, administrada por la empresa titular de la plataforma, en adelante también "RepuesTop", "la Plataforma" o "la Empresa". Estos Términos regulan el registro, acceso y uso de la Plataforma por parte de compradores.
@@ -167,7 +167,7 @@ Las cotizaciones enviadas por chat tendrán el plazo de validez configurado por 
 
 8. VENTAS, PAGOS, COMISIÓN Y LIQUIDACIÓN
 Las ventas iniciadas en RepuesTop deberán pagarse dentro de la Plataforma. Se prohíbe indicar al comprador que pague por fuera, compartir datos de contacto externos o utilizar el chat para evitar comisiones.
-RepuesTop cobrará al vendedor una comisión por uso de la Plataforma, intermediación tecnológica, procesamiento, soporte, seguimiento, reclamos y mediación. La estructura de comisiones estándar de RepuesTop es escalonada y se calcula sobre el valor neto de los productos vendidos más el 19% de IVA correspondiente: 10% más IVA para ventas hasta .000; 7% más IVA para ventas entre .001 y .000; y 5% más IVA para ventas superiores a .000 (o una tarifa fija preferencial de 5% más IVA para Vendedores con condición de Tienda Fundadora). RepuesTop emitirá mensualmente Factura Electrónica por las comisiones y su IVA para que el vendedor lo utilice como crédito fiscal.
+RepuesTop cobrará al vendedor una comisión por uso de la Plataforma, intermediación tecnológica, procesamiento, soporte, seguimiento, reclamos y mediación. La estructura de comisiones estándar de RepuesTop es escalonada y se calcula sobre el valor neto de los productos vendidos más el 19% de IVA correspondiente: 10% más IVA para ventas hasta $100.000; 7% más IVA para ventas entre $100.001 y $250.000; y 5% más IVA para ventas superiores a $250.000 (o una tarifa fija preferencial de 5% más IVA para Vendedores con condición de Tienda Fundadora, durante los primeros tres (3) meses desde la aprobación de su tienda y solo para las primeras cien (100) tiendas aprobadas). RepuesTop emitirá mensualmente Factura Electrónica por las comisiones y su IVA para que el vendedor lo utilice como crédito fiscal.
 El costo de recaudación y procesamiento de pagos vía pasarela electrónica (Flow: 2,89% más IVA, total 3,4391%) es de cargo del vendedor y se deducirá al liquidar la venta.
 La liquidación de los fondos estará disponible para su retiro por parte del vendedor a los 11 días transcurridos desde la entrega física confirmada del pedido al comprador, siempre que no existan reclamos, devoluciones, mediaciones pendientes o sospechas de fraude.
 

@@ -176,7 +176,7 @@ export const HELP_CATEGORIES = [
       },
       {
         q: '¿Qué es el Beneficio Tarifa Fundador?',
-        a: 'Es la tarifa preferente para las primeras tiendas que se suman a RepuesTop. Si tu cuenta lo tiene activo, verás la insignia en la cabecera de tu perfil y la comisión aplicada en tus pedidos será la del beneficio.',
+        a: 'Es la tarifa preferente de 5% + IVA para las primeras 100 tiendas aprobadas en RepuesTop, durante sus primeros 3 meses desde la aprobación. Si tu cuenta lo tiene activo, verás la insignia en la cabecera de tu perfil y la comisión aplicada en tus pedidos será la del beneficio.',
         roles: [HELP_ROLES.SELLER],
         topicId: 'seller-orders',
       },
