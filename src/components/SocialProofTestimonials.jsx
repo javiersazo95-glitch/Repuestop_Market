@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Star, UserRound, Loader2, ShieldCheck, Store, Car, BadgeCheck,
-  ChevronLeft, ChevronRight, CheckCircle2, MessageSquareQuote,
+  ChevronLeft, ChevronRight, MessageSquareQuote,
   CalendarDays, ThumbsUp,
 } from 'lucide-react';
 import { getPublicSystemFeedbackApi, resolveMediaUrl } from '../services/api';
@@ -259,19 +259,14 @@ export default function SocialProofTestimonials() {
             </div>
           )}
 
-          {/* 4. Leyenda de confianza */}
+          {/* 4. Leyenda de confianza. Solo lo que el proceso cumple (O33): el backoffice elige
+              que opiniones se muestran y no se exige una compra, asi que no se promete
+              "actividad confirmada" ni que no se ordenan o eliminan. */}
           <aside className="tst-trust">
             <span className="tst-trust-icon"><ShieldCheck size={22} /></span>
             <div className="tst-trust-copy">
-              <strong>Opiniones reales, sin editar ni comprar</strong>
-              <p>
-                Cada comentario proviene de una cuenta verificada con actividad confirmada en
-                RepuesTop. No editamos, ordenamos ni eliminamos opiniones.
-              </p>
+              <strong>Opiniones de usuarios registrados</strong>
             </div>
-            <span className="tst-trust-seal">
-              <CheckCircle2 size={15} /> Verificado por RepuesTop
-            </span>
           </aside>
         </>
       )}

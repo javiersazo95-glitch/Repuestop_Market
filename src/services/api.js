@@ -1323,6 +1323,11 @@ export async function getSupportTicketMessagesApi(userId, ticketId) {
   return fetchApi(`/support/tickets/mine/${userId}/${ticketId}/messages`, { method: 'GET' });
 }
 
+/** O39: archivos que soporte adjuntó al ticket (el dueño los puede ver). */
+export async function getSupportTicketAttachmentsApi(userId, ticketId) {
+  return fetchApi(`/support/tickets/mine/${userId}/${ticketId}/attachments`, { method: 'GET' });
+}
+
 export async function sendSupportTicketMessageApi(userId, ticketId, { mensaje, autorNombre } = {}) {
   return fetchApi(`/support/tickets/mine/${userId}/${ticketId}/messages`, {
     method: 'POST',

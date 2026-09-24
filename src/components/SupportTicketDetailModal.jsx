@@ -2,15 +2,26 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ConfirmDialog from './ConfirmDialog';
 import {
   ArrowLeft, Headphones, CheckCircle2, AlertTriangle, Send, Loader2, Lock, ShieldCheck,
-  Monitor, Smartphone, Tag, Clock, RefreshCw, Package,
+  Monitor, Smartphone, Tag, Clock, RefreshCw, Package, Paperclip, FileText,
 } from 'lucide-react';
 import {
   getSupportTicketDetailApi,
   getSupportTicketMessagesApi,
+  getSupportTicketAttachmentsApi,
   sendSupportTicketMessageApi,
   closeSupportTicketApi,
   markSupportTicketReadApi,
+  resolveMediaUrl,
 } from '../services/api';
+
+// Solo rutas reales del proxy de archivos (carpeta/archivo). Un ticket de prueba quedó con
+// `/api/v1/uploads/upload` como adjunto, que no es un archivo y se mostraría roto.
+const ATTACHMENT_PATH = /\/api\/v1\/uploads\/(r2\/)?[^/?]+\/[^?]+/i;
+const IMAGE_EXTENSION = /\.(jpe?g|png|gif|webp)$/i;
+
+function attachmentName(item) {
+  return item.nombreArchivo || String(item.url || '').split('?')[0].split('/').pop() || 'Archivo';
+}
 
 const STATUS_LABELS = {
   ABIERTO: 'Abierto',
@@ -51,6 +62,7 @@ function formatDate(value) {
 export default function SupportTicketDetailModal({ ticketId, userId, user, onClose, onUpdated }) {
   const [ticket, setTicket] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -66,12 +78,15 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
     if (quiet) setIsRefreshing(true); else setLoading(true);
     setError('');
     try {
-      const [ticketData, messagesData] = await Promise.all([
+      const [ticketData, messagesData, attachmentsData] = await Promise.all([
         getSupportTicketDetailApi(userId, ticketId),
         getSupportTicketMessagesApi(userId, ticketId).catch(() => []),
+        getSupportTicketAttachmentsApi(userId, ticketId).catch(() => []),
       ]);
       setTicket(ticketData);
       setMessages(Array.isArray(messagesData) ? messagesData : (messagesData?.content || []));
+      setAttachments((Array.isArray(attachmentsData) ? attachmentsData : [])
+        .filter((item) => ATTACHMENT_PATH.test(String(item?.url || ''))));
       markSupportTicketReadApi(userId, ticketId).catch(() => {});
     } catch (err) {
       if (!quiet) setError(err?.message || 'No se pudo cargar el detalle de la consulta.');
@@ -90,7 +105,10 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
   }, [messages.length, loading]);
 
   const status = String(ticket?.status || '').toUpperCase();
-  const isClosed = ['RESUELTO', 'CERRADO', 'CANCELADO'].includes(status);
+  // O36: RESUELTO ya no sella el hilo. Soporte lo marca resuelto, pero el cliente todavía puede
+  // responder (se reabre) o cerrarlo; si no hace nada, se cierra solo en `autoCloseAt`.
+  const isClosed = ['CERRADO', 'CANCELADO'].includes(status);
+  const isResolved = status === 'RESUELTO';
   const statusTone = STATUS_TONE[status] || 'wait';
   // El "tema" del ticket es lo que el usuario eligió en el formulario (su motivo). Se muestra
   // como título; nunca una etiqueta fija.
@@ -120,6 +138,8 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
       });
       setMessages((prev) => [...prev, sent]);
       setReplyText('');
+      // Responder un RESUELTO lo reabre: se recarga para que el sello y el aviso cambien.
+      if (isResolved) loadTicketData({ quiet: true });
       onUpdated?.();
     } catch (err) {
       setActionError(err?.message || 'No se pudo enviar el mensaje.');
@@ -183,7 +203,7 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
               title="Marca la consulta como resuelta y cierra el ticket"
             >
               {isClosing ? <Loader2 size={14} className="spin-icon" /> : <CheckCircle2 size={15} />}
-              <span>{isClosing ? 'Cerrando…' : 'Marcar resuelta'}</span>
+              <span>{isClosing ? 'Cerrando…' : isResolved ? 'Cerrar consulta' : 'Marcar resuelta'}</span>
             </button>
           )}
         </span>
@@ -213,6 +233,34 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
         </div>
       ) : (
         <div className="dispute-chat-body">
+          {attachments.length > 0 && (
+            <div className="support-chat-attachments">
+              <span className="support-chat-attachments-title"><Paperclip size={12} /> Archivos del caso</span>
+              <div className="support-chat-attachments-list">
+                {attachments.map((item) => {
+                  const name = attachmentName(item);
+                  const href = resolveMediaUrl(item.url);
+                  const isImage = IMAGE_EXTENSION.test(name) || IMAGE_EXTENSION.test(String(item.url).split('?')[0]);
+                  return (
+                    <a
+                      key={item.id || item.url}
+                      className="support-chat-attachment"
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={name}
+                    >
+                      {isImage
+                        ? <img src={href} alt={name} loading="lazy" />
+                        : <span className="support-chat-attachment-file"><FileText size={18} /></span>}
+                      <span className="support-chat-attachment-name">{name}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="dispute-thread" ref={threadRef}>
             {messages.length === 0 && !ticket?.supportResponse ? (
               <p className="dispute-thread-empty">
@@ -252,9 +300,19 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
             <p className="dispute-inline-error" style={{ margin: '0 16px 8px' }}>{actionError}</p>
           )}
 
+          {isResolved && (
+            <p className="support-resolved-note">
+              <CheckCircle2 size={14} /> Soporte marcó tu consulta como resuelta. Si todavía necesitas ayuda,
+              respóndenos aquí y la reabrimos.
+              {ticket?.autoCloseAt ? ` Si no, se cerrará automáticamente el ${formatDate(ticket.autoCloseAt)}.` : ''}
+            </p>
+          )}
+
           {isClosed ? (
             <p className="dispute-thread-closed">
-              <Lock size={14} /> Este ticket está {(STATUS_LABELS[status] || 'cerrado').toLowerCase()}. Si el problema
+              <Lock size={14} /> Este ticket está {(STATUS_LABELS[status] || 'cerrado').toLowerCase()}
+              {ticket?.closedAt ? ` desde el ${formatDate(ticket.closedAt)}` : ''}
+              {ticket?.closeReason && ticket?.closedBy !== 'USUARIO' ? ` (${ticket.closeReason})` : ''}. Si el problema
               vuelve, abre una consulta nueva desde el Centro de ayuda.
             </p>
           ) : (
