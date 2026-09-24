@@ -259,6 +259,9 @@ export async function registerBuyerApi(buyerData) {
       idToken: buyerData.idToken || null,
       userProfileUrl: buyerData.userProfileUrl || null,
       acceptsTerms: buyerData.acceptsTerms === true,
+      // Codigo de captador opcional; el backend lo valida y rechaza uno inexistente.
+      referral: buyerData.referral?.trim().toUpperCase() || null,
+      referralChannel: buyerData.referral ? 'WEB' : null,
       termsVersion: LEGAL_VERSION_CODE,
       // El alta con Google puede venir SIN direccion, y entonces hay que MANDARLA
       // NULA: `validarComprador()` solo se salta la validacion cuando el campo

@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
+import CaptadorCodeField, { useCaptadorCode } from './CaptadorCodeField';
+import { clearStoredCaptadorReferral, getStoredCaptadorReferral } from '../utils/captadorReferral';
 import { decodeGoogleIdToken } from '../utils/googleIdToken';
 import { GOOGLE_CLIENT_ID } from './founderConfig';
 import { resolverUbicacionPorNombre } from '../services/geoLookup';
@@ -170,6 +172,13 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
   const [buyerComuna, setBuyerComuna] = useState(null); // { id, nombre, region }
   const [buyerComunaError, setBuyerComunaError] = useState('');
   const [acceptsTerms, setAcceptsTerms] = useState(false);
+  // Codigo de captador opcional (registro manual y con Google). Parte con el `?ref=` del
+  // link que compartio el captador, si lo hubo.
+  const captadorReferral = useCaptadorCode(getStoredCaptadorReferral());
+  const resetCaptadorReferral = captadorReferral.reset;
+  useEffect(() => {
+    if (isOpen) resetCaptadorReferral(getStoredCaptadorReferral());
+  }, [isOpen, resetCaptadorReferral]);
   
   // Password Recovery State
   // `recoverIdentifier` es lo que el usuario ESCRIBE (correo del comprador o RUT de la
@@ -626,6 +635,13 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setIsSubmitting(true);
     setErrorMessage(null);
 
+    const captador = await captadorReferral.codeForSubmit();
+    if (!captador.ok) {
+      setIsSubmitting(false);
+      setErrorMessage('El código de captador no es válido. Corrígelo o déjalo vacío para continuar.');
+      return;
+    }
+
     const registro = await registerBuyer({
       email: googlePending.email,
       firstName,
@@ -634,6 +650,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
       authProvider: 'GOOGLE',
       idToken: googlePending.idToken,
       acceptsTerms: true,
+      referral: captador.code,
     });
 
     if (!registro.success) {
@@ -641,6 +658,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
       setErrorMessage(registro.error || 'No pudimos crear tu cuenta con Google.');
       return;
     }
+    clearStoredCaptadorReferral();
 
     // El registro con Google no manda codigo de verificacion (el correo ya lo
     // verifico el proveedor), pero no siempre devuelve sesion iniciada: se entra
@@ -709,6 +727,13 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setIsSubmitting(true);
     setErrorMessage(null);
 
+    const captador = await captadorReferral.codeForSubmit();
+    if (!captador.ok) {
+      setIsSubmitting(false);
+      setErrorMessage('El código de captador no es válido. Corrígelo o déjalo vacío para continuar.');
+      return;
+    }
+
     const result = await registerBuyer({
       email: cleanEmail,
       password: cleanPassword,
@@ -716,11 +741,13 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
       phone: cleanPhone || undefined,
       acceptsTerms,
       direccion: { calleYNumero: buyerStreet.trim(), comunaId: buyerComuna.id },
+      referral: captador.code,
     });
 
     setIsSubmitting(false);
 
     if (result.success) {
+      clearStoredCaptadorReferral();
       if (result.data?.pendingEmailVerification) {
         setRegisterVerifyCode('');
         setRegisterCooldown(60);
@@ -1458,6 +1485,8 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               </div>
             )}
 
+            <CaptadorCodeField referral={captadorReferral} disabled={isSubmitting} />
+
             {/* Aceptacion explicita, igual que en el registro por correo: queda en
                 `RT_aceptacion_terminos` con su version, asi que marcarla por el
                 usuario seria falsear ese registro. */}
@@ -1698,6 +1727,8 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                 </small>
               )}
             </div>
+
+            <CaptadorCodeField referral={captadorReferral} disabled={isSubmitting} />
 
             {/* Aceptacion explicita: el backend la exige (`validarTerminos`) y la guarda
                 en `accepts_terms` / `terms_accepted_at`. */}

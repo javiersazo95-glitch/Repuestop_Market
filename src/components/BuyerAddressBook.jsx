@@ -22,9 +22,12 @@ const EMPTY_FORM = { calleYNumero: '', codigoPostal: '', paisId: '', regionId: '
  * Proveedor sin direcciones propias, el formulario ofrece un botón para copiar la
  * dirección de su tienda como PUNTO DE PARTIDA (ver `handleUseStoreAddress`): es una
  * decisión explícita del usuario, no una sincronización automática en el backend.
+ *
+ * `onChange` avisa al contenedor (el checkout) que la libreta cambió, para que
+ * recargue su propia lista de direcciones.
  */
-export default function BuyerAddressBook({ usuarioId }) {
-  const { role, user } = useAuth();
+export default function BuyerAddressBook({ usuarioId, onChange }) {
+  const { role, user, refreshProfile } = useAuth();
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -54,6 +57,17 @@ export default function BuyerAddressBook({ usuarioId }) {
   };
 
   useEffect(loadAddresses, [usuarioId]);
+
+  // Tras cualquier cambio se recarga la lista y tambien el perfil de la sesion: el
+  // modal de metodos de entrega (PurchaseShippingModal) decide con `user.comuna`, que
+  // el backend saca de la direccion principal. Sin este refresh, una cuenta que
+  // registraba su primera direccion seguia viendo "Registra tu direccion para
+  // continuar" en la ficha, el carrito y el checkout hasta recargar la pagina.
+  const afterAddressChange = () => {
+    loadAddresses();
+    refreshProfile().catch(() => {});
+    onChange?.();
+  };
 
   const openAddForm = (defaultType = 'PERSONAL') => {
     setEditingId(null);
@@ -195,7 +209,7 @@ export default function BuyerAddressBook({ usuarioId }) {
         await createAddressApi(usuarioId, payload);
       }
       closeForm();
-      loadAddresses();
+      afterAddressChange();
     } catch (err) {
       setFormError(err.message || 'No se pudo guardar la dirección.');
     } finally {
@@ -228,7 +242,7 @@ export default function BuyerAddressBook({ usuarioId }) {
 
     try {
       await updateAddressApi(usuarioId, address.id, payload);
-      loadAddresses();
+      afterAddressChange();
     } catch {
       loadAddresses();
     }
@@ -245,7 +259,7 @@ export default function BuyerAddressBook({ usuarioId }) {
     setDeletingId(address.id);
     try {
       await deleteAddressApi(usuarioId, address.id);
-      loadAddresses();
+      afterAddressChange();
     } catch (err) {
       setError(err.message || 'No se pudo eliminar la dirección.');
     } finally {
@@ -260,7 +274,7 @@ export default function BuyerAddressBook({ usuarioId }) {
     setError('');
     try {
       await setDefaultAddressApi(usuarioId, addressId);
-      loadAddresses();
+      afterAddressChange();
     } catch (err) {
       setError(err.message || 'No se pudo actualizar tu dirección principal.');
     } finally {

@@ -264,15 +264,23 @@ export default function CheckoutPage() {
     return 'Sin costo';
   }, [lineItems, totals.costoEnvio]);
 
-  const loadAddresses = useCallback(() => {
+  // `silent` es para cuando la libreta embebida avisa un cambio: sin el estado de carga
+  // la libreta no se desmonta a mitad de camino (se oculta mientras carga) y la
+  // dirección recién creada aparece seleccionada en la lista.
+  const loadAddresses = useCallback(({ silent = false } = {}) => {
     if (!userId) return;
-    setAddressesLoading(true);
+    if (!silent) setAddressesLoading(true);
     getAddressesApi(userId)
       .then((data) => {
         const list = Array.isArray(data) ? data : [];
         setAddresses(list);
         const principal = list.find((address) => address.esPrincipal);
-        setSelectedAddressId((current) => current || String(principal?.id || list[0]?.id || ''));
+        // La selección actual se conserva solo si sigue existiendo: pudo borrarse desde la libreta.
+        setSelectedAddressId((current) => (
+          list.some((address) => String(address.id) === String(current))
+            ? current
+            : String(principal?.id || list[0]?.id || '')
+        ));
       })
       .catch(() => setAddresses([]))
       .finally(() => setAddressesLoading(false));
@@ -666,7 +674,7 @@ export default function CheckoutPage() {
                       </button>
 
                       {(addressBookOpen || (!addressesLoading && addresses.length === 0)) && (
-                        <div className="checkout-address-book"><BuyerAddressBook usuarioId={userId} /></div>
+                        <div className="checkout-address-book"><BuyerAddressBook usuarioId={userId} onChange={() => loadAddresses({ silent: true })} /></div>
                       )}
                     </>
                   ) : (
