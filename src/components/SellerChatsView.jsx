@@ -297,9 +297,11 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
   }
 
   const title = isSellerMode ? 'Chats con compradores' : 'Chats con vendedor';
-  const subtitle = isSellerMode
+  // Las ventas que se cierren por fuera no tienen soporte ni mediacion (terminos 2026-09-25).
+  const avisoSoporte = ' El soporte, los reclamos y la mediación de RepuesTop solo cubren compras pagadas dentro de RepuesTop.';
+  const subtitle = (isSellerMode
     ? 'Conversaciones de tus compradores sobre los pedidos que vendiste.'
-    : 'Escríbele a la tienda sobre cualquier compra: dudas, fallas o incompatibilidades.';
+    : 'Escríbele a la tienda sobre cualquier compra: dudas, fallas o incompatibilidades.') + avisoSoporte;
 
   return (
     <section className="profile-panel profile-cases-panel">

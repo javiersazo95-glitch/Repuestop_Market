@@ -3,6 +3,8 @@ export const FLOW_RATE_BASE = 0.0289;
 export const FLOW_IVA = 0.19;
 export const FLOW_RATE_WITH_IVA = FLOW_RATE_BASE * (1 + FLOW_IVA);
 export const FOUNDER_APP_RATE = 0.05;
+// Comision estandar parejo para tiendas verificadas (8 % + IVA, sin tramos ni tope; 2026-09-24).
+export const STANDARD_APP_RATE = 0.08;
 // Si es false, el porcentaje es neto y el IVA (19%) se cobra adicional al vendedor (% + IVA)
 export const COMMISSION_IVA_INCLUDED = false;
 
@@ -11,7 +13,7 @@ export function pricingFeeBreakdown(basePrice, isFounder = false) {
   const price = Math.min(Math.max(0, rawPrice), MAX_CATALOG_PRICE);
   if (price <= 0) {
     return {
-      rate: isFounder ? FOUNDER_APP_RATE : 0.10,
+      rate: isFounder ? FOUNDER_APP_RATE : STANDARD_APP_RATE,
       repuestopNet: 0,
       repuestopIva: 0,
       repuestopWithIva: 0,
@@ -19,14 +21,7 @@ export function pricingFeeBreakdown(basePrice, isFounder = false) {
     };
   }
 
-  let appRate = 0.10;
-  if (isFounder) {
-    appRate = FOUNDER_APP_RATE;
-  } else if (price > 100000 && price <= 250000) {
-    appRate = 0.07;
-  } else if (price > 250000) {
-    appRate = 0.05;
-  }
+  const appRate = isFounder ? FOUNDER_APP_RATE : STANDARD_APP_RATE;
 
   if (COMMISSION_IVA_INCLUDED) {
     const repuestopWithIva = Math.round(price * appRate);

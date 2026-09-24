@@ -566,9 +566,9 @@ export default function OrderDetailView({
   // PedidoResponseMapper). Este calculo es solo respaldo para cuando el backend no manda
   // `commissionSeller`/`comisionPasarela` -- en el caso normal se usa el valor real del backend.
   const commissionBase = Math.max(0, subtotal - discount + shippingFee);
-  const commissionRate = order.commissionRate ? order.commissionRate * 100 : commissionBase > 250000 ? 5 : commissionBase > 100000 ? 7 : 10;
+  const commissionRate = order.commissionRate ? order.commissionRate * 100 : 8;
   const repuestopFee = order.commissionSeller || Math.round(commissionBase * (commissionRate / 100) * 1.19);
-  const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(commissionBase * 0.025 * 1.19)));
+  const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(commissionBase * 0.0289 * 1.19)));
 
   // En un carrito multitienda no sirve tomar el estado agregado sin validarlo: la barra
   // representa la promesa completa al comprador y debe quedarse en el pedido que aún va más

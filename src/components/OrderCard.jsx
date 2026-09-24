@@ -200,9 +200,9 @@ export default function OrderCard({
 
   // Cálculo de comisiones para el modal de información del vendedor
   const storedCommissionRate = Number(order.commissionRate ?? order.comisionTasaAplicada ?? 0);
-  const commissionRate = storedCommissionRate > 0 ? (storedCommissionRate <= 1 ? storedCommissionRate * 100 : storedCommissionRate) : subtotal > 250000 ? 5 : subtotal > 100000 ? 7 : 10;
+  const commissionRate = storedCommissionRate > 0 ? (storedCommissionRate <= 1 ? storedCommissionRate * 100 : storedCommissionRate) : 8;
   const repuestopFee = order.commissionSeller || Math.round(subtotal * (commissionRate / 100) * 1.19);
-  const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(subtotal * 0.025 * 1.19)));
+  const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(subtotal * 0.0289 * 1.19)));
   const totalDeductions = repuestopFee + paymentProcessingFee;
   const paymentFailed = String(order.paymentStatus || '').toLowerCase() === 'failed' && !['CANCELADO', 'CANCELLED'].includes(normStatus);
   // `refundStatus` ya viene acotado por el backend a quien le concierne (al vendedor solo
@@ -699,7 +699,7 @@ export default function OrderCard({
                 <strong>Descuentos totales:</strong> -{formatCLP(totalDeductions)}
               </p>
               <p className="commission-footer-note">
-                El porcentaje estándar de RepuesTop es 10% hasta $100.000, 7% hasta $250.000 y 5% sobre $250.000.
+                El porcentaje estándar de RepuesTop es 8% + IVA sobre cada venta, sin tramos ni tope (5% + IVA para Tiendas Fundadoras durante sus primeros 3 meses).
               </p>
             </div>
             <button

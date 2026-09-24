@@ -159,7 +159,7 @@ export default function QuotationRequestModal({
             <div className="quote-request-trust">
               <BadgeCheck size={35} />
               <strong>Cotizas con una tienda verificada</strong>
-              <span>Tu solicitud será enviada de forma segura.</span>
+              <span>Tu solicitud será enviada de forma segura. El soporte, los reclamos y la mediación de RepuesTop solo cubren compras pagadas dentro de RepuesTop.</span>
             </div>
           </article>
 

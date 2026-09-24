@@ -12,7 +12,7 @@
  */
 
 /** Fecha de la version vigente, para mostrar en pantalla. */
-export const LEGAL_VERSION = '24 de septiembre de 2026';
+export const LEGAL_VERSION = '25 de septiembre de 2026';
 
 /**
  * Codigo estable de la misma version, el que viaja al backend y queda guardado en
@@ -23,7 +23,7 @@ export const LEGAL_VERSION = '24 de septiembre de 2026';
  * Debe coincidir con `repuestop.legal.version-vigente` del backend y con
  * LEGAL_VERSION_CODE de la app.
  */
-export const LEGAL_VERSION_CODE = '2026-09-24';
+export const LEGAL_VERSION_CODE = '2026-09-25';
 
 export const COMPRADOR_TERMS = `1. IDENTIFICACIÓN DE LA PLATAFORMA
 RepuesTop es una plataforma de comercio electrónico, disponible como aplicación móvil y sitio web, administrada por la empresa titular de la plataforma, en adelante también "RepuesTop", "la Plataforma" o "la Empresa". Estos Términos regulan el registro, acceso y uso de la Plataforma por parte de compradores.
@@ -60,7 +60,7 @@ RepuesTop asumirá el costo de la pasarela de pago salvo que informe expresament
 
 8. PROHIBICIÓN DE OPERACIONES EXTERNAS
 Queda prohibido utilizar RepuesTop para contactar vendedores y cerrar operaciones de compra fuera de la Plataforma, eludir comisiones, evitar el sistema de pago, alterar la trazabilidad o impedir la gestión de soporte y reclamos.
-Si comprador y vendedor realizan una operación externa, RepuesTop no será responsable por pagos, entregas, garantías, reclamos, devoluciones, fraudes, mediaciones ni daños asociados a dicha operación.
+Si comprador y vendedor realizan una operación externa, RepuesTop no será responsable por pagos, entregas, garantías, reclamos, devoluciones, fraudes, mediaciones ni daños asociados a dicha operación. El soporte, los reclamos, la mediación y la compra protegida de RepuesTop cubren exclusivamente las compras pagadas dentro de la Plataforma. Una cotización o una conversación por chat no constituyen compra mientras no se paguen en RepuesTop.
 
 9. DESPACHO, RETIRO Y ENTREGA
 Las modalidades de entrega podrán incluir retiro en tienda, delivery local y envío a regiones, según lo informado por el vendedor para cada producto o pedido.
@@ -92,7 +92,7 @@ C. RECLAMOS Y CANCELACIONES:
 Si el comprador adquirió un producto por error, podrá solicitar la cancelación antes de que el pedido sea despachado. Una vez despachado o entregado, la solicitud se tramitará exclusivamente de acuerdo con las reglas de retracto o mediación señaladas precedentemente.
 
 12. RECLAMOS Y MEDIACIÓN
-Después de realizar un pago, el comprador podrá iniciar un reclamo desde el detalle del pedido o mediante el botón de ayuda disponible en la Plataforma.
+Después de realizar un pago, el comprador podrá iniciar un reclamo desde el detalle del pedido o mediante el botón de ayuda disponible en la Plataforma. Los reclamos y la mediación solo proceden respecto de compras pagadas dentro de RepuesTop.
 RepuesTop podrá intervenir como mediador cuando comprador y vendedor no logren acuerdo, cuando una parte solicite ayuda, cuando exista sospecha de fraude, incumplimiento, producto falso, producto no entregado, devolución no resuelta o cualquier situación que afecte la seguridad de la Plataforma.
 La mediación podrá realizarse por canales separados con comprador y vendedor. Ambas partes podrán subir evidencia en formatos jpg, png y pdf u otros que RepuesTop habilite.
 RepuesTop podrá resolver internamente la controversia y adoptar decisiones dentro de la Plataforma, incluyendo reembolso, devolución, liberación o retención de pagos, bloqueo de cuentas u otras medidas proporcionales.
@@ -163,11 +163,11 @@ Cuando el comprador realice preguntas o solicite cotización, el vendedor será 
 
 7. COTIZACIONES
 El vendedor podrá publicar productos con precio visible o sin precio mediante botón de cotización, según las funcionalidades disponibles.
-Las cotizaciones enviadas por chat tendrán el plazo de validez configurado por el vendedor, desde minutos hasta días. Antes del pago, el vendedor podrá modificar o retirar la cotización. Después del pago, el vendedor no podrá modificar unilateralmente las condiciones esenciales aceptadas por el comprador.
+Las cotizaciones enviadas por chat tendrán el plazo de validez configurado por el vendedor, desde minutos hasta días. Antes del pago, el vendedor podrá modificar o retirar la cotización. Después del pago, el vendedor no podrá modificar unilateralmente las condiciones esenciales aceptadas por el comprador. Una cotización solo cuenta con soporte, reclamos y mediación de RepuesTop cuando el comprador la paga dentro de la Plataforma.
 
 8. VENTAS, PAGOS, COMISIÓN Y LIQUIDACIÓN
 Las ventas iniciadas en RepuesTop deberán pagarse dentro de la Plataforma. Se prohíbe indicar al comprador que pague por fuera, compartir datos de contacto externos o utilizar el chat para evitar comisiones.
-RepuesTop cobrará al vendedor una comisión por uso de la Plataforma, intermediación tecnológica, procesamiento, soporte, seguimiento, reclamos y mediación. La estructura de comisiones estándar de RepuesTop es escalonada y se calcula sobre el valor neto de los productos vendidos más el 19% de IVA correspondiente: 10% más IVA para ventas hasta $100.000; 7% más IVA para ventas entre $100.001 y $250.000; y 5% más IVA para ventas superiores a $250.000 (o una tarifa fija preferencial de 5% más IVA para Vendedores con condición de Tienda Fundadora, durante los primeros tres (3) meses desde la aprobación de su tienda y solo para las primeras cien (100) tiendas aprobadas). RepuesTop emitirá mensualmente Factura Electrónica por las comisiones y su IVA para que el vendedor lo utilice como crédito fiscal.
+RepuesTop cobrará al vendedor una comisión por uso de la Plataforma, intermediación tecnológica, procesamiento, soporte, seguimiento, reclamos y mediación. La comisión estándar de RepuesTop para tiendas verificadas es de 8% más el 19% de IVA correspondiente, calculada sobre el valor de cada venta (productos, menos descuentos, más el despacho local cobrado por el vendedor), sin tramos ni tope (o una tarifa fija preferencial de 5% más IVA para Vendedores con condición de Tienda Fundadora, durante los primeros tres (3) meses desde la aprobación de su tienda y solo para las primeras cien (100) tiendas aprobadas). RepuesTop emitirá mensualmente Factura Electrónica por las comisiones y su IVA para que el vendedor lo utilice como crédito fiscal.
 El costo de recaudación y procesamiento de pagos vía pasarela electrónica (Flow: 2,89% más IVA, total 3,4391%) es de cargo del vendedor y se deducirá al liquidar la venta.
 La liquidación de los fondos estará disponible para su retiro por parte del vendedor a los 11 días transcurridos desde la entrega física confirmada del pedido al comprador, siempre que no existan reclamos, devoluciones, mediaciones pendientes o sospechas de fraude.
 
@@ -199,7 +199,7 @@ C. EVALUACIÓN Y MEDIACIÓN:
 El vendedor deberá revisar con prontitud las solicitudes de devolución. Si el vendedor no responde en los plazos fijados o surge controversia sobre el estado del producto (por ejemplo, si fue instalado, dañado o manipulado indebidamente), el mediador de RepuesTop intervendrá para resolver la disputa sobre la base de la evidencia técnica y documental aportada.
 
 13. RECLAMOS Y MEDIACIÓN
-El vendedor podrá solicitar ayuda u orientación mediante el flujo de soporte o mediación disponible en la Plataforma.
+El vendedor podrá solicitar ayuda u orientación mediante el flujo de soporte o mediación disponible en la Plataforma. Los reclamos y la mediación solo proceden respecto de ventas pagadas dentro de RepuesTop.
 La mediación se activará cuando comprador o vendedor no logren acuerdo y lo soliciten mediante el botón de ayuda o cuando RepuesTop detecte una situación que requiera revisión.
 Ambas partes podrán subir evidencia. RepuesTop podrá aceptar archivos jpg, png, pdf y otros formatos habilitados. La decisión de RepuesTop será obligatoria dentro de la Plataforma, sin perjuicio de los derechos legales de las partes.
 
