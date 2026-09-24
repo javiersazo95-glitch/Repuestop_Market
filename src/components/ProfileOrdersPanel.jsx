@@ -398,7 +398,10 @@ export default function ProfileOrdersPanel({
                 onOpenDispute={(proveedorId, draftMessage) => {
                   const params = new URLSearchParams({ caso: String(detailOrder.id) });
                   if (proveedorId != null && proveedorId !== '') params.set('tienda', String(proveedorId));
-                  navigate(`${ROUTES.profile}/chats_vendedor?${params.toString()}`, {
+                  // El vendedor abre el chat en SU bandeja ("Chats con compradores"). Con
+                  // `chats_vendedor` caia en la de sus compras, en modo comprador.
+                  const inbox = asBuyerView ? 'chats_vendedor' : 'chats_compradores';
+                  navigate(`${ROUTES.profile}/${inbox}?${params.toString()}`, {
                     state: draftMessage ? { draftMessage } : undefined,
                   });
                 }}

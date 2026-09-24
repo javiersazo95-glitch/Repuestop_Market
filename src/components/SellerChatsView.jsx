@@ -24,6 +24,15 @@ function isDeliveredOrForward(status) {
   return DELIVERED_OR_FORWARD_STATES.has(String(status).trim().toUpperCase());
 }
 
+// El vendedor escribe desde que la venta esta pagada (igual que desde el detalle del pedido);
+// el backend rechaza abrir el chat en un PENDIENTE. El comprador sigue eligiendo aca solo
+// compras recibidas.
+const NOT_PAID_STATES = new Set(['', 'PENDIENTE', 'PENDING', 'CANCELADO', 'CANCELLED']);
+
+function isPaidOrForward(status) {
+  return !NOT_PAID_STATES.has(String(status || '').trim().toUpperCase());
+}
+
 // Este chip replica los cuatro hitos de la barra del detalle. En particular, PAGADO se
 // muestra como "Pendiente", porque la tienda todavía debe confirmar y preparar el pedido.
 function timelineStatus(status) {
@@ -63,7 +72,7 @@ function mediatorLine(chat) {
 /**
  * Vista propia de "Chats con vendedor" (comprador) / "Chats con compradores" (vendedor).
  * Permite listar conversaciones existentes e iniciar chats a partir de compras/ventas
- * que se encuentren en estado entregado hacia adelante.
+ * entregadas (comprador) o pagadas (vendedor).
  */
 export default function SellerChatsView({ user, mode = 'buyer', orders: initialOrders }) {
   const userId = user?.userId ?? user?.id;
@@ -151,10 +160,11 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
     return () => { active = false; };
   }, [initialOrders, isSellerMode, sellerId, userId]);
 
-  // Extraer compras/ventas y repuestos en estado entregado hacia adelante
+  // Extraer compras entregadas hacia adelante (comprador) o ventas pagadas (vendedor)
   const eligibleOrderGroups = useMemo(() => {
     if (!Array.isArray(orders)) return [];
     const groups = [];
+    const canStartChat = isSellerMode ? isPaidOrForward : isDeliveredOrForward;
 
     for (const order of orders) {
       if (!order || String(order.estado || order.status || '').toUpperCase() === 'CANCELADO') continue;
@@ -179,7 +189,7 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
             ? (order.estado || order.status)
             : (subOrder?.estado || order.estado || order.status);
 
-          if (isDeliveredOrForward(effectiveStatus)) {
+          if (canStartChat(effectiveStatus)) {
             const counterpartName = isSellerMode
               ? (order.compradorNombre || 'Comprador')
               : (item.proveedorNombre || subOrder?.nombreTienda || 'Tienda');
@@ -201,7 +211,7 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
       } else {
         // Respaldo para pedidos sin array explícito de items
         const effectiveStatus = order.estado || order.status;
-        if (isDeliveredOrForward(effectiveStatus)) {
+        if (canStartChat(effectiveStatus)) {
           eligibleItems.push({
             key: `order-${order.id}`,
             orderId: order.id,
@@ -313,7 +323,7 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
         <span>{visibleChats.length} {visibleChats.length === 1 ? 'conversación' : 'conversaciones'}</span>
       </div>
 
-      {/* Selector desplegable de repuestos en compras/ventas entregadas */}
+      {/* Selector desplegable: compras entregadas (comprador) o ventas pagadas (vendedor) */}
       <div className="seller-chat-picker-box">
         <div className="seller-chat-picker-header">
           <div>
@@ -325,12 +335,14 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
             </h3>
             <p>
               {isSellerMode
-                ? 'Solo se muestran las ventas que se encuentran en estado entregada hacia adelante.'
+                ? 'Solo se muestran las ventas ya pagadas.'
                 : 'Solo se muestran las compras que se encuentran en estado entregada hacia adelante.'}
             </p>
           </div>
           <span className="seller-chat-picker-badge">
-            {allEligibleItems.length} {allEligibleItems.length === 1 ? 'repuesto entregado' : 'repuestos entregados'}
+            {allEligibleItems.length} {isSellerMode
+              ? (allEligibleItems.length === 1 ? 'repuesto vendido' : 'repuestos vendidos')
+              : (allEligibleItems.length === 1 ? 'repuesto entregado' : 'repuestos entregados')}
           </span>
         </div>
 
@@ -343,19 +355,19 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
           <div className="seller-chat-picker-empty">
             <p>
               {isSellerMode
-                ? 'No tienes ventas en estado entregado o posterior disponibles para iniciar un chat.'
+                ? 'No tienes ventas pagadas disponibles para iniciar un chat.'
                 : 'No tienes compras en estado entregado o posterior disponibles para iniciar un chat.'}
             </p>
             <small>
               {isSellerMode
-                ? 'Los chats con compradores se habilitan una vez que el producto es entregado al cliente.'
+                ? 'Los chats con compradores se habilitan cuando el pago de la venta se aprueba.'
                 : 'Los chats con tiendas se habilitan una vez que recibes el producto.'}
             </small>
           </div>
         ) : (
           <div className="seller-chat-picker-controls">
             <label htmlFor="seller-chat-order-select" className="sr-only">
-              {isSellerMode ? 'Seleccionar venta entregada' : 'Seleccionar compra entregada'}
+              {isSellerMode ? 'Seleccionar venta pagada' : 'Seleccionar compra entregada'}
             </label>
             <select
               id="seller-chat-order-select"
@@ -368,7 +380,7 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
             >
               <option value="">
                 {isSellerMode
-                  ? '-- Selecciona una venta / repuesto entregado para chatear --'
+                  ? '-- Selecciona una venta / repuesto para chatear --'
                   : '-- Selecciona una compra / repuesto entregado para chatear --'}
               </option>
               {eligibleOrderGroups.map((group) => (

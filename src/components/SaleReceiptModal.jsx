@@ -147,6 +147,98 @@ export default function SaleReceiptModal({
     setFile(selected);
   };
 
+  // Datos de la venta y el PDF: con checklist es el cuerpo del paso 3, sin él (`uploadOnly`)
+  // es todo el contenido del popup.
+  const contenidoBoleta = (
+    <>
+      <div className="order-receipt-data">
+        <div className="order-receipt-data-head">
+          <span>Datos de la venta</span>
+          <button type="button" className="order-receipt-copy" onClick={copyData}>
+            {copied ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+            <span>{copied ? 'Copiado' : 'Copiar datos'}</span>
+          </button>
+        </div>
+        <dl className="order-receipt-fields">
+          <div><dt>Cliente</dt><dd>{buyerName}{buyerPhone ? ` · ${buyerPhone}` : ''}</dd></div>
+          <div><dt>Documento</dt><dd>{documentLine}</dd></div>
+          {docType === 'FACTURA' && <div><dt>RUT</dt><dd>{buyerRut || '—'}</dd></div>}
+          {docType === 'FACTURA' && order.facturaRazonSocial && <div><dt>Razón social</dt><dd>{order.facturaRazonSocial}</dd></div>}
+          {docType === 'FACTURA' && order.facturaGiro && <div><dt>Giro</dt><dd>{order.facturaGiro}</dd></div>}
+          {deliveryAddress && <div><dt>Despacho</dt><dd>{deliveryAddress}</dd></div>}
+        </dl>
+
+        {cleanItems.length > 0 && (
+          <table className="order-receipt-items">
+            <thead>
+              <tr><th>Detalle</th><th>Cant.</th><th>P. unit.</th><th>Subtotal</th></tr>
+            </thead>
+            <tbody>
+              {cleanItems.map((it, i) => (
+                <tr key={it.id || i}>
+                  <td>
+                    <strong>{it.nombre || it.productName || it.name || 'Repuesto'}</strong>
+                    {(it.marca || it.brand || it.sku) && (
+                      <small>{[it.marca || it.brand, it.sku ? `SKU ${it.sku}` : null].filter(Boolean).join(' · ')}</small>
+                    )}
+                  </td>
+                  <td>{qtyOf(it)}</td>
+                  <td>{formatCLP(unitOf(it))}</td>
+                  <td>{formatCLP(unitOf(it) * qtyOf(it))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        <div className="order-receipt-totals">
+          <span><span>Productos</span><strong>{formatCLP(productsTotal)}</strong></span>
+          {shippingValue > 0 && <span><span>Envío</span><strong>{formatCLP(shippingValue)}</strong></span>}
+          {discountValue > 0 && <span><span>Descuento</span><strong className="order-receipt-discount">-{formatCLP(discountValue)}</strong></span>}
+          <span className="order-receipt-total-main">
+            <span>Total a documentar al comprador</span>
+            <strong>{formatCLP(totalToDocument)}</strong>
+          </span>
+        </div>
+        <p className="order-receipt-hint">
+          Emite la boleta o factura por este monto en tu sistema y adjunta el archivo
+          en PDF. La comisión de RepuesTop se descuenta aparte y no va en el documento.
+        </p>
+      </div>
+
+      {boletaYaCargada && (
+        <p className="order-receipt-hint">
+          Ya cargaste la boleta de este pedido. Puedes confirmar así o adjuntar otra para reemplazarla.
+        </p>
+      )}
+      <div className="order-subdialog-field">
+        <span>{boletaYaCargada ? 'Reemplazar boleta (opcional)' : 'Archivo de la boleta *'}</span>
+        <div className={`order-subdialog-filedrop${file ? ' is-filled' : ''}`}>
+          <label>
+            {file ? <CheckCircle2 size={20} /> : <FileUp size={20} />}
+            <span>{file ? file.name : 'Adjuntar PDF de la boleta'}</span>
+            <input
+              type="file"
+              accept="application/pdf,.pdf"
+              onChange={handleFileChange}
+            />
+          </label>
+          {file && (
+            <button
+              type="button"
+              className="order-subdialog-fileclear"
+              aria-label="Quitar archivo"
+              title="Quitar archivo"
+              onClick={() => setFile(null)}
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+      </div>
+    </>
+  );
+
   return createPortal(
     <div className="commission-modal-backdrop order-subdialog-backdrop" onClick={() => !submitting && onClose?.()}>
       <form className="commission-modal-card order-subdialog-card order-subdialog-card--wide" onSubmit={handleSubmit} onClick={(e) => e.stopPropagation()}>
@@ -158,134 +250,32 @@ export default function SaleReceiptModal({
             <h3>{sellerChecklist ? 'Confirmar pedido' : uploadOnly ? 'Cargar boleta de venta' : 'Registrar boleta de venta'}</h3>
             <span>
               Pedido {orderCode}
-              {!uploadOnly && ' · obligatoria para confirmar'}
+              {sellerChecklist ? ' · 3 pasos para dejarlo listo' : !uploadOnly && ' · obligatoria para confirmar'}
             </span>
           </div>
         </div>
-
-        {sellerChecklist && !confirmed && (
-          <>
-            <p className="order-receipt-hint">
-              Estos pasos son solo para ti: el comprador no los ve. Revisar la compatibilidad
-              antes de emitir la boleta evita devoluciones y notas de crédito.
-            </p>
-            <SellerConfirmationChecklist
-              order={order}
-              isStorePickup={isStorePickup}
-              onConfirmStock={onConfirmStock}
-              onConfirmCompatibility={onConfirmCompatibility}
-              onOpenBuyerChat={onOpenBuyerChat}
-            />
-          </>
-        )}
-
-        {error && <p className="confirm-dialog-error">{error}</p>}
 
         {confirmed ? (
-          <div className="order-receipt-data">
-            <div className="order-receipt-data-head">
-              <span>Pedido confirmado</span>
-            </div>
-            <p className="order-receipt-hint">
-              ¡Gracias por enviar la boleta o factura! El comprador fue notificado por correo y ya puedes procesar el pedido.
+          <div className="order-subdialog-success seller-checklist-success">
+            <span className="seller-checklist-success-icon"><CheckCircle2 size={30} /></span>
+            <h4>Pedido confirmado</h4>
+            <p>
+              ¡Gracias por enviar la boleta o factura! El comprador fue notificado por correo y ya
+              puedes preparar el pedido.
             </p>
           </div>
-        ) : <>
-        {sellerChecklist && !checklistCompleto ? (
-          <div className="seller-checklist-step is-locked">
-            <div className="seller-checklist-step-head">
-              <span className="seller-checklist-step-num">3</span>
-              <strong>Boleta o factura</strong>
-            </div>
-          </div>
-        ) : <>
-        <div className="order-receipt-data">
-          <div className="order-receipt-data-head">
-            <span>Datos de la venta</span>
-            <button type="button" className="order-receipt-copy" onClick={copyData}>
-              {copied ? <CheckCircle2 size={13} /> : <Copy size={13} />}
-              <span>{copied ? 'Copiado' : 'Copiar datos'}</span>
-            </button>
-          </div>
-          <dl className="order-receipt-fields">
-            <div><dt>Cliente</dt><dd>{buyerName}{buyerPhone ? ` · ${buyerPhone}` : ''}</dd></div>
-            <div><dt>Documento</dt><dd>{documentLine}</dd></div>
-            {docType === 'FACTURA' && <div><dt>RUT</dt><dd>{buyerRut || '—'}</dd></div>}
-            {docType === 'FACTURA' && order.facturaRazonSocial && <div><dt>Razón social</dt><dd>{order.facturaRazonSocial}</dd></div>}
-            {docType === 'FACTURA' && order.facturaGiro && <div><dt>Giro</dt><dd>{order.facturaGiro}</dd></div>}
-            {deliveryAddress && <div><dt>Despacho</dt><dd>{deliveryAddress}</dd></div>}
-          </dl>
+        ) : sellerChecklist ? (
+          <SellerConfirmationChecklist
+            order={order}
+            isStorePickup={isStorePickup}
+            onConfirmStock={onConfirmStock}
+            onConfirmCompatibility={onConfirmCompatibility}
+            onOpenBuyerChat={onOpenBuyerChat}
+            boleta={{ lista: Boolean(file) || boletaYaCargada, contenido: contenidoBoleta }}
+          />
+        ) : contenidoBoleta}
 
-          {cleanItems.length > 0 && (
-            <table className="order-receipt-items">
-              <thead>
-                <tr><th>Detalle</th><th>Cant.</th><th>P. unit.</th><th>Subtotal</th></tr>
-              </thead>
-              <tbody>
-                {cleanItems.map((it, i) => (
-                  <tr key={it.id || i}>
-                    <td>
-                      <strong>{it.nombre || it.productName || it.name || 'Repuesto'}</strong>
-                      {(it.marca || it.brand || it.sku) && (
-                        <small>{[it.marca || it.brand, it.sku ? `SKU ${it.sku}` : null].filter(Boolean).join(' · ')}</small>
-                      )}
-                    </td>
-                    <td>{qtyOf(it)}</td>
-                    <td>{formatCLP(unitOf(it))}</td>
-                    <td>{formatCLP(unitOf(it) * qtyOf(it))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-
-          <div className="order-receipt-totals">
-            <span><span>Productos</span><strong>{formatCLP(productsTotal)}</strong></span>
-            {shippingValue > 0 && <span><span>Envío</span><strong>{formatCLP(shippingValue)}</strong></span>}
-            {discountValue > 0 && <span><span>Descuento</span><strong className="order-receipt-discount">-{formatCLP(discountValue)}</strong></span>}
-            <span className="order-receipt-total-main">
-              <span>Total a documentar al comprador</span>
-              <strong>{formatCLP(totalToDocument)}</strong>
-            </span>
-          </div>
-          <p className="order-receipt-hint">
-            Emite la boleta o factura por este monto en tu sistema y adjunta el archivo
-            en PDF. La comisión de RepuesTop se descuenta aparte y no va en el documento.
-          </p>
-        </div>
-
-        {boletaYaCargada && (
-          <p className="order-receipt-hint">
-            Ya cargaste la boleta de este pedido. Puedes confirmar así o adjuntar otra para reemplazarla.
-          </p>
-        )}
-        <div className="order-subdialog-field">
-          <span>{boletaYaCargada ? 'Reemplazar boleta (opcional)' : 'Archivo de la boleta *'}</span>
-          <div className="order-subdialog-filedrop">
-            <label>
-              <FileUp size={20} />
-              <span>{file ? file.name : 'Adjuntar PDF de la boleta'}</span>
-              <input
-                type="file"
-                accept="application/pdf,.pdf"
-                onChange={handleFileChange}
-              />
-            </label>
-            {file && (
-              <button
-                type="button"
-                className="order-subdialog-fileclear"
-                aria-label="Quitar archivo"
-                title="Quitar archivo"
-                onClick={() => setFile(null)}
-              >
-                <X size={15} />
-              </button>
-            )}
-          </div>
-        </div>
-        </>}
-        </>}
+        {error && <p className="confirm-dialog-error">{error}</p>}
 
         <div className="confirm-dialog-actions">
           {confirmed ? (
@@ -305,7 +295,9 @@ export default function SaleReceiptModal({
                 {submitting && <Loader2 size={16} className="spin-icon" />}
                 {submitting
                   ? (uploadOnly ? 'Guardando...' : 'Confirmando...')
-                  : (uploadOnly ? 'Guardar boleta' : 'Confirmar y preparar pedido')}
+                  : uploadOnly ? 'Guardar boleta'
+                    : (!file && !boletaYaCargada) ? 'Adjunta la boleta para confirmar'
+                      : 'Confirmar y preparar pedido'}
               </button>
             )}
           </>}

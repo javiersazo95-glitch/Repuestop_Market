@@ -126,7 +126,8 @@ export function getControlledOrderAction(order, mode) {
     return null;
   }
 
-  if (status === 'PENDIENTE' || status === 'PAGADO') {
+  // Solo PAGADO: un PENDIENTE no tiene pago aprobado y el backend rechaza confirmarlo.
+  if (status === 'PAGADO') {
     return {
       nextStatus: 'EN_PREPARACION',
       label: 'Confirmar pedido',

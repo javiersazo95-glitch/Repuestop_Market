@@ -6136,6 +6136,44 @@ input, select, textarea {
   color: var(--text-muted);
 }
 
+/* Desglose de cobros del vendedor (SellerChargesBreakdownModal): venta, cobros numerados,
+   total descontado y neto, leidos como un estado de cuenta de arriba hacia abajo. */
+.charges-breakdown-card { max-width: 460px; max-height: calc(100dvh - 48px); overflow-y: auto; gap: 14px; }
+.charges-breakdown-section { display: grid; gap: 8px; }
+.charges-breakdown-section h4 { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--text-muted); }
+.charges-breakdown-rows { display: grid; gap: 0; margin: 0; padding: 4px 14px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-page); }
+.charges-breakdown-rows > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 0; font-size: 13px; }
+.charges-breakdown-rows dt { color: var(--text-secondary); }
+.charges-breakdown-rows dd { margin: 0; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.charges-breakdown-rows dd.is-negative { color: #b91c1c; }
+.charges-breakdown-rows .charges-breakdown-subtotal { border-top: 1px dashed #cbd5e1; margin-top: 2px; padding-top: 9px; }
+.charges-breakdown-subtotal dt, .charges-breakdown-subtotal dd { font-weight: 800; color: var(--text-primary); }
+
+.charges-breakdown-list { list-style: none; margin: 0; padding: 0; display: grid; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; }
+.charges-breakdown-list li { display: grid; grid-template-columns: 20px 30px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 11px 14px; background: #fff; }
+.charges-breakdown-list li + li { border-top: 1px solid #eef2f7; }
+.charges-breakdown-index { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: #f1f5f9; color: #64748b; font-size: 10.5px; font-weight: 800; }
+.charges-breakdown-icon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9px; background: #fff1f2; color: #e11d48; }
+.charges-breakdown-label { display: grid; gap: 1px; min-width: 0; }
+.charges-breakdown-label strong { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.charges-breakdown-label small { font-size: 11px; color: var(--text-muted); line-height: 1.35; }
+.charges-breakdown-amount { font-size: 13px; font-weight: 800; color: #b91c1c; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.charges-breakdown-empty { margin: 0; font-size: 12.5px; color: var(--text-muted); }
+.charges-breakdown-total { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: var(--radius-md); background: #fef2f2; border: 1px solid #fecaca; }
+.charges-breakdown-total span { font-size: 13px; font-weight: 800; color: #7f1d1d; }
+.charges-breakdown-total strong { font-size: 15px; font-weight: 800; color: #b91c1c; font-variant-numeric: tabular-nums; }
+
+.charges-breakdown-net { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: var(--radius-md); background: linear-gradient(135deg, #ecfdf5, #f0fdf4); border: 1px solid #a7f3d0; }
+.charges-breakdown-net > span { display: grid; gap: 2px; }
+.charges-breakdown-net > span strong { font-size: 14px; font-weight: 800; color: #065f46; }
+.charges-breakdown-net > span small { font-size: 11px; color: #047857; }
+.charges-breakdown-net > strong { font-size: 20px; font-weight: 800; color: #047857; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 480px) {
+  .charges-breakdown-list li { grid-template-columns: 30px minmax(0, 1fr) auto; padding: 10px 12px; }
+  .charges-breakdown-index { display: none; }
+}
+
 /* --- FULL ORDER DETAIL MODAL --- */
 .order-modal-backdrop {
   position: fixed;
@@ -6221,8 +6259,16 @@ input, select, textarea {
 /* El acceso al chat vive sobre el estado: queda visible sin competir con las acciones del pie. */
 .order-chat-header-control { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
 .order-chat-header-row { display: inline-flex; align-items: center; gap: 5px; }
-.order-chat-header-button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: #2563EB; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; padding: 3px; }
+.order-chat-header-button { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; border: 0; background: transparent; color: #2563EB; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; padding: 3px; }
 .order-chat-header-button:hover { text-decoration: underline; }
+/* En celular el titulo y las acciones (chat, estado, cerrar) no caben en una fila: las acciones
+   bajan a su propia linea en vez de aplastar el titulo y desbordar el encabezado. */
+@media (max-width: 600px) {
+  .order-modal-header { position: relative; flex-wrap: wrap; gap: 10px; padding: 16px; }
+  .order-modal-title-group { flex: 1 1 100%; min-width: 0; padding-right: 34px; }
+  .order-modal-header-actions { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-end; gap: 8px 12px; }
+  .order-modal-header-actions > .btn-close-modal { position: absolute; top: 12px; right: 12px; }
+}
 .order-chat-info-button { display: inline-flex; align-items: center; justify-content: center; width: 25px; height: 25px; border: 1px solid #BFDBFE; border-radius: 999px; background: #EFF6FF; color: #2563EB; cursor: pointer; }
 .order-chat-mediator-info { max-width: 300px; margin: 0; padding: 8px 10px; border-radius: 8px; background: #EFF6FF; color: #334155; font-size: 12px; line-height: 1.4; text-align: left; }
 .order-status-header-control { display: inline-flex; }
@@ -15153,33 +15199,103 @@ input, select, textarea {
 .cart-document-section { margin: 12px 0; padding: 12px; border: 1px solid #dbe6f4; border-radius: 12px; background: #fff; }
 .cart-document-heading { display: flex; align-items: flex-start; gap: 8px; }.cart-document-heading > svg { flex: 0 0 auto; color: #1268f3; }.cart-document-heading div { display: grid; gap: 2px; }.cart-document-heading strong { color: #173253; font-size: 12px; }.cart-document-heading small { color: #7b899d; font-size: 10px; line-height: 1.35; }
 .cart-document-options { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }.cart-document-options label { min-height: 52px; padding: 8px; display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 7px; border: 1px solid #dfe5ee; border-radius: 10px; cursor: pointer; }.cart-document-options label.selected { border-color: #1268f3; background: #f1f7ff; }.cart-document-options input { width: 15px; height: 15px; accent-color: #1268f3; }.cart-document-options svg { width: 17px; color: #4c6f9c; }.cart-document-options span { display: grid; gap: 1px; }.cart-document-options strong { color: #213650; font-size: 11.5px; }.cart-document-options small { color: #8895a7; font-size: 9.5px; }
-/* Checklist de confirmacion del vendedor (plan_validacion_compatibilidad_pedido). */
-.seller-checklist { margin: 14px 0; padding: 14px; border: 1px solid #d6e0ed; border-radius: 10px; background: #fbfdff; }
-.seller-checklist-head h3 { margin: 0 0 4px; font-size: 14px; color: #1d2e45; }
-.seller-checklist-head p { margin: 0 0 12px; font-size: 11.5px; color: #52647a; line-height: 1.45; }
-.seller-checklist-step { padding: 10px 0; border-top: 1px solid #e6edf6; }
-.seller-checklist-step:first-of-type { border-top: 0; }
-.seller-checklist-step.is-locked { opacity: .5; }
-.seller-checklist-step-head { display: flex; align-items: center; gap: 8px; }
-.seller-checklist-step-head strong { font-size: 12.5px; color: #1d2e45; }
-.seller-checklist-step-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #e6edf6; color: #52647a; font-size: 11px; font-weight: 750; flex: 0 0 auto; }
-.seller-checklist-step.is-done .seller-checklist-step-num { background: #dcfce7; color: #15803d; }
-.seller-checklist-step-body { margin-top: 9px; display: grid; gap: 9px; }
-.seller-checklist-hint { margin: 0; font-size: 11.5px; color: #52647a; line-height: 1.45; }
-.seller-checklist-action { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: 100%; }
-.seller-checklist-vehicle { display: flex; align-items: center; gap: 7px; padding: 8px 10px; border-radius: 8px; background: #eef4ff; color: #1d2e45; font-size: 11.5px; }
+/* Checklist de confirmacion del vendedor (plan_validacion_compatibilidad_pedido).
+   Stepper vertical: barra de progreso arriba, una tarjeta por paso unida por un riel.
+   Hecho = verde y colapsado, activo = azul y abierto, bloqueado = gris con candado. */
+.seller-checklist { display: grid; gap: 14px; }
+.seller-checklist-progress { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid #dbe6f4; border-radius: var(--radius-md); background: linear-gradient(180deg, #f5f9ff, #fff); }
+.seller-checklist-progress-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 12.5px; color: #475569; }
+.seller-checklist-progress-head strong { color: var(--text-primary); }
+.seller-checklist-progress-count { flex-shrink: 0; font-size: 11.5px; font-weight: 800; color: var(--color-brand-blue); }
+.seller-checklist-progress-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.seller-checklist-progress-bar > span { height: 6px; border-radius: 999px; background: #e2e8f0; transition: background .3s ease; }
+.seller-checklist-progress-bar > span.is-active { background: linear-gradient(90deg, #93c5fd, #dbeafe); }
+.seller-checklist-progress-bar > span.is-done { background: #16a34a; }
+.seller-checklist-private { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: 11px; line-height: 1.45; color: var(--text-muted); }
+.seller-checklist-private svg { flex-shrink: 0; margin-top: 2px; }
+
+.seller-checklist-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.seller-checklist-step { position: relative; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; }
+.seller-checklist-rail { position: relative; display: flex; justify-content: center; padding-top: 12px; }
+.seller-checklist-step:not(:last-child) .seller-checklist-rail::after { content: ""; position: absolute; top: 44px; bottom: -14px; left: 50%; width: 2px; transform: translateX(-50%); border-radius: 2px; background: #e2e8f0; }
+.seller-checklist-step.is-hecho:not(:last-child) .seller-checklist-rail::after { background: #86efac; }
+.seller-checklist-step-num { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; border: 2px solid #cbd5e1; background: #fff; color: #64748b; font-size: 12.5px; font-weight: 800; transition: all .2s ease; }
+.seller-checklist-step.is-activo .seller-checklist-step-num { border-color: var(--color-brand-blue); background: var(--color-brand-blue); color: #fff; box-shadow: 0 0 0 4px rgba(0, 102, 255, .14); }
+.seller-checklist-step.is-hecho .seller-checklist-step-num { border-color: #16a34a; background: #16a34a; color: #fff; }
+.seller-checklist-step.is-bloqueado .seller-checklist-step-num { border-style: dashed; background: #f8fafc; color: #94a3b8; }
+
+.seller-checklist-card { min-width: 0; padding: 12px 14px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: #fff; transition: border-color .2s ease, box-shadow .2s ease; }
+.seller-checklist-step.is-activo .seller-checklist-card { border-color: #bfd6ff; box-shadow: 0 6px 18px rgba(15, 55, 120, .08); }
+.seller-checklist-step.is-hecho .seller-checklist-card { border-color: #bbf7d0; background: #f6fdf8; }
+.seller-checklist-step.is-bloqueado .seller-checklist-card { background: #f8fafc; }
+.seller-checklist-step.is-bloqueado .seller-checklist-step-head { opacity: .6; }
+
+.seller-checklist-step-head { display: flex; align-items: center; gap: 10px; }
+.seller-checklist-step-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 9px; background: #eff5ff; color: var(--color-brand-blue); }
+.seller-checklist-step.is-hecho .seller-checklist-step-icon { background: #dcfce7; color: #15803d; }
+.seller-checklist-step.is-bloqueado .seller-checklist-step-icon { background: #eef2f7; color: #94a3b8; }
+.seller-checklist-step-title { display: grid; gap: 1px; flex: 1; min-width: 0; }
+.seller-checklist-step-title small { font-size: 10.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--text-muted); }
+.seller-checklist-step-title strong { font-size: 13.5px; font-weight: 800; color: var(--text-primary); }
+.seller-checklist-status { flex-shrink: 0; padding: 3px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 800; white-space: nowrap; }
+.seller-checklist-status.is-hecho { background: #dcfce7; color: #15803d; }
+.seller-checklist-status.is-activo { background: #e0ecff; color: #0052cc; }
+.seller-checklist-status.is-bloqueado { background: #eef2f7; color: #64748b; }
+.seller-checklist-summary { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; font-size: 11.5px; font-weight: 600; color: #15803d; }
+.seller-checklist-step.is-bloqueado > .seller-checklist-card > .seller-checklist-hint { margin-top: 8px; }
+
+.seller-checklist-step-body { margin-top: 12px; display: grid; gap: 10px; animation: sellerChecklistOpen .25s ease; }
+@keyframes sellerChecklistOpen { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.seller-checklist-hint { margin: 0; font-size: 12px; color: #52647a; line-height: 1.45; }
+
+/* La accion de cada paso se ve como la casilla de un checklist: se "marca" para confirmarlo. */
+.seller-checklist-check { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 1.5px solid #bfd6ff; border-radius: 10px; background: #f5f9ff; color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s ease, background .15s ease, transform .15s ease; }
+.seller-checklist-check:hover:not(:disabled) { border-color: var(--color-brand-blue); background: #eaf2ff; transform: translateY(-1px); }
+.seller-checklist-check:focus-visible { outline: 3px solid rgba(0, 102, 255, .3); outline-offset: 2px; }
+.seller-checklist-check:disabled { cursor: wait; }
+.seller-checklist-checkbox { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex-shrink: 0; border: 2px solid #93b4e6; border-radius: 6px; background: #fff; color: transparent; transition: all .15s ease; }
+.seller-checklist-check:hover:not(:disabled) .seller-checklist-checkbox { border-color: var(--color-brand-blue); color: #93c5fd; }
+.seller-checklist-check:disabled .seller-checklist-checkbox { border-color: var(--color-brand-blue); color: var(--color-brand-blue); }
+.seller-checklist-check-text { display: grid; gap: 2px; min-width: 0; }
+.seller-checklist-check-text strong { font-size: 13px; font-weight: 800; }
+.seller-checklist-check-text small { font-size: 11px; color: var(--text-muted); }
+.seller-checklist-check.is-alerta { border-color: #fdba74; background: #fff7ed; }
+.seller-checklist-check.is-alerta:hover:not(:disabled) { border-color: #f97316; background: #ffedd5; }
+.seller-checklist-check.is-alerta .seller-checklist-checkbox { border-color: #fdba74; }
+
+.seller-checklist-vehicle { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border-radius: 9px; background: #eef4ff; color: #1d2e45; font-size: 12px; }
+.seller-checklist-vehicle svg { flex-shrink: 0; color: var(--color-brand-blue); }
 .seller-checklist-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.seller-checklist-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 1px solid #e6edf6; border-radius: 8px; background: #fff; }
-.seller-checklist-item-name { font-size: 12px; color: #1d2e45; }
+.seller-checklist-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 11px; border: 1px solid #e6edf6; border-radius: 9px; background: #fff; }
+.seller-checklist-item.tone-alerta { border-color: #fecaca; }
+.seller-checklist-item-name { min-width: 0; font-size: 12.5px; color: #1d2e45; }
 .seller-checklist-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
 .seller-checklist-badge.tone-ok { background: #dcfce7; color: #15803d; }
 .seller-checklist-badge.tone-alerta { background: #fee2e2; color: #b91c1c; }
 .seller-checklist-badge.tone-neutro { background: #f1f5f9; color: #52647a; }
-.seller-checklist-warning { padding: 10px 12px; border: 1px solid #fecaca; border-radius: 8px; background: #fff5f5; display: grid; gap: 8px; }
-.seller-checklist-warning p { margin: 0; font-size: 11.5px; color: #7f1d1d; line-height: 1.45; }
+.seller-checklist-warning { padding: 11px 12px; border: 1px solid #fecaca; border-radius: 9px; background: #fff5f5; display: grid; gap: 9px; }
+.seller-checklist-warning p { display: flex; gap: 8px; margin: 0; font-size: 12px; color: #7f1d1d; line-height: 1.45; }
+.seller-checklist-warning p svg { flex-shrink: 0; margin-top: 1px; color: #dc2626; }
 .seller-checklist-message { margin: 0; padding: 8px 10px; border-left: 3px solid #fca5a5; background: #fff; color: #52647a; font-size: 11.5px; line-height: 1.5; }
 .seller-checklist-warning-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.seller-checklist-warning-actions button { display: inline-flex; align-items: center; gap: 6px; }
+.seller-checklist-warning-actions button { display: inline-flex; align-items: center; gap: 6px; width: auto; min-height: 0; padding: 8px 12px; font-size: 12px; }
+
+/* El paso 3 recibe los datos de la venta y el PDF tal cual, dentro de su tarjeta. */
+.seller-checklist-step-body > .order-receipt-data { padding: 12px; }
+.order-subdialog-filedrop.is-filled { border-style: solid; border-color: #86efac; background: #f0fdf4; color: #15803d; }
+.order-subdialog-filedrop.is-filled span { color: #14532d; font-weight: 700; }
+
+.seller-checklist-success { padding: 14px 0 6px; }
+.seller-checklist-success-icon { display: inline-flex; align-items: center; justify-content: center; width: 58px; height: 58px; border-radius: 50%; background: #dcfce7; color: #16a34a; box-shadow: 0 0 0 8px #f0fdf4; margin-bottom: 6px; }
+
+@media (max-width: 520px) {
+  .seller-checklist-step { grid-template-columns: 24px minmax(0, 1fr); gap: 8px; }
+  .seller-checklist-step-num { width: 24px; height: 24px; font-size: 11px; }
+  .seller-checklist-step:not(:last-child) .seller-checklist-rail::after { top: 38px; }
+  .seller-checklist-step-icon { display: none; }
+  .seller-checklist-card { padding: 11px 12px; }
+  .seller-checklist-item { flex-wrap: wrap; }
+}
 .checkout-vehicle-active { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border: 1px solid #d6e0ed; border-radius: 8px; background: #fbfdff; cursor: pointer; }.checkout-vehicle-active span { display: grid; gap: 2px; }.checkout-vehicle-active strong { color: #1d2e45; font-size: 12.5px; }.checkout-vehicle-active small { color: #52647a; font-size: 11px; }
 .checkout-vehicle-toggle { background: none; border: none; padding: 0; color: var(--color-brand-blue, #0056bf); font-size: 12.5px; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .checkout-vehicle-toggle:hover { color: var(--color-brand-navy, #00459a); }

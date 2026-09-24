@@ -998,6 +998,14 @@ export default function OrderDetailView({
     }
   };
 
+  // "Chatear con comprador": el vendedor escribe desde que la venta esta pagada, igual que el
+  // comprador con la tienda. Un PENDIENTE no es venta (el backend lo rechaza) y con la tienda
+  // bloqueada el backend no deja escribir en el chat.
+  const canSellerChat = isSeller
+    && Boolean(onOpenDispute)
+    && !sellerReadOnly
+    && !['PENDIENTE', 'PENDING', 'CANCELADO', 'CANCELLED'].includes(normStatus);
+
   const handleSellerChatClick = () => {
     setChatStartError('');
     if (showSubOrders) {
@@ -1065,6 +1073,20 @@ export default function OrderDetailView({
                   ><Info size={16} /></button>
                 </div>
                 {showMediatorInfo && <p className="order-chat-mediator-info">Puedes conversar con el vendedor en cualquier momento. La ayuda de un mediador se habilita al recibir el producto y estará disponible durante los 10 días hábiles siguientes.</p>}
+              </div>
+            )}
+            {canSellerChat && (
+              <div className="order-chat-header-control">
+                <button
+                  type="button"
+                  className="order-chat-header-button"
+                  onClick={() => void startSellerChat(sellerId)}
+                  disabled={Boolean(chatStoreId)}
+                  title="Chatear con comprador"
+                >
+                  {chatStoreId ? <Loader2 size={16} className="spin-icon" /> : <MessageCircle size={16} />} Chatear con comprador
+                </button>
+                {chatStartError && <p className="confirm-dialog-error">{chatStartError}</p>}
               </div>
             )}
             <div className="order-status-header-control">

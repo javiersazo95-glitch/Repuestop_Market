@@ -1,15 +1,18 @@
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, Car, CheckCircle2, Copy, Loader2, MessageSquare, Package } from 'lucide-react';
+import {
+  AlertTriangle, Car, Check, CheckCircle2, Copy, EyeOff, Loader2, Lock, MessageSquare, Package, ReceiptText, ShieldCheck,
+} from 'lucide-react';
 
 /**
- * Pasos 1 y 2 de "Confirmar pedido" (stock/entrega y compatibilidad). Se embebe dentro de
- * `SaleReceiptModal`, que agrega el paso 3 (boleta) y el envío final: los tres pasos viven en
- * un solo modal con un solo botón de avance, no como tarjeta suelta en la página con botones
- * propios compitiendo con el de "Confirmar pedido".
+ * Checklist de "Confirmar pedido": 1) stock y entrega, 2) compatibilidad y 3) boleta. Se embebe
+ * dentro de `SaleReceiptModal`, que entrega el contenido del paso 3 (datos de la venta y el PDF)
+ * por `boleta` y pone el botón final: los tres pasos viven en un solo modal con un solo botón de
+ * avance, no como tarjeta suelta en la página con botones propios compitiendo con el de
+ * "Confirmar pedido".
  *
  * Solo lo ve el vendedor — el backend lo emite detrás de un guard por `proveedorId`. El estado
- * de cada paso lo calcula el backend y llega en `order.checklistVendedor`: los clientes no
- * vuelven a espejar las reglas.
+ * de los pasos 1 y 2 lo calcula el backend y llega en `order.checklistVendedor`: los clientes no
+ * vuelven a espejar las reglas. El paso 3 queda listo cuando hay un PDF adjunto (o ya cargado).
  *
  * Ver docs/planes/plan_validacion_compatibilidad_pedido.md en el monorepo.
  */
@@ -28,17 +31,54 @@ function descripcionVehiculo(order) {
   return partes.join(' ');
 }
 
-function Paso({ numero, titulo, listo, bloqueado, children }) {
+function horaConfirmacion(fecha) {
+  const d = fecha ? new Date(fecha) : null;
+  if (!d || Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function Paso({ numero, icono: Icono, titulo, descripcion, estado, resumen, children }) {
+  const hecho = estado === 'hecho';
+  const bloqueado = estado === 'bloqueado';
+  const etiquetaEstado = { hecho: 'Completado', activo: 'En curso', bloqueado: 'Pendiente' }[estado];
   return (
-    <div className={`seller-checklist-step ${listo ? 'is-done' : ''} ${bloqueado ? 'is-locked' : ''}`}>
-      <div className="seller-checklist-step-head">
+    <li className={`seller-checklist-step is-${estado}`} aria-current={estado === 'activo' ? 'step' : undefined}>
+      <div className="seller-checklist-rail" aria-hidden="true">
         <span className="seller-checklist-step-num">
-          {listo ? <CheckCircle2 size={16} /> : numero}
+          {hecho ? <Check size={15} strokeWidth={3} /> : bloqueado ? <Lock size={12} /> : numero}
         </span>
-        <strong>{titulo}</strong>
       </div>
-      {!listo && !bloqueado && <div className="seller-checklist-step-body">{children}</div>}
-    </div>
+      <div className="seller-checklist-card">
+        <div className="seller-checklist-step-head">
+          <span className="seller-checklist-step-icon"><Icono size={16} /></span>
+          <div className="seller-checklist-step-title">
+            <small>Paso {numero}</small>
+            <strong>{titulo}</strong>
+          </div>
+          <span className={`seller-checklist-status is-${estado}`}>{etiquetaEstado}</span>
+        </div>
+        {hecho && resumen && <p className="seller-checklist-summary"><CheckCircle2 size={13} />{resumen}</p>}
+        {bloqueado && <p className="seller-checklist-hint">{descripcion}</p>}
+        {!hecho && !bloqueado && <div className="seller-checklist-step-body">{children}</div>}
+      </div>
+    </li>
+  );
+}
+
+/** Casilla de declaración: el vendedor "marca" el paso y eso lo registra en el backend. */
+function Declaracion({ ocupado, alerta, onClick, children }) {
+  return (
+    <button
+      type="button"
+      className={`seller-checklist-check ${alerta ? 'is-alerta' : ''}`}
+      disabled={ocupado}
+      onClick={onClick}
+    >
+      <span className="seller-checklist-checkbox" aria-hidden="true">
+        {ocupado ? <Loader2 size={13} className="spin-icon" /> : <Check size={13} strokeWidth={3} />}
+      </span>
+      <span className="seller-checklist-check-text">{children}</span>
+    </button>
   );
 }
 
@@ -48,6 +88,7 @@ export default function SellerConfirmationChecklist({
   onConfirmStock,
   onConfirmCompatibility,
   onOpenBuyerChat,
+  boleta,
 }) {
   const checklist = order?.checklistVendedor;
   const [busyStep, setBusyStep] = useState(null);
@@ -69,6 +110,16 @@ export default function SellerConfirmationChecklist({
 
   const stockListo = Boolean(checklist.stockEntregaConfirmadaAt);
   const compatibilidadLista = Boolean(checklist.compatibilidadConfirmadaAt);
+  const boletaLista = Boolean(boleta?.lista);
+  const completados = [stockListo, compatibilidadLista, boletaLista].filter(Boolean).length;
+
+  const estadoStock = stockListo ? 'hecho' : 'activo';
+  const estadoCompatibilidad = compatibilidadLista ? 'hecho' : stockListo ? 'activo' : 'bloqueado';
+  // El paso 3 sigue abierto con el PDF adjunto: ahí se ve el archivo y el botón final confirma.
+  const estadoBoleta = !(stockListo && compatibilidadLista) ? 'bloqueado' : 'activo';
+
+  const pasoActual = !stockListo ? 1 : !compatibilidadLista ? 2 : 3;
+  const tituloActual = ['Stock y entrega', 'Compatibilidad', 'Boleta o factura'][pasoActual - 1];
 
   const ejecutar = async (paso, accion) => {
     setBusyStep(paso);
@@ -92,98 +143,144 @@ export default function SellerConfirmationChecklist({
     }
   };
 
+  const confirmadoStock = horaConfirmacion(checklist.stockEntregaConfirmadaAt);
+  const confirmadoCompat = horaConfirmacion(checklist.compatibilidadConfirmadaAt);
+
   return (
-    <div className="seller-checklist" aria-label="Pasos previos a la boleta">
-      <Paso numero="1" titulo="Stock y entrega" listo={stockListo}>
-        <p className="seller-checklist-hint">
-          {isStorePickup
-            ? 'El comprador retira en tu tienda.'
-            : 'Revisa que puedas despachar a la dirección del pedido.'}
-        </p>
-        <button
-          type="button"
-          className="btn-auth-primary seller-checklist-action"
-          disabled={busyStep === 'stock'}
-          onClick={() => ejecutar('stock', onConfirmStock)}
-        >
-          {busyStep === 'stock' ? <Loader2 size={15} className="spin-icon" /> : <Package size={15} />}
-          <span>Confirmo que tengo el stock y puedo cumplir la entrega</span>
-        </button>
-      </Paso>
-
-      <Paso numero="2" titulo="Compatibilidad" listo={compatibilidadLista} bloqueado={!stockListo}>
-        <div className="seller-checklist-vehicle">
-          <Car size={15} />
+    <div className="seller-checklist" aria-label="Pasos para confirmar el pedido">
+      <div className="seller-checklist-progress">
+        <div className="seller-checklist-progress-head">
           <span>
-            {order?.vehiculoOrigen && order.vehiculoOrigen !== 'NO_INFORMADO'
-              ? <>Vehículo del comprador: <strong>{descripcionVehiculo(order)}</strong>
-                {order?.vehiculoPatente ? ` · ${order.vehiculoPatente}` : ''}</>
-              : 'Sin información del vehículo. Confirma según tu criterio.'}
+            {completados === 3
+              ? <>Todo listo para confirmar</>
+              : <>Paso {pasoActual} de 3 · <strong>{tituloActual}</strong></>}
           </span>
+          <span className="seller-checklist-progress-count">{completados}/3 completados</span>
         </div>
+        <div className="seller-checklist-progress-bar" role="progressbar" aria-valuemin={0} aria-valuemax={3} aria-valuenow={completados}>
+          {[stockListo, compatibilidadLista, boletaLista].map((listo, i) => (
+            <span key={i} className={listo ? 'is-done' : i + 1 === pasoActual ? 'is-active' : ''} />
+          ))}
+        </div>
+        <p className="seller-checklist-private">
+          <EyeOff size={12} />
+          Solo tú ves estos pasos. Revisar la compatibilidad antes de emitir la boleta evita
+          devoluciones y notas de crédito.
+        </p>
+      </div>
 
-        {itemsAValidar.length === 0 ? (
-          <p className="seller-checklist-hint">
-            Todos los repuestos de este pedido sirven para cualquier vehículo.
-          </p>
-        ) : (
-          <ul className="seller-checklist-items">
-            {itemsAValidar.map((item) => {
-              const etiqueta = ETIQUETA_RESULTADO[item.resultado] ?? ETIQUETA_RESULTADO.SIN_DATOS;
-              return (
-                <li key={item.pedidoItemId} className={`seller-checklist-item tone-${etiqueta.tono}`}>
-                  <span className="seller-checklist-item-name">{item.nombre}</span>
-                  <span className={`seller-checklist-badge tone-${etiqueta.tono}`}>
-                    {etiqueta.tono === 'alerta' ? <AlertTriangle size={13} /> : null}
-                    {etiqueta.texto}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {hayIncompatibles && (
-          <div className="seller-checklist-warning">
-            <p>
-              <strong>Hay un repuesto que no calza con el vehículo del comprador.</strong> Antes de
-              seguir, conviene avisarle: puedes ofrecerle la pieza correcta o cancelar y devolverle
-              el dinero.
-            </p>
-            <blockquote className="seller-checklist-message">{mensajeParaComprador}</blockquote>
-            <div className="seller-checklist-warning-actions">
-              <button type="button" className="btn-auth-secondary" onClick={copiarMensaje}>
-                <Copy size={14} />
-                <span>{copiado ? 'Mensaje copiado' : 'Copiar mensaje'}</span>
-              </button>
-              {onOpenBuyerChat && (
-                <button
-                  type="button"
-                  className="btn-auth-secondary"
-                  onClick={() => onOpenBuyerChat(mensajeParaComprador)}
-                >
-                  <MessageSquare size={14} />
-                  <span>Abrir chat con el comprador</span>
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        <button
-          type="button"
-          className="btn-auth-primary seller-checklist-action"
-          disabled={busyStep === 'compatibilidad'}
-          onClick={() => ejecutar('compatibilidad', () => onConfirmCompatibility())}
+      <ol className="seller-checklist-steps">
+        <Paso
+          numero={1}
+          icono={Package}
+          titulo="Stock y entrega"
+          estado={estadoStock}
+          resumen={`Stock y entrega confirmados${confirmadoStock ? ` · ${confirmadoStock}` : ''}`}
         >
-          {busyStep === 'compatibilidad' ? <Loader2 size={15} className="spin-icon" /> : <CheckCircle2 size={15} />}
-          <span>
-            {hayIncompatibles
-              ? 'Confirmar de todas formas y seguir'
-              : 'Confirmo la compatibilidad de estos repuestos'}
-          </span>
-        </button>
-      </Paso>
+          <p className="seller-checklist-hint">
+            {isStorePickup
+              ? 'El comprador retira en tu tienda. Verifica que tengas las piezas disponibles.'
+              : 'Verifica que tengas las piezas y que puedas despachar a la dirección del pedido.'}
+          </p>
+          <Declaracion ocupado={busyStep === 'stock'} onClick={() => ejecutar('stock', onConfirmStock)}>
+            <strong>Tengo el stock y puedo cumplir la entrega</strong>
+            <small>Marca para confirmar este paso</small>
+          </Declaracion>
+        </Paso>
+
+        <Paso
+          numero={2}
+          icono={ShieldCheck}
+          titulo="Compatibilidad"
+          descripcion="Se habilita al confirmar el stock y la entrega."
+          estado={estadoCompatibilidad}
+          resumen={`Compatibilidad revisada${confirmadoCompat ? ` · ${confirmadoCompat}` : ''}`}
+        >
+          <div className="seller-checklist-vehicle">
+            <Car size={15} />
+            <span>
+              {order?.vehiculoOrigen && order.vehiculoOrigen !== 'NO_INFORMADO'
+                ? <>Vehículo del comprador: <strong>{descripcionVehiculo(order)}</strong>
+                  {order?.vehiculoPatente ? ` · ${order.vehiculoPatente}` : ''}</>
+                : 'Sin información del vehículo. Confirma según tu criterio.'}
+            </span>
+          </div>
+
+          {itemsAValidar.length === 0 ? (
+            <p className="seller-checklist-hint">
+              Todos los repuestos de este pedido sirven para cualquier vehículo.
+            </p>
+          ) : (
+            <ul className="seller-checklist-items">
+              {itemsAValidar.map((item) => {
+                const etiqueta = ETIQUETA_RESULTADO[item.resultado] ?? ETIQUETA_RESULTADO.SIN_DATOS;
+                return (
+                  <li key={item.pedidoItemId} className={`seller-checklist-item tone-${etiqueta.tono}`}>
+                    <span className="seller-checklist-item-name">{item.nombre}</span>
+                    <span className={`seller-checklist-badge tone-${etiqueta.tono}`}>
+                      {etiqueta.tono === 'alerta' ? <AlertTriangle size={12} /> : etiqueta.tono === 'ok' ? <Check size={12} strokeWidth={3} /> : null}
+                      {etiqueta.texto}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {hayIncompatibles && (
+            <div className="seller-checklist-warning">
+              <p>
+                <AlertTriangle size={15} />
+                <span>
+                  <strong>Hay un repuesto que no calza con el vehículo del comprador.</strong> Antes
+                  de seguir, conviene avisarle: puedes ofrecerle la pieza correcta o cancelar y
+                  devolverle el dinero.
+                </span>
+              </p>
+              <blockquote className="seller-checklist-message">{mensajeParaComprador}</blockquote>
+              <div className="seller-checklist-warning-actions">
+                <button type="button" className="btn-auth-secondary" onClick={copiarMensaje}>
+                  <Copy size={14} />
+                  <span>{copiado ? 'Mensaje copiado' : 'Copiar mensaje'}</span>
+                </button>
+                {onOpenBuyerChat && (
+                  <button
+                    type="button"
+                    className="btn-auth-secondary"
+                    onClick={() => onOpenBuyerChat(mensajeParaComprador)}
+                  >
+                    <MessageSquare size={14} />
+                    <span>Abrir chat con el comprador</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          <Declaracion
+            ocupado={busyStep === 'compatibilidad'}
+            alerta={hayIncompatibles}
+            onClick={() => ejecutar('compatibilidad', () => onConfirmCompatibility())}
+          >
+            <strong>
+              {hayIncompatibles
+                ? 'Entiendo la advertencia y confirmo de todas formas'
+                : 'Revisé que estos repuestos son compatibles'}
+            </strong>
+            <small>Marca para confirmar este paso</small>
+          </Declaracion>
+        </Paso>
+
+        <Paso
+          numero={3}
+          icono={ReceiptText}
+          titulo="Boleta o factura"
+          descripcion="Se habilita al completar los pasos 1 y 2. Así no emites el documento antes de revisar el pedido."
+          estado={estadoBoleta}
+        >
+          {boleta?.contenido}
+        </Paso>
+      </ol>
 
       {error && <p className="confirm-dialog-error">{error}</p>}
     </div>

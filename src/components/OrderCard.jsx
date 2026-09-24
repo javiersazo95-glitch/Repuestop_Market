@@ -9,6 +9,7 @@ import { isCancelledItem, orderDeliverySummary, orderDisplayCode } from '../data
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
+import SellerChargesBreakdownModal from './SellerChargesBreakdownModal';
 import useSellerChecklist from '../hooks/useSellerChecklist';
 import { cancellationReasonLabel } from '../data/cancellationReason';
 
@@ -201,8 +202,11 @@ export default function OrderCard({
   // Cálculo de comisiones para el modal de información del vendedor
   const storedCommissionRate = Number(order.commissionRate ?? order.comisionTasaAplicada ?? 0);
   const commissionRate = storedCommissionRate > 0 ? (storedCommissionRate <= 1 ? storedCommissionRate * 100 : storedCommissionRate) : 8;
-  const repuestopFee = order.commissionSeller || Math.round(subtotal * (commissionRate / 100) * 1.19);
-  const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(subtotal * 0.0289 * 1.19)));
+  // Misma base que el detalle del pedido y la liquidacion real: productos menos descuento mas
+  // envio local. El calculo es solo respaldo cuando el backend no manda los montos.
+  const commissionBase = Math.max(0, subtotal - discount + shippingFee);
+  const repuestopFee = order.commissionSeller || Math.round(commissionBase * (commissionRate / 100) * 1.19);
+  const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(commissionBase * 0.0289 * 1.19)));
   const totalDeductions = repuestopFee + paymentProcessingFee;
   const paymentFailed = String(order.paymentStatus || '').toLowerCase() === 'failed' && !['CANCELADO', 'CANCELLED'].includes(normStatus);
   // `refundStatus` ya viene acotado por el backend a quien le concierne (al vendedor solo
@@ -478,7 +482,8 @@ export default function OrderCard({
                 <button
                   type="button"
                   className="btn-commission-info"
-                  title="Ver cálculo de comisión"
+                  title="Ver desglose de cobros"
+                  aria-label="Ver desglose de cobros"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowCommissionModal(true);
@@ -678,39 +683,21 @@ export default function OrderCard({
         }}
       />
 
-      {/* Seller Commission Modal */}
+      {/* Desglose de cobros del vendedor (ícono "i" junto a "Neto a recibir") */}
       {showCommissionModal && (
-        <div className="commission-modal-backdrop" onClick={() => setShowCommissionModal(false)}>
-          <div className="commission-modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="commission-modal-header">
-              <div className="commission-icon-badge">
-                <Info size={22} />
-              </div>
-              <h3>Comisión de servicio RepuesTop</h3>
-            </div>
-            <div className="commission-modal-body">
-              <p>
-                <strong>Tarifa de servicio RepuesTop:</strong> {commissionRate}% sobre productos ({formatCLP(subtotal)}). Comisión + IVA: {formatCLP(repuestopFee)}.
-              </p>
-              {paymentProcessingFee > 0 && (
-                <p><strong>Costo procesador de pago:</strong> {formatCLP(paymentProcessingFee)}.</p>
-              )}
-              <p className="commission-highlight">
-                <strong>Descuentos totales:</strong> -{formatCLP(totalDeductions)}
-              </p>
-              <p className="commission-footer-note">
-                El porcentaje estándar de RepuesTop es 8% + IVA sobre cada venta, sin tramos ni tope (5% + IVA para Tiendas Fundadoras durante sus primeros 3 meses).
-              </p>
-            </div>
-            <button
-              type="button"
-              className="btn-auth-primary"
-              onClick={() => setShowCommissionModal(false)}
-            >
-              Entendido
-            </button>
-          </div>
-        </div>
+        <SellerChargesBreakdownModal
+          orderCode={orderIdShort}
+          subtotal={subtotal}
+          shippingFee={shippingFee}
+          discount={discount}
+          commissionBase={commissionBase}
+          commissionRate={commissionRate}
+          commissionWithIva={repuestopFee}
+          paymentProcessingFee={paymentProcessingFee}
+          refundAmount={refundAmount}
+          netAmount={totalSeller}
+          onClose={() => setShowCommissionModal(false)}
+        />
       )}
     </>
   );
