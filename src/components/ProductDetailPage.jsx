@@ -10,7 +10,7 @@ import ProductBrandMark from './ProductBrandMark';
 import ProductBrandModal from './ProductBrandModal';
 import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import {
-  createProductQuestionApi, getProductQuestionsApi, searchVehicleByPatenteApi,
+  createProductQuestionApi, getProductQuestionsApi, searchVehicleByPatenteApi, answerProductQuestionApi,
   getInventoryVehicleCatalogsApi, getVehicleVersionsApi
 } from '../services/api';
 import { adaptVehicle } from '../services/adapters';
@@ -274,6 +274,28 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
       subcategoryId: product.subcategoriaId || undefined,
       subcategory: product.subcategoriaId ? undefined : (product.subcategoria || undefined),
     });
+  };
+
+  // Pruebas de lanzamiento 10G (2026-09-24): el dueno veia el formulario para preguntarse a si mismo y,
+  // al llegar desde la notificacion "Nueva pregunta", no tenia donde responder. Ahora responde aqui.
+  const [answerDrafts, setAnswerDrafts] = useState({});
+  const [answerError, setAnswerError] = useState('');
+  const answerMutation = useMutation({
+    mutationFn: ({ questionId, text }) => answerProductQuestionApi(product.id, questionId, { respuesta: text }),
+    onSuccess: (_updated, { questionId, text }) => {
+      queryClient.setQueryData(qk.productQuestions(product.id), (old = []) =>
+        old.map((item) => (item.id === questionId ? { ...item, respuesta: text } : item)));
+      queryClient.invalidateQueries({ queryKey: qk.productQuestions(product.id) });
+      setAnswerDrafts((drafts) => ({ ...drafts, [questionId]: '' }));
+      setAnswerError('');
+    },
+    onError: (error) => setAnswerError(error?.message || 'No se pudo publicar la respuesta.'),
+  });
+  const submitAnswer = (event, questionId) => {
+    event.preventDefault();
+    const text = (answerDrafts[questionId] || '').trim();
+    if (!text || answerMutation.isPending) return;
+    answerMutation.mutate({ questionId, text });
   };
 
   const submitQuestion = (event) => {
@@ -592,15 +614,34 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
 
         <section className="product-marketplace-questions">
           <div className="product-marketplace-questions-head">
-            <div><h2><MessageCircle /> Preguntas públicas</h2><p>Haz preguntas públicas y ayuda a otros compradores.</p></div>
-            <form onSubmit={submitQuestion}><label><Search /><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Haz tu pregunta sobre este producto..." /></label><button type="submit" disabled={questionMutation.isPending}><Send /> {questionMutation.isPending ? 'Enviando...' : 'Enviar pregunta'}</button></form>
+            <div><h2><MessageCircle /> Preguntas públicas</h2><p>{isOwnProduct ? 'Este repuesto es de tu tienda: responde aquí las preguntas de los compradores.' : 'Haz preguntas públicas y ayuda a otros compradores.'}</p></div>
+            {!isOwnProduct && <form onSubmit={submitQuestion}><label><Search /><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Haz tu pregunta sobre este producto..." /></label><button type="submit" disabled={questionMutation.isPending}><Send /> {questionMutation.isPending ? 'Enviando...' : 'Enviar pregunta'}</button></form>}
           </div>
           {questionError && <div className="product-marketplace-question-error">{questionError}</div>}
+          {answerError && <div className="product-marketplace-question-error">{answerError}</div>}
           {publicQuestions.length > 0 ? <div className="product-marketplace-question-list">
             {publicQuestions.map((item, index) => {
               const text = item.pregunta || item.texto || item.question || item.message || 'Pregunta sin detalle';
               const answer = item.respuesta || item.answer || item.sellerResponse || '';
-              return <article key={item.id || index}><span>Pregunta pública</span><strong>{text}</strong><p>{answer ? <><b>Respuesta de la tienda:</b> {answer}</> : 'La tienda todavía no ha respondido.'}</p></article>;
+              const canAnswer = isOwnProduct && !answer && item.id;
+              return <article key={item.id || index}><span>Pregunta pública</span><strong>{text}</strong>
+                {canAnswer ? (
+                  <form className="product-marketplace-answer-form" onSubmit={(event) => submitAnswer(event, item.id)} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <input
+                      value={answerDrafts[item.id] || ''}
+                      onChange={(event) => setAnswerDrafts((drafts) => ({ ...drafts, [item.id]: event.target.value }))}
+                      placeholder="Escribe tu respuesta..."
+                      maxLength={500}
+                      aria-label={`Responder: ${text}`}
+                      style={{ flex: 1, padding: '8px 10px', border: '1px solid #d6dee8', borderRadius: 8 }}
+                    />
+                    <button type="submit" disabled={answerMutation.isPending || !(answerDrafts[item.id] || '').trim()}
+                      style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#1f6feb', color: '#fff', fontWeight: 700 }}>
+                      <Send /> Responder
+                    </button>
+                  </form>
+                ) : <p>{answer ? <><b>Respuesta de la tienda:</b> {answer}</> : 'La tienda todavía no ha respondido.'}</p>}
+              </article>;
             })}
           </div> : <div className="product-marketplace-no-questions"><MessageCircle /><span><strong>Aún no hay preguntas sobre este producto</strong><small>Sé la primera persona en consultar a la tienda.</small></span></div>}
         </section>
