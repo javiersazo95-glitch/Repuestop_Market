@@ -73,6 +73,8 @@ function mapServerCart(summary) {
     vendedor: item.proveedor,
     shippingMethod: item.metodoEnvio || '',
     shippingFee: Number(item.costoEnvioLocal || 0),
+    // El checkout exige el vehiculo si algun repuesto no es universal.
+    esUniversal: Boolean(item.esUniversal),
   }));
 }
 

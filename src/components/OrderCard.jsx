@@ -9,6 +9,7 @@ import { isCancelledItem, orderDeliverySummary, orderDisplayCode } from '../data
 import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
+import useSellerChecklist from '../hooks/useSellerChecklist';
 import { cancellationReasonLabel } from '../data/cancellationReason';
 
 export const UNIFIED_STATUS_CONFIG = {
@@ -108,6 +109,9 @@ export default function OrderCard({
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [showStoreStatuses]);
+
+  // Pasos 1 y 2 de "Confirmar pedido": el mismo popup que el detalle.
+  const sellerChecklist = useSellerChecklist(order);
 
   if (!order) return null;
 
@@ -236,10 +240,10 @@ export default function OrderCard({
     // `false` sin abrir nada: el boton quedaba mudo. Se pregunta con `ConfirmDialog`,
     // que es lo que ya usa la cancelacion del comprador.
     setActionError('');
-    // Confirmar un pedido recién pagado exige la boleta de venta: se abre el mismo popup
-    // de datos + adjunto que el detalle, no el ConfirmDialog simple.
+    // Confirmar un pedido recién pagado abre el mismo popup "Confirmar pedido" que el
+    // detalle (stock y entrega, compatibilidad y boleta), no el ConfirmDialog simple.
     if (isSeller && controlledAction.nextStatus === 'EN_PREPARACION' && onRegisterSaleReceipt
-        && !order.boletaVentaDisponible) {
+        && (!sellerChecklist.stepsReady || !order.boletaVentaDisponible)) {
       setShowReceiptModal(true);
       return;
     }
@@ -247,7 +251,8 @@ export default function OrderCard({
   };
 
   const submitSaleReceipt = async (file) => {
-    await onRegisterSaleReceipt(order, file);
+    // Sin archivo solo cuando la boleta ya estaba cargada: se confirma sin volver a subirla.
+    if (file) await onRegisterSaleReceipt(order, file);
     await onUpdateStatus(order.id, 'EN_PREPARACION');
   };
 
@@ -424,7 +429,7 @@ export default function OrderCard({
             <div>
               <strong>Boleta de venta pendiente</strong>
               <span>{normStatus === 'PAGADO'
-                ? 'Regístrala para confirmar el pedido.'
+                ? 'Se registra al confirmar el pedido, después de revisar stock y compatibilidad.'
                 : 'Adjúntala desde el detalle para dejar la venta documentada.'}</span>
             </div>
           </div>
@@ -628,10 +633,14 @@ export default function OrderCard({
 
       {showReceiptModal && (
         <SaleReceiptModal
-          order={order}
+          order={sellerChecklist.orderWithChecklist}
           items={items}
           shipping={shippingFee}
           discount={discount}
+          sellerChecklist={sellerChecklist.checklist}
+          isStorePickup={isStorePickup}
+          onConfirmStock={sellerChecklist.confirmStock}
+          onConfirmCompatibility={sellerChecklist.confirmCompatibility}
           onSubmit={submitSaleReceipt}
           onClose={() => setShowReceiptModal(false)}
         />

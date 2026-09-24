@@ -179,6 +179,19 @@ export default function CheckoutPage() {
     };
   }, [quote, quoteContext, conversacionId]);
 
+  // Si el producto cotizado es universal. La cotizacion no lo trae, asi que se pregunta a
+  // su ficha; mientras no se sepa (o si falla) se asume que no lo es y se pide el vehiculo.
+  const [quoteProductUniversal, setQuoteProductUniversal] = useState(false);
+  const quoteProductId = quoteContext?.productoId;
+  useEffect(() => {
+    if (!isQuoteMode || !quoteProductId) return undefined;
+    const controller = new AbortController();
+    getPublicProductApi(quoteProductId, { signal: controller.signal })
+      .then((dto) => setQuoteProductUniversal(Boolean(adaptProduct(dto).esUniversal)))
+      .catch(() => setQuoteProductUniversal(false));
+    return () => controller.abort();
+  }, [isQuoteMode, quoteProductId]);
+
   const lineItems = useMemo(
     () => (isQuoteMode ? (quoteLine ? [quoteLine] : []) : cartItems),
     [isQuoteMode, quoteLine, cartItems]
@@ -319,39 +332,23 @@ export default function CheckoutPage() {
     setError('');
   };
 
-  const rutValid = isValidRut(invoice.rut);
-  // Un vendedor sin ninguna direccion propia guardada no queda trabado aca: el backend
-  // ya sabe usar la direccion de su tienda como respaldo al armar el pedido
-  // (PedidoCheckoutCarritoSupport/CotizacionSupport), asi que no hace falta forzarlo a
-  // agregar una direccion solo para destrabar el boton.
-  const sellerWithoutSavedAddress = isSeller && !addressesLoading && addresses.length === 0;
-  const stepComplete = {
-    entrega: allShippingChosen && (!needsAddress || Boolean(selectedAddressId) || sellerWithoutSavedAddress),
-    pago: Boolean(paymentMethod) && (documentType !== 'FACTURA' || rutValid),
-  };
-
-  // Lo que falta para avanzar, dicho antes de que la persona haga clic: el botón se
-  // deshabilita, pero un botón apagado sin explicación es igual de frustrante.
-  const missingForStep = {
-    entrega: !allShippingChosen
-      ? 'Elige cómo recibir los productos de cada tienda para continuar.'
-      : 'Selecciona una dirección de entrega para continuar.',
-    pago: documentType === 'FACTURA' && !rutValid
-      ? 'Ingresa un RUT válido para emitir la factura.'
-      : '',
-  }[step];
-
-  // Vehiculo del comprador (opcional). Si llego al checkout desde una busqueda por
-  // patente, el vehiculo ya esta en el contexto y solo se confirma; si no, puede
-  // declararlo a mano. Alimenta la validacion de compatibilidad que hace el vendedor
-  // antes de preparar el pedido (docs/planes/plan_validacion_compatibilidad_pedido.md).
+  // Vehiculo del comprador. Si llego al checkout desde una busqueda por patente, el
+  // vehiculo ya esta en el contexto y solo se confirma; si no, lo declara a mano. Es lo
+  // que el vendedor usa para confirmar la compatibilidad antes de preparar el pedido
+  // (docs/planes/plan_validacion_compatibilidad_pedido.md), asi que es obligatorio en
+  // cuanto hay un repuesto que no es universal. El backend aplica la misma regla.
   const [useActiveVehicle, setUseActiveVehicle] = useState(true);
   const [vehicleForm, setVehicleForm] = useState({ patente: '', marca: '', modelo: '', anio: '' });
   const hasActiveVehicle = Boolean(activeVehicle?.marca || activeVehicle?.patente);
-  // Sin match por patente, el formulario manual parte plegado: es opcional y cuatro
-  // campos abiertos por defecto competian por atencion con el resto del checkout.
+  const vehicleRequired = isQuoteMode
+    ? Boolean(quoteLine) && !quoteProductUniversal
+    : cartItems.some((item) => !item.esUniversal);
+  // Sin match por patente y con solo repuestos universales, el formulario manual parte
+  // plegado: ahi es opcional y cuatro campos abiertos competian con el resto del checkout.
+  // Cuando es obligatorio parte abierto: plegado, el comprador ni se enteraba de que se lo
+  // pedian.
   const [vehicleFormOpen, setVehicleFormOpen] = useState(false);
-  const showVehicleForm = hasActiveVehicle ? !useActiveVehicle : vehicleFormOpen;
+  const showVehicleForm = hasActiveVehicle ? !useActiveVehicle : (vehicleRequired || vehicleFormOpen);
 
   const checkoutVehicle = useMemo(() => {
     if (hasActiveVehicle && useActiveVehicle) {
@@ -371,6 +368,36 @@ export default function CheckoutPage() {
     if (!patente && !marca && !modelo && !anio) return null;
     return { patente: patente || null, marca: marca || null, modelo: modelo || null, anio };
   }, [activeVehicle, hasActiveVehicle, useActiveVehicle, vehicleForm]);
+  // Basta la patente (6 caracteres; 5 las de moto antiguas) o marca, modelo y año.
+  const vehicleComplete = Boolean(checkoutVehicle) && (
+    String(checkoutVehicle.patente || '').replace(/[^A-Za-z0-9]/g, '').length >= 5
+    || Boolean(checkoutVehicle.marca && checkoutVehicle.modelo && checkoutVehicle.anio)
+  );
+
+  const rutValid = isValidRut(invoice.rut);
+  // Un vendedor sin ninguna direccion propia guardada no queda trabado aca: el backend
+  // ya sabe usar la direccion de su tienda como respaldo al armar el pedido
+  // (PedidoCheckoutCarritoSupport/CotizacionSupport), asi que no hace falta forzarlo a
+  // agregar una direccion solo para destrabar el boton.
+  const sellerWithoutSavedAddress = isSeller && !addressesLoading && addresses.length === 0;
+  const stepComplete = {
+    entrega: allShippingChosen && (!needsAddress || Boolean(selectedAddressId) || sellerWithoutSavedAddress),
+    pago: Boolean(paymentMethod) && (documentType !== 'FACTURA' || rutValid)
+      && (!vehicleRequired || vehicleComplete),
+  };
+
+  // Lo que falta para avanzar, dicho antes de que la persona haga clic: el botón se
+  // deshabilita, pero un botón apagado sin explicación es igual de frustrante.
+  const missingForStep = {
+    entrega: !allShippingChosen
+      ? 'Elige cómo recibir los productos de cada tienda para continuar.'
+      : 'Selecciona una dirección de entrega para continuar.',
+    pago: documentType === 'FACTURA' && !rutValid
+      ? 'Ingresa un RUT válido para emitir la factura.'
+      : vehicleRequired && !vehicleComplete
+        ? 'Indica la patente o la marca, modelo y año de tu vehículo para continuar.'
+        : '',
+  }[step];
 
   const pay = async () => {
     if (submittingRef.current) return;
@@ -725,9 +752,13 @@ export default function CheckoutPage() {
 
                 <section className="checkout-block" aria-labelledby="checkout-vehiculo-title">
                   <div className="shopify-section-header">
-                    <h2 id="checkout-vehiculo-title">¿Para qué vehículo es? <small>(opcional)</small></h2>
+                    <h2 id="checkout-vehiculo-title">
+                      ¿Para qué vehículo es? <small>{vehicleRequired ? '(obligatorio)' : '(opcional)'}</small>
+                    </h2>
                     <p className="shopify-section-subtitle">
-                      Nos ayuda a que el vendedor confirme que la pieza calza con tu auto y evita devoluciones.
+                      {vehicleRequired
+                        ? 'El vendedor revisa que el repuesto calce con tu vehículo antes de enviarlo. Basta con la patente, o con la marca, el modelo y el año.'
+                        : 'Nos ayuda a que el vendedor confirme que la pieza calza con tu auto y evita devoluciones.'}
                     </p>
                   </div>
 
@@ -747,7 +778,7 @@ export default function CheckoutPage() {
                     </label>
                   )}
 
-                  {!hasActiveVehicle && (
+                  {!hasActiveVehicle && !vehicleRequired && (
                     <button
                       type="button"
                       className="checkout-vehicle-toggle"

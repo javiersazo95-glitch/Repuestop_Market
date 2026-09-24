@@ -17,6 +17,7 @@ import { productPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
 import SaleReceiptViewerModal from './SaleReceiptViewerModal';
+import useSellerChecklist from '../hooks/useSellerChecklist';
 import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancellationReason';
 import { claimReasonPairs } from '../data/claimReason';
 import { carrierTracking } from '../data/carrierTracking';
@@ -419,6 +420,10 @@ export default function OrderDetailView({
     return () => window.clearInterval(timer);
   }, [showsPaymentWindow]);
 
+  // Pasos 1 y 2 de "Confirmar pedido" (stock/entrega y compatibilidad). Solo el vendedor
+  // recibe `checklistVendedor`; en el comprador queda vacio y no cambia nada.
+  const sellerChecklist = useSellerChecklist(order);
+
   if (!order) return null;
 
   const isSeller = mode === 'seller';
@@ -757,7 +762,8 @@ export default function OrderDetailView({
   // encadena la transición a EN_PREPARACION.
   const submitSaleReceipt = async (file) => {
     if (!onRegisterSaleReceipt) return;
-    await onRegisterSaleReceipt(order, file);
+    // Sin archivo solo cuando la boleta ya estaba cargada: se confirma sin volver a subirla.
+    if (file) await onRegisterSaleReceipt(order, file);
     if (!receiptUploadOnly && onUpdateStatus) {
       await onUpdateStatus(order.id, 'EN_PREPARACION');
     }
@@ -853,18 +859,13 @@ export default function OrderDetailView({
     // sin abrir nada: el boton quedaba mudo y parecia que no estaba cableado.
     if (!controlledAction.requiresPin) {
       setStatusError('');
-      // Confirmar un pedido recien pagado exige la boleta de venta: en vez del
-      // ConfirmDialog simple se abre el modal de boleta, que la sube y recien ahi avanza
-      // el estado. El backend tambien rechaza la transicion sin boleta.
-      //
-      // El checklist de compatibilidad (stock/entrega + compatibilidad, ver
-      // docs/planes/plan_validacion_compatibilidad_pedido.md) dejo de ser un paso
-      // obligatorio para avanzar: con los tres pasos de punta a punta, el vendedor no
-      // entendia por donde seguir en su primer pedido. El vehiculo y los resultados de
-      // compatibilidad se muestran solo como informacion en la tarjeta de datos del
-      // comprador; `REPUESTOP_PEDIDO_CHECKLIST_EXIGIR` vuelve a estar apagado.
+      // Confirmar un pedido recien pagado abre el popup "Confirmar pedido": 1) stock y
+      // entrega, 2) compatibilidad con el vehiculo del comprador y 3) boleta, en ese orden
+      // (emitir la boleta y recien despues descubrir una incompatibilidad obliga a una nota
+      // de credito). El backend rechaza la transicion si falta alguno, asi que el
+      // ConfirmDialog simple solo queda cuando los tres ya estan listos.
       if (isSeller && controlledAction.nextStatus === 'EN_PREPARACION' && onRegisterSaleReceipt
-          && !order.boletaVentaDisponible) {
+          && (!sellerChecklist.stepsReady || !order.boletaVentaDisponible)) {
         setReceiptUploadOnly(false);
         setShowReceiptModal(true);
         return;
@@ -1211,7 +1212,7 @@ export default function OrderDetailView({
                   </div>
                 )}
 
-                {/* El checklist de "Confirmar pedido" (stock/entrega, compatibilidad) ya no
+                {/* El checklist de "Confirmar pedido" (stock/entrega, compatibilidad) no
                     vive aca como tarjeta con botones propios: se embebe dentro de
                     `SaleReceiptModal`, que abre el unico boton "Confirmar pedido" de mas
                     abajo. Dos botones grandes en la misma pagina -- uno por paso, otro para
@@ -1245,7 +1246,11 @@ export default function OrderDetailView({
                           <FileSearch size={13} />
                           <span>Ver y descargar</span>
                         </button>
-                      ) : isSeller && onRegisterSaleReceipt && !cerrado ? (
+                      ) : isSeller && onRegisterSaleReceipt && !cerrado
+                          // Mientras falten los pasos 1 y 2 de un pedido sin confirmar, la
+                          // boleta se carga solo desde el popup de "Confirmar pedido": este
+                          // atajo la dejaba emitida antes de revisar la compatibilidad.
+                          && !(!sellerChecklist.stepsReady && (normStatus === 'PAGADO' || normStatus === 'PENDIENTE')) ? (
                         <button
                           type="button"
                           className="order-boleta-link is-cta"
@@ -2134,18 +2139,22 @@ export default function OrderDetailView({
           document.body
         )}
 
-        {/* Popup de boleta de venta. Obligatorio al confirmar un pedido recién pagado;
-            en modo `receiptUploadOnly` solo sube el archivo (pedido ya confirmado).
-            Sin `sellerChecklist`: los pasos de stock/entrega y compatibilidad dejaron
-            de ser un gate aca (ver handleStatusSubmit); el vehiculo y la compatibilidad
-            ahora son solo informativos en la tarjeta de datos del comprador. */}
+        {/* Popup "Confirmar pedido": pasos de stock/entrega y compatibilidad y la boleta.
+            En modo `receiptUploadOnly` solo sube el archivo (pedido ya confirmado). */}
         {showReceiptModal && (
           <SaleReceiptModal
-            order={order}
+            order={sellerChecklist.orderWithChecklist}
             items={receiptBlock?.items || []}
             shipping={receiptBlock?.shippingStore || 0}
             discount={discount}
             uploadOnly={receiptUploadOnly}
+            sellerChecklist={!receiptUploadOnly ? sellerChecklist.checklist : null}
+            isStorePickup={isStorePickup}
+            onConfirmStock={sellerChecklist.confirmStock}
+            onConfirmCompatibility={sellerChecklist.confirmCompatibility}
+            onOpenBuyerChat={onOpenDispute
+              ? (draftMessage) => startSellerChat(sellerId, draftMessage)
+              : undefined}
             onSubmit={submitSaleReceipt}
             onClose={() => setShowReceiptModal(false)}
           />

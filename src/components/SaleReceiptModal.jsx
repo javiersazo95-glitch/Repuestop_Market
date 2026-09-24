@@ -17,7 +17,8 @@ function formatCLP(value) {
  *
  * `items` debe venir ya acotado a la tienda del vendedor (las líneas canceladas se filtran
  * aquí). `onSubmit(file)` sube la boleta y — salvo en `uploadOnly` — encadena la confirmación;
- * si resuelve sin lanzar, muestra la confirmación al vendedor.
+ * si resuelve sin lanzar, muestra la confirmación al vendedor. `file` llega null cuando la boleta
+ * ya estaba cargada y el vendedor confirma sin reemplazarla.
  */
 export default function SaleReceiptModal({
   order,
@@ -49,6 +50,9 @@ export default function SaleReceiptModal({
   const stockListo = sellerChecklist ? Boolean(sellerChecklist.stockEntregaConfirmadaAt) : true;
   const compatibilidadLista = sellerChecklist ? Boolean(sellerChecklist.compatibilidadConfirmadaAt) : true;
   const checklistCompleto = stockListo && compatibilidadLista;
+  // La boleta pudo cargarse antes (pedidos confirmados a medias, o desde otro dispositivo):
+  // entonces el paso 3 no obliga a subirla de nuevo, solo permite reemplazarla.
+  const boletaYaCargada = !uploadOnly && Boolean(order.boletaVentaDisponible);
 
   const orderCode = orderDisplayCode(order, 'seller');
   const buyerName = order.compradorNombre || order.buyerName || order.usuarioNombre || 'Cliente RepuesTop';
@@ -104,7 +108,7 @@ export default function SaleReceiptModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file || submitting) return;
+    if ((!file && !boletaYaCargada) || submitting) return;
     setSubmitting(true);
     setError('');
     try {
@@ -250,8 +254,13 @@ export default function SaleReceiptModal({
           </p>
         </div>
 
+        {boletaYaCargada && (
+          <p className="order-receipt-hint">
+            Ya cargaste la boleta de este pedido. Puedes confirmar así o adjuntar otra para reemplazarla.
+          </p>
+        )}
         <div className="order-subdialog-field">
-          <span>Archivo de la boleta *</span>
+          <span>{boletaYaCargada ? 'Reemplazar boleta (opcional)' : 'Archivo de la boleta *'}</span>
           <div className="order-subdialog-filedrop">
             <label>
               <FileUp size={20} />
@@ -292,7 +301,7 @@ export default function SaleReceiptModal({
                 {!stockListo ? 'Completa el paso 1 para seguir' : 'Completa el paso 2 para seguir'}
               </button>
             ) : (
-              <button type="submit" className="btn-auth-primary" disabled={submitting || !file}>
+              <button type="submit" className="btn-auth-primary" disabled={submitting || (!file && !boletaYaCargada)}>
                 {submitting && <Loader2 size={16} className="spin-icon" />}
                 {submitting
                   ? (uploadOnly ? 'Guardando...' : 'Confirmando...')
