@@ -178,7 +178,19 @@ export function retractionNotice({ status, entregadoAt }, now = Date.now()) {
   if (!deliveredAt) return null;
 
   const remaining = deliveredAt + RETRACTION_DAYS * DAY_MS - now;
-  if (remaining <= 0) return null;
+  if (remaining <= 0) {
+    // H27 (pruebas de lanzamiento, 25-sep): vencido el retracto sigue la garantia legal de 6
+    // meses desde la recepcion (Ley 19.496 art. 21), y el boton de reclamo sigue disponible.
+    const garantiaHasta = new Date(deliveredAt);
+    garantiaHasta.setMonth(garantiaHasta.getMonth() + 6);
+    if (now > garantiaHasta.getTime()) return null;
+    return {
+      kind: 'warranty',
+      label: `Garantía legal hasta el ${garantiaHasta.toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+      detail: 'Si el repuesto presenta una falla, puedes reclamar desde el botón de reclamo y elegir cambio, reparación o devolución del dinero.',
+      urgent: false,
+    };
+  }
 
   const left = remainingLabel(remaining);
   return {

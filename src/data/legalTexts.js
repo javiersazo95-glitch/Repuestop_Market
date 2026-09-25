@@ -12,7 +12,7 @@
  */
 
 /** Fecha de la version vigente, para mostrar en pantalla. */
-export const LEGAL_VERSION = '25 de septiembre de 2026';
+export const LEGAL_VERSION = '26 de septiembre de 2026';
 
 /**
  * Codigo estable de la misma version, el que viaja al backend y queda guardado en
@@ -23,7 +23,7 @@ export const LEGAL_VERSION = '25 de septiembre de 2026';
  * Debe coincidir con `repuestop.legal.version-vigente` del backend y con
  * LEGAL_VERSION_CODE de la app.
  */
-export const LEGAL_VERSION_CODE = '2026-09-25';
+export const LEGAL_VERSION_CODE = '2026-09-26';
 
 export const COMPRADOR_TERMS = `1. IDENTIFICACIÓN DE LA PLATAFORMA
 RepuesTop es una plataforma de comercio electrónico, disponible como aplicación móvil y sitio web, administrada por la empresa titular de la plataforma, en adelante también "RepuesTop", "la Plataforma" o "la Empresa". Estos Términos regulan el registro, acceso y uso de la Plataforma por parte de compradores.
@@ -75,6 +75,8 @@ Si el vendedor no emite el documento tributario correspondiente, RepuesTop podr�
 
 11. CAMBIOS, DEVOLUCIONES, RETRACTO Y GARANTÍA
 Los cambios, devoluciones, retractos, garantías y reembolsos se regirán por la normativa chilena aplicable (Ley N° 19.496 y Ley N° 21.398), por las condiciones informadas por el vendedor y por las reglas operativas de RepuesTop.
+
+Forma de pago de los reembolsos: los reembolsos de compras pagadas en la Plataforma se procesan a través de la pasarela de pago (Flow). El comprador recibirá un correo de la pasarela para aceptar la devolución, que deberá aceptar dentro del plazo que ahí se indique. En pagos con tarjeta, la devolución se realiza como reversa en el mismo medio de pago y su reflejo depende del emisor, con un plazo informado por la pasarela de hasta 10 días hábiles. Si el plazo vence sin aceptación, el comprador podrá solicitar a soporte que coordine la devolución.
 
 A. DERECHO A RETRACTO LEGAL (COMPRAS A DISTANCIA / MEDIOS ELECTRÓNICOS):
 Conforme al artículo 3° bis letra b) de la Ley N° 19.496, tratándose de compras realizadas a través de la Plataforma, el comprador persona natural podrá poner término unilateralmente al contrato (retracto) dentro del plazo de diez (10) días corridos contados desde la recepción física del producto.

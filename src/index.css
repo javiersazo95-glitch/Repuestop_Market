@@ -7468,6 +7468,23 @@ input, select, textarea {
 .order-cancellation-block strong { color: #B8261A; font-size: 13.5px; }
 .order-cancellation-block span { color: #7f1d1d; font-size: 12.5px; line-height: 1.45; }
 
+/* O56/O57 (pruebas de lanzamiento, 25-sep): estado de la devolucion por Flow del comprador.
+   Mismo molde que el bloque de cancelacion; ambar mientras falta aceptar el correo de Flow,
+   verde cuando se devolvio y rojo si se rechazo o vencio. */
+.order-refund-status-block {
+  display: grid; gap: 4px;
+  margin: 0 24px 16px; padding: 12px 14px; border-radius: var(--radius-sm);
+  background: #FFF7E6; border: 1px solid #FFE5B4;
+}
+.order-refund-status-block strong { color: #9A5A00; font-size: 13.5px; }
+.order-refund-status-block span { color: #6b4e16; font-size: 12.5px; line-height: 1.45; }
+.order-refund-status-block.is-ok { background: #ECFDF3; border-color: #BBF7D0; }
+.order-refund-status-block.is-ok strong { color: #17845B; }
+.order-refund-status-block.is-ok span { color: #14532d; }
+.order-refund-status-block.is-error { background: #FFF0F0; border-color: #FECACA; }
+.order-refund-status-block.is-error strong { color: #B8261A; }
+.order-refund-status-block.is-error span { color: #7f1d1d; }
+
 /* Plazo de pago de un pedido pendiente. Ambar mientras corre y rojo cuando vencio:
    el mismo par de tonos que ya usan los badges de estado. */
 .order-payment-window {

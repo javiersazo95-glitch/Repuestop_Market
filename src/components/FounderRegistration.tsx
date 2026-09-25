@@ -132,6 +132,9 @@ function validarRegistro(form: FormState, ctx: {
   if (!form.comunaId) e.comunaId = 'Selecciona una comuna.';
   if (!form.address.trim()) e.address = 'La dirección es obligatoria.';
   else if (form.address.trim().length < 5) e.address = 'Ingresa calle y número.';
+  // O50 (pruebas de lanzamiento, 25-sep): una sugerencia de solo calle del autocompletado
+  // ("Imperial") dejaba la tienda sin numero. El backend tambien lo rechaza.
+  else if (!/\d/.test(form.address)) e.address = 'Incluye el número de la dirección (ej: Imperial 450).';
   if (!form.acceptsTerms) e.acceptsTerms = 'Debes aceptar los términos y condiciones.';
   return e;
 }

@@ -85,7 +85,9 @@ export default function SaleReceiptModal({
     docType === 'FACTURA' ? `RUT: ${buyerRut || '—'}` : null,
     docType === 'FACTURA' && order.facturaRazonSocial ? `Razón social: ${order.facturaRazonSocial}` : null,
     docType === 'FACTURA' && order.facturaGiro ? `Giro: ${order.facturaGiro}` : null,
-    deliveryAddress ? `Despacho: ${deliveryAddress}` : null,
+    // O54 (pruebas de lanzamiento, 25-sep): con retiro en tienda no hay despacho a la direccion
+    // del comprador; mostrarla confundia al vendedor.
+    isStorePickup ? 'Entrega: Retiro en tienda' : (deliveryAddress ? `Despacho: ${deliveryAddress}` : null),
     '',
     'Detalle:',
     ...cleanItems.map((it) => {
@@ -165,7 +167,10 @@ export default function SaleReceiptModal({
           {docType === 'FACTURA' && <div><dt>RUT</dt><dd>{buyerRut || '—'}</dd></div>}
           {docType === 'FACTURA' && order.facturaRazonSocial && <div><dt>Razón social</dt><dd>{order.facturaRazonSocial}</dd></div>}
           {docType === 'FACTURA' && order.facturaGiro && <div><dt>Giro</dt><dd>{order.facturaGiro}</dd></div>}
-          {deliveryAddress && <div><dt>Despacho</dt><dd>{deliveryAddress}</dd></div>}
+          {/* O54: retiro en tienda en vez de la direccion del comprador. */}
+          {isStorePickup
+            ? <div><dt>Entrega</dt><dd>Retiro en tienda</dd></div>
+            : deliveryAddress && <div><dt>Despacho</dt><dd>{deliveryAddress}</dd></div>}
         </dl>
 
         {cleanItems.length > 0 && (

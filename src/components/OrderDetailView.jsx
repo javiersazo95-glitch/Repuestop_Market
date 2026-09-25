@@ -11,7 +11,7 @@ import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, isCancelledItem, orderDeliverySummary, orderDisplayCode, subOrderDeliveryLabel, subOrderDeliveryMethod } from '../data/orderIdentity';
-import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
+import { getControlledOrderAction, isStorePickupOrder, normalizeOrderStatus, orderPaymentWindow } from '../data/orderStatusFlow';
 import { Link } from 'react-router-dom';
 import { productPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
@@ -19,6 +19,7 @@ import SaleReceiptModal from './SaleReceiptModal';
 import SaleReceiptViewerModal from './SaleReceiptViewerModal';
 import useSellerChecklist from '../hooks/useSellerChecklist';
 import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancellationReason';
+import { buyerRefundInfo, FLOW_REFUND_NOTICE } from '../data/refundStatus';
 import { claimReasonPairs } from '../data/claimReason';
 import { carrierTracking } from '../data/carrierTracking';
 import { fundsReleaseNotice, retractionNotice, storeAutoCloseNotice } from '../data/orderDeadlines';
@@ -254,6 +255,21 @@ const TIMELINE_STEPS = [
   { key: 'FINALIZADO', label: 'Entregado/Finalizado', icon: PackageCheck, description: 'El pedido fue recibido y el proceso de compra quedó finalizado.' },
 ];
 
+// O60 (pruebas de lanzamiento, 25-sep): en un retiro en tienda nadie despacha nada. El paso
+// ENVIADO es "Listo para retirar" -- el mismo nombre que ya usan la pildora de la tarjeta y la del
+// bloque de la tienda -- y su explicacion depende de quien mira: el comprador dicta el codigo, el
+// vendedor lo pide.
+const PICKUP_READY_STEP = {
+  buyer: { label: 'Listo para retirar', icon: Store, description: 'Tu pedido te espera en la tienda. Dicta tu código de retiro al retirarlo.' },
+  seller: { label: 'Listo para retirar', icon: Store, description: 'El pedido espera al comprador en tu tienda. Pídele su código de retiro al entregarlo.' },
+};
+
+function timelineStepsFor(isStorePickup, isSeller) {
+  if (!isStorePickup) return TIMELINE_STEPS;
+  const pickupStep = PICKUP_READY_STEP[isSeller ? 'seller' : 'buyer'];
+  return TIMELINE_STEPS.map((step) => (step.key === 'ENVIADO' ? { ...step, ...pickupStep } : step));
+}
+
 function getTimelineIndex(status) {
   const norm = String(status || '').toUpperCase();
   if (norm === 'EN_PREPARACION' || norm === 'PREPARING') return 1;
@@ -452,19 +468,29 @@ export default function OrderDetailView({
   // derivando en el backend (el menos avanzado de las vivas), que es lo que el timeline de
   // arriba muestra.
   //
-  // Solo con mas de una tienda: con una sola, la accion vive en el pie del modal como
-  // siempre. Es la accion principal del comprador y meterla dentro de la tarjeta del vendedor
-  // la esconde sin ganar nada, porque no hay ninguna ambiguedad que resolver.
+  // H27 (pruebas de lanzamiento, 25-sep): vale con UNA tienda o con varias. Antes exigia
+  // `showSubOrders` (> 1 tienda) suponiendo que con una sola la accion vivia en el pie del
+  // modal, pero el pie la oculta para todo comprador con bloques (`buyerActionsPerStore`): con
+  // una sola tienda el comprador no veia ni "Confirmar retiro" ni "Finalizar compra" en ningun
+  // lado. Ahora la accion vive SIEMPRE en el bloque de su tienda.
   const buyerStoreAction = (seller) => {
-    if (isSeller || !showSubOrders || !onUpdateStatus) return null;
+    if (isSeller || !onUpdateStatus) return null;
     if (!Number.isFinite(Number(seller?.id))) return null;
-    const estado = String(seller.subOrder?.estado || '').toUpperCase();
-    if (estado === 'ENVIADO') {
+    // Con una sola tienda y sin fila de subordén (historicos) se cae al estado del pedido, que
+    // en ese caso es el de esa tienda. Con varias, sin subordén no hay estado propio que mover.
+    const estado = normalizeOrderStatus({
+      estado: seller.subOrder?.estado || (subOrders.length <= 1 ? normStatus : ''),
+    });
+    const pickup = seller.isPickupStore ?? isStorePickup;
+    const unicaTienda = !showSubOrders;
+    if (estado === 'ENVIADO' || estado === 'LISTO_PARA_RETIRO' || estado === 'DISPATCHED') {
       return {
         nextStatus: 'ENTREGADO',
-        label: isStorePickup ? 'Confirmar retiro' : 'Confirmar recepción',
-        title: isStorePickup ? `¿Confirmar el retiro en ${seller.name}?` : `¿Confirmar lo que envió ${seller.name}?`,
-        message: `Confirma únicamente si ya tienes en tus manos los repuestos de ${seller.name}. El resto del pedido sigue su curso. Esta acción no se puede deshacer.`,
+        label: pickup ? 'Confirmar retiro' : 'Confirmar recepción',
+        title: pickup ? `¿Confirmar el retiro en ${seller.name}?` : `¿Confirmar lo que envió ${seller.name}?`,
+        message: unicaTienda
+          ? 'Confirma únicamente si ya tienes los repuestos en tus manos. Esta acción no se puede deshacer.'
+          : `Confirma únicamente si ya tienes en tus manos los repuestos de ${seller.name}. El resto del pedido sigue su curso. Esta acción no se puede deshacer.`,
       };
     }
     if (estado === 'ENTREGADO') {
@@ -472,7 +498,9 @@ export default function OrderDetailView({
         nextStatus: 'FINALIZADO',
         label: 'Finalizar compra',
         title: `¿Finalizar tu compra a ${seller.name}?`,
-        message: `Se cierra definitivamente lo de ${seller.name} y se habilita su pago. Las otras tiendas del pedido no se ven afectadas.`,
+        message: unicaTienda
+          ? 'Se cierra definitivamente la compra y se habilita el pago a la tienda. Tu plazo de retracto sigue corriendo.'
+          : `Se cierra definitivamente lo de ${seller.name} y se habilita su pago. Las otras tiendas del pedido no se ven afectadas.`,
       };
     }
     return null;
@@ -495,6 +523,9 @@ export default function OrderDetailView({
   // La explicacion esta escrita para el comprador ("si pagaste, el reembolso...").
   // Al vendedor le basta la etiqueta: el motivo lo declaro el.
   const cancellationHint = cancellationReason && mode !== 'seller' ? cancellationReasonHint(order) : null;
+  // O56 (pruebas de lanzamiento, 25-sep): en que va la devolucion por Flow. Solo al comprador:
+  // es el quien tiene que aceptar el correo de Flow. Cubre cancelaciones y mediaciones.
+  const buyerRefund = !isSeller ? buyerRefundInfo(order) : null;
 
   const orderIdShort = orderDisplayCode(order, isSeller ? 'seller' : 'buyer');
   const items = order.items || [];
@@ -581,8 +612,10 @@ export default function OrderDetailView({
   const timelineIndex = tracksSlowestStore
     ? Math.min(...activeTimelineStatuses.map(getTimelineIndex))
     : getTimelineIndex(normStatus);
-  const visibleTimelineStep = TIMELINE_STEPS.find((step) => step.key === selectedTimelineStep)
-    || TIMELINE_STEPS[timelineIndex];
+  // O60: con retiro en tienda el paso ENVIADO se llama y se explica como retiro.
+  const timelineSteps = timelineStepsFor(isStorePickup, isSeller);
+  const visibleTimelineStep = timelineSteps.find((step) => step.key === selectedTimelineStep)
+    || timelineSteps[timelineIndex];
   const VisibleTimelineIcon = visibleTimelineStep.icon;
 
   const controlledAction = getControlledOrderAction(order, mode);
@@ -599,17 +632,37 @@ export default function OrderDetailView({
   // Una vez FINALIZADO el plazo para reclamar ya venció: el pedido se cerró y se le pagó al
   // vendedor. Es lo que anuncia `storeAutoCloseNotice` mientras está ENTREGADO ("Después del
   // cierre ya no podrás abrir un reclamo"). Aquí se corta el acceso y se explica el motivo.
+  //
+  // H27 (pruebas de lanzamiento, 25-sep, decision del usuario tras revisar el SERNAC): el cierre
+  // automatico (3 dias) no termina los derechos del comprador. Retracto: 10 dias corridos desde
+  // la recepcion (Ley 19.496 art. 3 bis b), sin usar y en su embalaje. Garantia legal: 6 meses
+  // desde la recepcion por fallas (art. 21). Por eso el reclamo sigue abierto en FINALIZADO
+  // hasta los 6 meses, y el motivo "me arrepenti" (retracto) solo dentro de los 10 dias.
   const CLAIM_CLOSED_STATES = ['FINALIZADO', 'FINISHED'];
+  const fechaEntrega = (() => {
+    const fechas = [order.entregadoAt, ...(order.subordenes || []).map((s) => s?.entregadoAt)]
+      .map((f) => (f ? new Date(f).getTime() : NaN))
+      .filter((t) => Number.isFinite(t));
+    return fechas.length ? Math.max(...fechas) : null;
+  })();
+  const diasDesdeEntrega = fechaEntrega ? (Date.now() - fechaEntrega) / 86400000 : null;
+  const dentroDeRetracto = diasDesdeEntrega == null || diasDesdeEntrega <= 10;
+  const dentroDeGarantia = diasDesdeEntrega == null
+    || Date.now() <= new Date(fechaEntrega).setMonth(new Date(fechaEntrega).getMonth() + 6);
   const hasOpenClaim = Boolean(order.motivoReclamo || order.claimReason || order.descripcionReclamo);
   const claimWindowClosed = !isSeller
     && Boolean(onCreateClaim)
     && !hasOpenClaim
-    && CLAIM_CLOSED_STATES.includes(normStatus);
+    && CLAIM_CLOSED_STATES.includes(normStatus)
+    && !dentroDeGarantia;
+  // Sin pagar no hay nada que reclamar: se reintenta el pago o se cancela (decision del usuario).
   const canOpenClaim = !isSeller
     && Boolean(onCreateClaim)
-    && !['CANCELADO', 'EN_MEDIACION', 'MEDIATION', ...CLAIM_CLOSED_STATES].includes(normStatus)
+    && !['CANCELADO', 'EN_MEDIACION', 'MEDIATION', 'PENDIENTE'].includes(normStatus)
+    && !(CLAIM_CLOSED_STATES.includes(normStatus) && !dentroDeGarantia)
     && !hasOpenClaim;
-  const claimReasons = buyerClaimReasons(normStatus, isStorePickup);
+  const claimReasons = buyerClaimReasons(normStatus, isStorePickup)
+    .filter(([, code]) => dentroDeRetracto || code !== 'buyer_remorse');
   const claimFinalReason = claimReasonCode === 'other' ? claimCustomReason.trim() : claimReasonCode;
   const canSubmitClaim = Boolean(claimFinalReason)
     && claimDetail.trim().length > 0
@@ -1101,7 +1154,13 @@ export default function OrderDetailView({
                 <ExternalLink size={13} />
               </button>
             ) : (
-              <OrderStatusBadge status={rawStatus} size="medium" mediationStatus={mediationStatus} />
+              // O60 (pruebas de lanzamiento, 25-sep): en retiro, ENVIADO es "Listo para retirar",
+              // igual que la pildora de la tarjeta del listado y la del bloque de la tienda.
+              <OrderStatusBadge
+                status={normStatus === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : rawStatus}
+                size="medium"
+                mediationStatus={mediationStatus}
+              />
             )}
             </div>
             {!isPage && (
@@ -1124,9 +1183,9 @@ export default function OrderDetailView({
             )}
             <div
               className="order-timeline-steps"
-              style={{ '--timeline-completion': (timelineIndex / (TIMELINE_STEPS.length - 1)) * 100 }}
+              style={{ '--timeline-completion': (timelineIndex / (timelineSteps.length - 1)) * 100 }}
             >
-              {TIMELINE_STEPS.map((step, idx) => {
+              {timelineSteps.map((step, idx) => {
                 const StepIcon = step.icon;
                 const isPast = idx < timelineIndex;
                 const isCurrent = idx === timelineIndex;
@@ -1646,6 +1705,15 @@ export default function OrderDetailView({
           </div>
         )}
 
+        {/* O56/O57 (pruebas de lanzamiento, 25-sep): estado de la devolucion por Flow. Mientras
+            esta solicitada, el comprador tiene que aceptar el correo de Flow o no le llega. */}
+        {buyerRefund && (
+          <div className={`order-refund-status-block is-${buyerRefund.tone}`} role="status">
+            <strong>{buyerRefund.title}</strong>
+            <span>{buyerRefund.detail}</span>
+          </div>
+        )}
+
         {statusError && (
           <div className="auth-alert alert-error" style={{ margin: '0 24px 12px' }}>
             <AlertTriangle size={16} />
@@ -1852,6 +1920,29 @@ export default function OrderDetailView({
             >
               <Star size={16} />
               <span>Calificar Compra</span>
+            </button>
+          )}
+
+          {/* H27 (pruebas de lanzamiento, 25-sep): la entrada al reclamo. El disparador se habia
+              quitado y el modal quedo sin nadie que lo abriera, mientras el aviso de retracto
+              sigue diciendo "puedes devolverlo desde el botón de reclamo". El reclamo es del
+              PEDIDO (`crearReclamo` no recibe tienda), asi que va al pie y no en cada bloque.
+              `canOpenClaim` conserva las reglas: no en FINALIZADO, EN_MEDIACION, CANCELADO ni
+              con un reclamo ya abierto. */}
+          {canOpenClaim && (
+            <button
+              type="button"
+              className="btn-auth-secondary order-claim-trigger"
+              onClick={() => {
+                setClaimReasonCode('');
+                setClaimCustomReason('');
+                setClaimDetail('');
+                setClaimError('');
+                setShowClaimModal(true);
+              }}
+            >
+              <ShieldAlert size={16} />
+              <span>¿Tienes un problema? Iniciar reclamo</span>
             </button>
           )}
 
@@ -2380,9 +2471,13 @@ export default function OrderDetailView({
         <ConfirmDialog
           isOpen={Boolean(storeToCancel)}
           title={showSubOrders ? `¿Cancelar tu compra a ${storeToCancel?.name || 'esta tienda'}?` : '¿Cancelar este pedido?'}
-          message={showSubOrders
+          message={(showSubOrders
             ? `Se cancelan solo los repuestos de ${storeToCancel?.name || 'esta tienda'} y se te devuelve lo que pagaste por ellos${isStorePickup ? '' : ', incluido su envío'}. El resto del pedido sigue su curso. No se puede deshacer.`
-            : 'Las unidades vuelven al stock y se te devuelve lo que pagaste. Esta acción no se puede deshacer; si aún quieres el repuesto tendrás que comprarlo de nuevo.'}
+            : 'Las unidades vuelven al stock y se te devuelve lo que pagaste. Esta acción no se puede deshacer; si aún quieres el repuesto tendrás que comprarlo de nuevo.')
+            // O57 (pruebas de lanzamiento, 25-sep): la devolucion por Flow exige que el comprador
+            // acepte el correo de Flow. Sin pago (PENDIENTE) no hay nada que devolver.
+            + (String(storeToCancel?.subOrder?.estado || normStatus || '').toUpperCase() !== 'PENDIENTE'
+              ? ` ${FLOW_REFUND_NOTICE}` : '')}
           confirmLabel="Sí, cancelar"
           cancelLabel="No, mantenerla"
           isBusy={isCancellingStore}

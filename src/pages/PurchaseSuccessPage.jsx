@@ -81,6 +81,36 @@ export default function PurchaseSuccessPage() {
   const orderStatus = order ? normalizeOrderStatus(order) : null;
   const isPendingPayment = orderStatus === 'PENDIENTE';
   const isCancelled = orderStatus === 'CANCELADO';
+  const pendingOrderId = isPendingPayment ? order?.id : null;
+
+  // O51 (pruebas de lanzamiento, 25-sep): al volver de Flow el webhook suele llegar unos
+  // segundos despues, y la pagina se quedaba en "Pago pendiente" hasta recargar. Mientras el
+  // pedido siga PENDIENTE se reconsulta cada 3 s, hasta 10 veces (~30 s). Va antes de los
+  // return tempranos para no romper el orden de los hooks.
+  useEffect(() => {
+    if (!effectiveUserId || isFailure || !pendingOrderId) return undefined;
+    let active = true;
+    let intentos = 0;
+    let enCurso = false;
+    const intervalo = setInterval(() => {
+      if (enCurso) return;
+      intentos += 1;
+      if (intentos > 10) {
+        clearInterval(intervalo);
+        return;
+      }
+      enCurso = true;
+      confirmOrderPaymentApi(effectiveUserId, pendingOrderId)
+        .catch(() => getBuyerOrderByIdApi(effectiveUserId, pendingOrderId))
+        .then((data) => { if (active && data) setFetchedOrder(data); })
+        .catch(() => {})
+        .finally(() => { enCurso = false; });
+    }, 3000);
+    return () => {
+      active = false;
+      clearInterval(intervalo);
+    };
+  }, [pendingOrderId, effectiveUserId, isFailure]);
 
   if (isFailure) {
     return (
@@ -203,7 +233,8 @@ export default function PurchaseSuccessPage() {
         <div className="purchase-journey">
           <div className="purchase-journey-header">
             <span className="purchase-journey-badge">
-              <Truck size={15} /> Tu pedido va viajando a su destino
+              {/* O52 (pruebas de lanzamiento, 25-sep): con retiro en tienda el pedido no viaja. */}
+              <Truck size={15} /> {isPickup ? 'Tu pedido se está preparando para retiro' : 'Tu pedido va viajando a su destino'}
             </span>
             <span className="purchase-journey-destination">
               <MapPin size={13} /> {isPickup ? 'Retiro en tienda' : (address || 'Despacho a domicilio')}
@@ -216,7 +247,10 @@ export default function PurchaseSuccessPage() {
             <img className="journey-truck" src={deliveryTruck} alt="" />
           </div>
           <p className="purchase-journey-note">
-            La tienda ya fue notificada y está preparando tu pedido. Te avisamos cuando esté en viaje.
+            {/* O52: el aviso de retiro no habla de viaje. */}
+            {isPickup
+              ? 'La tienda ya fue notificada y está preparando tu pedido. Te avisaremos cuando esté listo para retirar.'
+              : 'La tienda ya fue notificada y está preparando tu pedido. Te avisamos cuando esté en viaje.'}
           </p>
         </div>
         )}

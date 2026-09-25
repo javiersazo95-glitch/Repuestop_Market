@@ -423,6 +423,10 @@ export default function OrderCard({
                   ? `Se anularon ${formatCLP(refundAmount)} de este pedido.`
                   : `Se te devuelven ${formatCLP(refundAmount)} por los productos cancelados.`}</span>
               )}
+              {/* O57 (pruebas de lanzamiento, 25-sep): sin aceptar el correo de Flow la plata no vuelve. */}
+              {!isSeller && String(order.refundStatus).toUpperCase() === 'REEMBOLSO_SOLICITADO' && (
+                <span>Acepta el correo de Flow (info@flow.cl) antes de la fecha límite para recibirla.</span>
+              )}
             </div>
           </div>
         )}
