@@ -7,8 +7,8 @@ import {
 import { Link } from 'react-router-dom';
 import { resolveMediaUrl } from '../services/api';
 import { isCancelledItem, orderDeliverySummary, orderDisplayCode } from '../data/orderIdentity';
-import { buyerClaimState, getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
-import { buyerCaseChatPath } from '../routes/paths';
+import { buyerClaimState, getControlledOrderAction, isStorePickupOrder, orderPaymentWindow, sellerClaimState } from '../data/orderStatusFlow';
+import { buyerCaseChatPath, sellerCaseChatPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
 import SellerChargesBreakdownModal from './SellerChargesBreakdownModal';
@@ -172,7 +172,12 @@ export default function OrderCard({
     || (storeNames.length > 1 ? `${storeNames[0]} y ${storeNames.length - 1} más` : storeNames[0])
     || 'Tienda RepuesTop';
   // O62 (pruebas de lanzamiento, 25-sep): tras reclamar, nada en "Mis pedidos" lo decia.
-  const claimState = !isSeller ? buyerClaimState(order) : null;
+  // O71 (pruebas de lanzamiento, 25-sep): la tienda tambien ve el caso de SU venta, con enlace a
+  // su chat en "Chats con compradores". Sus items ya vienen acotados a ella: de ahi sale su id.
+  const claimState = isSeller ? sellerClaimState(order) : buyerClaimState(order);
+  const claimChatPath = isSeller
+    ? sellerCaseChatPath(order.id, items.find((item) => item.proveedorId != null)?.proveedorId)
+    : buyerCaseChatPath(order.id);
 
   // Dirección real de despacho (no solo la etiqueta genérica "Despacho a domicilio"):
   // el vendedor la necesita para preparar el envío sin tener que abrir el detalle.
@@ -467,7 +472,7 @@ export default function OrderCard({
                 {claimState.title}
                 {' · '}
                 <Link
-                  to={buyerCaseChatPath(order.id)}
+                  to={claimChatPath}
                   className="order-claim-link"
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -558,7 +563,11 @@ export default function OrderCard({
             )}
             {isSeller && (
               <span className="order-withdrawal-note">
-                {normStatus === 'FINALIZADO'
+                {/* O67 (pruebas de lanzamiento, 25-sep): una venta devuelta entera no tiene nada
+                    que retirar; antes pedía finalizarla "para solicitar el retiro". */}
+                {fullyRefundedSale
+                  ? 'Venta reembolsada: sin monto por retirar'
+                  : normStatus === 'FINALIZADO'
                   ? withdrawalDate
                     ? `Retiro programado para el ${new Date(withdrawalDate).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}`
                     : 'Listo para solicitar retiro'

@@ -53,6 +53,17 @@ export function buyerCaseChatPath(orderId) {
   return `/perfil/chats_vendedor?caso=${encodeURIComponent(String(orderId ?? ''))}`;
 }
 
+/**
+ * `/perfil/chats_compradores?caso={id}&tienda={proveedorId}`: la misma conversacion vista por la
+ * TIENDA ("Chats con compradores"). `tienda` elige su chat en un pedido de varias; es el mismo
+ * formato que ya arma "Chatear con comprador". O71 (pruebas de lanzamiento, 25-sep).
+ */
+export function sellerCaseChatPath(orderId, proveedorId) {
+  const params = new URLSearchParams({ caso: String(orderId ?? '') });
+  if (proveedorId != null && proveedorId !== '') params.set('tienda', String(proveedorId));
+  return `/perfil/chats_compradores?${params.toString()}`;
+}
+
 export const PROFILE_TABS = [
   'resumen', 'pedidos', 'compras', 'favoritos', 'datos', 'consultas',
   'cotizaciones', 'mis_cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'tienda', 'tienda_datos',

@@ -355,7 +355,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   const statusTone = MEDIATION_STATUS_TONES[estado] || 'wait';
   const isClosed = chat?.chatCerrado || estado === 'RESUELTA' || estado === 'CERRADA';
   const orderReceived = ['ENTREGADO', 'RECEIVED', 'FINALIZADO', 'FINISHED'].includes(String(chat?.estadoPedido || '').toUpperCase());
-  // O63 (pruebas de lanzamiento, 25-sep), "modelo mixto": hasta 10 días hábiles desde la
+  // O63 (pruebas de lanzamiento, 25-sep), "modelo mixto": hasta 10 días corridos (O68) desde la
   // recepción se pide un mediador; después, y hasta 6 meses desde la entrega (garantía legal,
   // `garantiaHasta`), el comprador pide ayuda a soporte y RepuesTop coordina con la tienda.
   const warrantyUntil = chat?.garantiaHasta ? new Date(chat.garantiaHasta) : null;
@@ -379,8 +379,8 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   const mediatorLockedMessage = warrantyExpired
     ? 'Pasaron más de 6 meses desde la entrega: terminó la garantía legal y ya no se puede pedir un mediador ni ayuda de soporte desde este caso. Puedes seguir conversando con la otra parte.'
     : orderReceived
-    ? 'La ayuda del mediador se puede solicitar durante los 10 días hábiles posteriores a la recepción del producto. Ese plazo ya venció. Puedes seguir conversando con la otra parte.'
-    : 'La ayuda del mediador estará disponible cuando el producto sea recibido. Desde ese momento tendrás 10 días hábiles para solicitarla.';
+    ? 'La ayuda del mediador se puede solicitar durante los 10 días corridos posteriores a la recepción del producto. Ese plazo ya venció. Puedes seguir conversando con la otra parte.'
+    : 'La ayuda del mediador estará disponible cuando el producto sea recibido. Desde ese momento tendrás 10 días corridos para solicitarla.';
   // Al escalar, el backend cierra la conversacion directa (EstadoConversacion.CERRADA)
   // y rechaza mensajes nuevos con "la conversacion directa esta pausada". Se bloquea
   // el compositor acá para no dejar escribir algo que va a fallar al enviar.
@@ -798,7 +798,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
               <ResolutionDetailButton chat={chat} mode={mode} onOpen={() => setShowResolutionDetail(true)} />
               <div className="dispute-rail-card">
                 <h4><MessageSquare size={13} /> Chat con {mode === 'buyer' ? 'vendedor' : 'comprador'}</h4>
-                <p>Aquí te pones de acuerdo con {mode === 'buyer' ? 'el vendedor' : 'el comprador'}. Tras recibir el producto hay 10 días hábiles para solicitar un mediador si no llegan a una solución; después, y hasta 6 meses desde la entrega (garantía legal), {mode === 'buyer' ? 'puedes pedir ayuda a soporte de RepuesTop' : 'soporte de RepuesTop puede contactarte'}.</p>
+                <p>Aquí te pones de acuerdo con {mode === 'buyer' ? 'el vendedor' : 'el comprador'}. Tras recibir el producto hay 10 días corridos para solicitar un mediador si no llegan a una solución; después, y hasta 6 meses desde la entrega (garantía legal), {mode === 'buyer' ? 'puedes pedir ayuda a soporte de RepuesTop' : 'soporte de RepuesTop puede contactarte'}.</p>
               </div>
 
               <div className="dispute-rail-card">
@@ -826,7 +826,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
                   <ol className="dispute-mediator-steps">
                     <li><span>1</span><div>Escríbele a la otra parte y propón cómo resolverlo.</div></li>
                     <li><span>2</span><div>Adjunta fotos con el botón <b>Foto</b> si ayudan a explicar el problema.</div></li>
-                    <li><span>3</span><div>Si no hay acuerdo: durante los <b>10 días hábiles</b> siguientes a la recepción se puede solicitar ayuda de un mediador. Después, y hasta <b>6 meses</b> desde la entrega (garantía legal), {mode === 'buyer' ? 'puedes pedir ayuda a soporte de RepuesTop' : 'soporte de RepuesTop puede contactarte'} para coordinar el cambio, la reparación o la devolución, a cargo de la tienda.</div></li>
+                    <li><span>3</span><div>Si no hay acuerdo: durante los <b>10 días corridos</b> siguientes a la recepción se puede solicitar ayuda de un mediador. Después, y hasta <b>6 meses</b> desde la entrega (garantía legal), {mode === 'buyer' ? 'puedes pedir ayuda a soporte de RepuesTop' : 'soporte de RepuesTop puede contactarte'} para coordinar el cambio, la reparación o la devolución, a cargo de la tienda.</div></li>
                   </ol>
                 </div>
               )}

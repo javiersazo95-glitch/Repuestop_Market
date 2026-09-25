@@ -9,6 +9,9 @@
 // simplemente no encuentra etiqueta: por eso el fallback existe.
 export const CANCELLATION_REASON_LABELS = {
   EXPIRACION_PAGO: 'No se completó el pago a tiempo',
+  // SEC-BACKEND-077 (pruebas de lanzamiento, 25-sep): el pago llegó después del plazo y la unidad
+  // ya se había vendido; el backend pide el reembolso íntegro automáticamente.
+  PAGO_TARDIO_SIN_STOCK: 'El pago llegó después del plazo y ya no había stock',
   SIN_STOCK: 'Sin stock',
   ERROR_PRECIO: 'Error de precio',
   PRODUCTO_NO_DISPONIBLE: 'Producto no disponible',
@@ -29,6 +32,7 @@ const BUYER_FIRST_PERSON_LABELS = {
 // ahora, no solo que ocurrio. Solo se escriben las que tienen algo que agregar.
 export const CANCELLATION_REASON_HINTS = {
   EXPIRACION_PAGO: 'Venció el plazo de pago y la unidad volvió al stock. Puedes volver a comprarla.',
+  PAGO_TARDIO_SIN_STOCK: 'Tu pago llegó cuando el plazo ya había vencido y la unidad se había vendido. Te devolvemos todo lo que pagaste: te llegará un correo de Flow para aceptar la devolución.',
   SOLICITUD_DEL_COMPRADOR: 'La unidad volvió al stock. Puedes comprarla de nuevo cuando quieras.',
   SIN_STOCK: 'La tienda se quedó sin unidades. Si pagaste, el reembolso ya está en curso.',
   BLOQUEO_VENDEDOR: 'Cancelamos el pedido para protegerte. Si pagaste, el reembolso ya está en curso.',

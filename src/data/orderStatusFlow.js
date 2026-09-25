@@ -124,6 +124,37 @@ export function buyerClaimState(order) {
   return null;
 }
 
+/**
+ * O71 (pruebas de lanzamiento, 25-sep): la contraparte de `buyerClaimState` para la TIENDA, o
+ * `null` si su venta no tiene caso. Antes el vendedor solo se enteraba en "Chats con compradores".
+ *
+ * Lee `estadoCasoTienda`, que el backend calcula por tienda (PedidoResponseMapper): en un pedido
+ * de varias, cada una ve SU mediacion. Los items del vendedor ya vienen acotados a el, asi que el
+ * reembolso por veredicto que se menciona es el de su venta.
+ */
+export function sellerClaimState(order) {
+  if (!order) return null;
+  const state = String(order.estadoCasoTienda || '').toUpperCase();
+  const refundedByVerdict = (Array.isArray(order.items) ? order.items : [])
+    .some((item) => !isCancelledItem(item) && Number(item?.montoReembolsado || 0) > 0);
+
+  if (state === 'EN_MEDIACION') {
+    return { kind: 'mediation', title: 'En mediación', linkLabel: 'Ver caso' };
+  }
+  if (state === 'RESUELTA' || state === 'CERRADA') {
+    return {
+      kind: 'resolved',
+      title: 'Mediación resuelta',
+      detail: refundedByVerdict ? 'Se resolvió con reembolso al comprador.' : null,
+      linkLabel: 'Ver caso',
+    };
+  }
+  if (state === 'RECLAMO_ABIERTO') {
+    return { kind: 'open', title: 'Reclamo abierto', linkLabel: 'Ver conversación' };
+  }
+  return null;
+}
+
 export function getControlledOrderAction(order, mode) {
   const status = normalizeOrderStatus(order);
   const pickup = isStorePickupOrder(order);

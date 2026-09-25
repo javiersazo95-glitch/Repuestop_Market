@@ -64,9 +64,9 @@ function mediatorLine(chat) {
   if (chat.estadoMediacion === 'EN_MEDIACION') return { tone: 'ok', text: 'Mediador de RepuesTop revisando el caso' };
   if (CLOSED_STATES.includes(chat.estadoMediacion)) return { tone: 'done', text: 'Caso resuelto por el mediador' };
   const received = isDeliveredOrForward(chat.estadoPedido);
-  if (!received) return { tone: 'muted', text: 'Podrás solicitar un mediador al recibir el producto; desde entonces tendrás 10 días hábiles.' };
-  if (chat.mediadorDisponible) return { tone: 'ok', text: 'Puedes solicitar un mediador durante los 10 días hábiles posteriores a la recepción.' };
-  return { tone: 'muted', text: 'El plazo de 10 días hábiles desde la recepción ya venció.' };
+  if (!received) return { tone: 'muted', text: 'Podrás solicitar un mediador al recibir el producto; desde entonces tendrás 10 días corridos.' };
+  if (chat.mediadorDisponible) return { tone: 'ok', text: 'Puedes solicitar un mediador durante los 10 días corridos posteriores a la recepción.' };
+  return { tone: 'muted', text: 'El plazo de 10 días corridos desde la recepción ya venció.' };
 }
 
 /**

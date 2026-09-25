@@ -11,9 +11,9 @@ import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, isCancelledItem, orderDeliverySummary, orderDisplayCode, subOrderDeliveryLabel, subOrderDeliveryMethod } from '../data/orderIdentity';
-import { buyerClaimState, getControlledOrderAction, isStorePickupOrder, normalizeOrderStatus, orderPaymentWindow } from '../data/orderStatusFlow';
+import { buyerClaimState, getControlledOrderAction, isStorePickupOrder, normalizeOrderStatus, orderPaymentWindow, sellerClaimState } from '../data/orderStatusFlow';
 import { Link } from 'react-router-dom';
-import { buyerCaseChatPath, productPath } from '../routes/paths';
+import { buyerCaseChatPath, productPath, sellerCaseChatPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
 import SaleReceiptViewerModal from './SaleReceiptViewerModal';
@@ -532,7 +532,12 @@ export default function OrderDetailView({
   const buyerRefund = !isSeller ? buyerRefundInfo(order) : null;
   // O62 (pruebas de lanzamiento, 25-sep): el reclamo del comprador (abierto, en mediacion o
   // resuelto), con enlace a su conversacion.
-  const claimState = !isSeller ? buyerClaimState(order) : null;
+  // O71 (pruebas de lanzamiento, 25-sep): la tienda ve el caso de SU venta (`estadoCasoTienda`),
+  // con enlace a su chat en "Chats con compradores". Sus items ya vienen acotados a ella.
+  const claimState = isSeller ? sellerClaimState(order) : buyerClaimState(order);
+  const claimChatPath = isSeller
+    ? sellerCaseChatPath(order.id, sellerId ?? (order.items || []).find((item) => item.proveedorId != null)?.proveedorId)
+    : buyerCaseChatPath(order.id);
 
   const orderIdShort = orderDisplayCode(order, isSeller ? 'seller' : 'buyer');
   const items = order.items || [];
@@ -547,6 +552,8 @@ export default function OrderDetailView({
   // menos avanzado --: con una tienda entregada y otra en viaje no se podia calificar ninguna.
   const canRateStore = (block) => {
     if (isSeller || !block) return false;
+    // O69 (pruebas de lanzamiento, 25-sep): el veredicto le devolvio todo; no hay compra que calificar.
+    if (block.fullyRefundedByVerdict) return false;
     const vivos = (block.items || []).filter((item) => !isCancelledItem(item));
     if (vivos.length === 0) return false;
     if (vivos.some((item) => item.sellerRating != null || item.productRating != null)) return false;
@@ -646,7 +653,7 @@ export default function OrderDetailView({
 
   // "Hablar con la tienda": solo el comprador, y solo si el pedido no esta cancelado ni
   // finalizado. Abre el chat postventa; NO cambia el estado del pedido. El pedido pasa a
-  // "En mediación" solo si luego, durante los 10 días hábiles desde la recepción, alguna de las
+  // "En mediación" solo si luego, durante los 10 días corridos desde la recepción (O68), alguna de las
   // partes solicita un mediador desde el chat.
   //
   // Una vez FINALIZADO el plazo para reclamar ya venció: el pedido se cerró y se le pagó al
@@ -784,6 +791,13 @@ export default function OrderDetailView({
         * Number(item.cantidad ?? item.quantity ?? 1), 0);
     const refundStore = storeItems.reduce(
       (sum, item) => sum + Number(item.montoReembolsado ?? item.refundedAmount ?? 0), 0);
+    // O69 (pruebas de lanzamiento, 25-sep): un veredicto de mediacion que devolvio TODO lo de esta
+    // tienda (sus lineas siguen vivas, con `montoReembolsado` igual a su valor). Ahi ya no aplican
+    // el cierre automatico, el retracto ni la calificacion. Un reembolso PARCIAL no entra.
+    const liveRefundStore = storeItems
+      .filter((item) => !isCancelledItem(item))
+      .reduce((sum, item) => sum + Number(item.montoReembolsado ?? item.refundedAmount ?? 0), 0);
+    const fullyRefundedByVerdict = subtotalStore > 0 && liveRefundStore >= subtotalStore;
     // Al VENDEDOR el backend no le manda `subordenes` -- su respuesta esta acotada a el y esa
     // lista le pintaria la otra tienda dentro de su propia venta --, asi que sus datos se leen
     // del pedido, que para el YA viene acotado a lo suyo desde la fase 3.1: su estado, su
@@ -799,6 +813,7 @@ export default function OrderDetailView({
       isCancelledStore,
       subtotalStore,
       refundStore,
+      fullyRefundedByVerdict,
       trackingStore: subOrder?.trackingNumber || (isSeller ? order.trackingNumber : null),
       courierStore: subOrder?.courier || (isSeller ? order.courier : null),
       // Los dos relojes de ESTA tienda, con los que se anuncia lo que el backend va a hacer
@@ -1149,7 +1164,7 @@ export default function OrderDetailView({
                     onClick={() => setShowMediatorInfo((visible) => !visible)}
                   ><Info size={16} /></button>
                 </div>
-                {showMediatorInfo && <p className="order-chat-mediator-info">Puedes conversar con el vendedor en cualquier momento. La ayuda de un mediador se habilita al recibir el producto y estará disponible durante los 10 días hábiles siguientes.</p>}
+                {showMediatorInfo && <p className="order-chat-mediator-info">Puedes conversar con el vendedor en cualquier momento. La ayuda de un mediador se habilita al recibir el producto y estará disponible durante los 10 días corridos siguientes.</p>}
               </div>
             )}
             {canSellerChat && (
@@ -1202,7 +1217,7 @@ export default function OrderDetailView({
             <strong>
               <ShieldAlert size={15} /> {claimState.title}
               {' · '}
-              <Link to={buyerCaseChatPath(order.id)} className="order-claim-link">{claimState.linkLabel}</Link>
+              <Link to={claimChatPath} className="order-claim-link">{claimState.linkLabel}</Link>
             </strong>
             {claimState.detail && <span>{claimState.detail}</span>}
             {claimState.blocksFinalize && (normStatus === 'ENTREGADO'
@@ -1253,7 +1268,9 @@ export default function OrderDetailView({
             </div>
             <div id="order-timeline-tooltip" className="order-timeline-tooltip" role="tooltip">
               <VisibleTimelineIcon size={15} aria-hidden="true" />
-              <span><strong>{visibleTimelineStep.label}:</strong> {visibleTimelineStep.key === 'PENDIENTE' && normStatus === 'PENDIENTE'
+              {/* O69 (pruebas de lanzamiento, 25-sep): cancelado, el paso "Pendiente" no se rotula
+                  "Pendiente" -- decia "Pendiente: Este pedido fue cancelado." -- sino "Cancelado". */}
+              <span><strong>{visibleTimelineStep.key === 'PENDIENTE' && normStatus === 'CANCELADO' ? 'Cancelado' : visibleTimelineStep.label}:</strong> {visibleTimelineStep.key === 'PENDIENTE' && normStatus === 'PENDIENTE'
                 // El paso "Pendiente" cubre PAGADO y PENDIENTE, y "Recibimos tu pago" solo es verdad en el primero.
                 ? 'Todavía no recibimos tu pago. Retómalo antes de que venza el plazo, o el pedido se cancelará.'
                 : visibleTimelineStep.key === 'PENDIENTE' && normStatus === 'CANCELADO'
@@ -1523,7 +1540,8 @@ export default function OrderDetailView({
                           Al vendedor no se le muestra: para el, el plazo ya lo dice su boton de
                           finalizar (`sellerFinalizationAvailability`), y el aviso esta escrito
                           para quien tiene que decidir si reclama. */}
-                      {!isSeller && !block.isCancelledStore && (() => {
+                      {/* O69: con todo devuelto por el veredicto no hay cierre que anunciar. */}
+                      {!isSeller && !block.isCancelledStore && !block.fullyRefundedByVerdict && (() => {
                         const aviso = storeAutoCloseNotice({
                           estado: block.estado,
                           updatedAt: block.updatedAtStore,
@@ -1587,7 +1605,8 @@ export default function OrderDetailView({
                           Un aviso que se apagara con el cierre le diria que perdio un plazo que
                           todavia tiene, y al vendedor le dejaria la plata ausente del monto a
                           retirar sin ninguna explicacion. */}
-                      {!block.isCancelledStore && (() => {
+                      {/* O69: ni retracto ni garantia sobre una compra que el veredicto devolvio entera. */}
+                      {!block.isCancelledStore && !(block.fullyRefundedByVerdict && !isSeller) && (() => {
                         const aviso = isSeller
                           ? fundsReleaseNotice({ status: block.estado, entregadoAt: block.entregadoAtStore })
                           : retractionNotice({ status: block.estado, entregadoAt: block.entregadoAtStore });
@@ -2094,7 +2113,7 @@ export default function OrderDetailView({
                 </div>
                 <div className="order-subdialog-heading">
                   <h3>Hablar con la tienda · Pedido {orderIdShort}</h3>
-                  <span>Se abrirá un chat con la tienda para resolver el problema. Si no hay acuerdo, podrás solicitar un mediador una vez recibido el producto y durante los 10 días hábiles siguientes.</span>
+                  <span>Se abrirá un chat con la tienda para resolver el problema. Si no hay acuerdo, podrás solicitar un mediador una vez recibido el producto y durante los 10 días corridos siguientes.</span>
                 </div>
               </div>
 
