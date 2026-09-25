@@ -1291,9 +1291,10 @@ export async function sendDirectQuotationApi(quoteData) {
 }
 
 /**
- * Identificación por patente. El backend exige sesión en este endpoint porque cada
- * consulta no cacheada golpea una API externa facturada (ver SecurityConfig), así que
- * el 401 se traduce a un mensaje accionable en vez de "no autorizado".
+ * Identificación por patente. Desde el 24-sep el backend la responde también sin sesión, con topes
+ * diarios para las patentes nuevas (cada una es una consulta pagada a la API externa): superado el
+ * tope responde 429 con un mensaje ya escrito para el usuario ("usa la búsqueda manual o inicia
+ * sesión"), que se muestra tal cual. El 401 queda por compatibilidad con un backend anterior.
  */
 export async function searchVehicleByPatenteApi(patente) {
   try {
