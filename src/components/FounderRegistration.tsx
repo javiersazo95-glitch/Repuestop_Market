@@ -5,6 +5,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 // Vite la inyecta una sola vez aunque la importen las dos vistas.
 import '../styles/founder.css';
 import OpeningHoursPicker from './ads/OpeningHoursPicker';
+import AddressAutocompleteInput from './AddressAutocompleteInput';
+import { normalizarNombreGeografico } from '../services/geoLookup';
 import ShippingMethodsPicker from './ShippingMethodsPicker';
 import SpecialistBrandsManager, { type VehicleBrandOption } from './SpecialistBrandsManager';
 import { createDefaultSchedule, formatOpeningHours } from '../data/openingHours';
@@ -803,6 +805,38 @@ function RegistrationForm(p: RegFormProps) {
   const ok = (key: keyof FormState, message: string) =>
     !errors[key] && String(form[key] ?? '').trim().length > 0 ? message : undefined;
   const fuerza = fuerzaContrasena(form.password);
+
+  // Al elegir una dirección sugerida se completan región y comuna. La comuna no se
+  // puede fijar al tiro porque su lista llega recién después de cambiar la región,
+  // así que queda pendiente hasta que `p.comunas` la traiga.
+  const pendingComunaRef = useRef('');
+  const handleAddressLocation = ({ comuna, region }: { comuna?: string; region?: string }) => {
+    const objetivo = normalizarNombreGeografico(region);
+    const regionMatch = region
+      ? p.regiones.find((r) => {
+        const nombre = normalizarNombreGeografico(r.nombre);
+        return nombre === objetivo || nombre.includes(objetivo) || objetivo.includes(nombre);
+      })
+      : null;
+    if (comuna) pendingComunaRef.current = comuna;
+    if (regionMatch && String(regionMatch.id) !== String(form.regionId)) {
+      p.onRegionChange(String(regionMatch.id));
+    }
+  };
+  useEffect(() => {
+    const pendiente = pendingComunaRef.current;
+    if (!pendiente || p.comunas.length === 0) return;
+    const objetivo = normalizarNombreGeografico(pendiente);
+    const comunaMatch = p.comunas.find((c) => normalizarNombreGeografico(c.nombre) === objetivo)
+      || p.comunas.find((c) => normalizarNombreGeografico(c.nombre).includes(objetivo));
+    if (!comunaMatch) return;
+    pendingComunaRef.current = '';
+    update('comunaId', String(comunaMatch.id));
+  }, [p.comunas, update]);
+
+  const regionNombre = p.regiones.find((r) => String(r.id) === String(form.regionId))?.nombre;
+  const comunaNombre = p.comunas.find((c) => String(c.id) === String(form.comunaId))?.nombre;
+
   return (
     <div className="founder-reg-card">
       <div className="founder-reg-head">
@@ -931,9 +965,18 @@ function RegistrationForm(p: RegFormProps) {
         </Field>
 
         <Field label="Dirección" required error={errors.address} success={ok('address', 'Dirección ingresada')}>
-          <input value={form.address} placeholder="Av. Principal 123" maxLength={160}
-            onChange={(e) => update('address', e.target.value)}
-            onBlur={() => touch('address')} />
+          <AddressAutocompleteInput
+            id="founder-address"
+            value={form.address}
+            onChange={(valor: string) => update('address', valor)}
+            onBlur={() => touch('address')}
+            onSelectLocation={handleAddressLocation}
+            comuna={comunaNombre}
+            region={regionNombre}
+            placeholder="Av. Principal 123"
+            maxLength={160}
+            required
+          />
         </Field>
         <Field label="Código postal" hint="Opcional">
           <input value={form.codigoPostal} placeholder="Opcional"

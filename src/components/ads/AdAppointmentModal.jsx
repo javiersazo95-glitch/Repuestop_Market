@@ -5,6 +5,7 @@ import {
   Loader2, LogIn, Clock, Phone, Mail
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import { useAdOwnership } from './useAdOwnership';
 import {
   normalizeAgendaConfig, getUpcomingAgendaDates, getAgendaSlotsForDate,
@@ -47,6 +48,8 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isR
   const [vehiclePatent, setVehiclePatent] = useState('');
   const [vehicleModel, setVehicleModel] = useState('');
   const [notes, setNotes] = useState('');
+  // Solo hace falta si el taller va donde está el vehículo (igual que en la app).
+  const [serviceAddress, setServiceAddress] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [confirmedAppointment, setConfirmedAppointment] = useState(null);
@@ -188,7 +191,11 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isR
         customerEmail: user?.email || '',
         vehiclePatent: vehiclePatent.trim(),
         vehicleModel: vehicleModel.trim(),
-        notes: notes.trim()
+        // Misma convención que la app móvil: la dirección viaja dentro de las
+        // notas para no tocar el DTO del agendamiento.
+        notes: [notes.trim(), serviceAddress.trim() ? `Dirección del servicio: ${serviceAddress.trim()}` : '']
+          .filter(Boolean)
+          .join('\n')
       });
 
       setConfirmedAppointment(appointment);
@@ -416,6 +423,18 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isR
                       placeholder="Ej: Toyota RAV4 2021"
                       value={vehicleModel}
                       onChange={(e) => setVehicleModel(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="booking-field col-span-2">
+                    <label><MapPin size={12} /> Dirección del servicio (si es a domicilio)</label>
+                    <AddressAutocompleteInput
+                      value={serviceAddress}
+                      onChange={setServiceAddress}
+                      comuna={adOrCompany?.commune}
+                      region={adOrCompany?.region}
+                      placeholder="Calle y número donde está el vehículo"
+                      maxLength={200}
                     />
                   </div>
 

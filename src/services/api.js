@@ -814,9 +814,12 @@ export async function setDefaultAddressApi(usuarioId, direccionId, options = {})
 }
 
 /**
- * Sugerencias de direccion para autocompletar (Photon / OpenStreetMap por detras,
- * cacheado en el backend). Endpoint publico: tambien sirve sin sesion iniciada.
- * Devuelve `{ direccion, comuna, region, latitud, longitud }`.
+ * Sugerencias de direccion para autocompletar. Por detras el backend busca en su
+ * catastro de direcciones (datos INE, con numeros de casa reales) y cae a TomTom y
+ * OpenStreetMap; cacheado en el backend. Endpoint publico: tambien sirve sin sesion.
+ * Devuelve `{ direccion, comuna, region, latitud, longitud, numeroVerificado, fuente }`.
+ * `numeroVerificado === false` significa que la calle existe pero ese numero no esta
+ * en el catastro: se conserva lo escrito y conviene avisarlo.
  */
 export async function getDireccionSugerenciasApi(texto, { comuna, region, signal } = {}) {
   const params = new URLSearchParams({ texto });

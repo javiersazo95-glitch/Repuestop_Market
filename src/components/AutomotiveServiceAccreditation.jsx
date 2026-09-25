@@ -6,6 +6,8 @@ import {
   updateAutomotiveServiceLogoApi, resolveMediaUrl,
 } from '../services/api';
 import { uploadAdImages } from '../services/adsStorage';
+import AddressAutocompleteInput from './AddressAutocompleteInput';
+import { normalizarNombreGeografico } from '../services/geoLookup';
 import { formatRut, isValidRut } from '../services/adapters';
 import { validateUpload, FILE_LIMITS } from '../utils/fileValidation';
 
@@ -148,6 +150,34 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
   const handleChange = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
   const handleRegionChange = (regionId) => setForm((current) => ({ ...current, regionId, comunaId: '' }));
+
+  // Al elegir una dirección sugerida se completan región y comuna. La comuna queda
+  // pendiente hasta que cargue la lista de la región elegida.
+  const pendingComunaRef = useRef('');
+  const handleAddressLocation = ({ comuna, region }) => {
+    const objetivo = normalizarNombreGeografico(region);
+    const regionMatch = region
+      ? regiones.find((r) => {
+        const nombre = normalizarNombreGeografico(r.nombre);
+        return nombre === objetivo || nombre.includes(objetivo) || objetivo.includes(nombre);
+      })
+      : null;
+    if (comuna) pendingComunaRef.current = comuna;
+    if (regionMatch && String(regionMatch.id) !== String(form.regionId)) handleRegionChange(String(regionMatch.id));
+  };
+  useEffect(() => {
+    const pendiente = pendingComunaRef.current;
+    if (!pendiente || comunas.length === 0) return;
+    const objetivo = normalizarNombreGeografico(pendiente);
+    const comunaMatch = comunas.find((c) => normalizarNombreGeografico(c.nombre) === objetivo)
+      || comunas.find((c) => normalizarNombreGeografico(c.nombre).includes(objetivo));
+    if (!comunaMatch) return;
+    pendingComunaRef.current = '';
+    setForm((current) => ({ ...current, comunaId: String(comunaMatch.id) }));
+  }, [comunas]);
+
+  const regionNombre = regiones.find((r) => String(r.id) === String(form.regionId))?.nombre;
+  const comunaNombre = comunas.find((c) => String(c.id) === String(form.comunaId))?.nombre;
 
   // Acepta PDF o imagen, con tope de 10 MB. Antes no comprobaba nada y el archivo se
   // adjuntaba tal cual, de modo que el fallo por tamano aparecia recien al enviar todo
@@ -370,10 +400,12 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
 
           <div className="form-group">
             <label>Dirección (opcional)</label>
-            <input
-              type="text"
+            <AddressAutocompleteInput
               value={form.direccion}
-              onChange={(e) => handleChange('direccion', e.target.value)}
+              onChange={(valor) => handleChange('direccion', valor)}
+              onSelectLocation={handleAddressLocation}
+              comuna={comunaNombre}
+              region={regionNombre}
               placeholder="Av. Italia 1234"
             />
           </div>
