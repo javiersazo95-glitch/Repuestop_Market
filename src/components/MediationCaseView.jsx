@@ -371,6 +371,11 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   const warrantyTicketPath = warrantyTicketId != null
     ? `${profilePath('consultas')}?ticket=${encodeURIComponent(String(warrantyTicketId))}`
     : null;
+  // O63b (pruebas de lanzamiento, 25-sep): el caso cerrado también ofrece soporte por garantía
+  // legal (o el ticket ya abierto) mientras esté vigente; el backend lo permite y decide
+  // `soporteGarantiaDisponible`.
+  const showClosedCaseWarranty = isClosed && mode === 'buyer' && !warrantyExpired
+    && (Boolean(warrantyTicketPath) || canRequestWarrantySupport);
   const mediatorLockedMessage = warrantyExpired
     ? 'Pasaron más de 6 meses desde la entrega: terminó la garantía legal y ya no se puede pedir un mediador ni ayuda de soporte desde este caso. Puedes seguir conversando con la otra parte.'
     : orderReceived
@@ -610,6 +615,20 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
     }
   };
 
+  // O63: botón del comprador para soporte por garantía legal, o el ticket que ya abrió. Lo usan la
+  // barra de acciones del chat abierto y, desde O63b, el caso cerrado.
+  const warrantyAction = warrantyTicketPath ? (
+    <button type="button" onClick={() => navigate(warrantyTicketPath)}>
+      <span className="dispute-chat-action-icon is-resolve"><Headphones size={16} /></span>
+      <span>Soporte ya está revisando tu caso · Ver ticket</span>
+    </button>
+  ) : (
+    <button type="button" onClick={openWarrantyDialog}>
+      <span className="dispute-chat-action-icon is-help"><Headphones size={16} /></span>
+      <span>Pedir ayuda a soporte (garantía legal)</span>
+    </button>
+  );
+
   if (loading) {
     return <div className="dispute-file-loading"><Loader2 size={20} className="spin-icon" /> Abriendo expediente...</div>;
   }
@@ -737,17 +756,15 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
               </span>
               <span>Solicitar ayuda de un mediador</span>
             </button>
-          ) : warrantyTicketPath ? (
-            <button type="button" onClick={() => navigate(warrantyTicketPath)}>
-              <span className="dispute-chat-action-icon is-resolve"><Headphones size={16} /></span>
-              <span>Soporte ya está revisando tu caso · Ver ticket</span>
-            </button>
-          ) : (
-            <button type="button" onClick={openWarrantyDialog}>
-              <span className="dispute-chat-action-icon is-help"><Headphones size={16} /></span>
-              <span>Pedir ayuda a soporte (garantía legal)</span>
-            </button>
-          )}
+          ) : warrantyAction}
+        </div>
+      )}
+      {/* O63b (pruebas de lanzamiento, 25-sep): en un caso cerrado la barra de arriba no se muestra,
+          pero la garantía legal se puede volver a ejercer si la falla persiste o aparece otra. Solo
+          el botón de soporte (o el ticket abierto) y su diálogo; el chat sigue cerrado. */}
+      {showClosedCaseWarranty && (
+        <div className="dispute-chat-actions">
+          {warrantyAction}
         </div>
       )}
       {showMediatorLockedInfo && (
