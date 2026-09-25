@@ -69,8 +69,11 @@ export default function SocialProofTestimonials() {
 
   const stepSize = () => {
     const el = trackRef.current;
-    const card = el?.querySelector('.tst-card');
-    return card ? card.offsetWidth + 18 : (el?.clientWidth ?? 0) * 0.8;
+    if (!el) return 0;
+    const card = el.querySelector('.tst-card');
+    if (!card) return el.clientWidth * 0.8;
+    const gap = parseFloat(window.getComputedStyle(el).gap) || 18;
+    return card.offsetWidth + gap;
   };
 
   const syncTrack = useCallback(() => {
@@ -78,7 +81,8 @@ export default function SocialProofTestimonials() {
     if (!el) return;
     const max = el.scrollWidth - el.clientWidth;
     const card = el.querySelector('.tst-card');
-    const step = card ? card.offsetWidth + 18 : el.clientWidth;
+    const gap = parseFloat(window.getComputedStyle(el).gap) || 18;
+    const step = card ? card.offsetWidth + gap : el.clientWidth;
     setScrollable(max > 4);
     setCanPrev(el.scrollLeft > 4);
     setCanNext(el.scrollLeft < max - 4);
@@ -218,7 +222,7 @@ export default function SocialProofTestimonials() {
                       </span>
                     </div>
 
-                    <p className="tst-text">“{rev.comentario}”</p>
+                    <p className="tst-text" title={rev.comentario}>“{rev.comentario}”</p>
 
                     <footer className="tst-card-foot">
                       <button

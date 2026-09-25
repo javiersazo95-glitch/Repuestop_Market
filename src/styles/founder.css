@@ -766,3 +766,15 @@
 .repuestop-about-page .founder-legal-body { overflow-y: auto; padding: 20px 22px 26px; }
 .repuestop-about-page .founder-legal-body p { color: #3a4a5a; font-size: .84rem; line-height: 1.6; margin: 0 0 14px; white-space: pre-line; }
 .repuestop-about-page .founder-legal-body p:last-child { margin-bottom: 0; }
+
+@media (max-width: 560px) {
+  .repuestop-about-page .founder-reg-shell,
+  .repuestop-about-page .founder-reg-main,
+  .repuestop-about-page .founder-reg-card,
+  .repuestop-about-page .founder-reg-method-grid,
+  .repuestop-about-page .founder-reg-method-card { min-width: 0; max-width: 100%; }
+  .repuestop-about-page .founder-reg-card { padding: 18px 14px; }
+  .repuestop-about-page .founder-reg-method-grid { grid-template-columns: minmax(0, 1fr); }
+  .repuestop-about-page .founder-reg-method-card { padding: 18px 14px; }
+  .repuestop-about-page .founder-reg-google-btn { width: 100%; min-width: 0; overflow: hidden; }
+}

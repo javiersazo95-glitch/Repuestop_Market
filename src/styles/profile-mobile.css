@@ -1,0 +1,928 @@
+/* ===========================================================================
+   INTRANET (/perfil) EN CELULARES — comprador y proveedor
+   ---------------------------------------------------------------------------
+   Rediseño de la distribución para <=768px. Solo layout: conserva colores,
+   marca y el 100% de las funcionalidades; no hay reglas fuera del media query
+   que afecten al escritorio. Se importa DESPUES de index.css (main.jsx) para
+   que sus reglas ganen a las de escritorio de igual especificidad.
+
+   Estructura movil:
+     1. App bar sticky (titulo de la seccion, wallet, notificaciones).
+     2. Hero compacto solo en Resumen (portada + avatar + nombre + chips + CTA).
+     3. Contenido a una columna con tarjetas.
+     4. Barra inferior fija (4 accesos del rol + "Mas") y hoja deslizante con
+        todas las secciones.
+   ========================================================================== */
+
+/* Los elementos exclusivos de movil no existen en escritorio. */
+@media (min-width: 769px) {
+  .profile-bottom-bar,
+  .profile-sheet,
+  .profile-sheet-backdrop,
+  .profile-mobile-title { display: none !important; }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --pm-appbar-h: 56px;
+    --pm-bottombar-h: 62px;
+    --pm-gutter: 12px;
+    --pm-safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* La hoja "Mas" bloquea el scroll por clase (no por style inline) para no
+     pisar el guardado/restaurado de body.style.overflow que hacen los modales. */
+  body.profile-sheet-open { overflow: hidden; }
+
+  /* `clip` (no `hidden`): un overflow hidden/auto en el ancestro rompe el sticky
+     del topbar; clip solo recorta sin crear contenedor de scroll. */
+  .profile-dashboard {
+    overflow-x: clip;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  .profile-dashboard .profile-body,
+  .profile-dashboard .profile-main,
+  .profile-dashboard .profile-panel { min-width: 0; }
+
+  /* Sin zoom automatico de iOS al enfocar campos (<16px lo dispara). */
+  .profile-dashboard .profile-main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  .profile-dashboard .profile-main select,
+  .profile-dashboard .profile-main textarea,
+  .order-modal-container input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  .order-modal-container select,
+  .order-modal-container textarea,
+  .catalog-product-modal input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  .catalog-product-modal select,
+  .catalog-product-modal textarea,
+  .commission-modal-card textarea,
+  .delete-account-modal textarea,
+  .quote-workspace textarea,
+  .quote-workspace input:not([type="checkbox"]):not([type="radio"]) { font-size: 16px; }
+
+  /* -------------------------------------------------------------------------
+     1. APP BAR
+     ------------------------------------------------------------------------- */
+  .profile-dashboard .profile-topbar {
+    background: rgba(255, 255, 255, .96);
+    box-shadow: 0 1px 0 var(--border-subtle), 0 6px 18px rgba(15, 23, 42, .05);
+  }
+  .profile-dashboard .profile-topbar-inner {
+    min-height: var(--pm-appbar-h);
+    padding: 6px 8px;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
+  }
+  .profile-dashboard .profile-logo-group,
+  .profile-dashboard .btn-visit-my-store,
+  .profile-dashboard .profile-role-chip,
+  .profile-dashboard .btn-topbar-logout { display: none; }
+  .profile-dashboard .profile-topbar-actions { flex: 0 0 auto; gap: 0; }
+  .profile-dashboard .btn-back-to-store {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 12px;
+    background: transparent;
+    color: #10366d;
+  }
+  .profile-dashboard .btn-back-to-store:hover { transform: none; background: #f1f5f9; }
+  .profile-dashboard .btn-back-to-store span { display: none; }
+  .profile-dashboard .profile-mobile-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: block;
+    overflow: hidden;
+    color: var(--text-primary);
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -.2px;
+    line-height: 1.2;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .profile-dashboard .profile-topbar-user { flex: 0 0 auto; gap: 4px; }
+  .profile-dashboard .wallet-trigger--topbar { min-height: 40px; }
+  .profile-dashboard .profile-bell-button { width: 40px; height: 40px; }
+  /* El popover vive dentro del topbar (backdrop-filter => es su containing
+     block), asi que `fixed` se mide desde el topbar: queda justo debajo. */
+  .profile-dashboard .profile-notifications-popover {
+    position: fixed;
+    top: calc(var(--pm-appbar-h) + 4px);
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-height: calc(100vh - 150px);
+    max-height: calc(100dvh - 150px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* -------------------------------------------------------------------------
+     2. HERO COMPACTO (solo Resumen)
+     ------------------------------------------------------------------------- */
+  .profile-dashboard:not([data-active-tab="resumen"]) .facebook-cover-hero-container { display: none; }
+
+  .profile-dashboard .facebook-cover-hero-container {
+    height: auto;
+    overflow: hidden;
+    background: linear-gradient(160deg, #0f172a 0%, #1e293b 100%);
+  }
+  .buyer-profile-dashboard .facebook-cover-hero-container {
+    background: linear-gradient(160deg, #0052cc 0%, #0066ff 62%, #1d8cf6 100%);
+  }
+  .profile-dashboard .facebook-cover-banner { height: 128px; }
+  .profile-dashboard .facebook-cover-banner::before {
+    background: linear-gradient(180deg, rgba(5, 21, 42, .08) 0%, rgba(5, 21, 42, .55) 100%);
+  }
+  .profile-dashboard .btn-change-cover-photo {
+    top: 10px;
+    right: 10px;
+    bottom: auto;
+    left: auto;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .profile-dashboard .btn-change-cover-photo span { display: none; }
+
+  .profile-dashboard .facebook-hero-bar {
+    position: relative;
+    inset: auto;
+    max-width: none;
+    margin: -34px 0 0;
+    padding: 0 16px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .profile-dashboard .facebook-avatar-wrapper { position: relative; margin: 0; }
+  .profile-dashboard .facebook-avatar-circle {
+    width: 72px;
+    height: 72px;
+    border-width: 3px;
+    font-size: 22px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, .28);
+  }
+  .buyer-profile-dashboard .btn-change-avatar-camera { width: 28px; height: 28px; right: -2px; bottom: -2px; }
+  .profile-dashboard .facebook-hero-info { width: 100%; padding: 0; gap: 4px; }
+  .profile-dashboard .facebook-hero-title-row { flex-wrap: wrap; gap: 6px 8px; }
+  .profile-dashboard .facebook-hero-name {
+    font-size: 20px;
+    line-height: 1.2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .profile-dashboard .facebook-hero-email { font-size: 12px; margin: 0; overflow-wrap: anywhere; }
+  .profile-dashboard .profile-hero-tags { gap: 6px; margin-top: 4px; }
+  .profile-dashboard .hero-tag { font-size: 10.5px; padding: 4px 9px; }
+  .profile-dashboard .store-status-chip { font-size: 10.5px; }
+  /* index.css los esconde a <=640px; en movil vuelven, a ancho completo. */
+  .profile-dashboard .founder-tag-contrast { display: inline-flex; }
+  .profile-dashboard .btn-withdraw-money-hero,
+  .profile-dashboard .btn-hero-cta {
+    display: inline-flex;
+    width: 100%;
+    min-height: 46px;
+    margin: 4px 0 0;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 800;
+  }
+  .buyer-profile-dashboard .btn-hero-cta { color: #0052cc; background: #fff; box-shadow: 0 8px 18px rgba(0, 30, 80, .22); }
+  .buyer-profile-dashboard .btn-hero-cta:hover { background: #eef5ff; }
+
+  /* -------------------------------------------------------------------------
+     3. CUERPO: una columna, sin sidebar
+     ------------------------------------------------------------------------- */
+  .profile-dashboard .profile-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    margin: 0;
+    padding: var(--pm-gutter) var(--pm-gutter) calc(var(--pm-bottombar-h) + 28px + var(--pm-safe-bottom));
+  }
+  .profile-dashboard .profile-sidebar { display: none; }
+  /* Columna explicita: con `auto` la pista crece al ancho intrinseco de un input
+     o un select y el panel entero desborda la pantalla. */
+  .profile-dashboard .profile-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .profile-dashboard .profile-main > * { min-width: 0; max-width: 100%; }
+  .profile-dashboard .seller-orders-screen,
+  .profile-dashboard .seller-orders-tools,
+  .profile-dashboard .seller-orders-filter-panel > div,
+  .profile-dashboard .withdrawal-pending-columns,
+  .profile-dashboard .withdrawal-content-grid,
+  .profile-dashboard .seller-question-list,
+  .profile-dashboard .withdrawal-orders-modal-body { grid-template-columns: minmax(0, 1fr); }
+  .profile-dashboard .profile-main input,
+  .profile-dashboard .profile-main select,
+  .profile-dashboard .profile-main textarea { max-width: 100%; }
+
+  .profile-dashboard .profile-panel { padding: 16px 14px; border-radius: 14px; }
+  .profile-dashboard .profile-panel-clean,
+  .profile-dashboard .overview-widget-card { padding: 14px; border-radius: 14px; }
+  .profile-dashboard .profile-panel-title { font-size: 17px; }
+  .profile-dashboard .profile-panel-header-row { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .profile-dashboard .profile-panel-header-row > * { min-width: 0; max-width: 100%; }
+  /* Cabeceras cortas (titulo + un boton "Ver todo") siguen en una fila. */
+  .profile-dashboard .profile-panel-clean > .profile-panel-header-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .profile-dashboard .profile-panel-clean > .profile-panel-header-row .profile-section-title { margin-bottom: 0; }
+  .profile-dashboard .profile-panel-clean > .profile-panel-header-row + * { margin-top: 12px; }
+  .profile-dashboard .profile-section-title { font-size: 14px; margin-bottom: 12px; }
+  .profile-dashboard .auth-alert { align-items: flex-start; }
+
+  /* Banner de cuenta bloqueada: estilos inline en el JSX (min-width 280 y
+     nowrap desbordan a 320px); dos overrides acotados bastan. */
+  .profile-dashboard .seller-blocked-banner { padding: 14px !important; gap: 12px !important; }
+  .profile-dashboard .seller-blocked-banner > div { min-width: 0 !important; }
+  .profile-dashboard .seller-blocked-banner .btn-auth-primary {
+    width: 100% !important;
+    min-height: 44px;
+    justify-content: center !important;
+    white-space: normal !important;
+  }
+
+  /* -------------------------------------------------------------------------
+     4. BARRA INFERIOR
+     ------------------------------------------------------------------------- */
+  .profile-dashboard .profile-bottom-bar {
+    position: fixed;
+    z-index: 60; /* sobre el contenido y el topbar (50); bajo cualquier modal (>=1000) */
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: calc(var(--pm-bottombar-h) + var(--pm-safe-bottom));
+    padding: 0 4px var(--pm-safe-bottom);
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: stretch;
+    background: rgba(255, 255, 255, .98);
+    border-top: 1px solid var(--border-subtle);
+    box-shadow: 0 -8px 24px rgba(15, 23, 42, .07);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+  .profile-dashboard .profile-bottom-bar-item {
+    min-width: 0;
+    min-height: 44px;
+    margin: 6px 2px;
+    padding: 4px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border: 0;
+    border-radius: 12px;
+    color: #64748b;
+    background: transparent;
+    font: inherit;
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 1.1;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color .15s ease, background .15s ease;
+  }
+  .profile-dashboard .profile-bottom-bar-item svg { flex: 0 0 auto; }
+  .profile-dashboard .profile-bottom-bar-item span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .profile-dashboard .profile-bottom-bar-item.active { color: #0875eb; background: #eaf3ff; }
+  .profile-dashboard .profile-bottom-bar-item:focus-visible { outline: 2px solid #0066ff; outline-offset: -2px; }
+
+  /* Con un hilo de chat/mediacion abierto la barra estorba al compositor: se
+     esconde (y tambien mientras se escribe, para no subir con el teclado). */
+  .profile-dashboard:has(.dispute-workspace) .profile-bottom-bar,
+  .profile-dashboard:has(.dispute-composer textarea:focus) .profile-bottom-bar { display: none; }
+  .profile-dashboard:has(.dispute-workspace) .profile-body { padding-bottom: calc(16px + var(--pm-safe-bottom)); }
+
+  /* -------------------------------------------------------------------------
+     5. HOJA "MAS" (todas las secciones)
+     ------------------------------------------------------------------------- */
+  .profile-dashboard .profile-sheet-backdrop {
+    position: fixed;
+    z-index: 900;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    padding: 0;
+    background: rgba(6, 19, 41, .62);
+    cursor: default;
+    animation: pm-fade-in .18s ease-out;
+  }
+  .profile-dashboard .profile-sheet {
+    position: fixed;
+    z-index: 901;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    max-height: 86vh;
+    max-height: 86dvh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 20px 20px 0 0;
+    background: #fff;
+    box-shadow: 0 -18px 48px rgba(6, 19, 41, .28);
+    animation: pm-sheet-up .22s cubic-bezier(.16, 1, .3, 1);
+  }
+  @keyframes pm-fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes pm-sheet-up { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
+  .profile-dashboard .profile-sheet-grip {
+    width: 40px;
+    height: 4px;
+    margin: 8px auto 0;
+    border-radius: 2px;
+    background: #cbd5e1;
+    flex: 0 0 auto;
+  }
+  .profile-dashboard .profile-sheet-head {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px 12px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .profile-dashboard .profile-sheet .sidebar-mini-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+    color: #fff;
+    background: linear-gradient(135deg, #1e293b, #334155);
+    font-size: 15px;
+  }
+  .buyer-profile-dashboard .profile-sheet .sidebar-mini-avatar { background: linear-gradient(135deg, #0052cc, #0066ff); }
+  .profile-dashboard .profile-sheet-identity { min-width: 0; flex: 1 1 auto; display: grid; gap: 2px; }
+  .profile-dashboard .profile-sheet-identity strong {
+    color: var(--text-primary);
+    font-size: 14.5px;
+    font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .profile-dashboard .profile-sheet-identity span {
+    color: var(--text-muted);
+    font-size: 11.5px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+  .profile-dashboard .profile-sheet-close {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    color: #475569;
+    background: #fff;
+    cursor: pointer;
+  }
+  .profile-dashboard .profile-sheet-store-link {
+    flex: 0 0 auto;
+    margin: 12px 16px 0;
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 12px;
+    color: #fff;
+    background: #0875eb;
+    font-size: 13.5px;
+    font-weight: 800;
+    text-decoration: none;
+    box-shadow: 0 6px 14px rgba(8, 117, 235, .22);
+  }
+  .profile-dashboard .profile-sheet-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 10px calc(14px + var(--pm-safe-bottom));
+  }
+  .profile-dashboard .profile-sheet .sidebar-nav-group { margin: 0 0 6px; gap: 2px; }
+  .profile-dashboard .profile-sheet .sidebar-group-title { padding: 12px 10px 4px; font-size: 10.5px; }
+  .profile-dashboard .profile-sheet .sidebar-group-items { display: grid; gap: 2px; }
+  .profile-dashboard .profile-sheet .profile-nav-item {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 10px 10px 12px;
+    border-radius: 12px;
+    color: #1f2f46;
+    font-size: 14px;
+    font-weight: 650;
+    white-space: normal;
+    text-align: left;
+  }
+  .profile-dashboard .profile-sheet .profile-nav-item > span { flex: 1 1 auto; min-width: 0; }
+  .profile-dashboard .profile-sheet .profile-nav-item > svg:first-child { flex: 0 0 auto; color: #5b6b82; }
+  .profile-dashboard .profile-sheet .profile-nav-item.active > svg:first-child { color: #0875eb; }
+  .profile-dashboard .profile-sheet .profile-nav-item-chevron { flex: 0 0 auto; color: #a3b0c2; }
+  .profile-dashboard .profile-sheet .profile-nav-final-actions {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-subtle);
+    display: grid;
+    gap: 2px;
+  }
+  .profile-dashboard .profile-sheet .profile-nav-delete { margin: 0; padding-top: 10px; border-top: 0; color: #b42318; }
+  .profile-dashboard .profile-sheet .profile-nav-delete > svg:first-child { color: #b42318; }
+  .profile-dashboard .profile-sheet .profile-nav-logout { color: #dc2626; }
+  .profile-dashboard .profile-sheet .profile-nav-logout > svg:first-child { color: #dc2626; }
+
+  /* -------------------------------------------------------------------------
+     6. RESUMEN
+     ------------------------------------------------------------------------- */
+  .profile-dashboard .profile-overview-grid { display: flex; flex-direction: column; gap: 12px; }
+  .profile-dashboard .profile-overview-main-col,
+  .profile-dashboard .profile-overview-side-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  /* El checklist de la cuenta va primero entre los widgets de apoyo. */
+  .profile-dashboard .profile-overview-side-col .overview-widget-card:has(.onboarding-progress-bar) { order: -1; }
+
+  .profile-dashboard .profile-stats-grid-v2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .profile-dashboard .profile-stat-card-v2 { min-height: 104px; padding: 13px; border-radius: 12px; }
+  .profile-dashboard .stat-v2-icon { width: 32px; height: 32px; }
+  .profile-dashboard .stat-v2-icon svg { width: 17px; height: 17px; }
+  .profile-dashboard .stat-v2-label { font-size: 10.5px; }
+  .profile-dashboard .stat-v2-val { font-size: 21px; }
+  .profile-dashboard .stat-v2-action { font-size: 10.5px; }
+
+  .profile-dashboard .quick-actions-grid-v2 { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .profile-dashboard .quick-action-card-v2 { min-height: 60px; padding: 10px 12px; gap: 12px; }
+  .profile-dashboard .action-v2-icon { width: 38px; height: 38px; }
+  .profile-dashboard .action-v2-body strong { font-size: 13px; }
+  .profile-dashboard .action-v2-desc { font-size: 11px; }
+
+  .profile-dashboard .activity-feed-header { display: none; }
+  .profile-dashboard .activity-feed-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+    padding: 11px 12px;
+    min-height: 48px;
+  }
+  .profile-dashboard .activity-type-col strong { font-size: 12.5px; }
+  .profile-dashboard .activity-detail-col { font-size: 12px; white-space: normal; }
+  .profile-dashboard .activity-date-col { font-size: 11px; color: var(--text-muted); text-align: left; }
+
+  .profile-dashboard .widget-header-row h3 { font-size: 13px; }
+  .profile-dashboard .onboarding-step-row { min-height: 40px; font-size: 12.5px; }
+  .profile-dashboard .tips-widget-text { font-size: 12px; }
+
+  /* -------------------------------------------------------------------------
+     7. PEDIDOS RECIBIDOS / MIS PEDIDOS / MIS COMPRAS / DETALLE
+     ------------------------------------------------------------------------- */
+  .profile-dashboard .seller-orders-screen { gap: 12px; }
+  .profile-dashboard .seller-orders-page-heading { flex-wrap: wrap; gap: 8px; }
+  .profile-dashboard .seller-orders-summary { padding: 14px; border-radius: 14px; }
+  .profile-dashboard .seller-orders-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .profile-dashboard .seller-orders-summary-grid article {
+    min-height: 0;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto;
+    align-items: center;
+    justify-items: start;
+    gap: 2px 10px;
+    text-align: left;
+  }
+  .profile-dashboard .seller-orders-summary-grid article > span { grid-row: 1; width: 32px; height: 32px; }
+  .profile-dashboard .seller-orders-summary-grid article:nth-child(3) { grid-column: 1 / -1; }
+  .profile-dashboard .seller-orders-summary-grid strong { font-size: 17px; }
+  .profile-dashboard .seller-orders-summary-grid small { font-size: 10.5px; }
+
+  .profile-dashboard .seller-orders-tools { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .profile-dashboard .seller-orders-search { min-height: 46px; border-radius: 12px; }
+  .profile-dashboard .seller-orders-search input { font-size: 16px; }
+  .profile-dashboard .seller-orders-filter-trigger { min-height: 44px; width: 100%; font-size: 12.5px; }
+  .profile-dashboard .seller-orders-filter-panel { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 12px; }
+  .profile-dashboard .seller-orders-chip-group {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .profile-dashboard .seller-orders-chip-group::-webkit-scrollbar { display: none; }
+  .profile-dashboard .seller-orders-chip-group button { flex: 0 0 auto; min-height: 36px; padding: 6px 12px; font-size: 12px; }
+  .profile-dashboard .seller-orders-clear-filters { grid-column: auto; min-height: 40px; font-size: 12.5px; }
+  .profile-dashboard .seller-orders-list-heading { flex-direction: column; align-items: stretch; gap: 8px; padding-bottom: 10px; }
+  .profile-dashboard .seller-orders-list-heading label { width: 100%; }
+  .profile-dashboard .seller-orders-list-heading select { flex: 1; max-width: none; min-height: 44px; font-size: 16px; }
+  .profile-dashboard .seller-orders-empty { min-height: 200px; padding: 24px 16px; }
+
+  /* index.css usa `.profile-orders-cards-grid:not(...):not(...)` (0,3,0) con `1fr` a
+     secas, cuyo minimo es `auto`: la pista crece al contenido. Se iguala y supera. */
+  .profile-dashboard .profile-orders-cards-grid,
+  .profile-dashboard .profile-orders-cards-grid:not(.seller-catalog-grid):not(.seller-quotes-grid),
+  .profile-dashboard .seller-orders-card-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .profile-dashboard .order-card-container { min-width: 0; max-width: 100%; padding: 14px; gap: 12px; }
+  .profile-dashboard .order-card-header,
+  .profile-dashboard .order-card-person-row,
+  .profile-dashboard .order-card-info-chips,
+  .profile-dashboard .order-card-footer { flex-wrap: wrap; gap: 8px; min-width: 0; }
+  .profile-dashboard .order-card-footer .total-info { min-width: 0; max-width: 100%; }
+  .profile-dashboard .order-card-product-row { min-width: 0; }
+  .profile-dashboard .order-info-chip {
+    max-width: 100%;
+    height: auto;
+    min-height: 26px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+  }
+  .profile-dashboard .order-card-product-row .product-copy { min-width: 0; }
+  .profile-dashboard .order-card-actions { flex-wrap: wrap; gap: 8px; }
+  .profile-dashboard .order-card-actions .btn-order-action,
+  .profile-dashboard .order-card-actions .btn-auth-primary,
+  .profile-dashboard .order-card-actions .btn-auth-secondary {
+    flex: 1 1 auto;
+    min-height: 44px;
+    justify-content: center;
+  }
+  .profile-dashboard .order-card-actions .btn-view-details { min-height: 44px; }
+  .profile-dashboard .order-withdrawal-note { max-width: none; text-align: left; }
+
+  /* Detalle de pedido dentro del panel (layout="page") */
+  .profile-dashboard .order-page-container { border-radius: 14px; }
+  .profile-dashboard .order-page-container .order-modal-header { flex-wrap: wrap; gap: 10px; padding: 14px; }
+  .profile-dashboard .order-page-container .order-modal-title-group { width: 100%; align-items: flex-start; }
+  .profile-dashboard .order-page-container .order-modal-title-group h2 { font-size: 16px; line-height: 1.25; }
+  .profile-dashboard .order-page-back { width: 44px; height: 44px; border-radius: 12px; }
+  .profile-dashboard .order-page-container .order-modal-header-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .profile-dashboard .order-page-container .order-chat-header-control,
+  .profile-dashboard .order-page-container .order-chat-header-row { width: 100%; }
+  .profile-dashboard .order-page-container .order-chat-header-button { width: 100%; min-height: 44px; justify-content: center; }
+  .profile-dashboard .order-page-body { padding: 14px 12px; gap: 12px; }
+  .profile-dashboard .order-timeline-card { padding: 12px; }
+  .profile-dashboard .order-timeline-steps { overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+  .profile-dashboard .order-details-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  /* Grid y no flex-column: con flex-wrap:wrap heredado y flex-basis 100% (que en
+     columna es ALTURA) los botones se repartian en columnas fuera de pantalla. */
+  .profile-dashboard .order-page-container .order-modal-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 12px 14px 14px;
+  }
+  .profile-dashboard .order-page-container .order-modal-footer > * {
+    width: 100%;
+    margin: 0;
+    min-height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .profile-dashboard .order-page-container .order-claim-trigger { margin-right: 0; }
+
+  /* -------------------------------------------------------------------------
+     8. PRODUCTOS (catalogo publicado)
+     ------------------------------------------------------------------------- */
+  .profile-dashboard .catalog-header-actions { width: 100%; flex-direction: column; align-items: stretch; gap: 8px; }
+  .profile-dashboard .catalog-search-form { width: 100%; min-width: 0; min-height: 46px; border-radius: 12px; }
+  .profile-dashboard .catalog-add-product-button { width: 100%; min-height: 46px; justify-content: center; border-radius: 12px; }
+  .profile-dashboard .catalog-bulk-inventory-notice { align-items: flex-start; flex-wrap: wrap; padding: 12px; gap: 10px; }
+  .profile-dashboard .catalog-bulk-inventory-notice a {
+    width: 100%;
+    min-height: 42px;
+    margin-left: 0;
+    justify-content: center;
+    border: 1px solid #b9d3f2;
+    border-radius: 10px;
+  }
+  .profile-dashboard .catalog-top-info { align-items: flex-start; padding: 11px 12px; }
+  .profile-dashboard .catalog-category-filter { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+  .profile-dashboard .catalog-category-chips {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    gap: 6px;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .profile-dashboard .catalog-category-chips::-webkit-scrollbar { display: none; }
+  .profile-dashboard .catalog-category-chip { flex: 0 0 auto; min-height: 36px; }
+  .profile-dashboard .catalog-range-filter { flex-wrap: wrap; gap: 6px; }
+  .profile-dashboard .catalog-range-pill { min-width: 40px; min-height: 36px; }
+  .profile-dashboard .catalog-category-section-header { flex-wrap: wrap; gap: 4px 10px; }
+  .profile-dashboard .seller-catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .profile-dashboard .catalog-card-content { padding: 10px 10px 8px; gap: 8px; }
+  .profile-dashboard .catalog-card-content .total-amount { font-size: 16px; }
+  .profile-dashboard .catalog-card-container .order-card-actions { padding: 8px 10px 10px; gap: 6px; }
+  .profile-dashboard .catalog-card-container .order-card-actions > * { flex: 1 1 calc(50% - 6px); min-height: 40px; justify-content: center; }
+  .profile-dashboard .catalog-pagination { flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .profile-dashboard .catalog-page-indicator { flex: 1 1 100%; order: -1; text-align: center; }
+  .profile-dashboard .catalog-page-btn { flex: 1 1 40%; min-height: 44px; justify-content: center; }
+
+  /* -------------------------------------------------------------------------
+     9. COTIZACIONES / PREGUNTAS / FAVORITOS
+     ------------------------------------------------------------------------- */
+  .profile-dashboard .seller-quotes-toolbar { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .profile-dashboard .seller-quotes-search { min-height: 46px; border-radius: 12px; }
+  .profile-dashboard .seller-quotes-search input { font-size: 16px; }
+  .profile-dashboard .seller-quotes-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .profile-dashboard .seller-quotes-filters::-webkit-scrollbar { display: none; }
+  .profile-dashboard .seller-quotes-filters button { flex: 0 0 auto; min-height: 38px; }
+  .profile-dashboard .seller-quotes-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .profile-dashboard .seller-quotes-summary article { min-height: 0; padding: 10px 12px; }
+  .profile-dashboard .seller-quotes-summary article strong { font-size: 17px; }
+  .profile-dashboard .seller-quotes-heading-actions { width: 100%; }
+  .profile-dashboard .seller-quotes-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+
+  .profile-dashboard .seller-questions-toolbar { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .profile-dashboard .seller-questions-toolbar input { min-height: 44px; font-size: 16px; }
+  .profile-dashboard .seller-question-summary {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .profile-dashboard .seller-question-summary::-webkit-scrollbar { display: none; }
+  .profile-dashboard .seller-question-summary > span { flex: 0 0 auto; }
+  .profile-dashboard .seller-question-product-filter { flex-wrap: wrap; gap: 8px; }
+  .profile-dashboard .seller-question-list { padding: 10px; gap: 8px; }
+  .profile-dashboard .seller-question-item { padding: 12px; }
+  .profile-dashboard .seller-question-meta { flex-wrap: wrap; gap: 6px; }
+  .profile-dashboard .seller-question-item > strong { font-size: 13px; }
+  .profile-dashboard .seller-question-item > p { font-size: 12px; }
+
+  .profile-dashboard .favorites-hero { padding: 18px 16px; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .profile-dashboard .favorites-hero h2 { font-size: 22px; }
+  .profile-dashboard .favorites-hero p { font-size: 12.5px; }
+  .profile-dashboard .favorites-toolbar { padding: 10px 12px; flex-direction: column; align-items: stretch; gap: 8px; }
+  .profile-dashboard .favorites-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .profile-dashboard .favorites-tabs button { flex: 0 0 auto; min-height: 40px; }
+  .profile-dashboard .favorites-search { width: 100%; }
+  .profile-dashboard .favorites-search input { min-height: 44px; font-size: 16px; }
+  .profile-dashboard .favorites-section { padding: 12px; }
+  .profile-dashboard .favorites-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+  /* -------------------------------------------------------------------------
+     10. MIS DATOS / MI TIENDA Y DATOS / MI TIENDA
+     ------------------------------------------------------------------------- */
+  .profile-dashboard .store-profile-unified-grid,
+  .profile-dashboard .details-info-grid,
+  .profile-dashboard .form-grid-2 { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .profile-dashboard .details-info-row { font-size: 13.5px; gap: 2px; }
+  .profile-dashboard .info-value { overflow-wrap: anywhere; }
+  .profile-dashboard .details-card-header-row { flex-wrap: wrap; gap: 8px; }
+  .profile-dashboard .details-card-header-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+  .profile-dashboard .details-card-header-actions > * { flex: 1 1 auto; min-height: 42px; justify-content: center; }
+  .profile-dashboard .details-card-link-button { min-height: 42px; }
+  .profile-dashboard .btn-edit-profile { width: 100%; min-height: 44px; justify-content: center; }
+  .profile-dashboard .form-group input:not([type="checkbox"]):not([type="radio"]),
+  .profile-dashboard .form-group select { min-height: 46px; }
+  .profile-dashboard .profile-data-form-actions { flex-direction: column; align-items: stretch; gap: 8px; }
+  .profile-dashboard .profile-data-form-actions > * { width: 100%; min-height: 46px; justify-content: center; }
+  .profile-dashboard .shipping-methods-pills { flex-wrap: wrap; gap: 8px; }
+  .profile-dashboard .shipping-method-pill { min-height: 40px; }
+  .profile-dashboard .btn-manage-specialist-brands { width: 100%; min-height: 44px; justify-content: center; }
+  .profile-dashboard .buyer-address-list li {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 10px;
+  }
+  .profile-dashboard .buyer-address-list li > button,
+  .profile-dashboard .buyer-address-list li > a { grid-column: 2; justify-self: start; min-height: 40px; }
+  .profile-dashboard .verification-cta { width: 100%; align-self: stretch; min-height: 46px; justify-content: center; }
+  .profile-dashboard .verification-doc-list li { flex-wrap: wrap; }
+  .profile-dashboard .verification-doc-list li span { flex: 1 1 100%; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+  .profile-dashboard .store-card-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+  /* -------------------------------------------------------------------------
+     11. RETIRAR DINERO
+     ------------------------------------------------------------------------- */
+  .profile-dashboard .withdrawal-kpis-bar { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .profile-dashboard .withdrawal-kpi-card { padding: 12px 14px; }
+  .profile-dashboard .withdrawal-tabs button { min-height: 44px; font-size: 13px; }
+  .profile-dashboard .withdrawal-content-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .profile-dashboard .withdrawal-section-card { padding: 14px; }
+  .profile-dashboard .withdrawal-section-header,
+  .profile-dashboard .withdrawal-section-title-row { flex-wrap: wrap; gap: 8px; }
+  .profile-dashboard .withdrawal-info-banner { align-items: flex-start; flex-wrap: wrap; }
+  .profile-dashboard .withdrawal-info-banner > span { flex: 1 1 100%; }
+  .profile-dashboard .withdrawal-info-banner .withdrawal-bank-button { flex: 1 1 100%; width: 100%; margin: 8px 0 0; }
+  .profile-dashboard .withdrawal-bank-button,
+  .profile-dashboard .withdrawal-view-more-btn { width: 100%; min-height: 44px; justify-content: center; }
+  .profile-dashboard .withdrawal-management .btn-auth-primary { width: 100%; min-height: 46px; }
+  .profile-dashboard .withdrawal-in-progress-card { flex-wrap: wrap; }
+  .profile-dashboard .withdrawal-history-card { padding: 14px; }
+  .profile-dashboard .withdrawal-history-top,
+  .profile-dashboard .withdrawal-history-meta { flex-wrap: wrap; gap: 6px 10px; }
+  .profile-dashboard .withdrawal-order-main { min-width: 0; }
+  .withdrawal-modal { width: 100%; max-height: 94vh; max-height: 94dvh; border-radius: 18px 18px 0 0; }
+  .withdrawal-modal > header { padding: 14px; }
+  .withdrawal-modal-search input { font-size: 16px; min-height: 44px; }
+  .withdrawal-modal-footer { flex-wrap: wrap; gap: 8px; padding-bottom: calc(12px + var(--pm-safe-bottom)); }
+  .withdrawal-modal-footer .btn-auth-primary,
+  .withdrawal-modal-footer .btn-auth-secondary { width: 100%; min-height: 46px; justify-content: center; }
+
+  /* -------------------------------------------------------------------------
+     12. GESTION DE ANUNCIOS
+     ------------------------------------------------------------------------- */
+  .profile-dashboard .ads-mgmt-header { flex-direction: column; align-items: stretch; gap: 12px; }
+  .profile-dashboard .ads-mgmt-header-main { flex-direction: column; align-items: stretch; }
+  .profile-dashboard .ads-mgmt-titles-row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .profile-dashboard .ads-mgmt-titles-actions { width: 100%; padding-top: 0; }
+  .profile-dashboard .ads-mgmt-actions-row { flex-wrap: wrap; justify-content: stretch; }
+  .profile-dashboard .ads-mgmt-actions-row > * { flex: 1 1 auto; min-height: 44px; justify-content: center; }
+  .profile-dashboard .ads-mgmt-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+  .profile-dashboard .ads-mgmt-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .profile-dashboard .ads-mgmt-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .profile-dashboard .ads-mgmt-table { min-width: 640px; }
+
+  /* -------------------------------------------------------------------------
+     13. REPORTES / SOPORTE / MEDIACION y CHATS
+     ------------------------------------------------------------------------- */
+  .profile-dashboard .profile-cases-panel { grid-template-columns: minmax(0, 1fr); }
+  .profile-dashboard .profile-cases-panel > *,
+  .profile-dashboard .profile-cases-header > *,
+  .profile-dashboard .case-row > * { min-width: 0; max-width: 100%; }
+  .profile-dashboard .profile-cases-header,
+  .profile-dashboard .profile-cases-toolbar { flex-direction: column; align-items: stretch; gap: 10px; }
+  .profile-dashboard .profile-cases-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .profile-dashboard .profile-cases-pills::-webkit-scrollbar { display: none; }
+  .profile-dashboard .profile-cases-pills > button { flex: 0 0 auto; min-height: 40px; }
+  .profile-dashboard .profile-cases-toolbar,
+  .profile-dashboard .profile-cases-pills,
+  .profile-dashboard .profile-cases-filter { min-width: 0; max-width: 100%; }
+  .profile-dashboard .profile-cases-filter { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .profile-dashboard .profile-cases-filter > button { min-width: 0; min-height: 42px; padding: 0 6px; font-size: 12px; white-space: normal; }
+  .profile-dashboard .case-row { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 12px; min-height: 0; }
+  .profile-dashboard .case-row-meta { flex-wrap: wrap; gap: 6px; }
+  .profile-dashboard .case-row-action { justify-self: end; min-height: 36px; }
+
+  .profile-dashboard .dispute-workspace { border-radius: 14px; }
+  .profile-dashboard .dispute-chat-head { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+  .profile-dashboard .dispute-chat-actions { flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
+  .profile-dashboard .dispute-chat-actions > button { flex: 1 1 calc(50% - 8px); min-height: 40px; }
+  .profile-dashboard .dispute-chat-tabs { overflow-x: auto; scrollbar-width: none; }
+  .profile-dashboard .dispute-thread {
+    padding: 12px;
+    max-height: calc(100vh - 330px);
+    max-height: calc(100dvh - 330px);
+  }
+  .profile-dashboard .dispute-composer { padding: 10px 12px calc(12px + var(--pm-safe-bottom)); }
+  .profile-dashboard .dispute-composer textarea { font-size: 16px; }
+
+  .profile-dashboard .seller-chat-picker-box { padding: 12px; }
+  .profile-dashboard .seller-chat-picker-header { flex-wrap: wrap; gap: 8px; }
+  .profile-dashboard .seller-chat-picker-select { min-height: 46px; font-size: 16px; }
+  .profile-dashboard .seller-chat-preview-card { flex-wrap: wrap; gap: 12px; padding: 12px; }
+  .profile-dashboard .seller-chat-preview-info { flex: 1 1 60%; min-width: 0; }
+  .profile-dashboard .seller-chat-preview-actions { width: 100%; }
+  .profile-dashboard .seller-chat-start-button { width: 100%; min-height: 46px; justify-content: center; }
+  .profile-dashboard .case-row.seller-chat-row { grid-template-columns: 44px minmax(0, 1fr); align-items: start; }
+  .profile-dashboard .case-row.seller-chat-row .case-row-meta,
+  .profile-dashboard .case-row.seller-chat-row .case-row-action { grid-column: 2; }
+  .profile-dashboard .seller-chat-thumb { width: 44px; height: 44px; }
+
+  /* -------------------------------------------------------------------------
+     14. FEEDBACK
+     ------------------------------------------------------------------------- */
+  .profile-dashboard .profile-feedback-tabs button { min-height: 44px; }
+  .profile-dashboard .profile-feedback-form { padding: 14px; }
+  .profile-dashboard .profile-feedback-footer { align-items: stretch; flex-direction: column; }
+  .profile-dashboard .profile-feedback-footer .btn-auth-primary { width: 100%; min-height: 46px; }
+
+  /* -------------------------------------------------------------------------
+     15. MODALES -> hojas inferiores / pantalla completa
+     ------------------------------------------------------------------------- */
+  /* Detalle de pedido (modal), foto de perfil, verificacion, revision de bloqueo */
+  .order-modal-backdrop { padding: 0; align-items: flex-end; }
+  .order-modal-container {
+    max-width: none !important;
+    max-height: 94vh;
+    max-height: 94dvh;
+    border-radius: 18px 18px 0 0;
+  }
+  .order-modal-header { flex-wrap: wrap; gap: 10px; padding: 14px; }
+  .order-modal-header h2 { font-size: 16px; }
+  .order-modal-body { padding: 14px !important; }
+  .order-modal-footer {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 14px calc(12px + var(--pm-safe-bottom));
+  }
+  .order-modal-footer > * { flex: 1 1 100%; margin: 0; min-height: 46px; justify-content: center; }
+  .order-modal-footer .order-claim-trigger { margin-right: 0; }
+  .blocked-review-modal { max-width: none; }
+
+  /* Confirmaciones cortas */
+  .commission-modal-backdrop { padding: 0; align-items: flex-end; }
+  .commission-modal-card {
+    max-width: none;
+    max-height: 92vh;
+    max-height: 92dvh;
+    overflow-y: auto;
+    padding: 20px 16px calc(20px + var(--pm-safe-bottom));
+    border-radius: 18px 18px 0 0;
+  }
+  .commission-modal-card .btn-auth-primary,
+  .commission-modal-card .btn-auth-secondary,
+  .commission-modal-card .btn-auth-danger { min-height: 46px; }
+
+  /* Cerrar cuenta */
+  .delete-account-backdrop { padding: 0; align-items: flex-end; }
+  .delete-account-modal {
+    width: 100%;
+    max-height: 92vh;
+    max-height: 92dvh;
+    overflow-y: auto;
+    padding: 22px 16px calc(22px + var(--pm-safe-bottom));
+    border-radius: 18px 18px 0 0;
+  }
+  .delete-account-actions { flex-direction: column; align-items: stretch; gap: 8px; }
+  .delete-account-actions > * { width: 100%; min-height: 46px; }
+
+  /* Nuevo producto / editar producto */
+  .catalog-product-modal-backdrop { padding: 0; }
+  .catalog-product-modal {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+  }
+  .catalog-product-footer { flex-wrap: wrap; gap: 8px; padding-bottom: calc(12px + var(--pm-safe-bottom)); }
+  .catalog-product-footer > button { flex: 1 1 auto; min-height: 46px; justify-content: center; }
+
+  /* Selector de portadas (portal) */
+  .store-cover-template-backdrop { padding: 0; }
+  .store-cover-template-modal { width: 100%; max-height: 100vh; max-height: 100dvh; border-radius: 18px 18px 0 0; }
+  .store-cover-template-header { padding: 14px; }
+  .store-cover-template-body { padding: 12px; }
+  .store-cover-template-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .store-cover-template-footer { flex-direction: column; align-items: stretch; gap: 10px; padding-bottom: calc(12px + var(--pm-safe-bottom)); }
+  .store-cover-template-footer > div { width: 100%; }
+  .store-cover-template-footer > div > button { flex: 1; min-height: 46px; }
+
+  /* Cotizacion (workspace a pantalla completa) */
+  .quote-workspace { grid-template-rows: 52px minmax(0, 1fr); }
+  .quote-ws-topbar { padding: 0 10px; }
+}
+
+/* Telefonos (<=480px): las fichas de catalogo/favoritos con insignias y acciones no
+   caben a dos columnas sin cortar etiquetas; a una columna se leen completas. */
+@media (max-width: 480px) {
+  .profile-dashboard .seller-catalog-grid,
+  .profile-dashboard .favorites-cards-grid { grid-template-columns: minmax(0, 1fr); }
+  .profile-dashboard .catalog-card-content { padding: 14px 14px 10px; gap: 10px; }
+  .profile-dashboard .catalog-card-content .total-amount { font-size: 19px; }
+  .profile-dashboard .catalog-card-container .order-card-actions > * { min-height: 44px; }
+}
+
+/* Pantallas angostas (<=359px, p. ej. iPhone SE 1ra gen): un poco menos de aire. */
+@media (max-width: 359px) {
+  .profile-dashboard .profile-body { padding-left: 8px; padding-right: 8px; }
+  .profile-dashboard .profile-bottom-bar-item { font-size: 9.5px; margin: 6px 0; }
+  .profile-dashboard .seller-catalog-grid,
+  .profile-dashboard .favorites-cards-grid,
+  .profile-dashboard .profile-stats-grid-v2 { grid-template-columns: minmax(0, 1fr); }
+  .profile-dashboard .facebook-hero-name { font-size: 18px; }
+}

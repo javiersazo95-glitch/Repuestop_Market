@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 // Las reglas `founder-*` viven en esta hoja, que es suya y del FounderModal.
 // La importa el componente que las necesita: las rutas van en chunks perezosos,
 // asi que depender de que otra vista la inyectara dejaba /vender sin estilos.
@@ -14,7 +14,7 @@ import { defaultShippingSelections, buildShippingMethodsString } from '../data/s
 import {
   ArrowLeft, ArrowRight, Crown, Check, Eye, EyeOff, UploadCloud, FileText,
   UserRound, Store, ClipboardCheck, ShieldCheck, MailCheck, Sparkles, PartyPopper, X,
-  RotateCcw, Search, KeyRound, AlertTriangle, Mail,
+  RotateCcw, Search, KeyRound, AlertTriangle, Mail, RefreshCw,
 } from 'lucide-react';
 import {
   registerSeller, validateReferral, verifyRegistrationCode, resendRegistrationCode,
@@ -31,6 +31,7 @@ import {
 import { VENDEDOR_TERMS, PRIVACIDAD_POLICY, LEGAL_VERSION_CODE } from '../data/legalTexts';
 import { sanitizeWebsiteUrl } from '../utils/websiteUrl';
 import { isValidRut } from '../services/adapters';
+import { getStoredCaptadorReferral, clearStoredCaptadorReferral } from '../utils/captadorReferral';
 
 type LegalDoc = 'terms' | 'privacy';
 
@@ -170,7 +171,51 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
 
   // Phase 0 — registro
   const [methodChosen, setMethodChosen] = useState(false);
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [form, setForm] = useState<FormState>(() => {
+    const initialReferral = getStoredCaptadorReferral() || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('ref') || '' : '');
+    return {
+      ...EMPTY_FORM,
+      referral: initialReferral ? initialReferral.trim().toUpperCase() : '',
+    };
+  });
+  const [referralStatus, setReferralStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
+  const [referralAlias, setReferralAlias] = useState<string | null>(null);
+
+  const checkReferral = useCallback(async (val: string) => {
+    const trimmed = val.trim().toUpperCase();
+    if (!trimmed) {
+      setReferralStatus('idle');
+      setReferralAlias(null);
+      setErrors((prev) => ({ ...prev, referral: undefined }));
+      return;
+    }
+    setReferralStatus('checking');
+    try {
+      const res = await validateReferral(trimmed);
+      if (res?.valido) {
+        setReferralStatus('valid');
+        setReferralAlias(res.captadorAlias || null);
+        setErrors((prev) => ({ ...prev, referral: undefined }));
+      } else {
+        setReferralStatus('invalid');
+        setReferralAlias(null);
+        setErrors((prev) => ({ ...prev, referral: 'El código no pertenece a un captador aprobado.' }));
+      }
+    } catch {
+      setReferralStatus('invalid');
+      setReferralAlias(null);
+      setErrors((prev) => ({ ...prev, referral: 'No pudimos validar el código de referido.' }));
+    }
+  }, []);
+
+  useEffect(() => {
+    const stored = getStoredCaptadorReferral() || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('ref') || '' : '');
+    if (stored) {
+      const normalized = stored.trim().toUpperCase();
+      setForm((prev) => (prev.referral ? prev : { ...prev, referral: normalized }));
+      void checkReferral(normalized);
+    }
+  }, [checkReferral]);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [authProvider, setAuthProvider] = useState<'EMAIL_PASSWORD' | 'GOOGLE'>('EMAIL_PASSWORD');
   const [google, setGoogle] = useState<GoogleProfile | null>(null);
@@ -323,6 +368,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
     setErrors((e) => ({ ...e, [key]: undefined }));
     if (key === 'email') { setEmailTaken(null); setEmailAvailable(false); }
     if (key === 'taxId') { setTaxIdTaken(null); setTaxIdAvailable(false); }
+    if (key === 'referral') { setReferralStatus('idle'); setReferralAlias(null); }
     // Selectores y casillas no tienen "salir escribiendo": cuentan como tocados al cambiar.
     if (key === 'giro' || key === 'regionId' || key === 'comunaId' || key === 'acceptsTerms') {
       setTouched((t) => ({ ...t, [key]: true }));
@@ -522,6 +568,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
       }
 
       const result = await registerSeller(payload);
+      clearStoredCaptadorReferral();
       if (isPendingVerification(result)) {
         setPendingEmail(result.email);
       } else {
@@ -647,6 +694,8 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
                   onOpenLegal={setLegal}
                   onEmailBlur={checkEmailNow} checkingEmail={checkingEmail}
                   onTaxIdBlur={checkTaxIdNow} checkingTaxId={checkingTaxId}
+                  referralStatus={referralStatus} referralAlias={referralAlias}
+                  onReferralBlur={() => void checkReferral(form.referral)}
                 />
               )}
 
@@ -797,10 +846,13 @@ type RegFormProps = {
   touch: (k: keyof FormState) => void;
   isFormValid: boolean; pendingSummary: string | null;
   emailAvailable: boolean; taxIdAvailable: boolean;
+  referralStatus: 'idle' | 'checking' | 'valid' | 'invalid';
+  referralAlias: string | null;
+  onReferralBlur: () => void;
 };
 
 function RegistrationForm(p: RegFormProps) {
-  const { form, errors, update, touch } = p;
+  const { form, errors, update, touch, referralStatus, referralAlias, onReferralBlur } = p;
   // Mensaje verde cuando el campo quedó bien, como en el registro del comprador.
   const ok = (key: keyof FormState, message: string) =>
     !errors[key] && String(form[key] ?? '').trim().length > 0 ? message : undefined;
@@ -983,10 +1035,21 @@ function RegistrationForm(p: RegFormProps) {
             onChange={(e) => update('codigoPostal', e.target.value)} />
         </Field>
 
-        <Field label="Código de referido" hint="Opcional" error={errors.referral} className="founder-reg-col-full">
+        <Field label="Código de referido" hint={referralStatus === 'valid' ? undefined : "Opcional"} error={errors.referral} className="founder-reg-col-full">
           <input value={form.referral} placeholder="Ej: RT-CAPTADOR-00001" maxLength={40}
             autoCapitalize="characters" autoComplete="off"
-            onChange={(e) => update('referral', e.target.value.toUpperCase())} />
+            onChange={(e) => update('referral', e.target.value.toUpperCase())}
+            onBlur={onReferralBlur} />
+          {referralStatus === 'checking' && (
+            <small style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, color: '#64748b', fontSize: '0.8rem' }}>
+              <RefreshCw size={12} className="spin-icon" /> Validando código...
+            </small>
+          )}
+          {referralStatus === 'valid' && (
+            <small style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, color: '#16a34a', fontSize: '0.8rem', fontWeight: 600 }}>
+              <Check size={13} /> Código de captador aplicado{referralAlias ? ` · captador @${referralAlias}` : ''}
+            </small>
+          )}
         </Field>
       </div>
 

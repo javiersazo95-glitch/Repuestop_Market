@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  ChevronRight, Compass, Disc3, FileText, Filter, Headphones,
+  ChevronDown, ChevronRight, Compass, Disc3, FileText, Filter, Headphones,
   Lock, Megaphone, MessageSquare, PackageSearch, Search, ShieldCheck, Store, Tag,
   Truck, Users
 } from 'lucide-react';
@@ -58,6 +58,20 @@ export default function Footer() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [openSections, setOpenSections] = useState({
+    explore: false,
+    categories: false,
+    sellers: false,
+    support: false,
+  });
+
+  const toggleSection = (sectionKey) => {
+    setOpenSections((prev) => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey],
+    }));
+  };
+
   const buyerPurchasesLabel = String(user?.role || user?.rol || '').toUpperCase() === 'SELLER'
     ? 'Mis compras'
     : 'Mis pedidos';
@@ -118,37 +132,121 @@ export default function Footer() {
           </div>
         </section>
 
-        <section className="reference-footer-column">
-          <h2><Compass /> Explorar Repuestos</h2>
-          <ul>
-            {EXPLORE_LINKS.map(([label, Icon, to]) => renderLink(label, Icon, to))}
-            <li>
-              <button type="button" onClick={goPatentSearch}>
-                <Search /> <span>Buscar por patente</span> <ChevronRight className="footer-link-chevron" />
-              </button>
-            </li>
-          </ul>
+        <section className={`reference-footer-column ${openSections.explore ? 'is-open' : ''}`}>
+          <h2 id="footer-heading-explore">
+            <button
+              type="button"
+              className="reference-footer-toggle"
+              onClick={() => toggleSection('explore')}
+              aria-expanded={Boolean(openSections.explore)}
+              aria-controls="footer-section-explore"
+            >
+              <span className="reference-footer-toggle-title">
+                <Compass />
+                <span>Explorar Repuestos</span>
+              </span>
+              <ChevronDown className="reference-footer-chevron" aria-hidden="true" />
+            </button>
+          </h2>
+          <div
+            id="footer-section-explore"
+            className="reference-footer-collapse"
+            role="region"
+            aria-labelledby="footer-heading-explore"
+          >
+            <ul>
+              {EXPLORE_LINKS.map(([label, Icon, to]) => renderLink(label, Icon, to))}
+              <li>
+                <button type="button" onClick={goPatentSearch}>
+                  <Search /> <span>Buscar por patente</span> <ChevronRight className="footer-link-chevron" />
+                </button>
+              </li>
+            </ul>
+          </div>
         </section>
 
-        <section className="reference-footer-column">
-          <h2><Tag /> Categorías Populares</h2>
-          <ul>
-            {CATEGORY_LINKS.map(([label, Icon, to]) => renderLink(label, Icon, to))}
-          </ul>
+        <section className={`reference-footer-column ${openSections.categories ? 'is-open' : ''}`}>
+          <h2 id="footer-heading-categories">
+            <button
+              type="button"
+              className="reference-footer-toggle"
+              onClick={() => toggleSection('categories')}
+              aria-expanded={Boolean(openSections.categories)}
+              aria-controls="footer-section-categories"
+            >
+              <span className="reference-footer-toggle-title">
+                <Tag />
+                <span>Categorías Populares</span>
+              </span>
+              <ChevronDown className="reference-footer-chevron" aria-hidden="true" />
+            </button>
+          </h2>
+          <div
+            id="footer-section-categories"
+            className="reference-footer-collapse"
+            role="region"
+            aria-labelledby="footer-heading-categories"
+          >
+            <ul>
+              {CATEGORY_LINKS.map(([label, Icon, to]) => renderLink(label, Icon, to))}
+            </ul>
+          </div>
         </section>
 
-        <section className="reference-footer-column">
-          <h2><Store /> Vende en RepuesTop</h2>
-          <ul>
-            {SELLER_LINKS.map(([label, Icon, to]) => renderLink(label, Icon, to))}
-          </ul>
+        <section className={`reference-footer-column ${openSections.sellers ? 'is-open' : ''}`}>
+          <h2 id="footer-heading-sellers">
+            <button
+              type="button"
+              className="reference-footer-toggle"
+              onClick={() => toggleSection('sellers')}
+              aria-expanded={Boolean(openSections.sellers)}
+              aria-controls="footer-section-sellers"
+            >
+              <span className="reference-footer-toggle-title">
+                <Store />
+                <span>Vende en RepuesTop</span>
+              </span>
+              <ChevronDown className="reference-footer-chevron" aria-hidden="true" />
+            </button>
+          </h2>
+          <div
+            id="footer-section-sellers"
+            className="reference-footer-collapse"
+            role="region"
+            aria-labelledby="footer-heading-sellers"
+          >
+            <ul>
+              {SELLER_LINKS.map(([label, Icon, to]) => renderLink(label, Icon, to))}
+            </ul>
+          </div>
         </section>
 
-        <section className="reference-footer-column">
-          <h2><Headphones /> Ayuda y Confianza</h2>
-          <ul>
-            {supportLinks.map(([label, Icon, to, requiresAuth]) => renderLink(label, Icon, to, requiresAuth))}
-          </ul>
+        <section className={`reference-footer-column ${openSections.support ? 'is-open' : ''}`}>
+          <h2 id="footer-heading-support">
+            <button
+              type="button"
+              className="reference-footer-toggle"
+              onClick={() => toggleSection('support')}
+              aria-expanded={Boolean(openSections.support)}
+              aria-controls="footer-section-support"
+            >
+              <span className="reference-footer-toggle-title">
+                <Headphones />
+                <span>Ayuda y Confianza</span>
+              </span>
+              <ChevronDown className="reference-footer-chevron" aria-hidden="true" />
+            </button>
+          </h2>
+          <div
+            id="footer-section-support"
+            className="reference-footer-collapse"
+            role="region"
+            aria-labelledby="footer-heading-support"
+          >
+            <ul>
+              {supportLinks.map(([label, Icon, to, requiresAuth]) => renderLink(label, Icon, to, requiresAuth))}
+            </ul>
+          </div>
         </section>
       </div>
 

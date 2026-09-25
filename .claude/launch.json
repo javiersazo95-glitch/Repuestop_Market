@@ -4,9 +4,30 @@
     {
       "name": "repuestop-market",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5173,
       "autoPort": false
+    },
+    {
+      "name": "repuestop-market-5174",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5174",
+        "--strictPort"
+      ],
+      "port": 5174,
+      "autoPort": false
+    },
+    {
+      "name": "repuestop-market-attach",
+      "url": "http://localhost:5174"
     }
   ]
 }

@@ -139,12 +139,11 @@ function GoogleSignInButton({ onCredential, disabled }) {
   return <div ref={containerRef} className="google-signin-container" />;
 }
 
-export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLoginSuccess }) {
-  // El acceso siempre comienza en login. La selección de cuenta sólo aparece
-  // al crear una cuenta o cuando el backend confirma que el correo no existe.
-  const [step, setStep] = useState('login_form');
-  const [selectedRole, setSelectedRole] = useState('BUYER'); // 'BUYER' | 'SELLER'
-  const [isRegistrationFlow, setIsRegistrationFlow] = useState(false);
+export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerRegister, onLoginSuccess }) {
+  // El acceso comienza en login_form salvo cuando se abre directamente para crear cuenta o referido.
+  const [step, setStep] = useState(modalOptions?.initialStep || 'login_form');
+  const [selectedRole, setSelectedRole] = useState(modalOptions?.selectedRole || 'BUYER'); // 'BUYER' | 'SELLER'
+  const [isRegistrationFlow, setIsRegistrationFlow] = useState(Boolean(modalOptions?.isRegistrationFlow));
   
   const { login, loginWithGoogle, registerBuyer, verifyRegisterEmail, resendRegisterCode } = useAuth();
 
@@ -185,8 +184,25 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
   const captadorReferral = useCaptadorCode(getStoredCaptadorReferral());
   const resetCaptadorReferral = captadorReferral.reset;
   useEffect(() => {
-    if (isOpen) resetCaptadorReferral(getStoredCaptadorReferral());
-  }, [isOpen, resetCaptadorReferral]);
+    if (isOpen) {
+      if (modalOptions?.initialStep) {
+        setStep(modalOptions.initialStep);
+      } else {
+        setStep('login_form');
+      }
+      if (modalOptions?.isRegistrationFlow !== undefined) {
+        setIsRegistrationFlow(Boolean(modalOptions.isRegistrationFlow));
+      } else {
+        setIsRegistrationFlow(false);
+      }
+      if (modalOptions?.selectedRole) {
+        setSelectedRole(modalOptions.selectedRole);
+      } else {
+        setSelectedRole('BUYER');
+      }
+      resetCaptadorReferral(getStoredCaptadorReferral());
+    }
+  }, [isOpen, modalOptions, resetCaptadorReferral]);
   
   // Password Recovery State
   // `recoverIdentifier` es lo que el usuario ESCRIBE (correo del comprador o RUT de la
@@ -971,7 +987,14 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               {/* Buyer Card */}
               <div
                 className={`role-option-card buyer-card ${selectedRole === 'BUYER' ? 'selected' : ''}`}
-                onClick={() => handleSelectRole('BUYER')}
+                onClick={() => {
+                  if (isRegistrationFlow && selectedRole === 'BUYER') {
+                    setErrorMessage(null);
+                    setStep('register_buyer');
+                  } else {
+                    handleSelectRole('BUYER');
+                  }
+                }}
               >
                 <div className="role-card-header">
                   <div className="role-icon-box buyer-icon">
@@ -999,7 +1022,15 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               {/* Seller Card */}
               <div
                 className={`role-option-card seller-card ${selectedRole === 'SELLER' ? 'selected' : ''}`}
-                onClick={() => handleSelectRole('SELLER')}
+                onClick={() => {
+                  if (isRegistrationFlow && selectedRole === 'SELLER') {
+                    setErrorMessage(null);
+                    handleClose();
+                    onOpenSellerRegister();
+                  } else {
+                    handleSelectRole('SELLER');
+                  }
+                }}
               >
                 <div className="role-card-header">
                   <div className="role-icon-box seller-icon">
@@ -1031,7 +1062,11 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                 className="btn-auth-primary"
                 onClick={handleContinueFromRole}
               >
-                <span>{isRegistrationFlow ? 'Continuar a crear cuenta' : 'Continuar a Iniciar Sesión'}</span>
+                <span>
+                  {isRegistrationFlow
+                    ? (selectedRole === 'SELLER' ? 'Continuar a crear cuenta de Proveedor / Tienda' : 'Continuar a crear cuenta de Comprador')
+                    : 'Continuar a Iniciar Sesión'}
+                </span>
                 <ChevronRight size={18} />
               </button>
             </div>
@@ -1810,10 +1845,10 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               <button
                 type="button"
                 className="btn-auth-secondary"
-                onClick={() => setStep('login_form')}
+                onClick={() => setStep(isRegistrationFlow ? 'select_role' : 'login_form')}
               >
                 <ArrowLeft size={16} />
-                <span>Volver al Login</span>
+                <span>{isRegistrationFlow ? 'Cambiar tipo de cuenta' : 'Volver al Login'}</span>
               </button>
 
               <button

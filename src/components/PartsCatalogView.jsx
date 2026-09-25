@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'r
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   Search, Filter, SlidersHorizontal, ShieldCheck, MapPin,
-  ArrowRight, ArrowLeft, X, CheckCircle2, RotateCcw,
+  X, CheckCircle2, RotateCcw,
   ChevronDown, ShoppingCart, Car, Wrench, Layers, AlertCircle, Info, Tag, Globe,
-  CarFront, RefreshCw
+  CarFront, RefreshCw, ArrowUpDown
 } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
@@ -27,9 +27,6 @@ import PaginationBar from './PaginationBar';
 
 const normalizeNameKey = (value) => String(value || '').normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-const CAROUSEL_PAGE_SIZE = 6;
-const CAROUSEL_PAGE_COUNT = Math.ceil(CAROUSEL_CATEGORIES.length / CAROUSEL_PAGE_SIZE);
 
 /**
  * Cuantos repuestos se muestran en la vitrina de entrada, cuando todavia no hay
@@ -105,6 +102,7 @@ export default function PartsCatalogView({
   const [searchMode, setSearchMode] = useState('patente');
   const [inputValue, setInputValue] = useState(initialActiveVehicle?.patente || initialSearchQuery || '');
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const [selectedCategory, setSelectedCategory] = useState(initialCatalogFilter?.category || 'TODAS');
@@ -140,17 +138,6 @@ export default function PartsCatalogView({
   const [sortBy, setSortBy] = useState('relevancia');
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [itemsPerPage, setItemsPerPage] = useState(12);
-
-  const [activeCarouselPage, setActiveCarouselPage] = useState(0);
-
-  const moveCategoryCarousel = (direction) => {
-    setActiveCarouselPage((page) => (page + direction + CAROUSEL_PAGE_COUNT) % CAROUSEL_PAGE_COUNT);
-  };
-
-  const visibleCarouselCategories = Array.from(
-    { length: CAROUSEL_PAGE_SIZE },
-    (_, index) => CAROUSEL_CATEGORIES[(activeCarouselPage * CAROUSEL_PAGE_SIZE + index) % CAROUSEL_CATEGORIES.length]
-  );
 
   const selectCarouselCategory = (category) => {
     const matchedHeader = HEADER_CATEGORIES.find((h) => h.id === category.id);
@@ -726,7 +713,8 @@ export default function PartsCatalogView({
   };
 
   const handleApplyFilters = () => {
-    document.querySelector('.catalog-parts-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setMobileFiltersOpen(false);
+    requestAnimationFrame(() => document.querySelector('.catalog-parts-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
 
   const appliedFilterLabel = selectedSubcategory !== 'TODAS'
@@ -740,8 +728,7 @@ export default function PartsCatalogView({
     setSelectedSubcategory('TODAS');
   };
 
-  const renderCatalogSearchControls = () => (
-    <div className="catalog-showcase-search-controls catalog-post-category-filters">
+  const renderCatalogTextSearch = (placeholder = 'Buscar repuestos') => (
       <TextSearchWithSuggestions
         value={searchQuery}
         onChange={setSearchQuery}
@@ -749,8 +736,13 @@ export default function PartsCatalogView({
           ...NAVIGATION_CATEGORIES.map((category) => ({ label: category.nombre, type: 'category' })),
           ...products.map((product) => ({ label: product.titulo, type: 'product' })),
         ].filter((item) => item.label)}
-        placeholder="Buscar repuestos"
+        placeholder={placeholder}
       />
+  );
+
+  const renderCatalogSearchControls = () => (
+    <div className="catalog-showcase-search-controls catalog-post-category-filters">
+      {renderCatalogTextSearch()}
       <div className="catalog-vehicle-location-filters">
         <div className="catalog-showcase-patente-control">
           {activeVehicle ? (
@@ -762,7 +754,7 @@ export default function PartsCatalogView({
           ) : (
             <div className="catalog-quick-patente-bar">
               <CarFront size={18} className="patente-icon" />
-              <input type="text" placeholder="Ingresa tu patente (ej: ABCD-12)" value={patentInput} onChange={(e) => { const sanitized = sanitizePlateInput(e.target.value); setPatentInput(sanitized); if (patentError) setPatentError(''); }} onKeyDown={(e) => e.key === 'Enter' && handleUnifiedSearch(patentInput)} className="patente-quick-input" maxLength={8} />
+              <input type="text" placeholder="Patente (ABCD-12)" aria-label="Ingresa tu patente" value={patentInput} onChange={(e) => { const sanitized = sanitizePlateInput(e.target.value); setPatentInput(sanitized); if (patentError) setPatentError(''); }} onKeyDown={(e) => e.key === 'Enter' && handleUnifiedSearch(patentInput)} className="patente-quick-input" maxLength={8} />
               <button type="button" className="btn-quick-patente-submit" onClick={() => handleUnifiedSearch(patentInput)} disabled={patentSearching}>{patentSearching ? <RefreshCw size={15} className="spin-icon" /> : 'Buscar'}</button>
               {patentError && <span className="quick-patente-error">{patentError}</span>}
             </div>
@@ -790,23 +782,15 @@ export default function PartsCatalogView({
               </div>
             </div>
             <div className="category-showcase-carousel">
-              <button
-                type="button"
-                className="category-carousel-arrow previous"
-                onClick={() => moveCategoryCarousel(-1)}
-                aria-label="Ver categorías anteriores"
-              >
-                <ArrowLeft size={20} />
-              </button>
-              <div className="category-carousel-viewport">
-                <div className="category-carousel-track" key={activeCarouselPage}>
-                  {visibleCarouselCategories.map((category, index) => {
+              <div className="category-carousel-viewport" role="region" aria-label="Categorías de repuestos; desliza para ver todas" tabIndex={0}>
+                <div className="category-carousel-track">
+                  {CAROUSEL_CATEGORIES.map((category) => {
                     const isSelected = selectedCategory === category.id || selectedCategory === category.nombre;
                     return (
                       <button
-                        key={`${activeCarouselPage}-${category.id}-${index}`}
+                        key={category.id}
                         type="button"
-                        className={`category-showcase-card category-catalog-card ${isSelected ? 'active-selected' : ''}`}
+                        className={`category-catalog-card ${isSelected ? 'active-selected' : ''}`}
                         data-category={category.id}
                         onClick={() => selectCarouselCategory(category)}
                       >
@@ -819,17 +803,29 @@ export default function PartsCatalogView({
                   })}
                 </div>
               </div>
-              <button
-                type="button"
-                className="category-carousel-arrow next"
-                onClick={() => moveCategoryCarousel(1)}
-                aria-label="Ver siguientes categorías"
-              >
-                <ArrowRight size={20} />
-              </button>
             </div>
             {renderCatalogSearchControls()}
         </section>
+
+        {!hasActiveContext && !showcaseLoading && showcase.items.length > 0 && (
+          <div className="catalog-mobile-showcase-heading">
+            <h2>Recién publicados</h2>
+            <p>Una muestra del catálogo. Filtra por categoría, patente o busca por nombre para ver el resto.</p>
+          </div>
+        )}
+        <div className="catalog-mobile-actions-row">
+          {renderCatalogTextSearch('Buscar repuestos')}
+          <button type="button" className="catalog-mobile-filter-trigger" onClick={() => setMobileFiltersOpen(true)} aria-controls="catalog-filter-panel" aria-expanded={mobileFiltersOpen}><SlidersHorizontal size={18} /> Filtro</button>
+          <label className="catalog-mobile-sort-trigger" title="Ordenar repuestos">
+            <ArrowUpDown size={20} aria-hidden="true" />
+            <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Ordenar repuestos">
+              <option value="relevancia">Recomendados</option>
+              <option value="recientes">Más Recientes</option>
+              <option value="precio-asc">Precio: Menor a Mayor</option>
+              <option value="precio-desc">Precio: Mayor a Menor</option>
+            </select>
+          </label>
+        </div>
 
         {/* 2. Top Control Bar (Summary & Sort). Sin contexto no hay resultados que resumir ni ordenar. */}
         {hasActiveContext && (
@@ -863,10 +859,13 @@ export default function PartsCatalogView({
           <button type="button" onClick={clearAppliedCatalogFilter}><X size={14} /> Quitar filtro</button>
         </div>}
 
+        {mobileFiltersOpen && <button type="button" className="catalog-mobile-filter-backdrop" aria-label="Cerrar filtros" onClick={() => setMobileFiltersOpen(false)} />}
+
         {/* 3. Main 2-Column Content Layout (Technical Sidebar + Parts Grid) */}
         <div className="catalog-content-grid catalog-main-content-grid">
           {/* Sidebar Technical Filters (Left 280px) */}
-          <aside className="catalog-sidebar-filters catalog-advanced-filter-panel">
+          <aside id="catalog-filter-panel" className={`catalog-sidebar-filters catalog-advanced-filter-panel ${mobileFiltersOpen ? 'mobile-filters-open' : ''}`} aria-label="Filtros del catálogo">
+            <button type="button" className="catalog-mobile-filter-close" onClick={() => setMobileFiltersOpen(false)}><X size={19} /> Cerrar filtros</button>
             <div className="sidebar-filters-header">
               <div className="sidebar-title-group">
                 <SlidersHorizontal size={25} />

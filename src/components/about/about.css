@@ -96,6 +96,11 @@
   transition: transform .16s ease, box-shadow .16s ease;
 }
 .rt-about-header__actions button:hover { transform: translateY(-1px); }
+
+@media (min-width: 681px) and (max-width: 900px) {
+  .rt-about-header nav, .rt-about-header__login { display: none; }
+  .rt-about-header__actions { margin-left: auto; }
+}
 .rt-about-header__login { color: #17315d; background: #fff; border: 1px solid #dfe9f5; box-shadow: 0 3px 10px rgba(23, 49, 93, .05); }
 .rt-about-header__signup { color: #fff; background: #066cff; border: 1px solid #066cff; box-shadow: 0 5px 14px rgba(6, 108, 255, .24); }
 .rt-about-header button:focus-visible { outline: 3px solid #8ebeff; outline-offset: 3px; border-radius: 8px; }

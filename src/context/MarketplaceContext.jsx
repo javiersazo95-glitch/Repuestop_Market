@@ -119,6 +119,18 @@ export function MarketplaceProvider({ children }) {
   const [lastAddedItem, setLastAddedItem] = useState(null);
   const lastAddedTimerRef = useRef(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalOptions, setAuthModalOptions] = useState(null);
+
+  const openAuthModal = useCallback((options = null) => {
+    setAuthModalOptions(options);
+    setIsAuthModalOpen(true);
+  }, []);
+
+  const closeAuthModal = useCallback(() => {
+    setIsAuthModalOpen(false);
+    setAuthModalOptions(null);
+  }, []);
+
   const [quoteProduct, setQuoteProduct] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -438,8 +450,9 @@ export function MarketplaceProvider({ children }) {
     removeFromCart,
     clearCart,
     isAuthModalOpen,
-    openAuthModal: () => setIsAuthModalOpen(true),
-    closeAuthModal: () => setIsAuthModalOpen(false),
+    authModalOptions,
+    openAuthModal,
+    closeAuthModal,
     quoteProduct,
     openQuote: setQuoteProduct,
     closeQuote: () => setQuoteProduct(null),
@@ -447,7 +460,7 @@ export function MarketplaceProvider({ children }) {
     setSearchQuery,
   }), [
     activeVehicle, cartItems, cartCount, cartTotals, cartError, addToCart, updateCartQuantity, updateCartShipping, removeFromCart, clearCart,
-    isAuthModalOpen, quoteProduct, searchQuery, lastAddedItem, dismissLastAdded,
+    isAuthModalOpen, authModalOptions, openAuthModal, closeAuthModal, quoteProduct, searchQuery, lastAddedItem, dismissLastAdded,
   ]);
 
   return <MarketplaceContext.Provider value={value}>{children}</MarketplaceContext.Provider>;

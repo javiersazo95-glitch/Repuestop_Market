@@ -7,7 +7,7 @@ import {
   ShoppingCart, Car, Wrench, Layers, Building2, MessageSquare, AlertCircle,
   Heart, Share2, Image, PenLine, ArrowRight, HelpCircle,
   CarFront, Barcode, CircleHelp, RefreshCw, Tag, Store as StoreIcon,
-  MessageCircle, Send, Mail, Link2
+  MessageCircle, Send, Mail, Link2, ArrowUpDown
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { NAVIGATION_CATEGORIES } from '../data/categories';
@@ -65,6 +65,7 @@ export default function StorePublicProfileView({
   const [myComunaNombre, setMyComunaNombre] = useState('');
   const [comunaLookupStatus, setComunaLookupStatus] = useState('idle');
   const [comunaNotice, setComunaNotice] = useState('');
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const [shareFeedback, setShareFeedback] = useState('');
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
@@ -244,7 +245,11 @@ export default function StorePublicProfileView({
   };
 
   const handleApplyStoreFilters = () => {
+    setMobileFiltersOpen(false);
     setCurrentPage(1);
+    requestAnimationFrame(() => {
+      document.querySelector('.catalog-parts-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   };
 
   // Mismo comportamiento que el catálogo: toma la comuna del perfil y filtra los repuestos
@@ -819,9 +824,11 @@ export default function StorePublicProfileView({
         </section>
 
         {/* 3. Layout de dos columnas: filtros y resultados de la tienda. */}
+        {mobileFiltersOpen && <button type="button" className="catalog-mobile-filter-backdrop" onClick={() => setMobileFiltersOpen(false)} aria-label="Cerrar filtros" />}
         <div className="catalog-content-grid store-catalog-main-content-grid">
           {/* Left Technical Filters Sidebar */}
-          <aside className="catalog-sidebar-filters catalog-advanced-filter-panel store-advanced-filter-panel">
+          <aside id="store-filter-panel" className={`catalog-sidebar-filters catalog-advanced-filter-panel store-advanced-filter-panel ${mobileFiltersOpen ? 'mobile-filters-open' : ''}`}>
+            <button type="button" className="catalog-mobile-filter-close" onClick={() => setMobileFiltersOpen(false)} aria-label="Cerrar filtros"><X size={20} /> Cerrar</button>
             <div className="sidebar-filters-header">
               <div className="sidebar-title-group">
                 <SlidersHorizontal size={25} />
@@ -969,6 +976,39 @@ export default function StorePublicProfileView({
                 </select>
               </label>
             </header>
+
+            {/* Mobile Actions Row (Search + Filter + Sort) right below title and description */}
+            <div className="catalog-mobile-actions-row">
+              <TextSearchWithSuggestions
+                value={searchQuery}
+                onChange={setSearchQuery}
+                suggestions={textSearchSuggestions}
+                placeholder="Buscar en esta tienda"
+              />
+              <button
+                type="button"
+                className="catalog-mobile-filter-trigger"
+                onClick={() => setMobileFiltersOpen(true)}
+                aria-controls="store-filter-panel"
+                aria-expanded={mobileFiltersOpen}
+              >
+                <SlidersHorizontal size={18} /> Filtro
+              </button>
+              <label className="catalog-mobile-sort-trigger" title="Ordenar repuestos">
+                <ArrowUpDown size={20} aria-hidden="true" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  aria-label="Ordenar repuestos"
+                >
+                  <option value="relevancia">Recomendados</option>
+                  <option value="recientes">Más recientes</option>
+                  <option value="precio-asc">Precio: menor a mayor</option>
+                  <option value="precio-desc">Precio: mayor a menor</option>
+                </select>
+              </label>
+            </div>
+
             {productsLoading || (wantsVehicleCompat && compatibleOffersLoading) ? (
               <div className="directory-empty-state">
                 <Package size={56} className="empty-icon-gray" />

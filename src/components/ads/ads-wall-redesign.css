@@ -1062,3 +1062,15 @@ button.ad-meta-item:hover { color: var(--ads-primary); }
   .ads-fb-toggle { flex: 1 1 calc(50% - 5px); justify-content: center; }
   .ads-main-head { align-items: flex-start; }
 }
+
+@media (max-width: 960px) {
+  .ads-layout { grid-template-columns: minmax(0, 1fr); }
+  .ads-layout, .ads-sidebar, .ads-main-col, .ads-sidebar-block, .ads-provider-card, .ads-grid, .ad-card { min-width: 0; max-width: 100%; }
+  .ads-provider-card, .ad-card { overflow-wrap: anywhere; }
+  .ads-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .ads-grid { grid-template-columns: minmax(0, 1fr); }
+  .ads-main-head { flex-wrap: wrap; }
+}

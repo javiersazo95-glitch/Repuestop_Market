@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, Check, RefreshCw, Users } from 'lucide-react';
 import { validateReferral } from './founderApi';
 import { CAPTADOR_CODE_MAX_LENGTH, normalizeCaptadorCode } from '../utils/captadorReferral';
@@ -43,6 +43,15 @@ export function useCaptadorCode(initialCode = '') {
       return false;
     }
   }, [code, status]);
+
+  // Si el código viene precargado (p. ej. por el link de referido ?ref=...), lo validamos
+  // automáticamente para que el usuario vea de inmediato que su referido está activo.
+  useEffect(() => {
+    const current = normalizeCaptadorCode(code);
+    if (current && status === 'idle' && lastChecked.current !== current) {
+      void validate();
+    }
+  }, [code, status, validate]);
 
   const codeForSubmit = useCallback(async () => {
     const current = normalizeCaptadorCode(code);

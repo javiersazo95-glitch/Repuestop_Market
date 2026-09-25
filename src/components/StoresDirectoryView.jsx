@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import {
   Building2, Search, Filter, SlidersHorizontal, MapPin, ShieldCheck,
   Star, ArrowLeft, X, CheckCircle2, RotateCcw,
-  Store, Tag, Truck, Bike, ChevronRight, ChevronDown, Car, CarFront, RefreshCw
+  Store, Tag, Truck, Bike, ChevronRight, ChevronDown, Car, CarFront, RefreshCw, ArrowUpDown
 } from 'lucide-react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
@@ -74,6 +74,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   const [patentSearching, setPatentSearching] = useState(false);
   const [myComunaLoading, setMyComunaLoading] = useState(false);
   const [comunaNotice, setComunaNotice] = useState('');
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const handlePatentSearch = async () => {
     const patent = normalizePlate(patentInput);
@@ -314,7 +315,10 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   };
 
   const handleApplyFilters = () => {
-    document.querySelector('.directory-stores-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setMobileFiltersOpen(false);
+    requestAnimationFrame(() => {
+      document.querySelector('.directory-stores-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   };
 
   return (
@@ -359,7 +363,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
         </div>
       </div>
 
-      <div className="container directory-main-container">
+      <div className={`container directory-main-container ${mobileFiltersOpen ? 'mobile-filters-active' : ''}`}>
         {/* 2. Top Control Bar (Search & Sort) */}
         <div className="directory-control-bar">
           <div className="search-bar-directory-box">
@@ -378,45 +382,59 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
             )}
           </div>
 
-          <div className="directory-vehicle-filters">
-            {activeVehicle ? (
-              <div className="directory-active-vehicle">
-                <Car size={16} />
-                <span><strong>{activeVehicle.marca} {activeVehicle.modelo}</strong> · {activeVehicle.patente}</span>
-                <button type="button" onClick={() => { setActiveVehicle(null); setSelectedBrand('TODAS'); setPatentInput(''); }}>
-                  <X size={14} /> Quitar filtro
-                </button>
-              </div>
-            ) : (
-              <div className="directory-patente-search">
-                <CarFront size={16} />
-                <input
-                  value={patentInput}
-                  onChange={(e) => { setPatentInput(sanitizePlateInput(e.target.value)); setPatentError(''); }}
-                  onKeyDown={(e) => e.key === 'Enter' && handlePatentSearch()}
-                  placeholder="Buscar por patente"
-                  maxLength={8}
-                />
-                <button type="button" onClick={handlePatentSearch} disabled={patentSearching}>
-                  {patentSearching ? <RefreshCw size={15} className="spin-icon" /> : 'Buscar'}
-                </button>
-                {patentError && <small>{patentError}</small>}
-              </div>
-            )}
-            <div className="directory-my-comuna-wrap">
-              <button type="button" className={`directory-my-comuna ${selectedComuna !== 'TODAS' ? 'active' : ''}`} onClick={handleMyComuna} disabled={myComunaLoading} aria-pressed={selectedComuna !== 'TODAS'} title={selectedComuna !== 'TODAS' ? 'Quitar filtro de comuna' : 'Filtrar por mi comuna'}>
-                <MapPin size={16} /> {myComunaLoading ? 'Buscando…' : selectedComuna !== 'TODAS' ? `Quitar: ${selectedComuna}` : 'Mi comuna'}
+          <div className="directory-vehicle-filters catalog-vehicle-location-filters">
+            <div className="catalog-showcase-patente-control">
+              {activeVehicle ? (
+                <div className="catalog-showcase-vehicle-filter directory-active-vehicle">
+                  <Car size={18} />
+                  <span><strong>{activeVehicle.marca} {activeVehicle.modelo}</strong>{activeVehicle.patente && activeVehicle.patente !== 'MANUAL' ? ` · ${activeVehicle.patente}` : ''}</span>
+                  <button type="button" onClick={() => { setActiveVehicle(null); setSelectedBrand('TODAS'); setPatentInput(''); }} title="Quitar filtro de vehículo">
+                    <X size={15} /> Quitar filtro
+                  </button>
+                </div>
+              ) : (
+                <div className="catalog-quick-patente-bar directory-patente-search">
+                  <CarFront size={18} className="patente-icon" />
+                  <input
+                    type="text"
+                    placeholder="Patente (ABCD-12)"
+                    aria-label="Ingresa tu patente"
+                    value={patentInput}
+                    onChange={(e) => { setPatentInput(sanitizePlateInput(e.target.value)); setPatentError(''); }}
+                    onKeyDown={(e) => e.key === 'Enter' && handlePatentSearch()}
+                    className="patente-quick-input"
+                    maxLength={8}
+                  />
+                  <button type="button" className="btn-quick-patente-submit" onClick={handlePatentSearch} disabled={patentSearching}>
+                    {patentSearching ? <RefreshCw size={15} className="spin-icon" /> : 'Buscar'}
+                  </button>
+                  {patentError && <span className="quick-patente-error">{patentError}</span>}
+                </div>
+              )}
+            </div>
+
+            <div className="catalog-showcase-comuna-control directory-my-comuna-wrap">
+              <button
+                type="button"
+                className={`btn-comuna-toggle-pill directory-my-comuna ${selectedComuna !== 'TODAS' ? 'active' : ''}`}
+                onClick={handleMyComuna}
+                disabled={myComunaLoading}
+                aria-pressed={selectedComuna !== 'TODAS'}
+                title={selectedComuna !== 'TODAS' ? 'Quitar filtro de comuna' : 'Filtrar por mi comuna'}
+              >
+                <MapPin size={17} />
+                <span>{myComunaLoading ? 'Buscando comuna…' : selectedComuna !== 'TODAS' ? `En ${selectedComuna}` : 'Mi comuna'}</span>
               </button>
-              {comunaNotice && <small>{comunaNotice}</small>}
+              {comunaNotice && <span className="quick-patente-error">{comunaNotice}</span>}
             </div>
           </div>
-
         </div>
 
-        {/* 3. Main 2-Column Content Layout (Sidebar Filters + Stores Grid) */}
+        {mobileFiltersOpen && <button type="button" className="catalog-mobile-filter-backdrop" onClick={() => setMobileFiltersOpen(false)} aria-label="Cerrar filtros" />}
         <div className="directory-content-grid directory-advanced-content-grid">
           {/* Sidebar Filters Column (Left 280px) */}
-          <aside className="directory-sidebar-filters catalog-sidebar-filters catalog-advanced-filter-panel directory-advanced-filter-panel">
+          <aside id="directory-filter-panel" className={`directory-sidebar-filters catalog-sidebar-filters catalog-advanced-filter-panel directory-advanced-filter-panel ${mobileFiltersOpen ? 'mobile-filters-open' : ''}`}>
+            <button type="button" className="catalog-mobile-filter-close" onClick={() => setMobileFiltersOpen(false)} aria-label="Cerrar filtros"><X size={20} /> Cerrar</button>
             <div className="sidebar-filters-header">
               <div className="sidebar-title-group">
                 <SlidersHorizontal size={25} />
@@ -523,6 +541,48 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                 </select>
               </div>
             </div>
+
+            {/* Mobile Actions Row (Search + Filter + Sort) right below title and description */}
+            <div className="catalog-mobile-actions-row">
+              <div className="catalog-text-search">
+                <Search size={17} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={searchQuery}
+                  placeholder="Buscar tiendas..."
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Buscar tiendas por texto"
+                />
+                {searchQuery && (
+                  <button type="button" onClick={() => setSearchQuery('')} aria-label="Limpiar búsqueda">
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                className="catalog-mobile-filter-trigger"
+                onClick={() => setMobileFiltersOpen(true)}
+                aria-controls="directory-filter-panel"
+                aria-expanded={mobileFiltersOpen}
+              >
+                <SlidersHorizontal size={18} /> Filtro
+              </button>
+              <label className="catalog-mobile-sort-trigger" title="Ordenar tiendas">
+                <ArrowUpDown size={20} aria-hidden="true" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  aria-label="Ordenar tiendas"
+                >
+                  <option value="relevancia">Recomendados</option>
+                  <option value="+publicaciones">Más publicaciones en stock</option>
+                  <option value="rating">Mejor calificación</option>
+                  <option value="recientes">Ingresadas recientemente</option>
+                </select>
+              </label>
+            </div>
+
             {isLoading ? (
               <div className="stores-cards-grid-directory" aria-busy="true">
                 {Array.from({ length: 6 }).map((_, i) => (

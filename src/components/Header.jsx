@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Truck, ShieldCheck, Store, HelpCircle, Search, ShoppingCart, User,
-  ChevronDown, ChevronRight, X, LogOut, LayoutDashboard, MessageSquare, Menu,
-  Package, Tag, Info, Megaphone
+  ChevronDown, ChevronRight, ArrowLeft, X, LogOut, LayoutDashboard, MessageSquare, Menu,
+  Package, Tag, Info, Megaphone, Wrench
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
@@ -45,10 +45,13 @@ export default function Header({
   const [highlightedSubcategory, setHighlightedSubcategory] = useState('');
   const [subcategoryInventory, setSubcategoryInventory] = useState({});
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showMobileNav, setShowMobileNav] = useState(false);
+  const [mobileCategoryDetail, setMobileCategoryDetail] = useState(false);
   const [productSuggestions, setProductSuggestions] = useState([]);
   const [isSuggestOpen, setIsSuggestOpen] = useState(false);
   const [isSuggestLoading, setIsSuggestLoading] = useState(false);
   const categorySearchInputRef = useRef(null);
+  const mobileDrawerCloseRef = useRef(null);
   const categoryMenuRef = useRef(null);
   const userMenuRef = useRef(null);
   const searchConsoleRef = useRef(null);
@@ -174,8 +177,27 @@ export default function Header({
     else {
       setCategorySearchQuery('');
       setHighlightedSubcategory('');
+      setMobileCategoryDetail(false);
     }
   }, [showCategoryMenu]);
+
+  useEffect(() => {
+    if (!showMobileNav) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(() => mobileDrawerCloseRef.current?.focus());
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') {
+        setShowCategoryMenu(false);
+        setShowMobileNav(false);
+      }
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [showMobileNav]);
 
   useEffect(() => {
     if (!highlightedSubcategory || categorySearchQuery) return;
@@ -265,6 +287,7 @@ export default function Header({
     setActiveHeaderCategoryId(result.category.id);
     setHighlightedSubcategory(result.type === 'subcategory' ? result.label : '');
     setCategorySearchQuery('');
+    if (window.matchMedia('(max-width: 640px)').matches) setMobileCategoryDetail(true);
   };
 
   const handleUserBoxClick = () => {
@@ -278,7 +301,7 @@ export default function Header({
   };
 
   return (
-    <header className="trust-header-main light-market-header">
+    <header className={`trust-header-main light-market-header ${showMobileNav ? 'mobile-nav-active' : ''}`}>
       <div className="top-trust-bar-vivid">
         <div className="container top-trust-content-vivid">
           <div className="trust-items-left-vivid">
@@ -300,14 +323,19 @@ export default function Header({
       </div>
 
       <div className="container header-brand-row">
-        <button className="brand-logo-official" onClick={() => { onOpenHome?.(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+        <button className="brand-logo-official" onClick={() => { setShowMobileNav(false); setShowCategoryMenu(false); onOpenHome?.(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
           <RepuesTopLogo height={66} />
         </button>
+        <div className="mobile-header-actions">
+          <button type="button" aria-label={isLoggedIn ? 'Abrir mi perfil' : 'Iniciar sesión'} onClick={() => isLoggedIn ? onOpenProfile?.() : onOpenAuthModal?.()}><User size={22} /></button>
+          {!isBlockedAccount && <button type="button" aria-label={`Abrir carrito${cartCount ? `, ${cartCount} productos` : ''}`} onClick={onOpenCart}><ShoppingCart size={22} />{cartCount > 0 && <span className="mobile-cart-count">{cartCount}</span>}</button>}
+          <button type="button" className="mobile-nav-toggle" aria-label={showMobileNav ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={showMobileNav} aria-controls="marketplace-navigation" onClick={() => { if (showMobileNav) setShowCategoryMenu(false); setShowMobileNav((open) => !open); }}>{showMobileNav ? <X size={24} /> : <Menu size={24} />}</button>
+        </div>
 
         <div ref={searchConsoleRef} className="header-search-console-wrap">
           <form
             className="header-search-console"
-            onSubmit={(event) => { event.preventDefault(); setIsSuggestOpen(false); onSearchSubmit(); }}
+            onSubmit={(event) => { event.preventDefault(); setIsSuggestOpen(false); setShowMobileNav(false); onSearchSubmit(); }}
           >
             <div className="search-input-wrapper">
               <input
@@ -421,14 +449,67 @@ export default function Header({
         </div>
       </div>
 
-      <nav className="header-primary-nav">
+      {showMobileNav && <button type="button" className="mobile-nav-backdrop" aria-label="Cerrar menú" onClick={() => { setShowCategoryMenu(false); setShowMobileNav(false); }} />}
+      <nav id="marketplace-navigation" className={`header-primary-nav ${showMobileNav ? 'mobile-nav-open' : ''}`}>
+        <div className="mobile-drawer-head">
+          <button
+            type="button"
+            className="mobile-drawer-close"
+            ref={mobileDrawerCloseRef}
+            aria-label="Cerrar menú"
+            onClick={() => { setShowCategoryMenu(false); setShowMobileNav(false); }}
+          >
+            <X size={22} />
+          </button>
+
+          <div className="mobile-drawer-profile-centered">
+            <button
+              type="button"
+              className="mobile-drawer-profile-btn"
+              onClick={() => {
+                setShowMobileNav(false);
+                if (isLoggedIn) onOpenProfile?.();
+                else onOpenAuthModal?.();
+              }}
+              aria-label={isLoggedIn ? 'Abrir mi perfil' : 'Iniciar sesión'}
+            >
+              <div className="mobile-drawer-avatar">
+                {isLoggedIn && user?.userProfileUrl ? (
+                  <img
+                    src={user.userProfileUrl}
+                    alt={user?.userName || 'Foto de perfil'}
+                    className="mobile-drawer-avatar-img"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : isLoggedIn && isSellerAccount ? (
+                  <Store size={26} />
+                ) : (
+                  <User size={26} />
+                )}
+              </div>
+            </button>
+
+            <div className="mobile-drawer-user-info">
+              <strong>{isLoggedIn ? `Hola, ${user?.userName || user?.storeName || 'bienvenido'}` : '¡Hola!'}</strong>
+              <span>{isLoggedIn ? (user?.email || 'Tu cuenta RepuesTop') : 'Ingresa a tu cuenta'}</span>
+            </div>
+
+            <button
+              type="button"
+              className="mobile-drawer-account"
+              onClick={() => { setShowMobileNav(false); if (isLoggedIn) onOpenProfile?.(); else onOpenAuthModal?.(); }}
+            >
+              {isLoggedIn ? 'Ir a mi perfil' : 'Iniciar sesión'}
+            </button>
+          </div>
+        </div>
         <div className="container primary-nav-inner">
           <div ref={categoryMenuRef} className="categories-nav-wrap">
             <button className="categories-nav-button" onClick={() => setShowCategoryMenu((open) => !open)}>
-              <Menu size={20} /> Categorías
+              <Wrench size={19} /> Categorías
             </button>
             {showCategoryMenu && (
-              <div className="header-category-dropdown header-category-mega-menu">
+              <div className={`header-category-dropdown header-category-mega-menu ${mobileCategoryDetail ? 'mobile-category-detail' : ''}`}>
                 <div className="header-category-search-wrap">
                   <Search size={16} aria-hidden="true" />
                   <input
@@ -445,6 +526,7 @@ export default function Header({
                       <X size={15} />
                     </button>
                   )}
+                  <button type="button" className="header-category-mobile-close" onClick={() => setShowCategoryMenu(false)} aria-label="Cerrar categorías"><X size={20} /></button>
                 </div>
 
                 {categorySearchQuery ? (
@@ -490,7 +572,13 @@ export default function Header({
                       onFocus={() => handleCategoryMouseEnter(category.id)}
                       onClick={() => {
                         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+                        if (window.matchMedia('(max-width: 640px)').matches) {
+                          setActiveHeaderCategoryId(category.id);
+                          setMobileCategoryDetail(true);
+                          return;
+                        }
                         setShowCategoryMenu(false);
+                        setShowMobileNav(false);
                         onSelectCategory({ category: category.id, categoryId: getBackendCategory(category)?.id, categoryName: category.nombre });
                       }}
                     >
@@ -500,11 +588,13 @@ export default function Header({
                   ))}
                 </div>
                 <div className="header-subcategory-panel">
+                  <button type="button" className="mobile-category-back" onClick={() => setMobileCategoryDetail(false)}><ArrowLeft size={18} /> Todas las categorías</button>
                   <div className="header-subcategory-panel-title">
                     <strong>{activeHeaderCategory.nombre}</strong>
                     <button onClick={() => {
                       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
                       setShowCategoryMenu(false);
+                      setShowMobileNav(false);
                       onSelectCategory({ category: activeHeaderCategory.id, categoryId: getBackendCategory(activeHeaderCategory)?.id, categoryName: activeHeaderCategory.nombre });
                     }}>Ver más <ChevronRight size={16} /></button>
                   </div>
@@ -524,6 +614,7 @@ export default function Header({
                           onClick={() => {
                             if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
                             setShowCategoryMenu(false);
+                            setShowMobileNav(false);
                             onSelectCategory({ category: activeHeaderCategory.id, categoryId: getBackendCategory(activeHeaderCategory)?.id, categoryName: activeHeaderCategory.nombre, subcategoryId: inventory?.subcategoryId, subcategory: subcategory });
                           }}
                         >
@@ -539,12 +630,17 @@ export default function Header({
               </div>
             )}
           </div>
-          <button type="button" onClick={onOpenStores}><Store size={16} /> <span>Tiendas</span></button>
-          <button type="button" onClick={onOpenCatalog}><Package size={16} /> <span>Catálogo de repuestos</span></button>
-          <button type="button" className="offers-nav-link" onClick={onOpenCatalog}><Tag size={16} /> <span>Ofertas</span></button>
-          <button type="button" onClick={onOpenAbout}><Info size={16} /> <span>Sobre RepuesTop</span></button>
-          <button type="button" onClick={onOpenAdsWall}><Megaphone size={16} /> <span>Mural de anuncios</span></button>
-          <button type="button" onClick={onOpenHelp}><HelpCircle size={16} /> <span>Ayuda</span></button>
+          <button type="button" onClick={() => { setShowMobileNav(false); onOpenStores(); }}><Store size={16} /> <span>Tiendas</span></button>
+          <button type="button" onClick={() => { setShowMobileNav(false); onOpenCatalog(); }}><Package size={16} /> <span>Catálogo de repuestos</span></button>
+          <button type="button" className="offers-nav-link" onClick={() => { setShowMobileNav(false); onOpenCatalog(); }}><Tag size={16} /> <span>Ofertas</span></button>
+          <button type="button" onClick={() => { setShowMobileNav(false); onOpenAbout(); }}><Info size={16} /> <span>Sobre RepuesTop</span></button>
+          <button type="button" onClick={() => { setShowMobileNav(false); onOpenAdsWall(); }}><Megaphone size={16} /> <span>Mural de anuncios</span></button>
+          <button type="button" onClick={() => { setShowMobileNav(false); onOpenHelp(); }}><HelpCircle size={16} /> <span>Ayuda</span></button>
+          {isLoggedIn && (
+            <button type="button" className="mobile-drawer-logout" onClick={() => { setShowMobileNav(false); handleLogout(); }}>
+              <LogOut size={16} /> <span>Cerrar sesión</span>
+            </button>
+          )}
         </div>
       </nav>
     </header>

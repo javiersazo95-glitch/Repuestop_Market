@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -23,12 +23,29 @@ export default function AppLayout() {
   const nav = useAppNavigation();
   const {
     activeVehicle, cartCount,
-    isAuthModalOpen, openAuthModal, closeAuthModal,
+    isAuthModalOpen, authModalOptions, openAuthModal, closeAuthModal,
     quoteProduct, closeQuote,
     searchQuery, setSearchQuery,
   } = useMarketplace();
   const { isLoggedIn, user } = useAuth();
   const isAboutPage = location.pathname === ROUTES.about;
+
+  // Detección de link de referido o solicitud directa de registro:
+  // Si la URL trae `ref=...` o `crear_cuenta=true` / `registro=true` / `register=true`,
+  // abre directamente el popup de creación de cuenta rápida (selección Comprador vs Proveedor).
+  const hasTriggeredRefModal = useRef(false);
+  useEffect(() => {
+    if (isLoggedIn) return;
+    const hasRef = searchParams.has('ref');
+    const wantsRegister = searchParams.get('crear_cuenta') === 'true'
+      || searchParams.get('registro') === 'true'
+      || searchParams.get('register') === 'true';
+
+    if ((hasRef || wantsRegister) && !hasTriggeredRefModal.current) {
+      hasTriggeredRefModal.current = true;
+      openAuthModal({ initialStep: 'select_role', isRegistrationFlow: true });
+    }
+  }, [searchParams, isLoggedIn, openAuthModal]);
 
   // Una ruta protegida redirige aquí marcando `requireAuth`: abrimos el login y
   // recordamos a dónde quería ir el usuario.
@@ -100,6 +117,7 @@ export default function AppLayout() {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={closeAuthModal}
+        modalOptions={authModalOptions}
         onOpenSellerRegister={nav.goSellerRegister}
         onLoginSuccess={() => {
           // Si el usuario está comprando, iniciar sesión no debe sacarlo del flujo.

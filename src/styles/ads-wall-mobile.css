@@ -1,0 +1,234 @@
+/* ===========================================================================
+   MURAL PUBLICO DE ANUNCIOS EN CELULARES (<=768px)
+   ---------------------------------------------------------------------------
+   Solo distribucion movil; el escritorio no se toca (no hay reglas fuera del
+   media query). Se importa desde AdsWallView.jsx DESPUES de ads-wall-redesign.css
+   para que sus reglas ganen a las de escritorio de igual especificidad.
+
+   Orden en movil:
+     1. Barra de filtros compacta (busqueda, 2 selectores lado a lado, 4
+        accesos en 2x2).
+     2. Historias (si hay).
+     3. Categorias en franja horizontal.
+     4. Resultados (titulo, orden, contador y tarjetas a una columna).
+     5. Tarjeta "Para proveedores" compacta, al final.
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .ads-wall-page { padding-bottom: 40px; }
+  .ads-wall-page .container { padding-left: 12px; padding-right: 12px; }
+  .ads-wall-page .ads-wall-shell { padding-top: 12px; }
+
+  /* Sin zoom automatico de iOS al enfocar campos. */
+  .ads-wall-page input,
+  .ads-wall-page select,
+  .ads-filter-sheet input,
+  .ads-filter-sheet select { font-size: 16px; }
+
+  /* -------------------------------------------------------------------------
+     1. Barra de filtros compacta
+     ------------------------------------------------------------------------- */
+  .ads-wall-page .ads-filterbar {
+    gap: 8px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+  .ads-wall-page .ads-search-input-wrap input {
+    min-height: 46px;
+    padding: 10px 84px 10px 40px;
+    border-radius: 12px;
+  }
+  .ads-wall-page .ads-fb-chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  /* Los dos selectores van a ancho completo, con rotulo y valor en una linea:
+     "Todas las categorias" a 16px no cabe en media columna. */
+  .ads-wall-page .ads-fb-chip {
+    grid-column: 1 / -1;
+    flex: none;
+    min-width: 0;
+    min-height: 44px;
+    padding: 4px 12px;
+    gap: 6px;
+  }
+  .ads-wall-page .ads-fb-chip-body { flex-direction: row; align-items: center; gap: 6px; }
+  .ads-wall-page .ads-fb-chip-body em { flex: 0 0 auto; font-size: 12px; }
+  .ads-wall-page .ads-fb-chip-body em::after { content: ':'; }
+  /* El rotulo ("Ubicacion"/"Categoria") ya identifica el chip: el icono se
+     quita para que quepa el valor completo ("Todas las comunas"). */
+  .ads-wall-page .ads-fb-chip > svg:first-child { display: none; }
+  .ads-wall-page .ads-fb-chip-caret { width: 14px; height: 14px; margin-left: -2px; }
+  .ads-wall-page .ads-fb-chip-body select {
+    width: 100%;
+    min-width: 0;
+    font-size: 16px;
+    letter-spacing: -.2px;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ads-wall-page .ads-fb-toggle {
+    flex: none;
+    min-width: 0;
+    min-height: 42px;
+    padding: 0 8px;
+    justify-content: center;
+    font-size: 12.5px;
+    border-radius: 10px;
+  }
+  .ads-wall-page .ads-fb-toggle span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ads-wall-page .ads-suggestions { left: 0; right: 0; max-height: 50vh; max-height: 50dvh; overflow-y: auto; }
+
+  /* Busqueda por patente: input y boton apilados */
+  .ads-wall-page .ads-plate-area--bar { padding: 12px; }
+  .ads-wall-page .ads-plate-row { flex-direction: column; gap: 8px; }
+  .ads-wall-page .ads-plate-btn { width: 100%; min-height: 46px; justify-content: center; }
+  .ads-wall-page .ads-plate-hint { font-size: 12.5px; }
+
+  /* -------------------------------------------------------------------------
+     2. Historias
+     ------------------------------------------------------------------------- */
+  .ads-wall-page .ads-stories-section { padding-top: 12px; padding-bottom: 4px; }
+  .ads-wall-page .ads-stories-header { margin-bottom: 8px; }
+  .ads-wall-page .ads-stories-header h2 { font-size: 15px; }
+  .ads-wall-page .stories-track { padding: 4px 2px 8px; -webkit-overflow-scrolling: touch; }
+
+  /* -------------------------------------------------------------------------
+     3 + 4 + 5. Orden: categorias -> resultados -> tarjeta proveedores
+     `display: contents` saca los dos bloques del aside al flujo del layout
+     para poder reordenarlos con `order` sin tocar el JSX.
+     ------------------------------------------------------------------------- */
+  .ads-wall-page .ads-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .ads-wall-page .ads-sidebar { display: contents; }
+  .ads-wall-page .ads-sidebar-block { order: 1; }
+  .ads-wall-page .ads-main-col { order: 2; }
+  .ads-wall-page .ads-provider-card { order: 3; }
+
+  /* Categorias: franja horizontal sin caja */
+  .ads-wall-page .ads-sidebar-block {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+  }
+  .ads-wall-page .ads-sidebar-title {
+    margin: 0 0 6px 2px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--ads-muted);
+  }
+  .ads-wall-page .ads-sidebar-cats {
+    display: flex;
+    gap: 6px;
+    margin: 0 -12px;
+    padding: 2px 12px 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ads-wall-page .ads-sidebar-cats::-webkit-scrollbar { display: none; }
+  .ads-wall-page .ads-sidebar-cats li { flex: 0 0 auto; }
+  .ads-wall-page .ads-sidebar-cat {
+    width: auto;
+    min-height: 40px;
+    padding: 0 12px;
+    gap: 7px;
+    border: 1px solid var(--ads-border);
+    border-radius: 999px;
+    background: #fff;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+  .ads-wall-page .ads-sidebar-cat.active { border-color: var(--ads-primary); background: var(--ads-primary-light); }
+
+  /* Resultados */
+  .ads-wall-page .ads-main-col { gap: 10px; }
+  .ads-wall-page .ads-main-head { flex-direction: column; align-items: stretch; gap: 8px; }
+  .ads-wall-page .ads-main-head-text h2 { font-size: 18px; line-height: 1.2; }
+  .ads-wall-page .ads-main-head-text p { font-size: 12.5px; }
+  .ads-wall-page .ads-sort-field { width: 100%; min-height: 44px; padding: 0 12px; }
+  .ads-wall-page .ads-sort-field select { flex: 1 1 auto; min-width: 0; font-size: 16px; }
+  .ads-wall-page .ads-results-bar { flex-wrap: wrap; gap: 6px 12px; }
+  .ads-wall-page .ads-results-count { font-size: 12.5px; }
+  .ads-wall-page .ads-results-clear { min-height: 36px; }
+  .ads-wall-page .ads-state-banner { flex-wrap: wrap; }
+
+  /* Tarjetas: una columna, botones de 44px */
+  .ads-wall-page .ads-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .ads-wall-page .ad-card { min-width: 0; }
+  .ads-wall-page .ad-card-body { padding: 12px 14px 14px; }
+  .ads-wall-page .ad-card-title { font-size: 16px; }
+  .ads-wall-page .ad-card-actions { gap: 8px; }
+  .ads-wall-page .ad-pill { height: 40px; font-size: 12.5px; }
+  .ads-wall-page .ad-card-detail-btn { min-height: 44px; font-size: 13.5px; }
+  .ads-wall-page .ad-card-report,
+  .ads-wall-page .ad-card-favorite { width: 40px; height: 40px; }
+  .ads-wall-page .ads-load-more { align-self: stretch; width: 100%; min-height: 46px; }
+  .ads-wall-page .ads-empty-panel { padding: 30px 18px; }
+  .ads-wall-page .ads-empty-panel h3 { font-size: 16px; }
+  .ads-wall-page .ads-empty-panel p { font-size: 13px; }
+  .ads-wall-page .ads-empty-panel .btn-post-ad,
+  .ads-wall-page .ads-empty-panel .ads-state-retry { width: 100%; min-height: 46px; }
+
+  /* Tarjeta "Para proveedores": compacta y al final */
+  .ads-wall-page .ads-provider-card { padding: 18px 16px; border-radius: 14px; }
+  .ads-wall-page .ads-provider-glow { display: none; }
+  .ads-wall-page .ads-provider-card h3 { font-size: 17px; }
+  .ads-wall-page .ads-provider-card p { margin-bottom: 12px; }
+  .ads-wall-page .ads-provider-plans {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 6px;
+  }
+  .ads-wall-page .ads-provider-plans li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 8px 10px;
+    border-bottom: 0 !important;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .06);
+  }
+  .ads-wall-page .ads-provider-plans .plan-dot { display: none; }
+  .ads-wall-page .ads-provider-plans .plan-name { font-size: 11.5px; }
+  .ads-wall-page .ads-provider-plans .plan-price { margin-left: 0; text-align: left; white-space: normal; font-size: 12.5px; }
+  .ads-wall-page .ads-provider-cta { min-height: 46px; }
+  .ads-wall-page .ads-provider-link { min-height: 42px; }
+
+  /* -------------------------------------------------------------------------
+     "Mas filtros": hoja inferior a pantalla casi completa
+     ------------------------------------------------------------------------- */
+  .ads-filter-overlay { padding: 0; align-items: flex-end; }
+  .ads-filter-sheet {
+    max-width: none;
+    max-height: 92vh;
+    max-height: 92dvh;
+    border-radius: 18px 18px 0 0;
+  }
+  .ads-filter-sheet-header { padding: 12px 14px; }
+  .ads-filter-sheet-body { padding: 14px; gap: 14px; -webkit-overflow-scrolling: touch; }
+  .ads-filter-sheet-footer { padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .ads-filter-apply { width: 100%; min-height: 46px; }
+  .ads-filter-toggle,
+  .ads-filter-chips > * { min-height: 38px; }
+}
+
+/* Pantallas angostas: los cuatro accesos a una columna para no cortar texto. */
+@media (max-width: 359px) {
+  .ads-wall-page .ads-fb-toggle { grid-column: 1 / -1; }
+}

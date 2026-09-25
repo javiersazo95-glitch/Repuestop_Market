@@ -396,10 +396,24 @@ export default function OfficialPatentHero({
     setErrorMsg('');
   };
 
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const visibleCarouselCategories = Array.from(
     { length: CAROUSEL_PAGE_SIZE },
     (_, index) => CAROUSEL_CATEGORIES[(activeCarouselPage * CAROUSEL_PAGE_SIZE + index) % CAROUSEL_CATEGORIES.length]
   );
+
+  const displayedCarouselCategories = isMobile ? CAROUSEL_CATEGORIES : visibleCarouselCategories;
 
   const DEFAULT_CATEGORY_PRIORITY = [
     'frenos', 'motor', 'aceite', 'filtros', 'suspension',
@@ -470,7 +484,7 @@ export default function OfficialPatentHero({
         <main className="light-hero-main">
           <div className="light-search-intro">
             <div className="light-intro-copy">
-              <h1>Encuentra el<br />repuesto correcto<br /><span>en segundos</span></h1>
+              <h1>Encuentra el<br /> repuesto correcto<br /> <span>en segundos</span></h1>
               <i aria-hidden="true" />
               <p>Busca por patente, código OEM o nombre del repuesto y compara opciones de tiendas verificadas, con el pago protegido hasta que recibas.</p>
               <ul>
@@ -811,10 +825,10 @@ export default function OfficialPatentHero({
           <ArrowLeft size={22} />
         </button>
         <div className="category-carousel-viewport">
-          <div className="category-carousel-track" key={activeCarouselPage}>
-            {visibleCarouselCategories.map((category, index) => (
+          <div className="category-carousel-track" key={isMobile ? 'mobile-track' : activeCarouselPage}>
+            {displayedCarouselCategories.map((category, index) => (
               <button
-                key={`${activeCarouselPage}-${category.id}-${index}`}
+                key={`${isMobile ? 'm' : activeCarouselPage}-${category.id}-${index}`}
                 className="category-showcase-card"
                 data-category={category.id}
                 onClick={() => selectCarouselCategory(category)}
