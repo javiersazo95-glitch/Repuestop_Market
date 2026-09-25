@@ -83,6 +83,8 @@ export default function BuyerAddressBook({ usuarioId, onChange }) {
     }
   };
 
+  const editingAddress = editingId ? addresses.find((item) => String(item.id) === String(editingId)) : null;
+
   const openEditForm = (address) => {
     setEditingId(address.id);
     setForm({
@@ -671,8 +673,12 @@ export default function BuyerAddressBook({ usuarioId, onChange }) {
                 value={form.calleYNumero}
                 onChange={(calleYNumero) => setForm((current) => ({ ...current, calleYNumero }))}
                 onSelectLocation={handleSuggestionLocation}
-                comuna={comunas.find((item) => String(item.id) === String(form.comunaId))?.nombre}
-                region={regiones.find((item) => String(item.id) === String(form.regionId))?.nombre}
+                // Al editar no se cargan las regiones y las comunas pueden tardar: se usa el
+                // nombre ya guardado en la dirección para no dejar el campo bloqueado.
+                comuna={comunas.find((item) => String(item.id) === String(form.comunaId))?.nombre
+                  || (editingId && String(editingAddress?.comunaId) === String(form.comunaId) ? editingAddress?.comunaNombre : undefined)}
+                region={regiones.find((item) => String(item.id) === String(form.regionId))?.nombre
+                  || (editingId ? editingAddress?.regionNombre : undefined)}
                 placeholder="Av. Italia 1234, depto 5"
                 required
               />

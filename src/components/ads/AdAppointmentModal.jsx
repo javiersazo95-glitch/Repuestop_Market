@@ -433,6 +433,9 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isR
                       onChange={setServiceAddress}
                       comuna={adOrCompany?.commune}
                       region={adOrCompany?.region}
+                      // La zona la fija el anuncio (comuna del taller); un aviso antiguo
+                      // sin comuna no debe bloquear el campo.
+                      requireComuna={false}
                       placeholder="Calle y número donde está el vehículo"
                       maxLength={200}
                     />

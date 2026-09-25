@@ -10,13 +10,15 @@ import CaptadorCodeField, { useCaptadorCode } from './CaptadorCodeField';
 import { clearStoredCaptadorReferral, getStoredCaptadorReferral } from '../utils/captadorReferral';
 import { decodeGoogleIdToken } from '../utils/googleIdToken';
 import { GOOGLE_CLIENT_ID } from './founderConfig';
-import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import { ROUTES } from '../routes/paths';
 import {
   recoverPasswordSendCodeApi,
   recoverPasswordVerifyCodeApi,
   recoverPasswordResetApi,
   checkEmailAvailabilityApi,
+  getPaisesApi,
+  getRegionesApi,
+  getComunasApi,
 } from '../services/api';
 
 // ID de cliente OAuth de RepuesTop en Google Cloud (mismo usado por mobile/backoffice/vendedor_panel
@@ -169,8 +171,14 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
   // El backend exige direccion (comunaId + calle) y aceptacion de terminos para crear
   // la cuenta: `validarComprador` los valida antes de tocar la base.
   const [buyerStreet, setBuyerStreet] = useState('');
-  const [buyerComuna, setBuyerComuna] = useState(null); // { id, nombre, region }
-  const [buyerComunaError, setBuyerComunaError] = useState('');
+  // Región y comuna se eligen ANTES de la dirección: la búsqueda se acota a esa comuna,
+  // que es lo que la hace precisa (sin comuna, "Los Huertos 670" sale en Curicó y no en
+  // Chillán). Además la comuna es la que exige el backend para guardar la dirección.
+  const [buyerRegionId, setBuyerRegionId] = useState('');
+  const [buyerComunaId, setBuyerComunaId] = useState('');
+  const [buyerRegiones, setBuyerRegiones] = useState([]);
+  const [buyerComunas, setBuyerComunas] = useState([]);
+  const [buyerGeoError, setBuyerGeoError] = useState('');
   const [acceptsTerms, setAcceptsTerms] = useState(false);
   // Codigo de captador opcional (registro manual y con Google). Parte con el `?ref=` del
   // link que compartio el captador, si lo hubo.
@@ -218,7 +226,33 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
   const isEmailFormatValid = emailRegex.test(email.trim());
   const isEmailValid = isEmailFormatValid && !emailTakenWarning;
   const isPasswordLengthValid = password.length >= 6 && password.length <= 32;
-  const isAddressValid = Boolean(buyerStreet.trim().length > 0 && buyerComuna?.id);
+  const buyerRegionNombre = buyerRegiones.find((r) => String(r.id) === String(buyerRegionId))?.nombre;
+  const buyerComunaNombre = buyerComunas.find((c) => String(c.id) === String(buyerComunaId))?.nombre;
+  const isAddressValid = Boolean(buyerStreet.trim().length > 0 && buyerComunaId);
+
+  // Regiones de Chile al abrir el registro de comprador, y comunas al elegir región.
+  useEffect(() => {
+    if (step !== 'register_buyer' || buyerRegiones.length > 0) return undefined;
+    let activo = true;
+    getPaisesApi()
+      .then((paises) => {
+        const lista = Array.isArray(paises) ? paises : [];
+        const chile = lista.find((pais) => /chile/i.test(pais.nombre)) || lista[0];
+        return chile ? getRegionesApi(chile.id) : [];
+      })
+      .then((data) => { if (activo) setBuyerRegiones(Array.isArray(data) ? data : []); })
+      .catch(() => { if (activo) setBuyerGeoError('No pudimos cargar las regiones. Revisa tu conexión.'); });
+    return () => { activo = false; };
+  }, [step, buyerRegiones.length]);
+
+  useEffect(() => {
+    if (!buyerRegionId) { setBuyerComunas([]); return undefined; }
+    let activo = true;
+    getComunasApi(buyerRegionId)
+      .then((data) => { if (activo) setBuyerComunas(Array.isArray(data) ? data : []); })
+      .catch(() => { if (activo) setBuyerGeoError('No pudimos cargar las comunas. Revisa tu conexión.'); });
+    return () => { activo = false; };
+  }, [buyerRegionId]);
 
   const getPasswordStrength = (pwd) => {
     if (!pwd || pwd.length < 6) return { score: 1, label: 'Débil', color: '#ef4444' };
@@ -286,8 +320,8 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     setBuyerName('');
     setBuyerPhone('');
     setBuyerStreet('');
-    setBuyerComuna(null);
-    setBuyerComunaError('');
+    setBuyerRegionId('');
+    setBuyerComunaId('');
     setAcceptsTerms(false);
     setGooglePending(null);
     setGoogleMissingFields({ firstName: false, lastName: false });
@@ -680,22 +714,6 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
     }, 1200);
   };
 
-  /**
-   * El backend guarda la direccion por comunaId. Se resuelve desde el nombre que trae la
-   * sugerencia; si el catalogo no tiene esa comuna se avisa en vez de dejar al usuario
-   * chocar contra un 400 al enviar.
-   */
-  const resolverComunaDelRegistro = async ({ comuna, region }) => {
-    setBuyerComunaError('');
-    const resuelto = await resolverUbicacionPorNombre({ comuna, region });
-    if (resuelto.comunaId) {
-      setBuyerComuna({ id: resuelto.comunaId, nombre: resuelto.comunaNombre, region: resuelto.regionNombre });
-    } else {
-      setBuyerComuna(null);
-      setBuyerComunaError('No reconocimos esa comuna. Prueba con otra dirección cercana.');
-    }
-  };
-
   const handleBuyerRegisterSubmit = async (e) => {
     e.preventDefault();
     setBuyerTouched({ name: true, email: true, phone: true, password: true, address: true });
@@ -717,7 +735,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
       } else if (!isPasswordLengthValid) {
         setErrorMessage('La contraseña debe tener al menos 6 caracteres.');
       } else if (!isAddressValid) {
-        setErrorMessage('Elige tu dirección desde las sugerencias para detectar tu comuna.');
+        setErrorMessage('Elige tu región y comuna, y luego escribe tu dirección de despacho.');
       } else if (!acceptsTerms) {
         setErrorMessage('Debes aceptar los Términos y Condiciones para crear tu cuenta.');
       }
@@ -740,7 +758,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
       name: cleanName,
       phone: cleanPhone || undefined,
       acceptsTerms,
-      direccion: { calleYNumero: buyerStreet.trim(), comunaId: buyerComuna.id },
+      direccion: { calleYNumero: buyerStreet.trim(), comunaId: Number(buyerComunaId) },
       referral: captador.code,
     });
 
@@ -1641,31 +1659,57 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
               )}
             </div>
 
+            <div className="form-grid-2">
+              <div className="form-group">
+                <label htmlFor="buyer-region">Región *</label>
+                <select
+                  id="buyer-region"
+                  value={buyerRegionId}
+                  onChange={(e) => { setBuyerRegionId(e.target.value); setBuyerComunaId(''); }}
+                  required
+                >
+                  <option value="">{buyerRegiones.length ? 'Selecciona tu región' : 'Cargando regiones...'}</option>
+                  {buyerRegiones.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label htmlFor="buyer-comuna">Comuna *</label>
+                <select
+                  id="buyer-comuna"
+                  value={buyerComunaId}
+                  onChange={(e) => setBuyerComunaId(e.target.value)}
+                  disabled={!buyerRegionId}
+                  required
+                >
+                  <option value="">{buyerRegionId ? 'Selecciona tu comuna' : 'Elige región primero'}</option>
+                  {buyerComunas.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              </div>
+            </div>
+
             <div className="form-group">
               <label>Dirección de despacho *</label>
               <AddressAutocompleteInput
                 value={buyerStreet}
                 onChange={(valor) => {
                   setBuyerStreet(valor);
-                  setBuyerComuna(null);
                   setBuyerTouched((prev) => ({ ...prev, address: true }));
                 }}
-                onSelectLocation={resolverComunaDelRegistro}
-                placeholder="Escribe tu calle y elige una sugerencia"
+                comuna={buyerComunaNombre}
+                region={buyerRegionNombre}
+                placeholder="Escribe tu calle y número"
                 maxLength={160}
                 required
               />
-              {buyerComuna ? (
+              {buyerGeoError ? (
+                <small className="auth-field-warning"><AlertCircle size={13} /> {buyerGeoError}</small>
+              ) : isAddressValid ? (
                 <small className="auth-address-hint is-ok">
-                  <Check size={13} /> {buyerComuna.nombre}{buyerComuna.region ? `, ${buyerComuna.region}` : ''}
-                </small>
-              ) : buyerStreet.trim().length > 0 ? (
-                <small className="auth-field-warning">
-                  <AlertCircle size={13} /> Elige una sugerencia de la lista para detectar tu comuna de despacho.
+                  <Check size={13} /> {buyerComunaNombre}{buyerRegionNombre ? `, ${buyerRegionNombre}` : ''}
                 </small>
               ) : (
                 <small className="auth-address-hint">
-                  {buyerComunaError || 'Escribe tu calle y elige una sugerencia de la lista.'}
+                  Elige tu región y comuna: las sugerencias de dirección se buscan dentro de esa comuna.
                 </small>
               )}
             </div>
@@ -1753,7 +1797,7 @@ export default function AuthModal({ isOpen, onClose, onOpenSellerRegister, onLog
                 ) : emailTakenWarning ? (
                   <span><AlertCircle size={13} /> El correo ya está registrado en RepuesTop</span>
                 ) : !isAddressValid ? (
-                  <span><AlertCircle size={13} /> Falta seleccionar tu dirección desde las sugerencias</span>
+                  <span><AlertCircle size={13} /> Falta tu región, comuna o dirección de despacho</span>
                 ) : !isPasswordLengthValid ? (
                   <span><AlertCircle size={13} /> La contraseña debe tener al menos 6 caracteres ({password.length}/6)</span>
                 ) : !acceptsTerms ? (

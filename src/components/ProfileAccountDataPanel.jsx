@@ -509,9 +509,43 @@ export default function ProfileAccountDataPanel({
                   </button>.
                 </small>
 
-                {/* DIRECCIÓN COMERCIAL OFICIAL DE LA TIENDA */}
+                {/* DIRECCIÓN COMERCIAL OFICIAL DE LA TIENDA. Región y comuna van primero: la
+                    calle se busca dentro de la comuna elegida, que es lo que la hace precisa. */}
                 <div className="form-section-title" style={{ marginTop: '20px' }}>
                   Dirección Comercial de la Tienda
+                </div>
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label>Región {sellerGeoLoading && !sellerRegiones.length && <Loader2 size={12} className="spin-icon" />}</label>
+                    <select
+                      value={storeRegionIdDraft}
+                      onChange={(e) => handleStoreRegionChange(e.target.value)}
+                    >
+                      <option value="">Selecciona una región</option>
+                      {sellerRegiones.map((reg) => (
+                        <option key={reg.id} value={reg.id}>{reg.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Comuna {sellerGeoLoading && storeRegionIdDraft && <Loader2 size={12} className="spin-icon" />}</label>
+                    <select
+                      value={storeComunaIdDraft}
+                      onChange={(e) => {
+                        setStoreComunaIdDraft(e.target.value);
+                        const com = sellerComunas.find((c) => String(c.id) === String(e.target.value));
+                        setStoreComunaDraft(com?.nombre || '');
+                      }}
+                      disabled={!storeRegionIdDraft || sellerGeoLoading}
+                    >
+                      <option value="">
+                        {!storeRegionIdDraft ? 'Primero selecciona una región' : sellerGeoLoading ? 'Cargando comunas...' : 'Selecciona una comuna'}
+                      </option>
+                      {sellerComunas.map((com) => (
+                        <option key={com.id} value={com.id}>{com.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="form-group">
                   <label>
@@ -548,39 +582,6 @@ export default function ProfileAccountDataPanel({
                     maxLength={180}
                   />
                   {formErrors.storeAddress && <small className="field-error-text">{formErrors.storeAddress}</small>}
-                </div>
-                <div className="form-grid-2">
-                  <div className="form-group">
-                    <label>Región {sellerGeoLoading && !sellerRegiones.length && <Loader2 size={12} className="spin-icon" />}</label>
-                    <select
-                      value={storeRegionIdDraft}
-                      onChange={(e) => handleStoreRegionChange(e.target.value)}
-                    >
-                      <option value="">Selecciona una región</option>
-                      {sellerRegiones.map((reg) => (
-                        <option key={reg.id} value={reg.id}>{reg.nombre}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Comuna {sellerGeoLoading && storeRegionIdDraft && <Loader2 size={12} className="spin-icon" />}</label>
-                    <select
-                      value={storeComunaIdDraft}
-                      onChange={(e) => {
-                        setStoreComunaIdDraft(e.target.value);
-                        const com = sellerComunas.find((c) => String(c.id) === String(e.target.value));
-                        setStoreComunaDraft(com?.nombre || '');
-                      }}
-                      disabled={!storeRegionIdDraft || sellerGeoLoading}
-                    >
-                      <option value="">
-                        {!storeRegionIdDraft ? 'Primero selecciona una región' : sellerGeoLoading ? 'Cargando comunas...' : 'Selecciona una comuna'}
-                      </option>
-                      {sellerComunas.map((com) => (
-                        <option key={com.id} value={com.id}>{com.nombre}</option>
-                      ))}
-                    </select>
-                  </div>
                 </div>
                 <small className="form-helper-text">
                   Esta es la dirección física oficial de tu tienda: punto único para catálogo público, retiros presenciales de clientes, despachos de pedidos y recepción de devoluciones.

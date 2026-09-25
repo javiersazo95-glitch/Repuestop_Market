@@ -21,7 +21,12 @@ const DEBOUNCE_MS = 300;
  */
 export default function AddressAutocompleteInput({
   value, onChange, onSelectLocation, comuna, region, placeholder, required, id, maxLength, onBlur,
+  // Exige comuna antes de escribir (por defecto sí): con la comuna la búsqueda se acota a
+  // esa zona; sin ella compite contra las calles homónimas de todo Chile ("Los Huertos 670"
+  // sale en Curicó y no en Chillán). Solo se apaga donde la zona ya viene dada.
+  requireComuna = true,
 }) {
+  const esperandoComuna = requireComuna && !comuna;
   const [suggestions, setSuggestions] = useState([]);
   const [searching, setSearching] = useState(false);
   const [open, setOpen] = useState(false);
@@ -30,7 +35,7 @@ export default function AddressAutocompleteInput({
 
   useEffect(() => {
     const term = String(value || '').trim();
-    if (term.length < MIN_CARACTERES || term === justPickedRef.current) {
+    if (esperandoComuna || term.length < MIN_CARACTERES || term === justPickedRef.current) {
       setSuggestions([]);
       setSearching(false);
       return undefined;
@@ -56,7 +61,7 @@ export default function AddressAutocompleteInput({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [value, comuna, region]);
+  }, [value, comuna, region, esperandoComuna]);
 
   const pick = (suggestion) => {
     justPickedRef.current = suggestion.direccion;
@@ -82,7 +87,9 @@ export default function AddressAutocompleteInput({
           // Opcional: los formularios con validación al salir del campo lo usan.
           onBlur?.(event);
         }}
-        placeholder={placeholder}
+        placeholder={esperandoComuna ? 'Primero elige la región y la comuna' : placeholder}
+        disabled={esperandoComuna}
+        title={esperandoComuna ? 'La dirección se busca dentro de la comuna elegida' : undefined}
         required={required}
         // Opcional: solo lo aplica quien muestre un tope. Sin esto, un formulario
         // podia pintar un contador "/300" que el campo no hacia cumplir.
