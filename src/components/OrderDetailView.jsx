@@ -11,9 +11,9 @@ import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, isCancelledItem, orderDeliverySummary, orderDisplayCode, subOrderDeliveryLabel, subOrderDeliveryMethod } from '../data/orderIdentity';
-import { getControlledOrderAction, isStorePickupOrder, normalizeOrderStatus, orderPaymentWindow } from '../data/orderStatusFlow';
+import { buyerClaimState, getControlledOrderAction, isStorePickupOrder, normalizeOrderStatus, orderPaymentWindow } from '../data/orderStatusFlow';
 import { Link } from 'react-router-dom';
-import { productPath } from '../routes/paths';
+import { buyerCaseChatPath, productPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
 import SaleReceiptViewerModal from './SaleReceiptViewerModal';
@@ -494,6 +494,10 @@ export default function OrderDetailView({
       };
     }
     if (estado === 'ENTREGADO') {
+      // O62 (pruebas de lanzamiento, 25-sep): finalizar le libera la plata a la tienda; no se
+      // ofrece con reclamo abierto, mediacion en curso ni mediacion resuelta con reembolso. El
+      // backend lo rechaza igual (PedidoResponseMapper.motivoBloqueoFinalizacionComprador).
+      if (claimState?.blocksFinalize) return null;
       return {
         nextStatus: 'FINALIZADO',
         label: 'Finalizar compra',
@@ -526,6 +530,9 @@ export default function OrderDetailView({
   // O56 (pruebas de lanzamiento, 25-sep): en que va la devolucion por Flow. Solo al comprador:
   // es el quien tiene que aceptar el correo de Flow. Cubre cancelaciones y mediaciones.
   const buyerRefund = !isSeller ? buyerRefundInfo(order) : null;
+  // O62 (pruebas de lanzamiento, 25-sep): el reclamo del comprador (abierto, en mediacion o
+  // resuelto), con enlace a su conversacion.
+  const claimState = !isSeller ? buyerClaimState(order) : null;
 
   const orderIdShort = orderDisplayCode(order, isSeller ? 'seller' : 'buyer');
   const items = order.items || [];
@@ -597,9 +604,22 @@ export default function OrderDetailView({
   // PedidoResponseMapper). Este calculo es solo respaldo para cuando el backend no manda
   // `commissionSeller`/`comisionPasarela` -- en el caso normal se usa el valor real del backend.
   const commissionBase = Math.max(0, subtotal - discount + shippingFee);
-  const commissionRate = order.commissionRate ? order.commissionRate * 100 : 8;
-  const repuestopFee = order.commissionSeller || Math.round(commissionBase * (commissionRate / 100) * 1.19);
+  // O65 (pruebas de lanzamiento, 25-sep): la comision real es la del backend (`comisionVendedor`,
+  // alias `commissionSeller`, con IVA). Con `||` una comision de CERO -venta reembolsada por
+  // veredicto, regla O28- caia al calculo local y se inventaba un cobro que no existe.
+  const storedCommissionRate = Number(order.commissionRate ?? order.comisionTasaAplicada ?? 0);
+  // Redondeado a 2 decimales: 0.07 * 100 da 7.000000000000001 y se pintaria tal cual en la etiqueta.
+  const commissionRate = storedCommissionRate > 0
+    ? Math.round((storedCommissionRate <= 1 ? storedCommissionRate * 100 : storedCommissionRate) * 100) / 100
+    : 8;
+  const repuestopFee = Number(order.comisionVendedor ?? order.commissionSeller
+    ?? Math.round(commissionBase * (commissionRate / 100) * 1.19));
   const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(commissionBase * 0.0289 * 1.19)));
+  // O65: cargo fijo de Flow por el reembolso de un veredicto (lo asume la tienda, O28).
+  const refundCharge = Number(order.cargoReembolsoPasarela ?? 0);
+  // O65: venta devuelta entera (cancelacion o veredicto a favor del comprador).
+  const fullyRefundedSale = isSeller && refundAmount > 0 && totalSeller <= 0;
+  const sellerAssumedCost = repuestopFee + paymentProcessingFee + refundCharge;
 
   // En un carrito multitienda no sirve tomar el estado agregado sin validarlo: la barra
   // representa la promesa completa al comprador y debe quedarse en el pedido que aún va más
@@ -676,7 +696,11 @@ export default function OrderDetailView({
     try {
       await onCreateClaim(order, { motivo: claimFinalReason, descripcion: claimDetail.trim() });
       setShowClaimModal(false);
-      onClose?.();
+      // O62 (pruebas de lanzamiento, 25-sep): el reclamo abre la conversacion del caso; se lleva
+      // al comprador directo ahi (`/perfil/chats_vendedor?caso={id}`) en vez de devolverlo a la
+      // lista, donde nada le indicaba lo que acababa de hacer.
+      if (onOpenDispute) onOpenDispute();
+      else onClose?.();
     } catch (err) {
       setClaimError(err?.message || 'No se pudo iniciar el reclamo.');
     } finally {
@@ -1171,6 +1195,27 @@ export default function OrderDetailView({
           </div>
         </div>
 
+        {/* O62 (pruebas de lanzamiento, 25-sep): el reclamo del comprador, arriba y con enlace a su
+            conversacion. Antes, tras reclamar, el detalle no decia nada. */}
+        {claimState && (
+          <div className={`order-refund-status-block order-claim-status-block is-${claimState.kind}`} role="status">
+            <strong>
+              <ShieldAlert size={15} /> {claimState.title}
+              {' · '}
+              <Link to={buyerCaseChatPath(order.id)} className="order-claim-link">{claimState.linkLabel}</Link>
+            </strong>
+            {claimState.detail && <span>{claimState.detail}</span>}
+            {claimState.blocksFinalize && (normStatus === 'ENTREGADO'
+              || subOrders.some((sub) => String(sub?.estado || '').toUpperCase() === 'ENTREGADO')) && (
+              <span>
+                {claimState.kind === 'resolved'
+                  ? 'La compra se cierra automáticamente; no hace falta finalizarla.'
+                  : 'Mientras el caso siga abierto no se puede finalizar la compra.'}
+              </span>
+            )}
+          </div>
+        )}
+
         <div className={isPage ? 'order-page-body' : 'order-modal-body'}>
           {/* El mismo progreso se muestra al comprador y al vendedor. Cada hito es
               seleccionable para explicar qué ocurre en esa etapa. */}
@@ -1662,8 +1707,28 @@ export default function OrderDetailView({
                       el vendedor veia "Monto Neto a Recibir" mas bajo sin ninguna explicacion. */}
                   {refundAmount > 0 && (
                     <div className="financial-row deduction-row">
-                      <span>Reembolso por mediación</span>
+                      {/* O65: tambien lo trae una cancelacion, no solo un veredicto. */}
+                      <span>Reembolso al comprador</span>
                       <strong className="negative-text">-{formatCLP(refundAmount)}</strong>
+                    </div>
+                  )}
+                  {refundCharge > 0 && (
+                    <div className="financial-row deduction-row">
+                      <span>Cargo de Flow por el reembolso</span>
+                      <strong className="negative-text">-{formatCLP(refundCharge)}</strong>
+                    </div>
+                  )}
+                  {/* O65 (pruebas de lanzamiento, 25-sep): en una venta devuelta entera se dice lo
+                      que la tienda asume de verdad (regla O28: sin comision de RepuesTop, solo el
+                      costo de la pasarela), no un "descuento por servicio" que no existe. */}
+                  {fullyRefundedSale && (
+                    <div className="financial-row">
+                      <span>
+                        {sellerAssumedCost > 0
+                          ? 'Venta reembolsada · costo de pasarela asumido'
+                          : 'Venta reembolsada · sin descuentos para tu tienda'}
+                      </span>
+                      {sellerAssumedCost > 0 && <strong>{formatCLP(sellerAssumedCost)}</strong>}
                     </div>
                   )}
                 </>

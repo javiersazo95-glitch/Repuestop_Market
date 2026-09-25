@@ -45,6 +45,14 @@ export function profilePurchasePath(orderId) {
   return `/perfil/compras/${encodeURIComponent(String(orderId ?? ''))}`;
 }
 
+/**
+ * `/perfil/chats_vendedor?caso={id}`: la conversacion del reclamo / mediacion de un pedido,
+ * vista como COMPRADOR. O62 (pruebas de lanzamiento, 25-sep).
+ */
+export function buyerCaseChatPath(orderId) {
+  return `/perfil/chats_vendedor?caso=${encodeURIComponent(String(orderId ?? ''))}`;
+}
+
 export const PROFILE_TABS = [
   'resumen', 'pedidos', 'compras', 'favoritos', 'datos', 'consultas',
   'cotizaciones', 'mis_cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'tienda', 'tienda_datos',

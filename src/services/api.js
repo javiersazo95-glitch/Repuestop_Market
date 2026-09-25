@@ -1511,6 +1511,21 @@ export async function sendMediatorMessageApi(pedidoId, mensaje, proveedorId) {
   });
 }
 
+/**
+ * O63 (pruebas de lanzamiento, 25-sep): pasado el plazo del mediador y dentro de los 6 meses
+ * de la garantia legal, el comprador pide ayuda a soporte desde el caso. Crea un ticket de
+ * soporte ligado al pedido (o devuelve el que ya esta abierto) y responde el caso actualizado.
+ */
+export async function requestWarrantySupportApi(pedidoId, { comentario, proveedorId } = {}) {
+  const formData = new FormData();
+  if (comentario) formData.append('comentario', comentario);
+  appendProveedor(formData, proveedorId);
+  return fetchApi(`/pedidos/${pedidoId}/soporte-garantia`, {
+    method: 'POST',
+    body: formData,
+  });
+}
+
 /** Aporta evidencia al expediente durante la mediacion (endpoint aparte del mensaje). */
 export async function uploadMediationEvidenceApi(pedidoId, imagenes, proveedorId) {
   const formData = new FormData();

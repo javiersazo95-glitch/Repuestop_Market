@@ -26,6 +26,8 @@ export default function SellerChargesBreakdownModal({
   commissionWithIva = 0,
   paymentProcessingFee = 0,
   refundAmount = 0,
+  refundCharge = 0,
+  fullyRefunded = false,
   netAmount = 0,
   onClose,
 }) {
@@ -63,9 +65,21 @@ export default function SellerChargesBreakdownModal({
       detail: 'Por productos cancelados o mediación',
       amount: refundAmount,
     },
+    // O65 (pruebas de lanzamiento, 25-sep): Flow cobra un cargo fijo por cada reembolso de un
+    // veredicto y no lo devuelve; lo asume la tienda (O28). Viene del backend.
+    {
+      key: 'cargo-reembolso',
+      icon: CreditCard,
+      label: 'Cargo de Flow por el reembolso',
+      detail: 'Costo fijo de la pasarela por devolver el pago',
+      amount: refundCharge,
+    },
   ].filter((charge) => charge.amount > 0);
 
   const totalCharges = charges.reduce((sum, charge) => sum + charge.amount, 0);
+  // O65: en una venta devuelta entera lo que importa es lo que la tienda asume de verdad (sin
+  // comision de RepuesTop; solo el costo de la pasarela, si lo hubo), no el reembolso en si.
+  const assumedCost = commissionWithIva + paymentProcessingFee + refundCharge;
 
   return createPortal(
     <div className="commission-modal-backdrop order-subdialog-backdrop" onClick={onClose}>
@@ -128,6 +142,14 @@ export default function SellerChargesBreakdownModal({
           </span>
           <strong>{formatCLP(netAmount)}</strong>
         </div>
+
+        {fullyRefunded && (
+          <p className="commission-footer-note">
+            {assumedCost > 0
+              ? `Venta reembolsada: RepuesTop no cobra comisión y tu tienda asume solo el costo de la pasarela (${formatCLP(assumedCost)}).`
+              : 'Venta reembolsada: no hay descuentos para tu tienda.'}
+          </p>
+        )}
 
         <p className="commission-footer-note">
           El porcentaje estándar de RepuesTop es 8% + IVA sobre cada venta, sin tramos ni tope

@@ -1,4 +1,4 @@
-import { activeOrderItems } from './orderIdentity';
+import { activeOrderItems, isCancelledItem } from './orderIdentity';
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -86,6 +86,44 @@ export function sellerFinalizationAvailability(order, now = Date.now()) {
   return { enabled: false, label: `Finalizar pedido (disponible en ${remaining})` };
 }
 
+/**
+ * O62 (pruebas de lanzamiento, 25-sep): en que va el reclamo del comprador, o `null` si no hay.
+ *
+ * - `mediation`: un mediador de RepuesTop revisa el caso.
+ * - `resolved`: la mediacion termino (el backend manda `estadoMediacion` RESUELTA/CERRADA aunque el
+ *   pedido haya vuelto a ENTREGADO). Un veredicto con reembolso deja items vivos con
+ *   `montoReembolsado`: eso tambien cuenta como resuelta, con reembolso.
+ * - `open`: hay reclamo (`motivoReclamo`) y todavia no interviene nadie; se conversa con la tienda.
+ *
+ * `blocksFinalize` espeja `PedidoResponseMapper.motivoBloqueoFinalizacionComprador`: el comprador no
+ * finaliza con reclamo abierto, mediacion en curso ni mediacion resuelta con reembolso.
+ */
+export function buyerClaimState(order) {
+  if (!order) return null;
+  const status = normalizeOrderStatus(order);
+  const mediation = String(order.estadoMediacion || order.mediationStatus || '').toUpperCase();
+  const hasClaim = Boolean(order.motivoReclamo || order.claimReason || order.descripcionReclamo);
+  const refundedByVerdict = (Array.isArray(order.items) ? order.items : [])
+    .some((item) => !isCancelledItem(item) && Number(item?.montoReembolsado || 0) > 0);
+
+  if (status === 'EN_MEDIACION' || mediation === 'EN_MEDIACION') {
+    return { kind: 'mediation', title: 'En mediación', linkLabel: 'Ver caso', blocksFinalize: true };
+  }
+  if (mediation === 'RESUELTA' || mediation === 'CERRADA' || refundedByVerdict) {
+    return {
+      kind: 'resolved',
+      title: 'Mediación resuelta',
+      detail: refundedByVerdict ? 'Se resolvió con reembolso a tu favor.' : null,
+      linkLabel: 'Ver caso',
+      blocksFinalize: refundedByVerdict,
+    };
+  }
+  if (hasClaim) {
+    return { kind: 'open', title: 'Reclamo abierto', linkLabel: 'Ver conversación', blocksFinalize: true };
+  }
+  return null;
+}
+
 export function getControlledOrderAction(order, mode) {
   const status = normalizeOrderStatus(order);
   const pickup = isStorePickupOrder(order);
@@ -116,6 +154,8 @@ export function getControlledOrderAction(order, mode) {
       };
     }
     if (status === 'ENTREGADO') {
+      // O62: con reclamo abierto, mediacion o reembolso por veredicto no se finaliza.
+      if (buyerClaimState(order)?.blocksFinalize) return null;
       return {
         nextStatus: 'FINALIZADO',
         label: 'Finalizar pedido',

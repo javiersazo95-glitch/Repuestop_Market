@@ -1,16 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, Download, FileText, Image as ImageIcon,
+  AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, Download, FileText, Headphones, Image as ImageIcon,
   Loader2, Lock, Maximize2, MessageSquare, Package, Paperclip, RefreshCw, Scale, Send, ShieldAlert, Store, User, Wallet, X,
 } from 'lucide-react';
 import {
-  escalateMediationApi, getMediationChatApi, resolveMediationApi,
+  escalateMediationApi, getMediationChatApi, requestWarrantySupportApi, resolveMediationApi,
   sendConversationMessageApi, sendMediatorMessageApi, uploadMediationEvidenceApi,
   uploadMediationChatImageApi, resolveMediaUrl,
 } from '../services/api';
 import { MEDIATION_STATUS_LABELS, MEDIATION_STATUS_TONES } from '../data/mediationStatus';
 import { claimReasonLabel } from '../data/claimReason';
+import { profilePath } from '../routes/paths';
 import compressImageFile from '../utils/imageCompression';
 import ChatImagePreview from './ChatImagePreview';
 
@@ -296,6 +298,14 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // O63 (pruebas de lanzamiento, 25-sep): pedir ayuda a soporte por garantia legal.
+  const navigate = useNavigate();
+  const [warrantyDialog, setWarrantyDialog] = useState(false);
+  const [warrantyComment, setWarrantyComment] = useState('');
+  const [warrantyError, setWarrantyError] = useState('');
+  const [isRequestingWarranty, setIsRequestingWarranty] = useState(false);
+  const [warrantyDone, setWarrantyDone] = useState(false);
+
   const threadRef = useRef(null);
 
   const chatImages = useMemo(
@@ -345,7 +355,25 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   const statusTone = MEDIATION_STATUS_TONES[estado] || 'wait';
   const isClosed = chat?.chatCerrado || estado === 'RESUELTA' || estado === 'CERRADA';
   const orderReceived = ['ENTREGADO', 'RECEIVED', 'FINALIZADO', 'FINISHED'].includes(String(chat?.estadoPedido || '').toUpperCase());
-  const mediatorLockedMessage = orderReceived
+  // O63 (pruebas de lanzamiento, 25-sep), "modelo mixto": hasta 10 días hábiles desde la
+  // recepción se pide un mediador; después, y hasta 6 meses desde la entrega (garantía legal,
+  // `garantiaHasta`), el comprador pide ayuda a soporte y RepuesTop coordina con la tienda.
+  const warrantyUntil = chat?.garantiaHasta ? new Date(chat.garantiaHasta) : null;
+  const warrantyExpired = Boolean(warrantyUntil) && Date.now() > warrantyUntil.getTime();
+  const warrantyUntilLabel = warrantyUntil
+    ? warrantyUntil.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })
+    : '';
+  const warrantyTicketId = mode === 'buyer' ? (chat?.ticketGarantiaId ?? null) : null;
+  const canRequestWarrantySupport = mode === 'buyer' && Boolean(chat?.soporteGarantiaDisponible);
+  // A la tienda, pasado el plazo del mediador y dentro de la garantía, no se le ofrece el botón:
+  // se le explica que soporte puede contactarla.
+  const sellerWarrantyNotice = mode === 'seller' && !chat?.mediadorDisponible && Boolean(warrantyUntil) && !warrantyExpired;
+  const warrantyTicketPath = warrantyTicketId != null
+    ? `${profilePath('consultas')}?ticket=${encodeURIComponent(String(warrantyTicketId))}`
+    : null;
+  const mediatorLockedMessage = warrantyExpired
+    ? 'Pasaron más de 6 meses desde la entrega: terminó la garantía legal y ya no se puede pedir un mediador ni ayuda de soporte desde este caso. Puedes seguir conversando con la otra parte.'
+    : orderReceived
     ? 'La ayuda del mediador se puede solicitar durante los 10 días hábiles posteriores a la recepción del producto. Ese plazo ya venció. Puedes seguir conversando con la otra parte.'
     : 'La ayuda del mediador estará disponible cuando el producto sea recibido. Desde ese momento tendrás 10 días hábiles para solicitarla.';
   // Al escalar, el backend cierra la conversacion directa (EstadoConversacion.CERRADA)
@@ -548,6 +576,40 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
     }
   };
 
+  const openWarrantyDialog = () => {
+    setWarrantyComment('');
+    setWarrantyError('');
+    setWarrantyDone(false);
+    setWarrantyDialog(true);
+  };
+
+  const closeWarrantyDialog = () => {
+    if (isRequestingWarranty) return;
+    setWarrantyDialog(false);
+  };
+
+  const submitWarranty = async (event) => {
+    event.preventDefault();
+    if (isRequestingWarranty) return;
+    setIsRequestingWarranty(true);
+    setWarrantyError('');
+    try {
+      const data = await requestWarrantySupportApi(pedidoId, { comentario: warrantyComment.trim(), proveedorId });
+      if (data?.conversacion) {
+        setChat(data);
+        setMessages(data?.mensajes || []);
+      } else {
+        await load({ quiet: true });
+      }
+      setWarrantyDone(true);
+      onChanged?.();
+    } catch (error) {
+      setWarrantyError(error.message || 'No se pudo enviar tu solicitud a soporte.');
+    } finally {
+      setIsRequestingWarranty(false);
+    }
+  };
+
   if (loading) {
     return <div className="dispute-file-loading"><Loader2 size={20} className="spin-icon" /> Abriendo expediente...</div>;
   }
@@ -659,19 +721,33 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
 
       {/* Acciones de la disputa directa, arriba del hilo. "¿Necesitas ayuda?" abre solicitar
           mediador; al confirmarlo este chat queda archivado y pasa a ser la pestaña "Chat". */}
-      {!threadLocked && (
+      {/* O63: pasado el plazo del mediador y dentro de la garantía legal, el comprador ve
+          "Pedir ayuda a soporte" (o el ticket que ya abrió) y la tienda no ve el botón. */}
+      {!threadLocked && !sellerWarrantyNotice && (
         <div className="dispute-chat-actions">
-          <button
-            type="button"
-            className={chat?.mediadorDisponible ? '' : 'is-locked'}
-            aria-disabled={!chat?.mediadorDisponible}
-            onClick={() => chat?.mediadorDisponible ? openDialog('escalate') : setShowMediatorLockedInfo(true)}
-          >
-            <span className="dispute-chat-action-icon is-help">
-              {chat?.mediadorDisponible ? <Scale size={16} /> : <Lock size={16} />}
-            </span>
-            <span>Solicitar ayuda de un mediador</span>
-          </button>
+          {chat?.mediadorDisponible || (!warrantyTicketPath && !canRequestWarrantySupport) ? (
+            <button
+              type="button"
+              className={chat?.mediadorDisponible ? '' : 'is-locked'}
+              aria-disabled={!chat?.mediadorDisponible}
+              onClick={() => chat?.mediadorDisponible ? openDialog('escalate') : setShowMediatorLockedInfo(true)}
+            >
+              <span className="dispute-chat-action-icon is-help">
+                {chat?.mediadorDisponible ? <Scale size={16} /> : <Lock size={16} />}
+              </span>
+              <span>Solicitar ayuda de un mediador</span>
+            </button>
+          ) : warrantyTicketPath ? (
+            <button type="button" onClick={() => navigate(warrantyTicketPath)}>
+              <span className="dispute-chat-action-icon is-resolve"><Headphones size={16} /></span>
+              <span>Soporte ya está revisando tu caso · Ver ticket</span>
+            </button>
+          ) : (
+            <button type="button" onClick={openWarrantyDialog}>
+              <span className="dispute-chat-action-icon is-help"><Headphones size={16} /></span>
+              <span>Pedir ayuda a soporte (garantía legal)</span>
+            </button>
+          )}
         </div>
       )}
       {showMediatorLockedInfo && (
@@ -692,6 +768,11 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
               <Lock size={13} /> La conversación directa quedó archivada al pedir un mediador. El seguimiento sigue en la pestaña <b>Mediador RepuesTop</b>.
             </p>
           )}
+          {!threadLocked && sellerWarrantyNotice && (
+            <p className="dispute-frozen-notice">
+              <Headphones size={13} /> Terminó el plazo para pedir un mediador. Hasta el {warrantyUntilLabel} rige la garantía legal: soporte de RepuesTop puede contactarte para coordinar el cambio, la reparación o la devolución del producto.
+            </p>
+          )}
 
           {/* Mismo layout que el hilo del mediador: guía + reclamo a la izquierda,
               chat acotado al centro, fotos a la derecha. */}
@@ -700,7 +781,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
               <ResolutionDetailButton chat={chat} mode={mode} onOpen={() => setShowResolutionDetail(true)} />
               <div className="dispute-rail-card">
                 <h4><MessageSquare size={13} /> Chat con {mode === 'buyer' ? 'vendedor' : 'comprador'}</h4>
-                <p>Aquí te pones de acuerdo con {mode === 'buyer' ? 'el vendedor' : 'el comprador'}. Tras recibir el producto, tendrás 10 días hábiles para solicitar un mediador si no llegan a una solución.</p>
+                <p>Aquí te pones de acuerdo con {mode === 'buyer' ? 'el vendedor' : 'el comprador'}. Tras recibir el producto hay 10 días hábiles para solicitar un mediador si no llegan a una solución; después, y hasta 6 meses desde la entrega (garantía legal), {mode === 'buyer' ? 'puedes pedir ayuda a soporte de RepuesTop' : 'soporte de RepuesTop puede contactarte'}.</p>
               </div>
 
               <div className="dispute-rail-card">
@@ -728,7 +809,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
                   <ol className="dispute-mediator-steps">
                     <li><span>1</span><div>Escríbele a la otra parte y propón cómo resolverlo.</div></li>
                     <li><span>2</span><div>Adjunta fotos con el botón <b>Foto</b> si ayudan a explicar el problema.</div></li>
-                    <li><span>3</span><div>Al recibir el producto se habilitan <b>10 días hábiles</b> para solicitar ayuda de un mediador si no hay acuerdo.</div></li>
+                    <li><span>3</span><div>Si no hay acuerdo: durante los <b>10 días hábiles</b> siguientes a la recepción se puede solicitar ayuda de un mediador. Después, y hasta <b>6 meses</b> desde la entrega (garantía legal), {mode === 'buyer' ? 'puedes pedir ayuda a soporte de RepuesTop' : 'soporte de RepuesTop puede contactarte'} para coordinar el cambio, la reparación o la devolución, a cargo de la tienda.</div></li>
                   </ol>
                 </div>
               )}
@@ -1158,6 +1239,71 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
                 </button>
               </footer>
             </form>
+          </section>
+        </div>,
+        document.body
+      )}
+
+      {warrantyDialog && typeof document !== 'undefined' && createPortal(
+        <div className="dispute-dialog-backdrop" onClick={closeWarrantyDialog}>
+          <section
+            className="dispute-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Pedir ayuda a soporte por garantía legal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header>
+              <div>
+                <small>Expediente {codigo}</small>
+                <h2>{warrantyDone ? 'Soporte revisará tu caso' : 'Pedir ayuda a soporte'}</h2>
+              </div>
+              <button type="button" aria-label="Cerrar" disabled={isRequestingWarranty} onClick={closeWarrantyDialog}><X size={16} /></button>
+            </header>
+
+            {warrantyDone ? (
+              <>
+                <p className="dispute-dialog-lead">
+                  Listo: soporte de RepuesTop recibió tu reclamo con el pedido y la tienda. Coordinaremos con la tienda el cambio, la reparación o la devolución del producto, que corren por cuenta de la tienda. Te responderemos en Mis consultas y por correo; el chat con la tienda sigue disponible.
+                </p>
+                <form onSubmit={(event) => { event.preventDefault(); closeWarrantyDialog(); }} noValidate>
+                  <footer>
+                    {warrantyTicketPath && (
+                      <button type="button" className="dispute-btn" onClick={() => navigate(warrantyTicketPath)}>Ver ticket</button>
+                    )}
+                    <button type="submit" className="dispute-btn is-primary"><CheckCircle2 size={15} /> Entendido</button>
+                  </footer>
+                </form>
+              </>
+            ) : (
+              <>
+                <p className="dispute-dialog-lead">
+                  Pasó el plazo para pedir un mediador, pero tu compra sigue cubierta por la garantía legal{warrantyUntilLabel ? ` hasta el ${warrantyUntilLabel}` : ''}. Soporte de RepuesTop recibirá tu reclamo con el pedido y la tienda, y coordinará con la tienda el cambio, la reparación o la devolución del producto (a cargo de la tienda).
+                </p>
+                <form onSubmit={submitWarranty} noValidate>
+                  <label className="dispute-field">
+                    <span>¿Algo más que soporte deba saber? (opcional)<i>{warrantyComment.length}/{MAX_DETAIL}</i></span>
+                    <textarea
+                      rows={3}
+                      value={warrantyComment}
+                      maxLength={MAX_DETAIL}
+                      onChange={(event) => setWarrantyComment(event.target.value)}
+                      placeholder="Ej: la tienda no responde desde hace una semana"
+                    />
+                  </label>
+
+                  {warrantyError && <p className="dispute-dialog-error"><AlertTriangle size={14} /> {warrantyError}</p>}
+
+                  <footer>
+                    <button type="button" className="dispute-btn" disabled={isRequestingWarranty} onClick={closeWarrantyDialog}>Cancelar</button>
+                    <button type="submit" className="dispute-btn is-primary" disabled={isRequestingWarranty}>
+                      {isRequestingWarranty ? <Loader2 size={15} className="spin-icon" /> : <Headphones size={15} />}
+                      {isRequestingWarranty ? 'Enviando...' : 'Pedir ayuda a soporte'}
+                    </button>
+                  </footer>
+                </form>
+              </>
+            )}
           </section>
         </div>,
         document.body

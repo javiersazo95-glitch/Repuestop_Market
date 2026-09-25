@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import {
   Clock, Wrench, Truck, PackageCheck, ShieldCheck, AlertCircle, XCircle,
   RotateCcw, FileText, User, Store, Package, Info, ChevronRight, Check,
-  Phone, MapPin, Boxes, Loader2, ReceiptText, FileCheck, ListChecks
+  Phone, MapPin, Boxes, Loader2, ReceiptText, FileCheck, ListChecks, ShieldAlert
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { resolveMediaUrl } from '../services/api';
 import { isCancelledItem, orderDeliverySummary, orderDisplayCode } from '../data/orderIdentity';
-import { getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
+import { buyerClaimState, getControlledOrderAction, isStorePickupOrder, orderPaymentWindow } from '../data/orderStatusFlow';
+import { buyerCaseChatPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
 import SellerChargesBreakdownModal from './SellerChargesBreakdownModal';
@@ -158,7 +160,19 @@ export default function OrderCard({
   const buyerName = order.compradorNombre || order.buyerName || order.usuarioNombre || 'Cliente sin nombre';
   const buyerAvatar = resolveMediaUrl(order.compradorFotoPerfil || order.compradorAvatarUrl || order.buyerAvatarUrl || order.buyerAvatar || null);
   const buyerPhone = order.compradorTelefono || order.buyerPhone || order.telefono || '';
-  const sellerName = order.vendedorNombre || order.sellerName || order.nombreTienda || 'Tienda RepuesTop';
+  // O61 (pruebas de lanzamiento, 25-sep): el pedido del comprador no trae un nombre de tienda a
+  // nivel pedido (PedidoResponseDTO), asi que la tarjeta caia siempre en "Tienda RepuesTop". El
+  // nombre real viene en cada subordén (`nombreTienda`) y en cada item (`proveedorNombre`), que es
+  // de donde lo lee el detalle.
+  const storeNames = [...new Set([
+    ...(Array.isArray(order.subordenes) ? order.subordenes : []).map((sub) => sub?.nombreTienda),
+    ...items.map((item) => item.proveedorNombre || item.sellerName || item.nombreTienda),
+  ].filter(Boolean))];
+  const sellerName = order.vendedorNombre || order.sellerName || order.nombreTienda
+    || (storeNames.length > 1 ? `${storeNames[0]} y ${storeNames.length - 1} más` : storeNames[0])
+    || 'Tienda RepuesTop';
+  // O62 (pruebas de lanzamiento, 25-sep): tras reclamar, nada en "Mis pedidos" lo decia.
+  const claimState = !isSeller ? buyerClaimState(order) : null;
 
   // Dirección real de despacho (no solo la etiqueta genérica "Despacho a domicilio"):
   // el vendedor la necesita para preparar el envío sin tener que abrir el detalle.
@@ -194,6 +208,9 @@ export default function OrderCard({
   const subtotal = Number(order.subtotal ?? itemsSubtotal ?? order.total ?? 0);
   const totalSeller = Number(order.totalVendedor ?? order.totalSeller ?? (subtotal * 0.93));
   const totalBuyer = Number(order.total || subtotal);
+  // Se declara antes de `totalActive`, que lo usa como respaldo (con `const` leerlo antes de su
+  // declaracion revienta la tarjeta si el backend no manda `totalActivo`).
+  const refundAmount = Number(order.montoReembolsado || order.refundedAmount || 0);
   // Con un reembolso en curso la tarjeta se contradecia sola: el aviso de arriba anunciaba la
   // devolucion y el pie seguia rotulando el cobro original como "Total". Peor aun, el detalle
   // del MISMO pedido ya mostraba "Total Final": dos cifras distintas segun donde se mirara.
@@ -205,15 +222,24 @@ export default function OrderCard({
   // Misma base que el detalle del pedido y la liquidacion real: productos menos descuento mas
   // envio local. El calculo es solo respaldo cuando el backend no manda los montos.
   const commissionBase = Math.max(0, subtotal - discount + shippingFee);
-  const repuestopFee = order.commissionSeller || Math.round(commissionBase * (commissionRate / 100) * 1.19);
+  // O65 (pruebas de lanzamiento, 25-sep): la comision real es `comisionVendedor` (alias
+  // `commissionSeller`, con IVA), que el backend calcula con la regla O28. Con `||` una comision
+  // de CERO -venta reembolsada por veredicto- caia al calculo local: de ahi salian "Descuentos por
+  // servicio y pago: -$844" en una venta que no le cobra comision.
+  const repuestopFee = Number(order.comisionVendedor ?? order.commissionSeller
+    ?? Math.round(commissionBase * (commissionRate / 100) * 1.19));
   const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(commissionBase * 0.0289 * 1.19)));
-  const totalDeductions = repuestopFee + paymentProcessingFee;
+  // O65: cargo fijo de Flow por el reembolso de un veredicto, que la tienda asume (O28).
+  const refundCharge = Number(order.cargoReembolsoPasarela ?? 0);
+  const totalDeductions = repuestopFee + paymentProcessingFee + refundCharge;
+  // O65: venta devuelta entera (cancelacion o veredicto a favor del comprador). Ahi no se habla
+  // de "descuentos por servicio": se dice lo que la tienda asume de verdad, si asume algo.
+  const fullyRefundedSale = isSeller && refundAmount > 0 && totalSeller <= 0;
   const paymentFailed = String(order.paymentStatus || '').toLowerCase() === 'failed' && !['CANCELADO', 'CANCELLED'].includes(normStatus);
   // `refundStatus` ya viene acotado por el backend a quien le concierne (al vendedor solo
   // si alguno de SUS items quedo cancelado). Aca se agrega el monto, que antes no se decia:
   // "Reembolso en proceso" sin cifra no le sirve a nadie.
   const hasRefund = ['REEMBOLSADO', 'REEMBOLSO_SOLICITADO'].includes(String(order.refundStatus || '').toUpperCase());
-  const refundAmount = Number(order.montoReembolsado || order.refundedAmount || 0);
 
   const controlledAction = getControlledOrderAction(order, mode);
 
@@ -366,7 +392,7 @@ export default function OrderCard({
               </div>
               <div className="person-copy">
                 <strong className="person-name">{sellerName}</strong>
-                <span className="person-role">Vendedor</span>
+                <span className="person-role">{storeNames.length > 1 ? 'Vendedores' : 'Vendedor'}</span>
               </div>
             </>
           )}
@@ -427,6 +453,28 @@ export default function OrderCard({
               {!isSeller && String(order.refundStatus).toUpperCase() === 'REEMBOLSO_SOLICITADO' && (
                 <span>Acepta el correo de Flow (info@flow.cl) antes de la fecha límite para recibirla.</span>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* O62 (pruebas de lanzamiento, 25-sep): el reclamo se ve desde la lista y lleva a su
+            conversacion. El enlace no abre el detalle: corta el clic de la tarjeta. */}
+        {claimState && (
+          <div className={`order-card-state-banner claim is-${claimState.kind}`}>
+            <ShieldAlert size={18} />
+            <div>
+              <strong>
+                {claimState.title}
+                {' · '}
+                <Link
+                  to={buyerCaseChatPath(order.id)}
+                  className="order-claim-link"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {claimState.linkLabel}
+                </Link>
+              </strong>
+              {claimState.detail && <span>{claimState.detail}</span>}
             </div>
           </div>
         )}
@@ -497,7 +545,13 @@ export default function OrderCard({
                 </button>
               )}
             </div>
-            {isSeller && totalDeductions > 0 && (
+            {fullyRefundedSale ? (
+              <span className="commission-deductions-note">
+                {totalDeductions > 0
+                  ? `Venta reembolsada · costo de pasarela asumido: ${formatCLP(totalDeductions)}`
+                  : 'Venta reembolsada · sin descuentos para tu tienda'}
+              </span>
+            ) : isSeller && totalDeductions > 0 && (
               <span className="commission-deductions-note">
                 Descuentos por servicio y pago: -{formatCLP(totalDeductions)}
               </span>
@@ -699,6 +753,8 @@ export default function OrderCard({
           commissionWithIva={repuestopFee}
           paymentProcessingFee={paymentProcessingFee}
           refundAmount={refundAmount}
+          refundCharge={refundCharge}
+          fullyRefunded={fullyRefundedSale}
           netAmount={totalSeller}
           onClose={() => setShowCommissionModal(false)}
         />

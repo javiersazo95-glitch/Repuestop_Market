@@ -7485,6 +7485,18 @@ input, select, textarea {
 .order-refund-status-block.is-error strong { color: #B8261A; }
 .order-refund-status-block.is-error span { color: #7f1d1d; }
 
+/* O62 (pruebas de lanzamiento, 25-sep): reclamo del comprador en el detalle y en la tarjeta.
+   Morado (el tono de "En mediacion") mientras el caso sigue abierto; verde cuando se resolvio. */
+.order-claim-status-block { margin-top: 12px; background: #F5F2FF; border-color: #D9CEF7; }
+.order-claim-status-block strong { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: #6745CB; }
+.order-claim-status-block span { color: #4c3a8f; }
+.order-claim-status-block.is-resolved { background: #ECFDF3; border-color: #BBF7D0; }
+.order-claim-status-block.is-resolved strong { color: #17845B; }
+.order-claim-status-block.is-resolved span { color: #14532d; }
+.order-claim-link { color: inherit; font-weight: 700; text-decoration: underline; }
+.order-card-state-banner.claim { color: #6745cb; border-color: #d9cef7; background: #f5f2ff; }
+.order-card-state-banner.claim.is-resolved { color: #17845b; border-color: #bbf7d0; background: #ecfdf3; }
+
 /* Plazo de pago de un pedido pendiente. Ambar mientras corre y rojo cuando vencio:
    el mismo par de tonos que ya usan los badges de estado. */
 .order-payment-window {
