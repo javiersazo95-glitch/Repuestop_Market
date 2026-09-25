@@ -645,7 +645,12 @@
 .repuestop-about-page .founder-field input:focus, .repuestop-about-page .founder-field select:focus, .repuestop-about-page .founder-field textarea:focus, .repuestop-about-page .founder-reg-code:focus { outline: none; border-color: var(--about-blue); box-shadow: 0 0 0 3px rgba(0,102,255,.12); }
 .repuestop-about-page .founder-field input:disabled, .repuestop-about-page .founder-field select:disabled { background: var(--bg-page); color: var(--about-muted); cursor: not-allowed; }
 .repuestop-about-page .founder-field.has-error input, .repuestop-about-page .founder-field.has-error select { border-color: #de350b; }
-.repuestop-about-page .founder-field-error { color: #de350b; font-size: .72rem; }
+.repuestop-about-page .founder-field-error { color: #de350b; font-size: .72rem; display: inline-flex; align-items: flex-start; gap: 4px; }
+/* Validación reactiva (igual que el registro del comprador): verde cuando el campo quedó bien. */
+.repuestop-about-page .founder-field.has-success input, .repuestop-about-page .founder-field.has-success select { border-color: #10b981; }
+.repuestop-about-page .founder-field-success { color: #059669; font-size: .72rem; display: inline-flex; align-items: center; gap: 4px; }
+.repuestop-about-page .founder-field-error svg { flex-shrink: 0; margin-top: 1px; }
+.repuestop-about-page .founder-reg-card .auth-validation-summary { margin: 14px 0 0; }
 .repuestop-about-page .founder-field-hint { color: var(--about-muted); font-size: .72rem; }
 
 .repuestop-about-page .founder-reg-phone { display: flex; align-items: stretch; border: 1px solid var(--about-line); border-radius: 10px; overflow: hidden; }

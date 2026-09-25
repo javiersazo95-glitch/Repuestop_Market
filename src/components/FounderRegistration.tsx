@@ -28,6 +28,7 @@ import {
 // acepto, y con dos fuentes la constancia apunta a un documento que no es el que se mostro.
 import { VENDEDOR_TERMS, PRIVACIDAD_POLICY, LEGAL_VERSION_CODE } from '../data/legalTexts';
 import { sanitizeWebsiteUrl } from '../utils/websiteUrl';
+import { isValidRut } from '../services/adapters';
 
 type LegalDoc = 'terms' | 'privacy';
 
@@ -84,6 +85,72 @@ const EMPTY_FORM: FormState = {
   acceptsTerms: false,
 };
 
+type FormErrors = Partial<Record<keyof FormState, string>>;
+
+const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 64;
+
+/**
+ * Validación reactiva del registro de la tienda, con las mismas reglas que exige el envío. Antes
+ * sólo se validaba al apretar "Crear cuenta" y el botón estaba siempre activo; ahora, igual que el
+ * registro del comprador, cada campo se valida mientras se escribe y el botón espera a que todo
+ * esté bien. Devuelve el error de cada campo inválido (vacío incluido).
+ */
+function validarRegistro(form: FormState, ctx: {
+  authProvider: 'EMAIL_PASSWORD' | 'GOOGLE'; emailTaken: string | null; taxIdTaken: string | null;
+}): FormErrors {
+  const e: FormErrors = {};
+  const nombre = form.responsibleName.trim();
+  if (!nombre) e.responsibleName = 'El nombre del responsable es obligatorio.';
+  else if (nombre.split(/\s+/).filter(Boolean).length < 2) e.responsibleName = 'Ingresa nombre y apellido separados por un espacio.';
+  if (!form.cargo.trim()) e.cargo = 'El cargo es obligatorio.';
+  else if (form.cargo.trim().length < 2) e.cargo = 'Ingresa un cargo válido.';
+  const email = form.email.trim();
+  if (!email) e.email = 'El correo electrónico es obligatorio.';
+  else if (!EMAIL_REGEX.test(email)) e.email = 'Ingresa un correo electrónico válido (ej: nombre@correo.com).';
+  else if (ctx.emailTaken) e.email = ctx.emailTaken;
+  if (!form.phone) e.phone = 'El teléfono es obligatorio.';
+  else if (!/^9\d{8}$/.test(form.phone)) e.phone = `Teléfono chileno de 9 dígitos que empieza en 9 (llevas ${form.phone.length}/9).`;
+  if (ctx.authProvider === 'EMAIL_PASSWORD') {
+    if (!form.password) e.password = 'La contraseña es obligatoria.';
+    else if (form.password.length < PASSWORD_MIN) e.password = `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres (llevas ${form.password.length}/${PASSWORD_MIN}).`;
+    else if (form.password.length > PASSWORD_MAX) e.password = `La contraseña puede tener hasta ${PASSWORD_MAX} caracteres.`;
+  }
+  if (!form.storeName.trim()) e.storeName = 'El nombre de la tienda es obligatorio.';
+  else if (form.storeName.trim().length < 2) e.storeName = 'Ingresa un nombre de tienda válido.';
+  const rut = form.taxId.trim();
+  if (!rut) e.taxId = 'El RUT de la empresa es obligatorio.';
+  else if (!/^[0-9.]+-[0-9kK]$/.test(rut)) e.taxId = 'RUT con formato 12.345.678-9.';
+  else if (!isValidRut(rut)) e.taxId = 'El RUT no es válido: revisa el dígito verificador.';
+  else if (ctx.taxIdTaken) e.taxId = ctx.taxIdTaken;
+  if (!form.giro) e.giro = 'Selecciona el giro de tu tienda.';
+  if (form.giro === 'other' && !form.giroOtro.trim()) e.giroOtro = 'Especifica el giro comercial.';
+  if (!form.regionId) e.regionId = 'Selecciona una región.';
+  if (!form.comunaId) e.comunaId = 'Selecciona una comuna.';
+  if (!form.address.trim()) e.address = 'La dirección es obligatoria.';
+  else if (form.address.trim().length < 5) e.address = 'Ingresa calle y número.';
+  if (!form.acceptsTerms) e.acceptsTerms = 'Debes aceptar los términos y condiciones.';
+  return e;
+}
+
+/** Mismo medidor que el registro del comprador, con el mínimo de la tienda (8). */
+function fuerzaContrasena(pwd: string): { score: 1 | 2 | 3; label: string; color: string } {
+  if (!pwd || pwd.length < PASSWORD_MIN) return { score: 1, label: `Mínimo ${PASSWORD_MIN} car.`, color: '#ef4444' };
+  const letras = /[a-zA-Z]/.test(pwd);
+  const numeros = /\d/.test(pwd);
+  const especiales = /[^a-zA-Z0-9]/.test(pwd);
+  if ((letras && numeros && especiales) || pwd.length >= 12) return { score: 3, label: 'Segura', color: '#10b981' };
+  if (letras && numeros) return { score: 2, label: 'Aceptable', color: '#f59e0b' };
+  return { score: 1, label: 'Débil', color: '#ef4444' };
+}
+
+/** Orden en que el resumen menciona lo que falta (el mismo del formulario). */
+const ORDEN_CAMPOS: (keyof FormState)[] = [
+  'responsibleName', 'cargo', 'email', 'phone', 'password', 'storeName', 'taxId',
+  'giro', 'giroOtro', 'regionId', 'comunaId', 'address', 'acceptsTerms',
+];
+
 export default function FounderRegistration({ onBack }: { onBack: () => void }) {
   const [activePhase, setActivePhase] = useState(0);
   // El horario de atencion de la tienda. `SellerRegistrationPayload` ya tenia
@@ -112,6 +179,12 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
   const [emailTaken, setEmailTaken] = useState<string | null>(null);
   const [checkingTaxId, setCheckingTaxId] = useState(false);
   const [taxIdTaken, setTaxIdTaken] = useState<string | null>(null);
+  // Validación reactiva: un campo vacío se marca recién al salir de él (o al intentar enviar);
+  // un formato inválido se marca mientras se escribe, igual que el registro del comprador.
+  const [touched, setTouched] = useState<Partial<Record<keyof FormState, boolean>>>({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [emailAvailable, setEmailAvailable] = useState(false);
+  const [taxIdAvailable, setTaxIdAvailable] = useState(false);
 
   // Verificación de correo
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
@@ -246,11 +319,48 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((e) => ({ ...e, [key]: undefined }));
-    if (key === 'email') setEmailTaken(null);
-    if (key === 'taxId') setTaxIdTaken(null);
+    if (key === 'email') { setEmailTaken(null); setEmailAvailable(false); }
+    if (key === 'taxId') { setTaxIdTaken(null); setTaxIdAvailable(false); }
+    // Selectores y casillas no tienen "salir escribiendo": cuentan como tocados al cambiar.
+    if (key === 'giro' || key === 'regionId' || key === 'comunaId' || key === 'acceptsTerms') {
+      setTouched((t) => ({ ...t, [key]: true }));
+    }
   };
 
+  const touch = (key: keyof FormState) => setTouched((t) => ({ ...t, [key]: true }));
+
   const emailLocked = authProvider === 'GOOGLE';
+
+  const fieldErrors = validarRegistro(form, { authProvider, emailTaken, taxIdTaken });
+  // Lo que se muestra: el error de envío o del backend (p. ej. referido) manda; si no, el de la
+  // validación reactiva, pero un campo vacío sólo después de tocarlo o de intentar enviar.
+  const visibleErrors: FormErrors = {};
+  (Object.keys(fieldErrors) as (keyof FormState)[]).forEach((key) => {
+    const value = form[key];
+    const tieneValor = typeof value === 'boolean' ? value : String(value ?? '').trim().length > 0;
+    if (touched[key] || submitAttempted || tieneValor) visibleErrors[key] = fieldErrors[key];
+  });
+  (Object.keys(errors) as (keyof FormState)[]).forEach((key) => {
+    if (errors[key]) visibleErrors[key] = errors[key];
+  });
+  const isFormValid = Object.keys(fieldErrors).length === 0 && !checkingEmail && !checkingTaxId;
+  const pendiente = ORDEN_CAMPOS.find((key) => fieldErrors[key]);
+  const resumenPendiente: string | null = (pendiente ? fieldErrors[pendiente] : undefined)
+    ?? (checkingEmail || checkingTaxId ? 'Verificando disponibilidad…' : null);
+
+  // Disponibilidad mientras se escribe (con una pausa, para no consultar en cada tecla): el
+  // comprador lo sabe antes de salir del campo y la tienda lo sabía recién al salir de él.
+  useEffect(() => {
+    if (emailLocked || !EMAIL_REGEX.test(form.email.trim())) return;
+    const timer = setTimeout(() => { void checkEmailNow(form.email); }, 500);
+    return () => clearTimeout(timer);
+  }, [form.email, emailLocked]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!isValidRut(form.taxId.trim())) return;
+    const timer = setTimeout(() => { void checkTaxIdNow(form.taxId); }, 500);
+    return () => clearTimeout(timer);
+  }, [form.taxId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Avisa de inmediato (sin esperar al envío del formulario) si el correo ya está registrado. */
   async function checkEmailNow(email: string) {
@@ -263,6 +373,8 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
         const message = result.message || 'Este correo ya está registrado.';
         setEmailTaken(message);
         setErrors((e) => ({ ...e, email: message }));
+      } else {
+        setEmailAvailable(true);
       }
     } catch {
       /* si falla la verificación rápida, el envío del formulario igual detecta el duplicado */
@@ -282,6 +394,8 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
         const message = 'Este RUT ya está registrado en RepuesTop.';
         setTaxIdTaken(message);
         setErrors((e) => ({ ...e, taxId: message }));
+      } else {
+        setTaxIdAvailable(true);
       }
     } catch {
       /* si falla la verificación rápida, el envío del formulario igual detecta el duplicado */
@@ -353,24 +467,10 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
 
   /* ------------------------- validación ------------------------- */
   function validate(): boolean {
-    const e: Partial<Record<keyof FormState, string>> = {};
-    if (!form.responsibleName.trim()) e.responsibleName = 'Ingresa el nombre del responsable';
-    if (!form.cargo.trim()) e.cargo = 'Ingresa el cargo';
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) e.email = 'Correo no válido';
-    else if (emailTaken) e.email = emailTaken;
-    if (!/^9\d{8}$/.test(form.phone)) e.phone = 'Teléfono chileno de 9 dígitos (empieza en 9)';
-    if (authProvider === 'EMAIL_PASSWORD' && form.password.length < 8) e.password = 'Mínimo 8 caracteres';
-    if (!form.storeName.trim()) e.storeName = 'Ingresa el nombre de tu tienda';
-    if (!/^[0-9.]+-[0-9kK]$/.test(form.taxId.trim())) e.taxId = 'RUT con formato 12.345.678-9';
-    else if (taxIdTaken) e.taxId = taxIdTaken;
-    if (!form.giro) e.giro = 'Selecciona un giro';
-    if (form.giro === 'other' && !form.giroOtro.trim()) e.giroOtro = 'Especifica el giro';
-    if (!form.regionId) e.regionId = 'Selecciona una región';
-    if (!form.comunaId) e.comunaId = 'Selecciona una comuna';
-    if (!form.address.trim()) e.address = 'Ingresa la dirección';
-    if (!form.acceptsTerms) e.acceptsTerms = 'Debes aceptar los términos';
-    setErrors(e);
-    return Object.keys(e).length === 0;
+    // Mismas reglas que la validación reactiva; al intentar enviar se muestran también los
+    // campos vacíos que nunca se tocaron.
+    setSubmitAttempted(true);
+    return isFormValid;
   }
 
   /* ------------------------- submit registro ------------------------- */
@@ -529,7 +629,9 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
 
               {activePhase === 0 && !pendingEmail && methodChosen && (
                 <RegistrationForm
-                  form={form} errors={errors} update={update}
+                  form={form} errors={visibleErrors} update={update} touch={touch}
+                  isFormValid={isFormValid} pendingSummary={resumenPendiente}
+                  emailAvailable={emailAvailable && !emailTaken} taxIdAvailable={taxIdAvailable && !taxIdTaken}
                   authProvider={authProvider} emailLocked={emailLocked}
                   google={google} onChangeMethod={changeMethod}
                   showPassword={showPassword} setShowPassword={setShowPassword}
@@ -690,10 +792,17 @@ type RegFormProps = {
   onOpenLegal: (doc: LegalDoc) => void;
   onEmailBlur: (email: string) => void; checkingEmail: boolean;
   onTaxIdBlur: (taxId: string) => void; checkingTaxId: boolean;
+  touch: (k: keyof FormState) => void;
+  isFormValid: boolean; pendingSummary: string | null;
+  emailAvailable: boolean; taxIdAvailable: boolean;
 };
 
 function RegistrationForm(p: RegFormProps) {
-  const { form, errors, update } = p;
+  const { form, errors, update, touch } = p;
+  // Mensaje verde cuando el campo quedó bien, como en el registro del comprador.
+  const ok = (key: keyof FormState, message: string) =>
+    !errors[key] && String(form[key] ?? '').trim().length > 0 ? message : undefined;
+  const fuerza = fuerzaContrasena(form.password);
   return (
     <div className="founder-reg-card">
       <div className="founder-reg-head">
@@ -717,22 +826,26 @@ function RegistrationForm(p: RegFormProps) {
       </div>
 
       <div className="founder-reg-grid">
-        <Field label="Nombre del responsable" required error={errors.responsibleName}>
-          <input value={form.responsibleName} placeholder="Nombre completo"
-            onChange={(e) => update('responsibleName', e.target.value)} />
+        <Field label="Nombre del responsable" required error={errors.responsibleName}
+          success={ok('responsibleName', 'Nombre completo válido')}>
+          <input value={form.responsibleName} placeholder="Nombre y apellido" maxLength={80}
+            onChange={(e) => update('responsibleName', e.target.value)}
+            onBlur={() => touch('responsibleName')} />
         </Field>
-        <Field label="Cargo" required error={errors.cargo}>
-          <input value={form.cargo} placeholder="Ej: Gerente, Administrador"
-            onChange={(e) => update('cargo', e.target.value)} />
+        <Field label="Cargo" required error={errors.cargo} success={ok('cargo', 'Cargo válido')}>
+          <input value={form.cargo} placeholder="Ej: Gerente, Administrador" maxLength={60}
+            onChange={(e) => update('cargo', e.target.value)}
+            onBlur={() => touch('cargo')} />
         </Field>
 
         <Field label="Correo electrónico" required error={errors.email}
-          hint={p.emailLocked ? 'Verificado con tu cuenta de Google' : p.checkingEmail ? 'Verificando disponibilidad...' : undefined}>
-          <input type="email" value={form.email} placeholder="ejemplo@correo.com" disabled={p.emailLocked}
+          success={p.emailLocked ? undefined : p.emailAvailable && !errors.email ? 'Correo disponible' : undefined}
+          hint={p.emailLocked ? 'Verificado con tu cuenta de Google' : p.checkingEmail ? 'Comprobando disponibilidad...' : undefined}>
+          <input type="email" value={form.email} placeholder="ejemplo@correo.com" disabled={p.emailLocked} maxLength={120}
             onChange={(e) => update('email', e.target.value)}
-            onBlur={(e) => { if (!p.emailLocked) p.onEmailBlur(e.target.value); }} />
+            onBlur={(e) => { touch('email'); if (!p.emailLocked) p.onEmailBlur(e.target.value); }} />
         </Field>
-        <Field label="Teléfono" required error={errors.phone}>
+        <Field label="Teléfono" required error={errors.phone} success={ok('phone', 'Teléfono válido')}>
           <div className="founder-reg-phone">
             <span>🇨🇱 +56</span>
             <input type="tel" value={form.phone} placeholder="9 1234 5678" maxLength={9}
@@ -740,38 +853,56 @@ function RegistrationForm(p: RegFormProps) {
                 let v = e.target.value.replace(/\D/g, '');
                 if (v.length && v[0] !== '9') v = '9' + v;
                 update('phone', v.slice(0, 9));
-              }} />
+              }}
+              onBlur={() => touch('phone')} />
           </div>
         </Field>
 
         {p.authProvider === 'EMAIL_PASSWORD' && (
-          <Field label="Contraseña" required error={errors.password} className="founder-reg-col-full">
+          <Field label="Contraseña" required error={errors.password} className="founder-reg-col-full"
+            success={ok('password', 'Longitud válida')}>
             <div className="founder-reg-password">
               <input type={p.showPassword ? 'text' : 'password'} value={form.password}
-                placeholder="Mínimo 8 caracteres"
-                onChange={(e) => update('password', e.target.value)} />
+                placeholder={`Mínimo ${PASSWORD_MIN} caracteres`} maxLength={PASSWORD_MAX}
+                onChange={(e) => update('password', e.target.value)}
+                onBlur={() => touch('password')} />
               <button type="button" onClick={() => p.setShowPassword(!p.showPassword)} aria-label="Ver contraseña">
                 {p.showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+            {form.password.length > 0 && (
+              <div className="password-strength-container">
+                <div className={`password-strength-meter strength-${fuerza.score}`}>
+                  <div className="bar" />
+                  <div className="bar" />
+                  <div className="bar" />
+                </div>
+                <div className="password-strength-meta">
+                  <small style={{ color: fuerza.color, fontWeight: 600 }}>Seguridad: {fuerza.label}</small>
+                  <small className="char-counter">{form.password.length}/{PASSWORD_MIN} mín.</small>
+                </div>
+              </div>
+            )}
           </Field>
         )}
 
         <div className="founder-reg-divider founder-reg-col-full"><Store size={15} /> Datos de la tienda</div>
 
-        <Field label="Nombre de la tienda" required error={errors.storeName}>
-          <input value={form.storeName} placeholder="Nombre de tu tienda o negocio"
-            onChange={(e) => update('storeName', e.target.value)} />
+        <Field label="Nombre de la tienda" required error={errors.storeName} success={ok('storeName', 'Nombre válido')}>
+          <input value={form.storeName} placeholder="Nombre de tu tienda o negocio" maxLength={100}
+            onChange={(e) => update('storeName', e.target.value)}
+            onBlur={() => touch('storeName')} />
         </Field>
         <Field label="RUT de la empresa" required error={errors.taxId}
-          hint={p.checkingTaxId ? 'Verificando disponibilidad...' : undefined}>
+          success={p.taxIdAvailable && !errors.taxId ? 'RUT válido y disponible' : undefined}
+          hint={p.checkingTaxId ? 'Comprobando disponibilidad...' : undefined}>
           <input value={form.taxId} placeholder="12.345.678-9" inputMode="text" maxLength={12}
             onChange={(e) => update('taxId', formatRut(e.target.value))}
-            onBlur={(e) => p.onTaxIdBlur(e.target.value)} />
+            onBlur={(e) => { touch('taxId'); p.onTaxIdBlur(e.target.value); }} />
         </Field>
 
         <Field label="Giro comercial" required error={errors.giro} className="founder-reg-col-full">
-          <select value={form.giro} onChange={(e) => update('giro', e.target.value)}>
+          <select value={form.giro} onChange={(e) => update('giro', e.target.value)} onBlur={() => touch('giro')}>
             <option value="">Selecciona el giro de tu tienda</option>
             {GIRO_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
             <option value="other">Otro</option>
@@ -779,28 +910,30 @@ function RegistrationForm(p: RegFormProps) {
         </Field>
         {form.giro === 'other' && (
           <Field label="Especificar giro" required error={errors.giroOtro} className="founder-reg-col-full">
-            <input value={form.giroOtro} placeholder="Escribe tu giro comercial"
-              onChange={(e) => update('giroOtro', e.target.value)} />
+            <input value={form.giroOtro} placeholder="Escribe tu giro comercial" maxLength={100}
+              onChange={(e) => update('giroOtro', e.target.value)}
+              onBlur={() => touch('giroOtro')} />
           </Field>
         )}
 
         <Field label="Región" required error={errors.regionId}>
-          <select value={form.regionId} onChange={(e) => p.onRegionChange(e.target.value)}>
+          <select value={form.regionId} onChange={(e) => p.onRegionChange(e.target.value)} onBlur={() => touch('regionId')}>
             <option value="">{p.regiones.length ? 'Selecciona una región' : 'Cargando...'}</option>
             {p.regiones.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
           </select>
         </Field>
         <Field label="Comuna" required error={errors.comunaId}>
           <select value={form.comunaId} disabled={!form.regionId}
-            onChange={(e) => update('comunaId', e.target.value)}>
+            onChange={(e) => update('comunaId', e.target.value)} onBlur={() => touch('comunaId')}>
             <option value="">{form.regionId ? 'Selecciona una comuna' : 'Elige región primero'}</option>
             {p.comunas.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
           </select>
         </Field>
 
-        <Field label="Dirección" required error={errors.address}>
-          <input value={form.address} placeholder="Av. Principal 123"
-            onChange={(e) => update('address', e.target.value)} />
+        <Field label="Dirección" required error={errors.address} success={ok('address', 'Dirección ingresada')}>
+          <input value={form.address} placeholder="Av. Principal 123" maxLength={160}
+            onChange={(e) => update('address', e.target.value)}
+            onBlur={() => touch('address')} />
         </Field>
         <Field label="Código postal" hint="Opcional">
           <input value={form.codigoPostal} placeholder="Opcional"
@@ -850,9 +983,18 @@ function RegistrationForm(p: RegFormProps) {
       </div>
       {errors.acceptsTerms && <p className="founder-reg-hint-error">{errors.acceptsTerms}</p>}
 
+      {/* Igual que el registro del comprador: dice qué falta y el botón espera a que esté todo. */}
+      {!p.isFormValid && p.pendingSummary && (
+        <div className="auth-validation-summary">
+          <span><AlertTriangle size={13} /> {p.pendingSummary}</span>
+        </div>
+      )}
+
       {p.formError && <div className="founder-reg-alert">{p.formError}</div>}
 
-      <button className="button founder-reg-submit" onClick={p.onSubmit} disabled={p.submitting}>
+      <button className="button founder-reg-submit" onClick={p.onSubmit}
+        disabled={p.submitting || !p.isFormValid}
+        title={!p.isFormValid ? 'Completa todos los campos obligatorios para activar este botón' : undefined}>
         {p.submitting ? 'Creando cuenta...' : <>Crear cuenta y continuar <ArrowRight size={18} /></>}
       </button>
     </div>
@@ -1478,16 +1620,17 @@ function LegalModal({ open, title, text, onClose }: {
  * etiquetas anidadas, que es HTML invalido y el navegador acomoda como puede. En ese caso
  * se renderiza como <div>.
  */
-function Field({ label, required, error, hint, className, children, as: Tag = 'label' }: {
-  label: string; required?: boolean; error?: string; hint?: string; className?: string;
+function Field({ label, required, error, hint, success, className, children, as: Tag = 'label' }: {
+  label: string; required?: boolean; error?: string; hint?: string; success?: string; className?: string;
   children: ReactNode; as?: 'label' | 'div';
 }) {
   return (
-    <Tag className={`founder-field ${className ?? ''} ${error ? 'has-error' : ''}`}>
+    <Tag className={`founder-field ${className ?? ''} ${error ? 'has-error' : success ? 'has-success' : ''}`}>
       <span className="founder-field-label">{label}{required && <i className="founder-req">*</i>}</span>
       {children}
-      {error ? <span className="founder-field-error">{error}</span>
-        : hint ? <span className="founder-field-hint">{hint}</span> : null}
+      {error ? <span className="founder-field-error"><AlertTriangle size={12} /> {error}</span>
+        : hint ? <span className="founder-field-hint">{hint}</span>
+          : success ? <span className="founder-field-success"><Check size={12} /> {success}</span> : null}
     </Tag>
   );
 }
