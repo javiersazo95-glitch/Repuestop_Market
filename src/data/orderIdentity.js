@@ -39,24 +39,25 @@ export function activeOrderItems(order) {
 }
 
 /**
- * El número que ve cada rol. NO es el id de la tabla.
+ * El número público del pedido: el MISMO para comprador, tienda y soporte. NO es el id de la
+ * tabla.
  *
- * Mostrar `pedido.id` tenía dos problemas: al comprador no le dice nada ("Pedido #21" no es
- * su vigésimo primer pedido, es la fila 21 de la tabla), y es enumerable — un vendedor que
- * ve "#21" sabe cuántos pedidos lleva el marketplace entero.
+ * O72 (pruebas de lanzamiento, 25-sep): un pedido llegaba a tener cuatro nombres ("#5" del
+ * comprador, "Venta #000004" y "RTP-6-PED-000004" de la tienda, "PED-0000025" de soporte).
+ * Desde ahora el backend manda un número de 10 dígitos (9 aleatorios + verificador Luhn):
+ * `numeroPedido` sin espacios ("4827193605", para URL y búsquedas) y `numeroPedidoFormato`
+ * agrupado 4-4-2 ("4827 1936 05"). Comprador y tienda lo ven igual, sin sufijo: el "-1"/"-2" de
+ * un pedido de varias tiendas es solo del backoffice.
  *
- * El backend ya trae los dos números correctos y nadie los usaba:
- *
- *  - `numeroPedidoComprador`: secuencia POR COMPRADOR (1, 2, 3...). Es la que el comprador
- *    entiende como "mi tercer pedido". La app ya la usa (`getOrderDisplayCode`).
- *  - `items[].codigoVendedor`: secuencia POR VENDEDOR (`RTP-1-PED-000017`). Del número del
- *    comprador no sirve para el vendedor, porque dos clientes distintos tienen ambos su
- *    "pedido #1".
- *
- * Del código del vendedor se muestra solo la cola: el prefijo lleva el id del proveedor y
- * existe para garantizar unicidad en la base, no para leerse.
+ * `mode` se conserva por compatibilidad con quienes llaman: el número es el mismo para ambos.
+ * Si un pedido viejo en caché no trae el número, se cae a los códigos antiguos para no
+ * pintar la PK.
  */
 export function orderDisplayCode(order, mode = 'buyer') {
+  const formato = String(order?.numeroPedidoFormato || '').trim();
+  if (formato) return formato;
+  const compacto = String(order?.numeroPedido || '').trim();
+  if (compacto) return formatOrderNumber(compacto);
   if (mode === 'buyer') {
     const numero = Number(order?.numeroPedidoComprador ?? order?.buyerOrderNumber ?? 0);
     if (Number.isFinite(numero) && numero > 0) return `#${numero}`;
@@ -68,6 +69,81 @@ export function orderDisplayCode(order, mode = 'buyer') {
     if (cola) return cola;
   }
   return `#${String(order?.id ?? '').slice(-6).toUpperCase()}`;
+}
+
+export const ORDER_NUMBER_LENGTH = 10;
+
+/** Dígito verificador Luhn de los 9 primeros dígitos (espejo de `NumeroPedido.java`). */
+function luhnDigit(nineDigits) {
+  let sum = 0;
+  let double = true;
+  for (let i = nineDigits.length - 1; i >= 0; i -= 1) {
+    let d = Number(nineDigits[i]);
+    if (double) {
+      d *= 2;
+      if (d > 9) d -= 9;
+    }
+    sum += d;
+    double = !double;
+  }
+  return (10 - (sum % 10)) % 10;
+}
+
+/** `true` si el texto limpio es un número público válido: 10 dígitos, primero ≠ 0, Luhn ok. */
+export function isPublicOrderNumber(value) {
+  const numero = String(value ?? '').trim();
+  if (!/^[1-9]\d{9}$/.test(numero)) return false;
+  return luhnDigit(numero.slice(0, ORDER_NUMBER_LENGTH - 1)) === Number(numero[ORDER_NUMBER_LENGTH - 1]);
+}
+
+/**
+ * Lo que escribió una persona ("4827 1936 05", "4827-1936-05-2", con espacios de más) llevado al
+ * número limpio de 10 dígitos, o `''` si no es un número público válido. El sufijo de tienda
+ * se descarta: identifica al pedido, no a la subórden.
+ */
+export function normalizeOrderNumber(value) {
+  const limpio = String(value ?? '').trim().replace(/[\s.]/g, '');
+  if (!limpio) return '';
+  const match = limpio.match(/^([\d-]+?)(?:-(\d{1,2}))?$/);
+  if (!match) return '';
+  const digitos = match[1].replace(/-/g, '');
+  if (isPublicOrderNumber(digitos)) return digitos;
+  const todo = limpio.replace(/-/g, '');
+  return isPublicOrderNumber(todo) ? todo : '';
+}
+
+/** "4827193605" -> "4827 1936 05"; "4827193605-2" -> "4827 1936 05-2". Otro texto se devuelve igual. */
+export function formatOrderNumber(value) {
+  const texto = String(value ?? '').trim();
+  const match = texto.match(/^(\d{10})(-\d{1,2})?$/);
+  if (!match) return texto;
+  const n = match[1];
+  return `${n.slice(0, 4)} ${n.slice(4, 8)} ${n.slice(8)}${match[2] || ''}`;
+}
+
+/**
+ * La referencia del pedido para una URL (`/perfil/pedidos/4827193605`): el número público sin
+ * espacios ni sufijo. Si el pedido no lo trae (caché vieja), el id como último recurso para no
+ * romper la navegación.
+ */
+export function orderNumberRef(order) {
+  const compacto = String(order?.numeroPedido || '').trim();
+  if (compacto) return compacto.split('-')[0];
+  const formato = normalizeOrderNumber(order?.numeroPedidoFormato);
+  if (formato) return formato;
+  return order?.id != null ? String(order.id) : '';
+}
+
+/**
+ * ¿Este pedido es el que nombra la referencia? Acepta el número público (con o sin espacios,
+ * guiones o sufijo) y, para enlaces antiguos, el id de la tabla. Se usa contra la lista YA
+ * cargada del propio usuario, así que un id no revela nada que no fuera suyo.
+ */
+export function orderMatchesRef(order, ref) {
+  if (!order || ref == null || ref === '') return false;
+  const numero = normalizeOrderNumber(ref);
+  if (numero) return orderNumberRef(order) === numero;
+  return String(order.id) === String(ref).trim();
 }
 
 /**

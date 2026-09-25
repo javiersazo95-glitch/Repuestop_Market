@@ -548,6 +548,31 @@ export async function getBuyerOrderByIdApi(usuarioId, orderId, { signal } = {}) 
 }
 
 /**
+ * O72 (pruebas de lanzamiento, 25-sep): el detalle por el NUMERO PUBLICO del pedido
+ * ("4827193605", con o sin espacios), que es lo que va en la URL del perfil y en el retorno de
+ * Flow. Misma validacion de dueno y el mismo 404 que por id.
+ */
+export async function getBuyerOrderByNumberApi(usuarioId, numero, { signal } = {}) {
+  return fetchApi(`/usuarios/${usuarioId}/pedidos/numero/${encodeURIComponent(String(numero ?? '').replace(/\s/g, ''))}`, { method: 'GET', signal });
+}
+
+/** O72: la venta por su numero publico, con la vista de la tienda (solo una tienda participante). */
+export async function getSellerOrderByNumberApi(proveedorId, numero, { signal } = {}) {
+  return fetchApi(`/proveedores/${proveedorId}/pedidos/numero/${encodeURIComponent(String(numero ?? '').replace(/\s/g, ''))}`, { method: 'GET', signal });
+}
+
+/**
+ * Detalle por la referencia que venga en una URL: el numero publico (10 digitos) o, en enlaces
+ * antiguos, el id. Un numero corto que no sea un numero publico va por id: el backend igual
+ * responde 404 si no es del usuario, asi que no revela nada.
+ */
+export async function getBuyerOrderByRefApi(usuarioId, ref, options = {}) {
+  const limpio = String(ref ?? '').replace(/[\s-]/g, '');
+  if (/^\d{10}$/.test(limpio)) return getBuyerOrderByNumberApi(usuarioId, limpio, options);
+  return getBuyerOrderByIdApi(usuarioId, ref, options);
+}
+
+/**
  * Pide una intencion de pago NUEVA para un pedido que quedo en PENDIENTE y
  * devuelve el `PedidoResponseDTO` con un `urlPago` fresco de Flow.
  *

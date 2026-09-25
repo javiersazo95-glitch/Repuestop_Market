@@ -8,6 +8,7 @@ import { useSellerBlocked } from '../../hooks/useSellerBlocked';
 import { CONTACT_TOPICS, HELP_ROLES, TICKET_CATEGORIES, contactTopic } from '../../data/helpContent';
 import { claimReasonPairs } from '../../data/claimReason';
 import { profilePath } from '../../routes/paths';
+import { orderDisplayCode } from '../../data/orderIdentity';
 
 // Asuntos por tema. Viajan como `motivo` del ticket (texto libre, no enum), así
 // que se pueden ajustar sin romper el backoffice. Se retiró "Problemas al usar
@@ -150,7 +151,7 @@ export default function HelpContactForm({ user, reportType, initialTopic = null,
     try {
       if (isOrdersTopic) {
         await createOrderClaimApi(user?.userId ?? user?.id, selectedOrderId, { motivo: finalClaim, descripcion: detail.trim() });
-        setSubmittedId(`Reclamo pedido #${String(selectedOrderId).slice(0, 8)}`);
+        setSubmittedId(`Reclamo pedido ${orderDisplayCode(selectedOrder, reportType === HELP_ROLES.SELLER ? 'seller' : 'buyer')}`);
       } else {
         const ticket = await createSupportTicketApi({
           usuarioId: user?.userId ?? user?.id,
@@ -225,7 +226,7 @@ ${detail.trim()}`
               <option value="">Elige un pedido</option>
               {availableOrders.map((order) => (
                 <option key={order.id} value={order.id}>
-                  Pedido #{String(order.id).slice(0, 8)} · {order.total ? `$${Number(order.total).toLocaleString('es-CL')}` : normalizedStatus(order)}
+                  Pedido {orderDisplayCode(order, reportType === HELP_ROLES.SELLER ? 'seller' : 'buyer')} · {order.total ? `$${Number(order.total).toLocaleString('es-CL')}` : normalizedStatus(order)}
                 </option>
               ))}
             </select>

@@ -13,6 +13,7 @@ import {
   markSupportTicketReadApi,
   resolveMediaUrl,
 } from '../services/api';
+import { formatOrderNumber } from '../data/orderIdentity';
 
 // Solo rutas reales del proxy de archivos (carpeta/archivo). Un ticket de prueba quedó con
 // `/api/v1/uploads/upload` como adjunto, que no es un archivo y se mostraría roto.
@@ -119,7 +120,7 @@ export default function SupportTicketDetailModal({ ticketId, userId, user, onClo
     // El tema es lo que el usuario eligió en el formulario de ayuda (su motivo real),
     // nunca una etiqueta fija.
     if (ticket?.reason) list.push({ icon: Tag, text: `Tema · ${ticket.reason}`, strong: true });
-    if (ticket?.orderId) list.push({ icon: Package, text: `Pedido ${ticket.orderId}` });
+    if (ticket?.orderId) list.push({ icon: Package, text: `Pedido ${formatOrderNumber(ticket.orderId)}` });
     if (platformLabel) list.push({ icon: platformLabel === 'App móvil' ? Smartphone : Monitor, text: platformLabel });
     if (ticket?.sla) list.push({ icon: Clock, text: `Respuesta en ${String(ticket.sla).toLowerCase()}` });
     return list;

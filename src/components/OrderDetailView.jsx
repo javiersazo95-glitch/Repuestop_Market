@@ -1137,10 +1137,8 @@ export default function OrderDetailView({
               <h2>{isSeller ? "Detalles de la Venta" : "Detalles del Pedido"} {orderIdShort}</h2>
               <span className="order-modal-subtitle">
                 {formatDate(order.createdAt || order.fecha)} · {order.source === 'quote' ? 'Cotización' : 'Carrito'}
-                {/* El numero de arriba es el de cada rol y NO identifica el pedido para un
-                    tercero: el del comprador es su propia secuencia y el del vendedor es su
-                    parte. Este es el unico que sirve para escribirle a soporte. */}
-                {order.codigoSoporte && <> · <span className="order-support-code">Código: {order.codigoSoporte}</span></>}
+                {/* O72: el numero de arriba ya es el publico, el mismo que le pide soporte; no se
+                    repite como "Código". */}
               </span>
             </div>
           </div>
@@ -2176,7 +2174,7 @@ export default function OrderDetailView({
                   <XCircle size={22} />
                 </div>
                 <div className="order-subdialog-heading">
-                  <h3>Cancelar pedido #{orderIdShort}</h3>
+                  <h3>Cancelar pedido {orderIdShort}</h3>
                   <span>Indica el motivo de la cancelación para el cliente</span>
                 </div>
               </div>

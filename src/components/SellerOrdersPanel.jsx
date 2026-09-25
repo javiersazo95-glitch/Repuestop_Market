@@ -64,7 +64,9 @@ function toggleValue(values, value) {
 function searchableOrderText(order) {
   const items = Array.isArray(order?.items) ? order.items : [];
   return [
-    order?.id, order?.compradorNombre, order?.buyerName, order?.deliveryTerms,
+    // O72: el numero publico, con y sin espacios, para que se encuentre como se escriba.
+    order?.numeroPedido, order?.numeroPedidoFormato, String(order?.numeroPedido || '').replace(/-/g, ''),
+    order?.compradorNombre, order?.buyerName, order?.deliveryTerms,
     order?.tipoEnvio, canonicalSource(order), canonicalStatus(order),
     ...items.flatMap((item) => [
       item?.nombre, item?.name, item?.productName, item?.marca, item?.brand,

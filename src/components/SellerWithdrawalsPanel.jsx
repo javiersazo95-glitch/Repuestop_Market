@@ -154,7 +154,7 @@ function PendingOrderRow({ order, isHeld = false, isInDetail = false }) {
           {order.nombrePedido || order.nombre || 'Producto sin nombre'}
         </strong>
         <span className="withdrawal-order-meta">
-          Pedido {sellerCodeShort(order.codigoExterno) || `#${order.pedidoId}`} · {formatDate(order.fecha, true)} · Cantidad vendida: {Number(order.cantidadVendida || 0)}
+          Pedido {order.numeroPedido || sellerCodeShort(order.codigoExterno) || '—'} · {formatDate(order.fecha, true)} · Cantidad vendida: {Number(order.cantidadVendida || 0)}
         </span>
         {isHeld && countdown ? (
           <div className={`withdrawal-countdown-badge ${countdown.className}`}>
@@ -214,11 +214,13 @@ function OrdersListModal({ modalData, onClose }) {
   const filtered = useMemo(() => {
     if (!query.trim()) return orders;
     const q = query.trim().toLowerCase();
+    // O72: el numero publico se busca con o sin espacios ("4827 1936 05" / "4827193605").
+    const qNumero = q.replace(/[\s-]/g, '');
     return orders.filter((order) => {
       const nombre = (order.nombrePedido || order.nombre || '').toLowerCase();
       const codigo = String(order.codigoExterno || '').toLowerCase();
-      const id = String(order.pedidoId || '').toLowerCase();
-      return nombre.includes(q) || codigo.includes(q) || id.includes(q);
+      const numero = String(order.numeroPedido || '').replace(/[\s-]/g, '');
+      return nombre.includes(q) || codigo.includes(q) || (qNumero && numero.includes(qNumero));
     });
   }, [orders, query]);
 
@@ -743,7 +745,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
               <article key={withdrawal.retiroId} className="withdrawal-history-card">
                 <div className="withdrawal-history-top">
                   <div>
-                    <small>{withdrawal.codigoExterno || `RET-${String(withdrawal.retiroId).padStart(6, '0')}`}</small>
+                    <small>{withdrawal.codigoExterno || 'Retiro'}</small>
                     <span>Solicitado el {formatDate(withdrawal.fechaSolicitud, true)}</span>
                   </div>
                   <WithdrawalStatus status={withdrawal.estado} />
@@ -849,7 +851,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
       {(detail || detailLoading) && (
         <ModalShell
           title="Detalle del retiro"
-          subtitle={detail?.codigoExterno || (detail ? `RET-${String(detail.retiroId).padStart(6, '0')}` : 'Cargando información...')}
+          subtitle={detail?.codigoExterno || (detail ? 'Retiro' : 'Cargando información...')}
           icon={History}
           onClose={() => !detailLoading && setDetail(null)}
           wide

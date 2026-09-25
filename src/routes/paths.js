@@ -35,12 +35,17 @@ export const ROUTES = {
 };
 
 // Pestañas válidas del panel de perfil; cada una es una URL (`/perfil/pedidos`).
-/** `/perfil/pedidos/{id}`, el detalle de un pedido dentro del panel. */
+/**
+ * `/perfil/pedidos/{numero}`, el detalle de un pedido dentro del panel. O72 (pruebas de
+ * lanzamiento, 25-sep): la referencia es el NUMERO PUBLICO del pedido ("4827193605"), no el id de
+ * la tabla; ver `orderNumberRef` en `data/orderIdentity.js`. Los enlaces antiguos con id siguen
+ * resolviendo contra la lista del propio usuario y se redirigen al numero.
+ */
 export function profileOrderPath(orderId) {
   return `/perfil/pedidos/${encodeURIComponent(String(orderId ?? ''))}`;
 }
 
-/** `/perfil/compras/{id}`, el detalle de una compra del vendedor (lo ve como comprador). */
+/** `/perfil/compras/{numero}`, el detalle de una compra del vendedor (lo ve como comprador). */
 export function profilePurchasePath(orderId) {
   return `/perfil/compras/${encodeURIComponent(String(orderId ?? ''))}`;
 }

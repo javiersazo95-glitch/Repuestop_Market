@@ -50,6 +50,7 @@ import ProfileFavoritesPanel from './ProfileFavoritesPanel';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES, storePath } from '../routes/paths';
+import { orderDisplayCode } from '../data/orderIdentity';
 
 export const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
 
@@ -236,7 +237,7 @@ export function formatCLP(value) {
 
 function orderTitle(order) {
   const items = order.items || [];
-  if (items.length === 0) return `Pedido #${order.id}`;
+  if (items.length === 0) return `Pedido ${orderDisplayCode(order)}`;
   if (items.length === 1) return items[0].nombre || items[0].name;
   return `${items[0].nombre || items[0].name} y ${items.length - 1} más`;
 }
@@ -985,7 +986,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         id: `ord-${ord.id}`,
         type: 'order',
         title: isSeller ? 'Nuevo pedido' : 'Pedido realizado',
-        detail: `Pedido #${ord.id} - ${orderTitle(ord)}`,
+        detail: `Pedido ${orderDisplayCode(ord, isSeller ? 'seller' : 'buyer')} - ${orderTitle(ord)}`,
         date: ord.createdAt || ord.fecha || Date.now() - 86400000,
         badgeClass: 'badge-emerald',
         action: () => setActiveTab('pedidos')

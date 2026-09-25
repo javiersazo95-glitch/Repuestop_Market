@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, ShoppingCart } from 'lucide-react';
 import {
-  getBuyerOrderByIdApi, retryOrderPaymentApi, confirmOrderPaymentApi, updateOrderStatusApi,
+  getBuyerOrderByRefApi, retryOrderPaymentApi, confirmOrderPaymentApi, updateOrderStatusApi,
   cancelSellerOrderApi, cancelBuyerSubOrderApi, registerOrderDispatchApi, registerSaleReceiptApi,
   declareOrderDeliveryApi, createOrderClaimApi,
 } from '../services/api';
@@ -13,6 +13,7 @@ import OrderDetailView from './OrderDetailView';
 import SellerOrdersPanel from './SellerOrdersPanel';
 import { EmptyState } from './ProfileDashboard';
 import { profileOrderPath, profilePurchasePath, ROUTES } from '../routes/paths';
+import { normalizeOrderNumber, orderMatchesRef, orderNumberRef } from '../data/orderIdentity';
 
 /**
  * Pestañas "Pedidos recibidos"/"Mis Pedidos" y "Mis compras" del panel de
@@ -65,7 +66,9 @@ export default function ProfileOrdersPanel({
     if (openedDeepLinkRef.current === deepLinkOrderId) return;
     openedDeepLinkRef.current = deepLinkOrderId;
     onClearDeepLink?.('pedido');
-    navigate(profileOrderPath(deepLinkOrderId), { replace: true });
+    // O72: la URL lleva el numero publico. Si el enlace trae el id (notificaciones y correos
+    // anteriores), se navega igual y el detalle lo resuelve contra la lista y redirige al numero.
+    navigate(profileOrderPath(normalizeOrderNumber(deepLinkOrderId) || deepLinkOrderId), { replace: true });
   }, [deepLinkOrderId, navigate, onClearDeepLink]);
 
   // plan_retorno_flow.md Fase 3: PagoController redirige aqui con
@@ -77,14 +80,15 @@ export default function ProfileOrdersPanel({
       setPaymentBannerOrder(null);
       return undefined;
     }
-    const found = orders.find((o) => String(o.id) === String(paymentOrderId));
+    const found = orders.find((o) => orderMatchesRef(o, paymentOrderId));
     if (found) {
       setPaymentBannerOrder(found);
       return undefined;
     }
     if (!effectiveUserId) return undefined;
     let active = true;
-    getBuyerOrderByIdApi(effectiveUserId, paymentOrderId)
+    // O72: PagoController devuelve el numero publico en `orderId`; se resuelve por numero.
+    getBuyerOrderByRefApi(effectiveUserId, paymentOrderId)
       .then((order) => { if (active) setPaymentBannerOrder(order); })
       .catch(() => {});
     return () => { active = false; };
@@ -194,15 +198,16 @@ export default function ProfileOrdersPanel({
   // Abrir un pedido es NAVEGAR, no levantar un popup: asi el "atras" del navegador vuelve al
   // listado, la URL se puede compartir y los dialogos que el detalle abre dejan de ser un modal
   // encima de otro modal.
+  // O72: la URL lleva el numero publico del pedido, nunca el id de la tabla.
   const openOrderDetail = (order) => {
     if (!order?.id) return;
-    navigate(profileOrderPath(order.id));
+    navigate(profileOrderPath(orderNumberRef(order)));
   };
 
   // El vendedor abre una de SUS compras: mismo patron, otra ruta y otra lista de origen.
   const openPurchaseDetail = (order) => {
     if (!order?.id) return;
-    navigate(profilePurchasePath(order.id));
+    navigate(profilePurchasePath(orderNumberRef(order)));
   };
 
   // El detalle abierto: puede ser un pedido recibido (`detailOrderId`) o una compra
@@ -211,8 +216,10 @@ export default function ProfileOrdersPanel({
   const detailIsPurchase = Boolean(detailPurchaseId);
   const detailSourceList = detailIsPurchase ? purchases : orders;
 
+  // Por numero publico (con o sin espacios) o, para enlaces antiguos, por id: siempre contra la
+  // lista del propio usuario, asi que un id ajeno simplemente no aparece.
   const detailFromList = activeDetailId
-    ? (detailSourceList || []).find((candidate) => String(candidate.id) === String(activeDetailId))
+    ? (detailSourceList || []).find((candidate) => orderMatchesRef(candidate, activeDetailId))
     : null;
   // `selectedOrder` es el buffer donde los handlers escriben la respuesta del backend apenas
   // llega (confirmar por tienda, cancelar, calificar). `invalidateQueries` refresca el listado,
@@ -220,13 +227,24 @@ export default function ProfileOrdersPanel({
   // la pagina seguia leyendo la version vieja de la lista.
   const detailOrder = !activeDetailId
     ? null
-    : (selectedOrder && String(selectedOrder.id) === String(activeDetailId)
+    : (selectedOrder && orderMatchesRef(selectedOrder, activeDetailId)
       ? { ...detailFromList, ...selectedOrder }
       : detailFromList);
 
+  // O72: un enlace antiguo con el id (`/perfil/pedidos/25`) que si es de este usuario se
+  // reescribe a su numero publico; si no es suyo, abajo se muestra "No encontramos ese pedido"
+  // sin distinguirlo de uno inexistente.
+  useEffect(() => {
+    if (!activeDetailId || !detailFromList) return;
+    if (normalizeOrderNumber(activeDetailId)) return;
+    const ref = orderNumberRef(detailFromList);
+    if (!ref || ref === String(activeDetailId)) return;
+    navigate(detailIsPurchase ? profilePurchasePath(ref) : profileOrderPath(ref), { replace: true });
+  }, [activeDetailId, detailFromList, detailIsPurchase, navigate]);
+
   useEffect(() => {
     if (!activeDetailId) return;
-    if (selectedOrder && String(selectedOrder.id) === String(activeDetailId)) return;
+    if (selectedOrder && orderMatchesRef(selectedOrder, activeDetailId)) return;
     if (detailFromList) setSelectedOrder(detailFromList);
     // `selectedOrder` no va en las dependencias a proposito: cada actualizacion del buffer
     // volveria a disparar el efecto y lo pisaria con la version vieja de la lista.

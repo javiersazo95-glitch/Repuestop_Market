@@ -3,6 +3,7 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 import { ChevronRight, CircleAlert, Clock, Inbox, Loader2, MessageSquare, Package, PackageCheck, ShieldCheck, ShoppingBag, Store, Truck, User, Wrench } from 'lucide-react';
 import { getBuyerOrdersApi, getMySellerChatsApi, getSellerOrdersApi, resolveMediaUrl, startSellerChatApi } from '../services/api';
 import { MEDIATION_STATUS_LABELS } from '../data/mediationStatus';
+import { orderDisplayCode } from '../data/orderIdentity';
 import MediationCaseView from './MediationCaseView';
 
 const CLOSED_STATES = ['RESUELTA', 'CERRADA'];
@@ -197,7 +198,7 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
             eligibleItems.push({
               key: `${order.id}-${item.productoId || item.id || idx}-${storeId || '0'}`,
               orderId: order.id,
-              orderCode: order.codigoSoporte || order.numeroPedidoComprador || order.id,
+              orderCode: orderDisplayCode(order, isSellerMode ? 'seller' : 'buyer'),
               orderDate: order.createdAt || order.fecha,
               productId: item.productoId || item.id,
               productName: item.nombre || 'Repuesto del pedido',
@@ -215,10 +216,10 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
           eligibleItems.push({
             key: `order-${order.id}`,
             orderId: order.id,
-            orderCode: order.codigoSoporte || order.numeroPedidoComprador || order.id,
+            orderCode: orderDisplayCode(order, isSellerMode ? 'seller' : 'buyer'),
             orderDate: order.createdAt || order.fecha,
             productId: null,
-            productName: `Pedido #${order.codigoSoporte || order.id}`,
+            productName: `Pedido ${orderDisplayCode(order, isSellerMode ? 'seller' : 'buyer')}`,
             productPhoto: null,
             proveedorId: isSellerMode ? Number(sellerId) : null,
             counterpartName: isSellerMode ? (order.compradorNombre || 'Comprador') : (order.proveedorNombre || 'Tienda'),
@@ -230,7 +231,7 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
       if (eligibleItems.length > 0) {
         groups.push({
           orderId: order.id,
-          orderCode: order.codigoSoporte || order.numeroPedidoComprador || order.id,
+          orderCode: orderDisplayCode(order, isSellerMode ? 'seller' : 'buyer'),
           orderDate: order.createdAt || order.fecha,
           items: eligibleItems,
         });
@@ -386,7 +387,7 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
               {eligibleOrderGroups.map((group) => (
                 <optgroup
                   key={group.orderId}
-                  label={`Pedido #${group.orderCode} · ${formatDate(group.orderDate)}`}
+                  label={`Pedido ${group.orderCode} · ${formatDate(group.orderDate)}`}
                 >
                   {group.items.map((item) => (
                     <option key={item.key} value={item.key}>
@@ -414,7 +415,7 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
                       {isSellerMode ? <User size={13} /> : <Store size={13} />}
                       <strong>{selectedItem.counterpartName}</strong>
                     </span>
-                    <span>· Pedido #{selectedItem.orderCode}</span>
+                    <span>· Pedido {selectedItem.orderCode}</span>
                     <span>· {formatDate(selectedItem.orderDate)}</span>
                   </div>
                   <div className="seller-chat-preview-status">

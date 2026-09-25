@@ -396,7 +396,8 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
     || (mode === 'buyer' ? chat?.vendedorFotoUrl : chat?.compradorFotoUrl)
   );
   const participantRoleLabel = mode === 'buyer' ? 'Tienda' : 'Comprador';
-  const codigo = chat?.codigoMediacion || `PED-${pedidoId}`;
+  // O72: mientras el chat carga no se inventa un codigo con el id de la tabla.
+  const codigo = chat?.codigoMediacion || chat?.codigoPedido || '';
   // Resumen del pedido reclamado (lo manda el backend en el propio chat).
   const productoNombre = chat?.productoNombre || null;
   const productoFoto = resolveMediaUrl(chat?.productoFotoUrl);

@@ -2,11 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Check, FileText, MapPin, Package, ReceiptText, ShoppingBag, Sparkles, Truck, XCircle } from 'lucide-react';
 import deliveryTruck from '../assets/delivery-truck.webp';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { confirmOrderPaymentApi, getBuyerOrderByIdApi, resolveMediaUrl } from '../services/api';
+import { confirmOrderPaymentApi, getBuyerOrderByIdApi, getBuyerOrderByRefApi, resolveMediaUrl } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { normalizeOrderStatus } from '../data/orderStatusFlow';
-import { buyerProfilePath, ROUTES } from '../routes/paths';
-import { orderDeliverySummary } from '../data/orderIdentity';
+import { buyerProfilePath, profileOrderPath, profilePurchasePath, ROUTES } from '../routes/paths';
+import { orderDeliverySummary, orderDisplayCode, orderNumberRef } from '../data/orderIdentity';
 
 const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
 
@@ -53,8 +53,12 @@ export default function PurchaseSuccessPage() {
 
     let active = true;
     if (!storedOrder && orderIdFromUrl) {
-      confirmOrderPaymentApi(effectiveUserId, orderIdFromUrl)
-        .catch(() => getBuyerOrderByIdApi(effectiveUserId, orderIdFromUrl))
+      // O72 (pruebas de lanzamiento, 25-sep): `orderId` trae el NUMERO PUBLICO del pedido. Se
+      // resuelve por numero y recien con el id real se fuerza la confirmacion del pago.
+      getBuyerOrderByRefApi(effectiveUserId, orderIdFromUrl)
+        .then((data) => (data?.id
+          ? confirmOrderPaymentApi(effectiveUserId, data.id).catch(() => data)
+          : data))
         .then((data) => { if (active && data) setFetchedOrder(data); })
         .catch(() => { if (active) setOrderNotFound(true); });
       return () => { active = false; };
@@ -161,7 +165,12 @@ export default function PurchaseSuccessPage() {
   }
 
   const items = order?.items || [];
-  const orderNumber = order?.id ? String(order.id).padStart(6, '0') : 'confirmado';
+  // O72: el numero publico ("4827 1936 05"), el mismo que vera en Mis pedidos y que le pide soporte.
+  const orderNumber = order?.id ? orderDisplayCode(order) : 'confirmado';
+  const isSellerAccount = String(user?.role || user?.rol || '').toUpperCase() === 'SELLER';
+  const orderDetailPath = order?.id
+    ? (isSellerAccount ? profilePurchasePath(orderNumberRef(order)) : profileOrderPath(orderNumberRef(order)))
+    : buyerPurchasesPath;
   const address = [
     order?.compradorDireccion || order?.direccionEntrega || order?.address,
     order?.compradorComuna || order?.comuna,
@@ -201,7 +210,7 @@ export default function PurchaseSuccessPage() {
                 <span className="purchase-simulated-tag"><Sparkles size={11} /> Pago simulado (Pruebas)</span>
               )}
             </div>
-            <h1 id="purchase-success-title">Pedido #{orderNumber}</h1>
+            <h1 id="purchase-success-title">Pedido {orderNumber}</h1>
             <p>{orderDate}</p>
           </div>
           {isPendingPayment && (
@@ -307,7 +316,7 @@ export default function PurchaseSuccessPage() {
                   donde las ponen los marketplaces locales y donde ya está mirando quien
                   acaba de revisar el total. */}
               <div className="purchase-success-actions">
-                <button type="button" className="purchase-success-primary" onClick={() => navigate(buyerPurchasesPath)}>Ver detalle del pedido</button>
+                <button type="button" className="purchase-success-primary" onClick={() => navigate(orderDetailPath)}>Ver detalle del pedido</button>
                 <button type="button" className="purchase-success-secondary" onClick={() => navigate(ROUTES.catalog)}>Seguir comprando</button>
               </div>
             </aside>
