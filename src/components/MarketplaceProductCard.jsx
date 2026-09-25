@@ -60,7 +60,10 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
   const storeName = product.vendedor || product.tienda || 'Tienda RepuesTop';
   const storeLogo = product.logoTienda || product.storeIconUrl || product.tiendaLogo || null;
   const stock = Number(product.stock ?? product.stockAvailable ?? 0);
-  const rating = Number(product.rating || product.calificacion || 4.8);
+  // Nota real o nada. Antes caía a 4.8 cuando no había calificaciones: una tienda recién
+  // aprobada aparecía con 4.8 sin una sola reseña (pruebas de lanzamiento, O53), igual que
+  // lo que ya se había quitado de la ficha.
+  const rating = Number(product.rating || product.calificacion || 0);
   // La foto registrada por la tienda siempre tiene prioridad.
   //
   // Para las publicaciones sin foto el respaldo es la imagen de LA PIEZA que nombra el
@@ -125,7 +128,7 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
         </div>
 
         <div className="market-product-meta">
-          <span className="market-product-rating"><Star size={12} /> {rating.toFixed(1)}</span>
+          {rating > 0 && <span className="market-product-rating"><Star size={12} /> {rating.toFixed(1)}</span>}
           <span className={`market-product-stock ${stock <= 0 ? 'out' : stock <= 5 ? 'low' : ''}`}>
             <PackageCheck size={12} /> {stock > 0 ? `${stock} en stock` : 'Sin stock'}
           </span>

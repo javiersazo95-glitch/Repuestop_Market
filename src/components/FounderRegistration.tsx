@@ -32,6 +32,7 @@ import { VENDEDOR_TERMS, PRIVACIDAD_POLICY, LEGAL_VERSION_CODE } from '../data/l
 import { sanitizeWebsiteUrl } from '../utils/websiteUrl';
 import { isValidRut } from '../services/adapters';
 import { getStoredCaptadorReferral, clearStoredCaptadorReferral } from '../utils/captadorReferral';
+import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
 
 type LegalDoc = 'terms' | 'privacy';
 
@@ -41,8 +42,6 @@ const GIRO_OPTIONS = [
   'Mantenimiento y reparación de vehículos motorizados',
   'Venta de vehículos motorizados',
 ];
-
-const PANEL_VENDEDORES_URL = 'https://inventario.repuestop.cl/';
 
 const PHASES = [
   { icon: <UserRound />, title: 'Registro', text: 'Crea tu cuenta de tienda fundadora.' },
@@ -1661,7 +1660,7 @@ function ApprovedInfo({ approved, onHome }: { approved: boolean; onHome: () => v
           Tu cuenta de tienda fundadora ya fue validada por nuestro equipo. Ingresa al <strong>panel de vendedores</strong> para
           cargar tu inventario y empezar a vender. Si tu tienda está entre las primeras 100 aprobadas, tendrás 5% de comisión fija durante tus primeros 3 meses.
         </p>
-        <a className="button founder-reg-submit" href={PANEL_VENDEDORES_URL}>
+        <a className="button founder-reg-submit" href={INVENTORY_PANEL_URL}>
           Ir al panel de vendedores <ArrowRight size={18} />
         </a>
         <button type="button" className="button button-outline founder-reg-submit" onClick={onHome}>Volver al inicio</button>

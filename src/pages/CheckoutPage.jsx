@@ -8,7 +8,9 @@ import { useAuth } from '../context/AuthContext';
 import {
   checkoutCartApi, checkoutConversationQuoteApi, confirmOrderPaymentApi, getAddressesApi,
   getBuyerConversationsApi, getConversationQuoteApi, getPublicProductApi, resolveMediaUrl,
+  searchVehicleByPatenteApi,
 } from '../services/api';
+import { formatVehicleLabel, isValidPlate, lookupVehicleByPlate, normalizePlate } from '../utils/vehicleLookup';
 import { adaptProduct, formatRut, isValidRut } from '../services/adapters';
 import { isQuoteExpired, quantityFromLabel } from '../utils/quoteFlow';
 import { normalizeOrderStatus } from '../data/orderStatusFlow';
@@ -350,6 +352,54 @@ export default function CheckoutPage() {
   const [vehicleFormOpen, setVehicleFormOpen] = useState(false);
   const showVehicleForm = hasActiveVehicle ? !useActiveVehicle : (vehicleRequired || vehicleFormOpen);
 
+  // H26 (pruebas de lanzamiento, 25-sep, decisión del usuario): la patente escrita en el
+  // checkout se identifica como en el home, para que el pedido lleve marca, modelo y año y el
+  // vendedor pueda revisar la compatibilidad. Una sola consulta por patente (caché local) y solo
+  // con la patente completa: con 6 caracteres al escribir, con 5 (motos) al salir del campo, para
+  // no consultar por el camino "AB123" mientras se escribe "AB1234" (cada patente nueva tiene
+  // costo). Si no se identifica, se piden marca, modelo y año.
+  const [plateLookup, setPlateLookup] = useState({ patente: '', status: 'idle', vehicle: null });
+  const plateLookupCache = useRef(new Map());
+  const identifyPlate = useCallback(async (raw) => {
+    const patente = normalizePlate(raw);
+    if (!isValidPlate(patente)) return;
+    if (plateLookupCache.current.has(patente)) {
+      const cached = plateLookupCache.current.get(patente);
+      setPlateLookup({ patente, status: cached ? 'found' : 'notfound', vehicle: cached });
+      return;
+    }
+    setPlateLookup({ patente, status: 'loading', vehicle: null });
+    let vehicle = null;
+    let status = 'notfound';
+    try {
+      vehicle = await lookupVehicleByPlate(patente, { searchVehicleByPatenteApi });
+      status = vehicle ? 'found' : 'notfound';
+      plateLookupCache.current.set(patente, vehicle);
+    } catch {
+      // 429 (tope de patentes nuevas) o red: no se cachea, se piden los datos a mano.
+      status = 'error';
+    }
+    // Si mientras tanto se escribió otra patente, esta respuesta ya no aplica.
+    setPlateLookup((current) => (current.patente === patente ? { patente, status, vehicle } : current));
+    if (vehicle) {
+      setVehicleForm((current) => (normalizePlate(current.patente) !== patente ? current : {
+        ...current,
+        marca: current.marca || vehicle.marca || '',
+        modelo: current.modelo || vehicle.modelo || '',
+        anio: current.anio || (vehicle.anio > 0 ? String(vehicle.anio) : ''),
+      }));
+    }
+  }, []);
+  useEffect(() => {
+    const patente = normalizePlate(vehicleForm.patente);
+    if (patente.length !== 6 || !isValidPlate(patente) || plateLookup.patente === patente) return undefined;
+    const timer = setTimeout(() => { identifyPlate(patente); }, 500);
+    return () => clearTimeout(timer);
+  }, [vehicleForm.patente, plateLookup.patente, identifyPlate]);
+  const lookupForCurrentPlate = plateLookup.patente && plateLookup.patente === normalizePlate(vehicleForm.patente)
+    ? plateLookup
+    : null;
+
   const checkoutVehicle = useMemo(() => {
     if (hasActiveVehicle && useActiveVehicle) {
       return {
@@ -366,12 +416,23 @@ export default function CheckoutPage() {
     const anio = Number(vehicleForm.anio) || null;
     // Sin ningun dato no se manda nada: el backend lo registra como NO_INFORMADO.
     if (!patente && !marca && !modelo && !anio) return null;
-    return { patente: patente || null, marca: marca || null, modelo: modelo || null, anio };
-  }, [activeVehicle, hasActiveVehicle, useActiveVehicle, vehicleForm]);
-  // Basta la patente (6 caracteres; 5 las de moto antiguas) o marca, modelo y año.
+    const identificado = lookupForCurrentPlate?.status === 'found' ? lookupForCurrentPlate.vehicle : null;
+    return {
+      patente: patente || null,
+      vehiculoCatalogoId: identificado?.catalogoId || null,
+      marca: marca || null,
+      modelo: modelo || null,
+      anio,
+    };
+  }, [activeVehicle, hasActiveVehicle, useActiveVehicle, vehicleForm, lookupForCurrentPlate]);
+  // Basta una patente identificada, o marca, modelo y año. Una patente que no se pudo
+  // identificar (o que se está consultando) no alcanza: el vendedor no tendría contra qué
+  // revisar la compatibilidad (H26).
   const vehicleComplete = Boolean(checkoutVehicle) && (
-    String(checkoutVehicle.patente || '').replace(/[^A-Za-z0-9]/g, '').length >= 5
-    || Boolean(checkoutVehicle.marca && checkoutVehicle.modelo && checkoutVehicle.anio)
+    Boolean(checkoutVehicle.marca && checkoutVehicle.modelo && checkoutVehicle.anio)
+    || (hasActiveVehicle && useActiveVehicle
+      && String(checkoutVehicle.patente || '').replace(/[^A-Za-z0-9]/g, '').length >= 5)
+    || lookupForCurrentPlate?.status === 'found'
   );
 
   const rutValid = isValidRut(invoice.rut);
@@ -395,7 +456,11 @@ export default function CheckoutPage() {
     pago: documentType === 'FACTURA' && !rutValid
       ? 'Ingresa un RUT válido para emitir la factura.'
       : vehicleRequired && !vehicleComplete
-        ? 'Indica la patente o la marca, modelo y año de tu vehículo para continuar.'
+        ? (lookupForCurrentPlate?.status === 'loading'
+          ? 'Estamos identificando tu patente…'
+          : (lookupForCurrentPlate?.status === 'notfound' || lookupForCurrentPlate?.status === 'error')
+            ? 'No pudimos identificar la patente: completa la marca, el modelo y el año.'
+            : 'Indica la patente o la marca, modelo y año de tu vehículo para continuar.')
         : '',
   }[step];
 
@@ -795,9 +860,19 @@ export default function CheckoutPage() {
                         <input
                           value={vehicleForm.patente}
                           onChange={(event) => setVehicleForm((current) => ({ ...current, patente: event.target.value.toUpperCase() }))}
+                          onBlur={(event) => identifyPlate(event.target.value)}
                           placeholder="ABCD12"
                           maxLength={12}
                         />
+                        {lookupForCurrentPlate?.status === 'loading' && (
+                          <small className="checkout-plate-status"><Loader2 size={12} className="spin-icon" /> Identificando patente…</small>
+                        )}
+                        {lookupForCurrentPlate?.status === 'found' && (
+                          <small className="checkout-plate-status is-found">Identificado: <strong>{formatVehicleLabel(lookupForCurrentPlate.vehicle)}</strong></small>
+                        )}
+                        {(lookupForCurrentPlate?.status === 'notfound' || lookupForCurrentPlate?.status === 'error') && (
+                          <small className="checkout-plate-status is-missing">No pudimos identificarla: completa marca, modelo y año.</small>
+                        )}
                       </label>
                       <label>
                         <span>Marca</span>

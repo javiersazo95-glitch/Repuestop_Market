@@ -38,6 +38,7 @@ import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import ProductTopManagementModal from './ProductTopManagementModal';
 import QuoteDetailModal from './QuoteDetailModal';
 import ProfileSupportPanel from './ProfileSupportPanel';
+import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
 import SellerChatsView from './SellerChatsView';
 import ProfileNotificationsBell from './ProfileNotificationsBell';
 import HeaderWalletButton from './HeaderWalletButton';
@@ -303,9 +304,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
   const [showBlockedReviewModal, setShowBlockedReviewModal] = useState(false);
 
-  const inventoryPanelUrl = __DEPLOY_BRANCH__ === 'main'
-    ? 'https://inventario.repuestop.cl'
-    : 'https://dev-inventario.repuestop.cl';
+  const inventoryPanelUrl = INVENTORY_PANEL_URL;
 
   const handleOpenMediaModal = (type) => {
     setShowMediaModal(type);

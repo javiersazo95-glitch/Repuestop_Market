@@ -24,11 +24,16 @@ const ETIQUETA_RESULTADO = {
   SIN_DATOS: { texto: 'Sin información', tono: 'neutro' },
 };
 
+// Marca, modelo, año y versión, y la patente una sola vez. Antes la patente salía dos veces
+// ("patente ABCD12 · ABCD12") y, sin modelo, el vendedor no tenía contra qué revisar
+// (pruebas de lanzamiento H26: el backend ahora completa el vehículo con la patente guardada).
 function descripcionVehiculo(order) {
   const partes = [order?.vehiculoMarca, order?.vehiculoModelo, order?.vehiculoAnio].filter(Boolean);
-  if (partes.length === 0 && order?.vehiculoPatente) return `patente ${order.vehiculoPatente}`;
+  const version = order?.vehiculoVersion ? ` ${order.vehiculoVersion}` : '';
+  const patente = order?.vehiculoPatente ? `patente ${order.vehiculoPatente}` : '';
+  if (partes.length === 0 && patente) return `${patente} (marca y modelo no identificados)`;
   if (partes.length === 0) return 'el vehículo del comprador';
-  return partes.join(' ');
+  return `${partes.join(' ')}${version}${patente ? ` · ${patente}` : ''}`;
 }
 
 function horaConfirmacion(fecha) {
@@ -200,8 +205,7 @@ export default function SellerConfirmationChecklist({
             <Car size={15} />
             <span>
               {order?.vehiculoOrigen && order.vehiculoOrigen !== 'NO_INFORMADO'
-                ? <>Vehículo del comprador: <strong>{descripcionVehiculo(order)}</strong>
-                  {order?.vehiculoPatente ? ` · ${order.vehiculoPatente}` : ''}</>
+                ? <>Vehículo del comprador: <strong>{descripcionVehiculo(order)}</strong></>
                 : 'Sin información del vehículo. Confirma según tu criterio.'}
             </span>
           </div>

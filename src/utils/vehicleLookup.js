@@ -61,6 +61,7 @@ export async function lookupVehicleByPlate(plate, { searchVehicleByPatenteApi } 
 
   return {
     patente: data.patente || normalized,
+    catalogoId: data.catalogoId || null,
     marca: data.marca,
     modelo: data.modelo || '',
     anio: Number(data.anio) || 0,

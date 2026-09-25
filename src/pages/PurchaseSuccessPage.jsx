@@ -38,6 +38,8 @@ export default function PurchaseSuccessPage() {
 
   const storedOrder = useMemo(() => location.state?.order || readStoredOrder(), [location.state]);
   const [fetchedOrder, setFetchedOrder] = useState(null);
+  // El pedido de la URL no se pudo traer (no es de esta cuenta, no existe, sin sesión).
+  const [orderNotFound, setOrderNotFound] = useState(false);
   const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
   const buyerPurchasesPath = buyerProfilePath(user, 'purchases');
   const buyerPurchasesLabel = String(user?.role || user?.rol || '').toUpperCase() === 'SELLER'
@@ -54,7 +56,7 @@ export default function PurchaseSuccessPage() {
       confirmOrderPaymentApi(effectiveUserId, orderIdFromUrl)
         .catch(() => getBuyerOrderByIdApi(effectiveUserId, orderIdFromUrl))
         .then((data) => { if (active && data) setFetchedOrder(data); })
-        .catch(() => {});
+        .catch(() => { if (active) setOrderNotFound(true); });
       return () => { active = false; };
     }
 
@@ -93,6 +95,36 @@ export default function PurchaseSuccessPage() {
             <button type="button" className="purchase-success-primary" onClick={() => navigate(buyerPurchasesPath)}>Ir a {buyerPurchasesLabel}</button>
             <button type="button" className="purchase-success-secondary" onClick={() => navigate(ROUTES.catalog)}>Seguir comprando</button>
           </div>
+        </section>
+      </main>
+    );
+  }
+
+  // Sin pedido no hay comprobante que mostrar. Antes se pintaba igual uno genérico
+  // ("Pedido #confirmado", sello "Pagado", "Despacho a domicilio"): p. ej. al entrar con otra
+  // cuenta sobre la compra exitosa de un comprador (pruebas de lanzamiento, 25-sep).
+  if (!order) {
+    const cargando = Boolean(orderIdFromUrl && effectiveUserId && !orderNotFound);
+    return (
+      <main className="purchase-success-page">
+        <section className="purchase-success-card" aria-labelledby="purchase-missing-title">
+          <div className="purchase-success-hero">
+            {!cargando && (
+              <div className="purchase-success-icon" style={{ background: '#fffbeb', color: '#b45309' }}><AlertTriangle /></div>
+            )}
+            <h1 id="purchase-missing-title">
+              {cargando ? 'Cargando tu pedido…' : 'No encontramos este pedido en tu cuenta'}
+            </h1>
+            {!cargando && (
+              <p>Revisa tus pedidos con la cuenta con que compraste.</p>
+            )}
+          </div>
+          {!cargando && (
+            <div className="purchase-success-actions">
+              <button type="button" className="purchase-success-primary" onClick={() => navigate(buyerPurchasesPath)}>Ir a {buyerPurchasesLabel}</button>
+              <button type="button" className="purchase-success-secondary" onClick={() => navigate(ROUTES.home)}>Ir al inicio</button>
+            </div>
+          )}
         </section>
       </main>
     );

@@ -10,11 +10,12 @@ import { qk } from '../services/queryKeys';
 import { CATEGORY_VISUALS, HEADER_CATEGORIES } from '../data/categories';
 import RepuesTopLogo from './RepuesTopLogo';
 import { useAuth } from '../context/AuthContext';
+import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
 import HeaderWalletButton from './HeaderWalletButton';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import { getPartCategoriesApi, getPartSubcategoriesApi, getPublicProductsApi, resolveMediaUrl } from '../services/api';
-import { productPath } from '../routes/paths';
+import { ROUTES, productPath } from '../routes/paths';
 import CategoryIconTile from './CategoryIconTile';
 
 // Mínimo de caracteres antes de consultar sugerencias: menos que eso trae
@@ -65,9 +66,7 @@ export default function Header({
   const isBlockedAccount = isSellerBlockedAccount || isBuyerBlockedAccount;
   const isSellerAccount = String(user?.role || role || '').toUpperCase() === 'SELLER'
     && Boolean(user?.sellerId);
-  const inventoryPanelUrl = __DEPLOY_BRANCH__ === 'main'
-    ? 'https://inventario.repuestop.cl'
-    : 'https://dev-inventario.repuestop.cl';
+  const inventoryPanelUrl = INVENTORY_PANEL_URL;
 
   const openInventoryPanel = () => {
     setShowUserMenu(false);
@@ -295,9 +294,13 @@ export default function Header({
     else onOpenAuthModal();
   };
 
+  // Cerrar sesión lleva al home: quedarse en la página actual dejaba al siguiente usuario
+  // que entraba parado en una pantalla ajena, p. ej. la compra exitosa del comprador anterior
+  // (pruebas de lanzamiento, 25-sep).
   const handleLogout = () => {
     setShowUserMenu(false);
     logout();
+    navigate(ROUTES.home);
   };
 
   return (
