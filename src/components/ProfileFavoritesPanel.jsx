@@ -14,14 +14,14 @@ const TABS = [
   { id: 'all', label: 'Todos', Icon: Heart },
   { id: 'products', label: 'Repuestos', Icon: Package },
   { id: 'ads', label: 'Anuncios', Icon: Megaphone },
-  { id: 'stores', label: 'Tiendas', Icon: Store },
+  { id: 'stores', label: 'Casas de repuestos', Icon: Store },
 ];
 
 function EmptySection({ type, onExplore }) {
   const config = {
     products: { Icon: Package, title: 'Aún no guardas repuestos', text: 'Explora el catálogo y toca el corazón de los repuestos que quieras revisar después.', button: 'Explorar repuestos' },
     ads: { Icon: Megaphone, title: 'Aún no guardas anuncios', text: 'Guarda servicios automotrices para volver a contactarlos rápidamente.', button: 'Explorar anuncios' },
-    stores: { Icon: Store, title: 'Aún no guardas tiendas', text: 'Sigue tus tiendas preferidas para tener siempre su catálogo a mano.', button: 'Explorar tiendas' },
+    stores: { Icon: Store, title: 'Aún no guardas casas de repuestos', text: 'Sigue tus tiendas preferidas para tener siempre su catálogo a mano.', button: 'Explorar casas de repuestos' },
   }[type];
   return (
     <div className="favorites-empty">
@@ -71,7 +71,7 @@ export default function ProfileFavoritesPanel({ userId, productFavorites = [], i
   const sections = [
     { type: 'products', title: 'Repuestos favoritos', subtitle: 'Productos que guardaste para revisar o comprar', count: normalizedProducts.length },
     { type: 'ads', title: 'Anuncios favoritos', subtitle: 'Servicios automotrices que quieres tener a mano', count: savedAds.length },
-    { type: 'stores', title: 'Tiendas favoritas', subtitle: 'Vendedores y catálogos que sigues', count: savedStores.length },
+    { type: 'stores', title: 'Casas de repuestos favoritas', subtitle: 'Vendedores y catálogos que sigues', count: savedStores.length },
   ];
 
   return (

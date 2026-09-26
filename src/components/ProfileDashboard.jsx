@@ -288,6 +288,16 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     setActiveTabState(tab);
     onTabChange?.(tab);
   }, [onTabChange]);
+  // Flecha de la app bar en movil (<=768px). En escritorio el boton dice "Volver a la tienda" y
+  // va al home; en el celular es una flecha sola y la persona espera volver UNA vista atras, no
+  // salir de la intranet: detalle del pedido -> su lista; cualquier seccion -> Resumen; y solo
+  // desde Resumen -> la tienda.
+  const handleMobileBack = useCallback(() => {
+    if (detailPurchaseId) { setActiveTab('compras'); return; }
+    if (detailOrderId) { setActiveTab('pedidos'); return; }
+    if (activeTab !== 'resumen') { setActiveTab('resumen'); return; }
+    onBackToStore();
+  }, [detailPurchaseId, detailOrderId, activeTab, setActiveTab, onBackToStore]);
   const [showMediaModal, setShowMediaModal] = useState(null);
   const [mediaInput, setMediaInput] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
@@ -1053,7 +1063,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             )}
           </div>
 
-          {/* Solo visible en movil (<=768px): titulo de la seccion activa en la app bar. */}
+          {/* Solo visibles en movil (<=768px): flecha "una vista atras" y titulo de la seccion
+              activa en la app bar. */}
+          <button type="button" className="profile-mobile-back" onClick={handleMobileBack} aria-label="Volver">
+            <ArrowLeft size={22} />
+          </button>
           <span className="profile-mobile-title" aria-live="polite">{mobileSectionTitle}</span>
 
           <div className="profile-topbar-user">
@@ -1363,6 +1377,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   storeInfo={storeInfo}
                   displayName={displayName}
                   inventorySummary={inventorySummary}
+                  storeUrl={user?.sellerId ? storePath({ id: user.sellerId, nombre: storeInfo?.storeName || user?.storeName }) : null}
                 />
               )}
 

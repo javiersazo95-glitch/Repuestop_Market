@@ -26,7 +26,7 @@ export default function NotFoundPage() {
           <Package size={16} /> Ver catálogo
         </button>
         <button type="button" className="route-status-action secondary" onClick={nav.goStores}>
-          <Store size={16} /> Ver tiendas
+          <Store size={16} /> Ver casas de repuestos
         </button>
       </div>
     </div>

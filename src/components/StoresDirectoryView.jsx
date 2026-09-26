@@ -225,7 +225,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
 
   const isLoading = hasLocalFilters ? poolLoading : pageLoading;
   const queryError = hasLocalFilters ? poolQueryError : pageQueryError;
-  const storesError = queryError ? (queryError.message || 'No se pudo cargar el directorio de tiendas.') : null;
+  const storesError = queryError ? (queryError.message || 'No se pudo cargar el directorio de casas de repuestos.') : null;
 
   // Synchronize authenticated user profile photo / cover photo with their store card
   const applyUserSync = (list) => list.map(store => {
@@ -345,7 +345,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
           <div className="directory-hero-stats-row">
             <div className="stat-pill-item">
               <ShieldCheck size={24} className="text-emerald-400" />
-              <span><strong>100% Tiendas<br />Acreditadas</strong><small>Verificadas y confiables</small></span>
+              <span><strong>100% Casas de repuestos<br />acreditadas</strong><small>Verificadas y confiables</small></span>
             </div>
             <div className="stat-pill-item">
               <Store size={24} className="text-blue-400" />
@@ -454,7 +454,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                 {['TODAS', ...giroOptions].map((type) => (
                   <button key={type} className={`filter-option-btn ${selectedGiro === type ? 'active' : ''}`} onClick={() => setSelectedGiro(type)}>
                     <span className="filter-condition-icon"><Building2 size={14} /></span>
-                    <span className="filter-option-copy"><strong>{type === 'TODAS' ? 'Todas las Tiendas' : type}</strong><small>{type === 'TODAS' ? 'Explorar todo el directorio' : 'Tiendas verificadas'}</small></span>
+                    <span className="filter-option-copy"><strong>{type === 'TODAS' ? 'Todas las casas de repuestos' : type}</strong><small>{type === 'TODAS' ? 'Explorar todo el directorio' : 'Casas de repuestos verificadas'}</small></span>
                     {selectedGiro === type ? <CheckCircle2 size={18} className="check-active" /> : <ChevronRight size={16} className="filter-option-chevron" />}
                   </button>
                 ))}
@@ -512,28 +512,28 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
 
             <button className="btn-clear-all-filters-wide" onClick={handleApplyFilters}>
               <Search size={18} />
-              <span>Aplicar Filtros y Ver Tiendas</span>
+              <span>Aplicar filtros y ver casas de repuestos</span>
             </button>
-            <p className="filter-security-note"><ShieldCheck size={14} /> Solo mostramos tiendas verificadas.</p>
+            <p className="filter-security-note"><ShieldCheck size={14} /> Solo mostramos casas de repuestos verificadas.</p>
           </aside>
 
           {/* Stores Cards Column (Right Grid) */}
           <main className="directory-stores-main">
             <div className="directory-stores-section-header">
               <div>
-                <h2>Tiendas recién publicadas</h2>
+                <h2>Casas de repuestos recién publicadas</h2>
                 {hasActiveStoreContext ? (
                   <p>
-                    Mostrando <strong>{totalElements}</strong> tiendas encontradas.
+                    Mostrando <strong>{totalElements}</strong> casas de repuestos encontradas.
                     {poolMayBeIncomplete && ' Puede haber más resultados: afina la búsqueda o la comuna para verlos todos.'}
                   </p>
                 ) : (
-                  <p>Explora tiendas verificadas y encuentra la especialista ideal para tus repuestos.</p>
+                  <p>Explora casas de repuestos verificadas y encuentra la especialista ideal para tus repuestos.</p>
                 )}
               </div>
               <div className="sort-dropdown-box directory-stores-sort">
                 <span className="sort-label">Ordenar por:</span>
-                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sort-select-input" aria-label="Ordenar tiendas">
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sort-select-input" aria-label="Ordenar casas de repuestos">
                   <option value="relevancia">Recomendados</option>
                   <option value="+publicaciones">Más publicaciones en stock</option>
                   <option value="rating">Mejor calificación</option>
@@ -549,9 +549,9 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                 <input
                   type="search"
                   value={searchQuery}
-                  placeholder="Buscar tiendas..."
+                  placeholder="Buscar casas de repuestos..."
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label="Buscar tiendas por texto"
+                  aria-label="Buscar casas de repuestos por texto"
                 />
                 {searchQuery && (
                   <button type="button" onClick={() => setSearchQuery('')} aria-label="Limpiar búsqueda">
@@ -568,12 +568,12 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
               >
                 <SlidersHorizontal size={18} /> Filtro
               </button>
-              <label className="catalog-mobile-sort-trigger" title="Ordenar tiendas">
+              <label className="catalog-mobile-sort-trigger" title="Ordenar casas de repuestos">
                 <ArrowUpDown size={20} aria-hidden="true" />
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  aria-label="Ordenar tiendas"
+                  aria-label="Ordenar casas de repuestos"
                 >
                   <option value="relevancia">Recomendados</option>
                   <option value="+publicaciones">Más publicaciones en stock</option>
@@ -626,7 +626,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                   rangeStart={startIndex + 1}
                   rangeEnd={endIndex}
                   totalItems={totalElements}
-                  itemLabel="tiendas"
+                  itemLabel="casas de repuestos"
                   itemsPerPage={itemsPerPage}
                   onItemsPerPageChange={setItemsPerPage}
                   perPageOptions={[6, 12, 24]}
@@ -636,7 +636,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
               /* Empty Filter State */
               <div className="directory-empty-state">
                 <Building2 size={56} className="empty-icon-gray" />
-                <h3>No se encontraron tiendas con estos filtros</h3>
+                <h3>No se encontraron casas de repuestos con estos filtros</h3>
                 <p>Intenta cambiar los filtros seleccionados o realiza una nueva búsqueda por nombre de tienda o ciudad.</p>
                 <button className="btn-reset-filters-large" onClick={handleResetFilters}>
                   <RotateCcw size={16} />

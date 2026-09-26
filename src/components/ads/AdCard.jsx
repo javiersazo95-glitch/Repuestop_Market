@@ -8,6 +8,7 @@ import { getCategoryIcon } from './categoryIcons';
 import { useAdOwnership } from './useAdOwnership';
 import ContextualReportButton from '../ContextualReportButton';
 import VehicleBrandLogo from '../VehicleBrandLogo';
+import { confirmWhatsappContact } from '../../utils/whatsappContact';
 // La tarjeta también se muestra en Favoritos. Cargar su diseño aquí evita que
 // dependa de que el usuario haya visitado antes el Mural de anuncios.
 import './ads-wall-redesign.css';
@@ -64,6 +65,7 @@ export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCatego
   };
 
   const handleWhatsAppClick = () => guard('whatsapp', () => {
+    if (!confirmWhatsappContact(ad.company, ad.whatsapp)) return;
     const text = encodeURIComponent(
       `Hola ${ad.company || ''}, vi su anuncio "${ad.title}" en el Mural de Anuncios de RepuesTop y deseo consultar por sus servicios.`
     );

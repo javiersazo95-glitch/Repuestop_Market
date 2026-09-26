@@ -1,0 +1,555 @@
+/* ===========================================================================
+   CHATS DE LA INTRANET (/perfil) EN CELULARES — comprador y proveedor
+   ---------------------------------------------------------------------------
+   Solo layout para <=768px: bandeja de chats, expediente de disputa (hilo con la
+   otra parte y con el mediador), chat de soporte, chat de cotizacion y el titulo
+   del detalle del pedido. Conserva colores, marca y el 100% de las funciones. No
+   hay reglas fuera de los media queries que afecten al escritorio. Se importa
+   DESPUES de index.css y de profile-mobile.css (main.jsx) para ganar la cascada
+   a igual especificidad.
+
+   Idea central: con un chat abierto (.dispute-workspace) el hilo ocupa TODA la
+   pantalla como una app de mensajeria (sin app bar ni barra inferior), con la
+   cabecera arriba, el hilo con scroll propio y el compositor fijo abajo. Las
+   columnas laterales de escritorio (guia + evidencia) no se apilan encima del
+   chat: se abren con el boton "Info" de la cabecera (.dispute-mobile-panel-toggle,
+   que en escritorio no existe).
+   ========================================================================== */
+
+/* Elementos exclusivos de movil: no existen en escritorio. */
+@media (min-width: 769px) {
+  .dispute-mobile-panel-toggle { display: none !important; }
+}
+
+@media (max-width: 768px) {
+  /* -------------------------------------------------------------------------
+     0. TITULO DEL DETALLE DEL PEDIDO (pagina y modal)
+     "Detalles del Pedido 4827 1936 05" saltaba a dos o tres lineas. Ahora son
+     dos lineas fijas: la etiqueta chica arriba y el numero, sin cortes, abajo.
+     ------------------------------------------------------------------------- */
+  .order-modal-title-group > div { flex: 1 1 auto; min-width: 0; }
+  .order-modal-title-group h2 {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    line-height: 1.2;
+  }
+  .order-modal-title-label {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .order-modal-title-number {
+    font-size: 19px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* Filas de repuestos del pedido: en escritorio van en una linea (foto, nombre,
+     cantidad, precio, chevron). A 375px el nombre quedaba en una columna de pocas
+     letras y se partia palabra por palabra. En movil: foto | nombre + marca y, debajo,
+     cantidad y precio | chevron. */
+  .order-item-row .order-item-row-main {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "img info toggle"
+      "img pricing toggle";
+    align-items: start;
+    gap: 4px 10px;
+  }
+  .order-item-row .item-table-img,
+  .order-item-row .item-table-fallback { grid-area: img; width: 44px; height: 44px; }
+  .order-item-row .item-table-info { grid-area: info; min-width: 0; gap: 2px; }
+  .order-item-row .order-item-row-title { gap: 4px 6px; }
+  .order-item-row .item-table-name {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-width: 0;
+    font-size: 13.5px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+  .order-item-row .item-table-meta { font-size: 11px; line-height: 1.3; overflow-wrap: anywhere; }
+  .order-item-row .item-table-pricing { grid-area: pricing; gap: 6px; }
+  .order-item-row .item-qty { font-size: 12px; }
+  .order-item-row .item-subtotal { font-size: 14px; }
+  .order-item-row .order-item-row-toggle { grid-area: toggle; align-self: center; width: 36px; height: 36px; }
+
+  /* -------------------------------------------------------------------------
+     1. BANDEJA: cabecera de la seccion y filas de casos/chats
+     ------------------------------------------------------------------------- */
+  .profile-dashboard .profile-cases-panel { gap: 12px; }
+  /* El titulo ya va en la app bar del perfil (Chats con vendedor / Reportes-Soporte). */
+  .profile-dashboard .profile-cases-header { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
+  .profile-dashboard .profile-cases-header h2 { display: none; }
+  .profile-dashboard .profile-cases-header p { font-size: 12px; line-height: 1.4; }
+  .profile-dashboard .profile-cases-header > span { flex: 0 0 auto; padding: 6px 9px; font-size: 10px; }
+
+  .profile-dashboard .case-rows { gap: 8px; }
+  .profile-dashboard .case-row {
+    min-height: 0;
+    padding: 10px 12px;
+    gap: 6px 10px;
+    align-items: start;
+    border-radius: 12px;
+  }
+  .profile-dashboard .case-row > * { min-width: 0; max-width: 100%; }
+
+  /* Reportes / soporte / disputas: sello arriba a la izquierda, chevron a la
+     derecha, titulo y detalle a todo el ancho, metadatos en una fila. */
+  .profile-dashboard .case-row:not(.seller-chat-row) { grid-template-columns: minmax(0, 1fr) auto; }
+  .profile-dashboard .case-row:not(.seller-chat-row) .profile-ticket-status { grid-area: 1 / 1; justify-self: start; }
+  .profile-dashboard .case-row:not(.seller-chat-row) .case-row-action {
+    grid-area: 1 / 2;
+    justify-self: end;
+    min-height: 0;
+    gap: 0;
+    font-size: 0; /* solo el chevron; toda la fila es tocable */
+  }
+  .profile-dashboard .case-row:not(.seller-chat-row) .case-row-action svg:not(:last-child) { display: none; }
+  .profile-dashboard .case-row:not(.seller-chat-row) .case-row-main { grid-column: 1 / -1; }
+  .profile-dashboard .case-row:not(.seller-chat-row) .case-row-main strong { font-size: 13.5px; white-space: normal; line-height: 1.3; }
+  .profile-dashboard .case-row:not(.seller-chat-row) .case-row-main p {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: normal;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .profile-dashboard .case-row:not(.seller-chat-row) .case-row-meta { grid-column: 1 / -1; flex-wrap: wrap; gap: 4px 8px; font-size: 10.5px; }
+
+  /* Chats con vendedor / compradores: miniatura, contenido y columna de fecha. */
+  .profile-dashboard .case-row.seller-chat-row {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    grid-template-areas: "thumb main meta";
+    gap: 10px;
+  }
+  .profile-dashboard .seller-chat-thumb { grid-area: thumb; width: 44px; height: 44px; border-radius: 10px; }
+  .profile-dashboard .case-row.seller-chat-row .case-row-main { grid-area: main; display: grid; gap: 3px; }
+  .profile-dashboard .seller-chat-counterpart { gap: 6px; }
+  .profile-dashboard .seller-chat-counterpart strong {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13.5px;
+  }
+  .profile-dashboard .seller-chat-order-status { padding: 2px 6px; font-size: 10px; }
+  .profile-dashboard .case-row.seller-chat-row .case-row-main p {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12.5px;
+  }
+  .profile-dashboard .seller-chat-mediator {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-top: 0;
+    font-size: 10.5px;
+    line-height: 1.35;
+  }
+  .profile-dashboard .seller-chat-mediator svg { display: none; }
+  .profile-dashboard .case-row.seller-chat-row .case-row-meta {
+    grid-area: meta;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    font-size: 10.5px;
+  }
+  .profile-dashboard .case-row.seller-chat-row .case-row-meta time { order: -1; }
+  /* El estado ("Chat abierto", "En mediacion") ya se ve en la insignia del contenido. */
+  .profile-dashboard .case-row.seller-chat-row .profile-ticket-status { display: none; }
+  .profile-dashboard .case-row.seller-chat-row .case-row-id { font-size: 10px; }
+  .profile-dashboard .seller-chat-unread { min-width: 20px; padding: 2px 6px; font-size: 10.5px; }
+  .profile-dashboard .case-row.seller-chat-row .case-row-action { display: none; }
+
+  /* -------------------------------------------------------------------------
+     2. SELECTOR "ELEGIR UNA COMPRA / VENTA PARA ESCRIBIR" (compacto)
+     ------------------------------------------------------------------------- */
+  .profile-dashboard .seller-chat-picker-box { padding: 12px; gap: 10px; border-radius: 14px; }
+  .profile-dashboard .seller-chat-picker-header { gap: 8px; }
+  .profile-dashboard .seller-chat-picker-header h3 { font-size: 13px; gap: 6px; }
+  .profile-dashboard .seller-chat-picker-header h3 svg { width: 16px; height: 16px; }
+  .profile-dashboard .seller-chat-picker-header p,
+  .profile-dashboard .seller-chat-picker-badge { display: none; }
+  .profile-dashboard .seller-chat-picker-controls { gap: 10px; }
+  .profile-dashboard .seller-chat-picker-select { min-height: 46px; padding: 0 12px; border-radius: 12px; font-size: 16px; }
+  .profile-dashboard .seller-chat-picker-loading { font-size: 12px; padding: 4px 0; }
+  .profile-dashboard .seller-chat-picker-empty { padding: 12px; }
+  .profile-dashboard .seller-chat-picker-empty p { font-size: 12.5px; }
+  .profile-dashboard .seller-chat-picker-empty small { font-size: 11px; }
+  .profile-dashboard .seller-chat-preview-card {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px 10px;
+    padding: 10px;
+    border-radius: 12px;
+  }
+  .profile-dashboard .seller-chat-preview-media { width: 44px; height: 44px; border-radius: 10px; }
+  .profile-dashboard .seller-chat-preview-info { min-width: 0; gap: 3px; }
+  .profile-dashboard .seller-chat-preview-info h4 { font-size: 13px; }
+  .profile-dashboard .seller-chat-preview-meta { flex-wrap: nowrap; overflow: hidden; gap: 4px; font-size: 11px; }
+  .profile-dashboard .seller-chat-preview-meta span { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .profile-dashboard .seller-chat-preview-status { flex-wrap: wrap; gap: 6px; }
+  .profile-dashboard .seller-chat-preview-actions { grid-column: 1 / -1; width: 100%; }
+  .profile-dashboard .seller-chat-start-button { width: 100%; min-height: 44px; justify-content: center; border-radius: 12px; }
+
+  /* -------------------------------------------------------------------------
+     3. CHAT ABIERTO A PANTALLA COMPLETA (.dispute-workspace)
+        Hilo con la contraparte, hilo del mediador y chat de soporte.
+     ------------------------------------------------------------------------- */
+  /* Sin app bar ni barra inferior: la cabecera del chat es la unica cabecera. */
+  .profile-dashboard:has(.dispute-workspace) .profile-topbar,
+  .profile-dashboard:has(.dispute-workspace) .profile-bottom-bar { display: none; }
+  /* Regla de hoja, no inline: no pisa el body.style.overflow que guardan los modales. */
+  body:has(.dispute-workspace) { overflow: hidden; }
+
+  /* Ningun ancestro tiene transform/filter: el fixed se mide contra la ventana.
+     z-index sobre la barra inferior (60) y bajo cualquier modal (>=1000). */
+  .profile-dashboard .dispute-workspace {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #fff;
+  }
+  .profile-dashboard .dispute-chat { flex: 1 1 auto; min-height: 0; height: 100%; }
+  .profile-dashboard .dispute-chat-body { flex: 1 1 auto; min-height: 0; }
+  .profile-dashboard .dispute-file-loading { min-height: 60vh; min-height: 60dvh; }
+
+  /* Cabecera: una sola fila (index.css la parte en dos a <=620px). */
+  .profile-dashboard .dispute-chat-head {
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding: 6px 8px 6px 4px;
+    padding-top: calc(6px + env(safe-area-inset-top, 0px));
+  }
+  .profile-dashboard .dispute-back {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: #10366d;
+    font-size: 0; /* solo la flecha; el svg conserva su tamano por atributo */
+  }
+  .profile-dashboard .dispute-back svg { width: 20px; height: 20px; }
+  .profile-dashboard .dispute-chat-peer { gap: 8px; }
+  .profile-dashboard .dispute-chat-avatar { width: 34px; height: 34px; }
+  .profile-dashboard .dispute-chat-peer-id strong { font-size: 14px; }
+  .profile-dashboard .dispute-chat-peer-id small { font-size: 11px; }
+  .profile-dashboard .dispute-chat-head-right { width: auto; justify-content: flex-end; gap: 4px; }
+  .profile-dashboard .dispute-seal {
+    max-width: 96px;
+    padding: 3px 7px;
+    gap: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 8.5px;
+    letter-spacing: .02em;
+  }
+  .profile-dashboard .dispute-seal::before { flex: 0 0 auto; }
+  .profile-dashboard .dispute-chat-refresh,
+  .profile-dashboard .dispute-mobile-panel-toggle {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #45566d;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .profile-dashboard .dispute-mobile-panel-toggle[aria-pressed="true"] { color: #0b5fd0; background: #eaf3ff; }
+  .profile-dashboard .support-resolve-btn { width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 10px; }
+  .profile-dashboard .support-resolve-btn span { display: none; }
+
+  /* Tira del pedido: miniatura + nombre; "Ver detalle del reclamo" pasa a icono. */
+  .profile-dashboard .dispute-order-strip { gap: 8px; padding: 6px 12px; }
+  .profile-dashboard .dispute-order-strip-thumb { width: 32px; height: 32px; }
+  .profile-dashboard .dispute-order-strip-copy strong { font-size: 12px; }
+  .profile-dashboard .dispute-order-strip-copy small { font-size: 10.5px; }
+  .profile-dashboard .dispute-order-strip .dispute-claim-link {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 0;
+  }
+  .profile-dashboard .dispute-order-strip .dispute-claim-link svg { width: 16px; height: 16px; }
+
+  /* Solapas (solo con mediador). */
+  .profile-dashboard .dispute-chat-tabs { gap: 4px; padding: 6px 10px; overflow-x: auto; scrollbar-width: none; }
+  .profile-dashboard .dispute-chat-tabs::-webkit-scrollbar { display: none; }
+  .profile-dashboard .dispute-chat-tabs > button { min-height: 38px; padding: 6px 8px; font-size: 11px; gap: 5px; }
+
+  /* Acciones (pedir mediador / soporte por garantia): un boton a todo el ancho. */
+  .profile-dashboard .dispute-chat-actions { flex-direction: row; gap: 8px; padding: 8px 12px; }
+  .profile-dashboard .dispute-chat-actions > button {
+    flex: 1 1 auto;
+    min-height: 40px;
+    padding: 6px 10px;
+    font-size: 11.5px;
+    white-space: normal;
+    text-align: left;
+  }
+  .profile-dashboard .dispute-chat-actions > button > span:last-child { flex: 1 1 auto; min-width: 0; }
+  .profile-dashboard .dispute-chat-action-icon { flex: 0 0 auto; width: 24px; height: 24px; }
+
+  /* Avisos y bandas. */
+  .profile-dashboard .dispute-frozen-notice,
+  .profile-dashboard .dispute-resolved-banner,
+  .profile-dashboard .support-resolved-note,
+  .profile-dashboard .dispute-thread-closed { padding: 8px 12px; font-size: 11.5px; line-height: 1.4; }
+  .profile-dashboard .dispute-resolved-banner strong { font-size: 12px; }
+  .profile-dashboard .dispute-resolved-banner p { font-size: 11px; }
+  .profile-dashboard .dispute-mediator-summary-toggle { min-height: 44px; padding: 6px 12px; gap: 8px; }
+  .profile-dashboard .dispute-mediator-summary { padding: 10px 12px; }
+
+  /* Soporte: chips y adjuntos en una fila con scroll horizontal. */
+  .profile-dashboard .support-chat-meta,
+  .profile-dashboard .support-chat-attachments-list {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .profile-dashboard .support-chat-meta::-webkit-scrollbar,
+  .profile-dashboard .support-chat-attachments-list::-webkit-scrollbar { display: none; }
+  .profile-dashboard .support-chat-meta { padding: 6px 12px; gap: 6px; }
+  .profile-dashboard .support-chat-chip { flex: 0 0 auto; white-space: nowrap; font-size: 10.5px; }
+  .profile-dashboard .support-chat-attachments { padding: 6px 12px 8px; }
+  .profile-dashboard .support-chat-attachments-title { margin-bottom: 5px; }
+  .profile-dashboard .support-chat-attachment { flex: 0 0 auto; width: 72px; }
+  .profile-dashboard .support-chat-attachment img,
+  .profile-dashboard .support-chat-attachment-file { width: 72px; height: 56px; }
+
+  /* Cuerpo: en modo chat solo el hilo + compositor; las columnas laterales de
+     escritorio (guia, reclamo, resolucion, evidencia) se ven en modo Info. */
+  /* align-items: stretch anula el "start" de la grilla de escritorio: en columna
+     flex, con start el hilo se encogia a su contenido y dejaba media pantalla vacia. */
+  .profile-dashboard .dispute-mediator-layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    background: #fff;
+  }
+  .profile-dashboard .dispute-mediator-center { flex: 1 1 auto; width: 100%; min-width: 0; min-height: 0; order: 0; }
+  .profile-dashboard .dispute-chat:not(.is-mobile-panel-open) .dispute-mediator-rail { display: none; }
+  .profile-dashboard .dispute-chat.is-mobile-panel-open .dispute-mediator-layout { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .profile-dashboard .dispute-chat.is-mobile-panel-open .dispute-mediator-center { display: none; }
+  .profile-dashboard .dispute-chat.is-mobile-panel-open .dispute-mediator-rail {
+    display: grid;
+    flex: 0 0 auto;
+    gap: 10px;
+    padding: 12px;
+    border: 0;
+    background: #fff;
+  }
+  .profile-dashboard .dispute-chat.is-mobile-panel-open .dispute-mediator-rail.is-guide { padding-bottom: 0; }
+  .profile-dashboard .dispute-chat.is-mobile-panel-open .dispute-mediator-rail.is-evidence { padding-bottom: calc(16px + var(--pm-safe-bottom)); }
+  .profile-dashboard .dispute-chat.is-mobile-panel-open .dispute-mediator-rail.is-evidence .dispute-evidence-strip { grid-template-columns: 1fr; gap: 4px; }
+  .profile-dashboard .dispute-rail-card { padding: 11px 12px; }
+  .profile-dashboard .dispute-rail-card p,
+  .profile-dashboard .dispute-mediator-steps li { font-size: 12px; }
+
+  /* Hilo: ocupa lo que queda de pantalla, con scroll propio. */
+  .profile-dashboard .dispute-thread {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    padding: 12px;
+    gap: 10px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .profile-dashboard .dispute-thread-empty { max-width: 260px; }
+  .profile-dashboard .dispute-msg { max-width: 86%; gap: 2px; }
+  .profile-dashboard .dispute-msg-author { font-size: 9.5px; }
+  .profile-dashboard .dispute-msg-body { padding: 9px 12px; }
+  .profile-dashboard .dispute-msg-body p { font-size: 13.5px; line-height: 1.45; }
+  .profile-dashboard .dispute-msg-body img,
+  .profile-dashboard .dispute-msg-body .quote-ws-image-open > img { max-width: min(220px, 70vw); }
+  .profile-dashboard .dispute-msg time { font-size: 10.5px; }
+  .profile-dashboard .dispute-system-note { max-width: 92%; font-size: 11px; }
+  .profile-dashboard .dispute-log-entry { font-size: 11px; }
+
+  /* Compositor fijo al fondo. */
+  .profile-dashboard .dispute-composer { padding: 8px 12px calc(10px + var(--pm-safe-bottom)); }
+  .profile-dashboard .dispute-composer-label { display: none; }
+  .profile-dashboard .dispute-composer textarea {
+    min-height: 44px;
+    max-height: 120px;
+    padding: 10px 12px;
+    resize: none;
+    border-radius: 12px;
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  .profile-dashboard .dispute-composer footer { margin-top: 6px; gap: 8px; }
+  .profile-dashboard .dispute-composer footer small { font-size: 10.5px; }
+  .profile-dashboard .dispute-composer button { min-height: 40px; padding: 0 14px; border-radius: 12px; font-size: 12.5px; }
+  .profile-dashboard .dispute-attach-btn { min-height: 36px; padding: 0 10px; border-radius: 10px; }
+  .profile-dashboard .dispute-inline-error { margin-bottom: 5px; }
+  .profile-dashboard .chat-image-preview { padding: 6px 10px; gap: 8px; }
+  .profile-dashboard .chat-image-preview img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; }
+  .profile-dashboard .chat-image-preview > div { min-width: 0; }
+  .profile-dashboard .chat-image-preview span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Dialogos del expediente (pedir mediador, resolver, ficha del reclamo,
+     resolucion): hojas inferiores. */
+  .dispute-dialog-backdrop { padding: 0; place-items: end center; }
+  .dispute-dialog {
+    width: 100%;
+    max-height: 92vh;
+    max-height: 92dvh;
+    border-radius: 18px 18px 0 0;
+  }
+  .dispute-dialog > header { padding: 14px 16px; }
+  .dispute-dialog-lead { padding: 10px 16px; }
+  .dispute-dialog form { padding: 14px 16px calc(16px + var(--pm-safe-bottom)); gap: 12px; }
+  .dispute-dialog form footer { flex-direction: column-reverse; gap: 8px; }
+  .dispute-dialog form footer .dispute-btn { width: 100%; min-height: 46px; }
+  .dispute-claim-dialog { width: 100%; }
+  .dispute-claim-dialog-body { padding: 12px 16px calc(18px + var(--pm-safe-bottom)); }
+  .dispute-field input,
+  .dispute-field textarea { font-size: 16px; }
+
+  /* -------------------------------------------------------------------------
+     4. CHAT DE COTIZACION (.quote-workspace, ya es un overlay fijo)
+     ------------------------------------------------------------------------- */
+  .quote-workspace { grid-template-rows: 48px minmax(0, 1fr); }
+  .quote-ws-topbar { padding: 0 6px 0 12px; gap: 8px; }
+  .quote-ws-brand svg,
+  .quote-ws-brand img { height: 28px; width: auto; }
+  .quote-ws-account { grid-template-columns: 40px; gap: 0; }
+  .quote-ws-account-avatar,
+  .quote-ws-account > div { display: none; }
+  .quote-ws-account button { width: 40px; height: 40px; border-radius: 10px; }
+  .quote-ws-toast { top: 56px; left: 8px; right: 8px; min-width: 0; transform: none; font-size: 12px; }
+
+  .quote-ws-layout { padding: 0; gap: 0; }
+  .quote-ws-chat { border: 0; border-radius: 0; grid-template-rows: auto auto minmax(0, 1fr) auto; }
+
+  /* Cabecera del chat en dos filas: persona + opciones arriba, el boton de la
+     cotizacion ("Revisar y pagar" / "Ver detalles") a todo el ancho abajo. */
+  .quote-ws-chat-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 8px;
+    padding: 8px 10px;
+  }
+  .quote-ws-chat-actions { display: contents; }
+  .quote-ws-person { grid-area: 1 / 1; }
+  .quote-ws-person > span { width: 36px; height: 36px; }
+  .quote-ws-person strong { font-size: 13px; }
+  .quote-ws-person small { font-size: 10px; }
+  .quote-ws-icon-button { grid-area: 1 / 2; width: 40px; height: 40px; }
+  .quote-ws-details-button {
+    grid-area: 2 / 1 / 3 / 3;
+    max-width: none;
+    min-height: 40px;
+    padding: 0 12px;
+    justify-content: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  .quote-ws-details-button.pay-ready { font-size: 13px; }
+
+  .quote-ws-private { margin: 8px 10px 0; padding: 8px 10px; gap: 8px; align-items: center; }
+  .quote-ws-private > svg { flex: 0 0 auto; width: 16px; height: 16px; }
+  .quote-ws-private strong { font-size: 11.5px; }
+  .quote-ws-private span { display: none; }
+
+  .quote-ws-messages { padding: 10px; gap: 8px; }
+  .quote-ws-message-row { max-width: 88%; gap: 6px; }
+  .quote-ws-message-avatar { width: 28px; height: 28px; font-size: 8px; }
+  .quote-ws-message-row.mine .quote-ws-message-avatar { display: none; }
+  .quote-ws-bubble { min-width: 0; padding: 9px 11px; }
+  .quote-ws-bubble p { font-size: 13px; line-height: 1.45; }
+  .quote-ws-bubble > small { font-size: 10px; }
+  .quote-ws-document-bubble { width: 100%; }
+  .quote-ws-image-open > img { max-width: min(230px, 70vw); }
+  .quote-chat-closed { padding: 12px 12px calc(12px + var(--pm-safe-bottom)); font-size: 12px; }
+
+  .quote-ws-composer {
+    margin: 0;
+    padding: 8px 10px calc(8px + var(--pm-safe-bottom));
+    border: 0;
+    border-top: 1px solid #dfe7ef;
+    border-radius: 0;
+  }
+  .quote-ws-composer textarea { min-height: 40px; max-height: 120px; font-size: 16px; line-height: 1.4; }
+  .quote-ws-composer > div { grid-template-columns: 1fr auto; gap: 8px; }
+  .quote-ws-composer small { font-size: 10.5px; }
+  .quote-ws-composer button[type="submit"] { min-height: 40px; padding: 0 14px; border-radius: 10px; font-size: 12.5px; }
+
+  /* Dialogos de la cotizacion (ver/crear cotizacion, reporte, opciones): hojas
+     inferiores. El visor de imagen tiene su propia clase con !important y no entra. */
+  .quote-ws-dialog-backdrop:not(.quote-ws-image-viewer) { padding: 0; place-items: end center; }
+  .quote-ws-quote-dialog,
+  .quote-ws-report-dialog,
+  .quote-ws-editor-dialog,
+  .quote-ws-options-dialog,
+  .quote-ws-report-success {
+    width: 100%;
+    max-height: 94vh;
+    max-height: 94dvh;
+    border-radius: 18px 18px 0 0;
+  }
+  .quote-ws-quote-dialog > footer,
+  .quote-ws-report-dialog > footer { flex-wrap: wrap; padding-bottom: calc(12px + var(--pm-safe-bottom)); }
+  .quote-ws-quote-dialog > footer button,
+  .quote-ws-report-dialog > footer button { flex: 1 1 auto; min-height: 46px; }
+  .quote-ws-editor-dialog > .quote-editor-footer { padding-bottom: calc(11px + var(--pm-safe-bottom)); }
+  .quote-ws-options-dialog > div { padding-bottom: calc(7px + var(--pm-safe-bottom)); }
+  .quote-ws-report-success { padding-bottom: calc(26px + var(--pm-safe-bottom)); }
+  .quote-ws-dialog-body input,
+  .quote-ws-dialog-body select,
+  .quote-ws-dialog-body textarea,
+  .quote-ws-report-detail textarea { font-size: 16px; }
+}
+
+/* Pantallas angostas (<=359px): un poco menos de aire en la cabecera del chat. */
+@media (max-width: 359px) {
+  .profile-dashboard .dispute-seal { max-width: 72px; }
+  .profile-dashboard .dispute-chat-peer-id strong { font-size: 13px; }
+  .profile-dashboard .case-row.seller-chat-row { grid-template-columns: 40px minmax(0, 1fr) auto; }
+  .profile-dashboard .seller-chat-thumb { width: 40px; height: 40px; }
+}

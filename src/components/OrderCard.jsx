@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom';
 import { resolveMediaUrl } from '../services/api';
 import { isCancelledItem, orderDeliverySummary, orderDisplayCode } from '../data/orderIdentity';
 import { buyerClaimState, getControlledOrderAction, isStorePickupOrder, orderPaymentWindow, sellerClaimState } from '../data/orderStatusFlow';
-import { buyerCaseChatPath, sellerCaseChatPath } from '../routes/paths';
+import { buyerCaseChatPath, currentPathForBack, sellerCaseChatPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
 import SellerChargesBreakdownModal from './SellerChargesBreakdownModal';
@@ -473,6 +473,7 @@ export default function OrderCard({
                 {' · '}
                 <Link
                   to={claimChatPath}
+                  state={{ from: currentPathForBack() }}
                   className="order-claim-link"
                   onClick={(e) => e.stopPropagation()}
                 >

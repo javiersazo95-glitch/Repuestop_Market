@@ -509,6 +509,12 @@ export default function StorePublicProfileView({
     window.location.href = `mailto:?subject=${encodeURIComponent(currentStore?.nombre || 'RepuesTop')}&body=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`;
   });
 
+  // En el celular: la hoja nativa (WhatsApp, Instagram, correo, lo que tenga la persona).
+  const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  const shareNative = () => closeShareMenuAnd(() => {
+    navigator.share({ title: currentStore?.nombre || 'RepuesTop', text: shareText, url: shareUrl }).catch(() => {});
+  });
+
   const handleCopyLink = () => closeShareMenuAnd(async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -568,7 +574,7 @@ export default function StorePublicProfileView({
           <div className="container store-header-actions-bar">
             <button className="btn-back-stores" onClick={onBackToStores} type="button">
               <ArrowLeft size={16} />
-              <span>Volver a Tiendas</span>
+              <span>Volver a Casas de repuestos</span>
             </button>
             {onEditStore && (
               <button className="btn-edit-store-profile" onClick={onEditStore} type="button" title="Editar mi tienda">
@@ -640,6 +646,13 @@ export default function StorePublicProfileView({
 
                     {isShareMenuOpen && (
                       <ul className="store-share-menu" role="menu">
+                        {canNativeShare && (
+                          <li role="none">
+                            <button type="button" role="menuitem" className="store-share-option native" onClick={shareNative}>
+                              <Share2 size={16} /> Compartir con…
+                            </button>
+                          </li>
+                        )}
                         <li role="none">
                           <button type="button" role="menuitem" className="store-share-option whatsapp" onClick={shareViaWhatsapp}>
                             <MessageCircle size={16} /> WhatsApp

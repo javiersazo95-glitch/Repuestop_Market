@@ -15,6 +15,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useMarketplace } from '../../context/MarketplaceContext';
 import { useSavedMarketplaceItems } from '../../hooks/useSavedMarketplaceItems';
 import VehicleBrandLogo from '../VehicleBrandLogo';
+import { confirmWhatsappContact } from '../../utils/whatsappContact';
+import MobileStickyBar from '../MobileStickyBar';
 import './ad-detail.css';
 
 const FALLBACK_IMAGE =
@@ -104,6 +106,7 @@ export default function AdDetailView({ ad, onBack }) {
   });
 
   const handleWhatsApp = () => guard('whatsapp', () => {
+    if (!confirmWhatsappContact(ad.company, ad.whatsapp)) return;
     const text = encodeURIComponent(
       `Hola ${ad.company || ''}, vi su anuncio "${ad.title}" en el Mural de Anuncios de RepuesTop y deseo consultar por sus servicios.`
     );
@@ -334,6 +337,15 @@ export default function AdDetailView({ ad, onBack }) {
               {isEmpresarial ? 'Taller verificado por RepuesTop' : 'Publicado en RepuesTop'}
             </p>
           </div>
+
+          {/* Solo movil: la columna lateral con WhatsApp/agenda queda al final (~1.600px). */}
+          {!isOwnAd && (canWhatsapp || canBook || ad.phone) && (
+            <MobileStickyBar label="Precio desde" value={priceLabel || 'A convenir'} watchSelector=".ad-detail-side .ad-detail-btn" ariaLabel="Contactar al taller">
+              {canWhatsapp && <button type="button" className="mobile-sticky-bar__btn is-whatsapp" onClick={handleWhatsApp}><MessageCircle size={18} /> WhatsApp</button>}
+              {canBook && <button type="button" className={`mobile-sticky-bar__btn ${canWhatsapp ? 'is-secondary' : ''}`} onClick={handleBooking} aria-label="Agendar cita"><Calendar size={18} />{!canWhatsapp && ' Agendar'}</button>}
+              {!canWhatsapp && !canBook && ad.phone && <button type="button" className="mobile-sticky-bar__btn" onClick={handlePhone}><Phone size={18} /> Llamar</button>}
+            </MobileStickyBar>
+          )}
 
           {/* ---- Columna lateral ---- */}
           <aside className="ad-detail-side">

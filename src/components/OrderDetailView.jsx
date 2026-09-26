@@ -13,7 +13,7 @@ import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, isCancelledItem, orderDeliverySummary, orderDisplayCode, subOrderDeliveryLabel, subOrderDeliveryMethod } from '../data/orderIdentity';
 import { buyerClaimState, getControlledOrderAction, isStorePickupOrder, normalizeOrderStatus, orderPaymentWindow, sellerClaimState } from '../data/orderStatusFlow';
 import { Link } from 'react-router-dom';
-import { buyerCaseChatPath, productPath, sellerCaseChatPath } from '../routes/paths';
+import { buyerCaseChatPath, currentPathForBack, productPath, sellerCaseChatPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
 import SaleReceiptViewerModal from './SaleReceiptViewerModal';
@@ -1134,7 +1134,9 @@ export default function OrderDetailView({
               </div>
             )}
             <div>
-              <h2>{isSeller ? "Detalles de la Venta" : "Detalles del Pedido"} {orderIdShort}</h2>
+              {/* Dos spans sin estilo en escritorio; en movil (chat-mobile.css) van en dos lineas
+                  para que el numero de 10 digitos no parta el titulo en tres. */}
+              <h2><span className="order-modal-title-label">{isSeller ? "Detalles de la Venta" : "Detalles del Pedido"}</span> <span className="order-modal-title-number">{orderIdShort}</span></h2>
               <span className="order-modal-subtitle">
                 {formatDate(order.createdAt || order.fecha)} · {order.source === 'quote' ? 'Cotización' : 'Carrito'}
                 {/* O72: el numero de arriba ya es el publico, el mismo que le pide soporte; no se
@@ -1215,7 +1217,7 @@ export default function OrderDetailView({
             <strong>
               <ShieldAlert size={15} /> {claimState.title}
               {' · '}
-              <Link to={claimChatPath} className="order-claim-link">{claimState.linkLabel}</Link>
+              <Link to={claimChatPath} state={{ from: currentPathForBack() }} className="order-claim-link">{claimState.linkLabel}</Link>
             </strong>
             {claimState.detail && <span>{claimState.detail}</span>}
             {claimState.blocksFinalize && (normStatus === 'ENTREGADO'

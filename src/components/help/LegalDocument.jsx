@@ -28,6 +28,23 @@ export default function LegalDocument({ titulo, descripcion, texto, extra = null
         <small>Versión vigente: {LEGAL_VERSION}</small>
       </header>
 
+      {/* Solo movil (public-mobile.css): el documento mide 10+ pantallazos. */}
+      {sections.some((section) => section.numero) && (
+        <details className="legal-mobile-index" id="indice-legal">
+          <summary>Índice · {sections.filter((section) => section.numero).length} secciones</summary>
+          <ol>
+            {sections.filter((section) => section.numero).map((section) => (
+              <li key={section.numero}>
+                <a href={`#s${section.numero}`}><span>{section.numero}</span>{section.titulo}</a>
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
+      {sections.some((section) => section.numero) && (
+        <a className="legal-mobile-top" href="#indice-legal" aria-label="Volver al índice">↑</a>
+      )}
+
       <div className="legal-body">
         {sections.map((section, index) => (
           <section key={`${section.numero || 'intro'}-${index}`} id={section.numero ? `s${section.numero}` : undefined}>

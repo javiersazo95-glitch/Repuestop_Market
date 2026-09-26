@@ -20,6 +20,9 @@ import { useFavorites } from '../hooks/useFavorites';
 import { qk } from '../services/queryKeys';
 import StoreLogoBadge from './StoreLogoBadge';
 import ContextualReportButton from './ContextualReportButton';
+import ShareLinkButton from './ShareLinkButton';
+import MobileStickyBar from './MobileStickyBar';
+import { productPath } from '../routes/paths';
 import RelatedProductsCarousel from './RelatedProductsCarousel';
 import ProductTopBadge from './ProductTopBadge';
 import { isProductTopActive } from '../utils/productTop';
@@ -346,6 +349,16 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             >
               <Heart size={22} fill={favorite ? 'currentColor' : 'none'} />
             </button>
+            <ShareLinkButton
+              className="product-marketplace-share"
+              iconOnly
+              iconSize={22}
+              stopPropagation={false}
+              url={productPath(product)}
+              title={product.titulo}
+              text={`${product.titulo} en RepuesTop`}
+              label="Compartir repuesto"
+            />
             <div className="product-marketplace-photo">
               {images[activeImage]
                 ? <img src={images[activeImage]} alt={product.titulo} />
@@ -436,6 +449,23 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
               <span><ShieldCheck /><b>Calidad garantizada</b><small>Productos verificados</small></span>
             </div>
           </article>
+
+          {/* Solo movil: el buybox queda bajo la galeria y todo el resumen (a ~1.400px). */}
+          {!isOwnProduct && (quoteOnly ? (
+            <MobileStickyBar label="Precio" value="A cotizar" watchSelector=".product-marketplace-buybox .product-marketplace-primary" ariaLabel="Cotizar este repuesto">
+              <button type="button" className="mobile-sticky-bar__btn" onClick={() => onOpenQuote(product)}><MessageCircle size={18} /> Cotizar</button>
+            </MobileStickyBar>
+          ) : (
+            <MobileStickyBar
+              label={stock > 0 ? 'Precio · IVA incluido' : 'Sin stock'}
+              value={'$' + Number(product.precio).toLocaleString('es-CL')}
+              watchSelector=".product-marketplace-buybox .product-marketplace-primary"
+              ariaLabel="Comprar este repuesto"
+            >
+              <button type="button" className="mobile-sticky-bar__btn is-secondary" disabled={!stock} onClick={addToCartNow} aria-label="Añadir al carro"><ShoppingCart size={20} /></button>
+              <button type="button" className="mobile-sticky-bar__btn" disabled={!stock} onClick={buyNow}>Comprar</button>
+            </MobileStickyBar>
+          ))}
 
           <aside className="product-marketplace-buybox">
             <div className="product-marketplace-buy-status"><span><i /> {stock > 0 ? 'Disponible' : 'Sin stock'}</span><small>{stock} disponibles</small></div>

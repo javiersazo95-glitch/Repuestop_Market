@@ -1052,7 +1052,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                     </li>
                   ))}
                 </ul>
-                <div className="role-badge-tag seller-tag">Para Tiendas y Desarmadurías</div>
+                <div className="role-badge-tag seller-tag">Para casas de repuestos y desarmadurías</div>
               </div>
             </div>
 

@@ -11,7 +11,7 @@ export default function CatalogPage() {
   const nav = useAppNavigation();
   const { activeVehicle, setActiveVehicle, openQuote, searchQuery, setSearchQuery } = useMarketplace();
 
-  const { filter, query, page } = useMemo(
+  const { filter, query, page, showAll } = useMemo(
     () => catalogFilterFromParams(searchParams),
     [searchParams]
   );
@@ -52,6 +52,7 @@ export default function CatalogPage() {
       apply('subcategoria', state.subcategory);
       apply('q', state.query?.trim());
       apply('pagina', state.page > 1 ? state.page : null);
+      apply('todos', state.showAll ? '1' : null);
 
       return next;
     }, { replace: true });
@@ -66,6 +67,7 @@ export default function CatalogPage() {
       initialCatalogFilter={filter}
       initialSearchQuery={query}
       initialPage={page}
+      initialShowAll={showAll}
       onVehicleChange={setActiveVehicle}
       onNavigationStateChange={syncUrl}
     />

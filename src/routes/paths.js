@@ -137,6 +137,16 @@ export function checkoutPath({ cotizacion } = {}) {
   return cotizacion ? `${ROUTES.checkout}?cotizacion=${encodeURIComponent(cotizacion)}` : ROUTES.checkout;
 }
 
+/**
+ * La vista actual (ruta + query), para pasarla como `state.from` al abrir un chat desde otra
+ * pantalla (detalle del pedido, tarjeta). El "volver" del chat regresa ahi y no a la bandeja,
+ * que en movil obligaba a rehacer el camino. Sin `from`, el chat vuelve a su bandeja.
+ */
+export function currentPathForBack() {
+  if (typeof window === 'undefined') return '';
+  return `${window.location.pathname}${window.location.search}`;
+}
+
 export function profilePath(tab = 'resumen') {
   return `${ROUTES.profile}/${tab || 'resumen'}`;
 }
@@ -185,6 +195,8 @@ export function catalogPath(filter = null, extra = {}) {
   if (normalized.subcategoryId) params.set('subcategoriaId', String(normalized.subcategoryId));
   if (extra.q) params.set('q', extra.q);
   if (extra.pagina && Number(extra.pagina) > 1) params.set('pagina', String(extra.pagina));
+  // "Ver todos los repuestos": listado completo paginado en vez de la vitrina de entrada.
+  if (extra.todos) params.set('todos', '1');
 
   const query = params.toString();
   return query ? `${ROUTES.catalog}?${query}` : ROUTES.catalog;
@@ -204,6 +216,7 @@ export function catalogFilterFromParams(searchParams) {
     filter: hasFilter ? filter : null,
     query: searchParams.get('q') || '',
     page: Math.max(1, Number(searchParams.get('pagina') || 1) || 1),
+    showAll: searchParams.get('todos') === '1',
   };
 }
 

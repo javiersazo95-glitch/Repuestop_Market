@@ -25,7 +25,7 @@ import { useAuth } from '../context/AuthContext';
  */
 const EXPLORE_LINKS = [
   ['Catálogo de repuestos', PackageSearch, ROUTES.catalog],
-  ['Tiendas Verificadas', Store, ROUTES.stores],
+  ['Casas de repuestos verificadas', Store, ROUTES.stores],
   ['Mural de Anuncios', Megaphone, ROUTES.adsWall],
 ];
 

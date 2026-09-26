@@ -2446,12 +2446,6 @@ input, select, textarea {
   padding: 36px 0 44px;
 }
 
-.footer-columns-grid {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 1.2fr;
-  gap: 48px;
-}
-
 .footer-col h4 {
   font-size: 15.5px;
   font-weight: 900;
@@ -2591,14 +2585,6 @@ input, select, textarea {
   &.webpay-official { background: #0066ff; color: #ffffff; box-shadow: 0 2px 8px rgba(0, 102, 255, 0.4); }
   &.mp-official { background: #009ee3; color: #ffffff; box-shadow: 0 2px 8px rgba(0, 158, 227, 0.4); }
   &.card-official { background: #1e293b; color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.15); }
-}
-
-.footer-bottom-row-vivid {
-  background: #050811;
-  padding: 22px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 12.5px;
-  color: #94a3b8;
 }
 
 .bottom-flex {
@@ -11484,20 +11470,6 @@ input, select, textarea {
   gap: 16px;
 }
 
-.store-header-profile-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  padding: 24px 28px;
-  border-radius: var(--radius-lg);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.25);
-  flex-wrap: wrap;
-}
-
 .store-logo-avatar-wrap {
   flex-shrink: 0;
 }
@@ -11565,12 +11537,6 @@ input, select, textarea {
   font-size: 13.5px;
   color: #cbd5e1;
   margin: 0 0 10px 0;
-}
-
-.store-metrics-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
 }
 
 .metric-pill {
@@ -11670,20 +11636,6 @@ input, select, textarea {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-}
-
-.patent-filter-box-bar {
-  background: #ffffff;
-  border-radius: 18px;
-  border: 1px solid #dce5f1;
-  padding: 20px 34px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 28px;
-  margin-bottom: 0;
-  box-shadow: 0 16px 34px rgba(2, 15, 42, 0.14);
-  flex-wrap: wrap;
 }
 
 .catalog-patent-console-wrap {
@@ -11991,10 +11943,6 @@ input, select, textarea {
   .container {
     max-width: 960px;
   }
-  .footer-columns-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 36px !important;
-  }
   .latest-parts-grid-4 {
     grid-template-columns: repeat(2, 1fr) !important;
   }
@@ -12091,17 +12039,6 @@ input, select, textarea {
   .parts-cards-grid-catalog,
   .latest-parts-grid-4 {
     grid-template-columns: 1fr !important;
-  }
-
-  .footer-columns-grid {
-    grid-template-columns: 1fr !important;
-    gap: 28px !important;
-  }
-
-  .footer-bottom-row-vivid .bottom-flex {
-    flex-direction: column;
-    gap: 12px;
-    text-align: center;
   }
 
   .legal-links-list {
@@ -14759,7 +14696,6 @@ input, select, textarea {
   content: '';
 }
 .store-public-profile-wrapper .store-hero-inner { position: relative; z-index: 1; gap: 31px; }
-.store-hero-topbar { min-height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .store-public-profile-wrapper .btn-back-marketplace {
   min-height: 48px;
   padding: 0 22px;
@@ -14790,20 +14726,6 @@ input, select, textarea {
 .store-cover-edit-action > span { display: flex; flex-direction: column; gap: 2px; }
 .store-cover-edit-action strong { font-size: 12px; }
 .store-cover-edit-action small { color: #b7c3d5; font-size: 9px; }
-.store-public-profile-wrapper .store-header-profile-card {
-  max-width: 100%;
-  display: grid;
-  grid-template-columns: 214px minmax(0, 1fr) 325px;
-  grid-template-areas: 'avatar info actions' 'avatar metrics metrics';
-  align-items: center;
-  gap: 21px 27px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-}
 .store-public-profile-wrapper .store-logo-avatar-wrap { position: relative; grid-area: avatar; align-self: stretch; min-height: 214px; }
 .store-public-profile-wrapper .store-logo-img,
 .store-public-profile-wrapper .store-logo-initials-box {
@@ -14840,13 +14762,6 @@ input, select, textarea {
 .store-social-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 .store-social-actions button { min-height: 43px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid rgba(255,255,255,.32); border-radius: 22px; color: #f3f7fd; background: rgba(4, 15, 34, .58); backdrop-filter: blur(9px); font-size: 10.5px; font-weight: 800; }
 .store-social-actions button.active { border-color: #4c8fff; color: #8cb8ff; background: rgba(18, 88, 204, .25); }
-.store-public-profile-wrapper .store-metrics-row { grid-area: metrics; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; min-height: 81px; padding: 13px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 14px; background: rgba(8, 23, 47, .66); backdrop-filter: blur(12px); }
-.store-public-profile-wrapper .store-metrics-row > div { min-width: 0; padding: 0 17px; display: flex; align-items: center; gap: 10px; border-right: 1px solid rgba(255,255,255,.17); }
-.store-public-profile-wrapper .store-metrics-row > div:last-child { border-right: 0; }
-.store-public-profile-wrapper .store-metrics-row > div > span { width: 38px; height: 38px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; color: #e6edf8; background: rgba(255,255,255,.08); }
-.store-public-profile-wrapper .store-metrics-row p { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.store-public-profile-wrapper .store-metrics-row strong { overflow: hidden; color: #fff; font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
-.store-public-profile-wrapper .store-metrics-row small { overflow: hidden; color: #aeb9ca; font-size: 9.5px; white-space: nowrap; text-overflow: ellipsis; }
 
 .store-public-profile-wrapper .persistent-store-sticky-banner { margin-bottom: 17px; }
 .store-public-profile-wrapper .persistent-store-inner { min-height: 53px; padding: 10px 20px; border-color: #bad4ff; border-radius: 11px; color: #2268d8; background: linear-gradient(110deg, #f5f9ff, #edf4ff); box-shadow: none; }
@@ -14869,7 +14784,6 @@ input, select, textarea {
 .store-catalog-filter-feedback strong { color: #0f172a; }
 .store-catalog-sort { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; margin-top: 23px; color: #475569; font-size: 13px; font-weight: 700; }
 .store-active-vehicle-inline { margin-top: 12px; }
-.store-public-profile-wrapper .patent-filter-box-bar { display: grid; grid-template-columns: minmax(300px, .82fr) minmax(520px, 1.45fr); gap: 22px; padding: 21px 28px; border-color: #d9e3f1; border-radius: 16px; box-shadow: 0 9px 22px rgba(21, 49, 87, .07); }
 .store-public-profile-wrapper .patent-filter-header-title { min-width: 0; padding-right: 22px; border-right: 1px solid #e1e7f0; }
 .store-public-profile-wrapper .patent-filter-header-title > svg { width: 38px; height: 38px; color: #1268f3; }
 .store-public-profile-wrapper .patent-filter-header-title strong { color: #17233a; font-size: 14px; }
@@ -14879,7 +14793,6 @@ input, select, textarea {
 .store-search-help { z-index: 1; margin-left: -47px; margin-right: 13px; flex: 0 0 auto; color: #71829a; }
 .store-public-profile-wrapper .btn-patent-search-blue { min-height: 48px; padding: 0 25px; border-radius: 10px; }
 .store-public-profile-wrapper .active-patent-verified-chip { grid-column: 1 / -1; width: fit-content; }
-.store-public-profile-wrapper .store-inventory-control-bar { min-height: 137px; padding: 23px 28px; display: grid; grid-template-columns: minmax(300px, .68fr) minmax(0, 1.42fr); gap: 27px; border: 1px solid #dce5f0; border-radius: 16px; background: #fff; box-shadow: 0 9px 22px rgba(21, 49, 87, .06); }
 .store-inventory-search-title { display: flex; align-items: center; gap: 17px; }
 .store-inventory-search-title > span { width: 48px; height: 48px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; color: #1268f3; background: #edf4ff; }
 .store-inventory-search-title p { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -14891,34 +14804,21 @@ input, select, textarea {
 .store-popular-searches { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: #77869d; font-size: 9px; }
 .store-popular-searches button { min-height: 25px; padding: 0 10px; border: 1px solid #d5deea; border-radius: 13px; color: #687890; background: #fff; font-size: 8.5px; }
 .store-popular-searches button:hover { border-color: #8eb8ff; color: #1268f3; }
-.store-results-toolbar { min-height: 55px; padding: 9px 15px; display: flex; align-items: center; justify-content: space-between; gap: 18px; border: 1px solid #e1e7ef; border-radius: 12px; color: #66758c; background: #fff; font-size: 10.5px; }
-.store-results-toolbar strong { color: #1268f3; }
-.store-results-toolbar label { display: flex; align-items: center; gap: 10px; font-weight: 750; }
-.store-results-toolbar select { min-height: 35px; padding: 0 34px 0 12px; border: 1px solid #d8e0eb; border-radius: 9px; color: #25344d; background: #fff; font-size: 10px; font-weight: 700; }
 
 @media (max-width: 1100px) {
-  .store-public-profile-wrapper .store-header-profile-card { grid-template-columns: 180px minmax(0, 1fr) 270px; gap: 18px; }
   .store-public-profile-wrapper .store-logo-avatar-wrap { min-height: 180px; }
   .store-public-profile-wrapper .store-logo-img, .store-public-profile-wrapper .store-logo-initials-box { max-height: 180px; }
-  .store-public-profile-wrapper .store-metrics-row > div { padding: 0 9px; }
-  .store-public-profile-wrapper .patent-filter-box-bar, .store-public-profile-wrapper .store-inventory-control-bar { grid-template-columns: 1fr; }
   .store-public-profile-wrapper .patent-filter-header-title { padding-right: 0; border-right: 0; }
 }
 
 @media (max-width: 800px) {
   .store-public-profile-wrapper .store-public-hero-banner { min-height: 0; margin: 10px 8px 22px; padding: 18px 0 22px; border-radius: 15px; }
-  .store-hero-topbar { align-items: flex-start; }
   .store-cover-edit-action span { display: none; }
-  .store-public-profile-wrapper .store-header-profile-card { grid-template-columns: 92px minmax(0, 1fr); grid-template-areas: 'avatar info' 'actions actions' 'metrics metrics'; }
   .store-public-profile-wrapper .store-logo-avatar-wrap { min-height: 92px; align-self: start; }
   .store-public-profile-wrapper .store-logo-img, .store-public-profile-wrapper .store-logo-initials-box { max-height: 92px; border-radius: 18px; font-size: 26px; }
   .store-avatar-rating { right: -5px; bottom: -8px; }
   .store-public-profile-wrapper .store-profile-name { font-size: 27px; }
   .store-profile-description, .store-service-icons { display: none; }
-  .store-public-profile-wrapper .store-metrics-row { grid-template-columns: 1fr 1fr; }
-  .store-public-profile-wrapper .store-metrics-row > div:nth-child(2) { border-right: 0; }
-  .store-public-profile-wrapper .store-metrics-row > div { min-height: 58px; }
-  .store-public-profile-wrapper .patent-filter-box-bar, .store-public-profile-wrapper .store-inventory-control-bar { padding: 18px; }
   .store-catalog-filter-controls, .catalog-showcase-search-controls { width: 100%; align-items: stretch; flex-direction: column; }
   .catalog-vehicle-location-filters { width: 100%; padding-left: 0; border-top: 1px solid #d9e3f0; border-left: 0; padding-top: 12px; flex-wrap: wrap; }
   .store-catalog-filter-controls .catalog-showcase-patente-control,
@@ -14927,8 +14827,6 @@ input, select, textarea {
   .store-catalog-results-heading { align-items: stretch; flex-direction: column; }
   .store-catalog-sort { justify-content: space-between; margin-top: 0; }
   .store-inventory-search-row { grid-template-columns: 1fr; }
-  .store-results-toolbar { align-items: stretch; flex-direction: column; }
-  .store-results-toolbar label { justify-content: space-between; }
 }
 
 /* Restored advanced catalog filter: icon-led, collapsible and sticky without internal scroll. */
@@ -20612,3 +20510,134 @@ input.has-success {
     gap: 10px !important;
   }
 }
+
+/* ==========================================================================
+   COMPARTIR (ShareLinkButton): repuesto, tienda y anuncio.
+   El boton toma el estilo del lugar donde vive; aca solo el aviso "Enlace copiado"
+   y el boton flotante de la ficha publica del repuesto, junto al de favoritos.
+   ========================================================================== */
+.share-link-button.is-copied { border-color: #a7d9be !important; color: #0c6b40 !important; background: #f1faf4 !important; }
+.share-link-button.is-failed { color: #a4342a !important; }
+.store-summary-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.store-summary-header .profile-panel-title { margin-bottom: 0; }
+.store-share-button { display: inline-flex; align-items: center; gap: 7px; }
+.product-marketplace-share {
+  position: absolute; z-index: 3; top: 17px; right: 74px;
+  width: 48px; height: 48px; display: grid; place-items: center;
+  border: 1px solid #edf0f5; border-radius: 50%;
+  color: #1d6fe0; background: #fff; box-shadow: 0 7px 17px rgba(30, 54, 89, .13); cursor: pointer;
+}
+.product-marketplace-share:hover { background: #f5faff; }
+@media (max-width: 760px) {
+  .product-marketplace-share { width: 52px; height: 52px; right: 80px; }
+  .product-marketplace-share svg { width: 25px; height: 25px; }
+}
+
+/* Categorias: flecha de desplegable en la barra de navegacion (gira al abrir). */
+.categories-nav-button .categories-nav-chevron { flex: 0 0 auto; margin-left: 2px; opacity: .8; transition: transform .2s ease; }
+.categories-nav-button[aria-expanded="true"] .categories-nav-chevron { transform: rotate(180deg); }
+
+/* ==========================================================================
+   BARRA DE NAVEGACION DE ESCRITORIO (>1200px) — rediseño 2026-09-26
+   Una sola linea, sin cortes de texto; "Categorias" como boton principal con
+   separador; enlaces tipo pastilla con hover suave; la seccion activa lleva
+   color de marca y una linea inferior; "Ayuda" fuera de la barra.
+   "Cerrar sesion" sale de esta barra: sigue en el menu de la cuenta.
+   ========================================================================== */
+@media (min-width: 1201px) {
+  .light-market-header .header-primary-nav {
+    position: relative;
+    z-index: 5;
+    border-top: 1px solid #edf1f6;
+    border-bottom: 0;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+    box-shadow: 0 10px 24px -16px rgba(15, 35, 70, .28);
+  }
+  .light-market-header .primary-nav-inner { height: 62px; gap: 4px; }
+  .light-market-header .primary-nav-inner > .mobile-drawer-logout { display: none; }
+
+  .light-market-header .categories-nav-wrap {
+    height: auto;
+    display: flex;
+    align-items: center;
+    margin-right: 14px;
+    padding-right: 18px;
+    border-right: 1px solid #e3e9f1;
+  }
+  .light-market-header .categories-nav-wrap .categories-nav-button {
+    height: 44px;
+    min-width: 0;
+    padding: 0 16px 0 15px;
+    gap: 9px;
+    border-radius: 12px;
+    color: #fff;
+    background: linear-gradient(135deg, #1672ff 0%, #0754d6 100%);
+    box-shadow: 0 10px 20px -8px rgba(8, 84, 214, .6), inset 0 1px 0 rgba(255, 255, 255, .18);
+    font-size: 14.5px;
+    font-weight: 800;
+    letter-spacing: -.1px;
+    white-space: nowrap;
+    transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+  }
+  .light-market-header .categories-nav-wrap .categories-nav-button svg { color: #fff; }
+  .light-market-header .categories-nav-wrap .categories-nav-button:hover,
+  .light-market-header .categories-nav-wrap .categories-nav-button[aria-expanded="true"] {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+    box-shadow: 0 14px 26px -10px rgba(8, 84, 214, .7), inset 0 1px 0 rgba(255, 255, 255, .2);
+  }
+
+  .light-market-header .primary-nav-inner > button {
+    position: relative;
+    height: 44px;
+    padding: 0 15px;
+    gap: 9px;
+    border-radius: 12px;
+    color: #1b2b45;
+    font-size: 14.5px;
+    font-weight: 700;
+    letter-spacing: -.1px;
+    white-space: nowrap;
+    transition: background .18s ease, color .18s ease;
+  }
+  .light-market-header .primary-nav-inner > button svg { width: 18px; height: 18px; color: #7b8aa3; }
+  .light-market-header .primary-nav-inner > button:hover { color: #0754d6; background: #f1f6ff; }
+  .light-market-header .primary-nav-inner > button:hover svg { color: #0754d6; transform: none; }
+  .light-market-header .primary-nav-inner > button:focus-visible { outline: 2px solid #0866ed; outline-offset: 2px; }
+  .light-market-header .primary-nav-inner > button[aria-current="page"] { color: #0754d6; background: #eef4ff; }
+  .light-market-header .primary-nav-inner > button[aria-current="page"] svg { color: #0754d6; }
+  .light-market-header .primary-nav-inner > button[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    right: 15px;
+    bottom: -9px;
+    left: 15px;
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+    background: #0866ed;
+  }
+  /* Ayuda sale de esta barra: en escritorio vive en la barra superior ("Centro de ayuda").
+     El menu lateral de movil/tablet la conserva: alli es la unica entrada. */
+  .light-market-header .primary-nav-inner > .nav-item-help { display: none; }
+}
+
+/* Catalogo: "Ver todos los repuestos" al pie de la vitrina "Recien publicados". */
+.catalog-showcase-see-all { display: flex; justify-content: center; margin-top: 24px; }
+.catalog-showcase-see-all-btn {
+  min-height: 50px;
+  padding: 0 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  background: linear-gradient(135deg, #1672ff 0%, #0754d6 100%);
+  box-shadow: 0 12px 24px -10px rgba(8, 84, 214, .6), inset 0 1px 0 rgba(255, 255, 255, .18);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+.catalog-showcase-see-all-btn:hover { transform: translateY(-1px); filter: brightness(1.05); box-shadow: 0 16px 28px -12px rgba(8, 84, 214, .7); }
+.catalog-showcase-see-all-btn:focus-visible { outline: 2px solid #0866ed; outline-offset: 3px; }

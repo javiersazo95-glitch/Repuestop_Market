@@ -17,6 +17,8 @@ import {
 } from '../../data/automotiveAdsData';
 import { groupAppointmentsByTime } from '../../utils/appointmentHistory';
 import { useAuth } from '../../context/AuthContext';
+import { adDetailPath } from '../../routes/paths';
+import ShareLinkButton from '../ShareLinkButton';
 import { useAutomotiveAccreditation } from '../../hooks/useAutomotiveAccreditation';
 import { AccreditationPill } from './AccreditationPill';
 import AccreditationModal from './AccreditationModal';
@@ -653,6 +655,18 @@ export default function AdsManagementSection({ onNavigateToMural }) {
                           >
                             <CalendarClock size={15} />
                           </button>
+                        )}
+                        {/* Solo un anuncio visible en el Mural tiene algo que compartir. */}
+                        {ad.moderationStatus === AD_MODERATION_STATUS.APROBADO && ad.activo && (
+                          <ShareLinkButton
+                            className="btn-mgmt-icon"
+                            iconOnly
+                            iconSize={15}
+                            url={adDetailPath(ad)}
+                            title={ad.title}
+                            text={`${ad.title} · Mural de anuncios RepuesTop`}
+                            label="Compartir el anuncio"
+                          />
                         )}
                         <button
                           type="button"

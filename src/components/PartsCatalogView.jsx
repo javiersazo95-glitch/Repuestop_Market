@@ -4,7 +4,7 @@ import {
   Search, Filter, SlidersHorizontal, ShieldCheck, MapPin,
   X, CheckCircle2, RotateCcw,
   ChevronDown, ShoppingCart, Car, Wrench, Layers, AlertCircle, Info, Tag, Globe,
-  CarFront, RefreshCw, ArrowUpDown
+  CarFront, RefreshCw, ArrowUpDown, ArrowRight, LayoutGrid
 } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
@@ -92,6 +92,7 @@ export default function PartsCatalogView({
   initialCatalogFilter = null,
   initialSearchQuery = '',
   initialPage = 1,
+  initialShowAll = false,
   onVehicleChange,
   onNavigationStateChange,
 }) {
@@ -103,6 +104,10 @@ export default function PartsCatalogView({
   const [inputValue, setInputValue] = useState(initialActiveVehicle?.patente || initialSearchQuery || '');
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  // "Ver todos los repuestos": pide el listado paginado completo aunque no haya filtros.
+  // Solo por accion explicita (boton o ?todos=1): la entrada a /repuestos sigue siendo la
+  // vitrina acotada, que no dispara la consulta sobre todo el inventario.
+  const [showAllProducts, setShowAllProducts] = useState(initialShowAll);
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const [selectedCategory, setSelectedCategory] = useState(initialCatalogFilter?.category || 'TODAS');
@@ -331,7 +336,8 @@ export default function PartsCatalogView({
    * muestra la vitrina de entrada (categorías con conteo real + destacados acotados).
    */
   const hasActiveContext = Boolean(
-    deferredSearchQuery?.trim()
+    showAllProducts
+    || deferredSearchQuery?.trim()
     || selectedCategory !== 'TODAS'
     || activeCategoryId
     || activeComunaId
@@ -677,8 +683,9 @@ export default function PartsCatalogView({
       subcategory: selectedSubcategory === 'TODAS' ? null : selectedSubcategory,
       query: searchQuery,
       page: currentPage,
+      showAll: showAllProducts,
     });
-  }, [onNavigationStateChange, selectedCategory, selectedSubcategory, searchQuery, currentPage]);
+  }, [onNavigationStateChange, selectedCategory, selectedSubcategory, searchQuery, currentPage, showAllProducts]);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -691,6 +698,7 @@ export default function PartsCatalogView({
   };
 
   const handleResetFilters = () => {
+    setShowAllProducts(false);
     setSearchQuery('');
     setInputValue('');
     setSelectedCategory('TODAS');
@@ -722,6 +730,12 @@ export default function PartsCatalogView({
     : selectedCategory !== 'TODAS'
       ? (NAVIGATION_CATEGORIES.find((category) => category.id === selectedCategory)?.nombre || selectedCategory)
       : null;
+
+  // Solo movil (public-mobile.css): con una categoria elegida el carrusel de categorias se
+  // pliega (339px sobre los resultados) y "Cambiar" lo vuelve a abrir. En escritorio no hay
+  // reglas para estas clases.
+  const [isPickingCategory, setIsPickingCategory] = useState(false);
+  useEffect(() => { setIsPickingCategory(false); }, [selectedCategory, selectedSubcategory]);
 
   const clearAppliedCatalogFilter = () => {
     setSelectedCategory('TODAS');
@@ -774,7 +788,7 @@ export default function PartsCatalogView({
   return (
     <div className="parts-catalog-view-wrapper">
       <div className="container catalog-main-container">
-        <section className="catalog-showcase-carousel-wrapper" aria-label="Explora por categorías">
+        <section className={`catalog-showcase-carousel-wrapper ${appliedFilterLabel ? 'has-category' : ''} ${isPickingCategory ? 'is-picking' : ''}`} aria-label="Explora por categorías">
             <div className="catalog-showcase-carousel-header">
               <div>
                 <h2>¿Qué repuesto necesitas?</h2>
@@ -856,6 +870,7 @@ export default function PartsCatalogView({
 
         {appliedFilterLabel && <div className="catalog-applied-filter-notice">
           <Filter size={15} /><span>Filtro aplicado: <strong>{appliedFilterLabel}</strong></span>
+          <button type="button" className="catalog-mobile-category-summary" onClick={() => setIsPickingCategory((open) => !open)} aria-expanded={isPickingCategory}>{isPickingCategory ? 'Ocultar' : 'Cambiar'}</button>
           <button type="button" onClick={clearAppliedCatalogFilter}><X size={14} /> Quitar filtro</button>
         </div>}
 
@@ -1191,6 +1206,21 @@ export default function PartsCatalogView({
                           onToggleFavorite={isLoggedIn ? toggleFavorite : undefined}
                         />
                       ))}
+                    </div>
+                    <div className="catalog-showcase-see-all">
+                      <button
+                        type="button"
+                        className="catalog-showcase-see-all-btn"
+                        onClick={() => {
+                          setCurrentPage(1);
+                          setShowAllProducts(true);
+                          requestAnimationFrame(() => document.querySelector('.catalog-parts-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                        }}
+                      >
+                        <LayoutGrid size={18} aria-hidden="true" />
+                        <span>Ver todos los repuestos</span>
+                        <ArrowRight size={18} aria-hidden="true" />
+                      </button>
                     </div>
                   </>
                 )}

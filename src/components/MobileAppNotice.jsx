@@ -13,7 +13,7 @@ function isPhone() {
 export default function MobileAppNotice() {
   const [visible, setVisible] = useState(() => {
     if (!isPhone()) return false;
-    try { return sessionStorage.getItem(DISMISSED_KEY) !== '1'; }
+    try { return localStorage.getItem(DISMISSED_KEY) !== '1'; }
     catch { return true; }
   });
 
@@ -21,7 +21,7 @@ export default function MobileAppNotice() {
 
   const dismiss = () => {
     setVisible(false);
-    try { sessionStorage.setItem(DISMISSED_KEY, '1'); }
+    try { localStorage.setItem(DISMISSED_KEY, '1'); }
     catch { /* Private browsing can disable storage. The current page still closes. */ }
   };
 

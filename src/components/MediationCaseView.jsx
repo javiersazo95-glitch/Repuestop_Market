@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, Download, FileText, Headphones, Image as ImageIcon,
-  Loader2, Lock, Maximize2, MessageSquare, Package, Paperclip, RefreshCw, Scale, Send, ShieldAlert, Store, User, Wallet, X,
+  Info, Loader2, Lock, Maximize2, MessageSquare, Package, Paperclip, RefreshCw, Scale, Send, ShieldAlert, Store, User, Wallet, X,
 } from 'lucide-react';
 import {
   escalateMediationApi, getMediationChatApi, requestWarrantySupportApi, resolveMediationApi,
@@ -283,6 +283,11 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
 
   // Hilo activo: con la otra parte o con el mediador de RepuesTop.
   const [activeThread, setActiveThread] = useState('parte');
+  // Solo movil (<=768px, chat-mobile.css): en vez de apilar guia + hilo + evidencia en una
+  // columna, el hilo ocupa la pantalla y las columnas laterales se abren desde el boton
+  // "Info" de la cabecera. En escritorio el boton no existe (display: none) y esta clase no
+  // tiene reglas.
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const [mediatorText, setMediatorText] = useState('');
   const [mediatorFiles, setMediatorFiles] = useState([]);
   const [mediatorError, setMediatorError] = useState('');
@@ -443,6 +448,9 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   useEffect(() => {
     if (!chat?.escalado && activeThread === 'mediador') setActiveThread('parte');
   }, [chat?.escalado, activeThread]);
+
+  // Al cambiar de hilo se vuelve al chat: el panel Info es de ESE hilo.
+  useEffect(() => { setMobilePanelOpen(false); }, [activeThread]);
 
   const openDialog = (kind) => {
     setDialog(kind);
@@ -644,7 +652,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   }
 
   return (
-    <article className="dispute-chat">
+    <article className={`dispute-chat ${mobilePanelOpen ? 'is-mobile-panel-open' : ''}`}>
       <header className="dispute-chat-head">
         <button type="button" className="dispute-back" onClick={onClose} title="Volver a mis casos">
           <ArrowLeft size={15} /> Casos
@@ -664,6 +672,16 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
 
         <span className="dispute-chat-head-right">
           <span className={`dispute-seal seal-${statusTone}`}>{MEDIATION_STATUS_LABELS[estado] || estado || 'En curso'}</span>
+          <button
+            type="button"
+            className="dispute-mobile-panel-toggle"
+            onClick={() => setMobilePanelOpen((open) => !open)}
+            aria-pressed={mobilePanelOpen}
+            aria-label="Información y evidencia del caso"
+            title="Información y evidencia del caso"
+          >
+            <Info size={18} />
+          </button>
           <button
             type="button"
             className="dispute-chat-refresh"
@@ -694,7 +712,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
           </small>
         </div>
         {(chat?.motivo || chat?.descripcion) && (
-          <button type="button" className="dispute-claim-link" onClick={() => setShowClaimDetail(true)}>
+          <button type="button" className="dispute-claim-link" onClick={() => setShowClaimDetail(true)} aria-label="Ver detalle del reclamo" title="Ver detalle del reclamo">
             <FileText size={13} /> Ver detalle del reclamo
           </button>
         )}

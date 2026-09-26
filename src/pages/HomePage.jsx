@@ -29,7 +29,7 @@ export default function HomePage() {
       <LatestAddedPartsSection
         onQuickView={nav.goProduct}
         onOpenQuote={openQuote}
-        onOpenCatalog={() => nav.goCatalog()}
+        onOpenCatalog={() => nav.goCatalog(null, { todos: true })}
       />
 
       {/* 3. NEW ONBOARDED AUTO PARTS STORES & WRECKING YARDS */}

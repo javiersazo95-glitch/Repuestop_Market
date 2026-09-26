@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Truck, ShieldCheck, Store, HelpCircle, Search, ShoppingCart, User,
   ChevronDown, ChevronRight, ArrowLeft, X, LogOut, LayoutDashboard, MessageSquare, Menu,
-  Package, Tag, Info, Megaphone, Wrench
+  Package, Info, Megaphone, Wrench, Heart
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
@@ -15,7 +15,7 @@ import HeaderWalletButton from './HeaderWalletButton';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import { getPartCategoriesApi, getPartSubcategoriesApi, getPublicProductsApi, resolveMediaUrl } from '../services/api';
-import { ROUTES, productPath } from '../routes/paths';
+import { ROUTES, buyerProfilePath, productPath } from '../routes/paths';
 import CategoryIconTile from './CategoryIconTile';
 
 // Mínimo de caracteres antes de consultar sugerencias: menos que eso trae
@@ -60,6 +60,9 @@ export default function Header({
   const categoryButtonRefs = useRef(new Map());
   const subcategoryCardRefs = useRef(new Map());
   const navigate = useNavigate();
+  // Seccion activa de la barra de navegacion (aria-current="page"): la pinta el CSS.
+  const { pathname } = useLocation();
+  const navCurrent = (prefix) => (pathname === prefix || pathname.startsWith(`${prefix}/`) ? 'page' : undefined);
   const { user, isLoggedIn, role, logout } = useAuth();
   const { isBlocked: isSellerBlockedAccount } = useSellerBlocked();
   const { isBlocked: isBuyerBlockedAccount } = useBuyerBlocked();
@@ -172,7 +175,8 @@ export default function Header({
   }, [showCategoryMenu, activeHeaderCategory, backendCategories, subcategoryInventory]);
 
   useEffect(() => {
-    if (showCategoryMenu) requestAnimationFrame(() => categorySearchInputRef.current?.focus());
+    // En el celular no se enfoca solo: abriria el teclado y taparia la lista de categorias.
+    if (showCategoryMenu && !window.matchMedia('(max-width: 768px)').matches) requestAnimationFrame(() => categorySearchInputRef.current?.focus());
     else {
       setCategorySearchQuery('');
       setHighlightedSubcategory('');
@@ -311,7 +315,7 @@ export default function Header({
             <span className="trust-item-plain"><Truck size={15} /> Envíos a todo Chile</span>
             <span className="trust-item-plain"><ShieldCheck size={15} /> Compra protegida</span>
             <button className="trust-item-plain utility-link" onClick={onOpenStores}>
-              <Store size={15} /> Tiendas verificadas
+              <Store size={15} /> Casas de repuestos verificadas
             </button>
           </div>
           <div className="trust-items-right-vivid">
@@ -505,11 +509,35 @@ export default function Header({
               {isLoggedIn ? 'Ir a mi perfil' : 'Iniciar sesión'}
             </button>
           </div>
+
+          {/* Solo movil (public-mobile.css): lo que mas se busca al abrir el menu. */}
+          <div className="mobile-drawer-quick mobile-only-nav-item">
+            <button type="button" onClick={() => { setShowMobileNav(false); if (isLoggedIn) navigate(buyerProfilePath(user, 'purchases')); else onOpenAuthModal?.(); }}>
+              <Package size={20} /><span>Mis compras</span>
+            </button>
+            <button type="button" onClick={() => { setShowMobileNav(false); if (isLoggedIn) navigate(buyerProfilePath(user, 'favorites')); else onOpenAuthModal?.(); }}>
+              <Heart size={20} /><span>Favoritos</span>
+            </button>
+            {!isBlockedAccount && (
+              <button type="button" onClick={() => { setShowMobileNav(false); onOpenCart(); }}>
+                <ShoppingCart size={20} /><span>Carrito</span>{cartCount > 0 && <b>{cartCount}</b>}
+              </button>
+            )}
+          </div>
         </div>
         <div className="container primary-nav-inner">
+          <p className="mobile-drawer-section-title is-explore mobile-only-nav-item">Explorar</p>
           <div ref={categoryMenuRef} className="categories-nav-wrap">
-            <button className="categories-nav-button" onClick={() => setShowCategoryMenu((open) => !open)}>
-              <Wrench size={19} /> Categorías
+            <button className="categories-nav-button" aria-expanded={showCategoryMenu} onClick={() => setShowCategoryMenu((open) => !open)}>
+              <Wrench size={19} /> <span className="nav-label-desktop">Categorías</span>
+              {/* Escritorio: flecha que indica que es un desplegable (gira al abrir). En movil la
+                  reemplaza la flecha del menu lateral (public-mobile.css). */}
+              <ChevronDown size={17} className="categories-nav-chevron" aria-hidden="true" />
+              {/* Solo movil: deja claro que es un desplegable. */}
+              <span className="nav-label-mobile nav-dropdown-copy">
+                <strong>Categorías</strong>
+                <small>{showCategoryMenu ? 'Elige una para ver más' : `Desplegar ${HEADER_CATEGORIES.length} categorías`}</small>
+              </span>
             </button>
             {showCategoryMenu && (
               <div className={`header-category-dropdown header-category-mega-menu ${mobileCategoryDetail ? 'mobile-category-detail' : ''}`}>
@@ -575,7 +603,7 @@ export default function Header({
                       onFocus={() => handleCategoryMouseEnter(category.id)}
                       onClick={() => {
                         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-                        if (window.matchMedia('(max-width: 640px)').matches) {
+                        if (window.matchMedia('(max-width: 768px)').matches) {
                           setActiveHeaderCategoryId(category.id);
                           setMobileCategoryDetail(true);
                           return;
@@ -633,17 +661,30 @@ export default function Header({
               </div>
             )}
           </div>
-          <button type="button" onClick={() => { setShowMobileNav(false); onOpenStores(); }}><Store size={16} /> <span>Tiendas</span></button>
-          <button type="button" onClick={() => { setShowMobileNav(false); onOpenCatalog(); }}><Package size={16} /> <span>Catálogo de repuestos</span></button>
-          <button type="button" className="offers-nav-link" onClick={() => { setShowMobileNav(false); onOpenCatalog(); }}><Tag size={16} /> <span>Ofertas</span></button>
-          <button type="button" onClick={() => { setShowMobileNav(false); onOpenAbout(); }}><Info size={16} /> <span>Sobre RepuesTop</span></button>
-          <button type="button" onClick={() => { setShowMobileNav(false); onOpenAdsWall(); }}><Megaphone size={16} /> <span>Mural de anuncios</span></button>
-          <button type="button" onClick={() => { setShowMobileNav(false); onOpenHelp(); }}><HelpCircle size={16} /> <span>Ayuda</span></button>
+          {/* "Ofertas" se elimino: llevaba al mismo catalogo que "Catálogo de repuestos". */}
+          <button type="button" className="nav-item-stores" aria-current={navCurrent(ROUTES.stores)} onClick={() => { setShowMobileNav(false); onOpenStores(); }}><Store size={16} /> <span>Casas de repuestos</span></button>
+          <button type="button" className="nav-item-catalog" aria-current={navCurrent(ROUTES.catalog)} onClick={() => { setShowMobileNav(false); onOpenCatalog(); }}><Package size={16} /> <span>Catálogo de repuestos</span></button>
+          <button type="button" className="nav-item-about" aria-current={navCurrent(ROUTES.about)} onClick={() => { setShowMobileNav(false); onOpenAbout(); }}><Info size={16} /> <span>Sobre RepuesTop</span></button>
+          <button type="button" className="nav-item-ads" aria-current={navCurrent(ROUTES.adsWall)} onClick={() => { setShowMobileNav(false); onOpenAdsWall(); }}><Megaphone size={16} /> <span>Mural de anuncios</span></button>
+          <p className="mobile-drawer-section-title is-more mobile-only-nav-item">RepuesTop</p>
+          <button type="button" className="nav-item-help" aria-current={navCurrent(ROUTES.support)} onClick={() => { setShowMobileNav(false); onOpenHelp(); }}><HelpCircle size={16} /> <span className="nav-label-desktop">Ayuda</span><span className="nav-label-mobile">Centro de ayuda</span></button>
+          {/* Solo movil: en escritorio este acceso vive en la barra superior, que en el celular
+              no existe. Tarjeta destacada: es la puerta de entrada de las casas de repuestos. */}
+          <button type="button" className="mobile-only-nav-item mobile-drawer-seller-cta" onClick={() => { setShowMobileNav(false); onOpenSellerModal?.(); }}>
+            <Store size={20} />
+            <span><strong>Vende en RepuesTop</strong><small>Publica tu inventario y vende en todo Chile</small></span>
+            <ChevronRight size={18} />
+          </button>
           {isLoggedIn && (
             <button type="button" className="mobile-drawer-logout" onClick={() => { setShowMobileNav(false); handleLogout(); }}>
               <LogOut size={16} /> <span>Cerrar sesión</span>
             </button>
           )}
+          <div className="mobile-drawer-legal mobile-only-nav-item">
+            <button type="button" onClick={() => { setShowMobileNav(false); navigate(ROUTES.terms); }}>Términos</button>
+            <span aria-hidden="true">·</span>
+            <button type="button" onClick={() => { setShowMobileNav(false); navigate(ROUTES.privacy); }}>Privacidad</button>
+          </div>
         </div>
       </nav>
     </header>

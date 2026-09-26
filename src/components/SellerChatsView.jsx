@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronRight, CircleAlert, Clock, Inbox, Loader2, MessageSquare, Package, PackageCheck, ShieldCheck, ShoppingBag, Store, Truck, User, Wrench } from 'lucide-react';
 import { getBuyerOrdersApi, getMySellerChatsApi, getSellerOrdersApi, resolveMediaUrl, startSellerChatApi } from '../services/api';
 import { MEDIATION_STATUS_LABELS } from '../data/mediationStatus';
@@ -94,6 +94,7 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
 
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const openCaseId = searchParams.get('caso');
   const openCaseTienda = searchParams.get('tienda');
   // Viene del checklist del vendedor ("Avisar al comprador"): un mensaje ya armado para no
@@ -106,6 +107,10 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
     setSearchParams(next);
   };
   const closeCase = () => {
+    // Si el chat se abrio desde otra vista (detalle del pedido, tarjeta), "volver" regresa
+    // alli; si se abrio desde esta bandeja, se cierra el caso y se queda en la lista.
+    const from = location.state?.from;
+    if (from && from !== `${location.pathname}${location.search}`) { navigate(from); return; }
     const next = new URLSearchParams(searchParams);
     next.delete('caso');
     next.delete('tienda');

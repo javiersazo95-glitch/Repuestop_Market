@@ -90,7 +90,7 @@ export default function HeroSection({
           <ul className="rt-hero-trust">
             <li><CheckCircle2 size={15} /> Webpay y Flow</li>
             <li><CheckCircle2 size={15} /> Boleta o Factura</li>
-            <li><CheckCircle2 size={15} /> Tiendas verificadas</li>
+            <li><CheckCircle2 size={15} /> Casas de repuestos verificadas</li>
           </ul>
         </Reveal>
 

@@ -12,7 +12,7 @@ import OrderCard from './OrderCard';
 import OrderDetailView from './OrderDetailView';
 import SellerOrdersPanel from './SellerOrdersPanel';
 import { EmptyState } from './ProfileDashboard';
-import { profileOrderPath, profilePurchasePath, ROUTES } from '../routes/paths';
+import { currentPathForBack, profileOrderPath, profilePurchasePath, ROUTES } from '../routes/paths';
 import { normalizeOrderNumber, orderMatchesRef, orderNumberRef } from '../data/orderIdentity';
 
 /**
@@ -419,8 +419,9 @@ export default function ProfileOrdersPanel({
                   // El vendedor abre el chat en SU bandeja ("Chats con compradores"). Con
                   // `chats_vendedor` caia en la de sus compras, en modo comprador.
                   const inbox = asBuyerView ? 'chats_vendedor' : 'chats_compradores';
+                  // `from`: el "volver" del chat regresa a este detalle, no a la bandeja.
                   navigate(`${ROUTES.profile}/${inbox}?${params.toString()}`, {
-                    state: draftMessage ? { draftMessage } : undefined,
+                    state: { from: currentPathForBack(), ...(draftMessage ? { draftMessage } : {}) },
                   });
                 }}
                 readOnly={!asBuyerView && isSellerBlocked}

@@ -4,7 +4,7 @@ import { useAppNavigation } from '../routes/useAppNavigation';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 
 export default function StoresPage() {
-  useDocumentTitle('Tiendas verificadas');
+  useDocumentTitle('Casas de repuestos verificadas');
   const nav = useAppNavigation();
 
   return (

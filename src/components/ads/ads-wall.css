@@ -273,19 +273,6 @@
 /* ==========================================================================
    LAYOUT PRINCIPAL: FILTROS A LA IZQUIERDA + GRID DE ANUNCIOS
    ========================================================================== */
-.ads-main-layout {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 28px;
-  margin-top: 28px;
-  align-items: start;
-}
-
-@media (max-width: 980px) {
-  .ads-main-layout {
-    grid-template-columns: 1fr;
-  }
-}
 
 /* Barra Lateral de Filtros con Scroll Independiente */
 .ads-filter-sidebar {
@@ -620,18 +607,6 @@
 .ad-card.is-own-ad { border-color: rgba(37, 99, 235, 0.35); background: #fbfdff; }
 
 /* Estructura Interna de la Card */
-.ad-card-layout {
-  display: grid;
-  grid-template-columns: 240px 1fr 230px;
-  gap: 20px;
-  padding: 18px;
-}
-
-@media (max-width: 900px) {
-  .ad-card-layout {
-    grid-template-columns: 1fr;
-  }
-}
 
 /* Columna 1: Galería / Imágenes */
 .ad-card-gallery {
@@ -828,33 +803,6 @@
 }
 
 /* Columna 3: Precios & Acciones de Contacto */
-.ad-card-actions-col {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  border-left: 1px solid rgba(0, 0, 0, 0.06);
-  padding-left: 18px;
-}
-
-@media (max-width: 900px) {
-  .ad-card-actions-col {
-    border-left: none;
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
-    padding-left: 0;
-    padding-top: 16px;
-  }
-}
-
-.ad-price-block {
-  text-align: right;
-  margin-bottom: 12px;
-}
-
-@media (max-width: 900px) {
-  .ad-price-block {
-    text-align: left;
-  }
-}
 
 .ad-price-label {
   font-size: 11px;

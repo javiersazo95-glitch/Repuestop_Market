@@ -3,7 +3,9 @@ import {
   Package, Tag, ChevronRight, Edit3, CheckCircle, AlertTriangle, XCircle, MessageCircleQuestion, Trophy, Loader2, Pause, Play
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
+import { productPath } from '../routes/paths';
 import ProductTopBadge from './ProductTopBadge';
+import ShareLinkButton from './ShareLinkButton';
 import { getProductTopStatus, topExpiryDateLabel } from '../utils/productTop';
 
 export function StockBadge({ stock, isPaused }) {
@@ -161,6 +163,18 @@ export default function CatalogCard({
             {isUpdatingPause ? <Loader2 size={13} className="spin-icon" /> : isPaused ? <Play size={13} /> : <Pause size={13} />}
             <span>{isPaused ? 'Reanudar' : 'Pausar'}</span>
           </button>
+        )}
+
+        {/* El id del inventario es el mismo de la ficha publica (/inventario/productos/{id}). */}
+        {product.id != null && (
+          <ShareLinkButton
+            className="btn-view-details catalog-share-button"
+            iconSize={13}
+            url={productPath({ id: product.id, titulo: title })}
+            title={title}
+            text={`${title} en RepuesTop`}
+            label="Compartir"
+          />
         )}
 
         <button

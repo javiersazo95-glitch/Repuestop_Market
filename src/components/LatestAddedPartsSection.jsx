@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Inbox, ArrowRight, Award } from 'lucide-react';
+import { Loader2, Inbox, ArrowRight, Award, LayoutGrid } from 'lucide-react';
 import MarketplaceProductCard from './MarketplaceProductCard';
 import { getPublicProductsApi } from '../services/api';
 import { adaptPage, adaptLatestPart } from '../services/adapters';
@@ -89,6 +89,16 @@ export default function LatestAddedPartsSection({ onQuickView, onOpenCatalog }) 
             onToggleFavorite={isLoggedIn ? toggleFavorite : undefined}
           />
         ))}
+        {/* Solo movil (public-mobile.css): la seccion muestra 5 repuestos; en dos columnas
+            este acceso ocupa el hueco del sexto y lleva al catalogo completo. */}
+        {onOpenCatalog && parts.length > 0 && (
+          <button type="button" className="latest-parts-see-all" onClick={onOpenCatalog}>
+            <span className="latest-parts-see-all-icon"><LayoutGrid size={22} /></span>
+            <strong>Ver todos los repuestos</strong>
+            <small>Explora el catálogo completo</small>
+            <span className="latest-parts-see-all-cta">Ir al catálogo <ArrowRight size={16} /></span>
+          </button>
+        )}
       </div>
     </section>
   );

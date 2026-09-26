@@ -807,7 +807,7 @@ export default function OfficialPatentHero({
 
           {/* Trust Guarantees Bar */}
           <div className="light-trust-row">
-            <div><span className="trust-circle blue"><Users size={27} /></span><p><strong>Tiendas verificadas</strong><small>Documentos revisados por soporte</small></p></div>
+            <div><span className="trust-circle blue"><Users size={27} /></span><p><strong>Casas de repuestos verificadas</strong><small>Documentos revisados por soporte</small></p></div>
             <div><span className="trust-circle green"><Truck size={27} /></span><p><strong>Envíos a todo Chile</strong><small>Rápido y seguro</small></p></div>
             <div><span className="trust-circle amber"><ShieldCheck size={27} /></span><p><strong>Repuestos originales<br />y alternativos</strong><small>Calidad garantizada</small></p></div>
             <div><span className="trust-circle purple"><ShieldCheck size={27} /></span><p><strong>Compra protegida</strong><small>Tu compra 100% segura</small></p></div>

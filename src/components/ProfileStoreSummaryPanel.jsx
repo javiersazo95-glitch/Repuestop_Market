@@ -1,16 +1,30 @@
 import React from 'react';
 import { Building2, Layers, Star, Truck } from 'lucide-react';
 import { EmptyState } from './ProfileDashboard';
+import ShareLinkButton from './ShareLinkButton';
 
 /**
  * Pestaña "Mi Tienda" del panel de perfil (tarjeta resumen: nombre, ubicacion,
  * cantidad de productos, calificacion y metodos de envio). Extraida de
  * ProfileDashboard: es de solo lectura, sin estado propio.
  */
-export default function ProfileStoreSummaryPanel({ storeInfo, displayName, inventorySummary }) {
+export default function ProfileStoreSummaryPanel({ storeInfo, displayName, inventorySummary, storeUrl }) {
+  const storeName = storeInfo?.storeName || displayName || 'mi tienda';
   return (
     <div className="profile-panel">
-      <h2 className="profile-panel-title">Mi Tienda</h2>
+      <div className="profile-panel-header-row store-summary-header">
+        <h2 className="profile-panel-title">Mi Tienda</h2>
+        {storeUrl && (
+          <ShareLinkButton
+            className="btn-auth-secondary store-share-button"
+            iconSize={16}
+            url={storeUrl}
+            title={storeName}
+            text={`Mira los repuestos de ${storeName} en RepuesTop`}
+            label="Compartir tienda"
+          />
+        )}
+      </div>
       {storeInfo ? (
         <div className="profile-store-card">
           <div className="store-card-header">

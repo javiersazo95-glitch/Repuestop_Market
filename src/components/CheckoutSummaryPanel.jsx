@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight, CreditCard, Landmark, Loader2, ShieldCheck } from 'lucide-react';
+import MobileStickyBar from './MobileStickyBar';
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
@@ -39,6 +40,16 @@ export default function CheckoutSummaryPanel({
       </div>
 
       {warning && <p className="checkout-summary-warning">{warning}</p>}
+
+      {/* Solo movil: el resumen se renderiza despues de todos los grupos de la compra. */}
+      {onCta && (
+        <MobileStickyBar label={`Total · ${itemCount} ${itemCount === 1 ? 'producto' : 'productos'}`} value={formatCLP(total)} watchSelector=".checkout-summary-cta" ariaLabel="Continuar la compra">
+          <button type="button" className="mobile-sticky-bar__btn" onClick={onCta} disabled={ctaDisabled || ctaLoading}>
+            {ctaLoading ? <Loader2 size={18} className="spin-icon" /> : null}
+            <span>{ctaLabel}</span>
+          </button>
+        </MobileStickyBar>
+      )}
 
       {onCta && (
         <button

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, ChevronRight, CircleAlert, Headphones, Inbox, Loader2, MessageSquare } from 'lucide-react';
 import { getMyReportsApi, getMySupportTicketsApi } from '../services/api';
 import MediationCaseView from './MediationCaseView';
@@ -59,8 +59,13 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
   // El caso abierto vive en la URL (`/perfil/consultas?caso=<pedidoId>`) para que
   // el botón atrás del navegador cierre el expediente y el enlace sea compartible.
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const openCaseId = searchParams.get('caso');
   const closeCase = () => {
+    // Abierto desde otra vista: "volver" regresa alli (ver currentPathForBack).
+    const from = location.state?.from;
+    if (from && from !== `${location.pathname}${location.search}`) { navigate(from); return; }
     const next = new URLSearchParams(searchParams);
     next.delete('caso');
     setSearchParams(next);
