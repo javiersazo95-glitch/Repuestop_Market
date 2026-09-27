@@ -29,6 +29,18 @@ const STEPS = [
 
 const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
 
+/** Comuna sin tildes ni mayúsculas, igual que `shippingMethodsForLocation`. */
+function normalizeCommuneName(value) {
+  return String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('es').trim();
+}
+
+/** O84: el aviso de una entrega por revisar, según el motivo. */
+const ENTREGA_POR_REVISAR_TEXTO = {
+  otra: 'Tu dirección está en otra comuna: vuelve a elegir la entrega',
+  misma: 'Tu dirección está en la misma comuna de la tienda: vuelve a elegir la entrega',
+  cambio: 'Cambiaste la dirección: vuelve a elegir la entrega',
+};
+
 /**
  * ¿Se ofrece el método de pago "Simulación" en este ambiente?
  *
@@ -201,7 +213,9 @@ export default function CheckoutPage() {
   const itemCount = isQuoteMode ? (quoteLine?.quantity || 0) : cartCount;
   // El backend fija el costo local desde los métodos de la tienda y lo devuelve dentro
   // de `condicionesEntrega`; aquí se desglosa para que el resumen coincida con el pedido.
-  const totals = isQuoteMode
+  // O84: `rawTotals` cuenta el envío de TODAS las tiendas; el resumen usa `totals` (más abajo),
+  // que descuenta el de las entregas que quedaron por revisar.
+  const rawTotals = isQuoteMode
     ? { subtotal: quoteLine?.total || 0, costoEnvio: quoteLine?.shippingFee || 0, total: (quoteLine?.total || 0) + (quoteLine?.shippingFee || 0) }
     : cartTotals;
 
@@ -232,11 +246,17 @@ export default function CheckoutPage() {
   // al abrir el selector, y se guardan con `updateCartShipping`.
   const [shippingEditor, setShippingEditor] = useState(null);
 
+  // O84: comuna de cada tienda (normalizada), para decir bien por qué hay que volver a elegir la
+  // entrega. Se aprovecha la ficha que ya se pide al abrir el selector.
+  const storeCommuneCache = useRef(new Map());
+
   const openShippingEditor = useCallback(async (group) => {
     setShippingEditor({ group, product: null, loading: true, error: '' });
     try {
       const dto = await getPublicProductApi(group.items[0].id);
-      setShippingEditor({ group, product: adaptProduct(dto), loading: false, error: '' });
+      const product = adaptProduct(dto);
+      storeCommuneCache.current.set(group.key, normalizeCommuneName(product.ciudadVendedor || product.comunaVendedor));
+      setShippingEditor({ group, product, loading: false, error: '' });
     } catch {
       setShippingEditor({
         group,
@@ -252,7 +272,7 @@ export default function CheckoutPage() {
     await updateCartShipping(group.items.map((item) => item.id), { shippingMethod, shippingFee });
     setEntregaPorRevisar((prev) => {
       if (!prev.has(group.key)) return prev;
-      const next = new Set(prev);
+      const next = new Map(prev);
       next.delete(group.key);
       return next;
     });
@@ -262,11 +282,39 @@ export default function CheckoutPage() {
   // Tiendas cuyo despacho quedo elegido para OTRA comuna: el comprador cambio a una direccion de
   // otra comuna despues de elegir la entrega. Dentro/fuera de la comuna depende de la direccion,
   // asi que hay que volver a elegir (el retiro en tienda no se toca).
-  const [entregaPorRevisar, setEntregaPorRevisar] = useState(() => new Set());
+  //
+  // O84 (pruebas de lanzamiento, 27-sep): es un Map tienda -> motivo, para que el aviso diga la
+  // verdad: 'otra' (la direccion quedo en otra comuna que la tienda), 'misma' (quedo en la misma
+  // comuna y lo elegido era "fuera de la comuna") o 'cambio' (no se sabe la comuna de la tienda).
+  const [entregaPorRevisar, setEntregaPorRevisar] = useState(() => new Map());
   const allShippingChosen = isQuoteMode || groups.every((group) => Boolean(group.shippingMethod) && !entregaPorRevisar.has(group.key));
 
+  // O84: una entrega por revisar ya no está elegida, así que su envío no se suma: el resumen
+  // queda como antes de elegir ("Por definir" y el total sin ese despacho). Misma regla que
+  // `calcularTotalesCarrito`: un envío por tienda.
+  const lineItemsEfectivos = useMemo(() => (
+    isQuoteMode || entregaPorRevisar.size === 0
+      ? lineItems
+      : lineItems.map((item) => (
+        entregaPorRevisar.has(String(item.proveedorId || item.vendedor || item.id))
+          ? { ...item, shippingMethod: '', shippingFee: 0 }
+          : item
+      ))
+  ), [isQuoteMode, lineItems, entregaPorRevisar]);
+  const totals = useMemo(() => {
+    if (isQuoteMode || entregaPorRevisar.size === 0) return rawTotals;
+    const envioPorTienda = new Map();
+    lineItemsEfectivos.forEach((item) => {
+      const fee = Number(item.shippingFee || 0);
+      const key = String(item.proveedorId || item.vendedor || item.id);
+      if (fee > 0 && !envioPorTienda.has(key)) envioPorTienda.set(key, fee);
+    });
+    const costoEnvio = [...envioPorTienda.values()].reduce((sum, fee) => sum + fee, 0);
+    return { subtotal: rawTotals.subtotal, costoEnvio, total: rawTotals.subtotal + costoEnvio };
+  }, [isQuoteMode, entregaPorRevisar, rawTotals, lineItemsEfectivos]);
+
   const shippingLabel = useMemo(() => {
-    const services = lineItems
+    const services = lineItemsEfectivos
       .map((item) => item.shippingMethod)
       .filter(Boolean)
       .map((method) => resolveShippingService(method).name);
@@ -277,7 +325,7 @@ export default function CheckoutPage() {
     // incluye contradecia el propio resumen.
     if (Number(totals.costoEnvio) > 0) return formatCLP(totals.costoEnvio);
     return 'Sin costo';
-  }, [lineItems, totals.costoEnvio]);
+  }, [lineItemsEfectivos, totals.costoEnvio]);
 
   // `silent` es para cuando la libreta embebida avisa un cambio: sin el estado de carga
   // la libreta no se desmonta a mitad de camino (se oculta mientras carga) y la
@@ -310,14 +358,54 @@ export default function CheckoutPage() {
   const selectedCommune = addresses.find((address) => String(address.id) === String(selectedAddressId))?.comunaNombre || '';
   const comunaAnteriorRef = useRef('');
   useEffect(() => {
-    const actual = String(selectedCommune).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    const actual = normalizeCommuneName(selectedCommune);
     const anterior = comunaAnteriorRef.current;
     comunaAnteriorRef.current = actual;
     if (!anterior || !actual || anterior === actual) return;
     const aRevisar = groups
-      .filter((group) => group.shippingMethod && resolveShippingService(group.shippingMethod).name !== 'Retiro en tienda')
-      .map((group) => group.key);
-    if (aRevisar.length > 0) setEntregaPorRevisar((prev) => new Set([...prev, ...aRevisar]));
+      .filter((group) => group.shippingMethod && resolveShippingService(group.shippingMethod).name !== 'Retiro en tienda');
+    if (aRevisar.length === 0) return;
+    // Mientras se averigua la comuna de cada tienda la entrega queda por revisar (no se puede
+    // pagar con un despacho que quizás ya no aplica).
+    setEntregaPorRevisar((prev) => {
+      const next = new Map(prev);
+      aRevisar.forEach((group) => next.set(group.key, 'cambio'));
+      return next;
+    });
+    // O84 (pruebas de lanzamiento, 27-sep): con la comuna de la tienda se decide el motivo. Si lo
+    // elegido sigue valiendo ("fuera" y la dirección sigue fuera, o "dentro" y volvió a la comuna
+    // de la tienda) se quita el aviso; si no, 'misma' u 'otra'. Sin comuna conocida queda 'cambio'.
+    Promise.all(aRevisar.map(async (group) => {
+      let tienda = storeCommuneCache.current.get(group.key);
+      if (tienda === undefined) {
+        try {
+          const product = adaptProduct(await getPublicProductApi(group.items[0].id));
+          tienda = normalizeCommuneName(product.ciudadVendedor || product.comunaVendedor);
+          storeCommuneCache.current.set(group.key, tienda);
+        } catch {
+          tienda = '';
+        }
+      }
+      if (!tienda) return [group.key, 'cambio'];
+      const misma = tienda === actual;
+      const fuera = resolveShippingService(group.shippingMethod).name === 'Envío fuera de la comuna';
+      // Lo elegido sigue valiendo (p. ej. volvió a la dirección de antes): sin aviso.
+      if (fuera !== misma) return [group.key, null];
+      return [group.key, misma ? 'misma' : 'otra'];
+    })).then((resultados) => {
+      // Si mientras tanto cambió otra vez la dirección, manda la evaluación nueva.
+      if (comunaAnteriorRef.current !== actual) return;
+      setEntregaPorRevisar((prev) => {
+        const next = new Map(prev);
+        resultados.forEach(([key, motivo]) => {
+          // Si ya volvió a elegir la entrega de esa tienda, no se le reabre el aviso.
+          if (!next.has(key)) return;
+          if (motivo) next.set(key, motivo);
+          else next.delete(key);
+        });
+        return next;
+      });
+    });
   }, [selectedCommune, groups]);
 
   // Se parte de los params actuales en vez de escribir un objeto nuevo: pasarle
@@ -676,7 +764,7 @@ export default function CheckoutPage() {
                               </div>
                               <div className={`cart-store-shipping ${group.shippingMethod && !entregaPorRevisar.has(group.key) ? '' : 'is-missing'}`}>
                                 {entregaPorRevisar.has(group.key) ? (
-                                  <span className="cart-store-shipping-value" role="alert">Tu dirección está en otra comuna: vuelve a elegir la entrega</span>
+                                  <span className="cart-store-shipping-value" role="alert">{ENTREGA_POR_REVISAR_TEXTO[entregaPorRevisar.get(group.key)] || ENTREGA_POR_REVISAR_TEXTO.cambio}</span>
                                 ) : group.shippingMethod ? (
                                   <span className="cart-store-shipping-value" style={{ '--shipping-color': service.color }}>
                                     <ShippingIcon size={15} />

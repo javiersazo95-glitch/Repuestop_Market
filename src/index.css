@@ -7405,6 +7405,9 @@ input, select, textarea {
 /* La boleta es el unico enlace del bloque que el comprador necesita despues de la entrega
    -- para la garantia de 6 meses o un reclamo --, asi que pesa mas que el de seguimiento. */
 .order-store-block-boletalink { padding: 5px 12px; font-size: 12.5px; gap: 5px; }
+/* O87 (pruebas de lanzamiento, 27-sep): comprobante de envio para el comprador. */
+.order-store-block-shipreceipt { flex-wrap: wrap; color: var(--color-brand-blue); }
+.order-shipreceipt-error { flex-basis: 100%; color: #b91c1c; font-size: 12px; }
 
 .order-card-state-banner.boleta-pending { color: #b45309; border-color: #fcd9a8; background: #fff7ec; }
 .order-info-chip.boleta-ok { color: #15803d; }

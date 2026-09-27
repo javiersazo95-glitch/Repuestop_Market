@@ -8,7 +8,7 @@ import {
   Wallet, Undo2, Car
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
-import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi } from '../services/api';
+import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi, getShippingReceiptUrlApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, isCancelledItem, orderDeliverySummary, orderDisplayCode, subOrderDeliveryLabel, subOrderDeliveryMethod } from '../data/orderIdentity';
 import { buyerClaimState, buyerStoreClaimState, getControlledOrderAction, isStorePickupOrder, normalizeOrderStatus, orderPaymentWindow, sellerClaimState } from '../data/orderStatusFlow';
@@ -405,6 +405,10 @@ export default function OrderDetailView({
   // El visor de la boleta ya cargada (`SaleReceiptViewerModal`): guarda de que tienda es,
   // porque en un carrito de varias el comprador pide la de cada subordén.
   const [receiptViewer, setReceiptViewer] = useState(null);
+  // O87 (pruebas de lanzamiento, 27-sep): comprobante de envío que subió la tienda. O90: es de
+  // cada tienda, así que la carga y el error guardan de qué bloque son (`proveedorId`).
+  const [shippingReceiptLoadingId, setShippingReceiptLoadingId] = useState(null);
+  const [shippingReceiptError, setShippingReceiptError] = useState(null);
 
   // Buyer Rating Modal State (A4)
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -903,6 +907,10 @@ export default function OrderDetailView({
       // acotado a lo suyo); para el comprador, por subordén.
       boletaVentaDisponible: subOrder?.boletaVentaDisponible ?? (isSeller ? order.boletaVentaDisponible : false),
       boletaVentaNombre: subOrder?.boletaVentaNombre || (isSeller ? order.boletaVentaNombre : null),
+      // O90 (pruebas de lanzamiento, 27-sep): el comprobante de envío de ESTA tienda, solo para el
+      // comprador (la tienda ya lo ve en su despacho). Nulo si la respuesta no trae el dato por
+      // subordén (respaldo más abajo).
+      comprobanteEnvioDisponibleStore: isSeller ? false : (subOrder?.comprobanteEnvioDisponible ?? null),
       // Como entrega ESTA tienda (H8). Con subordén manda la suya; sin ella (vista del vendedor,
       // historicos) el del pedido, que para el vendedor ya viene acotado a lo suyo.
       deliveryLabelStore: subOrderDeliveryLabel(subOrder, order),
@@ -916,6 +924,36 @@ export default function OrderDetailView({
   // que es `> 1`, asi que en un pedido de una sola tienda el boton global sobrevivia y mandaba
   // la transicion sin `proveedorId`.
   const buyerActionsPerStore = groupedByStore && !isSeller && storeBlocks.length > 0;
+
+  // O87 / O90 (pruebas de lanzamiento, 27-sep): el comprobante de envío es de cada tienda. El
+  // backend informa por subordén si esa tienda subió uno (`subordenes[].comprobanteEnvioDisponible`)
+  // y el botón va en el bloque de CADA tienda que lo tenga, pidiéndolo con su `proveedorId`. Sin el
+  // dato por subordén (respuesta antigua) solo se puede atribuir el del pedido con una sola tienda.
+  const storeHasShippingReceipt = (block) => {
+    if (isSeller || !block) return false;
+    if (block.comprobanteEnvioDisponibleStore != null) return Boolean(block.comprobanteEnvioDisponibleStore);
+    return storeBlocks.length === 1 && Boolean(order?.comprobanteEnvioDisponible);
+  };
+  const renderShippingReceiptLink = (block) => {
+    const loading = shippingReceiptLoadingId != null && String(shippingReceiptLoadingId) === String(block.id);
+    const error = shippingReceiptError && String(shippingReceiptError.storeId) === String(block.id)
+      ? shippingReceiptError.message : '';
+    return (
+      <span className="order-store-block-boleta order-store-block-shipreceipt">
+        <FileText size={13} /> Comprobante de envío
+        <button
+          type="button"
+          className="order-store-block-tracklink order-store-block-boletalink"
+          onClick={() => handleViewShippingReceipt(block.id)}
+          disabled={shippingReceiptLoadingId != null}
+        >
+          {loading ? <Loader2 size={14} className="spin-icon" /> : <ExternalLink size={14} />}
+          Ver comprobante de envío
+        </button>
+        {error && <small className="order-shipreceipt-error" role="alert">{error}</small>}
+      </span>
+    );
+  };
 
   // Datos de la venta para el modal de boleta: la tienda del vendedor (su único bloque vivo),
   // lo que le compraron y su envío. El formateo y el "copiar datos" viven en SaleReceiptModal.
@@ -1050,6 +1088,34 @@ export default function OrderDetailView({
   // de popup lo mataban sin aviso. Pedir el token y traer el PDF ahora es tarea del modal.
   const handleViewReceipt = (proveedorId = null, storeName = null) => {
     setReceiptViewer({ proveedorId, storeName });
+  };
+
+  // O87 (pruebas de lanzamiento, 27-sep): abre el comprobante de envío en una pestaña nueva. No
+  // va en el visor de la boleta porque ese solo acepta PDF y el comprobante puede ser una foto.
+  // La pestaña se abre ANTES del `await`, dentro del gesto del usuario (si no, el bloqueador de
+  // popups la mata), y recién después se le pone la URL firmada.
+  // O90: `proveedorId` es la tienda del bloque; el backend lo exige con varias tiendas.
+  const handleViewShippingReceipt = async (proveedorId) => {
+    const effectiveUserId = userId || order?.compradorId || order?.usuarioId;
+    if (!effectiveUserId || shippingReceiptLoadingId != null) return;
+    setShippingReceiptError(null);
+    const tab = window.open('', '_blank');
+    if (!tab) {
+      setShippingReceiptError({ storeId: proveedorId, message: 'Tu navegador bloqueó la pestaña nueva. Permite las ventanas emergentes e inténtalo otra vez.' });
+      return;
+    }
+    tab.opener = null;
+    setShippingReceiptLoadingId(proveedorId);
+    try {
+      const { url } = (await getShippingReceiptUrlApi(effectiveUserId, order.id, { proveedorId })) || {};
+      if (!url) throw new Error('No se pudo obtener el comprobante.');
+      tab.location.href = url;
+    } catch (err) {
+      tab.close();
+      setShippingReceiptError({ storeId: proveedorId, message: err?.message || 'No pudimos abrir el comprobante. Inténtalo de nuevo.' });
+    } finally {
+      setShippingReceiptLoadingId(null);
+    }
   };
 
   const handleSellerCancelSubmit = async (e) => {
@@ -1633,6 +1699,8 @@ export default function OrderDetailView({
                             </button>
                           </span>
                         )}
+                        {/* O87 / O90: el comprobante de envío de ESTA tienda, si lo subió. */}
+                        {storeHasShippingReceipt(block) && renderShippingReceiptLink(block)}
                       </div>
 
                       {/* Lo que va a pasar SOLO si nadie hace nada. Desde `PedidoAutoCierreJob`

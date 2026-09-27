@@ -413,6 +413,11 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   const productoFoto = resolveMediaUrl(chat?.productoFotoUrl);
   const pedidoItemsCount = Number(chat?.pedidoItemsCount || 0);
   const pedidoTotal = Number(chat?.pedidoTotal || 0);
+  // O81 (pruebas de lanzamiento, 27-sep): el monto de ESTA tienda (productos + su envío). En un
+  // pedido de varias tiendas `pedidoTotal` es lo pagado a todas; si el backend no lo manda
+  // (versión anterior) se cae al total del pedido.
+  const montoCaso = chat?.montoTienda != null ? Number(chat.montoTienda) : pedidoTotal;
+  const montoEsDeLaTienda = chat?.montoTienda != null && montoCaso !== pedidoTotal;
   const formatCLP = (value) => `$${Number(value || 0).toLocaleString('es-CL')}`;
 
   // El backend guarda la evidencia de escalación y la de resolución en el mismo
@@ -736,7 +741,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
           <small>
             Pedido {codigo}
             {pedidoItemsCount > 1 ? ` · ${pedidoItemsCount} repuestos` : ''}
-            {pedidoTotal > 0 ? ` · ${formatCLP(pedidoTotal)}` : ''}
+            {montoCaso > 0 ? ` · ${formatCLP(montoCaso)}` : ''}
           </small>
         </div>
         {(chat?.motivo || chat?.descripcion) && (
@@ -1203,7 +1208,11 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
                     Pedido {codigo}
                     {pedidoItemsCount > 1 ? ` · ${pedidoItemsCount} repuestos` : ''}
                   </small>
-                  {pedidoTotal > 0 && <small>Total del pedido: {formatCLP(pedidoTotal)}</small>}
+                  {montoCaso > 0 && (
+                    <small>
+                      {montoEsDeLaTienda ? 'Total en esta tienda' : 'Total del pedido'}: {formatCLP(montoCaso)}
+                    </small>
+                  )}
                 </div>
               </div>
 

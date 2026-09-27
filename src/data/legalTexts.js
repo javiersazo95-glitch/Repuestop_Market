@@ -12,7 +12,7 @@
  */
 
 /** Fecha de la version vigente, para mostrar en pantalla. */
-export const LEGAL_VERSION = '26 de septiembre de 2026';
+export const LEGAL_VERSION = '27 de septiembre de 2026';
 
 /**
  * Codigo estable de la misma version, el que viaja al backend y queda guardado en
@@ -23,7 +23,7 @@ export const LEGAL_VERSION = '26 de septiembre de 2026';
  * Debe coincidir con `repuestop.legal.version-vigente` del backend y con
  * LEGAL_VERSION_CODE de la app.
  */
-export const LEGAL_VERSION_CODE = '2026-09-26';
+export const LEGAL_VERSION_CODE = '2026-09-27';
 
 export const COMPRADOR_TERMS = `1. IDENTIFICACIÓN DE LA PLATAFORMA
 RepuesTop es una plataforma de comercio electrónico, disponible como aplicación móvil y sitio web, administrada por la empresa titular de la plataforma, en adelante también "RepuesTop", "la Plataforma" o "la Empresa". Estos Términos regulan el registro, acceso y uso de la Plataforma por parte de compradores.
@@ -54,8 +54,7 @@ Una vez pagada una cotización o compra, el vendedor no podrá modificar unilate
 
 7. COMPRA, PAGO Y TARIFA DE SERVICIO
 Las compras deberán pagarse dentro de RepuesTop mediante los medios de pago disponibles, que podrán incluir Mercado Pago, Khipu, Stripe u otros proveedores habilitados.
-RepuesTop podrá cobrar al comprador una tarifa de servicio asociada al uso de la Plataforma, procesamiento, operación, soporte, pago, seguimiento o mediación. La tarifa será informada antes de confirmar el pago.
-La base comercial inicial considerada para RepuesTop es una comisión o tarifa de 5% más IVA calculada sobre el valor del producto, sin perjuicio de que el detalle final aplicable al comprador deberá informarse en el checkout antes de pagar.
+Actualmente RepuesTop no cobra una tarifa de servicio al comprador: el precio que se muestra en el checkout es el que se paga, más el despacho si corresponde. Si en el futuro se incorpora una tarifa, se informará de forma clara antes de confirmar el pago y requerirá la aceptación de los términos actualizados.
 RepuesTop asumirá el costo de la pasarela de pago salvo que informe expresamente una condición distinta antes de la compra.
 
 8. PROHIBICIÓN DE OPERACIONES EXTERNAS

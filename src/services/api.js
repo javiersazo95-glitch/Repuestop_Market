@@ -1167,6 +1167,18 @@ export async function getSaleReceiptUrlApi(orderId, { proveedorId } = {}) {
 }
 
 /**
+ * O87 (pruebas de lanzamiento, 27-sep): URL firmada de un solo uso del comprobante de envío
+ * que subió la tienda (imagen o PDF), para el COMPRADOR del pedido. Devuelve `{ url }`.
+ *
+ * O90 (27-sep): el comprobante es de cada tienda. `proveedorId` es obligatorio cuando el pedido
+ * tiene varias tiendas (el backend responde 400 sin él) y opcional con una sola.
+ */
+export async function getShippingReceiptUrlApi(usuarioId, orderId, { proveedorId } = {}) {
+  const query = proveedorId != null ? `?proveedorId=${Number(proveedorId)}` : '';
+  return fetchApi(`/usuarios/${usuarioId}/pedidos/${orderId}/comprobante-envio-url${query}`, { method: 'GET' });
+}
+
+/**
  * El vendedor reporta que un courier externo (Uber Flash, Didi, un fletero propio) ya
  * entrego el pedido. Arranca la ventana de veto de 48 horas: el comprador puede confirmarla
  * o vetarla (abrir un reclamo); si no responde, el backend la confirma sola.

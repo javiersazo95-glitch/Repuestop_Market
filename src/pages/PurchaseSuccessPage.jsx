@@ -182,6 +182,22 @@ export default function PurchaseSuccessPage() {
     ? orderDeliverySummary(order)
     : (order?.courier || order?.deliveryTerms || 'Entrega por coordinar');
   const isPickup = /retiro|tienda|store_pickup/i.test(shippingMethod);
+  // O85 (pruebas de lanzamiento, 27-sep): el titular sigue al estado del pedido. Recién pagado
+  // (PAGADO / EN_PREPARACION) decía "Tu pedido va viajando a su destino" aunque la tienda
+  // todavía lo estaba preparando. Con varias tiendas manda el estado derivado (la más atrasada).
+  const journeyCopy = (() => {
+    if (orderStatus === 'ENVIADO') {
+      return isPickup
+        ? { title: 'Tu pedido está listo para retirar', note: 'Ya puedes retirarlo en la tienda. Tu código de retiro está en el detalle del pedido.' }
+        : { title: 'Tu pedido va viajando a su destino', note: 'La tienda ya despachó tu pedido. Cuando lo recibas, confírmalo en el detalle del pedido.' };
+    }
+    if (orderStatus === 'ENTREGADO' || orderStatus === 'FINALIZADO') {
+      return { title: 'Tu pedido ya fue entregado', note: 'La entrega de tu pedido ya quedó registrada.' };
+    }
+    return isPickup
+      ? { title: 'Tu pedido se está preparando para retiro', note: 'La tienda ya fue notificada y está preparando tu pedido. Te avisaremos cuando esté listo para retirar.' }
+      : { title: 'La tienda está preparando tu pedido', note: 'La tienda ya fue notificada y está preparando tu pedido. Te avisamos cuando esté en viaje.' };
+  })();
   const subtotal = items.reduce((sum, item) => (
     sum + Number(item.precioUnitario || item.precio || item.unitPrice || 0) * Number(item.cantidad || item.quantity || 1)
   ), 0);
@@ -242,8 +258,9 @@ export default function PurchaseSuccessPage() {
         <div className="purchase-journey">
           <div className="purchase-journey-header">
             <span className="purchase-journey-badge">
-              {/* O52 (pruebas de lanzamiento, 25-sep): con retiro en tienda el pedido no viaja. */}
-              <Truck size={15} /> {isPickup ? 'Tu pedido se está preparando para retiro' : 'Tu pedido va viajando a su destino'}
+              {/* O52 (pruebas de lanzamiento, 25-sep): con retiro en tienda el pedido no viaja.
+                  O85 (27-sep): "va viajando" solo cuando la tienda ya despachó. */}
+              <Truck size={15} /> {journeyCopy.title}
             </span>
             <span className="purchase-journey-destination">
               <MapPin size={13} /> {isPickup ? 'Retiro en tienda' : (address || 'Despacho a domicilio')}
@@ -257,9 +274,7 @@ export default function PurchaseSuccessPage() {
           </div>
           <p className="purchase-journey-note">
             {/* O52: el aviso de retiro no habla de viaje. */}
-            {isPickup
-              ? 'La tienda ya fue notificada y está preparando tu pedido. Te avisaremos cuando esté listo para retirar.'
-              : 'La tienda ya fue notificada y está preparando tu pedido. Te avisamos cuando esté en viaje.'}
+            {journeyCopy.note}
           </p>
         </div>
         )}
