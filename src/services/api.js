@@ -1399,6 +1399,8 @@ export async function getPublicSystemFeedbackApi() {
   return fetchApi('/feedback/public', { method: 'GET' });
 }
 
+// O71b (pruebas de lanzamiento, 27-sep): `claim.proveedorId` es la tienda del reclamo; obligatoria
+// en un pedido de varias tiendas (el reclamo es de la subordén), opcional con una sola.
 export async function createOrderClaimApi(userId, orderId, claim) {
   return fetchApi(`/usuarios/${userId}/pedidos/${orderId}/reclamo`, {
     method: 'POST',
@@ -1511,9 +1513,13 @@ export async function escalateMediationApi(pedidoId, { motivo, descripcion, imag
   });
 }
 
-export async function resolveMediationApi(pedidoId, { motivoResolucion, evidencias }) {
+// O79 (pruebas de lanzamiento, 27-sep): solo el comprador, con el reclamo abierto y antes de pedir
+// un mediador; el backend rechaza a la tienda (403) y un caso en mediacion (400). `proveedorId`
+// elige la tienda del caso en un pedido de varias, como el resto de los endpoints de mediacion.
+export async function resolveMediationApi(pedidoId, { motivoResolucion, evidencias, proveedorId }) {
   const formData = new FormData();
   formData.append('motivoResolucion', motivoResolucion);
+  appendProveedor(formData, proveedorId);
   (evidencias || []).forEach((file) => formData.append('evidencias', file));
   return fetchApi(`/pedidos/${pedidoId}/mediacion-resolver`, {
     method: 'POST',

@@ -295,7 +295,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   const [isUploadingEvidence, setIsUploadingEvidence] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [dialog, setDialog] = useState(null); // 'escalate'
+  const [dialog, setDialog] = useState(null); // 'escalate' | 'resolve' (O79)
   const [showMediatorLockedInfo, setShowMediatorLockedInfo] = useState(false);
   const [reason, setReason] = useState('');
   const [detail, setDetail] = useState('');
@@ -357,8 +357,13 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   }, [viewerImage]);
 
   const estado = chat?.estadoMediacion;
-  const statusTone = MEDIATION_STATUS_TONES[estado] || 'wait';
-  const isClosed = chat?.chatCerrado || estado === 'RESUELTA' || estado === 'CERRADA';
+  // O79 (pruebas de lanzamiento, 27-sep): el comprador dio el reclamo por resuelto con la tienda,
+  // sin mediador. El caso queda cerrado igual que una mediacion resuelta, con su propio rotulo.
+  const reclamoResuelto = Boolean(chat?.reclamoResuelto);
+  const statusTone = MEDIATION_STATUS_TONES[estado] || (reclamoResuelto ? 'done' : 'wait');
+  const isClosed = chat?.chatCerrado || estado === 'RESUELTA' || estado === 'CERRADA' || reclamoResuelto;
+  // Solo el comprador, con el reclamo abierto y antes de escalar (lo decide el backend).
+  const canMarkResolved = mode === 'buyer' && Boolean(chat?.puedeMarcarResuelto) && !isClosed;
   const orderReceived = ['ENTREGADO', 'RECEIVED', 'FINALIZADO', 'FINISHED'].includes(String(chat?.estadoPedido || '').toUpperCase());
   // O63 (pruebas de lanzamiento, 25-sep), "modelo mixto": hasta 10 días corridos (O68) desde la
   // recepción se pide un mediador; después, y hasta 6 meses desde la entrega (garantía legal,
@@ -565,6 +570,29 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
     event.preventDefault();
     if (isSubmitting) return;
 
+    // O79 (pruebas de lanzamiento, 27-sep): el comprador cierra su reclamo con la tienda. Solo
+    // pide como se resolvio; la evidencia es opcional. El backend deja constancia en el chat,
+    // cierra la conversacion y la compra sigue su curso (se puede finalizar).
+    if (dialog === 'resolve') {
+      if (!reason.trim()) {
+        setFormError('Cuenta brevemente cómo se resolvió: queda registrado en el expediente.');
+        return;
+      }
+      setIsSubmitting(true);
+      setFormError('');
+      try {
+        await resolveMediationApi(pedidoId, { motivoResolucion: reason.trim(), evidencias: files, proveedorId });
+        setDialog(null);
+        await load();
+        onChanged?.();
+      } catch (error) {
+        setFormError(error.message || 'No se pudo marcar el reclamo como resuelto.');
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     if (!reason.trim() || !detail.trim()) {
       // El backend valida ambos campos (validarTexto en MediacionChatService),
       // así que el detalle no es opcional aunque lo parezca.
@@ -671,7 +699,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
         </span>
 
         <span className="dispute-chat-head-right">
-          <span className={`dispute-seal seal-${statusTone}`}>{MEDIATION_STATUS_LABELS[estado] || estado || 'En curso'}</span>
+          <span className={`dispute-seal seal-${statusTone}`}>{MEDIATION_STATUS_LABELS[estado] || estado || (reclamoResuelto ? 'Resuelto con la tienda' : 'En curso')}</span>
           <button
             type="button"
             className="dispute-mobile-panel-toggle"
@@ -743,7 +771,13 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
         <div className="dispute-resolved-banner">
           <CheckCircle2 size={16} />
           <div>
-            <strong>{estado === 'RESUELTA' ? 'Disputa resuelta' : 'Caso cerrado'}</strong>
+            {/* O79: sin mediador, el rotulo es el del acuerdo directo. */}
+            <strong>{reclamoResuelto && !estado
+              ? (mode === 'buyer' ? 'Reclamo resuelto con la tienda' : 'Reclamo resuelto por el comprador')
+              : estado === 'RESUELTA' ? 'Disputa resuelta' : 'Caso cerrado'}</strong>
+            {reclamoResuelto && !estado && chat?.reclamoResueltoMotivo && (
+              <p className="dispute-resolved-banner-reason">{chat.reclamoResueltoMotivo}</p>
+            )}
             {chat?.motivoResolucion && <p className="dispute-resolved-banner-reason">{chat.motivoResolucion}</p>}
             {(chat?.motivoResolucion
               || (mode === 'buyer' && chat?.resolucionFavor === 'COMPRADOR' && Number(chat?.montoReembolso || 0) > 0)) && (
@@ -763,6 +797,15 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
           "Pedir ayuda a soporte" (o el ticket que ya abrió) y la tienda no ve el botón. */}
       {!threadLocked && !sellerWarrantyNotice && (
         <div className="dispute-chat-actions">
+          {/* O79 (pruebas de lanzamiento, 27-sep): si se arreglaron conversando, el COMPRADOR cierra
+              el reclamo. Antes el dialogo existia pero nadie lo abria y "Reclamo abierto" quedaba
+              para siempre. La tienda no lo ve; en mediacion decide el mediador. */}
+          {canMarkResolved && (
+            <button type="button" onClick={() => openDialog('resolve')}>
+              <span className="dispute-chat-action-icon is-resolve"><CheckCircle2 size={16} /></span>
+              <span>Marcar como resuelto</span>
+            </button>
+          )}
           {chat?.mediadorDisponible || (!warrantyTicketPath && !canRequestWarrantySupport) ? (
             <button
               type="button"
@@ -1194,13 +1237,13 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
             className="dispute-dialog"
             role="dialog"
             aria-modal="true"
-            aria-label={dialog === 'escalate' ? 'Solicitar mediador' : 'Marcar la disputa como resuelta'}
+            aria-label={dialog === 'escalate' ? 'Solicitar mediador' : 'Marcar el reclamo como resuelto'}
             onClick={(event) => event.stopPropagation()}
           >
             <header>
               <div>
                 <small>Expediente {codigo}</small>
-                <h2>{dialog === 'escalate' ? 'Solicitar mediador' : 'Marcar como resuelta'}</h2>
+                <h2>{dialog === 'escalate' ? 'Solicitar mediador' : 'Marcar como resuelto'}</h2>
               </div>
               <button type="button" aria-label="Cerrar" disabled={isSubmitting} onClick={() => setDialog(null)}><X size={16} /></button>
             </header>
@@ -1208,7 +1251,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
             <p className="dispute-dialog-lead">
               {dialog === 'escalate'
                 ? 'Un mediador de RepuesTop revisará el caso. Al enviarlo, la conversación directa con la otra parte queda pausada.'
-                : 'Queda registrado en el expediente que llegaron a un acuerdo y el pedido pasa a entregado.'}
+                : 'Queda registrado en el expediente que resolviste el reclamo con la tienda. Esta conversación se cierra, se apaga el aviso de reclamo y tu compra sigue su curso normal.'}
             </p>
 
             <form onSubmit={submitDialog} noValidate>
@@ -1228,7 +1271,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
                     value={reason}
                     maxLength={MAX_REASON}
                     onChange={(event) => setReason(event.target.value)}
-                    placeholder="Ej: El vendedor reembolsó la compra"
+                    placeholder="Ej: La tienda me cambió la pieza"
                   />
                 )}
               </label>
@@ -1271,7 +1314,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
                   disabled={isSubmitting || !reason.trim() || (dialog === 'escalate' && !detail.trim())}
                 >
                   {isSubmitting ? <Loader2 size={15} className="spin-icon" /> : (dialog === 'escalate' ? <ShieldAlert size={15} /> : <CheckCircle2 size={15} />)}
-                  {isSubmitting ? 'Enviando...' : (dialog === 'escalate' ? 'Solicitar mediador' : 'Marcar como resuelta')}
+                  {isSubmitting ? 'Enviando...' : (dialog === 'escalate' ? 'Solicitar mediador' : 'Marcar como resuelto')}
                 </button>
               </footer>
             </form>

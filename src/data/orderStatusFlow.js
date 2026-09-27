@@ -102,14 +102,17 @@ export function buyerClaimState(order) {
   if (!order) return null;
   const status = normalizeOrderStatus(order);
   const mediation = String(order.estadoMediacion || order.mediationStatus || '').toUpperCase();
-  const hasClaim = Boolean(order.motivoReclamo || order.claimReason || order.descripcionReclamo);
+  // O71b (pruebas de lanzamiento, 27-sep): `estadoCaso` resume el caso del pedido (la tienda que va
+  // mas atras manda); el detalle por tienda va en `subordenes[].estadoCaso` (`buyerStoreClaimState`).
+  const caso = String(order.estadoCaso || '').toUpperCase();
+  const hasClaim = Boolean(order.motivoReclamo || order.claimReason || order.descripcionReclamo) || caso === 'RECLAMO_ABIERTO';
   const refundedByVerdict = (Array.isArray(order.items) ? order.items : [])
     .some((item) => !isCancelledItem(item) && Number(item?.montoReembolsado || 0) > 0);
 
-  if (status === 'EN_MEDIACION' || mediation === 'EN_MEDIACION') {
+  if (status === 'EN_MEDIACION' || mediation === 'EN_MEDIACION' || caso === 'EN_MEDIACION') {
     return { kind: 'mediation', title: 'En mediación', linkLabel: 'Ver caso', blocksFinalize: true };
   }
-  if (mediation === 'RESUELTA' || mediation === 'CERRADA' || refundedByVerdict) {
+  if (mediation === 'RESUELTA' || mediation === 'CERRADA' || caso === 'RESUELTA' || caso === 'CERRADA' || refundedByVerdict) {
     return {
       kind: 'resolved',
       title: 'Mediación resuelta',
@@ -118,8 +121,45 @@ export function buyerClaimState(order) {
       blocksFinalize: refundedByVerdict,
     };
   }
+  // O79 (pruebas de lanzamiento, 27-sep): el comprador lo dio por resuelto con la tienda, sin
+  // mediador. Ya no bloquea nada; la compra sigue su curso.
+  if (caso === 'RECLAMO_RESUELTO') {
+    return { kind: 'resolved', title: 'Reclamo resuelto con la tienda', detail: null, linkLabel: 'Ver conversación', blocksFinalize: false };
+  }
   if (hasClaim) {
     return { kind: 'open', title: 'Reclamo abierto', linkLabel: 'Ver conversación', blocksFinalize: true };
+  }
+  return null;
+}
+
+/**
+ * O71b (pruebas de lanzamiento, 27-sep): el caso de UNA tienda del pedido, para el comprador. Lee
+ * `estadoCaso` de la subordén (lo calcula el backend por tienda) y el reembolso por veredicto de
+ * SUS items. `blocksFinalize` espeja `PedidoResponseMapper.motivoBloqueoFinalizacionComprador`,
+ * que desde O71b se decide por tienda: el reclamo contra la A no impide finalizar la B.
+ */
+export function buyerStoreClaimState(subOrder, storeItems = []) {
+  if (!subOrder) return null;
+  const caso = String(subOrder.estadoCaso || '').toUpperCase();
+  const refundedByVerdict = (Array.isArray(storeItems) ? storeItems : [])
+    .some((item) => !isCancelledItem(item) && Number(item?.montoReembolsado || 0) > 0);
+  if (caso === 'EN_MEDIACION') {
+    return { kind: 'mediation', title: 'En mediación', detail: null, linkLabel: 'Ver caso', blocksFinalize: true };
+  }
+  if (caso === 'RESUELTA' || caso === 'CERRADA' || refundedByVerdict) {
+    return {
+      kind: 'resolved',
+      title: 'Mediación resuelta',
+      detail: refundedByVerdict ? 'Se resolvió con reembolso a tu favor.' : null,
+      linkLabel: 'Ver caso',
+      blocksFinalize: refundedByVerdict,
+    };
+  }
+  if (caso === 'RECLAMO_RESUELTO') {
+    return { kind: 'resolved', title: 'Reclamo resuelto con la tienda', detail: null, linkLabel: 'Ver conversación', blocksFinalize: false };
+  }
+  if (caso === 'RECLAMO_ABIERTO') {
+    return { kind: 'open', title: 'Reclamo abierto', detail: null, linkLabel: 'Ver conversación', blocksFinalize: true };
   }
   return null;
 }
@@ -148,6 +188,11 @@ export function sellerClaimState(order) {
       detail: refundedByVerdict ? 'Se resolvió con reembolso al comprador.' : null,
       linkLabel: 'Ver caso',
     };
+  }
+  // O79 (pruebas de lanzamiento, 27-sep): el comprador cerro el reclamo con la tienda; la venta
+  // sigue su cierre normal.
+  if (state === 'RECLAMO_RESUELTO') {
+    return { kind: 'resolved', title: 'Reclamo resuelto por el comprador', detail: 'Tu venta sigue su curso normal.', linkLabel: 'Ver conversación' };
   }
   if (state === 'RECLAMO_ABIERTO') {
     return { kind: 'open', title: 'Reclamo abierto', linkLabel: 'Ver conversación' };
@@ -229,6 +274,12 @@ export function getControlledOrderAction(order, mode) {
     return { waiting: true, label: 'Esperando recepción del comprador' };
   }
   if (status === 'ENTREGADO') {
+    // O74 (pruebas de lanzamiento, 27-sep): una venta devuelta ENTERA por el veredicto no tiene nada
+    // que finalizar ni plata que liberar; el cierre lo hace el sistema. Mismo criterio que O69 para el
+    // comprador (`fullyRefundedSale` en la tarjeta y el detalle). Solo UI: el backend no cambia.
+    const refundAmount = Number(order?.montoReembolsado || order?.refundedAmount || 0);
+    const totalSeller = Number(order?.totalVendedor ?? order?.totalSeller ?? NaN);
+    if (refundAmount > 0 && Number.isFinite(totalSeller) && totalSeller <= 0) return null;
     const availability = sellerFinalizationAvailability(order);
     return {
       nextStatus: 'FINALIZADO',

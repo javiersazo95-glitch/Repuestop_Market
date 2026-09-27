@@ -7480,6 +7480,13 @@ input, select, textarea {
 .order-claim-status-block.is-resolved strong { color: #17845B; }
 .order-claim-status-block.is-resolved span { color: #14532d; }
 .order-claim-link { color: inherit; font-weight: 700; text-decoration: underline; }
+/* O71b (pruebas de lanzamiento, 27-sep): el caso de UNA tienda dentro de su bloque, en un pedido de
+   varias. Mismos tonos que el bloque de arriba. */
+.order-store-block-claim { display: flex; align-items: flex-start; gap: 7px; padding: 8px 11px; border-radius: var(--radius-sm); background: #F5F2FF; border: 1px solid #D9CEF7; color: #4c3a8f; font-size: 12px; line-height: 1.45; }
+.order-store-block-claim svg { flex-shrink: 0; margin-top: 2px; }
+.order-store-block-claim strong { color: #6745CB; }
+.order-store-block-claim.is-resolved { background: #ECFDF3; border-color: #BBF7D0; color: #14532d; }
+.order-store-block-claim.is-resolved strong { color: #17845B; }
 .order-card-state-banner.claim { color: #6745cb; border-color: #d9cef7; background: #f5f2ff; }
 .order-card-state-banner.claim.is-resolved { color: #17845b; border-color: #bbf7d0; background: #ecfdf3; }
 

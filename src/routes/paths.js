@@ -54,8 +54,12 @@ export function profilePurchasePath(orderId) {
  * `/perfil/chats_vendedor?caso={id}`: la conversacion del reclamo / mediacion de un pedido,
  * vista como COMPRADOR. O62 (pruebas de lanzamiento, 25-sep).
  */
-export function buyerCaseChatPath(orderId) {
-  return `/perfil/chats_vendedor?caso=${encodeURIComponent(String(orderId ?? ''))}`;
+export function buyerCaseChatPath(orderId, proveedorId) {
+  const params = new URLSearchParams({ caso: String(orderId ?? '') });
+  // O71b (pruebas de lanzamiento, 27-sep): el caso es por tienda; en un pedido de varias se abre el
+  // de la tienda reclamada, igual que hace la tienda con `sellerCaseChatPath`.
+  if (proveedorId != null && proveedorId !== '') params.set('tienda', String(proveedorId));
+  return `/perfil/chats_vendedor?${params.toString()}`;
 }
 
 /**

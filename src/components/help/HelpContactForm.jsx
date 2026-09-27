@@ -134,9 +134,15 @@ export default function HelpContactForm({ user, reportType, initialTopic = null,
   // `finished` (FINALIZADO) queda fuera: tras el cierre del pedido el plazo para reclamar ya
   // venció (lo anuncia el aviso de auto-cierre mientras está ENTREGADO). Un `mediation` ya
   // tiene un caso abierto y un `cancelled` no tiene nada que reclamar.
+  // O71b (pruebas de lanzamiento, 27-sep): el reclamo es por tienda y este formulario no elige
+  // tienda, asi que un pedido de varias se reclama desde su detalle (ahi esta el boton por tienda).
+  // Un reclamo que el comprador dio por resuelto (O79) no bloquea uno nuevo.
   const availableOrders = orders.filter((order) => {
     const status = normalizedStatus(order);
-    return !['mediation', 'cancelled', 'finished'].includes(status) && !order.claimReason && !order.motivoReclamo;
+    const caso = String(order.estadoCaso || '').toUpperCase();
+    const tieneCaso = caso ? caso !== 'RECLAMO_RESUELTO' : Boolean(order.claimReason || order.motivoReclamo);
+    const variasTiendas = Array.isArray(order.subordenes) && order.subordenes.length > 1;
+    return !['mediation', 'cancelled', 'finished'].includes(status) && !tieneCaso && !variasTiendas;
   });
   const finalSubject = subject === 'other' ? customSubject.trim() : subject;
   const finalClaim = claimType === 'other' ? customClaimType.trim() : claimType;

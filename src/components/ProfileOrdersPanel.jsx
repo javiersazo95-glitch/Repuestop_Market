@@ -350,12 +350,14 @@ export default function ProfileOrdersPanel({
    * caso. Un solo tap y sin pedirle que retipee nada -el comprador ya dijo con el boton mismo
    * que no la recibio-, a diferencia del reclamo libre de "Reportes/Disputa".
    */
-  const handleDisputeDeclaredDelivery = async (order) => {
+  const handleDisputeDeclaredDelivery = async (order, proveedorId) => {
     const orderId = order?.id;
     if (!orderId) return;
+    // O71b (pruebas de lanzamiento, 27-sep): el veto es de la tienda que declaro la entrega.
     const updated = await createOrderClaimApi(effectiveUserId, orderId, {
       motivo: 'not_received',
       descripcion: 'El vendedor reportó que el pedido fue entregado, pero no lo recibí.',
+      ...(proveedorId != null ? { proveedorId } : {}),
     });
     queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
     setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
@@ -371,10 +373,14 @@ export default function ProfileOrdersPanel({
    * pero con el motivo y la descripcion que eligio en el modal. El pedido queda "En disputa"
    * (chat directo con la tienda); solo pasa a "En mediación" si luego se pide un mediador.
    */
-  const handleCreateOrderClaim = async (order, { motivo, descripcion }) => {
+  const handleCreateOrderClaim = async (order, { motivo, descripcion, proveedorId }) => {
     const orderId = order?.id;
     if (!orderId) return;
-    const updated = await createOrderClaimApi(effectiveUserId, orderId, { motivo, descripcion });
+    // O71b (pruebas de lanzamiento, 27-sep): el reclamo es contra UNA tienda; con varias, el
+    // comprador la eligio en el detalle.
+    const updated = await createOrderClaimApi(effectiveUserId, orderId, {
+      motivo, descripcion, ...(proveedorId != null ? { proveedorId } : {}),
+    });
     queryClient.invalidateQueries({ queryKey: qk.buyerOrders(effectiveUserId) });
     setSelectedOrder((prev) => prev && String(prev.id) === String(orderId)
       ? { ...prev, ...updated }

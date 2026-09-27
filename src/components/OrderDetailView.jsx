@@ -11,7 +11,7 @@ import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, isCancelledItem, orderDeliverySummary, orderDisplayCode, subOrderDeliveryLabel, subOrderDeliveryMethod } from '../data/orderIdentity';
-import { buyerClaimState, getControlledOrderAction, isStorePickupOrder, normalizeOrderStatus, orderPaymentWindow, sellerClaimState } from '../data/orderStatusFlow';
+import { buyerClaimState, buyerStoreClaimState, getControlledOrderAction, isStorePickupOrder, normalizeOrderStatus, orderPaymentWindow, sellerClaimState } from '../data/orderStatusFlow';
 import { Link } from 'react-router-dom';
 import { buyerCaseChatPath, currentPathForBack, productPath, sellerCaseChatPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
@@ -358,6 +358,9 @@ export default function OrderDetailView({
   // entrega declarada, que ya trae el motivo fijo.
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [claimReasonCode, setClaimReasonCode] = useState('');
+  // O71b (pruebas de lanzamiento, 27-sep): la tienda del reclamo ({ id, name, estado, entregadoAt,
+  // pickup }). En un pedido de varias el comprador la elige desde el bloque de esa tienda.
+  const [claimStore, setClaimStore] = useState(null);
   const [claimDetail, setClaimDetail] = useState('');
   const [claimCustomReason, setClaimCustomReason] = useState('');
   const [isSubmittingClaim, setIsSubmittingClaim] = useState(false);
@@ -497,7 +500,13 @@ export default function OrderDetailView({
       // O62 (pruebas de lanzamiento, 25-sep): finalizar le libera la plata a la tienda; no se
       // ofrece con reclamo abierto, mediacion en curso ni mediacion resuelta con reembolso. El
       // backend lo rechaza igual (PedidoResponseMapper.motivoBloqueoFinalizacionComprador).
-      if (claimState?.blocksFinalize) return null;
+      // O71b (27-sep): el bloqueo es de ESTA tienda (`subordenes[].estadoCaso`); con una sola
+      // tienda sin subordén (historicos) se cae al del pedido.
+      const storeClaim = seller.subOrder
+        ? buyerStoreClaimState(seller.subOrder, (order.items || []).filter(
+            (item) => String(item.proveedorId ?? item.sellerId ?? '') === String(seller.id)))
+        : claimState;
+      if (storeClaim?.blocksFinalize) return null;
       return {
         nextStatus: 'FINALIZADO',
         label: 'Finalizar compra',
@@ -535,9 +544,16 @@ export default function OrderDetailView({
   // O71 (pruebas de lanzamiento, 25-sep): la tienda ve el caso de SU venta (`estadoCasoTienda`),
   // con enlace a su chat en "Chats con compradores". Sus items ya vienen acotados a ella.
   const claimState = isSeller ? sellerClaimState(order) : buyerClaimState(order);
+  // O71b (pruebas de lanzamiento, 27-sep): el caso es de una tienda; el enlace del comprador abre el
+  // chat de la tienda cuyo caso resume `estadoCaso` (en un pedido de varias).
+  const claimStoreSub = !isSeller
+    ? (order.subordenes || []).find((sub) => sub?.estadoCaso && String(sub.estadoCaso).toUpperCase() === String(order.estadoCaso || '').toUpperCase())
+      || (order.subordenes || []).find((sub) => sub?.estadoCaso)
+    : null;
   const claimChatPath = isSeller
     ? sellerCaseChatPath(order.id, sellerId ?? (order.items || []).find((item) => item.proveedorId != null)?.proveedorId)
-    : buyerCaseChatPath(order.id);
+    : buyerCaseChatPath(order.id, claimStoreSub?.proveedorId);
+  const claimStoreName = claimStoreSub && (order.subordenes || []).length > 1 ? claimStoreSub.nombreTienda : null;
 
   const orderIdShort = orderDisplayCode(order, isSeller ? 'seller' : 'buyer');
   const items = order.items || [];
@@ -636,9 +652,19 @@ export default function OrderDetailView({
     .map((subOrder) => String(subOrder?.estado || subOrder?.status || '').toUpperCase())
     .filter((status) => status && !['CANCELADO', 'CANCELLED'].includes(status));
   const tracksSlowestStore = timelineSubOrders.length > 1 && activeTimelineStatuses.length > 0;
-  const timelineIndex = tracksSlowestStore
-    ? Math.min(...activeTimelineStatuses.map(getTimelineIndex))
-    : getTimelineIndex(normStatus);
+  // O75 (pruebas de lanzamiento, 27-sep): EN_MEDIACION no es un paso de la barra. Antes caia en el
+  // indice 0 y el paso "Pendiente" quedaba marcado con "Recibimos tu pago...". En mediacion la barra
+  // marca lo ya recorrido (hasta "Entregado" si se recibio; si no, hasta "Enviado"), ningun paso queda
+  // como actual y el texto explica la mediacion. Vale para el comprador y para la tienda.
+  const enMediacion = ['EN_MEDIACION', 'MEDIATION'].includes(normStatus);
+  const mediacionAlcanzo = enMediacion
+    ? ((order.entregadoAt || (order.subordenes || []).some((sub) => sub?.entregadoAt)) ? 3 : 2)
+    : null;
+  const timelineIndex = enMediacion
+    ? mediacionAlcanzo
+    : tracksSlowestStore
+      ? Math.min(...activeTimelineStatuses.map(getTimelineIndex))
+      : getTimelineIndex(normStatus);
   // O60: con retiro en tienda el paso ENVIADO se llama y se explica como retiro.
   const timelineSteps = timelineStepsFor(isStorePickup, isSeller);
   const visibleTimelineStep = timelineSteps.find((step) => step.key === selectedTimelineStep)
@@ -676,20 +702,63 @@ export default function OrderDetailView({
   const dentroDeRetracto = diasDesdeEntrega == null || diasDesdeEntrega <= 10;
   const dentroDeGarantia = diasDesdeEntrega == null
     || Date.now() <= new Date(fechaEntrega).setMonth(new Date(fechaEntrega).getMonth() + 6);
-  const hasOpenClaim = Boolean(order.motivoReclamo || order.claimReason || order.descripcionReclamo);
+  // O71b (pruebas de lanzamiento, 27-sep): el caso es por tienda (`estadoCaso`). Un caso con
+  // mediador (en curso, resuelto o cerrado) o un reclamo abierto bloquean uno nuevo; uno que el
+  // comprador dio por resuelto con la tienda (O79) no: si la falla vuelve, se reabre.
+  const casoBloqueaNuevoReclamo = (estadoCaso) => {
+    const caso = String(estadoCaso || '').toUpperCase();
+    return Boolean(caso) && caso !== 'RECLAMO_RESUELTO';
+  };
+  const estadoCasoPedido = String(order.estadoCaso || '').toUpperCase();
+  const hasOpenClaim = estadoCasoPedido
+    ? casoBloqueaNuevoReclamo(estadoCasoPedido)
+    : Boolean(order.motivoReclamo || order.claimReason || order.descripcionReclamo);
+  const dentroDeGarantiaDesde = (entregadoAt) => {
+    const t = entregadoAt ? new Date(entregadoAt).getTime() : NaN;
+    return !Number.isFinite(t) || Date.now() <= new Date(t).setMonth(new Date(t).getMonth() + 6);
+  };
+  const dentroDeRetractoDesde = (entregadoAt) => {
+    const t = entregadoAt ? new Date(entregadoAt).getTime() : NaN;
+    return !Number.isFinite(t) || (Date.now() - t) / 86400000 <= 10;
+  };
   const claimWindowClosed = !isSeller
     && Boolean(onCreateClaim)
     && !hasOpenClaim
     && CLAIM_CLOSED_STATES.includes(normStatus)
     && !dentroDeGarantia;
   // Sin pagar no hay nada que reclamar: se reintenta el pago o se cancela (decision del usuario).
-  const canOpenClaim = !isSeller
+  const claimEntryAllowed = !isSeller
     && Boolean(onCreateClaim)
-    && !['CANCELADO', 'EN_MEDIACION', 'MEDIATION', 'PENDIENTE'].includes(normStatus)
+    && !['CANCELADO', 'PENDIENTE'].includes(normStatus);
+  const multiStoreOrder = (order.subordenes || []).filter((sub) => !['CANCELADO', 'CANCELLED'].includes(String(sub?.estado || '').toUpperCase())).length > 1
+    || (order.subordenes || []).length > 1;
+  // Con UNA tienda, el boton del pie de siempre. Con varias, el reclamo se inicia desde el bloque
+  // de cada tienda (`canOpenClaimForStore`), porque el reclamo es de la tienda.
+  const canOpenClaim = claimEntryAllowed
+    && !multiStoreOrder
+    && !['EN_MEDIACION', 'MEDIATION'].includes(normStatus)
     && !(CLAIM_CLOSED_STATES.includes(normStatus) && !dentroDeGarantia)
     && !hasOpenClaim;
-  const claimReasons = buyerClaimReasons(normStatus, isStorePickup)
-    .filter(([, code]) => dentroDeRetracto || code !== 'buyer_remorse');
+  const canOpenClaimForStore = (block) => claimEntryAllowed
+    && multiStoreOrder
+    && !block.isCancelledStore
+    && !['EN_MEDIACION', 'MEDIATION', 'PENDIENTE'].includes(block.estado)
+    && !(CLAIM_CLOSED_STATES.includes(block.estado) && !dentroDeGarantiaDesde(block.entregadoAtStore))
+    && !casoBloqueaNuevoReclamo(block.subOrder?.estadoCaso);
+  const openClaimModal = (block) => {
+    setClaimStore(block ? {
+      id: block.id, name: block.name, estado: block.estado, entregadoAt: block.entregadoAtStore, pickup: block.isPickupStore,
+    } : null);
+    setClaimReasonCode('');
+    setClaimCustomReason('');
+    setClaimDetail('');
+    setClaimError('');
+    setShowClaimModal(true);
+  };
+  // Los motivos se ofrecen segun el estado y la entrega de LA TIENDA reclamada (con una sola, la del pedido).
+  const claimContextStatus = claimStore?.estado || normStatus;
+  const claimReasons = buyerClaimReasons(claimContextStatus, claimStore ? claimStore.pickup : isStorePickup)
+    .filter(([, code]) => (claimStore ? dentroDeRetractoDesde(claimStore.entregadoAt) : dentroDeRetracto) || code !== 'buyer_remorse');
   const claimFinalReason = claimReasonCode === 'other' ? claimCustomReason.trim() : claimReasonCode;
   const canSubmitClaim = Boolean(claimFinalReason)
     && claimDetail.trim().length > 0
@@ -701,12 +770,16 @@ export default function OrderDetailView({
     setIsSubmittingClaim(true);
     setClaimError('');
     try {
-      await onCreateClaim(order, { motivo: claimFinalReason, descripcion: claimDetail.trim() });
+      // O71b: la tienda del reclamo. Con una sola se manda igual (el backend la deduce, pero asi
+      // el chat que se abre despues es el de esa tienda).
+      const proveedorId = claimStore?.id ?? (order.subordenes || [])[0]?.proveedorId
+        ?? (order.items || []).find((item) => item.proveedorId != null)?.proveedorId;
+      await onCreateClaim(order, { motivo: claimFinalReason, descripcion: claimDetail.trim(), proveedorId });
       setShowClaimModal(false);
       // O62 (pruebas de lanzamiento, 25-sep): el reclamo abre la conversacion del caso; se lleva
       // al comprador directo ahi (`/perfil/chats_vendedor?caso={id}`) en vez de devolverlo a la
       // lista, donde nada le indicaba lo que acababa de hacer.
-      if (onOpenDispute) onOpenDispute();
+      if (onOpenDispute) onOpenDispute(proveedorId);
       else onClose?.();
     } catch (err) {
       setClaimError(err?.message || 'No se pudo iniciar el reclamo.');
@@ -887,7 +960,8 @@ export default function OrderDetailView({
     setDeliveryVetoError(null);
     setBusyDeliveryVetoId(block.id);
     try {
-      await onDisputeDeclaredDelivery(order);
+      // O71b: el veto es de la tienda que declaro la entrega.
+      await onDisputeDeclaredDelivery(order, block.id);
     } catch (error) {
       setDeliveryVetoError({ blockId: block.id, message: error.message || 'No se pudo registrar tu respuesta.' });
     } finally {
@@ -1216,6 +1290,8 @@ export default function OrderDetailView({
           <div className={`order-refund-status-block order-claim-status-block is-${claimState.kind}`} role="status">
             <strong>
               <ShieldAlert size={15} /> {claimState.title}
+              {/* O71b: en un pedido de varias tiendas, de cual es el caso. */}
+              {claimStoreName ? ` · ${claimStoreName}` : ''}
               {' · '}
               <Link to={claimChatPath} state={{ from: currentPathForBack() }} className="order-claim-link">{claimState.linkLabel}</Link>
             </strong>
@@ -1247,8 +1323,9 @@ export default function OrderDetailView({
             >
               {timelineSteps.map((step, idx) => {
                 const StepIcon = step.icon;
-                const isPast = idx < timelineIndex;
-                const isCurrent = idx === timelineIndex;
+                // O75: en mediacion lo recorrido queda como pasado y nada como "actual".
+                const isPast = idx < timelineIndex || (enMediacion && idx <= timelineIndex);
+                const isCurrent = idx === timelineIndex && !enMediacion;
                 return (
                   <button
                     type="button"
@@ -1270,12 +1347,17 @@ export default function OrderDetailView({
               <VisibleTimelineIcon size={15} aria-hidden="true" />
               {/* O69 (pruebas de lanzamiento, 25-sep): cancelado, el paso "Pendiente" no se rotula
                   "Pendiente" -- decia "Pendiente: Este pedido fue cancelado." -- sino "Cancelado". */}
+              {enMediacion && selectedTimelineStep == null ? (
+                // O75: el texto de la mediacion, no el del paso donde cayo la barra.
+                <span><strong>En mediación:</strong> un mediador de RepuesTop está revisando el caso.</span>
+              ) : (
               <span><strong>{visibleTimelineStep.key === 'PENDIENTE' && normStatus === 'CANCELADO' ? 'Cancelado' : visibleTimelineStep.label}:</strong> {visibleTimelineStep.key === 'PENDIENTE' && normStatus === 'PENDIENTE'
                 // El paso "Pendiente" cubre PAGADO y PENDIENTE, y "Recibimos tu pago" solo es verdad en el primero.
                 ? 'Todavía no recibimos tu pago. Retómalo antes de que venza el plazo, o el pedido se cancelará.'
                 : visibleTimelineStep.key === 'PENDIENTE' && normStatus === 'CANCELADO'
                   ? 'Este pedido fue cancelado.'
                   : visibleTimelineStep.description}</span>
+              )}
             </div>
           </div>
 
@@ -1467,6 +1549,29 @@ export default function OrderDetailView({
                         )}
                       </header>
 
+                      {/* O71b (pruebas de lanzamiento, 27-sep): el caso de ESTA tienda. Solo con varias
+                          tiendas: con una, el bloque de arriba ya lo dice. */}
+                      {!isSeller && storeBlocks.length > 1 && (() => {
+                        const storeClaim = buyerStoreClaimState(block.subOrder, block.items);
+                        if (!storeClaim) return null;
+                        return (
+                          <div className={`order-store-block-claim is-${storeClaim.kind}`} role="status">
+                            <ShieldAlert size={13} />
+                            <span>
+                              <strong>{storeClaim.title}.</strong>
+                              {storeClaim.detail ? ` ${storeClaim.detail}` : ''}
+                              {storeClaim.blocksFinalize && block.estado === 'ENTREGADO'
+                                ? (storeClaim.kind === 'resolved'
+                                  ? ' Esta compra se cierra automáticamente.'
+                                  : ' Mientras el caso siga abierto no se puede finalizar esta compra.')
+                                : ''}
+                              {' '}
+                              <Link to={buyerCaseChatPath(order.id, block.id)} state={{ from: currentPathForBack() }} className="order-claim-link">{storeClaim.linkLabel}</Link>
+                            </span>
+                          </div>
+                        );
+                      })()}
+
                       <div className="order-items-table">
                         {block.items.map((item, i) => (
                           <OrderProductRow key={item.id || i} item={item} onNavigate={onClose} />
@@ -1636,8 +1741,19 @@ export default function OrderDetailView({
                       {/* Las acciones de ESTA tienda, dentro de su bloque. Un boton al pie del
                           modal no diria a cual le pega. Una tienda cancelada no ofrece ninguna:
                           el bloque queda solo como comprobante de lo que se devolvio. */}
-                      {!isSeller && !block.isCancelledStore && (accion || puedeCancelar || canRateStore(block)) && (
+                      {!isSeller && !block.isCancelledStore && (accion || puedeCancelar || canRateStore(block) || canOpenClaimForStore(block)) && (
                         <div className="order-store-block-actions">
+                          {/* O71b: el reclamo se inicia desde la tienda reclamada. */}
+                          {canOpenClaimForStore(block) && (
+                            <button
+                              type="button"
+                              className="btn-auth-secondary order-claim-trigger"
+                              onClick={() => openClaimModal(block)}
+                            >
+                              <ShieldAlert size={14} />
+                              <span>Iniciar reclamo</span>
+                            </button>
+                          )}
                           {/* La calificacion tambien es POR TIENDA: se evalua a ese vendedor con
                               SUS repuestos. Un boton global calificaba a "Tienda RepuesTop" -- un
                               nombre generico -- y mezclaba los productos de las dos. */}
@@ -2009,21 +2125,16 @@ export default function OrderDetailView({
 
           {/* H27 (pruebas de lanzamiento, 25-sep): la entrada al reclamo. El disparador se habia
               quitado y el modal quedo sin nadie que lo abriera, mientras el aviso de retracto
-              sigue diciendo "puedes devolverlo desde el botón de reclamo". El reclamo es del
-              PEDIDO (`crearReclamo` no recibe tienda), asi que va al pie y no en cada bloque.
-              `canOpenClaim` conserva las reglas: no en FINALIZADO, EN_MEDIACION, CANCELADO ni
-              con un reclamo ya abierto. */}
+              sigue diciendo "puedes devolverlo desde el botón de reclamo".
+              O71b (27-sep): el reclamo es de la TIENDA. Con una sola sigue aca, al pie; con varias
+              vive en el bloque de cada tienda (`canOpenClaimForStore`). `canOpenClaim` conserva las
+              reglas: no en FINALIZADO fuera de garantia, EN_MEDIACION, CANCELADO ni con un caso
+              vivo. */}
           {canOpenClaim && (
             <button
               type="button"
               className="btn-auth-secondary order-claim-trigger"
-              onClick={() => {
-                setClaimReasonCode('');
-                setClaimCustomReason('');
-                setClaimDetail('');
-                setClaimError('');
-                setShowClaimModal(true);
-              }}
+              onClick={() => openClaimModal(storeBlocks.length === 1 ? storeBlocks[0] : null)}
             >
               <ShieldAlert size={16} />
               <span>¿Tienes un problema? Iniciar reclamo</span>
@@ -2112,8 +2223,8 @@ export default function OrderDetailView({
                   <ShieldAlert size={22} />
                 </div>
                 <div className="order-subdialog-heading">
-                  <h3>Hablar con la tienda · Pedido {orderIdShort}</h3>
-                  <span>Se abrirá un chat con la tienda para resolver el problema. Si no hay acuerdo, podrás solicitar un mediador una vez recibido el producto y durante los 10 días corridos siguientes.</span>
+                  <h3>Hablar con {claimStore && storeBlocks.length > 1 ? claimStore.name : 'la tienda'} · Pedido {orderIdShort}</h3>
+                  <span>Se abrirá un chat con {claimStore && storeBlocks.length > 1 ? claimStore.name : 'la tienda'} para resolver el problema. Si no hay acuerdo, podrás solicitar un mediador una vez recibido el producto y durante los 10 días corridos siguientes.{storeBlocks.length > 1 ? ' Las otras tiendas del pedido no se ven afectadas.' : ''}</span>
                 </div>
               </div>
 
