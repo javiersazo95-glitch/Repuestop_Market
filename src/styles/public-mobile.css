@@ -1590,3 +1590,41 @@
   .store-public-profile-wrapper .store-action-toast-banner { grid-column: 1 / -1 !important; justify-self: start; }
   .store-public-profile-wrapper .store-rating-card { padding: 9px 14px !important; border-radius: 12px !important; }
 }
+
+/* Home, vehiculo identificado por patente, en el celular. El boton "Ver repuestos disponibles
+   para este vehiculo" tenia alto fijo de 50px y sin padding: el texto se partia en dos lineas
+   y la lupa y la flecha quedaban pegadas a los bordes. Aqui crece con el texto, los iconos van
+   en su propio espacio y los dos botones secundarios quedan del mismo tamano. */
+@media (max-width: 768px) {
+  .hero-vehicle-action-bar { gap: 10px; }
+  .btn-hero-view-parts {
+    height: auto;
+    min-height: 56px;
+    padding: 10px 16px;
+    gap: 12px;
+    border-radius: 12px;
+    font-size: 14.5px;
+    line-height: 1.25;
+    box-shadow: 0 10px 22px -10px rgba(0, 102, 255, .6);
+  }
+  .btn-hero-view-parts > svg { flex: 0 0 auto; }
+  .btn-hero-view-parts > span { flex: 1 1 auto; min-width: 0; text-align: center; }
+  .hero-vehicle-sub-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .btn-hero-edit-vehicle,
+  .btn-hero-reset-vehicle {
+    min-height: 46px;
+    padding: 8px 10px;
+    justify-content: center;
+    gap: 7px;
+    border-radius: 10px;
+    font-size: 12.5px;
+    line-height: 1.2;
+    text-align: left;
+  }
+  .btn-hero-edit-vehicle > svg,
+  .btn-hero-reset-vehicle > svg { flex: 0 0 auto; }
+}

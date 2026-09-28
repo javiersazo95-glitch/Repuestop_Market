@@ -3,8 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle, ArrowLeft, BadgeCheck, Car, CheckCircle2, ChevronLeft, ChevronRight, CreditCard,
   Globe, Heart, Info, Landmark, MapPin, MessageCircle, Package, Search, Send, ShieldCheck,
-  ShoppingCart, Star, Store, Tag, Truck, Wrench, X
+  ShoppingCart, Star, Store, Tag, Truck, Wrench, X, ChevronDown, ChevronUp, SlidersHorizontal
 } from 'lucide-react';
+import VehicleBrandLogo from './VehicleBrandLogo';
 import { CATEGORY_IMAGE_BY_ID, getPartImage } from '../data/categories';
 import ProductBrandMark from './ProductBrandMark';
 import ProductBrandModal from './ProductBrandModal';
@@ -42,6 +43,27 @@ function vehicleMatchesCompatibility(vehicle, item) {
   return marcaOk && modeloOk && anioOk;
 }
 
+function compatibilityYearLabel(anioInicio, anioFin) {
+  if (!anioInicio && !anioFin) return '—';
+  return `${anioInicio || '—'}${anioFin && anioFin !== anioInicio ? `–${anioFin}` : ''}`;
+}
+
+// La tabla de compatibilidades (escritorio) solo existe por sobre el ancho de celular.
+const COMPAT_TABLE_QUERY = '(min-width: 769px)';
+function useIsCompatTableLayout() {
+  const [matches, setMatches] = useState(() => (
+    typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(COMPAT_TABLE_QUERY).matches : true
+  ));
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const media = window.matchMedia(COMPAT_TABLE_QUERY);
+    const onChange = (event) => setMatches(event.matches);
+    media.addEventListener?.('change', onChange);
+    return () => media.removeEventListener?.('change', onChange);
+  }, []);
+  return matches;
+}
+
 export default function ProductDetailPage({ product, user, activeVehicle, onBack, onAddToCart, onOpenQuote, onOpenStore, onSelectProduct }) {
   const queryClient = useQueryClient();
   // El vendedor llega a su propia ficha desde el catalogo como comprador, asi que
@@ -74,6 +96,13 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const [plateVehicle, setPlateVehicle] = useState(null);
   const [plateMatchIndex, setPlateMatchIndex] = useState(null);
   const compatibilityItemRefs = useRef([]);
+  // Hoja de compatibilidades en el celular (mismo diseño que la app): filtro por marca,
+  // orden, y tarjetas plegables por grupo.
+  const [compatFiltersOpen, setCompatFiltersOpen] = useState(false);
+  const [compatBrandFilter, setCompatBrandFilter] = useState(null);
+  const [compatSortAscending, setCompatSortAscending] = useState(true);
+  const [expandedCompatGroups, setExpandedCompatGroups] = useState(() => new Set());
+  const questionsSectionRef = useRef(null);
   const { setActiveVehicle } = useMarketplace();
   const nav = useAppNavigation();
   const stock = Number(product.stock || 0);
@@ -127,15 +156,6 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const descriptionText = product.descripcion
     || 'Repuesto publicado por una tienda verificada en RepuesTop. Consulta la compatibilidad antes de completar tu compra.';
   const descriptionIsLong = descriptionText.length > 320;
-  const visibleCompatibilities = compatibility.filter((item) => {
-    const query = compatibilitySearch.trim().toLocaleLowerCase('es');
-    if (!query) return true;
-    return [item.marca, item.modelo, item.version, item.motor, item.anioInicio, item.anioFin]
-      .filter(Boolean)
-      .join(' ')
-      .toLocaleLowerCase('es')
-      .includes(query);
-  });
 
   const allVehicleCatalogIds = useMemo(() => {
     const ids = new Set();
@@ -183,6 +203,125 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   });
 
   const versionsMap = versionsQueries.data || {};
+
+  // Tabla de compatibilidades (escritorio): una fila por vehiculo. Cuando el grupo trae
+  // versiones del catalogo (`vehiculoCatalogoIds`) cada una es su propia fila con marca,
+  // modelo, años, version, motor y transmision del catalogo; si no, el grupo es una fila con
+  // lo que declaro el vendedor. Ordenada por marca, modelo, año y version.
+  const isCompatTableLayout = useIsCompatTableLayout();
+  const compatibilityRows = useMemo(() => {
+    const rows = [];
+    compatibility.forEach((item, groupIndex) => {
+      const oem = item.referenciaOem || product.oemCode || '';
+      const ids = (item.vehiculoCatalogoIds || []).map(String);
+      const versionKey = `${item.marca}|${item.modelo}|${item.anioInicio || ''}|${item.anioFin || ''}`;
+      const catalogVersions = versionsMap[versionKey] || [];
+      const fromCatalog = ids.map((id, idx) => {
+        const detail = vehicleCatalogDetails.find((d) => String(d.id) === id);
+        const version = catalogVersions.find((v) => String(v.id) === id);
+        const label = Array.isArray(item.versionLabels) ? item.versionLabels[idx] : null;
+        if (!detail && !version && !label) return null;
+        return {
+          key: `${groupIndex}-${id}`,
+          groupIndex,
+          marca: detail?.marca || item.marca,
+          modelo: detail?.modelo || item.modelo,
+          anioInicio: detail?.anioDesde ?? item.anioInicio,
+          anioFin: detail?.anioHasta ?? item.anioFin,
+          version: detail?.version || version?.nombre || version?.version || label || '',
+          motor: detail?.motor || item.motor || '',
+          transmision: detail?.transmision || '',
+          oem,
+        };
+      }).filter(Boolean);
+      if (fromCatalog.length > 0) {
+        rows.push(...fromCatalog);
+        return;
+      }
+      rows.push({
+        key: `${groupIndex}-group`,
+        groupIndex,
+        marca: item.marca,
+        modelo: item.modelo,
+        anioInicio: item.anioInicio,
+        anioFin: item.anioFin,
+        version: ids.length > 0
+          ? `${ids.length} versión${ids.length === 1 ? '' : 'es'} seleccionada${ids.length === 1 ? '' : 's'}`
+          : (item.version || 'Todas las versiones'),
+        motor: item.motor || '',
+        transmision: '',
+        oem,
+      });
+    });
+    const text = (value) => String(value || '').toLocaleLowerCase('es');
+    return rows.sort((a, b) => (
+      text(a.marca).localeCompare(text(b.marca), 'es')
+      || text(a.modelo).localeCompare(text(b.modelo), 'es')
+      || (Number(a.anioInicio) || 0) - (Number(b.anioInicio) || 0)
+      || text(a.version).localeCompare(text(b.version), 'es', { numeric: true })
+    ));
+  }, [compatibility, vehicleCatalogDetails, versionsMap, product.oemCode]);
+  // Celular: las mismas filas agrupadas por compatibilidad registrada, como la app.
+  const compatibilityGroupCards = useMemo(() => {
+    const byGroup = new Map();
+    compatibilityRows.forEach((row) => {
+      if (!byGroup.has(row.groupIndex)) byGroup.set(row.groupIndex, []);
+      byGroup.get(row.groupIndex).push(row);
+    });
+    return Array.from(byGroup.entries()).map(([groupIndex, rows]) => {
+      const unique = (values) => Array.from(new Set(values.filter(Boolean)));
+      const starts = rows.map((r) => Number(r.anioInicio)).filter(Number.isFinite);
+      const ends = rows.map((r) => Number(r.anioFin)).filter(Number.isFinite);
+      return {
+        groupIndex,
+        rows,
+        brands: unique(rows.map((r) => r.marca)),
+        models: unique(rows.map((r) => r.modelo)),
+        versions: unique(rows.map((r) => r.version)),
+        years: compatibilityYearLabel(starts.length ? Math.min(...starts) : null, ends.length ? Math.max(...ends) : null),
+        oem: rows[0]?.oem || '',
+      };
+    });
+  }, [compatibilityRows]);
+  const compatibilityBrandOptions = useMemo(() => Array.from(new Set(compatibilityRows.map((r) => r.marca).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b, 'es')), [compatibilityRows]);
+  const visibleCompatibilityGroupCards = useMemo(() => {
+    const query = compatibilitySearch.trim().toLocaleLowerCase('es');
+    const matches = compatibilityGroupCards.filter((group) => {
+      if (compatBrandFilter && !group.brands.includes(compatBrandFilter)) return false;
+      if (!query) return true;
+      return group.rows.flatMap((r) => [r.marca, r.modelo, r.version, r.motor, r.transmision, r.anioInicio, r.anioFin, r.oem])
+        .filter(Boolean).join(' ').toLocaleLowerCase('es').includes(query);
+    });
+    const label = (group) => `${group.brands[0] || ''} ${group.models[0] || ''}`.trim();
+    return [...matches].sort((a, b) => label(a).localeCompare(label(b), 'es') * (compatSortAscending ? 1 : -1));
+  }, [compatibilityGroupCards, compatibilitySearch, compatBrandFilter, compatSortAscending]);
+  const visibleCompatibilityVehicleCount = visibleCompatibilityGroupCards.reduce((total, group) => total + group.rows.length, 0);
+  const toggleCompatGroup = (groupIndex) => {
+    setExpandedCompatGroups((current) => {
+      const next = new Set(current);
+      if (next.has(groupIndex)) next.delete(groupIndex);
+      else next.add(groupIndex);
+      return next;
+    });
+  };
+  const askSellerFromCompatibility = () => {
+    setCompatibilityOpen(false);
+    window.setTimeout(() => {
+      questionsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      questionsSectionRef.current?.querySelector('input')?.focus({ preventScroll: true });
+    }, 60);
+  };
+
+  const visibleCompatibilityRows = compatibilityRows.filter((row) => {
+    const query = compatibilitySearch.trim().toLocaleLowerCase('es');
+    if (!query) return true;
+    return [row.marca, row.modelo, row.version, row.motor, row.transmision, row.anioInicio, row.anioFin, row.oem]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase('es')
+      .includes(query);
+  });
 
   const { data: publicQuestions = [] } = useQuery({
     queryKey: qk.productQuestions(product.id),
@@ -642,7 +781,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
 
         <RelatedProductsCarousel product={product} onSelectProduct={onSelectProduct} />
 
-        <section className="product-marketplace-questions">
+        <section className="product-marketplace-questions" ref={questionsSectionRef}>
           <div className="product-marketplace-questions-head">
             <div><h2><MessageCircle /> Preguntas públicas</h2><p>{isOwnProduct ? 'Este repuesto es de tu tienda: responde aquí las preguntas de los compradores.' : 'Haz preguntas públicas y ayuda a otros compradores.'}</p></div>
             {!isOwnProduct && <form onSubmit={submitQuestion}><label><Search /><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Haz tu pregunta sobre este producto..." /></label><button type="submit" disabled={questionMutation.isPending}><Send /> {questionMutation.isPending ? 'Enviando...' : 'Enviar pregunta'}</button></form>}
@@ -679,14 +818,56 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
 
       {compatibilityOpen && (
         <div className="product-compatibility-modal-backdrop" role="presentation" onMouseDown={() => setCompatibilityOpen(false)}>
-          <section className="product-compatibility-modal" role="dialog" aria-modal="true" aria-labelledby="compatibility-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+          <section className={`product-compatibility-modal ${isCompatTableLayout ? 'has-table' : ''}`} role="dialog" aria-modal="true" aria-labelledby="compatibility-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+            {isCompatTableLayout ? (
             <header>
               <span><Car /></span>
               <div><h2 id="compatibility-modal-title">Compatibilidades del producto</h2><p>Estos son vehículos de <strong>otros compradores</strong> registrados por el vendedor. Ingresa tu patente para confirmar si tu vehículo calza con este repuesto.</p></div>
               <button type="button" aria-label="Cerrar compatibilidades" onClick={() => setCompatibilityOpen(false)}><X /></button>
             </header>
+            ) : (
+              /* Celular: hoja inferior con el mismo diseño que la app (manija, icono, titulo,
+                 cerrar; buscador + Filtrar; chips de marca; contador y orden). */
+              <header className="compat-sheet-header">
+                <i className="compat-sheet-handle" aria-hidden="true" />
+                <span className="compat-sheet-badge"><Car /></span>
+                <div className="compat-sheet-title">
+                  <h2 id="compatibility-modal-title">Compatibilidades</h2>
+                  <p>Vehículos compatibles con este repuesto.</p>
+                </div>
+                <button type="button" className="compat-sheet-close" aria-label="Cerrar compatibilidades" onClick={() => setCompatibilityOpen(false)}><X /></button>
+                <div className="compat-sheet-tools">
+                  <label className="compat-sheet-search">
+                    <Search />
+                    <input value={compatibilitySearch} onChange={(event) => setCompatibilitySearch(event.target.value)} placeholder="Buscar por marca o modelo..." />
+                  </label>
+                  <button
+                    type="button"
+                    className={`compat-sheet-filter ${compatFiltersOpen ? 'is-active' : ''}`}
+                    aria-expanded={compatFiltersOpen}
+                    onClick={() => setCompatFiltersOpen((value) => !value)}
+                  >
+                    <SlidersHorizontal /> Filtrar
+                  </button>
+                </div>
+                {compatFiltersOpen && (
+                  <div className="compat-sheet-brands" role="group" aria-label="Filtrar por marca">
+                    <button type="button" className={compatBrandFilter === null ? 'is-active' : ''} onClick={() => setCompatBrandFilter(null)}>Todas</button>
+                    {compatibilityBrandOptions.map((brand) => (
+                      <button key={brand} type="button" className={compatBrandFilter === brand ? 'is-active' : ''} onClick={() => setCompatBrandFilter(brand)}>{brand}</button>
+                    ))}
+                  </div>
+                )}
+                <div className="compat-sheet-results">
+                  <strong>{visibleCompatibilityVehicleCount} {visibleCompatibilityVehicleCount === 1 ? 'vehículo compatible' : 'vehículos compatibles'}</strong>
+                  <button type="button" onClick={() => setCompatSortAscending((value) => !value)}>
+                    {compatSortAscending ? 'Más recientes' : 'Marca A–Z'} <ChevronDown />
+                  </button>
+                </div>
+              </header>
+            )}
 
-            <div className="product-compatibility-modal-controls">
+            <div className={`product-compatibility-modal-controls ${isCompatTableLayout ? '' : 'is-sheet'}`}>
               <form className="product-compatibility-plate-check" onSubmit={searchVehicleByPlate}>
                 <label>
                   <Car />
@@ -722,99 +903,138 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                 </div>
               )}
 
-              <div className="product-compatibility-modal-toolbar">
-                <label><Search /><input value={compatibilitySearch} onChange={(event) => setCompatibilitySearch(event.target.value)} placeholder="Buscar por marca, modelo, versión, motor o año" /></label>
-                <span>{visibleCompatibilities.length} de {compatibility.length} compatibilidades</span>
-              </div>
-            </div>
-            <div className="product-compatibility-modal-list">
-              {visibleCompatibilities.length > 0 ? visibleCompatibilities.map((item, index) => {
-                const itemCatalogIds = (item.vehiculoCatalogoIds || []).map(String);
-                const versionKey = `${item.marca}|${item.modelo}|${item.anioInicio || ''}|${item.anioFin || ''}`;
-                const availableCatalogVersions = versionsMap[versionKey] || [];
-
-                let resolvedVersions = [];
-                if (itemCatalogIds.length > 0) {
-                  resolvedVersions = itemCatalogIds.map((id, idx) => {
-                    const fromCatalog = availableCatalogVersions.find((v) => String(v.id) === String(id));
-                    if (fromCatalog?.nombre) return fromCatalog.nombre;
-                    if (fromCatalog?.version) return fromCatalog.version;
-
-                    const fromDetails = vehicleCatalogDetails.find((d) => String(d.id) === String(id));
-                    if (fromDetails) {
-                      const parts = [fromDetails.version, fromDetails.motor, fromDetails.transmision].filter(Boolean);
-                      if (parts.length > 0) return parts.join(' - ');
-                      if (fromDetails.nombre) return fromDetails.nombre;
-                    }
-
-                    if (Array.isArray(item.versionLabels) && item.versionLabels[idx]) {
-                      return item.versionLabels[idx];
-                    }
-
-                    return null;
-                  }).filter(Boolean);
-                } else if (item.version && !item.version.toLowerCase().includes('versiones') && item.version !== 'Todas' && item.version !== 'Todas las versiones') {
-                  resolvedVersions = item.version.split(',').map((s) => s.trim()).filter(Boolean);
-                }
-
-                const hasSpecificIds = itemCatalogIds.length > 0;
-
-                const yearDisplay = (item.anioInicio || item.anioFin)
-                  ? `${item.anioInicio || '—'}${item.anioFin && item.anioFin !== item.anioInicio ? `–${item.anioFin}` : ''}`
-                  : '—';
-
-                return (
-                  <article
-                    key={`${item.marca}-${item.modelo}-${item.version}-${item.motor}-${index}`}
-                    ref={(node) => { compatibilityItemRefs.current[index] = node; }}
-                    className={index === plateMatchIndex ? 'is-plate-match' : ''}
-                  >
-                    <header className="product-compatibility-card-header">
-                      <h3>{[item.marca, item.modelo].filter(Boolean).join(' ') || 'Vehículo compatible'}</h3>
-                      {index === plateMatchIndex
-                        ? <span className="product-compatibility-seller-check is-plate-match"><CheckCircle2 /> Es tu vehículo</span>
-                        : <span className="product-compatibility-seller-check"><CheckCircle2 /> Registrada por el vendedor</span>}
-                    </header>
-
-                    <div className="product-compatibility-fields">
-                      <div><span>Marca</span><strong>{item.marca || '—'}</strong></div>
-                      <div><span>Modelo</span><strong>{item.modelo || '—'}</strong></div>
-                      <div><span>Año</span><strong>{yearDisplay}</strong></div>
-                      <div><span>Motor</span><strong>{item.motor || 'No especificado'}</strong></div>
-                      <div className="is-full-width"><span>Ref. OEM</span><strong>{item.referenciaOem || product.oemCode || 'No informada'}</strong></div>
-                    </div>
-
-                    <div className="product-compatibility-versions-section">
-                      <span className="compatibility-versions-label">Versiones compatibles:</span>
-                      {resolvedVersions.length > 0 ? (
-                        <div className="compatibility-versions-chips">
-                          {resolvedVersions.map((v, vIndex) => (
-                            <span key={vIndex} className="compatibility-version-chip">
-                              {v}
-                            </span>
-                          ))}
-                        </div>
-                      ) : hasSpecificIds ? (
-                        <div className="compatibility-versions-chips">
-                          <span className="compatibility-version-chip">
-                            {itemCatalogIds.length} versión{itemCatalogIds.length === 1 ? '' : 'es'} seleccionada{itemCatalogIds.length === 1 ? '' : 's'}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="compatibility-versions-chips">
-                          <span className="compatibility-version-chip is-all">
-                            <CheckCircle2 size={12} /> {item.version || 'Compatible con todas las versiones'}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                );
-              }) : (
-                <div className="product-compatibility-empty"><Search /><strong>No encontramos compatibilidades</strong><span>Prueba con otro término de búsqueda.</span></div>
+              {isCompatTableLayout && (
+                <div className="product-compatibility-modal-toolbar">
+                  <label><Search /><input value={compatibilitySearch} onChange={(event) => setCompatibilitySearch(event.target.value)} placeholder="Buscar por marca, modelo, versión, motor o año" /></label>
+                  <span>{`${visibleCompatibilityRows.length} de ${compatibilityRows.length} ${compatibilityRows.length === 1 ? 'vehículo compatible' : 'vehículos compatibles'}`}</span>
+                </div>
               )}
             </div>
-            <footer><ShieldCheck /><span>Confirma siempre la compatibilidad con tu patente o código OEM antes de comprar.</span><button type="button" onClick={() => setCompatibilityOpen(false)}>Entendido</button></footer>
+            <div className={`product-compatibility-modal-list ${isCompatTableLayout ? 'is-table' : ''}`}>
+              {isCompatTableLayout ? (
+                visibleCompatibilityRows.length > 0 ? (
+                  <div className="product-compatibility-table-wrap">
+                    <table className="product-compatibility-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Marca</th>
+                          <th scope="col">Modelo</th>
+                          <th scope="col">Año</th>
+                          <th scope="col">Versión</th>
+                          <th scope="col">Motor</th>
+                          <th scope="col">Transmisión</th>
+                          <th scope="col">Ref. OEM</th>
+                          <th scope="col">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          // El scroll a la coincidencia por patente apunta a la primera fila del grupo.
+                          const groupsWithRef = new Set();
+                          return visibleCompatibilityRows.map((row) => {
+                            const isMatch = row.groupIndex === plateMatchIndex;
+                            const takesRef = !groupsWithRef.has(row.groupIndex);
+                            if (takesRef) groupsWithRef.add(row.groupIndex);
+                            return (
+                              <tr
+                                key={row.key}
+                                ref={takesRef ? (node) => { compatibilityItemRefs.current[row.groupIndex] = node; } : undefined}
+                                className={isMatch ? 'is-plate-match' : ''}
+                              >
+                                <td className="is-strong">{row.marca || '—'}</td>
+                                <td className="is-strong">{row.modelo || '—'}</td>
+                                <td className="is-nowrap">{compatibilityYearLabel(row.anioInicio, row.anioFin)}</td>
+                                <td><span className="product-compatibility-table-version">{row.version || '—'}</span></td>
+                                <td>{row.motor || 'No especificado'}</td>
+                                <td>{row.transmision || '—'}</td>
+                                <td className="is-mono">{row.oem || 'No informada'}</td>
+                                <td>
+                                  {isMatch
+                                    ? <span className="product-compatibility-seller-check is-plate-match"><CheckCircle2 /> Es tu vehículo</span>
+                                    : <span className="product-compatibility-seller-check"><CheckCircle2 /> Registrada</span>}
+                                </td>
+                              </tr>
+                            );
+                          });
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="product-compatibility-empty"><Search /><strong>No encontramos compatibilidades</strong><span>Prueba con otro término de búsqueda.</span></div>
+                )
+              ) : (
+                <>
+                  {visibleCompatibilityGroupCards.map((group) => {
+                    const brand = group.brands[0] || 'Vehículo';
+                    const model = group.models.join(', ') || 'Modelo no informado';
+                    const summary = group.versions[0] || group.rows[0]?.motor || 'Versión por confirmar';
+                    const expanded = expandedCompatGroups.has(group.groupIndex);
+                    const isMatch = group.groupIndex === plateMatchIndex;
+                    return (
+                      <article
+                        key={group.groupIndex}
+                        ref={(node) => { compatibilityItemRefs.current[group.groupIndex] = node; }}
+                        className={`compat-sheet-card ${expanded ? 'is-expanded' : ''} ${isMatch ? 'is-plate-match' : ''}`}
+                      >
+                        <button
+                          type="button"
+                          className="compat-sheet-card-summary"
+                          aria-expanded={expanded}
+                          aria-label={`${expanded ? 'Ocultar' : 'Mostrar'} detalles de ${brand} ${model}`}
+                          onClick={() => toggleCompatGroup(group.groupIndex)}
+                        >
+                          <span className="compat-sheet-logo"><VehicleBrandLogo brand={brand} /></span>
+                          <span className="compat-sheet-card-copy">
+                            <strong>{brand} {model}</strong>
+                            <em>{summary}</em>
+                            <span className="compat-sheet-badges">
+                              <b className="is-year">Años {group.years}</b>
+                              {isMatch
+                                ? <b className="is-mine"><CheckCircle2 /> Es tu vehículo</b>
+                                : <b className="is-ok"><CheckCircle2 /> Compatible</b>}
+                            </span>
+                          </span>
+                          {expanded ? <ChevronUp className="compat-sheet-chevron" /> : <ChevronRight className="compat-sheet-chevron" />}
+                        </button>
+                        {expanded && (
+                          <div className="compat-sheet-card-body">
+                            <div className="compat-sheet-details">
+                              <div><span>Marca</span><strong>{group.brands.join(', ') || 'No informada'}</strong></div>
+                              <div><span>Modelo</span><strong>{model}</strong></div>
+                              <div><span>Años</span><strong>{group.years}</strong></div>
+                              <div><span>Ref. OEM</span><strong>{group.oem || 'No informada'}</strong></div>
+                            </div>
+                            {group.rows.map((row, rowIndex) => (
+                              <div key={row.key} className="compat-sheet-version">
+                                <Car />
+                                <span>
+                                  <strong>{row.version || `Configuración ${rowIndex + 1}`}</strong>
+                                  <em>{[row.motor, row.transmision].filter(Boolean).join(' · ') || 'Motor y transmisión por confirmar'}</em>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                  {visibleCompatibilityGroupCards.length === 0 && (
+                    <div className="compat-sheet-empty"><Car /><strong>No encontramos coincidencias</strong><span>Prueba con otra marca o modelo.</span></div>
+                  )}
+                  <div className="compat-sheet-help">
+                    <Info />
+                    <span>
+                      <strong>¿No encuentras tu vehículo?</strong>
+                      <em>Revisa el número OEM o consulta con el vendedor.</em>
+                    </span>
+                    <button type="button" onClick={askSellerFromCompatibility}>Preguntar al vendedor</button>
+                  </div>
+                  <p className="compat-sheet-disclaimer"><ShieldCheck /> La compatibilidad es referencial. Confirma con el vendedor antes de comprar.</p>
+                </>
+              )}
+            </div>
+            {isCompatTableLayout && <footer><ShieldCheck /><span>Confirma siempre la compatibilidad con tu patente o código OEM antes de comprar.</span><button type="button" onClick={() => setCompatibilityOpen(false)}>Entendido</button></footer>}
           </section>
         </div>
       )}

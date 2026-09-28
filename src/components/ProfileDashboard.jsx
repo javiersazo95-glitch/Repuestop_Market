@@ -7,7 +7,7 @@ import {
   Clock, ShieldCheck, PackageCheck, Loader2, Inbox, Search,
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
-  Megaphone, CheckCircle2, ShoppingCart, Scale, Menu, ChevronRight
+  Megaphone, CheckCircle2, ShoppingCart, Scale, Menu, ChevronRight, Home, Car, MapPin
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
@@ -30,8 +30,10 @@ import {
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi,
   saveConversationQuoteApi, sendConversationMessageApi,
   pauseSellerProductApi, resumeSellerProductApi,
-  getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi
+  getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
+  getSellerPendingWithdrawalsApi
 } from '../services/api';
+import { useMarketplace } from '../context/MarketplaceContext';
 import { qk } from '../services/queryKeys';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
@@ -51,6 +53,10 @@ import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES, storePath } from '../routes/paths';
 import { orderDisplayCode } from '../data/orderIdentity';
+import { normalizeOrderStatus } from '../data/orderStatusFlow';
+
+// Estados en que un pedido ya termino (para "pedidos en curso" del comprador).
+const ORDER_CLOSED_STATES = new Set(['ENTREGADO', 'FINALIZADO', 'CANCELADO', 'REEMBOLSADO', 'RECHAZADO']);
 
 export const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
 
@@ -580,6 +586,21 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     staleTime: 60 * 1000,
   });
 
+  // Saldo listo para retirar, solo para el boton "Retirar dinero" del hero movil en Resumen.
+  // Misma fuente que SellerWithdrawalsPanel (`/retiros/pendientes` -> totalARetirar).
+  const pendingWithdrawalsQuery = useQuery({
+    queryKey: ['seller', effectiveSellerId, 'withdrawals', 'pending-hero'],
+    queryFn: () => getSellerPendingWithdrawalsApi(effectiveSellerId),
+    enabled: Boolean(isSeller && effectiveSellerId && activeTab === 'resumen'),
+    staleTime: 60 * 1000,
+  });
+  const withdrawableAmount = Number(
+    pendingWithdrawalsQuery.data?.totalARetirar ?? pendingWithdrawalsQuery.data?.disponibleRetiro ?? 0
+  );
+
+  // Vehiculo con el que el comprador busca (guardado en el navegador por el marketplace).
+  const { activeVehicle } = useMarketplace();
+
   const catalogQuery = useQuery({
     queryKey: qk.sellerInventory(user?.sellerId, { page: catalogPage, size: catalogPageSize, texto: catalogSearchTerm, categoriaId: catalogCategoryId }),
     queryFn: ({ signal }) => getSellerInventoryApi(user.sellerId, {
@@ -839,6 +860,17 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
   const shippingOrdersCount = (orders || []).filter((o) => o.estado === 'ENVIADO').length;
 
+  // Contadores del hero movil (solo Resumen). Vendedor: lo que pide accion hoy. Comprador:
+  // lo que todavia esta en curso. Se calculan sobre la misma pagina de pedidos ya cargada.
+  const ordersToDispatchCount = (orders || []).filter((o) => {
+    const status = normalizeOrderStatus(o);
+    return status === 'PAGADO' || status === 'EN_PREPARACION';
+  }).length;
+  const lowStockCount = Number(inventorySummary?.bajoStock ?? 0);
+  const openOrdersCount = (orders || []).filter((o) => !ORDER_CLOSED_STATES.has(normalizeOrderStatus(o))).length;
+  const hasActiveVehicle = Boolean(activeVehicle?.marca || activeVehicle?.patente);
+  const deliveryComuna = user?.deliveryComuna || user?.comuna || '';
+
   // Checklist de puesta a punto de la cuenta. El vendedor completa su tienda;
   // el comprador completa los datos que necesita para comprar y recibir.
   const onboardingSteps = useMemo(() => {
@@ -1068,7 +1100,18 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           <button type="button" className="profile-mobile-back" onClick={handleMobileBack} aria-label="Volver">
             <ArrowLeft size={22} />
           </button>
-          <span className="profile-mobile-title" aria-live="polite">{mobileSectionTitle}</span>
+          {/* Solo movil: titulo de la seccion con el tipo de cuenta debajo, y acceso directo al
+              inicio (la flecha de atras se queda dentro de la intranet; este boton si sale). */}
+          <span className="profile-mobile-heading">
+            <span className="profile-mobile-title" aria-live="polite">{mobileSectionTitle}</span>
+            <span className={`profile-mobile-role ${isSeller ? 'is-seller' : 'is-buyer'}`}>
+              {isSeller ? <Store size={11} /> : <ShoppingBag size={11} />}
+              <span>{isSeller ? 'Cuenta vendedor' : 'Cuenta comprador'}</span>
+            </span>
+          </span>
+          <button type="button" className="profile-mobile-home" onClick={onBackToStore} aria-label="Ir al inicio" title="Ir al inicio">
+            <Home size={20} />
+          </button>
 
           <div className="profile-topbar-user">
             <div className={`profile-role-chip ${isSeller ? 'chip-seller' : 'chip-buyer'}`}>
@@ -1163,6 +1206,92 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             </div>
           </div>
 
+          {/* Solo movil (<=768px) y solo en Resumen: llena la franja bajo la portada con lo
+              que la persona necesita ver primero. Vendedor: calificacion y accesos con lo
+              pendiente de hoy. Comprador: su vehiculo, lo que tiene en curso y donde recibe.
+              En escritorio no existe (ver profile-mobile.css). */}
+          {activeTab === 'resumen' && (
+            <div className="hero-mobile-extras">
+              {isSeller ? (
+                <>
+                  <div className="hero-mobile-badges">
+                    <span className="hero-tag tag-contrast hero-tag-rating">
+                      <Star size={12} strokeWidth={2.4} />
+                      {storeInfo?.rating ? Number(storeInfo.rating).toFixed(1) : 'Sin calificar'}
+                      {storeInfo?.reviewCount > 0 && (
+                        <em>({Number(storeInfo.reviewCount).toLocaleString('es-CL')} {Number(storeInfo.reviewCount) === 1 ? 'opinión' : 'opiniones'})</em>
+                      )}
+                    </span>
+                    {inventorySummary?.total != null && (
+                      <span className="hero-tag tag-contrast">
+                        <Package size={12} /> {Number(inventorySummary.publicados ?? inventorySummary.total).toLocaleString('es-CL')} publicados
+                      </span>
+                    )}
+                  </div>
+                  <div className="hero-mobile-counters" role="list">
+                    <button type="button" role="listitem" className={`hero-counter ${ordersToDispatchCount > 0 ? 'is-alert' : ''}`} onClick={() => setActiveTab('pedidos')}>
+                      <Truck size={16} />
+                      <strong>{ordersToDispatchCount}</strong>
+                      <span>Por despachar</span>
+                    </button>
+                    <button type="button" role="listitem" className={`hero-counter ${quoteSummary.pending > 0 ? 'is-alert' : ''}`} onClick={() => setActiveTab('cotizaciones')}>
+                      <ReceiptText size={16} />
+                      <strong>{quoteSummary.pending}</strong>
+                      <span>Cotizaciones por responder</span>
+                    </button>
+                    <button type="button" role="listitem" className={`hero-counter ${lowStockCount > 0 ? 'is-warn' : ''}`} onClick={() => setActiveTab('productos')}>
+                      <AlertTriangle size={16} />
+                      <strong>{lowStockCount}</strong>
+                      <span>Bajo stock</span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <button type="button" className={`hero-vehicle-card ${hasActiveVehicle ? '' : 'is-empty'}`} onClick={() => navigate(ROUTES.home)}>
+                    <span className="hero-vehicle-ic"><Car size={20} /></span>
+                    <span className="hero-vehicle-body">
+                      {hasActiveVehicle ? (
+                        <>
+                          <strong>{[activeVehicle.marca, activeVehicle.modelo, activeVehicle.anio].filter(Boolean).join(' ')}</strong>
+                          <em>{activeVehicle.patente ? `Patente ${activeVehicle.patente}` : 'Tu vehículo'} · Cambiar</em>
+                        </>
+                      ) : (
+                        <>
+                          <strong>Ingresa tu patente</strong>
+                          <em>Para ver solo repuestos compatibles con tu auto</em>
+                        </>
+                      )}
+                    </span>
+                    <ChevronRight size={16} className="hero-vehicle-arrow" />
+                  </button>
+                  <div className="hero-mobile-counters" role="list">
+                    <button type="button" role="listitem" className="hero-counter" onClick={() => setActiveTab('pedidos')}>
+                      <Package size={16} />
+                      <strong>{openOrdersCount}</strong>
+                      <span>Pedidos en curso</span>
+                    </button>
+                    <button type="button" role="listitem" className={`hero-counter ${shippingOrdersCount > 0 ? 'is-alert' : ''}`} onClick={() => setActiveTab('pedidos')}>
+                      <Truck size={16} />
+                      <strong>{shippingOrdersCount}</strong>
+                      <span>Envíos en camino</span>
+                    </button>
+                    <button type="button" role="listitem" className={`hero-counter ${quoteSummary.unread > 0 ? 'is-alert' : ''}`} onClick={() => setActiveTab('cotizaciones')}>
+                      <ReceiptText size={16} />
+                      <strong>{quoteSummary.sent}</strong>
+                      <span>Cotizaciones respondidas</span>
+                    </button>
+                  </div>
+                  <button type="button" className="hero-delivery-line" onClick={() => setActiveTab('datos')}>
+                    <MapPin size={13} />
+                    <span>{deliveryComuna ? `Entregas en ${deliveryComuna}` : 'Agrega tu dirección de entrega'}</span>
+                    <em>{deliveryComuna ? 'Editar' : 'Completar'}</em>
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           {/* El hero es compartido por todas las pestañas: este CTA solo va en
               Resumen para no repetirse en cada pantalla (ya está en el sidebar
               y en Acciones rápidas del Resumen). */}
@@ -1175,6 +1304,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             >
               <Wallet size={16} />
               <span>Retirar dinero</span>
+              {/* Solo movil: el monto listo para retirar, dentro del mismo boton. */}
+              {withdrawableAmount > 0 && <span className="hero-cta-amount">${formatCLP(withdrawableAmount)}</span>}
             </button>
           )}
 

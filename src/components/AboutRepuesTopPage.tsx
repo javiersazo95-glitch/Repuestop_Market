@@ -19,9 +19,9 @@ interface AboutRepuesTopPageProps {
 }
 
 const BENEFITS: { Icon: LucideIcon; title: string; text: string }[] = [
-  { Icon: Gift, title: 'Amplio catálogo', text: 'Miles de repuestos para todas las marcas y modelos.' },
+  { Icon: Gift, title: 'Amplio catálogo', text: 'Repuestos de distintas casas de repuestos en un solo catálogo.' },
   { Icon: ShieldCheck, title: 'Proveedores verificados', text: 'Casas de repuestos reales y confiables.' },
-  { Icon: Search, title: 'Cotiza y compara', text: 'Recibe múltiples cotizaciones en minutos.' },
+  { Icon: Search, title: 'Cotiza y compara', text: 'Pide cotizaciones y compáralas en un solo lugar.' },
   { Icon: LockKeyhole, title: 'Compra segura', text: 'Transacciones protegidas y soporte en todo momento.' },
   { Icon: Truck, title: 'Envíos a todo Chile', text: 'Recibe tus repuestos donde estés.' },
   { Icon: Headphones, title: 'Soporte experto', text: 'Te ayudamos a encontrar el repuesto correcto.' },
@@ -62,7 +62,7 @@ const FAQ_GROUPS: FaqGroup[] = [
     height: 822,
     caption: 'Portada de RepuesTop',
     items: [
-      ['¿Qué es RepuesTop?', 'Un marketplace chileno de repuestos automotrices. Escribes la patente de tu vehículo y RepuesTop cruza tu auto con el inventario de cientos de casas de repuestos para mostrarte solo las piezas que le calzan, con precio, stock y tienda a la vista.'],
+      ['¿Qué es RepuesTop?', 'Un marketplace chileno de repuestos automotrices. Escribes la patente de tu vehículo y RepuesTop cruza tu auto con el inventario de las casas de repuestos adheridas para mostrarte solo las piezas que le calzan, con precio, stock y tienda a la vista.'],
       ['¿En qué regiones funciona RepuesTop?', 'RepuesTop conecta compradores y casas de repuestos en las 16 regiones de Chile. Puedes filtrar por comuna y elegir retiro en tienda o despacho a todo el país.'],
       ['¿RepuesTop tiene aplicación móvil?', 'La app Android está en camino a Google Play. Es la misma cuenta y los mismos datos que la web: buscas en el computador y sigues la cotización desde el celular. Mientras tanto, la versión web funciona completa desde el navegador del teléfono.'],
       ['¿Cómo puedo contactar al soporte?', 'Desde el Centro de Ayuda, donde están las respuestas por tema y el formulario para escribirnos. Si tienes cuenta, además puedes seguir el estado de tu caso.'],
@@ -268,7 +268,7 @@ const PLATE_STEPS: { Icon: LucideIcon; title: string; text: string }[] = [
   {
     Icon: Boxes,
     title: 'Ves solo lo que le calza',
-    text: 'Cruzamos tu auto con el inventario de cientos de casas de repuestos y filtramos el resto.',
+    text: 'Cruzamos tu auto con el inventario de las casas de repuestos adheridas y filtramos el resto.',
   },
 ];
 
@@ -418,9 +418,9 @@ export default function AboutRepuesTopPage({
                 <button className="rt-btn rt-btn--outline" type="button" onClick={onOpenSeller}><Store aria-hidden="true" /> Quiero ofrecer mis repuestos</button>
               </div>
               <ul className="rt-hero__trust">
-                <li><ShieldCheck aria-hidden="true" /><span>100% seguro<br />y confiable</span></li>
-                <li><ShieldCheck aria-hidden="true" /><span>Proveedores verificados<br />en todo Chile</span></li>
-                <li><Sparkles aria-hidden="true" /><span>Miles de repuestos<br />disponibles</span></li>
+                <li><ShieldCheck aria-hidden="true" /><span>100% seguro <br />y confiable</span></li>
+                <li><ShieldCheck aria-hidden="true" /><span>Proveedores verificados <br />en todo Chile</span></li>
+                <li><Sparkles aria-hidden="true" /><span>Repuestos compatibles <br />con tu patente</span></li>
               </ul>
             </div>
             <div className="rt-hero__visual">
@@ -433,14 +433,16 @@ export default function AboutRepuesTopPage({
           </div>
         </section>
 
-        <section className="rt-metrics" aria-label="Cifras de RepuesTop">
+        <section className="rt-metrics" aria-label="Lo que ofrece RepuesTop">
           <div className="rt-shell">
             <div className="rt-metrics__grid">
               {([
-                [Store, '+100', 'Casas de repuestos conectadas'],
-                [Box, '2000+', 'Marcas y modelos cubiertos'],
-                [Clock3, '3 días', 'Tiempo promedio de respuesta'],
-                [ShieldCheck, '98%', 'Clientes satisfechos'],
+                // Sin cifras: RepuesTop está partiendo, así que el bloque describe lo que ofrece
+                // en vez de prometer cantidades de casas de repuestos, repuestos o clientes.
+                [Store, 'Verificadas', 'Casas de repuestos con identidad revisada'],
+                [Box, 'Patente', 'Busca repuestos compatibles con tu vehículo'],
+                [Clock3, 'Directo', 'Cotiza y conversa con cada casa de repuestos'],
+                [ShieldCheck, 'Protegida', 'Tu compra con respaldo de principio a fin'],
               ] as [LucideIcon, string, string][]).map(([Icon, value, label]) => (
                 <div className="rt-metric" key={value}>
                   <span><Icon aria-hidden="true" /></span>
@@ -456,7 +458,7 @@ export default function AboutRepuesTopPage({
             <Reveal as="header" className="rt-section-head">
               <p className="rt-kicker">Lo que nos hace distintos</p>
               <h2 id="rt-plate-title">Tu patente filtra el catálogo por ti</h2>
-              <p>Escribes seis caracteres y RepuesTop cruza tu vehículo con el inventario de cientos de casas de repuestos de todo Chile. Lo que aparece en pantalla ya viene filtrado: solo piezas que le calzan a tu auto, con su precio, su stock y la tienda que las tiene.</p>
+              <p>Escribes seis caracteres y RepuesTop cruza tu vehículo con el inventario de las casas de repuestos adheridas en todo Chile. Lo que aparece en pantalla ya viene filtrado: solo piezas que le calzan a tu auto, con su precio, su stock y la tienda que las tiene.</p>
             </Reveal>
 
             <div className="rt-plate__grid">
@@ -488,7 +490,7 @@ export default function AboutRepuesTopPage({
 
             <div className="rt-plate__facts">
               {([
-                [Building2, 'Cientos de casas de repuestos', 'Un solo lugar para consultarle a todas a la vez, sin llamar una por una.'],
+                [Building2, 'Varias casas de repuestos a la vez', 'Un solo lugar para consultarlas, sin llamar una por una.'],
                 [Search, 'Cero piezas que no calzan', 'La compatibilidad la resuelve el sistema, no tu memoria ni el vendedor.'],
                 [Sparkles, 'También los universales', 'Las piezas que sirven a cualquier vehículo aparecen igual, no se pierden.'],
               ] as [LucideIcon, string, string][]).map(([Icon, title, text], index) => (
@@ -522,7 +524,7 @@ export default function AboutRepuesTopPage({
               <Reveal as="article" className="rt-community-card rt-community-card--seller" delay={110}>
                 <div className="rt-community-card__content">
                   <h3><span><Store aria-hidden="true" /></span>Para casas de repuestos</h3>
-                  <p>Publica tus productos, recibe solicitudes de cotización y aumenta tus ventas. Conecta con miles de clientes en todo Chile.</p>
+                  <p>Publica tus productos, recibe solicitudes de cotización y aumenta tus ventas. Llega a clientes de todo Chile.</p>
                   <CheckList items={SELLER_POINTS} />
                   <button className="rt-btn rt-btn--primary" type="button" onClick={onOpenSeller}>Quiero ser proveedor <ArrowRight aria-hidden="true" /></button>
                 </div>
@@ -773,7 +775,7 @@ export default function AboutRepuesTopPage({
                 <h3>Juntos mantenemos<br />a Chile en movimiento</h3>
                 <p>Creemos en una movilidad más simple, transparente y conectada. Por eso trabajamos todos los días para acercar a quienes necesitan repuestos con quienes tienen la solución.</p>
                 <ul className="rt-coverage-card__stats">
-                  <li><span><HeartHandshake aria-hidden="true" /></span><div><strong>+200.000</strong><small>Personas ya confían en nosotros</small></div></li>
+                  <li><span><HeartHandshake aria-hidden="true" /></span><div><strong>Hecho en Chile</strong><small>Pensado para conductores y talleres</small></div></li>
                   <li><span><MapPin aria-hidden="true" /></span><div><strong>16 regiones</strong><small>Cobertura en todo Chile</small></div></li>
                 </ul>
               </div>
@@ -789,7 +791,7 @@ export default function AboutRepuesTopPage({
             <TrustSeal />
             <div className="rt-trust-grid">
               {([
-                [ShieldCheck, 'Protección de datos', 'Tu información está segura con estándares de clase mundial.'],
+                [ShieldCheck, 'Protección de datos', 'Tu información protegida y usada solo para operar tu cuenta.'],
                 [CheckCircle2, 'Proveedores verificados', 'Solo trabajamos con negocios reales y confiables.'],
                 [LockKeyhole, 'Transacciones seguras', 'Compra o cotiza con total tranquilidad.'],
                 [Headphones, 'Soporte en todo Chile', 'Te acompañamos en cada paso.'],
@@ -908,7 +910,7 @@ export default function AboutRepuesTopPage({
           <div className="rt-shell rt-final-cta__grid">
             <div>
               <h2 id="rt-cta-title">Tu próximo repuesto está más cerca<br />de lo que piensas</h2>
-              <p>Únete a miles de conductores y casas de repuestos que ya confían en RepuesTop.</p>
+              <p>Súmate a los conductores y casas de repuestos que ya son parte de RepuesTop.</p>
               <div className="rt-actions">
                 <button className="rt-btn rt-btn--glass" type="button" onClick={goCatalog}><Search aria-hidden="true" />Buscar repuestos ahora <ArrowRight aria-hidden="true" /></button>
                 <button className="rt-btn rt-btn--dark-outline" type="button" onClick={onOpenSeller}><Sparkles aria-hidden="true" />Crear cuenta gratis</button>

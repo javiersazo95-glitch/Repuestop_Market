@@ -20,7 +20,12 @@
   .profile-sheet,
   .profile-sheet-backdrop,
   .profile-mobile-back,
-  .profile-mobile-title { display: none !important; }
+  .profile-mobile-title,
+  .profile-mobile-heading,
+  .profile-mobile-role,
+  .profile-mobile-home,
+  .hero-mobile-extras,
+  .hero-cta-amount { display: none !important; }
 }
 
 @media (max-width: 768px) {
@@ -113,6 +118,49 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
+  /* Titulo de la seccion con el tipo de cuenta debajo (misma altura que monedas y campana). */
+  .profile-dashboard .profile-mobile-heading {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .profile-dashboard .profile-mobile-heading .profile-mobile-title { flex: 0 0 auto; max-width: 100%; }
+  .profile-dashboard .profile-mobile-role {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    height: 18px;
+    padding: 0 7px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .2px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .profile-dashboard .profile-mobile-role.is-seller { color: #1e293b; background: #e2e8f0; }
+  .profile-dashboard .profile-mobile-role.is-buyer { color: #0369a1; background: #e0f2fe; }
+  /* Acceso directo al inicio. */
+  .profile-dashboard .profile-mobile-home {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--border-subtle, #e2e8f0);
+    border-radius: 12px;
+    background: #fff;
+    color: #10366d;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .profile-dashboard .profile-mobile-home:active { background: #f1f5f9; }
   .profile-dashboard .profile-topbar-user { flex: 0 0 auto; gap: 4px; }
   .profile-dashboard .wallet-trigger--topbar { min-height: 40px; }
   .profile-dashboard .profile-bell-button { width: 40px; height: 40px; }
@@ -132,20 +180,21 @@
 
   /* -------------------------------------------------------------------------
      2. HERO COMPACTO (solo Resumen)
+     Debajo de la portada va una tarjeta BLANCA, en la misma familia visual que el resto de
+     la intranet (fondos claros, tarjetas con borde suave y sombra). En escritorio el hero
+     va superpuesto sobre la portada con texto blanco; aqui se pisa todo eso.
      ------------------------------------------------------------------------- */
   .profile-dashboard:not([data-active-tab="resumen"]) .facebook-cover-hero-container { display: none; }
 
-  .profile-dashboard .facebook-cover-hero-container {
-    height: auto;
-    overflow: hidden;
-    background: linear-gradient(160deg, #0f172a 0%, #1e293b 100%);
-  }
+  .profile-dashboard .facebook-cover-hero-container,
   .buyer-profile-dashboard .facebook-cover-hero-container {
-    background: linear-gradient(160deg, #0052cc 0%, #0066ff 62%, #1d8cf6 100%);
+    height: auto;
+    overflow: visible;
+    background: #f5f8fc;
   }
-  .profile-dashboard .facebook-cover-banner { height: 128px; }
+  .profile-dashboard .facebook-cover-banner { height: 136px; }
   .profile-dashboard .facebook-cover-banner::before {
-    background: linear-gradient(180deg, rgba(5, 21, 42, .08) 0%, rgba(5, 21, 42, .55) 100%);
+    background: linear-gradient(180deg, rgba(5, 21, 42, .04) 0%, rgba(5, 21, 42, .38) 100%);
   }
   .profile-dashboard .btn-change-cover-photo {
     top: 10px;
@@ -160,55 +209,194 @@
   }
   .profile-dashboard .btn-change-cover-photo span { display: none; }
 
+  /* La tarjeta del hero: se monta sobre la portada y contiene todo. */
   .profile-dashboard .facebook-hero-bar {
     position: relative;
     inset: auto;
     max-width: none;
-    margin: -34px 0 0;
+    margin: -22px 12px 0;
     padding: 0 16px 16px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+    border: 1px solid #e3eaf3;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 14px 34px -18px rgba(15, 42, 80, .28), 0 2px 6px rgba(15, 42, 80, .05);
   }
-  .profile-dashboard .facebook-avatar-wrapper { position: relative; margin: 0; }
+  .profile-dashboard .facebook-avatar-wrapper { position: relative; margin: -30px 0 0; }
   .profile-dashboard .facebook-avatar-circle {
-    width: 72px;
-    height: 72px;
-    border-width: 3px;
+    width: 74px;
+    height: 74px;
+    border: 4px solid #fff;
     font-size: 22px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, .28);
+    box-shadow: 0 8px 20px rgba(15, 42, 80, .22);
   }
   .buyer-profile-dashboard .btn-change-avatar-camera { width: 28px; height: 28px; right: -2px; bottom: -2px; }
   .profile-dashboard .facebook-hero-info { width: 100%; padding: 0; gap: 4px; }
   .profile-dashboard .facebook-hero-title-row { flex-wrap: wrap; gap: 6px 8px; }
   .profile-dashboard .facebook-hero-name {
-    font-size: 20px;
+    color: #0f172a !important;
+    font-size: 21px;
     line-height: 1.2;
+    letter-spacing: -.3px;
     white-space: normal;
     overflow-wrap: anywhere;
   }
-  .profile-dashboard .facebook-hero-email { font-size: 12px; margin: 0; overflow-wrap: anywhere; }
+  .profile-dashboard .facebook-hero-email { color: #64748b !important; font-size: 12.5px; margin: 0; overflow-wrap: anywhere; }
   .profile-dashboard .profile-hero-tags { gap: 6px; margin-top: 4px; }
-  .profile-dashboard .hero-tag { font-size: 10.5px; padding: 4px 9px; }
-  .profile-dashboard .store-status-chip { font-size: 10.5px; }
-  /* index.css los esconde a <=640px; en movil vuelven, a ancho completo. */
-  .profile-dashboard .founder-tag-contrast { display: inline-flex; }
+  /* Chips sobre fondo claro: tono suave + texto oscuro (los de index.css son para foto). */
+  .profile-dashboard .hero-tag {
+    font-size: 11px;
+    padding: 5px 10px;
+    backdrop-filter: none;
+    border: 1px solid #e2e8f0;
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+  }
+  .profile-dashboard .tag-contrast { color: #166534 !important; background: #ecfdf5 !important; border-color: #bbf7d0 !important; }
+  .profile-dashboard .founder-tag-contrast { display: inline-flex; color: #92400e !important; background: #fffbeb !important; border-color: #fde68a !important; }
+  .profile-dashboard .store-status-chip { font-size: 10.5px; backdrop-filter: none; }
+  .profile-dashboard .store-status-chip.chip-approved { color: #166534; background: #ecfdf5; border-color: #bbf7d0; }
+  .profile-dashboard .store-status-chip.chip-approved svg { color: #16a34a; }
+  .profile-dashboard .store-status-chip.chip-pending { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+  .profile-dashboard .store-status-chip.chip-pending svg { color: #d97706; }
+  .profile-dashboard .store-status-chip.chip-rejected { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
+  .profile-dashboard .store-status-chip.chip-rejected svg { color: #dc2626; }
+
+  /* Boton principal: azul de la marca en ambos perfiles. */
   .profile-dashboard .btn-withdraw-money-hero,
-  .profile-dashboard .btn-hero-cta {
+  .profile-dashboard .btn-hero-cta,
+  .buyer-profile-dashboard .btn-hero-cta {
     display: inline-flex;
     width: 100%;
-    min-height: 46px;
+    min-height: 48px;
     margin: 4px 0 0;
+    padding: 0 16px;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    border-radius: 12px;
-    font-size: 14px;
+    border: 0;
+    border-radius: 13px;
+    color: #fff;
+    background: linear-gradient(135deg, #0066ff, #0052cc);
+    box-shadow: 0 10px 22px -10px rgba(0, 102, 255, .65);
+    font-size: 14.5px;
     font-weight: 800;
   }
-  .buyer-profile-dashboard .btn-hero-cta { color: #0052cc; background: #fff; box-shadow: 0 8px 18px rgba(0, 30, 80, .22); }
-  .buyer-profile-dashboard .btn-hero-cta:hover { background: #eef5ff; }
+  .profile-dashboard .btn-withdraw-money-hero:hover,
+  .buyer-profile-dashboard .btn-hero-cta:hover { background: linear-gradient(135deg, #0a70ff, #0a5be0); }
+  /* Monto listo para retirar, dentro del boton del vendedor. */
+  .profile-dashboard .hero-cta-amount {
+    margin-left: auto;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .2);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .1px;
+  }
+
+  /* Relleno del hero (solo Resumen): sellos, accesos con contador y, en el comprador, el
+     vehiculo y la comuna de entrega. Tarjetas blancas elevadas sobre la tarjeta del hero. */
+  .profile-dashboard .hero-mobile-extras { width: 100%; display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .profile-dashboard .hero-mobile-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+  .profile-dashboard .hero-tag-rating { color: #78350f !important; background: #fffbeb !important; border-color: #fde68a !important; }
+  .profile-dashboard .hero-tag-rating svg { color: #f59e0b; fill: #f59e0b; }
+  .profile-dashboard .hero-tag-rating em { font-style: normal; font-weight: 600; opacity: .8; }
+
+  .profile-dashboard .hero-mobile-counters {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .profile-dashboard .hero-counter {
+    position: relative;
+    min-width: 0;
+    min-height: 92px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 10px;
+    border: 1px solid #e3eaf3;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 6px 16px -10px rgba(15, 42, 80, .35);
+    color: #0f172a;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .profile-dashboard .hero-counter:active { background: #f8fafc; }
+  .profile-dashboard .hero-counter svg {
+    width: 30px;
+    height: 30px;
+    padding: 7px;
+    border-radius: 9px;
+    color: #0066ff;
+    background: #eaf2ff;
+  }
+  .profile-dashboard .hero-counter strong { margin-top: 2px; font-size: 21px; font-weight: 800; line-height: 1; letter-spacing: -.4px; color: #0f172a; }
+  .profile-dashboard .hero-counter span { font-size: 10.5px; font-weight: 600; line-height: 1.2; color: #64748b; }
+  /* Con pendientes: el numero y el borde toman el color del icono. */
+  .profile-dashboard .hero-counter.is-alert { border-color: #bfdbfe; background: linear-gradient(180deg, #fff, #f3f8ff); }
+  .profile-dashboard .hero-counter.is-alert strong { color: #0052cc; }
+  .profile-dashboard .hero-counter.is-warn { border-color: #fde68a; background: linear-gradient(180deg, #fff, #fffbeb); }
+  .profile-dashboard .hero-counter.is-warn svg { color: #d97706; background: #fef3c7; }
+  .profile-dashboard .hero-counter.is-warn strong { color: #b45309; }
+
+  .profile-dashboard .hero-vehicle-card {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 11px 12px;
+    border: 1px solid #cfe0fb;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #f3f8ff, #eaf2ff);
+    color: #0f172a;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .profile-dashboard .hero-vehicle-card:active { background: #e3eeff; }
+  .profile-dashboard .hero-vehicle-card.is-empty { border-style: dashed; background: #f8fafc; }
+  .profile-dashboard .hero-vehicle-ic {
+    flex: 0 0 42px;
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #0066ff, #0052cc);
+    color: #fff;
+    box-shadow: 0 6px 14px -6px rgba(0, 102, 255, .6);
+  }
+  .profile-dashboard .hero-vehicle-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .profile-dashboard .hero-vehicle-body strong { font-size: 14.5px; font-weight: 800; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .profile-dashboard .hero-vehicle-body em { font-style: normal; font-size: 11.5px; line-height: 1.25; color: #4b5f7d; }
+  .profile-dashboard .hero-vehicle-arrow { flex: 0 0 auto; color: #0066ff; }
+
+  .profile-dashboard .hero-delivery-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 0 2px;
+    border: 0;
+    background: transparent;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .profile-dashboard .hero-delivery-line svg { color: #0066ff; }
+  .profile-dashboard .hero-delivery-line span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .profile-dashboard .hero-delivery-line em { flex: 0 0 auto; font-style: normal; font-weight: 800; color: #0066ff; }
 
   /* -------------------------------------------------------------------------
      3. CUERPO: una columna, sin sidebar
@@ -545,14 +733,74 @@
      secas, cuyo minimo es `auto`: la pista crece al contenido. Se iguala y supera. */
   .profile-dashboard .profile-orders-cards-grid,
   .profile-dashboard .profile-orders-cards-grid:not(.seller-catalog-grid):not(.seller-quotes-grid),
-  .profile-dashboard .seller-orders-card-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .profile-dashboard .order-card-container { min-width: 0; max-width: 100%; padding: 14px; gap: 12px; }
-  .profile-dashboard .order-card-header,
-  .profile-dashboard .order-card-person-row,
-  .profile-dashboard .order-card-info-chips,
-  .profile-dashboard .order-card-footer { flex-wrap: wrap; gap: 8px; min-width: 0; }
-  .profile-dashboard .order-card-footer .total-info { min-width: 0; max-width: 100%; }
-  .profile-dashboard .order-card-product-row { min-width: 0; }
+  .profile-dashboard .seller-orders-card-grid { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+
+  /* Tarjeta de pedido en el celular. Antes, con 12px de separacion y sin sombra sobre un
+     panel blanco, la lista se leia como un solo bloque. Ahora la lista va sobre una franja
+     gris y cada pedido es una tarjeta blanca con franja azul arriba, borde marcado, sombra y
+     tres zonas claras: cabecera (numero + estado) con fondo propio, cuerpo, y pie con el
+     total destacado. Misma informacion, solo cambia el diseno. */
+  .profile-dashboard .profile-orders-cards-grid:not(.seller-catalog-grid):not(.seller-quotes-grid),
+  .profile-dashboard .seller-orders-card-grid {
+    margin: 10px -14px 0;
+    padding: 14px;
+    background: #edf2f8;
+    border-top: 1px solid #e3eaf3;
+    border-bottom: 1px solid #e3eaf3;
+  }
+  .profile-dashboard .order-card-container {
+    min-width: 0;
+    max-width: 100%;
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid #d3deeb;
+    border-top: 4px solid #0066ff;
+    border-radius: 16px;
+    box-shadow: 0 12px 26px -14px rgba(15, 42, 80, .4), 0 1px 3px rgba(15, 42, 80, .06);
+  }
+  .profile-dashboard .order-card-container:hover { transform: none; }
+  .profile-dashboard .order-card-container > * { margin-left: 14px; margin-right: 14px; }
+  .profile-dashboard .order-card-header {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    margin: 0;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e3eaf3;
+    background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+  }
+  .profile-dashboard .order-card-title-group { flex: 1 1 auto; min-width: 0; }
+  .profile-dashboard .order-card-id { font-size: 17px; letter-spacing: -.3px; color: #0b2a5b; }
+  .profile-dashboard .order-card-date-meta { font-size: 11.5px; }
+  .profile-dashboard .order-card-header .order-status-badge,
+  .profile-dashboard .order-card-header .order-store-statuses-trigger { flex: 0 0 auto; }
+  .profile-dashboard .order-card-person-row { margin-top: 12px; flex-wrap: wrap; gap: 8px; min-width: 0; }
+  .profile-dashboard .order-card-info-chips { margin-top: 10px; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  .profile-dashboard .order-card-state-banner { margin-top: 10px; }
+  .profile-dashboard .order-card-product-row { margin-top: 12px; min-width: 0; }
+  .profile-dashboard .order-card-footer {
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+    margin: 12px 14px 0;
+    padding: 10px 12px;
+    border-top: 0;
+    border-radius: 12px;
+    background: #f3f8ff;
+  }
+  .profile-dashboard .order-card-footer .delivery-info { max-width: 100%; }
+  .profile-dashboard .order-card-footer .total-info { min-width: 0; max-width: 100%; margin-left: auto; }
+  .profile-dashboard .order-card-footer .total-amount { font-size: 20px; }
+  .profile-dashboard .order-cancellation-reason,
+  .profile-dashboard .order-payment-window { margin-top: 10px; }
+  .profile-dashboard .order-card-actions {
+    margin: 12px 0 0;
+    padding: 10px 14px 14px;
+    border-top: 1px solid #eef2f7;
+  }
+  .profile-dashboard .order-controlled-error { margin: 0 14px 12px; }
   .profile-dashboard .order-info-chip {
     max-width: 100%;
     height: auto;

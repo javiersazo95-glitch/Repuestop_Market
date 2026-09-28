@@ -20737,3 +20737,161 @@ input.has-success {
 /* Distancia a la tienda ("cerca de mí"): pastilla sobre la portada, arriba a la izquierda
    (el corazón está a la derecha y el avatar abajo). Misma pieza que la app. */
 .market-seller-distance { position: absolute; z-index: 6; top: 9px; left: 10px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; color: #fff; background: rgba(15, 23, 42, .78); font-size: 11px; font-weight: 700; line-height: 1.3; }
+
+/* Compatibilidades del producto en ESCRITORIO: tabla ordenada con una fila por vehiculo
+   (marca, modelo, año, version, motor, transmision, referencia OEM y estado). El modal se
+   ensancha para que quepan todas las columnas; en el celular siguen las tarjetas. */
+@media (min-width: 769px) {
+  .product-compatibility-modal.has-table { width: min(1120px, 100%); }
+  .product-compatibility-modal-list.is-table { padding: 16px 20px 18px; gap: 0; }
+  .product-compatibility-table-wrap {
+    border: 1px solid #dce5f1;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(27, 53, 91, .05);
+    overflow: auto;
+  }
+  .product-compatibility-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; color: #1c2c45; }
+  .product-compatibility-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 12px 14px;
+    border-bottom: 1px solid #dce5f1;
+    background: #f1f6fd;
+    color: #5b6b82;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .4px;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .product-compatibility-table tbody td {
+    padding: 11px 14px;
+    border-bottom: 1px solid #edf1f7;
+    vertical-align: middle;
+    line-height: 1.35;
+  }
+  .product-compatibility-table tbody tr:nth-child(even) td { background: #fafcff; }
+  .product-compatibility-table tbody tr:last-child td { border-bottom: 0; }
+  .product-compatibility-table tbody tr:hover td { background: #f3f8ff; }
+  .product-compatibility-table td.is-strong { font-weight: 800; }
+  .product-compatibility-table td.is-nowrap { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .product-compatibility-table td.is-mono { font-variant-numeric: tabular-nums; color: #40516a; font-weight: 700; }
+  .product-compatibility-table-version {
+    display: inline-flex;
+    padding: 3px 9px;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .product-compatibility-table .product-compatibility-seller-check { min-height: 26px; }
+  /* Fila que coincide con la patente del comprador. */
+  .product-compatibility-table tbody tr.is-plate-match td { background: #eaf2ff; }
+  .product-compatibility-table tbody tr.is-plate-match td:first-child { box-shadow: inset 4px 0 0 #1268f3; }
+}
+
+/* Compatibilidades del producto en el CELULAR: hoja inferior con el mismo diseño que la app
+   (mobile/components/product-detail/product-detail-modals.tsx): manija, icono en caja
+   celeste, titulo y cerrar; buscador + "Filtrar" con chips de marca; contador y orden;
+   tarjetas plegables con logo de la marca, años y "Compatible"; ayuda y aviso al final. */
+@media (max-width: 768px) {
+  .product-compatibility-modal-backdrop:has(.product-compatibility-modal:not(.has-table)) { padding: 0; place-items: end stretch; }
+  .product-compatibility-modal:not(.has-table) {
+    width: 100%;
+    max-height: 90vh;
+    max-height: 90dvh;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    border: 0;
+    border-radius: 24px 24px 0 0;
+    background: #fff;
+    animation: compat-sheet-in .24s ease-out;
+  }
+  .product-compatibility-modal > header.compat-sheet-header {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr) 44px;
+    align-items: center;
+    gap: 12px;
+    min-height: 0;
+    padding: 10px 18px 12px;
+    color: #0f172a;
+    background: #fff;
+  }
+  .compat-sheet-handle { grid-column: 1 / -1; justify-self: center; width: 40px; height: 4px; margin-bottom: 4px; border-radius: 2px; background: #d9e0e7; }
+  .product-compatibility-modal > header.compat-sheet-header > .compat-sheet-badge { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 16px; color: #0056bf; background: #eaf2ff; }
+  .product-compatibility-modal > header.compat-sheet-header > .compat-sheet-badge svg { width: 27px; height: 27px; }
+  .compat-sheet-title { min-width: 0; display: grid; gap: 2px; }
+  .product-compatibility-modal > header.compat-sheet-header .compat-sheet-title h2 { margin: 0; color: #0f172a; font-size: 20px; font-weight: 800; line-height: 1.2; }
+  .product-compatibility-modal > header.compat-sheet-header .compat-sheet-title p { margin: 0; color: #64748b; font-size: 13px; line-height: 17px; }
+  .product-compatibility-modal > header.compat-sheet-header > .compat-sheet-close { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 1px solid #d9e0e7; border-radius: 10px; color: #64748b; background: #fff; cursor: pointer; }
+  .product-compatibility-modal > header.compat-sheet-header > .compat-sheet-close svg { width: 24px; height: 24px; }
+  .compat-sheet-tools { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; }
+  .compat-sheet-search { flex: 1; min-width: 0; min-height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid #d9e0e7; border-radius: 10px; background: #fff; }
+  .compat-sheet-search:focus-within { border-color: #0056bf; box-shadow: 0 0 0 3px rgba(0, 86, 191, .12); }
+  .compat-sheet-search svg { width: 20px; height: 20px; flex: 0 0 auto; color: #64748b; }
+  .compat-sheet-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #0f172a; font-size: 16px; }
+  .compat-sheet-filter { height: 48px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid #bfd6f7; border-radius: 12px; color: #0056bf; background: #f5f9ff; font-size: 13px; font-weight: 800; cursor: pointer; }
+  .compat-sheet-filter.is-active { border-color: #0056bf; background: #eaf2ff; }
+  .compat-sheet-filter svg { width: 20px; height: 20px; }
+  .compat-sheet-brands { grid-column: 1 / -1; display: flex; gap: 7px; padding: 2px 0; overflow-x: auto; scrollbar-width: none; }
+  .compat-sheet-brands::-webkit-scrollbar { display: none; }
+  .compat-sheet-brands button { flex: 0 0 auto; min-height: 32px; padding: 0 12px; border: 1px solid #d9e0e7; border-radius: 16px; color: #64748b; background: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .compat-sheet-brands button.is-active { border-color: #bfd6f7; color: #0056bf; background: #eaf2ff; }
+  .compat-sheet-results { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .compat-sheet-results strong { flex: 1; color: #64748b; font-size: 13px; font-weight: 800; }
+  .compat-sheet-results button { min-width: 126px; height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; border: 1px solid #d9e0e7; border-radius: 9px; color: #0056bf; background: #fff; font-size: 12px; font-weight: 800; cursor: pointer; }
+  .compat-sheet-results button svg { width: 17px; height: 17px; }
+
+  /* Verificacion por patente (solo existe en la web): compacta, entre la cabecera y la lista. */
+  .product-compatibility-modal-controls.is-sheet { padding-bottom: 12px; border-bottom: 1px solid #eef2f7; }
+  .product-compatibility-modal-controls.is-sheet .product-compatibility-plate-check { grid-template-columns: minmax(0, 1fr) auto; margin: 0 18px; padding: 8px; }
+  .product-compatibility-modal-controls.is-sheet .product-compatibility-plate-check input { font-size: 16px; }
+  .product-compatibility-modal-controls.is-sheet .product-compatibility-plate-error,
+  .product-compatibility-modal-controls.is-sheet .product-compatibility-plate-banner { margin: 10px 18px 0; }
+
+  .product-compatibility-modal:not(.has-table) .product-compatibility-modal-list { min-height: 0; padding: 12px 18px calc(18px + env(safe-area-inset-bottom)); gap: 9px; background: #fff; }
+  .product-compatibility-modal-list article.compat-sheet-card { flex: 0 0 auto; display: block; padding: 0; gap: 0; border: 1px solid #d9e0e7; border-radius: 12px; background: #fff; box-shadow: 0 2px 8px rgba(15, 23, 42, .06); }
+  .product-compatibility-modal-list article.compat-sheet-card.is-expanded { border-color: #bfd6f7; }
+  .product-compatibility-modal-list article.compat-sheet-card.is-plate-match { border: 2px solid #0056bf; background: #fff; }
+  .compat-sheet-card-summary { width: 100%; min-height: 94px; display: flex; align-items: center; gap: 11px; padding: 12px; border: 0; background: transparent; text-align: left; cursor: pointer; }
+  .compat-sheet-logo { width: 62px; height: 62px; flex: 0 0 62px; display: grid; place-items: center; border: 1px solid #d9e0e7; border-radius: 12px; background: #fff; }
+  .compat-sheet-logo .vehicle-brand-icon { width: 46px; height: 46px; border: 0; background: transparent; font-size: 15px; cursor: inherit; }
+  .compat-sheet-logo .vehicle-brand-icon img { width: 100%; height: 100%; }
+  .compat-sheet-card-copy { flex: 1; min-width: 0; display: grid; gap: 3px; }
+  .compat-sheet-card-copy > strong { overflow: hidden; color: #0f172a; font-size: 16px; font-weight: 800; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }
+  .compat-sheet-card-copy > em { overflow: hidden; color: #64748b; font-size: 12px; font-style: normal; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+  .compat-sheet-badges { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 2px; }
+  .compat-sheet-badges b { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 7px; font-size: 11px; font-weight: 700; line-height: 14px; }
+  .compat-sheet-badges b svg { width: 13px; height: 13px; }
+  .compat-sheet-badges .is-year { color: #0056bf; background: #eaf2ff; }
+  .compat-sheet-badges .is-ok { color: #18a957; background: #eafbf1; }
+  .compat-sheet-badges .is-mine { color: #fff; background: #0056bf; }
+  .compat-sheet-chevron { width: 21px; height: 21px; flex: 0 0 auto; color: #0056bf; }
+  .compat-sheet-card-body { display: grid; gap: 9px; padding: 11px 12px 12px; border-top: 1px solid #d9e0e7; border-radius: 0 0 12px 12px; background: #f8fafc; }
+  .compat-sheet-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .compat-sheet-details > div { min-height: 51px; display: grid; align-content: start; gap: 2px; padding: 8px; border: 1px solid #d9e0e7; border-radius: 9px; background: #fff; }
+  .compat-sheet-details span { color: #64748b; font-size: 12px; }
+  .compat-sheet-details strong { color: #0f172a; font-size: 12px; font-weight: 800; line-height: 16px; overflow-wrap: anywhere; }
+  .compat-sheet-version { display: flex; align-items: center; gap: 9px; padding: 9px; border: 1px solid #eaf2ff; border-radius: 9px; background: #fff; }
+  .compat-sheet-version > svg { width: 17px; height: 17px; flex: 0 0 auto; color: #0056bf; }
+  .compat-sheet-version > span { min-width: 0; display: grid; gap: 1px; }
+  .compat-sheet-version strong { color: #0f172a; font-size: 12px; font-weight: 800; line-height: 16px; }
+  .compat-sheet-version em { color: #64748b; font-size: 12px; font-style: normal; }
+  .compat-sheet-empty { display: grid; justify-items: center; gap: 5px; padding: 28px 0; color: #64748b; text-align: center; }
+  .compat-sheet-empty svg { width: 30px; height: 30px; }
+  .compat-sheet-empty strong { color: #0f172a; font-size: 14px; }
+  .compat-sheet-empty span { font-size: 12px; }
+  .compat-sheet-help { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #bfd6f7; border-radius: 12px; background: #f5f9ff; }
+  .compat-sheet-help > svg { width: 23px; height: 23px; flex: 0 0 auto; color: #0056bf; }
+  .compat-sheet-help > span { flex: 1; min-width: 0; display: grid; gap: 2px; }
+  .compat-sheet-help strong { color: #0056bf; font-size: 13px; font-weight: 800; }
+  .compat-sheet-help em { color: #64748b; font-size: 12px; font-style: normal; line-height: 16px; }
+  .compat-sheet-help button { min-height: 38px; flex: 0 0 auto; padding: 0 10px; border: 1px solid #0056bf; border-radius: 9px; color: #0056bf; background: #fff; font-size: 12px; font-weight: 800; cursor: pointer; }
+  .compat-sheet-disclaimer { display: flex; align-items: flex-start; justify-content: center; gap: 7px; margin: 0; padding: 6px 8px 0; color: #64748b; font-size: 12px; line-height: 16px; text-align: left; }
+  .compat-sheet-disclaimer svg { width: 17px; height: 17px; flex: 0 0 auto; }
+}
+@keyframes compat-sheet-in { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }

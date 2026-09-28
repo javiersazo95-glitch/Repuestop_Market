@@ -4694,3 +4694,33 @@
 @media (max-width: 480px) {
   .recharge-doc-choice { grid-template-columns: 1fr; }
 }
+
+/* Estado de acreditacion en el celular. El panel se anclaba al sello con 320px fijos y,
+   como el sello queda en la mitad derecha de la fila, se salia de la pantalla y tapaba los
+   accesos de abajo. Aqui el panel se ancla a la fila de acciones completa: se abre justo
+   debajo y del mismo ancho, sin cortarse ni salirse de la pantalla. Solo celular. */
+@media (max-width: 768px) {
+  .ads-mgmt-actions-row { position: relative; }
+  .ads-mgmt-actions-row .acc-pill-wrap { position: static; }
+  .ads-mgmt-actions-row .acc-pill { width: 100%; justify-content: center; min-height: 44px; }
+  .ads-mgmt-actions-row .acc-pill > svg:last-child { margin-left: auto; }
+  .ads-mgmt-actions-row .acc-pill-txt strong { font-size: 13px; }
+  .ads-mgmt-actions-row .acc-pill-txt em { font-size: 11px; }
+  .ads-mgmt-actions-row .acc-pill-pop {
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+    padding: 14px;
+    gap: 12px;
+    border-radius: 16px;
+    box-shadow: 0 22px 50px -18px rgba(15, 23, 42, .4);
+  }
+  .ads-mgmt-actions-row .acc-pill-rows { gap: 11px; padding: 12px; }
+  .ads-mgmt-actions-row .acc-pill-row > svg { flex-shrink: 0; margin-top: 2px; }
+  .ads-mgmt-actions-row .acc-pill-row span { font-size: 11px; }
+  .ads-mgmt-actions-row .acc-pill-row strong { font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+  .ads-mgmt-actions-row .acc-pill-desc { font-size: 13px; }
+  .ads-mgmt-actions-row .acc-pill-cta { width: 100%; min-height: 44px; font-size: 13.5px; }
+}
