@@ -1487,6 +1487,7 @@ export default function OrderDetailView({
                             {[order.vehiculoMarca, order.vehiculoModelo, order.vehiculoVersion, order.vehiculoAnio].filter(Boolean).join(' ')}
                           </strong>
                           {order.vehiculoPatente ? ` · Patente ${order.vehiculoPatente}` : ''}
+                          {order.vehiculoPatente || order.vehiculoChasis ? ` · Chasis ${order.vehiculoChasis || 'no identificado'}` : ''}
                         </span>
                       ) : (
                         <span>Vehículo: sin información</span>

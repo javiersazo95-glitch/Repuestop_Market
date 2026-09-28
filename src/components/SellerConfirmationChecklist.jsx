@@ -36,6 +36,15 @@ function descripcionVehiculo(order) {
   return `${partes.join(' ')}${version}${patente ? ` · ${patente}` : ''}`;
 }
 
+// Patente y chasis del vehículo, aunque el comprador solo haya ingresado la patente: el
+// backend guarda el chasis del vehículo consultado (`vehiculoChasis`) y con él se valida la pieza.
+function identificacionVehiculo(order) {
+  if (order?.vehiculoPatente) {
+    return `Patente ${order.vehiculoPatente} · Chasis ${order.vehiculoChasis || 'no identificado'}`;
+  }
+  return order?.vehiculoChasis ? `Chasis ${order.vehiculoChasis}` : '';
+}
+
 function horaConfirmacion(fecha) {
   const d = fecha ? new Date(fecha) : null;
   if (!d || Number.isNaN(d.getTime())) return '';
@@ -207,6 +216,11 @@ export default function SellerConfirmationChecklist({
               {order?.vehiculoOrigen && order.vehiculoOrigen !== 'NO_INFORMADO'
                 ? <>Vehículo del comprador: <strong>{descripcionVehiculo(order)}</strong></>
                 : 'Sin información del vehículo. Confirma según tu criterio.'}
+              {identificacionVehiculo(order) && (
+                <small className="seller-checklist-vehicle-id" style={{ display: 'block', marginTop: 2, userSelect: 'all' }}>
+                  {identificacionVehiculo(order)}
+                </small>
+              )}
             </span>
           </div>
 

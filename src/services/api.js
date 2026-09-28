@@ -976,12 +976,13 @@ export async function sendConversationMessageApi(conversationId, texto) {
  * El backend la guarda como datos y publica en el chat el mensaje en lista. Devuelve la
  * conversación con su `solicitud`.
  */
-export async function sendQuoteRequestApi(conversationId, { cantidad, metodoEnvio, chasis, nota }) {
+export async function sendQuoteRequestApi(conversationId, { cantidad, metodoEnvio, patente, chasis, nota }) {
   return fetchApi(`/conversaciones/${conversationId}/solicitud`, {
     method: 'POST',
     body: JSON.stringify({
       cantidad: Number(cantidad) || 1,
       metodoEnvio,
+      patente: patente?.trim() || null,
       chasis: chasis?.trim() || null,
       nota: nota?.trim() || null,
     }),

@@ -8,7 +8,7 @@ import {
   createConversationApi, getBuyerConversationsApi, resolveMediaUrl, sendQuoteRequestApi,
 } from '../services/api';
 import {
-  isQuoteExpired, QUOTE_DELIVERY_OPTIONS, shippingCodeFromText,
+  isQuoteExpired, isValidPlate, normalizePlate, QUOTE_DELIVERY_OPTIONS, shippingCodeFromText,
 } from '../utils/quoteFlow';
 import { buyerProfilePath } from '../routes/paths';
 import { parseShippingMethods, resolveShippingService, shippingMethodsForLocation } from '../data/shippingMethods';
@@ -46,10 +46,20 @@ async function needsNewQuoteThread(user, providerId, productId) {
   }
 }
 
+function vehicleIdentification(value, activeVehicle) {
+  const typed = String(value || '').trim();
+  if (isValidPlate(typed)) {
+    const plate = normalizePlate(typed);
+    const sameVehicle = normalizePlate(activeVehicle?.patente) === plate;
+    return { patente: plate, chasis: sameVehicle ? (activeVehicle?.vin || activeVehicle?.chasis || '') : '' };
+  }
+  return { patente: activeVehicle?.patente && typed === (activeVehicle?.vin || '') ? activeVehicle.patente : '', chasis: typed };
+}
+
 const initialForm = (activeVehicle) => ({
   quantity: 1,
   shippingMethod: '',
-  chassis: activeVehicle?.vin || activeVehicle?.patente || '',
+  chassis: activeVehicle?.patente || activeVehicle?.vin || '',
   notes: '',
 });
 
@@ -124,7 +134,9 @@ export default function QuotationRequestModal({
       const saved = await sendQuoteRequestApi(createdConversation.id, {
         cantidad: formData.quantity,
         metodoEnvio: shippingCodeFromText(formData.shippingMethod) || formData.shippingMethod,
-        chasis: formData.chassis,
+        // Con la patente, el backend completa el chasis y ambos se muestran en la cotización al
+        // comprador y a la tienda. Si escribió un chasis/VIN, va como chasis.
+        ...vehicleIdentification(formData.chassis, activeVehicle),
         nota: formData.notes,
       });
       setConversation({ ...createdConversation, ...(saved || {}) });
@@ -187,7 +199,7 @@ export default function QuotationRequestModal({
                 <label><span>Método de envío *</span><select value={formData.shippingMethod} onChange={(event) => updateField('shippingMethod', event.target.value)} required><option value="">Selecciona una opción</option>{shippingOptions.map((option) => <option key={option}>{option}</option>)}</select><small>{shippingOptions.length ? 'Opciones disponibles según las comunas de comprador y tienda.' : 'La tienda no tiene un método compatible para esta ubicación.'}</small></label>
               </div>
 
-              <label><span className="quote-request-label-with-help">Patente o chasis {requiresChassis ? '*' : '(opcional)'} <CircleHelp size={16} /></span><input value={formData.chassis} onChange={(event) => updateField('chassis', event.target.value.toUpperCase())} required={requiresChassis} maxLength={17} placeholder="Ej. BBCL12 o VIN" /></label>
+              <label><span className="quote-request-label-with-help">Patente o chasis {requiresChassis ? '*' : '(opcional)'} <CircleHelp size={16} /></span><input value={formData.chassis} onChange={(event) => updateField('chassis', event.target.value.toUpperCase())} required={requiresChassis} maxLength={17} placeholder="Ej. BBCL12 o VIN" /><small>Con la patente completamos el chasis para que la tienda valide el repuesto.</small></label>
               <label><span>Nota para el vendedor (opcional)</span><textarea rows="3" value={formData.notes} onChange={(event) => updateField('notes', event.target.value)} maxLength="500" placeholder="Marca preferida, urgencia u otra información útil..." /><small className="quote-request-counter">{formData.notes.length}/500</small></label>
 
               {submitError && <div className="modal-form-error"><AlertCircle size={16} /><span>{submitError}</span></div>}

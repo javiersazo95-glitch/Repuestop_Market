@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Calendar, Car, CheckCircle2, X, AlertCircle, ShieldCheck, MapPin,
@@ -12,6 +12,14 @@ import {
   getAgendaSummaryText, formatAgendaDateLong
 } from '../../data/agendaConfig';
 import { blocksAppointmentSlot } from '../../data/automotiveAdsData';
+import { searchVehicleByPatenteApi } from '../../services/api';
+import { isValidPlate, normalizePlate } from '../../utils/quoteFlow';
+
+/** "Toyota Yaris 2020", listo para el campo de marca, modelo y año. */
+function vehicleLabel(vehicle) {
+  return [vehicle?.marca, vehicle?.modelo, vehicle?.anio > 0 ? String(vehicle.anio) : '']
+    .filter(Boolean).join(' ').trim();
+}
 import {
   fetchAdAppointments, createAdAppointment, notifyAppointmentCreated, adErrorMessage
 } from '../../services/adsStorage';
@@ -47,12 +55,60 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isR
   const [userPhone, setUserPhone] = useState(user?.phone || user?.telefono || '');
   const [vehiclePatent, setVehiclePatent] = useState('');
   const [vehicleModel, setVehicleModel] = useState('');
+  // Detección por patente, igual que en la app: 'idle' | 'searching' | 'found' | 'not-found'.
+  const [plateLookup, setPlateLookup] = useState('idle');
+  const [detectedPlate, setDetectedPlate] = useState('');
+  // Último texto que puso la detección: se reemplaza si cambia la patente, pero no lo que
+  // haya escrito el usuario.
+  const autoFilledVehicle = useRef('');
   const [notes, setNotes] = useState('');
   // Solo hace falta si el taller va donde está el vehículo (igual que en la app).
   const [serviceAddress, setServiceAddress] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [confirmedAppointment, setConfirmedAppointment] = useState(null);
+
+  /**
+   * Al escribir una patente válida se consulta el vehículo (mismo endpoint que el buscador por
+   * patente) y se completa "Marca, modelo y año". Si no se encuentra, el campo queda para
+   * llenarlo a mano.
+   */
+  useEffect(() => {
+    const plate = normalizePlate(vehiclePatent);
+    if (!isValidPlate(plate)) {
+      setPlateLookup('idle');
+      return undefined;
+    }
+    if (plate === detectedPlate) {
+      setPlateLookup('found');
+      return undefined;
+    }
+
+    let active = true;
+    setPlateLookup('searching');
+    const timer = window.setTimeout(() => {
+      searchVehicleByPatenteApi(plate)
+        .then((vehicle) => {
+          if (!active) return;
+          const label = vehicleLabel(vehicle);
+          if (!vehicle?.marca || !label) {
+            setPlateLookup('not-found');
+            return;
+          }
+          setDetectedPlate(plate);
+          setPlateLookup('found');
+          setVehicleModel((current) => (
+            !current.trim() || current === autoFilledVehicle.current ? label : current
+          ));
+          autoFilledVehicle.current = label;
+        })
+        .catch(() => { if (active) setPlateLookup('not-found'); });
+    }, 600);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [vehiclePatent, detectedPlate]);
 
   const adId = adOrCompany?.id;
   const isOwnAd = adOrCompany ? isOwn(adOrCompany) : false;
@@ -413,6 +469,15 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isR
                       value={vehiclePatent}
                       onChange={(e) => setVehiclePatent(e.target.value.toUpperCase())}
                     />
+                    {plateLookup === 'searching' && (
+                      <small className="ad-upload-hint"><Loader2 size={12} className="spin-icon" /> Buscando vehículo…</small>
+                    )}
+                    {plateLookup === 'found' && (
+                      <small className="ad-upload-hint"><CheckCircle2 size={12} /> Vehículo detectado: {vehicleModel}</small>
+                    )}
+                    {plateLookup === 'not-found' && (
+                      <small className="ad-upload-hint">No encontramos esa patente. Escribe la marca, modelo y año.</small>
+                    )}
                   </div>
 
                   <div className="booking-field">

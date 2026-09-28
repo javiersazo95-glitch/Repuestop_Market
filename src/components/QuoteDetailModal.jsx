@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowLeft, BadgeCheck, BadgeDollarSign, CalendarDays, CalendarClock,
+  AlertTriangle, ArrowLeft, BadgeCheck, BadgeDollarSign, CalendarDays, CalendarClock, Car,
   CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, ClipboardList, CreditCard, Download, ExternalLink, Eye, FileText, Flag,
   Headphones, Image as ImageIcon, Info, Loader2, Lock, Maximize2, MessageSquare, MoreHorizontal, Package, Paperclip,
   Pencil, Send, ShieldCheck, ShoppingCart, Store, Tag, Trash2, Truck, X,
@@ -18,7 +18,7 @@ import { adaptStore } from '../services/adapters';
 import { compressImageFile } from '../utils/imageCompression';
 import CommissionSummaryCard from './CommissionSummaryCard';
 import {
-  deliveryTermsLabel, isQuoteExpired, quantityFromLabel, quoteChargeBase,
+  deliveryTermsLabel, isQuoteExpired, isValidPlate, normalizePlate, quantityFromLabel, quoteChargeBase,
   quoteExpirationLabel, quoteShippingCost as shippingCostOfQuote, resolveQuoteRequest, shippingCodeFromText,
   QUOTE_AVAILABILITY_OPTIONS, QUOTE_DELIVERY_OPTIONS, QUOTE_SHIPPING_LABELS,
   QUOTE_VALIDITY_OPTIONS, QUOTE_WARRANTY_OPTIONS,
@@ -355,7 +355,11 @@ export default function QuoteDetailModal({
       storeEmail: details?.email || (mode === 'seller' ? user?.email : ''),
       storeHours: details?.horario || details?.hours || '',
       buyerName,
-      vehicleConsulted: requested.requestedChassis,
+      // Corto para que quepa en la línea "Vehículo:" del PDF: "BBCL12 · VIN 9BWZZZ377VT004251".
+      vehicleConsulted: [
+        requested.requestedPlate,
+        requested.requestedChassis ? `VIN ${requested.requestedChassis}` : '',
+      ].filter(Boolean).join(' · '),
       storeLogoUrl: details?.logoUrl || storePhoto,
     });
   };
@@ -451,7 +455,7 @@ export default function QuoteDetailModal({
     setModificationForm({
       quantity: quantityFromLabel(requested.requestedQty),
       shippingMethod: matchedShipping || '',
-      chassis: requested.requestedChassis || '',
+      chassis: requested.requestedPlate || requested.requestedChassis || '',
       notes: requested.requestedNotes || '',
     });
     setModificationError('');
@@ -476,7 +480,10 @@ export default function QuoteDetailModal({
       const saved = await sendQuoteRequestApi(quote.id, {
         cantidad: modificationForm.quantity,
         metodoEnvio: shippingCodeFromText(modificationForm.shippingMethod) || modificationForm.shippingMethod,
-        chasis: modificationForm.chassis,
+        // Una patente se manda como patente (el backend completa el chasis); otro valor, como chasis.
+        ...(isValidPlate(modificationForm.chassis)
+          ? { patente: normalizePlate(modificationForm.chassis), chasis: normalizePlate(modificationForm.chassis) === requested.requestedPlate ? requested.requestedChassis : '' }
+          : { patente: '', chasis: modificationForm.chassis }),
         nota: modificationForm.notes,
       });
       if (saved?.solicitud) setSolicitud(saved.solicitud);
@@ -565,7 +572,8 @@ export default function QuoteDetailModal({
             <button type="button" className="quote-ws-product-mini" onClick={openProduct}>{productImage ? <img src={productImage} alt={productName} /> : <Package size={25} />}<div><small>Producto cotizado</small><strong>{productName}</strong><span>Producto #{quote.productoId || '—'}</span></div><ChevronRight size={18} /></button>
             <DataRow icon={Package} label="Cantidad solicitada" value={requested.requestedQty} />
             <DataRow icon={Truck} label="Método de envío" value={requested.requestedDeliveryTerms || 'Por confirmar'} />
-            <DataRow icon={ShieldCheck} label="Patente o chasis" value={requested.requestedChassis || 'No informado'} />
+            <DataRow icon={Car} label="Patente" value={requested.requestedPlate || 'No informada'} />
+            <DataRow icon={ShieldCheck} label="Chasis" value={requested.requestedChassis || (requested.requestedPlate ? 'No identificado' : 'No informado')} />
             <DataRow icon={MessageSquare} label="Nota del comprador" value={requested.requestedNotes || 'Sin nota adicional'} />
           </section>
         </aside>
@@ -737,7 +745,8 @@ export default function QuoteDetailModal({
                   <span><small>Producto</small><b>{productName}</b></span>
                   <span><small>Cantidad solicitada</small><b>{requested.requestedQty}</b></span>
                   <span><small>Método de envío solicitado</small><b>{requested.requestedDeliveryTerms || 'Por confirmar'}</b></span>
-                  <span><small>Chasis del vehículo</small><b>{requested.requestedChassis || 'No informado'}</b></span>
+                  <span><small>Patente</small><b>{requested.requestedPlate || 'No informada'}</b></span>
+                  <span><small>Chasis del vehículo</small><b>{requested.requestedChassis || (requested.requestedPlate ? 'No identificado' : 'No informado')}</b></span>
                   <span><small>Nota del comprador</small><b>{requested.requestedNotes || 'Sin nota adicional'}</b></span>
                 </div>
               </div>

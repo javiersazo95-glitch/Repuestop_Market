@@ -69,20 +69,21 @@ function quantityLabel(amount) {
 }
 
 /** El mismo mensaje en lista que publica el backend (se usa sólo como respaldo local). */
-export function buildQuoteRequestMessage({ quantity, shippingMethod, chassis, notes }, productName = '') {
+export function buildQuoteRequestMessage({ quantity, shippingMethod, plate, chassis, notes }, productName = '') {
   const amount = Math.max(1, Number(quantity) || 1);
   const code = shippingCodeFromText(shippingMethod);
   const lines = ['Solicitud de cotización'];
   if (productName?.trim()) lines.push(`• Producto: ${productName.trim()}`);
   lines.push(`• Unidades: ${quantityLabel(amount)}`);
   lines.push(`• Método de envío: ${QUOTE_SHIPPING_LABELS[code] || shippingMethod}`);
+  if (plate?.trim()) lines.push(`• Patente: ${plate.trim().toUpperCase()}`);
   lines.push(`• Chasis: ${chassis?.trim() || 'No informado'}`);
   if (notes?.trim()) lines.push(`• Nota: ${notes.trim()}`);
   return lines.join('\n');
 }
 
 function untilFieldEnd(value = '') {
-  const end = value.search(/\.\s*(?:chasis|nota):|\.\s*$/i);
+  const end = value.search(/\.\s*(?:patente|chasis|nota):|\.\s*$/i);
   return (end >= 0 ? value.slice(0, end) : value).trim();
 }
 
@@ -99,7 +100,7 @@ export function parseQuoteRequestMessage(message = '') {
   if (!isQuoteRequestMessage(messageText)) {
     return {
       requestedQty: '1 unidad', requestedDeliveryTerms: '', requestedShippingCode: '',
-      hasRequestedDeliveryTerms: false, requestedChassis: '', requestedNotes: messageText,
+      hasRequestedDeliveryTerms: false, requestedPlate: '', requestedChassis: '', requestedNotes: messageText,
     };
   }
   const qty = Number(messageText.match(/(?:solicitud de cotizaci[oó]n por|unidades:)\s*(\d{1,4})/i)?.[1]);
@@ -113,6 +114,7 @@ export function parseQuoteRequestMessage(message = '') {
     requestedDeliveryTerms: QUOTE_SHIPPING_LABELS[code] || '',
     requestedShippingCode: code,
     hasRequestedDeliveryTerms: Boolean(code),
+    requestedPlate: untilFieldEnd(messageText.match(/patente:\s*([^\n]*)/i)?.[1] || ''),
     requestedChassis: chassis,
     requestedNotes: messageText.match(/nota:\s*([\s\S]*)/i)?.[1]?.trim() || '',
   };
@@ -130,6 +132,7 @@ export function resolveQuoteRequest(solicitud, messages = [], fallbackText = '')
       requestedDeliveryTerms: solicitud.metodoEnvioEtiqueta || QUOTE_SHIPPING_LABELS[code] || '',
       requestedShippingCode: code,
       hasRequestedDeliveryTerms: Boolean(code),
+      requestedPlate: solicitud.patente || '',
       requestedChassis: solicitud.chasis || '',
       requestedNotes: solicitud.nota || '',
     };
@@ -163,6 +166,17 @@ export function quoteChargeBase(quote) {
   if (!quote) return 0;
   if (typeof quote.totalConDespacho === 'number' && quote.totalConDespacho > 0) return quote.totalConDespacho;
   return quoteProductsTotal(quote) + quoteShippingCost(quote);
+}
+
+/** Patente chilena: AB1234, ABCD12, AB123 o ABC12. */
+export const PLATE_PATTERN = /^([A-Z]{2}[0-9]{4}|[A-Z]{4}[0-9]{2}|[A-Z]{2}[0-9]{3}|[A-Z]{3}[0-9]{2})$/i;
+
+export function normalizePlate(value) {
+  return String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+export function isValidPlate(value) {
+  return PLATE_PATTERN.test(normalizePlate(value));
 }
 
 /** Condición de entrega sin el "(costo: $X)" que agrega el backend. */
