@@ -1476,7 +1476,10 @@ export default function OrderDetailView({
                     muestra para que el vendedor pueda mirarlo antes de despachar, sin el
                     checklist de confirmacion de por medio (docs/planes/
                     plan_validacion_compatibilidad_pedido.md). */}
-                {isSeller && (() => {
+                {/* El vehículo contra el que se confirmó la compra lo ven ambos: si hay un reclamo
+                    por compatibilidad, comprador y tienda revisan los mismos datos. A la tienda la
+                    patente le llega enmascarada desde el backend (dato personal del comprador). */}
+                {(isSeller || (order.vehiculoOrigen && order.vehiculoOrigen !== 'NO_INFORMADO')) && (() => {
                   const tieneVehiculo = order.vehiculoOrigen && order.vehiculoOrigen !== 'NO_INFORMADO';
                   return (
                     <div className={`order-delivery-summary-row ${tieneVehiculo ? 'order-vehicle-row' : 'order-vehicle-row is-empty'}`}>

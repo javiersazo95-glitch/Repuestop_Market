@@ -553,3 +553,103 @@
   .profile-dashboard .case-row.seller-chat-row { grid-template-columns: 40px minmax(0, 1fr) auto; }
   .profile-dashboard .seller-chat-thumb { width: 40px; height: 40px; }
 }
+
+/* ---------------------------------------------------------------------------
+   DETALLE DEL PEDIDO EN MOVIL: tarjetas ordenadas (solo visual, 2026-09-28)
+   Mismo criterio que la app: estado arriba, luego que se compro, como llega y
+   con que vehiculo, y al final el desglose de pago. Todas las tarjetas comparten
+   superficie blanca, borde, radio, sombra suave y una cabecera con icono y
+   separador, sobre un fondo gris claro que las despega. El orden se cambia con
+   `order` de flexbox: el HTML (y el orden de lectura en escritorio) no cambia.
+   --------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .order-page-body,
+  .order-modal-body {
+    background: #f5f7fb;
+    gap: 12px !important;
+    padding: 12px !important;
+  }
+
+  .order-page-body > .order-timeline-card,
+  .order-modal-body > .order-timeline-card { order: 1; }
+  .order-page-body > .order-products-block,
+  .order-modal-body > .order-products-block { order: 2; }
+  .order-page-body > .order-delivery-summary,
+  .order-modal-body > .order-delivery-summary { order: 3; }
+  .order-page-body > .financial-summary-block,
+  .order-modal-body > .financial-summary-block { order: 4; }
+
+  .order-page-body > .order-timeline-card,
+  .order-modal-body > .order-timeline-card,
+  .order-page-body > .details-card-block,
+  .order-modal-body > .details-card-block {
+    background: #ffffff;
+    border: 1px solid var(--border-subtle, #e2e8f0);
+    border-radius: 14px;
+    padding: 14px !important;
+    gap: 10px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  }
+
+  /* Cabecera comun de cada tarjeta: icono en pastilla, titulo y separador. */
+  .order-page-body > .order-timeline-card > .section-subtitle,
+  .order-modal-body > .order-timeline-card > .section-subtitle,
+  .order-page-body > .details-card-block > .section-subtitle,
+  .order-modal-body > .details-card-block > .section-subtitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eef2f7;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0;
+    color: var(--text-primary, #0f172a);
+  }
+  .order-page-body > .details-card-block > .section-subtitle > svg,
+  .order-modal-body > .details-card-block > .section-subtitle > svg {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    padding: 7px;
+    border-radius: 8px;
+    background: #e8f0fc;
+    color: var(--color-brand-blue, #0056bf);
+    box-sizing: border-box;
+  }
+
+  /* Filas de entrega y vehiculo: una por linea, icono alineado arriba, texto que corta
+     en cualquier punto (direcciones y chasis largos) sin desbordar la tarjeta. */
+  .order-delivery-summary-rows { gap: 9px; }
+  .order-delivery-summary-row {
+    align-items: flex-start;
+    font-size: 13px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+  .order-delivery-summary-row > svg { flex: 0 0 auto; margin-top: 2px; color: #64748b; }
+  .order-delivery-summary-row.order-vehicle-row {
+    padding: 10px;
+    border-radius: 10px;
+    background: #f8fafc;
+  }
+
+  /* Bloques por tienda dentro de "Tu compra": misma separacion interna. */
+  .order-store-blocks { gap: 10px; }
+  .order-store-block { padding: 12px; gap: 10px; border-radius: 12px; }
+
+  /* Desglose de pago: filas parejas y el total destacado al final. */
+  .financial-rows-list { gap: 8px; }
+  .financial-row { font-size: 13px; }
+
+  /* Avisos que siguen al detalle (cancelacion, devolucion, plazo de pago) con el mismo
+     margen lateral que las tarjetas. */
+  .order-cancellation-block,
+  .order-refund-status-block,
+  .order-payment-window.in-modal {
+    margin-left: 12px;
+    margin-right: 12px;
+    border-radius: 12px;
+  }
+}

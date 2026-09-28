@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, Download, FileText, Headphones, Image as ImageIcon,
+  AlertTriangle, ArrowLeft, Car, CheckCircle2, ChevronDown, ChevronRight, Download, FileText, Headphones, Image as ImageIcon,
   Info, Loader2, Lock, Maximize2, MessageSquare, Package, Paperclip, RefreshCw, Scale, Send, ShieldAlert, Store, User, Wallet, X,
 } from 'lucide-react';
 import {
@@ -15,6 +15,7 @@ import { claimReasonLabel } from '../data/claimReason';
 import { profilePath } from '../routes/paths';
 import compressImageFile from '../utils/imageCompression';
 import ChatImagePreview from './ChatImagePreview';
+import SaleReceiptViewerModal from './SaleReceiptViewerModal';
 
 const MAX_EVIDENCE_FILES = 5;
 const MAX_REASON = 150;
@@ -277,6 +278,9 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   // Modal con el motivo y la descripción del reclamo (se abre desde la cabecera del chat,
   // igual que "Ver detalle del reclamo" en la app móvil).
   const [showClaimDetail, setShowClaimDetail] = useState(false);
+  // Vehículo confirmado en la compra y boleta de esta tienda, iguales para ambas partes.
+  const [showVehicleReceipt, setShowVehicleReceipt] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   const [showResolutionDetail, setShowResolutionDetail] = useState(false);
   // Resumen del caso plegado dentro del hilo del mediador (motivo, evidencia).
   const [mediatorSummaryOpen, setMediatorSummaryOpen] = useState(false);
@@ -704,6 +708,19 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
         </span>
 
         <span className="dispute-chat-head-right">
+          <button
+            type="button"
+            className="dispute-chat-refresh dispute-vehicle-button"
+            onClick={() => setShowVehicleReceipt(true)}
+            title="Vehículo y boleta de la compra"
+            aria-label="Ver vehículo y boleta de la compra"
+            style={{ position: 'relative' }}
+          >
+            <Car size={15} />
+            {chat?.boletaVentaDisponible && (
+              <span aria-hidden="true" style={{ position: 'absolute', top: 2, right: 2, width: 7, height: 7, borderRadius: 4, background: '#16a34a' }} />
+            )}
+          </button>
           <span className={`dispute-seal seal-${statusTone}`}>{MEDIATION_STATUS_LABELS[estado] || estado || (reclamoResuelto ? 'Resuelto con la tienda' : 'En curso')}</span>
           <button
             type="button"
@@ -1175,6 +1192,67 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
           mode={mode}
           codigo={codigo}
           onClose={() => setShowResolutionDetail(false)}
+        />
+      )}
+
+      {showVehicleReceipt && typeof document !== 'undefined' && createPortal(
+        <div className="dispute-dialog-backdrop" onClick={() => setShowVehicleReceipt(false)}>
+          <section
+            className="dispute-dialog dispute-claim-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Vehículo y boleta de la compra"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header>
+              <div>
+                <small>Pedido {codigo}</small>
+                <h2>Vehículo y boleta de la compra</h2>
+              </div>
+              <button type="button" aria-label="Cerrar" onClick={() => setShowVehicleReceipt(false)}><X size={16} /></button>
+            </header>
+            <div className="dispute-claim-dialog-body">
+              <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>
+                Lo ven el comprador y la tienda, para revisar la compatibilidad con los mismos datos.
+              </p>
+              <div className="dispute-vehicle-card" style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, display: 'grid', gap: 6 }}>
+                <small style={{ fontWeight: 700, color: '#0066ff', letterSpacing: '.04em' }}>VEHÍCULO CONFIRMADO</small>
+                {(chat?.vehiculoPatente || chat?.vehiculoChasis || chat?.vehiculoMarca || chat?.vehiculoModelo) ? (
+                  <>
+                    <span><small style={{ color: '#64748b' }}>Vehículo</small><br /><strong>{[chat.vehiculoMarca, chat.vehiculoModelo, chat.vehiculoVersion, chat.vehiculoAnio].filter(Boolean).join(' ') || 'Marca y modelo no identificados'}</strong></span>
+                    <span><small style={{ color: '#64748b' }}>Patente</small><br /><strong>{chat.vehiculoPatente || 'No informada'}</strong></span>
+                    <span><small style={{ color: '#64748b' }}>Chasis</small><br /><strong style={{ userSelect: 'all' }}>{chat.vehiculoChasis || 'No identificado'}</strong></span>
+                    {mode === 'seller' && (
+                      <small style={{ color: '#64748b' }}>La patente se muestra parcial para proteger los datos del comprador; el chasis basta para validar el repuesto.</small>
+                    )}
+                  </>
+                ) : (
+                  <small style={{ color: '#64748b' }}>El comprador no informó su vehículo en esta compra.</small>
+                )}
+              </div>
+              <div className="dispute-vehicle-card" style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, display: 'grid', gap: 8 }}>
+                <small style={{ fontWeight: 700, color: '#0066ff', letterSpacing: '.04em' }}>BOLETA DE LA TIENDA</small>
+                {chat?.boletaVentaDisponible ? (
+                  <button type="button" onClick={() => setReceiptOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifySelf: 'start', padding: '8px 12px', borderRadius: 8, border: '1px solid #0066ff', background: '#fff', color: '#0066ff', fontWeight: 600, cursor: 'pointer' }}>
+                    <FileText size={15} /> {chat.boletaVentaNombre || 'Ver boleta'}
+                  </button>
+                ) : (
+                  <small style={{ color: '#64748b' }}>La tienda todavía no carga la boleta de esta compra.</small>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>,
+        document.body,
+      )}
+
+      {receiptOpen && (
+        <SaleReceiptViewerModal
+          orderId={pedidoId}
+          proveedorId={mode === 'buyer' ? (chat?.proveedorId ?? proveedorId ?? null) : null}
+          orderCode={codigo}
+          storeName={mode === 'buyer' ? participantName : undefined}
+          onClose={() => setReceiptOpen(false)}
         />
       )}
 

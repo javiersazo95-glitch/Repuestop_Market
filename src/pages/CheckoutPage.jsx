@@ -914,6 +914,7 @@ export default function CheckoutPage() {
                         ? 'El vendedor revisa que el repuesto calce con tu vehículo antes de enviarlo. Basta con la patente, o con la marca, el modelo y el año.'
                         : 'Nos ayuda a que el vendedor confirme que la pieza calza con tu auto y evita devoluciones.'}
                     </p>
+                    <small className="checkout-vehicle-privacy" style={{ display: 'block', color: '#64748b', marginTop: 4 }}>Compartimos con la tienda solo el chasis y el modelo de tu vehículo (la patente, parcial) para validar la compatibilidad.</small>
                   </div>
 
                   {hasActiveVehicle && (
