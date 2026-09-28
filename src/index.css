@@ -14666,6 +14666,16 @@ input, select, textarea {
    desalineados entre tiendas con y sin imagen. */
 .market-seller-profile { width: 100%; min-height: 34px; margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; color: #fff; background: linear-gradient(135deg, #1268f3, #065ce8); font-size: 11px; font-weight: 850; box-shadow: 0 5px 10px rgba(4, 91, 230, .18); }
 .market-seller-profile:hover { background: #0755d8; }
+/* Piezas nuevas de la card (ciudad recortable, tienda sin reseñas, multimarca y envío por
+   coordinar). En escritorio la etiqueta larga manda; public-mobile.css cambia a la corta. */
+.market-seller-city { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.market-seller-label-short { display: none; }
+.market-seller-card .vehicle-brand-more-narrow { display: none; }
+.market-seller-rating.is-new span { color: #c9d3e0; }
+.market-seller-rating.is-new small { color: #71819a; font-weight: 600; }
+.market-seller-all-brands { display: inline-flex; align-items: center; gap: 4px; color: #14213a; font-size: 10.5px; font-weight: 800; white-space: nowrap; }
+.market-seller-all-brands svg { flex: 0 0 auto; color: #1268f3; }
+.market-seller-shipping-empty { color: #71819a; font-size: 8.5px; font-weight: 600; }
 
 .parts-cards-grid-catalog .market-product-card { min-height: 360px; }
 .stores-cards-grid-directory .market-seller-card { height: 270px; min-height: 270px; }
@@ -20651,3 +20661,62 @@ input.has-success {
 }
 .catalog-showcase-see-all-btn:hover { transform: translateY(-1px); filter: brightness(1.05); box-shadow: 0 16px 28px -12px rgba(8, 84, 214, .7); }
 .catalog-showcase-see-all-btn:focus-visible { outline: 2px solid #0866ed; outline-offset: 3px; }
+
+/* ---------------------------------------------------------------------------
+   Banner del directorio de casas de repuestos (StoresDirectoryView).
+   Escritorio: pieza gráfica completa. Celular (public-mobile.css): la tarjeta de la app.
+   --------------------------------------------------------------------------- */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+/* Mismo ancho que .directory-main-container (barra de búsqueda y grilla de abajo) y MISMO ALTO
+   que el hero anterior (.directory-hero-banner), medido: 427px a 1366, 436px a 1920 (el h1 crecía
+   con clamp) y 526px de 769 a 1199, donde era de borde a borde. Sin margen inferior: la barra de
+   búsqueda se monta 29px sobre el banner igual que antes. La imagen llena ese alto con
+   object-fit: cover, anclada a la izquierda para que el texto de la pieza nunca se recorte. */
+.stores-directory-view-wrapper .stores-directory-banner { position: relative; width: calc(100% - 48px); max-width: 1720px; margin: 0 auto; padding: 0; }
+.stores-directory-banner-desktop {
+  position: relative;
+  height: clamp(427px, calc(408px + 1.45vw), 436px);
+  overflow: hidden;
+  border-radius: 18px 18px 0 0;
+  background: #020a1f;
+}
+.stores-directory-banner-desktop-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: left 15%;
+  display: block;
+}
+.stores-directory-banner-back {
+  position: absolute;
+  z-index: 2;
+  top: 18px;
+  left: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid rgba(255, 255, 255, .28);
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(6, 22, 56, .55);
+  backdrop-filter: blur(6px);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .16s ease;
+}
+.stores-directory-banner-back:hover { background: rgba(6, 22, 56, .8); }
+@media (min-width: 769px) and (max-width: 1199px) {
+  .stores-directory-view-wrapper .stores-directory-banner { width: 100%; }
+  .stores-directory-banner-desktop { border-radius: 0; height: 526px; }
+  .stores-directory-banner-desktop-img { object-position: left center; }
+}
+.stores-directory-banner-mobile { display: none; }
+
+/* Distancia a la tienda ("cerca de mí"): pastilla sobre la portada, arriba a la izquierda
+   (el corazón está a la derecha y el avatar abajo). Misma pieza que la app. */
+.market-seller-distance { position: absolute; z-index: 6; top: 9px; left: 10px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; color: #fff; background: rgba(15, 23, 42, .78); font-size: 11px; font-weight: 700; line-height: 1.3; }

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import {
   Building2, Search, Filter, SlidersHorizontal, MapPin, ShieldCheck,
   Star, ArrowLeft, X, CheckCircle2, RotateCcw,
-  Store, Tag, Truck, Bike, ChevronRight, ChevronDown, Car, CarFront, RefreshCw, ArrowUpDown
+  Tag, Truck, Bike, ChevronRight, ChevronDown, Car, CarFront, RefreshCw, ArrowUpDown
 } from 'lucide-react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
@@ -13,10 +13,14 @@ import { getAddressesApi, getPublicStoresApi, searchVehicleByPatenteApi } from '
 import { adaptPage, adaptStore, adaptVehicle } from '../services/adapters';
 import { normalizePlate, sanitizePlateInput, isValidPlate } from '../utils/vehicleLookup';
 import MarketplaceSellerCard from './MarketplaceSellerCard';
+import storesBannerDesktop from '../assets/stores-directory-banner-desktop.webp';
+import storesBannerMobileArt from '../assets/stores-directory-banner-mobile-art.webp';
 import StoreCardSkeleton from './skeletons/StoreCardSkeleton';
 import PaginationBar from './PaginationBar';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useMarketplace } from '../context/MarketplaceContext';
+import { useUserLocation } from '../hooks/useUserLocation';
+import { distanceKmTo, sortByDistance } from '../utils/geoDistance';
 
 /**
  * /tiendas/publicas topea `size` en 100. Antes ese tope se pedía SIEMPRE (una
@@ -75,6 +79,11 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   const [myComunaLoading, setMyComunaLoading] = useState(false);
   const [comunaNotice, setComunaNotice] = useState('');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  // "Cerca de mí" con la ubicación del navegador, igual que la app: distancia en cada card y
+  // orden de la más cercana a la más lejana. Sin ubicación cae al filtro "mi comuna" de antes.
+  const userLocation = useUserLocation();
+  const [isNearbySortActive, setIsNearbySortActive] = useState(false);
+  const isLocating = userLocation.status === 'loading';
 
   const handlePatentSearch = async () => {
     const patent = normalizePlate(patentInput);
@@ -103,13 +112,38 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
     }
   };
 
-  const handleMyComuna = async () => {
+  const handleNearby = async () => {
+    // Interruptor: el mismo control quita el orden por cercanía o el filtro de comuna.
+    if (isNearbySortActive) {
+      setIsNearbySortActive(false);
+      setComunaNotice('');
+      return;
+    }
+    if (selectedComuna !== 'TODAS') {
+      setSelectedComuna('TODAS');
+      setComunaNotice('');
+      return;
+    }
+    const coords = userLocation.coords || await userLocation.requestLocation();
+    if (coords) {
+      setIsNearbySortActive(true);
+      setComunaNotice('');
+      return;
+    }
+    await handleMyComuna({ fallback: true });
+  };
+
+  const handleMyComuna = async ({ fallback = false } = {}) => {
     // Es un interruptor: si el filtro ya está aplicado, el mismo control lo quita.
     // Antes volvía a pedir la dirección y reaplicaba la misma comuna, dejando al usuario
     // sin una salida rápida hacia el directorio completo.
     if (selectedComuna !== 'TODAS') {
       setSelectedComuna('TODAS');
       setComunaNotice('');
+      return;
+    }
+    if (fallback && !user?.userId) {
+      setComunaNotice('Activa el permiso de ubicación del navegador para ver las casas de repuestos más cercanas.');
       return;
     }
     if (!user?.userId) {
@@ -126,6 +160,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
         return;
       }
       setSelectedComuna(principal.comunaNombre);
+      if (fallback) setComunaNotice(`No pudimos usar tu ubicación: mostrando casas de repuestos en ${principal.comunaNombre}.`);
     } catch (err) {
       setComunaNotice(err.message || 'No pudimos obtener tu comuna.');
     } finally {
@@ -212,7 +247,9 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
     selectedGiro !== 'TODAS' ||
     selectedShipping !== 'TODAS' ||
     selectedBrand !== 'TODAS' ||
-    (sortBy !== 'relevancia' && sortBy !== 'recientes');
+    (sortBy !== 'relevancia' && sortBy !== 'recientes') ||
+    // Ordenar por cercanía la página actual engañaría (6 de 100): trabaja sobre el pool.
+    isNearbySortActive;
   const hasActiveStoreContext = Boolean(
     searchQuery.trim()
     || selectedGiro !== 'TODAS'
@@ -221,6 +258,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
     || selectedBrand !== 'TODAS'
     || activeVehicle?.marca
     || sortBy !== 'relevancia'
+    || isNearbySortActive
   );
 
   const isLoading = hasLocalFilters ? poolLoading : pageLoading;
@@ -264,11 +302,16 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
     return true;
   }), [poolStores, selectedGiro, selectedShipping, selectedBrand]);
 
-  const sortedPoolStores = useMemo(() => [...filteredPoolStores].sort((a, b) => {
-    if (sortBy === '+publicaciones') return (b.totalPublicaciones || 0) - (a.totalPublicaciones || 0);
-    if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
-    return 0;
-  }), [filteredPoolStores, sortBy]);
+  const sortedPoolStores = useMemo(() => {
+    if (isNearbySortActive && userLocation.coords) {
+      return sortByDistance(filteredPoolStores, (store) => distanceKmTo(userLocation.coords, store));
+    }
+    return [...filteredPoolStores].sort((a, b) => {
+      if (sortBy === '+publicaciones') return (b.totalPublicaciones || 0) - (a.totalPublicaciones || 0);
+      if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
+      return 0;
+    });
+  }, [filteredPoolStores, isNearbySortActive, sortBy, userLocation.coords]);
 
   // Con filtros locales activos, se pagina el pool ya filtrado en el cliente.
   // Sin ellos, la página ya viene paginada y ordenada por el servidor.
@@ -286,7 +329,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   // Reset to Page 1 on any filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedGiro, selectedComuna, selectedShipping, selectedBrand, activeVehicle?.marca, sortBy, itemsPerPage]);
+  }, [searchQuery, selectedGiro, selectedComuna, selectedShipping, selectedBrand, activeVehicle?.marca, sortBy, itemsPerPage, isNearbySortActive]);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -307,6 +350,8 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
     setActiveVehicle(null);
     setPatentInput('');
     setSortBy('relevancia');
+    setIsNearbySortActive(false);
+    setComunaNotice('');
     setCurrentPage(1);
   };
 
@@ -323,45 +368,34 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
 
   return (
     <div className="stores-directory-view-wrapper">
-      {/* 1. Directory Hero Banner */}
-      <div className="directory-hero-banner">
-        <div className="container directory-hero-content">
-          <button className="btn-back-marketplace" onClick={onBackToStore}>
+      {/* 1. Banner del directorio. Escritorio: pieza gráfica completa (texto incluido en la
+          imagen). Celular: el mismo banner de la app (DirectoryHero de mobile/app/store-directory):
+          tarjeta azul marino con el título como texto real y la ilustración de las casas a la
+          derecha, porque la pieza de escritorio queda ilegible a 360px. */}
+      <section className="stores-directory-banner" aria-labelledby="stores-directory-title">
+        <h1 id="stores-directory-title" className="sr-only">Casas de repuestos verificadas en Chile</h1>
+        <div className="stores-directory-banner-desktop">
+          <img
+            className="stores-directory-banner-desktop-img"
+            src={storesBannerDesktop}
+            alt="Tiendas de repuestos - Encuentra tiendas verificadas cerca de ti"
+            width="1962"
+            height="801"
+            fetchPriority="high"
+          />
+          <button className="stores-directory-banner-back" onClick={onBackToStore}>
             <ArrowLeft size={16} />
             <span>Volver al Inicio</span>
           </button>
-
-          <div className="directory-hero-text">
-            <div className="directory-hero-badge">
-              <Building2 size={14} />
-              <span>DIRECTORIO NACIONAL</span>
-            </div>
-            <h1>Casas de Repuestos <span>Acreditadas</span> en Chile</h1>
-            <p>
-              Explora más de 500 importadores, distribuidoras y desarmadurías con RUT verificado, local físico y despacho a todo el país.
-            </p>
-          </div>
-
-          <div className="directory-hero-stats-row">
-            <div className="stat-pill-item">
-              <ShieldCheck size={24} className="text-emerald-400" />
-              <span><strong>100% Casas de repuestos<br />acreditadas</strong><small>Verificadas y confiables</small></span>
-            </div>
-            <div className="stat-pill-item">
-              <Store size={24} className="text-blue-400" />
-              <span><strong>+500 Locales<br />en Chile</strong><small>Cobertura nacional</small></span>
-            </div>
-            <div className="stat-pill-item">
-              <Truck size={24} className="text-sky-400" />
-              <span><strong>Despacho Directo<br />o Retiro</strong><small>En todo el país</small></span>
-            </div>
-            <div className="stat-pill-item">
-              <CheckCircle2 size={24} className="text-purple-400" />
-              <span><strong>RUT Verificado<br />y Validado</strong><small>Seguridad garantizada</small></span>
-            </div>
+        </div>
+        <div className="stores-directory-banner-mobile" aria-hidden="true">
+          <img src={storesBannerMobileArt} alt="" className="stores-directory-banner-mobile-art" />
+          <div className="stores-directory-banner-mobile-copy">
+            <strong>Casas de repuestos</strong>
+            <span><ShieldCheck size={18} /> Casas verificadas cerca de ti</span>
           </div>
         </div>
-      </div>
+      </section>
 
       <div className={`container directory-main-container ${mobileFiltersOpen ? 'mobile-filters-active' : ''}`}>
         {/* 2. Top Control Bar (Search & Sort) */}
@@ -416,14 +450,21 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
             <div className="catalog-showcase-comuna-control directory-my-comuna-wrap">
               <button
                 type="button"
-                className={`btn-comuna-toggle-pill directory-my-comuna ${selectedComuna !== 'TODAS' ? 'active' : ''}`}
-                onClick={handleMyComuna}
-                disabled={myComunaLoading}
-                aria-pressed={selectedComuna !== 'TODAS'}
-                title={selectedComuna !== 'TODAS' ? 'Quitar filtro de comuna' : 'Filtrar por mi comuna'}
+                className={`btn-comuna-toggle-pill directory-my-comuna ${isNearbySortActive || selectedComuna !== 'TODAS' ? 'active' : ''}`}
+                onClick={handleNearby}
+                disabled={myComunaLoading || isLocating}
+                aria-pressed={isNearbySortActive || selectedComuna !== 'TODAS'}
+                title={isNearbySortActive
+                  ? 'Quitar el orden por cercanía'
+                  : selectedComuna !== 'TODAS' ? 'Quitar filtro de comuna' : 'Ver las casas de repuestos más cercanas a mi ubicación'}
               >
-                <MapPin size={17} />
-                <span>{myComunaLoading ? 'Buscando comuna…' : selectedComuna !== 'TODAS' ? `En ${selectedComuna}` : 'Mi comuna'}</span>
+                {isLocating ? <RefreshCw size={16} className="spin-icon" /> : <MapPin size={17} />}
+                <span>
+                  {isLocating ? 'Buscando tu ubicación…'
+                    : myComunaLoading ? 'Buscando comuna…'
+                      : isNearbySortActive ? 'Más cercanas'
+                        : selectedComuna !== 'TODAS' ? `En ${selectedComuna}` : 'Cerca de mí'}
+                </span>
               </button>
               {comunaNotice && <span className="quick-patente-error">{comunaNotice}</span>}
             </div>
@@ -524,7 +565,8 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                 <h2>Casas de repuestos recién publicadas</h2>
                 {hasActiveStoreContext ? (
                   <p>
-                    Mostrando <strong>{totalElements}</strong> casas de repuestos encontradas.
+                    Mostrando <strong>{totalElements}</strong> casas de repuestos encontradas
+                    {isNearbySortActive ? ', de la más cercana a la más lejana' : ''}.
                     {poolMayBeIncomplete && ' Puede haber más resultados: afina la búsqueda o la comuna para verlos todos.'}
                   </p>
                 ) : (
@@ -614,6 +656,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                         }}
                         vehicleBrand={activeVehicle?.marca || null}
                         vehicleResolved={Boolean(activeVehicle?.catalogoId)}
+                        distanceKm={distanceKmTo(userLocation.coords, store)}
                       />
                     );
                   })}

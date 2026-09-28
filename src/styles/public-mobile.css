@@ -309,6 +309,8 @@
 
 /* Telefonos angostos. */
 @media (max-width: 359px) {
+  .market-seller-card { padding-left: 6px !important; padding-right: 6px !important; }
+  .market-seller-card .market-seller-heading h3 { font-size: 12.5px; }
   .light-market-header .header-brand-row { grid-template-columns: 34px 40px minmax(0, 1fr) 40px; padding: 6px; }
   .light-market-header .brand-logo-official { width: 34px; max-width: 34px; }
   .light-market-header .mobile-nav-toggle,
@@ -563,21 +565,50 @@
   .latest-header-right-actions .btn-view-directory-blue span::before,
   .stores-header-actions-group .btn-view-directory-blue span::before { content: "Ver todos"; font-size: 13px; }
 
-  /* Tarjeta de tienda (home y directorio): textos legibles y datos esenciales. */
-  .market-seller-favorite { width: 40px; height: 40px; }
-  .market-seller-heading h3 { font-size: 13px; }
-  .market-seller-heading p,
-  .market-seller-rating small,
+  /* Tarjeta de tienda (home y directorio), grilla de dos columnas. Misma pieza que la
+     app movil (DirectoryStoreCard layout="grid"): si cambia una, cambia la otra. */
+  .market-seller-card { transition: transform .15s ease, box-shadow .15s ease; -webkit-tap-highlight-color: transparent; }
+  .market-seller-card:active { transform: scale(.985); box-shadow: 0 4px 12px rgba(2, 19, 49, .12); }
+  /* Corazón de 32px dentro de la portada (antes 40px invadía la línea del nombre); el
+     ::before lleva el área táctil a 44px. */
+  .market-seller-favorite { top: 6px; right: 6px; width: 32px; height: 32px; }
+  .market-seller-favorite::before { position: absolute; inset: -6px; content: ''; }
+  .market-seller-favorite svg { width: 15px; height: 15px; }
+  /* Termina antes del avatar montado (que parte en y=24). */
+  .market-seller-distance { top: 5px; left: 6px; padding: 1px 6px; line-height: 15px; }
+  /* El bloque nombre + comuna reserva el alto de un nombre de dos líneas: la comuna va
+     pegada al nombre y aun así las dos cards de una fila quedan alineadas. */
+  .market-seller-heading { min-height: 49px; }
+  .market-seller-heading h3 { font-size: 13px; line-height: 16px; min-height: 0; }
+  .market-seller-heading p { min-width: 0; margin-top: 3px; font-size: 11px; }
+  .market-seller-metrics { min-height: 40px; }
+  .market-seller-region { display: none; }
   .market-seller-rating strong,
-  .market-seller-rating span { font-size: 11px; }
+  .market-seller-rating span,
+  .market-seller-rating small { font-size: 11px; }
   .market-seller-metrics p strong { font-size: 12px; }
   .market-seller-metrics p small,
   .market-seller-specialist-brands small,
   .market-seller-shipping > span { font-size: 11px; }
+  .market-seller-label-long { display: none; }
+  .market-seller-label-short { display: inline; }
+  .market-seller-specialist-brands > div { min-height: 18px; gap: 3px; }
+  .market-seller-specialist-brands .vehicle-brand-icon { width: 18px; height: 18px; font-size: 7px; }
+  .market-seller-specialist-brands .vehicle-brand-more { font-size: 7px; }
+  .market-seller-all-brands { gap: 3px; font-size: 11.5px; }
+  /* Sin el ícono "Multimarca" cabe en media columna a 360px sin recortar "Repuestos". */
+  .market-seller-all-brands svg { display: none; }
+  .market-seller-card .is-third-brand,
+  .market-seller-card .vehicle-brand-more-wide { display: none; }
+  .market-seller-card .vehicle-brand-more-narrow { display: grid; }
   /* Tiempos de respuesta y despacho: datos secundarios; completos en la ficha. */
   .market-seller-metrics > div:nth-child(2),
   .market-seller-metrics > div:nth-child(3) { display: none; }
-  .market-seller-profile { min-height: 40px; font-size: 12.5px; }
+  .market-seller-shipping { min-height: 24px; }
+  .market-shipping-icon { width: 22px; height: 22px; flex: 0 0 22px; }
+  .market-shipping-icon svg { width: 12px; height: 12px; }
+  .market-seller-shipping-empty { font-size: 11px; }
+  .market-seller-profile { min-height: 40px; border-radius: 8px; font-size: 12.5px; }
   .tst-helpful { min-height: 40px; padding: 0 12px; }
 
   /* -------------------------------------------------------------------------
@@ -607,6 +638,31 @@
   /* -------------------------------------------------------------------------
      17. DIRECTORIO DE TIENDAS: hero compacto
      ------------------------------------------------------------------------- */
+  /* Banner del directorio: la misma tarjeta de la app (mobile/app/store-directory.tsx). */
+  .stores-directory-view-wrapper .stores-directory-banner { width: auto; max-width: none; margin: 12px 12px; padding: 0; }
+  .stores-directory-banner-desktop { display: none; }
+  .stores-directory-banner-mobile {
+    position: relative;
+    height: 132px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #0a2149, #06307a);
+    box-shadow: 0 6px 16px rgba(4, 22, 58, .18);
+  }
+  .stores-directory-banner-mobile-art { position: absolute; top: 0; right: 0; bottom: 0; width: 64%; height: 100%; object-fit: cover; object-position: left center; }
+  /* Funde el borde izquierdo de la ilustración con el azul marino, como en la app. */
+  .stores-directory-banner-mobile::after {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, #0a2149 0%, rgba(10, 33, 73, .96) 34%, rgba(10, 33, 73, .25) 60%, rgba(10, 33, 73, 0) 100%);
+    content: '';
+  }
+  .stores-directory-banner-mobile-copy { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8px; padding: 0 44% 0 16px; }
+  .stores-directory-banner-mobile-copy strong { color: #fff; font-size: 20px; font-weight: 800; line-height: 26px; letter-spacing: -.2px; }
+  .stores-directory-banner-mobile-copy span { display: flex; align-items: center; gap: 8px; color: rgba(255, 255, 255, .9); font-size: 13px; line-height: 18px; }
+  .stores-directory-banner-mobile-copy svg { flex: 0 0 auto; color: #fff; }
   .directory-hero-banner { padding: 14px 0 12px !important; }
   .directory-hero-content .btn-back-marketplace,
   .directory-hero-badge { display: none !important; }

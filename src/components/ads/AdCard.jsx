@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   MapPin, MessageCircle, Star, ShieldCheck, Phone, Calendar,
-  CheckCircle2, CalendarClock, UserCheck, ArrowRight, Zap, Heart
+  CheckCircle2, CalendarClock, UserCheck, ArrowRight, Zap, Heart, Navigation
 } from 'lucide-react';
 import { AD_TIERS, SERVICE_CATEGORIES, getAdExpiryInfo } from '../../data/automotiveAdsData';
 import { getCategoryIcon } from './categoryIcons';
@@ -9,6 +9,7 @@ import { useAdOwnership } from './useAdOwnership';
 import ContextualReportButton from '../ContextualReportButton';
 import VehicleBrandLogo from '../VehicleBrandLogo';
 import { confirmWhatsappContact } from '../../utils/whatsappContact';
+import { formatDistanceKm } from '../../utils/geoDistance';
 // La tarjeta también se muestra en Favoritos. Cargar su diseño aquí evita que
 // dependa de que el usuario haya visitado antes el Mural de anuncios.
 import './ads-wall-redesign.css';
@@ -24,7 +25,7 @@ const TIER_THEME = {
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80';
 
-export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCategory, isFavorite = false, onToggleFavorite }) {
+export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCategory, isFavorite = false, onToggleFavorite, distanceKm = null }) {
   const [blockNotice, setBlockNotice] = useState(null);
   const { isOwn, blockIfOwnAd } = useAdOwnership();
 
@@ -108,6 +109,13 @@ export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCatego
         {isOwnAdCard && (
           <span className="ad-own-badge">
             <UserCheck size={12} /> Tu anuncio
+          </span>
+        )}
+
+        {/* Distancia al aviso con "cerca de mí" activo, igual que la tarjeta de la app. */}
+        {distanceKm != null && (
+          <span className="ad-card-distance" aria-label={`A ${formatDistanceKm(distanceKm)} de tu ubicación`}>
+            <Navigation size={11} /> {formatDistanceKm(distanceKm)}
           </span>
         )}
 

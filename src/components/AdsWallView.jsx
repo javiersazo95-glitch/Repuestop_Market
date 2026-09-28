@@ -16,6 +16,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
+import { useUserLocation } from '../hooks/useUserLocation';
+import { distanceKmTo, sortByDistance } from '../utils/geoDistance';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { getCategoryIcon } from './ads/categoryIcons';
 import AdsStoriesCarousel from './ads/AdsStoriesCarousel';
@@ -157,16 +159,40 @@ export default function AdsWallView() {
   );
   const showSuggestions = isSearchFocused && searchSuggestions.length > 0;
 
-  const isNearbyActive = Boolean(userComuna)
+  // "Cerca de mí" con la ubicación real del navegador, igual que el Mural de la app: ordena
+  // del aviso más cercano al más lejano y muestra la distancia en cada tarjeta. Si el
+  // navegador no entrega la ubicación, cae al filtro por la comuna del perfil (lo de antes).
+  const userLocation = useUserLocation();
+  const [isNearbySortActive, setIsNearbySortActive] = useState(false);
+  const [locationNotice, setLocationNotice] = useState('');
+  const isComunaNearbyActive = Boolean(userComuna)
     && selectedCommune.toLocaleLowerCase('es') === userComuna.toLocaleLowerCase('es');
+  const isNearbyActive = isNearbySortActive || isComunaNearbyActive;
+  const isLocating = userLocation.status === 'loading';
 
-  const toggleNearby = () => {
-    if (!userComuna) return;
-    setSelectedCommune((current) =>
-      current.toLocaleLowerCase('es') === userComuna.toLocaleLowerCase('es')
-        ? 'Todas las comunas'
-        : userComuna
-    );
+  const toggleNearby = async () => {
+    if (isNearbySortActive) {
+      setIsNearbySortActive(false);
+      setLocationNotice('');
+      return;
+    }
+    if (isComunaNearbyActive) {
+      setSelectedCommune('Todas las comunas');
+      setLocationNotice('');
+      return;
+    }
+    const coords = userLocation.coords || await userLocation.requestLocation();
+    if (coords) {
+      setIsNearbySortActive(true);
+      setLocationNotice('Ordenados del más cercano al más lejano a tu ubicación.');
+      return;
+    }
+    if (userComuna) {
+      setSelectedCommune(userComuna);
+      setLocationNotice(`No pudimos usar tu ubicación: mostrando avisos en ${userComuna}.`);
+      return;
+    }
+    setLocationNotice('Activa el permiso de ubicación del navegador para ver los avisos más cercanos.');
   };
 
   const handleResetFilters = () => {
@@ -175,6 +201,8 @@ export default function AdsWallView() {
     setSelectedCategory('TODAS');
     setSelectedTier('TODOS');
     setSelectedCommune('Todas las comunas');
+    setIsNearbySortActive(false);
+    setLocationNotice('');
     setSelectedServiceTag(ALL_TAGS);
     setOnlyBooking(false);
     setOnlyWhatsapp(false);
@@ -294,10 +322,15 @@ export default function AdsWallView() {
       result.sort((a, b) => (tierWeight[b.tier] || 0) - (tierWeight[a.tier] || 0));
     }
 
+    // "Cerca de mí" manda sobre el orden elegido, igual que en la app: pura cercanía real.
+    if (isNearbySortActive && userLocation.coords) {
+      result = sortByDistance(result, (ad) => distanceKmTo(userLocation.coords, ad));
+    }
+
     return result;
   }, [
     adsList, searchQuery, selectedCategory, selectedTier, selectedCommune, selectedServiceTag,
-    onlyBooking, onlyWhatsapp, only24Hours, sortBy, plateVehicle
+    onlyBooking, onlyWhatsapp, only24Hours, sortBy, plateVehicle, isNearbySortActive, userLocation.coords
   ]);
 
   const visibleAds = useMemo(
@@ -328,16 +361,17 @@ export default function AdsWallView() {
               onChange={(e) => setSearchInput(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
             />
-            {userComuna && (
-              <button
-                type="button"
-                className={`ads-nearby-btn ${isNearbyActive ? 'active' : ''}`}
-                onClick={toggleNearby}
-                title={isNearbyActive ? `Quitar filtro de ${userComuna}` : `Filtrar por mi comuna: ${userComuna}`}
-              >
-                <MapPin size={16} />
-              </button>
-            )}
+            <button
+              type="button"
+              className={`ads-nearby-btn ${isNearbyActive ? 'active' : ''}`}
+              onClick={toggleNearby}
+              disabled={isLocating}
+              aria-pressed={isNearbyActive}
+              aria-label={isNearbyActive ? 'Quitar el orden por cercanía' : 'Ver los avisos más cercanos a mi ubicación'}
+              title={isNearbyActive ? 'Quitar el orden por cercanía' : 'Ver los avisos más cercanos a mi ubicación'}
+            >
+              {isLocating ? <RefreshCw size={15} className="spin-icon" /> : <MapPin size={16} />}
+            </button>
             {searchInput && (
               <button
                 type="button"
@@ -500,6 +534,11 @@ export default function AdsWallView() {
             </p>
           </div>
         )}
+        {locationNotice && (
+          <p className={`ads-location-notice ${isNearbySortActive ? 'is-active' : ''}`} role="status">
+            <MapPin size={14} /> {locationNotice}
+          </p>
+        )}
       </div>
 
       {/* 2. Carrusel de historias */}
@@ -648,6 +687,7 @@ export default function AdsWallView() {
                     onOpenBooking={(adData) => setSelectedAdForBooking(adData)}
                     onSelectCategory={(catId) => setSelectedCategory(catId)}
                     isFavorite={isAdSaved(ad.id)}
+                    distanceKm={distanceKmTo(userLocation.coords, ad)}
                     onToggleFavorite={(adData) => {
                       if (!isLoggedIn) { openAuthModal(); return; }
                       toggleAd(adData);

@@ -3058,18 +3058,51 @@
 .btn-token-history { display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border: 1px solid rgba(255, 255, 255, .28); border-radius: 12px; background: transparent; color: #e2ecf9; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background .15s ease; }
 .btn-token-history:hover { background: rgba(255, 255, 255, .1); }
 
+.tokens-wallet-label-short { display: none; }
+
+/* Celular: la tarjeta se ve IGUAL que la de la app (mobile/components/ads/TokensWalletCard.tsx).
+   Antes el tarifario pasaba a columna y cada beneficio heredaba `flex: 1 1 400px`, que en
+   columna se aplica al ALTO: tres filas de ~130px con aire vacío en medio. Ahora va en una
+   fila de tres con filetes, el nombre del monedero cabe junto a "Saldo activo" y los botones
+   ocupan todo el ancho. El tamaño del texto se ajusta al ancho como `adjustsFontSizeToFit`. */
 @media (max-width: 620px) {
-  /* El tarifario en columna: en una fila de tres, "Empresariales" y su costo se
-     recortaban antes de que el nombre alcanzara a leerse. */
-  .tokens-wallet-benefits { flex-direction: column; gap: 10px; }
-  .tokens-wallet-benefit + .tokens-wallet-benefit { border-left: none; }
-  .tokens-wallet-benefit { padding: 0; }
-  /* En pantalla angosta no hay ancho para las dos cosas en una fila, y el CTA a
-     todo lo ancho si corresponde, como en la app. */
+  /* El monedero usa casi todo el ancho del teléfono, como la pantalla de la app. */
+  .booking-modal-overlay:has(.wallet-modal-card) { padding-left: 8px; padding-right: 8px; }
+  .wallet-modal-card { width: 100%; padding: 20px 12px 16px; }
+  .wallet-modal-card .booking-modal-header { padding: 0 4px; }
+  .tokens-wallet-card { padding: 16px; }
+  .tokens-wallet-label-long { display: none; }
+  .tokens-wallet-label-short { display: inline; }
+  .tokens-wallet-label { overflow: hidden; font-size: 12.5px; white-space: nowrap; text-overflow: ellipsis; }
+  .tokens-wallet-label-row { gap: 6px; }
+  .tokens-wallet-active { padding: 3px 7px; }
+  .tokens-wallet-amount > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .tokens-wallet-hint { text-wrap: balance; }
+
   .tokens-wallet-bottom { flex-direction: column; align-items: stretch; gap: 14px; }
-  .tokens-wallet-actions { flex-direction: column; }
-  .btn-recharge-tokens { flex: 1 1 auto; }
-  .btn-token-history { justify-content: center; }
+  .tokens-wallet-benefits { flex: none; flex-direction: row; width: 100%; }
+  .tokens-wallet-benefit { gap: 5px; padding: 0 4px; }
+  .tokens-wallet-benefit:first-child { padding-left: 0; }
+  .tokens-wallet-benefit:last-child { padding-right: 0; }
+  .tokens-wallet-benefit svg { width: 17px; height: 17px; }
+  .tokens-wallet-benefit span { flex: 1; }
+  .tokens-wallet-benefit b { font-size: clamp(10px, 2.75vw, 13px); }
+  .tokens-wallet-benefit small { font-size: clamp(10px, 2.75vw, 11px); }
+
+  .tokens-wallet-actions { margin-left: 0; flex-direction: column; }
+  /* Apilados, la recarga (acción principal) va primero, como el único botón de la app. */
+  .btn-recharge-tokens { position: relative; order: -1; flex: 1 1 auto; min-height: 52px; }
+  /* Como en la app: moneda + texto centrados y el chevron fijo al borde derecho. */
+  .btn-recharge-chevron { position: absolute; right: 14px; margin-left: 0; }
+  .btn-token-history { justify-content: center; min-height: 40px; }
+}
+/* Teléfonos angostos (360-380): la moneda un poco más chica deja entrar el nombre completo. */
+@media (max-width: 380px) {
+  .tokens-wallet-top { gap: 10px; }
+  .tokens-wallet-coin { width: 62px; height: 62px; }
+  .tokens-wallet-coin > * { transform: scale(.8); }
+  .tokens-wallet-label { font-size: 12px; }
+  .tokens-wallet-label-row { gap: 4px; }
 }
 
 /* 3. Métricas: banda compacta con separadores finos. Cada segmento: marca de

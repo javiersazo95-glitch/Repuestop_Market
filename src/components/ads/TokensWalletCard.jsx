@@ -50,7 +50,11 @@ export default function TokensWalletCard({
 
         <div className="tokens-wallet-top-copy">
           <div className="tokens-wallet-label-row">
-            <span className="tokens-wallet-label">Monedero de Monedas RepuesTop</span>
+            {/* En celular el nombre corto: el largo partía en tres líneas junto a "Saldo activo". */}
+            <span className="tokens-wallet-label">
+              <span className="tokens-wallet-label-long">Monedero de Monedas RepuesTop</span>
+              <span className="tokens-wallet-label-short">Monedero RepuesTop</span>
+            </span>
             <span className="tokens-wallet-active">
               <i className="tokens-wallet-active-dot" />
               Saldo activo

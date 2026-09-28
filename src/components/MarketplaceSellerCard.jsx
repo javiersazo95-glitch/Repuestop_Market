@@ -1,13 +1,14 @@
 import React from 'react';
-import { ArrowRight, Clock, Heart, MapPin, Package, ShieldCheck } from 'lucide-react';
+import { ArrowRight, CarFront, Clock, Heart, MapPin, Navigation, Package, ShieldCheck } from 'lucide-react';
 import VehicleBrandLogo from './VehicleBrandLogo';
 import { parseShippingMethods, resolveShippingService } from '../data/shippingMethods';
+import { formatDistanceKm } from '../utils/geoDistance';
 
 function initials(name) {
   return String(name || 'RT').split(/\s+/).slice(0, 2).map((word) => word[0]).join('').toUpperCase();
 }
 
-export default function MarketplaceSellerCard({ store, avatarPhoto, onView, isFavorite = false, onToggleFavorite, vehicleBrand = null, vehicleResolved = false }) {
+export default function MarketplaceSellerCard({ store, avatarPhoto, onView, isFavorite = false, onToggleFavorite, vehicleBrand = null, vehicleResolved = false, distanceKm = null }) {
   const rating = Number(store.rating ?? 0);
   const publications = Number(store.totalPublicaciones ?? 0);
   const averageResponseTime = store.averageResponseTime || store.tiempoPromedioRespuesta || '15 min';
@@ -29,6 +30,13 @@ export default function MarketplaceSellerCard({ store, avatarPhoto, onView, isFa
     ? 'Repuestos'
     : (vehicleResolved ? 'Para tu vehículo' : `Para ${vehicleBrand}`);
 
+  // "Providencia, Region Metropolitana de Santiago": en celular solo cabe la comuna, así
+  // que la región va en su propio span y public-mobile.css la oculta bajo 768px.
+  const [city, ...regionParts] = String(store.ciudad || 'Santiago, RM').split(',');
+  const region = regionParts.join(',').trim();
+  // Sin reseñas no hay nota: "0,0 ☆☆☆☆☆" se lee como una mala evaluación.
+  const hasReviews = reviewCount > 0;
+
   return (
     <article className="market-seller-card">
       {onToggleFavorite && (
@@ -41,6 +49,12 @@ export default function MarketplaceSellerCard({ store, avatarPhoto, onView, isFa
         >
           <Heart size={19} fill={isFavorite ? 'currentColor' : 'none'} />
         </button>
+      )}
+      {/* Distancia a la tienda cuando se conoce la ubicación ("cerca de mí"), como la app. */}
+      {distanceKm != null && (
+        <span className="market-seller-distance" aria-label={`A ${formatDistanceKm(distanceKm)} de tu ubicación`}>
+          <Navigation size={11} /> {formatDistanceKm(distanceKm)}
+        </span>
       )}
       {store.coverUrl && (
         <div
@@ -55,14 +69,20 @@ export default function MarketplaceSellerCard({ store, avatarPhoto, onView, isFa
         </div>
         <div className="market-seller-heading">
           <div><h3>{store.nombre}</h3>{rating >= 4.9 && <ShieldCheck size={17} />}</div>
-          <p><MapPin size={12} /> {store.ciudad || 'Santiago, RM'}</p>
+          <p>
+            <MapPin size={12} />
+            <span className="market-seller-city">
+              {city.trim()}
+              {region && <span className="market-seller-region">, {region}</span>}
+            </span>
+          </p>
         </div>
       </div>
 
-      <div className="market-seller-rating">
-        <strong>{rating.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}</strong>
-        <span aria-label={`${rating} de 5 estrellas`}>{`${'★'.repeat(Math.round(rating))}${'☆'.repeat(Math.max(0, 5 - Math.round(rating)))}`}</span>
-        <small>({reviewCount})</small>
+      <div className={`market-seller-rating ${hasReviews ? '' : 'is-new'}`}>
+        {hasReviews && <strong>{rating.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}</strong>}
+        <span aria-label={hasReviews ? `${rating} de 5 estrellas` : 'Sin calificaciones'}>{`${'★'.repeat(hasReviews ? Math.round(rating) : 0)}${'☆'.repeat(Math.max(0, 5 - (hasReviews ? Math.round(rating) : 0)))}`}</span>
+        <small>{hasReviews ? `(${reviewCount})` : 'Sin reseñas'}</small>
       </div>
 
       <div className="market-seller-divider" />
@@ -73,25 +93,45 @@ export default function MarketplaceSellerCard({ store, avatarPhoto, onView, isFa
         <div><Clock size={15} /><p><strong>{averageDispatchTime}</strong><small>Tiempo promedio de despacho</small></p></div>
         <div className="market-seller-specialist-brands">
           <div aria-label="Marcas especialistas">
-            {specialistBrands.slice(0, 3).map((brand) => (
-              <VehicleBrandLogo key={brand.id || brand.nombre} brand={brand.nombre} />
+            {/* Sin marcas declaradas la tienda atiende a todas: se dice, no se deja el hueco. */}
+            {specialistBrands.length === 0 && (
+              <strong className="market-seller-all-brands"><CarFront size={13} /> Multimarca</strong>
+            )}
+            {/* Escritorio: 3 logos + "+N". Celular (public-mobile.css): 2 logos + su propio
+                "+N", porque el tercero no cabe en la card de media columna de 360px. */}
+            {specialistBrands.slice(0, 3).map((brand, index) => (
+              <VehicleBrandLogo key={brand.id || brand.nombre} brand={brand.nombre} className={index === 2 ? 'is-third-brand' : ''} />
             ))}
             {specialistBrands.length > 3 && (
               <span
-                className="vehicle-brand-icon vehicle-brand-more"
+                className="vehicle-brand-icon vehicle-brand-more vehicle-brand-more-wide"
                 data-tooltip={specialistBrands.slice(3).map((brand) => brand.nombre).join(', ')}
                 tabIndex={0}
                 aria-label={`${specialistBrands.length - 3} marcas especialistas más`}
               >+{specialistBrands.length - 3}</span>
             )}
+            {specialistBrands.length > 2 && (
+              <span
+                className="vehicle-brand-icon vehicle-brand-more vehicle-brand-more-narrow"
+                data-tooltip={specialistBrands.slice(2).map((brand) => brand.nombre).join(', ')}
+                tabIndex={0}
+                aria-label={`${specialistBrands.length - 2} marcas especialistas más`}
+              >+{specialistBrands.length - 2}</span>
+            )}
           </div>
-          <p><small>Marcas especialistas</small></p>
+          <p>
+            <small>
+              <span className="market-seller-label-long">Marcas especialistas</span>
+              <span className="market-seller-label-short">Especialidad</span>
+            </small>
+          </p>
         </div>
       </div>
 
       <div className="market-seller-shipping">
         <span>Envíos</span>
         <div>
+          {shippingMethods.length === 0 && <small className="market-seller-shipping-empty">Por coordinar</small>}
           {shippingMethods.slice(0, 3).map((method) => {
             const config = resolveShippingService(method);
             const ShippingIcon = config.icon;

@@ -177,6 +177,18 @@
   border-color: var(--ads-primary);
 }
 .ads-search-clear { right: 8px; background: #fff; color: var(--ads-muted); }
+.ads-nearby-btn:disabled { cursor: progress; opacity: .8; }
+.ads-location-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  color: var(--ads-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.ads-location-notice.is-active { color: var(--ads-primary); }
+.ads-location-notice svg { flex: 0 0 auto; }
 
 .ads-suggestions {
   position: absolute;
@@ -675,6 +687,22 @@
   cursor: pointer;
 }
 .ad-card-icon.has-logo { background: #fff; }
+/* Distancia con "cerca de mí" activo: abajo a la derecha, el ícono de categoría ocupa la izquierda. */
+.ad-card-distance {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(15, 23, 42, 0.78);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
 .ad-card-icon img { width: 100%; height: 100%; object-fit: cover; }
 
 .ad-card-body {

@@ -386,6 +386,9 @@ export function adaptStore(dto, index = 0) {
     logoUrl: resolveMediaUrl(dto.logoUrl || dto.userProfileUrl) || null,
     coverUrl: resolveMediaUrl(dto.coverUrl) || '/tiensoft_cover.jpg',
     responseTimeLabel: dto.responseTimeLabel || '',
+    // Dirección pública geocodificada (TiendaGeocodificacionJob): "cerca de mí" del directorio.
+    latitude: toNumber(dto.latitude) ?? null,
+    longitude: toNumber(dto.longitude) ?? null,
   };
 }
 
@@ -567,6 +570,9 @@ export function adaptAd(dto) {
     region: dto.region || '',
     commune: dto.commune || '',
     address: dto.address || '',
+    // Coordenadas geocodificadas por el backend: distancia y orden "cerca de mí" del mural.
+    latitude: toNumber(dto.latitude) ?? null,
+    longitude: toNumber(dto.longitude) ?? null,
     phone: dto.phone || '',
     whatsapp: dto.whatsapp || null,
     openingHours: dto.openingHours || '',
