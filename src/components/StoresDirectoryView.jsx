@@ -375,12 +375,13 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
       <section className="stores-directory-banner" aria-labelledby="stores-directory-title">
         <h1 id="stores-directory-title" className="sr-only">Casas de repuestos verificadas en Chile</h1>
         <div className="stores-directory-banner-desktop">
+          <img className="stores-directory-banner-desktop-fill" src={storesBannerDesktop} alt="" aria-hidden="true" />
           <img
             className="stores-directory-banner-desktop-img"
             src={storesBannerDesktop}
-            alt="Tiendas de repuestos - Encuentra tiendas verificadas cerca de ti"
-            width="1962"
-            height="801"
+            alt="Casas de repuestos - Encuentra casas de repuestos adheridas a Repuestop en todo Chile"
+            width="2000"
+            height="750"
             fetchPriority="high"
           />
           <button className="stores-directory-banner-back" onClick={onBackToStore}>
@@ -656,7 +657,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                         }}
                         vehicleBrand={activeVehicle?.marca || null}
                         vehicleResolved={Boolean(activeVehicle?.catalogoId)}
-                        distanceKm={distanceKmTo(userLocation.coords, store)}
+                        distanceKm={isNearbySortActive ? distanceKmTo(userLocation.coords, store) : null}
                       />
                     );
                   })}

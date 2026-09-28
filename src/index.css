@@ -20670,24 +20670,42 @@ input.has-success {
 /* Mismo ancho que .directory-main-container (barra de búsqueda y grilla de abajo) y MISMO ALTO
    que el hero anterior (.directory-hero-banner), medido: 427px a 1366, 436px a 1920 (el h1 crecía
    con clamp) y 526px de 769 a 1199, donde era de borde a borde. Sin margen inferior: la barra de
-   búsqueda se monta 29px sobre el banner igual que antes. La imagen llena ese alto con
-   object-fit: cover, anclada a la izquierda para que el texto de la pieza nunca se recorte. */
+   búsqueda se monta 29px sobre el banner igual que antes. */
 .stores-directory-view-wrapper .stores-directory-banner { position: relative; width: calc(100% - 48px); max-width: 1720px; margin: 0 auto; padding: 0; }
 .stores-directory-banner-desktop {
   position: relative;
   height: clamp(427px, calc(408px + 1.45vw), 436px);
   overflow: hidden;
   border-radius: 18px 18px 0 0;
-  background: #020a1f;
+  background: #eef4fc;
+  container-type: size;
 }
+/* La pieza (2000x750, 2,67:1) es más alta que el recuadro (3,1:1 a 3,9:1) y su contenido va al
+   centro: logo, título e íconos ocupan las filas 66-602 de la imagen. Se escala para cubrir el
+   recuadro, pero nunca tanto que ese bloque (con aire: el 88% del alto, centrado en el 44,7%)
+   deje de caber sobre los 29px que tapa la barra de búsqueda. En pantallas anchas eso deja
+   franjas a los lados: las rellena la misma pieza desenfocada y los bordes se funden en 48px. */
 .stores-directory-banner-desktop-img {
+  --rh: min(calc((100cqh - 29px) / .88), max(100cqh, calc((100cqw + 96px) * .375)));
   position: absolute;
-  top: 0;
-  left: 0;
+  top: clamp(calc(100cqh - var(--rh)), calc((100cqh - 29px) / 2 - var(--rh) * .4467), 0px);
+  left: 50%;
+  width: auto;
+  max-width: none;
+  height: var(--rh);
+  transform: translateX(-50%);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+  display: block;
+}
+.stores-directory-banner-desktop-fill {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: left 15%;
+  filter: blur(22px) saturate(1.05);
+  transform: scale(1.12);
   display: block;
 }
 .stores-directory-banner-back {
@@ -20713,7 +20731,6 @@ input.has-success {
 @media (min-width: 769px) and (max-width: 1199px) {
   .stores-directory-view-wrapper .stores-directory-banner { width: 100%; }
   .stores-directory-banner-desktop { border-radius: 0; height: 526px; }
-  .stores-directory-banner-desktop-img { object-position: left center; }
 }
 .stores-directory-banner-mobile { display: none; }
 

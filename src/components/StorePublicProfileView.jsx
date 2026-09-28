@@ -613,8 +613,6 @@ export default function StorePublicProfileView({
 
                 <p className="store-subtitle-meta">
                   <span className="meta-item"><MapPin size={14} /> {currentStore.ciudad}</span>
-                  <span className="meta-divider">|</span>
-                  <span className="meta-item"><ShieldCheck size={14} /> RUT: {currentStore.rut}</span>
                 </p>
 
                 <div className="store-action-buttons">

@@ -448,7 +448,7 @@ export default function AdsWallView() {
               aria-pressed={only24Hours}
               onClick={() => setOnly24Hours((v) => !v)}
             >
-              <Zap size={15} /> <span>Urgente</span>
+              <Zap size={15} /> <span>24 horas</span>
             </button>
 
             <button
@@ -687,7 +687,7 @@ export default function AdsWallView() {
                     onOpenBooking={(adData) => setSelectedAdForBooking(adData)}
                     onSelectCategory={(catId) => setSelectedCategory(catId)}
                     isFavorite={isAdSaved(ad.id)}
-                    distanceKm={distanceKmTo(userLocation.coords, ad)}
+                    distanceKm={isNearbySortActive ? distanceKmTo(userLocation.coords, ad) : null}
                     onToggleFavorite={(adData) => {
                       if (!isLoggedIn) { openAuthModal(); return; }
                       toggleAd(adData);

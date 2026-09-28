@@ -1501,3 +1501,92 @@
   .catalog-showcase-see-all { margin-top: 16px; }
   .catalog-showcase-see-all-btn { width: 100%; justify-content: center; min-height: 52px; }
 }
+
+/* Encabezado de la tienda publica en el celular. El avatar queda a la izquierda del nombre,
+   la descripcion y la ubicacion; las tres acciones bajan a una sola fila de todo el ancho
+   (antes se apretaban junto al avatar y "Reportar" caia a una segunda linea). "Volver"
+   queda como una pastilla chica para no competir con el nombre. Solo celular: el escritorio
+   no cambia. */
+@media (max-width: 768px) {
+  .store-public-profile-wrapper .store-cover-image {
+    min-height: 0 !important;
+    padding-top: 50px !important;
+    padding-bottom: 30px !important;
+  }
+  .store-public-profile-wrapper .store-header-actions-bar {
+    top: 12px !important;
+    padding: 0 14px !important;
+  }
+  .store-public-profile-wrapper .btn-back-stores,
+  .store-public-profile-wrapper .btn-edit-store-profile {
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 10px 0 8px !important;
+    gap: 4px !important;
+    border-radius: 999px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    background: rgba(7, 18, 38, .42) !important;
+    border-color: rgba(255, 255, 255, .28) !important;
+  }
+  .store-public-profile-wrapper .btn-back-stores svg,
+  .store-public-profile-wrapper .btn-edit-store-profile svg { width: 13px !important; height: 13px !important; }
+
+  .store-public-profile-wrapper .store-hero-inner-container { gap: 14px !important; padding: 0 14px !important; }
+  .store-public-profile-wrapper .store-hero-left {
+    display: grid !important;
+    grid-template-columns: 60px minmax(0, 1fr) !important;
+    column-gap: 12px !important;
+    row-gap: 3px !important;
+    align-items: start !important;
+  }
+  /* La columna de texto se "disuelve" para que las acciones puedan ocupar las dos columnas. */
+  .store-public-profile-wrapper .store-info-details { display: contents !important; }
+  .store-public-profile-wrapper .store-avatar-box {
+    grid-column: 1 !important;
+    grid-row: 1 / span 3 !important;
+    width: 60px !important;
+    height: 60px !important;
+    min-width: 60px !important;
+    border-radius: 14px !important;
+  }
+  .store-public-profile-wrapper .store-title-badge-row,
+  .store-public-profile-wrapper .store-description-text,
+  .store-public-profile-wrapper .store-subtitle-meta { grid-column: 2 !important; margin: 0 !important; min-width: 0 !important; }
+  .store-public-profile-wrapper .store-title-badge-row h1 { font-size: 18px !important; text-shadow: 0 1px 8px rgba(0, 0, 0, .45) !important; }
+  .store-public-profile-wrapper .store-description-text,
+  .store-public-profile-wrapper .store-subtitle-meta { text-shadow: 0 1px 6px rgba(0, 0, 0, .5) !important; }
+
+  .store-public-profile-wrapper .store-action-buttons {
+    grid-column: 1 / -1 !important;
+    display: grid !important;
+    /* "Guardar tienda" un poco mas ancha; Compartir y Reportar (solo con sesion) iguales. */
+    grid-template-columns: minmax(0, 1.3fr) !important;
+    grid-auto-flow: column !important;
+    grid-auto-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+    margin-top: 12px !important;
+  }
+  .store-public-profile-wrapper .store-action-buttons > * { min-width: 0 !important; width: 100% !important; }
+  .store-public-profile-wrapper .store-share-wrap .btn-share-store { width: 100% !important; }
+  .store-public-profile-wrapper .btn-follow-store,
+  .store-public-profile-wrapper .btn-share-store,
+  .store-public-profile-wrapper .btn-report-store {
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 8px !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    border-radius: 10px !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+  }
+  .store-public-profile-wrapper .btn-follow-store span,
+  .store-public-profile-wrapper .btn-share-store span,
+  .store-public-profile-wrapper .btn-report-store span { overflow: hidden; text-overflow: ellipsis; }
+  .store-public-profile-wrapper .btn-follow-store svg,
+  .store-public-profile-wrapper .btn-share-store svg,
+  .store-public-profile-wrapper .btn-report-store svg { flex: 0 0 auto; width: 14px !important; height: 14px !important; }
+  .store-public-profile-wrapper .store-action-toast-banner { grid-column: 1 / -1 !important; justify-self: start; }
+  .store-public-profile-wrapper .store-rating-card { padding: 9px 14px !important; border-radius: 12px !important; }
+}
