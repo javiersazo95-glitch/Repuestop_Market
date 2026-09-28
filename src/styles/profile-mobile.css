@@ -760,6 +760,18 @@
     box-shadow: 0 12px 26px -14px rgba(15, 42, 80, .4), 0 1px 3px rgba(15, 42, 80, .06);
   }
   .profile-dashboard .order-card-container:hover { transform: none; }
+  /* Vendedor: index.css tiene `.seller-profile-dashboard .seller-orders-card-grid
+     .order-card-container` (0,3,0), que pisaba el borde (incluida la franja azul), el radio y
+     la sombra de arriba. Se repite con el mismo peso para que "Pedidos recibidos" se vea
+     igual que "Mis pedidos". */
+  .seller-profile-dashboard .seller-orders-card-grid .order-card-container,
+  .seller-profile-dashboard .seller-orders-card-grid .order-card-container:hover {
+    border: 1px solid #d3deeb;
+    border-top: 4px solid #0066ff;
+    border-radius: 16px;
+    box-shadow: 0 12px 26px -14px rgba(15, 42, 80, .4), 0 1px 3px rgba(15, 42, 80, .06);
+  }
+  .seller-profile-dashboard .seller-orders-card-grid { gap: 18px; }
   .profile-dashboard .order-card-container > * { margin-left: 14px; margin-right: 14px; }
   .profile-dashboard .order-card-header {
     flex-wrap: wrap;
