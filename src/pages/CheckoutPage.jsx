@@ -12,7 +12,7 @@ import {
 } from '../services/api';
 import { formatVehicleLabel, isValidPlate, lookupVehicleByPlate, normalizePlate } from '../utils/vehicleLookup';
 import { adaptProduct, formatRut, isValidRut } from '../services/adapters';
-import { isQuoteExpired, quantityFromLabel } from '../utils/quoteFlow';
+import { isQuoteExpired, quantityFromLabel, quoteShippingCost } from '../utils/quoteFlow';
 import { normalizeOrderStatus } from '../data/orderStatusFlow';
 import { checkoutFallbackShippingMethod, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import { buyerProfilePath, profilePath, ROUTES } from '../routes/paths';
@@ -189,7 +189,8 @@ export default function CheckoutPage() {
       quantity: cantidad,
       total,
       shippingMethod: quote.condicionesEntrega || '',
-      shippingFee: Number(quote.condicionesEntrega?.match(/costo:\s*\$?([\d.]+)/i)?.[1]?.replace(/\./g, '') || 0),
+      // El mismo despacho que cobrara el backend (`costoDespacho` de la cotizacion).
+      shippingFee: quoteShippingCost(quote),
     };
   }, [quote, quoteContext, conversacionId]);
 

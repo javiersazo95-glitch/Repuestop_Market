@@ -53,6 +53,11 @@ import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES, storePath } from '../routes/paths';
 import { orderDisplayCode } from '../data/orderIdentity';
+import { deliveryTermsLabel, quoteChargeBase, quoteShippingCost } from '../utils/quoteFlow';
+
+function formatQuoteCLP(value) {
+  return `$${Math.round(Number(value) || 0).toLocaleString('es-CL')}`;
+}
 import { normalizeOrderStatus } from '../data/orderStatusFlow';
 
 // Estados en que un pedido ya termino (para "pedidos en curso" del comprador).
@@ -719,8 +724,16 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
   const handleSendQuoteResponse = async (quoteId, responseData) => {
     const savedQuote = await saveConversationQuoteApi(quoteId, responseData);
-    const finalPrice = Number(savedQuote?.precioFinal ?? savedQuote?.precio ?? responseData.precioFinal ?? responseData.precio ?? 0);
-    const notificationText = `Cotización enviada por $${finalPrice.toLocaleString('es-CL')}. ${responseData.condicionesEntrega || ''}`.trim();
+    // El monto del aviso es el que pagara el comprador: productos menos descuento mas el
+    // envio dentro de la comuna (lo que cobra el checkout y la base de la comision).
+    const quoteForTotal = savedQuote || responseData;
+    const total = quoteChargeBase(quoteForTotal);
+    const shipping = quoteShippingCost(quoteForTotal);
+    const method = deliveryTermsLabel(savedQuote?.condicionesEntrega || responseData.condicionesEntrega);
+    const notificationText = [
+      `Cotización enviada por ${formatQuoteCLP(total)}${shipping > 0 ? ` (incluye despacho ${formatQuoteCLP(shipping)})` : ''}.`,
+      method ? `Método de envío: ${method}.` : '',
+    ].filter(Boolean).join(' ');
     const sentMessage = await sendConversationMessageApi(quoteId, notificationText).catch(() => null);
     queryClient.invalidateQueries({ queryKey: qk.conversations(isSeller ? effectiveSellerId : effectiveUserId, isSeller) });
     setSelectedQuote((prev) =>

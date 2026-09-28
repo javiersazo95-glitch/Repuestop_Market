@@ -971,6 +971,29 @@ export async function sendConversationMessageApi(conversationId, texto) {
   });
 }
 
+/**
+ * Registra (o modifica) la solicitud de cotización: unidades, método de envío, chasis y nota.
+ * El backend la guarda como datos y publica en el chat el mensaje en lista. Devuelve la
+ * conversación con su `solicitud`.
+ */
+export async function sendQuoteRequestApi(conversationId, { cantidad, metodoEnvio, chasis, nota }) {
+  return fetchApi(`/conversaciones/${conversationId}/solicitud`, {
+    method: 'POST',
+    body: JSON.stringify({
+      cantidad: Number(cantidad) || 1,
+      metodoEnvio,
+      chasis: chasis?.trim() || null,
+      nota: nota?.trim() || null,
+    }),
+  });
+}
+
+/** Lo que pidió el comprador (null si la conversación no tiene solicitud). */
+export async function getQuoteRequestApi(conversationId) {
+  const result = await fetchApi(`/conversaciones/${conversationId}/solicitud`, { method: 'GET' });
+  return result && typeof result === 'object' ? result : null;
+}
+
 export async function saveConversationQuoteApi(conversationId, payload) {
   return fetchApi(`/conversaciones/${conversationId}/cotizacion`, {
     method: 'POST',

@@ -10,16 +10,17 @@ import RepuesTopLogo from './RepuesTopLogo';
 import ChatImagePreview from './ChatImagePreview';
 import {
   getConversationMessagesApi,
-  getConversationQuoteApi, getSellerStoreApi, getStoreProfileApi,
+  getConversationQuoteApi, getQuoteRequestApi, getSellerStoreApi, getStoreProfileApi,
   markConversationReadApi, reportConversationApi, resolveMediaUrl,
-  sendConversationMessageApi, uploadConversationImageApi,
+  sendConversationMessageApi, sendQuoteRequestApi, uploadConversationImageApi,
 } from '../services/api';
 import { adaptStore } from '../services/adapters';
 import { compressImageFile } from '../utils/imageCompression';
 import CommissionSummaryCard from './CommissionSummaryCard';
 import {
-  buildQuoteRequestMessage, isQuoteExpired, parseQuoteRequestMessage, quantityFromLabel,
-  quoteExpirationLabel, QUOTE_AVAILABILITY_OPTIONS,
+  deliveryTermsLabel, isQuoteExpired, quantityFromLabel, quoteChargeBase,
+  quoteExpirationLabel, quoteShippingCost as shippingCostOfQuote, resolveQuoteRequest, shippingCodeFromText,
+  QUOTE_AVAILABILITY_OPTIONS, QUOTE_DELIVERY_OPTIONS, QUOTE_SHIPPING_LABELS,
   QUOTE_VALIDITY_OPTIONS, QUOTE_WARRANTY_OPTIONS,
 } from '../utils/quoteFlow';
 import { buildQuotePdfBlob, quoteDocumentFilename } from '../utils/quoteDocument';
@@ -132,40 +133,40 @@ export default function QuoteDetailModal({
   const fileInputRef = React.useRef(null);
   const chatTextareaRef = React.useRef(null);
 
-  const requestMessage = useMemo(() => {
-    // El ULTIMO mensaje estructurado, no el primero: "Solicitar modificación" manda uno
-    // nuevo a la misma conversacion, y el resumen de arriba ("Cantidad solicitada", etc.)
-    // tiene que reflejar el pedido vigente, no el original.
-    const structured = [...messages].reverse()
-      .find((message) => /Solicitud de cotización por\s+/i.test(message.texto || ''));
-    return structured?.texto || quote?.ultimoMensaje || '';
-  }, [messages, quote?.ultimoMensaje]);
-  const requested = useMemo(() => parseQuoteRequestMessage(requestMessage), [requestMessage]);
+  // Lo que pidio el comprador sale de la solicitud guardada en el backend (`solicitud`). Antes
+  // se releia el texto del chat y, mientras cargaban los mensajes o si no calzaba la regex, la
+  // condicion caia en "Retiro en tienda" aunque se hubiera pedido envio dentro de la comuna.
+  const [solicitud, setSolicitud] = useState(quote?.solicitud || null);
+  const requested = useMemo(
+    () => resolveQuoteRequest(solicitud, messages, quote?.ultimoMensaje),
+    [solicitud, messages, quote?.ultimoMensaje],
+  );
 
   const [unitPrice, setUnitPrice] = useState('');
   const [discount, setDiscount] = useState('');
   const [availability, setAvailability] = useState('Stock disponible');
-  const [deliveryTerms, setDeliveryTerms] = useState('Retiro en tienda');
+  const [deliveryTerms, setDeliveryTerms] = useState('');
   const [deliveryCost, setDeliveryCost] = useState('');
   const [warranty, setWarranty] = useState('3 meses');
   const [validity, setValidity] = useState('Valida por 24 horas');
   const [responseNotes, setResponseNotes] = useState('');
+  // Los metodos de la TIENDA de esta conversacion. El respaldo a `user.shippingMethods` solo
+  // vale para el vendedor (es su propia tienda): para un comprador que ademas vende eran los
+  // metodos de su tienda, no los de la que cotiza.
+  const storeShippingMethods = quote?.sellerShippingMethods || (mode === 'seller' ? user?.shippingMethods : '');
   const localShippingCost = useMemo(() => {
-    const methods = parseShippingMethods(quote?.sellerShippingMethods || user?.shippingMethods);
+    const methods = parseShippingMethods(storeShippingMethods);
     const localMethod = methods.find((method) => resolveShippingService(method).name === 'Envío dentro de la comuna');
     return shippingMethodCost(localMethod);
-  }, [quote?.sellerShippingMethods, user?.shippingMethods]);
-  // Metodos de envio de la tienda para el popup de "Solicitar modificación": mismo origen
-  // que `localShippingCost`, asi que no hace falta volver a pedir el producto completo.
+  }, [storeShippingMethods]);
+  // Metodos de envio de la tienda para el popup de "Solicitar modificación".
   const modificationShippingOptions = useMemo(() => {
-    const methods = parseShippingMethods(quote?.sellerShippingMethods || user?.shippingMethods);
-    return [...new Set(methods.map((method) => resolveShippingService(method).name))];
-  }, [quote?.sellerShippingMethods, user?.shippingMethods]);
-  const quoteShippingCost = useMemo(() => {
-    const savedCost = activeQuote?.condicionesEntrega?.match(/costo:\s*\$?([\d.]+)/i)?.[1]?.replace(/\./g, '');
-    return Number(savedCost || 0);
-  }, [activeQuote?.condicionesEntrega]);
-  const isLocalDelivery = ['Delivery local', 'Envío dentro de la comuna'].includes(deliveryTerms);
+    const methods = parseShippingMethods(storeShippingMethods);
+    const names = methods.map((method) => QUOTE_SHIPPING_LABELS[shippingCodeFromText(method)]).filter(Boolean);
+    return [...new Set(names.length ? names : QUOTE_DELIVERY_OPTIONS)];
+  }, [storeShippingMethods]);
+  const quoteShippingCost = shippingCostOfQuote(activeQuote);
+  const isLocalDelivery = shippingCodeFromText(deliveryTerms) === 'DENTRO_DE_LA_COMUNA';
 
   useEffect(() => {
     const current = quote?.cotizacion;
@@ -173,20 +174,29 @@ export default function QuoteDetailModal({
     setUnitPrice(String(current?.precioUnitario ?? current?.precio ?? ''));
     setDiscount(String(current?.descuento ?? ''));
     setAvailability(current?.disponibilidad || 'Stock disponible');
-    // Sin cotizacion previa, la condicion es la que pidio el COMPRADOR. Antes caia en
-    // "Retiro en tienda" fijo, asi que el vendedor cotizaba sobre una condicion que el
-    // comprador no habia pedido.
+    // La condicion es SIEMPRE la que pidio el comprador, tambien si ya habia una cotizacion:
+    // si pidio una modificacion, la cotizacion editada debe tomar el metodo nuevo. Antes una
+    // cotizacion guardada como "Retiro en tienda" le ganaba a cualquier solicitud posterior.
     setDeliveryTerms(
-      current?.condicionesEntrega?.replace(/ \(costo:.*\)$/i, '')
-      || requested.requestedDeliveryTerms
-      || 'Retiro en tienda'
+      requested.hasRequestedDeliveryTerms
+        ? requested.requestedDeliveryTerms
+        : deliveryTermsLabel(current?.condicionesEntrega) || ''
     );
-    const savedCost = current?.condicionesEntrega?.match(/costo:\s*\$?([\d.]+)/i)?.[1]?.replace(/\./g, '');
-    setDeliveryCost(savedCost || (['Delivery local', 'Envío dentro de la comuna'].includes(requested.requestedDeliveryTerms) && localShippingCost ? String(localShippingCost) : ''));
+    setDeliveryCost(requested.requestedShippingCode === 'DENTRO_DE_LA_COMUNA' && localShippingCost ? String(localShippingCost) : '');
     setWarranty(current?.garantia || '3 meses');
     setValidity(current?.vigencia || 'Valida por 24 horas');
     setResponseNotes(current?.notas || '');
-  }, [quote, requested.requestedDeliveryTerms, localShippingCost]);
+  }, [quote, requested.requestedDeliveryTerms, requested.hasRequestedDeliveryTerms, requested.requestedShippingCode, localShippingCost]);
+
+  useEffect(() => {
+    setSolicitud(quote?.solicitud || null);
+    if (!quote?.id) return undefined;
+    let cancelled = false;
+    getQuoteRequestApi(quote.id)
+      .then((current) => { if (!cancelled && current) setSolicitud(current); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [quote?.id, quote?.solicitud]);
 
   useEffect(() => {
     if (!quote) return undefined;
@@ -220,6 +230,11 @@ export default function QuoteDetailModal({
       getConversationQuoteApi(quote.id)
         .then((current) => {
           if (current) setLocalQuote(current);
+        })
+        .catch(() => {});
+      getQuoteRequestApi(quote.id)
+        .then((current) => {
+          if (current) setSolicitud(current);
         })
         .catch(() => {});
     };
@@ -428,12 +443,14 @@ export default function QuoteDetailModal({
   // que el comprador lo ajuste. Antes solo precargaba el textarea del chat con una frase
   // fija, sin mostrar los datos que ya habia pedido ni dejar editarlos.
   const openModificationRequest = () => {
+    // Parte en el metodo VIGENTE. Antes, si no calzaba el texto, tomaba la primera opcion
+    // (casi siempre "Retiro en tienda") y la modificacion cambiaba el metodo sin querer.
     const matchedShipping = modificationShippingOptions.find(
-      (option) => option.toLowerCase() === requested.requestedDeliveryTerms.toLowerCase(),
+      (option) => shippingCodeFromText(option) === requested.requestedShippingCode,
     );
     setModificationForm({
       quantity: quantityFromLabel(requested.requestedQty),
-      shippingMethod: matchedShipping || modificationShippingOptions[0] || '',
+      shippingMethod: matchedShipping || '',
       chassis: requested.requestedChassis || '',
       notes: requested.requestedNotes || '',
     });
@@ -454,16 +471,17 @@ export default function QuoteDetailModal({
     setModificationSubmitting(true);
     setModificationError('');
     try {
-      // Dos mensajes: el estructurado (lo que el "Cantidad solicitada"/"Método de envío
-      // solicitado" de arriba parsean para mostrar el pedido vigente) y uno generico atras,
-      // para que a la tienda le quede clarísimo en el chat que hay algo nuevo que revisar.
-      const structuredMessage = buildQuoteRequestMessage(modificationForm);
-      const sentStructured = await sendConversationMessageApi(quote.id, structuredMessage);
-      const sentNotice = await sendConversationMessageApi(
-        quote.id,
-        'Te envié una nueva solicitud de cotización, revísala 🙂',
-      );
-      setMessages((previous) => [...previous, sentStructured, sentNotice]);
+      // La modificacion reemplaza la solicitud guardada en el backend, que publica en el chat
+      // la lista "Solicitud de cotización actualizada" con unidades, metodo y chasis.
+      const saved = await sendQuoteRequestApi(quote.id, {
+        cantidad: modificationForm.quantity,
+        metodoEnvio: shippingCodeFromText(modificationForm.shippingMethod) || modificationForm.shippingMethod,
+        chasis: modificationForm.chassis,
+        nota: modificationForm.notes,
+      });
+      if (saved?.solicitud) setSolicitud(saved.solicitud);
+      const refreshed = await getConversationMessagesApi(quote.id).catch(() => null);
+      if (Array.isArray(refreshed)) setMessages(refreshed);
       setModificationOpen(false);
       setStatusMessage({ type: 'success', text: 'Tu solicitud de modificación fue enviada.' });
     } catch (error) {
@@ -482,10 +500,14 @@ export default function QuoteDetailModal({
     setIsSending(true);
     setStatusMessage(null);
     try {
-      let normalizedDelivery = deliveryTerms;
-      if (['Delivery local', 'Envío dentro de la comuna'].includes(deliveryTerms) && localShippingCost) {
-        normalizedDelivery += ` (costo: ${formatCLP(localShippingCost)})`;
+      if (!deliveryTerms) {
+        setStatusMessage({ type: 'error', text: 'Selecciona el método de envío de la cotización.' });
+        setIsSending(false);
+        return;
       }
+      // El backend fija el metodo y las unidades desde la solicitud y agrega la tarifa de la
+      // tienda al envio dentro de la comuna ("(costo: $X)").
+      const normalizedDelivery = deliveryTerms;
       const payload = {
         precio: finalPrice, cantidad: requested.requestedQty, disponibilidad: availability,
         condicionesEntrega: normalizedDelivery, precioUnitario: Number(unitPrice),
@@ -542,7 +564,7 @@ export default function QuoteDetailModal({
             <button type="button" className="quote-ws-store" onClick={openStore} disabled={!storeId} aria-label={`Ver tienda ${storeName}`}><div className="quote-ws-avatar">{storePhoto ? <img src={storePhoto} alt={storeName} /> : <Store size={22} />}</div><div><small>Tienda vendedora</small><strong>{storeName}</strong><span><BadgeCheck size={12} /> Verificada</span></div><ChevronRight className="quote-ws-store-arrow" size={19} /></button>
             <button type="button" className="quote-ws-product-mini" onClick={openProduct}>{productImage ? <img src={productImage} alt={productName} /> : <Package size={25} />}<div><small>Producto cotizado</small><strong>{productName}</strong><span>Producto #{quote.productoId || '—'}</span></div><ChevronRight size={18} /></button>
             <DataRow icon={Package} label="Cantidad solicitada" value={requested.requestedQty} />
-            <DataRow icon={Truck} label="Método de envío" value={requested.requestedDeliveryTerms} />
+            <DataRow icon={Truck} label="Método de envío" value={requested.requestedDeliveryTerms || 'Por confirmar'} />
             <DataRow icon={ShieldCheck} label="Patente o chasis" value={requested.requestedChassis || 'No informado'} />
             <DataRow icon={MessageSquare} label="Nota del comprador" value={requested.requestedNotes || 'Sin nota adicional'} />
           </section>
@@ -714,7 +736,8 @@ export default function QuoteDetailModal({
                 <div className="quote-editor-request-grid">
                   <span><small>Producto</small><b>{productName}</b></span>
                   <span><small>Cantidad solicitada</small><b>{requested.requestedQty}</b></span>
-                  <span><small>Método de envío solicitado</small><b>{requested.requestedDeliveryTerms}</b></span>
+                  <span><small>Método de envío solicitado</small><b>{requested.requestedDeliveryTerms || 'Por confirmar'}</b></span>
+                  <span><small>Chasis del vehículo</small><b>{requested.requestedChassis || 'No informado'}</b></span>
                   <span><small>Nota del comprador</small><b>{requested.requestedNotes || 'Sin nota adicional'}</b></span>
                 </div>
               </div>
@@ -732,6 +755,7 @@ export default function QuoteDetailModal({
                     lo que cree. `onApplySuggested` escribe el precio por unidad. */}
                 <CommissionSummaryCard
                   basePrice={finalPrice + (isLocalDelivery ? localShippingCost : 0)}
+                  shippingCost={isLocalDelivery ? localShippingCost : 0}
                   isFounder={Boolean(isFounder ?? user?.founder ?? user?.fundador)}
                   suggestedContextLabel="Precio sugerido a COBRAR para recibir este líquido (no es lo que vas a publicar ni recibir tal cual; al presionar Aplicar se ajusta el precio por unidad):"
                   onApplySuggested={(value) => setUnitPrice(String(Math.min(Math.ceil((Math.max(0, value - (isLocalDelivery ? localShippingCost : 0)) + normalizedDiscount) / quantity), 99999999)))}
@@ -750,8 +774,10 @@ export default function QuoteDetailModal({
               {/* La condicion de entrega la eligio el COMPRADOR al pedir la cotizacion:
                   el vendedor cotiza sobre esa condicion, no la cambia. Se muestra
                   bloqueada igual que la cantidad, que ya funcionaba asi. */}
-              <label><span>Condición de entrega <Lock size={13} /></span><div className="quote-locked-field">{deliveryTerms}<Lock size={15} /></div></label>
-              {['Delivery local', 'Envío dentro de la comuna'].includes(deliveryTerms) && <label><span>Costo del envío local configurado</span><div className="quote-locked-field">{deliveryCost ? formatCLP(deliveryCost) : 'Sin tarifa configurada'}<Lock size={15} /></div><small>Se obtiene desde los métodos de envío de Mi tienda y datos.</small></label>}
+              {requested.hasRequestedDeliveryTerms
+                ? <label><span>Método de envío solicitado <Lock size={13} /></span><div className="quote-locked-field">{deliveryTerms}<Lock size={15} /></div></label>
+                : <label><span>Método de envío</span><select value={deliveryTerms} onChange={(event) => setDeliveryTerms(event.target.value)} required><option value="">Selecciona el método</option>{QUOTE_DELIVERY_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>}
+              {isLocalDelivery && <label><span>Costo del envío local configurado</span><div className="quote-locked-field">{deliveryCost ? formatCLP(deliveryCost) : 'Sin tarifa configurada'}<Lock size={15} /></div><small>Se obtiene desde los métodos de envío de Mi tienda y datos.</small></label>}
               <label><span>Garantía</span><select value={warranty} onChange={(event) => setWarranty(event.target.value)}>{QUOTE_WARRANTY_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
               <label><span>Vigencia</span><select value={validity} onChange={(event) => setValidity(event.target.value)}>{QUOTE_VALIDITY_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
             </div>
@@ -869,7 +895,7 @@ export default function QuoteDetailModal({
         </div>
       )}
 
-      {quotePreviewOpen && activeQuote && <div className="quote-ws-dialog-backdrop" onClick={() => setQuotePreviewOpen(false)}><section className="quote-ws-quote-dialog quote-ws-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><FileText size={22} /><span><strong>Detalle de la cotización</strong><small><CalendarClock size={13} /> {quoteExpirationLabel(activeQuote, now)}</small></span></div><button type="button" onClick={() => setQuotePreviewOpen(false)}><X size={20} /></button></header><div className="quote-ws-dialog-body"><div className="quote-ws-preview-price"><small>Total cotizado</small><strong>{formatCLP(Number(activeQuote.precioFinal ?? activeQuote.precio ?? 0) + quoteShippingCost)}</strong></div><DataRow icon={Package} label="Cantidad" value={activeQuote.cantidad} /><DataRow icon={CheckCircle2} label="Disponibilidad" value={activeQuote.disponibilidad} /><DataRow icon={Truck} label="Entrega" value={activeQuote.condicionesEntrega} />{quoteShippingCost > 0 && <DataRow icon={CreditCard} label="Despacho" value={formatCLP(quoteShippingCost)} />}{Number(activeQuote.descuento) > 0 && <DataRow icon={Tag} label="Descuento" value={`-${formatCLP(activeQuote.descuento)}`} />}<DataRow icon={ShieldCheck} label="Garantía" value={activeQuote.garantia} /><DataRow icon={FileText} label="Notas" value={activeQuote.notas} /><div className="quote-ws-preview-document"><button type="button" onClick={viewDocument}><Eye size={16} /> Ver PDF</button><button type="button" onClick={downloadDocument}><Download size={16} /> Descargar PDF</button></div>{mode === 'buyer' && <button type="button" className="quote-ws-primary-button" disabled={expired || closed} onClick={goToQuoteCheckout}><ShoppingCart size={16} /> {expired ? 'Cotización vencida' : 'Comprar esta cotización'}</button>}</div></section></div>}
+      {quotePreviewOpen && activeQuote && <div className="quote-ws-dialog-backdrop" onClick={() => setQuotePreviewOpen(false)}><section className="quote-ws-quote-dialog quote-ws-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><FileText size={22} /><span><strong>Detalle de la cotización</strong><small><CalendarClock size={13} /> {quoteExpirationLabel(activeQuote, now)}</small></span></div><button type="button" onClick={() => setQuotePreviewOpen(false)}><X size={20} /></button></header><div className="quote-ws-dialog-body"><div className="quote-ws-preview-price"><small>Total a pagar{quoteShippingCost > 0 ? ' (productos + despacho)' : ''}</small><strong>{formatCLP(quoteChargeBase(activeQuote))}</strong></div><DataRow icon={Package} label="Cantidad" value={activeQuote.cantidad} /><DataRow icon={CheckCircle2} label="Disponibilidad" value={activeQuote.disponibilidad} /><DataRow icon={Truck} label="Método de envío" value={deliveryTermsLabel(activeQuote.condicionesEntrega)} />{quoteShippingCost > 0 && <DataRow icon={CreditCard} label="Despacho dentro de la comuna" value={formatCLP(quoteShippingCost)} />}{Number(activeQuote.descuento) > 0 && <DataRow icon={Tag} label="Descuento" value={`-${formatCLP(activeQuote.descuento)}`} />}<DataRow icon={ShieldCheck} label="Garantía" value={activeQuote.garantia} /><DataRow icon={FileText} label="Notas" value={activeQuote.notas} /><div className="quote-ws-preview-document"><button type="button" onClick={viewDocument}><Eye size={16} /> Ver PDF</button><button type="button" onClick={downloadDocument}><Download size={16} /> Descargar PDF</button></div>{mode === 'buyer' && <button type="button" className="quote-ws-primary-button" disabled={expired || closed} onClick={goToQuoteCheckout}><ShoppingCart size={16} /> {expired ? 'Cotización vencida' : 'Comprar esta cotización'}</button>}</div></section></div>}
     </div>
   );
 }

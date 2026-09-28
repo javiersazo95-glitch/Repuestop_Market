@@ -9,8 +9,14 @@ function formatCLP(amount) {
 
 const FLOW_RATE_LABEL = `${(FLOW_RATE_BASE * 100).toFixed(2).replace('.', ',')}%`;
 
+/**
+ * `basePrice` es lo que paga el comprador y la base de la comision. `shippingCost` es la
+ * parte que corresponde al envio dentro de la comuna: la comision se cobra sobre el total
+ * pagado, despacho incluido (O86), y se muestra para que el vendedor lo vea en el desglose.
+ */
 export default function CommissionSummaryCard({
   basePrice = 0,
+  shippingCost = 0,
   isFounder = false,
   onApplySuggested,
   suggestedContextLabel,
@@ -184,6 +190,12 @@ export default function CommissionSummaryCard({
         </div>
       ) : (
         <>
+          {shippingCost > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', margin: '3px 0', color: '#475569' }}>
+              <span>Base del cobro: productos {formatCLP(price - shippingCost)} + despacho {formatCLP(shippingCost)}</span>
+              <strong style={{ color: '#334155' }}>{formatCLP(price)}</strong>
+            </div>
+          )}
           {/* Row 1: Costo total, tambien es el toggle del desglose */}
           <button
             type="button"
@@ -233,6 +245,11 @@ export default function CommissionSummaryCard({
               gap: '4px',
               fontSize: '12px',
             }}>
+              {shippingCost > 0 && (
+                <div style={{ color: '#64748b', fontSize: '11px' }}>
+                  Las comisiones se calculan sobre el total pagado ({formatCLP(price)}), que incluye el envío dentro de la comuna.
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#475569' }}>Comisión RepuesTop ({Math.round(breakdown.rate * 100)}% + IVA):</span>
                 <strong style={{ color: '#334155' }}>-{formatCLP(breakdown.repuestopWithIva)}</strong>

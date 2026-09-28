@@ -5,10 +5,10 @@ import {
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  createConversationApi, getBuyerConversationsApi, resolveMediaUrl, sendConversationMessageApi,
+  createConversationApi, getBuyerConversationsApi, resolveMediaUrl, sendQuoteRequestApi,
 } from '../services/api';
 import {
-  buildQuoteRequestMessage, isQuoteExpired, QUOTE_DELIVERY_OPTIONS,
+  isQuoteExpired, QUOTE_DELIVERY_OPTIONS, shippingCodeFromText,
 } from '../utils/quoteFlow';
 import { buyerProfilePath } from '../routes/paths';
 import { parseShippingMethods, resolveShippingService, shippingMethodsForLocation } from '../data/shippingMethods';
@@ -118,9 +118,16 @@ export default function QuotationRequestModal({
       // otra cotizacion, no continuando la anterior.
       const forceNew = await needsNewQuoteThread(user, providerId, product.id);
       const createdConversation = await createConversationApi(providerId, product.id, { forceNew });
-      const message = buildQuoteRequestMessage(formData);
-      const sentMessage = await sendConversationMessageApi(createdConversation.id, message);
-      setConversation({ ...createdConversation, ultimoMensaje: sentMessage?.texto || message });
+      // La solicitud viaja como datos: el backend la guarda (unidades, método, chasis) y
+      // publica en el chat el mensaje en lista. Antes se mandaba sólo un texto que cada
+      // pantalla releía y, si no podía, mostraba "Retiro en tienda".
+      const saved = await sendQuoteRequestApi(createdConversation.id, {
+        cantidad: formData.quantity,
+        metodoEnvio: shippingCodeFromText(formData.shippingMethod) || formData.shippingMethod,
+        chasis: formData.chassis,
+        nota: formData.notes,
+      });
+      setConversation({ ...createdConversation, ...(saved || {}) });
       // "Mis cotizaciones" lee las conversaciones por React Query con staleTime de 60s.
       // Sin invalidar, la solicitud quedaba guardada en el backend pero no aparecia en
       // el perfil hasta recargar, y parecia que no habia funcionado.

@@ -1,4 +1,5 @@
 import { formatRut } from '../services/adapters';
+import { deliveryTermsLabel, quoteChargeBase, quoteProductsTotal, quoteShippingCost } from './quoteFlow';
 
 const COLORS = {
   navy: [7, 43, 101],
@@ -397,7 +398,12 @@ export async function buildQuotePdfBlob({
 }) {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
-  const total = Number(quote?.precioFinal ?? quote?.precio ?? 0);
+  // `total` son los productos menos el descuento; `grandTotal` suma el envio dentro de la
+  // comuna, que es lo que cobra el checkout (y la base de la comision). Antes el PDF decia
+  // "TOTAL COTIZADO" sin el despacho aunque el comprador lo iba a pagar.
+  const total = quoteProductsTotal(quote);
+  const shippingCost = quoteShippingCost(quote);
+  const grandTotal = quoteChargeBase(quote);
   const unitPrice = Number(quote?.precioUnitario ?? total);
   const discount = Number(quote?.descuento || 0);
   const quantity = quote?.cantidad || '1 unidad';
@@ -581,7 +587,7 @@ export async function buildQuotePdfBlob({
   setText(doc, COLORS.text, 7.2, 'bold');
   doc.text('Entrega:', 116, cardY + 35);
   setText(doc, COLORS.text, 7.0);
-  const deliveryText = quote?.condicionesEntrega || 'A convenir con la tienda';
+  const deliveryText = deliveryTermsLabel(quote?.condicionesEntrega) || 'A convenir con la tienda';
   doc.text(split(doc, deliveryText, 60)[0], 130, cardY + 35);
 
   // Fila 3: Garantía
@@ -620,26 +626,28 @@ export async function buildQuotePdfBlob({
   const totalRows = [
     ['Subtotal:', money(subtotal), COLORS.text],
     ['Descuento:', `-${money(discount)}`, COLORS.red],
+    ...(shippingCost > 0 ? [['Despacho dentro de la comuna:', money(shippingCost), COLORS.text]] : []),
   ];
   totalRows.forEach(([label, value, color], index) => {
-    const y = 168 + index * 7;
+    const y = 167 + index * (totalRows.length > 2 ? 5.5 : 7);
     setText(doc, COLORS.text, 8, 'bold');
     doc.text(label, 101, y);
     setText(doc, color, 8);
     doc.text(value, 192, y, { align: 'right' });
   });
   doc.setDrawColor(...COLORS.border);
-  doc.line(98, 177.5, 195, 177.5);
+  const totalLineY = totalRows.length > 2 ? 180.5 : 177.5;
+  doc.line(98, totalLineY, 195, totalLineY);
   setText(doc, COLORS.navy, 9.4, 'bold');
-  doc.text('TOTAL COTIZADO:', 101, 185);
+  doc.text('TOTAL COTIZADO:', 101, totalLineY + 6.5);
   setText(doc, COLORS.navy, 13.5, 'bold');
-  doc.text(money(total), 192, 185, { align: 'right' });
+  doc.text(money(grandTotal), 192, totalLineY + 6.5, { align: 'right' });
 
   // Condiciones y notas de la propuesta.
   sectionTitle(doc, 'CONDICIONES DE LA COTIZACIÓN', 198);
   const conditions = [
     [boxIcon, 'Disponibilidad:', quote?.disponibilidad || 'No informada'],
-    [truckIcon, 'Condiciones de entrega:', quote?.condicionesEntrega || 'A convenir'],
+    [truckIcon, 'Método de envío:', deliveryTermsLabel(quote?.condicionesEntrega) || 'A convenir'],
     [shieldIcon, 'Garantía:', quote?.garantia || 'No informada'],
     [clockIcon, 'Vigencia:', quote?.vigencia || 'No informada'],
   ];
