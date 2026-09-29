@@ -41,7 +41,11 @@ export const EMPRESA = {
   correo: 'contacto@repuestop.cl',
 };
 
-const IDENTIFICACION_EMPRESA = `${EMPRESA.razonSocial}, RUT ${EMPRESA.rut}, con domicilio en ${EMPRESA.domicilio}, representada legalmente por ${EMPRESA.representantes}`;
+const IDENTIFICACION_EMPRESA = `${EMPRESA.razonSocial}, RUT ${EMPRESA.rut}, con domicilio en ${EMPRESA.domicilio}`;
+
+// Seccion final, al estilo de los marketplaces chilenos (p. ej. Paris, "Representante legal"):
+// la designacion es del operador y no se extiende a los vendedores.
+const REPRESENTANTE_LEGAL = `${EMPRESA.razonSocial}, administradora de la Plataforma, designa como sus representantes legales a ${EMPRESA.representantes}, ambos con domicilio en ${EMPRESA.domicilio}. Esta designación no se extiende a los vendedores, que actúan por cuenta propia y tienen sus propios representantes legales.`;
 
 export const COMPRADOR_TERMS = `1. IDENTIFICACIÓN DE LA PLATAFORMA
 RepuesTop es una plataforma de comercio electrónico, disponible como aplicación móvil y sitio web, administrada por ${IDENTIFICACION_EMPRESA}, en adelante también "RepuesTop", "la Plataforma" o "la Empresa". Estos Términos regulan el registro, acceso y uso de la Plataforma por parte de compradores.
@@ -147,7 +151,10 @@ Cuando el cambio sea relevante, RepuesTop podrá exigir una nueva aceptación di
 Estos Términos se rigen por las leyes de la República de Chile. Antes de iniciar otras acciones, el comprador deberá utilizar los canales internos de soporte o mediación disponibles en RepuesTop, sin perjuicio de los derechos que la ley le reconozca.
 
 19. CONTACTO
-Para soporte, reclamos o mediación, el canal principal será el botón de ayuda dentro de la Plataforma. Para asuntos legales o privacidad, el correo de contacto será contacto@repuestop.cl. Para soporte general, el correo será soporte@repuestop.cl, sin perjuicio de los canales que RepuesTop habilite.`;
+Para soporte, reclamos o mediación, el canal principal será el botón de ayuda dentro de la Plataforma. Para asuntos legales o privacidad, el correo de contacto será contacto@repuestop.cl. Para soporte general, el correo será soporte@repuestop.cl, sin perjuicio de los canales que RepuesTop habilite.
+
+20. REPRESENTANTE LEGAL
+${REPRESENTANTE_LEGAL}`;
 
 export const VENDEDOR_TERMS = `RepuesTop es administrada por ${IDENTIFICACION_EMPRESA} (en adelante, "RepuesTop"). Contacto: ${EMPRESA.correo}.
 
@@ -241,7 +248,10 @@ RepuesTop podrá conservar información necesaria por motivos legales, contables
 RepuesTop podrá modificar estos Términos, comisiones, reglas de operación o condiciones comerciales. Los cambios relevantes serán informados mediante notificación en la Plataforma, aviso al iniciar sesión u otro canal disponible. Si el vendedor no acepta nuevas condiciones obligatorias, no podrá continuar operando en la Plataforma.
 
 18. LEY APLICABLE
-Estos Términos se rigen por las leyes de Chile. El vendedor acepta utilizar previamente los canales internos de soporte, reclamo y mediación de RepuesTop, sin perjuicio de los derechos y acciones que correspondan conforme a la ley.`;
+Estos Términos se rigen por las leyes de Chile. El vendedor acepta utilizar previamente los canales internos de soporte, reclamo y mediación de RepuesTop, sin perjuicio de los derechos y acciones que correspondan conforme a la ley.
+
+19. REPRESENTANTE LEGAL
+${REPRESENTANTE_LEGAL}`;
 
 export const PRIVACIDAD_POLICY = `1. RESPONSABLE DEL TRATAMIENTO
 El responsable del tratamiento de datos personales es ${IDENTIFICACION_EMPRESA}, titular de RepuesTop. Para asuntos de privacidad, el canal de contacto será contacto@repuestop.cl, sin perjuicio de otros canales que se habiliten dentro de la Plataforma.
