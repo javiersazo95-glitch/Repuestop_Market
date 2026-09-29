@@ -23,6 +23,7 @@ import StoreLogoBadge from './StoreLogoBadge';
 import ContextualReportButton from './ContextualReportButton';
 import ShareLinkButton from './ShareLinkButton';
 import MobileStickyBar from './MobileStickyBar';
+import ProductDetailMobile from './ProductDetailMobile';
 import { productPath } from '../routes/paths';
 import RelatedProductsCarousel from './RelatedProductsCarousel';
 import ProductTopBadge from './ProductTopBadge';
@@ -463,6 +464,10 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     await onAddToCart(product);
   };
 
+  // Ficha móvil clonada de la app (≤768px): el mismo breakpoint de la tabla de
+  // compatibilidades separa ambos layouts. El escritorio no cambia.
+  const isMobileLayout = !isCompatTableLayout;
+
   return (
     <main className="product-marketplace-page">
       <div className="product-marketplace-container">
@@ -476,6 +481,73 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
           </nav>
         </div>
 
+        {isMobileLayout ? (<>
+          <ProductDetailMobile
+            product={product}
+            images={images}
+            activeImage={activeImage}
+            setActiveImage={setActiveImage}
+            onChangeImage={changeImage}
+            favorite={favorite}
+            onToggleFavorite={handleToggleFavorite}
+            isTopProduct={isTopProduct}
+            isBestSeller={isBestSeller}
+            condition={condition}
+            category={category}
+            brandName={brandName}
+            city={city}
+            sellerName={sellerName}
+            stock={stock}
+            quoteOnly={quoteOnly}
+            isOwnProduct={isOwnProduct}
+            compatible={compatible}
+            activeVehicle={activeVehicle}
+            isUniversalPart={isUniversalPart}
+            compatibilityCount={compatibility.length}
+            sellerRating={sellerRating}
+            sellerReviews={sellerReviews}
+            descriptionText={descriptionText}
+            descriptionIsLong={descriptionIsLong}
+            descriptionExpanded={descriptionExpanded}
+            onToggleDescription={() => setDescriptionExpanded((value) => !value)}
+            onOpenCompatibility={() => setCompatibilityOpen(true)}
+            onOpenBrandModal={() => setBrandModalOpen(true)}
+            onOpenStore={onOpenStore}
+          />
+
+          {/* Barra fija de acción como la de la app: favorito + acción principal,
+              siempre visible (sin watchSelector: el layout móvil no tiene buybox). */}
+          {!isOwnProduct && (quoteOnly ? (
+            <MobileStickyBar label="Precio" value="A cotizar" ariaLabel="Cotizar este repuesto">
+              <button
+                type="button"
+                className={`mobile-sticky-bar__btn is-secondary ${favorite ? 'is-favorite' : ''}`}
+                onClick={handleToggleFavorite}
+                aria-label={favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+              >
+                <Heart size={20} fill={favorite ? 'currentColor' : 'none'} />
+              </button>
+              <button type="button" className="mobile-sticky-bar__btn" onClick={() => onOpenQuote(product)}><MessageCircle size={18} /> Cotizar</button>
+            </MobileStickyBar>
+          ) : (
+            <MobileStickyBar
+              label={stock > 0 ? 'Precio · IVA incluido' : 'Sin stock'}
+              value={'$' + Number(product.precio).toLocaleString('es-CL')}
+              ariaLabel="Comprar este repuesto"
+            >
+              <button
+                type="button"
+                className={`mobile-sticky-bar__btn is-secondary ${favorite ? 'is-favorite' : ''}`}
+                onClick={handleToggleFavorite}
+                aria-label={favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+              >
+                <Heart size={20} fill={favorite ? 'currentColor' : 'none'} />
+              </button>
+              <button type="button" className="mobile-sticky-bar__btn is-secondary" disabled={!stock} onClick={addToCartNow} aria-label="Añadir al carro"><ShoppingCart size={20} /></button>
+              <button type="button" className="mobile-sticky-bar__btn" disabled={!stock} onClick={buyNow}>Comprar</button>
+            </MobileStickyBar>
+          ))}
+        </>) : (
         <section className="product-marketplace-layout">
           <article className={`product-marketplace-gallery ${images.length > 1 ? '' : 'single-image'}`}>
             {isTopProduct && <ProductTopBadge className="product-detail-top-badge" />}
@@ -778,6 +850,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             )}
           </section>
         </section>
+        )}
 
         <RelatedProductsCarousel product={product} onSelectProduct={onSelectProduct} />
 

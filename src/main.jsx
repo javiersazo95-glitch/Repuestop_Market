@@ -8,6 +8,8 @@ import './styles/profile-mobile.css'
 import './styles/chat-mobile.css'
 // Web publica en movil (auditoria 2026-09-26); va al final para ganar la cascada.
 import './styles/public-mobile.css'
+// Ficha del repuesto en movil clonada de la app (2026-09-29); despues de public-mobile.css.
+import './styles/product-detail-mobile.css'
 import App from './App.jsx'
 import { initSentry } from './sentry.js'
 import { watchStaleChunks } from './utils/staleDeploy.js'
