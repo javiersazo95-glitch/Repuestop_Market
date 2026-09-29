@@ -9,6 +9,7 @@ import {
   ROUTES, buyerProfilePath, catalogPath, helpCategoryPath, helpContactPath,
 } from '../routes/paths';
 import { useAuth } from '../context/AuthContext';
+import { EMPRESA } from '../data/legalTexts';
 
 /**
  * Los enlaces del footer son `<a>` reales (`Link`), no botones: así se indexan,
@@ -251,7 +252,13 @@ export default function Footer() {
       </div>
 
       <div className="container reference-footer-bottom">
-        <p>© 2026 Corebit SpA Chile.<br />Todos los derechos reservados.</p>
+        {/* O49: identificacion del operador (DS 6/2021, art. 7). */}
+        <p>
+          © 2026 {EMPRESA.razonSocial} · RUT {EMPRESA.rut}.<br />
+          {EMPRESA.domicilioCorto} · {EMPRESA.correo}<br />
+          Representantes legales: {EMPRESA.representantes}.<br />
+          Todos los derechos reservados.
+        </p>
         <nav>
           <Link to={ROUTES.terms} onClick={handleSameRoute(ROUTES.terms)}><FileText size={13} /> Términos y Condiciones</Link>
           <Link to={ROUTES.privacy} onClick={handleSameRoute(ROUTES.privacy)}><ShieldCheck size={13} /> Política de Privacidad</Link>

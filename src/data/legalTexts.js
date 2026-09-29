@@ -12,7 +12,7 @@
  */
 
 /** Fecha de la version vigente, para mostrar en pantalla. */
-export const LEGAL_VERSION = '27 de septiembre de 2026';
+export const LEGAL_VERSION = '28 de septiembre de 2026';
 
 /**
  * Codigo estable de la misma version, el que viaja al backend y queda guardado en
@@ -23,10 +23,28 @@ export const LEGAL_VERSION = '27 de septiembre de 2026';
  * Debe coincidir con `repuestop.legal.version-vigente` del backend y con
  * LEGAL_VERSION_CODE de la app.
  */
-export const LEGAL_VERSION_CODE = '2026-09-27';
+export const LEGAL_VERSION_CODE = '2026-09-28';
+
+/**
+ * O49 (28-sep): identificacion de la empresa operadora, exigida por el Reglamento de Comercio
+ * Electronico (DS 6/2021, art. 7: razon social, RUT, domicilio, contacto y representante legal)
+ * y por la ley de datos personales (responsable del tratamiento). Se usa en los tres documentos
+ * y en el pie del sitio. Mismos datos que BO_datos_empresa del backend (contrato de adhesion) y
+ * que `mobile/constants/legal-texts.ts`.
+ */
+export const EMPRESA = {
+  razonSocial: 'COREBIT SpA',
+  rut: '78.474.031-5',
+  domicilio: 'Pérez Valenzuela 1572, oficina 411, comuna de Providencia, Región Metropolitana de Santiago',
+  domicilioCorto: 'Pérez Valenzuela 1572, of. 411, Providencia',
+  representantes: 'Elias Choque y Javier Sazo',
+  correo: 'contacto@repuestop.cl',
+};
+
+const IDENTIFICACION_EMPRESA = `${EMPRESA.razonSocial}, RUT ${EMPRESA.rut}, con domicilio en ${EMPRESA.domicilio}, representada legalmente por ${EMPRESA.representantes}`;
 
 export const COMPRADOR_TERMS = `1. IDENTIFICACIÓN DE LA PLATAFORMA
-RepuesTop es una plataforma de comercio electrónico, disponible como aplicación móvil y sitio web, administrada por la empresa titular de la plataforma, en adelante también "RepuesTop", "la Plataforma" o "la Empresa". Estos Términos regulan el registro, acceso y uso de la Plataforma por parte de compradores.
+RepuesTop es una plataforma de comercio electrónico, disponible como aplicación móvil y sitio web, administrada por ${IDENTIFICACION_EMPRESA}, en adelante también "RepuesTop", "la Plataforma" o "la Empresa". Estos Términos regulan el registro, acceso y uso de la Plataforma por parte de compradores.
 
 2. ACEPTACIÓN DE LOS TÉRMINOS
 Al crear una cuenta, acceder a la Plataforma, realizar una búsqueda, solicitar una cotización, comprar un producto o usar cualquier funcionalidad, el comprador declara haber leído, entendido y aceptado estos Términos y la Política de Privacidad.
@@ -131,7 +149,9 @@ Estos Términos se rigen por las leyes de la República de Chile. Antes de inici
 19. CONTACTO
 Para soporte, reclamos o mediación, el canal principal será el botón de ayuda dentro de la Plataforma. Para asuntos legales o privacidad, el correo de contacto será contacto@repuestop.cl. Para soporte general, el correo será soporte@repuestop.cl, sin perjuicio de los canales que RepuesTop habilite.`;
 
-export const VENDEDOR_TERMS = `1. REGISTRO Y VALIDACIÓN DEL VENDEDOR
+export const VENDEDOR_TERMS = `RepuesTop es administrada por ${IDENTIFICACION_EMPRESA} (en adelante, "RepuesTop"). Contacto: ${EMPRESA.correo}.
+
+1. REGISTRO Y VALIDACIÓN DEL VENDEDOR
 El vendedor deberá ser una empresa formalizada con inicio de actividades ante el SII y contar con patente comercial u otro antecedente equivalente exigido por RepuesTop.
 Para registrarse, el vendedor deberá entregar razón social, RUT empresa, giro, dirección, teléfono, correo, datos del representante legal y demás antecedentes solicitados.
 RepuesTop podrá solicitar documentos tales como inicio de actividades, patente comercial, boleta o factura, cédula del representante legal, antecedentes bancarios y otros documentos necesarios para verificar la identidad, existencia y cumplimiento mínimo del vendedor.
@@ -224,7 +244,7 @@ RepuesTop podrá modificar estos Términos, comisiones, reglas de operación o c
 Estos Términos se rigen por las leyes de Chile. El vendedor acepta utilizar previamente los canales internos de soporte, reclamo y mediación de RepuesTop, sin perjuicio de los derechos y acciones que correspondan conforme a la ley.`;
 
 export const PRIVACIDAD_POLICY = `1. RESPONSABLE DEL TRATAMIENTO
-El responsable del tratamiento de datos personales será la empresa titular de RepuesTop. Para asuntos de privacidad, el canal de contacto será contacto@repuestop.cl, sin perjuicio de otros canales que se habiliten dentro de la Plataforma.
+El responsable del tratamiento de datos personales es ${IDENTIFICACION_EMPRESA}, titular de RepuesTop. Para asuntos de privacidad, el canal de contacto será contacto@repuestop.cl, sin perjuicio de otros canales que se habiliten dentro de la Plataforma.
 Esta Política deberá ajustarse a la Ley N° 19.628 y a las modificaciones introducidas por la Ley N° 21.719 cuando resulten exigibles, así como a cualquier normativa chilena aplicable en materia de datos personales, comercio electrónico y protección de consumidores.
 
 2. DATOS QUE RECOPILAMOS
