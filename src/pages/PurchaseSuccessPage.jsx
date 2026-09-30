@@ -36,7 +36,19 @@ export default function PurchaseSuccessPage() {
   const orderIdFromUrl = searchParams.get('orderId');
   const isFailure = status === 'failure';
 
-  const storedOrder = useMemo(() => location.state?.order || readStoredOrder(), [location.state]);
+  // H58 (pruebas de lanzamiento, 30-sep): la copia guardada es la del ULTIMO checkout de esta
+  // pestaña. Si la URL trae otro pedido (un pago reintentado desde "Mis pedidos" tras abandonar
+  // otro checkout, o el enlace a un comprobante anterior), la copia no sirve: se mostraba el
+  // pedido equivocado. Solo se usa cuando coincide con el `orderId` de la URL.
+  const storedOrder = useMemo(() => {
+    const candidate = location.state?.order || readStoredOrder();
+    if (!candidate || !orderIdFromUrl) return candidate;
+    const wanted = String(orderIdFromUrl).replace(/\s/g, '');
+    const refs = [candidate.numeroPedido, candidate.id]
+      .filter((value) => value != null)
+      .map((value) => String(value).replace(/\s/g, ''));
+    return refs.includes(wanted) ? candidate : null;
+  }, [location.state, orderIdFromUrl]);
   const [fetchedOrder, setFetchedOrder] = useState(null);
   // El pedido de la URL no se pudo traer (no es de esta cuenta, no existe, sin sesión).
   const [orderNotFound, setOrderNotFound] = useState(false);
