@@ -20,8 +20,8 @@ const SELLER_ROLES = ['SELLER', 'PROVIDER', 'PROVEEDOR'];
  * login, pero en la web eso no sirve: `AuthProvider` revalida con `GET /users/perfil` en
  * cada carga y pisa el usuario entero con un `PerfilUsuarioDTO` que no trae esos campos,
  * así que se perderían igual que se perdía la comuna del comprador. La fuente de verdad es
- * `GET /proveedores/{id}/verificacion`: `reviewStatus === 'APPROVED'` (equivale al `isOpen`
- * del móvil) y `adhesionContractDoc` vacío (equivale a `adhesionAccepted === false`).
+ * `GET /proveedores/{id}/verificacion`: `tiendaAprobada` (equivale al `isOpen` del móvil) y
+ * `adhesionContractDoc` vacío (equivale a `adhesionAccepted === false`).
  *
  * No tiene botón de cerrar, igual que el del móvil y que `TermsReacceptanceModal`: la
  * salida es cerrar sesión. Y el documento es el PDF real que emite el backend, no una copia
@@ -47,9 +47,12 @@ export default function SellerAdhesionModal() {
     retry: false,
   });
 
+  // `tiendaAprobada` es el estado de la TIENDA, el mismo que el backend exige para aceptar: el
+  // backoffice puede aprobarla sin pasar por la solicitud. `reviewStatus` queda de respaldo para
+  // un backend que todavía no envía el campo.
   const pendiente = Boolean(
     consultar
-    && verificacion?.reviewStatus === 'APPROVED'
+    && (verificacion?.tiendaAprobada ?? verificacion?.reviewStatus === 'APPROVED')
     && !verificacion?.adhesionContractDoc,
   );
 

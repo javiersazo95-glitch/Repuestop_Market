@@ -103,6 +103,10 @@ export default function SellerVerificationCard({ sellerId }) {
   const isCorrection = Boolean(verification?.verificationId);
   const canSubmit = !status || status === 'NEEDS_CORRECTION' || status === 'REJECTED';
   const adhesionAccepted = Boolean(verification?.adhesionContractDoc);
+  // El contrato se firma con la TIENDA aprobada: el backend rechaza la aceptación en cualquier
+  // otro estado (30-sep). `tiendaAprobada` es el estado de la tienda, no el de esta solicitud; el
+  // respaldo en `reviewStatus` cubre un backend anterior que todavía no lo envía.
+  const tiendaAprobada = verification?.tiendaAprobada ?? status === 'APPROVED';
 
   const pickFile = (field, file) => {
     setFormError('');
@@ -363,7 +367,11 @@ export default function SellerVerificationCard({ sellerId }) {
               <FileSignature size={17} />
               <div>
                 <strong>Contrato de adhesión</strong>
-                <span>{adhesionAccepted ? 'Aceptado' : 'Pendiente de aceptación'}</span>
+                <span>
+                  {adhesionAccepted
+                    ? 'Aceptado'
+                    : tiendaAprobada ? 'Pendiente de aceptación' : 'Se habilita cuando tu tienda esté aprobada'}
+                </span>
               </div>
             </div>
             {/* Antes el unico boton era "Aceptar contrato" y aceptaba de inmediato: se
@@ -377,7 +385,7 @@ export default function SellerVerificationCard({ sellerId }) {
               >
                 <Eye size={16} /> Ver contrato firmado
               </a>
-            ) : (
+            ) : tiendaAprobada && (
               <button type="button" className="btn-auth-secondary" onClick={openAdhesionPreview} disabled={isLoadingAdhesion}>
                 {isLoadingAdhesion ? <Loader2 size={16} className="spin-icon" /> : <Eye size={16} />}
                 {isLoadingAdhesion ? 'Abriendo…' : 'Leer y aceptar contrato'}
