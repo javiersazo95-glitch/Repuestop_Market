@@ -6,7 +6,7 @@ import { confirmOrderPaymentApi, getBuyerOrderByIdApi, getBuyerOrderByRefApi, re
 import { useAuth } from '../context/AuthContext';
 import { normalizeOrderStatus } from '../data/orderStatusFlow';
 import { buyerProfilePath, profileOrderPath, profilePurchasePath, ROUTES } from '../routes/paths';
-import { orderDeliverySummary, orderDisplayCode, orderNumberRef } from '../data/orderIdentity';
+import { orderDeliverySummary, orderDisplayCode, orderHasShippingDueOnDelivery, orderNumberRef } from '../data/orderIdentity';
 
 const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
 
@@ -202,6 +202,11 @@ export default function PurchaseSuccessPage() {
     sum + Number(item.precioUnitario || item.precio || item.unitPrice || 0) * Number(item.cantidad || item.quantity || 1)
   ), 0);
   const shippingFee = Number(String(order?.costoEnvio ?? order?.shippingFee ?? 0).replace(/[^0-9]/g, '')) || 0;
+  // H57: el envio fuera de la comuna se paga al recibir; su costo 0 no es "Sin costo".
+  const shippingDueOnDelivery = orderHasShippingDueOnDelivery(order);
+  const shippingLabel = shippingDueOnDelivery
+    ? (shippingFee ? `${formatCLP(shippingFee)} + por pagar al recibir` : 'Por pagar al recibir')
+    : (shippingFee ? formatCLP(shippingFee) : 'Sin costo');
   const discount = Number(String(order?.descuento ?? 0).replace(/[^0-9]/g, '')) || 0;
   const total = Number(order?.total || subtotal + shippingFee - discount);
   const documentType = String(order?.tipoDocumentoTributario || order?.documentType || 'BOLETA').toUpperCase();
@@ -323,7 +328,7 @@ export default function PurchaseSuccessPage() {
               <div className="purchase-success-totals">
                 <div><span>Productos</span><strong>{formatCLP(subtotal)}</strong></div>
                 {discount > 0 && <div><span>Descuento</span><strong className="purchase-success-discount">−{formatCLP(discount)}</strong></div>}
-                <div><span>Envío</span><strong>{shippingFee ? formatCLP(shippingFee) : 'Sin costo'}</strong></div>
+                <div><span>Envío</span><strong>{shippingLabel}</strong></div>
                 <div className="purchase-success-total"><span>{isPendingPayment ? 'Total a pagar' : isCancelled ? 'Total' : 'Total pagado'}</span><strong>{formatCLP(total)}</strong></div>
               </div>
 

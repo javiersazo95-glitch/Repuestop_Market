@@ -200,6 +200,19 @@ export function subOrderDeliveryLabel(subOrder, order) {
 }
 
 /**
+ * H57 (pruebas de lanzamiento, 30-sep): ¿alguna tienda del pedido despacha fuera de la comuna?
+ * Ese envio llega con `costoEnvio` 0 porque el courier se le paga al recibir, asi que un costo 0
+ * no significa "sin costo": el comprobante decia "Envío: Sin costo" y el comprador lo leia gratis.
+ */
+export function orderHasShippingDueOnDelivery(order) {
+  const subOrders = Array.isArray(order?.subordenes) ? order.subordenes : [];
+  const methods = subOrders.length
+    ? subOrders.map((sub) => subOrderDeliveryMethod(sub, order))
+    : [String(order?.tipoEnvio || '').trim().toLowerCase()];
+  return methods.includes('courier_por_pagar');
+}
+
+/**
  * Lo que el comprador eligio, tal cual lo eligio en el checkout. Con varias tiendas lista los
  * metodos distintos ("Envío dentro de la comuna · Envío fuera de la comuna") en vez de pintar
  * uno solo para todas. Nunca el courier: "Starken" dice quien lleva el paquete, no como se
