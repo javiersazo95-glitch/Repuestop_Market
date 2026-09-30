@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { getSellerAccountStatusApi } from '../services/api';
 import { qk } from '../services/queryKeys';
-import { claimReasonLabel } from '../data/claimReason';
+import { CLAIM_REASON_LABELS, claimReasonLabel } from '../data/claimReason';
 
 const SELLER_ROLES = ['SELLER', 'PROVIDER', 'PROVEEDOR'];
 
@@ -42,7 +42,10 @@ export function useSellerBlocked() {
     isBlocked,
     // El backend guarda ahi el CODIGO del reclamo del comprador, no una frase.
     blockReason: rawReason ? claimReasonLabel(rawReason) : '',
-    blockReasonIsClaim: Boolean(rawReason),
+    // H62 (pruebas de lanzamiento, 30-sep): solo es "el reclamo que origino la mediacion" si
+    // viene un codigo de reclamo. Una suspension directa trae el motivo que escribio el
+    // operador y se mostraba como si fuera el reclamo de un comprador.
+    blockReasonIsClaim: Boolean(rawReason) && Object.prototype.hasOwnProperty.call(CLAIM_REASON_LABELS, String(rawReason).trim()),
   };
 }
 
