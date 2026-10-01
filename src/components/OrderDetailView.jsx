@@ -311,6 +311,8 @@ export default function OrderDetailView({
   onRatingPromptShown,
   onOrderRated,
   readOnly = false,
+  // H59 fase 5: comprador suspendido; conserva su postventa pero no califica.
+  ratingDisabled = false,
 }) {
   const rawStatus = order?.estado || order?.status || 'PENDIENTE';
   const normStatus = String(rawStatus).toUpperCase();
@@ -571,7 +573,7 @@ export default function OrderDetailView({
   // mide contra el estado de la subordén y no contra el del pedido, que es el DERIVADO -- el
   // menos avanzado --: con una tienda entregada y otra en viaje no se podia calificar ninguna.
   const canRateStore = (block) => {
-    if (isSeller || !block) return false;
+    if (isSeller || !block || ratingDisabled) return false;
     // O69 (pruebas de lanzamiento, 25-sep): el veredicto le devolvio todo; no hay compra que calificar.
     if (block.fullyRefundedByVerdict) return false;
     const vivos = (block.items || []).filter((item) => !isCancelledItem(item));
@@ -593,7 +595,7 @@ export default function OrderDetailView({
   const ratingComplete = sellerRating > 0
     && ratingItems.length > 0
     && ratingItems.every((item) => Number(productRatings[item.productoId || item.id]) > 0);
-  const canRateOrder = RATEABLE.includes(normStatus) && !alreadyRated;
+  const canRateOrder = RATEABLE.includes(normStatus) && !alreadyRated && !ratingDisabled;
 
   const buyerName = order.compradorNombre || order.buyerName || order.usuarioNombre || 'Cliente RepuesTop';
   const buyerPhone = order.compradorTelefono || order.buyerPhone || order.telefono || '—';

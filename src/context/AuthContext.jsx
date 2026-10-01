@@ -142,6 +142,8 @@ export function AuthProvider({ children }) {
       sellerBlocked: authResponse.sellerBlocked ?? baseUser.sellerBlocked,
       sellerBlockReason: authResponse.sellerBlockReason ?? baseUser.sellerBlockReason,
       sellerCanAppeal: authResponse.sellerCanAppeal ?? baseUser.sellerCanAppeal,
+      // H59 fase 3: suspendida sin fraude, puede completar sus ventas ya pagadas.
+      sellerComplianceMode: authResponse.sellerComplianceMode ?? baseUser.sellerComplianceMode,
       // Mismo caso que arriba pero para el comprador: tambien viajan en la RAIZ de
       // LoginResponseDTO.
       buyerBlocked: authResponse.buyerBlocked ?? baseUser.buyerBlocked,

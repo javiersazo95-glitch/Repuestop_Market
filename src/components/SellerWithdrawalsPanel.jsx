@@ -13,7 +13,7 @@ import { BANKS, findBankByCode } from '../data/banks';
 import { sellerCodeShort } from '../data/orderIdentity';
 import { formatRut, isValidRut } from '../services/adapters';
 
-const EMPTY_PENDING = { pedidos: [], totalARetirar: 0, retenidos: [], totalRetenido: 0 };
+const EMPTY_PENDING = { pedidos: [], totalARetirar: 0, retenidos: [], totalRetenido: 0, fondosRetenidos: false, motivoRetencion: null };
 const DISPLAY_LIMIT = 3;
 
 const ACCOUNT_TYPES = [
@@ -413,6 +413,9 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
         totalARetirar,
         retenidos: retenidosFiltrados,
         totalRetenido,
+        // H59 fase 4: tienda suspendida. El backend rechaza el retiro y explica por que.
+        fondosRetenidos: Boolean(pendingData?.fondosRetenidos),
+        motivoRetencion: pendingData?.motivoRetencion || null,
       });
       setHistory(historyList);
     } catch (loadError) {
@@ -547,6 +550,18 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
         </div>
       ) : activeTab === 'management' ? (
         <div className="withdrawal-management">
+          {pending.fondosRetenidos && (
+            <div
+              role="status"
+              style={{
+                marginBottom: 16, padding: '14px 16px', borderRadius: 12,
+                background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontSize: 13.5, lineHeight: 1.45,
+              }}
+            >
+              <strong style={{ display: 'block', marginBottom: 4 }}>Fondos retenidos</strong>
+              {pending.motivoRetencion}
+            </div>
+          )}
           {/* Tarjetas KPI de resumen financiero */}
           <div className="withdrawal-kpis-bar">
             <div className="withdrawal-kpi-card kpi-available">
@@ -729,7 +744,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
               <button
                 type="button"
                 onClick={startWithdrawal}
-                disabled={!pending.pedidos.length || submitting || Boolean(withdrawalInProgress)}
+                disabled={!pending.pedidos.length || submitting || Boolean(withdrawalInProgress) || pending.fondosRetenidos}
               >
                 <Wallet size={17} />
                 {withdrawalInProgress ? 'Retiro en curso' : 'Solicitar retiro'}

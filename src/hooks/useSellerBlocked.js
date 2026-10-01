@@ -36,6 +36,10 @@ export function useSellerBlocked() {
 
   const isBlocked = isSeller && Boolean(data?.sellerBlocked ?? user?.sellerBlocked);
   const rawReason = data?.blockReason || user?.sellerBlockReason;
+  // H59 fase 3 (pruebas de lanzamiento, 1-oct): la tienda suspendida SIN fraude queda en "modo
+  // cumplimiento": no vende ni toca su inventario, pero completa lo que ya le pagaron (despacho,
+  // boleta, PIN, cancelacion) dentro de su plazo. Si no, el backend lo cancela y reembolsa solo.
+  const complianceMode = isBlocked && Boolean(data?.complianceMode ?? user?.sellerComplianceMode);
 
   return {
     isSeller,
@@ -46,6 +50,9 @@ export function useSellerBlocked() {
     // viene un codigo de reclamo. Una suspension directa trae el motivo que escribio el
     // operador y se mostraba como si fuera el reclamo de un comprador.
     blockReasonIsClaim: Boolean(rawReason) && Object.prototype.hasOwnProperty.call(CLAIM_REASON_LABELS, String(rawReason).trim()),
+    complianceMode,
+    // [{ orderId, orderNumber, type: 'DESPACHO' | 'RETIRO', deadline }], el mas proximo primero.
+    complianceDeadlines: complianceMode && Array.isArray(data?.complianceDeadlines) ? data.complianceDeadlines : [],
   };
 }
 

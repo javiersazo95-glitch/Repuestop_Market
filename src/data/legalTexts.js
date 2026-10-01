@@ -12,7 +12,7 @@
  */
 
 /** Fecha de la version vigente, para mostrar en pantalla. */
-export const LEGAL_VERSION = '28 de septiembre de 2026';
+export const LEGAL_VERSION = '1 de octubre de 2026';
 
 /**
  * Codigo estable de la misma version, el que viaja al backend y queda guardado en
@@ -23,7 +23,7 @@ export const LEGAL_VERSION = '28 de septiembre de 2026';
  * Debe coincidir con `repuestop.legal.version-vigente` del backend y con
  * LEGAL_VERSION_CODE de la app.
  */
-export const LEGAL_VERSION_CODE = '2026-09-28';
+export const LEGAL_VERSION_CODE = '2026-10-01';
 
 /**
  * O49 (28-sep): identificacion de la empresa operadora, exigida por el Reglamento de Comercio
@@ -85,7 +85,7 @@ Si comprador y vendedor realizan una operación externa, RepuesTop no será resp
 
 9. DESPACHO, RETIRO Y ENTREGA
 Las modalidades de entrega podrán incluir retiro en tienda, delivery local y envío a regiones, según lo informado por el vendedor para cada producto o pedido.
-El vendedor será responsable de preparar, despachar o entregar el producto dentro del plazo informado. Como regla operativa inicial, el plazo máximo de despacho será de 48 horas, salvo que se informe otra condición para el producto, vendedor o zona.
+El vendedor será responsable de preparar, despachar o entregar el producto dentro del plazo informado. El plazo máximo de despacho será de 2 días hábiles desde la confirmación del pago (lunes a viernes, sin feriados), salvo que se informe otra condición para el producto, vendedor o zona. Si la tienda no despacha dentro de ese plazo, RepuesTop podrá cancelar su parte de la compra y devolverte lo pagado.
 El costo de despacho será definido por el vendedor y deberá informarse al comprador antes de confirmar la compra.
 El comprador deberá confirmar manualmente la recepción del producto en la Plataforma cuando corresponda. Si no confirma recepción, RepuesTop podrá enviar recordatorios y mantener el pedido sin confirmar, sin perjuicio de las acciones de mediación disponibles.
 
@@ -211,7 +211,7 @@ El vendedor podrá subir el comprobante tributario a la Plataforma o enviarlo po
 11. DESPACHO, RETIRO Y ENTREGA
 El vendedor será responsable del despacho, entrega o habilitación de retiro en tienda de los productos vendidos.
 Las modalidades podrán incluir retiro en tienda, delivery local o envío a regiones. El costo de despacho será definido por el vendedor y deberá ser informado antes de la compra.
-El plazo máximo operativo de despacho será de 48 horas, salvo que el vendedor informe otro plazo y RepuesTop lo permita. Si el vendedor no despacha dentro del plazo, el comprador podrá iniciar reclamo.
+El plazo máximo operativo de despacho será de 2 días hábiles desde la confirmación del pago (lunes a viernes, sin feriados), salvo que el vendedor informe otro plazo y RepuesTop lo permita. Si el vendedor no despacha dentro del plazo, el comprador podrá iniciar reclamo. Si la cuenta del vendedor es suspendida, debe completar los pedidos ya pagados dentro de ese plazo; si no lo hace, RepuesTop podrá cancelarlos y devolver el pago al comprador.
 
 12. GARANTÍA, DEVOLUCIÓN Y RETRACTO
 El vendedor deberá cumplir rigurosamente con la garantía legal y demás obligaciones de protección al consumidor establecidas en la Ley N° 19.496 y la Ley N° 21.398.

@@ -30,6 +30,9 @@ export default function ProfileOrdersPanel({
   activeTab,
   isSeller,
   isSellerBlocked,
+  sellerComplianceMode = false,
+  sellerComplianceDeadlines = [],
+  isBuyerBlocked = false,
   user,
   effectiveUserId,
   effectiveSellerId,
@@ -46,6 +49,10 @@ export default function ProfileOrdersPanel({
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  // H59 fase 3: la tienda suspendida sin fraude (modo cumplimiento) sigue completando sus ventas
+  // ya pagadas; solo el bloqueo por fraude deja el panel en solo lectura.
+  const sellerActionsLocked = Boolean(isSellerBlocked) && !sellerComplianceMode;
+  // H59 fase 5: el comprador suspendido gestiona lo ya pagado, pero no paga ni califica.
 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [ratingPromptOrderId, setRatingPromptOrderId] = useState(null);
@@ -394,6 +401,12 @@ export default function ProfileOrdersPanel({
       {/* `/perfil/pedidos/:orderId` y `/perfil/compras/:orderId`: el detalle ocupa el
           lugar del listado, dentro del panel. Una compra del vendedor se ve SIEMPRE en
           modo comprador. */}
+      {activeTab === 'pedidos' && isSeller && sellerComplianceMode && (
+        <ComplianceDeadlinesNotice
+          deadlines={sellerComplianceDeadlines}
+          orderId={detailOrderId || null}
+        />
+      )}
       {(activeTab === 'pedidos' || activeTab === 'compras') && activeDetailId ? (
         detailOrder ? (
           (() => {
@@ -407,16 +420,17 @@ export default function ProfileOrdersPanel({
                 userId={effectiveUserId}
                 onClose={() => navigate(detailIsPurchase ? `${ROUTES.profile}/compras` : `${ROUTES.profile}/pedidos`)}
                 onUpdateStatus={detailIsPurchase ? handlePurchaseUpdateStatus : handleUpdateOrderStatus}
-                onRetryPayment={asBuyerView ? handleRetryPayment : undefined}
+                onRetryPayment={asBuyerView && !isBuyerBlocked ? handleRetryPayment : undefined}
                 onCancelOrder={asBuyerView ? handleCancelOrder : undefined}
                 onCancelBuyerSubOrder={asBuyerView ? handleCancelBuyerSubOrder : undefined}
-                autoOpenRating={asBuyerView && ratingPromptOrderId != null && String(detailOrder.id) === String(ratingPromptOrderId)}
+                autoOpenRating={asBuyerView && !isBuyerBlocked && ratingPromptOrderId != null && String(detailOrder.id) === String(ratingPromptOrderId)}
                 onRatingPromptShown={() => setRatingPromptOrderId(null)}
                 onOrderRated={handleOrderRated}
-                onCancelSellerOrder={!asBuyerView && !isSellerBlocked ? handleCancelSellerOrder : undefined}
-                onRegisterDispatch={!asBuyerView && !isSellerBlocked ? handleRegisterOrderDispatch : undefined}
-                onRegisterSaleReceipt={!asBuyerView && !isSellerBlocked ? handleRegisterSaleReceipt : undefined}
-                onDeclareDelivery={!asBuyerView && !isSellerBlocked ? handleDeclareOrderDelivery : undefined}
+                ratingDisabled={asBuyerView && isBuyerBlocked}
+                onCancelSellerOrder={!asBuyerView && !sellerActionsLocked ? handleCancelSellerOrder : undefined}
+                onRegisterDispatch={!asBuyerView && !sellerActionsLocked ? handleRegisterOrderDispatch : undefined}
+                onRegisterSaleReceipt={!asBuyerView && !sellerActionsLocked ? handleRegisterSaleReceipt : undefined}
+                onDeclareDelivery={!asBuyerView && !sellerActionsLocked ? handleDeclareOrderDelivery : undefined}
                 onDisputeDeclaredDelivery={asBuyerView ? handleDisputeDeclaredDelivery : undefined}
                 onCreateClaim={asBuyerView ? handleCreateOrderClaim : undefined}
                 onOpenDispute={(proveedorId, draftMessage) => {
@@ -430,7 +444,7 @@ export default function ProfileOrdersPanel({
                     state: { from: currentPathForBack(), ...(draftMessage ? { draftMessage } : {}) },
                   });
                 }}
-                readOnly={!asBuyerView && isSellerBlocked}
+                readOnly={!asBuyerView && sellerActionsLocked}
               />
             );
           })()
@@ -448,8 +462,8 @@ export default function ProfileOrdersPanel({
             sellerId={user?.sellerId}
             onSelectOrder={openOrderDetail}
             onUpdateStatus={handleUpdateOrderStatus}
-            onRegisterSaleReceipt={isSellerBlocked ? undefined : handleRegisterSaleReceipt}
-            readOnly={isSellerBlocked}
+            onRegisterSaleReceipt={sellerActionsLocked ? undefined : handleRegisterSaleReceipt}
+            readOnly={sellerActionsLocked}
           />
         ) : (
           <div className="profile-panel">
@@ -489,7 +503,7 @@ export default function ProfileOrdersPanel({
               emptyLabel="Aún no has realizado pedidos."
               onSelectOrder={openOrderDetail}
               onUpdateStatus={handleUpdateOrderStatus}
-              onRetryPayment={handleRetryPayment}
+              onRetryPayment={isBuyerBlocked ? undefined : handleRetryPayment}
               onCancelOrder={handleCancelOrder}
             />
           </div>
@@ -516,5 +530,57 @@ export default function ProfileOrdersPanel({
         </div>
       )}
     </>
+  );
+}
+
+const DEADLINE_LABELS = {
+  DESPACHO: 'Despachar (o dejar listo para retiro) antes del',
+  RETIRO: 'El comprador puede retirar hasta el',
+};
+
+function formatDeadline(value) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('es-CL', {
+    timeZone: 'America/Santiago',
+    weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+  });
+}
+
+/**
+ * H59 fase 3: plazos de la tienda suspendida en modo cumplimiento, calculados por el backend
+ * (2 dias habiles desde el pago, tope de 72 h en la definitiva, 7/5 dias para retirar). En el
+ * detalle de un pedido muestra solo el suyo.
+ */
+function ComplianceDeadlinesNotice({ deadlines, orderId }) {
+  const visible = orderId != null
+    ? deadlines.filter((d) => String(d.orderId) === String(orderId))
+    : deadlines;
+  if (orderId != null && visible.length === 0) return null;
+  return (
+    <div
+      role="status"
+      style={{
+        marginBottom: 16, padding: '14px 16px', borderRadius: 12,
+        background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontSize: 13.5, lineHeight: 1.45,
+      }}
+    >
+      <strong style={{ display: 'block', marginBottom: 4 }}>Completa tus ventas ya pagadas</strong>
+      {visible.length === 0 ? (
+        <span>No tienes ventas pendientes de despacho o retiro.</span>
+      ) : (
+        <>
+          <span>Si no se cumple el plazo, la venta se cancela y se le devuelve el pago al comprador.</span>
+          <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+            {visible.map((d) => (
+              <li key={`${d.orderId}-${d.type}`}>
+                {orderId == null && <strong>{d.orderNumber}: </strong>}
+                {DEADLINE_LABELS[d.type] || 'Plazo:'} {formatDeadline(d.deadline)}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
   );
 }

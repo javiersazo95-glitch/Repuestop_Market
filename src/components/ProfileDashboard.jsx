@@ -148,16 +148,13 @@ const SELLER_BLOCKED_HIDDEN_TABS = [
   'anuncios',
 ];
 
-// Contraparte para comprador bloqueado. A diferencia del vendedor (que conserva
-// pestanas de solo lectura), aqui se ocultan TODAS las de operacion: el backend
-// rechaza con 403 cualquier compra, cotizacion, pregunta o chat del lado comprador
-// mientras la cuenta este suspendida. Solo quedan "Resumen" (donde vive el aviso y
-// la solicitud de revision) y "Soporte", igual que el vendedor.
+// Contraparte para comprador bloqueado: el backend rechaza con 403 comprar, cotizar,
+// preguntar y calificar mientras la cuenta este suspendida. H59 fase 5 (decision 8): sus
+// compras YA pagadas siguen siendo suyas (confirmar recepcion, reclamar, cancelar su parte,
+// chat de mediacion), asi que "pedidos" y "chats_vendedor" quedan visibles.
 const BUYER_BLOCKED_HIDDEN_TABS = [
-  'pedidos',
   'cotizaciones',
   'mis_preguntas',
-  'chats_vendedor',
   'favoritos',
   'datos',
   'anuncios',
@@ -520,7 +517,13 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // El estado de bloqueo lo resuelve `useSellerBlocked`, que es la misma fuente que usan
   // el header, el carrito y el centro de ayuda. Tenerlo resuelto en cada vista era como
   // termino este bug la primera vez: cinco nombres de campo inventados, ninguno real.
-  const { isBlocked: isSellerBlocked, blockReason: sellerBlockReason, blockReasonIsClaim } = useSellerBlocked();
+  const {
+    isBlocked: isSellerBlocked,
+    blockReason: sellerBlockReason,
+    blockReasonIsClaim,
+    complianceMode: sellerComplianceMode,
+    complianceDeadlines: sellerComplianceDeadlines,
+  } = useSellerBlocked();
   const { isBlocked: isBuyerBlocked, blockReason: buyerBlockReason } = useBuyerBlocked();
   // Un usuario esta bloqueado por un lado u otro, nunca ambos a la vez en la
   // practica (son dos suspensiones independientes en el backend).
@@ -539,8 +542,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // lectura). Soporte es justamente donde vive la mediacion que suele originar el
   // bloqueo.
   const sidebarGroups = useMemo(() => {
+    // H59 fase 4: en modo cumplimiento la tienda ve sus retiros (con el motivo de la retencion;
+    // la definitiva cobra al terminar su reserva de cierre).
     const hiddenTabs = isSellerBlocked
-      ? SELLER_BLOCKED_HIDDEN_TABS
+      ? (sellerComplianceMode ? SELLER_BLOCKED_HIDDEN_TABS.filter((tab) => tab !== 'retiros') : SELLER_BLOCKED_HIDDEN_TABS)
       : isBuyerBlocked
         ? BUYER_BLOCKED_HIDDEN_TABS
         : null;
@@ -551,7 +556,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         items: group.items.filter((item) => !hiddenTabs.includes(item.id)),
       }))
       .filter((group) => group.items.length > 0);
-  }, [baseSidebarGroups, isSellerBlocked, isBuyerBlocked]);
+  }, [baseSidebarGroups, isSellerBlocked, isBuyerBlocked, sellerComplianceMode]);
 
   // Version movil: items de la barra inferior y titulo de la app bar. Solo derivan de
   // `sidebarGroups` y `activeTab`; no hay estado nuevo.
@@ -585,13 +590,14 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // un enlace guardado o el boton atras entran igual. Al detectar el bloqueo se vuelve
   // al resumen.
   useEffect(() => {
-    if (isSellerBlocked && SELLER_BLOCKED_HIDDEN_TABS.includes(activeTab)) {
+    if (isSellerBlocked && SELLER_BLOCKED_HIDDEN_TABS.includes(activeTab)
+      && !(sellerComplianceMode && activeTab === 'retiros')) {
       setActiveTab('resumen');
     }
     if (isBuyerBlocked && BUYER_BLOCKED_HIDDEN_TABS.includes(activeTab)) {
       setActiveTab('resumen');
     }
-  }, [isSellerBlocked, isBuyerBlocked, activeTab, setActiveTab]);
+  }, [isSellerBlocked, isBuyerBlocked, sellerComplianceMode, activeTab, setActiveTab]);
 
   const inventorySummaryQuery = useQuery({
     queryKey: qk.sellerInventorySummary(effectiveSellerId),
@@ -1533,13 +1539,15 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   </strong>
                   <p style={{ margin: '3px 0 0', color: '#b91c1c', fontSize: '13px', lineHeight: 1.4 }}>
                     {blockReason} {isSellerBlocked
-                      ? 'Mientras esté suspendida no podrás recibir nuevos pedidos ni publicar productos.'
-                      : 'Mientras esté suspendida no podrás comprar, cotizar ni usar el resto de las funciones de la cuenta.'}
+                      ? (sellerComplianceMode
+                        ? 'Mientras esté suspendida no podrás recibir nuevos pedidos ni publicar productos, pero debes completar tus ventas ya pagadas desde «Mis ventas» dentro de su plazo; si no, se cancelan y se le devuelve el pago al comprador.'
+                        : 'Mientras esté suspendida no podrás recibir nuevos pedidos ni publicar productos.')
+                      : 'Mientras esté suspendida no podrás comprar ni cotizar. Tus compras ya pagadas siguen en «Mis pedidos»: puedes confirmar la recepción, reclamar y usar el chat de mediación.'}
                   </p>
                   {suspensionEndLabel && (
                     <p style={{ margin: '6px 0 0', color: '#991b1b', fontSize: '12.5px', fontWeight: 700 }}>
                       {suspensionEndsAt.getTime() <= Date.now()
-                        ? 'El plazo de la suspensión ya se cumplió: cierra sesión y vuelve a ingresar para reactivar tu cuenta.'
+                        ? 'El plazo de la suspensión ya se cumplió: tu cuenta se reactivará sola en los próximos minutos.'
                         : `La suspensión termina el ${suspensionEndLabel}. Tu cuenta se reactivará sola.`}
                     </p>
                   )}
@@ -1594,6 +1602,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 activeTab={activeTab}
                 isSeller={isSeller}
                 isSellerBlocked={isSellerBlocked}
+                sellerComplianceMode={sellerComplianceMode}
+                sellerComplianceDeadlines={sellerComplianceDeadlines}
+                isBuyerBlocked={isBuyerBlocked}
                 user={user}
                 effectiveUserId={effectiveUserId}
                 effectiveSellerId={effectiveSellerId}
