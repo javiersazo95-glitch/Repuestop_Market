@@ -94,6 +94,9 @@ export default function AppointmentsHistoryModal({
     const isBusy = busyId === appointment.id;
     const canRespond = isReceived && appointment.status === 'pending' && !isPast;
     const canCancel = !isReceived && !isClosed && !isPast;
+    // El taller tambien puede cancelar una cita que ya confirmo (el backend lo permite y la app
+    // lo ofrece): si no podra atenderla, libera el bloque y se le avisa al cliente.
+    const canProviderCancel = isReceived && appointment.status === 'accepted' && !isPast;
     const ad = adById(appointment.adId);
     const services = appointment.services?.length ? appointment.services.join(', ') : appointment.service;
 
@@ -140,8 +143,20 @@ export default function AppointmentsHistoryModal({
           )}
         </div>
 
-        {(canRespond || canCancel) && (
+        {(canRespond || canCancel || canProviderCancel) && (
           <div className="agenda-appointment-actions">
+            {canProviderCancel && (
+              <button
+                type="button"
+                className="btn-mgmt-delete"
+                disabled={isBusy}
+                onClick={() => { if (window.confirm(`¿Cancelar esta cita confirmada?\n\nSe avisará a ${appointment.customerName || 'el cliente'} que no podrás atenderlo el ${formatAgendaDateLong(appointment.date)} a las ${appointment.time}.`)) respond(appointment, 'cancelled'); }}
+                title="Cancelar esta cita confirmada"
+              >
+                {isBusy ? <Loader2 size={14} className="spin-icon" /> : <XCircle size={14} />}
+                <span>Cancelar cita</span>
+              </button>
+            )}
             {canRespond && (
               <>
                 <button

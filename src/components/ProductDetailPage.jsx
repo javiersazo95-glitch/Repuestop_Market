@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle, ArrowLeft, BadgeCheck, Car, CheckCircle2, ChevronLeft, ChevronRight, CreditCard,
-  Globe, Heart, Info, Landmark, MapPin, MessageCircle, Package, Search, Send, ShieldCheck,
+  Globe, Heart, Info, MapPin, MessageCircle, Package, Search, Send, ShieldCheck,
   ShoppingCart, Star, Store, Tag, Truck, Wrench, X, ChevronDown, ChevronUp, SlidersHorizontal
 } from 'lucide-react';
 import VehicleBrandLogo from './VehicleBrandLogo';
@@ -379,17 +379,6 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     setPlateError('');
     setPlateVehicle(null);
     setPlateMatchIndex(null);
-    // Patente de prueba para validar el flujo sin depender del endpoint real
-    // (que exige sesión iniciada): ABCD11 resuelve directo a un Toyota Yaris 2018.
-    const normalizedPlate = plate.replace(/[^a-z0-9]/gi, '').toUpperCase();
-    if (normalizedPlate === 'ABCD11') {
-      const testVehicle = { marca: 'Toyota', modelo: 'Yaris', anio: 2018, patente: normalizedPlate };
-      setCompatibilitySearch('');
-      setPlateVehicle(testVehicle);
-      setPlateMatchIndex(compatibility.findIndex((item) => vehicleMatchesCompatibility(testVehicle, item)));
-      setPlateSearching(false);
-      return;
-    }
     try {
       const resolved = adaptVehicle(await searchVehicleByPatenteApi(plate));
       if (!resolved || resolved.requiereIngresoManual || !resolved.marca) {
@@ -753,11 +742,6 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                 <span><Truck /><p><b>Despacho a coordinar</b><small>La tienda informa el valor al confirmar tu pedido</small></p></span>
               )}
 
-              {/* Khipu es un medio de pago igual que Flow: no va sobre el repuesto
-                  propio, que no se puede comprar. */}
-              {!isOwnProduct && (
-                <span><Landmark /><p><b>Transferencia vía Khipu</b><small>Disponible como alternativa de pago</small></p></span>
-              )}
             </div>
 
             {!isOwnProduct && (
@@ -844,7 +828,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             {!isOwnProduct && (
               <article>
                 <h2><ShieldCheck /> Compra protegida</h2>
-                <p>Tu compra queda protegida y puedes pagar con Flow o Khipu según la alternativa disponible.</p>
+                <p>Tu compra queda protegida y pagas con Flow: débito, crédito o prepago.</p>
                 <span className="product-marketplace-protected"><BadgeCheck /> Pago y despacho trazables</span>
               </article>
             )}

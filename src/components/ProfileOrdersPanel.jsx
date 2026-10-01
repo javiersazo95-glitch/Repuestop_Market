@@ -8,10 +8,10 @@ import {
   declareOrderDeliveryApi, createOrderClaimApi,
 } from '../services/api';
 import { qk } from '../services/queryKeys';
-import OrderCard from './OrderCard';
 import OrderDetailView from './OrderDetailView';
 import SellerOrdersPanel from './SellerOrdersPanel';
 import { EmptyState } from './ProfileDashboard';
+import BuyerOrdersBrowser from './BuyerOrdersBrowser';
 import { currentPathForBack, profileOrderPath, profilePurchasePath, ROUTES } from '../routes/paths';
 import { normalizeOrderNumber, orderMatchesRef, orderNumberRef } from '../data/orderIdentity';
 
@@ -483,7 +483,15 @@ export default function ProfileOrdersPanel({
               </div>
             )}
             <h2 className="profile-panel-title">Mis Pedidos</h2>
-            {(orders || []).length === 0 ? <EmptyState label="Aún no has realizado pedidos." /> : <div className="profile-orders-cards-grid">{orders.map((order) => <OrderCard key={order.id} order={order} mode="buyer" onSelectOrder={openOrderDetail} onUpdateStatus={handleUpdateOrderStatus} onRetryPayment={handleRetryPayment} onCancelOrder={handleCancelOrder} />)}</div>}
+            <BuyerOrdersBrowser
+              orders={orders || []}
+              loading={ordersLoading}
+              emptyLabel="Aún no has realizado pedidos."
+              onSelectOrder={openOrderDetail}
+              onUpdateStatus={handleUpdateOrderStatus}
+              onRetryPayment={handleRetryPayment}
+              onCancelOrder={handleCancelOrder}
+            />
           </div>
         )
       )}
@@ -496,25 +504,15 @@ export default function ProfileOrdersPanel({
           <p style={{ margin: '4px 0 16px', color: '#64748b', fontSize: '13.5px' }}>
             Los repuestos que has comprado a otras tiendas. Se gestionan igual que cualquier compra.
           </p>
-          {purchasesLoading
-            ? <EmptyState label="Cargando tus compras…" />
-            : (purchases || []).length === 0
-              ? <EmptyState label="Aún no has comprado repuestos a otras tiendas." />
-              : (
-                <div className="profile-orders-cards-grid">
-                  {purchases.map((order) => (
-                    <OrderCard
-                      key={order.id}
-                      order={order}
-                      mode="buyer"
-                      onSelectOrder={openPurchaseDetail}
-                      onUpdateStatus={handlePurchaseUpdateStatus}
-                      onRetryPayment={handleRetryPayment}
-                      onCancelOrder={handleCancelOrder}
-                    />
-                  ))}
-                </div>
-              )}
+          <BuyerOrdersBrowser
+            orders={purchases || []}
+            loading={purchasesLoading}
+            emptyLabel="Aún no has comprado repuestos a otras tiendas."
+            onSelectOrder={openPurchaseDetail}
+            onUpdateStatus={handlePurchaseUpdateStatus}
+            onRetryPayment={handleRetryPayment}
+            onCancelOrder={handleCancelOrder}
+          />
         </div>
       )}
     </>

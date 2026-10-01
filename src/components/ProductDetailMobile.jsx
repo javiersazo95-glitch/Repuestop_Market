@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   BadgeCheck, Car, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CreditCard,
-  Globe, Heart, Info, Landmark, MapPin, Package, ShieldCheck, Star, Store, Truck,
+  Globe, Heart, Info, MapPin, Package, ShieldCheck, Star, Store, Truck,
 } from 'lucide-react';
 
 import ProductBrandMark from './ProductBrandMark';
@@ -303,7 +303,6 @@ export default function ProductDetailMobile({
             <div className="pdm-payments">
               <div className="pdm-payments-row"><ShieldCheck size={16} /><p><b>Compra segura y protegida</b><small>Tu información está 100% protegida</small></p></div>
               <div className="pdm-payments-row"><CreditCard size={16} /><p><b>Paga con Flow</b><small>Débito, crédito y prepago{!quoteOnly && precio > 0 ? ` · 3x $${Math.ceil(precio / 3).toLocaleString('es-CL')} · 6x $${Math.ceil(precio / 6).toLocaleString('es-CL')} · 12x $${Math.ceil(precio / 12).toLocaleString('es-CL')} aprox.` : ''}</small></p></div>
-              <div className="pdm-payments-row"><Landmark size={16} /><p><b>Transferencia vía Khipu</b><small>Disponible como alternativa de pago</small></p></div>
               <div className="pdm-report">
                 <ContextualReportButton
                   tipoObjeto="PRODUCTO"

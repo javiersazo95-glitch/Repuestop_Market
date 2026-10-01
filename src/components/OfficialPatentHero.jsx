@@ -49,6 +49,8 @@ export default function OfficialPatentHero({
   onOpenCatalog
 }) {
   const [searchMode, setSearchMode] = useState('patente');
+  // El boton "¿Dónde está mi patente?" no hacia nada: ahora despliega la ayuda.
+  const [plateHelpOpen, setPlateHelpOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -769,12 +771,23 @@ export default function OfficialPatentHero({
                               maxLength={searchMode === 'patente' ? 8 : 100}
                             />
                             {searchMode === 'patente' && (
-                              <button type="button" className="plate-help">
+                              <button
+                                type="button"
+                                className="plate-help"
+                                aria-expanded={plateHelpOpen}
+                                onClick={() => setPlateHelpOpen((open) => !open)}
+                              >
                                 <CircleHelp size={14} /> ¿Dónde está mi patente?
                               </button>
                             )}
                           </div>
                         </div>
+                        {searchMode === 'patente' && plateHelpOpen && (
+                          <p className="plate-help-panel" role="note">
+                            Es el código de la placa delantera y trasera de tu vehículo (por ejemplo ABCD12 o BB·CL·12).
+                            También aparece en el padrón (certificado de inscripción), el permiso de circulación y el SOAP.
+                          </p>
+                        )}
 
                         {errorMsg && (
                           <div className="light-search-error">

@@ -10,7 +10,7 @@ import {
 import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi, getShippingReceiptUrlApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
-import { activeOrderItems, isCancelledItem, orderDeliverySummary, orderDisplayCode, subOrderDeliveryLabel, subOrderDeliveryMethod } from '../data/orderIdentity';
+import { activeOrderItems, courierDisplayName, isCancelledItem, orderDeliverySummary, orderDisplayCode, subOrderDeliveryLabel, subOrderDeliveryMethod } from '../data/orderIdentity';
 import { buyerClaimState, buyerStoreClaimState, getControlledOrderAction, isStorePickupOrder, normalizeOrderStatus, orderPaymentWindow, sellerClaimState } from '../data/orderStatusFlow';
 import { Link } from 'react-router-dom';
 import { buyerCaseChatPath, currentPathForBack, productPath, sellerCaseChatPath } from '../routes/paths';
@@ -892,7 +892,7 @@ export default function OrderDetailView({
       refundStore,
       fullyRefundedByVerdict,
       trackingStore: subOrder?.trackingNumber || (isSeller ? order.trackingNumber : null),
-      courierStore: subOrder?.courier || (isSeller ? order.courier : null),
+      courierStore: courierDisplayName(subOrder?.courier || (isSeller ? order.courier : null)),
       // Los dos relojes de ESTA tienda, con los que se anuncia lo que el backend va a hacer
       // solo. Al vendedor le llegan planos en el pedido, que desde la fase 3.1 ya viene
       // acotado a el; al comprador, uno por subordén. Los del pedido NO sirven para el
@@ -2048,7 +2048,7 @@ export default function OrderDetailView({
                         onClick={handleDeclareDelivery}
                       >
                         {isDeclaringDelivery ? <Loader2 size={15} className="spin-icon" /> : <Send size={15} />}
-                        <span>Marcar como recibida{order?.courier ? ` (vía ${order.courier})` : ''}</span>
+                        <span>Marcar como recibida{courierDisplayName(order?.courier) ? ` (vía ${courierDisplayName(order.courier)})` : ''}</span>
                       </button>
                       {declareDeliveryError && <p className="confirm-dialog-error">{declareDeliveryError}</p>}
                     </div>

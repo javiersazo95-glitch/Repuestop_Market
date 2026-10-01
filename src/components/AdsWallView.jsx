@@ -109,6 +109,8 @@ export default function AdsWallView() {
   const [selectedTier, setSelectedTier] = useState('TODOS');
   const [selectedCommune, setSelectedCommune] = useState('Todas las comunas');
   const [selectedServiceTag, setSelectedServiceTag] = useState(ALL_TAGS);
+  // Filtro por marca especialista del taller (paridad con la app, ads-wall.tsx).
+  const [selectedSpecialistBrand, setSelectedSpecialistBrand] = useState('Todas las marcas');
   const [onlyBooking, setOnlyBooking] = useState(false);
   const [onlyWhatsapp, setOnlyWhatsapp] = useState(false);
   const [only24Hours, setOnly24Hours] = useState(false);
@@ -139,7 +141,7 @@ export default function AdsWallView() {
     setVisibleCount(PAGE_SIZE);
   }, [
     searchQuery, selectedCategory, selectedTier, selectedCommune, selectedServiceTag,
-    onlyBooking, onlyWhatsapp, only24Hours, sortBy, plateVehicle
+    onlyBooking, onlyWhatsapp, only24Hours, sortBy, plateVehicle, selectedSpecialistBrand
   ]);
 
   useEffect(() => {
@@ -204,6 +206,7 @@ export default function AdsWallView() {
     setIsNearbySortActive(false);
     setLocationNotice('');
     setSelectedServiceTag(ALL_TAGS);
+    setSelectedSpecialistBrand('Todas las marcas');
     setOnlyBooking(false);
     setOnlyWhatsapp(false);
     setOnly24Hours(false);
@@ -216,7 +219,8 @@ export default function AdsWallView() {
   const quickFiltersCount =
     (selectedCommune !== 'Todas las comunas' ? 1 : 0) +
     (selectedCategory !== 'TODAS' ? 1 : 0) +
-    (selectedServiceTag !== ALL_TAGS ? 1 : 0);
+    (selectedServiceTag !== ALL_TAGS ? 1 : 0) +
+    (selectedSpecialistBrand !== 'Todas las marcas' ? 1 : 0);
 
   const advancedFiltersCount =
     (selectedTier !== 'TODOS' ? 1 : 0) +
@@ -294,6 +298,10 @@ export default function AdsWallView() {
           .some((tag) => normalizeSearchText(tag) === target)
       );
     }
+    if (selectedSpecialistBrand !== 'Todas las marcas') {
+      const target = selectedSpecialistBrand.toLowerCase();
+      result = result.filter((ad) => ad.specialistBrands?.some((b) => b.toLowerCase() === target));
+    }
     if (plateVehicle?.marca) {
       const brand = plateVehicle.marca.toLowerCase();
       result = result.filter((ad) =>
@@ -330,8 +338,15 @@ export default function AdsWallView() {
     return result;
   }, [
     adsList, searchQuery, selectedCategory, selectedTier, selectedCommune, selectedServiceTag,
-    onlyBooking, onlyWhatsapp, only24Hours, sortBy, plateVehicle, isNearbySortActive, userLocation.coords
+    onlyBooking, onlyWhatsapp, only24Hours, sortBy, plateVehicle, isNearbySortActive, userLocation.coords,
+    selectedSpecialistBrand,
   ]);
+
+  // Marcas que declaran los talleres publicados, para el filtro.
+  const specialistBrandOptions = useMemo(
+    () => Array.from(new Set(adsList.flatMap((ad) => ad.specialistBrands ?? []))).sort((a, b) => a.localeCompare(b, 'es')),
+    [adsList],
+  );
 
   const visibleAds = useMemo(
     () => filteredAds.slice(0, visibleCount),
@@ -406,6 +421,24 @@ export default function AdsWallView() {
           </div>
 
           <div className="ads-fb-chips">
+            {specialistBrandOptions.length > 0 && (
+              <label className="ads-fb-chip">
+                <Settings size={17} />
+                <span className="ads-fb-chip-body">
+                  <em>Marca</em>
+                  <select
+                    value={selectedSpecialistBrand}
+                    onChange={(e) => setSelectedSpecialistBrand(e.target.value)}
+                    aria-label="Marca especialista"
+                  >
+                    {['Todas las marcas', ...specialistBrandOptions].map((brand) => (
+                      <option key={brand} value={brand}>{brand}</option>
+                    ))}
+                  </select>
+                </span>
+                <ChevronDown size={15} className="ads-fb-chip-caret" />
+              </label>
+            )}
             <label className="ads-fb-chip">
               <MapPin size={17} />
               <span className="ads-fb-chip-body">

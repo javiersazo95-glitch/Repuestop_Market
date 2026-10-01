@@ -98,7 +98,7 @@ const FAQ_GROUPS: FaqGroup[] = [
       ['¿Cuánto cuesta usar RepuesTop?', 'Nada. Buscar por patente, comparar, pedir cotizaciones y comprar es gratis para cualquier persona, y publicar tu catálogo como casa de repuestos tampoco tiene costo. La plataforma cobra una tarifa de servicio solo sobre las ventas concretadas: 5% durante los primeros 3 meses desde el lanzamiento y 8% después.'],
       ['¿Cuándo se cobra la tarifa de servicio?', 'Solo cuando una venta se concreta, y se descuenta de esa misma venta. No hay suscripción, ni cobro por publicar, ni costo por recibir cotizaciones: si no vendes, no pagas nada.'],
       ['¿Qué son las Monedas RepuesTop?', 'Son el saldo interno de la plataforma y son totalmente opcionales. Cada Moneda equivale a $50 CLP y sirven para dos cosas: impulsar un repuesto al posicionamiento Top Ventas y publicar o subir de plan un anuncio en el Mural. Tus 2 primeros repuestos Top y tu primer anuncio Básico no cuestan Monedas.'],
-      ['¿Qué formas de pago están disponibles?', 'Pagas con tarjeta de crédito, débito o Redcompra a través de Flow, con la opción de simular cuotas antes de confirmar, o por transferencia vía Khipu según la alternativa que habilite la tienda. Los datos de tu tarjeta se ingresan solo en la pasarela, nunca en RepuesTop.'],
+      ['¿Qué formas de pago están disponibles?', 'Pagas con tarjeta de crédito, débito o Redcompra a través de Flow, con la opción de simular cuotas antes de confirmar. Los datos de tu tarjeta se ingresan solo en la pasarela, nunca en RepuesTop.'],
     ],
   },
   {

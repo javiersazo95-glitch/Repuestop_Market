@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, CreditCard, Landmark, Loader2, ShieldCheck } from 'lucide-react';
+import { ArrowRight, CreditCard, Loader2, ShieldCheck } from 'lucide-react';
 import MobileStickyBar from './MobileStickyBar';
 
 function formatCLP(value) {
@@ -67,8 +67,7 @@ export default function CheckoutSummaryPanel({
 
       <p className="checkout-summary-trust"><ShieldCheck size={15} /> Compra protegida por RepuesTop</p>
       <div className="checkout-summary-payments">
-        <span><CreditCard size={14} /> Flow · débito y crédito</span>
-        <span><Landmark size={14} /> Khipu · transferencia</span>
+        <span><CreditCard size={14} /> Flow · débito, crédito y prepago</span>
       </div>
     </aside>
   );

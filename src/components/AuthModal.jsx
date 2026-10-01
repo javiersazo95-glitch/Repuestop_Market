@@ -241,7 +241,9 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
   const isNameValid = buyerName.trim().split(/\s+/).filter(Boolean).length >= 2;
   const isEmailFormatValid = emailRegex.test(email.trim());
   const isEmailValid = isEmailFormatValid && !emailTakenWarning;
-  const isPasswordLengthValid = password.length >= 6 && password.length <= 32;
+  // 8 como minimo: es lo que exige el backend al restablecer (SEC-BACKEND-087) y lo que pide la
+  // app; con 6 se podia crear una clave que despues no servia para recuperar la cuenta.
+  const isPasswordLengthValid = password.length >= 8 && password.length <= 32;
   const buyerRegionNombre = buyerRegiones.find((r) => String(r.id) === String(buyerRegionId))?.nombre;
   const buyerComunaNombre = buyerComunas.find((c) => String(c.id) === String(buyerComunaId))?.nombre;
   const isAddressValid = Boolean(buyerStreet.trim().length > 0 && buyerComunaId);
@@ -271,12 +273,12 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
   }, [buyerRegionId]);
 
   const getPasswordStrength = (pwd) => {
-    if (!pwd || pwd.length < 6) return { score: 1, label: 'Débil', color: '#ef4444' };
+    if (!pwd || pwd.length < 8) return { score: 1, label: 'Débil', color: '#ef4444' };
     let score = 1;
     const hasLetters = /[a-zA-Z]/.test(pwd);
     const hasNumbers = /\d/.test(pwd);
     const hasSpecial = /[^a-zA-Z0-9]/.test(pwd);
-    if (pwd.length >= 6 && hasLetters && hasNumbers) score = 2;
+    if (pwd.length >= 8 && hasLetters && hasNumbers) score = 2;
     if (pwd.length >= 8 && ((hasLetters && hasNumbers && hasSpecial) || pwd.length >= 10)) score = 3;
 
     if (score === 3) return { score: 3, label: 'Segura', color: '#10b981' };
@@ -304,6 +306,8 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
 
   // Register Email Verification State
   const [registerVerifyCode, setRegisterVerifyCode] = useState('');
+  // El paso de verificacion se abrio desde el login (cuenta sin activar), no desde el registro.
+  const [verifyFromLogin, setVerifyFromLogin] = useState(false);
   const [registerCooldown, setRegisterCooldown] = useState(0);
   const [isResendingRegisterCode, setIsResendingRegisterCode] = useState(false);
 
@@ -477,8 +481,8 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
 
   const handleResetPasswordSubmit = async (e) => {
     e.preventDefault();
-    if (!recoverNewPassword || recoverNewPassword.length < 6) {
-      setErrorMessage('La nueva contraseña debe tener al menos 6 caracteres.');
+    if (!recoverNewPassword || recoverNewPassword.length < 8) {
+      setErrorMessage('La nueva contraseña debe tener al menos 8 caracteres.');
       return;
     }
     if (recoverNewPassword !== recoverConfirmPassword) {
@@ -571,6 +575,20 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
       });
       setReactivateTermsAccepted(false);
       setStep('deletion_scheduled_feedback');
+    } else if (/verificar tu correo/i.test(result.error || '')) {
+      // Cuenta creada pero sin activar: antes solo se mostraba el error y quien cerro el modal
+      // tras registrarse quedaba atascado. Como la app (useLoginScreen -> verify-email), se lleva
+      // al paso del codigo, con la opcion de pedir uno nuevo.
+      setVerifyFromLogin(true);
+      setRegisterVerifyCode('');
+      setRegisterCooldown(0);
+      setErrorMessage(null);
+      setSuccessMessage('Tu cuenta aún no está activada. Ingresa el código que te enviamos por correo o pide uno nuevo.');
+      setStep('register_verify_email');
+    } else if (result.requiresRegistration) {
+      setIsRegistrationFlow(true);
+      setErrorMessage('Tu perfil anterior fue eliminado. Para volver a usar RepuesTop, crea tu perfil nuevamente.');
+      setStep('select_role');
     } else if (isAccountNotFound(result)) {
       setIsRegistrationFlow(true);
       setErrorMessage('No encontramos una cuenta con este correo. Elige cómo quieres crearla.');
@@ -614,7 +632,8 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
     // ofrecer crearla tiene sentido. Antes cualquier fallo terminaba en un
     // mensaje que mandaba a la persona a registrarse por su cuenta, escribiendo
     // de nuevo el nombre y el correo que Google ya habia entregado.
-    const perfil = result.status === 404 ? decodeGoogleIdToken(idToken) : null;
+    // `requiresRegistration`: la cuenta existe pero su perfil fue eliminado; se crea de nuevo.
+    const perfil = result.status === 404 || result.requiresRegistration ? decodeGoogleIdToken(idToken) : null;
     if (perfil) {
       setGooglePending({ ...perfil, idToken });
       setGoogleMissingFields({ firstName: !perfil.firstName?.trim(), lastName: !perfil.lastName?.trim() });
@@ -749,7 +768,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
       } else if (!isNameValid) {
         setErrorMessage('Ingresa tu nombre y apellido separados por un espacio.');
       } else if (!isPasswordLengthValid) {
-        setErrorMessage('La contraseña debe tener al menos 6 caracteres.');
+        setErrorMessage('La contraseña debe tener al menos 8 caracteres.');
       } else if (!isAddressValid) {
         setErrorMessage('Elige tu región y comuna, y luego escribe tu dirección de despacho.');
       } else if (!acceptsTerms) {
@@ -786,6 +805,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
         setRegisterVerifyCode('');
         setRegisterCooldown(60);
         setSuccessMessage('¡Cuenta creada! Enviamos un código de 6 dígitos a tu correo para activar tu cuenta.');
+        setVerifyFromLogin(false);
         setStep('register_verify_email');
         return;
       }
@@ -924,7 +944,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                 <span className="pill-buyer"><Lock size={14} /> Paso 3 de 3 · Nueva Contraseña</span>
               </div>
               <h2>Crear Nueva Contraseña</h2>
-              <p>Ingresa tu nueva clave de acceso de al menos 6 caracteres.</p>
+              <p>Ingresa tu nueva clave de acceso de al menos 8 caracteres.</p>
             </>
           )}
 
@@ -1421,14 +1441,14 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
         {step === 'recover_new_password' && (
           <form onSubmit={handleResetPasswordSubmit} className="auth-modal-body">
             <div className="form-group">
-              <label>Nueva Contraseña (mínimo 6 caracteres) *</label>
+              <label>Nueva Contraseña (mínimo 8 caracteres) *</label>
               <div className="input-with-icon">
                 <Lock size={18} className="field-icon" />
                 <input
                   type={showRecoverPassword ? 'text' : 'password'}
                   required
                   autoFocus
-                  minLength={6}
+                  minLength={8}
                   placeholder="Ingresa tu nueva contraseña"
                   value={recoverNewPassword}
                   onChange={(e) => setRecoverNewPassword(e.target.value)}
@@ -1450,7 +1470,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                 <input
                   type={showRecoverPassword ? 'text' : 'password'}
                   required
-                  minLength={6}
+                  minLength={8}
                   placeholder="Repite tu nueva contraseña"
                   value={recoverConfirmPassword}
                   onChange={(e) => setRecoverConfirmPassword(e.target.value)}
@@ -1756,9 +1776,9 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
-                  minLength={6}
+                  minLength={8}
                   maxLength={32}
-                  placeholder="Crea una contraseña segura (mín. 6 caracteres)"
+                  placeholder="Crea una contraseña segura (mín. 8 caracteres)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onBlur={() => setBuyerTouched((prev) => ({ ...prev, password: true }))}
@@ -1784,7 +1804,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                       Seguridad: {passwordStrength.label}
                     </small>
                     <small className="char-counter">
-                      {password.length}/6 mín.
+                      {password.length}/8 mín.
                     </small>
                   </div>
                 </div>
@@ -1797,7 +1817,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
               )}
               {password.length > 0 && !isPasswordLengthValid && (
                 <small className="auth-field-error">
-                  <AlertCircle size={13} /> La contraseña debe tener al menos 6 caracteres (llevas {password.length}/6).
+                  <AlertCircle size={13} /> La contraseña debe tener al menos 8 caracteres (llevas {password.length}/8).
                 </small>
               )}
               {isPasswordLengthValid && (
@@ -1834,7 +1854,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                 ) : !isAddressValid ? (
                   <span><AlertCircle size={13} /> Falta tu región, comuna o dirección de despacho</span>
                 ) : !isPasswordLengthValid ? (
-                  <span><AlertCircle size={13} /> La contraseña debe tener al menos 6 caracteres ({password.length}/6)</span>
+                  <span><AlertCircle size={13} /> La contraseña debe tener al menos 8 caracteres ({password.length}/8)</span>
                 ) : !acceptsTerms ? (
                   <span><AlertCircle size={13} /> Debes aceptar los Términos y Condiciones</span>
                 ) : null}
@@ -1912,10 +1932,10 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
               <button
                 type="button"
                 className="btn-auth-secondary"
-                onClick={() => { setErrorMessage(null); setSuccessMessage(null); setStep('register_buyer'); }}
+                onClick={() => { setErrorMessage(null); setSuccessMessage(null); setStep(verifyFromLogin ? 'login_form' : 'register_buyer'); }}
               >
                 <ArrowLeft size={16} />
-                <span>Volver a Editar</span>
+                <span>{verifyFromLogin ? 'Volver' : 'Volver a Editar'}</span>
               </button>
 
               <button

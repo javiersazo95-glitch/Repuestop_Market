@@ -43,6 +43,12 @@ export default function ProfileCatalogPanel({
   updatingTopProductId,
   onTogglePause,
   updatingPauseProductId,
+  onDeleteProduct,
+  deletingProductId,
+  catalogStatusFilter = 'all',
+  onStatusFilterChange,
+  catalogSort = 'default',
+  onSortChange,
 }) {
   const categories = Array.isArray(catalogCategories) ? catalogCategories : [];
   const activeCategory = categories.find(
@@ -154,6 +160,45 @@ export default function ProfileCatalogPanel({
         </div>
       )}
 
+      {onStatusFilterChange && (
+        <div className="catalog-category-filter">
+          <span className="catalog-category-filter-label">Estado:</span>
+          <div className="catalog-category-chips">
+            {[
+              { key: 'all', label: 'Todos' },
+              { key: 'active', label: 'Activos' },
+              { key: 'paused', label: 'Pausados' },
+              { key: 'low', label: 'Stock bajo' },
+              { key: 'out', label: 'Sin stock' },
+            ].map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                className={`catalog-category-chip ${catalogStatusFilter === option.key ? 'active' : ''}`}
+                aria-pressed={catalogStatusFilter === option.key}
+                onClick={() => onStatusFilterChange(option.key)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          {onSortChange && (
+            <select
+              className="catalog-sort-select"
+              value={catalogSort}
+              onChange={(event) => onSortChange(event.target.value)}
+              aria-label="Ordenar productos"
+            >
+              <option value="default">Orden: por categoría</option>
+              <option value="name">Nombre (A-Z)</option>
+              <option value="price-asc">Precio: menor a mayor</option>
+              <option value="price-desc">Precio: mayor a menor</option>
+              <option value="stock-asc">Stock: menor primero</option>
+            </select>
+          )}
+        </div>
+      )}
+
       <div className="catalog-range-filter">
         <span>Mostrar por página:</span>
         {CATALOG_PAGE_SIZE_OPTIONS.map((size) => (
@@ -209,6 +254,8 @@ export default function ProfileCatalogPanel({
                     isUpdatingTop={updatingTopProductId === p.id}
                     onTogglePause={onTogglePause}
                     isUpdatingPause={updatingPauseProductId === p.id}
+                    onDelete={onDeleteProduct}
+                    isDeleting={deletingProductId === p.id}
                   />
                 ))}
               </div>

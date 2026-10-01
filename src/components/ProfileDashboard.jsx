@@ -29,7 +29,7 @@ import {
   uploadProfileImageApi, resolveMediaUrl,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi,
   saveConversationQuoteApi, sendConversationMessageApi,
-  pauseSellerProductApi, resumeSellerProductApi,
+  pauseSellerProductApi, resumeSellerProductApi, deleteSellerProductApi, getSellerFullInventoryApi,
   getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
   getSellerPendingWithdrawalsApi
 } from '../services/api';
@@ -453,6 +453,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [catalogActionError, setCatalogActionError] = useState(null);
   const [updatingTopProductId, setUpdatingTopProductId] = useState(null);
   const [updatingPauseProductId, setUpdatingPauseProductId] = useState(null);
+  const [deletingProductId, setDeletingProductId] = useState(null);
   const [questionsProductFilter, setQuestionsProductFilter] = useState(null);
   const [showNewProductModal, setShowNewProductModal] = useState(false);
 
@@ -524,6 +525,14 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // Un usuario esta bloqueado por un lado u otro, nunca ambos a la vez en la
   // practica (son dos suspensiones independientes en el backend).
   const blockReason = isSellerBlocked ? sellerBlockReason : buyerBlockReason;
+  // Solo se apela lo que el backend permite (`canAppeal`, igual que la app): una suspension
+  // temporal se cumple sola y una revision ya pedida no se repite. Si el dato no vino (sesion
+  // anterior al bloqueo), se ofrece y decide el backend.
+  const blockCanAppeal = (isSellerBlocked ? user?.sellerCanAppeal : user?.buyerCanAppeal) !== false;
+  const suspensionEndsAt = user?.suspendedUntil ? new Date(user.suspendedUntil) : null;
+  const suspensionEndLabel = suspensionEndsAt && !Number.isNaN(suspensionEndsAt.getTime())
+    ? suspensionEndsAt.toLocaleString('es-CL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : null;
 
   // Se ocultan las pestanas de operacion, no la navegacion entera: resumen y
   // Reportes/Soporte siguen accesibles (para el vendedor ademas pedidos en solo
@@ -605,6 +614,18 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
   // Vehiculo con el que el comprador busca (guardado en el navegador por el marketplace).
   const { activeVehicle } = useMarketplace();
+
+  // Filtro por estado y orden del inventario (paridad con la app). El servidor no los resuelve,
+  // asi que cuando estan activos se trabaja sobre el inventario completo y se pagina aca.
+  const [catalogStatusFilter, setCatalogStatusFilter] = useState('all');
+  const [catalogSort, setCatalogSort] = useState('default');
+  const catalogLocalMode = catalogStatusFilter !== 'all' || catalogSort !== 'default';
+  const fullInventoryQuery = useQuery({
+    queryKey: qk.sellerFullInventory(user?.sellerId),
+    queryFn: ({ signal }) => getSellerFullInventoryApi(user.sellerId, { signal }),
+    enabled: Boolean(isSeller && activeTab === 'productos' && user?.sellerId && catalogLocalMode),
+    staleTime: 60 * 1000,
+  });
 
   const catalogQuery = useQuery({
     queryKey: qk.sellerInventory(user?.sellerId, { page: catalogPage, size: catalogPageSize, texto: catalogSearchTerm, categoriaId: catalogCategoryId }),
@@ -691,12 +712,49 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const storeInfo = storeInfoQuery.data || null;
   const isSellerFounder = Boolean(storeInfo?.founder ?? user?.founder ?? user?.fundador);
   const inventorySummary = inventorySummaryQuery.data || null;
-  const sellerProducts = catalogQuery.data?.content || [];
+  const localCatalog = useMemo(() => {
+    if (!catalogLocalMode) return null;
+    const term = String(catalogSearchTerm || '').toLowerCase().trim();
+    const stockOf = (product) => Number(product.stock ?? product.stockDisponible ?? 0);
+    const priceOf = (product) => Number(product.precio ?? product.precioVenta ?? product.price ?? 0);
+    const pausedOf = (product) => Boolean(product.pausado || product.isPaused || product.activo === false);
+    const filtered = (fullInventoryQuery.data || []).filter((product) => {
+      if (catalogCategoryId && String(product.categoriaId) !== String(catalogCategoryId)) return false;
+      if (term) {
+        const text = [product.nombrePublicado, product.repuestoNombre, product.nombre, product.skuProveedor, product.sku]
+          .filter(Boolean).join(' ').toLowerCase();
+        if (!text.includes(term)) return false;
+      }
+      const paused = pausedOf(product);
+      const stock = stockOf(product);
+      if (catalogStatusFilter === 'active') return !paused && stock > 0;
+      if (catalogStatusFilter === 'paused') return paused;
+      if (catalogStatusFilter === 'out') return !paused && stock <= 0;
+      if (catalogStatusFilter === 'low') return !paused && stock > 0 && stock <= 3;
+      return true;
+    });
+    const nameOf = (product) => String(product.nombrePublicado || product.repuestoNombre || product.nombre || '');
+    const sorted = [...filtered].sort((a, b) => {
+      if (catalogSort === 'price-asc') return priceOf(a) - priceOf(b);
+      if (catalogSort === 'price-desc') return priceOf(b) - priceOf(a);
+      if (catalogSort === 'stock-asc') return stockOf(a) - stockOf(b);
+      if (catalogSort === 'name') return nameOf(a).localeCompare(nameOf(b), 'es');
+      return 0;
+    });
+    const totalPages = Math.max(1, Math.ceil(sorted.length / catalogPageSize));
+    const page = Math.min(catalogPage, totalPages - 1);
+    return {
+      content: sorted.slice(page * catalogPageSize, (page + 1) * catalogPageSize),
+      totalElements: sorted.length,
+      totalPages,
+    };
+  }, [catalogLocalMode, fullInventoryQuery.data, catalogSearchTerm, catalogCategoryId, catalogStatusFilter, catalogSort, catalogPage, catalogPageSize]);
+  const sellerProducts = (localCatalog ? localCatalog.content : catalogQuery.data?.content) || [];
   const catalogCategories = catalogCategoriesQuery.data || [];
-  const catalogTotalPages = catalogQuery.data?.totalPages ?? 0;
-  const catalogTotalElements = catalogQuery.data?.totalElements ?? 0;
-  const isCatalogLoading = catalogQuery.isLoading;
-  const catalogError = catalogQuery.error?.message || catalogActionError || null;
+  const catalogTotalPages = localCatalog ? localCatalog.totalPages : (catalogQuery.data?.totalPages ?? 0);
+  const catalogTotalElements = localCatalog ? localCatalog.totalElements : (catalogQuery.data?.totalElements ?? 0);
+  const isCatalogLoading = localCatalog ? fullInventoryQuery.isLoading : catalogQuery.isLoading;
+  const catalogError = (localCatalog ? fullInventoryQuery.error?.message : catalogQuery.error?.message) || catalogActionError || null;
   const productQuestions = productQuestionsQuery.data || [];
   const productQuestionsLoading = productQuestionsQuery.isLoading;
   const productQuestionsError = productQuestionsQuery.error?.message || '';
@@ -852,6 +910,48 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     }
   };
 
+  // Publicar exige un metodo de envio configurado, como en la app
+  // (useCreateProductShippingMethodGuard): un repuesto sin forma de entrega no se puede comprar.
+  const openNewProductModal = () => {
+    const shippingMethods = String(storeInfo?.shippingMethods || user?.shippingMethods || '').trim();
+    if (isSeller && !shippingMethods) {
+      if (window.confirm('Método de envío requerido\n\nPrimero registra al menos un método de envío en los datos de tu tienda antes de publicar un repuesto.\n\n¿Ir a configurarlo ahora?')) {
+        setActiveTab('tienda_datos');
+      }
+      return;
+    }
+    setShowNewProductModal(true);
+  };
+  // Las listas de acciones estan memorizadas: llaman siempre a la version vigente (con los
+  // metodos de envio ya cargados) a traves de esta referencia.
+  const openNewProductModalRef = useRef(openNewProductModal);
+  openNewProductModalRef.current = openNewProductModal;
+
+  // Eliminar un producto (baja logica en el backend). La app ya lo tenia; en la web solo se
+  // podia pausar y un producto que ya no se vende quedaba para siempre en el catalogo.
+  const handleDeleteProduct = async (product) => {
+    if (!user?.sellerId || !product?.id || deletingProductId) return;
+    const title = product.nombrePublicado || product.repuestoNombre || product.nombre || 'este producto';
+    if (!window.confirm(`¿Eliminar "${title}"?\n\nDejará de aparecer en tu catálogo y en las búsquedas. Los pedidos y cotizaciones anteriores se conservan. Si solo quieres ocultarlo un tiempo, usa Pausar.`)) {
+      return;
+    }
+    setDeletingProductId(product.id);
+    setCatalogActionError(null);
+    setCatalogTopFeedback('');
+    try {
+      await deleteSellerProductApi(user.sellerId, product.id);
+      setCatalogTopFeedback('Producto eliminado del catálogo.');
+      setSelectedCatalogProduct((previous) => (previous?.id === product.id ? null : previous));
+      queryClient.invalidateQueries({ queryKey: ['sellerInventory'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: qk.sellerInventorySummary(effectiveSellerId) });
+    } catch (error) {
+      setCatalogActionError(error.message || 'No se pudo eliminar el producto.');
+    } finally {
+      setDeletingProductId(null);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     onBackToStore();
@@ -929,12 +1029,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         action: () => handleOpenMediaModal('avatar')
       },
       {
-        id: 'desc',
-        label: 'Completar descripción',
-        completed: Boolean(storeInfo?.description && storeInfo.description.trim().length >= 15),
-        action: () => setActiveTab('tienda_datos')
-      },
-      {
         id: 'shipping',
         label: 'Agregar métodos de envío',
         completed: Boolean(storeInfo?.shippingMethods && String(storeInfo.shippingMethods).trim().length > 0),
@@ -950,7 +1044,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         id: 'products',
         label: 'Publicar al menos 5 productos',
         completed: (inventorySummary?.total || sellerProducts?.length || 0) >= 5,
-        action: () => setShowNewProductModal(true)
+        action: () => openNewProductModalRef.current()
       },
     ];
   }, [isSeller, user, storeInfo, inventorySummary, sellerProducts, orders]);
@@ -978,7 +1072,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         {
           id: 'rating', tone: 'amber', icon: Star, label: 'Calificación promedio',
           value: storeInfo?.rating ? Number(storeInfo.rating).toFixed(1) : '—',
-          actionLabel: 'Ver opiniones', onClick: () => setActiveTab('tienda_datos'),
+          // "Ver opiniones" llevaba a Datos de la tienda, donde no hay opiniones: la calificacion
+          // se ve en la tienda publica, que es lo que ven los compradores.
+          actionLabel: 'Ver mi tienda',
+          onClick: () => (user?.sellerId ? navigate(storePath({ id: user.sellerId, nombre: storeInfo?.storeName || user?.storeName })) : setActiveTab('tienda_datos')),
         },
         {
           id: 'ventas', tone: 'purple', icon: TrendingUp, label: 'Ventas este mes',
@@ -1010,13 +1107,13 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       },
     ];
   }, [isSeller, inventorySummary, sellerProducts, orders, storeInfo, ordersThisMonthTotal,
-      shippingOrdersCount, quoteSummary.total, favoritesTotal, setActiveTab]);
+      shippingOrdersCount, quoteSummary.total, favoritesTotal, setActiveTab, navigate, user?.sellerId, user?.storeName]);
 
   const overviewActions = useMemo(() => {
     if (isSeller) {
       return [
         { id: 'pedidos', tone: 'blue', icon: ShoppingBag, title: 'Gestionar pedidos', description: 'Revisa, despacha y actualiza el estado de tus pedidos.', onClick: () => setActiveTab('pedidos') },
-        { id: 'nuevo', tone: 'emerald', icon: Plus, title: 'Agregar producto', description: 'Publica nuevos repuestos en tu catálogo.', onClick: () => setShowNewProductModal(true) },
+        { id: 'nuevo', tone: 'emerald', icon: Plus, title: 'Agregar producto', description: 'Publica nuevos repuestos en tu catálogo.', onClick: () => openNewProductModalRef.current() },
         { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Responder cotizaciones', description: 'Atiende solicitudes directas de clientes.', onClick: () => setActiveTab('cotizaciones') },
         { id: 'tienda', tone: 'sky', icon: Store, title: 'Mi tienda y datos', description: 'Edita la información comercial de tu tienda.', onClick: () => setActiveTab('tienda_datos') },
         { id: 'retiros', tone: 'emerald', icon: Wallet, title: 'Retirar dinero', description: 'Solicita el depósito bancario de tus ventas.', onClick: () => setActiveTab('retiros') },
@@ -1439,8 +1536,16 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                       ? 'Mientras esté suspendida no podrás recibir nuevos pedidos ni publicar productos.'
                       : 'Mientras esté suspendida no podrás comprar, cotizar ni usar el resto de las funciones de la cuenta.'}
                   </p>
+                  {suspensionEndLabel && (
+                    <p style={{ margin: '6px 0 0', color: '#991b1b', fontSize: '12.5px', fontWeight: 700 }}>
+                      {suspensionEndsAt.getTime() <= Date.now()
+                        ? 'El plazo de la suspensión ya se cumplió: cierra sesión y vuelve a ingresar para reactivar tu cuenta.'
+                        : `La suspensión termina el ${suspensionEndLabel}. Tu cuenta se reactivará sola.`}
+                    </p>
+                  )}
                 </div>
               </div>
+              {blockCanAppeal && (
               <button
                 type="button"
                 className="btn-auth-primary"
@@ -1460,6 +1565,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 <Scale size={16} />
                 <span>Solicitar Revisión</span>
               </button>
+              )}
             </div>
           )}
 
@@ -1545,6 +1651,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   setCatalogPage={setCatalogPage}
                   catalogPageSize={catalogPageSize}
                   onPageSizeChange={handleCatalogPageSizeChange}
+                  catalogStatusFilter={catalogStatusFilter}
+                  onStatusFilterChange={(value) => { setCatalogStatusFilter(value); setCatalogPage(0); }}
+                  catalogSort={catalogSort}
+                  onSortChange={(value) => { setCatalogSort(value); setCatalogPage(0); }}
                   inventoryPanelUrl={inventoryPanelUrl}
                   questionCountForProduct={questionCountForProduct}
                   onSelectProduct={(item) => setSelectedCatalogProduct(item)}
@@ -1552,11 +1662,13 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                     setQuestionsProductFilter(productId);
                     setActiveTab('preguntas_productos');
                   }}
-                  onAddProduct={() => setShowNewProductModal(true)}
+                  onAddProduct={openNewProductModal}
                   onToggleTop={handleToggleProductTop}
                   updatingTopProductId={updatingTopProductId}
                   onTogglePause={handleToggleProductPause}
                   updatingPauseProductId={updatingPauseProductId}
+                  onDeleteProduct={handleDeleteProduct}
+                  deletingProductId={deletingProductId}
                 />
               )}
 

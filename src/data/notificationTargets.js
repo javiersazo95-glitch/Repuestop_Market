@@ -1,4 +1,4 @@
-import { ROUTES, productPath } from '../routes/paths';
+import { ROUTES, buyerCaseChatPath, productPath, sellerCaseChatPath } from '../routes/paths';
 
 /**
  * Traduce el destino de una notificación a una ruta de la WEB.
@@ -55,11 +55,14 @@ const TARGETS = {
     ? `${PROFILE('cotizaciones')}?cotizacion=${encodeURIComponent(params.quoteId)}`
     : PROFILE('cotizaciones')),
 
-  // La mediación se abre desde el expediente del caso, que en la web vive en
-  // Reportes/Disputa y no en una pantalla de chat aparte como en la app.
-  '/mediation-chat': (params) => (params?.orderId
-    ? `${PROFILE('consultas')}?pedido=${encodeURIComponent(params.orderId)}`
-    : PROFILE('consultas')),
+  // El caso (reclamo o mediacion) vive en la conversacion del pedido: "Chats con vendedor" para
+  // el comprador y "Chats con compradores" para la tienda (O62/O71). Antes apuntaba a
+  // `consultas?pedido=`, que ese panel no lee: la notificacion no abria el caso. El backend manda
+  // la MISMA ruta a las dos partes, asi que el lado lo decide quien la abre.
+  '/mediation-chat': (params, context) => {
+    if (!params?.orderId) return context?.isSeller ? PROFILE('chats_compradores') : PROFILE('chats_vendedor');
+    return context?.isSeller ? sellerCaseChatPath(params.orderId) : buyerCaseChatPath(params.orderId);
+  },
 
   '/support-ticket-detail': (params) => (params?.ticketId
     ? `${PROFILE('consultas')}?ticket=${encodeURIComponent(params.ticketId)}`
@@ -92,13 +95,13 @@ const TARGETS = {
  * razonable. Con `null` la campana solo marca como leída, que es mejor que mandar al
  * usuario a una pantalla que no tiene que ver.
  */
-export function notificationTargetPath(notification) {
+export function notificationTargetPath(notification, context = {}) {
   const route = notification?.targetRoute;
   if (!route) return null;
   const resolver = TARGETS[route];
   if (!resolver) return null;
   try {
-    return resolver(notification.targetParams || {});
+    return resolver(notification.targetParams || {}, context);
   } catch {
     return null;
   }

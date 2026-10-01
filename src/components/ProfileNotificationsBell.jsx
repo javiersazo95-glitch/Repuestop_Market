@@ -72,7 +72,7 @@ export default function ProfileNotificationsBell({ user }) {
    */
   const openNotification = (item) => {
     markRead(item);
-    const target = notificationTargetPath(item);
+    const target = notificationTargetPath(item, { isSeller: user?.role === 'SELLER' });
     if (!target) return;
     setOpen(false);
     navigate(target);

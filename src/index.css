@@ -13096,6 +13096,7 @@ input, select, textarea {
 .light-query-field input::placeholder { color: #94a3b8; font-weight: 500; font-size: 15px; letter-spacing: normal; }
 .plate-help { display: flex; align-items: center; gap: 4px; color: #0066ff; font-size: 11.5px; font-weight: 700; white-space: nowrap; background: none; border: none; cursor: pointer; }
 .plate-help:hover { text-decoration: underline; }
+.plate-help-panel { margin: 8px 0 0; padding: 10px 12px; border: 1px solid #bfd6f7; border-radius: 8px; background: #f5f9ff; color: #1d2e45; font-size: 12.5px; line-height: 1.45; }
 .light-primary-search { width: calc(100% - 139px); height: 56px; margin: 20px 0 18px 139px; display: flex; align-items: center; justify-content: center; gap: 12px; border: none; border-radius: 8px; color: #fff; background: #0066ff; font-size: 15.5px; font-weight: 800; cursor: pointer; transition: background 0.2s ease, transform 0.1s ease; box-shadow: 0 4px 14px rgba(0, 102, 255, 0.25); }
 .light-primary-search:hover { background: #0052cc; transform: translateY(-1px); }
 .light-primary-search:active { transform: translateY(0); }
@@ -15802,11 +15803,23 @@ input, select, textarea {
   .seller-checklist-item { flex-wrap: wrap; }
 }
 .checkout-vehicle-active { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border: 1px solid #d6e0ed; border-radius: 8px; background: #fbfdff; cursor: pointer; }.checkout-vehicle-active span { display: grid; gap: 2px; }.checkout-vehicle-active strong { color: #1d2e45; font-size: 12.5px; }.checkout-vehicle-active small { color: #52647a; font-size: 11px; }
-.checkout-vehicle-toggle { background: none; border: none; padding: 0; color: var(--color-brand-blue, #0056bf); font-size: 12.5px; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .checkout-plate-status { display: flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 12px; color: #64748b; }
 .checkout-plate-status.is-found { color: #047857; }
 .checkout-plate-status.is-missing { color: #b45309; }
-.checkout-vehicle-toggle:hover { color: var(--color-brand-navy, #00459a); }
+/* Bloque del vehiculo en el pago: destacado siempre (opcional no es prescindible: alimenta el
+   checklist de compatibilidad del vendedor) y con un parpadeo al llegar al paso. */
+.checkout-vehicle-block { position: relative; border: 2px solid var(--color-brand-blue, #0056bf); background: #f5f9ff; box-shadow: 0 6px 20px rgba(0, 86, 191, 0.12); scroll-margin: 96px; }
+.checkout-vehicle-block h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.checkout-vehicle-icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--color-brand-blue, #0056bf); color: #fff; }
+.checkout-vehicle-block h2 .checkout-vehicle-icon svg { color: #fff; }
+.checkout-vehicle-badge { padding: 2px 9px; border-radius: 999px; border: 1px solid #bfd6f7; background: #eaf2ff; color: var(--color-brand-blue, #0056bf); font-size: 11px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; }
+.checkout-vehicle-badge.is-required { border-color: var(--color-brand-blue, #0056bf); background: var(--color-brand-blue, #0056bf); color: #fff; }
+.checkout-vehicle-block .checkout-plate-input { font-size: 15px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; border-color: var(--color-brand-blue, #0056bf); }
+.checkout-vehicle-pulse { position: absolute; inset: -2px; border-radius: inherit; pointer-events: none; animation: checkout-vehicle-pulse 0.75s ease-in-out 3; }
+@keyframes checkout-vehicle-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); } 50% { box-shadow: 0 0 0 7px rgba(245, 158, 11, 0.5); } }
+@media (prefers-reduced-motion: reduce) { .checkout-vehicle-pulse { animation-duration: 0.01ms; } }
+.checkout-vehicle-skip-note { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; padding: 10px 12px; border: 1px solid #fde3a7; border-radius: 8px; background: #fff7e6; color: #9a5a00; font-size: 12.5px; line-height: 1.45; }
+.checkout-vehicle-skip-note svg { flex-shrink: 0; margin-top: 2px; }
 .cart-invoice-fields { margin-top: 10px; display: grid; gap: 7px; }.cart-invoice-fields label { display: grid; gap: 4px; }.cart-invoice-fields label > span { color: #52647a; font-size: 10.5px; font-weight: 750; }.cart-invoice-fields input { width: 100%; min-height: 38px; padding: 0 10px; border: 1px solid #d6e0ed; border-radius: 8px; color: #1d2e45; background: #fbfdff; font-size: 12px; outline: 0; }.cart-invoice-fields input:focus { border-color: #67a2fa; box-shadow: 0 0 0 3px rgba(18,104,243,.09); }
 
 @media (max-width: 480px) {
@@ -20895,3 +20908,27 @@ input.has-success {
   .compat-sheet-disclaimer svg { width: 17px; height: 17px; flex: 0 0 auto; }
 }
 @keyframes compat-sheet-in { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Paridad con la app: eliminar un producto desde el catalogo del vendedor. */
+.btn-view-details.btn-delete-product { color: #b42318; border-color: #fecaca; }
+.btn-view-details.btn-delete-product:hover:not(:disabled) { background: #fff1f2; }
+
+/* Cambiar contrasena con la sesion iniciada (paridad con la app). */
+.change-password-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.change-password-row p { margin: 0; font-size: 13px; color: #64748b; }
+.change-password-form { display: grid; gap: 10px; }
+
+/* Busqueda y filtros de Mis pedidos / Mis compras (paridad con la app). */
+.buyer-orders-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.buyer-orders-toolbar select { padding: 8px 10px; border: 1px solid #d6e0ed; border-radius: 8px; background: #fff; font-size: 13px; }
+.buyer-orders-search { flex: 1 1 240px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid #d6e0ed; border-radius: 8px; background: #fff; color: #64748b; }
+.buyer-orders-search input { flex: 1; min-width: 0; border: none; outline: none; padding: 9px 0; font-size: 13.5px; background: transparent; }
+.buyer-orders-search button { border: none; background: none; color: #64748b; cursor: pointer; display: grid; place-items: center; }
+.buyer-orders-chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; }
+.buyer-orders-chip { flex-shrink: 0; padding: 6px 12px; border-radius: 999px; border: 1px solid #cbd5e1; background: #fff; color: #475569; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.buyer-orders-chip span { margin-left: 4px; color: #94a3b8; font-weight: 700; }
+.buyer-orders-chip.is-active { border-color: var(--color-brand-blue, #0056bf); background: #eaf2ff; color: var(--color-brand-blue, #0056bf); }
+.buyer-orders-chip.is-active span { color: inherit; }
+
+/* Orden del inventario del vendedor (paridad con la app). */
+.catalog-sort-select { margin-left: auto; padding: 6px 10px; border: 1px solid #d6e0ed; border-radius: 8px; background: #fff; font-size: 12.5px; }

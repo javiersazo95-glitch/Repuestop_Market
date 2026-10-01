@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowLeft, Building2, ChevronRight, CreditCard, FileText, Loader2, Lock, MapPin, Package, ReceiptText, Sparkles, Store, Truck, User, X,
+  AlertTriangle, ArrowLeft, Building2, Car, CheckCircle2, ChevronRight, CreditCard, FileText, Loader2, Lock, MapPin, Package, ReceiptText, Sparkles, Store, Truck, User, X,
 } from 'lucide-react';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAuth } from '../context/AuthContext';
@@ -434,12 +434,10 @@ export default function CheckoutPage() {
   const vehicleRequired = isQuoteMode
     ? Boolean(quoteLine) && !quoteProductUniversal
     : cartItems.some((item) => !item.esUniversal);
-  // Sin match por patente y con solo repuestos universales, el formulario manual parte
-  // plegado: ahi es opcional y cuatro campos abiertos competian con el resto del checkout.
-  // Cuando es obligatorio parte abierto: plegado, el comprador ni se enteraba de que se lo
-  // pedian.
-  const [vehicleFormOpen, setVehicleFormOpen] = useState(false);
-  const showVehicleForm = hasActiveVehicle ? !useActiveVehicle : (vehicleRequired || vehicleFormOpen);
+  // El formulario va siempre abierto, aunque sea opcional: plegado tras un "+ Agregar", el
+  // comprador lo pasaba de largo y el pedido le llegaba al vendedor sin vehiculo contra el
+  // cual revisar la compatibilidad (su checklist de confirmacion).
+  const showVehicleForm = !hasActiveVehicle || !useActiveVehicle;
 
   // H26 (pruebas de lanzamiento, 25-sep, decisión del usuario): la patente escrita en el
   // checkout se identifica como en el home, para que el pedido lleve marca, modelo y año y el
@@ -470,12 +468,14 @@ export default function CheckoutPage() {
     }
     // Si mientras tanto se escribió otra patente, esta respuesta ya no aplica.
     setPlateLookup((current) => (current.patente === patente ? { patente, status, vehicle } : current));
+    // La patente manda: se pisan marca, modelo y año aunque ya hubiera datos (de otra
+    // patente escrita antes, por ejemplo).
     if (vehicle) {
       setVehicleForm((current) => (normalizePlate(current.patente) !== patente ? current : {
         ...current,
-        marca: current.marca || vehicle.marca || '',
-        modelo: current.modelo || vehicle.modelo || '',
-        anio: current.anio || (vehicle.anio > 0 ? String(vehicle.anio) : ''),
+        marca: vehicle.marca || current.marca,
+        modelo: vehicle.modelo || current.modelo,
+        anio: vehicle.anio > 0 ? String(vehicle.anio) : current.anio,
       }));
     }
   }, []);
@@ -523,6 +523,34 @@ export default function CheckoutPage() {
       && String(checkoutVehicle.patente || '').replace(/[^A-Za-z0-9]/g, '').length >= 5)
     || lookupForCurrentPlate?.status === 'found'
   );
+
+  // Cada vez que se llega al paso de pago la pagina baja sola hasta el vehiculo y lo hace
+  // parpadear: es opcional, pero el comprador lo pasaba de largo. El ref de callback se
+  // dispara al montar el bloque, que solo existe en el paso de pago, asi que corre una vez
+  // por llegada (tambien al volver desde "Entrega").
+  const vehicleSectionNode = useRef(null);
+  const plateInputRef = useRef(null);
+  const [vehicleAttention, setVehicleAttention] = useState(0);
+  const focusVehicleSection = useCallback(() => {
+    const node = vehicleSectionNode.current;
+    if (!node) return;
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    node.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+    setVehicleAttention((current) => current + 1);
+    // Con mouse se deja el cursor en la patente; en celular no, para no abrir el teclado
+    // encima del resumen.
+    const input = plateInputRef.current;
+    if (input && !input.value && window.matchMedia?.('(pointer: fine)').matches) {
+      input.focus({ preventScroll: true });
+    }
+  }, []);
+  const vehicleSectionRef = useCallback((node) => {
+    vehicleSectionNode.current = node;
+    if (node) window.setTimeout(focusVehicleSection, 350);
+  }, [focusVehicleSection]);
+  // Pagar sin vehiculo (cuando es opcional) pide un segundo clic: el primero lleva al bloque.
+  const [vehicleSkipWarned, setVehicleSkipWarned] = useState(false);
+  const vehicleSkipPending = step === 'pago' && !vehicleRequired && !checkoutVehicle;
 
   const rutValid = isValidRut(invoice.rut);
   // Un vendedor sin ninguna direccion propia guardada no queda trabado aca: el backend
@@ -646,7 +674,15 @@ export default function CheckoutPage() {
       setError(missingForStep);
       return;
     }
-    if (step === 'pago') { pay(); return; }
+    if (step === 'pago') {
+      if (vehicleSkipPending && !vehicleSkipWarned) {
+        setVehicleSkipWarned(true);
+        focusVehicleSection();
+        return;
+      }
+      pay();
+      return;
+    }
     goStep(STEPS[stepIndex + 1].id);
   };
 
@@ -904,15 +940,24 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                <section className="checkout-block" aria-labelledby="checkout-vehiculo-title">
+                <section
+                  ref={vehicleSectionRef}
+                  className="checkout-block checkout-vehicle-block"
+                  aria-labelledby="checkout-vehiculo-title"
+                >
+                  {vehicleAttention > 0 && <span key={vehicleAttention} className="checkout-vehicle-pulse" aria-hidden="true" />}
                   <div className="shopify-section-header">
                     <h2 id="checkout-vehiculo-title">
-                      ¿Para qué vehículo es? <small>{vehicleRequired ? '(obligatorio)' : '(opcional)'}</small>
+                      <span className="checkout-vehicle-icon"><Car size={16} /></span>
+                      ¿Para qué vehículo es?
+                      <span className={`checkout-vehicle-badge ${vehicleRequired ? 'is-required' : ''}`}>
+                        {vehicleRequired ? 'Obligatorio' : 'Importante'}
+                      </span>
                     </h2>
                     <p className="shopify-section-subtitle">
                       {vehicleRequired
-                        ? 'El vendedor revisa que el repuesto calce con tu vehículo antes de enviarlo. Basta con la patente, o con la marca, el modelo y el año.'
-                        : 'Nos ayuda a que el vendedor confirme que la pieza calza con tu auto y evita devoluciones.'}
+                        ? 'El vendedor revisa que el repuesto calce con tu vehículo antes de enviarlo. Escribe tu patente y completamos el resto por ti.'
+                        : 'Escribe tu patente y completamos los datos por ti: el vendedor confirma que la pieza calza con tu auto antes de enviarla y evitas devoluciones.'}
                     </p>
                     <small className="checkout-vehicle-privacy" style={{ display: 'block', color: '#64748b', marginTop: 4 }}>Compartimos con la tienda solo el chasis y el modelo de tu vehículo (la patente, parcial) para validar la compatibilidad.</small>
                   </div>
@@ -933,21 +978,14 @@ export default function CheckoutPage() {
                     </label>
                   )}
 
-                  {!hasActiveVehicle && !vehicleRequired && (
-                    <button
-                      type="button"
-                      className="checkout-vehicle-toggle"
-                      onClick={() => setVehicleFormOpen((current) => !current)}
-                    >
-                      {vehicleFormOpen ? '- Ocultar' : '+ Agregar los datos de mi vehículo'}
-                    </button>
-                  )}
-
                   {showVehicleForm && (
                     <div className="cart-invoice-fields">
                       <label>
                         <span>Patente</span>
                         <input
+                          ref={plateInputRef}
+                          className="checkout-plate-input"
+                          autoComplete="off"
                           value={vehicleForm.patente}
                           onChange={(event) => setVehicleForm((current) => ({ ...current, patente: event.target.value.toUpperCase() }))}
                           onBlur={(event) => identifyPlate(event.target.value)}
@@ -958,7 +996,7 @@ export default function CheckoutPage() {
                           <small className="checkout-plate-status"><Loader2 size={12} className="spin-icon" /> Identificando patente…</small>
                         )}
                         {lookupForCurrentPlate?.status === 'found' && (
-                          <small className="checkout-plate-status is-found">Identificado: <strong>{formatVehicleLabel(lookupForCurrentPlate.vehicle)}</strong></small>
+                          <small className="checkout-plate-status is-found"><CheckCircle2 size={12} /> Identificado: <strong>{formatVehicleLabel(lookupForCurrentPlate.vehicle)}</strong></small>
                         )}
                         {(lookupForCurrentPlate?.status === 'notfound' || lookupForCurrentPlate?.status === 'error') && (
                           <small className="checkout-plate-status is-missing">No pudimos identificarla: completa marca, modelo y año.</small>
@@ -993,6 +1031,16 @@ export default function CheckoutPage() {
                         />
                       </label>
                     </div>
+                  )}
+
+                  {vehicleSkipPending && vehicleSkipWarned && (
+                    <p className="checkout-vehicle-skip-note" role="status">
+                      <AlertTriangle size={14} />
+                      <span>
+                        Sin tu vehículo el vendedor no puede confirmar que el repuesto calce antes de enviarlo.
+                        Si no tienes la patente a mano, vuelve a pulsar <strong>Pagar</strong> para continuar sin ella.
+                      </span>
+                    </p>
                   )}
                 </section>
 
@@ -1173,7 +1221,9 @@ export default function CheckoutPage() {
             onCta={advance}
             ctaDisabled={!stepComplete[step] || placing}
             ctaLoading={placing}
-            warning={stepComplete[step] ? '' : missingForStep}
+            warning={stepComplete[step]
+              ? (vehicleSkipPending && vehicleSkipWarned ? 'No indicaste tu vehículo. Si igual quieres pagar sin él, vuelve a pulsar Pagar.' : '')
+              : missingForStep}
           >
             {step === 'pago' && (
               <button

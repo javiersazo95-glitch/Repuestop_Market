@@ -10,7 +10,7 @@ import RepuesTopLogo from './RepuesTopLogo';
 import ChatImagePreview from './ChatImagePreview';
 import {
   getConversationMessagesApi,
-  getConversationQuoteApi, getQuoteRequestApi, getSellerStoreApi, getStoreProfileApi,
+  deleteConversationQuoteApi, getConversationQuoteApi, getQuoteRequestApi, getSellerStoreApi, getStoreProfileApi,
   markConversationReadApi, reportConversationApi, resolveMediaUrl,
   sendConversationMessageApi, sendQuoteRequestApi, uploadConversationImageApi,
 } from '../services/api';
@@ -103,7 +103,10 @@ export default function QuoteDetailModal({
   }, [storeId, storeInfo, mode]);
 
   const [localQuote, setLocalQuote] = useState(quote?.cotizacion || null);
-  const activeQuote = localQuote || quote?.cotizacion || null;
+  // Tras eliminar la cotizacion, la que venia en las props ya no vale.
+  const [quoteDeleted, setQuoteDeleted] = useState(false);
+  const [isDeletingQuote, setIsDeletingQuote] = useState(false);
+  const activeQuote = quoteDeleted ? localQuote : (localQuote || quote?.cotizacion || null);
   const [messages, setMessages] = useState([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(true);
   const [isSending, setIsSending] = useState(false);
@@ -523,12 +526,31 @@ export default function QuoteDetailModal({
       };
       const saved = await onSendQuoteResponse?.(quote.id, payload);
       setLocalQuote(saved || { ...payload, id: activeQuote?.id || `local-${quote.id}`, createdAt: activeQuote?.createdAt || new Date().toISOString() });
+      setQuoteDeleted(false);
       setQuoteEditorOpen(false);
       setStatusMessage({ type: 'success', text: activeQuote ? 'Cotización actualizada y documento regenerado.' : 'Cotización enviada. El documento ya está disponible para ambos.' });
     } catch (error) {
       setStatusMessage({ type: 'error', text: error.message || 'No se pudo guardar la cotización.' });
     } finally {
       setIsSending(false);
+    }
+  };
+
+  // Eliminar la cotizacion enviada (paridad con la app, useMessageDetail.requestDeleteQuote).
+  const deleteQuote = async () => {
+    if (isDeletingQuote || !activeQuote) return;
+    setOptionsOpen(false);
+    if (!window.confirm('¿Eliminar esta cotización?\n\nEl comprador dejará de verla y no podrá pagarla. Esta acción no se puede deshacer.')) return;
+    setIsDeletingQuote(true);
+    try {
+      await deleteConversationQuoteApi(quote.id);
+      setLocalQuote(null);
+      setQuoteDeleted(true);
+      setStatusMessage({ type: 'success', text: 'Cotización eliminada. Puedes crear una nueva cuando quieras.' });
+    } catch (error) {
+      setStatusMessage({ type: 'error', text: error.message || 'No se pudo eliminar la cotización.' });
+    } finally {
+      setIsDeletingQuote(false);
     }
   };
 
@@ -723,7 +745,7 @@ export default function QuoteDetailModal({
         </aside>
       </div>
 
-      {optionsOpen && <div className="quote-ws-dialog-backdrop quote-ws-options-backdrop" onClick={() => setOptionsOpen(false)}><section className="quote-ws-options-dialog" role="dialog" aria-modal="true" aria-label="Opciones de la conversación" onClick={(event) => event.stopPropagation()}><header><strong>Opciones</strong><button type="button" aria-label="Cerrar opciones" onClick={() => setOptionsOpen(false)}><X size={19} /></button></header><div><button type="button" onClick={openHelp}><span><CircleHelp size={20} /></span><div><strong>Ayuda</strong><small>Obtén asistencia con esta cotización</small></div><ChevronRight size={18} /></button><button type="button" className="danger" onClick={() => { setOptionsOpen(false); setReportOpen(true); }}><span><Flag size={20} /></span><div><strong>Reportar {mode === 'seller' ? 'comprador' : 'vendedor'}</strong><small>Informa una conducta que incumple las normas</small></div><ChevronRight size={18} /></button></div></section></div>}
+      {optionsOpen && <div className="quote-ws-dialog-backdrop quote-ws-options-backdrop" onClick={() => setOptionsOpen(false)}><section className="quote-ws-options-dialog" role="dialog" aria-modal="true" aria-label="Opciones de la conversación" onClick={(event) => event.stopPropagation()}><header><strong>Opciones</strong><button type="button" aria-label="Cerrar opciones" onClick={() => setOptionsOpen(false)}><X size={19} /></button></header><div><button type="button" onClick={openHelp}><span><CircleHelp size={20} /></span><div><strong>Ayuda</strong><small>Obtén asistencia con esta cotización</small></div><ChevronRight size={18} /></button>{mode === 'seller' && activeQuote && !closed && <button type="button" className="danger" disabled={isDeletingQuote} onClick={deleteQuote}><span><Trash2 size={20} /></span><div><strong>Eliminar cotización</strong><small>El comprador dejará de verla y no podrá pagarla</small></div><ChevronRight size={18} /></button>}<button type="button" className="danger" onClick={() => { setOptionsOpen(false); setReportOpen(true); }}><span><Flag size={20} /></span><div><strong>Reportar {mode === 'seller' ? 'comprador' : 'vendedor'}</strong><small>Informa una conducta que incumple las normas</small></div><ChevronRight size={18} /></button></div></section></div>}
 
       {reportOpen && <div className="quote-ws-dialog-backdrop" onClick={() => !isSubmittingReport && setReportOpen(false)}><form className="quote-ws-report-dialog" onSubmit={submitReport} onClick={(event) => event.stopPropagation()}><header><div><Flag size={22} /><span><strong>Reportar conversación</strong><small>Selecciona el motivo del reporte. Tu reporte es confidencial.</small></span></div><button type="button" aria-label="Cerrar reporte" disabled={isSubmittingReport} onClick={() => setReportOpen(false)}><X size={19} /></button></header><div className="quote-ws-report-body"><fieldset><legend>Motivo del reporte</legend>{REPORT_REASONS.map((reason) => <label key={reason} className={reportReason === reason ? 'selected' : ''}><input type="radio" name="reportReason" value={reason} checked={reportReason === reason} onChange={(event) => setReportReason(event.target.value)} /><span>{reason}</span><i /></label>)}</fieldset><label className="quote-ws-report-detail"><span>Detalle adicional (opcional)</span><textarea rows="3" maxLength="500" value={reportDetail} onChange={(event) => setReportDetail(event.target.value)} placeholder="Cuéntanos qué ocurrió..." /><small>{reportDetail.length}/500</small></label></div><footer><button type="button" className="secondary" disabled={isSubmittingReport} onClick={() => setReportOpen(false)}>Cancelar</button><button type="submit" disabled={!reportReason || isSubmittingReport}>{isSubmittingReport ? <Loader2 size={17} className="spin-icon" /> : <Flag size={17} />} {isSubmittingReport ? 'Enviando...' : 'Enviar reporte'}</button></footer></form></div>}
 

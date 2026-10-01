@@ -22,8 +22,8 @@ import { updateAppointmentStatus, adErrorMessage } from '../../services/adsStora
  * que tocan a la sesión en una sola respuesta.
  *
  * Solo se puede responder una reserva `pending`: el backend rechaza con 400
- * cualquier intento sobre una ya resuelta, y `cancelled` está reservado al
- * cliente.
+ * cualquier intento sobre una ya resuelta. Una reserva ya `accepted` el taller la
+ * puede cancelar si no podrá atenderla (`AnuncioAgendamientoService`), igual que en la app.
  */
 export default function AdAgendaModal({ ad, appointments, onClose, onAppointmentUpdated }) {
   const [tab, setTab] = useState('solicitudes'); // 'solicitudes' | 'calendario'
@@ -71,6 +71,7 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
   const renderAppointment = (appointment, { compact = false } = {}) => {
     const meta = APPOINTMENT_STATUS_META[appointment.status] || APPOINTMENT_STATUS_META.pending;
     const canRespond = appointment.status === 'pending' && appointment.date >= todayIso;
+    const canProviderCancel = appointment.status === 'accepted' && appointment.date >= todayIso;
     const isBusy = updatingId === appointment.id;
 
     return (
@@ -142,6 +143,18 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
             </button>
           </div>
         )}
+        {canProviderCancel && (
+          <div className="agenda-appointment-actions">
+            <button
+              type="button"
+              className="btn-agenda-reject"
+              disabled={isBusy}
+              onClick={() => { if (window.confirm(`¿Cancelar esta cita confirmada?\n\nSe avisará a ${appointment.customerName || 'el cliente'} que no podrás atenderlo el ${formatAgendaDateLong(appointment.date)} a las ${appointment.time}.`)) handleRespond(appointment, 'cancelled'); }}
+            >
+              {isBusy ? <Loader2 size={14} className="spin-icon" /> : <XCircle size={14} />} Cancelar cita
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -149,6 +162,7 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
   const renderDetail = (appointment) => {
     const meta = APPOINTMENT_STATUS_META[appointment.status] || APPOINTMENT_STATUS_META.pending;
     const canRespond = appointment.status === 'pending' && appointment.date >= todayIso;
+    const canProviderCancel = appointment.status === 'accepted' && appointment.date >= todayIso;
     const isBusy = updatingId === appointment.id;
     const services = appointment.services?.length ? appointment.services.join(', ') : appointment.service;
 
@@ -189,6 +203,18 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
               onClick={() => handleRespond(appointment, 'rejected')}
             >
               <XCircle size={14} /> Rechazar
+            </button>
+          </div>
+        )}
+        {canProviderCancel && (
+          <div className="agenda-appointment-actions">
+            <button
+              type="button"
+              className="btn-agenda-reject"
+              disabled={isBusy}
+              onClick={() => { if (window.confirm(`¿Cancelar esta cita confirmada?\n\nSe avisará a ${appointment.customerName || 'el cliente'} que no podrás atenderlo el ${formatAgendaDateLong(appointment.date)} a las ${appointment.time}.`)) handleRespond(appointment, 'cancelled'); }}
+            >
+              {isBusy ? <Loader2 size={14} className="spin-icon" /> : <XCircle size={14} />} Cancelar cita
             </button>
           </div>
         )}

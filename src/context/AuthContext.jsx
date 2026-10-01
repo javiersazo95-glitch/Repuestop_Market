@@ -147,6 +147,10 @@ export function AuthProvider({ children }) {
       buyerBlocked: authResponse.buyerBlocked ?? baseUser.buyerBlocked,
       buyerBlockReason: authResponse.buyerBlockReason ?? baseUser.buyerBlockReason,
       buyerCanAppeal: authResponse.buyerCanAppeal ?? baseUser.buyerCanAppeal,
+      // Plazo de la suspension temporal (null = indefinida). La app ya los mostraba; sin
+      // copiarlos aqui la web no podia decir hasta cuando dura la sancion.
+      suspendedUntil: authResponse.suspendedUntil ?? baseUser.suspendedUntil,
+      suspensionDuration: authResponse.suspensionDuration ?? baseUser.suspensionDuration,
     });
 
     const assignedRole = baseUser.role || authResponse.role || preferredRole || 'BUYER';
@@ -185,6 +189,12 @@ export function AuthProvider({ children }) {
           user: response.usuario,
         };
       }
+      // El usuario existe pero su perfil de comprador/vendedor fue eliminado: el backend lo
+      // marca con `requiresRegistration`. Antes se guardaba la sesion igual y el modal decia
+      // "¡Bienvenido!" a una cuenta sin perfil. Como la app (useLoginScreen), se le pide crearlo.
+      if (response?.requiresRegistration) {
+        return { success: false, requiresRegistration: true };
+      }
       const savedUserData = saveSession(response, preferredRole);
       return { success: true, user: savedUserData };
     } catch (error) {
@@ -212,6 +222,9 @@ export function AuthProvider({ children }) {
           scheduledDeletionAt: response.scheduledDeletionAt,
           user: response.usuario,
         };
+      }
+      if (response?.requiresRegistration) {
+        return { success: false, requiresRegistration: true };
       }
       const savedUserData = saveSession(response);
       return { success: true, user: savedUserData };

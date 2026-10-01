@@ -899,6 +899,16 @@ export async function getSellerInventoryApi(proveedorId, { page = 0, size = 12, 
 }
 
 /**
+ * Inventario COMPLETO del vendedor (sin paginar): el backend lo devuelve asi cuando no se piden
+ * `page`/`size`. Lo usan los filtros por estado y el orden del panel de productos, que el servidor
+ * no resuelve; es lo mismo que hace la app (`productos.tsx`).
+ */
+export async function getSellerFullInventoryApi(proveedorId, { signal } = {}) {
+  const data = await fetchApi(`/proveedores/${proveedorId}/inventario`, { method: 'GET', signal });
+  return Array.isArray(data) ? data : (data?.content || []);
+}
+
+/**
  * Categorias que el vendedor tiene publicadas, con su conteo
  * (`[{ categoriaId, categoriaNombre, total }]`). Alimenta el filtro por categoria del panel
  * de productos; se piden aparte del listado para que las opciones no cambien al filtrar.
@@ -1000,6 +1010,14 @@ export async function saveConversationQuoteApi(conversationId, payload) {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+/**
+ * Elimina la cotizacion enviada en la conversacion (solo el vendedor que la emitio; el backend lo
+ * valida). La app ya lo permitia; en la web solo se podia editar.
+ */
+export async function deleteConversationQuoteApi(conversationId) {
+  return fetchApi(`/conversaciones/${conversationId}/cotizacion`, { method: 'DELETE' });
 }
 
 export async function getConversationQuoteApi(conversationId) {
@@ -1908,6 +1926,17 @@ export async function resumeSellerProductApi(proveedorId, productoId) {
   });
 }
 
+/**
+ * Elimina un producto del inventario. Es una baja LOGICA en el backend
+ * (`InventarioProveedorController.eliminarProducto`): la fila queda inactiva para conservar la
+ * trazabilidad de pedidos y cotizaciones. La app ya lo ofrecia; la web solo podia pausar.
+ */
+export async function deleteSellerProductApi(proveedorId, productoId) {
+  return fetchApi(`/proveedores/${proveedorId}/inventario/${productoId}`, {
+    method: 'DELETE',
+  });
+}
+
 // No hay `GET /proveedores/{id}/shipping-methods`: PerfilProveedorController solo expone
 // el PUT. Habia un getter apuntando ahi que hubiera dado 405 (no 404, que era lo unico
 // que atajaba). Los metodos configurados llegan dentro de `GET /proveedores/{id}/tienda`.
@@ -2155,6 +2184,18 @@ export async function updateAutomotiveServiceLogoApi(logoUrl) {
   return fetchApi('/automotive-services/me/logo', {
     method: 'PATCH',
     body: JSON.stringify({ logoUrl: logoUrl || null }),
+  });
+}
+
+/**
+ * Cambia solo el telefono publicado del servicio acreditado, sin reabrir el expediente. La app
+ * ya lo permitia (automotive-service-accreditation.tsx); en la web, una vez aprobado, el
+ * telefono quedaba fijo.
+ */
+export async function updateAutomotiveServicePhoneApi(telefono) {
+  return fetchApi('/automotive-services/me/telefono', {
+    method: 'PATCH',
+    body: JSON.stringify({ telefono }),
   });
 }
 

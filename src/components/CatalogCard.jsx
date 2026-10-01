@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Package, Tag, ChevronRight, Edit3, CheckCircle, AlertTriangle, XCircle, MessageCircleQuestion, Trophy, Loader2, Pause, Play
+  Package, Tag, ChevronRight, Edit3, CheckCircle, AlertTriangle, XCircle, MessageCircleQuestion, Trophy, Loader2, Pause, Play, Trash2
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
 import { productPath } from '../routes/paths';
@@ -56,6 +56,8 @@ export default function CatalogCard({
   isUpdatingTop = false,
   onTogglePause,
   isUpdatingPause = false,
+  onDelete,
+  isDeleting = false,
 }) {
   if (!product) return null;
 
@@ -162,6 +164,22 @@ export default function CatalogCard({
           >
             {isUpdatingPause ? <Loader2 size={13} className="spin-icon" /> : isPaused ? <Play size={13} /> : <Pause size={13} />}
             <span>{isPaused ? 'Reanudar' : 'Pausar'}</span>
+          </button>
+        )}
+
+        {onDelete && (
+          <button
+            type="button"
+            className="btn-view-details btn-delete-product"
+            disabled={isDeleting}
+            title="Eliminar este producto del catálogo"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(product);
+            }}
+          >
+            {isDeleting ? <Loader2 size={13} className="spin-icon" /> : <Trash2 size={13} />}
+            <span>Eliminar</span>
           </button>
         )}
 

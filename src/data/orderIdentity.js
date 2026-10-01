@@ -233,5 +233,19 @@ export function orderDeliverySummary(order) {
  * responden preguntas distintas.
  */
 export function deliveryCourierLabel(order) {
-  return String(order?.courier || order?.deliveryTerms || '').trim() || null;
+  return courierDisplayName(order?.courier) || String(order?.deliveryTerms || '').trim() || null;
+}
+
+/**
+ * El courier tal como debe leerse. La app movil registraba los envios dentro de la comuna con
+ * el codigo interno `local_delivery:<valor>` (y el retiro con `store_pickup`), y el backend lo
+ * guardo tal cual: sin esto la web mostraba "vía local_delivery:3000". La app ya manda el nombre
+ * real (Uber, delivery propio...); esto cubre los pedidos que quedaron guardados antes.
+ */
+export function courierDisplayName(courier) {
+  const value = String(courier || '').trim();
+  if (!value) return null;
+  if (value.toLowerCase().startsWith('local_delivery')) return 'Entrega dentro de la comuna';
+  if (value.toLowerCase() === 'store_pickup') return 'Retiro en tienda';
+  return value;
 }

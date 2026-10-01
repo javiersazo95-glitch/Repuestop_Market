@@ -320,6 +320,30 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
     // con su `OR esUniversal`, y dejarle compatibilidad cargada lo haria aparecer DOS veces
     // en la busqueda por patente (por universal y por el cruce relacional).
     const primary = form.isUniversal ? emptyCompatibility() : (form.compatibilities[0] || emptyCompatibility());
+    // Una tarjeta sin versiones elegidas cubre TODAS las versiones de ese modelo en esos anios,
+    // igual que en la app (useCreateProductScreen). Antes se mandaba vacia: el backend solo
+    // traduce a versiones el texto de la PRIMERA tarjeta (y solo si ninguna trae versiones), asi
+    // que las demas se perdian sin aviso y el producto no aparecia al buscar por patente.
+    const resolvedVersionIds = {};
+    if (!form.isUniversal) {
+      for (const item of form.compatibilities) {
+        if ((item.vehicleCatalogIds || []).length || !item.brand || !item.model || !item.yearFrom) continue;
+        const key = `${item.brand}|${item.model}|${item.yearFrom}|${item.yearTo}`;
+        let list = versionOptions[key];
+        if (!list) {
+          list = await getVehicleVersionsApi({ marca: item.brand, modelo: item.model, anioDesde: item.yearFrom, anioHasta: item.yearTo })
+            .catch(() => []);
+          if (Array.isArray(list)) setVersionOptions((previous) => ({ ...previous, [key]: list }));
+        }
+        const ids = (Array.isArray(list) ? list : []).map((version) => Number(version.id)).filter(Number.isFinite);
+        if (!ids.length) {
+          setSaving(false);
+          setError(`No encontramos versiones de ${item.brand} ${item.model} para ${item.yearFrom}${item.yearTo ? `–${item.yearTo}` : ''} en el catálogo. Revisa los años o elige las versiones a mano.`);
+          return;
+        }
+        resolvedVersionIds[key] = ids;
+      }
+    }
     const compatibilityGroups = form.isUniversal ? [] : form.compatibilities
       .filter((item) => item.brand || item.model || item.yearFrom || item.yearTo || item.motor || item.oem)
       .map((item) => {
@@ -341,7 +365,8 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
           referenciaOem: item.oem,
           version: versionLabel,
           versionLabels: selectedNames,
-          vehiculoCatalogoIds: item.vehicleCatalogIds.map(Number).filter(Number.isFinite),
+          vehiculoCatalogoIds: ((item.vehicleCatalogIds?.length ? item.vehicleCatalogIds : resolvedVersionIds[key]) || [])
+            .map(Number).filter(Number.isFinite),
         };
       });
     const payload = new FormData();

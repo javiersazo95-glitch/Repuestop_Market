@@ -3,7 +3,7 @@ import { ShieldCheck, UploadCloud, Loader2, Check, AlertCircle, ImagePlus, Build
 import {
   getPaisesApi, getRegionesApi, getComunasApi,
   getAutomotiveServiceAccreditationApi, submitAutomotiveServiceAccreditationApi,
-  updateAutomotiveServiceLogoApi, resolveMediaUrl,
+  updateAutomotiveServiceLogoApi, updateAutomotiveServicePhoneApi, resolveMediaUrl,
 } from '../services/api';
 import { uploadAdImages } from '../services/adsStorage';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
@@ -112,6 +112,11 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
   // Logo de la empresa. Se puede cargar antes de enviar el expediente y también
   // cambiar cuando ya está APROBADO (ahí el formulario queda en modo consulta).
   const [logoUrl, setLogoUrl] = useState('');
+  // Telefono publicado: editable aunque el expediente este aprobado (paridad con la app).
+  const [phoneEditing, setPhoneEditing] = useState(false);
+  const [phoneDraft, setPhoneDraft] = useState('');
+  const [phoneSaving, setPhoneSaving] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
   const [logoBusy, setLogoBusy] = useState(false);
   const [logoError, setLogoError] = useState('');
 
@@ -311,6 +316,64 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
           <p style={{ marginTop: '16px', fontSize: '13.5px', fontWeight: 700, color: '#166534' }}>
             Tu servicio está aprobado: ya puedes comprar monedas y publicar múltiples anuncios.
           </p>
+          <div className="form-group" style={{ marginTop: '14px' }}>
+            <label>Teléfono publicado en tus anuncios</label>
+            {phoneEditing ? (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={phoneDraft}
+                  onChange={(e) => { setPhoneDraft(normalizeChileanPhone(e.target.value)); setPhoneError(''); }}
+                  placeholder="912345678"
+                  maxLength={9}
+                  style={{ maxWidth: '180px' }}
+                />
+                <button
+                  type="button"
+                  className="btn-auth-primary"
+                  style={{ width: 'auto' }}
+                  disabled={phoneSaving}
+                  onClick={async () => {
+                    if (phoneDraft.length !== 9) {
+                      setPhoneError('Ingresa un celular de 9 dígitos (ej. 912345678).');
+                      return;
+                    }
+                    setPhoneSaving(true);
+                    setPhoneError('');
+                    try {
+                      const saved = await updateAutomotiveServicePhoneApi(phoneDraft);
+                      if (saved) setRecord(saved);
+                      setPhoneEditing(false);
+                      setSuccess('Teléfono actualizado.');
+                    } catch (err) {
+                      setPhoneError(err.message || 'No se pudo guardar el teléfono.');
+                    } finally {
+                      setPhoneSaving(false);
+                    }
+                  }}
+                >
+                  {phoneSaving ? <Loader2 size={15} className="spin-icon" /> : <Check size={15} />} Guardar
+                </button>
+                <button type="button" className="btn-auth-secondary" style={{ width: 'auto' }} disabled={phoneSaving} onClick={() => { setPhoneEditing(false); setPhoneError(''); }}>
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <strong>{record?.telefono || 'Sin teléfono'}</strong>
+                <button
+                  type="button"
+                  className="btn-auth-secondary"
+                  style={{ width: 'auto', padding: '6px 12px' }}
+                  onClick={() => { setPhoneDraft(normalizeChileanPhone(record?.telefono || '')); setPhoneEditing(true); }}
+                >
+                  Cambiar
+                </button>
+              </div>
+            )}
+            {phoneError && <small className="field-error-text">{phoneError}</small>}
+          </div>
           {/* El logo se puede cambiar aunque el expediente esté cerrado. */}
           <LogoPicker
             value={logoUrl}

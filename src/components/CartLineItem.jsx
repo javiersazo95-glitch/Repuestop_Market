@@ -33,9 +33,14 @@ export default function CartLineItem({ item, activeVehicle, onUpdateQuantity, on
           <span className="cart-line-oem">OEM {item.oemCode}</span>
           {item.marca && <span>{item.marca}</span>}
         </p>
-        {activeVehicle && (
-          <p className="cart-line-fit">Compatible con {activeVehicle.patente}</p>
-        )}
+        {/* Antes decia "Compatible con {patente}" en cada linea sin verificar nada. La
+            compatibilidad la confirma el vendedor con el vehiculo del pedido (checklist de
+            confirmacion), asi que se dice eso; un repuesto universal si sirve para cualquiera. */}
+        {item.esUniversal ? (
+          <p className="cart-line-fit">Repuesto universal</p>
+        ) : activeVehicle?.patente ? (
+          <p className="cart-line-fit">La tienda confirmará que calce con tu {activeVehicle.patente}</p>
+        ) : null}
         {lowStock && (
           <p className="cart-line-stock">
             <AlertTriangle size={13} />

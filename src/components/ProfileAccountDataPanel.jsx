@@ -13,6 +13,7 @@ import {
 import { qk } from '../services/queryKeys';
 import ShippingMethodsPicker from './ShippingMethodsPicker';
 import BuyerAddressBook from './BuyerAddressBook';
+import ChangePasswordCard from './ChangePasswordCard';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import VehicleBrandLogo from './VehicleBrandLogo';
@@ -886,9 +887,12 @@ export default function ProfileAccountDataPanel({
                   </div>
                 )}
 
-                {!isSeller && (
+                {/* Tambien para la tienda: son las direcciones donde RECIBE lo que compra (la app las
+                    tiene en "Direcciones de entrega"). La comercial de la tienda es aparte, arriba. */}
+                {(
                   <BuyerAddressBook usuarioId={user?.userId} />
                 )}
+                <ChangePasswordCard user={{ ...user, taxId: storeInfo?.taxId || user?.taxId }} isSeller={isSeller} />
                 {isSeller && <SellerVerificationCard sellerId={effectiveSellerId} />}
               </div>
             </div>
