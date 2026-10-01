@@ -14,6 +14,9 @@ export const FLOW_REFUND_NOTICE =
 // `estadoReembolso` (backend, O56) viene simplificado: SOLICITADO / REEMBOLSADO / RECHAZADO /
 // ERROR. Un backend anterior solo manda `refundStatus` con el vocabulario interno del pago.
 const LEGACY_REFUND_STATUS = {
+  // H59: la devolucion ya se decidio y se pide a Flow en unos minutos.
+  REEMBOLSO_POR_SOLICITAR: 'EN_PROCESO',
+  REEMBOLSO_SOLICITANDO: 'EN_PROCESO',
   REEMBOLSO_SOLICITADO: 'SOLICITADO',
   REEMBOLSO_ACEPTADO: 'ACEPTADO',
   REEMBOLSADO: 'REEMBOLSADO',
@@ -34,6 +37,12 @@ export function refundState(order) {
 export function buyerRefundInfo(order) {
   const supportCode = order?.codigoSoporte ? ` indicando el pedido ${order.codigoSoporte}` : '';
   switch (refundState(order)) {
+    case 'EN_PROCESO':
+      return {
+        tone: 'pending',
+        title: 'Devolución en proceso',
+        detail: 'Estamos solicitando tu devolución a Flow. En unos minutos te llegará un correo de Flow para aceptarla.',
+      };
     case 'SOLICITADO':
       return {
         tone: 'pending',
