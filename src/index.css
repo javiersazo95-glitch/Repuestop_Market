@@ -3037,6 +3037,37 @@ input, select, textarea {
   background: #e2e8f0;
 }
 
+/* Login de la tienda: con correo o con el RUT de la tienda (igual que la app). */
+.auth-login-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #f1f5f9;
+}
+
+.auth-login-mode button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-login-mode button.active {
+  background: #fff;
+  color: #0056bf;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
 .role-selection-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

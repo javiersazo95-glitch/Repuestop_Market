@@ -219,6 +219,17 @@ export async function loginApi({ email, password, reactivateAccount, acceptsTerm
   });
 }
 
+/**
+ * Login de la tienda con su RUT en vez del correo (igual que la app): para cuando el vendedor no
+ * recuerda con qué correo se registró. Responde lo mismo que `/auth/login`.
+ */
+export async function loginByTaxIdApi({ taxId, password }) {
+  return fetchApi('/auth/login-by-taxid', {
+    method: 'POST',
+    body: JSON.stringify({ taxId: String(taxId || '').trim(), password }),
+  });
+}
+
 export async function loginGoogleApi({ idToken, reactivateAccount, acceptsTerms }) {
   return fetchApi('/auth/google', {
     method: 'POST',

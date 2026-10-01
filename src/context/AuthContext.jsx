@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { loginApi, loginGoogleApi, logoutApi, getProfileApi, updateProfileApi, deleteAccountApi, registerBuyerApi, registerSellerApi, verifyRegisterEmailApi, resendRegisterCodeApi, resolveMediaUrl, acceptTermsApi } from '../services/api';
+import { loginApi, loginByTaxIdApi, loginGoogleApi, logoutApi, getProfileApi, updateProfileApi, deleteAccountApi, registerBuyerApi, registerSellerApi, verifyRegisterEmailApi, resendRegisterCodeApi, resolveMediaUrl, acceptTermsApi } from '../services/api';
 import { clearSessionData } from '../utils/sessionCleanup';
 
 const AuthContext = createContext(null);
@@ -178,10 +178,13 @@ export function AuthProvider({ children }) {
     clearSessionData();
   };
 
-  const login = async ({ email, password, preferredRole = 'BUYER', reactivateAccount = false, acceptsTerms = false }) => {
+  const login = async ({ email, taxId, password, preferredRole = 'BUYER', reactivateAccount = false, acceptsTerms = false }) => {
     setIsLoading(true);
     try {
-      const response = await loginApi({ email, password, reactivateAccount, acceptsTerms });
+      // Con `taxId` entra la tienda por su RUT (siempre como vendedor).
+      const response = taxId
+        ? await loginByTaxIdApi({ taxId, password })
+        : await loginApi({ email, password, reactivateAccount, acceptsTerms });
       if (response?.deletionScheduled) {
         return {
           success: false,
@@ -197,7 +200,7 @@ export function AuthProvider({ children }) {
       if (response?.requiresRegistration) {
         return { success: false, requiresRegistration: true };
       }
-      const savedUserData = saveSession(response, preferredRole);
+      const savedUserData = saveSession(response, taxId ? 'SELLER' : preferredRole);
       return { success: true, user: savedUserData };
     } catch (error) {
       // Conservamos el código HTTP para que la interfaz pueda distinguir entre

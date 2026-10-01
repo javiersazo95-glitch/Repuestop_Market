@@ -10,6 +10,7 @@ import CaptadorCodeField, { useCaptadorCode } from './CaptadorCodeField';
 import { clearStoredCaptadorReferral, getStoredCaptadorReferral } from '../utils/captadorReferral';
 import { decodeGoogleIdToken } from '../utils/googleIdToken';
 import { GOOGLE_CLIENT_ID } from './founderConfig';
+import { formatRut, isValidRut } from '../services/adapters';
 import { ROUTES } from '../routes/paths';
 import {
   recoverPasswordSendCodeApi,
@@ -150,6 +151,9 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
   // Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // La tienda puede entrar con su RUT si no recuerda el correo (igual que en la app).
+  const [loginMode, setLoginMode] = useState('email'); // 'email' | 'taxId'
+  const [taxId, setTaxId] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   
   // Buyer Register Extra State
@@ -337,6 +341,8 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
     setIsRegistrationFlow(false);
     setEmail('');
     setPassword('');
+    setLoginMode('email');
+    setTaxId('');
     setBuyerName('');
     setBuyerPhone('');
     setBuyerStreet('');
@@ -544,7 +550,17 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) {
+    const byTaxId = selectedRole === 'SELLER' && loginMode === 'taxId';
+    if (byTaxId) {
+      if (!isValidRut(taxId)) {
+        setErrorMessage('Ingresa un RUT válido (con dígito verificador).');
+        return;
+      }
+      if (!password) {
+        setErrorMessage('Ingresa tu contraseña.');
+        return;
+      }
+    } else if (!email || !password) {
       setErrorMessage('Por favor completa todos los campos.');
       return;
     }
@@ -552,11 +568,19 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    const result = await login({
-      email,
-      password,
-      preferredRole: selectedRole,
-    });
+    const result = await login(byTaxId
+      ? { taxId: formatRut(taxId), password, preferredRole: 'SELLER' }
+      : { email, password, preferredRole: selectedRole });
+
+    if (byTaxId && !result.success && !result.deletionScheduled) {
+      setIsSubmitting(false);
+      // Por RUT no se ofrece crear cuenta ni se pasa al codigo de verificacion (no hay correo
+      // escrito): se muestra el error tal cual y la tienda puede volver a "Con correo".
+      setErrorMessage(isAccountNotFound(result)
+        ? 'No encontramos una tienda con ese RUT. Revisa el número o entra con tu correo.'
+        : (result.error || 'RUT o contraseña incorrectos.'));
+      return;
+    }
 
     setIsSubmitting(false);
 
@@ -1099,23 +1123,66 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
             <GoogleSignInButton onCredential={handleGoogleCredential} disabled={isSubmitting} />
 
             <div className="auth-divider">
-              <span>o ingresa con tu correo</span>
+              <span>{selectedRole === 'SELLER' ? 'o ingresa con tus datos' : 'o ingresa con tu correo'}</span>
             </div>
 
-            <div className="form-group">
-              <label>Correo Electrónico *</label>
-              <div className="input-with-icon">
-                <Mail size={18} className="field-icon" />
-                <input
-                  type="email"
-                  required
-                  placeholder="ejemplo@correo.com"
-                  maxLength={254}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+            {selectedRole === 'SELLER' && (
+              <div className="auth-login-mode" role="tablist" aria-label="Cómo quieres ingresar">
+                {[
+                  { key: 'email', label: 'Con correo', icon: <Mail size={14} /> },
+                  { key: 'taxId', label: 'Tienda con RUT', icon: <Building2 size={14} /> },
+                ].map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={loginMode === option.key}
+                    className={loginMode === option.key ? 'active' : ''}
+                    onClick={() => {
+                      setLoginMode(option.key);
+                      setErrorMessage(null);
+                    }}
+                  >
+                    {option.icon} {option.label}
+                  </button>
+                ))}
               </div>
-            </div>
+            )}
+
+            {selectedRole === 'SELLER' && loginMode === 'taxId' ? (
+              <div className="form-group">
+                <label htmlFor="auth-login-taxid">RUT de la tienda *</label>
+                <div className="input-with-icon">
+                  <Building2 size={18} className="field-icon" />
+                  <input
+                    id="auth-login-taxid"
+                    type="text"
+                    inputMode="text"
+                    autoComplete="username"
+                    required
+                    placeholder="Ej. 76.123.456-7"
+                    maxLength={12}
+                    value={taxId}
+                    onChange={(e) => setTaxId(formatRut(e.target.value))}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="form-group">
+                <label>Correo Electrónico *</label>
+                <div className="input-with-icon">
+                  <Mail size={18} className="field-icon" />
+                  <input
+                    type="email"
+                    required
+                    placeholder="ejemplo@correo.com"
+                    maxLength={254}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="form-group">
               <label>Contraseña *</label>
