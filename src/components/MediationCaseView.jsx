@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle, ArrowLeft, Car, CheckCircle2, ChevronDown, ChevronRight, Download, FileText, Headphones, Image as ImageIcon,
   Info, Loader2, Lock, Maximize2, MessageSquare, Package, Paperclip, RefreshCw, Scale, Send, ShieldAlert, Store, User, Wallet, X,
+  Award, Clock, CreditCard, Flag, Hourglass, Images, ShieldCheck, GitCommitVertical,
 } from 'lucide-react';
 import {
   escalateMediationApi, getMediationChatApi, requestWarrantySupportApi, resolveMediationApi,
@@ -16,6 +17,7 @@ import { profilePath } from '../routes/paths';
 import compressImageFile from '../utils/imageCompression';
 import ChatImagePreview from './ChatImagePreview';
 import SaleReceiptViewerModal from './SaleReceiptViewerModal';
+import { buildMediationTimeline, refundStatusLabel, resolutionFavorLabel } from '../utils/mediationTimeline';
 
 const MAX_EVIDENCE_FILES = 5;
 const MAX_REASON = 150;
@@ -62,16 +64,6 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function refundStatusLabel(estado) {
-  switch (String(estado || '').toUpperCase()) {
-    case 'REEMBOLSADO': return 'Reembolso acreditado';
-    case 'REEMBOLSO_SOLICITADO': return 'Solicitado a la pasarela (Flow)';
-    case 'REEMBOLSO_RECHAZADO':
-    case 'REEMBOLSO_ERROR': return 'En revisión con nuestro equipo';
-    default: return 'En proceso';
-  }
-}
-
 function buyerRefundSteps(chat, codigo) {
   const monto = Number(chat?.montoReembolso || 0);
   const pct = Number(chat?.porcentajeReembolso) || 100;
@@ -85,49 +77,139 @@ function buyerRefundSteps(chat, codigo) {
 }
 
 /**
- * Disparador compacto (una fila) que abre el detalle de la resolución al centro de
- * la pantalla. Pensado para no ocupar espacio en móvil: la resolución y los pasos
- * del reembolso viven en el modal, no en el hilo.
+ * Disparador compacto (una fila) que abre el detalle de la mediación al centro de la
+ * pantalla: veredicto, línea de tiempo del caso y seguimiento del reembolso. Pensado para no
+ * ocupar espacio en móvil. Aparece apenas hay mediación, también mientras sigue en curso.
  */
 function ResolutionDetailButton({ chat, mode, onOpen }) {
   const hasRefund = mode === 'buyer' && chat?.resolucionFavor === 'COMPRADOR' && Number(chat?.montoReembolso || 0) > 0;
-  if (!chat?.motivoResolucion && !hasRefund) return null;
+  const inProgress = chat?.estadoMediacion === 'EN_MEDIACION';
+  if (!chat?.estadoMediacion && !chat?.motivoResolucion && !hasRefund) return null;
+  const title = inProgress
+    ? 'Ver detalle de la mediación'
+    : hasRefund ? 'Resolución y seguimiento del reembolso' : 'Ver resolución de la mediación';
+  const subtitle = inProgress
+    ? 'En revisión del mediador · línea de tiempo'
+    : hasRefund ? refundStatusLabel(chat?.estadoReembolso) : 'Línea de tiempo y detalle del caso';
   return (
     <button type="button" className="dispute-resolution-trigger" onClick={onOpen}>
-      <span className="dispute-resolution-trigger-icon">{hasRefund ? <Wallet size={14} /> : <Scale size={14} />}</span>
+      <span className="dispute-resolution-trigger-icon">{inProgress ? <Clock size={14} /> : hasRefund ? <Wallet size={14} /> : <Scale size={14} />}</span>
       <span className="dispute-resolution-trigger-copy">
-        <strong>{hasRefund ? 'Resolución y seguimiento del reembolso' : 'Ver resolución de la disputa'}</strong>
-        {hasRefund && <small>{refundStatusLabel(chat?.estadoReembolso)}</small>}
+        <strong>{title}</strong>
+        <small className={hasRefund && !inProgress ? '' : 'is-muted'}>{subtitle}</small>
       </span>
       <ChevronRight size={16} />
     </button>
   );
 }
 
+const TIMELINE_ICONS = {
+  pago: CreditCard,
+  recepcion: Package,
+  reclamo: Flag,
+  'reclamo-resuelto': CheckCircle2,
+  mediador: ShieldCheck,
+  evidencias: Images,
+  revision: Hourglass,
+  resolucion: Award,
+  reembolso: Wallet,
+};
+
+function formatTimelineDate(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const day = date.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+  const time = date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+  return `${day} · ${time}`;
+}
+
+function MediationTimeline({ steps }) {
+  return (
+    <ol className="dispute-timeline">
+      {steps.map((step) => {
+        const Icon = TIMELINE_ICONS[step.key] || CheckCircle2;
+        const date = formatTimelineDate(step.date);
+        return (
+          <li key={step.key} className={`dispute-timeline-step is-${step.status} tone-${step.tone}`}>
+            <span className="dispute-timeline-dot" aria-hidden="true"><Icon size={14} /></span>
+            <div className="dispute-timeline-body">
+              <div className="dispute-timeline-title">
+                <strong>{step.title}</strong>
+                {step.status === 'current' && <span className="dispute-timeline-now">En curso</span>}
+                {step.status === 'pending' && <span className="dispute-timeline-next">Siguiente</span>}
+              </div>
+              {date && <time dateTime={step.date}>{date}</time>}
+              {step.detail && <p>{step.detail}</p>}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 function ResolutionDetailDialog({ chat, mode, codigo, onClose }) {
   if (typeof document === 'undefined') return null;
-  const hasRefund = mode === 'buyer' && chat?.resolucionFavor === 'COMPRADOR' && Number(chat?.montoReembolso || 0) > 0;
+  const isBuyer = mode === 'buyer';
+  const hasRefund = isBuyer && chat?.resolucionFavor === 'COMPRADOR' && Number(chat?.montoReembolso || 0) > 0;
   const steps = hasRefund ? buyerRefundSteps(chat, codigo) : [];
+  const timeline = buildMediationTimeline(chat, isBuyer, claimReasonLabel);
+  const inProgress = chat?.estadoMediacion === 'EN_MEDIACION';
+  const closed = chat?.estadoMediacion === 'CERRADA';
+  const favor = resolutionFavorLabel(chat?.resolucionFavor, isBuyer);
+  const title = inProgress ? 'Detalle de la mediación' : 'Resolución de la mediación';
+  const statusLabel = inProgress ? 'En mediación' : closed ? 'Cerrada' : (chat?.estadoMediacion || chat?.reclamoResuelto) ? 'Resuelta' : null;
   return createPortal(
     <div className="dispute-dialog-backdrop" onClick={onClose}>
       <section
-        className="dispute-dialog dispute-claim-dialog"
+        className="dispute-dialog dispute-claim-dialog dispute-resolution-dialog"
         role="dialog"
         aria-modal="true"
-        aria-label="Resolución de la disputa"
+        aria-label={title}
         onClick={(event) => event.stopPropagation()}
       >
         <header>
           <div>
-            <small>Pedido {codigo}</small>
-            <h2>Resolución de la disputa</h2>
+            <small>{[chat?.codigoMediacion ? `Caso ${chat.codigoMediacion}` : null, codigo ? `Pedido ${codigo}` : null].filter(Boolean).join(' · ')}</small>
+            <h2>{title}</h2>
           </div>
           <button type="button" aria-label="Cerrar" onClick={onClose}><X size={16} /></button>
         </header>
         <div className="dispute-claim-dialog-body">
+          <div className="dispute-resolution-summary">
+            {statusLabel && (
+              <span className={`dispute-seal seal-${inProgress ? 'mediation' : 'done'}`}>{statusLabel}</span>
+            )}
+            {favor && <strong>{favor}</strong>}
+            {chat?.resolucionOpcionLabel && <span>{chat.resolucionOpcionLabel}</span>}
+            {chat?.resolucionFundamentoLegal && <small>Fundamento: {chat.resolucionFundamentoLegal}</small>}
+            {inProgress && (
+              <small>Un mediador de RepuesTop está revisando el caso. Aquí verás cada avance y la resolución final.</small>
+            )}
+          </div>
+
+          {(chat?.motivo || chat?.motivoEscalacion) && (
+            <div className="dispute-resolution-facts">
+              {chat?.motivo && (
+                <div><span>Reclamo</span><strong>{claimReasonLabel(chat.motivo)}</strong></div>
+              )}
+              {chat?.motivoEscalacion && (
+                <div><span>Motivo de la mediación</span><strong>{chat.motivoEscalacion}</strong></div>
+              )}
+            </div>
+          )}
+
+          {timeline.length > 0 && (
+            <div className="dispute-claim-field">
+              <span><GitCommitVertical size={12} /> Línea de tiempo del caso</span>
+              <MediationTimeline steps={timeline} />
+            </div>
+          )}
+
           {chat?.motivoResolucion && (
             <div className="dispute-claim-field">
-              <span>Veredicto</span>
+              <span>Fundamento del mediador</span>
               <p style={{ whiteSpace: 'pre-line' }}>{chat.motivoResolucion}</p>
             </div>
           )}
@@ -365,6 +447,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   // sin mediador. El caso queda cerrado igual que una mediacion resuelta, con su propio rotulo.
   const reclamoResuelto = Boolean(chat?.reclamoResuelto);
   const statusTone = MEDIATION_STATUS_TONES[estado] || (reclamoResuelto ? 'done' : 'wait');
+  const sealLabel = MEDIATION_STATUS_LABELS[estado] || estado || (reclamoResuelto ? 'Resuelto con la tienda' : 'En curso');
   const isClosed = chat?.chatCerrado || estado === 'RESUELTA' || estado === 'CERRADA' || reclamoResuelto;
   // Solo el comprador, con el reclamo abierto y antes de escalar (lo decide el backend).
   const canMarkResolved = mode === 'buyer' && Boolean(chat?.puedeMarcarResuelto) && !isClosed;
@@ -703,7 +786,11 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
           </span>
           <span className="dispute-chat-peer-id">
             <strong>{participantName || participantRoleLabel}</strong>
-            <small>{participantRoleLabel} · Pedido {codigo}</small>
+            <span className="dispute-chat-peer-meta">
+              {/* En móvil el estado va bajo el nombre, completo, en vez de cortarse a la derecha. */}
+              <span className={`dispute-seal dispute-seal-inline seal-${statusTone}`}>{sealLabel}</span>
+              <small>{participantRoleLabel} · Pedido {codigo}</small>
+            </span>
           </span>
         </span>
 
@@ -714,14 +801,11 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
             onClick={() => setShowVehicleReceipt(true)}
             title="Vehículo y boleta de la compra"
             aria-label="Ver vehículo y boleta de la compra"
-            style={{ position: 'relative' }}
           >
             <Car size={15} />
-            {chat?.boletaVentaDisponible && (
-              <span aria-hidden="true" style={{ position: 'absolute', top: 2, right: 2, width: 7, height: 7, borderRadius: 4, background: '#16a34a' }} />
-            )}
+            {chat?.boletaVentaDisponible && <span aria-hidden="true" className="dispute-vehicle-dot" />}
           </button>
-          <span className={`dispute-seal seal-${statusTone}`}>{MEDIATION_STATUS_LABELS[estado] || estado || (reclamoResuelto ? 'Resuelto con la tienda' : 'En curso')}</span>
+          <span className={`dispute-seal dispute-seal-head seal-${statusTone}`}>{sealLabel}</span>
           <button
             type="button"
             className="dispute-mobile-panel-toggle"
@@ -801,12 +885,11 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
               <p className="dispute-resolved-banner-reason">{chat.reclamoResueltoMotivo}</p>
             )}
             {chat?.motivoResolucion && <p className="dispute-resolved-banner-reason">{chat.motivoResolucion}</p>}
-            {(chat?.motivoResolucion
+            {(estado || chat?.motivoResolucion
               || (mode === 'buyer' && chat?.resolucionFavor === 'COMPRADOR' && Number(chat?.montoReembolso || 0) > 0)) && (
               <button type="button" className="dispute-resolved-banner-link" onClick={() => setShowResolutionDetail(true)}>
-                Ver resolución completa
                 {mode === 'buyer' && chat?.resolucionFavor === 'COMPRADOR' && Number(chat?.montoReembolso || 0) > 0
-                  ? ' y seguimiento del reembolso' : ''}
+                  ? 'Ver resolución, línea de tiempo y reembolso' : 'Ver resolución y línea de tiempo'}
               </button>
             )}
           </div>
@@ -956,7 +1039,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
                 <p className="dispute-thread-closed">
                   <Lock size={14} /> {isPaused
                     ? 'La conversación directa está archivada: el caso sigue con el mediador de RepuesTop.'
-                    : `Este caso está ${String(MEDIATION_STATUS_LABELS[estado] || 'cerrado').toLowerCase()}; ya no admite mensajes.`}
+                    : `Este caso está ${estado === 'RESUELTA' ? 'resuelto' : 'cerrado'}; ya no admite mensajes.`}
                 </p>
               ) : (
                 <form className="dispute-composer" onSubmit={submitMessage}>

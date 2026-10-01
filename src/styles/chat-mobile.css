@@ -264,17 +264,24 @@
   .profile-dashboard .dispute-chat-peer-id strong { font-size: 14px; }
   .profile-dashboard .dispute-chat-peer-id small { font-size: 11px; }
   .profile-dashboard .dispute-chat-head-right { width: auto; justify-content: flex-end; gap: 4px; }
+  /* El estado ("Mediación resuelta") pasa bajo el nombre, completo y en una línea: a la
+     derecha se cortaba ("MEDIACIÓN RE…") y le quitaba ancho al nombre. A la derecha quedan
+     solo los botones de icono, todos del mismo tamaño. */
+  .profile-dashboard .dispute-seal-head { display: none; }
+  .profile-dashboard .dispute-seal-inline { display: inline-flex !important; }
+  .profile-dashboard .dispute-chat-peer-id { gap: 3px; }
+  .profile-dashboard .dispute-chat-peer-meta { gap: 6px; }
   .profile-dashboard .dispute-seal {
-    max-width: 96px;
-    padding: 3px 7px;
+    flex: 0 0 auto;
+    padding: 2px 8px;
     gap: 4px;
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 8.5px;
-    letter-spacing: .02em;
+    font-size: 9px;
+    letter-spacing: .03em;
   }
   .profile-dashboard .dispute-seal::before { flex: 0 0 auto; }
+  .profile-dashboard .dispute-chat-peer-meta small { min-width: 0; flex: 1 1 auto; }
+
   .profile-dashboard .dispute-chat-refresh,
   .profile-dashboard .dispute-mobile-panel-toggle {
     width: 36px;
@@ -290,6 +297,10 @@
     -webkit-tap-highlight-color: transparent;
   }
   .profile-dashboard .dispute-mobile-panel-toggle[aria-pressed="true"] { color: #0b5fd0; background: #eaf3ff; }
+  /* Vehículo y boleta: el único acceso a datos de la compra, en azul suave para distinguirlo
+     de las acciones (info, actualizar); el punto verde avisa que hay boleta. */
+  .profile-dashboard .dispute-chat-refresh.dispute-vehicle-button { color: #0b5fd0; background: #eaf3ff; }
+  .profile-dashboard .dispute-vehicle-dot { top: 6px; right: 6px; }
   .profile-dashboard .support-resolve-btn { width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 10px; }
   .profile-dashboard .support-resolve-btn span { display: none; }
 
@@ -548,7 +559,7 @@
 
 /* Pantallas angostas (<=359px): un poco menos de aire en la cabecera del chat. */
 @media (max-width: 359px) {
-  .profile-dashboard .dispute-seal { max-width: 72px; }
+  .profile-dashboard .dispute-chat-peer-meta small { display: none; }
   .profile-dashboard .dispute-chat-peer-id strong { font-size: 13px; }
   .profile-dashboard .case-row.seller-chat-row { grid-template-columns: 40px minmax(0, 1fr) auto; }
   .profile-dashboard .seller-chat-thumb { width: 40px; height: 40px; }
