@@ -24,6 +24,7 @@ import { claimReasonPairs } from '../data/claimReason';
 import { carrierTracking } from '../data/carrierTracking';
 import { fundsReleaseNotice, retractionNotice, storeAutoCloseNotice } from '../data/orderDeadlines';
 import { validateUpload, FILE_LIMITS } from '../utils/fileValidation';
+import { buildOrderPackages } from '../utils/orderPackages';
 
 /**
  * Una linea de repuesto dentro del bloque de su tienda, con la ficha tecnica desplegable.
@@ -115,22 +116,6 @@ function OrderProductRow({ item, onNavigate }) {
           </span>
           {cancelled && refunded > 0 && (
             <span className="order-item-row-refund">Reembolso {formatCLP(refunded)}</span>
-          )}
-          {/* Checkout por producto: cada repuesto puede ir a otra dirección y ser para otro auto. */}
-          {(item.metodoEnvio || item.entregaDireccion || item.vehiculoPatente || item.vehiculoMarca) && (
-            <span className="order-item-row-delivery">
-              {item.metodoEnvio && (
-                <span>
-                  <Truck size={12} /> {String(item.metodoEnvio).replace(/\s*\(.*\)\s*$/, '')}
-                  {item.entregaDireccion ? ` · ${[item.entregaDireccion, item.entregaComuna].filter(Boolean).join(', ')}` : ''}
-                </span>
-              )}
-              {(item.vehiculoPatente || item.vehiculoMarca) && (
-                <span>
-                  <Car size={12} /> {[item.vehiculoPatente, [item.vehiculoMarca, item.vehiculoModelo, item.vehiculoAnio].filter(Boolean).join(' ')].filter(Boolean).join(' · ')}
-                </span>
-              )}
-            </span>
           )}
         </div>
         <div className="item-table-pricing">
@@ -334,7 +319,8 @@ export default function OrderDetailView({
   const normStatus = String(rawStatus).toUpperCase();
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedTimelineStep, setSelectedTimelineStep] = useState(null);
-  const [addressCopied, setAddressCopied] = useState(false);
+  // Clave del paquete cuya dirección se acaba de copiar (sección Entrega).
+  const [copiedPackage, setCopiedPackage] = useState('');
   const [pickupPin, setPickupPin] = useState('');
   const [statusError, setStatusError] = useState('');
   const [isRetryingPayment, setIsRetryingPayment] = useState(false);
@@ -624,11 +610,16 @@ export default function OrderDetailView({
     order.compradorRegion || order.region,
   ].filter(Boolean).join(', ') || 'Dirección de envío no registrada';
   const isStorePickup = isStorePickupOrder(order);
-  const copyAddress = (e) => {
-    e.stopPropagation();
-    navigator.clipboard?.writeText(deliveryAddress).then(() => {
-      setAddressCopied(true);
-      setTimeout(() => setAddressCopied(false), 1500);
+  // Sección Entrega: un paquete por tienda + método + destino, cada uno con su vehículo.
+  const deliveryPackages = buildOrderPackages(order, {
+    fallbackAddress: isStorePickup ? null : deliveryAddress,
+    fallbackMethod: orderDeliverySummary(order),
+  });
+  const copyPackageAddress = (event, pkg) => {
+    event.stopPropagation();
+    navigator.clipboard?.writeText(pkg.address).then(() => {
+      setCopiedPackage(pkg.key);
+      setTimeout(() => setCopiedPackage(''), 1500);
     });
   };
 
@@ -1463,59 +1454,72 @@ export default function OrderDetailView({
                     mismo campo que ya se lee mas abajo en el bloque por tienda -- y mostrarlo
                     aca no repite texto libre concatenado, que es lo que este bloque evitaba. */}
                 <div className="order-delivery-summary-row">
-                  <Truck size={14} />
-                  <span>{orderDeliverySummary(order)}</span>
-                </div>
-                {/* En un retiro en tienda NO hay direccion de despacho, pero el bloque se monta
-                    igual: es donde el vendedor ve a quien le entrega y el comprador su propio
-                    documento. Ocultarlo entero dejaba al vendedor de un retiro sin un solo dato
-                    de la persona que va a ir a buscar el repuesto. */}
-                {!isStorePickup && (
-                <div className="order-delivery-summary-row">
-                  <MapPin size={14} />
-                  <span>{deliveryAddress}</span>
-                  <button
-                    type="button"
-                    className="order-delivery-copy"
-                    onClick={copyAddress}
-                    title="Copiar dirección"
-                    aria-label="Copiar dirección"
-                  >
-                    {addressCopied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
-                  </button>
-                </div>
-                )}
-                <div className="order-delivery-summary-row">
                   <User size={14} />
-                  <span>{buyerName}{buyerPhone && buyerPhone !== '—' ? ` · ${buyerPhone}` : ''}</span>
+                  <span>{isSeller ? '' : 'Recibe: '}{buyerName}{buyerPhone && buyerPhone !== '—' ? ` · ${buyerPhone}` : ''}</span>
                 </div>
-                {/* Dato informativo, solo para el vendedor: no gatilla ningun paso ni bloquea
-                    nada. El comprador lo declaro opcionalmente en el checkout; aca solo se
-                    muestra para que el vendedor pueda mirarlo antes de despachar, sin el
-                    checklist de confirmacion de por medio (docs/planes/
-                    plan_validacion_compatibilidad_pedido.md). */}
-                {/* El vehículo contra el que se confirmó la compra lo ven ambos: si hay un reclamo
-                    por compatibilidad, comprador y tienda revisan los mismos datos. A la tienda la
-                    patente le llega enmascarada desde el backend (dato personal del comprador). */}
-                {(isSeller || (order.vehiculoOrigen && order.vehiculoOrigen !== 'NO_INFORMADO')) && (() => {
-                  const tieneVehiculo = order.vehiculoOrigen && order.vehiculoOrigen !== 'NO_INFORMADO';
-                  return (
-                    <div className={`order-delivery-summary-row ${tieneVehiculo ? 'order-vehicle-row' : 'order-vehicle-row is-empty'}`}>
-                      <Car size={14} />
-                      {tieneVehiculo ? (
-                        <span>
-                          <strong>
-                            {[order.vehiculoMarca, order.vehiculoModelo, order.vehiculoVersion, order.vehiculoAnio].filter(Boolean).join(' ')}
-                          </strong>
-                          {order.vehiculoPatente ? ` · Patente ${order.vehiculoPatente}` : ''}
-                          {order.vehiculoPatente || order.vehiculoChasis ? ` · Chasis ${order.vehiculoChasis || 'no identificado'}` : ''}
-                        </span>
-                      ) : (
-                        <span>Vehículo: sin información</span>
-                      )}
-                    </div>
-                  );
-                })()}
+                {/* Un bloque por PAQUETE (tienda + método + destino, la regla con la que se cobran
+                    los despachos): cómo llega, a dónde -- o dónde se retira -- y para qué vehículo
+                    son sus repuestos. Nada se junta: una compra puede ir a dos casas y ser para
+                    dos autos. A la tienda le llegan solo sus productos (y la patente parcial). */}
+                <div className="order-packages">
+                  {deliveryPackages.map((pkg, index) => {
+                    const conVehiculo = new Set(pkg.vehicles.flatMap((vehicle) => vehicle.products));
+                    const universales = pkg.products.filter((name) => !conVehiculo.has(name));
+                    return (
+                      <div key={pkg.key} className="order-package">
+                        <div className="order-package-head">
+                          <span className="order-package-badge">{deliveryPackages.length > 1 ? `Paquete ${index + 1}` : 'Paquete'}</span>
+                          {!isSeller && <strong>{pkg.storeName}</strong>}
+                        </div>
+                        <div className="order-package-row is-method">
+                          {pkg.kind === 'pickup' ? <Store size={14} /> : <Truck size={14} />}
+                          <span>{pkg.method}</span>
+                        </div>
+                        <div className="order-package-row">
+                          <MapPin size={14} />
+                          {pkg.kind === 'pickup' ? (
+                            <span>
+                              {isSeller
+                                ? 'El comprador retira en tu local'
+                                : `Retiras en ${pkg.pickupAddress || 'la tienda'}${pkg.pickupHours ? ` · ${pkg.pickupHours}` : ''}`}
+                            </span>
+                          ) : (
+                            <>
+                              <span>{pkg.address || 'Dirección no registrada'}</span>
+                              {pkg.address && (
+                                <button
+                                  type="button"
+                                  className="order-delivery-copy"
+                                  onClick={(event) => copyPackageAddress(event, pkg)}
+                                  title="Copiar dirección"
+                                  aria-label="Copiar dirección"
+                                >
+                                  {copiedPackage === pkg.key ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        {pkg.vehicles.map((vehicle, vIndex) => (
+                          <div key={`${vehicle.plate}-${vehicle.label}-${vIndex}`} className="order-package-vehicle">
+                            <div className="order-package-row">
+                              <Car size={14} />
+                              <strong>{[vehicle.plate, vehicle.label].filter(Boolean).join(' · ')}</strong>
+                            </div>
+                            {isSeller && <small>Chasis {vehicle.chassis || 'no identificado'}</small>}
+                            <span>Para: {vehicle.products.join(' · ')}</span>
+                          </div>
+                        ))}
+                        {universales.length > 0 && (
+                          <div className="order-package-row">
+                            <Package size={14} />
+                            <span>{pkg.vehicles.length > 0 ? 'Universales: ' : ''}{universales.join(' · ')}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
                 {(order.tipoDocumentoTributario || order.tipoDocumento || order.documentType) && (
                   <div className="order-delivery-summary-row">
                     <FileText size={14} />
