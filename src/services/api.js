@@ -1550,6 +1550,14 @@ export async function confirmOrderCompatibilityApi(pedidoId, pedidoItemIds) {
   });
 }
 
+/**
+ * Deshace el paso 2 del checklist del vendedor (lo marcó por error). El backend solo lo permite
+ * antes de confirmar la venta y devuelve el pedido con el checklist reabierto.
+ */
+export async function unconfirmOrderCompatibilityApi(pedidoId) {
+  return fetchApi(`/pedidos/${pedidoId}/confirmaciones/compatibilidad`, { method: 'DELETE' });
+}
+
 /** Inicia explícitamente el chat postventa comprador-vendedor. */
 export async function startSellerChatApi(pedidoId, proveedorId) {
   return fetchApi(`/pedidos/${pedidoId}/chat-vendedor${proveedorQuery(proveedorId)}`, { method: 'POST' });

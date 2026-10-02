@@ -30,6 +30,7 @@ export default function SaleReceiptModal({
   isStorePickup = false,
   onConfirmStock,
   onConfirmCompatibility,
+  onUnconfirmCompatibility,
   onOpenBuyerChat,
   onSubmit,
   onClose,
@@ -275,6 +276,7 @@ export default function SaleReceiptModal({
             isStorePickup={isStorePickup}
             onConfirmStock={onConfirmStock}
             onConfirmCompatibility={onConfirmCompatibility}
+            onUnconfirmCompatibility={onUnconfirmCompatibility}
             onOpenBuyerChat={onOpenBuyerChat}
             boleta={{ lista: Boolean(file) || boletaYaCargada, contenido: contenidoBoleta }}
           />

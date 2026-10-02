@@ -51,7 +51,7 @@ function horaConfirmacion(fecha) {
   return d.toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-function Paso({ numero, icono: Icono, titulo, descripcion, estado, resumen, children }) {
+function Paso({ numero, icono: Icono, titulo, descripcion, estado, resumen, accionesHecho, children }) {
   const hecho = estado === 'hecho';
   const bloqueado = estado === 'bloqueado';
   const etiquetaEstado = { hecho: 'Completado', activo: 'En curso', bloqueado: 'Pendiente' }[estado];
@@ -72,6 +72,8 @@ function Paso({ numero, icono: Icono, titulo, descripcion, estado, resumen, chil
           <span className={`seller-checklist-status is-${estado}`}>{etiquetaEstado}</span>
         </div>
         {hecho && resumen && <p className="seller-checklist-summary"><CheckCircle2 size={13} />{resumen}</p>}
+        {/* Aun hecho: el chat con el comprador sigue disponible y el paso se puede deshacer. */}
+        {hecho && accionesHecho && <div className="seller-checklist-step-body">{accionesHecho}</div>}
         {bloqueado && <p className="seller-checklist-hint">{descripcion}</p>}
         {!hecho && !bloqueado && <div className="seller-checklist-step-body">{children}</div>}
       </div>
@@ -80,11 +82,13 @@ function Paso({ numero, icono: Icono, titulo, descripcion, estado, resumen, chil
 }
 
 /** Casilla de declaración: el vendedor "marca" el paso y eso lo registra en el backend. */
-function Declaracion({ ocupado, alerta, onClick, children }) {
+function Declaracion({ ocupado, alerta, marcado = false, onClick, children }) {
   return (
     <button
       type="button"
-      className={`seller-checklist-check ${alerta ? 'is-alerta' : ''}`}
+      role="checkbox"
+      aria-checked={marcado}
+      className={`seller-checklist-check ${alerta ? 'is-alerta' : ''} ${marcado ? 'is-marcado' : ''}`}
       disabled={ocupado}
       onClick={onClick}
     >
@@ -101,6 +105,7 @@ export default function SellerConfirmationChecklist({
   isStorePickup,
   onConfirmStock,
   onConfirmCompatibility,
+  onUnconfirmCompatibility,
   onOpenBuyerChat,
   boleta,
 }) {
@@ -157,6 +162,39 @@ export default function SellerConfirmationChecklist({
     }
   };
 
+  // Advertencia de repuesto incompatible, con el mensaje listo y el chat con el comprador. Se
+  // muestra al revisar el paso y también con el paso ya confirmado.
+  const avisoIncompatible = hayIncompatibles ? (
+<div className="seller-checklist-warning">
+              <p>
+                <AlertTriangle size={15} />
+                <span>
+                  <strong>Hay un repuesto que no calza con el vehículo del comprador.</strong> Antes
+                  de seguir, conviene avisarle: puedes ofrecerle la pieza correcta o cancelar y
+                  devolverle el dinero.
+                </span>
+              </p>
+              <blockquote className="seller-checklist-message">{mensajeParaComprador}</blockquote>
+              <div className="seller-checklist-warning-actions">
+                <button type="button" className="btn-auth-secondary" onClick={copiarMensaje}>
+                  <Copy size={14} />
+                  <span>{copiado ? 'Mensaje copiado' : 'Copiar mensaje'}</span>
+                </button>
+                {onOpenBuyerChat && (
+                  <button
+                    type="button"
+                    className="btn-auth-secondary"
+                    disabled={busyStep !== null}
+                    onClick={() => ejecutar('chat', () => onOpenBuyerChat(mensajeParaComprador))}
+                  >
+                    <MessageSquare size={14} />
+                    <span>Abrir chat con el comprador</span>
+                  </button>
+                )}
+              </div>
+            </div>
+  ) : null;
+
   const confirmadoStock = horaConfirmacion(checklist.stockEntregaConfirmadaAt);
   const confirmadoCompat = horaConfirmacion(checklist.compatibilidadConfirmadaAt);
 
@@ -209,6 +247,21 @@ export default function SellerConfirmationChecklist({
           descripcion="Se habilita al confirmar el stock y la entrega."
           estado={estadoCompatibilidad}
           resumen={`Compatibilidad revisada${confirmadoCompat ? ` · ${confirmadoCompat}` : ''}`}
+          accionesHecho={(
+            <>
+              {avisoIncompatible}
+              {onUnconfirmCompatibility && (
+                <Declaracion
+                  marcado
+                  ocupado={busyStep === 'compatibilidad'}
+                  onClick={() => ejecutar('compatibilidad', () => onUnconfirmCompatibility())}
+                >
+                  <strong>Compatibilidad revisada</strong>
+                  <small>Marcado · desmarca si fue un error</small>
+                </Declaracion>
+              )}
+            </>
+          )}
         >
           <div className="seller-checklist-vehicle">
             <Car size={15} />
@@ -254,35 +307,7 @@ export default function SellerConfirmationChecklist({
             </ul>
           )}
 
-          {hayIncompatibles && (
-            <div className="seller-checklist-warning">
-              <p>
-                <AlertTriangle size={15} />
-                <span>
-                  <strong>Hay un repuesto que no calza con el vehículo del comprador.</strong> Antes
-                  de seguir, conviene avisarle: puedes ofrecerle la pieza correcta o cancelar y
-                  devolverle el dinero.
-                </span>
-              </p>
-              <blockquote className="seller-checklist-message">{mensajeParaComprador}</blockquote>
-              <div className="seller-checklist-warning-actions">
-                <button type="button" className="btn-auth-secondary" onClick={copiarMensaje}>
-                  <Copy size={14} />
-                  <span>{copiado ? 'Mensaje copiado' : 'Copiar mensaje'}</span>
-                </button>
-                {onOpenBuyerChat && (
-                  <button
-                    type="button"
-                    className="btn-auth-secondary"
-                    onClick={() => onOpenBuyerChat(mensajeParaComprador)}
-                  >
-                    <MessageSquare size={14} />
-                    <span>Abrir chat con el comprador</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
+          {avisoIncompatible}
 
           <Declaracion
             ocupado={busyStep === 'compatibilidad'}

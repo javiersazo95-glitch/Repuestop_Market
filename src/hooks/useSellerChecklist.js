@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { confirmOrderCompatibilityApi, confirmOrderStockDeliveryApi } from '../services/api';
+import { confirmOrderCompatibilityApi, confirmOrderStockDeliveryApi, unconfirmOrderCompatibilityApi } from '../services/api';
 
 /**
  * Pasos 1 (stock y entrega) y 2 (compatibilidad) de "Confirmar pedido", compartidos por el
@@ -34,5 +34,10 @@ export default function useSellerChecklist(order) {
     guardar(await confirmOrderCompatibilityApi(order.id, pedidoItemIds));
   };
 
-  return { checklist, orderWithChecklist, stepsReady, confirmStock, confirmCompatibility };
+  // Deshace el paso 2 (se marcó por error): el backend lo permite solo antes de confirmar la venta.
+  const unconfirmCompatibility = async () => {
+    guardar(await unconfirmOrderCompatibilityApi(order.id));
+  };
+
+  return { checklist, orderWithChecklist, stepsReady, confirmStock, confirmCompatibility, unconfirmCompatibility };
 }

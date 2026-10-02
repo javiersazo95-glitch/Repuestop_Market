@@ -21090,3 +21090,8 @@ input.has-success {
 .order-store-section-title .order-store-block-amount { margin-left: auto; }
 .order-store-receipt { padding-top: 8px; border-top: 1px solid #eef2f6; }
 .order-store-receipt-pending { color: #64748b; font-size: 12px; line-height: 1.45; }
+/* Casilla del checklist ya marcada: se puede desmarcar si el vendedor se equivocó. */
+.seller-checklist-check.is-marcado { border-color: #16a34a; background: #f0fdf4; }
+.seller-checklist-check.is-marcado .seller-checklist-checkbox { border-color: #16a34a; background: #16a34a; color: #fff; }
+.seller-checklist-check.is-marcado:hover:not(:disabled) .seller-checklist-checkbox { color: #fff; }
+.seller-checklist-warning-actions .btn-auth-secondary:disabled { opacity: .6; cursor: not-allowed; }

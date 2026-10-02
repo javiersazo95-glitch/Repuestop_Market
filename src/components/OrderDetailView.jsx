@@ -2607,6 +2607,7 @@ export default function OrderDetailView({
             isStorePickup={isStorePickup}
             onConfirmStock={sellerChecklist.confirmStock}
             onConfirmCompatibility={sellerChecklist.confirmCompatibility}
+            onUnconfirmCompatibility={sellerChecklist.unconfirmCompatibility}
             onOpenBuyerChat={onOpenDispute
               ? (draftMessage) => startSellerChat(sellerId, draftMessage)
               : undefined}

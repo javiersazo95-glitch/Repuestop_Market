@@ -4,8 +4,8 @@ import {
   RotateCcw, FileText, User, Store, Package, Info, ChevronRight, Check,
   Phone, MapPin, Boxes, Loader2, ReceiptText, FileCheck, ListChecks, ShieldAlert
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { resolveMediaUrl } from '../services/api';
+import { Link, useNavigate } from 'react-router-dom';
+import { resolveMediaUrl, startSellerChatApi } from '../services/api';
 import { isCancelledItem, orderDeliverySummary, orderDisplayCode } from '../data/orderIdentity';
 import { buyerClaimState, getControlledOrderAction, isStorePickupOrder, orderPaymentWindow, sellerClaimState } from '../data/orderStatusFlow';
 import { buyerCaseChatPath, currentPathForBack, sellerCaseChatPath } from '../routes/paths';
@@ -115,6 +115,17 @@ export default function OrderCard({
 
   // Pasos 1 y 2 de "Confirmar pedido": el mismo popup que el detalle.
   const sellerChecklist = useSellerChecklist(order);
+  const navigate = useNavigate();
+  // Aviso de repuesto incompatible: el chat con el comprador también desde la preview, no solo
+  // desde el detalle de la venta. Abre el mismo chat ("Chats con compradores") con el mensaje
+  // listo; si falla, el error lo muestra el propio checklist.
+  const openBuyerChat = async (draftMessage) => {
+    const proveedorId = (order?.items || []).find((item) => item.proveedorId != null)?.proveedorId;
+    await startSellerChatApi(order.id, proveedorId);
+    navigate(sellerCaseChatPath(order.id, proveedorId), {
+      state: { from: currentPathForBack(), ...(draftMessage ? { draftMessage } : {}) },
+    });
+  };
 
   if (!order) return null;
 
@@ -714,6 +725,8 @@ export default function OrderCard({
           isStorePickup={isStorePickup}
           onConfirmStock={sellerChecklist.confirmStock}
           onConfirmCompatibility={sellerChecklist.confirmCompatibility}
+          onUnconfirmCompatibility={sellerChecklist.unconfirmCompatibility}
+          onOpenBuyerChat={isSeller ? openBuyerChat : undefined}
           onSubmit={submitSaleReceipt}
           onClose={() => setShowReceiptModal(false)}
         />
