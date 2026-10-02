@@ -234,7 +234,16 @@ export default function SellerConfirmationChecklist({
                 const etiqueta = ETIQUETA_RESULTADO[item.resultado] ?? ETIQUETA_RESULTADO.SIN_DATOS;
                 return (
                   <li key={item.pedidoItemId} className={`seller-checklist-item tone-${etiqueta.tono}`}>
-                    <span className="seller-checklist-item-name">{item.nombre}</span>
+                    <span className="seller-checklist-item-name">
+                      {item.nombre}
+                      {/* El vehículo de ESTE repuesto: el comprador puede comprar para el auto de un familiar. */}
+                      {(item.vehiculo || item.vehiculoPatente) && (
+                        <small className="seller-checklist-item-vehicle">
+                          Para: {[item.vehiculoPatente, item.vehiculo].filter(Boolean).join(' · ')}
+                          {item.vehiculoChasis ? ` · Chasis ${item.vehiculoChasis}` : ''}
+                        </small>
+                      )}
+                    </span>
                     <span className={`seller-checklist-badge tone-${etiqueta.tono}`}>
                       {etiqueta.tono === 'alerta' ? <AlertTriangle size={12} /> : etiqueta.tono === 'ok' ? <Check size={12} strokeWidth={3} /> : null}
                       {etiqueta.texto}

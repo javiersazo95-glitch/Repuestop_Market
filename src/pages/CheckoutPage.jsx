@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowLeft, Building2, Car, CheckCircle2, ChevronRight, CreditCard, FileText, Loader2, Lock, MapPin, Package, ReceiptText, Sparkles, Store, Truck, User, X,
+  AlertTriangle, ArrowLeft, Building2, Car, CheckCircle2, ChevronRight, CreditCard, FileText, Loader2, Lock, MapPin, Package, ReceiptText, Sparkles, Store, Truck, User,
 } from 'lucide-react';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAuth } from '../context/AuthContext';
@@ -14,13 +14,17 @@ import { formatVehicleLabel, isValidPlate, lookupVehicleByPlate, normalizePlate 
 import { adaptProduct, formatRut, isValidRut } from '../services/adapters';
 import { isQuoteExpired, quantityFromLabel, quoteShippingCost } from '../utils/quoteFlow';
 import { normalizeOrderStatus } from '../data/orderStatusFlow';
-import { checkoutFallbackShippingMethod, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
+import { checkoutFallbackShippingMethod, resolveShippingService } from '../data/shippingMethods';
 import { buyerProfilePath, profilePath, ROUTES } from '../routes/paths';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import BuyerAddressBook from '../components/BuyerAddressBook';
 import CheckoutSummaryPanel from '../components/CheckoutSummaryPanel';
-import PurchaseShippingModal from '../components/PurchaseShippingModal';
+import CheckoutItemDelivery from '../components/CheckoutItemDelivery';
+import CheckoutVehicleDialog from '../components/CheckoutVehicleDialog';
+import {
+  deliveryKind, isDispatch, methodsForItem, pendingDeliveryReason, shippingFees, vehicleLabel,
+} from '../utils/cartDelivery';
 
 const STEPS = [
   { id: 'entrega', label: 'Entrega' },
@@ -29,17 +33,6 @@ const STEPS = [
 
 const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
 
-/** Comuna sin tildes ni mayúsculas, igual que `shippingMethodsForLocation`. */
-function normalizeCommuneName(value) {
-  return String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('es').trim();
-}
-
-/** O84: el aviso de una entrega por revisar, según el motivo. */
-const ENTREGA_POR_REVISAR_TEXTO = {
-  otra: 'Tu dirección está en otra comuna: vuelve a elegir la entrega',
-  misma: 'Tu dirección está en la misma comuna de la tienda: vuelve a elegir la entrega',
-  cambio: 'Cambiaste la dirección: vuelve a elegir la entrega',
-};
 
 /**
  * ¿Se ofrece el método de pago "Simulación" en este ambiente?
@@ -70,7 +63,7 @@ export default function CheckoutPage() {
   const { user } = useAuth();
   const isSeller = user?.role === 'SELLER';
   const buyerQuotesPath = buyerProfilePath(user, 'quotes');
-  const { activeVehicle, cartItems, cartCount, cartTotals, clearCart, updateCartShipping } = useMarketplace();
+  const { activeVehicle, cartItems, cartCount, cartTotals, clearCart } = useMarketplace();
   const userId = user?.userId ?? user?.id;
 
   const location = useLocation();
@@ -239,83 +232,12 @@ export default function CheckoutPage() {
     return [...byStore.values()];
   }, [lineItems]);
 
-  // El método de entrega se elige acá, por tienda, en vez de al agregar el producto al
-  // carrito: recién en este paso tiene sentido preguntar (ya se sabe si hace falta
-  // dirección) y evita interrumpir el "añadir al carro" con una pregunta que no es
-  // necesaria hasta este punto. Mismo mecanismo que usaba /carrito: se piden los
-  // métodos reales de la tienda (`metodosEnvio`, que el ítem del carrito no trae) recién
-  // al abrir el selector, y se guardan con `updateCartShipping`.
-  const [shippingEditor, setShippingEditor] = useState(null);
-
-  // O84: comuna de cada tienda (normalizada), para decir bien por qué hay que volver a elegir la
-  // entrega. Se aprovecha la ficha que ya se pide al abrir el selector.
-  const storeCommuneCache = useRef(new Map());
-
-  const openShippingEditor = useCallback(async (group) => {
-    setShippingEditor({ group, product: null, loading: true, error: '' });
-    try {
-      const dto = await getPublicProductApi(group.items[0].id);
-      const product = adaptProduct(dto);
-      storeCommuneCache.current.set(group.key, normalizeCommuneName(product.ciudadVendedor || product.comunaVendedor));
-      setShippingEditor({ group, product, loading: false, error: '' });
-    } catch {
-      setShippingEditor({
-        group,
-        product: null,
-        loading: false,
-        error: 'No pudimos cargar las formas de entrega de esta tienda. Intenta nuevamente.',
-      });
-    }
-  }, []);
-
-  const confirmShipping = async ({ shippingMethod, shippingFee }) => {
-    const { group } = shippingEditor;
-    await updateCartShipping(group.items.map((item) => item.id), { shippingMethod, shippingFee });
-    setEntregaPorRevisar((prev) => {
-      if (!prev.has(group.key)) return prev;
-      const next = new Map(prev);
-      next.delete(group.key);
-      return next;
-    });
-    setShippingEditor(null);
-  };
-
-  // Tiendas cuyo despacho quedo elegido para OTRA comuna: el comprador cambio a una direccion de
-  // otra comuna despues de elegir la entrega. Dentro/fuera de la comuna depende de la direccion,
-  // asi que hay que volver a elegir (el retiro en tienda no se toca).
-  //
-  // O84 (pruebas de lanzamiento, 27-sep): es un Map tienda -> motivo, para que el aviso diga la
-  // verdad: 'otra' (la direccion quedo en otra comuna que la tienda), 'misma' (quedo en la misma
-  // comuna y lo elegido era "fuera de la comuna") o 'cambio' (no se sabe la comuna de la tienda).
-  const [entregaPorRevisar, setEntregaPorRevisar] = useState(() => new Map());
-  const allShippingChosen = isQuoteMode || groups.every((group) => Boolean(group.shippingMethod) && !entregaPorRevisar.has(group.key));
-
-  // O84: una entrega por revisar ya no está elegida, así que su envío no se suma: el resumen
-  // queda como antes de elegir ("Por definir" y el total sin ese despacho). Misma regla que
-  // `calcularTotalesCarrito`: un envío por tienda.
-  const lineItemsEfectivos = useMemo(() => (
-    isQuoteMode || entregaPorRevisar.size === 0
-      ? lineItems
-      : lineItems.map((item) => (
-        entregaPorRevisar.has(String(item.proveedorId || item.vendedor || item.id))
-          ? { ...item, shippingMethod: '', shippingFee: 0 }
-          : item
-      ))
-  ), [isQuoteMode, lineItems, entregaPorRevisar]);
-  const totals = useMemo(() => {
-    if (isQuoteMode || entregaPorRevisar.size === 0) return rawTotals;
-    const envioPorTienda = new Map();
-    lineItemsEfectivos.forEach((item) => {
-      const fee = Number(item.shippingFee || 0);
-      const key = String(item.proveedorId || item.vendedor || item.id);
-      if (fee > 0 && !envioPorTienda.has(key)) envioPorTienda.set(key, fee);
-    });
-    const costoEnvio = [...envioPorTienda.values()].reduce((sum, fee) => sum + fee, 0);
-    return { subtotal: rawTotals.subtotal, costoEnvio, total: rawTotals.subtotal + costoEnvio };
-  }, [isQuoteMode, entregaPorRevisar, rawTotals, lineItemsEfectivos]);
+  // La cotización trae su entrega acordada; el carrito la elige por producto (más abajo).
+  const allShippingChosen = isQuoteMode || groups.every((group) => Boolean(group.shippingMethod));
+  const totals = rawTotals;
 
   const shippingLabel = useMemo(() => {
-    const services = lineItemsEfectivos
+    const services = lineItems
       .map((item) => item.shippingMethod)
       .filter(Boolean)
       .map((method) => resolveShippingService(method).name);
@@ -326,7 +248,7 @@ export default function CheckoutPage() {
     // incluye contradecia el propio resumen.
     if (Number(totals.costoEnvio) > 0) return formatCLP(totals.costoEnvio);
     return 'Sin costo';
-  }, [lineItemsEfectivos, totals.costoEnvio]);
+  }, [lineItems, totals.costoEnvio]);
 
   // `silent` es para cuando la libreta embebida avisa un cambio: sin el estado de carga
   // la libreta no se desmonta a mitad de camino (se oculta mientras carga) y la
@@ -356,58 +278,112 @@ export default function CheckoutPage() {
     if (userId) loadAddresses();
   }, [userId, loadAddresses]);
 
-  const selectedCommune = addresses.find((address) => String(address.id) === String(selectedAddressId))?.comunaNombre || '';
-  const comunaAnteriorRef = useRef('');
+  // Checkout por producto (2026-10-02, igual que la app): los vehículos de la compra (el propio,
+  // el de un familiar) y la entrega de cada producto: método, dirección y vehículo.
+  const [cartVehicles, setCartVehicles] = useState(() => (
+    activeVehicle?.marca || activeVehicle?.patente
+      ? [{
+        key: 'v-activo',
+        patente: normalizePlate(activeVehicle.patente || ''),
+        marca: activeVehicle.marca || '',
+        modelo: activeVehicle.modelo || '',
+        anio: activeVehicle.anio ? String(activeVehicle.anio) : '',
+        catalogoId: activeVehicle.catalogoId || null,
+      }]
+      : []
+  ));
+  const [identifiedPlates, setIdentifiedPlates] = useState(() => new Set(
+    activeVehicle?.patente && activeVehicle?.marca ? [normalizePlate(activeVehicle.patente)] : [],
+  ));
+  const [deliveries, setDeliveries] = useState({});
+  const [vehicleDialog, setVehicleDialog] = useState(null);
+  const deliveryPlateCache = useRef(new Map());
+
+  // Cada producto parte con el método que eligió al agregarlo, la dirección principal y el primer
+  // vehículo de la compra; después el comprador cambia lo que necesite en cada uno.
   useEffect(() => {
-    const actual = normalizeCommuneName(selectedCommune);
-    const anterior = comunaAnteriorRef.current;
-    comunaAnteriorRef.current = actual;
-    if (!anterior || !actual || anterior === actual) return;
-    const aRevisar = groups
-      .filter((group) => group.shippingMethod && resolveShippingService(group.shippingMethod).name !== 'Retiro en tienda');
-    if (aRevisar.length === 0) return;
-    // Mientras se averigua la comuna de cada tienda la entrega queda por revisar (no se puede
-    // pagar con un despacho que quizás ya no aplica).
-    setEntregaPorRevisar((prev) => {
-      const next = new Map(prev);
-      aRevisar.forEach((group) => next.set(group.key, 'cambio'));
+    if (isQuoteMode) return;
+    setDeliveries((current) => {
+      const principalId = String(addresses.find((address) => address.esPrincipal)?.id || addresses[0]?.id || '') || null;
+      const next = {};
+      let changed = Object.keys(current).length !== cartItems.length;
+      cartItems.forEach((item) => {
+        const previous = current[item.id];
+        const addressId = previous?.addressId && addresses.some((address) => String(address.id) === String(previous.addressId))
+          ? previous.addressId : principalId;
+        const address = addresses.find((entry) => String(entry.id) === String(addressId)) || null;
+        const allowed = methodsForItem(item, address);
+        const wanted = previous?.method ?? (item.shippingMethod || null);
+        const method = wanted && allowed.includes(wanted) ? wanted : allowed.length === 1 ? allowed[0] : null;
+        const vehicleKey = item.esUniversal
+          ? null
+          : previous?.vehicleKey && cartVehicles.some((vehicle) => vehicle.key === previous.vehicleKey)
+            ? previous.vehicleKey
+            : cartVehicles[0]?.key ?? null;
+        next[item.id] = { method, addressId, vehicleKey };
+        if (!previous || previous.method !== method || previous.addressId !== addressId || previous.vehicleKey !== vehicleKey) changed = true;
+      });
+      return changed ? next : current;
+    });
+  }, [isQuoteMode, cartItems, addresses, cartVehicles]);
+
+  // Si la nueva dirección deja fuera el método elegido ("dentro de la comuna" hacia otra comuna),
+  // se pasa al equivalente que sí sirve.
+  const updateDelivery = (item, patch) => {
+    setDeliveries((current) => {
+      const merged = { method: null, addressId: null, vehicleKey: null, ...current[item.id], ...patch };
+      const address = addresses.find((entry) => String(entry.id) === String(merged.addressId)) || null;
+      const allowed = methodsForItem(item, address);
+      if (merged.method && !allowed.includes(merged.method)) {
+        const kind = deliveryKind(merged.method);
+        const equivalente = kind === 'local' || kind === 'courier'
+          ? allowed.find((method) => deliveryKind(method) === (kind === 'local' ? 'courier' : 'local'))
+          : undefined;
+        merged.method = equivalente ?? null;
+      }
+      return { ...current, [item.id]: merged };
+    });
+  };
+
+  const saveCartVehicle = (vehicle, plateIdentified) => {
+    setCartVehicles((current) => (current.some((entry) => entry.key === vehicle.key)
+      ? current.map((entry) => (entry.key === vehicle.key ? vehicle : entry))
+      : [...current, vehicle]));
+    setIdentifiedPlates((current) => {
+      const next = new Set(current);
+      if (plateIdentified && vehicle.patente) next.add(vehicle.patente);
+      else next.delete(vehicle.patente);
       return next;
     });
-    // O84 (pruebas de lanzamiento, 27-sep): con la comuna de la tienda se decide el motivo. Si lo
-    // elegido sigue valiendo ("fuera" y la dirección sigue fuera, o "dentro" y volvió a la comuna
-    // de la tienda) se quita el aviso; si no, 'misma' u 'otra'. Sin comuna conocida queda 'cambio'.
-    Promise.all(aRevisar.map(async (group) => {
-      let tienda = storeCommuneCache.current.get(group.key);
-      if (tienda === undefined) {
-        try {
-          const product = adaptProduct(await getPublicProductApi(group.items[0].id));
-          tienda = normalizeCommuneName(product.ciudadVendedor || product.comunaVendedor);
-          storeCommuneCache.current.set(group.key, tienda);
-        } catch {
-          tienda = '';
-        }
-      }
-      if (!tienda) return [group.key, 'cambio'];
-      const misma = tienda === actual;
-      const fuera = resolveShippingService(group.shippingMethod).name === 'Envío fuera de la comuna';
-      // Lo elegido sigue valiendo (p. ej. volvió a la dirección de antes): sin aviso.
-      if (fuera !== misma) return [group.key, null];
-      return [group.key, misma ? 'misma' : 'otra'];
-    })).then((resultados) => {
-      // Si mientras tanto cambió otra vez la dirección, manda la evaluación nueva.
-      if (comunaAnteriorRef.current !== actual) return;
-      setEntregaPorRevisar((prev) => {
-        const next = new Map(prev);
-        resultados.forEach(([key, motivo]) => {
-          // Si ya volvió a elegir la entrega de esa tienda, no se le reabre el aviso.
-          if (!next.has(key)) return;
-          if (motivo) next.set(key, motivo);
-          else next.delete(key);
-        });
-        return next;
-      });
-    });
-  }, [selectedCommune, groups]);
+    const itemId = vehicleDialog?.itemId;
+    if (itemId != null) {
+      setDeliveries((current) => ({ ...current, [itemId]: { method: null, addressId: null, ...current[itemId], vehicleKey: vehicle.key } }));
+    }
+    setVehicleDialog(null);
+  };
+
+  const cartShipping = useMemo(() => shippingFees(cartItems, deliveries), [cartItems, deliveries]);
+  const entregaPendiente = isQuoteMode ? '' : pendingDeliveryReason(cartItems, deliveries, cartVehicles, identifiedPlates);
+  // En el carrito el envío se cobra por destino de cada tienda (la regla del backend).
+  const checkoutTotals = isQuoteMode
+    ? totals
+    : { subtotal: rawTotals.subtotal, costoEnvio: cartShipping.total, total: rawTotals.subtotal + cartShipping.total };
+  const checkoutShippingLabel = (() => {
+    if (isQuoteMode) return shippingLabel;
+    const methods = cartItems.map((item) => deliveries[item.id]?.method).filter(Boolean);
+    if (methods.length < cartItems.length) return 'Por definir';
+    if (methods.every((method) => deliveryKind(method) === 'pickup')) return 'Retiro en tienda';
+    if (cartShipping.total > 0) {
+      return cartShipping.shipments > 1 ? `${formatCLP(cartShipping.total)} (${cartShipping.shipments} despachos)` : formatCLP(cartShipping.total);
+    }
+    if (methods.some((method) => deliveryKind(method) === 'courier')) return 'Por pagar';
+    return 'Sin costo';
+  })();
+  const addressBookRef = useRef(null);
+  const openAddressBook = () => {
+    setAddressBookOpen(true);
+    window.setTimeout(() => addressBookRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  };
 
   // Se parte de los params actuales en vez de escribir un objeto nuevo: pasarle
   // `{ paso: id }` a setSearchParams reemplaza TODA la query, y eso borraba el
@@ -550,7 +526,7 @@ export default function CheckoutPage() {
   }, [focusVehicleSection]);
   // Pagar sin vehiculo (cuando es opcional) pide un segundo clic: el primero lleva al bloque.
   const [vehicleSkipWarned, setVehicleSkipWarned] = useState(false);
-  const vehicleSkipPending = step === 'pago' && !vehicleRequired && !checkoutVehicle;
+  const vehicleSkipPending = isQuoteMode && step === 'pago' && !vehicleRequired && !checkoutVehicle;
 
   const rutValid = isValidRut(invoice.rut);
   // Un vendedor sin ninguna direccion propia guardada no queda trabado aca: el backend
@@ -559,20 +535,25 @@ export default function CheckoutPage() {
   // agregar una direccion solo para destrabar el boton.
   const sellerWithoutSavedAddress = isSeller && !addressesLoading && addresses.length === 0;
   const stepComplete = {
-    entrega: allShippingChosen && (!needsAddress || Boolean(selectedAddressId) || sellerWithoutSavedAddress),
+    entrega: isQuoteMode
+      ? allShippingChosen && (!needsAddress || Boolean(selectedAddressId) || sellerWithoutSavedAddress)
+      : !entregaPendiente,
+    // En el carrito el vehículo ya va en cada producto (paso Entrega).
     pago: Boolean(paymentMethod) && (documentType !== 'FACTURA' || rutValid)
-      && (!vehicleRequired || vehicleComplete),
+      && (!isQuoteMode || !vehicleRequired || vehicleComplete),
   };
 
   // Lo que falta para avanzar, dicho antes de que la persona haga clic: el botón se
   // deshabilita, pero un botón apagado sin explicación es igual de frustrante.
   const missingForStep = {
-    entrega: !allShippingChosen
-      ? 'Elige cómo recibir los productos de cada tienda para continuar.'
-      : 'Selecciona una dirección de entrega para continuar.',
+    entrega: !isQuoteMode
+      ? entregaPendiente
+      : !allShippingChosen
+        ? 'Elige cómo recibir los productos de cada tienda para continuar.'
+        : 'Selecciona una dirección de entrega para continuar.',
     pago: documentType === 'FACTURA' && !rutValid
       ? 'Ingresa un RUT válido para emitir la factura.'
-      : vehicleRequired && !vehicleComplete
+      : isQuoteMode && vehicleRequired && !vehicleComplete
         ? (lookupForCurrentPlate?.status === 'loading'
           ? 'Estamos identificando tu patente…'
           : (lookupForCurrentPlate?.status === 'notfound' || lookupForCurrentPlate?.status === 'error')
@@ -602,15 +583,37 @@ export default function CheckoutPage() {
           direccionId: needsAddress && selectedAddressId ? Number(selectedAddressId) : null,
           vehiculo: checkoutVehicle,
         })
-        : await checkoutCartApi(userId, {
-          direccionId: needsAddress && selectedAddressId ? String(selectedAddressId) : '',
-          metodoEnvio: checkoutFallbackShippingMethod(cartItems),
-          tipoDocumentoTributario: documentType,
-          facturaRut: documentType === 'FACTURA' ? invoice.rut.trim() : '',
-          facturaRazonSocial: documentType === 'FACTURA' ? invoice.razonSocial.trim() : '',
-          facturaGiro: documentType === 'FACTURA' ? invoice.giro.trim() : '',
-          vehiculo: checkoutVehicle,
-        });
+        : await (() => {
+          // Entrega de cada producto: su método, su dirección (si se despacha) y su vehículo.
+          const toVehiculo = (vehicle) => (vehicle ? {
+            patente: vehicle.patente || null,
+            vehiculoCatalogoId: vehicle.catalogoId || null,
+            marca: vehicle.marca || null,
+            modelo: vehicle.modelo || null,
+            anio: Number(vehicle.anio) || null,
+          } : null);
+          const entregas = cartItems.map((item) => {
+            const delivery = deliveries[item.id] || {};
+            const vehicle = item.esUniversal ? null : cartVehicles.find((entry) => entry.key === delivery.vehicleKey);
+            return {
+              productoId: Number(item.id),
+              metodoEnvio: delivery.method || item.shippingMethod || null,
+              direccionId: isDispatch(delivery.method) && delivery.addressId ? Number(delivery.addressId) : null,
+              vehiculo: toVehiculo(vehicle),
+            };
+          });
+          const principalDireccion = entregas.find((entrega) => entrega.direccionId)?.direccionId;
+          return checkoutCartApi(userId, {
+            direccionId: principalDireccion ? String(principalDireccion) : '',
+            metodoEnvio: checkoutFallbackShippingMethod(cartItems),
+            tipoDocumentoTributario: documentType,
+            facturaRut: documentType === 'FACTURA' ? invoice.rut.trim() : '',
+            facturaRazonSocial: documentType === 'FACTURA' ? invoice.razonSocial.trim() : '',
+            facturaGiro: documentType === 'FACTURA' ? invoice.giro.trim() : '',
+            vehiculo: entregas.find((entrega) => entrega.vehiculo)?.vehiculo ?? null,
+            entregas,
+          });
+        })();
       // Una cotización no toca el carrito: vaciarlo acá borraría productos que la
       // persona dejó guardados para después.
       if (!isQuoteMode) clearCart();
@@ -786,59 +789,79 @@ export default function CheckoutPage() {
 
                 {!isQuoteMode && (
                   <section className="checkout-block" aria-labelledby="checkout-shipping-title">
-                    <h2 id="checkout-shipping-title"><Truck size={16} /> ¿Cómo quieres recibir cada pedido?</h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {groups.map((group) => {
-                        const service = group.shippingMethod ? resolveShippingService(group.shippingMethod) : null;
-                        const ShippingIcon = service?.icon;
-                        const price = group.shippingMethod ? shippingMethodPrice(group.shippingMethod) : null;
-                        return (
-                          <div key={group.key} className="cart-store-group">
-                            <div className="cart-store-head">
-                              <div className="cart-store-id">
-                                <span className="cart-store-avatar"><Store size={15} /></span>
-                                <strong>{group.vendedor || 'Tienda RepuesTop'}</strong>
-                              </div>
-                              <div className={`cart-store-shipping ${group.shippingMethod && !entregaPorRevisar.has(group.key) ? '' : 'is-missing'}`}>
-                                {entregaPorRevisar.has(group.key) ? (
-                                  <span className="cart-store-shipping-value" role="alert">{ENTREGA_POR_REVISAR_TEXTO[entregaPorRevisar.get(group.key)] || ENTREGA_POR_REVISAR_TEXTO.cambio}</span>
-                                ) : group.shippingMethod ? (
-                                  <span className="cart-store-shipping-value" style={{ '--shipping-color': service.color }}>
-                                    <ShippingIcon size={15} />
-                                    {service.label}
-                                    {price && <em>{price}</em>}
-                                  </span>
-                                ) : (
-                                  <span className="cart-store-shipping-value">Elige cómo recibirlo</span>
-                                )}
-                                <button type="button" onClick={() => openShippingEditor(group)}>
-                                  {group.shippingMethod && !entregaPorRevisar.has(group.key) ? 'Cambiar' : 'Elegir entrega'}
-                                </button>
-                              </div>
-                            </div>
-                            <div className="cart-store-lines">
-                              {group.items.map((item) => (
-                                <div key={item.id} className="cart-line">
-                                  <div className="cart-line-media">
-                                    {item.imagen ? <img src={item.imagen} alt="" loading="lazy" /> : <Package size={20} />}
-                                  </div>
-                                  <div className="cart-line-info">
-                                    <h3>{item.titulo}</h3>
-                                    <p className="cart-line-meta">
-                                      <span>{item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'}</span>
-                                      {item.marca && <span>{item.marca}</span>}
-                                    </p>
-                                  </div>
-                                </div>
-                              ))}
+                    <h2 id="checkout-shipping-title"><Truck size={16} /> Entrega de cada producto</h2>
+                    <p className="checkout-block-note">
+                      Elige cómo recibir cada repuesto, a qué dirección va y para qué vehículo es: puede ser tu auto o el de un familiar.
+                    </p>
+                    <div className="checkout-delivery-groups">
+                      {groups.map((group) => (
+                        <div key={group.key} className="cart-store-group">
+                          <div className="cart-store-head">
+                            <div className="cart-store-id">
+                              <span className="cart-store-avatar"><Store size={15} /></span>
+                              <strong>{group.items[0]?.storeName || group.vendedor || 'Tienda RepuesTop'}</strong>
+                              {group.items[0]?.storeComuna && <small className="checkout-store-commune">{group.items[0].storeComuna}</small>}
                             </div>
                           </div>
-                        );
-                      })}
+                          <div className="cart-store-lines">
+                            {group.items.map((item) => {
+                              const delivery = deliveries[item.id] || { method: null, addressId: null, vehicleKey: null };
+                              const sharesShipment = cartShipping.perItem[item.id] === 0 && deliveryKind(delivery.method) === 'local'
+                                && group.items.some((other) => other.id !== item.id
+                                  && String(deliveries[other.id]?.addressId) === String(delivery.addressId)
+                                  && (cartShipping.perItem[other.id] || 0) > 0);
+                              return (
+                                <div key={item.id} className="checkout-delivery-line">
+                                  <div className="cart-line">
+                                    <div className="cart-line-media">
+                                      {item.imagen ? <img src={item.imagen} alt="" loading="lazy" /> : <Package size={20} />}
+                                    </div>
+                                    <div className="cart-line-info">
+                                      <h3>{item.titulo}</h3>
+                                      <p className="cart-line-meta">
+                                        <span>{item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'}</span>
+                                        {item.marca && <span>{item.marca}</span>}
+                                        <span>{formatCLP(item.precio * item.quantity)}</span>
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <CheckoutItemDelivery
+                                    item={item}
+                                    delivery={delivery}
+                                    addresses={addresses}
+                                    vehicles={cartVehicles}
+                                    sharesShipment={sharesShipment}
+                                    onChange={(patch) => updateDelivery(item, patch)}
+                                    onAddVehicle={() => setVehicleDialog({ vehicle: null, itemId: item.id })}
+                                    onEditVehicle={(vehicle) => setVehicleDialog({ vehicle, itemId: item.id })}
+                                    onManageAddresses={openAddressBook}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </section>
                 )}
 
+                {!isQuoteMode && (
+                  <section className="checkout-block" aria-labelledby="checkout-direcciones-title" ref={addressBookRef}>
+                    <h2 id="checkout-direcciones-title"><MapPin size={16} /> Tus direcciones</h2>
+                    <p className="checkout-block-note">
+                      Cada producto que se despacha elige una de estas direcciones. Agrega la de tu familiar si le envías un repuesto.
+                    </p>
+                    <button type="button" className="checkout-inline-link" onClick={() => setAddressBookOpen((open) => !open)}>
+                      {addressBookOpen ? 'Ocultar direcciones' : 'Agregar o editar direcciones'}
+                    </button>
+                    {(addressBookOpen || (!addressesLoading && addresses.length === 0)) && (
+                      <div className="checkout-address-book"><BuyerAddressBook usuarioId={userId} onChange={() => loadAddresses({ silent: true })} /></div>
+                    )}
+                  </section>
+                )}
+
+                {isQuoteMode && (
                 <section className="checkout-block" aria-labelledby="checkout-entrega-title">
                   <h2 id="checkout-entrega-title"><MapPin size={16} /> ¿Dónde recibes tu pedido?</h2>
 
@@ -908,6 +931,7 @@ export default function CheckoutPage() {
                     </p>
                   )}
                 </section>
+                )}
               </div>
             )}
 
@@ -929,7 +953,9 @@ export default function CheckoutPage() {
                   <div className="shopify-recap-row">
                     <span className="shopify-recap-label">Entrega</span>
                     <span className="shopify-recap-value">
-                      {needsAddress
+                      {!isQuoteMode
+                        ? 'Por producto (detalle abajo)'
+                        : needsAddress
                         ? (() => {
                           const address = addresses.find((item) => String(item.id) === String(selectedAddressId));
                           const direccion = address ? `${address.calleYNumero}, ${address.comunaNombre}${address.regionNombre ? `, ${address.regionNombre}` : ''}` : 'Dirección seleccionada';
@@ -940,6 +966,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
+                {isQuoteMode && (
                 <section
                   ref={vehicleSectionRef}
                   className="checkout-block checkout-vehicle-block"
@@ -1043,6 +1070,7 @@ export default function CheckoutPage() {
                     </p>
                   )}
                 </section>
+                )}
 
                 {/* Métodos de Pago con selector de Simulación */}
                 <section className="checkout-block" aria-labelledby="checkout-pago-title">
@@ -1185,13 +1213,30 @@ export default function CheckoutPage() {
                   <div className="checkout-recap-lines">
                     {groups.map((group) => (
                       <div key={group.key} className="checkout-recap-store">
-                        <h3><Store size={14} /> {group.vendedor || 'Tienda RepuesTop'}</h3>
-                        {group.items.map((item) => (
-                          <p key={item.id}>
-                            <span>{item.quantity} × {item.titulo}</span>
-                            <strong>{formatCLP(item.precio * item.quantity)}</strong>
-                          </p>
-                        ))}
+                        <h3><Store size={14} /> {group.items[0]?.storeName || group.vendedor || 'Tienda RepuesTop'}</h3>
+                        {group.items.map((item) => {
+                          const delivery = deliveries[item.id];
+                          const address = addresses.find((entry) => String(entry.id) === String(delivery?.addressId));
+                          const vehicle = cartVehicles.find((entry) => entry.key === delivery?.vehicleKey);
+                          return (
+                            <div key={item.id} className="checkout-recap-item">
+                              <p>
+                                <span>{item.quantity} × {item.titulo}</span>
+                                <strong>{formatCLP(item.precio * item.quantity)}</strong>
+                              </p>
+                              {!isQuoteMode && delivery && (
+                                <ul className="checkout-recap-delivery">
+                                  <li>
+                                    <Truck size={12} />
+                                    {(delivery.method || '').replace(/\s*\(.*\)\s*$/, '')}
+                                    {isDispatch(delivery.method) && address ? ` · ${address.calleYNumero}, ${address.comunaNombre}` : ''}
+                                  </li>
+                                  {!item.esUniversal && vehicle && <li><Car size={12} /> {vehicleLabel(vehicle)}</li>}
+                                </ul>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     ))}
                   </div>
@@ -1209,13 +1254,13 @@ export default function CheckoutPage() {
 
           <CheckoutSummaryPanel
             itemCount={itemCount}
-            subtotal={totals.subtotal}
-            costoEnvio={totals.costoEnvio}
-            total={totals.total}
-            shippingLabel={shippingLabel}
+            subtotal={checkoutTotals.subtotal}
+            costoEnvio={checkoutTotals.costoEnvio}
+            total={checkoutTotals.total}
+            shippingLabel={checkoutShippingLabel}
             ctaLabel={
               step === 'pago'
-                ? (paymentProcessingStatus || (paymentMethod === 'SIMULACION' ? `Simular y pagar ${formatCLP(totals.total)}` : `Pagar ${formatCLP(totals.total)}`))
+                ? (paymentProcessingStatus || (paymentMethod === 'SIMULACION' ? `Simular y pagar ${formatCLP(checkoutTotals.total)}` : `Pagar ${formatCLP(checkoutTotals.total)}`))
                 : 'Continuar con el pago'
             }
             onCta={advance}
@@ -1238,28 +1283,15 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {shippingEditor?.loading && (
-        <div className="cart-shipping-loading" role="status">
-          <Loader2 size={18} className="spin-icon" /> Cargando formas de entrega…
-        </div>
+      {vehicleDialog && (
+        <CheckoutVehicleDialog
+          vehicle={vehicleDialog.vehicle}
+          plateCache={deliveryPlateCache.current}
+          onClose={() => setVehicleDialog(null)}
+          onSave={saveCartVehicle}
+        />
       )}
 
-      {shippingEditor?.error && (
-        <div className="cart-page-alert is-floating" role="alert">
-          <AlertTriangle size={15} />
-          <span>{shippingEditor.error}</span>
-          <button type="button" onClick={() => setShippingEditor(null)} aria-label="Cerrar aviso"><X size={14} /></button>
-        </div>
-      )}
-
-      <PurchaseShippingModal
-        product={shippingEditor?.product || null}
-        intent={shippingEditor?.product ? 'update' : null}
-        initialMethod={shippingEditor?.group?.shippingMethod || ''}
-        buyerCommune={selectedCommune}
-        onClose={() => setShippingEditor(null)}
-        onConfirm={confirmShipping}
-      />
     </main>
   );
 }

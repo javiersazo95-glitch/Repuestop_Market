@@ -116,6 +116,22 @@ function OrderProductRow({ item, onNavigate }) {
           {cancelled && refunded > 0 && (
             <span className="order-item-row-refund">Reembolso {formatCLP(refunded)}</span>
           )}
+          {/* Checkout por producto: cada repuesto puede ir a otra dirección y ser para otro auto. */}
+          {(item.metodoEnvio || item.entregaDireccion || item.vehiculoPatente || item.vehiculoMarca) && (
+            <span className="order-item-row-delivery">
+              {item.metodoEnvio && (
+                <span>
+                  <Truck size={12} /> {String(item.metodoEnvio).replace(/\s*\(.*\)\s*$/, '')}
+                  {item.entregaDireccion ? ` · ${[item.entregaDireccion, item.entregaComuna].filter(Boolean).join(', ')}` : ''}
+                </span>
+              )}
+              {(item.vehiculoPatente || item.vehiculoMarca) && (
+                <span>
+                  <Car size={12} /> {[item.vehiculoPatente, [item.vehiculoMarca, item.vehiculoModelo, item.vehiculoAnio].filter(Boolean).join(' ')].filter(Boolean).join(' · ')}
+                </span>
+              )}
+            </span>
+          )}
         </div>
         <div className="item-table-pricing">
           <span className="item-qty">x{qty}</span>

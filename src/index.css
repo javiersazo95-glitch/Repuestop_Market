@@ -21012,3 +21012,62 @@ input.has-success {
 .filter-search-select-input { width: 100%; min-height: 36px; padding: 7px 10px; border: 1px solid #d3dae2; border-radius: 9px; background: #fff; color: #172033; font-size: 13px; }
 .filter-search-select-input:focus { outline: none; border-color: #0b5fd0; box-shadow: 0 0 0 3px rgba(11, 95, 208, .12); }
 .filter-search-select-help { color: #64748b; font-size: 11.5px; }
+
+/* --- Checkout por producto (2026-10-02, igual que la app): entrega, destino y vehículo de cada repuesto --- */
+.checkout-delivery-groups { display: grid; gap: 12px; }
+.checkout-store-commune { color: #64748b; font-size: 12px; font-weight: 600; }
+.checkout-delivery-line { display: grid; gap: 8px; padding: 10px 0; border-bottom: 1px solid #eef2f6; }
+.checkout-delivery-line:last-child { border-bottom: 0; }
+.checkout-item-delivery { display: grid; gap: 10px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fbfcfe; }
+.checkout-item-delivery-step { display: grid; gap: 6px; }
+.checkout-item-delivery-label { display: flex; align-items: center; gap: 6px; color: #172033; font-size: 12.5px; font-weight: 800; }
+.checkout-item-delivery-label svg { color: #0b5fd0; }
+.checkout-item-link { margin-left: auto; padding: 0; border: 0; background: none; color: #0b5fd0; font-size: 12px; font-weight: 700; cursor: pointer; justify-self: start; }
+.checkout-item-delivery-step > .checkout-item-link { margin-left: 0; }
+.checkout-item-methods { display: grid; gap: 6px; }
+.checkout-item-method { position: relative; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 10px; border: 1px solid #d3dae2; border-radius: 10px; background: #fff; color: #33445c; font-size: 13px; cursor: pointer; }
+.checkout-item-method input { position: absolute; opacity: 0; pointer-events: none; }
+.checkout-item-method svg { flex-shrink: 0; color: #94a3b8; }
+.checkout-item-method-title { flex: 1; min-width: 0; }
+.checkout-item-method em { font-style: normal; font-weight: 700; color: #64748b; white-space: nowrap; }
+.checkout-item-method.is-selected { border-color: #0b5fd0; background: #f5f9ff; color: #0b5fd0; font-weight: 700; }
+.checkout-item-method.is-selected svg, .checkout-item-method.is-selected em { color: #0b5fd0; }
+.checkout-item-method:focus-within { box-shadow: 0 0 0 3px rgba(11, 95, 208, .15); }
+.checkout-item-select { width: 100%; min-height: 44px; padding: 8px 10px; border: 1px solid #d3dae2; border-radius: 10px; background: #fff; color: #172033; font-size: 14px; }
+.checkout-item-pickup { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px; border-radius: 10px; background: #f5f9ff; color: #0b5fd0; }
+.checkout-item-pickup span { display: grid; gap: 2px; }
+.checkout-item-pickup strong { color: #172033; font-size: 12.5px; }
+.checkout-item-pickup small { color: #64748b; font-size: 12px; }
+.checkout-item-required { margin-left: auto; padding: 1px 8px; border-radius: 999px; background: #fff7e6; color: #9a5a00; font-size: 11px; font-style: normal; font-weight: 800; }
+.checkout-item-vehicles { display: flex; flex-wrap: wrap; gap: 6px; }
+.checkout-item-vehicle { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 36px; padding: 0 12px; border: 1px solid #bfd6f7; border-radius: 999px; background: #fff; color: #172033; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.checkout-item-vehicle span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.checkout-item-vehicle svg { flex-shrink: 0; color: #0b5fd0; }
+.checkout-item-vehicle.is-selected { border-color: #0b5fd0; background: #0b5fd0; color: #fff; }
+.checkout-item-vehicle.is-selected svg { color: #fff; }
+.checkout-item-vehicle.is-add { border-style: dashed; color: #0b5fd0; }
+.checkout-item-delivery-error { margin: 0; color: #b42318; font-size: 12px; }
+.checkout-item-delivery-note { color: #64748b; font-size: 12px; }
+.checkout-recap-item { display: grid; gap: 2px; }
+.checkout-recap-delivery { display: grid; gap: 2px; margin: 0 0 4px; padding: 0; list-style: none; color: #64748b; font-size: 12px; }
+.checkout-recap-delivery li { display: flex; align-items: center; gap: 5px; }
+.checkout-recap-delivery svg { flex-shrink: 0; color: #0b5fd0; }
+
+.checkout-vehicle-dialog-backdrop { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: flex-end; justify-content: center; background: rgba(15, 23, 42, .45); }
+.checkout-vehicle-dialog { display: grid; gap: 12px; width: min(460px, 100%); max-height: 92vh; overflow-y: auto; padding: 16px; border-radius: 16px 16px 0 0; background: #fff; box-shadow: 0 -12px 40px rgba(9, 20, 38, .25); }
+.checkout-vehicle-dialog header { display: flex; align-items: flex-start; gap: 10px; }
+.checkout-vehicle-dialog header > div { flex: 1; min-width: 0; }
+.checkout-vehicle-dialog h2 { margin: 0; color: #172033; font-size: 17px; }
+.checkout-vehicle-dialog header p { margin: 2px 0 0; color: #64748b; font-size: 12.5px; line-height: 1.45; }
+.checkout-vehicle-dialog header > button { width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; background: #f1f5f9; color: #45566d; cursor: pointer; }
+.checkout-vehicle-dialog-privacy { color: #64748b; font-size: 12px; }
+.checkout-vehicle-dialog-save { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; border: 0; border-radius: 10px; background: #0b5fd0; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer; }
+.checkout-vehicle-dialog-save[aria-disabled="true"] { background: #94a3b8; }
+@media (min-width: 640px) {
+  .checkout-vehicle-dialog-backdrop { align-items: center; padding: 16px; }
+  .checkout-vehicle-dialog { border-radius: 16px; }
+}
+.order-item-row-delivery { display: grid; gap: 2px; margin-top: 4px; padding: 5px 8px; border-radius: 8px; background: #f5f9ff; color: #33445c; font-size: 12px; }
+.order-item-row-delivery > span { display: flex; align-items: center; gap: 5px; }
+.order-item-row-delivery svg { flex-shrink: 0; color: #0b5fd0; }
+.seller-checklist-item-vehicle { display: block; margin-top: 2px; color: #64748b; font-size: 11.5px; font-weight: 500; }
