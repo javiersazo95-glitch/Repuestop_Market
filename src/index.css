@@ -21084,3 +21084,9 @@ input.has-success {
 .order-package-vehicle strong { color: #172033; }
 .order-package-vehicle .order-package-row > svg { color: #0b5fd0; }
 .order-package-vehicle small { color: #64748b; font-size: 12px; }
+.order-store-section { display: grid; gap: 6px; width: 100%; }
+.order-store-section-title { display: flex; align-items: center; gap: 6px; color: #172033; font-size: 12.5px; font-weight: 800; }
+.order-store-section-title svg { color: #0b5fd0; }
+.order-store-section-title .order-store-block-amount { margin-left: auto; }
+.order-store-receipt { padding-top: 8px; border-top: 1px solid #eef2f6; }
+.order-store-receipt-pending { color: #64748b; font-size: 12px; line-height: 1.45; }

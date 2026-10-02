@@ -37,6 +37,69 @@ import { buildOrderPackages } from '../utils/orderPackages';
  * Si el producto ya no existe -- lo dio de baja el vendedor -- se muestra lo que trae el
  * pedido y nada mas. Es un detalle opcional, no puede romper la pantalla.
  */
+/**
+ * Un paquete del pedido (tienda + método + destino): cómo llega, a dónde -- o dónde se retira --
+ * y para qué vehículo son sus repuestos. Lo usan "Despachar a" de la tienda y cada bloque de
+ * "Tu compra" del comprador. Igual que `PackageBlock` de la app.
+ */
+function PackageCard({ pkg, label, isSeller = false, showStore = false, recipient = '', copied = false, onCopy }) {
+  const conVehiculo = new Set(pkg.vehicles.flatMap((vehicle) => vehicle.products));
+  const universales = pkg.products.filter((name) => !conVehiculo.has(name));
+  return (
+    <div className="order-package">
+      <div className="order-package-head">
+        <span className="order-package-badge">{label}</span>
+        {showStore && <strong>{pkg.storeName}</strong>}
+      </div>
+      <div className="order-package-row is-method">
+        {pkg.kind === 'pickup' ? <Store size={14} /> : <Truck size={14} />}
+        <span>{pkg.method}</span>
+      </div>
+      <div className="order-package-row">
+        <MapPin size={14} />
+        {pkg.kind === 'pickup' ? (
+          <span>
+            {isSeller
+              ? 'El comprador retira en tu local'
+              : `Retiras en ${pkg.pickupAddress || 'la tienda'}${pkg.pickupHours ? ` · ${pkg.pickupHours}` : ''}`}
+          </span>
+        ) : (
+          <>
+            <span>{pkg.address || 'Dirección no registrada'}</span>
+            {pkg.address && onCopy && (
+              <button type="button" className="order-delivery-copy" onClick={onCopy} title="Copiar dirección" aria-label="Copiar dirección">
+                {copied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+              </button>
+            )}
+          </>
+        )}
+      </div>
+      {recipient && pkg.kind !== 'pickup' && (
+        <div className="order-package-row">
+          <User size={14} />
+          <span>Recibe: {recipient}</span>
+        </div>
+      )}
+      {pkg.vehicles.map((vehicle, vIndex) => (
+        <div key={`${vehicle.plate}-${vehicle.label}-${vIndex}`} className="order-package-vehicle">
+          <div className="order-package-row">
+            <Car size={14} />
+            <strong>{[vehicle.plate, vehicle.label].filter(Boolean).join(' · ')}</strong>
+          </div>
+          {isSeller && <small>Chasis {vehicle.chassis || 'no identificado'}</small>}
+          <span>Para: {vehicle.products.join(' · ')}</span>
+        </div>
+      ))}
+      {universales.length > 0 && (
+        <div className="order-package-row">
+          <Package size={14} />
+          <span>{pkg.vehicles.length > 0 ? 'Universales: ' : ''}{universales.join(' · ')}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OrderProductRow({ item, onNavigate }) {
   const [expanded, setExpanded] = useState(false);
   const [details, setDetails] = useState(null);
@@ -610,6 +673,8 @@ export default function OrderDetailView({
     order.compradorRegion || order.region,
   ].filter(Boolean).join(', ') || 'Dirección de envío no registrada';
   const isStorePickup = isStorePickupOrder(order);
+  const documentLabel = String(order.tipoDocumentoTributario || order.tipoDocumento || order.documentType || '').toUpperCase() === 'FACTURA'
+    ? 'Factura' : 'Boleta';
   // Sección Entrega: un paquete por tienda + método + destino, cada uno con su vehículo.
   const deliveryPackages = buildOrderPackages(order, {
     fallbackAddress: isStorePickup ? null : deliveryAddress,
@@ -1441,7 +1506,9 @@ export default function OrderDetailView({
               estaba partido entre su propia tarjeta de "participante" y el bloque de entrega,
               que ademas repetia el metodo de envio del pedido -- que con dos tiendas es la
               concatenacion de los dos y no significa nada. */}
-          {(
+          {/* Comprador: la entrega va dentro de cada tienda en "Tu compra". Esta tarjeta queda
+              para la tienda ("Despachar a") y para pedidos sin desglose por tienda. */}
+          {(isSeller || storeBlocks.length === 0) && (
             <div className="details-card-block order-delivery-summary">
               <h3 className="section-subtitle">
                 <MapPin size={16} />
@@ -1462,63 +1529,17 @@ export default function OrderDetailView({
                     son sus repuestos. Nada se junta: una compra puede ir a dos casas y ser para
                     dos autos. A la tienda le llegan solo sus productos (y la patente parcial). */}
                 <div className="order-packages">
-                  {deliveryPackages.map((pkg, index) => {
-                    const conVehiculo = new Set(pkg.vehicles.flatMap((vehicle) => vehicle.products));
-                    const universales = pkg.products.filter((name) => !conVehiculo.has(name));
-                    return (
-                      <div key={pkg.key} className="order-package">
-                        <div className="order-package-head">
-                          <span className="order-package-badge">{deliveryPackages.length > 1 ? `Paquete ${index + 1}` : 'Paquete'}</span>
-                          {!isSeller && <strong>{pkg.storeName}</strong>}
-                        </div>
-                        <div className="order-package-row is-method">
-                          {pkg.kind === 'pickup' ? <Store size={14} /> : <Truck size={14} />}
-                          <span>{pkg.method}</span>
-                        </div>
-                        <div className="order-package-row">
-                          <MapPin size={14} />
-                          {pkg.kind === 'pickup' ? (
-                            <span>
-                              {isSeller
-                                ? 'El comprador retira en tu local'
-                                : `Retiras en ${pkg.pickupAddress || 'la tienda'}${pkg.pickupHours ? ` · ${pkg.pickupHours}` : ''}`}
-                            </span>
-                          ) : (
-                            <>
-                              <span>{pkg.address || 'Dirección no registrada'}</span>
-                              {pkg.address && (
-                                <button
-                                  type="button"
-                                  className="order-delivery-copy"
-                                  onClick={(event) => copyPackageAddress(event, pkg)}
-                                  title="Copiar dirección"
-                                  aria-label="Copiar dirección"
-                                >
-                                  {copiedPackage === pkg.key ? <CheckCircle2 size={14} /> : <Copy size={14} />}
-                                </button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                        {pkg.vehicles.map((vehicle, vIndex) => (
-                          <div key={`${vehicle.plate}-${vehicle.label}-${vIndex}`} className="order-package-vehicle">
-                            <div className="order-package-row">
-                              <Car size={14} />
-                              <strong>{[vehicle.plate, vehicle.label].filter(Boolean).join(' · ')}</strong>
-                            </div>
-                            {isSeller && <small>Chasis {vehicle.chassis || 'no identificado'}</small>}
-                            <span>Para: {vehicle.products.join(' · ')}</span>
-                          </div>
-                        ))}
-                        {universales.length > 0 && (
-                          <div className="order-package-row">
-                            <Package size={14} />
-                            <span>{pkg.vehicles.length > 0 ? 'Universales: ' : ''}{universales.join(' · ')}</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                  {deliveryPackages.map((pkg, index) => (
+                    <PackageCard
+                      key={pkg.key}
+                      pkg={pkg}
+                      label={deliveryPackages.length > 1 ? `Paquete ${index + 1}` : 'Paquete'}
+                      isSeller={isSeller}
+                      showStore={!isSeller}
+                      copied={copiedPackage === pkg.key}
+                      onCopy={(event) => copyPackageAddress(event, pkg)}
+                    />
+                  ))}
                 </div>
                 {(order.tipoDocumentoTributario || order.tipoDocumento || order.documentType) && (
                   <div className="order-delivery-summary-row">
@@ -1673,6 +1694,26 @@ export default function OrderDetailView({
                       {/* Como llega LO DE ESTA TIENDA. El seguimiento y el PIN son suyos: el
                           pedido guarda los del ultimo que despacho y el codigo es por tienda. */}
                       <div className="order-store-block-delivery">
+                        {!isSeller && deliveryPackages.some((pkg) => pkg.sellerId === String(block.id)) ? (() => {
+                          // El envío de ESTA tienda: sus paquetes con método, destino y vehículo.
+                          const paquetes = deliveryPackages.filter((pkg) => pkg.sellerId === String(block.id));
+                          return (
+                            <div className="order-store-section">
+                              <span className="order-store-section-title">
+                                <Truck size={13} /> {paquetes.length > 1 ? `Envío · ${paquetes.length} paquetes` : 'Envío'}
+                                {block.shippingStore > 0 && <strong className="order-store-block-amount">{formatCLP(block.shippingStore)}</strong>}
+                              </span>
+                              {paquetes.map((pkg, index) => (
+                                <PackageCard
+                                  key={pkg.key}
+                                  pkg={pkg}
+                                  label={paquetes.length > 1 ? `Paquete ${index + 1}` : 'Paquete'}
+                                  recipient={[buyerName, buyerPhone && buyerPhone !== '—' ? buyerPhone : null].filter(Boolean).join(' · ')}
+                                />
+                              ))}
+                            </div>
+                          );
+                        })() : (
                         <span>
                           <Truck size={13} />
                           {block.isPickupStore ? 'Retiro en tienda' : block.deliveryLabelStore}
@@ -1680,6 +1721,7 @@ export default function OrderDetailView({
                             <strong className="order-store-block-amount">{formatCLP(block.shippingStore)}</strong>
                           )}
                         </span>
+                        )}
                         {block.trackingStore && (() => {
                           // El enlace directo al portal del courier. `carrierTracking` devuelve
                           // null seguido -- el nombre del courier es texto libre que escribe el
@@ -1710,20 +1752,31 @@ export default function OrderDetailView({
                             <strong>{block.pickupCode}</strong>
                           </span>
                         )}
-                        {/* La boleta de venta de ESTA tienda. Al comprador solo se le ofrece
-                            si ya existe; para el vendedor la fila vive en "Despachar a". */}
-                        {!isSeller && block.boletaVentaDisponible && !block.isCancelledStore && (
-                          <span className="order-store-block-boleta">
-                            <FileCheck size={13} /> Boleta de venta
-                            <button
-                              type="button"
-                              className="order-store-block-tracklink order-store-block-boletalink"
-                              onClick={() => handleViewReceipt(block.id, block.name)}
-                            >
-                              <FileSearch size={14} />
-                              Ver y descargar
-                            </button>
-                          </span>
+                        {/* La boleta (o factura) de ESTA tienda: cada tienda emite la suya por su
+                            parte del pedido. Para el vendedor la fila vive en "Despachar a". */}
+                        {!isSeller && !block.isCancelledStore && (
+                          <div className="order-store-section order-store-receipt">
+                            <span className="order-store-section-title">
+                              <FileCheck size={13} /> {documentLabel}
+                            </span>
+                            {block.boletaVentaDisponible ? (
+                              <span className="order-store-block-boleta">
+                                <FileText size={13} /> Emitida por la tienda
+                                <button
+                                  type="button"
+                                  className="order-store-block-tracklink order-store-block-boletalink"
+                                  onClick={() => handleViewReceipt(block.id, block.name)}
+                                >
+                                  <FileSearch size={14} />
+                                  Ver y descargar
+                                </button>
+                              </span>
+                            ) : (
+                              <small className="order-store-receipt-pending">
+                                {block.name} adjunta la {documentLabel.toLowerCase()} al confirmar tu pedido. La verás aquí.
+                              </small>
+                            )}
+                          </div>
                         )}
                         {/* O87 / O90: el comprobante de envío de ESTA tienda, si lo subió. */}
                         {storeHasShippingReceipt(block) && renderShippingReceiptLink(block)}
