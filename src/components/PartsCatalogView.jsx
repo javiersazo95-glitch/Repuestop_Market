@@ -4,7 +4,7 @@ import {
   Search, Filter, SlidersHorizontal, ShieldCheck, MapPin,
   X, CheckCircle2, RotateCcw,
   ChevronDown, ShoppingCart, Car, Wrench, Layers, AlertCircle, Info, Tag, Globe,
-  CarFront, RefreshCw, ArrowUpDown, ArrowRight, LayoutGrid
+  CarFront, RefreshCw, ArrowUpDown, ArrowRight, LayoutGrid, Store
 } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
@@ -16,7 +16,7 @@ import {
 import {
   getPartCategoriesApi, getPublicProductsApi, getVehicleCatalogPartsApi, searchVehicleByPatenteApi, getAddressesApi,
   getPartSubcategoriesApi, getPartBrandsApi,
-  getVehicleBrandsApi, getVehicleModelsApi, getPublicPartOriginsApi
+  getVehicleBrandsApi, getVehicleModelsApi, getPublicPartOriginsApi, getCatalogFilterOptionsApi
 } from '../services/api';
 import { adaptPage, adaptProduct, adaptCompatibleOffersPage, adaptVehicle } from '../services/adapters';
 import { normalizePlate, sanitizePlateInput, isValidPlate } from '../utils/vehicleLookup';
@@ -85,6 +85,42 @@ const PART_CONDITIONS = [
 
 const formatCLP = (value) => `$${Number(value || 0).toLocaleString('es-CL')}`;
 
+/**
+ * Desplegable con buscador para listas largas (Tienda y Comuna del panel de filtros), igual
+ * que el selector de la app: cerrado ocupa una sola línea, y desde 10 opciones muestra un
+ * campo para acotar la lista. La opción elegida nunca desaparece al buscar.
+ */
+function FilterSearchSelect({ label, icon, allLabel, options, value, onChange, searchPlaceholder, helper }) {
+  const [query, setQuery] = useState('');
+  const normalized = normalizeNameKey(query);
+  const visible = normalized
+    ? options.filter((option) => option.value === value || normalizeNameKey(option.label).includes(normalized))
+    : options;
+  return (
+    <div className="filter-section-group compact-select-section filter-search-select">
+      <label className="filter-group-label">{icon} {label}</label>
+      {options.length >= 10 && (
+        <input
+          type="search"
+          className="filter-search-select-input"
+          placeholder={searchPlaceholder}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label={searchPlaceholder}
+        />
+      )}
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="sidebar-select-input" aria-label={label}>
+        <option value="">{allLabel}</option>
+        {visible.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+      {normalized && visible.length === 0 && <small className="filter-search-select-help">Sin resultados para “{query.trim()}”</small>}
+      {helper && !normalized && <small className="filter-search-select-help">{helper}</small>}
+    </div>
+  );
+}
+
 export default function PartsCatalogView({
   onQuickView,
   onOpenQuote: _onOpenQuote,
@@ -129,6 +165,10 @@ export default function PartsCatalogView({
   // comparaban contra etiquetas ("Nuevo OEM Original") que el dato real nunca tuvo.
   const [selectedCondition, setSelectedCondition] = useState('');
   const [selectedOrigin, setSelectedOrigin] = useState('');
+  // Tienda y comuna de los filtros avanzados (igual que la app): viajan al servidor como
+  // `proveedorId` y `comunaId`, sobre todo el catálogo y no sobre la página cargada.
+  const [selectedStoreId, setSelectedStoreId] = useState('');
+  const [selectedComunaId, setSelectedComunaId] = useState('');
   // Modalidad de compra como interruptor: encendido deja SOLO los que se venden a cotizacion.
   // Antes eran tres opciones con un "Todos los Repuestos" que prometia ver el catalogo entero
   // -justo lo que la vitrina evita- y que al tocarlo no cambiaba nada.
@@ -159,7 +199,8 @@ export default function PartsCatalogView({
   const [myComunaNombre, setMyComunaNombre] = useState('');
   const [comunaLookupStatus, setComunaLookupStatus] = useState('idle');
   const [comunaNotice, setComunaNotice] = useState('');
-  const activeComunaId = filterByMyComuna ? myComunaId : null;
+  // La comuna elegida en el panel manda sobre "Mi comuna".
+  const activeComunaId = selectedComunaId || (filterByMyComuna ? myComunaId : null);
 
   const handleToggleComunaFilter = async () => {
     if (filterByMyComuna) {
@@ -295,6 +336,31 @@ export default function PartsCatalogView({
 
   // Orígenes de fabricación presentes en el catálogo. `MarcaRepuesto.paisOrigen` es texto
   // libre, así que la lista la sirve el backend ya descompuesta y deduplicada.
+  // Tiendas y comunas de todo el catálogo publicado, no de los productos ya cargados.
+  const { data: catalogFilterOptions = { tiendas: [], comunas: [] } } = useQuery({
+    queryKey: qk.catalogFilterOptions(),
+    queryFn: async ({ signal }) => {
+      try {
+        const data = await getCatalogFilterOptionsApi({ signal });
+        return {
+          tiendas: Array.isArray(data?.tiendas) ? data.tiendas : [],
+          comunas: Array.isArray(data?.comunas) ? data.comunas : [],
+        };
+      } catch {
+        return { tiendas: [], comunas: [] };
+      }
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+  const storeFilterOptions = useMemo(() => catalogFilterOptions.tiendas.map((store) => ({
+    value: String(store.id),
+    label: store.comuna ? `${store.nombre} · ${store.comuna}` : store.nombre,
+  })), [catalogFilterOptions.tiendas]);
+  const comunaFilterOptions = useMemo(() => catalogFilterOptions.comunas.map((comuna) => ({
+    value: String(comuna.id),
+    label: comuna.region ? `${comuna.nombre} · ${comuna.region}` : comuna.nombre,
+  })), [catalogFilterOptions.comunas]);
+
   const { data: partOrigins = [] } = useQuery({
     queryKey: qk.partOrigins(),
     queryFn: async ({ signal }) => {
@@ -349,6 +415,7 @@ export default function PartsCatalogView({
     || vehicleModel
     || vehicleYear
     || partBrandId
+    || selectedStoreId
     || minPrice > 0
     || maxPrice < PRICE_CEILING
   );
@@ -381,6 +448,7 @@ export default function PartsCatalogView({
           condicion: selectedCondition || undefined,
           origen: selectedOrigin || undefined,
           comunaId: activeComunaId,
+        proveedorId: selectedStoreId || undefined,
           soloCotizacion: onlyQuoteOnly ? true : undefined,
           precioMin: minPrice > 0 ? minPrice : undefined,
           precioMax: maxPrice < PRICE_CEILING ? maxPrice : undefined,
@@ -392,6 +460,7 @@ export default function PartsCatalogView({
           categoryId: activeCategoryId,
           subcategoriaId: activeSubcategoryId,
           comunaId: activeComunaId,
+        proveedorId: selectedStoreId || undefined,
           compatibilidadMarca,
           compatibilidadModelo,
           compatibilidadAnio,
@@ -420,6 +489,7 @@ export default function PartsCatalogView({
           condicion: selectedCondition || undefined,
           origen: selectedOrigin || undefined,
           comunaId: activeComunaId,
+        proveedorId: selectedStoreId || undefined,
           soloCotizacion: onlyQuoteOnly ? true : undefined,
           precioMin: minPrice > 0 ? minPrice : undefined,
           precioMax: maxPrice < PRICE_CEILING ? maxPrice : undefined,
@@ -435,6 +505,7 @@ export default function PartsCatalogView({
         categoriaId: activeCategoryId,
         subcategoriaId: activeSubcategoryId,
         comunaId: activeComunaId,
+        proveedorId: selectedStoreId || undefined,
         compatibilidadMarca,
         compatibilidadModelo,
         compatibilidadAnio,
@@ -643,7 +714,7 @@ export default function PartsCatalogView({
     const signature = JSON.stringify([
       deferredSearchQuery, selectedCategory, selectedSubcategory, vehicleBrandName, vehicleModel,
       vehicleYear, partBrandId, selectedCondition, selectedOrigin, onlyQuoteOnly, onlyCompatible,
-      minPrice, maxPrice, sortBy, itemsPerPage
+      minPrice, maxPrice, sortBy, itemsPerPage, selectedStoreId, selectedComunaId
     ]);
     const previous = previousFiltersRef.current;
     previousFiltersRef.current = signature;
@@ -652,7 +723,7 @@ export default function PartsCatalogView({
   }, [
     deferredSearchQuery, selectedCategory, selectedSubcategory, vehicleBrandName, vehicleModel,
     vehicleYear, partBrandId, selectedCondition, selectedOrigin, onlyQuoteOnly, onlyCompatible,
-    minPrice, maxPrice, sortBy, itemsPerPage
+    minPrice, maxPrice, sortBy, itemsPerPage, selectedStoreId, selectedComunaId
   ]);
 
   /**
@@ -710,6 +781,8 @@ export default function PartsCatalogView({
     setPartBrandId('');
     setSelectedCondition('');
     setSelectedOrigin('');
+    setSelectedStoreId('');
+    setSelectedComunaId('');
     setOnlyQuoteOnly(false);
     setOnlyCompatible(false);
     setMinPrice(0);
@@ -1152,6 +1225,29 @@ export default function PartsCatalogView({
                 </div>
               </div>}
             </div>
+
+            {/* Tienda y Comuna, al final como en la app: desplegables con buscador sobre
+                todas las tiendas y comunas del catálogo, para que el panel no crezca. */}
+            <FilterSearchSelect
+              label="Tienda"
+              icon={<Store size={13} />}
+              allLabel="Todas las tiendas"
+              options={storeFilterOptions}
+              value={selectedStoreId}
+              onChange={setSelectedStoreId}
+              searchPlaceholder="Buscar tienda"
+              helper={storeFilterOptions.length ? `${storeFilterOptions.length} ${storeFilterOptions.length === 1 ? 'tienda' : 'tiendas'} con repuestos publicados` : ''}
+            />
+            <FilterSearchSelect
+              label="Comuna"
+              icon={<MapPin size={13} />}
+              allLabel="Todas las comunas"
+              options={comunaFilterOptions}
+              value={selectedComunaId}
+              onChange={setSelectedComunaId}
+              searchPlaceholder="Buscar comuna"
+              helper={comunaFilterOptions.length ? `${comunaFilterOptions.length} ${comunaFilterOptions.length === 1 ? 'comuna' : 'comunas'} con tiendas` : ''}
+            />
 
             {/* Clear All Filters Button */}
             <button className="btn-clear-all-filters-wide" onClick={handleApplyFilters}>

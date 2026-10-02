@@ -16,6 +16,8 @@ export const qk = {
   categories: () => ['categories'],
   subcategories: (categoriaId) => ['subcategories', categoriaId || 'none'],
   partOrigins: () => ['partOrigins'],
+  /** Tiendas y comunas de todo el catalogo publico (filtros avanzados). */
+  catalogFilterOptions: () => ['catalogFilterOptions'],
   brands: (categoria) => ['brands', categoria || 'all'],
   cart: (userId) => ['cart', userId],
   orders: (userId) => ['orders', userId],

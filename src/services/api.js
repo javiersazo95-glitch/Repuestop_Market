@@ -1279,7 +1279,7 @@ export async function getStoreProductsApi(storeId, { page = 0, size = 12, texto,
   return fetchApi(`/tiendas/${storeId}/productos?${params.toString()}`, { method: 'GET', signal });
 }
 
-export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, soloDestacados, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, comunaId, compatibilidadMarca, compatibilidadModelo, compatibilidadAnio, condicion, origen, sort = 'precio,asc', signal } = {}) {
+export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, soloDestacados, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, comunaId, proveedorId, compatibilidadMarca, compatibilidadModelo, compatibilidadAnio, condicion, origen, sort = 'precio,asc', signal } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size), sort });
   if (texto) params.set('texto', texto);
   if (patente) params.set('patente', patente);
@@ -1297,6 +1297,8 @@ export async function getPublicProductsApi({ page = 0, size = 12, texto, patente
   if (precioMin) params.set('precioMin', String(precioMin));
   if (precioMax) params.set('precioMax', String(precioMax));
   if (comunaId) params.set('comunaId', String(comunaId));
+  // Filtro "Tienda" de los filtros avanzados, resuelto en el servidor sobre todo el catalogo.
+  if (proveedorId) params.set('proveedorId', String(proveedorId));
   if (condicion) params.set('condicion', condicion);
   if (origen) params.set('origen', origen);
   return fetchApi(`/inventario/productos?${params.toString()}`, { method: 'GET', signal });
@@ -1319,6 +1321,15 @@ export async function getPublicCategoryCountsApi() {
  * Paises de origen presentes hoy en el catalogo. `MarcaRepuesto.paisOrigen` es texto libre,
  * asi que la lista tiene que venir del backend en vez de estar escrita en el cliente.
  */
+/**
+ * Tiendas y comunas de TODO el catalogo publico para los filtros avanzados (Tienda/Comuna),
+ * igual que la app: no salen de la pagina de productos ya cargada.
+ * Responde { tiendas: [{id, nombre, comunaId, comuna, productos}], comunas: [{id, nombre, region, tiendas}] }.
+ */
+export async function getCatalogFilterOptionsApi({ signal } = {}) {
+  return fetchApi('/inventario/productos/filtros', { method: 'GET', signal });
+}
+
 export async function getPublicPartOriginsApi({ signal } = {}) {
   return fetchApi('/inventario/productos/origenes', { method: 'GET', signal });
 }
