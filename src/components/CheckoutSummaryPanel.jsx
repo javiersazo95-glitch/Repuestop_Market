@@ -67,7 +67,7 @@ export default function CheckoutSummaryPanel({
 
       <p className="checkout-summary-trust"><ShieldCheck size={15} /> Compra protegida por RepuesTop</p>
       <div className="checkout-summary-payments">
-        <span><CreditCard size={14} /> Flow · débito, crédito y prepago</span>
+        <span><CreditCard size={14} /> Pagos procesados por Flow</span>
       </div>
     </aside>
   );

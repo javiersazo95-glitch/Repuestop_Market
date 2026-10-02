@@ -128,7 +128,7 @@ export default function Footer() {
             <div><Truck /><span><strong>Envíos a todo Chile</strong>Entregas rápidas y seguras donde estés.</span></div>
             <div className="footer-flow-point">
               <b>flow</b>
-              <span><strong>Pagos procesados por Flow</strong>Crédito y débito</span>
+              <span><strong>Pagos procesados por Flow</strong>Pago seguro en línea</span>
             </div>
           </div>
         </section>
@@ -256,7 +256,6 @@ export default function Footer() {
         <p>
           © 2026 {EMPRESA.razonSocial} · RUT {EMPRESA.rut}.<br />
           {EMPRESA.domicilioCorto} · {EMPRESA.correo}<br />
-          Representantes legales: {EMPRESA.representantes}.<br />
           Todos los derechos reservados.
         </p>
         <nav>
