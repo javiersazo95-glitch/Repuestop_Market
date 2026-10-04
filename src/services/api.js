@@ -1358,6 +1358,13 @@ export async function getVehicleVersionsApi({ marca, modelo, anioDesde, anioHast
   return fetchApi(`/catalogos/inventario/versiones?${params.toString()}`, { method: 'GET' });
 }
 
+export async function getVehicleMotorsApi({ marca, modelo, anioDesde, anioHasta }) {
+  const params = new URLSearchParams({ marca, modelo });
+  if (anioDesde) params.set('anioDesde', String(anioDesde));
+  if (anioHasta) params.set('anioHasta', String(anioHasta));
+  return fetchApi(`/catalogos/inventario/motores?${params.toString()}`, { method: 'GET' });
+}
+
 /** Crea un producto personalizado mediante el mismo flujo multipart del panel de inventario. */
 export async function createSellerInventoryProductApi(proveedorId, formData) {
   return fetchApi(`/proveedores/${proveedorId}/inventario/personalizado`, {
