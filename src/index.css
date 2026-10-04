@@ -18227,6 +18227,7 @@ input, select, textarea {
 .cart-line-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; font-size: 11.5px; color: var(--text-muted); }
 .cart-line-oem { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 700; color: var(--color-brand-blue); }
 .cart-line-fit { margin-top: 6px; font-size: 11.5px; font-weight: 700; color: var(--color-emerald-green); }
+.cart-line-own { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 4px 8px; border-radius: 7px; font-size: 11.5px; font-weight: 700; color: #b42318; background: #fff0f0; }
 .cart-line-stock { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 11.5px; font-weight: 700; color: #b45309; }
 
 .cart-line-qty { display: inline-flex; align-items: center; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); }

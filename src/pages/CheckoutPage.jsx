@@ -570,6 +570,11 @@ export default function CheckoutPage() {
 
   const pay = async () => {
     if (submittingRef.current) return;
+    const ownStoreItem = isQuoteMode ? null : cartItems.find((item) => item.ownStore);
+    if (ownStoreItem) {
+      setError(`"${ownStoreItem.titulo}" es de tu propia tienda y no puedes comprarlo. Quítalo del carrito para continuar.`);
+      return;
+    }
     submittingRef.current = true;
     setPlacing(true);
     setError('');

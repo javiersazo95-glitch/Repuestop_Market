@@ -4,6 +4,7 @@ import { qk } from '../services/queryKeys';
 import { addCartItemApi, getCartApi, removeCartItemApi, resolveMediaUrl, updateCartItemApi } from '../services/api';
 import { useAuth } from './AuthContext';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
+import { isOwnStoreProduct } from '../utils/purchaseProfile';
 
 const MarketplaceContext = createContext(null);
 
@@ -187,7 +188,13 @@ export function MarketplaceProvider({ children }) {
     enabled: Boolean(isLoggedIn && userId),
   });
 
-  const cartItems = isLoggedIn && userId ? serverCartItems : guestCartItems;
+  // `ownStore`: el producto es de la tienda de quien compra. Un vendedor no puede comprarse a sí
+  // mismo (el backend lo rechaza); el carrito lo marca para que lo quite antes de pagar.
+  const baseCartItems = isLoggedIn && userId ? serverCartItems : guestCartItems;
+  const cartItems = useMemo(
+    () => baseCartItems.map((item) => ({ ...item, ownStore: isOwnStoreProduct(user?.sellerId, item.proveedorId) })),
+    [baseCartItems, user?.sellerId],
+  );
 
   // Aplica un cambio optimista al carrito que esté activo (invitado o server).
   const applyOptimisticCart = useCallback((updater) => {
@@ -208,25 +215,47 @@ export function MarketplaceProvider({ children }) {
     let cancelled = false;
 
     (async () => {
-      try {
-        let summary;
-        for (const item of guestCartItems) {
+      // Cada producto se traspasa por separado: antes un solo rechazo cortaba el resto y los
+      // demás productos del invitado se perdían sin aviso.
+      let summary;
+      const ownStore = [];
+      const failed = [];
+      for (const item of guestCartItems) {
+        // El invitado pudo agregar un producto de la tienda con la que ahora inicia sesión: no
+        // se traspasa (un vendedor no compra en su propia tienda) y se le avisa.
+        if (isOwnStoreProduct(user?.sellerId, item.proveedorId)) {
+          ownStore.push(item);
+          continue;
+        }
+        try {
           summary = await addCartItemApi(userId, {
             proveedorProductoId: Number(item.id),
             cantidad: item.quantity,
             metodoEnvio: item.shippingMethod,
             costoEnvioLocal: item.shippingFee || 0,
           });
+        } catch (error) {
+          // El backend también lo rechaza si la sesión todavía no traía la tienda.
+          if (/propia tienda/i.test(error?.message || '')) ownStore.push(item);
+          else failed.push(item);
+          console.warn('No se pudo traspasar un producto del carrito de invitado:', error);
         }
-        if (!cancelled) {
-          if (summary) queryClient.setQueryData(qk.cart(userId), mapServerCart(summary));
-          setGuestCartItems([]);
-        }
-      } catch (error) {
-        console.warn('No se pudo sincronizar el carrito de invitado con el servidor:', error);
-      } finally {
-        if (!cancelled) queryClient.invalidateQueries({ queryKey: qk.cart(userId) });
       }
+      if (cancelled) return;
+      if (summary) queryClient.setQueryData(qk.cart(userId), mapServerCart(summary));
+      setGuestCartItems([]);
+      queryClient.invalidateQueries({ queryKey: qk.cart(userId) });
+      const names = (items) => items.map((item) => `"${item.titulo || 'Repuesto'}"`).join(', ');
+      const notices = [];
+      if (ownStore.length > 0) {
+        notices.push(ownStore.length === 1
+          ? `Quitamos ${names(ownStore)} de tu carrito porque es de tu propia tienda y no puedes comprarlo.`
+          : `Quitamos ${names(ownStore)} de tu carrito porque son de tu propia tienda y no puedes comprarlos.`);
+      }
+      if (failed.length > 0) {
+        notices.push(`No pudimos agregar ${names(failed)} a tu carrito. Vuelve a agregarlo desde el catálogo.`);
+      }
+      if (notices.length > 0) setCartError(notices.join(' '));
     })();
 
     return () => { cancelled = true; };
@@ -250,6 +279,10 @@ export function MarketplaceProvider({ children }) {
     // local, la peticion fallaba y el item desaparecia solo unos segundos despues.
     if (isBlockedAccount) {
       setCartError('Tu cuenta está bloqueada: no puedes comprar mientras se revisa tu caso.');
+      return null;
+    }
+    if (isOwnStoreProduct(user?.sellerId, product.proveedorId)) {
+      setCartError('Este repuesto es de tu propia tienda: no puedes agregarlo al carrito.');
       return null;
     }
     const shippingMethod = options.shippingMethod || '';
@@ -308,7 +341,11 @@ export function MarketplaceProvider({ children }) {
     } catch (error) {
       console.warn('No se pudo agregar el producto en el backend, revirtiendo:', error);
       queryClient.setQueryData(qk.cart(userId), previousServerCart ?? []);
-      setCartError('No se pudo agregar el producto al carrito. Intenta nuevamente.');
+      setLastAddedItem(null);
+      // Un rechazo del backend (tienda propia, sin stock) se muestra con su motivo.
+      setCartError(/propia tienda|stock/i.test(error?.message || '')
+        ? error.message
+        : 'No se pudo agregar el producto al carrito. Intenta nuevamente.');
       return null;
     } finally {
       if (pendingAddsRef.current.get(productIdStr) === pendingRecord) {

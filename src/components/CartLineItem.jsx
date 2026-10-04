@@ -43,6 +43,12 @@ export default function CartLineItem({ item, activeVehicle, onUpdateQuantity, on
         ) : activeVehicle?.patente ? (
           <p className="cart-line-fit">La tienda confirmará que calce con tu {activeVehicle.patente}</p>
         ) : null}
+        {item.ownStore && (
+          <p className="cart-line-own">
+            <AlertTriangle size={13} />
+            Es de tu propia tienda: quítalo para continuar la compra
+          </p>
+        )}
         {lowStock && (
           <p className="cart-line-stock">
             <AlertTriangle size={13} />

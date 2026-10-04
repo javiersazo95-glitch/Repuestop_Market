@@ -53,6 +53,9 @@ export default function CartPage() {
     return 'Sin costo';
   }, [cartItems]);
 
+  // Productos de la tienda de quien compra: no se pueden pagar (el backend rechaza el pedido entero).
+  const ownStoreItems = cartItems.filter((item) => item.ownStore);
+
   const goToCheckout = () => {
     if (!isLoggedIn) {
       openAuthModal();
@@ -89,6 +92,15 @@ export default function CartPage() {
     return (
       <main className="cart-page">
         <div className="cart-page-shell">
+          {/* El aviso también va con el carrito vacío: al iniciar sesión se puede haber quitado el
+              único producto (por ejemplo, uno de la propia tienda). */}
+          {cartError && (
+            <div className="cart-page-alert" role="alert">
+              <AlertTriangle size={15} />
+              <span>{cartError}</span>
+              <button type="button" onClick={dismissCartError} aria-label="Cerrar aviso"><X size={14} /></button>
+            </div>
+          )}
           <div className="cart-empty">
             <ShoppingBag size={40} strokeWidth={1.4} />
             <h1>Tu carrito está vacío</h1>
@@ -147,6 +159,10 @@ export default function CartPage() {
             shippingLabel={shippingLabel}
             ctaLabel={isLoggedIn ? 'Continuar la compra' : 'Inicia sesión para continuar'}
             onCta={goToCheckout}
+            ctaDisabled={ownStoreItems.length > 0}
+            warning={ownStoreItems.length > 0
+              ? `No puedes comprar productos de tu propia tienda. Quita ${ownStoreItems.length === 1 ? `"${ownStoreItems[0].titulo}"` : `los ${ownStoreItems.length} productos marcados`} para continuar.`
+              : undefined}
           />
         </div>
       </div>
