@@ -1,10 +1,19 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
-  ArrowUpRight, Boxes, CheckCircle, ChevronLeft, ChevronRight, Plus, RotateCcw, Search, X,
+  ArrowUpDown, ArrowUpRight, Boxes, CheckCircle, ChevronLeft, ChevronRight, Plus, RotateCcw, Search, SlidersHorizontal, X,
 } from 'lucide-react';
 import CatalogCard from './CatalogCard';
 import ProductTopBadge from './ProductTopBadge';
 import { EmptyState, LoadingRow, CATALOG_PAGE_SIZE_OPTIONS } from './ProfileDashboard';
+
+const STATUS_OPTIONS = [
+  { key: 'all', label: 'Todos' },
+  { key: 'active', label: 'Activos' },
+  { key: 'paused', label: 'Pausados' },
+  { key: 'low', label: 'Stock bajo' },
+  { key: 'out', label: 'Sin stock' },
+];
 
 /**
  * Pestaña "Catálogo Publicado" (productos) del panel de perfil. Extraccion
@@ -74,6 +83,34 @@ export default function ProfileCatalogPanel({
     || catalogStatusFilter !== 'all' || catalogSort !== 'default'
   );
 
+  // Filtros avanzados: viven en una barra lateral y aquí se resumen como etiquetas removibles.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  useEffect(() => {
+    if (!filtersOpen) return undefined;
+    const onKey = (event) => { if (event.key === 'Escape') setFiltersOpen(false); };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [filtersOpen]);
+
+  const activeFilterTags = [
+    activeCategory && { key: 'category', label: `Categoría: ${activeCategory.categoriaNombre}`, onRemove: () => onCategoryChange(null) },
+    catalogPartBrand && { key: 'part', label: `Marca: ${catalogPartBrand}`, onRemove: () => onPartBrandChange?.('') },
+    catalogVehicleBrand && { key: 'vehicle', label: `Vehículo: ${catalogVehicleBrand}`, onRemove: () => onVehicleBrandChange?.('') },
+    catalogYear && { key: 'year', label: `Año: ${catalogYear}`, onRemove: () => onYearChange?.('') },
+    catalogStatusFilter !== 'all' && {
+      key: 'status',
+      label: `Estado: ${STATUS_OPTIONS.find((option) => option.key === catalogStatusFilter)?.label || catalogStatusFilter}`,
+      onRemove: () => onStatusFilterChange?.('all'),
+    },
+  ].filter(Boolean);
+  const advancedCount = activeFilterTags.length;
+  const clearAdvanced = () => activeFilterTags.forEach((tag) => tag.onRemove());
+
   /**
    * Productos de la pagina agrupados por categoria, en secciones.
    *
@@ -134,10 +171,10 @@ export default function ProfileCatalogPanel({
         <div className="catalog-top-feedback"><CheckCircle size={15} /> {catalogTopFeedback}</div>
       )}
 
-      {/* Barra de filtros en una fila, igual que el inventario del Panel de vendedor: buscador y
-          desplegables. Reemplaza las etiquetas de categoría y estado, que con muchas categorías
-          ocupaban varias filas. */}
-      <div className="catalog-control-bar">
+      {/* Escritorio: buscador y desplegables en una fila, como el inventario del Panel de vendedor.
+          Celular: buscador, orden y "Filtros avanzados", que abre los mismos filtros en una barra
+          lateral para no llenar la pantalla de desplegables. */}
+      <div className="inventory-filter-bar">
         <form className="catalog-control-search" onSubmit={onSearchSubmit} role="search">
           <Search size={14} />
           <input
@@ -150,7 +187,7 @@ export default function ProfileCatalogPanel({
         </form>
 
         <select
-          className="catalog-control-select"
+          className="catalog-control-select catalog-control-desktop"
           value={catalogCategoryId ?? ''}
           onChange={(event) => onCategoryChange(event.target.value || null)}
           aria-label="Filtrar por categoría"
@@ -162,9 +199,8 @@ export default function ProfileCatalogPanel({
             </option>
           ))}
         </select>
-
         <select
-          className="catalog-control-select"
+          className="catalog-control-select catalog-control-desktop"
           value={catalogPartBrand}
           onChange={(event) => onPartBrandChange?.(event.target.value)}
           aria-label="Filtrar por marca del repuesto"
@@ -172,9 +208,8 @@ export default function ProfileCatalogPanel({
           <option value="">Marca: Todas</option>
           {catalogPartBrands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
         </select>
-
         <select
-          className="catalog-control-select"
+          className="catalog-control-select catalog-control-desktop"
           value={catalogVehicleBrand}
           onChange={(event) => onVehicleBrandChange?.(event.target.value)}
           aria-label="Filtrar por marca del vehículo"
@@ -182,9 +217,8 @@ export default function ProfileCatalogPanel({
           <option value="">Vehículo: Todos</option>
           {catalogVehicleBrands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
         </select>
-
         <select
-          className="catalog-control-select"
+          className="catalog-control-select catalog-control-desktop"
           value={catalogYear}
           onChange={(event) => onYearChange?.(event.target.value)}
           aria-label="Filtrar por año del vehículo"
@@ -192,36 +226,51 @@ export default function ProfileCatalogPanel({
           <option value="">Año: Todos</option>
           {catalogYears.map((year) => <option key={year} value={year}>{year}</option>)}
         </select>
-
         {onStatusFilterChange && (
           <select
-            className="catalog-control-select"
+            className="catalog-control-select catalog-control-desktop"
             value={catalogStatusFilter}
             onChange={(event) => onStatusFilterChange(event.target.value)}
             aria-label="Filtrar por estado"
           >
-            <option value="all">Estado: Todos</option>
-            <option value="active">Activos</option>
-            <option value="paused">Pausados</option>
-            <option value="low">Stock bajo</option>
-            <option value="out">Sin stock</option>
+            {STATUS_OPTIONS.map((option) => (
+              <option key={option.key} value={option.key}>{option.key === 'all' ? 'Estado: Todos' : option.label}</option>
+            ))}
           </select>
         )}
 
         {onSortChange && (
-          <select
-            className="catalog-control-select"
-            value={catalogSort}
-            onChange={(event) => onSortChange(event.target.value)}
-            aria-label="Ordenar productos"
-          >
-            <option value="default">Orden: por categoría</option>
-            <option value="name">Nombre (A-Z)</option>
-            <option value="price-asc">Precio: menor a mayor</option>
-            <option value="price-desc">Precio: mayor a menor</option>
-            <option value="stock-asc">Stock: menor primero</option>
-          </select>
+          // En celular es un botón con ícono (el desplegable nativo va encima, invisible) para
+          // que buscador, orden y filtros quepan en una sola fila.
+          <label className={`catalog-control-sort ${catalogSort !== 'default' ? 'is-active' : ''}`} title="Ordenar productos">
+            <ArrowUpDown size={17} aria-hidden="true" />
+            <select
+              className="catalog-control-select"
+              value={catalogSort}
+              onChange={(event) => onSortChange(event.target.value)}
+              aria-label="Ordenar productos"
+            >
+              <option value="default">Orden: por categoría</option>
+              <option value="name">Nombre (A-Z)</option>
+              <option value="price-asc">Precio: menor a mayor</option>
+              <option value="price-desc">Precio: mayor a menor</option>
+              <option value="stock-asc">Stock: menor primero</option>
+            </select>
+          </label>
         )}
+
+        <button
+          type="button"
+          className={`catalog-control-advanced ${advancedCount > 0 ? 'has-filters' : ''}`}
+          onClick={() => setFiltersOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={filtersOpen}
+          aria-label="Filtros avanzados"
+          title="Filtros avanzados"
+        >
+          <SlidersHorizontal size={17} /> <span className="catalog-control-advanced-text">Filtros avanzados</span>
+          {advancedCount > 0 && <span className="catalog-control-count">{advancedCount}</span>}
+        </button>
 
         {hasActiveFilters && (
           <button type="button" className="catalog-control-clear" onClick={onClearFilters} title="Limpiar filtros">
@@ -229,6 +278,86 @@ export default function ProfileCatalogPanel({
           </button>
         )}
       </div>
+
+      {activeFilterTags.length > 0 && (
+        <div className="catalog-active-filters" aria-label="Filtros aplicados">
+          {activeFilterTags.map((tag) => (
+            <button key={tag.key} type="button" onClick={tag.onRemove} title={`Quitar filtro ${tag.label}`}>
+              {tag.label} <X size={12} />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {filtersOpen && createPortal(
+        <div className="catalog-filter-backdrop" onClick={() => setFiltersOpen(false)}>
+          <aside
+            className="catalog-filter-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Filtros avanzados del inventario"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header>
+              <div><SlidersHorizontal size={18} /><strong>Filtros avanzados</strong></div>
+              <button type="button" onClick={() => setFiltersOpen(false)} aria-label="Cerrar filtros"><X size={18} /></button>
+            </header>
+
+            <div className="catalog-filter-body">
+              <label>
+                <span>Categoría</span>
+                <select value={catalogCategoryId ?? ''} onChange={(event) => onCategoryChange(event.target.value || null)}>
+                  <option value="">Todas ({totalTodasCategorias})</option>
+                  {categories.map((category) => (
+                    <option key={category.categoriaId} value={category.categoriaId}>
+                      {category.categoriaNombre} ({category.total})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Marca del repuesto</span>
+                <select value={catalogPartBrand} onChange={(event) => onPartBrandChange?.(event.target.value)}>
+                  <option value="">Todas</option>
+                  {catalogPartBrands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>Marca del vehículo</span>
+                <select value={catalogVehicleBrand} onChange={(event) => onVehicleBrandChange?.(event.target.value)}>
+                  <option value="">Todas</option>
+                  {catalogVehicleBrands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>Año del vehículo</span>
+                <select value={catalogYear} onChange={(event) => onYearChange?.(event.target.value)}>
+                  <option value="">Todos</option>
+                  {catalogYears.map((year) => <option key={year} value={year}>{year}</option>)}
+                </select>
+              </label>
+              {onStatusFilterChange && (
+                <label>
+                  <span>Estado</span>
+                  <select value={catalogStatusFilter} onChange={(event) => onStatusFilterChange(event.target.value)}>
+                    {STATUS_OPTIONS.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
+                  </select>
+                </label>
+              )}
+            </div>
+
+            <footer>
+              <button type="button" className="secondary" onClick={clearAdvanced} disabled={advancedCount === 0}>
+                <RotateCcw size={14} /> Limpiar
+              </button>
+              <button type="button" onClick={() => setFiltersOpen(false)}>
+                Ver {catalogTotalElements} {catalogTotalElements === 1 ? 'producto' : 'productos'}
+              </button>
+            </footer>
+          </aside>
+        </div>,
+        document.body
+      )}
 
       <div className="catalog-range-filter">
         <span>Mostrar por página:</span>

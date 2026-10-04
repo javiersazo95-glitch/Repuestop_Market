@@ -21039,7 +21039,7 @@ input.has-success {
 .buyer-orders-chip.is-active span { color: inherit; }
 
 /* Orden del inventario del vendedor (paridad con la app). */
-.catalog-control-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 16px; padding: 13px 16px; border: 1px solid #dfe7f1; border-radius: 14px; background: #fff; }
+.inventory-filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 16px; padding: 13px 16px; border: 1px solid #dfe7f1; border-radius: 14px; background: #fff; }
 .catalog-control-search { position: relative; flex: 2.5 1 240px; min-width: 180px; display: flex; align-items: center; }
 .catalog-control-search svg { position: absolute; left: 13px; color: #7a8ba0; pointer-events: none; }
 .catalog-control-search input { width: 100%; height: 38px; padding: 0 12px 0 34px; border: 1px solid #d6e0ed; border-radius: 10px; outline: none; color: #0f172a; background: #f8fafc; font: inherit; font-size: 13px; font-weight: 500; }
@@ -21047,12 +21047,49 @@ input.has-success {
 .catalog-control-select { flex: 1 1 130px; min-width: 118px; max-width: 100%; height: 38px; padding: 0 28px 0 11px; border: 1px solid #d6e0ed; border-radius: 10px; outline: none; color: #1e293b; background-color: #f8fafc; font: inherit; font-size: 13px; font-weight: 500; text-overflow: ellipsis; cursor: pointer; }
 .catalog-control-clear { flex: 0 0 auto; height: 38px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #d6e0ed; border-radius: 10px; color: #334155; background: #fff; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .catalog-control-clear:hover { border-color: #0066ff; color: #0066ff; }
+.catalog-control-sort { flex: 1 1 130px; min-width: 118px; display: flex; }
+.catalog-control-sort > svg { display: none; }
+.catalog-control-sort > select { flex: 1 1 auto; width: 100%; }
+/* Filtros avanzados en barra lateral: solo en celular; en escritorio van los desplegables en fila. */
+.catalog-control-advanced, .catalog-active-filters { display: none !important; }
+.catalog-control-advanced { flex: 0 0 auto; height: 38px; padding: 0 14px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid #d6e0ed; border-radius: 10px; color: #1e293b; background: #fff; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.catalog-control-advanced:hover, .catalog-control-advanced.has-filters { border-color: #0066ff; color: #0066ff; background: #f2f7ff; }
+.catalog-control-count { min-width: 20px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; border-radius: 999px; color: #fff; background: #0066ff; font-size: 11.5px; font-weight: 700; }
+.catalog-active-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: -6px 0 16px; }
+.catalog-active-filters button { min-height: 30px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #bfd6f7; border-radius: 999px; color: #00459a; background: #eaf2ff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.catalog-active-filters button:hover { border-color: #0066ff; }
+.catalog-filter-backdrop { position: fixed; inset: 0; z-index: 2100; display: flex; justify-content: flex-end; background: rgba(6, 19, 41, .45); animation: catalog-filter-fade .18s ease-out; }
+.catalog-filter-drawer { width: min(380px, 100vw); height: 100%; display: flex; flex-direction: column; background: #fff; box-shadow: -18px 0 50px rgba(5, 27, 51, .22); animation: catalog-filter-slide .22s ease-out; }
+.catalog-filter-drawer > header { min-height: 60px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e2e9f0; }
+.catalog-filter-drawer > header > div { display: flex; align-items: center; gap: 9px; color: #17395e; }
+.catalog-filter-drawer > header strong { font-size: 16px; }
+.catalog-filter-drawer > header button { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 9px; color: #61758a; background: #edf2f6; cursor: pointer; }
+.catalog-filter-body { flex: 1; overflow-y: auto; padding: 18px; display: grid; align-content: start; gap: 16px; }
+.catalog-filter-body label { display: grid; gap: 6px; }
+.catalog-filter-body label > span { color: #334155; font-size: 12.5px; font-weight: 700; }
+.catalog-filter-body select { width: 100%; height: 44px; padding: 0 32px 0 12px; border: 1px solid #d6e0ed; border-radius: 10px; outline: none; color: #1e293b; background-color: #f8fafc; font: inherit; font-size: 14px; cursor: pointer; }
+.catalog-filter-body select:focus { border-color: #0066ff; background: #fff; box-shadow: 0 0 0 3px rgba(0, 102, 255, .12); }
+.catalog-filter-drawer > footer { padding: 14px 18px calc(14px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: auto 1fr; gap: 10px; border-top: 1px solid #e2e9f0; }
+.catalog-filter-drawer > footer button { min-height: 44px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid #0066ff; border-radius: 10px; color: #fff; background: #0066ff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.catalog-filter-drawer > footer button.secondary { color: #334155; border-color: #d6e0ed; background: #fff; }
+.catalog-filter-drawer > footer button:disabled { opacity: .5; cursor: default; }
+@keyframes catalog-filter-slide { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes catalog-filter-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .catalog-filter-backdrop, .catalog-filter-drawer { animation: none; } }
 @media (max-width: 768px) {
-  .catalog-control-bar { padding: 12px; gap: 8px; }
-  .catalog-control-search { flex: 1 1 100%; }
-  .catalog-control-search input, .catalog-control-select { height: 44px; font-size: 16px; }
-  .catalog-control-select { flex: 1 1 calc(50% - 4px); min-width: 0; }
-  .catalog-control-clear { flex: 1 1 100%; justify-content: center; height: 44px; }
+  /* Buscador, orden y filtros en una sola fila: los dos últimos como botones de ícono. */
+  .inventory-filter-bar { padding: 10px; gap: 8px; }
+  .catalog-control-desktop { display: none; }
+  .catalog-control-search { flex: 1 1 0; min-width: 0; }
+  .catalog-control-search input { height: 44px; font-size: 16px; }
+  .catalog-control-sort, .catalog-control-advanced { position: relative; flex: 0 0 44px; width: 44px; min-width: 44px; height: 44px; padding: 0; display: inline-flex !important; align-items: center; justify-content: center; border: 1px solid #d6e0ed; border-radius: 10px; color: #1e293b; background: #fff; }
+  .catalog-control-sort > svg { display: block; }
+  .catalog-control-sort > select { position: absolute; inset: 0; width: 100%; height: 100%; min-width: 0; padding: 0; opacity: 0; font-size: 16px; cursor: pointer; }
+  .catalog-control-sort.is-active, .catalog-control-advanced.has-filters { border-color: #0066ff; color: #0066ff; background: #f2f7ff; }
+  .catalog-control-advanced-text { display: none; }
+  .catalog-control-count { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; font-size: 10.5px; }
+  .catalog-active-filters { display: flex !important; }
+  .catalog-control-clear { flex: 1 1 100%; justify-content: center; height: 40px; }
 }
 .catalog-sort-select { margin-left: auto; padding: 6px 10px; border: 1px solid #d6e0ed; border-radius: 8px; background: #fff; font-size: 12.5px; }
 
