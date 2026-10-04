@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 
 import ProductBrandMark from './ProductBrandMark';
+import ProductPhoto from './ProductPhoto';
 import ProductTopBadge from './ProductTopBadge';
 import ShareLinkButton from './ShareLinkButton';
 import StoreLogoBadge from './StoreLogoBadge';
@@ -95,9 +96,7 @@ export default function ProductDetailMobile({
           />
         </div>
         <div className="pdm-hero-photo">
-          {images[activeImage]
-            ? <img src={images[activeImage]} alt={product.titulo} />
-            : <Package size={64} />}
+          <ProductPhoto src={images[activeImage]} product={product} alt={product.titulo} iconSize={64} />
           {images.length > 1 && <>
             <button className="pdm-image-arrow previous" type="button" onClick={() => onChangeImage(-1)} aria-label="Imagen anterior"><ChevronLeft /></button>
             <button className="pdm-image-arrow next" type="button" onClick={() => onChangeImage(1)} aria-label="Imagen siguiente"><ChevronRight /></button>
@@ -110,7 +109,7 @@ export default function ProductDetailMobile({
           <div className="pdm-thumbs">
             {visibleThumbs.map((image, index) => (
               <button key={`${image}-${index}`} type="button" className={index === activeImage ? 'active' : ''} onClick={() => setActiveImage(index)}>
-                <img src={image} alt={`Vista ${index + 1} de ${product.titulo}`} />
+                <ProductPhoto src={image} product={product} alt={`Vista ${index + 1} de ${product.titulo}`} />
               </button>
             ))}
             {extraThumbs > 0 && (

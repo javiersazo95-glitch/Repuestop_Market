@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertCircle, CalendarClock, Camera, Car, Check, ChevronLeft, ChevronRight, Clock3, Eye,
+  AlarmClock, AlertCircle, CalendarClock, Camera, Car, Check, ChevronLeft, ChevronRight, Clock3, Eye,
   Film, Heart, Loader2, LockKeyhole, MessageCircle, Plus, PlusCircle, Sparkles, Trash2, TrendingUp, UserPlus, X
 } from 'lucide-react';
 import {
@@ -755,6 +755,23 @@ export default function AdForm({
                 </select>
               </div>
 
+              {/* Urgencias 24 horas, junto a la categoria: el aviso entra en el filtro
+                  "Urgencias 24 horas" del Mural (mismo dato `is24Hours`). */}
+              <label className={`ads-urgent-card col-span-2 ${is24Hours ? 'is-active' : ''}`}>
+                <span className="ads-urgent-icon"><AlarmClock size={16} /></span>
+                <span className="ads-urgent-text">
+                  <strong>Urgencias 24 horas</strong>
+                  <small>Actívalo si atiendes urgencias a toda hora. Tu aviso aparecerá en el filtro de urgencias del Mural.</small>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={is24Hours}
+                  onChange={(e) => setIs24Hours(e.target.checked)}
+                  aria-label="Atiendo urgencias 24 horas"
+                />
+              </label>
+
               <div className="ad-field booking-field col-span-2">
                 <div className="ad-field-header">
                   <label htmlFor="ad-description">Descripción del servicio *</label>
@@ -928,16 +945,8 @@ export default function AdForm({
                 <div className="ad-field-header">
                   <label><Clock3 size={14} /> Horario de atención</label>
                 </div>
-                <label className="ad-check-row">
-                  <input
-                    type="checkbox"
-                    checked={is24Hours}
-                    onChange={(e) => setIs24Hours(e.target.checked)}
-                  />
-                  <span>Atención 24 horas continuas</span>
-                </label>
                 {is24Hours ? (
-                  <small className="ad-upload-hint">El aviso se publicará con el distintivo de “Atención 24 horas”.</small>
+                  <small className="ad-upload-hint">Atiendes urgencias 24 horas: el aviso se publicará con el distintivo de “Atención 24 horas” y no necesita horario.</small>
                 ) : (
                   <OpeningHoursPicker schedule={schedule} onChange={setSchedule} />
                 )}

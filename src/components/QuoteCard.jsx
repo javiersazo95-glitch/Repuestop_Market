@@ -1,9 +1,9 @@
 import React from 'react';
 import {
-  MessageSquare, Clock, CheckCircle2, XCircle, Send, User, ChevronRight, Lock, CalendarClock
+  MessageSquare, Clock, CheckCircle2, XCircle, Send, User, ChevronRight, Lock, CalendarClock, PauseCircle
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
-import { isQuoteExpired } from '../utils/quoteFlow';
+import { isConversationPaused, isQuoteExpired } from '../utils/quoteFlow';
 
 export const UNIFIED_QUOTE_STATUS = {
   PENDIENTE: { label: 'Pendiente de respuesta', icon: Clock, className: 'badge-amber' },
@@ -16,6 +16,8 @@ export const UNIFIED_QUOTE_STATUS = {
   rejected: { label: 'Rechazada', icon: XCircle, className: 'badge-red' },
   CERRADA: { label: 'Cerrada', icon: Lock, className: 'badge-slate' },
   VENCIDA: { label: 'Cotización vencida', icon: CalendarClock, className: 'badge-red-outline' },
+  // El comprador pidió una modificación: la cotización enviada está en pausa hasta que la tienda responda.
+  MODIFICACION: { label: 'Modificación solicitada', icon: PauseCircle, className: 'badge-amber' },
 };
 
 function formatCLP(value) {
@@ -69,7 +71,9 @@ export default function QuoteCard({
     ? 'CERRADA'
     : (activeQuote && isQuoteExpired(activeQuote))
       ? 'VENCIDA'
-      : activeQuote ? 'RESPONDIDA' : 'PENDIENTE';
+      : isConversationPaused(quote)
+        ? 'MODIFICACION'
+        : activeQuote ? 'RESPONDIDA' : 'PENDIENTE';
   const normStatus = String(rawStatus).toUpperCase();
 
   const customerName = quote.otroParticipanteNombre || quote.compradorNombre || quote.buyerName || (mode === 'buyer' ? 'Tienda RepuesTop' : 'Comprador RepuesTop');

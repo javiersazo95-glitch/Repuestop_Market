@@ -6,7 +6,8 @@ import {
   ShoppingCart, Star, Store, Tag, Truck, Wrench, X, ChevronDown, ChevronUp, SlidersHorizontal
 } from 'lucide-react';
 import VehicleBrandLogo from './VehicleBrandLogo';
-import { CATEGORY_IMAGE_BY_ID, getPartImage } from '../data/categories';
+import ProductPhoto from './ProductPhoto';
+import { productReferenceImage } from '../utils/productImage';
 import ProductBrandMark from './ProductBrandMark';
 import ProductBrandModal from './ProductBrandModal';
 import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
@@ -44,15 +45,18 @@ function vehicleMatchesCompatibility(vehicle, item, catalogRowsForGroup = []) {
   if (!vehicle) return false;
 
   // 1. Coincidencia relacional por catalogo: la fila del auto y sus equivalentes (familia del
-  // modelo y anio), igual que el listado por patente. Con solo la fila exacta, la ficha decia
-  // "no le sirve" a un repuesto que el listado si traia.
+  // modelo y anio, MISMA version), igual que el listado por patente. Con solo la fila exacta,
+  // la ficha decia "no le sirve" a un repuesto que el listado si traia.
+  // Regla del 4-oct: con la version del auto identificada no se cae a marca/modelo/anio; eso
+  // le decia a un Yaris GLI que le sirve lo registrado para el Yaris Sport.
   const vCatIds = vehicleCatalogIds(vehicle);
   if (vCatIds.length > 0) {
     const itemIds = Array.isArray(item?.vehiculoCatalogoIds) ? item.vehiculoCatalogoIds.map(String) : [];
-    if (itemIds.some((id) => vCatIds.includes(id))) return true;
+    return itemIds.some((id) => vCatIds.includes(id));
   }
 
-  // 2. Coincidencia contra filas enriquecidas del catálogo generadas para este grupo
+  // 2. Sin version identificada (la patente no calzo con el catalogo): por marca/modelo/anio
+  // contra las filas enriquecidas del catálogo generadas para este grupo
   if (Array.isArray(catalogRowsForGroup) && catalogRowsForGroup.length > 0) {
     const matchRow = catalogRowsForGroup.some((row) => {
       const rowMarcaKey = claveTexto(row.marca);
@@ -117,11 +121,10 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const isOwnProduct = isOwnStoreProduct(user?.sellerId, product.proveedorId);
   // Mismo respaldo que la tarjeta del catalogo: la foto de la pieza que nombra el titulo
   // antes que la de su categoria, para no abrir la ficha de un espejo con la foto de un auto.
+  // Si una foto no carga, `ProductPhoto` cae a esta misma referencial (como la tarjeta).
   const images = (product.imagenes?.length
     ? product.imagenes
-    : [product.imagen
-      || getPartImage(product.titulo, product.subcategoria, product.categoriaNombre)
-      || CATEGORY_IMAGE_BY_ID[product.categoria]]).filter(Boolean);
+    : [product.imagen || productReferenceImage(product)]).filter(Boolean);
   const [activeImage, setActiveImage] = useState(0);
   // El estado del corazon sale del mismo hook que usa el catalogo. Antes esta pantalla
   // llevaba su propio `useState` + `checkIsFavoriteApi`, y para BORRAR le pasaba el id
@@ -614,9 +617,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
               label="Compartir repuesto"
             />
             <div className="product-marketplace-photo">
-              {images[activeImage]
-                ? <img src={images[activeImage]} alt={product.titulo} />
-                : <Package size={76} />}
+              <ProductPhoto src={images[activeImage]} product={product} alt={product.titulo} iconSize={76} />
             </div>
             {images.length > 1 && <>
               <button className="product-marketplace-image-arrow previous" type="button" onClick={() => changeImage(-1)} aria-label="Imagen anterior"><ChevronLeft /></button>
@@ -627,7 +628,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             {images.length > 1 && <div className="product-marketplace-thumbs">
               {images.map((image, index) => (
                 <button key={`${image}-${index}`} type="button" className={index === activeImage ? 'active' : ''} onClick={() => setActiveImage(index)}>
-                  <img src={image} alt={`Vista ${index + 1} de ${product.titulo}`} />
+                  <ProductPhoto src={image} product={product} alt={`Vista ${index + 1} de ${product.titulo}`} />
                 </button>
               ))}
             </div>}

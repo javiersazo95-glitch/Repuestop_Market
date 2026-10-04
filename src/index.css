@@ -16299,6 +16299,34 @@ input, select, textarea {
 .quote-ws-private > div { display: grid; gap: 2px; }
 .quote-ws-private strong { font-size: 11.5px; line-height: 1.35; }
 .quote-ws-private span { color: #5e7895; font-size: 10.5px; line-height: 1.35; }
+/* Modificación pendiente: la cotización está en pausa hasta que la tienda responda. */
+.quote-ws-paused { margin: 10px 14px 0; padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px; border: 1px solid #fde3a7; border-radius: 10px; color: #9a5a00; background: #fff7e6; }
+.quote-ws-paused > svg { flex: 0 0 auto; margin-top: 1px; }
+.quote-ws-paused > div { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.quote-ws-paused strong { font-size: 13px; line-height: 1.35; }
+.quote-ws-paused span { color: #6b5a3a; font-size: 12px; line-height: 1.45; }
+.quote-ws-paused ul { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.quote-ws-paused li { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px; padding-top: 5px; border-top: 1px solid #fde3a7; font-size: 12px; }
+.quote-ws-paused li small { color: #8a7650; font-size: 11.5px; }
+.quote-ws-paused li b { color: #1e293b; font-weight: 700; overflow-wrap: anywhere; }
+.quote-ws-paused-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.quote-ws-paused-actions button { min-height: 36px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #0066ff; border-radius: 8px; color: #fff; background: #0066ff; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.quote-ws-paused-actions button.secondary { color: #0066ff; background: #fff; }
+.quote-ws-paused-actions button:disabled { opacity: .65; cursor: default; }
+.quote-ws-paused.kept { border-color: #bfd6f7; color: #00459a; background: #eaf2ff; }
+.quote-ws-paused.kept span { color: #44607f; }
+.quote-ws-pause-notice { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid #fde3a7; border-radius: 10px; color: #9a5a00; background: #fff7e6; }
+.quote-ws-pause-notice > svg { flex: 0 0 auto; }
+.quote-ws-pause-notice > div { display: grid; gap: 3px; }
+.quote-ws-pause-notice strong { font-size: 13.5px; }
+.quote-ws-pause-notice span { color: #6b5a3a; font-size: 12.5px; line-height: 1.45; font-weight: 400; }
+.quote-ws-preview-paused { margin: 4px 0 0; padding: 10px 12px; display: flex; align-items: flex-start; gap: 8px; border: 1px solid #fde3a7; border-radius: 9px; color: #9a5a00; background: #fff7e6; font-size: 12.5px; line-height: 1.45; }
+.quote-ws-preview-paused svg { flex: 0 0 auto; margin-top: 1px; }
+.quote-ws-keep-reasons { display: flex; flex-wrap: wrap; gap: 6px; }
+.quote-ws-keep-reasons button { min-height: 34px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 999px; color: #1e293b; background: #fff; font: inherit; font-size: 12.5px; cursor: pointer; }
+.quote-ws-keep-reasons button.selected { border-color: #0066ff; color: #0066ff; background: #eaf2ff; font-weight: 700; }
+/* En escritorio la solicitud y "Solicitar modificación" ya están en las columnas laterales. */
+.quote-ws-option-mobile { display: none !important; }
 .quote-ws-messages { min-height: 0; padding: 15px 16px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; scrollbar-width: thin; }
 .quote-ws-message-row { max-width: 78%; display: flex; align-items: flex-start; gap: 8px; }
 .quote-ws-message-row.mine { align-self: flex-end; flex-direction: row-reverse; }
@@ -16576,6 +16604,11 @@ input, select, textarea {
   .quote-ws-options-backdrop { place-items: center; padding: 14px; }
   .quote-ws-report-body fieldset { grid-template-columns: 1fr; }
   .quote-ws-private { margin: 8px 8px 0; }
+  .quote-ws-paused { margin: 8px 8px 0; padding: 10px 11px; }
+  .quote-ws-paused li { grid-template-columns: 96px minmax(0, 1fr); }
+  .quote-ws-paused-actions button { flex: 1 1 100%; justify-content: center; min-height: 40px; }
+  /* Las columnas laterales se ocultan en celular: la solicitud y la modificación van al menú. */
+  .quote-ws-option-mobile { display: grid !important; }
   .quote-ws-messages { padding: 10px 8px; }
   .quote-ws-message-row { max-width: 92%; }
   .quote-ws-composer { margin: 0 8px 8px; }

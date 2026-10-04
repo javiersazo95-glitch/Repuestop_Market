@@ -420,9 +420,11 @@ export default function StorePublicProfileView({
           // guardado con el picker de compatibilidad) y activeVehicle.catalogoId como
           // number: comparar sin normalizar los deja siempre distintos (`"1019" !== 1019`)
           // y el `includes` nunca encuentra nada.
-          if (idsDelVehiculo.length > 0 && Array.isArray(c.vehiculoCatalogoIds)
-              && c.vehiculoCatalogoIds.map(String).some((id) => idsDelVehiculo.includes(id))) {
-            return true;
+          // Regla del 4-oct: con la version del auto identificada solo vale el calce por
+          // catalogo (misma version); la heuristica por modelo mezclaria Yaris GLI con Sport.
+          if (idsDelVehiculo.length > 0) {
+            return Array.isArray(c.vehiculoCatalogoIds)
+              && c.vehiculoCatalogoIds.map(String).some((id) => idsDelVehiculo.includes(id));
           }
           // `activeVehicle.modelo` viene de adaptVehicle() como "modelo version" (ej.
           // "Yaris 1.5 GLI"), pero lo que declara el vendedor suele ser solo el modelo

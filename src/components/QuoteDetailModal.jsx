@@ -4,12 +4,12 @@ import {
   AlertTriangle, ArrowLeft, BadgeCheck, BadgeDollarSign, CalendarDays, CalendarClock, Car,
   CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, ClipboardList, CreditCard, Download, ExternalLink, Eye, FileText, Flag,
   Headphones, Image as ImageIcon, Info, Loader2, Lock, Maximize2, MessageSquare, MoreHorizontal, Package, Paperclip,
-  Pencil, Send, ShieldCheck, ShoppingCart, Store, Tag, Trash2, Truck, X,
+  PauseCircle, Pencil, Send, ShieldCheck, ShoppingCart, Store, Tag, Trash2, Truck, Undo2, X,
 } from 'lucide-react';
 import RepuesTopLogo from './RepuesTopLogo';
 import ChatImagePreview from './ChatImagePreview';
 import {
-  getConversationMessagesApi,
+  cancelQuoteModificationApi, getConversationMessagesApi, keepOriginalQuoteApi,
   deleteConversationQuoteApi, getConversationQuoteApi, getQuoteRequestApi, getSellerStoreApi, getStoreProfileApi,
   markConversationReadApi, reportConversationApi, resolveMediaUrl,
   sendConversationMessageApi, sendQuoteRequestApi, uploadConversationImageApi,
@@ -18,8 +18,8 @@ import { adaptStore } from '../services/adapters';
 import { compressImageFile } from '../utils/imageCompression';
 import CommissionSummaryCard from './CommissionSummaryCard';
 import {
-  deliveryTermsLabel, isQuoteExpired, isValidPlate, normalizePlate, quantityFromLabel, quoteChargeBase,
-  quoteExpirationLabel, quoteShippingCost as shippingCostOfQuote, resolveQuoteRequest, shippingCodeFromText,
+  deliveryTermsLabel, isQuoteExpired, isQuotePaused, isValidPlate, normalizePlate, quantityFromLabel, quoteChargeBase,
+  quoteExpirationLabel, quoteRequestChanges, quoteShippingCost as shippingCostOfQuote, resolveQuoteRequest, shippingCodeFromText,
   QUOTE_AVAILABILITY_OPTIONS, QUOTE_DELIVERY_OPTIONS, QUOTE_SHIPPING_LABELS,
   QUOTE_VALIDITY_OPTIONS, QUOTE_WARRANTY_OPTIONS,
 } from '../utils/quoteFlow';
@@ -58,6 +58,13 @@ function initials(name) {
 function DataRow({ icon: Icon, label, value }) {
   return <div className="quote-ws-data-row"><Icon size={17} /><span><small>{label}</small><strong>{value || 'No informado'}</strong></span></div>;
 }
+
+// Motivos frecuentes para mantener la cotización original ante una solicitud de modificación.
+const KEEP_ORIGINAL_REASONS = [
+  'No tengo más unidades disponibles',
+  'No realizo ese tipo de envío',
+  'El precio no cambia con ese ajuste',
+];
 
 const REPORT_REASONS = [
   'Quiere pagar o vender fuera de RepuesTop',
@@ -125,6 +132,13 @@ export default function QuoteDetailModal({
   const [modificationForm, setModificationForm] = useState(null);
   const [modificationSubmitting, setModificationSubmitting] = useState(false);
   const [modificationError, setModificationError] = useState('');
+  // Respuestas a una modificación pendiente: el comprador la cancela o la tienda mantiene la original.
+  const [isCancellingModification, setIsCancellingModification] = useState(false);
+  const [keepOriginalOpen, setKeepOriginalOpen] = useState(false);
+  const [keepOriginalReason, setKeepOriginalReason] = useState('');
+  const [keepOriginalError, setKeepOriginalError] = useState('');
+  const [isKeepingOriginal, setIsKeepingOriginal] = useState(false);
+  const [requestSummaryOpen, setRequestSummaryOpen] = useState(false);
 
   // La miniatura de la burbuja no alcanza para revisar una pieza: el vendedor necesita
   // ver el detalle y a veces guardarse la foto. Se abre a pantalla completa con opcion
@@ -177,18 +191,23 @@ export default function QuoteDetailModal({
     setUnitPrice(String(current?.precioUnitario ?? current?.precio ?? ''));
     setDiscount(String(current?.descuento ?? ''));
     setAvailability(current?.disponibilidad || 'Stock disponible');
+    setWarranty(current?.garantia || '3 meses');
+    setValidity(current?.vigencia || 'Valida por 24 horas');
+    setResponseNotes(current?.notas || '');
+  }, [quote]);
+
+  // Aparte del efecto anterior: la solicitud se relee cada 8 s y, con todo junto, una
+  // modificación del comprador borraba el precio y el descuento que la tienda estaba tipeando.
+  useEffect(() => {
     // La condicion es SIEMPRE la que pidio el comprador, tambien si ya habia una cotizacion:
     // si pidio una modificacion, la cotizacion editada debe tomar el metodo nuevo. Antes una
     // cotizacion guardada como "Retiro en tienda" le ganaba a cualquier solicitud posterior.
     setDeliveryTerms(
       requested.hasRequestedDeliveryTerms
         ? requested.requestedDeliveryTerms
-        : deliveryTermsLabel(current?.condicionesEntrega) || ''
+        : deliveryTermsLabel(quote?.cotizacion?.condicionesEntrega) || ''
     );
     setDeliveryCost(requested.requestedShippingCode === 'DENTRO_DE_LA_COMUNA' && localShippingCost ? String(localShippingCost) : '');
-    setWarranty(current?.garantia || '3 meses');
-    setValidity(current?.vigencia || 'Valida por 24 horas');
-    setResponseNotes(current?.notas || '');
   }, [quote, requested.requestedDeliveryTerms, requested.hasRequestedDeliveryTerms, requested.requestedShippingCode, localShippingCost]);
 
   useEffect(() => {
@@ -240,6 +259,19 @@ export default function QuoteDetailModal({
           if (current) setSolicitud(current);
         })
         .catch(() => {});
+      // Los mensajes solo se cargaban al abrir: la solicitud de modificación del comprador o la
+      // respuesta de la tienda no aparecían hasta reabrir el chat.
+      getConversationMessagesApi(quote.id)
+        .then((items) => {
+          if (Array.isArray(items)) {
+            setMessages((previous) => (
+              previous.length === items.length && previous[previous.length - 1]?.id === items[items.length - 1]?.id
+                ? previous
+                : items
+            ));
+          }
+        })
+        .catch(() => {});
     };
     const interval = window.setInterval(refreshQuoteDocument, 8000);
     return () => window.clearInterval(interval);
@@ -283,6 +315,11 @@ export default function QuoteDetailModal({
   // sobre una oferta que ya no se puede pagar. El backend ya bloquea la CERRADA; la
   // vencida se decide aca, que es donde se interpreta `vigencia`.
   const chatLocked = closed || expired;
+  // El comprador pidió una modificación y la tienda aún no responde: la cotización se ve pero
+  // no se puede pagar (el backend también la rechaza en el checkout).
+  const paused = !closed && isQuotePaused(solicitud, activeQuote);
+  const modification = solicitud?.modificacion || null;
+  const requestChanges = paused ? quoteRequestChanges(solicitud) : [];
   const canWriteText = !chatLocked && (mode === 'seller' || Boolean(activeQuote) || sellerHasReplied);
   const canAttach = !chatLocked && imageCount < MAX_CHAT_IMAGES;
   const documentName = quoteDocumentFilename(quote.id);
@@ -475,6 +512,21 @@ export default function QuoteDetailModal({
       setModificationError('Selecciona el método de envío que necesitas.');
       return;
     }
+    const nextQuantity = Number(modificationForm.quantity);
+    if (!Number.isInteger(nextQuantity) || nextQuantity < 1 || nextQuantity > 999) {
+      setModificationError('Ingresa cuántas unidades necesitas (entre 1 y 999).');
+      return;
+    }
+    const currentVehicle = String(requested.requestedPlate || requested.requestedChassis || '').trim().toUpperCase();
+    const nextVehicle = String(modificationForm.chassis || '').trim().toUpperCase();
+    const unchanged = nextQuantity === quantityFromLabel(requested.requestedQty)
+      && shippingCodeFromText(modificationForm.shippingMethod) === requested.requestedShippingCode
+      && (nextVehicle === '' || nextVehicle === currentVehicle)
+      && String(modificationForm.notes || '').trim() === String(requested.requestedNotes || '').trim();
+    if (activeQuote && unchanged) {
+      setModificationError('Cambia al menos un dato para pedir una nueva cotización.');
+      return;
+    }
     setModificationSubmitting(true);
     setModificationError('');
     try {
@@ -493,11 +545,60 @@ export default function QuoteDetailModal({
       const refreshed = await getConversationMessagesApi(quote.id).catch(() => null);
       if (Array.isArray(refreshed)) setMessages(refreshed);
       setModificationOpen(false);
-      setStatusMessage({ type: 'success', text: 'Tu solicitud de modificación fue enviada.' });
+      onMarkedRead?.(quote.id);
+      setStatusMessage({
+        type: 'success',
+        text: activeQuote
+          ? 'Avisamos a la tienda. Tu cotización actual queda en pausa hasta que responda.'
+          : 'Tu solicitud fue actualizada.',
+      });
     } catch (error) {
       setModificationError(error.message || 'No se pudo enviar la modificación. Intenta nuevamente.');
     } finally {
       setModificationSubmitting(false);
+    }
+  };
+
+  const refreshAfterModification = async (saved) => {
+    if (saved?.solicitud) setSolicitud(saved.solicitud);
+    const refreshed = await getConversationMessagesApi(quote.id).catch(() => null);
+    if (Array.isArray(refreshed)) setMessages(refreshed);
+    onMarkedRead?.(quote.id);
+  };
+
+  // El comprador retira su solicitud: la cotización original sale de la pausa.
+  const cancelModification = async () => {
+    if (isCancellingModification) return;
+    if (!window.confirm('¿Cancelar tu solicitud de modificación?\n\nRetomarás la cotización original de la tienda y podrás pagarla mientras siga vigente.')) return;
+    setIsCancellingModification(true);
+    try {
+      await refreshAfterModification(await cancelQuoteModificationApi(quote.id));
+      setStatusMessage({ type: 'success', text: 'Solicitud cancelada. La cotización original vuelve a estar disponible.' });
+    } catch (error) {
+      setStatusMessage({ type: 'error', text: error.message || 'No se pudo cancelar la solicitud.' });
+    } finally {
+      setIsCancellingModification(false);
+    }
+  };
+
+  // La tienda no hará el cambio: mantiene su cotización, con un motivo para el comprador.
+  const submitKeepOriginal = async (event) => {
+    event.preventDefault();
+    if (!keepOriginalReason.trim()) {
+      setKeepOriginalError('Cuéntale al comprador por qué mantienes la cotización.');
+      return;
+    }
+    setIsKeepingOriginal(true);
+    setKeepOriginalError('');
+    try {
+      await refreshAfterModification(await keepOriginalQuoteApi(quote.id, keepOriginalReason));
+      setKeepOriginalOpen(false);
+      setKeepOriginalReason('');
+      setStatusMessage({ type: 'success', text: 'Mantuviste tu cotización original. Avisamos al comprador.' });
+    } catch (error) {
+      setKeepOriginalError(error.message || 'No se pudo completar la acción. Intenta nuevamente.');
+    } finally {
+      setIsKeepingOriginal(false);
     }
   };
 
@@ -528,6 +629,8 @@ export default function QuoteDetailModal({
       setLocalQuote(saved || { ...payload, id: activeQuote?.id || `local-${quote.id}`, createdAt: activeQuote?.createdAt || new Date().toISOString() });
       setQuoteDeleted(false);
       setQuoteEditorOpen(false);
+      // La nueva cotización cierra la modificación pendiente: se relee la solicitud para quitar la pausa.
+      getQuoteRequestApi(quote.id).then((current) => { if (current) setSolicitud(current); }).catch(() => {});
       setStatusMessage({ type: 'success', text: activeQuote ? 'Cotización actualizada y documento regenerado.' : 'Cotización enviada. El documento ya está disponible para ambos.' });
     } catch (error) {
       setStatusMessage({ type: 'error', text: error.message || 'No se pudo guardar la cotización.' });
@@ -605,7 +708,7 @@ export default function QuoteDetailModal({
             <div className="quote-ws-person"><span>{participantPhoto ? <img src={participantPhoto} alt={participantName} /> : initials(participantName)}</span><div><strong>{participantName}</strong><small>{mode === 'buyer' ? 'Vendedor verificado' : 'Comprador'} <i /> En línea</small></div></div>
             <div className="quote-ws-chat-actions">
               {(() => {
-                const isBuyerPayReady = mode === 'buyer' && Boolean(activeQuote);
+                const isBuyerPayReady = mode === 'buyer' && Boolean(activeQuote) && !paused;
                 return (
                   <button
                     type="button"
@@ -623,6 +726,11 @@ export default function QuoteDetailModal({
                         <Eye size={17} />
                         <span>Ver detalles de la cotización</span>
                       </>
+                    ) : paused ? (
+                      <>
+                        <PauseCircle size={17} />
+                        <span>Cotización en pausa</span>
+                      </>
                     ) : (
                       <>
                         <Eye size={17} />
@@ -638,6 +746,49 @@ export default function QuoteDetailModal({
 
           <div className="quote-ws-private"><Info size={19} /><div><strong>Este chat es privado y está asociado a la cotización #{quoteIdShort}.</strong><span>Aquí podrás resolver dudas, solicitar ajustes o confirmar tu compra. El soporte, los reclamos y la mediación de RepuesTop solo cubren compras pagadas dentro de RepuesTop. No pagues ni coordines la compra por fuera.</span></div></div>
 
+          {paused && (
+            <section className="quote-ws-paused" aria-live="polite">
+              <PauseCircle size={20} />
+              <div>
+                <strong>{mode === 'buyer' ? 'Cotización en pausa: pediste una modificación' : 'El comprador pidió una modificación'}</strong>
+                <span>
+                  {mode === 'buyer'
+                    ? 'Avisamos a la tienda. No puedes pagar esta cotización hasta que te envíe una nueva o confirme que la mantiene.'
+                    : 'Tu cotización está en pausa: el comprador no puede pagarla hasta que respondas. Envía una nueva o confirma que mantienes la original.'}
+                </span>
+                {requestChanges.length > 0 && (
+                  <ul>
+                    {requestChanges.map((change) => (
+                      <li key={change.label}><small>{change.label}</small><b>{change.before} → {change.after}</b></li>
+                    ))}
+                  </ul>
+                )}
+                <div className="quote-ws-paused-actions">
+                  {mode === 'buyer' ? (
+                    <button type="button" className="secondary" disabled={isCancellingModification} onClick={cancelModification}>
+                      {isCancellingModification ? <Loader2 size={15} className="spin-icon" /> : <Undo2 size={15} />}
+                      {isCancellingModification ? 'Cancelando…' : 'Cancelar solicitud y retomar la cotización'}
+                    </button>
+                  ) : (
+                    <>
+                      <button type="button" onClick={() => setQuoteEditorOpen(true)}><BadgeDollarSign size={15} /> Enviar nueva cotización</button>
+                      <button type="button" className="secondary" onClick={() => { setKeepOriginalError(''); setKeepOriginalOpen(true); }}>Mantener la original</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+          {!paused && modification?.resolucion === 'MANTENIDA' && activeQuote && !closed && (
+            <section className="quote-ws-paused kept">
+              <Info size={20} />
+              <div>
+                <strong>{mode === 'buyer' ? 'La tienda mantuvo la cotización original' : 'Mantuviste tu cotización original'}</strong>
+                <span>{modification.motivo ? `Motivo: ${modification.motivo}` : 'La cotización vuelve a estar disponible para pagar.'}</span>
+              </div>
+            </section>
+          )}
+
           <div className="quote-ws-messages">
             {isLoadingMessages ? <div className="quote-messages-loading"><Loader2 size={20} className="spin-icon" /> Cargando conversación...</div> : messages.map((message) => {
               const isBuyer = Number(message.emisorId) === Number(quote.usuarioId);
@@ -646,7 +797,7 @@ export default function QuoteDetailModal({
               const bubbleInitials = mine ? initials(user?.userName || user?.nombre) : initials(participantName);
               return <div key={message.id} className={`quote-ws-message-row ${mine ? 'mine' : ''}`}><span className="quote-ws-message-avatar">{bubblePhoto ? <img src={bubblePhoto} alt="" referrerPolicy="no-referrer" /> : bubbleInitials}</span><div className="quote-ws-bubble">{message.imagenUrl && <button type="button" className="quote-ws-image-open" onClick={() => setViewerImage(resolveMediaUrl(message.imagenUrl))} title="Ver imagen completa"><img src={resolveMediaUrl(message.imagenUrl)} alt="Adjunto" /><span><Maximize2 size={15} /></span></button>}{message.texto && <p>{message.texto}</p>}<small>{formatDate(message.createdAt)} {mine ? '✓✓' : ''}</small></div></div>;
             })}
-            {activeQuote && <div className={`quote-ws-message-row ${mode === 'seller' ? 'mine' : ''}`}><span className="quote-ws-message-avatar">{storePhoto ? <img src={storePhoto} alt="" referrerPolicy="no-referrer" /> : initials(storeName)}</span><div className="quote-ws-bubble quote-ws-document-bubble"><p>Te adjunto la propuesta comercial con todos los detalles de la cotización.</p><button type="button" className="quote-ws-file" onClick={viewDocument}><FileText size={25} /><span><strong>{documentName}</strong><small>PDF · Documento de cotización</small></span><Eye size={18} /></button><small>{formatDate(activeQuote.createdAt)}</small></div></div>}
+            {activeQuote && <div className={`quote-ws-message-row ${mode === 'seller' ? 'mine' : ''}`}><span className="quote-ws-message-avatar">{storePhoto ? <img src={storePhoto} alt="" referrerPolicy="no-referrer" /> : initials(storeName)}</span><div className="quote-ws-bubble quote-ws-document-bubble"><p>Te adjunto la propuesta comercial con todos los detalles de la cotización.</p><button type="button" className="quote-ws-file" onClick={viewDocument}><FileText size={25} /><span><strong>{documentName}</strong><small>PDF · Documento de cotización</small></span><Eye size={18} /></button><small>{formatDate(activeQuote.vigenteDesde || activeQuote.createdAt)}</small></div></div>}
           </div>
 
           {!chatLocked ? (
@@ -725,9 +876,10 @@ export default function QuoteDetailModal({
               <button
                 type="button"
                 className="quote-ws-primary-button"
-                disabled={!canWriteText}
+                disabled={!canWriteText || paused}
                 title={chatLocked
                   ? 'La cotización ya no admite cambios'
+                  : paused ? 'Ya pediste una modificación. Cancélala para pedir otra.'
                   : !canWriteText ? 'Podrás escribir cuando la tienda responda' : undefined}
                 onClick={openModificationRequest}
               >
@@ -745,7 +897,7 @@ export default function QuoteDetailModal({
         </aside>
       </div>
 
-      {optionsOpen && <div className="quote-ws-dialog-backdrop quote-ws-options-backdrop" onClick={() => setOptionsOpen(false)}><section className="quote-ws-options-dialog" role="dialog" aria-modal="true" aria-label="Opciones de la conversación" onClick={(event) => event.stopPropagation()}><header><strong>Opciones</strong><button type="button" aria-label="Cerrar opciones" onClick={() => setOptionsOpen(false)}><X size={19} /></button></header><div><button type="button" onClick={openHelp}><span><CircleHelp size={20} /></span><div><strong>Ayuda</strong><small>Obtén asistencia con esta cotización</small></div><ChevronRight size={18} /></button>{mode === 'seller' && activeQuote && !closed && <button type="button" className="danger" disabled={isDeletingQuote} onClick={deleteQuote}><span><Trash2 size={20} /></span><div><strong>Eliminar cotización</strong><small>El comprador dejará de verla y no podrá pagarla</small></div><ChevronRight size={18} /></button>}<button type="button" className="danger" onClick={() => { setOptionsOpen(false); setReportOpen(true); }}><span><Flag size={20} /></span><div><strong>Reportar {mode === 'seller' ? 'comprador' : 'vendedor'}</strong><small>Informa una conducta que incumple las normas</small></div><ChevronRight size={18} /></button></div></section></div>}
+      {optionsOpen && <div className="quote-ws-dialog-backdrop quote-ws-options-backdrop" onClick={() => setOptionsOpen(false)}><section className="quote-ws-options-dialog" role="dialog" aria-modal="true" aria-label="Opciones de la conversación" onClick={(event) => event.stopPropagation()}><header><strong>Opciones</strong><button type="button" aria-label="Cerrar opciones" onClick={() => setOptionsOpen(false)}><X size={19} /></button></header><div><button type="button" className="quote-ws-option-mobile" onClick={() => { setOptionsOpen(false); setRequestSummaryOpen(true); }}><span><ClipboardList size={20} /></span><div><strong>Ver solicitud</strong><small>Unidades, envío y vehículo pedidos</small></div><ChevronRight size={18} /></button>{mode === 'buyer' && canWriteText && !paused && <button type="button" className="quote-ws-option-mobile" onClick={() => { setOptionsOpen(false); openModificationRequest(); }}><span><Pencil size={20} /></span><div><strong>Solicitar modificación</strong><small>Pide otra cantidad, envío o vehículo</small></div><ChevronRight size={18} /></button>}<button type="button" onClick={openHelp}><span><CircleHelp size={20} /></span><div><strong>Ayuda</strong><small>Obtén asistencia con esta cotización</small></div><ChevronRight size={18} /></button>{mode === 'seller' && activeQuote && !closed && <button type="button" className="danger" disabled={isDeletingQuote} onClick={deleteQuote}><span><Trash2 size={20} /></span><div><strong>Eliminar cotización</strong><small>El comprador dejará de verla y no podrá pagarla</small></div><ChevronRight size={18} /></button>}<button type="button" className="danger" onClick={() => { setOptionsOpen(false); setReportOpen(true); }}><span><Flag size={20} /></span><div><strong>Reportar {mode === 'seller' ? 'comprador' : 'vendedor'}</strong><small>Informa una conducta que incumple las normas</small></div><ChevronRight size={18} /></button></div></section></div>}
 
       {reportOpen && <div className="quote-ws-dialog-backdrop" onClick={() => !isSubmittingReport && setReportOpen(false)}><form className="quote-ws-report-dialog" onSubmit={submitReport} onClick={(event) => event.stopPropagation()}><header><div><Flag size={22} /><span><strong>Reportar conversación</strong><small>Selecciona el motivo del reporte. Tu reporte es confidencial.</small></span></div><button type="button" aria-label="Cerrar reporte" disabled={isSubmittingReport} onClick={() => setReportOpen(false)}><X size={19} /></button></header><div className="quote-ws-report-body"><fieldset><legend>Motivo del reporte</legend>{REPORT_REASONS.map((reason) => <label key={reason} className={reportReason === reason ? 'selected' : ''}><input type="radio" name="reportReason" value={reason} checked={reportReason === reason} onChange={(event) => setReportReason(event.target.value)} /><span>{reason}</span><i /></label>)}</fieldset><label className="quote-ws-report-detail"><span>Detalle adicional (opcional)</span><textarea rows="3" maxLength="500" value={reportDetail} onChange={(event) => setReportDetail(event.target.value)} placeholder="Cuéntanos qué ocurrió..." /><small>{reportDetail.length}/500</small></label></div><footer><button type="button" className="secondary" disabled={isSubmittingReport} onClick={() => setReportOpen(false)}>Cancelar</button><button type="submit" disabled={!reportReason || isSubmittingReport}>{isSubmittingReport ? <Loader2 size={17} className="spin-icon" /> : <Flag size={17} />} {isSubmittingReport ? 'Enviando...' : 'Enviar reporte'}</button></footer></form></div>}
 
@@ -860,12 +1012,21 @@ export default function QuoteDetailModal({
               <div className="quote-request-header-copy">
                 <span>COTIZACIÓN CON LA TIENDA</span>
                 <h2 id="modification-request-title">Solicitar modificación</h2>
-                <p>Ajusta los datos de tu solicitud. La tienda recibirá una notificación con el pedido actualizado.</p>
+                <p>Ajusta los datos de tu solicitud y la tienda te enviará una cotización nueva.</p>
               </div>
             </header>
 
             <div className="quote-request-content">
               <form className="quote-request-form" onSubmit={submitModificationRequest}>
+                {activeQuote && (
+                  <div className="quote-ws-pause-notice">
+                    <PauseCircle size={20} />
+                    <div>
+                      <strong>Tu cotización actual quedará en pausa</strong>
+                      <span>No podrás pagarla hasta que la tienda responda. Si cambias de idea, cancela la solicitud y la retomas mientras siga vigente.</span>
+                    </div>
+                  </div>
+                )}
                 <div className="quote-request-section-title">
                   <ClipboardList size={22} />
                   <div><strong>Detalle de tu solicitud</strong><small>Estos datos quedarán visibles para el vendedor.</small></div>
@@ -877,6 +1038,7 @@ export default function QuoteDetailModal({
                     <input
                       type="number"
                       min="1"
+                      max="999"
                       value={modificationForm.quantity}
                       onChange={(event) => updateModificationField('quantity', event.target.value)}
                       required
@@ -900,6 +1062,7 @@ export default function QuoteDetailModal({
                   <input
                     value={modificationForm.chassis}
                     onChange={(event) => updateModificationField('chassis', event.target.value.toUpperCase())}
+                    maxLength="30"
                     placeholder="Ej. BBCL12 o VIN"
                   />
                 </label>
@@ -918,7 +1081,7 @@ export default function QuoteDetailModal({
 
                 <button type="submit" disabled={modificationSubmitting} className="btn-submit-ticket">
                   <Send size={20} />
-                  <span>{modificationSubmitting ? 'Enviando…' : 'Guardar y enviar a la tienda'}</span>
+                  <span>{modificationSubmitting ? 'Enviando…' : 'Pedir modificación a la tienda'}</span>
                 </button>
               </form>
             </div>
@@ -926,7 +1089,50 @@ export default function QuoteDetailModal({
         </div>
       )}
 
-      {quotePreviewOpen && activeQuote && <div className="quote-ws-dialog-backdrop" onClick={() => setQuotePreviewOpen(false)}><section className="quote-ws-quote-dialog quote-ws-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><FileText size={22} /><span><strong>Detalle de la cotización</strong><small><CalendarClock size={13} /> {quoteExpirationLabel(activeQuote, now)}</small></span></div><button type="button" onClick={() => setQuotePreviewOpen(false)}><X size={20} /></button></header><div className="quote-ws-dialog-body"><div className="quote-ws-preview-price"><small>Total a pagar{quoteShippingCost > 0 ? ' (productos + despacho)' : ''}</small><strong>{formatCLP(quoteChargeBase(activeQuote))}</strong></div><DataRow icon={Package} label="Cantidad" value={activeQuote.cantidad} /><DataRow icon={CheckCircle2} label="Disponibilidad" value={activeQuote.disponibilidad} /><DataRow icon={Truck} label="Método de envío" value={deliveryTermsLabel(activeQuote.condicionesEntrega)} />{quoteShippingCost > 0 && <DataRow icon={CreditCard} label="Despacho dentro de la comuna" value={formatCLP(quoteShippingCost)} />}{Number(activeQuote.descuento) > 0 && <DataRow icon={Tag} label="Descuento" value={`-${formatCLP(activeQuote.descuento)}`} />}<DataRow icon={ShieldCheck} label="Garantía" value={activeQuote.garantia} /><DataRow icon={FileText} label="Notas" value={activeQuote.notas} /><div className="quote-ws-preview-document"><button type="button" onClick={viewDocument}><Eye size={16} /> Ver PDF</button><button type="button" onClick={downloadDocument}><Download size={16} /> Descargar PDF</button></div>{mode === 'buyer' && <button type="button" className="quote-ws-primary-button" disabled={expired || closed} onClick={goToQuoteCheckout}><ShoppingCart size={16} /> {expired ? 'Cotización vencida' : 'Comprar esta cotización'}</button>}</div></section></div>}
+      {keepOriginalOpen && (
+        <div className="quote-ws-dialog-backdrop" onClick={() => !isKeepingOriginal && setKeepOriginalOpen(false)}>
+          <form className="quote-ws-report-dialog quote-ws-keep-dialog" onSubmit={submitKeepOriginal} onClick={(event) => event.stopPropagation()}>
+            <header>
+              <div><FileText size={22} /><span><strong>Mantener la cotización original</strong><small>Tu cotización vuelve a quedar disponible para pagar, tal como la enviaste.</small></span></div>
+              <button type="button" aria-label="Cerrar" disabled={isKeepingOriginal} onClick={() => setKeepOriginalOpen(false)}><X size={19} /></button>
+            </header>
+            <div className="quote-ws-report-body">
+              <div className="quote-ws-keep-reasons">
+                {KEEP_ORIGINAL_REASONS.map((reason) => (
+                  <button key={reason} type="button" className={keepOriginalReason === reason ? 'selected' : ''} onClick={() => setKeepOriginalReason(keepOriginalReason === reason ? '' : reason)}>{reason}</button>
+                ))}
+              </div>
+              <label className="quote-ws-report-detail">
+                <span>Motivo (se lo mostraremos al comprador)</span>
+                <textarea rows="3" maxLength="300" value={keepOriginalReason} onChange={(event) => setKeepOriginalReason(event.target.value)} placeholder="Ej. Solo me quedan 2 unidades de este repuesto." />
+                <small>{keepOriginalReason.length}/300</small>
+              </label>
+              {keepOriginalError && <div className="modal-form-error"><AlertTriangle size={16} /><span>{keepOriginalError}</span></div>}
+            </div>
+            <footer>
+              <button type="button" className="secondary" disabled={isKeepingOriginal} onClick={() => setKeepOriginalOpen(false)}>Volver</button>
+              <button type="submit" disabled={isKeepingOriginal}>{isKeepingOriginal ? <Loader2 size={17} className="spin-icon" /> : <CheckCircle2 size={17} />} {isKeepingOriginal ? 'Guardando…' : 'Mantener cotización'}</button>
+            </footer>
+          </form>
+        </div>
+      )}
+
+      {requestSummaryOpen && (
+        <div className="quote-ws-dialog-backdrop" onClick={() => setRequestSummaryOpen(false)}>
+          <section className="quote-ws-quote-dialog quote-ws-preview-dialog" role="dialog" aria-modal="true" aria-label="Solicitud del comprador" onClick={(event) => event.stopPropagation()}>
+            <header><div><ClipboardList size={22} /><span><strong>Solicitud del comprador</strong><small>Cotización #{quoteIdShort}</small></span></div><button type="button" aria-label="Cerrar" onClick={() => setRequestSummaryOpen(false)}><X size={20} /></button></header>
+            <div className="quote-ws-dialog-body">
+              <DataRow icon={Package} label="Cantidad solicitada" value={requested.requestedQty} />
+              <DataRow icon={Truck} label="Método de envío" value={requested.requestedDeliveryTerms || 'Por confirmar'} />
+              <DataRow icon={Car} label="Patente" value={requested.requestedPlate || 'No informada'} />
+              <DataRow icon={ShieldCheck} label="Chasis" value={requested.requestedChassis || (requested.requestedPlate ? 'No identificado' : 'No informado')} />
+              <DataRow icon={MessageSquare} label="Nota del comprador" value={requested.requestedNotes || 'Sin nota adicional'} />
+            </div>
+          </section>
+        </div>
+      )}
+
+      {quotePreviewOpen && activeQuote && <div className="quote-ws-dialog-backdrop" onClick={() => setQuotePreviewOpen(false)}><section className="quote-ws-quote-dialog quote-ws-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><FileText size={22} /><span><strong>Detalle de la cotización</strong><small><CalendarClock size={13} /> {quoteExpirationLabel(activeQuote, now)}</small></span></div><button type="button" onClick={() => setQuotePreviewOpen(false)}><X size={20} /></button></header><div className="quote-ws-dialog-body"><div className="quote-ws-preview-price"><small>Total a pagar{quoteShippingCost > 0 ? ' (productos + despacho)' : ''}</small><strong>{formatCLP(quoteChargeBase(activeQuote))}</strong></div><DataRow icon={Package} label="Cantidad" value={activeQuote.cantidad} /><DataRow icon={CheckCircle2} label="Disponibilidad" value={activeQuote.disponibilidad} /><DataRow icon={Truck} label="Método de envío" value={deliveryTermsLabel(activeQuote.condicionesEntrega)} />{quoteShippingCost > 0 && <DataRow icon={CreditCard} label="Despacho dentro de la comuna" value={formatCLP(quoteShippingCost)} />}{Number(activeQuote.descuento) > 0 && <DataRow icon={Tag} label="Descuento" value={`-${formatCLP(activeQuote.descuento)}`} />}<DataRow icon={ShieldCheck} label="Garantía" value={activeQuote.garantia} /><DataRow icon={FileText} label="Notas" value={activeQuote.notas} /><div className="quote-ws-preview-document"><button type="button" onClick={viewDocument}><Eye size={16} /> Ver PDF</button><button type="button" onClick={downloadDocument}><Download size={16} /> Descargar PDF</button></div>{mode === 'buyer' && paused && <p className="quote-ws-preview-paused"><PauseCircle size={16} /> En pausa: pediste una modificación. Espera la respuesta de la tienda o cancela tu solicitud para pagar esta cotización.</p>}{mode === 'buyer' && <button type="button" className="quote-ws-primary-button" disabled={expired || closed || paused} onClick={goToQuoteCheckout}><ShoppingCart size={16} /> {expired ? 'Cotización vencida' : paused ? 'Cotización en pausa' : 'Comprar esta cotización'}</button>}</div></section></div>}
     </div>
   );
 }

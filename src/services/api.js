@@ -1016,6 +1016,19 @@ export async function getQuoteRequestApi(conversationId) {
   return result && typeof result === 'object' ? result : null;
 }
 
+/** El comprador retira su solicitud de modificación: la cotización original sale de la pausa. */
+export async function cancelQuoteModificationApi(conversationId) {
+  return fetchApi(`/conversaciones/${conversationId}/modificacion`, { method: 'DELETE' });
+}
+
+/** La tienda mantiene su cotización original (con un motivo) en vez de enviar una nueva. */
+export async function keepOriginalQuoteApi(conversationId, motivo) {
+  return fetchApi(`/conversaciones/${conversationId}/modificacion/mantener`, {
+    method: 'POST',
+    body: JSON.stringify({ motivo: String(motivo || '').trim() }),
+  });
+}
+
 export async function saveConversationQuoteApi(conversationId, payload) {
   return fetchApi(`/conversaciones/${conversationId}/cotizacion`, {
     method: 'POST',
@@ -1842,11 +1855,27 @@ export async function createAdAppointmentApi(adId, payload) {
  * `pending`; `cancelled` solo el cliente, y solo si todavia no se cerro.
  * Cualquier otra combinacion responde 403.
  */
-export async function updateAdAppointmentStatusApi(appointmentId, status) {
+export async function updateAdAppointmentStatusApi(appointmentId, status, reason) {
   return fetchApi(`/anuncios/agendamientos/${appointmentId}/estado`, {
     method: 'PATCH',
-    body: JSON.stringify({ status })
+    body: JSON.stringify({ status, reason: reason?.trim() || undefined })
   });
+}
+
+/**
+ * Mueve una cita propia a otro bloque del mismo anuncio. Una sola operacion en el backend:
+ * cancela la anterior, crea la nueva enlazada y avisa al taller del cambio.
+ */
+export async function rescheduleAdAppointmentApi(appointmentId, payload) {
+  return fetchApi(`/anuncios/agendamientos/${appointmentId}/reagendar`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+/** Contadores de citas vigentes de la sesion: `{ cliente: {pendientes, aceptadas}, taller: {porResponder, aceptadas, hoy} }`. */
+export async function getAppointmentsSummaryApi({ signal } = {}) {
+  return fetchApi('/anuncios/agendamientos/resumen', { method: 'GET', signal });
 }
 
 /**

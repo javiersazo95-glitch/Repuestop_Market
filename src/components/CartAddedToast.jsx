@@ -1,6 +1,8 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Check, Package, X } from 'lucide-react';
+import ProductPhoto from './ProductPhoto';
+import { productReferenceImage } from '../utils/productImage';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { ROUTES } from '../routes/paths';
 
@@ -30,8 +32,8 @@ export default function CartAddedToast() {
       </div>
 
       <div className="cart-added-body">
-        {lastAddedItem.imagen
-          ? <img src={lastAddedItem.imagen} alt="" />
+        {lastAddedItem.imagen || productReferenceImage(lastAddedItem)
+          ? <ProductPhoto src={lastAddedItem.imagen} product={lastAddedItem} iconSize={18} />
           : <span className="cart-added-placeholder"><Package size={18} /></span>}
         <div>
           <p>{lastAddedItem.titulo}</p>

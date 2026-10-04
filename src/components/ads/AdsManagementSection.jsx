@@ -9,13 +9,13 @@ import {
 import {
   fetchMyAds, deleteAd, adErrorMessage,
   getCachedTokensBalance, fetchTokensBalance, TOKENS_UPDATED_EVENT,
-  fetchMyAppointments, updateAppointmentStatus, fetchPublicAd
+  fetchMyAppointments, fetchPublicAd, APPOINTMENTS_UPDATED_EVENT
 } from '../../services/adsStorage';
 import {
   AD_TIERS, AD_TIER_ORDER, AD_MODERATION_STATUS, AD_MODERATION_LABELS,
   SERVICE_CATEGORIES, getAdExpiryInfo, getUpgradableTiers,
 } from '../../data/automotiveAdsData';
-import { groupAppointmentsByTime } from '../../utils/appointmentHistory';
+import { isAppointmentCurrent, splitAppointmentsByRole, summarizeAppointmentsByRole } from '../../utils/appointmentHistory';
 import { useAuth } from '../../context/AuthContext';
 import { adDetailPath } from '../../routes/paths';
 import ShareLinkButton from '../ShareLinkButton';
@@ -51,8 +51,9 @@ const STATUS_ICONS = {
   RECHAZADO: XCircle
 };
 
-// Un anuncio esta realmente publicado solo si ademas de APROBADO sigue activo:
-// cualquier edicion posterior lo apaga hasta la nueva revision.
+// Un anuncio esta realmente publicado solo si ademas de APROBADO sigue activo. Editar un
+// anuncio ya aprobado (o subirle el plan) no lo saca del Mural: `AnuncioService.actualizar()`
+// lo mantiene APROBADO y activo. Solo la primera publicacion pasa por moderacion.
 const isLive = (ad) => ad.moderationStatus === AD_MODERATION_STATUS.APROBADO && ad.activo === true;
 
 const STATUS_FILTERS = [
@@ -143,37 +144,48 @@ export default function AdsManagementSection({ onNavigateToMural }) {
     return () => controller.abort();
   }, [loadAds, loadAppointments]);
 
+  // Una accion sobre una cita (aqui o en "Mis citas") o una notificacion de cita recargan la
+  // lista: antes una reserva nueva no aparecia hasta pulsar Actualizar.
+  useEffect(() => {
+    const reload = () => loadAppointments();
+    window.addEventListener(APPOINTMENTS_UPDATED_EVENT, reload);
+    return () => window.removeEventListener(APPOINTMENTS_UPDATED_EVENT, reload);
+  }, [loadAppointments]);
+
   const sessionUserId = user?.userId ?? user?.id ?? user?.buyerId ?? null;
 
-  const { receivedByAd, pendingReceived } = useMemo(() => {
+  // Recibidas = el anuncio es mio (`ownerUserId` del backend). Un solo criterio para el badge,
+  // la metrica y el modal; antes cada uno calculaba el rol a su manera y no cuadraban.
+  // Se recalcula cada minuto: una cita que empieza sin respuesta, termina o se cancela deja de
+  // contar en los distintivos sin tener que pulsar Actualizar.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const { receivedByAd, appointmentSummary } = useMemo(() => {
     const received = new Map();
-    appointments.forEach((appointment) => {
-      const isMine = sessionUserId != null
-        && String(appointment.customerUserId) === String(sessionUserId);
-      if (isMine) return;
+    splitAppointmentsByRole(appointments, sessionUserId).received.forEach((appointment) => {
       const list = received.get(appointment.adId) || [];
       list.push(appointment);
       received.set(appointment.adId, list);
     });
     return {
       receivedByAd: received,
-      pendingReceived: appointments.filter(
-        (item) => item.status === 'pending'
-          && (sessionUserId == null || String(item.customerUserId) !== String(sessionUserId))
-      ).length
+      // Solo citas vigentes: una solicitud vencida ya no se puede responder y dejaba la
+      // metrica "Citas por responder" inflada para siempre.
+      appointmentSummary: summarizeAppointmentsByRole(appointments, sessionUserId, now)
     };
-  }, [appointments, sessionUserId]);
+  }, [appointments, sessionUserId, now]);
+  const pendingReceived = appointmentSummary.provider.pending;
 
   const replaceAppointment = (saved) => {
     setAppointments((current) => current.map((item) => (item.id === saved.id ? saved : item)));
   };
 
-  // Próximas citas (recibidas + pedidas) para el distintivo del botón "Historial
-  // de citas". No cerradas y con fecha/bloque aún por venir.
-  const upcomingAppointmentsCount = useMemo(
-    () => groupAppointmentsByTime(appointments).upcoming.length,
-    [appointments]
-  );
+  // Citas vigentes de la cuenta (recibidas + reservadas) para el distintivo de "Gestión de citas".
+  const upcomingAppointmentsCount = appointmentSummary.provider.current + appointmentSummary.customer.current;
 
   // El gate de publicación: sin expediente aprobado no se abre el formulario.
   // Mientras carga la acreditación se deja pasar para no bloquear en falso; el
@@ -200,22 +212,16 @@ export default function AdsManagementSection({ onNavigateToMural }) {
     setRebookState('loading');
     try {
       const ad = await fetchPublicAd(appointment.adId);
-      setRebookState({ ad, appointmentId: appointment.id });
+      // Solo una cita vigente se cambia de hora; desde una cancelada o pasada es una reserva nueva.
+      setRebookState({ ad, appointmentId: isAppointmentCurrent(appointment) ? appointment.id : null });
     } catch {
       setRebookState(null);
+      window.alert('El anuncio de esta cita ya no está publicado, así que no se puede reservar otra hora.');
     }
   };
 
-  const handleRebooked = async () => {
-    const previousId = rebookState?.appointmentId;
-    // La hora anterior se cancela recién cuando la nueva quedó reservada.
-    if (previousId) {
-      try {
-        await updateAppointmentStatus(previousId, 'cancelled');
-      } catch {
-        // Si la cancelación falla se refleja igual al recargar la lista.
-      }
-    }
+  // El backend ya canceló la hora anterior y avisó al taller, todo en una operación.
+  const handleRebooked = () => {
     loadAppointments();
   };
 
@@ -402,8 +408,8 @@ export default function AdsManagementSection({ onNavigateToMural }) {
             {upcomingAppointmentsCount > 0 && <i className="ads-tile-badge">{upcomingAppointmentsCount}</i>}
           </span>
           <span className="ads-tile-body">
-            <strong>Historial de citas</strong>
-            <em>Revisa todas tus reservas</em>
+            <strong>Gestión de citas</strong>
+            <em>{pendingReceived > 0 ? `${pendingReceived} por responder` : 'Tus reservas y solicitudes'}</em>
           </span>
           <ChevronRight size={15} className="ads-tile-arrow" />
         </button>
@@ -570,8 +576,8 @@ export default function AdsManagementSection({ onNavigateToMural }) {
 
             {filteredAds.map((ad) => {
               const tierConfig = AD_TIERS[ad.tier] || AD_TIERS.basica;
-              // APROBADO pero apagado: lo apago la ultima edicion y espera la
-              // nueva revision. Se pinta como pendiente, no como publicado.
+              // APROBADO pero apagado (dato antiguo o inconsistente): se pinta como
+              // pendiente, no como publicado.
               const isWaitingRecheck = ad.moderationStatus === AD_MODERATION_STATUS.APROBADO && !ad.activo;
               const effectiveStatus = isWaitingRecheck ? AD_MODERATION_STATUS.PENDIENTE : ad.moderationStatus;
               const status = AD_MODERATION_LABELS[effectiveStatus] || AD_MODERATION_LABELS.PENDIENTE;
@@ -580,7 +586,8 @@ export default function AdsManagementSection({ onNavigateToMural }) {
               const catObj = SERVICE_CATEGORIES.find((c) => c.id === ad.category);
               const coverPhoto = ad.images?.[0] || null;
               const canUpgrade = getUpgradableTiers(ad.tier).length > 0;
-              const adAppointments = receivedByAd.get(ad.id) || [];
+              // Por anuncio se cuentan solo las citas vigentes, no todo su historial.
+              const adAppointments = (receivedByAd.get(ad.id) || []).filter((item) => isAppointmentCurrent(item, now));
               const adPending = adAppointments.filter((item) => item.status === 'pending').length;
               const isRejected = ad.moderationStatus === AD_MODERATION_STATUS.RECHAZADO;
 
@@ -621,7 +628,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
                     <td className="col-bookings">
                       {ad.hasOnlineBooking ? (
                         <button type="button" className="mgmt-bookings-link" onClick={() => setAdForAgenda(ad)}>
-                          {adAppointments.length}{adPending > 0 ? ` · ${adPending} pend.` : ''}
+                          {adAppointments.length}{adPending > 0 ? ` · ${adPending} por responder` : ''}
                         </button>
                       ) : '—'}
                     </td>
@@ -786,6 +793,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
       {isHistoryOpen && (
         <AppointmentsHistoryModal
           ads={ads}
+          adsLoaded={!isLoading}
           appointments={appointments}
           sessionUserId={sessionUserId}
           userEmail={user?.email || ''}
@@ -800,7 +808,8 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           adOrCompany={rebookState.ad}
           onBooked={handleRebooked}
           onClose={() => setRebookState(null)}
-          isRescheduling
+          isRescheduling={Boolean(rebookState.appointmentId)}
+          rescheduleFromId={rebookState.appointmentId}
         />
       )}
 

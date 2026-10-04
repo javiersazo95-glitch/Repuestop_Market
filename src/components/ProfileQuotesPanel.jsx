@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Clock, Inbox, MessageSquare, ReceiptText, Search, Send, Sliders, X } from 'lucide-react';
 import QuoteCard from './QuoteCard';
 import { EmptyState } from './ProfileDashboard';
+import { isConversationPaused } from '../utils/quoteFlow';
 
 /**
  * Pestaña "Cotizaciones"/"Mis cotizaciones" del panel de perfil. Extraida de
@@ -25,8 +26,9 @@ export default function ProfileQuotesPanel({
     return (activeQuoteSource || [])
       .filter((conversation) => !conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion')
       .filter((conversation) => {
-        if (quoteFilter === 'pending') return !conversation.cotizacion;
-        if (quoteFilter === 'sent') return Boolean(conversation.cotizacion);
+        // Una modificación pendiente vuelve a dejar la conversación "sin responder".
+        if (quoteFilter === 'pending') return !conversation.cotizacion || isConversationPaused(conversation);
+        if (quoteFilter === 'sent') return Boolean(conversation.cotizacion) && !isConversationPaused(conversation);
         if (quoteFilter === 'unread') return Number(conversation.mensajesNoLeidos || 0) > 0;
         return true;
       })

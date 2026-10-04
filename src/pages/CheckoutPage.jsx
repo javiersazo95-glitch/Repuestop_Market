@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowLeft, Building2, Car, CheckCircle2, ChevronRight, CreditCard, FileText, Loader2, Lock, MapPin, Package, ReceiptText, Sparkles, Store, Truck, User,
+  AlertTriangle, ArrowLeft, Building2, Car, CheckCircle2, ChevronRight, CreditCard, FileText, Loader2, Lock, MapPin, ReceiptText, Sparkles, Store, Truck, User,
 } from 'lucide-react';
+import ProductPhoto from '../components/ProductPhoto';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -139,6 +140,11 @@ export default function CheckoutPage() {
           setQuoteError('La cotización venció. Pídele al vendedor que la actualice.');
           return;
         }
+        // Pediste una modificación y la tienda aún no responde: la cotización no se puede pagar.
+        if (savedQuote.enPausa) {
+          setQuoteError('Esta cotización está en pausa porque pediste una modificación. Espera la respuesta de la tienda o cancela tu solicitud desde el chat para pagarla.');
+          return;
+        }
         setQuote(savedQuote);
         if (!contextoActual && Array.isArray(conversations)) {
           const found = conversations.find((item) => String(item.id) === String(conversacionId));
@@ -149,7 +155,7 @@ export default function CheckoutPage() {
               productoNombre: found.productoNombre,
               productoImagenUrl: resolveMediaUrl(found.productoImagenUrl),
               proveedorId: found.proveedorId,
-              tiendaNombre: found.participante || found.proveedorNombre,
+              tiendaNombre: found.otroParticipanteNombre || found.participante || found.proveedorNombre,
             });
           }
         }
@@ -814,7 +820,7 @@ export default function CheckoutPage() {
                                 <div key={item.id} className="checkout-delivery-line">
                                   <div className="cart-line">
                                     <div className="cart-line-media">
-                                      {item.imagen ? <img src={item.imagen} alt="" loading="lazy" /> : <Package size={20} />}
+                                      <ProductPhoto src={item.imagen} product={item} loading="lazy" iconSize={20} />
                                     </div>
                                     <div className="cart-line-info">
                                       <h3>{item.titulo}</h3>

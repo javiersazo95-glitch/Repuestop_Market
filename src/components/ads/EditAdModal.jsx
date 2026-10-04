@@ -115,11 +115,15 @@ export default function EditAdModal({
                 {savedPublished ? <CheckCircle2 size={34} /> : <Clock3 size={34} />}
               </div>
 
-              <h3>{savedPublished ? 'Cambios publicados' : 'Cambios guardados, en revisión'}</h3>
+              <h3>
+                {savedPublished
+                  ? (upgradedToTier ? 'Plan mejorado y publicado' : 'Cambios publicados')
+                  : 'Cambios guardados, en revisión'}
+              </h3>
 
               <p>
                 {savedPublished
-                  ? <>Actualizamos <strong>"{savedAd.title}"</strong> en el Mural. La nueva versión ya está visible para los clientes.</>
+                  ? <>Actualizamos <strong>"{savedAd.title}"</strong> en el Mural. La nueva versión ya está visible para los clientes, sin pasar de nuevo por revisión.</>
                   : <>Guardamos la nueva versión de <strong>"{savedAd.title}"</strong>. Como todavía no pasó su primera aprobación, te avisamos cuando quede publicado.</>}
               </p>
 

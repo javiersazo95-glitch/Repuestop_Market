@@ -2,6 +2,8 @@ import React from 'react';
 import { AlertTriangle, Minus, Plus } from 'lucide-react';
 import { CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
+import ProductPhoto from './ProductPhoto';
+import { productReferenceImage } from '../utils/productImage';
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
@@ -16,8 +18,8 @@ export default function CartLineItem({ item, activeVehicle, onUpdateQuantity, on
   return (
     <article className="cart-line">
       <div className="cart-line-media">
-        {item.imagen ? (
-          <img src={item.imagen} alt="" loading="lazy" />
+        {item.imagen || productReferenceImage(item) ? (
+          <ProductPhoto src={item.imagen} product={item} loading="lazy" iconSize={24} />
         ) : (
           <CategoryIconTile
             iconName={CATEGORY_ICON_BY_ID[item.categoria]}

@@ -59,7 +59,11 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
   const PartTypeIcon = partType.icon;
   const storeName = product.vendedor || product.tienda || 'Tienda RepuesTop';
   const storeLogo = product.logoTienda || product.storeIconUrl || product.tiendaLogo || null;
-  const stock = Number(product.stock ?? product.stockAvailable ?? 0);
+  // Sin dato de stock no se afirma nada: antes un stock desconocido se leia como 0 y la tarjeta
+  // decia "Sin stock" (pasaba con todos los favoritos).
+  const rawStock = product.stock ?? product.stockAvailable;
+  const stockKnown = rawStock !== null && rawStock !== undefined && rawStock !== '';
+  const stock = Number(rawStock ?? 0);
   // Nota real o nada. Antes caía a 4.8 cuando no había calificaciones: una tienda recién
   // aprobada aparecía con 4.8 sin una sola reseña (pruebas de lanzamiento, O53), igual que
   // lo que ya se había quitado de la ficha.
@@ -129,9 +133,11 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
 
         <div className="market-product-meta">
           {rating > 0 && <span className="market-product-rating"><Star size={12} /> {rating.toFixed(1)}</span>}
-          <span className={`market-product-stock ${stock <= 0 ? 'out' : stock <= 5 ? 'low' : ''}`}>
-            <PackageCheck size={12} /> {stock > 0 ? `${stock} en stock` : 'Sin stock'}
-          </span>
+          {stockKnown && (
+            <span className={`market-product-stock ${stock <= 0 ? 'out' : stock <= 5 ? 'low' : ''}`}>
+              <PackageCheck size={12} /> {stock > 0 ? `${stock} en stock` : 'Sin stock'}
+            </span>
+          )}
         </div>
 
         <div className="market-product-price">

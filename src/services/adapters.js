@@ -757,6 +757,12 @@ export function adaptAppointment(dto) {
     customerPhone: dto.customerPhone || '',
     customerEmail: dto.customerEmail || '',
     customerUserId: dto.customerUserId ? String(dto.customerUserId) : null,
+    // Dueño del anuncio: decide qué citas son "recibidas" sin depender de la lista de anuncios.
+    ownerUserId: dto.ownerUserId ? String(dto.ownerUserId) : null,
+    cancelledBy: dto.cancelledBy || null,
+    cancelReason: dto.cancelReason || '',
+    rescheduledFromId: dto.rescheduledFromId ? String(dto.rescheduledFromId) : null,
+    rescheduledToId: dto.rescheduledToId ? String(dto.rescheduledToId) : null,
     vehiclePatent: dto.vehiclePatent || '',
     vehicleModel: dto.vehicleModel || '',
     notes: dto.notes || '',

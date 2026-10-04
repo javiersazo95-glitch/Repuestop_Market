@@ -141,6 +141,36 @@ export function resolveQuoteRequest(solicitud, messages = [], fallbackText = '')
   return parseQuoteRequestMessage(latest?.texto || (isQuoteRequestMessage(fallbackText) ? fallbackText : ''));
 }
 
+/**
+ * Modificación pedida sobre una cotización ya enviada. Mientras está `PENDIENTE` la cotización
+ * queda EN PAUSA: no se puede pagar hasta que la tienda envíe una nueva o mantenga la original,
+ * o el comprador cancele su solicitud. Contraparte de `isQuotePaused` de la app.
+ */
+export function isQuotePaused(solicitud, quote) {
+  return Boolean(quote) && solicitud?.modificacion?.estado === 'PENDIENTE';
+}
+
+/** Conversación de la lista: tiene cotización y el comprador espera respuesta a su modificación. */
+export function isConversationPaused(conversation) {
+  return isQuotePaused(conversation?.solicitud, conversation?.cotizacion);
+}
+
+/** Qué cambió entre la solicitud que respondía la cotización y la nueva: "antes → ahora". */
+export function quoteRequestChanges(solicitud) {
+  const previous = solicitud?.modificacion?.anterior;
+  if (!previous || !solicitud) return [];
+  const text = (value) => String(value ?? '').trim() || 'No informado';
+  const quantity = (item) => item.cantidadEtiqueta || (item.cantidad ? quantityLabel(item.cantidad) : '1 unidad');
+  const shipping = (item) => item.metodoEnvioEtiqueta || QUOTE_SHIPPING_LABELS[shippingCodeFromText(item.metodoEnvio)] || '';
+  return [
+    { label: 'Unidades', before: quantity(previous), after: quantity(solicitud) },
+    { label: 'Método de envío', before: text(shipping(previous)), after: text(shipping(solicitud)) },
+    { label: 'Patente', before: text(previous.patente), after: text(solicitud.patente) },
+    { label: 'Chasis', before: text(previous.chasis), after: text(solicitud.chasis) },
+    { label: 'Nota', before: text(previous.nota), after: text(solicitud.nota) },
+  ].filter((row) => row.before.toLowerCase() !== row.after.toLowerCase());
+}
+
 /** Despacho que cobrará el checkout: el que informa el backend o el "(costo: $X)" guardado. */
 export function quoteShippingCost(quote) {
   if (!quote) return 0;
@@ -189,8 +219,10 @@ export function quantityFromLabel(value) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
-function validityMilliseconds(validity = '') {
-  const lower = validity.toLowerCase();
+// El backend manda `vigencia: null` en una cotizacion sin vigencia: el `= ''` solo cubre
+// undefined, y el null tumbaba la pantalla de cotizaciones de la intranet en produccion.
+function validityMilliseconds(validity) {
+  const lower = String(validity ?? '').toLowerCase();
   const amount = Number(lower.match(/\d+/)?.[0]);
   if (!Number.isFinite(amount)) return null;
   if (lower.includes('hora')) return amount * 60 * 60 * 1000;

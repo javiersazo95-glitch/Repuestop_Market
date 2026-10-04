@@ -73,6 +73,14 @@ const TARGETS = {
     ? `${ROUTES.adsWall}?anuncio=${encodeURIComponent(params.id)}`
     : ROUTES.adsWall),
   '/ads-management': () => PROFILE('anuncios'),
+  // Notificaciones de cita (las crea el backend): abren "Mis citas" en la bandeja que
+  // corresponde, con la cita resaltada. Lo atiende `ProfileAppointmentsButton`.
+  '/appointments-history': (params) => {
+    const query = new URLSearchParams({ citas: params?.segmento === 'received' ? 'recibidas' : 'pedidas' });
+    if (params?.id) query.set('cita', params.id);
+    // Con la pestaña explícita: `/perfil` a secas redirige a `/perfil/resumen` y pierde la consulta.
+    return `${PROFILE('resumen')}?${query.toString()}`;
+  },
 
   '/provider-verification-status': () => PROFILE('tienda_datos'),
 

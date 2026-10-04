@@ -23,7 +23,7 @@ import {
   getFichasBalanceApi, getFichasMovimientosApi, getFichasPacksApi, iniciarRecargaFichasApi,
   getAdAppointmentsApi, getMyAppointmentsApi, createAdAppointmentApi,
   updateAdAppointmentStatusApi, sendAppointmentSummaryEmailsApi,
-  createUserNotificationApi, createProviderNotificationApi,
+  rescheduleAdAppointmentApi,
   getDatosDocumentoRecargaApi,
 } from './api';
 import {
@@ -472,53 +472,41 @@ export async function createAdAppointment(adId, form) {
   return adaptAppointment(await createAdAppointmentApi(adId, toAppointmentRequestPayload(form)));
 }
 
-/** Acepta, rechaza o cancela una reserva. Devuelve la cita con el estado nuevo. */
-export async function updateAppointmentStatus(appointmentId, status) {
-  return adaptAppointment(await updateAdAppointmentStatusApi(appointmentId, status));
+/** Evento de ventana: las citas cambiaron (una accion propia o una notificacion de cita). */
+export const APPOINTMENTS_UPDATED_EVENT = 'repuestop:appointments-updated';
+
+export function notifyAppointmentsChanged() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(APPOINTMENTS_UPDATED_EVENT));
 }
 
 /**
- * Avisa la cita nueva al taller y al cliente: correo con el resumen para ambos y
- * notificacion dentro de la plataforma para cada uno. Contraparte de
- * `mobile/services/appointment-notifications.ts`.
- *
- * NUNCA lanza. La reserva ya quedo confirmada por el backend y un fallo de aviso
- * no debe deshacerla ni mostrarse como si la cita hubiera fallado; por eso los
- * tres envios van en paralelo con `allSettled` y el resultado es informativo.
- *
- * `dateLabel` llega ya formateado ("jueves 20 de agosto de 2026") porque el
- * correo lo imprime tal cual: el backend no formatea fechas de este payload.
+ * Acepta, rechaza o cancela una reserva (con motivo opcional). Devuelve la cita con el estado
+ * nuevo. El aviso a la contraparte lo crea el backend junto con el cambio.
  */
-export async function notifyAppointmentCreated({ appointment, ad, customerUserId, dateLabel }) {
-  // Los ids del backend son numericos. Un 'guest' o un id vacio darian un 404
-  // que no aporta nada, asi que esos avisos simplemente no se intentan.
-  const isNumericId = (value) => Boolean(value && /^\d+$/.test(String(value).trim()));
+export async function updateAppointmentStatus(appointmentId, status, reason) {
+  const updated = adaptAppointment(await updateAdAppointmentStatusApi(appointmentId, status, reason));
+  notifyAppointmentsChanged();
+  return updated;
+}
 
-  const notifyProvider = async () => {
-    if (!isNumericId(ad?.ownerSellerId)) return;
-    await createProviderNotificationApi(String(ad.ownerSellerId), {
-      tipo: 'AGENDAMIENTO_CITA',
-      titulo: 'Nueva reserva en tu agenda',
-      mensaje: `${appointment.customerName} reservó ${appointment.service} para el ${dateLabel} a las ${appointment.time} en "${ad.title}".`,
-      targetRoute: '/perfil',
-      targetParams: { adId: String(ad.id) },
-      // Idempotencia del lado del backend: si el aviso se reintenta, no duplica.
-      eventKey: `ad-appointment:${appointment.id}`
-    });
-  };
+/** Cambia la hora de una cita propia: el backend cancela la anterior y crea la nueva. */
+export async function rescheduleAdAppointment(appointmentId, form) {
+  const created = adaptAppointment(await rescheduleAdAppointmentApi(appointmentId, toAppointmentRequestPayload(form)));
+  notifyAppointmentsChanged();
+  return created;
+}
 
-  const notifyCustomer = async () => {
-    if (!isNumericId(customerUserId)) return;
-    await createUserNotificationApi(String(customerUserId), {
-      tipo: 'AGENDAMIENTO_CITA',
-      titulo: 'Tu cita quedó registrada',
-      mensaje: `${appointment.service} en ${ad?.company || ad?.title} el ${dateLabel} a las ${appointment.time}. Te avisaremos cuando el taller la confirme.`,
-      targetRoute: '/mural-anuncios',
-      targetParams: { adId: String(ad?.id ?? '') },
-      eventKey: `ad-appointment-customer:${appointment.id}`
-    });
-  };
-
+/**
+ * Envia a ambos el correo con el resumen de la cita nueva.
+ *
+ * Las notificaciones dentro de la plataforma ya no salen de aqui: las crea el backend junto
+ * con la reserva y con cada cambio de estado (revision del 4-oct). Este aviso usaba
+ * `ad.ownerSellerId`, que llega como "RTP-<id>" y no es numerico, asi que al taller nunca le
+ * llegaba nada desde la web.
+ *
+ * NUNCA lanza: la reserva ya quedo guardada.
+ */
+export async function notifyAppointmentCreated({ appointment, ad, dateLabel }) {
   const sendEmails = async () => {
     await sendAppointmentSummaryEmailsApi({
       reservaId: appointment.id,
@@ -539,12 +527,10 @@ export async function notifyAppointmentCreated({ appointment, ad, customerUserId
     });
   };
 
-  const [provider, customer, email] = await Promise.allSettled([
-    notifyProvider(), notifyCustomer(), sendEmails()
-  ]);
-
-  return {
-    inApp: provider.status === 'fulfilled' || customer.status === 'fulfilled',
-    email: email.status === 'fulfilled'
-  };
+  try {
+    await sendEmails();
+    return { email: true };
+  } catch {
+    return { email: false };
+  }
 }

@@ -13,7 +13,9 @@ const MarketplaceContext = createContext(null);
 // dejaba el catálogo en cero resultados. Cambiar la clave descarta ese dato una vez.
 // v3: el vehiculo guardado lleva `catalogoIdsEquivalentes` y el modelo canonico. Uno guardado
 // con la forma anterior se descarta para que la patente se vuelva a consultar.
-const ACTIVE_VEHICLE_KEY = 'repuestop_active_vehicle_v3';
+// v4: `catalogoIdsEquivalentes` pasa a ser solo de la misma version (regla del 4-oct). Uno
+// guardado antes trae todas las versiones del modelo y se descarta para volver a consultarlo.
+const ACTIVE_VEHICLE_KEY = 'repuestop_active_vehicle_v4';
 
 // El carrito de invitado se persiste porque ahora vive en una URL propia (`/carrito`):
 // antes solo existía dentro del drawer y morir al recargar no se notaba.

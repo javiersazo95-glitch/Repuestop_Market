@@ -14,8 +14,127 @@
      5. Tarjeta "Para proveedores" compacta, al final.
    ========================================================================== */
 
+/* Fila movil del rediseño del 4-oct (tabs + campo + filtro + orden): solo en
+   celular. En escritorio sigue la barra .ads-filterbar de siempre. */
+.ads-mobile-search { display: none; }
+
 @media (max-width: 768px) {
   .ads-wall-page { padding-bottom: 40px; }
+
+  /* -------------------------------------------------------------------------
+     0. Rediseño del 4-oct: misma vista que repuestos. Tabs de busqueda por
+        servicio o patente y una sola fila: campo (con el pin de "cerca de mi"
+        adentro), filtro avanzado (panel lateral derecho) y orden. Lo demas
+        (marca, comuna, categoria, 24 h, planes) vive en el panel.
+     ------------------------------------------------------------------------- */
+  .ads-wall-page .ads-filterbar,
+  .ads-wall-page .ads-plate-area--bar,
+  .ads-wall-page .ads-sidebar-block,
+  .ads-wall-page .ads-sort-field { display: none; }
+
+  .ads-mobile-search {
+    display: block;
+    overflow: visible;
+    border: 1px solid var(--ads-border);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, .04);
+  }
+  .ads-mobile-tabs { display: flex; border-bottom: 1px solid var(--ads-border); }
+  .ads-mobile-tabs button {
+    flex: 1 1 0;
+    min-height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--ads-muted);
+    font-size: 12.5px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .ads-mobile-tabs button:first-child { border-top-left-radius: 14px; }
+  .ads-mobile-tabs button:last-child { border-top-right-radius: 14px; }
+  .ads-mobile-tabs button.active {
+    border-bottom-color: var(--ads-primary);
+    background: var(--ads-primary-light);
+    color: var(--ads-primary);
+  }
+  .ads-mobile-search .ads-mobile-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    margin: 0;
+    padding: 10px;
+  }
+  .ads-mobile-field { flex: 1 1 0; min-width: 0; }
+  .ads-wall-page .ads-mobile-field input {
+    min-height: 44px;
+    padding: 8px 46px 8px 38px;
+    border-radius: 10px;
+  }
+  .ads-wall-page .ads-mobile-field input:not(:placeholder-shown) { padding-right: 80px; }
+  .ads-wall-page .ads-mobile-field--plate input,
+  .ads-wall-page .ads-mobile-field--plate input:not(:placeholder-shown) { padding-right: 80px; }
+  .ads-mobile-field .ads-nearby-btn { right: 7px; }
+  .ads-mobile-field .ads-search-clear { right: 41px; }
+  .ads-mobile-field--plate .ads-nearby-btn { right: 41px; }
+  .ads-mobile-plate-go {
+    position: absolute;
+    right: 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--ads-primary);
+    color: #fff;
+    cursor: pointer;
+  }
+  .ads-mobile-plate-go:disabled { cursor: progress; opacity: .8; }
+  /* Mismos botones cuadrados que la fila de repuestos (index.css), aqui de 44px
+     incluso a 768px, donde la regla del catalogo aun no aplica. */
+  .ads-mobile-search .catalog-mobile-filter-trigger,
+  .ads-mobile-search .catalog-mobile-sort-trigger {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #bfd4f5;
+    border-radius: 10px;
+    color: #0754c9;
+    background: #eff6ff;
+  }
+  .ads-mobile-search .catalog-mobile-sort-trigger { overflow: hidden; }
+  .ads-mobile-search .catalog-mobile-sort-trigger select {
+    position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
+  }
+  .ads-mobile-search .catalog-mobile-filter-trigger.is-active,
+  .ads-mobile-search .catalog-mobile-sort-trigger.is-active {
+    border-color: #0754c9;
+    background: #dbeafe;
+  }
+  .ads-mobile-search .catalog-mobile-filter-trigger .ads-filter-btn-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    border: 1.5px solid #fff;
+  }
+  .ads-mobile-search .ads-plate-vehicle,
+  .ads-mobile-search .ads-plate-result { margin: 0 10px 10px; }
+  .ads-mobile-search .ads-plate-result { font-size: 12.5px; color: var(--ads-muted); }
+  .ads-mobile-search .ads-plate-result.is-error { color: #b91c1c; }
+  .ads-wall-page .ads-location-notice { margin-top: 8px; }
   .ads-wall-page .container { padding-left: 12px; padding-right: 12px; }
   .ads-wall-page .ads-wall-shell { padding-top: 12px; }
 
@@ -211,16 +330,34 @@
   .ads-wall-page .ads-provider-link { min-height: 42px; }
 
   /* -------------------------------------------------------------------------
-     "Mas filtros": hoja inferior a pantalla casi completa
+     Filtro avanzado: panel lateral desde la derecha, como los "Filtros
+     Avanzados" de repuestos (mismo ancho, scrim y sombra).
      ------------------------------------------------------------------------- */
-  .ads-filter-overlay { padding: 0; align-items: flex-end; }
-  .ads-filter-sheet {
-    max-width: none;
-    max-height: 92vh;
-    max-height: 92dvh;
-    border-radius: 18px 18px 0 0;
+  .ads-filter-overlay {
+    padding: 0;
+    align-items: stretch;
+    justify-content: flex-end;
+    background: rgba(6, 19, 41, .62);
+    backdrop-filter: none;
   }
-  .ads-filter-sheet-header { padding: 12px 14px; }
+  .ads-filter-sheet {
+    width: min(90vw, 400px);
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 18px 0 0 18px;
+    box-shadow: -14px 0 36px rgba(6, 19, 41, .24);
+    animation: ads-filter-slide-in .22s ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) { .ads-filter-sheet { animation: none; } }
+  @keyframes ads-filter-slide-in {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  .ads-filter-sheet .catalog-search-select-trigger { min-height: 44px; font-size: 16px; }
+  .ads-filter-sheet .catalog-search-select-search input { font-size: 16px; }
+  .ads-filter-sheet-header { padding: calc(12px + env(safe-area-inset-top, 0px)) 14px 12px; }
   .ads-filter-sheet-body { padding: 14px; gap: 14px; -webkit-overflow-scrolling: touch; }
   .ads-filter-sheet-footer { padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px)); }
   .ads-filter-apply { width: 100%; min-height: 46px; }

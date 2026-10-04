@@ -5,7 +5,13 @@ import {
   Loader2, AlertTriangle, ChevronLeft, ChevronRight, ArrowLeft, Hash, Wrench,
   Clock, MessageSquare
 } from 'lucide-react';
-import { APPOINTMENT_STATUS_META, isClosedAppointment } from '../../data/automotiveAdsData';
+import {
+  APPOINTMENT_LEGEND, APPOINTMENT_STATE_ORDER, appointmentVisualState, describeAppointment,
+  isAppointmentCurrent
+} from '../../utils/appointmentHistory';
+import AppointmentReasonDialog from './AppointmentReasonDialog';
+
+const TONE_BY_STATE = { pending: 'warning', accepted: 'success', cancelled: 'danger', past: 'muted' };
 import {
   WEEKDAYS, formatAgendaDateLong, getTimeUntilLabel, parseIsoDate, toIsoDate,
   weekdayIndexFromDate, formatAgendaMonthLabel
@@ -37,6 +43,7 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
   // así que quien administraba el anuncio no tenía forma de ver el detalle
   // desde esa pestaña.
   const [selectedDateIso, setSelectedDateIso] = useState(null);
+  const [reasonTarget, setReasonTarget] = useState(null); // { kind, appointment }
 
   const todayIso = toIsoDate(new Date());
 
@@ -45,10 +52,12 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
       (a, b) => (a.date === b.date ? a.time.localeCompare(b.time) : a.date.localeCompare(b.date))
     );
     return {
-      upcoming: sorted.filter((item) => !isClosedAppointment(item.status) && item.date >= todayIso),
-      closed: sorted.filter((item) => isClosedAppointment(item.status) || item.date < todayIso).reverse()
+      // Vigentes: una pendiente hasta su hora de inicio, una aceptada hasta que termina su bloque.
+      // Antes bastaba con que fuera de hoy, y una solicitud de las 09:00 seguía "por responder" a las 15:00.
+      upcoming: sorted.filter((item) => isAppointmentCurrent(item)),
+      closed: sorted.filter((item) => !isAppointmentCurrent(item)).reverse()
     };
-  }, [appointments, todayIso]);
+  }, [appointments]);
 
   const pendingCount = upcoming.filter((item) => item.status === 'pending').length;
   const nextAppointment = upcoming[0] || null;
@@ -68,10 +77,22 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
     }
   };
 
+  const confirmReason = async (reason) => {
+    const { kind, appointment } = reasonTarget;
+    try {
+      onAppointmentUpdated(
+        await updateAppointmentStatus(appointment.id, kind === 'reject' ? 'rejected' : 'cancelled', reason)
+      );
+    } catch (error) {
+      throw new Error(adErrorMessage(error, 'No se pudo actualizar la reserva.'));
+    }
+  };
+
   const renderAppointment = (appointment, { compact = false } = {}) => {
-    const meta = APPOINTMENT_STATUS_META[appointment.status] || APPOINTMENT_STATUS_META.pending;
-    const canRespond = appointment.status === 'pending' && appointment.date >= todayIso;
-    const canProviderCancel = appointment.status === 'accepted' && appointment.date >= todayIso;
+    const meta = describeAppointment(appointment, 'provider');
+    const isCurrent = meta.state === 'pending' || meta.state === 'accepted';
+    const canRespond = meta.state === 'pending';
+    const canProviderCancel = meta.state === 'accepted';
     const isBusy = updatingId === appointment.id;
 
     return (
@@ -84,10 +105,12 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
 
         <div className="agenda-appointment-body">
           <div className="agenda-appointment-top">
-            <span className={`mgmt-status-pill tone-${meta.tone}`}>{meta.label}</span>
-            <span className="agenda-appointment-eta">
-              {getTimeUntilLabel(appointment.date, appointment.time)}
-            </span>
+            <span className={`mgmt-status-pill tone-${meta.tone}`}><i className={`appt-dot tone-${meta.tone}`} /> {meta.label}</span>
+            {isCurrent && (
+              <span className="agenda-appointment-eta">
+                {getTimeUntilLabel(appointment.date, appointment.time)}
+              </span>
+            )}
           </div>
 
           <h5>
@@ -118,6 +141,13 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
             </p>
           )}
 
+          {!isCurrent && (
+            <p className={`agenda-appointment-state tone-${meta.tone}`}>
+              {meta.longLabel}.
+              {appointment.cancelReason && !appointment.rescheduledToId ? ` Motivo: ${appointment.cancelReason}.` : ''}
+            </p>
+          )}
+
           <button type="button" className="agenda-appointment-detail-link" onClick={() => setDetailId(appointment.id)}>
             Ver detalle
           </button>
@@ -137,7 +167,7 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
               type="button"
               className="btn-agenda-reject"
               disabled={isBusy}
-              onClick={() => handleRespond(appointment, 'rejected')}
+              onClick={() => setReasonTarget({ kind: 'reject', appointment })}
             >
               <XCircle size={14} /> Rechazar
             </button>
@@ -149,7 +179,7 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
               type="button"
               className="btn-agenda-reject"
               disabled={isBusy}
-              onClick={() => { if (window.confirm(`¿Cancelar esta cita confirmada?\n\nSe avisará a ${appointment.customerName || 'el cliente'} que no podrás atenderlo el ${formatAgendaDateLong(appointment.date)} a las ${appointment.time}.`)) handleRespond(appointment, 'cancelled'); }}
+              onClick={() => setReasonTarget({ kind: 'provider-cancel', appointment })}
             >
               {isBusy ? <Loader2 size={14} className="spin-icon" /> : <XCircle size={14} />} Cancelar cita
             </button>
@@ -160,9 +190,9 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
   };
 
   const renderDetail = (appointment) => {
-    const meta = APPOINTMENT_STATUS_META[appointment.status] || APPOINTMENT_STATUS_META.pending;
-    const canRespond = appointment.status === 'pending' && appointment.date >= todayIso;
-    const canProviderCancel = appointment.status === 'accepted' && appointment.date >= todayIso;
+    const meta = describeAppointment(appointment, 'provider');
+    const canRespond = meta.state === 'pending';
+    const canProviderCancel = meta.state === 'accepted';
     const isBusy = updatingId === appointment.id;
     const services = appointment.services?.length ? appointment.services.join(', ') : appointment.service;
 
@@ -172,7 +202,10 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
           <ArrowLeft size={14} /> Volver
         </button>
 
-        <span className={`mgmt-status-pill tone-${meta.tone}`} style={{ marginTop: 12 }}>{meta.longLabel || meta.label}</span>
+        <span className={`mgmt-status-pill tone-${meta.tone}`} style={{ marginTop: 12 }}>
+          <i className={`appt-dot tone-${meta.tone}`} /> {meta.longLabel}
+          {appointment.cancelReason && !appointment.rescheduledToId ? ` · Motivo: ${appointment.cancelReason}` : ''}
+        </span>
 
         <div className="agenda-detail-rows">
           <DetailRow Icon={Hash} label="Código" value={appointment.id} />
@@ -200,7 +233,7 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
               type="button"
               className="btn-agenda-reject"
               disabled={isBusy}
-              onClick={() => handleRespond(appointment, 'rejected')}
+              onClick={() => setReasonTarget({ kind: 'reject', appointment })}
             >
               <XCircle size={14} /> Rechazar
             </button>
@@ -212,7 +245,7 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
               type="button"
               className="btn-agenda-reject"
               disabled={isBusy}
-              onClick={() => { if (window.confirm(`¿Cancelar esta cita confirmada?\n\nSe avisará a ${appointment.customerName || 'el cliente'} que no podrás atenderlo el ${formatAgendaDateLong(appointment.date)} a las ${appointment.time}.`)) handleRespond(appointment, 'cancelled'); }}
+              onClick={() => setReasonTarget({ kind: 'provider-cancel', appointment })}
             >
               {isBusy ? <Loader2 size={14} className="spin-icon" /> : <XCircle size={14} />} Cancelar cita
             </button>
@@ -228,17 +261,21 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const leading = weekdayIndexFromDate(new Date(year, month, 1));
 
-    const countByIso = new Map();
+    // Estados presentes en cada día, también canceladas y pasadas: cada uno tiene su color.
+    const statesByIso = new Map();
     appointments.forEach((item) => {
-      if (isClosedAppointment(item.status)) return;
-      countByIso.set(item.date, (countByIso.get(item.date) || 0) + 1);
+      const set = statesByIso.get(item.date) || new Set();
+      set.add(appointmentVisualState(item));
+      statesByIso.set(item.date, set);
     });
 
     const cells = [];
     for (let i = 0; i < leading; i += 1) cells.push(null);
     for (let day = 1; day <= daysInMonth; day += 1) {
       const iso = toIsoDate(new Date(year, month, day));
-      cells.push({ iso, day, count: countByIso.get(iso) || 0, isPast: iso < todayIso, isToday: iso === todayIso });
+      const present = statesByIso.get(iso);
+      const states = present ? APPOINTMENT_STATE_ORDER.filter((state) => present.has(state)) : [];
+      cells.push({ iso, day, states, count: states.length, isPast: iso < todayIso, isToday: iso === todayIso });
     }
 
     // Las reservas cerradas (rechazadas/canceladas) no llevan punto en el
@@ -304,12 +341,20 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
                 <span className="appt-cal-num">{cell.day}</span>
                 {cell.count > 0 && (
                   <span className="appt-cal-dots">
-                    <i className="dot dot-recibidas">{cell.count}</i>
+                    {cell.states.map((state) => (
+                      <i key={state} className={`appt-dot tone-${TONE_BY_STATE[state]}`} />
+                    ))}
                   </span>
                 )}
               </div>
             );
           })}
+        </div>
+
+        <div className="appt-legend">
+          {APPOINTMENT_LEGEND.map((item) => (
+            <span key={item.state}><i className={`appt-dot tone-${TONE_BY_STATE[item.state]}`} /> {item.label}</span>
+          ))}
         </div>
 
         {selectedDateIso && (
@@ -435,6 +480,14 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
           </>
         )}
       </div>
+      {reasonTarget && (
+        <AppointmentReasonDialog
+          kind={reasonTarget.kind}
+          message={`Le avisaremos a ${reasonTarget.appointment.customerName || 'el cliente'} que no podrás atenderlo el ${formatAgendaDateLong(reasonTarget.appointment.date)} a las ${String(reasonTarget.appointment.time).split('-')[0].trim()}.`}
+          onConfirm={confirmReason}
+          onClose={() => setReasonTarget(null)}
+        />
+      )}
     </div>,
     document.body
   );

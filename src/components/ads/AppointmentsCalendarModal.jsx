@@ -1,10 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, ChevronLeft, ChevronRight, CalendarDays, Check, XCircle, Loader2,
   Phone, Mail, Car, StickyNote
 } from 'lucide-react';
-import { APPOINTMENT_STATUS_META } from '../../data/automotiveAdsData';
+import {
+  APPOINTMENT_LEGEND, APPOINTMENT_STATE_ORDER, appointmentVisualState, describeAppointment,
+  summarizeAppointments
+} from '../../utils/appointmentHistory';
 import {
   WEEKDAYS, toIsoDate, weekdayIndexFromDate, formatAgendaMonthLabel,
   formatAgendaDateLong, getTimeUntilLabel
@@ -20,7 +23,8 @@ import {
  * `weekdayIndexFromDate`.
  */
 
-const KIND_LABEL = { mias: 'Pedidas', recibidas: 'Recibidas' };
+const KIND_LABEL = { mias: 'Mis reservas', recibidas: 'Recibidas' };
+const TONE_BY_STATE = { pending: 'warning', accepted: 'success', cancelled: 'danger', past: 'muted' };
 
 function buildMonthCells(cursor, itemsByDate) {
   const year = cursor.getFullYear();
@@ -37,8 +41,9 @@ function buildMonthCells(cursor, itemsByDate) {
       iso,
       dayNumber,
       items: dayItems,
-      bookedCount: dayItems.filter((i) => i.kind === 'mias').length,
-      receivedCount: dayItems.filter((i) => i.kind === 'recibidas').length,
+      // Un punto por estado presente ese día: el color es el estado de la cita (regla del 4-oct).
+      states: APPOINTMENT_STATE_ORDER.filter((state) =>
+        dayItems.some((i) => appointmentVisualState(i.appointment) === state)),
       isToday: iso === todayIso,
       isPast: iso < todayIso
     });
@@ -51,6 +56,8 @@ export default function AppointmentsCalendarModal({
   receivedAppointments = [],
   onClose,
   onUpdateStatus,
+  /** (appointment, isReceived) => void: abre la confirmación de cancelar con motivo. */
+  onRequestCancel,
   initialSegment = 'all'
 }) {
   const [filter, setFilter] = useState(initialSegment);
@@ -80,6 +87,16 @@ export default function AppointmentsCalendarModal({
     });
     return map;
   }, [filteredItems]);
+
+  // Los números de los filtros son el panorama vigente, no todo el historial.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const bookedCurrent = useMemo(() => summarizeAppointments(bookedAppointments, now).current, [bookedAppointments, now]);
+  const receivedCurrent = useMemo(() => summarizeAppointments(receivedAppointments, now).current, [receivedAppointments, now]);
+  const filterCount = { all: bookedCurrent + receivedCurrent, mias: bookedCurrent, recibidas: receivedCurrent };
 
   const cells = useMemo(() => buildMonthCells(monthCursor, itemsByDate), [monthCursor, itemsByDate]);
   const selectedItems = itemsByDate.get(selectedDayIso) || [];
@@ -130,7 +147,7 @@ export default function AppointmentsCalendarModal({
                 className={filter === key ? 'active' : ''}
                 onClick={() => setFilter(key)}
               >
-                {key === 'all' ? 'Todas' : KIND_LABEL[key]}
+                {key === 'all' ? 'Todas' : KIND_LABEL[key]} ({filterCount[key]})
               </button>
             ))}
           </div>
@@ -171,13 +188,20 @@ export default function AppointmentsCalendarModal({
                 <span className="appt-cal-num">{cell.dayNumber}</span>
                 {hasItems && (
                   <span className="appt-cal-dots">
-                    {cell.bookedCount > 0 && <i className="dot dot-mias" title="Pedidas">{cell.bookedCount}</i>}
-                    {cell.receivedCount > 0 && <i className="dot dot-recibidas" title="Recibidas">{cell.receivedCount}</i>}
+                    {cell.states.map((state) => (
+                      <i key={state} className={`appt-dot tone-${TONE_BY_STATE[state]}`} />
+                    ))}
                   </span>
                 )}
               </button>
             );
           })}
+        </div>
+
+        <div className="appt-legend">
+          {APPOINTMENT_LEGEND.map((item) => (
+            <span key={item.state}><i className={`appt-dot tone-${TONE_BY_STATE[item.state]}`} /> {item.label}</span>
+          ))}
         </div>
 
         <div className="appt-cal-day-panel">
@@ -190,9 +214,12 @@ export default function AppointmentsCalendarModal({
                 .slice()
                 .sort((a, b) => a.appointment.time.localeCompare(b.appointment.time))
                 .map(({ appointment, kind }) => {
-                  const meta = APPOINTMENT_STATUS_META[appointment.status] || APPOINTMENT_STATUS_META.pending;
                   const isReceived = kind === 'recibidas';
-                  const canRespond = isReceived && appointment.status === 'pending';
+                  const meta = describeAppointment(appointment, isReceived ? 'provider' : 'customer');
+                  const isCurrent = meta.state === 'pending' || meta.state === 'accepted';
+                  // Una solicitud cuya hora ya pasó no se responde (el backend también la rechaza).
+                  const canRespond = isReceived && meta.state === 'pending';
+                  const canCancel = Boolean(onRequestCancel) && (isReceived ? meta.state === 'accepted' : isCurrent);
                   const isBusy = updatingId === appointment.id;
                   return (
                     <div key={`${kind}-${appointment.id}`} className={`agenda-appointment tone-${meta.tone}`}>
@@ -201,11 +228,13 @@ export default function AppointmentsCalendarModal({
                       </div>
                       <div className="agenda-appointment-body">
                         <div className="agenda-appointment-top">
-                          <span className={`mgmt-status-pill tone-${meta.tone}`}>{meta.label}</span>
-                          <span className={`appt-kind-tag kind-${kind}`}>{KIND_LABEL[kind]}</span>
-                          <span className="agenda-appointment-eta">
-                            {getTimeUntilLabel(appointment.date, appointment.time)}
-                          </span>
+                          <span className={`mgmt-status-pill tone-${meta.tone}`}><i className={`appt-dot tone-${meta.tone}`} /> {meta.label}</span>
+                          <span className="appt-kind-tag">{isReceived ? 'Recibida' : 'Reservada por mí'}</span>
+                          {isCurrent && (
+                            <span className="agenda-appointment-eta">
+                              {getTimeUntilLabel(appointment.date, appointment.time)}
+                            </span>
+                          )}
                         </div>
                         <h5>{(appointment.services?.length ? appointment.services.join(', ') : appointment.service) || 'Servicio no informado'}</h5>
                         <div className="agenda-appointment-meta">
@@ -223,7 +252,20 @@ export default function AppointmentsCalendarModal({
                         {appointment.notes && (
                           <p className="agenda-appointment-notes"><StickyNote size={12} /> {appointment.notes}</p>
                         )}
+                        {!isCurrent && (
+                          <p className={`agenda-appointment-state tone-${meta.tone}`}>
+                            {meta.longLabel}.
+                            {appointment.cancelReason && !appointment.rescheduledToId ? ` Motivo: ${appointment.cancelReason}.` : ''}
+                          </p>
+                        )}
                       </div>
+                      {!canRespond && canCancel && (
+                        <div className="agenda-appointment-actions">
+                          <button type="button" className="btn-mgmt-delete" onClick={() => onRequestCancel(appointment, isReceived)}>
+                            <XCircle size={14} /> <span>Cancelar cita</span>
+                          </button>
+                        </div>
+                      )}
                       {canRespond && (
                         <div className="agenda-appointment-actions">
                           <button

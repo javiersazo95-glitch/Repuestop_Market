@@ -43,6 +43,7 @@ import ProfileSupportPanel from './ProfileSupportPanel';
 import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
 import SellerChatsView from './SellerChatsView';
 import ProfileNotificationsBell from './ProfileNotificationsBell';
+import ProfileAppointmentsButton from './ProfileAppointmentsButton';
 import HeaderWalletButton from './HeaderWalletButton';
 import NewCatalogProductModal from './NewCatalogProductModal';
 import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
@@ -53,7 +54,7 @@ import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES, storePath } from '../routes/paths';
 import { orderDisplayCode } from '../data/orderIdentity';
-import { deliveryTermsLabel, quoteChargeBase, quoteShippingCost } from '../utils/quoteFlow';
+import { deliveryTermsLabel, isConversationPaused, quoteChargeBase, quoteShippingCost } from '../utils/quoteFlow';
 
 function formatQuoteCLP(value) {
   return `$${Math.round(Number(value) || 0).toLocaleString('es-CL')}`;
@@ -706,15 +707,20 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       return;
     }
     if (openedQuoteDeepLinkRef.current === deepLinkQuoteId) return;
-    const found = (conversations || []).find((c) => (
+    const matches = (c) => (
       String(c.id) === String(deepLinkQuoteId) ||
       String(c.cotizacion?.id) === String(deepLinkQuoteId) ||
       String(c.cotizacionId) === String(deepLinkQuoteId)
-    ));
-    if (!found) return;
+    );
+    const found = (conversations || []).find(matches);
+    // Un vendedor que compra en otra tienda tiene esa cotización en "Mis cotizaciones", no en
+    // las de su tienda: antes el aviso no abría nada.
+    const foundAsBuyer = !found && isSeller ? (buyerConversations || []).find(matches) : null;
+    if (!found && !foundAsBuyer) return;
     openedQuoteDeepLinkRef.current = deepLinkQuoteId;
-    setSelectedQuote(found);
-  }, [deepLinkQuoteId, conversations]);
+    if (foundAsBuyer && activeTab !== 'mis_cotizaciones') setActiveTab('mis_cotizaciones');
+    setSelectedQuote(found || foundAsBuyer);
+  }, [deepLinkQuoteId, conversations, buyerConversations, isSeller, activeTab, setActiveTab]);
   const storeInfo = storeInfoQuery.data || null;
   const isSellerFounder = Boolean(storeInfo?.founder ?? user?.founder ?? user?.fundador);
   const inventorySummary = inventorySummaryQuery.data || null;
@@ -828,8 +834,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     ));
     return {
       total: quoteOnly.length,
-      pending: quoteOnly.filter((conversation) => !conversation.cotizacion).length,
-      sent: quoteOnly.filter((conversation) => Boolean(conversation.cotizacion)).length,
+      // Con una modificación pendiente la cotización está en pausa: vuelve a "por responder".
+      pending: quoteOnly.filter((conversation) => !conversation.cotizacion || isConversationPaused(conversation)).length,
+      sent: quoteOnly.filter((conversation) => Boolean(conversation.cotizacion) && !isConversationPaused(conversation)).length,
       unread: quoteOnly.reduce((total, conversation) => total + Number(conversation.mensajesNoLeidos || 0), 0),
     };
   }, [activeQuoteSource]);
@@ -1235,6 +1242,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               <span>{isSeller ? 'Proveedor' : 'Comprador'}</span>
             </div>
             <HeaderWalletButton variant="topbar" />
+            <ProfileAppointmentsButton user={user} />
             <ProfileNotificationsBell user={user} />
             <button className="btn-topbar-logout" onClick={handleLogout}>
               <LogOut size={15} />

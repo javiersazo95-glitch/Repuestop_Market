@@ -394,8 +394,8 @@ export const APPOINTMENT_STATUS_META = {
   },
   cancelled: {
     label: 'Cancelada',
-    longLabel: 'Cancelada por el cliente',
-    tone: 'muted'
+    longLabel: 'Cancelada',
+    tone: 'danger'
   }
 };
 

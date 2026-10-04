@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   Megaphone, Plus, Search, RotateCcw, Loader2, WifiOff, AlertTriangle,
   RefreshCw, SlidersHorizontal, X, Car, MapPin, Settings, ChevronDown,
-  ArrowUpDown, ShieldCheck, Zap, Star, CheckCircle2, Sparkles
+  ArrowUpDown, ArrowRight, ShieldCheck, Zap, Star, CheckCircle2, Sparkles
 } from 'lucide-react';
 import { AD_TIERS, SERVICE_CATEGORIES, CHILE_COMMUNES } from '../data/automotiveAdsData';
 import { fetchPublicAds, getCachedWallAds, ADS_WALL_UPDATED_EVENT } from '../services/adsStorage';
@@ -129,6 +129,9 @@ export default function AdsWallView() {
   const [selectedAdForBooking, setSelectedAdForBooking] = useState(null);
 
   const searchBoxRef = useRef(null);
+  // Campo de la fila movil (rediseño del 4-oct): las sugerencias se cierran al
+  // tocar fuera de cualquiera de los dos campos.
+  const mobileSearchBoxRef = useRef(null);
 
   // El texto se aplica con retardo: mientras se escribe solo se recalculan las
   // sugerencias, no el filtrado completo del mural.
@@ -146,7 +149,9 @@ export default function AdsWallView() {
 
   useEffect(() => {
     const onClickOutside = (e) => {
-      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target)) {
+      const inside = [searchBoxRef.current, mobileSearchBoxRef.current]
+        .some((box) => box && box.contains(e.target));
+      if (!inside) {
         setIsSearchFocused(false);
       }
     };
@@ -342,6 +347,14 @@ export default function AdsWallView() {
     selectedSpecialistBrand,
   ]);
 
+  // Comunas con anuncios (el filtro compara exacto con la del anuncio), mas la
+  // elegida si no esta (p. ej. la del perfil al usar "cerca de mi" sin GPS).
+  const communeOptions = useMemo(() => {
+    const set = new Set(adsList.map((ad) => ad.commune?.trim()).filter(Boolean));
+    if (selectedCommune !== 'Todas las comunas') set.add(selectedCommune);
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'));
+  }, [adsList, selectedCommune]);
+
   // Marcas que declaran los talleres publicados, para el filtro.
   const specialistBrandOptions = useMemo(
     () => Array.from(new Set(adsList.flatMap((ad) => ad.specialistBrands ?? []))).sort((a, b) => a.localeCompare(b, 'es')),
@@ -365,6 +378,157 @@ export default function AdsWallView() {
   return (
     <main className="ads-wall-page">
       <div className="container ads-wall-shell">
+        {/* Celular (rediseño del 4-oct): como en repuestos, tabs de busqueda y una sola
+            fila con el campo (pin de "cerca de mi" adentro), el filtro avanzado (panel
+            lateral) y el orden. La barra de escritorio de abajo se oculta en celular. */}
+        <div className="ads-mobile-search">
+          <div className="ads-mobile-tabs" role="tablist" aria-label="Tipo de búsqueda">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={searchMode === 'service'}
+              className={searchMode === 'service' ? 'active' : ''}
+              onClick={() => { setSearchMode('service'); setPlateVehicle(null); setPlateError(''); }}
+            >
+              <Search size={15} /> Buscar servicio
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={searchMode === 'plate'}
+              className={searchMode === 'plate' ? 'active' : ''}
+              onClick={() => { setSearchMode('plate'); setSearchInput(''); setSearchQuery(''); setIsSearchFocused(false); }}
+            >
+              <Car size={15} /> Buscar por patente
+            </button>
+          </div>
+
+          <div className="catalog-mobile-actions-row ads-mobile-actions-row">
+            {searchMode === 'service' ? (
+              <div className="ads-search-input-wrap ads-mobile-field" ref={mobileSearchBoxRef}>
+                <Search size={17} className="ads-search-input-icon" />
+                <input
+                  type="text"
+                  placeholder="Buscar talleres, scanner, pintura..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  aria-label="Buscar servicio"
+                />
+                {searchInput && (
+                  <button
+                    type="button"
+                    className="ads-search-clear"
+                    onClick={() => { setSearchInput(''); setSearchQuery(''); }}
+                    aria-label="Limpiar búsqueda"
+                  >
+                    <X size={15} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={`ads-nearby-btn ${isNearbyActive ? 'active' : ''}`}
+                  onClick={toggleNearby}
+                  disabled={isLocating}
+                  aria-pressed={isNearbyActive}
+                  aria-label={isNearbyActive ? 'Quitar el orden por cercanía' : 'Ver los avisos más cercanos a mi ubicación'}
+                >
+                  {isLocating ? <RefreshCw size={15} className="spin-icon" /> : <MapPin size={16} />}
+                </button>
+                {showSuggestions && (
+                  <div className="ads-suggestions">
+                    {searchSuggestions.map((s) => {
+                      const meta = SUGGESTION_META[s.type] || SUGGESTION_META.servicio;
+                      const MetaIcon = meta.Icon;
+                      return (
+                        <button
+                          key={`${s.type}-${s.label}`}
+                          type="button"
+                          className="ads-suggestion-row"
+                          onClick={() => handleSelectSuggestion(s.label)}
+                        >
+                          <MetaIcon size={15} />
+                          <span className="ads-suggestion-text">{s.label}</span>
+                          <span className="ads-suggestion-hint">{meta.hint}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="ads-search-input-wrap ads-mobile-field ads-mobile-field--plate">
+                <Car size={17} className="ads-search-input-icon" />
+                <input
+                  type="text"
+                  placeholder="Patente. Ej: AB·CD·12"
+                  value={plateQuery}
+                  maxLength={8}
+                  aria-label="Patente"
+                  onChange={(e) => {
+                    setPlateQuery(e.target.value.toUpperCase());
+                    setPlateVehicle(null);
+                    setPlateError('');
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && searchByPlate()}
+                />
+                <button
+                  type="button"
+                  className={`ads-nearby-btn ${isNearbyActive ? 'active' : ''}`}
+                  onClick={toggleNearby}
+                  disabled={isLocating}
+                  aria-pressed={isNearbyActive}
+                  aria-label={isNearbyActive ? 'Quitar el orden por cercanía' : 'Ver los avisos más cercanos a mi ubicación'}
+                >
+                  {isLocating ? <RefreshCw size={15} className="spin-icon" /> : <MapPin size={16} />}
+                </button>
+                <button
+                  type="button"
+                  className="ads-mobile-plate-go"
+                  onClick={searchByPlate}
+                  disabled={isPlateSearching}
+                  aria-label="Buscar patente"
+                >
+                  {isPlateSearching ? <Loader2 size={15} className="spin-icon" /> : <ArrowRight size={16} />}
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              className={`catalog-mobile-filter-trigger ${activeFiltersCount > 0 ? 'is-active' : ''}`}
+              onClick={() => setIsFilterOpen(true)}
+              aria-label="Abrir filtros avanzados"
+            >
+              <SlidersHorizontal size={18} />
+              {activeFiltersCount > 0 && <span className="ads-filter-btn-badge">{activeFiltersCount}</span>}
+            </button>
+            <label className={`catalog-mobile-sort-trigger ${sortBy !== 'relevancia' ? 'is-active' : ''}`} title="Ordenar anuncios">
+              <ArrowUpDown size={20} aria-hidden="true" />
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Ordenar anuncios">
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {searchMode === 'plate' && (
+            plateVehicle ? (
+              <div className="ads-plate-vehicle">
+                <CheckCircle2 size={16} />
+                <div>
+                  <strong>Vehículo identificado</strong>
+                  <span>{formatVehicleLabel(plateVehicle)} · {plateVehicle.patente}</span>
+                </div>
+              </div>
+            ) : (
+              <p className={`ads-plate-result ${plateError ? 'is-error' : ''}`}>
+                {plateError || 'Mostraremos talleres que atienden la marca de tu vehículo, incluidos los multimarca.'}
+              </p>
+            )
+          )}
+        </div>
+
         {/* 1. Barra de filtros (equivalente a la fila de filtros del marketplace) */}
         <div className="ads-filterbar">
           <div className="ads-search-input-wrap ads-fb-search" ref={searchBoxRef}>
@@ -786,8 +950,10 @@ export default function AdsWallView() {
         setOnlyWhatsapp={setOnlyWhatsapp}
         only24Hours={only24Hours}
         setOnly24Hours={setOnly24Hours}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
+        communeOptions={communeOptions}
+        specialistBrandOptions={searchMode === 'service' ? specialistBrandOptions : []}
+        selectedSpecialistBrand={selectedSpecialistBrand}
+        setSelectedSpecialistBrand={setSelectedSpecialistBrand}
         onResetFilters={handleResetFilters}
         activeFiltersCount={activeFiltersCount + (searchQuery.trim() ? 1 : 0)}
         totalResults={filteredAds.length}

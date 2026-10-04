@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Check, ChevronDown, CircleDollarSign, ClipboardList, Image as ImageIcon, Images, ListChecks, Loader2, PackagePlus, Plus, Search, Tag, Trash2, Upload, X } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, Check, CircleDollarSign, ClipboardList, Image as ImageIcon, Images, ListChecks, Loader2, PackagePlus, Plus, Search, Tag, Trash2, Upload, X } from 'lucide-react';
 import CommissionSummaryCard from './CommissionSummaryCard';
+import SearchableDropdown from './SearchableDropdown';
 import {
   createSellerInventoryProductApi,
   getPartBrandsApi,
@@ -121,36 +122,6 @@ const initialForm = (product = null) => ({
 
 function CatalogField({ label, optional, children }) {
   return <label className="catalog-product-field"><span>{label}{optional && <small>Opcional</small>}</span>{children}</label>;
-}
-
-function SearchableDropdown({ value, options, placeholder, onChange, disabled = false, emptyText = 'No hay resultados.', allowCustom = false, customOptionLabel, onCustomOption }) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const rootRef = useRef(null);
-  const normalizedQuery = query.trim().toLocaleLowerCase('es');
-  const filtered = options.filter((option) => option.label.toLocaleLowerCase('es').includes(normalizedQuery));
-  const selected = options.find((option) => String(option.value) === String(value));
-
-  useEffect(() => {
-    const closeOnOutside = (event) => { if (!rootRef.current?.contains(event.target)) setOpen(false); };
-    document.addEventListener('mousedown', closeOnOutside);
-    return () => document.removeEventListener('mousedown', closeOnOutside);
-  }, []);
-
-  return <div className={`catalog-search-select ${open ? 'is-open' : ''} ${disabled ? 'is-disabled' : ''}`} ref={rootRef}>
-    <button type="button" className="catalog-search-select-trigger" disabled={disabled} onClick={() => { setOpen((current) => !current); setQuery(''); }}>
-      <span className={selected || value ? '' : 'catalog-search-select-placeholder'}>{selected?.label || value || placeholder}</span><ChevronDown size={16} />
-    </button>
-    {open && <div className="catalog-search-select-menu">
-      <div className="catalog-search-select-search"><Search size={15} /><input autoFocus value={query} maxLength={80} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar..." /></div>
-      <div className="catalog-search-select-options">
-        {filtered.map((option) => <button type="button" key={option.value} className={String(option.value) === String(value) ? 'selected' : ''} onClick={() => { onChange(option.value); setOpen(false); }}><span>{option.label}</span>{String(option.value) === String(value) && <Check size={15} />}</button>)}
-        {allowCustom && query.trim() && !options.some((option) => option.label.toLocaleLowerCase('es') === normalizedQuery) && <button type="button" className="catalog-search-select-custom" onClick={() => { onChange(query.trim().slice(0, 40)); setOpen(false); }}><span>Usar “{query.trim().slice(0, 40)}”</span><Plus size={15} /></button>}
-        {customOptionLabel && <button type="button" className="catalog-search-select-custom" onClick={() => { onCustomOption?.(); setOpen(false); }}><span>{customOptionLabel}</span><Plus size={15} /></button>}
-        {!filtered.length && !(allowCustom && query.trim()) && <p>{emptyText}</p>}
-      </div>
-    </div>}
-  </div>;
 }
 
 export default function NewCatalogProductModal({ sellerId, product = null, onClose, onCreated, isFounder = false }) {

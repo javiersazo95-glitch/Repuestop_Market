@@ -2,16 +2,21 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, RotateCcw, SlidersHorizontal, ShieldCheck, Zap, Star,
-  Calendar, MessageCircle, Clock
+  Calendar, MessageCircle, AlarmClock
 } from 'lucide-react';
-import { SERVICE_CATEGORIES, CHILE_COMMUNES } from '../../data/automotiveAdsData';
+import { SERVICE_CATEGORIES } from '../../data/automotiveAdsData';
+import SearchableDropdown from '../SearchableDropdown';
 
-const SORT_OPTIONS = [
-  { label: 'Relevancia (Planes destacados)', value: 'relevancia' },
-  { label: 'Más recientes', value: 'recientes' },
-  { label: 'Menor precio / tarifa', value: 'precio-menor' },
-  { label: 'Mayor precio / tarifa', value: 'precio-mayor' },
-];
+const ALL_BRANDS = 'Todas las marcas';
+const ALL_COMMUNES = 'Todas las comunas';
+
+/*
+ * Rediseño del 4-oct: en celular es un panel lateral desde la derecha, como los
+ * "Filtros Avanzados" de repuestos (ver ads-wall-mobile.css). El orden ya no vive
+ * aqui: tiene su propio boton junto al filtro (y su selector en escritorio).
+ * Comuna y Marca especialista son desplegables con buscador: en produccion hay
+ * muchas y como chips el panel se volvia interminable.
+ */
 
 const TIER_OPTIONS = [
   { value: 'TODOS', label: 'Todos los planes', Icon: null, tone: '' },
@@ -30,14 +35,16 @@ export default function AdsFilterModal({
   setSelectedTier,
   selectedCommune,
   setSelectedCommune,
+  communeOptions = [],
+  specialistBrandOptions = [],
+  selectedSpecialistBrand = ALL_BRANDS,
+  setSelectedSpecialistBrand,
   onlyBooking,
   setOnlyBooking,
   onlyWhatsapp,
   setOnlyWhatsapp,
   only24Hours,
   setOnly24Hours,
-  sortBy,
-  setSortBy,
   onResetFilters,
   activeFiltersCount = 0,
   totalResults,
@@ -82,21 +89,21 @@ export default function AdsFilterModal({
         </div>
 
         <div className="ads-filter-sheet-body">
-          <div className="ads-filter-group">
-            <span className="ads-filter-label">Ordenar por</span>
-            <div className="ads-filter-chips">
-              {SORT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={`ads-filter-chip ${sortBy === opt.value ? 'active' : ''}`}
-                  onClick={() => setSortBy(opt.value)}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          {/* Arriba, como "Solo a cotizar" en repuestos: lo que busca quien tiene una urgencia. */}
+          <label className={`ads-urgent-card ${only24Hours ? 'is-active' : ''}`}>
+            <span className="ads-urgent-icon"><AlarmClock size={16} /></span>
+            <span className="ads-urgent-text">
+              <strong>Urgencias 24 horas</strong>
+              <small>Servicios que atienden a toda hora</small>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={only24Hours}
+              onChange={(e) => setOnly24Hours(e.target.checked)}
+              aria-label="Solo urgencias 24 horas"
+            />
+          </label>
 
           <div className="ads-filter-group">
             <span className="ads-filter-label">Especialidad automotriz</span>
@@ -130,17 +137,28 @@ export default function AdsFilterModal({
             </div>
           </div>
 
+          {setSelectedSpecialistBrand && specialistBrandOptions.length > 0 && (
+            <div className="ads-filter-group">
+              <span className="ads-filter-label">Marca especialista</span>
+              <SearchableDropdown
+                value={selectedSpecialistBrand}
+                options={[ALL_BRANDS, ...specialistBrandOptions].map((brand) => ({ value: brand, label: brand }))}
+                placeholder={ALL_BRANDS}
+                onChange={(value) => setSelectedSpecialistBrand(value || ALL_BRANDS)}
+                emptyText="No encontramos esa marca."
+              />
+            </div>
+          )}
+
           <div className="ads-filter-group">
-            <span className="ads-filter-label">Comuna / Ubicación</span>
-            <select
-              className="ads-filter-select"
+            <span className="ads-filter-label">Comuna</span>
+            <SearchableDropdown
               value={selectedCommune}
-              onChange={(e) => setSelectedCommune(e.target.value)}
-            >
-              {CHILE_COMMUNES.map((commune) => (
-                <option key={commune} value={commune}>{commune}</option>
-              ))}
-            </select>
+              options={[ALL_COMMUNES, ...communeOptions].map((commune) => ({ value: commune, label: commune }))}
+              placeholder={ALL_COMMUNES}
+              onChange={(value) => setSelectedCommune(value || ALL_COMMUNES)}
+              emptyText="No hay anuncios en esa comuna."
+            />
           </div>
 
           <div className="ads-filter-group">
@@ -152,10 +170,6 @@ export default function AdsFilterModal({
             <label className="ads-filter-toggle">
               <span><MessageCircle size={16} /> Contacto rápido por WhatsApp</span>
               <input type="checkbox" checked={onlyWhatsapp} onChange={(e) => setOnlyWhatsapp(e.target.checked)} />
-            </label>
-            <label className="ads-filter-toggle">
-              <span><Clock size={16} /> Atención 24 horas / urgencias</span>
-              <input type="checkbox" checked={only24Hours} onChange={(e) => setOnly24Hours(e.target.checked)} />
             </label>
           </div>
         </div>

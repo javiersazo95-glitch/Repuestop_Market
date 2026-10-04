@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, CheckCheck, Loader2, Trash2 } from 'lucide-react';
+import { Bell, CalendarClock, CheckCheck, Loader2, Trash2 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   getNotificationsApi, getUnreadNotificationsCountApi, markAllNotificationsReadApi,
   markNotificationReadApi, deleteReadNotificationsApi
 } from '../services/api';
 import { notificationTargetPath } from '../data/notificationTargets';
+import { notifyAppointmentsChanged } from '../services/adsStorage';
 
 function formatTime(value) {
   if (!value) return '';
@@ -22,10 +23,19 @@ export default function ProfileNotificationsBell({ user }) {
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const lastUnreadRef = useRef(Number.MAX_SAFE_INTEGER);
 
   const loadUnread = useCallback(async () => {
     if (!userId) return;
-    try { const response = await getUnreadNotificationsCountApi(userId); setUnread(Number(response?.count || 0)); } catch { /* la campana no debe bloquear el perfil */ }
+    try {
+      const response = await getUnreadNotificationsCountApi(userId);
+      const count = Number(response?.count || 0);
+      // Llegó algo nuevo: las listas y contadores de citas abiertos se recargan (puede ser una
+      // reserva o una respuesta), en vez de esperar a que alguien pulse Actualizar.
+      if (count > lastUnreadRef.current) notifyAppointmentsChanged();
+      lastUnreadRef.current = count;
+      setUnread(count);
+    } catch { /* la campana no debe bloquear el perfil */ }
   }, [userId]);
 
   const loadItems = useCallback(async () => {
@@ -124,7 +134,7 @@ export default function ProfileNotificationsBell({ user }) {
           )}
         </div>
       </div>
-      {loading ? <div className="profile-notifications-loading"><Loader2 size={16} className="spin-icon" /> Cargando...</div> : items.length === 0 ? <p className="profile-notifications-empty">No tienes notificaciones por ahora.</p> : <div className="profile-notifications-list">{items.map((item) => <button type="button" key={item.id} className={`profile-notification-item ${item.leida ? 'read' : 'unread'}`} onClick={() => openNotification(item)}><span><strong>{item.titulo || 'Nueva notificación'}</strong><small>{item.mensaje}</small><time>{formatTime(item.createdAt)}</time></span>{!item.leida && <i />}</button>)}</div>}
+      {loading ? <div className="profile-notifications-loading"><Loader2 size={16} className="spin-icon" /> Cargando...</div> : items.length === 0 ? <p className="profile-notifications-empty">No tienes notificaciones por ahora.</p> : <div className="profile-notifications-list">{items.map((item) => <button type="button" key={item.id} className={`profile-notification-item ${item.leida ? 'read' : 'unread'}`} onClick={() => openNotification(item)}>{item.tipo === 'AGENDAMIENTO_CITA' && <em className="profile-notification-kind" aria-hidden="true"><CalendarClock size={15} /></em>}<span><strong>{item.titulo || 'Nueva notificación'}</strong><small>{item.mensaje}</small><time>{formatTime(item.createdAt)}</time></span>{!item.leida && <i />}</button>)}</div>}
     </div>}
   </div>;
 }
