@@ -14,7 +14,7 @@ import {
   createProductQuestionApi, getProductQuestionsApi, searchVehicleByPatenteApi, answerProductQuestionApi,
   getInventoryVehicleCatalogsApi, getVehicleVersionsApi
 } from '../services/api';
-import { adaptVehicle } from '../services/adapters';
+import { adaptVehicle, vehicleCatalogIds } from '../services/adapters';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import { useFavorites } from '../hooks/useFavorites';
@@ -38,45 +38,18 @@ function claveTexto(str) {
     .replace(/[^a-z0-9]/g, '');
 }
 
-function extraerCilindradaLitros(valor) {
-  if (!valor) return null;
-  const str = String(valor).toLowerCase().replace(',', '.');
-  const ccMatch = str.match(/\b([1-9][0-9]{3})\b/);
-  if (ccMatch) {
-    const cc = parseInt(ccMatch[1], 10);
-    return (cc / 1000).toFixed(1);
-  }
-  const litMatch = str.match(/\b([0-9]\.[0-9]{1,3})\b/);
-  if (litMatch) {
-    const lit = parseFloat(litMatch[1]);
-    return lit.toFixed(1);
-  }
-  return null;
-}
-
-function sonMotoresEquivalentes(motorA, motorB) {
-  if (!motorA || !motorB) return true;
-  const a = claveTexto(motorA);
-  const b = claveTexto(motorB);
-  if (!a || !b || a === b || a.includes(b) || b.includes(a)) return true;
-
-  const numA = extraerCilindradaLitros(motorA);
-  const numB = extraerCilindradaLitros(motorB);
-  if (numA && numB && numA === numB) return true;
-
-  return false;
-}
-
 // Compara el vehículo resuelto por patente contra un registro de compatibilidad
 // del repuesto o sus filas de catálogo enriquecidas.
 function vehicleMatchesCompatibility(vehicle, item, catalogRowsForGroup = []) {
   if (!vehicle) return false;
 
-  // 1. Coincidencia relacional exacta por catalogoId
-  if (vehicle.catalogoId) {
-    const vCatId = String(vehicle.catalogoId);
+  // 1. Coincidencia relacional por catalogo: la fila del auto y sus equivalentes (familia del
+  // modelo y anio), igual que el listado por patente. Con solo la fila exacta, la ficha decia
+  // "no le sirve" a un repuesto que el listado si traia.
+  const vCatIds = vehicleCatalogIds(vehicle);
+  if (vCatIds.length > 0) {
     const itemIds = Array.isArray(item?.vehiculoCatalogoIds) ? item.vehiculoCatalogoIds.map(String) : [];
-    if (itemIds.includes(vCatId)) return true;
+    if (itemIds.some((id) => vCatIds.includes(id))) return true;
   }
 
   // 2. Coincidencia contra filas enriquecidas del catálogo generadas para este grupo

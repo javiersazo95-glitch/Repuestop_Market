@@ -192,6 +192,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   // `catalogoId` cuando la patente se resolvio contra el catalogo (el caso normal); la marca
   // queda de respaldo para un vehiculo ingresado a mano, que no tiene fila en el catalogo.
   const backendCatalogoId = activeVehicle?.catalogoId || undefined;
+  const backendAnioVehiculo = backendCatalogoId ? activeVehicle?.anio || undefined : undefined;
   const backendMarcaVehiculo = backendCatalogoId ? undefined : (activeVehicle?.marca || undefined);
 
   // Página real: paginada por el servidor con texto + comuna. Es la fuente
@@ -201,10 +202,10 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
     isLoading: pageLoading,
     error: pageQueryError,
   } = useQuery({
-    queryKey: qk.stores({ page: currentPage, size: itemsPerPage, texto: debouncedSearchQuery, comuna: backendComuna, marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId }),
+    queryKey: qk.stores({ page: currentPage, size: itemsPerPage, texto: debouncedSearchQuery, comuna: backendComuna, marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, anioVehiculo: backendAnioVehiculo }),
     queryFn: ({ signal }) => getPublicStoresApi({
       page: currentPage - 1, size: itemsPerPage, texto: debouncedSearchQuery, comuna: backendComuna,
-      marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, signal,
+      marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, anioVehiculo: backendAnioVehiculo, signal,
     }),
     select: (data) => adaptPage(data, adaptStore),
     placeholderData: keepPreviousData,
@@ -217,10 +218,10 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
     isLoading: poolLoading,
     error: poolQueryError,
   } = useQuery({
-    queryKey: qk.stores({ pool: true, texto: debouncedSearchQuery, comuna: backendComuna, marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId }),
+    queryKey: qk.stores({ pool: true, texto: debouncedSearchQuery, comuna: backendComuna, marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, anioVehiculo: backendAnioVehiculo }),
     queryFn: ({ signal }) => getPublicStoresApi({
       page: 0, size: FILTER_POOL_SIZE, texto: debouncedSearchQuery, comuna: backendComuna,
-      marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, signal,
+      marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, anioVehiculo: backendAnioVehiculo, signal,
     }),
     select: (data) => adaptPage(data, adaptStore).items,
     placeholderData: keepPreviousData,

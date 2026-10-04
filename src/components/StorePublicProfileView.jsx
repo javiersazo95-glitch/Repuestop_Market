@@ -18,7 +18,7 @@ import ContextualReportButton from './ContextualReportButton';
 import { parseShippingMethods, resolveShippingService } from '../data/shippingMethods';
 import { getAddressesApi, getStoreProductsApi, getStoreProfileApi, getVehicleCatalogPartsApi, searchVehicleByPatenteApi } from '../services/api';
 import { isValidPlate, normalizePlate } from '../utils/vehicleLookup';
-import { adaptCompatibleOffersPage, adaptPage, adaptProduct, adaptStore, adaptVehicle } from '../services/adapters';
+import { adaptCompatibleOffersPage, adaptPage, adaptProduct, adaptStore, adaptVehicle, vehicleCatalogIds } from '../services/adapters';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useFavorites } from '../hooks/useFavorites';
 import { useMarketplace } from '../context/MarketplaceContext';
@@ -188,7 +188,7 @@ export default function StorePublicProfileView({
   // (PartsCatalogView), acotado a esta tienda con `proveedorId`.
   const wantsVehicleCompat = Boolean(onlyCompatible && activeVehicle?.catalogoId);
   const { data: compatibleOffersData, isLoading: compatibleOffersLoading, error: compatibleOffersError } = useQuery({
-    queryKey: qk.vehicleCompatibleProducts(activeVehicle?.catalogoId, { proveedorId: storeId }),
+    queryKey: qk.vehicleCompatibleProducts(activeVehicle?.catalogoId, { proveedorId: storeId, anio: activeVehicle?.anio || undefined }),
     queryFn: async ({ signal }) => {
       // `proveedorId` lo aplica el backend. Antes se pedia pagina por pagina TODO el
       // marketplace compatible con el vehiculo y se descartaba aca lo que no era de esta
@@ -196,6 +196,7 @@ export default function StorePublicProfileView({
       // pagina se gastaba en ofertas ajenas, asi que una tienda chica podia quedar sin
       // ningun repuesto visible pese a tener stock compatible.
       const fetchPage = (page) => getVehicleCatalogPartsApi(activeVehicle.catalogoId, {
+        anio: activeVehicle.anio || undefined,
         page,
         size: STORE_PRODUCTS_FETCH_SIZE,
         proveedorId: storeId,
@@ -382,8 +383,9 @@ export default function StorePublicProfileView({
     // le sirve a cualquier vehiculo -- la misma regla con la que el catalogo general lo
     // rescata via `OR esUniversal` en la Specification del backend.
     if (!wantsVehicleCompat && onlyCompatible && activeVehicle && !prod.esUniversal) {
-      if (activeVehicle.catalogoId && Array.isArray(prod.vehiculoCatalogoIds)
-          && prod.vehiculoCatalogoIds.map(String).includes(String(activeVehicle.catalogoId))) {
+      const idsDelVehiculo = vehicleCatalogIds(activeVehicle);
+      if (idsDelVehiculo.length > 0 && Array.isArray(prod.vehiculoCatalogoIds)
+          && prod.vehiculoCatalogoIds.map(String).some((id) => idsDelVehiculo.includes(id))) {
         // Coincidencia exacta por catálogo a nivel de producto
       } else {
         const matchesVehicle = (prod.compatibilidad || []).some(
@@ -392,8 +394,8 @@ export default function StorePublicProfileView({
           // guardado con el picker de compatibilidad) y activeVehicle.catalogoId como
           // number: comparar sin normalizar los deja siempre distintos (`"1019" !== 1019`)
           // y el `includes` nunca encuentra nada.
-          if (activeVehicle.catalogoId && Array.isArray(c.vehiculoCatalogoIds)
-              && c.vehiculoCatalogoIds.map(String).includes(String(activeVehicle.catalogoId))) {
+          if (idsDelVehiculo.length > 0 && Array.isArray(c.vehiculoCatalogoIds)
+              && c.vehiculoCatalogoIds.map(String).some((id) => idsDelVehiculo.includes(id))) {
             return true;
           }
           // `activeVehicle.modelo` viene de adaptVehicle() como "modelo version" (ej.

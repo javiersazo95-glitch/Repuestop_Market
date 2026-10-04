@@ -1248,7 +1248,7 @@ export async function declareOrderDeliveryApi(orderId) {
  * Marketplace Endpoints (Unificados con Spring Boot Backend)
  */
 
-export async function getPublicStoresApi({ page = 0, size = 12, texto, comuna, marcaVehiculo, catalogoId, signal } = {}) {
+export async function getPublicStoresApi({ page = 0, size = 12, texto, comuna, marcaVehiculo, catalogoId, anioVehiculo, signal } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (texto) params.set('texto', texto);
   if (comuna) params.set('comuna', comuna);
@@ -1260,6 +1260,8 @@ export async function getPublicStoresApi({ page = 0, size = 12, texto, comuna, m
   // conteo sale del mismo cruce relacional que despues usa la ficha de la tienda, asi que la
   // card no promete 264 repuestos para terminar mostrando 9.
   if (catalogoId) params.set('catalogoId', String(catalogoId));
+  // Mismo anio que manda el listado por patente, para que el conteo de la card coincida.
+  if (catalogoId && Number(anioVehiculo) > 0) params.set('anioVehiculo', String(Number(anioVehiculo)));
   return fetchApi(`/tiendas/publicas?${params.toString()}`, { method: 'GET', signal });
 }
 
@@ -2117,8 +2119,11 @@ export async function getInventoryVehicleCatalogsApi(ids, { signal } = {}) {
 /**
  * Retorna las ofertas de repuestos compatibles con un vehiculo_catalogo específico.
  */
-export async function getVehicleCatalogPartsApi(catalogoId, { categoriaId, subcategoriaId, marcaId, precioMin, precioMax, texto, condicion, origen, comunaId, soloCotizacion, proveedorId, page = 0, size = 20, signal } = {}) {
+export async function getVehicleCatalogPartsApi(catalogoId, { anio, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, texto, condicion, origen, comunaId, soloCotizacion, proveedorId, page = 0, size = 20, signal } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
+  // Anio del auto del comprador. El catalogoId es una version con un rango de anios: con el
+  // anio real el backend trae lo registrado en todas las versiones del modelo que le sirven.
+  if (Number(anio) > 0) params.set('anio', String(Number(anio)));
   if (categoriaId) params.set('categoriaId', String(categoriaId));
   if (subcategoriaId) params.set('subcategoriaId', String(subcategoriaId));
   if (condicion) params.set('condicion', condicion);

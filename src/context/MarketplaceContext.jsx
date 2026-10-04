@@ -11,7 +11,9 @@ const MarketplaceContext = createContext(null);
 // demostración de src/data/sampleVehicles.js, que al volver de localStorage activaba
 // el filtro "solo compatibles" contra un auto que no existe en el inventario real y
 // dejaba el catálogo en cero resultados. Cambiar la clave descarta ese dato una vez.
-const ACTIVE_VEHICLE_KEY = 'repuestop_active_vehicle_v2';
+// v3: el vehiculo guardado lleva `catalogoIdsEquivalentes` y el modelo canonico. Uno guardado
+// con la forma anterior se descarta para que la patente se vuelva a consultar.
+const ACTIVE_VEHICLE_KEY = 'repuestop_active_vehicle_v3';
 
 // El carrito de invitado se persiste porque ahora vive en una URL propia (`/carrito`):
 // antes solo existía dentro del drawer y morir al recargar no se notaba.
@@ -96,6 +98,7 @@ export function MarketplaceProvider({ children }) {
   const [activeVehicle, setActiveVehicle] = useState(() => {
     try {
       localStorage.removeItem('repuestop_active_vehicle'); // dato de la era mock
+      localStorage.removeItem('repuestop_active_vehicle_v2');
       const saved = localStorage.getItem(ACTIVE_VEHICLE_KEY);
       if (saved && saved !== 'undefined') {
         const parsed = JSON.parse(saved);

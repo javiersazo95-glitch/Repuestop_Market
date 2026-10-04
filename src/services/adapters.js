@@ -406,6 +406,16 @@ export function adaptStore(dto, index = 0) {
  * `requiereIngresoManual` indica que ni la BD local ni la API externa identificaron
  * el vehículo; la UI debe ofrecer el ingreso manual en ese caso.
  */
+/**
+ * Ids de catalogo contra los que se compara un repuesto: la fila resuelta del vehiculo y sus
+ * equivalentes. Como strings, porque los ids de un grupo guardado llegan a veces como texto.
+ */
+export function vehicleCatalogIds(vehicle) {
+  if (!vehicle) return [];
+  const ids = [vehicle.catalogoId, ...(Array.isArray(vehicle.catalogoIdsEquivalentes) ? vehicle.catalogoIdsEquivalentes : [])];
+  return [...new Set(ids.filter((id) => id !== undefined && id !== null && id !== '').map(String))];
+}
+
 export function adaptVehicle(dto) {
   if (!dto) return null;
 
@@ -435,6 +445,9 @@ export function adaptVehicle(dto) {
   return {
     vehiculoConsultadoId: dto.vehiculoConsultadoId || null,
     catalogoId: dto.catalogoId || null,
+    // Todas las filas del catalogo que son este mismo auto (familia del modelo y anio). Un
+    // repuesto le sirve si esta registrado contra cualquiera: misma regla del listado.
+    catalogoIdsEquivalentes: Array.isArray(dto.catalogoIdsEquivalentes) ? dto.catalogoIdsEquivalentes : [],
     patente: dto.patente || '',
     marca: dto.marca || '',
     modelo: modeloLimpio,

@@ -439,6 +439,7 @@ export default function PartsCatalogView({
   } = useQuery({
     queryKey: isVehicleCatalogSearch
       ? qk.vehicleCompatibleProducts(activeVehicle.catalogoId, {
+          anio: activeVehicle.anio || undefined,
           page: currentPage - 1,
           size: itemsPerPage,
           texto: deferredSearchQuery?.trim() || undefined,
@@ -480,6 +481,7 @@ export default function PartsCatalogView({
     queryFn: async ({ signal }) => {
       if (isVehicleCatalogSearch) {
         const data = await getVehicleCatalogPartsApi(activeVehicle.catalogoId, {
+          anio: activeVehicle.anio || undefined,
           page: currentPage - 1,
           size: itemsPerPage,
           texto: deferredSearchQuery?.trim() || undefined,
