@@ -171,17 +171,25 @@ function mapCompatibilidad(dto) {
         : dto.compatibilityGroupsJson;
       if (Array.isArray(grupos) && grupos.length > 0) {
         return grupos.map((g) => {
-          const versionCount = Array.isArray(g.vehiculoCatalogoIds) ? g.vehiculoCatalogoIds.length : (Array.isArray(g.vehicleCatalogIds) ? g.vehicleCatalogIds.length : 0);
-          const versionLabel = g.version || g.versionNombre || (Array.isArray(g.versionLabels) && g.versionLabels.length ? g.versionLabels.join(', ') : '') || (versionCount > 0 ? `${versionCount} versiones` : '') || g.trim || '';
+          const ids = g.vehiculoCatalogoIds || g.vehicleCatalogIds || [];
+          const versionCount = Array.isArray(ids) ? ids.length : 0;
+          const versionLabels = Array.isArray(g.versionLabels) ? g.versionLabels : [];
+          const versionLabel = g.version
+            || g.versionNombre
+            || (versionLabels.length ? versionLabels.join(', ') : '')
+            || (versionCount > 0 ? `${versionCount} versión${versionCount === 1 ? '' : 'es'}` : '')
+            || g.trim
+            || '';
           return {
-            marca: g.marca || g.brand || '',
-            modelo: g.modelo || g.model || '',
+            marca: g.marca || g.brand || g.compatBrand || g.vehicleBrand || dto.compatibilidadMarca || '',
+            modelo: g.modelo || g.model || g.compatModelo || g.vehicleModel || dto.compatibilidadModelo || '',
             version: versionLabel,
-            anioInicio: toNumber(g.anioDesde ?? g.anioInicio ?? g.yearFrom),
-            anioFin: toNumber(g.anioHasta ?? g.anioFin ?? g.yearTo),
-            motor: g.motor || g.engine || '',
+            anioInicio: toNumber(g.anioDesde ?? g.anioInicio ?? g.yearFrom ?? g.vehicleYear ?? dto.anioDesde),
+            anioFin: toNumber(g.anioHasta ?? g.anioFin ?? g.yearTo ?? g.vehicleYearTo ?? dto.anioHasta),
+            motor: g.motor || g.engine || dto.motor || '',
             referenciaOem: g.referenciaOem || g.oem || g.oemReference || dto.referenciaOem || '',
-            vehiculoCatalogoIds: g.vehiculoCatalogoIds || g.vehicleCatalogIds || [],
+            vehiculoCatalogoIds: Array.isArray(ids) ? ids : (dto.vehiculoCatalogoIds || []),
+            versionLabels,
           };
         });
       }
@@ -190,7 +198,7 @@ function mapCompatibilidad(dto) {
     }
   }
 
-  if (!dto.compatibilidadMarca && !dto.compatibilidadModelo) return [];
+  if (!dto.compatibilidadMarca && !dto.compatibilidadModelo && (!dto.vehiculoCatalogoIds || !dto.vehiculoCatalogoIds.length)) return [];
 
   const flatVersionCount = Array.isArray(dto.vehiculoCatalogoIds) ? dto.vehiculoCatalogoIds.length : 0;
   const flatVersionLabel = dto.compatibilidadVersion || dto.version || (flatVersionCount > 0 ? `${flatVersionCount} versiones` : '');
@@ -204,6 +212,7 @@ function mapCompatibilidad(dto) {
     motor: dto.motor || '',
     referenciaOem: dto.referenciaOem || '',
     vehiculoCatalogoIds: dto.vehiculoCatalogoIds || [],
+    versionLabels: [],
   }];
 }
 

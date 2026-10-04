@@ -30,17 +30,89 @@ import ProductTopBadge from './ProductTopBadge';
 import { isProductTopActive } from '../utils/productTop';
 import { isOwnStoreProduct } from '../utils/purchaseProfile';
 
+function claveTexto(str) {
+  return String(str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function extraerCilindradaLitros(valor) {
+  if (!valor) return null;
+  const str = String(valor).toLowerCase().replace(',', '.');
+  const ccMatch = str.match(/\b([1-9][0-9]{3})\b/);
+  if (ccMatch) {
+    const cc = parseInt(ccMatch[1], 10);
+    return (cc / 1000).toFixed(1);
+  }
+  const litMatch = str.match(/\b([0-9]\.[0-9]{1,3})\b/);
+  if (litMatch) {
+    const lit = parseFloat(litMatch[1]);
+    return lit.toFixed(1);
+  }
+  return null;
+}
+
+function sonMotoresEquivalentes(motorA, motorB) {
+  if (!motorA || !motorB) return true;
+  const a = claveTexto(motorA);
+  const b = claveTexto(motorB);
+  if (!a || !b || a === b || a.includes(b) || b.includes(a)) return true;
+
+  const numA = extraerCilindradaLitros(motorA);
+  const numB = extraerCilindradaLitros(motorB);
+  if (numA && numB && numA === numB) return true;
+
+  return false;
+}
+
 // Compara el vehículo resuelto por patente contra un registro de compatibilidad
-// del repuesto. El modelo del vehículo puede traer la versión pegada (p.ej.
-// "D-Max LTZ"), así que se usa coincidencia parcial en vez de igualdad estricta.
-function vehicleMatchesCompatibility(vehicle, item) {
-  const norm = (value) => String(value || '').toLocaleLowerCase('es').trim();
-  const marcaOk = norm(vehicle.marca) === norm(item.marca);
-  const vehicleModelo = norm(vehicle.modelo);
-  const itemModelo = norm(item.modelo);
+// del repuesto o sus filas de catálogo enriquecidas.
+function vehicleMatchesCompatibility(vehicle, item, catalogRowsForGroup = []) {
+  if (!vehicle) return false;
+
+  // 1. Coincidencia relacional exacta por catalogoId
+  if (vehicle.catalogoId) {
+    const vCatId = String(vehicle.catalogoId);
+    const itemIds = Array.isArray(item?.vehiculoCatalogoIds) ? item.vehiculoCatalogoIds.map(String) : [];
+    if (itemIds.includes(vCatId)) return true;
+  }
+
+  // 2. Coincidencia contra filas enriquecidas del catálogo generadas para este grupo
+  if (Array.isArray(catalogRowsForGroup) && catalogRowsForGroup.length > 0) {
+    const matchRow = catalogRowsForGroup.some((row) => {
+      const rowMarcaKey = claveTexto(row.marca);
+      const vehMarcaKey = claveTexto(vehicle.marca);
+      const marcaOk = !rowMarcaKey || !vehMarcaKey || rowMarcaKey === vehMarcaKey;
+      if (!marcaOk) return false;
+
+      const rowModelKey = claveTexto(row.modelo);
+      const vehModelKey = claveTexto(vehicle.modelo);
+      const modeloOk = Boolean(rowModelKey && vehModelKey) && (vehModelKey.includes(rowModelKey) || rowModelKey.includes(vehModelKey));
+      if (!modeloOk) return false;
+
+      const anio = Number(vehicle.anio) || null;
+      const anioOk = !anio || ((!row.anioInicio || anio >= Number(row.anioInicio)) && (!row.anioFin || anio <= Number(row.anioFin)));
+      if (!anioOk) return false;
+
+      return true;
+    });
+    if (matchRow) return true;
+  }
+
+  // 3. Coincidencia contra el registro directo del producto (item)
+  const itemMarcaKey = claveTexto(item?.marca);
+  const vehMarcaKey = claveTexto(vehicle.marca);
+  const marcaOk = !itemMarcaKey || !vehMarcaKey || itemMarcaKey === vehMarcaKey;
+
+  const vehicleModelo = claveTexto(vehicle.modelo);
+  const itemModelo = claveTexto(item?.modelo);
   const modeloOk = Boolean(itemModelo) && (vehicleModelo.includes(itemModelo) || itemModelo.includes(vehicleModelo));
+
   const anio = Number(vehicle.anio) || null;
-  const anioOk = !anio || ((!item.anioInicio || anio >= item.anioInicio) && (!item.anioFin || anio <= item.anioFin));
+  const anioOk = !anio || ((!item?.anioInicio || anio >= Number(item.anioInicio)) && (!item?.anioFin || anio <= Number(item.anioFin)));
+
   return marcaOk && modeloOk && anioOk;
 }
 
@@ -112,11 +184,8 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const rawSeller = product.vendedor;
   const seller = typeof rawSeller === 'object' ? (rawSeller?.nombre || rawSeller?.razonSocial) : rawSeller;
   const sellerName = seller || 'Tienda verificada';
-  const compatibility = product.compatibilidad || [];
+  const compatibility = useMemo(() => product.compatibilidad || [], [product.compatibilidad]);
   const isUniversalPart = Boolean(product.esUniversal);
-  const compatible = activeVehicle && compatibility.some((item) =>
-    item.marca?.toLowerCase() === activeVehicle.marca?.toLowerCase()
-    && item.modelo?.toLowerCase() === activeVehicle.modelo?.toLowerCase());
   const category = product.categoriaNombre || product.categoria || 'Repuestos';
   const condition = product.condicion || 'Original';
   const city = product.ciudadVendedor || 'Chile';
@@ -262,6 +331,11 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
       || text(a.version).localeCompare(text(b.version), 'es', { numeric: true })
     ));
   }, [compatibility, vehicleCatalogDetails, versionsMap, product.oemCode]);
+
+  const compatible = useMemo(() => Boolean(activeVehicle && (isUniversalPart || compatibility.some((item, groupIndex) => {
+    const groupRows = compatibilityRows.filter((r) => r.groupIndex === groupIndex);
+    return vehicleMatchesCompatibility(activeVehicle, item, groupRows);
+  }))), [activeVehicle, isUniversalPart, compatibility, compatibilityRows]);
   // Celular: las mismas filas agrupadas por compatibilidad registrada, como la app.
   const compatibilityGroupCards = useMemo(() => {
     const byGroup = new Map();
@@ -387,8 +461,15 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
       }
       setCompatibilitySearch('');
       setPlateVehicle(resolved);
-      const matchIndex = compatibility.findIndex((item) => vehicleMatchesCompatibility(resolved, item));
-      setPlateMatchIndex(matchIndex);
+      if (isUniversalPart) {
+        setPlateMatchIndex(0);
+      } else {
+        const matchIndex = compatibility.findIndex((item, groupIndex) => {
+          const groupRows = compatibilityRows.filter((r) => r.groupIndex === groupIndex);
+          return vehicleMatchesCompatibility(resolved, item, groupRows);
+        });
+        setPlateMatchIndex(matchIndex);
+      }
     } catch (error) {
       setPlateError(error.message || 'No se pudo consultar la patente.');
     } finally {
@@ -913,7 +994,8 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                   <Car />
                   <input
                     value={plateInput}
-                    onChange={(event) => { setPlateInput(event.target.value); }}
+                    maxLength={8}
+                    onChange={(event) => { setPlateInput(event.target.value.toUpperCase()); }}
                     placeholder="Ingresa tu patente (ej. BBCL12)"
                   />
                 </label>
@@ -926,7 +1008,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                   <CheckCircle2 />
                   <div>
                     <strong>Tu {plateVehicle.marca} {plateVehicle.modelo}{plateVehicle.anio ? ` (${plateVehicle.anio})` : ''} es compatible con este repuesto.</strong>
-                    <span>Lo destacamos en la lista de abajo.</span>
+                    <span>{isUniversalPart ? 'Este repuesto es universal: es compatible con cualquier vehículo.' : 'Lo destacamos en la lista de abajo.'}</span>
                   </div>
                 </div>
               )}

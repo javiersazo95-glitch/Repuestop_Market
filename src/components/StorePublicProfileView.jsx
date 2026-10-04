@@ -382,7 +382,11 @@ export default function StorePublicProfileView({
     // le sirve a cualquier vehiculo -- la misma regla con la que el catalogo general lo
     // rescata via `OR esUniversal` en la Specification del backend.
     if (!wantsVehicleCompat && onlyCompatible && activeVehicle && !prod.esUniversal) {
-      const matchesVehicle = (prod.compatibilidad || []).some(
+      if (activeVehicle.catalogoId && Array.isArray(prod.vehiculoCatalogoIds)
+          && prod.vehiculoCatalogoIds.map(String).includes(String(activeVehicle.catalogoId))) {
+        // Coincidencia exacta por catálogo a nivel de producto
+      } else {
+        const matchesVehicle = (prod.compatibilidad || []).some(
         c => {
           // El backend a veces manda los ids del grupo como string (vienen de un JSON
           // guardado con el picker de compatibilidad) y activeVehicle.catalogoId como
@@ -413,6 +417,7 @@ export default function StorePublicProfileView({
         }
       );
       if (!matchesVehicle) return false;
+      }
     }
 
     // 5. Purchase Type / Modalidad Filter (Precio Directo vs Solo Cotización)
