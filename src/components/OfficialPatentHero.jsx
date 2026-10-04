@@ -538,7 +538,7 @@ export default function OfficialPatentHero({
                     </div>
                     <div className="hero-vehicle-spec-item">
                       <span className="hero-vehicle-spec-label">Motor</span>
-                      <span className="hero-vehicle-spec-value" title={activeVehicle.motor}>{activeVehicle.motor || 'No informado'}</span>
+                      <span className="hero-vehicle-spec-value" title={activeVehicle.numeroMotor ? `N° Motor: ${activeVehicle.numeroMotor}` : activeVehicle.motor}>{activeVehicle.motor || 'No informado'}</span>
                     </div>
                     <div className="hero-vehicle-spec-item">
                       <span className="hero-vehicle-spec-label">Combustible</span>

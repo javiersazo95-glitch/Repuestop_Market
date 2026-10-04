@@ -400,14 +400,42 @@ export function adaptStore(dto, index = 0) {
 export function adaptVehicle(dto) {
   if (!dto) return null;
 
+  // Extraer cilindrada limpia en formato amigable (ej: "1.4L" o "1.4")
+  const cilindradaLimpia = dto.cilindradaLitros
+    || (dto.cilindrada ? (/^\d+(\.\d+)?$/.test(dto.cilindrada) ? `${dto.cilindrada}L` : dto.cilindrada) : '');
+
+  // Modelo limpio canónico (evitar cadenas concatenadas como "BALENO GLS HB 1.4 Estándar")
+  const modeloLimpio = dto.catalogoModelo || dto.modelo || '';
+
+  // Versión canónica limpia (evitar placeholder "Estándar" si no hay detalle)
+  const rawVersion = dto.version && !/^est[aá]ndar$/i.test(dto.version.trim()) ? dto.version.trim() : '';
+  const versionLimpia = dto.catalogoVersion || rawVersion || '';
+
+  // Motor amigable para la vista (cilindrada)
+  let motorDisplay = cilindradaLimpia;
+  if (!motorDisplay && dto.modelo) {
+    const matchCil = dto.modelo.match(/\b([0-9]{1,2}[.,][0-9]{1,3})\b/);
+    if (matchCil) {
+      motorDisplay = `${matchCil[1].replace(',', '.')}L`;
+    }
+  }
+  if (!motorDisplay) {
+    motorDisplay = dto.numeroMotor || '';
+  }
+
   return {
     vehiculoConsultadoId: dto.vehiculoConsultadoId || null,
     catalogoId: dto.catalogoId || null,
     patente: dto.patente || '',
     marca: dto.marca || '',
-    modelo: [dto.modelo, dto.version].filter(Boolean).join(' '),
+    modelo: modeloLimpio,
+    version: versionLimpia,
     anio: toNumber(dto.anio),
-    motor: dto.numeroMotor || '',
+    motor: motorDisplay,
+    numeroMotor: dto.numeroMotor || '',
+    motorCodigo: dto.motorCodigo || '',
+    cilindrada: dto.cilindrada || '',
+    cilindradaLitros: dto.cilindradaLitros || '',
     transmision: dto.transmision || '',
     vin: dto.vin || dto.chasis || '',
     combustible: dto.tipoCombustible || '',
