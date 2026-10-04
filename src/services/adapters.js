@@ -542,7 +542,11 @@ export function adaptCompatibleOffer(spare, offer) {
     imagenes,
     logoTienda: resolveMediaUrl(offer.storeIconUrl),
     requiereChasis: Boolean(offer.requiereChasis),
-    isTop: false,
+    // Insignia Top ventas vigente, ya calculada por el backend (destacado y top_hasta futuro).
+    isTop: Boolean(offer.destacado),
+    topExpiresAt: offer.topHasta || null,
+    // Registrado como compatible con el auto (no solo universal): define su grupo en el orden.
+    compatibleRegistrado: Boolean(spare?.nivelConfianza) && spare.nivelConfianza !== 'UNIVERSAL',
     pricingMode: soloCotizacion ? 'QUOTE_ONLY' : 'SHOW_PRICE',
     soloCotizacion,
     createdAt: null,

@@ -1332,6 +1332,18 @@ export async function getCatalogFilterOptionsApi({ signal } = {}) {
   return fetchApi('/inventario/productos/filtros', { method: 'GET', signal });
 }
 
+/**
+ * Opciones de los filtros avanzados con una patente activa (regla del 4-oct): categorias,
+ * subcategorias, marcas, condiciones, origenes, tiendas, comunas y rango de precio que existen
+ * en el universo compatible con el auto, para no ofrecer filtros que devuelvan cero.
+ */
+export async function getVehicleFilterOptionsApi(catalogoId, { anio, signal } = {}) {
+  const params = new URLSearchParams();
+  if (Number(anio) > 0) params.set('anio', String(Number(anio)));
+  const query = params.toString();
+  return fetchApi(`/vehiculos-catalogo/${catalogoId}/repuestos/filtros${query ? `?${query}` : ''}`, { method: 'GET', signal });
+}
+
 export async function getPublicPartOriginsApi({ signal } = {}) {
   return fetchApi('/inventario/productos/origenes', { method: 'GET', signal });
 }
@@ -2119,11 +2131,14 @@ export async function getInventoryVehicleCatalogsApi(ids, { signal } = {}) {
 /**
  * Retorna las ofertas de repuestos compatibles con un vehiculo_catalogo específico.
  */
-export async function getVehicleCatalogPartsApi(catalogoId, { anio, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, texto, condicion, origen, comunaId, soloCotizacion, proveedorId, page = 0, size = 20, signal } = {}) {
+export async function getVehicleCatalogPartsApi(catalogoId, { anio, sort, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, texto, condicion, origen, comunaId, soloCotizacion, proveedorId, page = 0, size = 20, signal } = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   // Anio del auto del comprador. El catalogoId es una version con un rango de anios: con el
   // anio real el backend trae lo registrado en todas las versiones del modelo que le sirven.
   if (Number(anio) > 0) params.set('anio', String(Number(anio)));
+  // Orden elegido por el comprador. El backend lo aplica dentro de cada grupo: compatible con
+  // Top, compatible, universal con Top y universal nunca se mezclan.
+  if (sort) params.set('sort', sort);
   if (categoriaId) params.set('categoriaId', String(categoriaId));
   if (subcategoriaId) params.set('subcategoriaId', String(subcategoriaId));
   if (condicion) params.set('condicion', condicion);

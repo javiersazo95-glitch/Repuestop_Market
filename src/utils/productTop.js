@@ -39,6 +39,18 @@ export function isProductTopActive(product, now) {
   return getProductTopStatus(product, now).state === 'active';
 }
 
+/**
+ * Grupo de un repuesto en el listado por patente (regla del 4-oct, igual que el backend):
+ * 0 compatible con el auto y con Top vigente, 1 compatible, 2 universal con Top, 3 universal.
+ * `compatibleRegistrado` lo arma adaptCompatibleOffer; sin el, se usa `esUniversal`.
+ */
+export function rangoListadoPorPatente(product, now) {
+  const compatible = product?.compatibleRegistrado ?? !product?.esUniversal;
+  const top = isProductTopActive(product, now);
+  if (compatible) return top ? 0 : 1;
+  return top ? 2 : 3;
+}
+
 export function topExpiryDateLabel(status) {
   if (!status?.expiresAt) return '';
   return status.expiresAt.toLocaleDateString('es-CL', {

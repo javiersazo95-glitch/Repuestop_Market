@@ -39,6 +39,8 @@ export const qk = {
   buyerAccountStatus: (buyerId) => ['buyerAccountStatus', buyerId],
   /** Ofertas compatibles de repuestos para un vehiculo_catalogo (GET /vehiculos-catalogo/{id}/repuestos). */
   vehicleCompatibleProducts: (catalogoId, filters) => ['vehicleCatalogParts', catalogoId, filters || {}],
+  /** Opciones de filtros acotadas a la patente (GET /vehiculos-catalogo/{id}/repuestos/filtros). */
+  vehicleFilterOptions: (catalogoId, anio) => ['vehicleFilterOptions', catalogoId, anio || null],
   vehicleBrands: () => ['vehicleBrands'],
   vehicleModels: (marcaId) => ['vehicleModels', marcaId],
   vehicleVersions: (marca, modelo, anio) => ['vehicleVersions', { marca, modelo, anio }],

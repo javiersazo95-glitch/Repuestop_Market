@@ -16,7 +16,8 @@ import {
 import {
   getPartCategoriesApi, getPublicProductsApi, getVehicleCatalogPartsApi, searchVehicleByPatenteApi, getAddressesApi,
   getPartSubcategoriesApi, getPartBrandsApi,
-  getVehicleBrandsApi, getVehicleModelsApi, getPublicPartOriginsApi, getCatalogFilterOptionsApi
+  getVehicleBrandsApi, getVehicleModelsApi, getPublicPartOriginsApi, getCatalogFilterOptionsApi,
+  getVehicleFilterOptionsApi
 } from '../services/api';
 import { adaptPage, adaptProduct, adaptCompatibleOffersPage, adaptVehicle } from '../services/adapters';
 import { normalizePlate, sanitizePlateInput, isValidPlate } from '../utils/vehicleLookup';
@@ -252,6 +253,9 @@ export default function PartsCatalogView({
         return 'stock,desc';
     }
   }, [sortBy]);
+  // Con patente, "relevancia" no manda orden: el backend usa su regla (compatible con Top,
+  // compatible, universal con Top, universal). Los demas ordenes se aplican dentro de cada grupo.
+  const vehicleSort = sortBy === 'relevancia' ? undefined : backendSort;
 
   // Lista de categorías persistidas en el backend para resolver IDs reales
   const { data: backendCategories = [], isFetched: categoriesFetched } = useQuery({
@@ -378,6 +382,62 @@ export default function PartsCatalogView({
   // consultamos el motor de cruce relacional /vehiculos-catalogo/{id}/repuestos directamente.
   const isVehicleCatalogSearch = Boolean(onlyCompatible && activeVehicle?.catalogoId);
 
+  // Regla del 4-oct: con patente, cada filtro avanzado ofrece solo lo que existe en el universo
+  // compatible con el auto (categorias, marcas, condicion, origen, tiendas, comunas, precio y
+  // modalidad). Sin patente, o mientras carga, se usan los catalogos completos.
+  const { data: vehicleFilters = null } = useQuery({
+    queryKey: qk.vehicleFilterOptions(activeVehicle?.catalogoId, activeVehicle?.anio),
+    queryFn: async ({ signal }) => {
+      try {
+        return await getVehicleFilterOptionsApi(activeVehicle.catalogoId, { anio: activeVehicle.anio, signal });
+      } catch {
+        return null;
+      }
+    },
+    enabled: isVehicleCatalogSearch,
+    staleTime: 1000 * 60 * 5,
+  });
+  const scopedFilters = isVehicleCatalogSearch && vehicleFilters ? vehicleFilters : null;
+  const scopedCategoryKeys = useMemo(
+    () => (scopedFilters ? new Set((scopedFilters.categorias || []).map((c) => normalizeNameKey(c.nombre))) : null),
+    [scopedFilters],
+  );
+  const visibleNavigationCategories = useMemo(() => {
+    if (!scopedFilters) return NAVIGATION_CATEGORIES;
+    return NAVIGATION_CATEGORIES
+      .filter((cat) => scopedCategoryKeys.has(normalizeNameKey(cat.nombre)))
+      .map((cat) => {
+        const backendCategory = (scopedFilters.categorias || []).find((c) => normalizeNameKey(c.nombre) === normalizeNameKey(cat.nombre));
+        const subKeys = new Set((scopedFilters.subcategorias || [])
+          .filter((sub) => !backendCategory || sub.categoriaId === backendCategory.id)
+          .map((sub) => normalizeNameKey(sub.nombre)));
+        return { ...cat, subcategories: (cat.subcategories || []).filter((name) => subKeys.has(normalizeNameKey(name))) };
+      });
+  }, [scopedFilters, scopedCategoryKeys]);
+  const visiblePartBrands = scopedFilters ? (scopedFilters.marcas || []) : partBrands;
+  const visibleConditions = scopedFilters
+    ? PART_CONDITIONS.filter((condition) => (scopedFilters.condiciones || []).includes(condition.value))
+    : PART_CONDITIONS;
+  const visibleOrigins = scopedFilters ? (scopedFilters.origenes || []) : partOrigins;
+  const visibleStoreOptions = useMemo(() => (scopedFilters
+    ? (scopedFilters.tiendas || []).map((store) => ({
+      value: String(store.id),
+      label: store.comuna ? `${store.nombre} · ${store.comuna}` : store.nombre,
+    }))
+    : storeFilterOptions), [scopedFilters, storeFilterOptions]);
+  const visibleComunaOptions = useMemo(() => (scopedFilters
+    ? (scopedFilters.comunas || []).map((comuna) => ({
+      value: String(comuna.id),
+      label: comuna.region ? `${comuna.nombre} · ${comuna.region}` : comuna.nombre,
+    }))
+    : comunaFilterOptions), [scopedFilters, comunaFilterOptions]);
+  const scopedMinPrice = scopedFilters?.precioMin != null ? Number(scopedFilters.precioMin) : null;
+  const scopedMaxPrice = scopedFilters?.precioMax != null ? Number(scopedFilters.precioMax) : null;
+  const visiblePricePresets = scopedMinPrice != null
+    ? PRICE_PRESETS.filter((preset) => preset >= scopedMinPrice)
+    : PRICE_PRESETS;
+  const showQuoteOnlyFilter = !scopedFilters || scopedFilters.hayCotizacion || onlyQuoteOnly;
+
   /**
    * Compatibilidad enviada al servidor. Manda el vehículo activo (patente) cuando lo hay y
    * no se resolvió por `catalogoId`; si no, mandan los selectores manuales del panel.
@@ -440,6 +500,7 @@ export default function PartsCatalogView({
     queryKey: isVehicleCatalogSearch
       ? qk.vehicleCompatibleProducts(activeVehicle.catalogoId, {
           anio: activeVehicle.anio || undefined,
+          sort: vehicleSort,
           page: currentPage - 1,
           size: itemsPerPage,
           texto: deferredSearchQuery?.trim() || undefined,
@@ -482,6 +543,7 @@ export default function PartsCatalogView({
       if (isVehicleCatalogSearch) {
         const data = await getVehicleCatalogPartsApi(activeVehicle.catalogoId, {
           anio: activeVehicle.anio || undefined,
+          sort: vehicleSort,
           page: currentPage - 1,
           size: itemsPerPage,
           texto: deferredSearchQuery?.trim() || undefined,
@@ -786,7 +848,9 @@ export default function PartsCatalogView({
     setSelectedStoreId('');
     setSelectedComunaId('');
     setOnlyQuoteOnly(false);
-    setOnlyCompatible(false);
+    // El filtro de la patente manda: limpiar los filtros avanzados no lo quita. Para eso
+    // esta el boton "Quitar filtro" del vehiculo.
+    setOnlyCompatible(Boolean(activeVehicle));
     setMinPrice(0);
     setMinPriceDraft('');
     setMaxPrice(PRICE_CEILING);
@@ -972,7 +1036,7 @@ export default function PartsCatalogView({
 
             {/* Filter 0: Modalidad de compra. Un interruptor, no tres opciones: el estado
                 neutro es no filtrar, y no necesita una opcion propia que lo diga. */}
-            <div className="filter-section-group">
+            {showQuoteOnlyFilter && <div className="filter-section-group">
               <label className="checkbox-filter-label">
                 <input
                   type="checkbox"
@@ -984,7 +1048,7 @@ export default function PartsCatalogView({
                   <small><ShoppingCart size={12} /> Piezas sin precio publicado, que se cotizan con la tienda.</small>
                 </span>
               </label>
-            </div>
+            </div>}
 
             {/* Filter 1: Categoría del Repuesto */}
             <div className={`filter-section-group ${openFilterSections.category ? 'is-open' : 'is-collapsed'}`}>
@@ -1000,7 +1064,7 @@ export default function PartsCatalogView({
                   <span className="filter-option-copy"><strong>Todas las Categorías</strong><small>Explorar todo el catálogo</small></span>
                   {selectedCategory === 'TODAS' && <CheckCircle2 size={18} className="check-active" />}
                 </button>
-                {NAVIGATION_CATEGORIES.map((cat) => {
+                {visibleNavigationCategories.map((cat) => {
                   const isSelected = selectedCategory === cat.id;
                   const expanded = expandedCategories[cat.id] || isSelected;
                   return <div className="filter-category-tree" key={cat.id}>
@@ -1116,7 +1180,7 @@ export default function PartsCatalogView({
                 <option value="">
                   {activeCategoryName ? `Todas las de ${activeCategoryName}` : 'Todas las marcas'}
                 </option>
-                {partBrands.map((brand) => (
+                {visiblePartBrands.map((brand) => (
                   <option key={brand.id} value={brand.id}>{brand.nombre}</option>
                 ))}
               </select>
@@ -1136,7 +1200,7 @@ export default function PartsCatalogView({
                   <span className="filter-choice-dot">{selectedCondition === '' && <CheckCircle2 size={18} />}</span>
                   <span className="filter-option-copy"><strong>Original y Alternativo</strong><small>Todo el catálogo es repuesto nuevo</small></span>
                 </button>
-                {PART_CONDITIONS.map((condition) => (
+                {visibleConditions.map((condition) => (
                   <button
                     key={condition.value}
                     className={`filter-option-btn ${selectedCondition === condition.value ? 'active' : ''}`}
@@ -1158,7 +1222,7 @@ export default function PartsCatalogView({
                 className="sidebar-select-input"
               >
                 <option value="">Todos los orígenes</option>
-                {partOrigins.map((origin) => (
+                {visibleOrigins.map((origin) => (
                   <option key={origin} value={origin}>{origin}</option>
                 ))}
               </select>
@@ -1206,8 +1270,13 @@ export default function PartsCatalogView({
                   <span>$0</span>
                   <span>{formatCLP(PRICE_CEILING)}+</span>
                 </div>
+                {scopedMinPrice != null && scopedMaxPrice != null && (
+                  <small className="filter-search-select-help">
+                    Para tu vehículo hay repuestos entre {formatCLP(scopedMinPrice)} y {formatCLP(scopedMaxPrice)}
+                  </small>
+                )}
                 <div className="filter-price-presets">
-                  {PRICE_PRESETS.map((preset) => (
+                  {visiblePricePresets.map((preset) => (
                     <button
                       key={preset}
                       type="button"
@@ -1234,21 +1303,25 @@ export default function PartsCatalogView({
               label="Tienda"
               icon={<Store size={13} />}
               allLabel="Todas las tiendas"
-              options={storeFilterOptions}
+              options={visibleStoreOptions}
               value={selectedStoreId}
               onChange={setSelectedStoreId}
               searchPlaceholder="Buscar tienda"
-              helper={storeFilterOptions.length ? `${storeFilterOptions.length} ${storeFilterOptions.length === 1 ? 'tienda' : 'tiendas'} con repuestos publicados` : ''}
+              helper={visibleStoreOptions.length
+                ? `${visibleStoreOptions.length} ${visibleStoreOptions.length === 1 ? 'tienda' : 'tiendas'} con repuestos ${scopedFilters ? 'para tu vehículo' : 'publicados'}`
+                : ''}
             />
             <FilterSearchSelect
               label="Comuna"
               icon={<MapPin size={13} />}
               allLabel="Todas las comunas"
-              options={comunaFilterOptions}
+              options={visibleComunaOptions}
               value={selectedComunaId}
               onChange={setSelectedComunaId}
               searchPlaceholder="Buscar comuna"
-              helper={comunaFilterOptions.length ? `${comunaFilterOptions.length} ${comunaFilterOptions.length === 1 ? 'comuna' : 'comunas'} con tiendas` : ''}
+              helper={visibleComunaOptions.length
+                ? `${visibleComunaOptions.length} ${visibleComunaOptions.length === 1 ? 'comuna' : 'comunas'} con tiendas${scopedFilters ? ' que tienen repuestos para tu vehículo' : ''}`
+                : ''}
             />
 
             {/* Clear All Filters Button */}

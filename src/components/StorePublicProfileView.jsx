@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
 import {
@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { NAVIGATION_CATEGORIES } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
-import { isProductTopActive } from '../utils/productTop';
+import { isProductTopActive, rangoListadoPorPatente } from '../utils/productTop';
 import ContextualReportButton from './ContextualReportButton';
 import { parseShippingMethods, resolveShippingService } from '../data/shippingMethods';
 import { getAddressesApi, getStoreProductsApi, getStoreProfileApi, getVehicleCatalogPartsApi, searchVehicleByPatenteApi } from '../services/api';
@@ -27,6 +27,10 @@ import PaginationBar from './PaginationBar';
 
 // El backend acota el tamaño de página a 100; esta vista filtra y pagina en cliente.
 const STORE_PRODUCTS_FETCH_SIZE = 100;
+
+/** Clave comparable de un nombre: sin tildes, en minusculas y solo letras y digitos. */
+const normalizarClave = (value) => String(value || '').normalize('NFD')
+  .replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 export default function StorePublicProfileView({
   store,
@@ -212,7 +216,28 @@ export default function StorePublicProfileView({
     enabled: wantsVehicleCompat && Boolean(storeId),
   });
 
-  const compatibleStoreProducts = compatibleOffersData || [];
+  const compatibleStoreProducts = useMemo(() => compatibleOffersData || [], [compatibleOffersData]);
+
+  // Regla del 4-oct: con patente, el panel solo ofrece categorias, subcategorias y condiciones
+  // que existen entre los repuestos compatibles de esta tienda. La lista ya trae TODAS las
+  // paginas compatibles (no una muestra), asi que se puede derivar de ella sin perder opciones.
+  const visibleStoreCategories = useMemo(() => {
+    if (!wantsVehicleCompat) return NAVIGATION_CATEGORIES;
+    const categorias = new Set(compatibleStoreProducts.map((p) => normalizarClave(p.categoriaNombre)));
+    return NAVIGATION_CATEGORIES
+      .filter((cat) => categorias.has(normalizarClave(cat.nombre)))
+      .map((cat) => {
+        const subcategorias = new Set(compatibleStoreProducts
+          .filter((p) => normalizarClave(p.categoriaNombre) === normalizarClave(cat.nombre))
+          .map((p) => normalizarClave(p.subcategoria)));
+        return { ...cat, subcategories: (cat.subcategories || []).filter((name) => subcategorias.has(normalizarClave(name))) };
+      });
+  }, [wantsVehicleCompat, compatibleStoreProducts]);
+  const visibleStoreConditions = useMemo(() => {
+    if (!wantsVehicleCompat) return ['ORIGINAL', 'ALTERNATIVO'];
+    const presentes = new Set(compatibleStoreProducts.map((p) => String(p.condicion || '').toUpperCase()));
+    return ['ORIGINAL', 'ALTERNATIVO'].filter((cond) => presentes.has(cond));
+  }, [wantsVehicleCompat, compatibleStoreProducts]);
   // Marcas que la tienda realmente cubre. Cuando el backend no las manda (ficha aun en
   // vuelo) el selector queda solo con "Todas": es preferible a ofrecer marcas inventadas.
   const storeVehicleBrands = Array.isArray(currentStore?.marcasVehiculoDisponibles)
@@ -235,7 +260,8 @@ export default function StorePublicProfileView({
     setSelectedCondition('');
     setSelectedBrand('TODAS');
     setOnlyQuoteOnly(false);
-    setOnlyCompatible(false);
+    // El filtro de la patente manda: limpiar los filtros avanzados no lo quita.
+    setOnlyCompatible(Boolean(activeVehicle));
     setSearchQuery('');
     setInputValue('');
     setPatentInput('');
@@ -454,6 +480,12 @@ export default function StorePublicProfileView({
 
   // Sorting Logic
   const sortedProducts = [...filteredProducts].sort((a, b) => {
+    // Con patente activa, primero el grupo (compatible con Top, compatible, universal con Top,
+    // universal): un universal con Top no pasa delante de lo registrado para el auto.
+    if (wantsVehicleCompat) {
+      const grupo = rangoListadoPorPatente(a) - rangoListadoPorPatente(b);
+      if (grupo) return grupo;
+    }
     const topPriority = Number(isProductTopActive(b)) - Number(isProductTopActive(a));
     if (topPriority) return topPriority;
     if (sortBy === 'precio-asc') return a.precio - b.precio;
@@ -880,7 +912,7 @@ export default function StorePublicProfileView({
                   <span className="filter-option-copy"><strong>Todas las Categorías</strong><small>Explorar el catálogo completo</small></span>
                   {selectedCategory === 'TODAS' && <CheckCircle2 size={14} className="check-active" />}
                 </button>
-                {NAVIGATION_CATEGORIES.map((cat) => {
+                {visibleStoreCategories.map((cat) => {
                   const isSelected = selectedCategory === cat.id;
                   const isExpanded = expandedCategories[cat.id] || isSelected;
                   return (
@@ -936,7 +968,7 @@ export default function StorePublicProfileView({
                   <span className="filter-choice-dot">{selectedCondition === '' && <CheckCircle2 size={18} />}</span>
                   <span className="filter-option-copy"><strong>Original y Alternativo</strong><small>Todo el catálogo de la tienda</small></span>
                 </button>
-                {['ORIGINAL', 'ALTERNATIVO'].map((cond) => (
+                {visibleStoreConditions.map((cond) => (
                   <button
                     key={cond}
                     className={`filter-option-btn ${selectedCondition === cond ? 'active' : ''}`}
