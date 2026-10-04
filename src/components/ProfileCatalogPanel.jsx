@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import {
-  ArrowUpRight, Boxes, CheckCircle, ChevronLeft, ChevronRight, Layers, Plus, Search, X,
+  ArrowUpRight, Boxes, CheckCircle, ChevronLeft, ChevronRight, Plus, RotateCcw, Search, X,
 } from 'lucide-react';
 import CatalogCard from './CatalogCard';
 import ProductTopBadge from './ProductTopBadge';
@@ -49,6 +49,16 @@ export default function ProfileCatalogPanel({
   onStatusFilterChange,
   catalogSort = 'default',
   onSortChange,
+  catalogPartBrand = '',
+  onPartBrandChange,
+  catalogPartBrands = [],
+  catalogVehicleBrand = '',
+  onVehicleBrandChange,
+  catalogVehicleBrands = [],
+  catalogYear = '',
+  onYearChange,
+  catalogYears = [],
+  onClearFilters,
 }) {
   const categories = Array.isArray(catalogCategories) ? catalogCategories : [];
   const activeCategory = categories.find(
@@ -59,6 +69,10 @@ export default function ProfileCatalogPanel({
   // numero que la categoria elegida. Si el resumen aun no llego, se suma lo de las fichas.
   const totalTodasCategorias = catalogTotalInventory
     ?? categories.reduce((total, category) => total + Number(category.total || 0), 0);
+  const hasActiveFilters = Boolean(
+    catalogSearchTerm || catalogCategoryId || catalogPartBrand || catalogVehicleBrand || catalogYear
+    || catalogStatusFilter !== 'all' || catalogSort !== 'default'
+  );
 
   /**
    * Productos de la pagina agrupados por categoria, en secciones.
@@ -99,15 +113,6 @@ export default function ProfileCatalogPanel({
           Catálogo Publicado {catalogTotalElements > 0 && <span className="catalog-total-badge">{catalogTotalElements}</span>}
         </h2>
         <div className="catalog-header-actions">
-          <form className="catalog-search-form" onSubmit={onSearchSubmit}>
-            <Search size={14} />
-            <input
-              type="text"
-              placeholder="Buscar por nombre o SKU..."
-              value={catalogSearchInput}
-              onChange={(e) => setCatalogSearchInput(e.target.value)}
-            />
-          </form>
           <button type="button" className="catalog-add-product-button" onClick={onAddProduct}>
             <Plus size={16} /> Agregar producto
           </button>
@@ -129,75 +134,101 @@ export default function ProfileCatalogPanel({
         <div className="catalog-top-feedback"><CheckCircle size={15} /> {catalogTopFeedback}</div>
       )}
 
-      {categories.length > 0 && (
-        <div className="catalog-category-filter">
-          <span className="catalog-category-filter-label"><Layers size={14} /> Categoría:</span>
-          <div className="catalog-category-chips">
-            <button
-              type="button"
-              className={`catalog-category-chip ${!catalogCategoryId ? 'active' : ''}`}
-              aria-pressed={!catalogCategoryId}
-              onClick={() => onCategoryChange(null)}
-            >
-              Todas <span className="catalog-category-chip-count">{totalTodasCategorias}</span>
-            </button>
-            {categories.map((category) => {
-              const isActive = String(category.categoriaId) === String(catalogCategoryId);
-              return (
-                <button
-                  key={category.categoriaId}
-                  type="button"
-                  className={`catalog-category-chip ${isActive ? 'active' : ''}`}
-                  aria-pressed={isActive}
-                  onClick={() => onCategoryChange(category.categoriaId)}
-                >
-                  {category.categoriaNombre}
-                  <span className="catalog-category-chip-count">{category.total}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Barra de filtros en una fila, igual que el inventario del Panel de vendedor: buscador y
+          desplegables. Reemplaza las etiquetas de categoría y estado, que con muchas categorías
+          ocupaban varias filas. */}
+      <div className="catalog-control-bar">
+        <form className="catalog-control-search" onSubmit={onSearchSubmit} role="search">
+          <Search size={14} />
+          <input
+            type="text"
+            placeholder="Buscar por nombre o SKU..."
+            value={catalogSearchInput}
+            onChange={(e) => setCatalogSearchInput(e.target.value)}
+            aria-label="Buscar en el inventario"
+          />
+        </form>
 
-      {onStatusFilterChange && (
-        <div className="catalog-category-filter">
-          <span className="catalog-category-filter-label">Estado:</span>
-          <div className="catalog-category-chips">
-            {[
-              { key: 'all', label: 'Todos' },
-              { key: 'active', label: 'Activos' },
-              { key: 'paused', label: 'Pausados' },
-              { key: 'low', label: 'Stock bajo' },
-              { key: 'out', label: 'Sin stock' },
-            ].map((option) => (
-              <button
-                key={option.key}
-                type="button"
-                className={`catalog-category-chip ${catalogStatusFilter === option.key ? 'active' : ''}`}
-                aria-pressed={catalogStatusFilter === option.key}
-                onClick={() => onStatusFilterChange(option.key)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          {onSortChange && (
-            <select
-              className="catalog-sort-select"
-              value={catalogSort}
-              onChange={(event) => onSortChange(event.target.value)}
-              aria-label="Ordenar productos"
-            >
-              <option value="default">Orden: por categoría</option>
-              <option value="name">Nombre (A-Z)</option>
-              <option value="price-asc">Precio: menor a mayor</option>
-              <option value="price-desc">Precio: mayor a menor</option>
-              <option value="stock-asc">Stock: menor primero</option>
-            </select>
-          )}
-        </div>
-      )}
+        <select
+          className="catalog-control-select"
+          value={catalogCategoryId ?? ''}
+          onChange={(event) => onCategoryChange(event.target.value || null)}
+          aria-label="Filtrar por categoría"
+        >
+          <option value="">Categoría: Todas ({totalTodasCategorias})</option>
+          {categories.map((category) => (
+            <option key={category.categoriaId} value={category.categoriaId}>
+              {category.categoriaNombre} ({category.total})
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="catalog-control-select"
+          value={catalogPartBrand}
+          onChange={(event) => onPartBrandChange?.(event.target.value)}
+          aria-label="Filtrar por marca del repuesto"
+        >
+          <option value="">Marca: Todas</option>
+          {catalogPartBrands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
+        </select>
+
+        <select
+          className="catalog-control-select"
+          value={catalogVehicleBrand}
+          onChange={(event) => onVehicleBrandChange?.(event.target.value)}
+          aria-label="Filtrar por marca del vehículo"
+        >
+          <option value="">Vehículo: Todos</option>
+          {catalogVehicleBrands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
+        </select>
+
+        <select
+          className="catalog-control-select"
+          value={catalogYear}
+          onChange={(event) => onYearChange?.(event.target.value)}
+          aria-label="Filtrar por año del vehículo"
+        >
+          <option value="">Año: Todos</option>
+          {catalogYears.map((year) => <option key={year} value={year}>{year}</option>)}
+        </select>
+
+        {onStatusFilterChange && (
+          <select
+            className="catalog-control-select"
+            value={catalogStatusFilter}
+            onChange={(event) => onStatusFilterChange(event.target.value)}
+            aria-label="Filtrar por estado"
+          >
+            <option value="all">Estado: Todos</option>
+            <option value="active">Activos</option>
+            <option value="paused">Pausados</option>
+            <option value="low">Stock bajo</option>
+            <option value="out">Sin stock</option>
+          </select>
+        )}
+
+        {onSortChange && (
+          <select
+            className="catalog-control-select"
+            value={catalogSort}
+            onChange={(event) => onSortChange(event.target.value)}
+            aria-label="Ordenar productos"
+          >
+            <option value="default">Orden: por categoría</option>
+            <option value="name">Nombre (A-Z)</option>
+            <option value="price-asc">Precio: menor a mayor</option>
+            <option value="price-desc">Precio: mayor a menor</option>
+            <option value="stock-asc">Stock: menor primero</option>
+          </select>
+        )}
+
+        {hasActiveFilters && (
+          <button type="button" className="catalog-control-clear" onClick={onClearFilters} title="Limpiar filtros">
+            <RotateCcw size={14} /> Limpiar
+          </button>
+        )}
+      </div>
 
       <div className="catalog-range-filter">
         <span>Mostrar por página:</span>

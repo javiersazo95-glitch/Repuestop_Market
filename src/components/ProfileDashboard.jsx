@@ -279,6 +279,17 @@ export function EmptyState({ label }) {
   );
 }
 
+// Datos del producto que usan los filtros del inventario (marca del repuesto, del vehículo y años).
+const partBrandOf = (product) => String(product.marcaRepuesto || product.brand || product.marca || '').trim();
+const vehicleBrandOf = (product) => String(product.compatibilidadMarca || product.vehicleBrand || '').trim();
+function yearsOf(product) {
+  const from = Number(product.anioDesde ?? product.anioInicio);
+  const to = Number(product.anioHasta ?? product.anioFin ?? from);
+  if (!Number.isInteger(from) || from < 1950) return [];
+  const last = Number.isInteger(to) && to >= from ? Math.min(to, from + 80) : from;
+  return Array.from({ length: last - from + 1 }, (_, index) => from + index);
+}
+
 export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange, paymentStatus, paymentOrderId, deepLinkOrderId, deepLinkTicketId, deepLinkQuoteId, onClearDeepLink, detailOrderId, detailPurchaseId }) {
   const { user, role, logout, refreshProfile } = useAuth();
   // El centro de ayuda dejó de ser una pestaña del perfil: vive en /ayuda y se
@@ -626,11 +637,17 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // asi que cuando estan activos se trabaja sobre el inventario completo y se pagina aca.
   const [catalogStatusFilter, setCatalogStatusFilter] = useState('all');
   const [catalogSort, setCatalogSort] = useState('default');
-  const catalogLocalMode = catalogStatusFilter !== 'all' || catalogSort !== 'default';
+  // Marca del repuesto, marca del vehículo y año: los mismos filtros del inventario del Panel de
+  // vendedor. Tampoco los resuelve el servidor, y sus opciones salen del inventario completo.
+  const [catalogPartBrand, setCatalogPartBrand] = useState('');
+  const [catalogVehicleBrand, setCatalogVehicleBrand] = useState('');
+  const [catalogYear, setCatalogYear] = useState('');
+  const catalogLocalMode = catalogStatusFilter !== 'all' || catalogSort !== 'default'
+    || Boolean(catalogPartBrand || catalogVehicleBrand || catalogYear);
   const fullInventoryQuery = useQuery({
     queryKey: qk.sellerFullInventory(user?.sellerId),
     queryFn: ({ signal }) => getSellerFullInventoryApi(user.sellerId, { signal }),
-    enabled: Boolean(isSeller && activeTab === 'productos' && user?.sellerId && catalogLocalMode),
+    enabled: Boolean(isSeller && activeTab === 'productos' && user?.sellerId),
     staleTime: 60 * 1000,
   });
 
@@ -737,6 +754,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           .filter(Boolean).join(' ').toLowerCase();
         if (!text.includes(term)) return false;
       }
+      if (catalogPartBrand && partBrandOf(product) !== catalogPartBrand) return false;
+      if (catalogVehicleBrand && vehicleBrandOf(product) !== catalogVehicleBrand) return false;
+      if (catalogYear && !yearsOf(product).includes(Number(catalogYear))) return false;
       const paused = pausedOf(product);
       const stock = stockOf(product);
       if (catalogStatusFilter === 'active') return !paused && stock > 0;
@@ -760,7 +780,17 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       totalElements: sorted.length,
       totalPages,
     };
-  }, [catalogLocalMode, fullInventoryQuery.data, catalogSearchTerm, catalogCategoryId, catalogStatusFilter, catalogSort, catalogPage, catalogPageSize]);
+  }, [catalogLocalMode, fullInventoryQuery.data, catalogSearchTerm, catalogCategoryId, catalogStatusFilter, catalogSort, catalogPage, catalogPageSize, catalogPartBrand, catalogVehicleBrand, catalogYear]);
+  // Opciones de los desplegables, desde el inventario completo (como en el Panel de vendedor).
+  const catalogFilterOptions = useMemo(() => {
+    const products = fullInventoryQuery.data || [];
+    const sortText = (values) => [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+    return {
+      partBrands: sortText(products.map(partBrandOf)),
+      vehicleBrands: sortText(products.map(vehicleBrandOf)),
+      years: [...new Set(products.flatMap(yearsOf))].sort((a, b) => b - a),
+    };
+  }, [fullInventoryQuery.data]);
   const sellerProducts = (localCatalog ? localCatalog.content : catalogQuery.data?.content) || [];
   const catalogCategories = catalogCategoriesQuery.data || [];
   const catalogTotalPages = localCatalog ? localCatalog.totalPages : (catalogQuery.data?.totalPages ?? 0);
@@ -855,7 +885,19 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // Volver a la primera pagina es obligatorio: quedarse en la pagina 4 de "todas" al filtrar
   // una categoria con dos productos mostraria un listado vacio sin explicacion.
   const handleCatalogCategoryChange = (categoriaId) => {
-    setCatalogCategoryId((current) => (String(current ?? '') === String(categoriaId ?? '') ? null : categoriaId));
+    setCatalogCategoryId(categoriaId || null);
+    setCatalogPage(0);
+  };
+
+  const handleCatalogClearFilters = () => {
+    setCatalogSearchInput('');
+    setCatalogSearchTerm('');
+    setCatalogCategoryId(null);
+    setCatalogPartBrand('');
+    setCatalogVehicleBrand('');
+    setCatalogYear('');
+    setCatalogStatusFilter('all');
+    setCatalogSort('default');
     setCatalogPage(0);
   };
 
@@ -1674,6 +1716,16 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   onStatusFilterChange={(value) => { setCatalogStatusFilter(value); setCatalogPage(0); }}
                   catalogSort={catalogSort}
                   onSortChange={(value) => { setCatalogSort(value); setCatalogPage(0); }}
+                  catalogPartBrand={catalogPartBrand}
+                  onPartBrandChange={(value) => { setCatalogPartBrand(value); setCatalogPage(0); }}
+                  catalogPartBrands={catalogFilterOptions.partBrands}
+                  catalogVehicleBrand={catalogVehicleBrand}
+                  onVehicleBrandChange={(value) => { setCatalogVehicleBrand(value); setCatalogPage(0); }}
+                  catalogVehicleBrands={catalogFilterOptions.vehicleBrands}
+                  catalogYear={catalogYear}
+                  onYearChange={(value) => { setCatalogYear(value); setCatalogPage(0); }}
+                  catalogYears={catalogFilterOptions.years}
+                  onClearFilters={handleCatalogClearFilters}
                   inventoryPanelUrl={inventoryPanelUrl}
                   questionCountForProduct={questionCountForProduct}
                   onSelectProduct={(item) => setSelectedCatalogProduct(item)}
