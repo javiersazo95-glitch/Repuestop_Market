@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import OrderCard from './OrderCard';
+import usePagedList, { recentOrdersNote } from '../hooks/usePagedList';
+import ListPager from './ListPager';
 import { orderDisplayCode } from '../data/orderIdentity';
 import { buyerClaimState, normalizeOrderStatus } from '../data/orderStatusFlow';
 
@@ -94,6 +96,7 @@ export default function BuyerOrdersBrowser({ orders, loading = false, emptyLabel
       return orderTime(b) - orderTime(a);
     });
   }, [list, query, status, date, sort]);
+  const { pageItems, pagerProps } = usePagedList(visible, JSON.stringify([query, status, date, sort]));
 
   // Mientras carga no se dice "Aún no has realizado pedidos": eso confundia a quien si tenia.
   if (loading && list.length === 0) {
@@ -154,8 +157,9 @@ export default function BuyerOrdersBrowser({ orders, loading = false, emptyLabel
           )}
         </div>
       ) : (
+        <>
         <div className="profile-orders-cards-grid">
-          {visible.map((order) => (
+          {pageItems.map((order) => (
             <OrderCard
               key={order.id}
               order={order}
@@ -167,6 +171,8 @@ export default function BuyerOrdersBrowser({ orders, loading = false, emptyLabel
             />
           ))}
         </div>
+        <ListPager pagerProps={pagerProps} itemLabel="pedidos" note={recentOrdersNote(list.length)} />
+        </>
       )}
     </div>
   );

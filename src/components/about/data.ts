@@ -128,7 +128,7 @@ export const BRAND_LOGOS = [
    ========================================================================= */
 export const TRUST_PILLARS: { Icon: LucideIcon; title: string }[] = [
   { Icon: Receipt,    title: 'Boleta y Factura' },
-  { Icon: ShieldCheck, title: 'Garantía SERNAC 6 meses' },
+  { Icon: ShieldCheck, title: 'Garantía legal de 6 meses' },
   { Icon: LockKeyhole, title: 'Webpay y Flow' },
   { Icon: FileCheck,  title: 'Tiendas verificadas' },
 ];

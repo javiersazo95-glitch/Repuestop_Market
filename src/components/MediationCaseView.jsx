@@ -183,7 +183,7 @@ function ResolutionDetailDialog({ chat, mode, codigo, onClose }) {
             )}
             {favor && <strong>{favor}</strong>}
             {chat?.resolucionOpcionLabel && <span>{chat.resolucionOpcionLabel}</span>}
-            {chat?.resolucionFundamentoLegal && <small>Fundamento: {chat.resolucionFundamentoLegal}</small>}
+            {chat?.resolucionMotivo && <small>Motivo: {chat.resolucionMotivo}</small>}
             {inProgress && (
               <small>Un mediador de RepuesTop está revisando el caso. Aquí verás cada avance y la resolución final.</small>
             )}
@@ -966,6 +966,8 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
               <div className="dispute-rail-card">
                 <h4><MessageSquare size={13} /> Chat con {mode === 'buyer' ? 'vendedor' : 'comprador'}</h4>
                 <p>Aquí te pones de acuerdo con {mode === 'buyer' ? 'el vendedor' : 'el comprador'}. Tras recibir el producto hay 10 días corridos para solicitar un mediador si no llegan a una solución; después, y hasta 6 meses desde la entrega (garantía legal), {mode === 'buyer' ? 'puedes pedir ayuda a soporte de RepuesTop' : 'soporte de RepuesTop puede contactarte'}.</p>
+                {/* U4: al surgir el reclamo se informa el derecho a acudir a tribunales (art. 3 g Ley 19.496). */}
+                {mode === 'buyer' && <p>Este proceso es gratuito. Siempre puedes acudir al Juzgado de Policía Local o reclamar en el SERNAC.</p>}
               </div>
 
               <div className="dispute-rail-card">

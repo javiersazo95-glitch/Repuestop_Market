@@ -712,7 +712,7 @@ export async function buildQuotePdfBlob({
   setText(doc, COLORS.text, 6.3, 'bold');
   doc.text('Validez comercial y precios:', clauseX + 5, clauseY + 11.2);
   setText(doc, COLORS.text, 6.1);
-  const p1 = 'Precios preferenciales, descuentos y disponibilidad rigen y son exigibles ÚNICAMENTE mediante orden pagada en la plataforma RepuesTop (Ley N° 19.496). Esta cotización carece de validez legal para compra o liquidación directa fuera del sistema.';
+  const p1 = 'Precios preferenciales, descuentos y disponibilidad rigen y son exigibles ÚNICAMENTE mediante orden pagada en la plataforma RepuesTop. Esta cotización carece de validez legal para compra o liquidación directa fuera del sistema.';
   doc.text(p1, clauseX + 5, clauseY + 14.5, { maxWidth: clauseWidth - 10, lineHeightFactor: 1.25 });
 
   // Cláusula 2: Garantías y mediación técnica

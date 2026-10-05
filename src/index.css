@@ -21358,3 +21358,11 @@ input.has-success {
 @media (prefers-reduced-motion: reduce) {
   .store-actions-backdrop, .store-actions-sheet { animation: none; }
 }
+
+/* U2 (5-oct): nota al pie de las listas paginadas del perfil (p. ej. tope de pedidos recientes). */
+.profile-list-note {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-muted, #64748b);
+}

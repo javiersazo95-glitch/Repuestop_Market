@@ -580,7 +580,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                 <ShieldCheck size={20} />
               </div>
               <div className="withdrawal-kpi-info">
-                <span>En custodia legal</span>
+                <span>En retención</span>
                 <strong>{formatCLP(pending.totalRetenido)}</strong>
                 <small>{pending.retenidos.length} {pending.retenidos.length === 1 ? 'pedido en garantía' : 'pedidos en garantía'}</small>
               </div>
@@ -601,7 +601,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
           <div className="withdrawal-info-banner">
             <Info size={19} />
             <span>
-              Los depósitos se transfieren todos los jueves a tu cuenta registrada. Aquí visualizas tus fondos disponibles para cobro inmediato y aquellos que se encuentran en custodia por garantía legal de retracto.
+              Los depósitos se transfieren todos los jueves a tu cuenta registrada. Aquí visualizas tus fondos disponibles para cobro inmediato y los que siguen en el plazo de arrepentimiento del comprador.
             </span>
           </div>
 
@@ -636,7 +636,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                           {pending.pedidos.length} {pending.pedidos.length === 1 ? 'pedido' : 'pedidos'} · {formatCLP(pending.totalARetirar)}
                         </span>
                       </div>
-                      <p>Ventas completadas con plazo de garantía legal cumplido. Listas para transferir a tu cuenta bancaria hoy.</p>
+                      <p>Ventas completadas y fuera del plazo de arrepentimiento del comprador. Listas para transferir a tu cuenta bancaria hoy.</p>
                     </div>
                   </div>
                 </header>
@@ -677,7 +677,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                 </div>
               </section>
 
-              {/* Bloque 2: Pedidos en Custodia Legal */}
+              {/* Bloque 2: pedidos en retencion (plazo de retracto del comprador) */}
               {pending.retenidos.length > 0 && (
                 <section className="withdrawal-section-card withdrawal-held-card">
                   <header className="withdrawal-section-header">
@@ -687,13 +687,13 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                       </span>
                       <div>
                         <div className="withdrawal-section-title-row">
-                          <h3>Fondos en custodia legal (Garantía de retracto)</h3>
+                          <h3>Fondos en retención</h3>
                           <span className="withdrawal-section-badge held-badge">
                             {pending.retenidos.length} {pending.retenidos.length === 1 ? 'pedido' : 'pedidos'} · {formatCLP(pending.totalRetenido)}
                           </span>
                         </div>
                         <p>
-                          Por Ley del Consumidor (garantía de retracto de 10 días corridos desde la entrega), estos fondos se mantienen en custodia segura y se liberan automáticamente a tu saldo disponible en la fecha señalada.
+                          Retenemos el monto mientras el comprador puede arrepentirse de la compra (10 días desde la entrega). Se libera solo, en la fecha indicada.
                         </p>
                       </div>
                     </div>
@@ -709,14 +709,14 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                         className="withdrawal-view-more-btn held-btn"
                         onClick={() => setOrdersModal({
                           type: 'held',
-                          title: 'Pedidos en custodia legal (Garantía de retracto)',
+                          title: 'Pedidos en retención',
                           subtitle: `${pending.retenidos.length} pedidos en garantía · Total ${formatCLP(pending.totalRetenido)}`,
                           icon: ShieldCheck,
                           orders: pending.retenidos,
                         })}
                       >
                         <Eye size={15} />
-                        <span>Ver los {pending.retenidos.length - DISPLAY_LIMIT} pedidos en custodia restantes</span>
+                        <span>Ver los {pending.retenidos.length - DISPLAY_LIMIT} pedidos en retención restantes</span>
                         <ChevronRight size={15} />
                       </button>
                     )}
@@ -793,7 +793,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
         </div>
       )}
 
-      {/* Modal para ver todos los pedidos (disponibles o en custodia) */}
+      {/* Modal para ver todos los pedidos (disponibles o en retencion) */}
       {ordersModal && (
         <OrdersListModal
           modalData={ordersModal}

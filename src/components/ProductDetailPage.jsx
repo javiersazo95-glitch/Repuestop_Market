@@ -700,7 +700,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
 
             <div className="product-marketplace-benefits">
               <span><Truck /><b>Despacho rápido</b><small>Envíos a todo Chile</small></span>
-              <span><CheckCircle2 /><b>Devoluciones fáciles</b><small>Hasta 30 días</small></span>
+              <span><CheckCircle2 /><b>Garantía legal</b><small>6 meses desde la entrega</small></span>
               <span><ShieldCheck /><b>Calidad garantizada</b><small>Productos verificados</small></span>
             </div>
           </article>

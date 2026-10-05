@@ -1108,6 +1108,15 @@ export async function getSellerPendingWithdrawalsApi(proveedorId) {
   }
 }
 
+/**
+ * U3 (5-oct): saldo de la tienda por etapa (disponible, retenido, en curso, en transferencia y
+ * retirado), calculado en el backend con la misma liquidacion que el retiro. Reemplaza a "Mis
+ * ganancias", que sumaba en el navegador lo pagado de los ultimos 100 pedidos.
+ */
+export async function getSellerBalanceApi(proveedorId) {
+  return fetchApi(`/proveedores/${proveedorId}/retiros/saldo`, { method: 'GET' });
+}
+
 export async function getSellerWithdrawalsApi(proveedorId) {
   try {
     const res = await fetchApi(`/proveedores/${proveedorId}/retiros`, { method: 'GET' });
