@@ -13,7 +13,7 @@ import {
 } from '../services/api';
 import { formatVehicleLabel, isValidPlate, lookupVehicleByPlate, normalizePlate } from '../utils/vehicleLookup';
 import { adaptProduct, formatRut, isValidRut } from '../services/adapters';
-import { isQuoteExpired, quantityFromLabel, quoteShippingCost } from '../utils/quoteFlow';
+import { deliveryTermsLabel, isQuoteExpired, quantityFromLabel, quoteShippingCost } from '../utils/quoteFlow';
 import { normalizeOrderStatus } from '../data/orderStatusFlow';
 import { checkoutFallbackShippingMethod, resolveShippingService } from '../data/shippingMethods';
 import { buyerProfilePath, profilePath, ROUTES } from '../routes/paths';
@@ -938,7 +938,7 @@ export default function CheckoutPage() {
                   {isQuoteMode && (
                     <p className="checkout-block-note checkout-quote-terms">
                       <FileText size={14} /> La entrega ya está acordada en la cotización:
-                      {' '}<strong>{quoteLine.shippingMethod || 'a coordinar con la tienda'}</strong>.
+                      {' '}<strong>{deliveryTermsLabel(quoteLine.shippingMethod) || 'a coordinar con la tienda'}</strong>.
                     </p>
                   )}
                 </section>

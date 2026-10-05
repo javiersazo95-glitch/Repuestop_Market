@@ -177,7 +177,7 @@ function mapCompatibilidad(dto) {
           const versionLabel = g.version
             || g.versionNombre
             || (versionLabels.length ? versionLabels.join(', ') : '')
-            || (versionCount > 0 ? `${versionCount} versión${versionCount === 1 ? '' : 'es'}` : '')
+            || (versionCount > 0 ? `${versionCount} ${versionCount === 1 ? 'versión' : 'versiones'}` : '')
             || g.trim
             || '';
           return {

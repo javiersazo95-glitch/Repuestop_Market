@@ -45,7 +45,7 @@ export default function MyAppointmentsHub({ onClose, initialSegment, focusAppoin
   const handleRebook = async (appointment) => {
     try {
       const ad = await fetchPublicAd(appointment.adId);
-      setRebookState({ ad, appointmentId: isAppointmentCurrent(appointment) ? appointment.id : null });
+      setRebookState({ ad, appointment, appointmentId: isAppointmentCurrent(appointment) ? appointment.id : null });
     } catch {
       window.alert('El anuncio de esta cita ya no está publicado, así que no se puede reservar otra hora.');
     }
@@ -73,6 +73,7 @@ export default function MyAppointmentsHub({ onClose, initialSegment, focusAppoin
           onClose={() => setRebookState(null)}
           isRescheduling={Boolean(rebookState.appointmentId)}
           rescheduleFromId={rebookState.appointmentId}
+          fromAppointment={rebookState.appointment}
         />
       )}
     </>

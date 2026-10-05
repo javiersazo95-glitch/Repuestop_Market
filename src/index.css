@@ -18461,6 +18461,7 @@ input, select, textarea {
 .purchase-success-info-row > svg { width: 15px; height: 15px; margin-top: 2px; color: var(--text-muted); }
 .purchase-success-info-row span { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
 .purchase-success-info-row strong { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 700; line-height: 1.45; color: var(--text-primary); }
+.purchase-success-info-row .purchase-success-package-items { display: block; margin-top: 2px; font-size: 11.5px; line-height: 1.4; color: var(--text-muted); }
 
 .purchase-success-totals { display: flex; flex-direction: column; gap: 8px; padding-top: 13px; }
 .purchase-success-totals > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--text-muted); }

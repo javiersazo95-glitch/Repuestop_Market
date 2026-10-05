@@ -292,7 +292,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
         anioInicio: item.anioInicio,
         anioFin: item.anioFin,
         version: ids.length > 0
-          ? `${ids.length} versión${ids.length === 1 ? '' : 'es'} seleccionada${ids.length === 1 ? '' : 's'}`
+          ? `${ids.length} ${ids.length === 1 ? 'versión' : 'versiones'} seleccionada${ids.length === 1 ? '' : 's'}`
           : (item.version || 'Todas las versiones'),
         motor: item.motor || '',
         transmision: '',

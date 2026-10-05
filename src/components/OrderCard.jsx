@@ -197,6 +197,14 @@ export default function OrderCard({
     order.compradorComuna || order.comuna,
     order.compradorRegion || order.region,
   ].filter(Boolean).join(', ');
+  // Checkout por producto: con dos o más destinos la dirección del pedido es solo la del primer
+  // paquete; la tarjeta avisa cuántos son y el detalle los muestra uno por uno.
+  const lineAddresses = new Set(items
+    .filter((item) => item.entregaDireccion && !isCancelledItem(item))
+    .map((item) => `${item.entregaDireccion}|${item.entregaComuna || ''}`));
+  const deliveryAddressLabel = lineAddresses.size > 1
+    ? `${lineAddresses.size} direcciones de entrega (ver detalle)`
+    : deliveryAddress;
   const shippingFee = Number(String(order.shippingFee ?? order.costoEnvio ?? 0).replace(/[^0-9]/g, '')) || 0;
   const discount = Number(String(order.descuento ?? 0).replace(/[^0-9]/g, '')) || 0;
   // Se cuentan las unidades VIVAS. Decir "2 productos" cuando uno ya no llega contradice al
@@ -441,7 +449,7 @@ export default function OrderCard({
             <span className="order-info-chip"><Truck size={13} /> {deliveryTerms}</span>
           )}
           {isSeller && deliveryAddress && !isStorePickup && (
-            <span className="order-info-chip address"><MapPin size={13} /> {deliveryAddress}</span>
+            <span className="order-info-chip address"><MapPin size={13} /> {deliveryAddressLabel}</span>
           )}
           {boletaLoaded && (
             <span className="order-info-chip boleta-ok"><FileCheck size={13} /> Boleta cargada</span>

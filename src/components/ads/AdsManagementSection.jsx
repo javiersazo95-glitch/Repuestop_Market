@@ -213,7 +213,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
     try {
       const ad = await fetchPublicAd(appointment.adId);
       // Solo una cita vigente se cambia de hora; desde una cancelada o pasada es una reserva nueva.
-      setRebookState({ ad, appointmentId: isAppointmentCurrent(appointment) ? appointment.id : null });
+      setRebookState({ ad, appointment, appointmentId: isAppointmentCurrent(appointment) ? appointment.id : null });
     } catch {
       setRebookState(null);
       window.alert('El anuncio de esta cita ya no está publicado, así que no se puede reservar otra hora.');
@@ -810,6 +810,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           onClose={() => setRebookState(null)}
           isRescheduling={Boolean(rebookState.appointmentId)}
           rescheduleFromId={rebookState.appointmentId}
+          fromAppointment={rebookState.appointment}
         />
       )}
 

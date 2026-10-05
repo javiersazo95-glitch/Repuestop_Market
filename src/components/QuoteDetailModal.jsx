@@ -289,7 +289,11 @@ export default function QuoteDetailModal({
   const participantName = quote.otroParticipanteNombre || (mode === 'buyer' ? 'Tienda RepuesTop' : 'Comprador RepuesTop');
   const productName = quote.productoNombre || 'Producto consultado';
   const productImage = resolveMediaUrl(quote.productoImagenUrl);
-  const storeName = mode === 'buyer' ? participantName : (user?.storeName || 'Mi tienda RepuesTop');
+  // La sesión no siempre trae `storeName` (pruebas E2E en dev, 5-oct: la tienda veía "Mi tienda
+  // RepuesTop" en su propia cotización); los datos de la tienda ya cargados sí lo tienen.
+  const storeName = mode === 'buyer'
+    ? participantName
+    : (storeDetails?.nombre || storeDetails?.storeName || user?.storeName || 'Mi tienda RepuesTop');
   const buyerName = mode === 'seller' ? participantName : (user?.userName || user?.nombre || 'Comprador RepuesTop');
   const participantPhoto = resolveMediaUrl(quote.otroParticipanteFotoUrl);
   // El logo va al PDF de la cotización, así que se agotan todos los campos donde
@@ -436,8 +440,14 @@ export default function QuoteDetailModal({
           if (shareError?.name === 'AbortError') return;
         }
       }
-      await navigator.clipboard.writeText(url);
-      setStatusMessage({ type: 'success', text: 'Enlace copiado. Quien lo abra podrá ver y descargar el PDF de la cotización.' });
+      try {
+        await navigator.clipboard.writeText(url);
+        setStatusMessage({ type: 'success', text: 'Enlace copiado. Quien lo abra podrá ver y descargar el PDF de la cotización.' });
+      } catch {
+        // Sin permiso de portapapeles (pruebas E2E en dev, 5-oct) el enlace ya existe: se muestra
+        // para copiarlo a mano en vez del error crudo del navegador ("Failed to execute 'writeText'").
+        window.prompt('Copia este enlace para compartir la cotización:', url);
+      }
     } catch (error) {
       setStatusMessage({ type: 'error', text: error.message || 'No se pudo crear el enlace de la cotización.' });
     } finally {

@@ -77,6 +77,10 @@ export default function AdDetailView({ ad, onBack }) {
     .filter(Boolean);
 
   const priceLabel = (ad.priceText || '').replace(/^desde\s*/i, '').trim();
+  // Un aviso "A cotizar" trae texto ("Según presupuesto"), no un monto: sin "CLP" ni "Precio desde"
+  // (pruebas E2E en dev, 5-oct: se leía "Segun presupuesto CLP · Precio desde").
+  const priceIsAmount = ad.priceType !== 'quote' && /\d/.test(priceLabel);
+  const priceCaption = priceIsAmount ? 'Precio desde' : 'Precio';
   const locationText = [ad.address, ad.commune, ad.region].filter(Boolean).join(', ')
     || ad.commune || 'Ubicación a confirmar';
   const mapsQuery = encodeURIComponent(locationText);
@@ -340,7 +344,7 @@ export default function AdDetailView({ ad, onBack }) {
 
           {/* Solo movil: la columna lateral con WhatsApp/agenda queda al final (~1.600px). */}
           {!isOwnAd && (canWhatsapp || canBook || ad.phone) && (
-            <MobileStickyBar label="Precio desde" value={priceLabel || 'A convenir'} watchSelector=".ad-detail-side .ad-detail-btn" ariaLabel="Contactar al taller">
+            <MobileStickyBar label={priceCaption} value={priceLabel || 'A convenir'} watchSelector=".ad-detail-side .ad-detail-btn" ariaLabel="Contactar al taller">
               {canWhatsapp && <button type="button" className="mobile-sticky-bar__btn is-whatsapp" onClick={handleWhatsApp}><MessageCircle size={18} /> WhatsApp</button>}
               {canBook && <button type="button" className={`mobile-sticky-bar__btn ${canWhatsapp ? 'is-secondary' : ''}`} onClick={handleBooking} aria-label="Agendar cita"><Calendar size={18} />{!canWhatsapp && ' Agendar'}</button>}
               {!canWhatsapp && !canBook && ad.phone && <button type="button" className="mobile-sticky-bar__btn" onClick={handlePhone}><Phone size={18} /> Llamar</button>}
@@ -363,8 +367,8 @@ export default function AdDetailView({ ad, onBack }) {
 
               <div className="ad-detail-price">
                 <strong>{priceLabel || 'A convenir'}</strong>
-                {priceLabel && !/clp/i.test(priceLabel) && <em>CLP</em>}
-                <span>Precio desde</span>
+                {priceIsAmount && !/clp/i.test(priceLabel) && <em>CLP</em>}
+                <span>{priceCaption}</span>
               </div>
 
               <div className="ad-detail-respond">
