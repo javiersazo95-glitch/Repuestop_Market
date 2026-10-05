@@ -522,7 +522,7 @@ export async function notifyAppointmentCreated({ appointment, ad, dateLabel }) {
       patente: appointment.vehiclePatent,
       notas: appointment.notes,
       direccion: [ad?.address, ad?.commune].filter(Boolean).join(', '),
-      tallerCorreo: ad?.ownerEmail,
+      // Los destinatarios los pone el backend desde la reserva guardada (5-oct).
       tallerNombre: ad?.company
     });
   };
