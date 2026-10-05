@@ -89,10 +89,11 @@ function formatCLP(value) {
 // `readOnly` = tienda bloqueada. Los pedidos se siguen viendo (el vendedor necesita
 // saber que dejo pendiente), pero no se puede avanzar ninguno: el backend rechaza el
 // despacho en `PedidoEnvioSupport` y el boton solo produciria un error.
-export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder, onUpdateStatus, onRegisterSaleReceipt, readOnly = false }) {
+// `initialStatuses`: filtro con que se abre desde "Por despachar" del Resumen (U6).
+export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder, onUpdateStatus, onRegisterSaleReceipt, readOnly = false, initialStatuses }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [statuses, setStatuses] = useState([]);
+  const [statuses, setStatuses] = useState(() => (Array.isArray(initialStatuses) ? initialStatuses : []));
   const [sources, setSources] = useState([]);
   const [dateFilter, setDateFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');

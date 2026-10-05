@@ -1,4 +1,4 @@
-import { ROUTES, buyerCaseChatPath, productPath, sellerCaseChatPath } from '../routes/paths';
+import { ROUTES, buyerCaseChatPath, productPath, profilePurchasePath, sellerCaseChatPath } from '../routes/paths';
 
 /**
  * Traduce el destino de una notificación a una ruta de la WEB.
@@ -15,9 +15,9 @@ import { ROUTES, buyerCaseChatPath, productPath, sellerCaseChatPath } from '../r
  * Cada entrada recibe los `targetParams` que emite el backend. Las claves son las que
  * se verificaron en el código Java, no inventadas:
  *
- * - `/order-detail`               -> `{ orderId }`
+ * - `/order-detail`               -> `{ orderId, viewMode? }`
  * - `/product-detail`             -> `{ productId, questionId? }`
- * - `/quote-chat`                 -> `{ quoteId }`
+ * - `/quote-chat`                 -> `{ quoteId, viewMode? }`
  * - `/mediation-chat`             -> `{ orderId }`
  * - `/ad-detail`, `/ads-management` -> `{ id }`
  * - `/support-ticket-detail`      -> `{ ticketId }`
@@ -25,13 +25,26 @@ import { ROUTES, buyerCaseChatPath, productPath, sellerCaseChatPath } from '../r
  */
 const PROFILE = (tab) => `${ROUTES.profile}/${tab}`;
 
+// U1 (5-oct): una tienda que compra recibe avisos con `viewMode: 'buyer'`. Sin mirarlo, su compra se
+// abria en "Pedidos" (sus ventas) y su cotizacion en la bandeja de la tienda.
+const isSellerBuying = (params, context) => Boolean(context?.isSeller) && params?.viewMode === 'buyer';
+
 const TARGETS = {
-  '/order-detail': (params) => (params?.orderId
-    ? `${PROFILE('pedidos')}?pedido=${encodeURIComponent(params.orderId)}`
-    : PROFILE('pedidos')),
-  '/(seller)/pedidos': (params) => (params?.orderId
-    ? `${PROFILE('pedidos')}?pedido=${encodeURIComponent(params.orderId)}`
-    : PROFILE('pedidos')),
+  '/order-detail': (params, context) => {
+    if (isSellerBuying(params, context)) {
+      return params?.orderId ? profilePurchasePath(params.orderId) : PROFILE('compras');
+    }
+    return params?.orderId
+      ? `${PROFILE('pedidos')}?pedido=${encodeURIComponent(params.orderId)}`
+      : PROFILE('pedidos');
+  },
+  // `tab: 'mediacion'` es el aviso del caso a la tienda: se abre su chat, no la lista de ventas.
+  '/(seller)/pedidos': (params) => {
+    if (params?.tab === 'mediacion' && params?.orderId) return sellerCaseChatPath(params.orderId);
+    return params?.orderId
+      ? `${PROFILE('pedidos')}?pedido=${encodeURIComponent(params.orderId)}`
+      : PROFILE('pedidos');
+  },
   '/seller/pedidos': (params) => (params?.orderId
     ? `${PROFILE('pedidos')}?pedido=${encodeURIComponent(params.orderId)}`
     : PROFILE('pedidos')),
@@ -42,9 +55,12 @@ const TARGETS = {
   '/(seller)/productos': () => PROFILE('productos'),
   '/seller/productos': () => PROFILE('productos'),
 
-  '/quote-chat': (params) => (params?.quoteId
-    ? `${PROFILE('cotizaciones')}?cotizacion=${encodeURIComponent(params.quoteId)}`
-    : PROFILE('cotizaciones')),
+  '/quote-chat': (params, context) => {
+    const tab = isSellerBuying(params, context) ? 'mis_cotizaciones' : 'cotizaciones';
+    return params?.quoteId
+      ? `${PROFILE(tab)}?cotizacion=${encodeURIComponent(params.quoteId)}`
+      : PROFILE(tab);
+  },
   '/(seller)/mensajes': (params) => (params?.quoteId
     ? `${PROFILE('cotizaciones')}?cotizacion=${encodeURIComponent(params.quoteId)}`
     : PROFILE('cotizaciones')),

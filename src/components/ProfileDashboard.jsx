@@ -308,6 +308,19 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     setActiveTabState(tab);
     onTabChange?.(tab);
   }, [onTabChange]);
+
+  // U6 (5-oct): "Por despachar" y "Cotizaciones por responder" abren su pestaña ya filtrada con el
+  // mismo criterio del contador. `nonce` remonta el panel para que un segundo toque vuelva a filtrar
+  // aunque la persona haya cambiado el filtro a mano; al salir de la pestaña el filtro se olvida.
+  const [panelPreset, setPanelPreset] = useState(null);
+  const openFilteredTab = useCallback((tab, filter) => {
+    setPanelPreset({ tab, filter, nonce: Date.now() });
+    setActiveTab(tab);
+  }, [setActiveTab]);
+  useEffect(() => {
+    if (panelPreset && panelPreset.tab !== activeTab) setPanelPreset(null);
+  }, [activeTab, panelPreset]);
+  const presetFor = (tab) => (panelPreset?.tab === tab ? panelPreset : null);
   // Flecha de la app bar en movil (<=768px). En escritorio el boton dice "Volver a la tienda" y
   // va al home; en el celular es una flecha sola y la persona espera volver UNA vista atras, no
   // salir de la intranet: detalle del pedido -> su lista; cualquier seccion -> Resumen; y solo
@@ -1169,7 +1182,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       return [
         { id: 'pedidos', tone: 'blue', icon: ShoppingBag, title: 'Gestionar pedidos', description: 'Revisa, despacha y actualiza el estado de tus pedidos.', onClick: () => setActiveTab('pedidos') },
         { id: 'nuevo', tone: 'emerald', icon: Plus, title: 'Agregar producto', description: 'Publica nuevos repuestos en tu catálogo.', onClick: () => openNewProductModalRef.current() },
-        { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Responder cotizaciones', description: 'Atiende solicitudes directas de clientes.', onClick: () => setActiveTab('cotizaciones') },
+        { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Responder cotizaciones', description: 'Atiende solicitudes directas de clientes.', onClick: () => openFilteredTab('cotizaciones', 'pending') },
         { id: 'tienda', tone: 'sky', icon: Store, title: 'Mi tienda y datos', description: 'Edita la información comercial de tu tienda.', onClick: () => setActiveTab('tienda_datos') },
         { id: 'retiros', tone: 'emerald', icon: Wallet, title: 'Retirar dinero', description: 'Solicita el depósito bancario de tus ventas.', onClick: () => setActiveTab('retiros') },
         { id: 'anuncios', tone: 'amber', icon: Megaphone, title: 'Gestión de anuncios', description: 'Publica y destaca en el Mural de Anuncios.', onClick: () => setActiveTab('anuncios') },
@@ -1183,7 +1196,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       { id: 'anuncios', tone: 'emerald', icon: Megaphone, title: 'Gestión de anuncios', description: 'Publica tu búsqueda en el Mural de Anuncios.', onClick: () => setActiveTab('anuncios') },
       { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte de compra.', onClick: () => navigate(ROUTES.support) },
     ];
-  }, [isSeller, setActiveTab, navigate]);
+  }, [isSeller, setActiveTab, openFilteredTab, navigate]);
 
   const recentActivities = useMemo(() => {
     const list = [];
@@ -1395,12 +1408,12 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                     )}
                   </div>
                   <div className="hero-mobile-counters" role="list">
-                    <button type="button" role="listitem" className={`hero-counter ${ordersToDispatchCount > 0 ? 'is-alert' : ''}`} onClick={() => setActiveTab('pedidos')}>
+                    <button type="button" role="listitem" className={`hero-counter ${ordersToDispatchCount > 0 ? 'is-alert' : ''}`} onClick={() => openFilteredTab('pedidos', ['pending', 'preparing'])}>
                       <Truck size={16} />
                       <strong>{ordersToDispatchCount}</strong>
                       <span>Por despachar</span>
                     </button>
-                    <button type="button" role="listitem" className={`hero-counter ${quoteSummary.pending > 0 ? 'is-alert' : ''}`} onClick={() => setActiveTab('cotizaciones')}>
+                    <button type="button" role="listitem" className={`hero-counter ${quoteSummary.pending > 0 ? 'is-alert' : ''}`} onClick={() => openFilteredTab('cotizaciones', 'pending')}>
                       <ReceiptText size={16} />
                       <strong>{quoteSummary.pending}</strong>
                       <span>Cotizaciones por responder</span>
@@ -1650,6 +1663,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
               <ProfileOrdersPanel
                 activeTab={activeTab}
+                sellerOrdersPreset={presetFor('pedidos')}
                 isSeller={isSeller}
                 isSellerBlocked={isSellerBlocked}
                 sellerComplianceMode={sellerComplianceMode}
@@ -1757,6 +1771,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
               {(activeTab === 'cotizaciones' || (isSeller && activeTab === 'mis_cotizaciones')) && (
                 <ProfileQuotesPanel
+                  key={presetFor(activeTab)?.nonce ?? 'quotes'}
+                  initialFilter={presetFor(activeTab)?.filter}
                   quotesAsBuyer={quotesAsBuyer}
                   quoteSummary={quoteSummary}
                   activeQuoteSource={activeQuoteSource}

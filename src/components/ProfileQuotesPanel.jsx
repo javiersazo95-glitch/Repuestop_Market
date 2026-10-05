@@ -16,8 +16,10 @@ export default function ProfileQuotesPanel({
   quoteSummary,
   activeQuoteSource,
   onSelectQuote,
+  initialFilter,
 }) {
-  const [quoteFilter, setQuoteFilter] = useState('all');
+  // `initialFilter`: "pending" cuando se llega desde "Cotizaciones por responder" (U6).
+  const [quoteFilter, setQuoteFilter] = useState(initialFilter || 'all');
   const [quoteSearch, setQuoteSearch] = useState('');
   const [quoteSort, setQuoteSort] = useState('newest');
 

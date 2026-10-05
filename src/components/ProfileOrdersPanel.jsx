@@ -28,6 +28,7 @@ import { normalizeOrderNumber, orderMatchesRef, orderNumberRef } from '../data/o
  */
 export default function ProfileOrdersPanel({
   activeTab,
+  sellerOrdersPreset = null,
   isSeller,
   isSellerBlocked,
   sellerComplianceMode = false,
@@ -458,6 +459,8 @@ export default function ProfileOrdersPanel({
       ) : activeTab === 'pedidos' && (
         isSeller ? (
           <SellerOrdersPanel
+            key={sellerOrdersPreset?.nonce ?? 'seller-orders'}
+            initialStatuses={sellerOrdersPreset?.filter}
             orders={orders || []}
             sellerId={user?.sellerId}
             onSelectOrder={openOrderDetail}

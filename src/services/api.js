@@ -546,7 +546,9 @@ export async function selectStoreCoverTemplateApi(templateId) {
  * Perfil: Pedidos, favoritos e inventario/tienda del proveedor
  */
 export async function getBuyerOrdersApi(usuarioId, { signal } = {}) {
-  return fetchApi(`/usuarios/${usuarioId}/pedidos`, { method: 'GET', signal });
+  // Sin `size` el backend responde su pagina por defecto (20) y la web mostraba solo las ultimas 20
+  // compras sin avisar (U2, 5-oct). Mismo lote que las ventas, hasta paginar en el cliente.
+  return fetchApi(`/usuarios/${usuarioId}/pedidos?size=100`, { method: 'GET', signal });
 }
 
 /**
