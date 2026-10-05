@@ -13,6 +13,7 @@ const CatalogPage = lazy(() => import('../pages/CatalogPage'));
 const ProductPage = lazy(() => import('../pages/ProductPage'));
 const StoresPage = lazy(() => import('../pages/StoresPage'));
 const StorePage = lazy(() => import('../pages/StorePage'));
+const SharedQuotePage = lazy(() => import('../pages/SharedQuotePage'));
 const HelpCenterPage = lazy(() => import('../pages/HelpCenterPage'));
 const HelpHomeView = lazy(() => import('../pages/help/HelpHomeView'));
 const HelpCategoryView = lazy(() => import('../pages/help/HelpCategoryView'));
@@ -44,6 +45,8 @@ export default function AppRoutes() {
               <Route path={ROUTES.product} element={<ProductPage />} />
               <Route path={ROUTES.stores} element={<StoresPage />} />
               <Route path={ROUTES.store} element={<StorePage />} />
+              {/* Publica: el enlace de "Compartir cotizacion" se abre sin sesion. */}
+              <Route path={ROUTES.sharedQuote} element={<SharedQuotePage />} />
               <Route path={ROUTES.adsWall} element={<AdsWallPage />} />
               <Route path={ROUTES.adDetail} element={<AdDetailPage />} />
               <Route path={ROUTES.about} element={<AboutPage />} />

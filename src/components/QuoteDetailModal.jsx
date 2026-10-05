@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle, ArrowLeft, BadgeCheck, BadgeDollarSign, CalendarDays, CalendarClock, Car,
   CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, ClipboardList, CreditCard, Download, ExternalLink, Eye, FileText, Flag,
-  Headphones, Image as ImageIcon, Info, Loader2, Lock, Maximize2, MessageSquare, MoreHorizontal, Package, Paperclip,
-  PauseCircle, Pencil, Send, ShieldCheck, ShoppingCart, Store, Tag, Trash2, Truck, Undo2, X,
+  Headphones, Image as ImageIcon, Info, Loader2, Lock, Maximize2, MessageSquare, Package, Paperclip,
+  PauseCircle, Pencil, Send, Settings2, Share2, ShieldCheck, ShoppingCart, Store, Tag, Trash2, Truck, Undo2, X,
 } from 'lucide-react';
 import RepuesTopLogo from './RepuesTopLogo';
 import ChatImagePreview from './ChatImagePreview';
@@ -13,6 +13,7 @@ import {
   deleteConversationQuoteApi, getConversationQuoteApi, getQuoteRequestApi, getSellerStoreApi, getStoreProfileApi,
   markConversationReadApi, reportConversationApi, resolveMediaUrl,
   sendConversationMessageApi, sendQuoteRequestApi, uploadConversationImageApi,
+  createQuoteShareLinkApi,
 } from '../services/api';
 import { adaptStore } from '../services/adapters';
 import { compressImageFile } from '../utils/imageCompression';
@@ -123,6 +124,7 @@ export default function QuoteDetailModal({
   const [quoteEditorOpen, setQuoteEditorOpen] = useState(false);
   const [quotePreviewOpen, setQuotePreviewOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [isSharingQuote, setIsSharingQuote] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportDetail, setReportDetail] = useState('');
@@ -418,6 +420,31 @@ export default function QuoteDetailModal({
     }
   };
 
+  // "Compartir cotizacion" (5-oct): comparte un enlace del Market para ver o descargar el PDF, no
+  // un archivo. Con la hoja de compartir del sistema si existe; si no, copia el enlace.
+  const shareQuoteLink = async () => {
+    if (!activeQuote || isSharingQuote) return;
+    setIsSharingQuote(true);
+    try {
+      const { url } = await createQuoteShareLinkApi(quote.id);
+      const title = `Cotización · ${productName}`;
+      if (navigator.share) {
+        try {
+          await navigator.share({ title, text: `${title} en RepuesTop`, url });
+          return;
+        } catch (shareError) {
+          if (shareError?.name === 'AbortError') return;
+        }
+      }
+      await navigator.clipboard.writeText(url);
+      setStatusMessage({ type: 'success', text: 'Enlace copiado. Quien lo abra podrá ver y descargar el PDF de la cotización.' });
+    } catch (error) {
+      setStatusMessage({ type: 'error', text: error.message || 'No se pudo crear el enlace de la cotización.' });
+    } finally {
+      setIsSharingQuote(false);
+    }
+  };
+
   const downloadDocument = async () => {
     if (!activeQuote) return;
     try {
@@ -678,6 +705,19 @@ export default function QuoteDetailModal({
     });
   };
 
+  // La burbuja del documento va en su lugar segun la hora en que se envio la cotizacion, no
+  // siempre al final: despues de una solicitud de modificacion quedaba debajo de ella.
+  const documentBubble = activeQuote ? <div className={`quote-ws-message-row ${mode === 'seller' ? 'mine' : ''}`}><span className="quote-ws-message-avatar">{storePhoto ? <img src={storePhoto} alt="" referrerPolicy="no-referrer" /> : initials(storeName)}</span><div className="quote-ws-bubble quote-ws-document-bubble"><p>Te adjunto la propuesta comercial con todos los detalles de la cotización.</p><button type="button" className="quote-ws-file" onClick={viewDocument}><FileText size={25} /><span><strong>{documentName}</strong><small>PDF · Documento de cotización</small></span><Eye size={18} /></button><small>{formatDate(activeQuote.vigenteDesde || activeQuote.createdAt)}</small></div></div> : null;
+  const documentTime = activeQuote ? new Date(activeQuote.vigenteDesde || activeQuote.createdAt).getTime() : NaN;
+  const documentBubbleIndex = !activeQuote
+    ? -1
+    : Number.isNaN(documentTime)
+      ? messages.length
+      : (() => {
+        const later = messages.findIndex((message) => new Date(message.createdAt).getTime() > documentTime);
+        return later === -1 ? messages.length : later;
+      })();
+
   return (
     <div className="quote-workspace" role="dialog" aria-modal="true" aria-label={`Chat de cotización ${quoteIdShort}`}>
       <header className="quote-ws-topbar">
@@ -740,64 +780,60 @@ export default function QuoteDetailModal({
                   </button>
                 );
               })()}
-              <button type="button" className="quote-ws-icon-button" aria-label="Opciones de la conversación" aria-expanded={optionsOpen} onClick={() => setOptionsOpen(true)}><MoreHorizontal size={20} /></button>
+              {/* "Gestionar" (5-oct): antes eran tres puntos que pasaban desapercibidos. Desde aqui se
+                  gestiona todo (ver la solicitud o la cotizacion, responder o cancelar una
+                  modificacion, eliminar, ayuda y reporte), asi la vista del chat queda limpia. */}
+              <button type="button" className="quote-ws-manage-button" aria-label={paused ? 'Gestionar cotización, hay una acción pendiente' : 'Gestionar cotización'} aria-expanded={optionsOpen} onClick={() => setOptionsOpen(true)}><Settings2 size={17} /><span>Gestionar</span>{paused && <i className="quote-ws-manage-dot" aria-hidden="true" />}</button>
             </div>
           </header>
 
-          <div className="quote-ws-private"><Info size={19} /><div><strong>Este chat es privado y está asociado a la cotización #{quoteIdShort}.</strong><span>Aquí podrás resolver dudas, solicitar ajustes o confirmar tu compra. El soporte, los reclamos y la mediación de RepuesTop solo cubren compras pagadas dentro de RepuesTop. No pagues ni coordines la compra por fuera.</span></div></div>
+          {/* Avisos sobre los mensajes en un solo contenedor: el chat es una grilla de 4 filas
+              (encabezado, avisos, mensajes, caja de texto). Con el aviso de modificacion como hijo
+              suelto caia en la fila de los mensajes, que se encoge a 0, y su texto quedaba debajo
+              de las burbujas. */}
+          <div className="quote-ws-notices">
+            <div className="quote-ws-private"><Info size={19} /><div><strong>Este chat es privado y está asociado a la cotización #{quoteIdShort}.</strong><span>Aquí podrás resolver dudas, solicitar ajustes o confirmar tu compra. El soporte, los reclamos y la mediación de RepuesTop solo cubren compras pagadas dentro de RepuesTop. No pagues ni coordines la compra por fuera.</span></div></div>
 
-          {paused && (
-            <section className="quote-ws-paused" aria-live="polite">
-              <PauseCircle size={20} />
-              <div>
-                <strong>{mode === 'buyer' ? 'Cotización en pausa: pediste una modificación' : 'El comprador pidió una modificación'}</strong>
-                <span>
-                  {mode === 'buyer'
-                    ? 'Avisamos a la tienda. No puedes pagar esta cotización hasta que te envíe una nueva o confirme que la mantiene.'
-                    : 'Tu cotización está en pausa: el comprador no puede pagarla hasta que respondas. Envía una nueva o confirma que mantienes la original.'}
-                </span>
-                {requestChanges.length > 0 && (
-                  <ul>
-                    {requestChanges.map((change) => (
-                      <li key={change.label}><small>{change.label}</small><b>{change.before} → {change.after}</b></li>
-                    ))}
-                  </ul>
-                )}
-                <div className="quote-ws-paused-actions">
-                  {mode === 'buyer' ? (
-                    <button type="button" className="secondary" disabled={isCancellingModification} onClick={cancelModification}>
-                      {isCancellingModification ? <Loader2 size={15} className="spin-icon" /> : <Undo2 size={15} />}
-                      {isCancellingModification ? 'Cancelando…' : 'Cancelar solicitud y retomar la cotización'}
-                    </button>
-                  ) : (
-                    <>
-                      <button type="button" onClick={() => setQuoteEditorOpen(true)}><BadgeDollarSign size={15} /> Enviar nueva cotización</button>
-                      <button type="button" className="secondary" onClick={() => { setKeepOriginalError(''); setKeepOriginalOpen(true); }}>Mantener la original</button>
-                    </>
+            {paused && (
+              <section className="quote-ws-paused" aria-live="polite">
+                <PauseCircle size={20} />
+                <div>
+                  <strong>{mode === 'buyer' ? 'Cotización en pausa: pediste una modificación' : 'El comprador pidió una modificación'}</strong>
+                  <span>
+                    {mode === 'buyer'
+                      ? 'Avisamos a la tienda. No puedes pagar hasta que te envíe una nueva o confirme que la mantiene.'
+                      : 'Tu cotización está en pausa: el comprador no puede pagarla hasta que respondas.'}
+                  </span>
+                  {requestChanges.length > 0 && (
+                    <ul>
+                      {requestChanges.map((change) => (
+                        <li key={change.label}><small>{change.label}</small><b>{change.before} → {change.after}</b></li>
+                      ))}
+                    </ul>
                   )}
                 </div>
-              </div>
-            </section>
-          )}
-          {!paused && modification?.resolucion === 'MANTENIDA' && activeQuote && !closed && (
-            <section className="quote-ws-paused kept">
-              <Info size={20} />
-              <div>
-                <strong>{mode === 'buyer' ? 'La tienda mantuvo la cotización original' : 'Mantuviste tu cotización original'}</strong>
-                <span>{modification.motivo ? `Motivo: ${modification.motivo}` : 'La cotización vuelve a estar disponible para pagar.'}</span>
-              </div>
-            </section>
-          )}
+              </section>
+            )}
+            {!paused && modification?.resolucion === 'MANTENIDA' && activeQuote && !closed && (
+              <section className="quote-ws-paused kept">
+                <Info size={20} />
+                <div>
+                  <strong>{mode === 'buyer' ? 'La tienda mantuvo la cotización original' : 'Mantuviste tu cotización original'}</strong>
+                  <span>{modification.motivo ? `Motivo: ${modification.motivo}` : 'La cotización vuelve a estar disponible para pagar.'}</span>
+                </div>
+              </section>
+            )}
+          </div>
 
           <div className="quote-ws-messages">
-            {isLoadingMessages ? <div className="quote-messages-loading"><Loader2 size={20} className="spin-icon" /> Cargando conversación...</div> : messages.map((message) => {
+            {isLoadingMessages ? <div className="quote-messages-loading"><Loader2 size={20} className="spin-icon" /> Cargando conversación...</div> : messages.map((message, index) => {
               const isBuyer = Number(message.emisorId) === Number(quote.usuarioId);
               const mine = mode === 'buyer' ? isBuyer : !isBuyer;
               const bubblePhoto = mine ? myPhoto : participantPhoto;
               const bubbleInitials = mine ? initials(user?.userName || user?.nombre) : initials(participantName);
-              return <div key={message.id} className={`quote-ws-message-row ${mine ? 'mine' : ''}`}><span className="quote-ws-message-avatar">{bubblePhoto ? <img src={bubblePhoto} alt="" referrerPolicy="no-referrer" /> : bubbleInitials}</span><div className="quote-ws-bubble">{message.imagenUrl && <button type="button" className="quote-ws-image-open" onClick={() => setViewerImage(resolveMediaUrl(message.imagenUrl))} title="Ver imagen completa"><img src={resolveMediaUrl(message.imagenUrl)} alt="Adjunto" /><span><Maximize2 size={15} /></span></button>}{message.texto && <p>{message.texto}</p>}<small>{formatDate(message.createdAt)} {mine ? '✓✓' : ''}</small></div></div>;
+              return <React.Fragment key={message.id}>{index === documentBubbleIndex && documentBubble}<div className={`quote-ws-message-row ${mine ? 'mine' : ''}`}><span className="quote-ws-message-avatar">{bubblePhoto ? <img src={bubblePhoto} alt="" referrerPolicy="no-referrer" /> : bubbleInitials}</span><div className="quote-ws-bubble">{message.imagenUrl && <button type="button" className="quote-ws-image-open" onClick={() => setViewerImage(resolveMediaUrl(message.imagenUrl))} title="Ver imagen completa"><img src={resolveMediaUrl(message.imagenUrl)} alt="Adjunto" /><span><Maximize2 size={15} /></span></button>}{message.texto && <p>{message.texto}</p>}<small>{formatDate(message.createdAt)} {mine ? '✓✓' : ''}</small></div></div></React.Fragment>;
             })}
-            {activeQuote && <div className={`quote-ws-message-row ${mode === 'seller' ? 'mine' : ''}`}><span className="quote-ws-message-avatar">{storePhoto ? <img src={storePhoto} alt="" referrerPolicy="no-referrer" /> : initials(storeName)}</span><div className="quote-ws-bubble quote-ws-document-bubble"><p>Te adjunto la propuesta comercial con todos los detalles de la cotización.</p><button type="button" className="quote-ws-file" onClick={viewDocument}><FileText size={25} /><span><strong>{documentName}</strong><small>PDF · Documento de cotización</small></span><Eye size={18} /></button><small>{formatDate(activeQuote.vigenteDesde || activeQuote.createdAt)}</small></div></div>}
+            {!isLoadingMessages && documentBubbleIndex === messages.length && documentBubble}
           </div>
 
           {!chatLocked ? (
@@ -897,7 +933,22 @@ export default function QuoteDetailModal({
         </aside>
       </div>
 
-      {optionsOpen && <div className="quote-ws-dialog-backdrop quote-ws-options-backdrop" onClick={() => setOptionsOpen(false)}><section className="quote-ws-options-dialog" role="dialog" aria-modal="true" aria-label="Opciones de la conversación" onClick={(event) => event.stopPropagation()}><header><strong>Opciones</strong><button type="button" aria-label="Cerrar opciones" onClick={() => setOptionsOpen(false)}><X size={19} /></button></header><div><button type="button" className="quote-ws-option-mobile" onClick={() => { setOptionsOpen(false); setRequestSummaryOpen(true); }}><span><ClipboardList size={20} /></span><div><strong>Ver solicitud</strong><small>Unidades, envío y vehículo pedidos</small></div><ChevronRight size={18} /></button>{mode === 'buyer' && canWriteText && !paused && <button type="button" className="quote-ws-option-mobile" onClick={() => { setOptionsOpen(false); openModificationRequest(); }}><span><Pencil size={20} /></span><div><strong>Solicitar modificación</strong><small>Pide otra cantidad, envío o vehículo</small></div><ChevronRight size={18} /></button>}<button type="button" onClick={openHelp}><span><CircleHelp size={20} /></span><div><strong>Ayuda</strong><small>Obtén asistencia con esta cotización</small></div><ChevronRight size={18} /></button>{mode === 'seller' && activeQuote && !closed && <button type="button" className="danger" disabled={isDeletingQuote} onClick={deleteQuote}><span><Trash2 size={20} /></span><div><strong>Eliminar cotización</strong><small>El comprador dejará de verla y no podrá pagarla</small></div><ChevronRight size={18} /></button>}<button type="button" className="danger" onClick={() => { setOptionsOpen(false); setReportOpen(true); }}><span><Flag size={20} /></span><div><strong>Reportar {mode === 'seller' ? 'comprador' : 'vendedor'}</strong><small>Informa una conducta que incumple las normas</small></div><ChevronRight size={18} /></button></div></section></div>}
+      {/* Menu "Gestionar cotizacion" (5-oct): las mismas opciones, nombres y descripciones que en la
+          app (quote-chat y seller-messages), en el mismo orden. */}
+      {optionsOpen && <div className="quote-ws-dialog-backdrop quote-ws-options-backdrop" onClick={() => setOptionsOpen(false)}><section className="quote-ws-options-dialog" role="dialog" aria-modal="true" aria-label="Gestionar cotización" onClick={(event) => event.stopPropagation()}><header><strong>Gestionar cotización</strong><button type="button" aria-label="Cerrar opciones" onClick={() => setOptionsOpen(false)}><X size={19} /></button></header><div>
+        {mode === 'buyer' && paused && <button type="button" className="highlight" disabled={isCancellingModification} onClick={() => { setOptionsOpen(false); cancelModification(); }}><span><Undo2 size={20} /></span><div><strong>{isCancellingModification ? 'Cancelando…' : 'Cancelar solicitud y retomar la cotización'}</strong><small>Vuelves a la cotización original y podrás pagarla</small></div><ChevronRight size={18} /></button>}
+        {mode === 'seller' && paused && activeQuote && <button type="button" className="highlight" onClick={() => { setOptionsOpen(false); setQuoteEditorOpen(true); }}><span><BadgeDollarSign size={20} /></span><div><strong>Enviar nueva cotización</strong><small>Responde la modificación con una cotización nueva</small></div><ChevronRight size={18} /></button>}
+        {mode === 'seller' && paused && activeQuote && <button type="button" onClick={() => { setOptionsOpen(false); setKeepOriginalError(''); setKeepOriginalOpen(true); }}><span><CheckCircle2 size={20} /></span><div><strong>Mantener la cotización original</strong><small>El comprador vuelve a poder pagarla</small></div><ChevronRight size={18} /></button>}
+        <button type="button" onClick={() => { setOptionsOpen(false); setRequestSummaryOpen(true); }}><span><ClipboardList size={20} /></span><div><strong>Ver solicitud</strong><small>Unidades, envío y vehículo pedidos</small></div><ChevronRight size={18} /></button>
+        {activeQuote && <button type="button" onClick={() => { setOptionsOpen(false); if (mode === 'buyer') setQuotePreviewOpen(true); else viewDocument(); }}><span><FileText size={20} /></span><div><strong>Ver cotización</strong><small>Precio, envío, vigencia y documento</small></div><ChevronRight size={18} /></button>}
+        {mode === 'buyer' && activeQuote && <button type="button" onClick={() => { setOptionsOpen(false); shareQuoteLink(); }}><span><Share2 size={20} /></span><div><strong>Compartir cotización</strong><small>Envía un enlace para ver o descargar el PDF</small></div><ChevronRight size={18} /></button>}
+        {mode === 'buyer' && activeQuote && !paused && !closed && !expired && <button type="button" onClick={() => { setOptionsOpen(false); goToQuoteCheckout(); }}><span><CreditCard size={20} /></span><div><strong>Revisar y pagar</strong><small>Paga la cotización con la compra protegida</small></div><ChevronRight size={18} /></button>}
+        {mode === 'buyer' && canWriteText && activeQuote && !paused && !closed && !expired && <button type="button" onClick={() => { setOptionsOpen(false); openModificationRequest(); }}><span><Pencil size={20} /></span><div><strong>Solicitar modificación</strong><small>Pide otra cantidad, envío o vehículo</small></div><ChevronRight size={18} /></button>}
+        {mode === 'seller' && !paused && !closed && <button type="button" onClick={() => { setOptionsOpen(false); setQuoteEditorOpen(true); }}><span><Pencil size={20} /></span><div><strong>{activeQuote ? 'Editar cotización' : 'Enviar cotización'}</strong><small>{activeQuote ? 'Cambia precio, envío o vigencia' : 'Responde la solicitud con precio y envío'}</small></div><ChevronRight size={18} /></button>}
+        <button type="button" onClick={() => { openHelp(); }}><span><CircleHelp size={20} /></span><div><strong>Ayuda</strong><small>Obtén asistencia con esta cotización</small></div><ChevronRight size={18} /></button>
+        {mode === 'seller' && activeQuote && !closed && <button type="button" className="danger" disabled={isDeletingQuote} onClick={() => { deleteQuote(); }}><span><Trash2 size={20} /></span><div><strong>Eliminar cotización</strong><small>El comprador dejará de verla y no podrá pagarla</small></div><ChevronRight size={18} /></button>}
+        <button type="button" className="danger" onClick={() => { setOptionsOpen(false); setReportOpen(true); }}><span><Flag size={20} /></span><div><strong>Reportar {mode === 'seller' ? 'comprador' : 'vendedor'}</strong><small>Informa una conducta que incumple las normas</small></div><ChevronRight size={18} /></button>
+      </div></section></div>}
 
       {reportOpen && <div className="quote-ws-dialog-backdrop" onClick={() => !isSubmittingReport && setReportOpen(false)}><form className="quote-ws-report-dialog" onSubmit={submitReport} onClick={(event) => event.stopPropagation()}><header><div><Flag size={22} /><span><strong>Reportar conversación</strong><small>Selecciona el motivo del reporte. Tu reporte es confidencial.</small></span></div><button type="button" aria-label="Cerrar reporte" disabled={isSubmittingReport} onClick={() => setReportOpen(false)}><X size={19} /></button></header><div className="quote-ws-report-body"><fieldset><legend>Motivo del reporte</legend>{REPORT_REASONS.map((reason) => <label key={reason} className={reportReason === reason ? 'selected' : ''}><input type="radio" name="reportReason" value={reason} checked={reportReason === reason} onChange={(event) => setReportReason(event.target.value)} /><span>{reason}</span><i /></label>)}</fieldset><label className="quote-ws-report-detail"><span>Detalle adicional (opcional)</span><textarea rows="3" maxLength="500" value={reportDetail} onChange={(event) => setReportDetail(event.target.value)} placeholder="Cuéntanos qué ocurrió..." /><small>{reportDetail.length}/500</small></label></div><footer><button type="button" className="secondary" disabled={isSubmittingReport} onClick={() => setReportOpen(false)}>Cancelar</button><button type="submit" disabled={!reportReason || isSubmittingReport}>{isSubmittingReport ? <Loader2 size={17} className="spin-icon" /> : <Flag size={17} />} {isSubmittingReport ? 'Enviando...' : 'Enviar reporte'}</button></footer></form></div>}
 

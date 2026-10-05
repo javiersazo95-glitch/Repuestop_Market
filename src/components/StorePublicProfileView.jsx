@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
 import {
@@ -7,7 +8,7 @@ import {
   ShoppingCart, Car, Wrench, Layers, Building2, MessageSquare, AlertCircle,
   Heart, Share2, Image, PenLine, ArrowRight, HelpCircle,
   CarFront, Barcode, CircleHelp, RefreshCw, Tag, Store as StoreIcon,
-  MessageCircle, Send, Mail, Link2, ArrowUpDown
+  MessageCircle, Send, Mail, Link2, ArrowUpDown, MoreHorizontal
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { NAVIGATION_CATEGORIES } from '../data/categories';
@@ -24,6 +25,7 @@ import { useFavorites } from '../hooks/useFavorites';
 import { useMarketplace } from '../context/MarketplaceContext';
 import TextSearchWithSuggestions from './TextSearchWithSuggestions';
 import PaginationBar from './PaginationBar';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 // El backend acota el tamaño de página a 100; esta vista filtra y pagina en cliente.
 const STORE_PRODUCTS_FETCH_SIZE = 100;
@@ -73,6 +75,10 @@ export default function StorePublicProfileView({
 
   const [shareFeedback, setShareFeedback] = useState('');
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+  // Movil (5-oct): la portada queda limpia (imagen y logo); guardar, compartir, reportar y
+  // editar viven en una hoja que abre un solo icono sobre la portada.
+  const isMobile = useIsMobile();
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const shareMenuRef = useRef(null);
   const [openFilterSections, setOpenFilterSections] = useState({ purchase: true, category: true, condition: true });
   const [expandedCategories, setExpandedCategories] = useState({});
@@ -533,6 +539,7 @@ export default function StorePublicProfileView({
 
   const closeShareMenuAnd = (action) => {
     setIsShareMenuOpen(false);
+    setMobileActionsOpen(false);
     action();
   };
 
@@ -565,6 +572,18 @@ export default function StorePublicProfileView({
     }
     setTimeout(() => setShareFeedback(''), 2500);
   });
+
+  useEffect(() => {
+    if (!mobileActionsOpen) return undefined;
+    const onKeyDown = (event) => { if (event.key === 'Escape') setMobileActionsOpen(false); };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [mobileActionsOpen]);
+
+  const toggleSavedStore = () => {
+    if (!user) { openAuthModal(); return; }
+    toggleStore(currentStore);
+  };
 
   const toggleFilterSection = (section) => {
     setOpenFilterSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -612,6 +631,23 @@ export default function StorePublicProfileView({
           )}
           <div className="store-cover-overlay" />
 
+          {isMobile ? (
+            <div className="store-mobile-cover-bar">
+              <button className="store-cover-icon-button" onClick={onBackToStores} type="button" aria-label="Volver a Casas de repuestos">
+                <ArrowLeft size={18} />
+              </button>
+              <button
+                className="store-cover-icon-button"
+                onClick={() => setMobileActionsOpen(true)}
+                type="button"
+                aria-label="Guardar, compartir y más opciones de la tienda"
+                aria-haspopup="dialog"
+                aria-expanded={mobileActionsOpen}
+              >
+                <MoreHorizontal size={19} />
+              </button>
+            </div>
+          ) : (
           <div className="container store-header-actions-bar">
             <button className="btn-back-stores" onClick={onBackToStores} type="button">
               <ArrowLeft size={16} />
@@ -624,7 +660,9 @@ export default function StorePublicProfileView({
               </button>
             )}
           </div>
+          )}
 
+          {!isMobile && (
           <div className="container store-hero-inner-container">
             <div className="store-hero-left">
               <div className="store-avatar-box">
@@ -756,12 +794,117 @@ export default function StorePublicProfileView({
               </div>
             </div>
           </div>
+          )}
         </div>
+
+        {isMobile && (
+          <div className="store-mobile-identity">
+            <div className="store-avatar-box">
+              {currentStore.logoUrl && !logoError ? (
+                <img
+                  src={currentStore.logoUrl}
+                  alt={currentStore.nombre}
+                  className="store-avatar-img"
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <div className="store-avatar-fallback" style={{ backgroundColor: currentStore.bgColor || '#0066ff' }}>
+                  <span>{currentStore.initials || 'RT'}</span>
+                </div>
+              )}
+            </div>
+            <div className="store-mobile-identity-copy">
+              <h1>{currentStore.nombre}</h1>
+              {isVerified && <span className="badge-official-store">Tienda verificada</span>}
+              {currentStore.descripcion && <p>{currentStore.descripcion}</p>}
+              <span className="store-mobile-identity-location"><MapPin size={13} /> {currentStore.ciudad}</span>
+            </div>
+            {shareFeedback && (
+              <div className="store-action-toast-banner" role="status">
+                <CheckCircle2 size={14} />
+                <span>{shareFeedback}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {isMobile && mobileActionsOpen && typeof document !== 'undefined' && createPortal(
+        <div className="store-actions-backdrop" onClick={() => setMobileActionsOpen(false)}>
+          <div
+            className="store-actions-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Opciones de la tienda"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header>
+              <strong>{currentStore.nombre}</strong>
+              <button type="button" onClick={() => setMobileActionsOpen(false)} aria-label="Cerrar">
+                <X size={20} />
+              </button>
+            </header>
+            <div className="store-actions-list">
+              <button
+                type="button"
+                className={`store-actions-option ${isStoreSaved(currentStore.id) ? 'is-saved' : ''}`}
+                onClick={() => { setMobileActionsOpen(false); toggleSavedStore(); }}
+              >
+                <Heart size={18} className={isStoreSaved(currentStore.id) ? 'fill-current' : ''} />
+                <span>{isStoreSaved(currentStore.id) ? 'Quitar de tiendas guardadas' : 'Guardar tienda'}</span>
+              </button>
+              <small className="store-actions-group-label">Compartir</small>
+              {canNativeShare && (
+                <button type="button" className="store-actions-option" onClick={shareNative}>
+                  <Share2 size={18} /> <span>Compartir con…</span>
+                </button>
+              )}
+              <button type="button" className="store-actions-option" onClick={shareViaWhatsapp}>
+                <MessageCircle size={18} /> <span>WhatsApp</span>
+              </button>
+              <button type="button" className="store-actions-option" onClick={shareViaMessenger}>
+                <Send size={18} /> <span>Messenger</span>
+              </button>
+              <button type="button" className="store-actions-option" onClick={shareViaEmail}>
+                <Mail size={18} /> <span>Email</span>
+              </button>
+              <button type="button" className="store-actions-option" onClick={handleCopyLink}>
+                <Link2 size={18} /> <span>Copiar enlace</span>
+              </button>
+              {/* Reportar exige sesion (ContextualReportButton no se pinta sin usuario). */}
+              {(onEditStore || (!isOwnStore && user)) && <small className="store-actions-group-label">Más</small>}
+              {onEditStore && (
+                <button type="button" className="store-actions-option" onClick={() => { setMobileActionsOpen(false); onEditStore(); }}>
+                  <PenLine size={18} /> <span>Editar tienda</span>
+                </button>
+              )}
+              {!isOwnStore && (
+                <ContextualReportButton
+                  tipoObjeto="TIENDA"
+                  objetoId={storeId}
+                  objetoTitulo={currentStore.nombre}
+                  className="store-actions-option is-danger"
+                  label="Reportar tienda"
+                />
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {/* Bottom Metrics Card Strip */}
       <div className="container store-metrics-strip-container">
         <div className="store-metrics-strip-card">
+            {isMobile && (
+              <div className="metric-strip-item">
+                <span className="metric-icon-box is-rating"><Star size={22} /></span>
+                <div className="metric-text-box">
+                  <small>{reviewCount > 0 ? `${reviewCount.toLocaleString('es-CL')} evaluaciones` : 'Calificación de la tienda'}</small>
+                  <strong>{rating > 0 ? rating.toFixed(1) : '—'}</strong>
+                </div>
+              </div>
+            )}
             <div className="metric-strip-item">
               <span className="metric-icon-box"><Package size={22} /></span>
               {/* Con una patente activa esta metrica tiene que hablar del mismo universo que
@@ -808,7 +951,8 @@ export default function StorePublicProfileView({
               </div>
             )}
 
-            {currentStore.verificadoFecha && (
+            {/* En movil no va (5-oct): la franja queda con lo que sirve para decidir la compra. */}
+            {!isMobile && currentStore.verificadoFecha && (
               <div className="metric-strip-item">
                 <span className="metric-icon-box"><ShieldCheck size={22} /></span>
                 <div className="metric-text-box">

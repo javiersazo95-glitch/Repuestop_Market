@@ -21181,3 +21181,179 @@ input.has-success {
 .seller-checklist-check.is-marcado .seller-checklist-checkbox { border-color: #16a34a; background: #16a34a; color: #fff; }
 .seller-checklist-check.is-marcado:hover:not(:disabled) .seller-checklist-checkbox { color: #fff; }
 .seller-checklist-warning-actions .btn-auth-secondary:disabled { opacity: .6; cursor: not-allowed; }
+
+/* Selector de los filtros avanzados en movil (SheetSelect): el mismo AppPicker de la app.
+   Hoja que sube desde abajo, titulo con cerrar, buscador arriba y lista con la opcion marcada. */
+.sheet-select-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 46px; text-align: left; cursor: pointer; }
+.catalog-sidebar-filters .sheet-select-trigger { min-height: 46px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 14px; font-weight: 600; color: #0f172a; }
+.sheet-select-trigger:disabled { opacity: .55; cursor: not-allowed; background: #f1f5f9; }
+.sheet-select-trigger svg { flex: 0 0 auto; color: #0f172a; }
+.sheet-select-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-select-value.is-placeholder { color: #64748b; font-weight: 500; }
+.sheet-select-backdrop { position: fixed; inset: 0; z-index: 10090; display: flex; align-items: flex-end; justify-content: center; background: rgba(0, 0, 0, .5); animation: sheet-select-fade .18s ease-out; }
+.sheet-select-sheet { display: flex; flex-direction: column; width: 100%; max-height: 75dvh; padding: 16px 16px calc(24px + env(safe-area-inset-bottom)); border-radius: 20px 20px 0 0; background: #fff; box-shadow: 0 -12px 32px rgba(6, 19, 41, .18); animation: sheet-select-up .22s ease-out; }
+.sheet-select-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #cbd5e1; }
+.sheet-select-header strong { color: #0f172a; font-size: 16px; font-weight: 700; }
+.sheet-select-close { display: inline-flex; padding: 4px; border: 0; background: transparent; color: #0f172a; cursor: pointer; }
+.sheet-select-search { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; height: 44px; margin: 0 12px 12px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; color: #64748b; }
+.sheet-select-search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: none; background: transparent; color: #0f172a; font-size: 15px; }
+.sheet-select-search input::-webkit-search-cancel-button { display: none; }
+.sheet-select-search button { display: inline-flex; padding: 0; border: 0; background: transparent; color: #64748b; cursor: pointer; }
+.sheet-select-list { flex: 1; min-height: 0; margin: 0; padding: 4px 0; overflow-y: auto; overscroll-behavior: contain; list-style: none; }
+.sheet-select-option { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; padding: 16px 12px; border: 0; border-bottom: 1px solid rgba(203, 213, 225, .5); background: transparent; color: #0f172a; font-size: 15px; text-align: left; cursor: pointer; }
+.sheet-select-option span { min-width: 0; }
+.sheet-select-option.is-selected { background: rgba(0, 86, 191, .03); color: #0056bf; font-weight: 600; }
+.sheet-select-option svg { flex: 0 0 auto; color: #0056bf; }
+.sheet-select-empty { padding: 24px 0; color: #64748b; font-size: 15px; text-align: center; }
+@keyframes sheet-select-up { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
+@keyframes sheet-select-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .sheet-select-backdrop, .sheet-select-sheet { animation: none; }
+}
+
+/* Tarjetas "Vehículo filtrado" y "Filtros aplicados" sobre los resultados: mismo diseño que la
+   tarjeta del vehículo consultado de la app (fondo celeste, título azul, cerrar y "Cambiar"). */
+.catalog-applied-card { display: flex; flex-direction: column; gap: 6px; margin: 0 0 10px; padding: 8px 12px 10px; border: 1px solid #bfd6f7; border-radius: 12px; background: #f3f8ff; }
+.catalog-applied-card-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.catalog-applied-card-title { display: inline-flex; align-items: center; gap: 5px; color: #0056bf; font-size: 13px; font-weight: 700; }
+.catalog-applied-card-actions { display: inline-flex; align-items: center; gap: 4px; }
+.catalog-applied-card-close { display: inline-flex; padding: 4px; border: 0; border-radius: 12px; background: transparent; color: #64748b; cursor: pointer; }
+.catalog-applied-card-close:hover { background: #e2ecfb; }
+.catalog-applied-card-clear { padding: 4px 6px; border: 0; background: transparent; color: #64748b; font-size: 12px; font-weight: 600; cursor: pointer; }
+.catalog-applied-card-change { display: inline-flex; align-items: center; gap: 2px; min-height: 28px; padding: 0 8px; border: 0; border-radius: 999px; background: #eaf2ff; color: #0056bf; font-size: 12px; font-weight: 600; cursor: pointer; }
+.catalog-applied-card-change:hover { background: #dbeafe; }
+.catalog-applied-card-sub { margin: 0; overflow: hidden; color: #475569; font-size: 13px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
+.catalog-applied-pins-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.catalog-applied-pin { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 32px; padding: 0 4px 0 11px; border: 1px solid #bfd6f7; border-radius: 999px; background: #eaf2ff; color: #0056bf; font-size: 12px; font-weight: 600; }
+.catalog-applied-pin > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.catalog-applied-pin button { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 999px; background: #fff; color: #0056bf; cursor: pointer; flex: 0 0 auto; }
+.catalog-applied-pin button:hover { background: #dbeafe; }
+@media (max-width: 767px) {
+  .catalog-applied-pins-list { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .catalog-applied-pins-list::-webkit-scrollbar { display: none; }
+  .catalog-applied-pins-list li { flex: 0 0 auto; }
+}
+.catalog-mobile-filter-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin-left: 2px; padding: 0 5px; border-radius: 999px; background: #0754c9; color: #fff; font-size: 11px; font-weight: 800; line-height: 1; }
+
+/* Datos del vehiculo en su tarjeta: etiqueta arriba, valor abajo (como la app). */
+.catalog-vehicle-facts { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; }
+.catalog-vehicle-fact { min-width: 64px; margin: 0; }
+.catalog-vehicle-fact.is-wide { flex-basis: 100%; }
+.catalog-vehicle-fact dt { margin: 0; color: #64748b; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.catalog-vehicle-fact dd { margin: 0; color: #0f172a; font-size: 13px; font-weight: 600; line-height: 18px; }
+/* En movil la tarjeta "Vehículo consultado" reemplaza la pastilla del vehiculo de arriba. */
+@media (max-width: 767px) {
+  .catalog-post-category-filters .catalog-showcase-vehicle-filter { display: none; }
+}
+/* Seleccion multiple (versiones): pie con "Aceptar"; en escritorio, ventana centrada. */
+.sheet-select-footer { flex: 0 0 auto; padding-top: 12px; }
+.sheet-select-accept { width: 100%; min-height: 46px; border: 0; border-radius: 12px; background: #0056bf; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
+.sheet-select-backdrop.is-centered { align-items: center; padding: 24px; }
+.sheet-select-backdrop.is-centered .sheet-select-sheet { max-width: 480px; max-height: 80vh; border-radius: 20px; padding-bottom: 16px; }
+/* Movil: la fila de busqueda, "Filtro" y ordenar queda fija bajo el header al hacer scroll,
+   para tener la busqueda y los filtros a mano mientras se recorren los resultados. */
+@media (max-width: 767px) {
+  .catalog-main-container > .catalog-mobile-actions-row {
+    position: sticky;
+    top: var(--catalog-sticky-top, 57px);
+    z-index: 90;
+    margin: 0 -14px 8px;
+    padding: 8px 14px;
+    background: #f8fafc;
+    transition: box-shadow .15s ease;
+  }
+  .catalog-main-container > .catalog-mobile-actions-row.is-stuck {
+    box-shadow: 0 6px 14px rgba(15, 23, 42, .1);
+  }
+}
+/* Escritorio: desplegable con busqueda rapida bajo el campo (marca y modelo del vehiculo, anio,
+   versiones y marca del repuesto). */
+.sheet-select-popover-wrap { position: relative; width: 100%; }
+.sheet-select-popover { position: absolute; z-index: 300; top: calc(100% + 4px); left: 0; right: 0; display: flex; flex-direction: column; max-height: 360px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; box-shadow: 0 14px 32px rgba(15, 23, 42, .16); }
+.sheet-select-popover .sheet-select-search { height: 38px; margin: 0 0 6px; }
+.sheet-select-popover .sheet-select-search input { font-size: 13px; }
+.sheet-select-popover .sheet-select-option { padding: 9px 10px; font-size: 13px; }
+.sheet-select-popover .sheet-select-empty { padding: 14px 0; font-size: 13px; }
+.sheet-select-popover .sheet-select-footer { padding-top: 6px; }
+.sheet-select-popover .sheet-select-accept { min-height: 36px; font-size: 13px; }
+.sheet-select-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* En las secciones compactas (etiqueta y campo en la misma fila) el campo es angosto: la lista se
+   abre con ancho propio, alineada a la derecha. */
+.compact-select-section .sheet-select-popover { left: auto; right: 0; width: 260px; }
+/* Movil: la pagina nunca se desplaza hacia los lados. Si algun elemento se pasa del ancho, al
+   arrastrar de costado se movia la pagina entera y el header fijo se veia cortado. `clip` (y no
+   `hidden`) no convierte a html/body en contenedor de scroll, asi que el header y la barra de
+   busqueda siguen fijos. Los carruseles y la fila de pines tienen su propio scroll horizontal. */
+@media (max-width: 767px) {
+  html, body { overflow-x: clip; overscroll-behavior-x: none; }
+}
+/* Unidades vendidas en la fila del stock de la card. */
+.market-product-sales { color: #475569; font-weight: 700; }
+/* Avisos del chat de cotizacion (privado, modificacion pendiente, cotizacion mantenida): una sola
+   fila de la grilla; si crecen mucho en pantallas bajas, se desplazan dentro y no tapan los mensajes. */
+.quote-ws-notices { min-width: 0; max-height: 45vh; overflow-y: auto; padding-bottom: 2px; }
+/* Boton "Gestionar" del chat de cotizacion: reemplaza los tres puntos y tiene presencia, porque
+   desde ahi se gestiona la cotizacion. El punto avisa una modificacion pendiente. */
+.quote-ws-manage-button { position: relative; min-height: 36px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #bfd6f7; border-radius: 999px; color: #0056bf; background: #eaf2ff; font: inherit; font-size: 12.5px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.quote-ws-manage-button:hover { background: #dbeafe; border-color: #93c5fd; }
+.quote-ws-manage-dot { width: 8px; height: 8px; border-radius: 50%; background: #d97706; box-shadow: 0 0 0 2px #fff; }
+.quote-ws-options-dialog > div > button.highlight { background: #fff7e6; }
+.quote-ws-options-dialog > div > button.highlight:hover { background: #ffefcc; }
+.quote-ws-options-dialog > div > button.highlight > span { color: #9a5a00; background: #ffe7b3; }
+.quote-ws-options-dialog > div > button:disabled { opacity: .6; cursor: default; }
+/* Cotizacion compartida (/cotizacion/:token). */
+.shared-quote-page { padding: 32px 16px 48px; display: grid; place-items: start center; }
+.shared-quote-card { width: min(520px, 100%); display: grid; gap: 16px; padding: 22px; border: 1px solid #dbe6f6; border-radius: 16px; background: #fff; box-shadow: 0 12px 32px rgba(15, 23, 42, .08); }
+.shared-quote-card.is-loading, .shared-quote-card.is-error { place-items: center; text-align: center; color: #475569; }
+.shared-quote-card.is-error h1 { margin: 0; color: #0f172a; font-size: 18px; }
+.shared-quote-card header { display: flex; gap: 12px; align-items: flex-start; }
+.shared-quote-icon { width: 46px; height: 46px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 12px; color: #0056bf; background: #eaf2ff; }
+.shared-quote-card header small { color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.shared-quote-card header h1 { margin: 2px 0 4px; color: #0f172a; font-size: 19px; line-height: 1.3; }
+.shared-quote-card header p { margin: 0; display: inline-flex; align-items: center; gap: 5px; color: #475569; font-size: 13px; }
+.shared-quote-warning { margin: 0; padding: 10px 12px; display: flex; gap: 8px; align-items: flex-start; border: 1px solid #fde3a7; border-radius: 10px; color: #9a5a00; background: #fff7e6; font-size: 13px; }
+.shared-quote-facts { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.shared-quote-facts > div { padding: 10px 12px; border-radius: 10px; background: #f6f9ff; }
+.shared-quote-facts dt { color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.shared-quote-facts dd { margin: 3px 0 0; color: #0f172a; font-size: 15px; font-weight: 700; }
+.shared-quote-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.shared-quote-actions button { flex: 1 1 160px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid #0056bf; border-radius: 10px; color: #0056bf; background: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.shared-quote-actions button.primary { color: #fff; background: #0056bf; }
+.shared-quote-actions button:disabled { opacity: .6; cursor: default; }
+.shared-quote-error { margin: 0; color: #b3272b; font-size: 13px; }
+.shared-quote-note { color: #64748b; font-size: 12px; line-height: 1.45; }
+
+/* Tienda en movil (5-oct): portada limpia con solo la imagen y el logo. Volver y un icono de
+   opciones (guardar, compartir, reportar, editar) quedan como botones redondos sutiles. */
+.store-mobile-cover-bar { position: absolute; top: 10px; left: 12px; right: 12px; z-index: 10; display: flex; justify-content: space-between; pointer-events: none; }
+.store-cover-icon-button { pointer-events: auto; width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .28); border-radius: 50%; color: #fff; background: rgba(7, 18, 38, .38); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); cursor: pointer; }
+.store-cover-icon-button:active { background: rgba(7, 18, 38, .55); }
+.store-mobile-identity { position: relative; z-index: 3; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; padding: 0 16px 4px; }
+.store-mobile-identity .store-avatar-box { margin-top: -36px; }
+.store-mobile-identity-copy { min-width: 0; padding-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.store-mobile-identity-copy h1 { margin: 0; color: #0f172a; font-size: 18px; font-weight: 800; line-height: 1.22; overflow-wrap: anywhere; }
+.store-mobile-identity-copy p { flex-basis: 100%; margin: 0; color: #475569; font-size: 12.5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.store-mobile-identity-location { flex-basis: 100%; display: inline-flex; align-items: center; gap: 4px; color: #64748b; font-size: 12px; font-weight: 600; }
+.store-mobile-identity .store-action-toast-banner { grid-column: 1 / -1; justify-self: start; margin-top: 8px; }
+.metric-icon-box.is-rating { color: #f59e0b; }
+.metric-icon-box.is-rating svg { fill: #f59e0b; }
+@media (max-width: 767px) {
+  .store-header-banner:has(.store-mobile-identity) .store-cover-image { min-height: 150px !important; padding: 0 !important; }
+  .store-header-banner:has(.store-mobile-identity) { margin-bottom: 14px !important; }
+  .store-public-profile-wrapper .store-metrics-strip-container { margin-top: 0 !important; }
+}
+
+.store-actions-backdrop { position: fixed; inset: 0; z-index: 2300; display: flex; align-items: flex-end; justify-content: center; background: rgba(0, 0, 0, .5); animation: sheet-select-fade .18s ease-out; }
+.store-actions-sheet { width: 100%; max-height: 80dvh; overflow-y: auto; overscroll-behavior: contain; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); border-radius: 20px 20px 0 0; background: #fff; box-shadow: 0 -12px 32px rgba(6, 19, 41, .18); animation: sheet-select-up .22s ease-out; }
+.store-actions-sheet > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; }
+.store-actions-sheet > header strong { min-width: 0; color: #0f172a; font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.store-actions-sheet > header button { display: inline-flex; padding: 4px; border: 0; color: #0f172a; background: transparent; cursor: pointer; }
+.store-actions-list { display: grid; }
+.store-actions-group-label { padding: 12px 4px 4px; color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.store-actions-option { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 4px; border: 0; border-bottom: 1px solid #f1f5f9; color: #0f172a; background: transparent; font: inherit; font-size: 15px; font-weight: 600; text-align: left; cursor: pointer; }
+.store-actions-option svg { flex: 0 0 auto; color: #0056bf; }
+.store-actions-option.is-saved svg { color: #e11d48; }
+.store-actions-option.is-danger, .store-actions-option.is-danger svg { color: #b3272b; }
+@media (prefers-reduced-motion: reduce) {
+  .store-actions-backdrop, .store-actions-sheet { animation: none; }
+}

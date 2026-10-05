@@ -3,7 +3,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   Search, Filter, SlidersHorizontal, ShieldCheck, MapPin,
   X, CheckCircle2, RotateCcw,
-  ChevronDown, ShoppingCart, Car, Wrench, Layers, AlertCircle, Info, Tag, Globe,
+  ChevronDown, ChevronRight, ShoppingCart, Car, Wrench, Layers, AlertCircle, Info, Tag, Globe,
   CarFront, RefreshCw, ArrowUpDown, ArrowRight, LayoutGrid, Store
 } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
@@ -16,14 +16,17 @@ import {
 import {
   getPartCategoriesApi, getPublicProductsApi, getVehicleCatalogPartsApi, searchVehicleByPatenteApi, getAddressesApi,
   getPartSubcategoriesApi, getPartBrandsApi,
-  getVehicleBrandsApi, getVehicleModelsApi, getPublicPartOriginsApi, getCatalogFilterOptionsApi,
+  getVehicleBrandsApi, getVehicleModelsApi, getVehicleVersionsApi, getPublicPartOriginsApi, getCatalogFilterOptionsApi,
   getVehicleFilterOptionsApi
 } from '../services/api';
 import { adaptPage, adaptProduct, adaptCompatibleOffersPage, adaptVehicle } from '../services/adapters';
+import { useScrollMemory } from '../routes/useScrollMemory';
 import { normalizePlate, sanitizePlateInput, isValidPlate } from '../utils/vehicleLookup';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../hooks/useFavorites';
 import TextSearchWithSuggestions from './TextSearchWithSuggestions';
+import SheetSelect from './SheetSelect';
+import { useIsMobile } from '../hooks/useIsMobile';
 import PaginationBar from './PaginationBar';
 
 const normalizeNameKey = (value) => String(value || '').normalize('NFD')
@@ -67,6 +70,7 @@ const COMPAT_YEARS = Array.from(
   { length: new Date().getFullYear() - 1989 },
   (_, index) => new Date().getFullYear() - index
 );
+const COMPAT_YEAR_OPTIONS = COMPAT_YEARS.map((year) => ({ value: String(year), label: String(year) }));
 
 /**
  * Condicion tecnica ofrecida en el filtro. RepuesTop opera solo con tiendas verificadas que
@@ -91,8 +95,41 @@ const formatCLP = (value) => `$${Number(value || 0).toLocaleString('es-CL')}`;
  * que el selector de la app: cerrado ocupa una sola línea, y desde 10 opciones muestra un
  * campo para acotar la lista. La opción elegida nunca desaparece al buscar.
  */
+/** "Automatica CVT" -> "Automática"; "Mecánica" -> "Mecánica". Sin dato, nada. */
+function transmisionLabel(value) {
+  const text = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (!text || text.includes('no informad')) return '';
+  if (/(^|\W)(mec|mecanic|manual|mt)/.test(text)) return 'Mecánica';
+  if (/(^|\W)(aut|automatic|cvt|at)/.test(text)) return 'Automática';
+  return value;
+}
+
+/** Datos del vehículo en su tarjeta (patente o filtro avanzado), cada uno con su etiqueta. */
+function VehicleFacts({ facts }) {
+  return (
+    <dl className="catalog-vehicle-facts">
+      {facts.filter(([, factValue]) => Boolean(factValue)).map(([factLabel, factValue]) => (
+        <div key={factLabel} className={factLabel.startsWith('Versi') ? 'catalog-vehicle-fact is-wide' : 'catalog-vehicle-fact'}>
+          <dt>{factLabel}</dt>
+          <dd>{factValue}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 function FilterSearchSelect({ label, icon, allLabel, options, value, onChange, searchPlaceholder, helper }) {
+  const isMobile = useIsMobile();
   const [query, setQuery] = useState('');
+  if (isMobile) {
+    return (
+      <div className="filter-section-group compact-select-section filter-search-select">
+        <label className="filter-group-label">{icon} {label}</label>
+        <SheetSelect label={label} placeholder={allLabel} options={options} value={value} onChange={onChange} searchable />
+        {helper && <small className="filter-search-select-help">{helper}</small>}
+      </div>
+    );
+  }
   const normalized = normalizeNameKey(query);
   const visible = normalized
     ? options.filter((option) => option.value === value || normalizeNameKey(option.label).includes(normalized))
@@ -130,9 +167,43 @@ export default function PartsCatalogView({
   initialSearchQuery = '',
   initialPage = 1,
   initialShowAll = false,
+  initialAdvancedFilters = null,
   onVehicleChange,
   onNavigationStateChange,
 }) {
+  // Los filtros avanzados que trae la URL (al volver de la ficha de un repuesto, recargar o
+  // abrir un enlace compartido). Solo siembran el estado inicial: despues manda el panel.
+  const [initialAdvanced] = useState(() => initialAdvancedFilters || {});
+  const isMobileLayout = useIsMobile();
+
+  // La fila de búsqueda, filtro y orden queda fija bajo el header al hacer scroll (móvil). El
+  // header también es fijo y su alto cambia (menú, avisos), así que se mide en vivo.
+  const mobileActionsRef = useRef(null);
+  const [mobileActionsStuck, setMobileActionsStuck] = useState(false);
+  useEffect(() => {
+    const header = document.querySelector('header');
+    if (!header) return undefined;
+    const root = document.documentElement;
+    const update = () => root.style.setProperty('--catalog-sticky-top', `${Math.round(header.getBoundingClientRect().height)}px`);
+    update();
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(update) : null;
+    observer?.observe(header);
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty('--catalog-sticky-top');
+    };
+  }, []);
+  useEffect(() => {
+    const row = mobileActionsRef.current;
+    if (!row || !isMobileLayout) return undefined;
+    const check = () => {
+      const top = parseFloat(getComputedStyle(row).top) || 0;
+      setMobileActionsStuck(row.getBoundingClientRect().top <= top + 1 && window.scrollY > 0);
+    };
+    check();
+    window.addEventListener('scroll', check, { passive: true });
+    return () => window.removeEventListener('scroll', check);
+  }, [isMobileLayout]);
   const [activeVehicle, setActiveVehicle] = useState(initialActiveVehicle);
   const [patentInput, setPatentInput] = useState('');
   const [patentError, setPatentError] = useState('');
@@ -154,36 +225,42 @@ export default function PartsCatalogView({
   // Compatibilidad de vehículo elegida a mano (para quien no tiene la patente a mano).
   // La marca se guarda con id y nombre: el catálogo de modelos se pide por id, pero el
   // filtro del catálogo público compara por NOMBRE (`compatibilidadMarca`).
-  const [vehicleBrandId, setVehicleBrandId] = useState('');
-  const [vehicleBrandName, setVehicleBrandName] = useState('');
-  const [vehicleModel, setVehicleModel] = useState('');
-  const [vehicleYear, setVehicleYear] = useState('');
+  const [vehicleBrandId, setVehicleBrandId] = useState(initialAdvanced.vehicleBrandId || '');
+  const [vehicleBrandName, setVehicleBrandName] = useState(initialAdvanced.vehicleBrandName || '');
+  const [vehicleModel, setVehicleModel] = useState(initialAdvanced.vehicleModel || '');
+  const [vehicleYear, setVehicleYear] = useState(initialAdvanced.vehicleYear || '');
+  // Versiones (opcional, una o varias): ids de filas del catalogo separados por comas. Regla del
+  // 5-oct: es el unico filtro que distingue un GLI de otro; el backend trae exactamente esas
+  // versiones mas lo publicado sin version.
+  const [vehicleVersionIds, setVehicleVersionIds] = useState(initialAdvanced.vehicleVersionIds || '');
   // Marca del repuesto (Bosch, Brembo, Valeo…). Es `marcaId` del endpoint, distinto de
   // la marca del vehículo: una es quién fabrica la pieza y la otra para qué auto sirve.
-  const [partBrandId, setPartBrandId] = useState('');
+  const [partBrandId, setPartBrandId] = useState(initialAdvanced.partBrandId || '');
   // Condición técnica y origen de fabricación. Vuelven al panel ahora que el endpoint los
   // acepta como parámetro: antes se filtraban en el cliente sobre la página actual, y además
   // comparaban contra etiquetas ("Nuevo OEM Original") que el dato real nunca tuvo.
-  const [selectedCondition, setSelectedCondition] = useState('');
-  const [selectedOrigin, setSelectedOrigin] = useState('');
+  const [selectedCondition, setSelectedCondition] = useState(initialAdvanced.condition || '');
+  const [selectedOrigin, setSelectedOrigin] = useState(initialAdvanced.origin || '');
   // Tienda y comuna de los filtros avanzados (igual que la app): viajan al servidor como
   // `proveedorId` y `comunaId`, sobre todo el catálogo y no sobre la página cargada.
-  const [selectedStoreId, setSelectedStoreId] = useState('');
-  const [selectedComunaId, setSelectedComunaId] = useState('');
+  const [selectedStoreId, setSelectedStoreId] = useState(initialAdvanced.storeId || '');
+  const [selectedComunaId, setSelectedComunaId] = useState(initialAdvanced.comunaId || '');
   // Modalidad de compra como interruptor: encendido deja SOLO los que se venden a cotizacion.
   // Antes eran tres opciones con un "Todos los Repuestos" que prometia ver el catalogo entero
   // -justo lo que la vitrina evita- y que al tocarlo no cambiaba nada.
-  const [onlyQuoteOnly, setOnlyQuoteOnly] = useState(false);
-  const [onlyCompatible, setOnlyCompatible] = useState(!!initialActiveVehicle);
-  const [minPrice, setMinPrice] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(PRICE_CEILING);
+  const [onlyQuoteOnly, setOnlyQuoteOnly] = useState(Boolean(initialAdvanced.quoteOnly));
+  const [onlyCompatible, setOnlyCompatible] = useState(!!initialActiveVehicle && initialAdvanced.onlyCompatible !== false);
+  const [minPrice, setMinPrice] = useState(initialAdvanced.minPrice || 0);
+  const [maxPrice, setMaxPrice] = useState(
+    initialAdvanced.maxPrice && initialAdvanced.maxPrice < PRICE_CEILING ? initialAdvanced.maxPrice : PRICE_CEILING
+  );
   // El deslizador se mueve contra un borrador local y solo se confirma al soltarlo:
   // `maxPrice` viaja al servidor, asi que arrastrarlo dispararia una consulta por pixel.
-  const [priceDraft, setPriceDraft] = useState(PRICE_CEILING);
-  const [minPriceDraft, setMinPriceDraft] = useState('');
-  const [sortBy, setSortBy] = useState('relevancia');
+  const [priceDraft, setPriceDraft] = useState(maxPrice);
+  const [minPriceDraft, setMinPriceDraft] = useState(minPrice > 0 ? String(minPrice) : '');
+  const [sortBy, setSortBy] = useState(initialAdvanced.sort || 'relevancia');
   const [currentPage, setCurrentPage] = useState(initialPage);
-  const [itemsPerPage, setItemsPerPage] = useState(12);
+  const [itemsPerPage, setItemsPerPage] = useState(initialAdvanced.perPage || 12);
 
   const selectCarouselCategory = (category) => {
     const matchedHeader = HEADER_CATEGORIES.find((h) => h.id === category.id);
@@ -195,9 +272,9 @@ export default function PartsCatalogView({
 
   const { user, isLoggedIn } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites(user?.userId ?? user?.id);
-  const [filterByMyComuna, setFilterByMyComuna] = useState(false);
-  const [myComunaId, setMyComunaId] = useState(null);
-  const [myComunaNombre, setMyComunaNombre] = useState('');
+  const [filterByMyComuna, setFilterByMyComuna] = useState(Boolean(initialAdvanced.myComunaId));
+  const [myComunaId, setMyComunaId] = useState(initialAdvanced.myComunaId || null);
+  const [myComunaNombre, setMyComunaNombre] = useState(initialAdvanced.myComunaName || '');
   const [comunaLookupStatus, setComunaLookupStatus] = useState('idle');
   const [comunaNotice, setComunaNotice] = useState('');
   // La comuna elegida en el panel manda sobre "Mi comuna".
@@ -253,8 +330,9 @@ export default function PartsCatalogView({
         return 'stock,desc';
     }
   }, [sortBy]);
-  // Con patente, "relevancia" no manda orden: el backend usa su regla (compatible con Top,
-  // compatible, universal con Top, universal). Los demas ordenes se aplican dentro de cada grupo.
+  // Con vehiculo (patente o marca/modelo/anio/version del panel), "relevancia" no manda orden: el
+  // backend usa su regla (compatible con Top, compatible, universal con Top, universal; en cada
+  // grupo lo mas vendido primero). Los demas ordenes se aplican dentro de cada grupo.
   const vehicleSort = sortBy === 'relevancia' ? undefined : backendSort;
 
   // Lista de categorías persistidas en el backend para resolver IDs reales
@@ -318,6 +396,23 @@ export default function PartsCatalogView({
       return Array.isArray(list) ? list : [];
     },
     enabled: Boolean(vehicleBrandId),
+    staleTime: 1000 * 60 * 60,
+  });
+
+  // Versiones del modelo elegido (con anio, solo las que lo cubren). Opcional, como en la
+  // busqueda manual del inicio.
+  const { data: vehicleVersions = [] } = useQuery({
+    queryKey: qk.vehicleVersions(vehicleBrandName, vehicleModel, vehicleYear),
+    queryFn: async () => {
+      const list = await getVehicleVersionsApi({
+        marca: vehicleBrandName,
+        modelo: vehicleModel,
+        anioDesde: vehicleYear || undefined,
+        anioHasta: vehicleYear || undefined,
+      });
+      return Array.isArray(list) ? list : [];
+    },
+    enabled: Boolean(vehicleBrandName && vehicleModel),
     staleTime: 1000 * 60 * 60,
   });
 
@@ -454,6 +549,10 @@ export default function PartsCatalogView({
   const compatibilidadAnio = usaVehiculoActivo
     ? activeVehicle.anio || undefined
     : vehicleYear || undefined;
+  const compatibilidadVersionIds = usaVehiculoActivo ? undefined : vehicleVersionIds || undefined;
+  // Con vehiculo el backend ordena por grupos de compatibilidad y ventas: "relevancia" no manda
+  // orden (el `stock,desc` del catalogo general lo pisaria dentro de cada grupo).
+  const catalogSort = (compatibilidadMarca || compatibilidadModelo) ? vehicleSort : backendSort;
 
   /**
    * El catálogo paginado NO se consulta sin contexto. Entrar a /repuestos y disparar un
@@ -526,12 +625,13 @@ export default function PartsCatalogView({
           compatibilidadMarca,
           compatibilidadModelo,
           compatibilidadAnio,
+          compatibilidadVersionIds,
           marcaId: partBrandId || undefined,
           condicion: selectedCondition || undefined,
           origen: selectedOrigin || undefined,
           precioMin: minPrice > 0 ? minPrice : undefined,
           precioMax: maxPrice < PRICE_CEILING ? maxPrice : undefined,
-          sort: backendSort,
+          sort: catalogSort,
           soloCotizacion: onlyQuoteOnly ? true : undefined,
         }),
     enabled: hasActiveContext && filtersResolved,
@@ -573,13 +673,14 @@ export default function PartsCatalogView({
         compatibilidadMarca,
         compatibilidadModelo,
         compatibilidadAnio,
+        compatibilidadVersionIds,
         marcaId: partBrandId || undefined,
         condicion: selectedCondition || undefined,
         origen: selectedOrigin || undefined,
         precioMin: minPrice > 0 ? minPrice : undefined,
         precioMax: maxPrice < PRICE_CEILING ? maxPrice : undefined,
         soloCotizacion: onlyQuoteOnly ? true : undefined,
-        sort: backendSort,
+        sort: catalogSort,
         signal,
       });
       const adapted = adaptPage(data, adaptProduct);
@@ -633,6 +734,14 @@ export default function PartsCatalogView({
   });
 
   const products = catalogData.items;
+  // Opciones de los desplegables en el formato { value, label } de SheetSelect.
+  const vehicleBrandOptions = vehicleBrands.map((brand) => ({ value: String(brand.id), label: brand.nombre }));
+  const vehicleModelOptions = vehicleModels.map((model) => ({ value: model.nombre, label: model.nombre }));
+  const vehicleVersionOptions = vehicleVersions.map((version) => ({ value: String(version.id), label: version.nombre }));
+  const partBrandOptions = visiblePartBrands.map((brand) => ({ value: String(brand.id), label: brand.nombre }));
+  const originOptions = visibleOrigins.map((origin) => ({ value: origin, label: origin }));
+  // Al volver de la ficha de un repuesto el scroll se devuelve cuando el listado ya esta pintado.
+  useScrollMemory(hasActiveContext ? filtersResolved && !productsLoading : !showcaseLoading);
   const totalProducts = catalogData.total;
   // Paginación acotada: se navegan hasta MAX_PAGINATED_RESULTS resultados. Más allá,
   // el usuario debe refinar (categoría, patente, texto) en vez de pasar páginas.
@@ -665,10 +774,13 @@ export default function PartsCatalogView({
     }
   }, [initialSearchQuery]);
 
+  const keepCompatibleOffRef = useRef(initialAdvanced.onlyCompatible === false);
   useEffect(() => {
     setActiveVehicle(initialActiveVehicle);
     if (initialActiveVehicle) {
-      setOnlyCompatible(true);
+      // Al volver con el filtro del vehiculo quitado (`compatible=0`) se respeta esa decision.
+      if (keepCompatibleOffRef.current) keepCompatibleOffRef.current = false;
+      else setOnlyCompatible(true);
       if (initialActiveVehicle.patente) {
         setInputValue(initialActiveVehicle.patente);
         setSearchMode('patente');
@@ -768,16 +880,24 @@ export default function PartsCatalogView({
   // La lista de marcas de repuesto se acota a la categoría elegida, así que al cambiar de
   // categoría la marca seleccionada puede dejar de existir en el desplegable: si quedara
   // puesta, el `marcaId` seguiría viajando y el filtro se vería vacío sin motivo visible.
+  const categoryNameRef = useRef(null);
   useEffect(() => {
+    if (!categoriesFetched) return;
+    if (categoryNameRef.current === null) {
+      categoryNameRef.current = activeCategoryName ?? '';
+      return;
+    }
+    if (categoryNameRef.current === (activeCategoryName ?? '')) return;
+    categoryNameRef.current = activeCategoryName ?? '';
     setPartBrandId('');
-  }, [activeCategoryName]);
+  }, [activeCategoryName, categoriesFetched]);
 
   // Reset to page 1 when any filter changes.
   const previousFiltersRef = useRef(null);
   useEffect(() => {
     const signature = JSON.stringify([
       deferredSearchQuery, selectedCategory, selectedSubcategory, vehicleBrandName, vehicleModel,
-      vehicleYear, partBrandId, selectedCondition, selectedOrigin, onlyQuoteOnly, onlyCompatible,
+      vehicleYear, vehicleVersionIds, partBrandId, selectedCondition, selectedOrigin, onlyQuoteOnly, onlyCompatible,
       minPrice, maxPrice, sortBy, itemsPerPage, selectedStoreId, selectedComunaId
     ]);
     const previous = previousFiltersRef.current;
@@ -786,7 +906,7 @@ export default function PartsCatalogView({
     setCurrentPage(1);
   }, [
     deferredSearchQuery, selectedCategory, selectedSubcategory, vehicleBrandName, vehicleModel,
-    vehicleYear, partBrandId, selectedCondition, selectedOrigin, onlyQuoteOnly, onlyCompatible,
+    vehicleYear, vehicleVersionIds, partBrandId, selectedCondition, selectedOrigin, onlyQuoteOnly, onlyCompatible,
     minPrice, maxPrice, sortBy, itemsPerPage, selectedStoreId, selectedComunaId
   ]);
 
@@ -819,8 +939,33 @@ export default function PartsCatalogView({
       query: searchQuery,
       page: currentPage,
       showAll: showAllProducts,
+      advanced: {
+        vehicleBrandId,
+        vehicleBrandName,
+        vehicleModel,
+        vehicleYear,
+        vehicleVersionIds,
+        partBrandId,
+        condition: selectedCondition,
+        origin: selectedOrigin,
+        storeId: selectedStoreId,
+        comunaId: selectedComunaId,
+        myComunaId: filterByMyComuna ? myComunaId : null,
+        myComunaName: filterByMyComuna ? myComunaNombre : null,
+        quoteOnly: onlyQuoteOnly ? '1' : null,
+        minPrice: minPrice > 0 ? minPrice : null,
+        maxPrice: maxPrice < PRICE_CEILING ? maxPrice : null,
+        sort: sortBy !== 'relevancia' ? sortBy : null,
+        perPage: itemsPerPage !== 12 ? itemsPerPage : null,
+        onlyCompatible: activeVehicle && !onlyCompatible ? '0' : null,
+      },
     });
-  }, [onNavigationStateChange, selectedCategory, selectedSubcategory, searchQuery, currentPage, showAllProducts]);
+  }, [
+    onNavigationStateChange, selectedCategory, selectedSubcategory, searchQuery, currentPage, showAllProducts,
+    vehicleBrandId, vehicleBrandName, vehicleModel, vehicleYear, vehicleVersionIds, partBrandId,
+    selectedCondition, selectedOrigin, selectedStoreId, selectedComunaId, filterByMyComuna, myComunaId,
+    myComunaNombre, onlyQuoteOnly, minPrice, maxPrice, sortBy, itemsPerPage, activeVehicle, onlyCompatible,
+  ]);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -842,6 +987,7 @@ export default function PartsCatalogView({
     setVehicleBrandName('');
     setVehicleModel('');
     setVehicleYear('');
+    setVehicleVersionIds('');
     setPartBrandId('');
     setSelectedCondition('');
     setSelectedOrigin('');
@@ -881,6 +1027,82 @@ export default function PartsCatalogView({
     setSelectedSubcategory('TODAS');
   };
 
+  /**
+   * Pines de los filtros avanzados aplicados, visibles sobre los resultados: el comprador ve
+   * por que se esta filtrando sin abrir el panel, y quita cada uno con su X. La categoria y el
+   * vehiculo de la patente ya tienen su propio aviso arriba, y el vehiculo del panel va en su
+   * tarjeta (como la patente en la app), asi que no se repiten como pines.
+   */
+  const labelOf = (options, value) => options.find((option) => option.value === String(value))?.label;
+  const usesPanelVehicle = !(activeVehicle && onlyCompatible) && Boolean(vehicleBrandName || vehicleModel);
+  const selectedVersionLabels = String(vehicleVersionIds || '').split(',').filter(Boolean)
+    .map((id) => labelOf(vehicleVersionOptions, id) || id);
+  const panelVehicleLabel = usesPanelVehicle
+    ? [
+      [vehicleBrandName, vehicleModel, vehicleYear].filter(Boolean).join(' '),
+      selectedVersionLabels.length ? selectedVersionLabels.join(', ') : null,
+    ].filter(Boolean).join(' · ')
+    : '';
+  const clearPanelVehicle = () => {
+    setVehicleBrandId('');
+    setVehicleBrandName('');
+    setVehicleModel('');
+    setVehicleYear('');
+    setVehicleVersionIds('');
+  };
+  // "Cambiar": en movil abre el panel; en escritorio lleva a la seccion del panel.
+  const openFiltersAt = (section) => {
+    if (isMobileLayout) {
+      setMobileFiltersOpen(true);
+      return;
+    }
+    if (section) setOpenFilterSections((current) => ({ ...current, [section]: true }));
+    requestAnimationFrame(() => document.getElementById('catalog-filter-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
+  const appliedAdvancedFilters = [
+    onlyQuoteOnly && { key: 'cotizar', label: 'Solo a cotizar', onRemove: () => setOnlyQuoteOnly(false) },
+    partBrandId && {
+      key: 'marca',
+      label: `Marca: ${labelOf(partBrandOptions, partBrandId) || 'elegida'}`,
+      onRemove: () => setPartBrandId(''),
+    },
+    selectedCondition && {
+      key: 'condicion',
+      label: PART_CONDITIONS.find((condition) => condition.value === selectedCondition)?.label || selectedCondition,
+      onRemove: () => setSelectedCondition(''),
+    },
+    selectedOrigin && { key: 'origen', label: `Origen: ${selectedOrigin}`, onRemove: () => setSelectedOrigin('') },
+    (minPrice > 0 || maxPrice < PRICE_CEILING) && {
+      key: 'precio',
+      label: minPrice > 0 && maxPrice < PRICE_CEILING
+        ? `Precio: ${formatCLP(minPrice)} – ${formatCLP(maxPrice)}`
+        : minPrice > 0 ? `Desde ${formatCLP(minPrice)}` : `Hasta ${formatCLP(maxPrice)}`,
+      onRemove: () => {
+        setMinPrice(0);
+        setMinPriceDraft('');
+        setMaxPrice(PRICE_CEILING);
+        setPriceDraft(PRICE_CEILING);
+      },
+    },
+    selectedStoreId && {
+      key: 'tienda',
+      label: `Tienda: ${(labelOf(visibleStoreOptions, selectedStoreId) || 'elegida').split(' · ')[0]}`,
+      onRemove: () => setSelectedStoreId(''),
+    },
+    selectedComunaId && {
+      key: 'comuna',
+      label: `Comuna: ${(labelOf(visibleComunaOptions, selectedComunaId) || 'elegida').split(' · ')[0]}`,
+      onRemove: () => setSelectedComunaId(''),
+    },
+    !selectedComunaId && filterByMyComuna && {
+      key: 'miComuna',
+      label: `Mi comuna: ${myComunaNombre || 'registrada'}`,
+      onRemove: () => setFilterByMyComuna(false),
+    },
+  ].filter(Boolean);
+  const clearAppliedAdvancedFilters = () => appliedAdvancedFilters.forEach((filter) => filter.onRemove());
+  const activeAdvancedCount = appliedAdvancedFilters.length + (panelVehicleLabel ? 1 : 0);
+
   const renderCatalogTextSearch = (placeholder = 'Buscar repuestos') => (
       <TextSearchWithSuggestions
         value={searchQuery}
@@ -893,6 +1115,13 @@ export default function PartsCatalogView({
       />
   );
 
+  const clearActiveVehicle = () => {
+    setActiveVehicle(null);
+    onVehicleChange?.(null);
+    setOnlyCompatible(false);
+    setPatentInput('');
+  };
+
   const renderCatalogSearchControls = () => (
     <div className="catalog-showcase-search-controls catalog-post-category-filters">
       {renderCatalogTextSearch()}
@@ -902,7 +1131,7 @@ export default function PartsCatalogView({
             <div className="catalog-showcase-vehicle-filter">
               <Car size={18} />
               <span><strong>{activeVehicle.marca} {activeVehicle.modelo}</strong>{activeVehicle.patente && activeVehicle.patente !== 'MANUAL' ? ` · ${activeVehicle.patente}` : ''}</span>
-              <button type="button" onClick={() => { setActiveVehicle(null); onVehicleChange?.(null); setOnlyCompatible(false); setPatentInput(''); }} title="Quitar filtro de vehículo"><X size={15} /> Quitar filtro</button>
+              <button type="button" onClick={clearActiveVehicle} title="Quitar filtro de vehículo"><X size={15} /> Quitar filtro</button>
             </div>
           ) : (
             <div className="catalog-quick-patente-bar">
@@ -966,9 +1195,9 @@ export default function PartsCatalogView({
             <p>Una muestra del catálogo. Filtra por categoría, patente o busca por nombre para ver el resto.</p>
           </div>
         )}
-        <div className="catalog-mobile-actions-row">
+        <div ref={mobileActionsRef} className={`catalog-mobile-actions-row ${mobileActionsStuck ? 'is-stuck' : ''}`}>
           {renderCatalogTextSearch('Buscar repuestos')}
-          <button type="button" className="catalog-mobile-filter-trigger" onClick={() => setMobileFiltersOpen(true)} aria-controls="catalog-filter-panel" aria-expanded={mobileFiltersOpen}><SlidersHorizontal size={18} /> Filtro</button>
+          <button type="button" className="catalog-mobile-filter-trigger" onClick={() => setMobileFiltersOpen(true)} aria-controls="catalog-filter-panel" aria-expanded={mobileFiltersOpen}><SlidersHorizontal size={18} /> Filtro{activeAdvancedCount > 0 && <span className="catalog-mobile-filter-count" aria-label={`${activeAdvancedCount} filtros aplicados`}>{activeAdvancedCount}</span>}</button>
           <label className="catalog-mobile-sort-trigger" title="Ordenar repuestos">
             <ArrowUpDown size={20} aria-hidden="true" />
             <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Ordenar repuestos">
@@ -979,6 +1208,73 @@ export default function PartsCatalogView({
             </select>
           </label>
         </div>
+
+        {/* Como en la app: primero el vehículo, abajo los filtros extra y después los resultados. */}
+        {activeVehicle && onlyCompatible && (
+          <section className="catalog-applied-card" aria-label={`Vehículo consultado: ${activeVehicle.marca} ${activeVehicle.modelo}`}>
+            <div className="catalog-applied-card-header">
+              <span className="catalog-applied-card-title"><Car size={16} aria-hidden="true" /> Vehículo consultado</span>
+              <div className="catalog-applied-card-actions">
+                <button type="button" className="catalog-applied-card-close" onClick={clearActiveVehicle} aria-label="Quitar filtro de vehículo consultado"><X size={18} /></button>
+              </div>
+            </div>
+            <VehicleFacts
+              facts={[
+                ['Marca', activeVehicle.marca],
+                ['Modelo', activeVehicle.modelo],
+                ['Año', activeVehicle.anio ? String(activeVehicle.anio) : ''],
+                ['Versión', [activeVehicle.version, transmisionLabel(activeVehicle.transmision)].filter(Boolean).join(' · ')],
+                ['Patente', activeVehicle.patente && activeVehicle.patente !== 'MANUAL' ? activeVehicle.patente : ''],
+              ]}
+            />
+          </section>
+        )}
+
+        {panelVehicleLabel && (
+          <section className="catalog-applied-card" aria-label={`Vehículo filtrado: ${panelVehicleLabel}`}>
+            <div className="catalog-applied-card-header">
+              <span className="catalog-applied-card-title"><Car size={16} aria-hidden="true" /> Vehículo filtrado</span>
+              <div className="catalog-applied-card-actions">
+                <button type="button" className="catalog-applied-card-close" onClick={clearPanelVehicle} aria-label="Quitar filtro de vehículo"><X size={18} /></button>
+                <button type="button" className="catalog-applied-card-change" onClick={() => openFiltersAt('vehicle')} aria-label="Cambiar vehículo filtrado">Cambiar <ChevronRight size={13} aria-hidden="true" /></button>
+              </div>
+            </div>
+            <VehicleFacts
+              facts={[
+                ['Marca', vehicleBrandName],
+                ['Modelo', vehicleModel || 'Todos'],
+                ['Año', vehicleYear || 'Todos'],
+                [selectedVersionLabels.length > 1 ? 'Versiones' : 'Versión', selectedVersionLabels.length ? selectedVersionLabels.join(', ') : 'Todas'],
+              ]}
+            />
+          </section>
+        )}
+
+        {appliedAdvancedFilters.length > 0 && (
+          <section className="catalog-applied-card" aria-label="Filtros aplicados">
+            <div className="catalog-applied-card-header">
+              <span className="catalog-applied-card-title"><SlidersHorizontal size={16} aria-hidden="true" /> Filtros aplicados</span>
+              <div className="catalog-applied-card-actions">
+                {appliedAdvancedFilters.length > 1 && (
+                  <button type="button" className="catalog-applied-card-clear" onClick={clearAppliedAdvancedFilters} aria-label="Limpiar todos los filtros">Limpiar</button>
+                )}
+                <button type="button" className="catalog-applied-card-change" onClick={() => openFiltersAt(null)} aria-label="Cambiar filtros">Cambiar <ChevronRight size={13} aria-hidden="true" /></button>
+              </div>
+            </div>
+            <ul className="catalog-applied-pins-list">
+              {appliedAdvancedFilters.map((filter) => (
+                <li key={filter.key}>
+                  <span className="catalog-applied-pin">
+                    <span>{filter.label}</span>
+                    <button type="button" onClick={filter.onRemove} aria-label={`Quitar filtro ${filter.label}`}>
+                      <X size={13} aria-hidden="true" />
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* 2. Top Control Bar (Summary & Sort). Sin contexto no hay resultados que resumir ni ordenar. */}
         {hasActiveContext && (
@@ -1105,8 +1401,8 @@ export default function PartsCatalogView({
               </div>}
             </div>
 
-            {/* Filter 4: Compatibilidad de vehículo (marca → modelo → año), para quien no
-                tiene la patente a mano. Viajan como compatibilidadMarca/Modelo/Anio. */}
+            {/* Filter 4: Compatibilidad de vehículo (marca → modelo → año → versión opcional), para
+                quien no tiene la patente a mano. Viajan como compatibilidadMarca/Modelo/Anio/VersionId. */}
             <div className={`filter-section-group ${openFilterSections.vehicle ? 'is-open' : 'is-collapsed'}`}>
               <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('vehicle')} aria-expanded={openFilterSections.vehicle}>
                 <span className="filter-group-label"><Car size={13} /> Compatibilidad de Vehículo</span><ChevronDown size={16} />
@@ -1119,52 +1415,66 @@ export default function PartsCatalogView({
                 )}
                 <label className="filter-select-field">
                   <span>Marca</span>
-                  <select
-                    className="sidebar-select-input"
+                  <SheetSelect
+                    label="Marca del vehículo"
+                    searchable
+                    placeholder="Todas las marcas"
+                    options={vehicleBrandOptions}
                     value={vehicleBrandId}
                     disabled={Boolean(activeVehicle && onlyCompatible)}
-                    onChange={(e) => {
-                      const id = e.target.value;
+                    onChange={(id) => {
                       const matched = vehicleBrands.find((b) => String(b.id) === id);
                       setVehicleBrandId(id);
                       setVehicleBrandName(matched?.nombre || '');
-                      // Cambiar de marca invalida el modelo elegido de la marca anterior.
+                      // Cambiar de marca invalida el modelo y la version de la marca anterior.
                       setVehicleModel('');
+                      setVehicleVersionIds('');
                     }}
-                  >
-                    <option value="">Todas las marcas</option>
-                    {vehicleBrands.map((brand) => (
-                      <option key={brand.id} value={brand.id}>{brand.nombre}</option>
-                    ))}
-                  </select>
+                  />
                 </label>
                 <label className="filter-select-field">
                   <span>Modelo</span>
-                  <select
-                    className="sidebar-select-input"
+                  <SheetSelect
+                    label="Modelo"
+                    searchable
+                    placeholder={vehicleBrandId ? 'Todos los modelos' : 'Elige una marca primero'}
+                    options={vehicleModelOptions}
                     value={vehicleModel}
                     disabled={!vehicleBrandId || Boolean(activeVehicle && onlyCompatible)}
-                    onChange={(e) => setVehicleModel(e.target.value)}
-                  >
-                    <option value="">{vehicleBrandId ? 'Todos los modelos' : 'Elige una marca primero'}</option>
-                    {vehicleModels.map((model) => (
-                      <option key={model.id} value={model.nombre}>{model.nombre}</option>
-                    ))}
-                  </select>
+                    onChange={(model) => {
+                      setVehicleModel(model);
+                      setVehicleVersionIds('');
+                    }}
+                  />
                 </label>
                 <label className="filter-select-field">
                   <span>Año</span>
-                  <select
-                    className="sidebar-select-input"
+                  <SheetSelect
+                    label="Año"
+                    searchable
+                    placeholder="Cualquier año"
+                    options={COMPAT_YEAR_OPTIONS}
                     value={vehicleYear}
                     disabled={Boolean(activeVehicle && onlyCompatible)}
-                    onChange={(e) => setVehicleYear(e.target.value)}
-                  >
-                    <option value="">Cualquier año</option>
-                    {COMPAT_YEARS.map((year) => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
+                    onChange={(year) => {
+                      setVehicleYear(year);
+                      // Las versiones dependen del año: la elegida puede no cubrir el nuevo.
+                      setVehicleVersionIds('');
+                    }}
+                  />
+                </label>
+                <label className="filter-select-field">
+                  <span>Versiones (opcional)</span>
+                  <SheetSelect
+                    label="Versiones"
+                    multiple
+                    searchable
+                    placeholder={vehicleModel ? 'Todas las versiones' : 'Elige un modelo primero'}
+                    options={vehicleVersionOptions}
+                    value={vehicleVersionIds}
+                    disabled={!vehicleModel || vehicleVersions.length === 0 || Boolean(activeVehicle && onlyCompatible)}
+                    onChange={setVehicleVersionIds}
+                  />
                 </label>
               </div>}
             </div>
@@ -1172,18 +1482,14 @@ export default function PartsCatalogView({
             {/* Filter 5: Marca del Repuesto (`marcaId`). Es quién fabrica la pieza. */}
             <div className="filter-section-group compact-select-section">
               <label className="filter-group-label"><Wrench size={13} /> Marca del Repuesto</label>
-              <select
+              <SheetSelect
+                label="Marca del repuesto"
+                searchable
+                placeholder={activeCategoryName ? `Todas las de ${activeCategoryName}` : 'Todas las marcas'}
+                options={partBrandOptions}
                 value={partBrandId}
-                onChange={(e) => setPartBrandId(e.target.value)}
-                className="sidebar-select-input"
-              >
-                <option value="">
-                  {activeCategoryName ? `Todas las de ${activeCategoryName}` : 'Todas las marcas'}
-                </option>
-                {visiblePartBrands.map((brand) => (
-                  <option key={brand.id} value={brand.id}>{brand.nombre}</option>
-                ))}
-              </select>
+                onChange={setPartBrandId}
+              />
             </div>
 
             {/* Filter 6: Condición Técnica. Viaja como `condicion`, con el vocabulario
@@ -1216,16 +1522,13 @@ export default function PartsCatalogView({
             {/* Filter 7: Origen de Fabricación. La lista la sirve el backend (`/origenes`). */}
             <div className="filter-section-group compact-select-section">
               <label className="filter-group-label"><Globe size={13} /> Origen / Fabricación</label>
-              <select
+              <SheetSelect
+                label="Origen / Fabricación"
+                placeholder="Todos los orígenes"
+                options={originOptions}
                 value={selectedOrigin}
-                onChange={(e) => setSelectedOrigin(e.target.value)}
-                className="sidebar-select-input"
-              >
-                <option value="">Todos los orígenes</option>
-                {visibleOrigins.map((origin) => (
-                  <option key={origin} value={origin}>{origin}</option>
-                ))}
-              </select>
+                onChange={setSelectedOrigin}
+              />
             </div>
 
             {/* Filter 5: Precio Máximo. Viaja como `precioMax` al endpoint. */}

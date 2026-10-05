@@ -1,9 +1,10 @@
 import React from 'react';
-import { Heart, MapPin, PackageCheck, ShieldCheck, Sparkles, Star, Store, Tag } from 'lucide-react';
+import { Heart, MapPin, PackageCheck, ShieldCheck, ShoppingBag, Sparkles, Star, Store, Tag } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
 import ProductTopBadge from './ProductTopBadge';
 import { CATEGORY_COLOR_BY_ID, CATEGORY_ICON_BY_ID, CATEGORY_IMAGE_BY_ID, getPartImage } from '../data/categories';
 import { isProductTopActive } from '../utils/productTop';
+import { compatibilidadLinea } from '../services/adapters';
 
 const CATEGORY_LABELS = {
   frenos: 'Frenos',
@@ -16,15 +17,9 @@ const CATEGORY_LABELS = {
   neumaticos: 'Neumáticos',
 };
 
+/** Marca, modelo, años y versión del vehículo declarado, para verlo de un vistazo (5-oct). */
 function getCompatibility(product) {
-  const summary = String(product.compatibilidadSummary || '').trim();
-  if (summary) return summary;
-  const first = product.compatibilidad?.[0];
-  if (first) {
-    const vehicle = [first.marca, first.modelo, first.anio].filter(Boolean).join(' ').trim();
-    if (vehicle) return vehicle;
-  }
-  return 'Compatibilidad multimarca';
+  return compatibilidadLinea(product.compatibilidad) || 'Compatibilidad multimarca';
 }
 
 function getPartBrand(product) {
@@ -133,6 +128,12 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
 
         <div className="market-product-meta">
           {rating > 0 && <span className="market-product-rating"><Star size={12} /> {rating.toFixed(1)}</span>}
+          {/* Unidades vendidas: dentro de cada grupo del listado ordena lo mas vendido, asi se ve por que va antes. */}
+          {typeof product.ventas === 'number' && (
+            <span className="market-product-sales">
+              <ShoppingBag size={12} /> {product.ventas} {product.ventas === 1 ? 'vendido' : 'vendidos'}
+            </span>
+          )}
           {stockKnown && (
             <span className={`market-product-stock ${stock <= 0 ? 'out' : stock <= 5 ? 'low' : ''}`}>
               <PackageCheck size={12} /> {stock > 0 ? `${stock} en stock` : 'Sin stock'}

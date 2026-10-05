@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import PartsCatalogView from '../components/PartsCatalogView';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
-import { catalogFilterFromParams } from '../routes/paths';
+import { CATALOG_ADVANCED_PARAMS, catalogFilterFromParams } from '../routes/paths';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 
 export default function CatalogPage() {
@@ -11,7 +11,7 @@ export default function CatalogPage() {
   const nav = useAppNavigation();
   const { activeVehicle, setActiveVehicle, openQuote, searchQuery, setSearchQuery } = useMarketplace();
 
-  const { filter, query, page, showAll } = useMemo(
+  const { filter, query, page, showAll, advanced } = useMemo(
     () => catalogFilterFromParams(searchParams),
     [searchParams]
   );
@@ -54,6 +54,10 @@ export default function CatalogPage() {
       apply('pagina', state.page > 1 ? state.page : null);
       apply('todos', state.showAll ? '1' : null);
 
+      // Filtros avanzados: sin esto se perdian al abrir la ficha de un repuesto y volver.
+      const advancedState = state.advanced || {};
+      Object.entries(CATALOG_ADVANCED_PARAMS).forEach(([field, key]) => apply(key, advancedState[field]));
+
       return next;
     }, { replace: true });
   }, [setSearchParams]);
@@ -68,6 +72,7 @@ export default function CatalogPage() {
       initialSearchQuery={query}
       initialPage={page}
       initialShowAll={showAll}
+      initialAdvancedFilters={advanced}
       onVehicleChange={setActiveVehicle}
       onNavigationStateChange={syncUrl}
     />

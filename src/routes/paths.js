@@ -6,6 +6,8 @@ export const ROUTES = {
   home: '/',
   catalog: '/repuestos',
   product: '/repuestos/:productId',
+  // Cotizacion compartida (5-oct): el enlace de "Compartir cotizacion" para ver o descargar el PDF.
+  sharedQuote: '/cotizacion/:token',
   stores: '/tiendas',
   store: '/tiendas/:storeId',
   cart: '/carrito',
@@ -221,6 +223,68 @@ export function catalogFilterFromParams(searchParams) {
     query: searchParams.get('q') || '',
     page: Math.max(1, Number(searchParams.get('pagina') || 1) || 1),
     showAll: searchParams.get('todos') === '1',
+    advanced: catalogAdvancedFiltersFromParams(searchParams),
+  };
+}
+
+/**
+ * Filtros avanzados del catalogo en la URL. Antes vivian solo en el estado de la vista: al abrir
+ * la ficha de un repuesto y volver, el catalogo se montaba de nuevo sin ellos (solo quedaba la
+ * patente, que vive en el contexto). En la URL sobreviven al "atras", a recargar y se comparten.
+ * Cada clave se omite cuando el filtro esta en su valor por defecto.
+ */
+export const CATALOG_ADVANCED_PARAMS = {
+  vehicleBrandId: 'marcaVehiculoId',
+  vehicleBrandName: 'marcaVehiculo',
+  vehicleModel: 'modelo',
+  vehicleYear: 'anio',
+  vehicleVersionIds: 'version',
+  partBrandId: 'marca',
+  condition: 'condicion',
+  origin: 'origen',
+  storeId: 'tienda',
+  comunaId: 'comuna',
+  myComunaId: 'miComuna',
+  myComunaName: 'miComunaNombre',
+  quoteOnly: 'cotizar',
+  minPrice: 'precioMin',
+  maxPrice: 'precioMax',
+  sort: 'orden',
+  perPage: 'porPagina',
+  onlyCompatible: 'compatible',
+};
+
+const CATALOG_SORTS = ['relevancia', 'precio-asc', 'precio-desc', 'recientes'];
+const CATALOG_PAGE_SIZES = [12, 24, 36];
+
+export function catalogAdvancedFiltersFromParams(searchParams) {
+  const get = (field) => searchParams.get(CATALOG_ADVANCED_PARAMS[field]) || '';
+  const positive = (field) => {
+    const value = Number(get(field));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  };
+  const sort = get('sort');
+  const perPage = positive('perPage');
+  return {
+    vehicleBrandId: get('vehicleBrandId'),
+    vehicleBrandName: get('vehicleBrandName'),
+    vehicleModel: get('vehicleModel'),
+    vehicleYear: get('vehicleYear'),
+    vehicleVersionIds: get('vehicleVersionIds'),
+    partBrandId: get('partBrandId'),
+    condition: get('condition'),
+    origin: get('origin'),
+    storeId: get('storeId'),
+    comunaId: get('comunaId'),
+    myComunaId: get('myComunaId'),
+    myComunaName: get('myComunaName'),
+    quoteOnly: get('quoteOnly') === '1',
+    minPrice: positive('minPrice'),
+    maxPrice: positive('maxPrice'),
+    sort: CATALOG_SORTS.includes(sort) ? sort : null,
+    perPage: CATALOG_PAGE_SIZES.includes(perPage) ? perPage : null,
+    // Solo se anota cuando el comprador quito el filtro del vehiculo activo.
+    onlyCompatible: get('onlyCompatible') === '0' ? false : null,
   };
 }
 

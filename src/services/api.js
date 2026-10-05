@@ -1278,6 +1278,20 @@ export async function getPublicStoresApi({ page = 0, size = 12, texto, comuna, m
   return fetchApi(`/tiendas/publicas?${params.toString()}`, { method: 'GET', signal });
 }
 
+/**
+ * "Compartir cotizacion" (5-oct): enlace del Market para ver o descargar el PDF de la cotizacion
+ * vigente. Solo lo emite un participante de la conversacion; vence a los 30 dias.
+ * Responde { url, token, expiraEn }.
+ */
+export async function createQuoteShareLinkApi(conversacionId) {
+  return fetchApi(`/conversaciones/${conversacionId}/cotizacion/enlace`, { method: 'POST' });
+}
+
+/** Cotizacion de un enlace compartido (publico: el token firmado es la autorizacion). */
+export async function getSharedQuoteApi(token) {
+  return fetchApi(`/cotizaciones/compartidas/${encodeURIComponent(token)}`, { method: 'GET' });
+}
+
 export async function getStoreProfileApi(storeId) {
   return fetchApi(`/tiendas/${storeId}`, { method: 'GET' });
 }
@@ -1294,8 +1308,12 @@ export async function getStoreProductsApi(storeId, { page = 0, size = 12, texto,
   return fetchApi(`/tiendas/${storeId}/productos?${params.toString()}`, { method: 'GET', signal });
 }
 
-export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, soloDestacados, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, comunaId, proveedorId, compatibilidadMarca, compatibilidadModelo, compatibilidadAnio, condicion, origen, sort = 'precio,asc', signal } = {}) {
-  const params = new URLSearchParams({ page: String(page), size: String(size), sort });
+export async function getPublicProductsApi({ page = 0, size = 12, texto, patente, soloCotizacion, soloDestacados, categoriaId, subcategoriaId, marcaId, precioMin, precioMax, comunaId, proveedorId, compatibilidadMarca, compatibilidadModelo, compatibilidadAnio, compatibilidadVersionIds, condicion, origen, sort, signal } = {}) {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  // Sin `sort` el backend usa precio ascendente en el catalogo general y, con vehiculo, la regla
+  // del 5-oct (compatible con Top, compatible, universal con Top, universal; lo mas vendido
+  // primero dentro de cada grupo).
+  if (sort) params.set('sort', sort);
   if (texto) params.set('texto', texto);
   if (patente) params.set('patente', patente);
   // Compatibilidad de vehiculo resuelta en el servidor (Specification `compatibilidadVehiculo`,
@@ -1304,6 +1322,13 @@ export async function getPublicProductsApi({ page = 0, size = 12, texto, patente
   if (compatibilidadMarca) params.set('compatibilidadMarca', compatibilidadMarca);
   if (compatibilidadModelo) params.set('compatibilidadModelo', compatibilidadModelo);
   if (compatibilidadAnio) params.set('compatibilidadAnio', String(compatibilidadAnio));
+  // Versiones elegidas en el filtro avanzado (ids de filas del catalogo, una o varias). Regla del
+  // 5-oct: es el unico filtro que distingue un GLI de otro; trae exactamente esas versiones mas lo
+  // publicado sin version.
+  const versionIds = Array.isArray(compatibilidadVersionIds)
+    ? compatibilidadVersionIds.filter(Boolean)
+    : String(compatibilidadVersionIds || '').split(',').filter(Boolean);
+  if (versionIds.length) params.set('compatibilidadVersionIds', versionIds.join(','));
   if (soloCotizacion !== undefined) params.set('soloCotizacion', String(soloCotizacion));
   if (soloDestacados) params.set('soloDestacados', 'true');
   if (categoriaId) params.set('categoriaId', String(categoriaId));

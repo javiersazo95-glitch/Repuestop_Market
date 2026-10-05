@@ -217,15 +217,39 @@ function mapCompatibilidad(dto) {
 }
 
 export function compatibilidadSummary(compatibilidad) {
-  if (!Array.isArray(compatibilidad) || compatibilidad.length === 0) {
-    return 'Consultar compatibilidad';
-  }
+  return compatibilidadLinea(compatibilidad) || 'Consultar compatibilidad';
+}
+
+/** "XLI 151MC1 - 1.500 - Mecánica" -> "XLI 151MC1 Mecánica": sin la cilindrada repetida. */
+function versionCorta(label) {
+  const [nombre, ...resto] = String(label || '').split(' - ').map((parte) => parte.trim()).filter(Boolean);
+  const transmision = resto.find((parte) => /mec|autom/i.test(parte));
+  return [nombre, transmision].filter(Boolean).join(' ');
+}
+
+/**
+ * Linea de compatibilidad de la card (5-oct): marca, modelo, anios y version del primer vehiculo
+ * declarado ("Toyota Yaris 2016–2027 · XLI +1"), y cuantos vehiculos mas declara. Vacia si no
+ * declara vehiculo.
+ */
+export function compatibilidadLinea(compatibilidad) {
+  if (!Array.isArray(compatibilidad) || compatibilidad.length === 0) return '';
   const [primera] = compatibilidad;
   const anios = primera.anioInicio && primera.anioFin
-    ? ` ${primera.anioInicio}–${primera.anioFin}`
+    ? (primera.anioInicio === primera.anioFin ? `${primera.anioInicio}` : `${primera.anioInicio}–${primera.anioFin}`)
+    : `${primera.anioInicio || primera.anioFin || ''}`;
+  const vehiculo = [primera.marca, primera.modelo, anios].filter(Boolean).join(' ').trim();
+  if (!vehiculo) return '';
+  const versiones = Array.isArray(primera.versionLabels) && primera.versionLabels.length
+    ? primera.versionLabels
+    : String(primera.version || '').split(',').map((v) => v.trim()).filter((v) => v && !/^\d+ versi/i.test(v));
+  const version = versiones.length > 1
+    ? `${versionCorta(versiones[0])} +${versiones.length - 1}`
+    : versiones.length === 1 ? versionCorta(versiones[0]) : '';
+  const mas = compatibilidad.length > 1
+    ? `+${compatibilidad.length - 1} ${compatibilidad.length === 2 ? 'vehículo' : 'vehículos'}`
     : '';
-  const resto = compatibilidad.length > 1 ? ` +${compatibilidad.length - 1} más` : '';
-  return `${primera.marca} ${primera.modelo}${anios}${resto}`.trim();
+  return [vehiculo, version, mas].filter(Boolean).join(' · ');
 }
 
 /**
@@ -266,6 +290,9 @@ export function adaptProduct(dto) {
     precioOriginal,
     descuento: calcularDescuento(precio, precioOriginal),
     vendidos: toNumber(dto.salesCount) ?? 0,
+    // Unidades vendidas tal como las informa el backend (null si no llegan): la card las muestra
+    // junto al stock para que se vea por que un repuesto va antes (5-oct).
+    ventas: toNumber(dto.salesCount),
     // El backend duplica estos campos en inglés/español según el endpoint.
     vendedor: dto.storeName || dto.tiendaNombre || 'Tienda RepuesTop',
     proveedorId: dto.proveedorId,
@@ -523,7 +550,8 @@ export function adaptCompatibleOffer(spare, offer) {
     precio,
     precioOriginal,
     descuento: calcularDescuento(precio, precioOriginal),
-    vendidos: 0,
+    vendidos: toNumber(offer.salesCount) ?? 0,
+    ventas: toNumber(offer.salesCount),
     vendedor: offer.proveedor || offer.storeName || 'Tienda RepuesTop',
     proveedorId: offer.proveedorId,
     ciudadVendedor: offer.comuna || '',
@@ -551,14 +579,16 @@ export function adaptCompatibleOffer(spare, offer) {
     soloCotizacion,
     createdAt: null,
     vehiculoCatalogoIds: [],
-    compatibilityGroupsJson: null,
-    compatibilidad: [{
-      marca: spare?.marcaRepuesto || '',
-      modelo: '',
-      version: '',
-      anioInicio: null,
-      anioFin: null,
-    }],
+    compatibilityGroupsJson: offer.compatibilityGroupsJson || null,
+    // El vehiculo declarado de la oferta (marca, modelo, anios y versiones). Antes se ponia la
+    // marca del repuesto como si fuera la del vehiculo y la card decia "NGK".
+    compatibilidad: mapCompatibilidad({
+      compatibilityGroupsJson: offer.compatibilityGroupsJson,
+      compatibilidadMarca: offer.compatibilidadMarca,
+      compatibilidadModelo: offer.compatibilidadModelo,
+      anioDesde: offer.anioDesde,
+      anioHasta: offer.anioHasta,
+    }),
     esUniversal: Boolean(offer.esUniversal || spare?.nivelConfianza === 'UNIVERSAL'),
   };
 }
