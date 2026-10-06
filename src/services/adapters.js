@@ -700,6 +700,8 @@ export function adaptAd(dto) {
     updatedAt: dto.updatedAt || null,
     moderationStatus: dto.moderationStatus || 'PENDIENTE',
     rejectionReason: dto.rejectionReason || null,
+    // M3 (6-oct): Monedas que se vuelven a cobrar al reenviar a revisión un anuncio rechazado.
+    monedasParaReenviar: Number(dto.monedasParaReenviar) || 0,
     reviewedAt: dto.reviewedAt || null,
     activo: dto.activo === true,
   };

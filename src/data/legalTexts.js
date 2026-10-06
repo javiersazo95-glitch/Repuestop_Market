@@ -62,7 +62,7 @@ Cada anuncio se publica por períodos de 30 días, pagados con Monedas según el
 Las Monedas se descuentan al enviar el anuncio. Subir de plan cuesta el valor completo del plan nuevo, no la diferencia; bajar de plan no tiene costo ni devolución. La renovación no es automática: el anunciante puede renovar por otros 30 días pagando el valor de su plan, y la Plataforma le avisa 3 días antes del vencimiento. Al vencer, el anuncio deja de mostrarse.
 
 D. REVISIÓN Y DEVOLUCIÓN DE MONEDAS:
-La primera publicación de cada anuncio pasa por una revisión de RepuesTop. Si el anuncio se rechaza en esa primera revisión, o el anunciante lo elimina mientras está en revisión, se devuelven las Monedas cobradas. Una vez aprobado, eliminar el anuncio no devuelve Monedas.
+La primera publicación de cada anuncio pasa por una revisión de RepuesTop. Si el anuncio se rechaza en esa primera revisión, o el anunciante lo elimina mientras está en revisión, se devuelven las Monedas cobradas. Si el anunciante corrige el anuncio rechazado y lo vuelve a enviar a revisión, se cobran nuevamente las Monedas devueltas. Una vez aprobado, eliminar el anuncio no devuelve Monedas.
 RepuesTop puede rechazar, ocultar o retirar anuncios engañosos, fraudulentos, ilegales, duplicados, con datos de contacto falsos o contrarios a estos Términos, incluso después de aprobados.
 
 E. AGENDA DE CITAS:

@@ -70,6 +70,14 @@ const STATUS_FILTERS = [
  * cualquier estado de moderacion: `GET /anuncios` solo trae lo aprobado, vigente
  * y activo, asi que ahi un anuncio en revision o rechazado no existe.
  */
+// M3 (6-oct): el rechazo en la primera revisión devuelve las Monedas y reenviar el anuncio las
+// vuelve a cobrar. Mismo texto que la app (getResubmitCostNotice).
+function resubmitCostNotice(monedas) {
+  if (!monedas || monedas <= 0) return '';
+  const cantidad = monedas.toLocaleString('es-CL');
+  return ` Te devolvimos ${cantidad} ${monedas === 1 ? 'Moneda' : 'Monedas'} por el rechazo. Al reenviarlo a revisión se vuelven a cobrar.`;
+}
+
 export default function AdsManagementSection({ onNavigateToMural }) {
   const { user } = useAuth();
   const accreditation = useAutomotiveAccreditation(Boolean(user));
@@ -704,7 +712,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
                             <strong>{isRejected ? 'Moderación rechazó este anuncio.' : 'Anuncio vencido.'}</strong>
                             <p>
                               {isRejected
-                                ? `${ad.rejectionReason || 'Sin motivo informado.'} Corrige los datos y se vuelve a revisar automáticamente al guardar.`
+                                ? `${ad.rejectionReason || 'Sin motivo informado.'} Corrige los datos y se vuelve a revisar automáticamente al guardar.${resubmitCostNotice(ad.monedasParaReenviar)}`
                                 : 'Los anuncios duran 30 días en el mural. Usa el botón de reloj para agregar 30 días con Monedas RepuesTop.'}
                             </p>
                           </div>
