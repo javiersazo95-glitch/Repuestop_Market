@@ -61,6 +61,12 @@ const PRICE_CEILING = 1000000;
 const PRICE_STEP = 5000;
 const PRICE_PRESETS = [20000, 50000, 100000, 300000];
 
+/** Categoría publicada que corresponde a una de NAVIGATION_CATEGORIES (por id o nombre). */
+function findPublishedCategory(filterSource, cat) {
+  return (filterSource?.categorias || []).find((c) => String(c.id) === String(cat.id)
+    || normalizeNameKey(c.nombre) === normalizeNameKey(cat.nombre));
+}
+
 /**
  * Si el valor elegido ya no tiene publicaciones (llega desde la URL o cambió otro filtro), se
  * mantiene en la lista sin conteo: el desplegable no queda en blanco y se puede quitar.
@@ -487,10 +493,13 @@ export default function PartsCatalogView({
   // compatible con el auto (categorias, marcas, condicion, origen, tiendas, comunas, precio y
   // modalidad). Sin patente, o mientras carga, se usan los catalogos completos.
   const { data: vehicleFilters = null } = useQuery({
-    queryKey: qk.vehicleFilterOptions(activeVehicle?.catalogoId, activeVehicle?.anio),
+    // En la vista de una tienda, acotadas a la tienda y al vehiculo a la vez.
+    queryKey: qk.vehicleFilterOptions(activeVehicle?.catalogoId, activeVehicle?.anio, cascadeStoreId),
     queryFn: async ({ signal }) => {
       try {
-        return await getVehicleFilterOptionsApi(activeVehicle.catalogoId, { anio: activeVehicle.anio, signal });
+        return await getVehicleFilterOptionsApi(activeVehicle.catalogoId, {
+          anio: activeVehicle.anio, proveedorId: cascadeStoreId, signal,
+        });
       } catch {
         return null;
       }
@@ -548,10 +557,8 @@ export default function PartsCatalogView({
 
   const visibleNavigationCategories = useMemo(() => {
     if (!filterSource) return NAVIGATION_CATEGORIES;
-    const backendCategories = filterSource.categorias || [];
     return NAVIGATION_CATEGORIES.map((cat) => {
-      const backendCategory = backendCategories.find((c) => String(c.id) === String(cat.id)
-        || normalizeNameKey(c.nombre) === normalizeNameKey(cat.nombre));
+      const backendCategory = findPublishedCategory(filterSource, cat);
       const isSelected = selectedCategory === cat.id || selectedCategory === cat.nombre;
       if (!backendCategory && !isSelected) return null;
       const subCounts = new Map((filterSource.subcategorias || [])
@@ -568,15 +575,35 @@ export default function PartsCatalogView({
     }).filter(Boolean);
   }, [filterSource, selectedCategory, selectedSubcategory]);
 
-  // Marca del repuesto. En el catálogo general se sigue acotando a la categoría elegida (el
-  // endpoint de opciones no recibe categoría), así que ahí el conteo es el de toda la marca.
+  // Ids publicados de la categoría y subcategoría elegidas, con el mismo cruce por id o nombre
+  // del panel; si no aparecen en lo publicado, los ids resueltos contra el catálogo maestro.
+  const publishedCategoryId = useMemo(() => {
+    if (selectedCategory === 'TODAS') return activeCategoryId;
+    const navCategory = NAVIGATION_CATEGORIES.find((cat) => selectedCategory === cat.id || selectedCategory === cat.nombre);
+    return (navCategory && findPublishedCategory(filterSource, navCategory)?.id) ?? activeCategoryId;
+  }, [filterSource, selectedCategory, activeCategoryId]);
+  const publishedSubcategoryId = useMemo(() => {
+    if (selectedSubcategory === 'TODAS') return activeSubcategoryId;
+    const sub = (filterSource?.subcategorias || []).find((item) => String(item.categoriaId) === String(publishedCategoryId)
+      && normalizeNameKey(item.nombre) === normalizeNameKey(selectedSubcategory));
+    return sub?.id ?? activeSubcategoryId;
+  }, [filterSource, selectedSubcategory, publishedCategoryId, activeSubcategoryId]);
+
+  // Marca del repuesto con lo publicado y su conteo dentro de lo elegido: con subcategoría, las
+  // marcas de esa subcategoría; con categoría, las de la categoría; si no, todas. Sin datos
+  // publicados (cargando o error) queda el cruce maestro categoría→marca, sin conteo.
   const visiblePartBrands = useMemo(() => {
     if (!filterSource) return partBrands;
-    const list = filterSource.marcas || [];
-    if (scopedFilters || !activeCategoryName || partBrands.length === 0) return list;
-    const categoryBrandIds = new Set(partBrands.map((brand) => String(brand.id)));
-    return list.filter((brand) => categoryBrandIds.has(String(brand.id)));
-  }, [filterSource, scopedFilters, activeCategoryName, partBrands]);
+    const byGroup = (list, groupId) => (list || [])
+      .filter((brand) => String(brand.grupoId) === String(groupId));
+    if (selectedSubcategory !== 'TODAS' && publishedSubcategoryId != null && filterSource.marcasPorSubcategoria) {
+      return byGroup(filterSource.marcasPorSubcategoria, publishedSubcategoryId);
+    }
+    if (selectedCategory !== 'TODAS' && publishedCategoryId != null && filterSource.marcasPorCategoria) {
+      return byGroup(filterSource.marcasPorCategoria, publishedCategoryId);
+    }
+    return filterSource.marcas || [];
+  }, [filterSource, partBrands, selectedCategory, selectedSubcategory, publishedCategoryId, publishedSubcategoryId]);
 
   const conditionCounts = filterSource
     ? new Map((filterSource.condicionesConteo || (filterSource.condiciones || []).map((nombre) => ({ nombre })))
@@ -614,8 +641,13 @@ export default function PartsCatalogView({
   selectedComunaId,
   comunaFilterOptions.find((option) => option.value === String(selectedComunaId))?.label),
   [filterSource, comunaFilterOptions, selectedComunaId]);
-  const scopedMinPrice = scopedFilters?.precioMin != null ? Number(scopedFilters.precioMin) : null;
-  const scopedMaxPrice = scopedFilters?.precioMax != null ? Number(scopedFilters.precioMax) : null;
+  // Rango de precio de lo publicado en el alcance actual, con o sin patente: ambos modos
+  // descartan los atajos bajo el mínimo y muestran el mismo aviso.
+  const scopedMinPrice = filterSource?.precioMin != null ? Number(filterSource.precioMin) : null;
+  const scopedMaxPrice = filterSource?.precioMax != null ? Number(filterSource.precioMax) : null;
+  const priceRangeLead = (isVehicleCatalogSearch || compatibilidadMarca)
+    ? 'Para tu vehículo'
+    : (lockedStoreId ? 'En esta tienda' : 'En el catálogo');
   const visiblePricePresets = scopedMinPrice != null
     ? PRICE_PRESETS.filter((preset) => preset >= scopedMinPrice)
     : PRICE_PRESETS;
@@ -821,7 +853,8 @@ export default function PartsCatalogView({
   );
   const partBrandOptions = keepSelected(
     visiblePartBrands.map((brand) => ({ value: String(brand.id), label: brand.nombre, count: brand.productos })),
-    partBrandId, partBrands.find((brand) => String(brand.id) === String(partBrandId))?.nombre,
+    partBrandId, [...(filterSource?.marcas || []), ...partBrands]
+      .find((brand) => String(brand.id) === String(partBrandId))?.nombre,
   );
   const originOptions = keepSelected(visibleOrigins, selectedOrigin, selectedOrigin);
   // Al volver de la ficha de un repuesto el scroll se devuelve cuando el listado ya esta pintado.
@@ -1679,7 +1712,7 @@ export default function PartsCatalogView({
                 </div>
                 {scopedMinPrice != null && scopedMaxPrice != null && (
                   <small className="filter-search-select-help">
-                    Para tu vehículo hay repuestos entre {formatCLP(scopedMinPrice)} y {formatCLP(scopedMaxPrice)}
+                    {priceRangeLead} hay repuestos entre {formatCLP(scopedMinPrice)} y {formatCLP(scopedMaxPrice)}
                   </small>
                 )}
                 <div className="filter-price-presets">

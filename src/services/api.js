@@ -1272,10 +1272,20 @@ export async function declareOrderDeliveryApi(orderId) {
  * Marketplace Endpoints (Unificados con Spring Boot Backend)
  */
 
-export async function getPublicStoresApi({ page = 0, size = 12, texto, comuna, marcaVehiculo, catalogoId, anioVehiculo, signal } = {}) {
+export async function getPublicStoresApi({
+  page = 0, size = 12, texto, comuna, region, giro, metodoEnvio, marcaEspecialista,
+  marcaVehiculo, catalogoId, anioVehiculo, signal,
+} = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (texto) params.set('texto', texto);
   if (comuna) params.set('comuna', comuna);
+  // Filtros del panel del directorio: el backend compara exacto sin distinguir mayusculas
+  // (metodoEnvio contra un metodo completo de la lista de la tienda), asi el total y la
+  // paginacion salen exactos sobre todas las tiendas.
+  if (region) params.set('region', region);
+  if (giro) params.set('giro', giro);
+  if (metodoEnvio) params.set('metodoEnvio', metodoEnvio);
+  if (marcaEspecialista) params.set('marcaEspecialista', marcaEspecialista);
   // Marca del vehiculo resuelto por patente: el backend deja solo las tiendas con stock que
   // le sirva a ese auto (universales incluidos) y devuelve `productCount` con ese mismo
   // criterio. Es lo que pinta el "N Para {marca}" de cada card.
@@ -1287,6 +1297,22 @@ export async function getPublicStoresApi({ page = 0, size = 12, texto, comuna, m
   // Mismo anio que manda el listado por patente, para que el conteo de la card coincida.
   if (catalogoId && Number(anioVehiculo) > 0) params.set('anioVehiculo', String(Number(anioVehiculo)));
   return fetchApi(`/tiendas/publicas?${params.toString()}`, { method: 'GET', signal });
+}
+
+/**
+ * Opciones del panel del directorio de tiendas con su conteo, sobre TODAS las tiendas publicas.
+ * Los conteos ignoran lo elegido en el panel y respetan el contexto (texto + vehiculo).
+ * Responde { total, comunas, regiones, giros, metodosEnvio, marcasEspecialistas }, cada item
+ * { nombre, region|null, tiendas }.
+ */
+export async function getPublicStoreFilterOptionsApi({ texto, marcaVehiculo, catalogoId, anioVehiculo, signal } = {}) {
+  const params = new URLSearchParams();
+  if (texto) params.set('texto', texto);
+  if (marcaVehiculo) params.set('marcaVehiculo', marcaVehiculo);
+  if (catalogoId) params.set('catalogoId', String(catalogoId));
+  if (catalogoId && Number(anioVehiculo) > 0) params.set('anioVehiculo', String(Number(anioVehiculo)));
+  const query = params.toString();
+  return fetchApi(`/tiendas/publicas/opciones-filtro${query ? `?${query}` : ''}`, { method: 'GET', signal });
 }
 
 /**
@@ -1386,9 +1412,11 @@ export async function getCatalogFilterOptionsApi({ signal } = {}) {
  * subcategorias, marcas, condiciones, origenes, tiendas, comunas y rango de precio que existen
  * en el universo compatible con el auto, para no ofrecer filtros que devuelvan cero.
  */
-export async function getVehicleFilterOptionsApi(catalogoId, { anio, signal } = {}) {
+export async function getVehicleFilterOptionsApi(catalogoId, { anio, proveedorId, signal } = {}) {
   const params = new URLSearchParams();
   if (Number(anio) > 0) params.set('anio', String(Number(anio)));
+  // En la vista de una tienda las opciones se acotan a la tienda Y al vehiculo a la vez.
+  if (proveedorId) params.set('proveedorId', String(proveedorId));
   const query = params.toString();
   return fetchApi(`/vehiculos-catalogo/${catalogoId}/repuestos/filtros${query ? `?${query}` : ''}`, { method: 'GET', signal });
 }

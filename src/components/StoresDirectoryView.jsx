@@ -9,7 +9,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
 import { useAuth } from '../context/AuthContext';
-import { getAddressesApi, getPublicStoresApi, searchVehicleByPatenteApi } from '../services/api';
+import { getAddressesApi, getPublicStoreFilterOptionsApi, getPublicStoresApi, searchVehicleByPatenteApi } from '../services/api';
 import { adaptPage, adaptStore, adaptVehicle } from '../services/adapters';
 import { normalizePlate, sanitizePlateInput, isValidPlate } from '../utils/vehicleLookup';
 import MarketplaceSellerCard from './MarketplaceSellerCard';
@@ -23,47 +23,24 @@ import { useUserLocation } from '../hooks/useUserLocation';
 import { distanceKmTo, sortByDistance } from '../utils/geoDistance';
 
 /**
- * /tiendas/publicas topea `size` en 100. Antes ese tope se pedía SIEMPRE (una
- * sola consulta de 100, sin importar cuántas tiendas hubiera realmente) y todo
- * el filtrado y la paginación se hacían en el cliente sobre ese bloque —
- * pasadas las 100 tiendas, las siguientes quedaban invisibles sin ningún aviso.
- *
- * Ahora hay dos consultas, igual que en la app móvil:
- * - `pageQuery`: la página real que se muestra, paginada por el servidor con
- *   `texto` y `comuna` (los dos filtros que el backend sí resuelve). Escala sin
- *   límite: la tienda 150 se ve igual que la 5.
- * - `poolQuery`: hasta 100 tiendas (ya acotadas por `texto`/`comuna`) para
- *   construir las opciones de los filtros que el backend no soporta (marca,
- *   envío, giro) y para resolverlos en el cliente cuando el usuario los usa.
- *   Solo en ese caso la paginación deja de ser exacta contra el sistema
- *   completo — y el contador de resultados lo dice explícitamente en vez de
- *   fingir un total que no es.
+ * /tiendas/publicas topea `size` en 100 y no sabe ordenar por publicaciones, calificación ni
+ * distancia. Por eso hay dos consultas, igual que en la app móvil:
+ * - `pageQuery`: la página real, paginada por el servidor con texto, vehículo y TODOS los
+ *   filtros del panel (comuna, giro, método de envío, marca). Total y páginas son exactos
+ *   sobre todas las tiendas: la tienda 150 se ve igual que la 5.
+ * - `poolQuery`: solo con un orden que el backend no resuelve (más publicaciones, mejor
+ *   calificación o cercanía). Trae hasta 100 tiendas con esos mismos filtros y las ordena y
+ *   pagina en el cliente; si llega al tope, el contador avisa que puede haber más.
+ * Las opciones del panel y sus conteos salen de /tiendas/publicas/opciones-filtro, sobre todas
+ * las tiendas, no de las tiendas cargadas.
  */
-const FILTER_POOL_SIZE = 100;
+const SORT_POOL_SIZE = 100;
 
-/**
- * Opciones de filtro derivadas de los datos reales del pool, no de una lista
- * fija en el código, con cuántas tiendas tienen cada valor. Se deduplica
- * ignorando mayúsculas porque el giro y los métodos de envío los escribe cada
- * vendedor a mano; una tienda cuenta una sola vez por valor.
- * Devuelve [{ value, count }] ordenado por nombre.
- */
-function countedOptions(stores, getValues) {
-  const byKey = new Map();
-  stores.forEach((store) => {
-    const seen = new Set();
-    [].concat(getValues(store) || []).forEach((value) => {
-      const label = (value || '').toString().trim();
-      if (!label) return;
-      const key = label.toLowerCase();
-      if (seen.has(key)) return;
-      seen.add(key);
-      const current = byKey.get(key);
-      if (current) current.count += 1;
-      else byKey.set(key, { value: label, count: 1 });
-    });
-  });
-  return Array.from(byKey.values()).sort((a, b) => a.value.localeCompare(b.value, 'es'));
+/** Items { nombre, tiendas } del backend al formato { value, count } del panel. */
+function toCountedOptions(items) {
+  return (Array.isArray(items) ? items : [])
+    .filter((item) => item?.nombre)
+    .map((item) => ({ value: item.nombre, count: item.tiendas ?? 0 }));
 }
 
 /** El valor elegido se mantiene visible aunque ya no tenga tiendas (p. ej. viene de la URL). */
@@ -212,81 +189,76 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   const backendAnioVehiculo = backendCatalogoId ? activeVehicle?.anio || undefined : undefined;
   const backendMarcaVehiculo = backendCatalogoId ? undefined : (activeVehicle?.marca || undefined);
 
-  // Página real: paginada por el servidor con texto + comuna. Es la fuente
-  // por defecto mientras no haya un filtro u orden que el backend no resuelve.
+  // Filtros del panel que resuelve el servidor (coincidencia exacta sin mayúsculas).
+  const serverFilters = {
+    texto: debouncedSearchQuery,
+    comuna: backendComuna,
+    giro: selectedGiro !== 'TODAS' ? selectedGiro : undefined,
+    metodoEnvio: selectedShipping !== 'TODAS' ? selectedShipping : undefined,
+    marcaEspecialista: selectedBrand !== 'TODAS' ? selectedBrand : undefined,
+    marcaVehiculo: backendMarcaVehiculo,
+    catalogoId: backendCatalogoId,
+    anioVehiculo: backendAnioVehiculo,
+  };
+
+  // "recientes" no reordena: el backend ya entrega lo más reciente primero. Ordenar por
+  // cercanía solo la página actual engañaría (6 de 100), así que también usa el pool.
+  const needsClientSort = (sortBy !== 'relevancia' && sortBy !== 'recientes') || isNearbySortActive;
+
   const {
     data: pageData,
     isLoading: pageLoading,
     error: pageQueryError,
   } = useQuery({
-    queryKey: qk.stores({ page: currentPage, size: itemsPerPage, texto: debouncedSearchQuery, comuna: backendComuna, marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, anioVehiculo: backendAnioVehiculo }),
-    queryFn: ({ signal }) => getPublicStoresApi({
-      page: currentPage - 1, size: itemsPerPage, texto: debouncedSearchQuery, comuna: backendComuna,
-      marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, anioVehiculo: backendAnioVehiculo, signal,
-    }),
+    queryKey: qk.stores({ page: currentPage, size: itemsPerPage, ...serverFilters }),
+    queryFn: ({ signal }) => getPublicStoresApi({ page: currentPage - 1, size: itemsPerPage, ...serverFilters, signal }),
     select: (data) => adaptPage(data, adaptStore),
     placeholderData: keepPreviousData,
+    enabled: !needsClientSort,
   });
 
-  // Pool acotado (mismo texto/comuna, tope 100): alimenta las opciones de los
-  // filtros locales y se usa para mostrarlos cuando el usuario los activa.
   const {
     data: poolItems = [],
     isLoading: poolLoading,
     error: poolQueryError,
   } = useQuery({
-    queryKey: qk.stores({ pool: true, texto: debouncedSearchQuery, comuna: backendComuna, marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, anioVehiculo: backendAnioVehiculo }),
-    queryFn: ({ signal }) => getPublicStoresApi({
-      page: 0, size: FILTER_POOL_SIZE, texto: debouncedSearchQuery, comuna: backendComuna,
-      marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, anioVehiculo: backendAnioVehiculo, signal,
-    }),
+    queryKey: qk.stores({ pool: true, ...serverFilters }),
+    queryFn: ({ signal }) => getPublicStoresApi({ page: 0, size: SORT_POOL_SIZE, ...serverFilters, signal }),
     select: (data) => adaptPage(data, adaptStore).items,
     placeholderData: keepPreviousData,
+    enabled: needsClientSort,
   });
 
-  // Las comunas se cuentan sobre un pool SIN el filtro de comuna: el otro ya viene acotado a la
-  // comuna elegida y dejaría una sola opción. Sin comuna elegida la queryKey es la misma del
-  // pool de arriba, así que React Query no repite la consulta.
-  const { data: comunaPoolItems = [] } = useQuery({
-    queryKey: qk.stores({ pool: true, texto: debouncedSearchQuery, comuna: undefined, marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, anioVehiculo: backendAnioVehiculo }),
-    queryFn: ({ signal }) => getPublicStoresApi({
-      page: 0, size: FILTER_POOL_SIZE, texto: debouncedSearchQuery,
-      marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, anioVehiculo: backendAnioVehiculo, signal,
+  // Opciones y conteos sobre todas las tiendas: ignoran lo elegido en el panel (si no, al
+  // elegir una comuna quedaría una sola opción) y respetan el texto y el vehículo.
+  const { data: filterOptions = null } = useQuery({
+    queryKey: qk.storeFilterOptions({
+      texto: debouncedSearchQuery, marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, anioVehiculo: backendAnioVehiculo,
     }),
-    select: (data) => adaptPage(data, adaptStore).items,
+    queryFn: ({ signal }) => getPublicStoreFilterOptionsApi({
+      texto: debouncedSearchQuery, marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, anioVehiculo: backendAnioVehiculo, signal,
+    }),
     placeholderData: keepPreviousData,
+    staleTime: 1000 * 60 * 5,
   });
 
   const comunaOptions = useMemo(
-    () => keepSelectedOption(countedOptions(comunaPoolItems, (s) => s.comuna), selectedComuna),
-    [comunaPoolItems, selectedComuna]
+    () => keepSelectedOption(toCountedOptions(filterOptions?.comunas), selectedComuna),
+    [filterOptions, selectedComuna]
   );
   const giroOptions = useMemo(
-    () => keepSelectedOption(countedOptions(poolItems, (s) => s.tipo), selectedGiro),
-    [poolItems, selectedGiro]
+    () => keepSelectedOption(toCountedOptions(filterOptions?.giros), selectedGiro),
+    [filterOptions, selectedGiro]
   );
   const shippingOptions = useMemo(
-    () => keepSelectedOption(countedOptions(poolItems, (s) => s.metodosEnvio), selectedShipping),
-    [poolItems, selectedShipping]
+    () => keepSelectedOption(toCountedOptions(filterOptions?.metodosEnvio), selectedShipping),
+    [filterOptions, selectedShipping]
   );
   const brandOptions = useMemo(
-    () => keepSelectedOption(countedOptions(poolItems, (s) => (s.marcasEspecialistas || []).map((b) => b.nombre)), selectedBrand),
-    [poolItems, selectedBrand]
+    () => keepSelectedOption(toCountedOptions(filterOptions?.marcasEspecialistas), selectedBrand),
+    [filterOptions, selectedBrand]
   );
 
-  // Solo estos filtros/orden fuerzan el modo pool: comuna y texto ya los
-  // resuelve el servidor en `pageQuery`, así que no cuentan aquí. "recientes"
-  // no reordena nada: el orden por defecto del backend ya es el más reciente
-  // primero, así que equivale a no aplicar ningún orden en el cliente.
-  // `activeVehicle` ya NO fuerza el modo pool: la compatibilidad la resuelve el servidor
-  // junto con la paginacion, asi que no hay que traerse 100 tiendas para filtrarlas aca.
-  const hasLocalFilters =
-    selectedGiro !== 'TODAS' ||
-    selectedShipping !== 'TODAS' ||
-    selectedBrand !== 'TODAS' ||
-    (sortBy !== 'relevancia' && sortBy !== 'recientes') ||
-    // Ordenar por cercanía la página actual engañaría (6 de 100): trabaja sobre el pool.
-    isNearbySortActive;
   const hasActiveStoreContext = Boolean(
     searchQuery.trim()
     || selectedGiro !== 'TODAS'
@@ -298,8 +270,8 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
     || isNearbySortActive
   );
 
-  const isLoading = hasLocalFilters ? poolLoading : pageLoading;
-  const queryError = hasLocalFilters ? poolQueryError : pageQueryError;
+  const isLoading = needsClientSort ? poolLoading : pageLoading;
+  const queryError = needsClientSort ? poolQueryError : pageQueryError;
   const storesError = queryError ? (queryError.message || 'No se pudo cargar el directorio de casas de repuestos.') : null;
 
   // Synchronize authenticated user profile photo / cover photo with their store card
@@ -325,43 +297,29 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   const pageStores = useMemo(() => applyUserSync(pageData?.items || []), [pageData, user]);
   const poolStores = useMemo(() => applyUserSync(poolItems), [poolItems, user]);
 
-  // Filtrado sobre el pool: solo lo que el backend no resuelve (giro, envío, marca).
-  const filteredPoolStores = useMemo(() => poolStores.filter(store => {
-    if (selectedGiro !== 'TODAS' && store.tipo !== selectedGiro) return false;
-    if (selectedShipping !== 'TODAS') {
-      const methods = store.metodosEnvio || [];
-      if (!methods.some(m => m.toLowerCase() === selectedShipping.toLowerCase())) return false;
-    }
-    if (selectedBrand !== 'TODAS') {
-      const brands = (store.marcasEspecialistas || []).map(b => (b.nombre || '').toLowerCase());
-      if (!brands.includes(selectedBrand.toLowerCase())) return false;
-    }
-    return true;
-  }), [poolStores, selectedGiro, selectedShipping, selectedBrand]);
-
   const sortedPoolStores = useMemo(() => {
     if (isNearbySortActive && userLocation.coords) {
-      return sortByDistance(filteredPoolStores, (store) => distanceKmTo(userLocation.coords, store));
+      return sortByDistance(poolStores, (store) => distanceKmTo(userLocation.coords, store));
     }
-    return [...filteredPoolStores].sort((a, b) => {
+    return [...poolStores].sort((a, b) => {
       if (sortBy === '+publicaciones') return (b.totalPublicaciones || 0) - (a.totalPublicaciones || 0);
       if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
       return 0;
     });
-  }, [filteredPoolStores, isNearbySortActive, sortBy, userLocation.coords]);
+  }, [poolStores, isNearbySortActive, sortBy, userLocation.coords]);
 
-  // Con filtros locales activos, se pagina el pool ya filtrado en el cliente.
-  // Sin ellos, la página ya viene paginada y ordenada por el servidor.
-  const totalElements = hasLocalFilters ? sortedPoolStores.length : (pageData?.total || 0);
-  const totalPages = hasLocalFilters
+  // Con un orden local se pagina el pool ya ordenado en el cliente; si no, la página ya
+  // viene filtrada, paginada y ordenada por el servidor.
+  const totalElements = needsClientSort ? sortedPoolStores.length : (pageData?.total || 0);
+  const totalPages = needsClientSort
     ? Math.max(1, Math.ceil(sortedPoolStores.length / itemsPerPage))
     : Math.max(1, pageData?.totalPages || 1);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(totalElements, currentPage * itemsPerPage);
-  const paginatedStores = hasLocalFilters ? sortedPoolStores.slice(startIndex, endIndex) : pageStores;
-  // El pool tiene tope 100: si el filtro local devuelve justo ese tope, puede
-  // haber más tiendas que coinciden y que el pool no llegó a traer.
-  const poolMayBeIncomplete = hasLocalFilters && poolItems.length >= FILTER_POOL_SIZE;
+  const paginatedStores = needsClientSort ? sortedPoolStores.slice(startIndex, endIndex) : pageStores;
+  // El pool tiene tope 100: si lo alcanza, puede haber más tiendas que coinciden y que el
+  // orden local no llegó a ver.
+  const poolMayBeIncomplete = needsClientSort && poolItems.length >= SORT_POOL_SIZE;
 
   // Reset to Page 1 on any filter change
   useEffect(() => {
@@ -540,8 +498,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
               </div>}
             </div>
 
-            {/* Filter 2: Comuna — el único filtro (junto al texto) que el
-                backend resuelve de verdad; escala sin el tope de 100 del pool */}
+            {/* Filter 2: Comuna, con el conteo de tiendas de todo el directorio */}
             <div className="filter-section-group compact-select-section">
               <label className="filter-group-label"><MapPin size={13} /> Comuna</label>
               <select
@@ -556,7 +513,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
               </select>
             </div>
 
-            {/* Filter 3: Métodos de Envío — igual, construido desde el pool */}
+            {/* Filter 3: Métodos de Envío declarados por las tiendas, con su conteo */}
             <div className={`filter-section-group ${openFilterSections.shipping ? 'is-open' : 'is-collapsed'}`}>
               <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('shipping')} aria-expanded={openFilterSections.shipping}>
                 <span className="filter-group-label"><Truck size={13} /> Método de Envío</span><ChevronDown size={16} />

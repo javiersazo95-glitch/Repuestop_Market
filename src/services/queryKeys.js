@@ -4,6 +4,7 @@
 export const qk = {
   stores: (filters) => ['stores', filters || {}],
   store: (id) => ['stores', id],
+  storeFilterOptions: (params) => ['storeFilterOptions', params || {}],
   storeProducts: (id, filters) => ['stores', id, 'products', filters || {}],
   sellerStore: (id) => ['seller', id, 'store'],
   products: (filters) => ['products', filters || {}],
@@ -40,7 +41,7 @@ export const qk = {
   /** Ofertas compatibles de repuestos para un vehiculo_catalogo (GET /vehiculos-catalogo/{id}/repuestos). */
   vehicleCompatibleProducts: (catalogoId, filters) => ['vehicleCatalogParts', catalogoId, filters || {}],
   /** Opciones de filtros acotadas a la patente (GET /vehiculos-catalogo/{id}/repuestos/filtros). */
-  vehicleFilterOptions: (catalogoId, anio) => ['vehicleFilterOptions', catalogoId, anio || null],
+  vehicleFilterOptions: (catalogoId, anio, proveedorId) => ['vehicleFilterOptions', catalogoId, anio || null, proveedorId || null],
   /** Cascada marca/modelo/año/versión con repuestos publicados (GET /inventario/productos/opciones-vehiculo). */
   vehicleCascadeOptions: (params) => ['vehicleCascadeOptions', params || {}],
   /** Opciones con conteo del catalogo general (GET /inventario/productos/opciones-filtro). */
