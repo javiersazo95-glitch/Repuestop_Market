@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Check, CircleDollarSign, ClipboardList, Image as ImageIcon, Images, ListChecks, Loader2, PackagePlus, Plus, Search, Tag, Trash2, Upload, X } from 'lucide-react';
 import CommissionSummaryCard from './CommissionSummaryCard';
 import SearchableDropdown from './SearchableDropdown';
@@ -6,6 +6,7 @@ import {
   createSellerInventoryProductApi,
   getPartBrandsApi,
   getPartCategoriesApi,
+  getInventoryVehicleCatalogsApi,
   getPartSubcategoriesApi,
   getVehicleBrandsApi,
   getVehicleModelsApi,
@@ -104,6 +105,33 @@ function parseCompatibilitiesFromProduct(product) {
   return [emptyCompatibility()];
 }
 
+/**
+ * La app guarda cada compatibilidad solo con sus versiones del catalogo (vehiculoCatalogoIds), sin
+ * marca, modelo ni años en texto. Sin completarlas, el Market las mostraba como tarjetas vacias:
+ * el vendedor las llenaba creyendo agregar otra y, al guardar, pisaba la que existia. Se completan
+ * desde las filas del catalogo: la marca y el modelo mas repetidos y el rango de años que cubren.
+ */
+function completarDesdeCatalogo(compatibility, filasPorId) {
+  const filas = (compatibility.vehicleCatalogIds || []).map((id) => filasPorId.get(String(id))).filter(Boolean);
+  if (!filas.length) return compatibility;
+  const masRepetido = (valores) => {
+    const conteo = new Map();
+    valores.filter(Boolean).forEach((valor) => conteo.set(valor, (conteo.get(valor) || 0) + 1));
+    return [...conteo.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+  };
+  const brand = masRepetido(filas.map((fila) => fila.marca));
+  const delaMarca = filas.filter((fila) => fila.marca === brand);
+  const desde = delaMarca.map((fila) => fila.anioDesde).filter(Number.isFinite);
+  const hasta = delaMarca.map((fila) => fila.anioHasta).filter(Number.isFinite);
+  return {
+    ...compatibility,
+    brand,
+    model: masRepetido(delaMarca.map((fila) => fila.modelo)),
+    yearFrom: compatibility.yearFrom || (desde.length ? String(Math.min(...desde)) : ''),
+    yearTo: compatibility.yearTo || (hasta.length ? String(Math.min(Math.max(...hasta), CURRENT_YEAR)) : ''),
+  };
+}
+
 const initialForm = (product = null) => ({
   name: product?.nombrePublicado || product?.repuestoNombre || product?.nombre || '',
   sku: product?.skuProveedor || product?.sku || product?.codigoSKU || '',
@@ -164,18 +192,11 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
       .catch(() => setError('No se pudieron cargar todos los catálogos. Puedes completar los datos manualmente.'));
   }, []);
 
+  // El formulario se arma UNA vez por repuesto. Antes este efecto tambien dependia de las marcas
+  // de vehiculo y, al llegar el catalogo, reiniciaba el formulario: se perdia lo que el vendedor
+  // ya hubiera agregado o editado.
   useEffect(() => {
-    const initialCompatibilities = parseCompatibilitiesFromProduct(product);
-    const enrichedCompatibilities = initialCompatibilities.map((item) => {
-      if (item.brandId) return item;
-      const matched = vehicleBrands.find((brand) => brand.nombre?.trim().toLowerCase() === item.brand?.trim().toLowerCase());
-      return matched ? { ...item, brandId: String(matched.id), brand: matched.nombre } : item;
-    });
-
-    setForm({
-      ...initialForm(product),
-      compatibilities: enrichedCompatibilities,
-    });
+    setForm(initialForm(product));
     setFiles([]);
     const existing = [];
     if (product?.imageUrls && Array.isArray(product.imageUrls)) {
@@ -186,18 +207,52 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
     setExistingPhotos(existing);
     setIsCustomPartBrand(false);
 
-    enrichedCompatibilities.forEach((c) => {
-      if (c.brandId) {
-        getVehicleModelsApi(c.brandId)
-          .then((models) => {
-            setModelOptions((previous) => ({ ...previous, [c.brandId]: Array.isArray(models) ? models : [] }));
-          })
-          .catch(() => {
-            setModelOptions((previous) => ({ ...previous, [c.brandId]: [] }));
-          });
-      }
+    // Compatibilidades guardadas desde la app (solo versiones): se completan con el catalogo.
+    const sinTexto = parseCompatibilitiesFromProduct(product)
+      .filter((item) => !item.brand && (item.vehicleCatalogIds || []).length);
+    const ids = [...new Set(sinTexto.flatMap((item) => item.vehicleCatalogIds))];
+    if (!ids.length) return undefined;
+    let vigente = true;
+    getInventoryVehicleCatalogsApi(ids)
+      .then((filas) => {
+        if (!vigente || !Array.isArray(filas)) return;
+        const filasPorId = new Map(filas.map((fila) => [String(fila.id), fila]));
+        setForm((previous) => ({
+          ...previous,
+          compatibilities: previous.compatibilities.map((item) => (item.brand ? item : completarDesdeCatalogo(item, filasPorId))),
+        }));
+      })
+      .catch(() => undefined);
+    return () => { vigente = false; };
+  }, [product]);
+
+  // Con el catalogo de marcas a mano, cada compatibilidad conocida por nombre recibe su id (para
+  // el selector y los modelos) sin tocar nada mas del formulario.
+  useEffect(() => {
+    if (!vehicleBrands.length) return;
+    setForm((previous) => {
+      let cambio = false;
+      const compatibilities = previous.compatibilities.map((item) => {
+        if (item.brandId || !item.brand) return item;
+        const matched = vehicleBrands.find((brand) => brand.nombre?.trim().toLowerCase() === item.brand.trim().toLowerCase());
+        if (!matched) return item;
+        cambio = true;
+        return { ...item, brandId: String(matched.id), brand: matched.nombre };
+      });
+      return cambio ? { ...previous, compatibilities } : previous;
     });
-  }, [product, vehicleBrands]);
+  }, [vehicleBrands, form.compatibilities]);
+
+  // Modelos de cada marca elegida, una vez por marca.
+  useEffect(() => {
+    const marcas = [...new Set(form.compatibilities.map((item) => item.brandId).filter(Boolean))];
+    marcas.filter((brandId) => !modelOptions[brandId]).forEach((brandId) => {
+      setModelOptions((previous) => ({ ...previous, [brandId]: previous[brandId] || [] }));
+      getVehicleModelsApi(brandId)
+        .then((models) => setModelOptions((previous) => ({ ...previous, [brandId]: Array.isArray(models) ? models : [] })))
+        .catch(() => undefined);
+    });
+  }, [form.compatibilities]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => files.forEach(({ preview }) => URL.revokeObjectURL(preview)), [files]);
 
@@ -224,6 +279,26 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
       setSubcategories([]);
     }
   };
+  // "+ Agregar" suma una tarjeta al final y lleva la vista a ella, como en la app: sin el
+  // desplazamiento la nueva quedaba fuera de pantalla y parecia que no habia pasado nada.
+  const compatibilityRefs = useRef([]);
+  const scrollToCompatibilityRef = useRef(null);
+  const addCompatibility = () => {
+    setForm((previous) => {
+      scrollToCompatibilityRef.current = previous.compatibilities.length;
+      return { ...previous, compatibilities: [...previous.compatibilities, emptyCompatibility()] };
+    });
+  };
+  useEffect(() => {
+    const index = scrollToCompatibilityRef.current;
+    if (index === null) return;
+    const card = compatibilityRefs.current[index];
+    if (!card) return;
+    scrollToCompatibilityRef.current = null;
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    card.querySelector('input, button:not([aria-label="Eliminar compatibilidad"])')?.focus({ preventScroll: true });
+  }, [form.compatibilities.length]);
+
   const updateCompatibility = (index, patch) => {
     setForm((previous) => ({
       ...previous,
@@ -338,7 +413,9 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
       }
     }
     const compatibilityGroups = form.isUniversal ? [] : form.compatibilities
-      .filter((item) => item.brand || item.model || item.yearFrom || item.yearTo || item.motor || item.oem)
+      // Una tarjeta con versiones pero sin texto tambien es una compatibilidad: descartarla borraba
+      // al guardar las que se cargaron desde la app.
+      .filter((item) => item.brand || item.model || item.yearFrom || item.yearTo || item.motor || item.oem || (item.vehicleCatalogIds || []).length)
       .map((item) => {
         const key = `${item.brand}|${item.model}|${item.yearFrom}|${item.yearTo}`;
         const available = versionOptions[key] || [];
@@ -495,11 +572,11 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
             )}
           </section>
           <section className="catalog-product-section" id="catalog-compatibility">
-            <div className="catalog-section-title-row"><h3><b>3</b> Compatibilidad</h3>{!form.isUniversal && <button type="button" className="catalog-add-compatibility" onClick={() => update('compatibilities', [...form.compatibilities, emptyCompatibility()])}><Plus size={15} /> Agregar</button>}</div>
+            <div className="catalog-section-title-row"><h3><b>3</b> Compatibilidad</h3>{!form.isUniversal && <button type="button" className="catalog-add-compatibility" onClick={addCompatibility}><Plus size={15} /> Agregar</button>}</div>
             <div className="catalog-condition-row"><span>¿Es un repuesto universal?</span>{[false, true].map((value) => <button type="button" key={String(value)} className={form.isUniversal === value ? 'active' : ''} onClick={() => update('isUniversal', value)}><Check size={14} />{value ? 'Sí, sirve para cualquier vehículo' : 'No'}</button>)}</div>
             {form.isUniversal
               ? <p className="catalog-universal-hint">Aparecerá en las búsquedas de todos los vehículos, así que no necesita declarar marca ni modelo. Úsalo solo para aceites, lubricantes, accesorios y similares.</p>
-              : form.compatibilities.map((compatibility, index) => <div className="catalog-compatibility" key={index}>
+              : form.compatibilities.map((compatibility, index) => <div className="catalog-compatibility" key={index} ref={(node) => { compatibilityRefs.current[index] = node; }}>
               <div className="catalog-compatibility-heading"><strong>Compatibilidad {index + 1}</strong>{index > 0 && <button type="button" onClick={() => update('compatibilities', form.compatibilities.filter((_, itemIndex) => itemIndex !== index))} aria-label="Eliminar compatibilidad"><Trash2 size={15} /></button>}</div>
               <div className="catalog-product-grid compact">
                 <CatalogField label="Marca vehículo"><SearchableDropdown value={compatibility.brandId} options={vehicleBrands.map((brand) => ({ value: brand.id, label: brand.nombre }))} placeholder="Selecciona una marca" onChange={(brandId) => changeVehicleBrand(index, String(brandId))} emptyText="No encontramos esa marca." /></CatalogField>
