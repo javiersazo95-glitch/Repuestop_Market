@@ -7,6 +7,7 @@ export const qk = {
   storeFilterOptions: (params) => ['storeFilterOptions', params || {}],
   storeProducts: (id, filters) => ['stores', id, 'products', filters || {}],
   sellerStore: (id) => ['seller', id, 'store'],
+  sellerBankAccount: (id) => ['seller', id, 'bankAccount'],
   products: (filters) => ['products', filters || {}],
   product: (id) => ['products', id],
   productQuestions: (id) => ['products', id, 'questions'],

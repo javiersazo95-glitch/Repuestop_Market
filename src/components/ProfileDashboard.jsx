@@ -25,7 +25,7 @@ import {
   getBuyerOrdersApi, getSellerOrdersApi, getFavoritesApi,
   confirmOrderPaymentApi,
   getSellerInventoryApi,
-  getSellerInventoryCategoriesApi, getSellerInventorySummaryApi, getSellerConversationsApi, getBuyerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
+  getSellerInventoryCategoriesApi, getSellerInventorySummaryApi, getSellerConversationsApi, getBuyerConversationsApi, getSellerStoreApi, getSellerBankAccountApi, getSellerProductQuestionsApi,
   uploadProfileImageApi, resolveMediaUrl,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi,
   saveConversationQuoteApi, sendConversationMessageApi,
@@ -47,7 +47,7 @@ import ProfileAppointmentsButton from './ProfileAppointmentsButton';
 import HeaderWalletButton from './HeaderWalletButton';
 import NewCatalogProductModal from './NewCatalogProductModal';
 import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
-import SellerWithdrawalsPanel from './SellerWithdrawalsPanel';
+import SellerWithdrawalsPanel, { isCompleteBankAccount } from './SellerWithdrawalsPanel';
 import AdsManagementSection from './ads/AdsManagementSection';
 import ProfileFavoritesPanel from './ProfileFavoritesPanel';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
@@ -535,6 +535,15 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const storeInfoQuery = useQuery({
     queryKey: qk.sellerStore(effectiveSellerId),
     queryFn: ({ signal }) => getSellerStoreApi(effectiveSellerId, { signal }),
+    enabled: Boolean(isSeller && effectiveSellerId),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // "Configurar métodos de pago" del checklist: la cuenta bancaria vive en su propio endpoint (cifrada),
+  // no en la tienda. Antes se buscaba en storeInfo con campos que no existen y el paso nunca se marcaba.
+  const bankAccountQuery = useQuery({
+    queryKey: qk.sellerBankAccount(effectiveSellerId),
+    queryFn: () => getSellerBankAccountApi(effectiveSellerId),
     enabled: Boolean(isSeller && effectiveSellerId),
     staleTime: 5 * 60 * 1000,
   });
@@ -1105,7 +1114,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       {
         id: 'payment',
         label: 'Configurar métodos de pago',
-        completed: Boolean(storeInfo?.bankAccount || storeInfo?.accountNumber || user?.bankAccount),
+        completed: isCompleteBankAccount(bankAccountQuery.data),
         action: () => setActiveTab('retiros')
       },
       {
@@ -1115,7 +1124,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         action: () => openNewProductModalRef.current()
       },
     ];
-  }, [isSeller, user, storeInfo, inventorySummary, sellerProducts, orders]);
+  }, [isSeller, user, storeInfo, bankAccountQuery.data, inventorySummary, sellerProducts, orders]);
 
   const completedOnboardingCount = useMemo(
     () => onboardingSteps.filter((step) => step.completed).length,

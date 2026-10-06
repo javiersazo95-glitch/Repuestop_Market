@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
 import {
   AlertCircle, AlertTriangle, CalendarDays, CheckCircle2, ChevronRight, Clock,
@@ -12,6 +13,7 @@ import {
 import { BANKS, findBankByCode } from '../data/banks';
 import { sellerCodeShort } from '../data/orderIdentity';
 import { formatRut, isValidRut } from '../services/adapters';
+import { qk } from '../services/queryKeys';
 
 const EMPTY_PENDING = { pedidos: [], totalARetirar: 0, retenidos: [], totalRetenido: 0, cargos: [], totalCargos: 0, fondosRetenidos: false, motivoRetencion: null };
 const DISPLAY_LIMIT = 3;
@@ -60,7 +62,10 @@ function maskAccountNumber(value) {
   return `•••• •••• ${digits.slice(-4)}`;
 }
 
-function isCompleteBankAccount(account) {
+// Exportada: el checklist "Completa tu tienda" del Resumen usa la misma regla, para no marcar como
+// pendiente una cuenta que este panel da por completa (pasaba: el Resumen buscaba campos que el
+// backend no manda).
+export function isCompleteBankAccount(account) {
   const bank = findBankByCode(account?.bankCode);
   const basic = account?.bankAccountHolderName?.trim() && account?.bankAccountRut?.trim()
     && account?.bankName?.trim() && account?.bankAccountType?.trim() && account?.bankAccountNumber?.trim();
@@ -382,6 +387,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
   const [pending, setPending] = useState(EMPTY_PENDING);
   const [history, setHistory] = useState([]);
   const [bankAccount, setBankAccount] = useState(null);
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -871,6 +877,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
           onClose={() => setShowBankModal(false)}
           onSaved={(account) => {
             setBankAccount(account);
+            queryClient.invalidateQueries({ queryKey: qk.sellerBankAccount(sellerId) });
             setShowBankModal(false);
             setNotice({ type: 'success', message: 'Tus datos bancarios se guardaron correctamente.' });
           }}
