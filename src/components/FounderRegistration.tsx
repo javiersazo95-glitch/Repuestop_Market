@@ -71,6 +71,20 @@ function phaseForVerification(v: VerificacionResponse | null): number {
   return 2; // PENDING (o vacío pero ya enviado) -> en validación
 }
 
+/**
+ * Por qué no se aprobó la verificación, para mostrarlo al retomar la postulación (el correo de
+ * "necesitamos una corrección" trae aquí). El backend acumula las observaciones como
+ * "[Corrección Solicitada - fecha]: texto", una por línea: manda la última y sin el prefijo. Sin
+ * observación igual se avisa, para que el vendedor no vea solo el formulario sin saber qué pasó.
+ */
+function verificationFailureReason(v: VerificacionResponse | null): string | null {
+  const status = (v?.reviewStatus || '').toUpperCase();
+  if (status !== 'REJECTED' && status !== 'NEEDS_CORRECTION') return null;
+  const lines = String(v?.reviewNotes || '').split('\n').map((line) => line.trim()).filter(Boolean);
+  const last = lines.length ? lines[lines.length - 1].replace(/^\[[^\]]*\]:\s*/, '').trim() : '';
+  return last || 'Revisamos tus documentos y no pudimos validarlos. Vuelve a subirlos revisando que estén vigentes y legibles.';
+}
+
 type FormState = {
   responsibleName: string; cargo: string; email: string; phone: string; password: string;
   storeName: string; taxId: string; giro: string; giroOtro: string;
@@ -468,11 +482,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
       storeName: sellerSession.storeName,
       founder: sellerSession.founder,
     });
-    if (verification?.reviewNotes && ['REJECTED', 'NEEDS_CORRECTION'].includes((verification.reviewStatus || '').toUpperCase())) {
-      setPhaseNotice(verification.reviewNotes);
-    } else {
-      setPhaseNotice(null);
-    }
+    setPhaseNotice(verificationFailureReason(verification));
     setAlreadyApproved((verification?.reviewStatus || '').toUpperCase() === 'APPROVED');
     setActivePhase(phaseForVerification(verification));
     setShowResume(false);

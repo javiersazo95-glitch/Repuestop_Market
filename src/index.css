@@ -20919,6 +20919,9 @@ input.has-success {
 .sheet-select-option span { min-width: 0; }
 .sheet-select-option.is-selected { background: rgba(0, 86, 191, .03); color: #0056bf; font-weight: 600; }
 .sheet-select-option svg { flex: 0 0 auto; color: #0056bf; }
+/* Conteo de publicaciones de cada opción, atenuado solo en la lista (no en el campo cerrado).
+   Con opacidad y no un color fijo para que se lea igual sobre una opción activa. */
+.sheet-select-count, .filter-option-count, .catalog-search-select-count { opacity: .6; font-weight: 500; }
 .sheet-select-empty { padding: 24px 0; color: #64748b; font-size: 15px; text-align: center; }
 @keyframes sheet-select-up { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
 @keyframes sheet-select-fade { from { opacity: 0; } to { opacity: 1; } }
