@@ -296,6 +296,12 @@ export default function SellerConfirmationChecklist({
                           {item.vehiculoChasis ? ` · Chasis ${item.vehiculoChasis}` : ''}
                         </small>
                       )}
+                      {/* 6-oct: el Market y la app le avisaron antes de pagar y confirmó que lo quería igual. */}
+                      {item.compradorAceptoAviso && (
+                        <small className="seller-checklist-item-vehicle">
+                          El comprador fue avisado de que no figuraba como compatible y decidió comprarlo igual.
+                        </small>
+                      )}
                     </span>
                     <span className={`seller-checklist-badge tone-${etiqueta.tono}`}>
                       {etiqueta.tono === 'alerta' ? <AlertTriangle size={12} /> : etiqueta.tono === 'ok' ? <Check size={12} strokeWidth={3} /> : null}

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle, ArrowLeft, Car, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Heart, Info,
   MessageCircle, Search, ShieldCheck, ShoppingCart, SlidersHorizontal, X,
@@ -385,6 +386,22 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
       questionsSectionRef.current?.querySelector('input')?.focus({ preventScroll: true });
     }, 60);
   };
+
+  // Desde el carrito o el checkout, cuando un repuesto no figura como compatible con el vehículo
+  // del comprador: `?abrir=compatibilidad` abre la lista de compatibilidades y `?abrir=preguntas`
+  // lleva al formulario para preguntarle a la tienda (el mismo de "Preguntar al vendedor").
+  const [searchParams] = useSearchParams();
+  const openOnArrival = searchParams.get('abrir');
+  useEffect(() => {
+    if (openOnArrival === 'compatibilidad') setCompatibilityOpen(true);
+    if (openOnArrival !== 'preguntas') return undefined;
+    // Con margen para que la ficha termine de pintarse (y el scroll al inicio de la ruta).
+    const timer = window.setTimeout(() => {
+      questionsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      questionsSectionRef.current?.querySelector('input')?.focus({ preventScroll: true });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [openOnArrival, product.id]);
 
   const visibleCompatibilityRows = compatibilityRows.filter((row) => {
     const query = compatibilitySearch.trim().toLocaleLowerCase('es');

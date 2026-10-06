@@ -23,6 +23,8 @@ import BuyerAddressBook from '../components/BuyerAddressBook';
 import CheckoutSummaryPanel from '../components/CheckoutSummaryPanel';
 import CheckoutItemDelivery from '../components/CheckoutItemDelivery';
 import CheckoutVehicleDialog from '../components/CheckoutVehicleDialog';
+import { useCompatibilityCheck } from '../hooks/useCompatibilityCheck';
+import { COMPAT, compatCacheKey, mismatchCountText } from '../utils/compatibilityCheck';
 import {
   defaultAddressFor, deliveryKind, isDispatch, methodsForItem, pendingDeliveryReason, shippingFees, vehicleLabel,
 } from '../utils/cartDelivery';
@@ -64,7 +66,7 @@ export default function CheckoutPage() {
   const { user } = useAuth();
   const isSeller = user?.role === 'SELLER';
   const buyerQuotesPath = buyerProfilePath(user, 'quotes');
-  const { activeVehicle, cartItems, cartCount, cartTotals, clearCart } = useMarketplace();
+  const { activeVehicle, cartItems, cartCount, cartTotals, clearCart, removeFromCart } = useMarketplace();
   const userId = user?.userId ?? user?.id;
 
   const location = useLocation();
@@ -362,6 +364,29 @@ export default function CheckoutPage() {
 
   const cartShipping = useMemo(() => shippingFees(cartItems, deliveries), [cartItems, deliveries]);
   const entregaPendiente = isQuoteMode ? '' : pendingDeliveryReason(cartItems, deliveries, cartVehicles, identifiedPlates, addresses);
+
+  // Compatibilidad de cada producto con SU vehículo (el backend la evalúa). No bloquea la
+  // compra: si alguno "no figura como compatible", el comprador lo confirma con una casilla y el
+  // pedido viaja con `aceptaAvisoCompatibilidad`. Si la consulta falla, no se muestra nada.
+  const compatEntries = useMemo(() => (isQuoteMode ? [] : cartItems.map((item) => ({
+    productoId: item.id,
+    esUniversal: Boolean(item.esUniversal),
+    vehicle: item.esUniversal ? null : (cartVehicles.find((vehicle) => vehicle.key === deliveries[item.id]?.vehicleKey) || null),
+  }))), [isQuoteMode, cartItems, cartVehicles, deliveries]);
+  const { statusOf: compatStatusOf, retryFailed: retryCompatibility } = useCompatibilityCheck(compatEntries, { enabled: !isQuoteMode });
+  const compatStatusFor = (entry) => compatStatusOf(entry.productoId, entry.vehicle, entry.esUniversal);
+  const compatMismatches = compatEntries.filter((entry) => compatStatusFor(entry) === COMPAT.NO_COINCIDE);
+  const compatLoading = compatEntries.some((entry) => compatStatusFor(entry) === 'loading');
+  // La casilla confirma ESTE conjunto de avisos: si aparece uno nuevo (otro vehículo, otro
+  // producto), hay que volver a marcarla; si ya no queda ninguno, desaparece y no se manda nada.
+  const mismatchSignature = compatMismatches.map((entry) => compatCacheKey(entry.productoId, entry.vehicle)).join(',');
+  const [compatAckSignature, setCompatAckSignature] = useState('');
+  const compatAcknowledged = Boolean(mismatchSignature) && compatAckSignature === mismatchSignature;
+  const compatBlockReason = isQuoteMode ? '' : compatLoading
+    ? 'Estamos revisando la compatibilidad de tus repuestos…'
+    : compatMismatches.length > 0 && !compatAcknowledged
+      ? `${mismatchCountText(compatMismatches.length)} con el vehículo elegido. Revísalo o marca «Entiendo y quiero comprarlo igual» para continuar.`
+      : '';
   // En el carrito el envío se cobra por destino de cada tienda (la regla del backend).
   const checkoutTotals = isQuoteMode
     ? totals
@@ -535,17 +560,18 @@ export default function CheckoutPage() {
   const stepComplete = {
     entrega: isQuoteMode
       ? allShippingChosen && (!needsAddress || Boolean(selectedAddressId) || sellerWithoutSavedAddress)
-      : !entregaPendiente,
+      : !entregaPendiente && !compatBlockReason,
     // En el carrito el vehículo ya va en cada producto (paso Entrega).
     pago: Boolean(paymentMethod) && (documentType !== 'FACTURA' || rutValid)
-      && (!isQuoteMode || !vehicleRequired || vehicleComplete),
+      && (!isQuoteMode || !vehicleRequired || vehicleComplete)
+      && !compatBlockReason,
   };
 
   // Lo que falta para avanzar, dicho antes de que la persona haga clic: el botón se
   // deshabilita, pero un botón apagado sin explicación es igual de frustrante.
   const missingForStep = {
     entrega: !isQuoteMode
-      ? entregaPendiente
+      ? (entregaPendiente || compatBlockReason)
       : !allShippingChosen
         ? 'Elige cómo recibir los productos de cada tienda para continuar.'
         : 'Selecciona una dirección de entrega para continuar.',
@@ -557,7 +583,7 @@ export default function CheckoutPage() {
           : (lookupForCurrentPlate?.status === 'notfound' || lookupForCurrentPlate?.status === 'error')
             ? 'No pudimos identificar la patente: completa la marca, el modelo y el año.'
             : 'Indica la patente o la marca, modelo y año de tu vehículo para continuar.')
-        : '',
+        : compatBlockReason,
   }[step];
 
   const pay = async () => {
@@ -595,16 +621,34 @@ export default function CheckoutPage() {
             modelo: vehicle.modelo || null,
             anio: Number(vehicle.anio) || null,
           } : null);
-          const entregas = cartItems.map((item) => {
+          // El comprador marcó "Entiendo y quiero comprarlo igual": los productos que no figuran
+          // como compatibles con su vehículo van con `aceptaAvisoCompatibilidad` (si no, el
+          // backend rechaza el pedido). Solo esos: al resto no se le manda el flag.
+          const acceptedIds = new Set(compatAcknowledged ? compatMismatches.map((entry) => String(entry.productoId)) : []);
+          const rows = cartItems.map((item) => {
             const delivery = deliveries[item.id] || {};
             const vehicle = item.esUniversal ? null : cartVehicles.find((entry) => entry.key === delivery.vehicleKey);
+            const accepted = Boolean(vehicle) && acceptedIds.has(String(item.id));
+            const vehiculo = toVehiculo(vehicle);
             return {
-              productoId: Number(item.id),
-              metodoEnvio: delivery.method || item.shippingMethod || null,
-              direccionId: isDispatch(delivery.method) && delivery.addressId ? Number(delivery.addressId) : null,
-              vehiculo: toVehiculo(vehicle),
+              vehicleKey: vehicle?.key ?? null,
+              accepted,
+              entrega: {
+                productoId: Number(item.id),
+                metodoEnvio: delivery.method || item.shippingMethod || null,
+                direccionId: isDispatch(delivery.method) && delivery.addressId ? Number(delivery.addressId) : null,
+                vehiculo: vehiculo && accepted ? { ...vehiculo, aceptaAvisoCompatibilidad: true } : vehiculo,
+              },
             };
           });
+          const entregas = rows.map((row) => row.entrega);
+          // El vehículo general es el del primer producto con vehículo; si ese mismo vehículo va
+          // en algún producto aceptado, el general lleva el flag también.
+          const generalRow = rows.find((row) => row.entrega.vehiculo);
+          const generalAccepted = Boolean(generalRow) && rows.some((row) => row.accepted && row.vehicleKey === generalRow.vehicleKey);
+          const vehiculoGeneral = generalRow
+            ? { ...toVehiculo(cartVehicles.find((entry) => entry.key === generalRow.vehicleKey)), ...(generalAccepted ? { aceptaAvisoCompatibilidad: true } : {}) }
+            : null;
           const principalDireccion = entregas.find((entrega) => entrega.direccionId)?.direccionId;
           return checkoutCartApi(userId, {
             direccionId: principalDireccion ? String(principalDireccion) : '',
@@ -613,7 +657,7 @@ export default function CheckoutPage() {
             facturaRut: documentType === 'FACTURA' ? invoice.rut.trim() : '',
             facturaRazonSocial: documentType === 'FACTURA' ? invoice.razonSocial.trim() : '',
             facturaGiro: documentType === 'FACTURA' ? invoice.giro.trim() : '',
-            vehiculo: entregas.find((entrega) => entrega.vehiculo)?.vehiculo ?? null,
+            vehiculo: vehiculoGeneral,
             entregas,
           });
         })();
@@ -669,9 +713,29 @@ export default function CheckoutPage() {
       navigate(ROUTES.purchaseSuccess, { state: { order } });
     } catch (submitError) {
       setError(submitError.message || 'No se pudo generar el pedido. Intenta nuevamente.');
+      // El backend rechazó por compatibilidad: si la revisión de esta página había fallado en
+      // silencio, se vuelve a pedir para que aparezca el aviso y la casilla para confirmarlo.
+      if (!isQuoteMode && /no figura como compatible/i.test(submitError.message || '')) retryCompatibility();
       submittingRef.current = false;
       setPlacing(false);
       setPaymentProcessingStatus('');
+    }
+  };
+
+  const goToCompatIssue = () => {
+    const target = compatMismatches[0];
+    if (!target) return;
+    const reveal = () => {
+      const node = document.getElementById(`compat-${target.productoId}`);
+      if (!node) return;
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      node.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+    };
+    if (step !== 'entrega') {
+      goStep('entrega');
+      window.setTimeout(reveal, 120);
+    } else {
+      reveal();
     }
   };
 
@@ -834,6 +898,12 @@ export default function CheckoutPage() {
                                     addresses={addresses}
                                     vehicles={cartVehicles}
                                     sharesShipment={sharesShipment}
+                                    compatibility={compatStatusOf(
+                                      item.id,
+                                      cartVehicles.find((vehicle) => vehicle.key === delivery.vehicleKey) || null,
+                                      Boolean(item.esUniversal),
+                                    )}
+                                    onRemove={() => removeFromCart(item.id)}
                                     onChange={(patch) => updateDelivery(item, patch)}
                                     onAddVehicle={() => setVehicleDialog({ vehicle: null, itemId: item.id })}
                                     onEditVehicle={(vehicle) => setVehicleDialog({ vehicle, itemId: item.id })}
@@ -1267,6 +1337,32 @@ export default function CheckoutPage() {
                 : 'Continuar con el pago'
             }
             onCta={advance}
+            beforeCta={!isQuoteMode && compatMismatches.length > 0 ? (
+              <div className="checkout-compat-summary">
+                <p className="checkout-compat-summary-text">
+                  <AlertTriangle size={14} aria-hidden="true" />
+                  <span>
+                    {mismatchCountText(compatMismatches.length)}
+                    {' '}
+                    <button type="button" onClick={goToCompatIssue}>
+                      {compatMismatches.length === 1 ? 'Ver el repuesto' : 'Ver el primero'}
+                    </button>
+                  </span>
+                </p>
+                <label className="checkout-compat-ack">
+                  <input
+                    type="checkbox"
+                    checked={compatAcknowledged}
+                    onChange={(event) => setCompatAckSignature(event.target.checked ? mismatchSignature : '')}
+                  />
+                  <span>Entiendo y quiero comprarlo igual</span>
+                </label>
+              </div>
+            ) : null}
+            stickyAviso={!isQuoteMode && !compatLoading && compatMismatches.length > 0 && !compatAcknowledged ? {
+              texto: mismatchCountText(compatMismatches.length),
+              onIr: () => document.querySelector('.checkout-compat-ack')?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+            } : undefined}
             ctaDisabled={!stepComplete[step] || placing}
             ctaLoading={placing}
             warning={stepComplete[step]

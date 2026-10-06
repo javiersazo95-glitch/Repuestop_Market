@@ -886,6 +886,15 @@ export async function checkoutCartApi(usuarioId, payload) {
   return fetchApi(`/usuarios/${usuarioId}/pedidos/checkout`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
+/**
+ * ¿Cada repuesto le sirve al vehículo elegido? Público (con sesión el token va igual).
+ * `items`: [{ productoId, vehiculo: { vehiculoCatalogoId, marca, modelo, anio } }], máximo 50.
+ * Responde { resultados: [{ productoId, resultado: COMPATIBLE | NO_COINCIDE | SIN_DATOS | UNIVERSAL }] }.
+ */
+export async function evaluateCompatibilityApi(items, { signal } = {}) {
+  return fetchApi('/compatibilidad/evaluar', { method: 'POST', body: JSON.stringify({ items }), signal });
+}
+
 export async function getCartApi(usuarioId) {
   return fetchApi(`/usuarios/${usuarioId}/carrito`, { method: 'GET' });
 }
