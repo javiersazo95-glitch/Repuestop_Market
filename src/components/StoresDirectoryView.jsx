@@ -43,19 +43,36 @@ const FILTER_POOL_SIZE = 100;
 
 /**
  * Opciones de filtro derivadas de los datos reales del pool, no de una lista
- * fija en el código. Se deduplica ignorando mayúsculas porque el giro y los
- * métodos de envío los escribe cada vendedor a mano.
+ * fija en el código, con cuántas tiendas tienen cada valor. Se deduplica
+ * ignorando mayúsculas porque el giro y los métodos de envío los escribe cada
+ * vendedor a mano; una tienda cuenta una sola vez por valor.
+ * Devuelve [{ value, count }] ordenado por nombre.
  */
-function uniqueOptions(values) {
+function countedOptions(stores, getValues) {
   const byKey = new Map();
-  values.forEach((value) => {
-    const label = (value || '').toString().trim();
-    if (!label) return;
-    const key = label.toLowerCase();
-    if (!byKey.has(key)) byKey.set(key, label);
+  stores.forEach((store) => {
+    const seen = new Set();
+    [].concat(getValues(store) || []).forEach((value) => {
+      const label = (value || '').toString().trim();
+      if (!label) return;
+      const key = label.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      const current = byKey.get(key);
+      if (current) current.count += 1;
+      else byKey.set(key, { value: label, count: 1 });
+    });
   });
-  return Array.from(byKey.values()).sort((a, b) => a.localeCompare(b, 'es'));
+  return Array.from(byKey.values()).sort((a, b) => a.value.localeCompare(b.value, 'es'));
 }
+
+/** El valor elegido se mantiene visible aunque ya no tenga tiendas (p. ej. viene de la URL). */
+function keepSelectedOption(options, selected) {
+  if (selected === 'TODAS' || options.some((option) => option.value.toLowerCase() === selected.toLowerCase())) return options;
+  return [{ value: selected, count: 0 }, ...options];
+}
+
+const optionText = (option) => `${option.value} (${option.count})`;
 
 export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   const { user } = useAuth();
@@ -227,15 +244,34 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
     placeholderData: keepPreviousData,
   });
 
-  const comunaOptions = useMemo(() => uniqueOptions(poolItems.map((s) => s.comuna)), [poolItems]);
-  const giroOptions = useMemo(() => uniqueOptions(poolItems.map((s) => s.tipo)), [poolItems]);
+  // Las comunas se cuentan sobre un pool SIN el filtro de comuna: el otro ya viene acotado a la
+  // comuna elegida y dejaría una sola opción. Sin comuna elegida la queryKey es la misma del
+  // pool de arriba, así que React Query no repite la consulta.
+  const { data: comunaPoolItems = [] } = useQuery({
+    queryKey: qk.stores({ pool: true, texto: debouncedSearchQuery, comuna: undefined, marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, anioVehiculo: backendAnioVehiculo }),
+    queryFn: ({ signal }) => getPublicStoresApi({
+      page: 0, size: FILTER_POOL_SIZE, texto: debouncedSearchQuery,
+      marcaVehiculo: backendMarcaVehiculo, catalogoId: backendCatalogoId, anioVehiculo: backendAnioVehiculo, signal,
+    }),
+    select: (data) => adaptPage(data, adaptStore).items,
+    placeholderData: keepPreviousData,
+  });
+
+  const comunaOptions = useMemo(
+    () => keepSelectedOption(countedOptions(comunaPoolItems, (s) => s.comuna), selectedComuna),
+    [comunaPoolItems, selectedComuna]
+  );
+  const giroOptions = useMemo(
+    () => keepSelectedOption(countedOptions(poolItems, (s) => s.tipo), selectedGiro),
+    [poolItems, selectedGiro]
+  );
   const shippingOptions = useMemo(
-    () => uniqueOptions(poolItems.flatMap((s) => s.metodosEnvio || [])),
-    [poolItems]
+    () => keepSelectedOption(countedOptions(poolItems, (s) => s.metodosEnvio), selectedShipping),
+    [poolItems, selectedShipping]
   );
   const brandOptions = useMemo(
-    () => uniqueOptions(poolItems.flatMap((s) => (s.marcasEspecialistas || []).map((b) => b.nombre))),
-    [poolItems]
+    () => keepSelectedOption(countedOptions(poolItems, (s) => (s.marcasEspecialistas || []).map((b) => b.nombre)), selectedBrand),
+    [poolItems, selectedBrand]
   );
 
   // Solo estos filtros/orden fuerzan el modo pool: comuna y texto ya los
@@ -494,10 +530,10 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                 <span className="filter-group-label"><Building2 size={13} /> Tipo de Empresa / Giro</span><ChevronDown size={16} />
               </button>
               {openFilterSections.business && <div className="filter-options-list">
-                {['TODAS', ...giroOptions].map((type) => (
+                {[{ value: 'TODAS' }, ...giroOptions].map(({ value: type, count }) => (
                   <button key={type} className={`filter-option-btn ${selectedGiro === type ? 'active' : ''}`} onClick={() => setSelectedGiro(type)}>
                     <span className="filter-condition-icon"><Building2 size={14} /></span>
-                    <span className="filter-option-copy"><strong>{type === 'TODAS' ? 'Todas las casas de repuestos' : type}</strong><small>{type === 'TODAS' ? 'Explorar todo el directorio' : 'Casas de repuestos verificadas'}</small></span>
+                    <span className="filter-option-copy"><strong>{type === 'TODAS' ? 'Todas las casas de repuestos' : type}{count != null && <span className="filter-option-count"> ({count})</span>}</strong><small>{type === 'TODAS' ? 'Explorar todo el directorio' : 'Casas de repuestos verificadas'}</small></span>
                     {selectedGiro === type ? <CheckCircle2 size={18} className="check-active" /> : <ChevronRight size={16} className="filter-option-chevron" />}
                   </button>
                 ))}
@@ -515,7 +551,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
               >
                 <option value="TODAS">Todas las comunas</option>
                 {comunaOptions.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c.value} value={c.value}>{optionText(c)}</option>
                 ))}
               </select>
             </div>
@@ -526,12 +562,12 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
                 <span className="filter-group-label"><Truck size={13} /> Método de Envío</span><ChevronDown size={16} />
               </button>
               {openFilterSections.shipping && <div className="filter-options-list">
-                {['TODAS', ...shippingOptions].map((method) => {
+                {[{ value: 'TODAS' }, ...shippingOptions].map(({ value: method, count }) => {
                   const shippingConfig = method === 'TODAS' ? { icon: Truck, label: 'Todos los servicios' } : getShippingIconConfig(method);
                   const ShippingIcon = shippingConfig.icon;
                   return <button key={method} className={`filter-option-btn ${selectedShipping === method ? 'active' : ''}`} onClick={() => setSelectedShipping(method)}>
                     <span className="filter-condition-icon"><ShippingIcon size={14} /></span>
-                    <span className="filter-option-copy"><strong>{method === 'TODAS' ? 'Todos los Métodos' : method}</strong><small>{method === 'TODAS' ? 'Retiro y despacho disponibles' : shippingConfig.label}</small></span>
+                    <span className="filter-option-copy"><strong>{method === 'TODAS' ? 'Todos los Métodos' : method}{count != null && <span className="filter-option-count"> ({count})</span>}</strong><small>{method === 'TODAS' ? 'Retiro y despacho disponibles' : shippingConfig.label}</small></span>
                     {selectedShipping === method && <CheckCircle2 size={18} className="check-active" />}
                   </button>;
                 })}
@@ -548,7 +584,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
               >
                 <option value="TODAS">Todas las marcas</option>
                 {brandOptions.map((b) => (
-                  <option key={b} value={b}>{b}</option>
+                  <option key={b.value} value={b.value}>{optionText(b)}</option>
                 ))}
               </select>
             </div>

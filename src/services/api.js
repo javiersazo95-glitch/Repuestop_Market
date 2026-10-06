@@ -1393,6 +1393,42 @@ export async function getVehicleFilterOptionsApi(catalogoId, { anio, signal } = 
   return fetchApi(`/vehiculos-catalogo/${catalogoId}/repuestos/filtros${query ? `?${query}` : ''}`, { method: 'GET', signal });
 }
 
+/**
+ * Marca, modelo, año y versión de vehículo que tienen repuestos publicados registrados como
+ * compatibles (los universales no cuentan). Un paso de la cascada por llamada: sin marca trae
+ * `marcas`; con marca, `modelos`; con marca+modelo, `anios`; con los tres, `versiones`.
+ * Cada opción viene como { id, nombre, productos }.
+ */
+export async function getVehicleCascadeOptionsApi({ proveedorId, marcaId, modelo, anio, signal } = {}) {
+  const params = new URLSearchParams();
+  if (proveedorId) params.set('proveedorId', String(proveedorId));
+  if (marcaId) params.set('marcaId', String(marcaId));
+  if (modelo) params.set('modelo', modelo);
+  if (anio) params.set('anio', String(anio));
+  const query = params.toString();
+  return fetchApi(`/inventario/productos/opciones-vehiculo${query ? `?${query}` : ''}`, { method: 'GET', signal });
+}
+
+/**
+ * Opciones de los filtros avanzados del catálogo general con su conteo, solo con lo publicado:
+ * mismo formato que `getVehicleFilterOptionsApi` más `condicionesConteo` y `origenesConteo`.
+ * Con vehículo del panel se acota a lo compatible + universal (igual que el listado), y con
+ * `proveedorId` a una sola tienda.
+ */
+export async function getPublishedFilterOptionsApi({
+  proveedorId, compatibilidadMarca, compatibilidadModelo, compatibilidadAnio, compatibilidadVersionIds, signal,
+} = {}) {
+  const params = new URLSearchParams();
+  if (proveedorId) params.set('proveedorId', String(proveedorId));
+  if (compatibilidadMarca) params.set('compatibilidadMarca', compatibilidadMarca);
+  if (compatibilidadModelo) params.set('compatibilidadModelo', compatibilidadModelo);
+  if (compatibilidadAnio) params.set('compatibilidadAnio', String(compatibilidadAnio));
+  String(compatibilidadVersionIds || '').split(',').filter(Boolean)
+    .forEach((id) => params.append('compatibilidadVersionIds', id));
+  const query = params.toString();
+  return fetchApi(`/inventario/productos/opciones-filtro${query ? `?${query}` : ''}`, { method: 'GET', signal });
+}
+
 export async function getPublicPartOriginsApi({ signal } = {}) {
   return fetchApi('/inventario/productos/origenes', { method: 'GET', signal });
 }

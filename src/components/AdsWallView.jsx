@@ -4,7 +4,7 @@ import {
   RefreshCw, SlidersHorizontal, X, Car, MapPin, Settings, ChevronDown,
   ArrowUpDown, ArrowRight, ShieldCheck, Zap, Star, CheckCircle2, Sparkles
 } from 'lucide-react';
-import { AD_TIERS, SERVICE_CATEGORIES, CHILE_COMMUNES } from '../data/automotiveAdsData';
+import { AD_TIERS, SERVICE_CATEGORIES } from '../data/automotiveAdsData';
 import { fetchPublicAds, getCachedWallAds, ADS_WALL_UPDATED_EVENT } from '../services/adsStorage';
 import { searchVehicleByPatenteApi } from '../services/api';
 import {
@@ -347,19 +347,51 @@ export default function AdsWallView() {
     selectedSpecialistBrand,
   ]);
 
+  // Cada filtro ofrece solo valores con anuncios publicados y cuántos hay de cada uno ("(N)"),
+  // contados sobre todo el mural para que no se elija algo sin resultados.
   // Comunas con anuncios (el filtro compara exacto con la del anuncio), mas la
   // elegida si no esta (p. ej. la del perfil al usar "cerca de mi" sin GPS).
   const communeOptions = useMemo(() => {
-    const set = new Set(adsList.map((ad) => ad.commune?.trim()).filter(Boolean));
-    if (selectedCommune !== 'Todas las comunas') set.add(selectedCommune);
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'));
+    const counts = new Map();
+    adsList.forEach((ad) => {
+      const commune = ad.commune?.trim();
+      if (commune) counts.set(commune, (counts.get(commune) || 0) + 1);
+    });
+    if (selectedCommune !== 'Todas las comunas' && !counts.has(selectedCommune)) counts.set(selectedCommune, 0);
+    return Array.from(counts, ([value, count]) => ({ value, count })).sort((a, b) => a.value.localeCompare(b.value, 'es'));
   }, [adsList, selectedCommune]);
 
-  // Marcas que declaran los talleres publicados, para el filtro.
-  const specialistBrandOptions = useMemo(
-    () => Array.from(new Set(adsList.flatMap((ad) => ad.specialistBrands ?? []))).sort((a, b) => a.localeCompare(b, 'es')),
-    [adsList],
-  );
+  // Marcas que declaran los talleres publicados, para el filtro. El filtro compara sin
+  // mayúsculas, así que se cuentan igual y cada anuncio suma una vez por marca.
+  const specialistBrandOptions = useMemo(() => {
+    const byKey = new Map();
+    adsList.forEach((ad) => {
+      new Map((ad.specialistBrands ?? []).filter(Boolean).map((brand) => [brand.toLowerCase(), brand]))
+        .forEach((brand, key) => {
+          const current = byKey.get(key);
+          if (current) current.count += 1;
+          else byKey.set(key, { value: brand, count: 1 });
+        });
+    });
+    if (selectedSpecialistBrand !== 'Todas las marcas' && !byKey.has(selectedSpecialistBrand.toLowerCase())) {
+      byKey.set(selectedSpecialistBrand.toLowerCase(), { value: selectedSpecialistBrand, count: 0 });
+    }
+    return Array.from(byKey.values()).sort((a, b) => a.value.localeCompare(b.value, 'es'));
+  }, [adsList, selectedSpecialistBrand]);
+
+  // Especialidades y planes con anuncios; la elegida se mantiene aunque quede en cero.
+  const categoryCounts = useMemo(() => {
+    const counts = {};
+    adsList.forEach((ad) => { if (ad.category) counts[ad.category] = (counts[ad.category] || 0) + 1; });
+    return counts;
+  }, [adsList]);
+  const tierCounts = useMemo(() => {
+    const counts = {};
+    adsList.forEach((ad) => { if (ad.tier) counts[ad.tier] = (counts[ad.tier] || 0) + 1; });
+    return counts;
+  }, [adsList]);
+  const availableCategories = SERVICE_CATEGORIES.filter((cat) => cat.id !== 'TODAS'
+    && (categoryCounts[cat.id] > 0 || selectedCategory === cat.id));
 
   const visibleAds = useMemo(
     () => filteredAds.slice(0, visibleCount),
@@ -372,7 +404,7 @@ export default function AdsWallView() {
 
   const sidebarCategories = [
     { id: 'TODAS', label: 'Todas las categorías' },
-    ...SERVICE_CATEGORIES.filter((cat) => cat.id !== 'TODAS'),
+    ...availableCategories,
   ];
 
   return (
@@ -595,8 +627,9 @@ export default function AdsWallView() {
                     onChange={(e) => setSelectedSpecialistBrand(e.target.value)}
                     aria-label="Marca especialista"
                   >
-                    {['Todas las marcas', ...specialistBrandOptions].map((brand) => (
-                      <option key={brand} value={brand}>{brand}</option>
+                    <option value="Todas las marcas">Todas las marcas</option>
+                    {specialistBrandOptions.map(({ value, count }) => (
+                      <option key={value} value={value}>{value} ({count})</option>
                     ))}
                   </select>
                 </span>
@@ -612,8 +645,9 @@ export default function AdsWallView() {
                   onChange={(e) => setSelectedCommune(e.target.value)}
                   aria-label="Ubicación"
                 >
-                  {CHILE_COMMUNES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                  <option value="Todas las comunas">Todas las comunas</option>
+                  {communeOptions.map(({ value, count }) => (
+                    <option key={value} value={value}>{value} ({count})</option>
                   ))}
                 </select>
               </span>
@@ -629,10 +663,9 @@ export default function AdsWallView() {
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   aria-label="Categoría"
                 >
-                  {SERVICE_CATEGORIES.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.id === 'TODAS' ? 'Todas las categorías' : cat.label}
-                    </option>
+                  <option value="TODAS">Todas las categorías</option>
+                  {availableCategories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>{cat.label} ({categoryCounts[cat.id] || 0})</option>
                   ))}
                 </select>
               </span>
@@ -757,7 +790,10 @@ export default function AdsWallView() {
                       onClick={() => handleSelectCategory(cat.id)}
                     >
                       <CatIcon size={17} />
-                      <span>{cat.label}</span>
+                      <span>
+                        {cat.label}
+                        {cat.id !== 'TODAS' && <span className="filter-option-count"> ({categoryCounts[cat.id] || 0})</span>}
+                      </span>
                     </button>
                   </li>
                 );
@@ -951,6 +987,9 @@ export default function AdsWallView() {
         only24Hours={only24Hours}
         setOnly24Hours={setOnly24Hours}
         communeOptions={communeOptions}
+        categoryOptions={availableCategories}
+        categoryCounts={categoryCounts}
+        tierCounts={tierCounts}
         specialistBrandOptions={searchMode === 'service' ? specialistBrandOptions : []}
         selectedSpecialistBrand={selectedSpecialistBrand}
         setSelectedSpecialistBrand={setSelectedSpecialistBrand}

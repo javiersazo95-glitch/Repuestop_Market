@@ -41,6 +41,10 @@ export const qk = {
   vehicleCompatibleProducts: (catalogoId, filters) => ['vehicleCatalogParts', catalogoId, filters || {}],
   /** Opciones de filtros acotadas a la patente (GET /vehiculos-catalogo/{id}/repuestos/filtros). */
   vehicleFilterOptions: (catalogoId, anio) => ['vehicleFilterOptions', catalogoId, anio || null],
+  /** Cascada marca/modelo/año/versión con repuestos publicados (GET /inventario/productos/opciones-vehiculo). */
+  vehicleCascadeOptions: (params) => ['vehicleCascadeOptions', params || {}],
+  /** Opciones con conteo del catalogo general (GET /inventario/productos/opciones-filtro). */
+  publishedFilterOptions: (params) => ['publishedFilterOptions', params || {}],
   vehicleBrands: () => ['vehicleBrands'],
   vehicleModels: (marcaId) => ['vehicleModels', marcaId],
   vehicleVersions: (marca, modelo, anio) => ['vehicleVersions', { marca, modelo, anio }],
