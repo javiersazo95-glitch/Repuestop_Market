@@ -1,16 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  AlertTriangle, ArrowLeft, BadgeCheck, Car, CheckCircle2, ChevronLeft, ChevronRight,
-  Globe, Heart, Info, MapPin, MessageCircle, Package, Search, Send, ShieldCheck,
-  ShoppingCart, Star, Store, Tag, Truck, Wrench, X, ChevronDown, ChevronUp, SlidersHorizontal
+  AlertTriangle, ArrowLeft, Car, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Heart, Info,
+  MessageCircle, Search, ShieldCheck, ShoppingCart, SlidersHorizontal, X,
 } from 'lucide-react';
 import VehicleBrandLogo from './VehicleBrandLogo';
-import ProductPhoto from './ProductPhoto';
 import { productReferenceImage } from '../utils/productImage';
-import ProductBrandMark from './ProductBrandMark';
 import ProductBrandModal from './ProductBrandModal';
-import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
+import { localDeliveryCost, productShippingOptions } from '../utils/cartDelivery';
 import {
   createProductQuestionApi, getProductQuestionsApi, searchVehicleByPatenteApi, answerProductQuestionApi,
   getInventoryVehicleCatalogsApi, getVehicleVersionsApi
@@ -20,14 +17,12 @@ import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import { useFavorites } from '../hooks/useFavorites';
 import { qk } from '../services/queryKeys';
-import StoreLogoBadge from './StoreLogoBadge';
-import ContextualReportButton from './ContextualReportButton';
-import ShareLinkButton from './ShareLinkButton';
 import MobileStickyBar from './MobileStickyBar';
 import ProductDetailMobile from './ProductDetailMobile';
-import { productPath } from '../routes/paths';
+import ProductDetailDesktop from './ProductDetailDesktop';
+import ProductQuestionsSection from './ProductQuestionsSection';
+import ProductPhotoLightbox from './ProductPhotoLightbox';
 import RelatedProductsCarousel from './RelatedProductsCarousel';
-import ProductTopBadge from './ProductTopBadge';
 import { isProductTopActive } from '../utils/productTop';
 import { isOwnStoreProduct } from '../utils/purchaseProfile';
 
@@ -126,6 +121,8 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     ? product.imagenes
     : [product.imagen || productReferenceImage(product)]).filter(Boolean);
   const [activeImage, setActiveImage] = useState(0);
+  // Fotos a pantalla completa (solo escritorio); comparte `activeImage` con la galería.
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   // El estado del corazon sale del mismo hook que usa el catalogo. Antes esta pantalla
   // llevaba su propio `useState` + `checkIsFavoriteApi`, y para BORRAR le pasaba el id
   // del producto a `removeFavoriteApi`, que espera el id DEL FAVORITO: el DELETE moria,
@@ -194,7 +191,32 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const sellerRating = Number(product.vendedorRating ?? 0);
   const sellerReviews = Number(product.vendedorReviewCount ?? 0);
   const hasSellerRating = sellerRating > 0;
-  const shippingMethods = parseShippingMethods(product.metodosEnvio);
+  // Como en la app: con la comuna del comprador se ofrece solo lo que le sirve (dentro de la
+  // comuna si es la de la tienda, fuera si no) y lo que elija acá es lo que el carro confirma.
+  const shippingMethods = useMemo(
+    () => productShippingOptions(product.metodosEnvio, user?.comuna, product.ciudadVendedor),
+    [product.metodosEnvio, user?.comuna, product.ciudadVendedor],
+  );
+  // Lo que se elige antes de comprar. Si la tienda no publicó métodos queda "a coordinar", como en la app.
+  const shippingChoices = useMemo(
+    () => (shippingMethods.length ? shippingMethods : ['A coordinar con el vendedor']),
+    [shippingMethods],
+  );
+  const [selectedShippingMethod, setSelectedShippingMethod] = useState('');
+  useEffect(() => { setSelectedShippingMethod(''); }, [product.id]);
+  useEffect(() => {
+    if (selectedShippingMethod && !shippingChoices.includes(selectedShippingMethod)) setSelectedShippingMethod('');
+  }, [shippingChoices, selectedShippingMethod]);
+  const canChooseShipping = !isOwnProduct && !quoteOnly;
+  // Intento de compra sin método: se lleva al comprador a la card y se resalta un momento.
+  const shippingCardRef = useRef(null);
+  const [shippingFocused, setShippingFocused] = useState(false);
+  const shippingFocusTimer = useRef(null);
+  useEffect(() => () => clearTimeout(shippingFocusTimer.current), []);
+  const selectShippingMethod = (method) => {
+    setSelectedShippingMethod(method);
+    setShippingFocused(false);
+  };
   // El distintivo "Más vendido" solo aparece cuando el producto registra ventas.
   const isBestSeller = Number(product.vendidos || 0) > 0;
   const isTopProduct = isProductTopActive(product);
@@ -453,16 +475,20 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     }
   };
 
+  // Filtro del catálogo para la categoría (y subcategoría) de este producto. El id puede venir
+  // nulo según el endpoint; entonces se filtra por nombre.
+  const catalogFilterFor = (withSubcategory) => ({
+    categoryId: product.categoriaId || undefined,
+    category: product.categoriaId ? undefined : (product.categoriaNombre || undefined),
+    subcategoryId: withSubcategory ? (product.subcategoriaId || undefined) : undefined,
+    subcategory: withSubcategory && !product.subcategoriaId ? (product.subcategoria || undefined) : undefined,
+  });
+
   const viewCompatibleProducts = () => {
     if (!plateVehicle) return;
     setActiveVehicle(plateVehicle);
     setCompatibilityOpen(false);
-    nav.goCatalog({
-      categoryId: product.categoriaId || undefined,
-      category: product.categoriaId ? undefined : (product.categoriaNombre || undefined),
-      subcategoryId: product.subcategoriaId || undefined,
-      subcategory: product.subcategoriaId ? undefined : (product.subcategoria || undefined),
-    });
+    nav.goCatalog(catalogFilterFor(true));
   };
 
   // Pruebas de lanzamiento 10G (2026-09-24): el dueno veia el formulario para preguntarse a si mismo y,
@@ -501,18 +527,62 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   // salta al carrito de inmediato en vez de esperar el viaje al backend. Ningún
   // marketplace exige dirección para agregar al carro -eso se resuelve en el checkout-,
   // así que se sacó el guard que bloqueaba con un modal cuando `user.comuna` venía vacío.
+  // Como en la app, primero se elige cómo recibirlo: viaja con el producto y el carro solo lo
+  // confirma. Sin elegir, no se compra ni se agrega: se lleva a "Opciones de entrega".
+  const requireShippingMethod = () => {
+    if (selectedShippingMethod) return true;
+    shippingCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setShippingFocused(true);
+    clearTimeout(shippingFocusTimer.current);
+    shippingFocusTimer.current = setTimeout(() => setShippingFocused(false), 4000);
+    return false;
+  };
+  const cartOptions = () => ({
+    shippingMethod: selectedShippingMethod,
+    shippingFee: localDeliveryCost(selectedShippingMethod),
+  });
+
   const buyNow = () => {
-    onAddToCart(product);
+    if (!requireShippingMethod()) return;
+    onAddToCart(product, cartOptions());
     nav.goCart();
   };
 
   const addToCartNow = async () => {
-    await onAddToCart(product);
+    if (!requireShippingMethod()) return;
+    await onAddToCart(product, cartOptions());
   };
 
-  // Ficha móvil clonada de la app (≤768px): el mismo breakpoint de la tabla de
-  // compatibilidades separa ambos layouts. El escritorio no cambia.
+  // Ficha móvil clonada de la app (≤768px) o ficha de escritorio (ProductDetailDesktop): el
+  // mismo breakpoint de la tabla de compatibilidades separa ambos layouts.
   const isMobileLayout = !isCompatTableLayout;
+
+  // En escritorio las migas navegan (Inicio, categoría, subcategoría); en el móvil siguen siendo texto.
+  const crumbs = [
+    { label: 'Inicio', go: nav.goHome },
+    { label: category, go: () => nav.goCatalog(catalogFilterFor(false)) },
+    ...(product.subcategoria ? [{ label: product.subcategoria, go: () => nav.goCatalog(catalogFilterFor(true)) }] : []),
+  ];
+
+  // Una sola instancia para ambos layouts: el móvil la pinta al final; el escritorio, en su
+  // columna izquierda bajo la descripción.
+  const questionsSection = (
+    <ProductQuestionsSection
+      ref={questionsSectionRef}
+      isOwnProduct={isOwnProduct}
+      question={question}
+      onQuestionChange={setQuestion}
+      onSubmitQuestion={submitQuestion}
+      questionPending={questionMutation.isPending}
+      questionError={questionError}
+      answerError={answerError}
+      questions={publicQuestions}
+      answerDrafts={answerDrafts}
+      onAnswerDraftChange={(questionId, value) => setAnswerDrafts((drafts) => ({ ...drafts, [questionId]: value }))}
+      onSubmitAnswer={submitAnswer}
+      answerPending={answerMutation.isPending}
+    />
+  );
 
   return (
     <main className="product-marketplace-page">
@@ -522,8 +592,14 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             <ArrowLeft size={17} /> Volver al catálogo
           </button>
           <nav className="product-marketplace-crumb" aria-label="Ruta del producto">
-            <span>Inicio</span><ChevronRight size={13} /><span>{category}</span>
-            {product.subcategoria && <><ChevronRight size={13} /><span>{product.subcategoria}</span></>}
+            {crumbs.map((crumb, index) => (
+              <React.Fragment key={crumb.label}>
+                {index > 0 && <ChevronRight size={13} />}
+                {isMobileLayout
+                  ? <span>{crumb.label}</span>
+                  : <button type="button" className="product-marketplace-crumb-link" onClick={crumb.go}>{crumb.label}</button>}
+              </React.Fragment>
+            ))}
           </nav>
         </div>
 
@@ -559,6 +635,11 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             onOpenCompatibility={() => setCompatibilityOpen(true)}
             onOpenBrandModal={() => setBrandModalOpen(true)}
             onOpenStore={onOpenStore}
+            shippingMethods={shippingChoices}
+            selectedShippingMethod={selectedShippingMethod}
+            onSelectShippingMethod={canChooseShipping ? selectShippingMethod : null}
+            shippingSectionRef={shippingCardRef}
+            shippingFocused={shippingFocused}
           />
 
           {/* Barra fija de acción como la de la app: favorito + acción principal,
@@ -593,322 +674,59 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
               <button type="button" className="mobile-sticky-bar__btn" disabled={!stock} onClick={buyNow}>Comprar</button>
             </MobileStickyBar>
           ))}
+
+          <RelatedProductsCarousel product={product} onSelectProduct={onSelectProduct} />
+          {questionsSection}
         </>) : (
-        <section className="product-marketplace-layout">
-          <article className={`product-marketplace-gallery ${images.length > 1 ? '' : 'single-image'}`}>
-            {isTopProduct && <ProductTopBadge className="product-detail-top-badge" />}
-            {isBestSeller && <span className="product-marketplace-ranking">Más vendido</span>}
-            <button
-              className={`product-marketplace-favorite ${favorite ? 'active' : ''}`}
-              type="button"
-              aria-label={favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-              onClick={handleToggleFavorite}
-            >
-              <Heart size={22} fill={favorite ? 'currentColor' : 'none'} />
-            </button>
-            <ShareLinkButton
-              className="product-marketplace-share"
-              iconOnly
-              iconSize={22}
-              stopPropagation={false}
-              url={productPath(product)}
-              title={product.titulo}
-              text={`${product.titulo} en RepuesTop`}
-              label="Compartir repuesto"
-            />
-            <div className="product-marketplace-photo">
-              <ProductPhoto src={images[activeImage]} product={product} alt={product.titulo} iconSize={76} />
-            </div>
-            {images.length > 1 && <>
-              <button className="product-marketplace-image-arrow previous" type="button" onClick={() => changeImage(-1)} aria-label="Imagen anterior"><ChevronLeft /></button>
-              <button className="product-marketplace-image-arrow next" type="button" onClick={() => changeImage(1)} aria-label="Imagen siguiente"><ChevronRight /></button>
-            </>}
-            {/* Con una sola foto la tira de miniaturas es una barra vacía: se omite
-                y la imagen ocupa todo el alto de la galería. */}
-            {images.length > 1 && <div className="product-marketplace-thumbs">
-              {images.map((image, index) => (
-                <button key={`${image}-${index}`} type="button" className={index === activeImage ? 'active' : ''} onClick={() => setActiveImage(index)}>
-                  <ProductPhoto src={image} product={product} alt={`Vista ${index + 1} de ${product.titulo}`} />
-                </button>
-              ))}
-            </div>}
-          </article>
-
-          <article className="product-marketplace-summary">
-            <div className="product-marketplace-condition"><i /> {condition.toUpperCase()} <span>·</span> {stock} disponibles</div>
-            <div className="product-marketplace-title-row">
-              <h1>{product.titulo}</h1>
-              <span className="product-marketplace-verified"><BadgeCheck size={18} /> Producto verificado</span>
-            </div>
-            <div className="product-marketplace-brand">
-              <span className="product-marketplace-category-tag">{category}</span>
-              {brandName && (
-                <button
-                  type="button"
-                  className="product-marketplace-brand-pill"
-                  onClick={() => setBrandModalOpen(true)}
-                  title={`Ver información y procedencia de la marca ${brandName}`}
-                  aria-label={`Ver información y procedencia de la marca ${brandName}`}
-                >
-                  <ProductBrandMark brand={brandName} logoUrl={product.brandLogoUrl} size={26} />
-                  <span className="product-marketplace-brand-pill-text">
-                    Marca: <strong>{brandName}</strong>
-                  </span>
-                  <Info size={14} className="product-marketplace-brand-pill-icon" />
-                </button>
-              )}
-            </div>
-            {compatible && <div className="product-marketplace-match"><CheckCircle2 size={18} /> Compatible con tu {activeVehicle.marca} {activeVehicle.modelo}</div>}
-            <div className="product-marketplace-code">Código OEM / SKU: <strong>{product.oemCode || product.sku || 'No informado'}</strong></div>
-            <div className={`product-marketplace-description ${descriptionIsLong ? 'clamped' : ''} ${descriptionExpanded ? 'expanded' : ''}`}>
-              <p>{descriptionText}</p>
-            </div>
-            {descriptionIsLong && (
-              <button type="button" className="product-marketplace-description-toggle" onClick={() => setDescriptionExpanded((value) => !value)}>
-                {descriptionExpanded ? 'Ver menos' : 'Ver descripción completa'}
-                <ChevronRight size={13} />
-              </button>
-            )}
-
-            <section className="product-marketplace-store">
-              <span className="product-marketplace-store-logo">
-                {product.logoTienda
-                  ? <img src={product.logoTienda} alt={`Logo de ${sellerName}`} referrerPolicy="no-referrer" />
-                  : <StoreLogoBadge name={sellerName} seed={product.proveedorId || 0} size={46} />}
-              </span>
-
-              <div className="product-marketplace-store-copy">
-                <small>Vendido por</small>
-                <strong title={sellerName}>{sellerName} <BadgeCheck size={15} /></strong>
-                <small className="product-marketplace-store-place"><MapPin size={12} /> Tienda verificada en {city}</small>
-              </div>
-
-              {hasSellerRating && (
-                <div className="product-marketplace-rating">
-                  <Star size={15} fill="currentColor" />
-                  <strong>{sellerRating.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</strong>
-                  <small>{sellerReviews === 1 ? '1 evaluación' : `${sellerReviews} evaluaciones`}</small>
-                </div>
-              )}
-
-              {onOpenStore && (
-                <button type="button" className="product-marketplace-store-link" onClick={() => onOpenStore(product)}>
-                  Ver tienda <ChevronRight size={14} />
-                </button>
-              )}
-            </section>
-
-            <div className="product-marketplace-benefits">
-              <span><Truck /><b>Despacho rápido</b><small>Envíos a todo Chile</small></span>
-              <span><CheckCircle2 /><b>Garantía legal</b><small>6 meses desde la entrega</small></span>
-              <span><ShieldCheck /><b>Calidad garantizada</b><small>Productos verificados</small></span>
-            </div>
-          </article>
-
-          {/* Solo movil: el buybox queda bajo la galeria y todo el resumen (a ~1.400px). */}
-          {!isOwnProduct && (quoteOnly ? (
-            <MobileStickyBar label="Precio" value="A cotizar" watchSelector=".product-marketplace-buybox .product-marketplace-primary" ariaLabel="Cotizar este repuesto">
-              <button type="button" className="mobile-sticky-bar__btn" onClick={() => onOpenQuote(product)}><MessageCircle size={18} /> Cotizar</button>
-            </MobileStickyBar>
-          ) : (
-            <MobileStickyBar
-              label={stock > 0 ? 'Precio · IVA incluido' : 'Sin stock'}
-              value={'$' + Number(product.precio).toLocaleString('es-CL')}
-              watchSelector=".product-marketplace-buybox .product-marketplace-primary"
-              ariaLabel="Comprar este repuesto"
-            >
-              <button type="button" className="mobile-sticky-bar__btn is-secondary" disabled={!stock} onClick={addToCartNow} aria-label="Añadir al carro"><ShoppingCart size={20} /></button>
-              <button type="button" className="mobile-sticky-bar__btn" disabled={!stock} onClick={buyNow}>Comprar</button>
-            </MobileStickyBar>
-          ))}
-
-          <aside className="product-marketplace-buybox">
-            <div className="product-marketplace-buy-status"><span><i /> {stock > 0 ? 'Disponible' : 'Sin stock'}</span><small>{stock} disponibles</small></div>
-            {isOwnProduct ? (
-              /* SEC-BACKEND-022 rechaza la auto-compra, pero recien en el
-                 checkout: hasta ahi el vendedor podia agregar su propio producto
-                 al carro y hasta cotizarse a si mismo, y se enteraba al final.
-                 Se corta aca, como ya hace `useAdOwnership` con los anuncios. */
-              <div className="product-marketplace-own-store">
-                <Store />
-                <div>
-                  <strong>Este repuesto es de tu tienda</strong>
-                  <p>No puedes comprarlo ni cotizarlo. Para editarlo entra a "Productos" en tu panel.</p>
-                </div>
-              </div>
-            ) : quoteOnly ? (
-              <>
-                <h2>Precio a cotizar</h2>
-                <p>Solicita el precio final y las alternativas de despacho directamente a la tienda.</p>
-                <button className="product-marketplace-primary quote" type="button" onClick={() => onOpenQuote(product)}><MessageCircle /> Cotizar con la tienda</button>
-              </>
-            ) : (
-              <>
-                <div className="product-marketplace-price">${Number(product.precio).toLocaleString('es-CL')} <small>CLP</small></div>
-                <p>IVA incluido</p>
-                <button className="product-marketplace-primary" type="button" disabled={!stock} onClick={buyNow}><ShoppingCart /> Comprar ahora</button>
-                <button className="product-marketplace-secondary" type="button" disabled={!stock} onClick={addToCartNow}><Package /> Añadir al carro</button>
-              </>
-            )}
-
-            {/* Nada de esto aplica sobre el propio repuesto: el vendedor no puede comprarlo.
-                Lanzamiento (2-oct): solo "procesado por Flow", sin simulador de cuotas ni logos de
-                tarjetas. Los medios de pago se activan y desactivan en Flow; el sitio no promete
-                ninguno en particular (con cuotas o credito el comprador podia esperar algo que no
-                estuviera activo). */}
-            {!isOwnProduct && (
-              <div className="product-marketplace-flow">
-                <div><small>Paga con</small><strong>flow</strong><span>Tu pago se procesa con Flow</span></div>
-              </div>
-            )}
-
-            <div className="product-marketplace-assurances">
-              <span><ShieldCheck /><p><b>Compra segura y protegida</b><small>Tu información está 100% protegida</small></p></span>
-
-              {/* Métodos de entrega reales publicados por la tienda; si todavía no
-                  declaró ninguno se muestra el respaldo genérico. */}
-              {shippingMethods.length ? shippingMethods.map((method) => {
-                const { icon: ShippingIcon, label } = resolveShippingService(method);
-                const price = shippingMethodPrice(method);
-                return (
-                  <span key={method}>
-                    <ShippingIcon />
-                    <p><b>{label}</b><small>{price ? `Valor informado por la tienda: ${price}` : 'Coordinado con la tienda'}</small></p>
-                  </span>
-                );
-              }) : (
-                <span><Truck /><p><b>Despacho a coordinar</b><small>La tienda informa el valor al confirmar tu pedido</small></p></span>
-              )}
-
-            </div>
-
-            {!isOwnProduct && (
-              <div className="product-marketplace-report-footer">
-                <ContextualReportButton
-                  tipoObjeto="PRODUCTO"
-                  objetoId={product.id}
-                  objetoTitulo={product.titulo}
-                  className="btn-product-report-link"
-                  label="Reportar publicación"
-                />
-              </div>
-            )}
-          </aside>
-
-          <section className={`product-marketplace-info-grid${isOwnProduct ? ' is-own-product' : ''}`}>
-            <article>
-              <h2><Package /> Detalles del producto</h2>
-              <dl>
-                <div><dt>Categoría</dt><dd>{category}</dd></div>
-                <div><dt>Subcategoría</dt><dd>{product.subcategoria || 'No especificada'}</dd></div>
-                {brandName && (
-                  <div>
-                    <dt>Marca</dt>
-                    <dd>
-                      <button
-                        type="button"
-                        className="product-marketplace-brand-link-btn"
-                        onClick={() => setBrandModalOpen(true)}
-                        title={`Ver información y procedencia de la marca ${brandName}`}
-                      >
-                        <ProductBrandMark brand={brandName} logoUrl={product.brandLogoUrl} size={20} />
-                        <span>{brandName}</span>
-                        <Info size={13} />
-                      </button>
-                    </dd>
-                  </div>
-                )}
-                <div><dt>OEM / SKU</dt><dd>{product.oemCode || product.sku || 'No informado'}</dd></div>
-                <div><dt>Condición</dt><dd><span>{condition}</span></dd></div>
-              </dl>
-            </article>
-            <article>
-              <h2><Car /> {isUniversalPart ? 'Compatibilidad' : 'Otras compatibilidades'}</h2>
-              {isUniversalPart ? (
-                /* Un repuesto universal NO declara vehiculos, asi que la lista de
-                   compatibilidades sale vacia y el modal decia "No encontramos
-                   compatibilidades": exactamente lo contrario de la verdad. El vendedor
-                   afirmo que sirve para cualquier vehiculo, y eso es lo que hay que decir. */
-                <p className="product-universal-note">
-                  <Globe />
-                  <span>
-                    Este repuesto es <strong>universal</strong>: el vendedor lo publicó como compatible
-                    con cualquier vehículo, así que no depende de la marca ni del modelo de tu auto.
-                  </span>
-                </p>
-              ) : compatibility.length ? (
-                <ul className="product-marketplace-compat-list">
-                  {compatibility.slice(0, 2).map((item, index) => (
-                    <li key={`${item.marca}-${item.modelo}-${index}`}>
-                      <span className="product-marketplace-compat-vehicle">
-                        {[item.marca, item.modelo].filter(Boolean).join(' ') || 'Vehículo compatible'}
-                      </span>
-                      <span className="product-marketplace-compat-tags">
-                        {(item.anioInicio || item.anioFin) && (
-                          <b>{item.anioInicio || '—'}{item.anioFin && item.anioFin !== item.anioInicio ? `–${item.anioFin}` : ''}</b>
-                        )}
-                        {item.version && <b>{item.version}</b>}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p>Consulta a la tienda con tu patente o código OEM para confirmar la compatibilidad.</p>}
-              {!isUniversalPart && (
-                <button type="button" onClick={() => setCompatibilityOpen(true)}>
-                  {compatibility.length > 2 ? `Ver todas las compatibilidades (${compatibility.length})` : compatibility.length > 0 ? 'Ver detalle de compatibilidad' : 'Ver compatibilidades'}
-                  <ChevronRight />
-                </button>
-              )}
-            </article>
-            {/* Ultima mencion a Flow que quedaba en la ficha. Al ocultarla el grid
-                pasa a dos columnas con `is-own-product`, porque son tres fijas y
-                si no queda un hueco a la derecha. */}
-            {!isOwnProduct && (
-              <article>
-                <h2><ShieldCheck /> Compra protegida</h2>
-                <p>Tu compra queda protegida y tu pago se procesa con Flow.</p>
-                <span className="product-marketplace-protected"><BadgeCheck /> Pago y despacho trazables</span>
-              </article>
-            )}
-          </section>
-        </section>
+        <>
+          <ProductDetailDesktop
+            product={product}
+            images={images}
+            activeImage={activeImage}
+            setActiveImage={setActiveImage}
+            onChangeImage={changeImage}
+            onOpenLightbox={() => setLightboxOpen(true)}
+            favorite={favorite}
+            onToggleFavorite={handleToggleFavorite}
+            isTopProduct={isTopProduct}
+            isBestSeller={isBestSeller}
+            condition={condition}
+            category={category}
+            brandName={brandName}
+            city={city}
+            sellerName={sellerName}
+            stock={stock}
+            quoteOnly={quoteOnly}
+            isOwnProduct={isOwnProduct}
+            compatible={compatible}
+            activeVehicle={activeVehicle}
+            isUniversalPart={isUniversalPart}
+            compatibility={compatibility}
+            sellerRating={sellerRating}
+            sellerReviews={sellerReviews}
+            hasSellerRating={hasSellerRating}
+            descriptionText={descriptionText}
+            descriptionIsLong={descriptionIsLong}
+            descriptionExpanded={descriptionExpanded}
+            onToggleDescription={() => setDescriptionExpanded((value) => !value)}
+            onOpenCompatibility={() => setCompatibilityOpen(true)}
+            onOpenBrandModal={() => setBrandModalOpen(true)}
+            onOpenStore={onOpenStore}
+            onOpenQuote={onOpenQuote}
+            onBuyNow={buyNow}
+            onAddToCart={addToCartNow}
+            canChooseShipping={canChooseShipping}
+            shippingChoices={shippingChoices}
+            shippingMethods={shippingMethods}
+            selectedShippingMethod={selectedShippingMethod}
+            onSelectShippingMethod={selectShippingMethod}
+            shippingCardRef={shippingCardRef}
+            shippingFocused={shippingFocused}
+            questions={questionsSection}
+          />
+          <RelatedProductsCarousel product={product} onSelectProduct={onSelectProduct} />
+        </>
         )}
-
-        <RelatedProductsCarousel product={product} onSelectProduct={onSelectProduct} />
-
-        <section className="product-marketplace-questions" ref={questionsSectionRef}>
-          <div className="product-marketplace-questions-head">
-            <div><h2><MessageCircle /> Preguntas públicas</h2><p>{isOwnProduct ? 'Este repuesto es de tu tienda: responde aquí las preguntas de los compradores.' : 'Haz preguntas públicas y ayuda a otros compradores.'}</p></div>
-            {!isOwnProduct && <form onSubmit={submitQuestion}><label><Search /><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Haz tu pregunta sobre este producto..." /></label><button type="submit" disabled={questionMutation.isPending}><Send /> {questionMutation.isPending ? 'Enviando...' : 'Enviar pregunta'}</button></form>}
-          </div>
-          {questionError && <div className="product-marketplace-question-error">{questionError}</div>}
-          {answerError && <div className="product-marketplace-question-error">{answerError}</div>}
-          {publicQuestions.length > 0 ? <div className="product-marketplace-question-list">
-            {publicQuestions.map((item, index) => {
-              const text = item.pregunta || item.texto || item.question || item.message || 'Pregunta sin detalle';
-              const answer = item.respuesta || item.answer || item.sellerResponse || '';
-              const canAnswer = isOwnProduct && !answer && item.id;
-              return <article key={item.id || index}><span>Pregunta pública</span><strong>{text}</strong>
-                {canAnswer ? (
-                  <form className="product-marketplace-answer-form" onSubmit={(event) => submitAnswer(event, item.id)} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                    <input
-                      value={answerDrafts[item.id] || ''}
-                      onChange={(event) => setAnswerDrafts((drafts) => ({ ...drafts, [item.id]: event.target.value }))}
-                      placeholder="Escribe tu respuesta..."
-                      maxLength={500}
-                      aria-label={`Responder: ${text}`}
-                      style={{ flex: 1, padding: '8px 10px', border: '1px solid #d6dee8', borderRadius: 8 }}
-                    />
-                    <button type="submit" disabled={answerMutation.isPending || !(answerDrafts[item.id] || '').trim()}
-                      style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#1f6feb', color: '#fff', fontWeight: 700 }}>
-                      <Send /> Responder
-                    </button>
-                  </form>
-                ) : <p>{answer ? <><b>Respuesta de la tienda:</b> {answer}</> : 'La tienda todavía no ha respondido.'}</p>}
-              </article>;
-            })}
-          </div> : <div className="product-marketplace-no-questions"><MessageCircle /><span><strong>Aún no hay preguntas sobre este producto</strong><small>Sé la primera persona en consultar a la tienda.</small></span></div>}
-        </section>
       </div>
 
       {compatibilityOpen && (
@@ -1141,6 +959,18 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
         brand={brandName}
         product={product}
       />
+
+      {lightboxOpen && !isMobileLayout && (
+        <ProductPhotoLightbox
+          images={images}
+          index={activeImage}
+          product={product}
+          title={product.titulo}
+          onClose={() => setLightboxOpen(false)}
+          onChange={changeImage}
+          onSelect={setActiveImage}
+        />
+      )}
     </main>
   );
 }

@@ -10,6 +10,8 @@ import './styles/chat-mobile.css'
 import './styles/public-mobile.css'
 // Ficha del repuesto en movil clonada de la app (2026-09-29); despues de public-mobile.css.
 import './styles/product-detail-mobile.css'
+// Ficha del repuesto en escritorio (≥769px): todo dentro de min-width, no toca el móvil.
+import './styles/product-detail-desktop.css'
 import App from './App.jsx'
 import { initSentry } from './sentry.js'
 import { watchStaleChunks } from './utils/staleDeploy.js'

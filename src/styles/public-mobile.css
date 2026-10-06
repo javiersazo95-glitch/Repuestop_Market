@@ -381,52 +381,9 @@
      12. FICHA DEL REPUESTO (galeria mas baja, titulo legible, pago compacto)
      ------------------------------------------------------------------------- */
   .product-marketplace-page { padding-top: 6px; }
-  /* La foto de imagen unica mide el 100% de la galeria (index.css): se fija la galeria. */
-  .product-marketplace-gallery { height: 300px; padding: 10px 12px; }
-  .product-marketplace-gallery:not(.single-image) { height: 372px; }
-  .product-marketplace-gallery:not(.single-image) .product-marketplace-photo { height: 280px; }
-  .product-marketplace-photo img { padding: 10px 18px 4px; }
-  .product-marketplace-summary .product-marketplace-title-row h1 { font-size: 22px; line-height: 1.25; }
-  .product-marketplace-condition { font-size: 12.5px; }
-  .product-marketplace-verified { font-size: 12px; }
-  .product-marketplace-brand span { min-height: 34px; font-size: 13px; }
-  .product-marketplace-code { font-size: 13px; }
-  .product-marketplace-description { font-size: 14px; }
-  .product-marketplace-store { min-height: 0; }
-  .product-marketplace-rating small,
-  .product-marketplace-seniority small { font-size: 11px; }
-  .product-marketplace-store-link { min-height: 40px; font-size: 12.5px; }
-  /* Beneficios: una fila de chips desplazable en vez de 3 filas de 57px. */
-  .product-marketplace-benefits {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-  .product-marketplace-benefits::-webkit-scrollbar { display: none; }
-  .product-marketplace-benefits > span { flex: 0 0 auto; min-height: 40px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; }
-  .product-marketplace-benefits svg { width: 18px; height: 18px; }
-  .product-marketplace-benefits b { font-size: 12px; white-space: nowrap; }
-  .product-marketplace-benefits small { display: none; }
-  /* Buybox: botones de 52px y pago mas compacto. */
-  .product-marketplace-primary,
-  .product-marketplace-secondary { min-height: 52px; font-size: 16px; }
-  .product-marketplace-flow { padding: 12px 14px; }
-  .product-marketplace-flow > div:first-child strong { font-size: 22px; }
-  .product-marketplace-installments-hint { font-size: 12px; }
-  .product-marketplace-installments > small { display: none; }
-  .payment-brand-mastercard > small { font-size: 9px; }
-  .product-marketplace-assurances { gap: 10px; }
-  .product-marketplace-assurances > span > svg { width: 32px; height: 32px; }
-  .product-marketplace-assurances small { font-size: 11.5px; }
-  .product-marketplace-info-grid dd span { font-size: 11px; }
-  .product-marketplace-info-grid p { font-size: 12.5px; }
-  .product-marketplace-info-grid article > button { min-height: 44px; font-size: 12.5px; }
   .product-marketplace-questions-head p { margin-left: 0; font-size: 12px; }
   .product-marketplace-questions label,
   .product-marketplace-questions form button { min-height: 46px; }
-  .product-marketplace-image-arrow { width: 44px; height: 44px; }
 
   /* -------------------------------------------------------------------------
      13. DETALLE DEL ANUNCIO
@@ -911,7 +868,6 @@
   /* about.css usa !important en la etiqueta de los planes. */
   :root .rt-about .rt-pricing__tag { font-size: 11px !important; }
   :root .rt-about-header__logo { min-height: 44px; }
-  .product-marketplace-brand-link-btn { min-height: 40px; }
   :root .ad-detail-mapslink { min-height: 40px; display: inline-flex; align-items: center; }
   :root .ad-detail-facts dd span,
   :root .ad-detail-facts span,

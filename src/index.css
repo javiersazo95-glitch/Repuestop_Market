@@ -14319,7 +14319,6 @@ input, select, textarea {
 .market-product-top-badge + .market-product-badge { left: 62px; }
 .catalog-product-top-badge { position: absolute; z-index: 4; left: 8px; bottom: 7px; }
 .catalog-top-expired { position: absolute; z-index: 3; left: 12px; bottom: 12px; padding: 6px 9px; border: 1px solid #d7dee8; border-radius: 8px; color: #687789; background: rgba(255,255,255,.94); box-shadow: 0 4px 12px rgba(20,40,70,.12); font-size: 10px; font-weight: 850; }
-.product-detail-top-badge { position: absolute; z-index: 4; left: 16px; bottom: 16px; }
 
 .product-top-explainer-overlay,
 .product-top-management-overlay { position: fixed; z-index: 10050; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(10,25,50,.56); backdrop-filter: blur(5px); }
@@ -14363,7 +14362,6 @@ input, select, textarea {
   .product-top-management > header .product-top-badge { width: 54px; height: 54px; }
   .product-top-management h3 { font-size: 18px; }
   .product-top-explainer { padding: 24px 20px calc(20px + env(safe-area-inset-bottom)); border-radius: 20px; }
-  .product-detail-top-badge { width: 58px; height: 58px; }
 }
 .market-product-favorite { position: absolute; z-index: 2; top: 9px; right: 9px; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: rgba(13, 27, 51, .27); filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
 .market-product-content { min-height: 190px; padding: 10px 11px 10px; display: flex; flex: 1; flex-direction: column; }
@@ -14414,11 +14412,6 @@ input, select, textarea {
 .catalog-applied-filter-notice.catalog-vehicle-match-notice button { border-left-color: #a7f3d0; color: #047857; }
 .catalog-applied-filter-notice.catalog-vehicle-match-notice button:hover { color: #b42318; }
 
-.product-marketplace-page { min-height: calc(100vh - 120px); padding: 28px 0 64px; background: #f5f6f7; }.product-marketplace-container { max-width: 1220px; }.product-marketplace-back, .product-marketplace-crumb { border: 0; color: #3483fa; background: transparent; font-size: 13px; }.product-marketplace-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px; cursor: pointer; }.product-marketplace-crumb { display: flex; align-items: center; gap: 6px; margin-bottom: 13px; color: #87909a; }.product-marketplace-crumb span:last-child { color: #59636e; }.product-marketplace-card { display: grid; grid-template-columns: minmax(350px, .95fr) minmax(320px, .9fr) minmax(280px, .75fr); overflow: hidden; border-radius: 6px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.12); }.product-marketplace-gallery { padding: 22px; border-right: 1px solid #eee; }.product-marketplace-photo { position: relative; display: grid; place-items: center; height: 450px; color: #b4bcc4; background: #fff; }.product-marketplace-photo img { width: 100%; height: 100%; object-fit: contain; }.product-marketplace-favorite { position: absolute; top: 0; right: 0; display: grid; place-items: center; width: 42px; height: 42px; border: 0; border-radius: 50%; color: #3483fa; background: #f5faff; cursor: pointer; }.product-marketplace-favorite.active { color: #e24573; }.product-marketplace-thumbs { display: flex; gap: 8px; margin-top: 15px; }.product-marketplace-thumbs button { width: 54px; height: 54px; padding: 3px; border: 1px solid #ddd; border-radius: 4px; background: #fff; cursor: pointer; }.product-marketplace-thumbs button.active { border: 2px solid #3483fa; }.product-marketplace-thumbs img { width: 100%; height: 100%; object-fit: contain; }
-/* Sin miniaturas la foto usa todo el alto disponible de la galería. */
-.product-marketplace-gallery.single-image .product-marketplace-photo { height: 100%; }.product-marketplace-summary { padding: 28px 25px; }.product-marketplace-condition { color: #737b84; font-size: 13px; }.product-marketplace-condition span { padding: 0 4px; }.product-marketplace-summary h1 { margin: 10px 0; color: #333; font-size: 23px; font-weight: 500; line-height: 1.25; }.product-marketplace-brand { display: flex; flex-wrap: wrap; gap: 7px; color: #59636e; font-size: 12px; }.product-marketplace-brand span { padding: 5px 8px; border-radius: 12px; background: #f2f4f6; }.product-marketplace-match { display: flex; align-items: center; gap: 7px; margin: 16px 0; padding: 10px; border-radius: 5px; color: #157847; background: #e9f8ee; font-size: 12px; font-weight: 700; }.product-marketplace-code { margin: 14px 0; color: #737b84; font-size: 12px; }.product-marketplace-code strong { color: #425466; }.product-marketplace-description { color: #59636e; font-size: 13px; line-height: 1.55; }.product-marketplace-store { display: flex; align-items: center; gap: 9px; margin-top: 23px; padding-top: 17px; border-top: 1px solid #eee; color: #3483fa; }.product-marketplace-store div { display: grid; flex: 1; gap: 4px; }.product-marketplace-store strong { font-size: 13px; }.product-marketplace-store span { display: flex; align-items: center; gap: 4px; color: #78838e; font-size: 11px; }.product-marketplace-buybox { margin: 16px; padding: 20px; align-self: start; border: 1px solid #ddd; border-radius: 7px; box-shadow: 0 1px 2px rgba(0,0,0,.08); }.product-marketplace-buy-status { color: #00a650; font-size: 13px; }.product-marketplace-buybox h2 { margin: 12px 0 5px; color: #333; font-size: 22px; font-weight: 500; }.product-marketplace-buybox > p { margin: 0 0 16px; color: #737b84; font-size: 12px; }.product-marketplace-price { margin: 12px 0 3px; color: #222; font-size: 31px; line-height: 1; }.product-marketplace-price small { font-size: 15px; }.product-marketplace-primary, .product-marketplace-secondary { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; min-height: 47px; border: 0; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer; }.product-marketplace-primary { margin-top: 18px; color: #fff; background: #3483fa; }.product-marketplace-primary:hover { background: #2968c8; }.product-marketplace-primary:disabled { background: #c9d2dc; cursor: not-allowed; }.product-marketplace-primary.quote { background: #00a650; }.product-marketplace-secondary { margin-top: 9px; color: #3483fa; background: #e3f1ff; }.product-marketplace-payments, .product-marketplace-delivery { display: grid; gap: 7px; margin-top: 18px; padding-top: 16px; border-top: 1px solid #eee; color: #59636e; font-size: 11px; }.product-marketplace-payments strong { color: #333; font-size: 12px; }.product-marketplace-payments span, .product-marketplace-delivery { display: flex; align-items: center; gap: 6px; }.product-marketplace-delivery { align-items: flex-start; }.product-marketplace-delivery div { display: grid; gap: 4px; }.product-marketplace-delivery strong { color: #333; font-size: 12px; }.product-marketplace-info-grid { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 16px; margin-top: 18px; }.product-marketplace-info-grid article { min-height: 190px; padding: 22px; border-radius: 6px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.12); }.product-marketplace-info-grid h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 17px; color: #333; font-size: 17px; }.product-marketplace-info-grid dl { margin: 0; }.product-marketplace-info-grid dl div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 12px; }.product-marketplace-info-grid dt { color: #737b84; }.product-marketplace-info-grid dd { margin: 0; color: #333; text-align: right; }.product-marketplace-info-grid p { color: #59636e; font-size: 13px; line-height: 1.5; }.product-marketplace-compatibility { display: flex; flex-wrap: wrap; gap: 7px; }.product-marketplace-compatibility span, .product-marketplace-protected { display: inline-flex; align-items: center; gap: 5px; padding: 7px 9px; border-radius: 4px; color: #167148; background: #e8f8ed; font-size: 11px; font-weight: 700; }
-@media (max-width: 980px) { .product-marketplace-card { grid-template-columns: 1fr 1fr; }.product-marketplace-buybox { grid-column: 1 / -1; margin: 0 22px 22px; }.product-marketplace-info-grid { grid-template-columns: 1fr; } }.product-marketplace-buybox .product-marketplace-delivery span { display: block; }
-@media (max-width: 650px) { .product-marketplace-page { padding-top: 15px; }.product-marketplace-card { grid-template-columns: 1fr; }.product-marketplace-gallery { border-right: 0; }.product-marketplace-photo { height: 300px; }.product-marketplace-summary { padding: 20px; }.product-marketplace-buybox { grid-column: auto; margin: 0 20px 20px; }.product-marketplace-container { padding: 0 12px; } }
 
 
 /* Final shared seller card: density and hierarchy mirror the reference. */
@@ -14989,181 +14982,26 @@ input, select, textarea {
 .product-marketplace-back { margin: 0; padding: 0; display: inline-flex; align-items: center; gap: 6px; border: 0; color: #2563eb; background: transparent; font-size: 12px; font-weight: 750; cursor: pointer; }
 .product-marketplace-crumb { margin: 0; display: flex; align-items: center; gap: 6px; color: #8390a5; font-size: 11px; }
 .product-marketplace-crumb span:last-child { color: #43526b; }
-.product-marketplace-layout { display: grid; grid-template-columns: minmax(390px, 1.03fr) minmax(390px, 1.12fr) minmax(350px, .92fr); grid-template-areas: 'gallery summary buybox' 'information information buybox'; align-items: start; gap: 18px; }
-.product-marketplace-gallery,
-.product-marketplace-summary,
-.product-marketplace-buybox,
-.product-marketplace-info-grid > article,
 .product-marketplace-questions { border: 1px solid #e1e7f0; background: rgba(255,255,255,.97); box-shadow: 0 9px 26px rgba(23, 50, 91, .08); }
-.product-marketplace-gallery { position: relative; grid-area: gallery; min-width: 0; height: 510px; padding: 15px 18px 17px; overflow: hidden; border-radius: 16px; background: radial-gradient(circle at 82% 42%, #cfe5ff 0, #f5faff 27%, #fff 67%); }
-.product-marketplace-gallery::after { position: absolute; right: -70px; bottom: -125px; width: 430px; height: 260px; border-radius: 50%; background: radial-gradient(ellipse, rgba(84, 159, 255, .25), transparent 68%); content: ''; pointer-events: none; }
-.product-marketplace-ranking { position: absolute; z-index: 3; top: 14px; left: 18px; min-height: 26px; padding: 0 13px; display: inline-flex; align-items: center; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #2784ff, #5c3bff); box-shadow: 0 7px 14px rgba(46, 105, 240, .25); font-size: 10px; font-weight: 850; }
-.product-marketplace-favorite { position: absolute; z-index: 3; top: 17px; right: 18px; width: 48px; height: 48px; display: grid; place-items: center; border: 1px solid #edf0f5; border-radius: 50%; color: #ff315c; background: #fff; box-shadow: 0 7px 17px rgba(30, 54, 89, .13); cursor: pointer; }
-.product-marketplace-favorite.active { color: #e91649; background: #fff1f5; }
-.product-marketplace-photo { position: relative; z-index: 1; width: 100%; height: 405px; min-height: 0; display: grid; place-items: center; overflow: hidden; color: #9bacbf; background: transparent; }
-.product-marketplace-photo img { position: absolute; inset: 0; width: 100%; height: 100%; min-width: 0; min-height: 0; padding: 18px 30px 6px; box-sizing: border-box; object-fit: contain; filter: drop-shadow(0 15px 15px rgba(27, 42, 70, .13)); }
-.product-marketplace-image-arrow { position: absolute; z-index: 4; top: 43%; width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid #e3eaf3; border-radius: 50%; color: #263750; background: rgba(255,255,255,.95); box-shadow: 0 6px 15px rgba(29, 53, 88, .12); cursor: pointer; }
-.product-marketplace-image-arrow.previous { left: 19px; }.product-marketplace-image-arrow.next { right: 19px; }
-.product-marketplace-thumbs { position: relative; z-index: 3; height: 67px; margin: 6px 0 0; padding: 5px; display: flex; gap: 6px; overflow-x: auto; border: 1px solid rgba(255,255,255,.85); border-radius: 13px; background: rgba(255,255,255,.58); backdrop-filter: blur(8px); }
-.product-marketplace-thumbs button { width: 66px; height: 55px; flex: 0 0 66px; padding: 4px; border: 1px solid #e1e7f0; border-radius: 9px; background: #fff; cursor: pointer; }
-.product-marketplace-thumbs button.active { border: 2px solid #2478ff; box-shadow: 0 0 0 2px rgba(36,120,255,.09); }
-.product-marketplace-thumbs img { width: 100%; height: 100%; object-fit: contain; }
-
-.product-marketplace-summary { grid-area: summary; min-width: 0; min-height: 510px; padding: 18px 12px 0; border-color: transparent; border-radius: 16px; box-shadow: none; background: transparent; }
-.product-marketplace-condition { display: flex; align-items: center; gap: 8px; color: #34506f; font-size: 11px; font-weight: 700; }
-.product-marketplace-condition i { width: 9px; height: 9px; border: 2px solid #cfe4ff; border-radius: 50%; background: #2585ff; }
-.product-marketplace-condition span { color: #9ba7b6; }
-.product-marketplace-title-row { margin: 13px 0 11px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
-.product-marketplace-summary .product-marketplace-title-row h1 { margin: 0; color: #0d1422; font-size: clamp(26px, 2.1vw, 38px); font-weight: 850; letter-spacing: -1.2px; line-height: 1.05; }
-.product-marketplace-verified { display: inline-flex; align-items: center; gap: 5px; color: #4f46f5; font-size: 10px; font-weight: 750; }.product-marketplace-verified svg { color: #6c55ff; }
-.product-marketplace-brand { display: flex; gap: 8px; margin-bottom: 17px; }
-.product-marketplace-brand span { min-height: 32px; padding: 0 13px; display: inline-flex; align-items: center; border-radius: 12px; color: #245bac; background: #eaf3ff; font-size: 11px; }
-.product-marketplace-brand span + span { color: #5a6980; background: #f0f3f7; }.product-marketplace-brand b { margin-left: 4px; color: #20334f; }
-.product-marketplace-code { margin: 0 0 12px; color: #65758c; font-size: 12px; }.product-marketplace-code strong { color: #194277; }
-.product-marketplace-description { position: relative; margin: 0; color: #38475d; font-size: 11.5px; line-height: 1.62; }
-.product-marketplace-description p { margin: 0; }
-/* Velo inferior en lugar de una barra de scroll dentro del texto: la descripción
-   se recorta con degradado y se despliega con "Ver descripción completa". Solo se
-   aplica cuando el texto es largo (clase .clamped); textos cortos no llevan
-   max-height ni degradado, para no verse recortados/desvanecidos sin motivo. */
-.product-marketplace-description.clamped { max-height: 108px; overflow: hidden; }
-.product-marketplace-description.clamped::after { position: absolute; right: 0; bottom: 0; left: 0; height: 34px; background: linear-gradient(180deg, rgba(255,255,255,0), #fff 88%); content: ''; pointer-events: none; }
-.product-marketplace-description.expanded { max-height: none; }
-.product-marketplace-description.expanded::after { display: none; }
-.product-marketplace-description-toggle { margin: 7px 0 0; padding: 0; display: inline-flex; align-items: center; gap: 3px; border: 0; color: #176cff; background: transparent; font-size: 10.5px; font-weight: 800; cursor: pointer; }
-.product-marketplace-description-toggle:hover { color: #0d4fc4; }
-.product-marketplace-match { margin: -4px 0 12px; padding: 8px 10px; display: flex; align-items: center; gap: 7px; border-radius: 8px; color: #138451; background: #e9faf0; font-size: 11px; font-weight: 750; }
-/* Ficha del vendedor: es el bloque de confianza de la vista, así que muestra el
-   logo real de la tienda, su nombre completo y su calificación verdadera. */
-.product-marketplace-store { min-height: 76px; margin: 19px 0 0; padding: 11px 12px; display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 10px; border: 1px solid #dfe6f0; border-radius: 12px; color: #33445c; background: #fbfcfe; }
-.product-marketplace-store-logo { width: 46px; height: 46px; display: grid; place-items: center; flex: 0 0 auto; overflow: hidden; border: 1px solid #e6ecf5; border-radius: 12px; background: #fff; }
-.product-marketplace-store-logo img { width: 100%; height: 100%; object-fit: cover; }
-.product-marketplace-store-logo .store-logo-badge { border-radius: 11px; }
-.product-marketplace-store-copy { min-width: 0; display: grid; gap: 2px; }
-.product-marketplace-store-copy > small:first-child { color: #8a97a9; font-size: 9px; font-weight: 700; letter-spacing: .2px; text-transform: uppercase; }
-.product-marketplace-store-copy strong { min-width: 0; display: flex; align-items: center; gap: 5px; overflow: hidden; color: #16233a; font-size: 13px; font-weight: 800; white-space: nowrap; text-overflow: ellipsis; }
-.product-marketplace-store-copy strong svg { flex: 0 0 auto; color: #1268f3; }
-.product-marketplace-store-place { display: flex; align-items: center; gap: 4px; color: #7b899c; font-size: 9.5px; }
-.product-marketplace-store-place svg { flex: 0 0 auto; }
-.product-marketplace-rating { min-width: 84px; padding-left: 11px; display: grid; grid-template-columns: auto auto; align-items: center; gap: 1px 5px; border-left: 1px solid #e4e9f0; }
-.product-marketplace-rating svg { color: #ffba19; }
-.product-marketplace-rating strong { color: #1b293d; font-size: 12px; }
-.product-marketplace-rating small { grid-column: 1 / -1; color: #8b97a7; font-size: 8.5px; white-space: nowrap; }
-.product-marketplace-store-link { min-height: 34px; padding: 0 13px; display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; border: 1px solid #cfe0fb; border-radius: 9px; color: #1268f3; background: #fff; font-size: 10.5px; font-weight: 800; cursor: pointer; transition: border-color .18s ease, background .18s ease; }
-.product-marketplace-store-link:hover { border-color: #1268f3; background: #f2f7ff; }
-.product-marketplace-benefits { margin-top: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.product-marketplace-benefits > span { min-width: 0; min-height: 54px; padding: 8px; display: grid; grid-template-columns: auto 1fr; align-content: center; gap: 2px 7px; border: 1px solid #e3e9f1; border-radius: 9px; background: #fff; }.product-marketplace-benefits svg { grid-row: 1 / 3; width: 18px; color: #277bfb; }.product-marketplace-benefits > span:nth-child(2) svg { color: #8cb918; }.product-marketplace-benefits > span:nth-child(3) svg { color: #7549f5; }.product-marketplace-benefits b { color: #28374d; font-size: 9px; line-height: 1.25; }.product-marketplace-benefits small { color: #8290a3; font-size: 8px; line-height: 1.3; }
-
-.product-marketplace-buybox { position: sticky; top: 16px; grid-area: buybox; min-width: 0; min-height: 697px; margin: 0; padding: 24px 25px; border-radius: 16px; }
-.product-marketplace-buy-status { display: flex; align-items: center; justify-content: space-between; color: #06a740; font-size: 12px; font-weight: 750; }.product-marketplace-buy-status span { display: flex; align-items: center; gap: 8px; }.product-marketplace-buy-status i { width: 10px; height: 10px; display: block; border: 2px solid #b7f5c9; border-radius: 50%; background: #08bd3d; }.product-marketplace-buy-status small { color: #758399; font-size: 10px; font-weight: 500; }
-.product-marketplace-price { margin: 14px 0 2px; color: #050b15; font-size: clamp(38px, 3vw, 48px); font-weight: 600; letter-spacing: -1.5px; line-height: 1; }.product-marketplace-price small { font-size: 16px; font-weight: 500; letter-spacing: 0; }.product-marketplace-buybox > h2 { margin: 15px 0 7px; color: #0d1626; font-size: 28px; }.product-marketplace-buybox > p { margin: 0 0 13px; color: #748198; font-size: 11px; }
-.product-marketplace-primary, .product-marketplace-secondary { width: 100%; min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 12px; font-size: 14px; font-weight: 850; cursor: pointer; }.product-marketplace-primary svg, .product-marketplace-secondary svg { width: 20px; }.product-marketplace-primary { margin-top: 16px; color: #fff; background: linear-gradient(135deg, #2987ff, #074de7); box-shadow: 0 10px 20px rgba(17, 95, 236, .22); }.product-marketplace-primary:hover { background: linear-gradient(135deg, #1674ee, #0643cb); }.product-marketplace-primary:disabled { background: #bfc8d6; box-shadow: none; cursor: not-allowed; }.product-marketplace-primary.quote { background: linear-gradient(135deg, #7155f7, #4b27df); }.product-marketplace-secondary { min-height: 51px; margin-top: 8px; color: #1658e9; background: linear-gradient(110deg, #e9f3ff, #f4f8ff); }
-.product-marketplace-flow { margin-top: 14px; padding: 12px 15px; border: 1px solid #dce3ec; border-radius: 11px; }.product-marketplace-flow > div:first-child { display: flex; align-items: center; gap: 13px; }.product-marketplace-flow > div:first-child small { color: #53627a; font-size: 9px; }.product-marketplace-flow > div:first-child strong { color: #16b7a8; font-size: 24px; font-weight: 500; letter-spacing: -1px; }.product-marketplace-flow > div:first-child span { color: #728197; font-size: 9px; }.product-marketplace-card-brands { margin-top: 10px; padding-top: 9px; display: flex; align-items: center; justify-content: space-between; gap: 5px; border-top: 1px solid #e8ecf1; }.product-marketplace-card-brands b { padding: 3px 5px; border: 1px solid #e0e5ec; border-radius: 3px; color: #1c4f9a; background: #fff; font-size: 7px; }
-/* Simulación de cuotas Flow: reemplaza el listado estático de "Tarjeta de
-   crédito/débito" por montos aproximados en 3/6/12 cuotas, para incentivar
-   la compra mostrando cuánto pagaría el cliente mes a mes. */
-.product-marketplace-installments { margin: 9px 0 0; padding-top: 9px; border-top: 1px solid #e8ecf1; }
-.product-marketplace-installments-hint { margin: 0 0 8px; display: flex; align-items: center; gap: 7px; color: #16b7a8; font-size: 10.5px; font-weight: 800; }
-.product-marketplace-installments-hint svg { width: 15px; }
-.product-marketplace-installments-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.product-marketplace-installments-grid > div { padding: 8px 6px; display: grid; justify-items: center; gap: 2px; border: 1px solid #d8f2ec; border-radius: 9px; background: linear-gradient(180deg, #f2fdfb, #fff); }
-.product-marketplace-installments-grid strong { color: #0d8f7f; font-size: 11.5px; font-weight: 850; }
-.product-marketplace-installments-grid span { color: #1c2c3f; font-size: 11px; font-weight: 750; white-space: nowrap; }
-.product-marketplace-installments > small { margin-top: 7px; display: block; color: #8a97a9; font-size: 8.5px; line-height: 1.4; }
-.product-marketplace-assurances { margin-top: 14px; display: grid; gap: 11px; }.product-marketplace-assurances > span { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 10px; }.product-marketplace-assurances > span > svg { width: 32px; height: 32px; padding: 7px; border-radius: 9px; color: #219e75; background: #e8f9f2; }.product-marketplace-assurances > span:nth-child(2) > svg, .product-marketplace-assurances > span:nth-child(3) > svg { color: #1d9bb3; background: #e8f8fb; }.product-marketplace-assurances > span:nth-child(4) > svg { color: #6754df; background: #f0edff; }.product-marketplace-assurances p { margin: 0; display: grid; gap: 2px; }.product-marketplace-assurances b { color: #334056; font-size: 9.5px; }.product-marketplace-assurances small { color: #8390a1; font-size: 8.5px; }
-
-.product-marketplace-info-grid { grid-area: information; display: grid; grid-template-columns: 1.2fr .95fr .95fr; gap: 18px; margin: 0; }
-/* En el repuesto propio se oculta "Compra protegida" y quedan dos tarjetas; sin
-   esto sobraria la tercera columna vacia a la derecha. Va pegado a la definicion
-   de arriba a proposito: mas arriba en el archivo hay OTRA regla de este grid
-   (`1.15fr 1fr 1fr`) que quedo muerta, pisada por esta, y su media query de 980px
-   tampoco corre. El breakpoint vivo de este grid es el de 760px. */
-.product-marketplace-info-grid.is-own-product { grid-template-columns: 1.2fr .95fr; }
-.product-marketplace-info-grid > article { min-height: 139px; padding: 17px 20px; border-radius: 13px; box-shadow: 0 5px 17px rgba(23,50,91,.06); }
-.product-marketplace-info-grid h2 { margin: 0 0 13px; display: flex; align-items: center; gap: 8px; color: #152136; font-size: 12px; }.product-marketplace-info-grid h2 svg { width: 18px; color: #176cff; }.product-marketplace-info-grid > article:nth-child(2) h2 svg { color: #21a775; }.product-marketplace-info-grid > article:nth-child(3) h2 svg { color: #6b4eed; }
-.product-marketplace-info-grid dl { margin: 0; }.product-marketplace-info-grid dl div { min-height: 25px; padding: 3px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border: 0; font-size: 9.5px; }.product-marketplace-info-grid dt { color: #748299; }.product-marketplace-info-grid dd { margin: 0; color: #2e3e55; text-align: left; }.product-marketplace-info-grid dd span { padding: 4px 8px; border-radius: 5px; color: #178052; background: #e7f8ee; font-size: 8px; font-weight: 800; text-transform: uppercase; }
-.product-marketplace-info-grid p { margin: 0; color: #66768d; font-size: 9px; line-height: 1.45; }.product-marketplace-info-grid article > button { margin-top: 8px; padding: 0; display: flex; align-items: center; gap: 5px; border: 0; color: #176cff; background: transparent; font-size: 8.5px; font-weight: 750; cursor: pointer; }.product-marketplace-info-grid article > button svg { width: 13px; }.product-marketplace-protected { padding: 6px 9px; margin-top: 9px; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; color: #12824d; background: #e6f9ed; font-size: 8.5px; font-weight: 750; }.product-marketplace-protected svg { width: 13px; }
-/* Card de compatibilidad en el grid de información: lista los vehículos
-   compatibles (marca + modelo) con sus etiquetas de año/versión, en vez de un
-   único chip que solo mostraba el primer registro. */
-.product-marketplace-compat-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
-.product-universal-note { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 12px 14px; border: 1px solid #bfe3cd; border-radius: 10px; background: #f2fbf6; color: #2c5c43; font-size: 13px; line-height: 1.5; }
-.product-universal-note svg { flex-shrink: 0; width: 18px; height: 18px; margin-top: 1px; color: #16a34a; }
-.product-marketplace-compat-list li { padding: 7px 9px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; border: 1px solid #e1e9f4; border-radius: 8px; background: #f8fbff; }
-.product-marketplace-compat-vehicle { color: #17263d; font-size: 9.5px; font-weight: 800; }
-.product-marketplace-compat-tags { display: flex; flex-wrap: wrap; gap: 4px; }
-.product-marketplace-compat-tags b { padding: 3px 7px; border-radius: 5px; color: #12824d; background: #e6f9ed; font-size: 8px; font-weight: 800; }
-
 .product-marketplace-questions { margin-top: 18px; padding: 16px 20px 18px; border-radius: 15px; }
 .product-marketplace-questions-head { display: grid; grid-template-columns: minmax(250px,.7fr) minmax(470px,1.3fr); align-items: center; gap: 20px; }.product-marketplace-questions-head h2 { margin: 0; display: flex; align-items: center; gap: 8px; color: #142035; font-size: 13px; }.product-marketplace-questions-head h2 svg { color: #6e42f5; }.product-marketplace-questions-head p { margin: 3px 0 0 29px; color: #8190a5; font-size: 8.5px; }.product-marketplace-questions form { display: grid; grid-template-columns: 1fr auto; gap: 8px; }.product-marketplace-questions label { min-height: 39px; padding: 0 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #dce3ed; border-radius: 9px; background: #fff; }.product-marketplace-questions label svg { width: 14px; color: #98a6b8; }.product-marketplace-questions input { width: 100%; border: 0; outline: 0; color: #283951; font-size: 9.5px; }.product-marketplace-questions form button { min-height: 39px; padding: 0 17px; display: flex; align-items: center; gap: 7px; border: 0; border-radius: 8px; color: #fff; background: linear-gradient(135deg,#7549f7,#5422d8); font-size: 9.5px; font-weight: 750; cursor: pointer; }.product-marketplace-questions form button svg { width: 13px; }
 .product-marketplace-question-list { margin-top: 13px; display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }.product-marketplace-question-list article { min-height: 95px; padding: 13px 15px; display: grid; align-content: start; gap: 7px; border: 1px solid #e1e7f0; border-radius: 11px; }.product-marketplace-question-list span { color: #6844ec; font-size: 8px; }.product-marketplace-question-list strong { color: #28374e; font-size: 10px; }.product-marketplace-question-list p { margin: 0; color: #8390a1; font-size: 8.5px; }
 .product-marketplace-no-questions { min-height: 64px; margin-top: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1px dashed #d9e1ec; border-radius: 10px; color: #8b6bf4; background: #fbfaff; }.product-marketplace-no-questions > span { display: grid; gap: 2px; }.product-marketplace-no-questions strong { color: #4b5870; font-size: 9.5px; }.product-marketplace-no-questions small { color: #8a97aa; font-size: 8px; }
 
-@media (max-width: 1250px) {
-  .product-marketplace-layout { grid-template-columns: minmax(340px,1fr) minmax(340px,1fr); grid-template-areas: 'gallery summary' 'information information' 'buybox buybox'; }
-  .product-marketplace-buybox { position: static; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; }
-  .product-marketplace-buybox .product-marketplace-buy-status, .product-marketplace-buybox > h2, .product-marketplace-buybox > .product-marketplace-price, .product-marketplace-buybox > p, .product-marketplace-buybox > button { grid-column: 1; }
-  .product-marketplace-flow { grid-column: 2; grid-row: 1 / 5; margin-top: 0; }.product-marketplace-assurances { grid-column: 2; }
-}
 @media (max-width: 760px) {
-  .product-marketplace-page { padding-top: 10px; }.product-marketplace-container { width: min(calc(100% - 24px),1560px); }.product-marketplace-toolbar { align-items: flex-start; flex-direction: column; gap: 6px; }.product-marketplace-layout { grid-template-columns: 1fr; grid-template-areas: 'gallery' 'summary' 'buybox' 'information'; }.product-marketplace-gallery { height: 430px; }.product-marketplace-photo { height: 330px; }.product-marketplace-summary { min-height: 0; padding: 14px 5px; }.product-marketplace-store { grid-template-columns: auto 1fr; }.product-marketplace-rating { padding-left: 0; border-left: 0; }.product-marketplace-store-link { justify-content: center; }.product-marketplace-benefits { grid-template-columns: 1fr; }.product-marketplace-buybox { display: block; padding: 20px; }.product-marketplace-info-grid { grid-template-columns: 1fr; }.product-marketplace-info-grid.is-own-product { grid-template-columns: 1fr; }.product-marketplace-questions-head { grid-template-columns: 1fr; }.product-marketplace-questions form { grid-template-columns: 1fr; }.product-marketplace-question-list { grid-template-columns: 1fr; }
+  .product-marketplace-page { padding-top: 10px; }.product-marketplace-container { width: min(calc(100% - 24px),1560px); }.product-marketplace-toolbar { align-items: flex-start; flex-direction: column; gap: 6px; }.product-marketplace-questions-head { grid-template-columns: 1fr; }.product-marketplace-questions form { grid-template-columns: 1fr; }.product-marketplace-question-list { grid-template-columns: 1fr; }
 }
 
 /* Product detail readability: slightly larger type and icon scale. */
 .product-marketplace-back { font-size: 13.5px; }.product-marketplace-back svg { width: 19px; height: 19px; }
 .product-marketplace-crumb { font-size: 12px; }.product-marketplace-crumb svg { width: 15px; height: 15px; }
-.product-marketplace-ranking { min-height: 29px; font-size: 11.5px; }
-.product-marketplace-condition { font-size: 12.5px; }.product-marketplace-condition i { width: 10px; height: 10px; }
-.product-marketplace-verified { font-size: 11.5px; }.product-marketplace-verified svg { width: 20px; height: 20px; }
-.product-marketplace-brand span { min-height: 35px; font-size: 12.5px; }
-.product-marketplace-code { font-size: 13px; }
-.product-marketplace-description { font-size: 13px; line-height: 1.58; }.product-marketplace-description.clamped { max-height: 128px; }
-.product-marketplace-store-icon { width: 44px; height: 44px; }.product-marketplace-store-icon svg { width: 25px; height: 25px; }
-.product-marketplace-store > div:nth-child(2) strong { font-size: 12px; }.product-marketplace-store > div:nth-child(2) small { font-size: 10.5px; }.product-marketplace-store > div:nth-child(2) small svg { width: 15px; height: 15px; }
-.product-marketplace-rating strong, .product-marketplace-seniority strong { font-size: 11px; }.product-marketplace-rating small, .product-marketplace-seniority small { font-size: 9px; }.product-marketplace-rating svg, .product-marketplace-seniority svg { width: 19px; height: 19px; }
-.product-marketplace-benefits svg { width: 21px; height: 21px; }.product-marketplace-benefits b { font-size: 9.5px; }.product-marketplace-benefits small { font-size: 8.5px; }
-.product-marketplace-buy-status { font-size: 13.5px; }.product-marketplace-buy-status small { font-size: 11.5px; }
-.product-marketplace-buybox > p { font-size: 12.5px; }.product-marketplace-primary, .product-marketplace-secondary { font-size: 15px; }.product-marketplace-primary svg, .product-marketplace-secondary svg { width: 22px; height: 22px; }
-.product-marketplace-flow > div:first-child small, .product-marketplace-flow > div:first-child span { font-size: 10.5px; }.product-marketplace-installments-hint { font-size: 11.5px; }.product-marketplace-installments-hint svg { width: 17px; height: 17px; }.product-marketplace-installments-grid strong { font-size: 12.5px; }.product-marketplace-installments-grid span { font-size: 12px; }.product-marketplace-card-brands b { font-size: 8px; }
-.product-marketplace-assurances > span > svg { width: 36px; height: 36px; }.product-marketplace-assurances b { font-size: 11px; }.product-marketplace-assurances small { font-size: 9.5px; }
-.product-marketplace-info-grid h2 { font-size: 14px; }.product-marketplace-info-grid h2 svg { width: 21px; height: 21px; }.product-marketplace-info-grid dl div { font-size: 11px; }.product-marketplace-info-grid dd span { font-size: 9px; }.product-marketplace-info-grid p { font-size: 10.5px; }.product-marketplace-info-grid article > button { font-size: 10px; }.product-marketplace-info-grid article > button svg { width: 15px; height: 15px; }.product-marketplace-protected { font-size: 10px; }.product-marketplace-protected svg { width: 15px; height: 15px; }.product-marketplace-compat-vehicle { font-size: 10.5px; }.product-marketplace-compat-tags b { font-size: 9px; }
 .product-marketplace-questions-head h2 { font-size: 15px; }.product-marketplace-questions-head h2 svg { width: 22px; height: 22px; }.product-marketplace-questions-head p { font-size: 10px; }.product-marketplace-questions input, .product-marketplace-questions form button { font-size: 11px; }.product-marketplace-questions label svg, .product-marketplace-questions form button svg { width: 16px; height: 16px; }.product-marketplace-no-questions > svg { width: 25px; height: 25px; }.product-marketplace-no-questions strong { font-size: 11px; }.product-marketplace-no-questions small { font-size: 9.5px; }.product-marketplace-question-list span { font-size: 9px; }.product-marketplace-question-list strong { font-size: 11.5px; }.product-marketplace-question-list p { font-size: 10px; }
 
 /* Product detail readability — prominent scale requested for the marketplace view. */
 .product-marketplace-back { font-size: 15px; }.product-marketplace-back svg { width: 22px; height: 22px; }
 .product-marketplace-crumb { font-size: 13.5px; }.product-marketplace-crumb svg { width: 17px; height: 17px; }
-.product-marketplace-ranking { min-height: 32px; padding: 0 16px; font-size: 13px; }
-.product-marketplace-favorite { width: 52px; height: 52px; }.product-marketplace-favorite svg { width: 25px; height: 25px; }
-.product-marketplace-condition { font-size: 14px; }.product-marketplace-condition i { width: 12px; height: 12px; }
-.product-marketplace-summary .product-marketplace-title-row h1 { font-size: clamp(31px, 2.35vw, 42px); }
-.product-marketplace-verified { font-size: 13px; }.product-marketplace-verified svg { width: 23px; height: 23px; }
-.product-marketplace-brand span { min-height: 39px; padding: 0 15px; font-size: 14px; }
-.product-marketplace-code { font-size: 14.5px; }
-.product-marketplace-description { font-size: 14.5px; line-height: 1.6; }.product-marketplace-description.clamped { max-height: 145px; }
-.product-marketplace-match { font-size: 13.5px; }.product-marketplace-match svg { width: 21px; height: 21px; }
-.product-marketplace-store { min-height: 82px; }.product-marketplace-store-icon { width: 49px; height: 49px; }.product-marketplace-store-icon svg { width: 28px; height: 28px; }
-.product-marketplace-store > div:nth-child(2) strong { font-size: 13.5px; }.product-marketplace-store > div:nth-child(2) small { font-size: 12px; }.product-marketplace-store > div:nth-child(2) small svg { width: 17px; height: 17px; }
-.product-marketplace-rating, .product-marketplace-seniority { min-width: 86px; }.product-marketplace-rating strong, .product-marketplace-seniority strong { font-size: 12.5px; }.product-marketplace-rating small, .product-marketplace-seniority small { font-size: 10px; }.product-marketplace-rating svg, .product-marketplace-seniority svg { width: 21px; height: 21px; }
-.product-marketplace-benefits > span { min-height: 57px; padding: 9px; }.product-marketplace-benefits svg { width: 24px; height: 24px; }.product-marketplace-benefits b { font-size: 11px; }.product-marketplace-benefits small { font-size: 10px; }
-.product-marketplace-buy-status { font-size: 15px; }.product-marketplace-buy-status small { font-size: 13px; }.product-marketplace-buy-status i { width: 12px; height: 12px; }
-.product-marketplace-buybox > p { font-size: 14px; }.product-marketplace-primary, .product-marketplace-secondary { min-height: 61px; font-size: 17px; }.product-marketplace-primary svg, .product-marketplace-secondary svg { width: 25px; height: 25px; }
-.product-marketplace-flow { padding: 15px 17px; }.product-marketplace-flow > div:first-child small, .product-marketplace-flow > div:first-child span { font-size: 12px; }.product-marketplace-flow > div:first-child strong { font-size: 28px; }.product-marketplace-installments-hint { font-size: 12.5px; }.product-marketplace-installments-hint svg { width: 20px; height: 20px; }.product-marketplace-installments-grid strong { font-size: 13.5px; }.product-marketplace-installments-grid span { font-size: 13px; }.product-marketplace-card-brands b { font-size: 9.5px; }
-.product-marketplace-assurances { gap: 14px; }.product-marketplace-assurances > span > svg { width: 40px; height: 40px; }.product-marketplace-assurances b { font-size: 12.5px; }.product-marketplace-assurances small { font-size: 11px; }
-.product-marketplace-info-grid > article { min-height: 160px; padding: 20px 22px; }.product-marketplace-info-grid h2 { font-size: 16px; }.product-marketplace-info-grid h2 svg { width: 24px; height: 24px; }.product-marketplace-info-grid dl div { min-height: 30px; font-size: 13px; }.product-marketplace-info-grid dd span { font-size: 10.5px; }.product-marketplace-info-grid p { font-size: 12px; }.product-marketplace-info-grid article > button { font-size: 11.5px; }.product-marketplace-info-grid article > button svg { width: 17px; height: 17px; }.product-marketplace-protected { padding: 8px 10px; font-size: 11.5px; }.product-marketplace-protected svg { width: 18px; height: 18px; }.product-marketplace-compat-list li { padding: 9px 11px; }.product-marketplace-compat-vehicle { font-size: 11.5px; }.product-marketplace-compat-tags b { padding: 4px 8px; font-size: 10px; }
 .product-marketplace-questions { padding: 20px 23px; }.product-marketplace-questions-head h2 { font-size: 17px; }.product-marketplace-questions-head h2 svg { width: 25px; height: 25px; }.product-marketplace-questions-head p { margin-left: 33px; font-size: 11.5px; }.product-marketplace-questions label, .product-marketplace-questions form button { min-height: 45px; }.product-marketplace-questions input, .product-marketplace-questions form button { font-size: 12.5px; }.product-marketplace-questions label svg, .product-marketplace-questions form button svg { width: 19px; height: 19px; }.product-marketplace-no-questions { min-height: 76px; }.product-marketplace-no-questions > svg { width: 29px; height: 29px; }.product-marketplace-no-questions strong { font-size: 12.5px; }.product-marketplace-no-questions small { font-size: 11px; }.product-marketplace-question-list span { font-size: 10.5px; }.product-marketplace-question-list strong { font-size: 13px; }.product-marketplace-question-list p { font-size: 11.5px; }
 
-/* Recognizable payment brand marks, replacing the generic text chips. */
-.product-marketplace-card-brands { min-height: 58px; margin-top: 13px; padding: 12px 8px 3px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center; gap: 12px; border-top: 1px solid #e5eaf1; }
-.payment-brand-logo { position: relative; width: 100%; min-width: 0; height: 40px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #e0e6ef; border-radius: 7px; background: linear-gradient(180deg, #fff, #fafcff); box-shadow: 0 3px 8px rgba(35,54,84,.07); font-style: normal; line-height: 1; }
-.payment-brand-visa { color: #173f92; font-family: Arial, sans-serif; font-size: 19px; font-style: italic; font-weight: 900; letter-spacing: -1.7px; text-shadow: 0 1px 0 #fff; }
-.payment-brand-mastercard { padding: 0 4px 0 32px; }.payment-brand-mastercard > i { position: absolute; top: 11px; left: 7px; width: 18px; height: 18px; border-radius: 50%; background: #eb001b; }.payment-brand-mastercard > i:nth-child(2) { left: 17px; background: rgba(247,158,27,.94); }.payment-brand-mastercard > small { position: relative; z-index: 2; color: #242936; font-family: Arial, sans-serif; font-size: 7px; font-weight: 750; letter-spacing: -.3px; }
-.payment-brand-redcompra { padding: 0 2px; gap: 0; font-family: Arial, sans-serif; font-style: italic; letter-spacing: -.65px; }.payment-brand-redcompra::before { width: 4px; height: 17px; margin-right: 2px; flex: 0 0 4px; border-radius: 3px 0 0 3px; background: linear-gradient(180deg, #ee2538 0 50%, #174e9e 50%); content: ''; }.payment-brand-redcompra b:first-of-type { color: #e32836; font-size: 9px; font-weight: 900; }.payment-brand-redcompra b:last-of-type { color: #174d9b; font-size: 8.5px; font-weight: 900; }
-
-/* One compact purchase action per product modality. */
-.product-marketplace-buybox .product-marketplace-primary,
-.product-marketplace-buybox .product-marketplace-secondary { min-height: 49px; border-radius: 10px; font-size: 15px; }
-.product-marketplace-buybox .product-marketplace-primary svg,
-.product-marketplace-buybox .product-marketplace-secondary svg { width: 21px; height: 21px; }
 
 /* Full compatibility registry popup. */
 .product-compatibility-modal-backdrop { position: fixed; z-index: 1200; inset: 0; padding: 24px; display: grid; place-items: center; background: rgba(11, 21, 39, .6); backdrop-filter: blur(6px); animation: compatibility-backdrop-in .18s ease-out; }
@@ -15314,7 +15152,7 @@ input, select, textarea {
 .seller-question-product-groups { display: grid; gap: 14px; }.seller-question-product-group { overflow: hidden; border: 1px solid #dce5f0; border-radius: 14px; background: #fff; box-shadow: 0 7px 18px rgba(29,54,91,.06); }.seller-question-product-group > header { min-height: 76px; padding: 12px 15px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 12px; border-bottom: 1px solid #e4eaf2; background: linear-gradient(110deg,#f9fbff,#f5f2ff); }.seller-question-product-group > header > img, .seller-question-product-group > header > span { width: 52px; height: 52px; display: grid; place-items: center; border: 1px solid #dce5f0; border-radius: 10px; object-fit: contain; background: #fff; }.seller-question-product-group > header > span svg { color: #7890ae; }.seller-question-product-group > header h3 { margin: 0; color: #20314a; font-size: 14px; }.seller-question-product-group > header small { color: #8090a5; font-size: 9px; }.seller-question-product-group > header b { min-height: 34px; padding: 0 11px; display: inline-flex; align-items: center; gap: 6px; border-radius: 9px; color: #5c3ed0; background: #ece7ff; font-size: 10px; }.seller-question-product-group > header b svg { width: 16px; }
 .seller-question-list { padding: 13px; display: grid; gap: 10px; }.seller-question-item { padding: 13px 15px; display: grid; gap: 8px; border: 1px solid #e2e8f0; border-radius: 11px; background: #fff; }.seller-question-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; }.seller-question-meta > span { min-height: 25px; padding: 0 8px; display: inline-flex; align-items: center; gap: 5px; border-radius: 7px; font-size: 9px; font-weight: 800; }.seller-question-meta > span svg { width: 13px; }.seller-question-meta > span.pending { color: #ad6d07; background: #fff3d9; }.seller-question-meta > span.answered { color: #147b50; background: #e7f8ee; }.seller-question-meta small { color: #8a97a8; font-size: 9px; }.seller-question-item > strong { color: #263850; font-size: 12.5px; line-height: 1.45; }.seller-question-item > p { margin: 0; padding: 9px 11px; border-left: 3px solid #38a875; border-radius: 0 8px 8px 0; color: #557067; background: #f0faf4; font-size: 10.5px; line-height: 1.45; }.seller-question-item > p b { color: #16754d; }.seller-question-item > p.waiting-answer { border-left-color: #e4a62b; color: #8a691f; background: #fff9eb; }
 .seller-questions-empty { min-height: 260px; display: grid; place-items: center; align-content: center; gap: 7px; border: 1px dashed #d7e0ec; border-radius: 14px; color: #8a99ac; background: #fbfcfe; text-align: center; }.seller-questions-empty > svg { width: 38px; height: 38px; color: #9c8be8; }.seller-questions-empty strong { color: #40516a; font-size: 14px; }.seller-questions-empty span { font-size: 11px; }
-.product-marketplace-questions form button:disabled { opacity: .6; cursor: wait; }.product-marketplace-question-error { margin-top: 11px; padding: 9px 12px; border: 1px solid #fecaca; border-radius: 9px; color: #b42318; background: #fff3f3; font-size: 11px; }.product-marketplace-question-list article p b { color: #168052; }
+.product-marketplace-questions form button:disabled { opacity: .6; cursor: wait; }.product-marketplace-answer-form { display: flex; gap: 8px; margin-top: 8px; }.product-marketplace-answer-form input { flex: 1; padding: 8px 10px; border: 1px solid #d6dee8; border-radius: 8px; }.product-marketplace-answer-form button { padding: 8px 14px; border: 0; border-radius: 8px; color: #fff; background: #1f6feb; font-weight: 700; }.product-marketplace-question-error { margin-top: 11px; padding: 9px 12px; border: 1px solid #fecaca; border-radius: 9px; color: #b42318; background: #fff3f3; font-size: 11px; }.product-marketplace-question-list article p b { color: #168052; }
 
 @media (max-width: 760px) {
   .catalog-card-title-with-questions { grid-template-columns: 1fr; }.catalog-product-question-count { width: fit-content; }.seller-questions-heading { align-items: stretch; flex-direction: column; }.seller-question-summary { display: grid; grid-template-columns: repeat(3,1fr); }.seller-question-summary > span { min-width: 0; }.seller-questions-toolbar { grid-template-columns: 1fr; }.seller-questions-toolbar > div { overflow-x: auto; }.seller-question-product-group > header { grid-template-columns: auto 1fr; }.seller-question-product-group > header > b { grid-column: 1 / -1; width: fit-content; }.seller-question-meta { align-items: flex-start; flex-direction: column; }
@@ -16513,14 +16351,6 @@ input, select, textarea {
    ============================================================ */
 .contextual-report-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid #dfe6ee; border-radius: 8px; color: #7a8da1; background: transparent; font-size: 11px; font-weight: 700; cursor: pointer; transition: color .15s ease, border-color .15s ease; }
 .contextual-report-trigger:hover { color: #c2333d; border-color: #f0c4c7; background: #fdf4f5; }
-.product-marketplace-report-row { margin-top: 14px; display: flex; justify-content: flex-end; }
-.product-marketplace-report-footer {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid #f1f5f9;
-  display: flex;
-  justify-content: center;
-}
 .btn-product-report-link {
   display: inline-flex;
   align-items: center;
@@ -18798,13 +18628,6 @@ input.has-success {
   .terms-reaccept-accept { justify-content: center; }
 }
 
-/* El vendedor en su propia ficha: no puede comprarse ni cotizarse a si mismo.
-   Reutiliza el lenguaje del buybox (mismo radio y misma escala de texto) para no
-   parecer un cartel pegado encima. */
-.product-marketplace-own-store { display: flex; align-items: flex-start; gap: 11px; padding: 14px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
-.product-marketplace-own-store svg { flex-shrink: 0; width: 20px; height: 20px; color: #475569; }
-.product-marketplace-own-store strong { display: block; font-size: 14px; font-weight: 700; color: #0f172a; }
-.product-marketplace-own-store p { margin: 3px 0 0; font-size: 12.5px; line-height: 17px; color: #64748b; }
 
 
 /* Alta con Google: la cuenta que Google entrego, para que la persona confirme
@@ -19120,13 +18943,6 @@ input.has-success {
   vertical-align: middle;
 }
 
-/* Las reglas generales de los chips y de la tabla añaden padding a todos los
-   span descendientes. En este icono consumían todo el espacio del logo. */
-.product-marketplace-brand .product-brand-mark,
-.product-marketplace-info-grid dd .product-brand-mark {
-  box-sizing: border-box;
-  padding: 0;
-}
 
 .product-brand-mark-img {
   width: 100%;
@@ -19146,99 +18962,6 @@ input.has-success {
   user-select: none;
 }
 
-/* Brand pill inside product summary header */
-.product-marketplace-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 4px;
-}
-
-.product-marketplace-category-tag {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #475569;
-  background: #f1f5f9;
-  padding: 4px 10px;
-  border-radius: 9999px;
-}
-
-.product-marketplace-brand-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 3px 12px 3px 6px;
-  border-radius: 9999px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: #1e293b;
-  font-family: inherit;
-  font-size: 0.8125rem;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-.product-marketplace-brand-pill:hover {
-  background: #f8fafc;
-  border-color: #3b82f6;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
-  transform: translateY(-1px);
-}
-
-.product-marketplace-brand-pill:active {
-  transform: translateY(0) scale(0.98);
-}
-
-.product-marketplace-brand-pill-text {
-  color: #475569;
-}
-
-.product-marketplace-brand-pill-text strong {
-  color: #0f172a;
-  font-weight: 700;
-  margin-left: 2px;
-}
-
-.product-marketplace-brand-pill-icon {
-  color: #2563eb;
-  opacity: 0.75;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.product-marketplace-brand-pill:hover .product-marketplace-brand-pill-icon {
-  opacity: 1;
-  transform: scale(1.15);
-}
-
-/* Brand button in product details table dl */
-.product-marketplace-brand-link-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 3px 8px;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.875rem;
-  color: #0f172a;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.product-marketplace-brand-link-btn:hover {
-  background: #eff6ff;
-  border-color: #bfdbfe;
-  color: #1d4ed8;
-}
-
-.product-marketplace-brand-link-btn svg {
-  color: #3b82f6;
-}
 
 /* Modal Overlay & Animations */
 @keyframes brandFadeIn {
@@ -20663,17 +20386,6 @@ input.has-success {
 .store-summary-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .store-summary-header .profile-panel-title { margin-bottom: 0; }
 .store-share-button { display: inline-flex; align-items: center; gap: 7px; }
-.product-marketplace-share {
-  position: absolute; z-index: 3; top: 17px; right: 74px;
-  width: 48px; height: 48px; display: grid; place-items: center;
-  border: 1px solid #edf0f5; border-radius: 50%;
-  color: #1d6fe0; background: #fff; box-shadow: 0 7px 17px rgba(30, 54, 89, .13); cursor: pointer;
-}
-.product-marketplace-share:hover { background: #f5faff; }
-@media (max-width: 760px) {
-  .product-marketplace-share { width: 52px; height: 52px; right: 80px; }
-  .product-marketplace-share svg { width: 25px; height: 25px; }
-}
 
 /* Categorias: flecha de desplegable en la barra de navegacion (gira al abrir). */
 .categories-nav-button .categories-nav-chevron { flex: 0 0 auto; margin-left: 2px; opacity: .8; transition: transform .2s ease; }
@@ -21384,3 +21096,25 @@ input.has-success {
 .withdrawal-section-icon.charge-icon { background: #fff0f0; color: #b42318; }
 .withdrawal-section-badge.charge-badge { background: #fff0f0; color: #b42318; }
 
+
+/* "Opciones de entrega" de la ficha en escritorio: la misma card que la app (product-detail.tsx). */
+.product-shipping-card { margin-top: 16px; padding: 14px; display: grid; gap: 10px; border: 1px solid #dfe6f0; border-radius: 12px; background: #fff; scroll-margin: 90px; transition: background-color .2s, border-color .2s, box-shadow .2s; }
+.product-shipping-card.is-focused { border-color: #f0b44c; background: #fff7e6; box-shadow: 0 0 0 3px rgba(240,180,76,.25); }
+.product-shipping-card h2 { margin: 0; display: flex; align-items: center; gap: 8px; color: #1f2a3a; font-size: 15px; font-weight: 700; }
+.product-shipping-card h2 svg { color: #6b7686; }
+.product-shipping-card-options { display: grid; gap: 7px; }
+.product-shipping-card-option { width: 100%; min-height: 56px; padding: 8px 12px; display: grid; grid-template-columns: auto auto minmax(0,1fr) auto; align-items: center; gap: 10px; border: 1px solid #dfe6f0; border-radius: 10px; background: #fff; color: #1f2a3a; font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, background-color .15s; }
+.product-shipping-card-option:hover { border-color: #bfd6f7; }
+.product-shipping-card-option:focus-visible { outline: 2px solid #3483fa; outline-offset: 2px; }
+.product-shipping-card-option.is-selected { border-color: #0056bf; background: #f5f9ff; }
+.product-shipping-card-radio { color: #9aa5b4; }
+.product-shipping-card-option.is-selected .product-shipping-card-radio { color: #0056bf; }
+.product-shipping-card-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; color: #0056bf; background: #eaf2ff; }
+.product-shipping-card-copy { min-width: 0; display: grid; gap: 2px; }
+.product-shipping-card-copy strong { font-size: 14px; font-weight: 700; }
+.product-shipping-card-copy small { color: #6b7686; font-size: 12px; }
+.product-shipping-card-option em { color: #0f8a4f; font-size: 13px; font-style: normal; font-weight: 700; white-space: nowrap; }
+.product-shipping-card-option em.is-free { color: #0056bf; }
+.product-shipping-card-info { margin: 0; padding: 8px 10px; display: flex; align-items: flex-start; gap: 8px; border: 1px solid #bfd6f7; border-radius: 9px; color: #0056bf; background: #eaf2ff; font-size: 12.5px; line-height: 1.45; }
+.product-shipping-card-info svg { flex-shrink: 0; margin-top: 1px; }
+.product-shipping-card-info.is-warning { border-color: #f0b44c; color: #8a5a00; background: #fff3d6; }

@@ -541,6 +541,42 @@
     background: #f4f8ff;
   }
 
+  /* Se intentó comprar sin elegir método: la sección se resalta como en la app. */
+  .pdm-shipping-section {
+    scroll-margin: 80px;
+    transition: background-color .2s, border-color .2s;
+  }
+
+  .pdm-shipping-section.is-focused {
+    border-color: #f0b44c;
+    background: #fff7e6;
+  }
+
+  .pdm-shipping-info {
+    margin: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid #bfd6f7;
+    border-radius: 10px;
+    background: #eaf2ff;
+    color: #0056bf;
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+
+  .pdm-shipping-info svg {
+    flex: none;
+    margin-top: 1px;
+  }
+
+  .pdm-shipping-info.is-warning {
+    border-color: #f0b44c;
+    background: #fff3d6;
+    color: #8a5a00;
+  }
+
   .pdm-radio {
     flex: none;
     width: 16px;
