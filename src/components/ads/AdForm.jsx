@@ -21,7 +21,7 @@ import OpeningHoursPicker from './OpeningHoursPicker';
 import {
   toAgendaConfigPayload, getAgendaSummaryText, getAgendaWeeklySlotsCount, validateAgendaConfig
 } from '../../data/agendaConfig';
-import { AD_TIER_PRICES_CLP, UPGRADE_TOKEN_COSTS, uploadAdImages, adErrorMessage } from '../../services/adsStorage';
+import { UPGRADE_TOKEN_COSTS, tierPriceClp, uploadAdImages, adErrorMessage } from '../../services/adsStorage';
 import { validateUpload, FILE_LIMITS } from '../../utils/fileValidation';
 import RepuestopCoin from './RepuestopCoin';
 
@@ -680,7 +680,7 @@ export default function AdForm({
                       {tier === tierId && <span className="tier-selected-check"><Check size={12} /></span>}
                     </span>
                     <h4>{config.name}</h4>
-                    <strong className="tier-option-price">{cost === 0 ? 'Gratis por 30 días' : `$${Number(AD_TIER_PRICES_CLP[tierId] || cost * 50).toLocaleString('es-CL')} CLP`}</strong>
+                    <strong className="tier-option-price">{cost === 0 ? 'Gratis por 30 días' : `$${tierPriceClp(tierId).toLocaleString('es-CL')} CLP`}</strong>
                     {cost > 0 && <span className="tier-option-coins"><RepuestopCoin size={15} /> {cost} monedas</span>}
                     <div className="tier-features-list">
                       • {config.maxImages} fotos · {config.maxTags} etiquetas<br />

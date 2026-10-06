@@ -5,7 +5,7 @@ import {
   ArrowUpDown, ArrowRight, ShieldCheck, Zap, Star, CheckCircle2, Sparkles
 } from 'lucide-react';
 import { AD_TIERS, SERVICE_CATEGORIES, CHILE_COMMUNES } from '../data/automotiveAdsData';
-import { fetchPublicAds, getCachedWallAds, ADS_WALL_UPDATED_EVENT } from '../services/adsStorage';
+import { AD_TIER_PRICES_CLP, fetchPublicAds, getCachedWallAds, ADS_WALL_UPDATED_EVENT } from '../services/adsStorage';
 import { searchVehicleByPatenteApi } from '../services/api';
 import {
   isValidPlate, normalizePlate, lookupVehicleByPlate, formatVehicleLabel
@@ -48,13 +48,14 @@ const SORT_OPTIONS = [
 ];
 
 // Planes de publicación para proveedores (bloque estático del sidebar).
-// Precios en CLP por período de 30 días; deben reflejar AD_TIER_PRICES_CLP
-// (src/services/adsStorage.js), fuente de verdad final del tarifario.
+// Precios en CLP por período de 30 días, derivados de AD_TIER_PRICES_CLP
+// (src/services/adsStorage.js) para no repetir montos sueltos que se desfasen.
+const formatPlanPrice = (tier) => `$${AD_TIER_PRICES_CLP[tier].toLocaleString('es-CL')}`;
 const PROVIDER_PLANS = [
-  { tier: 'basica', name: 'Básica', priceLabel: 'Gratis 30 días', note: 'luego $4.990/30 días' },
-  { tier: 'destacada', name: 'Destacada', priceLabel: 'desde $9.990', note: '/ 30 días' },
-  { tier: 'premium', name: 'Premium', priceLabel: 'desde $19.990', note: '/ 30 días' },
-  { tier: 'empresarial', name: 'Empresarial', priceLabel: 'desde $39.990', note: '/ 30 días' },
+  { tier: 'basica', name: 'Básica', priceLabel: 'Gratis 30 días', note: `luego ${formatPlanPrice('basica')}/30 días` },
+  { tier: 'destacada', name: 'Destacada', priceLabel: `desde ${formatPlanPrice('destacada')}`, note: '/ 30 días' },
+  { tier: 'premium', name: 'Premium', priceLabel: `desde ${formatPlanPrice('premium')}`, note: '/ 30 días' },
+  { tier: 'empresarial', name: 'Empresarial', priceLabel: `desde ${formatPlanPrice('empresarial')}`, note: '/ 30 días' },
 ];
 
 export default function AdsWallView() {

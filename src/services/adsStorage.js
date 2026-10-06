@@ -63,13 +63,25 @@ function readCache(key) {
 /** Valor nominal validado por el backend para cada Moneda RepuesTop. */
 export const TOKEN_VALUE_CLP = 50;
 
-/** Precios comerciales de los planes por cada período de 30 días. */
-export const AD_TIER_PRICES_CLP = {
-  basica: 4990,
-  destacada: 9990,
-  premium: 19990,
-  empresarial: 39990
+/**
+ * Costo base en Monedas de cada plan por período de 30 días: el mismo tarifario del backend
+ * (`MonederoFichaService`), que además lo reenvía en `costosPorTier` (ver `syncTierCosts`).
+ */
+const AD_TIER_TOKEN_PRICES = {
+  basica: 100,
+  destacada: 200,
+  premium: 400,
+  empresarial: 800
 };
+
+/**
+ * Precios comerciales de los planes por cada período de 30 días: Monedas × valor de la Moneda.
+ * Antes eran valores sueltos terminados en $990 (100 Monedas a $4.990), que no calzaban con
+ * lo que de verdad cuestan esas Monedas ($5.000).
+ */
+export const AD_TIER_PRICES_CLP = Object.fromEntries(
+  Object.entries(AD_TIER_TOKEN_PRICES).map(([tier, monedas]) => [tier, monedas * TOKEN_VALUE_CLP])
+);
 
 export function tokensForClp(priceClp) {
   return Math.ceil(priceClp / TOKEN_VALUE_CLP);
@@ -100,12 +112,15 @@ export async function fetchTokenPacks() {
 }
 
 // Costo en Monedas RepuesTop para mejorar de rango un anuncio
-export const UPGRADE_TOKEN_COSTS = {
-  basica: tokensForClp(AD_TIER_PRICES_CLP.basica),
-  destacada: tokensForClp(AD_TIER_PRICES_CLP.destacada),
-  premium: tokensForClp(AD_TIER_PRICES_CLP.premium),
-  empresarial: tokensForClp(AD_TIER_PRICES_CLP.empresarial)
-};
+export const UPGRADE_TOKEN_COSTS = { ...AD_TIER_TOKEN_PRICES };
+
+/**
+ * Precio en pesos de un plan con el costo vigente en Monedas (el que sincroniza el backend),
+ * para que el precio mostrado nunca se aleje de las Monedas que se cobran.
+ */
+export function tierPriceClp(tier) {
+  return (UPGRADE_TOKEN_COSTS[tier] || 0) * TOKEN_VALUE_CLP;
+}
 
 /** El backend es la fuente final del tarifario; conserva los valores locales como fallback. */
 function syncTierCosts(costosPorTier) {

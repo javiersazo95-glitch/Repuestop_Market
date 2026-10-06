@@ -625,12 +625,29 @@ export function adaptCompatibleOffersPage(response) {
  * El backend fue modelado desde el cliente, asi que casi todos los campos ya
  * vienen con el nombre que usa la UI. Lo que si hay que normalizar:
  *
- * - `rating` y `reviewsCount` llegan HARDCODEADOS en 5.0 y 0 desde
- *   `AnuncioService.toResponse()`; no hay reseñas de anuncios en el backend.
- *   Se descartan para no mostrar un 5.0 falso en todas las tarjetas.
+ * - `rating` y `reviewsCount`: los anuncios aún no tienen reseñas en el backend.
+ *   Antes llegaba un 5.0 fijo; ahora llega `rating: null` y `reviewsCount: 0`.
+ *   Solo se conserva una nota si viene con reseñas reales (ver `getAdRatingSummary`),
+ *   para no mostrar nunca un 5.0 falso en las tarjetas ni en Favoritos.
  * - las imagenes pueden venir como ruta relativa del servidor de archivos.
  * - `agendaConfig` viene como `Map<String,Object>`; puede llegar vacio ({}).
  */
+/**
+ * Nota del taller lista para mostrarse, o `null` si no corresponde mostrar estrellas:
+ * sin reseñas (o con una copia vieja que no trae `reviewsCount`) no hay nota que mostrar.
+ */
+export function getAdRatingSummary(ad) {
+  const rating = toNumber(ad?.rating);
+  const reviewsCount = toNumber(ad?.reviewsCount);
+  if (rating == null || rating <= 0 || reviewsCount == null || reviewsCount <= 0) return null;
+  return { rating, reviewsCount };
+}
+
+function adRatingFields(dto) {
+  const summary = getAdRatingSummary(dto);
+  return summary ?? { rating: null, reviewsCount: 0 };
+}
+
 export function adaptAd(dto) {
   if (!dto) return null;
   const images = (Array.isArray(dto.images) ? dto.images : []).map(resolveMediaUrl).filter(Boolean);
@@ -660,6 +677,7 @@ export function adaptAd(dto) {
     phone: dto.phone || '',
     whatsapp: dto.whatsapp || null,
     openingHours: dto.openingHours || '',
+    ...adRatingFields(dto),
     images,
     storyImages,
     features: Array.isArray(dto.features) ? dto.features : [],

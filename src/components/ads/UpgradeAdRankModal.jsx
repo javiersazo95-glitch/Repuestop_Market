@@ -8,7 +8,7 @@ import {
   AD_TIERS, AD_MODERATION_STATUS, getUpgradableTiers,
   getNewlyUnlockedFeatures
 } from '../../data/automotiveAdsData';
-import { AD_TIER_PRICES_CLP, UPGRADE_TOKEN_COSTS, spendTokensForAdUpgrade, adErrorMessage } from '../../services/adsStorage';
+import { UPGRADE_TOKEN_COSTS, tierPriceClp, spendTokensForAdUpgrade, adErrorMessage } from '../../services/adsStorage';
 
 /** Contenido de cada plan destino (1:1 con mobile/components/ads/UpgradeAdRankModal.tsx). */
 const TIER_OPTIONS = {
@@ -198,7 +198,7 @@ export default function UpgradeAdRankModal({
                         </div>
                         <h4 className="choice-title">{opt.planName}</h4>
                         <p className="upgrade-choice-price" style={{ color: opt.accent }}>
-                          ${(AD_TIER_PRICES_CLP[tierId] || cost * 50).toLocaleString('es-CL')} CLP por 30 días
+                          ${tierPriceClp(tierId).toLocaleString('es-CL')} CLP por 30 días
                         </p>
                         <p className="upgrade-choice-includes">Incluye todo lo de {opt.includesFrom}, y además:</p>
                         <ul className="choice-benefits">

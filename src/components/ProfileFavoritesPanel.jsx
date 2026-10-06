@@ -9,7 +9,7 @@ import MarketplaceProductCard from './MarketplaceProductCard';
 import MarketplaceSellerCard from './MarketplaceSellerCard';
 import AdCard from './ads/AdCard';
 import { getPublicProductApi, removeFavoriteApi, resolveMediaUrl } from '../services/api';
-import { adaptProduct } from '../services/adapters';
+import { adaptProduct, getAdRatingSummary } from '../services/adapters';
 import { qk } from '../services/queryKeys';
 import { adDetailPath, productPath, ROUTES, storePath } from '../routes/paths';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
@@ -343,7 +343,7 @@ function FavoritesMobile({
                     {ad.categoryLabel && <em className="fav-m-overline">{ad.categoryLabel}</em>}
                     <strong>{ad.title}</strong>
                     <small>{[ad.company, ad.region || ad.commune].filter(Boolean).join(' · ') || 'Servicio automotriz'}</small>
-                    {ad.rating ? <small className="fav-m-rating"><Star size={12} fill="currentColor" /> {Number(ad.rating).toFixed(1)}</small> : null}
+                    <SavedAdRating ad={ad} />
                   </span>
                   <button type="button" className="fav-m-heart" aria-label={`Quitar anuncio ${ad.title} de favoritos`} onClick={(e) => { e.stopPropagation(); onRemoveAd(ad); }}>
                     <Heart size={17} fill="currentColor" />
@@ -463,5 +463,19 @@ function EmptyMobile({ icon: Icon, title, text, action, onAction, compact = fals
       <p>{text}</p>
       <button type="button" onClick={onAction}>{action}</button>
     </div>
+  );
+}
+
+/**
+ * Nota del taller en un anuncio guardado. Sin reseñas reales no se muestra: las copias
+ * guardadas antes podían traer el 5.0 fijo que mandaba el backend.
+ */
+function SavedAdRating({ ad }) {
+  const summary = getAdRatingSummary(ad);
+  if (!summary) return null;
+  return (
+    <small className="fav-m-rating">
+      <Star size={12} fill="currentColor" /> {summary.rating.toFixed(1)} ({summary.reviewsCount})
+    </small>
   );
 }
