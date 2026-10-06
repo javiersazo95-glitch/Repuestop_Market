@@ -101,7 +101,7 @@ export const ADVANTAGES: Advantage[] = [
   { id: 6,  Icon: Truck,      accent: 'amber',   tier: 'row', title: 'Retiro $0 o despacho',      line: 'Retira con PIN o recibe por courier en todo Chile.' },
   { id: 5,  Icon: CircleHelp, accent: 'cyan',    tier: 'row', title: 'Preguntas públicas',        line: 'Pregunta antes de pagar; la respuesta queda visible.' },
   { id: 9,  Icon: PackageCheck, accent: 'indigo', tier: 'row', title: 'Captadores de repuestos',  line: 'Rastreamos por ti la pieza difícil o descontinuada.' },
-  { id: 10, Icon: Wrench,     accent: 'rose',    tier: 'row', title: 'Mural de talleres',         line: 'Mecánicos por comuna, con reseñas reales.' },
+  { id: 10, Icon: Wrench,     accent: 'rose',    tier: 'row', title: 'Mural de talleres',         line: 'Talleres acreditados por comuna, cerca de ti.' },
   { id: 12, Icon: Layers,     accent: 'blue',    tier: 'row', title: 'Ingeniería chilena',        line: 'Un equipo mejorando la plataforma cada día.' },
 ];
 

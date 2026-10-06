@@ -94,7 +94,7 @@ const MODULES: Module[] = [
     tab: 'Mural de servicios',
     tag: 'Talleres y mecánicos',
     title: 'Mural de Servicios Automotrices',
-    desc: 'Mecánicos y talleres por comuna, con reseñas y agenda.',
+    desc: 'Mecánicos y talleres acreditados por comuna, con distancia y agenda de citas.',
     image: '/about-assets/mecanico-taller.webp',
     width: 1440,
     height: 810,
