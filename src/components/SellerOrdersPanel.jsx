@@ -167,7 +167,7 @@ export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder
         <div className="seller-orders-summary-grid">
           <article className="orders-summary-amber"><span><Clock3 size={19} /></span><div className="seller-orders-summary-copy"><small>En curso</small><strong>{summary.inProgress}</strong></div></article>
           <article className="orders-summary-purple"><span><CheckCircle2 size={19} /></span><div className="seller-orders-summary-copy"><small>Completados</small><strong>{summary.completed}</strong></div></article>
-          <article className="orders-summary-green"><span><Banknote size={19} /></span><div className="seller-orders-summary-copy"><small>Disponible para retirar</small><strong>{balance ? formatCLP(balance.disponible) : '—'}</strong>{balance && <small>Por liberar {formatCLP(Number(balance.retenido || 0) + Number(balance.enCurso || 0))} · Retirado {formatCLP(balance.retirado)}</small>}</div></article>
+          <article className="orders-summary-green"><span><Banknote size={19} /></span><div className="seller-orders-summary-copy"><small>Disponible para retirar</small><strong>{balance ? formatCLP(Math.max(0, Number(balance.disponible || 0))) : '—'}</strong>{balance && <small>Por liberar {formatCLP(Number(balance.retenido || 0) + Number(balance.enCurso || 0))} · Retirado {formatCLP(balance.retirado)}{Number(balance.cargos || 0) < 0 ? ` · Cargos -${formatCLP(Math.abs(Number(balance.cargos)))}` : ''}</small>}</div></article>
         </div>
       </section>
 

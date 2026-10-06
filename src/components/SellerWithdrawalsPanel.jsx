@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   AlertCircle, AlertTriangle, CalendarDays, CheckCircle2, ChevronRight, Clock,
   CreditCard, Eye, EyeOff, History, Info, Landmark, Loader2, Mail,
-  Package, Save, Search, ShieldCheck, User, Wallet, X,
+  Package, RotateCcw, Save, Search, ShieldCheck, User, Wallet, X,
 } from 'lucide-react';
 import {
   createSellerWithdrawalApi, getSellerBankAccountApi, getSellerPendingWithdrawalsApi,
@@ -13,7 +13,7 @@ import { BANKS, findBankByCode } from '../data/banks';
 import { sellerCodeShort } from '../data/orderIdentity';
 import { formatRut, isValidRut } from '../services/adapters';
 
-const EMPTY_PENDING = { pedidos: [], totalARetirar: 0, retenidos: [], totalRetenido: 0, fondosRetenidos: false, motivoRetencion: null };
+const EMPTY_PENDING = { pedidos: [], totalARetirar: 0, retenidos: [], totalRetenido: 0, cargos: [], totalCargos: 0, fondosRetenidos: false, motivoRetencion: null };
 const DISPLAY_LIMIT = 3;
 
 const ACCOUNT_TYPES = [
@@ -29,8 +29,11 @@ const STATUS_CONFIG = {
   RECHAZADO: { label: 'Rechazado', className: 'rejected' },
 };
 
+// Los cargos son negativos: "-$549", no "$-549".
 function formatCLP(value) {
-  return `$${Number(value || 0).toLocaleString('es-CL')}`;
+  const amount = Number(value || 0);
+  const formatted = `$${Math.abs(amount).toLocaleString('es-CL')}`;
+  return amount < 0 ? `-${formatted}` : formatted;
 }
 
 function formatDate(value, withTime = false) {
@@ -143,12 +146,13 @@ function WithdrawalRejectedNotice({ motivo }) {
   );
 }
 
-function PendingOrderRow({ order, isHeld = false, isInDetail = false }) {
-  const countdown = isHeld ? getRemainingDaysInfo(order.disponibleDesde) : null;
+// `isCharge` (U9): reembolso total por veredicto; se muestra como cargo, no como venta.
+function PendingOrderRow({ order, isHeld = false, isInDetail = false, isCharge = false }) {
+  const countdown = isHeld && !isCharge ? getRemainingDaysInfo(order.disponibleDesde) : null;
   const reembolso = Number(order.montoReembolsoMediacion || 0);
 
   return (
-    <article className={`withdrawal-order-row ${isHeld ? 'is-held' : 'is-available'}`}>
+    <article className={`withdrawal-order-row ${isCharge ? 'is-charge' : isHeld ? 'is-held' : 'is-available'}`}>
       <div className="withdrawal-order-main">
         <strong title={order.nombrePedido || order.nombre}>
           {order.nombrePedido || order.nombre || 'Producto sin nombre'}
@@ -156,7 +160,12 @@ function PendingOrderRow({ order, isHeld = false, isInDetail = false }) {
         <span className="withdrawal-order-meta">
           Pedido {order.numeroPedido || sellerCodeShort(order.codigoExterno) || '—'} · {formatDate(order.fecha, true)} · Cantidad vendida: {Number(order.cantidadVendida || 0)}
         </span>
-        {isHeld && countdown ? (
+        {isCharge ? (
+          <div className="withdrawal-charge-badge">
+            <RotateCcw size={13} />
+            <span>Reembolso total al comprador</span>
+          </div>
+        ) : isHeld && countdown ? (
           <div className={`withdrawal-countdown-badge ${countdown.className}`}>
             <Clock size={13} />
             <span>{countdown.label}</span>
@@ -172,13 +181,15 @@ function PendingOrderRow({ order, isHeld = false, isInDetail = false }) {
             explicacion y pensaba que el calculo estaba mal. */}
         {reembolso > 0 && (
           <span className="withdrawal-refund-note">
-            Incluye descuento por reembolso de mediación: -{formatCLP(reembolso)}
+            {isCharge
+              ? `Devuelto al comprador: ${formatCLP(reembolso)}. Comisión de Flow no recuperable.`
+              : `Incluye descuento por reembolso de mediación: -${formatCLP(reembolso)}`}
           </span>
         )}
       </div>
       <div className="withdrawal-order-amount-box">
         <b>{formatCLP(order.valor)}</b>
-        <small>Monto neto</small>
+        <small>{isCharge ? 'Cargo' : 'Monto neto'}</small>
       </div>
     </article>
   );
@@ -405,7 +416,10 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
         return estadoUpper !== 'SOLICITADO' && estadoUpper !== 'PAGADO' && estadoUpper !== 'RETIRADO';
       });
 
-      const totalARetirar = pedidosFiltrados.reduce((acc, p) => acc + Number(p.valor || 0), 0);
+      // U9: reembolsos totales por veredicto; se descuentan del proximo retiro.
+      const cargos = (pendingData?.cargos || []).filter((p) => !p.retiroId && !p.solicitado);
+      const totalCargos = cargos.reduce((acc, p) => acc + Number(p.valor || 0), 0);
+      const totalARetirar = pedidosFiltrados.reduce((acc, p) => acc + Number(p.valor || 0), 0) + totalCargos;
       const totalRetenido = retenidosFiltrados.reduce((acc, p) => acc + Number(p.valor || 0), 0);
 
       setPending({
@@ -413,6 +427,8 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
         totalARetirar,
         retenidos: retenidosFiltrados,
         totalRetenido,
+        cargos,
+        totalCargos,
         // H59 fase 4: tienda suspendida. El backend rechaza el retiro y explica por que.
         fondosRetenidos: Boolean(pendingData?.fondosRetenidos),
         motivoRetencion: pendingData?.motivoRetencion || null,
@@ -570,7 +586,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
               </div>
               <div className="withdrawal-kpi-info">
                 <span>Disponible para retiro</span>
-                <strong>{formatCLP(pending.totalARetirar)}</strong>
+                <strong>{formatCLP(Math.max(0, pending.totalARetirar))}</strong>
                 <small>{pending.pedidos.length} {pending.pedidos.length === 1 ? 'pedido listo' : 'pedidos listos'}</small>
               </div>
             </div>
@@ -723,12 +739,39 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                   </div>
                 </section>
               )}
+
+            {/* U9: reembolsos totales por veredicto. No son ventas: se descuentan del proximo retiro. */}
+            {pending.cargos.length > 0 && (
+              <section className="withdrawal-section-card withdrawal-charges-card">
+                <header className="withdrawal-section-header">
+                  <div className="withdrawal-section-title-wrap">
+                    <span className="withdrawal-section-icon charge-icon">
+                      <RotateCcw size={19} />
+                    </span>
+                    <div>
+                      <div className="withdrawal-section-title-row">
+                        <h3>Cargos por reembolsos</h3>
+                        <span className="withdrawal-section-badge charge-badge">
+                          {pending.cargos.length} {pending.cargos.length === 1 ? 'pedido' : 'pedidos'} · {formatCLP(pending.totalCargos)}
+                        </span>
+                      </div>
+                      <p>Un mediador de RepuesTop revisó estos casos de forma imparcial y resolvió a favor del comprador, porque la venta no cumplió lo ofrecido por la tienda (por ejemplo, el producto llegó con falla o no correspondía a lo publicado). Se le devolvió todo al comprador y la comisión de Flow, que no se recupera, la asume la tienda. Se descuenta de tu próximo retiro.</p>
+                    </div>
+                  </div>
+                </header>
+                <div className="withdrawal-section-orders">
+                  {pending.cargos.map((order) => (
+                    <PendingOrderRow key={`cargo-${order.pedidoId}`} order={order} isCharge />
+                  ))}
+                </div>
+              </section>
+            )}
             </div>
 
             {/* Tarjeta lateral de acción */}
             <aside className="withdrawal-total-card">
               <span>Total a retirar</span>
-              <strong>{formatCLP(pending.totalARetirar)}</strong>
+              <strong>{formatCLP(Math.max(0, pending.totalARetirar))}</strong>
               <small>
                 {pending.pedidos.length} {pending.pedidos.length === 1 ? 'pedido disponible' : 'pedidos disponibles'}
               </small>

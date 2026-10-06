@@ -21366,3 +21366,21 @@ input.has-success {
   font-size: 0.82rem;
   color: var(--text-muted, #64748b);
 }
+
+/* U9 (5-oct): cargos por reembolsos totales en Retiros. */
+.withdrawal-order-row.is-charge { border-left-color: #b42318; }
+.withdrawal-charge-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #fff0f0;
+  color: #b42318;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.withdrawal-section-icon.charge-icon { background: #fff0f0; color: #b42318; }
+.withdrawal-section-badge.charge-badge { background: #fff0f0; color: #b42318; }
+
