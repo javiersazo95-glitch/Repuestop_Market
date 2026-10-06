@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Bike, Car, CheckCircle2, Circle, CircleDot, MapPin, Package, Plus, Store, Truck } from 'lucide-react';
 import { deliveryKind, isDispatch, localDeliveryCost, methodsForItem, vehicleLabel } from '../utils/cartDelivery';
 import { COMPAT } from '../utils/compatibilityCheck';
@@ -42,21 +42,14 @@ export default function CheckoutItemDelivery({
   const dispatch = isDispatch(delivery.method);
   const selectedVehicle = vehicles.find((vehicle) => vehicle.key === delivery.vehicleKey) || null;
   const radioName = `entrega-${item.id}`;
-  const vehiclesRef = useRef(null);
 
-  // "Cambiar vehículo" lleva al selector de este producto y deja el foco en la primera opción
-  // distinta de la elegida (otro vehículo de la compra o "Otro vehículo" para agregar uno).
-  const focusVehicleSelector = () => {
-    const group = vehiclesRef.current;
-    if (!group) return;
-    group.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    const target = group.querySelector('button[aria-checked="false"], button.is-add');
-    target?.focus({ preventScroll: true });
-  };
+  // "Cambiar vehículo" abre el formulario para indicar otro vehículo, que queda elegido para este
+  // producto al guardarlo (como en la app). Antes sólo movía el foco al selector, que está justo
+  // arriba y a la vista, así que el botón parecía no hacer nada.
   // Las fichas se abren en otra pestaña: volver no debe borrar lo que ya se eligió en el checkout.
   const compatActions = [
     { label: 'Ver compatibilidad', to: `${productPath(item)}?abrir=compatibilidad`, newTab: true },
-    { label: 'Cambiar vehículo', onClick: focusVehicleSelector },
+    { label: 'Cambiar vehículo', onClick: onAddVehicle },
     { label: 'Preguntar a la tienda', to: `${productPath(item)}?abrir=preguntas`, newTab: true },
     ...(onRemove ? [{ label: 'Quitar del carrito', onClick: onRemove }] : []),
   ];
@@ -139,7 +132,7 @@ export default function CheckoutItemDelivery({
           <CompatibilityStatus status={COMPAT.UNIVERSAL} id={`compat-${item.id}`} />
         ) : (
           <>
-            <div ref={vehiclesRef} className="checkout-item-vehicles" role="radiogroup" aria-label={`Vehículo de ${item.titulo}`}>
+            <div className="checkout-item-vehicles" role="radiogroup" aria-label={`Vehículo de ${item.titulo}`}>
               {vehicles.map((vehicle) => {
                 const selected = vehicle.key === delivery.vehicleKey;
                 return (
