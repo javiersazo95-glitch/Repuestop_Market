@@ -231,7 +231,7 @@ export function MarketplaceProvider({ children }) {
           summary = await addCartItemApi(userId, {
             proveedorProductoId: Number(item.id),
             cantidad: item.quantity,
-            metodoEnvio: item.shippingMethod,
+            metodoEnvio: item.shippingMethod || null,
             costoEnvioLocal: item.shippingFee || 0,
           });
         } catch (error) {
@@ -296,8 +296,9 @@ export function MarketplaceProvider({ children }) {
     applyOptimisticCart((current) => {
       const existing = current.find((item) => String(item.id) === productIdStr);
       if (existing) {
+        // Sin método nuevo se conserva el que ya tenía: volver a agregar no borra lo elegido.
         return current.map((item) => (String(item.id) === productIdStr
-          ? { ...item, quantity: item.quantity + 1, shippingMethod, shippingFee }
+          ? { ...item, quantity: item.quantity + 1, ...(shippingMethod ? { shippingMethod, shippingFee } : {}) }
           : item));
       }
       return [...current, { ...product, quantity: 1, shippingMethod, shippingFee }];
@@ -318,8 +319,9 @@ export function MarketplaceProvider({ children }) {
       const summary = await addCartItemApi(userId, {
         proveedorProductoId: Number(product.id),
         cantidad: 1,
-        metodoEnvio: shippingMethod,
-        costoEnvioLocal: shippingFee,
+        // null y no '': el backend solo reemplaza el método guardado si llega uno.
+        metodoEnvio: shippingMethod || null,
+        costoEnvioLocal: shippingMethod ? shippingFee : null,
       });
 
       if (pendingRecord.cancelled) {

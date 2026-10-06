@@ -27,7 +27,11 @@ export default function CheckoutItemDelivery({
   onChange, onAddVehicle, onEditVehicle, onManageAddresses,
 }) {
   const address = addresses.find((entry) => String(entry.id) === String(delivery.addressId)) || null;
-  const methods = methodsForItem(item, address);
+  const allowed = methodsForItem(item, address);
+  // El método con que se agregó al carro nunca desaparece de la lista: el carro lo confirma. Si la
+  // dirección elegida no le sirve, se avisa para cambiar la dirección (o el método, si quiere).
+  const methodMismatch = Boolean(delivery.method) && !allowed.includes(delivery.method);
+  const methods = methodMismatch ? [delivery.method, ...allowed] : allowed;
   const dispatch = isDispatch(delivery.method);
   const selectedVehicle = vehicles.find((vehicle) => vehicle.key === delivery.vehicleKey) || null;
   const radioName = `entrega-${item.id}`;
@@ -81,6 +85,13 @@ export default function CheckoutItemDelivery({
             </select>
           ) : (
             <p className="checkout-item-delivery-error">Agrega una dirección para recibir este producto.</p>
+          )}
+          {methodMismatch && address && (
+            <p className="checkout-item-delivery-error">
+              {deliveryKind(delivery.method) === 'local'
+                ? `${methodTitle(delivery.method)} solo llega a ${item.storeComuna || 'la comuna de la tienda'}: elige una dirección de esa comuna.`
+                : `${methodTitle(delivery.method)} no aplica en ${address.comunaNombre || 'esa comuna'}: elige una dirección de otra comuna.`}
+            </p>
           )}
           {sharesShipment && <small className="checkout-item-delivery-note">Va en el mismo despacho que otro producto de esta tienda.</small>}
         </div>

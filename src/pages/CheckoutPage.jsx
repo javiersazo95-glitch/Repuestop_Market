@@ -24,7 +24,7 @@ import CheckoutSummaryPanel from '../components/CheckoutSummaryPanel';
 import CheckoutItemDelivery from '../components/CheckoutItemDelivery';
 import CheckoutVehicleDialog from '../components/CheckoutVehicleDialog';
 import {
-  deliveryKind, isDispatch, methodsForItem, pendingDeliveryReason, shippingFees, vehicleLabel,
+  defaultAddressFor, deliveryKind, isDispatch, methodsForItem, pendingDeliveryReason, shippingFees, vehicleLabel,
 } from '../utils/cartDelivery';
 
 const STEPS = [
@@ -305,22 +305,23 @@ export default function CheckoutPage() {
   const [vehicleDialog, setVehicleDialog] = useState(null);
   const deliveryPlateCache = useRef(new Map());
 
-  // Cada producto parte con el método que eligió al agregarlo, la dirección principal y el primer
+  // Cada producto parte con el método que eligió al agregarlo (el carro solo lo confirma: no lo
+  // cambia ni lo borra), una dirección donde ese método sirve (la principal si calza) y el primer
   // vehículo de la compra; después el comprador cambia lo que necesite en cada uno.
   useEffect(() => {
     if (isQuoteMode) return;
     setDeliveries((current) => {
-      const principalId = String(addresses.find((address) => address.esPrincipal)?.id || addresses[0]?.id || '') || null;
       const next = {};
       let changed = Object.keys(current).length !== cartItems.length;
       cartItems.forEach((item) => {
         const previous = current[item.id];
+        const wanted = previous?.method ?? (item.shippingMethod || null);
+        const fallbackId = defaultAddressFor(item, wanted, addresses);
         const addressId = previous?.addressId && addresses.some((address) => String(address.id) === String(previous.addressId))
-          ? previous.addressId : principalId;
+          ? previous.addressId : (fallbackId != null ? String(fallbackId) : null);
         const address = addresses.find((entry) => String(entry.id) === String(addressId)) || null;
         const allowed = methodsForItem(item, address);
-        const wanted = previous?.method ?? (item.shippingMethod || null);
-        const method = wanted && allowed.includes(wanted) ? wanted : allowed.length === 1 ? allowed[0] : null;
+        const method = wanted || (allowed.length === 1 ? allowed[0] : null);
         const vehicleKey = item.esUniversal
           ? null
           : previous?.vehicleKey && cartVehicles.some((vehicle) => vehicle.key === previous.vehicleKey)
@@ -333,22 +334,13 @@ export default function CheckoutPage() {
     });
   }, [isQuoteMode, cartItems, addresses, cartVehicles]);
 
-  // Si la nueva dirección deja fuera el método elegido ("dentro de la comuna" hacia otra comuna),
-  // se pasa al equivalente que sí sirve.
+  // Solo cambia lo que el comprador tocó: si la nueva dirección no sirve para el método elegido
+  // ("dentro de la comuna" hacia otra comuna), el método se queda y el producto avisa qué ajustar.
   const updateDelivery = (item, patch) => {
-    setDeliveries((current) => {
-      const merged = { method: null, addressId: null, vehicleKey: null, ...current[item.id], ...patch };
-      const address = addresses.find((entry) => String(entry.id) === String(merged.addressId)) || null;
-      const allowed = methodsForItem(item, address);
-      if (merged.method && !allowed.includes(merged.method)) {
-        const kind = deliveryKind(merged.method);
-        const equivalente = kind === 'local' || kind === 'courier'
-          ? allowed.find((method) => deliveryKind(method) === (kind === 'local' ? 'courier' : 'local'))
-          : undefined;
-        merged.method = equivalente ?? null;
-      }
-      return { ...current, [item.id]: merged };
-    });
+    setDeliveries((current) => ({
+      ...current,
+      [item.id]: { method: null, addressId: null, vehicleKey: null, ...current[item.id], ...patch },
+    }));
   };
 
   const saveCartVehicle = (vehicle, plateIdentified) => {
@@ -369,7 +361,7 @@ export default function CheckoutPage() {
   };
 
   const cartShipping = useMemo(() => shippingFees(cartItems, deliveries), [cartItems, deliveries]);
-  const entregaPendiente = isQuoteMode ? '' : pendingDeliveryReason(cartItems, deliveries, cartVehicles, identifiedPlates);
+  const entregaPendiente = isQuoteMode ? '' : pendingDeliveryReason(cartItems, deliveries, cartVehicles, identifiedPlates, addresses);
   // En el carrito el envío se cobra por destino de cada tienda (la regla del backend).
   const checkoutTotals = isQuoteMode
     ? totals

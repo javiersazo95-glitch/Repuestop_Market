@@ -72,6 +72,69 @@ export function methodsForItem(item, address) {
   });
 }
 
+/**
+ * Métodos que la ficha ofrece al agregar al carro, igual que la app (useProductDetailScreen): con
+ * la comuna del comprador (la de su dirección principal) "dentro de la comuna" solo si es la de la
+ * tienda y "fuera" solo si no. Así lo que se elige en la ficha es lo mismo que el carro confirma.
+ */
+export function productShippingOptions(methodsText, buyerComuna, storeComuna) {
+  const methods = parseStoreMethods(methodsText);
+  if (!normalize(buyerComuna) || !normalize(storeComuna)) return methods;
+  const sameComuna = normalize(buyerComuna) === normalize(storeComuna);
+  return methods.filter((method) => {
+    const kind = deliveryKind(method);
+    if (kind === 'local') return sameComuna;
+    if (kind === 'courier') return !sameComuna;
+    return true;
+  });
+}
+
+/**
+ * Dirección con la que parte un producto en el carro: si se agregó con un despacho, la primera
+ * (principal primero) donde ese método sirve, para confirmar lo elegido en vez de cambiarlo.
+ */
+export function defaultAddressFor(item, method, addresses) {
+  const ordered = [...addresses].sort((a, b) => Number(Boolean(b.esPrincipal)) - Number(Boolean(a.esPrincipal)));
+  const fallback = ordered[0]?.id ?? null;
+  if (!isDispatch(method)) return fallback;
+  const fits = ordered.find((address) => methodsForItem(item, address).includes(method));
+  return fits?.id ?? fallback;
+}
+
+/**
+ * Título, detalle y precio de cada método, igual que la ficha de la app
+ * (shippingMethodMeta en mobile/app/product-detail.tsx).
+ */
+export function shippingMethodMeta(method, hours) {
+  const price = String(method).match(/\$\s?[\d.,]+/)?.[0];
+  const kind = deliveryKind(method);
+  if (kind === 'pickup') {
+    return { title: 'Retiro en tienda', subtitle: hours ? `Retira en horario ${hours}` : 'Retira directamente en el local', price: 'Gratis', free: true };
+  }
+  if (kind === 'local') {
+    return { title: 'Envío dentro de la comuna', subtitle: 'Entrega local coordinada', price: price ? `Desde ${price}` : 'A coordinar', free: false };
+  }
+  if (kind === 'courier') {
+    return { title: 'Envío fuera de la comuna', subtitle: 'Despacho por courier', price: price ? `Desde ${price}` : 'Por pagar', free: false };
+  }
+  return { title: method, subtitle: 'Coordina los detalles con el vendedor', price: 'A coordinar', free: false };
+}
+
+/** Aviso bajo las opciones una vez elegida (getShippingMethodMessage de la app). */
+export function shippingMethodMessage(method, hours) {
+  const kind = deliveryKind(method);
+  if (kind === 'pickup') {
+    return `Retiro en tienda disponible solo en el horario de atención de la tienda (${hours || 'Lunes a viernes 09:00 a 18:00'}).`;
+  }
+  if (kind === 'local') {
+    const value = String(method).match(/\(([^)]+)\)/)?.[1];
+    return value
+      ? `El envío dentro de la comuna tiene un valor fijo de ${value}.`
+      : 'El envío dentro de la comuna tiene un valor fijo, el cual debe ser informado por el vendedor.';
+  }
+  return 'Los envíos fuera de la comuna son por pagar (a cargo del comprador).';
+}
+
 export function vehicleLabel(vehicle) {
   if (!vehicle) return '';
   const model = [vehicle.marca, vehicle.modelo, vehicle.anio].filter((value) => String(value || '').trim()).join(' ');
@@ -107,7 +170,7 @@ export function shippingFees(items, deliveries) {
 }
 
 /** Lo que falta para pagar, producto por producto, o '' si está todo. */
-export function pendingDeliveryReason(items, deliveries, vehicles, identifiedPlates) {
+export function pendingDeliveryReason(items, deliveries, vehicles, identifiedPlates, addresses = []) {
   const kindByStore = new Map();
   for (const item of items) {
     const delivery = deliveries[item.id];
@@ -115,6 +178,12 @@ export function pendingDeliveryReason(items, deliveries, vehicles, identifiedPla
     const name = item.titulo || 'el repuesto';
     if (!method) return `Elige cómo recibir "${name}".`;
     if (isDispatch(method) && !delivery?.addressId) return `Elige a qué dirección enviar "${name}".`;
+    if (isDispatch(method)) {
+      const address = addresses.find((entry) => String(entry.id) === String(delivery.addressId));
+      if (address && !methodsForItem(item, address).includes(method)) {
+        return `"${name}" va con ${method.replace(/\s*\(.*\)\s*$/, '')}: elige una dirección donde sirva o cambia el método.`;
+      }
+    }
     if (!item.esUniversal) {
       const vehicle = vehicles.find((entry) => entry.key === delivery?.vehicleKey);
       if (!vehicle) return `Indica para qué vehículo es "${name}".`;
