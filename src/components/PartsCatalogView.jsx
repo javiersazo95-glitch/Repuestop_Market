@@ -104,18 +104,14 @@ function transmisionLabel(value) {
   return value;
 }
 
-/** Datos del vehículo en su tarjeta (patente o filtro avanzado), cada uno con su etiqueta. */
-function VehicleFacts({ facts }) {
-  return (
-    <dl className="catalog-vehicle-facts">
-      {facts.filter(([, factValue]) => Boolean(factValue)).map(([factLabel, factValue]) => (
-        <div key={factLabel} className={factLabel.startsWith('Versi') ? 'catalog-vehicle-fact is-wide' : 'catalog-vehicle-fact'}>
-          <dt>{factLabel}</dt>
-          <dd>{factValue}</dd>
-        </div>
-      ))}
-    </dl>
-  );
+/**
+ * Vehículo de su tarjeta (patente o filtro avanzado) en UNA línea compuesta, como en la app:
+ * "Toyota Yaris 2018 · 1.5 GLI · Automática · ABCD11". La grilla con una etiqueta por dato
+ * partía la tarjeta en varias filas.
+ */
+function VehicleLine({ parts }) {
+  const text = parts.filter(Boolean).join(' · ');
+  return <p className="catalog-applied-card-sub" title={text}>{text}</p>;
 }
 
 function FilterSearchSelect({ label, icon, allLabel, options, value, onChange, searchPlaceholder, helper }) {
@@ -1244,13 +1240,12 @@ export default function PartsCatalogView({
                 <button type="button" className="catalog-applied-card-close" onClick={clearActiveVehicle} aria-label="Quitar filtro de vehículo consultado"><X size={18} /></button>
               </div>
             </div>
-            <VehicleFacts
-              facts={[
-                ['Marca', activeVehicle.marca],
-                ['Modelo', activeVehicle.modelo],
-                ['Año', activeVehicle.anio ? String(activeVehicle.anio) : ''],
-                ['Versión', [activeVehicle.version, transmisionLabel(activeVehicle.transmision)].filter(Boolean).join(' · ')],
-                ['Patente', activeVehicle.patente && activeVehicle.patente !== 'MANUAL' ? activeVehicle.patente : ''],
+            <VehicleLine
+              parts={[
+                [activeVehicle.marca, activeVehicle.modelo, activeVehicle.anio].filter(Boolean).join(' '),
+                activeVehicle.version,
+                transmisionLabel(activeVehicle.transmision),
+                activeVehicle.patente && activeVehicle.patente !== 'MANUAL' ? activeVehicle.patente : '',
               ]}
             />
           </section>
@@ -1265,12 +1260,10 @@ export default function PartsCatalogView({
                 <button type="button" className="catalog-applied-card-change" onClick={() => openFiltersAt('vehicle')} aria-label="Cambiar vehículo filtrado">Cambiar <ChevronRight size={13} aria-hidden="true" /></button>
               </div>
             </div>
-            <VehicleFacts
-              facts={[
-                ['Marca', vehicleBrandName],
-                ['Modelo', vehicleModel || 'Todos'],
-                ['Año', vehicleYear || 'Todos'],
-                [selectedVersionLabels.length > 1 ? 'Versiones' : 'Versión', selectedVersionLabels.length ? selectedVersionLabels.join(', ') : 'Todas'],
+            <VehicleLine
+              parts={[
+                [vehicleBrandName, vehicleModel, vehicleYear].filter(Boolean).join(' '),
+                selectedVersionLabels.join(', '),
               ]}
             />
           </section>

@@ -20948,12 +20948,6 @@ input.has-success {
 }
 .catalog-mobile-filter-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin-left: 2px; padding: 0 5px; border-radius: 999px; background: #0754c9; color: #fff; font-size: 11px; font-weight: 800; line-height: 1; }
 
-/* Datos del vehiculo en su tarjeta: etiqueta arriba, valor abajo (como la app). */
-.catalog-vehicle-facts { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; }
-.catalog-vehicle-fact { min-width: 64px; margin: 0; }
-.catalog-vehicle-fact.is-wide { flex-basis: 100%; }
-.catalog-vehicle-fact dt { margin: 0; color: #64748b; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-.catalog-vehicle-fact dd { margin: 0; color: #0f172a; font-size: 13px; font-weight: 600; line-height: 18px; }
 /* En movil la tarjeta "Vehículo consultado" reemplaza la pastilla del vehiculo de arriba. */
 @media (max-width: 767px) {
   .catalog-post-category-filters .catalog-showcase-vehicle-filter { display: none; }
