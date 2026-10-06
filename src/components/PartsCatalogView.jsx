@@ -170,7 +170,14 @@ export default function PartsCatalogView({
   initialAdvancedFilters = null,
   onVehicleChange,
   onNavigationStateChange,
+  // Vista de una tienda (StorePublicProfileView): el mismo catálogo con sus mismos filtros,
+  // acotado a esa tienda. La tienda no se puede quitar y el carrusel de categorías y la
+  // vitrina no aplican (siempre hay contexto: la tienda).
+  lockedStoreId = null,
+  storeName = '',
+  onResultsChange,
 }) {
+  const embedded = Boolean(lockedStoreId);
   // Los filtros avanzados que trae la URL (al volver de la ficha de un repuesto, recargar o
   // abrir un enlace compartido). Solo siembran el estado inicial: despues manda el panel.
   const [initialAdvanced] = useState(() => initialAdvancedFilters || {});
@@ -243,7 +250,10 @@ export default function PartsCatalogView({
   const [selectedOrigin, setSelectedOrigin] = useState(initialAdvanced.origin || '');
   // Tienda y comuna de los filtros avanzados (igual que la app): viajan al servidor como
   // `proveedorId` y `comunaId`, sobre todo el catálogo y no sobre la página cargada.
-  const [selectedStoreId, setSelectedStoreId] = useState(initialAdvanced.storeId || '');
+  const [selectedStoreId, setSelectedStoreId] = useState(lockedStoreId ? String(lockedStoreId) : (initialAdvanced.storeId || ''));
+  useEffect(() => {
+    if (lockedStoreId) setSelectedStoreId(String(lockedStoreId));
+  }, [lockedStoreId]);
   const [selectedComunaId, setSelectedComunaId] = useState(initialAdvanced.comunaId || '');
   // Modalidad de compra como interruptor: encendido deja SOLO los que se venden a cotizacion.
   // Antes eran tres opciones con un "Todos los Repuestos" que prometia ver el catalogo entero
@@ -743,6 +753,10 @@ export default function PartsCatalogView({
   // Al volver de la ficha de un repuesto el scroll se devuelve cuando el listado ya esta pintado.
   useScrollMemory(hasActiveContext ? filtersResolved && !productsLoading : !showcaseLoading);
   const totalProducts = catalogData.total;
+  useEffect(() => {
+    if (!onResultsChange || productsLoading) return;
+    onResultsChange({ total: totalProducts, vehicleActive: Boolean(activeVehicle && onlyCompatible) });
+  }, [onResultsChange, productsLoading, totalProducts, activeVehicle, onlyCompatible]);
   // Paginación acotada: se navegan hasta MAX_PAGINATED_RESULTS resultados. Más allá,
   // el usuario debe refinar (categoría, patente, texto) en vez de pasar páginas.
   const maxNavigablePages = Math.max(1, Math.ceil(MAX_PAGINATED_RESULTS / itemsPerPage));
@@ -991,7 +1005,7 @@ export default function PartsCatalogView({
     setPartBrandId('');
     setSelectedCondition('');
     setSelectedOrigin('');
-    setSelectedStoreId('');
+    setSelectedStoreId(lockedStoreId ? String(lockedStoreId) : '');
     setSelectedComunaId('');
     setOnlyQuoteOnly(false);
     // El filtro de la patente manda: limpiar los filtros avanzados no lo quita. Para eso
@@ -1084,7 +1098,7 @@ export default function PartsCatalogView({
         setPriceDraft(PRICE_CEILING);
       },
     },
-    selectedStoreId && {
+    selectedStoreId && !lockedStoreId && {
       key: 'tienda',
       label: `Tienda: ${(labelOf(visibleStoreOptions, selectedStoreId) || 'elegida').split(' · ')[0]}`,
       onRemove: () => setSelectedStoreId(''),
@@ -1142,20 +1156,31 @@ export default function PartsCatalogView({
             </div>
           )}
         </div>
-        <div className="catalog-showcase-comuna-control">
+        {!lockedStoreId && <div className="catalog-showcase-comuna-control">
           <button type="button" className={`btn-comuna-toggle-pill ${filterByMyComuna ? 'active' : ''}`} onClick={handleToggleComunaFilter} disabled={comunaLookupStatus === 'loading'}>
             <MapPin size={17} />
             <span>{comunaLookupStatus === 'loading' ? 'Buscando comuna…' : filterByMyComuna ? `En ${myComunaNombre || 'mi comuna'}` : 'Mi comuna'}</span>
           </button>
           {comunaNotice && <span className="quick-patente-error">{comunaNotice}</span>}
-        </div>
+        </div>}
       </div>
     </div>
   );
 
   return (
-    <div className="parts-catalog-view-wrapper">
+    <div className={`parts-catalog-view-wrapper${embedded ? ' is-store-embedded' : ''}`}>
       <div className="container catalog-main-container">
+        {embedded ? (
+          <section className="catalog-showcase-carousel-wrapper store-catalog-toolbar-wrapper" aria-label="Buscar en esta tienda">
+            <div className="catalog-showcase-carousel-header">
+              <div>
+                <h2>Repuestos de {storeName || 'esta tienda'}</h2>
+                <p>Los mismos filtros del catálogo, solo con lo que publica esta tienda: patente, categoría, vehículo, marca, condición, origen y precio.</p>
+              </div>
+            </div>
+            {renderCatalogSearchControls()}
+          </section>
+        ) : (
         <section className={`catalog-showcase-carousel-wrapper ${appliedFilterLabel ? 'has-category' : ''} ${isPickingCategory ? 'is-picking' : ''}`} aria-label="Explora por categorías">
             <div className="catalog-showcase-carousel-header">
               <div>
@@ -1188,6 +1213,7 @@ export default function PartsCatalogView({
             </div>
             {renderCatalogSearchControls()}
         </section>
+        )}
 
         {!hasActiveContext && !showcaseLoading && showcase.items.length > 0 && (
           <div className="catalog-mobile-showcase-heading">
@@ -1602,7 +1628,7 @@ export default function PartsCatalogView({
 
             {/* Tienda y Comuna, al final como en la app: desplegables con buscador sobre
                 todas las tiendas y comunas del catálogo, para que el panel no crezca. */}
-            <FilterSearchSelect
+            {!lockedStoreId && <FilterSearchSelect
               label="Tienda"
               icon={<Store size={13} />}
               allLabel="Todas las tiendas"
@@ -1613,8 +1639,9 @@ export default function PartsCatalogView({
               helper={visibleStoreOptions.length
                 ? `${visibleStoreOptions.length} ${visibleStoreOptions.length === 1 ? 'tienda' : 'tiendas'} con repuestos ${scopedFilters ? 'para tu vehículo' : 'publicados'}`
                 : ''}
-            />
-            <FilterSearchSelect
+            />}
+            {/* Dentro de una tienda la comuna es una sola: el filtro no aplica. */}
+            {!lockedStoreId && <FilterSearchSelect
               label="Comuna"
               icon={<MapPin size={13} />}
               allLabel="Todas las comunas"
@@ -1625,7 +1652,7 @@ export default function PartsCatalogView({
               helper={visibleComunaOptions.length
                 ? `${visibleComunaOptions.length} ${visibleComunaOptions.length === 1 ? 'comuna' : 'comunas'} con tiendas${scopedFilters ? ' que tienen repuestos para tu vehículo' : ''}`
                 : ''}
-            />
+            />}
 
             {/* Clear All Filters Button */}
             <button className="btn-clear-all-filters-wide" onClick={handleApplyFilters}>
