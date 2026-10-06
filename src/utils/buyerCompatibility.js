@@ -53,12 +53,15 @@ export function matchBuyerCompatibility(compatibilidad = [], vehicle) {
 /** Texto de la fila "Compatibilidad" de una compra. '' si no hay nada que decir. */
 export function buyerCompatibilityText({ compatibilidad = [], vehicle, esUniversal }) {
   if (esUniversal) return 'Universal: sirve para cualquier vehículo';
-  const match = matchBuyerCompatibility(compatibilidad, vehicle);
-  if (match) return entryLabel(match);
+  // El vehículo de la compra manda. Los grupos guardados solo con versiones del catálogo no
+  // traen marca/modelo propios y `adaptProduct` les pone los del PRIMER grupo, así que el
+  // grupo que calzaba por versión se rotulaba con otro vehículo (un Yaris salía como "BAIC").
   const own = vehicleLabelOf(vehicle);
   if (own) return own;
+  const match = matchBuyerCompatibility(compatibilidad, vehicle);
+  if (match && entryLabel(match)) return entryLabel(match);
   if (!compatibilidad.length) return '';
   // Sin vehículo declarado (compras antiguas): todas, no solo la primera.
-  const labels = compatibilidad.map(entryLabel).filter(Boolean);
+  const labels = [...new Set(compatibilidad.map(entryLabel).filter(Boolean))];
   return labels.length > 3 ? `${labels.slice(0, 3).join(' · ')} y ${labels.length - 3} más` : labels.join(' · ');
 }
