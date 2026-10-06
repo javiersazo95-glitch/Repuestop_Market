@@ -582,7 +582,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
               <div className="withdrawal-kpi-info">
                 <span>En retención</span>
                 <strong>{formatCLP(pending.totalRetenido)}</strong>
-                <small>{pending.retenidos.length} {pending.retenidos.length === 1 ? 'pedido en garantía' : 'pedidos en garantía'}</small>
+                <small>{pending.retenidos.length} {pending.retenidos.length === 1 ? 'pedido en retención' : 'pedidos en retención'}</small>
               </div>
             </div>
 
@@ -710,7 +710,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                         onClick={() => setOrdersModal({
                           type: 'held',
                           title: 'Pedidos en retención',
-                          subtitle: `${pending.retenidos.length} pedidos en garantía · Total ${formatCLP(pending.totalRetenido)}`,
+                          subtitle: `${pending.retenidos.length} pedidos en retención · Total ${formatCLP(pending.totalRetenido)}`,
                           icon: ShieldCheck,
                           orders: pending.retenidos,
                         })}

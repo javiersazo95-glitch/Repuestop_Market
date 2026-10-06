@@ -75,9 +75,12 @@ const TARGETS = {
   // el comprador y "Chats con compradores" para la tienda (O62/O71). Antes apuntaba a
   // `consultas?pedido=`, que ese panel no lee: la notificacion no abria el caso. El backend manda
   // la MISMA ruta a las dos partes, asi que el lado lo decide quien la abre.
+  // U1: `viewMode` (desde el 5-oct) dice de que lado es el aviso; una tienda que compra abre su
+  // caso como compradora.
   '/mediation-chat': (params, context) => {
-    if (!params?.orderId) return context?.isSeller ? PROFILE('chats_compradores') : PROFILE('chats_vendedor');
-    return context?.isSeller ? sellerCaseChatPath(params.orderId) : buyerCaseChatPath(params.orderId);
+    const asSeller = params?.viewMode ? params.viewMode === 'seller' : Boolean(context?.isSeller);
+    if (!params?.orderId) return asSeller ? PROFILE('chats_compradores') : PROFILE('chats_vendedor');
+    return asSeller ? sellerCaseChatPath(params.orderId) : buyerCaseChatPath(params.orderId);
   },
 
   '/support-ticket-detail': (params) => (params?.ticketId
