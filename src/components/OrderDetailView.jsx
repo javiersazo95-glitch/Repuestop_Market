@@ -25,6 +25,7 @@ import { carrierTracking } from '../data/carrierTracking';
 import { fundsReleaseNotice, retractionNotice, storeAutoCloseNotice } from '../data/orderDeadlines';
 import { validateUpload, FILE_LIMITS } from '../utils/fileValidation';
 import { buildOrderPackages } from '../utils/orderPackages';
+import { buyerCompatibilityText } from '../utils/buyerCompatibility';
 
 /**
  * Una linea de repuesto dentro del bloque de su tienda, con la ficha tecnica desplegable.
@@ -100,7 +101,7 @@ function PackageCard({ pkg, label, isSeller = false, showStore = false, recipien
   );
 }
 
-function OrderProductRow({ item, onNavigate }) {
+function OrderProductRow({ item, order, onNavigate }) {
   const [expanded, setExpanded] = useState(false);
   const [details, setDetails] = useState(null);
   const [specsState, setSpecsState] = useState('idle');
@@ -120,6 +121,13 @@ function OrderProductRow({ item, onNavigate }) {
   const cancelled = isCancelledItem(item);
   const refunded = Number(item.montoReembolsado ?? item.refundedAmount ?? 0);
   const productId = item.productoId || item.productId || item.id;
+  // Vehiculo con que se compro ESTE repuesto; en compras anteriores al checkout por producto, el
+  // del pedido.
+  const buyerVehicle = item.vehiculoMarca || item.vehiculoModelo || item.vehiculoCatalogoId
+    ? { catalogoId: item.vehiculoCatalogoId, marca: item.vehiculoMarca, modelo: item.vehiculoModelo, anio: item.vehiculoAnio }
+    : (order?.vehiculoMarca || order?.vehiculoModelo
+      ? { catalogoId: order.vehiculoCatalogoId, marca: order.vehiculoMarca, modelo: order.vehiculoModelo, anio: order.vehiculoAnio }
+      : null);
 
   useEffect(() => {
     if (!expanded || !productId || fetchedRef.current) return undefined;
@@ -145,9 +153,12 @@ function OrderProductRow({ item, onNavigate }) {
     // codigoInterno en el primero que haya -- las dos filas mostraban el mismo valor.
     ['SKU', details?.skuProveedor || sku || null],
     ['Condición', details?.condicion || null],
-    ['Compatibilidad', details?.compatibilidades?.[0]
-      ? [details.compatibilidades[0].marca, details.compatibilidades[0].modelo].filter(Boolean).join(' ')
-      : null],
+    // La del vehiculo con que se compro, no la primera que declaro el vendedor.
+    ['Compatibilidad', buyerCompatibilityText({
+      compatibilidad: details?.compatibilidad || [],
+      vehicle: buyerVehicle,
+      esUniversal: Boolean(item.esUniversal ?? details?.esUniversal),
+    }) || null],
     ['Referencia OEM', details?.referenciaOem || null],
   ].filter(([, value]) => Boolean(value));
 
@@ -1687,7 +1698,7 @@ export default function OrderDetailView({
 
                       <div className="order-items-table">
                         {block.items.map((item, i) => (
-                          <OrderProductRow key={item.id || i} item={item} onNavigate={onClose} />
+                          <OrderProductRow key={item.id || i} item={item} order={order} onNavigate={onClose} />
                         ))}
                       </div>
 
