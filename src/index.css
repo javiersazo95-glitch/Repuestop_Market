@@ -21112,3 +21112,4 @@ input.has-success {
 .product-shipping-card-info { margin: 0; padding: 8px 10px; display: flex; align-items: flex-start; gap: 8px; border: 1px solid #bfd6f7; border-radius: 9px; color: #0056bf; background: #eaf2ff; font-size: 12.5px; line-height: 1.45; }
 .product-shipping-card-info svg { flex-shrink: 0; margin-top: 1px; }
 .product-shipping-card-info.is-warning { border-color: #f0b44c; color: #8a5a00; background: #fff3d6; }
+.withdrawal-view-more-btn.charge-btn { color: #b42318; }

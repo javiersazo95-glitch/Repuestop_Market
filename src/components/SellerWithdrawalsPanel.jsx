@@ -221,6 +221,7 @@ function OrdersListModal({ modalData, onClose }) {
   const [query, setQuery] = useState('');
   const { title, subtitle, icon: Icon = Wallet, orders = [], type } = modalData;
   const isHeld = type === 'held';
+  const isCharge = type === 'charge';
 
   const filtered = useMemo(() => {
     if (!query.trim()) return orders;
@@ -277,9 +278,10 @@ function OrdersListModal({ modalData, onClose }) {
           {filtered.length > 0 ? (
             filtered.map((order) => (
               <PendingOrderRow
-                key={isHeld ? `modal-held-${order.pedidoId}` : `modal-avail-${order.pedidoId}`}
+                key={`modal-${type}-${order.pedidoId}`}
                 order={order}
                 isHeld={isHeld}
+                isCharge={isCharge}
               />
             ))
           ) : (
@@ -760,9 +762,26 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                   </div>
                 </header>
                 <div className="withdrawal-section-orders">
-                  {pending.cargos.map((order) => (
+                  {pending.cargos.slice(0, DISPLAY_LIMIT).map((order) => (
                     <PendingOrderRow key={`cargo-${order.pedidoId}`} order={order} isCharge />
                   ))}
+                  {pending.cargos.length > DISPLAY_LIMIT && (
+                    <button
+                      type="button"
+                      className="withdrawal-view-more-btn charge-btn"
+                      onClick={() => setOrdersModal({
+                        type: 'charge',
+                        title: 'Cargos por reembolsos',
+                        subtitle: `${pending.cargos.length} pedidos · Total ${formatCLP(pending.totalCargos)}`,
+                        icon: RotateCcw,
+                        orders: pending.cargos,
+                      })}
+                    >
+                      <Eye size={15} />
+                      <span>Ver los {pending.cargos.length - DISPLAY_LIMIT} cargos restantes</span>
+                      <ChevronRight size={15} />
+                    </button>
+                  )}
                 </div>
               </section>
             )}
