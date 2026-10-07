@@ -498,15 +498,17 @@ antiguo, que no se elimina hasta la Fase 4.
 
 ### 3.9 Después del corte
 
-- [ ] `https://repuestop.cl` sirve el marketplace, con candado válido.
-- [ ] `https://www.repuestop.cl` redirige al ápex.
-- [ ] Rehacer el checklist sobre el dominio real.
+- [x] `https://repuestop.cl` sirve el marketplace, con candado válido.
+- [x] `https://www.repuestop.cl` redirige al ápex.
+- [x] Rehacer el checklist sobre el dominio real (la tabla de verificación está en 3.8).
 - [ ] Probar un pago y que el retorno de Flow caiga en `repuestop.cl/compra-exitosa`. Antes
-      del corte esa URL no existía.
+      del corte esa URL no existía. **Queda para el encendido de producción**: es el caso
+      P3-6 del `plan_pruebas_lanzamiento_unificado.md` del repo del backend, con Flow real.
 - [ ] **Quitar `https://repuestop-market.vercel.app` de `CORS_ALLOWED_ORIGINS`** en el
-      backend de producción.
+      backend de producción. Al 28-09-2026 la variable está **borrada en espera** en
+      Railway, sin desplegar; se aplica en el corte (A3 del plan de pruebas unificado).
 - [ ] Quitar ese mismo origen de los autorizados en Google Cloud Console.
-- [ ] **Evitar que `repuestop-market.vercel.app` compita en Google.** Vercel marca
+- [x] **Evitar que `repuestop-market.vercel.app` compita en Google.** Vercel marca
       `noindex` en los deployments de *preview*, pero **no** en el alias de producción, así
       que después del corte ese dominio seguiría sirviendo el sitio completo y Google puede
       indexarlo como contenido duplicado de `repuestop.cl`. Se arregla agregando a
@@ -524,9 +526,32 @@ antiguo, que no se elimina hasta la Fase 4.
       **Va después del corte, no antes**: mientras se verifica, ese dominio tiene que servir
       el sitio. El mismo problema aplica a `dev-repuestop-market.vercel.app`, aunque ahí
       importa menos.
-- [ ] Search Console: enviar `https://repuestop.cl/sitemap.xml`. El sitio pasa de una landing
+
+      **Hecho** en `314aa4f`: `vercel.json` tiene el redirect por host para los dos alias
+      (`repuestop-market.vercel.app` → `repuestop.cl` y `dev-repuestop-market.vercel.app`
+      → `dev-repuestop.repuestop.cl`).
+- [ ] **⚠️ Revertir el bloqueo de indexación de `public/robots.txt`**, el día del
+      lanzamiento y no antes. Desde el commit `6434291` (21-08-2026) el archivo dice
+      `Disallow: /` para que Google no indexe el marketplace sin catálogo y con el backend
+      de producción apagado; la configuración real está comentada justo debajo y revertirlo
+      es descomentarla. **Mientras siga así el sitio es invisible en Google aunque
+      producción esté encendida**, y Search Console manda el aviso "Bloqueada por
+      robots.txt" (llegó el 07-10-2026). Es el único paso de SEO del lanzamiento; el
+      detalle está en `HANDOFF_PROXIMO_AGENTE.md` §3.5.
+
+      **Ojo: el archivo es el mismo para los dos ambientes.** `dev` y `main` comparten
+      `public/robots.txt` y hoy están idénticos, así que revertirlo en `dev` —que es por
+      donde pasa al `main` del corte— deja indexable también `dev-repuestop.repuestop.cl`.
+      Si no se quiere eso, hay que resolverlo en el mismo cambio: un `X-Robots-Tag:
+      noindex` en `vercel.json` condicionado al host de dev, al lado de los redirects por
+      host que ya existen.
+- [ ] Search Console: enviar `https://repuestop.cl/sitemap.xml`, **pero solo cuando haya
+      catálogo real** y después de revertir el `robots.txt`. El sitio pasa de una landing
       de una página a un marketplace de muchas rutas; la indexación se rehace y las
-      posiciones actuales se van a mover.
+      posiciones actuales se van a mover. Enviarlo con el catálogo vacío hace que Google
+      clasifique esas rutas como páginas pobres, y recuperar posiciones cuesta más que
+      indexar bien la primera vez (`HANDOFF_PROXIMO_AGENTE.md` §3.5); enviarlo con el
+      bloqueo puesto devuelve error en todas las URLs.
 
 ### Resumen del orden
 

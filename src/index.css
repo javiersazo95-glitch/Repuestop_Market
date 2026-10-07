@@ -4077,6 +4077,39 @@ input, select, textarea {
 .profile-notification-item time { color: #94a3b8; font-size: 10px; }
 .profile-notification-item i { width: 7px; height: 7px; flex: 0 0 auto; margin-top: 5px; border-radius: 50%; background: var(--color-brand-blue); }
 
+/* Moderacion de notificaciones por perfil (7-oct): ajustes dentro del popover y tarjeta en Mis datos. */
+.profile-notifications-back { display: inline-flex; align-items: center; gap: 5px; border: 0; color: var(--color-brand-blue); background: transparent; font-size: 11px; font-weight: 700; cursor: pointer; }
+.profile-notifications-gear { width: 26px; height: 26px; display: inline-grid; place-items: center; border: 1px solid #e2e8f0 !important; border-radius: 50%; color: #475569 !important; background: #fff; }
+.profile-notifications-gear:hover { color: var(--color-brand-blue) !important; border-color: #9dc5ff !important; background: #eff6ff; }
+.profile-notifications-settings { padding: 12px 13px 4px; }
+.profile-notifications-muted-note { display: flex; align-items: center; gap: 7px; padding: 8px 13px; border-bottom: 1px solid #eff3f7; color: #64748b; background: #f8fafc; font-size: 11px; }
+.profile-notifications-muted-note span { flex: 1; min-width: 0; }
+.profile-notifications-muted-note button { border: 0; color: var(--color-brand-blue); background: transparent; font-size: 11px; font-weight: 700; cursor: pointer; }
+.profile-notification-item.muted { opacity: .55; }
+.profile-notification-item.muted.unread { background: #fff; }
+.notif-prefs { display: grid; gap: 14px; }
+.notif-prefs--compact { gap: 10px; }
+.notif-prefs-section { display: grid; gap: 8px; }
+.notif-prefs-title { margin: 0; display: inline-flex; align-items: center; gap: 6px; color: #0f172a; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; }
+.notif-prefs-options { display: grid; gap: 8px; }
+.notif-pref-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #fff; text-align: left; cursor: pointer; font: inherit; }
+.notif-pref-option:hover { border-color: #cbd5e1; }
+.notif-pref-option.selected { border-color: #2563eb; background: #eff6ff; }
+.notif-pref-option:disabled { cursor: default; opacity: .7; }
+.notif-pref-option-icon { width: 32px; height: 32px; flex: 0 0 auto; display: inline-grid; place-items: center; border-radius: 10px; color: var(--color-brand-blue); background: #eaf2ff; }
+.notif-pref-option.selected .notif-pref-option-icon { color: #fff; background: var(--color-brand-blue); }
+.notif-pref-option-copy { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.notif-pref-option-copy strong { color: #0f172a; font-size: 13px; }
+.notif-pref-option-copy small { color: #64748b; font-size: 11.5px; line-height: 1.4; }
+.notif-pref-radio { width: 18px; height: 18px; flex: 0 0 auto; border: 2px solid #cbd5e1; border-radius: 50%; position: relative; }
+.notif-pref-radio.on { border-color: var(--color-brand-blue); }
+.notif-pref-radio.on::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--color-brand-blue); }
+.notif-prefs-error { margin: 0; color: #b91c1c; font-size: 12px; }
+.notif-prefs-note { margin: 0; color: #94a3b8; font-size: 11px; line-height: 1.4; }
+.notif-prefs--compact .notif-prefs-note { padding-bottom: 6px; }
+.notif-prefs-card { display: grid; gap: 10px; }
+.notif-prefs-intro { margin: 0; color: #64748b; font-size: 12.5px; line-height: 1.5; }
+
 .profile-support-subtitle { margin: 4px 0 0; color: #64748b; font-size: 12px; }
 .profile-support-form { margin: 18px 0; padding: 18px; display: grid; gap: 13px; border: 1px solid #dbe7f6; border-radius: 12px; background: #f8fbff; }
 .profile-support-form label { display: grid; gap: 6px; color: #334155; font-size: 12px; font-weight: 700; }
@@ -6439,7 +6472,11 @@ input, select, textarea {
    comprador. Antes era un input generico de 160px pegado al boton, sin etiqueta, que en el
    pie del modal se leia como un campo de busqueda perdido. `.order-pin-entry` lo agrupa con
    su boton y le da el aire de un campo de codigo: casillas monoespaciadas y separadas. */
-.order-pin-entry { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+/* Anclado a la izquierda, donde empieza la lectura: teclear el codigo es LA accion de este
+   paso, y el pie la arrinconaba contra "Volver" por el `justify-content: flex-end`, con media
+   pagina vacia al lado. De paso recupera el ancho que necesita: apretado contra el borde, el
+   boton no cabia junto al campo y caia debajo, estirado a todo el bloque. */
+.order-pin-entry { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-right: auto; }
 .order-pin-field { display: flex; flex-direction: column; gap: 5px; }
 .order-pin-label { display: inline-flex; align-items: center; gap: 5px; color: #475569; font-size: 11.5px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
 /* `!important` porque `.order-modal-footer input` y los estilos base de formulario ganan por
@@ -6449,11 +6486,12 @@ input, select, textarea {
 .order-pin-field input:focus { outline: none; border-color: var(--brand-blue, #1d6fe0) !important; box-shadow: 0 0 0 3px rgba(29, 111, 224, .16); }
 .order-pin-field small { color: #94a3b8; font-size: 11px; }
 /* El boton se alinea con la CAJA del input, no con el bloque completo: sin esto la etiqueta
-   de arriba lo empuja y queda flotando sobre el campo. */
-.order-pin-submit { margin-bottom: 18px; }
+   de arriba lo empuja y queda flotando sobre el campo. Son los 17px del texto de ayuda mas
+   los 5px de `gap` que lo separan del campo; con 18px quedaba 4px mas abajo que el input. */
+.order-pin-submit { margin-bottom: 22px; }
 
 @media (max-width: 560px) {
-  .order-pin-entry { width: 100%; }
+  .order-pin-entry { width: 100%; margin-right: 0; }
   .order-pin-field, .order-pin-field input { width: 100% !important; }
   .order-pin-submit { margin-bottom: 0; width: 100%; justify-content: center; }
 }
@@ -7320,6 +7358,10 @@ input, select, textarea {
   background: #f8fafc;
   border-top: 1px solid var(--border-subtle);
   display: flex;
+  /* Sin `center`, el `stretch` por defecto estira TODOS los botones a la altura del hijo mas
+     alto. Con el bloque del PIN del retiro en tienda -- etiqueta, campo y ayuda, 88px -- el
+     boton de volver se pintaba de 158px de alto: una barra enorme al lado del campo. */
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
 }
@@ -7329,6 +7371,21 @@ input, select, textarea {
 .order-claim-trigger { margin-right: auto; color: #B8261A; border-color: #FECACA; }
 .order-claim-trigger:hover { background: #FFF0F0; }
 .order-page-container .order-modal-footer { flex-wrap: wrap; }
+
+/* `.btn-auth-primary` nacio para el formulario de login, donde el boton ocupa todo el ancho, y
+   arrastra un `width: 100%` a donde lo reusen. En el pie del pedido eso lo convierte en una barra
+   de lado a lado -- 1130px de los 1178 del pie -- que empuja al resto fuera de su sitio; dentro
+   del bloque del PIN se comia el ancho del grupo y tiraba el boton debajo del campo. Aca cada
+   boton mide lo que dice su texto. */
+.order-modal-footer .btn-auth-primary,
+.order-modal-footer .btn-auth-secondary { width: auto; }
+
+/* En un telefono si se apilan a lo ancho, que es donde el boton completo se agradece. */
+@media (max-width: 560px) {
+  .order-modal-footer { flex-wrap: wrap; }
+  .order-modal-footer .btn-auth-primary,
+  .order-modal-footer .btn-auth-secondary { width: 100%; }
+}
 
 /* Pedido finalizado: el plazo para reclamar ya venció. Se ancla a la izquierda como el
    botón que reemplaza. */
@@ -20855,6 +20912,33 @@ input.has-success {
 .checkout-recap-delivery { display: grid; gap: 2px; margin: 0 0 4px; padding: 0; list-style: none; color: #64748b; font-size: 12px; }
 .checkout-recap-delivery li { display: flex; align-items: center; gap: 5px; }
 .checkout-recap-delivery svg { flex-shrink: 0; color: #0b5fd0; }
+
+/* --- Compatibilidad con el vehículo elegido (carrito y checkout): ícono + texto, ámbar (no rojo) si no coincide --- */
+.compat-status { display: grid; gap: 6px; padding: 7px 10px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; color: #45566d; font-size: 12.5px; line-height: 1.4; }
+.compat-status-text { display: flex; align-items: flex-start; gap: 6px; margin: 0; }
+.compat-status-text svg { flex-shrink: 0; margin-top: 2px; }
+.compat-status.is-ok { border-color: #bbe5d3; background: #f0faf5; color: #05603a; }
+.compat-status.is-ok svg { color: #059669; }
+.compat-status.is-neutral svg, .compat-status.is-info svg, .compat-status.is-loading svg { color: #64748b; }
+.compat-status.is-loading { border-style: dashed; color: #64748b; }
+.compat-status.is-warn { border-color: #f5d48a; background: #fffaeb; color: #7a4a00; font-weight: 600; }
+.compat-status.is-warn svg { color: #b45309; }
+.compat-status-actions { display: flex; flex-wrap: wrap; gap: 4px 14px; padding-left: 20px; }
+.compat-status-actions a, .compat-status-actions button { padding: 0; border: 0; background: none; color: #0b5fd0; font-size: 12px; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.compat-status-actions a:hover, .compat-status-actions button:hover { color: #084aa3; }
+.cart-line-compat { margin-top: 6px; justify-self: start; }
+.cart-compat-summary { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 14px; padding: 10px 14px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: #fff; color: #33445c; font-size: 13px; font-weight: 600; line-height: 1.45; }
+.cart-compat-summary svg { flex-shrink: 0; margin-top: 2px; color: #0b5fd0; }
+.checkout-compat-summary { display: grid; gap: 8px; margin-top: 12px; padding: 10px 12px; border: 1px solid #f5d48a; border-radius: var(--radius-sm); background: #fffaeb; }
+.checkout-compat-summary-text { display: flex; align-items: flex-start; gap: 6px; margin: 0; color: #7a4a00; font-size: 12.5px; font-weight: 700; line-height: 1.4; }
+.checkout-compat-summary-text svg { flex-shrink: 0; margin-top: 2px; color: #b45309; }
+.checkout-compat-summary-text button { padding: 0; border: 0; background: none; color: #0b5fd0; font-size: 12.5px; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.checkout-compat-ack { display: flex; align-items: center; gap: 8px; min-height: 36px; color: #172033; font-size: 13px; font-weight: 700; cursor: pointer; }
+.checkout-compat-ack input { width: 18px; height: 18px; flex-shrink: 0; accent-color: #0b5fd0; }
+@media (max-width: 640px) {
+  .compat-status-actions { gap: 6px 14px; padding-left: 0; }
+  .compat-status-actions a, .compat-status-actions button { min-height: 32px; display: inline-flex; align-items: center; }
+}
 
 .checkout-vehicle-dialog-backdrop { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: flex-end; justify-content: center; background: rgba(15, 23, 42, .45); }
 .checkout-vehicle-dialog { display: grid; gap: 12px; width: min(460px, 100%); max-height: 92vh; overflow-y: auto; padding: 16px; border-radius: 16px 16px 0 0; background: #fff; box-shadow: 0 -12px 40px rgba(9, 20, 38, .25); }

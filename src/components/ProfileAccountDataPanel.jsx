@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertCircle, Building2, Camera, Check, CreditCard, FileText, Image as ImageIcon, Info, Loader2, Lock, Mail,
+  AlertCircle, Bell, Building2, Camera, Check, CreditCard, FileText, Image as ImageIcon, Info, Loader2, Lock, Mail,
   MapPin, Package, Pencil, Phone, Save, Search, Store, Truck, Wallet, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -14,6 +14,7 @@ import { qk } from '../services/queryKeys';
 import ShippingMethodsPicker from './ShippingMethodsPicker';
 import BuyerAddressBook from './BuyerAddressBook';
 import ChangePasswordCard from './ChangePasswordCard';
+import NotificationPreferencesPanel from './NotificationPreferencesPanel';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import VehicleBrandLogo from './VehicleBrandLogo';
@@ -893,6 +894,17 @@ export default function ProfileAccountDataPanel({
                   <BuyerAddressBook usuarioId={user?.userId} />
                 )}
                 <ChangePasswordCard user={{ ...user, taxId: storeInfo?.taxId || user?.taxId }} isSeller={isSeller} />
+                <div className="notif-prefs-card">
+                  <div className="form-section-title" style={{ marginTop: '20px' }}>
+                    <Bell size={15} /> Notificaciones
+                  </div>
+                  <p className="notif-prefs-intro">
+                    {isSeller
+                      ? 'Elige cuántos avisos quieres recibir en cada perfil. Se guarda en tu cuenta y vale también en la app.'
+                      : 'Elige cuántos avisos quieres recibir. Se guarda en tu cuenta y vale también en la app.'}
+                  </p>
+                  <NotificationPreferencesPanel />
+                </div>
                 {isSeller && <SellerVerificationCard sellerId={effectiveSellerId} />}
               </div>
             </div>

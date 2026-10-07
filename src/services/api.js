@@ -886,6 +886,15 @@ export async function checkoutCartApi(usuarioId, payload) {
   return fetchApi(`/usuarios/${usuarioId}/pedidos/checkout`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
+/**
+ * ¿Cada repuesto le sirve al vehículo elegido? Público (con sesión el token va igual).
+ * `items`: [{ productoId, vehiculo: { vehiculoCatalogoId, marca, modelo, anio } }], máximo 50.
+ * Responde { resultados: [{ productoId, resultado: COMPATIBLE | NO_COINCIDE | SIN_DATOS | UNIVERSAL }] }.
+ */
+export async function evaluateCompatibilityApi(items, { signal } = {}) {
+  return fetchApi('/compatibilidad/evaluar', { method: 'POST', body: JSON.stringify({ items }), signal });
+}
+
 export async function getCartApi(usuarioId) {
   return fetchApi(`/usuarios/${usuarioId}/carrito`, { method: 'GET' });
 }
@@ -1799,12 +1808,30 @@ export async function markNotificationReadApi(userId, notificationId) {
   return fetchApi(`/usuarios/${userId}/notificaciones/${notificationId}/leida`, { method: 'PUT' });
 }
 
-export async function markAllNotificationsReadApi(userId) {
-  return fetchApi(`/usuarios/${userId}/notificaciones/leidas`, { method: 'PUT' });
+/** Sin `ids` marca todas; con `ids` solo esas (lo visible segun la moderacion por perfil). */
+export async function markAllNotificationsReadApi(userId, ids) {
+  return fetchApi(`/usuarios/${userId}/notificaciones/leidas`, {
+    method: 'PUT',
+    ...(Array.isArray(ids) ? { body: JSON.stringify({ ids }) } : {}),
+  });
+}
+
+/** Moderacion de notificaciones por perfil: `{ vendedor, comprador }` con TODAS | IMPORTANTES | NINGUNA. */
+export async function getNotificationPreferencesApi(userId) {
+  return fetchApi(`/usuarios/${userId}/preferencias-notificaciones`, { method: 'GET' });
+}
+
+export async function updateNotificationPreferencesApi(userId, payload) {
+  return fetchApi(`/usuarios/${userId}/preferencias-notificaciones`, { method: 'PUT', body: JSON.stringify(payload) });
 }
 
 export async function deleteReadNotificationsApi(userId) {
   return fetchApi(`/usuarios/${userId}/notificaciones/leidas`, { method: 'DELETE' });
+}
+
+/** Un aviso abierto (se navego a su destino) se elimina: la campana solo muestra lo que aun no se abre. */
+export async function deleteNotificationApi(userId, notificationId) {
+  return fetchApi(`/usuarios/${userId}/notificaciones/${notificationId}`, { method: 'DELETE' });
 }
 
 // -------------------------------------------------------------
@@ -2352,9 +2379,11 @@ export async function getAutomotiveServiceAccreditationApi({ signal } = {}) {
 export async function submitAutomotiveServiceAccreditationApi(data, files) {
   const formData = new FormData();
   formData.append('data', JSON.stringify({ ...data, canal: 'MARKETPLACE_WEB' }));
-  formData.append('identidad', files.identidad);
-  formData.append('inicioActividades', files.inicioActividades);
-  formData.append('patenteMunicipal', files.patenteMunicipal);
+  // Solo viajan los documentos nuevos: al corregir, el backend conserva los ya
+  // recibidos que no se reemplazan.
+  ['identidad', 'inicioActividades', 'patenteMunicipal'].forEach((key) => {
+    if (files[key]) formData.append(key, files[key]);
+  });
   return fetchApi('/automotive-services/me', {
     method: 'POST',
     body: formData,

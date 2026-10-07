@@ -1,6 +1,9 @@
 import React from 'react';
 import { Bike, Car, CheckCircle2, Circle, CircleDot, MapPin, Package, Plus, Store, Truck } from 'lucide-react';
 import { deliveryKind, isDispatch, localDeliveryCost, methodsForItem, vehicleLabel } from '../utils/cartDelivery';
+import { COMPAT } from '../utils/compatibilityCheck';
+import { productPath } from '../routes/paths';
+import CompatibilityStatus from './CompatibilityStatus';
 
 const formatCLP = (value) => `$${Math.round(Number(value) || 0).toLocaleString('es-CL')}`;
 const KIND_ICON = { pickup: Store, local: Bike, courier: Truck, other: Package };
@@ -21,10 +24,14 @@ function methodPrice(method, sharedWithPrevious) {
  * Entrega de UN producto del checkout, igual que la app (CartItemDelivery): cómo lo recibe, a
  * dónde va (o dónde se retira) y para qué vehículo es. Cada producto puede ir a otra dirección
  * y ser para otro auto (el propio y el de un familiar).
+ *
+ * `compatibility`: si el repuesto le sirve al vehículo elegido ('loading', COMPATIBLE,
+ * NO_COINCIDE, SIN_DATOS, UNIVERSAL o null si no hay nada que decir). Se muestra justo bajo el
+ * vehículo; cuando no coincide ofrece revisar la ficha, cambiar el vehículo, preguntar o quitarlo.
  */
 export default function CheckoutItemDelivery({
-  item, delivery, addresses, vehicles, sharesShipment,
-  onChange, onAddVehicle, onEditVehicle, onManageAddresses,
+  item, delivery, addresses, vehicles, sharesShipment, compatibility = null,
+  onChange, onAddVehicle, onEditVehicle, onManageAddresses, onRemove,
 }) {
   const address = addresses.find((entry) => String(entry.id) === String(delivery.addressId)) || null;
   const allowed = methodsForItem(item, address);
@@ -35,6 +42,17 @@ export default function CheckoutItemDelivery({
   const dispatch = isDispatch(delivery.method);
   const selectedVehicle = vehicles.find((vehicle) => vehicle.key === delivery.vehicleKey) || null;
   const radioName = `entrega-${item.id}`;
+
+  // "Cambiar vehículo" abre el formulario para indicar otro vehículo, que queda elegido para este
+  // producto al guardarlo (como en la app). Antes sólo movía el foco al selector, que está justo
+  // arriba y a la vista, así que el botón parecía no hacer nada.
+  // Las fichas se abren en otra pestaña: volver no debe borrar lo que ya se eligió en el checkout.
+  const compatActions = [
+    { label: 'Ver compatibilidad', to: `${productPath(item)}?abrir=compatibilidad`, newTab: true },
+    { label: 'Cambiar vehículo', onClick: onAddVehicle },
+    { label: 'Preguntar a la tienda', to: `${productPath(item)}?abrir=preguntas`, newTab: true },
+    ...(onRemove ? [{ label: 'Quitar del carrito', onClick: onRemove }] : []),
+  ];
 
   return (
     <div className="checkout-item-delivery">
@@ -111,7 +129,7 @@ export default function CheckoutItemDelivery({
           {!item.esUniversal && <em className="checkout-item-required">Obligatorio</em>}
         </span>
         {item.esUniversal ? (
-          <small className="checkout-item-delivery-note">Repuesto universal: sirve para cualquier vehículo.</small>
+          <CompatibilityStatus status={COMPAT.UNIVERSAL} id={`compat-${item.id}`} />
         ) : (
           <>
             <div className="checkout-item-vehicles" role="radiogroup" aria-label={`Vehículo de ${item.titulo}`}>
@@ -135,6 +153,14 @@ export default function CheckoutItemDelivery({
                 <Plus size={14} /> {vehicles.length === 0 ? 'Agregar vehículo' : 'Otro vehículo'}
               </button>
             </div>
+            {selectedVehicle && (
+              <CompatibilityStatus
+                status={compatibility}
+                vehicle={selectedVehicle}
+                actions={compatActions}
+                id={`compat-${item.id}`}
+              />
+            )}
             {selectedVehicle ? (
               <button type="button" className="checkout-item-link" onClick={() => onEditVehicle(selectedVehicle)}>Editar este vehículo</button>
             ) : (
