@@ -2414,6 +2414,30 @@ export async function updateAutomotiveServicePhoneApi(telefono) {
   });
 }
 
+/**
+ * Cambia la atención 24/7 / urgencias y, si viene `horario`, el "Horario principal" del
+ * taller sin reabrir el expediente. Misma vía que la app (`PATCH /me/horario`).
+ */
+export async function updateAutomotiveServiceHoursApi(payload) {
+  return fetchApi('/automotive-services/me/horario', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Pasos que le quedan al taller aprobado: registrar su agenda y crear su primer anuncio
+ * (`ServicioAutomotrizDTOs.Onboarding`). `null` si falla: el banner simplemente no se muestra.
+ */
+export async function getAutomotiveServiceOnboardingApi({ signal } = {}) {
+  try {
+    return await fetchApi('/automotive-services/me/onboarding', { method: 'GET', signal });
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+    return null;
+  }
+}
+
 // -------------------------------------------------------------
 // AGENDAS CON NOMBRE (sincronizadas web + móvil, `/api/v1/agenda-configs`)
 // -------------------------------------------------------------

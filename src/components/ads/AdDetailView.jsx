@@ -18,6 +18,7 @@ import VehicleBrandLogo from '../VehicleBrandLogo';
 import { confirmWhatsappContact } from '../../utils/whatsappContact';
 import MobileStickyBar from '../MobileStickyBar';
 import './ad-detail.css';
+import { canBookAd } from '../../utils/adBooking';
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=1200&auto=format&fit=crop&q=80';
@@ -57,7 +58,8 @@ export default function AdDetailView({ ad, onBack }) {
   const CategoryIcon = getCategoryIcon(ad.category);
 
   const canWhatsapp = Boolean(tierConfig.hasWhatsapp && ad.whatsapp);
-  const canBook = Boolean(tierConfig.hasBooking && ad.hasOnlineBooking);
+  // Un anuncio 24/7 se contacta directo: nunca ofrece agenda (ver `canBookAd`).
+  const canBook = canBookAd(ad);
 
   const images = (ad.images || []).filter(Boolean);
   const gallery = images.length > 0 ? images : [FALLBACK_IMAGE];
@@ -92,8 +94,8 @@ export default function AdDetailView({ ad, onBack }) {
     { Icon: MapPin, label: 'Dirección', value: locationText },
     { Icon: Phone, label: 'Teléfono', value: ad.phone },
     { Icon: MessageCircle, label: 'WhatsApp', value: canWhatsapp ? 'Contacto directo disponible' : null },
-    { Icon: Clock, label: 'Horario', value: ad.openingHours },
-    { Icon: Zap, label: 'Atención 24 h', value: ad.is24Hours ? 'Sí' : null },
+    { Icon: Clock, label: 'Horario', value: ad.is24Hours ? 'Atención 24 horas, todos los días' : ad.openingHours },
+    { Icon: Zap, label: 'Urgencias 24/7', value: ad.is24Hours ? 'Todos los días, a toda hora' : null },
     { Icon: CalendarCheck, label: 'Agenda en línea', value: canBook ? 'Disponible' : null },
     { Icon: Building2, label: 'En RepuesTop desde', value: memberSince },
   ].filter((f) => f.value);
@@ -186,7 +188,7 @@ export default function AdDetailView({ ad, onBack }) {
                   {ad.is24Hours && (
                     <>
                       <span className="ad-detail-dot">•</span>
-                      <span className="ad-detail-loc"><Clock size={14} /> Atención 24 h</span>
+                      <span className="ad-detail-loc"><Clock size={14} /> Urgencias 24/7</span>
                     </>
                   )}
                 </div>
@@ -347,7 +349,7 @@ export default function AdDetailView({ ad, onBack }) {
             <MobileStickyBar label={priceCaption} value={priceLabel || 'A convenir'} watchSelector=".ad-detail-side .ad-detail-btn" ariaLabel="Contactar al taller">
               {canWhatsapp && <button type="button" className="mobile-sticky-bar__btn is-whatsapp" onClick={handleWhatsApp}><MessageCircle size={18} /> WhatsApp</button>}
               {canBook && <button type="button" className={`mobile-sticky-bar__btn ${canWhatsapp ? 'is-secondary' : ''}`} onClick={handleBooking} aria-label="Agendar cita"><Calendar size={18} />{!canWhatsapp && ' Agendar'}</button>}
-              {!canWhatsapp && !canBook && ad.phone && <button type="button" className="mobile-sticky-bar__btn" onClick={handlePhone}><Phone size={18} /> Llamar</button>}
+              {(ad.is24Hours || (!canWhatsapp && !canBook)) && ad.phone && <button type="button" className={`mobile-sticky-bar__btn ${canWhatsapp ? 'is-secondary' : ''}`} onClick={handlePhone} aria-label="Llamar al taller"><Phone size={18} />{!canWhatsapp && (ad.is24Hours ? ' Llamar ahora' : ' Llamar')}</button>}
             </MobileStickyBar>
           )}
 
@@ -392,10 +394,11 @@ export default function AdDetailView({ ad, onBack }) {
               {ad.phone && (
                 <button
                   type="button"
-                  className={`ad-detail-btn ${canWhatsapp || canBook ? 'is-ghost' : 'is-book'}`}
+                  className={`ad-detail-btn ${!ad.is24Hours && (canWhatsapp || canBook) ? 'is-ghost' : 'is-book'}`}
                   onClick={handlePhone}
                 >
-                  <Phone size={17} /> Llamar
+                  {/* 24/7: sin agenda, el contacto directo es la acción principal. */}
+                  <Phone size={17} /> {ad.is24Hours ? 'Llamar ahora' : 'Llamar'}
                 </button>
               )}
 

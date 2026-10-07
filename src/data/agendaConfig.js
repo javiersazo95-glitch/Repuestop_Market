@@ -63,6 +63,21 @@ export function createDefaultAgendaConfig() {
 }
 
 /**
+ * "Horario principal": el horario normal que el taller declara al acreditarse (o en
+ * "Horario y urgencias"). El backend lo guarda con este id fijo y los anuncios lo
+ * preseleccionan. Mismo id que `AgendaConfigService.CLIENT_ID_PRINCIPAL` y que
+ * `PRINCIPAL_AGENDA_ID` en la app.
+ */
+export const PRINCIPAL_AGENDA_ID = 'principal';
+export const PRINCIPAL_AGENDA_NAME = 'Horario principal';
+
+/** La agenda que un anuncio nuevo debe preseleccionar: la principal o, si no, la única guardada. */
+export function pickDefaultAgendaConfig(configs) {
+  const list = Array.isArray(configs) ? configs : [];
+  return list.find((config) => config.id === PRINCIPAL_AGENDA_ID) || (list.length === 1 ? list[0] : null);
+}
+
+/**
  * Normaliza lo que venga del backend a la forma que usa el editor.
  *
  * `agendaConfig` es un `Map<String,Object>` en Java: los dias pueden llegar como

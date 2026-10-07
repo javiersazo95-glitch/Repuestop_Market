@@ -4,7 +4,7 @@ import {
   AlertTriangle, ArrowLeft, BadgeCheck, BadgeDollarSign, CalendarDays, CalendarClock, Car,
   CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, ClipboardList, CreditCard, Download, ExternalLink, Eye, FileText, Flag,
   Headphones, Image as ImageIcon, Info, Loader2, Lock, Maximize2, MessageSquare, Package, Paperclip,
-  PauseCircle, Pencil, Send, Settings2, Share2, ShieldCheck, ShoppingCart, Store, Tag, Trash2, Truck, Undo2, X,
+  PauseCircle, Pencil, Send, Settings2, Share2, ShieldCheck, ShoppingCart, Store, Tag, Trash2, Truck, Undo2, X, PackageCheck
 } from 'lucide-react';
 import RepuesTopLogo from './RepuesTopLogo';
 import ChatImagePreview from './ChatImagePreview';
@@ -25,7 +25,7 @@ import {
   QUOTE_VALIDITY_OPTIONS, QUOTE_WARRANTY_OPTIONS,
 } from '../utils/quoteFlow';
 import { buildQuotePdfBlob, quoteDocumentFilename } from '../utils/quoteDocument';
-import { checkoutPath, helpCategoryPath, productPath, storePath } from '../routes/paths';
+import { checkoutPath, helpCategoryPath, productPath, profilePurchasePath, storePath } from '../routes/paths';
 import { parseShippingMethods, resolveShippingService, shippingMethodCost } from '../data/shippingMethods';
 
 // Tope del mensaje del chat. Una cotizacion se negocia con datos concretos -cantidad,
@@ -317,6 +317,11 @@ export default function QuoteDetailModal({
     String(message.emisorId ?? message.autorId ?? '') !== String(user?.userId ?? user?.id ?? '')
   ));
   const closed = quote.estado === 'CERRADA';
+  // Ya se compro: el backend manda el pedido pagado que salio de esta cotizacion
+  // (`ConversacionResponseDTO.pedidoCotizacionId`). Desde ahi no se ofrece "Revisar y pagar",
+  // que hacia creer que faltaba pagar, sino ir a la compra.
+  const purchasedOrderId = quote.pedidoCotizacionId ?? null;
+  const purchased = mode === 'buyer' && purchasedOrderId != null;
   // Vencida o cerrada, el hilo deja de admitir mensajes: no tiene sentido negociar
   // sobre una oferta que ya no se puede pagar. El backend ya bloquea la CERRADA; la
   // vencida se decide aca, que es donde se interpreta `vigencia`.
@@ -759,6 +764,18 @@ export default function QuoteDetailModal({
             <div className="quote-ws-chat-actions">
               {(() => {
                 const isBuyerPayReady = mode === 'buyer' && Boolean(activeQuote) && !paused;
+                if (purchased) {
+                  return (
+                    <button
+                      type="button"
+                      className="quote-ws-details-button"
+                      onClick={() => navigate(profilePurchasePath(purchasedOrderId))}
+                    >
+                      <PackageCheck size={17} />
+                      <span>Compra realizada · Ver pedido</span>
+                    </button>
+                  );
+                }
                 return (
                   <button
                     type="button"
@@ -952,7 +969,7 @@ export default function QuoteDetailModal({
         <button type="button" onClick={() => { setOptionsOpen(false); setRequestSummaryOpen(true); }}><span><ClipboardList size={20} /></span><div><strong>Ver solicitud</strong><small>Unidades, envío y vehículo pedidos</small></div><ChevronRight size={18} /></button>
         {activeQuote && <button type="button" onClick={() => { setOptionsOpen(false); if (mode === 'buyer') setQuotePreviewOpen(true); else viewDocument(); }}><span><FileText size={20} /></span><div><strong>Ver cotización</strong><small>Precio, envío, vigencia y documento</small></div><ChevronRight size={18} /></button>}
         {mode === 'buyer' && activeQuote && <button type="button" onClick={() => { setOptionsOpen(false); shareQuoteLink(); }}><span><Share2 size={20} /></span><div><strong>Compartir cotización</strong><small>Envía un enlace para ver o descargar el PDF</small></div><ChevronRight size={18} /></button>}
-        {mode === 'buyer' && activeQuote && !paused && !closed && !expired && <button type="button" onClick={() => { setOptionsOpen(false); goToQuoteCheckout(); }}><span><CreditCard size={20} /></span><div><strong>Revisar y pagar</strong><small>Paga la cotización con la compra protegida</small></div><ChevronRight size={18} /></button>}
+        {mode === 'buyer' && activeQuote && !purchased && !paused && !closed && !expired && <button type="button" onClick={() => { setOptionsOpen(false); goToQuoteCheckout(); }}><span><CreditCard size={20} /></span><div><strong>Revisar y pagar</strong><small>Paga la cotización con la compra protegida</small></div><ChevronRight size={18} /></button>}
         {mode === 'buyer' && canWriteText && activeQuote && !paused && !closed && !expired && <button type="button" onClick={() => { setOptionsOpen(false); openModificationRequest(); }}><span><Pencil size={20} /></span><div><strong>Solicitar modificación</strong><small>Pide otra cantidad, envío o vehículo</small></div><ChevronRight size={18} /></button>}
         {mode === 'seller' && !paused && !closed && <button type="button" onClick={() => { setOptionsOpen(false); setQuoteEditorOpen(true); }}><span><Pencil size={20} /></span><div><strong>{activeQuote ? 'Editar cotización' : 'Enviar cotización'}</strong><small>{activeQuote ? 'Cambia precio, envío o vigencia' : 'Responde la solicitud con precio y envío'}</small></div><ChevronRight size={18} /></button>}
         <button type="button" onClick={() => { openHelp(); }}><span><CircleHelp size={20} /></span><div><strong>Ayuda</strong><small>Obtén asistencia con esta cotización</small></div><ChevronRight size={18} /></button>
@@ -1193,7 +1210,7 @@ export default function QuoteDetailModal({
         </div>
       )}
 
-      {quotePreviewOpen && activeQuote && <div className="quote-ws-dialog-backdrop" onClick={() => setQuotePreviewOpen(false)}><section className="quote-ws-quote-dialog quote-ws-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><FileText size={22} /><span><strong>Detalle de la cotización</strong><small><CalendarClock size={13} /> {quoteExpirationLabel(activeQuote, now)}</small></span></div><button type="button" onClick={() => setQuotePreviewOpen(false)}><X size={20} /></button></header><div className="quote-ws-dialog-body"><div className="quote-ws-preview-price"><small>Total a pagar{quoteShippingCost > 0 ? ' (productos + despacho)' : ''}</small><strong>{formatCLP(quoteChargeBase(activeQuote))}</strong></div><DataRow icon={Package} label="Cantidad" value={activeQuote.cantidad} /><DataRow icon={CheckCircle2} label="Disponibilidad" value={activeQuote.disponibilidad} /><DataRow icon={Truck} label="Método de envío" value={deliveryTermsLabel(activeQuote.condicionesEntrega)} />{quoteShippingCost > 0 && <DataRow icon={CreditCard} label="Despacho dentro de la comuna" value={formatCLP(quoteShippingCost)} />}{Number(activeQuote.descuento) > 0 && <DataRow icon={Tag} label="Descuento" value={`-${formatCLP(activeQuote.descuento)}`} />}<DataRow icon={ShieldCheck} label="Garantía" value={activeQuote.garantia} /><DataRow icon={FileText} label="Notas" value={activeQuote.notas} /><div className="quote-ws-preview-document"><button type="button" onClick={viewDocument}><Eye size={16} /> Ver PDF</button><button type="button" onClick={downloadDocument}><Download size={16} /> Descargar PDF</button></div>{mode === 'buyer' && paused && <p className="quote-ws-preview-paused"><PauseCircle size={16} /> En pausa: pediste una modificación. Espera la respuesta de la tienda o cancela tu solicitud para pagar esta cotización.</p>}{mode === 'buyer' && <button type="button" className="quote-ws-primary-button" disabled={expired || closed || paused} onClick={goToQuoteCheckout}><ShoppingCart size={16} /> {expired ? 'Cotización vencida' : paused ? 'Cotización en pausa' : 'Comprar esta cotización'}</button>}</div></section></div>}
+      {quotePreviewOpen && activeQuote && <div className="quote-ws-dialog-backdrop" onClick={() => setQuotePreviewOpen(false)}><section className="quote-ws-quote-dialog quote-ws-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><FileText size={22} /><span><strong>Detalle de la cotización</strong><small><CalendarClock size={13} /> {quoteExpirationLabel(activeQuote, now)}</small></span></div><button type="button" onClick={() => setQuotePreviewOpen(false)}><X size={20} /></button></header><div className="quote-ws-dialog-body"><div className="quote-ws-preview-price"><small>Total a pagar{quoteShippingCost > 0 ? ' (productos + despacho)' : ''}</small><strong>{formatCLP(quoteChargeBase(activeQuote))}</strong></div><DataRow icon={Package} label="Cantidad" value={activeQuote.cantidad} /><DataRow icon={CheckCircle2} label="Disponibilidad" value={activeQuote.disponibilidad} /><DataRow icon={Truck} label="Método de envío" value={deliveryTermsLabel(activeQuote.condicionesEntrega)} />{quoteShippingCost > 0 && <DataRow icon={CreditCard} label="Despacho dentro de la comuna" value={formatCLP(quoteShippingCost)} />}{Number(activeQuote.descuento) > 0 && <DataRow icon={Tag} label="Descuento" value={`-${formatCLP(activeQuote.descuento)}`} />}<DataRow icon={ShieldCheck} label="Garantía" value={activeQuote.garantia} /><DataRow icon={FileText} label="Notas" value={activeQuote.notas} /><div className="quote-ws-preview-document"><button type="button" onClick={viewDocument}><Eye size={16} /> Ver PDF</button><button type="button" onClick={downloadDocument}><Download size={16} /> Descargar PDF</button></div>{mode === 'buyer' && paused && <p className="quote-ws-preview-paused"><PauseCircle size={16} /> En pausa: pediste una modificación. Espera la respuesta de la tienda o cancela tu solicitud para pagar esta cotización.</p>}{purchased ? <button type="button" className="quote-ws-primary-button" onClick={() => navigate(profilePurchasePath(purchasedOrderId))}><PackageCheck size={16} /> Ver mi compra</button> : mode === 'buyer' && <button type="button" className="quote-ws-primary-button" disabled={expired || closed || paused} onClick={goToQuoteCheckout}><ShoppingCart size={16} /> {expired ? 'Cotización vencida' : paused ? 'Cotización en pausa' : 'Comprar esta cotización'}</button>}</div></section></div>}
     </div>
   );
 }

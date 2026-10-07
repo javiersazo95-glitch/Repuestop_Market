@@ -357,6 +357,25 @@ function timelineStepsFor(isStorePickup, isSeller) {
   return TIMELINE_STEPS.map((step) => (step.key === 'ENVIADO' ? { ...step, ...pickupStep } : step));
 }
 
+// Mientras hay un caso postventa VIVO (reclamo abierto o mediacion en curso) la barra cuenta ese
+// caso: pago, reclamo, mediador y resolucion. Resuelto -- por el mediador o porque el comprador lo
+// dio por cerrado con la tienda --, la barra vuelve a los estados del pedido para que nadie se
+// pierda en que va la compra (entregado, finalizado...). Mismo criterio que `TimelineStatus` de la app.
+const CLAIM_TIMELINE_STEPS = {
+  buyer: [
+    { key: 'CASO_PAGO', label: 'Pago confirmado', icon: CreditCard, description: 'Tu pago fue procesado y queda protegido mientras se resuelve el caso.' },
+    { key: 'CASO_RECLAMO', label: 'Reclamo abierto', icon: MessageCircle, description: 'Abriste un reclamo y lo estás conversando con la tienda en el chat del caso.' },
+    { key: 'CASO_MEDIACION', label: 'En mediación', icon: ShieldAlert, description: 'Un mediador de RepuesTop revisa el reclamo, las evidencias y la conversación de ambas partes.' },
+    { key: 'CASO_RESUELTO', label: 'Resuelto', icon: CheckCircle2, description: 'Cuando el caso se resuelva, esta barra vuelve a mostrar el estado de tu pedido.' },
+  ],
+  seller: [
+    { key: 'CASO_PAGO', label: 'Venta cobrada', icon: CreditCard, description: 'El pago del comprador está asegurado mientras se resuelve el caso.' },
+    { key: 'CASO_RECLAMO', label: 'Reclamo abierto', icon: MessageCircle, description: 'El comprador abrió un reclamo: respóndele en el chat del caso.' },
+    { key: 'CASO_MEDIACION', label: 'En mediación', icon: ShieldAlert, description: 'Un mediador de RepuesTop revisa el reclamo, las evidencias y la conversación de ambas partes.' },
+    { key: 'CASO_RESUELTO', label: 'Resuelto', icon: CheckCircle2, description: 'Cuando el caso se resuelva, esta barra vuelve a mostrar el estado de la venta.' },
+  ],
+};
+
 function getTimelineIndex(status) {
   const norm = String(status || '').toUpperCase();
   if (norm === 'EN_PREPARACION' || norm === 'PREPARING') return 1;
@@ -757,17 +776,23 @@ export default function OrderDetailView({
   // indice 0 y el paso "Pendiente" quedaba marcado con "Recibimos tu pago...". En mediacion la barra
   // marca lo ya recorrido (hasta "Entregado" si se recibio; si no, hasta "Enviado"), ningun paso queda
   // como actual y el texto explica la mediacion. Vale para el comprador y para la tienda.
-  const enMediacion = ['EN_MEDIACION', 'MEDIATION'].includes(normStatus);
+  // Caso vivo: la barra muestra el flujo del reclamo (ver `CLAIM_TIMELINE_STEPS`).
+  const caseIsLive = claimState?.kind === 'open' || claimState?.kind === 'mediation';
+  const enMediacion = !caseIsLive && ['EN_MEDIACION', 'MEDIATION'].includes(normStatus);
   const mediacionAlcanzo = enMediacion
     ? ((order.entregadoAt || (order.subordenes || []).some((sub) => sub?.entregadoAt)) ? 3 : 2)
     : null;
-  const timelineIndex = enMediacion
+  const timelineIndex = caseIsLive
+    ? (claimState.kind === 'mediation' ? 2 : 1)
+    : enMediacion
     ? mediacionAlcanzo
     : tracksSlowestStore
       ? Math.min(...activeTimelineStatuses.map(getTimelineIndex))
       : getTimelineIndex(normStatus);
   // O60: con retiro en tienda el paso ENVIADO se llama y se explica como retiro.
-  const timelineSteps = timelineStepsFor(isStorePickup, isSeller);
+  const timelineSteps = caseIsLive
+    ? CLAIM_TIMELINE_STEPS[isSeller ? 'seller' : 'buyer']
+    : timelineStepsFor(isStorePickup, isSeller);
   const visibleTimelineStep = timelineSteps.find((step) => step.key === selectedTimelineStep)
     || timelineSteps[timelineIndex];
   const VisibleTimelineIcon = visibleTimelineStep.icon;
@@ -1475,7 +1500,7 @@ export default function OrderDetailView({
               seleccionable para explicar qué ocurre en esa etapa. */}
           <div className="order-timeline-card">
             <h3 className="section-subtitle">Estado del Pedido</h3>
-            {tracksSlowestStore && (
+            {tracksSlowestStore && !caseIsLive && (
               <p className="order-timeline-multistore-note">
                 <Info size={14} /> Esta barra sigue el pedido que va más atrás y se completará cuando todas las tiendas con pedidos vigentes finalicen.
               </p>

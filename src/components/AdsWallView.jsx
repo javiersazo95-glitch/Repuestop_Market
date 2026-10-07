@@ -29,6 +29,7 @@ import './ads/ads-wall.css';
 import './ads/ads-wall-redesign.css';
 // Va DESPUES del rediseño: solo distribucion para <=768px; el escritorio no cambia.
 import '../styles/ads-wall-mobile.css';
+import { canBookAd } from '../utils/adBooking';
 
 const PAGE_SIZE = 12;
 const ALL_TAGS = 'Todos los servicios';
@@ -316,7 +317,7 @@ export default function AdsWallView() {
       );
     }
     if (onlyBooking) {
-      result = result.filter((ad) => AD_TIERS[ad.tier]?.hasBooking && ad.hasOnlineBooking);
+      result = result.filter((ad) => canBookAd(ad));
     }
     if (onlyWhatsapp) {
       result = result.filter((ad) => AD_TIERS[ad.tier]?.hasWhatsapp && Boolean(ad.whatsapp));
