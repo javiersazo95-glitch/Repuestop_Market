@@ -115,9 +115,19 @@ export default function SellerConfirmationChecklist({
   const [copiado, setCopiado] = useState(false);
 
   const items = useMemo(() => checklist?.items ?? [], [checklist]);
-  // Los universales no se validan: el paso 2 solo existe por los demás.
+  // Los universales no se validan: el paso 2 solo existe por los demás. El filtro decide si hay
+  // algo que JUZGAR, pero ya no decide qué se pinta: la lista los muestra todos con su etiqueta
+  // (`ETIQUETA_RESULTADO.UNIVERSAL`, que antes no llegaba a renderizarse nunca). En un pedido con
+  // dos universales y uno con vehículo solo se veía el tercero, y el vendedor -- que está por
+  // emitir la boleta -- no sabía qué había pasado con los otros dos.
   const itemsAValidar = useMemo(() => items.filter((item) => item.resultado !== 'UNIVERSAL'), [items]);
   const hayIncompatibles = itemsAValidar.some((item) => item.resultado === 'NO_COINCIDE');
+  // Sin ninguna línea que dependa del vehículo no hay criterio que aportar, así que el paso deja
+  // de pedirlo: pedir un juicio sobre algo que la propia pantalla declara que no lo necesita es
+  // lo que hacía que "Confirma según tu criterio" y "sirven para cualquier vehículo" se
+  // contradijeran en la misma tarjeta.
+  const requiereCriterio = itemsAValidar.length > 0;
+  const hayVehiculo = Boolean(order?.vehiculoOrigen) && order.vehiculoOrigen !== 'NO_INFORMADO';
 
   const mensajeParaComprador = useMemo(() => (
     `Hola, revisé tu pedido y la pieza que compraste no calza con ${descripcionVehiculo(order)}. `
@@ -246,7 +256,7 @@ export default function SellerConfirmationChecklist({
           titulo="Compatibilidad"
           descripcion="Se habilita al confirmar el stock y la entrega."
           estado={estadoCompatibilidad}
-          resumen={`Compatibilidad revisada${confirmadoCompat ? ` · ${confirmadoCompat}` : ''}`}
+          resumen={`${requiereCriterio ? 'Compatibilidad revisada' : 'Sin compatibilidad que revisar'}${confirmadoCompat ? ` · ${confirmadoCompat}` : ''}`}
           accionesHecho={(
             <>
               {avisoIncompatible}
@@ -256,34 +266,41 @@ export default function SellerConfirmationChecklist({
                   ocupado={busyStep === 'compatibilidad'}
                   onClick={() => ejecutar('compatibilidad', () => onUnconfirmCompatibility())}
                 >
-                  <strong>Compatibilidad revisada</strong>
+                  <strong>{requiereCriterio ? 'Compatibilidad revisada' : 'Paso completado'}</strong>
                   <small>Marcado · desmarca si fue un error</small>
                 </Declaracion>
               )}
             </>
           )}
         >
-          <div className="seller-checklist-vehicle">
-            <Car size={15} />
-            <span>
-              {order?.vehiculoOrigen && order.vehiculoOrigen !== 'NO_INFORMADO'
-                ? <>Vehículo del comprador: <strong>{descripcionVehiculo(order)}</strong></>
-                : 'Sin información del vehículo. Confirma según tu criterio.'}
-              {identificacionVehiculo(order) && (
-                <small className="seller-checklist-vehicle-id" style={{ display: 'block', marginTop: 2, userSelect: 'all' }}>
-                  {identificacionVehiculo(order)}
-                </small>
-              )}
-            </span>
-          </div>
+          {/* Sin vehículo informado Y sin nada que juzgar, este bloque solo aportaba la frase que
+              confundía: se omite. Con vehículo informado se muestra igual, porque es dato útil
+              aunque los repuestos sean universales. */}
+          {(hayVehiculo || requiereCriterio) && (
+            <div className="seller-checklist-vehicle">
+              <Car size={15} />
+              <span>
+                {hayVehiculo
+                  ? <>Vehículo del comprador: <strong>{descripcionVehiculo(order)}</strong></>
+                  : 'Sin información del vehículo. Confirma según tu criterio.'}
+                {identificacionVehiculo(order) && (
+                  <small className="seller-checklist-vehicle-id" style={{ display: 'block', marginTop: 2, userSelect: 'all' }}>
+                    {identificacionVehiculo(order)}
+                  </small>
+                )}
+              </span>
+            </div>
+          )}
 
-          {itemsAValidar.length === 0 ? (
+          {!requiereCriterio && (
             <p className="seller-checklist-hint">
-              Todos los repuestos de este pedido sirven para cualquier vehículo.
+              Ningún repuesto de este pedido depende del vehículo: todos sirven para cualquiera.
             </p>
-          ) : (
+          )}
+
+          {items.length > 0 && (
             <ul className="seller-checklist-items">
-              {itemsAValidar.map((item) => {
+              {items.map((item) => {
                 const etiqueta = ETIQUETA_RESULTADO[item.resultado] ?? ETIQUETA_RESULTADO.SIN_DATOS;
                 return (
                   <li key={item.pedidoItemId} className={`seller-checklist-item tone-${etiqueta.tono}`}>
@@ -323,9 +340,15 @@ export default function SellerConfirmationChecklist({
             <strong>
               {hayIncompatibles
                 ? 'Entiendo la advertencia y confirmo de todas formas'
-                : 'Revisé que estos repuestos son compatibles'}
+                : requiereCriterio
+                  ? 'Revisé que estos repuestos son compatibles'
+                  : 'Entendido, continuar'}
             </strong>
-            <small>Marca para confirmar este paso</small>
+            <small>
+              {requiereCriterio || hayIncompatibles
+                ? 'Marca para confirmar este paso'
+                : 'Este pedido no requiere revisión de compatibilidad'}
+            </small>
           </Declaracion>
         </Paso>
 
