@@ -296,6 +296,9 @@ export default function QuoteDetailModal({
     : (storeDetails?.nombre || storeDetails?.storeName || user?.storeName || 'Mi tienda RepuesTop');
   const buyerName = mode === 'seller' ? participantName : (user?.userName || user?.nombre || 'Comprador RepuesTop');
   const participantPhoto = resolveMediaUrl(quote.otroParticipanteFotoUrl);
+  // `participantPhoto` es la del OTRO participante: solo es la del comprador mirando desde la
+  // tienda. Si el editor lo abriera un comprador, pintaria al vendedor bajo el rotulo equivocado.
+  const buyerPhoto = mode === 'seller' ? participantPhoto : null;
   // El logo va al PDF de la cotización, así que se agotan todos los campos donde
   // el backend o el usuario pueden entregarlo antes de caer en el placeholder.
   const rawStoreLogo = mode === 'buyer'
@@ -990,7 +993,15 @@ export default function QuoteDetailModal({
 
           <div className="quote-editor-body">
             <section className="quote-editor-request">
-              <CircleUserRound size={25} />
+              {/* La foto del comprador, el mismo avatar que ya muestran la tarjeta del listado
+                  (`QuoteCard`) y el chat: este editor era el unico punto del flujo donde se perdia.
+                  Va como hijo DIRECTO de la seccion porque `.quote-editor-request > svg` apunta al
+                  icono de respaldo con `>`: envolverlo dejaria al fallback sin su circulo.
+                  Al PDF no se lleva a proposito -- ese documento se descarga y se reenvia, y la foto
+                  de una persona natural no deberia salir de la plataforma. */}
+              {buyerPhoto
+                ? <img className="quote-editor-request-avatar" src={buyerPhoto} alt="" referrerPolicy="no-referrer" />
+                : <CircleUserRound size={25} />}
               <div className="quote-editor-request-content">
                 <strong>Solicitud del comprador</strong>
                 <div className="quote-editor-request-grid">

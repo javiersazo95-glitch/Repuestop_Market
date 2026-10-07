@@ -16306,6 +16306,9 @@ input, select, textarea {
 .quote-editor-body { min-height: 0; padding: 12px 28px 14px; display: grid; gap: 13px; overflow-y: auto; }
 .quote-editor-request { min-width: 0; padding: 13px 15px; display: grid; grid-template-columns: 38px minmax(0, 1fr); align-items: center; gap: 12px; border: 1px solid #bdd5f3; border-radius: 11px; color: #1d65c7; background: linear-gradient(110deg, #f4f8ff, #fff); }
 .quote-editor-request > svg { width: 38px; height: 38px; padding: 8px; border-radius: 50%; background: #e3edff; }
+/* La foto del comprador ocupa el mismo hueco de 38px que el icono de respaldo de la linea de
+   arriba, y por eso va como hijo directo: esa regla apunta con `>`. */
+.quote-editor-request-avatar { width: 38px; height: 38px; border-radius: 50%; border: 1px solid #bdd5f3; background: #e3edff; object-fit: cover; }
 .quote-editor-request-content { min-width: 0; display: grid; gap: 8px; }
 .quote-editor-request-content > strong { color: #18375d; font-size: 13px; }
 .quote-editor-request-grid { min-width: 0; display: grid; grid-template-columns: 1.15fr .72fr 1fr 1.18fr; }
