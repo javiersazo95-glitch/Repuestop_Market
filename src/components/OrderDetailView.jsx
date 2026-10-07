@@ -110,7 +110,19 @@ function OrderProductRow({ item, order, onNavigate }) {
   // dependencias del efecto, `setLoading(true)` lo re-ejecutaba, el cleanup del anterior
   // marcaba la respuesta como cancelada y el `finally` nunca apagaba el "Cargando...". La
   // ficha se quedaba girando para siempre aunque el endpoint respondiera 200.
-  const fetchedRef = useRef(false);
+  //
+  // Guarda el productId pedido, no un booleano: con el booleano quedaba a medias. El efecto
+  // depende de `expanded` y `productId`, asi que CUALQUIER cambio de esos dos lo re-ejecuta,
+  // y el cleanup del anterior seguia descartando la respuesta en vuelo -- pero el ref ya
+  // estaba marcado, asi que no se volvia a pedir y el estado se quedaba en 'loading' para
+  // siempre. Pasaba al plegar y volver a abrir la ficha mientras cargaba, y tambien cuando
+  // `item.productoId` cambia de valor al mezclarse la respuesta del backend sobre el pedido
+  // de la lista (ahi `productId` cae al `item.id` del fallback, o al reves).
+  const fetchedRef = useRef(null);
+  // La respuesta se aplica salvo que el componente ya no este montado. Antes se descartaba
+  // tambien al re-ejecutarse el efecto, que es lo que dejaba la ficha girando.
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   const photo = resolveMediaUrl(item.imagenUrl || item.imageUrl || item.productPhotoUri || (item.imageUrls && item.imageUrls[0]));
   const name = item.nombre || item.productName || item.name || 'Repuesto de vehículo';
@@ -130,20 +142,20 @@ function OrderProductRow({ item, order, onNavigate }) {
       : null);
 
   useEffect(() => {
-    if (!expanded || !productId || fetchedRef.current) return undefined;
-    fetchedRef.current = true;
-    let cancelado = false;
+    if (!expanded || !productId) return;
+    // Ya pedida para ESTE producto: no se repite. Si el id cambia, se pide la del nuevo.
+    if (fetchedRef.current === productId) return;
+    fetchedRef.current = productId;
     setSpecsState('loading');
     getPublicProductApi(productId)
       .then((dto) => {
-        if (cancelado) return;
+        if (!mountedRef.current) return;
         setDetails(adaptProduct(dto));
         setSpecsState('done');
       })
       // Un repuesto dado de baja por el vendedor ya no responde. Es un detalle opcional: se
       // avisa y se sigue mostrando lo que el pedido guarda, no se rompe la fila.
-      .catch(() => { if (!cancelado) setSpecsState('error'); });
-    return () => { cancelado = true; };
+      .catch(() => { if (mountedRef.current) setSpecsState('error'); });
   }, [expanded, productId]);
 
   const specs = [
