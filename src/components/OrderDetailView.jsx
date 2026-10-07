@@ -22,7 +22,7 @@ import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancell
 import { buyerRefundInfo, FLOW_REFUND_NOTICE } from '../data/refundStatus';
 import { claimReasonPairs } from '../data/claimReason';
 import { carrierTracking } from '../data/carrierTracking';
-import { fundsReleaseNotice, retractionNotice, storeAutoCloseNotice } from '../data/orderDeadlines';
+import { fundsReleaseNotice, retractionNotice, storeAutoCloseNotice, RETRACTION_DAYS } from '../data/orderDeadlines';
 import { validateUpload, FILE_LIMITS } from '../utils/fileValidation';
 import { buildOrderPackages } from '../utils/orderPackages';
 import { buyerCompatibilityText } from '../utils/buyerCompatibility';
@@ -624,9 +624,14 @@ export default function OrderDetailView({
         nextStatus: 'FINALIZADO',
         label: 'Finalizar compra',
         title: `¿Finalizar tu compra a ${seller.name}?`,
+        // El mensaje dice lo que el comprador DECLARA y lo que CONSERVA. Lo del pago a la tienda
+        // es la relacion entre RepuesTop y el vendedor: no le ayuda a decidir y le insinua que su
+        // clic es lo que le paga. Y "definitivamente" contradecia al aviso de la misma pantalla,
+        // que le promete que el retracto sobrevive al cierre. Mismo texto que en la app
+        // (`useOrderDetailScreen`): es la misma accion y tiene que leerse igual en las dos.
         message: unicaTienda
-          ? 'Se cierra definitivamente la compra y se habilita el pago a la tienda. Tu plazo de retracto sigue corriendo.'
-          : `Se cierra definitivamente lo de ${seller.name} y se habilita su pago. Las otras tiendas del pedido no se ven afectadas.`,
+          ? `Confirmas que recibiste todo conforme. Conservas tu derecho a retracto por ${RETRACTION_DAYS} dias.`
+          : `Confirmas que recibiste conforme lo de ${seller.name}. Las otras tiendas siguen su curso y conservas tu derecho a retracto por ${RETRACTION_DAYS} dias.`,
       };
     }
     return null;
