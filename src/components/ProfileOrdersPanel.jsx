@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, ShoppingCart } from 'lucide-react';
 import {
-  getBuyerOrderByRefApi, retryOrderPaymentApi, confirmOrderPaymentApi, updateOrderStatusApi,
+  getBuyerOrderByRefApi, getSellerOrderByNumberApi, retryOrderPaymentApi, confirmOrderPaymentApi, updateOrderStatusApi,
   cancelSellerOrderApi, cancelBuyerSubOrderApi, registerOrderDispatchApi, registerSaleReceiptApi,
   declareOrderDeliveryApi, createOrderClaimApi,
 } from '../services/api';
@@ -223,12 +223,71 @@ export default function ProfileOrdersPanel({
   const activeDetailId = detailOrderId || detailPurchaseId;
   const detailIsPurchase = Boolean(detailPurchaseId);
   const detailSourceList = detailIsPurchase ? purchases : orders;
+  const detailListLoading = detailIsPurchase ? purchasesLoading : ordersLoading;
 
   // Por numero publico (con o sin espacios) o, para enlaces antiguos, por id: siempre contra la
   // lista del propio usuario, asi que un id ajeno simplemente no aparece.
   const detailFromList = activeDetailId
     ? (detailSourceList || []).find((candidate) => orderMatchesRef(candidate, activeDetailId))
     : null;
+
+  /**
+   * El pedido que NO esta en la lista cacheada se pide por su numero.
+   *
+   * Pasa con cualquier venta que llegue DURANTE la sesion: la campana navega al detalle, pero
+   * el listado quedo cacheado con `staleTime` de 60s y no se vuelve a pedir, asi que el pedido
+   * nuevo no esta ahi. Y `ordersLoading` es `isLoading`, que con la lista ya cargada es false:
+   * no se veia ni "Cargando", se iba derecho a "No encontramos ese pedido en tu cuenta" y la
+   * venta solo aparecia al recargar con F5.
+   *
+   * Es el mismo recurso que ya usa el banner del retorno de pago, unas lineas mas arriba.
+   */
+  const [fetchedDetail, setFetchedDetail] = useState(null);
+  const [detailFetching, setDetailFetching] = useState(false);
+  // El refresco del listado se dispara UNA vez por pedido: si el backend no lo devolviera en la
+  // lista, invalidar en cada respuesta dejaria el par pedir-invalidar girando solo.
+  const detailRefreshedRef = useRef(null);
+  useEffect(() => {
+    // Mientras la lista siga en su primera carga no se pide nada: lo normal es que venga en ella.
+    if (!activeDetailId || detailFromList || detailListLoading) {
+      setFetchedDetail(null);
+      setDetailFetching(false);
+      return undefined;
+    }
+    const asBuyerView = detailIsPurchase || !isSeller;
+    // La tienda solo tiene el endpoint por NUMERO publico (O72); un enlace antiguo con el id se
+    // sigue resolviendo contra la lista, como hasta ahora.
+    if (!asBuyerView && !normalizeOrderNumber(activeDetailId)) return undefined;
+    const ownerId = asBuyerView ? effectiveUserId : effectiveSellerId;
+    if (!ownerId) return undefined;
+    let active = true;
+    setDetailFetching(true);
+    const request = asBuyerView
+      ? getBuyerOrderByRefApi(ownerId, activeDetailId)
+      : getSellerOrderByNumberApi(ownerId, activeDetailId);
+    request
+      .then((order) => {
+        if (!active) return;
+        setFetchedDetail(order || null);
+        // El listado tampoco lo tiene: se refresca para que al volver atras aparezca.
+        if (order && detailRefreshedRef.current !== String(activeDetailId)) {
+          detailRefreshedRef.current = String(activeDetailId);
+          queryClient.invalidateQueries({
+            queryKey: asBuyerView ? qk.buyerOrders(effectiveUserId) : qk.sellerOrders(effectiveSellerId),
+          });
+        }
+      })
+      // Un 404 aca es lo mismo que no encontrarlo en la lista: se muestra el mensaje de siempre.
+      .catch(() => { if (active) setFetchedDetail(null); })
+      .finally(() => { if (active) setDetailFetching(false); });
+    return () => { active = false; };
+  }, [activeDetailId, detailFromList, detailListLoading, detailIsPurchase, isSeller,
+    effectiveUserId, effectiveSellerId, queryClient]);
+
+  // La lista manda cuando lo tiene: es la copia que los handlers refrescan al invalidar.
+  const detailBase = detailFromList
+    || (activeDetailId && orderMatchesRef(fetchedDetail, activeDetailId) ? fetchedDetail : null);
+
   // `selectedOrder` es el buffer donde los handlers escriben la respuesta del backend apenas
   // llega (confirmar por tienda, cancelar, calificar). `invalidateQueries` refresca el listado,
   // pero es asincrono: sin mezclarlo, la accion se veia con retraso -- o no se veia -- porque
@@ -236,28 +295,28 @@ export default function ProfileOrdersPanel({
   const detailOrder = !activeDetailId
     ? null
     : (selectedOrder && orderMatchesRef(selectedOrder, activeDetailId)
-      ? { ...detailFromList, ...selectedOrder }
-      : detailFromList);
+      ? { ...detailBase, ...selectedOrder }
+      : detailBase);
 
   // O72: un enlace antiguo con el id (`/perfil/pedidos/25`) que si es de este usuario se
   // reescribe a su numero publico; si no es suyo, abajo se muestra "No encontramos ese pedido"
   // sin distinguirlo de uno inexistente.
   useEffect(() => {
-    if (!activeDetailId || !detailFromList) return;
+    if (!activeDetailId || !detailBase) return;
     if (normalizeOrderNumber(activeDetailId)) return;
-    const ref = orderNumberRef(detailFromList);
+    const ref = orderNumberRef(detailBase);
     if (!ref || ref === String(activeDetailId)) return;
     navigate(detailIsPurchase ? profilePurchasePath(ref) : profileOrderPath(ref), { replace: true });
-  }, [activeDetailId, detailFromList, detailIsPurchase, navigate]);
+  }, [activeDetailId, detailBase, detailIsPurchase, navigate]);
 
   useEffect(() => {
     if (!activeDetailId) return;
     if (selectedOrder && orderMatchesRef(selectedOrder, activeDetailId)) return;
-    if (detailFromList) setSelectedOrder(detailFromList);
+    if (detailBase) setSelectedOrder(detailBase);
     // `selectedOrder` no va en las dependencias a proposito: cada actualizacion del buffer
     // volveria a disparar el efecto y lo pisaria con la version vieja de la lista.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDetailId, detailFromList]);
+  }, [activeDetailId, detailBase]);
 
   const handleOrderRated = (updatedOrder) => {
     if (!updatedOrder?.id) return;
@@ -451,7 +510,7 @@ export default function ProfileOrdersPanel({
           })()
         ) : (
           <div className="profile-panel">
-            {(detailIsPurchase ? purchasesLoading : ordersLoading)
+            {(detailListLoading || detailFetching)
               ? <EmptyState label={detailIsPurchase ? 'Cargando la compra…' : 'Cargando el pedido…'} />
               : <EmptyState label="No encontramos ese pedido en tu cuenta." />}
           </div>
