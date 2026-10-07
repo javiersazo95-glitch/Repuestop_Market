@@ -2361,9 +2361,11 @@ export async function getAutomotiveServiceAccreditationApi({ signal } = {}) {
 export async function submitAutomotiveServiceAccreditationApi(data, files) {
   const formData = new FormData();
   formData.append('data', JSON.stringify({ ...data, canal: 'MARKETPLACE_WEB' }));
-  formData.append('identidad', files.identidad);
-  formData.append('inicioActividades', files.inicioActividades);
-  formData.append('patenteMunicipal', files.patenteMunicipal);
+  // Solo viajan los documentos nuevos: al corregir, el backend conserva los ya
+  // recibidos que no se reemplazan.
+  ['identidad', 'inicioActividades', 'patenteMunicipal'].forEach((key) => {
+    if (files[key]) formData.append(key, files[key]);
+  });
   return fetchApi('/automotive-services/me', {
     method: 'POST',
     body: formData,

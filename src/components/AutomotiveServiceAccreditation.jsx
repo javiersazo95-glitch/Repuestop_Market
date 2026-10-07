@@ -20,10 +20,26 @@ const EMPTY_FILES = { identidad: null, inicioActividades: null, patenteMunicipal
 
 // Los tres documentos que exige la acreditación, en el mismo orden en que se piden.
 const REQUIRED_DOCS = [
-  { key: 'identidad', label: 'Identidad o RUT del responsable' },
-  { key: 'inicioActividades', label: 'Inicio de actividades SII' },
-  { key: 'patenteMunicipal', label: 'Patente municipal vigente' },
+  { key: 'identidad', label: 'Identidad o RUT del responsable', recordField: 'documentoIdentidadNombre' },
+  { key: 'inicioActividades', label: 'Inicio de actividades SII', recordField: 'inicioActividadesNombre' },
+  { key: 'patenteMunicipal', label: 'Patente municipal vigente', recordField: 'patenteMunicipalNombre' },
 ];
+
+/** Formulario precargado con el expediente; el referido no, porque es inmutable tras el primer envío. */
+function formFromRecord(record, current) {
+  const texto = (value) => (value == null ? '' : String(value));
+  return {
+    ...current,
+    nombreNegocio: texto(record.nombreNegocio) || current.nombreNegocio,
+    rutNegocio: record.rutNegocio ? formatRut(record.rutNegocio) : current.rutNegocio,
+    giro: texto(record.giro) || current.giro,
+    responsable: texto(record.responsable) || current.responsable,
+    regionId: texto(record.regionId) || current.regionId,
+    comunaId: texto(record.comunaId) || current.comunaId,
+    direccion: texto(record.direccion) || current.direccion,
+    telefono: normalizeChileanPhone(texto(record.telefono)) || current.telefono,
+  };
+}
 
 // Estados en los que el expediente todavía se puede enviar o reenviar.
 const EDITABLE_STATES = ['SIN_SOLICITUD', 'POR_CORREGIR', 'RECHAZADO'];
@@ -127,6 +143,9 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
       .then((data) => {
         setRecord(data || null);
         if (data?.logoUrl) setLogoUrl(resolveMediaUrl(data.logoUrl) || data.logoUrl);
+        // Al corregir o reenviar se parte de lo ya enviado: antes el formulario
+        // volvía en blanco y había que reescribir datos que estaban bien.
+        if (data?.estado) setForm((current) => formFromRecord(data, current));
       })
       .catch((err) => setError(err.message || 'No se pudo cargar tu acreditación.'))
       .finally(() => setLoading(false));
@@ -236,10 +255,9 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
       setError('Ingresa un teléfono chileno de 9 dígitos.');
       return;
     }
-    // Los tres documentos se piden en cada envío, incluso al corregir: el
-    // backend guarda un expediente completo por revisión, no un parche sobre
-    // el anterior.
-    const faltante = REQUIRED_DOCS.find((doc) => !files[doc.key]);
+    // Un documento ya recibido cuenta como adjunto: al corregir solo se
+    // reemplaza el observado y el backend conserva los demás.
+    const faltante = REQUIRED_DOCS.find((doc) => !files[doc.key] && !record?.[doc.recordField]);
     if (faltante) {
       setError(`Adjunta el documento "${faltante.label}" antes de enviar.`);
       return;
@@ -513,8 +531,13 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
                 type="file"
                 accept="application/pdf,image/*"
                 onChange={(e) => handleFileChange(doc.key, e.target.files?.[0] || null)}
-                required
+                required={!record?.[doc.recordField]}
               />
+              {record?.[doc.recordField] && !files[doc.key] ? (
+                <small style={{ color: '#64748b' }}>
+                  Ya recibido: {record[doc.recordField]}. Adjunta otro solo si te pidieron reemplazarlo.
+                </small>
+              ) : null}
             </div>
           ))}
 
