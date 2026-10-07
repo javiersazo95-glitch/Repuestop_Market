@@ -1808,12 +1808,30 @@ export async function markNotificationReadApi(userId, notificationId) {
   return fetchApi(`/usuarios/${userId}/notificaciones/${notificationId}/leida`, { method: 'PUT' });
 }
 
-export async function markAllNotificationsReadApi(userId) {
-  return fetchApi(`/usuarios/${userId}/notificaciones/leidas`, { method: 'PUT' });
+/** Sin `ids` marca todas; con `ids` solo esas (lo visible segun la moderacion por perfil). */
+export async function markAllNotificationsReadApi(userId, ids) {
+  return fetchApi(`/usuarios/${userId}/notificaciones/leidas`, {
+    method: 'PUT',
+    ...(Array.isArray(ids) ? { body: JSON.stringify({ ids }) } : {}),
+  });
+}
+
+/** Moderacion de notificaciones por perfil: `{ vendedor, comprador }` con TODAS | IMPORTANTES | NINGUNA. */
+export async function getNotificationPreferencesApi(userId) {
+  return fetchApi(`/usuarios/${userId}/preferencias-notificaciones`, { method: 'GET' });
+}
+
+export async function updateNotificationPreferencesApi(userId, payload) {
+  return fetchApi(`/usuarios/${userId}/preferencias-notificaciones`, { method: 'PUT', body: JSON.stringify(payload) });
 }
 
 export async function deleteReadNotificationsApi(userId) {
   return fetchApi(`/usuarios/${userId}/notificaciones/leidas`, { method: 'DELETE' });
+}
+
+/** Un aviso abierto (se navego a su destino) se elimina: la campana solo muestra lo que aun no se abre. */
+export async function deleteNotificationApi(userId, notificationId) {
+  return fetchApi(`/usuarios/${userId}/notificaciones/${notificationId}`, { method: 'DELETE' });
 }
 
 // -------------------------------------------------------------

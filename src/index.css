@@ -4077,6 +4077,39 @@ input, select, textarea {
 .profile-notification-item time { color: #94a3b8; font-size: 10px; }
 .profile-notification-item i { width: 7px; height: 7px; flex: 0 0 auto; margin-top: 5px; border-radius: 50%; background: var(--color-brand-blue); }
 
+/* Moderacion de notificaciones por perfil (7-oct): ajustes dentro del popover y tarjeta en Mis datos. */
+.profile-notifications-back { display: inline-flex; align-items: center; gap: 5px; border: 0; color: var(--color-brand-blue); background: transparent; font-size: 11px; font-weight: 700; cursor: pointer; }
+.profile-notifications-gear { width: 26px; height: 26px; display: inline-grid; place-items: center; border: 1px solid #e2e8f0 !important; border-radius: 50%; color: #475569 !important; background: #fff; }
+.profile-notifications-gear:hover { color: var(--color-brand-blue) !important; border-color: #9dc5ff !important; background: #eff6ff; }
+.profile-notifications-settings { padding: 12px 13px 4px; }
+.profile-notifications-muted-note { display: flex; align-items: center; gap: 7px; padding: 8px 13px; border-bottom: 1px solid #eff3f7; color: #64748b; background: #f8fafc; font-size: 11px; }
+.profile-notifications-muted-note span { flex: 1; min-width: 0; }
+.profile-notifications-muted-note button { border: 0; color: var(--color-brand-blue); background: transparent; font-size: 11px; font-weight: 700; cursor: pointer; }
+.profile-notification-item.muted { opacity: .55; }
+.profile-notification-item.muted.unread { background: #fff; }
+.notif-prefs { display: grid; gap: 14px; }
+.notif-prefs--compact { gap: 10px; }
+.notif-prefs-section { display: grid; gap: 8px; }
+.notif-prefs-title { margin: 0; display: inline-flex; align-items: center; gap: 6px; color: #0f172a; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; }
+.notif-prefs-options { display: grid; gap: 8px; }
+.notif-pref-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #fff; text-align: left; cursor: pointer; font: inherit; }
+.notif-pref-option:hover { border-color: #cbd5e1; }
+.notif-pref-option.selected { border-color: #2563eb; background: #eff6ff; }
+.notif-pref-option:disabled { cursor: default; opacity: .7; }
+.notif-pref-option-icon { width: 32px; height: 32px; flex: 0 0 auto; display: inline-grid; place-items: center; border-radius: 10px; color: var(--color-brand-blue); background: #eaf2ff; }
+.notif-pref-option.selected .notif-pref-option-icon { color: #fff; background: var(--color-brand-blue); }
+.notif-pref-option-copy { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.notif-pref-option-copy strong { color: #0f172a; font-size: 13px; }
+.notif-pref-option-copy small { color: #64748b; font-size: 11.5px; line-height: 1.4; }
+.notif-pref-radio { width: 18px; height: 18px; flex: 0 0 auto; border: 2px solid #cbd5e1; border-radius: 50%; position: relative; }
+.notif-pref-radio.on { border-color: var(--color-brand-blue); }
+.notif-pref-radio.on::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--color-brand-blue); }
+.notif-prefs-error { margin: 0; color: #b91c1c; font-size: 12px; }
+.notif-prefs-note { margin: 0; color: #94a3b8; font-size: 11px; line-height: 1.4; }
+.notif-prefs--compact .notif-prefs-note { padding-bottom: 6px; }
+.notif-prefs-card { display: grid; gap: 10px; }
+.notif-prefs-intro { margin: 0; color: #64748b; font-size: 12.5px; line-height: 1.5; }
+
 .profile-support-subtitle { margin: 4px 0 0; color: #64748b; font-size: 12px; }
 .profile-support-form { margin: 18px 0; padding: 18px; display: grid; gap: 13px; border: 1px solid #dbe7f6; border-radius: 12px; background: #f8fbff; }
 .profile-support-form label { display: grid; gap: 6px; color: #334155; font-size: 12px; font-weight: 700; }

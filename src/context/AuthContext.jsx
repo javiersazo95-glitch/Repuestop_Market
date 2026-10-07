@@ -332,6 +332,23 @@ export function AuthProvider({ children }) {
     return mergedUser;
   };
 
+  /**
+   * Respuesta de PUT /preferencias-notificaciones ({ vendedor, comprador }): se refleja en el usuario
+   * de la sesion con los mismos nombres que traen el login y /users/perfil.
+   */
+  const setNotificationPreferences = (saved) => {
+    setUser((current) => {
+      if (!current) return current;
+      const next = {
+        ...current,
+        notificacionesVendedor: saved?.vendedor ?? current.notificacionesVendedor ?? null,
+        notificacionesComprador: saved?.comprador ?? current.notificacionesComprador ?? null,
+      };
+      localStorage.setItem('repuestop_user', JSON.stringify(next));
+      return next;
+    });
+  };
+
   const deleteAccount = async () => {
     const userId = user?.userId ?? user?.id;
     if (!userId) {
@@ -384,6 +401,7 @@ export function AuthProvider({ children }) {
     resendRegisterCode,
     updateProfile,
     refreshProfile,
+    setNotificationPreferences,
     deleteAccount,
   };
 
