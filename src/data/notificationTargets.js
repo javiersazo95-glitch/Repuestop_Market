@@ -19,7 +19,8 @@ import { ROUTES, buyerCaseChatPath, productPath, profilePurchasePath, sellerCase
  * - `/product-detail`             -> `{ productId, questionId? }`
  * - `/quote-chat`                 -> `{ quoteId, viewMode? }`
  * - `/mediation-chat`             -> `{ orderId }`
- * - `/ad-detail`, `/ads-management` -> `{ id }`
+ * - `/ad-detail`, `/ads-management` -> `{ id }`; la aprobación del taller manda `{ seccion: 'agenda' }`
+ * - `/automotive-service-accreditation` -> `{}` (corrección o rechazo de la acreditación)
  * - `/support-ticket-detail`      -> `{ ticketId }`
  * - `/provider-verification-status` -> `{ sellerId }`
  */
@@ -91,7 +92,13 @@ const TARGETS = {
   '/ad-detail': (params) => (params?.id
     ? `${ROUTES.adsWall}?anuncio=${encodeURIComponent(params.id)}`
     : ROUTES.adsWall),
-  '/ads-management': () => PROFILE('anuncios'),
+  // `seccion: 'agenda'` (aprobación del taller): Gestión de anuncios abre el horario
+  // principal si la agenda sigue pendiente (lo atiende `AdsManagementSection`).
+  '/ads-management': (params) => (params?.seccion === 'agenda'
+    ? `${PROFILE('anuncios')}?seccion=agenda`
+    : PROFILE('anuncios')),
+  // En la web la acreditación vive dentro de Gestión de anuncios (`AccreditationModal`).
+  '/automotive-service-accreditation': () => PROFILE('anuncios'),
   // Notificaciones de cita (las crea el backend): abren "Mis citas" en la bandeja que
   // corresponde, con la cita resaltada. Lo atiende `ProfileAppointmentsButton`.
   '/appointments-history': (params) => {

@@ -4962,3 +4962,33 @@
   .bk-body { padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
 }
 @media (prefers-reduced-motion: reduce) { .bk-sheet { animation: none; } }
+
+/* Horario de atencion del taller (acreditacion y "Horario y urgencias"). */
+.workshop-hours { display: flex; flex-direction: column; gap: 16px; }
+.workshop-hours-question { display: flex; flex-direction: column; gap: 6px; }
+.workshop-hours-question > strong { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: #0f172a; }
+.workshop-hours-question > small { font-size: 12.5px; color: #64748b; }
+.workshop-hours-yesno { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.workshop-hours-option { flex: 1 1 140px; display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; font-size: 13px; font-weight: 600; color: #334155; cursor: pointer; }
+.workshop-hours-option.is-active { border-color: #0066ff; background: #eff6ff; color: #0052cc; }
+.workshop-hours-option input { accent-color: #0066ff; margin: 0; }
+.workshop-hours-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.workshop-hours-notice { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid #a7f3d0; background: #ecfdf5; color: #047857; font-size: 12.5px; }
+
+/* "Proximos pasos" del taller recien acreditado. */
+.next-steps-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 14px; border: 1px solid #cfe0fb; background: #f5f9ff; }
+.next-steps-head { display: flex; gap: 10px; align-items: flex-start; color: #0052cc; }
+.next-steps-head strong { display: block; color: #0f172a; font-size: 14.5px; }
+.next-steps-head small { color: #64748b; font-size: 12.5px; }
+.next-steps-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid #e2e8f0; background: #ffffff; text-align: left; cursor: pointer; font: inherit; }
+.next-steps-item:hover:not(.is-done) { border-color: #93c5fd; }
+.next-steps-item.is-done { background: #ecfdf5; border-color: #a7f3d0; cursor: default; }
+.next-steps-icon { flex: 0 0 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: #eff6ff; color: #0066ff; }
+.next-steps-item.is-done .next-steps-icon { background: #ffffff; color: #059669; }
+.next-steps-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.next-steps-copy strong { font-size: 13.5px; color: #0f172a; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.next-steps-item.is-done .next-steps-copy strong { color: #047857; }
+.next-steps-copy small { font-size: 12.5px; color: #64748b; }
+.next-steps-optional { padding: 1px 8px; border-radius: 999px; background: #f1f5f9; color: #64748b; font-size: 11px; font-weight: 600; }
+.next-steps-action { flex-shrink: 0; display: inline-flex; align-items: center; gap: 2px; color: #0066ff; font-size: 12.5px; font-weight: 700; }
+.next-steps-warning { display: flex; gap: 8px; align-items: flex-start; width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid #fcd34d; background: #fffbeb; color: #92400e; font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; }

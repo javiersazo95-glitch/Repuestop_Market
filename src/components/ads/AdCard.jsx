@@ -13,6 +13,7 @@ import { formatDistanceKm } from '../../utils/geoDistance';
 // La tarjeta también se muestra en Favoritos. Cargar su diseño aquí evita que
 // dependa de que el usuario haya visitado antes el Mural de anuncios.
 import './ads-wall-redesign.css';
+import { canBookAd } from '../../utils/adBooking';
 
 /** Distintivo visual de cada plan en el mural (1:1 con mobile/components/ads/AdCard.tsx). */
 const TIER_THEME = {
@@ -34,6 +35,8 @@ export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCatego
   const tierConfig = AD_TIERS[ad.tier] || AD_TIERS.basica;
   const theme = TIER_THEME[ad.tier] || TIER_THEME.basica;
   const isEmpresarial = ad.tier === 'empresarial';
+  // "Agendar" solo si el anuncio tiene la agenda activa (no basta el plan) y no es 24/7.
+  const canBook = canBookAd(ad);
   const isOwnAdCard = isOwn(ad);
 
   const canWhatsapp = Boolean(tierConfig.hasWhatsapp && ad.whatsapp);
@@ -225,7 +228,7 @@ export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCatego
                 <MessageCircle size={13} /> WhatsApp
               </button>
             )}
-            {isEmpresarial && (
+            {canBook && (
               <button type="button" className="ad-pill ad-pill-agenda" onClick={handleBookingClick}>
                 <Calendar size={13} /> Agendar
               </button>

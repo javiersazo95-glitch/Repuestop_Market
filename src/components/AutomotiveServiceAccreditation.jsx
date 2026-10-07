@@ -3,8 +3,12 @@ import { ShieldCheck, UploadCloud, Loader2, Check, AlertCircle, ImagePlus, Build
 import {
   getPaisesApi, getRegionesApi, getComunasApi,
   getAutomotiveServiceAccreditationApi, submitAutomotiveServiceAccreditationApi,
-  updateAutomotiveServiceLogoApi, updateAutomotiveServicePhoneApi, resolveMediaUrl,
+  updateAutomotiveServiceLogoApi, updateAutomotiveServicePhoneApi, updateAutomotiveServiceHoursApi, resolveMediaUrl,
 } from '../services/api';
+import WorkshopHoursSection from './ads/WorkshopHoursSection';
+import { EMPTY_WORKSHOP_HOURS, toWorkshopHoursPayload, workshopHoursMissing } from '../data/workshopHours';
+import { getAgendaConfigs } from '../services/agendaConfigsStorage';
+import { getAgendaSummaryText, PRINCIPAL_AGENDA_ID } from '../data/agendaConfig';
 import { uploadAdImages } from '../services/adsStorage';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import { normalizarNombreGeografico } from '../services/geoLookup';
@@ -87,6 +91,29 @@ function LogoPicker({ value, onPick, busy, error, caption }) {
   );
 }
 
+/** Estado inicial del horario a partir del expediente guardado y su "Horario principal". */
+function hoursFromRecord(record, principal) {
+  return {
+    atiende24Horas: record?.atiende24Horas === true,
+    servicios24Horas: Array.isArray(record?.servicios24Horas) ? record.servicios24Horas : [],
+    tieneHorarioNormal: record?.atiende24Horas ? record?.tieneHorarioNormal !== false : null,
+    horario: principal,
+  };
+}
+
+/** Una línea legible para el modo consulta. */
+function hoursSummary(record, hours) {
+  const parts = [];
+  if (record?.atiende24Horas) {
+    const servicios = record.servicios24Horas?.length ? ` (${record.servicios24Horas.join(', ')})` : '';
+    parts.push(`Urgencias 24/7${servicios}`);
+  }
+  if (!record?.atiende24Horas || record?.tieneHorarioNormal !== false) {
+    parts.push(hours.horario ? getAgendaSummaryText(hours.horario) : 'Horario normal sin registrar');
+  }
+  return parts.join(' · ');
+}
+
 /**
  * Acreditación del servicio automotriz: expediente legal INDEPENDIENTE de los
  * documentos de la tienda. Aunque la cuenta ya sea vendedora y tenga su tienda
@@ -119,14 +146,24 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
   const [phoneError, setPhoneError] = useState('');
   const [logoBusy, setLogoBusy] = useState(false);
   const [logoError, setLogoError] = useState('');
+  // Horario de atención y 24/7: viaja con el expediente y, ya enviado, se cambia
+  // por separado (PATCH /me/horario), igual que el teléfono y el logo.
+  const [hours, setHours] = useState(EMPTY_WORKSHOP_HOURS);
+  const [hoursEditing, setHoursEditing] = useState(false);
+  const [hoursSaving, setHoursSaving] = useState(false);
+  const [hoursError, setHoursError] = useState('');
 
   useEffect(() => {
     // Sin expediente presentado el getter devuelve null, y el formulario se
     // abre en blanco.
     getAutomotiveServiceAccreditationApi()
-      .then((data) => {
+      .then(async (data) => {
         setRecord(data || null);
         if (data?.logoUrl) setLogoUrl(resolveMediaUrl(data.logoUrl) || data.logoUrl);
+        if (data?.submittedAt) {
+          const configs = await getAgendaConfigs().catch(() => []);
+          setHours(hoursFromRecord(data, configs.find((config) => config.id === PRINCIPAL_AGENDA_ID) || null));
+        }
       })
       .catch((err) => setError(err.message || 'No se pudo cargar tu acreditación.'))
       .finally(() => setLoading(false));
@@ -239,6 +276,11 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
     // Los tres documentos se piden en cada envío, incluso al corregir: el
     // backend guarda un expediente completo por revisión, no un parche sobre
     // el anterior.
+    const faltaHorario = workshopHoursMissing(hours);
+    if (faltaHorario.length > 0) {
+      setError(`Horario de atención: indica ${faltaHorario.join(', ')}.`);
+      return;
+    }
     const faltante = REQUIRED_DOCS.find((doc) => !files[doc.key]);
     if (faltante) {
       setError(`Adjunta el documento "${faltante.label}" antes de enviar.`);
@@ -256,6 +298,7 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
         rutNegocio: formatRut(form.rutNegocio),
         regionId: Number(form.regionId),
         comunaId: Number(form.comunaId),
+        ...toWorkshopHoursPayload(hours),
       }, files);
       setRecord(saved || null);
       setFiles(EMPTY_FILES);
@@ -265,6 +308,27 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
       setError(err.message || 'No se pudo enviar la acreditación.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveHours = async () => {
+    const faltaHorario = workshopHoursMissing(hours);
+    if (faltaHorario.length > 0) {
+      setHoursError(`Indica ${faltaHorario.join(', ')}.`);
+      return;
+    }
+    setHoursSaving(true);
+    setHoursError('');
+    try {
+      const saved = await updateAutomotiveServiceHoursApi(toWorkshopHoursPayload(hours));
+      if (saved) setRecord(saved);
+      setHoursEditing(false);
+      setSuccess('Horario y urgencias actualizados.');
+      onSaved?.(saved || record);
+    } catch (err) {
+      setHoursError(err.message || 'No se pudo guardar el horario.');
+    } finally {
+      setHoursSaving(false);
     }
   };
 
@@ -385,6 +449,39 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
         </>
       )}
 
+      {/* Horario y urgencias: editable con el expediente en revisión o aprobado. */}
+      {!editable && record && (
+        <div className="form-group" style={{ marginTop: '14px' }}>
+          <label>Horario y urgencias</label>
+          {hoursEditing ? (
+            <>
+              <WorkshopHoursSection value={hours} onChange={setHours} disabled={hoursSaving} idPrefix="acc-hours-edit" />
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
+                <button type="button" className="btn-auth-primary" style={{ width: 'auto' }} disabled={hoursSaving} onClick={handleSaveHours}>
+                  {hoursSaving ? <Loader2 size={15} className="spin-icon" /> : <Check size={15} />} Guardar horario
+                </button>
+                <button type="button" className="btn-auth-secondary" style={{ width: 'auto' }} disabled={hoursSaving} onClick={() => { setHoursEditing(false); setHoursError(''); }}>
+                  Cancelar
+                </button>
+              </div>
+            </>
+          ) : (
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <strong style={{ fontSize: '13.5px' }}>{hoursSummary(record, hours)}</strong>
+              <button
+                type="button"
+                className="btn-auth-secondary"
+                style={{ width: 'auto', padding: '6px 12px' }}
+                onClick={() => setHoursEditing(true)}
+              >
+                Cambiar
+              </button>
+            </div>
+          )}
+          {hoursError && <small className="field-error-text">{hoursError}</small>}
+        </div>
+      )}
+
       {editable && (
         <form onSubmit={handleSubmit} style={{ marginTop: '18px' }}>
           {/* El logo va al inicio: es lo primero que verá el cliente en el Mural. */}
@@ -502,6 +599,11 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
               maxLength={40}
               autoComplete="off"
             />
+          </div>
+
+          <div className="form-group">
+            <label>Horario de atención</label>
+            <WorkshopHoursSection value={hours} onChange={setHours} disabled={saving} idPrefix="acc-hours" />
           </div>
 
           {REQUIRED_DOCS.map((doc) => (
