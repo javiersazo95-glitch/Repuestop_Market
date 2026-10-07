@@ -5730,6 +5730,8 @@ input, select, textarea {
 .order-card-state-banner strong { font-size: 11.5px; }.order-card-state-banner span { color: #6f7f91; font-size: 9.5px; }
 .order-card-state-banner.payment-failed { color: #b42318; border-color: #f4c7c3; background: #fff3f2; }
 .order-card-state-banner.refund { color: #6745cb; border-color: #d9cef7; background: #f5f2ff; }
+.order-card-state-banner.pickup-code { color: #0052cc; border-color: #cfe0fb; background: #eff6ff; }
+.order-card-pickup-code { font-size: 14px; letter-spacing: 2px; font-weight: 800; }
 .order-withdrawal-note { max-width: 210px; margin-top: 2px; color: #8491a1; font-size: 9.5px; line-height: 1.3; text-align: right; }
 
 @media (max-width: 900px) {

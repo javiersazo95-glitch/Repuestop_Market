@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Clock, Wrench, Truck, PackageCheck, ShieldCheck, AlertCircle, XCircle,
   RotateCcw, FileText, User, Store, Package, Info, ChevronRight, Check,
-  Phone, MapPin, Boxes, Loader2, ReceiptText, FileCheck, ListChecks, ShieldAlert
+  Phone, MapPin, Boxes, Loader2, ReceiptText, FileCheck, ListChecks, ShieldAlert, KeyRound
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { resolveMediaUrl, startSellerChatApi } from '../services/api';
@@ -163,6 +163,20 @@ export default function OrderCard({
   const deliveryTerms = orderDeliverySummary(order);
   const isStorePickup = isStorePickupOrder(order);
   const displayStatus = normStatus === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : rawStatus;
+  // El codigo de retiro del comprador tambien en la tarjeta: antes solo salia al abrir el
+  // detalle. Mismas reglas que el bloque por tienda de `OrderDetailView`: cada tienda genera
+  // el suyo al quedar lista para retirar, y el `codigoRetiro` plano del pedido solo vale con
+  // UNA tienda (con varias el backend lo manda nulo).
+  const pickupCodes = (() => {
+    if (isSeller || !isStorePickup) return [];
+    const subs = Array.isArray(order.subordenes) ? order.subordenes : [];
+    const ready = (status) => String(status || '').toUpperCase() === 'ENVIADO';
+    const fromSubs = subs
+      .filter((sub) => ready(sub?.estado) && sub?.codigoRetiro)
+      .map((sub) => ({ code: sub.codigoRetiro, store: subs.length > 1 ? sub.nombreTienda : null }));
+    if (fromSubs.length > 0) return fromSubs;
+    return subs.length <= 1 && ready(normStatus) && order.codigoRetiro ? [{ code: order.codigoRetiro, store: null }] : [];
+  })();
 
   const orderIdShort = orderDisplayCode(order, isSeller ? 'seller' : 'buyer');
   const orderDate = formatOrderDate(order.createdAt || order.fecha);
@@ -455,6 +469,20 @@ export default function OrderCard({
             <span className="order-info-chip boleta-ok"><FileCheck size={13} /> Boleta cargada</span>
           )}
         </div>
+
+        {pickupCodes.length > 0 && (
+          <div className="order-card-state-banner pickup-code">
+            <KeyRound size={18} />
+            <div>
+              {pickupCodes.map(({ code, store }) => (
+                <strong key={`${store || 'unica'}-${code}`}>
+                  Código de retiro{store ? ` · ${store}` : ''}: <b className="order-card-pickup-code">{code}</b>
+                </strong>
+              ))}
+              <span>Dícta{pickupCodes.length > 1 ? 'los' : 'lo'} en la tienda al retirar. No {pickupCodes.length > 1 ? 'los' : 'lo'} compartas por chat.</span>
+            </div>
+          </div>
+        )}
 
         {paymentFailed && (
           <div className="order-card-state-banner payment-failed">
