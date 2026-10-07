@@ -247,6 +247,8 @@ export default function ProfileOrdersPanel({
   // El refresco del listado se dispara UNA vez por pedido: si el backend no lo devolviera en la
   // lista, invalidar en cada respuesta dejaria el par pedir-invalidar girando solo.
   const detailRefreshedRef = useRef(null);
+  // Lo mismo para el camino en que NO hay endpoint y hay que repedir el listado entero.
+  const listRefetchedRef = useRef(null);
   useEffect(() => {
     // Mientras la lista siga en su primera carga no se pide nada: lo normal es que venga en ella.
     if (!activeDetailId || detailFromList || detailListLoading) {
@@ -255,11 +257,30 @@ export default function ProfileOrdersPanel({
       return undefined;
     }
     const asBuyerView = detailIsPurchase || !isSeller;
-    // La tienda solo tiene el endpoint por NUMERO publico (O72); un enlace antiguo con el id se
-    // sigue resolviendo contra la lista, como hasta ahora.
-    if (!asBuyerView && !normalizeOrderNumber(activeDetailId)) return undefined;
     const ownerId = asBuyerView ? effectiveUserId : effectiveSellerId;
     if (!ownerId) return undefined;
+
+    /**
+     * La tienda solo tiene el endpoint por NUMERO publico (O72), y las notificaciones enlazan con
+     * el id crudo: `PedidoNotificacionSupport` arma TODOS sus `targetParams` con
+     * `pedido.getId()`, asi que la campana manda `?pedido=4` y la URL queda en
+     * `/perfil/pedidos/4`. Ahi no hay nada que pedir por numero, y la unica via es repedir el
+     * listado -- que es exactamente el F5 que el vendedor terminaba apretando--.
+     *
+     * `refetchQueries` y no `invalidateQueries`: invalidar solo marca la copia como vieja y el
+     * refetch queda a merced de que algo la vuelva a observar, asi que la pantalla podia quedarse
+     * con el mismo listado sin el pedido.
+     */
+    if (!asBuyerView && !normalizeOrderNumber(activeDetailId)) {
+      if (listRefetchedRef.current === String(activeDetailId)) return undefined;
+      listRefetchedRef.current = String(activeDetailId);
+      let vigente = true;
+      setDetailFetching(true);
+      queryClient.refetchQueries({ queryKey: qk.sellerOrders(effectiveSellerId) })
+        .finally(() => { if (vigente) setDetailFetching(false); });
+      return () => { vigente = false; };
+    }
+
     let active = true;
     setDetailFetching(true);
     const request = asBuyerView
