@@ -6470,7 +6470,11 @@ input, select, textarea {
    comprador. Antes era un input generico de 160px pegado al boton, sin etiqueta, que en el
    pie del modal se leia como un campo de busqueda perdido. `.order-pin-entry` lo agrupa con
    su boton y le da el aire de un campo de codigo: casillas monoespaciadas y separadas. */
-.order-pin-entry { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+/* Anclado a la izquierda, donde empieza la lectura: teclear el codigo es LA accion de este
+   paso, y el pie la arrinconaba contra "Volver" por el `justify-content: flex-end`, con media
+   pagina vacia al lado. De paso recupera el ancho que necesita: apretado contra el borde, el
+   boton no cabia junto al campo y caia debajo, estirado a todo el bloque. */
+.order-pin-entry { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-right: auto; }
 .order-pin-field { display: flex; flex-direction: column; gap: 5px; }
 .order-pin-label { display: inline-flex; align-items: center; gap: 5px; color: #475569; font-size: 11.5px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
 /* `!important` porque `.order-modal-footer input` y los estilos base de formulario ganan por
@@ -6480,11 +6484,12 @@ input, select, textarea {
 .order-pin-field input:focus { outline: none; border-color: var(--brand-blue, #1d6fe0) !important; box-shadow: 0 0 0 3px rgba(29, 111, 224, .16); }
 .order-pin-field small { color: #94a3b8; font-size: 11px; }
 /* El boton se alinea con la CAJA del input, no con el bloque completo: sin esto la etiqueta
-   de arriba lo empuja y queda flotando sobre el campo. */
-.order-pin-submit { margin-bottom: 18px; }
+   de arriba lo empuja y queda flotando sobre el campo. Son los 17px del texto de ayuda mas
+   los 5px de `gap` que lo separan del campo; con 18px quedaba 4px mas abajo que el input. */
+.order-pin-submit { margin-bottom: 22px; }
 
 @media (max-width: 560px) {
-  .order-pin-entry { width: 100%; }
+  .order-pin-entry { width: 100%; margin-right: 0; }
   .order-pin-field, .order-pin-field input { width: 100% !important; }
   .order-pin-submit { margin-bottom: 0; width: 100%; justify-content: center; }
 }
@@ -7351,6 +7356,10 @@ input, select, textarea {
   background: #f8fafc;
   border-top: 1px solid var(--border-subtle);
   display: flex;
+  /* Sin `center`, el `stretch` por defecto estira TODOS los botones a la altura del hijo mas
+     alto. Con el bloque del PIN del retiro en tienda -- etiqueta, campo y ayuda, 88px -- el
+     boton de volver se pintaba de 158px de alto: una barra enorme al lado del campo. */
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
 }
@@ -7360,6 +7369,21 @@ input, select, textarea {
 .order-claim-trigger { margin-right: auto; color: #B8261A; border-color: #FECACA; }
 .order-claim-trigger:hover { background: #FFF0F0; }
 .order-page-container .order-modal-footer { flex-wrap: wrap; }
+
+/* `.btn-auth-primary` nacio para el formulario de login, donde el boton ocupa todo el ancho, y
+   arrastra un `width: 100%` a donde lo reusen. En el pie del pedido eso lo convierte en una barra
+   de lado a lado -- 1130px de los 1178 del pie -- que empuja al resto fuera de su sitio; dentro
+   del bloque del PIN se comia el ancho del grupo y tiraba el boton debajo del campo. Aca cada
+   boton mide lo que dice su texto. */
+.order-modal-footer .btn-auth-primary,
+.order-modal-footer .btn-auth-secondary { width: auto; }
+
+/* En un telefono si se apilan a lo ancho, que es donde el boton completo se agradece. */
+@media (max-width: 560px) {
+  .order-modal-footer { flex-wrap: wrap; }
+  .order-modal-footer .btn-auth-primary,
+  .order-modal-footer .btn-auth-secondary { width: 100%; }
+}
 
 /* Pedido finalizado: el plazo para reclamar ya venció. Se ancla a la izquierda como el
    botón que reemplaza. */
