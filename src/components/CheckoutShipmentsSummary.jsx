@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bike, Car, MapPin, Navigation, Package, Store, Truck } from 'lucide-react';
+import { Bike, Car, MapPin, Package, Store, Truck } from 'lucide-react';
 
 const formatCLP = (value) => `$${Math.round(Number(value) || 0).toLocaleString('es-CL')}`;
 const KIND_ICON = { pickup: Store, local: Bike, courier: Truck, other: Package };
@@ -7,8 +7,8 @@ const KIND_ICON = { pickup: Store, local: Bike, courier: Truck, other: Package }
 /**
  * "Tus envíos" (igual que la app, CartShipmentsSummary): los paquetes de la compra antes de pagar,
  * numerados dentro de cada tienda como en el detalle del pedido. Cada uno dice cómo llega, a
- * dónde, para qué vehículo y cuánto cuesta; el que va a otra comuna se marca aparte porque sale
- * por courier y el envío se paga al recibir.
+ * dónde, para qué vehículo y cuánto cuesta. Todos se muestran igual, vayan dentro o fuera de la
+ * comuna.
  */
 export default function CheckoutShipmentsSummary({ packages }) {
   if (!packages?.length) return null;
@@ -27,10 +27,9 @@ export default function CheckoutShipmentsSummary({ packages }) {
           {storePackages.map((pkg, index) => {
             const Icon = KIND_ICON[pkg.kind] || Package;
             return (
-              <div key={pkg.key} className={`checkout-shipment ${pkg.outside ? 'is-outside' : ''}`}>
+              <div key={pkg.key} className="checkout-shipment">
                 <div className="checkout-shipment-head">
                   <span className="checkout-shipment-badge">{storePackages.length > 1 ? `Paquete ${index + 1}` : 'Paquete'}</span>
-                  {pkg.outside && <span className="checkout-shipment-outside"><Navigation size={12} /> Otra comuna</span>}
                   <strong className="checkout-shipment-cost">
                     {pkg.kind === 'pickup' ? 'Gratis' : pkg.kind === 'courier' ? 'Por pagar' : pkg.cost > 0 ? formatCLP(pkg.cost) : 'Gratis'}
                   </strong>
@@ -41,7 +40,6 @@ export default function CheckoutShipmentsSummary({ packages }) {
                     <MapPin size={14} />
                     <span>
                       {pkg.address.calleYNumero}, <strong>{pkg.address.comunaNombre}</strong>
-                      {pkg.outside && pkg.outsideFromComuna ? ` (la tienda está en ${pkg.outsideFromComuna})` : ''}
                     </span>
                   </span>
                 )}
