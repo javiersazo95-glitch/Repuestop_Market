@@ -29,7 +29,7 @@ import { useCompatibilityCheck } from '../hooks/useCompatibilityCheck';
 import { COMPAT, compatCacheKey, mismatchCountText } from '../utils/compatibilityCheck';
 import {
   cartPackages, cartStoreKey, defaultAddressForMethod, deliveryKind, isDispatch,
-  pendingDeliveryReason, shippingFees, storeMethodsForItem, vehicleLabel, withStoreShipment,
+  offeredMethodsForItem, pendingDeliveryReason, shippingFees, vehicleLabel, withStoreShipment,
 } from '../utils/cartDelivery';
 
 const STEPS = [
@@ -362,7 +362,7 @@ export default function CheckoutPage() {
         const storeShipment = shipmentByStore.get(cartStoreKey(item));
         // El envío es uno por tienda: el método con que se agregó (si la tienda lo publica) y una
         // dirección que ese método alcance (dentro o fuera de la comuna de la tienda).
-        const published = storeMethodsForItem(item);
+        const published = offeredMethodsForItem(item, addresses);
         const wanted = previous?.method ?? (item.shippingMethod || null);
         const method = storeShipment
           ? storeShipment.method
@@ -458,11 +458,9 @@ export default function CheckoutPage() {
     if (methods.some((method) => deliveryKind(method) === 'courier')) return 'Por pagar';
     return 'Sin costo';
   })();
-  const addressBookRef = useRef(null);
-  const openAddressBook = () => {
-    setAddressBookOpen(true);
-    window.setTimeout(() => addressBookRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
-  };
+  // Las direcciones se agregan y editan en "Mis datos y perfil", no en el carrito (igual que la
+  // app, que lleva a Mis direcciones). Al volver, el carrito las vuelve a cargar.
+  const openAddressBook = () => navigate('/perfil/datos');
 
   // Se parte de los params actuales en vez de escribir un objeto nuevo: pasarle
   // `{ paso: id }` a setSearchParams reemplaza TODA la query, y eso borraba el
@@ -919,14 +917,22 @@ export default function CheckoutPage() {
                     <p className="checkout-block-note">
                       Cada tienda envía sus productos juntos: elige su envío y la dirección una vez, y para qué vehículo es cada repuesto.
                     </p>
-                    <div className="checkout-delivery-groups">
-                      {groups.map((group) => (
+                    {/* Con varias tiendas, cada una en su propio contenedor con encabezado de color y
+                        "Tienda N de M": al bajar tiene que quedar claro a qué tienda corresponde
+                        cada envío y cada producto. */}
+                    <div className={`checkout-delivery-groups ${groups.length > 1 ? 'is-multi' : ''}`}>
+                      {groups.map((group, groupIndex) => (
                         <div key={group.key} className="cart-store-group">
                           <div className="cart-store-head">
                             <div className="cart-store-id">
                               <span className="cart-store-avatar"><Store size={15} /></span>
-                              <strong>{group.items[0]?.storeName || group.vendedor || 'Tienda RepuesTop'}</strong>
-                              {group.items[0]?.storeComuna && <small className="checkout-store-commune">{group.items[0].storeComuna}</small>}
+                              <span className="checkout-store-title">
+                                {groups.length > 1 && <em className="checkout-store-index">Tienda {groupIndex + 1} de {groups.length}</em>}
+                                <strong>{group.items[0]?.storeName || group.vendedor || 'Tienda RepuesTop'}</strong>
+                                <small className="checkout-store-commune">
+                                  {[group.items[0]?.storeComuna, `${group.items.length} ${group.items.length === 1 ? 'producto' : 'productos'}`].filter(Boolean).join(' · ')}
+                                </small>
+                              </span>
                             </div>
                           </div>
                           {/* Un envío por tienda: método y dirección se eligen una vez, bajo su nombre. */}
@@ -986,21 +992,6 @@ export default function CheckoutPage() {
                 )}
 
                 {!isQuoteMode && <CheckoutShipmentsSummary packages={shipmentPackages} />}
-
-                {!isQuoteMode && (
-                  <section className="checkout-block" aria-labelledby="checkout-direcciones-title" ref={addressBookRef}>
-                    <h2 id="checkout-direcciones-title"><MapPin size={16} /> Tus direcciones</h2>
-                    <p className="checkout-block-note">
-                      Cada producto que se despacha elige una de estas direcciones. Agrega la de tu familiar si le envías un repuesto.
-                    </p>
-                    <button type="button" className="checkout-inline-link" onClick={() => setAddressBookOpen((open) => !open)}>
-                      {addressBookOpen ? 'Ocultar direcciones' : 'Agregar o editar direcciones'}
-                    </button>
-                    {(addressBookOpen || (!addressesLoading && addresses.length === 0)) && (
-                      <div className="checkout-address-book"><BuyerAddressBook usuarioId={userId} onChange={() => loadAddresses({ silent: true })} /></div>
-                    )}
-                  </section>
-                )}
 
                 {isQuoteMode && (
                 <section className="checkout-block" aria-labelledby="checkout-entrega-title">

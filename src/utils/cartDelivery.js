@@ -79,6 +79,29 @@ export function storeMethodsForItem(item) {
 }
 
 /**
+ * Los métodos que el checkout ofrece para la tienda (igual que la app): el retiro y SOLO el
+ * despacho que se eligió en la ficha al agregarlo (dentro o fuera de la comuna), no los tres. Si
+ * en la ficha se eligió retiro (o no hay elección), el despacho que corresponde a la dirección
+ * principal del comprador según la comuna de la tienda; sin esa información se ofrecen todos.
+ */
+export function offeredMethodsForItem(item, addresses = []) {
+  const published = storeMethodsForItem(item);
+  const selectedKind = deliveryKind(item.shippingMethod);
+  let dispatchKind = selectedKind === 'local' || selectedKind === 'courier' ? selectedKind : null;
+  if (!dispatchKind) {
+    const principal = (addresses || []).find((address) => address.esPrincipal) || (addresses || [])[0];
+    const sameComuna = isStoreComuna(item, principal);
+    if (sameComuna !== null) dispatchKind = sameComuna ? 'local' : 'courier';
+  }
+  if (!dispatchKind) return published;
+  const offered = published.filter((method) => {
+    const kind = deliveryKind(method);
+    return (kind !== 'local' && kind !== 'courier') || kind === dispatchKind;
+  });
+  return offered.length > 0 ? offered : published;
+}
+
+/**
  * Direcciones que sirven para el envío elegido (8-oct, igual que la app): "dentro de la comuna"
  * solo ofrece las de la comuna de la tienda y "fuera de la comuna", solo las de otras comunas.
  * Así el desplegable no muestra destinos que el envío no alcanza. Sin despacho, ninguna.

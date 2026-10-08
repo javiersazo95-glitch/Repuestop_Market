@@ -20938,32 +20938,20 @@ input.has-success {
 .checkout-item-vehicle.is-add { border-style: dashed; color: #0b5fd0; }
 .checkout-item-delivery-error { margin: 0; color: #b42318; font-size: 12px; }
 .checkout-item-delivery-error .checkout-item-link { display: block; margin: 4px 0 0; }
-/* Producto a otra comuna: sale aparte, por courier y con el envío por pagar. */
-.checkout-item-outside { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border: 1px solid #fde3a7; border-radius: 10px; background: #fffaeb; color: #92400e; }
-.checkout-item-outside > svg { flex: 0 0 auto; margin-top: 2px; }
-.checkout-item-outside span { display: grid; gap: 2px; min-width: 0; }
-.checkout-item-outside strong { font-size: 12.5px; font-weight: 800; }
-.checkout-item-outside small { font-size: 12px; line-height: 1.4; }
 /* "Tus envíos": los paquetes de la compra antes de pagar, como en el detalle del pedido. */
 .checkout-shipments { display: grid; gap: 10px; }
 .checkout-shipments > h2 { margin-bottom: 0; }
 .checkout-shipments h2 small { margin-left: auto; color: #64748b; font-size: 12px; font-weight: 600; }
-.checkout-shipments-lead { margin: 0; color: #92400e; font-size: 12.5px; font-weight: 600; }
 .checkout-shipments-store { display: grid; gap: 6px; }
 .checkout-shipments-store-name { display: flex; align-items: center; gap: 6px; color: #0f172a; font-size: 13px; font-weight: 800; }
 .checkout-shipment { display: grid; gap: 5px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; color: #475569; font-size: 12.5px; }
-.checkout-shipment.is-outside { border-color: #fde3a7; background: #fffaeb; }
 .checkout-shipment-head { display: flex; align-items: center; gap: 6px; }
 .checkout-shipment-badge { padding: 2px 8px; border-radius: 999px; background: #e8f0fd; color: #0b5fd0; font-size: 11.5px; font-weight: 800; }
-.checkout-shipment.is-outside .checkout-shipment-badge { background: #fff; color: #92400e; }
-.checkout-shipment-outside { display: inline-flex; align-items: center; gap: 3px; color: #92400e; font-size: 11.5px; font-weight: 800; }
 .checkout-shipment-cost { margin-left: auto; color: #0f172a; }
 .checkout-shipment-row { display: flex; align-items: flex-start; gap: 6px; overflow-wrap: anywhere; }
 .checkout-shipment-row > svg { flex: 0 0 auto; margin-top: 2px; }
 .checkout-shipment-row strong { color: #0f172a; }
 .checkout-shipment-row.is-method { color: #0b5fd0; font-weight: 700; }
-.checkout-shipment.is-outside .checkout-shipment-row.is-method,
-.checkout-shipment.is-outside .checkout-shipment-row strong:first-child { color: #92400e; }
 .checkout-item-delivery-note { color: #64748b; font-size: 12px; }
 .checkout-recap-item { display: grid; gap: 2px; }
 .checkout-recap-delivery { display: grid; gap: 2px; margin: 0 0 4px; padding: 0; list-style: none; color: #64748b; font-size: 12px; }
@@ -20978,11 +20966,19 @@ input.has-success {
 .compat-status.is-ok svg { color: #059669; }
 .compat-status.is-neutral svg, .compat-status.is-info svg, .compat-status.is-loading svg { color: #64748b; }
 .compat-status.is-loading { border-style: dashed; color: #64748b; }
-.compat-status.is-warn { border-color: #f5d48a; background: #fffaeb; color: #7a4a00; font-weight: 600; }
+.compat-status.is-warn { border-color: #f5d48a; background: #fffaeb; color: #7a4a00; font-weight: 500; }
 .compat-status.is-warn svg { color: #b45309; }
-.compat-status-actions { display: flex; flex-wrap: wrap; gap: 4px 14px; padding-left: 20px; }
-.compat-status-actions a, .compat-status-actions button { padding: 0; border: 0; background: none; color: #0b5fd0; font-size: 12px; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
-.compat-status-actions a:hover, .compat-status-actions button:hover { color: #084aa3; }
+/* Las cuatro salidas en una fila, compactas (ícono + palabra), igual que la app. */
+.compat-status-actions { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
+.compat-status-actions > a, .compat-status-actions > button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 32px; padding: 0 6px; border: 1px solid #f0e2bd; border-radius: 8px; background: #fff; color: #0b5fd0; font: inherit; font-size: 11.5px; font-weight: 700; text-decoration: none; white-space: nowrap; cursor: pointer; }
+/* En celular el ícono va sobre la palabra (igual que la app): así cada acción tiene su propio
+   espacio y las cuatro no se ven pegadas. */
+@media (max-width: 600px) {
+  .compat-status-actions > a, .compat-status-actions > button { flex-direction: column; gap: 2px; min-height: 44px; padding: 4px 2px; font-size: 11px; }
+}
+.compat-status-actions > a:hover, .compat-status-actions > button:hover { background: #eef4ff; }
+.compat-status-actions > .is-danger { color: #b42318; }
+.compat-status-actions svg { flex-shrink: 0; }
 .cart-line-compat { margin-top: 6px; justify-self: start; }
 .cart-compat-summary { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 14px; padding: 10px 14px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: #fff; color: #33445c; font-size: 13px; font-weight: 600; line-height: 1.45; }
 .cart-compat-summary svg { flex-shrink: 0; margin-top: 2px; color: #0b5fd0; }
@@ -20992,10 +20988,6 @@ input.has-success {
 .checkout-compat-summary-text button { padding: 0; border: 0; background: none; color: #0b5fd0; font-size: 12.5px; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .checkout-compat-ack { display: flex; align-items: center; gap: 8px; min-height: 36px; color: #172033; font-size: 13px; font-weight: 700; cursor: pointer; }
 .checkout-compat-ack input { width: 18px; height: 18px; flex-shrink: 0; accent-color: #0b5fd0; }
-@media (max-width: 640px) {
-  .compat-status-actions { gap: 6px 14px; padding-left: 0; }
-  .compat-status-actions a, .compat-status-actions button { min-height: 32px; display: inline-flex; align-items: center; }
-}
 
 .checkout-vehicle-dialog-backdrop { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: flex-end; justify-content: center; background: rgba(15, 23, 42, .45); }
 .checkout-vehicle-dialog { display: grid; gap: 12px; width: min(460px, 100%); max-height: 92vh; overflow-y: auto; padding: 16px; border-radius: 16px 16px 0 0; background: #fff; box-shadow: 0 -12px 40px rgba(9, 20, 38, .25); }
@@ -21270,18 +21262,7 @@ input.has-success {
 .product-shipping-card-info.is-warning { border-color: #f0b44c; color: #8a5a00; background: #fff3d6; }
 .withdrawal-view-more-btn.charge-btn { color: #b42318; }
 
-/* Paquete a OTRA comuna en el detalle del pedido: sale aparte, por courier, y el envío se paga al
-   recibir. En ambar para no confundirlo con el despacho dentro de la comuna. */
-.order-package.is-outside { border-color: #fde3a7; background: #fffaeb; }
-.order-package.is-outside .order-package-badge { background: #fff; color: #92400e; }
-.order-package.is-outside .order-package-row.is-method { color: #92400e; }
-.order-package-outside-chip { display: inline-flex; align-items: center; gap: 3px; color: #92400e; font-size: 11.5px; font-weight: 800; }
-.order-package-outside-note { margin: 0; color: #92400e; font-size: 12px; line-height: 1.45; }
-.order-packages-outside-summary { display: flex; align-items: flex-start; gap: 6px; margin: 0; color: #92400e; font-size: 12.5px; font-weight: 700; }
-.order-packages-outside-summary > svg { flex: 0 0 auto; margin-top: 2px; }
-.order-package.is-outside .order-package-row.is-method > svg { color: #92400e; }
-.order-store-block-delivery > .order-packages-outside-summary { align-items: flex-start; }
-
+.order-store-block-delivery > 
 .seller-checklist-item-manual { color: #b45309; }
 .checkout-store-address { display: grid; gap: 6px; }
 .checkout-store-address small { color: #64748b; font-size: 12px; }
@@ -21345,3 +21326,45 @@ input.has-success {
 @media (max-width: 768px) {
   .withdrawal-content-grid > .withdrawal-total-card { order: -1; position: static; }
 }
+
+/* Checkout con varias tiendas: cada una en su contenedor, con encabezado de color y "Tienda N
+   de M", y más aire entre ellas, para no confundir a qué tienda pertenece cada envío. */
+.checkout-store-title { display: grid; gap: 1px; min-width: 0; }
+.checkout-store-index { color: #0b5fd0; font-size: 10.5px; font-style: normal; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.checkout-delivery-groups.is-multi { gap: 22px; }
+.checkout-delivery-groups.is-multi > .cart-store-group { border: 1.5px solid #cfe0ff; border-radius: 14px; overflow: hidden; box-shadow: 0 6px 18px rgba(11, 95, 208, .06); }
+.checkout-delivery-groups.is-multi > .cart-store-group > .cart-store-head { background: #eef4ff; border-bottom-color: #cfe0ff; }
+.checkout-delivery-groups.is-multi .cart-store-avatar { background: #0b5fd0; color: #fff; }
+.cart-store-group > .checkout-store-shipment { margin: 12px 12px 0; }
+
+/* Retirar dinero: historial como ícono junto a "Datos bancarios" y "Ver detalle de la venta". */
+.withdrawal-heading-actions { display: flex; align-items: center; gap: 8px; }
+.withdrawal-icon-button { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 40px; height: 40px; border: 1px solid #dbe5f2; border-radius: 10px; background: #fff; color: #0b5fd0; cursor: pointer; }
+.withdrawal-icon-button:hover { background: #eef4ff; }
+.withdrawal-history-modal-body { max-height: 70vh; overflow: auto; padding: 14px 16px 18px; }
+.withdrawal-history-modal-body .withdrawal-history-list { grid-template-columns: 1fr; }
+.withdrawal-sale-link { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; margin-top: 4px; padding: 0; border: 0; background: none; color: #0b5fd0; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.withdrawal-sale-link:hover { text-decoration: underline; }
+.withdrawal-sale-detail { display: grid; gap: 10px; max-height: 72vh; overflow: auto; padding: 14px 16px 18px; }
+.withdrawal-sale-detail h4 { margin: 4px 0 0; color: #0f172a; font-size: 13px; font-weight: 800; }
+.withdrawal-sale-net { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: #ecfdf3; color: #15803d; }
+.withdrawal-sale-net span { font-size: 12px; font-weight: 700; }
+.withdrawal-sale-net strong { font-size: 20px; }
+.withdrawal-sale-net.is-charge { background: #fef3f2; color: #b42318; }
+.withdrawal-sale-loading { display: flex; align-items: center; gap: 6px; margin: 0; color: #64748b; font-size: 12.5px; }
+.withdrawal-sale-rows { display: grid; gap: 6px; margin: 0; }
+.withdrawal-sale-rows > div { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 8px; font-size: 12.5px; }
+.withdrawal-sale-rows dt { display: inline-flex; align-items: center; gap: 5px; color: #64748b; }
+.withdrawal-sale-rows dd { margin: 0; color: #0f172a; font-weight: 600; overflow-wrap: anywhere; }
+.withdrawal-sale-items, .withdrawal-sale-amounts { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; }
+.withdrawal-sale-items li { display: flex; align-items: flex-start; gap: 6px; }
+.withdrawal-sale-items .qty { width: 26px; color: #64748b; font-weight: 700; }
+.withdrawal-sale-items .name { flex: 1; color: #0f172a; }
+.withdrawal-sale-amounts li { display: flex; justify-content: space-between; gap: 8px; color: #64748b; }
+.withdrawal-sale-amounts b { color: #0f172a; }
+.withdrawal-sale-amounts b.neg { color: #b42318; }
+.withdrawal-sale-open { display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+@media (max-width: 600px) {
+  .withdrawal-sale-rows > div { grid-template-columns: 1fr; gap: 2px; }
+}
+

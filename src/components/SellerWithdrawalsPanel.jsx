@@ -1,18 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
   AlertCircle, AlertTriangle, CalendarDays, CheckCircle2, ChevronRight, Clock,
-  CreditCard, Eye, EyeOff, History, Info, Landmark, Loader2, Mail,
-  Package, RotateCcw, Save, Search, ShieldCheck, User, Wallet, X,
+  CreditCard, ExternalLink, Eye, EyeOff, History, Info, Landmark, Loader2, Mail,
+  Package, ReceiptText, RotateCcw, Save, Search, ShieldCheck, User, Wallet, X,
 } from 'lucide-react';
 import {
   createSellerWithdrawalApi, getSellerBankAccountApi, getSellerPendingWithdrawalsApi,
-  getSellerWithdrawalDetailApi, getSellerWithdrawalsApi, updateSellerBankAccountApi,
+  getSellerOrderByNumberApi, getSellerOrdersApi, getSellerWithdrawalDetailApi, getSellerWithdrawalsApi,
+  updateSellerBankAccountApi,
 } from '../services/api';
 import { BANKS, findBankByCode } from '../data/banks';
-import { sellerCodeShort } from '../data/orderIdentity';
+import { orderDisplayCode, sellerCodeShort } from '../data/orderIdentity';
+import { buildOrderPackages } from '../utils/orderPackages';
+import { profileOrderPath } from '../routes/paths';
 import { formatRut, isValidRut } from '../services/adapters';
 import { qk } from '../services/queryKeys';
 import InfoHint from './InfoHint';
@@ -175,7 +178,7 @@ function WithdrawalRejectedNotice({ motivo, rechazadoAt, reintentoCodigo }) {
 }
 
 // `isCharge` (U9): reembolso total por veredicto; se muestra como cargo, no como venta.
-function PendingOrderRow({ order, isHeld = false, isInDetail = false, isCharge = false }) {
+function PendingOrderRow({ order, isHeld = false, isInDetail = false, isCharge = false, onViewSale }) {
   const countdown = isHeld && !isCharge ? getRemainingDaysInfo(order.disponibleDesde) : null;
   const reembolso = Number(order.montoReembolsoMediacion || 0);
 
@@ -214,6 +217,11 @@ function PendingOrderRow({ order, isHeld = false, isInDetail = false, isCharge =
               : `Incluye descuento por reembolso de mediación: -${formatCLP(reembolso)}`}
           </span>
         )}
+        {onViewSale && (
+          <button type="button" className="withdrawal-sale-link" onClick={() => onViewSale(order)}>
+            <Eye size={13} /> Ver detalle de la venta
+          </button>
+        )}
       </div>
       <div className="withdrawal-order-amount-box">
         <b>{formatCLP(order.valor)}</b>
@@ -242,6 +250,94 @@ function ModalShell({ title, subtitle, icon: Icon = Wallet, onClose, children, w
       </section>
     </div>,
     document.body
+  );
+}
+
+const SALE_STATUS_LABEL = {
+  PENDIENTE: 'Pendiente de pago', PAGADO: 'Por confirmar', EN_PREPARACION: 'En preparación', ENVIADO: 'Enviado',
+  ENTREGADO: 'Entregado', FINALIZADO: 'Finalizado', EN_MEDIACION: 'En mediación', CANCELADO: 'Cancelado',
+};
+
+/**
+ * "Ver detalle de la venta" desde Retirar dinero (igual que la app): lo justo para que la tienda
+ * reconozca a qué venta corresponde cada monto, sin salir de la pantalla. El detalle completo
+ * queda a un clic.
+ */
+function SaleDetailModal({ sellerId, row, onClose }) {
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const numero = String(row.numeroPedido || '').replace(/\s/g, '');
+    const load = /^\d{10}$/.test(numero)
+      ? getSellerOrderByNumberApi(sellerId, numero)
+      : getSellerOrdersApi(sellerId).then((page) => (Array.isArray(page) ? page : page?.content || [])
+        .find((entry) => String(entry.id) === String(row.pedidoId)) || null);
+    load
+      .then((result) => { if (active) setOrder(result || null); })
+      .catch(() => { if (active) setOrder(null); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [sellerId, row]);
+
+  const items = (order?.items || []).filter((item) => !item.proveedorId || String(item.proveedorId) === String(sellerId));
+  const pkg = order ? buildOrderPackages(order)[0] : null;
+  const estado = String(order?.estado || order?.status || '').toUpperCase();
+  const commission = Number(order?.comisionVendedor ?? order?.commissionSeller ?? 0);
+  const reembolso = Number(row.montoReembolsoMediacion || 0);
+
+  return (
+    <ModalShell
+      title="Detalle de la venta"
+      subtitle={`Pedido ${order ? orderDisplayCode(order, 'seller') : row.numeroPedido || sellerCodeShort(row.codigoExterno) || '—'}`}
+      icon={ReceiptText}
+      onClose={onClose}
+    >
+      <div className="withdrawal-sale-detail">
+        <div className={`withdrawal-sale-net ${Number(row.valor) < 0 ? 'is-charge' : ''}`}>
+          <span>{Number(row.valor) < 0 ? 'Cargo a tu próximo retiro' : 'Lo que recibes por esta venta'}</span>
+          <strong>{formatCLP(row.valor)}</strong>
+        </div>
+        {loading ? (
+          <p className="withdrawal-sale-loading"><Loader2 size={15} className="spin-icon" /> Cargando la venta…</p>
+        ) : order ? (
+          <>
+            <dl className="withdrawal-sale-rows">
+              <div><dt><CalendarDays size={14} /> Fecha de compra</dt><dd>{formatDate(order.createdAt || order.fecha, true)}</dd></div>
+              <div><dt><Info size={14} /> Estado</dt><dd>{SALE_STATUS_LABEL[estado] || estado || '—'}</dd></div>
+              <div><dt><User size={14} /> Comprador</dt><dd>{[order.compradorNombre || order.buyerName, order.compradorTelefono || order.buyerPhone].filter(Boolean).join(' · ') || '—'}</dd></div>
+              {pkg && <div><dt><Package size={14} /> Entrega</dt><dd>{[pkg.method, pkg.address].filter(Boolean).join(' · ')}</dd></div>}
+            </dl>
+            <h4>Productos</h4>
+            <ul className="withdrawal-sale-items">
+              {items.map((item, index) => {
+                const qty = Number(item.cantidad ?? item.quantity ?? 1);
+                const price = Number(item.precioUnitario ?? item.precio ?? item.unitPrice ?? 0);
+                return (
+                  <li key={item.id || index}>
+                    <span className="qty">{qty}×</span>
+                    <span className="name">{item.nombre || item.productName || 'Repuesto'}</span>
+                    <b>{formatCLP(qty * price)}</b>
+                  </li>
+                );
+              })}
+            </ul>
+            <h4>Cómo se calcula</h4>
+            <ul className="withdrawal-sale-amounts">
+              <li><span>Venta</span><b>{formatCLP(order.subtotal ?? 0)}</b></li>
+              {commission > 0 && <li><span>Comisión RepuesTop</span><b className="neg">{formatCLP(-commission)}</b></li>}
+              {reembolso > 0 && <li><span>Reembolso por mediación</span><b className="neg">{formatCLP(-reembolso)}</b></li>}
+            </ul>
+          </>
+        ) : (
+          <p className="withdrawal-sale-loading">No pudimos cargar el detalle. Puedes abrir la venta completa.</p>
+        )}
+        <Link className="btn-auth-secondary withdrawal-sale-open" onClick={onClose} to={profileOrderPath(order?.numeroPedido || row.numeroPedido?.replace(/\s/g, '') || row.pedidoId)}>
+          <ExternalLink size={15} /> Abrir la venta completa
+        </Link>
+      </div>
+    </ModalShell>
   );
 }
 
@@ -406,7 +502,10 @@ function BankAccountModal({ sellerId, initialAccount, fallbackEmail, onClose, on
 }
 
 export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
-  const [activeTab, setActiveTab] = useState('management');
+  // El historial ya no es una pestaña: se abre desde un ícono junto a "Datos bancarios", para que
+  // la pantalla tenga una sola fila de pestañas (las de los fondos).
+  const [showHistory, setShowHistory] = useState(() => new URLSearchParams(window.location.search).get('tab') === 'historial');
+  const [saleDetail, setSaleDetail] = useState(null);
   const [pending, setPending] = useState(EMPTY_PENDING);
   const [history, setHistory] = useState([]);
   const [bankAccount, setBankAccount] = useState(null);
@@ -571,6 +670,16 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
             <h2>Retirar dinero <InfoHint title="Cómo funcionan tus fondos" paragraphs={AYUDA_FONDOS} /></h2>
           </div>
         </div>
+        <div className="withdrawal-heading-actions">
+        <button
+          type="button"
+          className="withdrawal-icon-button"
+          onClick={() => setShowHistory(true)}
+          aria-label="Historial de retiros"
+          title="Historial de retiros"
+        >
+          <History size={18} />
+        </button>
         <button
           type="button"
           className="withdrawal-bank-button"
@@ -586,27 +695,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
         >
           <Landmark size={17} /> Datos bancarios
         </button>
-      </div>
-
-      <div className="withdrawal-tabs" role="tablist" aria-label="Retiros">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'management'}
-          className={activeTab === 'management' ? 'active' : ''}
-          onClick={() => setActiveTab('management')}
-        >
-          <Wallet size={16} /> Gestión retiro
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'history'}
-          className={activeTab === 'history' ? 'active' : ''}
-          onClick={() => setActiveTab('history')}
-        >
-          <History size={16} /> Historial de retiros
-        </button>
+        </div>
       </div>
 
       {error && (
@@ -628,7 +717,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
         <div className="withdrawal-loading">
           <Loader2 size={20} className="spin-icon" /> Cargando retiros...
         </div>
-      ) : activeTab === 'management' ? (
+      ) : (
         <div className="withdrawal-management">
           {pending.fondosRetenidos && (
             <div
@@ -692,7 +781,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                   {pending.pedidos.length > 0 ? (
                     <>
                       {pending.pedidos.slice(0, DISPLAY_LIMIT).map((order) => (
-                        <PendingOrderRow key={order.pedidoId} order={order} isHeld={false} />
+                        <PendingOrderRow key={order.pedidoId} order={order} isHeld={false} onViewSale={setSaleDetail} />
                       ))}
                       {pending.pedidos.length > DISPLAY_LIMIT && (
                         <button
@@ -760,7 +849,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                 {heldByRelease.length > 0 ? (
                   <>
                     {heldByRelease.slice(0, DISPLAY_LIMIT).map((order) => (
-                      <PendingOrderRow key={`retenido-${order.pedidoId}`} order={order} isHeld={true} />
+                      <PendingOrderRow key={`retenido-${order.pedidoId}`} order={order} isHeld={true} onViewSale={setSaleDetail} />
                     ))}
                     {heldByRelease.length > DISPLAY_LIMIT && (
                       <button
@@ -797,7 +886,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
               </header>
               <div className="withdrawal-section-orders">
                 {pending.cargos.slice(0, DISPLAY_LIMIT).map((order) => (
-                  <PendingOrderRow key={`cargo-${order.pedidoId}`} order={order} isCharge />
+                  <PendingOrderRow key={`cargo-${order.pedidoId}`} order={order} isCharge onViewSale={setSaleDetail} />
                 ))}
                 {pending.cargos.length > DISPLAY_LIMIT && (
                   <button
@@ -820,45 +909,66 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
             </section>
           )}
         </div>
-      ) : (
-        <div className="withdrawal-history-list">
-          {history.length ? (
-            history.map((withdrawal) => (
-              <article key={withdrawal.retiroId} className="withdrawal-history-card">
-                <div className="withdrawal-history-top">
-                  <div>
-                    <small>{withdrawal.codigoExterno || 'Retiro'}</small>
-                    <span>Solicitado el {formatDate(withdrawal.fechaSolicitud, true)}</span>
-                  </div>
-                  <WithdrawalStatus status={withdrawal.estado} />
-                </div>
-                <strong>{formatCLP(withdrawal.montoTotal)}</strong>
-                {Number(withdrawal.montoReembolsoMediacion || 0) > 0 && (
-                  <span className="withdrawal-refund-note">
-                    Este monto incluye un descuento por reembolso de mediación: -{formatCLP(withdrawal.montoReembolsoMediacion)}
-                  </span>
-                )}
-                <div className="withdrawal-history-meta">
-                  <span><Package size={15} /> {withdrawal.cantidadPedidos} {Number(withdrawal.cantidadPedidos) === 1 ? 'pedido' : 'pedidos'}</span>
-                  <span><CalendarDays size={15} /> Pago estimado: {formatDate(withdrawal.fechaEfectiva)}</span>
-                </div>
-                {String(withdrawal.estado || '').toUpperCase() === 'RECHAZADO' && (
-                  <WithdrawalRejectedNotice motivo={withdrawal.motivoRechazo} rechazadoAt={withdrawal.rechazadoAt} reintentoCodigo={withdrawal.reintentoCodigo} />
-                )}
-                <button type="button" onClick={() => openDetail(withdrawal.retiroId)} disabled={detailLoading}>
-                  <Eye size={16} /> Ver detalle del retiro
-                </button>
-              </article>
-            ))
-          ) : (
-            <div className="withdrawal-empty history">
-              <span><History size={25} /></span>
-              <strong>Aún no tienes retiros solicitados</strong>
-              <p>Cuando solicites un retiro, aparecerá aquí.</p>
-            </div>
-          )}
-        </div>
       )}
+
+      {/* Historial de retiros: en una hoja, abierta desde el ícono del encabezado. */}
+      {showHistory && (
+        <ModalShell
+          title="Historial de retiros"
+          icon={History}
+          onClose={() => {
+            setShowHistory(false);
+            if (searchParams.get('tab') === 'historial') {
+              const next = new URLSearchParams(searchParams);
+              next.delete('tab');
+              setSearchParams(next, { replace: true });
+            }
+          }}
+          wide
+        >
+          <div className="withdrawal-history-modal-body">
+            <div className="withdrawal-history-list">
+              {history.length ? (
+                history.map((withdrawal) => (
+                  <article key={withdrawal.retiroId} className="withdrawal-history-card">
+                    <div className="withdrawal-history-top">
+                      <div>
+                        <small>{withdrawal.codigoExterno || 'Retiro'}</small>
+                        <span>Solicitado el {formatDate(withdrawal.fechaSolicitud, true)}</span>
+                      </div>
+                      <WithdrawalStatus status={withdrawal.estado} />
+                    </div>
+                    <strong>{formatCLP(withdrawal.montoTotal)}</strong>
+                    {Number(withdrawal.montoReembolsoMediacion || 0) > 0 && (
+                      <span className="withdrawal-refund-note">
+                        Este monto incluye un descuento por reembolso de mediación: -{formatCLP(withdrawal.montoReembolsoMediacion)}
+                      </span>
+                    )}
+                    <div className="withdrawal-history-meta">
+                      <span><Package size={15} /> {withdrawal.cantidadPedidos} {Number(withdrawal.cantidadPedidos) === 1 ? 'pedido' : 'pedidos'}</span>
+                      <span><CalendarDays size={15} /> Pago estimado: {formatDate(withdrawal.fechaEfectiva)}</span>
+                    </div>
+                    {String(withdrawal.estado || '').toUpperCase() === 'RECHAZADO' && (
+                      <WithdrawalRejectedNotice motivo={withdrawal.motivoRechazo} rechazadoAt={withdrawal.rechazadoAt} reintentoCodigo={withdrawal.reintentoCodigo} />
+                    )}
+                    <button type="button" onClick={() => openDetail(withdrawal.retiroId)} disabled={detailLoading}>
+                      <Eye size={16} /> Ver detalle del retiro
+                    </button>
+                  </article>
+                ))
+              ) : (
+                <div className="withdrawal-empty history">
+                  <span><History size={25} /></span>
+                  <strong>Aún no tienes retiros solicitados</strong>
+                  <p>Cuando solicites un retiro, aparecerá aquí.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </ModalShell>
+      )}
+
+      {saleDetail && <SaleDetailModal sellerId={sellerId} row={saleDetail} onClose={() => setSaleDetail(null)} />}
 
       {/* Modal para ver todos los pedidos (disponibles o en retencion) */}
       {ordersModal && (

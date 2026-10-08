@@ -5,7 +5,7 @@ import {
   MapPin, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
   RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock, ExternalLink, Timer,
   ThumbsUp, ThumbsDown, Send, ReceiptText, FileCheck, FileSearch, ShieldAlert, MessageCircle, Info,
-  Wallet, Undo2, Car, Navigation
+  Wallet, Undo2, Car
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi, getShippingReceiptUrlApi } from '../services/api';
@@ -46,29 +46,16 @@ import { buyerCompatibilityText } from '../utils/buyerCompatibility';
 function PackageCard({ pkg, label, isSeller = false, showStore = false, recipient = '', copied = false, onCopy }) {
   const conVehiculo = new Set(pkg.vehicles.flatMap((vehicle) => vehicle.products));
   const universales = pkg.products.filter((name) => !conVehiculo.has(name));
-  // El paquete que va a OTRA comuna que la de la tienda: sale aparte, por courier, y el envío se
-  // paga al recibir. En ambar, para no confundirlo con el despacho dentro de la comuna.
-  const outside = pkg.kind === 'courier';
   return (
-    <div className={`order-package ${outside ? 'is-outside' : ''}`}>
+    <div className="order-package">
       <div className="order-package-head">
         <span className="order-package-badge">{label}</span>
-        {outside && <span className="order-package-outside-chip"><Navigation size={12} /> Otra comuna</span>}
         {showStore && <strong>{pkg.storeName}</strong>}
       </div>
       <div className="order-package-row is-method">
         {pkg.kind === 'pickup' ? <Store size={14} /> : <Truck size={14} />}
         <span>{pkg.method}</span>
       </div>
-      {outside && (
-        <p className="order-package-outside-note">
-          {`Va a ${pkg.comuna ? `la comuna de ${pkg.comuna}` : 'otra comuna'}`}
-          {!isSeller && pkg.storeComuna ? `, fuera de ${pkg.storeComuna} (comuna de la tienda)` : ''}
-          {isSeller
-            ? ': despáchalo por courier con envío por pagar; lo paga el comprador al recibir.'
-            : '. Sale aparte, por courier, y el envío se paga al recibirlo.'}
-        </p>
-      )}
       <div className="order-package-row">
         <MapPin size={14} />
         {pkg.kind === 'pickup' ? (
@@ -1608,17 +1595,6 @@ export default function OrderDetailView({
                     son sus repuestos. Nada se junta: una compra puede ir a dos casas y ser para
                     dos autos. A la tienda le llegan solo sus productos (y la patente parcial). */}
                 <div className="order-packages">
-                  {/* Con un paquete a otra comuna se dice de entrada: se despacha distinto
-                      (courier, por pagar) que el resto del pedido. */}
-                  {deliveryPackages.length > 1 && deliveryPackages.some((pkg) => pkg.kind === 'courier') && (() => {
-                    const outside = deliveryPackages.filter((pkg) => pkg.kind === 'courier').length;
-                    return (
-                      <p className="order-packages-outside-summary">
-                        <Navigation size={13} />
-                        {`${outside === 1 ? '1 paquete va' : `${outside} paquetes van`} a otra comuna: ${isSeller ? 'despáchalo por courier con envío por pagar' : 'sale por courier y el envío se paga al recibir'}.`}
-                      </p>
-                    );
-                  })()}
                   {deliveryPackages.map((pkg, index) => (
                     <PackageCard
                       key={pkg.key}
@@ -1801,11 +1777,6 @@ export default function OrderDetailView({
                                 <Truck size={13} /> {paquetes.length > 1 ? `Envío · ${paquetes.length} paquetes` : 'Envío'}
                                 {block.shippingStore > 0 && <strong className="order-store-block-amount">{formatCLP(block.shippingStore)}</strong>}
                               </span>
-                              {paquetes.length > 1 && paquetes.some((pkg) => pkg.kind === 'courier') && (
-                                <span className="order-packages-outside-summary">
-                                  {`${paquetes.filter((pkg) => pkg.kind !== 'courier').length} dentro de la comuna y ${paquetes.filter((pkg) => pkg.kind === 'courier').length} a otra comuna (por pagar)`}
-                                </span>
-                              )}
                               {paquetes.map((pkg, index) => (
                                 <PackageCard
                                   key={pkg.key}
@@ -1825,21 +1796,6 @@ export default function OrderDetailView({
                           )}
                         </span>
                         )}
-                        {/* La tienda ve su venta sin el desglose por paquete (va en "Despachar a"); si
-                            alguno va a otra comuna se le adelanta acá, para que no lo despache igual
-                            que el resto. */}
-                        {isSeller && (() => {
-                          const paquetes = deliveryPackages.filter((pkg) => pkg.kind === 'courier');
-                          if (paquetes.length === 0) return null;
-                          return (
-                            <span className="order-packages-outside-summary">
-                              <Navigation size={13} />
-                              {deliveryPackages.length > 1
-                                ? `${paquetes.length === 1 ? '1 paquete va' : `${paquetes.length} paquetes van`} a otra comuna, con envío por pagar. Revisa "Despachar a".`
-                                : 'Va a otra comuna, con envío por pagar. Revisa "Despachar a".'}
-                            </span>
-                          );
-                        })()}
                         {block.trackingStore && (() => {
                           // El enlace directo al portal del courier. `carrierTracking` devuelve
                           // null seguido -- el nombre del courier es texto libre que escribe el
