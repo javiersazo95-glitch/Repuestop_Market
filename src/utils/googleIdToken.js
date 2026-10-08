@@ -34,3 +34,36 @@ export function decodeGoogleIdToken(idToken) {
     return null;
   }
 }
+
+/**
+ * Traspaso del perfil de Google desde el modal de acceso a `/vender`.
+ *
+ * Con un correo nuevo, el modal pregunta si la cuenta es de comprador o de tienda (igual que la
+ * pantalla "Tipo de cuenta" de la app). Si elige tienda, se guarda aca el idToken que Google ya
+ * entrego y `/vender` lo toma para no volver a pedir la cuenta. sessionStorage: muere con la
+ * pestana, y se borra apenas se lee.
+ */
+const CLAVE_GOOGLE_TIENDA = 'repuestop_google_pendiente_tienda';
+
+export function guardarGoogleParaTienda(idToken) {
+  try {
+    sessionStorage.setItem(CLAVE_GOOGLE_TIENDA, idToken);
+  } catch {
+    /* sin almacenamiento: /vender pedira Google de nuevo */
+  }
+}
+
+/**
+ * El perfil guardado para `/vender`, o null. Se borra al leerlo.
+ * @returns {{ idToken: string, email: string, name: string, picture: string } | null}
+ */
+export function tomarGoogleParaTienda() {
+  try {
+    const idToken = sessionStorage.getItem(CLAVE_GOOGLE_TIENDA);
+    sessionStorage.removeItem(CLAVE_GOOGLE_TIENDA);
+    const perfil = idToken ? decodeGoogleIdToken(idToken) : null;
+    return perfil && idToken ? { idToken, email: perfil.email, name: perfil.nombre, picture: perfil.picture } : null;
+  } catch {
+    return null;
+  }
+}

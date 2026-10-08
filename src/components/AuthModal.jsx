@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import CaptadorCodeField, { useCaptadorCode } from './CaptadorCodeField';
 import { clearStoredCaptadorReferral, getStoredCaptadorReferral } from '../utils/captadorReferral';
-import { decodeGoogleIdToken } from '../utils/googleIdToken';
+import { decodeGoogleIdToken, guardarGoogleParaTienda } from '../utils/googleIdToken';
 import { GOOGLE_CLIENT_ID } from './founderConfig';
 import { formatRut, isValidRut } from '../services/adapters';
 import { ROUTES } from '../routes/paths';
@@ -662,7 +662,9 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
       setGooglePending({ ...perfil, idToken });
       setGoogleMissingFields({ firstName: !perfil.firstName?.trim(), lastName: !perfil.lastName?.trim() });
       setGoogleTermsAccepted(false);
-      setStep('google_signup');
+      // Como la app (pantalla "Tipo de cuenta"): con un correo nuevo se pregunta si la cuenta es
+      // de comprador o de tienda. Antes iba directo a crear una cuenta de comprador.
+      setStep('google_role');
       return;
     }
 
@@ -989,6 +991,13 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
             </>
           )}
 
+          {step === 'google_role' && (
+            <>
+              <h2>¿Qué cuenta quieres crear?</h2>
+              <p>No encontramos una cuenta con {googlePending?.email}. Elige si vas a comprar o a vender repuestos.</p>
+            </>
+          )}
+
           {step === 'google_signup' && (
             <>
               <h2>Crea tu cuenta con Google</h2>
@@ -1025,6 +1034,42 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
         )}
 
         {/* STEP 1: ROLE SELECTION (COMPRADOR VS VENDEDOR) */}
+        {step === 'google_role' && googlePending && (
+          <div className="auth-modal-body">
+            <div className="role-selection-grid">
+              <button type="button" className="role-option-card buyer-card"
+                onClick={() => { setErrorMessage(null); setStep('google_signup'); }}>
+                <div className="role-card-header">
+                  <div className="role-icon-box buyer-icon"><Car size={30} /></div>
+                </div>
+                <div className="role-card-content">
+                  <h3>Comprador</h3>
+                  <p>Busca por patente, cotiza repuestos compatibles y compra de forma segura para tu vehículo.</p>
+                </div>
+                <div className="role-badge-tag">Para Conductores y Talleres</div>
+              </button>
+              <button type="button" className="role-option-card seller-card"
+                onClick={() => {
+                  // La tienda se registra en /vender, que pide RUT, dirección y documentos. Se le
+                  // pasa el idToken para que no tenga que elegir la cuenta de Google otra vez.
+                  guardarGoogleParaTienda(googlePending.idToken);
+                  setErrorMessage(null);
+                  handleClose();
+                  onOpenSellerRegister();
+                }}>
+                <div className="role-card-header">
+                  <div className="role-icon-box seller-icon"><Store size={30} /></div>
+                </div>
+                <div className="role-card-content">
+                  <h3>Tienda de repuestos</h3>
+                  <p>Registra tu tienda, sube tus documentos y vende tus repuestos en RepuesTop.</p>
+                </div>
+                <div className="role-badge-tag">Para tiendas con inicio de actividades</div>
+              </button>
+            </div>
+          </div>
+        )}
+
         {step === 'select_role' && (
           <div className="auth-modal-body">
             <div className="role-selection-grid">

@@ -269,6 +269,7 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
   const navigate = useNavigate();
   const openCaseId = searchParams.get('caso');
   const openCaseTienda = searchParams.get('tienda');
+  const openCaseTab = searchParams.get('pestana') === 'mediador' ? 'mediator' : 'chat';
   // Viene del checklist del vendedor ("Avisar al comprador"): un mensaje ya armado para no
   // obligarlo a copiar y pegar. Por `state`, no por query param, para no dejarlo en la URL.
   const openCaseDraftMessage = location.state?.draftMessage || '';
@@ -286,6 +287,7 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
     const next = new URLSearchParams(searchParams);
     next.delete('caso');
     next.delete('tienda');
+    next.delete('pestana');
     setSearchParams(next);
   };
 
@@ -439,6 +441,7 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
           user={user}
           mode={mode}
           initialDraft={openCaseDraftMessage}
+          initialTab={openCaseTab}
           onClose={closeCase}
           onChanged={load}
         />

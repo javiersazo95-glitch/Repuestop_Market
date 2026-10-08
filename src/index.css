@@ -3092,6 +3092,15 @@ input, select, textarea {
   flex-direction: column;
 }
 
+/* Las tarjetas del paso "¿Qué cuenta quieres crear?" (Google) son <button>: sin esto toman la
+   fuente y el texto centrado del navegador y no se ven igual que las de select_role. */
+button.role-option-card {
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  width: 100%;
+}
+
 .role-option-card.buyer-card {
   background: linear-gradient(165deg, #eff8ff 0%, #ffffff 55%);
 }
