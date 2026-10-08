@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlarmClock, AlertCircle, CalendarClock, Camera, Car, Check, ChevronLeft, ChevronRight, Clock3, Eye,
+  AlarmClock, AlertCircle, Home, CalendarClock, Camera, Car, Check, ChevronLeft, ChevronRight, Clock3, Eye,
   Film, Heart, Loader2, LockKeyhole, MessageCircle, Plus, PlusCircle, Sparkles, Trash2, TrendingUp, UserPlus, X
 } from 'lucide-react';
 import {
@@ -155,6 +155,8 @@ export default function AdForm({
   const workshopOnly24Hours = workshop24Hours && accreditationProfile?.tieneHorarioNormal === false;
   const show24HoursQuestion = workshop24Hours || initialAd?.is24Hours === true;
   const [is24Hours, setIs24Hours] = useState(initialAd?.is24Hours === true || workshopOnly24Hours);
+  // Servicio a domicilio dentro de la comuna: habilita la opción "a domicilio" al agendar.
+  const [homeService, setHomeService] = useState(initialAd?.homeService === true);
   // Las etiquetas existentes se conservan al editar; en creación ya no se
   // seleccionan en la etapa 3 para no duplicar los servicios manuales del paso 2.
   const [features] = useState(initialAd?.features || []);
@@ -554,6 +556,7 @@ export default function AdForm({
       whatsapp: limits.hasWhatsapp && whatsapp ? `+56 ${whatsapp}` : '',
       openingHours: is24Hours ? 'Atención 24 horas' : formatOpeningHours(schedule),
       is24Hours,
+      homeService,
       features: visibleFeatures,
       servicesOffered: visibleServices,
       specialistBrands,
@@ -804,6 +807,26 @@ export default function AdForm({
                   />
                 </label>
               )}
+
+              {/* Servicio a domicilio dentro de la comuna. Solo con este dato el cliente puede
+                  pedir "a domicilio" al agendar, y el aviso entra al filtro "A domicilio" del
+                  Mural (mismo dato `homeService` en la app). */}
+              <label className={`ads-urgent-card col-span-2 ${homeService ? 'is-active' : ''}`}>
+                <span className="ads-urgent-icon is-home"><Home size={16} /></span>
+                <span className="ads-urgent-text">
+                  <strong>¿Haces servicio a domicilio dentro de la comuna?</strong>
+                  <small>
+                    {`Actívalo si vas donde está el vehículo del cliente en ${comunaNombre || 'tu comuna'}. El anuncio lleva la etiqueta "A domicilio" y, al agendar, el cliente puede pedir que vayas a su dirección.`}
+                  </small>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={homeService}
+                  onChange={(e) => setHomeService(e.target.checked)}
+                  aria-label="Este anuncio ofrece servicio a domicilio dentro de la comuna"
+                />
+              </label>
 
               <div className="ad-field booking-field col-span-2">
                 <div className="ad-field-header">

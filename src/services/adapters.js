@@ -687,6 +687,8 @@ export function adaptAd(dto) {
     specialistBrands: Array.isArray(dto.specialistBrands) ? dto.specialistBrands.filter(Boolean) : [],
     is24Hours: dto.is24Hours === true,
     hasOnlineBooking: dto.hasOnlineBooking === true,
+    // El taller va donde está el vehículo, dentro de la comuna del anuncio.
+    homeService: dto.homeService === true,
     agendaConfig,
     agendaConfigId: dto.agendaConfigId || null,
     agendaConfigName: dto.agendaConfigName || null,
@@ -765,6 +767,8 @@ export function toAdRequestPayload(ad) {
     servicesOffered: list(ad?.servicesOffered, limits.maxTags),
     specialistBrands: list(ad?.specialistBrands, 20),
     is24Hours: ad?.is24Hours === true,
+    // Viaja siempre: el PUT reemplaza todos los campos y sin él se perdería al editar.
+    homeService: ad?.homeService === true,
     hasOnlineBooking,
     agendaConfig: hasOnlineBooking ? agendaConfig : null,
     agendaConfigId: ad?.agendaConfigId || null,
@@ -816,6 +820,8 @@ export function adaptAppointment(dto) {
     vehiclePatent: dto.vehiclePatent || '',
     vehicleModel: dto.vehicleModel || '',
     notes: dto.notes || '',
+    homeService: dto.homeService === true,
+    homeAddress: dto.homeAddress || '',
     status: APPOINTMENT_STATUSES.includes(dto.status) ? dto.status : 'pending',
     createdAt: dto.createdAt || null,
     isRedacted: !dto.customerName && !dto.customerUserId
@@ -855,6 +861,9 @@ export function toAppointmentRequestPayload(form) {
     customerEmail: text(form?.customerEmail),
     vehiclePatent: text(form?.vehiclePatent) || null,
     vehicleModel: text(form?.vehicleModel) || null,
-    notes: text(form?.notes) || null
+    notes: text(form?.notes) || null,
+    // Servicio a domicilio: el backend exige que el anuncio lo ofrezca y que venga la dirección.
+    homeService: form?.homeService === true,
+    homeAddress: form?.homeService === true ? (text(form?.homeAddress) || null) : null
   };
 }

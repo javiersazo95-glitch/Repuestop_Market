@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Heart, Share2, MapPin, BadgeCheck,
   ShieldCheck, Zap, Phone, MessageCircle, Calendar, CalendarCheck,
-  Building2, Tag, ListChecks, FileText, CheckCircle2, ThumbsUp, Clock, ExternalLink
+  Building2, Tag, ListChecks, FileText, CheckCircle2, ThumbsUp, Clock, ExternalLink, Home
 } from 'lucide-react';
 import { AD_TIERS, SERVICE_CATEGORIES } from '../../data/automotiveAdsData';
 import { getCategoryIcon } from './categoryIcons';
@@ -96,6 +96,7 @@ export default function AdDetailView({ ad, onBack }) {
     { Icon: MessageCircle, label: 'WhatsApp', value: canWhatsapp ? 'Contacto directo disponible' : null },
     { Icon: Clock, label: 'Horario', value: ad.is24Hours ? 'Atención 24 horas, todos los días' : ad.openingHours },
     { Icon: Zap, label: 'Urgencias 24/7', value: ad.is24Hours ? 'Todos los días, a toda hora' : null },
+    { Icon: Home, label: 'A domicilio', value: ad.homeService ? `Dentro de ${ad.commune || 'su comuna'}` : null },
     { Icon: CalendarCheck, label: 'Agenda en línea', value: canBook ? 'Disponible' : null },
     { Icon: Building2, label: 'En RepuesTop desde', value: memberSince },
   ].filter((f) => f.value);
@@ -189,6 +190,12 @@ export default function AdDetailView({ ad, onBack }) {
                     <>
                       <span className="ad-detail-dot">•</span>
                       <span className="ad-detail-loc"><Clock size={14} /> Urgencias 24/7</span>
+                    </>
+                  )}
+                  {ad.homeService && (
+                    <>
+                      <span className="ad-detail-dot">•</span>
+                      <span className="ad-detail-loc"><Home size={14} /> A domicilio</span>
                     </>
                   )}
                 </div>

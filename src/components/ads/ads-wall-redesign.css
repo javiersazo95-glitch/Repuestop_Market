@@ -792,6 +792,10 @@ button.ad-meta-item:hover { color: var(--ads-primary); }
   font-weight: 700;
 }
 .ad-meta-chip.is-warning { background: #FFFBEB; color: #B45309; }
+/* Etiquetas de servicio de la tarjeta (24 horas / a domicilio), mismos tonos que la app. */
+.ad-card-service-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 6px; }
+.ad-meta-chip.is-24h { background: #FFF0F0; color: #B42318; border: 1px solid #FECACA; }
+.ad-meta-chip.is-home { background: #EAF2FF; color: #0056BF; border: 1px solid #BFD6F7; }
 
 .ad-card-specialist-row {
   min-width: 0;

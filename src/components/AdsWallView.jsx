@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   Megaphone, Plus, Search, RotateCcw, Loader2, WifiOff, AlertTriangle,
   RefreshCw, SlidersHorizontal, X, Car, MapPin, Settings, ChevronDown,
-  ArrowUpDown, ArrowRight, ShieldCheck, Zap, Star, CheckCircle2, Sparkles
+  ArrowUpDown, ArrowRight, ShieldCheck, Zap, Star, CheckCircle2, Sparkles, Home
 } from 'lucide-react';
 import { AD_TIERS, SERVICE_CATEGORIES } from '../data/automotiveAdsData';
 import { AD_TIER_PRICES_CLP, fetchPublicAds, getCachedWallAds, ADS_WALL_UPDATED_EVENT } from '../services/adsStorage';
@@ -116,6 +116,7 @@ export default function AdsWallView() {
   const [onlyBooking, setOnlyBooking] = useState(false);
   const [onlyWhatsapp, setOnlyWhatsapp] = useState(false);
   const [only24Hours, setOnly24Hours] = useState(false);
+  const [onlyHomeService, setOnlyHomeService] = useState(false);
   const [sortBy, setSortBy] = useState('relevancia');
 
   const [searchMode, setSearchMode] = useState('service'); // 'service' | 'plate'
@@ -146,7 +147,7 @@ export default function AdsWallView() {
     setVisibleCount(PAGE_SIZE);
   }, [
     searchQuery, selectedCategory, selectedTier, selectedCommune, selectedServiceTag,
-    onlyBooking, onlyWhatsapp, only24Hours, sortBy, plateVehicle, selectedSpecialistBrand
+    onlyBooking, onlyWhatsapp, only24Hours, onlyHomeService, sortBy, plateVehicle, selectedSpecialistBrand
   ]);
 
   useEffect(() => {
@@ -217,6 +218,7 @@ export default function AdsWallView() {
     setOnlyBooking(false);
     setOnlyWhatsapp(false);
     setOnly24Hours(false);
+    setOnlyHomeService(false);
     setSortBy('relevancia');
     setPlateQuery('');
     setPlateVehicle(null);
@@ -233,7 +235,8 @@ export default function AdsWallView() {
     (selectedTier !== 'TODOS' ? 1 : 0) +
     (onlyBooking ? 1 : 0) +
     (onlyWhatsapp ? 1 : 0) +
-    (only24Hours ? 1 : 0);
+    (only24Hours ? 1 : 0) +
+    (onlyHomeService ? 1 : 0);
 
   const activeFiltersCount = quickFiltersCount + advancedFiltersCount;
 
@@ -325,6 +328,10 @@ export default function AdsWallView() {
     if (only24Hours) {
       result = result.filter((ad) => ad.is24Hours);
     }
+    // Servicio a domicilio dentro de la comuna del taller.
+    if (onlyHomeService) {
+      result = result.filter((ad) => ad.homeService === true);
+    }
 
     if (sortBy === 'precio-menor') {
       result.sort((a, b) => (a.priceValue || 0) - (b.priceValue || 0));
@@ -345,7 +352,7 @@ export default function AdsWallView() {
     return result;
   }, [
     adsList, searchQuery, selectedCategory, selectedTier, selectedCommune, selectedServiceTag,
-    onlyBooking, onlyWhatsapp, only24Hours, sortBy, plateVehicle, isNearbySortActive, userLocation.coords,
+    onlyBooking, onlyWhatsapp, only24Hours, onlyHomeService, sortBy, plateVehicle, isNearbySortActive, userLocation.coords,
     selectedSpecialistBrand,
   ]);
 
@@ -685,6 +692,15 @@ export default function AdsWallView() {
 
             <button
               type="button"
+              className={`ads-fb-toggle ${onlyHomeService ? 'active' : ''}`}
+              aria-pressed={onlyHomeService}
+              onClick={() => setOnlyHomeService((v) => !v)}
+            >
+              <Home size={15} /> <span>A domicilio</span>
+            </button>
+
+            <button
+              type="button"
               className={`ads-fb-toggle ${sortBy === 'relevancia' ? 'active' : ''}`}
               aria-pressed={sortBy === 'relevancia'}
               onClick={() => setSortBy((s) => (s === 'relevancia' ? 'recientes' : 'relevancia'))}
@@ -988,6 +1004,8 @@ export default function AdsWallView() {
         setOnlyWhatsapp={setOnlyWhatsapp}
         only24Hours={only24Hours}
         setOnly24Hours={setOnly24Hours}
+        onlyHomeService={onlyHomeService}
+        setOnlyHomeService={setOnlyHomeService}
         communeOptions={communeOptions}
         categoryOptions={availableCategories}
         categoryCounts={categoryCounts}

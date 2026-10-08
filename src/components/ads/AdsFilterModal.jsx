@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, RotateCcw, SlidersHorizontal, ShieldCheck, Zap, Star,
-  Calendar, MessageCircle, AlarmClock
+  Calendar, MessageCircle, AlarmClock, Home
 } from 'lucide-react';
 import { SERVICE_CATEGORIES } from '../../data/automotiveAdsData';
 import SearchableDropdown from '../SearchableDropdown';
@@ -49,6 +49,8 @@ export default function AdsFilterModal({
   setOnlyWhatsapp,
   only24Hours,
   setOnly24Hours,
+  onlyHomeService,
+  setOnlyHomeService,
   onResetFilters,
   activeFiltersCount = 0,
   totalResults,
@@ -106,6 +108,22 @@ export default function AdsFilterModal({
               checked={only24Hours}
               onChange={(e) => setOnly24Hours(e.target.checked)}
               aria-label="Solo urgencias 24 horas"
+            />
+          </label>
+
+          {/* Junto a urgencias: talleres que van donde está el vehículo (`homeService`). */}
+          <label className={`ads-urgent-card ${onlyHomeService ? 'is-active' : ''}`}>
+            <span className="ads-urgent-icon is-home"><Home size={16} /></span>
+            <span className="ads-urgent-text">
+              <strong>Servicio a domicilio</strong>
+              <small>Van donde está tu vehículo, dentro de su comuna</small>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={onlyHomeService}
+              onChange={(e) => setOnlyHomeService(e.target.checked)}
+              aria-label="Solo servicio a domicilio"
             />
           </label>
 

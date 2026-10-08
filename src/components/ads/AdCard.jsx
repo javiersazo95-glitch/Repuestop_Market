@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   MapPin, MessageCircle, Star, ShieldCheck, Phone, Calendar,
-  CheckCircle2, CalendarClock, UserCheck, ArrowRight, Zap, Heart, Navigation
+  CheckCircle2, CalendarClock, UserCheck, ArrowRight, Zap, Heart, Navigation, AlarmClock, Home
 } from 'lucide-react';
 import { AD_TIERS, SERVICE_CATEGORIES, getAdExpiryInfo } from '../../data/automotiveAdsData';
 import { getCategoryIcon } from './categoryIcons';
@@ -189,6 +189,18 @@ export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCatego
             <MapPin size={13} /> {ad.commune || 'Región Metropolitana'}
           </span>
         </div>
+
+        {/* Etiquetas de servicio: se ven de un vistazo en el mural (mismas en la app). */}
+        {(ad.is24Hours || ad.homeService) && (
+          <div className="ad-card-service-tags">
+            {ad.is24Hours && (
+              <span className="ad-meta-chip is-24h" aria-label="Atiende 24 horas"><AlarmClock size={12} /> 24 horas</span>
+            )}
+            {ad.homeService && (
+              <span className="ad-meta-chip is-home" aria-label="Servicio a domicilio"><Home size={12} /> A domicilio</span>
+            )}
+          </div>
+        )}
 
         {(previewBrands.length > 0 || showExpiryChip) && (
           <div className="ad-card-tags">

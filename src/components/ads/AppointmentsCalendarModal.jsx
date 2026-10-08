@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, ChevronLeft, ChevronRight, CalendarDays, Check, XCircle, Loader2,
-  Phone, Mail, Car, StickyNote
+  Phone, Mail, Car, StickyNote, Home
 } from 'lucide-react';
 import {
   APPOINTMENT_LEGEND, APPOINTMENT_STATE_ORDER, appointmentVisualState, describeAppointment,
@@ -249,6 +249,9 @@ export default function AppointmentsCalendarModal({
                             <span><Car size={12} /> {[appointment.vehiclePatent, appointment.vehicleModel].filter(Boolean).join(' · ')}</span>
                           )}
                         </div>
+                        {appointment.homeService && (
+                          <p className="agenda-appointment-notes is-home"><Home size={12} /> A domicilio{appointment.homeAddress ? ` · ${appointment.homeAddress}` : ''}</p>
+                        )}
                         {appointment.notes && (
                           <p className="agenda-appointment-notes"><StickyNote size={12} /> {appointment.notes}</p>
                         )}
