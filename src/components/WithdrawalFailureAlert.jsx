@@ -21,7 +21,7 @@ function formatDate(value) {
 }
 
 /**
- * Alerta de pago fallido en el header del market. Aparece cuando Administración Contable marcó
+ * Alerta de retiro fallido en el header del market. Aparece cuando Administración Contable marcó
  * que el depósito de un retiro rebotó en el banco, y se apaga sola cuando el vendedor vuelve a
  * solicitar un retiro: el backend la calcula comparando el rechazo con los retiros posteriores.
  * Equivalente web del chip de alerta del `TopAppBar` de la app móvil.
@@ -74,7 +74,7 @@ export default function WithdrawalFailureAlert({ variant = 'header' }) {
             <span className="withdrawal-alert-strip-cta">Ver detalle <ChevronRight size={15} /></span>
           </>
         ) : (
-          <span>Pago fallido</span>
+          <span>Retiro fallido</span>
         )}
       </button>
 

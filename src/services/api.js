@@ -1109,7 +1109,7 @@ export async function getSellerStoreApi(proveedorId, { signal } = {}) {
 }
 
 /**
- * Alerta de pago fallido del header: el último retiro cuyo depósito rebotó en el banco y que el
+ * Alerta de retiro fallido del header: el último retiro cuyo depósito rebotó en el banco y que el
  * vendedor todavía no vuelve a solicitar. Con `activa: false` no hay nada que corregir.
  */
 export async function getSellerWithdrawalAlertApi(proveedorId) {

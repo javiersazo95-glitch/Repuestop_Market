@@ -457,7 +457,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
 
   useEffect(() => { loadWithdrawals(); }, [loadWithdrawals]);
 
-  // La alerta de pago fallido del header llega con ?corregir=datos-bancarios: abre el formulario
+  // La alerta de retiro fallido del header llega con ?corregir=datos-bancarios: abre el formulario
   // de datos bancarios para que el vendedor los corrija antes de volver a pedir el retiro.
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
@@ -507,7 +507,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
       });
       // Limpiar pedidos disponibles localmente de inmediato para evitar cualquier desfase visual
       setPending((prev) => ({ ...prev, pedidos: [], totalARetirar: 0 }));
-      // Un retiro nuevo despues de un rechazo apaga la alerta de pago fallido del header.
+      // Un retiro nuevo despues de un rechazo apaga la alerta de retiro fallido del header.
       queryClient.invalidateQueries({ queryKey: qk.sellerWithdrawalAlert(sellerId) });
       await loadWithdrawals();
     } catch (submitError) {
