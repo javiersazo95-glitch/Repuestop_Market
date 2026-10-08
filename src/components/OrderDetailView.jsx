@@ -5,7 +5,7 @@ import {
   MapPin, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
   RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock, ExternalLink, Timer,
   ThumbsUp, ThumbsDown, Send, ReceiptText, FileCheck, FileSearch, ShieldAlert, MessageCircle, Info,
-  Wallet, Undo2, Car
+  Wallet, Undo2, Car, Navigation
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi, getShippingReceiptUrlApi } from '../services/api';
@@ -46,16 +46,29 @@ import { buyerCompatibilityText } from '../utils/buyerCompatibility';
 function PackageCard({ pkg, label, isSeller = false, showStore = false, recipient = '', copied = false, onCopy }) {
   const conVehiculo = new Set(pkg.vehicles.flatMap((vehicle) => vehicle.products));
   const universales = pkg.products.filter((name) => !conVehiculo.has(name));
+  // El paquete que va a OTRA comuna que la de la tienda: sale aparte, por courier, y el envío se
+  // paga al recibir. En ambar, para no confundirlo con el despacho dentro de la comuna.
+  const outside = pkg.kind === 'courier';
   return (
-    <div className="order-package">
+    <div className={`order-package ${outside ? 'is-outside' : ''}`}>
       <div className="order-package-head">
         <span className="order-package-badge">{label}</span>
+        {outside && <span className="order-package-outside-chip"><Navigation size={12} /> Otra comuna</span>}
         {showStore && <strong>{pkg.storeName}</strong>}
       </div>
       <div className="order-package-row is-method">
         {pkg.kind === 'pickup' ? <Store size={14} /> : <Truck size={14} />}
         <span>{pkg.method}</span>
       </div>
+      {outside && (
+        <p className="order-package-outside-note">
+          {`Va a ${pkg.comuna ? `la comuna de ${pkg.comuna}` : 'otra comuna'}`}
+          {!isSeller && pkg.storeComuna ? `, fuera de ${pkg.storeComuna} (comuna de la tienda)` : ''}
+          {isSeller
+            ? ': despáchalo por courier con envío por pagar; lo paga el comprador al recibir.'
+            : '. Sale aparte, por courier, y el envío se paga al recibirlo.'}
+        </p>
+      )}
       <div className="order-package-row">
         <MapPin size={14} />
         {pkg.kind === 'pickup' ? (
@@ -1065,20 +1078,26 @@ export default function OrderDetailView({
     const loading = shippingReceiptLoadingId != null && String(shippingReceiptLoadingId) === String(block.id);
     const error = shippingReceiptError && String(shippingReceiptError.storeId) === String(block.id)
       ? shippingReceiptError.message : '';
+    // Misma fila que la boleta: icono, nombre del documento y la accion al borde derecho.
     return (
-      <span className="order-store-block-boleta order-store-block-shipreceipt">
-        <FileText size={13} /> Comprobante de envío
+      <div className="order-store-doc">
+        <span className="order-store-doc-icon"><Truck size={15} /></span>
+        <span className="order-store-doc-text">
+          <strong>Comprobante de envío</strong>
+          <small>Subido por la tienda</small>
+        </span>
         <button
           type="button"
-          className="order-store-block-tracklink order-store-block-boletalink"
+          className="order-store-doc-action"
           onClick={() => handleViewShippingReceipt(block.id)}
           disabled={shippingReceiptLoadingId != null}
+          aria-label={`Ver el comprobante de envío de ${block.name}`}
         >
           {loading ? <Loader2 size={14} className="spin-icon" /> : <ExternalLink size={14} />}
-          Ver comprobante de envío
+          Ver
         </button>
         {error && <small className="order-shipreceipt-error" role="alert">{error}</small>}
-      </span>
+      </div>
     );
   };
 
@@ -1587,6 +1606,17 @@ export default function OrderDetailView({
                     son sus repuestos. Nada se junta: una compra puede ir a dos casas y ser para
                     dos autos. A la tienda le llegan solo sus productos (y la patente parcial). */}
                 <div className="order-packages">
+                  {/* Con un paquete a otra comuna se dice de entrada: se despacha distinto
+                      (courier, por pagar) que el resto del pedido. */}
+                  {deliveryPackages.length > 1 && deliveryPackages.some((pkg) => pkg.kind === 'courier') && (() => {
+                    const outside = deliveryPackages.filter((pkg) => pkg.kind === 'courier').length;
+                    return (
+                      <p className="order-packages-outside-summary">
+                        <Navigation size={13} />
+                        {`${outside === 1 ? '1 paquete va' : `${outside} paquetes van`} a otra comuna: ${isSeller ? 'despáchalo por courier con envío por pagar' : 'sale por courier y el envío se paga al recibir'}.`}
+                      </p>
+                    );
+                  })()}
                   {deliveryPackages.map((pkg, index) => (
                     <PackageCard
                       key={pkg.key}
@@ -1624,23 +1654,31 @@ export default function OrderDetailView({
                   const cerrado = ['CANCELADO', 'FINALIZADO'].includes(normStatus);
                   if (!disponible && cerrado) return null;
                   return (
-                    <div className={`order-delivery-summary-row order-boleta-row ${disponible ? 'is-ready' : 'is-pending'}`}>
-                      {disponible ? <FileCheck size={14} /> : <ReceiptText size={14} />}
-                      <span>
-                        {disponible
-                          ? 'Boleta de venta cargada'
-                          : normStatus === 'PAGADO' || normStatus === 'PENDIENTE'
-                            ? 'Boleta de venta pendiente — regístrala al confirmar el pedido'
-                            : 'Boleta de venta pendiente — adjúntala para dejar la venta documentada'}
+                    // Misma fila que los documentos del comprador: icono, nombre y la accion al
+                    // borde derecho. Como texto suelto junto al boton, en celular se partia.
+                    <div className={`order-store-doc order-boleta-row ${disponible ? 'is-ready' : 'is-pending'}`}>
+                      <span className="order-store-doc-icon">
+                        {disponible ? <FileCheck size={15} /> : <ReceiptText size={15} />}
+                      </span>
+                      <span className={`order-store-doc-text ${disponible ? '' : 'is-multiline'}`}>
+                        <strong>{disponible ? 'Boleta de venta cargada' : 'Boleta de venta pendiente'}</strong>
+                        <small>
+                          {disponible
+                            ? (order.boletaVentaNombre || 'El comprador ya la ve en su pedido')
+                            : normStatus === 'PAGADO' || normStatus === 'PENDIENTE'
+                              ? 'Regístrala al confirmar el pedido'
+                              : 'Adjúntala para dejar la venta documentada'}
+                        </small>
                       </span>
                       {disponible ? (
                         <button
                           type="button"
-                          className="order-boleta-link"
+                          className="order-store-doc-action"
                           onClick={() => handleViewReceipt()}
+                          aria-label="Ver y descargar la boleta de venta"
                         >
-                          <FileSearch size={13} />
-                          <span>Ver y descargar</span>
+                          <FileSearch size={14} />
+                          Ver
                         </button>
                       ) : isSeller && onRegisterSaleReceipt && !cerrado
                           // Mientras falten los pasos 1 y 2 de un pedido sin confirmar, la
@@ -1649,14 +1687,14 @@ export default function OrderDetailView({
                           && !(!sellerChecklist.stepsReady && (normStatus === 'PAGADO' || normStatus === 'PENDIENTE')) ? (
                         <button
                           type="button"
-                          className="order-boleta-link is-cta"
+                          className="order-store-doc-action is-cta"
                           onClick={() => {
                             setReceiptUploadOnly(true);
                             setShowReceiptModal(true);
                           }}
                         >
-                          <FileUp size={13} />
-                          <span>Cargar boleta</span>
+                          <FileUp size={14} />
+                          Cargar
                         </button>
                       ) : null}
                     </div>
@@ -1761,6 +1799,11 @@ export default function OrderDetailView({
                                 <Truck size={13} /> {paquetes.length > 1 ? `Envío · ${paquetes.length} paquetes` : 'Envío'}
                                 {block.shippingStore > 0 && <strong className="order-store-block-amount">{formatCLP(block.shippingStore)}</strong>}
                               </span>
+                              {paquetes.length > 1 && paquetes.some((pkg) => pkg.kind === 'courier') && (
+                                <span className="order-packages-outside-summary">
+                                  {`${paquetes.filter((pkg) => pkg.kind !== 'courier').length} dentro de la comuna y ${paquetes.filter((pkg) => pkg.kind === 'courier').length} a otra comuna (por pagar)`}
+                                </span>
+                              )}
                               {paquetes.map((pkg, index) => (
                                 <PackageCard
                                   key={pkg.key}
@@ -1780,16 +1823,37 @@ export default function OrderDetailView({
                           )}
                         </span>
                         )}
+                        {/* La tienda ve su venta sin el desglose por paquete (va en "Despachar a"); si
+                            alguno va a otra comuna se le adelanta acá, para que no lo despache igual
+                            que el resto. */}
+                        {isSeller && (() => {
+                          const paquetes = deliveryPackages.filter((pkg) => pkg.kind === 'courier');
+                          if (paquetes.length === 0) return null;
+                          return (
+                            <span className="order-packages-outside-summary">
+                              <Navigation size={13} />
+                              {deliveryPackages.length > 1
+                                ? `${paquetes.length === 1 ? '1 paquete va' : `${paquetes.length} paquetes van`} a otra comuna, con envío por pagar. Revisa "Despachar a".`
+                                : 'Va a otra comuna, con envío por pagar. Revisa "Despachar a".'}
+                            </span>
+                          );
+                        })()}
                         {block.trackingStore && (() => {
                           // El enlace directo al portal del courier. `carrierTracking` devuelve
                           // null seguido -- el nombre del courier es texto libre que escribe el
                           // vendedor --, asi que el numero se muestra IGUAL sin enlace: es el
                           // dato, el boton es la comodidad.
                           const carrier = carrierTracking(block.courierStore, block.trackingStore);
+                          // El texto va en su propio span: sueltos, "Seguimiento:", el numero y el
+                          // courier eran tres items del flex y en celular se partian en columnas
+                          // y empujaban el enlace fuera de la tarjeta.
                           return (
-                            <span>
-                              <Package size={13} /> Seguimiento: <strong>{block.trackingStore}</strong>
-                              {block.courierStore ? ` · ${block.courierStore}` : ''}
+                            <span className="order-store-block-track">
+                              <Package size={13} />
+                              <span className="order-store-block-track-text">
+                                Seguimiento: <strong>{block.trackingStore}</strong>
+                                {block.courierStore ? ` · ${block.courierStore}` : ''}
+                              </span>
                               {carrier && (
                                 <a
                                   className="order-store-block-tracklink"
@@ -1810,35 +1874,43 @@ export default function OrderDetailView({
                             <strong>{block.pickupCode}</strong>
                           </span>
                         )}
-                        {/* La boleta (o factura) de ESTA tienda: cada tienda emite la suya por su
-                            parte del pedido. Para el vendedor la fila vive en "Despachar a". */}
-                        {!isSeller && !block.isCancelledStore && (
-                          <div className="order-store-section order-store-receipt">
-                            <span className="order-store-section-title">
-                              <FileCheck size={13} /> {documentLabel}
-                            </span>
-                            {block.boletaVentaDisponible ? (
-                              <span className="order-store-block-boleta">
-                                <FileText size={13} /> Emitida por la tienda
-                                <button
-                                  type="button"
-                                  className="order-store-block-tracklink order-store-block-boletalink"
-                                  onClick={() => handleViewReceipt(block.id, block.name)}
-                                >
-                                  <FileSearch size={14} />
-                                  Ver y descargar
-                                </button>
-                              </span>
-                            ) : (
-                              <small className="order-store-receipt-pending">
-                                {block.name} adjunta la {documentLabel.toLowerCase()} al confirmar tu pedido. La verás aquí.
-                              </small>
-                            )}
-                          </div>
-                        )}
-                        {/* O87 / O90: el comprobante de envío de ESTA tienda, si lo subió. */}
-                        {storeHasShippingReceipt(block) && renderShippingReceiptLink(block)}
                       </div>
+
+                      {/* Los documentos de ESTA tienda en una sola seccion y con la misma fila: la
+                          boleta (o factura) que emite por su parte del pedido y, si lo subio, el
+                          comprobante de envio (O87 / O90). Va fuera del recuadro del envio: dentro
+                          quedaba tan angosta en celular que el nombre del documento se partia junto
+                          al boton. Para el vendedor la boleta vive en "Despachar a". */}
+                      {!isSeller && (!block.isCancelledStore || storeHasShippingReceipt(block)) && (
+                        <div className="order-store-section order-store-receipt">
+                          <span className="order-store-section-title">
+                            <FileCheck size={13} /> Documentos
+                          </span>
+                          {block.isCancelledStore ? null : block.boletaVentaDisponible ? (
+                            <div className="order-store-doc">
+                              <span className="order-store-doc-icon"><FileText size={15} /></span>
+                              <span className="order-store-doc-text">
+                                <strong>{documentLabel}</strong>
+                                <small>{block.boletaVentaNombre || 'Emitida por la tienda'}</small>
+                              </span>
+                              <button
+                                type="button"
+                                className="order-store-doc-action"
+                                onClick={() => handleViewReceipt(block.id, block.name)}
+                                aria-label={`Ver y descargar la ${documentLabel.toLowerCase()} de ${block.name}`}
+                              >
+                                <FileSearch size={14} />
+                                Ver
+                              </button>
+                            </div>
+                          ) : (
+                            <small className="order-store-receipt-pending">
+                              {block.name} adjunta la {documentLabel.toLowerCase()} al confirmar tu pedido. La verás aquí.
+                            </small>
+                          )}
+                          {storeHasShippingReceipt(block) && renderShippingReceiptLink(block)}
+                        </div>
+                      )}
 
                       {/* Lo que va a pasar SOLO si nadie hace nada. Desde `PedidoAutoCierreJob`
                           el pedido ya no espera un clic: a los 10 dias se da por recibido y 72

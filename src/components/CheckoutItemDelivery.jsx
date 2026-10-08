@@ -1,6 +1,6 @@
 import React from 'react';
-import { Bike, Car, CheckCircle2, Circle, CircleDot, MapPin, Package, Plus, Store, Truck } from 'lucide-react';
-import { deliveryKind, isDispatch, localDeliveryCost, methodsForItem, vehicleLabel } from '../utils/cartDelivery';
+import { Bike, Car, CheckCircle2, Circle, CircleDot, MapPin, Navigation, Package, Plus, Store, Truck } from 'lucide-react';
+import { deliveryKind, isDispatch, localDeliveryCost, methodsForItem, outsideComunaDelivery, vehicleLabel } from '../utils/cartDelivery';
 import { COMPAT } from '../utils/compatibilityCheck';
 import { productPath } from '../routes/paths';
 import CompatibilityStatus from './CompatibilityStatus';
@@ -41,6 +41,12 @@ export default function CheckoutItemDelivery({
   const methods = methodMismatch ? [delivery.method, ...allowed] : allowed;
   const dispatch = isDispatch(delivery.method);
   const selectedVehicle = vehicles.find((vehicle) => vehicle.key === delivery.vehicleKey) || null;
+  const outside = outsideComunaDelivery(item, delivery.method, address);
+  // "Dentro de la comuna" hacia otra comuna: se ofrece pasar al envío que sí llega, en vez de
+  // dejar solo el error.
+  const outsideMethod = methodMismatch && deliveryKind(delivery.method) === 'local'
+    ? allowed.find((method) => deliveryKind(method) === 'courier')
+    : null;
   const radioName = `entrega-${item.id}`;
 
   // "Cambiar vehículo" abre el formulario para indicar otro vehículo, que queda elegido para este
@@ -107,9 +113,27 @@ export default function CheckoutItemDelivery({
           {methodMismatch && address && (
             <p className="checkout-item-delivery-error">
               {deliveryKind(delivery.method) === 'local'
-                ? `${methodTitle(delivery.method)} solo llega a ${item.storeComuna || 'la comuna de la tienda'}: elige una dirección de esa comuna.`
+                ? `${methodTitle(delivery.method)} solo llega a ${item.storeComuna || 'la comuna de la tienda'}: elige una dirección de esa comuna${outsideMethod ? ' o envíalo fuera de la comuna' : ''}.`
                 : `${methodTitle(delivery.method)} no aplica en ${address.comunaNombre || 'esa comuna'}: elige una dirección de otra comuna.`}
+              {outsideMethod && (
+                <button type="button" className="checkout-item-link" onClick={() => onChange({ method: outsideMethod })}>
+                  Enviar fuera de la comuna (por pagar)
+                </button>
+              )}
             </p>
+          )}
+          {/* A otra comuna: el paquete sale aparte, por courier y con el envío por pagar. */}
+          {outside && (
+            <div className="checkout-item-outside" role="status">
+              <Navigation size={15} />
+              <span>
+                <strong>Va a otra comuna: {outside.destinationComuna}</strong>
+                <small>
+                  {item.storeName || item.vendedor || 'La tienda'}{outside.storeComuna ? ` está en ${outside.storeComuna}` : ' está en otra comuna'}: este
+                  producto sale en un paquete aparte, por courier, y el envío lo pagas al recibirlo.
+                </small>
+              </span>
+            </div>
           )}
           {sharesShipment && <small className="checkout-item-delivery-note">Va en el mismo despacho que otro producto de esta tienda.</small>}
         </div>

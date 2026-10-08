@@ -22,11 +22,12 @@ import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import BuyerAddressBook from '../components/BuyerAddressBook';
 import CheckoutSummaryPanel from '../components/CheckoutSummaryPanel';
 import CheckoutItemDelivery from '../components/CheckoutItemDelivery';
+import CheckoutShipmentsSummary from '../components/CheckoutShipmentsSummary';
 import CheckoutVehicleDialog from '../components/CheckoutVehicleDialog';
 import { useCompatibilityCheck } from '../hooks/useCompatibilityCheck';
 import { COMPAT, compatCacheKey, mismatchCountText } from '../utils/compatibilityCheck';
 import {
-  defaultAddressFor, deliveryKind, isDispatch, methodsForItem, pendingDeliveryReason, shippingFees, vehicleLabel,
+  cartPackages, defaultAddressFor, deliveryKind, isDispatch, methodsForItem, pendingDeliveryReason, shippingFees, vehicleLabel,
 } from '../utils/cartDelivery';
 
 const STEPS = [
@@ -363,6 +364,11 @@ export default function CheckoutPage() {
   };
 
   const cartShipping = useMemo(() => shippingFees(cartItems, deliveries), [cartItems, deliveries]);
+  // Los paquetes de la compra para "Tus envíos" (misma regla que el detalle del pedido).
+  const shipmentPackages = useMemo(
+    () => (isQuoteMode ? [] : cartPackages(cartItems, deliveries, addresses, cartVehicles)),
+    [isQuoteMode, cartItems, deliveries, addresses, cartVehicles],
+  );
   const entregaPendiente = isQuoteMode ? '' : pendingDeliveryReason(cartItems, deliveries, cartVehicles, identifiedPlates, addresses);
 
   // Compatibilidad de cada producto con SU vehículo (el backend la evalúa). No bloquea la
@@ -918,6 +924,8 @@ export default function CheckoutPage() {
                     </div>
                   </section>
                 )}
+
+                {!isQuoteMode && <CheckoutShipmentsSummary packages={shipmentPackages} />}
 
                 {!isQuoteMode && (
                   <section className="checkout-block" aria-labelledby="checkout-direcciones-title" ref={addressBookRef}>

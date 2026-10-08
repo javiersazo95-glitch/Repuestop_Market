@@ -201,3 +201,56 @@ export function pendingDeliveryReason(items, deliveries, vehicles, identifiedPla
   }
   return '';
 }
+
+/**
+ * Producto que va a OTRA comuna que la de su tienda (igual que la app, `outsideComunaDelivery`):
+ * sale aparte, por courier, y el envío se paga al recibirlo. Null si se retira, va dentro de la
+ * comuna o no se sabe el destino.
+ */
+export function outsideComunaDelivery(item, method, address) {
+  if (!address || deliveryKind(method) !== 'courier') return null;
+  if (isStoreComuna(item, address) !== false) return null;
+  return { storeComuna: item.storeComuna || null, destinationComuna: address.comunaNombre || '' };
+}
+
+/**
+ * Los paquetes del checkout con la regla del detalle del pedido (utils/orderPackages): uno por
+ * tienda, método y destino, con sus vehículos. Se numeran dentro de cada tienda, igual que en el
+ * detalle, para que el "Paquete 2" del carrito sea el mismo del pedido.
+ */
+export function cartPackages(items, deliveries, addresses, vehicles) {
+  const fees = shippingFees(items, deliveries);
+  const packages = new Map();
+  items.forEach((item) => {
+    const delivery = deliveries[item.id];
+    const method = delivery?.method ?? item.shippingMethod ?? null;
+    if (!method) return;
+    const kind = deliveryKind(method);
+    const address = kind === 'pickup' ? null : addresses.find((entry) => String(entry.id) === String(delivery?.addressId)) || null;
+    const key = `${storeKey(item)}|${kind}|${address?.id ?? ''}`;
+    const pkg = packages.get(key) || {
+      key,
+      storeName: item.storeName || item.vendedor || 'Tienda',
+      kind,
+      method: String(method).replace(/\s*\(.*\)\s*$/, '').trim() || method,
+      address,
+      outsideFromComuna: outsideComunaDelivery(item, method, address)?.storeComuna ?? null,
+      outside: Boolean(outsideComunaDelivery(item, method, address)),
+      cost: 0,
+      products: [],
+      vehicles: [],
+    };
+    const name = item.titulo || 'Repuesto';
+    pkg.products.push(name);
+    pkg.cost += fees.perItem[item.id] || 0;
+    const vehicle = item.esUniversal ? null : vehicles.find((entry) => entry.key === delivery?.vehicleKey);
+    if (vehicle) {
+      const label = vehicleLabel(vehicle);
+      const existing = pkg.vehicles.find((entry) => entry.label === label);
+      if (existing) existing.products.push(name);
+      else pkg.vehicles.push({ label, products: [name] });
+    }
+    packages.set(key, pkg);
+  });
+  return [...packages.values()];
+}

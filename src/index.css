@@ -6419,6 +6419,12 @@ input, select, textarea {
    que caer en la misma columna que el resto de los importes del bloque, o el ojo la lee como
    parte del texto. El `margin-left:auto` del strong es lo que la empuja. */
 .order-store-block-delivery > span { display: flex; align-items: center; gap: 6px; }
+/* Seguimiento: el texto ocupa lo que queda y el enlace al courier baja de linea si no cabe,
+   en vez de salirse de la tarjeta. */
+.order-store-block-delivery > .order-store-block-track { flex-wrap: wrap; row-gap: 4px; }
+.order-store-block-track > svg { flex: 0 0 auto; }
+.order-store-block-track-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.order-store-block-track .order-store-block-tracklink { margin-left: auto; }
 /* Solo el MONTO se va al borde. El numero de seguimiento y el PIN llevan texto detras, asi
    que empujarlos partiria la frase en dos mitades separadas por el ancho de la tarjeta. */
 .order-store-block-delivery .order-store-block-amount { margin-left: auto; color: #0f172a; }
@@ -7485,20 +7491,22 @@ input, select, textarea {
 .order-receipt-hint { color: var(--text-muted); font-size: 11.5px; line-height: 1.4; }
 
 /* Boleta de venta: fila en "Despachar a" y enlace por tienda. */
-.order-boleta-row.is-pending > svg { color: #b45309; }
-.order-boleta-row.is-ready > svg { color: #15803d; }
-.order-boleta-link { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 3px 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-full); background: var(--bg-white); color: var(--color-brand-blue); font: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; }
-.order-boleta-link:hover:not(:disabled) { border-color: #cfe0ff; background: #eff5ff; }
-.order-boleta-link.is-cta { color: #b45309; border-color: #fcd9a8; background: #fff7ec; }
-.order-boleta-link.is-cta:hover:not(:disabled) { background: #fdecd0; }
-.order-boleta-link:disabled { opacity: .6; cursor: default; }
-.order-store-block-boleta { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: #15803d; }
-.order-store-block-boleta > svg { flex-shrink: 0; }
-/* La boleta es el unico enlace del bloque que el comprador necesita despues de la entrega
-   -- para la garantia de 6 meses o un reclamo --, asi que pesa mas que el de seguimiento. */
-.order-store-block-boletalink { padding: 5px 12px; font-size: 12.5px; gap: 5px; }
-/* O87 (pruebas de lanzamiento, 27-sep): comprobante de envio para el comprador. */
-.order-store-block-shipreceipt { flex-wrap: wrap; color: var(--color-brand-blue); }
+.order-boleta-row.is-pending .order-store-doc-icon { background: #fff7ec; color: #b45309; }
+.order-boleta-row.is-ready .order-store-doc-icon { background: #ecfdf3; color: #15803d; }
+.order-store-doc-text.is-multiline small { white-space: normal; }
+.order-store-doc-action.is-cta { border-color: #fcd9a8; background: #fff7ec; color: #b45309; }
+.order-store-doc-action.is-cta:hover:not(:disabled) { background: #fdecd0; }
+/* Documentos de la tienda (boleta o factura y comprobante de envio, O87): una fila igual para
+   cada uno -- icono, nombre y accion al borde derecho -- para que queden alineados entre si.
+   Antes cada uno tenia su propio armado y en celular el texto se partia junto al boton. */
+.order-store-doc { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.order-store-doc-icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 28px; height: 28px; border-radius: 8px; background: #eff6ff; color: var(--color-brand-blue); }
+.order-store-doc-text { display: flex; flex-direction: column; gap: 1px; flex: 1 1 0; min-width: 0; }
+.order-store-doc-text strong { color: #0f172a; font-size: 12.5px; font-weight: 700; }
+.order-store-doc-text small { overflow: hidden; color: #64748b; font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+.order-store-doc-action { display: inline-flex; align-items: center; justify-content: center; gap: 5px; flex: 0 0 auto; min-height: 32px; padding: 0 11px; border: 1px solid #cfe0ff; border-radius: 999px; background: #eff5ff; color: var(--color-brand-blue); font: inherit; font-size: 12.5px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.order-store-doc-action:hover:not(:disabled) { background: #dbe8fd; }
+.order-store-doc-action:disabled { opacity: .6; cursor: default; }
 .order-shipreceipt-error { flex-basis: 100%; color: #b91c1c; font-size: 12px; }
 
 .order-card-state-banner.boleta-pending { color: #b45309; border-color: #fcd9a8; background: #fff7ec; }
@@ -19335,6 +19343,7 @@ input.has-success {
 .withdrawal-rejected-notice > div { display: flex; flex-direction: column; gap: 3px; }
 .withdrawal-rejected-notice strong { font-size: 12.5px; font-weight: 800; color: #8c1d13; }
 .withdrawal-rejected-notice span { font-size: 12px; color: #7a4a44; line-height: 1.45; }
+.withdrawal-rejected-notice .withdrawal-rejected-resolved { color: #17845b; font-weight: 700; }
 
 /* Application notice on phones. */
 .mobile-app-notice { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 64px; padding: 8px 12px; color: #fff; background: #071b45; }
@@ -19343,7 +19352,6 @@ input.has-success {
 .mobile-app-notice__text strong { font-size: 13px; }
 .mobile-app-notice__text span { font-size: 11px; overflow-wrap: anywhere; }
 .mobile-app-notice__link { flex: 0 0 auto; padding: 7px 10px; border-radius: 7px; color: #071b45; background: #fff; font-size: 11px; font-weight: 800; text-decoration: none; }
-.withdrawal-rejected-notice .withdrawal-rejected-resolved { color: #17845b; font-weight: 700; }
 .mobile-app-notice__close { display: grid; place-items: center; width: 36px; height: 36px; min-width: 36px; margin-left: auto; border-radius: 8px; color: #fff; }
 .mobile-app-notice__close:hover, .mobile-app-notice__close:focus-visible { background: rgba(255,255,255,.16); outline: 2px solid #fff; }
 
@@ -20929,6 +20937,33 @@ input.has-success {
 .checkout-item-vehicle.is-selected svg { color: #fff; }
 .checkout-item-vehicle.is-add { border-style: dashed; color: #0b5fd0; }
 .checkout-item-delivery-error { margin: 0; color: #b42318; font-size: 12px; }
+.checkout-item-delivery-error .checkout-item-link { display: block; margin: 4px 0 0; }
+/* Producto a otra comuna: sale aparte, por courier y con el envío por pagar. */
+.checkout-item-outside { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border: 1px solid #fde3a7; border-radius: 10px; background: #fffaeb; color: #92400e; }
+.checkout-item-outside > svg { flex: 0 0 auto; margin-top: 2px; }
+.checkout-item-outside span { display: grid; gap: 2px; min-width: 0; }
+.checkout-item-outside strong { font-size: 12.5px; font-weight: 800; }
+.checkout-item-outside small { font-size: 12px; line-height: 1.4; }
+/* "Tus envíos": los paquetes de la compra antes de pagar, como en el detalle del pedido. */
+.checkout-shipments { display: grid; gap: 10px; }
+.checkout-shipments > h2 { margin-bottom: 0; }
+.checkout-shipments h2 small { margin-left: auto; color: #64748b; font-size: 12px; font-weight: 600; }
+.checkout-shipments-lead { margin: 0; color: #92400e; font-size: 12.5px; font-weight: 600; }
+.checkout-shipments-store { display: grid; gap: 6px; }
+.checkout-shipments-store-name { display: flex; align-items: center; gap: 6px; color: #0f172a; font-size: 13px; font-weight: 800; }
+.checkout-shipment { display: grid; gap: 5px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; color: #475569; font-size: 12.5px; }
+.checkout-shipment.is-outside { border-color: #fde3a7; background: #fffaeb; }
+.checkout-shipment-head { display: flex; align-items: center; gap: 6px; }
+.checkout-shipment-badge { padding: 2px 8px; border-radius: 999px; background: #e8f0fd; color: #0b5fd0; font-size: 11.5px; font-weight: 800; }
+.checkout-shipment.is-outside .checkout-shipment-badge { background: #fff; color: #92400e; }
+.checkout-shipment-outside { display: inline-flex; align-items: center; gap: 3px; color: #92400e; font-size: 11.5px; font-weight: 800; }
+.checkout-shipment-cost { margin-left: auto; color: #0f172a; }
+.checkout-shipment-row { display: flex; align-items: flex-start; gap: 6px; overflow-wrap: anywhere; }
+.checkout-shipment-row > svg { flex: 0 0 auto; margin-top: 2px; }
+.checkout-shipment-row strong { color: #0f172a; }
+.checkout-shipment-row.is-method { color: #0b5fd0; font-weight: 700; }
+.checkout-shipment.is-outside .checkout-shipment-row.is-method,
+.checkout-shipment.is-outside .checkout-shipment-row strong:first-child { color: #92400e; }
 .checkout-item-delivery-note { color: #64748b; font-size: 12px; }
 .checkout-recap-item { display: grid; gap: 2px; }
 .checkout-recap-delivery { display: grid; gap: 2px; margin: 0 0 4px; padding: 0; list-style: none; color: #64748b; font-size: 12px; }
@@ -21226,3 +21261,15 @@ input.has-success {
 .product-shipping-card-info svg { flex-shrink: 0; margin-top: 1px; }
 .product-shipping-card-info.is-warning { border-color: #f0b44c; color: #8a5a00; background: #fff3d6; }
 .withdrawal-view-more-btn.charge-btn { color: #b42318; }
+
+/* Paquete a OTRA comuna en el detalle del pedido: sale aparte, por courier, y el envío se paga al
+   recibir. En ambar para no confundirlo con el despacho dentro de la comuna. */
+.order-package.is-outside { border-color: #fde3a7; background: #fffaeb; }
+.order-package.is-outside .order-package-badge { background: #fff; color: #92400e; }
+.order-package.is-outside .order-package-row.is-method { color: #92400e; }
+.order-package-outside-chip { display: inline-flex; align-items: center; gap: 3px; color: #92400e; font-size: 11.5px; font-weight: 800; }
+.order-package-outside-note { margin: 0; color: #92400e; font-size: 12px; line-height: 1.45; }
+.order-packages-outside-summary { display: flex; align-items: flex-start; gap: 6px; margin: 0; color: #92400e; font-size: 12.5px; font-weight: 700; }
+.order-packages-outside-summary > svg { flex: 0 0 auto; margin-top: 2px; }
+.order-package.is-outside .order-package-row.is-method > svg { color: #92400e; }
+.order-store-block-delivery > .order-packages-outside-summary { align-items: flex-start; }
