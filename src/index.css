@@ -21354,3 +21354,35 @@ input.has-success {
 .checkout-delivery-groups.is-multi > .cart-store-group > .cart-store-head { background: #eef4ff; border-bottom-color: #cfe0ff; }
 .checkout-delivery-groups.is-multi .cart-store-avatar { background: #0b5fd0; color: #fff; }
 .cart-store-group > .checkout-store-shipment { margin: 12px 12px 0; }
+
+/* Retirar dinero: historial como ícono junto a "Datos bancarios" y "Ver detalle de la venta". */
+.withdrawal-heading-actions { display: flex; align-items: center; gap: 8px; }
+.withdrawal-icon-button { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 40px; height: 40px; border: 1px solid #dbe5f2; border-radius: 10px; background: #fff; color: #0b5fd0; cursor: pointer; }
+.withdrawal-icon-button:hover { background: #eef4ff; }
+.withdrawal-history-modal-body { max-height: 70vh; overflow: auto; padding: 14px 16px 18px; }
+.withdrawal-history-modal-body .withdrawal-history-list { grid-template-columns: 1fr; }
+.withdrawal-sale-link { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; margin-top: 4px; padding: 0; border: 0; background: none; color: #0b5fd0; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.withdrawal-sale-link:hover { text-decoration: underline; }
+.withdrawal-sale-detail { display: grid; gap: 10px; max-height: 72vh; overflow: auto; padding: 14px 16px 18px; }
+.withdrawal-sale-detail h4 { margin: 4px 0 0; color: #0f172a; font-size: 13px; font-weight: 800; }
+.withdrawal-sale-net { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: #ecfdf3; color: #15803d; }
+.withdrawal-sale-net span { font-size: 12px; font-weight: 700; }
+.withdrawal-sale-net strong { font-size: 20px; }
+.withdrawal-sale-net.is-charge { background: #fef3f2; color: #b42318; }
+.withdrawal-sale-loading { display: flex; align-items: center; gap: 6px; margin: 0; color: #64748b; font-size: 12.5px; }
+.withdrawal-sale-rows { display: grid; gap: 6px; margin: 0; }
+.withdrawal-sale-rows > div { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 8px; font-size: 12.5px; }
+.withdrawal-sale-rows dt { display: inline-flex; align-items: center; gap: 5px; color: #64748b; }
+.withdrawal-sale-rows dd { margin: 0; color: #0f172a; font-weight: 600; overflow-wrap: anywhere; }
+.withdrawal-sale-items, .withdrawal-sale-amounts { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; }
+.withdrawal-sale-items li { display: flex; align-items: flex-start; gap: 6px; }
+.withdrawal-sale-items .qty { width: 26px; color: #64748b; font-weight: 700; }
+.withdrawal-sale-items .name { flex: 1; color: #0f172a; }
+.withdrawal-sale-amounts li { display: flex; justify-content: space-between; gap: 8px; color: #64748b; }
+.withdrawal-sale-amounts b { color: #0f172a; }
+.withdrawal-sale-amounts b.neg { color: #b42318; }
+.withdrawal-sale-open { display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+@media (max-width: 600px) {
+  .withdrawal-sale-rows > div { grid-template-columns: 1fr; gap: 2px; }
+}
+
