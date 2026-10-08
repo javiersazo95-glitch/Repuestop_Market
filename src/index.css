@@ -21262,18 +21262,7 @@ input.has-success {
 .product-shipping-card-info.is-warning { border-color: #f0b44c; color: #8a5a00; background: #fff3d6; }
 .withdrawal-view-more-btn.charge-btn { color: #b42318; }
 
-/* Paquete a OTRA comuna en el detalle del pedido: sale aparte, por courier, y el envío se paga al
-   recibir. En ambar para no confundirlo con el despacho dentro de la comuna. */
-.order-package.is-outside { border-color: #fde3a7; background: #fffaeb; }
-.order-package.is-outside .order-package-badge { background: #fff; color: #92400e; }
-.order-package.is-outside .order-package-row.is-method { color: #92400e; }
-.order-package-outside-chip { display: inline-flex; align-items: center; gap: 3px; color: #92400e; font-size: 11.5px; font-weight: 800; }
-.order-package-outside-note { margin: 0; color: #92400e; font-size: 12px; line-height: 1.45; }
-.order-packages-outside-summary { display: flex; align-items: flex-start; gap: 6px; margin: 0; color: #92400e; font-size: 12.5px; font-weight: 700; }
-.order-packages-outside-summary > svg { flex: 0 0 auto; margin-top: 2px; }
-.order-package.is-outside .order-package-row.is-method > svg { color: #92400e; }
-.order-store-block-delivery > .order-packages-outside-summary { align-items: flex-start; }
-
+.order-store-block-delivery > 
 .seller-checklist-item-manual { color: #b45309; }
 .checkout-store-address { display: grid; gap: 6px; }
 .checkout-store-address small { color: #64748b; font-size: 12px; }
