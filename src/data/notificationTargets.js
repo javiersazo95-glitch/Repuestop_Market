@@ -18,7 +18,7 @@ import { ROUTES, buyerCaseChatPath, productPath, profilePurchasePath, sellerCase
  * - `/order-detail`               -> `{ orderId, viewMode? }`
  * - `/product-detail`             -> `{ productId, questionId? }`
  * - `/quote-chat`                 -> `{ quoteId, viewMode? }`
- * - `/mediation-chat`             -> `{ orderId }`
+ * - `/mediation-chat`             -> `{ orderId, viewMode?, proveedorId? }` (la tienda del chat en multi-tienda)
  * - `/ad-detail`, `/ads-management` -> `{ id }`; la aprobación del taller manda `{ seccion: 'agenda' }`
  * - `/automotive-service-accreditation` -> `{}` (corrección o rechazo de la acreditación)
  * - `/support-ticket-detail`      -> `{ ticketId }`
@@ -81,7 +81,7 @@ const TARGETS = {
   '/mediation-chat': (params, context) => {
     const asSeller = params?.viewMode ? params.viewMode === 'seller' : Boolean(context?.isSeller);
     if (!params?.orderId) return asSeller ? PROFILE('chats_compradores') : PROFILE('chats_vendedor');
-    return asSeller ? sellerCaseChatPath(params.orderId) : buyerCaseChatPath(params.orderId);
+    return asSeller ? sellerCaseChatPath(params.orderId, params.proveedorId) : buyerCaseChatPath(params.orderId, params.proveedorId);
   },
 
   '/support-ticket-detail': (params) => (params?.ticketId

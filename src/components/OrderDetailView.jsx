@@ -11,7 +11,7 @@ import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi, getShippingReceiptUrlApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, courierDisplayName, isCancelledItem, orderDeliverySummary, orderDisplayCode, subOrderDeliveryLabel, subOrderDeliveryMethod } from '../data/orderIdentity';
-import { buyerClaimState, buyerStoreClaimState, getControlledOrderAction, isStorePickupOrder, normalizeOrderStatus, orderPaymentWindow, sellerClaimState } from '../data/orderStatusFlow';
+import { buyerClaimState, buyerStoreClaimState, getControlledOrderAction, isStorePickupOrder, normalizeOrderStatus, orderPaymentWindow, sellerClaimState, orderAllowsChat } from '../data/orderStatusFlow';
 import { Link } from 'react-router-dom';
 import { buyerCaseChatPath, currentPathForBack, productPath, sellerCaseChatPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
@@ -1358,7 +1358,10 @@ export default function OrderDetailView({
   const canSellerChat = isSeller
     && Boolean(onOpenDispute)
     && !sellerReadOnly
-    && !['PENDIENTE', 'PENDING', 'CANCELADO', 'CANCELLED'].includes(normStatus);
+    && orderAllowsChat(normStatus);
+  // "Chatear con vendedor": misma regla que la tienda y que la app (`pedidoAdmiteChat`): desde que
+  // el pago esta aprobado y mientras el pedido no este cancelado.
+  const canBuyerChat = !isSeller && Boolean(onOpenDispute) && orderAllowsChat(normStatus);
 
   const handleSellerChatClick = () => {
     setChatStartError('');
@@ -1407,7 +1410,7 @@ export default function OrderDetailView({
             </div>
           </div>
           <div className="order-modal-header-actions">
-            {!isSeller && !['CANCELADO'].includes(normStatus) && onOpenDispute && (
+            {canBuyerChat && (
               <div className="order-chat-header-control">
                 <div className="order-chat-header-row">
                   <button
@@ -1426,7 +1429,7 @@ export default function OrderDetailView({
                     onClick={() => setShowMediatorInfo((visible) => !visible)}
                   ><Info size={16} /></button>
                 </div>
-                {showMediatorInfo && <p className="order-chat-mediator-info">Puedes conversar con el vendedor en cualquier momento. La ayuda de un mediador se habilita al recibir el producto y estará disponible durante los 10 días corridos siguientes.</p>}
+                {showMediatorInfo && <p className="order-chat-mediator-info">Puedes conversar con el vendedor desde que el pago está aprobado. La ayuda de un mediador se habilita al recibir el producto y estará disponible durante los 10 días corridos siguientes.</p>}
               </div>
             )}
             {canSellerChat && (
@@ -1448,7 +1451,9 @@ export default function OrderDetailView({
               <button
                 type="button"
                 className="order-status-badge-link"
-                onClick={onOpenDispute}
+                // Sin el `() =>` el evento de clic viajaba como `proveedorId` y la URL quedaba
+                // con `tienda=[object Object]`. Se abre el chat de la tienda en mediacion.
+                onClick={() => onOpenDispute?.(subOrders.find((sub) => String(sub?.estado || '').toUpperCase() === 'EN_MEDIACION')?.proveedorId)}
                 title="Abrir la conversación de la disputa"
               >
                 <OrderStatusBadge status={rawStatus} size="medium" mediationStatus={mediationStatus} />
@@ -2359,7 +2364,7 @@ export default function OrderDetailView({
               {chatStartError && <p className="confirm-dialog-error">{chatStartError}</p>}
 
               <div className="order-store-chat-picker-list">
-                {storeBlocks.map((block) => {
+                {storeBlocks.filter((block) => orderAllowsChat(subOrderByStore.get(String(block.id))?.estado ?? normStatus)).map((block) => {
                   const openingChat = chatStoreId === block.id;
                   return (
                     <article key={block.id} className="order-store-chat-picker-item">

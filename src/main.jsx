@@ -6,6 +6,8 @@ import './components/ads/ads-wall.css'
 import './styles/profile-mobile.css'
 // Chats de la intranet y titulo del pedido en movil; tambien despues de index.css.
 import './styles/chat-mobile.css'
+// Chat del pedido (comprador <-> tienda) y su bandeja, clonados de la app; despues de chat-mobile.css.
+import './styles/mediation-chat.css'
 // Web publica en movil (auditoria 2026-09-26); va al final para ganar la cascada.
 import './styles/public-mobile.css'
 // Ficha del repuesto en movil clonada de la app (2026-09-29); despues de public-mobile.css.

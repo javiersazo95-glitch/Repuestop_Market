@@ -16509,6 +16509,24 @@ input, select, textarea {
 
 /* ==========================================================================
    EXPEDIENTE DE DISPUTA — vista maestro-detalle dentro de /perfil/consultas
+   NOTA (2026-10-07): el chat del pedido comprador<->tienda (MediationCaseView)
+   y su bandeja (SellerChatsView) ya no usan este bloque: viven en
+   src/styles/mediation-chat.css (.mchat-*). Lo siguen usando el chat de
+   soporte (SupportTicketDetailModal / ProfileSupportPanel) y los dialogos
+   conservados del expediente (.dispute-dialog*, .dispute-claim-dialog*,
+   .dispute-resolution-*, .dispute-timeline*, .dispute-evidence-*,
+   .dispute-mediator-steps, .dispute-seal, .dispute-refund-status). Quedan sin
+   uso y pueden borrarse en una limpieza: .dispute-order-strip*,
+   .dispute-chat-tabs, .dispute-chat-actions*, .dispute-mediator-layout,
+   .dispute-mediator-rail*, .dispute-rail-card, .dispute-rail-tip,
+   .dispute-mediator-center, .dispute-mediator-summary*,
+   .dispute-resolved-banner*, .dispute-mobile-panel-toggle,
+   .dispute-vehicle-button, .dispute-chat-peer-meta, .dispute-seal-inline,
+   .dispute-frozen-notice, .dispute-log-entry, .dispute-mediator-evidence-*,
+   .dispute-summary-fields, .dispute-locked-modal, .dispute-claim-link,
+   .dispute-resolution-trigger*, .dispute-btn, y la bandeja antigua
+   .seller-chat-picker-*, .seller-chat-preview-*, .seller-chat-row,
+   .seller-chat-* (tambien sus reglas moviles en styles/chat-mobile.css).
    Rediseño amigable/profesional: tarjetas con esquinas redondeadas y sombras
    suaves en vez de filetes de tramite, con leyendas que explican para qué
    sirve cada sección y qué se espera que haga el usuario. El chat vive

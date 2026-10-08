@@ -200,9 +200,10 @@ export default function OrderCard({
   // O71 (pruebas de lanzamiento, 25-sep): la tienda tambien ve el caso de SU venta, con enlace a
   // su chat en "Chats con compradores". Sus items ya vienen acotados a ella: de ahi sale su id.
   const claimState = isSeller ? sellerClaimState(order) : buyerClaimState(order);
+  // El chat es por (pedido, tienda): el comprador abre el de la tienda con caso (multi-tienda).
   const claimChatPath = isSeller
     ? sellerCaseChatPath(order.id, items.find((item) => item.proveedorId != null)?.proveedorId)
-    : buyerCaseChatPath(order.id);
+    : buyerCaseChatPath(order.id, (order.subordenes || []).find((sub) => sub?.estadoCaso)?.proveedorId);
 
   // Dirección real de despacho (no solo la etiqueta genérica "Despacho a domicilio"):
   // el vendedor la necesita para preparar el envío sin tener que abrir el detalle.
