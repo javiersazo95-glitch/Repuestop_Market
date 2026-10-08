@@ -636,9 +636,11 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   const otherPartyName = isBuyer ? (chat?.vendedorNombre ?? 'Vendedor') : (chat?.compradorNombre ?? 'Comprador');
 
   // Si el caso deja de estar escalado (o todavía no lo está), la pestaña del mediador no existe.
+  // Solo con el caso ya cargado (8-oct): antes de la respuesta `chat` es null, parecía "no
+  // escalado" y la notificación que abre la pestaña del mediador volvía al chat pausado.
   useEffect(() => {
-    if (!isEscalated && activeTab === 'mediator') setActiveTab('chat');
-  }, [isEscalated, activeTab]);
+    if (chat && !isEscalated && activeTab === 'mediator') setActiveTab('chat');
+  }, [chat, isEscalated, activeTab]);
 
   const openDialog = (kind) => {
     setDialog(kind);
