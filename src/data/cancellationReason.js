@@ -36,6 +36,11 @@ export const CANCELLATION_REASON_HINTS = {
   SOLICITUD_DEL_COMPRADOR: 'La unidad volvió al stock. Puedes comprarla de nuevo cuando quieras.',
   SIN_STOCK: 'La tienda se quedó sin unidades. Si pagaste, el reembolso ya está en curso.',
   BLOQUEO_VENDEDOR: 'Cancelamos el pedido para protegerte. Si pagaste, el reembolso ya está en curso.',
+  // Espejo de `mobile/utils/cancellation-reason.ts`. Sin estas tres, el comprador se quedaba con la
+  // etiqueta del formulario del vendedor ("Imposibilidad de despacho") y ninguna explicacion.
+  IMPOSIBILIDAD_DESPACHO: 'La tienda no pudo despachar tu pedido. Si pagaste, el reembolso ya está en curso.',
+  PRODUCTO_NO_DISPONIBLE: 'La tienda ya no tiene disponible este repuesto. Si pagaste, el reembolso ya está en curso.',
+  ERROR_PRECIO: 'La tienda detectó un error en el precio publicado. Si pagaste, el reembolso ya está en curso.',
 };
 
 /**
