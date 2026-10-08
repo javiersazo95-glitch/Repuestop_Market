@@ -72,6 +72,9 @@ export type VerificacionResponse = {
   /** Cuando la tienda declaro ser contribuyente de IVA; null si no lo ha hecho. */
   declaracionIvaAt?: string | null;
   websiteOrSocialUrl: string | null;
+  instagramUrl?: string | null;
+  facebookUrl?: string | null;
+  tiktokUrl?: string | null;
   reviewStatus: string | null;
   reviewNotes: string | null;
   submittedAt: string | null;
@@ -199,6 +202,10 @@ export type VerificacionFiles = {
   /** La tienda declara ser contribuyente de IVA. La IP y la fecha las toma el servidor. */
   declaraContribuyenteIva?: boolean;
   websiteOrSocialUrl?: string;
+  /** Redes sociales: vacía la quita del perfil; sin enviar, no cambia. */
+  instagramUrl?: string;
+  facebookUrl?: string;
+  tiktokUrl?: string;
   mensaje?: string;
 };
 
@@ -215,6 +222,9 @@ export function uploadVerificacion(
   if (files.certificadoCumplimientoDoc) form.append('certificadoCumplimientoDoc', files.certificadoCumplimientoDoc);
   if (files.declaraContribuyenteIva) form.append('declaraContribuyenteIva', 'true');
   if (files.websiteOrSocialUrl) form.append('websiteOrSocialUrl', files.websiteOrSocialUrl);
+  if (files.instagramUrl !== undefined) form.append('instagramUrl', files.instagramUrl);
+  if (files.facebookUrl !== undefined) form.append('facebookUrl', files.facebookUrl);
+  if (files.tiktokUrl !== undefined) form.append('tiktokUrl', files.tiktokUrl);
   if (files.mensaje) form.append('mensaje', files.mensaje);
 
   return request<VerificacionResponse>(`/proveedores/${encodeURIComponent(sellerId)}/verificacion`, {
