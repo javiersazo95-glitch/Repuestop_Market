@@ -15,9 +15,26 @@ import { BANKS, findBankByCode } from '../data/banks';
 import { sellerCodeShort } from '../data/orderIdentity';
 import { formatRut, isValidRut } from '../services/adapters';
 import { qk } from '../services/queryKeys';
+import InfoHint from './InfoHint';
 
 const EMPTY_PENDING = { pedidos: [], totalARetirar: 0, retenidos: [], totalRetenido: 0, cargos: [], totalCargos: 0, fondosRetenidos: false, motivoRetencion: null };
 const DISPLAY_LIMIT = 3;
+
+// Toda la explicación que antes ocupaba la pantalla, ahora detrás de un ícono "i" (igual que la app).
+const AYUDA_FONDOS = [
+  'Aquí ves la plata de tus ventas: lo que puedes retirar ahora y lo que se libera más adelante.',
+  'Retirar ahora: ventas finalizadas que ya pasaron el plazo de arrepentimiento del comprador. Puedes pedir su depósito hoy.',
+  'Por liberar: ventas finalizadas que siguen en el plazo de arrepentimiento del comprador (10 días desde la entrega). Se liberan solas en la fecha indicada y pasan a "Retirar ahora".',
+  'Los depósitos se hacen todos los jueves en la cuenta bancaria registrada de tu tienda.',
+];
+const AYUDA_LIBERAR = [
+  'Retenemos el monto mientras el comprador puede arrepentirse de la compra: 10 días desde la entrega.',
+  'No tienes que hacer nada: cada venta se libera sola en la fecha indicada y pasa a "Retirar ahora".',
+];
+const AYUDA_CARGOS = [
+  'Un mediador de RepuesTop revisó estos casos de forma imparcial y resolvió a favor del comprador, porque la venta no cumplió lo ofrecido por la tienda (por ejemplo, el producto llegó con falla o no correspondía a lo publicado).',
+  'Se le devolvió todo al comprador y la comisión de Flow, que no se recupera, la asume la tienda. El monto se descuenta de tu próximo retiro.',
+];
 
 const ACCOUNT_TYPES = [
   { value: 'corriente', label: 'Cuenta corriente' },
@@ -404,6 +421,8 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [revealAccountNumber, setRevealAccountNumber] = useState(false);
   const [ordersModal, setOrdersModal] = useState(null);
+  // Primero lo que se puede retirar hoy; lo que espera el plazo del comprador va aparte.
+  const [fundsTabChoice, setFundsTab] = useState('ahora');
 
   const loadWithdrawals = useCallback(async () => {
     if (!sellerId) return;
@@ -478,6 +497,20 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
     [history]
   );
 
+  // Lo que se libera antes, primero.
+  const heldByRelease = useMemo(
+    () => [...pending.retenidos].sort((a, b) => String(a.disponibleDesde || '').localeCompare(String(b.disponibleDesde || ''))),
+    [pending.retenidos]
+  );
+  const fundsTabs = [
+    { key: 'ahora', label: 'Retirar ahora', amount: formatCLP(Math.max(0, pending.totalARetirar)), count: pending.pedidos.length, tone: 'green' },
+    { key: 'liberar', label: 'Por liberar', amount: formatCLP(pending.totalRetenido), count: pending.retenidos.length, tone: 'blue' },
+    ...(pending.cargos.length > 0
+      ? [{ key: 'cargos', label: 'Cargos', amount: formatCLP(pending.totalCargos), count: pending.cargos.length, tone: 'red' }]
+      : []),
+  ];
+  const fundsTab = fundsTabChoice === 'cargos' && pending.cargos.length === 0 ? 'ahora' : fundsTabChoice;
+
   const startWithdrawal = async () => {
     setError('');
     try {
@@ -535,8 +568,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
         <div>
           <span className="withdrawal-heading-icon"><Wallet size={23} /></span>
           <div>
-            <h2>Retirar dinero</h2>
-            <p>Solicita el depósito bancario de tus ventas finalizadas.</p>
+            <h2>Retirar dinero <InfoHint title="Cómo funcionan tus fondos" paragraphs={AYUDA_FONDOS} /></h2>
           </div>
         </div>
         <button
@@ -610,85 +642,52 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
               {pending.motivoRetencion}
             </div>
           )}
-          {/* Tarjetas KPI de resumen financiero */}
-          <div className="withdrawal-kpis-bar">
-            <div className="withdrawal-kpi-card kpi-available">
-              <div className="withdrawal-kpi-icon">
-                <CheckCircle2 size={20} />
-              </div>
-              <div className="withdrawal-kpi-info">
-                <span>Disponible para retiro</span>
-                <strong>{formatCLP(Math.max(0, pending.totalARetirar))}</strong>
-                <small>{pending.pedidos.length} {pending.pedidos.length === 1 ? 'pedido listo' : 'pedidos listos'}</small>
-              </div>
-            </div>
-
-            <div className="withdrawal-kpi-card kpi-held">
-              <div className="withdrawal-kpi-icon">
-                <ShieldCheck size={20} />
-              </div>
-              <div className="withdrawal-kpi-info">
-                <span>En retención</span>
-                <strong>{formatCLP(pending.totalRetenido)}</strong>
-                <small>{pending.retenidos.length} {pending.retenidos.length === 1 ? 'pedido en retención' : 'pedidos en retención'}</small>
-              </div>
-            </div>
-
-            <div className="withdrawal-kpi-card kpi-total">
-              <div className="withdrawal-kpi-icon">
-                <Wallet size={20} />
-              </div>
-              <div className="withdrawal-kpi-info">
-                <span>Total acumulado</span>
-                <strong>{formatCLP(pending.totalARetirar + pending.totalRetenido)}</strong>
-                <small>{pending.pedidos.length + pending.retenidos.length} pedidos finalizados</small>
-              </div>
-            </div>
-          </div>
-
-          <div className="withdrawal-info-banner">
-            <Info size={19} />
-            <span>
-              Los depósitos se transfieren todos los jueves a tu cuenta registrada. Aquí visualizas tus fondos disponibles para cobro inmediato y los que siguen en el plazo de arrepentimiento del comprador.
-            </span>
-          </div>
-
           {withdrawalInProgress && (
             <div className="withdrawal-in-progress-card">
               <div className="withdrawal-in-progress-icon">
                 <Clock size={20} />
               </div>
               <div className="withdrawal-in-progress-content">
-                <strong>Tienes una solicitud de retiro en proceso</strong>
-                <p>
-                  Monto solicitado: <strong>{formatCLP(withdrawalInProgress.montoTotal)}</strong> ({withdrawalInProgress.cantidadPedidos} {Number(withdrawalInProgress.cantidadPedidos) === 1 ? 'pedido' : 'pedidos'}). Depósito programado para el <strong>{formatDate(withdrawalInProgress.fechaEfectiva)}</strong>.
-                </p>
-                <small>Los pedidos de esa solicitud ya fueron procesados y no figuran en tus saldos pendientes.</small>
+                <strong>Retiro en proceso: {formatCLP(withdrawalInProgress.montoTotal)}</strong>
+                <p>Depósito el <strong>{formatDate(withdrawalInProgress.fechaEfectiva)}</strong></p>
               </div>
+              <InfoHint
+                title="Retiro en proceso"
+                tone="amber"
+                paragraphs={[
+                  `Solicitaste ${formatCLP(withdrawalInProgress.montoTotal)} (${withdrawalInProgress.cantidadPedidos} ${Number(withdrawalInProgress.cantidadPedidos) === 1 ? 'pedido' : 'pedidos'}). El depósito está programado para el ${formatDate(withdrawalInProgress.fechaEfectiva)}.`,
+                  'Los pedidos de esa solicitud ya fueron procesados y no figuran en tus saldos pendientes. Podrás solicitar un nuevo retiro una vez que se efectúe ese pago.',
+                ]}
+              />
             </div>
           )}
 
-          <div className="withdrawal-content-grid">
-            <div className="withdrawal-pending-columns">
-              {/* Bloque 1: Pedidos Disponibles para Retiro */}
-              <section className="withdrawal-section-card withdrawal-available-card">
-                <header className="withdrawal-section-header">
-                  <div className="withdrawal-section-title-wrap">
-                    <span className="withdrawal-section-icon available-icon">
-                      <CheckCircle2 size={19} />
-                    </span>
-                    <div>
-                      <div className="withdrawal-section-title-row">
-                        <h3>Fondos disponibles para retiro</h3>
-                        <span className="withdrawal-section-badge available-badge">
-                          {pending.pedidos.length} {pending.pedidos.length === 1 ? 'pedido' : 'pedidos'} · {formatCLP(pending.totalARetirar)}
-                        </span>
-                      </div>
-                      <p>Ventas completadas y fuera del plazo de arrepentimiento del comprador. Listas para transferir a tu cuenta bancaria hoy.</p>
-                    </div>
-                  </div>
-                </header>
+          {/* Pestañas de fondos: lo que se puede retirar hoy primero; lo que espera el plazo del
+              comprador y los cargos, aparte. Cada una con su monto para comparar de un vistazo. */}
+          <div className="withdrawal-funds-tabs" role="tablist" aria-label="Fondos">
+            {fundsTabs.map((entry) => (
+              <button
+                key={entry.key}
+                type="button"
+                role="tab"
+                aria-selected={fundsTab === entry.key}
+                className={`withdrawal-funds-tab is-${entry.tone} ${fundsTab === entry.key ? 'is-active' : ''}`}
+                onClick={() => setFundsTab(entry.key)}
+              >
+                <span>{entry.label}</span>
+                <strong>{entry.amount}</strong>
+                <small>{entry.count} {entry.count === 1 ? 'pedido' : 'pedidos'}</small>
+              </button>
+            ))}
+          </div>
 
+          {fundsTab === 'ahora' ? (
+            <div className="withdrawal-content-grid">
+              <section className="withdrawal-section-card withdrawal-available-card">
+                <header className="withdrawal-section-header withdrawal-section-header-inline">
+                  <CheckCircle2 size={18} />
+                  <h3>Pedidos para retirar ahora</h3>
+                </header>
                 <div className="withdrawal-section-orders">
                   {pending.pedidos.length > 0 ? (
                     <>
@@ -701,14 +700,14 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                           className="withdrawal-view-more-btn"
                           onClick={() => setOrdersModal({
                             type: 'available',
-                            title: 'Pedidos disponibles para retiro',
+                            title: 'Pedidos para retirar ahora',
                             subtitle: `${pending.pedidos.length} pedidos listos · Total ${formatCLP(pending.totalARetirar)}`,
                             icon: CheckCircle2,
                             orders: pending.pedidos,
                           })}
                         >
                           <Eye size={15} />
-                          <span>Ver los {pending.pedidos.length - DISPLAY_LIMIT} pedidos disponibles restantes</span>
+                          <span>Ver los {pending.pedidos.length} pedidos</span>
                           <ChevronRight size={15} />
                         </button>
                       )}
@@ -717,133 +716,109 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                     <div className="withdrawal-empty-inline">
                       <Wallet size={22} />
                       <div>
-                        <strong>No tienes pedidos disponibles para retiro en este momento</strong>
-                        <p>Cuando tus ventas completen el período legal de garantía, se transferirán automáticamente aquí.</p>
+                        <strong>Nada para retirar por ahora</strong>
+                        {pending.retenidos.length > 0 && (
+                          <p>Tienes {pending.retenidos.length} {pending.retenidos.length === 1 ? 'venta' : 'ventas'} por liberar: revisa la pestaña «Por liberar».</p>
+                        )}
                       </div>
                     </div>
                   )}
                 </div>
               </section>
-
-              {/* Bloque 2: pedidos en retencion (plazo de retracto del comprador) */}
-              {pending.retenidos.length > 0 && (
-                <section className="withdrawal-section-card withdrawal-held-card">
-                  <header className="withdrawal-section-header">
-                    <div className="withdrawal-section-title-wrap">
-                      <span className="withdrawal-section-icon held-icon">
-                        <ShieldCheck size={19} />
-                      </span>
-                      <div>
-                        <div className="withdrawal-section-title-row">
-                          <h3>Fondos en retención</h3>
-                          <span className="withdrawal-section-badge held-badge">
-                            {pending.retenidos.length} {pending.retenidos.length === 1 ? 'pedido' : 'pedidos'} · {formatCLP(pending.totalRetenido)}
-                          </span>
-                        </div>
-                        <p>
-                          Retenemos el monto mientras el comprador puede arrepentirse de la compra (10 días desde la entrega). Se libera solo, en la fecha indicada.
-                        </p>
-                      </div>
-                    </div>
-                  </header>
-
-                  <div className="withdrawal-section-orders">
-                    {pending.retenidos.slice(0, DISPLAY_LIMIT).map((order) => (
+              {/* La acción: a la derecha en escritorio y arriba en celular (order en el CSS). */}
+              <aside className="withdrawal-total-card">
+                <span>Total a retirar</span>
+                <strong>{formatCLP(Math.max(0, pending.totalARetirar))}</strong>
+                <small>
+                  {pending.pedidos.length} {pending.pedidos.length === 1 ? 'pedido disponible' : 'pedidos disponibles'}
+                </small>
+                <div className="withdrawal-cycle-pill">
+                  <CalendarDays size={15} />
+                  <div>
+                    <span>Próximo día de depósito:</span>
+                    <strong>{getNextThursdayFormatted()}</strong>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={startWithdrawal}
+                  disabled={!pending.pedidos.length || submitting || Boolean(withdrawalInProgress) || pending.fondosRetenidos}
+                >
+                  <Wallet size={17} />
+                  {withdrawalInProgress ? 'Retiro en curso' : 'Solicitar retiro'}
+                </button>
+              </aside>
+            </div>
+          ) : fundsTab === 'liberar' ? (
+            <section className="withdrawal-section-card withdrawal-held-card">
+              <header className="withdrawal-section-header withdrawal-section-header-inline">
+                <Clock size={18} />
+                <h3>Se liberan solas</h3>
+                <InfoHint title="Fondos por liberar" paragraphs={AYUDA_LIBERAR} />
+              </header>
+              <div className="withdrawal-section-orders">
+                {heldByRelease.length > 0 ? (
+                  <>
+                    {heldByRelease.slice(0, DISPLAY_LIMIT).map((order) => (
                       <PendingOrderRow key={`retenido-${order.pedidoId}`} order={order} isHeld={true} />
                     ))}
-                    {pending.retenidos.length > DISPLAY_LIMIT && (
+                    {heldByRelease.length > DISPLAY_LIMIT && (
                       <button
                         type="button"
                         className="withdrawal-view-more-btn held-btn"
                         onClick={() => setOrdersModal({
                           type: 'held',
-                          title: 'Pedidos en retención',
-                          subtitle: `${pending.retenidos.length} pedidos en retención · Total ${formatCLP(pending.totalRetenido)}`,
+                          title: 'Pedidos por liberar',
+                          subtitle: `${pending.retenidos.length} pedidos · Total ${formatCLP(pending.totalRetenido)}`,
                           icon: ShieldCheck,
-                          orders: pending.retenidos,
+                          orders: heldByRelease,
                         })}
                       >
                         <Eye size={15} />
-                        <span>Ver los {pending.retenidos.length - DISPLAY_LIMIT} pedidos en retención restantes</span>
+                        <span>Ver los {heldByRelease.length} pedidos</span>
                         <ChevronRight size={15} />
                       </button>
                     )}
+                  </>
+                ) : (
+                  <div className="withdrawal-empty-inline">
+                    <ShieldCheck size={22} />
+                    <div><strong>No tienes ventas esperando el plazo del comprador.</strong></div>
                   </div>
-                </section>
-              )}
-
-            {/* U9: reembolsos totales por veredicto. No son ventas: se descuentan del proximo retiro. */}
-            {pending.cargos.length > 0 && (
-              <section className="withdrawal-section-card withdrawal-charges-card">
-                <header className="withdrawal-section-header">
-                  <div className="withdrawal-section-title-wrap">
-                    <span className="withdrawal-section-icon charge-icon">
-                      <RotateCcw size={19} />
-                    </span>
-                    <div>
-                      <div className="withdrawal-section-title-row">
-                        <h3>Cargos por reembolsos</h3>
-                        <span className="withdrawal-section-badge charge-badge">
-                          {pending.cargos.length} {pending.cargos.length === 1 ? 'pedido' : 'pedidos'} · {formatCLP(pending.totalCargos)}
-                        </span>
-                      </div>
-                      <p>Un mediador de RepuesTop revisó estos casos de forma imparcial y resolvió a favor del comprador, porque la venta no cumplió lo ofrecido por la tienda (por ejemplo, el producto llegó con falla o no correspondía a lo publicado). Se le devolvió todo al comprador y la comisión de Flow, que no se recupera, la asume la tienda. Se descuenta de tu próximo retiro.</p>
-                    </div>
-                  </div>
-                </header>
-                <div className="withdrawal-section-orders">
-                  {pending.cargos.slice(0, DISPLAY_LIMIT).map((order) => (
-                    <PendingOrderRow key={`cargo-${order.pedidoId}`} order={order} isCharge />
-                  ))}
-                  {pending.cargos.length > DISPLAY_LIMIT && (
-                    <button
-                      type="button"
-                      className="withdrawal-view-more-btn charge-btn"
-                      onClick={() => setOrdersModal({
-                        type: 'charge',
-                        title: 'Cargos por reembolsos',
-                        subtitle: `${pending.cargos.length} pedidos · Total ${formatCLP(pending.totalCargos)}`,
-                        icon: RotateCcw,
-                        orders: pending.cargos,
-                      })}
-                    >
-                      <Eye size={15} />
-                      <span>Ver los {pending.cargos.length - DISPLAY_LIMIT} cargos restantes</span>
-                      <ChevronRight size={15} />
-                    </button>
-                  )}
-                </div>
-              </section>
-            )}
-            </div>
-
-            {/* Tarjeta lateral de acción */}
-            <aside className="withdrawal-total-card">
-              <span>Total a retirar</span>
-              <strong>{formatCLP(Math.max(0, pending.totalARetirar))}</strong>
-              <small>
-                {pending.pedidos.length} {pending.pedidos.length === 1 ? 'pedido disponible' : 'pedidos disponibles'}
-              </small>
-
-              <div className="withdrawal-cycle-pill">
-                <CalendarDays size={15} />
-                <div>
-                  <span>Próximo día de depósito:</span>
-                  <strong>{getNextThursdayFormatted()}</strong>
-                </div>
+                )}
               </div>
-
-              <button
-                type="button"
-                onClick={startWithdrawal}
-                disabled={!pending.pedidos.length || submitting || Boolean(withdrawalInProgress) || pending.fondosRetenidos}
-              >
-                <Wallet size={17} />
-                {withdrawalInProgress ? 'Retiro en curso' : 'Solicitar retiro'}
-              </button>
-              <p>Se depositará en tu cuenta bancaria registrada.</p>
-            </aside>
-          </div>
+            </section>
+          ) : (
+            <section className="withdrawal-section-card withdrawal-charges-card">
+              <header className="withdrawal-section-header withdrawal-section-header-inline">
+                <RotateCcw size={18} />
+                <h3>Se descuentan de tu próximo retiro</h3>
+                <InfoHint title="Cargos por reembolsos" paragraphs={AYUDA_CARGOS} tone="red" />
+              </header>
+              <div className="withdrawal-section-orders">
+                {pending.cargos.slice(0, DISPLAY_LIMIT).map((order) => (
+                  <PendingOrderRow key={`cargo-${order.pedidoId}`} order={order} isCharge />
+                ))}
+                {pending.cargos.length > DISPLAY_LIMIT && (
+                  <button
+                    type="button"
+                    className="withdrawal-view-more-btn charge-btn"
+                    onClick={() => setOrdersModal({
+                      type: 'charge',
+                      title: 'Cargos por reembolsos',
+                      subtitle: `${pending.cargos.length} pedidos · Total ${formatCLP(pending.totalCargos)}`,
+                      icon: RotateCcw,
+                      orders: pending.cargos,
+                    })}
+                  >
+                    <Eye size={15} />
+                    <span>Ver los {pending.cargos.length} pedidos</span>
+                    <ChevronRight size={15} />
+                  </button>
+                )}
+              </div>
+            </section>
+          )}
         </div>
       ) : (
         <div className="withdrawal-history-list">

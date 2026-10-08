@@ -21294,3 +21294,54 @@ input.has-success {
 .checkout-store-shipment-head { display: flex; align-items: center; gap: 6px; color: #0f172a; font-size: 13px; }
 .checkout-store-shipment-head > svg { color: #0b5fd0; }
 .checkout-store-shipment-head small { margin-left: auto; color: #64748b; font-size: 12px; }
+
+/* Ícono de ayuda "i" (InfoHint): la explicación larga va en una hoja, no en la pantalla. */
+.info-hint-trigger { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: #0b5fd0; cursor: pointer; flex: 0 0 auto; }
+.info-hint-trigger:hover { background: #eaf3ff; }
+.info-hint-trigger.is-amber { color: #92400e; }
+.info-hint-trigger.is-amber:hover { background: #fef3c7; }
+.info-hint-trigger.is-red { color: #b42318; }
+.info-hint-trigger.is-red:hover { background: #fee4e2; }
+.info-hint-backdrop { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(18, 28, 45, .5); }
+.info-hint-sheet { width: min(460px, 100%); max-height: 80vh; overflow: auto; border-radius: 16px; background: #fff; box-shadow: 0 20px 50px rgba(15, 23, 42, .25); }
+.info-hint-sheet header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #e2e8f0; }
+.info-hint-sheet header h3 { flex: 1; margin: 0; color: #0f172a; font-size: 15px; font-weight: 800; }
+.info-hint-sheet header button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 0; border-radius: 999px; background: #f1f5f9; color: #64748b; cursor: pointer; }
+.info-hint-sheet-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 10px; background: #eaf3ff; color: #0b5fd0; }
+.info-hint-sheet-body { display: grid; gap: 10px; padding: 16px; }
+.info-hint-sheet-body p { margin: 0; color: #334155; font-size: 14px; line-height: 1.55; }
+@media (max-width: 600px) {
+  .info-hint-backdrop { align-items: flex-end; padding: 0; }
+  .info-hint-sheet { width: 100%; border-radius: 18px 18px 0 0; }
+}
+
+/* Retirar dinero (8-oct): pestañas de fondos con su monto; lo de hoy primero. */
+/* Reemplazan a las tarjetas KPI: cada pestaña ya dice su monto. Siempre en una fila. */
+.withdrawal-funds-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; margin: 4px 0 14px; }
+.withdrawal-funds-tab { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; color: #64748b; text-align: left; font: inherit; cursor: pointer; }
+.withdrawal-funds-tab span { font-size: 12px; font-weight: 700; }
+@media (max-width: 600px) {
+  .withdrawal-funds-tab { padding: 9px 8px; }
+  .withdrawal-funds-tab span { font-size: 11px; }
+  .withdrawal-funds-tab strong { font-size: 13.5px; }
+}
+.withdrawal-funds-tab strong { color: #0f172a; font-size: 15px; }
+.withdrawal-funds-tab small { color: #94a3b8; font-size: 11px; font-weight: 600; }
+.withdrawal-funds-tab.is-active small { color: inherit; opacity: .8; }
+.withdrawal-funds-tab.is-active.is-green { border-color: #15803d; background: #ecfdf3; color: #15803d; }
+.withdrawal-funds-tab.is-active.is-blue { border-color: #0b5fd0; background: #eff6ff; color: #0b5fd0; }
+.withdrawal-funds-tab.is-active.is-red { border-color: #b42318; background: #fef3f2; color: #b42318; }
+.withdrawal-funds-tab.is-active strong { color: inherit; }
+.withdrawal-section-header.withdrawal-section-header-inline { display: flex; align-items: center; gap: 8px; }
+.withdrawal-section-header-inline h3 { flex: 1; margin: 0; color: #0f172a; font-size: 14.5px; font-weight: 800; line-height: 1.3; }
+.withdrawal-section-header-inline > svg { flex: 0 0 auto; color: #64748b; }
+.withdrawal-available-card .withdrawal-section-header-inline > svg { color: #15803d; }
+.withdrawal-held-card .withdrawal-section-header-inline > svg { color: #0b5fd0; }
+.withdrawal-charges-card .withdrawal-section-header-inline > svg { color: #b42318; }
+.withdrawal-funds-tab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.withdrawal-heading h2 { display: flex; align-items: center; gap: 4px; }
+.withdrawal-in-progress-card { align-items: center; }
+.withdrawal-in-progress-content p { margin: 2px 0 0; }
+@media (max-width: 768px) {
+  .withdrawal-content-grid > .withdrawal-total-card { order: -1; position: static; }
+}
