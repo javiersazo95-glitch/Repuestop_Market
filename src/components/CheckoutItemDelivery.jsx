@@ -33,6 +33,7 @@ function methodPrice(method, sharedWithPrevious) {
 export default function CheckoutItemDelivery({
   item, delivery, addresses, vehicles, sharesShipment, compatibility = null, shipmentRole = 'single',
   onChange, onAddVehicle, onEditVehicle, onManageAddresses, onRemove,
+  onUseStoreAddress, usingStoreAddress = false, storeAddressError = '',
 }) {
   const address = addresses.find((entry) => String(entry.id) === String(delivery.addressId)) || null;
   const allowed = methodsForItem(item, address);
@@ -185,6 +186,15 @@ export default function CheckoutItemDelivery({
                 </option>
               ))}
             </select>
+          ) : onUseStoreAddress ? (
+            // 8-oct: la tienda que compra sin direcciones usa la de su tienda con un clic.
+            <div className="checkout-store-address">
+              <small>Aún no tienes direcciones de entrega. Puedes recibirlo en tu tienda o agregar otra dirección.</small>
+              <button type="button" className="checkout-store-address-btn" onClick={onUseStoreAddress} disabled={usingStoreAddress}>
+                <Store size={14} /> {usingStoreAddress ? 'Guardando la dirección de tu tienda…' : 'Usar la dirección de mi tienda'}
+              </button>
+              {storeAddressError && <p className="checkout-item-delivery-error">{storeAddressError}</p>}
+            </div>
           ) : (
             <p className="checkout-item-delivery-error">Agrega una dirección para recibir este producto.</p>
           )}

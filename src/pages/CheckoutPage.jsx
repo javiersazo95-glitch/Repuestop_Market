@@ -7,7 +7,7 @@ import ProductPhoto from '../components/ProductPhoto';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAuth } from '../context/AuthContext';
 import {
-  checkoutCartApi, checkoutConversationQuoteApi, confirmOrderPaymentApi, getAddressesApi,
+  checkoutCartApi, checkoutConversationQuoteApi, confirmOrderPaymentApi, createAddressApi, getAddressesApi, getProfileApi,
   getBuyerConversationsApi, getConversationQuoteApi, getPublicProductApi, resolveMediaUrl,
   searchVehicleByPatenteApi,
 } from '../services/api';
@@ -102,6 +102,16 @@ export default function CheckoutPage() {
     razonSocial: user?.facturaRazonSocial || '',
     giro: user?.facturaGiro || '',
   });
+  // El perfil se revalida al montar y puede llegar después (8-oct: con la tienda comprando trae el
+  // RUT y giro de su tienda): completa solo lo que la persona no escribió.
+  useEffect(() => {
+    if (!user?.facturaRut) return;
+    setInvoice((current) => ({
+      rut: current.rut || formatRut(user.facturaRut),
+      razonSocial: current.razonSocial || user.facturaRazonSocial || '',
+      giro: current.giro || user.facturaGiro || '',
+    }));
+  }, [user?.facturaRut, user?.facturaRazonSocial, user?.facturaGiro]);
 
   const [error, setError] = useState('');
   // `placing` sobrevive al vaciado del carrito: sin él, el clearCart posterior al pedido
@@ -281,6 +291,33 @@ export default function CheckoutPage() {
       .catch(() => setAddresses([]))
       .finally(() => setAddressesLoading(false));
   }, [userId]);
+
+  // 8-oct: la tienda que compra sin direcciones guardadas usa la de su tienda con un clic (igual
+  // que la app). Se toma de /users/perfil, se guarda en su libreta y queda elegida, así se ofrecen
+  // los envíos que corresponden a esa comuna.
+  const [usingStoreAddress, setUsingStoreAddress] = useState(false);
+  const [storeAddressError, setStoreAddressError] = useState('');
+  const applyStoreAddress = async () => {
+    if (!userId || usingStoreAddress) return;
+    setUsingStoreAddress(true);
+    setStoreAddressError('');
+    try {
+      const profile = await getProfileApi();
+      const calle = String(profile?.address || '').trim();
+      if (!calle || profile?.comunaId == null) {
+        throw new Error('Tu tienda no tiene una dirección con comuna registrada. Agrega una dirección a mano.');
+      }
+      const created = await createAddressApi(userId, {
+        calleYNumero: calle, comunaId: Number(profile.comunaId), codigoPostal: null, tipoDireccion: 'PERSONAL',
+      });
+      if (created?.id != null) setSelectedAddressId(String(created.id));
+      loadAddresses({ silent: true });
+    } catch (err) {
+      setStoreAddressError(err?.message || 'No pudimos usar la dirección de tu tienda.');
+    } finally {
+      setUsingStoreAddress(false);
+    }
+  };
 
   // Se cargan desde el inicio, no recien cuando hace falta direccion: la comuna de la direccion
   // elegida decide que metodos de despacho se ofrecen (dentro/fuera de la comuna).
@@ -925,6 +962,9 @@ export default function CheckoutPage() {
                                     onAddVehicle={() => setVehicleDialog({ vehicle: null, itemId: item.id })}
                                     onEditVehicle={(vehicle) => setVehicleDialog({ vehicle, itemId: item.id })}
                                     onManageAddresses={openAddressBook}
+                                    onUseStoreAddress={isSeller && addresses.length === 0 ? applyStoreAddress : undefined}
+                                    usingStoreAddress={usingStoreAddress}
+                                    storeAddressError={storeAddressError}
                                   />
                                 </div>
                               );

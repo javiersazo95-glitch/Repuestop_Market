@@ -21283,3 +21283,7 @@ input.has-success {
 .order-store-block-delivery > .order-packages-outside-summary { align-items: flex-start; }
 
 .seller-checklist-item-manual { color: #b45309; }
+.checkout-store-address { display: grid; gap: 6px; }
+.checkout-store-address small { color: #64748b; font-size: 12px; }
+.checkout-store-address-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px dashed #93c5fd; border-radius: 8px; background: #eff6ff; color: #1d4ed8; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.checkout-store-address-btn:disabled { opacity: .7; cursor: progress; }
