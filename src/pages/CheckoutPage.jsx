@@ -458,11 +458,9 @@ export default function CheckoutPage() {
     if (methods.some((method) => deliveryKind(method) === 'courier')) return 'Por pagar';
     return 'Sin costo';
   })();
-  const addressBookRef = useRef(null);
-  const openAddressBook = () => {
-    setAddressBookOpen(true);
-    window.setTimeout(() => addressBookRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
-  };
+  // Las direcciones se agregan y editan en "Mis datos y perfil", no en el carrito (igual que la
+  // app, que lleva a Mis direcciones). Al volver, el carrito las vuelve a cargar.
+  const openAddressBook = () => navigate('/perfil/datos');
 
   // Se parte de los params actuales en vez de escribir un objeto nuevo: pasarle
   // `{ paso: id }` a setSearchParams reemplaza TODA la query, y eso borraba el
@@ -994,21 +992,6 @@ export default function CheckoutPage() {
                 )}
 
                 {!isQuoteMode && <CheckoutShipmentsSummary packages={shipmentPackages} />}
-
-                {!isQuoteMode && (
-                  <section className="checkout-block" aria-labelledby="checkout-direcciones-title" ref={addressBookRef}>
-                    <h2 id="checkout-direcciones-title"><MapPin size={16} /> Tus direcciones</h2>
-                    <p className="checkout-block-note">
-                      Cada producto que se despacha elige una de estas direcciones. Agrega la de tu familiar si le envías un repuesto.
-                    </p>
-                    <button type="button" className="checkout-inline-link" onClick={() => setAddressBookOpen((open) => !open)}>
-                      {addressBookOpen ? 'Ocultar direcciones' : 'Agregar o editar direcciones'}
-                    </button>
-                    {(addressBookOpen || (!addressesLoading && addresses.length === 0)) && (
-                      <div className="checkout-address-book"><BuyerAddressBook usuarioId={userId} onChange={() => loadAddresses({ silent: true })} /></div>
-                    )}
-                  </section>
-                )}
 
                 {isQuoteMode && (
                 <section className="checkout-block" aria-labelledby="checkout-entrega-title">
