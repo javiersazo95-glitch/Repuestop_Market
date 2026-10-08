@@ -286,6 +286,8 @@ const SELLER_CANCEL_REASONS = [
   { code: 'ERROR_PRECIO', label: 'Error en el precio publicado' },
   { code: 'PRODUCTO_NO_DISPONIBLE', label: 'Producto dañado o no disponible' },
   { code: 'IMPOSIBILIDAD_DESPACHO', label: 'Imposibilidad de despacho a la dirección' },
+  // 8-oct: tras revisar la compatibilidad y conversar con el comprador sin llegar a acuerdo.
+  { code: 'INCOMPATIBLE_VEHICULO', label: 'Incompatible con el vehículo del comprador' },
   { code: 'OTRO', label: 'Otro motivo (especificar)' },
 ];
 

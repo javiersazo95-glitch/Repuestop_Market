@@ -16,6 +16,7 @@ export const CANCELLATION_REASON_LABELS = {
   ERROR_PRECIO: 'Error de precio',
   PRODUCTO_NO_DISPONIBLE: 'Producto no disponible',
   IMPOSIBILIDAD_DESPACHO: 'Imposibilidad de despacho',
+  INCOMPATIBLE_VEHICULO: 'Incompatible con el vehículo',
   BLOQUEO_VENDEDOR: 'La tienda no está disponible',
   SOLICITUD_DEL_COMPRADOR: 'Cancelado por el comprador',
   OTRO: 'Otro motivo',
@@ -41,6 +42,7 @@ export const CANCELLATION_REASON_HINTS = {
   IMPOSIBILIDAD_DESPACHO: 'La tienda no pudo despachar tu pedido. Si pagaste, el reembolso ya está en curso.',
   PRODUCTO_NO_DISPONIBLE: 'La tienda ya no tiene disponible este repuesto. Si pagaste, el reembolso ya está en curso.',
   ERROR_PRECIO: 'La tienda detectó un error en el precio publicado. Si pagaste, el reembolso ya está en curso.',
+  INCOMPATIBLE_VEHICULO: 'La tienda revisó que el repuesto no le sirve al vehículo que indicaste. Si pagaste, el reembolso ya está en curso.',
 };
 
 /**
