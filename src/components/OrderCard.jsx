@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { resolveMediaUrl, startSellerChatApi } from '../services/api';
-import { isCancelledItem, orderDeliverySummary, orderDisplayCode } from '../data/orderIdentity';
+import { isCancelledItem, orderDeliverySummary, orderDisplayCode, subOrderDeliveryMethod } from '../data/orderIdentity';
 import { buyerClaimState, getControlledOrderAction, isStorePickupOrder, orderPaymentWindow, sellerClaimState } from '../data/orderStatusFlow';
 import { buyerCaseChatPath, currentPathForBack, sellerCaseChatPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
@@ -739,8 +739,10 @@ export default function OrderCard({
                       : <span className="order-store-statuses-avatar order-store-statuses-avatar--fallback"><Store size={14} /></span>}
                     <span>{storeName}</span>
                   </span>
+                  {/* El estado de ESTA tienda con SU envío: con una tienda de retiro y otra de
+                      despacho, el envío del pedido es uno solo y las dos salían "Enviado". */}
                   <OrderStatusBadge
-                    status={sub.estado === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : sub.estado}
+                    status={sub.estado === 'ENVIADO' && subOrderDeliveryMethod(sub, order) === 'store_pickup' ? 'LISTO_RETIRO' : sub.estado}
                     size="small"
                     mediationStatus={order.estadoMediacion || order.mediationStatus}
                   />
