@@ -1314,7 +1314,8 @@ export default function OrderDetailView({
       await onRegisterDispatch(order, {
         courier: dispatchCourier.trim(),
         trackingNumber: dispatchTrackingNumber.trim() || undefined,
-        valorEnvio: dispatchShippingFee ? Number(dispatchShippingFee) : undefined,
+        // 8-oct: dentro de la comuna el precio es la tarifa de la tienda, ya cobrada en el checkout.
+        valorEnvio: !isLocalDispatch && dispatchShippingFee ? Number(dispatchShippingFee) : undefined,
         comprobante: dispatchVoucherFile || undefined,
       });
       setShowDispatchModal(false);
@@ -2621,6 +2622,12 @@ export default function OrderDetailView({
                   </small>
                 </label>
 
+                {isLocalDispatch ? (
+                  <p className="order-subdialog-hint">
+                    El envío dentro de la comuna se cobró al comprador con la tarifa de tu tienda
+                    {Number(order?.costoEnvio) > 0 ? ` (${formatCLP(order.costoEnvio)})` : ''}: no hay que ingresar un valor.
+                  </p>
+                ) : (
                 <label className="order-subdialog-field">
                   <span>Valor del envío (opcional)</span>
                   <input
@@ -2631,6 +2638,7 @@ export default function OrderDetailView({
                     onChange={(e) => setDispatchShippingFee(e.target.value.replace(/\D/g, '').slice(0, MAX_SHIPPING_FEE_DIGITS))}
                   />
                 </label>
+                )}
 
                 <div className="order-subdialog-field">
                   <span>Comprobante de envío en PDF{isLocalDispatch ? ' (opcional)' : ' *'}</span>

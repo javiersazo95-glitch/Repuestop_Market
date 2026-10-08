@@ -82,6 +82,22 @@ export default function ProfileAccountDataPanel({
   const [sellerComunas, setSellerComunas] = useState([]);
   const [sellerGeoLoading, setSellerGeoLoading] = useState(false);
 
+  // Abre la edición con lo que la tienda ya tiene guardado. Los dos botones ("Editar
+  // Información" y "Editar tienda") pasan por aquí: antes "Editar tienda" solo cambiaba a modo
+  // edición y los métodos de envío y las marcas especialistas aparecían vacíos (8-oct).
+  const startEditing = () => {
+    setIsEditing(true);
+    setSaveStatus(null);
+    setFormErrors({});
+    setNameDraft(user?.userName || user?.nombre || '');
+    setPhoneDraft(user?.phone || user?.telefono || '');
+    setTaxIdDraft(isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || ''));
+    setFacturaRazonSocialDraft(user?.facturaRazonSocial || '');
+    setFacturaGiroDraft(user?.facturaGiro || '');
+    setShippingSelectionsDraft(parseShippingSelections(storeInfo?.shippingMethods));
+    setSpecialistBrandIdsDraft((storeInfo?.marcasEspecialistas || []).map((brand) => String(brand.id)));
+  };
+
   useEffect(() => {
     if (!isEditing) {
       setNameDraft(user?.userName || user?.nombre || '');
@@ -279,18 +295,7 @@ export default function ProfileAccountDataPanel({
           {!isEditing && (
             <button
               className="btn-edit-profile"
-              onClick={() => {
-                setIsEditing(true);
-                setSaveStatus(null);
-                setFormErrors({});
-                setNameDraft(user?.userName || user?.nombre || '');
-                setPhoneDraft(user?.phone || user?.telefono || '');
-                setTaxIdDraft(isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || ''));
-                setFacturaRazonSocialDraft(user?.facturaRazonSocial || '');
-                setFacturaGiroDraft(user?.facturaGiro || '');
-                setShippingSelectionsDraft(parseShippingSelections(storeInfo?.shippingMethods));
-                setSpecialistBrandIdsDraft((storeInfo?.marcasEspecialistas || []).map((brand) => String(brand.id)));
-              }}
+              onClick={startEditing}
             >
               <Pencil size={14} /> Editar Información
             </button>
@@ -857,7 +862,7 @@ export default function ProfileAccountDataPanel({
                         <button
                           type="button"
                           className="details-card-link-button"
-                          onClick={() => setIsEditing(true)}
+                          onClick={startEditing}
                           style={{ alignSelf: 'flex-start' }}
                         >
                           <Pencil size={13} /> Editar tienda
