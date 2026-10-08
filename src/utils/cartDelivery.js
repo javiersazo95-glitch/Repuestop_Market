@@ -150,6 +150,34 @@ export function vehicleIsComplete(vehicle, plateIdentified = false) {
 
 const storeKey = (item) => String(item.proveedorId || item.vendedor || `producto-${item.id}`);
 
+/** Clave de la tienda de un producto del carro (igual que la app, `cartStoreKey`). */
+export const cartStoreKey = storeKey;
+
+/**
+ * Lugar del producto en el envío de su tienda (igual que la app). Decisión del 8-oct, como
+ * Mercado Libre: los productos de una misma tienda van en UN envío, con un solo método y una sola
+ * dirección, porque la tienda registra un comprobante y un seguimiento por venta. El primero de la
+ * tienda elige el envío ('leader', o 'single' si es el único) y el resto lo comparte ('follower').
+ */
+export function storeShipmentRole(items, item) {
+  const key = storeKey(item);
+  const sameStore = items.filter((entry) => storeKey(entry) === key);
+  if (sameStore.length <= 1) return 'single';
+  return String(sameStore[0].id) === String(item.id) ? 'leader' : 'follower';
+}
+
+/** Aplica método y dirección a todos los productos de la tienda de `item`; el vehículo es de cada uno. */
+export function withStoreShipment(items, deliveries, item, shipment) {
+  const key = storeKey(item);
+  const next = { ...deliveries };
+  items.forEach((entry) => {
+    if (storeKey(entry) !== key) return;
+    const previous = next[entry.id] || { method: null, addressId: null, vehicleKey: null };
+    next[entry.id] = { ...previous, method: shipment.method, addressId: shipment.addressId };
+  });
+  return next;
+}
+
 /** Despachos cobrados: uno por destino de cada tienda con envío dentro de la comuna. */
 export function shippingFees(items, deliveries) {
   const charged = new Set();
@@ -194,10 +222,16 @@ export function pendingDeliveryReason(items, deliveries, vehicles, identifiedPla
     }
     const pickup = deliveryKind(method) === 'pickup';
     const key = storeKey(item);
-    if (kindByStore.has(key) && kindByStore.get(key) !== pickup) {
-      return `En ${item.storeName || item.vendedor || 'una tienda'} no puedes combinar retiro con despacho: elige lo mismo para sus productos.`;
+    const previous = kindByStore.get(key);
+    const store = item.storeName || item.vendedor || 'una tienda';
+    if (previous && previous.pickup !== pickup) {
+      return `En ${store} no puedes combinar retiro con despacho: elige lo mismo para sus productos.`;
     }
-    kindByStore.set(key, pickup);
+    // Un envío por tienda (8-oct): el backend rechaza dos métodos o direcciones de una tienda.
+    if (previous && (previous.method !== method || (!pickup && String(previous.addressId) !== String(delivery?.addressId)))) {
+      return `En ${store} todos los productos van en un mismo envío: elige una sola dirección y método de entrega.`;
+    }
+    if (!previous) kindByStore.set(key, { pickup, method, addressId: delivery?.addressId ?? null });
   }
   return '';
 }

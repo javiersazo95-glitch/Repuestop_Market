@@ -27,7 +27,8 @@ import CheckoutVehicleDialog from '../components/CheckoutVehicleDialog';
 import { useCompatibilityCheck } from '../hooks/useCompatibilityCheck';
 import { COMPAT, compatCacheKey, mismatchCountText } from '../utils/compatibilityCheck';
 import {
-  cartPackages, defaultAddressFor, deliveryKind, isDispatch, methodsForItem, pendingDeliveryReason, shippingFees, vehicleLabel,
+  cartPackages, cartStoreKey, defaultAddressFor, deliveryKind, isDispatch, methodsForItem, pendingDeliveryReason, shippingFees,
+  storeShipmentRole, vehicleLabel, withStoreShipment,
 } from '../utils/cartDelivery';
 
 const STEPS = [
@@ -310,21 +311,26 @@ export default function CheckoutPage() {
 
   // Cada producto parte con el método que eligió al agregarlo (el carro solo lo confirma: no lo
   // cambia ni lo borra), una dirección donde ese método sirve (la principal si calza) y el primer
-  // vehículo de la compra; después el comprador cambia lo que necesite en cada uno.
+  // vehículo de la compra. Los productos de una misma tienda comparten el envío del primero
+  // (8-oct: un envío por tienda); el vehículo sí es de cada uno.
   useEffect(() => {
     if (isQuoteMode) return;
     setDeliveries((current) => {
       const next = {};
+      const shipmentByStore = new Map();
       let changed = Object.keys(current).length !== cartItems.length;
       cartItems.forEach((item) => {
         const previous = current[item.id];
+        const storeShipment = shipmentByStore.get(cartStoreKey(item));
         const wanted = previous?.method ?? (item.shippingMethod || null);
         const fallbackId = defaultAddressFor(item, wanted, addresses);
-        const addressId = previous?.addressId && addresses.some((address) => String(address.id) === String(previous.addressId))
+        const ownAddressId = previous?.addressId && addresses.some((address) => String(address.id) === String(previous.addressId))
           ? previous.addressId : (fallbackId != null ? String(fallbackId) : null);
+        const addressId = storeShipment ? storeShipment.addressId : ownAddressId;
         const address = addresses.find((entry) => String(entry.id) === String(addressId)) || null;
         const allowed = methodsForItem(item, address);
-        const method = wanted || (allowed.length === 1 ? allowed[0] : null);
+        const method = storeShipment ? storeShipment.method : (wanted || (allowed.length === 1 ? allowed[0] : null));
+        if (!storeShipment) shipmentByStore.set(cartStoreKey(item), { method, addressId });
         const vehicleKey = item.esUniversal
           ? null
           : previous?.vehicleKey && cartVehicles.some((vehicle) => vehicle.key === previous.vehicleKey)
@@ -339,11 +345,12 @@ export default function CheckoutPage() {
 
   // Solo cambia lo que el comprador tocó: si la nueva dirección no sirve para el método elegido
   // ("dentro de la comuna" hacia otra comuna), el método se queda y el producto avisa qué ajustar.
+  // Método y dirección valen para todos los productos de la tienda (un envío por tienda).
   const updateDelivery = (item, patch) => {
-    setDeliveries((current) => ({
-      ...current,
-      [item.id]: { method: null, addressId: null, vehicleKey: null, ...current[item.id], ...patch },
-    }));
+    setDeliveries((current) => {
+      const merged = { method: null, addressId: null, vehicleKey: null, ...current[item.id], ...patch };
+      return withStoreShipment(cartItems, { ...current, [item.id]: merged }, item, merged);
+    });
   };
 
   const saveCartVehicle = (vehicle, plateIdentified) => {
@@ -864,7 +871,7 @@ export default function CheckoutPage() {
                   <section className="checkout-block" aria-labelledby="checkout-shipping-title">
                     <h2 id="checkout-shipping-title"><Truck size={16} /> Entrega de cada producto</h2>
                     <p className="checkout-block-note">
-                      Elige cómo recibir cada repuesto, a qué dirección va y para qué vehículo es: puede ser tu auto o el de un familiar.
+                      Elige cómo recibir los productos de cada tienda (van en un solo envío) y para qué vehículo es cada repuesto: puede ser tu auto o el de un familiar.
                     </p>
                     <div className="checkout-delivery-groups">
                       {groups.map((group) => (
@@ -901,6 +908,7 @@ export default function CheckoutPage() {
                                   <CheckoutItemDelivery
                                     item={item}
                                     delivery={delivery}
+                                    shipmentRole={storeShipmentRole(cartItems, item)}
                                     addresses={addresses}
                                     vehicles={cartVehicles}
                                     sharesShipment={sharesShipment}
