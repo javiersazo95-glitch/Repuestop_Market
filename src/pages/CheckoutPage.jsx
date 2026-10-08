@@ -23,12 +23,13 @@ import BuyerAddressBook from '../components/BuyerAddressBook';
 import CheckoutSummaryPanel from '../components/CheckoutSummaryPanel';
 import CheckoutItemDelivery from '../components/CheckoutItemDelivery';
 import CheckoutShipmentsSummary from '../components/CheckoutShipmentsSummary';
+import CheckoutStoreShipment from '../components/CheckoutStoreShipment';
 import CheckoutVehicleDialog from '../components/CheckoutVehicleDialog';
 import { useCompatibilityCheck } from '../hooks/useCompatibilityCheck';
 import { COMPAT, compatCacheKey, mismatchCountText } from '../utils/compatibilityCheck';
 import {
-  cartPackages, cartStoreKey, defaultAddressFor, deliveryKind, isDispatch, methodsForItem, pendingDeliveryReason, shippingFees,
-  storeShipmentRole, vehicleLabel, withStoreShipment,
+  cartPackages, cartStoreKey, defaultAddressForMethod, deliveryKind, isDispatch,
+  pendingDeliveryReason, shippingFees, storeMethodsForItem, vehicleLabel, withStoreShipment,
 } from '../utils/cartDelivery';
 
 const STEPS = [
@@ -359,14 +360,17 @@ export default function CheckoutPage() {
       cartItems.forEach((item) => {
         const previous = current[item.id];
         const storeShipment = shipmentByStore.get(cartStoreKey(item));
+        // El envío es uno por tienda: el método con que se agregó (si la tienda lo publica) y una
+        // dirección que ese método alcance (dentro o fuera de la comuna de la tienda).
+        const published = storeMethodsForItem(item);
         const wanted = previous?.method ?? (item.shippingMethod || null);
-        const fallbackId = defaultAddressFor(item, wanted, addresses);
-        const ownAddressId = previous?.addressId && addresses.some((address) => String(address.id) === String(previous.addressId))
-          ? previous.addressId : (fallbackId != null ? String(fallbackId) : null);
-        const addressId = storeShipment ? storeShipment.addressId : ownAddressId;
-        const address = addresses.find((entry) => String(entry.id) === String(addressId)) || null;
-        const allowed = methodsForItem(item, address);
-        const method = storeShipment ? storeShipment.method : (wanted || (allowed.length === 1 ? allowed[0] : null));
+        const method = storeShipment
+          ? storeShipment.method
+          : wanted && published.includes(wanted) ? wanted : (published.length === 1 ? published[0] : wanted);
+        const principalId = addresses.find((address) => address.esPrincipal)?.id ?? null;
+        const addressId = storeShipment
+          ? storeShipment.addressId
+          : defaultAddressForMethod(item, method, addresses, previous?.addressId ?? principalId);
         if (!storeShipment) shipmentByStore.set(cartStoreKey(item), { method, addressId });
         const vehicleKey = item.esUniversal
           ? null
@@ -380,12 +384,14 @@ export default function CheckoutPage() {
     });
   }, [isQuoteMode, cartItems, addresses, cartVehicles]);
 
-  // Solo cambia lo que el comprador tocó: si la nueva dirección no sirve para el método elegido
-  // ("dentro de la comuna" hacia otra comuna), el método se queda y el producto avisa qué ajustar.
-  // Método y dirección valen para todos los productos de la tienda (un envío por tienda).
+  // Método y dirección son del envío de la tienda y valen para todos sus productos; al cambiar
+  // el método, la dirección pasa a una que ese método alcance (dentro o fuera de la comuna de la
+  // tienda). El vehículo es de cada producto.
   const updateDelivery = (item, patch) => {
     setDeliveries((current) => {
       const merged = { method: null, addressId: null, vehicleKey: null, ...current[item.id], ...patch };
+      if (!('method' in patch) && !('addressId' in patch)) return { ...current, [item.id]: merged };
+      merged.addressId = defaultAddressForMethod(item, merged.method, addresses, merged.addressId);
       return withStoreShipment(cartItems, { ...current, [item.id]: merged }, item, merged);
     });
   };
@@ -909,9 +915,9 @@ export default function CheckoutPage() {
 
                 {!isQuoteMode && (
                   <section className="checkout-block" aria-labelledby="checkout-shipping-title">
-                    <h2 id="checkout-shipping-title"><Truck size={16} /> Entrega de cada producto</h2>
+                    <h2 id="checkout-shipping-title"><Truck size={16} /> Envío y vehículo</h2>
                     <p className="checkout-block-note">
-                      Elige cómo recibir los productos de cada tienda (van en un solo envío) y para qué vehículo es cada repuesto: puede ser tu auto o el de un familiar.
+                      Cada tienda envía sus productos juntos: elige su envío y la dirección una vez, y para qué vehículo es cada repuesto.
                     </p>
                     <div className="checkout-delivery-groups">
                       {groups.map((group) => (
@@ -923,13 +929,23 @@ export default function CheckoutPage() {
                               {group.items[0]?.storeComuna && <small className="checkout-store-commune">{group.items[0].storeComuna}</small>}
                             </div>
                           </div>
+                          {/* Un envío por tienda: método y dirección se eligen una vez, bajo su nombre. */}
+                          {group.items[0] && (
+                            <CheckoutStoreShipment
+                              item={group.items[0]}
+                              productCount={group.items.length}
+                              delivery={deliveries[group.items[0].id] || { method: null, addressId: null }}
+                              addresses={addresses}
+                              onChange={(patch) => updateDelivery(group.items[0], patch)}
+                              onManageAddresses={openAddressBook}
+                              onUseStoreAddress={isSeller && addresses.length === 0 ? applyStoreAddress : undefined}
+                              usingStoreAddress={usingStoreAddress}
+                              storeAddressError={storeAddressError}
+                            />
+                          )}
                           <div className="cart-store-lines">
                             {group.items.map((item) => {
                               const delivery = deliveries[item.id] || { method: null, addressId: null, vehicleKey: null };
-                              const sharesShipment = cartShipping.perItem[item.id] === 0 && deliveryKind(delivery.method) === 'local'
-                                && group.items.some((other) => other.id !== item.id
-                                  && String(deliveries[other.id]?.addressId) === String(delivery.addressId)
-                                  && (cartShipping.perItem[other.id] || 0) > 0);
                               return (
                                 <div key={item.id} className="checkout-delivery-line">
                                   <div className="cart-line">
@@ -948,10 +964,7 @@ export default function CheckoutPage() {
                                   <CheckoutItemDelivery
                                     item={item}
                                     delivery={delivery}
-                                    shipmentRole={storeShipmentRole(cartItems, item)}
-                                    addresses={addresses}
                                     vehicles={cartVehicles}
-                                    sharesShipment={sharesShipment}
                                     compatibility={compatStatusOf(
                                       item.id,
                                       cartVehicles.find((vehicle) => vehicle.key === delivery.vehicleKey) || null,
@@ -961,10 +974,6 @@ export default function CheckoutPage() {
                                     onChange={(patch) => updateDelivery(item, patch)}
                                     onAddVehicle={() => setVehicleDialog({ vehicle: null, itemId: item.id })}
                                     onEditVehicle={(vehicle) => setVehicleDialog({ vehicle, itemId: item.id })}
-                                    onManageAddresses={openAddressBook}
-                                    onUseStoreAddress={isSeller && addresses.length === 0 ? applyStoreAddress : undefined}
-                                    usingStoreAddress={usingStoreAddress}
-                                    storeAddressError={storeAddressError}
                                   />
                                 </div>
                               );

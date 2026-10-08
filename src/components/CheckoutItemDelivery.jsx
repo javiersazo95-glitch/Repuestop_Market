@@ -1,55 +1,23 @@
 import React from 'react';
-import { Bike, Car, CheckCircle2, Circle, CircleDot, MapPin, Navigation, Package, Plus, Store, Truck } from 'lucide-react';
-import { deliveryKind, isDispatch, localDeliveryCost, methodsForItem, outsideComunaDelivery, vehicleLabel } from '../utils/cartDelivery';
+import { Car, CheckCircle2, Plus } from 'lucide-react';
+import { vehicleLabel } from '../utils/cartDelivery';
 import { COMPAT } from '../utils/compatibilityCheck';
 import { productPath } from '../routes/paths';
 import CompatibilityStatus from './CompatibilityStatus';
 
-const formatCLP = (value) => `$${Math.round(Number(value) || 0).toLocaleString('es-CL')}`;
-const KIND_ICON = { pickup: Store, local: Bike, courier: Truck, other: Package };
-
-/** "Envío dentro de la comuna ($3.000)" -> "Envío dentro de la comuna". */
-const methodTitle = (method) => method.replace(/\s*\(.*\)\s*$/, '').trim() || method;
-
-function methodPrice(method, sharedWithPrevious) {
-  const kind = deliveryKind(method);
-  if (kind === 'pickup') return 'Gratis';
-  if (kind === 'courier') return 'Por pagar';
-  const cost = localDeliveryCost(method);
-  if (cost <= 0) return 'Gratis';
-  return sharedWithPrevious ? 'Incluido' : formatCLP(cost);
-}
-
 /**
- * Entrega de UN producto del checkout, igual que la app (CartItemDelivery): cómo lo recibe, a
- * dónde va (o dónde se retira) y para qué vehículo es. El envío es uno por tienda (8-oct): el
- * primero de la tienda lo elige ('leader') y el resto lo muestra ('follower'); el vehículo es de
- * cada producto (el propio y el de un familiar).
+ * Lo que es de CADA producto del checkout (igual que la app CartItemDelivery): para qué vehículo
+ * es. El envío (método y dirección) es uno por tienda y se elige arriba, en "Envío de la tienda"
+ * (CheckoutStoreShipment).
  *
  * `compatibility`: si el repuesto le sirve al vehículo elegido ('loading', COMPATIBLE,
  * NO_COINCIDE, SIN_DATOS, UNIVERSAL o null si no hay nada que decir). Se muestra justo bajo el
  * vehículo; cuando no coincide ofrece revisar la ficha, cambiar el vehículo, preguntar o quitarlo.
  */
 export default function CheckoutItemDelivery({
-  item, delivery, addresses, vehicles, sharesShipment, compatibility = null, shipmentRole = 'single',
-  onChange, onAddVehicle, onEditVehicle, onManageAddresses, onRemove,
-  onUseStoreAddress, usingStoreAddress = false, storeAddressError = '',
+  item, delivery, vehicles, compatibility = null, onChange, onAddVehicle, onEditVehicle, onRemove,
 }) {
-  const address = addresses.find((entry) => String(entry.id) === String(delivery.addressId)) || null;
-  const allowed = methodsForItem(item, address);
-  // El método con que se agregó al carro nunca desaparece de la lista: el carro lo confirma. Si la
-  // dirección elegida no le sirve, se avisa para cambiar la dirección (o el método, si quiere).
-  const methodMismatch = Boolean(delivery.method) && !allowed.includes(delivery.method);
-  const methods = methodMismatch ? [delivery.method, ...allowed] : allowed;
-  const dispatch = isDispatch(delivery.method);
   const selectedVehicle = vehicles.find((vehicle) => vehicle.key === delivery.vehicleKey) || null;
-  const outside = outsideComunaDelivery(item, delivery.method, address);
-  // "Dentro de la comuna" hacia otra comuna: se ofrece pasar al envío que sí llega, en vez de
-  // dejar solo el error.
-  const outsideMethod = methodMismatch && deliveryKind(delivery.method) === 'local'
-    ? allowed.find((method) => deliveryKind(method) === 'courier')
-    : null;
-  const radioName = `entrega-${item.id}`;
 
   // "Cambiar vehículo" abre el formulario para indicar otro vehículo, que queda elegido para este
   // producto al guardarlo (como en la app). Antes sólo movía el foco al selector, que está justo
@@ -61,8 +29,6 @@ export default function CheckoutItemDelivery({
     { label: 'Preguntar a la tienda', to: `${productPath(item)}?abrir=preguntas`, newTab: true },
     ...(onRemove ? [{ label: 'Quitar del carrito', onClick: onRemove }] : []),
   ];
-
-  const storeName = item.storeName || item.vendedor || 'esta tienda';
 
   // Para qué vehículo: siempre es de cada producto, aunque el envío sea de la tienda.
   const vehicleStep = (
@@ -114,128 +80,5 @@ export default function CheckoutItemDelivery({
     </div>
   );
 
-  if (shipmentRole === 'follower') {
-    const destination = !delivery.method
-      ? 'Elige el envío en el primer producto de la tienda'
-      : deliveryKind(delivery.method) === 'pickup'
-        ? `Retiro en ${item.storeAddress || 'la tienda'}`
-        : address
-          ? `${methodTitle(delivery.method)} · ${address.calleYNumero}, ${address.comunaNombre}`
-          : methodTitle(delivery.method);
-    return (
-      <div className="checkout-item-delivery">
-        <p className="checkout-item-pickup">
-          <Package size={14} />
-          <span>
-            <strong>Va en el mismo envío de {storeName}</strong>
-            <small>{destination}</small>
-          </span>
-        </p>
-        {vehicleStep}
-      </div>
-    );
-  }
-
-  return (
-    <div className="checkout-item-delivery">
-      <div className="checkout-item-delivery-step">
-        <span className="checkout-item-delivery-label"><Truck size={14} /> Entrega</span>
-        {shipmentRole === 'leader' && (
-          <small className="checkout-item-delivery-note">Para todos los productos de {storeName}: van en un solo envío.</small>
-        )}
-        {methods.length === 0 ? (
-          <p className="checkout-item-delivery-error">Esta tienda no despacha a la comuna elegida. Cambia la dirección o elige retiro.</p>
-        ) : (
-          <div className="checkout-item-methods" role="radiogroup" aria-label={`Entrega de ${item.titulo}`}>
-            {methods.map((method) => {
-              const selected = delivery.method === method;
-              const Icon = KIND_ICON[deliveryKind(method)];
-              return (
-                <label key={method} className={`checkout-item-method ${selected ? 'is-selected' : ''}`}>
-                  <input type="radio" name={radioName} checked={selected} onChange={() => onChange({ method })} />
-                  {selected ? <CircleDot size={16} /> : <Circle size={16} />}
-                  <Icon size={15} />
-                  <span className="checkout-item-method-title">{methodTitle(method)}</span>
-                  <em>{methodPrice(method, selected && sharesShipment)}</em>
-                </label>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {dispatch ? (
-        <div className="checkout-item-delivery-step">
-          <span className="checkout-item-delivery-label">
-            <MapPin size={14} /> Enviar a
-            <button type="button" className="checkout-item-link" onClick={onManageAddresses}>
-              {addresses.length === 0 ? 'Agregar dirección' : 'Otra dirección'}
-            </button>
-          </span>
-          {addresses.length > 0 ? (
-            <select
-              className="checkout-item-select"
-              value={delivery.addressId || ''}
-              onChange={(event) => onChange({ addressId: event.target.value || null })}
-              aria-label={`Dirección de envío de ${item.titulo}`}
-            >
-              <option value="" disabled>Elige la dirección</option>
-              {addresses.map((entry) => (
-                <option key={entry.id} value={String(entry.id)}>
-                  {entry.calleYNumero}, {entry.comunaNombre}{entry.esPrincipal ? ' (principal)' : ''}
-                </option>
-              ))}
-            </select>
-          ) : onUseStoreAddress ? (
-            // 8-oct: la tienda que compra sin direcciones usa la de su tienda con un clic.
-            <div className="checkout-store-address">
-              <small>Aún no tienes direcciones de entrega. Puedes recibirlo en tu tienda o agregar otra dirección.</small>
-              <button type="button" className="checkout-store-address-btn" onClick={onUseStoreAddress} disabled={usingStoreAddress}>
-                <Store size={14} /> {usingStoreAddress ? 'Guardando la dirección de tu tienda…' : 'Usar la dirección de mi tienda'}
-              </button>
-              {storeAddressError && <p className="checkout-item-delivery-error">{storeAddressError}</p>}
-            </div>
-          ) : (
-            <p className="checkout-item-delivery-error">Agrega una dirección para recibir este producto.</p>
-          )}
-          {methodMismatch && address && (
-            <p className="checkout-item-delivery-error">
-              {deliveryKind(delivery.method) === 'local'
-                ? `${methodTitle(delivery.method)} solo llega a ${item.storeComuna || 'la comuna de la tienda'}: elige una dirección de esa comuna${outsideMethod ? ' o envíalo fuera de la comuna' : ''}.`
-                : `${methodTitle(delivery.method)} no aplica en ${address.comunaNombre || 'esa comuna'}: elige una dirección de otra comuna.`}
-              {outsideMethod && (
-                <button type="button" className="checkout-item-link" onClick={() => onChange({ method: outsideMethod })}>
-                  Enviar fuera de la comuna (por pagar)
-                </button>
-              )}
-            </p>
-          )}
-          {/* A otra comuna: el paquete sale aparte, por courier y con el envío por pagar. */}
-          {outside && (
-            <div className="checkout-item-outside" role="status">
-              <Navigation size={15} />
-              <span>
-                <strong>Va a otra comuna: {outside.destinationComuna}</strong>
-                <small>
-                  {item.storeName || item.vendedor || 'La tienda'}{outside.storeComuna ? ` está en ${outside.storeComuna}` : ' está en otra comuna'}: este
-                  producto sale en un paquete aparte, por courier, y el envío lo pagas al recibirlo.
-                </small>
-              </span>
-            </div>
-          )}
-          {sharesShipment && <small className="checkout-item-delivery-note">Va en el mismo despacho que otro producto de esta tienda.</small>}
-        </div>
-      ) : delivery.method && deliveryKind(delivery.method) === 'pickup' ? (
-        <p className="checkout-item-pickup">
-          <Store size={14} />
-          <span>
-            <strong>Retiras en {item.storeAddress ? `${item.storeAddress}${item.storeComuna ? `, ${item.storeComuna}` : ''}` : 'la tienda'}</strong>
-            {item.storeHours && <small>{item.storeHours}</small>}
-          </span>
-        </p>
-      ) : null}
-
-      {vehicleStep}
-    </div>
-  );
+  return <div className="checkout-item-delivery">{vehicleStep}</div>;
 }

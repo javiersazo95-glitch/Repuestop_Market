@@ -21287,3 +21287,10 @@ input.has-success {
 .checkout-store-address small { color: #64748b; font-size: 12px; }
 .checkout-store-address-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px dashed #93c5fd; border-radius: 8px; background: #eff6ff; color: #1d4ed8; font-size: 12.5px; font-weight: 700; cursor: pointer; }
 .checkout-store-address-btn:disabled { opacity: .7; cursor: progress; }
+
+/* "Envío de la tienda" en el checkout (8-oct): método y dirección una sola vez por tienda, bajo su
+   nombre; cada producto debajo solo elige su vehículo. */
+.checkout-store-shipment { display: grid; gap: 10px; margin: 0 0 10px; padding: 12px; border: 1px solid #cfe0ff; border-radius: 12px; background: #fff; }
+.checkout-store-shipment-head { display: flex; align-items: center; gap: 6px; color: #0f172a; font-size: 13px; }
+.checkout-store-shipment-head > svg { color: #0b5fd0; }
+.checkout-store-shipment-head small { margin-left: auto; color: #64748b; font-size: 12px; }

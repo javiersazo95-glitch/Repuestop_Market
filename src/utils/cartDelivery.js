@@ -72,6 +72,35 @@ export function methodsForItem(item, address) {
   });
 }
 
+/** Métodos que publica la tienda del producto, sin filtrar por dirección. */
+export function storeMethodsForItem(item) {
+  const published = parseStoreMethods(item.storeShippingMethods);
+  return published.length > 0 ? published : (item.shippingMethod ? [item.shippingMethod] : []);
+}
+
+/**
+ * Direcciones que sirven para el envío elegido (8-oct, igual que la app): "dentro de la comuna"
+ * solo ofrece las de la comuna de la tienda y "fuera de la comuna", solo las de otras comunas.
+ * Así el desplegable no muestra destinos que el envío no alcanza. Sin despacho, ninguna.
+ */
+export function addressesForMethod(item, method, addresses) {
+  const kind = deliveryKind(method);
+  if (kind !== 'local' && kind !== 'courier') return [];
+  return (addresses || []).filter((address) => {
+    const sameComuna = isStoreComuna(item, address);
+    if (sameComuna === null) return true;
+    return kind === 'local' ? sameComuna : !sameComuna;
+  });
+}
+
+/** La dirección del envío: la actual si sirve; si no, la principal si sirve; si no, la primera que sirva. */
+export function defaultAddressForMethod(item, method, addresses, currentId = null) {
+  const options = addressesForMethod(item, method, addresses);
+  if (currentId != null && options.some((address) => String(address.id) === String(currentId))) return String(currentId);
+  const pick = options.find((address) => address.esPrincipal) || options[0];
+  return pick ? String(pick.id) : null;
+}
+
 /**
  * Métodos que la ficha ofrece al agregar al carro, igual que la app (useProductDetailScreen): con
  * la comuna del comprador (la de su dirección principal) "dentro de la comuna" solo si es la de la
@@ -204,12 +233,18 @@ export function pendingDeliveryReason(items, deliveries, vehicles, identifiedPla
     const delivery = deliveries[item.id];
     const method = delivery?.method;
     const name = item.titulo || 'el repuesto';
-    if (!method) return `Elige cómo recibir "${name}".`;
-    if (isDispatch(method) && !delivery?.addressId) return `Elige a qué dirección enviar "${name}".`;
+    const store = item.storeName || item.vendedor || 'la tienda';
+    const comuna = item.storeComuna || 'su comuna';
+    if (!method) return `Elige el envío de ${store}.`;
+    if (isDispatch(method) && !delivery?.addressId) {
+      return deliveryKind(method) === 'local'
+        ? `Elige la dirección del envío de ${store} dentro de ${comuna}.`
+        : `Elige la dirección del envío de ${store} fuera de ${comuna}.`;
+    }
     if (isDispatch(method)) {
       const address = addresses.find((entry) => String(entry.id) === String(delivery.addressId));
-      if (address && !methodsForItem(item, address).includes(method)) {
-        return `"${name}" va con ${method.replace(/\s*\(.*\)\s*$/, '')}: elige una dirección donde sirva o cambia el método.`;
+      if (address && !addressesForMethod(item, method, [address]).length) {
+        return `La dirección del envío de ${store} no corresponde a "${method.replace(/\s*\(.*\)\s*$/, '')}": elige otra.`;
       }
     }
     if (!item.esUniversal) {
@@ -223,7 +258,6 @@ export function pendingDeliveryReason(items, deliveries, vehicles, identifiedPla
     const pickup = deliveryKind(method) === 'pickup';
     const key = storeKey(item);
     const previous = kindByStore.get(key);
-    const store = item.storeName || item.vendedor || 'una tienda';
     if (previous && previous.pickup !== pickup) {
       return `En ${store} no puedes combinar retiro con despacho: elige lo mismo para sus productos.`;
     }
