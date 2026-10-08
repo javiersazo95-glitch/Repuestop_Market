@@ -36,7 +36,7 @@ import {
   socialLinksPayload,
   validateSocialLinks,
 } from '../utils/socialLinks';
-import { tomarGoogleParaTienda } from '../utils/googleIdToken';
+import { tomarCorreoParaTienda, tomarGoogleParaTienda } from '../utils/googleIdToken';
 import { isValidRut } from '../services/adapters';
 import { getStoredCaptadorReferral, clearStoredCaptadorReferral } from '../utils/captadorReferral';
 import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
@@ -198,6 +198,8 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
     const initialReferral = getStoredCaptadorReferral() || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('ref') || '' : '');
     return {
       ...EMPTY_FORM,
+      // Correo que la tienda escribió en el modal al intentar entrar como vendedor sin cuenta.
+      email: typeof window !== 'undefined' ? tomarCorreoParaTienda() : '',
       referral: initialReferral ? initialReferral.trim().toUpperCase() : '',
     };
   });
