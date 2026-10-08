@@ -28,7 +28,7 @@ import {
 } from './founderApi';
 // Un solo archivo para el texto y para la version: el registro de aceptacion prueba QUE se
 // acepto, y con dos fuentes la constancia apunta a un documento que no es el que se mostro.
-import { VENDEDOR_TERMS, PRIVACIDAD_POLICY, LEGAL_VERSION_CODE } from '../data/legalTexts';
+import { VENDEDOR_TERMS, PRIVACIDAD_POLICY, LEGAL_VERSION_CODE, DECLARACION_IVA_TEXTO } from '../data/legalTexts';
 import { sanitizeWebsiteUrl } from '../utils/websiteUrl';
 import { isValidRut } from '../services/adapters';
 import { getStoredCaptadorReferral, clearStoredCaptadorReferral } from '../utils/captadorReferral';
@@ -1483,12 +1483,17 @@ function BlockedInfo({ reason }: { reason: string }) {
 /* ==================================================================== *
  * Fase 2 — Subida de documentos
  * ==================================================================== */
-type DocKey = 'representativeDocument' | 'inicioActividadesDoc' | 'patenteDoc' | 'boletaFacturaDoc';
+type DocKey = 'representativeDocument' | 'inicioActividadesDoc' | 'patenteDoc' | 'boletaFacturaDoc' | 'certificadoCumplimientoDoc';
 const DOC_FIELDS: { key: DocKey; label: string; hint: string; required: boolean }[] = [
   { key: 'representativeDocument', label: 'Cédula del representante', hint: 'Foto o PDF de la cédula por ambos lados.', required: true },
   { key: 'inicioActividadesDoc', label: 'Inicio de actividades (SII)', hint: 'Documento de inicio de actividades.', required: true },
   { key: 'patenteDoc', label: 'Patente comercial', hint: 'Patente municipal vigente.', required: true },
-  { key: 'boletaFacturaDoc', label: 'Boleta o factura', hint: 'Ejemplo de boleta o factura de tu tienda.', required: false },
+  // El backend la exige al crear la verificacion (PerfilProveedorService.validarVerificacion): como
+  // opcional, la web dejaba enviar sin ella y el servidor respondia 400.
+  { key: 'boletaFacturaDoc', label: 'Boleta o factura', hint: 'Ejemplo de boleta o factura de tu tienda.', required: true },
+  // Res. SII 168 de 2025: la plataforma debe exigirlo al contratar.
+  { key: 'certificadoCumplimientoDoc', label: 'Certificado de cumplimiento tributario',
+    hint: 'Descárgalo desde tu sitio personal en sii.cl y súbelo en PDF.', required: true },
 ];
 
 const COMMENT_MAX = 100;
@@ -1496,7 +1501,10 @@ const COMMENT_MAX = 100;
 function DocumentsUpload({ session, notice, onDone }: { session: Session; notice?: string | null; onDone: () => void }) {
   const [files, setFiles] = useState<Record<DocKey, File | null>>({
     representativeDocument: null, inicioActividadesDoc: null, patenteDoc: null, boletaFacturaDoc: null,
+    certificadoCumplimientoDoc: null,
   });
+  // Declaracion de contribuyente de IVA (Circular SII 39 de 2025). Si ya la hizo, no se pide.
+  const [declaraIva, setDeclaraIva] = useState(false);
   const [existing, setExisting] = useState<VerificacionResponse | null>(null);
   const [website, setWebsite] = useState('');
   const [comment, setComment] = useState('');
@@ -1512,12 +1520,19 @@ function DocumentsUpload({ session, notice, onDone }: { session: Session; notice
   }, [session.sellerId, session.token]);
 
   // Un doc requerido está satisfecho si se eligió un archivo nuevo o ya existe uno guardado (ej. tras una corrección parcial).
+  const ivaYaDeclarada = Boolean(existing?.declaracionIvaAt);
   const requiredReady = DOC_FIELDS.filter((d) => d.required)
-    .every((d) => files[d.key] || Boolean(existing?.[d.key]));
+    .every((d) => files[d.key] || Boolean(existing?.[d.key]))
+    && (ivaYaDeclarada || declaraIva);
 
   async function submit() {
     setError('');
-    if (!requiredReady) { setError('Adjunta los documentos obligatorios para continuar.'); return; }
+    if (!requiredReady) {
+      setError(!ivaYaDeclarada && !declaraIva
+        ? 'Debes declarar que tu tienda es contribuyente de IVA para vender en RepuesTop.'
+        : 'Adjunta los documentos obligatorios para continuar.');
+      return;
+    }
     
     // Sanear URL antes de enviar (bloquea javascript: y antepone https://)
     const sanitizedUrl = website.trim() ? sanitizeWebsiteUrl(website) : undefined;
@@ -1530,6 +1545,7 @@ function DocumentsUpload({ session, notice, onDone }: { session: Session; notice
     try {
       await uploadVerificacion(session.sellerId, session.token, {
         ...files,
+        declaraContribuyenteIva: declaraIva,
         websiteOrSocialUrl: sanitizedUrl,
         mensaje: comment.trim() || undefined,
       });
@@ -1568,6 +1584,14 @@ function DocumentsUpload({ session, notice, onDone }: { session: Session; notice
         <input value={website} placeholder="https://instagram.com/tu-tienda"
           onChange={(e) => setWebsite(e.target.value)} />
       </Field>
+
+      {!ivaYaDeclarada && (
+        <div className="founder-reg-terms">
+          <input id="declaraContribuyenteIva" type="checkbox" checked={declaraIva}
+            onChange={(e) => setDeclaraIva(e.target.checked)} />
+          <label htmlFor="declaraContribuyenteIva">{DECLARACION_IVA_TEXTO}</label>
+        </div>
+      )}
 
       {notice && (
         <Field label="Comentario para el equipo" hint={`${comment.length}/${COMMENT_MAX} · Opcional`}>

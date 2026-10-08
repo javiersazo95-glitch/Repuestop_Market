@@ -67,6 +67,10 @@ export type VerificacionResponse = {
   inicioActividadesDoc: string | null;
   patenteDoc: string | null;
   boletaFacturaDoc: string | null;
+  /** Certificado de cumplimiento tributario del SII (Res. 168/2025). */
+  certificadoCumplimientoDoc?: string | null;
+  /** Cuando la tienda declaro ser contribuyente de IVA; null si no lo ha hecho. */
+  declaracionIvaAt?: string | null;
   websiteOrSocialUrl: string | null;
   reviewStatus: string | null;
   reviewNotes: string | null;
@@ -191,6 +195,9 @@ export type VerificacionFiles = {
   inicioActividadesDoc?: File | null;
   patenteDoc?: File | null;
   boletaFacturaDoc?: File | null;
+  certificadoCumplimientoDoc?: File | null;
+  /** La tienda declara ser contribuyente de IVA. La IP y la fecha las toma el servidor. */
+  declaraContribuyenteIva?: boolean;
   websiteOrSocialUrl?: string;
   mensaje?: string;
 };
@@ -205,6 +212,8 @@ export function uploadVerificacion(
   if (files.inicioActividadesDoc) form.append('inicioActividadesDoc', files.inicioActividadesDoc);
   if (files.patenteDoc) form.append('patenteDoc', files.patenteDoc);
   if (files.boletaFacturaDoc) form.append('boletaFacturaDoc', files.boletaFacturaDoc);
+  if (files.certificadoCumplimientoDoc) form.append('certificadoCumplimientoDoc', files.certificadoCumplimientoDoc);
+  if (files.declaraContribuyenteIva) form.append('declaraContribuyenteIva', 'true');
   if (files.websiteOrSocialUrl) form.append('websiteOrSocialUrl', files.websiteOrSocialUrl);
   if (files.mensaje) form.append('mensaje', files.mensaje);
 

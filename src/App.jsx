@@ -6,6 +6,7 @@ import { MarketplaceProvider } from './context/MarketplaceContext';
 import AppRoutes from './routes/AppRoutes';
 import TermsReacceptanceModal from './components/TermsReacceptanceModal';
 import SellerAdhesionModal from './components/SellerAdhesionModal';
+import DeclaracionIvaPrompt from './components/DeclaracionIvaPrompt';
 import SystemErrorPage from './components/SystemErrorPage';
 import CookieConsentBanner from './components/CookieConsentBanner';
 import MobileAppNotice from './components/MobileAppNotice';
@@ -76,6 +77,7 @@ export default function App() {
                   tiene que alcanzarlo igual. */}
               <TermsReacceptanceModal />
               <SellerAdhesionModal />
+              <DeclaracionIvaPrompt />
               <CookieConsentBanner />
             </MarketplaceProvider>
           </AuthProvider>

@@ -26,6 +26,18 @@ export const LEGAL_VERSION = '1 de octubre de 2026';
 export const LEGAL_VERSION_CODE = '2026-10-01';
 
 /**
+ * Declaracion de la tienda de ser contribuyente de IVA (art. 3° bis LIVS, Circular SII 39 de
+ * 2025): "corresponde al vendedor informar al operador su calidad de contribuyente de IVA". Sin
+ * esta constancia, el IVA de las ventas de la tienda lo paga RepuesTop.
+ *
+ * Mismo texto y version que DECLARACION_IVA_TEXTO de la app (mobile/constants/legal-texts.ts) y
+ * que PerfilProveedorService.DECLARACION_IVA_VERSION del backend.
+ */
+export const DECLARACION_IVA_VERSION = '2026-10-09';
+export const DECLARACION_IVA_TEXTO =
+  'Declaro que mi tienda es contribuyente del Impuesto al Valor Agregado (IVA), que emite boleta o factura por cada venta que realiza en RepuesTop, y que informaré a RepuesTop cualquier cambio en esa condición, como el término de giro.';
+
+/**
  * O49 (28-sep): identificacion de la empresa operadora, exigida por el Reglamento de Comercio
  * Electronico (DS 6/2021, art. 7: razon social, RUT, domicilio, contacto y representante legal)
  * y por la ley de datos personales (responsable del tratamiento). Se usa en los tres documentos

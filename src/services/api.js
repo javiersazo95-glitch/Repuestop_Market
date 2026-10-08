@@ -2239,6 +2239,16 @@ export async function acceptSellerAdhesionApi(proveedorId) {
   });
 }
 
+/**
+ * La tienda declara ser contribuyente de IVA (Circular SII 39 de 2025). Para tiendas ya aprobadas
+ * que no la hicieron al subir sus documentos. La IP y la fecha las registra el servidor.
+ */
+export async function declareSellerIvaApi(proveedorId) {
+  return fetchApi(`/proveedores/${proveedorId}/declaracion-iva`, {
+    method: 'POST',
+  });
+}
+
 // -------------------------------------------------------------
 // FASE 6: CHATS CON IMAGEN
 // -------------------------------------------------------------
