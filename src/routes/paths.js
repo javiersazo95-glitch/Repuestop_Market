@@ -56,8 +56,10 @@ export function profilePurchasePath(orderId) {
  * `/perfil/chats_vendedor?caso={id}`: la conversacion del reclamo / mediacion de un pedido,
  * vista como COMPRADOR. O62 (pruebas de lanzamiento, 25-sep).
  */
-export function buyerCaseChatPath(orderId, proveedorId) {
+export function buyerCaseChatPath(orderId, proveedorId, tab) {
   const params = new URLSearchParams({ caso: String(orderId ?? '') });
+  // 8-oct: `tab='mediator'` abre la pestaña del mediador (aviso de un mensaje suyo).
+  if (tab === 'mediator') params.set('pestana', 'mediador');
   // O71b (pruebas de lanzamiento, 27-sep): el caso es por tienda; en un pedido de varias se abre el
   // de la tienda reclamada, igual que hace la tienda con `sellerCaseChatPath`.
   if (proveedorId != null && proveedorId !== '') params.set('tienda', String(proveedorId));
@@ -69,8 +71,9 @@ export function buyerCaseChatPath(orderId, proveedorId) {
  * TIENDA ("Chats con compradores"). `tienda` elige su chat en un pedido de varias; es el mismo
  * formato que ya arma "Chatear con comprador". O71 (pruebas de lanzamiento, 25-sep).
  */
-export function sellerCaseChatPath(orderId, proveedorId) {
+export function sellerCaseChatPath(orderId, proveedorId, tab) {
   const params = new URLSearchParams({ caso: String(orderId ?? '') });
+  if (tab === 'mediator') params.set('pestana', 'mediador');
   if (proveedorId != null && proveedorId !== '') params.set('tienda', String(proveedorId));
   return `/perfil/chats_compradores?${params.toString()}`;
 }

@@ -18,7 +18,7 @@ import { ROUTES, buyerCaseChatPath, productPath, profilePurchasePath, sellerCase
  * - `/order-detail`               -> `{ orderId, viewMode? }`
  * - `/product-detail`             -> `{ productId, questionId? }`
  * - `/quote-chat`                 -> `{ quoteId, viewMode? }`
- * - `/mediation-chat`             -> `{ orderId, viewMode?, proveedorId? }` (la tienda del chat en multi-tienda)
+ * - `/mediation-chat`             -> `{ orderId, viewMode?, proveedorId?, tab? }` (la tienda del chat en multi-tienda; `tab: 'mediator'` abre la pestaña del mediador)
  * - `/ad-detail`, `/ads-management` -> `{ id }`; la aprobación del taller manda `{ seccion: 'agenda' }`
  * - `/automotive-service-accreditation` -> `{}` (corrección o rechazo de la acreditación)
  * - `/support-ticket-detail`      -> `{ ticketId }`
@@ -81,7 +81,10 @@ const TARGETS = {
   '/mediation-chat': (params, context) => {
     const asSeller = params?.viewMode ? params.viewMode === 'seller' : Boolean(context?.isSeller);
     if (!params?.orderId) return asSeller ? PROFILE('chats_compradores') : PROFILE('chats_vendedor');
-    return asSeller ? sellerCaseChatPath(params.orderId, params.proveedorId) : buyerCaseChatPath(params.orderId, params.proveedorId);
+    // `tab: 'mediator'` (8-oct): un mensaje del mediador abre su pestaña, no el chat directo pausado.
+    return asSeller
+      ? sellerCaseChatPath(params.orderId, params.proveedorId, params.tab)
+      : buyerCaseChatPath(params.orderId, params.proveedorId, params.tab);
   },
 
   '/support-ticket-detail': (params) => (params?.ticketId

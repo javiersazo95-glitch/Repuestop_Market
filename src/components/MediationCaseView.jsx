@@ -417,7 +417,7 @@ function MediatorMessageCard({ entry, isMine, avatarUrl }) {
   );
 }
 
-export default function MediationCaseView({ pedidoId, proveedorId, user, mode: modeProp = 'buyer', initialDraft = '', onClose, onChanged }) {
+export default function MediationCaseView({ pedidoId, proveedorId, user, mode: modeProp = 'buyer', initialDraft = '', initialTab = 'chat', onClose, onChanged }) {
   const navigate = useNavigate();
   const [chat, setChat] = useState(null);
   // El rol REAL en esta disputa no se puede sacar de si el usuario tiene tienda: una tienda
@@ -445,7 +445,8 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   const [showVehicleReceipt, setShowVehicleReceipt] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [showResolutionDetail, setShowResolutionDetail] = useState(false);
-  const [activeTab, setActiveTab] = useState('chat');
+  // 8-oct: el aviso de un mensaje del mediador abre directo su pestaña.
+  const [activeTab, setActiveTab] = useState(initialTab === 'mediator' ? 'mediator' : 'chat');
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [mediatorText, setMediatorText] = useState('');
   const [mediatorFiles, setMediatorFiles] = useState([]);

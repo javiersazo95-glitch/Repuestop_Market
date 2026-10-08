@@ -68,6 +68,7 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
     if (from && from !== `${location.pathname}${location.search}`) { navigate(from); return; }
     const next = new URLSearchParams(searchParams);
     next.delete('caso');
+    next.delete('pestana');
     setSearchParams(next);
   };
 
@@ -152,6 +153,7 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
           pedidoId={openCaseId}
           user={user}
           mode={isSeller ? 'seller' : 'buyer'}
+          initialTab={searchParams.get('pestana') === 'mediador' ? 'mediator' : 'chat'}
           onClose={closeCase}
           onChanged={loadCases}
         />
