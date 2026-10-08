@@ -22,15 +22,16 @@ function methodPrice(method, sharedWithPrevious) {
 
 /**
  * Entrega de UN producto del checkout, igual que la app (CartItemDelivery): cómo lo recibe, a
- * dónde va (o dónde se retira) y para qué vehículo es. Cada producto puede ir a otra dirección
- * y ser para otro auto (el propio y el de un familiar).
+ * dónde va (o dónde se retira) y para qué vehículo es. El envío es uno por tienda (8-oct): el
+ * primero de la tienda lo elige ('leader') y el resto lo muestra ('follower'); el vehículo es de
+ * cada producto (el propio y el de un familiar).
  *
  * `compatibility`: si el repuesto le sirve al vehículo elegido ('loading', COMPATIBLE,
  * NO_COINCIDE, SIN_DATOS, UNIVERSAL o null si no hay nada que decir). Se muestra justo bajo el
  * vehículo; cuando no coincide ofrece revisar la ficha, cambiar el vehículo, preguntar o quitarlo.
  */
 export default function CheckoutItemDelivery({
-  item, delivery, addresses, vehicles, sharesShipment, compatibility = null,
+  item, delivery, addresses, vehicles, sharesShipment, compatibility = null, shipmentRole = 'single',
   onChange, onAddVehicle, onEditVehicle, onManageAddresses, onRemove,
 }) {
   const address = addresses.find((entry) => String(entry.id) === String(delivery.addressId)) || null;
@@ -60,10 +61,87 @@ export default function CheckoutItemDelivery({
     ...(onRemove ? [{ label: 'Quitar del carrito', onClick: onRemove }] : []),
   ];
 
+  const storeName = item.storeName || item.vendedor || 'esta tienda';
+
+  // Para qué vehículo: siempre es de cada producto, aunque el envío sea de la tienda.
+  const vehicleStep = (
+    <div className="checkout-item-delivery-step">
+      <span className="checkout-item-delivery-label">
+        <Car size={14} /> Vehículo
+        {!item.esUniversal && <em className="checkout-item-required">Obligatorio</em>}
+      </span>
+      {item.esUniversal ? (
+        <CompatibilityStatus status={COMPAT.UNIVERSAL} id={`compat-${item.id}`} />
+      ) : (
+        <>
+          <div className="checkout-item-vehicles" role="radiogroup" aria-label={`Vehículo de ${item.titulo}`}>
+            {vehicles.map((vehicle) => {
+              const selected = vehicle.key === delivery.vehicleKey;
+              return (
+                <button
+                  key={vehicle.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  className={`checkout-item-vehicle ${selected ? 'is-selected' : ''}`}
+                  onClick={() => onChange({ vehicleKey: vehicle.key })}
+                >
+                  {selected ? <CheckCircle2 size={14} /> : <Car size={14} />}
+                  <span>{vehicleLabel(vehicle)}</span>
+                </button>
+              );
+            })}
+            <button type="button" className="checkout-item-vehicle is-add" onClick={onAddVehicle}>
+              <Plus size={14} /> {vehicles.length === 0 ? 'Agregar vehículo' : 'Otro vehículo'}
+            </button>
+          </div>
+          {selectedVehicle && (
+            <CompatibilityStatus
+              status={compatibility}
+              vehicle={selectedVehicle}
+              actions={compatActions}
+              id={`compat-${item.id}`}
+            />
+          )}
+          {selectedVehicle ? (
+            <button type="button" className="checkout-item-link" onClick={() => onEditVehicle(selectedVehicle)}>Editar este vehículo</button>
+          ) : (
+            <p className="checkout-item-delivery-error">Elige para qué vehículo es: el vendedor confirma que calce antes de enviarlo.</p>
+          )}
+        </>
+      )}
+    </div>
+  );
+
+  if (shipmentRole === 'follower') {
+    const destination = !delivery.method
+      ? 'Elige el envío en el primer producto de la tienda'
+      : deliveryKind(delivery.method) === 'pickup'
+        ? `Retiro en ${item.storeAddress || 'la tienda'}`
+        : address
+          ? `${methodTitle(delivery.method)} · ${address.calleYNumero}, ${address.comunaNombre}`
+          : methodTitle(delivery.method);
+    return (
+      <div className="checkout-item-delivery">
+        <p className="checkout-item-pickup">
+          <Package size={14} />
+          <span>
+            <strong>Va en el mismo envío de {storeName}</strong>
+            <small>{destination}</small>
+          </span>
+        </p>
+        {vehicleStep}
+      </div>
+    );
+  }
+
   return (
     <div className="checkout-item-delivery">
       <div className="checkout-item-delivery-step">
         <span className="checkout-item-delivery-label"><Truck size={14} /> Entrega</span>
+        {shipmentRole === 'leader' && (
+          <small className="checkout-item-delivery-note">Para todos los productos de {storeName}: van en un solo envío.</small>
+        )}
         {methods.length === 0 ? (
           <p className="checkout-item-delivery-error">Esta tienda no despacha a la comuna elegida. Cambia la dirección o elige retiro.</p>
         ) : (
@@ -147,52 +225,7 @@ export default function CheckoutItemDelivery({
         </p>
       ) : null}
 
-      <div className="checkout-item-delivery-step">
-        <span className="checkout-item-delivery-label">
-          <Car size={14} /> Vehículo
-          {!item.esUniversal && <em className="checkout-item-required">Obligatorio</em>}
-        </span>
-        {item.esUniversal ? (
-          <CompatibilityStatus status={COMPAT.UNIVERSAL} id={`compat-${item.id}`} />
-        ) : (
-          <>
-            <div className="checkout-item-vehicles" role="radiogroup" aria-label={`Vehículo de ${item.titulo}`}>
-              {vehicles.map((vehicle) => {
-                const selected = vehicle.key === delivery.vehicleKey;
-                return (
-                  <button
-                    key={vehicle.key}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    className={`checkout-item-vehicle ${selected ? 'is-selected' : ''}`}
-                    onClick={() => onChange({ vehicleKey: vehicle.key })}
-                  >
-                    {selected ? <CheckCircle2 size={14} /> : <Car size={14} />}
-                    <span>{vehicleLabel(vehicle)}</span>
-                  </button>
-                );
-              })}
-              <button type="button" className="checkout-item-vehicle is-add" onClick={onAddVehicle}>
-                <Plus size={14} /> {vehicles.length === 0 ? 'Agregar vehículo' : 'Otro vehículo'}
-              </button>
-            </div>
-            {selectedVehicle && (
-              <CompatibilityStatus
-                status={compatibility}
-                vehicle={selectedVehicle}
-                actions={compatActions}
-                id={`compat-${item.id}`}
-              />
-            )}
-            {selectedVehicle ? (
-              <button type="button" className="checkout-item-link" onClick={() => onEditVehicle(selectedVehicle)}>Editar este vehículo</button>
-            ) : (
-              <p className="checkout-item-delivery-error">Elige para qué vehículo es: el vendedor confirma que calce antes de enviarlo.</p>
-            )}
-          </>
-        )}
-      </div>
+      {vehicleStep}
     </div>
   );
 }

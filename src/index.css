@@ -21005,6 +21005,14 @@ input.has-success {
 .checkout-vehicle-dialog header p { margin: 2px 0 0; color: #64748b; font-size: 12.5px; line-height: 1.45; }
 .checkout-vehicle-dialog header > button { width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; background: #f1f5f9; color: #45566d; cursor: pointer; }
 .checkout-vehicle-dialog-privacy { color: #64748b; font-size: 12px; }
+/* Vehículo del checkout con dos modos (8-oct): por patente o búsqueda manual con el catálogo. */
+.checkout-vehicle-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 12px; padding: 4px; border-radius: 10px; background: #f1f5fb; }
+.checkout-vehicle-modes button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #64748b; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.checkout-vehicle-modes button.is-active { border-color: #bfd6f7; background: #fff; color: #1264c0; }
+.checkout-vehicle-field { display: grid; gap: 4px; }
+.checkout-vehicle-field > span { color: #52647a; font-size: 10.5px; font-weight: 750; }
+.cart-invoice-fields select { width: 100%; min-height: 38px; padding: 0 10px; border: 1px solid #d6e0ed; border-radius: 8px; color: #1d2e45; background: #fbfdff; font-size: 12px; outline: 0; }
+.cart-invoice-fields select:focus { border-color: #67a2fa; box-shadow: 0 0 0 3px rgba(18,104,243,.09); }
 .checkout-vehicle-dialog-save { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; border: 0; border-radius: 10px; background: #0b5fd0; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer; }
 .checkout-vehicle-dialog-save[aria-disabled="true"] { background: #94a3b8; }
 @media (min-width: 640px) {
@@ -21273,3 +21281,5 @@ input.has-success {
 .order-packages-outside-summary > svg { flex: 0 0 auto; margin-top: 2px; }
 .order-package.is-outside .order-package-row.is-method > svg { color: #92400e; }
 .order-store-block-delivery > .order-packages-outside-summary { align-items: flex-start; }
+
+.seller-checklist-item-manual { color: #b45309; }

@@ -313,6 +313,12 @@ export default function SellerConfirmationChecklist({
                           {item.vehiculoChasis ? ` · Chasis ${item.vehiculoChasis}` : ''}
                         </small>
                       )}
+                      {/* 8-oct: sin patente identificada, el comprador eligió marca, modelo y año a mano. */}
+                      {item.vehiculoOrigen === 'MANUAL' && (
+                        <small className="seller-checklist-item-vehicle seller-checklist-item-manual">
+                          Datos del vehículo ingresados a mano por el comprador: revísalos con cuidado.
+                        </small>
+                      )}
                       {/* 6-oct: el Market y la app le avisaron antes de pagar y confirmó que lo quería igual. */}
                       {item.compradorAceptoAviso && (
                         <small className="seller-checklist-item-vehicle">
