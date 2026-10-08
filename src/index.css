@@ -20978,11 +20978,14 @@ input.has-success {
 .compat-status.is-ok svg { color: #059669; }
 .compat-status.is-neutral svg, .compat-status.is-info svg, .compat-status.is-loading svg { color: #64748b; }
 .compat-status.is-loading { border-style: dashed; color: #64748b; }
-.compat-status.is-warn { border-color: #f5d48a; background: #fffaeb; color: #7a4a00; font-weight: 600; }
+.compat-status.is-warn { border-color: #f5d48a; background: #fffaeb; color: #7a4a00; font-weight: 500; }
 .compat-status.is-warn svg { color: #b45309; }
-.compat-status-actions { display: flex; flex-wrap: wrap; gap: 4px 14px; padding-left: 20px; }
-.compat-status-actions a, .compat-status-actions button { padding: 0; border: 0; background: none; color: #0b5fd0; font-size: 12px; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
-.compat-status-actions a:hover, .compat-status-actions button:hover { color: #084aa3; }
+/* Las cuatro salidas en una fila, compactas (ícono + palabra), igual que la app. */
+.compat-status-actions { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; }
+.compat-status-actions > a, .compat-status-actions > button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 30px; padding: 0 4px; border: 0; border-radius: 8px; background: #fff; color: #0b5fd0; font: inherit; font-size: 11.5px; font-weight: 700; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.compat-status-actions > a:hover, .compat-status-actions > button:hover { background: #eef4ff; }
+.compat-status-actions > .is-danger { color: #b42318; }
+.compat-status-actions svg { flex-shrink: 0; }
 .cart-line-compat { margin-top: 6px; justify-self: start; }
 .cart-compat-summary { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 14px; padding: 10px 14px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: #fff; color: #33445c; font-size: 13px; font-weight: 600; line-height: 1.45; }
 .cart-compat-summary svg { flex-shrink: 0; margin-top: 2px; color: #0b5fd0; }
@@ -20992,10 +20995,6 @@ input.has-success {
 .checkout-compat-summary-text button { padding: 0; border: 0; background: none; color: #0b5fd0; font-size: 12.5px; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .checkout-compat-ack { display: flex; align-items: center; gap: 8px; min-height: 36px; color: #172033; font-size: 13px; font-weight: 700; cursor: pointer; }
 .checkout-compat-ack input { width: 18px; height: 18px; flex-shrink: 0; accent-color: #0b5fd0; }
-@media (max-width: 640px) {
-  .compat-status-actions { gap: 6px 14px; padding-left: 0; }
-  .compat-status-actions a, .compat-status-actions button { min-height: 32px; display: inline-flex; align-items: center; }
-}
 
 .checkout-vehicle-dialog-backdrop { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: flex-end; justify-content: center; background: rgba(15, 23, 42, .45); }
 .checkout-vehicle-dialog { display: grid; gap: 12px; width: min(460px, 100%); max-height: 92vh; overflow-y: auto; padding: 16px; border-radius: 16px 16px 0 0; background: #fff; box-shadow: 0 -12px 40px rgba(9, 20, 38, .25); }
@@ -21345,3 +21344,13 @@ input.has-success {
 @media (max-width: 768px) {
   .withdrawal-content-grid > .withdrawal-total-card { order: -1; position: static; }
 }
+
+/* Checkout con varias tiendas: cada una en su contenedor, con encabezado de color y "Tienda N
+   de M", y más aire entre ellas, para no confundir a qué tienda pertenece cada envío. */
+.checkout-store-title { display: grid; gap: 1px; min-width: 0; }
+.checkout-store-index { color: #0b5fd0; font-size: 10.5px; font-style: normal; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.checkout-delivery-groups.is-multi { gap: 22px; }
+.checkout-delivery-groups.is-multi > .cart-store-group { border: 1.5px solid #cfe0ff; border-radius: 14px; overflow: hidden; box-shadow: 0 6px 18px rgba(11, 95, 208, .06); }
+.checkout-delivery-groups.is-multi > .cart-store-group > .cart-store-head { background: #eef4ff; border-bottom-color: #cfe0ff; }
+.checkout-delivery-groups.is-multi .cart-store-avatar { background: #0b5fd0; color: #fff; }
+.cart-store-group > .checkout-store-shipment { margin: 12px 12px 0; }

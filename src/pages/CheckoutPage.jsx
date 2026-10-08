@@ -29,7 +29,7 @@ import { useCompatibilityCheck } from '../hooks/useCompatibilityCheck';
 import { COMPAT, compatCacheKey, mismatchCountText } from '../utils/compatibilityCheck';
 import {
   cartPackages, cartStoreKey, defaultAddressForMethod, deliveryKind, isDispatch,
-  pendingDeliveryReason, shippingFees, storeMethodsForItem, vehicleLabel, withStoreShipment,
+  offeredMethodsForItem, pendingDeliveryReason, shippingFees, vehicleLabel, withStoreShipment,
 } from '../utils/cartDelivery';
 
 const STEPS = [
@@ -362,7 +362,7 @@ export default function CheckoutPage() {
         const storeShipment = shipmentByStore.get(cartStoreKey(item));
         // El envío es uno por tienda: el método con que se agregó (si la tienda lo publica) y una
         // dirección que ese método alcance (dentro o fuera de la comuna de la tienda).
-        const published = storeMethodsForItem(item);
+        const published = offeredMethodsForItem(item, addresses);
         const wanted = previous?.method ?? (item.shippingMethod || null);
         const method = storeShipment
           ? storeShipment.method
@@ -919,14 +919,22 @@ export default function CheckoutPage() {
                     <p className="checkout-block-note">
                       Cada tienda envía sus productos juntos: elige su envío y la dirección una vez, y para qué vehículo es cada repuesto.
                     </p>
-                    <div className="checkout-delivery-groups">
-                      {groups.map((group) => (
+                    {/* Con varias tiendas, cada una en su propio contenedor con encabezado de color y
+                        "Tienda N de M": al bajar tiene que quedar claro a qué tienda corresponde
+                        cada envío y cada producto. */}
+                    <div className={`checkout-delivery-groups ${groups.length > 1 ? 'is-multi' : ''}`}>
+                      {groups.map((group, groupIndex) => (
                         <div key={group.key} className="cart-store-group">
                           <div className="cart-store-head">
                             <div className="cart-store-id">
                               <span className="cart-store-avatar"><Store size={15} /></span>
-                              <strong>{group.items[0]?.storeName || group.vendedor || 'Tienda RepuesTop'}</strong>
-                              {group.items[0]?.storeComuna && <small className="checkout-store-commune">{group.items[0].storeComuna}</small>}
+                              <span className="checkout-store-title">
+                                {groups.length > 1 && <em className="checkout-store-index">Tienda {groupIndex + 1} de {groups.length}</em>}
+                                <strong>{group.items[0]?.storeName || group.vendedor || 'Tienda RepuesTop'}</strong>
+                                <small className="checkout-store-commune">
+                                  {[group.items[0]?.storeComuna, `${group.items.length} ${group.items.length === 1 ? 'producto' : 'productos'}`].filter(Boolean).join(' · ')}
+                                </small>
+                              </span>
                             </div>
                           </div>
                           {/* Un envío por tienda: método y dirección se eligen una vez, bajo su nombre. */}

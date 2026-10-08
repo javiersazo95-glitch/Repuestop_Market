@@ -1,7 +1,7 @@
 import React from 'react';
 import { Bike, Circle, CircleDot, MapPin, Navigation, Package, Store, Truck } from 'lucide-react';
 import {
-  addressesForMethod, deliveryKind, isDispatch, localDeliveryCost, outsideComunaDelivery, storeMethodsForItem,
+  addressesForMethod, deliveryKind, isDispatch, localDeliveryCost, offeredMethodsForItem, outsideComunaDelivery,
 } from '../utils/cartDelivery';
 
 const formatCLP = (value) => `$${Math.round(Number(value) || 0).toLocaleString('es-CL')}`;
@@ -29,7 +29,8 @@ export default function CheckoutStoreShipment({
   item, productCount, delivery, addresses, onChange, onManageAddresses,
   onUseStoreAddress, usingStoreAddress = false, storeAddressError = '',
 }) {
-  const methods = storeMethodsForItem(item);
+  // El retiro y el despacho que se eligió en la ficha: no los tres.
+  const methods = offeredMethodsForItem(item, addresses);
   const kind = deliveryKind(delivery.method);
   const dispatch = isDispatch(delivery.method);
   const storeComuna = item.storeComuna || 'la comuna de la tienda';
