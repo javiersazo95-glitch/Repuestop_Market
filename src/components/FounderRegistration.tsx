@@ -30,6 +30,7 @@ import {
 // acepto, y con dos fuentes la constancia apunta a un documento que no es el que se mostro.
 import { VENDEDOR_TERMS, PRIVACIDAD_POLICY, LEGAL_VERSION_CODE, DECLARACION_IVA_TEXTO } from '../data/legalTexts';
 import { sanitizeWebsiteUrl } from '../utils/websiteUrl';
+import { tomarGoogleParaTienda } from '../utils/googleIdToken';
 import { isValidRut } from '../services/adapters';
 import { getStoredCaptadorReferral, clearStoredCaptadorReferral } from '../utils/captadorReferral';
 import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
@@ -367,6 +368,24 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
       setMethodChosen(true);
     }, (msg) => setGoogleMsg(msg));
   }, [activePhase, pendingEmail, methodChosen, googleRemountKey]);
+
+  // Viene del modal de acceso: entro con Google, el correo no tenia cuenta y eligio "Tienda". Se
+  // retoma con ese mismo perfil, como si hubiera usado el boton de Google de este paso (404).
+  useEffect(() => {
+    if (activePhase !== 0 || pendingEmail || methodChosen) return;
+    const profile = tomarGoogleParaTienda();
+    if (!profile) return;
+    setGoogle(profile);
+    setAuthProvider('GOOGLE');
+    setForm((f) => ({
+      ...f,
+      email: profile.email || f.email,
+      responsibleName: f.responsibleName || profile.name || '',
+    }));
+    setMethodChosen(true);
+    // Solo al entrar a la pagina.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function chooseManual() {
     setGoogle(null);
@@ -1505,6 +1524,8 @@ function DocumentsUpload({ session, notice, onDone }: { session: Session; notice
   });
   // Declaracion de contribuyente de IVA (Circular SII 39 de 2025). Si ya la hizo, no se pide.
   const [declaraIva, setDeclaraIva] = useState(false);
+  // Se marca lo que falta recien al intentar enviar, no apenas se abre el paso.
+  const [mostrarFaltantes, setMostrarFaltantes] = useState(false);
   const [existing, setExisting] = useState<VerificacionResponse | null>(null);
   const [website, setWebsite] = useState('');
   const [comment, setComment] = useState('');
@@ -1521,16 +1542,20 @@ function DocumentsUpload({ session, notice, onDone }: { session: Session; notice
 
   // Un doc requerido está satisfecho si se eligió un archivo nuevo o ya existe uno guardado (ej. tras una corrección parcial).
   const ivaYaDeclarada = Boolean(existing?.declaracionIvaAt);
-  const requiredReady = DOC_FIELDS.filter((d) => d.required)
-    .every((d) => files[d.key] || Boolean(existing?.[d.key]))
-    && (ivaYaDeclarada || declaraIva);
+  const docsFaltantes = DOC_FIELDS.filter((d) => d.required && !files[d.key] && !existing?.[d.key]);
+  const faltaIva = !ivaYaDeclarada && !declaraIva;
+  const requiredReady = docsFaltantes.length === 0 && !faltaIva;
 
   async function submit() {
     setError('');
     if (!requiredReady) {
-      setError(!ivaYaDeclarada && !declaraIva
-        ? 'Debes declarar que tu tienda es contribuyente de IVA para vender en RepuesTop.'
-        : 'Adjunta los documentos obligatorios para continuar.');
+      // Dice exactamente que falta: antes el boton quedaba deshabilitado y no explicaba nada.
+      setMostrarFaltantes(true);
+      const faltantes = [
+        ...docsFaltantes.map((d) => d.label),
+        ...(faltaIva ? ['la declaración de contribuyente de IVA'] : []),
+      ];
+      setError(`Para enviar falta: ${faltantes.join(', ')}.`);
       return;
     }
     
@@ -1576,11 +1601,12 @@ function DocumentsUpload({ session, notice, onDone }: { session: Session; notice
         {DOC_FIELDS.map((doc) => (
           <FileField key={doc.key} label={doc.label} hint={doc.hint} required={doc.required}
             file={files[doc.key]} existingUrl={existing?.[doc.key] ?? null}
-            onChange={(f) => setFiles((prev) => ({ ...prev, [doc.key]: f }))} />
+            missing={mostrarFaltantes && docsFaltantes.some((d) => d.key === doc.key)}
+            onChange={(f) => { setFiles((prev) => ({ ...prev, [doc.key]: f })); setError(''); }} />
         ))}
       </div>
 
-      <Field label="Sitio web o red social" hint="Opcional">
+      <Field label="Sitio web o red social (opcional)" hint="Si tienes, nos ayuda a validar tu tienda.">
         <input value={website} placeholder="https://instagram.com/tu-tienda"
           onChange={(e) => setWebsite(e.target.value)} />
       </Field>
@@ -1588,9 +1614,12 @@ function DocumentsUpload({ session, notice, onDone }: { session: Session; notice
       {!ivaYaDeclarada && (
         <div className="founder-reg-terms">
           <input id="declaraContribuyenteIva" type="checkbox" checked={declaraIva}
-            onChange={(e) => setDeclaraIva(e.target.checked)} />
+            onChange={(e) => { setDeclaraIva(e.target.checked); setError(''); }} />
           <label htmlFor="declaraContribuyenteIva">{DECLARACION_IVA_TEXTO}</label>
         </div>
+      )}
+      {mostrarFaltantes && faltaIva && (
+        <p className="founder-reg-hint-error">Marca la declaración de IVA: sin ella el SII no nos permite habilitar tu tienda.</p>
       )}
 
       {notice && (
@@ -1603,7 +1632,8 @@ function DocumentsUpload({ session, notice, onDone }: { session: Session; notice
 
       {error && <div className="founder-reg-alert">{error}</div>}
 
-      <button className="button founder-reg-submit" onClick={submit} disabled={uploading || !requiredReady}>
+      {/* Habilitado aunque falte algo: al presionarlo dice que falta (antes no respondia). */}
+      <button className="button founder-reg-submit" onClick={submit} disabled={uploading}>
         {uploading ? 'Enviando documentos...' : <>Enviar documentos <ArrowRight size={18} /></>}
       </button>
     </div>
@@ -1613,8 +1643,11 @@ function DocumentsUpload({ session, notice, onDone }: { session: Session; notice
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB límite defensivo
 const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
 
-function FileField({ label, hint, required, file, existingUrl, onChange }: {
-  label: string; hint: string; required: boolean; file: File | null; existingUrl?: string | null; onChange: (f: File | null) => void;
+function FileField({ label, hint, required, file, existingUrl, missing = false, onChange }: {
+  label: string; hint: string; required: boolean; file: File | null; existingUrl?: string | null;
+  /** Se intento enviar sin este documento obligatorio. */
+  missing?: boolean;
+  onChange: (f: File | null) => void;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -1644,14 +1677,16 @@ function FileField({ label, hint, required, file, existingUrl, onChange }: {
   };
 
   return (
-    <div className={`founder-file ${hasFile ? 'has-file' : ''} ${fileError ? 'has-error' : ''}`}>
+    <div className={`founder-file ${hasFile ? 'has-file' : ''} ${fileError || missing ? 'has-error' : ''}`}>
       <input ref={inputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" hidden
         onChange={handleFileChange} />
       <button type="button" className="founder-file-drop" onClick={() => inputRef.current?.click()}>
         <span className="founder-file-icon">{hasFile ? <FileText size={20} /> : <UploadCloud size={20} />}</span>
         <span className="founder-file-text">
           <strong>{label}{required && <i className="founder-req">*</i>}</strong>
-          <small>{fileError ? <span className="founder-field-error">{fileError}</span> : file ? file.name : existingUrl ? 'Ya adjuntado · toca para reemplazar' : hint}</small>
+          <small>{fileError ? <span className="founder-field-error">{fileError}</span>
+            : missing ? <span className="founder-field-error">Falta este documento. {hint}</span>
+              : file ? file.name : existingUrl ? 'Ya adjuntado · toca para reemplazar' : hint}</small>
         </span>
         {hasFile && !fileError && <span className="founder-file-check"><Check size={16} /></span>}
       </button>
