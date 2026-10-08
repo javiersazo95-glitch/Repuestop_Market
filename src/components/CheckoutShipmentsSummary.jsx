@@ -12,7 +12,6 @@ const KIND_ICON = { pickup: Store, local: Bike, courier: Truck, other: Package }
  */
 export default function CheckoutShipmentsSummary({ packages }) {
   if (!packages?.length) return null;
-  const outsideCount = packages.filter((pkg) => pkg.outside).length;
   const byStore = new Map();
   packages.forEach((pkg) => byStore.set(pkg.storeName, [...(byStore.get(pkg.storeName) || []), pkg]));
 
@@ -22,11 +21,6 @@ export default function CheckoutShipmentsSummary({ packages }) {
         <Package size={16} /> Tus envíos
         <small>{packages.length === 1 ? '1 paquete' : `${packages.length} paquetes`}</small>
       </h2>
-      {outsideCount > 0 && (
-        <p className="checkout-shipments-lead">
-          {outsideCount === 1 ? '1 paquete va' : `${outsideCount} paquetes van`} a otra comuna: sale por courier y el envío se paga al recibir.
-        </p>
-      )}
       {[...byStore.entries()].map(([storeName, storePackages]) => (
         <div key={storeName} className="checkout-shipments-store">
           <span className="checkout-shipments-store-name"><Store size={14} /> {storeName}</span>

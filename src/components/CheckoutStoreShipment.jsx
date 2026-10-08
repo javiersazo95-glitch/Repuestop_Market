@@ -1,7 +1,7 @@
 import React from 'react';
-import { Bike, Circle, CircleDot, MapPin, Navigation, Package, Store, Truck } from 'lucide-react';
+import { Bike, Circle, CircleDot, MapPin, Package, Store, Truck } from 'lucide-react';
 import {
-  addressesForMethod, deliveryKind, isDispatch, localDeliveryCost, offeredMethodsForItem, outsideComunaDelivery,
+  addressesForMethod, deliveryKind, isDispatch, localDeliveryCost, offeredMethodsForItem,
 } from '../utils/cartDelivery';
 
 const formatCLP = (value) => `$${Math.round(Number(value) || 0).toLocaleString('es-CL')}`;
@@ -35,8 +35,6 @@ export default function CheckoutStoreShipment({
   const dispatch = isDispatch(delivery.method);
   const storeComuna = item.storeComuna || 'la comuna de la tienda';
   const options = addressesForMethod(item, delivery.method, addresses);
-  const address = options.find((entry) => String(entry.id) === String(delivery.addressId)) || null;
-  const outside = outsideComunaDelivery(item, delivery.method, address);
   const zone = kind === 'local' ? `en ${storeComuna}` : `fuera de ${storeComuna}`;
   const radioName = `envio-tienda-${item.proveedorId || item.id}`;
 
@@ -95,19 +93,6 @@ export default function CheckoutStoreShipment({
             </div>
           ) : (
             <p className="checkout-item-delivery-error">No tienes direcciones {zone}. Agrega una o elige otro envío.</p>
-          )}
-          {/* A otra comuna: sale por courier y el envío se paga al recibir. */}
-          {outside && (
-            <div className="checkout-item-outside" role="status">
-              <Navigation size={15} />
-              <span>
-                <strong>Va a otra comuna: {outside.destinationComuna}</strong>
-                <small>
-                  {item.storeName || item.vendedor || 'La tienda'}{outside.storeComuna ? ` está en ${outside.storeComuna}` : ' está en otra comuna'}: el
-                  envío sale por courier y lo pagas al recibirlo.
-                </small>
-              </span>
-            </div>
           )}
         </div>
       ) : kind === 'pickup' ? (
