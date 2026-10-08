@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
   AlertCircle, AlertTriangle, CalendarDays, CheckCircle2, ChevronRight, Clock,
@@ -139,13 +140,18 @@ function WithdrawalStatus({ status }) {
   return <span className={`withdrawal-status ${config.className}`}>{config.label}</span>;
 }
 
-function WithdrawalRejectedNotice({ motivo }) {
+function WithdrawalRejectedNotice({ motivo, rechazadoAt, reintentoCodigo }) {
   return (
     <div className="withdrawal-rejected-notice">
       <AlertTriangle size={15} />
       <div>
         <strong>El depósito no se pudo realizar{motivo ? `: ${motivo}` : '.'}</strong>
-        <span>Tus pedidos volvieron a quedar disponibles. Revisa tus datos bancarios y solicita el retiro nuevamente.</span>
+        {rechazadoAt && <span>Rechazado por el banco el {formatDate(rechazadoAt)}.</span>}
+        {reintentoCodigo ? (
+          <span className="withdrawal-rejected-resolved">Ya lo volviste a solicitar con {reintentoCodigo}.</span>
+        ) : (
+          <span>Tus pedidos volvieron a quedar disponibles. Revisa tus datos bancarios y solicita el retiro nuevamente.</span>
+        )}
       </div>
     </div>
   );
@@ -451,6 +457,22 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
 
   useEffect(() => { loadWithdrawals(); }, [loadWithdrawals]);
 
+  // La alerta de pago fallido del header llega con ?corregir=datos-bancarios: abre el formulario
+  // de datos bancarios para que el vendedor los corrija antes de volver a pedir el retiro.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('corregir') !== 'datos-bancarios' || !sellerId) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('corregir');
+    setSearchParams(next, { replace: true });
+    setNotice({ type: 'warning', message: 'Tu último retiro no pudo depositarse. Corrige tus datos bancarios y vuelve a solicitarlo.' });
+    // El formulario toma los datos actuales al montarse: hay que tenerlos antes de abrirlo.
+    getSellerBankAccountApi(sellerId)
+      .then(setBankAccount)
+      .catch(() => setBankAccount(null))
+      .finally(() => setShowBankModal(true));
+  }, [searchParams, setSearchParams, sellerId]);
+
   const withdrawalInProgress = useMemo(
     () => history.find((withdrawal) => String(withdrawal.estado || '').toUpperCase() === 'SOLICITADO'),
     [history]
@@ -485,6 +507,8 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
       });
       // Limpiar pedidos disponibles localmente de inmediato para evitar cualquier desfase visual
       setPending((prev) => ({ ...prev, pedidos: [], totalARetirar: 0 }));
+      // Un retiro nuevo despues de un rechazo apaga la alerta de pago fallido del header.
+      queryClient.invalidateQueries({ queryKey: qk.sellerWithdrawalAlert(sellerId) });
       await loadWithdrawals();
     } catch (submitError) {
       setError(submitError.message || 'No se pudo solicitar el retiro.');
@@ -844,7 +868,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                   <span><CalendarDays size={15} /> Pago estimado: {formatDate(withdrawal.fechaEfectiva)}</span>
                 </div>
                 {String(withdrawal.estado || '').toUpperCase() === 'RECHAZADO' && (
-                  <WithdrawalRejectedNotice motivo={withdrawal.motivoRechazo} />
+                  <WithdrawalRejectedNotice motivo={withdrawal.motivoRechazo} rechazadoAt={withdrawal.rechazadoAt} reintentoCodigo={withdrawal.reintentoCodigo} />
                 )}
                 <button type="button" onClick={() => openDetail(withdrawal.retiroId)} disabled={detailLoading}>
                   <Eye size={16} /> Ver detalle del retiro

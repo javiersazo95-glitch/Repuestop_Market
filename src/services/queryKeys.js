@@ -8,6 +8,8 @@ export const qk = {
   storeProducts: (id, filters) => ['stores', id, 'products', filters || {}],
   sellerStore: (id) => ['seller', id, 'store'],
   sellerBankAccount: (id) => ['seller', id, 'bankAccount'],
+  /** Pago de retiro rebotado que el vendedor aun no corrige (alerta del header). */
+  sellerWithdrawalAlert: (id) => ['seller', id, 'withdrawalAlert'],
   products: (filters) => ['products', filters || {}],
   product: (id) => ['products', id],
   productQuestions: (id) => ['products', id, 'questions'],

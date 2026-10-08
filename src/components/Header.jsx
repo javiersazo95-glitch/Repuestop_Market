@@ -12,6 +12,7 @@ import RepuesTopLogo from './RepuesTopLogo';
 import { useAuth } from '../context/AuthContext';
 import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
 import HeaderWalletButton from './HeaderWalletButton';
+import WithdrawalFailureAlert from './WithdrawalFailureAlert';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import { getPartCategoriesApi, getPartSubcategoriesApi, getPublicProductsApi, resolveMediaUrl } from '../services/api';
@@ -436,6 +437,8 @@ export default function Header({
             </>
           )}
 
+          {isSellerAccount && <WithdrawalFailureAlert variant="header" />}
+
           {/* Con la cuenta bloqueada el carrito no se muestra: el backend responde 403 a
               todo el lado comprador, asi que el boton solo llevaria a un checkout que
               falla sin explicar por que. */}
@@ -455,6 +458,8 @@ export default function Header({
           )}
         </div>
       </div>
+
+      {isSellerAccount && <WithdrawalFailureAlert variant="strip" />}
 
       {showMobileNav && <button type="button" className="mobile-nav-backdrop" aria-label="Cerrar menú" onClick={() => { setShowCategoryMenu(false); setShowMobileNav(false); }} />}
       <nav id="marketplace-navigation" className={`header-primary-nav ${showMobileNav ? 'mobile-nav-open' : ''}`}>
