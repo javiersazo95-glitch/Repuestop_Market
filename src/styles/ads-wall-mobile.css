@@ -28,8 +28,8 @@
         (marca, comuna, categoria, 24 h, planes) vive en el panel.
      ------------------------------------------------------------------------- */
   .ads-wall-page .ads-filterbar,
-  .ads-wall-page .ads-plate-area--bar,
-  .ads-wall-page .ads-sidebar-block,
+  .ads-wall-page .ads-filters-panel,
+  .ads-wall-page .ads-active-pills,
   .ads-wall-page .ads-sort-field { display: none; }
 
   .ads-mobile-search {
@@ -157,59 +157,7 @@
     padding: 10px 84px 10px 40px;
     border-radius: 12px;
   }
-  .ads-wall-page .ads-fb-chips {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-  /* Los dos selectores van a ancho completo, con rotulo y valor en una linea:
-     "Todas las categorias" a 16px no cabe en media columna. */
-  .ads-wall-page .ads-fb-chip {
-    grid-column: 1 / -1;
-    flex: none;
-    min-width: 0;
-    min-height: 44px;
-    padding: 4px 12px;
-    gap: 6px;
-  }
-  .ads-wall-page .ads-fb-chip-body { flex-direction: row; align-items: center; gap: 6px; }
-  .ads-wall-page .ads-fb-chip-body em { flex: 0 0 auto; font-size: 12px; }
-  .ads-wall-page .ads-fb-chip-body em::after { content: ':'; }
-  /* El rotulo ("Ubicacion"/"Categoria") ya identifica el chip: el icono se
-     quita para que quepa el valor completo ("Todas las comunas"). */
-  .ads-wall-page .ads-fb-chip > svg:first-child { display: none; }
-  .ads-wall-page .ads-fb-chip-caret { width: 14px; height: 14px; margin-left: -2px; }
-  .ads-wall-page .ads-fb-chip-body select {
-    width: 100%;
-    min-width: 0;
-    font-size: 16px;
-    letter-spacing: -.2px;
-    line-height: 1.2;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .ads-wall-page .ads-fb-toggle {
-    flex: none;
-    min-width: 0;
-    min-height: 42px;
-    padding: 0 8px;
-    justify-content: center;
-    font-size: 12.5px;
-    border-radius: 10px;
-  }
-  .ads-wall-page .ads-fb-toggle span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
   .ads-wall-page .ads-suggestions { left: 0; right: 0; max-height: 50vh; max-height: 50dvh; overflow-y: auto; }
-
-  /* Busqueda por patente: input y boton apilados */
-  .ads-wall-page .ads-plate-area--bar { padding: 12px; }
-  .ads-wall-page .ads-plate-row { flex-direction: column; gap: 8px; }
-  .ads-wall-page .ads-plate-btn { width: 100%; min-height: 46px; justify-content: center; }
-  .ads-wall-page .ads-plate-hint { font-size: 12.5px; }
 
   /* -------------------------------------------------------------------------
      2. Historias
@@ -231,48 +179,8 @@
     margin-top: 12px;
   }
   .ads-wall-page .ads-sidebar { display: contents; }
-  .ads-wall-page .ads-sidebar-block { order: 1; }
   .ads-wall-page .ads-main-col { order: 2; }
   .ads-wall-page .ads-provider-card { order: 3; }
-
-  /* Categorias: franja horizontal sin caja */
-  .ads-wall-page .ads-sidebar-block {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-    border-radius: 0;
-  }
-  .ads-wall-page .ads-sidebar-title {
-    margin: 0 0 6px 2px;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    color: var(--ads-muted);
-  }
-  .ads-wall-page .ads-sidebar-cats {
-    display: flex;
-    gap: 6px;
-    margin: 0 -12px;
-    padding: 2px 12px 6px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-  .ads-wall-page .ads-sidebar-cats::-webkit-scrollbar { display: none; }
-  .ads-wall-page .ads-sidebar-cats li { flex: 0 0 auto; }
-  .ads-wall-page .ads-sidebar-cat {
-    width: auto;
-    min-height: 40px;
-    padding: 0 12px;
-    gap: 7px;
-    border: 1px solid var(--ads-border);
-    border-radius: 999px;
-    background: #fff;
-    font-size: 12.5px;
-    white-space: nowrap;
-  }
-  .ads-wall-page .ads-sidebar-cat.active { border-color: var(--ads-primary); background: var(--ads-primary-light); }
 
   /* Resultados */
   .ads-wall-page .ads-main-col { gap: 10px; }
@@ -363,9 +271,4 @@
   .ads-filter-apply { width: 100%; min-height: 46px; }
   .ads-filter-toggle,
   .ads-filter-chips > * { min-height: 38px; }
-}
-
-/* Pantallas angostas: los cuatro accesos a una columna para no cortar texto. */
-@media (max-width: 359px) {
-  .ads-wall-page .ads-fb-toggle { grid-column: 1 / -1; }
 }

@@ -33,87 +33,7 @@
   border-radius: 14px;
   box-shadow: 0 4px 14px -10px rgba(15, 23, 42, 0.18);
 }
-.ads-fb-search { width: 100%; }
-.ads-fb-chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  gap: 10px;
-}
 
-/* Chip de dos líneas: etiqueta arriba, valor (select) abajo */
-.ads-fb-chip {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 7px 12px;
-  min-width: 176px;
-  border: 1px solid var(--ads-border);
-  border-radius: 12px;
-  background: var(--ads-surface-muted);
-  color: var(--ads-primary);
-  cursor: pointer;
-}
-.ads-fb-chip:hover { border-color: #B7C4D0; }
-.ads-fb-chip:focus-within {
-  border-color: var(--ads-primary);
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.12);
-}
-.ads-fb-chip > svg { flex-shrink: 0; }
-.ads-fb-chip-caret { color: var(--ads-muted); flex-shrink: 0; }
-.ads-fb-chip-body {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  flex: 1;
-}
-.ads-fb-chip-body em {
-  font-style: normal;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--ads-muted);
-}
-.ads-fb-chip-body select {
-  border: none;
-  background: none;
-  outline: none;
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--ads-text);
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  text-overflow: ellipsis;
-  padding: 0;
-}
-
-.ads-fb-toggle {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 46px;
-  padding: 0 16px;
-  border: 1px solid var(--ads-border);
-  border-radius: 12px;
-  background: var(--ads-surface-muted);
-  color: var(--ads-text);
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.ads-fb-toggle:hover { border-color: #B7C4D0; }
-.ads-fb-toggle svg { color: var(--ads-primary); }
-.ads-fb-toggle.active {
-  border-color: var(--ads-primary);
-  background: var(--ads-primary-light);
-  color: var(--ads-primary);
-}
 .ads-filter-btn-badge {
   display: inline-flex;
   align-items: center;
@@ -227,47 +147,7 @@
 }
 .ads-suggestion-hint { font-size: 11px; color: var(--ads-muted); }
 
-/* Búsqueda por patente (bloque colapsable bajo la barra) */
-.ads-plate-area {
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.ads-plate-area--bar {
-  margin-top: 10px;
-  border: 1px solid var(--ads-border);
-  border-radius: 14px;
-  background: #fff;
-}
-.ads-plate-hint {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--ads-muted);
-  line-height: 1.45;
-}
-.ads-plate-row { display: flex; gap: 10px; }
-.ads-plate-row .ads-search-input-wrap { flex: 1; }
-.ads-plate-row .ads-search-input-wrap input {
-  padding-right: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.ads-plate-btn {
-  min-width: 96px;
-  padding: 0 18px;
-  border: none;
-  border-radius: 12px;
-  background: var(--ads-primary);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.ads-plate-btn:disabled { opacity: 0.7; cursor: progress; }
+/* Vehiculo identificado por patente (fila movil) */
 .ads-plate-vehicle {
   display: flex;
   align-items: center;
@@ -314,44 +194,6 @@
   position: sticky;
   top: 16px;
 }
-.ads-sidebar-block {
-  background: #fff;
-  border: 1px solid var(--ads-border);
-  border-radius: 14px;
-  padding: 16px;
-  box-shadow: 0 4px 14px -10px rgba(15, 23, 42, 0.18);
-}
-.ads-sidebar-title {
-  margin: 0 0 10px;
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--ads-primary);
-}
-.ads-sidebar-cats { list-style: none; margin: 0; padding: 0; }
-.ads-sidebar-cat {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 9px 10px;
-  border: none;
-  border-radius: 9px;
-  background: none;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ads-text);
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.14s ease, color 0.14s ease;
-}
-.ads-sidebar-cat svg { color: var(--ads-muted); flex-shrink: 0; }
-.ads-sidebar-cat:hover { background: var(--ads-surface-muted); }
-.ads-sidebar-cat.active {
-  background: var(--ads-primary-light);
-  color: var(--ads-primary);
-  font-weight: 700;
-}
-.ads-sidebar-cat.active svg { color: var(--ads-primary); }
 
 /* Tarjeta promo del proveedor */
 .ads-provider-card {
@@ -1077,27 +919,16 @@ button.ad-meta-item:hover { color: var(--ads-primary); }
 @media (max-width: 960px) {
   .ads-layout { grid-template-columns: 1fr; }
   .ads-sidebar { position: static; }
-  .ads-sidebar-cats {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    scrollbar-width: none;
-  }
-  .ads-sidebar-cats::-webkit-scrollbar { display: none; }
-  .ads-sidebar-cat { width: auto; white-space: nowrap; border: 1px solid var(--ads-border); border-radius: 999px; }
 }
 
 @media (max-width: 560px) {
   .ads-grid { grid-template-columns: 1fr; }
-  .ads-fb-chip { flex: 1 1 100%; }
-  .ads-fb-toggle { flex: 1 1 calc(50% - 5px); justify-content: center; }
   .ads-main-head { align-items: flex-start; }
 }
 
 @media (max-width: 960px) {
   .ads-layout { grid-template-columns: minmax(0, 1fr); }
-  .ads-layout, .ads-sidebar, .ads-main-col, .ads-sidebar-block, .ads-provider-card, .ads-grid, .ad-card { min-width: 0; max-width: 100%; }
+  .ads-layout, .ads-sidebar, .ads-main-col, .ads-provider-card, .ads-grid, .ad-card { min-width: 0; max-width: 100%; }
   .ads-provider-card, .ad-card { overflow-wrap: anywhere; }
   .ads-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); }
 }
@@ -1105,4 +936,278 @@ button.ad-meta-item:hover { color: var(--ads-primary); }
 @media (max-width: 560px) {
   .ads-grid { grid-template-columns: minmax(0, 1fr); }
   .ads-main-head { flex-wrap: wrap; }
+}
+
+/* ==========================================================================
+   ESCRITORIO (rediseño del 8-oct): barra unica (lupa + patente) arriba y todos
+   los filtros en la sidebar izquierda, como el catalogo de repuestos. En celular
+   nada de esto se ve: sigue la fila .ads-mobile-search con su modal de filtros.
+   ========================================================================== */
+
+/* ---------- Barra de busqueda unificada ---------- */
+.ads-sb {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.ads-sb-field {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 50px;
+  padding: 0 8px 0 14px;
+  border: 1px solid var(--ads-border);
+  border-radius: 12px;
+  background: var(--ads-surface-muted);
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.ads-sb-field:focus-within {
+  border-color: var(--ads-primary);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.12);
+}
+.ads-sb-lead-icon { flex: 0 0 auto; color: var(--ads-muted); }
+.ads-sb-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 14.5px;
+  color: var(--ads-text);
+  outline: none;
+}
+.ads-sb-input::placeholder { color: #8a99a8; }
+.ads-sb-input--plate {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.ads-sb-input--plate::placeholder {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* Modo patente: el campo toma aspecto de placa (franja azul "CL" a la izquierda). */
+.ads-sb.is-plate .ads-sb-field { padding-left: 0; overflow: visible; }
+.ads-sb-plate-flag {
+  display: inline-flex;
+  align-self: stretch;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 11px 0 0 11px;
+  background: var(--ads-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* Chip del vehiculo identificado, dentro del campo y antes del texto. */
+.ads-sb-vehicle {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  min-width: 0;
+  max-width: 46%;
+  border: 1px solid #A7C6EE;
+  border-radius: 999px;
+  background: var(--ads-primary-light);
+  color: var(--ads-primary);
+}
+.ads-sb-vehicle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 5px 4px 5px 10px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.ads-sb-vehicle-label svg { flex: 0 0 auto; }
+.ads-sb-vehicle-label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ads-sb-vehicle-label:hover span { text-decoration: underline; }
+.ads-sb-vehicle-remove {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 3px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.ads-sb-vehicle-remove:hover { background: rgba(0, 86, 191, 0.14); }
+
+.ads-sb-icon-btn {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--ads-border);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ads-muted);
+  cursor: pointer;
+}
+.ads-sb-icon-btn:hover { border-color: #B7C4D0; color: var(--ads-text); }
+.ads-sb-nearby { background: var(--ads-primary-light); color: var(--ads-primary); }
+.ads-sb-nearby.active { border-color: var(--ads-primary); background: var(--ads-primary); color: #fff; }
+.ads-sb-nearby:disabled { cursor: progress; opacity: 0.8; }
+
+.ads-sb-action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  border: 1px solid var(--ads-border);
+  border-radius: 12px;
+  background: var(--ads-surface-muted);
+  color: var(--ads-primary);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.ads-sb-action:hover { border-color: #B7C4D0; }
+.ads-sb-action--primary { border-color: var(--ads-primary); background: var(--ads-primary); color: #fff; }
+.ads-sb-action--primary:hover { border-color: var(--ads-primary-dark); background: var(--ads-primary-dark); }
+.ads-sb-action--primary:disabled { cursor: progress; opacity: 0.75; }
+.ads-sb-action--plate.active { border-color: var(--ads-primary); background: var(--ads-primary-light); }
+.ads-sb-plate-text { font-weight: 800; letter-spacing: 0.1em; }
+
+.ads-sb-hint { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ads-muted); }
+.ads-sb-hint.is-error { color: #D92D20; font-weight: 600; }
+
+/* ---------- Sidebar de filtros (clases del catalogo + ajustes del Mural) ---------- */
+.ads-sidebar { position: static; }
+.ads-sidebar .ads-filters-panel { position: static; top: auto; }
+.ads-fs-mobile-close,
+.ads-fs-mobile-apply { display: none; }
+.ads-filters-panel .btn-reset-filters-mini:disabled { opacity: 0.5; cursor: default; }
+.ads-filters-panel .filter-section-group.is-collapsed .filter-group-toggle { margin: 0; }
+.ads-fs-body { display: flex; flex-direction: column; gap: 8px; }
+.ads-fs-categories { max-height: 360px; overflow-y: auto; scrollbar-width: thin; }
+.ads-fs-cat-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--ads-surface-muted);
+  color: var(--ads-muted);
+}
+.ads-filters-panel .filter-option-btn.active .ads-fs-cat-icon { background: #fff; color: var(--ads-primary); }
+.ads-fs-note { margin: 0; font-size: 11.5px; color: var(--ads-muted); }
+
+/* Interruptores compactos (reusan .ads-urgent-card del formulario del aviso). */
+.ads-fs-switch { gap: 10px; padding: 9px 10px; border-radius: 10px; box-shadow: none; }
+.ads-fs-switch .ads-urgent-icon { width: 28px; height: 28px; }
+.ads-fs-switch .ads-urgent-icon.is-whatsapp { color: #128C4A; background: #E8F8EE; }
+.ads-fs-switch .ads-urgent-text strong { font-size: 12.5px; }
+.ads-fs-switch .ads-urgent-text small { font-size: 11px; }
+.ads-fs-switch input[type="checkbox"] { width: 36px; height: 20px; }
+.ads-fs-switch input[type="checkbox"]::after { width: 14px; height: 14px; }
+.ads-fs-switch input[type="checkbox"]:checked::after { transform: translateX(16px); }
+.ads-fs-switch.is-disabled { opacity: 0.7; cursor: progress; }
+
+.ads-fs-vehicle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid #A7F3D0;
+  border-radius: 10px;
+  background: #ECFDF5;
+}
+.ads-fs-vehicle > svg { flex: 0 0 auto; color: #059669; }
+.ads-fs-vehicle span { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.ads-fs-vehicle strong { font-size: 13px; color: #065F46; }
+.ads-fs-vehicle small { font-size: 11.5px; color: var(--ads-muted); letter-spacing: 0.04em; }
+.ads-fs-vehicle-actions { display: flex; gap: 8px; }
+.ads-fs-vehicle-actions button {
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 34px;
+  border: 1px solid var(--ads-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ads-primary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ads-fs-vehicle-actions button:hover { border-color: var(--ads-primary); background: var(--ads-primary-light); }
+.ads-filters-panel .ads-filter-chips { gap: 6px; }
+
+/* ---------- Pastillas de filtros activos sobre la grilla ---------- */
+.ads-active-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ads-active-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+  min-height: 32px;
+  padding: 0 10px 0 12px;
+  border: 1px solid #BFD4F5;
+  border-radius: 999px;
+  background: var(--ads-primary-light);
+  color: var(--ads-primary);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ads-active-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ads-active-pill svg { flex: 0 0 auto; }
+.ads-active-pill:hover { border-color: var(--ads-primary); }
+.ads-active-pill.is-vehicle { border-color: #A7F3D0; background: #ECFDF5; color: #047857; }
+.ads-active-pills-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  color: var(--ads-muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ads-active-pills-clear:hover { color: var(--ads-primary); text-decoration: underline; }
+
+@media (min-width: 769px) {
+  .ads-results-clear--mobile { display: none; }
+  /* Tablet horizontal: la sidebar se mantiene a la izquierda, mas angosta. */
+  .ads-layout { grid-template-columns: 280px minmax(0, 1fr); }
+}
+@media (min-width: 769px) and (max-width: 960px) {
+  .ads-layout { grid-template-columns: 240px minmax(0, 1fr); gap: 16px; }
+  .ads-grid { grid-template-columns: minmax(0, 1fr); }
+  .ads-sb-vehicle { max-width: 40%; }
 }
