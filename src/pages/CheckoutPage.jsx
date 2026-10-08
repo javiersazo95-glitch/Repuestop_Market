@@ -633,6 +633,9 @@ export default function CheckoutPage() {
             marca: vehicle.marca || null,
             modelo: vehicle.modelo || null,
             anio: Number(vehicle.anio) || null,
+            version: vehicle.version || null,
+            // Patente o búsqueda manual (8-oct): a la tienda le llega lo ingresado a mano.
+            origen: vehicle.origen || (vehicle.patente ? 'PATENTE' : 'MANUAL'),
           } : null);
           // El comprador marcó "Entiendo y quiero comprarlo igual": los productos que no figuran
           // como compatibles con su vehículo van con `aceptaAvisoCompatibilidad` (si no, el
