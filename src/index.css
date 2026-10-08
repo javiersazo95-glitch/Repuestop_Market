@@ -21368,3 +21368,5 @@ input.has-success {
   .withdrawal-sale-rows > div { grid-template-columns: 1fr; gap: 2px; }
 }
 
+.info-hint-sheet-footer { padding: 0 16px 16px; }
+.info-hint-sheet-footer button { width: 100%; min-height: 44px; border: 0; border-radius: 10px; background: #0b5fd0; color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }

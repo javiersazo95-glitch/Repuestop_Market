@@ -1034,3 +1034,77 @@
   .mchat-bubble-wrap { max-width: 86%; }
   .mchat-input textarea { font-size: 16px; }
 }
+
+/* ---------------------------------------------------------------------------
+   Chat compacto en celular (8-oct): encabezado de una fila, pestañas delgadas,
+   franjas de una línea y menú "⋯". En escritorio no cambia nada.
+   ------------------------------------------------------------------------- */
+.mchat-mobile-only { display: none !important; }
+.mchat-notices { display: grid; gap: 16px; }
+@media (max-width: 768px) {
+  .mchat-desktop-only { display: none !important; }
+  .mchat-headbar.mchat-mobile-only { display: flex !important; }
+  .mchat-tabs--compact.mchat-mobile-only { display: flex !important; }
+  .mchat-strips.mchat-mobile-only { display: grid !important; }
+  .mchat-status-strip.mchat-mobile-only { display: flex !important; }
+
+  .mchat-scroll { padding: 8px 12px 12px; gap: 8px; }
+  .mchat-headbar {
+    align-items: center;
+    gap: 6px;
+    padding: calc(6px + env(safe-area-inset-top)) 6px 6px;
+    border-bottom: 1px solid var(--rt-border, #e2e8f0);
+    background: #fff;
+  }
+  .mchat-headbar.is-resolved { background: #ecfdf3; border-bottom-color: #bbe5d3; }
+  .mchat-avatar--sm { width: 32px; height: 32px; flex: 0 0 auto; }
+  .mchat-headbar-copy { display: grid; flex: 1; min-width: 0; line-height: 1.2; }
+  .mchat-headbar-copy strong { overflow: hidden; color: #0f172a; font-size: 14.5px; text-overflow: ellipsis; white-space: nowrap; }
+  .mchat-headbar-copy small { overflow: hidden; color: #64748b; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+  .mchat-headbar-copy small.is-resolved { color: #15803d; font-weight: 700; }
+
+  .mchat-tabs--compact { gap: 4px; margin: 8px 12px 0; padding: 3px; border-radius: 999px; }
+  .mchat-tabs--compact .mchat-tab { min-height: 32px; border-radius: 999px; font-size: 12.5px; }
+  .mchat-tabs--compact .mchat-tab-avatar { width: 16px; height: 16px; }
+  .mchat-tabs--compact .mchat-tab.is-mediator:not(.is-active) { border-color: transparent; background: transparent; color: #64748b; }
+  .mchat-mediator-composer .mchat-attach-btn { width: 38px; height: 40px; border: 0; background: transparent; }
+
+  .mchat-strips { grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
+  .mchat-strip { display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; overflow: hidden; min-height: 32px; padding: 0 12px; border: 0; border-radius: 10px; background: #f1f5f9; color: #64748b; font-size: 12.5px; font-weight: 600; text-align: left; cursor: pointer; }
+  .mchat-strip > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mchat-strip > svg { flex: 0 0 auto; }
+  .mchat-strip.is-success { color: #15803d; }
+  .mchat-strip.is-mediation { color: var(--rt-mediation-text, #6d28d9); }
+
+  .mchat-mediator-panel { gap: 8px; }
+  .mchat-status-strip { align-items: center; gap: 6px; min-height: 34px; color: #64748b; font-size: 12.5px; font-weight: 600; }
+  .mchat-status-strip > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mchat-status-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+  .mchat-status-dot.is-open { background: var(--rt-mediation, #7c3aed); }
+  .mchat-status-dot.is-done { background: #16a34a; }
+  .mchat-section { padding: 0; border: 0; background: none; box-shadow: none; }
+  .mchat-mediator-panel .mchat-infobox { justify-content: center; padding: 16px 8px; border: 0; background: none; color: #64748b; text-align: center; }
+  .mchat-mediator-panel .mchat-infobox > svg { display: none; }
+  .mchat-mediator-composer { margin: 0; padding: 8px 12px; border: 0; border-top: 1px solid var(--rt-border, #e2e8f0); border-radius: 0; box-shadow: none; }
+}
+
+/* Botón de solo ícono, discreto (encabezado y línea de estado). */
+.mchat-iconbtn { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: #64748b; cursor: pointer; }
+.mchat-iconbtn:hover, .mchat-iconbtn:active { background: #f1f5f9; }
+.mchat-iconbtn.is-strong { color: #0f172a; }
+.mchat-iconbtn-dot { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border: 1px solid #fff; border-radius: 50%; background: #16a34a; }
+
+/* Menú "⋯" (hoja inferior en celular). */
+.mchat-menu-sheet { display: grid; gap: 2px; padding: 8px 8px calc(12px + env(safe-area-inset-bottom)); }
+.mchat-menu-grabber { justify-self: center; width: 36px; height: 4px; margin-bottom: 6px; border-radius: 2px; background: #e2e8f0; }
+.mchat-menu-title { padding: 0 12px 6px; color: #64748b; font-size: 12px; font-weight: 700; }
+.mchat-menu-item { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 0 12px; border: 0; border-radius: 10px; background: none; color: #0f172a; font-size: 14.5px; text-align: left; cursor: pointer; }
+.mchat-menu-item:hover { background: #f1f5f9; }
+.mchat-menu-item > svg:first-child { flex: 0 0 auto; color: #0b5fd0; }
+.mchat-menu-item > svg:last-child { flex: 0 0 auto; color: #94a3b8; }
+.mchat-menu-item.is-success, .mchat-menu-item.is-success > svg:first-child { color: #15803d; }
+.mchat-menu-item.is-muted > svg:first-child { color: #94a3b8; }
+.mchat-menu-copy { display: grid; flex: 1; min-width: 0; }
+.mchat-menu-copy small { color: #64748b; font-size: 12px; }
+.mchat-summary-sheet { display: grid; gap: 12px; }
+.mchat-summary-sheet .mchat-case-card { min-height: 0; }

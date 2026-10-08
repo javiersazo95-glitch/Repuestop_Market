@@ -5,7 +5,7 @@ import {
   AlertTriangle, ArrowLeft, Award, BookOpen, Camera, Car, Check, CheckCircle2, ChevronDown, ChevronRight, ChevronUp,
   CircleUser, Clock, CloudUpload, CreditCard, Download, FileText, Flag, Gavel, GitCommitVertical, Headphones, Hourglass,
   Image as ImageIcon, Images, Info, Loader2, Lock, MessageCircleMore, MessageSquareMore, Package, Paperclip,
-  Receipt, Send, Shield, ShieldCheck, Store, User, Users, Wallet, Wrench, X,
+  MoreHorizontal, Receipt, Send, Shield, ShieldCheck, Store, User, Users, Wallet, Wrench, X,
 } from 'lucide-react';
 import {
   escalateMediationApi, getMediationChatApi, requestWarrantySupportApi, resolveMediationApi,
@@ -19,6 +19,7 @@ import ChatImagePreview from './ChatImagePreview';
 import SaleReceiptViewerModal from './SaleReceiptViewerModal';
 import { buildMediationTimeline, refundStatusLabel, resolutionFavorLabel } from '../utils/mediationTimeline';
 import mediatorAvatar from '../assets/mediator-profile.webp';
+import { InfoSheet } from './InfoHint';
 
 /**
  * Chat del pedido entre el comprador y la tienda, clon 1:1 de `mobile/app/mediation-chat.tsx`:
@@ -447,6 +448,10 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   const [showResolutionDetail, setShowResolutionDetail] = useState(false);
   const [activeTab, setActiveTab] = useState('chat');
   const [summaryOpen, setSummaryOpen] = useState(false);
+  // Celular (8-oct): menú "⋯", resumen en hoja y la hoja de los avisos largos.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [summarySheetOpen, setSummarySheetOpen] = useState(false);
+  const [infoSheet, setInfoSheet] = useState(null);
   const [mediatorText, setMediatorText] = useState('');
   const [mediatorFiles, setMediatorFiles] = useState([]);
   const [mediatorError, setMediatorError] = useState('');
@@ -887,6 +892,75 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   }
 
   const showActionsRow = canMarkResolved || (chat && !isEscalated && !mediationResolved && !claimResolvedByBuyer);
+  // El detalle de la mediación, con el mismo criterio que `ResolutionTrigger`.
+  const hasRefundDetail = mode === 'buyer' && chat?.resolucionFavor === 'COMPRADOR' && Number(chat?.montoReembolso || 0) > 0;
+  const hasDetail = Boolean(chat?.estadoMediacion || chat?.motivoResolucion || hasRefundDetail);
+  const detailLabel = chat?.estadoMediacion === 'EN_MEDIACION'
+    ? 'Ver detalle de la mediación'
+    : hasRefundDetail ? 'Resolución y seguimiento del reembolso' : 'Ver resolución de la mediación';
+  const canAskMediator = Boolean(chat) && !isEscalated && !mediationResolved && !claimResolvedByBuyer;
+  // Menú "⋯" en celular: lo que en escritorio son chips y botones grandes.
+  const menuItems = [
+    ...(hasDetail ? [{ key: 'detalle', Icon: Clock, label: detailLabel, onPress: () => setShowResolutionDetail(true) }] : []),
+    ...(isEscalated ? [{ key: 'resumen', Icon: BookOpen, label: 'Resumen de la mediación', onPress: () => { setActiveTab('mediator'); setSummarySheetOpen(true); } }] : []),
+    { key: 'vehiculo', Icon: Car, label: chat?.boletaVentaDisponible ? 'Vehículo y boleta' : 'Vehículo', onPress: () => setShowVehicleReceipt(true) },
+    { key: 'pedido', Icon: Receipt, label: codigo ? `Pedido ${codigo}` : 'Ver compra', onPress: () => navigate(orderPath) },
+    ...(canMarkResolved ? [{ key: 'resolver', Icon: CheckCircle2, label: 'Marcar reclamo como resuelto', tone: 'success', onPress: () => openDialog('resolve') }] : []),
+    ...(canAskMediator ? [{
+      key: 'mediador',
+      Icon: chat.mediadorDisponible ? Gavel : Lock,
+      label: 'Solicitar mediador',
+      hint: chat.mediadorDisponible ? '' : 'Aún no disponible: toca para ver por qué',
+      tone: chat.mediadorDisponible ? '' : 'muted',
+      onPress: () => (chat.mediadorDisponible ? openDialog('escalate') : setShowMediatorLockedInfo(true)),
+    }] : []),
+    ...(canRequestWarrantySupport ? [{ key: 'garantia', Icon: Headphones, label: 'Pedir ayuda a soporte (garantía legal)', onPress: openWarrantyDialog }] : []),
+    ...(warrantyTicketPath ? [{ key: 'ticket', Icon: Headphones, label: 'Ver ticket de soporte', onPress: () => navigate(warrantyTicketPath) }] : []),
+  ];
+  // El resumen del caso: en escritorio se despliega en la pantalla; en celular, en una hoja.
+  // Desde la hoja del resumen, la foto se abre con la hoja cerrada (no quedan dos capas).
+  const openSummaryImage = (image) => { setSummarySheetOpen(false); setViewerImage(image); };
+  const summaryContent = (
+    <>
+          <div className="mchat-case-grid">
+            <CaseInfoCard icon={Wrench} label="Motivo" value={chat?.motivoEscalacion ?? 'No informado'} />
+            <CaseInfoCard icon={FileText} label="Solicitud" value={chat?.descripcionEscalacion ?? 'Sin detalle registrado'} />
+            <CaseInfoCard icon={Receipt} label="Pedido" value={codigo || '-'} />
+            <CaseInfoCard icon={Users} label="Solicitante" value={chat?.escaladoPor ?? 'No informado'} />
+          </div>
+
+          <section className="mchat-section">
+            <div className="mchat-section-title"><Images size={18} /> Mis evidencias</div>
+            {myEvidence.length
+              ? <EvidenceStrip items={myEvidence} onOpenImage={openSummaryImage} labelPrefix="Ampliar mi evidencia" />
+              : <span className="mchat-caption mchat-muted">Aún no has enviado evidencias.</span>}
+          </section>
+
+          <section className="mchat-section">
+            <div className="mchat-section-title is-muted"><Images size={18} /> Evidencias de {otherPartyName}</div>
+            {otherEvidence.length
+              ? <EvidenceStrip items={otherEvidence} onOpenImage={openSummaryImage} labelPrefix={`Ampliar evidencia de ${otherPartyName}`} />
+              : <span className="mchat-caption mchat-muted">{otherPartyName} aún no ha enviado evidencias.</span>}
+          </section>
+
+          {escalationEvidence.length > 0 && (
+            <section className="mchat-section">
+              <div className="mchat-section-title"><Images size={18} /> Adjuntos del caso</div>
+              <EvidenceStrip items={escalationEvidence} onOpenImage={openSummaryImage} labelPrefix="Ampliar adjunto del caso" />
+            </section>
+          )}
+    </>
+  );
+  const mediatorTabs = (compact) => (
+    <div className={`mchat-tabs ${compact ? 'mchat-tabs--compact mchat-mobile-only' : 'mchat-desktop-only'}`} role="tablist" aria-label="Conversaciones del caso">
+      <button type="button" role="tab" aria-selected={activeTab === 'chat'} className={`mchat-tab ${activeTab === 'chat' ? 'is-active' : ''}`} onClick={() => setActiveTab('chat')}>
+        <MessageCircleMore size={compact ? 15 : 18} /> Chat
+      </button>
+      <button type="button" role="tab" aria-selected={activeTab === 'mediator'} className={`mchat-tab is-mediator ${compact && activeTab === 'mediator' ? 'is-active' : ''}`} onClick={() => { setActiveTab('mediator'); void load({ quiet: true }); }} aria-label="Ver pestaña del mediador">
+        <img src={mediatorAvatar} alt="" className="mchat-tab-avatar" /> Mediador
+      </button>
+    </div>
+  );
   const senderRoleOf = (emisorId) => {
     const mine = String(emisorId) === viewerUserId;
     if (isBuyer) return mine ? 'BUYER' : 'SELLER';
@@ -895,9 +969,37 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
 
   return (
     <article className="mchat">
+      {/* Celular: encabezado de una fila y pestañas delgadas, fijos arriba. Vehículo/boleta,
+          pedido y el menú "⋯" son íconos sutiles; el chat se queda con la pantalla. */}
+      <header className={`mchat-headbar mchat-mobile-only ${resolved ? 'is-resolved' : ''}`}>
+        <button type="button" className="mchat-iconbtn" onClick={onClose} aria-label="Volver"><ArrowLeft size={20} /></button>
+        <span className={`mchat-avatar mchat-avatar--sm ${isBuyer ? 'is-store' : 'is-buyer'}`}>
+          {participantPhoto
+            ? <img src={participantPhoto} alt="" referrerPolicy="no-referrer" />
+            : (isBuyer ? <Store size={15} /> : <User size={15} />)}
+        </span>
+        <span className="mchat-headbar-copy">
+          <strong>{participantName || participantRoleLabel}</strong>
+          <small className={resolved ? 'is-resolved' : ''}>
+            {mediationResolved
+              ? 'Mediación resuelta'
+              : claimResolvedByBuyer
+                ? (isBuyer ? 'Reclamo resuelto con la tienda' : 'Reclamo resuelto por el comprador')
+                : isEscalated ? `${participantRoleLabel} · En mediación` : participantRoleLabel}
+          </small>
+        </span>
+        <button type="button" className="mchat-iconbtn" onClick={() => setShowVehicleReceipt(true)} aria-label={chat?.boletaVentaDisponible ? 'Ver vehículo y boleta de la compra' : 'Ver vehículo de la compra'}>
+          <Car size={18} />
+          {chat?.boletaVentaDisponible && <i className="mchat-iconbtn-dot" aria-hidden="true" />}
+        </button>
+        <button type="button" className="mchat-iconbtn" onClick={() => navigate(orderPath)} aria-label={`Ver detalles de la compra${codigo ? ` (Pedido ${codigo})` : ''}`}><Receipt size={18} /></button>
+        <button type="button" className="mchat-iconbtn is-strong" onClick={() => setMenuOpen(true)} aria-label="Más opciones del caso"><MoreHorizontal size={20} /></button>
+      </header>
+      {isEscalated && mediatorTabs(true)}
+
       <div className="mchat-scroll" ref={scrollRef}>
         {/* Cabecera: fila 1 contraparte, fila 2 accesos a la compra, fila 3 acciones. */}
-        <section className={`mchat-header ${resolved ? 'is-resolved' : ''}`}>
+        <section className={`mchat-header mchat-desktop-only ${resolved ? 'is-resolved' : ''}`}>
           <div className="mchat-header-top">
             <button type="button" className="mchat-back" onClick={onClose} aria-label="Volver"><ArrowLeft size={22} /></button>
             <span className={`mchat-avatar ${isBuyer ? 'is-store' : 'is-buyer'}`}>
@@ -953,17 +1055,9 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
           )}
         </section>
 
-        {isEscalated && (
-          <div className="mchat-tabs" role="tablist" aria-label="Conversaciones del caso">
-            <button type="button" role="tab" aria-selected={activeTab === 'chat'} className={`mchat-tab ${activeTab === 'chat' ? 'is-active' : ''}`} onClick={() => setActiveTab('chat')}>
-              <MessageCircleMore size={18} /> Chat
-            </button>
-            <button type="button" role="tab" aria-selected={activeTab === 'mediator'} className="mchat-tab is-mediator" onClick={() => { setActiveTab('mediator'); void load({ quiet: true }); }} aria-label="Ver pestaña del mediador">
-              <img src={mediatorAvatar} alt="" className="mchat-tab-avatar" /> Mediador
-            </button>
-          </div>
-        )}
+        {isEscalated && mediatorTabs(false)}
 
+        <div className="mchat-desktop-only mchat-notices">
         {warrantyTicketPath ? (
           <button type="button" className="mchat-notice is-link" onClick={() => navigate(warrantyTicketPath)}>
             <Headphones size={19} className="is-primary" />
@@ -998,13 +1092,75 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
           </div>
         )}
 
+        </div>
+
+        {/* Celular: cada aviso largo es una franja de una línea; el texto completo se abre al tocarla. */}
+        <div className="mchat-mobile-only mchat-strips">
+          {warrantyTicketPath ? (
+            <button type="button" className="mchat-strip" onClick={() => navigate(warrantyTicketPath)}>
+              <Headphones size={15} /><span>Soporte revisa tu caso por garantía legal</span><ChevronRight size={14} />
+            </button>
+          ) : canRequestWarrantySupport ? (
+            <button type="button" className="mchat-strip" onClick={() => setInfoSheet({
+              title: 'Garantía legal',
+              paragraphs: [`Pasó el plazo para pedir un mediador, pero tu garantía legal sigue vigente${warrantyUntilLabel ? ` hasta el ${warrantyUntilLabel}` : ''}. Soporte de RepuesTop puede ayudarte con la tienda.`],
+              action: { label: 'Pedir ayuda a soporte (garantía legal)', onPress: openWarrantyDialog },
+            })}>
+              <Headphones size={15} /><span>Tu garantía legal sigue vigente</span><ChevronRight size={14} />
+            </button>
+          ) : sellerWarrantyNotice ? (
+            <button type="button" className="mchat-strip is-mediation" onClick={() => setInfoSheet({
+              title: 'Garantía legal del comprador',
+              paragraphs: [`Pasó el plazo para pedir un mediador, pero el comprador conserva su garantía legal${warrantyUntilLabel ? ` hasta el ${warrantyUntilLabel}` : ''}. Si pide ayuda, soporte de RepuesTop podría contactarte para coordinar una solución.`],
+            })}>
+              <Shield size={15} /><span>El comprador conserva su garantía legal</span><ChevronRight size={14} />
+            </button>
+          ) : null}
+          {claimResolvedByBuyer && (
+            <button type="button" className="mchat-strip is-success" onClick={() => setInfoSheet({
+              title: 'Reclamo resuelto',
+              paragraphs: [
+                `${isBuyer ? 'Diste por resuelto este reclamo con la tienda.' : 'El comprador dio por resuelto este reclamo.'}${chat?.reclamoResueltoMotivo ? ` Motivo: ${chat.reclamoResueltoMotivo}` : ''}`,
+                'La conversación quedó cerrada y la compra sigue su curso normal.',
+              ],
+            })}>
+              <CheckCircle2 size={15} /><span>{isBuyer ? 'Diste por resuelto este reclamo' : 'El comprador dio por resuelto el reclamo'}</span><ChevronRight size={14} />
+            </button>
+          )}
+          {activeTab === 'chat' && !isEscalated && String(chat?.estadoPedido || '').toUpperCase() !== 'EN_MEDIACION' && hasDetail && (
+            <button type="button" className="mchat-strip" onClick={() => setShowResolutionDetail(true)}>
+              <Clock size={15} /><span>{detailLabel}</span><ChevronRight size={14} />
+            </button>
+          )}
+          {activeTab === 'chat' && (chat?.motivo || chat?.descripcion) && (
+            <button type="button" className="mchat-strip" onClick={() => setInfoSheet({
+              title: `Reclamo: ${claimReasonLabel(chat?.motivo)}`,
+              paragraphs: [chat?.descripcion, isBuyer ? 'Este proceso es gratuito. Siempre puedes acudir al Juzgado de Policía Local o reclamar en el SERNAC.' : null].filter(Boolean),
+            })}>
+              <Flag size={15} /><span>Reclamo: {claimReasonLabel(chat?.motivo)}</span><ChevronRight size={14} />
+            </button>
+          )}
+        </div>
+
         {activeTab === 'chat' && !isEscalated && String(chat?.estadoPedido || '').toUpperCase() !== 'EN_MEDIACION' && (
-          <ResolutionTrigger chat={chat} mode={mode} onOpen={() => setShowResolutionDetail(true)} />
+          <div className="mchat-desktop-only">
+            <ResolutionTrigger chat={chat} mode={mode} onOpen={() => setShowResolutionDetail(true)} />
+          </div>
         )}
 
         {activeTab === 'mediator' ? (
           <div className="mchat-mediator-panel">
-            <button type="button" className="mchat-mediator-hero" onClick={() => setSummaryOpen((v) => !v)} aria-expanded={summaryOpen} aria-label={summaryOpen ? 'Ocultar resumen de la mediación' : 'Mostrar resumen de la mediación'}>
+            {/* Celular: una línea de estado con dos íconos; resumen y detalle se abren al tocarlos. */}
+            <div className="mchat-status-strip mchat-mobile-only">
+              <i className={`mchat-status-dot ${estado === 'EN_MEDIACION' || !estado ? 'is-open' : 'is-done'}`} aria-hidden="true" />
+              <span>{formatMediationState(estado)}{chat?.codigoMediacion ? ` · Caso ${chat.codigoMediacion}` : ''}</span>
+              <button type="button" className="mchat-iconbtn" onClick={() => setSummarySheetOpen(true)} aria-label="Resumen de la mediación"><BookOpen size={17} /></button>
+              {hasDetail && (
+                <button type="button" className="mchat-iconbtn" onClick={() => setShowResolutionDetail(true)} aria-label="Ver detalle de la mediación"><GitCommitVertical size={17} /></button>
+              )}
+            </div>
+
+            <button type="button" className="mchat-mediator-hero mchat-desktop-only" onClick={() => setSummaryOpen((v) => !v)} aria-expanded={summaryOpen} aria-label={summaryOpen ? 'Ocultar resumen de la mediación' : 'Mostrar resumen de la mediación'}>
               <span className="mchat-mediator-hero-icon"><BookOpen size={28} /></span>
               <span className="mchat-mediator-hero-copy">
                 <span className="mchat-h3">Resumen de la mediación</span>
@@ -1013,42 +1169,14 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
               {summaryOpen ? <ChevronUp size={22} /> : <ChevronDown size={22} />}
             </button>
 
-            <ResolutionTrigger chat={chat} mode={mode} onOpen={() => setShowResolutionDetail(true)} />
+            <div className="mchat-desktop-only">
+              <ResolutionTrigger chat={chat} mode={mode} onOpen={() => setShowResolutionDetail(true)} />
+            </div>
 
-            {summaryOpen && (
-              <>
-                <div className="mchat-case-grid">
-                  <CaseInfoCard icon={Wrench} label="Motivo" value={chat?.motivoEscalacion ?? 'No informado'} />
-                  <CaseInfoCard icon={FileText} label="Solicitud" value={chat?.descripcionEscalacion ?? 'Sin detalle registrado'} />
-                  <CaseInfoCard icon={Receipt} label="Pedido" value={codigo || '-'} />
-                  <CaseInfoCard icon={Users} label="Solicitante" value={chat?.escaladoPor ?? 'No informado'} />
-                </div>
-
-                <section className="mchat-section">
-                  <div className="mchat-section-title"><Images size={18} /> Mis evidencias</div>
-                  {myEvidence.length
-                    ? <EvidenceStrip items={myEvidence} onOpenImage={setViewerImage} labelPrefix="Ampliar mi evidencia" />
-                    : <span className="mchat-caption mchat-muted">Aún no has enviado evidencias.</span>}
-                </section>
-
-                <section className="mchat-section">
-                  <div className="mchat-section-title is-muted"><Images size={18} /> Evidencias de {otherPartyName}</div>
-                  {otherEvidence.length
-                    ? <EvidenceStrip items={otherEvidence} onOpenImage={setViewerImage} labelPrefix={`Ampliar evidencia de ${otherPartyName}`} />
-                    : <span className="mchat-caption mchat-muted">{otherPartyName} aún no ha enviado evidencias.</span>}
-                </section>
-
-                {escalationEvidence.length > 0 && (
-                  <section className="mchat-section">
-                    <div className="mchat-section-title"><Images size={18} /> Adjuntos del caso</div>
-                    <EvidenceStrip items={escalationEvidence} onOpenImage={setViewerImage} labelPrefix="Ampliar adjunto del caso" />
-                  </section>
-                )}
-              </>
-            )}
+            {summaryOpen && <div className="mchat-desktop-only mchat-summary-inline">{summaryContent}</div>}
 
             <section className="mchat-section">
-              <div className="mchat-section-title"><MessageSquareMore size={18} /> Conversación con mediador</div>
+              <div className="mchat-section-title mchat-desktop-only"><MessageSquareMore size={18} /> Conversación con mediador</div>
               {mediatorThread.length ? mediatorThread.map((entry) => {
                 const isMine = !LOG_ENTRY_TYPES.has(entry.type) && entry.senderRole === ownRole;
                 return (
@@ -1070,14 +1198,14 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
         ) : (
           <>
             {isEscalated && (
-              <div className="mchat-notice">
+              <div className="mchat-notice mchat-desktop-only">
                 <Lock size={19} className="is-mediation" />
                 <span className="mchat-notice-copy">La conversación directa está pausada. Continúa el seguimiento con el mediador.</span>
               </div>
             )}
 
             {(chat?.motivo || chat?.descripcion) && (
-              <div className="mchat-infobox">
+              <div className="mchat-infobox mchat-desktop-only">
                 <Flag size={20} />
                 <div>
                   <strong>Reclamo: {claimReasonLabel(chat?.motivo)}</strong>
@@ -1088,7 +1216,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
               </div>
             )}
 
-            <span className="mchat-daychip">Chat con {isBuyer ? 'vendedor' : 'comprador'}</span>
+            <span className="mchat-daychip mchat-desktop-only">Chat con {isBuyer ? 'vendedor' : 'comprador'}</span>
 
             {messages.length === 0 ? (
               <div className="mchat-infobox">
@@ -1474,6 +1602,33 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
         </div>,
         document.body
       )}
+      {/* Celular: menú "⋯", resumen de la mediación y avisos largos. */}
+      {menuOpen && typeof document !== 'undefined' && createPortal(
+        <div className="mchat-sheet-backdrop" onClick={() => setMenuOpen(false)}>
+          <section className="mchat-sheet mchat-menu-sheet" role="dialog" aria-modal="true" aria-label="Opciones del caso" onClick={(e) => e.stopPropagation()}>
+            <span className="mchat-menu-grabber" aria-hidden="true" />
+            <span className="mchat-menu-title">Opciones del caso</span>
+            {menuItems.map(({ key, Icon, label, hint, tone, onPress }) => (
+              <button key={key} type="button" className={`mchat-menu-item ${tone ? `is-${tone}` : ''}`} onClick={() => { setMenuOpen(false); onPress(); }}>
+                <Icon size={19} />
+                <span className="mchat-menu-copy"><span>{label}</span>{hint && <small>{hint}</small>}</span>
+                <ChevronRight size={16} />
+              </button>
+            ))}
+          </section>
+        </div>,
+        document.body,
+      )}
+      <InfoSheet open={summarySheetOpen} title="Resumen de la mediación" onClose={() => setSummarySheetOpen(false)}>
+        <div className="mchat-summary-sheet">{summaryContent}</div>
+      </InfoSheet>
+      <InfoSheet
+        open={Boolean(infoSheet)}
+        title={infoSheet?.title ?? ''}
+        paragraphs={infoSheet?.paragraphs ?? []}
+        action={infoSheet?.action}
+        onClose={() => setInfoSheet(null)}
+      />
     </article>
   );
 }
