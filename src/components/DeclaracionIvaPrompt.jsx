@@ -38,7 +38,9 @@ export default function DeclaracionIvaPrompt() {
     consultar
     && (verificacion?.tiendaAprobada ?? verificacion?.reviewStatus === 'APPROVED')
     && verificacion?.adhesionContractDoc
-    && !verificacion?.declaracionIvaAt,
+    // `=== null` y no `!campo`: un backend anterior a la declaracion no envia el campo
+    // (undefined), y ahi el aviso apareceria y el POST fallaria. El nuevo lo envia en null.
+    && verificacion?.declaracionIvaAt === null,
   );
 
   const [declara, setDeclara] = useState(false);
