@@ -503,7 +503,9 @@ export default function ProfileOrdersPanel({
                 onUpdateStatus={detailIsPurchase ? handlePurchaseUpdateStatus : handleUpdateOrderStatus}
                 onRetryPayment={asBuyerView && !isBuyerBlocked ? handleRetryPayment : undefined}
                 onCancelOrder={asBuyerView ? handleCancelOrder : undefined}
-                onCancelBuyerSubOrder={asBuyerView ? handleCancelBuyerSubOrder : undefined}
+                // Comprador suspendido: sigue su pedido y conversa con la tienda, pero no cancela su
+                // compra a la tienda, no reclama ni vetea la entrega (pruebas en dev, 2026-10-09).
+                onCancelBuyerSubOrder={asBuyerView && !isBuyerBlocked ? handleCancelBuyerSubOrder : undefined}
                 autoOpenRating={asBuyerView && !isBuyerBlocked && ratingPromptOrderId != null && String(detailOrder.id) === String(ratingPromptOrderId)}
                 onRatingPromptShown={() => setRatingPromptOrderId(null)}
                 onOrderRated={handleOrderRated}
@@ -512,8 +514,8 @@ export default function ProfileOrdersPanel({
                 onRegisterDispatch={!asBuyerView && !sellerActionsLocked ? handleRegisterOrderDispatch : undefined}
                 onRegisterSaleReceipt={!asBuyerView && !sellerActionsLocked ? handleRegisterSaleReceipt : undefined}
                 onDeclareDelivery={!asBuyerView && !sellerActionsLocked ? handleDeclareOrderDelivery : undefined}
-                onDisputeDeclaredDelivery={asBuyerView ? handleDisputeDeclaredDelivery : undefined}
-                onCreateClaim={asBuyerView ? handleCreateOrderClaim : undefined}
+                onDisputeDeclaredDelivery={asBuyerView && !isBuyerBlocked ? handleDisputeDeclaredDelivery : undefined}
+                onCreateClaim={asBuyerView && !isBuyerBlocked ? handleCreateOrderClaim : undefined}
                 onOpenDispute={(proveedorId, draftMessage) => {
                   const params = new URLSearchParams({ caso: String(detailOrder.id) });
                   if (proveedorId != null && proveedorId !== '') params.set('tienda', String(proveedorId));

@@ -20,6 +20,7 @@ import SaleReceiptViewerModal from './SaleReceiptViewerModal';
 import { buildMediationTimeline, refundStatusLabel, resolutionFavorLabel } from '../utils/mediationTimeline';
 import mediatorAvatar from '../assets/mediator-profile.webp';
 import { InfoSheet } from './InfoHint';
+import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 
 /**
  * Chat del pedido entre el comprador y la tienda, clon 1:1 de `mobile/app/mediation-chat.tsx`:
@@ -430,6 +431,10 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
     ? (compradorUserId === viewerUserId ? 'buyer' : 'seller')
     : modeProp;
   const isBuyer = mode === 'buyer';
+  // Comprador suspendido: conversa con la tienda, pero no pide mediador, no le escribe ni pide
+  // soporte de garantia (pruebas en dev, 2026-10-09; el backend tambien lo rechaza).
+  const { isBlocked: buyerBlocked } = useBuyerBlocked();
+  const buyerSuspended = isBuyer && buyerBlocked;
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -575,7 +580,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
     ? warrantyUntil.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })
     : '';
   const warrantyTicketId = isBuyer ? (chat?.ticketGarantiaId ?? null) : null;
-  const canRequestWarrantySupport = isBuyer && Boolean(chat?.soporteGarantiaDisponible) && !warrantyTicketId;
+  const canRequestWarrantySupport = isBuyer && !buyerSuspended && Boolean(chat?.soporteGarantiaDisponible) && !warrantyTicketId;
   const sellerWarrantyNotice = !isBuyer && Boolean(chat) && !chat?.mediadorDisponible && warrantyActive;
   const warrantyTicketPath = warrantyTicketId != null
     ? `${profilePath('consultas')}?ticket=${encodeURIComponent(String(warrantyTicketId))}`
@@ -632,7 +637,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
       .map(normalizeMediatorEntry),
     [chat, isBuyer]
   );
-  const mediatorClosed = Boolean(chat?.chatCerrado);
+  const mediatorClosed = Boolean(chat?.chatCerrado) || buyerSuspended;
   const otherPartyName = isBuyer ? (chat?.vendedorNombre ?? 'Vendedor') : (chat?.compradorNombre ?? 'Comprador');
 
   // Si el caso deja de estar escalado (o todavía no lo está), la pestaña del mediador no existe.
@@ -901,7 +906,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   const detailLabel = chat?.estadoMediacion === 'EN_MEDIACION'
     ? 'Ver detalle de la mediación'
     : hasRefundDetail ? 'Resolución y seguimiento del reembolso' : 'Ver resolución de la mediación';
-  const canAskMediator = Boolean(chat) && !isEscalated && !mediationResolved && !claimResolvedByBuyer;
+  const canAskMediator = Boolean(chat) && !isEscalated && !mediationResolved && !claimResolvedByBuyer && !buyerSuspended;
   // Menú "⋯" en celular: lo que en escritorio son chips y botones grandes.
   const menuItems = [
     ...(hasDetail ? [{ key: 'detalle', Icon: Clock, label: detailLabel, onPress: () => setShowResolutionDetail(true) }] : []),
@@ -1043,7 +1048,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
                   <CheckCircle2 size={14} /> MARCAR RESUELTO
                 </button>
               )}
-              {chat && !isEscalated && !mediationResolved && !claimResolvedByBuyer && (
+              {canAskMediator && (
                 <button
                   type="button"
                   className={`mchat-action ${chat.mediadorDisponible ? '' : 'is-locked'}`}
@@ -1303,7 +1308,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
           )
         ) : (
           mediatorClosed ? (
-            <div className="mchat-frozen"><Lock size={18} /><span>Chat con mediador cerrado</span></div>
+            <div className="mchat-frozen"><Lock size={18} /><span>{buyerSuspended && !chat?.chatCerrado ? 'Con tu cuenta suspendida no puedes escribir al mediador.' : 'Chat con mediador cerrado'}</span></div>
           ) : (
             <form className="mchat-mediator-composer" onSubmit={submitMediatorMessage}>
               {mediatorError && <span className="mchat-inline-error"><AlertTriangle size={14} /> {mediatorError}</span>}

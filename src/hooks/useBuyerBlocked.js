@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { getBuyerAccountStatusApi } from '../services/api';
 import { qk } from '../services/queryKeys';
+import { legacySuspension, normalizeSuspension } from '../utils/accountSuspension';
 
 const BUYER_ROLES = ['BUYER', 'CLIENTE', 'CLIENT'];
 
@@ -30,10 +31,20 @@ export function useBuyerBlocked() {
   const isBlocked = isBuyer && Boolean(data?.buyerBlocked ?? user?.buyerBlocked);
   const blockReason = data?.blockReason || user?.buyerBlockReason || 'Tu cuenta ha sido suspendida.';
 
+  // Plazo, contador y revision (pruebas en dev, 2026-10-09); sin el payload nuevo, los campos del login.
+  const suspension = !isBlocked ? null
+    : (normalizeSuspension(data?.suspension) ?? normalizeSuspension(user?.suspension) ?? legacySuspension({
+      blocked: true,
+      reason: blockReason,
+      endsAt: user?.suspendedUntil,
+      canAppeal: user?.buyerCanAppeal,
+    }));
+
   return {
     isBuyer,
     isBlocked,
     blockReason,
+    suspension,
   };
 }
 

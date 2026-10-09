@@ -1913,6 +1913,7 @@ export default function OrderDetailView({
                                     {busy ? <Loader2 size={13} className="spin-icon" /> : <ThumbsUp size={13} />}
                                     <span>Sí, la recibí</span>
                                   </button>
+                                  {onDisputeDeclaredDelivery ? (
                                   <button
                                     type="button"
                                     className="btn-auth-danger order-store-block-veto-btn"
@@ -1922,6 +1923,7 @@ export default function OrderDetailView({
                                     {busy ? <Loader2 size={13} className="spin-icon" /> : <ThumbsDown size={13} />}
                                     <span>No la he recibido</span>
                                   </button>
+                                  ) : null}
                                 </div>
                                 {deliveryVetoError?.blockId === block.id && (
                                   <p className="confirm-dialog-error">{deliveryVetoError.message}</p>
