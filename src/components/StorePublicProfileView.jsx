@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
@@ -16,6 +16,7 @@ import { adaptStore } from '../services/adapters';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useMarketplace } from '../context/MarketplaceContext';
 import PartsCatalogView from './PartsCatalogView';
+import { useCatalogUrlState } from '../routes/useCatalogUrlState';
 import { useIsMobile } from '../hooks/useIsMobile';
 import SocialIcon from './SocialIcon';
 import { storeSocialLinks } from '../utils/socialLinks';
@@ -24,6 +25,9 @@ import '../styles/social-links.css';
 export default function StorePublicProfileView({
   store,
   onBackToStores,
+  // Volver a donde se abrio la tienda; sin el, vuelve al directorio.
+  onBack,
+  backLabel = 'Volver a Casas de repuestos',
   onQuickView,
   onOpenQuote,
   activeVehicle: initialActiveVehicle,
@@ -35,6 +39,14 @@ export default function StorePublicProfileView({
   const initialStoreId = typeof store === 'string' ? null : store?.id;
 
   const [logoError, setLogoError] = useState(false);
+  // Filtros y pagina del inventario en la URL de la tienda: al abrir un repuesto y volver, el
+  // catalogo queda igual. La tienda ya va en la ruta, asi que no se repite como filtro.
+  const catalogUrl = useCatalogUrlState();
+  const { syncUrl: syncCatalogUrl } = catalogUrl;
+  const syncStoreCatalogUrl = useCallback(
+    (state) => syncCatalogUrl({ ...state, advanced: { ...(state.advanced || {}), storeId: null } }),
+    [syncCatalogUrl]
+  );
   const [coverError, setCoverError] = useState(false);
 
 
@@ -263,7 +275,7 @@ export default function StorePublicProfileView({
 
           {isMobile ? (
             <div className="store-mobile-cover-bar">
-              <button className="store-cover-icon-button" onClick={onBackToStores} type="button" aria-label="Volver a Casas de repuestos">
+              <button className="store-cover-icon-button" onClick={onBack || onBackToStores} type="button" aria-label={backLabel}>
                 <ArrowLeft size={18} />
               </button>
               <button
@@ -279,9 +291,9 @@ export default function StorePublicProfileView({
             </div>
           ) : (
           <div className="container store-header-actions-bar">
-            <button className="btn-back-stores" onClick={onBackToStores} type="button">
+            <button className="btn-back-stores" onClick={onBack || onBackToStores} type="button">
               <ArrowLeft size={16} />
-              <span>Volver a Casas de repuestos</span>
+              <span>{backLabel}</span>
             </button>
             {onEditStore && (
               <button className="btn-edit-store-profile" onClick={onEditStore} type="button" title="Editar mi tienda">
@@ -609,6 +621,12 @@ export default function StorePublicProfileView({
         onQuickView={onQuickView}
         onOpenQuote={onOpenQuote}
         onResultsChange={setCatalogResults}
+        initialCatalogFilter={catalogUrl.filter}
+        initialSearchQuery={catalogUrl.query}
+        initialPage={catalogUrl.page}
+        initialShowAll={catalogUrl.showAll}
+        initialAdvancedFilters={catalogUrl.advanced}
+        onNavigationStateChange={syncStoreCatalogUrl}
       />
     </div>
   );

@@ -37,7 +37,7 @@ function formatMonthYear(value) {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-export default function AdDetailView({ ad, onBack }) {
+export default function AdDetailView({ ad, onBack, backLabel = 'Volver al mural' }) {
   const [imgIndex, setImgIndex] = useState(0);
   const [coverError, setCoverError] = useState({});
   const [shareMsg, setShareMsg] = useState('');
@@ -444,7 +444,7 @@ export default function AdDetailView({ ad, onBack }) {
             </div>
 
             <button type="button" className="ad-detail-back" onClick={onBack}>
-              <ChevronLeft size={15} /> Volver al mural
+              <ChevronLeft size={15} /> {backLabel}
             </button>
           </aside>
         </div>

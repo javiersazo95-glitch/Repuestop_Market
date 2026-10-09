@@ -53,7 +53,7 @@ import SellerWithdrawalsPanel, { isCompleteBankAccount } from './SellerWithdrawa
 import AdsManagementSection from './ads/AdsManagementSection';
 import ProfileFavoritesPanel from './ProfileFavoritesPanel';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES, storePath } from '../routes/paths';
 import { orderDisplayCode } from '../data/orderIdentity';
 import { deliveryTermsLabel, isConversationPaused, quoteChargeBase, quoteShippingCost } from '../utils/quoteFlow';
@@ -293,6 +293,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // El centro de ayuda dejó de ser una pestaña del perfil: vive en /ayuda y se
   // navega hacia allá desde el sidebar y los accesos rápidos.
   const navigate = useNavigate();
+  const location = useLocation();
+  const canGoBack = Boolean(location.key && location.key !== 'default');
   const [activeTab, setActiveTabState] = useState(initialTab);
   const [profileNavOpen, setProfileNavOpen] = useState(false);
 
@@ -320,15 +322,17 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   }, [activeTab, panelPreset]);
   const presetFor = (tab) => (panelPreset?.tab === tab ? panelPreset : null);
   // Flecha de la app bar en movil (<=768px). En escritorio el boton dice "Volver a la tienda" y
-  // va al home; en el celular es una flecha sola y la persona espera volver UNA vista atras, no
-  // salir de la intranet: detalle del pedido -> su lista; cualquier seccion -> Resumen; y solo
-  // desde Resumen -> la tienda.
+  // va al home; en el celular es una flecha sola y la persona espera volver UNA vista atras:
+  // exactamente a donde estaba (la lista de pedidos con sus filtros, la vista desde donde abrio
+  // "Retirar dinero", etc.). Solo si entro directo por URL se sube un nivel: detalle del pedido
+  // -> su lista; cualquier seccion -> Resumen; y desde Resumen -> la tienda.
   const handleMobileBack = useCallback(() => {
+    if (canGoBack) { navigate(-1); return; }
     if (detailPurchaseId) { setActiveTab('compras'); return; }
     if (detailOrderId) { setActiveTab('pedidos'); return; }
     if (activeTab !== 'resumen') { setActiveTab('resumen'); return; }
     onBackToStore();
-  }, [detailPurchaseId, detailOrderId, activeTab, setActiveTab, onBackToStore]);
+  }, [canGoBack, navigate, detailPurchaseId, detailOrderId, activeTab, setActiveTab, onBackToStore]);
   const [showMediaModal, setShowMediaModal] = useState(null);
   const [mediaInput, setMediaInput] = useState('');
   const [mediaFile, setMediaFile] = useState(null);

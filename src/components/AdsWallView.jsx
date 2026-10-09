@@ -16,6 +16,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
+import { useEffectAfterMount, useRestoredState } from '../routes/useRestoredState';
+import { useScrollMemory } from '../routes/useScrollMemory';
 import { useUserLocation } from '../hooks/useUserLocation';
 import { distanceKmTo, sortByDistance } from '../utils/geoDistance';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
@@ -33,6 +35,8 @@ import '../styles/ads-wall-mobile.css';
 import { canBookAd } from '../utils/adBooking';
 
 const PAGE_SIZE = 12;
+// Filtros y "cargar mas" del mural, recuperados al volver de un anuncio.
+const VIEW_ID = 'mural-anuncios';
 
 // Sugerencias del campo movil (en escritorio las pinta AdsSearchBar).
 const SUGGESTION_META = {
@@ -104,33 +108,33 @@ export default function AdsWallView() {
   }, []);
 
   // --- Filtros ---
-  const [searchInput, setSearchInput] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useRestoredState(VIEW_ID, 'searchInput', '');
+  const [searchQuery, setSearchQuery] = useRestoredState(VIEW_ID, 'searchQuery', '');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('TODAS');
-  const [selectedTier, setSelectedTier] = useState('TODOS');
-  const [selectedCommune, setSelectedCommune] = useState(ALL_COMMUNES);
-  const [selectedServiceTag, setSelectedServiceTag] = useState(ALL_TAGS);
+  const [selectedCategory, setSelectedCategory] = useRestoredState(VIEW_ID, 'selectedCategory', 'TODAS');
+  const [selectedTier, setSelectedTier] = useRestoredState(VIEW_ID, 'selectedTier', 'TODOS');
+  const [selectedCommune, setSelectedCommune] = useRestoredState(VIEW_ID, 'selectedCommune', ALL_COMMUNES);
+  const [selectedServiceTag, setSelectedServiceTag] = useRestoredState(VIEW_ID, 'selectedServiceTag', ALL_TAGS);
   // Filtro por marca especialista del taller (paridad con la app, ads-wall.tsx).
-  const [selectedSpecialistBrand, setSelectedSpecialistBrand] = useState(ALL_BRANDS);
-  const [onlyBooking, setOnlyBooking] = useState(false);
-  const [onlyWhatsapp, setOnlyWhatsapp] = useState(false);
-  const [only24Hours, setOnly24Hours] = useState(false);
-  const [onlyHomeService, setOnlyHomeService] = useState(false);
-  const [sortBy, setSortBy] = useState('relevancia');
+  const [selectedSpecialistBrand, setSelectedSpecialistBrand] = useRestoredState(VIEW_ID, 'selectedSpecialistBrand', ALL_BRANDS);
+  const [onlyBooking, setOnlyBooking] = useRestoredState(VIEW_ID, 'onlyBooking', false);
+  const [onlyWhatsapp, setOnlyWhatsapp] = useRestoredState(VIEW_ID, 'onlyWhatsapp', false);
+  const [only24Hours, setOnly24Hours] = useRestoredState(VIEW_ID, 'only24Hours', false);
+  const [onlyHomeService, setOnlyHomeService] = useRestoredState(VIEW_ID, 'onlyHomeService', false);
+  const [sortBy, setSortBy] = useRestoredState(VIEW_ID, 'sortBy', 'relevancia');
 
-  const [searchMode, setSearchMode] = useState('service'); // 'service' | 'plate'
-  const [plateQuery, setPlateQuery] = useState('');
-  const [plateVehicle, setPlateVehicle] = useState(null);
+  const [searchMode, setSearchMode] = useRestoredState(VIEW_ID, 'searchMode', 'service'); // 'service' | 'plate'
+  const [plateQuery, setPlateQuery] = useRestoredState(VIEW_ID, 'plateQuery', '');
+  const [plateVehicle, setPlateVehicle] = useRestoredState(VIEW_ID, 'plateVehicle', null);
   const [plateError, setPlateError] = useState('');
   const [isPlateSearching, setIsPlateSearching] = useState(false);
   // Con patente: por defecto tambien entran los talleres sin marca declarada (multimarca).
-  const [includeMultibrand, setIncludeMultibrand] = useState(true);
+  const [includeMultibrand, setIncludeMultibrand] = useRestoredState(VIEW_ID, 'includeMultibrand', true);
   const [recentPlates, setRecentPlates] = useState(() => getRecentPlates());
 
   // Modal de filtros: solo celular. En escritorio los filtros viven en la sidebar.
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [visibleCount, setVisibleCount] = useRestoredState(VIEW_ID, 'visibleCount', PAGE_SIZE);
 
   const [selectedAdForStories, setSelectedAdForStories] = useState(null);
   const [selectedAdForBooking, setSelectedAdForBooking] = useState(null);
@@ -142,7 +146,8 @@ export default function AdsWallView() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  useEffect(() => {
+  // Al volver al mural no se corre en el montaje: pisaria el "cargar mas" recuperado.
+  useEffectAfterMount(() => {
     setVisibleCount(PAGE_SIZE);
   }, [
     searchQuery, selectedCategory, selectedTier, selectedCommune, selectedServiceTag,
@@ -452,6 +457,8 @@ export default function AdsWallView() {
 
   const hasNoAdsAtAll = !isLoading && adsList.length === 0;
   const showSkeleton = isLoading && adsList.length === 0;
+  // Al volver de un anuncio, la posicion se reaplica cuando las tarjetas ya estan pintadas.
+  useScrollMemory(!showSkeleton);
 
   // Servicios que ofrecen los anuncios (features + servicesOffered). El filtro compara
   // normalizado, asi que "Frenos" y "frenos" cuentan como uno; los mas ofrecidos primero.

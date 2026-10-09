@@ -110,7 +110,7 @@ function useIsCompatTableLayout() {
   return matches;
 }
 
-export default function ProductDetailPage({ product, user, activeVehicle, onBack, onAddToCart, onOpenQuote, onOpenStore, onSelectProduct }) {
+export default function ProductDetailPage({ product, user, activeVehicle, onBack, backLabel = 'Volver al catálogo', onAddToCart, onOpenQuote, onOpenStore, onSelectProduct }) {
   const queryClient = useQueryClient();
   // El vendedor llega a su propia ficha desde el catalogo como comprador, asi que
   // esto NO depende del modo de la pantalla.
@@ -606,7 +606,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
       <div className="product-marketplace-container">
         <div className="product-marketplace-toolbar">
           <button className="product-marketplace-back" type="button" onClick={onBack}>
-            <ArrowLeft size={17} /> Volver al catálogo
+            <ArrowLeft size={17} /> {backLabel}
           </button>
           <nav className="product-marketplace-crumb" aria-label="Ruta del producto">
             {crumbs.map((crumb, index) => (

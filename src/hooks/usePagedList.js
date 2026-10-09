@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
+import { useEffectAfterMount, useRestoredState } from '../routes/useRestoredState';
 
 export const LIST_PAGE_SIZE = 20;
 
@@ -14,11 +15,14 @@ export function recentOrdersNote(count) {
  * Pagina en el navegador una lista ya filtrada (U2, 5-oct): compras, ventas y cotizaciones se
  * pintaban completas. Los filtros siguen operando sobre la lista entera; `resetKey` vuelve a la
  * pagina 1 cuando cambian, pero no cuando la lista solo se refresca.
+ *
+ * Con `viewId` la pagina se recupera al volver con "atras" (por ejemplo, desde el detalle de un
+ * pedido), en vez de reiniciar en la 1.
  */
-export default function usePagedList(items, resetKey, pageSize = LIST_PAGE_SIZE) {
-  const [page, setPage] = useState(1);
+export default function usePagedList(items, resetKey, pageSize = LIST_PAGE_SIZE, viewId = null) {
+  const [page, setPage] = useRestoredState(viewId, 'page', 1);
 
-  useEffect(() => {
+  useEffectAfterMount(() => {
     setPage(1);
   }, [resetKey, pageSize]);
 

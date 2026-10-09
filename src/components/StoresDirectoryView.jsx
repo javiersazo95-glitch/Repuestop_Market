@@ -21,6 +21,12 @@ import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useUserLocation } from '../hooks/useUserLocation';
 import { distanceKmTo, sortByDistance } from '../utils/geoDistance';
+import { useEffectAfterMount, useRestoredState } from '../routes/useRestoredState';
+import { useScrollMemory } from '../routes/useScrollMemory';
+
+// Filtros, orden y pagina del directorio (texto y comuna van en la URL), recuperados al volver
+// de una tienda.
+const VIEW_ID = 'directorio-tiendas';
 
 /**
  * /tiendas/publicas topea `size` en 100 y no sabe ordenar por publicaciones, calificación ni
@@ -59,14 +65,14 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
 
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get('texto') || '');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
-  const [selectedGiro, setSelectedGiro] = useState('TODAS');
+  const [selectedGiro, setSelectedGiro] = useRestoredState(VIEW_ID, 'selectedGiro', 'TODAS');
   const [selectedComuna, setSelectedComuna] = useState(() => searchParams.get('comuna') || 'TODAS');
-  const [selectedShipping, setSelectedShipping] = useState('TODAS');
-  const [selectedBrand, setSelectedBrand] = useState('TODAS');
-  const [sortBy, setSortBy] = useState('relevancia');
+  const [selectedShipping, setSelectedShipping] = useRestoredState(VIEW_ID, 'selectedShipping', 'TODAS');
+  const [selectedBrand, setSelectedBrand] = useRestoredState(VIEW_ID, 'selectedBrand', 'TODAS');
+  const [sortBy, setSortBy] = useRestoredState(VIEW_ID, 'sortBy', 'relevancia');
   const [openFilterSections, setOpenFilterSections] = useState({ business: true, shipping: true });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(6);
+  const [currentPage, setCurrentPage] = useRestoredState(VIEW_ID, 'currentPage', 1);
+  const [itemsPerPage, setItemsPerPage] = useRestoredState(VIEW_ID, 'itemsPerPage', 6);
   const [patentInput, setPatentInput] = useState(activeVehicle?.patente || '');
   const [patentError, setPatentError] = useState('');
   const [patentSearching, setPatentSearching] = useState(false);
@@ -271,6 +277,7 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   );
 
   const isLoading = needsClientSort ? poolLoading : pageLoading;
+  useScrollMemory(!isLoading);
   const queryError = needsClientSort ? poolQueryError : pageQueryError;
   const storesError = queryError ? (queryError.message || 'No se pudo cargar el directorio de casas de repuestos.') : null;
 
@@ -321,8 +328,8 @@ export default function StoresDirectoryView({ onBackToStore, onSelectStore }) {
   // orden local no llegó a ver.
   const poolMayBeIncomplete = needsClientSort && poolItems.length >= SORT_POOL_SIZE;
 
-  // Reset to Page 1 on any filter change
-  useEffect(() => {
+  // Reset to Page 1 on any filter change (no al montar: al volver pisaria la pagina recuperada)
+  useEffectAfterMount(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedGiro, selectedComuna, selectedShipping, selectedBrand, activeVehicle?.marca, sortBy, itemsPerPage, isNearbySortActive]);
 

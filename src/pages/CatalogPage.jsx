@@ -1,20 +1,15 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useEffect } from 'react';
 import PartsCatalogView from '../components/PartsCatalogView';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
-import { CATALOG_ADVANCED_PARAMS, catalogFilterFromParams } from '../routes/paths';
+import { useCatalogUrlState } from '../routes/useCatalogUrlState';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 
 export default function CatalogPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
   const nav = useAppNavigation();
   const { activeVehicle, setActiveVehicle, openQuote, searchQuery, setSearchQuery } = useMarketplace();
 
-  const { filter, query, page, showAll, advanced } = useMemo(
-    () => catalogFilterFromParams(searchParams),
-    [searchParams]
-  );
+  const { filter, query, page, showAll, advanced, syncUrl } = useCatalogUrlState();
 
   useDocumentTitle(query
     ? `Búsqueda: ${query}`
@@ -25,42 +20,6 @@ export default function CatalogPage() {
     if (query !== searchQuery) setSearchQuery(query);
     // Solo debe reaccionar al término de la URL, no a lo que el usuario está tecleando.
   }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // El catálogo empuja sus filtros de vuelta a la URL. Se usa `replace` para no
-  // llenar el historial con cada clic de filtro; el botón atrás sigue devolviendo
-  // a la pantalla anterior.
-  const syncUrl = useCallback((state) => {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      const apply = (key, value) => {
-        if (value) next.set(key, String(value));
-        else next.delete(key);
-      };
-
-      // Cambiar de categoría dentro del catálogo invalida los ids que traía la URL
-      // desde el menú del header: se descartan para no filtrar por la anterior.
-      if ((state.category || null) !== (current.get('categoria') || null)) {
-        next.delete('categoriaId');
-        next.delete('categoriaNombre');
-        next.delete('subcategoriaId');
-      }
-      if ((state.subcategory || null) !== (current.get('subcategoria') || null)) {
-        next.delete('subcategoriaId');
-      }
-
-      apply('categoria', state.category);
-      apply('subcategoria', state.subcategory);
-      apply('q', state.query?.trim());
-      apply('pagina', state.page > 1 ? state.page : null);
-      apply('todos', state.showAll ? '1' : null);
-
-      // Filtros avanzados: sin esto se perdian al abrir la ficha de un repuesto y volver.
-      const advancedState = state.advanced || {};
-      Object.entries(CATALOG_ADVANCED_PARAMS).forEach(([field, key]) => apply(key, advancedState[field]));
-
-      return next;
-    }, { replace: true });
-  }, [setSearchParams]);
 
   return (
     <PartsCatalogView

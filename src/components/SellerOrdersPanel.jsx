@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import OrderCard from './OrderCard';
 import usePagedList, { recentOrdersNote } from '../hooks/usePagedList';
+import { useRestoredState } from '../routes/useRestoredState';
+import { useScrollMemory } from '../routes/useScrollMemory';
 import ListPager from './ListPager';
 import { getSellerBalanceApi, getSellerWithdrawalDetailApi, getSellerWithdrawalsApi } from '../services/api';
 
@@ -86,12 +88,14 @@ function formatCLP(value) {
 // despacho en `PedidoEnvioSupport` y el boton solo produciria un error.
 // `initialStatuses`: filtro con que se abre desde "Por despachar" del Resumen (U6).
 export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder, onUpdateStatus, onRegisterSaleReceipt, readOnly = false, initialStatuses }) {
-  const [searchQuery, setSearchQuery] = useState('');
+  // Filtros y pagina se recuperan al volver del detalle de un pedido (la lista se desmonta al abrirlo).
+  const viewId = 'pedidos-vendedor';
+  const [searchQuery, setSearchQuery] = useRestoredState(viewId, 'searchQuery', '');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [statuses, setStatuses] = useState(() => (Array.isArray(initialStatuses) ? initialStatuses : []));
-  const [sources, setSources] = useState([]);
-  const [dateFilter, setDateFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('newest');
+  const [statuses, setStatuses] = useRestoredState(viewId, 'statuses', () => (Array.isArray(initialStatuses) ? initialStatuses : []));
+  const [sources, setSources] = useRestoredState(viewId, 'sources', []);
+  const [dateFilter, setDateFilter] = useRestoredState(viewId, 'dateFilter', 'all');
+  const [sortBy, setSortBy] = useRestoredState(viewId, 'sortBy', 'newest');
   const [withdrawalDatesByOrder, setWithdrawalDatesByOrder] = useState({});
 
   useEffect(() => {
@@ -142,7 +146,8 @@ export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder
       return sortBy === 'newest' ? rightTime - leftTime : leftTime - rightTime;
     });
   }, [dateFilter, orders, searchQuery, sortBy, sources, statuses]);
-  const { pageItems, pagerProps } = usePagedList(visibleOrders, JSON.stringify([searchQuery, statuses, sources, dateFilter, sortBy]));
+  const { pageItems, pagerProps } = usePagedList(visibleOrders, JSON.stringify([searchQuery, statuses, sources, dateFilter, sortBy]), undefined, viewId);
+  useScrollMemory(orders.length > 0);
 
   const clearFilters = () => {
     setSearchQuery('');

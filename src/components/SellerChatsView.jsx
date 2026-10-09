@@ -280,15 +280,18 @@ export default function SellerChatsView({ user, mode = 'buyer', orders: initialO
     setSearchParams(next);
   };
   const closeCase = () => {
-    // Si el chat se abrio desde otra vista (detalle del pedido, tarjeta), "volver" regresa
-    // alli; si se abrio desde esta bandeja, se cierra el caso y se queda en la lista.
+    // Volver regresa exactamente a donde se abrio el chat: la bandeja (abrir un caso agrega una
+    // entrada al historial) o la vista de origen (detalle del pedido, tarjeta). Asi tampoco se
+    // acumulan entradas y el "atras" del navegador no reabre el chat.
+    if (location.key && location.key !== 'default') { navigate(-1); return; }
+    // Entrada directa por enlace: se vuelve al origen declarado o se cierra el caso en la bandeja.
     const from = location.state?.from;
     if (from && from !== `${location.pathname}${location.search}`) { navigate(from); return; }
     const next = new URLSearchParams(searchParams);
     next.delete('caso');
     next.delete('tienda');
     next.delete('pestana');
-    setSearchParams(next);
+    setSearchParams(next, { replace: true });
   };
 
   const load = useCallback(async () => {
