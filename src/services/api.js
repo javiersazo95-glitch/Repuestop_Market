@@ -1257,6 +1257,37 @@ export async function registerSaleReceiptApi(orderId, file) {
 }
 
 /**
+ * 9-oct: notas de credito de la tienda, una por cada reembolso de su venta que anula su boleta.
+ * Devuelve `[{ pagoReembolsoId, origen, montoReembolso, venceEl, vencida, estado
+ * (PENDIENTE|REGISTRADA|RECHAZADA), motivoRechazo, notaId, folio, fechaEmision, monto,
+ * montoPropuesto, montoMaximo }]`; vacio si la venta no requiere nota.
+ */
+export async function getSellerCreditNotesApi(orderId) {
+  return fetchApi(`/pedidos/${orderId}/notas-credito`, { method: 'GET' });
+}
+
+/** La tienda sube su nota de credito: queda registrada al instante (el equipo puede rechazarla). */
+export async function uploadSellerCreditNoteApi(orderId, { pagoReembolsoId, folio, fechaEmision, monto }, file) {
+  if (!(file instanceof File)
+    || file.type !== 'application/pdf'
+    || !file.name.toLowerCase().endsWith('.pdf')) {
+    throw new Error('La nota de crédito debe ser un archivo PDF.');
+  }
+  const formData = new FormData();
+  formData.append('pagoReembolsoId', String(pagoReembolsoId));
+  formData.append('folio', folio);
+  formData.append('fechaEmision', fechaEmision);
+  if (monto != null) formData.append('monto', String(monto));
+  formData.append('archivo', file);
+  return fetchApi(`/pedidos/${orderId}/notas-credito`, { method: 'POST', body: formData });
+}
+
+/** URL de un solo uso (5 min) del PDF de la nota de credito. Devuelve `{ url }`. */
+export async function getSellerCreditNoteUrlApi(orderId, notaId) {
+  return fetchApi(`/pedidos/${orderId}/notas-credito/${notaId}/url`, { method: 'GET' });
+}
+
+/**
  * URL de descarga de un solo uso (5 min) para la boleta de venta. El comprador debe indicar
  * la tienda con `proveedorId`; al vendedor se le resuelve la suya. Devuelve `{ url }`.
  */

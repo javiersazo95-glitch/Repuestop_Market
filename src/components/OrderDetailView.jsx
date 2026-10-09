@@ -17,6 +17,7 @@ import { buyerCaseChatPath, currentPathForBack, productPath, sellerCaseChatPath 
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
 import SaleReceiptViewerModal from './SaleReceiptViewerModal';
+import OrderCreditNotes from './OrderCreditNotes';
 import useSellerChecklist from '../hooks/useSellerChecklist';
 import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancellationReason';
 import { buyerRefundInfo, FLOW_REFUND_NOTICE } from '../data/refundStatus';
@@ -1679,6 +1680,12 @@ export default function OrderDetailView({
                     </div>
                   );
                 })()}
+
+                {/* 9-oct: venta reembolsada con boleta: la tienda sube aqui su nota de credito.
+                    Paridad con la app. El componente no muestra nada si no se requiere. */}
+                {isSeller && !readOnly && (refundAmount > 0 || normStatus === 'CANCELADO') && (
+                  <OrderCreditNotes key={order.id} orderId={order.id} orderCode={orderIdShort} />
+                )}
               </div>
             </div>
           )}
