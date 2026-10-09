@@ -1035,7 +1035,8 @@
   .profile-dashboard .withdrawal-history-top,
   .profile-dashboard .withdrawal-history-meta { flex-wrap: wrap; gap: 6px 10px; }
   .profile-dashboard .withdrawal-order-main { min-width: 0; }
-  .withdrawal-modal { width: 100%; max-height: 94vh; max-height: 94dvh; border-radius: 18px 18px 0 0; }
+  /* Hoja inferior: el contenido termina sobre la barra de gestos/navegacion del telefono. */
+  .withdrawal-modal { width: 100%; max-height: 94vh; max-height: 94dvh; border-radius: 18px 18px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
   .withdrawal-modal > header { padding: 14px; }
   .withdrawal-modal-search input { font-size: 16px; min-height: 44px; }
   .withdrawal-modal-footer { flex-wrap: wrap; gap: 8px; padding-bottom: calc(12px + var(--pm-safe-bottom)); }

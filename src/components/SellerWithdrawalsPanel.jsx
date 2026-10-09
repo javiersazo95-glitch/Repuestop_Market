@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
-  AlertCircle, AlertTriangle, CalendarDays, CheckCircle2, ChevronRight, Clock,
+  AlertCircle, AlertTriangle, CalendarDays, CheckCircle2, ChevronRight, ChevronUp, Clock,
   CreditCard, ExternalLink, Eye, EyeOff, History, Info, Landmark, Loader2, Mail,
   Package, ReceiptText, RotateCcw, Save, Search, ShieldCheck, User, Wallet, X,
 } from 'lucide-react';
@@ -158,6 +158,29 @@ function getRemainingDaysInfo(targetDate) {
 function WithdrawalStatus({ status }) {
   const config = STATUS_CONFIG[String(status || '').toUpperCase()] || { label: status || 'Sin estado', className: 'other' };
   return <span className={`withdrawal-status ${config.className}`}>{config.label}</span>;
+}
+
+function isRejected(withdrawal) {
+  return String(withdrawal?.estado || '').toUpperCase() === 'RECHAZADO';
+}
+
+/**
+ * Estado del retiro. Si fue rechazado, la etiqueta se puede tocar para ver por qué: el retiro
+ * sigue siendo lo principal y el rechazo es un detalle que se consulta (igual que en la app).
+ */
+function WithdrawalStatusTag({ withdrawal, open, onToggle }) {
+  if (!isRejected(withdrawal)) return <WithdrawalStatus status={withdrawal?.estado} />;
+  return (
+    <button
+      type="button"
+      className="withdrawal-status rejected withdrawal-status-toggle"
+      aria-expanded={open}
+      aria-label={open ? 'Ocultar detalle del rechazo' : 'Ver detalle del rechazo'}
+      onClick={onToggle}
+    >
+      Rechazado {open ? <ChevronUp size={12} /> : <Info size={12} />}
+    </button>
+  );
 }
 
 function WithdrawalRejectedNotice({ motivo, rechazadoAt, reintentoCodigo }) {
@@ -517,6 +540,9 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
   const [showBankModal, setShowBankModal] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [detail, setDetail] = useState(null);
+  // Motivo del rechazo desplegado (se abre tocando la etiqueta "Rechazado").
+  const [detailRejectionOpen, setDetailRejectionOpen] = useState(false);
+  const [openRejections, setOpenRejections] = useState({});
   const [detailLoading, setDetailLoading] = useState(false);
   const [revealAccountNumber, setRevealAccountNumber] = useState(false);
   const [ordersModal, setOrdersModal] = useState(null);
@@ -650,6 +676,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
   };
 
   const openDetail = async (withdrawalId) => {
+    setDetailRejectionOpen(false);
     setDetailLoading(true);
     setError('');
     try {
@@ -936,8 +963,15 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                         <small>{withdrawal.codigoExterno || 'Retiro'}</small>
                         <span>Solicitado el {formatDate(withdrawal.fechaSolicitud, true)}</span>
                       </div>
-                      <WithdrawalStatus status={withdrawal.estado} />
+                      <WithdrawalStatusTag
+                        withdrawal={withdrawal}
+                        open={Boolean(openRejections[withdrawal.retiroId])}
+                        onToggle={() => setOpenRejections((current) => ({ ...current, [withdrawal.retiroId]: !current[withdrawal.retiroId] }))}
+                      />
                     </div>
+                    {isRejected(withdrawal) && openRejections[withdrawal.retiroId] && (
+                      <WithdrawalRejectedNotice motivo={withdrawal.motivoRechazo} rechazadoAt={withdrawal.rechazadoAt} reintentoCodigo={withdrawal.reintentoCodigo} />
+                    )}
                     <strong>{formatCLP(withdrawal.montoTotal)}</strong>
                     {Number(withdrawal.montoReembolsoMediacion || 0) > 0 && (
                       <span className="withdrawal-refund-note">
@@ -948,9 +982,6 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
                       <span><Package size={15} /> {withdrawal.cantidadPedidos} {Number(withdrawal.cantidadPedidos) === 1 ? 'pedido' : 'pedidos'}</span>
                       <span><CalendarDays size={15} /> Pago estimado: {formatDate(withdrawal.fechaEfectiva)}</span>
                     </div>
-                    {String(withdrawal.estado || '').toUpperCase() === 'RECHAZADO' && (
-                      <WithdrawalRejectedNotice motivo={withdrawal.motivoRechazo} rechazadoAt={withdrawal.rechazadoAt} reintentoCodigo={withdrawal.reintentoCodigo} />
-                    )}
                     <button type="button" onClick={() => openDetail(withdrawal.retiroId)} disabled={detailLoading}>
                       <Eye size={16} /> Ver detalle del retiro
                     </button>
@@ -1056,11 +1087,16 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
           ) : (
             <div className="withdrawal-detail-body">
               <div className="withdrawal-detail-summary">
-                <WithdrawalStatus status={detail.estado} />
+                <WithdrawalStatusTag
+                  withdrawal={detail}
+                  open={detailRejectionOpen}
+                  onToggle={() => setDetailRejectionOpen((value) => !value)}
+                />
+                <span><CalendarDays size={15} /> Solicitado el {formatDate(detail.fechaSolicitud, true)}</span>
                 <span><CalendarDays size={15} /> Pago estimado: {formatDate(detail.fechaEfectiva)}</span>
               </div>
-              {String(detail.estado || '').toUpperCase() === 'RECHAZADO' && (
-                <WithdrawalRejectedNotice motivo={detail.motivoRechazo} />
+              {isRejected(detail) && detailRejectionOpen && (
+                <WithdrawalRejectedNotice motivo={detail.motivoRechazo} rechazadoAt={detail.rechazadoAt} reintentoCodigo={detail.reintentoCodigo} />
               )}
               <div className="withdrawal-detail-orders">
                 {(detail.pedidos || []).map((order) => (
