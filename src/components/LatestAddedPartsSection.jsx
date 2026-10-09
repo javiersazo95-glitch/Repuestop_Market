@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Loader2, Inbox, ArrowRight, Award, LayoutGrid } from 'lucide-react';
 import MarketplaceProductCard from './MarketplaceProductCard';
 import { getPublicProductsApi } from '../services/api';
+import { qk } from '../services/queryKeys';
 import { adaptPage, adaptLatestPart } from '../services/adapters';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../hooks/useFavorites';
@@ -9,33 +11,22 @@ import { useFavorites } from '../hooks/useFavorites';
 const LATEST_PARTS_COUNT = 5;
 
 export default function LatestAddedPartsSection({ onQuickView, onOpenCatalog }) {
-  const [parts, setParts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const { user, isLoggedIn } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites(user?.userId ?? user?.id);
 
   // Feed real de las últimas publicaciones: GET /api/v1/inventario/productos
-  // ordenado por fecha de creación descendente (endpoint público).
-  useEffect(() => {
-    let isMounted = true;
-
-    getPublicProductsApi({ page: 0, size: LATEST_PARTS_COUNT, sort: 'createdAt,desc' })
-      .then((data) => {
-        if (!isMounted) return;
-        setParts(adaptPage(data, adaptLatestPart).items);
-        setError(null);
-      })
-      .catch((err) => {
-        if (!isMounted) return;
-        setError(err.message || 'No se pudieron cargar las últimas publicaciones.');
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-
-    return () => { isMounted = false; };
-  }, []);
+  // ordenado por fecha de creación descendente (endpoint público). Va por React Query para que,
+  // al volver al inicio desde un repuesto, la sección se pinte al instante desde la caché y el
+  // scroll se pueda restaurar donde estaba.
+  const { data: parts = [], isLoading: loading, error: queryError } = useQuery({
+    queryKey: qk.products({ latest: LATEST_PARTS_COUNT }),
+    queryFn: async () => adaptPage(
+      await getPublicProductsApi({ page: 0, size: LATEST_PARTS_COUNT, sort: 'createdAt,desc' }),
+      adaptLatestPart,
+    ).items,
+    staleTime: 60 * 1000,
+  });
+  const error = queryError ? (queryError.message || 'No se pudieron cargar las últimas publicaciones.') : null;
 
   return (
     <section className="latest-parts-section container">

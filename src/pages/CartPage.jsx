@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Lock, ShoppingBag, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Car, Loader2, Lock, ShoppingBag, X } from 'lucide-react';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
@@ -10,6 +10,8 @@ import { ROUTES } from '../routes/paths';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import CartStoreGroup from '../components/CartStoreGroup';
 import CheckoutSummaryPanel from '../components/CheckoutSummaryPanel';
+import { useCompatibilityCheck } from '../hooks/useCompatibilityCheck';
+import { cartCompatSummary, compatVehicleLabel, toCompatVehicle } from '../utils/compatibilityCheck';
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -52,6 +54,19 @@ export default function CartPage() {
     if (services.some((name) => name === 'Envío fuera de la comuna')) return 'Por pagar';
     return 'Sin costo';
   }, [cartItems]);
+
+  // Con un vehículo activo (el de la búsqueda por patente) se revisa cada repuesto contra él:
+  // un resumen arriba y una línea en cada producto. Sin vehículo evaluable no se consulta nada.
+  const compatEnabled = Boolean(toCompatVehicle(activeVehicle));
+  const compatEntries = useMemo(() => (compatEnabled ? cartItems.map((item) => ({
+    productoId: item.id,
+    esUniversal: Boolean(item.esUniversal),
+    vehicle: activeVehicle,
+  })) : []), [compatEnabled, cartItems, activeVehicle]);
+  const { statusOf: compatStatusOf } = useCompatibilityCheck(compatEntries, { enabled: compatEnabled });
+  const compatStatuses = compatEntries.map((entry) => compatStatusOf(entry.productoId, entry.vehicle, entry.esUniversal));
+  const compatLoading = compatStatuses.includes('loading');
+  const compatSummary = compatEnabled && !compatLoading ? cartCompatSummary(compatStatuses, activeVehicle) : '';
 
   // Productos de la tienda de quien compra: no se pueden pagar (el backend rechaza el pedido entero).
   const ownStoreItems = cartItems.filter((item) => item.ownStore);
@@ -138,6 +153,17 @@ export default function CartPage() {
           </div>
         )}
 
+        {compatEnabled && (compatLoading || compatSummary) && (
+          <p className="cart-compat-summary" role="status" aria-live="polite">
+            {compatLoading ? <Loader2 size={15} className="spin-icon" aria-hidden="true" /> : <Car size={15} aria-hidden="true" />}
+            <span>
+              {compatLoading
+                ? `Revisando compatibilidad con tu ${compatVehicleLabel(activeVehicle) || 'vehículo'}…`
+                : compatSummary}
+            </span>
+          </p>
+        )}
+
         <div className="cart-page-layout">
           <div className="cart-page-main">
             {groups.map((group) => (
@@ -145,6 +171,9 @@ export default function CartPage() {
                 key={group.key}
                 group={group}
                 activeVehicle={activeVehicle}
+                compatStatusOf={compatEnabled
+                  ? (item) => compatStatusOf(item.id, activeVehicle, Boolean(item.esUniversal))
+                  : null}
                 onUpdateQuantity={updateCartQuantity}
                 onRemove={removeFromCart}
               />

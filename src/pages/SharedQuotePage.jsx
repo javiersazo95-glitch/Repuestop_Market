@@ -4,10 +4,20 @@ import { AlertCircle, Download, Eye, FileText, Loader2, Store } from 'lucide-rea
 import { getSharedQuoteApi, getStoreProfileApi } from '../services/api';
 import { adaptStore } from '../services/adapters';
 import { buildQuotePdfBlob, quoteDocumentFilename } from '../utils/quoteDocument';
-import { isQuoteExpired, quoteChargeBase } from '../utils/quoteFlow';
+import { deliveryTermsLabel, isQuoteExpired, quoteChargeBase, quoteShippingCost } from '../utils/quoteFlow';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 
 const formatCLP = (value) => `$${Math.round(Number(value || 0)).toLocaleString('es-CL')}`;
+
+// La vigencia y la entrega se guardan como texto de trabajo ("Valida por 7 dias", "Envío dentro de
+// la comuna (costo: $3000)") que la app y el Market leen tal cual; esta página es para alguien de
+// fuera y los muestra escritos como corresponde (pruebas E2E en dev, 5-oct).
+const validityLabel = (value) => String(value || '').replace(/^Valida\b/, 'Válida').replace(/\bdias\b/, 'días');
+const deliveryLabel = (quote) => {
+  const shipping = quoteShippingCost(quote);
+  const label = deliveryTermsLabel(quote.condicionesEntrega);
+  return shipping > 0 ? `${label} (despacho ${formatCLP(shipping)})` : label;
+};
 
 /**
  * Cotizacion compartida (5-oct): "Compartir cotizacion" en la app o en el Market envia este enlace.
@@ -130,17 +140,21 @@ export default function SharedQuotePage() {
         {notPayable && (
           <p className="shared-quote-warning">
             <AlertCircle size={16} />
-            {!data.vigente
-              ? 'La tienda reemplazó o retiró esta cotización. El documento queda como referencia.'
-              : 'Esta cotización ya venció. El documento queda como referencia.'}
+            {data.motivoNoVigente === 'PAGADA'
+              ? 'Esta cotización ya fue pagada. El documento queda como referencia.'
+              : data.motivoNoVigente === 'EN_PAUSA'
+              ? 'Esta cotización está en pausa: el comprador pidió una modificación y la tienda aún no responde. El documento queda como referencia.'
+              : (data.motivoNoVigente === 'VENCIDA' || (data.vigente && expired))
+                ? 'Esta cotización ya venció. El documento queda como referencia.'
+                : 'La tienda reemplazó o retiró esta cotización. El documento queda como referencia.'}
           </p>
         )}
 
         <dl className="shared-quote-facts">
           <div><dt>Total cotizado</dt><dd>{formatCLP(quoteChargeBase(quote))}</dd></div>
           {quote.cantidad && <div><dt>Cantidad</dt><dd>{quote.cantidad}</dd></div>}
-          {quote.condicionesEntrega && <div><dt>Entrega</dt><dd>{quote.condicionesEntrega}</dd></div>}
-          {quote.vigencia && <div><dt>Vigencia</dt><dd>{quote.vigencia}</dd></div>}
+          {quote.condicionesEntrega && <div><dt>Entrega</dt><dd>{deliveryLabel(quote)}</dd></div>}
+          {quote.vigencia && <div><dt>Vigencia</dt><dd>{validityLabel(quote.vigencia)}</dd></div>}
         </dl>
 
         <div className="shared-quote-actions">

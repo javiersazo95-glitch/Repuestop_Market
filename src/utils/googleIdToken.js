@@ -34,3 +34,62 @@ export function decodeGoogleIdToken(idToken) {
     return null;
   }
 }
+
+/**
+ * Traspaso del perfil de Google desde el modal de acceso a `/vender`.
+ *
+ * Con un correo nuevo, el modal pregunta si la cuenta es de comprador o de tienda (igual que la
+ * pantalla "Tipo de cuenta" de la app). Si elige tienda, se guarda aca el idToken que Google ya
+ * entrego y `/vender` lo toma para no volver a pedir la cuenta. sessionStorage: muere con la
+ * pestana, y se borra apenas se lee.
+ */
+const CLAVE_GOOGLE_TIENDA = 'repuestop_google_pendiente_tienda';
+
+export function guardarGoogleParaTienda(idToken) {
+  try {
+    sessionStorage.setItem(CLAVE_GOOGLE_TIENDA, idToken);
+  } catch {
+    /* sin almacenamiento: /vender pedira Google de nuevo */
+  }
+}
+
+/**
+ * El perfil guardado para `/vender`, o null. Se borra al leerlo.
+ * @returns {{ idToken: string, email: string, name: string, picture: string } | null}
+ */
+export function tomarGoogleParaTienda() {
+  try {
+    const idToken = sessionStorage.getItem(CLAVE_GOOGLE_TIENDA);
+    sessionStorage.removeItem(CLAVE_GOOGLE_TIENDA);
+    const perfil = idToken ? decodeGoogleIdToken(idToken) : null;
+    return perfil && idToken ? { idToken, email: perfil.email, name: perfil.nombre, picture: perfil.picture } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Correo que escribió en el modal una tienda que intentó entrar como vendedor sin tener cuenta.
+ * `/vender` lo usa para precargar el registro. sessionStorage y se borra al leerlo, igual que
+ * el idToken de Google de arriba.
+ */
+const CLAVE_CORREO_TIENDA = 'repuestop_correo_pendiente_tienda';
+
+export function guardarCorreoParaTienda(email) {
+  try {
+    if (email) sessionStorage.setItem(CLAVE_CORREO_TIENDA, String(email).trim().toLowerCase());
+  } catch {
+    /* sin almacenamiento: /vender parte con el correo vacio */
+  }
+}
+
+/** @returns {string} el correo guardado, o '' si no hay. */
+export function tomarCorreoParaTienda() {
+  try {
+    const email = sessionStorage.getItem(CLAVE_CORREO_TIENDA) || '';
+    sessionStorage.removeItem(CLAVE_CORREO_TIENDA);
+    return email;
+  } catch {
+    return '';
+  }
+}

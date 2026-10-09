@@ -6,7 +6,7 @@ import ProductDetailPage from '../components/ProductDetailPage';
 import { useAuth } from '../context/AuthContext';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
-import { parseIdSlug } from '../routes/paths';
+import { ROUTES, parseIdSlug } from '../routes/paths';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 import { getPublicProductApi, getPublicProductsApi } from '../services/api';
 import { adaptPage, adaptProduct } from '../services/adapters';
@@ -64,8 +64,8 @@ export default function ProductPage() {
         <AlertCircle size={38} aria-hidden="true" />
         <h2>No encontramos este repuesto</h2>
         <p>{error?.message || 'No se pudo cargar la información del repuesto.'}</p>
-        <button type="button" className="route-status-action" onClick={() => nav.goCatalog()}>
-          <ArrowLeft size={16} /> Volver al catálogo
+        <button type="button" className="route-status-action" onClick={() => nav.goBack(ROUTES.catalog)}>
+          <ArrowLeft size={16} /> {nav.canGoBack ? 'Volver' : 'Volver al catálogo'}
         </button>
       </div>
     );
@@ -80,7 +80,10 @@ export default function ProductPage() {
       product={product}
       user={user}
       activeVehicle={activeVehicle}
-      onBack={() => nav.goCatalog()}
+      // Vuelve a donde se abrio la ficha (catalogo con sus filtros, inicio, tienda, favoritos o
+      // el repuesto anterior); solo con entrada directa cae al catalogo.
+      onBack={() => nav.goBack(ROUTES.catalog)}
+      backLabel={nav.canGoBack ? 'Volver' : 'Volver al catálogo'}
       onAddToCart={addToCart}
       onOpenQuote={openQuote}
       onSelectProduct={nav.goProduct}

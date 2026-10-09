@@ -70,34 +70,53 @@ import {
  * `rescheduleFromId`: cita vigente que se está cambiando de hora. Con ella el backend cancela
  * la anterior y crea la nueva en una sola operación (antes eran dos llamadas desde aquí, y si
  * la cancelación fallaba quedaban las dos).
+ *
+ * `fromAppointment`: la cita de la que se parte al reagendar o reservar otra hora. Precarga el
+ * servicio, el teléfono, el vehículo y la descripción: "Cambia la hora de tu cita" pedía todo
+ * de nuevo y, si no se reescribía, la cita nueva perdía la descripción (pruebas E2E, 5-oct).
  */
-export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isRescheduling = false, rescheduleFromId = null }) {
+const HOME_SERVICE_PREFIX = 'Servicio a domicilio. Dirección del servicio: ';
+
+export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isRescheduling = false, rescheduleFromId = null, fromAppointment = null }) {
   const { user } = useAuth();
   const { isOwn } = useAdOwnership();
+  const previousNoteLines = String(fromAppointment?.notes || '').split('\n');
+  // Citas antiguas guardaban la dirección dentro de las notas; las nuevas traen campos propios.
+  const previousHomeLine = previousNoteLines.find((line) => line.startsWith(HOME_SERVICE_PREFIX)) || '';
+  const previousHomeAddress = fromAppointment?.homeService
+    ? (fromAppointment.homeAddress || '')
+    : previousHomeLine.slice(HOME_SERVICE_PREFIX.length);
+  // La ranura "a domicilio" solo existe si el anuncio lo ofrece (`homeService`, lo declara el taller).
+  const offersHomeService = adOrCompany?.homeService === true;
 
   const [step, setStep] = useState('form'); // 'form' | 'confirm' | 'success'
   const [monthCursor, setMonthCursor] = useState(() => new Date());
   const [dataConfirmed, setDataConfirmed] = useState(false);
-  const [selectedServices, setSelectedServices] = useState([]);
+  const [selectedServices, setSelectedServices] = useState(() => (fromAppointment
+    ? (fromAppointment.services?.length ? fromAppointment.services : [fromAppointment.service]).filter(Boolean)
+    : []));
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointmentTime, setAppointmentTime] = useState('');
   const [bookedSlots, setBookedSlots] = useState([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
-  const [userName, setUserName] = useState(user?.userName || user?.nombre || '');
-  const [userPhone, setUserPhone] = useState(user?.phone || user?.telefono || '');
-  const [vehiclePatent, setVehiclePatent] = useState('');
-  const [vehicleModel, setVehicleModel] = useState('');
+  const [userName, setUserName] = useState(fromAppointment?.customerName || user?.userName || user?.nombre || '');
+  const [userPhone, setUserPhone] = useState(fromAppointment?.customerPhone || user?.phone || user?.telefono || '');
+  const [vehiclePatent, setVehiclePatent] = useState(fromAppointment?.vehiclePatent || '');
+  const [vehicleModel, setVehicleModel] = useState(fromAppointment?.vehicleModel || '');
   // Detección por patente, igual que en la app: 'idle' | 'searching' | 'found' | 'not-found'.
   const [plateLookup, setPlateLookup] = useState('idle');
-  const [detectedPlate, setDetectedPlate] = useState('');
+  // Con patente y vehículo precargados no se vuelve a consultar la patente (cada consulta nueva cuesta).
+  const [detectedPlate, setDetectedPlate] = useState(() => (
+    fromAppointment?.vehiclePatent && fromAppointment?.vehicleModel ? normalizePlate(fromAppointment.vehiclePatent) : ''));
   // Último texto que puso la detección: se reemplaza si cambia la patente, pero no lo que
   // haya escrito el usuario.
   const autoFilledVehicle = useRef('');
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(() => previousNoteLines.filter((line) => line !== previousHomeLine).join('\n').trim());
   // Solo hace falta si el taller va donde está el vehículo (igual que en la app).
-  const [serviceAddress, setServiceAddress] = useState('');
+  const [serviceAddress, setServiceAddress] = useState(previousHomeAddress);
   // Ranura "Servicio a domicilio" (igual que la app): apagada por defecto; al activarla se pide la dirección.
-  const [atHome, setAtHome] = useState(false);
+  const [atHomeChoice, setAtHome] = useState(Boolean(fromAppointment?.homeService || previousHomeLine));
+  const atHome = offersHomeService && atHomeChoice;
   const homeAddress = atHome ? serviceAddress.trim() : '';
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -326,11 +345,11 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isR
         customerEmail: accountEmail,
         vehiclePatent: vehiclePatent.trim(),
         vehicleModel: vehicleModel.trim(),
-        // Misma convención que la app móvil: la dirección viaja dentro de las
-        // notas para no tocar el DTO del agendamiento.
-        notes: [notes.trim(), homeAddress ? `Servicio a domicilio. Dirección del servicio: ${homeAddress}` : '']
-          .filter(Boolean)
-          .join('\n')
+        notes: notes.trim(),
+        // Campos propios (igual que la app): el backend valida que el anuncio ofrezca
+        // domicilio y exige la dirección.
+        homeService: atHome,
+        homeAddress
       };
       const appointment = rescheduleFromId
         ? await rescheduleAdAppointment(rescheduleFromId, form)
@@ -584,13 +603,17 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isR
                       <Car size={18} />
                       <input type="text" maxLength={160} placeholder="Marca y modelo del vehículo (opcional)" value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} />
                     </label>
-                    {/* Ranura "Servicio a domicilio": apagada por defecto. Al activarla se
-                        despliega la dirección donde está el vehículo, que pasa a ser obligatoria. */}
+                    {/* Ranura "Servicio a domicilio": solo en anuncios que lo ofrecen. Apagada por
+                        defecto; al activarla se despliega la dirección donde está el vehículo, que
+                        pasa a ser obligatoria. */}
+                    {offersHomeService && (
                     <label className={`bk-home-toggle ${atHome ? 'is-active' : ''}`}>
                       <span className="bk-home-icon"><Home size={17} /></span>
                       <span className="bk-home-text">
-                        <strong>Servicio a domicilio</strong>
-                        <small>{atHome ? 'El taller irá a la dirección que indiques.' : 'Actívalo si necesitas que el taller vaya donde está tu vehículo.'}</small>
+                        <strong>¿Quieres el servicio a domicilio?</strong>
+                        <small>{atHome
+                          ? 'El taller irá a la dirección que indiques.'
+                          : `Este taller va donde está tu vehículo${adOrCompany?.commune ? ` dentro de ${adOrCompany.commune}` : ' dentro de su comuna'}.`}</small>
                       </span>
                       <input
                         type="checkbox"
@@ -600,6 +623,7 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isR
                         aria-label="Servicio a domicilio"
                       />
                     </label>
+                    )}
                     {atHome && (
                       <div className="bk-address">
                         <AddressAutocompleteInput

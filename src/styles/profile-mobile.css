@@ -835,19 +835,54 @@
 
   /* Detalle de pedido dentro del panel (layout="page") */
   .profile-dashboard .order-page-container { border-radius: 14px; }
-  .profile-dashboard .order-page-container .order-modal-header { flex-wrap: wrap; gap: 10px; padding: 14px; }
-  .profile-dashboard .order-page-container .order-modal-title-group { width: 100%; align-items: flex-start; }
-  .profile-dashboard .order-page-container .order-modal-title-group h2 { font-size: 16px; line-height: 1.25; }
-  .profile-dashboard .order-page-back { width: 44px; height: 44px; border-radius: 12px; }
-  .profile-dashboard .order-page-container .order-modal-header-actions {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
+  /* Pruebas en dev (2026-10-09): una sola fila con el titulo, el chat como icono y el estado. La
+     flecha propia se quita: la app bar del perfil ya tiene la de volver. El aviso del mediador y
+     el error de abrir el chat bajan a lo ancho (`display: contents` los deja como hijos del flex). */
+  .profile-dashboard .order-page-container .order-modal-header {
+    flex-wrap: wrap;
+    align-items: center;
     gap: 8px;
+    padding: 12px 14px;
   }
-  .profile-dashboard .order-page-container .order-chat-header-control,
-  .profile-dashboard .order-page-container .order-chat-header-row { width: 100%; }
-  .profile-dashboard .order-page-container .order-chat-header-button { width: 100%; min-height: 44px; justify-content: center; }
+  .profile-dashboard .order-page-container .order-page-back { display: none; }
+  .profile-dashboard .order-page-container .order-modal-title-group { flex: 1 1 0; min-width: 0; width: auto; align-items: center; }
+  .profile-dashboard .order-page-container .order-modal-title-group h2 { font-size: 16px; line-height: 1.25; }
+  .profile-dashboard .order-page-container .order-modal-subtitle { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .profile-dashboard .order-page-container .order-modal-header-actions {
+    display: contents;
+  }
+  .profile-dashboard .order-page-container .order-chat-header-control { display: contents; }
+  .profile-dashboard .order-page-container .order-chat-header-row { flex: 0 0 auto; gap: 0; }
+  .profile-dashboard .order-page-container .order-chat-header-button {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    justify-content: center;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    background: #eff6ff;
+  }
+  .profile-dashboard .order-page-container .order-chat-header-button svg { width: 18px; height: 18px; }
+  .profile-dashboard .order-page-container .order-chat-header-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .profile-dashboard .order-page-container .order-chat-header-button:hover { text-decoration: none; background: #dbeafe; }
+  .profile-dashboard .order-page-container .order-chat-info-button { display: none; }
+  .profile-dashboard .order-page-container .order-status-header-control { flex: 0 0 auto; max-width: 46%; }
+  .profile-dashboard .order-page-container .order-chat-mediator-info,
+  .profile-dashboard .order-page-container .order-chat-header-control > .confirm-dialog-error {
+    order: 1;
+    flex-basis: 100%;
+    max-width: none;
+    margin: 0;
+  }
+  .profile-dashboard .order-page-container .order-boleta-row { align-items: center; }
   .profile-dashboard .order-page-body { padding: 14px 12px; gap: 12px; }
   .profile-dashboard .order-timeline-card { padding: 12px; }
   .profile-dashboard .order-timeline-steps { overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
@@ -1011,7 +1046,8 @@
   .profile-dashboard .withdrawal-history-top,
   .profile-dashboard .withdrawal-history-meta { flex-wrap: wrap; gap: 6px 10px; }
   .profile-dashboard .withdrawal-order-main { min-width: 0; }
-  .withdrawal-modal { width: 100%; max-height: 94vh; max-height: 94dvh; border-radius: 18px 18px 0 0; }
+  /* Hoja inferior: el contenido termina sobre la barra de gestos/navegacion del telefono. */
+  .withdrawal-modal { width: 100%; max-height: 94vh; max-height: 94dvh; border-radius: 18px 18px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
   .withdrawal-modal > header { padding: 14px; }
   .withdrawal-modal-search input { font-size: 16px; min-height: 44px; }
   .withdrawal-modal-footer { flex-wrap: wrap; gap: 8px; padding-bottom: calc(12px + var(--pm-safe-bottom)); }

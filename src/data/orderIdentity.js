@@ -195,7 +195,38 @@ export function subOrderDeliveryMethod(subOrder, order) {
   return String(subOrder?.tipoEnvio || order?.tipoEnvio || '').trim().toLowerCase();
 }
 
+/**
+ * Checkout por producto (2026-10-02): cada línea trae su propio método, y una tienda puede
+ * despachar un repuesto dentro de la comuna y otro fuera. La subordén guarda uno solo (el que
+ * se paga al recibir), así que la tarjeta y el detalle decían "Envío fuera de la comuna: $3.000"
+ * aunque esos $3.000 eran del despacho dentro de la comuna (pruebas E2E en dev, 5-oct). Con dos
+ * o más métodos distintos en las líneas se listan todos; `proveedorId` acota a una tienda.
+ */
+const LINE_LABEL_ORDER = ['store_pickup', 'local_delivery', 'courier_por_pagar'];
+
+function lineDeliveryType(item) {
+  const tipo = String(item?.tipoEnvio || '').trim().toLowerCase();
+  if (DELIVERY_LABELS[tipo]) return tipo;
+  const metodo = String(item?.metodoEnvio || '').toLowerCase();
+  if (!metodo) return null;
+  if (metodo.includes('retiro')) return 'store_pickup';
+  if (metodo.includes('fuera')) return 'courier_por_pagar';
+  if (metodo.includes('dentro') || metodo.includes('comuna')) return 'local_delivery';
+  return null;
+}
+
+export function lineDeliveryLabels(order, proveedorId = null) {
+  const types = new Set((order?.items || [])
+    .filter((item) => !isCancelledItem(item))
+    .filter((item) => proveedorId == null || String(item.proveedorId) === String(proveedorId))
+    .map(lineDeliveryType)
+    .filter(Boolean));
+  return LINE_LABEL_ORDER.filter((tipo) => types.has(tipo)).map((tipo) => DELIVERY_LABELS[tipo]);
+}
+
 export function subOrderDeliveryLabel(subOrder, order) {
+  const porLinea = lineDeliveryLabels(order, subOrder?.proveedorId ?? null);
+  if (porLinea.length > 1) return porLinea.join(' · ');
   return deliveryMethodLabel({ tipoEnvio: subOrderDeliveryMethod(subOrder, order) });
 }
 
@@ -219,6 +250,8 @@ export function orderHasShippingDueOnDelivery(order) {
  * compro.
  */
 export function orderDeliverySummary(order) {
+  const porLinea = lineDeliveryLabels(order);
+  if (porLinea.length > 1) return porLinea.join(' · ');
   const subOrders = Array.isArray(order?.subordenes) ? order.subordenes : [];
   if (subOrders.length > 1) {
     const labels = [...new Set(subOrders.map((sub) => subOrderDeliveryLabel(sub, order)))];

@@ -546,7 +546,9 @@ export async function selectStoreCoverTemplateApi(templateId) {
  * Perfil: Pedidos, favoritos e inventario/tienda del proveedor
  */
 export async function getBuyerOrdersApi(usuarioId, { signal } = {}) {
-  return fetchApi(`/usuarios/${usuarioId}/pedidos`, { method: 'GET', signal });
+  // Sin `size` el backend responde su pagina por defecto (20) y la web mostraba solo las ultimas 20
+  // compras sin avisar (U2, 5-oct). Mismo lote que las ventas, hasta paginar en el cliente.
+  return fetchApi(`/usuarios/${usuarioId}/pedidos?size=100`, { method: 'GET', signal });
 }
 
 /**
@@ -884,6 +886,15 @@ export async function checkoutCartApi(usuarioId, payload) {
   return fetchApi(`/usuarios/${usuarioId}/pedidos/checkout`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
+/**
+ * ¿Cada repuesto le sirve al vehículo elegido? Público (con sesión el token va igual).
+ * `items`: [{ productoId, vehiculo: { vehiculoCatalogoId, marca, modelo, anio } }], máximo 50.
+ * Responde { resultados: [{ productoId, resultado: COMPATIBLE | NO_COINCIDE | SIN_DATOS | UNIVERSAL }] }.
+ */
+export async function evaluateCompatibilityApi(items, { signal } = {}) {
+  return fetchApi('/compatibilidad/evaluar', { method: 'POST', body: JSON.stringify({ items }), signal });
+}
+
 export async function getCartApi(usuarioId) {
   return fetchApi(`/usuarios/${usuarioId}/carrito`, { method: 'GET' });
 }
@@ -1097,6 +1108,19 @@ export async function getSellerStoreApi(proveedorId, { signal } = {}) {
   }
 }
 
+/**
+ * Alerta de retiro fallido del header: el último retiro cuyo depósito rebotó en el banco y que el
+ * vendedor todavía no vuelve a solicitar. Con `activa: false` no hay nada que corregir.
+ */
+export async function getSellerWithdrawalAlertApi(proveedorId) {
+  try {
+    const res = await fetchApi(`/proveedores/${proveedorId}/retiros/alerta-rechazo`, { method: 'GET' });
+    return res && typeof res === 'object' ? res : { activa: false };
+  } catch (err) {
+    return { activa: false };
+  }
+}
+
 /** Fondos de pedidos finalizados que todavía no han sido incluidos en un retiro. */
 export async function getSellerPendingWithdrawalsApi(proveedorId) {
   try {
@@ -1104,6 +1128,15 @@ export async function getSellerPendingWithdrawalsApi(proveedorId) {
   } catch (err) {
     return { acumuladoActual: 0, disponibleRetiro: 0, pendientesLiquidacion: 0, items: [] };
   }
+}
+
+/**
+ * U3 (5-oct): saldo de la tienda por etapa (disponible, retenido, en curso, en transferencia y
+ * retirado), calculado en el backend con la misma liquidacion que el retiro. Reemplaza a "Mis
+ * ganancias", que sumaba en el navegador lo pagado de los ultimos 100 pedidos.
+ */
+export async function getSellerBalanceApi(proveedorId) {
+  return fetchApi(`/proveedores/${proveedorId}/retiros/saldo`, { method: 'GET' });
 }
 
 export async function getSellerWithdrawalsApi(proveedorId) {
@@ -1224,6 +1257,37 @@ export async function registerSaleReceiptApi(orderId, file) {
 }
 
 /**
+ * 9-oct: notas de credito de la tienda, una por cada reembolso de su venta que anula su boleta.
+ * Devuelve `[{ pagoReembolsoId, origen, montoReembolso, venceEl, vencida, estado
+ * (PENDIENTE|REGISTRADA|RECHAZADA), motivoRechazo, notaId, folio, fechaEmision, monto,
+ * montoPropuesto, montoMaximo }]`; vacio si la venta no requiere nota.
+ */
+export async function getSellerCreditNotesApi(orderId) {
+  return fetchApi(`/pedidos/${orderId}/notas-credito`, { method: 'GET' });
+}
+
+/** La tienda sube su nota de credito: queda registrada al instante (el equipo puede rechazarla). */
+export async function uploadSellerCreditNoteApi(orderId, { pagoReembolsoId, folio, fechaEmision, monto }, file) {
+  if (!(file instanceof File)
+    || file.type !== 'application/pdf'
+    || !file.name.toLowerCase().endsWith('.pdf')) {
+    throw new Error('La nota de crédito debe ser un archivo PDF.');
+  }
+  const formData = new FormData();
+  formData.append('pagoReembolsoId', String(pagoReembolsoId));
+  formData.append('folio', folio);
+  formData.append('fechaEmision', fechaEmision);
+  if (monto != null) formData.append('monto', String(monto));
+  formData.append('archivo', file);
+  return fetchApi(`/pedidos/${orderId}/notas-credito`, { method: 'POST', body: formData });
+}
+
+/** URL de un solo uso (5 min) del PDF de la nota de credito. Devuelve `{ url }`. */
+export async function getSellerCreditNoteUrlApi(orderId, notaId) {
+  return fetchApi(`/pedidos/${orderId}/notas-credito/${notaId}/url`, { method: 'GET' });
+}
+
+/**
  * URL de descarga de un solo uso (5 min) para la boleta de venta. El comprador debe indicar
  * la tienda con `proveedorId`; al vendedor se le resuelve la suya. Devuelve `{ url }`.
  */
@@ -1261,10 +1325,20 @@ export async function declareOrderDeliveryApi(orderId) {
  * Marketplace Endpoints (Unificados con Spring Boot Backend)
  */
 
-export async function getPublicStoresApi({ page = 0, size = 12, texto, comuna, marcaVehiculo, catalogoId, anioVehiculo, signal } = {}) {
+export async function getPublicStoresApi({
+  page = 0, size = 12, texto, comuna, region, giro, metodoEnvio, marcaEspecialista,
+  marcaVehiculo, catalogoId, anioVehiculo, signal,
+} = {}) {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (texto) params.set('texto', texto);
   if (comuna) params.set('comuna', comuna);
+  // Filtros del panel del directorio: el backend compara exacto sin distinguir mayusculas
+  // (metodoEnvio contra un metodo completo de la lista de la tienda), asi el total y la
+  // paginacion salen exactos sobre todas las tiendas.
+  if (region) params.set('region', region);
+  if (giro) params.set('giro', giro);
+  if (metodoEnvio) params.set('metodoEnvio', metodoEnvio);
+  if (marcaEspecialista) params.set('marcaEspecialista', marcaEspecialista);
   // Marca del vehiculo resuelto por patente: el backend deja solo las tiendas con stock que
   // le sirva a ese auto (universales incluidos) y devuelve `productCount` con ese mismo
   // criterio. Es lo que pinta el "N Para {marca}" de cada card.
@@ -1276,6 +1350,22 @@ export async function getPublicStoresApi({ page = 0, size = 12, texto, comuna, m
   // Mismo anio que manda el listado por patente, para que el conteo de la card coincida.
   if (catalogoId && Number(anioVehiculo) > 0) params.set('anioVehiculo', String(Number(anioVehiculo)));
   return fetchApi(`/tiendas/publicas?${params.toString()}`, { method: 'GET', signal });
+}
+
+/**
+ * Opciones del panel del directorio de tiendas con su conteo, sobre TODAS las tiendas publicas.
+ * Los conteos ignoran lo elegido en el panel y respetan el contexto (texto + vehiculo).
+ * Responde { total, comunas, regiones, giros, metodosEnvio, marcasEspecialistas }, cada item
+ * { nombre, region|null, tiendas }.
+ */
+export async function getPublicStoreFilterOptionsApi({ texto, marcaVehiculo, catalogoId, anioVehiculo, signal } = {}) {
+  const params = new URLSearchParams();
+  if (texto) params.set('texto', texto);
+  if (marcaVehiculo) params.set('marcaVehiculo', marcaVehiculo);
+  if (catalogoId) params.set('catalogoId', String(catalogoId));
+  if (catalogoId && Number(anioVehiculo) > 0) params.set('anioVehiculo', String(Number(anioVehiculo)));
+  const query = params.toString();
+  return fetchApi(`/tiendas/publicas/opciones-filtro${query ? `?${query}` : ''}`, { method: 'GET', signal });
 }
 
 /**
@@ -1375,11 +1465,49 @@ export async function getCatalogFilterOptionsApi({ signal } = {}) {
  * subcategorias, marcas, condiciones, origenes, tiendas, comunas y rango de precio que existen
  * en el universo compatible con el auto, para no ofrecer filtros que devuelvan cero.
  */
-export async function getVehicleFilterOptionsApi(catalogoId, { anio, signal } = {}) {
+export async function getVehicleFilterOptionsApi(catalogoId, { anio, proveedorId, signal } = {}) {
   const params = new URLSearchParams();
   if (Number(anio) > 0) params.set('anio', String(Number(anio)));
+  // En la vista de una tienda las opciones se acotan a la tienda Y al vehiculo a la vez.
+  if (proveedorId) params.set('proveedorId', String(proveedorId));
   const query = params.toString();
   return fetchApi(`/vehiculos-catalogo/${catalogoId}/repuestos/filtros${query ? `?${query}` : ''}`, { method: 'GET', signal });
+}
+
+/**
+ * Marca, modelo, año y versión de vehículo que tienen repuestos publicados registrados como
+ * compatibles (los universales no cuentan). Un paso de la cascada por llamada: sin marca trae
+ * `marcas`; con marca, `modelos`; con marca+modelo, `anios`; con los tres, `versiones`.
+ * Cada opción viene como { id, nombre, productos }.
+ */
+export async function getVehicleCascadeOptionsApi({ proveedorId, marcaId, modelo, anio, signal } = {}) {
+  const params = new URLSearchParams();
+  if (proveedorId) params.set('proveedorId', String(proveedorId));
+  if (marcaId) params.set('marcaId', String(marcaId));
+  if (modelo) params.set('modelo', modelo);
+  if (anio) params.set('anio', String(anio));
+  const query = params.toString();
+  return fetchApi(`/inventario/productos/opciones-vehiculo${query ? `?${query}` : ''}`, { method: 'GET', signal });
+}
+
+/**
+ * Opciones de los filtros avanzados del catálogo general con su conteo, solo con lo publicado:
+ * mismo formato que `getVehicleFilterOptionsApi` más `condicionesConteo` y `origenesConteo`.
+ * Con vehículo del panel se acota a lo compatible + universal (igual que el listado), y con
+ * `proveedorId` a una sola tienda.
+ */
+export async function getPublishedFilterOptionsApi({
+  proveedorId, compatibilidadMarca, compatibilidadModelo, compatibilidadAnio, compatibilidadVersionIds, signal,
+} = {}) {
+  const params = new URLSearchParams();
+  if (proveedorId) params.set('proveedorId', String(proveedorId));
+  if (compatibilidadMarca) params.set('compatibilidadMarca', compatibilidadMarca);
+  if (compatibilidadModelo) params.set('compatibilidadModelo', compatibilidadModelo);
+  if (compatibilidadAnio) params.set('compatibilidadAnio', String(compatibilidadAnio));
+  String(compatibilidadVersionIds || '').split(',').filter(Boolean)
+    .forEach((id) => params.append('compatibilidadVersionIds', id));
+  const query = params.toString();
+  return fetchApi(`/inventario/productos/opciones-filtro${query ? `?${query}` : ''}`, { method: 'GET', signal });
 }
 
 export async function getPublicPartOriginsApi({ signal } = {}) {
@@ -1443,6 +1571,17 @@ export async function updateStoreSpecialistBrandsApi(sellerId, marcaIds) {
   return fetchApi(`/proveedores/${sellerId}/marcas-especialistas`, {
     method: 'PUT',
     body: JSON.stringify({ marcaIds }),
+  });
+}
+
+/**
+ * Redes sociales de la tienda autenticada. Vacía quita la red. El servidor rechaza (400) todo
+ * enlace que no sea del dominio de su red.
+ */
+export async function updateStoreSocialLinksApi(sellerId, links) {
+  return fetchApi(`/proveedores/${sellerId}/redes-sociales`, {
+    method: 'PUT',
+    body: JSON.stringify(links),
   });
 }
 
@@ -1724,12 +1863,30 @@ export async function markNotificationReadApi(userId, notificationId) {
   return fetchApi(`/usuarios/${userId}/notificaciones/${notificationId}/leida`, { method: 'PUT' });
 }
 
-export async function markAllNotificationsReadApi(userId) {
-  return fetchApi(`/usuarios/${userId}/notificaciones/leidas`, { method: 'PUT' });
+/** Sin `ids` marca todas; con `ids` solo esas (lo visible segun la moderacion por perfil). */
+export async function markAllNotificationsReadApi(userId, ids) {
+  return fetchApi(`/usuarios/${userId}/notificaciones/leidas`, {
+    method: 'PUT',
+    ...(Array.isArray(ids) ? { body: JSON.stringify({ ids }) } : {}),
+  });
+}
+
+/** Moderacion de notificaciones por perfil: `{ vendedor, comprador }` con TODAS | IMPORTANTES | NINGUNA. */
+export async function getNotificationPreferencesApi(userId) {
+  return fetchApi(`/usuarios/${userId}/preferencias-notificaciones`, { method: 'GET' });
+}
+
+export async function updateNotificationPreferencesApi(userId, payload) {
+  return fetchApi(`/usuarios/${userId}/preferencias-notificaciones`, { method: 'PUT', body: JSON.stringify(payload) });
 }
 
 export async function deleteReadNotificationsApi(userId) {
   return fetchApi(`/usuarios/${userId}/notificaciones/leidas`, { method: 'DELETE' });
+}
+
+/** Un aviso abierto (se navego a su destino) se elimina: la campana solo muestra lo que aun no se abre. */
+export async function deleteNotificationApi(userId, notificationId) {
+  return fetchApi(`/usuarios/${userId}/notificaciones/${notificationId}`, { method: 'DELETE' });
 }
 
 // -------------------------------------------------------------
@@ -2124,6 +2281,16 @@ export async function acceptSellerAdhesionApi(proveedorId) {
   });
 }
 
+/**
+ * La tienda declara ser contribuyente de IVA (Circular SII 39 de 2025). Para tiendas ya aprobadas
+ * que no la hicieron al subir sus documentos. La IP y la fecha las registra el servidor.
+ */
+export async function declareSellerIvaApi(proveedorId) {
+  return fetchApi(`/proveedores/${proveedorId}/declaracion-iva`, {
+    method: 'POST',
+  });
+}
+
 // -------------------------------------------------------------
 // FASE 6: CHATS CON IMAGEN
 // -------------------------------------------------------------
@@ -2277,9 +2444,11 @@ export async function getAutomotiveServiceAccreditationApi({ signal } = {}) {
 export async function submitAutomotiveServiceAccreditationApi(data, files) {
   const formData = new FormData();
   formData.append('data', JSON.stringify({ ...data, canal: 'MARKETPLACE_WEB' }));
-  formData.append('identidad', files.identidad);
-  formData.append('inicioActividades', files.inicioActividades);
-  formData.append('patenteMunicipal', files.patenteMunicipal);
+  // Solo viajan los documentos nuevos: al corregir, el backend conserva los ya
+  // recibidos que no se reemplazan.
+  ['identidad', 'inicioActividades', 'patenteMunicipal'].forEach((key) => {
+    if (files[key]) formData.append(key, files[key]);
+  });
   return fetchApi('/automotive-services/me', {
     method: 'POST',
     body: formData,
@@ -2310,6 +2479,30 @@ export async function updateAutomotiveServicePhoneApi(telefono) {
   });
 }
 
+/**
+ * Cambia la atención 24/7 / urgencias y, si viene `horario`, el "Horario principal" del
+ * taller sin reabrir el expediente. Misma vía que la app (`PATCH /me/horario`).
+ */
+export async function updateAutomotiveServiceHoursApi(payload) {
+  return fetchApi('/automotive-services/me/horario', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Pasos que le quedan al taller aprobado: registrar su agenda y crear su primer anuncio
+ * (`ServicioAutomotrizDTOs.Onboarding`). `null` si falla: el banner simplemente no se muestra.
+ */
+export async function getAutomotiveServiceOnboardingApi({ signal } = {}) {
+  try {
+    return await fetchApi('/automotive-services/me/onboarding', { method: 'GET', signal });
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+    return null;
+  }
+}
+
 // -------------------------------------------------------------
 // AGENDAS CON NOMBRE (sincronizadas web + móvil, `/api/v1/agenda-configs`)
 // -------------------------------------------------------------
@@ -2334,4 +2527,21 @@ export async function upsertAgendaConfigApi(config) {
 
 export async function deleteAgendaConfigApi(id) {
   return fetchApi(`/agenda-configs/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+/**
+ * Certificado de cumplimiento tributario del semestre (Res. SII 168 de 2025: la plataforma lo
+ * verifica en enero y julio). Subirlo NO devuelve la tienda a revision.
+ */
+export async function getSellerCertificadoCumplimientoApi(proveedorId, { signal } = {}) {
+  return fetchApi(`/proveedores/${proveedorId}/certificado-cumplimiento`, { signal });
+}
+
+export async function uploadSellerCertificadoCumplimientoApi(proveedorId, file) {
+  const formData = new FormData();
+  formData.append('archivo', file);
+  return fetchApi(`/proveedores/${proveedorId}/certificado-cumplimiento`, {
+    method: 'POST',
+    body: formData,
+  });
 }

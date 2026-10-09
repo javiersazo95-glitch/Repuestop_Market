@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { getSellerAccountStatusApi } from '../services/api';
 import { qk } from '../services/queryKeys';
 import { CLAIM_REASON_LABELS, claimReasonLabel } from '../data/claimReason';
+import { legacySuspension, normalizeSuspension } from '../utils/accountSuspension';
 
 const SELLER_ROLES = ['SELLER', 'PROVIDER', 'PROVEEDOR'];
 
@@ -41,9 +42,20 @@ export function useSellerBlocked() {
   // boleta, PIN, cancelacion) dentro de su plazo. Si no, el backend lo cancela y reembolsa solo.
   const complianceMode = isBlocked && Boolean(data?.complianceMode ?? user?.sellerComplianceMode);
 
+  // Plazo, contador y revision (pruebas en dev, 2026-10-09); sin el payload nuevo, los campos del login.
+  const suspension = !isBlocked ? null
+    : (normalizeSuspension(data?.suspension) ?? normalizeSuspension(user?.suspension) ?? legacySuspension({
+      blocked: true,
+      reason: rawReason ? claimReasonLabel(rawReason) : null,
+      endsAt: user?.suspendedUntil,
+      canAppeal: user?.sellerCanAppeal,
+      complianceMode,
+    }));
+
   return {
     isSeller,
     isBlocked,
+    suspension,
     // El backend guarda ahi el CODIGO del reclamo del comprador, no una frase.
     blockReason: rawReason ? claimReasonLabel(rawReason) : '',
     // H62 (pruebas de lanzamiento, 30-sep): solo es "el reclamo que origino la mediacion" si

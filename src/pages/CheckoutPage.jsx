@@ -7,13 +7,13 @@ import ProductPhoto from '../components/ProductPhoto';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAuth } from '../context/AuthContext';
 import {
-  checkoutCartApi, checkoutConversationQuoteApi, confirmOrderPaymentApi, getAddressesApi,
+  checkoutCartApi, checkoutConversationQuoteApi, confirmOrderPaymentApi, createAddressApi, getAddressesApi, getProfileApi,
   getBuyerConversationsApi, getConversationQuoteApi, getPublicProductApi, resolveMediaUrl,
   searchVehicleByPatenteApi,
 } from '../services/api';
 import { formatVehicleLabel, isValidPlate, lookupVehicleByPlate, normalizePlate } from '../utils/vehicleLookup';
 import { adaptProduct, formatRut, isValidRut } from '../services/adapters';
-import { isQuoteExpired, quantityFromLabel, quoteShippingCost } from '../utils/quoteFlow';
+import { deliveryTermsLabel, isQuoteExpired, quantityFromLabel, quoteShippingCost } from '../utils/quoteFlow';
 import { normalizeOrderStatus } from '../data/orderStatusFlow';
 import { checkoutFallbackShippingMethod, resolveShippingService } from '../data/shippingMethods';
 import { buyerProfilePath, profilePath, ROUTES } from '../routes/paths';
@@ -22,9 +22,14 @@ import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import BuyerAddressBook from '../components/BuyerAddressBook';
 import CheckoutSummaryPanel from '../components/CheckoutSummaryPanel';
 import CheckoutItemDelivery from '../components/CheckoutItemDelivery';
+import CheckoutShipmentsSummary from '../components/CheckoutShipmentsSummary';
+import CheckoutStoreShipment from '../components/CheckoutStoreShipment';
 import CheckoutVehicleDialog from '../components/CheckoutVehicleDialog';
+import { useCompatibilityCheck } from '../hooks/useCompatibilityCheck';
+import { COMPAT, compatCacheKey, mismatchCountText } from '../utils/compatibilityCheck';
 import {
-  deliveryKind, isDispatch, methodsForItem, pendingDeliveryReason, shippingFees, vehicleLabel,
+  cartPackages, cartStoreKey, defaultAddressForMethod, deliveryKind, isDispatch,
+  offeredMethodsForItem, pendingDeliveryReason, shippingFees, vehicleLabel, withStoreShipment,
 } from '../utils/cartDelivery';
 
 const STEPS = [
@@ -64,7 +69,7 @@ export default function CheckoutPage() {
   const { user } = useAuth();
   const isSeller = user?.role === 'SELLER';
   const buyerQuotesPath = buyerProfilePath(user, 'quotes');
-  const { activeVehicle, cartItems, cartCount, cartTotals, clearCart } = useMarketplace();
+  const { activeVehicle, cartItems, cartCount, cartTotals, clearCart, removeFromCart } = useMarketplace();
   const userId = user?.userId ?? user?.id;
 
   const location = useLocation();
@@ -98,6 +103,16 @@ export default function CheckoutPage() {
     razonSocial: user?.facturaRazonSocial || '',
     giro: user?.facturaGiro || '',
   });
+  // El perfil se revalida al montar y puede llegar después (8-oct: con la tienda comprando trae el
+  // RUT y giro de su tienda): completa solo lo que la persona no escribió.
+  useEffect(() => {
+    if (!user?.facturaRut) return;
+    setInvoice((current) => ({
+      rut: current.rut || formatRut(user.facturaRut),
+      razonSocial: current.razonSocial || user.facturaRazonSocial || '',
+      giro: current.giro || user.facturaGiro || '',
+    }));
+  }, [user?.facturaRut, user?.facturaRazonSocial, user?.facturaGiro]);
 
   const [error, setError] = useState('');
   // `placing` sobrevive al vaciado del carrito: sin él, el clearCart posterior al pedido
@@ -278,6 +293,33 @@ export default function CheckoutPage() {
       .finally(() => setAddressesLoading(false));
   }, [userId]);
 
+  // 8-oct: la tienda que compra sin direcciones guardadas usa la de su tienda con un clic (igual
+  // que la app). Se toma de /users/perfil, se guarda en su libreta y queda elegida, así se ofrecen
+  // los envíos que corresponden a esa comuna.
+  const [usingStoreAddress, setUsingStoreAddress] = useState(false);
+  const [storeAddressError, setStoreAddressError] = useState('');
+  const applyStoreAddress = async () => {
+    if (!userId || usingStoreAddress) return;
+    setUsingStoreAddress(true);
+    setStoreAddressError('');
+    try {
+      const profile = await getProfileApi();
+      const calle = String(profile?.address || '').trim();
+      if (!calle || profile?.comunaId == null) {
+        throw new Error('Tu tienda no tiene una dirección con comuna registrada. Agrega una dirección a mano.');
+      }
+      const created = await createAddressApi(userId, {
+        calleYNumero: calle, comunaId: Number(profile.comunaId), codigoPostal: null, tipoDireccion: 'PERSONAL',
+      });
+      if (created?.id != null) setSelectedAddressId(String(created.id));
+      loadAddresses({ silent: true });
+    } catch (err) {
+      setStoreAddressError(err?.message || 'No pudimos usar la dirección de tu tienda.');
+    } finally {
+      setUsingStoreAddress(false);
+    }
+  };
+
   // Se cargan desde el inicio, no recien cuando hace falta direccion: la comuna de la direccion
   // elegida decide que metodos de despacho se ofrecen (dentro/fuera de la comuna).
   useEffect(() => {
@@ -305,22 +347,31 @@ export default function CheckoutPage() {
   const [vehicleDialog, setVehicleDialog] = useState(null);
   const deliveryPlateCache = useRef(new Map());
 
-  // Cada producto parte con el método que eligió al agregarlo, la dirección principal y el primer
-  // vehículo de la compra; después el comprador cambia lo que necesite en cada uno.
+  // Cada producto parte con el método que eligió al agregarlo (el carro solo lo confirma: no lo
+  // cambia ni lo borra), una dirección donde ese método sirve (la principal si calza) y el primer
+  // vehículo de la compra. Los productos de una misma tienda comparten el envío del primero
+  // (8-oct: un envío por tienda); el vehículo sí es de cada uno.
   useEffect(() => {
     if (isQuoteMode) return;
     setDeliveries((current) => {
-      const principalId = String(addresses.find((address) => address.esPrincipal)?.id || addresses[0]?.id || '') || null;
       const next = {};
+      const shipmentByStore = new Map();
       let changed = Object.keys(current).length !== cartItems.length;
       cartItems.forEach((item) => {
         const previous = current[item.id];
-        const addressId = previous?.addressId && addresses.some((address) => String(address.id) === String(previous.addressId))
-          ? previous.addressId : principalId;
-        const address = addresses.find((entry) => String(entry.id) === String(addressId)) || null;
-        const allowed = methodsForItem(item, address);
+        const storeShipment = shipmentByStore.get(cartStoreKey(item));
+        // El envío es uno por tienda: el método con que se agregó (si la tienda lo publica) y una
+        // dirección que ese método alcance (dentro o fuera de la comuna de la tienda).
+        const published = offeredMethodsForItem(item, addresses);
         const wanted = previous?.method ?? (item.shippingMethod || null);
-        const method = wanted && allowed.includes(wanted) ? wanted : allowed.length === 1 ? allowed[0] : null;
+        const method = storeShipment
+          ? storeShipment.method
+          : wanted && published.includes(wanted) ? wanted : (published.length === 1 ? published[0] : wanted);
+        const principalId = addresses.find((address) => address.esPrincipal)?.id ?? null;
+        const addressId = storeShipment
+          ? storeShipment.addressId
+          : defaultAddressForMethod(item, method, addresses, previous?.addressId ?? principalId);
+        if (!storeShipment) shipmentByStore.set(cartStoreKey(item), { method, addressId });
         const vehicleKey = item.esUniversal
           ? null
           : previous?.vehicleKey && cartVehicles.some((vehicle) => vehicle.key === previous.vehicleKey)
@@ -333,21 +384,15 @@ export default function CheckoutPage() {
     });
   }, [isQuoteMode, cartItems, addresses, cartVehicles]);
 
-  // Si la nueva dirección deja fuera el método elegido ("dentro de la comuna" hacia otra comuna),
-  // se pasa al equivalente que sí sirve.
+  // Método y dirección son del envío de la tienda y valen para todos sus productos; al cambiar
+  // el método, la dirección pasa a una que ese método alcance (dentro o fuera de la comuna de la
+  // tienda). El vehículo es de cada producto.
   const updateDelivery = (item, patch) => {
     setDeliveries((current) => {
       const merged = { method: null, addressId: null, vehicleKey: null, ...current[item.id], ...patch };
-      const address = addresses.find((entry) => String(entry.id) === String(merged.addressId)) || null;
-      const allowed = methodsForItem(item, address);
-      if (merged.method && !allowed.includes(merged.method)) {
-        const kind = deliveryKind(merged.method);
-        const equivalente = kind === 'local' || kind === 'courier'
-          ? allowed.find((method) => deliveryKind(method) === (kind === 'local' ? 'courier' : 'local'))
-          : undefined;
-        merged.method = equivalente ?? null;
-      }
-      return { ...current, [item.id]: merged };
+      if (!('method' in patch) && !('addressId' in patch)) return { ...current, [item.id]: merged };
+      merged.addressId = defaultAddressForMethod(item, merged.method, addresses, merged.addressId);
+      return withStoreShipment(cartItems, { ...current, [item.id]: merged }, item, merged);
     });
   };
 
@@ -369,7 +414,35 @@ export default function CheckoutPage() {
   };
 
   const cartShipping = useMemo(() => shippingFees(cartItems, deliveries), [cartItems, deliveries]);
-  const entregaPendiente = isQuoteMode ? '' : pendingDeliveryReason(cartItems, deliveries, cartVehicles, identifiedPlates);
+  // Los paquetes de la compra para "Tus envíos" (misma regla que el detalle del pedido).
+  const shipmentPackages = useMemo(
+    () => (isQuoteMode ? [] : cartPackages(cartItems, deliveries, addresses, cartVehicles)),
+    [isQuoteMode, cartItems, deliveries, addresses, cartVehicles],
+  );
+  const entregaPendiente = isQuoteMode ? '' : pendingDeliveryReason(cartItems, deliveries, cartVehicles, identifiedPlates, addresses);
+
+  // Compatibilidad de cada producto con SU vehículo (el backend la evalúa). No bloquea la
+  // compra: si alguno "no figura como compatible", el comprador lo confirma con una casilla y el
+  // pedido viaja con `aceptaAvisoCompatibilidad`. Si la consulta falla, no se muestra nada.
+  const compatEntries = useMemo(() => (isQuoteMode ? [] : cartItems.map((item) => ({
+    productoId: item.id,
+    esUniversal: Boolean(item.esUniversal),
+    vehicle: item.esUniversal ? null : (cartVehicles.find((vehicle) => vehicle.key === deliveries[item.id]?.vehicleKey) || null),
+  }))), [isQuoteMode, cartItems, cartVehicles, deliveries]);
+  const { statusOf: compatStatusOf, retryFailed: retryCompatibility } = useCompatibilityCheck(compatEntries, { enabled: !isQuoteMode });
+  const compatStatusFor = (entry) => compatStatusOf(entry.productoId, entry.vehicle, entry.esUniversal);
+  const compatMismatches = compatEntries.filter((entry) => compatStatusFor(entry) === COMPAT.NO_COINCIDE);
+  const compatLoading = compatEntries.some((entry) => compatStatusFor(entry) === 'loading');
+  // La casilla confirma ESTE conjunto de avisos: si aparece uno nuevo (otro vehículo, otro
+  // producto), hay que volver a marcarla; si ya no queda ninguno, desaparece y no se manda nada.
+  const mismatchSignature = compatMismatches.map((entry) => compatCacheKey(entry.productoId, entry.vehicle)).join(',');
+  const [compatAckSignature, setCompatAckSignature] = useState('');
+  const compatAcknowledged = Boolean(mismatchSignature) && compatAckSignature === mismatchSignature;
+  const compatBlockReason = isQuoteMode ? '' : compatLoading
+    ? 'Estamos revisando la compatibilidad de tus repuestos…'
+    : compatMismatches.length > 0 && !compatAcknowledged
+      ? `${mismatchCountText(compatMismatches.length)} con el vehículo elegido. Revísalo o marca «Entiendo y quiero comprarlo igual» para continuar.`
+      : '';
   // En el carrito el envío se cobra por destino de cada tienda (la regla del backend).
   const checkoutTotals = isQuoteMode
     ? totals
@@ -385,11 +458,9 @@ export default function CheckoutPage() {
     if (methods.some((method) => deliveryKind(method) === 'courier')) return 'Por pagar';
     return 'Sin costo';
   })();
-  const addressBookRef = useRef(null);
-  const openAddressBook = () => {
-    setAddressBookOpen(true);
-    window.setTimeout(() => addressBookRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
-  };
+  // Las direcciones se agregan y editan en "Mis datos y perfil", no en el carrito (igual que la
+  // app, que lleva a Mis direcciones). Al volver, el carrito las vuelve a cargar.
+  const openAddressBook = () => navigate('/perfil/datos');
 
   // Se parte de los params actuales en vez de escribir un objeto nuevo: pasarle
   // `{ paso: id }` a setSearchParams reemplaza TODA la query, y eso borraba el
@@ -543,17 +614,18 @@ export default function CheckoutPage() {
   const stepComplete = {
     entrega: isQuoteMode
       ? allShippingChosen && (!needsAddress || Boolean(selectedAddressId) || sellerWithoutSavedAddress)
-      : !entregaPendiente,
+      : !entregaPendiente && !compatBlockReason,
     // En el carrito el vehículo ya va en cada producto (paso Entrega).
     pago: Boolean(paymentMethod) && (documentType !== 'FACTURA' || rutValid)
-      && (!isQuoteMode || !vehicleRequired || vehicleComplete),
+      && (!isQuoteMode || !vehicleRequired || vehicleComplete)
+      && !compatBlockReason,
   };
 
   // Lo que falta para avanzar, dicho antes de que la persona haga clic: el botón se
   // deshabilita, pero un botón apagado sin explicación es igual de frustrante.
   const missingForStep = {
     entrega: !isQuoteMode
-      ? entregaPendiente
+      ? (entregaPendiente || compatBlockReason)
       : !allShippingChosen
         ? 'Elige cómo recibir los productos de cada tienda para continuar.'
         : 'Selecciona una dirección de entrega para continuar.',
@@ -565,7 +637,7 @@ export default function CheckoutPage() {
           : (lookupForCurrentPlate?.status === 'notfound' || lookupForCurrentPlate?.status === 'error')
             ? 'No pudimos identificar la patente: completa la marca, el modelo y el año.'
             : 'Indica la patente o la marca, modelo y año de tu vehículo para continuar.')
-        : '',
+        : compatBlockReason,
   }[step];
 
   const pay = async () => {
@@ -602,17 +674,38 @@ export default function CheckoutPage() {
             marca: vehicle.marca || null,
             modelo: vehicle.modelo || null,
             anio: Number(vehicle.anio) || null,
+            version: vehicle.version || null,
+            // Patente o búsqueda manual (8-oct): a la tienda le llega lo ingresado a mano.
+            origen: vehicle.origen || (vehicle.patente ? 'PATENTE' : 'MANUAL'),
           } : null);
-          const entregas = cartItems.map((item) => {
+          // El comprador marcó "Entiendo y quiero comprarlo igual": los productos que no figuran
+          // como compatibles con su vehículo van con `aceptaAvisoCompatibilidad` (si no, el
+          // backend rechaza el pedido). Solo esos: al resto no se le manda el flag.
+          const acceptedIds = new Set(compatAcknowledged ? compatMismatches.map((entry) => String(entry.productoId)) : []);
+          const rows = cartItems.map((item) => {
             const delivery = deliveries[item.id] || {};
             const vehicle = item.esUniversal ? null : cartVehicles.find((entry) => entry.key === delivery.vehicleKey);
+            const accepted = Boolean(vehicle) && acceptedIds.has(String(item.id));
+            const vehiculo = toVehiculo(vehicle);
             return {
-              productoId: Number(item.id),
-              metodoEnvio: delivery.method || item.shippingMethod || null,
-              direccionId: isDispatch(delivery.method) && delivery.addressId ? Number(delivery.addressId) : null,
-              vehiculo: toVehiculo(vehicle),
+              vehicleKey: vehicle?.key ?? null,
+              accepted,
+              entrega: {
+                productoId: Number(item.id),
+                metodoEnvio: delivery.method || item.shippingMethod || null,
+                direccionId: isDispatch(delivery.method) && delivery.addressId ? Number(delivery.addressId) : null,
+                vehiculo: vehiculo && accepted ? { ...vehiculo, aceptaAvisoCompatibilidad: true } : vehiculo,
+              },
             };
           });
+          const entregas = rows.map((row) => row.entrega);
+          // El vehículo general es el del primer producto con vehículo; si ese mismo vehículo va
+          // en algún producto aceptado, el general lleva el flag también.
+          const generalRow = rows.find((row) => row.entrega.vehiculo);
+          const generalAccepted = Boolean(generalRow) && rows.some((row) => row.accepted && row.vehicleKey === generalRow.vehicleKey);
+          const vehiculoGeneral = generalRow
+            ? { ...toVehiculo(cartVehicles.find((entry) => entry.key === generalRow.vehicleKey)), ...(generalAccepted ? { aceptaAvisoCompatibilidad: true } : {}) }
+            : null;
           const principalDireccion = entregas.find((entrega) => entrega.direccionId)?.direccionId;
           return checkoutCartApi(userId, {
             direccionId: principalDireccion ? String(principalDireccion) : '',
@@ -621,7 +714,7 @@ export default function CheckoutPage() {
             facturaRut: documentType === 'FACTURA' ? invoice.rut.trim() : '',
             facturaRazonSocial: documentType === 'FACTURA' ? invoice.razonSocial.trim() : '',
             facturaGiro: documentType === 'FACTURA' ? invoice.giro.trim() : '',
-            vehiculo: entregas.find((entrega) => entrega.vehiculo)?.vehiculo ?? null,
+            vehiculo: vehiculoGeneral,
             entregas,
           });
         })();
@@ -677,9 +770,29 @@ export default function CheckoutPage() {
       navigate(ROUTES.purchaseSuccess, { state: { order } });
     } catch (submitError) {
       setError(submitError.message || 'No se pudo generar el pedido. Intenta nuevamente.');
+      // El backend rechazó por compatibilidad: si la revisión de esta página había fallado en
+      // silencio, se vuelve a pedir para que aparezca el aviso y la casilla para confirmarlo.
+      if (!isQuoteMode && /no figura como compatible/i.test(submitError.message || '')) retryCompatibility();
       submittingRef.current = false;
       setPlacing(false);
       setPaymentProcessingStatus('');
+    }
+  };
+
+  const goToCompatIssue = () => {
+    const target = compatMismatches[0];
+    if (!target) return;
+    const reveal = () => {
+      const node = document.getElementById(`compat-${target.productoId}`);
+      if (!node) return;
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      node.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+    };
+    if (step !== 'entrega') {
+      goStep('entrega');
+      window.setTimeout(reveal, 120);
+    } else {
+      reveal();
     }
   };
 
@@ -800,27 +913,45 @@ export default function CheckoutPage() {
 
                 {!isQuoteMode && (
                   <section className="checkout-block" aria-labelledby="checkout-shipping-title">
-                    <h2 id="checkout-shipping-title"><Truck size={16} /> Entrega de cada producto</h2>
+                    <h2 id="checkout-shipping-title"><Truck size={16} /> Envío y vehículo</h2>
                     <p className="checkout-block-note">
-                      Elige cómo recibir cada repuesto, a qué dirección va y para qué vehículo es: puede ser tu auto o el de un familiar.
+                      Cada tienda envía sus productos juntos: elige su envío y la dirección una vez, y para qué vehículo es cada repuesto.
                     </p>
-                    <div className="checkout-delivery-groups">
-                      {groups.map((group) => (
+                    {/* Con varias tiendas, cada una en su propio contenedor con encabezado de color y
+                        "Tienda N de M": al bajar tiene que quedar claro a qué tienda corresponde
+                        cada envío y cada producto. */}
+                    <div className={`checkout-delivery-groups ${groups.length > 1 ? 'is-multi' : ''}`}>
+                      {groups.map((group, groupIndex) => (
                         <div key={group.key} className="cart-store-group">
                           <div className="cart-store-head">
                             <div className="cart-store-id">
                               <span className="cart-store-avatar"><Store size={15} /></span>
-                              <strong>{group.items[0]?.storeName || group.vendedor || 'Tienda RepuesTop'}</strong>
-                              {group.items[0]?.storeComuna && <small className="checkout-store-commune">{group.items[0].storeComuna}</small>}
+                              <span className="checkout-store-title">
+                                {groups.length > 1 && <em className="checkout-store-index">Tienda {groupIndex + 1} de {groups.length}</em>}
+                                <strong>{group.items[0]?.storeName || group.vendedor || 'Tienda RepuesTop'}</strong>
+                                <small className="checkout-store-commune">
+                                  {[group.items[0]?.storeComuna, `${group.items.length} ${group.items.length === 1 ? 'producto' : 'productos'}`].filter(Boolean).join(' · ')}
+                                </small>
+                              </span>
                             </div>
                           </div>
+                          {/* Un envío por tienda: método y dirección se eligen una vez, bajo su nombre. */}
+                          {group.items[0] && (
+                            <CheckoutStoreShipment
+                              item={group.items[0]}
+                              productCount={group.items.length}
+                              delivery={deliveries[group.items[0].id] || { method: null, addressId: null }}
+                              addresses={addresses}
+                              onChange={(patch) => updateDelivery(group.items[0], patch)}
+                              onManageAddresses={openAddressBook}
+                              onUseStoreAddress={isSeller && addresses.length === 0 ? applyStoreAddress : undefined}
+                              usingStoreAddress={usingStoreAddress}
+                              storeAddressError={storeAddressError}
+                            />
+                          )}
                           <div className="cart-store-lines">
                             {group.items.map((item) => {
                               const delivery = deliveries[item.id] || { method: null, addressId: null, vehicleKey: null };
-                              const sharesShipment = cartShipping.perItem[item.id] === 0 && deliveryKind(delivery.method) === 'local'
-                                && group.items.some((other) => other.id !== item.id
-                                  && String(deliveries[other.id]?.addressId) === String(delivery.addressId)
-                                  && (cartShipping.perItem[other.id] || 0) > 0);
                               return (
                                 <div key={item.id} className="checkout-delivery-line">
                                   <div className="cart-line">
@@ -839,13 +970,16 @@ export default function CheckoutPage() {
                                   <CheckoutItemDelivery
                                     item={item}
                                     delivery={delivery}
-                                    addresses={addresses}
                                     vehicles={cartVehicles}
-                                    sharesShipment={sharesShipment}
+                                    compatibility={compatStatusOf(
+                                      item.id,
+                                      cartVehicles.find((vehicle) => vehicle.key === delivery.vehicleKey) || null,
+                                      Boolean(item.esUniversal),
+                                    )}
+                                    onRemove={() => removeFromCart(item.id)}
                                     onChange={(patch) => updateDelivery(item, patch)}
                                     onAddVehicle={() => setVehicleDialog({ vehicle: null, itemId: item.id })}
                                     onEditVehicle={(vehicle) => setVehicleDialog({ vehicle, itemId: item.id })}
-                                    onManageAddresses={openAddressBook}
                                   />
                                 </div>
                               );
@@ -857,20 +991,7 @@ export default function CheckoutPage() {
                   </section>
                 )}
 
-                {!isQuoteMode && (
-                  <section className="checkout-block" aria-labelledby="checkout-direcciones-title" ref={addressBookRef}>
-                    <h2 id="checkout-direcciones-title"><MapPin size={16} /> Tus direcciones</h2>
-                    <p className="checkout-block-note">
-                      Cada producto que se despacha elige una de estas direcciones. Agrega la de tu familiar si le envías un repuesto.
-                    </p>
-                    <button type="button" className="checkout-inline-link" onClick={() => setAddressBookOpen((open) => !open)}>
-                      {addressBookOpen ? 'Ocultar direcciones' : 'Agregar o editar direcciones'}
-                    </button>
-                    {(addressBookOpen || (!addressesLoading && addresses.length === 0)) && (
-                      <div className="checkout-address-book"><BuyerAddressBook usuarioId={userId} onChange={() => loadAddresses({ silent: true })} /></div>
-                    )}
-                  </section>
-                )}
+                {!isQuoteMode && <CheckoutShipmentsSummary packages={shipmentPackages} />}
 
                 {isQuoteMode && (
                 <section className="checkout-block" aria-labelledby="checkout-entrega-title">
@@ -938,7 +1059,7 @@ export default function CheckoutPage() {
                   {isQuoteMode && (
                     <p className="checkout-block-note checkout-quote-terms">
                       <FileText size={14} /> La entrega ya está acordada en la cotización:
-                      {' '}<strong>{quoteLine.shippingMethod || 'a coordinar con la tienda'}</strong>.
+                      {' '}<strong>{deliveryTermsLabel(quoteLine.shippingMethod) || 'a coordinar con la tienda'}</strong>.
                     </p>
                   )}
                 </section>
@@ -1275,6 +1396,32 @@ export default function CheckoutPage() {
                 : 'Continuar con el pago'
             }
             onCta={advance}
+            beforeCta={!isQuoteMode && compatMismatches.length > 0 ? (
+              <div className="checkout-compat-summary">
+                <p className="checkout-compat-summary-text">
+                  <AlertTriangle size={14} aria-hidden="true" />
+                  <span>
+                    {mismatchCountText(compatMismatches.length)}
+                    {' '}
+                    <button type="button" onClick={goToCompatIssue}>
+                      {compatMismatches.length === 1 ? 'Ver el repuesto' : 'Ver el primero'}
+                    </button>
+                  </span>
+                </p>
+                <label className="checkout-compat-ack">
+                  <input
+                    type="checkbox"
+                    checked={compatAcknowledged}
+                    onChange={(event) => setCompatAckSignature(event.target.checked ? mismatchSignature : '')}
+                  />
+                  <span>Entiendo y quiero comprarlo igual</span>
+                </label>
+              </div>
+            ) : null}
+            stickyAviso={!isQuoteMode && !compatLoading && compatMismatches.length > 0 && !compatAcknowledged ? {
+              texto: mismatchCountText(compatMismatches.length),
+              onIr: () => document.querySelector('.checkout-compat-ack')?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+            } : undefined}
             ctaDisabled={!stepComplete[step] || placing}
             ctaLoading={placing}
             warning={stepComplete[step]

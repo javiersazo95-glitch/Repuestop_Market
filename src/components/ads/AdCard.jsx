@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   MapPin, MessageCircle, Star, ShieldCheck, Phone, Calendar,
-  CheckCircle2, CalendarClock, UserCheck, ArrowRight, Zap, Heart, Navigation
+  CheckCircle2, CalendarClock, UserCheck, ArrowRight, Zap, Heart, Navigation, AlarmClock, Home
 } from 'lucide-react';
 import { AD_TIERS, SERVICE_CATEGORIES, getAdExpiryInfo } from '../../data/automotiveAdsData';
 import { getCategoryIcon } from './categoryIcons';
@@ -13,6 +13,7 @@ import { formatDistanceKm } from '../../utils/geoDistance';
 // La tarjeta también se muestra en Favoritos. Cargar su diseño aquí evita que
 // dependa de que el usuario haya visitado antes el Mural de anuncios.
 import './ads-wall-redesign.css';
+import { canBookAd } from '../../utils/adBooking';
 
 /** Distintivo visual de cada plan en el mural (1:1 con mobile/components/ads/AdCard.tsx). */
 const TIER_THEME = {
@@ -34,6 +35,8 @@ export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCatego
   const tierConfig = AD_TIERS[ad.tier] || AD_TIERS.basica;
   const theme = TIER_THEME[ad.tier] || TIER_THEME.basica;
   const isEmpresarial = ad.tier === 'empresarial';
+  // "Agendar" solo si el anuncio tiene la agenda activa (no basta el plan) y no es 24/7.
+  const canBook = canBookAd(ad);
   const isOwnAdCard = isOwn(ad);
 
   const canWhatsapp = Boolean(tierConfig.hasWhatsapp && ad.whatsapp);
@@ -187,6 +190,18 @@ export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCatego
           </span>
         </div>
 
+        {/* Etiquetas de servicio: se ven de un vistazo en el mural (mismas en la app). */}
+        {(ad.is24Hours || ad.homeService) && (
+          <div className="ad-card-service-tags">
+            {ad.is24Hours && (
+              <span className="ad-meta-chip is-24h" aria-label="Atiende 24 horas"><AlarmClock size={12} /> 24 horas</span>
+            )}
+            {ad.homeService && (
+              <span className="ad-meta-chip is-home" aria-label="Servicio a domicilio"><Home size={12} /> A domicilio</span>
+            )}
+          </div>
+        )}
+
         {(previewBrands.length > 0 || showExpiryChip) && (
           <div className="ad-card-tags">
             {previewBrands.length > 0 && (
@@ -225,7 +240,7 @@ export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCatego
                 <MessageCircle size={13} /> WhatsApp
               </button>
             )}
-            {isEmpresarial && (
+            {canBook && (
               <button type="button" className="ad-pill ad-pill-agenda" onClick={handleBookingClick}>
                 <Calendar size={13} /> Agendar
               </button>

@@ -11,20 +11,22 @@ import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi, getShippingReceiptUrlApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, courierDisplayName, isCancelledItem, orderDeliverySummary, orderDisplayCode, subOrderDeliveryLabel, subOrderDeliveryMethod } from '../data/orderIdentity';
-import { buyerClaimState, buyerStoreClaimState, getControlledOrderAction, isStorePickupOrder, normalizeOrderStatus, orderPaymentWindow, sellerClaimState } from '../data/orderStatusFlow';
+import { buyerClaimState, buyerStoreClaimState, getControlledOrderAction, isStorePickupOrder, normalizeOrderStatus, orderPaymentWindow, sellerClaimState, orderAllowsChat } from '../data/orderStatusFlow';
 import { Link } from 'react-router-dom';
 import { buyerCaseChatPath, currentPathForBack, productPath, sellerCaseChatPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
 import SaleReceiptViewerModal from './SaleReceiptViewerModal';
+import OrderCreditNotes from './OrderCreditNotes';
 import useSellerChecklist from '../hooks/useSellerChecklist';
 import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancellationReason';
 import { buyerRefundInfo, FLOW_REFUND_NOTICE } from '../data/refundStatus';
 import { claimReasonPairs } from '../data/claimReason';
 import { carrierTracking } from '../data/carrierTracking';
-import { fundsReleaseNotice, retractionNotice, storeAutoCloseNotice } from '../data/orderDeadlines';
+import { fundsReleaseNotice, retractionNotice, storeAutoCloseNotice, RETRACTION_DAYS } from '../data/orderDeadlines';
 import { validateUpload, FILE_LIMITS } from '../utils/fileValidation';
 import { buildOrderPackages } from '../utils/orderPackages';
+import { buyerCompatibilityText } from '../utils/buyerCompatibility';
 
 /**
  * Una linea de repuesto dentro del bloque de su tienda, con la ficha tecnica desplegable.
@@ -100,7 +102,7 @@ function PackageCard({ pkg, label, isSeller = false, showStore = false, recipien
   );
 }
 
-function OrderProductRow({ item, onNavigate }) {
+function OrderProductRow({ item, order, onNavigate }) {
   const [expanded, setExpanded] = useState(false);
   const [details, setDetails] = useState(null);
   const [specsState, setSpecsState] = useState('idle');
@@ -109,7 +111,19 @@ function OrderProductRow({ item, onNavigate }) {
   // dependencias del efecto, `setLoading(true)` lo re-ejecutaba, el cleanup del anterior
   // marcaba la respuesta como cancelada y el `finally` nunca apagaba el "Cargando...". La
   // ficha se quedaba girando para siempre aunque el endpoint respondiera 200.
-  const fetchedRef = useRef(false);
+  //
+  // Guarda el productId pedido, no un booleano: con el booleano quedaba a medias. El efecto
+  // depende de `expanded` y `productId`, asi que CUALQUIER cambio de esos dos lo re-ejecuta,
+  // y el cleanup del anterior seguia descartando la respuesta en vuelo -- pero el ref ya
+  // estaba marcado, asi que no se volvia a pedir y el estado se quedaba en 'loading' para
+  // siempre. Pasaba al plegar y volver a abrir la ficha mientras cargaba, y tambien cuando
+  // `item.productoId` cambia de valor al mezclarse la respuesta del backend sobre el pedido
+  // de la lista (ahi `productId` cae al `item.id` del fallback, o al reves).
+  const fetchedRef = useRef(null);
+  // La respuesta se aplica salvo que el componente ya no este montado. Antes se descartaba
+  // tambien al re-ejecutarse el efecto, que es lo que dejaba la ficha girando.
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   const photo = resolveMediaUrl(item.imagenUrl || item.imageUrl || item.productPhotoUri || (item.imageUrls && item.imageUrls[0]));
   const name = item.nombre || item.productName || item.name || 'Repuesto de vehículo';
@@ -120,22 +134,29 @@ function OrderProductRow({ item, onNavigate }) {
   const cancelled = isCancelledItem(item);
   const refunded = Number(item.montoReembolsado ?? item.refundedAmount ?? 0);
   const productId = item.productoId || item.productId || item.id;
+  // Vehiculo con que se compro ESTE repuesto; en compras anteriores al checkout por producto, el
+  // del pedido.
+  const buyerVehicle = item.vehiculoMarca || item.vehiculoModelo || item.vehiculoCatalogoId
+    ? { catalogoId: item.vehiculoCatalogoId, marca: item.vehiculoMarca, modelo: item.vehiculoModelo, anio: item.vehiculoAnio }
+    : (order?.vehiculoMarca || order?.vehiculoModelo
+      ? { catalogoId: order.vehiculoCatalogoId, marca: order.vehiculoMarca, modelo: order.vehiculoModelo, anio: order.vehiculoAnio }
+      : null);
 
   useEffect(() => {
-    if (!expanded || !productId || fetchedRef.current) return undefined;
-    fetchedRef.current = true;
-    let cancelado = false;
+    if (!expanded || !productId) return;
+    // Ya pedida para ESTE producto: no se repite. Si el id cambia, se pide la del nuevo.
+    if (fetchedRef.current === productId) return;
+    fetchedRef.current = productId;
     setSpecsState('loading');
     getPublicProductApi(productId)
       .then((dto) => {
-        if (cancelado) return;
+        if (!mountedRef.current) return;
         setDetails(adaptProduct(dto));
         setSpecsState('done');
       })
       // Un repuesto dado de baja por el vendedor ya no responde. Es un detalle opcional: se
       // avisa y se sigue mostrando lo que el pedido guarda, no se rompe la fila.
-      .catch(() => { if (!cancelado) setSpecsState('error'); });
-    return () => { cancelado = true; };
+      .catch(() => { if (mountedRef.current) setSpecsState('error'); });
   }, [expanded, productId]);
 
   const specs = [
@@ -145,9 +166,12 @@ function OrderProductRow({ item, onNavigate }) {
     // codigoInterno en el primero que haya -- las dos filas mostraban el mismo valor.
     ['SKU', details?.skuProveedor || sku || null],
     ['Condición', details?.condicion || null],
-    ['Compatibilidad', details?.compatibilidades?.[0]
-      ? [details.compatibilidades[0].marca, details.compatibilidades[0].modelo].filter(Boolean).join(' ')
-      : null],
+    // La del vehiculo con que se compro, no la primera que declaro el vendedor.
+    ['Compatibilidad', buyerCompatibilityText({
+      compatibilidad: details?.compatibilidad || [],
+      vehicle: buyerVehicle,
+      esUniversal: Boolean(item.esUniversal ?? details?.esUniversal),
+    }) || null],
     ['Referencia OEM', details?.referenciaOem || null],
   ].filter(([, value]) => Boolean(value));
 
@@ -250,6 +274,8 @@ const SELLER_CANCEL_REASONS = [
   { code: 'ERROR_PRECIO', label: 'Error en el precio publicado' },
   { code: 'PRODUCTO_NO_DISPONIBLE', label: 'Producto dañado o no disponible' },
   { code: 'IMPOSIBILIDAD_DESPACHO', label: 'Imposibilidad de despacho a la dirección' },
+  // 8-oct: tras revisar la compatibilidad y conversar con el comprador sin llegar a acuerdo.
+  { code: 'INCOMPATIBLE_VEHICULO', label: 'Incompatible con el vehículo del comprador' },
   { code: 'OTRO', label: 'Otro motivo (especificar)' },
 ];
 
@@ -333,6 +359,25 @@ function timelineStepsFor(isStorePickup, isSeller) {
   const pickupStep = PICKUP_READY_STEP[isSeller ? 'seller' : 'buyer'];
   return TIMELINE_STEPS.map((step) => (step.key === 'ENVIADO' ? { ...step, ...pickupStep } : step));
 }
+
+// Mientras hay un caso postventa VIVO (reclamo abierto o mediacion en curso) la barra cuenta ese
+// caso: pago, reclamo, mediador y resolucion. Resuelto -- por el mediador o porque el comprador lo
+// dio por cerrado con la tienda --, la barra vuelve a los estados del pedido para que nadie se
+// pierda en que va la compra (entregado, finalizado...). Mismo criterio que `TimelineStatus` de la app.
+const CLAIM_TIMELINE_STEPS = {
+  buyer: [
+    { key: 'CASO_PAGO', label: 'Pago confirmado', icon: CreditCard, description: 'Tu pago fue procesado y queda protegido mientras se resuelve el caso.' },
+    { key: 'CASO_RECLAMO', label: 'Reclamo abierto', icon: MessageCircle, description: 'Abriste un reclamo y lo estás conversando con la tienda en el chat del caso.' },
+    { key: 'CASO_MEDIACION', label: 'En mediación', icon: ShieldAlert, description: 'Un mediador de RepuesTop revisa el reclamo, las evidencias y la conversación de ambas partes.' },
+    { key: 'CASO_RESUELTO', label: 'Resuelto', icon: CheckCircle2, description: 'Cuando el caso se resuelva, esta barra vuelve a mostrar el estado de tu pedido.' },
+  ],
+  seller: [
+    { key: 'CASO_PAGO', label: 'Venta cobrada', icon: CreditCard, description: 'El pago del comprador está asegurado mientras se resuelve el caso.' },
+    { key: 'CASO_RECLAMO', label: 'Reclamo abierto', icon: MessageCircle, description: 'El comprador abrió un reclamo: respóndele en el chat del caso.' },
+    { key: 'CASO_MEDIACION', label: 'En mediación', icon: ShieldAlert, description: 'Un mediador de RepuesTop revisa el reclamo, las evidencias y la conversación de ambas partes.' },
+    { key: 'CASO_RESUELTO', label: 'Resuelto', icon: CheckCircle2, description: 'Cuando el caso se resuelva, esta barra vuelve a mostrar el estado de la venta.' },
+  ],
+};
 
 function getTimelineIndex(status) {
   const norm = String(status || '').toUpperCase();
@@ -582,9 +627,14 @@ export default function OrderDetailView({
         nextStatus: 'FINALIZADO',
         label: 'Finalizar compra',
         title: `¿Finalizar tu compra a ${seller.name}?`,
+        // El mensaje dice lo que el comprador DECLARA y lo que CONSERVA. Lo del pago a la tienda
+        // es la relacion entre RepuesTop y el vendedor: no le ayuda a decidir y le insinua que su
+        // clic es lo que le paga. Y "definitivamente" contradecia al aviso de la misma pantalla,
+        // que le promete que el retracto sobrevive al cierre. Mismo texto que en la app
+        // (`useOrderDetailScreen`): es la misma accion y tiene que leerse igual en las dos.
         message: unicaTienda
-          ? 'Se cierra definitivamente la compra y se habilita el pago a la tienda. Tu plazo de retracto sigue corriendo.'
-          : `Se cierra definitivamente lo de ${seller.name} y se habilita su pago. Las otras tiendas del pedido no se ven afectadas.`,
+          ? `Confirmas que recibiste todo conforme. Conservas tu derecho a retracto por ${RETRACTION_DAYS} dias.`
+          : `Confirmas que recibiste conforme lo de ${seller.name}. Las otras tiendas siguen su curso y conservas tu derecho a retracto por ${RETRACTION_DAYS} dias.`,
       };
     }
     return null;
@@ -734,17 +784,23 @@ export default function OrderDetailView({
   // indice 0 y el paso "Pendiente" quedaba marcado con "Recibimos tu pago...". En mediacion la barra
   // marca lo ya recorrido (hasta "Entregado" si se recibio; si no, hasta "Enviado"), ningun paso queda
   // como actual y el texto explica la mediacion. Vale para el comprador y para la tienda.
-  const enMediacion = ['EN_MEDIACION', 'MEDIATION'].includes(normStatus);
+  // Caso vivo: la barra muestra el flujo del reclamo (ver `CLAIM_TIMELINE_STEPS`).
+  const caseIsLive = claimState?.kind === 'open' || claimState?.kind === 'mediation';
+  const enMediacion = !caseIsLive && ['EN_MEDIACION', 'MEDIATION'].includes(normStatus);
   const mediacionAlcanzo = enMediacion
     ? ((order.entregadoAt || (order.subordenes || []).some((sub) => sub?.entregadoAt)) ? 3 : 2)
     : null;
-  const timelineIndex = enMediacion
+  const timelineIndex = caseIsLive
+    ? (claimState.kind === 'mediation' ? 2 : 1)
+    : enMediacion
     ? mediacionAlcanzo
     : tracksSlowestStore
       ? Math.min(...activeTimelineStatuses.map(getTimelineIndex))
       : getTimelineIndex(normStatus);
   // O60: con retiro en tienda el paso ENVIADO se llama y se explica como retiro.
-  const timelineSteps = timelineStepsFor(isStorePickup, isSeller);
+  const timelineSteps = caseIsLive
+    ? CLAIM_TIMELINE_STEPS[isSeller ? 'seller' : 'buyer']
+    : timelineStepsFor(isStorePickup, isSeller);
   const visibleTimelineStep = timelineSteps.find((step) => step.key === selectedTimelineStep)
     || timelineSteps[timelineIndex];
   const VisibleTimelineIcon = visibleTimelineStep.icon;
@@ -1012,20 +1068,26 @@ export default function OrderDetailView({
     const loading = shippingReceiptLoadingId != null && String(shippingReceiptLoadingId) === String(block.id);
     const error = shippingReceiptError && String(shippingReceiptError.storeId) === String(block.id)
       ? shippingReceiptError.message : '';
+    // Misma fila que la boleta: icono, nombre del documento y la accion al borde derecho.
     return (
-      <span className="order-store-block-boleta order-store-block-shipreceipt">
-        <FileText size={13} /> Comprobante de envío
+      <div className="order-store-doc">
+        <span className="order-store-doc-icon"><Truck size={15} /></span>
+        <span className="order-store-doc-text">
+          <strong>Comprobante de envío</strong>
+          <small>Subido por la tienda</small>
+        </span>
         <button
           type="button"
-          className="order-store-block-tracklink order-store-block-boletalink"
+          className="order-store-doc-action"
           onClick={() => handleViewShippingReceipt(block.id)}
           disabled={shippingReceiptLoadingId != null}
+          aria-label={`Ver el comprobante de envío de ${block.name}`}
         >
           {loading ? <Loader2 size={14} className="spin-icon" /> : <ExternalLink size={14} />}
-          Ver comprobante de envío
+          Ver
         </button>
         {error && <small className="order-shipreceipt-error" role="alert">{error}</small>}
-      </span>
+      </div>
     );
   };
 
@@ -1253,7 +1315,8 @@ export default function OrderDetailView({
       await onRegisterDispatch(order, {
         courier: dispatchCourier.trim(),
         trackingNumber: dispatchTrackingNumber.trim() || undefined,
-        valorEnvio: dispatchShippingFee ? Number(dispatchShippingFee) : undefined,
+        // 8-oct: dentro de la comuna el precio es la tarifa de la tienda, ya cobrada en el checkout.
+        valorEnvio: !isLocalDispatch && dispatchShippingFee ? Number(dispatchShippingFee) : undefined,
         comprobante: dispatchVoucherFile || undefined,
       });
       setShowDispatchModal(false);
@@ -1310,7 +1373,10 @@ export default function OrderDetailView({
   const canSellerChat = isSeller
     && Boolean(onOpenDispute)
     && !sellerReadOnly
-    && !['PENDIENTE', 'PENDING', 'CANCELADO', 'CANCELLED'].includes(normStatus);
+    && orderAllowsChat(normStatus);
+  // "Chatear con vendedor": misma regla que la tienda y que la app (`pedidoAdmiteChat`): desde que
+  // el pago esta aprobado y mientras el pedido no este cancelado.
+  const canBuyerChat = !isSeller && Boolean(onOpenDispute) && orderAllowsChat(normStatus);
 
   const handleSellerChatClick = () => {
     setChatStartError('');
@@ -1359,7 +1425,7 @@ export default function OrderDetailView({
             </div>
           </div>
           <div className="order-modal-header-actions">
-            {!isSeller && !['CANCELADO'].includes(normStatus) && onOpenDispute && (
+            {canBuyerChat && (
               <div className="order-chat-header-control">
                 <div className="order-chat-header-row">
                   <button
@@ -1367,8 +1433,10 @@ export default function OrderDetailView({
                     className="order-chat-header-button"
                     onClick={handleSellerChatClick}
                     title="Chatear con vendedor"
+                    aria-label="Chatear con vendedor"
                   >
-                    <MessageCircle size={16} /> Chatear con vendedor
+                    {/* En el celular queda solo el icono, en la fila del titulo (profile-mobile.css). */}
+                    <MessageCircle size={16} /> <span className="order-chat-header-label">Chatear con vendedor</span>
                   </button>
                   <button
                     type="button"
@@ -1378,7 +1446,7 @@ export default function OrderDetailView({
                     onClick={() => setShowMediatorInfo((visible) => !visible)}
                   ><Info size={16} /></button>
                 </div>
-                {showMediatorInfo && <p className="order-chat-mediator-info">Puedes conversar con el vendedor en cualquier momento. La ayuda de un mediador se habilita al recibir el producto y estará disponible durante los 10 días corridos siguientes.</p>}
+                {showMediatorInfo && <p className="order-chat-mediator-info">Puedes conversar con el vendedor desde que el pago está aprobado. La ayuda de un mediador se habilita al recibir el producto y estará disponible durante los 10 días corridos siguientes.</p>}
               </div>
             )}
             {canSellerChat && (
@@ -1389,8 +1457,9 @@ export default function OrderDetailView({
                   onClick={() => void startSellerChat(sellerId)}
                   disabled={Boolean(chatStoreId)}
                   title="Chatear con comprador"
+                  aria-label="Chatear con comprador"
                 >
-                  {chatStoreId ? <Loader2 size={16} className="spin-icon" /> : <MessageCircle size={16} />} Chatear con comprador
+                  {chatStoreId ? <Loader2 size={16} className="spin-icon" /> : <MessageCircle size={16} />} <span className="order-chat-header-label">Chatear con comprador</span>
                 </button>
                 {chatStartError && <p className="confirm-dialog-error">{chatStartError}</p>}
               </div>
@@ -1400,7 +1469,9 @@ export default function OrderDetailView({
               <button
                 type="button"
                 className="order-status-badge-link"
-                onClick={onOpenDispute}
+                // Sin el `() =>` el evento de clic viajaba como `proveedorId` y la URL quedaba
+                // con `tienda=[object Object]`. Se abre el chat de la tienda en mediacion.
+                onClick={() => onOpenDispute?.(subOrders.find((sub) => String(sub?.estado || '').toUpperCase() === 'EN_MEDIACION')?.proveedorId)}
                 title="Abrir la conversación de la disputa"
               >
                 <OrderStatusBadge status={rawStatus} size="medium" mediationStatus={mediationStatus} />
@@ -1452,7 +1523,7 @@ export default function OrderDetailView({
               seleccionable para explicar qué ocurre en esa etapa. */}
           <div className="order-timeline-card">
             <h3 className="section-subtitle">Estado del Pedido</h3>
-            {tracksSlowestStore && (
+            {tracksSlowestStore && !caseIsLive && (
               <p className="order-timeline-multistore-note">
                 <Info size={14} /> Esta barra sigue el pedido que va más atrás y se completará cuando todas las tiendas con pedidos vigentes finalicen.
               </p>
@@ -1566,23 +1637,31 @@ export default function OrderDetailView({
                   const cerrado = ['CANCELADO', 'FINALIZADO'].includes(normStatus);
                   if (!disponible && cerrado) return null;
                   return (
-                    <div className={`order-delivery-summary-row order-boleta-row ${disponible ? 'is-ready' : 'is-pending'}`}>
-                      {disponible ? <FileCheck size={14} /> : <ReceiptText size={14} />}
-                      <span>
-                        {disponible
-                          ? 'Boleta de venta cargada'
-                          : normStatus === 'PAGADO' || normStatus === 'PENDIENTE'
-                            ? 'Boleta de venta pendiente — regístrala al confirmar el pedido'
-                            : 'Boleta de venta pendiente — adjúntala para dejar la venta documentada'}
+                    // Misma fila que los documentos del comprador: icono, nombre y la accion al
+                    // borde derecho. Como texto suelto junto al boton, en celular se partia.
+                    <div className={`order-store-doc order-boleta-row ${disponible ? 'is-ready' : 'is-pending'}`}>
+                      <span className="order-store-doc-icon">
+                        {disponible ? <FileCheck size={15} /> : <ReceiptText size={15} />}
+                      </span>
+                      <span className={`order-store-doc-text ${disponible ? '' : 'is-multiline'}`}>
+                        <strong>{disponible ? 'Boleta de venta cargada' : 'Boleta de venta pendiente'}</strong>
+                        <small>
+                          {disponible
+                            ? (order.boletaVentaNombre || 'El comprador ya la ve en su pedido')
+                            : normStatus === 'PAGADO' || normStatus === 'PENDIENTE'
+                              ? 'Regístrala al confirmar el pedido'
+                              : 'Adjúntala para dejar la venta documentada'}
+                        </small>
                       </span>
                       {disponible ? (
                         <button
                           type="button"
-                          className="order-boleta-link"
+                          className="order-store-doc-action"
                           onClick={() => handleViewReceipt()}
+                          aria-label="Ver y descargar la boleta de venta"
                         >
-                          <FileSearch size={13} />
-                          <span>Ver y descargar</span>
+                          <FileSearch size={14} />
+                          Ver
                         </button>
                       ) : isSeller && onRegisterSaleReceipt && !cerrado
                           // Mientras falten los pasos 1 y 2 de un pedido sin confirmar, la
@@ -1591,19 +1670,25 @@ export default function OrderDetailView({
                           && !(!sellerChecklist.stepsReady && (normStatus === 'PAGADO' || normStatus === 'PENDIENTE')) ? (
                         <button
                           type="button"
-                          className="order-boleta-link is-cta"
+                          className="order-store-doc-action is-cta"
                           onClick={() => {
                             setReceiptUploadOnly(true);
                             setShowReceiptModal(true);
                           }}
                         >
-                          <FileUp size={13} />
-                          <span>Cargar boleta</span>
+                          <FileUp size={14} />
+                          Cargar
                         </button>
                       ) : null}
                     </div>
                   );
                 })()}
+
+                {/* 9-oct: venta reembolsada con boleta: la tienda sube aqui su nota de credito.
+                    Paridad con la app. El componente no muestra nada si no se requiere. */}
+                {isSeller && !readOnly && (refundAmount > 0 || normStatus === 'CANCELADO') && (
+                  <OrderCreditNotes key={order.id} orderId={order.id} orderCode={orderIdShort} />
+                )}
               </div>
             </div>
           )}
@@ -1687,7 +1772,7 @@ export default function OrderDetailView({
 
                       <div className="order-items-table">
                         {block.items.map((item, i) => (
-                          <OrderProductRow key={item.id || i} item={item} onNavigate={onClose} />
+                          <OrderProductRow key={item.id || i} item={item} order={order} onNavigate={onClose} />
                         ))}
                       </div>
 
@@ -1728,10 +1813,16 @@ export default function OrderDetailView({
                           // vendedor --, asi que el numero se muestra IGUAL sin enlace: es el
                           // dato, el boton es la comodidad.
                           const carrier = carrierTracking(block.courierStore, block.trackingStore);
+                          // El texto va en su propio span: sueltos, "Seguimiento:", el numero y el
+                          // courier eran tres items del flex y en celular se partian en columnas
+                          // y empujaban el enlace fuera de la tarjeta.
                           return (
-                            <span>
-                              <Package size={13} /> Seguimiento: <strong>{block.trackingStore}</strong>
-                              {block.courierStore ? ` · ${block.courierStore}` : ''}
+                            <span className="order-store-block-track">
+                              <Package size={13} />
+                              <span className="order-store-block-track-text">
+                                Seguimiento: <strong>{block.trackingStore}</strong>
+                                {block.courierStore ? ` · ${block.courierStore}` : ''}
+                              </span>
                               {carrier && (
                                 <a
                                   className="order-store-block-tracklink"
@@ -1752,35 +1843,43 @@ export default function OrderDetailView({
                             <strong>{block.pickupCode}</strong>
                           </span>
                         )}
-                        {/* La boleta (o factura) de ESTA tienda: cada tienda emite la suya por su
-                            parte del pedido. Para el vendedor la fila vive en "Despachar a". */}
-                        {!isSeller && !block.isCancelledStore && (
-                          <div className="order-store-section order-store-receipt">
-                            <span className="order-store-section-title">
-                              <FileCheck size={13} /> {documentLabel}
-                            </span>
-                            {block.boletaVentaDisponible ? (
-                              <span className="order-store-block-boleta">
-                                <FileText size={13} /> Emitida por la tienda
-                                <button
-                                  type="button"
-                                  className="order-store-block-tracklink order-store-block-boletalink"
-                                  onClick={() => handleViewReceipt(block.id, block.name)}
-                                >
-                                  <FileSearch size={14} />
-                                  Ver y descargar
-                                </button>
-                              </span>
-                            ) : (
-                              <small className="order-store-receipt-pending">
-                                {block.name} adjunta la {documentLabel.toLowerCase()} al confirmar tu pedido. La verás aquí.
-                              </small>
-                            )}
-                          </div>
-                        )}
-                        {/* O87 / O90: el comprobante de envío de ESTA tienda, si lo subió. */}
-                        {storeHasShippingReceipt(block) && renderShippingReceiptLink(block)}
                       </div>
+
+                      {/* Los documentos de ESTA tienda en una sola seccion y con la misma fila: la
+                          boleta (o factura) que emite por su parte del pedido y, si lo subio, el
+                          comprobante de envio (O87 / O90). Va fuera del recuadro del envio: dentro
+                          quedaba tan angosta en celular que el nombre del documento se partia junto
+                          al boton. Para el vendedor la boleta vive en "Despachar a". */}
+                      {!isSeller && (!block.isCancelledStore || storeHasShippingReceipt(block)) && (
+                        <div className="order-store-section order-store-receipt">
+                          <span className="order-store-section-title">
+                            <FileCheck size={13} /> Documentos
+                          </span>
+                          {block.isCancelledStore ? null : block.boletaVentaDisponible ? (
+                            <div className="order-store-doc">
+                              <span className="order-store-doc-icon"><FileText size={15} /></span>
+                              <span className="order-store-doc-text">
+                                <strong>{documentLabel}</strong>
+                                <small>{block.boletaVentaNombre || 'Emitida por la tienda'}</small>
+                              </span>
+                              <button
+                                type="button"
+                                className="order-store-doc-action"
+                                onClick={() => handleViewReceipt(block.id, block.name)}
+                                aria-label={`Ver y descargar la ${documentLabel.toLowerCase()} de ${block.name}`}
+                              >
+                                <FileSearch size={14} />
+                                Ver
+                              </button>
+                            </div>
+                          ) : (
+                            <small className="order-store-receipt-pending">
+                              {block.name} adjunta la {documentLabel.toLowerCase()} al confirmar tu pedido. La verás aquí.
+                            </small>
+                          )}
+                          {storeHasShippingReceipt(block) && renderShippingReceiptLink(block)}
+                        </div>
+                      )}
 
                       {/* Lo que va a pasar SOLO si nadie hace nada. Desde `PedidoAutoCierreJob`
                           el pedido ya no espera un clic: a los 10 dias se da por recibido y 72
@@ -1824,6 +1923,7 @@ export default function OrderDetailView({
                                     {busy ? <Loader2 size={13} className="spin-icon" /> : <ThumbsUp size={13} />}
                                     <span>Sí, la recibí</span>
                                   </button>
+                                  {onDisputeDeclaredDelivery ? (
                                   <button
                                     type="button"
                                     className="btn-auth-danger order-store-block-veto-btn"
@@ -1833,6 +1933,7 @@ export default function OrderDetailView({
                                     {busy ? <Loader2 size={13} className="spin-icon" /> : <ThumbsDown size={13} />}
                                     <span>No la he recibido</span>
                                   </button>
+                                  ) : null}
                                 </div>
                                 {deliveryVetoError?.blockId === block.id && (
                                   <p className="confirm-dialog-error">{deliveryVetoError.message}</p>
@@ -2311,7 +2412,7 @@ export default function OrderDetailView({
               {chatStartError && <p className="confirm-dialog-error">{chatStartError}</p>}
 
               <div className="order-store-chat-picker-list">
-                {storeBlocks.map((block) => {
+                {storeBlocks.filter((block) => orderAllowsChat(subOrderByStore.get(String(block.id))?.estado ?? normStatus)).map((block) => {
                   const openingChat = chatStoreId === block.id;
                   return (
                     <article key={block.id} className="order-store-chat-picker-item">
@@ -2533,6 +2634,12 @@ export default function OrderDetailView({
                   </small>
                 </label>
 
+                {isLocalDispatch ? (
+                  <p className="order-subdialog-hint">
+                    El envío dentro de la comuna se cobró al comprador con la tarifa de tu tienda
+                    {Number(order?.costoEnvio) > 0 ? ` (${formatCLP(order.costoEnvio)})` : ''}: no hay que ingresar un valor.
+                  </p>
+                ) : (
                 <label className="order-subdialog-field">
                   <span>Valor del envío (opcional)</span>
                   <input
@@ -2543,6 +2650,7 @@ export default function OrderDetailView({
                     onChange={(e) => setDispatchShippingFee(e.target.value.replace(/\D/g, '').slice(0, MAX_SHIPPING_FEE_DIGITS))}
                   />
                 </label>
+                )}
 
                 <div className="order-subdialog-field">
                   <span>Comprobante de envío en PDF{isLocalDispatch ? ' (opcional)' : ' *'}</span>

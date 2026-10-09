@@ -219,14 +219,26 @@ export function quantityFromLabel(value) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
+/**
+ * "min", "mins", "minuto" o "minutos" como palabra suelta, para que "mínimo" o "minima" no se
+ * lean como minutos. La "palabra" incluye letras con tilde (rango latino), igual que el `\b` del
+ * backend en Java 17; un `\b` de JS solo mira ASCII.
+ */
+const VALIDITY_MINUTES_PATTERN = /(?:^|[^a-z0-9_\u00c0-\u024f])min(?:uto)?s?(?![a-z0-9_\u00c0-\u024f])/;
+
 // El backend manda `vigencia: null` en una cotizacion sin vigencia: el `= ''` solo cubre
 // undefined, y el null tumbaba la pantalla de cotizaciones de la intranet en produccion.
-function validityMilliseconds(validity) {
+//
+// Misma lectura que el backend (`VigenciaCotizacion`), que es quien rechaza en el checkout una
+// cotizacion vencida: el primer numero y la unidad, en este orden, "hora", "dia" o minutos.
+// Antes no se reconocian minutos y "45 min" se mostraba como una cotizacion que no vence.
+export function validityMilliseconds(validity) {
   const lower = String(validity ?? '').toLowerCase();
   const amount = Number(lower.match(/\d+/)?.[0]);
-  if (!Number.isFinite(amount)) return null;
+  if (!Number.isFinite(amount) || amount <= 0) return null;
   if (lower.includes('hora')) return amount * 60 * 60 * 1000;
   if (lower.includes('dia') || lower.includes('día')) return amount * 24 * 60 * 60 * 1000;
+  if (VALIDITY_MINUTES_PATTERN.test(lower)) return amount * 60 * 1000;
   return null;
 }
 

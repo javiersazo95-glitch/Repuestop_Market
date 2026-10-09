@@ -9,6 +9,9 @@ const normalize = (text) => String(text || '')
   .toLowerCase()
   .trim();
 
+// Un <option> nativo no admite estilo propio: el conteo va como texto "(N)" tras la etiqueta.
+const withCount = (option) => (option.count != null ? `${option.label} (${option.count})` : option.label);
+
 /**
  * Desplegable de los filtros avanzados.
  *
@@ -21,7 +24,8 @@ const normalize = (text) => String(text || '')
  *   repuesto se encuentran escribiendo, sin recorrer la lista entera.
  * - En escritorio sin busqueda, el `<select>` de siempre.
  *
- * `options`: [{ value, label }] con `value` como string. `placeholder` es la opcion vacia
+ * `options`: [{ value, label, count? }] con `value` como string. `count` (cuantas publicaciones
+ * tiene esa opcion) se muestra solo en la lista, nunca en el campo cerrado. `placeholder` es la opcion vacia
  * ("Todas las marcas") y lo que se muestra mientras no hay nada elegido.
  *
  * Con `multiple` (las versiones del vehiculo) `value` es una lista separada por comas, cada
@@ -93,7 +97,7 @@ export default function SheetSelect({
       >
         <option value="">{placeholder}</option>
         {options.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
+          <option key={option.value} value={option.value}>{withCount(option)}</option>
         ))}
       </select>
     );
@@ -182,7 +186,10 @@ export default function SheetSelect({
               className={optionSelected ? 'sheet-select-option is-selected' : 'sheet-select-option'}
               onClick={() => choose(option.value)}
             >
-              <span>{option.label}</span>
+              <span>
+                {option.label}
+                {option.count != null && <span className="sheet-select-count"> ({option.count})</span>}
+              </span>
               {optionSelected && <Check size={18} aria-hidden="true" />}
             </button>
           </li>

@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ShieldCheck, ShieldAlert, Hourglass, AlertTriangle, XCircle,
-  ChevronDown, ChevronUp, ArrowRight, Building2, MapPin, Phone
-} from 'lucide-react';
+  ChevronDown, ChevronUp, ArrowRight, Building2, MapPin, Phone, Zap } from 'lucide-react';
 
 /**
  * Estado del expediente de servicio automotriz, compacto, para la cabecera de la
@@ -35,6 +34,14 @@ function describe(status, businessName, reviewNotes) {
       : 'Estamos validando tus documentos. Te avisaremos por correo.';
   }
   return 'Para publicar anuncios en el Mural debemos validar los documentos de tu negocio.';
+}
+
+/** "Urgencias 24/7 (Grúa)" / "Solo 24/7" / "Horario normal". Igual que la app. */
+function urgencySummary(profile) {
+  if (!profile) return '';
+  if (!profile.atiende24Horas) return 'Horario normal · sin urgencias 24/7';
+  const services = profile.servicios24Horas?.length ? ` (${profile.servicios24Horas.join(', ')})` : '';
+  return profile.tieneHorarioNormal ? `Urgencias 24/7${services} + horario normal` : `Solo urgencias 24/7${services}`;
 }
 
 export function AccreditationPill({ status, businessName = '', reviewNotes = '', profile, onOpen }) {
@@ -79,6 +86,7 @@ export function AccreditationPill({ status, businessName = '', reviewNotes = '',
                 <Row Icon={Building2} label="Taller" value={profile?.businessName} />
                 <Row Icon={MapPin} label="Ubicación" value={location} />
                 <Row Icon={Phone} label="Teléfono publicado" value={profile?.phone} />
+                <Row Icon={Zap} label="Horario y urgencias" value={urgencySummary(profile)} />
               </div>
               <button type="button" className="acc-pill-cta" onClick={() => { setOpen(false); onOpen?.(); }}>
                 <span>Ver o editar expediente</span>

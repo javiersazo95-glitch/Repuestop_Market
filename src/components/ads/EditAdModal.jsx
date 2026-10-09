@@ -14,7 +14,7 @@ import AdForm from './AdForm';
  * revisión (PENDIENTE / rechazados) siguen en la cola tras editarlos.
  */
 export default function EditAdModal({
-  ad, isOpen, onClose, onAdUpdated, upgradedFromTier, upgradedToTier
+  ad, isOpen, onClose, onAdUpdated, upgradedFromTier, upgradedToTier, accreditationProfile = null
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -99,6 +99,7 @@ export default function EditAdModal({
             <AdForm
               mode="edit"
               initialAd={ad}
+              accreditationProfile={accreditationProfile}
               isSubmitting={isSubmitting}
               submitError={submitError}
               upgradedFromTier={upgradedFromTier}

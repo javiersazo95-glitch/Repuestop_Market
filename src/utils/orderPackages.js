@@ -43,7 +43,9 @@ export function buildOrderPackages(order, { fallbackAddress = null, fallbackMeth
       || (sub?.tipoEnvio ? LABELS[SHIPPING_TYPE_KIND[sub.tipoEnvio] || 'other'] : '')
       || fallbackMethod
       || '';
-    const kind = kindOf(rawMethod);
+    // El `tipoEnvio` de la línea manda sobre el texto del método: es el que fijó el backend al
+    // validar el destino contra la comuna de la tienda.
+    const kind = SHIPPING_TYPE_KIND[item.tipoEnvio] || kindOf(rawMethod);
     const method = rawMethod ? cleanMethod(rawMethod) : LABELS[kind];
     const itemAddress = item.entregaDireccion ? [item.entregaDireccion, item.entregaComuna].filter(Boolean).join(', ') : null;
     const address = kind === 'pickup' ? null : (itemAddress || fallbackAddress || null);
@@ -51,6 +53,9 @@ export function buildOrderPackages(order, { fallbackAddress = null, fallbackMeth
     const key = `${sellerId || storeName}|${kind}|${address || ''}`;
     const pkg = packages.get(key) || {
       key, sellerId, storeName, kind, method, address,
+      // Comuna de destino y la de la tienda: con ellas se marca el paquete que va a otra comuna.
+      comuna: kind === 'pickup' ? null : (item.entregaComuna || null),
+      storeComuna: item.proveedorComuna || '',
       pickupAddress: [item.proveedorDireccion, item.proveedorComuna].filter(Boolean).join(', '),
       pickupHours: item.proveedorHorario || '',
       products: [], vehicles: [],

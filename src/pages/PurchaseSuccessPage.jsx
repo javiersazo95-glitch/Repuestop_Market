@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { normalizeOrderStatus } from '../data/orderStatusFlow';
 import { buyerProfilePath, profileOrderPath, profilePurchasePath, ROUTES } from '../routes/paths';
 import { orderDeliverySummary, orderDisplayCode, orderHasShippingDueOnDelivery, orderNumberRef } from '../data/orderIdentity';
+import { buildOrderPackages } from '../utils/orderPackages';
 
 const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
 
@@ -193,7 +194,14 @@ export default function PurchaseSuccessPage() {
   const shippingMethod = order?.tipoEnvio || (Array.isArray(order?.subordenes) && order.subordenes.length > 0)
     ? orderDeliverySummary(order)
     : (order?.courier || order?.deliveryTerms || 'Entrega por coordinar');
-  const isPickup = /retiro|tienda|store_pickup/i.test(shippingMethod);
+  // Checkout por producto (2026-10-02): con dos o más paquetes (tienda + método + destino) una sola
+  // fila mezclaba el método de uno con la dirección de otro ("Envío fuera de la comuna" a la
+  // dirección de Temuco). Se muestra un renglón por paquete, igual que el detalle del pedido.
+  const deliveryPackages = buildOrderPackages(order, { fallbackAddress: address || null, fallbackMethod: shippingMethod });
+  const multiPackage = deliveryPackages.length > 1;
+  const isPickup = multiPackage
+    ? deliveryPackages.every((pkg) => pkg.kind === 'pickup')
+    : /retiro|tienda|store_pickup/i.test(shippingMethod);
   // O85 (pruebas de lanzamiento, 27-sep): el titular sigue al estado del pedido. Recién pagado
   // (PAGADO / EN_PREPARACION) decía "Tu pedido va viajando a su destino" aunque la tienda
   // todavía lo estaba preparando. Con varias tiendas manda el estado derivado (la más atrasada).
@@ -280,7 +288,7 @@ export default function PurchaseSuccessPage() {
               <Truck size={15} /> {journeyCopy.title}
             </span>
             <span className="purchase-journey-destination">
-              <MapPin size={13} /> {isPickup ? 'Retiro en tienda' : (address || 'Despacho a domicilio')}
+              <MapPin size={13} /> {isPickup ? 'Retiro en tienda' : multiPackage ? `${deliveryPackages.length} entregas` : (address || 'Despacho a domicilio')}
             </span>
           </div>
           <div className="purchase-journey-track" aria-hidden="true">
@@ -323,15 +331,32 @@ export default function PurchaseSuccessPage() {
 
             <aside className="purchase-success-summary">
               <h2><ReceiptText size={19} /> Resumen del pedido</h2>
-              <div className="purchase-success-info-row">
-                <Truck size={17} />
-                <div><span>Método de entrega</span><strong>{shippingMethod}</strong></div>
-              </div>
-              {!isPickup && (
-                <div className="purchase-success-info-row">
-                  <MapPin size={17} />
-                  <div><span>Dirección de envío</span><strong>{address || 'Dirección no registrada'}</strong></div>
+              {multiPackage ? deliveryPackages.map((pkg) => (
+                <div className="purchase-success-info-row" key={pkg.key}>
+                  {pkg.kind === 'pickup' ? <MapPin size={17} /> : <Truck size={17} />}
+                  <div>
+                    <span>{pkg.method}</span>
+                    <strong>
+                      {pkg.kind === 'pickup'
+                        ? `Retiro en ${pkg.pickupAddress || pkg.storeName}`
+                        : (pkg.address || 'Dirección no registrada')}
+                    </strong>
+                    <small className="purchase-success-package-items">{pkg.products.join(', ')}</small>
+                  </div>
                 </div>
+              )) : (
+                <>
+                  <div className="purchase-success-info-row">
+                    <Truck size={17} />
+                    <div><span>Método de entrega</span><strong>{shippingMethod}</strong></div>
+                  </div>
+                  {!isPickup && (
+                    <div className="purchase-success-info-row">
+                      <MapPin size={17} />
+                      <div><span>Dirección de envío</span><strong>{address || 'Dirección no registrada'}</strong></div>
+                    </div>
+                  )}
+                </>
               )}
               <div className="purchase-success-info-row">
                 <FileText size={17} />

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   X, CalendarClock, CalendarDays, Check, XCircle, Phone, Mail, Car, StickyNote,
   Loader2, AlertTriangle, ChevronLeft, ChevronRight, ArrowLeft, Hash, Wrench,
-  Clock, MessageSquare
+  Clock, MessageSquare, Home
 } from 'lucide-react';
 import {
   APPOINTMENT_LEGEND, APPOINTMENT_STATE_ORDER, appointmentVisualState, describeAppointment,
@@ -135,6 +135,11 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
             </div>
           )}
 
+          {!compact && appointment.homeService && (
+            <p className="agenda-appointment-notes is-home">
+              <Home size={12} /> A domicilio{appointment.homeAddress ? ` · ${appointment.homeAddress}` : ''}
+            </p>
+          )}
           {!compact && appointment.notes && (
             <p className="agenda-appointment-notes">
               <StickyNote size={12} /> {appointment.notes}
@@ -216,6 +221,7 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
           <DetailRow Icon={Mail} label="Correo" value={appointment.customerEmail} href={appointment.customerEmail ? `mailto:${appointment.customerEmail}` : null} />
           <DetailRow Icon={Car} label="Vehículo" value={appointment.vehicleModel} />
           <DetailRow Icon={Hash} label="Patente" value={appointment.vehiclePatent} />
+          <DetailRow Icon={Home} label="Lugar" value={appointment.homeService ? `A domicilio · ${appointment.homeAddress || 'sin dirección'}` : 'En el taller'} />
           <DetailRow Icon={MessageSquare} label="Comentarios" value={appointment.notes} />
         </div>
 

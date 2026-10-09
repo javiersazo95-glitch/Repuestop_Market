@@ -13,7 +13,13 @@ import {
   getSellerAdhesionPreviewApi,
   resolveMediaUrl,
 } from '../services/api';
-import { sanitizeWebsiteUrl } from '../utils/websiteUrl';
+import SocialLinksFields from './SocialLinksFields';
+import {
+  EMPTY_SOCIAL_LINKS,
+  socialLinksFromVerification,
+  socialLinksPayload,
+  validateSocialLinks,
+} from '../utils/socialLinks';
 import { VENDEDOR_TERMS, PRIVACIDAD_POLICY, LEGAL_VERSION } from '../data/legalTexts';
 
 /**
@@ -57,7 +63,8 @@ export default function SellerVerificationCard({ sellerId }) {
   const [loadError, setLoadError] = useState('');
 
   const [files, setFiles] = useState({});
-  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [socialLinks, setSocialLinks] = useState(EMPTY_SOCIAL_LINKS);
+  const [socialErrors, setSocialErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -81,6 +88,7 @@ export default function SellerVerificationCard({ sellerId }) {
     try {
       const data = await getSellerVerificationStatusApi(sellerId, { signal });
       setVerification(data);
+      setSocialLinks(socialLinksFromVerification(data));
     } catch (err) {
       if (err?.name === 'AbortError') return;
       setLoadError(err?.message || 'No pudimos cargar el estado de tu verificación.');
@@ -128,11 +136,11 @@ export default function SellerVerificationCard({ sellerId }) {
       return;
     }
 
-    // El enlace se sanea ANTES de enviarlo: lo abre un operador del backoffice desde su
-    // consola, así que un esquema ejecutable escrito aquí acabaría corriendo allá.
-    const sanitizedUrl = websiteUrl.trim() ? sanitizeWebsiteUrl(websiteUrl) : undefined;
-    if (websiteUrl.trim() && !sanitizedUrl) {
-      setFormError('El enlace no es válido. Usa una dirección web como https://instagram.com/tu-tienda.');
+    // Solo enlaces del dominio de cada red: se muestran como enlace en el perfil público.
+    const nextSocialErrors = validateSocialLinks(socialLinks);
+    setSocialErrors(nextSocialErrors);
+    if (Object.keys(nextSocialErrors).length > 0) {
+      setFormError('Revisa los enlaces de tus redes sociales.');
       return;
     }
 
@@ -141,7 +149,7 @@ export default function SellerVerificationCard({ sellerId }) {
     try {
       const payload = new FormData();
       chosen.forEach((doc) => payload.append(doc.field, files[doc.field]));
-      if (sanitizedUrl) payload.append('websiteOrSocialUrl', sanitizedUrl);
+      Object.entries(socialLinksPayload(socialLinks)).forEach(([key, url]) => payload.append(key, url));
 
       const updated = isCorrection
         ? await updateSellerVerificationApi(sellerId, payload)
@@ -306,16 +314,12 @@ export default function SellerVerificationCard({ sellerId }) {
                 </div>
               ))}
 
-              <label className="order-subdialog-field">
-                <span>Sitio web o red social (opcional)</span>
-                <input
-                  type="text"
-                  maxLength={200}
-                  placeholder="https://instagram.com/tutienda"
-                  value={websiteUrl}
-                  onChange={(e) => setWebsiteUrl(e.target.value)}
-                />
-              </label>
+              <SocialLinksFields
+                value={socialLinks}
+                errors={socialErrors}
+                fieldClassName="order-subdialog-field"
+                onChange={(next) => { setSocialLinks(next); setSocialErrors({}); setFormError(''); }}
+              />
 
               <div className="confirm-dialog-actions">
                 <button type="button" className="btn-auth-secondary" onClick={() => { setShowForm(false); setFormError(''); }} disabled={isSubmitting}>

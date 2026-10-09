@@ -67,7 +67,14 @@ export type VerificacionResponse = {
   inicioActividadesDoc: string | null;
   patenteDoc: string | null;
   boletaFacturaDoc: string | null;
+  /** Certificado de cumplimiento tributario del SII (Res. 168/2025). */
+  certificadoCumplimientoDoc?: string | null;
+  /** Cuando la tienda declaro ser contribuyente de IVA; null si no lo ha hecho. */
+  declaracionIvaAt?: string | null;
   websiteOrSocialUrl: string | null;
+  instagramUrl?: string | null;
+  facebookUrl?: string | null;
+  tiktokUrl?: string | null;
   reviewStatus: string | null;
   reviewNotes: string | null;
   submittedAt: string | null;
@@ -191,7 +198,14 @@ export type VerificacionFiles = {
   inicioActividadesDoc?: File | null;
   patenteDoc?: File | null;
   boletaFacturaDoc?: File | null;
+  certificadoCumplimientoDoc?: File | null;
+  /** La tienda declara ser contribuyente de IVA. La IP y la fecha las toma el servidor. */
+  declaraContribuyenteIva?: boolean;
   websiteOrSocialUrl?: string;
+  /** Redes sociales: vacía la quita del perfil; sin enviar, no cambia. */
+  instagramUrl?: string;
+  facebookUrl?: string;
+  tiktokUrl?: string;
   mensaje?: string;
 };
 
@@ -205,7 +219,12 @@ export function uploadVerificacion(
   if (files.inicioActividadesDoc) form.append('inicioActividadesDoc', files.inicioActividadesDoc);
   if (files.patenteDoc) form.append('patenteDoc', files.patenteDoc);
   if (files.boletaFacturaDoc) form.append('boletaFacturaDoc', files.boletaFacturaDoc);
+  if (files.certificadoCumplimientoDoc) form.append('certificadoCumplimientoDoc', files.certificadoCumplimientoDoc);
+  if (files.declaraContribuyenteIva) form.append('declaraContribuyenteIva', 'true');
   if (files.websiteOrSocialUrl) form.append('websiteOrSocialUrl', files.websiteOrSocialUrl);
+  if (files.instagramUrl !== undefined) form.append('instagramUrl', files.instagramUrl);
+  if (files.facebookUrl !== undefined) form.append('facebookUrl', files.facebookUrl);
+  if (files.tiktokUrl !== undefined) form.append('tiktokUrl', files.tiktokUrl);
   if (files.mensaje) form.append('mensaje', files.mensaje);
 
   return request<VerificacionResponse>(`/proveedores/${encodeURIComponent(sellerId)}/verificacion`, {

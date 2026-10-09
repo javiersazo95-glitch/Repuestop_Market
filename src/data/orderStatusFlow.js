@@ -40,6 +40,19 @@ export function orderPaymentWindow(order, now = Date.now()) {
   };
 }
 
+/**
+ * Estados (del pedido, o de la suborden de la tienda) con chat postventa habilitado: desde PAGADO
+ * en adelante, nunca PENDIENTE ni CANCELADO. Espejo de
+ * `MediacionChatService.exigirPedidoConChatDisponible` en el backend y de `pedidoAdmiteChat` en
+ * la app. Un chat ya abierto sigue listado aunque despues se cancele: esto solo decide si se
+ * puede INICIAR.
+ */
+export const CHAT_READY_STATES = new Set(['PAGADO', 'EN_PREPARACION', 'ENVIADO', 'ENTREGADO', 'FINALIZADO', 'EN_MEDIACION']);
+
+export function orderAllowsChat(status) {
+  return CHAT_READY_STATES.has(String(status || '').trim().toUpperCase());
+}
+
 export function normalizeOrderStatus(order) {
   const status = String(order?.estado || order?.status || 'PENDIENTE').toUpperCase();
   const aliases = {

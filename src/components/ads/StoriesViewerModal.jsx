@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, CheckCircle2, MessageCircle, Calendar, MapPin } from 'lucide-react';
 import { AD_TIERS, SERVICE_CATEGORIES } from '../../data/automotiveAdsData';
 import { useAdOwnership } from './useAdOwnership';
+import { canBookAd } from '../../utils/adBooking';
 
 const SLIDE_DURATION = 5000;
 
@@ -30,7 +31,7 @@ export default function StoriesViewerModal({
   const tierConfig = AD_TIERS[ad?.tier] || AD_TIERS.basica;
   const categoryObj = SERVICE_CATEGORIES.find((c) => c.id === ad?.category);
   const canWhatsapp = Boolean(tierConfig.hasWhatsapp && ad?.whatsapp);
-  const canBook = Boolean(tierConfig.hasBooking && ad?.hasOnlineBooking);
+  const canBook = canBookAd(ad);
 
   const goToNextSlide = useCallback(() => {
     if (currentSlideIndex < slides.length - 1) {

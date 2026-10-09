@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, CalendarClock, CalendarDays, Check, XCircle, Loader2, AlertTriangle,
-  Phone, Mail, Car, StickyNote, RotateCcw, Megaphone, Clock, Settings
+  Phone, Mail, Car, StickyNote, RotateCcw, Megaphone, Clock, Settings, Home
 } from 'lucide-react';
 import {
   formatAgendaDateLong, getTimeUntilLabel, parseIsoDate, toIsoDate
@@ -224,6 +224,9 @@ export default function AppointmentsHistoryModal({
             )}
           </div>
 
+          {appointment.homeService && (
+            <p className="agenda-appointment-notes is-home"><Home size={12} /> A domicilio{appointment.homeAddress ? ` · ${appointment.homeAddress}` : ''}</p>
+          )}
           {appointment.notes && (
             <p className="agenda-appointment-notes"><StickyNote size={12} /> {appointment.notes}</p>
           )}

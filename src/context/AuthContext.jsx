@@ -54,10 +54,15 @@ export function AuthProvider({ children }) {
     if (token) {
       getProfileApi()
         .then((profile) => {
-          const normalizedProfile = normalizeUserMedia(profile);
-          setUser(normalizedProfile);
+          // Se FUSIONA con lo guardado: el perfil no trae los datos del login (plazo de la
+          // suspension, si puede apelar...). Reemplazarlo los borraba al recargar la pagina
+          // y el aviso perdia la fecha de fin (pruebas en dev, 2026-10-09).
+          setUser((previous) => {
+            const merged = { ...(previous || {}), ...normalizeUserMedia(profile) };
+            localStorage.setItem('repuestop_user', JSON.stringify(merged));
+            return merged;
+          });
           if (profile.role) setRole(profile.role);
-          localStorage.setItem('repuestop_user', JSON.stringify(normalizedProfile));
         })
         .catch((err) => {
           // Solo el 401 significa "tu sesion ya no sirve". Un 403 es "estas autenticado
@@ -153,6 +158,8 @@ export function AuthProvider({ children }) {
       // copiarlos aqui la web no podia decir hasta cuando dura la sancion.
       suspendedUntil: authResponse.suspendedUntil ?? baseUser.suspendedUntil,
       suspensionDuration: authResponse.suspensionDuration ?? baseUser.suspensionDuration,
+      // SuspensionCuentaDTO del perfil con que entra (ver utils/accountSuspension).
+      suspension: authResponse.suspension ?? baseUser.suspension,
     });
 
     const assignedRole = baseUser.role || authResponse.role || preferredRole || 'BUYER';
@@ -332,6 +339,23 @@ export function AuthProvider({ children }) {
     return mergedUser;
   };
 
+  /**
+   * Respuesta de PUT /preferencias-notificaciones ({ vendedor, comprador }): se refleja en el usuario
+   * de la sesion con los mismos nombres que traen el login y /users/perfil.
+   */
+  const setNotificationPreferences = (saved) => {
+    setUser((current) => {
+      if (!current) return current;
+      const next = {
+        ...current,
+        notificacionesVendedor: saved?.vendedor ?? current.notificacionesVendedor ?? null,
+        notificacionesComprador: saved?.comprador ?? current.notificacionesComprador ?? null,
+      };
+      localStorage.setItem('repuestop_user', JSON.stringify(next));
+      return next;
+    });
+  };
+
   const deleteAccount = async () => {
     const userId = user?.userId ?? user?.id;
     if (!userId) {
@@ -384,6 +408,7 @@ export function AuthProvider({ children }) {
     resendRegisterCode,
     updateProfile,
     refreshProfile,
+    setNotificationPreferences,
     deleteAccount,
   };
 
