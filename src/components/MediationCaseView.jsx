@@ -906,12 +906,21 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   const detailLabel = chat?.estadoMediacion === 'EN_MEDIACION'
     ? 'Ver detalle de la mediación'
     : hasRefundDetail ? 'Resolución y seguimiento del reembolso' : 'Ver resolución de la mediación';
+  // Los vehiculos de la compra a esta tienda; con un backend anterior, el unico que venia.
+  const caseVehicles = Array.isArray(chat?.vehiculos) && chat.vehiculos.length > 0
+    ? chat.vehiculos
+    : (chat?.vehiculoPatente || chat?.vehiculoChasis || chat?.vehiculoMarca || chat?.vehiculoModelo)
+      ? [{
+        patente: chat.vehiculoPatente, chasis: chat.vehiculoChasis, marca: chat.vehiculoMarca,
+        modelo: chat.vehiculoModelo, version: chat.vehiculoVersion, anio: chat.vehiculoAnio, repuestos: [],
+      }]
+      : [];
   const canAskMediator = Boolean(chat) && !isEscalated && !mediationResolved && !claimResolvedByBuyer && !buyerSuspended;
   // Menú "⋯" en celular: lo que en escritorio son chips y botones grandes.
   const menuItems = [
     ...(hasDetail ? [{ key: 'detalle', Icon: Clock, label: detailLabel, onPress: () => setShowResolutionDetail(true) }] : []),
     ...(isEscalated ? [{ key: 'resumen', Icon: BookOpen, label: 'Resumen de la mediación', onPress: () => { setActiveTab('mediator'); setSummarySheetOpen(true); } }] : []),
-    { key: 'vehiculo', Icon: Car, label: chat?.boletaVentaDisponible ? 'Vehículo y boleta' : 'Vehículo', onPress: () => setShowVehicleReceipt(true) },
+    { key: 'vehiculo', Icon: Car, label: `${caseVehicles.length > 1 ? `Vehículos (${caseVehicles.length})` : 'Vehículo'}${chat?.boletaVentaDisponible ? ' y boleta' : ''}`, onPress: () => setShowVehicleReceipt(true) },
     { key: 'pedido', Icon: Receipt, label: codigo ? `Pedido ${codigo}` : 'Ver compra', onPress: () => navigate(orderPath) },
     ...(canMarkResolved ? [{ key: 'resolver', Icon: CheckCircle2, label: 'Marcar reclamo como resuelto', tone: 'success', onPress: () => openDialog('resolve') }] : []),
     ...(canAskMediator ? [{
@@ -1547,21 +1556,29 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
               <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>
                 Lo ven el comprador y la tienda, para revisar la compatibilidad con los mismos datos.
               </p>
-              <div className="dispute-vehicle-card" style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, display: 'grid', gap: 6 }}>
-                <small style={{ fontWeight: 700, color: '#0056BF', letterSpacing: '.04em' }}>VEHÍCULO CONFIRMADO</small>
-                {(chat?.vehiculoPatente || chat?.vehiculoChasis || chat?.vehiculoMarca || chat?.vehiculoModelo) ? (
-                  <>
-                    <span><small style={{ color: '#64748b' }}>Vehículo</small><br /><strong>{[chat.vehiculoMarca, chat.vehiculoModelo, chat.vehiculoVersion, chat.vehiculoAnio].filter(Boolean).join(' ') || 'Marca y modelo no identificados'}</strong></span>
-                    <span><small style={{ color: '#64748b' }}>Patente</small><br /><strong>{chat.vehiculoPatente || 'No informada'}</strong></span>
-                    <span><small style={{ color: '#64748b' }}>Chasis</small><br /><strong style={{ userSelect: 'all' }}>{chat.vehiculoChasis || 'No identificado'}</strong></span>
-                    {!isBuyer && (
-                      <small style={{ color: '#64748b' }}>La patente se muestra parcial para proteger los datos del comprador; el chasis basta para validar el repuesto.</small>
-                    )}
-                  </>
-                ) : (
+              {/* Todos los vehiculos de la compra a esta tienda, cada uno con sus repuestos
+                  (pruebas en dev, 2026-10-09: antes solo se veia el primero). */}
+              {caseVehicles.length > 0 ? caseVehicles.map((vehiculo, index) => (
+                <div key={`${vehiculo.patente || vehiculo.chasis || ''}-${index}`} className="dispute-vehicle-card" style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, display: 'grid', gap: 6 }}>
+                  <small style={{ fontWeight: 700, color: '#0056BF', letterSpacing: '.04em' }}>
+                    {caseVehicles.length > 1 ? `VEHÍCULO ${index + 1} DE ${caseVehicles.length}` : 'VEHÍCULO CONFIRMADO'}
+                  </small>
+                  <span><small style={{ color: '#64748b' }}>Vehículo</small><br /><strong>{[vehiculo.marca, vehiculo.modelo, vehiculo.version, vehiculo.anio].filter(Boolean).join(' ') || 'Marca y modelo no identificados'}</strong></span>
+                  <span><small style={{ color: '#64748b' }}>Patente</small><br /><strong>{vehiculo.patente || 'No informada'}</strong></span>
+                  <span><small style={{ color: '#64748b' }}>Chasis</small><br /><strong style={{ userSelect: 'all', overflowWrap: 'anywhere' }}>{vehiculo.chasis || 'No identificado'}</strong></span>
+                  {vehiculo.repuestos?.length > 0 && (
+                    <span><small style={{ color: '#64748b' }}>Repuestos para este vehículo</small><br /><strong style={{ fontWeight: 600 }}>{vehiculo.repuestos.join(' · ')}</strong></span>
+                  )}
+                </div>
+              )) : (
+                <div className="dispute-vehicle-card" style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, display: 'grid', gap: 6 }}>
+                  <small style={{ fontWeight: 700, color: '#0056BF', letterSpacing: '.04em' }}>VEHÍCULO CONFIRMADO</small>
                   <small style={{ color: '#64748b' }}>El comprador no informó su vehículo en esta compra.</small>
-                )}
-              </div>
+                </div>
+              )}
+              {!isBuyer && caseVehicles.some((vehiculo) => vehiculo.patente) && (
+                <small style={{ color: '#64748b' }}>La patente se muestra parcial para proteger los datos del comprador; el chasis basta para validar el repuesto.</small>
+              )}
               <div className="dispute-vehicle-card" style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, display: 'grid', gap: 8 }}>
                 <small style={{ fontWeight: 700, color: '#0056BF', letterSpacing: '.04em' }}>BOLETA DE LA TIENDA</small>
                 {chat?.boletaVentaDisponible ? (

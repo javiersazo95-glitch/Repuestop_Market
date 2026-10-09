@@ -1432,8 +1432,10 @@ export default function OrderDetailView({
                     className="order-chat-header-button"
                     onClick={handleSellerChatClick}
                     title="Chatear con vendedor"
+                    aria-label="Chatear con vendedor"
                   >
-                    <MessageCircle size={16} /> Chatear con vendedor
+                    {/* En el celular queda solo el icono, en la fila del titulo (profile-mobile.css). */}
+                    <MessageCircle size={16} /> <span className="order-chat-header-label">Chatear con vendedor</span>
                   </button>
                   <button
                     type="button"
@@ -1454,8 +1456,9 @@ export default function OrderDetailView({
                   onClick={() => void startSellerChat(sellerId)}
                   disabled={Boolean(chatStoreId)}
                   title="Chatear con comprador"
+                  aria-label="Chatear con comprador"
                 >
-                  {chatStoreId ? <Loader2 size={16} className="spin-icon" /> : <MessageCircle size={16} />} Chatear con comprador
+                  {chatStoreId ? <Loader2 size={16} className="spin-icon" /> : <MessageCircle size={16} />} <span className="order-chat-header-label">Chatear con comprador</span>
                 </button>
                 {chatStartError && <p className="confirm-dialog-error">{chatStartError}</p>}
               </div>

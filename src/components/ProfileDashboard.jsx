@@ -146,6 +146,8 @@ const SELLER_BLOCKED_HIDDEN_TABS = [
   'preguntas_productos',
   'tienda_datos',
   'anuncios',
+  // Una cuenta suspendida no deja feedback (pruebas en dev, 2026-10-09).
+  'feedback',
 ];
 
 // El comprador suspendido no reclama ni reporta: "Reportes/Soporte" tambien se oculta. El Centro
@@ -157,6 +159,7 @@ const BUYER_BLOCKED_HIDDEN_TABS = [
   'datos',
   'anuncios',
   'consultas',
+  'feedback',
 ];
 
 const BUYER_SIDEBAR_GROUPS = [
@@ -1557,9 +1560,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             ))}
 
             <div className="profile-nav-final-actions">
-              <button type="button" className={`profile-nav-item profile-nav-feedback ${activeTab === 'feedback' ? 'active' : ''}`} onClick={openFeedback}>
-                <MessageSquare size={17} /><span>Dejar feedback</span>
-              </button>
+              {!isSellerBlocked && !isBuyerBlocked && (
+                <button type="button" className={`profile-nav-item profile-nav-feedback ${activeTab === 'feedback' ? 'active' : ''}`} onClick={openFeedback}>
+                  <MessageSquare size={17} /><span>Dejar feedback</span>
+                </button>
+              )}
               <button type="button" className="profile-nav-item profile-nav-delete" onClick={() => setShowDeleteAccountModal(true)}>
                 <Trash2 size={17} /><span>Cerrar cuenta</span>
               </button>
@@ -1754,7 +1759,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 <SellerChatsView user={user} mode="seller" orders={ordersQuery.data} />
               )}
 
-              {activeTab === 'feedback' && <ProfileFeedbackPanel />}
+              {activeTab === 'feedback' && !isSellerBlocked && !isBuyerBlocked && <ProfileFeedbackPanel />}
 
               {(activeTab === 'tienda_datos' || activeTab === 'datos') && (
                 <ProfileAccountDataPanel
@@ -1867,9 +1872,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               ))}
 
               <div className="profile-nav-final-actions">
-                <button type="button" className={`profile-nav-item profile-nav-feedback ${activeTab === 'feedback' ? 'active' : ''}`} onClick={() => { setProfileNavOpen(false); openFeedback(); }}>
-                  <MessageSquare size={18} /><span>Dejar feedback</span>
-                </button>
+                {!isSellerBlocked && !isBuyerBlocked && (
+                  <button type="button" className={`profile-nav-item profile-nav-feedback ${activeTab === 'feedback' ? 'active' : ''}`} onClick={() => { setProfileNavOpen(false); openFeedback(); }}>
+                    <MessageSquare size={18} /><span>Dejar feedback</span>
+                  </button>
+                )}
                 <button type="button" className="profile-nav-item profile-nav-delete" onClick={() => { setProfileNavOpen(false); setShowDeleteAccountModal(true); }}>
                   <Trash2 size={18} /><span>Cerrar cuenta</span>
                 </button>
