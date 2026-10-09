@@ -1,0 +1,32 @@
+/* Redes sociales de la tienda: interruptor del registro y fila discreta del perfil público. */
+.social-links-fields { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+.social-links-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-white); }
+.social-links-toggle-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.social-links-toggle-copy strong { font-size: .88rem; color: var(--text-primary); }
+.social-links-toggle-copy small { font-size: .78rem; color: var(--text-muted); line-height: 1.35; }
+
+.social-links-switch { position: relative; flex: none; width: 44px; height: 24px; padding: 0; border: none; border-radius: var(--radius-full); background: #cbd5e1; cursor: pointer; transition: background var(--transition-smooth); }
+.social-links-switch.is-on { background: var(--color-brand-blue); }
+.social-links-switch:focus-visible { outline: 2px solid var(--color-brand-blue); outline-offset: 2px; }
+.social-links-switch-thumb { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(15, 23, 42, .25); transition: transform var(--transition-smooth); }
+.social-links-switch.is-on .social-links-switch-thumb { transform: translateX(20px); }
+
+.social-links-label { display: inline-flex; align-items: center; gap: 6px; }
+.social-links-error { color: #de350b; font-size: .76rem; }
+.social-links-field.has-error input { border-color: #de350b; }
+
+/* Perfil público: iconos pequeños y de color apagado; no compiten con la portada. */
+.store-social-links { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.store-social-links-label { font-size: .78rem; color: var(--text-muted); margin-right: 2px; }
+.store-social-link { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border-subtle); color: var(--text-muted); background: transparent; transition: color var(--transition-smooth), border-color var(--transition-smooth); }
+.store-social-link:hover, .store-social-link:focus-visible { border-color: currentColor; transform: translateY(-1px); }
+
+/* Escritorio: va dentro de la cabecera sobre la portada, en blanco translúcido como el resto. */
+.store-social-links.on-cover .store-social-links-label { color: rgba(255, 255, 255, .85); text-shadow: 0 1px 6px rgba(0, 0, 0, .6); }
+.store-social-links.on-cover .store-social-link { border-color: transparent; background: rgba(255, 255, 255, .95); box-shadow: 0 1px 4px rgba(15, 23, 42, .25); }
+.store-social-links.on-cover .store-social-link:hover, .store-social-links.on-cover .store-social-link:focus-visible { background: #fff; }
+
+/* Celular: bajo la portada, en la ficha de identidad; más pequeño todavía. */
+.store-social-links.is-mobile { flex-basis: 100%; gap: 6px; margin-top: 2px; }
+.store-social-links.is-mobile .store-social-links-label { font-size: 12px; font-weight: 600; color: #64748b; }
+.store-social-links.is-mobile .store-social-link { width: 26px; height: 26px; background: #fff; }

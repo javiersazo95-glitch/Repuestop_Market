@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
-  getVehicleBrandsApi, updateStoreSpecialistBrandsApi, updateSellerShippingMethodsApi,
+  getVehicleBrandsApi, updateStoreSpecialistBrandsApi, updateSellerShippingMethodsApi, updateStoreSocialLinksApi,
   getRegionesApi, getComunasApi, getPaisesApi,
 } from '../services/api';
 import { qk } from '../services/queryKeys';
@@ -20,6 +20,11 @@ import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import VehicleBrandLogo from './VehicleBrandLogo';
 import SellerVerificationCard from './SellerVerificationCard';
 import CertificadoCumplimientoCard from './CertificadoCumplimientoCard';
+import SocialLinksFields from './SocialLinksFields';
+import SocialIcon from './SocialIcon';
+import {
+  EMPTY_SOCIAL_LINKS, socialLinksFromVerification, socialLinksPayload, storeSocialLinks, validateSocialLinks,
+} from '../utils/socialLinks';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
 import {
   SHIPPING_METHOD_DEFS, parseShippingSelections, buildShippingMethodsString,
@@ -73,6 +78,8 @@ export default function ProfileAccountDataPanel({
   const [specialistBrandIdsDraft, setSpecialistBrandIdsDraft] = useState([]);
   const [availableVehicleBrands, setAvailableVehicleBrands] = useState([]);
   const [showSpecialistBrandsModal, setShowSpecialistBrandsModal] = useState(false);
+  const [socialLinksDraft, setSocialLinksDraft] = useState(EMPTY_SOCIAL_LINKS);
+  const [socialLinksErrors, setSocialLinksErrors] = useState({});
   const [specialistBrandSearch, setSpecialistBrandSearch] = useState('');
   const [storeAddressDraft, setStoreAddressDraft] = useState(storeInfo?.address || user?.address || '');
   const [storeRegionIdDraft, setStoreRegionIdDraft] = useState('');
@@ -97,6 +104,8 @@ export default function ProfileAccountDataPanel({
     setFacturaGiroDraft(user?.facturaGiro || '');
     setShippingSelectionsDraft(parseShippingSelections(storeInfo?.shippingMethods));
     setSpecialistBrandIdsDraft((storeInfo?.marcasEspecialistas || []).map((brand) => String(brand.id)));
+    setSocialLinksDraft(socialLinksFromVerification(storeInfo));
+    setSocialLinksErrors({});
   };
 
   useEffect(() => {
@@ -209,6 +218,13 @@ export default function ProfileAccountDataPanel({
 
     const validationErrors = validateProfileForm();
     setFormErrors(validationErrors);
+    // Solo enlaces del dominio de cada red; el servidor aplica la misma regla.
+    const nextSocialErrors = isSeller ? validateSocialLinks(socialLinksDraft) : {};
+    setSocialLinksErrors(nextSocialErrors);
+    if (Object.keys(nextSocialErrors).length > 0) {
+      setSaveStatus({ type: 'error', message: 'Revisa los enlaces de tus redes sociales.' });
+      return;
+    }
     if (Object.keys(validationErrors).length > 0) {
       setSaveStatus({ type: 'error', message: 'Revisa los campos marcados antes de guardar.' });
       return;
@@ -258,6 +274,7 @@ export default function ProfileAccountDataPanel({
     try {
       if (isSeller) {
         await updateStoreSpecialistBrandsApi(user.sellerId, specialistBrandIdsDraft);
+        await updateStoreSocialLinksApi(user.sellerId, socialLinksPayload(socialLinksDraft));
         if (shippingMethodsDraft) {
           // Sin `.catch()`: si esto falla, el usuario tiene que enterarse. Antes se
           // tragaba el error y el aviso de "actualizado correctamente" salía igual,
@@ -621,6 +638,15 @@ export default function ProfileAccountDataPanel({
                   <small className="form-helper-text">Selecciona las marcas de vehículo con las que trabaja tu tienda.</small>
                 </div>
 
+                <div className="form-group">
+                  <SocialLinksFields
+                    value={socialLinksDraft}
+                    errors={socialLinksErrors}
+                    fieldClassName="form-group"
+                    onChange={(next) => { setSocialLinksDraft(next); setSocialLinksErrors({}); }}
+                  />
+                </div>
+
                 <div className="form-section-title" style={{ marginTop: '16px' }}>Datos de Cuenta Bancaria de Cobro</div>
                 <div className="withdrawal-info-banner">
                   <Info size={18} />
@@ -749,6 +775,21 @@ export default function ProfileAccountDataPanel({
                           <VehicleBrandLogo key={brand.id || brand.nombre} brand={brand.nombre} />
                         )) : <strong className="info-value">Sin marcas registradas</strong>}
                       </div>
+                    </div>
+                  )}
+                  {isSeller && (
+                    <div className="details-info-row details-info-row-wide">
+                      <span className="info-label">Redes sociales</span>
+                      {storeSocialLinks(storeInfo).length ? (
+                        <div className="store-social-links">
+                          {storeSocialLinks(storeInfo).map((social) => (
+                            <a key={social.key} href={social.url} target="_blank" rel="noopener noreferrer nofollow"
+                              className="store-social-link" aria-label={social.label} title={social.url}>
+                              <SocialIcon network={social.key} size={15} />
+                            </a>
+                          ))}
+                        </div>
+                      ) : <strong className="info-value">Sin redes sociales</strong>}
                     </div>
                   )}
                 </div>

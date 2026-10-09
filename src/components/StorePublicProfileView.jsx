@@ -17,6 +17,9 @@ import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useMarketplace } from '../context/MarketplaceContext';
 import PartsCatalogView from './PartsCatalogView';
 import { useIsMobile } from '../hooks/useIsMobile';
+import SocialIcon from './SocialIcon';
+import { storeSocialLinks } from '../utils/socialLinks';
+import '../styles/social-links.css';
 
 export default function StorePublicProfileView({
   store,
@@ -81,6 +84,9 @@ export default function StorePublicProfileView({
       metodosEnvio: Array.isArray(inputStore.metodosEnvio) ? inputStore.metodosEnvio : [],
       logoUrl: inputStore.logoUrl || null,
       coverUrl: inputStore.coverUrl || null,
+      instagramUrl: inputStore.instagramUrl || null,
+      facebookUrl: inputStore.facebookUrl || null,
+      tiktokUrl: inputStore.tiktokUrl || null,
       descripcion: inputStore.descripcion || '',
       direccion: inputStore.direccion || '',
       telefono: inputStore.telefono || '',
@@ -107,6 +113,26 @@ export default function StorePublicProfileView({
     .map((brand) => typeof brand === 'string' ? brand : (brand?.nombre || brand?.name || ''))
     .filter(Boolean);
   const hasSpecialistBrands = specialistBrands.length > 0;
+  const socialLinks = storeSocialLinks(currentStore);
+  // Solo las redes con enlace; abren el perfil de la tienda en otra pestaña.
+  const renderSocialLinks = (variant) => socialLinks.length > 0 && (
+    <div className={`store-social-links ${variant}`}>
+      <span className="store-social-links-label">Redes sociales</span>
+      {socialLinks.map((social) => (
+        <a
+          key={social.key}
+          href={social.url}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          className="store-social-link"
+          aria-label={`${social.label} de ${currentStore.nombre}`}
+          title={social.label}
+        >
+          <SocialIcon network={social.key} size={variant === 'is-mobile' ? 14 : 15} />
+        </a>
+      ))}
+    </div>
+  );
   const isVerified = currentStore?.esOficial || rating >= 4.5;
   const isOwnStore = Boolean(
     onEditStore ||
@@ -298,6 +324,8 @@ export default function StorePublicProfileView({
                   <span className="meta-item"><MapPin size={14} /> {currentStore.ciudad}</span>
                 </p>
 
+                {renderSocialLinks('on-cover')}
+
                 <div className="store-action-buttons">
                   <button
                     className={`btn-follow-store ${isStoreSaved(currentStore.id) ? 'following' : ''}`}
@@ -422,6 +450,8 @@ export default function StorePublicProfileView({
               {isVerified && <span className="badge-official-store">Tienda verificada</span>}
               {currentStore.descripcion && <p>{currentStore.descripcion}</p>}
               <span className="store-mobile-identity-location"><MapPin size={13} /> {currentStore.ciudad}</span>
+              {/* Debajo de la portada, nunca sobre ella: en el celular la imagen queda limpia. */}
+              {renderSocialLinks('is-mobile')}
             </div>
             {shareFeedback && (
               <div className="store-action-toast-banner" role="status">

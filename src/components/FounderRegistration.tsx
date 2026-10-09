@@ -29,8 +29,14 @@ import {
 // Un solo archivo para el texto y para la version: el registro de aceptacion prueba QUE se
 // acepto, y con dos fuentes la constancia apunta a un documento que no es el que se mostro.
 import { VENDEDOR_TERMS, PRIVACIDAD_POLICY, LEGAL_VERSION_CODE, DECLARACION_IVA_TEXTO } from '../data/legalTexts';
-import { sanitizeWebsiteUrl } from '../utils/websiteUrl';
-import { tomarGoogleParaTienda } from '../utils/googleIdToken';
+import SocialLinksFields from './SocialLinksFields';
+import {
+  EMPTY_SOCIAL_LINKS,
+  socialLinksFromVerification,
+  socialLinksPayload,
+  validateSocialLinks,
+} from '../utils/socialLinks';
+import { tomarCorreoParaTienda, tomarGoogleParaTienda } from '../utils/googleIdToken';
 import { isValidRut } from '../services/adapters';
 import { getStoredCaptadorReferral, clearStoredCaptadorReferral } from '../utils/captadorReferral';
 import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
@@ -192,6 +198,8 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
     const initialReferral = getStoredCaptadorReferral() || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('ref') || '' : '');
     return {
       ...EMPTY_FORM,
+      // Correo que la tienda escribió en el modal al intentar entrar como vendedor sin cuenta.
+      email: typeof window !== 'undefined' ? tomarCorreoParaTienda() : '',
       referral: initialReferral ? initialReferral.trim().toUpperCase() : '',
     };
   });
@@ -1527,7 +1535,8 @@ function DocumentsUpload({ session, notice, onDone }: { session: Session; notice
   // Se marca lo que falta recien al intentar enviar, no apenas se abre el paso.
   const [mostrarFaltantes, setMostrarFaltantes] = useState(false);
   const [existing, setExisting] = useState<VerificacionResponse | null>(null);
-  const [website, setWebsite] = useState('');
+  const [socialLinks, setSocialLinks] = useState<Record<string, any>>(EMPTY_SOCIAL_LINKS);
+  const [socialErrors, setSocialErrors] = useState<Record<string, string>>({});
   const [comment, setComment] = useState('');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -1535,7 +1544,7 @@ function DocumentsUpload({ session, notice, onDone }: { session: Session; notice
   useEffect(() => {
     let cancelled = false;
     fetchVerificacionStatus(session.sellerId, session.token)
-      .then((v) => { if (!cancelled) { setExisting(v); if (v?.websiteOrSocialUrl) setWebsite(v.websiteOrSocialUrl); } })
+      .then((v) => { if (!cancelled) { setExisting(v); setSocialLinks(socialLinksFromVerification(v)); } })
       .catch(() => { /* si falla, tratamos como sin documentos previos */ });
     return () => { cancelled = true; };
   }, [session.sellerId, session.token]);
@@ -1559,10 +1568,11 @@ function DocumentsUpload({ session, notice, onDone }: { session: Session; notice
       return;
     }
     
-    // Sanear URL antes de enviar (bloquea javascript: y antepone https://)
-    const sanitizedUrl = website.trim() ? sanitizeWebsiteUrl(website) : undefined;
-    if (website.trim() && !sanitizedUrl) {
-      setError('Ingresa una URL válida (ej: https://instagram.com/tu-tienda).');
+    // Solo enlaces del dominio de cada red: se muestran como enlace en el perfil público.
+    const nextSocialErrors = validateSocialLinks(socialLinks);
+    setSocialErrors(nextSocialErrors);
+    if (Object.keys(nextSocialErrors).length > 0) {
+      setError('Revisa los enlaces de tus redes sociales.');
       return;
     }
 
@@ -1571,7 +1581,7 @@ function DocumentsUpload({ session, notice, onDone }: { session: Session; notice
       await uploadVerificacion(session.sellerId, session.token, {
         ...files,
         declaraContribuyenteIva: declaraIva,
-        websiteOrSocialUrl: sanitizedUrl,
+        ...socialLinksPayload(socialLinks),
         mensaje: comment.trim() || undefined,
       });
       onDone();
@@ -1606,10 +1616,13 @@ function DocumentsUpload({ session, notice, onDone }: { session: Session; notice
         ))}
       </div>
 
-      <Field label="Sitio web o red social (opcional)" hint="Si tienes, nos ayuda a validar tu tienda.">
-        <input value={website} placeholder="https://instagram.com/tu-tienda"
-          onChange={(e) => setWebsite(e.target.value)} />
-      </Field>
+      <SocialLinksFields
+        value={socialLinks}
+        errors={socialErrors}
+        fieldClassName="founder-field"
+        labelClassName="founder-field-label"
+        onChange={(next: Record<string, any>) => { setSocialLinks(next); setSocialErrors({}); setError(''); }}
+      />
 
       {!ivaYaDeclarada && (
         <div className="founder-reg-terms">

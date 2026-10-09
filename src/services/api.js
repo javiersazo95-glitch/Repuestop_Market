@@ -1543,6 +1543,17 @@ export async function updateStoreSpecialistBrandsApi(sellerId, marcaIds) {
   });
 }
 
+/**
+ * Redes sociales de la tienda autenticada. Vacía quita la red. El servidor rechaza (400) todo
+ * enlace que no sea del dominio de su red.
+ */
+export async function updateStoreSocialLinksApi(sellerId, links) {
+  return fetchApi(`/proveedores/${sellerId}/redes-sociales`, {
+    method: 'PUT',
+    body: JSON.stringify(links),
+  });
+}
+
 export async function sendDirectQuotationApi(quoteData) {
   return fetchApi('/cotizaciones/directa', {
     method: 'POST',

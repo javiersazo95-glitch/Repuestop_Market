@@ -8,8 +8,9 @@ import { useAuth } from '../context/AuthContext';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import CaptadorCodeField, { useCaptadorCode } from './CaptadorCodeField';
 import { clearStoredCaptadorReferral, getStoredCaptadorReferral } from '../utils/captadorReferral';
-import { decodeGoogleIdToken, guardarGoogleParaTienda } from '../utils/googleIdToken';
+import { decodeGoogleIdToken, guardarCorreoParaTienda, guardarGoogleParaTienda } from '../utils/googleIdToken';
 import { GOOGLE_CLIENT_ID } from './founderConfig';
+import { lookupSellerByTaxId } from './founderApi';
 import { formatRut, isValidRut } from '../services/adapters';
 import { ROUTES } from '../routes/paths';
 import {
@@ -383,12 +384,31 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
     setSelectedRole(role);
   };
 
+  /**
+   * La tienda se registra en `/vender` (cuenta fundadora: RUT, dirección y documentos), nunca
+   * con el registro de comprador. Se cierra el modal y se lleva allá con lo que ya entregó.
+   */
+  const goToSellerRegister = ({ googleIdToken, email: correo } = {}) => {
+    if (googleIdToken) guardarGoogleParaTienda(googleIdToken);
+    else if (correo) guardarCorreoParaTienda(correo);
+    setErrorMessage(null);
+    handleClose();
+    onOpenSellerRegister();
+  };
+
+  /** Cambio de rol dentro del formulario de inicio de sesión, sin volver a la elección. */
+  const switchLoginRole = (role) => {
+    if (role === selectedRole) return;
+    setSelectedRole(role);
+    setLoginMode('email');
+    setErrorMessage(null);
+  };
+
   const handleContinueFromRole = () => {
     setErrorMessage(null);
     if (isRegistrationFlow) {
       if (selectedRole === 'SELLER') {
-        handleClose();
-        onOpenSellerRegister();
+        goToSellerRegister();
       } else {
         setStep('register_buyer');
       }
@@ -548,6 +568,24 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
     return /(?:usuario|correo|cuenta|account|user).{0,40}(?:no existe|no encontrada|not found)/i.test(result?.error || '');
   };
 
+  /**
+   * El login responde lo mismo (401) a un correo inexistente que a una contraseña mal escrita,
+   * para no delatar cuentas. Solo con rol Tienda y tras un fallo se pregunta por separado: el
+   * correo a check-email (lo mismo que ya consulta el registro) y el RUT a seller-lookup (lo
+   * mismo que ya consulta /vender para retomar una postulación). Si falla la consulta, se
+   * muestra el error normal.
+   */
+  const sellerAccountMissing = async (result, byTaxId) => {
+    if (isAccountNotFound(result)) return true;
+    if (result?.status !== 401) return false;
+    try {
+      if (byTaxId) return (await lookupSellerByTaxId(formatRut(taxId)))?.found === false;
+      return (await checkEmailAvailabilityApi(email))?.exists === false;
+    } catch {
+      return false;
+    }
+  };
+
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     const byTaxId = selectedRole === 'SELLER' && loginMode === 'taxId';
@@ -572,6 +610,14 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
       ? { taxId: formatRut(taxId), password, preferredRole: 'SELLER' }
       : { email, password, preferredRole: selectedRole });
 
+    // Como vendedor y sin cuenta: directo al registro de tienda fundadora, no al de comprador.
+    if (selectedRole === 'SELLER' && !result.success && !result.deletionScheduled
+        && await sellerAccountMissing(result, byTaxId)) {
+      setIsSubmitting(false);
+      goToSellerRegister({ email: byTaxId ? '' : email });
+      return;
+    }
+
     if (byTaxId && !result.success && !result.deletionScheduled) {
       setIsSubmitting(false);
       // Por RUT no se ofrece crear cuenta ni se pasa al codigo de verificacion (no hay correo
@@ -585,7 +631,12 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
     setIsSubmitting(false);
 
     if (result.success) {
-      setSuccessMessage(`¡Bienvenido de nuevo! Has iniciado sesión como ${selectedRole === 'SELLER' ? 'Vendedor' : 'Comprador'}.`);
+      // El rol lo decide la cuenta, no el selector: un correo de comprador que entra con
+      // "Tienda" marcado sigue siendo comprador, y se le dice.
+      const entroComoTienda = Boolean(result.user?.sellerId);
+      setSuccessMessage(selectedRole === 'SELLER' && !entroComoTienda
+        ? '¡Bienvenido! Este correo es de una cuenta de comprador: entraste como Comprador. Para vender, registra tu tienda en "Vender en RepuesTop".'
+        : `¡Bienvenido de nuevo! Has iniciado sesión como ${entroComoTienda ? 'Tienda / Vendedor' : 'Comprador'}.`);
       setTimeout(() => {
         handleClose();
         onLoginSuccess?.();
@@ -658,6 +709,12 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
     // de nuevo el nombre y el correo que Google ya habia entregado.
     // `requiresRegistration`: la cuenta existe pero su perfil fue eliminado; se crea de nuevo.
     const perfil = result.status === 404 || result.requiresRegistration ? decodeGoogleIdToken(idToken) : null;
+    // Eligió "Tienda" y el correo no tiene cuenta: directo a crear la cuenta fundadora con ese
+    // mismo Google, sin volver a preguntar el tipo de cuenta.
+    if (perfil && selectedRole === 'SELLER') {
+      goToSellerRegister({ googleIdToken: idToken });
+      return;
+    }
     if (perfil) {
       setGooglePending({ ...perfil, idToken });
       setGoogleMissingFields({ firstName: !perfil.firstName?.trim(), lastName: !perfil.lastName?.trim() });
@@ -919,14 +976,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
 
           {step === 'login_form' && (
             <>
-              <div className="selected-role-pill">
-                {selectedRole === 'BUYER' ? (
-                  <span className="pill-buyer"><Car size={14} /> Modo Comprador</span>
-                ) : (
-                  <span className="pill-seller"><Store size={14} /> Modo Proveedor / Vendedor</span>
-                )}
-              </div>
-              <h2>Iniciar Sesión</h2>
+              <h2>Iniciar sesión como {selectedRole === 'BUYER' ? 'Comprador' : 'Tienda'}</h2>
               <p>Ingresa tus credenciales para acceder a tu panel de {selectedRole === 'BUYER' ? 'compras' : 'ventas'}.</p>
             </>
           )}
@@ -1052,10 +1102,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                 onClick={() => {
                   // La tienda se registra en /vender, que pide RUT, dirección y documentos. Se le
                   // pasa el idToken para que no tenga que elegir la cuenta de Google otra vez.
-                  guardarGoogleParaTienda(googlePending.idToken);
-                  setErrorMessage(null);
-                  handleClose();
-                  onOpenSellerRegister();
+                  goToSellerRegister({ googleIdToken: googlePending.idToken });
                 }}>
                 <div className="role-card-header">
                   <div className="role-icon-box seller-icon"><Store size={30} /></div>
@@ -1112,10 +1159,9 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
               <div
                 className={`role-option-card seller-card ${selectedRole === 'SELLER' ? 'selected' : ''}`}
                 onClick={() => {
-                  if (isRegistrationFlow && selectedRole === 'SELLER') {
-                    setErrorMessage(null);
-                    handleClose();
-                    onOpenSellerRegister();
+                  // Al crear cuenta, elegir Tienda lleva directo al registro de tienda fundadora.
+                  if (isRegistrationFlow) {
+                    goToSellerRegister();
                   } else {
                     handleSelectRole('SELLER');
                   }
@@ -1165,6 +1211,42 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
         {/* STEP 2: LOGIN FORM */}
         {step === 'login_form' && (
           <form onSubmit={handleLoginSubmit} className="auth-modal-body">
+            {/* El rol con el que se entra, bien a la vista y cambiable aquí mismo: antes era una
+                píldora chica y un "Cambiar Rol" al fondo, y tiendas terminaban creando una
+                cuenta de comprador sin darse cuenta. */}
+            <div className="auth-role-switch">
+              <span className="auth-role-switch-label">Estás ingresando como</span>
+              <div className="auth-role-switch-options" role="radiogroup" aria-label="Rol con el que ingresas">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedRole === 'BUYER'}
+                  className={`auth-role-option buyer ${selectedRole === 'BUYER' ? 'active' : ''}`}
+                  onClick={() => switchLoginRole('BUYER')}
+                >
+                  <Car size={20} />
+                  <span><strong>Comprador</strong><small>Busco repuestos</small></span>
+                  {selectedRole === 'BUYER' && <CheckCircle2 size={18} className="auth-role-check" />}
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedRole === 'SELLER'}
+                  className={`auth-role-option seller ${selectedRole === 'SELLER' ? 'active' : ''}`}
+                  onClick={() => switchLoginRole('SELLER')}
+                >
+                  <Store size={20} />
+                  <span><strong>Tienda / Vendedor</strong><small>Vendo repuestos</small></span>
+                  {selectedRole === 'SELLER' && <CheckCircle2 size={18} className="auth-role-check" />}
+                </button>
+              </div>
+              <p className={`auth-role-switch-hint ${selectedRole === 'SELLER' ? 'seller' : ''}`}>
+                {selectedRole === 'BUYER'
+                  ? <>¿Tienes una tienda de repuestos? Elige <strong>Tienda / Vendedor</strong> para entrar o registrarla.</>
+                  : <>Si tu tienda aún no tiene cuenta, al ingresar te llevamos a crear tu <strong>cuenta fundadora</strong>.</>}
+              </p>
+            </div>
+
             <GoogleSignInButton onCredential={handleGoogleCredential} disabled={isSubmitting} />
 
             <div className="auth-divider">
@@ -1265,19 +1347,6 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
 
             <div className="auth-action-row gap-2">
               <button
-                type="button"
-                className="btn-auth-secondary"
-                onClick={() => {
-                  setIsRegistrationFlow(false);
-                  setErrorMessage(null);
-                  setStep('select_role');
-                }}
-              >
-                <ArrowLeft size={16} />
-                <span>Cambiar Rol</span>
-              </button>
-
-              <button
                 type="submit"
                 className="btn-auth-primary"
                 disabled={isSubmitting}
@@ -1315,14 +1384,9 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                   <button
                     type="button"
                     className="link-btn highlight"
-                    onClick={() => {
-                      setIsRegistrationFlow(true);
-                      setSelectedRole('SELLER');
-                      setErrorMessage(null);
-                      setStep('select_role');
-                    }}
+                    onClick={() => goToSellerRegister({ email })}
                   >
-                    Postular mi Tienda Vendedora
+                    Crear cuenta de tienda fundadora
                   </button>
                 </p>
               )}

@@ -421,6 +421,10 @@ export function adaptStore(dto, index = 0) {
     // La portada si conserva la imagen generica, que es decorativa y no identifica a nadie.
     logoUrl: resolveMediaUrl(dto.logoUrl || dto.userProfileUrl) || null,
     coverUrl: resolveMediaUrl(dto.coverUrl) || '/tiensoft_cover.jpg',
+    // Redes sociales de la tienda; el perfil solo muestra las que traen enlace.
+    instagramUrl: dto.instagramUrl || null,
+    facebookUrl: dto.facebookUrl || null,
+    tiktokUrl: dto.tiktokUrl || null,
     responseTimeLabel: dto.responseTimeLabel || '',
     // Dirección pública geocodificada (TiendaGeocodificacionJob): "cerca de mí" del directorio.
     latitude: toNumber(dto.latitude) ?? null,

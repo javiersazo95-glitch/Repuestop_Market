@@ -67,3 +67,29 @@ export function tomarGoogleParaTienda() {
     return null;
   }
 }
+
+/**
+ * Correo que escribió en el modal una tienda que intentó entrar como vendedor sin tener cuenta.
+ * `/vender` lo usa para precargar el registro. sessionStorage y se borra al leerlo, igual que
+ * el idToken de Google de arriba.
+ */
+const CLAVE_CORREO_TIENDA = 'repuestop_correo_pendiente_tienda';
+
+export function guardarCorreoParaTienda(email) {
+  try {
+    if (email) sessionStorage.setItem(CLAVE_CORREO_TIENDA, String(email).trim().toLowerCase());
+  } catch {
+    /* sin almacenamiento: /vender parte con el correo vacio */
+  }
+}
+
+/** @returns {string} el correo guardado, o '' si no hay. */
+export function tomarCorreoParaTienda() {
+  try {
+    const email = sessionStorage.getItem(CLAVE_CORREO_TIENDA) || '';
+    sessionStorage.removeItem(CLAVE_CORREO_TIENDA);
+    return email;
+  } catch {
+    return '';
+  }
+}
