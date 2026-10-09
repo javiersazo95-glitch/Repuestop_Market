@@ -2,22 +2,29 @@ import React, { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertCircle, Building2, Camera, Check, CreditCard, FileText, Image as ImageIcon, Info, Loader2, Lock, Mail,
+  AlertCircle, Bell, Building2, Camera, Check, CreditCard, FileText, Image as ImageIcon, Info, Loader2, Lock, Mail,
   MapPin, Package, Pencil, Phone, Save, Search, Store, Truck, Wallet, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
-  getVehicleBrandsApi, updateStoreSpecialistBrandsApi, updateSellerShippingMethodsApi,
+  getVehicleBrandsApi, updateStoreSpecialistBrandsApi, updateSellerShippingMethodsApi, updateStoreSocialLinksApi,
   getRegionesApi, getComunasApi, getPaisesApi,
 } from '../services/api';
 import { qk } from '../services/queryKeys';
 import ShippingMethodsPicker from './ShippingMethodsPicker';
 import BuyerAddressBook from './BuyerAddressBook';
 import ChangePasswordCard from './ChangePasswordCard';
+import NotificationPreferencesPanel from './NotificationPreferencesPanel';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import VehicleBrandLogo from './VehicleBrandLogo';
 import SellerVerificationCard from './SellerVerificationCard';
+import CertificadoCumplimientoCard from './CertificadoCumplimientoCard';
+import SocialLinksFields from './SocialLinksFields';
+import SocialIcon from './SocialIcon';
+import {
+  EMPTY_SOCIAL_LINKS, socialLinksFromVerification, socialLinksPayload, storeSocialLinks, validateSocialLinks,
+} from '../utils/socialLinks';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
 import {
   SHIPPING_METHOD_DEFS, parseShippingSelections, buildShippingMethodsString,
@@ -71,6 +78,8 @@ export default function ProfileAccountDataPanel({
   const [specialistBrandIdsDraft, setSpecialistBrandIdsDraft] = useState([]);
   const [availableVehicleBrands, setAvailableVehicleBrands] = useState([]);
   const [showSpecialistBrandsModal, setShowSpecialistBrandsModal] = useState(false);
+  const [socialLinksDraft, setSocialLinksDraft] = useState(EMPTY_SOCIAL_LINKS);
+  const [socialLinksErrors, setSocialLinksErrors] = useState({});
   const [specialistBrandSearch, setSpecialistBrandSearch] = useState('');
   const [storeAddressDraft, setStoreAddressDraft] = useState(storeInfo?.address || user?.address || '');
   const [storeRegionIdDraft, setStoreRegionIdDraft] = useState('');
@@ -80,6 +89,24 @@ export default function ProfileAccountDataPanel({
   const [sellerRegiones, setSellerRegiones] = useState([]);
   const [sellerComunas, setSellerComunas] = useState([]);
   const [sellerGeoLoading, setSellerGeoLoading] = useState(false);
+
+  // Abre la edición con lo que la tienda ya tiene guardado. Los dos botones ("Editar
+  // Información" y "Editar tienda") pasan por aquí: antes "Editar tienda" solo cambiaba a modo
+  // edición y los métodos de envío y las marcas especialistas aparecían vacíos (8-oct).
+  const startEditing = () => {
+    setIsEditing(true);
+    setSaveStatus(null);
+    setFormErrors({});
+    setNameDraft(user?.userName || user?.nombre || '');
+    setPhoneDraft(user?.phone || user?.telefono || '');
+    setTaxIdDraft(isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || ''));
+    setFacturaRazonSocialDraft(user?.facturaRazonSocial || '');
+    setFacturaGiroDraft(user?.facturaGiro || '');
+    setShippingSelectionsDraft(parseShippingSelections(storeInfo?.shippingMethods));
+    setSpecialistBrandIdsDraft((storeInfo?.marcasEspecialistas || []).map((brand) => String(brand.id)));
+    setSocialLinksDraft(socialLinksFromVerification(storeInfo));
+    setSocialLinksErrors({});
+  };
 
   useEffect(() => {
     if (!isEditing) {
@@ -191,6 +218,13 @@ export default function ProfileAccountDataPanel({
 
     const validationErrors = validateProfileForm();
     setFormErrors(validationErrors);
+    // Solo enlaces del dominio de cada red; el servidor aplica la misma regla.
+    const nextSocialErrors = isSeller ? validateSocialLinks(socialLinksDraft) : {};
+    setSocialLinksErrors(nextSocialErrors);
+    if (Object.keys(nextSocialErrors).length > 0) {
+      setSaveStatus({ type: 'error', message: 'Revisa los enlaces de tus redes sociales.' });
+      return;
+    }
     if (Object.keys(validationErrors).length > 0) {
       setSaveStatus({ type: 'error', message: 'Revisa los campos marcados antes de guardar.' });
       return;
@@ -240,6 +274,7 @@ export default function ProfileAccountDataPanel({
     try {
       if (isSeller) {
         await updateStoreSpecialistBrandsApi(user.sellerId, specialistBrandIdsDraft);
+        await updateStoreSocialLinksApi(user.sellerId, socialLinksPayload(socialLinksDraft));
         if (shippingMethodsDraft) {
           // Sin `.catch()`: si esto falla, el usuario tiene que enterarse. Antes se
           // tragaba el error y el aviso de "actualizado correctamente" salía igual,
@@ -278,18 +313,7 @@ export default function ProfileAccountDataPanel({
           {!isEditing && (
             <button
               className="btn-edit-profile"
-              onClick={() => {
-                setIsEditing(true);
-                setSaveStatus(null);
-                setFormErrors({});
-                setNameDraft(user?.userName || user?.nombre || '');
-                setPhoneDraft(user?.phone || user?.telefono || '');
-                setTaxIdDraft(isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || ''));
-                setFacturaRazonSocialDraft(user?.facturaRazonSocial || '');
-                setFacturaGiroDraft(user?.facturaGiro || '');
-                setShippingSelectionsDraft(parseShippingSelections(storeInfo?.shippingMethods));
-                setSpecialistBrandIdsDraft((storeInfo?.marcasEspecialistas || []).map((brand) => String(brand.id)));
-              }}
+              onClick={startEditing}
             >
               <Pencil size={14} /> Editar Información
             </button>
@@ -614,6 +638,15 @@ export default function ProfileAccountDataPanel({
                   <small className="form-helper-text">Selecciona las marcas de vehículo con las que trabaja tu tienda.</small>
                 </div>
 
+                <div className="form-group">
+                  <SocialLinksFields
+                    value={socialLinksDraft}
+                    errors={socialLinksErrors}
+                    fieldClassName="form-group"
+                    onChange={(next) => { setSocialLinksDraft(next); setSocialLinksErrors({}); }}
+                  />
+                </div>
+
                 <div className="form-section-title" style={{ marginTop: '16px' }}>Datos de Cuenta Bancaria de Cobro</div>
                 <div className="withdrawal-info-banner">
                   <Info size={18} />
@@ -744,6 +777,21 @@ export default function ProfileAccountDataPanel({
                       </div>
                     </div>
                   )}
+                  {isSeller && (
+                    <div className="details-info-row details-info-row-wide">
+                      <span className="info-label">Redes sociales</span>
+                      {storeSocialLinks(storeInfo).length ? (
+                        <div className="store-social-links">
+                          {storeSocialLinks(storeInfo).map((social) => (
+                            <a key={social.key} href={social.url} target="_blank" rel="noopener noreferrer nofollow"
+                              className="store-social-link" aria-label={social.label} title={social.url}>
+                              <SocialIcon network={social.key} size={15} />
+                            </a>
+                          ))}
+                        </div>
+                      ) : <strong className="info-value">Sin redes sociales</strong>}
+                    </div>
+                  )}
                 </div>
                 {isSeller && (
                   <div className="details-info-list store-shipping-methods-row" style={{ marginTop: '18px' }}>
@@ -856,7 +904,7 @@ export default function ProfileAccountDataPanel({
                         <button
                           type="button"
                           className="details-card-link-button"
-                          onClick={() => setIsEditing(true)}
+                          onClick={startEditing}
                           style={{ alignSelf: 'flex-start' }}
                         >
                           <Pencil size={13} /> Editar tienda
@@ -893,7 +941,20 @@ export default function ProfileAccountDataPanel({
                   <BuyerAddressBook usuarioId={user?.userId} />
                 )}
                 <ChangePasswordCard user={{ ...user, taxId: storeInfo?.taxId || user?.taxId }} isSeller={isSeller} />
+                <div className="notif-prefs-card">
+                  <div className="form-section-title" style={{ marginTop: '20px' }}>
+                    <Bell size={15} /> Notificaciones
+                  </div>
+                  <p className="notif-prefs-intro">
+                    {isSeller
+                      ? 'Elige cuántos avisos quieres recibir en cada perfil. Se guarda en tu cuenta y vale también en la app.'
+                      : 'Elige cuántos avisos quieres recibir. Se guarda en tu cuenta y vale también en la app.'}
+                  </p>
+                  <NotificationPreferencesPanel />
+                </div>
                 {isSeller && <SellerVerificationCard sellerId={effectiveSellerId} />}
+                {/* Res. SII 168: certificado de cumplimiento actualizado en enero y julio. */}
+                {isSeller && <CertificadoCumplimientoCard sellerId={effectiveSellerId} />}
               </div>
             </div>
           </div>

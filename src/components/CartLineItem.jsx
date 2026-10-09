@@ -4,13 +4,15 @@ import { CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
 import ProductPhoto from './ProductPhoto';
 import { productReferenceImage } from '../utils/productImage';
+import { productPath } from '../routes/paths';
+import CompatibilityStatus from './CompatibilityStatus';
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
 }
 
 /** Una línea del carrito. La cantidad usa el debounce que ya trae `updateCartQuantity`. */
-export default function CartLineItem({ item, activeVehicle, onUpdateQuantity, onRemove }) {
+export default function CartLineItem({ item, activeVehicle, compatibility = null, onUpdateQuantity, onRemove }) {
   const stock = Number(item.stock || 0);
   const atStockLimit = stock > 0 && item.quantity >= stock;
   const lowStock = stock > 0 && stock <= 3;
@@ -38,7 +40,20 @@ export default function CartLineItem({ item, activeVehicle, onUpdateQuantity, on
         {/* Antes decia "Compatible con {patente}" en cada linea sin verificar nada. La
             compatibilidad la confirma el vendedor con el vehiculo del pedido (checklist de
             confirmacion), asi que se dice eso; un repuesto universal si sirve para cualquiera. */}
-        {item.esUniversal ? (
+        {/* Con vehículo activo, la compatibilidad que evalúa el backend. Si la consulta falla
+            (`compatibility` null) se vuelve al texto de siempre, sin afirmar nada. */}
+        {compatibility ? (
+          <CompatibilityStatus
+            status={compatibility}
+            vehicle={activeVehicle}
+            className="cart-line-compat"
+            actions={[
+              { label: 'Ver compatibilidad', to: `${productPath(item)}?abrir=compatibilidad` },
+              { label: 'Preguntar a la tienda', to: `${productPath(item)}?abrir=preguntas` },
+              { label: 'Quitar del carrito', onClick: () => onRemove(item.id) },
+            ]}
+          />
+        ) : item.esUniversal ? (
           <p className="cart-line-fit">Repuesto universal</p>
         ) : activeVehicle?.patente ? (
           <p className="cart-line-fit">La tienda confirmará que calce con tu {activeVehicle.patente}</p>

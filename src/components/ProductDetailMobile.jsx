@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   BadgeCheck, Car, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CreditCard,
-  Globe, Heart, Info, MapPin, Package, ShieldCheck, Star, Store, Truck,
+  AlertTriangle, Globe, Heart, Info, MapPin, Package, ShieldCheck, Star, Store, Truck,
 } from 'lucide-react';
 
 import ProductBrandMark from './ProductBrandMark';
@@ -10,8 +10,9 @@ import ProductTopBadge from './ProductTopBadge';
 import ShareLinkButton from './ShareLinkButton';
 import StoreLogoBadge from './StoreLogoBadge';
 import ContextualReportButton from './ContextualReportButton';
-import { parseShippingMethods, resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
+import { resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import { productPath } from '../routes/paths';
+import { shippingMethodMessage } from '../utils/cartDelivery';
 
 /**
  * Ficha del repuesto en el celular (≤768px), clonada del detalle de la app
@@ -19,8 +20,8 @@ import { productPath } from '../routes/paths';
  * badges, título, panel de métricas de 4 columnas (precio | calificación |
  * marca | stock), panel del vendedor, opciones de entrega, información del
  * repuesto en grilla de 2 columnas y descripción. Es presentacional: el estado
- * y los datos viven en ProductDetailPage, que en escritorio sigue mostrando el
- * layout de 3 columnas intacto.
+ * y los datos viven en ProductDetailPage; en escritorio se renderiza
+ * ProductDetailDesktop (dos columnas con panel de compra fijo).
  */
 export default function ProductDetailMobile({
   product,
@@ -53,9 +54,12 @@ export default function ProductDetailMobile({
   onOpenCompatibility,
   onOpenBrandModal,
   onOpenStore,
+  shippingMethods,
+  selectedShippingMethod,
+  onSelectShippingMethod,
+  shippingSectionRef,
+  shippingFocused,
 }) {
-  const shippingMethods = parseShippingMethods(product.metodosEnvio);
-  const [selectedShipping, setSelectedShipping] = useState(0);
   const [specsOpen, setSpecsOpen] = useState(true);
   const [paymentsOpen, setPaymentsOpen] = useState(false);
 
@@ -220,21 +224,23 @@ export default function ProductDetailMobile({
         {onOpenStore && <ChevronRight size={18} className="pdm-seller-chevron" />}
       </button>
 
-      {/* 4. Opciones de entrega (informativo, como en la app). */}
+      {/* 4. Opciones de entrega, como en la app: lo elegido viaja al carro, que solo lo confirma. */}
       {!quoteOnly && !isOwnProduct && (
-        <article className="pdm-section">
+        <article ref={shippingSectionRef} className={`pdm-section pdm-shipping-section${shippingFocused ? ' is-focused' : ''}`}>
           <h2 className="pdm-section-title"><Truck size={16} /> Opciones de entrega</h2>
           <div className="pdm-shipping-options">
-            {shippingMethods.length ? shippingMethods.map((method, index) => {
+            {shippingMethods.map((method) => {
               const { icon: ShippingIcon, label } = resolveShippingService(method);
               const price = shippingMethodPrice(method);
-              const selected = index === selectedShipping;
+              const selected = method === selectedShippingMethod;
               return (
                 <button
                   key={method}
                   type="button"
+                  role="radio"
+                  aria-checked={selected}
                   className={`pdm-shipping-option ${selected ? 'is-selected' : ''}`}
-                  onClick={() => setSelectedShipping(index)}
+                  onClick={() => onSelectShippingMethod?.(method)}
                 >
                   <span className={`pdm-radio ${selected ? 'on' : ''}`} />
                   <ShippingIcon size={16} />
@@ -244,17 +250,19 @@ export default function ProductDetailMobile({
                   </span>
                 </button>
               );
-            }) : (
-              <div className="pdm-shipping-option is-selected">
-                <span className="pdm-radio on" />
-                <Truck size={16} />
-                <span className="pdm-shipping-copy">
-                  <b>Despacho a coordinar</b>
-                  <small>La tienda informa el valor al confirmar tu pedido</small>
-                </span>
-              </div>
-            )}
+            })}
           </div>
+          {/* Igual que la app: qué implica lo elegido, o que falta elegir antes de comprar. */}
+          {selectedShippingMethod ? (
+            <p className="pdm-shipping-info"><Info size={15} /> {shippingMethodMessage(selectedShippingMethod, product.horarioVendedor)}</p>
+          ) : (
+            <p className={`pdm-shipping-info${shippingFocused ? ' is-warning' : ''}`}>
+              {shippingFocused ? <AlertTriangle size={15} /> : <Info size={15} />}
+              {shippingFocused
+                ? 'Elige cómo quieres recibir este repuesto antes de comprar o añadirlo al carro.'
+                : 'Selecciona una opción de entrega para continuar.'}
+            </p>
+          )}
         </article>
       )}
 

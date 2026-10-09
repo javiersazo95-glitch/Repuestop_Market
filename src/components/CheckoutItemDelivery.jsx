@@ -1,137 +1,84 @@
 import React from 'react';
-import { Bike, Car, CheckCircle2, Circle, CircleDot, MapPin, Package, Plus, Store, Truck } from 'lucide-react';
-import { deliveryKind, isDispatch, localDeliveryCost, methodsForItem, vehicleLabel } from '../utils/cartDelivery';
-
-const formatCLP = (value) => `$${Math.round(Number(value) || 0).toLocaleString('es-CL')}`;
-const KIND_ICON = { pickup: Store, local: Bike, courier: Truck, other: Package };
-
-/** "Envío dentro de la comuna ($3.000)" -> "Envío dentro de la comuna". */
-const methodTitle = (method) => method.replace(/\s*\(.*\)\s*$/, '').trim() || method;
-
-function methodPrice(method, sharedWithPrevious) {
-  const kind = deliveryKind(method);
-  if (kind === 'pickup') return 'Gratis';
-  if (kind === 'courier') return 'Por pagar';
-  const cost = localDeliveryCost(method);
-  if (cost <= 0) return 'Gratis';
-  return sharedWithPrevious ? 'Incluido' : formatCLP(cost);
-}
+import { Car, CheckCircle2, Plus } from 'lucide-react';
+import { vehicleLabel } from '../utils/cartDelivery';
+import { COMPAT } from '../utils/compatibilityCheck';
+import { productPath } from '../routes/paths';
+import CompatibilityStatus from './CompatibilityStatus';
 
 /**
- * Entrega de UN producto del checkout, igual que la app (CartItemDelivery): cómo lo recibe, a
- * dónde va (o dónde se retira) y para qué vehículo es. Cada producto puede ir a otra dirección
- * y ser para otro auto (el propio y el de un familiar).
+ * Lo que es de CADA producto del checkout (igual que la app CartItemDelivery): para qué vehículo
+ * es. El envío (método y dirección) es uno por tienda y se elige arriba, en "Envío de la tienda"
+ * (CheckoutStoreShipment).
+ *
+ * `compatibility`: si el repuesto le sirve al vehículo elegido ('loading', COMPATIBLE,
+ * NO_COINCIDE, SIN_DATOS, UNIVERSAL o null si no hay nada que decir). Se muestra justo bajo el
+ * vehículo; cuando no coincide ofrece revisar la ficha, cambiar el vehículo, preguntar o quitarlo.
  */
 export default function CheckoutItemDelivery({
-  item, delivery, addresses, vehicles, sharesShipment,
-  onChange, onAddVehicle, onEditVehicle, onManageAddresses,
+  item, delivery, vehicles, compatibility = null, onChange, onAddVehicle, onEditVehicle, onRemove,
 }) {
-  const address = addresses.find((entry) => String(entry.id) === String(delivery.addressId)) || null;
-  const methods = methodsForItem(item, address);
-  const dispatch = isDispatch(delivery.method);
   const selectedVehicle = vehicles.find((vehicle) => vehicle.key === delivery.vehicleKey) || null;
-  const radioName = `entrega-${item.id}`;
 
-  return (
-    <div className="checkout-item-delivery">
-      <div className="checkout-item-delivery-step">
-        <span className="checkout-item-delivery-label"><Truck size={14} /> Entrega</span>
-        {methods.length === 0 ? (
-          <p className="checkout-item-delivery-error">Esta tienda no despacha a la comuna elegida. Cambia la dirección o elige retiro.</p>
-        ) : (
-          <div className="checkout-item-methods" role="radiogroup" aria-label={`Entrega de ${item.titulo}`}>
-            {methods.map((method) => {
-              const selected = delivery.method === method;
-              const Icon = KIND_ICON[deliveryKind(method)];
+  // "Cambiar vehículo" abre el formulario para indicar otro vehículo, que queda elegido para este
+  // producto al guardarlo (como en la app). Antes sólo movía el foco al selector, que está justo
+  // arriba y a la vista, así que el botón parecía no hacer nada.
+  // Las fichas se abren en otra pestaña: volver no debe borrar lo que ya se eligió en el checkout.
+  const compatActions = [
+    { label: 'Ver compatibilidad', to: `${productPath(item)}?abrir=compatibilidad`, newTab: true },
+    { label: 'Cambiar vehículo', onClick: onAddVehicle },
+    { label: 'Preguntar a la tienda', to: `${productPath(item)}?abrir=preguntas`, newTab: true },
+    ...(onRemove ? [{ label: 'Quitar del carrito', onClick: onRemove }] : []),
+  ];
+
+  // Para qué vehículo: siempre es de cada producto, aunque el envío sea de la tienda.
+  const vehicleStep = (
+    <div className="checkout-item-delivery-step">
+      <span className="checkout-item-delivery-label">
+        <Car size={14} /> Vehículo
+        {!item.esUniversal && <em className="checkout-item-required">Obligatorio</em>}
+      </span>
+      {item.esUniversal ? (
+        <CompatibilityStatus status={COMPAT.UNIVERSAL} id={`compat-${item.id}`} />
+      ) : (
+        <>
+          <div className="checkout-item-vehicles" role="radiogroup" aria-label={`Vehículo de ${item.titulo}`}>
+            {vehicles.map((vehicle) => {
+              const selected = vehicle.key === delivery.vehicleKey;
               return (
-                <label key={method} className={`checkout-item-method ${selected ? 'is-selected' : ''}`}>
-                  <input type="radio" name={radioName} checked={selected} onChange={() => onChange({ method })} />
-                  {selected ? <CircleDot size={16} /> : <Circle size={16} />}
-                  <Icon size={15} />
-                  <span className="checkout-item-method-title">{methodTitle(method)}</span>
-                  <em>{methodPrice(method, selected && sharesShipment)}</em>
-                </label>
+                <button
+                  key={vehicle.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  className={`checkout-item-vehicle ${selected ? 'is-selected' : ''}`}
+                  onClick={() => onChange({ vehicleKey: vehicle.key })}
+                >
+                  {selected ? <CheckCircle2 size={14} /> : <Car size={14} />}
+                  <span>{vehicleLabel(vehicle)}</span>
+                </button>
               );
             })}
-          </div>
-        )}
-      </div>
-
-      {dispatch ? (
-        <div className="checkout-item-delivery-step">
-          <span className="checkout-item-delivery-label">
-            <MapPin size={14} /> Enviar a
-            <button type="button" className="checkout-item-link" onClick={onManageAddresses}>
-              {addresses.length === 0 ? 'Agregar dirección' : 'Otra dirección'}
+            <button type="button" className="checkout-item-vehicle is-add" onClick={onAddVehicle}>
+              <Plus size={14} /> {vehicles.length === 0 ? 'Agregar vehículo' : 'Otro vehículo'}
             </button>
-          </span>
-          {addresses.length > 0 ? (
-            <select
-              className="checkout-item-select"
-              value={delivery.addressId || ''}
-              onChange={(event) => onChange({ addressId: event.target.value || null })}
-              aria-label={`Dirección de envío de ${item.titulo}`}
-            >
-              <option value="" disabled>Elige la dirección</option>
-              {addresses.map((entry) => (
-                <option key={entry.id} value={String(entry.id)}>
-                  {entry.calleYNumero}, {entry.comunaNombre}{entry.esPrincipal ? ' (principal)' : ''}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <p className="checkout-item-delivery-error">Agrega una dirección para recibir este producto.</p>
+          </div>
+          {selectedVehicle && (
+            <CompatibilityStatus
+              status={compatibility}
+              vehicle={selectedVehicle}
+              actions={compatActions}
+              id={`compat-${item.id}`}
+            />
           )}
-          {sharesShipment && <small className="checkout-item-delivery-note">Va en el mismo despacho que otro producto de esta tienda.</small>}
-        </div>
-      ) : delivery.method && deliveryKind(delivery.method) === 'pickup' ? (
-        <p className="checkout-item-pickup">
-          <Store size={14} />
-          <span>
-            <strong>Retiras en {item.storeAddress ? `${item.storeAddress}${item.storeComuna ? `, ${item.storeComuna}` : ''}` : 'la tienda'}</strong>
-            {item.storeHours && <small>{item.storeHours}</small>}
-          </span>
-        </p>
-      ) : null}
-
-      <div className="checkout-item-delivery-step">
-        <span className="checkout-item-delivery-label">
-          <Car size={14} /> Vehículo
-          {!item.esUniversal && <em className="checkout-item-required">Obligatorio</em>}
-        </span>
-        {item.esUniversal ? (
-          <small className="checkout-item-delivery-note">Repuesto universal: sirve para cualquier vehículo.</small>
-        ) : (
-          <>
-            <div className="checkout-item-vehicles" role="radiogroup" aria-label={`Vehículo de ${item.titulo}`}>
-              {vehicles.map((vehicle) => {
-                const selected = vehicle.key === delivery.vehicleKey;
-                return (
-                  <button
-                    key={vehicle.key}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    className={`checkout-item-vehicle ${selected ? 'is-selected' : ''}`}
-                    onClick={() => onChange({ vehicleKey: vehicle.key })}
-                  >
-                    {selected ? <CheckCircle2 size={14} /> : <Car size={14} />}
-                    <span>{vehicleLabel(vehicle)}</span>
-                  </button>
-                );
-              })}
-              <button type="button" className="checkout-item-vehicle is-add" onClick={onAddVehicle}>
-                <Plus size={14} /> {vehicles.length === 0 ? 'Agregar vehículo' : 'Otro vehículo'}
-              </button>
-            </div>
-            {selectedVehicle ? (
-              <button type="button" className="checkout-item-link" onClick={() => onEditVehicle(selectedVehicle)}>Editar este vehículo</button>
-            ) : (
-              <p className="checkout-item-delivery-error">Elige para qué vehículo es: el vendedor confirma que calce antes de enviarlo.</p>
-            )}
-          </>
-        )}
-      </div>
+          {selectedVehicle ? (
+            <button type="button" className="checkout-item-link" onClick={() => onEditVehicle(selectedVehicle)}>Editar este vehículo</button>
+          ) : (
+            <p className="checkout-item-delivery-error">Elige para qué vehículo es: el vendedor confirma que calce antes de enviarlo.</p>
+          )}
+        </>
+      )}
     </div>
   );
+
+  return <div className="checkout-item-delivery">{vehicleStep}</div>;
 }

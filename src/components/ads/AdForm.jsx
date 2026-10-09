@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlarmClock, AlertCircle, CalendarClock, Camera, Car, Check, ChevronLeft, ChevronRight, Clock3, Eye,
+  AlarmClock, AlertCircle, Home, CalendarClock, Camera, Car, Check, ChevronLeft, ChevronRight, Clock3, Eye,
   Film, Heart, Loader2, LockKeyhole, MessageCircle, Plus, PlusCircle, Sparkles, Trash2, TrendingUp, UserPlus, X
 } from 'lucide-react';
 import {
@@ -19,9 +19,11 @@ import { useAuth } from '../../context/AuthContext';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import OpeningHoursPicker from './OpeningHoursPicker';
 import {
-  toAgendaConfigPayload, getAgendaSummaryText, getAgendaWeeklySlotsCount, validateAgendaConfig
+  toAgendaConfigPayload, getAgendaSummaryText, getAgendaWeeklySlotsCount, validateAgendaConfig,
+  pickDefaultAgendaConfig, PRINCIPAL_AGENDA_ID,
 } from '../../data/agendaConfig';
-import { AD_TIER_PRICES_CLP, UPGRADE_TOKEN_COSTS, uploadAdImages, adErrorMessage } from '../../services/adsStorage';
+import { agendaToOpeningSchedule } from '../../data/workshopHours';
+import { UPGRADE_TOKEN_COSTS, tierPriceClp, uploadAdImages, adErrorMessage } from '../../services/adsStorage';
 import { validateUpload, FILE_LIMITS } from '../../utils/fileValidation';
 import RepuestopCoin from './RepuestopCoin';
 
@@ -146,7 +148,15 @@ export default function AdForm({
   const [schedule, setSchedule] = useState(
     () => parseOpeningHours(initialAd?.openingHours) || createDefaultSchedule()
   );
-  const [is24Hours, setIs24Hours] = useState(initialAd?.is24Hours === true);
+  // 24/7 / urgencias lo declara el taller al acreditarse. Solo entonces se pregunta
+  // por anuncio; un taller "solo 24/7" publica todo como 24/7 (el backend lo fuerza
+  // igual). Un aviso que ya era 24/7 sigue mostrando la pregunta para poder apagarlo.
+  const workshop24Hours = accreditationProfile?.atiende24Horas === true;
+  const workshopOnly24Hours = workshop24Hours && accreditationProfile?.tieneHorarioNormal === false;
+  const show24HoursQuestion = workshop24Hours || initialAd?.is24Hours === true;
+  const [is24Hours, setIs24Hours] = useState(initialAd?.is24Hours === true || workshopOnly24Hours);
+  // Servicio a domicilio dentro de la comuna: habilita la opción "a domicilio" al agendar.
+  const [homeService, setHomeService] = useState(initialAd?.homeService === true);
   // Las etiquetas existentes se conservan al editar; en creación ya no se
   // seleccionan en la etapa 3 para no duplicar los servicios manuales del paso 2.
   const [features] = useState(initialAd?.features || []);
@@ -194,10 +204,26 @@ export default function AdForm({
   }, []);
 
   // Si hay una sola agenda y no se eligió ninguna, se preselecciona.
+  // Se preselecciona el "Horario principal" del taller (o la única guardada).
   useEffect(() => {
     if (!bookingEnabled || agendaConfigId) return;
-    if (agendaConfigs.length === 1) setAgendaConfigId(agendaConfigs[0].id);
+    const preferred = pickDefaultAgendaConfig(agendaConfigs);
+    if (preferred) setAgendaConfigId(preferred.id);
   }, [bookingEnabled, agendaConfigId, agendaConfigs]);
+
+  // Anuncio nuevo: el horario de atención arranca con el horario normal registrado.
+  const prefilledScheduleRef = useRef(false);
+  useEffect(() => {
+    if (mode !== 'create' || prefilledScheduleRef.current) return;
+    const principal = agendaConfigs.find((config) => config.id === PRINCIPAL_AGENDA_ID);
+    if (!principal) return;
+    prefilledScheduleRef.current = true;
+    setSchedule(agendaToOpeningSchedule(principal));
+  }, [mode, agendaConfigs]);
+
+  useEffect(() => {
+    if (workshopOnly24Hours) setIs24Hours(true);
+  }, [workshopOnly24Hours]);
 
   useEffect(() => {
     let active = true;
@@ -346,7 +372,7 @@ export default function AdForm({
   // `AnuncioService.validar()` responde 400 si `hasOnlineBooking` viene encendido
   // sin una agenda válida. Con el selector, "válida" = hay una agenda elegida y
   // su horario pasa `validateAgendaConfig`.
-  const agendaErrors = limits.hasBooking && bookingEnabled
+  const agendaErrors = limits.hasBooking && bookingEnabled && !is24Hours
     ? (selectedAgendaConfig
       ? validateAgendaConfig(selectedAgendaConfig)
       : ['Elige una agenda para recibir citas (o créala con "Nueva agenda").'])
@@ -510,7 +536,8 @@ export default function AdForm({
       return;
     }
 
-    const bookingOn = limits.hasBooking && bookingEnabled && Boolean(selectedAgendaConfig);
+    // Un anuncio 24/7 se contacta directo: nunca lleva agenda de citas.
+    const bookingOn = limits.hasBooking && bookingEnabled && !is24Hours && Boolean(selectedAgendaConfig);
     onSubmit?.({
       ...initialAd,
       tier,
@@ -529,6 +556,7 @@ export default function AdForm({
       whatsapp: limits.hasWhatsapp && whatsapp ? `+56 ${whatsapp}` : '',
       openingHours: is24Hours ? 'Atención 24 horas' : formatOpeningHours(schedule),
       is24Hours,
+      homeService,
       features: visibleFeatures,
       servicesOffered: visibleServices,
       specialistBrands,
@@ -680,7 +708,7 @@ export default function AdForm({
                       {tier === tierId && <span className="tier-selected-check"><Check size={12} /></span>}
                     </span>
                     <h4>{config.name}</h4>
-                    <strong className="tier-option-price">{cost === 0 ? 'Gratis por 30 días' : `$${Number(AD_TIER_PRICES_CLP[tierId] || cost * 50).toLocaleString('es-CL')} CLP`}</strong>
+                    <strong className="tier-option-price">{cost === 0 ? 'Gratis por 30 días' : `$${tierPriceClp(tierId).toLocaleString('es-CL')} CLP`}</strong>
                     {cost > 0 && <span className="tier-option-coins"><RepuestopCoin size={15} /> {cost} monedas</span>}
                     <div className="tier-features-list">
                       • {config.maxImages} fotos · {config.maxTags} etiquetas<br />
@@ -755,20 +783,48 @@ export default function AdForm({
                 </select>
               </div>
 
-              {/* Urgencias 24 horas, junto a la categoria: el aviso entra en el filtro
-                  "Urgencias 24 horas" del Mural (mismo dato `is24Hours`). */}
-              <label className={`ads-urgent-card col-span-2 ${is24Hours ? 'is-active' : ''}`}>
-                <span className="ads-urgent-icon"><AlarmClock size={16} /></span>
+              {/* ¿Este anuncio es 24/7? Solo si el taller declaró urgencias 24/7 en su
+                  acreditación. El aviso entra en el filtro "Urgencias 24 horas" del Mural
+                  y se contacta directo, sin agenda (mismo dato `is24Hours`). */}
+              {show24HoursQuestion && (
+                <label className={`ads-urgent-card col-span-2 ${is24Hours ? 'is-active' : ''}`}>
+                  <span className="ads-urgent-icon"><AlarmClock size={16} /></span>
+                  <span className="ads-urgent-text">
+                    <strong>¿Este anuncio es de atención 24/7?</strong>
+                    <small>
+                      {workshopOnly24Hours
+                        ? 'Tu taller atiende solo 24/7, así que el anuncio se publica como urgencia. Agrega un horario normal en "Horario y urgencias" para publicar anuncios con agenda.'
+                        : 'Actívalo si este servicio se atiende a toda hora. Se contacta directo (llamada o WhatsApp), sin agenda de citas, y aparece en el filtro de urgencias del Mural.'}
+                    </small>
+                  </span>
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    checked={is24Hours}
+                    disabled={workshopOnly24Hours}
+                    onChange={(e) => setIs24Hours(e.target.checked)}
+                    aria-label="Este anuncio es de atención 24/7"
+                  />
+                </label>
+              )}
+
+              {/* Servicio a domicilio dentro de la comuna. Solo con este dato el cliente puede
+                  pedir "a domicilio" al agendar, y el aviso entra al filtro "A domicilio" del
+                  Mural (mismo dato `homeService` en la app). */}
+              <label className={`ads-urgent-card col-span-2 ${homeService ? 'is-active' : ''}`}>
+                <span className="ads-urgent-icon is-home"><Home size={16} /></span>
                 <span className="ads-urgent-text">
-                  <strong>Urgencias 24 horas</strong>
-                  <small>Actívalo si atiendes urgencias a toda hora. Tu aviso aparecerá en el filtro de urgencias del Mural.</small>
+                  <strong>¿Haces servicio a domicilio dentro de la comuna?</strong>
+                  <small>
+                    {`Actívalo si vas donde está el vehículo del cliente en ${comunaNombre || 'tu comuna'}. El anuncio lleva la etiqueta "A domicilio" y, al agendar, el cliente puede pedir que vayas a su dirección.`}
+                  </small>
                 </span>
                 <input
                   type="checkbox"
                   role="switch"
-                  checked={is24Hours}
-                  onChange={(e) => setIs24Hours(e.target.checked)}
-                  aria-label="Atiendo urgencias 24 horas"
+                  checked={homeService}
+                  onChange={(e) => setHomeService(e.target.checked)}
+                  aria-label="Este anuncio ofrece servicio a domicilio dentro de la comuna"
                 />
               </label>
 
@@ -1145,13 +1201,18 @@ export default function AdForm({
                   <label className="ad-check-row">
                     <input
                       type="checkbox"
-                      checked={bookingEnabled}
+                      checked={bookingEnabled && !is24Hours}
+                      disabled={is24Hours}
                       onChange={(e) => handleBookingToggle(e.target.checked)}
                     />
                     <span>Habilitar reservas de hora desde el mural</span>
                   </label>
 
-                  {bookingEnabled ? (
+                  {is24Hours && (
+                    <small className="ad-upload-hint">Los anuncios 24/7 se contactan directo: no usan agenda de citas.</small>
+                  )}
+
+                  {bookingEnabled && !is24Hours ? (
                     <div className="ad-agenda-picker">
                       {agendaConfigs.length === 0 ? (
                         <button

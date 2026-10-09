@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Coins } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getAccountClosureSummaryApi, requestAccountClosureApi, reactivateAccountApi } from '../services/api';
+import { getAccountClosureCoinsWarning } from '../utils/accountClosure';
 
 /**
  * Flujo de "Eliminar cuenta" del sidebar del perfil (retener / motivo / resumen de
@@ -33,6 +34,11 @@ export default function AccountClosureModal({ isOpen, onClose, isSeller }) {
   if (!isOpen) return null;
 
   const closureProfile = isSeller ? 'PROVEEDOR' : 'COMPRADOR';
+  // Se calcula con el resumen revisado antes de confirmar y se repite en "Elige qué hacer".
+  const coinsWarning = getAccountClosureCoinsWarning(summary);
+  const coinsNotice = coinsWarning ? (
+    <div className="account-closure-coins" role="note"><Coins size={18} aria-hidden="true" /><span>{coinsWarning}</span></div>
+  ) : null;
 
   const handleClosureSummary = async () => {
     setIsBusy(true);
@@ -114,9 +120,11 @@ export default function AccountClosureModal({ isOpen, onClose, isSeller }) {
         {step === 'summary' && summary && <>
           <p>Estas son las operaciones que requieren seguimiento antes del cierre.</p>
           {summary.items?.length ? <div className="account-closure-items">{summary.items.map(item => <div className={item.blocking ? 'account-closure-item is-blocking' : 'account-closure-item'} key={item.id}><strong>{item.type} · {item.status}</strong><span>{item.detail}</span></div>)}</div> : <p className="account-closure-empty">No tienes operaciones pendientes.</p>}
+          {coinsNotice}
           {summary.deletionBlocked && <div className="auth-alert alert-error"><span>{summary.blockingMessage}</span></div>}
           <div className="delete-account-actions"><button type="button" className="btn-auth-secondary" onClick={() => setStep('reason')}>Volver</button>{!summary.deletionBlocked && <button type="button" className="btn-delete-account-confirm" onClick={() => setStep('decision')}>Continuar</button>}</div>
         </>}
+        {step === 'decision' && coinsNotice}
         {step === 'decision' && <div className="account-closure-decisions"><section><h3>Desactivar</h3><p>Deja de operar, conserva tus datos y podrás reactivarla.</p><button type="button" className="btn-auth-secondary" disabled={isBusy} onClick={() => handleAccountClosure('DEACTIVATE')}>Desactivar cuenta</button></section><section><h3>Eliminar</h3><p>Queda desactivada 30 días. Puedes reactivarla durante ese plazo; luego se anonimiza definitivamente.</p><button type="button" className="btn-delete-account-confirm" disabled={isBusy} onClick={() => handleAccountClosure('SCHEDULE_DELETION')}>{isBusy ? 'Guardando...' : 'Programar eliminación'}</button></section></div>}
         {step === 'done' && <><p>{summary?.status === 'DELETION_SCHEDULED' ? 'La eliminación quedó programada para dentro de 30 días.' : 'Tu cuenta quedó desactivada y sus datos se conservaron.'}</p><div className="delete-account-actions">{summary?.status !== 'DELETION_SCHEDULED' && <button type="button" className="btn-auth-secondary" disabled={isBusy} onClick={handleReactivateAccount}>Reactivar ahora</button>}<button type="button" className="btn-delete-account-confirm" onClick={handleDoneAccept}>{summary?.status === 'DELETION_SCHEDULED' ? 'Aceptar y cerrar sesión' : 'Entendido'}</button></div></>}
       </section>

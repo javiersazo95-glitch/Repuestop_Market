@@ -250,17 +250,13 @@ const sameId = (a, b) => {
 
 /**
  * ¿El anuncio lo publico la persona que esta usando la web? Se compara por
- * proveedor, usuario y correo porque un anuncio puede haberse creado antes de
- * que la sesion tuviera todos esos datos.
+ * proveedor y usuario. El mural publico ya no trae el correo del dueño
+ * (pruebas E2E en dev, 5-oct): `ownerUserId` viene siempre en el anuncio.
  */
 export function isOwnAd(ad, identity) {
   if (!ad || !identity) return false;
   if (sameId(ad.ownerSellerId, identity.sellerId)) return true;
-  if (sameId(ad.ownerUserId, identity.userId)) return true;
-  return Boolean(
-    ad.ownerEmail && identity.email &&
-    ad.ownerEmail.trim().toLowerCase() === identity.email.trim().toLowerCase()
-  );
+  return sameId(ad.ownerUserId, identity.userId);
 }
 
 /**
@@ -268,7 +264,7 @@ export function isOwnAd(ad, identity) {
  * el campo no lo tienen, y hasta que alguien los reclame no los administra nadie.
  */
 export function hasAdOwner(ad) {
-  return Boolean(ad?.ownerUserId || ad?.ownerSellerId || ad?.ownerEmail);
+  return Boolean(ad?.ownerUserId || ad?.ownerSellerId);
 }
 
 /** Solo los anuncios de esta cuenta: la gestion de un anuncio es privada de quien lo publico. */

@@ -7,11 +7,13 @@ import {
   Clock, ShieldCheck, PackageCheck, Loader2, Inbox, Search,
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
-  Megaphone, CheckCircle2, ShoppingCart, Scale, Menu, ChevronRight, Home, Car, MapPin
+  Megaphone, CheckCircle2, ShoppingCart, Menu, ChevronRight, Home, Car, MapPin
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
 import BlockedAccountReviewModal from './BlockedAccountReviewModal';
+import SuspensionPanel from './account-suspension/SuspensionPanel';
+import SuspensionBanner from './account-suspension/SuspensionBanner';
 import AccountClosureModal from './AccountClosureModal';
 import ProfileAccountDataPanel from './ProfileAccountDataPanel';
 import ProfileSummaryPanel from './ProfileSummaryPanel';
@@ -25,7 +27,7 @@ import {
   getBuyerOrdersApi, getSellerOrdersApi, getFavoritesApi,
   confirmOrderPaymentApi,
   getSellerInventoryApi,
-  getSellerInventoryCategoriesApi, getSellerInventorySummaryApi, getSellerConversationsApi, getBuyerConversationsApi, getSellerStoreApi, getSellerProductQuestionsApi,
+  getSellerInventoryCategoriesApi, getSellerInventorySummaryApi, getSellerConversationsApi, getBuyerConversationsApi, getSellerStoreApi, getSellerBankAccountApi, getSellerProductQuestionsApi,
   uploadProfileImageApi, resolveMediaUrl,
   getStoreCoverTemplatesApi, selectStoreCoverTemplateApi,
   saveConversationQuoteApi, sendConversationMessageApi,
@@ -47,11 +49,11 @@ import ProfileAppointmentsButton from './ProfileAppointmentsButton';
 import HeaderWalletButton from './HeaderWalletButton';
 import NewCatalogProductModal from './NewCatalogProductModal';
 import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
-import SellerWithdrawalsPanel from './SellerWithdrawalsPanel';
+import SellerWithdrawalsPanel, { isCompleteBankAccount } from './SellerWithdrawalsPanel';
 import AdsManagementSection from './ads/AdsManagementSection';
 import ProfileFavoritesPanel from './ProfileFavoritesPanel';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES, storePath } from '../routes/paths';
 import { orderDisplayCode } from '../data/orderIdentity';
 import { deliveryTermsLabel, isConversationPaused, quoteChargeBase, quoteShippingCost } from '../utils/quoteFlow';
@@ -133,32 +135,31 @@ const SELLER_SIDEBAR_GROUPS = [
   }
 ];
 
-// Con la tienda bloqueada el backend YA rechaza publicar productos
-// (`InventarioAccessSupport`), escribir en el chat (`ConversacionService`) y despachar
-// (`PedidoEnvioSupport`), asi que dejar estas pestanas a la vista solo produce errores.
-// Anuncios y retiros se ocultan por decision de producto: el backend no los bloquea, o
-// sea que siguen alcanzables desde la app o por API hasta que exista un guard alla.
-//
-// `pedidos` NO esta en la lista a proposito: queda visible en SOLO LECTURA. Un vendedor
-// que no ve lo que dejo pendiente tampoco entiende que esta colgando.
+// Cuenta suspendida (pruebas en dev, 2026-10-09): la tienda solo atiende lo ya vendido (sus
+// pedidos, sus chats con compradores y sus retiros) y el comprador solo sigue lo que ya pago (sus
+// pedidos y el chat con la tienda). El backend corta lo demas (`JwtAuthenticationFilter`); aqui
+// se esconde para no chocar contra un 403. Las pestanas de comprador de una cuenta tienda (sus
+// propias compras) no cambian: la suspension de la tienda no le impide comprar.
 const SELLER_BLOCKED_HIDDEN_TABS = [
   'productos',
   'cotizaciones',
   'preguntas_productos',
-  'retiros',
+  'tienda_datos',
   'anuncios',
+  // Una cuenta suspendida no deja feedback (pruebas en dev, 2026-10-09).
+  'feedback',
 ];
 
-// Contraparte para comprador bloqueado: el backend rechaza con 403 comprar, cotizar,
-// preguntar y calificar mientras la cuenta este suspendida. H59 fase 5 (decision 8): sus
-// compras YA pagadas siguen siendo suyas (confirmar recepcion, reclamar, cancelar su parte,
-// chat de mediacion), asi que "pedidos" y "chats_vendedor" quedan visibles.
+// El comprador suspendido no reclama ni reporta: "Reportes/Soporte" tambien se oculta. El Centro
+// de ayuda sigue (es una ruta propia, no una pestana del panel).
 const BUYER_BLOCKED_HIDDEN_TABS = [
   'cotizaciones',
   'mis_preguntas',
   'favoritos',
   'datos',
   'anuncios',
+  'consultas',
+  'feedback',
 ];
 
 const BUYER_SIDEBAR_GROUPS = [
@@ -295,6 +296,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // El centro de ayuda dejó de ser una pestaña del perfil: vive en /ayuda y se
   // navega hacia allá desde el sidebar y los accesos rápidos.
   const navigate = useNavigate();
+  const location = useLocation();
+  const canGoBack = Boolean(location.key && location.key !== 'default');
   const [activeTab, setActiveTabState] = useState(initialTab);
   const [profileNavOpen, setProfileNavOpen] = useState(false);
 
@@ -308,16 +311,31 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     setActiveTabState(tab);
     onTabChange?.(tab);
   }, [onTabChange]);
+
+  // U6 (5-oct): "Por despachar" y "Cotizaciones por responder" abren su pestaña ya filtrada con el
+  // mismo criterio del contador. `nonce` remonta el panel para que un segundo toque vuelva a filtrar
+  // aunque la persona haya cambiado el filtro a mano; al salir de la pestaña el filtro se olvida.
+  const [panelPreset, setPanelPreset] = useState(null);
+  const openFilteredTab = useCallback((tab, filter) => {
+    setPanelPreset({ tab, filter, nonce: Date.now() });
+    setActiveTab(tab);
+  }, [setActiveTab]);
+  useEffect(() => {
+    if (panelPreset && panelPreset.tab !== activeTab) setPanelPreset(null);
+  }, [activeTab, panelPreset]);
+  const presetFor = (tab) => (panelPreset?.tab === tab ? panelPreset : null);
   // Flecha de la app bar en movil (<=768px). En escritorio el boton dice "Volver a la tienda" y
-  // va al home; en el celular es una flecha sola y la persona espera volver UNA vista atras, no
-  // salir de la intranet: detalle del pedido -> su lista; cualquier seccion -> Resumen; y solo
-  // desde Resumen -> la tienda.
+  // va al home; en el celular es una flecha sola y la persona espera volver UNA vista atras:
+  // exactamente a donde estaba (la lista de pedidos con sus filtros, la vista desde donde abrio
+  // "Retirar dinero", etc.). Solo si entro directo por URL se sube un nivel: detalle del pedido
+  // -> su lista; cualquier seccion -> Resumen; y desde Resumen -> la tienda.
   const handleMobileBack = useCallback(() => {
+    if (canGoBack) { navigate(-1); return; }
     if (detailPurchaseId) { setActiveTab('compras'); return; }
     if (detailOrderId) { setActiveTab('pedidos'); return; }
     if (activeTab !== 'resumen') { setActiveTab('resumen'); return; }
     onBackToStore();
-  }, [detailPurchaseId, detailOrderId, activeTab, setActiveTab, onBackToStore]);
+  }, [canGoBack, navigate, detailPurchaseId, detailOrderId, activeTab, setActiveTab, onBackToStore]);
   const [showMediaModal, setShowMediaModal] = useState(null);
   const [mediaInput, setMediaInput] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
@@ -526,6 +544,15 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     staleTime: 5 * 60 * 1000,
   });
 
+  // "Configurar métodos de pago" del checklist: la cuenta bancaria vive en su propio endpoint (cifrada),
+  // no en la tienda. Antes se buscaba en storeInfo con campos que no existen y el paso nunca se marcaba.
+  const bankAccountQuery = useQuery({
+    queryKey: qk.sellerBankAccount(effectiveSellerId),
+    queryFn: () => getSellerBankAccountApi(effectiveSellerId),
+    enabled: Boolean(isSeller && effectiveSellerId),
+    staleTime: 5 * 60 * 1000,
+  });
+
   // El estado de bloqueo lo resuelve `useSellerBlocked`, que es la misma fuente que usan
   // el header, el carrito y el centro de ayuda. Tenerlo resuelto en cada vista era como
   // termino este bug la primera vez: cinco nombres de campo inventados, ninguno real.
@@ -535,29 +562,29 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     blockReasonIsClaim,
     complianceMode: sellerComplianceMode,
     complianceDeadlines: sellerComplianceDeadlines,
+    suspension: sellerSuspension,
   } = useSellerBlocked();
-  const { isBlocked: isBuyerBlocked, blockReason: buyerBlockReason } = useBuyerBlocked();
+  const { isBlocked: isBuyerBlocked, blockReason: buyerBlockReason, suspension: buyerSuspension } = useBuyerBlocked();
   // Un usuario esta bloqueado por un lado u otro, nunca ambos a la vez en la
   // practica (son dos suspensiones independientes en el backend).
   const blockReason = isSellerBlocked ? sellerBlockReason : buyerBlockReason;
   // Solo se apela lo que el backend permite (`canAppeal`, igual que la app): una suspension
   // temporal se cumple sola y una revision ya pedida no se repite. Si el dato no vino (sesion
   // anterior al bloqueo), se ofrece y decide el backend.
-  const blockCanAppeal = (isSellerBlocked ? user?.sellerCanAppeal : user?.buyerCanAppeal) !== false;
-  const suspensionEndsAt = user?.suspendedUntil ? new Date(user.suspendedUntil) : null;
-  const suspensionEndLabel = suspensionEndsAt && !Number.isNaN(suspensionEndsAt.getTime())
-    ? suspensionEndsAt.toLocaleString('es-CL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-    : null;
+  const suspensionRole = isSellerBlocked ? 'SELLER' : 'BUYER';
+  const accountSuspension = isSellerBlocked ? sellerSuspension : (isBuyerBlocked ? buyerSuspension : null);
+  const refreshAccountStatus = () => {
+    queryClient.invalidateQueries({ queryKey: qk.sellerAccountStatus(effectiveSellerId) });
+    queryClient.invalidateQueries({ queryKey: qk.buyerAccountStatus(effectiveBuyerId) });
+  };
 
   // Se ocultan las pestanas de operacion, no la navegacion entera: resumen y
   // Reportes/Soporte siguen accesibles (para el vendedor ademas pedidos en solo
   // lectura). Soporte es justamente donde vive la mediacion que suele originar el
   // bloqueo.
   const sidebarGroups = useMemo(() => {
-    // H59 fase 4: en modo cumplimiento la tienda ve sus retiros (con el motivo de la retencion;
-    // la definitiva cobra al terminar su reserva de cierre).
     const hiddenTabs = isSellerBlocked
-      ? (sellerComplianceMode ? SELLER_BLOCKED_HIDDEN_TABS.filter((tab) => tab !== 'retiros') : SELLER_BLOCKED_HIDDEN_TABS)
+      ? SELLER_BLOCKED_HIDDEN_TABS
       : isBuyerBlocked
         ? BUYER_BLOCKED_HIDDEN_TABS
         : null;
@@ -568,7 +595,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         items: group.items.filter((item) => !hiddenTabs.includes(item.id)),
       }))
       .filter((group) => group.items.length > 0);
-  }, [baseSidebarGroups, isSellerBlocked, isBuyerBlocked, sellerComplianceMode]);
+  }, [baseSidebarGroups, isSellerBlocked, isBuyerBlocked]);
 
   // Version movil: items de la barra inferior y titulo de la app bar. Solo derivan de
   // `sidebarGroups` y `activeTab`; no hay estado nuevo.
@@ -601,15 +628,16 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // Ocultar la pestana no basta: la web navega por URL (`/perfil/productos`), asi que
   // un enlace guardado o el boton atras entran igual. Al detectar el bloqueo se vuelve
   // al resumen.
+  // Reemplaza la entrada del historial (no la apila): con push, "atras" volvia a la pestana oculta,
+  // esta la volvia a sacar y la persona quedaba atrapada (pruebas en dev, 2026-10-09).
   useEffect(() => {
-    if (isSellerBlocked && SELLER_BLOCKED_HIDDEN_TABS.includes(activeTab)
-      && !(sellerComplianceMode && activeTab === 'retiros')) {
-      setActiveTab('resumen');
+    const oculta = (isSellerBlocked && SELLER_BLOCKED_HIDDEN_TABS.includes(activeTab))
+      || (isBuyerBlocked && BUYER_BLOCKED_HIDDEN_TABS.includes(activeTab));
+    if (oculta) {
+      setActiveTabState('resumen');
+      onTabChange?.('resumen', { replace: true });
     }
-    if (isBuyerBlocked && BUYER_BLOCKED_HIDDEN_TABS.includes(activeTab)) {
-      setActiveTab('resumen');
-    }
-  }, [isSellerBlocked, isBuyerBlocked, sellerComplianceMode, activeTab, setActiveTab]);
+  }, [isSellerBlocked, isBuyerBlocked, activeTab, onTabChange]);
 
   const inventorySummaryQuery = useQuery({
     queryKey: qk.sellerInventorySummary(effectiveSellerId),
@@ -1092,7 +1120,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       {
         id: 'payment',
         label: 'Configurar métodos de pago',
-        completed: Boolean(storeInfo?.bankAccount || storeInfo?.accountNumber || user?.bankAccount),
+        completed: isCompleteBankAccount(bankAccountQuery.data),
         action: () => setActiveTab('retiros')
       },
       {
@@ -1102,7 +1130,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         action: () => openNewProductModalRef.current()
       },
     ];
-  }, [isSeller, user, storeInfo, inventorySummary, sellerProducts, orders]);
+  }, [isSeller, user, storeInfo, bankAccountQuery.data, inventorySummary, sellerProducts, orders]);
 
   const completedOnboardingCount = useMemo(
     () => onboardingSteps.filter((step) => step.completed).length,
@@ -1169,7 +1197,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       return [
         { id: 'pedidos', tone: 'blue', icon: ShoppingBag, title: 'Gestionar pedidos', description: 'Revisa, despacha y actualiza el estado de tus pedidos.', onClick: () => setActiveTab('pedidos') },
         { id: 'nuevo', tone: 'emerald', icon: Plus, title: 'Agregar producto', description: 'Publica nuevos repuestos en tu catálogo.', onClick: () => openNewProductModalRef.current() },
-        { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Responder cotizaciones', description: 'Atiende solicitudes directas de clientes.', onClick: () => setActiveTab('cotizaciones') },
+        { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Responder cotizaciones', description: 'Atiende solicitudes directas de clientes.', onClick: () => openFilteredTab('cotizaciones', 'pending') },
         { id: 'tienda', tone: 'sky', icon: Store, title: 'Mi tienda y datos', description: 'Edita la información comercial de tu tienda.', onClick: () => setActiveTab('tienda_datos') },
         { id: 'retiros', tone: 'emerald', icon: Wallet, title: 'Retirar dinero', description: 'Solicita el depósito bancario de tus ventas.', onClick: () => setActiveTab('retiros') },
         { id: 'anuncios', tone: 'amber', icon: Megaphone, title: 'Gestión de anuncios', description: 'Publica y destaca en el Mural de Anuncios.', onClick: () => setActiveTab('anuncios') },
@@ -1183,7 +1211,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       { id: 'anuncios', tone: 'emerald', icon: Megaphone, title: 'Gestión de anuncios', description: 'Publica tu búsqueda en el Mural de Anuncios.', onClick: () => setActiveTab('anuncios') },
       { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte de compra.', onClick: () => navigate(ROUTES.support) },
     ];
-  }, [isSeller, setActiveTab, navigate]);
+  }, [isSeller, setActiveTab, openFilteredTab, navigate]);
 
   const recentActivities = useMemo(() => {
     const list = [];
@@ -1395,12 +1423,12 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                     )}
                   </div>
                   <div className="hero-mobile-counters" role="list">
-                    <button type="button" role="listitem" className={`hero-counter ${ordersToDispatchCount > 0 ? 'is-alert' : ''}`} onClick={() => setActiveTab('pedidos')}>
+                    <button type="button" role="listitem" className={`hero-counter ${ordersToDispatchCount > 0 ? 'is-alert' : ''}`} onClick={() => openFilteredTab('pedidos', ['pending', 'preparing'])}>
                       <Truck size={16} />
                       <strong>{ordersToDispatchCount}</strong>
                       <span>Por despachar</span>
                     </button>
-                    <button type="button" role="listitem" className={`hero-counter ${quoteSummary.pending > 0 ? 'is-alert' : ''}`} onClick={() => setActiveTab('cotizaciones')}>
+                    <button type="button" role="listitem" className={`hero-counter ${quoteSummary.pending > 0 ? 'is-alert' : ''}`} onClick={() => openFilteredTab('cotizaciones', 'pending')}>
                       <ReceiptText size={16} />
                       <strong>{quoteSummary.pending}</strong>
                       <span>Cotizaciones por responder</span>
@@ -1532,9 +1560,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             ))}
 
             <div className="profile-nav-final-actions">
-              <button type="button" className={`profile-nav-item profile-nav-feedback ${activeTab === 'feedback' ? 'active' : ''}`} onClick={openFeedback}>
-                <MessageSquare size={17} /><span>Dejar feedback</span>
-              </button>
+              {!isSellerBlocked && !isBuyerBlocked && (
+                <button type="button" className={`profile-nav-item profile-nav-feedback ${activeTab === 'feedback' ? 'active' : ''}`} onClick={openFeedback}>
+                  <MessageSquare size={17} /><span>Dejar feedback</span>
+                </button>
+              )}
               <button type="button" className="profile-nav-item profile-nav-delete" onClick={() => setShowDeleteAccountModal(true)}>
                 <Trash2 size={17} /><span>Cerrar cuenta</span>
               </button>
@@ -1551,87 +1581,27 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             </div>
           )}
 
-          {(isSellerBlocked || isBuyerBlocked) && (
-            <div
-              className="seller-blocked-banner"
-              style={{
-                marginBottom: '20px',
-                padding: '16px 20px',
-                borderRadius: '12px',
-                backgroundColor: '#fef2f2',
-                border: '1px solid #fecaca',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '16px',
-                flexWrap: 'wrap',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '280px' }}>
-                <div
-                  style={{
-                    width: '42px',
-                    height: '42px',
-                    borderRadius: '10px',
-                    backgroundColor: '#fee2e2',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#dc2626',
-                    flexShrink: 0,
-                  }}
-                >
-                  <AlertTriangle size={22} />
-                </div>
-                <div>
-                  <strong style={{ display: 'block', color: '#991b1b', fontSize: '14.5px', fontWeight: 800 }}>
-                    {isSellerBlocked ? 'Tu tienda se encuentra bloqueada' : 'Tu cuenta se encuentra suspendida'}
-                  </strong>
-                  <p style={{ margin: '3px 0 0', color: '#b91c1c', fontSize: '13px', lineHeight: 1.4 }}>
-                    {blockReason} {isSellerBlocked
-                      ? (sellerComplianceMode
-                        ? 'Mientras esté suspendida no podrás recibir nuevos pedidos ni publicar productos, pero debes completar tus ventas ya pagadas desde «Mis ventas» dentro de su plazo; si no, se cancelan y se le devuelve el pago al comprador.'
-                        : 'Mientras esté suspendida no podrás recibir nuevos pedidos ni publicar productos.')
-                      : 'Mientras esté suspendida no podrás comprar ni cotizar. Tus compras ya pagadas siguen en «Mis pedidos»: puedes confirmar la recepción, reclamar y usar el chat de mediación.'}
-                  </p>
-                  {suspensionEndLabel && (
-                    <p style={{ margin: '6px 0 0', color: '#991b1b', fontSize: '12.5px', fontWeight: 700 }}>
-                      {suspensionEndsAt.getTime() <= Date.now()
-                        ? 'El plazo de la suspensión ya se cumplió: tu cuenta se reactivará sola en los próximos minutos.'
-                        : `La suspensión termina el ${suspensionEndLabel}. Tu cuenta se reactivará sola.`}
-                    </p>
-                  )}
-                </div>
-              </div>
-              {blockCanAppeal && (
-              <button
-                type="button"
-                className="btn-auth-primary"
-                style={{
-                  backgroundColor: '#dc2626',
-                  borderColor: '#b91c1c',
-                  padding: '9px 18px',
-                  fontSize: '13px',
-                  height: 'auto',
-                  whiteSpace: 'nowrap',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-                onClick={() => setShowBlockedReviewModal(true)}
-              >
-                <Scale size={16} />
-                <span>Solicitar Revisión</span>
-              </button>
-              )}
-            </div>
+          {(isSellerBlocked || isBuyerBlocked) && activeTab !== 'resumen' && (
+            <SuspensionBanner suspension={accountSuspension} onOpen={() => setActiveTab('resumen')} />
           )}
 
           {isLoadingData ? (
             <div className="profile-panel"><LoadingRow /></div>
           ) : (
             <>
-              {activeTab === 'resumen' && (
+              {activeTab === 'resumen' && (isSellerBlocked || isBuyerBlocked) && (
+                <SuspensionPanel
+                  role={suspensionRole}
+                  suspension={accountSuspension}
+                  onPrimary={() => setActiveTab('pedidos')}
+                  onSecondary={() => setActiveTab('retiros')}
+                  onLogout={handleLogout}
+                  onAppeal={() => setShowBlockedReviewModal(true)}
+                  onRefresh={refreshAccountStatus}
+                  onHelp={() => navigate(ROUTES.support)}
+                />
+              )}
+              {activeTab === 'resumen' && !isSellerBlocked && !isBuyerBlocked && (
                 <ProfileSummaryPanel
                   isSeller={isSeller}
                   user={user}
@@ -1650,6 +1620,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
               <ProfileOrdersPanel
                 activeTab={activeTab}
+                sellerOrdersPreset={presetFor('pedidos')}
                 isSeller={isSeller}
                 isSellerBlocked={isSellerBlocked}
                 sellerComplianceMode={sellerComplianceMode}
@@ -1757,6 +1728,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
               {(activeTab === 'cotizaciones' || (isSeller && activeTab === 'mis_cotizaciones')) && (
                 <ProfileQuotesPanel
+                  key={presetFor(activeTab)?.nonce ?? 'quotes'}
+                  initialFilter={presetFor(activeTab)?.filter}
                   quotesAsBuyer={quotesAsBuyer}
                   quoteSummary={quoteSummary}
                   activeQuoteSource={activeQuoteSource}
@@ -1786,7 +1759,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 <SellerChatsView user={user} mode="seller" orders={ordersQuery.data} />
               )}
 
-              {activeTab === 'feedback' && <ProfileFeedbackPanel />}
+              {activeTab === 'feedback' && !isSellerBlocked && !isBuyerBlocked && <ProfileFeedbackPanel />}
 
               {(activeTab === 'tienda_datos' || activeTab === 'datos') && (
                 <ProfileAccountDataPanel
@@ -1899,9 +1872,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               ))}
 
               <div className="profile-nav-final-actions">
-                <button type="button" className={`profile-nav-item profile-nav-feedback ${activeTab === 'feedback' ? 'active' : ''}`} onClick={() => { setProfileNavOpen(false); openFeedback(); }}>
-                  <MessageSquare size={18} /><span>Dejar feedback</span>
-                </button>
+                {!isSellerBlocked && !isBuyerBlocked && (
+                  <button type="button" className={`profile-nav-item profile-nav-feedback ${activeTab === 'feedback' ? 'active' : ''}`} onClick={() => { setProfileNavOpen(false); openFeedback(); }}>
+                    <MessageSquare size={18} /><span>Dejar feedback</span>
+                  </button>
+                )}
                 <button type="button" className="profile-nav-item profile-nav-delete" onClick={() => { setProfileNavOpen(false); setShowDeleteAccountModal(true); }}>
                   <Trash2 size={18} /><span>Cerrar cuenta</span>
                 </button>

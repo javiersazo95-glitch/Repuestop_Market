@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getAutomotiveServiceAccreditationApi } from '../services/api';
+import { getAutomotiveServiceAccreditationApi, getAutomotiveServiceOnboardingApi } from '../services/api';
 
 /**
  * Estado del expediente de servicio automotriz de la cuenta en sesión, tal como
@@ -16,6 +16,8 @@ const KNOWN_STATUSES = ['SIN_SOLICITUD', 'PENDIENTE', 'POR_CORREGIR', 'RECHAZADO
 
 export function useAutomotiveAccreditation(enabled = true) {
   const [record, setRecord] = useState(null);
+  // Pasos pendientes del taller aprobado (banner "Próximos pasos"); null si no aplica.
+  const [onboarding, setOnboarding] = useState(null);
   const [isLoading, setIsLoading] = useState(enabled);
 
   const load = useCallback(async ({ signal } = {}) => {
@@ -27,6 +29,8 @@ export function useAutomotiveAccreditation(enabled = true) {
     try {
       const data = await getAutomotiveServiceAccreditationApi({ signal });
       setRecord(data || null);
+      const approved = String(data?.estado || '').toUpperCase() === 'APROBADO';
+      setOnboarding(approved ? await getAutomotiveServiceOnboardingApi({ signal }) : null);
     } catch (error) {
       if (error?.name === 'AbortError') return;
       // Un fallo de red no debe bloquear la vista: se asume "sin solicitud" y el
@@ -65,8 +69,15 @@ export function useAutomotiveAccreditation(enabled = true) {
           address: String(record?.direccion || ''),
           phone: String(record?.telefono || ''),
           logoUrl: String(record?.logoUrl || ''),
+          // 24/7 / urgencias declarado en la acreditación: habilita anuncios 24/7.
+          atiende24Horas: record?.atiende24Horas === true,
+          servicios24Horas: Array.isArray(record?.servicios24Horas) ? record.servicios24Horas : [],
+          // false = "solo 24/7": todos sus anuncios se publican 24/7, sin agenda.
+          tieneHorarioNormal: record?.tieneHorarioNormal !== false,
         }
       : null,
+    record,
+    onboarding,
     refresh: () => load(),
   };
 }

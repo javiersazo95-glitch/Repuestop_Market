@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, RotateCcw, SlidersHorizontal, ShieldCheck, Zap, Star,
-  Calendar, MessageCircle, AlarmClock
+  Calendar, MessageCircle, AlarmClock, Home
 } from 'lucide-react';
 import { SERVICE_CATEGORIES } from '../../data/automotiveAdsData';
 import SearchableDropdown from '../SearchableDropdown';
@@ -35,7 +35,11 @@ export default function AdsFilterModal({
   setSelectedTier,
   selectedCommune,
   setSelectedCommune,
+  // Solo valores con anuncios publicados: [{ value, count }] y conteos por especialidad y plan.
   communeOptions = [],
+  categoryOptions = SERVICE_CATEGORIES.filter((cat) => cat.id !== 'TODAS'),
+  categoryCounts = null,
+  tierCounts = null,
   specialistBrandOptions = [],
   selectedSpecialistBrand = ALL_BRANDS,
   setSelectedSpecialistBrand,
@@ -45,6 +49,8 @@ export default function AdsFilterModal({
   setOnlyWhatsapp,
   only24Hours,
   setOnly24Hours,
+  onlyHomeService,
+  setOnlyHomeService,
   onResetFilters,
   activeFiltersCount = 0,
   totalResults,
@@ -105,10 +111,26 @@ export default function AdsFilterModal({
             />
           </label>
 
+          {/* Junto a urgencias: talleres que van donde está el vehículo (`homeService`). */}
+          <label className={`ads-urgent-card ${onlyHomeService ? 'is-active' : ''}`}>
+            <span className="ads-urgent-icon is-home"><Home size={16} /></span>
+            <span className="ads-urgent-text">
+              <strong>Servicio a domicilio</strong>
+              <small>Van donde está tu vehículo, dentro de su comuna</small>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={onlyHomeService}
+              onChange={(e) => setOnlyHomeService(e.target.checked)}
+              aria-label="Solo servicio a domicilio"
+            />
+          </label>
+
           <div className="ads-filter-group">
             <span className="ads-filter-label">Especialidad automotriz</span>
             <div className="ads-filter-chips">
-              {SERVICE_CATEGORIES.map((cat) => (
+              {[SERVICE_CATEGORIES.find((cat) => cat.id === 'TODAS'), ...categoryOptions].filter(Boolean).map((cat) => (
                 <button
                   key={cat.id}
                   type="button"
@@ -116,6 +138,7 @@ export default function AdsFilterModal({
                   onClick={() => setSelectedCategory(cat.id)}
                 >
                   <span aria-hidden="true">{cat.emoji}</span> {cat.label}
+                  {categoryCounts && cat.id !== 'TODAS' && <span className="filter-option-count"> ({categoryCounts[cat.id] || 0})</span>}
                 </button>
               ))}
             </div>
@@ -124,7 +147,8 @@ export default function AdsFilterModal({
           <div className="ads-filter-group">
             <span className="ads-filter-label">Nivel del anuncio</span>
             <div className="ads-filter-chips">
-              {TIER_OPTIONS.map(({ value, label, Icon, tone }) => (
+              {TIER_OPTIONS.filter(({ value }) => !tierCounts || value === 'TODOS' || tierCounts[value] > 0 || selectedTier === value)
+                .map(({ value, label, Icon, tone }) => (
                 <button
                   key={value}
                   type="button"
@@ -132,6 +156,7 @@ export default function AdsFilterModal({
                   onClick={() => setSelectedTier(value)}
                 >
                   {Icon && <Icon size={13} />} {label}
+                  {tierCounts && value !== 'TODOS' && <span className="filter-option-count"> ({tierCounts[value] || 0})</span>}
                 </button>
               ))}
             </div>
@@ -142,7 +167,7 @@ export default function AdsFilterModal({
               <span className="ads-filter-label">Marca especialista</span>
               <SearchableDropdown
                 value={selectedSpecialistBrand}
-                options={[ALL_BRANDS, ...specialistBrandOptions].map((brand) => ({ value: brand, label: brand }))}
+                options={[{ value: ALL_BRANDS, label: ALL_BRANDS }, ...specialistBrandOptions.map(({ value, count }) => ({ value, label: value, count }))]}
                 placeholder={ALL_BRANDS}
                 onChange={(value) => setSelectedSpecialistBrand(value || ALL_BRANDS)}
                 emptyText="No encontramos esa marca."
@@ -154,7 +179,7 @@ export default function AdsFilterModal({
             <span className="ads-filter-label">Comuna</span>
             <SearchableDropdown
               value={selectedCommune}
-              options={[ALL_COMMUNES, ...communeOptions].map((commune) => ({ value: commune, label: commune }))}
+              options={[{ value: ALL_COMMUNES, label: ALL_COMMUNES }, ...communeOptions.map(({ value, count }) => ({ value, label: value, count }))]}
               placeholder={ALL_COMMUNES}
               onChange={(value) => setSelectedCommune(value || ALL_COMMUNES)}
               emptyText="No hay anuncios en esa comuna."

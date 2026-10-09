@@ -1,6 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Search, X } from 'lucide-react';
 import OrderCard from './OrderCard';
+import { useLocation } from 'react-router-dom';
+import usePagedList, { recentOrdersNote } from '../hooks/usePagedList';
+import { useRestoredState } from '../routes/useRestoredState';
+import { useScrollMemory } from '../routes/useScrollMemory';
+import ListPager from './ListPager';
 import { orderDisplayCode } from '../data/orderIdentity';
 import { buyerClaimState, normalizeOrderStatus } from '../data/orderStatusFlow';
 
@@ -72,10 +77,13 @@ function orderTime(order) {
 }
 
 export default function BuyerOrdersBrowser({ orders, loading = false, emptyLabel, onSelectOrder, onUpdateStatus, onRetryPayment, onCancelOrder }) {
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('all');
-  const [date, setDate] = useState('all');
-  const [sort, setSort] = useState('recent');
+  // Filtros y pagina se recuperan al volver del detalle de un pedido (la lista se desmonta al abrirlo).
+  const { pathname } = useLocation();
+  const viewId = `pedidos-comprador:${pathname}`;
+  const [query, setQuery] = useRestoredState(viewId, 'query', '');
+  const [status, setStatus] = useRestoredState(viewId, 'status', 'all');
+  const [date, setDate] = useRestoredState(viewId, 'date', 'all');
+  const [sort, setSort] = useRestoredState(viewId, 'sort', 'recent');
 
   const list = useMemo(() => (Array.isArray(orders) ? orders : []), [orders]);
   const counts = useMemo(() => Object.fromEntries(
@@ -94,6 +102,8 @@ export default function BuyerOrdersBrowser({ orders, loading = false, emptyLabel
       return orderTime(b) - orderTime(a);
     });
   }, [list, query, status, date, sort]);
+  const { pageItems, pagerProps } = usePagedList(visible, JSON.stringify([query, status, date, sort]), undefined, viewId);
+  useScrollMemory(list.length > 0);
 
   // Mientras carga no se dice "Aún no has realizado pedidos": eso confundia a quien si tenia.
   if (loading && list.length === 0) {
@@ -154,8 +164,9 @@ export default function BuyerOrdersBrowser({ orders, loading = false, emptyLabel
           )}
         </div>
       ) : (
+        <>
         <div className="profile-orders-cards-grid">
-          {visible.map((order) => (
+          {pageItems.map((order) => (
             <OrderCard
               key={order.id}
               order={order}
@@ -167,6 +178,8 @@ export default function BuyerOrdersBrowser({ orders, loading = false, emptyLabel
             />
           ))}
         </div>
+        <ListPager pagerProps={pagerProps} itemLabel="pedidos" note={recentOrdersNote(list.length)} />
+        </>
       )}
     </div>
   );

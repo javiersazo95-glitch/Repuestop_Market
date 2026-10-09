@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import {
   Clock, Wrench, Truck, PackageCheck, ShieldCheck, AlertCircle, XCircle,
   RotateCcw, FileText, User, Store, Package, Info, ChevronRight, Check,
-  Phone, MapPin, Boxes, Loader2, ReceiptText, FileCheck, ListChecks, ShieldAlert
+  Phone, MapPin, Boxes, Loader2, ReceiptText, FileCheck, ListChecks, ShieldAlert, KeyRound
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { resolveMediaUrl, startSellerChatApi } from '../services/api';
-import { isCancelledItem, orderDeliverySummary, orderDisplayCode } from '../data/orderIdentity';
+import { isCancelledItem, orderDeliverySummary, orderDisplayCode, subOrderDeliveryMethod } from '../data/orderIdentity';
 import { buyerClaimState, getControlledOrderAction, isStorePickupOrder, orderPaymentWindow, sellerClaimState } from '../data/orderStatusFlow';
 import { buyerCaseChatPath, currentPathForBack, sellerCaseChatPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
@@ -163,6 +163,20 @@ export default function OrderCard({
   const deliveryTerms = orderDeliverySummary(order);
   const isStorePickup = isStorePickupOrder(order);
   const displayStatus = normStatus === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : rawStatus;
+  // El codigo de retiro del comprador tambien en la tarjeta: antes solo salia al abrir el
+  // detalle. Mismas reglas que el bloque por tienda de `OrderDetailView`: cada tienda genera
+  // el suyo al quedar lista para retirar, y el `codigoRetiro` plano del pedido solo vale con
+  // UNA tienda (con varias el backend lo manda nulo).
+  const pickupCodes = (() => {
+    if (isSeller || !isStorePickup) return [];
+    const subs = Array.isArray(order.subordenes) ? order.subordenes : [];
+    const ready = (status) => String(status || '').toUpperCase() === 'ENVIADO';
+    const fromSubs = subs
+      .filter((sub) => ready(sub?.estado) && sub?.codigoRetiro)
+      .map((sub) => ({ code: sub.codigoRetiro, store: subs.length > 1 ? sub.nombreTienda : null }));
+    if (fromSubs.length > 0) return fromSubs;
+    return subs.length <= 1 && ready(normStatus) && order.codigoRetiro ? [{ code: order.codigoRetiro, store: null }] : [];
+  })();
 
   const orderIdShort = orderDisplayCode(order, isSeller ? 'seller' : 'buyer');
   const orderDate = formatOrderDate(order.createdAt || order.fecha);
@@ -186,9 +200,10 @@ export default function OrderCard({
   // O71 (pruebas de lanzamiento, 25-sep): la tienda tambien ve el caso de SU venta, con enlace a
   // su chat en "Chats con compradores". Sus items ya vienen acotados a ella: de ahi sale su id.
   const claimState = isSeller ? sellerClaimState(order) : buyerClaimState(order);
+  // El chat es por (pedido, tienda): el comprador abre el de la tienda con caso (multi-tienda).
   const claimChatPath = isSeller
     ? sellerCaseChatPath(order.id, items.find((item) => item.proveedorId != null)?.proveedorId)
-    : buyerCaseChatPath(order.id);
+    : buyerCaseChatPath(order.id, (order.subordenes || []).find((sub) => sub?.estadoCaso)?.proveedorId);
 
   // Dirección real de despacho (no solo la etiqueta genérica "Despacho a domicilio"):
   // el vendedor la necesita para preparar el envío sin tener que abrir el detalle.
@@ -197,6 +212,14 @@ export default function OrderCard({
     order.compradorComuna || order.comuna,
     order.compradorRegion || order.region,
   ].filter(Boolean).join(', ');
+  // Checkout por producto: con dos o más destinos la dirección del pedido es solo la del primer
+  // paquete; la tarjeta avisa cuántos son y el detalle los muestra uno por uno.
+  const lineAddresses = new Set(items
+    .filter((item) => item.entregaDireccion && !isCancelledItem(item))
+    .map((item) => `${item.entregaDireccion}|${item.entregaComuna || ''}`));
+  const deliveryAddressLabel = lineAddresses.size > 1
+    ? `${lineAddresses.size} direcciones de entrega (ver detalle)`
+    : deliveryAddress;
   const shippingFee = Number(String(order.shippingFee ?? order.costoEnvio ?? 0).replace(/[^0-9]/g, '')) || 0;
   const discount = Number(String(order.descuento ?? 0).replace(/[^0-9]/g, '')) || 0;
   // Se cuentan las unidades VIVAS. Decir "2 productos" cuando uno ya no llega contradice al
@@ -441,12 +464,26 @@ export default function OrderCard({
             <span className="order-info-chip"><Truck size={13} /> {deliveryTerms}</span>
           )}
           {isSeller && deliveryAddress && !isStorePickup && (
-            <span className="order-info-chip address"><MapPin size={13} /> {deliveryAddress}</span>
+            <span className="order-info-chip address"><MapPin size={13} /> {deliveryAddressLabel}</span>
           )}
           {boletaLoaded && (
             <span className="order-info-chip boleta-ok"><FileCheck size={13} /> Boleta cargada</span>
           )}
         </div>
+
+        {pickupCodes.length > 0 && (
+          <div className="order-card-state-banner pickup-code">
+            <KeyRound size={18} />
+            <div>
+              {pickupCodes.map(({ code, store }) => (
+                <strong key={`${store || 'unica'}-${code}`}>
+                  Código de retiro{store ? ` · ${store}` : ''}: <b className="order-card-pickup-code">{code}</b>
+                </strong>
+              ))}
+              <span>Dícta{pickupCodes.length > 1 ? 'los' : 'lo'} en la tienda al retirar. No {pickupCodes.length > 1 ? 'los' : 'lo'} compartas por chat.</span>
+            </div>
+          </div>
+        )}
 
         {paymentFailed && (
           <div className="order-card-state-banner payment-failed">
@@ -702,8 +739,10 @@ export default function OrderCard({
                       : <span className="order-store-statuses-avatar order-store-statuses-avatar--fallback"><Store size={14} /></span>}
                     <span>{storeName}</span>
                   </span>
+                  {/* El estado de ESTA tienda con SU envío: con una tienda de retiro y otra de
+                      despacho, el envío del pedido es uno solo y las dos salían "Enviado". */}
                   <OrderStatusBadge
-                    status={sub.estado === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : sub.estado}
+                    status={sub.estado === 'ENVIADO' && subOrderDeliveryMethod(sub, order) === 'store_pickup' ? 'LISTO_RETIRO' : sub.estado}
                     size="small"
                     mediationStatus={order.estadoMediacion || order.mediationStatus}
                   />

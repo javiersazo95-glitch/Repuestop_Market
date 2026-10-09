@@ -11,17 +11,22 @@ export function useAppNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const canGoBack = Boolean(location.key && location.key !== 'default');
+
   /**
-   * Vuelve a la pantalla anterior, y al inicio cuando no hay ninguna.
+   * Vuelve exactamente a la pantalla anterior (con sus filtros, su pagina y su scroll), y al
+   * destino de respaldo -o al inicio- cuando no hay ninguna.
    *
    * `location.key` vale 'default' solo en la primera entrada del historial de la app: es el
    * caso de quien llega por un enlace directo o desde Google. Ahi `navigate(-1)` sacaria al
-   * usuario del sitio -o no haria nada-, asi que se manda al inicio.
+   * usuario del sitio -o no haria nada-, asi que se manda al respaldo.
+   *
+   * El respaldo solo se toma si es una ruta: usado como `onClick={goBack}` llega el evento.
    */
-  const goBack = useCallback(() => {
-    if (location.key && location.key !== 'default') navigate(-1);
-    else navigate(ROUTES.home);
-  }, [navigate, location.key]);
+  const goBack = useCallback((fallback) => {
+    if (canGoBack) navigate(-1);
+    else navigate(typeof fallback === 'string' ? fallback : ROUTES.home);
+  }, [navigate, canGoBack]);
 
   const goProfile = useCallback((tab = 'resumen') => {
     navigate(profilePath(typeof tab === 'string' ? tab : 'resumen'));
@@ -46,6 +51,7 @@ export function useAppNavigation() {
   return useMemo(() => ({
     goHome: () => navigate(ROUTES.home),
     goBack,
+    canGoBack,
     goCatalog: (filter = null, extra = {}) => navigate(catalogPath(filter, extra)),
     goProduct,
     goStores: () => navigate(ROUTES.stores),
@@ -65,6 +71,6 @@ export function useAppNavigation() {
     goHelpContact: (topicId) => navigate(helpContactPath(topicId)),
     goTerms: () => navigate(ROUTES.terms),
     goPrivacy: () => navigate(ROUTES.privacy),
-  }), [navigate, goProduct, goStore, goProfile, goAdDetail, goBack]);
+  }), [navigate, goProduct, goStore, goProfile, goAdDetail, goBack, canGoBack]);
 }
 

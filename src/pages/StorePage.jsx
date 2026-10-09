@@ -4,7 +4,7 @@ import StorePublicProfileView from '../components/StorePublicProfileView';
 import { useAuth } from '../context/AuthContext';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
-import { parseIdSlug } from '../routes/paths';
+import { ROUTES, parseIdSlug } from '../routes/paths';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 
 const SELLER_ROLES = ['SELLER', 'PROVIDER', 'PROVEEDOR'];
@@ -35,6 +35,8 @@ export default function StorePage() {
     <StorePublicProfileView
       store={store}
       onBackToStores={nav.goStores}
+      onBack={() => nav.goBack(ROUTES.stores)}
+      backLabel={nav.canGoBack ? 'Volver' : 'Volver a Casas de repuestos'}
       onQuickView={nav.goProduct}
       onOpenQuote={openQuote}
       activeVehicle={activeVehicle}

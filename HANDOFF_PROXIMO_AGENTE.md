@@ -3745,3 +3745,109 @@ intento aunque la página estuviera cargada. La verificación es por medición d
 tráfico de red.
 
 Commit: `fa5ed40` en `dev`, subido a `origin/dev`.
+### 4.48 Sesión 2026-10-07 — pruebas en dev: nueve arreglos y una métrica nueva
+
+Sesión larga de prueba en vivo sobre `dev`, con el usuario operando como vendedor y comprador.
+Lo que sigue es lo que **no se deduce del código** leyéndolo después.
+
+**1. El correo de Search Console "Bloqueada por robots.txt" era esperado.** El bloqueo es
+intencional (`6434291`, 21-ago) y está explicado en 3.5, pero **el paso de revertirlo no estaba
+en ningún plan**: el commit que lo puso se hizo 36 minutos después de que se cerrara
+`PLAN_UNIFICACION_WEB.md` y solo tocó el `robots.txt` y este handoff. Ahora está en §3.9 de ese
+plan y en el `plan_pruebas_lanzamiento_unificado.md` del monorepo (ítem A9, paso 1b de la Orden
+del corte y prueba de humo P3-12). **Ojo al revertirlo**: `dev` y `main` comparten el archivo,
+así que abrirlo también deja indexable `dev-repuestop.repuestop.cl` salvo que se agregue un
+`X-Robots-Tag: noindex` por host en `vercel.json`.
+
+**2. La campana enlaza con el id CRUDO del pedido, no con el número público.**
+`PedidoNotificacionSupport` arma todos sus `targetParams` con `pedido.getId()` — son ~20 sitios,
+todos iguales—, así que llega `?pedido=4` y la URL queda en `/perfil/pedidos/4`. El detalle se
+resolvía solo contra el listado cacheado (`staleTime` de 60s), de modo que una venta que entra
+**durante** la sesión no estaba ahí y la pantalla mostraba "No encontramos ese pedido en tu
+cuenta". Y como el estado de carga mira `isLoading` —que con la lista ya cargada es `false`—, no
+se veía ni "Cargando": se iba derecho al mensaje de no encontrado y solo aparecía con F5.
+
+Ahora, si el pedido no está en la lista: con número público se pide por
+`/proveedores/{id}/pedidos/numero/{n}`, y con id crudo —que es el caso de **todas** las
+notificaciones— se repide el listado con `refetchQueries`. Es `refetch` y no `invalidate` a
+propósito: invalidar solo marca la copia como vieja y el refetch queda a merced de que algo la
+vuelva a observar. Arreglo de fondo pendiente: que las notificaciones lleven el número público,
+que es cambio coordinado backend + web + app porque la APK consume los mismos `targetParams`.
+
+**3. La ficha técnica del repuesto se quedaba girando para siempre.** El guard estaba a medias:
+el ref evitaba pedir dos veces, pero el cleanup seguía descartando la respuesta en vuelo, y con
+el ref ya marcado no se volvía a pedir. Lo dispara plegar y reabrir la ficha mientras carga, y
+también que `item.productoId` cambie de valor al mezclarse la respuesta del backend sobre el
+pedido de la lista. Es la trampa #3 de CLAUDE.md resuelta a medias. El ref guarda ahora el
+`productId` pedido, no un booleano.
+
+**4. `.btn-auth-primary` trae `width: 100%`** del formulario de login y se lo lleva a donde lo
+reusen. En el pie del detalle eso convertía el primario en una barra de 1130px de 1178 que
+empujaba al resto; y `.order-modal-footer` no declaraba `align-items`, así que el `stretch` por
+defecto estiraba "Volver a mis pedidos" a 158px de alto cuando convivía con el bloque del PIN.
+Los botones del pie miden ahora lo que dice su texto, a ancho completo solo en teléfono.
+
+**5. Editar un producto con muchas compatibilidades devolvía 413** *"El archivo supera el tamaño
+máximo permitido"* **sin ninguna foto en juego**: bastaba cambiar "Mostrar precio" a "Solo
+cotizar". No era el peso — era `server.tomcat.max-part-count`, que vale **50** por defecto en
+Spring Boot y no estaba configurado. El formulario manda ~20 campos más **una parte por cada id
+de versión de vehículo compatible**, y el producto 558 tiene 43: ~64 partes. Al pasarse, Tomcat
+corta el parseo y Spring lo traduce a `MaxUploadSizeExceededException`, que habla de archivos.
+Afecta a cualquier producto con más de ~25 versiones. Subido a 500 y, de paso, el
+`GlobalExceptionHandler` loguea la causa raíz: su mensaje es "Maximum upload size exceeded" tanto
+por peso como por partes, y eso es lo que hizo que costara identificarlo. Registrado como **O92**
+en el plan de pruebas del monorepo.
+
+**6. El paso 2 de "Confirmar pedido" se contradecía** con un pedido de puros repuestos
+universales: arriba decía "Sin información del vehículo. Confirma según tu criterio" y abajo
+"Todos los repuestos sirven para cualquier vehículo", y aun así había que firmar "Revisé que
+estos repuestos son compatibles". Además `ETIQUETA_RESULTADO.UNIVERSAL` existía desde el
+principio pero **no llegaba a renderizarse nunca**, porque el filtro de universales corría antes
+de pintar la lista. Ahora la lista los muestra todos con su etiqueta y, sin nada que dependa del
+vehículo, el paso deja de pedir criterio: "Entendido, continuar". El paso NO se salta — sigue
+guardando `compatibilidadConfirmadaAt` y el contador "1/3" seguiría mintiendo si desapareciera.
+
+**7. El riel del pedido daba por devuelta una plata que todavía no volvía.** Con el pedido
+cancelado y pagado fijaba el índice en 2, así que marcaba "Reembolsado · El dinero fue devuelto a
+tu medio de pago" **sin mirar el estado real del reembolso**, mientras la tarjeta de al lado
+pedía aceptar el correo de Flow. No es cosmético: ese correo tiene fecha límite y si vence la
+devolución no se hace. Ahora el paso se completa solo con `REEMBOLSADO`; sin dato (históricos) se
+mantiene el comportamiento anterior. En la misma pantalla, `RefundStatusCard` y
+`CancellationReasonCard` usaban `s.card`, **que no trae padding** —las tarjetas con cabecera lo
+ponen en `cardHeader`—, así que el texto quedaba pegado al borde: eran las dos únicas del archivo
+con ese olvido.
+
+**8. El popup de finalizar hablaba del pago al vendedor.** Decía "Se cierra definitivamente lo de
+<tienda> y se habilita su pago": el pago es la relación entre RepuesTop y la tienda, no le ayuda
+al comprador a decidir y le insinúa que su clic es lo que le paga. Y "definitivamente"
+contradecía al aviso de la misma pantalla, que le promete que el retracto sobrevive al cierre.
+Ahora dice qué declara y qué conserva, igual en web y app.
+
+**9. Métrica nueva: cuánto cancela cada tienda** (`GET /api/v1/sellers/cancellation-rates` y
+`/flagged`, más columna y tarjeta en el backoffice). Existe porque **cancelar le sale gratis al
+vendedor**: el comprador recibe el 100% —como debe ser—, pero la nota pública se arma con las
+calificaciones de compras FINALIZADAS, así que una venta cancelada ni siquiera entra en el
+promedio. Mercado Libre suspende sobre 2,5% de ventas canceladas (0,5% para Mercado Líder) y hay
+un fallo de la Corte de Apelaciones de La Serena, valorado por el SERNAC, que condenó a un
+marketplace por cancelación unilateral.
+
+**Solo mide: no suspende ni toca lo que ve el comprador.** Sin migración: todo sale de lo que ya
+se guarda al cancelar. Dos cosas que importan y costaron una corrección:
+
+- **El piso de 10 ventas pesa tanto como el umbral.** Sin él, una tienda nueva que cancela su
+  única venta marca 100% y la vigilancia es ruido el primer día.
+- **El denominador son las subórdenes VIVAS más las que canceló la propia tienda.** El primer
+  intento excluía solo lo cancelado por el SISTEMA y dejaba dentro **lo que canceló el
+  comprador**: en dev, una tienda con 8 ventas aparecía con 10, su única cancelación daba 10,0%
+  en vez de 12,5% y el denominador inflado le hacía cruzar el piso, pintándola marcada. Lo
+  detectó el usuario comparando contra los 8 pedidos de su panel.
+
+Verificado en vivo tras el redeploy: "1 de 8 ventas canceladas por la tienda", 12,5%, sin marca,
+y la tarjeta en 0 — coincidiendo con los "8 pedidos total" que muestra el panel del vendedor.
+
+**Commits.** Market: `cb03085` (plan), `0087103` y `58ca932` (detalle desde la campana),
+`e65bdb8` (ficha técnica), `6a24257` (pie), `b1d07f7` (paso 2), `efdb2b1` (popup), `8a37aef`
+(motivos de cancelación), `e546731` (foto del comprador en el editor de cotización).
+Monorepo: `20fd4254` (413 + log), `56447f0c` (O92), `de0c4508` (riel y tarjetas del reembolso),
+`b3be3306` (popup y plazos en la app), `5b0265f6` y `3ff1fda3` (métrica de cancelaciones).
+Backoffice: `88fd64a` (columna y tarjeta).

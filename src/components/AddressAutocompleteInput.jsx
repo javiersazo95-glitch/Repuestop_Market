@@ -32,10 +32,13 @@ export default function AddressAutocompleteInput({
   const [open, setOpen] = useState(false);
   // Evita volver a buscar con el texto que la propia selección acaba de escribir.
   const justPickedRef = useRef('');
+  // Solo se busca cuando la persona escribe (8-oct): con una dirección ya guardada, abrir el
+  // formulario de edición desplegaba sola la lista de sugerencias sobre el campo.
+  const typedRef = useRef(false);
 
   useEffect(() => {
     const term = String(value || '').trim();
-    if (esperandoComuna || term.length < MIN_CARACTERES || term === justPickedRef.current) {
+    if (!typedRef.current || esperandoComuna || term.length < MIN_CARACTERES || term === justPickedRef.current) {
       setSuggestions([]);
       setSearching(false);
       return undefined;
@@ -79,7 +82,10 @@ export default function AddressAutocompleteInput({
         id={id}
         type="text"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => {
+          typedRef.current = true;
+          onChange(event.target.value);
+        }}
         onFocus={() => suggestions.length > 0 && setOpen(true)}
         // El blur se retrasa para que el clic en una sugerencia alcance a registrarse.
         onBlur={(event) => {

@@ -173,9 +173,24 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
+  color: #475569;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+  cursor: pointer;
+}
+.ad-detail-report:hover { color: #c2333d; }
+/* Botón de solo ícono sobre la foto: el texto "Reportar" se desbordaba del círculo y quedaba
+   encima de la imagen (pruebas E2E en dev, 5-oct). Queda para lectores de pantalla. */
+.ad-detail-report span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .ad-detail-thumbs {

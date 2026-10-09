@@ -33,6 +33,11 @@ import RenewAdModal from './RenewAdModal';
 import EditAdModal from './EditAdModal';
 import CreateAdModal from './CreateAdModal';
 import CapturerContactCard from '../CapturerContactCard';
+import NextStepsBanner from './NextStepsBanner';
+import AgendaConfigModal from './AgendaConfigModal';
+import { useSearchParams } from 'react-router-dom';
+import { getAgendaConfigs } from '../../services/agendaConfigsStorage';
+import { createDefaultAgendaConfig, PRINCIPAL_AGENDA_ID, PRINCIPAL_AGENDA_NAME } from '../../data/agendaConfig';
 import './ads-wall.css';
 
 // Mensaje del gate de publicación según el estado del expediente de servicio
@@ -70,10 +75,23 @@ const STATUS_FILTERS = [
  * cualquier estado de moderacion: `GET /anuncios` solo trae lo aprobado, vigente
  * y activo, asi que ahi un anuncio en revision o rechazado no existe.
  */
+// M3 (6-oct): el rechazo en la primera revisión devuelve las Monedas y reenviar el anuncio las
+// vuelve a cobrar. Mismo texto que la app (getResubmitCostNotice).
+function resubmitCostNotice(monedas) {
+  if (!monedas || monedas <= 0) return '';
+  const cantidad = monedas.toLocaleString('es-CL');
+  return ` Te devolvimos ${cantidad} ${monedas === 1 ? 'Moneda' : 'Monedas'} por el rechazo. Al reenviarlo a revisión se vuelven a cobrar.`;
+}
+
 export default function AdsManagementSection({ onNavigateToMural }) {
   const { user } = useAuth();
   const accreditation = useAutomotiveAccreditation(Boolean(user));
   const [isAccreditationOpen, setIsAccreditationOpen] = useState(false);
+  // "Próximos pasos": el horario principal se edita desde el banner. El correo y la
+  // notificación de aprobación llegan con `?seccion=agenda` (abre la agenda si sigue
+  // pendiente) o `?nuevo=1` (abre "Crear anuncio").
+  const [principalAgenda, setPrincipalAgenda] = useState(null); // { config, exists } | null
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [ads, setAds] = useState([]);
   // `GET /anuncios/agendamientos/mias` devuelve en UNA respuesta las reservas de
@@ -208,12 +226,35 @@ export default function AdsManagementSection({ onNavigateToMural }) {
     setIsAccreditationOpen(true);
   };
 
+  const openPrincipalAgenda = useCallback(async () => {
+    const configs = await getAgendaConfigs().catch(() => []);
+    const existing = configs.find((config) => config.id === PRINCIPAL_AGENDA_ID);
+    setPrincipalAgenda({
+      config: existing || { ...createDefaultAgendaConfig(), id: PRINCIPAL_AGENDA_ID, name: PRINCIPAL_AGENDA_NAME },
+      exists: Boolean(existing),
+    });
+  }, []);
+
+  // Enlaces del correo / notificación de aprobación. Se consumen una sola vez.
+  useEffect(() => {
+    const seccion = searchParams.get('seccion');
+    const nuevo = searchParams.get('nuevo');
+    if (!seccion && !nuevo) return;
+    if (accreditation.isLoading) return;
+    if (seccion === 'agenda' && accreditation.onboarding && !accreditation.onboarding.agendaLista) openPrincipalAgenda();
+    if (nuevo === '1' && accreditation.isApproved) setIsCreateModalOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('seccion');
+    next.delete('nuevo');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, accreditation.isLoading, accreditation.isApproved, accreditation.onboarding, openPrincipalAgenda]);
+
   const handleRebook = async (appointment) => {
     setRebookState('loading');
     try {
       const ad = await fetchPublicAd(appointment.adId);
       // Solo una cita vigente se cambia de hora; desde una cancelada o pasada es una reserva nueva.
-      setRebookState({ ad, appointmentId: isAppointmentCurrent(appointment) ? appointment.id : null });
+      setRebookState({ ad, appointment, appointmentId: isAppointmentCurrent(appointment) ? appointment.id : null });
     } catch {
       setRebookState(null);
       window.alert('El anuncio de esta cita ya no está publicado, así que no se puede reservar otra hora.');
@@ -252,6 +293,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
   const handleAdCreated = (created, balance) => {
     setAds((current) => [created, ...current]);
     setTokensBalanceState(balance);
+    accreditation.refresh();
   };
 
   const handleAdUpdated = (saved) => {
@@ -386,6 +428,15 @@ export default function AdsManagementSection({ onNavigateToMural }) {
 
         <CapturerContactCard capturer={user?.captadorPublicidad} context="ads" />
       </div>
+
+      {accreditation.isApproved && (
+        <NextStepsBanner
+          onboarding={accreditation.onboarding}
+          onOpenAgenda={openPrincipalAgenda}
+          onCreateAd={handleOpenCreate}
+          onOpenHours={() => setIsAccreditationOpen(true)}
+        />
+      )}
 
       {/* Accesos rápidos a lo ancho, equivalente web de las "action tiles" de
           la app. Van en su propia fila —no dentro de la cabecera— para que no
@@ -704,7 +755,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
                             <strong>{isRejected ? 'Moderación rechazó este anuncio.' : 'Anuncio vencido.'}</strong>
                             <p>
                               {isRejected
-                                ? `${ad.rejectionReason || 'Sin motivo informado.'} Corrige los datos y se vuelve a revisar automáticamente al guardar.`
+                                ? `${ad.rejectionReason || 'Sin motivo informado.'} Corrige los datos y se vuelve a revisar automáticamente al guardar.${resubmitCostNotice(ad.monedasParaReenviar)}`
                                 : 'Los anuncios duran 30 días en el mural. Usa el botón de reloj para agregar 30 días con Monedas RepuesTop.'}
                             </p>
                           </div>
@@ -766,6 +817,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           isOpen={Boolean(adToEdit)}
           upgradedFromTier={upgradedFromTier}
           upgradedToTier={upgradedToTier}
+          accreditationProfile={accreditation.profile}
           onClose={closeEditModal}
           onAdUpdated={handleAdUpdated}
         />
@@ -778,6 +830,16 @@ export default function AdsManagementSection({ onNavigateToMural }) {
         hasUsedBasicFreePeriod={hasUsedBasicFreePeriod}
         onClose={() => setIsCreateModalOpen(false)}
         onAdCreated={handleAdCreated}
+      />
+
+      {/* Horario principal desde "Próximos pasos": guardarlo cierra el paso de agenda. */}
+      <AgendaConfigModal
+        isOpen={Boolean(principalAgenda)}
+        title="Tu agenda de citas"
+        configToEdit={principalAgenda?.config || null}
+        allowDelete={false}
+        onClose={() => setPrincipalAgenda(null)}
+        onSaved={() => accreditation.refresh()}
       />
 
       {isTutorialOpen && <AdsTutorialModal onClose={() => setIsTutorialOpen(false)} />}
@@ -810,6 +872,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           onClose={() => setRebookState(null)}
           isRescheduling={Boolean(rebookState.appointmentId)}
           rescheduleFromId={rebookState.appointmentId}
+          fromAppointment={rebookState.appointment}
         />
       )}
 

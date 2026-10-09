@@ -4,7 +4,11 @@ import {
   Lock, ShoppingBag, SlidersHorizontal, X,
 } from 'lucide-react';
 import OrderCard from './OrderCard';
-import { getSellerWithdrawalDetailApi, getSellerWithdrawalsApi } from '../services/api';
+import usePagedList, { recentOrdersNote } from '../hooks/usePagedList';
+import { useRestoredState } from '../routes/useRestoredState';
+import { useScrollMemory } from '../routes/useScrollMemory';
+import ListPager from './ListPager';
+import { getSellerBalanceApi, getSellerWithdrawalDetailApi, getSellerWithdrawalsApi } from '../services/api';
 
 const STATUS_FILTERS = [
   { value: 'pending', label: 'Pendiente' },
@@ -75,13 +79,6 @@ function searchableOrderText(order) {
   ].filter(Boolean).join(' ');
 }
 
-function isPaidOrder(order) {
-  if (String(order?.paymentStatus || '').toLowerCase() === 'paid') return true;
-  return ['PAGADO', 'EN_PREPARACION', 'ENVIADO', 'ENTREGADO', 'FINALIZADO', 'EN_MEDIACION'].includes(
-    String(order?.estado || order?.status || '').toUpperCase()
-  );
-}
-
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
 }
@@ -89,13 +86,16 @@ function formatCLP(value) {
 // `readOnly` = tienda bloqueada. Los pedidos se siguen viendo (el vendedor necesita
 // saber que dejo pendiente), pero no se puede avanzar ninguno: el backend rechaza el
 // despacho en `PedidoEnvioSupport` y el boton solo produciria un error.
-export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder, onUpdateStatus, onRegisterSaleReceipt, readOnly = false }) {
-  const [searchQuery, setSearchQuery] = useState('');
+// `initialStatuses`: filtro con que se abre desde "Por despachar" del Resumen (U6).
+export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder, onUpdateStatus, onRegisterSaleReceipt, readOnly = false, initialStatuses }) {
+  // Filtros y pagina se recuperan al volver del detalle de un pedido (la lista se desmonta al abrirlo).
+  const viewId = 'pedidos-vendedor';
+  const [searchQuery, setSearchQuery] = useRestoredState(viewId, 'searchQuery', '');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [statuses, setStatuses] = useState([]);
-  const [sources, setSources] = useState([]);
-  const [dateFilter, setDateFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('newest');
+  const [statuses, setStatuses] = useRestoredState(viewId, 'statuses', () => (Array.isArray(initialStatuses) ? initialStatuses : []));
+  const [sources, setSources] = useRestoredState(viewId, 'sources', []);
+  const [dateFilter, setDateFilter] = useRestoredState(viewId, 'dateFilter', 'all');
+  const [sortBy, setSortBy] = useRestoredState(viewId, 'sortBy', 'newest');
   const [withdrawalDatesByOrder, setWithdrawalDatesByOrder] = useState({});
 
   useEffect(() => {
@@ -114,16 +114,23 @@ export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder
     return () => { cancelled = true; };
   }, [sellerId]);
 
+  // U3: lo que se puede retirar hoy sale del backend; antes se sumaba aqui todo lo pagado.
+  const [balance, setBalance] = useState(null);
+  useEffect(() => {
+    if (!sellerId) return;
+    let cancelled = false;
+    getSellerBalanceApi(sellerId)
+      .then((data) => { if (!cancelled) setBalance(data || null); })
+      .catch(() => { if (!cancelled) setBalance(null); });
+    return () => { cancelled = true; };
+  }, [sellerId]);
+
   const activeFilterCount = statuses.length + sources.length + (dateFilter === 'all' ? 0 : 1);
 
   const summary = useMemo(() => {
     const inProgress = orders.filter((order) => ['pending', 'preparing', 'sent'].includes(canonicalStatus(order))).length;
     const completed = orders.filter((order) => ['received', 'finished'].includes(canonicalStatus(order))).length;
-    const revenue = orders.filter(isPaidOrder).reduce(
-      (total, order) => total + Number(order.totalVendedor ?? order.totalSeller ?? order.netoProveedor ?? 0),
-      0
-    );
-    return { inProgress, completed, revenue };
+    return { inProgress, completed };
   }, [orders]);
 
   const visibleOrders = useMemo(() => {
@@ -139,6 +146,8 @@ export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder
       return sortBy === 'newest' ? rightTime - leftTime : leftTime - rightTime;
     });
   }, [dateFilter, orders, searchQuery, sortBy, sources, statuses]);
+  const { pageItems, pagerProps } = usePagedList(visibleOrders, JSON.stringify([searchQuery, statuses, sources, dateFilter, sortBy]), undefined, viewId);
+  useScrollMemory(orders.length > 0);
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -163,7 +172,7 @@ export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder
         <div className="seller-orders-summary-grid">
           <article className="orders-summary-amber"><span><Clock3 size={19} /></span><div className="seller-orders-summary-copy"><small>En curso</small><strong>{summary.inProgress}</strong></div></article>
           <article className="orders-summary-purple"><span><CheckCircle2 size={19} /></span><div className="seller-orders-summary-copy"><small>Completados</small><strong>{summary.completed}</strong></div></article>
-          <article className="orders-summary-green"><span><Banknote size={19} /></span><div className="seller-orders-summary-copy"><small>Mis ganancias</small><strong>{formatCLP(summary.revenue)}</strong></div></article>
+          <article className="orders-summary-green"><span><Banknote size={19} /></span><div className="seller-orders-summary-copy"><small>Disponible para retirar</small><strong>{balance ? formatCLP(Math.max(0, Number(balance.disponible || 0))) : '—'}</strong>{balance && <small>Por liberar {formatCLP(Number(balance.retenido || 0) + Number(balance.enCurso || 0))} · Retirado {formatCLP(balance.retirado)}{Number(balance.cargos || 0) < 0 ? ` · Cargos -${formatCLP(Math.abs(Number(balance.cargos)))}` : ''}</small>}</div></article>
         </div>
       </section>
 
@@ -194,7 +203,7 @@ export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder
         <label><ArrowDownUp size={16} /><span>Ordenar</span><select value={sortBy} onChange={(event) => setSortBy(event.target.value)}><option value="newest">Más nuevos primero</option><option value="oldest">Más antiguos primero</option></select></label>
       </div>
 
-      {!orders.length ? <div className="seller-orders-empty"><span><ShoppingBag size={27} /></span><strong>Aún no hay pedidos pagados</strong><p>Cuando un comprador complete un pago, el pedido aparecerá aquí con su detalle real.</p></div> : !visibleOrders.length ? <div className="seller-orders-empty"><span><SlidersHorizontal size={27} /></span><strong>No encontramos pedidos</strong><p>Ajusta la búsqueda o limpia los filtros para volver a ver tus pedidos.</p><button type="button" onClick={clearFilters}>Limpiar filtros</button></div> : <div className="profile-orders-cards-grid seller-orders-card-grid">{visibleOrders.map((order) => <OrderCard key={order.id} order={order} mode="seller" withdrawalDate={withdrawalDatesByOrder[String(order.id)]} onSelectOrder={onSelectOrder} onUpdateStatus={readOnly ? undefined : onUpdateStatus} onRegisterSaleReceipt={readOnly ? undefined : onRegisterSaleReceipt} />)}</div>}
+      {!orders.length ? <div className="seller-orders-empty"><span><ShoppingBag size={27} /></span><strong>Aún no hay pedidos pagados</strong><p>Cuando un comprador complete un pago, el pedido aparecerá aquí con su detalle real.</p></div> : !visibleOrders.length ? <div className="seller-orders-empty"><span><SlidersHorizontal size={27} /></span><strong>No encontramos pedidos</strong><p>Ajusta la búsqueda o limpia los filtros para volver a ver tus pedidos.</p><button type="button" onClick={clearFilters}>Limpiar filtros</button></div> : <><div className="profile-orders-cards-grid seller-orders-card-grid">{pageItems.map((order) => <OrderCard key={order.id} order={order} mode="seller" withdrawalDate={withdrawalDatesByOrder[String(order.id)]} onSelectOrder={onSelectOrder} onUpdateStatus={readOnly ? undefined : onUpdateStatus} onRegisterSaleReceipt={readOnly ? undefined : onRegisterSaleReceipt} />)}</div><ListPager pagerProps={pagerProps} itemLabel="pedidos" note={recentOrdersNote(orders.length)} /></>}
     </div>
   );
 }

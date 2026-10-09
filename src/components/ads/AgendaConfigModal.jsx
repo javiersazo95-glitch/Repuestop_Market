@@ -11,7 +11,7 @@ import AgendaScheduleEditor from './AgendaScheduleEditor';
  * se reutiliza tal cual; acá solo se le suma el nombre y la persistencia contra
  * el backend compartido con el móvil.
  */
-export default function AgendaConfigModal({ isOpen, configToEdit, onClose, onSaved }) {
+export default function AgendaConfigModal({ isOpen, configToEdit, onClose, onSaved, title, allowDelete = true }) {
   const [name, setName] = useState('');
   const [config, setConfig] = useState(() => createDefaultAgendaConfig());
   const [busy, setBusy] = useState(false);
@@ -78,7 +78,7 @@ export default function AgendaConfigModal({ isOpen, configToEdit, onClose, onSav
       <div className="booking-modal-card agenda-config-modal-card">
         <div className="booking-modal-header">
           <div>
-            <h3><CalendarClock size={22} className="text-emerald-600" /> {configToEdit ? 'Editar agenda' : 'Nueva agenda'}</h3>
+            <h3><CalendarClock size={22} className="text-emerald-600" /> {title || (configToEdit ? 'Editar agenda' : 'Nueva agenda')}</h3>
             <p>Arma tus horarios una vez y reutilízalos en tus avisos empresariales.</p>
           </div>
           <button
@@ -115,7 +115,7 @@ export default function AgendaConfigModal({ isOpen, configToEdit, onClose, onSav
         </div>
 
         <div className="agenda-config-modal-footer">
-          {configToEdit && (
+          {configToEdit && allowDelete && (
             <button type="button" className="btn-mgmt-delete" onClick={handleDelete} disabled={busy}>
               <Trash2 size={15} /> Eliminar
             </button>

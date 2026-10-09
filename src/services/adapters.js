@@ -177,7 +177,7 @@ function mapCompatibilidad(dto) {
           const versionLabel = g.version
             || g.versionNombre
             || (versionLabels.length ? versionLabels.join(', ') : '')
-            || (versionCount > 0 ? `${versionCount} versión${versionCount === 1 ? '' : 'es'}` : '')
+            || (versionCount > 0 ? `${versionCount} ${versionCount === 1 ? 'versión' : 'versiones'}` : '')
             || g.trim
             || '';
           return {
@@ -421,6 +421,10 @@ export function adaptStore(dto, index = 0) {
     // La portada si conserva la imagen generica, que es decorativa y no identifica a nadie.
     logoUrl: resolveMediaUrl(dto.logoUrl || dto.userProfileUrl) || null,
     coverUrl: resolveMediaUrl(dto.coverUrl) || '/tiensoft_cover.jpg',
+    // Redes sociales de la tienda; el perfil solo muestra las que traen enlace.
+    instagramUrl: dto.instagramUrl || null,
+    facebookUrl: dto.facebookUrl || null,
+    tiktokUrl: dto.tiktokUrl || null,
     responseTimeLabel: dto.responseTimeLabel || '',
     // Dirección pública geocodificada (TiendaGeocodificacionJob): "cerca de mí" del directorio.
     latitude: toNumber(dto.latitude) ?? null,
@@ -625,12 +629,29 @@ export function adaptCompatibleOffersPage(response) {
  * El backend fue modelado desde el cliente, asi que casi todos los campos ya
  * vienen con el nombre que usa la UI. Lo que si hay que normalizar:
  *
- * - `rating` y `reviewsCount` llegan HARDCODEADOS en 5.0 y 0 desde
- *   `AnuncioService.toResponse()`; no hay reseñas de anuncios en el backend.
- *   Se descartan para no mostrar un 5.0 falso en todas las tarjetas.
+ * - `rating` y `reviewsCount`: los anuncios aún no tienen reseñas en el backend.
+ *   Antes llegaba un 5.0 fijo; ahora llega `rating: null` y `reviewsCount: 0`.
+ *   Solo se conserva una nota si viene con reseñas reales (ver `getAdRatingSummary`),
+ *   para no mostrar nunca un 5.0 falso en las tarjetas ni en Favoritos.
  * - las imagenes pueden venir como ruta relativa del servidor de archivos.
  * - `agendaConfig` viene como `Map<String,Object>`; puede llegar vacio ({}).
  */
+/**
+ * Nota del taller lista para mostrarse, o `null` si no corresponde mostrar estrellas:
+ * sin reseñas (o con una copia vieja que no trae `reviewsCount`) no hay nota que mostrar.
+ */
+export function getAdRatingSummary(ad) {
+  const rating = toNumber(ad?.rating);
+  const reviewsCount = toNumber(ad?.reviewsCount);
+  if (rating == null || rating <= 0 || reviewsCount == null || reviewsCount <= 0) return null;
+  return { rating, reviewsCount };
+}
+
+function adRatingFields(dto) {
+  const summary = getAdRatingSummary(dto);
+  return summary ?? { rating: null, reviewsCount: 0 };
+}
+
 export function adaptAd(dto) {
   if (!dto) return null;
   const images = (Array.isArray(dto.images) ? dto.images : []).map(resolveMediaUrl).filter(Boolean);
@@ -660,6 +681,7 @@ export function adaptAd(dto) {
     phone: dto.phone || '',
     whatsapp: dto.whatsapp || null,
     openingHours: dto.openingHours || '',
+    ...adRatingFields(dto),
     images,
     storyImages,
     features: Array.isArray(dto.features) ? dto.features : [],
@@ -669,6 +691,8 @@ export function adaptAd(dto) {
     specialistBrands: Array.isArray(dto.specialistBrands) ? dto.specialistBrands.filter(Boolean) : [],
     is24Hours: dto.is24Hours === true,
     hasOnlineBooking: dto.hasOnlineBooking === true,
+    // El taller va donde está el vehículo, dentro de la comuna del anuncio.
+    homeService: dto.homeService === true,
     agendaConfig,
     agendaConfigId: dto.agendaConfigId || null,
     agendaConfigName: dto.agendaConfigName || null,
@@ -682,6 +706,8 @@ export function adaptAd(dto) {
     updatedAt: dto.updatedAt || null,
     moderationStatus: dto.moderationStatus || 'PENDIENTE',
     rejectionReason: dto.rejectionReason || null,
+    // M3 (6-oct): Monedas que se vuelven a cobrar al reenviar a revisión un anuncio rechazado.
+    monedasParaReenviar: Number(dto.monedasParaReenviar) || 0,
     reviewedAt: dto.reviewedAt || null,
     activo: dto.activo === true,
   };
@@ -745,6 +771,8 @@ export function toAdRequestPayload(ad) {
     servicesOffered: list(ad?.servicesOffered, limits.maxTags),
     specialistBrands: list(ad?.specialistBrands, 20),
     is24Hours: ad?.is24Hours === true,
+    // Viaja siempre: el PUT reemplaza todos los campos y sin él se perdería al editar.
+    homeService: ad?.homeService === true,
     hasOnlineBooking,
     agendaConfig: hasOnlineBooking ? agendaConfig : null,
     agendaConfigId: ad?.agendaConfigId || null,
@@ -796,6 +824,8 @@ export function adaptAppointment(dto) {
     vehiclePatent: dto.vehiclePatent || '',
     vehicleModel: dto.vehicleModel || '',
     notes: dto.notes || '',
+    homeService: dto.homeService === true,
+    homeAddress: dto.homeAddress || '',
     status: APPOINTMENT_STATUSES.includes(dto.status) ? dto.status : 'pending',
     createdAt: dto.createdAt || null,
     isRedacted: !dto.customerName && !dto.customerUserId
@@ -835,6 +865,9 @@ export function toAppointmentRequestPayload(form) {
     customerEmail: text(form?.customerEmail),
     vehiclePatent: text(form?.vehiclePatent) || null,
     vehicleModel: text(form?.vehicleModel) || null,
-    notes: text(form?.notes) || null
+    notes: text(form?.notes) || null,
+    // Servicio a domicilio: el backend exige que el anuncio lo ofrezca y que venga la dirección.
+    homeService: form?.homeService === true,
+    homeAddress: form?.homeService === true ? (text(form?.homeAddress) || null) : null
   };
 }

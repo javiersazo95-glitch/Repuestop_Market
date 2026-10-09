@@ -12,7 +12,7 @@ import CartLineItem from './CartLineItem';
  * El método de entrega ya no se elige acá: se pregunta por tienda en el checkout, donde
  * ya se sabe si hace falta pedir dirección.
  */
-export default function CartStoreGroup({ group, activeVehicle, onUpdateQuantity, onRemove }) {
+export default function CartStoreGroup({ group, activeVehicle, compatStatusOf = null, onUpdateQuantity, onRemove }) {
   const { proveedorId, vendedor, items } = group;
 
   return (
@@ -34,6 +34,7 @@ export default function CartStoreGroup({ group, activeVehicle, onUpdateQuantity,
             key={item.id}
             item={item}
             activeVehicle={activeVehicle}
+            compatibility={compatStatusOf ? compatStatusOf(item) : null}
             onUpdateQuantity={onUpdateQuantity}
             onRemove={onRemove}
           />

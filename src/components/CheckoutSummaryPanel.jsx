@@ -12,10 +12,17 @@ function formatCLP(value) {
  *
  * Los montos llegan calculados desde `cartTotals` (MarketplaceContext). El despacho se
  * cobra al comprador y forma parte de la base de las comisiones del vendedor.
+ *
+ * `beforeCta`: lo que tiene que verse antes del botón (p. ej. el aviso de compatibilidad y la
+ * casilla "Entiendo y quiero comprarlo igual" que lo habilita).
+ *
+ * `stickyAviso` ({ texto, onIr }): en el celular la barra fija tapa el resumen y la casilla queda
+ * fuera de la vista; con un aviso pendiente, la barra lo dice y su botón lleva a la casilla en vez
+ * de quedar deshabilitado sin explicación.
  */
 export default function CheckoutSummaryPanel({
   itemCount, subtotal, costoEnvio, total, shippingLabel,
-  ctaLabel, onCta, ctaDisabled = false, ctaLoading = false, warning, children,
+  ctaLabel, onCta, ctaDisabled = false, ctaLoading = false, warning, beforeCta, stickyAviso, children,
 }) {
   return (
     <aside className="checkout-summary" aria-label="Resumen de la compra">
@@ -39,15 +46,23 @@ export default function CheckoutSummaryPanel({
         <strong>{formatCLP(total)}</strong>
       </div>
 
+      {beforeCta}
+
       {warning && <p className="checkout-summary-warning">{warning}</p>}
 
       {/* Solo movil: el resumen se renderiza despues de todos los grupos de la compra. */}
       {onCta && (
-        <MobileStickyBar label={`Total · ${itemCount} ${itemCount === 1 ? 'producto' : 'productos'}`} value={formatCLP(total)} watchSelector=".checkout-summary-cta" ariaLabel="Continuar la compra">
-          <button type="button" className="mobile-sticky-bar__btn" onClick={onCta} disabled={ctaDisabled || ctaLoading}>
-            {ctaLoading ? <Loader2 size={18} className="spin-icon" /> : null}
-            <span>{ctaLabel}</span>
-          </button>
+        <MobileStickyBar label={`Total · ${itemCount} ${itemCount === 1 ? 'producto' : 'productos'}`} value={formatCLP(total)} hint={stickyAviso?.texto} watchSelector=".checkout-summary-cta" ariaLabel="Continuar la compra">
+          {stickyAviso ? (
+            <button type="button" className="mobile-sticky-bar__btn" onClick={stickyAviso.onIr}>
+              <span>Revisar aviso</span>
+            </button>
+          ) : (
+            <button type="button" className="mobile-sticky-bar__btn" onClick={onCta} disabled={ctaDisabled || ctaLoading}>
+              {ctaLoading ? <Loader2 size={18} className="spin-icon" /> : null}
+              <span>{ctaLabel}</span>
+            </button>
+          )}
         </MobileStickyBar>
       )}
 

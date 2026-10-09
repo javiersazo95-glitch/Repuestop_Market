@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Clock, Inbox, MessageSquare, ReceiptText, Search, Send, Sliders, X } from 'lucide-react';
 import QuoteCard from './QuoteCard';
+import usePagedList from '../hooks/usePagedList';
+import ListPager from './ListPager';
 import { EmptyState } from './ProfileDashboard';
 import { isConversationPaused } from '../utils/quoteFlow';
 
@@ -16,8 +18,10 @@ export default function ProfileQuotesPanel({
   quoteSummary,
   activeQuoteSource,
   onSelectQuote,
+  initialFilter,
 }) {
-  const [quoteFilter, setQuoteFilter] = useState('all');
+  // `initialFilter`: "pending" cuando se llega desde "Cotizaciones por responder" (U6).
+  const [quoteFilter, setQuoteFilter] = useState(initialFilter || 'all');
   const [quoteSearch, setQuoteSearch] = useState('');
   const [quoteSort, setQuoteSort] = useState('newest');
 
@@ -43,6 +47,7 @@ export default function ProfileQuotesPanel({
         return quoteSort === 'newest' ? rightTime - leftTime : leftTime - rightTime;
       });
   }, [activeQuoteSource, quoteFilter, quoteSearch, quoteSort]);
+  const { pageItems, pagerProps } = usePagedList(quoteConversations, JSON.stringify([quoteFilter, quoteSearch, quoteSort, quotesAsBuyer]));
 
   return (
     <div className="profile-panel seller-quotes-panel">
@@ -81,8 +86,9 @@ export default function ProfileQuotesPanel({
       ) : quoteConversations.length === 0 ? (
         <EmptyState label="No encontramos cotizaciones con esos filtros." />
       ) : (
+        <>
         <div className="profile-orders-cards-grid seller-quotes-grid">
-          {quoteConversations.map((c) => (
+          {pageItems.map((c) => (
             <QuoteCard
               key={c.id}
               quote={c}
@@ -92,6 +98,8 @@ export default function ProfileQuotesPanel({
             />
           ))}
         </div>
+        <ListPager pagerProps={pagerProps} itemLabel="cotizaciones" />
+        </>
       )}
     </div>
   );
