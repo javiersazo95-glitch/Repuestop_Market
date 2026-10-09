@@ -2486,3 +2486,20 @@ export async function upsertAgendaConfigApi(config) {
 export async function deleteAgendaConfigApi(id) {
   return fetchApi(`/agenda-configs/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
+
+/**
+ * Certificado de cumplimiento tributario del semestre (Res. SII 168 de 2025: la plataforma lo
+ * verifica en enero y julio). Subirlo NO devuelve la tienda a revision.
+ */
+export async function getSellerCertificadoCumplimientoApi(proveedorId, { signal } = {}) {
+  return fetchApi(`/proveedores/${proveedorId}/certificado-cumplimiento`, { signal });
+}
+
+export async function uploadSellerCertificadoCumplimientoApi(proveedorId, file) {
+  const formData = new FormData();
+  formData.append('archivo', file);
+  return fetchApi(`/proveedores/${proveedorId}/certificado-cumplimiento`, {
+    method: 'POST',
+    body: formData,
+  });
+}

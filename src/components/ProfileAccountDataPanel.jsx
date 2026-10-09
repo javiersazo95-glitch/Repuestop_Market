@@ -19,6 +19,7 @@ import AddressAutocompleteInput from './AddressAutocompleteInput';
 import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import VehicleBrandLogo from './VehicleBrandLogo';
 import SellerVerificationCard from './SellerVerificationCard';
+import CertificadoCumplimientoCard from './CertificadoCumplimientoCard';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
 import {
   SHIPPING_METHOD_DEFS, parseShippingSelections, buildShippingMethodsString,
@@ -911,6 +912,8 @@ export default function ProfileAccountDataPanel({
                   <NotificationPreferencesPanel />
                 </div>
                 {isSeller && <SellerVerificationCard sellerId={effectiveSellerId} />}
+                {/* Res. SII 168: certificado de cumplimiento actualizado en enero y julio. */}
+                {isSeller && <CertificadoCumplimientoCard sellerId={effectiveSellerId} />}
               </div>
             </div>
           </div>
