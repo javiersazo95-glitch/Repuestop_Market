@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import AdDetailView from '../components/ads/AdDetailView';
 import { useAppNavigation } from '../routes/useAppNavigation';
-import { parseIdSlug } from '../routes/paths';
+import { ROUTES, parseIdSlug } from '../routes/paths';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 import { fetchPublicAd, getCachedWallAds } from '../services/adsStorage';
 import { qk } from '../services/queryKeys';
@@ -49,8 +49,8 @@ export default function AdDetailPage() {
         <AlertCircle size={38} aria-hidden="true" />
         <h2>No encontramos este anuncio</h2>
         <p>{error?.message || 'No se pudo cargar la información del anuncio.'}</p>
-        <button type="button" className="route-status-action" onClick={() => nav.goAdsWall()}>
-          <ArrowLeft size={16} /> Volver al mural
+        <button type="button" className="route-status-action" onClick={() => nav.goBack(ROUTES.adsWall)}>
+          <ArrowLeft size={16} /> {nav.canGoBack ? 'Volver' : 'Volver al mural'}
         </button>
       </div>
     );
@@ -60,5 +60,11 @@ export default function AdDetailPage() {
     return <PageLoadingSkeleton />;
   }
 
-  return <AdDetailView ad={ad} onBack={() => nav.goAdsWall()} />;
+  return (
+    <AdDetailView
+      ad={ad}
+      onBack={() => nav.goBack(ROUTES.adsWall)}
+      backLabel={nav.canGoBack ? 'Volver' : 'Volver al mural'}
+    />
+  );
 }

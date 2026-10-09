@@ -13,6 +13,8 @@ import { adaptProduct, getAdRatingSummary } from '../services/adapters';
 import { qk } from '../services/queryKeys';
 import { adDetailPath, productPath, ROUTES, storePath } from '../routes/paths';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
+import { useRestoredState } from '../routes/useRestoredState';
+import { useScrollMemory } from '../routes/useScrollMemory';
 
 const TABS = [
   { id: 'all', label: 'Todos', Icon: Heart },
@@ -74,9 +76,11 @@ function availabilityLabel(stock) {
 export default function ProfileFavoritesPanel({ userId, productFavorites = [], isLoading, error }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('all');
-  const [query, setQuery] = useState('');
+  // Pestaña, busqueda y scroll se recuperan al volver de un repuesto, anuncio o tienda.
+  const [activeTab, setActiveTab] = useRestoredState('favoritos', 'activeTab', 'all');
+  const [query, setQuery] = useRestoredState('favoritos', 'query', '');
   const [removingId, setRemovingId] = useState(null);
+  useScrollMemory(!isLoading);
   const { savedAds, savedStores, toggleAd, toggleStore } = useSavedMarketplaceItems(userId);
 
   // Ficha de cada favorito (tienda, marca, categoría, calidad y stock real), como hace la app. El
@@ -231,10 +235,10 @@ function FavoritesMobile({
   products, ads, stores, isLoading, error, removingId,
   onRemoveProduct, onRemoveAd, onRemoveStore, onOpenProduct, onOpenStore, onOpenAd, onExplore,
 }) {
-  const [tab, setTab] = useState('all');
-  const [query, setQuery] = useState('');
-  const [onlyAvailable, setOnlyAvailable] = useState(false);
-  const [newestFirst, setNewestFirst] = useState(true);
+  const [tab, setTab] = useRestoredState('favoritos-movil', 'tab', 'all');
+  const [query, setQuery] = useRestoredState('favoritos-movil', 'query', '');
+  const [onlyAvailable, setOnlyAvailable] = useRestoredState('favoritos-movil', 'onlyAvailable', false);
+  const [newestFirst, setNewestFirst] = useRestoredState('favoritos-movil', 'newestFirst', true);
 
   const term = query.trim().toLocaleLowerCase('es');
   const visibleProducts = products

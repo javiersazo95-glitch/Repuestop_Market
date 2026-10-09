@@ -6,11 +6,15 @@ import SocialProofTestimonials from '../components/SocialProofTestimonials';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
+import { useScrollMemory } from '../routes/useScrollMemory';
 
 export default function HomePage() {
   useDocumentTitle(null);
   const nav = useAppNavigation();
   const { activeVehicle, setActiveVehicle, openQuote } = useMarketplace();
+  // Al volver de un repuesto o una tienda, el inicio queda en la misma posición (las secciones
+  // se pintan desde la caché de React Query).
+  useScrollMemory(true);
 
   return (
     <>

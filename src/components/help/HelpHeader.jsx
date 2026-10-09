@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronLeft, LogIn, Store, UserRound } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { HELP_ROLES, resolveReportType } from '../../data/helpContent';
 import { profilePath, ROUTES } from '../../routes/paths';
@@ -15,6 +15,7 @@ import { profilePath, ROUTES } from '../../routes/paths';
  */
 export default function HelpHeader() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, role } = useAuth();
   const reportType = resolveReportType(role, user);
   const isSeller = reportType === HELP_ROLES.SELLER;
@@ -25,7 +26,9 @@ export default function HelpHeader() {
   const goBack = () => {
     // El centro de ayuda puede abrirse desde cualquier vista del perfil. Conservamos
     // exactamente ese origen en vez de enviarlo siempre al marketplace.
-    if (window.history.length > 1) navigate(-1);
+    // `history.length` cuenta tambien paginas de otros sitios: con entrada directa "atras"
+    // sacaba a la persona de RepuesTop. `location.key` 'default' es la primera entrada de la app.
+    if (location.key && location.key !== 'default') navigate(-1);
     else navigate(ROUTES.home);
   };
 

@@ -61,8 +61,10 @@ export default function ProfilePage() {
   const { isBlocked } = useSellerBlocked();
   const mustCompleteApplication = isSeller && !isBlocked && !isUnknown && !isApproved;
 
-  const handleTabChange = useCallback((nextTab) => {
-    navigate(profilePath(nextTab));
+  // `replace`: el panel corrige una pestana que la cuenta suspendida no puede ver sin dejarla en
+  // el historial (si no, "atras" volvia a ella y quedaba en un bucle).
+  const handleTabChange = useCallback((nextTab, options) => {
+    navigate(profilePath(nextTab), options?.replace ? { replace: true } : undefined);
   }, [navigate]);
 
   // El centro de ayuda salió del perfil: los enlaces y marcadores viejos a

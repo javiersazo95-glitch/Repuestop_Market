@@ -14,6 +14,8 @@ import './styles/public-mobile.css'
 import './styles/product-detail-mobile.css'
 // Ficha del repuesto en escritorio (≥769px): todo dentro de min-width, no toca el móvil.
 import './styles/product-detail-desktop.css'
+// Panel y aviso de cuenta suspendida (pruebas en dev, 2026-10-09).
+import './styles/account-suspension.css'
 import App from './App.jsx'
 import { initSentry } from './sentry.js'
 import { watchStaleChunks } from './utils/staleDeploy.js'

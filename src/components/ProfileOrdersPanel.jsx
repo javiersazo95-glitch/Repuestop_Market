@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertTriangle, ShoppingCart } from 'lucide-react';
 import {
   getBuyerOrderByRefApi, getSellerOrderByNumberApi, retryOrderPaymentApi, confirmOrderPaymentApi, updateOrderStatusApi,
@@ -50,6 +50,7 @@ export default function ProfileOrdersPanel({
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   // H59 fase 3: la tienda suspendida sin fraude (modo cumplimiento) sigue completando sus ventas
   // ya pagadas; solo el bloqueo por fraude deja el panel en solo lectura.
   const sellerActionsLocked = Boolean(isSellerBlocked) && !sellerComplianceMode;
@@ -499,11 +500,17 @@ export default function ProfileOrdersPanel({
                 mode={asBuyerView ? 'buyer' : 'seller'}
                 sellerId={effectiveSellerId}
                 userId={effectiveUserId}
-                onClose={() => navigate(detailIsPurchase ? `${ROUTES.profile}/compras` : `${ROUTES.profile}/pedidos`)}
+                // Cerrar vuelve a la lista tal como estaba; sin historial (enlace directo) abre la lista.
+                onClose={() => {
+                  if (location.key && location.key !== 'default') navigate(-1);
+                  else navigate(detailIsPurchase ? `${ROUTES.profile}/compras` : `${ROUTES.profile}/pedidos`);
+                }}
                 onUpdateStatus={detailIsPurchase ? handlePurchaseUpdateStatus : handleUpdateOrderStatus}
                 onRetryPayment={asBuyerView && !isBuyerBlocked ? handleRetryPayment : undefined}
                 onCancelOrder={asBuyerView ? handleCancelOrder : undefined}
-                onCancelBuyerSubOrder={asBuyerView ? handleCancelBuyerSubOrder : undefined}
+                // Comprador suspendido: sigue su pedido y conversa con la tienda, pero no cancela su
+                // compra a la tienda, no reclama ni vetea la entrega (pruebas en dev, 2026-10-09).
+                onCancelBuyerSubOrder={asBuyerView && !isBuyerBlocked ? handleCancelBuyerSubOrder : undefined}
                 autoOpenRating={asBuyerView && !isBuyerBlocked && ratingPromptOrderId != null && String(detailOrder.id) === String(ratingPromptOrderId)}
                 onRatingPromptShown={() => setRatingPromptOrderId(null)}
                 onOrderRated={handleOrderRated}
@@ -512,8 +519,8 @@ export default function ProfileOrdersPanel({
                 onRegisterDispatch={!asBuyerView && !sellerActionsLocked ? handleRegisterOrderDispatch : undefined}
                 onRegisterSaleReceipt={!asBuyerView && !sellerActionsLocked ? handleRegisterSaleReceipt : undefined}
                 onDeclareDelivery={!asBuyerView && !sellerActionsLocked ? handleDeclareOrderDelivery : undefined}
-                onDisputeDeclaredDelivery={asBuyerView ? handleDisputeDeclaredDelivery : undefined}
-                onCreateClaim={asBuyerView ? handleCreateOrderClaim : undefined}
+                onDisputeDeclaredDelivery={asBuyerView && !isBuyerBlocked ? handleDisputeDeclaredDelivery : undefined}
+                onCreateClaim={asBuyerView && !isBuyerBlocked ? handleCreateOrderClaim : undefined}
                 onOpenDispute={(proveedorId, draftMessage) => {
                   const params = new URLSearchParams({ caso: String(detailOrder.id) });
                   if (proveedorId != null && proveedorId !== '') params.set('tienda', String(proveedorId));
