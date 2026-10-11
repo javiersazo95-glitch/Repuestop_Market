@@ -14,6 +14,7 @@ import SaleReceiptModal from './SaleReceiptModal';
 import SellerChargesBreakdownModal from './SellerChargesBreakdownModal';
 import useSellerChecklist from '../hooks/useSellerChecklist';
 import { cancellationReasonLabel } from '../data/cancellationReason';
+import { resolveShippingService } from '../data/shippingMethods';
 
 export const UNIFIED_STATUS_CONFIG = {
   PENDIENTE: { label: 'Pendiente de pago', icon: Clock, className: 'badge-amber', tone: 'amber' },
@@ -161,6 +162,8 @@ export default function OrderCard({
   // Lo que el comprador eligio en el checkout, por tienda (H8). El courier ("Starken") es otro
   // dato: dice quien lleva el paquete, no como se compro.
   const deliveryTerms = orderDeliverySummary(order);
+  // Ícono del método: bicicleta dentro de la comuna, camión fuera (antes siempre camión).
+  const DeliveryIcon = resolveShippingService(deliveryTerms).icon;
   const isStorePickup = isStorePickupOrder(order);
   const displayStatus = normStatus === 'ENVIADO' && isStorePickup ? 'LISTO_RETIRO' : rawStatus;
   // El codigo de retiro del comprador tambien en la tarjeta: antes solo salia al abrir el
@@ -456,12 +459,12 @@ export default function OrderCard({
             // pedidos multi-tienda, donde `tipoEnvio` es una columna del PEDIDO completo (no de
             // la subordén) y puede no corresponder a la tienda con costo de envio (ver
             // orderDeadlines.js).
-            <span className="order-info-chip"><Truck size={13} /> {deliveryTerms}: {formatCLP(shippingFee)}</span>
+            <span className="order-info-chip"><DeliveryIcon size={13} /> {deliveryTerms}: {formatCLP(shippingFee)}</span>
           ) : (
             // "courier_por_pagar" (envio fuera de la comuna) siempre llega con costo 0 -es "por
             // pagar", se desconoce al comprar-, asi que caer aca no significa que sea despacho
             // local: antes esta rama SIEMPRE decia "Despacho a domicilio" sin mirar `tipoEnvio`.
-            <span className="order-info-chip"><Truck size={13} /> {deliveryTerms}</span>
+            <span className="order-info-chip"><DeliveryIcon size={13} /> {deliveryTerms}</span>
           )}
           {isSeller && deliveryAddress && !isStorePickup && (
             <span className="order-info-chip address"><MapPin size={13} /> {deliveryAddressLabel}</span>

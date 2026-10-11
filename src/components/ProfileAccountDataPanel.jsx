@@ -924,7 +924,7 @@ export default function ProfileAccountDataPanel({
                         <span>Ficha pública en el catálogo</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#334155' }}>
-                        <Truck size={15} color="#2563eb" style={{ flexShrink: 0 }} />
+                        <Store size={15} color="#2563eb" style={{ flexShrink: 0 }} />
                         <span>Retiros de clientes y transportistas</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#334155' }}>

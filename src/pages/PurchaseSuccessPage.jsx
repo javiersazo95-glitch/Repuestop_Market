@@ -8,6 +8,7 @@ import { normalizeOrderStatus } from '../data/orderStatusFlow';
 import { buyerProfilePath, profileOrderPath, profilePurchasePath, ROUTES } from '../routes/paths';
 import { orderDeliverySummary, orderDisplayCode, orderHasShippingDueOnDelivery, orderNumberRef } from '../data/orderIdentity';
 import { buildOrderPackages } from '../utils/orderPackages';
+import ShippingIcon from '../components/ShippingIcon';
 
 const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
 
@@ -333,7 +334,7 @@ export default function PurchaseSuccessPage() {
               <h2><ReceiptText size={19} /> Resumen del pedido</h2>
               {multiPackage ? deliveryPackages.map((pkg) => (
                 <div className="purchase-success-info-row" key={pkg.key}>
-                  {pkg.kind === 'pickup' ? <MapPin size={17} /> : <Truck size={17} />}
+                  <ShippingIcon kind={pkg.kind} size={17} />
                   <div>
                     <span>{pkg.method}</span>
                     <strong>
@@ -347,7 +348,7 @@ export default function PurchaseSuccessPage() {
               )) : (
                 <>
                   <div className="purchase-success-info-row">
-                    <Truck size={17} />
+                    <ShippingIcon method={shippingMethod} size={17} />
                     <div><span>Método de entrega</span><strong>{shippingMethod}</strong></div>
                   </div>
                   {!isPickup && (

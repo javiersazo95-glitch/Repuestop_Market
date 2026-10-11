@@ -27,6 +27,7 @@ import { fundsReleaseNotice, retractionNotice, storeAutoCloseNotice, RETRACTION_
 import { validateUpload, FILE_LIMITS } from '../utils/fileValidation';
 import { buildOrderPackages } from '../utils/orderPackages';
 import { buyerCompatibilityText } from '../utils/buyerCompatibility';
+import ShippingIcon from './ShippingIcon';
 
 /**
  * Una linea de repuesto dentro del bloque de su tienda, con la ficha tecnica desplegable.
@@ -54,7 +55,7 @@ function PackageCard({ pkg, label, isSeller = false, showStore = false, recipien
         {showStore && <strong>{pkg.storeName}</strong>}
       </div>
       <div className="order-package-row is-method">
-        {pkg.kind === 'pickup' ? <Store size={14} /> : <Truck size={14} />}
+        <ShippingIcon kind={pkg.kind} size={14} />
         <span>{pkg.method}</span>
       </div>
       <div className="order-package-row">

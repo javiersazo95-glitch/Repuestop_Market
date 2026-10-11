@@ -16,6 +16,7 @@ import { adaptProduct, formatRut, isValidRut } from '../services/adapters';
 import { deliveryTermsLabel, isQuoteExpired, quantityFromLabel, quoteShippingCost } from '../utils/quoteFlow';
 import { normalizeOrderStatus } from '../data/orderStatusFlow';
 import { checkoutFallbackShippingMethod, resolveShippingService } from '../data/shippingMethods';
+import ShippingIcon from '../components/ShippingIcon';
 import { buyerProfilePath, profilePath, ROUTES } from '../routes/paths';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
@@ -1359,7 +1360,7 @@ export default function CheckoutPage() {
                               {!isQuoteMode && delivery && (
                                 <ul className="checkout-recap-delivery">
                                   <li>
-                                    <Truck size={12} />
+                                    <ShippingIcon method={delivery.method} size={12} />
                                     {(delivery.method || '').replace(/\s*\(.*\)\s*$/, '')}
                                     {isDispatch(delivery.method) && address ? ` · ${address.calleYNumero}, ${address.comunaNombre}` : ''}
                                   </li>

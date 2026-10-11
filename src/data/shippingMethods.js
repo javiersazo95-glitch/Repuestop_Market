@@ -1,4 +1,4 @@
-import { Bike, Building2, Package, Truck } from 'lucide-react';
+import { Bike, Store, Truck } from 'lucide-react';
 
 // Los métodos de envío llegan como texto libre publicado por la tienda
 // ("Retiro en tienda, Envío dentro de la comuna ($4500), Envío fuera de la comuna").
@@ -7,6 +7,11 @@ import { Bike, Building2, Package, Truck } from 'lucide-react';
 // repartidas por los componentes y no coincidían entre sí: el envío dentro de la
 // comuna se dibujaba en bicicleta en la card del vendedor y en camión en la ficha del
 // producto, y el retiro en tienda cambiaba de ícono según la vista.
+//
+// Convención de todo RepuesTop (app y web, 11-oct): retiro en tienda = tienda con toldo
+// (Store), envío dentro de la comuna = bicicleta (Bike), envío fuera de la comuna = camión
+// (Truck). La caja (Package) es el producto, no un envío: un método que no se reconoce va con
+// el camión, el ícono genérico de despacho.
 
 /** Separa la cadena del backend en métodos individuales. */
 export function parseShippingMethods(methods) {
@@ -47,16 +52,24 @@ export function resolveShippingService(method) {
   const normalized = String(method || '').toLowerCase().trim();
 
   if (normalized.includes('retiro') || normalized.includes('tienda')) {
-    return { name: 'Retiro en tienda', label: 'Retiro en tienda', icon: Building2, color: '#7c3aed', bg: '#f3f0ff' };
+    return { name: 'Retiro en tienda', label: 'Retiro en tienda', icon: Store, color: '#7c3aed', bg: '#f3f0ff' };
   }
-  if (normalized.includes('dentro') || (normalized.includes('comuna') && !normalized.includes('fuera'))) {
+  if (normalized.includes('dentro') || normalized.includes('delivery')
+    || (normalized.includes('comuna') && !normalized.includes('fuera'))) {
     return { name: 'Envío dentro de la comuna', label: 'Envío dentro de la comuna', icon: Bike, color: '#059669', bg: '#eafbf1' };
   }
   if (normalized.includes('fuera') || normalized.includes('region') || normalized.includes('región')
     || normalized.includes('nacional') || normalized.includes('starken') || normalized.includes('chilexpress')) {
     return { name: 'Envío fuera de la comuna', label: 'Envío fuera de la comuna', icon: Truck, color: '#0284c7', bg: '#e0f2fe' };
   }
-  return { name: method, label: method || 'Método de envío', icon: Package, color: '#475569', bg: '#f1f5f9' };
+  return { name: method, label: method || 'Método de envío', icon: Truck, color: '#475569', bg: '#f1f5f9' };
+}
+
+/** Ícono de un tipo de paquete (`pickup` / `local` / `courier` / `other`, ver cartDelivery). */
+export function shippingKindIcon(kind) {
+  if (kind === 'pickup') return Store;
+  if (kind === 'local') return Bike;
+  return Truck;
 }
 
 /** Precio entre paréntesis que a veces incluye la tienda: "... ($4500)" -> "$4500". */
