@@ -9,7 +9,15 @@
 
 export const FLOW_REFUND_NOTICE =
   'Te llegará un correo de Flow (info@flow.cl) para recibir tu devolución: ábrelo y acéptalo antes de la fecha límite. '
-  + 'Si pagaste con tarjeta, la devolución se refleja en hasta 10 días hábiles.';
+  + 'Si pagaste con tarjeta, la devolución se refleja en hasta 10 días hábiles. '
+  // 12-oct: Flow devuelve a la tarjeta el monto total; una devolucion parcial del mismo dia del
+  // pago la hace por transferencia y en su formulario pide tambien la cuenta bancaria.
+  + 'Si es una devolución parcial, Flow puede pedirte también los datos de tu cuenta bancaria para transferirte.';
+
+/** Devolucion aceptada: por tarjeta o, si Flow pidio la cuenta, por transferencia (12-oct). */
+export const FLOW_REFUND_ACCEPTED_DETAIL =
+  'Aceptaste la devolución en Flow. Si te pidió los datos de tu cuenta bancaria, te la transferirá a esa cuenta '
+  + 'en los próximos días hábiles; si no, vuelve al mismo medio de pago que usaste y con tarjeta se refleja en hasta 10 días hábiles.';
 
 // `estadoReembolso` (backend, O56) viene simplificado: SOLICITADO / REEMBOLSADO / RECHAZADO /
 // ERROR. Un backend anterior solo manda `refundStatus` con el vocabulario interno del pago.
@@ -53,14 +61,14 @@ export function buyerRefundInfo(order) {
     case 'ACEPTADO':
       return {
         tone: 'ok',
-        title: 'Devolución aceptada — se refleja en tu tarjeta en hasta 10 días hábiles',
-        detail: 'Aceptaste la devolución en Flow; se hace en el mismo medio de pago que usaste al comprar.',
+        title: 'Devolución aceptada — Flow la está procesando',
+        detail: FLOW_REFUND_ACCEPTED_DETAIL,
       };
     case 'REEMBOLSADO':
       return {
         tone: 'ok',
         title: 'Devolución realizada',
-        detail: 'Flow ya procesó tu devolución en el mismo medio de pago que usaste al comprar; su reflejo depende de tu banco.',
+        detail: 'Flow ya procesó tu devolución, en tu medio de pago o por transferencia a tu cuenta; su reflejo depende de tu banco.',
       };
     case 'RECHAZADO':
       return {
@@ -163,14 +171,14 @@ export function refundTimeline(refund, supportCode) {
       title: 'Acepta el correo de Flow',
       detail: at(1) === 'done'
         ? 'Aceptaste la devolución en el correo de Flow.'
-        : 'Te llega un correo de info@flow.cl con una clave y una fecha límite: ábrelo y acepta la devolución. Si no lo ves, revisa spam o promociones.',
+        : 'Te llega un correo de info@flow.cl con una clave y una fecha límite: ábrelo y acepta la devolución. Si es parcial, puede pedirte también tu cuenta bancaria. Si no lo ves, revisa spam o promociones.',
       status: refund.state === 'ERROR' ? 'upcoming' : at(1),
     };
 
   const processing = {
     key: 'processing',
     title: 'Flow procesa la devolución',
-    detail: 'Se devuelve en el mismo medio de pago que usaste. Con tarjeta se refleja en hasta 10 días hábiles.',
+    detail: 'Vuelve al mismo medio de pago que usaste o, si Flow te pidió tu cuenta bancaria, por transferencia a esa cuenta. Puede tardar unos días hábiles.',
     status: refund.state === 'RECHAZADO' || refund.state === 'ERROR' ? 'upcoming' : at(2),
   };
 
