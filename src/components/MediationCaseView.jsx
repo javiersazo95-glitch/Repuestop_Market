@@ -125,7 +125,11 @@ function buyerRefundSteps(chat, codigo) {
   const montoTxt = `$${monto.toLocaleString('es-CL')}`;
   return [
     `El reembolso del ${pct}% de tu compra en la tienda (${montoTxt}) fue solicitado a la pasarela de pagos (Flow).`,
-    'Se acreditará automáticamente en el mismo medio de pago que usaste al comprar, en un plazo estimado de 5 a 10 días hábiles.',
+    // 12-oct: Flow devuelve a la tarjeta el monto total; una devolucion parcial puede hacerla por
+    // transferencia, pidiendo la cuenta bancaria en su correo.
+    pct < 100
+      ? 'Te llegará un correo de Flow (info@flow.cl) para aceptarlo. Como es una devolución parcial, Flow puede pedirte los datos de tu cuenta bancaria y transferirte; si no, vuelve al mismo medio de pago. Plazo estimado de 5 a 10 días hábiles.'
+      : 'Te llegará un correo de Flow (info@flow.cl) para aceptarlo; se acreditará en el mismo medio de pago que usaste al comprar, en un plazo estimado de 5 a 10 días hábiles.',
     `Puedes seguir el estado en "Mis pedidos" → detalle del pedido ${codigo}.`,
     'Cuando el reembolso se concrete recibirás un comprobante por correo electrónico.',
   ];
