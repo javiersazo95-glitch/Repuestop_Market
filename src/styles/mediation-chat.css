@@ -12,6 +12,7 @@
    ========================================================================== */
 
 .mchat,
+.mchat-layout,
 .mchat-inbox,
 .mchat-sheet,
 .mchat-centered {
@@ -57,13 +58,13 @@
   color: var(--rt-text);
   box-sizing: border-box;
 }
-.mchat *, .mchat-inbox *, .mchat-sheet *, .mchat-centered * { box-sizing: border-box; }
-.mchat button, .mchat-inbox button, .mchat-sheet button, .mchat-centered button {
+.mchat *, .mchat-layout *, .mchat-inbox *, .mchat-sheet *, .mchat-centered * { box-sizing: border-box; }
+.mchat button, .mchat-layout button, .mchat-inbox button, .mchat-sheet button, .mchat-centered button {
   font-family: inherit;
   cursor: pointer;
 }
 .mchat textarea, .mchat input, .mchat-sheet textarea, .mchat-sheet input { font-family: inherit; }
-.mchat p, .mchat-inbox p, .mchat-sheet p, .mchat-centered p { margin: 0; }
+.mchat p, .mchat-layout p, .mchat-inbox p, .mchat-sheet p, .mchat-centered p { margin: 0; }
 .mchat .spin-icon, .mchat-inbox .spin-icon, .mchat-sheet .spin-icon { animation: mchat-spin 1s linear infinite; }
 @keyframes mchat-spin { to { transform: rotate(360deg); } }
 
@@ -461,19 +462,28 @@
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
-  align-items: center;
+  /* Con varias lineas, la camara y el clip quedan abajo, junto a la ultima linea. */
+  align-items: flex-end;
   gap: 4px;
-  padding: 0 8px 0 14px;
+  padding: 3px 8px 3px 16px;
   border: 1px solid var(--rt-border);
   border-radius: var(--rt-radius-lg);
   background: var(--rt-canvas);
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
+/* El foco se marca en la capsula entera, no con un rectangulo dentro de ella. */
+.mchat-input:focus-within {
+  border-color: var(--rt-primary-border);
+  box-shadow: 0 0 0 3px var(--rt-primary-light);
+}
+.mchat-input .mchat-attach { margin-bottom: 3px; }
 .mchat-input textarea {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 38px;
-  max-height: 90px;
-  padding: 8px 0;
+  max-height: 140px;
+  padding: 9px 0;
+  overflow-y: hidden;
   border: 0;
   background: transparent;
   resize: none;
@@ -529,7 +539,7 @@
   flex: 1 1 auto;
   min-width: 0;
   min-height: 46px;
-  max-height: 120px;
+  max-height: 140px;
   padding: 12px;
   border: 1px solid var(--rt-border);
   border-radius: var(--rt-radius-md);
@@ -741,7 +751,8 @@
   line-height: 22px;
 }
 .mchat-field textarea { min-height: 104px; resize: vertical; }
-.mchat-field input:focus, .mchat-field textarea:focus, .mchat-input textarea:focus, .mchat-mediator-composer-row textarea:focus { outline: 2px solid var(--rt-primary-border); outline-offset: 0; }
+.mchat-field input:focus, .mchat-field textarea:focus, .mchat-mediator-composer-row textarea:focus { outline: 2px solid var(--rt-primary-border); outline-offset: 0; }
+.mchat-input textarea:focus, .mchat-input textarea:focus-visible { outline: none; }
 .mchat-warning-box {
   display: flex;
   align-items: flex-start;
@@ -1108,3 +1119,113 @@
 .mchat-menu-copy small { color: #64748b; font-size: 12px; }
 .mchat-summary-sheet { display: grid; gap: 12px; }
 .mchat-summary-sheet .mchat-case-card { min-height: 0; }
+
+/* ---------------------------------------------------------------------------
+   12-oct: escritorio ancho. El chat es una columna de 720 px y en una pantalla grande quedaban
+   dos franjas vacias: a la izquierda va la compra y a la derecha el estado del caso. Se decide
+   por el ANCHO DISPONIBLE (container query), no por el de la ventana: dentro del perfil, con su
+   menu lateral, el espacio real es menor. Bajo ese ancho los paneles no existen y nada cambia.
+   ------------------------------------------------------------------------- */
+.mchat-layout { container-type: inline-size; width: 100%; }
+.mchat-layout-grid { display: block; }
+.mchat-aside { display: none; }
+
+@container (min-width: 1120px) {
+  .mchat-layout-grid {
+    display: grid;
+    grid-template-columns: minmax(240px, 300px) minmax(0, 720px) minmax(240px, 300px);
+    justify-content: center;
+    align-items: start;
+    gap: 20px;
+  }
+  .mchat-layout-grid > .mchat { margin: 0; }
+  .mchat-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: min(calc(100dvh - 120px), 900px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+}
+
+.mchat-aside-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--rt-border);
+  border-radius: var(--rt-radius-lg);
+  background: var(--rt-surface);
+}
+.mchat-aside-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--rt-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+.mchat-aside-title svg { color: var(--rt-primary); flex-shrink: 0; }
+.mchat-aside-product { display: flex; align-items: center; gap: 12px; }
+.mchat-aside-product img,
+.mchat-aside-product-ph {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: var(--rt-radius-md);
+  border: 1px solid var(--rt-border);
+  object-fit: cover;
+  background: var(--rt-canvas);
+}
+.mchat-aside-product-ph { display: inline-flex; align-items: center; justify-content: center; color: var(--rt-text-muted); }
+.mchat-aside-product div { display: grid; gap: 2px; min-width: 0; }
+.mchat-aside-product strong { color: var(--rt-text); font-size: 14px; line-height: 19px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mchat-aside-product small { color: var(--rt-text-muted); font-size: 12px; }
+.mchat-aside-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; line-height: 18px; }
+.mchat-aside-row span { color: var(--rt-text-muted); flex-shrink: 0; }
+.mchat-aside-row strong { color: var(--rt-text); font-weight: 600; text-align: right; }
+.mchat-aside-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 2px;
+  padding: 9px 10px;
+  border: 1px solid var(--rt-primary-border);
+  border-radius: var(--rt-radius-md);
+  background: var(--rt-primary-light);
+  color: var(--rt-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mchat-aside-link svg:last-child { margin-left: auto; }
+.mchat-aside-link:hover { filter: brightness(0.98); }
+.mchat-aside-vehicle { display: grid; gap: 2px; padding: 8px 10px; border-radius: var(--rt-radius-md); background: var(--rt-canvas); }
+.mchat-aside-vehicle strong { color: var(--rt-text); font-size: 13px; }
+.mchat-aside-vehicle small { color: var(--rt-text-muted); font-size: 12px; }
+.mchat-aside-muted { color: var(--rt-text-muted); font-size: 12.5px; line-height: 18px; }
+.mchat-aside-steps { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.mchat-aside-steps li { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 8px; font-size: 13px; color: var(--rt-text); }
+.mchat-aside-steps time { color: var(--rt-text-muted); font-size: 12px; white-space: nowrap; }
+.mchat-aside-step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--rt-primary); }
+.mchat-aside-chip {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.mchat-aside-chip.is-ok { background: var(--rt-success-bg, #ecfdf5); color: var(--rt-success-text, #047857); }
+.mchat-aside-chip.is-mediation { background: var(--rt-mediation-bg); color: var(--rt-mediation-text, #6d28d9); }
+.mchat-aside-chip.is-warning { background: #fffbeb; color: #9a5a00; }
+.mchat-aside-chip.is-neutral { background: var(--rt-canvas); color: var(--rt-text-muted); }
+.mchat-aside-claim { display: grid; gap: 4px; padding: 10px 12px; border-left: 3px solid #f59e0b; border-radius: var(--rt-radius-sm); background: #fffbeb; }
+.mchat-aside-claim strong { color: var(--rt-text); font-size: 13px; }
+.mchat-aside-claim p { color: var(--rt-text-muted); font-size: 12.5px; line-height: 18px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.mchat-aside-tips { display: grid; gap: 8px; margin: 0; padding-left: 18px; color: var(--rt-text-muted); font-size: 12.5px; line-height: 18px; }

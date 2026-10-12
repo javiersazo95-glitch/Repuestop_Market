@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -13,7 +13,8 @@ import {
   uploadMediationChatImageApi, resolveMediaUrl,
 } from '../services/api';
 import { claimReasonLabel } from '../data/claimReason';
-import { profileOrderPath, profilePath, profilePurchasePath } from '../routes/paths';
+import { ROUTES, profileOrderPath, profilePath, profilePurchasePath } from '../routes/paths';
+import { CaseOrderAside, CaseStatusAside } from './MediationCaseAsides';
 import compressImageFile from '../utils/imageCompression';
 import ChatImagePreview from './ChatImagePreview';
 import SaleReceiptViewerModal from './SaleReceiptViewerModal';
@@ -419,6 +420,20 @@ function MediatorMessageCard({ entry, isMine, avatarUrl }) {
   );
 }
 
+/**
+ * El campo de mensaje crece con el texto hasta `max` px y desde ahi hace scroll. Con `rows={1}` y
+ * alto fijo, un mensaje largo (o uno precargado por una plantilla) quedaba cortado a media linea.
+ */
+function useAutoGrow(ref, value, max) {
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+    el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden';
+  }, [ref, value, max]);
+}
+
 export default function MediationCaseView({ pedidoId, proveedorId, user, mode: modeProp = 'buyer', initialDraft = '', initialTab = 'chat', onClose, onChanged }) {
   const navigate = useNavigate();
   const [chat, setChat] = useState(null);
@@ -682,6 +697,11 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
       setIsSending(false);
     }
   };
+
+  const composerRef = useRef(null);
+  const mediatorComposerRef = useRef(null);
+  useAutoGrow(composerRef, messageText, 140);
+  useAutoGrow(mediatorComposerRef, mediatorText, 140);
 
   const handleComposerKeyDown = (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -995,6 +1015,18 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   };
 
   return (
+    // 12-oct: en escritorio ancho, la compra y el estado del caso a los costados del chat.
+    <div className="mchat-layout">
+    <div className="mchat-layout-grid">
+    <CaseOrderAside
+      chat={chat}
+      isBuyer={isBuyer}
+      codigo={codigo}
+      productPhoto={chat?.productoFotoUrl ? resolveMediaUrl(chat.productoFotoUrl) : null}
+      vehicles={caseVehicles}
+      onOpenOrder={() => navigate(orderPath)}
+      onOpenVehicle={() => setShowVehicleReceipt(true)}
+    />
     <article className="mchat">
       {/* Celular: encabezado de una fila y pestañas delgadas, fijos arriba. Vehículo/boleta,
           pedido y el menú "⋯" son íconos sutiles; el chat se queda con la pantalla. */}
@@ -1290,6 +1322,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
               <div className="mchat-composer-row">
                 <div className="mchat-input">
                   <textarea
+                    ref={composerRef}
                     value={messageText}
                     onChange={(event) => setMessageText(event.target.value)}
                     onKeyDown={handleComposerKeyDown}
@@ -1331,6 +1364,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
                   }}
                 />
                 <textarea
+                  ref={mediatorComposerRef}
                   value={mediatorText}
                   onChange={(event) => setMediatorText(event.target.value)}
                   onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void submitMediatorMessage(); } }}
@@ -1653,5 +1687,15 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
         onClose={() => setInfoSheet(null)}
       />
     </article>
+    <CaseStatusAside
+      chat={chat}
+      isBuyer={isBuyer}
+      otherPartyName={otherPartyName}
+      resolved={resolved}
+      isEscalated={isEscalated}
+      onHelp={() => navigate(ROUTES.support)}
+    />
+    </div>
+    </div>
   );
 }
