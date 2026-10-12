@@ -1520,9 +1520,9 @@ export default function OrderDetailView({
             {claimState.blocksFinalize && (normStatus === 'ENTREGADO'
               || subOrders.some((sub) => String(sub?.estado || '').toUpperCase() === 'ENTREGADO')) && (
               <span>
-                {claimState.kind === 'resolved'
-                  ? 'La compra se cierra automáticamente; no hace falta finalizarla.'
-                  : 'Mientras el caso siga abierto no se puede finalizar la compra.'}
+                {claimState.blockedReason || (claimState.kind === 'resolved'
+                  ? 'Podrás finalizar la compra cuando se complete la devolución.'
+                  : 'Mientras el caso siga abierto no se puede finalizar la compra.')}
               </span>
             )}
           </div>
@@ -1764,9 +1764,9 @@ export default function OrderDetailView({
                               <strong>{storeClaim.title}.</strong>
                               {storeClaim.detail ? ` ${storeClaim.detail}` : ''}
                               {storeClaim.blocksFinalize && block.estado === 'ENTREGADO'
-                                ? (storeClaim.kind === 'resolved'
-                                  ? ' Esta compra se cierra automáticamente.'
-                                  : ' Mientras el caso siga abierto no se puede finalizar esta compra.')
+                                ? ` ${storeClaim.blockedReason || (storeClaim.kind === 'resolved'
+                                  ? 'Podrás finalizar la compra cuando se complete la devolución.'
+                                  : 'Mientras el caso siga abierto no se puede finalizar esta compra.')}`
                                 : ''}
                               {' '}
                               <Link to={buyerCaseChatPath(order.id, block.id)} state={{ from: currentPathForBack() }} className="order-claim-link">{storeClaim.linkLabel}</Link>

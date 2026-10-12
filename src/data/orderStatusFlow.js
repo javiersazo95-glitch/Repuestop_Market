@@ -126,12 +126,19 @@ export function buyerClaimState(order) {
     return { kind: 'mediation', title: 'En mediación', linkLabel: 'Ver caso', blocksFinalize: true };
   }
   if (mediation === 'RESUELTA' || mediation === 'CERRADA' || caso === 'RESUELTA' || caso === 'CERRADA' || refundedByVerdict) {
+    // 12-oct: el motivo del servidor por tienda manda (ver buyerStoreClaimState).
+    const subs = (Array.isArray(order.subordenes) ? order.subordenes : [])
+      .filter((sub) => sub && Object.prototype.hasOwnProperty.call(sub, 'motivoBloqueoFinalizacion'));
+    const blocks = subs.length ? subs.some((sub) => Boolean(sub.motivoBloqueoFinalizacion)) : refundedByVerdict;
     return {
       kind: 'resolved',
       title: 'Mediación resuelta',
-      detail: refundedByVerdict ? 'Se resolvió con reembolso a tu favor.' : null,
+      detail: refundedByVerdict
+        ? (blocks ? 'Se resolvió con reembolso a tu favor.' : 'Se resolvió con reembolso a tu favor y la devolución ya se completó: puedes finalizar la compra.')
+        : null,
       linkLabel: 'Ver caso',
-      blocksFinalize: refundedByVerdict,
+      blocksFinalize: blocks,
+      blockedReason: subs.map((sub) => sub.motivoBloqueoFinalizacion).find(Boolean) || null,
     };
   }
   // O79 (pruebas de lanzamiento, 27-sep): el comprador lo dio por resuelto con la tienda, sin
@@ -160,12 +167,20 @@ export function buyerStoreClaimState(subOrder, storeItems = []) {
     return { kind: 'mediation', title: 'En mediación', detail: null, linkLabel: 'Ver caso', blocksFinalize: true };
   }
   if (caso === 'RESUELTA' || caso === 'CERRADA' || refundedByVerdict) {
+    // 12-oct: con reembolso por veredicto el backend bloqueaba siempre ("se cierra solo") y el
+    // pedido quedaba trabado; ahora bloquea solo mientras la devolucion no se completa y manda su
+    // motivo por tienda (`motivoBloqueoFinalizacion`). Un backend anterior no lo manda.
+    const conMotivo = Object.prototype.hasOwnProperty.call(subOrder, 'motivoBloqueoFinalizacion');
+    const blocks = conMotivo ? Boolean(subOrder.motivoBloqueoFinalizacion) : refundedByVerdict;
     return {
       kind: 'resolved',
       title: 'Mediación resuelta',
-      detail: refundedByVerdict ? 'Se resolvió con reembolso a tu favor.' : null,
+      detail: refundedByVerdict
+        ? (blocks ? 'Se resolvió con reembolso a tu favor.' : 'Se resolvió con reembolso a tu favor y la devolución ya se completó: puedes finalizar la compra.')
+        : null,
       linkLabel: 'Ver caso',
-      blocksFinalize: refundedByVerdict,
+      blocksFinalize: blocks,
+      blockedReason: conMotivo ? subOrder.motivoBloqueoFinalizacion || null : null,
     };
   }
   if (caso === 'RECLAMO_RESUELTO') {
