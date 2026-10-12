@@ -5,7 +5,7 @@ import {
   MapPin, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
   RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock, ExternalLink, Timer,
   ThumbsUp, ThumbsDown, Send, ReceiptText, FileCheck, FileSearch, ShieldAlert, MessageCircle, Info,
-  Wallet, Undo2, Car
+  Wallet, Car
 } from 'lucide-react';
 import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi, getShippingReceiptUrlApi } from '../services/api';
@@ -17,13 +17,15 @@ import { buyerCaseChatPath, currentPathForBack, productPath, sellerCaseChatPath 
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
 import SaleReceiptViewerModal from './SaleReceiptViewerModal';
-import OrderCreditNotes from './OrderCreditNotes';
+import { CreditNoteHeaderButton } from './CreditNoteModal';
+import OrderRefundsMenu from './OrderRefundsMenu';
+import OrderSupportButton from './OrderSupportButton';
 import useSellerChecklist from '../hooks/useSellerChecklist';
 import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancellationReason';
-import { buyerRefundInfo, FLOW_REFUND_NOTICE } from '../data/refundStatus';
+import { FLOW_REFUND_NOTICE } from '../data/refundStatus';
 import { claimReasonPairs } from '../data/claimReason';
 import { carrierTracking } from '../data/carrierTracking';
-import { fundsReleaseNotice, retractionNotice, storeAutoCloseNotice, RETRACTION_DAYS } from '../data/orderDeadlines';
+import { fundsReleaseNotice, storeAutoCloseNotice, RETRACTION_DAYS } from '../data/orderDeadlines';
 import { validateUpload, FILE_LIMITS } from '../utils/fileValidation';
 import { buildOrderPackages } from '../utils/orderPackages';
 import { buyerCompatibilityText } from '../utils/buyerCompatibility';
@@ -658,9 +660,6 @@ export default function OrderDetailView({
   // La explicacion esta escrita para el comprador ("si pagaste, el reembolso...").
   // Al vendedor le basta la etiqueta: el motivo lo declaro el.
   const cancellationHint = cancellationReason && mode !== 'seller' ? cancellationReasonHint(order) : null;
-  // O56 (pruebas de lanzamiento, 25-sep): en que va la devolucion por Flow. Solo al comprador:
-  // es el quien tiene que aceptar el correo de Flow. Cubre cancelaciones y mediaciones.
-  const buyerRefund = !isSeller ? buyerRefundInfo(order) : null;
   // O62 (pruebas de lanzamiento, 25-sep): el reclamo del comprador (abierto, en mediacion o
   // resuelto), con enlace a su conversacion.
   // O71 (pruebas de lanzamiento, 25-sep): la tienda ve el caso de SU venta (`estadoCasoTienda`),
@@ -1426,6 +1425,16 @@ export default function OrderDetailView({
             </div>
           </div>
           <div className="order-modal-header-actions">
+            {/* 12-oct (paridad con la app): devoluciones en curso como alerta con su linea de
+                tiempo con Flow, la nota de credito de la tienda y Soporte con preguntas segun el
+                estado. Antes eran tarjetas y secciones en el cuerpo del detalle. */}
+            <div className="order-header-icons">
+              {!isSeller && <OrderRefundsMenu order={order} />}
+              {isSeller && (refundAmount > 0 || normStatus === 'CANCELADO') && (
+                <CreditNoteHeaderButton key={order.id} order={order} />
+              )}
+              <OrderSupportButton order={order} mode={isSeller ? 'seller' : 'buyer'} orderCode={orderIdShort} />
+            </div>
             {canBuyerChat && (
               <div className="order-chat-header-control">
                 <div className="order-chat-header-row">
@@ -1685,11 +1694,6 @@ export default function OrderDetailView({
                   );
                 })()}
 
-                {/* 9-oct: venta reembolsada con boleta: la tienda sube aqui su nota de credito.
-                    Paridad con la app. El componente no muestra nada si no se requiere. */}
-                {isSeller && !readOnly && (refundAmount > 0 || normStatus === 'CANCELADO') && (
-                  <OrderCreditNotes key={order.id} orderId={order.id} orderCode={orderIdShort} />
-                )}
               </div>
             </div>
           )}
@@ -1943,14 +1947,9 @@ export default function OrderDetailView({
                             </div>
                           );
                         }
-                        return (
-                          <div className={`order-store-block-deadline ${aviso.urgent ? 'order-store-block-deadline--urgent' : ''}`}>
-                            <Timer size={13} />
-                            <span>
-                              <strong>{aviso.label}.</strong> {aviso.detail}
-                            </span>
-                          </div>
-                        );
+                        // 12-oct: los plazos informativos (se da por recibido, se cierra) ya no van
+                        // en el bloque: el comprador los encuentra en Soporte, segun el estado.
+                        return null;
                       })()}
 
                       {/* V1 — El reloj del retracto, y su contraparte para el vendedor.
@@ -1960,14 +1959,13 @@ export default function OrderDetailView({
                           todavia tiene, y al vendedor le dejaria la plata ausente del monto a
                           retirar sin ninguna explicacion. */}
                       {/* O69: ni retracto ni garantia sobre una compra que el veredicto devolvio entera. */}
-                      {!block.isCancelledStore && !(block.fullyRefundedByVerdict && !isSeller) && (() => {
-                        const aviso = isSeller
-                          ? fundsReleaseNotice({ status: block.estado, entregadoAt: block.entregadoAtStore })
-                          : retractionNotice({ status: block.estado, entregadoAt: block.entregadoAtStore });
+                      {/* 12-oct: el retracto del comprador se explica en Soporte (preguntas del estado). */}
+                      {isSeller && !block.isCancelledStore && (() => {
+                        const aviso = fundsReleaseNotice({ status: block.estado, entregadoAt: block.entregadoAtStore });
                         if (!aviso) return null;
                         return (
                           <div className={`order-store-block-deadline ${aviso.urgent ? 'order-store-block-deadline--urgent' : ''}`}>
-                            {isSeller ? <Wallet size={13} /> : <Undo2 size={13} />}
+                            <Wallet size={13} />
                             <span>
                               <strong>{aviso.label}.</strong> {aviso.detail}
                             </span>
@@ -2154,14 +2152,6 @@ export default function OrderDetailView({
           </div>
         )}
 
-        {/* O56/O57 (pruebas de lanzamiento, 25-sep): estado de la devolucion por Flow. Mientras
-            esta solicitada, el comprador tiene que aceptar el correo de Flow o no le llega. */}
-        {buyerRefund && (
-          <div className={`order-refund-status-block is-${buyerRefund.tone}`} role="status">
-            <strong>{buyerRefund.title}</strong>
-            <span>{buyerRefund.detail}</span>
-          </div>
-        )}
 
         {statusError && (
           <div className="auth-alert alert-error" style={{ margin: '0 24px 12px' }}>

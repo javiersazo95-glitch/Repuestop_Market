@@ -78,3 +78,117 @@ export function buyerRefundInfo(order) {
       return null;
   }
 }
+
+// ---- 12-oct: devoluciones del pedido una a una, con su linea de tiempo ----
+// Misma regla que `utils/refund-status.ts` de la app.
+
+/**
+ * Las devoluciones que sigue el comprador (`reembolsos` del backend). Un backend anterior no
+ * manda la lista: se arma una sola con el estado simple del pedido.
+ */
+export function buyerRefunds(order) {
+  const list = Array.isArray(order?.reembolsos) ? order.reembolsos : [];
+  if (list.length > 0) {
+    return list.map((r) => ({
+      id: String(r.id ?? ''),
+      origin: String(r.origen || 'OTRO').toUpperCase(),
+      sellerId: r.proveedorId != null ? String(r.proveedorId) : null,
+      amount: Number(r.monto || 0),
+      state: String(r.estado || '').toUpperCase(),
+      requestedAt: r.solicitadoAt || null,
+      manual: r.manual === true,
+      manualAt: r.manualAt || null,
+    }));
+  }
+  const state = refundState(order);
+  if (!state) return [];
+  return [{ id: 'pedido', origin: 'OTRO', sellerId: null, amount: Number(order?.montoReembolsado || 0), state, requestedAt: null, manual: false, manualAt: null }];
+}
+
+/** Solo las que siguen en curso: las devueltas ya no alertan. */
+export function activeBuyerRefunds(order) {
+  return buyerRefunds(order).filter((refund) => refundStateChip(refund).tone !== 'ok');
+}
+
+export function refundOriginLabel(origin) {
+  switch (origin) {
+    case 'CANCELACION_COMPRADOR': return 'Cancelaste la compra';
+    case 'CANCELACION_VENDEDOR': return 'La tienda canceló la venta';
+    case 'BLOQUEO_TIENDA': return 'La tienda fue suspendida';
+    case 'PAGO_TARDIO': return 'Pago recibido sin stock disponible';
+    case 'MEDIACION': return 'Resolución de la mediación';
+    default: return 'Devolución del pedido';
+  }
+}
+
+export function refundStateChip(refund) {
+  switch (refund.state) {
+    case 'REEMBOLSADO': return { label: refund.manual ? 'Devuelta por soporte' : 'Devuelta', tone: 'ok' };
+    case 'ACEPTADO': return { label: 'Aceptada en Flow', tone: 'pending' };
+    case 'SOLICITADO': return { label: 'Acepta el correo de Flow', tone: 'pending' };
+    case 'RECHAZADO': return { label: 'Rechazada o vencida', tone: 'error' };
+    case 'ERROR': return { label: 'En revisión', tone: 'error' };
+    default: return { label: 'En proceso', tone: 'pending' };
+  }
+}
+
+/**
+ * Los pasos de una devolucion por Flow: aprobada, solicitada, correo aceptado, procesada,
+ * devuelta. `status`: done | current | upcoming | error.
+ */
+export function refundTimeline(refund, supportCode) {
+  const support = supportCode ? ` indicando el pedido ${supportCode}` : '';
+  const decided = { key: 'decided', title: 'Devolución aprobada', detail: refundOriginLabel(refund.origin), date: refund.requestedAt, status: 'done' };
+
+  if (refund.manual && refund.state === 'REEMBOLSADO') {
+    return [
+      decided,
+      { key: 'support', title: 'Gestionada por soporte', detail: 'Flow no pudo completarla y soporte de RepuesTop la realizó directamente.', status: 'done' },
+      { key: 'refunded', title: 'Dinero devuelto', detail: 'Revisa tu cuenta o medio de pago; el reflejo depende de tu banco.', date: refund.manualAt, status: 'done' },
+    ];
+  }
+
+  const order = ['EN_PROCESO', 'SOLICITADO', 'ACEPTADO', 'REEMBOLSADO'];
+  const reached = order.indexOf(refund.state);
+  const at = (index) => (reached > index ? 'done' : reached === index ? 'current' : 'upcoming');
+
+  const requested = refund.state === 'ERROR'
+    ? { key: 'requested', title: 'Solicitud a Flow', detail: `No pudimos solicitarla automáticamente y soporte la está gestionando. Si tienes dudas, escríbenos desde Ayuda${support}.`, status: 'error' }
+    : { key: 'requested', title: 'Solicitada a Flow', detail: at(0) === 'current' ? 'Estamos pidiendo la devolución a Flow. En unos minutos te llegará su correo.' : 'RepuesTop pidió la devolución a Flow.', status: at(0) === 'current' ? 'current' : reached > 0 || refund.state === 'RECHAZADO' ? 'done' : 'upcoming' };
+
+  const email = refund.state === 'RECHAZADO'
+    ? { key: 'email', title: 'Correo de Flow', detail: `El correo se rechazó o venció su plazo, así que la devolución no se hizo. Escríbenos desde Ayuda${support} y la coordinamos contigo.`, status: 'error' }
+    : {
+      key: 'email',
+      title: 'Acepta el correo de Flow',
+      detail: at(1) === 'done'
+        ? 'Aceptaste la devolución en el correo de Flow.'
+        : 'Te llega un correo de info@flow.cl con una clave y una fecha límite: ábrelo y acepta la devolución. Si no lo ves, revisa spam o promociones.',
+      status: refund.state === 'ERROR' ? 'upcoming' : at(1),
+    };
+
+  const processing = {
+    key: 'processing',
+    title: 'Flow procesa la devolución',
+    detail: 'Se devuelve en el mismo medio de pago que usaste. Con tarjeta se refleja en hasta 10 días hábiles.',
+    status: refund.state === 'RECHAZADO' || refund.state === 'ERROR' ? 'upcoming' : at(2),
+  };
+
+  const done = {
+    key: 'refunded',
+    title: 'Dinero devuelto',
+    detail: refund.state === 'REEMBOLSADO' ? 'Flow completó la devolución; su reflejo depende de tu banco.' : undefined,
+    status: refund.state === 'REEMBOLSADO' ? 'done' : 'upcoming',
+  };
+
+  return [decided, requested, email, processing, done];
+}
+
+/**
+ * Si la venta pudo generar un reembolso que pida nota de credito. Solo decide si se ofrece el
+ * boton sin pedir las notas de cada tarjeta: el popup carga las reales y, si no hay, lo dice.
+ */
+export function saleMayNeedCreditNote(order) {
+  return Number(order?.montoReembolsado || order?.refundedAmount || 0) > 0
+    || Boolean(order?.refundStatus) || Boolean(order?.estadoReembolso);
+}

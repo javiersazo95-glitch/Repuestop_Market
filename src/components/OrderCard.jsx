@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import {
   Clock, Wrench, Truck, PackageCheck, ShieldCheck, AlertCircle, XCircle,
   RotateCcw, FileText, User, Store, Package, Info, ChevronRight, Check,
-  Phone, MapPin, Boxes, Loader2, ReceiptText, FileCheck, ListChecks, ShieldAlert, KeyRound
+  Phone, MapPin, Boxes, Loader2, ReceiptText, FileCheck, ListChecks, ShieldAlert, KeyRound,
+  FileMinus,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { resolveMediaUrl, startSellerChatApi } from '../services/api';
@@ -11,6 +12,9 @@ import { buyerClaimState, getControlledOrderAction, isStorePickupOrder, orderPay
 import { buyerCaseChatPath, currentPathForBack, sellerCaseChatPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
+import CreditNoteModal from './CreditNoteModal';
+import { saleMayNeedCreditNote } from '../data/refundStatus';
+import OrderRefundsMenu from './OrderRefundsMenu';
 import SellerChargesBreakdownModal from './SellerChargesBreakdownModal';
 import useSellerChecklist from '../hooks/useSellerChecklist';
 import { cancellationReasonLabel } from '../data/cancellationReason';
@@ -84,6 +88,7 @@ export default function OrderCard({
 }) {
   const [showCommissionModal, setShowCommissionModal] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState(false);
+  const [showCreditNote, setShowCreditNote] = useState(false);
   const [actionError, setActionError] = useState('');
   const [isRetryingPayment, setIsRetryingPayment] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -693,6 +698,24 @@ export default function OrderCard({
             </button>
           )}
           {statusButton}
+          {/* 12-oct (paridad con la app): el comprador sigue sus devoluciones en curso con su
+              linea de tiempo con Flow; la tienda carga su nota de credito por el reembolso. El
+              span corta el clic: los popups viven en portales pero sus eventos suben por React
+              hasta la tarjeta, que abriria el detalle. */}
+          {!isSeller && (
+            <span className="order-card-action-slot" onClick={(e) => e.stopPropagation()}>
+              <OrderRefundsMenu order={order} trigger="button" />
+            </span>
+          )}
+          {isSeller && saleMayNeedCreditNote(order) && (
+            <span className="order-card-action-slot" onClick={(e) => e.stopPropagation()}>
+              <button type="button" className="btn-order-action btn-action-outline" onClick={() => setShowCreditNote(true)}>
+                <FileMinus size={14} />
+                <span>Nota de crédito</span>
+              </button>
+              {showCreditNote && <CreditNoteModal order={order} onClose={() => setShowCreditNote(false)} />}
+            </span>
+          )}
         </div>
         {/* El error del "Retomar pago" (el 409 de la ventana vencida, que dice que el pedido
             quedo cancelado) solo se pintaba junto al boton de avance de estado, y un pedido
