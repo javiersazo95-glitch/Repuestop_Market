@@ -919,6 +919,16 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   // Menú "⋯" en celular: lo que en escritorio son chips y botones grandes.
   const menuItems = [
     ...(hasDetail ? [{ key: 'detalle', Icon: Clock, label: detailLabel, onPress: () => setShowResolutionDetail(true) }] : []),
+    // El reclamo que abrió el caso: motivo en el menú; descripción y derechos al tocar.
+    ...(chat?.motivo || chat?.descripcion ? [{
+      key: 'reclamo',
+      Icon: Flag,
+      label: `Reclamo: ${claimReasonLabel(chat?.motivo)}`,
+      onPress: () => setInfoSheet({
+        title: `Reclamo: ${claimReasonLabel(chat?.motivo)}`,
+        paragraphs: [chat?.descripcion, isBuyer ? 'Este proceso es gratuito. Siempre puedes acudir al Juzgado de Policía Local o reclamar en el SERNAC.' : null].filter(Boolean),
+      }),
+    }] : []),
     ...(isEscalated ? [{ key: 'resumen', Icon: BookOpen, label: 'Resumen de la mediación', onPress: () => { setActiveTab('mediator'); setSummarySheetOpen(true); } }] : []),
     { key: 'vehiculo', Icon: Car, label: `${caseVehicles.length > 1 ? `Vehículos (${caseVehicles.length})` : 'Vehículo'}${chat?.boletaVentaDisponible ? ' y boleta' : ''}`, onPress: () => setShowVehicleReceipt(true) },
     { key: 'pedido', Icon: Receipt, label: codigo ? `Pedido ${codigo}` : 'Ver compra', onPress: () => navigate(orderPath) },
@@ -1144,19 +1154,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
               <CheckCircle2 size={15} /><span>{isBuyer ? 'Diste por resuelto este reclamo' : 'El comprador dio por resuelto el reclamo'}</span><ChevronRight size={14} />
             </button>
           )}
-          {activeTab === 'chat' && !isEscalated && String(chat?.estadoPedido || '').toUpperCase() !== 'EN_MEDIACION' && hasDetail && (
-            <button type="button" className="mchat-strip" onClick={() => setShowResolutionDetail(true)}>
-              <Clock size={15} /><span>{detailLabel}</span><ChevronRight size={14} />
-            </button>
-          )}
-          {activeTab === 'chat' && (chat?.motivo || chat?.descripcion) && (
-            <button type="button" className="mchat-strip" onClick={() => setInfoSheet({
-              title: `Reclamo: ${claimReasonLabel(chat?.motivo)}`,
-              paragraphs: [chat?.descripcion, isBuyer ? 'Este proceso es gratuito. Siempre puedes acudir al Juzgado de Policía Local o reclamar en el SERNAC.' : null].filter(Boolean),
-            })}>
-              <Flag size={15} /><span>Reclamo: {claimReasonLabel(chat?.motivo)}</span><ChevronRight size={14} />
-            </button>
-          )}
+          {/* Detalle/resolución y reclamo viven en el menú "⋯" del encabezado (app y Market). */}
         </div>
 
         {activeTab === 'chat' && !isEscalated && String(chat?.estadoPedido || '').toUpperCase() !== 'EN_MEDIACION' && (
