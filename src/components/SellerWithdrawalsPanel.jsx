@@ -215,7 +215,7 @@ function PendingOrderRow({ order, isHeld = false, isInDetail = false, isCharge =
           {order.nombrePedido || order.nombre || 'Producto sin nombre'}
         </strong>
         <span className="withdrawal-order-meta">
-          Pedido {order.numeroPedido || sellerCodeShort(order.codigoExterno) || '—'} · {formatDate(order.fecha, true)} · Cantidad vendida: {Number(order.cantidadVendida || 0)}
+          Pedido {order.numeroPedido || sellerCodeShort(order.codigoExterno) || '—'} · {formatDate(order.fecha, true)}{posterior ? '' : ` · Cantidad vendida: ${Number(order.cantidadVendida || 0)}`}
         </span>
         {isCharge ? (
           <div className="withdrawal-charge-badge">
