@@ -677,6 +677,34 @@
 .mchat-mediator-msg-head time { color: var(--rt-text-muted); white-space: nowrap; }
 .mchat-mediator-msg-card p { font-size: 15px; line-height: 22px; white-space: pre-wrap; word-break: break-word; }
 
+/* 12-oct: preguntas con opciones del flujo guiado de mediacion. */
+.mchat-question-title { font-size: 15px; line-height: 20px; }
+.mchat-question { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.mchat-question-options { display: flex; flex-direction: column; gap: 6px; }
+.mchat-question-option {
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: var(--rt-radius-md);
+  border: 1px solid var(--rt-primary);
+  background: var(--rt-surface);
+  color: var(--rt-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mchat-question-option:disabled { cursor: default; opacity: 0.55; }
+.mchat-question-option.is-selected { background: var(--rt-mediation-bg); color: var(--rt-primary); opacity: 1; }
+.mchat-question-answer { color: var(--rt-text-muted); font-size: 12.5px; }
+.mchat-question-pending { display: flex; flex-direction: column; gap: 8px; }
+.mchat-question-pending textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--rt-border); border-radius: var(--rt-radius-md); font: inherit; resize: vertical; }
+.mchat-question-files { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px dashed var(--rt-border); border-radius: var(--rt-radius-md); cursor: pointer; font-size: 13px; }
+.mchat-question-files input { display: none; }
+.mchat-question-pending-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.mchat-question-cancel, .mchat-question-send { padding: 8px 14px; border-radius: var(--rt-radius-pill, 999px); font: inherit; font-weight: 600; cursor: pointer; }
+.mchat-question-cancel { border: 1px solid var(--rt-border); background: var(--rt-surface); color: var(--rt-text); }
+.mchat-question-send { border: 1px solid var(--rt-primary); background: var(--rt-primary); color: #fff; }
+.mchat-question-send:disabled { opacity: 0.5; cursor: default; }
+
 /* ---------------------------------------------------------------------------
    Hojas y modales (bottom sheet en movil, centrado en escritorio)
    ------------------------------------------------------------------------- */

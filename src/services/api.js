@@ -1825,6 +1825,24 @@ export async function sendMediatorMessageApi(pedidoId, mensaje, proveedorId) {
 }
 
 /**
+ * 12-oct (flujos guiados): la parte toca una opcion de una pregunta del mediador. `texto` y
+ * `fotos` solo cuando la opcion los pide. El backend manda solo el siguiente paso a la otra
+ * parte y devuelve el caso completo.
+ */
+export async function answerMediationQuestionApi(pedidoId, mensajeId, { respuesta, texto, fotos, proveedorId } = {}) {
+  const formData = new FormData();
+  formData.append('respuesta', respuesta);
+  if (texto && String(texto).trim()) formData.append('texto', String(texto).trim());
+  (fotos || []).forEach((file) => formData.append('fotos', file));
+  appendProveedor(formData, proveedorId);
+  return fetchApi(`/pedidos/${pedidoId}/mediacion-preguntas/${mensajeId}/responder`, {
+    method: 'POST',
+    body: formData,
+    signal: AbortSignal.timeout(30000),
+  });
+}
+
+/**
  * O63 (pruebas de lanzamiento, 25-sep): pasado el plazo del mediador y dentro de los 6 meses
  * de la garantia legal, el comprador pide ayuda a soporte desde el caso. Crea un ticket de
  * soporte ligado al pedido (o devuelve el que ya esta abierto) y responde el caso actualizado.

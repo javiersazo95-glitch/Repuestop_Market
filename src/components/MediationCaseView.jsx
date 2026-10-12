@@ -10,6 +10,7 @@ import {
 import {
   escalateMediationApi, getMediationChatApi, requestWarrantySupportApi, resolveMediationApi,
   sendConversationMessageApi, sendMediatorMessageApi, startSellerChatApi, uploadMediationEvidenceApi,
+  answerMediationQuestionApi,
   uploadMediationChatImageApi, resolveMediaUrl,
 } from '../services/api';
 import { claimReasonLabel } from '../data/claimReason';
@@ -72,6 +73,24 @@ function normalizeMediatorEntry(entry, index) {
     type: entry.noteType ?? entry.tipo ?? entry.type ?? '',
     date: entry.createdAt ?? entry.fecha ?? entry.date ?? null,
     senderRole: entry.senderRole ?? '',
+    targetRole: entry.targetRole ?? '',
+    // 12-oct (flujos guiados): pregunta con opciones para tocar y, si ya se respondio, la eleccion.
+    question: entry.preguntaKey
+      ? {
+          key: entry.preguntaKey,
+          title: entry.preguntaTitulo || '',
+          options: (entry.opciones || []).filter((o) => o && o.key).map((o) => ({
+            key: String(o.key),
+            label: o.label || String(o.key),
+            pideTexto: Boolean(o.pideTexto),
+            pideFotos: Boolean(o.pideFotos),
+            placeholder: o.placeholder || '',
+          })),
+          answerKey: entry.respuestaKey || null,
+          answerLabel: entry.respuestaLabel || null,
+          answerText: entry.respuestaTexto || null,
+        }
+      : null,
   };
 }
 
@@ -400,8 +419,8 @@ function CaseInfoCard({ icon: Icon, label, value }) {
   );
 }
 
-function MediatorMessageCard({ entry, isMine, avatarUrl }) {
-  const isSystem = LOG_ENTRY_TYPES.has(entry.type);
+function MediatorMessageCard({ entry, isMine, avatarUrl, canAnswer, onAnswer, answering }) {
+  const isSystem = LOG_ENTRY_TYPES.has(entry.type) || entry.type === 'pregunta';
   return (
     <div className={`mchat-mediator-msg ${isMine ? 'is-mine' : ''} ${isSystem ? 'is-system' : ''}`}>
       <div className="mchat-mediator-msg-card">
@@ -414,8 +433,103 @@ function MediatorMessageCard({ entry, isMine, avatarUrl }) {
           </span>
           <time>{formatDateTime(entry.date)}</time>
         </div>
+        {entry.question && <strong className="mchat-question-title">{entry.question.title}</strong>}
         <p>{entry.text}</p>
+        {entry.question && (
+          <GuidedQuestionOptions question={entry.question} canAnswer={Boolean(canAnswer && onAnswer)} onAnswer={onAnswer} answering={Boolean(answering)} />
+        )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * 12-oct (flujos guiados): los botones de una pregunta del mediador. Una opcion que pide texto abre
+ * un campo corto (courier y numero de orden, descripcion); una que pide fotos, un selector de
+ * archivos. Respondida, los botones quedan deshabilitados con la eleccion marcada.
+ */
+function GuidedQuestionOptions({ question, canAnswer, onAnswer, answering }) {
+  const [pendingKey, setPendingKey] = useState(null);
+  const [texto, setTexto] = useState('');
+  const [files, setFiles] = useState([]);
+  const answered = Boolean(question.answerKey);
+  const pending = question.options.find((option) => option.key === pendingKey) || null;
+
+  const choose = (option) => {
+    if (!canAnswer || answered || answering) return;
+    if (option.pideTexto || option.pideFotos) {
+      setPendingKey(option.key);
+      return;
+    }
+    onAnswer(option.key);
+  };
+
+  const confirmPending = () => {
+    if (!pending) return;
+    onAnswer(pending.key, texto, files);
+    setPendingKey(null);
+    setTexto('');
+    setFiles([]);
+  };
+
+  const sendDisabled = answering
+    || (pending?.pideTexto && pending.key !== 'AYUDA' && !texto.trim())
+    || (pending?.pideFotos && files.length === 0);
+
+  return (
+    <div className="mchat-question">
+      <div className="mchat-question-options">
+        {question.options.map((option) => {
+          const selected = question.answerKey === option.key;
+          return (
+            <button
+              key={option.key}
+              type="button"
+              className={`mchat-question-option ${selected ? 'is-selected' : ''}`}
+              disabled={!canAnswer || answered || answering}
+              onClick={() => choose(option)}
+            >
+              {selected ? '✓ ' : ''}{option.label}
+            </button>
+          );
+        })}
+      </div>
+      {answered && (
+        <small className="mchat-question-answer">
+          Respondiste: {question.answerLabel || question.answerKey}{question.answerText ? ` · ${question.answerText}` : ''}
+        </small>
+      )}
+      {pending && (
+        <div className="mchat-question-pending">
+          {pending.pideTexto && (
+            <textarea
+              value={texto}
+              onChange={(event) => setTexto(event.target.value)}
+              placeholder={pending.placeholder || 'Escribe el dato'}
+              maxLength={300}
+              rows={2}
+              aria-label={pending.placeholder || 'Detalle'}
+            />
+          )}
+          {pending.pideFotos && (
+            <label className="mchat-question-files">
+              <span>{files.length ? `${files.length} foto(s) elegidas` : 'Adjuntar fotos'}</span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(event) => setFiles(Array.from(event.target.files || []).slice(0, 5))}
+              />
+            </label>
+          )}
+          <div className="mchat-question-pending-actions">
+            <button type="button" className="mchat-question-cancel" onClick={() => { setPendingKey(null); setTexto(''); setFiles([]); }}>Cancelar</button>
+            <button type="button" className="mchat-question-send" disabled={sendDisabled} onClick={confirmPending}>
+              {answering ? 'Enviando...' : 'Enviar'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -757,6 +871,28 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
       setMediatorError(error.message || 'No se pudo enviar el mensaje al mediador.');
     } finally {
       setIsSendingMediator(false);
+    }
+  };
+
+  // 12-oct (flujos guiados): la parte toca una opcion; el backend sigue solo con la otra parte.
+  const [answeringQuestionId, setAnsweringQuestionId] = useState(null);
+  const submitQuestionAnswer = async (mensajeId, respuesta, texto, fotos) => {
+    if (answeringQuestionId || mediatorClosed) return;
+    setAnsweringQuestionId(mensajeId);
+    setMediatorError('');
+    try {
+      const data = await answerMediationQuestionApi(pedidoId, mensajeId, { respuesta, texto, fotos, proveedorId });
+      if (data?.conversacion) {
+        setChat(data);
+        setMessages(data?.mensajes || []);
+      } else {
+        await load({ quiet: true });
+      }
+      onChanged?.();
+    } catch (error) {
+      setMediatorError(error.message || 'No se pudo enviar tu respuesta.');
+    } finally {
+      setAnsweringQuestionId(null);
     }
   };
 
@@ -1232,6 +1368,9 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
                     entry={entry}
                     isMine={isMine}
                     avatarUrl={isMine ? (isBuyer ? buyerAvatar : sellerAvatar) : undefined}
+                    canAnswer={!mediatorClosed && entry.targetRole === ownRole}
+                    onAnswer={(respuesta, texto, fotos) => submitQuestionAnswer(entry.id, respuesta, texto, fotos)}
+                    answering={answeringQuestionId === entry.id}
                   />
                 );
               }) : (
