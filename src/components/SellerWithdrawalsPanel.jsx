@@ -37,6 +37,7 @@ const AYUDA_LIBERAR = [
 const AYUDA_CARGOS = [
   'Un mediador de RepuesTop revisó estos casos de forma imparcial y resolvió a favor del comprador, porque la venta no cumplió lo ofrecido por la tienda (por ejemplo, el producto llegó con falla o no correspondía a lo publicado).',
   'Se le devolvió todo al comprador y la comisión de Flow, que no se recupera, la asume la tienda. El monto se descuenta de tu próximo retiro.',
+  'Si un reclamo por garantía termina en reembolso cuando esa venta ya se te había pagado, lo que se te pagó de más (lo devuelto, menos la comisión que se te reintegra, más el cargo de Flow por el reembolso) aparece aquí como «Reembolso de una venta ya pagada» y se descuenta de tu próximo retiro. Si no tienes ventas con que cubrirlo, RepuesTop te contactará para que lo transfieras.',
 ];
 
 const ACCOUNT_TYPES = [
@@ -204,6 +205,8 @@ function WithdrawalRejectedNotice({ motivo, rechazadoAt, reintentoCodigo }) {
 function PendingOrderRow({ order, isHeld = false, isInDetail = false, isCharge = false, onViewSale }) {
   const countdown = isHeld && !isCharge ? getRemainingDaysInfo(order.disponibleDesde) : null;
   const reembolso = Number(order.montoReembolsoMediacion || 0);
+  // 12-oct: reembolso de una venta que ya se le habia pagado (saldo en contra).
+  const posterior = isCharge && order.tipoCargo === 'REEMBOLSO_POSTERIOR';
 
   return (
     <article className={`withdrawal-order-row ${isCharge ? 'is-charge' : isHeld ? 'is-held' : 'is-available'}`}>
@@ -217,7 +220,7 @@ function PendingOrderRow({ order, isHeld = false, isInDetail = false, isCharge =
         {isCharge ? (
           <div className="withdrawal-charge-badge">
             <RotateCcw size={13} />
-            <span>Reembolso total al comprador</span>
+            <span>{posterior ? 'Venta ya pagada' : 'Reembolso total al comprador'}</span>
           </div>
         ) : isHeld && countdown ? (
           <div className={`withdrawal-countdown-badge ${countdown.className}`}>
@@ -235,7 +238,9 @@ function PendingOrderRow({ order, isHeld = false, isInDetail = false, isCharge =
             explicacion y pensaba que el calculo estaba mal. */}
         {reembolso > 0 && (
           <span className="withdrawal-refund-note">
-            {isCharge
+            {posterior
+              ? `Devuelto al comprador: ${formatCLP(reembolso)}. Esta venta ya se te había pagado.`
+              : isCharge
               ? `Devuelto al comprador: ${formatCLP(reembolso)}. Comisión de Flow no recuperable.`
               : `Incluye descuento por reembolso de mediación: -${formatCLP(reembolso)}`}
           </span>
@@ -913,7 +918,7 @@ export default function SellerWithdrawalsPanel({ sellerId, sellerEmail }) {
               </header>
               <div className="withdrawal-section-orders">
                 {pending.cargos.slice(0, DISPLAY_LIMIT).map((order) => (
-                  <PendingOrderRow key={`cargo-${order.pedidoId}`} order={order} isCharge onViewSale={setSaleDetail} />
+                  <PendingOrderRow key={`cargo-${order.tipoCargo || 'total'}-${order.pedidoId}`} order={order} isCharge onViewSale={setSaleDetail} />
                 ))}
                 {pending.cargos.length > DISPLAY_LIMIT && (
                   <button
