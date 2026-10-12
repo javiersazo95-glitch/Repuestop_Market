@@ -194,7 +194,7 @@ function SubirNotaModal({ orderId, orderCode, nota, onClose, onSaved }) {
         </div>
 
         <p className="order-subdialog-hint">
-          Los datos de la nota de crédito electrónica que emitiste en el SII para anular tu boleta.
+          Los datos de la nota de crédito electrónica que emitiste en el SII para anular tu {nota.documentoVenta === 'FACTURA' ? 'factura' : 'boleta'}.
         </p>
 
         {error && <p className="confirm-dialog-error">{error}</p>}
