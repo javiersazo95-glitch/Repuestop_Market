@@ -90,6 +90,8 @@ function normalizeMediatorEntry(entry, index) {
           answerKey: entry.respuestaKey || null,
           answerLabel: entry.respuestaLabel || null,
           answerText: entry.respuestaTexto || null,
+          plazoTexto: entry.plazoTexto || null,
+          vencida: Boolean(entry.vencida),
         }
       : null,
   };
@@ -454,91 +456,98 @@ function MediatorMessageCard({ entry, isMine, avatarUrl, canAnswer, onAnswer, an
  * orden, descripcion) y una que pide fotos, un selector de archivos. La ultima siempre es "hablar
  * con un mediador". Respondida, las opciones quedan deshabilitadas con la eleccion marcada.
  */
-function GuidedQuestionOptions({ question, canAnswer, onAnswer, answering }) {
-  const [pendingKey, setPendingKey] = useState(null);
+/**
+ * 13-oct: las opciones de una pregunta del asistente van en un desplegable (eran una lista de
+ * radios que llenaba la pantalla). Elegida una, aparecen el texto o las fotos si la opcion los pide y
+ * el boton "Enviar respuesta". `embedded`: la usa el popup de "pedir mediador": no envia sola, avisa
+ * la seleccion al padre con `onSelectionChange`.
+ */
+function GuidedQuestionOptions({ question, canAnswer, onAnswer, answering, embedded = false, onSelectionChange }) {
+  const [selectedKey, setSelectedKey] = useState('');
   const [texto, setTexto] = useState('');
   const [files, setFiles] = useState([]);
   const answered = Boolean(question.answerKey);
-  const pending = question.options.find((option) => option.key === pendingKey) || null;
+  const selected = question.options.find((option) => option.key === selectedKey) || null;
+  const needsText = Boolean(selected?.pideTexto && selected.key !== 'AYUDA');
+  const needsPhotos = Boolean(selected?.pideFotos);
+  const valid = Boolean(selected) && (!needsText || texto.trim().length > 0) && (!needsPhotos || files.length > 0 || embedded);
 
-  const choose = (option) => {
-    if (!canAnswer || answered || answering) return;
-    if (option.pideTexto || option.pideFotos) {
-      setPendingKey(option.key);
-      return;
-    }
-    onAnswer(option.key);
-  };
+  useEffect(() => {
+    if (!onSelectionChange) return;
+    onSelectionChange(selected ? { key: selected.key, texto: texto.trim(), files, valid } : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey, texto, files, valid]);
 
-  const confirmPending = () => {
-    if (!pending) return;
-    onAnswer(pending.key, texto, files);
-    setPendingKey(null);
+  const send = () => {
+    if (!selected || !valid || answering || !onAnswer) return;
+    onAnswer(selected.key, texto, files);
+    setSelectedKey('');
     setTexto('');
     setFiles([]);
   };
 
-  const sendDisabled = answering
-    || (pending?.pideTexto && pending.key !== 'AYUDA' && !texto.trim())
-    || (pending?.pideFotos && files.length === 0);
+  if (answered) {
+    return (
+      <div className="mchat-question">
+        <small className={`mchat-question-answer ${question.vencida ? 'is-expired' : ''}`}>
+          {question.vencida
+            ? 'Sin respuesta: venció el plazo'
+            : `Respondiste: ${question.answerLabel || question.answerKey}${question.answerText ? ` · ${question.answerText}` : ''}`}
+        </small>
+      </div>
+    );
+  }
 
+  const disabled = !canAnswer || answering;
   return (
     <div className="mchat-question">
-      <div className="mchat-question-options">
-        {question.options.map((option) => {
-          const selected = question.answerKey === option.key;
-          return (
-            <button
-              key={option.key}
-              type="button"
-              className={`mchat-question-option ${selected ? 'is-selected' : ''} ${option.key === 'AYUDA' ? 'is-help' : ''} ${pendingKey === option.key ? 'is-pending' : ''}`}
-              disabled={!canAnswer || answered || answering}
-              onClick={() => choose(option)}
-              aria-pressed={selected || pendingKey === option.key}
-            >
-              <span className="mchat-question-radio" aria-hidden="true" />
-              <span className="mchat-question-option-copy">
-                <span>{option.label}</span>
-                {option.description && <small>{option.description}</small>}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      {answered && (
-        <small className="mchat-question-answer">
-          Respondiste: {question.answerLabel || question.answerKey}{question.answerText ? ` · ${question.answerText}` : ''}
-        </small>
+      <label className="mchat-question-select-wrap">
+        <select
+          className="mchat-question-select"
+          value={selectedKey}
+          disabled={disabled}
+          onChange={(event) => { setSelectedKey(event.target.value); setTexto(''); setFiles([]); }}
+          aria-label="Elige una opción"
+        >
+          <option value="">Elige una opción…</option>
+          {question.options.map((option) => (
+            <option key={option.key} value={option.key}>{option.label}</option>
+          ))}
+        </select>
+      </label>
+      {selected?.description && <small className="mchat-question-description">{selected.description}</small>}
+      {canAnswer && question.plazoTexto && !embedded && (
+        <small className="mchat-question-deadline">Tienes {question.plazoTexto} para responder.</small>
       )}
-      {pending && (
-        <div className="mchat-question-pending">
-          {pending.pideTexto && (
-            <textarea
-              value={texto}
-              onChange={(event) => setTexto(event.target.value)}
-              placeholder={pending.placeholder || 'Escribe el dato'}
-              maxLength={300}
-              rows={2}
-              aria-label={pending.placeholder || 'Detalle'}
-            />
-          )}
-          {pending.pideFotos && (
-            <label className="mchat-question-files">
-              <span>{files.length ? `${files.length} foto(s) elegidas` : 'Adjuntar fotos'}</span>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(event) => setFiles(Array.from(event.target.files || []).slice(0, 5))}
-              />
-            </label>
-          )}
-          <div className="mchat-question-pending-actions">
-            <button type="button" className="mchat-question-cancel" onClick={() => { setPendingKey(null); setTexto(''); setFiles([]); }}>Cancelar</button>
-            <button type="button" className="mchat-question-send" disabled={sendDisabled} onClick={confirmPending}>
-              {answering ? 'Enviando...' : 'Enviar'}
-            </button>
-          </div>
+      {selected?.pideTexto && (
+        <textarea
+          value={texto}
+          onChange={(event) => setTexto(event.target.value)}
+          placeholder={selected.placeholder || (selected.key === 'AYUDA' ? 'Cuéntanos (opcional)' : 'Escribe el dato')}
+          maxLength={300}
+          rows={2}
+          aria-label={selected.placeholder || 'Detalle'}
+        />
+      )}
+      {selected && needsPhotos && !embedded && (
+        <label className="mchat-question-files">
+          <span>{files.length ? `${files.length} foto(s) elegidas` : 'Adjuntar fotos'}</span>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(event) => setFiles(Array.from(event.target.files || []).slice(0, 5))}
+          />
+        </label>
+      )}
+      {selected && needsPhotos && embedded && (
+        <small className="mchat-question-description">Adjunta las fotos en "Evidencias", más abajo.</small>
+      )}
+      {!embedded && (
+        <div className="mchat-question-pending-actions">
+          <button type="button" className="mchat-question-send" disabled={!valid || answering} onClick={send}>
+            {answering ? 'Enviando...' : 'Enviar respuesta'}
+          </button>
         </div>
       )}
     </div>
@@ -608,6 +617,8 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   const [showMediatorLockedInfo, setShowMediatorLockedInfo] = useState(false);
   const [helpReason, setHelpReason] = useState('no_agreement');
   const [helpCustomReason, setHelpCustomReason] = useState('');
+  // 13-oct: la opcion elegida en la primera pregunta del cuestionario (popup de pedir mediador).
+  const [helpSelection, setHelpSelection] = useState(null);
   const [detail, setDetail] = useState('');
   const [files, setFiles] = useState([]);
   const [formError, setFormError] = useState('');
@@ -778,6 +789,24 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
     [chat, isBuyer]
   );
   const mediatorClosed = Boolean(chat?.chatCerrado) || buyerSuspended;
+  // 13-oct: la primera pregunta del cuestionario para el popup de "pedir mediador".
+  const initialQuestion = useMemo(() => {
+    const raw = chat?.preguntaInicial;
+    if (!raw?.key) return null;
+    return {
+      key: raw.key,
+      title: raw.titulo || '',
+      text: raw.texto || '',
+      options: (raw.opciones || []).filter((o) => o && o.key).map((o) => ({
+        key: String(o.key),
+        label: o.label || String(o.key),
+        pideTexto: Boolean(o.pideTexto),
+        pideFotos: Boolean(o.pideFotos),
+        placeholder: o.placeholder || '',
+        description: o.descripcion || '',
+      })),
+    };
+  }, [chat]);
   const otherPartyName = isBuyer ? (chat?.vendedorNombre ?? 'Vendedor') : (chat?.compradorNombre ?? 'Comprador');
 
   // Si el caso deja de estar escalado (o todavía no lo está), la pestaña del mediador no existe.
@@ -931,18 +960,37 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
   const submitEscalate = async (event) => {
     event.preventDefault();
     if (isSubmitting) return;
-    const motivo = helpReason === 'other' ? helpCustomReason.trim() : (MEDIATOR_REASONS.find((o) => o.value === helpReason)?.label ?? helpReason);
-    if (!motivo || !detail.trim()) {
-      // El backend valida ambos campos (validarTexto en MediacionChatService).
-      setFormError('Completa el motivo y el detalle: el mediador necesita los dos para tomar el caso.');
-      return;
+    let motivo;
+    let respuesta = null;
+    let texto = null;
+    if (initialQuestion) {
+      if (!helpSelection?.valid) {
+        setFormError('Elige una opción del cuestionario para pedir el mediador.');
+        return;
+      }
+      const option = initialQuestion.options.find((item) => item.key === helpSelection.key);
+      if (option?.pideFotos && files.length === 0) {
+        setFormError('Esta opción necesita fotos: adjúntalas en "Evidencias".');
+        return;
+      }
+      motivo = option?.label || helpSelection.key;
+      respuesta = helpSelection.key;
+      texto = helpSelection.texto || null;
+    } else {
+      motivo = helpReason === 'other' ? helpCustomReason.trim() : (MEDIATOR_REASONS.find((o) => o.value === helpReason)?.label ?? helpReason);
+      if (!motivo || !detail.trim()) {
+        // El backend valida ambos campos (validarTexto en MediacionChatService).
+        setFormError('Completa el motivo y el detalle: el mediador necesita los dos para tomar el caso.');
+        return;
+      }
     }
     const warning = 'Al enviar esta solicitud, un mediador de RepuesTop tomará el caso. La conversación directa quedará pausada y el seguimiento continuará desde el apartado Mediador.';
     if (!window.confirm(warning)) return;
     setIsSubmitting(true);
     setFormError('');
     try {
-      await escalateMediationApi(pedidoId, { motivo, descripcion: detail.trim(), imagenes: files, proveedorId });
+      await escalateMediationApi(pedidoId, { motivo, descripcion: detail.trim(), imagenes: files, proveedorId, respuesta, texto });
+      setHelpSelection(null);
       // El chat con la otra parte queda pausado: el seguimiento pasa al apartado Mediador.
       setActiveTab('mediator');
       setSummaryOpen(true);
@@ -1569,28 +1617,42 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
                   <Info size={20} />
                   <span>La ayuda del mediador se puede solicitar una vez recibido el producto y durante los 10 días corridos siguientes. Al enviarla, el chat directo se pausará y el seguimiento continuará en el apartado Mediador.</span>
                 </div>
-                <div className="mchat-field">
-                  <span>Motivo de la solicitud</span>
-                  <div className="mchat-reason-grid" role="radiogroup" aria-label="Motivo de la solicitud">
-                    {MEDIATOR_REASONS.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        role="radio"
-                        aria-checked={helpReason === option.value}
-                        className={`mchat-reason-pill ${helpReason === option.value ? 'is-selected' : ''}`}
-                        onClick={() => setHelpReason(option.value)}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
+                {initialQuestion ? (
+                  <div className="mchat-field mchat-initial-question">
+                    <span>{initialQuestion.title}</span>
+                    <small className="mchat-muted">{initialQuestion.text}</small>
+                    <GuidedQuestionOptions
+                      question={{ options: initialQuestion.options }}
+                      canAnswer={!isSubmitting}
+                      answering={isSubmitting}
+                      embedded
+                      onSelectionChange={setHelpSelection}
+                    />
                   </div>
-                  {helpReason === 'other' && (
-                    <input type="text" value={helpCustomReason} maxLength={150} onChange={(event) => setHelpCustomReason(event.target.value)} placeholder="Escribe el motivo" aria-label="Motivo" />
-                  )}
-                </div>
+                ) : (
+                  <div className="mchat-field">
+                    <span>Motivo de la solicitud</span>
+                    <div className="mchat-reason-grid" role="radiogroup" aria-label="Motivo de la solicitud">
+                      {MEDIATOR_REASONS.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={helpReason === option.value}
+                          className={`mchat-reason-pill ${helpReason === option.value ? 'is-selected' : ''}`}
+                          onClick={() => setHelpReason(option.value)}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    {helpReason === 'other' && (
+                      <input type="text" value={helpCustomReason} maxLength={150} onChange={(event) => setHelpCustomReason(event.target.value)} placeholder="Escribe el motivo" aria-label="Motivo" />
+                    )}
+                  </div>
+                )}
                 <label className="mchat-field">
-                  <span>Detalle para el mediador</span>
+                  <span>{initialQuestion ? 'Detalle para el mediador (opcional)' : 'Detalle para el mediador'}</span>
                   <textarea
                     value={detail}
                     maxLength={MAX_DETAIL}

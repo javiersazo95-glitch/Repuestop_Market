@@ -1781,10 +1781,16 @@ export async function uploadMediationChatImageApi(conversacionId, file) {
   });
 }
 
-export async function escalateMediationApi(pedidoId, { motivo, descripcion, imagenes, proveedorId }) {
+/**
+ * 13-oct: `respuesta` (y `texto` si la opcion lo pide) es la opcion elegida en la primera pregunta
+ * del cuestionario (`preguntaInicial` del caso); con ella, motivo y descripcion son opcionales.
+ */
+export async function escalateMediationApi(pedidoId, { motivo, descripcion, imagenes, proveedorId, respuesta, texto }) {
   const formData = new FormData();
-  formData.append('motivo', motivo);
-  formData.append('descripcion', descripcion);
+  if (motivo) formData.append('motivo', motivo);
+  if (descripcion) formData.append('descripcion', descripcion);
+  if (respuesta) formData.append('respuesta', respuesta);
+  if (texto) formData.append('texto', texto);
   appendProveedor(formData, proveedorId);
   (imagenes || []).forEach((file) => formData.append('imagenes', file));
   // Timeout mas largo que el default de fetchApi (15s): son varias imagenes.

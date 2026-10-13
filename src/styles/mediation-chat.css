@@ -706,6 +706,26 @@
 .mchat-question-option.is-pending { background: var(--rt-mediation-bg); }
 .mchat-question-option.is-help { border-style: dashed; }
 .mchat-question-answer { color: var(--rt-text-muted); font-size: 12.5px; }
+.mchat-question-answer.is-expired { font-style: italic; }
+/* 13-oct: las opciones van en un desplegable. */
+.mchat-question-select-wrap { display: block; }
+.mchat-question-select {
+  width: 100%;
+  padding: 10px 36px 10px 12px;
+  border: 1px solid var(--rt-primary);
+  border-radius: var(--rt-radius-md);
+  background: var(--rt-surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231d4ed8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 12px center;
+  color: var(--rt-text);
+  font: inherit;
+  font-weight: 600;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.mchat-question-select:disabled { opacity: 0.55; cursor: default; }
+.mchat-question-description { color: var(--rt-text-muted); font-size: 12.5px; line-height: 17px; }
+.mchat-question-deadline { color: var(--rt-primary); font-size: 12.5px; }
+.mchat-initial-question { gap: 6px; }
 .mchat-question-pending { display: flex; flex-direction: column; gap: 8px; }
 .mchat-question-pending textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--rt-border); border-radius: var(--rt-radius-md); font: inherit; resize: vertical; }
 .mchat-question-files { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px dashed var(--rt-border); border-radius: var(--rt-radius-md); cursor: pointer; font-size: 13px; }
