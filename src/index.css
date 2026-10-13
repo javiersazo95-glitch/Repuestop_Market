@@ -4697,6 +4697,7 @@ button.role-option-card {
 .activity-dot.badge-emerald { background: #059669; }
 .activity-dot.badge-purple { background: #7c3aed; }
 .activity-dot.badge-amber { background: #d97706; }
+.activity-dot.badge-red { background: #dc2626; }
 
 .activity-type-col strong {
   font-size: 13px;
@@ -7536,7 +7537,9 @@ button.role-option-card {
 
 .order-subdialog-filedrop { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border: 1px dashed #94a3b8; border-radius: var(--radius-sm); background: var(--bg-page); color: var(--color-brand-blue); }
 .order-subdialog-filedrop > label { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; cursor: pointer; }
-.order-subdialog-filedrop span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); font-size: 12.5px; }
+/* 13-oct: width 0 para que un nombre de archivo largo no aporte ancho minimo: con nowrap, su ancho
+   intrinseco era el del texto completo y ensanchaba el paso 3 del checklist (el texto se corta con …). */
+.order-subdialog-filedrop span { flex: 1; width: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); font-size: 12.5px; }
 .order-subdialog-filedrop input { display: none; }
 /* La X vive DENTRO del recuadro: un enlace "Quitar archivo" colgando debajo rompia el
    bloque y competia visualmente con el propio adjunto. */

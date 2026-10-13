@@ -65,6 +65,23 @@ import { normalizeOrderStatus } from '../data/orderStatusFlow';
 
 // Estados en que un pedido ya termino (para "pedidos en curso" del comprador).
 const ORDER_CLOSED_STATES = new Set(['ENTREGADO', 'FINALIZADO', 'CANCELADO', 'REEMBOLSADO', 'RECHAZADO']);
+// Pedidos que no suman a lo comprado ni a las ventas del mes: no se pagaron o se cancelaron.
+const ORDER_NOT_PAID_STATES = new Set(['PENDIENTE', 'CANCELADO', 'RECHAZADO']);
+
+/** Titulo de la actividad reciente segun el estado del pedido (antes decia "Pedido realizado" siempre). */
+function recentOrderTitle(order, isSeller) {
+  const status = normalizeOrderStatus(order);
+  if (status === 'CANCELADO' || status === 'RECHAZADO') return 'Pedido cancelado';
+  if (status === 'PENDIENTE') return 'Pago pendiente';
+  return isSeller ? 'Nuevo pedido' : 'Pedido realizado';
+}
+
+function recentOrderBadge(order) {
+  const status = normalizeOrderStatus(order);
+  if (status === 'CANCELADO' || status === 'RECHAZADO') return 'badge-red';
+  if (status === 'PENDIENTE') return 'badge-amber';
+  return 'badge-emerald';
+}
 
 export const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48];
 
@@ -1044,12 +1061,16 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     setActiveTab('feedback');
   };
 
+  // 13-oct (prueba en prod): sumaba pedidos cancelados o sin pagar, y al comprador le mostraba el
+  // neto de la tienda (totalVendedor): un pedido de $1.000 cancelado salia "Total comprado $906".
+  // Solo cuenta lo pagado; el comprador ve lo que pago (menos lo devuelto) y la tienda su neto.
   const ordersThisMonthTotal = (orders || []).reduce((sum, o) => {
-    if (!o.createdAt) return sum;
+    if (!o.createdAt || ORDER_NOT_PAID_STATES.has(normalizeOrderStatus(o))) return sum;
     const d = new Date(o.createdAt);
     const now = new Date();
     if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
-      return sum + Number(o.totalVendedor ?? o.total ?? 0);
+      const monto = isSeller ? (o.totalVendedor ?? o.total) : (o.totalActivo ?? o.activeTotal ?? o.total);
+      return sum + Number(monto ?? 0);
     }
     return sum;
   }, 0);
@@ -1220,10 +1241,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       list.push({
         id: `ord-${ord.id}`,
         type: 'order',
-        title: isSeller ? 'Nuevo pedido' : 'Pedido realizado',
+        title: recentOrderTitle(ord, isSeller),
         detail: `Pedido ${orderDisplayCode(ord, isSeller ? 'seller' : 'buyer')} - ${orderTitle(ord)}`,
         date: ord.createdAt || ord.fecha || Date.now() - 86400000,
-        badgeClass: 'badge-emerald',
+        badgeClass: recentOrderBadge(ord),
         action: () => setActiveTab('pedidos')
       });
     });
