@@ -42,7 +42,8 @@ const MAX_CHAT_MESSAGE = 500;
 const MAX_CHAT_IMAGES = 10;
 const MAX_CHAT_IMAGE_SIZE = 3 * 1024 * 1024;
 const MAX_DETAIL = 500;
-const POLL_MS = 15000;
+// 13-oct: mismo ritmo que el backoffice, para que el chat se sienta en vivo; se detiene con el caso cerrado.
+const POLL_MS = 5000;
 
 // Entradas automaticas que el backend deja en el hilo del mediador: no son
 // mensajes de nadie, son asientos de la bitacora del caso.
@@ -662,14 +663,22 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
 
   useEffect(() => { void load(); }, [pedidoId, proveedorId]);
 
-  // Como `useSmartPolling` en la app: cada 15 s mientras la pestaña está visible.
+  // Como `useSmartPolling` en la app: cada 5 s mientras la pestaña está visible y el caso siga
+  // abierto; al volver a la pestaña se relee en el acto.
+  const pollingClosed = Boolean(chat?.chatCerrado) || chat?.estadoMediacion === 'RESUELTA' || chat?.estadoMediacion === 'CERRADA' || Boolean(chat?.reclamoResuelto);
   useEffect(() => {
-    if (notStarted || loadError) return undefined;
+    if (notStarted || loadError || pollingClosed) return undefined;
     const id = window.setInterval(() => {
       if (document.visibilityState === 'visible') void load({ quiet: true });
     }, POLL_MS);
-    return () => window.clearInterval(id);
-  }, [pedidoId, proveedorId, notStarted, loadError]);
+    const onVisible = () => { if (document.visibilityState === 'visible') void load({ quiet: true }); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidoId, proveedorId, notStarted, loadError, pollingClosed]);
 
   // Deep link o notificación a un chat que nadie abrió todavía: lo crea el POST (idempotente).
   const startConversation = async () => {
