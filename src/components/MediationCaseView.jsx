@@ -85,6 +85,7 @@ function normalizeMediatorEntry(entry, index) {
             pideTexto: Boolean(o.pideTexto),
             pideFotos: Boolean(o.pideFotos),
             placeholder: o.placeholder || '',
+            description: o.descripcion || '',
           })),
           answerKey: entry.respuestaKey || null,
           answerLabel: entry.respuestaLabel || null,
@@ -433,7 +434,7 @@ function MediatorMessageCard({ entry, isMine, avatarUrl, canAnswer, onAnswer, an
             {!isSystem && (avatarUrl
               ? <img src={avatarUrl} alt="" referrerPolicy="no-referrer" />
               : isMine ? <CircleUser size={24} /> : <img src={mediatorAvatar} alt="" />)}
-            <span>{isSystem ? 'RepuesTop' : (entry.author || 'Mediador')}</span>
+            <span>{entry.question ? 'Asistente RepuesTop' : isSystem ? 'RepuesTop' : (entry.author || 'Mediador')}</span>
           </span>
           <time>{formatDateTime(entry.date)}</time>
         </div>
@@ -448,9 +449,10 @@ function MediatorMessageCard({ entry, isMine, avatarUrl, canAnswer, onAnswer, an
 }
 
 /**
- * 12-oct (flujos guiados): los botones de una pregunta del mediador. Una opcion que pide texto abre
- * un campo corto (courier y numero de orden, descripcion); una que pide fotos, un selector de
- * archivos. Respondida, los botones quedan deshabilitados con la eleccion marcada.
+ * 12-oct (flujos guiados): el cuestionario del asistente, de seleccion unica. Cada opcion lleva su
+ * descripcion (que implica elegirla); una que pide texto abre un campo corto (courier y numero de
+ * orden, descripcion) y una que pide fotos, un selector de archivos. La ultima siempre es "hablar
+ * con un mediador". Respondida, las opciones quedan deshabilitadas con la eleccion marcada.
  */
 function GuidedQuestionOptions({ question, canAnswer, onAnswer, answering }) {
   const [pendingKey, setPendingKey] = useState(null);
@@ -489,11 +491,16 @@ function GuidedQuestionOptions({ question, canAnswer, onAnswer, answering }) {
             <button
               key={option.key}
               type="button"
-              className={`mchat-question-option ${selected ? 'is-selected' : ''}`}
+              className={`mchat-question-option ${selected ? 'is-selected' : ''} ${option.key === 'AYUDA' ? 'is-help' : ''} ${pendingKey === option.key ? 'is-pending' : ''}`}
               disabled={!canAnswer || answered || answering}
               onClick={() => choose(option)}
+              aria-pressed={selected || pendingKey === option.key}
             >
-              {selected ? '✓ ' : ''}{option.label}
+              <span className="mchat-question-radio" aria-hidden="true" />
+              <span className="mchat-question-option-copy">
+                <span>{option.label}</span>
+                {option.description && <small>{option.description}</small>}
+              </span>
             </button>
           );
         })}

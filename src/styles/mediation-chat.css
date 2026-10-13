@@ -682,6 +682,9 @@
 .mchat-question { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
 .mchat-question-options { display: flex; flex-direction: column; gap: 6px; }
 .mchat-question-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
   text-align: left;
   padding: 10px 12px;
   border-radius: var(--rt-radius-md);
@@ -694,6 +697,14 @@
 }
 .mchat-question-option:disabled { cursor: default; opacity: 0.55; }
 .mchat-question-option.is-selected { background: var(--rt-mediation-bg); color: var(--rt-primary); opacity: 1; }
+/* 13-oct: cuestionario de seleccion unica; la descripcion explica que implica cada opcion. */
+.mchat-question-option-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mchat-question-option-copy small { font-weight: 400; font-size: 12.5px; color: var(--rt-text-muted); }
+.mchat-question-radio { flex: 0 0 16px; width: 16px; height: 16px; margin-top: 2px; border: 2px solid var(--rt-primary); border-radius: 50%; background: var(--rt-surface); }
+.mchat-question-option.is-selected .mchat-question-radio,
+.mchat-question-option.is-pending .mchat-question-radio { background: var(--rt-primary); box-shadow: inset 0 0 0 3px var(--rt-surface); }
+.mchat-question-option.is-pending { background: var(--rt-mediation-bg); }
+.mchat-question-option.is-help { border-style: dashed; }
 .mchat-question-answer { color: var(--rt-text-muted); font-size: 12.5px; }
 .mchat-question-pending { display: flex; flex-direction: column; gap: 8px; }
 .mchat-question-pending textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--rt-border); border-radius: var(--rt-radius-md); font: inherit; resize: vertical; }
