@@ -60,6 +60,29 @@ export function isAppointmentCurrent(appointment, now = new Date()) {
   return limit ? limit.getTime() > now.getTime() : appointment.date >= toIsoDate(now);
 }
 
+/**
+ * Horas antes de una cita en que nadie (ni el cliente ni el taller) puede cancelarla
+ * ni reagendarla (regla del 13-oct). Mismo plazo que la app y que
+ * `AnuncioAgendamientoService.PLAZO_CAMBIOS` del backend.
+ */
+export const APPOINTMENT_CHANGE_LOCK_HOURS = 24;
+
+/** Desde cuándo una cita ya no se puede cancelar ni reagendar (24 horas antes de su inicio). */
+export function getAppointmentChangeDeadline(appointment) {
+  const start = getAppointmentStartDate(appointment.date, appointment.time);
+  return start ? new Date(start.getTime() - APPOINTMENT_CHANGE_LOCK_HOURS * 60 * 60 * 1000) : null;
+}
+
+/**
+ * La cita (confirmada o pendiente) ya entró en las 24 horas previas: no se cancela ni se reagenda.
+ * El taller sí puede seguir aceptando o rechazando una solicitud pendiente.
+ */
+export function isAppointmentChangeLocked(appointment, now = new Date()) {
+  if (appointment.status !== 'accepted' && appointment.status !== 'pending') return false;
+  const deadline = getAppointmentChangeDeadline(appointment);
+  return Boolean(deadline) && deadline.getTime() <= now.getTime();
+}
+
 /** Lo que se ve de una cita: 'pending' | 'accepted' | 'cancelled' (o rechazada) | 'past'. */
 export function appointmentVisualState(appointment, now = new Date()) {
   if (isClosedAppointment(appointment.status)) return 'cancelled';

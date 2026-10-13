@@ -15,6 +15,7 @@ import {
   weekdayIndexFromDate, WEEKDAYS
 } from '../../data/agendaConfig';
 import { blocksAppointmentSlot } from '../../data/automotiveAdsData';
+import { getAppointmentChangeDeadline } from '../../utils/appointmentHistory';
 import { searchVehicleByPatenteApi } from '../../services/api';
 import { isValidPlate, normalizePlate } from '../../utils/quoteFlow';
 
@@ -276,6 +277,9 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isR
   const shiftMonth = (delta) =>
     setMonthCursor((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1));
   const dateLabel = appointmentDate ? formatAgendaDateLong(appointmentDate) : '';
+  // Una hora a menos de 24 horas queda fija apenas se reserva (regla del 13-oct).
+  const changeDeadline = appointmentDate && appointmentTime ? getAppointmentChangeDeadline({ date: appointmentDate, time: appointmentTime }) : null;
+  const slotWithinChangeLock = Boolean(changeDeadline && changeDeadline.getTime() <= Date.now());
 
   const toggleService = (service) => {
     setSelectedServices((current) => (current.includes(service)
@@ -684,6 +688,13 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isR
                 <VoucherRow label="Lugar:" value={homeAddress ? `A domicilio · ${homeAddress}` : 'En el taller'} />
                 <VoucherRow label="Nombre:" value={userName.trim()} />
                 <VoucherRow label="Correo:" value={accountEmail} />
+              </div>
+              {/* Regla del 13-oct: dentro de las 24 horas previas la cita confirmada queda fija para ambos. */}
+              <div className="bk-confirm-intro bk-change-rule">
+                <Lock size={18} />
+                {slotWithinChangeLock
+                  ? ' Falta menos de 24 horas para esta hora: una vez enviada, ni tú ni el taller podrán cancelarla ni cambiarla de hora.'
+                  : ' Podrás cancelar o reagendar tu cita hasta 24 horas antes. Dentro de esas 24 horas ni tú ni el taller podrán cancelarla ni cambiarla de hora.'}
               </div>
               {submitError && (
                 <div className="ad-form-error"><AlertCircle size={16} /><span>{submitError}</span></div>

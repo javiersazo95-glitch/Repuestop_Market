@@ -2,14 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, CalendarClock, CalendarDays, Check, XCircle, Loader2, AlertTriangle,
-  Phone, Mail, Car, StickyNote, RotateCcw, Megaphone, Clock, Settings, Home
+  Phone, Mail, Car, StickyNote, RotateCcw, Megaphone, Clock, Settings, Home, Lock
 } from 'lucide-react';
 import {
   formatAgendaDateLong, getTimeUntilLabel, parseIsoDate, toIsoDate
 } from '../../data/agendaConfig';
 import {
   filterAppointmentsFor, groupAppointmentsByTime, summarizeAppointments,
-  describeAppointment, appointmentVisualState, isAppointmentCurrent, defaultAppointmentsSegment
+  describeAppointment, appointmentVisualState, isAppointmentCurrent, defaultAppointmentsSegment,
+  getAppointmentChangeDeadline, isAppointmentChangeLocked
 } from '../../utils/appointmentHistory';
 import AppointmentReasonDialog from './AppointmentReasonDialog';
 import { updateAppointmentStatus, adErrorMessage } from '../../services/adsStorage';
@@ -173,10 +174,15 @@ export default function AppointmentsHistoryModal({
     const isCurrent = meta.state === 'pending' || meta.state === 'accepted';
     const isBusy = busyId === appointment.id;
     const canRespond = isReceived && meta.state === 'pending';
+    // Dentro de las 24 horas previas una cita confirmada queda fija para ambos (13-oct).
+    const changeLocked = isAppointmentChangeLocked(appointment, now);
+    const changeNote = isCurrent ? appointmentChangeNote(appointment, isReceived, changeLocked) : null;
+    // Fuera de plazo los botones siguen a la vista, en gris y deshabilitados.
     const canCancel = !isReceived && isCurrent;
     // El taller tambien puede cancelar una cita que ya confirmo (el backend lo permite y la app
     // lo ofrece): si no podra atenderla, libera el bloque y se le avisa al cliente.
     const canProviderCancel = isReceived && meta.state === 'accepted';
+    const lockedTitle = 'Falta menos de 24 horas para la cita: ya no se puede cancelar ni reagendar';
     const canBookAgain = !isReceived && !isCurrent && !appointment.rescheduledToId && Boolean(onRebook);
     const isFocused = String(appointment.id) === String(focusAppointmentId);
     const ad = adById(appointment.adId);
@@ -237,6 +243,9 @@ export default function AppointmentsHistoryModal({
               {appointment.cancelReason && !appointment.rescheduledToId ? ` Motivo: ${appointment.cancelReason}.` : ''}
             </p>
           )}
+          {changeNote && (
+            <p className="agenda-appointment-notes">{changeLocked ? <Lock size={12} /> : <Clock size={12} />} {changeNote}</p>
+          )}
         </div>
 
         {(canRespond || canCancel || canProviderCancel || canBookAgain) && (
@@ -244,10 +253,10 @@ export default function AppointmentsHistoryModal({
             {canProviderCancel && (
               <button
                 type="button"
-                className="btn-mgmt-delete"
-                disabled={isBusy}
+                className={`btn-mgmt-delete ${changeLocked ? 'is-locked' : ''}`}
+                disabled={isBusy || changeLocked}
                 onClick={() => setReasonTarget({ kind: 'provider-cancel', appointment })}
-                title="Cancelar esta cita confirmada"
+                title={changeLocked ? lockedTitle : 'Cancelar esta cita confirmada'}
               >
                 {isBusy ? <Loader2 size={14} className="spin-icon" /> : <XCircle size={14} />}
                 <span>Cancelar cita</span>
@@ -276,10 +285,10 @@ export default function AppointmentsHistoryModal({
             {canCancel && onRebook && (
               <button
                 type="button"
-                className="btn-mgmt-edit"
-                disabled={isBusy}
+                className={`btn-mgmt-edit ${changeLocked ? 'is-locked' : ''}`}
+                disabled={isBusy || changeLocked}
                 onClick={() => onRebook(appointment)}
-                title="Reservar otra hora y cancelar esta"
+                title={changeLocked ? lockedTitle : 'Reservar otra hora y cancelar esta'}
               >
                 <RotateCcw size={14} />
                 <span>Reagendar</span>
@@ -288,10 +297,10 @@ export default function AppointmentsHistoryModal({
             {canCancel && (
               <button
                 type="button"
-                className="btn-mgmt-delete"
-                disabled={isBusy}
+                className={`btn-mgmt-delete ${changeLocked ? 'is-locked' : ''}`}
+                disabled={isBusy || changeLocked}
                 onClick={() => setReasonTarget({ kind: 'customer-cancel', appointment })}
-                title="Cancelar esta reserva"
+                title={changeLocked ? lockedTitle : 'Cancelar esta reserva'}
               >
                 {isBusy ? <Loader2 size={14} className="spin-icon" /> : <XCircle size={14} />}
                 <span>Cancelar</span>
@@ -493,4 +502,24 @@ export default function AppointmentsHistoryModal({
     </>,
     document.body
   );
+}
+
+/**
+ * Aviso del plazo para cancelar o reagendar: hasta cuándo se puede, o que la cita ya quedó fija.
+ * Al taller, una solicitud pendiente a menos de 24 horas le avisa que, si la acepta, quedará fija.
+ * Mismo texto que la app (`AppointmentsHubModal`).
+ */
+function appointmentChangeNote(appointment, isProvider, locked) {
+  if (locked) {
+    return isProvider && appointment.status === 'pending'
+      ? 'Falta menos de 24 horas: si la aceptas, ya no se podrá cancelar ni reagendar.'
+      : 'Falta menos de 24 horas: ya no se puede cancelar ni reagendar.';
+  }
+  const deadline = getAppointmentChangeDeadline(appointment);
+  if (!deadline) return null;
+  // Una solicitud que el taller aún no responde no lleva el plazo: lo muestra al confirmarse.
+  if (appointment.status === 'pending' && isProvider) return null;
+  const hh = String(deadline.getHours()).padStart(2, '0');
+  const mm = String(deadline.getMinutes()).padStart(2, '0');
+  return `Se puede cancelar o reagendar hasta el ${formatAgendaDateLong(toIsoDate(deadline))} a las ${hh}:${mm}.`;
 }

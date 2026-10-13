@@ -2260,6 +2260,15 @@
   background: #fecaca;
 }
 
+/* Fuera de plazo (24 horas antes de la cita): a la vista, pero en gris y sin acción. */
+.btn-mgmt-edit.is-locked, .btn-mgmt-delete.is-locked,
+.btn-mgmt-edit.is-locked:hover, .btn-mgmt-delete.is-locked:hover {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
 
 /* ==========================================================================
    ESTADOS DEL MURAL Y PIEZAS DE LA TARJETA CONECTADA AL BACKEND
@@ -4948,6 +4957,8 @@
 
 .bk-confirm-intro { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; background: #ffffff; color: #5a6b7a; font-size: 14px; }
 .bk-confirm-intro svg { flex: 0 0 auto; color: #0056bf; }
+.bk-change-rule { font-size: 12.5px; line-height: 1.45; background: #f8fafc; }
+.bk-change-rule svg { color: #5a6b7a; }
 .bk-voucher { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px dashed #d9e0e7; border-radius: 12px; background: #ffffff; }
 .bk-voucher-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: #5a6b7a; }
 .bk-voucher-row strong { flex: 1; min-width: 0; text-align: right; font-size: 14px; font-weight: 700; color: #243442; word-break: break-word; }
