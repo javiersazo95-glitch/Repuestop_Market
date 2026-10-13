@@ -14,7 +14,7 @@ import { defaultShippingSelections, buildShippingMethodsString } from '../data/s
 import {
   ArrowLeft, ArrowRight, Crown, Check, Eye, EyeOff, UploadCloud, FileText,
   UserRound, Store, ClipboardCheck, ShieldCheck, MailCheck, Sparkles, PartyPopper, X,
-  RotateCcw, Search, KeyRound, AlertTriangle, Mail, RefreshCw,
+  RotateCcw, Search, KeyRound, AlertTriangle, Mail, RefreshCw, Boxes, House,
 } from 'lucide-react';
 import {
   registerSeller, validateReferral, verifyRegistrationCode, resendRegistrationCode,
@@ -40,6 +40,8 @@ import { tomarCorreoParaTienda, tomarGoogleParaTienda } from '../utils/googleIdT
 import { isValidRut } from '../services/adapters';
 import { getStoredCaptadorReferral, clearStoredCaptadorReferral } from '../utils/captadorReferral';
 import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../routes/paths';
 
 type LegalDoc = 'terms' | 'privacy';
 
@@ -1736,19 +1738,29 @@ function ReviewInfo({ storeName, onFinish }: { storeName?: string; onFinish: () 
  * Fase 4 — Aprobación (informativa)
  * ==================================================================== */
 function ApprovedInfo({ approved, onHome }: { approved: boolean; onHome: () => void }) {
+  const navigate = useNavigate();
   if (approved) {
+    // Perfil e inicio son rutas de este mismo Market, así que quedan en el deploy de la rama
+    // (main -> repuestop.cl, dev -> dev-repuestop); el panel sale de INVENTORY_PANEL_URL,
+    // que también se elige por rama.
     return (
       <div className="founder-reg-card founder-reg-centered">
         <div className="founder-reg-icon-badge founder-reg-icon-approved"><Crown size={28} /></div>
         <h2>¡Tu tienda ya está aprobada!</h2>
         <p>
-          Tu cuenta de tienda fundadora ya fue validada por nuestro equipo. Ingresa al <strong>panel de vendedores</strong> para
-          cargar tu inventario y empezar a vender. Si tu tienda está entre las primeras 100 aprobadas, tendrás 5% de comisión fija durante tus primeros 3 meses.
+          Tu cuenta de tienda fundadora ya fue validada por nuestro equipo. Revisa tu <strong>perfil</strong> o entra
+          al <strong>panel de carga masiva</strong> para cargar tu inventario y empezar a vender. Si tu tienda está entre
+          las primeras 100 aprobadas, tendrás 5% de comisión fija durante tus primeros 3 meses.
         </p>
-        <a className="button founder-reg-submit" href={INVENTORY_PANEL_URL}>
-          Ir al panel de vendedores <ArrowRight size={18} />
+        <button type="button" className="button founder-reg-submit" onClick={() => navigate(ROUTES.profile)}>
+          <UserRound size={18} /> Ir a mi perfil
+        </button>
+        <a className="button button-outline founder-reg-submit" href={INVENTORY_PANEL_URL}>
+          <Boxes size={18} /> Ir al panel de carga masiva
         </a>
-        <button type="button" className="button button-outline founder-reg-submit" onClick={onHome}>Volver al inicio</button>
+        <button type="button" className="button button-outline founder-reg-submit" onClick={() => navigate(ROUTES.home)}>
+          <House size={18} /> Ir al home
+        </button>
       </div>
     );
   }
