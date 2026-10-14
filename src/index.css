@@ -21453,6 +21453,15 @@ input.has-success {
 .withdrawal-sale-amounts li { display: flex; justify-content: space-between; gap: 8px; color: #64748b; }
 .withdrawal-sale-amounts b { color: #0f172a; }
 .withdrawal-sale-amounts b.neg { color: #b42318; }
+.withdrawal-sale-amounts li > span { display: grid; gap: 1px; }
+.withdrawal-sale-amounts li small { color: #94a3b8; font-size: 11px; }
+.withdrawal-sale-amounts li.subtotal { padding-top: 5px; border-top: 1px solid #e2e8f0; color: #0f172a; font-weight: 600; }
+.withdrawal-sale-amounts li.total { padding-top: 6px; border-top: 2px solid #0f172a; color: #0f172a; font-weight: 800; }
+.withdrawal-sale-amounts li.total b { color: #15803d; font-size: 14px; }
+.withdrawal-sale-amounts li.total.is-neg b { color: #b42318; }
+.withdrawal-charge-why { display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; background: #fef3f2; color: #7a271a; font-size: 12.5px; line-height: 1.5; }
+.withdrawal-charge-why strong { color: #b42318; }
+.withdrawal-charge-why p { margin: 0; }
 .withdrawal-sale-open { display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
 @media (max-width: 600px) {
   .withdrawal-sale-rows > div { grid-template-columns: 1fr; gap: 2px; }

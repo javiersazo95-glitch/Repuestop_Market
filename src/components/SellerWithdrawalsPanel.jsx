@@ -27,11 +27,15 @@ const DISPLAY_LIMIT = 3;
 const AYUDA_FONDOS = [
   'Aquí ves la plata de tus ventas: lo que puedes retirar ahora y lo que se libera más adelante.',
   'Retirar ahora: ventas finalizadas que ya pasaron el plazo de arrepentimiento del comprador. Puedes pedir su depósito hoy.',
-  'Por liberar: ventas finalizadas que siguen en el plazo de arrepentimiento del comprador (10 días desde la entrega). Se liberan solas en la fecha indicada y pasan a "Retirar ahora".',
+  'Por liberar: ventas finalizadas que siguen en el plazo de arrepentimiento del comprador (10 días desde la entrega, derecho de retracto de la Ley 19.496, art. 3 bis). Se liberan solas en la fecha indicada y pasan a "Retirar ahora".',
   'Los depósitos se hacen todos los jueves en la cuenta bancaria registrada de tu tienda.',
 ];
 const AYUDA_LIBERAR = [
-  'Retenemos el monto mientras el comprador puede arrepentirse de la compra: 10 días desde la entrega.',
+  'Retenemos el monto mientras el comprador puede arrepentirse de la compra: 10 días desde la entrega. No es una regla de RepuesTop: es un derecho que la ley le da a todo comprador en Chile.',
+  'La Ley N° 19.496 de Protección de los Derechos de los Consumidores (artículo 3 bis, letra b, reforzado por la Ley Pro Consumidor N° 21.398 de 2021) establece que en toda compra por internet el comprador puede arrepentirse, sin dar explicaciones, dentro de 10 días contados desde que recibe el producto. En productos como los repuestos, la tienda no puede excluir este derecho.',
+  'Si el comprador se arrepiente y devuelve el producto en buen estado, la ley obliga a devolverle todo lo que pagó, sin descontar gastos. Como el pago lo recibe RepuesTop, guardar tu venta durante ese plazo nos permite devolverle directamente, sin pedirte plata de vuelta ni dejarte un saldo en contra en tus próximos retiros.',
+  'Sumamos 1 día de margen para recibir y procesar un aviso de arrepentimiento que llegue el último día del plazo. Por eso cada venta muestra su fecha exacta de liberación.',
+  'Este respaldo también juega a tu favor: el comprador compra con más confianza sabiendo que la ley lo protege, y si no se arrepiente (o el producto vuelve dañado por su culpa) la venta es tuya completa.',
   'No tienes que hacer nada: cada venta se libera sola en la fecha indicada y pasa a "Retirar ahora".',
 ];
 const AYUDA_CARGOS = [
@@ -281,6 +285,90 @@ function ModalShell({ title, subtitle, icon: Icon = Wallet, onClose, children, w
   );
 }
 
+/**
+ * 14-oct: "Cómo se calcula" con todas las partidas que usa el pago real
+ * (RetiroProveedorService.calcularMontoPagarVendedor): venta, reembolso, comisión, Flow y el cargo
+ * de Flow por el reembolso. En un cargo (saldo negativo) explica por qué quedó bajo cero.
+ */
+function CalculoVenta({ order, row }) {
+  const n = (value) => Number(value || 0);
+  const productos = n(order.subtotal ?? order.total);
+  const descuento = n(order.descuento);
+  const envio = n(order.costoEnvio);
+  const venta = Math.max(0, productos - descuento) + envio;
+  const reembolso = n(order.montoReembolsado) || n(row.montoReembolsoMediacion);
+  const comision = n(order.comisionVendedor ?? order.commissionSeller);
+  const flow = n(order.comisionPasarela ?? order.gatewayFee);
+  const cargoFlow = n(order.cargoReembolsoPasarela);
+  const neto = order.totalVendedor != null ? n(order.totalVendedor) : venta - comision - flow - reembolso - cargoFlow;
+  const valor = n(row.valor);
+  const esCargo = valor < 0;
+  const posterior = row.tipoCargo === 'REEMBOLSO_POSTERIOR';
+  // El cargo es lo pagado de más: neto antes del reembolso − neto después (CargoTiendaService).
+  const yaPagado = posterior ? neto - valor : null;
+
+  return (
+    <>
+      <h4>Cómo se calcula</h4>
+      <ul className="withdrawal-sale-amounts">
+        <li><span>Productos</span><b>{formatCLP(productos)}</b></li>
+        {descuento > 0 && <li><span>Descuento de la cotización</span><b className="neg">{formatCLP(-descuento)}</b></li>}
+        {envio > 0 && <li><span>Despacho</span><b>{formatCLP(envio)}</b></li>}
+        <li className="subtotal"><span>Total de la venta</span><b>{formatCLP(venta)}</b></li>
+        {reembolso > 0 && (
+          <li><span>Devuelto al comprador<small>Reembolso resuelto en la mediación</small></span><b className="neg">{formatCLP(-reembolso)}</b></li>
+        )}
+        <li>
+          <span>Comisión RepuesTop (con IVA){reembolso > 0 && <small>{comision > 0 ? 'Solo sobre lo que no se devolvió' : 'No se cobra sobre lo devuelto'}</small>}</span>
+          <b className={comision > 0 ? 'neg' : undefined}>{formatCLP(-comision)}</b>
+        </li>
+        <li>
+          <span>Comisión de Flow por el pago{reembolso > 0 && <small>Flow la cobró al procesar el pago y no la devuelve</small>}</span>
+          <b className="neg">{formatCLP(-flow)}</b>
+        </li>
+        {cargoFlow > 0 && (
+          <li><span>Cargo de Flow por el reembolso<small>$202 + IVA por procesar la devolución</small></span><b className="neg">{formatCLP(-cargoFlow)}</b></li>
+        )}
+        <li className={`total ${neto < 0 ? 'is-neg' : ''}`}>
+          <span>{posterior ? 'Con el reembolso, la venta te deja' : esCargo ? 'Resultado de la venta' : 'Lo que recibes'}</span>
+          <b>{formatCLP(neto)}</b>
+        </li>
+      </ul>
+
+      {posterior && (
+        <>
+          <h4>Por qué se descuenta</h4>
+          <ul className="withdrawal-sale-amounts">
+            <li><span>Ya se te había pagado por esta venta</span><b>{formatCLP(yaPagado)}</b></li>
+            <li><span>Con el reembolso te corresponde</span><b>{formatCLP(neto)}</b></li>
+            <li className="total is-neg"><span>Pagado de más: se descuenta de tu próximo retiro</span><b>{formatCLP(valor)}</b></li>
+          </ul>
+        </>
+      )}
+
+      {esCargo && (
+        <div className="withdrawal-charge-why">
+          <strong>¿Por qué quedó en negativo?</strong>
+          {posterior ? (
+            <p>
+              Cuando se resolvió el reembolso, esta venta ya se te había pagado completa. Al devolverle {formatCLP(reembolso)} al
+              comprador la venta vale menos, así que lo que se te pagó de más ({formatCLP(-valor)}) se descuenta de tu próximo retiro.
+              La comisión de RepuesTop sobre lo devuelto ya se te reintegra en este cálculo.
+            </p>
+          ) : (
+            <p>
+              Se le devolvió {reembolso >= venta ? 'todo' : formatCLP(reembolso)} al comprador, así que la venta no deja ingresos y RepuesTop
+              no te cobra comisión por lo devuelto. Pero Flow ya cobró {formatCLP(flow)} al procesar el pago
+              {cargoFlow > 0 ? <> y {formatCLP(cargoFlow)} por procesar la devolución</> : null}, y esa plata no se recupera.
+              Ese costo lo asume la tienda: por eso queda {formatCLP(valor)}, que se descuenta de tu próximo retiro.
+            </p>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 const SALE_STATUS_LABEL = {
   PENDIENTE: 'Pendiente de pago', PAGADO: 'Por confirmar', EN_PREPARACION: 'En preparación', ENVIADO: 'Enviado',
   ENTREGADO: 'Entregado', FINALIZADO: 'Finalizado', EN_MEDIACION: 'En mediación', CANCELADO: 'Cancelado',
@@ -312,8 +400,6 @@ function SaleDetailModal({ sellerId, row, onClose }) {
   const items = (order?.items || []).filter((item) => !item.proveedorId || String(item.proveedorId) === String(sellerId));
   const pkg = order ? buildOrderPackages(order)[0] : null;
   const estado = String(order?.estado || order?.status || '').toUpperCase();
-  const commission = Number(order?.comisionVendedor ?? order?.commissionSeller ?? 0);
-  const reembolso = Number(row.montoReembolsoMediacion || 0);
 
   return (
     <ModalShell
@@ -351,12 +437,7 @@ function SaleDetailModal({ sellerId, row, onClose }) {
                 );
               })}
             </ul>
-            <h4>Cómo se calcula</h4>
-            <ul className="withdrawal-sale-amounts">
-              <li><span>Venta</span><b>{formatCLP(order.subtotal ?? 0)}</b></li>
-              {commission > 0 && <li><span>Comisión RepuesTop</span><b className="neg">{formatCLP(-commission)}</b></li>}
-              {reembolso > 0 && <li><span>Reembolso por mediación</span><b className="neg">{formatCLP(-reembolso)}</b></li>}
-            </ul>
+            <CalculoVenta order={order} row={row} />
           </>
         ) : (
           <p className="withdrawal-sale-loading">No pudimos cargar el detalle. Puedes abrir la venta completa.</p>
