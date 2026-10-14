@@ -43,3 +43,26 @@ export function rowMatchesPlate(row, vehicleIds, anio) {
   if (!row?.catalogoId || !Array.isArray(vehicleIds) || vehicleIds.length === 0) return false;
   return vehicleIds.includes(String(row.catalogoId)) && yearInRange(anio, row.anioInicio, row.anioFin);
 }
+
+/**
+ * Las filas que son el auto de la patente. Si la versión exacta de la patente está en la lista,
+ * solo esa; las equivalentes de su familia (otras filas del catálogo con la misma versión) se
+ * usan solo cuando la exacta no está. Prueba 3 de H-P2: un Yaris 1.5 GLI 2018 marcaba también
+ * "SEDAN GLI" y "GLI 1.5 AT" como "Es tu vehículo".
+ */
+export function plateMatchRows(rows, exactId, vehicleIds, anio) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (exactId !== undefined && exactId !== null && exactId !== '') {
+    const exact = list.filter((row) => rowMatchesPlate(row, [String(exactId)], anio));
+    if (exact.length > 0) return exact;
+  }
+  return list.filter((row) => rowMatchesPlate(row, vehicleIds, anio));
+}
+
+/** "Toyota Yaris 1.5 GLI · 1.5L (2018)": marca, modelo, versión, motor y año del auto de la patente. */
+export function plateVehicleLabel(vehicle) {
+  if (!vehicle) return '';
+  const nombre = [vehicle.marca, vehicle.modelo, vehicle.version].filter(Boolean).join(' ');
+  const conMotor = [nombre, vehicle.motor].filter(Boolean).join(' · ');
+  return vehicle.anio ? `${conMotor} (${vehicle.anio})` : conMotor;
+}

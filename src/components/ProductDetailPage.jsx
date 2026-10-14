@@ -14,7 +14,7 @@ import {
   getInventoryVehicleCatalogsApi, getVehicleVersionsApi
 } from '../services/api';
 import { adaptVehicle, vehicleCatalogIds } from '../services/adapters';
-import { declaredYears, rowMatchesPlate, yearInRange } from '../utils/compatibilityMatch';
+import { declaredYears, plateMatchRows, plateVehicleLabel, yearInRange } from '../utils/compatibilityMatch';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import { useFavorites } from '../hooks/useFavorites';
@@ -342,10 +342,11 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const plateMatchKeys = useMemo(() => {
     if (!plateVehicle || plateMatchIndex === null || plateMatchIndex < 0 || isUniversalPart) return null;
     const ids = vehicleCatalogIds(plateVehicle);
-    const keys = compatibilityRows
-      .filter((row) => (ids.length > 0
-        ? rowMatchesPlate(row, ids, plateVehicle.anio)
-        : row.groupIndex === plateMatchIndex && yearInRange(plateVehicle.anio, row.anioInicio, row.anioFin)))
+    // Primero la versión exacta de la patente; las equivalentes, solo si la exacta no está.
+    const keys = (ids.length > 0
+      ? plateMatchRows(compatibilityRows, plateVehicle.catalogoId, ids, plateVehicle.anio)
+      : compatibilityRows.filter((row) => row.groupIndex === plateMatchIndex
+        && yearInRange(plateVehicle.anio, row.anioInicio, row.anioFin)))
       .map((row) => row.key);
     return keys.length > 0 ? new Set(keys) : null;
   }, [plateVehicle, plateMatchIndex, isUniversalPart, compatibilityRows]);
@@ -839,7 +840,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                 <div className="product-compatibility-plate-banner is-match">
                   <CheckCircle2 />
                   <div>
-                    <strong>Tu {plateVehicle.marca} {plateVehicle.modelo}{plateVehicle.anio ? ` (${plateVehicle.anio})` : ''} es compatible con este repuesto.</strong>
+                    <strong>Tu {plateVehicleLabel(plateVehicle)} es compatible con este repuesto.</strong>
                     <span>{isUniversalPart ? 'Este repuesto es universal: es compatible con cualquier vehículo.' : 'Abajo está la versión de tu vehículo.'}</span>
                     {plateMatchKeys && (
                       <button type="button" onClick={() => { setPlateVehicle(null); setPlateMatchIndex(null); }}>
@@ -853,7 +854,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                 <div className="product-compatibility-plate-banner is-nomatch">
                   <AlertTriangle />
                   <div>
-                    <strong>Tu {plateVehicle.marca} {plateVehicle.modelo}{plateVehicle.anio ? ` (${plateVehicle.anio})` : ''} no figura entre las compatibilidades que registró el vendedor para este repuesto.</strong>
+                    <strong>Tu {plateVehicleLabel(plateVehicle)} no figura entre las compatibilidades que registró el vendedor para este repuesto.</strong>
                     <span>Evita compras incompatibles: revisa los repuestos que sí son compatibles con tu vehículo.</span>
                     <button type="button" onClick={viewCompatibleProducts}>
                       Ver repuestos compatibles con mi vehículo <ChevronRight />
