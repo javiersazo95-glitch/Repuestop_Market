@@ -8,6 +8,8 @@
  * `vehicle`: { catalogoId, marca, modelo, anio } del ítem del pedido.
  */
 
+import { yearInRange } from './compatibilityMatch';
+
 const norm = (value) => String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
 function years(entry) {
@@ -31,7 +33,9 @@ export function matchBuyerCompatibility(compatibilidad = [], vehicle) {
   if (!vehicle || !compatibilidad.length) return null;
   if (vehicle.catalogoId) {
     const id = String(vehicle.catalogoId);
-    const byCatalog = compatibilidad.find((entry) => (entry.vehiculoCatalogoIds || []).map(String).includes(id));
+    // H-P2 (14-oct): la versión y además el año dentro de lo que declaró la tienda.
+    const byCatalog = compatibilidad.find((entry) => (entry.vehiculoCatalogoIds || []).map(String).includes(id)
+      && yearInRange(vehicle.anio, entry.anioInicio, entry.anioFin));
     if (byCatalog) return byCatalog;
   }
   const brand = norm(vehicle.marca);

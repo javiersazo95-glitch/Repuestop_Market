@@ -14,6 +14,7 @@ import {
   getInventoryVehicleCatalogsApi, getVehicleVersionsApi
 } from '../services/api';
 import { adaptVehicle, vehicleCatalogIds } from '../services/adapters';
+import { declaredYears, rowMatchesPlate, yearInRange } from '../utils/compatibilityMatch';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import { useFavorites } from '../hooks/useFavorites';
@@ -48,7 +49,8 @@ function vehicleMatchesCompatibility(vehicle, item, catalogRowsForGroup = []) {
   const vCatIds = vehicleCatalogIds(vehicle);
   if (vCatIds.length > 0) {
     const itemIds = Array.isArray(item?.vehiculoCatalogoIds) ? item.vehiculoCatalogoIds.map(String) : [];
-    return itemIds.some((id) => vCatIds.includes(id));
+    // H-P2 (14-oct): ademas, el año del auto dentro de lo que declaró la tienda.
+    return itemIds.some((id) => vCatIds.includes(id)) && yearInRange(vehicle.anio, item?.anioInicio, item?.anioFin);
   }
 
   // 2. Sin version identificada (la patente no calzo con el catalogo): por marca/modelo/anio
@@ -290,13 +292,17 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
         const version = catalogVersions.find((v) => String(v.id) === id);
         const label = Array.isArray(item.versionLabels) ? item.versionLabels[idx] : null;
         if (!detail && !version && !label) return null;
+        // H-P2 (14-oct): los años de la versión acotados a lo que declaró la tienda (antes se veía
+        // el rango completo de la versión del catálogo, p. ej. 2001–2014 en un "2010–2016").
+        const years = declaredYears(detail?.anioDesde, detail?.anioHasta, item.anioInicio, item.anioFin);
         return {
           key: `${groupIndex}-${id}`,
           groupIndex,
+          catalogoId: id,
           marca: detail?.marca || item.marca,
           modelo: detail?.modelo || item.modelo,
-          anioInicio: detail?.anioDesde ?? item.anioInicio,
-          anioFin: detail?.anioHasta ?? item.anioFin,
+          anioInicio: years.desde ?? item.anioInicio,
+          anioFin: years.hasta ?? item.anioFin,
           version: detail?.version || version?.nombre || version?.version || label || '',
           motor: detail?.motor || item.motor || '',
           transmision: detail?.transmision || '',
@@ -331,6 +337,22 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     ));
   }, [compatibility, vehicleCatalogDetails, versionsMap, product.oemCode]);
 
+  // H-P2 (14-oct): con una patente, solo las filas que son ese auto (su versión y su año). Antes
+  // se marcaban como "Es tu vehículo" todas las versiones del grupo que calzaba.
+  const plateMatchKeys = useMemo(() => {
+    if (!plateVehicle || plateMatchIndex === null || plateMatchIndex < 0 || isUniversalPart) return null;
+    const ids = vehicleCatalogIds(plateVehicle);
+    const keys = compatibilityRows
+      .filter((row) => (ids.length > 0
+        ? rowMatchesPlate(row, ids, plateVehicle.anio)
+        : row.groupIndex === plateMatchIndex && yearInRange(plateVehicle.anio, row.anioInicio, row.anioFin)))
+      .map((row) => row.key);
+    return keys.length > 0 ? new Set(keys) : null;
+  }, [plateVehicle, plateMatchIndex, isUniversalPart, compatibilityRows]);
+  const plateRows = useMemo(() => (plateMatchKeys
+    ? compatibilityRows.filter((row) => plateMatchKeys.has(row.key))
+    : compatibilityRows), [plateMatchKeys, compatibilityRows]);
+
   const compatible = useMemo(() => Boolean(activeVehicle && (isUniversalPart || compatibility.some((item, groupIndex) => {
     const groupRows = compatibilityRows.filter((r) => r.groupIndex === groupIndex);
     return vehicleMatchesCompatibility(activeVehicle, item, groupRows);
@@ -338,7 +360,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   // Celular: las mismas filas agrupadas por compatibilidad registrada, como la app.
   const compatibilityGroupCards = useMemo(() => {
     const byGroup = new Map();
-    compatibilityRows.forEach((row) => {
+    plateRows.forEach((row) => {
       if (!byGroup.has(row.groupIndex)) byGroup.set(row.groupIndex, []);
       byGroup.get(row.groupIndex).push(row);
     });
@@ -356,7 +378,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
         oem: rows[0]?.oem || '',
       };
     });
-  }, [compatibilityRows]);
+  }, [plateRows]);
   const compatibilityBrandOptions = useMemo(() => Array.from(new Set(compatibilityRows.map((r) => r.marca).filter(Boolean)))
     .sort((a, b) => a.localeCompare(b, 'es')), [compatibilityRows]);
   const visibleCompatibilityGroupCards = useMemo(() => {
@@ -403,7 +425,8 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     return () => window.clearTimeout(timer);
   }, [openOnArrival, product.id]);
 
-  const visibleCompatibilityRows = compatibilityRows.filter((row) => {
+  const visibleCompatibilityRows = plateRows.filter((row) => {
+    if (plateMatchKeys) return true;
     const query = compatibilitySearch.trim().toLocaleLowerCase('es');
     if (!query) return true;
     return [row.marca, row.modelo, row.version, row.motor, row.transmision, row.anioInicio, row.anioFin, row.oem]
@@ -817,7 +840,12 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                   <CheckCircle2 />
                   <div>
                     <strong>Tu {plateVehicle.marca} {plateVehicle.modelo}{plateVehicle.anio ? ` (${plateVehicle.anio})` : ''} es compatible con este repuesto.</strong>
-                    <span>{isUniversalPart ? 'Este repuesto es universal: es compatible con cualquier vehículo.' : 'Lo destacamos en la lista de abajo.'}</span>
+                    <span>{isUniversalPart ? 'Este repuesto es universal: es compatible con cualquier vehículo.' : 'Abajo está la versión de tu vehículo.'}</span>
+                    {plateMatchKeys && (
+                      <button type="button" onClick={() => { setPlateVehicle(null); setPlateMatchIndex(null); }}>
+                        Ver todas las compatibilidades <ChevronRight />
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -863,7 +891,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                           // El scroll a la coincidencia por patente apunta a la primera fila del grupo.
                           const groupsWithRef = new Set();
                           return visibleCompatibilityRows.map((row) => {
-                            const isMatch = row.groupIndex === plateMatchIndex;
+                            const isMatch = Boolean(plateMatchKeys?.has(row.key));
                             const takesRef = !groupsWithRef.has(row.groupIndex);
                             if (takesRef) groupsWithRef.add(row.groupIndex);
                             return (
@@ -901,7 +929,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
                     const model = group.models.join(', ') || 'Modelo no informado';
                     const summary = group.versions[0] || group.rows[0]?.motor || 'Versión por confirmar';
                     const expanded = expandedCompatGroups.has(group.groupIndex);
-                    const isMatch = group.groupIndex === plateMatchIndex;
+                    const isMatch = Boolean(plateMatchKeys) && group.rows.some((row) => plateMatchKeys.has(row.key));
                     return (
                       <article
                         key={group.groupIndex}
