@@ -6,8 +6,9 @@ import {
   ShieldCheck, MapPin, Star, Package, Clock,
   ArrowLeft, X, CheckCircle2, Truck,
   Heart, Share2, PenLine, Tag, Store as StoreIcon,
-  MessageCircle, Send, Mail, Link2, MoreHorizontal
+  MessageCircle, MessageSquareText, Send, Mail, Link2, MoreHorizontal
 } from 'lucide-react';
+import ReviewsModal from './reviews/ReviewsModal';
 import { useAuth } from '../context/AuthContext';
 import ContextualReportButton from './ContextualReportButton';
 import { parseShippingMethods } from '../data/shippingMethods';
@@ -53,6 +54,8 @@ export default function StorePublicProfileView({
 
 
   const [shareFeedback, setShareFeedback] = useState('');
+  // Opiniones de los compradores: se abren desde la calificacion de la tienda.
+  const [reviewsOpen, setReviewsOpen] = useState(false);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   // Movil (5-oct): la portada queda limpia (imagen y logo); guardar, compartir, reportar y
   // editar viven en una hoja que abre un solo icono sobre la portada.
@@ -435,6 +438,9 @@ export default function StorePublicProfileView({
                     </small>
                   </div>
                 </div>
+                <button type="button" className="store-rating-reviews-btn" onClick={() => setReviewsOpen(true)}>
+                  <MessageSquareText size={14} /> Ver opiniones de compradores
+                </button>
               </div>
             </div>
           </div>
@@ -543,13 +549,16 @@ export default function StorePublicProfileView({
       <div className="container store-metrics-strip-container">
         <div className="store-metrics-strip-card">
             {isMobile && (
-              <div className="metric-strip-item">
+              <button type="button" className="metric-strip-item store-metric-button" onClick={() => setReviewsOpen(true)} aria-label="Ver opiniones de la tienda">
                 <span className="metric-icon-box is-rating"><Star size={22} /></span>
                 <div className="metric-text-box">
                   <small>{reviewCount > 0 ? `${reviewCount.toLocaleString('es-CL')} evaluaciones` : 'Calificación de la tienda'}</small>
-                  <strong>{rating > 0 ? rating.toFixed(1) : '—'}</strong>
+                  <strong className="store-metric-rating">
+                    {rating > 0 ? rating.toFixed(1) : '—'}
+                    <MessageSquareText size={14} />
+                  </strong>
                 </div>
-              </div>
+              </button>
             )}
             <div className="metric-strip-item">
               <span className="metric-icon-box"><Package size={22} /></span>
@@ -627,6 +636,15 @@ export default function StorePublicProfileView({
         initialShowAll={catalogUrl.showAll}
         initialAdvancedFilters={catalogUrl.advanced}
         onNavigationStateChange={syncStoreCatalogUrl}
+      />
+
+      <ReviewsModal
+        open={reviewsOpen}
+        onClose={() => setReviewsOpen(false)}
+        kind="store"
+        id={currentStore?.id}
+        title="Opiniones de la tienda"
+        subtitle={currentStore?.nombre}
       />
     </div>
   );

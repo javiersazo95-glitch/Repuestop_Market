@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   BadgeCheck, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock, CreditCard, FileText, Globe, Heart,
-  Info, MapPin, Maximize2, MessageCircle, Package, ShieldCheck, ShoppingCart, Star, Store, Truck,
+  Info, MapPin, Maximize2, MessageCircle, MessageSquareText, Package, ShieldCheck, ShoppingCart, Star, Store, Truck, Zap,
 } from 'lucide-react';
 
 import ProductPhoto from './ProductPhoto';
@@ -13,6 +13,11 @@ import ContextualReportButton from './ContextualReportButton';
 import ProductShippingCard from './ProductShippingCard';
 import { resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import { productPath } from '../routes/paths';
+import ReviewStars from './reviews/ReviewStars';
+import { formatRating, reviewCountLabel } from '../services/reviews';
+import '../styles/reviews.css';
+import { NO_RETURN_DETAIL, NO_RETURN_TITLE, isNoReturnProduct } from '../utils/noReturnProducts';
+import '../styles/no-return.css';
 
 const formatCLP = (value) => `$${Number(value || 0).toLocaleString('es-CL')}`;
 
@@ -54,6 +59,8 @@ export default function ProductDetailDesktop({
   compatibility,
   sellerRating,
   sellerReviews,
+  onOpenReviews,
+  onOpenStoreReviews,
   hasSellerRating,
   descriptionText,
   descriptionIsLong,
@@ -90,6 +97,19 @@ export default function ProductDetailDesktop({
       : { className: 'is-ok', label: `Disponible · ${stock} u.` };
 
   const SellerTag = onOpenStore ? 'button' : 'div';
+  const productRating = Number(product.rating || 0);
+  const productReviews = Number(product.reviewCount || 0);
+  // El panel del vendedor puede ser un <button>: el acceso a las opiniones de la tienda no puede
+  // ser otro <button> adentro, asi que es un span con rol de boton que no deja pasar el clic.
+  const storeReviewsProps = onOpenStoreReviews ? {
+    role: 'button',
+    tabIndex: 0,
+    'aria-label': 'Ver opiniones de la tienda',
+    onClick: (event) => { event.stopPropagation(); onOpenStoreReviews(); },
+    onKeyDown: (event) => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); onOpenStoreReviews(); }
+    },
+  } : {};
 
   return (
     <section className="pdd-layout pdd-root">
@@ -238,6 +258,15 @@ export default function ProductDetailDesktop({
 
         <h1 className="pdd-title">{product.titulo}</h1>
 
+        {/* La nota del producto baja a sus opiniones, bajo las preguntas. */}
+        <button type="button" className="pdd-rating-link rv-rating-trigger" onClick={onOpenReviews}>
+          <ReviewStars value={productRating} size={15} />
+          <strong>{productRating > 0 ? formatRating(productRating) : 'Sin calificaciones'}</strong>
+          {productReviews > 0 && <em>({reviewCountLabel(productReviews)})</em>}
+          <MessageSquareText size={15} className="rv-trigger-icon" />
+          <span>Ver opiniones</span>
+        </button>
+
         <div className="pdd-meta">
           <button type="button" className="pdd-brand-pill" onClick={onOpenBrandModal} title={`Ver información y procedencia de la marca ${brandName}`}>
             <ProductBrandMark brand={brandName} logoUrl={product.brandLogoUrl} size={22} />
@@ -258,6 +287,14 @@ export default function ProductDetailDesktop({
           <button type="button" className="pdd-compat-pill" onClick={onOpenCompatibility}>
             <Car size={15} /> Ver compatibilidad{compatCount > 0 ? ` (${compatCount})` : ''} <ChevronRight size={14} />
           </button>
+        )}
+
+        {/* Electricos (2026-10-18): sin derecho a devolucion, a la vista antes de comprar. */}
+        {isNoReturnProduct(product) && (
+          <div className="no-return-note" role="note">
+            <Zap size={16} />
+            <span><strong>{NO_RETURN_TITLE}.</strong> {NO_RETURN_DETAIL}</span>
+          </div>
         )}
 
         <div className="pdd-price-block">
@@ -358,10 +395,11 @@ export default function ProductDetailDesktop({
             <small>Vendido por</small>
             <strong title={sellerName}>{sellerName} <BadgeCheck size={14} /></strong>
             {hasSellerRating && (
-              <span className="pdd-seller-rating">
-                <Star size={13} fill="currentColor" />
+              <span className={`pdd-seller-rating${onOpenStoreReviews ? ' rv-rating-pill' : ''}`} {...storeReviewsProps}>
+                <Star size={13} fill="currentColor" className="rv-star" />
                 {sellerRating.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                 <em>· {sellerReviews === 1 ? '1 evaluación' : `${sellerReviews} evaluaciones`}</em>
+                {onOpenStoreReviews && <MessageSquareText size={13} className="rv-trigger-icon" />}
               </span>
             )}
             <span className="pdd-seller-place">

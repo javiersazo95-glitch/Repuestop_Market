@@ -9,6 +9,7 @@
  */
 
 import { HEADER_CATEGORIES, SIDEBAR_CATEGORIES } from '../data/categories';
+import { isNoReturnCategory } from '../utils/noReturnProducts';
 import { AD_TIERS, APPOINTMENT_STATUSES } from '../data/automotiveAdsData';
 import { resolveMediaUrl, toMediaPath } from './api';
 
@@ -272,6 +273,8 @@ export function adaptProduct(dto) {
     categoria: normalizeCategoryId(dto.categoria),
     categoriaNombre: dto.categoria || '',
     subcategoria: dto.subcategoria || '',
+    // Electricos: sin derecho a devolucion (lo marca el backend; respaldo por nombre).
+    sinDevolucion: dto.sinDevolucion === true || isNoReturnCategory(dto.categoria),
     // Ids reales del catálogo: los necesita la vitrina de productos relacionados
     // para pedir el inventario de la misma subcategoría (o categoría) al backend.
     // `categoriaId` no viene en todos los endpoints y se resuelve por nombre.

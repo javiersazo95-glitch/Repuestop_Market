@@ -29,7 +29,9 @@ export default function ConfirmDialog({
   // El rojo dice "esto destruye algo". Avanzar el estado de un pedido no destruye
   // nada, asi que confirmar la recepcion en rojo leia como si fuera a cancelar.
   const isDanger = tone === 'danger';
-  const Icon = isDanger ? AlertTriangle : CheckCircle2;
+  // `warning`: un aviso que se acepta (no destruye nada): triangulo ambar y boton azul.
+  const isWarning = tone === 'warning';
+  const Icon = isDanger || isWarning ? AlertTriangle : CheckCircle2;
 
   return createPortal(
     <div
@@ -38,7 +40,7 @@ export default function ConfirmDialog({
     >
       <div className="commission-modal-card" onClick={(event) => event.stopPropagation()} role="alertdialog" aria-modal="true">
         <div className="commission-modal-header">
-          <div className={`commission-icon-badge ${isDanger ? 'confirm-dialog-badge' : 'confirm-dialog-badge--go'}`}>
+          <div className={`commission-icon-badge ${isDanger ? 'confirm-dialog-badge' : isWarning ? 'confirm-dialog-badge--warn' : 'confirm-dialog-badge--go'}`}>
             <Icon size={22} />
           </div>
           <h3>{title}</h3>

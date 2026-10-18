@@ -23,6 +23,10 @@ import MobileStickyBar from './MobileStickyBar';
 import ProductDetailMobile from './ProductDetailMobile';
 import ProductDetailDesktop from './ProductDetailDesktop';
 import ProductQuestionsSection from './ProductQuestionsSection';
+import ProductReviewsSection from './reviews/ProductReviewsSection';
+import ReviewsModal from './reviews/ReviewsModal';
+import ConfirmDialog from './ConfirmDialog';
+import { NO_RETURN_CART_MESSAGE, isNoReturnProduct } from '../utils/noReturnProducts';
 import ProductPhotoLightbox from './ProductPhotoLightbox';
 import RelatedProductsCarousel from './RelatedProductsCarousel';
 import { isProductTopActive } from '../utils/productTop';
@@ -152,6 +156,12 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const [compatSortAscending, setCompatSortAscending] = useState(true);
   const [expandedCompatGroups, setExpandedCompatGroups] = useState(() => new Set());
   const questionsSectionRef = useRef(null);
+  // Opiniones: la nota del producto baja a su seccion (bajo las preguntas) y la de la tienda
+  // abre sus opiniones en un popup.
+  const reviewsSectionRef = useRef(null);
+  const [storeReviewsOpen, setStoreReviewsOpen] = useState(false);
+  const scrollToReviews = () => reviewsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const openStoreReviews = product.proveedorId ? () => setStoreReviewsOpen(true) : null;
   const { setActiveVehicle } = useMarketplace();
   const nav = useAppNavigation();
   const stock = Number(product.stock || 0);
@@ -583,15 +593,34 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     shippingFee: localDeliveryCost(selectedShippingMethod),
   });
 
-  const buyNow = () => {
-    if (!requireShippingMethod()) return;
+  const runBuyNow = () => {
     onAddToCart(product, cartOptions());
     nav.goCart();
+  };
+  const runAddToCart = () => onAddToCart(product, cartOptions());
+
+  // Electricos (2026-10-18): sin derecho a devolucion; el comprador lo confirma antes de que el
+  // producto entre al carro.
+  const noReturn = isNoReturnProduct(product);
+  const [pendingCartAction, setPendingCartAction] = useState(null);
+
+  const buyNow = () => {
+    if (!requireShippingMethod()) return;
+    if (noReturn) { setPendingCartAction('buy'); return; }
+    runBuyNow();
   };
 
   const addToCartNow = async () => {
     if (!requireShippingMethod()) return;
-    await onAddToCart(product, cartOptions());
+    if (noReturn) { setPendingCartAction('add'); return; }
+    await runAddToCart();
+  };
+
+  const confirmNoReturnCart = async () => {
+    const action = pendingCartAction;
+    setPendingCartAction(null);
+    if (action === 'buy') runBuyNow();
+    else if (action === 'add') await runAddToCart();
   };
 
   // Ficha móvil clonada de la app (≤768px) o ficha de escritorio (ProductDetailDesktop): el
@@ -623,6 +652,10 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
       onSubmitAnswer={submitAnswer}
       answerPending={answerMutation.isPending}
     />
+  );
+
+  const reviewsSection = (
+    <ProductReviewsSection ref={reviewsSectionRef} productId={product.id} productName={product.titulo} />
   );
 
   return (
@@ -669,6 +702,8 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             compatibilityCount={compatibility.length}
             sellerRating={sellerRating}
             sellerReviews={sellerReviews}
+            onOpenReviews={scrollToReviews}
+            onOpenStoreReviews={openStoreReviews}
             descriptionText={descriptionText}
             descriptionIsLong={descriptionIsLong}
             descriptionExpanded={descriptionExpanded}
@@ -718,6 +753,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
 
           <RelatedProductsCarousel product={product} onSelectProduct={onSelectProduct} />
           {questionsSection}
+          {reviewsSection}
         </>) : (
         <>
           <ProductDetailDesktop
@@ -746,6 +782,8 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             sellerRating={sellerRating}
             sellerReviews={sellerReviews}
             hasSellerRating={hasSellerRating}
+            onOpenReviews={scrollToReviews}
+            onOpenStoreReviews={openStoreReviews}
             descriptionText={descriptionText}
             descriptionIsLong={descriptionIsLong}
             descriptionExpanded={descriptionExpanded}
@@ -763,12 +801,32 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             onSelectShippingMethod={selectShippingMethod}
             shippingCardRef={shippingCardRef}
             shippingFocused={shippingFocused}
-            questions={questionsSection}
+            questions={<>{questionsSection}{reviewsSection}</>}
           />
           <RelatedProductsCarousel product={product} onSelectProduct={onSelectProduct} />
         </>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={Boolean(pendingCartAction)}
+        tone="warning"
+        title="Producto sin devolución"
+        message={NO_RETURN_CART_MESSAGE}
+        confirmLabel={pendingCartAction === 'buy' ? 'Entiendo, comprar' : 'Entiendo, añadir al carro'}
+        cancelLabel="Cancelar"
+        onCancel={() => setPendingCartAction(null)}
+        onConfirm={confirmNoReturnCart}
+      />
+
+      <ReviewsModal
+        open={storeReviewsOpen}
+        onClose={() => setStoreReviewsOpen(false)}
+        kind="store"
+        id={product.proveedorId}
+        title="Opiniones de la tienda"
+        subtitle={sellerName}
+      />
 
       {compatibilityOpen && (
         <div className="product-compatibility-modal-backdrop" role="presentation" onMouseDown={() => setCompatibilityOpen(false)}>

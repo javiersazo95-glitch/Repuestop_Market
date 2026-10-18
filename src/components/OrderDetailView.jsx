@@ -5,8 +5,14 @@ import {
   MapPin, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
   RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock, ExternalLink, Timer,
   ThumbsUp, ThumbsDown, Send, ReceiptText, FileCheck, FileSearch, ShieldAlert, MessageCircle, Info,
-  Wallet, Car
+  Wallet, Car, Video, Zap
 } from 'lucide-react';
+import {
+  REVIEW_COMMENT_MAX, REVIEW_VIDEO_MAX_BYTES, REVIEW_VIDEO_MAX_SECONDS, readVideoDuration, uploadReviewVideoApi,
+} from '../services/reviews';
+import '../styles/reviews.css';
+import '../styles/no-return.css';
+import { NO_RETURN_CLAIM_MESSAGE, isNoReturnProduct } from '../utils/noReturnProducts';
 import { OrderStatusBadge } from './OrderCard';
 import { resolveMediaUrl, rateOrderApi, getPublicProductApi, startSellerChatApi, getShippingReceiptUrlApi } from '../services/api';
 import { adaptProduct } from '../services/adapters';
@@ -476,6 +482,10 @@ export default function OrderDetailView({
   // O71b (pruebas de lanzamiento, 27-sep): la tienda del reclamo ({ id, name, estado, entregadoAt,
   // pickup }). En un pedido de varias el comprador la elige desde el bloque de esa tienda.
   const [claimStore, setClaimStore] = useState(null);
+  // Tienda cuyo reclamo espera la advertencia de "producto electrico sin devolucion"
+  // (`undefined` = sin advertencia abierta; `null` = el pedido completo).
+  const [noReturnClaimBlock, setNoReturnClaimBlock] = useState(undefined);
+  const [claimIsNoReturn, setClaimIsNoReturn] = useState(false);
   const [claimDetail, setClaimDetail] = useState('');
   const [claimCustomReason, setClaimCustomReason] = useState('');
   const [isSubmittingClaim, setIsSubmittingClaim] = useState(false);
@@ -534,6 +544,11 @@ export default function OrderDetailView({
   const [storeToRate, setStoreToRate] = useState(null);
   const [sellerRating, setSellerRating] = useState(0);
   const [productRatings, setProductRatings] = useState({});
+  // Opiniones (2026-10-18): comentario de la tienda (uno por compra) y, por repuesto, comentario
+  // y video corto opcionales. El video se sube al elegirlo; al enviar solo viaja su clave.
+  const [sellerComment, setSellerComment] = useState('');
+  const [productComments, setProductComments] = useState({});
+  const [productVideos, setProductVideos] = useState({});
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const [ratingError, setRatingError] = useState('');
   const [ratingSuccess, setRatingSuccess] = useState(false);
@@ -544,6 +559,9 @@ export default function OrderDetailView({
     if (!autoOpenRating) return;
     setProductRatings({});
     setSellerRating(0);
+    setSellerComment('');
+    setProductComments({});
+    setProductVideos({});
     setRatingError('');
     setRatingSuccess(false);
     setShowRatingModal(true);
@@ -707,9 +725,13 @@ export default function OrderDetailView({
   // declaracion -- la variable existe -- y la pantalla revienta al abrirse con "Cannot access
   // before initialization".
   const ratingItems = (storeToRate ? storeToRate.items : items).filter((item) => !isCancelledItem(item));
+  const videosUploading = Object.values(productVideos).some((video) => video?.uploading);
+  const videosFailed = Object.values(productVideos).some((video) => video?.error);
   const ratingComplete = sellerRating > 0
     && ratingItems.length > 0
-    && ratingItems.every((item) => Number(productRatings[item.productoId || item.id]) > 0);
+    && ratingItems.every((item) => Number(productRatings[item.productoId || item.id]) > 0)
+    && !videosUploading
+    && !videosFailed;
   const canRateOrder = RATEABLE.includes(normStatus) && !alreadyRated && !ratingDisabled;
 
   const buyerName = order.compradorNombre || order.buyerName || order.usuarioNombre || 'Cliente RepuesTop';
@@ -884,20 +906,39 @@ export default function OrderDetailView({
     && !['EN_MEDIACION', 'MEDIATION', 'PENDIENTE'].includes(block.estado)
     && !(CLAIM_CLOSED_STATES.includes(block.estado) && !dentroDeGarantiaDesde(block.entregadoAtStore))
     && !casoBloqueaNuevoReclamo(block.subOrder?.estadoCaso);
-  const openClaimModal = (block) => {
+  // Electricos (2026-10-18): si todo lo vivo de esa tienda es de la categoria Electrico y ya se
+  // entrego, no hay devolucion posible (la garantia legal por falla si sigue).
+  const claimHasNoReturn = (block) => {
+    const estado = String(block?.estado || normStatus || '').toUpperCase();
+    if (!['ENTREGADO', 'FINALIZADO', 'RECIBIDO'].includes(estado)) return false;
+    const vivos = (block ? block.items : items).filter((item) => !isCancelledItem(item));
+    return vivos.length > 0 && vivos.every(isNoReturnProduct);
+  };
+  const showClaimForm = (block) => {
     setClaimStore(block ? {
       id: block.id, name: block.name, estado: block.estado, entregadoAt: block.entregadoAtStore, pickup: block.isPickupStore,
     } : null);
+    setClaimIsNoReturn(claimHasNoReturn(block));
     setClaimReasonCode('');
     setClaimCustomReason('');
     setClaimDetail('');
     setClaimError('');
     setShowClaimModal(true);
   };
+  const openClaimModal = (block) => {
+    // Primero la advertencia: "no tiene derecho a devolucion"; se puede seguir por falla.
+    if (!isSeller && claimHasNoReturn(block)) {
+      setNoReturnClaimBlock(block || null);
+      return;
+    }
+    showClaimForm(block);
+  };
+  const claimNoReturn = !isSeller && claimIsNoReturn;
   // Los motivos se ofrecen segun el estado y la entrega de LA TIENDA reclamada (con una sola, la del pedido).
   const claimContextStatus = claimStore?.estado || normStatus;
   const claimReasons = buyerClaimReasons(claimContextStatus, claimStore ? claimStore.pickup : isStorePickup)
-    .filter(([, code]) => (claimStore ? dentroDeRetractoDesde(claimStore.entregadoAt) : dentroDeRetracto) || code !== 'buyer_remorse');
+    .filter(([, code]) => (claimStore ? dentroDeRetractoDesde(claimStore.entregadoAt) : dentroDeRetracto) || code !== 'buyer_remorse')
+    .filter(([, code]) => !claimNoReturn || code !== 'buyer_remorse');
   const claimFinalReason = claimReasonCode === 'other' ? claimCustomReason.trim() : claimReasonCode;
   const canSubmitClaim = Boolean(claimFinalReason)
     && claimDetail.trim().length > 0
@@ -1165,10 +1206,35 @@ export default function OrderDetailView({
     }
   };
 
+  // Video de la opinion de un repuesto: hasta 30 s y 50 MB. Se sube apenas se elige.
+  const pickReviewVideo = async (productId, file) => {
+    if (!file) return;
+    const effectiveUserId = userId || order?.compradorId || order?.usuarioId;
+    const fail = (error) => setProductVideos((prev) => ({ ...prev, [productId]: { name: file.name, error } }));
+    if (!file.type.startsWith('video/')) { fail('Elige un archivo de video.'); return; }
+    if (file.size > REVIEW_VIDEO_MAX_BYTES) { fail('El video supera los 50 MB. Elige uno más corto.'); return; }
+    const duration = await readVideoDuration(file);
+    if (duration && duration > REVIEW_VIDEO_MAX_SECONDS + 1) { fail(`Elige un video de hasta ${REVIEW_VIDEO_MAX_SECONDS} segundos.`); return; }
+    setProductVideos((prev) => ({ ...prev, [productId]: { name: file.name, uploading: true } }));
+    try {
+      const uploaded = await uploadReviewVideoApi(effectiveUserId, order.id, file);
+      setProductVideos((prev) => (prev[productId]?.name === file.name
+        ? { ...prev, [productId]: { name: file.name, key: uploaded?.videoKey } }
+        : prev));
+    } catch (error) {
+      setProductVideos((prev) => (prev[productId]?.name === file.name
+        ? { ...prev, [productId]: { name: file.name, error: error?.message || 'No se pudo subir el video.' } }
+        : prev));
+    }
+  };
+
   const openRatingModal = (block = null) => {
     setStoreToRate(block);
     setProductRatings({});
     setSellerRating(0);
+    setSellerComment('');
+    setProductComments({});
+    setProductVideos({});
     setRatingError('');
     setRatingSuccess(false);
     setShowRatingModal(true);
@@ -2479,6 +2545,13 @@ export default function OrderDetailView({
 
               {claimError && <p className="confirm-dialog-error">{claimError}</p>}
 
+              {claimNoReturn && (
+                <div className="no-return-note" role="note">
+                  <Zap size={16} />
+                  <span>{NO_RETURN_CLAIM_MESSAGE}</span>
+                </div>
+              )}
+
               <label className="order-subdialog-field">
                 <span>Motivo del reclamo *</span>
                 <select value={claimReasonCode} onChange={(e) => setClaimReasonCode(e.target.value)}>
@@ -2770,6 +2843,9 @@ export default function OrderDetailView({
                         productoId: Number(pId) || 0,
                         sellerRating: Number(sellerRating),
                         productRating: Number(productRatings[pId]),
+                        sellerComment: sellerComment.trim() || undefined,
+                        productComment: (productComments[pId] || '').trim() || undefined,
+                        productVideoKey: productVideos[pId]?.key || undefined,
                       };
                     });
                     const actualizado = await rateOrderApi(effectiveUserId, order.id, itemsPayload);
@@ -2800,7 +2876,8 @@ export default function OrderDetailView({
                   <>
                     {ratingError && <p className="confirm-dialog-error">{ratingError}</p>}
 
-                    {/* Vendedor */}
+                    {/* Vendedor: nota y comentario, una vez por compra (se ven en su perfil). */}
+                    <div className="order-rating-card">
                     <section className="order-rating-block">
                       <header>
                         <span className="order-rating-eyebrow">Vendedor</span>
@@ -2824,6 +2901,19 @@ export default function OrderDetailView({
                         ))}
                       </div>
                     </section>
+                    <textarea
+                      className="order-rating-comment"
+                      value={sellerComment}
+                      onChange={(event) => setSellerComment(event.target.value)}
+                      maxLength={REVIEW_COMMENT_MAX}
+                      placeholder="¿Cómo fue la atención y la entrega? (opcional)"
+                      aria-label={`Comentario sobre ${storeToRate?.name || sellerName}`}
+                    />
+                    <div className="order-rating-comment-foot">
+                      <span>Se mostrará en el perfil de la tienda.</span>
+                      {sellerComment && <span>{sellerComment.length}/{REVIEW_COMMENT_MAX}</span>}
+                    </div>
+                    </div>
 
                     {/* Un bloque por repuesto */}
                     <div className="order-rating-products">
@@ -2835,8 +2925,11 @@ export default function OrderDetailView({
                         const pPhoto = resolveMediaUrl(
                           item.imagenUrl || item.imageUrl || (item.imageUrls && item.imageUrls[0])
                         );
+                        const comment = productComments[pId] || '';
+                        const video = productVideos[pId];
                         return (
-                          <div key={pId} className="order-rating-product-row">
+                          <div key={pId} className="order-rating-card">
+                          <div className="order-rating-product-row">
                             <div className="order-rating-product-head">
                               {pPhoto
                                 ? <img src={pPhoto} alt="" className="order-rating-product-thumb" />
@@ -2857,9 +2950,45 @@ export default function OrderDetailView({
                               ))}
                             </div>
                           </div>
+                          <textarea
+                            className="order-rating-comment"
+                            value={comment}
+                            onChange={(event) => setProductComments((prev) => ({ ...prev, [pId]: event.target.value }))}
+                            maxLength={REVIEW_COMMENT_MAX}
+                            placeholder="¿Qué te pareció el repuesto? (opcional)"
+                            aria-label={`Comentario sobre ${pName}`}
+                          />
+                          <div className="order-rating-comment-foot">
+                            <span>Se mostrará en la ficha del repuesto.</span>
+                            {comment && <span>{comment.length}/{REVIEW_COMMENT_MAX}</span>}
+                          </div>
+                          {video ? (
+                            <div className={`order-rating-video-state${video.error ? ' is-error' : video.key ? ' is-ready' : ''}`}>
+                              {video.uploading ? <Loader2 size={16} className="spin-icon" /> : video.error ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
+                              <span>{video.uploading ? 'Subiendo video...' : video.error || 'Video listo'}</span>
+                              <button type="button" onClick={() => setProductVideos((prev) => { const next = { ...prev }; delete next[pId]; return next; })}>
+                                Quitar
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="order-rating-video-btn">
+                              <Video size={15} /> Agregar video (opcional, hasta {REVIEW_VIDEO_MAX_SECONDS} s)
+                              <input
+                                type="file"
+                                accept="video/mp4,video/quicktime,video/webm"
+                                hidden
+                                onChange={(event) => { pickReviewVideo(pId, event.target.files?.[0]); event.target.value = ''; }}
+                              />
+                            </label>
+                          )}
+                          </div>
                         );
                       })}
                     </div>
+
+                    <p className="order-rating-privacy">
+                      <User size={14} /> Tu opinión se publica con tu foto de perfil y tu nombre abreviado (ej.: Juan P.).
+                    </p>
 
                     <div className="confirm-dialog-actions">
                       <button type="button" className="btn-auth-secondary" onClick={() => setShowRatingModal(false)} disabled={isSubmittingRating}>
@@ -2877,6 +3006,17 @@ export default function OrderDetailView({
           </div>,
           document.body
         )}
+
+        <ConfirmDialog
+          isOpen={noReturnClaimBlock !== undefined}
+          tone="warning"
+          title="Producto sin derecho a devolución"
+          message={NO_RETURN_CLAIM_MESSAGE}
+          confirmLabel="Reclamar por falla"
+          cancelLabel="Cancelar"
+          onCancel={() => setNoReturnClaimBlock(undefined)}
+          onConfirm={() => { const block = noReturnClaimBlock; setNoReturnClaimBlock(undefined); showClaimForm(block); }}
+        />
 
         <ConfirmDialog
           isOpen={confirmStatusAdvance}

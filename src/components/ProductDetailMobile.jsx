@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   BadgeCheck, Car, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CreditCard,
-  AlertTriangle, Globe, Heart, Info, MapPin, Package, ShieldCheck, Star, Store, Truck,
+  AlertTriangle, Globe, Heart, Info, MapPin, MessageSquareText, Package, ShieldCheck, Star, Store, Truck, Zap,
 } from 'lucide-react';
 
 import ProductBrandMark from './ProductBrandMark';
@@ -13,6 +13,22 @@ import ContextualReportButton from './ContextualReportButton';
 import { resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import { productPath } from '../routes/paths';
 import { shippingMethodMessage } from '../utils/cartDelivery';
+import '../styles/reviews.css';
+import { NO_RETURN_DETAIL, NO_RETURN_TITLE, isNoReturnProduct } from '../utils/noReturnProducts';
+import '../styles/no-return.css';
+
+// El panel del vendedor ya es un <button>: el acceso a sus opiniones no puede ser otro <button>
+// adentro (HTML invalido), asi que es un span con rol de boton que no deja pasar el clic.
+function nestedButtonProps(onActivate) {
+  return {
+    role: 'button',
+    tabIndex: 0,
+    onClick: (event) => { event.stopPropagation(); onActivate(); },
+    onKeyDown: (event) => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); onActivate(); }
+    },
+  };
+}
 
 /**
  * Ficha del repuesto en el celular (≤768px), clonada del detalle de la app
@@ -47,6 +63,8 @@ export default function ProductDetailMobile({
   compatibilityCount,
   sellerRating,
   sellerReviews,
+  onOpenReviews,
+  onOpenStoreReviews,
   descriptionText,
   descriptionIsLong,
   descriptionExpanded,
@@ -166,8 +184,11 @@ export default function ProductDetailMobile({
             )}
             <small>{quoteOnly ? 'Precio' : 'IVA incluido'}</small>
           </div>
-          <div className="pdm-metric">
-            <span className="pdm-metric-rating"><Star size={14} fill="currentColor" /> {rating > 0 ? rating.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'}</span>
+          <button type="button" className="pdm-metric pdm-metric-button" onClick={onOpenReviews} aria-label="Ver opiniones del producto">
+            <span className="pdm-metric-rating">
+              <Star size={14} fill="currentColor" /> {rating > 0 ? rating.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'}
+              <MessageSquareText size={13} className="rv-trigger-icon" />
+            </span>
             <small>
               {vendidos > 0
                 ? `(${vendidos} ${vendidos === 1 ? 'vendido' : 'vendidos'})`
@@ -175,7 +196,7 @@ export default function ProductDetailMobile({
                   ? `(${reviewCount} ${reviewCount === 1 ? 'reseña' : 'reseñas'})`
                   : 'Sin reseñas'}
             </small>
-          </div>
+          </button>
           <div className="pdm-metric">
             <button type="button" className="pdm-metric-brand" onClick={onOpenBrandModal} aria-label={`Ver información de la marca ${brandName}`}>
               <ProductBrandMark brand={brandName} logoUrl={product.brandLogoUrl} size={22} />
@@ -188,6 +209,14 @@ export default function ProductDetailMobile({
             <small>Stock</small>
           </div>
         </div>
+
+        {/* Electricos (2026-10-18): sin derecho a devolucion, a la vista antes de comprar. */}
+        {isNoReturnProduct(product) && (
+          <div className="no-return-note" role="note">
+            <Zap size={16} />
+            <span><strong>{NO_RETURN_TITLE}.</strong> {NO_RETURN_DETAIL}</span>
+          </div>
+        )}
 
         {product.requiereChasis && (
           <div className="pdm-vin-note">
@@ -212,11 +241,16 @@ export default function ProductDetailMobile({
         <span className="pdm-seller-copy">
           <strong>{sellerName} <BadgeCheck size={14} /></strong>
           <small>
-            {sellerRating > 0 && (
+            {sellerRating > 0 && (onOpenStoreReviews ? (
+              <span className="pdm-seller-rating rv-rating-pill" aria-label="Ver opiniones de la tienda" {...nestedButtonProps(onOpenStoreReviews)}>
+                <Star size={12} fill="currentColor" className="rv-star" /> {sellerRating.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ({sellerReviews})
+                <MessageSquareText size={12} className="rv-trigger-icon" />
+              </span>
+            ) : (
               <span className="pdm-seller-rating">
                 <Star size={12} fill="currentColor" /> {sellerRating.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ({sellerReviews})
               </span>
-            )}
+            ))}
             <span className="pdm-seller-place"><MapPin size={12} /> {city}</span>
           </small>
           {product.horarioVendedor && <small className="pdm-seller-hours">{product.horarioVendedor}</small>}

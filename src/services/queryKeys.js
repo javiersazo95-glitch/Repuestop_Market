@@ -13,6 +13,8 @@ export const qk = {
   products: (filters) => ['products', filters || {}],
   product: (id) => ['products', id],
   productQuestions: (id) => ['products', id, 'questions'],
+  /** Opiniones de compradores: resumen + primera pagina (producto o tienda). */
+  reviews: (kind, id, size) => ['reviews', kind, String(id), size],
   /** Bandeja del COMPRADOR con las preguntas que hizo (GET /usuarios/me/preguntas-productos). */
   buyerProductQuestions: (userId) => ['buyerProductQuestions', userId],
   relatedProducts: (id) => ['products', id, 'related'],
