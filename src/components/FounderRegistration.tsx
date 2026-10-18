@@ -42,6 +42,7 @@ import { getStoredCaptadorReferral, clearStoredCaptadorReferral } from '../utils
 import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../routes/paths';
+import { useAuth } from '../context/AuthContext';
 
 type LegalDoc = 'terms' | 'privacy';
 
@@ -180,6 +181,12 @@ const ORDEN_CAMPOS: (keyof FormState)[] = [
 ];
 
 export default function FounderRegistration({ onBack }: { onBack: () => void }) {
+  // Esta pantalla autentica con su propio cliente (`founderApi`); la sesion se le pasa al
+  // contexto para que el resto del sitio -`/perfil`, el header- la vea sin recargar.
+  // (El contexto es JS y nace de `createContext(null)`: TS lo infiere `never`.)
+  const { adoptSession } = useAuth() as unknown as {
+    adoptSession: (authResponse: unknown, preferredRole?: string) => unknown;
+  };
   const [activePhase, setActivePhase] = useState(0);
   // El horario de atencion de la tienda. `SellerRegistrationPayload` ya tenia
   // `hours?` y el backend lo persiste en `Proveedor.hours`, pero la web nunca lo
@@ -377,7 +384,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
       }));
       setMethodChosen(true);
     }, (msg) => setGoogleMsg(msg));
-  }, [activePhase, pendingEmail, methodChosen, googleRemountKey]);
+  }, [activePhase, pendingEmail, methodChosen, googleRemountKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Viene del modal de acceso: entro con Google, el correo no tenia cuenta y eligio "Tienda". Se
   // retoma con ese mismo perfil, como si hubiera usado el boton de Google de este paso (404).
@@ -505,6 +512,8 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
       return;
     }
     const verification = await fetchVerificacionStatus(sellerSession.sellerId, sellerSession.token);
+    // Sin respuesta cruda viene de la sesion guardada (bootstrap), que el contexto ya tiene.
+    if (sellerSession.authResponse) adoptSession(sellerSession.authResponse, 'SELLER');
     setSession({
       sellerId: sellerSession.sellerId,
       token: sellerSession.token,
@@ -613,6 +622,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
       if (isPendingVerification(result)) {
         setPendingEmail(result.email);
       } else {
+        adoptSession(result, 'SELLER');
         setSession({
           sellerId: result.sellerId,
           token: result.token,
@@ -642,6 +652,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
     setFormError('');
     try {
       const result = await verifyRegistrationCode(pendingEmail, code.trim());
+      adoptSession(result, 'SELLER');
       setSession({
         sellerId: result.sellerId,
         token: result.token,

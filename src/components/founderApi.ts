@@ -248,10 +248,13 @@ export type SellerSession = {
   founder: boolean;
   sellerBlocked: boolean;
   sellerBlockReason?: string | null;
+  /** Respuesta completa del login, para dejar la sesión iniciada en todo el sitio (`adoptSession`). */
+  authResponse?: unknown;
 };
 
 function extractSellerSession(data: any): SellerSession {
   return {
+    authResponse: data,
     token: data.token,
     sellerId: data.sellerId,
     storeName: data.storeName,

@@ -400,6 +400,10 @@ export function AuthProvider({ children }) {
     isLoading,
     login,
     loginWithGoogle,
+    // Para quien autentica fuera de este contexto (la postulacion de tienda en `/vender`
+    // usa su propio cliente): sin pasar por aqui, `/perfil` no veia la sesion y mandaba
+    // a iniciar sesion hasta recargar la pagina.
+    adoptSession: saveSession,
     logout,
     acceptTerms,
     registerBuyer,

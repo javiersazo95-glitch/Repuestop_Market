@@ -8,6 +8,8 @@ const SELLER_ROLES = ['SELLER', 'PROVIDER', 'PROVEEDOR'];
 /** `EstadoTienda` del backend. Solo APPROVED habilita el panel de vendedor. */
 export const STORE_APPROVED = 'APPROVED';
 
+const isApprovedStatus = (status) => String(status || '').toUpperCase() === STORE_APPROVED;
+
 /**
  * Aprobacion de la tienda. La otorga EXCLUSIVAMENTE el backoffice: al aprobar la
  * validacion, `ValidacionBackofficeService` escribe tres señales a la vez
@@ -27,24 +29,30 @@ export function useSellerApproval() {
   const isSeller = SELLER_ROLES.includes(role);
   const sellerId = isSeller ? (user?.sellerId || user?.proveedorId || null) : null;
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, isFetching } = useQuery({
     queryKey: qk.sellerStore(sellerId),
     queryFn: ({ signal }) => getSellerStoreApi(sellerId, { signal }),
     enabled: Boolean(sellerId),
     staleTime: 60 * 1000,
+    // Un "no aprobada" en cache puede haber cambiado: el backoffice aprueba mientras la
+    // tienda espera en `/vender`, y con el dato viejo `/perfil` la devolvia a postular
+    // hasta recargar la pagina. Solo el APPROVED se reusa sin volver a preguntar.
+    refetchOnMount: (query) => (isApprovedStatus(query.state.data?.status) ? true : 'always'),
     retry: false,
   });
 
   const storeStatus = data?.status || null;
+  const isApproved = isApprovedStatus(storeStatus);
 
   return {
     isSeller,
     storeStatus,
-    isApproved: String(storeStatus || '').toUpperCase() === STORE_APPROVED,
+    isApproved,
     // Mientras no se sepa el estado no se decide nada: redirigir con la consulta en
     // vuelo sacaba del panel a una tienda aprobada por un parpadeo. Un error tampoco
-    // decide -no es lo mismo "no aprobada" que "no pudimos preguntarlo"-.
-    isUnknown: isLoading || isError || !storeStatus,
+    // decide -no es lo mismo "no aprobada" que "no pudimos preguntarlo"-. Un "no
+    // aprobada" que se esta volviendo a consultar tampoco: puede venir ya aprobada.
+    isUnknown: isLoading || isError || !storeStatus || (isFetching && !isApproved),
   };
 }
 
