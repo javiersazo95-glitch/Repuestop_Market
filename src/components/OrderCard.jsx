@@ -265,7 +265,8 @@ export default function OrderCard({
 
   // Cálculo de comisiones para el modal de información del vendedor
   const storedCommissionRate = Number(order.commissionRate ?? order.comisionTasaAplicada ?? 0);
-  const commissionRate = storedCommissionRate > 0 ? (storedCommissionRate <= 1 ? storedCommissionRate * 100 : storedCommissionRate) : 8;
+  // Respaldo 7% (tarifa estandar desde 2026-10-18; antes 8%) solo cuando el backend no manda tasa.
+  const commissionRate = storedCommissionRate > 0 ? (storedCommissionRate <= 1 ? storedCommissionRate * 100 : storedCommissionRate) : 7;
   // Misma base que el detalle del pedido y la liquidacion real: productos menos descuento mas
   // envio local. El calculo es solo respaldo cuando el backend no manda los montos.
   const commissionBase = Math.max(0, subtotal - discount + shippingFee);

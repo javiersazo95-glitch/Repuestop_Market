@@ -45,7 +45,7 @@ const COMMUNITIES: Community[] = [
     Icon: Store,
     tag: 'Para casas de repuestos',
     founderTag: 'Tienda fundadora',
-    title: 'Vende con comisión fija del 5%',
+    title: 'Vende 2 meses sin tarifa de servicio',
     line: 'Subes tu Excel, ves cuánto recibes antes de publicar y cobras puntual.',
     perks: [
       { Icon: FileSpreadsheet, label: 'Carga por Excel' },

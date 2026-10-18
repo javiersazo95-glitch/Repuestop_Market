@@ -697,7 +697,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
           <h1>Únete como <em>tienda fundadora</em> de RepuesTop</h1>
           <p className="founder-reg-lead">
             Completa tu registro y sigue las 4 fases para activar tu tienda con beneficios de fundador:
-            5% de comisión fija durante tus primeros 3 meses (primeras 100 tiendas aprobadas), distintivo oficial y mayor visibilidad.
+            tarifa de servicio RepuesTop 0% (gratis) durante tus primeros 2 meses de marcha blanca (primeras 100 tiendas aprobadas), distintivo oficial y mayor visibilidad. Después: 7% + IVA por venta; el costo de Flow se mantiene.
           </p>
           <Timeline activePhase={activePhase} />
 
@@ -1761,7 +1761,8 @@ function ApprovedInfo({ approved, onHome }: { approved: boolean; onHome: () => v
         <p>
           Tu cuenta de tienda fundadora ya fue validada por nuestro equipo. Revisa tu <strong>perfil</strong> o entra
           al <strong>panel de carga masiva</strong> para cargar tu inventario y empezar a vender. Si tu tienda está entre
-          las primeras 100 aprobadas, tendrás 5% de comisión fija durante tus primeros 3 meses.
+          las primeras 100 aprobadas, tienes <strong>2 meses de servicio gratis</strong> desde la aprobación: 0% de tarifa
+          RepuesTop, solo pagas Flow (2,89% + IVA). Después: 7% + IVA por venta.
         </p>
         <button type="button" className="button founder-reg-submit" onClick={() => navigate(ROUTES.profile)}>
           <UserRound size={18} /> Ir a mi perfil
@@ -1781,9 +1782,10 @@ function ApprovedInfo({ approved, onHome }: { approved: boolean; onHome: () => v
       <h2>Último paso: aprobación e ingreso</h2>
       <p>
         Cuando el equipo apruebe tu tienda, recibirás un correo con el acceso al <strong>panel de vendedores</strong>,
-        donde podrás cargar tu inventario y empezar a vender. Las primeras 100 tiendas aprobadas tienen 5% de comisión fija durante sus primeros 3 meses.
+        donde podrás cargar tu inventario y empezar a vender. Las primeras 100 tiendas aprobadas tienen 2 meses de marcha blanca con tarifa de servicio RepuesTop 0% desde la aprobación; después, 7% + IVA por venta.
       </p>
       <ul className="founder-reg-checklist">
+        <li><Check size={16} /> Servicio RepuesTop gratis por 2 meses: solo pagas Flow (2,89% + IVA).</li>
         <li><Check size={16} /> Distintivo oficial de Fundador en tus publicaciones.</li>
         <li><Check size={16} /> Mayor visibilidad en las búsquedas por patente.</li>
         <li><Check size={16} /> Acceso anticipado a la gestión de inventario.</li>

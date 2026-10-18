@@ -95,7 +95,7 @@ const FAQ_GROUPS: FaqGroup[] = [
     height: 782,
     caption: 'Monedero de Monedas RepuesTop',
     items: [
-      ['¿Cuánto cuesta usar RepuesTop?', 'Nada. Buscar por patente, comparar, pedir cotizaciones y comprar es gratis para cualquier persona, y publicar tu catálogo como casa de repuestos tampoco tiene costo. La plataforma cobra una tarifa de servicio solo sobre las ventas concretadas: 5% durante los primeros 3 meses desde el lanzamiento y 8% después.'],
+      ['¿Cuánto cuesta usar RepuesTop?', 'Nada. Buscar por patente, comparar, pedir cotizaciones y comprar es gratis para cualquier persona, y publicar tu catálogo como casa de repuestos tampoco tiene costo. La plataforma cobra una tarifa de servicio solo sobre las ventas concretadas: 7% + IVA por venta. Las primeras 100 tiendas aprobadas como Fundadoras tienen 2 meses gratis (0%) desde su aprobación y después pasan al 7% + IVA; el costo de la pasarela Flow se mantiene en ambos casos.'],
       ['¿Cuándo se cobra la tarifa de servicio?', 'Solo cuando una venta se concreta, y se descuenta de esa misma venta. No hay suscripción, ni cobro por publicar, ni costo por recibir cotizaciones: si no vendes, no pagas nada.'],
       ['¿Qué son las Monedas RepuesTop?', 'Son el saldo interno de la plataforma y son totalmente opcionales. Cada Moneda equivale a $50 CLP y sirven para dos cosas: impulsar un repuesto al posicionamiento Top Ventas y publicar o subir de plan un anuncio en el Mural. Tus 2 primeros repuestos Top y tu primer anuncio Básico no cuestan Monedas.'],
       ['¿Qué formas de pago están disponibles?', 'Pagas con tarjeta de crédito, débito o Redcompra a través de Flow, con la opción de simular cuotas antes de confirmar. Los datos de tu tarjeta se ingresan solo en la pasarela, nunca en RepuesTop.'],
@@ -297,7 +297,7 @@ const PRICING_CARDS: { Icon: LucideIcon; tag: string; title: string; text: strin
     tag: 'Para quien vende',
     title: 'Comisión solo al vender',
     text: 'Publicar tu catálogo es gratis. La tarifa de servicio se cobra únicamente sobre las ventas concretadas.',
-    points: ['5% los primeros 3 meses desde el lanzamiento', 'Después, 8% por venta', 'Si no vendes, no pagas nada'],
+    points: ['Fundadoras: 2 meses gratis desde la aprobación (primeras 100 tiendas)', 'Después, 7% + IVA por venta', 'Si no vendes, no pagas nada'],
   },
   {
     Icon: Coins,
@@ -728,7 +728,7 @@ export default function AboutRepuesTopPage({
             <Reveal as="header" className="rt-section-head">
               <p className="rt-kicker">Sin suscripciones ni costos ocultos</p>
               <h2 id="rt-pricing-title">Usar RepuesTop es <span>100% gratis</span></h2>
-              <p>Para el público no cuesta nada: ni buscar, ni comparar, ni cotizar, ni comprar. Y para las casas de repuestos, publicar el catálogo tampoco. La plataforma se financia con la tarifa de servicio de cada venta y con las Monedas, que son opcionales.</p>
+              <p>Para el público no cuesta nada: ni buscar, ni comparar, ni cotizar, ni comprar. Y para las casas de repuestos, publicar el catálogo tampoco. La plataforma se financia con la tarifa de servicio de cada venta (7% + IVA; las primeras 100 tiendas Fundadoras tienen 2 meses gratis desde su aprobación) y con las Monedas, que son opcionales.</p>
             </Reveal>
 
             <div className="rt-pricing__grid">

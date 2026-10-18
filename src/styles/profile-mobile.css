@@ -256,7 +256,9 @@
     color: #334155 !important;
   }
   .profile-dashboard .tag-contrast { color: #166534 !important; background: #ecfdf5 !important; border-color: #bbf7d0 !important; }
-  .profile-dashboard .founder-tag-contrast { display: inline-flex; color: #92400e !important; background: #fffbeb !important; border-color: #fde68a !important; }
+  .profile-dashboard .founder-tag-contrast { display: inline-flex; color: #92400e !important; background: #fffbeb !important; border-color: #fde68a !important; white-space: normal; }
+  /* Quedan 7 dias o menos de marcha blanca: tono ambar un poco mas firme sobre fondo claro. */
+  .profile-dashboard .founder-tag-contrast.is-ending { color: #7c2d12 !important; background: #fef3c7 !important; border-color: #f59e0b !important; box-shadow: 0 0 0 2px rgba(245, 158, 11, .18); }
   .profile-dashboard .store-status-chip { font-size: 10.5px; backdrop-filter: none; }
   .profile-dashboard .store-status-chip.chip-approved { color: #166534; background: #ecfdf5; border-color: #bbf7d0; }
   .profile-dashboard .store-status-chip.chip-approved svg { color: #16a34a; }

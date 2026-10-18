@@ -25,7 +25,7 @@ const SUBJECTS = {
   'seller-orders': [],
   'seller-products': ['Error al crear o publicar producto', 'Problemas con las fotos del producto', 'Error al actualizar stock/inventario', 'Problemas con la carga masiva', 'Otro'],
   'seller-quote': ['Mensajes bloqueados o no cargan', 'Problema al enviar una cotización', 'Comprador no responde el chat', 'Otro'],
-  'seller-payouts': ['No puedo solicitar un retiro', 'Un retiro no ha sido depositado', 'Error al validar mis datos bancarios', 'Mi saldo disponible no cuadra', 'Dudas sobre la comisión aplicada a una venta', 'Dudas sobre el Beneficio Tarifa Fundador', 'Otro'],
+  'seller-payouts': ['No puedo solicitar un retiro', 'Un retiro no ha sido depositado', 'Error al validar mis datos bancarios', 'Mi saldo disponible no cuadra', 'Dudas sobre la comisión aplicada a una venta', 'Dudas sobre la marcha blanca de Fundador', 'Otro'],
   'seller-store': ['Corregir el nombre o el RUT de mi tienda', 'Problemas con el logo o la portada', 'Dudas sobre la verificación de mi tienda', 'Actualizar mis métodos de envío', 'Cambiar el correo o el representante de la cuenta', 'Otro'],
   'seller-report': ['Otra tienda copió mis fotos o publicaciones', 'Publicación engañosa o producto falsificado', 'Comprador con conducta abusiva', 'Comprador que insiste en operar fuera de RepuesTop', 'Sospecha de fraude en un pedido', 'Otro'],
   'blocked-account': ['Solicitud de apelación de cuenta', 'Dudas sobre el motivo del bloqueo', 'Dificultades con una mediación en curso', 'Otro'],

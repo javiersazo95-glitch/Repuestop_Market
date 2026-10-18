@@ -22,7 +22,7 @@ export default function SellerChargesBreakdownModal({
   shippingFee = 0,
   discount = 0,
   commissionBase = 0,
-  commissionRate = 8,
+  commissionRate = 7,
   commissionWithIva = 0,
   paymentProcessingFee = 0,
   refundAmount = 0,
@@ -152,8 +152,9 @@ export default function SellerChargesBreakdownModal({
         )}
 
         <p className="commission-footer-note">
-          El porcentaje estándar de RepuesTop es 8% + IVA sobre cada venta, sin tramos ni tope
-          (5% + IVA para Tiendas Fundadoras durante sus primeros 3 meses).
+          La tarifa de servicio estándar de RepuesTop es 7% + IVA sobre cada venta, sin tramos ni tope.
+          Las Tiendas Fundadoras tienen 2 meses de marcha blanca con tarifa 0% desde su aprobación
+          (solo pagan Flow); después rige el 7% + IVA.
         </p>
 
         <button type="button" className="btn-auth-primary" onClick={onClose}>

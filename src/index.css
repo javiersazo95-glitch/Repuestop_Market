@@ -952,7 +952,10 @@ input, select, textarea {
 .profile-dashboard .facebook-hero-email { color: rgba(255, 255, 255, .86) !important; font-size: 13px; }
 .profile-dashboard .profile-hero-tags { display: flex; gap: 8px; }
 .profile-dashboard .tag-contrast { color: #9af4bb !important; background: rgba(4, 90, 43, .55) !important; border-color: rgba(74, 222, 128, .55) !important; }
-.profile-dashboard .founder-tag-contrast { color: #ffd264 !important; background: rgba(42, 28, 4, .68) !important; border-color: rgba(250, 204, 21, .6) !important; }
+.profile-dashboard .founder-tag-contrast { color: #ffd264 !important; background: rgba(42, 28, 4, .68) !important; border-color: rgba(250, 204, 21, .6) !important; white-space: nowrap; }
+/* Marcha blanca por terminar (7 dias o menos): mismo chip, apenas mas encendido para que el
+   contador se note sin convertirse en alerta. No cambia padding ni alto. */
+.profile-dashboard .founder-tag-contrast.is-ending { color: #ffe08a !important; background: rgba(92, 52, 0, .8) !important; border-color: rgba(251, 191, 36, .9) !important; box-shadow: 0 0 0 2px rgba(251, 191, 36, .22); }
 /* El chip vive sobre la foto de portada, asi que necesita fondo propio oscuro. Antes
    solo se pisaba el `color` a verde palido y quedaba encima del degradado CLARO de
    `.chip-approved`: verde palido sobre casi blanco, ilegible. Cada estado lleva su

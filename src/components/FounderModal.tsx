@@ -5,7 +5,7 @@ import { Crown, X, Clock, ShieldCheck, CheckCircle2, Sparkles, ArrowRight, Perce
 import '../styles/founder.css';
 
 const BENEFITS = [
-  { icon: Percent, gradient: 'linear-gradient(135deg, #0056bf, #10c8e8)', title: '5% de comisión por 3 meses', text: 'Una tasa preferencial de solo 5% durante tus primeros 3 meses desde la aprobación de tu tienda.' },
+  { icon: Percent, gradient: 'linear-gradient(135deg, #0056bf, #10c8e8)', title: 'Servicio gratis por 2 meses', text: 'Tarifa de servicio RepuesTop 0% durante tus primeros 2 meses de marcha blanca desde la aprobación: solo pagas Flow (2,89% + IVA). Después: 7% + IVA por venta.' },
   { icon: Award, gradient: 'linear-gradient(135deg, #071b45, #0056bf)', title: 'Distintivo en publicaciones', text: 'Un sello oficial de "Fundador" que destaca tu tienda y genera mayor confianza con compradores.' },
   { icon: Radar, gradient: 'linear-gradient(135deg, #7257ff, #10c8e8)', title: 'Mayor visibilidad en RepuesTop', text: 'Tus repuestos aparecen destacados en las búsquedas por patente dentro de la plataforma web.' },
   { icon: Rocket, gradient: 'linear-gradient(135deg, #ffb800, #ff8a00)', title: 'Panel de gestión en tiempo real', text: 'Gestiona stock masivo, cotizaciones y pedidos desde tu panel de vendedor, sincronizado al instante con la vitrina pública.' }
@@ -55,7 +55,7 @@ export default function FounderModal({ isOpen, onClose, onApply }: { isOpen: boo
           <h2>Sé una Tienda <em>Fundadora</em> RepuesTop</h2>
           <p>Estamos eligiendo a los primeros proveedores de repuestos del país. Súmate ahora y asegura beneficios exclusivos que no volverán a repetirse.</p>
           <div className="founder-modal-stats">
-            <div><strong>5%</strong><span>Comisión fija</span></div>
+            <div><strong>0%</strong><span>Tarifa de servicio · 2 meses</span></div>
             <div><strong>0$</strong><span>Costo de inscripción</span></div>
             <div><strong>24h</strong><span>Respuesta del equipo</span></div>
           </div>
@@ -75,7 +75,7 @@ export default function FounderModal({ isOpen, onClose, onApply }: { isOpen: boo
           </div>
 
           <div className="founder-modal-cta">
-            <div className="founder-modal-cta-urgency"><Clock size={15} /> Solo para las primeras 100 tiendas aprobadas</div>
+            <div className="founder-modal-cta-urgency"><Clock size={15} /> Solo para las primeras 100 tiendas aprobadas · Después: 7% + IVA por venta</div>
             <button
               className="button"
               onClick={() => { onClose(); onApply(); }}

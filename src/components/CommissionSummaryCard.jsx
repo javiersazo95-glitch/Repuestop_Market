@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Tag, Calculator, ChevronDown, ChevronUp, Award, Sparkles, Check } from 'lucide-react';
-import { calculateSimplePricingSummary, calculateSuggestedPrice, FLOW_RATE_BASE } from '../utils/pricing';
+import { calculateSimplePricingSummary, calculateSuggestedPrice, FLOW_RATE_BASE, STANDARD_RATE_LABEL } from '../utils/pricing';
 
 function formatCLP(amount) {
   const safe = typeof amount === 'number' && !Number.isNaN(amount) ? Math.max(0, Math.round(amount)) : 0;
@@ -58,7 +58,7 @@ export default function CommissionSummaryCard({
           fontWeight: 600,
         }}>
           <Award size={15} />
-          <span>Beneficio Fundador: comisión RepuesTop fija de 5% + IVA, sin importar el monto.</span>
+          <span>Marcha blanca Fundador: tarifa de servicio RepuesTop 0% (gratis). Solo pagas Flow ({FLOW_RATE_LABEL} + IVA). Después: {STANDARD_RATE_LABEL} + IVA por venta.</span>
         </div>
       )}
 
@@ -250,13 +250,24 @@ export default function CommissionSummaryCard({
                   Las comisiones se calculan sobre el total pagado ({formatCLP(price)}), que incluye el envío dentro de la comuna.
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#475569' }}>Comisión RepuesTop ({Math.round(breakdown.rate * 100)}% + IVA):</span>
-                <strong style={{ color: '#334155' }}>-{formatCLP(breakdown.repuestopWithIva)}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '11px', paddingLeft: '8px' }}>
-                <span>↳ Neto comisión: {formatCLP(breakdown.repuestopNet)} | IVA (19%): {formatCLP(breakdown.repuestopIva)}</span>
-              </div>
+              {/* Marcha blanca de Fundador: tasa 0, asi que la fila dice "gratis" y se omite el
+                  desglose neto/IVA, que con $0 | $0 solo confundia. */}
+              {breakdown.rate === 0 ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#475569' }}>Tarifa de servicio RepuesTop (0% · marcha blanca):</span>
+                  <strong style={{ color: '#15803d' }}>{formatCLP(0)}</strong>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#475569' }}>Tarifa de servicio RepuesTop ({Math.round(breakdown.rate * 100)}% + IVA):</span>
+                    <strong style={{ color: '#334155' }}>-{formatCLP(breakdown.repuestopWithIva)}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '11px', paddingLeft: '8px' }}>
+                    <span>↳ Neto tarifa: {formatCLP(breakdown.repuestopNet)} | IVA (19%): {formatCLP(breakdown.repuestopIva)}</span>
+                  </div>
+                </>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#475569' }}>Procesamiento Flow ({FLOW_RATE_LABEL} + IVA):</span>
                 <strong style={{ color: '#334155' }}>-{formatCLP(breakdown.flowWithIva)}</strong>

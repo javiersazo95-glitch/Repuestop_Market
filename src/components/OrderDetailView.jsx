@@ -760,9 +760,14 @@ export default function OrderDetailView({
   // veredicto, regla O28- caia al calculo local y se inventaba un cobro que no existe.
   const storedCommissionRate = Number(order.commissionRate ?? order.comisionTasaAplicada ?? 0);
   // Redondeado a 2 decimales: 0.07 * 100 da 7.000000000000001 y se pintaria tal cual en la etiqueta.
+  // Respaldo 7% (tarifa estandar desde 2026-10-18; antes 8%) solo cuando el backend no manda tasa.
   const commissionRate = storedCommissionRate > 0
     ? Math.round((storedCommissionRate <= 1 ? storedCommissionRate * 100 : storedCommissionRate) * 100) / 100
-    : 8;
+    : 7;
+  // Marcha blanca de Fundador: la venta se cerro con tarifa 0 (el backend manda `comisionVendedor`
+  // 0 y tasa 0) y la tienda era fundadora al comprar. Se rotula "Fundador (0%)" en vez de ocultar
+  // la fila, para que el vendedor vea que el beneficio se aplico.
+  const sellerFounderAtPurchase = Boolean(order.sellerFounderAtPurchase ?? order.vendedorFundadorAlComprar ?? order.vendedorFundador ?? order.sellerFounder);
   const repuestopFee = Number(order.comisionVendedor ?? order.commissionSeller
     ?? Math.round(commissionBase * (commissionRate / 100) * 1.19));
   const paymentProcessingFee = Number(order.comisionPasarela ?? Math.max(0, Math.round(commissionBase * 0.0289 * 1.19)));
@@ -2071,12 +2076,17 @@ export default function OrderDetailView({
 
               {isSeller && (
                 <>
-                  {repuestopFee > 0 && (
+                  {repuestopFee > 0 ? (
                     <div className="financial-row deduction-row">
                       <span>Comisión RepuesTop ({commissionRate}% + IVA)</span>
                       <strong className="negative-text">-{formatCLP(repuestopFee)}</strong>
                     </div>
-                  )}
+                  ) : (sellerFounderAtPurchase && storedCommissionRate === 0 && (
+                    <div className="financial-row deduction-row">
+                      <span>Tarifa RepuesTop Fundador (0%)</span>
+                      <strong>{formatCLP(0)}</strong>
+                    </div>
+                  ))}
                   {paymentProcessingFee > 0 && (
                     <div className="financial-row deduction-row">
                       <span>Procesador de pago</span>

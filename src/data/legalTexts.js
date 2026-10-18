@@ -12,7 +12,7 @@
  */
 
 /** Fecha de la version vigente, para mostrar en pantalla. */
-export const LEGAL_VERSION = '1 de octubre de 2026';
+export const LEGAL_VERSION = '18 de octubre de 2026';
 
 /**
  * Codigo estable de la misma version, el que viaja al backend y queda guardado en
@@ -23,7 +23,7 @@ export const LEGAL_VERSION = '1 de octubre de 2026';
  * Debe coincidir con `repuestop.legal.version-vigente` del backend y con
  * LEGAL_VERSION_CODE de la app.
  */
-export const LEGAL_VERSION_CODE = '2026-10-01';
+export const LEGAL_VERSION_CODE = '2026-10-18';
 
 /**
  * Declaracion de la tienda de ser contribuyente de IVA (art. 3° bis LIVS, Circular SII 39 de
@@ -257,7 +257,7 @@ Después del pago, el vendedor no podrá modificar unilateralmente las condicion
 
 8. VENTAS, PAGOS, COMISIÓN Y LIQUIDACIÓN
 Las ventas iniciadas en RepuesTop deberán pagarse dentro de la Plataforma. Se prohíbe indicar al comprador que pague por fuera, compartir datos de contacto externos o utilizar el chat para evitar comisiones.
-RepuesTop cobrará al vendedor una comisión por uso de la Plataforma, intermediación tecnológica, procesamiento, soporte, seguimiento, reclamos y mediación. La comisión estándar de RepuesTop para tiendas verificadas es de 8% más el 19% de IVA, calculada sobre el valor de cada venta (productos, menos descuentos, más el despacho dentro de la comuna cobrado por el vendedor), sin tramos ni tope. Las tiendas con condición de Tienda Fundadora pagan una tarifa fija preferencial de 5% más IVA durante los primeros tres (3) meses desde la aprobación de su tienda; el beneficio es para las primeras cien (100) tiendas aprobadas, sin perjuicio de que RepuesTop pueda ampliar su cupo o duración.
+RepuesTop cobrará al vendedor una comisión por uso de la Plataforma, intermediación tecnológica, procesamiento, soporte, seguimiento, reclamos y mediación. La comisión estándar de RepuesTop para tiendas verificadas es de 7% más el 19% de IVA, calculada sobre el valor de cada venta (productos, menos descuentos, más el despacho dentro de la comuna cobrado por el vendedor), sin tramos ni tope. Las tiendas con condición de Tienda Fundadora tienen una marcha blanca con tarifa de servicio de 0% (sin comisión de RepuesTop) durante los primeros dos (2) meses contados desde la aprobación de su tienda; durante ese período solo es de su cargo el costo de la pasarela de pagos indicado en el párrafo siguiente. El beneficio es para las primeras cien (100) tiendas aprobadas, sin perjuicio de que RepuesTop pueda ampliar su cupo o duración. Cumplido el plazo, rige la comisión estándar de 7% más IVA.
 El costo de recaudación y procesamiento de pagos vía pasarela electrónica (Flow: 2,89% más IVA, total 3,4391%) es de cargo del vendedor y se deducirá al liquidar la venta, sobre la misma base que la comisión.
 El dinero de cada venta queda disponible para retiro 11 días después de la entrega al comprador, una vez finalizado el pedido y siempre que no existan reclamos en mediación, devoluciones pendientes o sospechas de fraude.
 

@@ -57,6 +57,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES, storePath } from '../routes/paths';
 import { orderDisplayCode } from '../data/orderIdentity';
 import { deliveryTermsLabel, isConversationPaused, quoteChargeBase, quoteShippingCost } from '../utils/quoteFlow';
+import { founderBenefitLabel, founderBenefitTooltip, founderDaysLeft } from '../utils/founderBenefit';
 
 function formatQuoteCLP(value) {
   return `$${Math.round(Number(value) || 0).toLocaleString('es-CL')}`;
@@ -1412,12 +1413,23 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               {/* Solo las tiendas marcadas como fundadoras en el backoffice
                   (`PATCH /backoffice/founders/{id}` -> `Proveedor.fundador`, que viaja
                   en `TiendaResponseDTO.founder`). Antes salía para TODO vendedor, así
-                  que cualquiera creía tener la tarifa del 5%. */}
-              {isSeller && storeInfo?.founder && (
-                <span className="hero-tag founder-tag-contrast">
-                  <Crown size={14} strokeWidth={2.4} /> Beneficio Tarifa Fundador Activo (5%)
-                </span>
-              )}
+                  que cualquiera creía tener el beneficio.
+                  Marcha blanca (2026-10-18): servicio 0% por 2 meses desde la aprobación;
+                  `founderUntil` (puede venir null) alimenta el contador de días. Con 7 días
+                  o menos el chip sube un poco el tono (`is-ending`). */}
+              {isSeller && storeInfo?.founder && (() => {
+                const founderUntil = storeInfo.founderUntil ?? user?.founderUntil ?? null;
+                const { daysLeft, endsAt } = founderDaysLeft(founderUntil);
+                const isEnding = Boolean(endsAt) && daysLeft !== null && daysLeft <= 7;
+                return (
+                  <span
+                    className={`hero-tag founder-tag-contrast${isEnding ? ' is-ending' : ''}`}
+                    title={founderBenefitTooltip(founderUntil)}
+                  >
+                    <Crown size={14} strokeWidth={2.4} /> Fundador · {founderBenefitLabel(founderUntil)}
+                  </span>
+                );
+              })()}
             </div>
           </div>
 

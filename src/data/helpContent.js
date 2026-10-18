@@ -170,13 +170,13 @@ export const HELP_CATEGORIES = [
       },
       {
         q: '¿Cuánto me cobra RepuesTop por vender?',
-        a: 'No hay un cargo fijo mensual: se descuenta una comisión por venta concretada, que varía según el monto del pedido, más el costo de procesamiento de la pasarela de pago. En el detalle de cada pedido puedes abrir "Ver cálculo de comisión" y revisar el desglose exacto de esa venta y el monto que te queda.',
+        a: 'No hay un cargo fijo mensual: se descuenta una tarifa de servicio pareja de 7% + IVA por cada venta concretada (sin tramos ni tope), más el costo de procesamiento de la pasarela Flow (2,89% + IVA). En el detalle de cada pedido puedes abrir "Ver cálculo de comisión" y revisar el desglose exacto de esa venta y el monto que te queda.',
         roles: [HELP_ROLES.SELLER],
         topicId: 'seller-orders',
       },
       {
-        q: '¿Qué es el Beneficio Tarifa Fundador?',
-        a: 'Es la tarifa preferente de 5% + IVA para las primeras 100 tiendas aprobadas en RepuesTop, durante sus primeros 3 meses desde la aprobación. Si tu cuenta lo tiene activo, verás la insignia en la cabecera de tu perfil y la comisión aplicada en tus pedidos será la del beneficio.',
+        q: '¿Qué es la marcha blanca de Tienda Fundadora?',
+        a: 'Es el beneficio de las primeras 100 tiendas aprobadas en RepuesTop: tarifa de servicio 0% (gratis) durante sus primeros 2 meses desde la aprobación. En ese período solo pagas la pasarela Flow (2,89% + IVA). Después rige la tarifa estándar de 7% + IVA por venta; el costo de Flow se mantiene. Si tu cuenta lo tiene activo, verás la insignia con los días que te quedan en la cabecera de tu perfil y tus pedidos de ese período se liquidan sin tarifa RepuesTop.',
         roles: [HELP_ROLES.SELLER],
         topicId: 'seller-orders',
       },

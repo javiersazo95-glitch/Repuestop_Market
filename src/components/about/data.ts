@@ -171,7 +171,7 @@ export const FAQS: { q: string; a: string }[] = [
   },
   {
     q: '¿Cómo sumo mi casa de repuestos?',
-    a: 'Postulas como Tienda Fundadora y accedes a comisión fija del 5% durante tus primeros 3 meses (primeras 100 tiendas aprobadas), carga de catálogo desde Excel y el distintivo de tienda verificada.',
+    a: 'Postulas como Tienda Fundadora y accedes a 2 meses de marcha blanca con tarifa de servicio RepuesTop 0% desde la aprobación (primeras 100 tiendas aprobadas; después 7% + IVA por venta, Flow se mantiene), carga de catálogo desde Excel y el distintivo de tienda verificada.',
   },
 ];
 
