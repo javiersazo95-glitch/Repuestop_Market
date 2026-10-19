@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   AlertCircle, BadgeCheck, BadgeDollarSign, Box, CheckCircle2, ChevronRight,
-  CircleHelp, ClipboardList, FileText, LockKeyhole, Package, Send, Shield, Store, X,
+  CircleHelp, ClipboardList, FileText, Loader2, LockKeyhole, Package, Send, Shield, Store, X,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -11,6 +11,9 @@ import {
   isQuoteExpired, isValidPlate, normalizePlate, QUOTE_DELIVERY_OPTIONS, shippingCodeFromText,
 } from '../utils/quoteFlow';
 import { buyerProfilePath } from '../routes/paths';
+import {
+  QUOTE_CHASSIS_MISSING_MESSAGE, QUOTE_VEHICLE_REQUIRED_MESSAGE, useQuoteVehicleCheck,
+} from '../hooks/useQuoteVehicleCheck';
 import { parseShippingMethods, resolveShippingService, shippingMethodsForLocation } from '../data/shippingMethods';
 
 /**
@@ -60,17 +63,26 @@ const initialForm = (activeVehicle) => ({
   quantity: 1,
   shippingMethod: '',
   chassis: activeVehicle?.patente || activeVehicle?.vin || '',
+  // 19-oct: chasis (VIN) que se pide aparte cuando la patente no lo trae.
+  vin: '',
   notes: '',
 });
 
 export default function QuotationRequestModal({
   product, activeVehicle, isOpen, onClose, user, isLoggedIn, onRequireLogin,
 }) {
+  const [showVehicleHelp, setShowVehicleHelp] = useState(false);
   const [formData, setFormData] = useState(() => initialForm(activeVehicle));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [conversation, setConversation] = useState(null);
   const [submitError, setSubmitError] = useState('');
   const queryClient = useQueryClient();
+  // 19-oct: la cotización necesita el chasis. Con patente se consulta el vehículo y, si no trae
+  // chasis, se pide. Sin sesión no se consulta (el backend no entrega el chasis).
+  const vehicleCheck = useQuoteVehicleCheck(formData.chassis, {
+    known: [{ patente: activeVehicle?.patente, chasis: activeVehicle?.vin || activeVehicle?.chasis }],
+    enabled: Boolean(isOpen && isLoggedIn),
+  });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -89,7 +101,6 @@ export default function QuotationRequestModal({
     product.imagen || product.imagenUrl || product.image || product.imagenes?.[0] || product.fotos?.[0],
   );
   const providerId = product.proveedorId ?? product.sellerId ?? product.vendedor?.id;
-  const requiresChassis = Boolean(product.requiereChasis || product.requiresChassis);
   const buyerCommune = user?.comuna;
   const sellerCommune = product.ciudadVendedor || product.comunaVendedor || product.storeCommune;
   const configuredShippingMethods = parseShippingMethods(product.metodosEnvio);
@@ -114,13 +125,21 @@ export default function QuotationRequestModal({
       setSubmitError('No fue posible identificar el producto o la tienda.');
       return;
     }
-    if (requiresChassis && !formData.chassis.trim()) {
-      setSubmitError('Este repuesto requiere patente o chasis para validar compatibilidad.');
+    if (!formData.chassis.trim()) {
+      setSubmitError(QUOTE_VEHICLE_REQUIRED_MESSAGE);
       return;
     }
 
     setIsSubmitting(true);
     setSubmitError('');
+    // Con una patente se espera su consulta: sin chasis, se pide antes de enviar.
+    const vehicleState = await vehicleCheck.resolve();
+    const vin = formData.vin.trim();
+    if (vehicleState.needsVin && !vin) {
+      setSubmitError(QUOTE_CHASSIS_MISSING_MESSAGE);
+      setIsSubmitting(false);
+      return;
+    }
     try {
       // El backend reutiliza la conversacion ABIERTA del producto si no se le pide otra
       // cosa. Se pide una NUEVA cuando la oferta anterior ya no sirve -vencida- o
@@ -135,8 +154,11 @@ export default function QuotationRequestModal({
         cantidad: formData.quantity,
         metodoEnvio: shippingCodeFromText(formData.shippingMethod) || formData.shippingMethod,
         // Con la patente, el backend completa el chasis y ambos se muestran en la cotización al
-        // comprador y a la tienda. Si escribió un chasis/VIN, va como chasis.
-        ...vehicleIdentification(formData.chassis, activeVehicle),
+        // comprador y a la tienda. Si escribió un chasis/VIN, va como chasis. 19-oct: si la
+        // patente no trae chasis, va el que escribió aparte.
+        ...(vehicleState.plate
+          ? { patente: vehicleState.plate, chasis: vehicleState.needsVin ? vin : vehicleState.chassis }
+          : vehicleIdentification(formData.chassis, activeVehicle)),
         nota: formData.notes,
       });
       setConversation({ ...createdConversation, ...(saved || {}) });
@@ -199,7 +221,54 @@ export default function QuotationRequestModal({
                 <label><span>Método de envío *</span><select value={formData.shippingMethod} onChange={(event) => updateField('shippingMethod', event.target.value)} required><option value="">Selecciona una opción</option>{shippingOptions.map((option) => <option key={option}>{option}</option>)}</select><small>{shippingOptions.length ? 'Opciones disponibles según las comunas de comprador y tienda.' : 'La tienda no tiene un método compatible para esta ubicación.'}</small></label>
               </div>
 
-              <label><span className="quote-request-label-with-help">Patente o chasis {requiresChassis ? '*' : '(opcional)'} <CircleHelp size={16} /></span><input value={formData.chassis} onChange={(event) => updateField('chassis', event.target.value.toUpperCase())} required={requiresChassis} maxLength={17} placeholder="Ej. BBCL12 o VIN" /><small>Con la patente completamos el chasis para que la tienda valide el repuesto. Compartimos con la tienda solo el chasis y el modelo de tu vehículo (la patente, parcial) para validar la compatibilidad.</small></label>
+              <label>
+                <span className="quote-request-label-with-help">
+                  Patente o chasis *
+                  {/* 19-oct: el icono era solo un dibujo; ahora explica para que se pide. Fuera del
+                      flujo del label (preventDefault) para que tocarlo no enfoque el campo. */}
+                  <button
+                    type="button"
+                    className="quote-request-help"
+                    aria-label="¿Por qué te pedimos la patente o el chasis?"
+                    aria-expanded={showVehicleHelp}
+                    onClick={(event) => { event.preventDefault(); setShowVehicleHelp((open) => !open); }}
+                    onBlur={() => setShowVehicleHelp(false)}
+                  >
+                    <CircleHelp size={16} aria-hidden="true" />
+                    <span className={`quote-request-help-tip ${showVehicleHelp ? 'is-open' : ''}`} role="tooltip">
+                      La tienda valida el repuesto con el número de chasis (VIN). Si escribes tu patente, buscamos el chasis por ti y a la tienda le llega la patente parcial (por ejemplo, BB••12). Si no tienes patente, escribe el chasis: son 17 caracteres y aparece en el padrón del vehículo.
+                    </span>
+                  </button>
+                </span>
+                <input
+                  value={formData.chassis}
+                  onChange={(event) => updateField('chassis', event.target.value.toUpperCase())}
+                  onBlur={(event) => { if (isLoggedIn) vehicleCheck.check(event.target.value); }}
+                  required
+                  maxLength={17}
+                  placeholder="Ej. BBCL12 o VIN"
+                />
+                {vehicleCheck.status === 'loading' && <small><Loader2 size={12} className="spin-icon" /> Buscando el chasis de esa patente…</small>}
+                {vehicleCheck.status === 'found' && vehicleCheck.chassis && <small>Chasis de la patente: <strong>{vehicleCheck.chassis}</strong></small>}
+                {vehicleCheck.status === 'error' && vehicleCheck.error && <small className="quote-request-field-error">{vehicleCheck.error}</small>}
+                {!['loading', 'found', 'error'].includes(vehicleCheck.status) && (
+                  <small>La tienda necesita el chasis para validar el repuesto: con la patente lo completamos. Compartimos con la tienda solo el chasis y el modelo de tu vehículo (la patente, parcial) para validar la compatibilidad.</small>
+                )}
+              </label>
+              {vehicleCheck.needsVin && (
+                <label>
+                  <span>N° de chasis (VIN) *</span>
+                  <input
+                    value={formData.vin}
+                    onChange={(event) => updateField('vin', event.target.value.replace(/\s+/g, '').toUpperCase())}
+                    required
+                    maxLength={30}
+                    placeholder="Ej. 9BWZZZ377VT004251"
+                    autoFocus
+                  />
+                  <small>{QUOTE_CHASSIS_MISSING_MESSAGE}</small>
+                </label>
+              )}
               <label><span>Nota para el vendedor (opcional)</span><textarea rows="3" value={formData.notes} onChange={(event) => updateField('notes', event.target.value)} maxLength="500" placeholder="Marca preferida, urgencia u otra información útil..." /><small className="quote-request-counter">{formData.notes.length}/500</small></label>
 
               {submitError && <div className="modal-form-error"><AlertCircle size={16} /><span>{submitError}</span></div>}

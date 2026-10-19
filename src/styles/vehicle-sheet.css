@@ -1,0 +1,24 @@
+/* Ficha del vehiculo del comprador para la tienda (2026-10-19): checklist, pedido y cotizacion. */
+.vehicle-sheet { display: grid; gap: 6px; min-width: 0; }
+.vehicle-sheet-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px 12px; margin: 0; }
+.vehicle-sheet-row { display: grid; gap: 1px; min-width: 0; }
+.vehicle-sheet-row dt { color: #64748b; font-size: 10.5px; font-weight: 750; text-transform: uppercase; letter-spacing: .02em; }
+.vehicle-sheet-row dd { margin: 0; color: #172033; font-size: 12.5px; font-weight: 650; overflow-wrap: anywhere; }
+.vehicle-sheet-row.is-chasis dd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.vehicle-sheet-row dd.is-copyable { user-select: all; }
+.vehicle-sheet-manual { display: flex; align-items: flex-start; gap: 6px; margin: 0; padding: 6px 8px; border-radius: 8px; background: #fff7e6; color: #b45309; font-size: 11.5px; font-weight: 600; line-height: 1.4; }
+.vehicle-sheet-manual svg { flex-shrink: 0; margin-top: 1px; }
+.vehicle-sheet.is-compact { display: grid; gap: 3px; margin-top: 2px; }
+.vehicle-sheet.is-compact .vehicle-sheet-line { color: #64748b; font-size: 11.5px; font-weight: 500; overflow-wrap: anywhere; }
+.vehicle-sheet.is-compact .vehicle-sheet-manual { padding: 0; background: none; font-size: 11px; }
+/* Bloque "Vehiculo del comprador" del checklist "Confirmar pedido". */
+.seller-checklist-vehicle.is-sheet { align-items: flex-start; }
+.seller-checklist-vehicle.is-sheet > svg { margin-top: 2px; }
+.seller-checklist-vehicle-body { display: grid; gap: 6px; flex: 1; min-width: 0; }
+.seller-checklist-vehicle-body > strong { font-size: 12px; }
+/* Paquete "Despachar a" del detalle del pedido de la tienda. */
+.order-package-vehicle .vehicle-sheet { margin: 2px 0; }
+/* Solicitud de cotizacion (tarjeta, editor y resumen). */
+.quote-request-vehicle-sheet { display: grid; gap: 6px; padding: 10px 12px; border-radius: 10px; background: #f5f9ff; }
+.quote-request-vehicle-sheet > small { color: #52647a; font-size: 11px; font-weight: 750; }
+.quote-request-form small.quote-request-field-error { color: #c72d39; }

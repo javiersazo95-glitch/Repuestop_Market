@@ -11,6 +11,8 @@
  * delivery = { method, addressId, vehicleKey }; vehicle = { key, patente, marca, modelo, anio, catalogoId }.
  */
 
+import { manualVehicleMissing } from './cartVehicleForm';
+
 const normalize = (value) => String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
   .toLowerCase().replace(/^(comuna|municipalidad) de\s+/, '').replace(/\s+/g, ' ').trim();
 
@@ -194,10 +196,12 @@ export function vehicleLabel(vehicle) {
   return plate && model ? `${plate} · ${model}` : plate || model || 'Vehículo sin datos';
 }
 
+// 19-oct: sin patente identificada, el vehículo a mano va completo (marca, modelo, año, versión y
+// motor): es lo que la tienda revisa en "Confirmar pedido". El backend aplica la misma regla.
 export function vehicleIsComplete(vehicle, plateIdentified = false) {
   if (!vehicle) return false;
   if (plateIdentified) return true;
-  return Boolean(String(vehicle.marca || '').trim() && String(vehicle.modelo || '').trim() && Number(vehicle.anio));
+  return Boolean(Number(vehicle.anio)) && !manualVehicleMissing(vehicle);
 }
 
 const storeKey = (item) => String(item.proveedorId || item.vendedor || `producto-${item.id}`);
@@ -275,7 +279,7 @@ export function pendingDeliveryReason(items, deliveries, vehicles, identifiedPla
       if (!vehicle) return `Indica para qué vehículo es "${name}".`;
       const plate = String(vehicle.patente || '').trim().toUpperCase();
       if (!vehicleIsComplete(vehicle, Boolean(plate) && identifiedPlates.has(plate))) {
-        return `Completa el vehículo de "${name}": patente identificada o marca, modelo y año.`;
+        return `Completa el vehículo de "${name}": patente identificada o marca, modelo, año, versión y motor.`;
       }
     }
     const pickup = deliveryKind(method) === 'pickup';

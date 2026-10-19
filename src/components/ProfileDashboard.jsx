@@ -7,8 +7,9 @@ import {
   Clock, ShieldCheck, PackageCheck, Loader2, Inbox, Search,
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
-  Megaphone, CheckCircle2, ShoppingCart, Menu, ChevronRight, Home, Car, MapPin
+  Megaphone, CheckCircle2, ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle
 } from 'lucide-react';
+import VideoTutorialModal from './VideoTutorialModal';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
 import BlockedAccountReviewModal from './BlockedAccountReviewModal';
@@ -149,7 +150,9 @@ const SELLER_SIDEBAR_GROUPS = [
     title: 'SOPORTE',
     items: [
       { id: 'consultas', label: 'Reportes/Soporte', icon: MessageSquare },
-      { id: 'soporte', label: 'Centro de ayuda', icon: Headphones, href: ROUTES.support }
+      { id: 'soporte', label: 'Centro de ayuda', icon: Headphones, href: ROUTES.support },
+      // 19-oct: video tutorial para tiendas; abre una ventana, no es una pestana.
+      { id: 'video_tutorial', label: 'Video tutorial', icon: PlayCircle, action: 'video_tutorial' }
     ]
   }
 ];
@@ -319,6 +322,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const canGoBack = Boolean(location.key && location.key !== 'default');
   const [activeTab, setActiveTabState] = useState(initialTab);
   const [profileNavOpen, setProfileNavOpen] = useState(false);
+  const [videoTutorialOpen, setVideoTutorialOpen] = useState(false);
 
   useEffect(() => {
     setActiveTabState(initialTab);
@@ -1224,6 +1228,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         { id: 'tienda', tone: 'sky', icon: Store, title: 'Mi tienda y datos', description: 'Edita la información comercial de tu tienda.', onClick: () => setActiveTab('tienda_datos') },
         { id: 'retiros', tone: 'emerald', icon: Wallet, title: 'Retirar dinero', description: 'Solicita el depósito bancario de tus ventas.', onClick: () => setActiveTab('retiros') },
         { id: 'anuncios', tone: 'amber', icon: Megaphone, title: 'Gestión de anuncios', description: 'Publica y destaca en el Mural de Anuncios.', onClick: () => setActiveTab('anuncios') },
+        { id: 'video_tutorial', tone: 'blue', icon: PlayCircle, title: 'Aprende a usar RepuesTop', description: 'Mira el video tutorial para tiendas.', onClick: () => setVideoTutorialOpen(true) },
       ];
     }
     return [
@@ -1583,7 +1588,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                         type="button"
                         aria-current={isActive ? 'page' : undefined}
                         className={`profile-nav-item ${isSeller ? 'nav-seller' : 'nav-buyer'} ${isActive ? 'active' : ''}`}
-                        onClick={() => { setProfileNavOpen(false); if (tab.href) navigate(tab.href); else setActiveTab(tab.id); }}
+                        onClick={() => { setProfileNavOpen(false); if (tab.action === 'video_tutorial') setVideoTutorialOpen(true); else if (tab.href) navigate(tab.href); else setActiveTab(tab.id); }}
                       >
                         <Icon size={17} />
                         <span>{tab.label}</span>
@@ -1894,7 +1899,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                           type="button"
                           aria-current={isActive ? 'page' : undefined}
                           className={`profile-nav-item ${isSeller ? 'nav-seller' : 'nav-buyer'} ${isActive ? 'active' : ''}`}
-                          onClick={() => { setProfileNavOpen(false); if (tab.href) navigate(tab.href); else setActiveTab(tab.id); }}
+                          onClick={() => { setProfileNavOpen(false); if (tab.action === 'video_tutorial') setVideoTutorialOpen(true); else if (tab.href) navigate(tab.href); else setActiveTab(tab.id); }}
                         >
                           <Icon size={18} />
                           <span>{tab.label}</span>
@@ -2155,6 +2160,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           onCreated={handleCatalogProductCreated}
         />
       )}
+
+      {isSeller && <VideoTutorialModal isOpen={videoTutorialOpen} onClose={() => setVideoTutorialOpen(false)} />}
 
       {/* Modal de Solicitud de Revisión de Cuenta Bloqueada */}
       <BlockedAccountReviewModal

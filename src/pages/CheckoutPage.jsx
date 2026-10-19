@@ -8,7 +8,7 @@ import { useMarketplace } from '../context/MarketplaceContext';
 import { useAuth } from '../context/AuthContext';
 import {
   checkoutCartApi, checkoutConversationQuoteApi, confirmOrderPaymentApi, createAddressApi, getAddressesApi, getProfileApi,
-  getBuyerConversationsApi, getConversationQuoteApi, getPublicProductApi, resolveMediaUrl,
+  getBuyerConversationsApi, getConversationQuoteApi, getPublicProductApi, getQuoteRequestApi, resolveMediaUrl,
   searchVehicleByPatenteApi,
 } from '../services/api';
 import { formatVehicleLabel, isValidPlate, lookupVehicleByPlate, normalizePlate } from '../utils/vehicleLookup';
@@ -26,6 +26,7 @@ import CheckoutItemDelivery from '../components/CheckoutItemDelivery';
 import CheckoutShipmentsSummary from '../components/CheckoutShipmentsSummary';
 import CheckoutStoreShipment from '../components/CheckoutStoreShipment';
 import CheckoutVehicleDialog from '../components/CheckoutVehicleDialog';
+import { manualVehicleMissing } from '../utils/cartVehicleForm';
 import { useCompatibilityCheck } from '../hooks/useCompatibilityCheck';
 import { COMPAT, compatCacheKey, mismatchCountText } from '../utils/compatibilityCheck';
 import {
@@ -59,6 +60,27 @@ const SIMULATED_PAYMENT_ENABLED = __DEPLOY_BRANCH__ !== 'main';
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
+}
+
+/**
+ * El vehículo como lo espera el backend (VehiculoCompradorDTO). Lo usan el carrito (por producto)
+ * y el checkout de una cotización: antes la cotización no mandaba versión ni origen y la tienda
+ * veía menos datos que en una compra del carro. 19-oct: también motor y chasis (a mano).
+ */
+function toCheckoutVehiculo(vehicle) {
+  if (!vehicle) return null;
+  return {
+    patente: vehicle.patente || null,
+    vehiculoCatalogoId: vehicle.catalogoId || null,
+    marca: vehicle.marca || null,
+    modelo: vehicle.modelo || null,
+    anio: Number(vehicle.anio) || null,
+    version: vehicle.version || null,
+    motor: vehicle.motor || null,
+    chasis: vehicle.chasis || null,
+    // Patente o búsqueda manual (8-oct): a la tienda le llega lo ingresado a mano.
+    origen: vehicle.origen || (vehicle.patente ? 'PATENTE' : 'MANUAL'),
+  };
 }
 
 export default function CheckoutPage() {
@@ -145,9 +167,12 @@ export default function CheckoutPage() {
     Promise.all([
       getConversationQuoteApi(conversacionId),
       contextoActual ? Promise.resolve(null) : getBuyerConversationsApi(userId),
+      // 19-oct: el vehiculo con que se pidio la cotizacion (la tienda cotizo contra ese).
+      getQuoteRequestApi(conversacionId).catch(() => null),
     ])
-      .then(([savedQuote, conversations]) => {
+      .then(([savedQuote, conversations, solicitud]) => {
         if (!active) return;
+        setQuoteSolicitud(solicitud || null);
         if (!savedQuote) {
           setQuoteError('Esta conversación todavía no tiene una cotización para pagar.');
           return;
@@ -482,11 +507,19 @@ export default function CheckoutPage() {
   // que el vendedor usa para confirmar la compatibilidad antes de preparar el pedido
   // (docs/planes/plan_validacion_compatibilidad_pedido.md), asi que es obligatorio en
   // cuanto hay un repuesto que no es universal. El backend aplica la misma regla.
+  // 19-oct: sin patente identificada, el vehículo se ingresa a mano con el mismo modal del carrito
+  // (CheckoutVehicleDialog): marca, modelo, año, versión y motor, y el chasis opcional.
   const [useActiveVehicle, setUseActiveVehicle] = useState(true);
-  const [vehicleForm, setVehicleForm] = useState({ patente: '', marca: '', modelo: '', anio: '' });
+  const [vehicleForm, setVehicleForm] = useState({ patente: '' });
+  const [quoteManualVehicle, setQuoteManualVehicle] = useState(null);
+  // 19-oct: si la solicitud ya trae patente o chasis, el pago usa ese vehiculo y no lo vuelve a
+  // pedir: el backend lo toma de la solicitud cuando el checkout no manda otro, y es contra ese
+  // vehiculo que la tienda cotizo y valido el chasis.
+  const [quoteSolicitud, setQuoteSolicitud] = useState(null);
+  const vehiculoDeLaSolicitud = isQuoteMode && Boolean(quoteSolicitud?.patente || quoteSolicitud?.chasis);
   const hasActiveVehicle = Boolean(activeVehicle?.marca || activeVehicle?.patente);
   const vehicleRequired = isQuoteMode
-    ? Boolean(quoteLine) && !quoteProductUniversal
+    ? Boolean(quoteLine) && !quoteProductUniversal && !vehiculoDeLaSolicitud
     : cartItems.some((item) => !item.esUniversal);
   // El formulario va siempre abierto, aunque sea opcional: plegado tras un "+ Agregar", el
   // comprador lo pasaba de largo y el pedido le llegaba al vendedor sin vehiculo contra el
@@ -522,16 +555,6 @@ export default function CheckoutPage() {
     }
     // Si mientras tanto se escribió otra patente, esta respuesta ya no aplica.
     setPlateLookup((current) => (current.patente === patente ? { patente, status, vehicle } : current));
-    // La patente manda: se pisan marca, modelo y año aunque ya hubiera datos (de otra
-    // patente escrita antes, por ejemplo).
-    if (vehicle) {
-      setVehicleForm((current) => (normalizePlate(current.patente) !== patente ? current : {
-        ...current,
-        marca: vehicle.marca || current.marca,
-        modelo: vehicle.modelo || current.modelo,
-        anio: vehicle.anio > 0 ? String(vehicle.anio) : current.anio,
-      }));
-    }
   }, []);
   useEffect(() => {
     const patente = normalizePlate(vehicleForm.patente);
@@ -543,40 +566,64 @@ export default function CheckoutPage() {
     ? plateLookup
     : null;
 
-  const checkoutVehicle = useMemo(() => {
-    if (hasActiveVehicle && useActiveVehicle) {
-      return {
-        patente: activeVehicle.patente || null,
-        vehiculoCatalogoId: activeVehicle.catalogoId || null,
-        marca: activeVehicle.marca || null,
-        modelo: activeVehicle.modelo || null,
-        anio: activeVehicle.anio || null,
-      };
+  // Cotización: el modal guarda el vehículo a mano; si ahí se identificó una patente, pasa al campo
+  // de patente (comparten la caché, así que no se vuelve a consultar).
+  const saveQuoteVehicle = (vehicle, plateIdentifiedInDialog) => {
+    if (vehicle.origen === 'PATENTE' && plateIdentifiedInDialog) {
+      setVehicleForm({ patente: vehicle.patente });
+      setQuoteManualVehicle(null);
+      identifyPlate(vehicle.patente);
+    } else {
+      setQuoteManualVehicle(vehicle);
+      if (vehicle.patente) setVehicleForm({ patente: vehicle.patente });
     }
-    const patente = vehicleForm.patente.trim();
-    const marca = vehicleForm.marca.trim();
-    const modelo = vehicleForm.modelo.trim();
-    const anio = Number(vehicleForm.anio) || null;
+    setVehicleDialog(null);
+  };
+
+  const plateIdentified = lookupForCurrentPlate?.status === 'found' && Boolean(lookupForCurrentPlate.vehicle);
+  const checkoutVehicle = useMemo(() => {
+    if (vehiculoDeLaSolicitud) return null;
+    if (hasActiveVehicle && useActiveVehicle) {
+      return toCheckoutVehiculo({
+        patente: activeVehicle.patente,
+        catalogoId: activeVehicle.catalogoId,
+        marca: activeVehicle.marca,
+        modelo: activeVehicle.modelo,
+        anio: activeVehicle.anio,
+        version: activeVehicle.version,
+      });
+    }
+    const patente = normalizePlate(vehicleForm.patente);
+    // La patente identificada manda: sus datos los completa el backend con la consulta guardada.
+    if (plateIdentified) {
+      const identificado = lookupForCurrentPlate.vehicle;
+      return toCheckoutVehiculo({
+        patente,
+        catalogoId: identificado.catalogoId,
+        marca: identificado.marca,
+        modelo: identificado.modelo,
+        anio: identificado.anio > 0 ? identificado.anio : null,
+        version: identificado.version,
+        origen: 'PATENTE',
+      });
+    }
+    // Ingresado a mano: va con la patente escrita que no se pudo identificar (le sirve a la tienda).
+    if (quoteManualVehicle) {
+      return toCheckoutVehiculo({ ...quoteManualVehicle, patente: isValidPlate(patente) ? patente : '', origen: 'MANUAL' });
+    }
     // Sin ningun dato no se manda nada: el backend lo registra como NO_INFORMADO.
-    if (!patente && !marca && !modelo && !anio) return null;
-    const identificado = lookupForCurrentPlate?.status === 'found' ? lookupForCurrentPlate.vehicle : null;
-    return {
-      patente: patente || null,
-      vehiculoCatalogoId: identificado?.catalogoId || null,
-      marca: marca || null,
-      modelo: modelo || null,
-      anio,
-    };
-  }, [activeVehicle, hasActiveVehicle, useActiveVehicle, vehicleForm, lookupForCurrentPlate]);
-  // Basta una patente identificada, o marca, modelo y año. Una patente que no se pudo
-  // identificar (o que se está consultando) no alcanza: el vendedor no tendría contra qué
-  // revisar la compatibilidad (H26).
+    return patente ? toCheckoutVehiculo({ patente }) : null;
+  }, [vehiculoDeLaSolicitud, activeVehicle, hasActiveVehicle, useActiveVehicle, vehicleForm, lookupForCurrentPlate, plateIdentified, quoteManualVehicle]);
+  // Basta una patente identificada, o el vehículo a mano completo (marca, modelo, año, versión y
+  // motor, 19-oct). Una patente que no se pudo identificar (o que se está consultando) no alcanza:
+  // el vendedor no tendría contra qué revisar la compatibilidad (H26).
   const vehicleComplete = Boolean(checkoutVehicle) && (
-    Boolean(checkoutVehicle.marca && checkoutVehicle.modelo && checkoutVehicle.anio)
-    || (hasActiveVehicle && useActiveVehicle
+    (hasActiveVehicle && useActiveVehicle
       && String(checkoutVehicle.patente || '').replace(/[^A-Za-z0-9]/g, '').length >= 5)
-    || lookupForCurrentPlate?.status === 'found'
+    || plateIdentified
+    || (Boolean(quoteManualVehicle) && !manualVehicleMissing(quoteManualVehicle))
   );
+  const quoteManualMissing = quoteManualVehicle ? manualVehicleMissing(quoteManualVehicle) : '';
 
   // Cada vez que se llega al paso de pago la pagina baja sola hasta el vehiculo y lo hace
   // parpadear: es opcional, pero el comprador lo pasaba de largo. El ref de callback se
@@ -604,7 +651,7 @@ export default function CheckoutPage() {
   }, [focusVehicleSection]);
   // Pagar sin vehiculo (cuando es opcional) pide un segundo clic: el primero lleva al bloque.
   const [vehicleSkipWarned, setVehicleSkipWarned] = useState(false);
-  const vehicleSkipPending = isQuoteMode && step === 'pago' && !vehicleRequired && !checkoutVehicle;
+  const vehicleSkipPending = isQuoteMode && step === 'pago' && !vehicleRequired && !checkoutVehicle && !vehiculoDeLaSolicitud;
 
   const rutValid = isValidRut(invoice.rut);
   // Un vendedor sin ninguna direccion propia guardada no queda trabado aca: el backend
@@ -635,9 +682,11 @@ export default function CheckoutPage() {
       : isQuoteMode && vehicleRequired && !vehicleComplete
         ? (lookupForCurrentPlate?.status === 'loading'
           ? 'Estamos identificando tu patente…'
-          : (lookupForCurrentPlate?.status === 'notfound' || lookupForCurrentPlate?.status === 'error')
-            ? 'No pudimos identificar la patente: completa la marca, el modelo y el año.'
-            : 'Indica la patente o la marca, modelo y año de tu vehículo para continuar.')
+          : quoteManualMissing
+            ? `Completa los datos de tu vehículo: ${quoteManualMissing.charAt(0).toLowerCase()}${quoteManualMissing.slice(1)}`
+            : (lookupForCurrentPlate?.status === 'notfound' || lookupForCurrentPlate?.status === 'error')
+              ? 'No pudimos identificar la patente: ingresa los datos de tu vehículo a mano.'
+              : 'Indica la patente o ingresa a mano la marca, modelo, año, versión y motor de tu vehículo para continuar.')
         : compatBlockReason,
   }[step];
 
@@ -669,16 +718,7 @@ export default function CheckoutPage() {
         })
         : await (() => {
           // Entrega de cada producto: su método, su dirección (si se despacha) y su vehículo.
-          const toVehiculo = (vehicle) => (vehicle ? {
-            patente: vehicle.patente || null,
-            vehiculoCatalogoId: vehicle.catalogoId || null,
-            marca: vehicle.marca || null,
-            modelo: vehicle.modelo || null,
-            anio: Number(vehicle.anio) || null,
-            version: vehicle.version || null,
-            // Patente o búsqueda manual (8-oct): a la tienda le llega lo ingresado a mano.
-            origen: vehicle.origen || (vehicle.patente ? 'PATENTE' : 'MANUAL'),
-          } : null);
+          const toVehiculo = toCheckoutVehiculo;
           // El comprador marcó "Entiendo y quiero comprarlo igual": los productos que no figuran
           // como compatibles con su vehículo van con `aceptaAvisoCompatibilidad` (si no, el
           // backend rechaza el pedido). Solo esos: al resto no se le manda el flag.
@@ -1122,6 +1162,16 @@ export default function CheckoutPage() {
                     <small className="checkout-vehicle-privacy" style={{ display: 'block', color: '#64748b', marginTop: 4 }}>Compartimos con la tienda solo el chasis y el modelo de tu vehículo (la patente, parcial) para validar la compatibilidad.</small>
                   </div>
 
+                  {vehiculoDeLaSolicitud ? (
+                    <p className="checkout-vehicle-from-request">
+                      Es el vehículo con que pediste la cotización:{' '}
+                      <strong>
+                        {[quoteSolicitud.patente && `Patente ${quoteSolicitud.patente}`, quoteSolicitud.chasis && `Chasis ${quoteSolicitud.chasis}`]
+                          .filter(Boolean).join(' · ')}
+                      </strong>
+                      . La tienda ya validó el repuesto con estos datos.
+                    </p>
+                  ) : (<>
                   {hasActiveVehicle && (
                     <label className="checkout-vehicle-active">
                       <input
@@ -1158,40 +1208,39 @@ export default function CheckoutPage() {
                         {lookupForCurrentPlate?.status === 'found' && (
                           <small className="checkout-plate-status is-found"><CheckCircle2 size={12} /> Identificado: <strong>{formatVehicleLabel(lookupForCurrentPlate.vehicle)}</strong></small>
                         )}
-                        {(lookupForCurrentPlate?.status === 'notfound' || lookupForCurrentPlate?.status === 'error') && (
-                          <small className="checkout-plate-status is-missing">No pudimos identificarla: completa marca, modelo y año.</small>
+                        {(lookupForCurrentPlate?.status === 'notfound' || lookupForCurrentPlate?.status === 'error') && !quoteManualVehicle && (
+                          <small className="checkout-plate-status is-missing">No pudimos identificarla: ingresa los datos de tu vehículo a mano.</small>
                         )}
                       </label>
-                      <label>
-                        <span>Marca</span>
-                        <input
-                          value={vehicleForm.marca}
-                          onChange={(event) => setVehicleForm((current) => ({ ...current, marca: event.target.value }))}
-                          placeholder="Toyota"
-                          maxLength={80}
-                        />
-                      </label>
-                      <label>
-                        <span>Modelo</span>
-                        <input
-                          value={vehicleForm.modelo}
-                          onChange={(event) => setVehicleForm((current) => ({ ...current, modelo: event.target.value }))}
-                          placeholder="Yaris"
-                          maxLength={120}
-                        />
-                      </label>
-                      <label>
-                        <span>Año</span>
-                        <input
-                          value={vehicleForm.anio}
-                          onChange={(event) => setVehicleForm((current) => ({ ...current, anio: event.target.value.replace(/\D/g, '').slice(0, 4) }))}
-                          placeholder="2018"
-                          inputMode="numeric"
-                          maxLength={4}
-                        />
-                      </label>
+                      {!plateIdentified && (
+                        quoteManualVehicle ? (
+                          <div className="checkout-plate-status is-found">
+                            <CheckCircle2 size={12} />
+                            <span>
+                              Ingresado a mano:{' '}
+                              <strong>
+                                {[
+                                  [quoteManualVehicle.marca, quoteManualVehicle.modelo, quoteManualVehicle.anio].filter(Boolean).join(' '),
+                                  quoteManualVehicle.version,
+                                  quoteManualVehicle.motor,
+                                  quoteManualVehicle.chasis ? `Chasis ${quoteManualVehicle.chasis}` : '',
+                                ].filter(Boolean).join(' · ')}
+                              </strong>{' '}
+                              <button type="button" className="checkout-item-link" onClick={() => setVehicleDialog({ quote: true, vehicle: quoteManualVehicle })}>Editar</button>
+                              {' · '}
+                              <button type="button" className="checkout-item-link" onClick={() => setQuoteManualVehicle(null)}>Quitar</button>
+                            </span>
+                          </div>
+                        ) : (
+                          <small className="checkout-plate-status">
+                            ¿Sin patente o no la identificamos?{' '}
+                            <button type="button" className="checkout-item-link" onClick={() => setVehicleDialog({ quote: true, vehicle: null })}>Ingresar los datos a mano</button>
+                          </small>
+                        )
+                      )}
                     </div>
                   )}
+                  </>)}
 
                   {vehicleSkipPending && vehicleSkipWarned && (
                     <p className="checkout-vehicle-skip-note" role="status">
@@ -1445,9 +1494,10 @@ export default function CheckoutPage() {
       {vehicleDialog && (
         <CheckoutVehicleDialog
           vehicle={vehicleDialog.vehicle}
-          plateCache={deliveryPlateCache.current}
+          plateCache={vehicleDialog.quote ? plateLookupCache.current : deliveryPlateCache.current}
+          initialMode={vehicleDialog.quote ? 'manual' : undefined}
           onClose={() => setVehicleDialog(null)}
-          onSave={saveCartVehicle}
+          onSave={vehicleDialog.quote ? saveQuoteVehicle : saveCartVehicle}
         />
       )}
 

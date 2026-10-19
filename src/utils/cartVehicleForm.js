@@ -3,6 +3,8 @@ import { normalizePlate } from './vehicleLookup';
 /**
  * Formulario del vehículo del checkout con dos modos, igual que la app (utils/cart-vehicle-form):
  * 'plate' (por patente) o 'manual' (marca, modelo, año y versión del catálogo). 8-oct.
+ * 19-oct (decisión del usuario): a mano, la tienda necesita la ficha completa para validar la
+ * pieza: versión y motor pasan a ser obligatorios y se suma el chasis (VIN), opcional.
  */
 const FIRST_YEAR = 1980;
 
@@ -47,15 +49,29 @@ export function buildCartVehicle({ key, mode, patente, plateState, identified, m
     anio: String(manual.anio || '').trim(),
     catalogoId: null,
     version: String(manual.version || '').trim() || undefined,
+    motor: String(manual.motor || '').trim() || undefined,
+    chasis: normalizeChassis(manual.chasis) || undefined,
     origen: 'MANUAL',
   };
+}
+
+/** Chasis (VIN) sin espacios y en mayúsculas, como lo guarda el backend. */
+export function normalizeChassis(value) {
+  return String(value || '').replace(/\s+/g, '').toUpperCase();
+}
+
+/** Lo que falta de un vehículo ingresado a mano (marca, modelo, año, versión y motor), o ''. */
+export function manualVehicleMissing(manual) {
+  if (!String(manual?.marca || '').trim()) return 'Elige la marca.';
+  if (!String(manual?.modelo || '').trim()) return 'Elige el modelo.';
+  if (!String(manual?.anio || '').trim()) return 'Elige el año.';
+  if (!String(manual?.version || '').trim()) return 'Elige o escribe la versión.';
+  if (!String(manual?.motor || '').trim()) return 'Elige o escribe el motor (cilindrada o código).';
+  return '';
 }
 
 /** Lo que falta para usar el vehículo, o '' si está completo. */
 export function vehicleFormMissing({ mode, plateState, manual }) {
   if (mode === 'plate') return plateState === 'found' ? '' : 'Escribe una patente que podamos identificar.';
-  if (!String(manual.marca || '').trim()) return 'Elige la marca.';
-  if (!String(manual.modelo || '').trim()) return 'Elige el modelo.';
-  if (!String(manual.anio || '').trim()) return 'Elige el año.';
-  return '';
+  return manualVehicleMissing(manual);
 }

@@ -34,6 +34,7 @@ import { carrierTracking } from '../data/carrierTracking';
 import { fundsReleaseNotice, storeAutoCloseNotice, RETRACTION_DAYS } from '../data/orderDeadlines';
 import { validateUpload, FILE_LIMITS } from '../utils/fileValidation';
 import { buildOrderPackages } from '../utils/orderPackages';
+import VehicleSheet from './VehicleSheet';
 import { buyerCompatibilityText } from '../utils/buyerCompatibility';
 import ShippingIcon from './ShippingIcon';
 
@@ -93,11 +94,22 @@ function PackageCard({ pkg, label, isSeller = false, showStore = false, recipien
       )}
       {pkg.vehicles.map((vehicle, vIndex) => (
         <div key={`${vehicle.plate}-${vehicle.label}-${vIndex}`} className="order-package-vehicle">
-          <div className="order-package-row">
-            <Car size={14} />
-            <strong>{[vehicle.plate, vehicle.label].filter(Boolean).join(' · ')}</strong>
-          </div>
-          {isSeller && <small>Chasis {vehicle.chassis || 'no identificado'}</small>}
+          {/* 19-oct: la tienda ve la ficha completa del vehículo, la misma del checklist y de la
+              cotización. El comprador sigue viendo patente y modelo. */}
+          {isSeller && vehicle.sheet ? (
+            <>
+              <div className="order-package-row">
+                <Car size={14} />
+                <strong>Vehículo del comprador</strong>
+              </div>
+              <VehicleSheet vehicle={vehicle.sheet} />
+            </>
+          ) : (
+            <div className="order-package-row">
+              <Car size={14} />
+              <strong>{[vehicle.plate, vehicle.label].filter(Boolean).join(' · ')}</strong>
+            </div>
+          )}
           <span>Para: {vehicle.products.join(' · ')}</span>
         </div>
       ))}

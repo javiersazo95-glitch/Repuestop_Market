@@ -16104,6 +16104,14 @@ button.role-option-card {
 .quote-request-form input:focus, .quote-request-form select:focus, .quote-request-form textarea:focus, .quote-offer-editor input:focus, .quote-offer-editor select:focus, .quote-offer-editor textarea:focus { border-color: #1680dd; box-shadow: 0 0 0 3px rgba(22, 128, 221, .09); }
 .quote-request-label-with-help { display: inline-flex; align-items: center; gap: 8px; }
 .quote-request-label-with-help svg { color: #667a92; }
+/* 19-oct: los dos campos de la fila arrancan arriba; antes "Cantidad" se estiraba al alto de
+   "Método de envío" (que tiene una linea de ayuda) y su caja quedaba mas alta. */
+.quote-request-grid > label { align-content: start; }
+.quote-request-help { position: relative; display: inline-flex; align-items: center; padding: 0; border: 0; background: none; color: #667a92; cursor: help; }
+.quote-request-help:focus-visible { outline: 2px solid #1680dd; outline-offset: 2px; border-radius: 50%; }
+.quote-request-help-tip { position: absolute; left: -6px; top: calc(100% + 8px); z-index: 5; width: min(320px, 78vw); padding: 10px 12px; border-radius: 10px; background: #0f2a47; color: #fff; font-size: 12px; font-weight: 500; line-height: 1.45; text-align: left; box-shadow: 0 10px 24px rgba(15, 42, 71, .25); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .15s ease; }
+.quote-request-help:hover .quote-request-help-tip, .quote-request-help:focus-visible .quote-request-help-tip, .quote-request-help-tip.is-open { opacity: 1; visibility: visible; }
+
 .quote-request-counter { position: absolute; right: 13px; bottom: 8px; color: #677992; font-size: 10px; font-weight: 500; }
 .quote-request-form .modal-form-error { display: flex; align-items: center; gap: 8px; color: #c72d39; font-size: 14px; }
 .quote-request-form > .btn-submit-ticket { width: 100%; min-height: 49px; margin: 0; border-radius: 9px; background: linear-gradient(100deg, #1256c4, #0861cd); font-size: 15px; font-weight: 900; box-shadow: 0 7px 15px rgba(13, 88, 194, .18); }
