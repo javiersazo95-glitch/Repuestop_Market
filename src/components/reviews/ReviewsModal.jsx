@@ -100,7 +100,7 @@ export default function ReviewsModal({ open, onClose, kind, id, title, subtitle 
               <ReviewSummary data={data} />
               <p className="rv-trust">Solo opinan compradores que recibieron su pedido en RepuesTop.</p>
               <div className="rv-list">
-                {items.map((review) => <ReviewCard key={review.id} review={review} />)}
+                {items.map((review) => <ReviewCard key={review.id} review={review} kind={kind} onBeforeLogin={onClose} />)}
               </div>
               {data.hasMore && (
                 <button type="button" className="rv-outline-btn rv-more" onClick={loadMore} disabled={loadingMore}>

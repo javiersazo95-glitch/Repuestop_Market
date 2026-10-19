@@ -19,7 +19,7 @@ import { adaptProduct } from '../services/adapters';
 import { activeOrderItems, courierDisplayName, isCancelledItem, orderDeliverySummary, orderDisplayCode, subOrderDeliveryLabel, subOrderDeliveryMethod } from '../data/orderIdentity';
 import { buyerClaimState, buyerStoreClaimState, getControlledOrderAction, isStorePickupOrder, normalizeOrderStatus, orderPaymentWindow, sellerClaimState, orderAllowsChat } from '../data/orderStatusFlow';
 import { Link } from 'react-router-dom';
-import { buyerCaseChatPath, currentPathForBack, productPath, sellerCaseChatPath } from '../routes/paths';
+import { ROUTES, buyerCaseChatPath, currentPathForBack, productPath, sellerCaseChatPath } from '../routes/paths';
 import ConfirmDialog from './ConfirmDialog';
 import SaleReceiptModal from './SaleReceiptModal';
 import SaleReceiptViewerModal from './SaleReceiptViewerModal';
@@ -2887,7 +2887,16 @@ export default function OrderDetailView({
                   </div>
                 ) : (
                   <>
-                    {ratingError && <p className="confirm-dialog-error">{ratingError}</p>}
+                    {/* 19-oct (moderacion): el aviso va ANTES de los comentarios, que es cuando
+                        sirve. Antes era una linea al pie que se leia ya escritos. El backend
+                        rechaza telefonos, correos, enlaces, redes y RUT (400 con su motivo). */}
+                    <p className="order-rating-privacy">
+                      <User size={14} />
+                      <span>
+                        Tu opinión será pública junto a tu nombre abreviado y tu foto de perfil. No incluyas teléfonos, correos, enlaces, redes sociales ni contenido ofensivo.{' '}
+                        <a href={ROUTES.terms} target="_blank" rel="noreferrer">Ver normas</a>
+                      </span>
+                    </p>
 
                     {/* Vendedor: nota y comentario, una vez por compra (se ven en su perfil). */}
                     <div className="order-rating-card">
@@ -3012,9 +3021,10 @@ export default function OrderDetailView({
                       })}
                     </div>
 
-                    <p className="order-rating-privacy">
-                      <User size={14} /> Tu opinión se publica con tu foto de perfil y tu nombre abreviado (ej.: Juan P.).
-                    </p>
+                    {/* El error va junto al boton de enviar: arriba quedaba fuera de vista en un
+                        dialogo largo, y el motivo del backend ("El comentario del producto no
+                        puede incluir un número de teléfono...") es lo que el comprador debe leer. */}
+                    {ratingError && <p className="confirm-dialog-error" role="alert">{ratingError}</p>}
 
                     <div className="confirm-dialog-actions">
                       <button type="button" className="btn-auth-secondary" onClick={() => setShowRatingModal(false)} disabled={isSubmittingRating}>

@@ -33,6 +33,12 @@
 .rv-card-text { margin: 0; color: #1f2d44; font-size: 14px; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; }
 .rv-card-text.is-clamped { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .rv-card-empty { margin: 0; color: #8a97ab; font-size: 13px; }
+/* 19-oct: opinion retirada por moderacion (se ven nota, nombre y fecha; el texto no). */
+.rv-card-hidden { margin: 0; color: #8a97ab; font-size: 13px; font-style: italic; }
+/* "Reportar" de cada opinion: discreto, a la derecha del nombre. */
+.rv-report-btn { margin-left: auto; flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px; border: 0; border-radius: 6px; background: none; color: #8a97ab; font-size: 12px; font-weight: 600; cursor: pointer; }
+.rv-report-btn svg { width: 13px; height: 13px; }
+.rv-report-btn:hover, .rv-report-btn:focus-visible { color: #a92a35; background: #fff1f2; }
 .rv-link { justify-self: start; padding: 0; border: 0; background: none; color: #0056bf; font-size: 13px; font-weight: 700; cursor: pointer; }
 .rv-link:hover { text-decoration: underline; }
 
@@ -131,7 +137,9 @@
 .order-rating-photo-state { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; background: rgba(15, 23, 42, .45); }
 .order-rating-photo button { position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; color: #fff; background: rgba(15, 23, 42, .7); cursor: pointer; }
 .order-rating-photo-error { margin: 0; color: #b91c1c; font-size: 12px; overflow-wrap: anywhere; }
-.order-rating-privacy { margin: 0; display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; }
+.order-rating-privacy { margin: 0; display: flex; align-items: flex-start; gap: 6px; color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+.order-rating-privacy svg { flex-shrink: 0; margin-top: 1px; }
+.order-rating-privacy a { color: #0056bf; font-weight: 700; white-space: nowrap; }
 
 @media (max-width: 768px) {
   /* La nota del producto en el panel de metricas es un boton: mismo aspecto que las demas. */

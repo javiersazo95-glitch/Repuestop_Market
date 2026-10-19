@@ -122,6 +122,10 @@ export default function QuoteDetailModal({
   const [chatMessage, setChatMessage] = useState('');
   const [now, setNow] = useState(Date.now());
   const [quoteEditorOpen, setQuoteEditorOpen] = useState(false);
+  // Error de guardar la cotizacion, mostrado DENTRO del editor: el aviso del chat
+  // (`quote-ws-toast`) queda detras del dialogo y no se alcanzaba a leer.
+  const [quoteEditorError, setQuoteEditorError] = useState('');
+  useEffect(() => { if (!quoteEditorOpen) setQuoteEditorError(''); }, [quoteEditorOpen]);
   const [quotePreviewOpen, setQuotePreviewOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [isSharingQuote, setIsSharingQuote] = useState(false);
@@ -650,14 +654,15 @@ export default function QuoteDetailModal({
   const submitQuote = async (event) => {
     event.preventDefault();
     if (finalPrice <= 0) {
-      setStatusMessage({ type: 'error', text: 'Ingresa un precio por unidad válido.' });
+      setQuoteEditorError('Ingresa un precio por unidad válido.');
       return;
     }
     setIsSending(true);
     setStatusMessage(null);
+    setQuoteEditorError('');
     try {
       if (!deliveryTerms) {
-        setStatusMessage({ type: 'error', text: 'Selecciona el método de envío de la cotización.' });
+        setQuoteEditorError('Selecciona el método de envío de la cotización.');
         setIsSending(false);
         return;
       }
@@ -678,7 +683,9 @@ export default function QuoteDetailModal({
       getQuoteRequestApi(quote.id).then((current) => { if (current) setSolicitud(current); }).catch(() => {});
       setStatusMessage({ type: 'success', text: activeQuote ? 'Cotización actualizada y documento regenerado.' : 'Cotización enviada. El documento ya está disponible para ambos.' });
     } catch (error) {
-      setStatusMessage({ type: 'error', text: error.message || 'No se pudo guardar la cotización.' });
+      // 19-oct: el backend rechaza notas con telefono, correo, enlace, redes o RUT; su motivo
+      // llega en `error.message` y es lo que el vendedor necesita leer.
+      setQuoteEditorError(error.message || 'No se pudo guardar la cotización.');
     } finally {
       setIsSending(false);
     }
@@ -1054,9 +1061,11 @@ export default function QuoteDetailModal({
               <label><span>Vigencia</span><select value={validity} onChange={(event) => setValidity(event.target.value)}>{QUOTE_VALIDITY_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
             </div>
 
-            <label className="quote-editor-notes"><span>Nota adicional (opcional)</span><textarea rows="3" value={responseNotes} onChange={(event) => setResponseNotes(event.target.value)} maxLength="500" placeholder="Incluye condiciones, detalles de entrega, información de pago u otros comentarios relevantes..." /><small>{responseNotes.length}/500</small></label>
+            <label className="quote-editor-notes"><span>Nota adicional (opcional)</span><textarea rows="3" value={responseNotes} onChange={(event) => setResponseNotes(event.target.value)} maxLength="500" placeholder="Incluye condiciones, detalles de entrega u otros comentarios relevantes (sin datos de contacto)..." /><small>{responseNotes.length}/500</small></label>
             <div className="quote-editor-info"><Info size={18} /><span>Esta cotización será enviada a ambos participantes. Puede incluir condiciones de entrega, garantía y pago acordadas.</span></div>
           </div>
+
+          {quoteEditorError && <p className="quote-editor-error" role="alert"><AlertTriangle size={16} /><span>{quoteEditorError}</span></p>}
 
           <footer className="quote-editor-footer"><button type="button" className="quote-editor-cancel" onClick={() => setQuoteEditorOpen(false)}>Cancelar</button><button className="quote-editor-submit" type="submit" disabled={isSending || closed}>{isSending ? <Loader2 size={18} className="spin-icon" /> : <Send size={18} />} {isSending ? 'Guardando...' : activeQuote ? 'Actualizar y enviar cotización' : 'Crear y enviar cotización'}</button></footer>
         </form>

@@ -16441,13 +16441,16 @@ button.role-option-card {
 .quote-editor-info { min-height: 42px; padding: 8px 14px; display: flex; align-items: center; gap: 10px; border: 1px solid #bed7f4; border-radius: 9px; color: #2864a8; background: #f4f8ff; font-size: 10.5px; }
 .quote-editor-info svg { flex: 0 0 auto; }
 .quote-ws-editor-dialog > .quote-editor-footer { min-height: 66px; padding: 11px 28px; justify-content: space-between; }
+/* Error de guardar la cotizacion, sobre el pie del editor (el toast del chat queda detras del dialogo). */
+.quote-ws-editor-dialog > .quote-editor-error { margin: 0; padding: 10px 28px; display: flex; align-items: flex-start; gap: 8px; border-top: 1px solid #f2c6ca; color: #a92a35; background: #fff1f2; font-size: 13px; font-weight: 600; line-height: 1.4; }
+.quote-ws-editor-dialog > .quote-editor-error svg { flex-shrink: 0; margin-top: 1px; }
 .quote-ws-editor-dialog > .quote-editor-footer button { min-height: 44px; border-radius: 9px; font-size: 12px; font-weight: 900; cursor: pointer; }
 .quote-editor-cancel { width: 180px; border: 1px solid #c8d5e2; color: #19395f; background: #fff; }
 .quote-editor-submit { width: min(480px, 52%); display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; color: #fff; background: linear-gradient(135deg, #2869ec, #1754d5); box-shadow: 0 7px 16px rgba(25, 87, 213, .16); }
 .quote-editor-submit:disabled { opacity: .55; cursor: not-allowed; }
 
 @media (max-width: 780px) {
-  .quote-ws-editor-dialog > .quote-editor-header, .quote-editor-body, .quote-ws-editor-dialog > .quote-editor-footer { padding-left: 15px; padding-right: 15px; }
+  .quote-ws-editor-dialog > .quote-editor-header, .quote-editor-body, .quote-ws-editor-dialog > .quote-editor-error, .quote-ws-editor-dialog > .quote-editor-footer { padding-left: 15px; padding-right: 15px; }
   .quote-ws-editor-dialog > .quote-editor-header strong { font-size: 17px; }
   .quote-ws-editor-dialog > .quote-editor-header small { font-size: 10px; }
   .quote-editor-request-grid, .quote-editor-pricing-layout, .quote-editor-price-row, .quote-editor-fields-grid { grid-template-columns: 1fr; }

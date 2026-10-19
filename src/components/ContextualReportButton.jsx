@@ -5,21 +5,37 @@ import { createContextualReportApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 /**
- * Reportar una tienda, un producto o un anuncio.
+ * Reportar una tienda, un producto, un anuncio o una opinion de comprador.
  *
  * Es la contraparte de `ContextualEntityActions` del movil, que ya usaba
  * `POST /usuarios/{id}/reportes`. En la web el unico reporte que existia era el del chat
  * (`POST /conversaciones/{id}/reportar`), asi que no habia forma de reportar contenido
  * fuera de una conversacion.
  *
- * `tipoObjeto` tiene que ser uno de los tres que acepta `ReporteUsuarioService`: TIENDA,
- * PRODUCTO o ANUNCIO. Cualquier otro valor responde "El tipo de reporte no es valido".
+ * `tipoObjeto` tiene que ser uno de los que acepta `ReporteUsuarioService`: TIENDA,
+ * PRODUCTO, ANUNCIO, y desde el 19-oct OPINION_PRODUCTO y OPINION_TIENDA (con `objetoId` =
+ * el `id` de la opinion en las listas publicas). Cualquier otro valor responde "El tipo de
+ * reporte no es valido".
+ *
+ * Sin sesion el boton no se pinta, salvo que se pase `onRequireLogin`: entonces se muestra y
+ * al tocarlo ofrece iniciar sesion (lo usan las opiniones).
  *
  * Reutiliza las clases `.quote-ws-report-*` del reporte de cotizaciones a proposito: es el
  * mismo dialogo con otro contenido, y duplicar el CSS los dejaria divergiendo.
  */
 
+// Opiniones (19-oct): los mismos motivos para la del producto y la de la tienda.
+const OPINION_REASONS = [
+  'Contenido ofensivo o discriminatorio',
+  'Incluye datos personales o de contacto',
+  'Spam o publicidad',
+  'No corresponde a este producto o tienda',
+  'Otro',
+];
+
 const REASONS = {
+  OPINION_PRODUCTO: OPINION_REASONS,
+  OPINION_TIENDA: OPINION_REASONS,
   TIENDA: [
     'Información comercial engañosa',
     'Incumplimientos reiterados',
@@ -43,7 +59,7 @@ const REASONS = {
   ],
 };
 
-export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTitulo, className, label }) {
+export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTitulo, className, label, onRequireLogin }) {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
@@ -53,18 +69,36 @@ export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTit
   const [errorMessage, setErrorMessage] = useState('');
 
   const reasons = REASONS[tipoObjeto];
-  const entityLabel = tipoObjeto === 'TIENDA'
-    ? 'tienda'
-    : tipoObjeto === 'PRODUCTO'
-      ? 'producto'
-      : 'anuncio';
+  const isOpinion = tipoObjeto === 'OPINION_PRODUCTO' || tipoObjeto === 'OPINION_TIENDA';
+  const entityLabel = isOpinion
+    ? 'opinión'
+    : tipoObjeto === 'TIENDA'
+      ? 'tienda'
+      : tipoObjeto === 'PRODUCTO'
+        ? 'producto'
+        : 'anuncio';
 
   // El backend resuelve al reportado a partir del id, asi que uno invalido solo sirve para
   // gastar un 400. Y sin sesion no hay a quien atribuir el reporte.
   const numericId = Number(objetoId);
   const hasValidId = Number.isFinite(numericId) && numericId > 0;
   const userId = user?.userId ?? user?.id;
-  if (!reasons || !hasValidId || !userId) return null;
+  if (!reasons || !hasValidId) return null;
+  if (!userId) {
+    if (!onRequireLogin) return null;
+    return (
+      <button
+        type="button"
+        className={className || 'contextual-report-trigger'}
+        onClick={onRequireLogin}
+        title="Inicia sesión para reportar"
+        aria-label={label || `Reportar ${entityLabel}`}
+      >
+        <Flag size={15} />
+        <span>{label || 'Reportar'}</span>
+      </button>
+    );
+  }
 
   const close = () => {
     if (isSubmitting) return;
@@ -161,7 +195,9 @@ export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTit
                 <div>
                   <strong>¿Qué sucederá con tu reporte?</strong>
                   <p>
-                    Será revisado de forma confidencial por el equipo de soporte y servirá como antecedente e historial en caso de futuras mediaciones.
+                    {isOpinion
+                      ? 'El equipo de soporte revisará la opinión de forma confidencial y, si no cumple las normas de la comunidad, retirará su contenido.'
+                      : 'Será revisado de forma confidencial por el equipo de soporte y servirá como antecedente e historial en caso de futuras mediaciones.'}
                   </p>
                 </div>
               </div>
@@ -192,7 +228,11 @@ export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTit
           >
             <span><CheckCircle2 size={34} /></span>
             <h3>Reporte enviado</h3>
-            <p>Hemos recibido tu reporte de manera confidencial y lo revisaremos a la brevedad.</p>
+            <p>
+              {isOpinion
+                ? 'Gracias, revisaremos esta opinión.'
+                : 'Hemos recibido tu reporte de manera confidencial y lo revisaremos a la brevedad.'}
+            </p>
             <button type="button" onClick={() => setSuccessOpen(false)}>Entendido</button>
           </section>
         </div>,
