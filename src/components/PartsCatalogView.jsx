@@ -237,8 +237,6 @@ export default function PartsCatalogView({
   const [patentInput, setPatentInput] = useState('');
   const [patentError, setPatentError] = useState('');
   const [patentSearching, setPatentSearching] = useState(false);
-  const [searchMode, setSearchMode] = useState('patente');
-  const [inputValue, setInputValue] = useState(initialActiveVehicle?.patente || initialSearchQuery || '');
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   // "Ver todos los repuestos": pide el listado paginado completo aunque no haya filtros.
@@ -889,10 +887,6 @@ export default function PartsCatalogView({
   // el buscador del header como al abrir o compartir un enlace.
   useEffect(() => {
     setSearchQuery(initialSearchQuery);
-    if (initialSearchQuery) {
-      setInputValue(initialSearchQuery);
-      setSearchMode('repuesto');
-    }
   }, [initialSearchQuery]);
 
   const keepCompatibleOffRef = useRef(initialAdvanced.onlyCompatible === false);
@@ -902,10 +896,6 @@ export default function PartsCatalogView({
       // Al volver con el filtro del vehiculo quitado (`compatible=0`) se respeta esa decision.
       if (keepCompatibleOffRef.current) keepCompatibleOffRef.current = false;
       else setOnlyCompatible(true);
-      if (initialActiveVehicle.patente) {
-        setInputValue(initialActiveVehicle.patente);
-        setSearchMode('patente');
-      }
     }
   }, [initialActiveVehicle]);
 
@@ -953,48 +943,40 @@ export default function PartsCatalogView({
     setOpenFilterSections((current) => ({ ...current, [section]: !current[section] }));
   };
 
-  const handleUnifiedSearch = async (valToUse) => {
-    const value = (valToUse !== undefined ? valToUse : inputValue).trim();
+  /**
+   * Busca el vehiculo de la patente. Es solo de la patente: el texto del buscador ("pastilla")
+   * es otra busqueda y se mantiene. Antes compartia un "modo" con el buscador de texto, y despues
+   * de buscar por texto la patente se mandaba como texto (?q=DLZP74) y reemplazaba lo escrito.
+   */
+  const handlePatentSearch = async (rawValue) => {
+    const value = String(rawValue || '').trim();
     if (!value) {
-      if (searchMode === 'patente') {
-        setPatentError('Ingresa una patente válida (ej. BB-CL-12)');
-      } else if (searchMode === 'oem') {
-        setPatentError('Ingresa un código OEM (ej. 04465-0D150)');
-      } else {
-        setPatentError('Ingresa un término para buscar repuestos');
-      }
+      setPatentError('Ingresa una patente válida (ej. BB-CL-12)');
       return;
     }
-
     setPatentError('');
-
-    if (searchMode === 'patente') {
-      const normalized = normalizePlate(value);
-      if (!isValidPlate(normalized)) {
-        setPatentError('Patente no válida. Formato: ABCD12 o BB-CL-12');
-        return;
-      }
-      setPatentSearching(true);
-      setPatentInput(normalized);
-      try {
-        const resolved = adaptVehicle(await searchVehicleByPatenteApi(normalized));
-        if (resolved && !resolved.requiereIngresoManual && resolved.marca) {
-          setActiveVehicle(resolved);
-          onVehicleChange?.(resolved);
-          setOnlyCompatible(true);
-          setInputValue(resolved.patente || normalized);
-        } else {
-          setActiveVehicle(null);
-          setPatentError(resolved?.mensaje || 'No encontramos ese vehículo. Verifica la patente e intenta de nuevo.');
-        }
-      } catch (err) {
+    const normalized = normalizePlate(value);
+    if (!isValidPlate(normalized)) {
+      setPatentError('Patente no válida. Formato: ABCD12 o BB-CL-12');
+      return;
+    }
+    setPatentSearching(true);
+    setPatentInput(normalized);
+    try {
+      const resolved = adaptVehicle(await searchVehicleByPatenteApi(normalized));
+      if (resolved && !resolved.requiereIngresoManual && resolved.marca) {
+        setActiveVehicle(resolved);
+        onVehicleChange?.(resolved);
+        setOnlyCompatible(true);
+      } else {
         setActiveVehicle(null);
-        setPatentError(err.message || 'No se pudo consultar la patente. Intenta nuevamente.');
-      } finally {
-        setPatentSearching(false);
+        setPatentError(resolved?.mensaje || 'No encontramos ese vehículo. Verifica la patente e intenta de nuevo.');
       }
-    } else if (searchMode === 'oem' || searchMode === 'repuesto') {
-      setSearchQuery(value);
+    } catch (err) {
+      setActiveVehicle(null);
+      setPatentError(err.message || 'No se pudo consultar la patente. Intenta nuevamente.');
+    } finally {
+      setPatentSearching(false);
     }
   };
 
@@ -1101,7 +1083,6 @@ export default function PartsCatalogView({
   const handleResetFilters = () => {
     setShowAllProducts(false);
     setSearchQuery('');
-    setInputValue('');
     setSelectedCategory('TODAS');
     setSelectedSubcategory('TODAS');
     setVehicleBrandId('');
@@ -1257,8 +1238,8 @@ export default function PartsCatalogView({
           ) : (
             <div className="catalog-quick-patente-bar">
               <CarFront size={18} className="patente-icon" />
-              <input type="text" placeholder="Patente (ABCD-12)" aria-label="Ingresa tu patente" value={patentInput} onChange={(e) => { const sanitized = sanitizePlateInput(e.target.value); setPatentInput(sanitized); if (patentError) setPatentError(''); }} onKeyDown={(e) => e.key === 'Enter' && handleUnifiedSearch(patentInput)} className="patente-quick-input" maxLength={8} />
-              <button type="button" className="btn-quick-patente-submit" onClick={() => handleUnifiedSearch(patentInput)} disabled={patentSearching}>{patentSearching ? <RefreshCw size={15} className="spin-icon" /> : 'Buscar'}</button>
+              <input type="text" placeholder="Patente (ABCD-12)" aria-label="Ingresa tu patente" value={patentInput} onChange={(e) => { const sanitized = sanitizePlateInput(e.target.value); setPatentInput(sanitized); if (patentError) setPatentError(''); }} onKeyDown={(e) => e.key === 'Enter' && handlePatentSearch(patentInput)} className="patente-quick-input" maxLength={8} />
+              <button type="button" className="btn-quick-patente-submit" onClick={() => handlePatentSearch(patentInput)} disabled={patentSearching}>{patentSearching ? <RefreshCw size={15} className="spin-icon" /> : 'Buscar'}</button>
               {patentError && <span className="quick-patente-error">{patentError}</span>}
             </div>
           )}
