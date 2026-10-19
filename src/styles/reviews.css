@@ -121,7 +121,7 @@
 .order-rating-video-state { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 10px; background: #fff; font-size: 12.5px; }
 .order-rating-video-state.is-error { border-color: #fecaca; color: #b91c1c; }
 .order-rating-video-state.is-ready svg { color: #15803d; }
-.order-rating-video-state span { flex: 1; min-width: 0; }
+.order-rating-video-state span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .order-rating-video-state button { padding: 0; border: 0; background: none; color: #0056bf; font-size: 12.5px; font-weight: 700; cursor: pointer; }
 .order-rating-privacy { margin: 0; display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; }
 
@@ -145,3 +145,12 @@
   .order-rating-comment { font-size: 16px; }
 }
 
+
+/* Telefonos angostos (<=420px): el titulo y el conteo se partian en dos lineas cada uno, y el
+   resumen dejaba 112px fijos para la nota. */
+@media (max-width: 420px) {
+  .rv-section-head { flex-wrap: wrap; row-gap: 2px; }
+  .rv-section-head > span { white-space: nowrap; }
+  .rv-summary { grid-template-columns: 92px minmax(0, 1fr); gap: 12px; }
+  .rv-summary-score strong { font-size: 30px; }
+}

@@ -26,7 +26,7 @@ import ProductQuestionsSection from './ProductQuestionsSection';
 import ProductReviewsSection from './reviews/ProductReviewsSection';
 import ReviewsModal from './reviews/ReviewsModal';
 import ConfirmDialog from './ConfirmDialog';
-import { NO_RETURN_CART_MESSAGE, isNoReturnProduct } from '../utils/noReturnProducts';
+import { NO_RETURN_BUY_MESSAGE, NO_RETURN_CART_MESSAGE, isNoReturnProduct } from '../utils/noReturnProducts';
 import ProductPhotoLightbox from './ProductPhotoLightbox';
 import RelatedProductsCarousel from './RelatedProductsCarousel';
 import { isProductTopActive } from '../utils/productTop';
@@ -734,7 +734,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             </MobileStickyBar>
           ) : (
             <MobileStickyBar
-              label={stock > 0 ? 'Precio · IVA incluido' : 'Sin stock'}
+              label={stock > 0 ? 'Precio con IVA' : 'Sin stock'}
               value={'$' + Number(product.precio).toLocaleString('es-CL')}
               ariaLabel="Comprar este repuesto"
             >
@@ -812,7 +812,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
         isOpen={Boolean(pendingCartAction)}
         tone="warning"
         title="Producto sin devolución"
-        message={NO_RETURN_CART_MESSAGE}
+        message={pendingCartAction === 'buy' ? NO_RETURN_BUY_MESSAGE : NO_RETURN_CART_MESSAGE}
         confirmLabel={pendingCartAction === 'buy' ? 'Entiendo, comprar' : 'Entiendo, añadir al carro'}
         cancelLabel="Cancelar"
         onCancel={() => setPendingCartAction(null)}

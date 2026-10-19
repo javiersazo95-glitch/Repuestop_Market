@@ -214,14 +214,17 @@
     letter-spacing: 0;
   }
 
+  /* El boton de compatibilidad baja de linea cuando el titulo no tiene al menos 180px: en un
+     celular de 320px el nombre quedaba en una columna de 85px y "electrolux" se salia de ella. */
   .pdm-title-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-start;
-    gap: 10px;
+    gap: 8px 10px;
   }
 
   .pdm-title-copy {
-    flex: 1;
+    flex: 1 1 180px;
     min-width: 0;
   }
 
@@ -231,12 +234,14 @@
     line-height: 1.25;
     font-weight: 800;
     color: #0d1b33;
+    overflow-wrap: anywhere;
   }
 
   .pdm-title-meta {
     margin: 3px 0 0;
     font-size: 12.5px;
     color: #5d6b82;
+    overflow-wrap: anywhere;
   }
 
   .pdm-compat-btn {
@@ -317,7 +322,8 @@
     line-height: 1.1;
     font-weight: 900;
     color: #0056bf;
-    overflow-wrap: anywhere;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
 
   .pdm-price-old {
@@ -618,16 +624,17 @@
   }
 
   /* --- 5. Grilla de specs de 2 columnas, como specGrid de la app --- */
+  /* Grilla de 2 columnas: con flex al 48.5% + 8px de separacion, en 320px dos tarjetas sumaban
+     mas que el ancho y quedaban todas en una sola columna con la mitad derecha vacia. */
   .pdm-specs-grid {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     margin: 0;
   }
 
   .pdm-specs-grid > div {
-    flex: 0 0 48.5%;
-    max-width: 48.5%;
+    min-width: 0;
     background: #f8fafc;
     border: 1px solid #eef2f7;
     border-radius: 10px;
@@ -721,5 +728,29 @@
   /* Favorito activo en la barra fija inferior. */
   .mobile-sticky-bar__btn.is-favorite {
     color: #e0455a;
+  }
+}
+
+/* Telefonos (<=480px): el precio va en su propia fila, a todo el ancho del panel. En la columna
+   de 1.4fr un "$55.000" se partia en "$55.0" / "00" y un "$1.250.000" no cabia de ninguna forma. */
+@media (max-width: 480px) {
+  .pdm-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 10px;
+  }
+
+  .pdm-metric-price {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 8px;
+    padding: 0 14px 10px;
+    border-left: none;
+    border-bottom: 1px solid #e1e7ef;
+  }
+
+  .pdm-metric-price + .pdm-metric {
+    border-left: none;
   }
 }

@@ -346,7 +346,8 @@
   .mobile-sticky-bar.is-hidden { transform: translateY(110%); }
   .mobile-sticky-bar__info { flex: 1 1 auto; min-width: 0; display: grid; gap: 1px; line-height: 1.15; }
   .mobile-sticky-bar__info small { color: #64748b; font-size: 11.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mobile-sticky-bar__info strong { color: #0f172a; font-size: 19px; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  /* El precio nunca se corta: en 320px con tres botones quedaba en "$55. ...". */
+  .mobile-sticky-bar__info strong { color: #0f172a; font-size: clamp(15px, 4.8vw, 19px); font-weight: 900; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .mobile-sticky-bar__info span { color: #64748b; font-size: 11px; }
   .mobile-sticky-bar__actions { flex: 0 0 auto; display: flex; gap: 8px; }
   .mobile-sticky-bar__btn {
@@ -373,6 +374,13 @@
   .mobile-sticky-bar__btn.is-whatsapp { background: #16a34a; box-shadow: 0 6px 14px rgba(22, 163, 74, .24); }
   .mobile-sticky-bar__btn:disabled { color: #fff; background: #cbd5e1; box-shadow: none; cursor: not-allowed; }
   .mobile-sticky-bar__btn.is-secondary:disabled { color: #94a3b8; background: #f1f5f9; border-color: #e2e8f0; }
+  /* Telefonos angostos: botones mas compactos para que el precio se lea entero. */
+  @media (max-width: 380px) {
+    .mobile-sticky-bar { gap: 8px; padding-left: 10px; padding-right: 10px; }
+    .mobile-sticky-bar__actions { gap: 6px; }
+    .mobile-sticky-bar__btn { padding: 0 14px; }
+    .mobile-sticky-bar__btn.is-secondary { width: 44px; }
+  }
   /* Mientras el menu lateral o un modal esta abierto, la barra no compite. */
   body:has(.mobile-nav-open) .mobile-sticky-bar,
   body:has(.modal-backdrop) .mobile-sticky-bar { transform: translateY(110%); }
@@ -487,6 +495,9 @@
     overflow: hidden;
     font-size: 12px;
     line-height: 1.2;
+    /* "Empaquetaduras" no cabe entero en 88px: se corta con guion en vez de salirse. */
+    overflow-wrap: anywhere;
+    hyphens: auto;
   }
   .light-home-hero .category-showcase-card .category-showcase-image,
   .light-home-hero .category-showcase-footer i { display: none; }
@@ -565,6 +576,11 @@
   .market-shipping-icon { width: 22px; height: 22px; flex: 0 0 22px; }
   .market-shipping-icon svg { width: 12px; height: 12px; }
   .market-seller-shipping-empty { font-size: 11px; }
+  /* Bajo 350px (iPhone SE, Android chicos) media columna no alcanza para "Repuestos" y
+     "Especialidad" lado a lado y ambos quedaban en "Repue..." / "Especiali...": van uno bajo otro. */
+  @media (max-width: 350px) {
+    .market-seller-metrics { grid-template-columns: minmax(0, 1fr); row-gap: 6px; }
+  }
   .market-seller-profile { min-height: 40px; border-radius: 8px; font-size: 12.5px; }
   .tst-helpful { min-height: 40px; padding: 0 12px; }
 
@@ -808,12 +824,12 @@
   :root .repuestop-about-page .founder-reg-aside { padding: 18px 16px; }
   :root .repuestop-about-page .founder-reg-ribbon { font-size: 11px; }
   :root .repuestop-about-page .founder-reg-aside h1 { font-size: 22px; line-height: 1.2; margin: 8px 0 6px; }
+  /* Sin recorte: desde la marcha blanca (18-oct) este texto dice la tarifa 0%, los 2 meses y lo
+     que se cobra despues, y con 3 lineas quedaba cortado en "tarifa de servicio RepuesTop...". */
   :root .repuestop-about-page .founder-reg-lead {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    font-size: 13px;
+    margin-bottom: 14px;
+    font-size: 12.5px;
+    line-height: 1.5;
   }
   /* Linea de tiempo: fila de 4 pasos; el detalle de cada fase se ve en el formulario. */
   :root .repuestop-about-page .founder-timeline {
