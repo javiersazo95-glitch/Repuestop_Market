@@ -23,6 +23,7 @@ const ALMACENAMIENTO = [
   ['Tu vehículo', 'Recuerda la patente y el vehículo activo para mostrarte repuestos compatibles.'],
   ['Tus preferencias', 'Guarda tus favoritos, direcciones, saldo de Monedas y los avisos que ya cerraste, para no pedírtelos de nuevo.'],
   ['Recursos de Google', 'Las fuentes, el botón de inicio de sesión y el mapa de un anuncio se cargan desde Google, que recibe tu dirección IP; el mapa puede usar cookies propias de Google.'],
+  ['Video tutorial (solo tiendas)', 'Se carga desde YouTube en su modo sin cookies solo si lo abres; si lo reproduces, YouTube puede guardar datos en tu navegador.'],
   ['Diagnóstico de errores', 'Si algo falla, se envía el error a nuestro proveedor de monitoreo para poder arreglarlo. No se envían datos de contacto, ni bancarios, ni grabaciones de tu sesión.'],
 ];
 
