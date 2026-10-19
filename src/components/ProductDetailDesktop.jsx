@@ -193,6 +193,7 @@ export default function ProductDetailDesktop({
             <div><dt>SKU</dt><dd>{product.skuProveedor || product.sku || 'No informado'}</dd></div>
             <div><dt>Ref. OEM</dt><dd>{product.referenciaOem || 'No informado'}</dd></div>
             <div><dt>Condición</dt><dd>{condition}</dd></div>
+            {product.garantia && <div><dt>Garantía</dt><dd>{product.garantia}</dd></div>}
             <div><dt>Stock</dt><dd>{stock} {stock === 1 ? 'unidad' : 'unidades'}</dd></div>
           </dl>
         </section>

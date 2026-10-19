@@ -17,6 +17,7 @@ import {
   updateSellerInventoryProductApi,
 } from '../services/api';
 import { compressImageFile } from '../utils/imageCompression';
+import { PRODUCT_WARRANTY_MAX, PRODUCT_WARRANTY_OPTIONS, PRODUCT_WARRANTY_OTHER, resolveWarranty, warrantyToForm } from '../utils/productWarranty';
 
 const MAX_PHOTOS = 4;
 const CURRENT_YEAR = new Date().getFullYear() + 2;
@@ -144,6 +145,7 @@ const initialForm = (product = null) => ({
   requiresChassis: Boolean(product?.requiereChasis),
   isUniversal: Boolean(product?.esUniversal),
   condition: product?.condicion || 'ORIGINAL',
+  ...warrantyToForm(product?.garantia),
   description: product?.descripcion || '',
   compatibilities: parseCompatibilitiesFromProduct(product),
 });
@@ -257,8 +259,11 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
   useEffect(() => () => files.forEach(({ preview }) => URL.revokeObjectURL(preview)), [files]);
 
   const hasQuoteOnly = form.pricingMode === 'QUOTE_ONLY';
+  const resolvedWarranty = resolveWarranty(form.warranty, form.warrantyOther);
+  // La garantia es obligatoria al crear; un producto antiguo se puede editar sin ella.
   const canSave = useMemo(() => form.name.trim() && form.sku.trim() && form.category.trim() && form.partBrand.trim()
-    && form.stock !== '' && (hasQuoteOnly || form.price !== ''), [form, hasQuoteOnly]);
+    && form.stock !== '' && (hasQuoteOnly || form.price !== '') && (isEditing || resolvedWarranty),
+  [form, hasQuoteOnly, isEditing, resolvedWarranty]);
 
   const update = (key, value) => setForm((previous) => ({ ...previous, [key]: value }));
   const changeCategory = async (category) => {
@@ -460,6 +465,7 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
     append('stock', form.stock);
     append('descripcion', form.description.trim());
     append('condicion', form.condition);
+    if (resolvedWarranty) append('garantia', resolvedWarranty);
     append('requiereChasis', form.requiresChassis);
     append('esUniversal', form.isUniversal);
     append('activo', true);
@@ -613,9 +619,19 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
             {totalPhotosCount === 0 && <p className="catalog-photo-note"><ImageIcon size={15} /> Si no agregas fotos, el producto se publicará con la imagen genérica de RepuesTop.</p>}
           </section>
           <section className="catalog-product-section">
-            <h3><b>5</b> Descripción y calidad</h3>
+            <h3><b>5</b> Descripción, calidad y garantía</h3>
             <CatalogField label="Descripción"><textarea rows="4" maxLength="1000" value={form.description} onChange={(e) => update('description', e.target.value)} placeholder="Describe el producto, sus características y detalles importantes." required /><small className="catalog-char-counter">{form.description.length}/1000</small></CatalogField>
             <div className="catalog-condition-row"><span>Calidad del producto</span>{['ORIGINAL', 'ALTERNATIVO'].map((condition) => <button type="button" key={condition} className={form.condition === condition ? 'active' : ''} onClick={() => update('condition', condition)}><Check size={14} />{condition === 'ORIGINAL' ? 'Original' : 'Alternativo'}</button>)}</div>
+            <div className="catalog-warranty-field">
+              <CatalogField label="Garantía">
+                <SearchableDropdown value={form.warranty} options={PRODUCT_WARRANTY_OPTIONS} placeholder="Selecciona la garantía" onChange={(value) => setForm((previous) => ({ ...previous, warranty: value, warrantyOther: value === PRODUCT_WARRANTY_OTHER ? previous.warrantyOther : '' }))} />
+              </CatalogField>
+              {form.warranty === PRODUCT_WARRANTY_OTHER && (
+                <CatalogField label="Registrar garantía">
+                  <input value={form.warrantyOther} maxLength={PRODUCT_WARRANTY_MAX} onChange={(e) => update('warrantyOther', e.target.value)} placeholder="Ej. 18 meses o 50.000 km" required={!isEditing} autoFocus />
+                </CatalogField>
+              )}
+            </div>
           </section>
           <footer className="catalog-product-footer"><button type="button" className="catalog-cancel-button" onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className="catalog-save-button" disabled={saving || !canSave}>{saving ? <><Loader2 size={16} className="spin-icon" /> Guardando…</> : isEditing ? <><Check size={16} /> Guardar cambios</> : <><Plus size={16} /> Registrar producto</>}</button></footer>
         </form>

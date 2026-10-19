@@ -315,6 +315,7 @@ export default function ProductDetailMobile({
             <div><dt>OEM</dt><dd>{product.referenciaOem || 'No informado'}</dd></div>
             {product.brandQuality && <div><dt>Calidad</dt><dd>{product.brandQuality}</dd></div>}
             <div><dt>Condición</dt><dd>{condition}</dd></div>
+            {product.garantia && <div><dt>Garantía</dt><dd>{product.garantia}</dd></div>}
             <div><dt>Stock</dt><dd>{stock}</dd></div>
           </dl>
         )}

@@ -314,6 +314,7 @@ export function adaptProduct(dto) {
     horarioVendedor: dto.sellerHours || '',
     stock: toNumber(dto.stock) ?? 0,
     condicion: dto.condicion || '',
+    garantia: typeof dto.garantia === 'string' ? dto.garantia.trim() : '',
     imagen: imagenes[0] || null,
     imagenes,
     logoTienda: resolveMediaUrl(dto.storeIconUrl),
