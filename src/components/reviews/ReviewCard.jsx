@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import ReviewStars from './ReviewStars';
-import ReviewVideo from './ReviewVideo';
+import ReviewPhotos from './ReviewPhotos';
 import { resolveMediaUrl } from '../../services/api';
 import { formatReviewDate } from '../../services/reviews';
 
@@ -9,8 +9,8 @@ function initials(name) {
   return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || 'C';
 }
 
-/** Una opinion: foto y nombre del comprador, sus estrellas, el comentario y el video si hay. */
-export default function ReviewCard({ review, pausedVideo = false }) {
+/** Una opinion: foto y nombre del comprador, sus estrellas, el comentario y sus fotos si hay. */
+export default function ReviewCard({ review }) {
   const [expanded, setExpanded] = useState(false);
   const [clamped, setClamped] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
@@ -52,7 +52,7 @@ export default function ReviewCard({ review, pausedVideo = false }) {
       ) : (
         <p className="rv-card-empty">Calificó sin dejar comentario.</p>
       )}
-      {review.videoUrl && <ReviewVideo url={review.videoUrl} paused={pausedVideo} />}
+      {review.imageUrls?.length > 0 && <ReviewPhotos urls={review.imageUrls} />}
     </article>
   );
 }

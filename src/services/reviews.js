@@ -1,19 +1,20 @@
 import { fetchApi } from './api';
+import { compressImageFile } from '../utils/imageCompression';
 
 /**
- * Opiniones de compradores (2026-10-18). Las del producto traen nota, comentario y un video
- * corto opcional; las de la tienda, nota y comentario (una por compra, sin video).
+ * Opiniones de compradores (2026-10-18). Las del producto traen nota, comentario y hasta 4 fotos
+ * (desde el 19-oct; antes un video); las de la tienda, nota y comentario (una por compra).
  * Contrato: `OpinionDTOs` del backend. Mismo contrato que la app (mobile/utils/reviews.ts).
  */
 export const REVIEW_COMMENT_MAX = 500;
-export const REVIEW_VIDEO_MAX_SECONDS = 30;
-export const REVIEW_VIDEO_MAX_BYTES = 50 * 1024 * 1024;
+/** Fotos por opinion de producto (el backend rechaza mas). */
+export const REVIEW_PHOTOS_MAX = 4;
 
 export const EMPTY_REVIEWS = {
   average: 0,
   total: 0,
   withComment: 0,
-  withVideo: 0,
+  withPhotos: 0,
   distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
   page: 0,
   size: 0,
@@ -37,34 +38,17 @@ export async function getReviewsApi(kind, id, { page = 0, size = 10, signal } = 
 }
 
 /**
- * Sube el video de la opinion de un producto ANTES de calificar; devuelve `{ videoKey, videoUrl }`
- * y la clave viaja luego en la calificacion (`productVideoKey`). Cuerpo binario, no multipart.
+ * Sube UNA foto de la opinion de un producto ANTES de calificar, comprimida en el navegador
+ * (`compressImageFile`: lado largo 1600 px, JPEG). Devuelve `{ imageKey, imageUrl }` y la clave
+ * viaja luego en la calificacion (`productImageKeys`). El backend la guarda en Review_producto/.
  */
-export async function uploadReviewVideoApi(userId, orderId, file) {
-  return fetchApi(`/usuarios/${userId}/pedidos/${orderId}/opiniones/videos`, {
+export async function uploadReviewPhotoApi(userId, orderId, file) {
+  const formData = new FormData();
+  formData.append('foto', await compressImageFile(file));
+  return fetchApi(`/usuarios/${userId}/pedidos/${orderId}/opiniones/fotos`, {
     method: 'POST',
-    headers: { 'Content-Type': file.type || 'video/mp4' },
-    body: file,
-    // Un video de hasta 50 MB no sube en los 15 s por defecto.
-    signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(180000) : undefined,
-  });
-}
-
-/** Duracion de un video local en segundos (lee solo los metadatos). */
-export function readVideoDuration(file) {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const video = document.createElement('video');
-    video.preload = 'metadata';
-    video.onloadedmetadata = () => {
-      URL.revokeObjectURL(url);
-      resolve(Number.isFinite(video.duration) ? video.duration : null);
-    };
-    video.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(null);
-    };
-    video.src = url;
+    body: formData,
+    signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(60000) : undefined,
   });
 }
 

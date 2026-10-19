@@ -5,10 +5,10 @@ import {
   MapPin, FileText, Package, CreditCard, CheckCircle2, Copy, KeyRound,
   RotateCcw, Loader2, XCircle, AlertTriangle, FileUp, Star, Lock, ExternalLink, Timer,
   ThumbsUp, ThumbsDown, Send, ReceiptText, FileCheck, FileSearch, ShieldAlert, MessageCircle, Info,
-  Wallet, Car, Video, Zap
+  Wallet, Car, Camera, Zap
 } from 'lucide-react';
 import {
-  REVIEW_COMMENT_MAX, REVIEW_VIDEO_MAX_BYTES, REVIEW_VIDEO_MAX_SECONDS, readVideoDuration, uploadReviewVideoApi,
+  REVIEW_COMMENT_MAX, REVIEW_PHOTOS_MAX, uploadReviewPhotoApi,
 } from '../services/reviews';
 import '../styles/reviews.css';
 import '../styles/no-return.css';
@@ -545,10 +545,10 @@ export default function OrderDetailView({
   const [sellerRating, setSellerRating] = useState(0);
   const [productRatings, setProductRatings] = useState({});
   // Opiniones (2026-10-18): comentario de la tienda (uno por compra) y, por repuesto, comentario
-  // y video corto opcionales. El video se sube al elegirlo; al enviar solo viaja su clave.
+  // y hasta 4 fotos opcionales. Las fotos se suben al elegirlas; al enviar solo viajan sus claves.
   const [sellerComment, setSellerComment] = useState('');
   const [productComments, setProductComments] = useState({});
-  const [productVideos, setProductVideos] = useState({});
+  const [productPhotos, setProductPhotos] = useState({});
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const [ratingError, setRatingError] = useState('');
   const [ratingSuccess, setRatingSuccess] = useState(false);
@@ -561,7 +561,7 @@ export default function OrderDetailView({
     setSellerRating(0);
     setSellerComment('');
     setProductComments({});
-    setProductVideos({});
+    setProductPhotos({});
     setRatingError('');
     setRatingSuccess(false);
     setShowRatingModal(true);
@@ -725,13 +725,13 @@ export default function OrderDetailView({
   // declaracion -- la variable existe -- y la pantalla revienta al abrirse con "Cannot access
   // before initialization".
   const ratingItems = (storeToRate ? storeToRate.items : items).filter((item) => !isCancelledItem(item));
-  const videosUploading = Object.values(productVideos).some((video) => video?.uploading);
-  const videosFailed = Object.values(productVideos).some((video) => video?.error);
+  const photosUploading = Object.values(productPhotos).some((photos) => photos?.some((photo) => photo.uploading));
+  const photosFailed = Object.values(productPhotos).some((photos) => photos?.some((photo) => photo.error));
   const ratingComplete = sellerRating > 0
     && ratingItems.length > 0
     && ratingItems.every((item) => Number(productRatings[item.productoId || item.id]) > 0)
-    && !videosUploading
-    && !videosFailed;
+    && !photosUploading
+    && !photosFailed;
   const canRateOrder = RATEABLE.includes(normStatus) && !alreadyRated && !ratingDisabled;
 
   const buyerName = order.compradorNombre || order.buyerName || order.usuarioNombre || 'Cliente RepuesTop';
@@ -1206,27 +1206,40 @@ export default function OrderDetailView({
     }
   };
 
-  // Video de la opinion de un repuesto: hasta 30 s y 50 MB. Se sube apenas se elige.
-  const pickReviewVideo = async (productId, file) => {
-    if (!file) return;
+  // Fotos de la opinion de un repuesto: hasta 4. Cada una se comprime y se sube apenas se elige;
+  // al enviar solo viajan sus claves.
+  const pickReviewPhotos = async (productId, fileList) => {
+    const files = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
+    if (!files.length) return;
     const effectiveUserId = userId || order?.compradorId || order?.usuarioId;
-    const fail = (error) => setProductVideos((prev) => ({ ...prev, [productId]: { name: file.name, error } }));
-    if (!file.type.startsWith('video/')) { fail('Elige un archivo de video.'); return; }
-    if (file.size > REVIEW_VIDEO_MAX_BYTES) { fail('El video supera los 50 MB. Elige uno más corto.'); return; }
-    const duration = await readVideoDuration(file);
-    if (duration && duration > REVIEW_VIDEO_MAX_SECONDS + 1) { fail(`Elige un video de hasta ${REVIEW_VIDEO_MAX_SECONDS} segundos.`); return; }
-    setProductVideos((prev) => ({ ...prev, [productId]: { name: file.name, uploading: true } }));
-    try {
-      const uploaded = await uploadReviewVideoApi(effectiveUserId, order.id, file);
-      setProductVideos((prev) => (prev[productId]?.name === file.name
-        ? { ...prev, [productId]: { name: file.name, key: uploaded?.videoKey } }
-        : prev));
-    } catch (error) {
-      setProductVideos((prev) => (prev[productId]?.name === file.name
-        ? { ...prev, [productId]: { name: file.name, error: error?.message || 'No se pudo subir el video.' } }
-        : prev));
-    }
+    const remaining = REVIEW_PHOTOS_MAX - (productPhotos[productId]?.length || 0);
+    const nuevas = files.slice(0, Math.max(0, remaining)).map((file, index) => ({
+      id: `${Date.now()}-${index}`,
+      previewUrl: URL.createObjectURL(file),
+      file,
+      uploading: true,
+    }));
+    if (!nuevas.length) return;
+    const patchPhoto = (id, patch) => setProductPhotos((prev) => ({
+      ...prev,
+      [productId]: (prev[productId] || []).map((photo) => (photo.id === id ? { ...photo, ...patch } : photo)),
+    }));
+    setProductPhotos((prev) => ({ ...prev, [productId]: [...(prev[productId] || []), ...nuevas].slice(0, REVIEW_PHOTOS_MAX) }));
+    await Promise.all(nuevas.map(async (photo) => {
+      try {
+        const uploaded = await uploadReviewPhotoApi(effectiveUserId, order.id, photo.file);
+        patchPhoto(photo.id, { uploading: false, key: uploaded?.imageKey });
+      } catch (error) {
+        patchPhoto(photo.id, { uploading: false, error: error?.message || 'No se pudo subir la foto.' });
+      }
+    }));
   };
+
+  const removeReviewPhoto = (productId, id) => setProductPhotos((prev) => {
+    const quitada = (prev[productId] || []).find((photo) => photo.id === id);
+    if (quitada?.previewUrl) URL.revokeObjectURL(quitada.previewUrl);
+    return { ...prev, [productId]: (prev[productId] || []).filter((photo) => photo.id !== id) };
+  });
 
   const openRatingModal = (block = null) => {
     setStoreToRate(block);
@@ -1234,7 +1247,7 @@ export default function OrderDetailView({
     setSellerRating(0);
     setSellerComment('');
     setProductComments({});
-    setProductVideos({});
+    setProductPhotos({});
     setRatingError('');
     setRatingSuccess(false);
     setShowRatingModal(true);
@@ -2845,7 +2858,7 @@ export default function OrderDetailView({
                         productRating: Number(productRatings[pId]),
                         sellerComment: sellerComment.trim() || undefined,
                         productComment: (productComments[pId] || '').trim() || undefined,
-                        productVideoKey: productVideos[pId]?.key || undefined,
+                        productImageKeys: (productPhotos[pId] || []).map((photo) => photo.key).filter(Boolean),
                       };
                     });
                     const actualizado = await rateOrderApi(effectiveUserId, order.id, itemsPayload);
@@ -2926,7 +2939,8 @@ export default function OrderDetailView({
                           item.imagenUrl || item.imageUrl || (item.imageUrls && item.imageUrls[0])
                         );
                         const comment = productComments[pId] || '';
-                        const video = productVideos[pId];
+                        const photos = productPhotos[pId] || [];
+                        const photoError = photos.find((photo) => photo.error)?.error;
                         return (
                           <div key={pId} className="order-rating-card">
                           <div className="order-rating-product-row">
@@ -2962,22 +2976,34 @@ export default function OrderDetailView({
                             <span>Se mostrará en la ficha del repuesto.</span>
                             {comment && <span>{comment.length}/{REVIEW_COMMENT_MAX}</span>}
                           </div>
-                          {video ? (
-                            <div className={`order-rating-video-state${video.error ? ' is-error' : video.key ? ' is-ready' : ''}`}>
-                              {video.uploading ? <Loader2 size={16} className="spin-icon" /> : video.error ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
-                              <span>{video.uploading ? 'Subiendo video...' : video.error || 'Video listo'}</span>
-                              <button type="button" onClick={() => setProductVideos((prev) => { const next = { ...prev }; delete next[pId]; return next; })}>
-                                Quitar
-                              </button>
+                          {photos.length > 0 && (
+                            <div className="order-rating-photos">
+                              {photos.map((photo) => (
+                                <div key={photo.id} className={`order-rating-photo${photo.error ? ' is-error' : ''}`}>
+                                  <img src={photo.previewUrl} alt="" />
+                                  {(photo.uploading || photo.error) && (
+                                    <span className="order-rating-photo-state">
+                                      {photo.uploading ? <Loader2 size={18} className="spin-icon" /> : <AlertTriangle size={18} />}
+                                    </span>
+                                  )}
+                                  <button type="button" aria-label="Quitar foto" onClick={() => removeReviewPhoto(pId, photo.id)}>
+                                    <X size={13} />
+                                  </button>
+                                </div>
+                              ))}
                             </div>
-                          ) : (
+                          )}
+                          {photoError && <p className="order-rating-photo-error">{photoError} Quítala o elige otra.</p>}
+                          {photos.length < REVIEW_PHOTOS_MAX && (
                             <label className="order-rating-video-btn">
-                              <Video size={15} /> Agregar video (opcional, hasta {REVIEW_VIDEO_MAX_SECONDS} s)
+                              <Camera size={15} />
+                              {photos.length ? `Agregar más fotos (${photos.length}/${REVIEW_PHOTOS_MAX})` : `Agregar fotos (opcional, hasta ${REVIEW_PHOTOS_MAX})`}
                               <input
                                 type="file"
-                                accept="video/mp4,video/quicktime,video/webm"
+                                accept="image/*"
+                                multiple
                                 hidden
-                                onChange={(event) => { pickReviewVideo(pId, event.target.files?.[0]); event.target.value = ''; }}
+                                onChange={(event) => { pickReviewPhotos(pId, event.target.files); event.target.value = ''; }}
                               />
                             </label>
                           )}

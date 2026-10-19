@@ -12,7 +12,7 @@ const PREVIEW_COUNT = 3;
 
 /**
  * Opiniones del producto en la ficha, bajo las preguntas: resumen y las primeras opiniones
- * (primero las que traen comentario o video); "Ver todas" abre el popup completo. La nota del
+ * (primero las que traen comentario o fotos); "Ver todas" abre el popup completo. La nota del
  * producto de arriba baja hasta aca.
  */
 const ProductReviewsSection = forwardRef(function ProductReviewsSection({ productId, productName }, ref) {
@@ -41,7 +41,7 @@ const ProductReviewsSection = forwardRef(function ProductReviewsSection({ produc
         <>
           <ReviewSummary data={data} />
           <div className="rv-list">
-            {data.items.map((review) => <ReviewCard key={review.id} review={review} pausedVideo={modalOpen} />)}
+            {data.items.map((review) => <ReviewCard key={review.id} review={review} />)}
           </div>
           {data.total > data.items.length && (
             <button type="button" className="rv-outline-btn" onClick={() => setModalOpen(true)}>
