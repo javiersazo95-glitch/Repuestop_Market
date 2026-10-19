@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle, Car, Check, CheckCircle2, Copy, EyeOff, Loader2, Lock, MessageSquare, Package, ReceiptText, ShieldCheck,
 } from 'lucide-react';
+import VehicleSheet from './VehicleSheet';
+import { hasVehicleSheet, vehicleSheetFromChecklistItem, vehicleSheetFromOrder } from '../utils/vehicleSheet';
 
 /**
  * Checklist de "Confirmar pedido": 1) stock y entrega, 2) compatibilidad y 3) boleta. Se embebe
@@ -34,15 +36,6 @@ function descripcionVehiculo(order) {
   if (partes.length === 0 && patente) return `${patente} (marca y modelo no identificados)`;
   if (partes.length === 0) return 'el vehículo del comprador';
   return `${partes.join(' ')}${version}${patente ? ` · ${patente}` : ''}`;
-}
-
-// Patente y chasis del vehículo, aunque el comprador solo haya ingresado la patente: el
-// backend guarda el chasis del vehículo consultado (`vehiculoChasis`) y con él se valida la pieza.
-function identificacionVehiculo(order) {
-  if (order?.vehiculoPatente) {
-    return `Patente ${order.vehiculoPatente} · Chasis ${order.vehiculoChasis || 'no identificado'}`;
-  }
-  return order?.vehiculoChasis ? `Chasis ${order.vehiculoChasis}` : '';
 }
 
 function horaConfirmacion(fecha) {
@@ -276,19 +269,19 @@ export default function SellerConfirmationChecklist({
           {/* Sin vehículo informado Y sin nada que juzgar, este bloque solo aportaba la frase que
               confundía: se omite. Con vehículo informado se muestra igual, porque es dato útil
               aunque los repuestos sean universales. */}
+          {/* 19-oct: la misma ficha del vehículo que en la cotización (VehicleSheet): patente,
+              marca modelo año, versión, motor y chasis; el chasis sale de la patente consultada. */}
           {(hayVehiculo || requiereCriterio) && (
-            <div className="seller-checklist-vehicle">
+            <div className={`seller-checklist-vehicle ${hayVehiculo ? 'is-sheet' : ''}`}>
               <Car size={15} />
-              <span>
-                {hayVehiculo
-                  ? <>Vehículo del comprador: <strong>{descripcionVehiculo(order)}</strong></>
-                  : 'Sin información del vehículo. Confirma según tu criterio.'}
-                {identificacionVehiculo(order) && (
-                  <small className="seller-checklist-vehicle-id" style={{ display: 'block', marginTop: 2, userSelect: 'all' }}>
-                    {identificacionVehiculo(order)}
-                  </small>
-                )}
-              </span>
+              {hayVehiculo ? (
+                <div className="seller-checklist-vehicle-body">
+                  <strong>Vehículo del comprador</strong>
+                  <VehicleSheet vehicle={vehicleSheetFromOrder(order)} />
+                </div>
+              ) : (
+                <span>Sin información del vehículo. Confirma según tu criterio.</span>
+              )}
             </div>
           )}
 
@@ -302,22 +295,15 @@ export default function SellerConfirmationChecklist({
             <ul className="seller-checklist-items">
               {items.map((item) => {
                 const etiqueta = ETIQUETA_RESULTADO[item.resultado] ?? ETIQUETA_RESULTADO.SIN_DATOS;
+                const vehiculoItem = vehicleSheetFromChecklistItem(item);
                 return (
                   <li key={item.pedidoItemId} className={`seller-checklist-item tone-${etiqueta.tono}`}>
                     <span className="seller-checklist-item-name">
                       {item.nombre}
-                      {/* El vehículo de ESTE repuesto: el comprador puede comprar para el auto de un familiar. */}
-                      {(item.vehiculo || item.vehiculoPatente) && (
-                        <small className="seller-checklist-item-vehicle">
-                          Para: {[item.vehiculoPatente, item.vehiculo].filter(Boolean).join(' · ')}
-                          {item.vehiculoChasis ? ` · Chasis ${item.vehiculoChasis}` : ''}
-                        </small>
-                      )}
-                      {/* 8-oct: sin patente identificada, el comprador eligió marca, modelo y año a mano. */}
-                      {item.vehiculoOrigen === 'MANUAL' && (
-                        <small className="seller-checklist-item-vehicle seller-checklist-item-manual">
-                          Datos del vehículo ingresados a mano por el comprador: revísalos con cuidado.
-                        </small>
+                      {/* El vehículo de ESTE repuesto: el comprador puede comprar para el auto de un familiar.
+                          Misma ficha que arriba, en una línea, con el aviso de datos a mano (8-oct). */}
+                      {(hasVehicleSheet(vehiculoItem) || vehiculoItem.origen === 'MANUAL') && (
+                        <VehicleSheet compact prefix="Para: " vehicle={vehiculoItem} />
                       )}
                       {/* 6-oct: el Market y la app le avisaron antes de pagar y confirmó que lo quería igual. */}
                       {item.compradorAceptoAviso && (

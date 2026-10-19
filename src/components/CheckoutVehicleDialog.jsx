@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Car, CheckCircle2, Loader2, PencilLine, X } from 'lucide-react';
-import { getVehicleBrandsApi, getVehicleModelsApi, getVehicleVersionsApi, searchVehicleByPatenteApi } from '../services/api';
+import { getVehicleBrandsApi, getVehicleModelsApi, getVehicleMotorsApi, getVehicleVersionsApi, searchVehicleByPatenteApi } from '../services/api';
 import { formatVehicleLabel, isValidPlate, lookupVehicleByPlate, normalizePlate } from '../utils/vehicleLookup';
-import { buildCartVehicle, initialVehicleMode, vehicleFormMissing, vehicleYearOptions } from '../utils/cartVehicleForm';
+import { buildCartVehicle, initialVehicleMode, normalizeChassis, vehicleFormMissing, vehicleYearOptions } from '../utils/cartVehicleForm';
 import SearchableDropdown from './SearchableDropdown';
 
 const sameText = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
@@ -16,9 +16,16 @@ const toOptions = (list) => (Array.isArray(list) ? list : []).map((item) => ({ v
  * buscador. Solo se ve uno a la vez y solo se guarda lo del activo. Antes marca, modelo y año eran
  * texto libre y un "yaris" mal escrito daba un "no coincide" falso en la compatibilidad.
  * `plateCache` evita consultar dos veces la misma patente.
+ *
+ * 19-oct (decisión del usuario): a mano, versión y motor son obligatorios (del catálogo cuando lo
+ * hay; si no aparece, se escribe) y se suma el chasis (VIN), opcional: la tienda ve la misma ficha
+ * del vehículo en una compra y en una cotización. Lo usan el carro y el checkout de una cotización
+ * (`initialMode="manual"` abre directo en la búsqueda manual).
  */
-export default function CheckoutVehicleDialog({ vehicle, plateCache, onClose, onSave }) {
-  const [mode, setMode] = useState(() => initialVehicleMode(vehicle));
+const OTHER_OPTION = '__otra__';
+
+export default function CheckoutVehicleDialog({ vehicle, plateCache, initialMode, onClose, onSave }) {
+  const [mode, setMode] = useState(() => initialMode || initialVehicleMode(vehicle));
   const [patente, setPatente] = useState(vehicle?.patente || '');
   const [status, setStatus] = useState(() => {
     const plate = normalizePlate(vehicle?.patente || '');
@@ -38,6 +45,16 @@ export default function CheckoutVehicleDialog({ vehicle, plateCache, onClose, on
   const [modelText, setModelText] = useState('');
   const [anio, setAnio] = useState(startsManual ? vehicle?.anio || '' : '');
   const [version, setVersion] = useState(startsManual ? vehicle?.version || '' : '');
+  // Versión o motor que no aparece en el catálogo: se escribe a mano.
+  const [versionFree, setVersionFree] = useState(false);
+  const [motors, setMotors] = useState([]);
+  const [motor, setMotor] = useState(startsManual ? vehicle?.motor || '' : '');
+  const [motorFree, setMotorFree] = useState(false);
+  const [chasis, setChasis] = useState(startsManual ? vehicle?.chasis || '' : '');
+  const versionRef = useRef(version);
+  versionRef.current = version;
+  const motorRef = useRef(motor);
+  motorRef.current = motor;
   const [catalogError, setCatalogError] = useState('');
   // Al editar un vehículo manual, sus textos se buscan en el catálogo cuando cargan las listas.
   const pendingBrand = useRef(startsManual ? vehicle?.marca || '' : '');
@@ -89,10 +106,31 @@ export default function CheckoutVehicleDialog({ vehicle, plateCache, onClose, on
 
   useEffect(() => {
     setVersions([]);
+    setMotors([]);
     if (customModel || !brandName || !modelName || !anio) return undefined;
     let active = true;
-    getVehicleVersionsApi({ marca: brandName, modelo: modelName, anioDesde: anio, anioHasta: anio })
-      .then((list) => { if (active) setVersions((Array.isArray(list) ? list : []).map((item) => ({ value: item.nombre, label: item.nombre }))); })
+    const sameVehicle = { marca: brandName, modelo: modelName, anioDesde: anio, anioHasta: anio };
+    getVehicleVersionsApi(sameVehicle)
+      .then((list) => {
+        if (!active) return;
+        const options = (Array.isArray(list) ? list : []).map((item) => ({ value: item.nombre, label: item.nombre }));
+        setVersions(options);
+        // Al editar, una versión escrita a mano que no está en la lista se mantiene como texto.
+        if (versionRef.current && !options.some((option) => sameText(option.value, versionRef.current))) setVersionFree(true);
+      })
+      .catch(() => undefined);
+    // Motor: las cilindradas y códigos del catálogo de ese modelo y año (1.5L, 2NR-FE...).
+    getVehicleMotorsApi(sameVehicle)
+      .then((list) => {
+        if (!active) return;
+        const options = (Array.isArray(list) ? list : [])
+          .map((item) => ({ value: item.valor || item.etiqueta, label: item.etiqueta || item.valor }))
+          .filter((option) => option.value);
+        setMotors(options);
+        if (motorRef.current && !options.some((option) => sameText(option.value, motorRef.current))) setMotorFree(true);
+        // Con un solo motor en el catálogo no hay nada que elegir.
+        else if (!motorRef.current && options.length === 1) setMotor(options[0].value);
+      })
       .catch(() => undefined);
     return () => { active = false; };
   }, [brandName, modelName, anio, customModel]);
@@ -127,7 +165,7 @@ export default function CheckoutVehicleDialog({ vehicle, plateCache, onClose, on
   const found = plateCache.get(normalizePlate(patente)) || null;
   const identified = status === 'found' && Boolean(found);
   const plateState = identified ? 'found' : status === 'found' ? 'idle' : status;
-  const manual = { marca: brandName, modelo: modelName, anio, version };
+  const manual = { marca: brandName, modelo: modelName, anio, version, motor, chasis };
   const missing = vehicleFormMissing({ mode, plateState, manual });
 
   const save = (event) => {
@@ -145,11 +183,22 @@ export default function CheckoutVehicleDialog({ vehicle, plateCache, onClose, on
     }), mode === 'plate' && identified);
   };
 
+  // Versión y motor dependen del modelo y del año: al cambiarlos se vuelven a elegir.
+  const resetVersionAndMotor = () => {
+    setVersion('');
+    setVersionFree(false);
+    setMotor('');
+    setMotorFree(false);
+  };
+
   const resetModel = () => {
     setModelId('');
     setModelText('');
-    setVersion('');
+    resetVersionAndMotor();
   };
+
+  const versionFromList = !customModel && versions.length > 0 && !versionFree;
+  const motorFromList = !customModel && motors.length > 0 && !motorFree;
 
   if (typeof document === 'undefined') return null;
   return createPortal(
@@ -230,7 +279,7 @@ export default function CheckoutVehicleDialog({ vehicle, plateCache, onClose, on
                   emptyText="No encontramos ese modelo."
                   customOptionLabel="Mi modelo no aparece"
                   onCustomOption={() => { setCustomModel(true); resetModel(); }}
-                  onChange={(value) => { setModelId(String(value)); setVersion(''); }}
+                  onChange={(value) => { setModelId(String(value)); resetVersionAndMotor(); }}
                 />
               )}
               {customModel && (
@@ -242,20 +291,73 @@ export default function CheckoutVehicleDialog({ vehicle, plateCache, onClose, on
             </div>
             <label>
               <span>Año</span>
-              <select value={anio} onChange={(event) => { setAnio(event.target.value); setVersion(''); }}>
+              <select value={anio} onChange={(event) => { setAnio(event.target.value); resetVersionAndMotor(); }}>
                 <option value="" disabled>Elige el año</option>
                 {yearOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
             </label>
-            {versions.length > 0 && (
-              <label>
-                <span>Versión (opcional)</span>
-                <select value={version} onChange={(event) => setVersion(event.target.value)}>
-                  <option value="">Sin versión</option>
+            <label>
+              <span>Versión</span>
+              {versionFromList ? (
+                <select
+                  value={version}
+                  onChange={(event) => {
+                    if (event.target.value === OTHER_OPTION) {
+                      setVersionFree(true);
+                      setVersion('');
+                    } else setVersion(event.target.value);
+                  }}
+                >
+                  <option value="" disabled>Elige la versión</option>
                   {versions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  <option value={OTHER_OPTION}>Mi versión no aparece</option>
                 </select>
-              </label>
-            )}
+              ) : (
+                <input value={version} maxLength={120} placeholder="Ej. GLI 1.5 MT" onChange={(event) => setVersion(event.target.value)} />
+              )}
+              {versionFree && versions.length > 0 && !customModel && (
+                <small className="checkout-plate-status">
+                  <button type="button" className="checkout-item-link" onClick={() => { setVersionFree(false); setVersion(''); }}>Elegir de la lista</button>
+                </small>
+              )}
+            </label>
+            <label>
+              <span>Motor</span>
+              {motorFromList ? (
+                <select
+                  value={motor}
+                  onChange={(event) => {
+                    if (event.target.value === OTHER_OPTION) {
+                      setMotorFree(true);
+                      setMotor('');
+                    } else setMotor(event.target.value);
+                  }}
+                >
+                  <option value="" disabled>Elige el motor</option>
+                  {motors.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  <option value={OTHER_OPTION}>Mi motor no aparece</option>
+                </select>
+              ) : (
+                <input value={motor} maxLength={80} placeholder="Cilindrada o código, ej. 1.5L 2NR-FE" onChange={(event) => setMotor(event.target.value)} />
+              )}
+              {motorFree && motors.length > 0 && !customModel && (
+                <small className="checkout-plate-status">
+                  <button type="button" className="checkout-item-link" onClick={() => { setMotorFree(false); setMotor(''); }}>Elegir de la lista</button>
+                </small>
+              )}
+            </label>
+            <label>
+              <span>N° de chasis (VIN) (opcional)</span>
+              <input
+                className="checkout-plate-input"
+                autoComplete="off"
+                value={chasis}
+                maxLength={30}
+                placeholder="Ej. 9BWZZZ377VT004251"
+                onChange={(event) => setChasis(normalizeChassis(event.target.value))}
+              />
+              <small className="checkout-plate-status">Con el chasis la tienda valida el repuesto con más seguridad.</small>
+            </label>
             {status === 'notfound' && normalizePlate(patente) && (
               <small className="checkout-plate-status">La patente {normalizePlate(patente)} (sin identificar) también le llega a la tienda.</small>
             )}

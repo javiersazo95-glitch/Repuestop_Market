@@ -66,6 +66,9 @@ export async function lookupVehicleByPlate(plate, { searchVehicleByPatenteApi } 
     modelo: data.modelo || '',
     anio: Number(data.anio) || 0,
     version: data.version || '',
+    // 19-oct: el chasis (o el VIN) de la patente. Una cotización lo necesita para que la tienda
+    // valide la pieza; sin sesión el backend no lo entrega y queda vacío.
+    chasis: data.chasis || data.vin || '',
     combustible: data.tipoCombustible || data.combustible || undefined,
     transmision: data.transmision || data.transmission || undefined,
   };

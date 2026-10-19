@@ -18,8 +18,13 @@ import {
 import { adaptStore } from '../services/adapters';
 import { compressImageFile } from '../utils/imageCompression';
 import CommissionSummaryCard from './CommissionSummaryCard';
+import VehicleSheet from './VehicleSheet';
+import { vehicleSheetFromQuoteRequest } from '../utils/vehicleSheet';
 import {
-  deliveryTermsLabel, isQuoteExpired, isQuotePaused, isValidPlate, normalizePlate, quantityFromLabel, quoteChargeBase,
+  QUOTE_CHASSIS_MISSING_MESSAGE, QUOTE_VEHICLE_REQUIRED_MESSAGE, useQuoteVehicleCheck,
+} from '../hooks/useQuoteVehicleCheck';
+import {
+  deliveryTermsLabel, isQuoteExpired, isQuotePaused, quantityFromLabel, quoteChargeBase,
   quoteExpirationLabel, quoteRequestChanges, quoteShippingCost as shippingCostOfQuote, resolveQuoteRequest, shippingCodeFromText,
   QUOTE_AVAILABILITY_OPTIONS, QUOTE_DELIVERY_OPTIONS, QUOTE_SHIPPING_LABELS,
   QUOTE_VALIDITY_OPTIONS, QUOTE_WARRANTY_OPTIONS,
@@ -164,6 +169,14 @@ export default function QuoteDetailModal({
     () => resolveQuoteRequest(solicitud, messages, quote?.ultimoMensaje),
     [solicitud, messages, quote?.ultimoMensaje],
   );
+  // 19-oct: la tienda ve la misma ficha del vehículo que en un pedido (VehicleSheet).
+  const requestedVehicleSheet = useMemo(() => vehicleSheetFromQuoteRequest(requested), [requested]);
+  // 19-oct: la modificación también necesita el chasis. Con la misma patente de la solicitud no se
+  // vuelve a consultar; con otra se consulta y, si no trae chasis, se pide.
+  const modificationVehicleCheck = useQuoteVehicleCheck(modificationForm?.chassis || '', {
+    known: [{ patente: requested.requestedPlate, chasis: requested.requestedChassis }],
+    enabled: mode === 'buyer' && modificationOpen,
+  });
 
   const [unitPrice, setUnitPrice] = useState('');
   const [discount, setDiscount] = useState('');
@@ -545,6 +558,7 @@ export default function QuoteDetailModal({
       quantity: quantityFromLabel(requested.requestedQty),
       shippingMethod: matchedShipping || '',
       chassis: requested.requestedPlate || requested.requestedChassis || '',
+      vin: '',
       notes: requested.requestedNotes || '',
     });
     setModificationError('');
@@ -568,9 +582,16 @@ export default function QuoteDetailModal({
     }
     const currentVehicle = String(requested.requestedPlate || requested.requestedChassis || '').trim().toUpperCase();
     const nextVehicle = String(modificationForm.chassis || '').trim().toUpperCase();
+    // 19-oct: la cotización necesita el chasis (patente que lo traiga o el chasis escrito).
+    if (!nextVehicle) {
+      setModificationError(QUOTE_VEHICLE_REQUIRED_MESSAGE);
+      return;
+    }
+    const vin = String(modificationForm.vin || '').trim();
     const unchanged = nextQuantity === quantityFromLabel(requested.requestedQty)
       && shippingCodeFromText(modificationForm.shippingMethod) === requested.requestedShippingCode
-      && (nextVehicle === '' || nextVehicle === currentVehicle)
+      && nextVehicle === currentVehicle
+      && !vin
       && String(modificationForm.notes || '').trim() === String(requested.requestedNotes || '').trim();
     if (activeQuote && unchanged) {
       setModificationError('Cambia al menos un dato para pedir una nueva cotización.');
@@ -578,15 +599,22 @@ export default function QuoteDetailModal({
     }
     setModificationSubmitting(true);
     setModificationError('');
+    const vehicleState = await modificationVehicleCheck.resolve();
+    if (vehicleState.needsVin && !vin) {
+      setModificationError(QUOTE_CHASSIS_MISSING_MESSAGE);
+      setModificationSubmitting(false);
+      return;
+    }
     try {
       // La modificacion reemplaza la solicitud guardada en el backend, que publica en el chat
       // la lista "Solicitud de cotización actualizada" con unidades, metodo y chasis.
       const saved = await sendQuoteRequestApi(quote.id, {
         cantidad: modificationForm.quantity,
         metodoEnvio: shippingCodeFromText(modificationForm.shippingMethod) || modificationForm.shippingMethod,
-        // Una patente se manda como patente (el backend completa el chasis); otro valor, como chasis.
-        ...(isValidPlate(modificationForm.chassis)
-          ? { patente: normalizePlate(modificationForm.chassis), chasis: normalizePlate(modificationForm.chassis) === requested.requestedPlate ? requested.requestedChassis : '' }
+        // Una patente se manda como patente con su chasis (el de la consulta o, si no lo trae, el
+        // escrito aparte); otro valor, como chasis.
+        ...(vehicleState.plate
+          ? { patente: vehicleState.plate, chasis: vehicleState.needsVin ? vin : vehicleState.chassis }
           : { patente: '', chasis: modificationForm.chassis }),
         nota: modificationForm.notes,
       });
@@ -762,8 +790,12 @@ export default function QuoteDetailModal({
             <button type="button" className="quote-ws-product-mini" onClick={openProduct}>{productImage ? <img src={productImage} alt={productName} /> : <Package size={25} />}<div><small>Producto cotizado</small><strong>{productName}</strong><span>Producto #{quote.productoId || '—'}</span></div><ChevronRight size={18} /></button>
             <DataRow icon={Package} label="Cantidad solicitada" value={requested.requestedQty} />
             <DataRow icon={Truck} label="Método de envío" value={requested.requestedDeliveryTerms || 'Por confirmar'} />
-            <DataRow icon={Car} label="Patente" value={requested.requestedPlate || 'No informada'} />
-            <DataRow icon={ShieldCheck} label="Chasis" value={requested.requestedChassis || (requested.requestedPlate ? 'No identificado' : 'No informado')} />
+            {mode === 'seller' ? <div className="quote-request-vehicle-sheet"><small>Vehículo del comprador</small><VehicleSheet vehicle={requestedVehicleSheet} /></div> : (
+              <>
+                <DataRow icon={Car} label="Patente" value={requested.requestedPlate || 'No informada'} />
+                <DataRow icon={ShieldCheck} label="Chasis" value={requested.requestedChassis || (requested.requestedPlate ? 'No identificado' : 'No informado')} />
+              </>
+            )}
             <DataRow icon={MessageSquare} label="Nota del comprador" value={requested.requestedNotes || 'Sin nota adicional'} />
           </section>
         </aside>
@@ -1015,10 +1047,9 @@ export default function QuoteDetailModal({
                   <span><small>Producto</small><b>{productName}</b></span>
                   <span><small>Cantidad solicitada</small><b>{requested.requestedQty}</b></span>
                   <span><small>Método de envío solicitado</small><b>{requested.requestedDeliveryTerms || 'Por confirmar'}</b></span>
-                  <span><small>Patente</small><b>{requested.requestedPlate || 'No informada'}</b></span>
-                  <span><small>Chasis del vehículo</small><b>{requested.requestedChassis || (requested.requestedPlate ? 'No identificado' : 'No informado')}</b></span>
                   <span><small>Nota del comprador</small><b>{requested.requestedNotes || 'Sin nota adicional'}</b></span>
                 </div>
+                <div className="quote-request-vehicle-sheet"><small>Vehículo del comprador</small><VehicleSheet vehicle={requestedVehicleSheet} /></div>
               </div>
             </section>
 
@@ -1156,14 +1187,31 @@ export default function QuoteDetailModal({
                 </div>
 
                 <label>
-                  <span>Patente o chasis (opcional)</span>
+                  <span>Patente o chasis *</span>
                   <input
                     value={modificationForm.chassis}
                     onChange={(event) => updateModificationField('chassis', event.target.value.toUpperCase())}
+                    onBlur={(event) => { modificationVehicleCheck.check(event.target.value); }}
                     maxLength="30"
                     placeholder="Ej. BBCL12 o VIN"
+                    required
                   />
+                  {modificationVehicleCheck.status === 'loading' && <small><Loader2 size={12} className="spin-icon" /> Buscando el chasis de esa patente…</small>}
+                  {modificationVehicleCheck.status === 'error' && modificationVehicleCheck.error && <small className="quote-request-field-error">{modificationVehicleCheck.error}</small>}
                 </label>
+                {modificationVehicleCheck.needsVin && (
+                  <label>
+                    <span>N° de chasis (VIN) *</span>
+                    <input
+                      value={modificationForm.vin || ''}
+                      onChange={(event) => updateModificationField('vin', event.target.value.replace(/\s+/g, '').toUpperCase())}
+                      maxLength="30"
+                      placeholder="Ej. 9BWZZZ377VT004251"
+                      required
+                    />
+                    <small>{QUOTE_CHASSIS_MISSING_MESSAGE}</small>
+                  </label>
+                )}
                 <label>
                   <span>Nota para el vendedor (opcional)</span>
                   <textarea
@@ -1222,8 +1270,12 @@ export default function QuoteDetailModal({
             <div className="quote-ws-dialog-body">
               <DataRow icon={Package} label="Cantidad solicitada" value={requested.requestedQty} />
               <DataRow icon={Truck} label="Método de envío" value={requested.requestedDeliveryTerms || 'Por confirmar'} />
-              <DataRow icon={Car} label="Patente" value={requested.requestedPlate || 'No informada'} />
-              <DataRow icon={ShieldCheck} label="Chasis" value={requested.requestedChassis || (requested.requestedPlate ? 'No identificado' : 'No informado')} />
+              {mode === 'seller' ? <div className="quote-request-vehicle-sheet"><small>Vehículo del comprador</small><VehicleSheet vehicle={requestedVehicleSheet} /></div> : (
+                <>
+                  <DataRow icon={Car} label="Patente" value={requested.requestedPlate || 'No informada'} />
+                  <DataRow icon={ShieldCheck} label="Chasis" value={requested.requestedChassis || (requested.requestedPlate ? 'No identificado' : 'No informado')} />
+                </>
+              )}
               <DataRow icon={MessageSquare} label="Nota del comprador" value={requested.requestedNotes || 'Sin nota adicional'} />
             </div>
           </section>

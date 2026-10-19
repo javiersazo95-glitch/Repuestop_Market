@@ -6,7 +6,12 @@
  *
  * Pedidos anteriores al checkout por producto (sin entrega por línea): un paquete por tienda con
  * el método de su subordén y la dirección y el vehículo del pedido.
+ *
+ * 19-oct: cada vehículo lleva además su ficha completa (`sheet`, ver utils/vehicleSheet.js) para que
+ * la tienda vea lo mismo que en el checklist y en la cotización.
  */
+
+import { vehicleSheetFromOrder } from './vehicleSheet';
 
 const LABELS = {
   pickup: 'Retiro en tienda',
@@ -72,7 +77,10 @@ export function buildOrderPackages(order, { fallbackAddress = null, fallbackMeth
     if (plate || label) {
       const vehicle = pkg.vehicles.find((entry) => entry.plate === plate && entry.label === label);
       if (vehicle) vehicle.products.push(productName);
-      else pkg.vehicles.push({ plate, label, chassis, products: [productName] });
+      else {
+        const sheet = vehicleSheetFromOrder(tieneVehiculoPropio ? item : order);
+        pkg.vehicles.push({ plate, label, chassis, sheet, products: [productName] });
+      }
     }
     packages.set(key, pkg);
   });

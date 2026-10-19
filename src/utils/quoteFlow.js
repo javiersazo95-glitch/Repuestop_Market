@@ -135,6 +135,14 @@ export function resolveQuoteRequest(solicitud, messages = [], fallbackText = '')
       requestedPlate: solicitud.patente || '',
       requestedChassis: solicitud.chasis || '',
       requestedNotes: solicitud.nota || '',
+      // 19-oct: ficha del vehículo de la patente (la misma que ve la tienda en un pedido).
+      requestedVehicle: {
+        marca: solicitud.vehiculoMarca || '',
+        modelo: solicitud.vehiculoModelo || '',
+        anio: solicitud.vehiculoAnio || '',
+        version: solicitud.vehiculoVersion || '',
+        motor: solicitud.vehiculoMotor || '',
+      },
     };
   }
   const latest = [...(messages || [])].reverse().find((message) => isQuoteRequestMessage(message?.texto));
