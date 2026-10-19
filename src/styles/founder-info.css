@@ -1,0 +1,34 @@
+/* Detalle del servicio gratis de Tienda Fundadora (boton "i" del chip del perfil, 19-oct). */
+.founder-info-trigger { display: inline-grid; place-items: center; width: 22px; height: 22px; margin: -3px -6px -3px 2px; padding: 0; border: 0; border-radius: 50%; color: inherit; background: rgba(255, 255, 255, .16); cursor: pointer; }
+.founder-info-trigger:hover { background: rgba(255, 255, 255, .28); }
+.founder-info-trigger:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+.founder-info-backdrop { position: fixed; inset: 0; z-index: 1300; display: grid; place-items: center; padding: 24px; background: rgba(11, 21, 39, .6); backdrop-filter: blur(4px); }
+.founder-info-dialog { position: relative; width: min(520px, 100%); max-height: min(780px, calc(100dvh - 48px)); display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; border-radius: 20px; background: #fff; box-shadow: 0 30px 80px rgba(6, 20, 48, .3); }
+.founder-info-handle { display: none; }
+.founder-info-head { display: flex; align-items: center; gap: 12px; padding: 18px 20px 14px; border-bottom: 1px solid #f3e6c2; background: linear-gradient(135deg, #fffaf0 0%, #fff4d6 100%); }
+.founder-info-head > div { flex: 1; min-width: 0; }
+.founder-info-head h2 { margin: 0; color: #0d1b33; font-size: 17px; font-weight: 800; overflow-wrap: anywhere; }
+.founder-info-head p { margin: 2px 0 0; color: #8a4b00; font-size: 13px; font-weight: 700; }
+.founder-info-head p.is-expired { color: #5d6b82; }
+.founder-info-crown { width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border: 1px solid #f3c85c; border-radius: 12px; color: #b66a00; background: #fff; }
+.founder-info-close { width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center; border: 0; border-radius: 50%; color: #5d6b82; background: rgba(255, 255, 255, .8); cursor: pointer; }
+.founder-info-body { display: grid; align-content: start; gap: 14px; padding: 18px 20px 20px; overflow-y: auto; overscroll-behavior: contain; }
+.founder-info-row h3, .founder-info-example h3 { margin: 0 0 4px; color: #0d1b33; font-size: 14px; font-weight: 800; }
+.founder-info-row p { margin: 0; color: #42516a; font-size: 13.5px; line-height: 1.55; }
+.founder-info-example { padding: 12px 14px; border: 1px solid #e1e7ef; border-radius: 12px; background: #f8fafc; }
+.founder-info-example dl { display: grid; gap: 6px; margin: 6px 0 0; }
+.founder-info-example dl > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.founder-info-example dt { color: #5d6b82; font-size: 13px; }
+.founder-info-example dd { margin: 0; color: #0d1b33; font-size: 14px; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.founder-info-ok { justify-self: end; min-height: 40px; padding: 0 18px; border: 0; border-radius: 10px; color: #fff; background: #0056bf; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+@media (max-width: 768px) {
+  .founder-info-trigger { background: rgba(146, 64, 14, .1); }
+  .founder-info-backdrop { padding: 0; place-items: end stretch; }
+  .founder-info-dialog { width: 100%; max-height: 90dvh; border-radius: 18px 18px 0 0; }
+  .founder-info-handle { display: block; position: absolute; top: 7px; left: 50%; z-index: 1; width: 40px; height: 4px; margin-left: -20px; border-radius: 999px; background: #e5d3a3; }
+  .founder-info-head { padding: 20px 16px 12px; }
+  .founder-info-body { padding: 14px 16px calc(20px + env(safe-area-inset-bottom, 0px)); }
+  .founder-info-ok { justify-self: stretch; min-height: 46px; }
+}

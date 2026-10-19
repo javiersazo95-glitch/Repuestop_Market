@@ -57,7 +57,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES, storePath } from '../routes/paths';
 import { orderDisplayCode } from '../data/orderIdentity';
 import { deliveryTermsLabel, isConversationPaused, quoteChargeBase, quoteShippingCost } from '../utils/quoteFlow';
-import { founderBenefitLabel, founderBenefitTooltip, founderDaysLeft } from '../utils/founderBenefit';
+import { founderBenefitLabel, founderDaysLeft } from '../utils/founderBenefit';
+import FounderBenefitInfo from './FounderBenefitInfo';
 
 function formatQuoteCLP(value) {
   return `$${Math.round(Number(value) || 0).toLocaleString('es-CL')}`;
@@ -1419,14 +1420,15 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   o menos el chip sube un poco el tono (`is-ending`). */}
               {isSeller && storeInfo?.founder && (() => {
                 const founderUntil = storeInfo.founderUntil ?? user?.founderUntil ?? null;
+                const founderSince = storeInfo.founderSince ?? user?.founderSince ?? null;
                 const { daysLeft, endsAt } = founderDaysLeft(founderUntil);
                 const isEnding = Boolean(endsAt) && daysLeft !== null && daysLeft <= 7;
+                // 19-oct: el "i" abre el detalle del servicio gratis (en que consiste, comision,
+                // de cuanto es, cuando empieza y termina); la corona queda para verlo de un vistazo.
                 return (
-                  <span
-                    className={`hero-tag founder-tag-contrast${isEnding ? ' is-ending' : ''}`}
-                    title={founderBenefitTooltip(founderUntil)}
-                  >
+                  <span className={`hero-tag founder-tag-contrast${isEnding ? ' is-ending' : ''}`}>
                     <Crown size={14} strokeWidth={2.4} /> Fundador · {founderBenefitLabel(founderUntil)}
+                    <FounderBenefitInfo founderSince={founderSince} founderUntil={founderUntil} />
                   </span>
                 );
               })()}

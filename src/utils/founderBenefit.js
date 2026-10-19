@@ -1,4 +1,4 @@
-import { FOUNDER_FREE_MONTHS, STANDARD_RATE_LABEL } from './pricing';
+import { FLOW_RATE_BASE, FOUNDER_FREE_MONTHS, STANDARD_RATE_LABEL, calculateSellerEarnings } from './pricing';
 
 /**
  * Marcha blanca de Tienda Fundadora: tarifa de servicio RepuesTop 0% durante los primeros
@@ -66,3 +66,58 @@ export function founderBenefitTooltip(founderUntil) {
   const span = `tu marcha blanca de ${FOUNDER_FREE_MONTHS} meses${until ? ` (hasta ${until})` : ''}`;
   return `0% de tarifa de servicio RepuesTop durante ${span}. Solo pagas Flow 2,89% + IVA. ${founderAfterLabel()}`;
 }
+
+const FLOW_RATE_LABEL = `${(FLOW_RATE_BASE * 100).toFixed(2).replace('.', ',')}%`;
+const EXAMPLE_PRICE = 100000;
+const clp = (value) => `$${Math.round(value).toLocaleString('es-CL')}`;
+
+/**
+ * Detalle del beneficio para el boton "i" junto al chip Fundador (perfil del vendedor, 19-oct):
+ * en que consiste el servicio gratis, que es la comision por venta, de cuanto es, cuando empezo y
+ * cuando termina, con un ejemplo de cuanto recibe. Mismos textos que la app
+ * (mobile/utils/founder-benefit.ts, `founderBenefitDetails`).
+ */
+export function founderBenefitDetails(founderSince, founderUntil, now = new Date()) {
+  const { daysLeft, isExpired, endsAt } = founderDaysLeft(founderUntil, now);
+  const since = founderEndsAtDateLabel(founderSince);
+  const until = founderEndsAtDateLabel(founderUntil);
+  const status = !endsAt
+    ? 'Servicio gratis activo'
+    : isExpired
+      ? `Tu servicio gratis terminó el ${until}`
+      : daysLeft === 1 ? 'Servicio gratis · último día' : `Servicio gratis · quedan ${daysLeft} días`;
+  return {
+    status,
+    isExpired,
+    sections: [
+      {
+        title: '¿En qué consiste el servicio gratis?',
+        text: `Por ser de las primeras tiendas de RepuesTop, durante tu marcha blanca de ${FOUNDER_FREE_MONTHS} meses no pagas comisión por venta a RepuesTop (0%). Solo se descuenta el costo de Flow, la pasarela de pago.`,
+      },
+      {
+        title: '¿Qué es la comisión por venta?',
+        text: 'Es la tarifa de servicio de RepuesTop: un porcentaje del precio de cada venta pagada que se descuenta en tu liquidación por vender en la plataforma. Es aparte del costo de Flow, que cobra la pasarela por procesar el pago.',
+      },
+      {
+        title: '¿De cuánto es?',
+        text: `Durante la marcha blanca: 0%. Al terminar: ${STANDARD_RATE_LABEL} + IVA por venta. Flow (${FLOW_RATE_LABEL} + IVA) se descuenta siempre.`,
+      },
+      {
+        title: '¿Cuándo empieza?',
+        text: since ? `El ${since}, cuando se aprobó tu tienda.` : 'Desde la aprobación de tu tienda.',
+      },
+      {
+        title: '¿Cuándo termina?',
+        text: until
+          ? `${isExpired ? 'Terminó' : 'Termina'} el ${until}. Desde esa fecha rige la comisión estándar de ${STANDARD_RATE_LABEL} + IVA por venta.`
+          : `${FOUNDER_FREE_MONTHS} meses después de la aprobación. Desde ahí rige la comisión estándar de ${STANDARD_RATE_LABEL} + IVA por venta.`,
+      },
+    ],
+    example: {
+      price: clp(EXAMPLE_PRICE),
+      now: clp(calculateSellerEarnings(EXAMPLE_PRICE, true)),
+      after: clp(calculateSellerEarnings(EXAMPLE_PRICE, false)),
+    },
+  };
+}
+
