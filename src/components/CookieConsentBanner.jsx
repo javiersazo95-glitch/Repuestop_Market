@@ -21,6 +21,8 @@ const ALMACENAMIENTO = [
   ['Sesión y seguridad', 'Te mantiene con la sesión iniciada y protege tu cuenta entre pestañas.'],
   ['Carrito y compra', 'Conserva lo que agregaste y el último pedido mientras dura la compra.'],
   ['Tu vehículo', 'Recuerda la patente y el vehículo activo para mostrarte repuestos compatibles.'],
+  ['Tus preferencias', 'Guarda tus favoritos, direcciones, saldo de Monedas y los avisos que ya cerraste, para no pedírtelos de nuevo.'],
+  ['Recursos de Google', 'Las fuentes, el botón de inicio de sesión y el mapa de un anuncio se cargan desde Google, que recibe tu dirección IP; el mapa puede usar cookies propias de Google.'],
   ['Diagnóstico de errores', 'Si algo falla, se envía el error a nuestro proveedor de monitoreo para poder arreglarlo. No se envían datos de contacto, ni bancarios, ni grabaciones de tu sesión.'],
 ];
 

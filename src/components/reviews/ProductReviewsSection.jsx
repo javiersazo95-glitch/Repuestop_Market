@@ -41,7 +41,7 @@ const ProductReviewsSection = forwardRef(function ProductReviewsSection({ produc
         <>
           <ReviewSummary data={data} />
           <div className="rv-list">
-            {data.items.map((review) => <ReviewCard key={review.id} review={review} />)}
+            {data.items.map((review) => <ReviewCard key={review.id} review={review} kind="product" />)}
           </div>
           {data.total > data.items.length && (
             <button type="button" className="rv-outline-btn" onClick={() => setModalOpen(true)}>

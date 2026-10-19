@@ -48,7 +48,7 @@ export default function HelpCategoryView() {
                 className="help-cookie-settings"
                 onClick={() => window.dispatchEvent(new Event('repuestop:manage-cookies'))}
               >
-                <Cookie size={16} /> Administrar mis cookies
+                <Cookie size={16} /> Ver qué se guarda en mi navegador
               </button>
             )}
           </section>
