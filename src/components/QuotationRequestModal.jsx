@@ -71,6 +71,7 @@ const initialForm = (activeVehicle) => ({
 export default function QuotationRequestModal({
   product, activeVehicle, isOpen, onClose, user, isLoggedIn, onRequireLogin,
 }) {
+  const [showVehicleHelp, setShowVehicleHelp] = useState(false);
   const [formData, setFormData] = useState(() => initialForm(activeVehicle));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [conversation, setConversation] = useState(null);
@@ -221,7 +222,24 @@ export default function QuotationRequestModal({
               </div>
 
               <label>
-                <span className="quote-request-label-with-help">Patente o chasis * <CircleHelp size={16} /></span>
+                <span className="quote-request-label-with-help">
+                  Patente o chasis *
+                  {/* 19-oct: el icono era solo un dibujo; ahora explica para que se pide. Fuera del
+                      flujo del label (preventDefault) para que tocarlo no enfoque el campo. */}
+                  <button
+                    type="button"
+                    className="quote-request-help"
+                    aria-label="¿Por qué te pedimos la patente o el chasis?"
+                    aria-expanded={showVehicleHelp}
+                    onClick={(event) => { event.preventDefault(); setShowVehicleHelp((open) => !open); }}
+                    onBlur={() => setShowVehicleHelp(false)}
+                  >
+                    <CircleHelp size={16} aria-hidden="true" />
+                    <span className={`quote-request-help-tip ${showVehicleHelp ? 'is-open' : ''}`} role="tooltip">
+                      La tienda valida el repuesto con el número de chasis (VIN). Si escribes tu patente, buscamos el chasis por ti y a la tienda le llega la patente parcial (por ejemplo, BB••12). Si no tienes patente, escribe el chasis: son 17 caracteres y aparece en el padrón del vehículo.
+                    </span>
+                  </button>
+                </span>
                 <input
                   value={formData.chassis}
                   onChange={(event) => updateField('chassis', event.target.value.toUpperCase())}
