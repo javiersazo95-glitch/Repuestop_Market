@@ -391,7 +391,7 @@ RepuesTop usa la ubicación del dispositivo con una sola finalidad: mostrar al u
 • Qué dato se usa: la posición aproximada del dispositivo, sin el modo de alta precisión, y el nombre de la comuna y región que se deriva de ella.
 • Autorización: el usuario la otorga mediante el permiso de ubicación de su teléfono o de su navegador. Es voluntaria: sin ella, la Plataforma funciona igual y el usuario puede elegir su comuna o región manualmente; solo dejará de ver la distancia a cada tienda o taller.
 • Conservación: las coordenadas se procesan en el dispositivo del usuario para calcular las distancias. No se envían a los servidores de RepuesTop, no se guardan en la cuenta ni se asocian al historial del usuario. En el sitio web se mantienen en la memoria del navegador solo mientras la página permanezca abierta.
-• Terceros: la ubicación no se comparte con tiendas, talleres, anunciantes ni captadores, y no se usa para publicidad, elaboración de perfiles ni venta de datos. Si el teléfono o el navegador no logra identificar la comuna, la Plataforma envía las coordenadas, sin ningún dato de la cuenta, a un servicio externo de mapas (Photon, operado por Komoot en Alemania) con el único fin de obtener el nombre de la comuna.
+• Terceros: la ubicación no se comparte con tiendas, talleres, anunciantes ni captadores, y no se usa para publicidad, elaboración de perfiles ni venta de datos. Si el teléfono o el navegador no logra identificar la comuna, la Plataforma envía las coordenadas, sin ningún dato de la cuenta, a un servicio externo de mapas ubicado en Alemania, con el único fin de obtener el nombre de la comuna.
 • Retiro del permiso: el usuario puede retirarlo en cualquier momento desde los ajustes de su teléfono o de su navegador. Desde ese momento la Plataforma deja de usar su ubicación.
 La ubicación de las tiendas y talleres es distinta: RepuesTop convierte en coordenadas la dirección pública que cada tienda o anunciante publica, para mostrarla en el mapa y calcular distancias. Esa información es pública por decisión de quien la publica.
 
@@ -404,19 +404,17 @@ Las opiniones que publica el comprador (nota, comentario y fotos) son visibles p
 RepuesTop no comparte la ubicación del usuario con ninguna de las partes anteriores.
 
 7. PROVEEDORES EXTERNOS Y TRANSFERENCIAS INTERNACIONALES
-RepuesTop utiliza proveedores externos que tratan datos por su cuenta y solo en la medida necesaria para prestarle sus servicios. Actualmente son:
-• Pagos y devoluciones: Flow (Chile), que recibe el monto, el detalle de la compra y el correo del comprador. RepuesTop no recibe ni guarda los datos de las tarjetas.
-• Pago de retiros a vendedores y captadores: Banco BCI (Chile), por transferencia desde la cuenta de RepuesTop, que recibe el nombre, el RUT y los datos bancarios del destinatario.
-• Alojamiento del servidor y la base de datos: Railway. Alojamiento del sitio web: Vercel.
-• Almacenamiento de archivos (fotos, documentos, boletas, comprobantes y evidencias): Cloudflare.
-• Envío de correos: Resend.
-• Notificaciones en el teléfono y actualizaciones de la aplicación: Expo y Google Firebase Cloud Messaging.
-• Inicio de sesión con Google: Google. En el sitio web, las fuentes tipográficas y el botón de inicio de sesión se cargan desde Google, que recibe la dirección IP y los datos del navegador del visitante.
-• Autocompletado de direcciones y mapas: TomTom y Photon (Komoot); al abrir el mapa de un anuncio, Google Maps o Apple Maps. RepuesTop también usa el catastro de direcciones del Instituto Nacional de Estadísticas, alojado en sus propios servidores.
-• Información vehicular por patente: GetAPI (getapi.cl, Chile), que recibe solo la patente consultada. RepuesTop guarda la respuesta para no repetir la consulta, sin asociarla a la cuenta del usuario.
+RepuesTop utiliza proveedores externos que tratan datos por su cuenta y solo en la medida necesaria para prestarle sus servicios. Son de estas categorías:
+• Pagos y devoluciones: Flow (Chile), la pasarela con que el usuario paga, que recibe el monto, el detalle de la compra y el correo del comprador. RepuesTop no recibe ni guarda los datos de las tarjetas.
+• Pago de retiros a vendedores y captadores: el banco de RepuesTop en Chile, que recibe el nombre, el RUT y los datos bancarios del destinatario.
+• Infraestructura tecnológica: alojamiento del servidor, de la base de datos y del sitio web, y almacenamiento de archivos (fotos, documentos, boletas, comprobantes y evidencias).
+• Comunicaciones: envío de correos, notificaciones en el teléfono y actualizaciones de la aplicación.
+• Inicio de sesión con Google: Google, cuando el usuario elige esa opción. En el sitio web, las fuentes tipográficas y el botón de inicio de sesión se cargan desde Google, que recibe la dirección IP y los datos del navegador del visitante.
+• Direcciones y mapas: servicios de autocompletado de direcciones y de mapas; al abrir el mapa de un anuncio, Google Maps o Apple Maps. RepuesTop también usa el catastro de direcciones del Instituto Nacional de Estadísticas, alojado en sus propios servidores.
+• Información vehicular por patente: un proveedor chileno de datos vehiculares, que recibe solo la patente consultada. RepuesTop guarda la respuesta para no repetir la consulta, sin asociarla a la cuenta del usuario.
 • Video tutorial para tiendas en el sitio web y el panel de inventario: YouTube (Google), en su modo de privacidad mejorada; solo recibe datos del navegador cuando la tienda abre y reproduce el video.
-• Monitoreo de errores del sitio web: Sentry. Registros técnicos del servidor: Better Stack, que puede recibir el correo o la patente asociados a una acción.
-Varios de estos proveedores almacenan o procesan datos fuera de Chile, principalmente en Estados Unidos y la Unión Europea. RepuesTop elige proveedores que ofrecen medidas de seguridad y confidencialidad adecuadas y les entrega solo los datos necesarios para cada servicio. Si cambia alguno de estos proveedores, RepuesTop actualizará esta lista.
+• Monitoreo y registros técnicos: servicios que reciben el detalle de los errores del sitio web y los registros del servidor, que pueden incluir el correo o la patente asociados a una acción.
+Varios de estos proveedores almacenan o procesan datos fuera de Chile, principalmente en Estados Unidos y la Unión Europea. RepuesTop elige proveedores que ofrecen medidas de seguridad y confidencialidad adecuadas y les entrega solo los datos necesarios para cada servicio. El usuario puede pedir la lista detallada de proveedores escribiendo a contacto@repuestop.cl.
 
 8. CONSERVACIÓN DE DATOS
 RepuesTop conserva los datos durante el tiempo necesario para cumplir las finalidades informadas, operar la cuenta, procesar compras, atender reclamos, cumplir obligaciones legales, tributarias, contables y contractuales, prevenir fraude, resolver mediaciones o defender derechos.
