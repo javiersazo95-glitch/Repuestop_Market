@@ -111,7 +111,7 @@ export default function SellerAdhesionModal() {
               <h2 id="adhesion-modal-title">{verificacion?.contratoDesactualizado ? 'Actualizamos el Contrato de Adhesión' : 'Contrato de Adhesión'}</h2>
               <span className="order-modal-subtitle">
                 {verificacion?.contratoDesactualizado
-                  ? 'Agregamos cláusulas nuevas (garantía en cada publicación, sin datos de contacto, notas de crédito y facturación). Fírmalo de nuevo para seguir publicando; tus ventas no se detienen.'
+                  ? 'Agregamos cláusulas nuevas (garantía en cada publicación, sin datos de contacto, notas de crédito y facturación). Fírmalo de nuevo para seguir usando tu cuenta.'
                   : 'Tu tienda quedó aprobada. Firma el contrato para empezar a vender en RepuesTop.'}
               </span>
             </div>
