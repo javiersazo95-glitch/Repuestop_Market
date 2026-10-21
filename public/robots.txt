@@ -1,20 +1,39 @@
 # ==========================================================================
-# BLOQUEO TEMPORAL — REVERTIR EL DIA DEL LANZAMIENTO
+# APERTURA PARCIAL (20-oct, decision del usuario: opcion A)
 #
-# El sitio esta en vivo en repuestop.cl pero todavia no se lanza: el catalogo
-# esta vacio y el backend de produccion esta apagado a proposito (ver
-# HANDOFF_PROXIMO_AGENTE.md seccion 3). Google ya conocia este dominio por el
-# sitio institucional anterior, asi que va a recrawlear igual; sin este bloqueo
-# indexaria un marketplace sin productos y con la API caida, y llegariamos al
-# lanzamiento arrastrando esa impresion.
+# Mientras se captan tiendas, se indexan solo las paginas institucionales
+# (inicio, vender, nosotros, ayuda y legales): una tienda que recibe la tarjeta
+# y busca "RepuesTop" en Google encuentra el sitio. El catalogo y las tiendas
+# quedan fuera hasta que haya productos reales; sin eso Google clasificaria
+# esas rutas como paginas pobres y llegariamos al lanzamiento arrastrandolo.
 #
-# PARA LANZAR: borrar este bloque y las dos lineas de abajo, y descomentar la
-# configuracion real que viene despues. Es todo lo que hay que hacer aca.
+# Google aplica la regla mas especifica (la mas larga): "Allow: /$" abre solo
+# el inicio y "Disallow: /" cierra todo lo demas. Los archivos de /assets y las
+# imagenes se abren porque Google necesita el JavaScript para ver la pagina.
+#
+# PARA EL LANZAMIENTO A COMPRADORES (con getapi.cl y catalogo minimo): borrar
+# este bloque y descomentar la configuracion completa de abajo (plan P3-12).
 # ==========================================================================
 User-agent: *
+Allow: /$
+Allow: /vender
+Allow: /nosotros
+Allow: /ayuda
+Allow: /terminos
+Allow: /privacidad
+Allow: /assets/
+Allow: /about-assets/
+Allow: /brand-logos/
+Allow: /*.png$
+Allow: /*.svg$
+Allow: /*.webp$
+Allow: /*.jpg$
+Allow: /*.ico$
+Allow: /site.webmanifest
+Allow: /googledb5011289430debb.html
 Disallow: /
 
-# --- Configuracion real, activar en el lanzamiento ---
+# --- Configuracion completa, activar en el lanzamiento a compradores ---
 # User-agent: *
 # Allow: /
 #
