@@ -25,6 +25,30 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="RepuesTop: repuestos para tu auto, de tiendas de todo Chile" />
     <meta name="twitter:card" content="summary_large_image" />
+    <!-- 22-oct: datos estructurados para que Google muestre "RepuesTop" como nombre del sitio y
+         reconozca la marca y el logo. JSON-LD no se ejecuta, asi que la CSP no lo bloquea. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "name": "RepuesTop",
+            "alternateName": ["Repuestop", "RepuesTop Chile"],
+            "url": "https://repuestop.cl/"
+          },
+          {
+            "@type": "Organization",
+            "name": "RepuesTop",
+            "legalName": "COREBIT SpA",
+            "url": "https://repuestop.cl/",
+            "logo": "https://repuestop.cl/icon-512.png",
+            "email": "contacto@repuestop.cl",
+            "description": "Marketplace de repuestos automotrices de Chile: busca por patente o por marca, modelo y año y compara precios de tiendas de todo el país."
+          }
+        ]
+      }
+    </script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
