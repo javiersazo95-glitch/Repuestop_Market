@@ -1,63 +1,175 @@
-import React, { useState } from 'react';
-import { X, Upload, Trash2, AlertCircle, Clock, ShieldCheck, Car } from 'lucide-react';
-import { lookupVehicleByPlate } from '../utils/vehicleLookup';
-import { searchVehicleByPatenteApi } from '../services/api';
-import { createAuction, uploadAuctionPhoto } from '../services/auctionApi';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  X, Upload, Trash2, AlertCircle, CheckCircle2, Clock, Plus, ShieldCheck, Car, Package,
+} from 'lucide-react';
+import { normalizePlate } from '../utils/vehicleLookup';
+import usePlateLookup, { maskPlate } from '../utils/usePlateLookup';
+import { createAuction, updateAuction, uploadAuctionPhoto } from '../services/auctionApi';
+import { useAuth } from '../context/AuthContext';
+import { useCategories } from '../data/categories';
 import '../styles/auctions.css';
+import '../styles/auction-vehicle.css';
 
-export default function CreateAuctionModal({ isOpen, onClose, onSuccess }) {
-  if (!isOpen) return null;
+const MAX_ITEMS = 20;
+let itemSeq = 0;
+const newItem = () => ({ key: `item-${++itemSeq}`, nombre: '', categoria: '', cantidad: 1, descripcion: '', otroVehiculo: false, patente: '' });
+
+/** Tarjeta del vehículo identificado por patente (marca, modelo, año y chasis). */
+function VehicleSummary({ vehicle, note }) {
+  return (
+    <div className="acv-vehicle">
+      <div className="acv-vehicle-head"><CheckCircle2 size={16} /> Vehículo identificado</div>
+      <dl>
+        {[['Marca', vehicle.marca], ['Modelo', vehicle.modelo], ['Año', vehicle.anio || ''], ['Versión', vehicle.version]]
+          .filter(([, value]) => value).map(([label, value]) => (
+            <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
+          ))}
+        <div className="is-chasis"><dt>Chasis / VIN</dt><dd>{vehicle.chasis}</dd></div>
+      </dl>
+      {note && <small>{note}</small>}
+    </div>
+  );
+}
+
+/** Un repuesto del pedido: nombre, cantidad, categoría y, si va para otro auto, su propia patente. */
+function ItemEditor({ item, index, canRemove, categories, onChange, onRemove, onVehicle }) {
+  const { vehicle, error, looking } = usePlateLookup(item.otroVehiculo ? item.patente : '', { subject: 'el pedido' });
+
+  useEffect(() => { onVehicle(item.key, vehicle); }, [vehicle]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <fieldset className="acv-item">
+      <legend><Package size={15} /> Repuesto {index + 1}</legend>
+      {canRemove && (
+        <button type="button" className="acv-item-remove" onClick={() => onRemove(item.key)} aria-label={`Quitar el repuesto ${index + 1}`}>
+          <Trash2 size={14} /> Quitar
+        </button>
+      )}
+
+      <div className="acv-item-grid">
+        <label className="acv-field acv-field-wide">
+          <span>Repuesto *</span>
+          <input
+            type="text"
+            value={item.nombre}
+            maxLength={180}
+            onChange={(e) => onChange(item.key, { nombre: e.target.value })}
+            placeholder="Ej: Bomba de agua con empaquetadura"
+            required
+          />
+        </label>
+        <label className="acv-field">
+          <span>Cantidad *</span>
+          <input type="number" min="1" max="999" value={item.cantidad} onChange={(e) => onChange(item.key, { cantidad: e.target.value })} required />
+        </label>
+        <label className="acv-field">
+          <span>Categoría *</span>
+          <select value={item.categoria} onChange={(e) => onChange(item.key, { categoria: e.target.value })} required>
+            <option value="">Selecciona…</option>
+            {categories.map((cat) => <option key={cat.id} value={cat.nombre}>{cat.nombre}</option>)}
+          </select>
+        </label>
+        <label className="acv-field acv-field-wide">
+          <span>Detalle o falla <small>Opcional</small></span>
+          <textarea
+            rows={2}
+            value={item.descripcion}
+            maxLength={1000}
+            onChange={(e) => onChange(item.key, { descripcion: e.target.value })}
+            placeholder="Lado (izq/der), síntoma, medidas, referencia…"
+          />
+        </label>
+      </div>
+
+      <label className="acv-other-vehicle">
+        <input
+          type="checkbox"
+          checked={item.otroVehiculo}
+          onChange={(e) => onChange(item.key, { otroVehiculo: e.target.checked, patente: e.target.checked ? item.patente : '' })}
+        />
+        <span><strong>Este repuesto es para otro vehículo</strong><small>Si no, se usa el vehículo del pedido.</small></span>
+      </label>
+
+      {item.otroVehiculo && (
+        <div className="acv-item-vehicle">
+          {vehicle ? (
+            <>
+              <div className="acv-plate is-confirmed">
+                <span className="acv-plate-label">Patente</span>
+                <strong className="acv-plate-value">{maskPlate(item.patente)}</strong>
+                <button type="button" className="acv-plate-change" onClick={() => onChange(item.key, { patente: '' })}>Cambiar patente</button>
+              </div>
+              <VehicleSummary vehicle={vehicle} />
+            </>
+          ) : (
+            <div className="acv-plate">
+              <label className="acv-plate-label" htmlFor={`plate-${item.key}`}>Patente de ese vehículo *</label>
+              <input
+                id={`plate-${item.key}`}
+                type="text"
+                value={item.patente}
+                maxLength={8}
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                onChange={(e) => onChange(item.key, { patente: e.target.value.toUpperCase().replace(/[^A-Z0-9-\s]/g, '') })}
+                placeholder="ABCD12"
+                className="acv-plate-input is-compact"
+              />
+              <small className="acv-plate-hint">{looking ? 'Consultando patente…' : 'Obtenemos su marca, modelo, año y chasis.'}</small>
+            </div>
+          )}
+          {error && <p className="acv-error" role="alert"><AlertCircle size={15} /> {error}</p>}
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
+/** Un pedido ya publicado vuelve a ser el formulario: cada repuesto conserva su nombre, categoría, mensaje y patente. */
+function itemsFromAuction(auction) {
+  const list = (auction?.items || []).map((item) => ({
+    ...newItem(),
+    nombre: item.repuesto || '',
+    categoria: item.categoria || '',
+    cantidad: item.cantidad || 1,
+    descripcion: item.descripcion || '',
+    otroVehiculo: Boolean(item.vehiculoPropio),
+    patente: item.patente || '',
+  }));
+  return list.length ? list : [newItem()];
+}
+
+function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
+  const isEditing = Boolean(auction);
+  const { user } = useAuth();
+  const { HEADER_CATEGORIES } = useCategories();
 
   const [loading, setLoading] = useState(false);
-  const [lookingUpPlate, setLookingUpPlate] = useState(false);
   const [error, setError] = useState(null);
 
-  // Campos del formulario con límites de negocio
-  const [patente, setPatente] = useState('');
-  const [marca, setMarca] = useState('');
-  const [modelo, setModelo] = useState('');
-  const [anio, setAnio] = useState('');
-  const [version, setVersion] = useState('');
-  const [motor, setMotor] = useState('');
-  const [chasis, setChasis] = useState('');
+  const [patente, setPatente] = useState(() => auction?.patente || '');
+  const { vehicle, error: plateError, looking: lookingUpPlate } = usePlateLookup(patente);
 
-  const [repuestoSolicitado, setRepuestoSolicitado] = useState('');
-  const [descripcion, setDescripcion] = useState('');
-  const [cantidad, setCantidad] = useState(1);
-  const [tiempoVigenciaHoras, setTiempoVigenciaHoras] = useState(48);
-  const [tiempoMaximoEnvio, setTiempoMaximoEnvio] = useState('24 horas');
-  const [tipoEnvio, setTipoEnvio] = useState('Cualquiera (Retiro o Despacho)');
-  const [presupuestoMaximo, setPresupuestoMaximo] = useState('');
-  const [region, setRegion] = useState('');
-  const [comuna, setComuna] = useState('');
+  const [items, setItems] = useState(() => (auction ? itemsFromAuction(auction) : [newItem()]));
+  const [itemVehicles, setItemVehicles] = useState({});
 
-  const [fotos, setFotos] = useState([]);
+  const [tiempoVigenciaHoras, setTiempoVigenciaHoras] = useState(() => auction?.tiempoVigenciaHoras || 48);
+  const [tiempoMaximoEnvio, setTiempoMaximoEnvio] = useState(() => auction?.tiempoMaximoEnvio || '24 horas');
+  const [tipoEnvio, setTipoEnvio] = useState(() => auction?.tipoEnvio || 'Cualquiera (Retiro o Despacho)');
+  const [presupuestoMaximo, setPresupuestoMaximo] = useState(() => (auction?.presupuestoMaximo ? String(Math.round(auction.presupuestoMaximo)) : ''));
+
+  const [fotos, setFotos] = useState(() => auction?.fotos || []);
   const [uploadingFoto, setUploadingFoto] = useState(false);
 
-  // Consulta automática por patente chilena
-  const handleLookupPlate = async (plateValue) => {
-    const clean = (plateValue || patente).trim().toUpperCase();
-    if (!clean || clean.length < 5) return;
-    setLookingUpPlate(true);
-    setError(null);
-    try {
-      const data = await lookupVehicleByPlate(clean, { searchVehicleByPatenteApi });
-      if (data) {
-        if (data.marca) setMarca(data.marca);
-        if (data.modelo) setModelo(data.modelo);
-        if (data.anio) setAnio(String(data.anio));
-        if (data.version) setVersion(data.version);
-        if (data.motor) setMotor(data.motor);
-        if (data.chasis) setChasis(data.chasis);
-      }
-    } catch (err) {
-      console.warn('Error en consulta de patente:', err);
-    } finally {
-      setLookingUpPlate(false);
-    }
-  };
+  const changeItem = (key, patch) => setItems((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)));
+  const removeItem = (key) => setItems((current) => current.filter((item) => item.key !== key));
+  const registerVehicle = (key, found) => setItemVehicles((current) => (current[key] === found ? current : { ...current, [key]: found }));
+  const addItem = () => setItems((current) => (current.length >= MAX_ITEMS ? current : [...current, newItem()]));
 
-  // Manejo de fotos
+  const totalUnits = useMemo(() => items.reduce((sum, item) => sum + (parseInt(item.cantidad, 10) || 0), 0), [items]);
+  const itemsMissingVehicle = items.filter((item) => item.otroVehiculo && !itemVehicles[item.key]);
+
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -74,9 +186,7 @@ export default function CreateAuctionModal({ isOpen, onClose, onSuccess }) {
           continue;
         }
         const res = await uploadAuctionPhoto(file);
-        if (res && res.url) {
-          setFotos((prev) => [...prev, res.url]);
-        }
+        if (res && res.url) setFotos((prev) => [...prev, res.url]);
       }
     } catch (err) {
       setError('Error al subir una o más imágenes. Inténtalo de nuevo.');
@@ -86,23 +196,24 @@ export default function CreateAuctionModal({ isOpen, onClose, onSuccess }) {
     }
   };
 
-  const removeFoto = (index) => {
-    setFotos((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // Enviar formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!patente.trim()) {
-      setError('La patente de tu vehículo es obligatoria.');
+    if (!vehicle?.chasis) {
+      setError('Ingresa la patente de tu vehículo: la usamos para obtener sus datos y su chasis.');
       return;
     }
-    if (!repuestoSolicitado.trim()) {
-      setError('Indica qué repuesto estás buscando.');
+    const blank = items.findIndex((item) => !item.nombre.trim());
+    if (blank >= 0) {
+      setError(`Indica el nombre del repuesto ${blank + 1}.`);
       return;
     }
-    if (!tiempoMaximoEnvio) {
-      setError('Selecciona el tiempo máximo de envío.');
+    const noCategory = items.findIndex((item) => !item.categoria);
+    if (noCategory >= 0) {
+      setError(`Selecciona la categoría del repuesto ${noCategory + 1}.`);
+      return;
+    }
+    if (itemsMissingVehicle.length > 0) {
+      setError('Hay repuestos para otro vehículo sin patente identificada. Ingresa su patente o desmarca la opción.');
       return;
     }
 
@@ -110,31 +221,38 @@ export default function CreateAuctionModal({ isOpen, onClose, onSuccess }) {
     setError(null);
 
     const payload = {
-      patente: patente.trim().toUpperCase(),
-      marca: marca.trim() || undefined,
-      modelo: modelo.trim() || undefined,
-      anio: anio ? parseInt(anio, 10) : undefined,
-      version: version.trim() || undefined,
-      motor: motor.trim() || undefined,
-      chasis: chasis.trim() || undefined,
-      repuestoSolicitado: repuestoSolicitado.trim(),
-      descripcion: descripcion.trim() || undefined,
-      cantidad: parseInt(cantidad, 10) || 1,
+      patente: normalizePlate(patente),
+      marca: vehicle.marca || undefined,
+      modelo: vehicle.modelo || undefined,
+      anio: vehicle.anio || undefined,
+      version: vehicle.version || undefined,
+      chasis: vehicle.chasis,
+      // El servidor arma el título del pedido a partir de los repuestos; estos campos son el respaldo.
+      repuestoSolicitado: items[0].nombre.trim(),
+      categoria: items[0].categoria,
+      cantidad: totalUnits || 1,
+      items: items.map((item) => ({
+        repuestoSolicitado: item.nombre.trim(),
+        categoria: item.categoria,
+        descripcion: item.descripcion.trim() || undefined,
+        cantidad: parseInt(item.cantidad, 10) || 1,
+        patente: item.otroVehiculo ? normalizePlate(item.patente) : undefined,
+      })),
       tiempoVigenciaHoras: parseInt(tiempoVigenciaHoras, 10) || 48,
       tiempoMaximoEnvio,
       tipoEnvio,
       presupuestoMaximo: presupuestoMaximo ? parseFloat(presupuestoMaximo) : undefined,
-      region: region.trim() || undefined,
-      comuna: comuna.trim() || undefined,
+      region: user?.region || undefined,
+      comuna: user?.comuna || undefined,
       fotos,
     };
 
     try {
-      const creada = await createAuction(payload);
+      const creada = isEditing ? await updateAuction(auction.id, payload) : await createAuction(payload);
       if (onSuccess) onSuccess(creada);
       onClose();
     } catch (err) {
-      setError(err?.message || 'Hubo un error al publicar la necesidad de compra.');
+      setError(err?.message || (isEditing ? 'No pudimos guardar los cambios de tu pedido.' : 'Hubo un error al publicar la necesidad de compra.'));
     } finally {
       setLoading(false);
     }
@@ -143,27 +261,18 @@ export default function CreateAuctionModal({ isOpen, onClose, onSuccess }) {
   return (
     <div className="auction-modal-overlay">
       <div className="auction-modal-card">
-        {/* Cabecera */}
         <div className="auction-modal-header" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: '#ffffff' }}>
           <div>
             <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#38bdf8', fontWeight: 800 }}>
               Bolsa de Subastas RepuesTop
             </div>
-            <h2 className="auction-modal-title" style={{ color: '#ffffff', marginTop: '2px' }}>
-              Publicar Necesidad de Compra
-            </h2>
+            <h2 className="auction-modal-title" style={{ color: '#ffffff', marginTop: '2px' }}>{isEditing ? 'Editar pedido de repuestos' : 'Publicar pedido de repuestos'}</h2>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="auction-modal-close-btn"
-            style={{ color: '#cbd5e1' }}
-          >
+          <button type="button" onClick={onClose} className="auction-modal-close-btn" style={{ color: '#cbd5e1' }}>
             <X size={20} />
           </button>
         </div>
 
-        {/* Formulario */}
         <form onSubmit={handleSubmit} className="auction-modal-body">
           {error && (
             <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '12px', borderRadius: '10px', color: '#b91c1c', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -172,188 +281,96 @@ export default function CreateAuctionModal({ isOpen, onClose, onSuccess }) {
             </div>
           )}
 
-          {/* Sección 1: Vehículo */}
-          <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 800, color: 'var(--auc-navy)', marginBottom: '12px' }}>
-              <Car size={18} style={{ color: 'var(--auc-primary)' }} />
-              <span>Datos del Vehículo</span>
-            </div>
+          {/* Sección 1: Vehículo del pedido — la patente es el único dato */}
+          <div className="acv-section">
+            <div className="acv-title"><Car size={18} /><span>Vehículo del pedido</span></div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-              <div className="auction-form-group">
-                <label className="auction-form-label">
-                  <span>Patente Chilena *</span>
-                  <span className="auction-form-charcount">{patente.length}/12</span>
-                </label>
+            {vehicle ? (
+              <div className="acv-plate is-confirmed">
+                <span className="acv-plate-label">Patente</span>
+                <strong className="acv-plate-value" aria-label="Patente parcialmente oculta">{maskPlate(patente)}</strong>
+                <button type="button" className="acv-plate-change" onClick={() => setPatente('')}>Cambiar patente</button>
+              </div>
+            ) : (
+              <div className="acv-plate">
+                <label className="acv-plate-label" htmlFor="auction-plate">Patente del vehículo *</label>
                 <input
+                  id="auction-plate"
                   type="text"
                   value={patente}
-                  maxLength={12}
-                  onChange={(e) => setPatente(e.target.value.toUpperCase())}
-                  onBlur={() => handleLookupPlate()}
-                  placeholder="Ej: ABCD12"
-                  className="auction-form-input"
-                  style={{ fontFamily: 'monospace', fontWeight: 700 }}
+                  maxLength={8}
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  onChange={(e) => setPatente(e.target.value.toUpperCase().replace(/[^A-Z0-9-\s]/g, ''))}
+                  placeholder="ABCD12"
+                  className="acv-plate-input"
                   required
                 />
-                {lookingUpPlate && (
-                  <span style={{ fontSize: '11px', color: 'var(--auc-primary)', marginTop: '2px' }}>
-                    Consultando patente...
-                  </span>
-                )}
+                <small className="acv-plate-hint">
+                  {lookingUpPlate ? 'Consultando patente…' : 'Con tu patente obtenemos la marca, el modelo, el año y el chasis.'}
+                </small>
               </div>
-
-              <div className="auction-form-group">
-                <label className="auction-form-label">
-                  <span>Marca</span>
-                  <span className="auction-form-charcount">{marca.length}/100</span>
-                </label>
-                <input
-                  type="text"
-                  value={marca}
-                  maxLength={100}
-                  onChange={(e) => setMarca(e.target.value)}
-                  placeholder="Ej: Toyota"
-                  className="auction-form-input"
-                />
-              </div>
-
-              <div className="auction-form-group">
-                <label className="auction-form-label">
-                  <span>Modelo</span>
-                  <span className="auction-form-charcount">{modelo.length}/100</span>
-                </label>
-                <input
-                  type="text"
-                  value={modelo}
-                  maxLength={100}
-                  onChange={(e) => setModelo(e.target.value)}
-                  placeholder="Ej: Yaris"
-                  className="auction-form-input"
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
-              <div className="auction-form-group">
-                <label className="auction-form-label">
-                  <span>Año</span>
-                  <span className="auction-form-charcount">4 dígitos</span>
-                </label>
-                <input
-                  type="number"
-                  value={anio}
-                  maxLength={4}
-                  onChange={(e) => setAnio(e.target.value)}
-                  placeholder="Ej: 2018"
-                  className="auction-form-input"
-                />
-              </div>
-
-              <div className="auction-form-group">
-                <label className="auction-form-label">
-                  <span>Motor / Cilindrada</span>
-                  <span className="auction-form-charcount">{motor.length}/100</span>
-                </label>
-                <input
-                  type="text"
-                  value={motor}
-                  maxLength={100}
-                  onChange={(e) => setMotor(e.target.value)}
-                  placeholder="Ej: 1.5 Dual VVT-i"
-                  className="auction-form-input"
-                />
-              </div>
-
-              <div className="auction-form-group">
-                <label className="auction-form-label">
-                  <span>Chasis / VIN</span>
-                  <span className="auction-form-charcount">{chasis.length}/40</span>
-                </label>
-                <input
-                  type="text"
-                  value={chasis}
-                  maxLength={40}
-                  onChange={(e) => setChasis(e.target.value.toUpperCase())}
-                  placeholder="Opcional"
-                  className="auction-form-input"
-                  style={{ fontFamily: 'monospace' }}
-                />
-              </div>
-            </div>
+            )}
+            {plateError && <p className="acv-error" role="alert"><AlertCircle size={15} /> {plateError}</p>}
+            {vehicle && (
+              <VehicleSummary
+                vehicle={vehicle}
+                note="El chasis lo ven las tiendas para cotizar la pieza exacta; tu patente se muestra siempre parcialmente oculta."
+              />
+            )}
           </div>
 
-          {/* Sección 2: Repuesto Requerido */}
-          <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 800, color: 'var(--auc-navy)', marginBottom: '12px' }}>
-              <ShieldCheck size={18} style={{ color: 'var(--auc-primary)' }} />
-              <span>¿Qué repuesto necesitas?</span>
+          {/* Sección 2: Repuestos del pedido */}
+          <div className="acv-section">
+            <div className="acv-title">
+              <ShieldCheck size={18} /><span>¿Qué repuestos necesitas?</span>
+              <em className="acv-count">{items.length} {items.length === 1 ? 'repuesto' : 'repuestos'} · {totalUnits} {totalUnits === 1 ? 'unidad' : 'unidades'}</em>
+            </div>
+            <p className="acv-lead">Agrega todo lo que necesitas en un solo pedido. Cada tienda podrá ofrecer los repuestos que tenga y tú eliges qué aceptar de cada oferta.</p>
+
+            <div className="acv-items">
+              {items.map((item, index) => (
+                <ItemEditor
+                  key={item.key}
+                  item={item}
+                  index={index}
+                  canRemove={items.length > 1}
+                  categories={HEADER_CATEGORIES}
+                  onChange={changeItem}
+                  onRemove={removeItem}
+                  onVehicle={registerVehicle}
+                />
+              ))}
             </div>
 
-            <div className="auction-form-group" style={{ marginBottom: '12px' }}>
-              <label className="auction-form-label">
-                <span>Repuesto Solicitado *</span>
-                <span className="auction-form-charcount">{repuestoSolicitado.length}/180</span>
-              </label>
-              <input
-                type="text"
-                value={repuestoSolicitado}
-                maxLength={180}
-                onChange={(e) => setRepuestoSolicitado(e.target.value)}
-                placeholder="Ej: Bomba de agua con empaquetadura"
-                className="auction-form-input"
-                required
-              />
-            </div>
+            <button type="button" className="acv-add-item" onClick={addItem} disabled={items.length >= MAX_ITEMS}>
+              <Plus size={16} /> Agregar otro repuesto
+            </button>
 
-            <div className="auction-form-group" style={{ marginBottom: '14px' }}>
-              <label className="auction-form-label">
-                <span>Descripción de la necesidad o falla</span>
-                <span className="auction-form-charcount">{descripcion.length}/1000</span>
-              </label>
-              <textarea
-                value={descripcion}
-                maxLength={1000}
-                rows={3}
-                onChange={(e) => setDescripcion(e.target.value)}
-                placeholder="Describe el síntoma de la falla, lado (izq/der), detalles específicos..."
-                className="auction-form-textarea"
-              />
-            </div>
+            {(user?.comuna || user?.region) && (
+              <span className="acv-location">Ubicación del pedido: {[user.comuna, user.region].filter(Boolean).join(', ')}</span>
+            )}
 
-            {/* Fotografías */}
-            <div className="auction-form-group">
+            <div className="auction-form-group" style={{ marginTop: '16px' }}>
               <label className="auction-form-label">
-                <span>Fotografías de muestra o falla (Hasta 5 fotos)</span>
+                <span>Fotografías de muestra o falla <em className="auction-optional">(Opcional · hasta 5 fotos)</em></span>
                 <span className="auction-form-charcount">{fotos.length}/5</span>
               </label>
-
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
                 {fotos.map((url, idx) => (
                   <div key={idx} className="auction-photo-thumb-wrap">
                     <img src={url} alt={`Foto ${idx + 1}`} />
-                    <button
-                      type="button"
-                      onClick={() => removeFoto(idx)}
-                      className="auction-photo-remove-btn"
-                    >
+                    <button type="button" onClick={() => setFotos((prev) => prev.filter((_, i) => i !== idx))} className="auction-photo-remove-btn">
                       <Trash2 size={12} />
                     </button>
                   </div>
                 ))}
-
                 {fotos.length < 5 && (
                   <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '72px', height: '72px', border: '2px dashed #cbd5e1', borderRadius: '8px', cursor: 'pointer', background: '#f8fafc' }}>
                     <Upload size={18} style={{ color: '#64748b' }} />
                     <span style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>Subir</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleFileChange}
-                      disabled={uploadingFoto}
-                      style={{ display: 'none' }}
-                    />
+                    <input type="file" accept="image/*" multiple onChange={handleFileChange} disabled={uploadingFoto} style={{ display: 'none' }} />
                   </label>
                 )}
               </div>
@@ -361,38 +378,14 @@ export default function CreateAuctionModal({ isOpen, onClose, onSuccess }) {
             </div>
           </div>
 
-          {/* Sección 3: Condiciones y Tiempos */}
+          {/* Sección 3: Condiciones */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 800, color: 'var(--auc-navy)', marginBottom: '12px' }}>
-              <Clock size={18} style={{ color: 'var(--auc-primary)' }} />
-              <span>Condiciones de Compra y Subasta</span>
-            </div>
+            <div className="acv-title"><Clock size={18} /><span>Condiciones de compra y subasta</span></div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '12px' }}>
               <div className="auction-form-group">
-                <label className="auction-form-label">
-                  <span>Cantidad *</span>
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="999"
-                  value={cantidad}
-                  onChange={(e) => setCantidad(e.target.value)}
-                  className="auction-form-input"
-                  required
-                />
-              </div>
-
-              <div className="auction-form-group">
-                <label className="auction-form-label">
-                  <span>Vigencia para Ofertas</span>
-                </label>
-                <select
-                  value={tiempoVigenciaHoras}
-                  onChange={(e) => setTiempoVigenciaHoras(e.target.value)}
-                  className="auction-form-select"
-                >
+                <label className="auction-form-label"><span>Vigencia para ofertas</span></label>
+                <select value={tiempoVigenciaHoras} onChange={(e) => setTiempoVigenciaHoras(e.target.value)} className="auction-form-select">
                   <option value={24}>24 horas (Urgente)</option>
                   <option value={48}>48 horas (Recomendado)</option>
                   <option value={72}>72 horas (3 días)</option>
@@ -400,18 +393,15 @@ export default function CreateAuctionModal({ isOpen, onClose, onSuccess }) {
                   <option value={168}>7 días</option>
                 </select>
               </div>
-
               <div className="auction-form-group">
                 <label className="auction-form-label">
-                  <span>Presupuesto Máximo (Opcional)</span>
-                  <span className="auction-form-charcount">{presupuestoMaximo.length}/12</span>
+                  <span>Presupuesto máximo del pedido (opcional)</span>
                 </label>
                 <input
                   type="number"
                   value={presupuestoMaximo}
-                  maxLength={12}
                   onChange={(e) => setPresupuestoMaximo(e.target.value)}
-                  placeholder="Ej: 50000"
+                  placeholder="Ej: 150000"
                   className="auction-form-input"
                 />
               </div>
@@ -419,14 +409,8 @@ export default function CreateAuctionModal({ isOpen, onClose, onSuccess }) {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
               <div className="auction-form-group">
-                <label className="auction-form-label">
-                  <span>Plazo Máx. Envío *</span>
-                </label>
-                <select
-                  value={tiempoMaximoEnvio}
-                  onChange={(e) => setTiempoMaximoEnvio(e.target.value)}
-                  className="auction-form-select"
-                >
+                <label className="auction-form-label"><span>Plazo máx. de envío *</span></label>
+                <select value={tiempoMaximoEnvio} onChange={(e) => setTiempoMaximoEnvio(e.target.value)} className="auction-form-select">
                   <option value="Mismo día / Inmediato">Mismo día / Inmediato</option>
                   <option value="24 horas">24 horas</option>
                   <option value="48 horas">48 horas</option>
@@ -434,16 +418,9 @@ export default function CreateAuctionModal({ isOpen, onClose, onSuccess }) {
                   <option value="A convenir">A convenir</option>
                 </select>
               </div>
-
               <div className="auction-form-group">
-                <label className="auction-form-label">
-                  <span>Tipo de Envío *</span>
-                </label>
-                <select
-                  value={tipoEnvio}
-                  onChange={(e) => setTipoEnvio(e.target.value)}
-                  className="auction-form-select"
-                >
+                <label className="auction-form-label"><span>Tipo de envío *</span></label>
+                <select value={tipoEnvio} onChange={(e) => setTipoEnvio(e.target.value)} className="auction-form-select">
                   <option value="Cualquiera (Retiro o Despacho)">Cualquiera (Retiro o Despacho)</option>
                   <option value="Retiro en Tienda">Retiro en Tienda</option>
                   <option value="Despacho a Domicilio">Despacho a Domicilio</option>
@@ -453,26 +430,20 @@ export default function CreateAuctionModal({ isOpen, onClose, onSuccess }) {
             </div>
           </div>
 
-          {/* Footer de Acciones */}
           <div className="auction-modal-footer">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="auction-btn-secondary"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="auction-btn-primary"
-            >
-              {loading ? 'Publicando...' : 'Publicar Necesidad de Compra'}
+            <button type="button" onClick={onClose} disabled={loading} className="auction-btn-secondary">Cancelar</button>
+            <button type="submit" disabled={loading || !vehicle} className="auction-btn-primary">
+              {loading ? (isEditing ? 'Guardando...' : 'Publicando...') : `${isEditing ? 'Guardar cambios' : 'Publicar pedido'} (${items.length} ${items.length === 1 ? 'repuesto' : 'repuestos'})`}
             </button>
           </div>
         </form>
       </div>
     </div>
   );
+}
+
+/* El contenido tiene hooks: se monta solo con el modal abierto. */
+export default function CreateAuctionModal(props) {
+  if (!props.isOpen) return null;
+  return <CreateAuctionModalContent {...props} />;
 }

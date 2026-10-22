@@ -32,6 +32,8 @@ export const ROUTES = {
   adsWall: '/mural-anuncios',
   auctions: '/subastas',
   auctionDetail: '/subastas/:id',
+  // Pago de las ofertas aceptadas de una subasta: un pedido de varias tiendas.
+  auctionCheckout: '/subastas/:id/pago',
   adDetail: '/mural-anuncios/:adId',
   sellerRegister: '/vender',
   purchaseSuccess: '/compra-exitosa',
@@ -92,6 +94,10 @@ export const PROFILE_TABS = [
   // en el sidebar y con su panel implementado, pero faltaba aca: la ruta no se
   // reconocia y `/perfil/mis_preguntas` caia en el 404.
   'mis_preguntas',
+  // Compra por subasta: publicar una necesidad, su historial y el seguimiento hasta la compra.
+  'subastas',
+  // Seguimiento de las ofertas que envió una tienda a pedidos de subasta.
+  'gestion_subastas',
 ];
 
 /** Slug legible para URLs de producto/tienda: "Pastillas de freno" -> "pastillas-de-freno" */
@@ -296,5 +302,9 @@ export function catalogAdvancedFiltersFromParams(searchParams) {
 
 export function auctionDetailPath(id) {
   return `/subastas/${encodeURIComponent(String(id))}`;
+}
+
+export function auctionCheckoutPath(id) {
+  return `/subastas/${encodeURIComponent(String(id))}/pago`;
 }
 

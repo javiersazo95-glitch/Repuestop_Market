@@ -25,6 +25,7 @@ const AboutPage = lazy(() => import('../pages/AboutPage'));
 const AdsWallPage = lazy(() => import('../pages/AdsWallPage'));
 const AuctionsPage = lazy(() => import('../pages/AuctionsPage'));
 const AuctionDetailPage = lazy(() => import('../pages/AuctionDetailPage'));
+const AuctionCheckoutPage = lazy(() => import('../pages/AuctionCheckoutPage'));
 const AdDetailPage = lazy(() => import('../pages/AdDetailPage'));
 const CartPage = lazy(() => import('../pages/CartPage'));
 const CheckoutPage = lazy(() => import('../pages/CheckoutPage'));
@@ -52,6 +53,7 @@ export default function AppRoutes() {
               <Route path={ROUTES.adsWall} element={<AdsWallPage />} />
               <Route path={ROUTES.auctions} element={<AuctionsPage />} />
               <Route path={ROUTES.auctionDetail} element={<AuctionDetailPage />} />
+              <Route path={ROUTES.auctionCheckout} element={<RequireAuth><AuctionCheckoutPage /></RequireAuth>} />
               <Route path={ROUTES.adDetail} element={<AdDetailPage />} />
               <Route path={ROUTES.about} element={<AboutPage />} />
               {/* El carrito es público: un invitado tiene que poder revisarlo antes de

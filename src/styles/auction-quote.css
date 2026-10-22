@@ -1,0 +1,177 @@
+/* Formulario de oferta de una tienda: elegir repuesto (sugerido por patente), fijar precio y ver el cumplimiento. */
+.aq-overlay { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(3px); font-family: var(--font-primary, inherit); }
+.aq-modal { display: flex; flex-direction: column; width: 100%; max-width: 1040px; max-height: min(92vh, 940px); background: #f7f9fb; border-radius: 16px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3); overflow: hidden; color: #243442; }
+.aq-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 22px; background: #fff; border-bottom: 1px solid #dbe6f3; }
+.aq-eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #0056bf; }
+.aq-head h2 { margin: 3px 0 0; font-family: var(--font-display, inherit); font-size: 20px; font-weight: 800; color: #0f172a; }
+.aq-head p { margin: 3px 0 0; font-size: 12.5px; color: #5a6b7a; }
+.aq-head b { color: #243442; }
+.aq-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.03em; }
+.aq-close { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: none; border-radius: 50%; background: transparent; color: #5a6b7a; cursor: pointer; }
+.aq-close:hover { background: #f3f5f7; }
+
+.aq-body { display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; flex: 1; }
+.aq-main { grid-column: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 16px 18px; min-height: 0; }
+.aq-side { grid-column: 2; grid-row: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 16px 0; min-height: 0; }
+.aq-foot { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; padding: 12px 22px; background: #fff; border-top: 1px solid #dbe6f3; }
+.aq-foot-actions { display: flex; gap: 8px; margin-left: auto; }
+
+.aq-step { padding: 16px 18px; background: #fff; border: 1px solid #dbe6f3; border-radius: 12px; box-shadow: 0 1px 2px rgba(15, 40, 90, 0.04); }
+.aq-step h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font-size: 15.5px; font-weight: 800; color: #243442; }
+.aq-step h3 span { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: #0056bf; color: #fff; font-size: 12px; font-weight: 800; }
+.aq-step.is-locked .aq-fields { opacity: 0.55; }
+
+.aq-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; margin-bottom: 12px; background: #f3f5f7; border-radius: 10px; }
+.aq-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; border: none; border-radius: 8px; background: transparent; font-family: inherit; font-size: 12.5px; font-weight: 700; color: #5a6b7a; cursor: pointer; }
+.aq-tabs button.active { background: #fff; color: #0056bf; box-shadow: 0 1px 3px rgba(15, 40, 90, 0.12); }
+
+.aq-search-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 10px; }
+.aq-search { flex: 1 1 240px; display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 12px; border: 1px solid #d9e0e7; border-radius: 10px; background: #fff; color: #5a6b7a; }
+.aq-search:focus-within { border-color: #0056bf; box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.12); }
+.aq-search input { flex: 1; min-width: 0; border: none; outline: none; background: none; font-family: inherit; font-size: 13px; color: #243442; }
+.aq-search button { display: inline-flex; border: none; background: none; color: #5a6b7a; cursor: pointer; padding: 2px; }
+.aq-switch { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: #3b4e5d; cursor: pointer; }
+.aq-switch input { width: 16px; height: 16px; accent-color: #0056bf; }
+
+.aq-parts { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; padding: 2px; }
+.aq-hint { display: flex; align-items: center; gap: 7px; margin: 0 0 2px; font-size: 12px; font-weight: 600; color: #0056bf; }
+.aq-part { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 14px; align-items: center; width: 100%; padding: 10px 12px; border: 1.5px solid #e6eaef; border-radius: 12px; background: #fff; text-align: left; font-family: inherit; cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease; }
+.aq-part:hover { border-color: #bfd6f7; background: #fbfdff; }
+.aq-part.is-selected { border-color: #0056bf; background: #f5f9ff; box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.1); }
+.aq-part-photo { display: flex; align-items: center; justify-content: center; width: 72px; height: 72px; border-radius: 10px; background: #f3f5f7; color: #8a97a5; overflow: hidden; }
+.aq-part-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.aq-part-body { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.aq-part-body > strong { font-size: 13px; font-weight: 800; color: #0f172a; overflow-wrap: anywhere; }
+.aq-part-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.aq-part-tags em { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: #f3f5f7; font-style: normal; font-size: 11px; font-weight: 700; color: #3b4e5d; }
+.aq-part-tags em.is-ok { background: #eafbf1; color: #0e7038; }
+.aq-part-tags em.is-warn { background: #fff7e6; color: #9a5a00; }
+.aq-part-tags em.is-bad { background: #fff0f0; color: #b42318; }
+.aq-part-meta { display: flex; flex-wrap: wrap; gap: 3px 14px; font-size: 12px; font-weight: 600; color: #243442; }
+.aq-part-meta small { font-size: 11px; font-weight: 600; color: #8a97a5; }
+.aq-part-price { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.aq-part-price small { font-size: 11px; color: #8a97a5; }
+.aq-part-price strong { font-size: 15.5px; font-weight: 800; color: #0056bf; }
+.aq-part-check { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 12px; font-weight: 700; color: #0056bf; }
+.aq-skeleton { height: 94px; border-style: dashed; background: linear-gradient(90deg, #f3f5f7 25%, #e9edf1 50%, #f3f5f7 75%); background-size: 200% 100%; animation: aq-shimmer 1.3s linear infinite; cursor: default; }
+@keyframes aq-shimmer { to { background-position: -200% 0; } }
+
+.aq-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 12px; text-align: center; color: #5a6b7a; border: 1.5px dashed #d9e0e7; border-radius: 12px; }
+.aq-empty strong { font-size: 13px; color: #243442; }
+.aq-empty p { margin: 0; font-size: 12px; }
+.aq-empty > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
+
+.aq-new { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 12px; background: #f5f9ff; border: 1px solid #bfd6f7; }
+.aq-new p { margin: 0; font-size: 12.5px; line-height: 1.5; color: #3b4e5d; }
+.aq-new ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.aq-new li { display: flex; align-items: flex-start; gap: 10px; font-size: 12.5px; line-height: 1.45; color: #243442; }
+.aq-new li span { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 1.5px solid #0056bf; color: #0056bf; font-size: 11px; font-weight: 800; }
+.aq-new .aq-btn-primary { align-self: flex-start; }
+
+.aq-notice { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; background: #f3f5f7; font-size: 12.5px; font-weight: 600; color: #3b4e5d; }
+.aq-notice svg { flex-shrink: 0; margin-top: 1px; }
+.aq-notice.is-ok { background: #eafbf1; color: #0e7038; }
+.aq-notice.is-bad { background: #fff0f0; color: #b42318; margin: 0; }
+.aq-linked { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 9px 12px; border-radius: 10px; background: #eafbf1; font-size: 12.5px; color: #0e7038; }
+.aq-linked span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.aq-linked button { border: none; background: none; font-family: inherit; font-size: 12.5px; font-weight: 700; color: #0056bf; cursor: pointer; text-decoration: underline; }
+
+.aq-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; margin: 0; padding: 0; border: none; min-width: 0; }
+.aq-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.aq-field > span { font-size: 12.5px; font-weight: 700; color: #243442; }
+.aq-field > span small, .aq-field > small { font-size: 11.5px; font-weight: 500; color: #8a97a5; }
+.aq-field input, .aq-field select, .aq-field textarea { width: 100%; box-sizing: border-box; min-height: 42px; padding: 0 12px; border: 1px solid #d9e0e7; border-radius: 10px; background: #fff; font-family: inherit; font-size: 13px; color: #243442; }
+.aq-field textarea { padding: 10px 12px; resize: vertical; }
+.aq-field input:focus, .aq-field select:focus, .aq-field textarea:focus { outline: none; border-color: #0056bf; box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.12); }
+.aq-field-wide { grid-column: 1 / -1; }
+.aq-field-price { grid-column: 1 / -1; }
+.aq-money { display: flex; align-items: center; border: 2px solid #0056bf; border-radius: 12px; background: #fff; overflow: hidden; }
+.aq-money i { padding: 0 6px 0 14px; font-style: normal; font-size: 20px; font-weight: 800; color: #0056bf; }
+.aq-money input { border: none !important; box-shadow: none !important; min-height: 50px; font-family: var(--font-display, inherit); font-size: 22px; font-weight: 800; letter-spacing: -0.2px; }
+
+.aq-card { padding: 14px 16px; background: #fff; border: 1px solid #dbe6f3; border-radius: 12px; box-shadow: 0 1px 2px rgba(15, 40, 90, 0.04); }
+.aq-card h4 { margin: 0 0 10px; font-size: 12.5px; font-weight: 800; color: #243442; }
+.aq-card dl { margin: 0; display: grid; gap: 8px; }
+.aq-card dl > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.aq-card dt { font-size: 12px; color: #5a6b7a; }
+.aq-card dd { margin: 0; font-size: 12.5px; font-weight: 700; color: #0f172a; text-align: right; }
+.aq-fit ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.aq-fit li { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.4; color: #3b4e5d; }
+.aq-fit li span { display: flex; flex-direction: column; min-width: 0; }
+.aq-fit li strong { font-size: 12px; font-weight: 800; color: #243442; }
+.aq-fit li svg { flex-shrink: 0; margin-top: 1px; }
+.aq-fit li.is-ok svg { color: #18a957; } .aq-fit li.is-warn svg { color: #d97706; } .aq-fit li.is-bad svg { color: #d92d20; } .aq-fit li.is-neutral svg { color: #8a97a5; }
+.aq-fit p { margin: 0; font-size: 12px; line-height: 1.5; color: #5a6b7a; }
+.aq-fit.is-ok { background: #f4fcf7; border-color: #bbf7d0; }
+.aq-fit.is-warn { background: #fffbf1; border-color: #fde3a7; }
+.aq-fit.is-bad { background: #fff7f6; border-color: #fecaca; }
+.aq-total { display: flex; flex-direction: column; gap: 2px; background: linear-gradient(135deg, #0a2149, #0056bf); border: none; color: #fff; }
+.aq-total small { font-size: 12px; color: #cfe1fa; }
+.aq-total strong { font-family: var(--font-display, inherit); font-size: 28px; line-height: 1.1; font-weight: 800; }
+.aq-total span { font-size: 12px; color: #cfe1fa; }
+.aq-secure { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 12px; color: #5a6b7a; }
+.aq-secure svg { color: #0e7038; flex-shrink: 0; }
+.aq-pending { margin: 0; font-size: 12.5px; font-weight: 600; color: #9a5a00; }
+
+.aq-btn-primary, .aq-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; padding: 0 20px; border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.aq-btn-primary { border: none; background: #0056bf; color: #fff; }
+.aq-btn-primary:hover:not(:disabled) { background: #00459a; }
+.aq-btn-outline { border: 1.5px solid #d9e0e7; background: #fff; color: #3b4e5d; }
+.aq-btn-primary:disabled, .aq-btn-outline:disabled { opacity: 0.55; cursor: default; }
+.aq-spin { animation: aq-spin 0.9s linear infinite; }
+@keyframes aq-spin { to { transform: rotate(360deg); } }
+
+.aq-sent { max-width: 460px; align-items: center; text-align: center; gap: 8px; padding: 32px 28px; background: #fff; }
+.aq-sent-icon { display: inline-flex; color: #18a957; }
+.aq-sent h2 { margin: 0; font-family: var(--font-display, inherit); font-size: 22px; font-weight: 800; color: #0f172a; }
+.aq-sent p { margin: 0 0 8px; font-size: 13px; color: #5a6b7a; }
+.aq-sent dl { width: 100%; margin: 0 0 12px; padding: 12px 14px; border-radius: 10px; background: #f5f9ff; border: 1px solid #bfd6f7; display: grid; gap: 8px; text-align: left; }
+.aq-sent dl > div { display: flex; justify-content: space-between; gap: 12px; }
+.aq-sent dt { font-size: 12px; color: #5a6b7a; }
+.aq-sent dd { margin: 0; font-size: 12.5px; font-weight: 700; color: #0f172a; text-align: right; }
+
+/* El formulario de carga de repuesto se abre encima de este modal. */
+.aq-nested .catalog-product-modal-backdrop { z-index: 10020; }
+
+@media (max-width: 900px) {
+  .aq-overlay { padding: 0; align-items: flex-end; }
+  .aq-modal { max-height: 96vh; border-radius: 16px 16px 0 0; }
+  .aq-body { grid-template-columns: minmax(0, 1fr); overflow-y: auto; grid-template-rows: auto; }
+  .aq-main, .aq-side { overflow: visible; grid-column: 1; grid-row: auto; }
+  .aq-side { padding: 0 18px 16px; }
+  .aq-foot { position: sticky; bottom: 0; }
+  .aq-part { grid-template-columns: 56px minmax(0, 1fr); }
+  .aq-part-photo { width: 56px; height: 56px; }
+  .aq-part-price { grid-column: 1 / -1; flex-direction: row; align-items: baseline; gap: 8px; }
+  .aq-fields { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Ofrecer por repuesto: cada repuesto del pedido es una fila que la tienda marca si lo tiene */
+.aq-lead { margin: -4px 0 12px; font-size: 12.5px; line-height: 1.5; color: #5a6b7a; }
+.aq-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.aq-item { border: 1.5px solid #e6eaef; border-radius: 12px; background: #fff; overflow: hidden; transition: border-color 0.15s ease; }
+.aq-item.is-on { border-color: #bfd6f7; box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.06); }
+.aq-item-head { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; cursor: pointer; }
+.aq-item-head > input { width: 18px; height: 18px; margin-top: 2px; accent-color: #0056bf; flex-shrink: 0; }
+.aq-item-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.aq-item-title strong { font-size: 13.5px; font-weight: 800; color: #0f172a; overflow-wrap: anywhere; }
+.aq-item-title strong small { font-size: 12.5px; font-weight: 700; color: #5a6b7a; }
+.aq-item-title > span { font-size: 12px; color: #5a6b7a; }
+.aq-item-other { margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: #fff7e6; font-style: normal; font-size: 11px; font-weight: 700; color: #9a5a00; }
+.aq-item-desc { color: #3b4e5d !important; }
+.aq-item-have { align-self: center; display: inline-flex; align-items: center; gap: 5px; padding: 3px 12px; border-radius: 999px; background: #f3f5f7; font-size: 12px; font-weight: 700; color: #5a6b7a; white-space: nowrap; }
+.aq-item-have.is-on { background: #eafbf1; color: #0e7038; }
+.aq-item-body { padding: 0 14px 14px 44px; display: flex; flex-direction: column; gap: 10px; }
+.aq-item-price { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.aq-item-price .aq-field { flex: 1 1 200px; }
+.aq-item-subtotal { display: flex; flex-direction: column; align-items: flex-end; padding-bottom: 8px; }
+.aq-item-subtotal small { font-size: 11.5px; color: #8a97a5; }
+.aq-item-subtotal strong { font-size: 17px; font-weight: 800; color: #0056bf; }
+.aq-item .aq-parts { max-height: 260px; }
+.aq-item .aq-money input { min-height: 44px; font-size: 18px; }
+.aq-link-btn { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 4px 0; border: none; background: none; font-family: inherit; font-size: 12.5px; font-weight: 700; color: #0056bf; cursor: pointer; text-decoration: underline; }
+.aq-notice.is-warn { background: #fff7e6; color: #9a5a00; margin: 10px 0 0; }
+@media (max-width: 900px) { .aq-item-body { padding-left: 14px; } }
+
+.aq-delivery-reason { display: block; margin-top: 4px; color: #9a5a00; }
+.aq-delivery-reason.is-blocking { color: #b42318; font-weight: 700; }

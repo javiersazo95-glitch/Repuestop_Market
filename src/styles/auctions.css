@@ -579,8 +579,8 @@
 
 /* Sidebar Resumen */
 .auction-summary-card {
-  position: sticky;
-  top: 20px;
+  /* Ya no es pegajosa: debajo van la tarjeta del comprador y los comentarios, que pueden ser largos. */
+  position: static;
 }
 
 .auction-summary-timer {

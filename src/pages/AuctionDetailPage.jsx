@@ -1,39 +1,108 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  Gavel, Clock, MapPin, Package, Truck, ShieldCheck, Trophy, Lock,
-  ChevronLeft, Store, Star, AlertCircle, CheckCircle2, Info
+  AlertCircle, ArrowRight, CalendarDays, Car, ChevronRight, Clock, Gavel,
+  Bookmark, BookmarkCheck, HelpCircle, Home, ListTree, Lock, Maximize2, X, MapPin, Package, PackageCheck, ShieldCheck, ShoppingCart, Trophy,
 } from 'lucide-react';
-import { getAuctionDetail, selectWinningQuote } from '../services/auctionApi';
-import { ROUTES } from '../routes/paths';
+import { getAuctionDetail, setAuctionSaved } from '../services/auctionApi';
+import { ROUTES, profileOrderPath, profilePurchasePath } from '../routes/paths';
 import { resolveMediaUrl } from '../services/api';
 import AuctionQuoteModal from '../components/AuctionQuoteModal';
+import AuctionBuyerCard from '../components/AuctionBuyerCard';
+import AuctionCommentsPanel from '../components/AuctionCommentsPanel';
+import AuctionOffersModal from '../components/AuctionOffersModal';
+import AuctionPurchaseModal from '../components/AuctionPurchaseModal';
+import AuctionItemsCard from '../components/AuctionItemsCard';
+import AuctionInfoTip from '../components/AuctionInfoTip';
+import AuctionImageViewer from '../components/AuctionImageViewer';
+import ShareLinkButton from '../components/ShareLinkButton';
+import AuctionAvatar from '../components/AuctionAvatar';
 import { useAuth } from '../context/AuthContext';
+import { useDocumentTitle } from '../routes/useDocumentTitle';
 import '../styles/auctions.css';
+import '../styles/auction-social.css';
+import '../styles/auction-detail.css';
+
+const HOUR = 60 * 60 * 1000;
 
 function formatCLP(value) {
   if (value == null) return '';
-  return new Intl.NumberFormat('es-CL', {
-    style: 'currency',
-    currency: 'CLP',
-    maximumFractionDigits: 0,
-  }).format(value);
+  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(value);
 }
 
 function formatDate(isoStr) {
   if (!isoStr) return '';
   try {
-    const d = new Date(isoStr);
-    return d.toLocaleString('es-CL', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return new Date(isoStr).toLocaleString('es-CL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   } catch {
     return isoStr;
   }
+}
+
+/** "1 día 04 h 23 min" / "04 h 23 min" / "23 min": mismo formato que el listado de subastas. */
+function formatRemaining(ms) {
+  const totalMinutes = Math.max(0, Math.floor(ms / 60000));
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days} ${days === 1 ? 'día' : 'días'} ${String(hours).padStart(2, '0')} h ${String(minutes).padStart(2, '0')} min`;
+  if (hours > 0) return `${String(hours).padStart(2, '0')} h ${String(minutes).padStart(2, '0')} min`;
+  return `${minutes} min`;
+}
+
+function QuoteRow({ quote, index }) {
+  if (quote.esPrivada) {
+    return (
+      <li className={`av-offer is-locked ${quote.aceptada ? 'is-accepted' : ''}`}>
+        <span className="av-offer-rank">{index + 1}</span>
+        <AuctionAvatar className="av-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+        <div className="av-offer-info">
+          <strong>
+            {quote.nombreTienda || 'Tienda verificada'}
+            {quote.tiendaRating ? <em> ★ {quote.tiendaRating}</em> : null}
+          </strong>
+          <small>{quote.aceptada ? <><Trophy size={11} /> Oferta aceptada</> : <><Lock size={11} /> Oferta confidencial · {formatDate(quote.fechaEnvio)}</>}</small>
+        </div>
+      </li>
+    );
+  }
+
+  const lineas = quote.lineas || [];
+  const valid = lineas.filter((line) => line.vigente);
+  const missing = quote.itemsFaltantes || [];
+  return (
+    <li className={`av-offer is-open ${quote.aceptada ? 'is-winner' : ''}`}>
+      {quote.aceptada && <span className="av-offer-ribbon"><Trophy size={13} /> Oferta aceptada</span>}
+      <div className="av-offer-top">
+        <AuctionAvatar className="av-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+        <div className="av-offer-info">
+          <strong>
+            {quote.nombreTienda}
+            {quote.tiendaRating ? <em> ★ {quote.tiendaRating}</em> : null}
+          </strong>
+          <small>Enviada {formatDate(quote.fechaEnvio)}</small>
+        </div>
+        <span className="av-offer-price">{formatCLP(valid.length ? valid.reduce((sum, line) => sum + Number(line.precioTotal || 0), 0) : (quote.precioFinal || quote.precio))}</span>
+      </div>
+      {lineas.length > 0 ? (
+        <ul className="av-offer-lines">
+          {lineas.map((line) => (
+            <li key={line.itemId} className={line.vigente ? '' : 'is-void'}>
+              <span>{line.repuesto} <small>× {line.cantidad}</small></span>
+              <b>{formatCLP(line.precioTotal)}</b>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="av-offer-product">{quote.productoTitulo || 'Repuesto cotizado según requerimiento'}</p>
+      )}
+      {missing.length > 0 && <p className="av-offer-missing">Faltan en esta oferta: {missing.join(', ')}</p>}
+      <small className="av-offer-terms">
+        Garantía: <strong>{quote.garantia || 'Garantía legal'}</strong> · Plazo: <strong>{quote.tiempoEntrega || 'A coordinar'}</strong>
+      </small>
+      {quote.notas && <p className="av-offer-notes">“{quote.notas}”</p>}
+    </li>
+  );
 }
 
 export default function AuctionDetailPage() {
@@ -45,20 +114,48 @@ export default function AuctionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
 
-  // Modal para cotizar (vendedor)
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
-  const [buyingQuoteId, setBuyingQuoteId] = useState(null);
+  const [isOffersOpen, setIsOffersOpen] = useState(false);
+  const [isAllOffersOpen, setIsAllOffersOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [saveNotice, setSaveNotice] = useState('');
+  const [isPurchaseOpen, setIsPurchaseOpen] = useState(false);
+
+  useDocumentTitle(auction?.repuestoSolicitado ? `${auction.repuestoSolicitado} · Subasta` : 'Detalle de subasta');
 
   const isSeller = String(user?.role || role || '').toUpperCase() === 'SELLER' || Boolean(user?.sellerId);
   const sellerId = user?.sellerId || user?.proveedorId;
+
+  const flashSaveNotice = (text) => {
+    setSaveNotice(text);
+    setTimeout(() => setSaveNotice(''), 2600);
+  };
+
+  const toggleSaved = async () => {
+    if (!user) { flashSaveNotice('Inicia sesión para guardar esta solicitud.'); return; }
+    setSaveBusy(true);
+    try {
+      await setAuctionSaved(id, !saved);
+      setSaved(!saved);
+      flashSaveNotice(!saved ? 'Solicitud guardada. La verás en Gestión subastas.' : 'Solicitud quitada de guardadas.');
+    } catch (err) {
+      flashSaveNotice(err?.message || 'No pudimos guardar la solicitud.');
+    } finally {
+      setSaveBusy(false);
+    }
+  };
 
   const loadDetail = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getAuctionDetail(id);
-      setAuction(data);
+      const detail = await getAuctionDetail(id);
+      setAuction(detail);
+      setSaved(Boolean(detail?.guardada));
     } catch (err) {
       console.error('Error cargando detalle subasta:', err);
       setError(err?.message || 'No pudimos cargar los detalles de esta subasta.');
@@ -71,371 +168,332 @@ export default function AuctionDetailPage() {
     loadDetail();
   }, [id]);
 
-  const handleSelectWinningQuote = async (quote) => {
-    const confirmMessage = `¿Deseas seleccionar la cotización de "${quote.nombreTienda}" por ${formatCLP(quote.precioFinal || quote.precio)} como GANADORA y proceder a la compra?`;
-    if (!window.confirm(confirmMessage)) return;
+  // Cuenta regresiva en vivo.
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30 * 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-    setBuyingQuoteId(quote.id);
-    try {
-      await selectWinningQuote(auction.id, quote.id);
-      alert('¡Felicitaciones! Has seleccionado la cotización ganadora. Se ha notificado a la tienda.');
-      loadDetail();
-    } catch (err) {
-      alert(err?.message || 'Error al procesar la selección de la cotización.');
-    } finally {
-      setBuyingQuoteId(null);
-    }
-  };
-
-  if (loading) {
+  if (loading && !auction) {
     return (
-      <div className="auctions-page" style={{ paddingTop: '40px' }}>
-        <div className="auctions-container">
-          <div className="auctions-empty-state">
-            <p>Cargando información de la subasta...</p>
-          </div>
-        </div>
-      </div>
+      <main className="av-page">
+        <div className="container av-shell"><div className="as-card av-state"><p className="as-muted">Cargando información de la subasta…</p></div></div>
+      </main>
     );
   }
 
   if (error || !auction) {
     return (
-      <div className="auctions-page" style={{ paddingTop: '60px' }}>
-        <div className="auctions-container">
-          <div className="auctions-empty-state">
-            <div className="auctions-empty-icon" style={{ color: '#dc2626', background: '#fef2f2' }}>
-              <AlertCircle size={32} />
-            </div>
-            <h3 className="auctions-empty-title">Subasta no disponible</h3>
-            <p className="auctions-empty-desc">{error || 'La necesidad de compra no existe o fue retirada.'}</p>
-            <button
-              type="button"
-              onClick={() => navigate(ROUTES.auctions)}
-              className="auction-btn-primary"
-            >
+      <main className="av-page">
+        <div className="container av-shell">
+          <div className="as-card av-state">
+            <span className="av-state-icon"><AlertCircle size={30} /></span>
+            <h1>Subasta no disponible</h1>
+            <p className="as-muted">{error || 'La necesidad de compra no existe o fue retirada.'}</p>
+            <button type="button" className="as-btn-primary" style={{ maxWidth: 220 }} onClick={() => navigate(ROUTES.auctions)}>
               Volver a Subastas
             </button>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   const {
-    patente,
-    marca,
-    modelo,
-    anio,
-    version,
-    motor,
-    chasis,
-    repuestoSolicitado,
-    descripcion,
-    cantidad,
-    tiempoMaximoEnvio,
-    tipoEnvio,
-    presupuestoMaximo,
-    region,
-    comuna,
-    estado,
-    fechaLimite,
-    segundosRestantes = 0,
-    fotos = [],
-    cotizaciones = [],
-    esCreador,
-    miCotizacion,
-    cotizacionGanadoraId,
+    patenteAnonimizada, marca, modelo, anio, version, motor, chasis, repuestoSolicitado, cantidad,
+    tiempoMaximoEnvio, tipoEnvio, presupuestoMaximo, region, comuna, estado, fechaLimite,
+    createdAt, categoria, pedidoId, fotos = [], cotizaciones = [], esCreador, miCotizacion, items = [], itemsPendientes = 0,
   } = auction;
 
+  const remainingMs = new Date(fechaLimite).getTime() - now;
   const isFinalizada = estado === 'FINALIZADA';
-  const isExpirada = estado === 'EXPIRADA' || (!isFinalizada && segundosRestantes <= 0);
-  const fallbackPhoto = 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=800&q=80';
-  const currentPhoto = fotos[activePhotoIndex] ? resolveMediaUrl(fotos[activePhotoIndex]) : fallbackPhoto;
+  const isExpirada = estado === 'EXPIRADA' || estado === 'CANCELADA' || (!isFinalizada && remainingMs <= 0);
+  const isOpen = !isFinalizada && !isExpirada;
+  const isUrgent = isOpen && remainingMs < HOUR;
+  const statusKey = isFinalizada || isExpirada ? 'finalizada' : isUrgent ? 'por-finalizar' : 'activa';
+  const statusLabel = isFinalizada ? 'Finalizada' : isExpirada ? 'Expirada' : isUrgent ? 'Por finalizar' : 'Activa';
+
+  const photos = fotos.map((url) => resolveMediaUrl(url));
+  const currentPhoto = photos[activePhotoIndex] || null;
+  const location = [comuna, region].filter(Boolean).join(', ');
+  const canQuote = isSeller && !esCreador && isOpen && itemsPendientes > 0 && !miCotizacion?.aceptada;
+  const acceptedCount = cotizaciones.filter((quote) => quote.aceptada).length;
+  const totalUnits = items.reduce((sum, item) => sum + item.cantidad, 0) || cantidad;
 
   return (
-    <div className="auctions-page">
-      {/* Barra superior de navegación */}
-      <div className="auction-detail-header-bar">
-        <div className="auctions-container">
-          <div className="auction-breadcrumb">
-            <button
-              type="button"
-              onClick={() => navigate(ROUTES.auctions)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--auc-primary)', fontWeight: 700 }}
-            >
-              <ChevronLeft size={16} /> Volver a Subastas
-            </button>
-            <span>/</span>
-            <span>{marca} {modelo}</span>
-            <span>/</span>
-            <span style={{ color: 'var(--auc-navy)', fontWeight: 700 }}>{repuestoSolicitado}</span>
-          </div>
-        </div>
-      </div>
+    <main className="av-page">
+      <div className="container av-shell">
+        <nav className="av-breadcrumb" aria-label="Ruta de navegación">
+          <Link to={ROUTES.home} aria-label="Inicio"><Home size={16} /></Link>
+          <ChevronRight size={14} />
+          <Link to={ROUTES.auctions}>Subastas</Link>
+          <ChevronRight size={14} />
+          <span aria-current="page">Detalle de necesidad de compra</span>
+        </nav>
 
-      <div className="auctions-container">
-        <div className="auction-detail-layout">
-          {/* Columna Principal: Galería, Ficha y Cotizaciones */}
-          <div>
-            {/* Panel Principal */}
-            <div className="auction-card-panel">
-              {/* Galería */}
-              <div className="auction-gallery-main">
-                <img
-                  src={currentPhoto}
-                  alt={repuestoSolicitado}
-                  className="auction-gallery-img"
-                />
-              </div>
-
-              {fotos.length > 1 && (
-                <div className="auction-gallery-thumbs">
-                  {fotos.map((f, idx) => (
-                    <img
-                      key={idx}
-                      src={resolveMediaUrl(f)}
-                      alt={`Thumb ${idx}`}
-                      onClick={() => setActivePhotoIndex(idx)}
-                      className={`auction-gallery-thumb ${activePhotoIndex === idx ? 'active' : ''}`}
-                    />
-                  ))}
+        <div className="av-layout">
+          <div className="av-main">
+            <div className="av-panel">
+              <div className="as-card av-gallery">
+                <div className="av-gallery-main">
+                  {currentPhoto ? <img src={currentPhoto} alt={repuestoSolicitado} /> : <Package size={56} />}
+                  {currentPhoto && (
+                    <button type="button" className="av-view-image" onClick={() => setViewerOpen(true)} aria-label="Ver imagen en grande">
+                      <Maximize2 size={15} /> Ver imagen
+                    </button>
+                  )}
                 </div>
-              )}
-
-              {/* Título y Estado */}
-              <div style={{ marginTop: '20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
-                  <span className="auction-card-vehicle-tag" style={{ fontSize: '14px' }}>
-                    {marca} {modelo} {anio ? `(${anio})` : ''} {version ? `· ${version}` : ''}
-                  </span>
-                  <span style={{ fontFamily: 'monospace', background: '#f1f5f9', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: 700 }}>
-                    {patente || 'PATENTE'}
-                  </span>
-                </div>
-
-                <h1 style={{ fontSize: '26px', fontWeight: 850, color: 'var(--auc-navy)', marginBottom: '12px', lineHeight: 1.25 }}>
-                  {repuestoSolicitado}
-                </h1>
-
-                {descripcion && (
-                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', marginBottom: '20px', fontSize: '14px', lineHeight: 1.5 }}>
-                    <strong style={{ display: 'block', color: 'var(--auc-navy)', marginBottom: '6px' }}>
-                      Descripción de la falla o requerimiento:
-                    </strong>
-                    <p style={{ color: '#475569', whiteSpace: 'pre-line' }}>{descripcion}</p>
+                {photos.length > 1 && (
+                  <div className="av-gallery-thumbs">
+                    {photos.map((url, index) => (
+                      <button
+                        key={url}
+                        type="button"
+                        className={index === activePhotoIndex ? 'active' : ''}
+                        onClick={() => setActivePhotoIndex(index)}
+                        aria-label={`Ver foto ${index + 1}`}
+                      >
+                        <img src={url} alt="" />
+                      </button>
+                    ))}
                   </div>
                 )}
-              </div>
-
-              {/* Ficha Técnica */}
-              <h2 className="auction-panel-title">Ficha del Requerimiento</h2>
-              <div className="auction-specs-grid">
-                <div className="auction-spec-box">
-                  <div className="auction-spec-label">Cantidad</div>
-                  <div className="auction-spec-val">{cantidad} un.</div>
-                </div>
-                <div className="auction-spec-box">
-                  <div className="auction-spec-label">Plazo Máx. Envío</div>
-                  <div className="auction-spec-val">{tiempoMaximoEnvio || 'A coordinar'}</div>
-                </div>
-                <div className="auction-spec-box">
-                  <div className="auction-spec-label">Tipo de Envío</div>
-                  <div className="auction-spec-val">{tipoEnvio || 'Cualquiera'}</div>
-                </div>
-                <div className="auction-spec-box">
-                  <div className="auction-spec-label">Presupuesto Tope</div>
-                  <div className="auction-spec-val" style={{ color: '#059669' }}>
-                    {presupuestoMaximo ? formatCLP(presupuestoMaximo) : 'Sin tope'}
-                  </div>
-                </div>
-                <div className="auction-spec-box">
-                  <div className="auction-spec-label">Ubicación</div>
-                  <div className="auction-spec-val">{comuna || region || 'Chile'}</div>
-                </div>
-                <div className="auction-spec-box">
-                  <div className="auction-spec-label">Cierre de Ofertas</div>
-                  <div className="auction-spec-val" style={{ fontSize: '12.5px' }}>{formatDate(fechaLimite)}</div>
+                <div className="av-how-mini">
+                  <HelpCircle size={18} />
+                  <p><strong>¿Cómo funcionan las subastas?</strong> Las tiendas ofertan en privado, el comprador elige y paga por la plataforma.</p>
+                  <AuctionInfoTip label="Cómo funciona una subasta de necesidad de compra" align="right">
+                    <ol className="av-how-steps">
+                      <li><b>El comprador publica su pedido.</b> Indica la patente, los repuestos, su tope de presupuesto y el plazo.</li>
+                      <li><b>Las tiendas ofertan en privado.</b> Las casas de repuestos verificadas ofrecen lo que tienen; pueden cubrir solo una parte.</li>
+                      <li><b>El comprador compara y acepta.</b> Puede elegir una o varias ofertas; lo que quede pendiente sigue abierto para otras tiendas.</li>
+                      <li><b>Paga una sola vez.</b> El pago se hace en la plataforma y el dinero queda retenido.</li>
+                      <li><b>Cada tienda despacha su parte.</b> Al recibir conforme el repuesto, se libera el pago a la tienda.</li>
+                    </ol>
+                    <Link to={ROUTES.support} className="av-how-link">Ver guía rápida <ArrowRight size={14} /></Link>
+                  </AuctionInfoTip>
                 </div>
               </div>
 
-              {(motor || chasis) && (
-                <div style={{ marginTop: '14px', fontSize: '13px', color: '#64748b' }}>
-                  {motor && <span style={{ marginRight: '16px' }}>Motor: <strong>{motor}</strong></span>}
-                  {chasis && <span>Chasis/VIN: <strong style={{ fontFamily: 'monospace' }}>{chasis}</strong></span>}
-                </div>
-              )}
-            </div>
+              <div className="av-content">
+                <div className="as-card av-top-info">
+                  <div className="av-top-meta">
+                    <span className={`av-badge is-${statusKey}`}>{statusLabel}</span>
+                    {isOpen && (
+                      <span className={`av-meta-time ${isUrgent ? 'is-urgent' : ''}`}>
+                        <Clock size={24} />
+                        <span><small>Tiempo restante</small><strong>{formatRemaining(remainingMs)}</strong></span>
+                      </span>
+                    )}
+                    {createdAt && (
+                      <span className="av-meta-item"><CalendarDays size={22} /><span><small>Publicado</small><strong>{formatDate(createdAt)}</strong></span></span>
+                    )}
+                    <span className="av-meta-item"><MapPin size={22} /><strong>{location || 'Ubicación no indicada'}</strong></span>
+                  </div>
 
-            {/* Panel de Cotizaciones Recibidas */}
-            <div className="auction-card-panel">
-              <h2 className="auction-panel-title">
-                <span>Cotizaciones y Ofertas ({cotizaciones.length})</span>
-                <span style={{ fontSize: '13px', fontWeight: 'normal', color: 'var(--auc-muted)' }}>
-                  {esCreador ? 'Vista de Comprador' : 'Vista Confidencial 🔒'}
-                </span>
-              </h2>
+                  <div className="av-title-row">
+                    <h1>{repuestoSolicitado}</h1>
+                    <div className="av-title-actions">
+                      <ShareLinkButton
+                        className="av-action-btn"
+                        url={`/subastas/${auction.id}`}
+                        title={`${repuestoSolicitado} · Solicitud de compra en RepuesTop`}
+                        text="Mira esta solicitud de compra en RepuesTop"
+                        label="Compartir"
+                        iconSize={15}
+                        stopPropagation={false}
+                      />
+                      <button type="button" className={`av-action-btn ${saved ? 'is-saved' : ''}`} onClick={toggleSaved} disabled={saveBusy} aria-pressed={saved}>
+                        {saved ? <BookmarkCheck size={15} /> : <Bookmark size={15} />} {saved ? 'Guardada' : 'Guardar'}
+                      </button>
+                    </div>
+                  </div>
+                  {saveNotice && <p className="av-save-notice" role="status">{saveNotice}</p>}
 
-              <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
-                {esCreador
-                  ? 'Revisa las propuestas enviadas por las tiendas verificadas. Cuando te decidas por la mejor opción, pulsa "Comprar esta cotización".'
-                  : 'Para resguardar la competencia leal, las cotizaciones se muestran protegidas con candado para tiendas y visitantes.'}
-              </p>
-
-              {cotizaciones.length === 0 ? (
-                <div className="auctions-empty-state" style={{ padding: '36px 20px' }}>
-                  <Gavel size={32} style={{ color: '#94a3b8', margin: '0 auto 8px' }} />
-                  <div style={{ fontWeight: 700, color: 'var(--auc-navy)' }}>Aún no se registran cotizaciones</div>
-                  <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
-                    Las casas de repuestos han sido notificadas y enviarán sus ofertas pronto.
+                  <div className="av-chips">
+                    {categoria && <span>Categoría: <strong>{categoria}</strong></span>}
+                    <span>{items.length > 1 ? 'Repuestos' : 'Cantidad'}: <strong>{items.length > 1 ? `${items.length} (${totalUnits} unidades)` : `${totalUnits} ${totalUnits === 1 ? 'unidad' : 'unidades'}`}</strong></span>
+                    <span>Plazo máx. de envío: <strong>{tiempoMaximoEnvio || 'A coordinar'}</strong></span>
+                    <span>Tipo de envío: <strong>{tipoEnvio || 'Cualquiera'}</strong></span>
+                    <span className="is-budget">Presupuesto tope: <strong>{presupuestoMaximo ? formatCLP(presupuestoMaximo) : 'Sin tope'}</strong></span>
                   </div>
                 </div>
-              ) : (
-                <div className="auction-quotes-list">
-                  {cotizaciones.map((quote) => {
-                    const isWinner = isFinalizada && (quote.esGanadora || quote.id === cotizacionGanadoraId);
 
-                    return (
-                      <div
-                        key={quote.id}
-                        className={`auction-quote-item ${isWinner ? 'winner' : ''}`}
-                      >
-                        {isWinner && (
-                          <div className="auction-winner-ribbon">
-                            <Trophy size={14} />
-                            <span>🏆 Cotización Ganadora Adjudicada</span>
-                          </div>
-                        )}
+                <div className="av-two">
+                  <AuctionItemsCard
+                    items={items}
+                    isOpen={isOpen}
+                    canOffer={canQuote}
+                    onOffer={() => setIsQuoteModalOpen(true)}
+                    vehicle={{ label: [marca, modelo, anio].filter(Boolean).join(' '), chasis, plate: patenteAnonimizada }}
+                  />
 
-                        {/* VISTA PRIVADA CON CANDADO */}
-                        {quote.esPrivada ? (
-                          <div className="auction-quote-locked">
-                            <div className="auction-quote-locked-icon">
-                              <Lock size={20} />
-                            </div>
-                            <div className="auction-quote-locked-info">
-                              <div className="auction-quote-locked-title">
-                                {quote.nombreTienda || 'Tienda Verificada'}
-                                {quote.tiendaRating && (
-                                  <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--auc-gold)' }}>
-                                    ★ {quote.tiendaRating}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="auction-quote-locked-desc">
-                                Oferta confidencial emitida el {formatDate(quote.fechaEnvio)}. Precios y detalles protegidos.
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          /* VISTA COMPLETA PARA EL COMPRADOR O TIENDA EMISORA */
-                          <div className="auction-quote-visible-content">
-                            <div className="auction-quote-top">
-                              <div className="auction-quote-store">
-                                <div className="auction-quote-store-avatar">
-                                  <Store size={20} />
-                                </div>
-                                <div>
-                                  <div className="auction-quote-store-name">{quote.nombreTienda}</div>
-                                  <div style={{ fontSize: '12px', color: '#64748b' }}>
-                                    Enviada: {formatDate(quote.fechaEnvio)}
-                                    {quote.tiendaRating && (
-                                      <span style={{ marginLeft: '8px', color: 'var(--auc-gold)', fontWeight: 700 }}>
-                                        ★ {quote.tiendaRating}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="auction-quote-price-tag">
-                                <div className="auction-quote-price-sub">Precio Cotizado</div>
-                                <div className="auction-quote-price-val">
-                                  {formatCLP(quote.precioFinal || quote.precio)}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Repuesto y Términos */}
-                            <div className="auction-quote-product-box">
-                              <div>
-                                <div className="auction-quote-product-title">
-                                  {quote.productoTitulo || 'Repuesto cotizado según requerimiento'}
-                                </div>
-                                <div className="auction-quote-product-warranty">
-                                  Garantía: <strong>{quote.garantia || 'Garantía legal'}</strong> · Plazo: <strong>{quote.tiempoEntrega || 'A coordinar'}</strong>
-                                </div>
-                              </div>
-                            </div>
-
-                            {quote.notas && (
-                              <div style={{ fontSize: '13px', background: '#fffbeb', border: '1px solid #fef3c7', padding: '10px 14px', borderRadius: '8px', color: '#92400e', fontStyle: 'italic' }}>
-                                "{quote.notas}"
-                              </div>
-                            )}
-
-                            {/* Botón de Adjudicación / Compra para el Comprador */}
-                            {esCreador && !isFinalizada && !isExpirada && (
-                              <div className="auction-quote-actions-row">
-                                <button
-                                  type="button"
-                                  onClick={() => handleSelectWinningQuote(quote)}
-                                  disabled={buyingQuoteId === quote.id}
-                                  className="auction-btn-buy-quote"
-                                >
-                                  <CheckCircle2 size={17} />
-                                  <span>{buyingQuoteId === quote.id ? 'Procesando...' : 'Comprar esta cotización'}</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                  <div className="as-card av-block">
+                    <h2 className="as-title"><span><Car size={17} /> Detalles del vehículo</span></h2>
+                    <dl className="av-details">
+                      {[
+                        ['Marca', marca], ['Modelo', modelo], ['Versión', version], ['Año', anio], ['Motor', motor],
+                        ['Patente', patenteAnonimizada], ['Chasis / VIN', chasis],
+                      ].filter(([, value]) => value).map(([label, value]) => (
+                        <div key={label}><dt>{label}</dt><dd className={label === 'Patente' || label === 'Chasis / VIN' ? 'is-mono' : ''}>{value}</dd></div>
+                      ))}
+                    </dl>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
+
+            <AuctionCommentsPanel auctionId={auction.id} isOpen={isOpen} canComment={isSeller || esCreador} />
           </div>
 
-          {/* Columna Lateral (Sidebar) */}
-          <div className="auction-summary-card">
-            <div className="auction-card-panel">
-              <div className="auction-summary-timer">
-                <div className="auction-summary-timer-label">
-                  {isFinalizada ? 'Estado de la Subasta' : isExpirada ? 'Subasta Cerrada' : 'Tiempo Restante'}
-                </div>
-                <div className="auction-summary-timer-digits">
-                  {isFinalizada ? 'FINALIZADA 🏆' : isExpirada ? 'EXPIRADA' : 'ACTIVA'}
-                </div>
-              </div>
+          <aside className="av-side">
+            <AuctionBuyerCard auctionId={auction.id} vehicle={[marca, modelo].filter(Boolean).join(' ')} region={region} />
 
-              {isSeller && !esCreador && !isFinalizada && !isExpirada && (
-                <button
-                  type="button"
-                  onClick={() => setIsQuoteModalOpen(true)}
-                  className="auction-summary-quote-btn"
-                >
-                  <Gavel size={18} />
-                  <span>{miCotizacion ? 'Modificar mi Cotización' : 'Emitir Cotización'}</span>
+            <section className="as-card av-offers" aria-label="Ofertas recibidas">
+              <header className="av-offers-banner">
+                <span className="av-offers-count" aria-hidden="true">{cotizaciones.length}</span>
+                <div className="av-offers-banner-text">
+                  <h2>{cotizaciones.length === 1 ? 'Oferta recibida' : 'Ofertas recibidas'}</h2>
+                  <small>
+                    {cotizaciones.length === 0
+                      ? 'Las casas de repuestos ya fueron notificadas'
+                      : `${cotizaciones.length === 1 ? 'Una tienda verificada ya cotizó' : 'Tiendas verificadas ya cotizaron'} esta necesidad`}
+                  </small>
+                </div>
+                {cotizaciones.length > 1 && (
+                  <button type="button" className="av-offers-expand" onClick={() => setIsAllOffersOpen(true)} aria-label="Ver todas las solicitudes de oferta" title="Ver todas las ofertas">
+                    <ListTree size={16} />
+                  </button>
+                )}
+                {cotizaciones.length > 0 && (
+                  <span className="av-offers-stack" aria-hidden="true">
+                    {cotizaciones.slice(0, 4).map((quote) => (
+                      <AuctionAvatar key={quote.id} className="av-offers-stack-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+                    ))}
+                  </span>
+                )}
+              </header>
+
+              {cotizaciones.length === 0 ? (
+                <div className="av-offers-empty">
+                  <Gavel size={30} />
+                  <strong>{isSeller && !esCreador ? 'Sé la primera tienda en ofertar' : 'Aún no hay ofertas'}</strong>
+                  <p>{isSeller && !esCreador ? 'Quien cotiza primero tiene más posibilidades de ser elegido.' : 'Te avisaremos apenas llegue la primera.'}</p>
+                </div>
+              ) : (
+                <>
+                  <p className="av-offers-note">
+                    <ShieldCheck size={15} />
+                    {esCreador ? 'Compáralas y elige la que más te convenga.' : 'Los precios y condiciones son confidenciales: solo los ve el comprador y la tienda que ofertó.'}
+                  </p>
+                  <ul className="av-offer-list">
+                    {cotizaciones.map((quote, index) => (
+                      <QuoteRow
+                        key={quote.id}
+                        quote={quote}
+                        index={index}
+                      />
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              {esCreador && isOpen && cotizaciones.length > 0 && (
+                <button type="button" className="as-btn-primary av-offers-compare" onClick={() => setIsOffersOpen(true)}>
+                  <Gavel size={16} /> Comparar y aceptar ofertas
                 </button>
               )}
 
-              <div style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.5, marginTop: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <ShieldCheck size={18} style={{ color: '#059669' }} />
-                  <strong>Transacción 100% Segura</strong>
+              {esCreador && acceptedCount > 0 && (
+                <div className="av-offers-cta">
+                  <span className="av-offers-cta-icon"><PackageCheck size={22} /></span>
+                  <p>
+                    <strong>{pedidoId && isFinalizada ? 'Pedido pagado' : `Tu pedido: ${acceptedCount} ${acceptedCount === 1 ? 'tienda' : 'tiendas'}`}</strong>
+                    <small>
+                      {itemsPendientes > 0
+                        ? `Te faltan ${itemsPendientes} ${itemsPendientes === 1 ? 'repuesto' : 'repuestos'} por adjudicar. Puedes pagar lo aceptado ahora.`
+                        : 'Ya adjudicaste todos tus repuestos. Revisa la composición y paga.'}
+                    </small>
+                  </p>
+                  <button type="button" className="as-btn-primary" onClick={() => setIsPurchaseOpen(true)}>
+                    <ShoppingCart size={15} /> Ver mi pedido y pagar
+                  </button>
+                  {pedidoId && (
+                    <button
+                      type="button"
+                      className="as-btn-outline"
+                      onClick={() => navigate(String(user?.role || role || '').toUpperCase() === 'SELLER' ? profilePurchasePath(pedidoId) : profileOrderPath(pedidoId))}
+                    >
+                      <PackageCheck size={15} /> Seguir compra
+                    </button>
+                  )}
                 </div>
-                <p>
-                  El comprador paga a través de la plataforma y el dinero se retiene de forma protegida hasta la recepción conforme del repuesto.
-                </p>
-              </div>
-            </div>
-          </div>
+              )}
+
+              {isSeller && !esCreador && miCotizacion?.aceptada && (
+                <div className="av-offers-cta">
+                  <span className="av-offers-cta-icon"><Trophy size={22} /></span>
+                  <p><strong>El comprador aceptó tu oferta</strong><small>Recibirás el pedido cuando el comprador pague.</small></p>
+                </div>
+              )}
+
+              {canQuote && (
+                <div className="av-offers-cta">
+                  <span className="av-offers-cta-icon"><Gavel size={22} /></span>
+                  <p>
+                    <strong>{items.length > 1 && itemsPendientes < items.length ? `Ofrece los ${itemsPendientes} repuestos que faltan` : 'Tu oferta también puede ser la mejor'}</strong>
+                    <small>{items.length > 1 ? 'Puedes ofrecer solo los repuestos que tengas.' : 'Haz tu propuesta y sé el primero en ser contactado.'}</small>
+                  </p>
+                  <button type="button" className="as-btn-primary" onClick={() => setIsQuoteModalOpen(true)}>
+                    <Gavel size={15} /> {miCotizacion ? 'Modificar mi oferta' : 'Enviar oferta'}
+                  </button>
+                </div>
+              )}
+            </section>
+          </aside>
         </div>
       </div>
 
-      {/* Modal para emitir cotización */}
+      {viewerOpen && photos.length > 0 && (
+        <AuctionImageViewer photos={photos} startIndex={activePhotoIndex} title={repuestoSolicitado} onClose={() => setViewerOpen(false)} />
+      )}
+
+      {isAllOffersOpen && (
+        <div className="aim-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsAllOffersOpen(false); }}>
+          <div className="aim-modal" role="dialog" aria-modal="true" aria-label="Ofertas recibidas">
+            <header className="aim-head">
+              <span className="aim-head-icon"><Gavel size={18} /></span>
+              <div>
+                <h2>Ofertas recibidas</h2>
+                <small>{cotizaciones.length} {cotizaciones.length === 1 ? 'oferta' : 'ofertas'} · {esCreador ? 'compáralas y elige la mejor' : 'precios y condiciones confidenciales'}</small>
+              </div>
+              <button type="button" className="aim-close" onClick={() => setIsAllOffersOpen(false)} aria-label="Cerrar"><X size={18} /></button>
+            </header>
+            <ul className="av-offer-list av-offer-list-modal">
+              {cotizaciones.map((quote, index) => <QuoteRow key={quote.id} quote={quote} index={index} />)}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {esCreador && (
+        <AuctionOffersModal
+          isOpen={isOffersOpen}
+          auctionId={auction.id}
+          onClose={() => setIsOffersOpen(false)}
+          onChanged={loadDetail}
+          onOpenPurchase={() => setIsPurchaseOpen(true)}
+        />
+      )}
+
+      {esCreador && (
+        <AuctionPurchaseModal
+          isOpen={isPurchaseOpen}
+          auctionId={auction.id}
+          onClose={() => setIsPurchaseOpen(false)}
+          onSeeOffers={() => setIsOffersOpen(true)}
+        />
+      )}
+
       {isSeller && (
         <AuctionQuoteModal
           isOpen={isQuoteModalOpen}
@@ -443,12 +501,9 @@ export default function AuctionDetailPage() {
           auction={auction}
           myQuote={miCotizacion}
           sellerId={sellerId}
-          onSuccess={() => {
-            alert('¡Cotización enviada exitosamente!');
-            loadDetail();
-          }}
+          onSuccess={loadDetail}
         />
       )}
-    </div>
+    </main>
   );
 }

@@ -7,7 +7,7 @@ import {
   Clock, ShieldCheck, PackageCheck, Loader2, Inbox, Search,
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
-  Megaphone, CheckCircle2, ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle
+  Megaphone, CheckCircle2, ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel
 } from 'lucide-react';
 import VideoTutorialModal from './VideoTutorialModal';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,8 @@ import ProfileSummaryPanel from './ProfileSummaryPanel';
 import ProfileFeedbackPanel from './ProfileFeedbackPanel';
 import ProfileOrdersPanel from './ProfileOrdersPanel';
 import ProfileQuotesPanel from './ProfileQuotesPanel';
+import ProfileAuctionsPanel from './ProfileAuctionsPanel';
+import ProfileAuctionManagementPanel from './ProfileAuctionManagementPanel';
 import ProfileCatalogPanel from './ProfileCatalogPanel';
 import ProfileMyQuestionsPanel from './ProfileMyQuestionsPanel';
 import ProfileStoreSummaryPanel from './ProfileStoreSummaryPanel';
@@ -127,6 +129,7 @@ const SELLER_SIDEBAR_GROUPS = [
       { id: 'pedidos', label: 'Pedidos recibidos', icon: ShoppingBag },
       { id: 'productos', label: 'Productos', icon: Package },
       { id: 'cotizaciones', label: 'Cotizaciones', icon: ReceiptText },
+      { id: 'gestion_subastas', label: 'Gestión subastas', icon: Gavel },
       { id: 'preguntas_productos', label: 'Preguntas de productos', icon: MessageCircleQuestion },
       { id: 'chats_compradores', label: 'Chats con compradores', icon: MessageSquare }
     ]
@@ -174,6 +177,7 @@ const SELLER_SIDEBAR_GROUPS = [
 const SELLER_BLOCKED_HIDDEN_TABS = [
   'productos',
   'cotizaciones',
+  'gestion_subastas',
   'preguntas_productos',
   'tienda_datos',
   'anuncios',
@@ -185,6 +189,7 @@ const SELLER_BLOCKED_HIDDEN_TABS = [
 // de ayuda sigue (es una ruta propia, no una pestana del panel).
 const BUYER_BLOCKED_HIDDEN_TABS = [
   'cotizaciones',
+  'subastas',
   'mis_preguntas',
   'favoritos',
   'datos',
@@ -206,6 +211,7 @@ const BUYER_SIDEBAR_GROUPS = [
     items: [
       { id: 'pedidos', label: 'Mis pedidos', icon: Package },
       { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
+      { id: 'subastas', label: 'Subastas', icon: Gavel },
       { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
       { id: 'chats_vendedor', label: 'Chats con vendedor', icon: MessageSquare },
       { id: 'favoritos', label: 'Favoritos', icon: Heart }
@@ -1696,6 +1702,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 paymentStatus={paymentStatus}
                 paymentOrderId={paymentOrderId}
               />
+
+              {activeTab === 'subastas' && <ProfileAuctionsPanel />}
+              {activeTab === 'gestion_subastas' && isSeller && <ProfileAuctionManagementPanel />}
 
               {activeTab === 'mis_preguntas' && (
                 <ProfileMyQuestionsPanel effectiveUserId={effectiveUserId} />

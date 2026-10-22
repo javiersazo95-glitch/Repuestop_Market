@@ -133,7 +133,7 @@ function completarDesdeCatalogo(compatibility, filasPorId) {
   };
 }
 
-const initialForm = (product = null) => ({
+const baseForm = (product = null) => ({
   name: product?.nombrePublicado || product?.repuestoNombre || product?.nombre || '',
   sku: product?.skuProveedor || product?.sku || product?.codigoSKU || '',
   category: product?.categoria || product?.categoriaNombre || product?.category || '',
@@ -150,14 +150,35 @@ const initialForm = (product = null) => ({
   compatibilities: parseCompatibilitiesFromProduct(product),
 });
 
+/**
+ * `prefill` (solo al crear): datos que ya se conocen, por ejemplo el vehículo y la categoría de una subasta,
+ * para que la tienda no los repita.
+ */
+const initialForm = (product = null, prefill = null) => {
+  const form = baseForm(product);
+  if (product || !prefill) return form;
+  if (prefill.name) form.name = prefill.name;
+  if (prefill.category) form.category = prefill.category;
+  if (prefill.brand) {
+    form.compatibilities = [{
+      ...emptyCompatibility(),
+      brand: prefill.brand,
+      model: prefill.model || '',
+      yearFrom: prefill.year ? String(prefill.year) : '',
+      yearTo: prefill.year ? String(prefill.year) : '',
+    }];
+  }
+  return form;
+};
+
 function CatalogField({ label, optional, children }) {
   return <label className="catalog-product-field"><span>{label}{optional && <small>Opcional</small>}</span>{children}</label>;
 }
 
-export default function NewCatalogProductModal({ sellerId, product = null, onClose, onCreated, isFounder = false }) {
+export default function NewCatalogProductModal({ sellerId, product = null, prefill = null, onClose, onCreated, isFounder = false }) {
   // Garantias de la lista `GARANTIA_PRODUCTO` del mantenedor (o las de siempre sin bootstrap).
   const warrantyOptions = useWarrantyOptions();
-  const [form, setForm] = useState(() => initialForm(product));
+  const [form, setForm] = useState(() => initialForm(product, prefill));
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
   const [partBrands, setPartBrands] = useState([]);
@@ -184,10 +205,11 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
         setCategories(categoryItems);
         setPartBrands(brandItems);
         setVehicleBrands(vehicleBrandItems);
-        if (product?.categoria) {
-          const selectedCategory = categoryItems.find((item) => item.nombre === product.categoria);
+        const categoryName = product?.categoria || prefill?.category;
+        if (categoryName) {
+          const selectedCategory = categoryItems.find((item) => item.nombre === categoryName);
           if (selectedCategory?.id) {
-            const [subcategoryItems, filteredBrands] = await Promise.all([getPartSubcategoriesApi(selectedCategory.id), getPartBrandsApi(product.categoria)]);
+            const [subcategoryItems, filteredBrands] = await Promise.all([getPartSubcategoriesApi(selectedCategory.id), getPartBrandsApi(categoryName)]);
             setSubcategories(Array.isArray(subcategoryItems) ? subcategoryItems : []);
             if (Array.isArray(filteredBrands)) setPartBrands(filteredBrands);
           }
@@ -200,7 +222,7 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
   // de vehiculo y, al llegar el catalogo, reiniciaba el formulario: se perdia lo que el vendedor
   // ya hubiera agregado o editado.
   useEffect(() => {
-    setForm(initialForm(product));
+    setForm(initialForm(product, prefill));
     setFiles([]);
     const existing = [];
     if (product?.imageUrls && Array.isArray(product.imageUrls)) {
