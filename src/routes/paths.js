@@ -30,6 +30,8 @@ export const ROUTES = {
   privacy: '/privacidad',
   about: '/nosotros',
   adsWall: '/mural-anuncios',
+  auctions: '/subastas',
+  auctionDetail: '/subastas/:id',
   adDetail: '/mural-anuncios/:adId',
   sellerRegister: '/vender',
   purchaseSuccess: '/compra-exitosa',
@@ -289,5 +291,10 @@ export function catalogAdvancedFiltersFromParams(searchParams) {
     // Solo se anota cuando el comprador quito el filtro del vehiculo activo.
     onlyCompatible: get('onlyCompatible') === '0' ? false : null,
   };
+}
+
+
+export function auctionDetailPath(id) {
+  return `/subastas/${encodeURIComponent(String(id))}`;
 }
 
