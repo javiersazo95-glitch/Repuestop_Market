@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
-import { CATEGORY_VISUALS, HEADER_CATEGORIES } from '../data/categories';
+import { matchesBackendCategory, useCategories } from '../data/categories';
+import { useFlag } from '../remoteConfig/hooks';
 import RepuesTopLogo from './RepuesTopLogo';
 import { useAuth } from '../context/AuthContext';
 import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
@@ -41,6 +42,12 @@ export default function Header({
   onSearchSubmit,
   onSelectCategory
 }) {
+  // Categorias del mantenedor (o el respaldo local si el bootstrap no llego).
+  const { HEADER_CATEGORIES, CATEGORY_VISUALS } = useCategories();
+  // El dueno puede apagar el mega menu desde el mantenedor (`market.header.megamenu-categorias`)
+  // y la entrada al Mural (`market.nav.mural-anuncios`). Sin bootstrap, ambos se ven como siempre.
+  const showCategoryMegaMenu = useFlag('market.header.megamenu-categorias');
+  const showAdsWallNav = useFlag('market.nav.mural-anuncios');
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [activeHeaderCategoryId, setActiveHeaderCategoryId] = useState(HEADER_CATEGORIES[0].id);
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
@@ -79,7 +86,7 @@ export default function Header({
 
   const activeHeaderCategory = useMemo(
     () => HEADER_CATEGORIES.find((category) => category.id === activeHeaderCategoryId) || HEADER_CATEGORIES[0],
-    [activeHeaderCategoryId]
+    [HEADER_CATEGORIES, activeHeaderCategoryId]
   );
 
   const normalizeCatalogName = (value) => String(value || '')
@@ -107,7 +114,7 @@ export default function Header({
       const rightStarts = normalizeSearchText(right.label).startsWith(query) ? 0 : 1;
       return leftStarts - rightStarts || left.label.localeCompare(right.label, 'es');
     }).slice(0, 12);
-  }, [categorySearchQuery]);
+  }, [HEADER_CATEGORIES, categorySearchQuery]);
 
   const { data: backendCategories = [] } = useQuery({
     queryKey: qk.categories(),
@@ -122,8 +129,9 @@ export default function Header({
     staleTime: 1000 * 60 * 60,
   });
 
-  const getBackendCategory = (category) => backendCategories.find((item) =>
-    normalizeCatalogName(item.nombre) === normalizeCatalogName(category.nombre));
+  // Cruce por `slug` (viene en CatalogoOpcionDTO desde el mantenedor) y, si el backend aun no lo
+  // manda, por nombre como antes.
+  const getBackendCategory = (category) => backendCategories.find((item) => matchesBackendCategory(category, item));
 
   // Se consulta una página por subcategoría para recibir totalElements: el número
   // mostrado es el total publicado en el sistema, no solo los elementos cargados.
@@ -150,15 +158,20 @@ export default function Header({
       } catch {
         return;
       }
-      const subcategoriesByName = new Map((Array.isArray(backendSubcategories) ? backendSubcategories : [])
-        .map((subcategory) => [normalizeCatalogName(subcategory.nombre), subcategory]));
+      const backendList = Array.isArray(backendSubcategories) ? backendSubcategories : [];
+      const subcategoriesByName = new Map(backendList.map((subcategory) => [normalizeCatalogName(subcategory.nombre), subcategory]));
+      const subcategoriesBySlug = new Map(backendList.filter((subcategory) => subcategory.slug)
+        .map((subcategory) => [subcategory.slug, subcategory]));
+      // Slug primero (sobrevive a un cambio de nombre en el mantenedor), nombre como respaldo.
+      const findBackendSubcategory = (subcategory) => subcategoriesBySlug.get(activeHeaderCategory.subcategorySlugs?.[subcategory])
+        || subcategoriesByName.get(normalizeCatalogName(subcategory));
       const pending = activeHeaderCategory.subcategories.filter((subcategory) => {
         const key = `${activeHeaderCategory.id}:${subcategory}`;
-        return subcategoriesByName.has(normalizeCatalogName(subcategory)) && subcategoryInventory[key] === undefined;
+        return Boolean(findBackendSubcategory(subcategory)) && subcategoryInventory[key] === undefined;
       });
       if (!pending.length) return;
       const entries = await Promise.all(pending.map(async (subcategory) => {
-        const backendSubcategory = subcategoriesByName.get(normalizeCatalogName(subcategory));
+        const backendSubcategory = findBackendSubcategory(subcategory);
         try {
           const page = await getPublicProductsApi({ page: 0, size: 1, subcategoriaId: backendSubcategory.id, sort: 'createdAt,desc' });
           return [
@@ -532,6 +545,7 @@ export default function Header({
         </div>
         <div className="container primary-nav-inner">
           <p className="mobile-drawer-section-title is-explore mobile-only-nav-item">Explorar</p>
+          {showCategoryMegaMenu && (
           <div ref={categoryMenuRef} className="categories-nav-wrap">
             <button className="categories-nav-button" aria-expanded={showCategoryMenu} onClick={() => setShowCategoryMenu((open) => !open)}>
               <Wrench size={19} /> <span className="nav-label-desktop">Categorías</span>
@@ -578,7 +592,7 @@ export default function Header({
                           handleCategorySearchResult(result);
                         }}
                       >
-                        <CategoryIconTile iconName={CATEGORY_VISUALS[result.category.id].iconName} color={CATEGORY_VISUALS[result.category.id].color} size={17} />
+                        <CategoryIconTile iconName={CATEGORY_VISUALS[result.category.id].iconName} iconUrl={CATEGORY_VISUALS[result.category.id].iconUrl} color={CATEGORY_VISUALS[result.category.id].color} size={17} />
                         <span className="header-category-result-copy">
                           <strong>{result.label}</strong>
                           <small>{result.type === 'category' ? 'Categoría' : `Subcategoría de ${result.category.nombre}`}</small>
@@ -618,7 +632,7 @@ export default function Header({
                         onSelectCategory({ category: category.id, categoryId: getBackendCategory(category)?.id, categoryName: category.nombre });
                       }}
                     >
-                      <span className="header-category-label"><CategoryIconTile iconName={CATEGORY_VISUALS[category.id].iconName} color={CATEGORY_VISUALS[category.id].color} size={16} />{category.nombre}</span>
+                      <span className="header-category-label"><CategoryIconTile iconName={CATEGORY_VISUALS[category.id].iconName} iconUrl={CATEGORY_VISUALS[category.id].iconUrl} color={CATEGORY_VISUALS[category.id].color} size={16} />{category.nombre}</span>
                       <ChevronRight size={16} aria-hidden="true" />
                     </button>
                   ))}
@@ -666,11 +680,14 @@ export default function Header({
               </div>
             )}
           </div>
+          )}
           {/* "Ofertas" se elimino: llevaba al mismo catalogo que "Catálogo de repuestos". */}
           <button type="button" className="nav-item-stores" aria-current={navCurrent(ROUTES.stores)} onClick={() => { setShowMobileNav(false); onOpenStores(); }}><Store size={16} /> <span>Casas de repuestos</span></button>
           <button type="button" className="nav-item-catalog" aria-current={navCurrent(ROUTES.catalog)} onClick={() => { setShowMobileNav(false); onOpenCatalog(); }}><Package size={16} /> <span>Catálogo de repuestos</span></button>
           <button type="button" className="nav-item-about" aria-current={navCurrent(ROUTES.about)} onClick={() => { setShowMobileNav(false); onOpenAbout(); }}><Info size={16} /> <span>Sobre RepuesTop</span></button>
-          <button type="button" className="nav-item-ads" aria-current={navCurrent(ROUTES.adsWall)} onClick={() => { setShowMobileNav(false); onOpenAdsWall(); }}><Megaphone size={16} /> <span>Mural de anuncios</span></button>
+          {showAdsWallNav && (
+            <button type="button" className="nav-item-ads" aria-current={navCurrent(ROUTES.adsWall)} onClick={() => { setShowMobileNav(false); onOpenAdsWall(); }}><Megaphone size={16} /> <span>Mural de anuncios</span></button>
+          )}
           <p className="mobile-drawer-section-title is-more mobile-only-nav-item">RepuesTop</p>
           <button type="button" className="nav-item-help" aria-current={navCurrent(ROUTES.support)} onClick={() => { setShowMobileNav(false); onOpenHelp(); }}><HelpCircle size={16} /> <span className="nav-label-desktop">Ayuda</span><span className="nav-label-mobile">Centro de ayuda</span></button>
           {/* Solo movil: en escritorio este acceso vive en la barra superior, que en el celular

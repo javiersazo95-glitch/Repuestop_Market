@@ -28,6 +28,7 @@ import CheckoutStoreShipment from '../components/CheckoutStoreShipment';
 import CheckoutVehicleDialog from '../components/CheckoutVehicleDialog';
 import { manualVehicleMissing } from '../utils/cartVehicleForm';
 import { useCompatibilityCheck } from '../hooks/useCompatibilityCheck';
+import { useFlag } from '../remoteConfig/hooks';
 import { COMPAT, compatCacheKey, mismatchCountText } from '../utils/compatibilityCheck';
 import {
   cartPackages, cartStoreKey, defaultAddressForMethod, deliveryKind, isDispatch,
@@ -52,11 +53,12 @@ const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
  * (`FlowPasarelaPago`, que aborta el arranque si faltan las llaves de Flow), así que
  * elegirlo deja el pedido sin pagar. Por eso la opción solo existe fuera de `main`.
  *
- * `__DEPLOY_BRANCH__` lo inyecta vite.config.js con la rama del deploy; Vite lo sustituye
- * por una constante al construir, de modo que en el bundle de producción esta rama
- * desaparece entera y la tarjeta de pruebas ni siquiera viaja al cliente.
+ * `__DEPLOY_BRANCH__` lo inyecta vite.config.js con la rama del deploy y es el respaldo.
+ * Desde el Mantenedor comun (2026-10-20) manda el flag `market.checkout.pago-simulado`: el
+ * dueno puede apagarlo en dev o, a conciencia, encenderlo en otro ambiente. Ojo: encenderlo
+ * en produccion deja pedidos sin pagar (ver arriba); sin bootstrap, `main` nunca lo ofrece.
  */
-const SIMULATED_PAYMENT_ENABLED = __DEPLOY_BRANCH__ !== 'main';
+const SIMULATED_PAYMENT_FALLBACK = __DEPLOY_BRANCH__ !== 'main';
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
@@ -147,6 +149,11 @@ export default function CheckoutPage() {
   // backend en modo mock devuelve un `urlPago` con token `mock_flow_token_` y más abajo
   // `isMockToken` ya dispara la confirmación simulada igual.
   const [paymentMethod, setPaymentMethod] = useState('FLOW');
+  const SIMULATED_PAYMENT_ENABLED = useFlag('market.checkout.pago-simulado', SIMULATED_PAYMENT_FALLBACK);
+  // Si el flag se apaga con la simulacion ya elegida (llega un bootstrap nuevo), se vuelve a Flow.
+  useEffect(() => {
+    if (!SIMULATED_PAYMENT_ENABLED && paymentMethod === 'SIMULACION') setPaymentMethod('FLOW');
+  }, [SIMULATED_PAYMENT_ENABLED, paymentMethod]);
   const [paymentProcessingStatus, setPaymentProcessingStatus] = useState('');
   const submittingRef = useRef(false);
 
@@ -766,7 +773,7 @@ export default function CheckoutPage() {
       // ¿Debe simularse el pago?
       // Se simula si el usuario eligió SIMULACION o si el urlPago contiene token mock de prueba
       const isMockToken = Boolean(order?.urlPago && /mock_flow_token_/i.test(order.urlPago));
-      const shouldSimulate = paymentMethod === 'SIMULACION' || isMockToken;
+      const shouldSimulate = (SIMULATED_PAYMENT_ENABLED && paymentMethod === 'SIMULACION') || isMockToken;
 
       if (shouldSimulate && order?.id) {
         setPaymentProcessingStatus('Simulando confirmación de pago…');

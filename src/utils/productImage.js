@@ -1,4 +1,4 @@
-import { CATEGORY_IMAGE_BY_ID, getPartImage } from '../data/categories';
+import { getCategories, getPartImage } from '../data/categories';
 
 /**
  * Foto referencial de un repuesto sin foto propia (o con una que no carga): la de LA PIEZA
@@ -8,6 +8,6 @@ import { CATEGORY_IMAGE_BY_ID, getPartImage } from '../data/categories';
 export function productReferenceImage(product) {
   if (!product) return null;
   return getPartImage(product.titulo, product.subcategoria, product.categoriaNombre)
-    || CATEGORY_IMAGE_BY_ID[product.categoria]
+    || getCategories().CATEGORY_IMAGE_BY_ID[product.categoria]
     || null;
 }

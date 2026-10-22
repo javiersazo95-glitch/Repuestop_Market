@@ -8,7 +8,7 @@
  * solo lugar para que los componentes no tengan que conocer la forma del backend.
  */
 
-import { HEADER_CATEGORIES, SIDEBAR_CATEGORIES } from '../data/categories';
+import { findCategoryBySlugOrName, getCategories } from '../data/categories';
 import { isNoReturnCategory } from '../utils/noReturnProducts';
 import { AD_TIERS, APPOINTMENT_STATUSES } from '../data/automotiveAdsData';
 import { resolveMediaUrl, toMediaPath } from './api';
@@ -38,8 +38,6 @@ function realProductImages(urls) {
 
 const normalizeNameKey = (value) => String(value || '').normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-const CATEGORY_IDS = SIDEBAR_CATEGORIES.map((c) => c.id);
 
 /**
  * Deja solo dígitos + dígito verificador (k/K) y aplica puntos de miles + guion.
@@ -80,8 +78,13 @@ export function isValidClPhone(value) {
 }
 
 /**
- * El backend devuelve el nombre de la categoría ("Accesorios", "Carrocería", "Sistema de Frenos", etc.).
- * Se resuelve primero por coincidencia exacta/slug con HEADER_CATEGORIES y luego por palabras clave.
+ * El backend devuelve el nombre de la categoría ("Accesorios", "Carrocería", "Sistema de Frenos", etc.)
+ * y, desde el Mantenedor comun, tambien su `slug`. Se resuelve primero por slug, despues por
+ * coincidencia exacta con las categorias vigentes (bootstrap o respaldo local) y recien al final
+ * por palabras clave.
+ *
+ * `CATEGORY_KEYWORDS` es solo el ultimo respaldo: sirve para nombres viejos o libres que no calzan
+ * con ninguna categoria ("Sistema de Frenos"). Con el slug del mantenedor no hace falta adivinar.
  */
 const CATEGORY_KEYWORDS = {
   frenos: ['freno', 'brake', 'pastilla', 'disco'],
@@ -94,22 +97,30 @@ const CATEGORY_KEYWORDS = {
   neumaticos: ['neumat', 'neumát', 'llanta', 'rueda', 'tire'],
 };
 
-export function normalizeCategoryId(rawCategoria) {
+export function normalizeCategoryId(rawCategoria, categoriaSlug = null) {
+  const categories = getCategories();
+
+  // 0. Slug del mantenedor (inmutable): no depende de como se escriba el nombre.
+  if (categoriaSlug) {
+    const bySlug = findCategoryBySlugOrName(categories, { slug: categoriaSlug });
+    if (bySlug) return bySlug.id;
+  }
+
   if (!rawCategoria) return 'motor';
 
   const texto = String(rawCategoria).trim();
   const norm = normalizeNameKey(texto);
 
-  // 1. Coincidencia directa con alguna de las 24 categorías canónicas
-  const matchedCanonical = HEADER_CATEGORIES.find((c) =>
+  // 1. Coincidencia directa con alguna de las categorías técnicas vigentes
+  const matchedCanonical = categories.HEADER_CATEGORIES.find((c) =>
     c.id === texto.toLowerCase() ||
     normalizeNameKey(c.nombre) === norm ||
     normalizeNameKey(c.id) === norm
-  );
+  ) || findCategoryBySlugOrName(categories, { nombre: texto });
   if (matchedCanonical) return matchedCanonical.id;
 
-  // 2. Coincidencia por id corto de SIDEBAR_CATEGORIES
-  if (CATEGORY_IDS.includes(texto.toLowerCase())) return texto.toLowerCase();
+  // 2. Coincidencia por id corto de las familias (SIDEBAR_CATEGORIES)
+  if (categories.SIDEBAR_CATEGORIES.some((c) => c.id === texto.toLowerCase())) return texto.toLowerCase();
 
   // 3. Fallback por palabras clave
   for (const [id, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
@@ -270,7 +281,7 @@ export function adaptProduct(dto) {
     // `categoria` es el identificador normalizado que usa la UI para color e
     // icono. Conservamos además el nombre literal del backend para no cambiar
     // etiquetas válidas como "Aceite" por una categoría visual genérica.
-    categoria: normalizeCategoryId(dto.categoria),
+    categoria: normalizeCategoryId(dto.categoria, dto.categoriaSlug),
     categoriaNombre: dto.categoria || '',
     subcategoria: dto.subcategoria || '',
     // Electricos: sin derecho a devolucion (lo marca el backend; respaldo por nombre).
@@ -544,7 +555,7 @@ export function adaptCompatibleOffer(spare, offer) {
     id: offer.proveedorProductoId || offer.id,
     repuestoId: spare?.repuestoId,
     titulo: offer.nombrePublicado || spare?.nombre || 'Repuesto compatible',
-    categoria: normalizeCategoryId(spare?.categoria),
+    categoria: normalizeCategoryId(spare?.categoria, spare?.categoriaSlug),
     categoriaNombre: spare?.categoria || '',
     // Viene de `RepuestoOfertaDTO.subcategoria`. Antes quedaba vacia y el filtro de
     // subcategoria de la ficha de tienda dejaba la vitrina en cero apenas habia una

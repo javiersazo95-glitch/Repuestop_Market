@@ -6,7 +6,8 @@ import {
   CarFront, Users, Truck, ShieldCheck, Car,
   ArrowLeft, ArrowRight, CircleHelp, Wrench, PenLine, RotateCcw
 } from 'lucide-react';
-import { CAROUSEL_CATEGORIES, NAVIGATION_CATEGORIES } from '../data/categories';
+import { matchesBackendCategory, useCategories } from '../data/categories';
+import { useCombustibles } from '../data/vehicleOptions';
 import { ANIOS_DISPONIBLES } from '../data/sampleVehicles';
 import {
   getPartCategoriesApi,
@@ -29,16 +30,6 @@ const SEARCH_MODES = [
 ];
 
 const CAROUSEL_PAGE_SIZE = 6;
-const CAROUSEL_PAGE_COUNT = Math.ceil(CAROUSEL_CATEGORIES.length / CAROUSEL_PAGE_SIZE);
-
-const COMBUSTIBLES_DISPONIBLES = [
-  'Bencina',
-  'Diésel',
-  'Eléctrico',
-  'Híbrido Sin Recarga Exterior',
-  'Híbrido Recarga Exterior',
-  'Gas (GLP / GNC)'
-];
 
 export default function OfficialPatentHero({
   activeVehicle,
@@ -56,6 +47,10 @@ export default function OfficialPatentHero({
   const [errorMsg, setErrorMsg] = useState('');
   const [activeCarouselPage, setActiveCarouselPage] = useState(0);
   const [recentPlates, setRecentPlates] = useState(() => getRecentPlates());
+  // Categorias y combustibles del mantenedor (lista `COMBUSTIBLE`), con el respaldo de siempre.
+  const { CAROUSEL_CATEGORIES, NAVIGATION_CATEGORIES } = useCategories();
+  const COMBUSTIBLES_DISPONIBLES = useCombustibles();
+  const CAROUSEL_PAGE_COUNT = Math.max(1, Math.ceil(CAROUSEL_CATEGORIES.length / CAROUSEL_PAGE_SIZE));
 
   // Manual vehicle search cascading state (identical 1:1 to mobile app)
   const [manualPlate, setManualPlate] = useState('');
@@ -70,9 +65,6 @@ export default function OfficialPatentHero({
 
   const mode = SEARCH_MODES.find((item) => item.id === searchMode) || SEARCH_MODES[0];
 
-  const categoryNameKey = (value) => String(value || '').normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
   const { data: backendCategories = [] } = useQuery({
     queryKey: qk.categories(),
     queryFn: async () => {
@@ -86,27 +78,31 @@ export default function OfficialPatentHero({
     staleTime: 1000 * 60 * 60,
   });
 
-  const { data: categoryCounts = {}, isLoading: isCountsLoading } = useQuery({
+  // La cache guarda la lista cruda y el cruce con las categorias se hace al pintar: asi un cambio
+  // de categorias en el mantenedor no deja conteos asignados con el mapa anterior.
+  const { data: categoryCountItems = [], isLoading: isCountsLoading } = useQuery({
     queryKey: qk.categoryCounts(),
     queryFn: async () => {
       try {
         const items = await getPublicCategoryCountsApi();
-        const list = Array.isArray(items) ? items : [];
-        const byId = {};
-        list.forEach((item) => {
-          const matchedCategory = CAROUSEL_CATEGORIES.find((category) =>
-            categoryNameKey(category.nombre) === categoryNameKey(item.categoriaNombre));
-          if (matchedCategory) {
-            byId[matchedCategory.id] = Number(item.total || 0);
-          }
-        });
-        return byId;
+        return Array.isArray(items) ? items : [];
       } catch {
-        return {};
+        return [];
       }
     },
     staleTime: 1000 * 60 * 5,
   });
+  const categoryCounts = useMemo(() => {
+    const byId = {};
+    categoryCountItems.forEach((item) => {
+      const backendItem = { nombre: item.categoriaNombre, slug: item.categoriaSlug, id: item.categoriaId };
+      const matchedCategory = CAROUSEL_CATEGORIES.find((category) => matchesBackendCategory(category, backendItem));
+      if (matchedCategory) {
+        byId[matchedCategory.id] = Number(item.total || 0);
+      }
+    });
+    return byId;
+  }, [CAROUSEL_CATEGORIES, categoryCountItems]);
 
   // Vehicle brands from catalog
   const { data: vehicleBrands = [], isLoading: isLoadingBrands } = useQuery({
@@ -172,7 +168,7 @@ export default function OfficialPatentHero({
   }, [manualMarcaNombre, manualMarcaId, vehicleBrands]);
 
   const selectCarouselCategory = (category) => {
-    const backendCategory = backendCategories.find((item) => categoryNameKey(item.nombre) === categoryNameKey(category.nombre));
+    const backendCategory = backendCategories.find((item) => matchesBackendCategory(category, item));
     onSelectCategory({
       category: category.id,
       categoryId: backendCategory?.id,
@@ -443,7 +439,7 @@ export default function OfficialPatentHero({
         return left.fallbackOrder - right.fallbackOrder || left.index - right.index;
       })
       .slice(0, 8);
-  }, [categoryCounts]);
+  }, [NAVIGATION_CATEGORIES, categoryCounts]);
 
   const moveCategoryCarousel = (direction) => {
     setActiveCarouselPage((page) => (page + direction + CAROUSEL_PAGE_COUNT) % CAROUSEL_PAGE_COUNT);
@@ -465,7 +461,7 @@ export default function OfficialPatentHero({
                   className={selectedCategory === category.id ? 'active' : ''}
                   onClick={() => selectCarouselCategory(category)}
                 >
-                  <CategoryIconTile iconName={category.iconName} color={category.color} size={16} className="light-cat-icon" />
+                  <CategoryIconTile iconName={category.iconName} iconUrl={category.iconUrl} color={category.color} size={16} className="light-cat-icon" />
                   <span>{category.nombre}</span>
                   <ChevronRight size={15} />
                 </button>
@@ -846,7 +842,7 @@ export default function OfficialPatentHero({
                 data-category={category.id}
                 onClick={() => selectCarouselCategory(category)}
               >
-                <CategoryIconTile iconName={category.iconName} color={category.color} size={24} className="category-showcase-icon" />
+                <CategoryIconTile iconName={category.iconName} iconUrl={category.iconUrl} color={category.color} size={24} className="category-showcase-icon" />
                 <strong>{category.nombre}</strong>
                 <div className="category-showcase-image">
                   <img src={category.image} alt="" />

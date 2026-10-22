@@ -31,7 +31,7 @@ import { cancellationReasonLabel, cancellationReasonHint } from '../data/cancell
 import { FLOW_REFUND_NOTICE } from '../data/refundStatus';
 import { claimReasonPairs } from '../data/claimReason';
 import { carrierTracking } from '../data/carrierTracking';
-import { fundsReleaseNotice, storeAutoCloseNotice, RETRACTION_DAYS } from '../data/orderDeadlines';
+import { fundsReleaseNotice, orderDeadlineParams, storeAutoCloseNotice } from '../data/orderDeadlines';
 import { validateUpload, FILE_LIMITS } from '../utils/fileValidation';
 import { buildOrderPackages } from '../utils/orderPackages';
 import VehicleSheet from './VehicleSheet';
@@ -666,8 +666,8 @@ export default function OrderDetailView({
         // que le promete que el retracto sobrevive al cierre. Mismo texto que en la app
         // (`useOrderDetailScreen`): es la misma accion y tiene que leerse igual en las dos.
         message: unicaTienda
-          ? `Confirmas que recibiste todo conforme. Conservas tu derecho a retracto por ${RETRACTION_DAYS} dias.`
-          : `Confirmas que recibiste conforme lo de ${seller.name}. Las otras tiendas siguen su curso y conservas tu derecho a retracto por ${RETRACTION_DAYS} dias.`,
+          ? `Confirmas que recibiste todo conforme. Conservas tu derecho a retracto por ${orderDeadlineParams().retractionDays} dias.`
+          : `Confirmas que recibiste conforme lo de ${seller.name}. Las otras tiendas siguen su curso y conservas tu derecho a retracto por ${orderDeadlineParams().retractionDays} dias.`,
       };
     }
     return null;

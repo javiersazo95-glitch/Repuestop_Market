@@ -4,6 +4,8 @@
  * al comprador de forma transparente y amigable antes de su compra.
  */
 
+import { remoteConfig } from '../remoteConfig/remoteConfig';
+
 export const BRAND_COLORS = ['#155EEF', '#0E9384', '#7A5AF8', '#B54708', '#C11574', '#067647', '#2563EB', '#D97706'];
 
 export function getBrandColor(brandName = '') {
@@ -352,9 +354,28 @@ export const LOCAL_BRAND_SVG_SLUGS = new Set([
   'volvo', 'citroen', 'mitsubishi', 'opel', 'seat', 'skoda', 'tesla'
 ]);
 
+// Carpeta publica de R2 donde el Mantenedor comun sube los iconos (`Iconos/<tipo>/...`). Un logo
+// del API que apunta aca lo eligio el dueno; no es el favicon automatico de Google.
+const MANTENEDOR_ICON_PATH = /\/Iconos\//;
+
+const brandKey = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+/** Marca destacada del bootstrap (`marcasRepuestoDestacadas`) para un nombre, por slug o nombre. */
+function findFeaturedPartBrand(slug, compact) {
+  const marcas = remoteConfig.catalogo('marcasRepuestoDestacadas', null);
+  if (!marcas) return null;
+  return marcas.find((marca) => marca?.slug === slug || brandKey(marca?.slug) === compact || brandKey(marca?.nombre) === compact) || null;
+}
+
 /**
- * Resuelve la URL del logo de la marca priorizando archivos vectoriales locales SVG
- * garantizados, antes de consultar URLs externas.
+ * Resuelve la URL del logo de la marca. Orden:
+ * 1. `iconoUrl` de la marca destacada en el Mantenedor comun (lo subio el dueno a R2).
+ * 2. `logoUrl` del API cuando tambien viene del mantenedor: `MarcaRepuestoDTO.logoUrl` devuelve
+ *    `COALESCE(icono_url, logo_url)`, asi que una marca no destacada con icono propio lo trae.
+ * 3. Archivos vectoriales locales SVG garantizados.
+ * 4. Catalogo enriquecido local y, al final, cualquier otro `logoUrl` del API (suele ser el favicon
+ *    de Google, que a tamano de icono se ve casi en blanco: por eso va despues del SVG local).
  */
 export function getBrandLogoUrl(brandName = '', productData = {}) {
   const raw = String(brandName || productData.marca || productData.marcaRepuesto || '').trim();
@@ -367,6 +388,14 @@ export function getBrandLogoUrl(brandName = '', productData = {}) {
 
   const slug = normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const compact = slug.replace(/-/g, '');
+
+  const featured = findFeaturedPartBrand(slug, compact);
+  if (featured?.iconoUrl) {
+    return featured.iconoUrl;
+  }
+  if (productData.brandLogoUrl && MANTENEDOR_ICON_PATH.test(productData.brandLogoUrl)) {
+    return productData.brandLogoUrl;
+  }
 
   if (LOCAL_BRAND_SVG_SLUGS.has(slug)) {
     return `/brand-logos/${slug}.svg`;

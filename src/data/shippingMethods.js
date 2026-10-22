@@ -1,4 +1,6 @@
 import { Bike, Store, Truck } from 'lucide-react';
+import { useLista } from '../remoteConfig/hooks';
+import { remoteConfig } from '../remoteConfig/remoteConfig';
 
 // Los métodos de envío llegan como texto libre publicado por la tienda
 // ("Retiro en tienda, Envío dentro de la comuna ($4500), Envío fuera de la comuna").
@@ -110,30 +112,84 @@ export function shippingMethodCost(method) {
  *
  * "Fuera de la comuna" va por courier externo y lo paga el comprador al recibir, asi que
  * la tienda no le fija precio: por eso no lleva input.
+ *
+ * Mantenedor comun (2026-10-20): los metodos visibles salen de la lista `METODO_ENVIO`
+ * (`valor` = id, `etiqueta` = texto del selector, metadata `{canonicalName, hasPrice, note}`).
+ * Esta constante es el respaldo. El CSV se escribe SIEMPRE con `canonicalName`, no con la
+ * etiqueta: si el dueno renombra la opcion, la cadena guardada sigue siendo la que reconocen la
+ * app, el backoffice y `resolveShippingService()`.
  */
-export const SHIPPING_METHOD_DEFS = [
+export const SHIPPING_METHOD_DEFS_FALLBACK = [
   { id: 'retiro', label: 'Retiro en tienda', canonicalName: 'Retiro en tienda', hasPrice: false },
   { id: 'dentro', label: 'Envío dentro de la comuna', canonicalName: 'Envío dentro de la comuna', hasPrice: true },
   { id: 'fuera', label: 'Envío fuera de la comuna', canonicalName: 'Envío fuera de la comuna', hasPrice: false, note: 'Por pagar en destino' },
 ];
 
+const FALLBACK_DEF_BY_ID = new Map(SHIPPING_METHOD_DEFS_FALLBACK.map((def) => [def.id, def]));
+
+/** Opciones de `METODO_ENVIO` -> la forma `{id, label, canonicalName, hasPrice, note}` de siempre. */
+function toShippingDefs(opciones) {
+  return opciones.filter((opcion) => opcion?.valor).map((opcion) => {
+    const fallback = FALLBACK_DEF_BY_ID.get(opcion.valor);
+    const metadata = opcion.metadata || {};
+    return {
+      id: opcion.valor,
+      label: opcion.etiqueta || fallback?.label || opcion.valor,
+      canonicalName: metadata.canonicalName || fallback?.canonicalName || opcion.etiqueta || opcion.valor,
+      hasPrice: typeof metadata.hasPrice === 'boolean' ? metadata.hasPrice : Boolean(fallback?.hasPrice),
+      note: metadata.note ?? fallback?.note,
+    };
+  });
+}
+
+let lastRemoteDefs = null;
+let lastBuiltDefs = SHIPPING_METHOD_DEFS_FALLBACK;
+
+/** Metodos activos (mantenedor o respaldo), para codigo fuera de React. */
+export function getShippingMethodDefs() {
+  const opciones = remoteConfig.lista('METODO_ENVIO', null);
+  if (!opciones) return SHIPPING_METHOD_DEFS_FALLBACK;
+  if (opciones !== lastRemoteDefs) {
+    lastRemoteDefs = opciones;
+    lastBuiltDefs = toShippingDefs(opciones);
+  }
+  return lastBuiltDefs;
+}
+
+/** Metodos activos, al dia con el mantenedor. */
+export function useShippingMethodDefs() {
+  return useLista('METODO_ENVIO', SHIPPING_METHOD_DEFS_FALLBACK, toShippingDefs);
+}
+
+/**
+ * Todos los metodos conocidos (activos + respaldo). Leer y escribir el CSV usa esta lista y no
+ * solo la de activos: si el dueno oculta un metodo, una tienda que ya lo ofrecia no lo pierde en
+ * silencio la proxima vez que guarde su perfil.
+ */
+function allShippingMethodDefs() {
+  const active = getShippingMethodDefs();
+  const ids = new Set(active.map((def) => def.id));
+  return [...active, ...SHIPPING_METHOD_DEFS_FALLBACK.filter((def) => !ids.has(def.id))];
+}
+
 /** Estado vacio del selector, con `retiro` marcado como en la app. */
 export function defaultShippingSelections() {
   const selections = Object.fromEntries(
-    SHIPPING_METHOD_DEFS.map((def) => [def.id, { enabled: false, price: '' }]),
+    allShippingMethodDefs().map((def) => [def.id, { enabled: false, price: '' }]),
   );
-  selections.retiro.enabled = true;
+  if (selections.retiro) selections.retiro.enabled = true;
   return selections;
 }
 
 /** CSV del backend -> estado del selector. */
 export function parseShippingSelections(rawMethods) {
+  const defs = allShippingMethodDefs();
   const selections = Object.fromEntries(
-    SHIPPING_METHOD_DEFS.map((def) => [def.id, { enabled: false, price: '' }]),
+    defs.map((def) => [def.id, { enabled: false, price: '' }]),
   );
   parseShippingMethods(rawMethods).forEach((method) => {
     const canonicalName = resolveShippingService(method).name;
-    const def = SHIPPING_METHOD_DEFS.find((candidate) => candidate.canonicalName === canonicalName);
+    const def = defs.find((candidate) => candidate.canonicalName === canonicalName);
     if (!def) return;
     const price = shippingMethodPrice(method);
     selections[def.id] = { enabled: true, price: price ? price.replace(/\D/g, '') : '' };
@@ -143,12 +199,12 @@ export function parseShippingSelections(rawMethods) {
 
 /** Estado del selector -> CSV del backend. */
 export function buildShippingMethodsString(selections) {
-  return SHIPPING_METHOD_DEFS
+  return allShippingMethodDefs()
     .filter((def) => selections[def.id]?.enabled)
     .map((def) => {
-      if (!def.hasPrice) return def.label;
+      if (!def.hasPrice) return def.canonicalName;
       const digits = String(selections[def.id]?.price || '').replace(/\D/g, '');
-      return digits ? `${def.label} ($${Number(digits).toLocaleString('es-CL')})` : def.label;
+      return digits ? `${def.canonicalName} ($${Number(digits).toLocaleString('es-CL')})` : def.canonicalName;
     })
     .join(', ');
 }

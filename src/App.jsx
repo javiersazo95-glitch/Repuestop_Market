@@ -10,6 +10,8 @@ import DeclaracionIvaPrompt from './components/DeclaracionIvaPrompt';
 import SystemErrorPage from './components/SystemErrorPage';
 import CookieConsentBanner from './components/CookieConsentBanner';
 import MobileAppNotice from './components/MobileAppNotice';
+import { RemoteConfigProvider } from './remoteConfig/RemoteConfigContext';
+import Feature from './remoteConfig/Feature';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,22 +69,28 @@ class ErrorBoundary extends React.Component {
 export default function App() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <AuthProvider>
-            <MarketplaceProvider>
-              <MobileAppNotice />
-              <AppRoutes />
-              {/* Va por encima de las rutas: el perfil vive fuera de AppLayout y el aviso
-                  tiene que alcanzarlo igual. */}
-              <TermsReacceptanceModal />
-              <SellerAdhesionModal />
-              <DeclaracionIvaPrompt />
-              <CookieConsentBanner />
-            </MarketplaceProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </QueryClientProvider>
+      {/* Configuracion del Mantenedor comun: arranca con la cache local o los fallbacks y
+          descarga el bootstrap en paralelo, sin bloquear el render. */}
+      <RemoteConfigProvider>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <AuthProvider>
+              <MarketplaceProvider>
+                {/* Los montajes globales se pueden apagar desde el mantenedor (`market.global.*`);
+                    sin bootstrap el flag vale `true` y todo se monta como siempre. */}
+                <Feature flag="market.global.aviso-app-movil"><MobileAppNotice /></Feature>
+                <AppRoutes />
+                {/* Va por encima de las rutas: el perfil vive fuera de AppLayout y el aviso
+                    tiene que alcanzarlo igual. */}
+                <Feature flag="market.global.modal-reaceptacion-terminos"><TermsReacceptanceModal /></Feature>
+                <Feature flag="market.global.modal-adhesion-vendedor"><SellerAdhesionModal /></Feature>
+                <Feature flag="market.global.prompt-declaracion-iva"><DeclaracionIvaPrompt /></Feature>
+                <Feature flag="market.global.cookie-banner"><CookieConsentBanner /></Feature>
+              </MarketplaceProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </QueryClientProvider>
+      </RemoteConfigProvider>
     </ErrorBoundary>
   );
 }

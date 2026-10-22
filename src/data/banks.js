@@ -1,6 +1,13 @@
+import { useLista } from '../remoteConfig/hooks';
+import { remoteConfig } from '../remoteConfig/remoteConfig';
+
 // Nómina "Banco Destino" usada por el backend de pagos BCI. Los códigos deben
 // mantenerse sincronizados con CodigoBanco y con el flujo móvil de retiros.
-export const BANKS = [
+//
+// Mantenedor comun (2026-10-20): la lista vigente es `BANCO` (lista de sistema: el dueno solo
+// renombra, ordena u oculta). El codigo numerico sale de `metadata.codigoBci` ("001" -> 1), que
+// es lo que guarda la cuenta del vendedor. Esto queda como respaldo.
+export const BANKS_FALLBACK = [
   { code: 1, label: 'Banco de Chile / A. Edwards / Citibank N.A.' },
   { code: 9, label: 'Banco Internacional' },
   { code: 11, label: 'Dresdner Bank Leteinamerika' },
@@ -37,5 +44,34 @@ export const BANKS = [
   { code: 875, label: 'Mercado Pago', requiresAlias: true },
 ];
 
-export const findBankByCode = (code) => BANKS.find((bank) => bank.code === Number(code));
+const FALLBACK_BY_CODE = new Map(BANKS_FALLBACK.map((bank) => [bank.code, bank]));
+
+/** Opciones de `BANCO` -> `{code, label, requiresAlias}`. Sin codigo legible, la opcion se omite. */
+function toBanks(opciones) {
+  return opciones.map((opcion) => {
+    const metadata = opcion?.metadata || {};
+    const code = Number(metadata.codigoBci ?? opcion?.valor);
+    if (!Number.isFinite(code)) return null;
+    const fallback = FALLBACK_BY_CODE.get(code);
+    const requiresAlias = typeof metadata.requiereAlias === 'boolean'
+      ? metadata.requiereAlias
+      : typeof metadata.requiresAlias === 'boolean' ? metadata.requiresAlias : Boolean(fallback?.requiresAlias);
+    return { code, label: opcion.etiqueta || fallback?.label || String(opcion.valor), ...(requiresAlias ? { requiresAlias: true } : {}) };
+  }).filter(Boolean);
+}
+
+/** Bancos que se ofrecen en el formulario de cuenta, al dia con el mantenedor. */
+export function useBanks() {
+  return useLista('BANCO', BANKS_FALLBACK, toBanks);
+}
+
+/**
+ * Busca por codigo en la lista vigente y, si no esta (el dueno lo oculto), en el respaldo: una
+ * cuenta ya registrada con ese banco tiene que seguir mostrando su nombre.
+ */
+export const findBankByCode = (code) => {
+  const opciones = remoteConfig.lista('BANCO', null);
+  const vigentes = opciones ? toBanks(opciones) : BANKS_FALLBACK;
+  return vigentes.find((bank) => bank.code === Number(code)) || FALLBACK_BY_CODE.get(Number(code));
+};
 

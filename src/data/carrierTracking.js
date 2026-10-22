@@ -17,12 +17,53 @@
  * Es el equivalente web de `mobile/utils/carrier-tracking.ts`.
  */
 
-const CARRIERS = [
+import { remoteConfig } from '../remoteConfig/remoteConfig';
+
+// Respaldo local. Desde el Mantenedor comun los couriers salen de la lista `COURIER`, con
+// `metadata.trackingUrl` (plantilla con `{codigo}`) y `metadata.local` (reparto propio, sin
+// seguimiento publico).
+export const CARRIERS_FALLBACK = [
   { match: ['starken'], name: 'Starken', url: (t) => `https://www.starken.cl/seguimiento?codigo=${t}` },
   { match: ['chilexpress', 'chile express'], name: 'Chilexpress', url: (t) => `https://www.chilexpress.cl/Views/ChilexpressCL/Resultado-busqueda.aspx?DATA=${t}` },
   { match: ['bluexpress', 'blue express', 'bluex', 'blue'], name: 'Blue Express', url: (t) => `https://www.bluex.cl/seguimiento/?n_seguimiento=${t}` },
   { match: ['correos'], name: 'CorreosChile', url: (t) => `https://www.correos.cl/web/guest/seguimiento-en-linea?envio=${t}` },
 ];
+
+const needle = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase().replace(/_/g, ' ').trim();
+
+/**
+ * Opciones de `COURIER` -> `{match, name, url}`. Los textos que el vendedor escribe a mano no son
+ * los del mantenedor, asi que a la etiqueta y al valor se suman las variantes conocidas del
+ * respaldo ("bluex", "blue") cuando el courier es el mismo. Sin `trackingUrl` no hay enlace.
+ */
+function toCarriers(opciones) {
+  return opciones
+    .filter((opcion) => opcion?.metadata?.trackingUrl && opcion.metadata.local !== true)
+    .map((opcion) => {
+      const own = [needle(opcion.etiqueta), needle(opcion.valor)].filter(Boolean);
+      const fallback = CARRIERS_FALLBACK.find((carrier) => carrier.match.some((item) => own.some((text) => text.includes(item))));
+      const template = String(opcion.metadata.trackingUrl);
+      return {
+        match: [...new Set([...own, ...(fallback?.match || [])])],
+        name: opcion.etiqueta || fallback?.name || opcion.valor,
+        url: (t) => (template.includes('{codigo}') ? template.split('{codigo}').join(t) : `${template}${t}`),
+      };
+    });
+}
+
+let lastRemote = null;
+let lastCarriers = CARRIERS_FALLBACK;
+
+function currentCarriers() {
+  const opciones = remoteConfig.lista('COURIER', null);
+  if (!opciones) return CARRIERS_FALLBACK;
+  if (opciones !== lastRemote) {
+    lastRemote = opciones;
+    lastCarriers = toCarriers(opciones);
+  }
+  return lastCarriers;
+}
 
 /**
  * `{ name, url }` del courier reconocido, o `null`.
@@ -34,10 +75,10 @@ export function carrierTracking(courier, trackingNumber) {
   const code = String(trackingNumber ?? '').trim();
   if (!code) return null;
 
-  const raw = String(courier ?? '').trim().toLowerCase();
+  const raw = needle(courier);
   if (!raw) return null;
 
-  const carrier = CARRIERS.find((c) => c.match.some((needle) => raw.includes(needle)));
+  const carrier = currentCarriers().find((c) => c.match.some((item) => raw.includes(item)));
   if (!carrier) return null;
 
   return { name: carrier.name, url: carrier.url(encodeURIComponent(code)) };

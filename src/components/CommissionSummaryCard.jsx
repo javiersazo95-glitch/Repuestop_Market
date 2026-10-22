@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { Tag, Calculator, ChevronDown, ChevronUp, Award, Sparkles, Check } from 'lucide-react';
-import { calculateSimplePricingSummary, calculateSuggestedPrice, FLOW_RATE_BASE, STANDARD_RATE_LABEL } from '../utils/pricing';
+import { calculateSimplePricingSummary, calculateSuggestedPrice, flowRateLabel, standardRateLabel } from '../utils/pricing';
+import { useRemoteData } from '../remoteConfig/hooks';
 
 function formatCLP(amount) {
   const safe = typeof amount === 'number' && !Number.isNaN(amount) ? Math.max(0, Math.round(amount)) : 0;
   return `$${new Intl.NumberFormat('es-CL').format(safe)}`;
 }
-
-const FLOW_RATE_LABEL = `${(FLOW_RATE_BASE * 100).toFixed(2).replace('.', ',')}%`;
 
 /**
  * `basePrice` es lo que paga el comprador y la base de la comision. `shippingCost` es la
@@ -21,6 +20,11 @@ export default function CommissionSummaryCard({
   onApplySuggested,
   suggestedContextLabel,
 }) {
+  // Suscripcion al bootstrap: las tasas (y sus textos) cambian si el dueno las edita en el
+  // mantenedor, y el calculo de abajo las lee de `pricingRates()` en cada render.
+  useRemoteData();
+  const FLOW_RATE_LABEL = flowRateLabel();
+  const STANDARD_RATE_LABEL = standardRateLabel();
   const [showDetails, setShowDetails] = useState(false);
   const [calculatorMode, setCalculatorMode] = useState('standard');
   const [desiredNetInput, setDesiredNetInput] = useState('');

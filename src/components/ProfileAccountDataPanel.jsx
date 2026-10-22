@@ -27,7 +27,7 @@ import {
 } from '../utils/socialLinks';
 import { getShippingIconConfig } from './NewOnboardedStoresSection';
 import {
-  SHIPPING_METHOD_DEFS, parseShippingSelections, buildShippingMethodsString,
+  getShippingMethodDefs, parseShippingSelections, buildShippingMethodsString,
 } from '../data/shippingMethods';
 import { formatRut, isValidRut, isValidClPhone } from '../services/adapters';
 import { helpContactPath } from '../routes/paths';
@@ -204,7 +204,7 @@ export default function ProfileAccountDataPanel({
       if (!storeAddressDraft.trim()) {
         errors.storeAddress = 'Ingresa la dirección comercial de la tienda.';
       }
-      const hasShippingMethod = SHIPPING_METHOD_DEFS.some((def) => shippingSelectionsDraft[def.id]?.enabled);
+      const hasShippingMethod = getShippingMethodDefs().some((def) => shippingSelectionsDraft[def.id]?.enabled);
       if (!hasShippingMethod) {
         errors.shippingMethods = 'Selecciona al menos un método de envío.';
       }

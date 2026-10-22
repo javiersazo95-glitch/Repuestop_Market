@@ -60,6 +60,8 @@ import { orderDisplayCode } from '../data/orderIdentity';
 import { deliveryTermsLabel, isConversationPaused, quoteChargeBase, quoteShippingCost } from '../utils/quoteFlow';
 import { founderBenefitLabel, founderDaysLeft } from '../utils/founderBenefit';
 import FounderBenefitInfo from './FounderBenefitInfo';
+import { useRemoteData } from '../remoteConfig/hooks';
+import { readFlag } from '../remoteConfig/remoteConfig';
 
 function formatQuoteCLP(value) {
   return `$${Math.round(Number(value) || 0).toLocaleString('es-CL')}`;
@@ -108,6 +110,9 @@ const BUYER_PROFILE_COVER_URL = import.meta.env.VITE_BUYER_PROFILE_COVER_URL
 // Navegación del panel: cada rol ve solo los accesos que le corresponden.
 // Los grupos se recorren tal cual para pintar el sidebar, así que un `id` no
 // puede repetirse entre grupos (dos ítems quedarían activos a la vez).
+// Mantenedor comun (2026-10-20): cada grupo con `flag` se puede ocultar desde el mantenedor
+// (`market.perfil.vendedor.<grupo>` / `market.perfil.comprador.<grupo>`). El grupo sin titulo
+// (Resumen) no lleva flag: es la portada del panel y no se apaga. Sin bootstrap se ve todo.
 const SELLER_SIDEBAR_GROUPS = [
   {
     title: null,
@@ -117,6 +122,7 @@ const SELLER_SIDEBAR_GROUPS = [
   },
   {
     title: 'VENTAS',
+    flag: 'market.perfil.vendedor.ventas',
     items: [
       { id: 'pedidos', label: 'Pedidos recibidos', icon: ShoppingBag },
       { id: 'productos', label: 'Productos', icon: Package },
@@ -130,6 +136,7 @@ const SELLER_SIDEBAR_GROUPS = [
     // perfil. El backend solo le impide comprarse a si mismo; todo lo demas (comprar a otras
     // tiendas, pedir cotizaciones, preguntar en productos ajenos, guardar favoritos) es igual.
     title: 'MIS COMPRAS',
+    flag: 'market.perfil.vendedor.mis-compras',
     items: [
       { id: 'compras', label: 'Mis compras', icon: ShoppingCart },
       { id: 'mis_cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
@@ -140,6 +147,7 @@ const SELLER_SIDEBAR_GROUPS = [
   },
   {
     title: 'MI TIENDA',
+    flag: 'market.perfil.vendedor.mi-tienda',
     items: [
       { id: 'tienda_datos', label: 'Mi tienda y datos', icon: Store },
       { id: 'retiros', label: 'Retirar dinero', icon: Wallet },
@@ -148,6 +156,7 @@ const SELLER_SIDEBAR_GROUPS = [
   },
   {
     title: 'SOPORTE',
+    flag: 'market.perfil.vendedor.soporte',
     items: [
       { id: 'consultas', label: 'Reportes/Soporte', icon: MessageSquare },
       { id: 'soporte', label: 'Centro de ayuda', icon: Headphones, href: ROUTES.support },
@@ -193,6 +202,7 @@ const BUYER_SIDEBAR_GROUPS = [
   },
   {
     title: 'MIS COMPRAS',
+    flag: 'market.perfil.comprador.mis-compras',
     items: [
       { id: 'pedidos', label: 'Mis pedidos', icon: Package },
       { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
@@ -203,6 +213,7 @@ const BUYER_SIDEBAR_GROUPS = [
   },
   {
     title: 'MI CUENTA',
+    flag: 'market.perfil.comprador.mi-cuenta',
     items: [
       { id: 'datos', label: 'Mis datos y perfil', icon: UserCog },
       { id: 'anuncios', label: 'Gestión de anuncios', icon: Megaphone }
@@ -210,6 +221,7 @@ const BUYER_SIDEBAR_GROUPS = [
   },
   {
     title: 'SOPORTE',
+    flag: 'market.perfil.comprador.soporte',
     items: [
       { id: 'consultas', label: 'Reportes/Soporte', icon: MessageSquare },
       { id: 'soporte', label: 'Centro de ayuda', icon: Headphones, href: ROUTES.support }
@@ -605,20 +617,24 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // Reportes/Soporte siguen accesibles (para el vendedor ademas pedidos en solo
   // lectura). Soporte es justamente donde vive la mediacion que suele originar el
   // bloqueo.
+  // Grupos que el dueno oculto desde el Mantenedor comun. Se leen los flags del bootstrap (no un
+  // `useFlag` por grupo) porque la lista de grupos depende del rol.
+  const remoteConfigData = useRemoteData();
   const sidebarGroups = useMemo(() => {
+    const enabledGroups = baseSidebarGroups.filter((group) => !group.flag || readFlag(remoteConfigData, group.flag, true));
     const hiddenTabs = isSellerBlocked
       ? SELLER_BLOCKED_HIDDEN_TABS
       : isBuyerBlocked
         ? BUYER_BLOCKED_HIDDEN_TABS
         : null;
-    if (!hiddenTabs) return baseSidebarGroups;
-    return baseSidebarGroups
+    if (!hiddenTabs) return enabledGroups;
+    return enabledGroups
       .map((group) => ({
         ...group,
         items: group.items.filter((item) => !hiddenTabs.includes(item.id)),
       }))
       .filter((group) => group.items.length > 0);
-  }, [baseSidebarGroups, isSellerBlocked, isBuyerBlocked]);
+  }, [baseSidebarGroups, remoteConfigData, isSellerBlocked, isBuyerBlocked]);
 
   // Version movil: items de la barra inferior y titulo de la app bar. Solo derivan de
   // `sidebarGroups` y `activeTab`; no hay estado nuevo.

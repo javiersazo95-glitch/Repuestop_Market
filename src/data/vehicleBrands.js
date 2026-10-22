@@ -9,9 +9,13 @@
 // La resolución es por nombre normalizado, así que una marca nueva en el catálogo
 // se muestra igual de bien sin tocar este archivo: si algún día se agrega su SVG a
 // public/brand-logos con el mismo slug, pasa a mostrar el emblema automáticamente.
+//
+// Mantenedor comun (2026-10-20): el emblema ahora se sube al mantenedor y llega como
+// `iconoUrl` en `marcasVehiculo` del bootstrap (R2). Los SVG locales quedan como respaldo:
+// sin bootstrap, o si la imagen remota no carga, se usa `/brand-logos/<slug>.svg`.
 
-/** Emblemas disponibles en public/brand-logos/<slug>.svg */
-export const VEHICLE_BRAND_LOGO_SLUGS = new Set([
+/** Emblemas disponibles en public/brand-logos/<slug>.svg (respaldo local). */
+export const VEHICLE_BRAND_LOGO_SLUGS_FALLBACK = new Set([
   'acura', 'astonmartin', 'audi', 'bentley', 'bmw', 'cadillac', 'chevrolet', 'chrysler',
   'citroen', 'dacia', 'dsautomobiles', 'ducati', 'ferrari', 'fiat', 'ford', 'honda',
   'husqvarna', 'hyundai', 'infiniti', 'iveco', 'jeep', 'kia', 'koenigsegg', 'ktm', 'lada',
@@ -55,13 +59,40 @@ export function vehicleBrandLogoSlug(name) {
   const compact = normalized.replace(/ /g, '');
   const alias = BRAND_SLUG_ALIASES[compact];
   if (alias) return alias;
-  return VEHICLE_BRAND_LOGO_SLUGS.has(compact) ? compact : null;
+  return VEHICLE_BRAND_LOGO_SLUGS_FALLBACK.has(compact) ? compact : null;
 }
 
 /** Ruta del emblema servido localmente (sin CDN externo). */
 export function vehicleBrandLogoUrl(name) {
   const slug = vehicleBrandLogoSlug(name);
   return slug ? `/brand-logos/${slug}.svg` : null;
+}
+
+/**
+ * Marca del bootstrap (`marcasVehiculo`) que corresponde a un nombre del catalogo. Cruza por
+ * slug y por nombre normalizado, con los mismos alias que el respaldo local ("KIA MOTORS" -> kia).
+ */
+export function findRemoteVehicleBrand(marcas, name) {
+  if (!Array.isArray(marcas) || !marcas.length) return null;
+  const normalized = normalizeBrandName(name);
+  if (!normalized) return null;
+  const compact = normalized.replace(/ /g, '');
+  const alias = BRAND_SLUG_ALIASES[compact];
+  const keyOf = (value) => normalizeBrandName(value).replace(/ /g, '');
+  return marcas.find((marca) => {
+    const slugKey = keyOf(marca.slug);
+    return slugKey === compact || (alias && slugKey === alias) || keyOf(marca.nombre) === compact;
+  }) || null;
+}
+
+/**
+ * Fuentes del emblema en orden de preferencia: `iconoUrl` del mantenedor y despues el SVG local.
+ * El componente avanza a la siguiente cuando una no carga (`onError`) y al final usa el monograma.
+ */
+export function vehicleBrandLogoSources(name, marcasRemotas) {
+  const remote = findRemoteVehicleBrand(marcasRemotas, name)?.iconoUrl || null;
+  const local = vehicleBrandLogoUrl(name);
+  return [remote, local].filter((url, index, list) => url && list.indexOf(url) === index);
 }
 
 /**

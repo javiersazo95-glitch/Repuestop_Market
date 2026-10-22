@@ -12,7 +12,7 @@ import {
   getSellerOrderByNumberApi, getSellerOrdersApi, getSellerWithdrawalDetailApi, getSellerWithdrawalsApi,
   updateSellerBankAccountApi,
 } from '../services/api';
-import { BANKS, findBankByCode } from '../data/banks';
+import { findBankByCode, useBanks } from '../data/banks';
 import { orderDisplayCode, sellerCodeShort } from '../data/orderIdentity';
 import { buildOrderPackages } from '../utils/orderPackages';
 import { profileOrderPath } from '../routes/paths';
@@ -536,6 +536,8 @@ function OrdersListModal({ modalData, onClose }) {
 }
 
 function BankAccountModal({ sellerId, initialAccount, fallbackEmail, onClose, onSaved }) {
+  // Bancos de la lista `BANCO` del mantenedor; sin bootstrap, los de siempre.
+  const banks = useBanks();
   const [form, setForm] = useState(() => ({
     bankCode: initialAccount?.bankCode ? String(initialAccount.bankCode) : '',
     holderName: initialAccount?.bankAccountHolderName || '',
@@ -549,6 +551,10 @@ function BankAccountModal({ sellerId, initialAccount, fallbackEmail, onClose, on
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const selectedBank = findBankByCode(form.bankCode);
+  // Un banco que el dueno oculto en el mantenedor sigue en la lista si es el de la cuenta guardada.
+  const bankOptions = !form.bankCode || banks.some((bank) => String(bank.code) === String(form.bankCode))
+    ? banks
+    : [selectedBank, ...banks].filter(Boolean);
 
   const update = (field, value) => setForm((current) => ({ ...current, [field]: value }));
 
@@ -597,7 +603,7 @@ function BankAccountModal({ sellerId, initialAccount, fallbackEmail, onClose, on
     <ModalShell title="Datos bancarios" subtitle="Estos datos se usan para procesar tus retiros de dinero." icon={Landmark} onClose={onClose} wide>
       <form className="withdrawal-bank-form" onSubmit={handleSubmit}>
         {errors.submit && <div className="withdrawal-alert error"><AlertCircle size={17} /><span>{errors.submit}</span></div>}
-        <label className="wide-field"><span>Banco</span><select value={form.bankCode} onChange={(event) => update('bankCode', event.target.value)}><option value="">Selecciona tu banco</option>{BANKS.map((bank) => <option key={bank.code} value={bank.code}>{bank.label}</option>)}</select>{errors.bankCode && <small>{errors.bankCode}</small>}</label>
+        <label className="wide-field"><span>Banco</span><select value={form.bankCode} onChange={(event) => update('bankCode', event.target.value)}><option value="">Selecciona tu banco</option>{bankOptions.map((bank) => <option key={bank.code} value={bank.code}>{bank.label}</option>)}</select>{errors.bankCode && <small>{errors.bankCode}</small>}</label>
         <label><span><User size={14} /> Nombre del titular</span><input value={form.holderName} onChange={(event) => update('holderName', event.target.value)} placeholder="Nombre del titular" />{errors.holderName && <small>{errors.holderName}</small>}</label>
         <label><span>RUT</span><input value={form.rut} onChange={(event) => update('rut', formatRut(event.target.value))} placeholder="12.345.678-9" />{errors.rut && <small>{errors.rut}</small>}</label>
         <label><span>Tipo de cuenta</span><select value={form.accountType} onChange={(event) => update('accountType', event.target.value)}><option value="">Selecciona el tipo</option>{ACCOUNT_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}</select>{errors.accountType && <small>{errors.accountType}</small>}</label>

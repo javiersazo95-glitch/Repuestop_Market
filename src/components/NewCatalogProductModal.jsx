@@ -17,7 +17,7 @@ import {
   updateSellerInventoryProductApi,
 } from '../services/api';
 import { compressImageFile } from '../utils/imageCompression';
-import { PRODUCT_WARRANTY_MAX, PRODUCT_WARRANTY_OPTIONS, PRODUCT_WARRANTY_OTHER, resolveWarranty, warrantyToForm } from '../utils/productWarranty';
+import { PRODUCT_WARRANTY_MAX, PRODUCT_WARRANTY_OTHER, resolveWarranty, useWarrantyOptions, warrantyToForm } from '../utils/productWarranty';
 
 const MAX_PHOTOS = 4;
 const CURRENT_YEAR = new Date().getFullYear() + 2;
@@ -155,6 +155,8 @@ function CatalogField({ label, optional, children }) {
 }
 
 export default function NewCatalogProductModal({ sellerId, product = null, onClose, onCreated, isFounder = false }) {
+  // Garantias de la lista `GARANTIA_PRODUCTO` del mantenedor (o las de siempre sin bootstrap).
+  const warrantyOptions = useWarrantyOptions();
   const [form, setForm] = useState(() => initialForm(product));
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
@@ -624,7 +626,7 @@ export default function NewCatalogProductModal({ sellerId, product = null, onClo
             <div className="catalog-condition-row"><span>Calidad del producto</span>{['ORIGINAL', 'ALTERNATIVO'].map((condition) => <button type="button" key={condition} className={form.condition === condition ? 'active' : ''} onClick={() => update('condition', condition)}><Check size={14} />{condition === 'ORIGINAL' ? 'Original' : 'Alternativo'}</button>)}</div>
             <div className="catalog-warranty-field">
               <CatalogField label="Garantía">
-                <SearchableDropdown value={form.warranty} options={PRODUCT_WARRANTY_OPTIONS} placeholder="Selecciona la garantía" onChange={(value) => setForm((previous) => ({ ...previous, warranty: value, warrantyOther: value === PRODUCT_WARRANTY_OTHER ? previous.warrantyOther : '' }))} />
+                <SearchableDropdown value={form.warranty} options={warrantyOptions} placeholder="Selecciona la garantía" onChange={(value) => setForm((previous) => ({ ...previous, warranty: value, warrantyOther: value === PRODUCT_WARRANTY_OTHER ? previous.warrantyOther : '' }))} />
               </CatalogField>
               {form.warranty === PRODUCT_WARRANTY_OTHER && (
                 <CatalogField label="Registrar garantía">

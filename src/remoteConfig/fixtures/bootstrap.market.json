@@ -1,0 +1,2813 @@
+{
+  "version": 1,
+  "cliente": "MARKET",
+  "generadoEn": "2026-10-20T12:00:00Z",
+  "parametros": {
+    "comision.tasa.alta": "0.07",
+    "comision.tasa.media": "0.07",
+    "comision.tasa.baja": "0.07",
+    "comision.limite.media": "100000",
+    "comision.limite.baja": "250000",
+    "comision.fundador.porcentaje": "0.00",
+    "comision.iva": "0.19",
+    "comision.iva.incluido": "false",
+    "pasarela.porcentaje": "0.0289",
+    "pasarela.iva": "0.19",
+    "pedido.expiracion.minutos": "30",
+    "pedido.autorecepcion.dias": "10",
+    "pedido.autorecepcion.aviso.dias": "7",
+    "pedido.autorecepcion.local.dias": "2",
+    "pedido.autofinalizacion.dias": "3",
+    "pedido.entregadeclarada.veto.horas": "48",
+    "retiro.retencion.retracto.dias": "11",
+    "legal.version-vigente": "2026-10-18",
+    "inventario.top.costo": "200",
+    "inventario.top.vigencia.dias": "30",
+    "inventario.fotos.maximo": "10",
+    "inventario.excel.limite-filas": "5000",
+    "mediacion.plazo-mediador.dias": "10"
+  },
+  "parametrosTipos": {
+    "comision.tasa.alta": "PERCENT",
+    "comision.tasa.media": "PERCENT",
+    "comision.tasa.baja": "PERCENT",
+    "comision.limite.media": "MONEY",
+    "comision.limite.baja": "MONEY",
+    "comision.fundador.porcentaje": "PERCENT",
+    "comision.iva": "PERCENT",
+    "comision.iva.incluido": "BOOLEAN",
+    "pasarela.porcentaje": "PERCENT",
+    "pasarela.iva": "PERCENT",
+    "pedido.expiracion.minutos": "NUMBER",
+    "pedido.autorecepcion.dias": "NUMBER",
+    "pedido.autorecepcion.aviso.dias": "NUMBER",
+    "pedido.autorecepcion.local.dias": "NUMBER",
+    "pedido.autofinalizacion.dias": "NUMBER",
+    "pedido.entregadeclarada.veto.horas": "NUMBER",
+    "retiro.retencion.retracto.dias": "NUMBER",
+    "legal.version-vigente": "STRING",
+    "inventario.top.costo": "NUMBER",
+    "inventario.top.vigencia.dias": "NUMBER",
+    "inventario.fotos.maximo": "NUMBER",
+    "inventario.excel.limite-filas": "NUMBER",
+    "mediacion.plazo-mediador.dias": "NUMBER"
+  },
+  "flags": {
+    "market.home.hero-patente": true,
+    "market.home.ultimos-agregados": true,
+    "market.home.tiendas-nuevas": true,
+    "market.home.testimonios": false,
+    "market.global.aviso-app-movil": true,
+    "market.global.cookie-banner": true,
+    "market.global.modal-reaceptacion-terminos": true,
+    "market.global.modal-adhesion-vendedor": true,
+    "market.global.prompt-declaracion-iva": true,
+    "market.checkout.pago-simulado": true,
+    "market.header.megamenu-categorias": true,
+    "market.footer.enlaces-categorias": true,
+    "market.nav.mural-anuncios": true,
+    "market.perfil.vendedor.ventas": true,
+    "market.perfil.vendedor.mis-compras": true,
+    "market.perfil.vendedor.mi-tienda": true,
+    "market.perfil.vendedor.soporte": true,
+    "market.perfil.comprador.mis-compras": true,
+    "market.perfil.comprador.mi-cuenta": true,
+    "market.perfil.comprador.soporte": true,
+    "global.mantenimiento": false
+  },
+  "flagsMetadata": {
+    "global.mantenimiento": {
+      "mensaje": "Volvemos a las 9:00"
+    }
+  },
+  "listas": {
+    "CONDICION_PRODUCTO": [
+      {
+        "valor": "ORIGINAL",
+        "etiqueta": "Original",
+        "descripcion": "Pieza nueva del fabricante del vehículo",
+        "orden": 0,
+        "esDefault": true,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "ALTERNATIVO",
+        "etiqueta": "Alternativo",
+        "descripcion": "Pieza nueva equivalente y homologada",
+        "orden": 1,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      }
+    ],
+    "TIPO_PRECIO": [
+      {
+        "valor": "MOSTRAR_PRECIO",
+        "etiqueta": "Mostrar precio",
+        "descripcion": null,
+        "orden": 0,
+        "esDefault": true,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "SOLO_COTIZAR",
+        "etiqueta": "Solo cotizar",
+        "descripcion": null,
+        "orden": 1,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      }
+    ],
+    "GARANTIA_PRODUCTO": [
+      {
+        "valor": "6 meses (garantía legal)",
+        "etiqueta": "6 meses (garantía legal)",
+        "descripcion": null,
+        "orden": 0,
+        "esDefault": true,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "1 año",
+        "etiqueta": "1 año",
+        "descripcion": null,
+        "orden": 1,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "2 años",
+        "etiqueta": "2 años",
+        "descripcion": null,
+        "orden": 2,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "3 años",
+        "etiqueta": "3 años",
+        "descripcion": null,
+        "orden": 3,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "Garantía del fabricante",
+        "etiqueta": "Garantía del fabricante",
+        "descripcion": null,
+        "orden": 4,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      }
+    ],
+    "METODO_ENVIO": [
+      {
+        "valor": "retiro",
+        "etiqueta": "Retiro en tienda",
+        "descripcion": null,
+        "orden": 0,
+        "esDefault": true,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "canonicalName": "Retiro en tienda",
+          "hasPrice": false,
+          "note": null
+        }
+      },
+      {
+        "valor": "dentro",
+        "etiqueta": "Envío dentro de la comuna",
+        "descripcion": null,
+        "orden": 1,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "canonicalName": "Envío dentro de la comuna",
+          "hasPrice": true,
+          "note": null
+        }
+      },
+      {
+        "valor": "fuera",
+        "etiqueta": "Envío fuera de la comuna",
+        "descripcion": null,
+        "orden": 2,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "canonicalName": "Envío fuera de la comuna",
+          "hasPrice": false,
+          "note": "Por pagar en destino"
+        }
+      }
+    ],
+    "COURIER": [
+      {
+        "valor": "STARKEN",
+        "etiqueta": "Starken",
+        "descripcion": null,
+        "orden": 0,
+        "esDefault": true,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "trackingUrl": "https://www.starken.cl/seguimiento?codigo={codigo}",
+          "local": false
+        }
+      },
+      {
+        "valor": "CHILEXPRESS",
+        "etiqueta": "Chilexpress",
+        "descripcion": null,
+        "orden": 1,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "trackingUrl": "https://www.chilexpress.cl/Views/ChilexpressCL/Resultado-busqueda.aspx?DATA={codigo}",
+          "local": false
+        }
+      },
+      {
+        "valor": "BLUE_EXPRESS",
+        "etiqueta": "Blue Express",
+        "descripcion": null,
+        "orden": 2,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "trackingUrl": "https://www.bluex.cl/seguimiento/?n_seguimiento={codigo}",
+          "local": false
+        }
+      },
+      {
+        "valor": "CORREOS_CHILE",
+        "etiqueta": "Correos de Chile",
+        "descripcion": null,
+        "orden": 3,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "trackingUrl": "https://www.correos.cl/web/guest/seguimiento-en-linea?envio={codigo}",
+          "local": false
+        }
+      },
+      {
+        "valor": "REPARTO_PROPIO",
+        "etiqueta": "Reparto propio de la tienda",
+        "descripcion": null,
+        "orden": 4,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "trackingUrl": null,
+          "local": true
+        }
+      }
+    ],
+    "MOTIVO_CANCELACION_PEDIDO": [
+      {
+        "valor": "EXPIRACION_PAGO",
+        "etiqueta": "No se completó el pago a tiempo",
+        "descripcion": null,
+        "orden": 0,
+        "esDefault": true,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "PAGO_TARDIO_SIN_STOCK",
+        "etiqueta": "El pago llegó después del plazo y ya no había stock",
+        "descripcion": null,
+        "orden": 1,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "SIN_STOCK",
+        "etiqueta": "Sin stock",
+        "descripcion": null,
+        "orden": 2,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "ERROR_PRECIO",
+        "etiqueta": "Error de precio",
+        "descripcion": null,
+        "orden": 3,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "PRODUCTO_NO_DISPONIBLE",
+        "etiqueta": "Producto no disponible",
+        "descripcion": null,
+        "orden": 4,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "IMPOSIBILIDAD_DESPACHO",
+        "etiqueta": "Imposibilidad de despacho",
+        "descripcion": null,
+        "orden": 5,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "INCOMPATIBLE_VEHICULO",
+        "etiqueta": "Incompatible con el vehículo",
+        "descripcion": null,
+        "orden": 6,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "BLOQUEO_VENDEDOR",
+        "etiqueta": "La tienda no está disponible",
+        "descripcion": null,
+        "orden": 7,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "SOLICITUD_DEL_COMPRADOR",
+        "etiqueta": "Cancelado por el comprador",
+        "descripcion": null,
+        "orden": 8,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "OTRO",
+        "etiqueta": "Otro motivo",
+        "descripcion": null,
+        "orden": 9,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      }
+    ],
+    "MOTIVO_RECLAMO": [
+      {
+        "valor": "incompatible",
+        "etiqueta": "Pieza incompatible con mi vehículo/modelo",
+        "descripcion": null,
+        "orden": 0,
+        "esDefault": true,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "defective",
+        "etiqueta": "Pieza en mal estado / Defectuosa / Dañada",
+        "descripcion": null,
+        "orden": 1,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "not_received",
+        "etiqueta": "El producto no ha llegado / Retraso en la entrega",
+        "descripcion": null,
+        "orden": 2,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "wrong_purchase",
+        "etiqueta": "Me equivoqué de compra / Quiero cancelar el pedido",
+        "descripcion": null,
+        "orden": 3,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "wrong_product",
+        "etiqueta": "Producto incorrecto o incompleto (faltan piezas)",
+        "descripcion": null,
+        "orden": 4,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "buyer_remorse",
+        "etiqueta": "Me arrepentí de la compra / Solicitar devolución",
+        "descripcion": null,
+        "orden": 5,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "delay_preparation",
+        "etiqueta": "El vendedor tarda demasiado en preparar o enviar el producto",
+        "descripcion": null,
+        "orden": 6,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "store_closed",
+        "etiqueta": "Fui a retirar y el local estaba cerrado",
+        "descripcion": null,
+        "orden": 7,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "refused_delivery",
+        "etiqueta": "El vendedor se niega a entregar el producto",
+        "descripcion": null,
+        "orden": 8,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "no_contact",
+        "etiqueta": "No logro contactar al vendedor",
+        "descripcion": null,
+        "orden": 9,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "buyer_no_response",
+        "etiqueta": "El comprador no responde o rechazó la entrega",
+        "descripcion": null,
+        "orden": 10,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "courier_issue",
+        "etiqueta": "Problema con la empresa de transporte (Courier)",
+        "descripcion": null,
+        "orden": 11,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "payout_issue",
+        "etiqueta": "Error en la liquidación o procesamiento del pago",
+        "descripcion": null,
+        "orden": 12,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "disputed_return",
+        "etiqueta": "Devolución de producto dañada o incompleta",
+        "descripcion": null,
+        "orden": 13,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "out_of_stock",
+        "etiqueta": "Problema con el stock / No puedo procesar el pedido",
+        "descripcion": null,
+        "orden": 14,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "buyer_no_show",
+        "etiqueta": "El comprador no se ha presentado a retirar",
+        "descripcion": null,
+        "orden": 15,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "other",
+        "etiqueta": "Otro",
+        "descripcion": null,
+        "orden": 16,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      }
+    ],
+    "BANCO": [
+      {
+        "valor": "BANCO_1",
+        "etiqueta": "Banco de Chile / A. Edwards / Citibank N.A.",
+        "descripcion": null,
+        "orden": 0,
+        "esDefault": true,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "001",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_9",
+        "etiqueta": "Banco Internacional",
+        "descripcion": null,
+        "orden": 1,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "009",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_11",
+        "etiqueta": "Dresdner Bank Leteinamerika",
+        "descripcion": null,
+        "orden": 2,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "011",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_12",
+        "etiqueta": "Banco del Estado de Chile (BancoEstado)",
+        "descripcion": null,
+        "orden": 3,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "012",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_14",
+        "etiqueta": "Scotiabank",
+        "descripcion": null,
+        "orden": 4,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "014",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_16",
+        "etiqueta": "Banco Credito e Inversiones (BCI)",
+        "descripcion": null,
+        "orden": 5,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "016",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_17",
+        "etiqueta": "Banco Do Brasil S.A.",
+        "descripcion": null,
+        "orden": 6,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "017",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_27",
+        "etiqueta": "Corpbanca",
+        "descripcion": null,
+        "orden": 7,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "027",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_28",
+        "etiqueta": "Banco Bice",
+        "descripcion": null,
+        "orden": 8,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "028",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_31",
+        "etiqueta": "HSBC Bank Chile",
+        "descripcion": null,
+        "orden": 9,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "031",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_37",
+        "etiqueta": "Banco Santander - Santiago",
+        "descripcion": null,
+        "orden": 10,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "037",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_39",
+        "etiqueta": "Banco Itaú",
+        "descripcion": null,
+        "orden": 11,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "039",
+          "requiereAlias": true
+        }
+      },
+      {
+        "valor": "BANCO_41",
+        "etiqueta": "JP Morgan Chase Bank",
+        "descripcion": null,
+        "orden": 12,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "041",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_43",
+        "etiqueta": "Banco de la Nación Argentina",
+        "descripcion": null,
+        "orden": 13,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "043",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_45",
+        "etiqueta": "The Bank of Tokyo – Mitsubishi",
+        "descripcion": null,
+        "orden": 14,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "045",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_46",
+        "etiqueta": "Abn Amro Bank (Chile)",
+        "descripcion": null,
+        "orden": 15,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "046",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_49",
+        "etiqueta": "Banco Security",
+        "descripcion": null,
+        "orden": 16,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "049",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_51",
+        "etiqueta": "Banco Falabella",
+        "descripcion": null,
+        "orden": 17,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "051",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_52",
+        "etiqueta": "Deutsche Bank (Chile)",
+        "descripcion": null,
+        "orden": 18,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "052",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_53",
+        "etiqueta": "Banco Ripley",
+        "descripcion": null,
+        "orden": 19,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "053",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_54",
+        "etiqueta": "HNS Banco",
+        "descripcion": null,
+        "orden": 20,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "054",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_55",
+        "etiqueta": "Banco Consorcio",
+        "descripcion": null,
+        "orden": 21,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "055",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_116",
+        "etiqueta": "Cuentas Mach",
+        "descripcion": null,
+        "orden": 22,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "116",
+          "requiereAlias": true
+        }
+      },
+      {
+        "valor": "BANCO_504",
+        "etiqueta": "BBVA Banco Bhif",
+        "descripcion": null,
+        "orden": 23,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "504",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_507",
+        "etiqueta": "Banco del Desarrollo",
+        "descripcion": null,
+        "orden": 24,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "507",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_672",
+        "etiqueta": "Copeeuch",
+        "descripcion": null,
+        "orden": 25,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "672",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_697",
+        "etiqueta": "La Polar",
+        "descripcion": null,
+        "orden": 26,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "697",
+          "requiereAlias": true
+        }
+      },
+      {
+        "valor": "BANCO_729",
+        "etiqueta": "Tarjetas Los Héroes S.A.",
+        "descripcion": null,
+        "orden": 27,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "729",
+          "requiereAlias": true
+        }
+      },
+      {
+        "valor": "BANCO_730",
+        "etiqueta": "Tenpo Prepago S.A.",
+        "descripcion": null,
+        "orden": 28,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "730",
+          "requiereAlias": true
+        }
+      },
+      {
+        "valor": "BANCO_732",
+        "etiqueta": "Los Andes Tarjetas de Prepago",
+        "descripcion": null,
+        "orden": 29,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "732",
+          "requiereAlias": true
+        }
+      },
+      {
+        "valor": "BANCO_734",
+        "etiqueta": "Banco Conosur",
+        "descripcion": null,
+        "orden": 30,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "734",
+          "requiereAlias": false
+        }
+      },
+      {
+        "valor": "BANCO_738",
+        "etiqueta": "Global 66",
+        "descripcion": null,
+        "orden": 31,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "738",
+          "requiereAlias": true
+        }
+      },
+      {
+        "valor": "BANCO_741",
+        "etiqueta": "Copec Pay",
+        "descripcion": null,
+        "orden": 32,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "741",
+          "requiereAlias": true
+        }
+      },
+      {
+        "valor": "BANCO_875",
+        "etiqueta": "Mercado Pago",
+        "descripcion": null,
+        "orden": 33,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": {
+          "codigoBci": "875",
+          "requiereAlias": true
+        }
+      }
+    ],
+    "COMBUSTIBLE": [
+      {
+        "valor": "Bencina",
+        "etiqueta": "Bencina",
+        "descripcion": null,
+        "orden": 0,
+        "esDefault": true,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "Diésel",
+        "etiqueta": "Diésel",
+        "descripcion": null,
+        "orden": 1,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "Eléctrico",
+        "etiqueta": "Eléctrico",
+        "descripcion": null,
+        "orden": 2,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "Híbrido Sin Recarga Exterior",
+        "etiqueta": "Híbrido Sin Recarga Exterior",
+        "descripcion": null,
+        "orden": 3,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "Híbrido Recarga Exterior",
+        "etiqueta": "Híbrido Recarga Exterior",
+        "descripcion": null,
+        "orden": 4,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "Gas (GLP / GNC)",
+        "etiqueta": "Gas (GLP / GNC)",
+        "descripcion": null,
+        "orden": 5,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      }
+    ]
+  },
+  "categorias": [
+    {
+      "id": 1,
+      "nombre": "Accesorios",
+      "slug": "accesorios",
+      "familia": "carroceria",
+      "orden": 0,
+      "iconoUrl": null,
+      "iconoNombre": "Sparkles",
+      "color": "#06b6d4",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 100,
+          "nombre": "Interior",
+          "slug": "interior",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 101,
+          "nombre": "Exterior",
+          "slug": "exterior",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 102,
+          "nombre": "Seguridad",
+          "slug": "seguridad",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 103,
+          "nombre": "Iluminación",
+          "slug": "iluminacion",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 104,
+          "nombre": "Audio y Tecnología",
+          "slug": "audio-y-tecnologia",
+          "orden": 4,
+          "imagenUrl": null
+        },
+        {
+          "id": 105,
+          "nombre": "Limpieza y Cuidado",
+          "slug": "limpieza-y-cuidado",
+          "orden": 5,
+          "imagenUrl": null
+        },
+        {
+          "id": 106,
+          "nombre": "Herramientas y Emergencia",
+          "slug": "herramientas-y-emergencia",
+          "orden": 6,
+          "imagenUrl": null
+        },
+        {
+          "id": 107,
+          "nombre": "Neumáticos y Llantas",
+          "slug": "neumaticos-y-llantas",
+          "orden": 7,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "nombre": "Aceite",
+      "slug": "aceite",
+      "familia": "aceites",
+      "orden": 1,
+      "iconoUrl": null,
+      "iconoNombre": "Droplets",
+      "color": "#14b8a6",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 108,
+          "nombre": "Bomba de Aceite",
+          "slug": "bomba-de-aceite",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 109,
+          "nombre": "Aceite de Caja",
+          "slug": "aceite-de-caja",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 110,
+          "nombre": "Aceite de Motor",
+          "slug": "aceite-de-motor",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 111,
+          "nombre": "Filtro de Aceite",
+          "slug": "filtro-de-aceite",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 112,
+          "nombre": "Radiador de Aceite",
+          "slug": "radiador-de-aceite",
+          "orden": 4,
+          "imagenUrl": null
+        },
+        {
+          "id": 113,
+          "nombre": "Válvula Control Aceite",
+          "slug": "valvula-control-aceite",
+          "orden": 5,
+          "imagenUrl": null
+        },
+        {
+          "id": 114,
+          "nombre": "Cárter",
+          "slug": "carter",
+          "orden": 6,
+          "imagenUrl": null
+        },
+        {
+          "id": 115,
+          "nombre": "Inyector Aceite",
+          "slug": "inyector-aceite",
+          "orden": 7,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "nombre": "Admisión de Aire",
+      "slug": "admision-aire",
+      "familia": "motor",
+      "orden": 2,
+      "iconoUrl": null,
+      "iconoNombre": "Wind",
+      "color": "#0ea5e9",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 116,
+          "nombre": "Múltiple Admisión",
+          "slug": "multiple-admision",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 117,
+          "nombre": "Válvula IAC",
+          "slug": "valvula-iac",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 118,
+          "nombre": "Cuerpo Aceleración",
+          "slug": "cuerpo-aceleracion",
+          "orden": 2,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "nombre": "Calefacción y Aire Acondicionado",
+      "slug": "calefaccion-aire-acondicionado",
+      "familia": "iluminacion",
+      "orden": 3,
+      "iconoUrl": null,
+      "iconoNombre": "ThermometerSun",
+      "color": "#f59e0b",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 119,
+          "nombre": "Compresor",
+          "slug": "compresor",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 120,
+          "nombre": "Condensador",
+          "slug": "condensador",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 121,
+          "nombre": "Filtro de Polen",
+          "slug": "filtro-de-polen",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 122,
+          "nombre": "Radiador de Calefacción",
+          "slug": "radiador-de-calefaccion",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 123,
+          "nombre": "Evaporador",
+          "slug": "evaporador",
+          "orden": 4,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "nombre": "Carrocería",
+      "slug": "carroceria",
+      "familia": "carroceria",
+      "orden": 4,
+      "iconoUrl": null,
+      "iconoNombre": "CarFront",
+      "color": "#ec4899",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 124,
+          "nombre": "Parachoques",
+          "slug": "parachoques",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 125,
+          "nombre": "Maleta & Portalón",
+          "slug": "maleta-portalon",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 126,
+          "nombre": "Capot",
+          "slug": "capot",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 127,
+          "nombre": "Cubre Frontal",
+          "slug": "cubre-frontal",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 128,
+          "nombre": "Cubre Motor",
+          "slug": "cubre-motor",
+          "orden": 4,
+          "imagenUrl": null
+        },
+        {
+          "id": 129,
+          "nombre": "Espejos",
+          "slug": "espejos",
+          "orden": 5,
+          "imagenUrl": null
+        },
+        {
+          "id": 130,
+          "nombre": "Focos Traseros",
+          "slug": "focos-traseros",
+          "orden": 6,
+          "imagenUrl": null
+        },
+        {
+          "id": 131,
+          "nombre": "Frontal",
+          "slug": "frontal",
+          "orden": 7,
+          "imagenUrl": null
+        },
+        {
+          "id": 132,
+          "nombre": "Guardafangos",
+          "slug": "guardafangos",
+          "orden": 8,
+          "imagenUrl": null
+        },
+        {
+          "id": 133,
+          "nombre": "Guías de Parachoques",
+          "slug": "guias-de-parachoques",
+          "orden": 9,
+          "imagenUrl": null
+        },
+        {
+          "id": 134,
+          "nombre": "Manillas",
+          "slug": "manillas",
+          "orden": 10,
+          "imagenUrl": null
+        },
+        {
+          "id": 135,
+          "nombre": "Neblineros",
+          "slug": "neblineros",
+          "orden": 11,
+          "imagenUrl": null
+        },
+        {
+          "id": 136,
+          "nombre": "Focos Delanteros",
+          "slug": "focos-delanteros",
+          "orden": 12,
+          "imagenUrl": null
+        },
+        {
+          "id": 137,
+          "nombre": "Paneles y Cunas de Motor",
+          "slug": "paneles-y-cunas-de-motor",
+          "orden": 13,
+          "imagenUrl": null
+        },
+        {
+          "id": 138,
+          "nombre": "Puertas",
+          "slug": "puertas",
+          "orden": 14,
+          "imagenUrl": null
+        },
+        {
+          "id": 139,
+          "nombre": "Refuerzos",
+          "slug": "refuerzos",
+          "orden": 15,
+          "imagenUrl": null
+        },
+        {
+          "id": 140,
+          "nombre": "Rejilla Torpedo",
+          "slug": "rejilla-torpedo",
+          "orden": 16,
+          "imagenUrl": null
+        },
+        {
+          "id": 141,
+          "nombre": "Tapabarros",
+          "slug": "tapabarros",
+          "orden": 17,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "nombre": "Cerraduras",
+      "slug": "cerraduras",
+      "familia": "carroceria",
+      "orden": 5,
+      "iconoUrl": null,
+      "iconoNombre": "KeyRound",
+      "color": "#64748b",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 142,
+          "nombre": "Chapas y Cilindros",
+          "slug": "chapas-y-cilindros",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 143,
+          "nombre": "Actuadores",
+          "slug": "actuadores",
+          "orden": 1,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "nombre": "Combustible",
+      "slug": "combustible",
+      "familia": "motor",
+      "orden": 6,
+      "iconoUrl": null,
+      "iconoNombre": "Fuel",
+      "color": "#eab308",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 144,
+          "nombre": "Bomba de Bencina",
+          "slug": "bomba-de-bencina",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 145,
+          "nombre": "Filtro de Combustible",
+          "slug": "filtro-de-combustible",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 146,
+          "nombre": "Inyector",
+          "slug": "inyector",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 147,
+          "nombre": "Bomba de Petróleo",
+          "slug": "bomba-de-petroleo",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 148,
+          "nombre": "Reguladores de Presión",
+          "slug": "reguladores-de-presion",
+          "orden": 4,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "nombre": "Correas",
+      "slug": "correas",
+      "familia": "motor",
+      "orden": 7,
+      "iconoUrl": null,
+      "iconoNombre": "Gauge",
+      "color": "#f97316",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 149,
+          "nombre": "Correa Aire Acondicionado",
+          "slug": "correa-aire-acondicionado",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 150,
+          "nombre": "Correas de Alternador",
+          "slug": "correas-de-alternador",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 151,
+          "nombre": "Correas Distribución",
+          "slug": "correas-distribucion",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 152,
+          "nombre": "Correa Dirección Hidráulica",
+          "slug": "correa-direccion-hidraulica",
+          "orden": 3,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "nombre": "Dirección",
+      "slug": "direccion",
+      "familia": "suspension",
+      "orden": 8,
+      "iconoUrl": null,
+      "iconoNombre": "CircleGauge",
+      "color": "#8b5cf6",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 153,
+          "nombre": "Columna de Dirección",
+          "slug": "columna-de-direccion",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 154,
+          "nombre": "Cremallera de Dirección",
+          "slug": "cremallera-de-direccion",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 155,
+          "nombre": "Junta Cardánica",
+          "slug": "junta-cardanica",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 156,
+          "nombre": "Módulo EPS",
+          "slug": "modulo-eps",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 157,
+          "nombre": "Terminal Axial",
+          "slug": "terminal-axial",
+          "orden": 4,
+          "imagenUrl": null
+        },
+        {
+          "id": 158,
+          "nombre": "Terminal de Dirección",
+          "slug": "terminal-de-direccion",
+          "orden": 5,
+          "imagenUrl": null
+        },
+        {
+          "id": 159,
+          "nombre": "Bomba de Dirección",
+          "slug": "bomba-de-direccion",
+          "orden": 6,
+          "imagenUrl": null
+        },
+        {
+          "id": 160,
+          "nombre": "Correa Dirección Hidráulica",
+          "slug": "correa-direccion-hidraulica",
+          "orden": 7,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "nombre": "Distribución",
+      "slug": "distribucion",
+      "familia": "motor",
+      "orden": 9,
+      "iconoUrl": null,
+      "iconoNombre": "Cog",
+      "color": "#f97316",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 161,
+          "nombre": "Rodamiento Tensor Distribución",
+          "slug": "rodamiento-tensor-distribucion",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 162,
+          "nombre": "Tapa Distribución",
+          "slug": "tapa-distribucion",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 163,
+          "nombre": "Cadenas Distribución",
+          "slug": "cadenas-distribucion",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 164,
+          "nombre": "Conjunto CVVT",
+          "slug": "conjunto-cvvt",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 165,
+          "nombre": "Guías de Cadena",
+          "slug": "guias-de-cadena",
+          "orden": 4,
+          "imagenUrl": null
+        },
+        {
+          "id": 166,
+          "nombre": "Piñones",
+          "slug": "pinones",
+          "orden": 5,
+          "imagenUrl": null
+        },
+        {
+          "id": 167,
+          "nombre": "Tensores Hidráulicos Distribución",
+          "slug": "tensores-hidraulicos-distribucion",
+          "orden": 6,
+          "imagenUrl": null
+        },
+        {
+          "id": 168,
+          "nombre": "Bombas de Agua",
+          "slug": "bombas-de-agua",
+          "orden": 7,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "nombre": "EGR",
+      "slug": "egr",
+      "familia": "motor",
+      "orden": 10,
+      "iconoUrl": null,
+      "iconoNombre": "Recycle",
+      "color": "#22c55e",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 169,
+          "nombre": "Válvula EGR",
+          "slug": "valvula-egr",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 170,
+          "nombre": "Enfriador EGR",
+          "slug": "enfriador-egr",
+          "orden": 1,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "nombre": "Ejes Delantero y Trasero",
+      "slug": "ejes-delantero-trasero",
+      "familia": "suspension",
+      "orden": 11,
+      "iconoUrl": null,
+      "iconoNombre": "GitFork",
+      "color": "#6366f1",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 171,
+          "nombre": "Mazas",
+          "slug": "mazas",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 172,
+          "nombre": "Muñones",
+          "slug": "munones",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 173,
+          "nombre": "Puente Trasero",
+          "slug": "puente-trasero",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 174,
+          "nombre": "Rodamiento de Rueda",
+          "slug": "rodamiento-de-rueda",
+          "orden": 3,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "nombre": "Eléctrico",
+      "slug": "electrico",
+      "familia": "electrico",
+      "orden": 12,
+      "iconoUrl": null,
+      "iconoNombre": "Zap",
+      "color": "#6366f1",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 175,
+          "nombre": "Botones Alza Vidrios",
+          "slug": "botones-alza-vidrios",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 176,
+          "nombre": "Limpia Parabrisas",
+          "slug": "limpia-parabrisas",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 177,
+          "nombre": "Bobinas",
+          "slug": "bobinas",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 178,
+          "nombre": "Comando de Luces",
+          "slug": "comando-de-luces",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 179,
+          "nombre": "Pedal Acelerador",
+          "slug": "pedal-acelerador",
+          "orden": 4,
+          "imagenUrl": null
+        },
+        {
+          "id": 180,
+          "nombre": "Switch Intermitente",
+          "slug": "switch-intermitente",
+          "orden": 5,
+          "imagenUrl": null
+        },
+        {
+          "id": 181,
+          "nombre": "Comando de Limpiaparabrisas",
+          "slug": "comando-de-limpiaparabrisas",
+          "orden": 6,
+          "imagenUrl": null
+        },
+        {
+          "id": 182,
+          "nombre": "Fusibles y Relé",
+          "slug": "fusibles-y-rele",
+          "orden": 7,
+          "imagenUrl": null
+        },
+        {
+          "id": 183,
+          "nombre": "Alternador",
+          "slug": "alternador",
+          "orden": 8,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "nombre": "Embrague",
+      "slug": "embrague",
+      "familia": "motor",
+      "orden": 13,
+      "iconoUrl": null,
+      "iconoNombre": "Disc3",
+      "color": "#d946ef",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 184,
+          "nombre": "Bombas de Embrague",
+          "slug": "bombas-de-embrague",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 185,
+          "nombre": "Cilindro de Embragues",
+          "slug": "cilindro-de-embragues",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 186,
+          "nombre": "Kit de Embragues",
+          "slug": "kit-de-embragues",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 187,
+          "nombre": "Piola Embrague",
+          "slug": "piola-embrague",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 188,
+          "nombre": "Volantes de Motor",
+          "slug": "volantes-de-motor",
+          "orden": 4,
+          "imagenUrl": null
+        },
+        {
+          "id": 189,
+          "nombre": "Horquilla de Embrague",
+          "slug": "horquilla-de-embrague",
+          "orden": 5,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "nombre": "Empaquetaduras y Retenes",
+      "slug": "empaquetaduras-retenes",
+      "familia": "motor",
+      "orden": 14,
+      "iconoUrl": null,
+      "iconoNombre": "Layers",
+      "color": "#a16207",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 190,
+          "nombre": "Retén Cigüeñal",
+          "slug": "reten-ciguenal",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 191,
+          "nombre": "Retenes de Válvula",
+          "slug": "retenes-de-valvula",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 192,
+          "nombre": "Sellos",
+          "slug": "sellos",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 193,
+          "nombre": "Empaquetadura de Culata",
+          "slug": "empaquetadura-de-culata",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 194,
+          "nombre": "Empaquetadura de Tapa de Válvulas",
+          "slug": "empaquetadura-de-tapa-de-valvulas",
+          "orden": 4,
+          "imagenUrl": null
+        },
+        {
+          "id": 195,
+          "nombre": "Juego de Empaquetaduras de Motor",
+          "slug": "juego-de-empaquetaduras-de-motor",
+          "orden": 5,
+          "imagenUrl": null
+        },
+        {
+          "id": 196,
+          "nombre": "Retenes de Eje Leva",
+          "slug": "retenes-de-eje-leva",
+          "orden": 6,
+          "imagenUrl": null
+        },
+        {
+          "id": 197,
+          "nombre": "Retenes Salida de Caja",
+          "slug": "retenes-salida-de-caja",
+          "orden": 7,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "nombre": "Encendido",
+      "slug": "encendido",
+      "familia": "electrico",
+      "orden": 15,
+      "iconoUrl": null,
+      "iconoNombre": "Zap",
+      "color": "#4f46e5",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 198,
+          "nombre": "Bobinas",
+          "slug": "bobinas",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 199,
+          "nombre": "Bujías",
+          "slug": "bujias",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 200,
+          "nombre": "Cables de Bujía",
+          "slug": "cables-de-bujia",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 201,
+          "nombre": "Motor de Partida",
+          "slug": "motor-de-partida",
+          "orden": 3,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "nombre": "Filtros",
+      "slug": "filtros",
+      "familia": "aceites",
+      "orden": 16,
+      "iconoUrl": null,
+      "iconoNombre": "Filter",
+      "color": "#14b8a6",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 202,
+          "nombre": "Filtro de Aire",
+          "slug": "filtro-de-aire",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 203,
+          "nombre": "Filtro de Combustible",
+          "slug": "filtro-de-combustible",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 204,
+          "nombre": "Filtro de Polen",
+          "slug": "filtro-de-polen",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 205,
+          "nombre": "Filtro de Aceite",
+          "slug": "filtro-de-aceite",
+          "orden": 3,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "nombre": "Frenos",
+      "slug": "frenos",
+      "familia": "frenos",
+      "orden": 17,
+      "iconoUrl": null,
+      "iconoNombre": "Disc3",
+      "color": "#ef4444",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 206,
+          "nombre": "Bomba de Freno",
+          "slug": "bomba-de-freno",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 207,
+          "nombre": "Cilindro de Freno",
+          "slug": "cilindro-de-freno",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 208,
+          "nombre": "Discos",
+          "slug": "discos",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 209,
+          "nombre": "Pastillas de Freno",
+          "slug": "pastillas-de-freno",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 210,
+          "nombre": "Patines de Freno",
+          "slug": "patines-de-freno",
+          "orden": 4,
+          "imagenUrl": null
+        },
+        {
+          "id": 211,
+          "nombre": "Piola Freno de Mano",
+          "slug": "piola-freno-de-mano",
+          "orden": 5,
+          "imagenUrl": null
+        },
+        {
+          "id": 212,
+          "nombre": "Servo Freno",
+          "slug": "servo-freno",
+          "orden": 6,
+          "imagenUrl": null
+        },
+        {
+          "id": 213,
+          "nombre": "Tambores",
+          "slug": "tambores",
+          "orden": 7,
+          "imagenUrl": null
+        },
+        {
+          "id": 214,
+          "nombre": "Depresor",
+          "slug": "depresor",
+          "orden": 8,
+          "imagenUrl": null
+        },
+        {
+          "id": 215,
+          "nombre": "Switch de Freno",
+          "slug": "switch-de-freno",
+          "orden": 9,
+          "imagenUrl": null
+        },
+        {
+          "id": 216,
+          "nombre": "Válvula Compensadora",
+          "slug": "valvula-compensadora",
+          "orden": 10,
+          "imagenUrl": null
+        },
+        {
+          "id": 217,
+          "nombre": "Caliper",
+          "slug": "caliper",
+          "orden": 11,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "nombre": "Motor",
+      "slug": "motor",
+      "familia": "motor",
+      "orden": 18,
+      "iconoUrl": null,
+      "iconoNombre": "Cog",
+      "color": "#f97316",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 218,
+          "nombre": "Empaquetaduras",
+          "slug": "empaquetaduras",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 219,
+          "nombre": "Balancín",
+          "slug": "balancin",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 220,
+          "nombre": "Bielas",
+          "slug": "bielas",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 221,
+          "nombre": "Cigüeñales",
+          "slug": "ciguenales",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 222,
+          "nombre": "Culata",
+          "slug": "culata",
+          "orden": 4,
+          "imagenUrl": null
+        },
+        {
+          "id": 223,
+          "nombre": "Ejes Compensadores",
+          "slug": "ejes-compensadores",
+          "orden": 5,
+          "imagenUrl": null
+        },
+        {
+          "id": 224,
+          "nombre": "Eje de Levas",
+          "slug": "eje-de-levas",
+          "orden": 6,
+          "imagenUrl": null
+        },
+        {
+          "id": 225,
+          "nombre": "Guías de Válvula",
+          "slug": "guias-de-valvula",
+          "orden": 7,
+          "imagenUrl": null
+        },
+        {
+          "id": 226,
+          "nombre": "Anillos de Pistón",
+          "slug": "anillos-de-piston",
+          "orden": 8,
+          "imagenUrl": null
+        },
+        {
+          "id": 227,
+          "nombre": "Metales Axiales",
+          "slug": "metales-axiales",
+          "orden": 9,
+          "imagenUrl": null
+        },
+        {
+          "id": 228,
+          "nombre": "Pistones",
+          "slug": "pistones",
+          "orden": 10,
+          "imagenUrl": null
+        },
+        {
+          "id": 229,
+          "nombre": "Metales de Bancada",
+          "slug": "metales-de-bancada",
+          "orden": 11,
+          "imagenUrl": null
+        },
+        {
+          "id": 230,
+          "nombre": "Metales de Biela",
+          "slug": "metales-de-biela",
+          "orden": 12,
+          "imagenUrl": null
+        },
+        {
+          "id": 231,
+          "nombre": "Metales Compensadores",
+          "slug": "metales-compensadores",
+          "orden": 13,
+          "imagenUrl": null
+        },
+        {
+          "id": 232,
+          "nombre": "Pernos de Culata",
+          "slug": "pernos-de-culata",
+          "orden": 14,
+          "imagenUrl": null
+        },
+        {
+          "id": 233,
+          "nombre": "Retén Cigüeñal",
+          "slug": "reten-ciguenal",
+          "orden": 15,
+          "imagenUrl": null
+        },
+        {
+          "id": 234,
+          "nombre": "Retenes de Válvula",
+          "slug": "retenes-de-valvula",
+          "orden": 16,
+          "imagenUrl": null
+        },
+        {
+          "id": 235,
+          "nombre": "Tapa de Válvula",
+          "slug": "tapa-de-valvula",
+          "orden": 17,
+          "imagenUrl": null
+        },
+        {
+          "id": 236,
+          "nombre": "Taqués",
+          "slug": "taques",
+          "orden": 18,
+          "imagenUrl": null
+        },
+        {
+          "id": 237,
+          "nombre": "Válvula de Admisión y Escape",
+          "slug": "valvula-de-admision-y-escape",
+          "orden": 19,
+          "imagenUrl": null
+        },
+        {
+          "id": 238,
+          "nombre": "Bombas de Agua",
+          "slug": "bombas-de-agua",
+          "orden": 20,
+          "imagenUrl": null
+        },
+        {
+          "id": 239,
+          "nombre": "Camisas",
+          "slug": "camisas",
+          "orden": 21,
+          "imagenUrl": null
+        },
+        {
+          "id": 240,
+          "nombre": "Retenes de Eje Leva",
+          "slug": "retenes-de-eje-leva",
+          "orden": 22,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "nombre": "Piolas",
+      "slug": "piolas",
+      "familia": "suspension",
+      "orden": 19,
+      "iconoUrl": null,
+      "iconoNombre": "Cable",
+      "color": "#0f766e",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 241,
+          "nombre": "Piola Selectora de Cambio",
+          "slug": "piola-selectora-de-cambio",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 242,
+          "nombre": "Piola Embrague",
+          "slug": "piola-embrague",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 243,
+          "nombre": "Piola Freno de Mano",
+          "slug": "piola-freno-de-mano",
+          "orden": 2,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "nombre": "Refrigeración",
+      "slug": "refrigeracion",
+      "familia": "motor",
+      "orden": 20,
+      "iconoUrl": null,
+      "iconoNombre": "Snowflake",
+      "color": "#0ea5e9",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 244,
+          "nombre": "Manguera Radiador",
+          "slug": "manguera-radiador",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 245,
+          "nombre": "Depósito Radiador",
+          "slug": "deposito-radiador",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 246,
+          "nombre": "Electroventilador",
+          "slug": "electroventilador",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 247,
+          "nombre": "Radiador de Agua",
+          "slug": "radiador-de-agua",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 248,
+          "nombre": "Sensor Temperatura",
+          "slug": "sensor-temperatura",
+          "orden": 4,
+          "imagenUrl": null
+        },
+        {
+          "id": 249,
+          "nombre": "Termostato",
+          "slug": "termostato",
+          "orden": 5,
+          "imagenUrl": null
+        },
+        {
+          "id": 250,
+          "nombre": "Radiador de Aceite",
+          "slug": "radiador-de-aceite",
+          "orden": 6,
+          "imagenUrl": null
+        },
+        {
+          "id": 251,
+          "nombre": "Bombas de Agua",
+          "slug": "bombas-de-agua",
+          "orden": 7,
+          "imagenUrl": null
+        },
+        {
+          "id": 252,
+          "nombre": "Cañerías",
+          "slug": "canerias",
+          "orden": 8,
+          "imagenUrl": null
+        },
+        {
+          "id": 253,
+          "nombre": "Centrífugo",
+          "slug": "centrifugo",
+          "orden": 9,
+          "imagenUrl": null
+        },
+        {
+          "id": 254,
+          "nombre": "Polea Bombas de Agua",
+          "slug": "polea-bombas-de-agua",
+          "orden": 10,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "nombre": "Rodamientos",
+      "slug": "rodamientos",
+      "familia": "suspension",
+      "orden": 21,
+      "iconoUrl": null,
+      "iconoNombre": "CircleDot",
+      "color": "#0891b2",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 255,
+          "nombre": "Rodamiento de Rueda",
+          "slug": "rodamiento-de-rueda",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 256,
+          "nombre": "Rodamiento Tensor Distribución",
+          "slug": "rodamiento-tensor-distribucion",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 257,
+          "nombre": "Polea Alternador",
+          "slug": "polea-alternador",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 258,
+          "nombre": "Polea Cigüeñal",
+          "slug": "polea-ciguenal",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 259,
+          "nombre": "Rodamiento Alternador",
+          "slug": "rodamiento-alternador",
+          "orden": 4,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "nombre": "Sensores",
+      "slug": "sensores",
+      "familia": "electrico",
+      "orden": 22,
+      "iconoUrl": null,
+      "iconoNombre": "Radar",
+      "color": "#db2777",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 260,
+          "nombre": "Cinta de Airbag",
+          "slug": "cinta-de-airbag",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 261,
+          "nombre": "Sensor ABS",
+          "slug": "sensor-abs",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 262,
+          "nombre": "Sensor MAP",
+          "slug": "sensor-map",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 263,
+          "nombre": "Sensor de Temperatura",
+          "slug": "sensor-de-temperatura",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 264,
+          "nombre": "Flujómetro",
+          "slug": "flujometro",
+          "orden": 4,
+          "imagenUrl": null
+        },
+        {
+          "id": 265,
+          "nombre": "Sensor de Oxígeno",
+          "slug": "sensor-de-oxigeno",
+          "orden": 5,
+          "imagenUrl": null
+        },
+        {
+          "id": 266,
+          "nombre": "Sensor Posición Cigüeñal",
+          "slug": "sensor-posicion-ciguenal",
+          "orden": 6,
+          "imagenUrl": null
+        },
+        {
+          "id": 267,
+          "nombre": "Marcha Atrás",
+          "slug": "marcha-atras",
+          "orden": 7,
+          "imagenUrl": null
+        },
+        {
+          "id": 268,
+          "nombre": "Sensor Posición Eje Leva",
+          "slug": "sensor-posicion-eje-leva",
+          "orden": 8,
+          "imagenUrl": null
+        },
+        {
+          "id": 269,
+          "nombre": "Sensor de Golpe",
+          "slug": "sensor-de-golpe",
+          "orden": 9,
+          "imagenUrl": null
+        },
+        {
+          "id": 270,
+          "nombre": "Bulbo Presión Aceite",
+          "slug": "bulbo-presion-aceite",
+          "orden": 10,
+          "imagenUrl": null
+        },
+        {
+          "id": 271,
+          "nombre": "Sensor Presión Catalítico",
+          "slug": "sensor-presion-catalitico",
+          "orden": 11,
+          "imagenUrl": null
+        },
+        {
+          "id": 272,
+          "nombre": "Sensor TPS",
+          "slug": "sensor-tps",
+          "orden": 12,
+          "imagenUrl": null
+        },
+        {
+          "id": 273,
+          "nombre": "Sensor Velocidad",
+          "slug": "sensor-velocidad",
+          "orden": 13,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "nombre": "Soportes de Motor",
+      "slug": "soportes-motor",
+      "familia": "motor",
+      "orden": 23,
+      "iconoUrl": null,
+      "iconoNombre": "Box",
+      "color": "#475569",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 274,
+          "nombre": "Soporte de Motor",
+          "slug": "soporte-de-motor",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 275,
+          "nombre": "Soporte de Caja",
+          "slug": "soporte-de-caja",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 276,
+          "nombre": "Base de Motor",
+          "slug": "base-de-motor",
+          "orden": 2,
+          "imagenUrl": null
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "nombre": "Suspensión",
+      "slug": "suspension",
+      "familia": "suspension",
+      "orden": 24,
+      "iconoUrl": null,
+      "iconoNombre": "ArrowUpDown",
+      "color": "#8b5cf6",
+      "imagenUrl": null,
+      "subcategorias": [
+        {
+          "id": 277,
+          "nombre": "Amortiguadores",
+          "slug": "amortiguadores",
+          "orden": 0,
+          "imagenUrl": null
+        },
+        {
+          "id": 278,
+          "nombre": "Bandejas",
+          "slug": "bandejas",
+          "orden": 1,
+          "imagenUrl": null
+        },
+        {
+          "id": 279,
+          "nombre": "Bieletas",
+          "slug": "bieletas",
+          "orden": 2,
+          "imagenUrl": null
+        },
+        {
+          "id": 280,
+          "nombre": "Bujes",
+          "slug": "bujes",
+          "orden": 3,
+          "imagenUrl": null
+        },
+        {
+          "id": 281,
+          "nombre": "Cazoletas",
+          "slug": "cazoletas",
+          "orden": 4,
+          "imagenUrl": null
+        },
+        {
+          "id": 282,
+          "nombre": "Espirales",
+          "slug": "espirales",
+          "orden": 5,
+          "imagenUrl": null
+        },
+        {
+          "id": 283,
+          "nombre": "Barra Tensora",
+          "slug": "barra-tensora",
+          "orden": 6,
+          "imagenUrl": null
+        },
+        {
+          "id": 284,
+          "nombre": "Rótulas",
+          "slug": "rotulas",
+          "orden": 7,
+          "imagenUrl": null
+        },
+        {
+          "id": 285,
+          "nombre": "Barra Torsión",
+          "slug": "barra-torsion",
+          "orden": 8,
+          "imagenUrl": null
+        }
+      ]
+    }
+  ],
+  "marcasVehiculo": [
+    {
+      "id": 1,
+      "nombre": "Toyota",
+      "slug": "toyota",
+      "orden": 0,
+      "iconoUrl": null,
+      "color": null,
+      "destacada": true
+    },
+    {
+      "id": 2,
+      "nombre": "Chevrolet",
+      "slug": "chevrolet",
+      "orden": 1,
+      "iconoUrl": null,
+      "color": null,
+      "destacada": true
+    },
+    {
+      "id": 3,
+      "nombre": "Nissan",
+      "slug": "nissan",
+      "orden": 2,
+      "iconoUrl": null,
+      "color": null,
+      "destacada": true
+    },
+    {
+      "id": 4,
+      "nombre": "Hyundai",
+      "slug": "hyundai",
+      "orden": 3,
+      "iconoUrl": null,
+      "color": null,
+      "destacada": true
+    },
+    {
+      "id": 5,
+      "nombre": "Kia",
+      "slug": "kia",
+      "orden": 4,
+      "iconoUrl": null,
+      "color": null,
+      "destacada": true
+    },
+    {
+      "id": 6,
+      "nombre": "Suzuki",
+      "slug": "suzuki",
+      "orden": 5,
+      "iconoUrl": null,
+      "color": null,
+      "destacada": true
+    },
+    {
+      "id": 7,
+      "nombre": "Mazda",
+      "slug": "mazda",
+      "orden": 6,
+      "iconoUrl": null,
+      "color": null,
+      "destacada": false
+    },
+    {
+      "id": 8,
+      "nombre": "Ford",
+      "slug": "ford",
+      "orden": 7,
+      "iconoUrl": null,
+      "color": null,
+      "destacada": false
+    },
+    {
+      "id": 9,
+      "nombre": "Volkswagen",
+      "slug": "volkswagen",
+      "orden": 8,
+      "iconoUrl": null,
+      "color": null,
+      "destacada": false
+    },
+    {
+      "id": 10,
+      "nombre": "Peugeot",
+      "slug": "peugeot",
+      "orden": 9,
+      "iconoUrl": null,
+      "color": null,
+      "destacada": false
+    }
+  ],
+  "marcasRepuestoDestacadas": [
+    {
+      "id": 5,
+      "nombre": "Bosch",
+      "slug": "bosch",
+      "orden": 0,
+      "iconoUrl": null,
+      "color": null,
+      "calidadReferencial": "Premium"
+    },
+    {
+      "id": 6,
+      "nombre": "Brembo",
+      "slug": "brembo",
+      "orden": 1,
+      "iconoUrl": null,
+      "color": null,
+      "calidadReferencial": "Premium"
+    }
+  ]
+}

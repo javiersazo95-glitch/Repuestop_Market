@@ -33,16 +33,21 @@
  * subordén (ver `HANDOFF_PROXIMO_AGENTE.md`).
  */
 
-export const AUTO_RECEPTION_DAYS = 10;
+import { remoteConfig } from '../remoteConfig/remoteConfig';
+
+// Mantenedor comun (2026-10-20): el backend ahora SI publica estos plazos, como parametros del
+// bootstrap (`pedido.*`, `retiro.retencion.retracto.dias`). Las constantes `*_FALLBACK` son el
+// respaldo cuando el bootstrap no esta; las funciones leen los vigentes con `orderDeadlineParams()`.
+export const AUTO_RECEPTION_DAYS_FALLBACK = 10;
 /**
  * Dias en ENVIADO antes de dar por recibida una subordén DENTRO de la comuna (delivery
  * propio, Uber, Didi, PedidosYa). Mucho mas corto que `AUTO_RECEPTION_DAYS`: un despacho
  * local suele ser el mismo dia, y esperar el plazo de un courier nacional dejaba al
  * comprador sin avisos sobre un pedido que ya habia llegado.
  */
-export const AUTO_RECEPTION_LOCAL_DAYS = 2;
-export const AUTO_FINALIZATION_DAYS = 3;
-export const DELIVERY_VETO_WINDOW_HOURS = 48;
+export const AUTO_RECEPTION_LOCAL_DAYS_FALLBACK = 2;
+export const AUTO_FINALIZATION_DAYS_FALLBACK = 3;
+export const DELIVERY_VETO_WINDOW_HOURS_FALLBACK = 48;
 /**
  * V1 — Dias corridos que el comprador conserva para retractarse desde la recepcion fisica
  * (Art. 3 bis letra b, Ley 19.496), y que los terminos prometen.
@@ -51,13 +56,31 @@ export const DELIVERY_VETO_WINDOW_HOURS = 48;
  * dias -- se califica, se contabiliza, se cierra el ciclo tributario -- y el retracto sigue
  * vivo 7 dias mas. Son dos relojes distintos sobre el mismo `entregadoAt`.
  */
-export const RETRACTION_DAYS = 10;
+export const RETRACTION_DAYS_FALLBACK = 10;
 /**
  * Dias que la plata del vendedor sigue en custodia. Espejo de
  * `repuestop.retiro.retencion.retracto.dias` del backend: el retracto mas un dia de margen por
  * el barrido horario del job.
  */
-export const FUNDS_RELEASE_DAYS = 11;
+export const FUNDS_RELEASE_DAYS_FALLBACK = 11;
+// Ventana de pago (ver `orderStatusFlow.js`): `pedido.expiracion.minutos` del backend.
+export const PAYMENT_WINDOW_MINUTES_FALLBACK = 30;
+
+/**
+ * Plazos vigentes. El retracto no es un parametro del mantenedor (lo fija la Ley 19.496 y lo
+ * prometen los terminos), asi que queda local.
+ */
+export function orderDeadlineParams() {
+  return {
+    autoReceptionDays: remoteConfig.parametro('pedido.autorecepcion.dias', AUTO_RECEPTION_DAYS_FALLBACK),
+    autoReceptionLocalDays: remoteConfig.parametro('pedido.autorecepcion.local.dias', AUTO_RECEPTION_LOCAL_DAYS_FALLBACK),
+    autoFinalizationDays: remoteConfig.parametro('pedido.autofinalizacion.dias', AUTO_FINALIZATION_DAYS_FALLBACK),
+    deliveryVetoWindowHours: remoteConfig.parametro('pedido.entregadeclarada.veto.horas', DELIVERY_VETO_WINDOW_HOURS_FALLBACK),
+    retractionDays: RETRACTION_DAYS_FALLBACK,
+    fundsReleaseDays: remoteConfig.parametro('retiro.retencion.retracto.dias', FUNDS_RELEASE_DAYS_FALLBACK),
+    paymentWindowMinutes: remoteConfig.parametro('pedido.expiracion.minutos', PAYMENT_WINDOW_MINUTES_FALLBACK),
+  };
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
@@ -96,6 +119,7 @@ export function storeAutoCloseNotice(
   now = Date.now(),
 ) {
   const status = String(estado || '').toUpperCase();
+  const deadlines = orderDeadlineParams();
 
   if (status === 'ENVIADO') {
     if (isStorePickup) return null;
@@ -104,7 +128,7 @@ export function storeAutoCloseNotice(
     // auto-recepcion por defecto (dias). Manda sobre ella mientras siga pendiente.
     const declaredAt = toTime(entregaDeclaradaAt);
     if (declaredAt) {
-      const remaining = declaredAt + DELIVERY_VETO_WINDOW_HOURS * HOUR_MS - now;
+      const remaining = declaredAt + deadlines.deliveryVetoWindowHours * HOUR_MS - now;
       const left = remainingLabel(remaining);
       return {
         kind: 'delivery_veto',
@@ -119,7 +143,7 @@ export function storeAutoCloseNotice(
     // El plazo depende de la modalidad: un despacho dentro de la comuna suele ser el mismo
     // dia, asi que anunciarle al comprador "10 días" -el plazo pensado para un courier
     // nacional- es confuso y esta mal.
-    const windowDays = isLocalDelivery ? AUTO_RECEPTION_LOCAL_DAYS : AUTO_RECEPTION_DAYS;
+    const windowDays = isLocalDelivery ? deadlines.autoReceptionLocalDays : deadlines.autoReceptionDays;
     const remaining = shippedAt + windowDays * DAY_MS - now;
     const left = remainingLabel(remaining);
     return {
@@ -140,7 +164,7 @@ export function storeAutoCloseNotice(
     // que el servidor no va a respetar.
     const deliveredAt = toTime(entregadoAt);
     if (!deliveredAt) return null;
-    const remaining = deliveredAt + AUTO_FINALIZATION_DAYS * DAY_MS - now;
+    const remaining = deliveredAt + deadlines.autoFinalizationDays * DAY_MS - now;
     const left = remainingLabel(remaining);
     return {
       kind: 'finalization',
@@ -177,7 +201,7 @@ export function retractionNotice({ status, entregadoAt }, now = Date.now()) {
   const deliveredAt = toTime(entregadoAt);
   if (!deliveredAt) return null;
 
-  const remaining = deliveredAt + RETRACTION_DAYS * DAY_MS - now;
+  const remaining = deliveredAt + orderDeadlineParams().retractionDays * DAY_MS - now;
   if (remaining <= 0) {
     // H27 (pruebas de lanzamiento, 25-sep): vencido el retracto sigue la garantia legal de 6
     // meses desde la recepcion (Ley 19.496 art. 21), y el boton de reclamo sigue disponible.
@@ -214,7 +238,7 @@ export function fundsReleaseNotice({ status, entregadoAt }, now = Date.now()) {
   const deliveredAt = toTime(entregadoAt);
   if (!deliveredAt) return null;
 
-  const remaining = deliveredAt + FUNDS_RELEASE_DAYS * DAY_MS - now;
+  const remaining = deliveredAt + orderDeadlineParams().fundsReleaseDays * DAY_MS - now;
   if (remaining <= 0) return null;
 
   const left = remainingLabel(remaining);

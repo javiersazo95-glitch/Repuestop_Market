@@ -21484,3 +21484,9 @@ input.has-success {
 
 .info-hint-sheet-footer { padding: 0 16px 16px; }
 .info-hint-sheet-footer button { width: 100%; min-height: 44px; border: 0; border-radius: 10px; background: #0b5fd0; color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+/* Icono de categoria subido al mantenedor (SVG/PNG en R2): mismo tamano que el icono lucide. */
+.category-tile-icon-img {
+  display: block;
+  object-fit: contain;
+}
