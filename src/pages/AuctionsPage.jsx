@@ -9,10 +9,12 @@ import { getAuctionMetrics, getAuctions } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
 import { auctionDetailPath, ROUTES } from '../routes/paths';
 import CreateAuctionModal from '../components/CreateAuctionModal';
+import MobileStickyBar from '../components/MobileStickyBar';
 import { useAuth } from '../context/AuthContext';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 import { useCategories } from '../data/categories';
 import '../styles/auctions-list.css';
+import '../styles/auction-mobile.css';
 
 const PAGE_SIZE = 8;
 const FETCH_SIZE = 200;
@@ -471,6 +473,13 @@ export default function AuctionsPage() {
           </aside>
 
           <section className="aw-main">
+            <div className="aw-scope-chips" role="tablist" aria-label="Tipo de necesidad">
+              {SCOPE_OPTIONS.map((option) => (
+                <button key={option.value} type="button" role="tab" aria-selected={scope === option.value} className={scope === option.value ? 'is-active' : ''} onClick={() => setScope(option.value)}>
+                  {option.label}
+                </button>
+              ))}
+            </div>
             <div className="aw-toolbar">
               <button type="button" className="aw-toolbar-filters" onClick={() => setIsFiltersOpen(true)}>
                 <SlidersHorizontal size={16} /> Filtros{activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ''}
@@ -567,6 +576,12 @@ export default function AuctionsPage() {
           </section>
         </div>
       </div>
+
+      <MobileStickyBar label="Solicitudes activas" value={nf.format(activeCount)} hint="¿Necesitas un repuesto?" ariaLabel="Publicar una necesidad">
+        <button type="button" className="mobile-sticky-bar__btn" onClick={handleOpenCreateModal}>
+          <Plus size={18} /> Publicar necesidad
+        </button>
+      </MobileStickyBar>
 
       <CreateAuctionModal
         isOpen={isCreateModalOpen}

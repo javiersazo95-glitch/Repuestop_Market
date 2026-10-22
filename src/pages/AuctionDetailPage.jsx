@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle, ArrowRight, CalendarDays, Car, ChevronRight, Clock, Gavel,
-  Bookmark, BookmarkCheck, HelpCircle, Pencil, Home, ListTree, Lock, Maximize2, X, MapPin, Package, PackageCheck, ShieldCheck, ShoppingCart, Trophy,
+  Bookmark, BookmarkCheck, ChevronDown, HelpCircle, Pencil, Home, ListTree, Lock, Maximize2, X, MapPin, Package, PackageCheck, ShieldCheck, ShoppingCart, Trophy,
 } from 'lucide-react';
 import { getAuctionDetail, setAuctionSaved } from '../services/auctionApi';
 import { ROUTES, profileOrderPath, profilePurchasePath } from '../routes/paths';
@@ -15,6 +15,8 @@ import AuctionPurchaseModal from '../components/AuctionPurchaseModal';
 import AuctionItemsCard from '../components/AuctionItemsCard';
 import AuctionInfoTip from '../components/AuctionInfoTip';
 import AuctionImageViewer from '../components/AuctionImageViewer';
+import MobileStickyBar from '../components/MobileStickyBar';
+import '../styles/auction-mobile.css';
 import ShareLinkButton from '../components/ShareLinkButton';
 import AuctionAvatar from '../components/AuctionAvatar';
 import { useAuth } from '../context/AuthContext';
@@ -120,6 +122,8 @@ export default function AuctionDetailPage() {
   const [isOffersOpen, setIsOffersOpen] = useState(false);
   const [isAllOffersOpen, setIsAllOffersOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [openFolds, setOpenFolds] = useState({});
+  const toggleFold = (key) => setOpenFolds((current) => ({ ...current, [key]: !current[key] }));
   const [saved, setSaved] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveNotice, setSaveNotice] = useState('');
@@ -243,6 +247,18 @@ export default function AuctionDetailPage() {
                     </button>
                   )}
                 </div>
+                <div className="av-gallery-track" onScroll={(event) => {
+                  const track = event.currentTarget;
+                  const index = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+                  if (index !== activePhotoIndex && index >= 0 && index < photos.length) setActivePhotoIndex(index);
+                }}>
+                  {photos.length === 0 ? <span className="av-gallery-empty"><Package size={44} /></span> : photos.map((url, index) => (
+                    <button key={url} type="button" className="av-gallery-slide" onClick={() => { setActivePhotoIndex(index); setViewerOpen(true); }} aria-label={`Ver foto ${index + 1} en grande`}>
+                      <img src={url} alt={index === 0 ? repuestoSolicitado : ''} loading={index === 0 ? 'eager' : 'lazy'} />
+                    </button>
+                  ))}
+                  {photos.length > 1 && <span className="av-gallery-counter" aria-hidden="true">{activePhotoIndex + 1} / {photos.length}</span>}
+                </div>
                 {photos.length > 1 && (
                   <div className="av-gallery-thumbs">
                     {photos.map((url, index) => (
@@ -342,11 +358,17 @@ export default function AuctionDetailPage() {
               </div>
             </div>
 
-            <AuctionCommentsPanel auctionId={auction.id} isOpen={isOpen} canComment={isSeller || esCreador} />
+            <div className={`av-fold av-fold-comments ${openFolds.comments ? 'is-open' : ''}`}>
+              <button type="button" className="av-fold-toggle" onClick={() => toggleFold('comments')} aria-expanded={Boolean(openFolds.comments)} aria-label="Mostrar u ocultar los comentarios"><ChevronDown size={18} /></button>
+              <AuctionCommentsPanel auctionId={auction.id} isOpen={isOpen} canComment={isSeller || esCreador} />
+            </div>
           </div>
 
           <aside className="av-side">
-            <AuctionBuyerCard auctionId={auction.id} vehicle={[marca, modelo].filter(Boolean).join(' ')} region={region} />
+            <div className={`av-fold av-fold-buyer ${openFolds.buyer ? 'is-open' : ''}`}>
+              <button type="button" className="av-fold-toggle" onClick={() => toggleFold('buyer')} aria-expanded={Boolean(openFolds.buyer)} aria-label="Mostrar u ocultar los datos del comprador"><ChevronDown size={18} /></button>
+              <AuctionBuyerCard auctionId={auction.id} vehicle={[marca, modelo].filter(Boolean).join(' ')} region={region} />
+            </div>
 
             <section className="as-card av-offers" aria-label="Ofertas recibidas">
               <header className="av-offers-banner">
@@ -450,6 +472,26 @@ export default function AuctionDetailPage() {
           </aside>
         </div>
       </div>
+
+      {(canQuote || (esCreador && isOpen && (cotizaciones.length > 0 || acceptedCount > 0))) && (
+        <MobileStickyBar label={isOpen ? 'Tiempo restante' : 'Subasta'} value={isOpen ? formatRemaining(remainingMs) : statusLabel} hint={`${cotizaciones.length} ${cotizaciones.length === 1 ? 'oferta' : 'ofertas'}`} ariaLabel="Acciones de la subasta">
+          {canQuote && (
+            <button type="button" className="mobile-sticky-bar__btn" onClick={() => setIsQuoteModalOpen(true)}>
+              {miCotizacion ? <Pencil size={17} /> : <Gavel size={17} />} {miCotizacion ? 'Modificar oferta' : 'Enviar oferta'}
+            </button>
+          )}
+          {esCreador && acceptedCount > 0 && (
+            <button type="button" className="mobile-sticky-bar__btn" onClick={() => setIsPurchaseOpen(true)}>
+              <ShoppingCart size={17} /> Ver mi pedido y pagar
+            </button>
+          )}
+          {esCreador && acceptedCount === 0 && cotizaciones.length > 0 && (
+            <button type="button" className="mobile-sticky-bar__btn" onClick={() => setIsOffersOpen(true)}>
+              <Gavel size={17} /> Comparar ofertas
+            </button>
+          )}
+        </MobileStickyBar>
+      )}
 
       {viewerOpen && photos.length > 0 && (
         <AuctionImageViewer photos={photos} startIndex={activePhotoIndex} title={repuestoSolicitado} onClose={() => setViewerOpen(false)} />
