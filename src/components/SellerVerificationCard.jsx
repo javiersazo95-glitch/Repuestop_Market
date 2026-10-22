@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { qk } from '../services/queryKeys';
 import { createPortal } from 'react-dom';
 import {
   ShieldCheck, ShieldAlert, ShieldQuestion, Clock, FileUp, X,
@@ -102,6 +104,20 @@ export default function SellerVerificationCard({ sellerId }) {
     load(controller.signal);
     return () => controller.abort();
   }, [load]);
+
+  // 20-oct: la misma verificacion que usa el aviso del contrato (SellerAdhesionModal). Al firmar
+  // desde el aviso, esta tarjeta seguia con la copia anterior ("sin contrato") y ofrecia leer y
+  // aceptar de nuevo en vez de "Ver contrato firmado". Las redes sociales no se tocan: se pueden
+  // estar editando.
+  const { data: verificacionCompartida } = useQuery({
+    queryKey: qk.sellerVerification(sellerId),
+    queryFn: ({ signal }) => getSellerVerificationStatusApi(sellerId, { signal }),
+    enabled: Boolean(sellerId),
+    staleTime: 30_000,
+  });
+  useEffect(() => {
+    if (verificacionCompartida) setVerification(verificacionCompartida);
+  }, [verificacionCompartida]);
 
   const status = verification?.reviewStatus || null;
   const meta = status ? (STATUS_META[status] || NOT_SUBMITTED) : NOT_SUBMITTED;
