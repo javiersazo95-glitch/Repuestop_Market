@@ -42,15 +42,15 @@
   .av-page .av-shell { padding-left: var(--pub-gutter, 14px); padding-right: var(--pub-gutter, 14px); }
   .av-page .av-breadcrumb { margin-bottom: 8px; font-size: 12px; }
   /* Se aplanan los contenedores para poder ordenar las secciones por importancia:
-     fotos, qué se pide, ofertas, repuestos, vehículo, comprador, comentarios. */
+     fotos, comprador, qué se pide, ofertas, repuestos, vehículo, comentarios. */
   .av-page .av-layout { display: flex; flex-direction: column; gap: 12px; }
   .av-page .av-main, .av-page .av-panel, .av-page .av-content, .av-page .av-two, .av-page .av-side { display: contents; }
   .av-page .av-gallery { order: 1; }
-  .av-page .av-top-info { order: 2; }
-  .av-page .av-offers { order: 3; }
-  .av-page .av-items { order: 4; }
-  .av-page .av-block { order: 5; }
-  .av-page .av-fold-buyer { order: 6; }
+  .av-page .av-fold-buyer { order: 2; }
+  .av-page .av-top-info { order: 3; }
+  .av-page .av-offers { order: 4; }
+  .av-page .av-items { order: 5; }
+  .av-page .av-block { order: 6; }
   .av-page .av-fold-comments { order: 7; }
   .av-page .av-layout > * { min-width: 0; }
   .av-page .av-layout .as-card, .av-page .av-fold .as-card { border-radius: 14px; margin: 0; }

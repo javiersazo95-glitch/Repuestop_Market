@@ -122,7 +122,7 @@ export default function AuctionDetailPage() {
   const [isOffersOpen, setIsOffersOpen] = useState(false);
   const [isAllOffersOpen, setIsAllOffersOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [openFolds, setOpenFolds] = useState({});
+  const [openFolds, setOpenFolds] = useState({ comments: true });
   const toggleFold = (key) => setOpenFolds((current) => ({ ...current, [key]: !current[key] }));
   const [saved, setSaved] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
