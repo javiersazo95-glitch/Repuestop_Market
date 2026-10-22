@@ -140,6 +140,7 @@ function ItemOfferRow({ auction, item, line, onChange, onCreateRequest }) {
               <CheckCircle2 size={16} />
               <span>Producto: <b>{line.part.nombrePublicado || line.part.repuestoNombre}</b></span>
               <button type="button" onClick={() => setChanging(true)}>Cambiar</button>
+              <button type="button" onClick={() => onCreateRequest(item)}>Agregar otro repuesto</button>
             </div>
           ) : (
             <>
@@ -153,6 +154,10 @@ function ItemOfferRow({ auction, item, line, onChange, onCreateRequest }) {
                   <input type="checkbox" checked={onlyCompatible} onChange={(e) => setOnlyCompatible(e.target.checked)} />
                   <span>Solo compatibles con {vehicle || 'el vehículo'}</span>
                 </label>
+              </div>
+              <div className="aq-create-bar">
+                <span>¿Ninguno es el repuesto correcto o no lo tienes cargado?</span>
+                <button type="button" className="aq-btn-outline" onClick={() => onCreateRequest(item)}><PackagePlus size={15} /> Agregar repuesto</button>
               </div>
               <div className="aq-parts" aria-busy={loading}>
                 {loading && suggestions.items.length === 0 ? (
@@ -174,7 +179,6 @@ function ItemOfferRow({ auction, item, line, onChange, onCreateRequest }) {
                     {suggestions.items.map((part) => (
                       <PartCard key={part.id} part={part} selected={line.part?.id === part.id} compatible={compatibleIds.has(part.id)} vehicle={vehicle} onSelect={pick} />
                     ))}
-                    <button type="button" className="aq-link-btn" onClick={() => onCreateRequest(item)}><PackagePlus size={14} /> No lo tengo cargado: cargar repuesto</button>
                   </>
                 )}
               </div>

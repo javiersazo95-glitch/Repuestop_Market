@@ -235,3 +235,6 @@
 .av-gallery-main { position: relative; }
 .av-view-image { position: absolute; right: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 0; border-radius: 999px; background: rgba(15, 23, 42, 0.78); color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .av-view-image:hover { background: rgba(15, 23, 42, 0.92); }
+
+.av-offers-banner .av-offers-expand { margin-left: 0; }
+.av-offers-banner .av-offers-banner-text + .av-offers-expand, .av-offers-banner .av-offers-banner-text ~ .av-offers-expand:first-of-type { margin-left: auto; }

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle, ArrowRight, CalendarDays, Car, ChevronRight, Clock, Gavel,
-  Bookmark, BookmarkCheck, HelpCircle, Home, ListTree, Lock, Maximize2, X, MapPin, Package, PackageCheck, ShieldCheck, ShoppingCart, Trophy,
+  Bookmark, BookmarkCheck, HelpCircle, Pencil, Home, ListTree, Lock, Maximize2, X, MapPin, Package, PackageCheck, ShieldCheck, ShoppingCart, Trophy,
 } from 'lucide-react';
 import { getAuctionDetail, setAuctionSaved } from '../services/auctionApi';
 import { ROUTES, profileOrderPath, profilePurchasePath } from '../routes/paths';
@@ -359,6 +359,17 @@ export default function AuctionDetailPage() {
                       : `${cotizaciones.length === 1 ? 'Una tienda verificada ya cotizó' : 'Tiendas verificadas ya cotizaron'} esta necesidad`}
                   </small>
                 </div>
+                {canQuote && (
+                  <button
+                    type="button"
+                    className="av-offers-expand is-edit"
+                    onClick={() => setIsQuoteModalOpen(true)}
+                    aria-label={miCotizacion ? 'Modificar mi oferta' : 'Enviar oferta'}
+                    title={miCotizacion ? 'Modificar mi oferta' : 'Enviar oferta'}
+                  >
+                    {miCotizacion ? <Pencil size={16} /> : <Gavel size={16} />}
+                  </button>
+                )}
                 {cotizaciones.length > 1 && (
                   <button type="button" className="av-offers-expand" onClick={() => setIsAllOffersOpen(true)} aria-label="Ver todas las solicitudes de oferta" title="Ver todas las ofertas">
                     <ListTree size={16} />
@@ -433,19 +444,6 @@ export default function AuctionDetailPage() {
                 <div className="av-offers-cta">
                   <span className="av-offers-cta-icon"><Trophy size={22} /></span>
                   <p><strong>El comprador aceptó tu oferta</strong><small>Recibirás el pedido cuando el comprador pague.</small></p>
-                </div>
-              )}
-
-              {canQuote && (
-                <div className="av-offers-cta">
-                  <span className="av-offers-cta-icon"><Gavel size={22} /></span>
-                  <p>
-                    <strong>{items.length > 1 && itemsPendientes < items.length ? `Ofrece los ${itemsPendientes} repuestos que faltan` : 'Tu oferta también puede ser la mejor'}</strong>
-                    <small>{items.length > 1 ? 'Puedes ofrecer solo los repuestos que tengas.' : 'Haz tu propuesta y sé el primero en ser contactado.'}</small>
-                  </p>
-                  <button type="button" className="as-btn-primary" onClick={() => setIsQuoteModalOpen(true)}>
-                    <Gavel size={15} /> {miCotizacion ? 'Modificar mi oferta' : 'Enviar oferta'}
-                  </button>
                 </div>
               )}
             </section>
