@@ -57,3 +57,12 @@
 }
 
 .auction-optional { font-style: normal; font-weight: 600; color: #8a97a5; }
+
+.auction-required { font-style: normal; font-weight: 600; color: #b42318; }
+.acv-address-ok { display: flex; align-items: flex-start; gap: 10px; margin-top: 8px; padding: 10px 12px; border: 1px solid #bbf7d0; border-radius: 10px; background: #f0fdf4; color: #0e7038; }
+.acv-address-ok span { display: flex; flex-direction: column; }
+.acv-address-ok strong { font-size: 13px; color: #243442; }
+.acv-address-ok small { font-size: 12px; color: #5a6b7a; }
+.acv-address-note { margin: 8px 0 0; font-size: 12.5px; color: #5a6b7a; }
+.acv-address-note.is-warn { padding: 10px 12px; border-radius: 10px; background: #fff7e6; color: #7a4a00; }
+.acv-address-book { margin-top: 10px; }

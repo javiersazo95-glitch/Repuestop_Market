@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  X, Upload, Trash2, AlertCircle, CheckCircle2, Clock, Plus, ShieldCheck, Car, Package,
+  X, Upload, Trash2, AlertCircle, CheckCircle2, Clock, MapPin, Plus, ShieldCheck, Car, Package,
 } from 'lucide-react';
 import { normalizePlate } from '../utils/vehicleLookup';
 import usePlateLookup, { maskPlate } from '../utils/usePlateLookup';
+import { getAddressesApi } from '../services/api';
+import BuyerAddressBook from './BuyerAddressBook';
 import { createAuction, updateAuction, uploadAuctionPhoto } from '../services/auctionApi';
 import { useAuth } from '../context/AuthContext';
 import { useCategories } from '../data/categories';
@@ -145,6 +147,23 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
   const { user } = useAuth();
   const { HEADER_CATEGORIES } = useCategories();
 
+  const userId = user?.userId ?? user?.id;
+  // La necesidad se publica con la ubicación de una dirección registrada: la del comprador o la que cree aquí mismo.
+  const [addresses, setAddresses] = useState([]);
+  const [addressesLoaded, setAddressesLoaded] = useState(false);
+  const loadAddresses = useCallback(async () => {
+    if (!userId) { setAddressesLoaded(true); return; }
+    try {
+      const data = await getAddressesApi(userId);
+      setAddresses(Array.isArray(data) ? data : []);
+    } catch {
+      setAddresses([]);
+    } finally {
+      setAddressesLoaded(true);
+    }
+  }, [userId]);
+  useEffect(() => { loadAddresses(); }, [loadAddresses]);
+  const mainAddress = useMemo(() => addresses.find((address) => address.esPrincipal) || addresses[0] || null, [addresses]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -198,6 +217,10 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!mainAddress) {
+      setError('Registra una dirección para publicar tu necesidad: la usamos para ubicarla y para que las tiendas sepan si despachan a tu comuna.');
+      return;
+    }
     if (!vehicle?.chasis) {
       setError('Ingresa la patente de tu vehículo: la usamos para obtener sus datos y su chasis.');
       return;
@@ -242,8 +265,8 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
       tiempoMaximoEnvio,
       tipoEnvio,
       presupuestoMaximo: presupuestoMaximo ? parseFloat(presupuestoMaximo) : undefined,
-      region: user?.region || undefined,
-      comuna: user?.comuna || undefined,
+      region: mainAddress?.regionNombre || undefined,
+      comuna: mainAddress?.comunaNombre || undefined,
       fotos,
     };
 
@@ -378,6 +401,27 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
             </div>
           </div>
 
+          {/* Dirección: obligatoria, sale de una dirección registrada o se crea aquí mismo */}
+          <div>
+            <div className="acv-title"><MapPin size={18} /><span>Dirección de la necesidad <em className="auction-required">(obligatoria)</em></span></div>
+            {!addressesLoaded ? (
+              <p className="acv-address-note">Cargando tus direcciones…</p>
+            ) : mainAddress ? (
+              <div className="acv-address-ok">
+                <CheckCircle2 size={16} />
+                <span>
+                  <strong>{mainAddress.calleYNumero}</strong>
+                  <small>{[mainAddress.comunaNombre, mainAddress.regionNombre].filter(Boolean).join(', ')}{mainAddress.esPrincipal ? ' · Principal' : ''}</small>
+                </span>
+              </div>
+            ) : (
+              <p className="acv-address-note is-warn">Aún no tienes una dirección registrada. Agrégala aquí para poder publicar: así las tiendas saben si despachan a tu comuna.</p>
+            )}
+            <div className="acv-address-book">
+              <BuyerAddressBook usuarioId={userId} onChange={loadAddresses} />
+            </div>
+          </div>
+
           {/* Sección 3: Condiciones */}
           <div>
             <div className="acv-title"><Clock size={18} /><span>Condiciones de la necesidad de compra</span></div>
@@ -432,7 +476,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
 
           <div className="auction-modal-footer">
             <button type="button" onClick={onClose} disabled={loading} className="auction-btn-secondary">Cancelar</button>
-            <button type="submit" disabled={loading || !vehicle} className="auction-btn-primary">
+            <button type="submit" disabled={loading || !vehicle || !mainAddress} className="auction-btn-primary" title={!mainAddress ? 'Registra una dirección para publicar' : undefined}>
               {loading ? (isEditing ? 'Guardando...' : 'Publicando...') : `${isEditing ? 'Guardar cambios' : 'Publicar pedido'} (${items.length} ${items.length === 1 ? 'repuesto' : 'repuestos'})`}
             </button>
           </div>
