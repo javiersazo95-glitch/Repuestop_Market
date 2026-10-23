@@ -1,7 +1,8 @@
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import HelpHeader from '../components/help/HelpHeader';
 import Footer from '../components/Footer';
+import { seoTitleFor } from '../routes/seoPages';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 
 /**
@@ -10,7 +11,10 @@ import { useDocumentTitle } from '../routes/useDocumentTitle';
  * del sitio ni los accesos que ya vivían ahí.
  */
 export default function HelpCenterPage() {
-  useDocumentTitle('Centro de ayuda');
+  // El layout pone el título de cada vista hija (sus efectos corren antes y este los
+  // pisaría): así /ayuda/pedidos no se ve igual que /ayuda para los buscadores.
+  const { pathname } = useLocation();
+  useDocumentTitle(seoTitleFor(pathname.replace(/\/+$/, '')) || 'Centro de ayuda');
 
   return (
     <div className="help-center-page">

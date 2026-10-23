@@ -2,8 +2,11 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import FounderRegistration from '../components/FounderRegistration';
 import { ROUTES } from '../routes/paths';
+import { seoTitleFor } from '../routes/seoPages';
+import { useDocumentTitle } from '../routes/useDocumentTitle';
 
 export default function SellerRegisterPage() {
+  useDocumentTitle(seoTitleFor(ROUTES.sellerRegister));
   const navigate = useNavigate();
   const location = useLocation();
 
