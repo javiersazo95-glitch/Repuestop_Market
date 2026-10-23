@@ -15,6 +15,7 @@ import AuctionPurchaseModal from '../components/AuctionPurchaseModal';
 import AuctionItemsCard from '../components/AuctionItemsCard';
 import AuctionInfoTip from '../components/AuctionInfoTip';
 import AuctionImageViewer from '../components/AuctionImageViewer';
+import CreateAuctionModal from '../components/CreateAuctionModal';
 import MobileStickyBar from '../components/MobileStickyBar';
 import '../styles/auction-mobile.css';
 import ShareLinkButton from '../components/ShareLinkButton';
@@ -122,6 +123,7 @@ export default function AuctionDetailPage() {
   const [isOffersOpen, setIsOffersOpen] = useState(false);
   const [isAllOffersOpen, setIsAllOffersOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [openFolds, setOpenFolds] = useState({ comments: true });
   const toggleFold = (key) => setOpenFolds((current) => ({ ...current, [key]: !current[key] }));
   const [saved, setSaved] = useState(false);
@@ -318,6 +320,18 @@ export default function AuctionDetailPage() {
                         iconSize={15}
                         stopPropagation={false}
                       />
+                      {esCreador && (
+                        <button
+                          type="button"
+                          className={`av-action-btn av-edit-btn ${auction.editable === false ? 'is-locked' : ''}`}
+                          aria-disabled={auction.editable === false}
+                          onClick={() => (auction.editable === false
+                            ? flashSaveNotice(auction.motivoNoEditable || 'Esta necesidad de compra ya no se puede editar.')
+                            : setIsEditOpen(true))}
+                        >
+                          {auction.editable === false ? <Lock size={15} /> : <Pencil size={15} />} Editar
+                        </button>
+                      )}
                       <button type="button" className={`av-action-btn ${saved ? 'is-saved' : ''}`} onClick={toggleSaved} disabled={saveBusy} aria-pressed={saved}>
                         {saved ? <BookmarkCheck size={15} /> : <Bookmark size={15} />} {saved ? 'Guardada' : 'Guardar'}
                       </button>
@@ -491,6 +505,10 @@ export default function AuctionDetailPage() {
             </button>
           )}
         </MobileStickyBar>
+      )}
+
+      {esCreador && isEditOpen && (
+        <CreateAuctionModal isOpen auction={auction} onClose={() => setIsEditOpen(false)} onSuccess={() => { setIsEditOpen(false); loadDetail(); }} />
       )}
 
       {viewerOpen && photos.length > 0 && (

@@ -238,3 +238,6 @@
 
 .av-offers-banner .av-offers-expand { margin-left: 0; }
 .av-offers-banner .av-offers-banner-text + .av-offers-expand, .av-offers-banner .av-offers-banner-text ~ .av-offers-expand:first-of-type { margin-left: auto; }
+
+.av-edit-btn.is-locked { border-color: #cfd8e3; color: #8a97a5; background: #f3f5f7; cursor: not-allowed; }
+.av-edit-btn.is-locked:hover { background: #f3f5f7; border-color: #cfd8e3; }
