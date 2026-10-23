@@ -32,6 +32,8 @@ Allow: /*.jpg$
 Allow: /*.ico$
 Allow: /site.webmanifest
 Allow: /googledb5011289430debb.html
+# Sin esto el sitemap queda bajo el "Disallow: /" y Search Console dice "No se ha podido obtener".
+Allow: /sitemap.xml
 Disallow: /
 
 # El sitemap lista solo las paginas abiertas arriba (se genera desde src/routes/seoPages.js).
