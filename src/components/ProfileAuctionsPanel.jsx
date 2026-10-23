@@ -198,7 +198,7 @@ export default function ProfileAuctionsPanel() {
       setAuctions(Array.isArray(data) ? data : data?.content || []);
       setError('');
     } catch (err) {
-      setError(err?.message || 'No pudimos cargar tus subastas.');
+      setError(err?.message || 'No pudimos cargar tus necesidades de compra.');
     } finally {
       setLoading(false);
     }
@@ -252,8 +252,8 @@ export default function ProfileAuctionsPanel() {
     <div className="profile-panel seller-quotes-panel">
       <div className="seller-quotes-heading">
         <div>
-          <span className="seller-quotes-eyebrow"><Gavel size={14} /> Compra por subasta</span>
-          <h2 className="profile-panel-title">Subastas</h2>
+          <span className="seller-quotes-eyebrow"><Gavel size={14} /> Necesidades de compra</span>
+          <h2 className="profile-panel-title">Necesidades de compra</h2>
           <p>Arma un pedido con todos los repuestos que necesitas, recibe ofertas de las tiendas y acepta las que te sirvan, aunque cubran solo una parte. Lo aceptado se paga junto, en un solo pedido de varias tiendas.</p>
         </div>
         <div className="seller-quotes-heading-actions">
@@ -272,7 +272,7 @@ export default function ProfileAuctionsPanel() {
 
       <div className="seller-quotes-toolbar">
         <label className="seller-quotes-search"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar repuesto, vehículo o categoría..." />{search && <button type="button" onClick={() => setSearch('')} aria-label="Limpiar búsqueda"><X size={13} /></button>}</label>
-        <div className="seller-quotes-filters" role="group" aria-label="Filtrar subastas">
+        <div className="seller-quotes-filters" role="group" aria-label="Filtrar necesidades de compra">
           {FILTERS.map(([value, label]) => (
             <button key={value} type="button" className={filter === value ? 'active' : ''} onClick={() => setFilter(value)}>{label}</button>
           ))}
@@ -280,13 +280,13 @@ export default function ProfileAuctionsPanel() {
       </div>
 
       {loading ? (
-        <EmptyState label="Cargando tus subastas..." />
+        <EmptyState label="Cargando tus necesidades de compra..." />
       ) : error ? (
         <div className="pa-error" role="alert"><AlertCircle size={16} /> {error} <button type="button" onClick={load}>Reintentar</button></div>
       ) : rows.length === 0 ? (
         <EmptyState label="Aún no has publicado ninguna necesidad de compra." />
       ) : visibleRows.length === 0 ? (
-        <EmptyState label="No encontramos subastas con esos filtros." />
+        <EmptyState label="No encontramos necesidades de compra con esos filtros." />
       ) : (
         <>
           <div className="pa-list">
@@ -294,7 +294,7 @@ export default function ProfileAuctionsPanel() {
               <AuctionRow key={auction.id} auction={auction} stage={stage} now={now} isSeller={isSeller} onNavigate={navigate} onOpenOffers={(item) => setOffersAuctionId(item.id)} onOpenPurchase={(item) => setPurchaseAuctionId(item.id)} onEdit={openEdit} editBusy={editBusyId === auction.id} />
             ))}
           </div>
-          <ListPager pagerProps={pagerProps} itemLabel="subastas" />
+          <ListPager pagerProps={pagerProps} itemLabel="necesidades" />
         </>
       )}
 

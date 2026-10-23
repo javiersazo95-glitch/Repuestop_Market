@@ -129,7 +129,7 @@ export default function AuctionDetailPage() {
   const [saveNotice, setSaveNotice] = useState('');
   const [isPurchaseOpen, setIsPurchaseOpen] = useState(false);
 
-  useDocumentTitle(auction?.repuestoSolicitado ? `${auction.repuestoSolicitado} · Subasta` : 'Detalle de subasta');
+  useDocumentTitle(auction?.repuestoSolicitado ? `${auction.repuestoSolicitado} · Necesidad de compra` : 'Detalle de necesidad de compra');
 
   const isSeller = String(user?.role || role || '').toUpperCase() === 'SELLER' || Boolean(user?.sellerId);
   const sellerId = user?.sellerId || user?.proveedorId;
@@ -145,7 +145,7 @@ export default function AuctionDetailPage() {
     try {
       await setAuctionSaved(id, !saved);
       setSaved(!saved);
-      flashSaveNotice(!saved ? 'Solicitud guardada. La verás en Gestión subastas.' : 'Solicitud quitada de guardadas.');
+      flashSaveNotice(!saved ? 'Solicitud guardada. La verás en Gestión de necesidades.' : 'Solicitud quitada de guardadas.');
     } catch (err) {
       flashSaveNotice(err?.message || 'No pudimos guardar la solicitud.');
     } finally {
@@ -162,7 +162,7 @@ export default function AuctionDetailPage() {
       setSaved(Boolean(detail?.guardada));
     } catch (err) {
       console.error('Error cargando detalle subasta:', err);
-      setError(err?.message || 'No pudimos cargar los detalles de esta subasta.');
+      setError(err?.message || 'No pudimos cargar los detalles de esta necesidad de compra.');
     } finally {
       setLoading(false);
     }
@@ -181,7 +181,7 @@ export default function AuctionDetailPage() {
   if (loading && !auction) {
     return (
       <main className="av-page">
-        <div className="container av-shell"><div className="as-card av-state"><p className="as-muted">Cargando información de la subasta…</p></div></div>
+        <div className="container av-shell"><div className="as-card av-state"><p className="as-muted">Cargando información de la necesidad de compra…</p></div></div>
       </main>
     );
   }
@@ -192,10 +192,10 @@ export default function AuctionDetailPage() {
         <div className="container av-shell">
           <div className="as-card av-state">
             <span className="av-state-icon"><AlertCircle size={30} /></span>
-            <h1>Subasta no disponible</h1>
+            <h1>Necesidad de compra no disponible</h1>
             <p className="as-muted">{error || 'La necesidad de compra no existe o fue retirada.'}</p>
             <button type="button" className="as-btn-primary" style={{ maxWidth: 220 }} onClick={() => navigate(ROUTES.auctions)}>
-              Volver a Subastas
+              Volver a Necesidades de compra
             </button>
           </div>
         </div>
@@ -276,8 +276,8 @@ export default function AuctionDetailPage() {
                 )}
                 <div className="av-how-mini">
                   <HelpCircle size={18} />
-                  <p><strong>¿Cómo funcionan las subastas?</strong> Las tiendas ofertan en privado, el comprador elige y paga por la plataforma.</p>
-                  <AuctionInfoTip label="Cómo funciona una subasta de necesidad de compra" align="right">
+                  <p><strong>¿Cómo funcionan las necesidades de compra?</strong> Las tiendas ofertan en privado, el comprador elige y paga por la plataforma.</p>
+                  <AuctionInfoTip label="Cómo funciona una necesidad de compra" align="right">
                     <ol className="av-how-steps">
                       <li><b>El comprador publica su pedido.</b> Indica la patente, los repuestos, su tope de presupuesto y el plazo.</li>
                       <li><b>Las tiendas ofertan en privado.</b> Las casas de repuestos verificadas ofrecen lo que tienen; pueden cubrir solo una parte.</li>
@@ -474,7 +474,7 @@ export default function AuctionDetailPage() {
       </div>
 
       {(canQuote || (esCreador && isOpen && (cotizaciones.length > 0 || acceptedCount > 0))) && (
-        <MobileStickyBar label={isOpen ? 'Tiempo restante' : 'Subasta'} value={isOpen ? formatRemaining(remainingMs) : statusLabel} hint={`${cotizaciones.length} ${cotizaciones.length === 1 ? 'oferta' : 'ofertas'}`} ariaLabel="Acciones de la subasta">
+        <MobileStickyBar label={isOpen ? 'Tiempo restante' : 'Necesidad'} value={isOpen ? formatRemaining(remainingMs) : statusLabel} hint={`${cotizaciones.length} ${cotizaciones.length === 1 ? 'oferta' : 'ofertas'}`} ariaLabel="Acciones de la necesidad de compra">
           {canQuote && (
             <button type="button" className="mobile-sticky-bar__btn" onClick={() => setIsQuoteModalOpen(true)}>
               {miCotizacion ? <Pencil size={17} /> : <Gavel size={17} />} {miCotizacion ? 'Modificar oferta' : 'Enviar oferta'}

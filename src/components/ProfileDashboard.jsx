@@ -129,7 +129,7 @@ const SELLER_SIDEBAR_GROUPS = [
       { id: 'pedidos', label: 'Pedidos recibidos', icon: ShoppingBag },
       { id: 'productos', label: 'Productos', icon: Package },
       { id: 'cotizaciones', label: 'Cotizaciones', icon: ReceiptText },
-      { id: 'gestion_subastas', label: 'Gestión subastas', icon: Gavel },
+      { id: 'gestion_subastas', label: 'Gestión de necesidades', icon: Gavel },
       { id: 'preguntas_productos', label: 'Preguntas de productos', icon: MessageCircleQuestion },
       { id: 'chats_compradores', label: 'Chats con compradores', icon: MessageSquare }
     ]
@@ -211,7 +211,7 @@ const BUYER_SIDEBAR_GROUPS = [
     items: [
       { id: 'pedidos', label: 'Mis pedidos', icon: Package },
       { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
-      { id: 'subastas', label: 'Subastas', icon: Gavel },
+      { id: 'subastas', label: 'Necesidades de compra', icon: Gavel },
       { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
       { id: 'chats_vendedor', label: 'Chats con vendedor', icon: MessageSquare },
       { id: 'favoritos', label: 'Favoritos', icon: Heart }

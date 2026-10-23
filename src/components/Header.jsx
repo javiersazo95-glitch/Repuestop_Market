@@ -682,7 +682,7 @@ export default function Header({
           </div>
           )}
           {/* "Ofertas" se elimino: llevaba al mismo catalogo que "Catálogo de repuestos". */}
-          <button type="button" className="nav-item-auctions" aria-current={navCurrent(ROUTES.auctions)} onClick={() => { setShowMobileNav(false); navigate(ROUTES.auctions); }}><Gavel size={16} /> <span>Subastas</span></button>
+          <button type="button" className="nav-item-auctions" aria-current={navCurrent(ROUTES.auctions)} onClick={() => { setShowMobileNav(false); navigate(ROUTES.auctions); }}><Gavel size={16} /> <span>Necesidades de compra</span></button>
           <button type="button" className="nav-item-stores" aria-current={navCurrent(ROUTES.stores)} onClick={() => { setShowMobileNav(false); onOpenStores(); }}><Store size={16} /> <span>Casas de repuestos</span></button>
           <button type="button" className="nav-item-catalog" aria-current={navCurrent(ROUTES.catalog)} onClick={() => { setShowMobileNav(false); onOpenCatalog(); }}><Package size={16} /> <span>Catálogo de repuestos</span></button>
           <button type="button" className="nav-item-about" aria-current={navCurrent(ROUTES.about)} onClick={() => { setShowMobileNav(false); onOpenAbout(); }}><Info size={16} /> <span>Sobre RepuesTop</span></button>

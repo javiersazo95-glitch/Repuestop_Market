@@ -50,7 +50,7 @@ export default function AuctionBuyerReviewsModal({ isOpen, onClose, auctionId, b
           ) : error ? (
             <p className="as-error" role="alert">{error}</p>
           ) : items.length === 0 ? (
-            <p className="as-muted">Este comprador aún no tiene compras en subasta.</p>
+            <p className="as-muted">Este comprador aún no tiene compras por necesidad de compra.</p>
           ) : (
             <ul className="as-review-list">
               {items.map((item) => (

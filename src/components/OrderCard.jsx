@@ -188,7 +188,7 @@ export default function OrderCard({
 
   const orderIdShort = orderDisplayCode(order, isSeller ? 'seller' : 'buyer');
   const orderDate = formatOrderDate(order.createdAt || order.fecha);
-  const orderSource = order.origen === 'SUBASTA' ? 'Subasta' : order.source === 'quote' || order.origen === 'COTIZACION' ? 'Cotización' : 'Carrito';
+  const orderSource = order.origen === 'SUBASTA' ? 'Necesidad de compra' : order.source === 'quote' || order.origen === 'COTIZACION' ? 'Cotización' : 'Carrito';
 
   const buyerName = order.compradorNombre || order.buyerName || order.usuarioNombre || 'Cliente sin nombre';
   const buyerAvatar = resolveMediaUrl(order.compradorFotoPerfil || order.compradorAvatarUrl || order.buyerAvatarUrl || order.buyerAvatar || null);

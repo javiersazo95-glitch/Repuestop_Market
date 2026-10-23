@@ -264,7 +264,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
         <div className="auction-modal-header" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: '#ffffff' }}>
           <div>
             <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#38bdf8', fontWeight: 800 }}>
-              Bolsa de Subastas RepuesTop
+              Necesidades de compra RepuesTop
             </div>
             <h2 className="auction-modal-title" style={{ color: '#ffffff', marginTop: '2px' }}>{isEditing ? 'Editar pedido de repuestos' : 'Publicar pedido de repuestos'}</h2>
           </div>
@@ -380,7 +380,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
 
           {/* Sección 3: Condiciones */}
           <div>
-            <div className="acv-title"><Clock size={18} /><span>Condiciones de compra y subasta</span></div>
+            <div className="acv-title"><Clock size={18} /><span>Condiciones de la necesidad de compra</span></div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '12px' }}>
               <div className="auction-form-group">

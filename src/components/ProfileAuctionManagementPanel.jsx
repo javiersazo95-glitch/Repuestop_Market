@@ -74,8 +74,8 @@ function Timeline({ offer }) {
       case 'ACEPTADA': return { label: 'Aceptada: el comprador debe pagar', tone: 'done' };
       case 'PAGO_PENDIENTE': return { label: 'Pedido creado, esperando el pago', tone: 'warn' };
       case 'PAGADA': return { label: 'Pagada: ya es un pedido tuyo', tone: 'done' };
-      case 'EXPIRADA': return { label: 'La subasta cerró sin adjudicarte', tone: 'lost' };
-      case 'CANCELADA': return { label: 'La subasta fue cancelada', tone: 'lost' };
+      case 'EXPIRADA': return { label: 'La necesidad de compra cerró sin adjudicarte', tone: 'lost' };
+      case 'CANCELADA': return { label: 'La necesidad de compra fue cancelada', tone: 'lost' };
       default: return { label: 'Esperando decisión', tone: 'idle' };
     }
   })();
@@ -148,7 +148,7 @@ function OfferCard({ item, onEdit, onOpen, onOrder, busy }) {
       <aside className="pg-side">
         <div className="pg-total"><small>Total vigente</small><strong className={overBudget ? 'is-over' : ''}>{money(oferta.totalVigente)}</strong>{overBudget && <em>Sobre el tope</em>}</div>
         <div className="pg-actions">
-          <button type="button" className="pg-btn" onClick={() => onOpen(necesidad.id)}>Ver subasta <ArrowRight size={14} /></button>
+          <button type="button" className="pg-btn" onClick={() => onOpen(necesidad.id)}>Ver necesidad <ArrowRight size={14} /></button>
           <button type="button" className={`pg-btn pg-toggle ${expanded ? 'is-open' : ''}`} aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
             {expanded ? 'Ocultar detalle' : 'Ver detalle'} <ChevronDown size={14} />
           </button>
@@ -240,7 +240,7 @@ function SavedCard({ auction, myOffer, onOpen, onRemove, busy }) {
         <span />
         <div className="pg-actions">
           <button type="button" className="pg-btn" onClick={() => onRemove(auction.id)} disabled={busy}><Bookmark size={14} /> Quitar de guardadas</button>
-          <button type="button" className="pg-btn is-primary" onClick={() => onOpen(auction.id)}>Ver subasta <ArrowRight size={14} /></button>
+          <button type="button" className="pg-btn is-primary" onClick={() => onOpen(auction.id)}>Ver necesidad <ArrowRight size={14} /></button>
         </div>
       </div>
     </article>
@@ -326,11 +326,11 @@ export default function ProfileAuctionManagementPanel() {
     <section className="pg-panel">
       <header className="pg-header">
         <div>
-          <h2><Gavel size={20} /> Gestión subastas</h2>
+          <h2><Gavel size={20} /> Gestión de necesidades</h2>
           <p>Sigue cada oferta que enviaste: si el comprador la revisó, si eligió otra y en qué etapa va la venta.</p>
         </div>
         <button type="button" className="pg-btn is-primary" onClick={() => navigate(ROUTES.auctions)}>
-          <Gavel size={15} /> Ver subastas públicas
+          <Gavel size={15} /> Ver necesidades públicas
         </button>
       </header>
 
@@ -359,7 +359,7 @@ export default function ProfileAuctionManagementPanel() {
 
           {filter === 'saved' ? (
             visibleSaved.length === 0 ? (
-              <EmptyState label="No tienes solicitudes guardadas. Abre una subasta y presiona «Guardar» para hacerle seguimiento." />
+              <EmptyState label="No tienes solicitudes guardadas. Abre una necesidad de compra y presiona «Guardar» para hacerle seguimiento." />
             ) : (
               <div className="pg-list">
                 {visibleSaved.map((auction) => (
@@ -375,7 +375,7 @@ export default function ProfileAuctionManagementPanel() {
               </div>
             )
           ) : visible.length === 0 ? (
-            <EmptyState label={offers.length === 0 ? 'Aún no has enviado ofertas. Entra a las subastas públicas y ofrece tus repuestos.' : 'No hay ofertas en este filtro.'} />
+            <EmptyState label={offers.length === 0 ? 'Aún no has enviado ofertas. Entra a las necesidades de compra públicas y ofrece tus repuestos.' : 'No hay ofertas en este filtro.'} />
           ) : (
             <div className="pg-list">
               {visible.map((item) => (

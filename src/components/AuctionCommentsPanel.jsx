@@ -76,7 +76,7 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
       </div>
 
       {!isOpen ? (
-        <p className="as-muted as-closed">Esta subasta ya no recibe comentarios.</p>
+        <p className="as-muted as-closed">Esta necesidad de compra ya no recibe comentarios.</p>
       ) : isLoggedIn && !canComment ? (
         <p className="as-muted as-closed">Solo las tiendas pueden comentar esta necesidad para afinar su oferta; el comprador responde aquí.</p>
       ) : isLoggedIn ? (

@@ -21,7 +21,7 @@ const STATUS_FILTERS = [
 const SOURCE_FILTERS = [
   { value: 'cart', label: 'Carrito' },
   { value: 'quote', label: 'Cotización' },
-  { value: 'auction', label: 'Subasta' },
+  { value: 'auction', label: 'Necesidad de compra' },
 ];
 
 const DATE_FILTERS = [

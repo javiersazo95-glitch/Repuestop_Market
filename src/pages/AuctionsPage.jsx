@@ -176,14 +176,14 @@ function AuctionRow({ auction, status, now, onOpen }) {
       </div>
 
       <button type="button" className="aw-card-cta" onClick={() => onOpen(auction.id)}>
-        Ver subasta <ArrowRight size={16} />
+        Ver necesidad <ArrowRight size={16} />
       </button>
     </article>
   );
 }
 
 export default function AuctionsPage() {
-  useDocumentTitle('Subastas de repuestos');
+  useDocumentTitle('Necesidades de compra');
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
   const { HEADER_CATEGORIES } = useCategories();
@@ -215,7 +215,7 @@ export default function AuctionsPage() {
       setAuctions(data?.content || (Array.isArray(data) ? data : []));
     } catch (err) {
       console.error('Error cargando subastas:', err);
-      if (!silent) setError('No pudimos conectar con el servidor de subastas. Verifica tu conexión o reintenta.');
+      if (!silent) setError('No pudimos conectar con el servidor de necesidades de compra. Verifica tu conexión o reintenta.');
     } finally {
       if (!silent) setLoading(false);
     }
@@ -339,12 +339,12 @@ export default function AuctionsPage() {
         <nav className="aw-breadcrumb" aria-label="Ruta de navegación">
           <Link to={ROUTES.home}>Inicio</Link>
           <span>/</span>
-          <span aria-current="page">Subastas</span>
+          <span aria-current="page">Necesidades de compra</span>
         </nav>
 
         <header className="aw-head">
           <div className="aw-head-text">
-            <h1>Subastas de repuestos</h1>
+            <h1>Necesidades de compra</h1>
             <p>Encuentra solicitudes de compra y ofrece el repuesto que alguien necesita.</p>
           </div>
           <button type="button" className="aw-btn-publish" onClick={handleOpenCreateModal}>
@@ -517,7 +517,7 @@ export default function AuctionsPage() {
             {error ? (
               <div className="aw-empty">
                 <div className="aw-empty-icon is-error"><AlertCircle size={30} /></div>
-                <h3>Error al cargar las subastas</h3>
+                <h3>Error al cargar las necesidades de compra</h3>
                 <p>{error}</p>
                 <button type="button" className="aw-btn-publish" onClick={() => loadAuctions()}>Reintentar</button>
               </div>
@@ -528,7 +528,7 @@ export default function AuctionsPage() {
             ) : visible.length === 0 ? (
               <div className="aw-empty">
                 <div className="aw-empty-icon"><Gavel size={30} /></div>
-                <h3>No hay subastas con estos filtros</h3>
+                <h3>No hay necesidades de compra con estos filtros</h3>
                 <p>Prueba cambiando los filtros o publica tú la necesidad de compra para recibir cotizaciones de tiendas verificadas.</p>
                 <div className="aw-empty-actions">
                   {activeFiltersCount > 0 && (
