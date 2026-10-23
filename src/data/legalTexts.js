@@ -12,7 +12,7 @@
  */
 
 /** Fecha de la version vigente, para mostrar en pantalla. */
-export const LEGAL_VERSION = '18 de octubre de 2026';
+export const LEGAL_VERSION = '22 de octubre de 2026';
 
 /**
  * Codigo estable de la misma version, el que viaja al backend y queda guardado en
@@ -23,7 +23,7 @@ export const LEGAL_VERSION = '18 de octubre de 2026';
  * Debe coincidir con `repuestop.legal.version-vigente` del backend y con
  * LEGAL_VERSION_CODE de la app.
  */
-export const LEGAL_VERSION_CODE = '2026-10-18';
+export const LEGAL_VERSION_CODE = '2026-10-22';
 
 /**
  * Declaracion de la tienda de ser contribuyente de IVA (art. 3° bis LIVS, Circular SII 39 de
