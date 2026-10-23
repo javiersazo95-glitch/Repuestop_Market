@@ -231,6 +231,21 @@ function deliveryOptions(auction) {
   return options;
 }
 
+/** Lo que el comprador va a ver de la entrega según el método elegido (costo, "por pagar" o dirección de retiro). */
+function deliveryExplain(type, options, auction) {
+  const option = options.find((item) => item.metodo === type);
+  const comuna = auction?.comuna ? ` (${auction.comuna})` : '';
+  if (type === 'Retiro en tienda') return `El comprador retira en tu tienda: verá su dirección en tu oferta. Solo aplica a pedidos de tu misma comuna${comuna}.`;
+  if (type === 'Envío dentro de la comuna') {
+    const cost = Number(option?.costo || 0);
+    return cost > 0
+      ? `Despacho a domicilio en tu comuna: se carga el envío de ${money(cost)} en el detalle de tu oferta y el comprador lo paga junto al pedido.`
+      : 'Despacho a domicilio en tu comuna, sin costo de envío.';
+  }
+  if (type === 'Envío fuera de la comuna') return 'Despacho a domicilio por pagar (courier): el costo del envío no va en tu oferta; el comprador lo paga aparte al recibirlo.';
+  return '';
+}
+
 function defaultDeliveryType(options, myQuote) {
   const allowed = options.filter((option) => option.disponible).map((option) => option.metodo);
   if (myQuote?.tipoEntrega && allowed.includes(myQuote.tipoEntrega)) return myQuote.tipoEntrega;
@@ -413,6 +428,7 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
                   <small>
                     Según la comuna del pedido{auction?.comuna ? ` (${auction.comuna})` : ''} y los métodos que publicó tu tienda; el costo del envío dentro de la comuna es el que publicaste.
                   </small>
+                  <small className="aq-delivery-explain">{deliveryExplain(deliveryType, deliveryChoices, auction)}</small>
                   {deliveryChoices.filter((option) => !option.disponible && option.motivo).map((option) => (
                     <small key={option.metodo} className="aq-delivery-reason"><b>{option.metodo}:</b> {option.motivo}</small>
                   ))}

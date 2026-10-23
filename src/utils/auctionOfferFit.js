@@ -77,7 +77,10 @@ function shippingCheck(auction, quote) {
   if (wanted === 'any' || wanted == null) return { key: 'shipping', label, status: 'neutral', detail: `Aceptabas: ${auction.tipoEnvio || 'cualquiera'}` };
   if (offered == null || offered === 'any') return { key: 'shipping', label, status: 'warn', detail: `${quote.tipoEntrega || 'A coordinar'} (pediste ${auction.tipoEnvio})` };
   if (offered === wanted) return { key: 'shipping', label, status: 'ok', detail: `${quote.tipoEntrega}: coincide con lo que pediste` };
-  const closeEnough = (wanted === 'home' && offered === 'courier') || (wanted === 'courier' && offered === 'home');
+  // Despacho a domicilio es una sola opción para el comprador: dentro de la comuna o por pagar (courier) es lo mismo para él.
+  const isDelivery = (kind) => kind === 'home' || kind === 'courier';
+  if (isDelivery(wanted) && isDelivery(offered)) return { key: 'shipping', label, status: 'ok', detail: `${quote.tipoEntrega}: es despacho a domicilio, como pediste` };
+  const closeEnough = false;
   return {
     key: 'shipping',
     label,

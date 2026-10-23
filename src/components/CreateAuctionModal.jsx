@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { normalizePlate } from '../utils/vehicleLookup';
 import usePlateLookup, { maskPlate } from '../utils/usePlateLookup';
+import { shippingClass } from '../utils/auctionOfferFit';
 import { createAddressApi, getAddressesApi } from '../services/api';
 import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
@@ -245,7 +246,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
 
   const [tiempoVigenciaHoras, setTiempoVigenciaHoras] = useState(() => auction?.tiempoVigenciaHoras || 48);
   const [tiempoMaximoEnvio, setTiempoMaximoEnvio] = useState(() => auction?.tiempoMaximoEnvio || '24 horas');
-  const [tipoEnvio, setTipoEnvio] = useState(() => auction?.tipoEnvio || 'Cualquiera (Retiro o Despacho)');
+  const [tipoEnvio, setTipoEnvio] = useState(() => (auction?.tipoEnvio && shippingClass(auction.tipoEnvio) === 'pickup' ? 'Retiro en tienda' : 'Despacho a domicilio'));
   const [presupuestoMaximo, setPresupuestoMaximo] = useState(() => (auction?.presupuestoMaximo ? String(Math.round(auction.presupuestoMaximo)) : ''));
 
   const [fotos, setFotos] = useState(() => auction?.fotos || []);
@@ -542,11 +543,12 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
               <div className="auction-form-group">
                 <label className="auction-form-label"><span>Tipo de envío *</span></label>
                 <select value={tipoEnvio} onChange={(e) => setTipoEnvio(e.target.value)} className="auction-form-select">
-                  <option value="Cualquiera (Retiro o Despacho)">Cualquiera (Retiro o Despacho)</option>
-                  <option value="Retiro en Tienda">Retiro en Tienda</option>
-                  <option value="Despacho a Domicilio">Despacho a Domicilio</option>
-                  <option value="Envío a Regiones (Courier)">Envío a Regiones (Courier)</option>
+                  <option value="Despacho a domicilio">Despacho a domicilio</option>
+                  <option value="Retiro en tienda">Retiro en tienda</option>
                 </select>
+                <small className="acv-shipping-rule">
+                  Las tiendas de tu comuna podrán ofrecerte retiro en tienda o despacho dentro de la comuna (con el costo del envío). Las de otras comunas solo podrán ofrecer despacho a domicilio por pagar (courier): el envío lo pagas aparte.
+                </small>
               </div>
             </div>
           </div>

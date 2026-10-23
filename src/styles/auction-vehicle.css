@@ -71,3 +71,5 @@
 .acv-quick-address > small { grid-column: 1 / -1; margin: 0; }
 .acv-quick-address .auction-btn-primary { min-height: 42px; }
 .acv-address-error { color: #b42318; font-size: 12.5px; }
+
+.acv-shipping-rule { display: block; margin-top: 6px; font-size: 12px; line-height: 1.45; color: #5a6b7a; }

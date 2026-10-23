@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, Clock, Gavel, Lightbulb, MinusCircle, Package, PackageCheck,
-  ShieldCheck, Trophy, X, XCircle,
+  AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, Clock, Gavel, Lightbulb, MapPin, MinusCircle, Package, PackageCheck,
+  ShieldCheck, Trophy, Truck, X, XCircle,
 } from 'lucide-react';
 import { acceptAuctionOffer, getAuctionDetail, markAuctionOfferSeen } from '../services/auctionApi';
 import AuctionAvatar from './AuctionAvatar';
-import { evaluateOffer, suggestOffer } from '../utils/auctionOfferFit';
+import { evaluateOffer, shippingClass, suggestOffer } from '../utils/auctionOfferFit';
 import '../styles/auction-offers.css';
 
 const nf = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
@@ -81,6 +81,44 @@ function LinesTable({ quote }) {
   );
 }
 
+/** Cómo y desde dónde se entrega: dónde está la tienda, la dirección si es retiro y qué pasa con el costo del envío. */
+function DeliveryBox({ quote }) {
+  const kind = shippingClass(quote.tipoEntrega);
+  const place = [quote.tiendaComuna, quote.tiendaRegion].filter(Boolean).join(', ');
+  if (!kind || kind === 'any') return null;
+  if (kind === 'pickup') {
+    return (
+      <div className="ao-delivery is-pickup" role="note">
+        <MapPin size={16} />
+        <div>
+          <strong>Retiro en tienda{place ? ` · tienda en ${place}` : ''}</strong>
+          <small>{quote.direccionRetiro ? <>Retiras en <b>{quote.direccionRetiro}</b>.</> : 'La tienda te indicará la dirección de retiro.'} Esta oferta solo conviene si puedes ir a buscarlo.</small>
+        </div>
+      </div>
+    );
+  }
+  if (kind === 'home') {
+    return (
+      <div className="ao-delivery is-home" role="note">
+        <Truck size={16} />
+        <div>
+          <strong>Despacho a domicilio dentro de la comuna{place ? ` · tienda en ${place}` : ''}</strong>
+          <small>{quote.costoEnvio > 0 ? <>El envío cuesta <b>{money(quote.costoEnvio)}</b> y se suma al total al pagar.</> : 'Sin costo de envío.'}</small>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="ao-delivery is-courier" role="note">
+      <Truck size={16} />
+      <div>
+        <strong>Despacho a domicilio por pagar{place ? ` · tienda en ${place}` : ''}</strong>
+        <small>La tienda está en otra comuna: envía por courier y <b>el costo del envío no está incluido</b>; lo pagas aparte, al recibirlo.</small>
+      </div>
+    </div>
+  );
+}
+
 function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, confirming, busy, onAskConfirm, onCancel, onAccept }) {
   const [expanded, setExpanded] = useState(false);
   const seenSent = useRef(false);
@@ -147,6 +185,8 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
         </button>
       </div>
 
+      <DeliveryBox quote={quote} />
+
       {expanded && (
         <div className="ao-offer-body">
           <LinesTable quote={quote} />
@@ -164,6 +204,8 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
 
           <dl className="ao-terms">
             <Term label="Método de entrega" value={quote.tipoEntrega} />
+            {quote.costoEnvio > 0 && <Term label="Costo del envío" value={`${money(quote.costoEnvio)} (se suma al total al pagar)`} />}
+            {quote.envioPorPagar && <Term label="Costo del envío" value="Por pagar: no está incluido en el total" />}
             <Term label="Plazo de entrega" value={quote.tiempoEntrega} />
             <Term label="Garantía" value={quote.garantia || 'Garantía legal'} />
             <Term label="Vigencia de la oferta" value={quote.vigencia} />

@@ -175,6 +175,7 @@ export default function AuctionCheckoutPage() {
                     <div>
                       <strong>{store.tienda}</strong>
                       <small><Truck size={12} /> {chosenMethod(store)}{store.plazoEntrega ? ` · ${store.plazoEntrega}` : ''}</small>
+                      {(store.tiendaComuna || store.tiendaRegion) && <small>Tienda en {[store.tiendaComuna, store.tiendaRegion].filter(Boolean).join(', ')}</small>}
                     </div>
                     <strong>{money(totalOf(store))}</strong>
                   </header>
@@ -192,6 +193,10 @@ export default function AuctionCheckoutPage() {
                       <tr><td colSpan={2}>Envío</td><td className="is-num">{shippingOf(store) > 0 ? money(shippingOf(store)) : 'Sin costo'}</td></tr>
                     </tfoot>
                   </table>
+                  {isPickup(chosenMethod(store)) && store.direccionRetiro && (
+                    <p className="apc-note"><Truck size={14} /> Retiras en <strong>{store.direccionRetiro}</strong>.</p>
+                  )}
+                  {/fuera/i.test(chosenMethod(store)) && <p className="apc-note apc-note-warn"><AlertCircle size={14} /> Despacho a domicilio por pagar: el costo del envío no está incluido, lo pagas aparte al recibirlo.</p>}
                   {store.avisoEntrega && <p className="apc-note apc-note-warn"><AlertCircle size={14} /> {store.avisoEntrega}</p>}
                   {(store.opcionesEntrega || []).length > 1 && (
                     <div className="apc-delivery" role="radiogroup" aria-label={`Entrega de ${store.tienda}`}>
