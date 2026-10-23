@@ -66,3 +66,8 @@
 .acv-address-note { margin: 8px 0 0; font-size: 12.5px; color: #5a6b7a; }
 .acv-address-note.is-warn { padding: 10px 12px; border-radius: 10px; background: #fff7e6; color: #7a4a00; }
 .acv-address-book { margin-top: 10px; }
+
+.acv-quick-address { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; margin-top: 8px; }
+.acv-quick-address > small { grid-column: 1 / -1; margin: 0; }
+.acv-quick-address .auction-btn-primary { min-height: 42px; }
+.acv-address-error { color: #b42318; font-size: 12.5px; }
