@@ -164,7 +164,6 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
           <small>{coverage && coverage.coveredItems < coverage.totalItems ? 'Total de lo que cubre' : 'Total ofertado'}</small>
           <strong>{money(total)}</strong>
         </div>
-        <span className={`ao-chevron ${expanded ? 'is-open' : ''}`} aria-hidden="true"><ChevronDown size={18} /></span>
       </header>
 
       <div className="ao-preview">
