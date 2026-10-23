@@ -12,7 +12,8 @@
 # imagenes se abren porque Google necesita el JavaScript para ver la pagina.
 #
 # PARA EL LANZAMIENTO A COMPRADORES (con getapi.cl y catalogo minimo): borrar
-# este bloque y descomentar la configuracion completa de abajo (plan P3-12).
+# este bloque y descomentar la configuracion completa de abajo (plan P3-12), y sumar
+# /repuestos y /tiendas a src/routes/seoPages.js para que entren al sitemap.
 # ==========================================================================
 User-agent: *
 Allow: /$
@@ -32,6 +33,9 @@ Allow: /*.ico$
 Allow: /site.webmanifest
 Allow: /googledb5011289430debb.html
 Disallow: /
+
+# El sitemap lista solo las paginas abiertas arriba (se genera desde src/routes/seoPages.js).
+Sitemap: https://repuestop.cl/sitemap.xml
 
 # --- Configuracion completa, activar en el lanzamiento a compradores ---
 # User-agent: *

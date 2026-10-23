@@ -15,9 +15,16 @@
     { "source": "/postular-fundador", "destination": "/vender", "permanent": true }
   ],
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/(vender|nosotros|ayuda|terminos|privacidad)", "destination": "/$1/index.html" },
+    { "source": "/ayuda/(preguntas-frecuentes|contacto|productos|cotizaciones|cuenta|politicas|seguridad)", "destination": "/ayuda/$1/index.html" },
+    { "source": "/(.*)", "destination": "/app.html" }
   ],
   "headers": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "dev-repuestop.repuestop.cl" }],
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
     {
       "source": "/(.*)",
       "headers": [
