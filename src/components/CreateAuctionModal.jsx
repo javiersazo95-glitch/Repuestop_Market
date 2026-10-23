@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   X, Upload, Trash2, AlertCircle, CheckCircle2, Clock, MapPin, Plus, ShieldCheck, Car, Package,
 } from 'lucide-react';
@@ -14,6 +14,7 @@ import '../styles/auction-vehicle.css';
 
 const MAX_ITEMS = 20;
 let itemSeq = 0;
+const NEW_ADDRESS = '__new__';
 const newItem = () => ({ key: `item-${++itemSeq}`, nombre: '', categoria: '', cantidad: 1, descripcion: '', otroVehiculo: false, patente: '' });
 
 /** Tarjeta del vehículo identificado por patente (marca, modelo, año y chasis). */
@@ -151,19 +152,32 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
   // La necesidad se publica con la ubicación de una dirección registrada: la del comprador o la que cree aquí mismo.
   const [addresses, setAddresses] = useState([]);
   const [addressesLoaded, setAddressesLoaded] = useState(false);
+  const [addressChoice, setAddressChoice] = useState('');   // id elegido, o NEW_ADDRESS para crear una
+  const knownAddressIds = useRef(new Set());
   const loadAddresses = useCallback(async () => {
     if (!userId) { setAddressesLoaded(true); return; }
     try {
       const data = await getAddressesApi(userId);
-      setAddresses(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      const created = list.find((address) => !knownAddressIds.current.has(String(address.id)));
+      const firstLoad = knownAddressIds.current.size === 0;
+      knownAddressIds.current = new Set(list.map((address) => String(address.id)));
+      setAddresses(list);
+      setAddressChoice((current) => {
+        if (!firstLoad && created) return String(created.id);              // recién creada en este formulario
+        if (current && current !== NEW_ADDRESS && list.some((address) => String(address.id) === current)) return current;
+        const main = list.find((address) => address.esPrincipal) || list[0];
+        return main ? String(main.id) : NEW_ADDRESS;
+      });
     } catch {
       setAddresses([]);
+      setAddressChoice(NEW_ADDRESS);
     } finally {
       setAddressesLoaded(true);
     }
   }, [userId]);
   useEffect(() => { loadAddresses(); }, [loadAddresses]);
-  const mainAddress = useMemo(() => addresses.find((address) => address.esPrincipal) || addresses[0] || null, [addresses]);
+  const mainAddress = useMemo(() => addresses.find((address) => String(address.id) === addressChoice) || null, [addresses, addressChoice]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -404,22 +418,31 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
           {/* Dirección: obligatoria, sale de una dirección registrada o se crea aquí mismo */}
           <div>
             <div className="acv-title"><MapPin size={18} /><span>Dirección de la necesidad <em className="auction-required">(obligatoria)</em></span></div>
-            {!addressesLoaded ? (
-              <p className="acv-address-note">Cargando tus direcciones…</p>
-            ) : mainAddress ? (
-              <div className="acv-address-ok">
-                <CheckCircle2 size={16} />
-                <span>
-                  <strong>{mainAddress.calleYNumero}</strong>
-                  <small>{[mainAddress.comunaNombre, mainAddress.regionNombre].filter(Boolean).join(', ')}{mainAddress.esPrincipal ? ' · Principal' : ''}</small>
-                </span>
-              </div>
-            ) : (
-              <p className="acv-address-note is-warn">Aún no tienes una dirección registrada. Agrégala aquí para poder publicar: así las tiendas saben si despachan a tu comuna.</p>
-            )}
-            <div className="acv-address-book">
-              <BuyerAddressBook usuarioId={userId} onChange={loadAddresses} />
+            <div className="auction-form-group acv-address-select">
+              <select
+                value={addressChoice}
+                onChange={(e) => setAddressChoice(e.target.value)}
+                className="auction-form-select"
+                disabled={!addressesLoaded}
+                aria-label="Dirección de la necesidad"
+              >
+                {!addressesLoaded && <option value="">Cargando tus direcciones…</option>}
+                {addresses.map((address) => (
+                  <option key={address.id} value={String(address.id)}>
+                    {address.calleYNumero} · {[address.comunaNombre, address.regionNombre].filter(Boolean).join(', ')}{address.esPrincipal ? ' (principal)' : ''}
+                  </option>
+                ))}
+                <option value={NEW_ADDRESS}>+ Agregar una dirección nueva</option>
+              </select>
+              {addressesLoaded && addresses.length === 0 && addressChoice === NEW_ADDRESS && (
+                <small className="acv-address-note">Aún no tienes direcciones: agrega una para poder publicar.</small>
+              )}
             </div>
+            {addressChoice === NEW_ADDRESS && (
+              <div className="acv-address-book">
+                <BuyerAddressBook usuarioId={userId} onChange={loadAddresses} />
+              </div>
+            )}
           </div>
 
           {/* Sección 3: Condiciones */}
