@@ -17,6 +17,8 @@ import AuctionInfoTip from '../components/AuctionInfoTip';
 import AuctionImageViewer from '../components/AuctionImageViewer';
 import CreateAuctionModal from '../components/CreateAuctionModal';
 import MobileStickyBar from '../components/MobileStickyBar';
+import AuctionDetailMobile from '../components/AuctionDetailMobile';
+import { useIsMobile } from '../hooks/useIsMobile';
 import '../styles/auction-mobile.css';
 import ShareLinkButton from '../components/ShareLinkButton';
 import AuctionAvatar from '../components/AuctionAvatar';
@@ -112,6 +114,7 @@ export default function AuctionDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, role } = useAuth();
+  const isMobile = useIsMobile();
 
   const [auction, setAuction] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -228,6 +231,29 @@ export default function AuctionDetailPage() {
 
   return (
     <main className="av-page">
+      {isMobile ? (
+        <AuctionDetailMobile
+          auction={auction}
+          now={now}
+          isSeller={isSeller}
+          canQuote={canQuote}
+          acceptedCount={acceptedCount}
+          isOpen={isOpen}
+          isFinalizada={isFinalizada}
+          isLoggedIn={Boolean(user)}
+          onBack={() => navigate(ROUTES.auctions)}
+          onOffer={() => setIsQuoteModalOpen(true)}
+          onCompare={() => setIsOffersOpen(true)}
+          onOpenPurchase={() => setIsPurchaseOpen(true)}
+          saved={saved}
+          saveBusy={saveBusy}
+          saveNotice={saveNotice}
+          onToggleSaved={toggleSaved}
+          onEdit={() => (auction.editable === false
+            ? flashSaveNotice(auction.motivoNoEditable || 'Esta necesidad de compra ya no se puede editar.')
+            : setIsEditOpen(true))}
+        />
+      ) : (
       <div className="container av-shell">
         <nav className="av-breadcrumb" aria-label="Ruta de navegación">
           <Link to={ROUTES.home} aria-label="Inicio"><Home size={16} /></Link>
@@ -486,8 +512,9 @@ export default function AuctionDetailPage() {
           </aside>
         </div>
       </div>
+      )}
 
-      {(canQuote || (esCreador && isOpen && (cotizaciones.length > 0 || acceptedCount > 0))) && (
+      {!isMobile && (canQuote || (esCreador && isOpen && (cotizaciones.length > 0 || acceptedCount > 0))) && (
         <MobileStickyBar label={isOpen ? 'Tiempo restante' : 'Necesidad'} value={isOpen ? formatRemaining(remainingMs) : statusLabel} hint={`${cotizaciones.length} ${cotizaciones.length === 1 ? 'oferta' : 'ofertas'}`} ariaLabel="Acciones de la necesidad de compra">
           {canQuote && (
             <button type="button" className="mobile-sticky-bar__btn" onClick={() => setIsQuoteModalOpen(true)}>

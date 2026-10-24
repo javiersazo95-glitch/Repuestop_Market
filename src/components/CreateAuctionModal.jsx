@@ -8,6 +8,8 @@ import { shippingClass } from '../utils/auctionOfferFit';
 import { createAddressApi, getAddressesApi } from '../services/api';
 import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
+import AuctionCreateMobile from './AuctionCreateMobile';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { createAuction, updateAuction, uploadAuctionPhoto } from '../services/auctionApi';
 import { useAuth } from '../context/AuthContext';
 import { useCategories } from '../data/categories';
@@ -567,6 +569,9 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
 
 /* El contenido tiene hooks: se monta solo con el modal abierto. */
 export default function CreateAuctionModal(props) {
+  const isMobile = useIsMobile();
   if (!props.isOpen) return null;
+  // En el celular, publicar y editar usan el formulario idéntico al de la app.
+  if (isMobile) return <AuctionCreateMobile auction={props.auction || null} onClose={props.onClose} onSuccess={props.onSuccess} />;
   return <CreateAuctionModalContent {...props} />;
 }

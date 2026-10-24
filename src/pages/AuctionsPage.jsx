@@ -10,6 +10,8 @@ import { resolveMediaUrl } from '../services/api';
 import { auctionDetailPath, ROUTES } from '../routes/paths';
 import CreateAuctionModal from '../components/CreateAuctionModal';
 import MobileStickyBar from '../components/MobileStickyBar';
+import AuctionsListMobile from '../components/AuctionsListMobile';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { useAuth } from '../context/AuthContext';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 import { useCategories } from '../data/categories';
@@ -187,6 +189,7 @@ export default function AuctionsPage() {
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
   const { HEADER_CATEGORIES } = useCategories();
+  const isMobile = useIsMobile();
 
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -333,6 +336,144 @@ export default function AuctionsPage() {
     else loadAuctions();
   };
 
+  const filtersPanel = (
+    <>
+        {isFiltersOpen && (
+          <button type="button" className="aw-backdrop" aria-label="Cerrar filtros" onClick={() => setIsFiltersOpen(false)} />
+        )}
+
+        <aside className={`aw-sidebar ${isFiltersOpen ? 'is-open' : ''}`} aria-label="Filtrar solicitudes">
+          <div className="catalog-sidebar-filters catalog-advanced-filter-panel aw-filters">
+            <button type="button" className="aw-filters-close" onClick={() => setIsFiltersOpen(false)}>
+              <X size={19} /> Cerrar filtros
+            </button>
+            <div className="sidebar-filters-header">
+              <div className="sidebar-title-group">
+                <SlidersHorizontal size={22} />
+                <span><strong>Filtrar solicitudes</strong></span>
+              </div>
+            </div>
+
+            <div className="aw-search">
+              <Search size={17} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar repuesto..."
+                aria-label="Buscar repuesto"
+                maxLength={100}
+              />
+              {searchQuery && (
+                <button type="button" onClick={() => setSearchQuery('')} aria-label="Limpiar búsqueda"><X size={15} /></button>
+              )}
+            </div>
+
+            {categoryOptions.length > 0 && (
+              <FilterSection id="categoria" label="Categoría" isOpen={openSections.categoria} onToggle={toggleSection}>
+                {categoryOptions.map(({ value, count }) => (
+                  <CheckRow
+                    key={value}
+                    label={value}
+                    count={count}
+                    checked={categorias.includes(value)}
+                    onChange={(checked) => toggleIn(setCategorias, value, checked)}
+                  />
+                ))}
+              </FilterSection>
+            )}
+
+            <FilterSection id="estado" label="Estado" isOpen={openSections.estado} onToggle={toggleSection}>
+              {ESTADO_OPTIONS.map((option) => (
+                <CheckRow
+                  key={option.value}
+                  label={option.label}
+                  checked={estados.includes(option.value)}
+                  onChange={(checked) => toggleIn(setEstados, option.value, checked)}
+                />
+              ))}
+            </FilterSection>
+
+            {brandOptions.length > 0 && (
+              <FilterSection id="marca" label="Marca del vehículo" isOpen={openSections.marca} onToggle={toggleSection}>
+                {brandOptions.map(({ value, count }) => (
+                  <CheckRow
+                    key={value}
+                    label={value}
+                    count={count}
+                    checked={marcas.includes(value)}
+                    onChange={(checked) => toggleIn(setMarcas, value, checked)}
+                  />
+                ))}
+              </FilterSection>
+            )}
+
+            {regionOptions.length > 0 && (
+              <FilterSection id="region" label="Región" isOpen={openSections.region} onToggle={toggleSection}>
+                {regionOptions.map(({ value, count }) => (
+                  <CheckRow
+                    key={value}
+                    label={value}
+                    count={count}
+                    checked={regiones.includes(value)}
+                    onChange={(checked) => toggleIn(setRegiones, value, checked)}
+                  />
+                ))}
+              </FilterSection>
+            )}
+
+            <FilterSection id="tiempo" label="Tiempo restante" isOpen={openSections.tiempo} onToggle={toggleSection}>
+              {TIEMPO_OPTIONS.map((option) => (
+                <CheckRow
+                  key={option.value}
+                  label={option.label}
+                  checked={tiempos.includes(option.value)}
+                  onChange={(checked) => toggleIn(setTiempos, option.value, checked)}
+                />
+              ))}
+            </FilterSection>
+
+            <button type="button" className="aw-clear" onClick={handleResetFilters} disabled={activeFiltersCount === 0}>
+              <RotateCcw size={15} /> Limpiar filtros
+            </button>
+            <button type="button" className="aw-filters-apply" onClick={() => setIsFiltersOpen(false)}>
+              Ver {filtered.length} {filtered.length === 1 ? 'solicitud' : 'solicitudes'}
+            </button>
+          </div>
+        </aside>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        <AuctionsListMobile
+          rows={filtered}
+          now={now}
+          loading={loading}
+          error={error}
+          onRetry={() => loadAuctions()}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          activeFiltersCount={activeFiltersCount}
+          onOpenFilters={() => setIsFiltersOpen(true)}
+          sortBy={sortBy}
+          sortOptions={SORT_OPTIONS}
+          onSortChange={setSortBy}
+          onResetFilters={handleResetFilters}
+          onCreate={handleOpenCreateModal}
+          onOpenAuction={handleOpenAuction}
+          filtersPanel={filtersPanel}
+        />
+        <CreateAuctionModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSuccess={handleCreatedSuccess}
+        />
+      </>
+    );
+  }
+
   return (
     <main className="aw-page">
       <div className="container aw-shell">
@@ -368,109 +509,7 @@ export default function AuctionsPage() {
         </section>
 
         <div className="aw-layout">
-          {isFiltersOpen && (
-            <button type="button" className="aw-backdrop" aria-label="Cerrar filtros" onClick={() => setIsFiltersOpen(false)} />
-          )}
-
-          <aside className={`aw-sidebar ${isFiltersOpen ? 'is-open' : ''}`} aria-label="Filtrar solicitudes">
-            <div className="catalog-sidebar-filters catalog-advanced-filter-panel aw-filters">
-              <button type="button" className="aw-filters-close" onClick={() => setIsFiltersOpen(false)}>
-                <X size={19} /> Cerrar filtros
-              </button>
-              <div className="sidebar-filters-header">
-                <div className="sidebar-title-group">
-                  <SlidersHorizontal size={22} />
-                  <span><strong>Filtrar solicitudes</strong></span>
-                </div>
-              </div>
-
-              <div className="aw-search">
-                <Search size={17} />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar repuesto..."
-                  aria-label="Buscar repuesto"
-                  maxLength={100}
-                />
-                {searchQuery && (
-                  <button type="button" onClick={() => setSearchQuery('')} aria-label="Limpiar búsqueda"><X size={15} /></button>
-                )}
-              </div>
-
-              {categoryOptions.length > 0 && (
-                <FilterSection id="categoria" label="Categoría" isOpen={openSections.categoria} onToggle={toggleSection}>
-                  {categoryOptions.map(({ value, count }) => (
-                    <CheckRow
-                      key={value}
-                      label={value}
-                      count={count}
-                      checked={categorias.includes(value)}
-                      onChange={(checked) => toggleIn(setCategorias, value, checked)}
-                    />
-                  ))}
-                </FilterSection>
-              )}
-
-              <FilterSection id="estado" label="Estado" isOpen={openSections.estado} onToggle={toggleSection}>
-                {ESTADO_OPTIONS.map((option) => (
-                  <CheckRow
-                    key={option.value}
-                    label={option.label}
-                    checked={estados.includes(option.value)}
-                    onChange={(checked) => toggleIn(setEstados, option.value, checked)}
-                  />
-                ))}
-              </FilterSection>
-
-              {brandOptions.length > 0 && (
-                <FilterSection id="marca" label="Marca del vehículo" isOpen={openSections.marca} onToggle={toggleSection}>
-                  {brandOptions.map(({ value, count }) => (
-                    <CheckRow
-                      key={value}
-                      label={value}
-                      count={count}
-                      checked={marcas.includes(value)}
-                      onChange={(checked) => toggleIn(setMarcas, value, checked)}
-                    />
-                  ))}
-                </FilterSection>
-              )}
-
-              {regionOptions.length > 0 && (
-                <FilterSection id="region" label="Región" isOpen={openSections.region} onToggle={toggleSection}>
-                  {regionOptions.map(({ value, count }) => (
-                    <CheckRow
-                      key={value}
-                      label={value}
-                      count={count}
-                      checked={regiones.includes(value)}
-                      onChange={(checked) => toggleIn(setRegiones, value, checked)}
-                    />
-                  ))}
-                </FilterSection>
-              )}
-
-              <FilterSection id="tiempo" label="Tiempo restante" isOpen={openSections.tiempo} onToggle={toggleSection}>
-                {TIEMPO_OPTIONS.map((option) => (
-                  <CheckRow
-                    key={option.value}
-                    label={option.label}
-                    checked={tiempos.includes(option.value)}
-                    onChange={(checked) => toggleIn(setTiempos, option.value, checked)}
-                  />
-                ))}
-              </FilterSection>
-
-              <button type="button" className="aw-clear" onClick={handleResetFilters} disabled={activeFiltersCount === 0}>
-                <RotateCcw size={15} /> Limpiar filtros
-              </button>
-              <button type="button" className="aw-filters-apply" onClick={() => setIsFiltersOpen(false)}>
-                Ver {filtered.length} {filtered.length === 1 ? 'solicitud' : 'solicitudes'}
-              </button>
-            </div>
-          </aside>
+          {filtersPanel}
 
           <section className="aw-main">
             <div className="aw-scope-chips" role="tablist" aria-label="Tipo de necesidad">
