@@ -493,6 +493,10 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
           <footer className="aq-foot">
             {error && <p className="aq-notice is-bad" role="alert"><AlertCircle size={16} /> {error}</p>}
             {!error && missing.length > 0 && <p className="aq-pending">Falta: {missing.join(' y ')}.</p>}
+            <div className="aq-foot-total" aria-live="polite">
+              <small>Total de tu oferta</small>
+              <strong>{money(total || null)}</strong>
+            </div>
             <div className="aq-foot-actions">
               <button type="button" className="aq-btn-outline" onClick={onClose} disabled={submitting}>Cancelar</button>
               <button type="submit" className="aq-btn-primary" disabled={submitting || missing.length > 0}>

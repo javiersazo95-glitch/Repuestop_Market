@@ -180,3 +180,78 @@
 .aq-create-bar .aq-btn-outline { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
 .aq-delivery-explain { display: block; margin-top: 4px; color: #0056bf; font-weight: 600; }
+
+/* El total del pie solo existe en el celular (en escritorio va en la columna derecha). */
+.aq-foot-total { display: none; }
+
+/* ===========================================================================
+   FORMULARIO DE OFERTA EN EL CELULAR (≤768px): pantalla completa, pasos compactos y pie fijo con el total
+   y el botón de enviar. Mismo orden que la hoja de la app: lo pedido, precio, condiciones y confidencialidad.
+   =========================================================================== */
+@media (max-width: 768px) {
+  .aq-overlay { padding: 0; align-items: stretch; background: #f8fafc; backdrop-filter: none; }
+  .aq-modal { max-width: none; max-height: none; height: 100dvh; border-radius: 0; box-shadow: none; }
+  .aq-modal.aq-sent { height: auto; margin: auto 16px; border-radius: 16px; }
+
+  .aq-head { align-items: center; padding: 12px 14px; }
+  .aq-head > div { min-width: 0; }
+  .aq-eyebrow { font-size: 11.5px; }
+  .aq-head h2 { font-size: 16px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .aq-head p { font-size: 12px; line-height: 1.35; }
+  .aq-close { flex: 0 0 40px; width: 40px; height: 40px; background: #f3f5f7; }
+
+  .aq-body { display: flex; flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  /* Lo que pidió el comprador va primero y compacto; el resto de la columna lateral baja. */
+  .aq-main { order: 2; overflow: visible; gap: 12px; padding: 12px 14px; }
+  .aq-side { order: 1; overflow: visible; gap: 10px; padding: 12px 14px 0; }
+  .aq-side .aq-total { display: none; }
+  .aq-side .aq-secure { display: none; }
+  .aq-card { padding: 12px 14px; border-radius: 12px; }
+  .aq-card h4 { font-size: 12px; margin-bottom: 8px; }
+  .aq-card dl > div { padding-bottom: 6px; border-bottom: 1px solid #e6eaef; }
+  .aq-card dl > div:last-child { padding-bottom: 0; border-bottom: 0; }
+
+  .aq-step { padding: 14px; border-radius: 12px; box-shadow: none; }
+  .aq-step h3 { gap: 8px; margin-bottom: 10px; font-size: 14px; }
+  .aq-step h3 span { width: 22px; height: 22px; font-size: 11px; }
+  .aq-lead { font-size: 12px; }
+
+  /* Cada repuesto del pedido: casilla grande, título y estado en una columna ordenada. */
+  .aq-items { gap: 10px; }
+  .aq-item-head { flex-wrap: wrap; gap: 8px 10px; padding: 12px; }
+  .aq-item-head > input { width: 22px; height: 22px; }
+  .aq-item-title { flex: 1 1 calc(100% - 40px); }
+  .aq-item-title strong { font-size: 13px; }
+  .aq-item-have { margin-left: 32px; padding: 3px 10px; font-size: 11.5px; }
+  .aq-item-body { padding: 0 12px 12px; }
+  .aq-search-row { flex-direction: column; align-items: stretch; gap: 8px; }
+  .aq-search { flex: 0 0 auto; min-height: 44px; }
+  .aq-switch { min-height: 36px; }
+  .aq-create-bar { flex-direction: column; align-items: stretch; text-align: left; }
+  .aq-create-bar .aq-btn-outline { width: 100%; }
+  .aq-parts { max-height: 300px; }
+  .aq-part { grid-template-columns: 52px minmax(0, 1fr); gap: 10px; padding: 10px; }
+  .aq-part-photo { width: 52px; height: 52px; }
+  .aq-part-price { grid-column: 1 / -1; flex-direction: row; align-items: baseline; justify-content: space-between; padding-top: 6px; border-top: 1px solid #e6eaef; }
+  .aq-part-price strong { font-size: 15px; }
+  .aq-item-price { flex-direction: column; align-items: stretch; gap: 8px; }
+  .aq-item-subtotal { flex-direction: row; align-items: baseline; justify-content: space-between; padding: 0; }
+  .aq-linked { flex-wrap: wrap; }
+
+  /* Campos a una columna, cómodos de tocar y sin que iOS haga zoom (16px). */
+  .aq-fields { gap: 12px; }
+  .aq-field input, .aq-field select, .aq-field textarea { min-height: 46px; font-size: 16px; }
+  .aq-money input { min-height: 48px; font-size: 20px; }
+
+  /* Pie fijo: total a la izquierda; Cancelar y Enviar debajo, a todo el ancho. */
+  .aq-foot {
+    position: sticky; bottom: 0; z-index: 2; display: grid; grid-template-columns: 1fr; gap: 8px;
+    padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.06);
+  }
+  .aq-foot-total { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .aq-foot-total small { font-size: 12px; color: #5a6b7a; }
+  .aq-foot-total strong { font-size: 20px; font-weight: 800; color: #0056bf; letter-spacing: -0.2px; }
+  .aq-foot-actions { margin-left: 0; display: grid; grid-template-columns: 1fr 2fr; gap: 8px; }
+  .aq-foot-actions .aq-btn-primary, .aq-foot-actions .aq-btn-outline { min-height: 48px; width: 100%; }
+  .aq-notice, .aq-pending { font-size: 12px; }
+}

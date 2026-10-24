@@ -365,11 +365,6 @@ export default function AuctionDetailMobile({
       {isSeller && !esCreador && miCotizacion?.aceptada && (
         <p className="am-note"><PackageCheck size={16} /> El comprador aceptó tu oferta. Recibirás el pedido cuando pague.</p>
       )}
-      {!esCreador && (
-        <button type="button" className="am-btn am-btn-outline" onClick={() => document.getElementById('am-comments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-          <MessageCircle size={18} /> Contactar comprador
-        </button>
-      )}
 
       {/* Comentarios */}
       <section className="am-card" id="am-comments">
