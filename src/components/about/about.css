@@ -586,6 +586,8 @@
 /* Insignia de tienda, no boton: la app todavia no esta publicada y un enlace roto seria
    peor que decirlo. Cuando salga, se convierte en <a href> sin tocar el estilo. */
 .rt-store-badge {
+  text-decoration: none;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 11px;
