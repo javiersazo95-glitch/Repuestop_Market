@@ -545,8 +545,18 @@ antiguo, que no se elimina hasta la Fase 4.
       Si no se quiere eso, hay que resolverlo en el mismo cambio: un `X-Robots-Tag:
       noindex` en `vercel.json` condicionado al host de dev, al lado de los redirects por
       host que ya existen.
+
+      🟡 **20-oct: apertura parcial** (opción A del usuario): el `robots.txt` abre solo las
+      páginas institucionales mientras se captan tiendas. ✅ **23-oct:** ese
+      `X-Robots-Tag: noindex, nofollow` por host de dev ya está en `vercel.json` (dev
+      servía el mismo `robots.txt` abierto). Ese día también se corrigió que esas páginas
+      tenían el `canonical` del inicio (Google las tomaba por copias de la portada): cada
+      una se genera con su título, descripción y `canonical` (README, sección "SEO").
 - [ ] Search Console: enviar `https://repuestop.cl/sitemap.xml`, **pero solo cuando haya
-      catálogo real** y después de revertir el `robots.txt`. El sitio pasa de una landing
+      catálogo real** y después de revertir el `robots.txt`. **23-oct:** el sitemap ahora
+      se genera desde `src/routes/seoPages.js` y lista solo las páginas que el `robots.txt`
+      abre (no el catálogo ni las tiendas), así que ya se puede enviar sin el riesgo de
+      páginas pobres que se describe aquí; al abrir el catálogo se le suman esas rutas. El sitio pasa de una landing
       de una página a un marketplace de muchas rutas; la indexación se rehace y las
       posiciones actuales se van a mover. Enviarlo con el catálogo vacío hace que Google
       clasifique esas rutas como páginas pobres, y recuperar posiciones cuesta más que

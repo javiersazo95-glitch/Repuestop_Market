@@ -2,10 +2,11 @@ import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { Compass, Home, Package, Store } from 'lucide-react';
 import { useAppNavigation } from '../routes/useAppNavigation';
-import { useDocumentTitle } from '../routes/useDocumentTitle';
+import { useDocumentTitle, useNoIndex } from '../routes/useDocumentTitle';
 
 export default function NotFoundPage() {
   useDocumentTitle('Página no encontrada');
+  useNoIndex();
   const location = useLocation();
   const nav = useAppNavigation();
   const requestedPath = location.state?.requestedPath || location.pathname;
