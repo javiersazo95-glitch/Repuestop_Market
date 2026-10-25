@@ -111,12 +111,13 @@ export async function postAuctionComment(auctionId, texto) {
  * Repuestos del inventario de la tienda que sirven para el vehículo de la subasta (patente registrada por el
  * comprador). Con `soloCompatibles: false` busca en todo el inventario y marca cuáles son compatibles.
  */
-export async function getAuctionSuggestedParts(auctionId, { texto, soloCompatibles = true, size = 24, itemId } = {}) {
+export async function getAuctionSuggestedParts(auctionId, { texto, soloCompatibles = true, size = 24, itemId, page = 0 } = {}) {
   const params = new URLSearchParams();
   if (itemId) params.set('itemId', String(itemId));
   if (texto) params.set('texto', texto);
   params.set('soloCompatibles', String(soloCompatibles));
   params.set('size', String(size));
+  if (page) params.set('page', String(page));
   return fetchApi(`/necesidades-compra/${encodeURIComponent(String(auctionId))}/repuestos-sugeridos?${params.toString()}`);
 }
 

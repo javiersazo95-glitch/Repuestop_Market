@@ -362,7 +362,14 @@ export default function AuctionDetailPage() {
 
                   <div className="av-title-row">
                     <h1>{repuestoSolicitado}</h1>
-                    <p className="av-code">Código: <strong>{auctionTrackingCode(auction.id)}</strong></p>
+                    <div className="av-title-side">
+                      {canQuote && (
+                        <button type="button" className="av-send-offer-btn" onClick={() => setIsQuoteModalOpen(true)}>
+                          {miCotizacion ? <Pencil size={16} /> : <Gavel size={16} />} {miCotizacion ? 'Modificar oferta' : 'Enviar oferta'}
+                        </button>
+                      )}
+                      <p className="av-code">Código: <strong>{auctionTrackingCode(auction.id)}</strong></p>
+                    </div>
                     <div className="av-title-actions">
                       <ShareLinkButton
                         className="av-action-btn"

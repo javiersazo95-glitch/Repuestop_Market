@@ -248,3 +248,7 @@
 .av-offer-meta { display: flex; flex-direction: column; gap: 1px; font-size: 12px; color: #5a6b7a; }
 .av-offer-meta > span { display: inline-flex; align-items: center; gap: 4px; }
 .av-offer-meta svg.is-rated { color: #f5a623; fill: #f5a623; }
+
+.av-title-side { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.av-send-offer-btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 20px; border: 0; border-radius: 12px; background: #0056bf; color: #fff; font: inherit; font-size: 13.5px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.av-send-offer-btn:hover { background: #004aa6; }

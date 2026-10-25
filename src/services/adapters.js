@@ -175,7 +175,7 @@ export function formatRelativeTime(isoDate) {
  * Arma la lista de compatibilidad. El backend entrega o bien un JSON de grupos
  * (compatibilityGroupsJson) o los campos sueltos marca/modelo/años/motor.
  */
-function mapCompatibilidad(dto) {
+export function mapCompatibilidad(dto) {
   if (dto.compatibilityGroupsJson) {
     try {
       const grupos = typeof dto.compatibilityGroupsJson === 'string'
