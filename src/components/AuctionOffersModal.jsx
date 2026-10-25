@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, Clock, Gavel, Lightbulb, MapPin, MinusCircle, Package, PackageCheck,
-  ShieldCheck, Trophy, Truck, X, XCircle,
+  ShieldCheck, Star, Trophy, Truck, X, XCircle,
 } from 'lucide-react';
 import { acceptAuctionOffer, getAuctionDetail, markAuctionOfferSeen } from '../services/auctionApi';
 import AuctionAvatar from './AuctionAvatar';
+import AuctionImageViewer from './AuctionImageViewer';
+import { resolveMediaUrl } from '../services/api';
 import { evaluateOffer, shippingClass, suggestOffer } from '../utils/auctionOfferFit';
 import '../styles/auction-offers.css';
 
@@ -121,6 +123,7 @@ function DeliveryBox({ quote }) {
 
 function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, confirming, busy, onAskConfirm, onCancel, onAccept }) {
   const [expanded, setExpanded] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
   const seenSent = useRef(false);
   // La tienda ve "Revisada por el comprador" en Gestión subastas apenas se abre el detalle de su oferta.
   useEffect(() => {
@@ -148,10 +151,25 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
         onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpanded((value) => !value); } }}
       >
         <span className="ao-offer-index">Oferta {index + 1}</span>
-        <AuctionAvatar className="ao-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+        {quote.tiendaLogoUrl ? (
+          <button
+            type="button"
+            className="ao-offer-avatar-btn"
+            onClick={(event) => { event.stopPropagation(); setPhotoOpen(true); }}
+            onKeyDown={(event) => event.stopPropagation()}
+            aria-label={`Ver foto de ${quote.nombreTienda || 'la tienda'}`}
+          >
+            <AuctionAvatar className="ao-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+          </button>
+        ) : (
+          <AuctionAvatar className="ao-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+        )}
         <div className="ao-offer-store">
           <strong>{quote.nombreTienda}</strong>
-          <small>{quote.tiendaRating ? <>★ {quote.tiendaRating} · </> : null}Enviada el {formatDateTime(quote.fechaEnvio)}</small>
+          <small className="ao-offer-meta">
+            <span><Star size={12} className={quote.tiendaRating ? 'is-rated' : ''} /> {quote.tiendaRating ? `Evaluación ${Number(quote.tiendaRating).toFixed(1)} de 5` : 'Sin evaluaciones aún'}</span>
+            <span>Oferta enviada el {formatDateTime(quote.fechaEnvio)}</span>
+          </small>
         </div>
         <div className="ao-offer-tags">
           {accepted && <span className="ao-tag is-winner"><Trophy size={12} /> Oferta aceptada</span>}
@@ -239,6 +257,9 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
             </button>
           )}
         </footer>
+      )}
+      {photoOpen && (
+        <AuctionImageViewer photos={[resolveMediaUrl(quote.tiendaLogoUrl)]} title={quote.nombreTienda} onClose={() => setPhotoOpen(false)} className="is-top" />
       )}
     </article>
   );

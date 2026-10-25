@@ -5,7 +5,7 @@ import {
   FileText, Gavel, LayoutGrid, List, Lock, MapPin, Package, Plus, RotateCcw, Search,
   SlidersHorizontal, Tag, X,
 } from 'lucide-react';
-import { getAuctionMetrics, getAuctions } from '../services/auctionApi';
+import { auctionTrackingCode, getAuctionMetrics, getAuctions } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
 import { auctionDetailPath, ROUTES } from '../routes/paths';
 import CreateAuctionModal from '../components/CreateAuctionModal';
@@ -157,6 +157,7 @@ function AuctionRow({ auction, status, now, onOpen }) {
 
       <div className="aw-card-main">
         <h3 className="aw-card-title">{auction.repuestoSolicitado}</h3>
+        <p className="aw-card-code">Código: {auctionTrackingCode(auction.id)}</p>
         {detail && <p className="aw-card-vehicle">{detail}</p>}
         <div className="aw-card-meta">
           <span><CalendarDays size={14} /> {formatPublished(auction.createdAt, now)}</span>
@@ -187,7 +188,9 @@ function AuctionRow({ auction, status, now, onOpen }) {
 export default function AuctionsPage() {
   useDocumentTitle('Necesidades de compra');
   const navigate = useNavigate();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, role } = useAuth();
+  // Solo las cuentas creadas como comprador publican; una tienda no, aunque entre al perfil de comprador.
+  const canCreate = isLoggedIn && role === 'BUYER';
   const { HEADER_CATEGORIES } = useCategories();
   const isMobile = useIsMobile();
 
@@ -462,6 +465,7 @@ export default function AuctionsPage() {
           onSortChange={setSortBy}
           onResetFilters={handleResetFilters}
           onCreate={handleOpenCreateModal}
+          canCreate={canCreate}
           onOpenAuction={handleOpenAuction}
           filtersPanel={filtersPanel}
         />
@@ -488,9 +492,11 @@ export default function AuctionsPage() {
             <h1>Necesidades de compra</h1>
             <p>Encuentra solicitudes de compra y ofrece el repuesto que alguien necesita.</p>
           </div>
-          <button type="button" className="aw-btn-publish" onClick={handleOpenCreateModal}>
-            <Plus size={18} /> Publicar necesidad
-          </button>
+          {canCreate && (
+            <button type="button" className="aw-btn-publish" onClick={handleOpenCreateModal}>
+              <Plus size={18} /> Publicar necesidad
+            </button>
+          )}
         </header>
 
         <section className="aw-stats" aria-label="Resumen de necesidades de compra">
@@ -573,7 +579,7 @@ export default function AuctionsPage() {
                   {activeFiltersCount > 0 && (
                     <button type="button" className="aw-btn-outline" onClick={handleResetFilters}><RotateCcw size={15} /> Limpiar filtros</button>
                   )}
-                  <button type="button" className="aw-btn-publish" onClick={handleOpenCreateModal}><Plus size={16} /> Publicar necesidad</button>
+                  {canCreate && <button type="button" className="aw-btn-publish" onClick={handleOpenCreateModal}><Plus size={16} /> Publicar necesidad</button>}
                 </div>
               </div>
             ) : (
@@ -616,11 +622,13 @@ export default function AuctionsPage() {
         </div>
       </div>
 
-      <MobileStickyBar label="Solicitudes activas" value={nf.format(activeCount)} hint="¿Necesitas un repuesto?" ariaLabel="Publicar una necesidad">
-        <button type="button" className="mobile-sticky-bar__btn" onClick={handleOpenCreateModal}>
-          <Plus size={18} /> Publicar necesidad
-        </button>
-      </MobileStickyBar>
+      {canCreate && (
+        <MobileStickyBar label="Solicitudes activas" value={nf.format(activeCount)} hint="¿Necesitas un repuesto?" ariaLabel="Publicar una necesidad">
+          <button type="button" className="mobile-sticky-bar__btn" onClick={handleOpenCreateModal}>
+            <Plus size={18} /> Publicar necesidad
+          </button>
+        </MobileStickyBar>
+      )}
 
       <CreateAuctionModal
         isOpen={isCreateModalOpen}

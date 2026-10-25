@@ -241,3 +241,10 @@
 
 .av-edit-btn.is-locked { border-color: #cfd8e3; color: #8a97a5; background: #f3f5f7; cursor: not-allowed; }
 .av-edit-btn.is-locked:hover { background: #f3f5f7; border-color: #cfd8e3; }
+
+.av-code { margin: 2px 0 0; font-size: 13px; color: #5a6b7a; }
+.av-code strong { color: #0f172a; letter-spacing: 0.02em; user-select: all; }
+.av-offer-avatar-btn { flex: 0 0 auto; padding: 0; border: 0; border-radius: 10px; background: none; cursor: zoom-in; }
+.av-offer-meta { display: flex; flex-direction: column; gap: 1px; font-size: 12px; color: #5a6b7a; }
+.av-offer-meta > span { display: inline-flex; align-items: center; gap: 4px; }
+.av-offer-meta svg.is-rated { color: #f5a623; fill: #f5a623; }

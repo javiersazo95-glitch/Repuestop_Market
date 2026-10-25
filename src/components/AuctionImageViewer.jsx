@@ -3,8 +3,10 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import '../styles/auction-items-modal.css';
 
 /** Visor de imágenes a pantalla completa: la tienda ve en grande la falla o la pieza que necesita el comprador. */
-export default function AuctionImageViewer({ photos = [], startIndex = 0, title, onClose }) {
+export default function AuctionImageViewer({ photos = [], startIndex = 0, title, onClose, className = '' }) {
   const [index, setIndex] = useState(startIndex);
+  const [zoomed, setZoomed] = useState(false);
+  useEffect(() => { setZoomed(false); }, [index]);
   const total = photos.length;
 
   useEffect(() => {
@@ -20,13 +22,18 @@ export default function AuctionImageViewer({ photos = [], startIndex = 0, title,
   if (total === 0) return null;
 
   return (
-    <div className="aiv-backdrop" role="dialog" aria-modal="true" aria-label="Imagen de la solicitud" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className={`aiv-backdrop ${className}`} role="dialog" aria-modal="true" aria-label="Imagen de la solicitud" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <button type="button" className="aiv-close" onClick={onClose} aria-label="Cerrar"><X size={22} /></button>
       {total > 1 && (
         <button type="button" className="aiv-nav is-prev" onClick={() => setIndex((value) => (value - 1 + total) % total)} aria-label="Imagen anterior"><ChevronLeft size={26} /></button>
       )}
       <figure className="aiv-figure">
-        <img src={photos[index]} alt={title ? `${title} (foto ${index + 1})` : `Foto ${index + 1}`} />
+        <img
+          className={zoomed ? 'is-zoomed' : ''}
+          src={photos[index]}
+          alt={title ? `${title} (foto ${index + 1})` : `Foto ${index + 1}`}
+          onClick={() => setZoomed((value) => !value)}
+        />
         <figcaption>{title ? `${title} · ` : ''}Foto {index + 1} de {total}</figcaption>
       </figure>
       {total > 1 && (

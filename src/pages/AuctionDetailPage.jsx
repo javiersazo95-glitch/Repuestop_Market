@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle, ArrowRight, CalendarDays, Car, ChevronRight, Clock, Gavel,
-  Bookmark, BookmarkCheck, ChevronDown, HelpCircle, Pencil, Home, ListTree, Lock, Maximize2, X, MapPin, Package, PackageCheck, ShieldCheck, ShoppingCart, Trophy,
+  Bookmark, BookmarkCheck, ChevronDown, Star, HelpCircle, Pencil, Home, ListTree, Lock, Maximize2, X, MapPin, Package, PackageCheck, ShieldCheck, ShoppingCart, Trophy,
 } from 'lucide-react';
-import { getAuctionDetail, setAuctionSaved } from '../services/auctionApi';
-import { ROUTES, profileOrderPath, profilePurchasePath } from '../routes/paths';
+import { auctionTrackingCode, getAuctionDetail, setAuctionSaved } from '../services/auctionApi';
+import { ROUTES, helpCategoryPath, profileOrderPath, profilePurchasePath } from '../routes/paths';
 import { resolveMediaUrl } from '../services/api';
 import AuctionQuoteModal from '../components/AuctionQuoteModal';
 import AuctionBuyerCard from '../components/AuctionBuyerCard';
@@ -55,18 +55,45 @@ function formatRemaining(ms) {
   return `${minutes} min`;
 }
 
-function QuoteRow({ quote, index }) {
+function ratingText(rating) {
+  return rating ? `Evaluación ${Number(rating).toFixed(1)} de 5` : 'Sin evaluaciones aún';
+}
+
+/** Avatar de la tienda; si tiene foto se puede tocar para verla en grande. */
+function StoreAvatar({ quote, onViewPhoto }) {
+  const avatar = <AuctionAvatar className="av-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />;
+  if (!quote.tiendaLogoUrl) return avatar;
+  return (
+    <button
+      type="button"
+      className="av-offer-avatar-btn"
+      onClick={() => onViewPhoto(resolveMediaUrl(quote.tiendaLogoUrl), quote.nombreTienda)}
+      aria-label={`Ver foto de ${quote.nombreTienda || 'la tienda'}`}
+    >
+      {avatar}
+    </button>
+  );
+}
+
+function QuoteMeta({ quote }) {
+  return (
+    <span className="av-offer-meta">
+      <span><Star size={12} className={quote.tiendaRating ? 'is-rated' : ''} /> {ratingText(quote.tiendaRating)}</span>
+      {quote.fechaEnvio && <span><CalendarDays size={12} /> Oferta enviada {formatDate(quote.fechaEnvio)}</span>}
+    </span>
+  );
+}
+
+function QuoteRow({ quote, index, onViewPhoto }) {
   if (quote.esPrivada) {
     return (
       <li className={`av-offer is-locked ${quote.aceptada ? 'is-accepted' : ''}`}>
         <span className="av-offer-rank">{index + 1}</span>
-        <AuctionAvatar className="av-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+        <StoreAvatar quote={quote} onViewPhoto={onViewPhoto} />
         <div className="av-offer-info">
-          <strong>
-            {quote.nombreTienda || 'Tienda verificada'}
-            {quote.tiendaRating ? <em> ★ {quote.tiendaRating}</em> : null}
-          </strong>
-          <small>{quote.aceptada ? <><Trophy size={11} /> Oferta aceptada</> : <><Lock size={11} /> Oferta confidencial · {formatDate(quote.fechaEnvio)}</>}</small>
+          <strong>{quote.nombreTienda || 'Tienda verificada'}</strong>
+          <QuoteMeta quote={quote} />
+          <small>{quote.aceptada ? <><Trophy size={11} /> Oferta aceptada</> : <><Lock size={11} /> Oferta confidencial</>}</small>
         </div>
       </li>
     );
@@ -79,13 +106,10 @@ function QuoteRow({ quote, index }) {
     <li className={`av-offer is-open ${quote.aceptada ? 'is-winner' : ''}`}>
       {quote.aceptada && <span className="av-offer-ribbon"><Trophy size={13} /> Oferta aceptada</span>}
       <div className="av-offer-top">
-        <AuctionAvatar className="av-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+        <StoreAvatar quote={quote} onViewPhoto={onViewPhoto} />
         <div className="av-offer-info">
-          <strong>
-            {quote.nombreTienda}
-            {quote.tiendaRating ? <em> ★ {quote.tiendaRating}</em> : null}
-          </strong>
-          <small>Enviada {formatDate(quote.fechaEnvio)}</small>
+          <strong>{quote.nombreTienda}</strong>
+          <QuoteMeta quote={quote} />
         </div>
         <span className="av-offer-price">{formatCLP(valid.length ? valid.reduce((sum, line) => sum + Number(line.precioTotal || 0), 0) : (quote.precioFinal || quote.precio))}</span>
       </div>
@@ -126,6 +150,8 @@ export default function AuctionDetailPage() {
   const [isOffersOpen, setIsOffersOpen] = useState(false);
   const [isAllOffersOpen, setIsAllOffersOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [storePhoto, setStorePhoto] = useState(null); // { url, name }
+  const openStorePhoto = (url, name) => setStorePhoto({ url, name });
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [openFolds, setOpenFolds] = useState({ comments: true });
   const toggleFold = (key) => setOpenFolds((current) => ({ ...current, [key]: !current[key] }));
@@ -313,7 +339,7 @@ export default function AuctionDetailPage() {
                       <li><b>Paga una sola vez.</b> El pago se hace en la plataforma y el dinero queda retenido.</li>
                       <li><b>Cada tienda despacha su parte.</b> Al recibir conforme el repuesto, se libera el pago a la tienda.</li>
                     </ol>
-                    <Link to={ROUTES.support} className="av-how-link">Ver guía rápida <ArrowRight size={14} /></Link>
+                    <Link to={helpCategoryPath('necesidades')} className="av-how-link">Ver guía rápida <ArrowRight size={14} /></Link>
                   </AuctionInfoTip>
                 </div>
               </div>
@@ -336,6 +362,7 @@ export default function AuctionDetailPage() {
 
                   <div className="av-title-row">
                     <h1>{repuestoSolicitado}</h1>
+                    <p className="av-code">Código: <strong>{auctionTrackingCode(auction.id)}</strong></p>
                     <div className="av-title-actions">
                       <ShareLinkButton
                         className="av-action-btn"
@@ -464,6 +491,7 @@ export default function AuctionDetailPage() {
                         key={quote.id}
                         quote={quote}
                         index={index}
+                        onViewPhoto={openStorePhoto}
                       />
                     ))}
                   </ul>
@@ -538,6 +566,10 @@ export default function AuctionDetailPage() {
         <CreateAuctionModal isOpen auction={auction} onClose={() => setIsEditOpen(false)} onSuccess={() => { setIsEditOpen(false); loadDetail(); }} />
       )}
 
+      {storePhoto && (
+        <AuctionImageViewer photos={[storePhoto.url]} title={storePhoto.name} onClose={() => setStorePhoto(null)} className="is-top" />
+      )}
+
       {viewerOpen && photos.length > 0 && (
         <AuctionImageViewer photos={photos} startIndex={activePhotoIndex} title={repuestoSolicitado} onClose={() => setViewerOpen(false)} />
       )}
@@ -554,7 +586,7 @@ export default function AuctionDetailPage() {
               <button type="button" className="aim-close" onClick={() => setIsAllOffersOpen(false)} aria-label="Cerrar"><X size={18} /></button>
             </header>
             <ul className="av-offer-list av-offer-list-modal">
-              {cotizaciones.map((quote, index) => <QuoteRow key={quote.id} quote={quote} index={index} />)}
+              {cotizaciones.map((quote, index) => <QuoteRow key={quote.id} quote={quote} index={index} onViewPhoto={openStorePhoto} />)}
             </ul>
           </div>
         </div>

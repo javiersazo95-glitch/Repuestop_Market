@@ -42,7 +42,7 @@ function nameScore(partName, itemName) {
   return wanted.filter((token) => have.has(token)).length / wanted.length;
 }
 
-function PartCard({ part, selected, compatible, vehicle, onSelect }) {
+function PartCard({ part, selected, compatible, vehicle, onSelect, showDescription = false }) {
   const photo = part.imageUrls?.[0] ? resolveMediaUrl(part.imageUrls[0]) : null;
   const title = part.nombrePublicado || part.repuestoNombre || 'Repuesto';
   const meta = [
@@ -54,12 +54,13 @@ function PartCard({ part, selected, compatible, vehicle, onSelect }) {
   ].filter(Boolean);
 
   return (
-    <button type="button" className={`aq-part ${selected ? 'is-selected' : ''}`} onClick={() => onSelect(part)} aria-pressed={selected}>
+    <button type="button" className={`aq-part ${selected ? 'is-selected' : ''}`} onClick={() => onSelect?.(part)} aria-pressed={selected}>
       <span className="aq-part-photo">{photo ? <img src={photo} alt="" loading="lazy" /> : <Package size={26} />}</span>
       <span className="aq-part-body">
         <strong>{title}</strong>
+        {showDescription && part.descripcion && <span className="aq-part-desc">{part.descripcion}</span>}
         <span className="aq-part-tags">
-          {compatible
+          {compatible === null ? null : compatible
             ? <em className="is-ok"><CheckCircle2 size={12} /> Compatible con {vehicle || 'el vehículo'}</em>
             : <em className="is-warn"><AlertTriangle size={12} /> Sin compatibilidad registrada para este vehículo</em>}
           {part.stock != null && <em className={part.stock > 0 ? '' : 'is-bad'}>{part.stock} en stock</em>}
@@ -81,11 +82,12 @@ function PartCard({ part, selected, compatible, vehicle, onSelect }) {
  * Un repuesto del pedido: la tienda marca si lo tiene, elige el producto de su inventario (sugerido según el
  * vehículo y el nombre pedido) o lo carga con el flujo normal, y fija su precio unitario.
  */
-function ItemOfferRow({ auction, item, line, onChange, onCreateRequest }) {
+function ItemOfferRow({ auction, item, line, takenPartIds, onChange, onCreateRequest }) {
   const vehicle = item.vehiculoPropio ? itemVehicleLabel(item) : [auction.marca, auction.modelo, auction.anio].filter(Boolean).join(' ');
   const [search, setSearch] = useState('');
   const debounced = useDebounced(search.trim());
-  const [onlyCompatible, setOnlyCompatible] = useState(true);
+  // Por defecto solo se ofrecen los compatibles con el vehículo; si no hay, la tienda busca en todo su inventario.
+  const [searchAll, setSearchAll] = useState(false);
   const [suggestions, setSuggestions] = useState({ items: [], compatibleIds: [] });
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -99,18 +101,25 @@ function ItemOfferRow({ auction, item, line, onChange, onCreateRequest }) {
     let active = true;
     setLoading(true);
     setLoadError('');
-    getAuctionSuggestedParts(auction.id, { itemId: item.id, texto: debounced || undefined, soloCompatibles: onlyCompatible })
+    getAuctionSuggestedParts(auction.id, { itemId: item.id, texto: debounced || undefined, soloCompatibles: !searchAll, size: 50 })
       .then((data) => {
         if (!active) return;
-        const list = [...(data?.resultado?.content || [])].sort((a, b) => nameScore(b.nombrePublicado || b.repuestoNombre, item.repuesto) - nameScore(a.nombrePublicado || a.repuestoNombre, item.repuesto));
+        // Primero los compatibles con el vehículo; entre iguales, los que más se parecen al nombre pedido.
+        const compatibleSet = new Set(data?.idsCompatibles || []);
+        const list = [...(data?.resultado?.content || [])].sort((a, b) => (
+          (Number(compatibleSet.has(b.id)) - Number(compatibleSet.has(a.id)))
+          || (nameScore(b.nombrePublicado || b.repuestoNombre, item.repuesto) - nameScore(a.nombrePublicado || a.repuestoNombre, item.repuesto))
+        ));
         setSuggestions({ items: list, compatibleIds: data?.idsCompatibles || [] });
       })
       .catch((err) => { if (active) setLoadError(err?.message || 'No pudimos cargar tus repuestos.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [showPicker, auction.id, item.id, item.repuesto, debounced, onlyCompatible]);
+  }, [showPicker, auction.id, item.id, item.repuesto, debounced, searchAll]);
 
   const compatibleIds = useMemo(() => new Set(suggestions.compatibleIds), [suggestions.compatibleIds]);
+  // Un repuesto del inventario cubre un solo repuesto del pedido: los ya elegidos en otras líneas no se sugieren de nuevo.
+  const available = useMemo(() => suggestions.items.filter((part) => !takenPartIds.has(part.id)), [suggestions.items, takenPartIds]);
   const lineTotal = (parseFloat(line?.unitPrice) || 0) * item.cantidad;
 
   const pick = (part) => {
@@ -137,8 +146,13 @@ function ItemOfferRow({ auction, item, line, onChange, onCreateRequest }) {
         <div className="aq-item-body">
           {line.part && !changing ? (
             <div className="aq-linked">
-              <CheckCircle2 size={16} />
-              <span>Producto: <b>{line.part.nombrePublicado || line.part.repuestoNombre}</b></span>
+              <PartCard
+                part={line.part}
+                selected
+                showDescription
+                vehicle={vehicle}
+                compatible={suggestions.items.some((p) => p.id === line.part.id) ? compatibleIds.has(line.part.id) : null}
+              />
               <button type="button" onClick={() => setChanging(true)}>Cambiar</button>
               <button type="button" onClick={() => onCreateRequest(item)}>Agregar otro repuesto</button>
             </div>
@@ -150,33 +164,32 @@ function ItemOfferRow({ auction, item, line, onChange, onCreateRequest }) {
                   <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre, OEM o SKU…" aria-label={`Buscar ${item.repuesto} en tu inventario`} />
                   {search && <button type="button" onClick={() => setSearch('')} aria-label="Limpiar búsqueda"><X size={14} /></button>}
                 </label>
-                <label className="aq-switch">
-                  <input type="checkbox" checked={onlyCompatible} onChange={(e) => setOnlyCompatible(e.target.checked)} />
-                  <span>Solo compatibles con {vehicle || 'el vehículo'}</span>
-                </label>
               </div>
               <div className="aq-create-bar">
-                <span>¿Ninguno es el repuesto correcto o no lo tienes cargado?</span>
-                <button type="button" className="aq-btn-outline" onClick={() => onCreateRequest(item)}><PackagePlus size={15} /> Agregar repuesto</button>
+                <strong>¿No es el que buscas?</strong>
+                <div className="aq-create-actions">
+                  {!searchAll && <button type="button" className="aq-btn-outline" onClick={() => setSearchAll(true)}><Search size={15} /> Buscar en todo mi inventario</button>}
+                  <button type="button" className="aq-btn-outline" onClick={() => onCreateRequest(item)}><PackagePlus size={15} /> Nuevo repuesto</button>
+                </div>
               </div>
               <div className="aq-parts" aria-busy={loading}>
                 {loading && suggestions.items.length === 0 ? (
                   [0, 1].map((i) => <div key={i} className="aq-part aq-skeleton" />)
                 ) : loadError ? (
                   <p className="aq-notice is-bad"><AlertCircle size={16} /> {loadError}</p>
-                ) : suggestions.items.length === 0 ? (
+                ) : available.length === 0 ? (
                   <div className="aq-empty">
                     <Package size={26} />
-                    <strong>{onlyCompatible ? 'No encontramos repuestos tuyos compatibles con este vehículo' : 'No encontramos repuestos con esa búsqueda'}</strong>
+                    <strong>{searchAll ? 'No encontramos repuestos en tu inventario con esa búsqueda' : `No encontramos repuestos tuyos compatibles con ${vehicle || 'este vehículo'}`}</strong>
                     <div>
-                      {onlyCompatible && <button type="button" className="aq-btn-outline" onClick={() => setOnlyCompatible(false)}>Buscar en todo mi inventario</button>}
+                      {!searchAll && <button type="button" className="aq-btn-outline" onClick={() => setSearchAll(true)}>Buscar en todo mi inventario</button>}
                       <button type="button" className="aq-btn-primary" onClick={() => onCreateRequest(item)}><PackagePlus size={15} /> Cargar repuesto</button>
                     </div>
                   </div>
                 ) : (
                   <>
-                    {!debounced && onlyCompatible && <p className="aq-hint"><Sparkles size={14} /> Sugeridos para {vehicle || 'este vehículo'}: {suggestions.items.length}</p>}
-                    {suggestions.items.map((part) => (
+                    {!searchAll && available.length > 0 && <p className="aq-hint"><Sparkles size={14} /> Repuestos compatibles con la solicitud: {available.length}</p>}
+                    {available.map((part) => (
                       <PartCard key={part.id} part={part} selected={line.part?.id === part.id} compatible={compatibleIds.has(part.id)} vehicle={vehicle} onSelect={pick} />
                     ))}
                   </>
@@ -286,6 +299,12 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
     });
     setJustCreated(item.repuesto);
   };
+
+  const takenPartIds = (itemId) => new Set(
+    Object.entries(lines)
+      .filter(([id, line]) => Number(id) !== itemId && line.enabled && line.part)
+      .map(([, line]) => line.part.id),
+  );
 
   const enabledItems = pendingItems.filter((item) => lines[item.id]?.enabled);
   const covered = enabledItems.map((item) => {
@@ -398,6 +417,7 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
                     auction={auction}
                     item={item}
                     line={lines[item.id]}
+                    takenPartIds={takenPartIds(item.id)}
                     onChange={changeLine}
                     onCreateRequest={setCreateFor}
                   />

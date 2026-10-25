@@ -311,3 +311,15 @@
 @media (min-width: 768px) {
   .am-page { max-width: 560px; margin: 0 auto; }
 }
+
+.am-summary-photo.is-zoomable { padding: 0; border: 0; cursor: zoom-in; }
+.am-offer-avatar-btn { flex: 0 0 auto; padding: 0; border: 0; border-radius: 10px; background: none; cursor: zoom-in; }
+.am-tracking strong { color: var(--am-text, inherit); letter-spacing: 0.02em; user-select: all; }
+.am-card-code { font-size: 10px; line-height: 14px; color: var(--am-subtle); }
+.am-offer-meta { display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 15px; color: var(--am-muted); }
+.am-offer-meta svg.is-rated { color: #f5a623; fill: #f5a623; }
+.am-help-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 13px; font-weight: 700; color: var(--am-primary); text-decoration: none; }
+
+.am-card-view { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; padding: 4px 8px; border: 1px solid #cfe1fa; border-radius: 999px; background: var(--am-primary-light); color: var(--am-primary); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.am-card-timeline { color: var(--am-primary) !important; font-weight: 600; }
+.am-card-timeline.is-por-finalizar { color: var(--am-warn) !important; }

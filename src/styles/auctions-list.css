@@ -515,3 +515,5 @@
   .aw-pagination { justify-content: center; }
   .aw-list.is-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+.aw-card-code { margin: 0; font-size: 12px; color: #5a6b7a; letter-spacing: 0.02em; }

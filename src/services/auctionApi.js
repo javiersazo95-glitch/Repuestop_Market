@@ -190,3 +190,8 @@ export async function setAuctionSaved(auctionId, saved) {
 export async function getSavedAuctions() {
   return fetchApi('/necesidades-compra/guardadas');
 }
+
+/** Código corto para hacerle seguimiento a una necesidad de compra (igual al de la app). */
+export function auctionTrackingCode(id) {
+  return `NC-${String(id).padStart(6, '0')}`;
+}

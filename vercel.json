@@ -16,7 +16,7 @@
   ],
   "rewrites": [
     { "source": "/(vender|nosotros|ayuda|terminos|privacidad)", "destination": "/$1/index.html" },
-    { "source": "/ayuda/(preguntas-frecuentes|contacto|productos|cotizaciones|cuenta|politicas|seguridad)", "destination": "/ayuda/$1/index.html" },
+    { "source": "/ayuda/(preguntas-frecuentes|contacto|productos|cotizaciones|necesidades|cuenta|politicas|seguridad)", "destination": "/ayuda/$1/index.html" },
     { "source": "/(.*)", "destination": "/app.html" }
   ],
   "headers": [

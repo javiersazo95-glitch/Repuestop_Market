@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { helpCategoryPath } from '../routes/paths';
 import {
   ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, Bus, CalendarDays, Car, ChevronRight, Clock, Gavel, Info, ListChecks, Lock, MapPin,
-  MessageCircle, Package, PackageCheck, Pencil, Send, ShoppingCart, Star, Tag, Trophy, User, Wallet, X,
+  Hash, MessageCircle, Package, PackageCheck, Pencil, Send, ShoppingCart, Star, Tag, Trophy, User, Wallet, X,
 } from 'lucide-react';
-import { getAuctionBuyerProfile, getAuctionComments, postAuctionComment } from '../services/auctionApi';
+import { auctionTrackingCode, getAuctionBuyerProfile, getAuctionComments, postAuctionComment } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
 import AuctionAvatar from './AuctionAvatar';
+import AuctionImageViewer from './AuctionImageViewer';
 import ShareLinkButton from './ShareLinkButton';
 import '../styles/auction-app-mobile.css';
 
@@ -128,6 +131,8 @@ export default function AuctionDetailMobile({
   const [posting, setPosting] = useState(false);
   const [commentError, setCommentError] = useState('');
   const [photoIndex, setPhotoIndex] = useState(0);
+  // Visor a pantalla completa: fotos de la necesidad o la foto de una tienda que ofertó.
+  const [viewer, setViewer] = useState(null); // { photos, index, title }
   const [modal, setModal] = useState(null); // 'breakdown' | 'offers' | 'budget' | 'process'
   const [budgetNoteOpen, setBudgetNoteOpen] = useState(false);
 
@@ -227,15 +232,20 @@ export default function AuctionDetailMobile({
       {/* Resumen */}
       <section className="am-card am-summary">
         <div className="am-summary-top">
-          <div className="am-summary-photo">
-            {photos[photoIndex] ? <img src={photos[photoIndex]} alt={repuestoSolicitado} /> : <Package size={34} />}
-          </div>
+          {photos[photoIndex] ? (
+            <button type="button" className="am-summary-photo is-zoomable" onClick={() => setViewer({ photos, index: photoIndex, title: repuestoSolicitado })} aria-label="Ampliar foto">
+              <img src={photos[photoIndex]} alt={repuestoSolicitado} />
+            </button>
+          ) : (
+            <div className="am-summary-photo"><Package size={34} /></div>
+          )}
           <div className="am-summary-info">
             <div className="am-pills">
               <span className={`am-pill is-${tone}`}>{statusLabel}</span>
               {isOpen && <span className={`am-pill is-${tone}`}><Clock size={14} /> {formatRemaining(remainingMs)}</span>}
             </div>
             <h2>{repuestoSolicitado}</h2>
+            <p className="am-meta am-tracking"><Hash size={14} /><span>Código: <strong>{auctionTrackingCode(id)}</strong></span></p>
             {createdAt && <p className="am-meta"><CalendarDays size={14} /><span>Publicado {formatPublished(createdAt)}</span></p>}
             {location && <p className="am-meta"><MapPin size={14} /><span>{location}</span></p>}
           </div>
@@ -448,14 +458,32 @@ export default function AuctionDetailMobile({
             return (
               <div key={quote.id} className={`am-offer ${winner ? 'is-winner' : ''}`}>
                 <span className="am-offer-n">{index + 1}</span>
-                <AuctionAvatar className="am-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+                {quote.tiendaLogoUrl ? (
+                  <button
+                    type="button"
+                    className="am-offer-avatar-btn"
+                    onClick={() => setViewer({ photos: [resolveMediaUrl(quote.tiendaLogoUrl)], index: 0, title: quote.nombreTienda })}
+                    aria-label={`Ver foto de ${quote.nombreTienda || 'la tienda'}`}
+                  >
+                    <AuctionAvatar className="am-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+                  </button>
+                ) : (
+                  <AuctionAvatar className="am-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+                )}
                 <div className="am-offer-text">
                   <strong>{quote.nombreTienda || 'Tienda verificada'}</strong>
+                  <span className="am-offer-meta">
+                    <Star size={12} className={quote.tiendaRating ? 'is-rated' : ''} />
+                    {quote.tiendaRating ? `Evaluación ${Number(quote.tiendaRating).toFixed(1)} de 5` : 'Sin evaluaciones aún'}
+                  </span>
                   <small>
                     {quote.esPrivada
                       ? 'Oferta confidencial'
                       : `${formatCLP(quote.precioFinal || quote.precio)}${quote.tiempoEntrega ? ` · ${quote.tiempoEntrega}` : ''}`}
                   </small>
+                  {quote.fechaEnvio && (
+                    <span className="am-offer-meta"><CalendarDays size={12} />Oferta enviada {formatPublished(quote.fechaEnvio)}</span>
+                  )}
                   {winner && <em>Oferta ganadora</em>}
                 </div>
                 <span className="am-offer-lock">{winner ? <Trophy size={15} /> : <Lock size={15} />}</span>
@@ -492,7 +520,11 @@ export default function AuctionDetailMobile({
               </li>
             ))}
           </ol>
+          <Link to={helpCategoryPath('necesidades')} className="am-help-link">Ver preguntas frecuentes <ArrowRight size={14} /></Link>
         </CenterModal>
+      )}
+      {viewer && (
+        <AuctionImageViewer photos={viewer.photos} startIndex={viewer.index} title={viewer.title} onClose={() => setViewer(null)} className="is-top" />
       )}
     </main>
   );

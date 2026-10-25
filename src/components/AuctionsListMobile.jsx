@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import {
-  ArrowRight, ArrowUpDown, CalendarDays, Car, Check, Clock, Gavel, MapPin, Package, Plus, Search,
+  ArrowUpDown, CalendarDays, Car, Check, ChevronRight, Clock, Eye, Gavel, MapPin, Package, Plus, Search,
   SlidersHorizontal, Tag, Wallet, X,
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
+import { auctionTrackingCode } from '../services/auctionApi';
 import '../styles/auction-app-mobile.css';
 
 const HOUR = 60 * 60 * 1000;
@@ -53,18 +54,14 @@ function AuctionCardMobile({ auction, status, now, onOpen }) {
         <div className="am-card-body">
           <div className="am-card-head">
             <span className={`am-card-state is-${status.key}`}>{status.label}</span>
-            {open && (
-              <span className={`am-card-time is-${status.key}`}>
-                <Clock size={20} />
-                <span>
-                  <strong>{formatRemaining(status.remaining)}</strong>
-                  <small>restantes</small>
-                </span>
-              </span>
-            )}
+            <button type="button" className="am-card-view" onClick={() => onOpen(auction.id)} aria-label="Ver necesidad">
+              <Eye size={13} /> Ver necesidad <ChevronRight size={13} />
+            </button>
           </div>
           <h3 className="am-card-title">{auction.repuestoSolicitado}</h3>
+          <span className="am-card-code">Código: {auctionTrackingCode(auction.id)}</span>
           <div className="am-card-info">
+            {open && <p className={`am-card-timeline is-${status.key}`}><Clock size={14} /><span>{formatRemaining(status.remaining)} restantes</span></p>}
             <p><Car size={14} /><span>{vehicle}{motor ? ` · Motor ${motor}` : ''}</span></p>
             {auction.createdAt && <p><CalendarDays size={14} /><span>{formatPublished(auction.createdAt, now)}</span></p>}
             {location && <p><MapPin size={14} /><span>{location}</span></p>}
@@ -78,9 +75,6 @@ function AuctionCardMobile({ auction, status, now, onOpen }) {
         <span><Tag size={15} /> {offers} {offers === 1 ? 'oferta' : 'ofertas'}</span>
       </div>
 
-      <button type="button" className="am-btn am-btn-sm" onClick={() => onOpen(auction.id)}>
-        Ver necesidad <ArrowRight size={15} />
-      </button>
     </article>
   );
 }
@@ -104,6 +98,7 @@ export default function AuctionsListMobile({
   onSortChange,
   onResetFilters,
   onCreate,
+  canCreate = false,
   onOpenAuction,
   filtersPanel,
 }) {
@@ -191,9 +186,9 @@ export default function AuctionsListMobile({
         <div className="am-empty">
           <Gavel size={32} />
           <h2>No hay necesidades de compra en esta sección</h2>
-          <p>Publica lo que necesitas para recibir cotizaciones de tiendas verificadas.</p>
+          {canCreate && <p>Publica lo que necesitas para recibir cotizaciones de tiendas verificadas.</p>}
           {activeFiltersCount > 0 && <button type="button" className="am-btn am-btn-outline" onClick={onResetFilters}>Limpiar filtros</button>}
-          <button type="button" className="am-btn" onClick={onCreate}>Publicar necesidad de repuesto</button>
+          {canCreate && <button type="button" className="am-btn" onClick={onCreate}>Publicar necesidad de repuesto</button>}
         </div>
       ) : (
         <div className="am-list-cards">
@@ -208,9 +203,11 @@ export default function AuctionsListMobile({
         </div>
       )}
 
-      <button type="button" className="am-fab" onClick={onCreate} aria-label="Publicar una necesidad de compra">
-        <Plus size={26} />
-      </button>
+      {canCreate && (
+        <button type="button" className="am-fab" onClick={onCreate} aria-label="Publicar una necesidad de compra">
+          <Plus size={26} />
+        </button>
+      )}
 
       <div className="aw-page am-filters-host">{filtersPanel}</div>
     </main>
