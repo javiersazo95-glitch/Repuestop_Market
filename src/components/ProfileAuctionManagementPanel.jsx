@@ -1,14 +1,18 @@
 import '../styles/profile-auction-management.css';
+import '../styles/profile-auction-tracking.css';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertCircle, ArrowRight, Bookmark, Car, ChevronDown, CheckCircle2, Clock, Eye, EyeOff, Gavel, Loader2, MapPin, PackageCheck, Pencil,
-  Search, Tag, User, Users,
+  AlertCircle, ArrowRight, Bookmark, CheckCircle2, ClipboardList, Clock, Eye, EyeOff, Gavel, Loader2, MessageCircle, PackageCheck,
+  Pencil, Search, Send, Tag, Trophy, User, Wallet, XCircle,
 } from 'lucide-react';
-import { getAuctionDetail, getMyAuctionOffers, getSavedAuctions, setAuctionSaved } from '../services/auctionApi';
+import {
+  getAuctionComments, getAuctionDetail, getMyAuctionOffers, getSavedAuctions, postAuctionComment, setAuctionSaved,
+} from '../services/auctionApi';
 import { auctionDetailPath, profileOrderPath, ROUTES } from '../routes/paths';
 import { useAuth } from '../context/AuthContext';
 import AuctionQuoteModal from './AuctionQuoteModal';
+import AuctionAvatar from './AuctionAvatar';
 import { EmptyState } from './ProfileDashboard';
 
 const nf = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
@@ -16,40 +20,48 @@ const money = (value) => (value == null || Number.isNaN(Number(value)) ? '—' :
 
 const STATE_LABEL = {
   ENVIADA: 'Enviada',
-  REVISADA: 'Revisada por el comprador',
-  PARCIALMENTE_SUPERADA: 'Parcialmente superada',
-  ADJUDICADA_A_OTRA: 'Adjudicada a otra oferta',
-  ACEPTADA: 'Aceptada',
+  REVISADA: 'Revisada',
+  PARCIALMENTE_SUPERADA: 'Parcial',
+  ADJUDICADA_A_OTRA: 'Perdida',
+  RECHAZADA: 'Rechazada',
+  ACEPTADA: 'Ganada',
   PAGO_PENDIENTE: 'Pago pendiente',
   PAGADA: 'Pagada',
   EXPIRADA: 'Expirada',
   CANCELADA: 'Cancelada',
 };
-// Tono visual de cada estado: azul = en juego, verde = ganada, ámbar = requiere atención, gris = perdida/cerrada.
+// Tono visual de cada estado: azul = en juego, verde = ganada, ámbar = requiere atención, rojo = perdida, gris = cerrada.
 const STATE_TONE = {
-  ENVIADA: 'blue', REVISADA: 'blue', PARCIALMENTE_SUPERADA: 'amber', ADJUDICADA_A_OTRA: 'gray', ACEPTADA: 'green',
-  PAGO_PENDIENTE: 'amber', PAGADA: 'green', EXPIRADA: 'gray', CANCELADA: 'gray',
+  ENVIADA: 'blue', REVISADA: 'blue', PARCIALMENTE_SUPERADA: 'amber', ADJUDICADA_A_OTRA: 'red', RECHAZADA: 'red', ACEPTADA: 'green',
+  PAGO_PENDIENTE: 'amber', PAGADA: 'teal', EXPIRADA: 'gray', CANCELADA: 'gray',
+};
+const STATE_ICON = {
+  ENVIADA: Send, REVISADA: Eye, PARCIALMENTE_SUPERADA: AlertCircle, ADJUDICADA_A_OTRA: XCircle, RECHAZADA: XCircle, ACEPTADA: Trophy,
+  PAGO_PENDIENTE: Clock, PAGADA: Wallet, EXPIRADA: Clock, CANCELADA: XCircle,
 };
 const LINE_LABEL = { PENDIENTE: 'Compitiendo', GANADA: 'Ganada', ADJUDICADA_A_OTRA: 'Adjudicada a otra', ACEPTADA: 'Aceptada', PAGADA: 'Pagada' };
-const LINE_TONE = { PENDIENTE: 'blue', GANADA: 'green', ACEPTADA: 'green', PAGADA: 'green', ADJUDICADA_A_OTRA: 'gray' };
+const LINE_TONE = { PENDIENTE: 'blue', GANADA: 'green', ACEPTADA: 'green', PAGADA: 'teal', ADJUDICADA_A_OTRA: 'gray' };
 const POSITION_LABEL = { MAS_BAJA: 'Tu precio es el más bajo', MEDIA: 'Tu precio está en el medio', MAS_ALTA: 'Tu precio es el más alto', UNICA: 'Eres la única oferta' };
+
+const ACTIVE_STATES = ['ENVIADA', 'REVISADA', 'PARCIALMENTE_SUPERADA'];
+const WON_STATES = ['ACEPTADA', 'PAGO_PENDIENTE'];
+const LOST_STATES = ['ADJUDICADA_A_OTRA', 'RECHAZADA', 'EXPIRADA', 'CANCELADA'];
 
 const FILTERS = [
   ['all', 'Todas'],
-  ['active', 'En juego'],
+  ['active', 'En seguimiento'],
   ['won', 'Ganadas'],
-  ['closed', 'Cerradas'],
+  ['paid', 'Pagadas'],
+  ['lost', 'Perdidas'],
   ['saved', 'Guardadas'],
 ];
-const ACTIVE_STATES = ['ENVIADA', 'REVISADA', 'PARCIALMENTE_SUPERADA'];
-const WON_STATES = ['ACEPTADA', 'PAGO_PENDIENTE', 'PAGADA'];
 
 function matchesFilter(offer, filter) {
-  if (filter === 'saved') return false;
   if (filter === 'active') return ACTIVE_STATES.includes(offer.estado);
   if (filter === 'won') return WON_STATES.includes(offer.estado);
-  if (filter === 'closed') return !ACTIVE_STATES.includes(offer.estado) && !WON_STATES.includes(offer.estado);
-  return true;
+  if (filter === 'paid') return offer.estado === 'PAGADA';
+  if (filter === 'lost') return LOST_STATES.includes(offer.estado);
+  return filter !== 'saved';
 }
 
 function formatRemaining(seconds) {
@@ -65,185 +77,221 @@ function formatDateTime(iso) {
   return new Date(iso).toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-/** Camino de la oferta: enviada -> revisada por el comprador -> resultado. */
-function Timeline({ offer }) {
-  const result = (() => {
-    switch (offer.estado) {
-      case 'ADJUDICADA_A_OTRA': return { label: 'El comprador eligió otra oferta', tone: 'lost' };
-      case 'PARCIALMENTE_SUPERADA': return { label: 'Parte de tus repuestos fue a otra oferta', tone: 'warn' };
-      case 'ACEPTADA': return { label: 'Aceptada: el comprador debe pagar', tone: 'done' };
-      case 'PAGO_PENDIENTE': return { label: 'Pedido creado, esperando el pago', tone: 'warn' };
-      case 'PAGADA': return { label: 'Pagada: ya es un pedido tuyo', tone: 'done' };
-      case 'EXPIRADA': return { label: 'La necesidad de compra cerró sin adjudicarte', tone: 'lost' };
-      case 'CANCELADA': return { label: 'La necesidad de compra fue cancelada', tone: 'lost' };
-      default: return { label: 'Esperando decisión', tone: 'idle' };
-    }
-  })();
-  const seen = Boolean(offer.vistaEn);
-  return (
-    <ol className="pg-timeline" aria-label="Seguimiento de la oferta">
-      <li className="is-done"><CheckCircle2 size={15} /><span><strong>Enviada</strong><small>{formatDateTime(offer.enviadaEn)}</small></span></li>
-      <li className={seen ? 'is-done' : ''}>{seen ? <Eye size={15} /> : <EyeOff size={15} />}
-        <span><strong>{seen ? 'Revisada por el comprador' : 'Aún sin revisar'}</strong>{seen && <small>{formatDateTime(offer.vistaEn)}</small>}</span></li>
-      <li className={`is-${result.tone}`}><Gavel size={15} /><span><strong>{result.label}</strong>
-        {offer.aceptadaEn && <small>{formatDateTime(offer.aceptadaEn)}</small>}</span></li>
-    </ol>
-  );
+function StatePill({ estado }) {
+  const Icon = STATE_ICON[estado] || Send;
+  return <span className={`pt-pill is-${STATE_TONE[estado] || 'blue'}`}><Icon size={13} /> {STATE_LABEL[estado] || estado}</span>;
 }
 
-function ConditionRow({ label, buyer, mine, tone }) {
+function KpiCard({ icon: Icon, tone, value, label }) {
   return (
-    <div className={`pg-cond ${tone ? `is-${tone}` : ''}`}>
-      <span>{label}</span>
-      <strong>{buyer}</strong>
-      <em>{mine}</em>
+    <div className="pt-kpi">
+      <span className={`pt-kpi-icon is-${tone}`}><Icon size={22} /></span>
+      <span><strong>{value ?? 0}</strong><small>{label}</small></span>
     </div>
   );
 }
 
-function OfferCard({ item, onEdit, onOpen, onOrder, busy }) {
+/** Camino de la oferta: enviada -> revisada por el comprador -> resultado. */
+function Stepper({ offer }) {
+  const seen = Boolean(offer.vistaEn);
+  const decided = !ACTIVE_STATES.includes(offer.estado);
+  const lost = LOST_STATES.includes(offer.estado);
+  const paid = offer.estado === 'PAGADA';
+  const resultLabel = paid ? 'Pedido pagado' : lost ? STATE_LABEL[offer.estado] : WON_STATES.includes(offer.estado) ? 'Aceptada' : 'Decisión del comprador';
+  const resultHint = paid ? formatDateTime(offer.actualizadaEn) : decided ? formatDateTime(offer.aceptadaEn || offer.actualizadaEn) : 'Pendiente';
+  return (
+    <ol className="pt-stepper" aria-label="Seguimiento de la oferta">
+      <li className="is-done"><span className="pt-dot"><CheckCircle2 size={14} /></span><strong>Oferta enviada</strong><small>{formatDateTime(offer.enviadaEn)}</small></li>
+      <li className={seen ? 'is-done' : ''}><span className="pt-dot">{seen ? <CheckCircle2 size={14} /> : <EyeOff size={12} />}</span><strong>{seen ? 'Comprador la revisó' : 'Aún sin revisar'}</strong><small>{seen ? formatDateTime(offer.vistaEn) : 'Pendiente'}</small></li>
+      <li className={decided ? (lost ? 'is-lost' : 'is-done') : ''}><span className="pt-dot">{lost ? <XCircle size={14} /> : decided ? <CheckCircle2 size={14} /> : null}</span><strong>{resultLabel}</strong><small>{resultHint}</small></li>
+    </ol>
+  );
+}
+
+function CompareRow({ icon: Icon, label, value, tone }) {
+  if (value == null || value === '') return null;
+  return (
+    <li className={tone ? `is-${tone}` : ''}>
+      <Icon size={16} />
+      <span><small>{label}</small><strong>{value}</strong></span>
+    </li>
+  );
+}
+
+/** Preguntas públicas de la necesidad: la tienda lee lo que preguntaron y responde para afinar su propuesta. */
+function PublicQuestions({ auctionId, isOpen }) {
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    getAuctionComments(auctionId)
+      .then((data) => { if (active) setComments(Array.isArray(data) ? data : []); })
+      .catch((err) => { if (active) setError(err?.message || 'No pudimos cargar las preguntas.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [auctionId]);
+
+  const submit = async (event) => {
+    event.preventDefault();
+    const value = text.trim();
+    if (!value) return;
+    setSending(true);
+    setError('');
+    try {
+      const created = await postAuctionComment(auctionId, value);
+      setComments((current) => [...current, created]);
+      setText('');
+    } catch (err) {
+      setError(err?.message || 'No pudimos publicar tu respuesta.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <section className="pt-questions" aria-label="Preguntas públicas de la necesidad">
+      <h4><MessageCircle size={16} /> Preguntas públicas de la necesidad <small>Las preguntas y respuestas son públicas para esta necesidad de compra.</small></h4>
+      {loading ? (
+        <p className="pt-muted"><Loader2 size={14} className="pg-spin" /> Cargando preguntas…</p>
+      ) : comments.length === 0 ? (
+        <p className="pt-muted">Aún no hay preguntas sobre esta necesidad.</p>
+      ) : (
+        <ul className="pt-comment-list">
+          {comments.map((comment) => (
+            <li key={comment.id} className={comment.autorEsComprador ? 'is-buyer' : comment.autorEsTienda ? 'is-store' : ''}>
+              <AuctionAvatar className="pt-avatar" src={comment.autorFotoUrl} name={comment.autor || ''} isStore={comment.autorEsTienda} />
+              <div>
+                <p><strong>{comment.autorEsComprador ? 'Pregunta pública del comprador' : comment.autor || 'Tienda'}</strong> <small>{formatDateTime(comment.createdAt)}</small></p>
+                <p>{comment.texto}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {error && <p className="pg-error" role="alert"><AlertCircle size={14} /> {error}</p>}
+      {isOpen && (
+        <form className="pt-composer" onSubmit={submit}>
+          <input type="text" value={text} onChange={(event) => setText(event.target.value)} maxLength={1000} placeholder="Escribe una respuesta pública…" aria-label="Escribe una respuesta pública" />
+          <button type="submit" className="pt-btn is-primary" disabled={sending || !text.trim()}>
+            {sending ? <Loader2 size={14} className="pg-spin" /> : <Send size={14} />} Responder públicamente
+          </button>
+        </form>
+      )}
+    </section>
+  );
+}
+
+function DetailPanel({ item, busy, onEdit, onOpen, onOrder }) {
   const { necesidad, oferta } = item;
-  const [expanded, setExpanded] = useState(false);
-  const tone = STATE_TONE[oferta.estado] || 'blue';
   const budget = necesidad.presupuestoMaximo;
   const overBudget = budget != null && oferta.totalVigente != null && Number(oferta.totalVigente) > Number(budget);
   const open = necesidad.estado === 'ACTIVA' && necesidad.segundosRestantes > 0;
-  const facts = [
-    { icon: Car, label: 'Vehículo', value: necesidad.vehiculo },
-    { icon: Tag, label: 'Categoría', value: necesidad.categoria },
-    { icon: MapPin, label: 'Ubicación', value: necesidad.ubicacion },
-    { icon: User, label: 'Comprador', value: necesidad.comprador },
-  ].filter((fact) => fact.value);
+  const offered = (oferta.lineas || []).map((line) => line.producto).filter(Boolean);
 
   return (
-    <article className={`pg-card is-${tone}`}>
-      <div className="pg-top">
-      <header className="pg-card-head">
-        <div className="pg-card-title">
+    <aside className="pt-detail" aria-label="Detalle de la propuesta">
+      <header className="pt-detail-head">
+        <span className="pt-thumb is-lg"><Gavel size={26} /></span>
+        <div>
           <h3>{necesidad.titulo}</h3>
-          <span className={`pg-badge is-${tone}`}>{STATE_LABEL[oferta.estado] || oferta.estado}</span>
+          <small>Pedido N.º {necesidad.id} · Oferta N.º {oferta.id}</small>
         </div>
-        <span className="pg-card-id">Pedido N.º {necesidad.id} · {necesidad.itemsTotal} {necesidad.itemsTotal === 1 ? 'repuesto' : 'repuestos'} · Oferta N.º {oferta.id}</span>
-        {oferta.detalleEstado && <p className="pg-detail">{oferta.detalleEstado}</p>}
-        <div className="pg-chips">
-          <span className={`pg-chip ${oferta.vistaEn ? 'is-ok' : ''}`}>{oferta.vistaEn ? <Eye size={13} /> : <EyeOff size={13} />}{oferta.vistaEn ? 'Revisada por el comprador' : 'Sin revisar'}</span>
-          <span className="pg-chip"><Users size={13} />{oferta.ofertasCompetidoras > 0 ? `${oferta.ofertasCompetidoras} ${oferta.ofertasCompetidoras === 1 ? 'oferta compite' : 'ofertas compiten'}` : 'Única oferta'}</span>
-          {open && <span className="pg-chip"><Clock size={13} />{formatRemaining(necesidad.segundosRestantes)}</span>}
-          {oferta.itemsFaltantes?.length > 0 && <span className="pg-chip is-warn"><AlertCircle size={13} />Faltan {oferta.itemsFaltantes.length}</span>}
+        <div className="pt-detail-state">
+          <StatePill estado={oferta.estado} />
+          <small>Oferta enviada: {formatDateTime(oferta.enviadaEn)}</small>
         </div>
-        <dl className="pg-facts">
-          {facts.map(({ icon: Icon, label, value }) => (
-            <div key={label}><dt><Icon size={13} /> {label}</dt><dd>{value}</dd></div>
-          ))}
-        </dl>
       </header>
-      <div className="pg-figures">
-        <div><small>Mi oferta</small><strong>{money(oferta.totalVigente)}</strong></div>
-        <div><small>Tope del comprador</small><strong>{budget != null ? money(budget) : 'Sin tope'}</strong></div>
-        <div><small>Entrega</small><strong>{oferta.tipoEntrega || '—'}</strong></div>
-        <div><small>Plazo</small><strong>{oferta.tiempoEntrega || '—'}</strong></div>
-        <div><small>Enviada</small><strong>{formatDateTime(oferta.enviadaEn)}</strong></div>
-        <div><small>Vigencia</small><strong>{oferta.vigencia || '—'}</strong></div>
+      {oferta.detalleEstado && <p className="pt-detail-note">{oferta.detalleEstado}</p>}
+
+      <div className="pt-buyer">
+        <span className="pt-avatar-lg"><User size={20} /></span>
+        <span><small>Comprador</small><strong>{necesidad.comprador || 'Comprador'}</strong>{necesidad.ubicacion && <em>{necesidad.ubicacion}</em>}</span>
+        <button type="button" className="pt-btn" onClick={() => onOpen(necesidad.id)}>Ver necesidad <ArrowRight size={14} /></button>
       </div>
-      <aside className="pg-side">
-        <div className="pg-total"><small>Total vigente</small><strong className={overBudget ? 'is-over' : ''}>{money(oferta.totalVigente)}</strong>{overBudget && <em>Sobre el tope</em>}</div>
-        <div className="pg-actions">
-          <button type="button" className="pg-btn" onClick={() => onOpen(necesidad.id)}>Ver necesidad <ArrowRight size={14} /></button>
-          <button type="button" className={`pg-btn pg-toggle ${expanded ? 'is-open' : ''}`} aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
-            {expanded ? 'Ocultar detalle' : 'Ver detalle'} <ChevronDown size={14} />
+
+      <h4 className="pt-section-title"><ClipboardList size={18} /> Comparación de la necesidad</h4>
+      <div className="pt-compare">
+        <section className="is-buyer">
+          <h5>Lo que pide el comprador</h5>
+          <ul>
+            <CompareRow icon={Tag} label="Repuestos" value={`${necesidad.itemsTotal} ${necesidad.itemsTotal === 1 ? 'repuesto' : 'repuestos'}`} />
+            <CompareRow icon={Gavel} label="Vehículo" value={necesidad.vehiculo} />
+            <CompareRow icon={Clock} label="Entrega deseada" value={[necesidad.tiempoMaximoEnvio, necesidad.tipoEnvio].filter(Boolean).join(' · ') || 'Sin plazo'} />
+            <CompareRow icon={Wallet} label="Presupuesto / tope" value={budget != null ? `Hasta ${money(budget)}` : 'Sin tope'} />
+            {open && <CompareRow icon={Clock} label="Tiempo restante" value={formatRemaining(necesidad.segundosRestantes)} />}
+          </ul>
+        </section>
+        <section className="is-mine">
+          <h5>Mi oferta enviada</h5>
+          <ul>
+            <CompareRow icon={Tag} label="Producto ofrecido" value={offered.length ? offered.join(', ') : null} />
+            <CompareRow icon={Wallet} label="Mi precio" value={money(oferta.totalVigente)} tone={overBudget ? 'bad' : undefined} />
+            <CompareRow icon={Clock} label="Entrega" value={[oferta.tiempoEntrega, oferta.tipoEntrega].filter(Boolean).join(' · ') || '—'} />
+            <CompareRow icon={CheckCircle2} label="Vigencia" value={oferta.vigencia} />
+            <CompareRow icon={CheckCircle2} label="Garantía" value={oferta.garantia} />
+            <CompareRow icon={ClipboardList} label="Observación" value={oferta.notas} />
+          </ul>
+        </section>
+      </div>
+      {overBudget && <p className="pt-warn"><AlertCircle size={14} /> Tu oferta supera el tope del comprador.</p>}
+      {oferta.itemsFaltantes?.length > 0 && <p className="pt-warn"><AlertCircle size={14} /> No cubre: {oferta.itemsFaltantes.join(', ')}</p>}
+
+      <Stepper offer={oferta} />
+      <p className="pt-compete">
+        {oferta.ofertasCompetidoras > 0
+          ? `${oferta.ofertasCompetidoras} ${oferta.ofertasCompetidoras === 1 ? 'oferta compite' : 'ofertas compiten'} contigo${oferta.posicionPrecio ? ` · ${POSITION_LABEL[oferta.posicionPrecio] || ''}` : ''}`
+          : 'Eres la única oferta por ahora'}
+      </p>
+
+      {oferta.lineas?.length > 0 && (
+        <ul className="pt-lines">
+          {oferta.lineas.map((line) => (
+            <li key={line.itemId}>
+              <span><strong>{line.repuesto}</strong><small>{line.producto} · {line.cantidad} u. × {money(line.precioUnitario)}</small></span>
+              <b>{money(line.precioTotal)}</b>
+              <span className={`pt-pill is-${LINE_TONE[line.estado] || 'blue'}`}>{LINE_LABEL[line.estado] || line.estado}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <PublicQuestions auctionId={necesidad.id} isOpen={open} />
+
+      <footer className="pt-detail-actions">
+        {oferta.pedidoId && <button type="button" className="pt-btn is-primary" onClick={() => onOrder(oferta.pedidoId)}><PackageCheck size={14} /> Ver pedido</button>}
+        {oferta.editable && (
+          <button type="button" className="pt-btn" onClick={() => onEdit(necesidad.id)} disabled={busy}>
+            {busy ? <Loader2 size={14} className="pg-spin" /> : <Pencil size={14} />} Editar oferta
           </button>
-          {oferta.editable && (
-            <button type="button" className="pg-btn" onClick={() => onEdit(necesidad.id)} disabled={busy}>
-              {busy ? <Loader2 size={14} className="pg-spin" /> : <Pencil size={14} />} Editar oferta
-            </button>
-          )}
-          {oferta.pedidoId && (
-            <button type="button" className="pg-btn is-primary" onClick={() => onOrder(oferta.pedidoId)}>
-              <PackageCheck size={14} /> Ver pedido
-            </button>
-          )}
-        </div>
-      </aside>
-      </div>
-
-      {expanded && <div className="pg-body">
-        <section className="pg-col">
-          <h4>Seguimiento</h4>
-          <Timeline offer={oferta} />
-          <p className="pg-compete">
-            <Users size={14} />
-            {oferta.ofertasCompetidoras > 0
-              ? `${oferta.ofertasCompetidoras} ${oferta.ofertasCompetidoras === 1 ? 'oferta compite' : 'ofertas compiten'} contigo${oferta.posicionPrecio ? ` · ${POSITION_LABEL[oferta.posicionPrecio] || ''}` : ''}`
-              : 'Eres la única oferta por ahora'}
-          </p>
-        </section>
-
-        <section className="pg-col">
-          <h4>Tu oferta vs. lo que pide el comprador</h4>
-          <div className="pg-conds">
-            <div className="pg-cond pg-cond-head"><span /><strong>Comprador</strong><em>Tu oferta</em></div>
-            <ConditionRow
-              label="Presupuesto"
-              buyer={budget != null ? `hasta ${money(budget)}` : 'Sin tope'}
-              mine={money(oferta.totalVigente)}
-              tone={budget == null ? '' : overBudget ? 'bad' : 'ok'}
-            />
-            <ConditionRow label="Plazo de envío" buyer={necesidad.tiempoMaximoEnvio || 'Sin plazo'} mine={oferta.tiempoEntrega || '—'} />
-            <ConditionRow label="Entrega" buyer={necesidad.tipoEnvio || 'Cualquiera'} mine={oferta.tipoEntrega || '—'} />
-            <ConditionRow label="Garantía" buyer="—" mine={oferta.garantia || '—'} />
-            <ConditionRow label="Vigencia" buyer="—" mine={oferta.vigencia || '—'} />
-          </div>
-          {oferta.itemsFaltantes?.length > 0 && (
-            <p className="pg-missing"><AlertCircle size={14} /> No cubre: {oferta.itemsFaltantes.join(', ')}</p>
-          )}
-        </section>
-      </div>}
-
-      {expanded && <ul className="pg-lines">
-        {oferta.lineas.map((line) => (
-          <li key={line.itemId}>
-            <span className="pg-line-name"><strong>{line.repuesto}</strong><small>{line.producto} · {line.cantidad} u. × {money(line.precioUnitario)}</small></span>
-            <span className="pg-line-price">{money(line.precioTotal)}</span>
-            <span className={`pg-badge is-${LINE_TONE[line.estado] || 'blue'}`}>{LINE_LABEL[line.estado] || line.estado}</span>
-          </li>
-        ))}
-      </ul>}
-
-    </article>
+        )}
+      </footer>
+    </aside>
   );
 }
 
 /** Solicitud guardada para seguimiento: lo esencial y si la tienda ya ofertó. */
-function SavedCard({ auction, myOffer, onOpen, onRemove, busy }) {
+function SavedRow({ auction, myOffer, onOpen, onRemove, busy }) {
   const vehicle = [auction.marca, auction.modelo, auction.anio].filter(Boolean).join(' ');
-  const location = [auction.comuna, auction.region].filter(Boolean).join(', ');
   const remaining = Math.max(0, new Date(auction.fechaLimite).getTime() - Date.now());
   const open = auction.estado === 'ACTIVA' && remaining > 0;
   return (
-    <article className="pg-card">
-      <div className="pg-card-head">
-        <div className="pg-card-title">
-          <h3>{auction.repuestoSolicitado}</h3>
-          <span className={`pg-badge ${open ? '' : 'is-gray'}`}>{open ? 'Activa' : 'Cerrada'}</span>
-          {myOffer && <span className="pg-badge is-green">Ya ofertaste</span>}
-        </div>
-        <span className="pg-card-id">Pedido N.º {auction.id} · {auction.totalItems || 1} {(auction.totalItems || 1) === 1 ? 'repuesto' : 'repuestos'}</span>
-        <dl className="pg-facts">
-          {vehicle && <div><dt><Car size={13} /> Vehículo</dt><dd>{vehicle}</dd></div>}
-          {auction.categoria && <div><dt><Tag size={13} /> Categoría</dt><dd>{auction.categoria}</dd></div>}
-          {location && <div><dt><MapPin size={13} /> Ubicación</dt><dd>{location}</dd></div>}
-          {open && <div><dt><Clock size={13} /> Tiempo restante</dt><dd>{formatRemaining(remaining / 1000)}</dd></div>}
-          <div><dt><Users size={13} /> Ofertas recibidas</dt><dd>{auction.totalCotizaciones || 0}</dd></div>
-        </dl>
-      </div>
-      <div className="pg-foot">
-        <span />
-        <div className="pg-actions">
-          <button type="button" className="pg-btn" onClick={() => onRemove(auction.id)} disabled={busy}><Bookmark size={14} /> Quitar de guardadas</button>
-          <button type="button" className="pg-btn is-primary" onClick={() => onOpen(auction.id)}>Ver necesidad <ArrowRight size={14} /></button>
-        </div>
-      </div>
-    </article>
+    <tr>
+      <td><span className="pt-need"><span className="pt-thumb"><Gavel size={18} /></span><span><strong>{auction.repuestoSolicitado}</strong><small>Pedido N.º {auction.id}</small></span></span></td>
+      <td>{vehicle || '—'}</td>
+      <td>{auction.totalCotizaciones || 0} ofertas</td>
+      <td><span className={`pt-pill is-${open ? 'blue' : 'gray'}`}>{open ? 'Activa' : 'Cerrada'}</span>{myOffer && <span className="pt-pill is-green">Ya ofertaste</span>}</td>
+      <td>{open ? formatRemaining(remaining / 1000) : '—'}</td>
+      <td className="pt-row-actions">
+        <button type="button" className="pt-btn" onClick={() => onRemove(auction.id)} disabled={busy}><Bookmark size={14} /> Quitar</button>
+        <button type="button" className="pt-btn is-primary" onClick={() => onOpen(auction.id)}>Ver <ArrowRight size={14} /></button>
+      </td>
+    </tr>
   );
 }
 
@@ -256,6 +304,7 @@ export default function ProfileAuctionManagementPanel() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
+  const [selectedId, setSelectedId] = useState(null);
   const [editing, setEditing] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [saved, setSaved] = useState([]);
@@ -277,17 +326,26 @@ export default function ProfileAuctionManagementPanel() {
   useEffect(() => { load(); }, [load]);
 
   const offers = useMemo(() => data?.ofertas || [], [data]);
-  const visible = useMemo(() => {
-    const text = query.trim().toLowerCase();
-    return offers.filter((item) => matchesFilter(item.oferta, filter)
-      && (!text || `${item.necesidad.titulo} ${item.necesidad.vehiculo || ''} ${item.necesidad.id}`.toLowerCase().includes(text)));
-  }, [offers, filter, query]);
+  const counts = useMemo(() => ({
+    all: offers.length,
+    active: offers.filter((item) => matchesFilter(item.oferta, 'active')).length,
+    won: offers.filter((item) => matchesFilter(item.oferta, 'won')).length,
+    paid: offers.filter((item) => matchesFilter(item.oferta, 'paid')).length,
+    lost: offers.filter((item) => matchesFilter(item.oferta, 'lost')).length,
+    saved: saved.length,
+  }), [offers, saved]);
 
+  const text = query.trim().toLowerCase();
+  const visible = useMemo(() => offers.filter((item) => matchesFilter(item.oferta, filter)
+    && (!text || `${item.necesidad.titulo} ${item.necesidad.vehiculo || ''} ${item.necesidad.comprador || ''} ${item.necesidad.id}`.toLowerCase().includes(text))), [offers, filter, text]);
+  const visibleSaved = useMemo(() => saved.filter((auction) => !text
+    || `${auction.repuestoSolicitado} ${auction.marca || ''} ${auction.modelo || ''} ${auction.id}`.toLowerCase().includes(text)), [saved, text]);
   const myOfferIds = useMemo(() => new Set(offers.map((item) => item.necesidad.id)), [offers]);
-  const visibleSaved = useMemo(() => {
-    const text = query.trim().toLowerCase();
-    return saved.filter((auction) => !text || `${auction.repuestoSolicitado} ${auction.marca || ''} ${auction.modelo || ''} ${auction.id}`.toLowerCase().includes(text));
-  }, [saved, query]);
+
+  const selected = useMemo(
+    () => visible.find((item) => item.oferta.id === selectedId) || visible[0] || null,
+    [visible, selectedId],
+  );
 
   const removeSaved = async (auctionId) => {
     setRemovingId(auctionId);
@@ -313,23 +371,16 @@ export default function ProfileAuctionManagementPanel() {
     }
   };
 
-  const counters = [
-    { key: 'enviadas', label: 'Ofertas enviadas', value: data?.enviadas },
-    { key: 'revisadas', label: 'Revisadas por el comprador', value: data?.revisadas },
-    { key: 'aceptadas', label: 'Aceptadas', value: data?.aceptadas },
-    { key: 'porPagar', label: 'Por pagar', value: data?.porPagar },
-    { key: 'pagadas', label: 'Pagadas', value: data?.pagadas },
-    { key: 'superadas', label: 'Adjudicadas a otra', value: data?.superadas },
-  ];
+  const wonTotal = (data?.aceptadas ?? 0) + (data?.porPagar ?? 0) + (data?.pagadas ?? 0);
 
   return (
-    <section className="pg-panel">
-      <header className="pg-header">
+    <section className="pg-panel pt-panel">
+      <header className="pt-header">
         <div>
-          <h2><Gavel size={20} /> Gestión de necesidades</h2>
-          <p>Sigue cada oferta que enviaste: si el comprador la revisó, si eligió otra y en qué etapa va la venta.</p>
+          <h2>Seguimiento de propuestas</h2>
+          <p>Haz seguimiento a tus ofertas, compara tu propuesta con lo que pide el comprador y revisa las preguntas públicas.</p>
         </div>
-        <button type="button" className="pg-btn is-primary" onClick={() => navigate(ROUTES.auctions)}>
+        <button type="button" className="pt-btn is-primary" onClick={() => navigate(ROUTES.auctions)}>
           <Gavel size={15} /> Ver necesidades públicas
         </button>
       </header>
@@ -338,22 +389,25 @@ export default function ProfileAuctionManagementPanel() {
         <div className="pg-loading"><Loader2 size={18} className="pg-spin" /> Cargando tus ofertas…</div>
       ) : (
         <>
-          <div className="pg-counters">
-            {counters.map(({ key, label, value }) => (
-              <div key={key} className="pg-counter"><strong>{value ?? 0}</strong><small>{label}</small></div>
-            ))}
+          <div className="pt-kpis">
+            <KpiCard icon={Send} tone="blue" value={data?.enviadas} label="Enviadas" />
+            <KpiCard icon={Eye} tone="violet" value={data?.revisadas} label="Revisadas" />
+            <KpiCard icon={Trophy} tone="amber" value={wonTotal} label="Ganadas" />
+            <KpiCard icon={Wallet} tone="green" value={data?.pagadas} label="Pagadas" />
           </div>
 
           {error && <p className="pg-error" role="alert"><AlertCircle size={15} /> {error}</p>}
 
-          <div className="pg-toolbar">
-            <div className="pg-filters" role="tablist" aria-label="Filtrar ofertas">
+          <div className="pt-toolbar">
+            <div className="pt-tabs" role="tablist" aria-label="Filtrar propuestas">
               {FILTERS.map(([key, label]) => (
-                <button key={key} type="button" role="tab" aria-selected={filter === key} className={filter === key ? 'is-active' : ''} onClick={() => setFilter(key)}>{label}{key === 'saved' && saved.length > 0 ? ` (${saved.length})` : ''}</button>
+                <button key={key} type="button" role="tab" aria-selected={filter === key} className={filter === key ? 'is-active' : ''} onClick={() => setFilter(key)}>
+                  {label} ({counts[key]})
+                </button>
               ))}
             </div>
-            <label className="pg-search"><Search size={15} />
-              <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por repuesto, vehículo o N.º" />
+            <label className="pt-search"><Search size={15} />
+              <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por repuesto, vehículo o comprador…" />
             </label>
           </div>
 
@@ -361,33 +415,53 @@ export default function ProfileAuctionManagementPanel() {
             visibleSaved.length === 0 ? (
               <EmptyState label="No tienes solicitudes guardadas. Abre una necesidad de compra y presiona «Guardar» para hacerle seguimiento." />
             ) : (
-              <div className="pg-list">
-                {visibleSaved.map((auction) => (
-                  <SavedCard
-                    key={auction.id}
-                    auction={auction}
-                    myOffer={myOfferIds.has(auction.id)}
-                    busy={removingId === auction.id}
-                    onOpen={(id) => navigate(auctionDetailPath(id))}
-                    onRemove={removeSaved}
-                  />
-                ))}
+              <div className="pt-table-wrap">
+                <table className="pt-table">
+                  <thead><tr><th>Necesidad</th><th>Vehículo</th><th>Ofertas</th><th>Estado</th><th>Tiempo restante</th><th /></tr></thead>
+                  <tbody>
+                    {visibleSaved.map((auction) => (
+                      <SavedRow key={auction.id} auction={auction} myOffer={myOfferIds.has(auction.id)} busy={removingId === auction.id} onOpen={(id) => navigate(auctionDetailPath(id))} onRemove={removeSaved} />
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )
           ) : visible.length === 0 ? (
-            <EmptyState label={offers.length === 0 ? 'Aún no has enviado ofertas. Entra a las necesidades de compra públicas y ofrece tus repuestos.' : 'No hay ofertas en este filtro.'} />
+            <EmptyState label={offers.length === 0 ? 'Aún no has enviado ofertas. Entra a las necesidades de compra públicas y ofrece tus repuestos.' : 'No hay propuestas en este filtro.'} />
           ) : (
-            <div className="pg-list">
-              {visible.map((item) => (
-                <OfferCard
-                  key={item.oferta.id}
-                  item={item}
-                  busy={busyId === item.necesidad.id}
+            <div className="pt-layout">
+              <div className="pt-table-wrap">
+                <table className="pt-table">
+                  <thead>
+                    <tr><th className="pt-col-need">Necesidad</th><th className="pt-col-vehicle">Vehículo</th><th className="pt-col-state">Estado</th><th className="pt-col-date">Última actividad</th></tr>
+                  </thead>
+                  <tbody>
+                    {visible.map((item) => {
+                      const { necesidad, oferta } = item;
+                      const active = selected?.oferta.id === oferta.id;
+                      return (
+                        <tr key={oferta.id} className={active ? 'is-selected' : ''} onClick={() => setSelectedId(oferta.id)} tabIndex={0} aria-selected={active}
+                          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedId(oferta.id); } }}>
+                          <td><span className="pt-need"><span className="pt-thumb"><Gavel size={18} /></span><span><strong title={necesidad.titulo}>{necesidad.titulo}</strong><small>Pedido N.º {necesidad.id} · {necesidad.itemsTotal} {necesidad.itemsTotal === 1 ? 'repuesto' : 'repuestos'}</small></span></span></td>
+                          <td className="pt-cell-vehicle" title={necesidad.vehiculo || undefined}>{necesidad.vehiculo || '—'}</td>
+                          <td><StatePill estado={oferta.estado} /></td>
+                          <td className="pt-date">{formatDateTime(oferta.actualizadaEn || oferta.enviadaEn)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {selected && (
+                <DetailPanel
+                  key={selected.oferta.id}
+                  item={selected}
+                  busy={busyId === selected.necesidad.id}
                   onEdit={openEdit}
                   onOpen={(id) => navigate(auctionDetailPath(id))}
                   onOrder={(id) => navigate(profileOrderPath(id))}
                 />
-              ))}
+              )}
             </div>
           )}
         </>

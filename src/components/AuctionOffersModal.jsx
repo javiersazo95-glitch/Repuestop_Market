@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
+  Search,
   AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, Clock, Gavel, Lightbulb, MapPin, MinusCircle, Package, PackageCheck,
   ShieldCheck, Star, Trophy, Truck, X, XCircle,
 } from 'lucide-react';
-import { acceptAuctionOffer, getAuctionDetail, markAuctionOfferSeen } from '../services/auctionApi';
+import { acceptAuctionOffer, getAuctionDetail, markAuctionOfferSeen, rejectAuctionOffer } from '../services/auctionApi';
 import AuctionAvatar from './AuctionAvatar';
 import AuctionImageViewer from './AuctionImageViewer';
 import { resolveMediaUrl } from '../services/api';
@@ -16,6 +18,11 @@ const money = (value) => (value == null ? '—' : nf.format(value));
 function formatDateTime(iso) {
   if (!iso) return '';
   return new Date(iso).toLocaleString('es-CL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatShortDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 function Term({ label, value }) {
@@ -121,8 +128,10 @@ function DeliveryBox({ quote }) {
   );
 }
 
-function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, confirming, busy, onAskConfirm, onCancel, onAccept }) {
+function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, confirming, busy, onAskConfirm, onCancel, onAccept, onReject, compact = false }) {
   const [expanded, setExpanded] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState('');
   const [photoOpen, setPhotoOpen] = useState(false);
   const seenSent = useRef(false);
   // La tienda ve "Revisada por el comprador" en Gestión subastas apenas se abre el detalle de su oferta.
@@ -137,11 +146,57 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
   const discarded = !accepted && quote.estado === 'DESCARTADA';
   const hasValidLines = !quote.lineas || quote.lineas.length === 0 ? true : validLines.length > 0;
   const total = coverage ? coverage.total : (quote.precioFinal ?? quote.precio);
-  const canAccept = isOpen && !accepted && !discarded && hasValidLines;
+  const rejected = !accepted && quote.estado === 'RECHAZADA';
+  const canAccept = isOpen && !accepted && !discarded && !rejected && hasValidLines;
   const missing = quote.itemsFaltantes || [];
+  const included = validLines.length > 0 ? validLines.map((line) => line.repuesto) : (quote.productoTitulo ? [quote.productoTitulo] : []);
+  const toggle = () => setExpanded((value) => !value);
+  const tags = (
+    <>
+      {accepted && <span className="ao-tag is-winner"><Trophy size={12} /> Aceptada</span>}
+      {isSuggested && !accepted && <span className="ao-tag is-suggested"><Lightbulb size={12} /> Sugerida</span>}
+      {!accepted && !discarded && !rejected && <span className={`ao-tag fit-${fit.level}`}>{LEVEL_LABEL[fit.level]}</span>}
+      {isBest && !accepted && !discarded && !rejected && <span className="ao-tag is-best">Menor precio</span>}
+      {discarded && <span className="ao-tag is-muted">Sin repuestos pendientes</span>}
+      {rejected && <span className="ao-tag is-muted">Rechazada</span>}
+    </>
+  );
+  const quickActions = canAccept && !confirming && !rejecting;
 
   return (
-    <article className={`ao-offer fit-${fit.level} ${accepted ? 'is-winner' : ''} ${discarded ? 'is-discarded' : ''}`}>
+    <article className={`ao-offer fit-${fit.level} ${accepted ? 'is-winner' : ''} ${discarded || rejected ? 'is-discarded' : ''}`}>
+      {compact ? (
+        <div className="ao-row" role="row">
+          <span className="ao-col-n" role="cell">{index + 1}</span>
+          <div className="ao-row-store" role="cell">
+            <AuctionAvatar className="ao-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+            <div>
+              <strong title={quote.nombreTienda}>{quote.nombreTienda}</strong>
+              <small><Star size={11} className={quote.tiendaRating ? 'is-rated' : ''} /> {quote.tiendaRating ? Number(quote.tiendaRating).toFixed(1) : 'Sin evaluaciones'} · {formatShortDate(quote.fechaEnvio)}</small>
+            </div>
+          </div>
+          <div className="ao-row-items" role="cell">
+            <span className="ao-items-line is-ok" title={included.join(', ')}><CheckCircle2 size={12} /> <b>{included.length} de {included.length + missing.length}</b> {included.length > 0 ? `· ${included.join(', ')}` : ''}</span>
+            {missing.length > 0 && <span className="ao-items-line is-miss" title={missing.join(', ')}><AlertTriangle size={12} /> Faltan: {missing.join(', ')}</span>}
+          </div>
+          <strong className="ao-col-price" role="cell">{money(total)}</strong>
+          <span className="ao-col-text" role="cell" title={quote.tiempoEntrega || undefined}>{quote.tiempoEntrega || '—'}</span>
+          <span className="ao-col-text" role="cell" title={quote.tipoEntrega || undefined}>{quote.tipoEntrega || '—'}</span>
+          <span className="ao-col-text" role="cell" title={quote.garantia || undefined}>{quote.garantia || 'Garantía legal'}</span>
+          <div className="ao-row-tags" role="cell">{tags}</div>
+          <div className="ao-row-actions" role="cell">
+            {quickActions && (
+              <>
+                <button type="button" className="ao-btn-outline is-reject is-sm" onClick={() => { onCancel(); setRejecting(true); }}><XCircle size={14} /> Rechazar</button>
+                <button type="button" className="ao-btn-primary is-sm" onClick={onAskConfirm}><CheckCircle2 size={14} /> Aceptar</button>
+              </>
+            )}
+          </div>
+          <button type="button" className={`ao-btn-outline is-sm ao-row-detail ${expanded ? 'is-open' : ''}`} aria-expanded={expanded} onClick={toggle}>
+            {expanded ? 'Ocultar' : 'Ver detalle'} <ChevronDown size={14} />
+          </button>
+        </div>
+      ) : (<>
       <header
         className="ao-offer-head"
         role="button"
@@ -174,9 +229,10 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
         <div className="ao-offer-tags">
           {accepted && <span className="ao-tag is-winner"><Trophy size={12} /> Oferta aceptada</span>}
           {isSuggested && !accepted && <span className="ao-tag is-suggested"><Lightbulb size={12} /> Sugerida</span>}
-          {!accepted && !discarded && <span className={`ao-tag fit-${fit.level}`}>{LEVEL_LABEL[fit.level]}</span>}
-          {isBest && !accepted && !discarded && <span className="ao-tag is-best">Menor precio</span>}
+          {!accepted && !discarded && !rejected && <span className={`ao-tag fit-${fit.level}`}>{LEVEL_LABEL[fit.level]}</span>}
+          {isBest && !accepted && !discarded && !rejected && <span className="ao-tag is-best">Menor precio</span>}
           {discarded && <span className="ao-tag is-muted">Sin repuestos pendientes</span>}
+          {rejected && <span className="ao-tag is-muted">Rechazada</span>}
         </div>
         <div className="ao-offer-total">
           <small>{coverage && coverage.coveredItems < coverage.totalItems ? 'Total de lo que cubre' : 'Total ofertado'}</small>
@@ -201,10 +257,43 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
           {expanded ? 'Ocultar detalle' : 'Ver detalle'} <ChevronDown size={14} className={expanded ? 'is-open' : ''} />
         </button>
       </div>
+      </>)}
 
-      <DeliveryBox quote={quote} />
+      {!compact && <DeliveryBox quote={quote} />}
 
-      {expanded && (
+      {expanded && compact && (
+        <div className="ao-detail">
+          <section className="ao-detail-main">
+            <h5>Repuestos de la oferta</h5>
+            <LinesTable quote={quote} />
+            {missing.length > 0 && (
+              <p className="ao-detail-miss"><AlertTriangle size={14} /> No incluye: <b>{missing.join(', ')}</b>. Si la aceptas, quedan disponibles para otras tiendas.</p>
+            )}
+            {quote.notas && <p className="ao-detail-notes"><b>Observaciones de la tienda:</b> {quote.notas}</p>}
+          </section>
+          <aside className="ao-detail-side">
+            <h5>Condiciones</h5>
+            <dl className="ao-kv">
+              <div><dt>Entrega</dt><dd>{quote.tipoEntrega || '—'}</dd></div>
+              {quote.costoEnvio > 0 && <div><dt>Costo de envío</dt><dd>{money(quote.costoEnvio)}</dd></div>}
+              {quote.envioPorPagar && <div><dt>Costo de envío</dt><dd>Por pagar</dd></div>}
+              <div><dt>Plazo</dt><dd>{quote.tiempoEntrega || '—'}</dd></div>
+              <div><dt>Garantía</dt><dd>{quote.garantia || 'Garantía legal'}</dd></div>
+              <div><dt>Vigencia</dt><dd>{quote.vigencia || '—'}</dd></div>
+            </dl>
+            <h5>Cumplimiento de lo pedido</h5>
+            <ul className="ao-checks">
+              {fit.checks.map((check) => {
+                const Icon = CHECK_ICON[check.status];
+                return <li key={check.key} className={`is-${check.status}`}><Icon size={14} /><span><b>{check.label}</b> {check.detail}</span></li>;
+              })}
+            </ul>
+            <DeliveryBox quote={quote} />
+          </aside>
+        </div>
+      )}
+
+      {expanded && !compact && (
         <div className="ao-offer-body">
           <LinesTable quote={quote} />
 
@@ -234,9 +323,28 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
         </div>
       )}
 
-      {canAccept && (
+      {rejected && (
+        <footer className="ao-offer-foot is-rejected">
+          <p><XCircle size={15} /> Rechazaste esta oferta{quote.motivoRechazo ? `: «${quote.motivoRechazo}»` : ''}. La tienda ya lo sabe y puede mejorarla y reenviarla.</p>
+        </footer>
+      )}
+
+      {canAccept && !(compact && !rejecting && !confirming) && (
         <footer className="ao-offer-foot">
-          {confirming ? (
+          {rejecting ? (
+            <>
+              <label className="ao-reject-reason">
+                <span>¿Por qué la rechazas? (opcional, la tienda lo verá)</span>
+                <textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={300} rows={2} placeholder="Ej: el precio supera mi presupuesto, no es el repuesto que busco…" />
+              </label>
+              <div>
+                <button type="button" className="ao-btn-outline" onClick={() => { setRejecting(false); setReason(''); }} disabled={busy}>Volver</button>
+                <button type="button" className="ao-btn-danger" onClick={() => onReject(reason)} disabled={busy}>
+                  <XCircle size={15} /> {busy ? 'Procesando…' : 'Confirmar rechazo'}
+                </button>
+              </div>
+            </>
+          ) : confirming ? (
             <>
               <p>
                 <AlertCircle size={15} />
@@ -252,9 +360,14 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
               </div>
             </>
           ) : (
-            <button type="button" className="ao-btn-primary" onClick={onAskConfirm}>
-              <Gavel size={15} /> {missing.length > 0 ? 'Aceptar esta oferta (parcial)' : 'Aceptar esta oferta'}
-            </button>
+            <div className="ao-offer-actions">
+              <button type="button" className="ao-btn-outline is-reject" onClick={() => { onCancel(); setRejecting(true); }}>
+                <XCircle size={15} /> Rechazar
+              </button>
+              <button type="button" className="ao-btn-primary" onClick={onAskConfirm}>
+                <Gavel size={15} /> {missing.length > 0 ? 'Aceptar esta oferta (parcial)' : 'Aceptar esta oferta'}
+              </button>
+            </div>
           )}
         </footer>
       )}
@@ -270,12 +383,20 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
  * (qué repuestos incluye y cuáles faltan). El comprador acepta las que le sirven, completas o parciales; lo
  * que no se adjudica sigue disponible para otras tiendas. Lo aceptado se paga junto desde "Tu pedido".
  */
-export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChanged, onOpenPurchase }) {
+export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChanged, onOpenPurchase, fullScreen = false }) {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [confirmId, setConfirmId] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [coverFilter, setCoverFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('best');
+  // En pantalla completa las sugerencias van ocultas; el ícono de la cabecera las activa.
+  const [hintsOn, setHintsOn] = useState(false);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -288,6 +409,8 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
       setLoading(false);
     }
   }, [auctionId]);
+
+  useEffect(() => { setPage(0); }, [search, statusFilter, coverFilter, sortBy, pageSize]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -314,7 +437,7 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
 
   const isOpenAuction = detail?.estado === 'ACTIVA' && new Date(detail.fechaLimite).getTime() > Date.now();
   const acceptedCount = offers.filter((quote) => quote.aceptada).length;
-  const competing = offers.filter((quote) => !quote.aceptada && quote.estado !== 'DESCARTADA');
+  const competing = offers.filter((quote) => !quote.aceptada && quote.estado !== 'DESCARTADA' && quote.estado !== 'RECHAZADA');
   const suggestion = detail && isOpenAuction && competing.length > 0 ? suggestOffer(detail, competing) : null;
   const prices = competing.map((quote) => evaluateOffer(detail, quote).total).filter((value) => value > 0);
   const bestPrice = competing.length > 1 && prices.length > 0 ? Math.min(...prices) : null;
@@ -336,11 +459,57 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
     }
   };
 
+  const handleReject = async (quote, reason) => {
+    setBusy(true);
+    setError('');
+    try {
+      await rejectAuctionOffer(auctionId, quote.id, reason);
+      await load();
+      onChanged?.();
+    } catch (err) {
+      setError(err?.message || 'No pudimos rechazar la oferta.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const vehicle = detail ? [detail.marca, detail.modelo, detail.anio].filter(Boolean).join(' ') : '';
 
-  return (
-    <div className="ao-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div className="ao-modal" role="dialog" aria-modal="true" aria-label="Ofertas recibidas">
+  const statusOf = (quote) => {
+    if (quote.aceptada) return 'accepted';
+    if (quote.estado === 'RECHAZADA') return 'rejected';
+    if (quote.estado === 'DESCARTADA') return 'closed';
+    return 'open';
+  };
+  const statusCounts = offers.reduce((acc, quote) => {
+    const key = statusOf(quote);
+    return { ...acc, [key]: (acc[key] || 0) + 1 };
+  }, { all: offers.length });
+  const searchText = search.trim().toLowerCase();
+  let shown = fullScreen
+    ? offers.filter((quote) => (statusFilter === 'all' || statusOf(quote) === statusFilter)
+      && (coverFilter === 'all' || (coverFilter === 'full') === ((quote.itemsFaltantes || []).length === 0))
+      && (!searchText || [quote.nombreTienda, quote.productoTitulo, ...(quote.lineas || []).flatMap((line) => [line.repuesto, line.productoTitulo])]
+        .filter(Boolean).join(' ').toLowerCase().includes(searchText)))
+    : offers;
+  if (fullScreen && sortBy !== 'best') {
+    const validCount = (quote) => (quote.lineas || []).filter((line) => line.vigente).length;
+    shown = [...shown].sort((a, b) => {
+      if (sortBy === 'price') return evaluateOffer(detail, a).total - evaluateOffer(detail, b).total;
+      if (sortBy === 'coverage') return validCount(b) - validCount(a);
+      if (sortBy === 'rating') return (Number(b.tiendaRating) || 0) - (Number(a.tiendaRating) || 0);
+      return new Date(b.fechaEnvio).getTime() - new Date(a.fechaEnvio).getTime();
+    });
+  }
+  const totalShown = shown.length;
+  const totalPages = Math.max(1, Math.ceil(totalShown / pageSize));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageOffers = fullScreen ? shown.slice(safePage * pageSize, (safePage + 1) * pageSize) : shown;
+  const hasFilters = statusFilter !== 'all' || coverFilter !== 'all' || searchText || sortBy !== 'best';
+
+  const view = (
+    <div className={`ao-overlay ${fullScreen ? 'is-full' : ''}`} role="presentation" onMouseDown={(event) => { if (!fullScreen && event.target === event.currentTarget) onClose(); }}>
+      <div className={`ao-modal ${fullScreen ? 'is-full' : ''}`} role="dialog" aria-modal="true" aria-label="Ofertas recibidas">
         <header className="ao-modal-head">
           <div>
             <span className="ao-eyebrow"><Gavel size={14} /> Ofertas recibidas</span>
@@ -372,6 +541,18 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
               <span>Plazo máximo: <b>{detail.tiempoMaximoEnvio || 'a convenir'}</b></span>
               <span>Envío: <b>{detail.tipoEnvio || 'cualquiera'}</b></span>
               <span>Repuestos: <b>{items.length || 1}</b></span>
+              {fullScreen && (
+                <button
+                type="button"
+                className={`ao-hint-btn ${hintsOn ? 'is-on' : ''}`}
+                onClick={() => setHintsOn((value) => !value)}
+                aria-pressed={hintsOn}
+                aria-label={hintsOn ? 'Ocultar sugerencias' : 'Mostrar sugerencias'}
+                title={hintsOn ? 'Ocultar sugerencias' : 'Activar sugerencias'}
+              >
+                <Lightbulb size={18} />
+              </button>
+            )}
             </div>
           )}
 
@@ -382,12 +563,18 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
             </div>
           )}
 
-          {suggestion && (
-            <div className={`ao-suggestion fit-${suggestion.level}`} role="note">
+          {(fullScreen ? hintsOn : suggestion) && (
+            <div className={`ao-suggestion fit-${suggestion ? suggestion.level : 'warn'}`} role="note">
               <Lightbulb size={18} />
               <div>
-                <strong>Sugerencia</strong>
-                <p>{suggestion.reason}</p>
+                <strong>Sugerencias</strong>
+                <p>{suggestion ? suggestion.reason : 'Aún no hay ofertas vigentes para sugerir.'}</p>
+                {fullScreen && (
+                  <p className="ao-hint-help">
+                    ¿Qué son? Comparamos cada oferta con lo que pediste (presupuesto, plazo máximo, método de envío y repuestos) y te señalamos la que mejor calza.
+                    Es solo una guía: tú decides cuál aceptar o rechazar.
+                  </p>
+                )}
                 <small className="ao-legend">
                   <i className="fit-ok" /> Cumple <i className="fit-warn" /> Revisar <i className="fit-bad" /> No cumple
                 </small>
@@ -396,6 +583,33 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
           )}
 
           {error && <p className="ao-error" role="alert"><AlertCircle size={15} /> {error}</p>}
+          {fullScreen && offers.length > 0 && (
+            <div className="ao-toolbar">
+              <label className="ao-search"><Search size={15} />
+                <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por tienda o repuesto…" aria-label="Buscar ofertas" />
+              </label>
+              <div className="ao-tabs" role="tablist" aria-label="Estado de la oferta">
+                {[['all', 'Todas'], ['open', 'Vigentes'], ['accepted', 'Aceptadas'], ['rejected', 'Rechazadas']].map(([key, label]) => (
+                  <button key={key} type="button" role="tab" aria-selected={statusFilter === key} className={statusFilter === key ? 'is-active' : ''} onClick={() => setStatusFilter(key)}>
+                    {label} ({statusCounts[key] || 0})
+                  </button>
+                ))}
+              </div>
+              <select value={coverFilter} onChange={(event) => setCoverFilter(event.target.value)} aria-label="Cobertura">
+                <option value="all">Cobertura: todas</option>
+                <option value="full">Cubren todo</option>
+                <option value="partial">Parciales</option>
+              </select>
+              <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Ordenar por">
+                <option value="best">Orden: recomendado</option>
+                <option value="price">Menor precio</option>
+                <option value="coverage">Más repuestos</option>
+                <option value="rating">Mejor evaluadas</option>
+                <option value="recent">Más recientes</option>
+              </select>
+              {hasFilters && <button type="button" className="ao-clear" onClick={() => { setSearch(''); setStatusFilter('all'); setCoverFilter('all'); setSortBy('best'); }}>Limpiar</button>}
+            </div>
+          )}
           {loading && !detail ? (
             <p className="ao-muted">Cargando ofertas…</p>
           ) : offers.length === 0 && detail ? (
@@ -404,8 +618,21 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
               <strong>Aún no recibes ofertas</strong>
               <p>Las casas de repuestos ya fueron notificadas. Te avisaremos cuando llegue la primera.</p>
             </div>
+          ) : shown.length === 0 ? (
+            <div className="ao-empty">
+              <Search size={26} />
+              <strong>Ninguna oferta coincide con los filtros</strong>
+            </div>
           ) : (
-            offers.map((quote, index) => {
+            <>
+            {fullScreen && (
+              <div className="ao-table-head" role="row">
+                <span>N.º</span><span>Tienda</span><span>Repuestos (cubre / faltan)</span>
+                <span className="is-right">Total</span><span>Plazo</span><span>Entrega</span><span>Garantía</span><span>Cumplimiento</span><span /><span />
+              </div>
+            )}
+            {pageOffers.map((quote, offerIndex) => {
+              const index = fullScreen ? safePage * pageSize + offerIndex : offerIndex;
               const fit = evaluateOffer(detail, quote);
               return (
                 <OfferCard
@@ -422,9 +649,27 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
                   onAskConfirm={() => setConfirmId(quote.id)}
                   onCancel={() => setConfirmId(null)}
                   onAccept={() => handleAccept(quote)}
+                  onReject={(reason) => handleReject(quote, reason)}
+                  compact={fullScreen}
                 />
               );
-            })
+            })}
+            {fullScreen && (
+              <div className="ao-pager">
+                <span>Mostrando <b>{totalShown === 0 ? 0 : safePage * pageSize + 1}–{Math.min((safePage + 1) * pageSize, totalShown)}</b> de <b>{totalShown}</b> {totalShown === 1 ? 'oferta' : 'ofertas'}</span>
+                <label>Por página
+                  <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+                    {[25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+                  </select>
+                </label>
+                <div>
+                  <button type="button" className="ao-btn-outline is-sm" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>Anterior</button>
+                  <span>Pág. {safePage + 1} de {totalPages}</span>
+                  <button type="button" className="ao-btn-outline is-sm" disabled={safePage + 1 >= totalPages} onClick={() => setPage(safePage + 1)}>Siguiente</button>
+                </div>
+              </div>
+            )}
+            </>
           )}
 
           {acceptedCount > 0 && (
@@ -434,4 +679,6 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(view, document.body) : view;
 }

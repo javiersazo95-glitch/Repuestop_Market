@@ -299,6 +299,7 @@ export default function ProfileAuctionsPanel() {
       )}
 
       <AuctionOffersModal
+        fullScreen
         isOpen={offersAuctionId != null}
         auctionId={offersAuctionId}
         onClose={() => setOffersAuctionId(null)}

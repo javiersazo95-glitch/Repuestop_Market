@@ -105,6 +105,7 @@ function QuoteRow({ quote, index, onViewPhoto }) {
   return (
     <li className={`av-offer is-open ${quote.aceptada ? 'is-winner' : ''}`}>
       {quote.aceptada && <span className="av-offer-ribbon"><Trophy size={13} /> Oferta aceptada</span>}
+      {!quote.aceptada && quote.estado === 'RECHAZADA' && <span className="av-offer-ribbon is-rejected">Oferta rechazada{quote.motivoRechazo ? `: ${quote.motivoRechazo}` : ''}</span>}
       <div className="av-offer-top">
         <StoreAvatar quote={quote} onViewPhoto={onViewPhoto} />
         <div className="av-offer-info">
@@ -176,7 +177,7 @@ export default function AuctionDetailPage() {
     try {
       await setAuctionSaved(id, !saved);
       setSaved(!saved);
-      flashSaveNotice(!saved ? 'Solicitud guardada. La verás en Gestión de necesidades.' : 'Solicitud quitada de guardadas.');
+      flashSaveNotice(!saved ? 'Solicitud guardada. La verás en Seguimiento de propuestas.' : 'Solicitud quitada de guardadas.');
     } catch (err) {
       flashSaveNotice(err?.message || 'No pudimos guardar la solicitud.');
     } finally {

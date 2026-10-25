@@ -183,3 +183,161 @@ i.fit-ok { background: #18a957; } i.fit-warn { background: #f59e0b; } i.fit-bad 
 .ao-offer-meta { display: flex; flex-direction: column; gap: 1px; }
 .ao-offer-meta span { display: inline-flex; align-items: center; gap: 4px; }
 .ao-offer-meta svg.is-rated { color: #f5a623; fill: #f5a623; }
+
+/* Rechazar una oferta */
+.ao-offer-actions { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.ao-btn-outline.is-reject { color: #b42318; border-color: #f3c4c0; }
+.ao-btn-outline.is-reject:hover:not(:disabled) { background: #fff0f0; border-color: #b42318; }
+.ao-btn-danger { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 0 18px; border: none; border-radius: 10px; background: #b42318; color: #fff; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.ao-btn-danger:hover:not(:disabled) { background: #912018; }
+.ao-btn-danger:disabled { opacity: 0.6; cursor: default; }
+.ao-reject-reason { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 240px; font-size: 12px; color: #3b4e5d; }
+.ao-reject-reason textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #d9e0e7; border-radius: 10px; font: inherit; font-size: 13px; resize: vertical; }
+.ao-offer-foot.is-rejected { background: #fff5f4; border-top-color: #f3c4c0; }
+.ao-offer-foot.is-rejected p { color: #912018; }
+
+/* Ver ofertas a pantalla completa (perfil del comprador): aprovecha todo el espacio, con volver y X. */
+.ao-overlay.is-full { padding: 0; align-items: stretch; background: #f7f9fb; backdrop-filter: none; }
+.ao-modal.is-full { max-width: none; max-height: none; height: 100%; border-radius: 0; box-shadow: none; }
+.ao-modal.is-full .ao-modal-head { align-items: center; padding: 14px 28px; }
+.ao-modal.is-full .ao-modal-head > div { flex: 1; min-width: 0; }
+.ao-modal.is-full .ao-modal-head h2 { font-size: 22px; }
+.ao-back { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; min-height: 40px; padding: 0 14px; border: 1px solid #dbe6f3; border-radius: 10px; background: #fff; font: inherit; font-size: 13px; font-weight: 700; color: #0056bf; cursor: pointer; }
+.ao-back:hover { background: #eaf2ff; border-color: #0056bf; }
+.ao-modal.is-full .ao-close { width: 40px; height: 40px; background: #f3f5f7; }
+.ao-modal.is-full .ao-summary { padding: 12px 28px; }
+.ao-modal.is-full .ao-modal-body { width: 100%; max-width: none; box-sizing: border-box; margin: 0; gap: 10px; padding: 14px 24px 28px; }
+@media (max-width: 760px) {
+  .ao-modal.is-full .ao-modal-head { padding: 12px 14px; gap: 10px; }
+  .ao-back span { display: none; }
+  .ao-modal.is-full .ao-modal-body { padding: 12px 14px 24px; }
+}
+
+/* Lista de ofertas a pantalla completa: tabla de resumen por columnas (aprovecha todo el ancho), aceptar/rechazar rápido,
+   "Ver detalle" desplegable y paginación para cuando llegan decenas o cientos de ofertas. */
+.ao-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.ao-search { display: flex; align-items: center; gap: 8px; flex: 1 1 260px; max-width: 380px; min-height: 38px; padding: 0 12px; border: 1px solid #dbe3ec; border-radius: 10px; background: #fff; color: #8a97a5; }
+.ao-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13px; color: #243442; }
+.ao-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.ao-tabs button { min-height: 34px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 12.5px; font-weight: 700; color: #3b4e5d; cursor: pointer; }
+.ao-tabs button:hover { background: #eef3f9; }
+.ao-tabs button.is-active { background: #0056bf; color: #fff; }
+.ao-toolbar select { min-height: 38px; padding: 0 10px; border: 1px solid #dbe3ec; border-radius: 10px; background: #fff; font: inherit; font-size: 12.5px; font-weight: 600; color: #243442; }
+.ao-clear { min-height: 34px; padding: 0 10px; border: 0; background: none; font: inherit; font-size: 12.5px; font-weight: 700; color: #0056bf; cursor: pointer; text-decoration: underline; }
+.ao-modal.is-full { --ao-cols: 28px minmax(170px, 1.1fr) minmax(220px, 1.4fr) 100px minmax(108px, 0.8fr) minmax(120px, 1fr) minmax(88px, 0.6fr) 150px 180px 100px; }
+.ao-table-head, .ao-row { display: grid; grid-template-columns: var(--ao-cols); align-items: center; column-gap: 12px; }
+.ao-table-head { position: sticky; top: -14px; z-index: 2; padding: 9px 14px; border: 1px solid #dbe6f3; border-radius: 10px; background: #eef3f9; font-size: 11px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; color: #5a6b7a; }
+.ao-table-head > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ao-table-head .is-right { text-align: right; }
+.ao-row { padding: 9px 14px; }
+.ao-row:hover { background: #f8fbff; }
+.ao-row > * { min-width: 0; }
+.ao-col-n { font-size: 12px; font-weight: 800; color: #6b7a89; }
+.ao-row-store { display: flex; align-items: center; gap: 10px; }
+.ao-row-store > div { min-width: 0; }
+.ao-row-store strong { display: block; overflow: hidden; font-size: 13px; color: #0f172a; text-overflow: ellipsis; white-space: nowrap; }
+.ao-row-store small { display: flex; align-items: center; gap: 4px; overflow: hidden; font-size: 11px; color: #6b7a89; white-space: nowrap; }
+.ao-row-store small .is-rated { color: #f5a623; fill: #f5a623; }
+.ao-row .ao-offer-avatar { flex: 0 0 34px; width: 34px; height: 34px; }
+.ao-row-items { display: flex; flex-direction: column; gap: 3px; }
+.ao-items-line { display: flex; align-items: center; gap: 5px; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.ao-items-line svg { flex: 0 0 auto; }
+.ao-items-line.is-ok { color: #0e7038; }
+.ao-items-line.is-miss { color: #9a5a00; font-weight: 700; }
+.ao-col-price { text-align: right; font-size: 14.5px; font-weight: 800; color: #0056bf; white-space: nowrap; }
+.ao-col-text { overflow: hidden; font-size: 12.5px; color: #243442; text-overflow: ellipsis; white-space: nowrap; }
+.ao-row-tags { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.ao-row-tags .ao-tag { max-width: 100%; white-space: nowrap; }
+.ao-row-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.ao-btn-primary.is-sm, .ao-btn-outline.is-sm { min-height: 32px; padding: 0 12px; font-size: 12px; }
+.ao-row-actions .is-sm, .ao-row-detail { flex: 0 0 auto; }
+.ao-row-detail { justify-self: end; }
+.ao-row-detail svg { transition: transform 0.15s ease; }
+.ao-row-detail.is-open svg { transform: rotate(180deg); }
+
+.ao-pager { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; padding: 4px 2px; font-size: 12.5px; color: #5a6b7a; }
+.ao-pager label { display: inline-flex; align-items: center; gap: 8px; }
+.ao-pager select { min-height: 32px; padding: 0 8px; border: 1px solid #dbe3ec; border-radius: 8px; background: #fff; font: inherit; font-weight: 700; }
+.ao-pager > div { display: inline-flex; align-items: center; gap: 10px; }
+.ao-pager button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Pantallas más angostas: la fila se parte en bloques para no cortar nada y la cabecera de columnas se oculta. */
+@media (max-width: 1480px) {
+  .ao-table-head { display: none; }
+  .ao-row { grid-template-columns: 26px minmax(0, 1.2fr) minmax(0, 1.8fr) 116px; grid-template-areas: "n store items price" "n tags actions detail"; row-gap: 8px; }
+  .ao-col-n { grid-area: n; align-self: start; }
+  .ao-row > .ao-row-store { grid-area: store; }
+  .ao-row > .ao-row-items { grid-area: items; }
+  .ao-col-price { grid-area: price; }
+  .ao-row-tags { grid-area: tags; }
+  .ao-row-actions { grid-area: actions; }
+  .ao-row-detail { grid-area: detail; }
+  .ao-col-text { display: none; }
+}
+@media (max-width: 760px) {
+  .ao-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "store price" "items items" "tags tags" "actions actions" "detail detail"; }
+  .ao-col-n { display: none; }
+  .ao-row-actions { justify-content: stretch; }
+  .ao-row-actions .is-sm { flex: 1; }
+  .ao-row-detail { justify-self: stretch; }
+  .ao-search { max-width: none; }
+}
+
+/* Filas parejas: todo centrado en vertical, mismo alto y logos con el mismo tamaño y recorte. */
+.ao-row { min-height: 58px; align-items: center; }
+.ao-row > * { align-self: center; }
+.ao-col-n { text-align: center; }
+.ao-row .ao-offer-avatar { flex: 0 0 38px; width: 38px; height: 38px; border-radius: 10px; border: 1px solid #e6eaef; background: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.ao-row .ao-offer-avatar img { width: 100%; height: 100%; object-fit: contain; padding: 3px; box-sizing: border-box; }
+.ao-row-store { gap: 10px; }
+.ao-row-store strong { line-height: 1.25; }
+.ao-row-store small { margin-top: 1px; line-height: 1.25; }
+.ao-row-items, .ao-row-tags { min-height: 38px; justify-content: center; }
+.ao-items-line { line-height: 1.3; }
+.ao-col-price, .ao-col-text { line-height: 1.25; }
+
+/* Detalle desplegable: dos bloques simples, repuestos a la izquierda y condiciones/cumplimiento a la derecha. */
+.ao-detail { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); gap: 28px; padding: 14px 18px 18px 52px; border-top: 1px solid #eef1f4; background: #fbfcfe; }
+.ao-detail h5 { margin: 0 0 8px; font-size: 11px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7a89; }
+.ao-detail-side h5 + dl + h5, .ao-detail-side .ao-kv + h5 { margin-top: 16px; }
+.ao-detail .ao-lines { border: 0; border-radius: 0; font-size: 12.5px; }
+.ao-detail .ao-lines th { padding: 6px 8px 6px 0; background: none; font-size: 11px; font-weight: 700; color: #8a97a5; border-bottom: 1px solid #e6eaef; }
+.ao-detail .ao-lines td { padding: 8px 8px 8px 0; border-bottom: 1px solid #eef1f4; vertical-align: middle; }
+.ao-detail .ao-lines .is-num { padding-right: 0; padding-left: 8px; }
+.ao-detail-miss { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-size: 12px; color: #9a5a00; }
+.ao-detail-miss svg { flex: 0 0 auto; }
+.ao-detail-notes { margin: 8px 0 0; font-size: 12px; line-height: 1.45; color: #3b4e5d; }
+.ao-kv { margin: 0; }
+.ao-kv > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid #eef1f4; font-size: 12.5px; }
+.ao-kv dt { color: #6b7a89; }
+.ao-kv dd { margin: 0; text-align: right; font-weight: 700; color: #0f172a; }
+.ao-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ao-checks li { display: flex; align-items: flex-start; gap: 7px; font-size: 12px; line-height: 1.35; color: #3b4e5d; }
+.ao-checks li svg { flex: 0 0 auto; margin-top: 1px; }
+.ao-checks li b { color: #243442; }
+.ao-checks li.is-ok svg { color: #18a957; } .ao-checks li.is-warn svg { color: #d97706; } .ao-checks li.is-bad svg { color: #d92d20; } .ao-checks li.is-neutral svg { color: #8a97a5; }
+.ao-detail .ao-delivery { margin: 12px 0 0; padding: 8px 10px; border-radius: 8px; }
+.ao-detail .ao-delivery strong { font-size: 12px; }
+.ao-detail .ao-delivery small { font-size: 11.5px; }
+@media (max-width: 1100px) { .ao-detail { grid-template-columns: minmax(0, 1fr); gap: 16px; padding-left: 18px; } }
+
+/* Columnas de dato con ancho justo (sin espacio de sobra) y etiquetas/botones que nunca se pisan. */
+.ao-col-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; line-height: 1.25; }
+.ao-col-price { text-align: left; }
+.ao-table-head .is-right { text-align: left; }
+.ao-row-tags { overflow: hidden; }
+.ao-row-tags .ao-tag { overflow: hidden; text-overflow: ellipsis; }
+.ao-row-actions { flex-wrap: nowrap; overflow: visible; }
+.ao-row-actions .is-sm { white-space: nowrap; }
+
+/* Sugerencias a pantalla completa: ícono en la cabecera que las activa o las oculta. */
+.ao-head-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.ao-hint-btn { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 0; border-radius: 50%; background: #f3f5f7; color: #5a6b7a; cursor: pointer; }
+.ao-hint-btn:hover { background: #fff3d6; color: #b45309; }
+.ao-hint-btn.is-on { background: #ffe9b3; color: #b45309; box-shadow: 0 0 0 2px #fcd34d inset; }
+.ao-hint-help { margin: 4px 0 0; font-size: 12px; line-height: 1.45; color: #5a6b7a; }
+
+/* El ícono de sugerencias vive a la derecha de "Lo que pediste", siempre en color. */
+.ao-wanted .ao-hint-btn { margin-left: auto; width: 34px; height: 34px; background: #fff3d6; color: #d97706; box-shadow: none; }
+.ao-wanted .ao-hint-btn:hover { background: #ffe9b3; color: #b45309; }
+.ao-wanted .ao-hint-btn.is-on { background: #fcd34d; color: #92400e; box-shadow: 0 0 0 2px #f59e0b inset; }

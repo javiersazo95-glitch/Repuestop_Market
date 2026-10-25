@@ -129,7 +129,7 @@ const SELLER_SIDEBAR_GROUPS = [
       { id: 'pedidos', label: 'Pedidos recibidos', icon: ShoppingBag },
       { id: 'productos', label: 'Productos', icon: Package },
       { id: 'cotizaciones', label: 'Cotizaciones', icon: ReceiptText },
-      { id: 'gestion_subastas', label: 'Gestión de necesidades', icon: Gavel },
+      { id: 'gestion_subastas', label: 'Seguimiento de propuestas', icon: Gavel },
       { id: 'preguntas_productos', label: 'Preguntas de productos', icon: MessageCircleQuestion },
       { id: 'chats_compradores', label: 'Chats con compradores', icon: MessageSquare }
     ]

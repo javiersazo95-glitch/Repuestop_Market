@@ -252,3 +252,5 @@
 .av-title-side { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .av-send-offer-btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 20px; border: 0; border-radius: 12px; background: #0056bf; color: #fff; font: inherit; font-size: 13.5px; font-weight: 800; cursor: pointer; white-space: nowrap; }
 .av-send-offer-btn:hover { background: #004aa6; }
+
+.av-offer-ribbon.is-rejected { background: #ffe9e9; color: #b42318; }

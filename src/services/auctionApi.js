@@ -128,6 +128,14 @@ export async function acceptAuctionOffer(auctionId, offerId) {
   });
 }
 
+/** El comprador rechaza una oferta (motivo opcional): la tienda lo sabe al instante y deja de esperar. */
+export async function rejectAuctionOffer(auctionId, offerId, motivo) {
+  return fetchApi(`/necesidades-compra/${encodeURIComponent(String(auctionId))}/cotizaciones/${encodeURIComponent(String(offerId))}/rechazar`, {
+    method: 'POST',
+    body: JSON.stringify({ motivo: motivo?.trim() || undefined }),
+  });
+}
+
 /** Composición de la compra: las ofertas aceptadas de distintas tiendas, con envío, totales y lo que falta por adjudicar. */
 export async function getAuctionPurchase(auctionId, addressId) {
   const query = addressId ? `?direccionId=${encodeURIComponent(String(addressId))}` : '';
