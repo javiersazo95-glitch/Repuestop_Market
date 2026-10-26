@@ -1028,14 +1028,15 @@
   .light-market-header .primary-nav-inner > .is-explore { order: 0; }
   .light-market-header .primary-nav-inner > .categories-nav-wrap { order: 1; }
   .light-market-header .primary-nav-inner > .nav-item-catalog { order: 2; }
-  .light-market-header .primary-nav-inner > .nav-item-stores { order: 3; }
+  .light-market-header .primary-nav-inner > .nav-item-auctions { order: 3; }
   .light-market-header .primary-nav-inner > .nav-item-ads { order: 4; }
-  .light-market-header .primary-nav-inner > .is-more { order: 5; }
-  .light-market-header .primary-nav-inner > .nav-item-help { order: 6; }
-  .light-market-header .primary-nav-inner > .nav-item-about { order: 7; }
-  .light-market-header .primary-nav-inner > .mobile-drawer-seller-cta { order: 8; }
-  .light-market-header .primary-nav-inner > .mobile-drawer-logout { order: 9; }
-  .light-market-header .primary-nav-inner > .mobile-drawer-legal { order: 10; }
+  .light-market-header .primary-nav-inner > .nav-item-stores { order: 5; }
+  .light-market-header .primary-nav-inner > .is-more { order: 6; }
+  .light-market-header .primary-nav-inner > .nav-item-help { order: 7; }
+  .light-market-header .primary-nav-inner > .nav-item-about { order: 8; }
+  .light-market-header .primary-nav-inner > .mobile-drawer-seller-cta { order: 9; }
+  .light-market-header .primary-nav-inner > .mobile-drawer-logout { order: 10; }
+  .light-market-header .primary-nav-inner > .mobile-drawer-legal { order: 11; }
 
   .light-market-header .primary-nav-inner > button,
   .light-market-header .categories-nav-wrap > button {
@@ -1085,6 +1086,7 @@
   }
   .light-market-header .categories-nav-wrap > button { --tile-bg: #fff1e6; --tile-fg: #c2410c; }
   .light-market-header .primary-nav-inner > .nav-item-catalog { --tile-bg: #eaf2ff; --tile-fg: #1d4ed8; }
+  .light-market-header .primary-nav-inner > .nav-item-auctions { --tile-bg: #fff4e0; --tile-fg: #b45309; }
   .light-market-header .primary-nav-inner > .nav-item-stores { --tile-bg: #e6f7ef; --tile-fg: #047857; }
   .light-market-header .primary-nav-inner > .nav-item-ads { --tile-bg: #f1ebff; --tile-fg: #6d28d9; }
   .light-market-header .primary-nav-inner > .nav-item-help { --tile-bg: #e4f5fd; --tile-fg: #0369a1; }
