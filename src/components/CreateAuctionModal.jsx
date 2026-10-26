@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X, Upload, Trash2, AlertCircle, CheckCircle2, Clock, MapPin, Plus, ShieldCheck, Car, Package,
 } from 'lucide-react';
 import { normalizePlate } from '../utils/vehicleLookup';
 import usePlateLookup, { maskPlate } from '../utils/usePlateLookup';
 import { shippingClass } from '../utils/auctionOfferFit';
-import { createAddressApi, getAddressesApi } from '../services/api';
+import { createAddressApi, getAddressesApi, resolveMediaUrl } from '../services/api';
 import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import AuctionCreateMobile from './AuctionCreateMobile';
@@ -456,7 +457,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
                 {fotos.map((url, idx) => (
                   <div key={idx} className="auction-photo-thumb-wrap">
-                    <img src={url} alt={`Foto ${idx + 1}`} />
+                    <img src={resolveMediaUrl(url)} alt={`Foto ${idx + 1}`} />
                     <button type="button" onClick={() => setFotos((prev) => prev.filter((_, i) => i !== idx))} className="auction-photo-remove-btn">
                       <Trash2 size={12} />
                     </button>
@@ -572,6 +573,10 @@ export default function CreateAuctionModal(props) {
   const isMobile = useIsMobile();
   if (!props.isOpen) return null;
   // En el celular, publicar y editar usan el formulario idéntico al de la app.
-  if (isMobile) return <AuctionCreateMobile auction={props.auction || null} onClose={props.onClose} onSuccess={props.onSuccess} />;
-  return <CreateAuctionModalContent {...props} />;
+  const view = isMobile
+    ? <AuctionCreateMobile auction={props.auction || null} onClose={props.onClose} onSuccess={props.onSuccess} />
+    : <CreateAuctionModalContent {...props} />;
+  // Fuera del panel del perfil: los contenedores del intranet (scroll, apilado) recortaban el popup y dejaban
+  // el menú y la barra superior encima de los campos.
+  return typeof document !== 'undefined' ? createPortal(view, document.body) : view;
 }
