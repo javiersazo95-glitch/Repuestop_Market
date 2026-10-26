@@ -74,7 +74,7 @@ export default function WorkshopRegisterPage() {
       <div className="ft-page"><div className="ft-shell">
         <div className="ft-card" style={{ alignItems: 'center', textAlign: 'center' }}>
           <CheckCircle2 size={40} color="#0e7038" />
-          <h1 style={{ fontSize: 22 }}>Taller creado</h1>
+          <h1>Taller creado</h1>
           <p className="ft-sub">Tu cuenta quedó lista. Falta acreditar tu negocio para publicar anuncios y comentar fallas: sube tu identidad, inicio de actividades y patente municipal.</p>
           <button type="button" className="ft-btn ft-btn-primary" onClick={() => navigate(`${ROUTES.profile}/resumen`, { replace: true })}>Ir a mi perfil</button>
         </div>

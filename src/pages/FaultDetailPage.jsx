@@ -118,7 +118,7 @@ export default function FaultDetailPage() {
 
         <section className="ft-card">
           <div className="ft-card-top">
-            <h1 style={{ fontSize: 22 }}>{fault.titulo}</h1>
+            <h1>{fault.titulo}</h1>
             <span className={`ft-badge ${fault.vigente ? '' : 'is-closed'}`}>{fault.vigente ? 'Abierta' : 'Cerrada'}</span>
           </div>
           <p className="ft-sub">{fault.autor} · {timeSince(fault.createdAt)}</p>
@@ -136,7 +136,7 @@ export default function FaultDetailPage() {
           {fault.propia && fault.vigente && <div className="ft-actions"><button type="button" className="ft-btn ft-btn-outline" onClick={close}>Cerrar falla</button></div>}
         </section>
 
-        <h2 style={{ fontSize: 18, color: 'var(--ft-strong)' }}>Diagnósticos de talleres ({diagnostics.length})</h2>
+        <h2 style={{ color: 'var(--ft-strong)' }}>Diagnósticos de talleres ({diagnostics.length})</h2>
         {diagnostics.length === 0 ? (
           <div className="ft-empty"><strong>Aún no hay diagnósticos</strong>{fault.propia ? 'Avisamos a los talleres acreditados. Te notificaremos cuando respondan.' : 'Sé el primero en dejar tu diagnóstico.'}</div>
         ) : (

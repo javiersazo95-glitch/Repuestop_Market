@@ -90,7 +90,7 @@ export default function WorkshopProfilePage() {
           <div className="ft-hero">
             {profile.logoUrl ? <img className="ft-logo" src={resolveMediaUrl(profile.logoUrl)} alt={`Logo de ${profile.nombre}`} /> : <span className="ft-logo" aria-hidden="true">{profile.nombre.slice(0, 1)}</span>}
             <div style={{ flex: 1, minWidth: 220 }}>
-              <h1 style={{ fontSize: 24 }}>{profile.nombre}</h1>
+              <h1>{profile.nombre}</h1>
               <p className="ft-sub" style={{ display: 'flex', gap: 6, alignItems: 'center' }}><MapPin size={14} /> {place || 'Ubicación por confirmar'}</p>
               <div className="ft-chips" style={{ marginTop: 8 }}>
                 <span className="ft-badge"><ShieldCheck size={12} /> Taller acreditado</span>

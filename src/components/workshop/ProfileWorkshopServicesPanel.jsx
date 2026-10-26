@@ -82,7 +82,7 @@ export default function ProfileWorkshopServicesPanel() {
     <div className="ft-page" style={{ background: 'transparent', minHeight: 0, paddingBottom: 0 }}>
       <div className="ft-shell" style={{ padding: 0 }}>
         <div className="ft-head">
-          <div><h2 style={{ fontSize: 22 }}>Mis servicios</h2><p>Regístralos una vez, con su precio y las marcas en que eres especialista, y elígelos al publicar tu anuncio.</p></div>
+          <div><h2>Mis servicios</h2><p>Regístralos una vez, con su precio y las marcas en que eres especialista, y elígelos al publicar tu anuncio.</p></div>
           <button type="button" className="ft-btn ft-btn-primary" onClick={() => open('new')}><Plus size={16} /> Nuevo servicio</button>
         </div>
 

@@ -40,7 +40,7 @@ export default function ProfileDiagnosticPanel({ onOpenAds }) {
   return (
     <div className="ft-page" style={{ background: 'transparent', minHeight: 0, paddingBottom: 0 }}>
       <div className="ft-shell" style={{ padding: 0 }}>
-        <div className="ft-head"><div><h2 style={{ fontSize: 22 }}>Servicio Diagnóstico</h2><p>Ofrece agendamiento en tus comentarios de fallas sin publicar un anuncio Empresarial.</p></div></div>
+        <div className="ft-head"><div><h2>Servicio Diagnóstico</h2><p>Ofrece agendamiento en tus comentarios de fallas sin publicar un anuncio Empresarial.</p></div></div>
 
         <section className="ft-card">
           <div className="ft-card-top">
