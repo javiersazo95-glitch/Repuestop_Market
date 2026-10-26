@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Store } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
+import '../styles/auction-avatar.css';
 
 /** Foto de perfil de un comprador o de una tienda; si no hay foto (o no carga), inicial o ícono de tienda. */
 export default function AuctionAvatar({ src, name = '', isStore = false, className = '' }) {

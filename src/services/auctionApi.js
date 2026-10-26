@@ -100,10 +100,21 @@ export async function getAuctionComments(auctionId) {
   return fetchApi(`/necesidades-compra/${encodeURIComponent(String(auctionId))}/comentarios`, { anonymous: true });
 }
 
-export async function postAuctionComment(auctionId, texto) {
+/** Preguntas de tiendas sin responder en las necesidades del comprador: { [idNecesidad]: cantidad }. */
+export async function getPendingQuestionCounts() {
+  return fetchApi('/necesidades-compra/mis-solicitudes/preguntas-pendientes');
+}
+
+/** Preguntas que la tienda hizo a necesidades de otros compradores, con las respuestas recibidas. */
+export async function getMyAuctionQuestions() {
+  return fetchApi('/necesidades-compra/mis-solicitudes/preguntas-realizadas');
+}
+
+/** Con `respondeAId` el creador de la necesidad contesta una pregunta puntual de una tienda. */
+export async function postAuctionComment(auctionId, texto, respondeAId = null) {
   return fetchApi(`/necesidades-compra/${encodeURIComponent(String(auctionId))}/comentarios`, {
     method: 'POST',
-    body: JSON.stringify({ texto }),
+    body: JSON.stringify({ texto, respondeAId }),
   });
 }
 

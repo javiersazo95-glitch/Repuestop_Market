@@ -7,7 +7,7 @@ import {
   Pencil, Search, Send, Tag, Trophy, User, Wallet, XCircle,
 } from 'lucide-react';
 import {
-  getAuctionComments, getAuctionDetail, getMyAuctionOffers, getSavedAuctions, postAuctionComment, setAuctionSaved,
+  auctionTrackingCode, getAuctionComments, getAuctionDetail, getMyAuctionOffers, getMyAuctionQuestions, getSavedAuctions, postAuctionComment, setAuctionSaved,
 } from '../services/auctionApi';
 import { auctionDetailPath, profileOrderPath, ROUTES } from '../routes/paths';
 import { useAuth } from '../context/AuthContext';
@@ -54,6 +54,7 @@ const FILTERS = [
   ['paid', 'Pagadas'],
   ['lost', 'Perdidas'],
   ['saved', 'Guardadas'],
+  ['questions', 'Preguntas'],
 ];
 
 function matchesFilter(offer, filter) {
@@ -61,7 +62,7 @@ function matchesFilter(offer, filter) {
   if (filter === 'won') return WON_STATES.includes(offer.estado);
   if (filter === 'paid') return offer.estado === 'PAGADA';
   if (filter === 'lost') return LOST_STATES.includes(offer.estado);
-  return filter !== 'saved';
+  return filter !== 'saved' && filter !== 'questions';
 }
 
 function formatRemaining(seconds) {
@@ -163,12 +164,18 @@ function PublicQuestions({ auctionId, isOpen }) {
         <p className="pt-muted">Aún no hay preguntas sobre esta necesidad.</p>
       ) : (
         <ul className="pt-comment-list">
-          {comments.map((comment) => (
+          {comments.filter((comment) => comment.respondeAId == null || !comments.some((c) => c.id === comment.respondeAId)).map((comment) => (
             <li key={comment.id} className={comment.autorEsComprador ? 'is-buyer' : comment.autorEsTienda ? 'is-store' : ''}>
               <AuctionAvatar className="pt-avatar" src={comment.autorFotoUrl} name={comment.autor || ''} isStore={comment.autorEsTienda} />
               <div>
-                <p><strong>{comment.autorEsComprador ? 'Pregunta pública del comprador' : comment.autor || 'Tienda'}</strong> <small>{formatDateTime(comment.createdAt)}</small></p>
+                <p><strong>{comment.autorEsComprador ? 'Comentario del comprador' : comment.autor || 'Tienda'}</strong> <small>{formatDateTime(comment.createdAt)}</small></p>
                 <p>{comment.texto}</p>
+                {comments.filter((reply) => reply.respondeAId === comment.id).map((reply) => (
+                  <div key={reply.id} className="pt-reply">
+                    <p><strong>Respuesta del cliente</strong> <small>{formatDateTime(reply.createdAt)}</small></p>
+                    <p>{reply.texto}</p>
+                  </div>
+                ))}
               </div>
             </li>
           ))}
@@ -184,6 +191,38 @@ function PublicQuestions({ auctionId, isOpen }) {
         </form>
       )}
     </section>
+  );
+}
+
+/** Preguntas que la tienda hizo a las necesidades, cada una con la respuesta anidada del comprador. */
+function MyQuestionsList({ questions, onOpen }) {
+  if (questions.length === 0) {
+    return <EmptyState label="Aún no has hecho preguntas. Abre una necesidad de compra y pregunta lo que necesites para afinar tu oferta." />;
+  }
+  return (
+    <ul className="pt-myq-list">
+      {questions.map((question) => {
+        const answered = question.respuestas?.length > 0;
+        return (
+          <li key={question.id} className={answered ? 'is-answered' : ''}>
+            <header>
+              <span className="pt-myq-code">{auctionTrackingCode(question.necesidadId)}</span>
+              <strong title={question.necesidadTitulo}>{question.necesidadTitulo}</strong>
+              <span className={`pt-pill is-${answered ? 'green' : 'amber'}`}>{answered ? 'Respondida' : 'Sin respuesta'}</span>
+              <small>{formatDateTime(question.createdAt)}</small>
+              <button type="button" className="pt-btn" onClick={() => onOpen(question.necesidadId)}>Ver necesidad <ArrowRight size={14} /></button>
+            </header>
+            <p className="pt-myq-text">{question.texto}</p>
+            {(question.respuestas || []).map((reply) => (
+              <div key={reply.id} className="pt-reply">
+                <p><strong>Respuesta del cliente</strong> <small>{formatDateTime(reply.createdAt)}</small></p>
+                <p>{reply.texto}</p>
+              </div>
+            ))}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -282,7 +321,7 @@ function SavedRow({ auction, myOffer, onOpen, onRemove, busy }) {
   const open = auction.estado === 'ACTIVA' && remaining > 0;
   return (
     <tr>
-      <td><span className="pt-need"><span className="pt-thumb"><Gavel size={18} /></span><span><strong>{auction.repuestoSolicitado}</strong><small>Pedido N.º {auction.id}</small></span></span></td>
+      <td className="pt-code-cell">{auctionTrackingCode(auction.id)}</td>
       <td>{vehicle || '—'}</td>
       <td>{auction.totalCotizaciones || 0} ofertas</td>
       <td><span className={`pt-pill is-${open ? 'blue' : 'gray'}`}>{open ? 'Activa' : 'Cerrada'}</span>{myOffer && <span className="pt-pill is-green">Ya ofertaste</span>}</td>
@@ -308,14 +347,18 @@ export default function ProfileAuctionManagementPanel() {
   const [editing, setEditing] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [saved, setSaved] = useState([]);
+  const [myQuestions, setMyQuestions] = useState([]);
   const [removingId, setRemovingId] = useState(null);
 
   const load = useCallback(async () => {
     try {
       setError('');
-      const [offersData, savedData] = await Promise.all([getMyAuctionOffers(), getSavedAuctions().catch(() => [])]);
+      const [offersData, savedData, questionsData] = await Promise.all([
+        getMyAuctionOffers(), getSavedAuctions().catch(() => []), getMyAuctionQuestions().catch(() => []),
+      ]);
       setData(offersData);
       setSaved(Array.isArray(savedData) ? savedData : []);
+      setMyQuestions(Array.isArray(questionsData) ? questionsData : []);
     } catch (err) {
       setError(err?.message || 'No pudimos cargar tus ofertas.');
     } finally {
@@ -333,13 +376,16 @@ export default function ProfileAuctionManagementPanel() {
     paid: offers.filter((item) => matchesFilter(item.oferta, 'paid')).length,
     lost: offers.filter((item) => matchesFilter(item.oferta, 'lost')).length,
     saved: saved.length,
-  }), [offers, saved]);
+    questions: myQuestions.length,
+  }), [offers, saved, myQuestions]);
 
   const text = query.trim().toLowerCase();
   const visible = useMemo(() => offers.filter((item) => matchesFilter(item.oferta, filter)
     && (!text || `${item.necesidad.titulo} ${item.necesidad.vehiculo || ''} ${item.necesidad.comprador || ''} ${item.necesidad.id}`.toLowerCase().includes(text))), [offers, filter, text]);
   const visibleSaved = useMemo(() => saved.filter((auction) => !text
     || `${auction.repuestoSolicitado} ${auction.marca || ''} ${auction.modelo || ''} ${auction.id}`.toLowerCase().includes(text)), [saved, text]);
+  const visibleQuestions = useMemo(() => myQuestions.filter((question) => !text
+    || `${question.necesidadTitulo} ${question.texto} ${auctionTrackingCode(question.necesidadId)}`.toLowerCase().includes(text)), [myQuestions, text]);
   const myOfferIds = useMemo(() => new Set(offers.map((item) => item.necesidad.id)), [offers]);
 
   const selected = useMemo(
@@ -411,7 +457,9 @@ export default function ProfileAuctionManagementPanel() {
             </label>
           </div>
 
-          {filter === 'saved' ? (
+          {filter === 'questions' ? (
+            <MyQuestionsList questions={visibleQuestions} onOpen={(id) => navigate(auctionDetailPath(id))} />
+          ) : filter === 'saved' ? (
             visibleSaved.length === 0 ? (
               <EmptyState label="No tienes solicitudes guardadas. Abre una necesidad de compra y presiona «Guardar» para hacerle seguimiento." />
             ) : (
@@ -442,7 +490,7 @@ export default function ProfileAuctionManagementPanel() {
                       return (
                         <tr key={oferta.id} className={active ? 'is-selected' : ''} onClick={() => setSelectedId(oferta.id)} tabIndex={0} aria-selected={active}
                           onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedId(oferta.id); } }}>
-                          <td><span className="pt-need"><span className="pt-thumb"><Gavel size={18} /></span><span><strong title={necesidad.titulo}>{necesidad.titulo}</strong><small>Pedido N.º {necesidad.id} · {necesidad.itemsTotal} {necesidad.itemsTotal === 1 ? 'repuesto' : 'repuestos'}</small></span></span></td>
+                          <td className="pt-code-cell" title={necesidad.titulo}>{auctionTrackingCode(necesidad.id)}</td>
                           <td className="pt-cell-vehicle" title={necesidad.vehiculo || undefined}>{necesidad.vehiculo || '—'}</td>
                           <td><StatePill estado={oferta.estado} /></td>
                           <td className="pt-date">{formatDateTime(oferta.actualizadaEn || oferta.enviadaEn)}</td>

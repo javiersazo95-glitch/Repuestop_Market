@@ -1,0 +1,10 @@
+/* Foto de perfil de comprador o tienda: círculo de proporción fija en cualquier vista que la use.
+   El tamaño por defecto va en :where() (especificidad 0) para que cada vista pueda fijar el suyo. */
+.as-avatar-box {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  box-sizing: border-box; aspect-ratio: 1 / 1; border-radius: 50%; overflow: hidden; line-height: 1;
+  background: #eaf2ff; color: #0056bf; font-weight: 800; user-select: none;
+}
+:where(.as-avatar-box) { width: 36px; height: 36px; font-size: 14px; }
+.as-avatar-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.as-avatar-box.is-store { background: #f3f5f7; color: #5a6b7a; }

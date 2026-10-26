@@ -116,7 +116,7 @@
 .pt-comment-list p:first-child { font-size: 12px; }
 .pt-comment-list p small { margin-left: 6px; color: #8a97a5; font-weight: 500; }
 .pt-comment-list li.is-store p strong { color: #0056bf; }
-.pt-avatar { flex: 0 0 30px; width: 30px; height: 30px; }
+.pt-avatar { flex: 0 0 30px; width: 30px; height: 30px; font-size: 12px; }
 .pt-composer { display: flex; align-items: center; gap: 8px; }
 .pt-composer input { flex: 1; min-width: 0; min-height: 40px; padding: 0 12px; border: 1px solid #dbe3ec; border-radius: 10px; font: inherit; font-size: 13px; }
 .pt-composer input:focus { outline: none; border-color: #0056bf; box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.12); }
@@ -207,3 +207,16 @@
 .pt-avatar { flex-basis: 24px; width: 24px; height: 24px; font-size: 11px; }
 .pt-composer input { min-height: 34px; font-size: 12.5px; }
 .pt-detail-actions { gap: 6px; }
+.pt-reply { margin-top: 8px; padding: 8px 10px; border-left: 3px solid #0056bf; border-radius: 0 8px 8px 0; background: #fff; }
+.pt-myq-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.pt-myq-list > li { padding: 14px 16px; border: 1px solid #dfe6ee; border-radius: 12px; background: #fff; box-shadow: inset 3px 0 0 #f0a500; }
+.pt-myq-list > li.is-answered { box-shadow: inset 3px 0 0 #12a150; }
+.pt-myq-list header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.pt-myq-list header strong { flex: 1 1 160px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: #0f172a; }
+.pt-myq-list header small { color: #8a97a5; font-size: 12px; }
+.pt-myq-code { padding: 2px 8px; border-radius: 6px; background: #eef3f9; color: #0056bf; font-size: 12px; font-weight: 800; letter-spacing: 0.02em; }
+.pt-myq-text { margin: 0; font-size: 13.5px; line-height: 1.5; color: #243442; overflow-wrap: anywhere; white-space: pre-line; }
+.pt-myq-list .pt-reply { margin-top: 10px; background: #eaf2ff; }
+.pt-myq-list .pt-reply p { margin: 0; font-size: 13px; line-height: 1.45; color: #243442; }
+.pt-code-cell { font-size: 13px; font-weight: 800; letter-spacing: 0.02em; color: #0f172a; white-space: nowrap; }
+.pt-layout .pt-col-need { width: 120px; }

@@ -2,16 +2,17 @@ import '../styles/profile-auctions.css';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertCircle, ArrowRight, CalendarDays, Car, CheckCircle2, Clock, Gavel, Inbox, Lock, MapPin, Package, PackageCheck, Pencil, Plus,
+  AlertCircle, ArrowRight, CalendarDays, Car, CheckCircle2, Clock, Gavel, Inbox, Lock, MapPin, MessageCircle, Package, PackageCheck, Pencil, Plus,
   ReceiptText, Search, ShoppingCart, Tag, X,
 } from 'lucide-react';
-import { getAuctionDetail, getMyAuctionRequests } from '../services/auctionApi';
+import { getAuctionDetail, getMyAuctionRequests, getPendingQuestionCounts } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
 import { auctionDetailPath, profilePurchasePath, profileOrderPath } from '../routes/paths';
 import { useAuth } from '../context/AuthContext';
 import CreateAuctionModal from './CreateAuctionModal';
 import AuctionOffersModal from './AuctionOffersModal';
 import AuctionPurchaseModal from './AuctionPurchaseModal';
+import AuctionQuestionsModal from './AuctionQuestionsModal';
 import ListPager from './ListPager';
 import usePagedList from '../hooks/usePagedList';
 import { EmptyState } from './ProfileDashboard';
@@ -58,7 +59,7 @@ const FILTERS = [
   ['history', 'Historial'],
 ];
 
-function AuctionRow({ auction, stage, now, isSeller, onNavigate, onOpenOffers, onOpenPurchase, onEdit, editBusy }) {
+function AuctionRow({ auction, stage, now, isSeller, onNavigate, onOpenOffers, onOpenPurchase, onOpenQuestions, pendingQuestions, onEdit, editBusy }) {
   const [blockedNotice, setBlockedNotice] = useState(false);
   const canEdit = auction.editable !== false;
   const vehicle = [auction.marca, auction.modelo, auction.anio].filter(Boolean).join(' ');
@@ -151,6 +152,10 @@ function AuctionRow({ auction, stage, now, isSeller, onNavigate, onOpenOffers, o
           <button type="button" className="pa-btn-link" onClick={() => onNavigate(auctionDetailPath(auction.id))}>
             Ver detalle <ArrowRight size={14} />
           </button>
+          <button type="button" className="pa-btn-secondary pa-btn-icon" onClick={() => onOpenQuestions(auction)} aria-label={pendingQuestions > 0 ? `Preguntas de las tiendas (${pendingQuestions} sin responder)` : 'Preguntas de las tiendas'} title="Preguntas de las tiendas">
+            <MessageCircle size={15} />
+            {pendingQuestions > 0 && <span className="pa-q-badge">{pendingQuestions > 99 ? '99+' : pendingQuestions}</span>}
+          </button>
           <button
             type="button"
             className={`pa-btn-secondary pa-btn-edit ${canEdit ? '' : 'is-locked'}`}
@@ -186,6 +191,8 @@ export default function ProfileAuctionsPanel() {
   const [filter, setFilter] = useState('all');
   const [offersAuctionId, setOffersAuctionId] = useState(null);
   const [purchaseAuctionId, setPurchaseAuctionId] = useState(null);
+  const [questionsAuction, setQuestionsAuction] = useState(null);
+  const [pendingQuestions, setPendingQuestions] = useState({});
   const [search, setSearch] = useState('');
   const [now, setNow] = useState(() => Date.now());
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -194,8 +201,9 @@ export default function ProfileAuctionsPanel() {
 
   const load = useCallback(async () => {
     try {
-      const data = await getMyAuctionRequests();
+      const [data, pending] = await Promise.all([getMyAuctionRequests(), getPendingQuestionCounts().catch(() => ({}))]);
       setAuctions(Array.isArray(data) ? data : data?.content || []);
+      setPendingQuestions(pending && typeof pending === 'object' ? pending : {});
       setError('');
     } catch (err) {
       setError(err?.message || 'No pudimos cargar tus necesidades de compra.');
@@ -218,6 +226,9 @@ export default function ProfileAuctionsPanel() {
     toPay: rows.filter(({ stage }) => stage.key === 'quote').length,
     purchased: rows.filter(({ stage }) => stage.key === 'purchased').length,
   }), [rows]);
+
+  const pendingTotal = useMemo(() => Object.values(pendingQuestions).reduce((sum, value) => sum + Number(value || 0), 0), [pendingQuestions]);
+  const pendingAuctions = Object.keys(pendingQuestions).length;
 
   const visibleRows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -270,6 +281,13 @@ export default function ProfileAuctionsPanel() {
         <article className="is-unread"><PackageCheck size={18} /><span><strong>{summary.purchased}</strong>Compradas</span></article>
       </div>
 
+      {pendingTotal > 0 && (
+        <p className="pa-q-banner" role="status">
+          <MessageCircle size={16} />
+          <span>Tienes <b>{pendingTotal} {pendingTotal === 1 ? 'pregunta nueva' : 'preguntas nuevas'}</b> de las tiendas por responder en {pendingAuctions} {pendingAuctions === 1 ? 'necesidad' : 'necesidades'}.</span>
+        </p>
+      )}
+
       <div className="seller-quotes-toolbar">
         <label className="seller-quotes-search"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar repuesto, vehículo o categoría..." />{search && <button type="button" onClick={() => setSearch('')} aria-label="Limpiar búsqueda"><X size={13} /></button>}</label>
         <div className="seller-quotes-filters" role="group" aria-label="Filtrar necesidades de compra">
@@ -291,7 +309,7 @@ export default function ProfileAuctionsPanel() {
         <>
           <div className="pa-list">
             {pageItems.map(({ auction, stage }) => (
-              <AuctionRow key={auction.id} auction={auction} stage={stage} now={now} isSeller={isSeller} onNavigate={navigate} onOpenOffers={(item) => setOffersAuctionId(item.id)} onOpenPurchase={(item) => setPurchaseAuctionId(item.id)} onEdit={openEdit} editBusy={editBusyId === auction.id} />
+              <AuctionRow key={auction.id} auction={auction} stage={stage} now={now} isSeller={isSeller} onNavigate={navigate} onOpenOffers={(item) => setOffersAuctionId(item.id)} onOpenPurchase={(item) => setPurchaseAuctionId(item.id)} onOpenQuestions={setQuestionsAuction} pendingQuestions={pendingQuestions[auction.id] || 0} onEdit={openEdit} editBusy={editBusyId === auction.id} />
             ))}
           </div>
           <ListPager pagerProps={pagerProps} itemLabel="necesidades" />
@@ -313,6 +331,20 @@ export default function ProfileAuctionsPanel() {
         onClose={() => { setPurchaseAuctionId(null); load(); }}
         onSeeOffers={() => setOffersAuctionId(purchaseAuctionId)}
       />
+
+      {questionsAuction && (
+        <AuctionQuestionsModal
+          auctionId={questionsAuction.id}
+          title={questionsAuction.repuestoSolicitado}
+          canReply={questionsAuction.estado === 'ACTIVA' && new Date(questionsAuction.fechaLimite).getTime() > now}
+          onPendingChange={(count) => setPendingQuestions((current) => {
+            const next = { ...current };
+            if (count > 0) next[questionsAuction.id] = count; else delete next[questionsAuction.id];
+            return next;
+          })}
+          onClose={() => setQuestionsAuction(null)}
+        />
+      )}
 
       <CreateAuctionModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onSuccess={handleCreated} />
       {editing && (

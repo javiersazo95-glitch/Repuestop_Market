@@ -19,7 +19,7 @@ function timeAgo(iso) {
 }
 
 /** Comentarios públicos de la necesidad: las tiendas preguntan para afinar la cotización. */
-export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = true }) {
+export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = true, isCreator = false }) {
   const { isLoggedIn } = useAuth();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +27,8 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [sortBy, setSortBy] = useState('RECIENTES');
+  const [replyingId, setReplyingId] = useState(null);
+  const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -55,7 +57,31 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
     }
   };
 
-  const ordered = sortBy === 'RECIENTES' ? [...comments].reverse() : comments;
+  const submitReply = async (event, question) => {
+    event.preventDefault();
+    const value = replyText.trim();
+    if (!value) return;
+    setSending(true);
+    setError('');
+    try {
+      const created = await postAuctionComment(auctionId, value, question.id);
+      setComments((current) => [...current, created]);
+      setReplyText('');
+      setReplyingId(null);
+    } catch (err) {
+      setError(err?.message || 'No pudimos publicar tu respuesta.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Las respuestas del creador cuelgan de la pregunta que contestan; el orden aplica a las preguntas.
+  const repliesByQuestion = comments.reduce((acc, comment) => {
+    if (comment.respondeAId == null) return acc;
+    return { ...acc, [comment.respondeAId]: [...(acc[comment.respondeAId] || []), comment] };
+  }, {});
+  const questions = comments.filter((comment) => comment.respondeAId == null || !comments.some((c) => c.id === comment.respondeAId));
+  const ordered = sortBy === 'RECIENTES' ? [...questions].reverse() : questions;
 
   return (
     <section className="as-card as-comments" aria-label="Comentarios de la necesidad">
@@ -79,6 +105,8 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
         <p className="as-muted as-closed">Esta necesidad de compra ya no recibe comentarios.</p>
       ) : isLoggedIn && !canComment ? (
         <p className="as-muted as-closed">Solo las tiendas pueden comentar esta necesidad para afinar su oferta; el comprador responde aquí.</p>
+      ) : isCreator ? (
+        <p className="as-muted as-closed">Responde cada pregunta con el botón «Responder» bajo ella; tu respuesta queda anidada en esa pregunta.</p>
       ) : isLoggedIn ? (
         <form className="as-composer" onSubmit={submit}>
           <input
@@ -114,6 +142,29 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
                   <small>{timeAgo(comment.createdAt)}</small>
                 </div>
                 <p>{comment.texto}</p>
+                {(repliesByQuestion[comment.id] || []).map((reply) => (
+                  <div key={reply.id} className="as-reply">
+                    <div className="as-comment-head">
+                      <strong>{reply.autor}</strong>
+                      <span className="as-tag">Respuesta del cliente</span>
+                      <small>{timeAgo(reply.createdAt)}</small>
+                    </div>
+                    <p>{reply.texto}</p>
+                  </div>
+                ))}
+                {isCreator && isOpen && !comment.autorEsComprador && comment.respondeAId == null && (
+                  replyingId === comment.id ? (
+                    <form className="as-reply-form" onSubmit={(event) => submitReply(event, comment)}>
+                      <input type="text" autoFocus value={replyText} onChange={(e) => setReplyText(e.target.value)} maxLength={MAX_LENGTH} placeholder="Escribe tu respuesta…" aria-label={`Responder a ${comment.autor}`} />
+                      <button type="submit" className="as-btn-primary" disabled={sending || !replyText.trim()}><Send size={14} /> Responder</button>
+                      <button type="button" className="as-reply-cancel" onClick={() => setReplyingId(null)}>Cancelar</button>
+                    </form>
+                  ) : (
+                    <button type="button" className="as-reply-btn" onClick={() => { setReplyingId(comment.id); setReplyText(''); }}>
+                      {(repliesByQuestion[comment.id] || []).length === 0 ? 'Responder' : 'Agregar otra respuesta'}
+                    </button>
+                  )
+                )}
               </div>
             </li>
           ))}

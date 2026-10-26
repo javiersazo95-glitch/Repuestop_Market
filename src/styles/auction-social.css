@@ -172,3 +172,12 @@
 .as-stats dt { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #5a6b7a; }
 .as-stats dt svg { color: #0056bf; flex-shrink: 0; }
 .as-stats dd { margin: 3px 0 0; font-size: 13px; font-weight: 800; color: #0f172a; }
+
+.as-reply { margin-top: 10px; padding: 10px 12px; border-left: 3px solid #0056bf; border-radius: 0 10px 10px 0; background: #f3f8ff; }
+.as-reply-btn { margin-top: 6px; padding: 0; border: 0; background: none; color: #0056bf; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.as-reply-btn:hover { text-decoration: underline; }
+.as-reply-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.as-reply-form input { flex: 1 1 220px; min-width: 0; padding: 9px 12px; border: 1px solid #c9d3de; border-radius: 10px; font-size: 13px; }
+.as-reply-form input:focus { outline: none; border-color: #0056bf; box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.12); }
+.as-reply-form .as-btn-primary { width: auto; min-height: 38px; padding: 0 16px; }
+.as-reply-cancel { min-height: 38px; padding: 0 12px; border: 1px solid #c9d3de; border-radius: 10px; background: #fff; color: #243442; font-size: 12.5px; font-weight: 700; cursor: pointer; }

@@ -435,7 +435,7 @@ export default function AuctionDetailPage() {
 
             <div className={`av-fold av-fold-comments ${openFolds.comments ? 'is-open' : ''}`}>
               <button type="button" className="av-fold-toggle" onClick={() => toggleFold('comments')} aria-expanded={Boolean(openFolds.comments)} aria-label="Mostrar u ocultar los comentarios"><ChevronDown size={18} /></button>
-              <AuctionCommentsPanel auctionId={auction.id} isOpen={isOpen} canComment={isSeller || esCreador} />
+              <AuctionCommentsPanel auctionId={auction.id} isOpen={isOpen} canComment={isSeller || esCreador} isCreator={Boolean(esCreador)} />
             </div>
           </div>
 
