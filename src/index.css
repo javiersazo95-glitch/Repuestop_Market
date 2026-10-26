@@ -2876,7 +2876,8 @@ input, select, textarea {
 }
 
 .auth-modal-card--wide {
-  max-width: 800px;
+  /* Tres tarjetas de rol (comprador, taller y tienda) en una misma fila. */
+  max-width: 1080px;
 }
 
 .modal-close-btn {
@@ -3142,11 +3143,11 @@ input, select, textarea {
 
 .role-selection-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .role-selection-grid {
     grid-template-columns: 1fr;
   }

@@ -1117,7 +1117,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                   <h3>Comprador</h3>
                   <p>Busca por patente, cotiza repuestos compatibles y compra de forma segura para tu vehículo.</p>
                 </div>
-                <div className="role-badge-tag">Para Conductores y Talleres</div>
+                <div className="role-badge-tag">Para conductores</div>
               </button>
               <button type="button" className="role-option-card seller-card"
                 onClick={() => {
@@ -1173,7 +1173,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                     </li>
                   ))}
                 </ul>
-                <div className="role-badge-tag">Para Conductores y Talleres</div>
+                <div className="role-badge-tag">Para conductores</div>
               </div>
 
               {/* Seller Card */}
