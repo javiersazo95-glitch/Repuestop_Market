@@ -84,7 +84,7 @@ export const AUCTION_HELP_FAQS = [
   {
     grupo: 'Ofertas y aceptación',
     q: '¿Puedo aceptar más de una oferta?',
-    a: 'Sí. Una tienda puede cubrir solo parte de tu pedido (por ejemplo 2 de 3 repuestos) y la otra el resto. Al aceptar una oferta, los repuestos que cubre quedan adjudicados a esa tienda y lo que siga pendiente permanece abierto para que otras tiendas ofrezcan hasta que termine el plazo o hasta que todo esté adjudicado. Las ofertas que ya no tienen repuestos pendientes se descartan.',
+    a: 'No hace falta: cada oferta que recibes es completa, porque las tiendas solo pueden enviarla si cubren todos los repuestos de tu pedido. Compara las ofertas y acepta la que más te convenga; al aceptarla, todo el pedido queda adjudicado a esa tienda y las demás ofertas se descartan.',
     roles: [BUYER],
   },
   {
@@ -101,8 +101,8 @@ export const AUCTION_HELP_FAQS = [
   },
   {
     grupo: 'Ofertas y aceptación',
-    q: '¿Qué pasa si una oferta no cubre todos mis repuestos?',
-    a: 'En la oferta verás qué repuestos cubre y cuáles faltan. Puedes aceptarla igual y esperar otras ofertas para lo que falta, o no aceptarla. No estás obligado a aceptar ninguna.',
+    q: '¿Qué pasa si una tienda no tiene todos mis repuestos?',
+    a: 'No puede enviarte una oferta: la plataforma exige que cada oferta cubra todos los repuestos de tu pedido. Así solo recibes propuestas completas y las comparas entre sí. No estás obligado a aceptar ninguna.',
     roles: [BUYER],
   },
   {
@@ -178,7 +178,7 @@ export const AUCTION_HELP_FAQS = [
   {
     grupo: 'Para casas de repuestos',
     q: '¿Cómo envío una oferta?',
-    a: 'Abre la necesidad y toca Ofertar ahora. Para cada repuesto pendiente eliges un producto de tu inventario y su precio unitario; puedes cubrir solo una parte del pedido. Indica además tiempo de entrega, tipo de entrega, garantía y notas. Tu método de envío debe servir para la comuna del comprador (retiro, dentro de la comuna o fuera de ella); si no, la plataforma te indicará por qué no puedes ofrecerlo.',
+    a: 'Abre la necesidad y toca Ofertar ahora. Para cada repuesto pendiente eliges un producto de tu inventario y su precio unitario. Debes cubrir todos los repuestos del pedido: si te falta alguno, no podrás registrar la oferta. Indica además tiempo de entrega, tipo de entrega, garantía y notas. Tu método de envío debe servir para la comuna del comprador (retiro, dentro de la comuna o fuera de ella); si no, la plataforma te indicará por qué no puedes ofrecerlo.',
     roles: [SELLER],
   },
   {
@@ -202,7 +202,7 @@ export const AUCTION_HELP_FAQS = [
   {
     grupo: 'Para casas de repuestos',
     q: 'Perdí la necesidad: el comprador eligió a otra tienda, ¿qué pasa con mi oferta?',
-    a: 'Si el comprador acepta otras ofertas y tu oferta ya no tiene repuestos pendientes, queda descartada y te lo avisamos. No tiene ningún costo ni afecta tu evaluación. Si tu oferta cubría más repuestos de los que se adjudicaron, puede seguir vigente para lo que quedó pendiente.',
+    a: 'Si el comprador acepta la oferta de otra tienda, la tuya queda descartada y te lo avisamos. No tiene ningún costo ni afecta tu evaluación.',
     roles: [SELLER],
   },
   {

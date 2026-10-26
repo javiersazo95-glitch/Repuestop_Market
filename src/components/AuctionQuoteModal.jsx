@@ -375,7 +375,6 @@ function ItemOfferRow({ auction, item, line, takenPartIds, onChange, onCreateReq
   return (
     <li className={`aq-item ${enabled ? 'is-on' : ''}`}>
       <label className="aq-item-head">
-        <input type="checkbox" checked={enabled} onChange={(e) => onChange(item.id, { enabled: e.target.checked })} />
         <span className="aq-item-title">
           <strong>{item.repuesto} <small>× {item.cantidad}</small></strong>
           <span>
@@ -384,7 +383,7 @@ function ItemOfferRow({ auction, item, line, takenPartIds, onChange, onCreateReq
           </span>
           {item.descripcion && <span className="aq-item-desc">{item.descripcion}</span>}
         </span>
-        <span className={`aq-item-have ${enabled ? 'is-on' : ''}`}>{enabled ? <><CheckCircle2 size={14} /> Lo ofrezco</> : 'Lo tengo'}</span>
+        <span className={`aq-item-have ${line?.part ? 'is-on' : ''}`}>{line?.part ? <><CheckCircle2 size={14} /> Cubierto</> : 'Obligatorio'}</span>
       </label>
 
       {enabled && (
@@ -493,7 +492,7 @@ function initialLines(auction, myQuote) {
         unitPrice: String(Math.round(existing.precioUnitario)),
         warranty: '',
       }
-      : { enabled: false, part: null, unitPrice: '', warranty: '' };
+      : { enabled: true, part: null, unitPrice: '', warranty: '' };
   });
   return lines;
 }
@@ -574,7 +573,6 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
     return { item, line, unit, total: unit * item.cantidad };
   });
   const total = covered.reduce((sum, entry) => sum + entry.total, 0);
-  const notCovered = pendingItems.filter((item) => !lines[item.id]?.enabled);
 
   const fit = useMemo(() => evaluateOffer(auction, {
     precioFinal: total,
@@ -587,9 +585,9 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
 
   const missing = [];
   if (noDeliveryAllowed) missing.push('actualiza tus métodos de envío en Mi tienda');
-  if (enabledItems.length === 0) missing.push('marca al menos un repuesto que tengas');
-  if (covered.some((entry) => !entry.line.part)) missing.push('elige el producto de cada repuesto que ofreces');
-  else if (covered.some((entry) => !(entry.unit > 0))) missing.push('fija el precio de cada repuesto');
+  const uncovered = pendingItems.filter((item) => !lines[item.id]?.part);
+  if (uncovered.length > 0) missing.push(`cubre todos los repuestos del pedido (te falta: ${uncovered.map((item) => item.repuesto).join(', ')})`);
+  if (uncovered.length === 0 && covered.some((entry) => !(entry.unit > 0))) missing.push('fija el precio de cada repuesto');
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -635,7 +633,6 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
             <div><dt>Repuestos que ofreces</dt><dd>{enabledItems.length} de {pendingItems.length}</dd></div>
             <div><dt>Total ofertado</dt><dd>{money(total)}</dd></div>
             <div><dt>Entrega</dt><dd>{deliveryType} · {deliveryTime}</dd></div>
-            {notCovered.length > 0 && <div><dt>Faltan en tu oferta</dt><dd>{notCovered.map((item) => item.repuesto).join(', ')}</dd></div>}
           </dl>
           <button type="button" className="aq-btn-primary" onClick={finish}>Listo</button>
         </div>
@@ -663,10 +660,10 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
         <form className="aq-body" onSubmit={handleSubmit}>
           <div className="aq-main">
             <section className="aq-step">
-              <h3><span>1</span> Marca los repuestos que tienes</h3>
+              <h3><span>1</span> Cubre todos los repuestos del pedido</h3>
               <p className="aq-lead">
                 {pendingItems.length > 1
-                  ? `El comprador pidió ${pendingItems.length} repuestos. Ofrece solo los que tengas: le informaremos cuáles incluye tu oferta y cuáles faltan.`
+                  ? `El comprador pidió ${pendingItems.length} repuestos y recibe solo ofertas completas: elige un producto de tu inventario para cada uno. Si te falta alguno, no podrás enviar la oferta.`
                   : 'Elige el repuesto de tu inventario con el que cubres esta solicitud.'}
               </p>
               {justCreated && (
@@ -685,12 +682,6 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
                   />
                 ))}
               </ul>
-              {notCovered.length > 0 && enabledItems.length > 0 && (
-                <p className="aq-notice is-warn" role="note">
-                  <AlertTriangle size={16} />
-                  <span>Tu oferta no incluye: <b>{notCovered.map((item) => item.repuesto).join(', ')}</b>. El comprador verá que faltan esos repuestos y otras tiendas podrán ofrecerlos.</span>
-                </p>
-              )}
             </section>
 
             <section className="aq-step">
