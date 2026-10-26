@@ -36,7 +36,8 @@ import {
   saveConversationQuoteApi, sendConversationMessageApi,
   pauseSellerProductApi, resumeSellerProductApi, deleteSellerProductApi, getSellerFullInventoryApi,
   getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
-  getSellerPendingWithdrawalsApi
+  getSellerPendingWithdrawalsApi,
+  getAutomotiveServiceAccreditationApi,
 } from '../services/api';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { qk } from '../services/queryKeys';
@@ -57,6 +58,7 @@ import AdsManagementSection from './ads/AdsManagementSection';
 import ProfileFavoritesPanel from './ProfileFavoritesPanel';
 import FaultsList from './faults/FaultsList';
 import ProfileWorkshopServicesPanel from './workshop/ProfileWorkshopServicesPanel';
+import AutomotiveServiceAccreditation from './AutomotiveServiceAccreditation';
 import ProfileDiagnosticPanel from './workshop/ProfileDiagnosticPanel';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -550,6 +552,17 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // Datos del perfil y rol
   const isSeller = role === 'SELLER';
   const isWorkshop = role === 'WORKSHOP';
+  // Como la tienda: el taller solo entra a su panel con el expediente aprobado. Sin enviar, en
+  // revision, por corregir o rechazado ve unicamente su acreditacion.
+  const workshopAccreditation = useQuery({
+    queryKey: ['workshop-accreditation-gate', effectiveUserId],
+    queryFn: () => getAutomotiveServiceAccreditationApi(),
+    enabled: isWorkshop,
+    staleTime: 30_000,
+  });
+  const workshopPendingApproval = isWorkshop
+    && workshopAccreditation.isSuccess
+    && String(workshopAccreditation.data?.estado || 'SIN_SOLICITUD').toUpperCase() !== 'APROBADO';
   const baseSidebarGroups = isSeller ? SELLER_SIDEBAR_GROUPS : isWorkshop ? WORKSHOP_SIDEBAR_GROUPS : BUYER_SIDEBAR_GROUPS;
   const effectiveSellerId = user?.sellerId || user?.proveedorId || user?.tiendaId || user?.userId || user?.id;
   const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
@@ -1379,6 +1392,32 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return list.slice(0, 5);
   }, [orders, conversations, isSeller, sellerProducts]);
+
+  if (workshopPendingApproval) {
+    return (
+      <div className="profile-dashboard buyer-profile-dashboard">
+        <div className="profile-topbar">
+          <div className="profile-topbar-inner">
+            <div className="profile-logo-group" onClick={onBackToStore}>
+              <RepuesTopLogo height={38} />
+            </div>
+            <div className="profile-topbar-actions">
+              <button className="btn-back-to-store" onClick={onBackToStore}>
+                <ArrowLeft size={16} />
+                <span>Volver a la tienda</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 16px' }}>
+          <AutomotiveServiceAccreditation
+            user={user}
+            onSaved={() => workshopAccreditation.refetch()}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`profile-dashboard ${isSeller ? 'seller-profile-dashboard' : 'buyer-profile-dashboard'}`} data-active-tab={activeTab}>
