@@ -1,4 +1,4 @@
-import { ROUTES, buyerCaseChatPath, productPath, profilePurchasePath, sellerCaseChatPath } from '../routes/paths';
+import { ROUTES, auctionDetailPath, buyerCaseChatPath, productPath, profilePurchasePath, sellerCaseChatPath } from '../routes/paths';
 
 /**
  * Traduce el destino de una notificación a una ruta de la WEB.
@@ -135,6 +135,9 @@ const TARGETS = {
 export function notificationTargetPath(notification, context = {}) {
   const route = notification?.targetRoute;
   if (!route) return null;
+  // Necesidades de compra: el aviso trae `/subastas/{id}` con el id ya incluido en la ruta.
+  const auctionMatch = /^\/subastas\/(\d+)$/.exec(route);
+  if (auctionMatch) return auctionDetailPath(auctionMatch[1]);
   const resolver = TARGETS[route];
   if (!resolver) return null;
   try {
