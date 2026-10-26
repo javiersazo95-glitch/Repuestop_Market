@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Car, Store, ChevronRight, X, Eye, EyeOff, Lock, Mail,
   ShieldCheck, ArrowLeft, AlertCircle, CheckCircle2, UserPlus, LogIn, Check,
-  KeyRound, RefreshCw, AlertTriangle, Building2
+  KeyRound, RefreshCw, AlertTriangle, Building2, Wrench
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import CaptadorCodeField, { useCaptadorCode } from './CaptadorCodeField';
@@ -63,6 +64,13 @@ const BUYER_FEATURES = [
   'Cotiza en tiempo real con varias tiendas',
   'Pagos protegidos hasta recibir tu pedido',
   'Sigue tus envíos y compras en un solo lugar',
+];
+
+const WORKSHOP_FEATURES = [
+  'Diagnostica las fallas que registran los clientes',
+  'Publica tus servicios con precio en el Mural',
+  'Recibe citas agendadas con la falla del cliente',
+  'Compra repuestos y publica tus necesidades',
 ];
 
 const SELLER_FEATURES = [
@@ -148,6 +156,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
   const [isRegistrationFlow, setIsRegistrationFlow] = useState(Boolean(modalOptions?.isRegistrationFlow));
   
   const { login, loginWithGoogle, registerBuyer, verifyRegisterEmail, resendRegisterCode } = useAuth();
+  const navigate = useNavigate();
 
   // Form State
   const [email, setEmail] = useState('');
@@ -404,11 +413,20 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
     setErrorMessage(null);
   };
 
+  /** El taller se registra en `/taller/registro` (RUT, direccion del taller), no con el registro de comprador. */
+  const goToWorkshopRegister = () => {
+    setErrorMessage(null);
+    handleClose();
+    navigate(ROUTES.workshopRegister);
+  };
+
   const handleContinueFromRole = () => {
     setErrorMessage(null);
     if (isRegistrationFlow) {
       if (selectedRole === 'SELLER') {
         goToSellerRegister();
+      } else if (selectedRole === 'WORKSHOP') {
+        goToWorkshopRegister();
       } else {
         setStep('register_buyer');
       }
@@ -634,7 +652,10 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
       // El rol lo decide la cuenta, no el selector: un correo de comprador que entra con
       // "Tienda" marcado sigue siendo comprador, y se le dice.
       const entroComoTienda = Boolean(result.user?.sellerId);
-      setSuccessMessage(selectedRole === 'SELLER' && !entroComoTienda
+      const entroComoTaller = result.user?.role === 'WORKSHOP';
+      setSuccessMessage(entroComoTaller
+        ? '¡Bienvenido de nuevo! Has iniciado sesión como Taller.'
+        : selectedRole === 'SELLER' && !entroComoTienda
         ? '¡Bienvenido! Este correo es de una cuenta de comprador: entraste como Comprador. Para vender, registra tu tienda en "Vender en RepuesTop".'
         : `¡Bienvenido de nuevo! Has iniciado sesión como ${entroComoTienda ? 'Tienda / Vendedor' : 'Comprador'}.`);
       setTimeout(() => {
@@ -1189,6 +1210,38 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                 </ul>
                 <div className="role-badge-tag seller-tag">Para casas de repuestos y desarmadurías</div>
               </div>
+
+              {/* Workshop Card */}
+              <div
+                className={`role-option-card buyer-card ${selectedRole === 'WORKSHOP' ? 'selected' : ''}`}
+                onClick={() => {
+                  // Al crear cuenta, elegir Taller lleva directo al registro del taller.
+                  if (isRegistrationFlow) goToWorkshopRegister();
+                  else handleSelectRole('WORKSHOP');
+                }}
+              >
+                <div className="role-card-header">
+                  <div className="role-icon-box buyer-icon">
+                    <Wrench size={30} />
+                  </div>
+                  <div className="role-radio">
+                    <div className={`radio-dot ${selectedRole === 'WORKSHOP' ? 'active' : ''}`} />
+                  </div>
+                </div>
+                <div className="role-card-content">
+                  <h3>Modo Taller</h3>
+                  <p>Diagnostica fallas de clientes, ofrece tus servicios y recibe citas con la falla ya descrita.</p>
+                </div>
+                <ul className="role-feature-list">
+                  {WORKSHOP_FEATURES.map((feature) => (
+                    <li key={feature}>
+                      <Check size={13} />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="role-badge-tag">Para talleres automotrices</div>
+              </div>
             </div>
 
             <div className="auth-action-row">
@@ -1199,7 +1252,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
               >
                 <span>
                   {isRegistrationFlow
-                    ? (selectedRole === 'SELLER' ? 'Continuar a crear cuenta de Proveedor / Tienda' : 'Continuar a crear cuenta de Comprador')
+                    ? (selectedRole === 'SELLER' ? 'Continuar a crear cuenta de Proveedor / Tienda' : selectedRole === 'WORKSHOP' ? 'Continuar a crear cuenta de Taller' : 'Continuar a crear cuenta de Comprador')
                     : 'Continuar a Iniciar Sesión'}
                 </span>
                 <ChevronRight size={18} />

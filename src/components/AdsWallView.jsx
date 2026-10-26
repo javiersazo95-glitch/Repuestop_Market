@@ -13,6 +13,8 @@ import {
 import {
   buildAdSuggestionIndex, matchAdSuggestions, adMatchesSearch, normalizeSearchText
 } from '../utils/adSearch';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../routes/paths';
 import { useAuth } from '../context/AuthContext';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
@@ -64,7 +66,10 @@ const PROVIDER_PLANS = [
 ];
 
 export default function AdsWallView() {
-  const { isLoggedIn, user } = useAuth();
+  const navigate = useNavigate();
+  const { isLoggedIn, user, role: accountRole } = useAuth();
+  // Publicar avisos es del perfil Taller: el resto crea su cuenta de taller.
+  const isWorkshopAccount = accountRole === 'WORKSHOP';
   const { openAuthModal } = useMarketplace();
   const nav = useAppNavigation();
   const { isAdSaved, toggleAd } = useSavedMarketplaceItems(user?.userId ?? user?.id);
@@ -258,8 +263,9 @@ export default function AdsWallView() {
     (selectedTier !== 'TODOS' ? 1 : 0);
 
   const handlePublishAdClick = () => {
-    if (!isLoggedIn) openAuthModal();
-    else nav.goProfile('anuncios');
+    if (isWorkshopAccount) nav.goProfile('anuncios');
+    else if (!isLoggedIn) navigate(ROUTES.workshopRegister);
+    else window.alert('Publicar avisos es del perfil Taller. Crea una cuenta de taller con otro correo para ofrecer tus servicios.');
   };
 
   const scrollToResults = () => {
@@ -753,9 +759,9 @@ export default function AdsWallView() {
             </ul>
 
             <button type="button" className="ads-provider-cta" onClick={handlePublishAdClick}>
-              <Plus size={16} /> Publica tu primer anuncio gratis
+              <Plus size={16} /> {isWorkshopAccount ? 'Publica tu primer anuncio gratis' : 'Registra tu taller'}
             </button>
-            {isLoggedIn && (
+            {isLoggedIn && isWorkshopAccount && (
               <button
                 type="button"
                 className="ads-provider-link"

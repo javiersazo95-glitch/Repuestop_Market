@@ -430,7 +430,9 @@ export default function Header({
                 </div>
                 <div className="user-dropdown-body">
                   <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.(); }}><LayoutDashboard size={15} /> Mi perfil</button>
-                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.('anuncios'); }}><Megaphone size={15} /> Gestión de anuncios</button>
+                  {role === 'WORKSHOP' && (
+                    <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.('anuncios'); }}><Megaphone size={15} /> Anuncios y agenda</button>
+                  )}
                   {isSellerAccount && (
                     <button className="dropdown-item" onClick={openInventoryPanel}><Package size={15} /> Panel de inventario</button>
                   )}

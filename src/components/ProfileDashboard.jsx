@@ -7,7 +7,7 @@ import {
   Clock, ShieldCheck, PackageCheck, Loader2, Inbox, Search,
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
-  Megaphone, CheckCircle2, ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel
+  Megaphone, CheckCircle2, ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, Wrench, Stethoscope, Settings
 } from 'lucide-react';
 import VideoTutorialModal from './VideoTutorialModal';
 import { useAuth } from '../context/AuthContext';
@@ -55,6 +55,9 @@ import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
 import SellerWithdrawalsPanel, { isCompleteBankAccount } from './SellerWithdrawalsPanel';
 import AdsManagementSection from './ads/AdsManagementSection';
 import ProfileFavoritesPanel from './ProfileFavoritesPanel';
+import FaultsList from './faults/FaultsList';
+import ProfileWorkshopServicesPanel from './workshop/ProfileWorkshopServicesPanel';
+import ProfileDiagnosticPanel from './workshop/ProfileDiagnosticPanel';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES, storePath } from '../routes/paths';
@@ -153,8 +156,7 @@ const SELLER_SIDEBAR_GROUPS = [
     flag: 'market.perfil.vendedor.mi-tienda',
     items: [
       { id: 'tienda_datos', label: 'Mi tienda y datos', icon: Store },
-      { id: 'retiros', label: 'Retirar dinero', icon: Wallet },
-      { id: 'anuncios', label: 'Gestión de anuncios', icon: Megaphone }
+      { id: 'retiros', label: 'Retirar dinero', icon: Wallet }
     ]
   },
   {
@@ -212,6 +214,7 @@ const BUYER_SIDEBAR_GROUPS = [
       { id: 'pedidos', label: 'Mis pedidos', icon: Package },
       { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
       { id: 'subastas', label: 'Necesidades de compra', icon: Gavel },
+      { id: 'mis_fallas', label: 'Fallas automotrices', icon: Wrench },
       { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
       { id: 'chats_vendedor', label: 'Chats con vendedor', icon: MessageSquare },
       { id: 'favoritos', label: 'Favoritos', icon: Heart }
@@ -221,13 +224,60 @@ const BUYER_SIDEBAR_GROUPS = [
     title: 'MI CUENTA',
     flag: 'market.perfil.comprador.mi-cuenta',
     items: [
-      { id: 'datos', label: 'Mis datos y perfil', icon: UserCog },
-      { id: 'anuncios', label: 'Gestión de anuncios', icon: Megaphone }
+      { id: 'datos', label: 'Mis datos y perfil', icon: UserCog }
     ]
   },
   {
     title: 'SOPORTE',
     flag: 'market.perfil.comprador.soporte',
+    items: [
+      { id: 'consultas', label: 'Reportes/Soporte', icon: MessageSquare },
+      { id: 'soporte', label: 'Centro de ayuda', icon: Headphones, href: ROUTES.support }
+    ]
+  }
+];
+
+// Perfil Taller: compra como un comprador (mismo grupo de compras) y suma lo propio de su taller. Publicar
+// avisos, el catalogo de servicios, el Diagnostico y las fallas de los clientes viven solo aqui.
+const WORKSHOP_SIDEBAR_GROUPS = [
+  {
+    title: null,
+    items: [
+      { id: 'resumen', label: 'Resumen', icon: LayoutGrid }
+    ]
+  },
+  {
+    title: 'MI TALLER',
+    flag: 'market.perfil.taller.mi-taller',
+    items: [
+      { id: 'fallas_taller', label: 'Fallas automotrices', icon: Wrench },
+      { id: 'servicios_taller', label: 'Mis servicios', icon: Settings },
+      { id: 'diagnostico', label: 'Servicio Diagnóstico', icon: Stethoscope },
+      { id: 'anuncios', label: 'Anuncios y agenda', icon: Megaphone }
+    ]
+  },
+  {
+    title: 'MIS COMPRAS',
+    flag: 'market.perfil.taller.mis-compras',
+    items: [
+      { id: 'pedidos', label: 'Mis pedidos', icon: Package },
+      { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
+      { id: 'subastas', label: 'Necesidades de compra', icon: Gavel },
+      { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
+      { id: 'chats_vendedor', label: 'Chats con vendedor', icon: MessageSquare },
+      { id: 'favoritos', label: 'Favoritos', icon: Heart }
+    ]
+  },
+  {
+    title: 'MI CUENTA',
+    flag: 'market.perfil.taller.mi-cuenta',
+    items: [
+      { id: 'datos', label: 'Mis datos y perfil', icon: UserCog }
+    ]
+  },
+  {
+    title: 'SOPORTE',
+    flag: 'market.perfil.taller.soporte',
     items: [
       { id: 'consultas', label: 'Reportes/Soporte', icon: MessageSquare },
       { id: 'soporte', label: 'Centro de ayuda', icon: Headphones, href: ROUTES.support }
@@ -241,6 +291,7 @@ const BUYER_SIDEBAR_GROUPS = [
 // abre la hoja con todos los grupos.
 const MOBILE_PRIMARY_TAB_IDS = {
   seller: ['resumen', 'pedidos', 'productos', 'chats_compradores'],
+  workshop: ['resumen', 'fallas_taller', 'servicios_taller', 'pedidos'],
   buyer: ['resumen', 'pedidos', 'cotizaciones', 'chats_vendedor'],
 };
 // Etiquetas cortas para la barra inferior (caben en ~70px); la hoja "Mas" y la app bar
@@ -498,7 +549,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
   // Datos del perfil y rol
   const isSeller = role === 'SELLER';
-  const baseSidebarGroups = isSeller ? SELLER_SIDEBAR_GROUPS : BUYER_SIDEBAR_GROUPS;
+  const isWorkshop = role === 'WORKSHOP';
+  const baseSidebarGroups = isSeller ? SELLER_SIDEBAR_GROUPS : isWorkshop ? WORKSHOP_SIDEBAR_GROUPS : BUYER_SIDEBAR_GROUPS;
   const effectiveSellerId = user?.sellerId || user?.proveedorId || user?.tiendaId || user?.userId || user?.id;
   const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
   const effectiveBuyerId = user?.buyerId || user?.compradorId;
@@ -646,9 +698,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // `sidebarGroups` y `activeTab`; no hay estado nuevo.
   const sidebarItems = useMemo(() => sidebarGroups.flatMap((group) => group.items), [sidebarGroups]);
   const mobilePrimaryTabs = useMemo(() => {
-    const ids = MOBILE_PRIMARY_TAB_IDS[isSeller ? 'seller' : 'buyer'];
+    const ids = MOBILE_PRIMARY_TAB_IDS[isSeller ? 'seller' : isWorkshop ? 'workshop' : 'buyer'];
     return ids.map((id) => sidebarItems.find((item) => item.id === id)).filter(Boolean);
-  }, [sidebarItems, isSeller]);
+  }, [sidebarItems, isSeller, isWorkshop]);
   const mobileSectionTitle = useMemo(() => {
     if (activeTab === 'feedback') return 'Dejar feedback';
     return sidebarItems.find((item) => item.id === activeTab)?.label || 'Mi cuenta';
@@ -675,6 +727,17 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // al resumen.
   // Reemplaza la entrada del historial (no la apila): con push, "atras" volvia a la pestana oculta,
   // esta la volvia a sacar y la persona quedaba atrapada (pruebas en dev, 2026-10-09).
+  // Publicar avisos, acreditar el taller y su agenda son del perfil Taller: un enlace guardado a
+  // `/perfil/anuncios` (o a las pestañas del taller) de otra cuenta vuelve al resumen.
+  useEffect(() => {
+    const soloTaller = ['anuncios', 'fallas_taller', 'servicios_taller', 'diagnostico'].includes(activeTab);
+    const soloComprador = activeTab === 'mis_fallas';
+    if ((soloTaller && !isWorkshop) || (soloComprador && isWorkshop)) {
+      setActiveTabState('resumen');
+      onTabChange?.('resumen', { replace: true });
+    }
+  }, [activeTab, isWorkshop, onTabChange]);
+
   useEffect(() => {
     const oculta = (isSellerBlocked && SELLER_BLOCKED_HIDDEN_TABS.includes(activeTab))
       || (isBuyerBlocked && BUYER_BLOCKED_HIDDEN_TABS.includes(activeTab));
@@ -1249,8 +1312,17 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Responder cotizaciones', description: 'Atiende solicitudes directas de clientes.', onClick: () => openFilteredTab('cotizaciones', 'pending') },
         { id: 'tienda', tone: 'sky', icon: Store, title: 'Mi tienda y datos', description: 'Edita la información comercial de tu tienda.', onClick: () => setActiveTab('tienda_datos') },
         { id: 'retiros', tone: 'emerald', icon: Wallet, title: 'Retirar dinero', description: 'Solicita el depósito bancario de tus ventas.', onClick: () => setActiveTab('retiros') },
-        { id: 'anuncios', tone: 'amber', icon: Megaphone, title: 'Gestión de anuncios', description: 'Publica y destaca en el Mural de Anuncios.', onClick: () => setActiveTab('anuncios') },
         { id: 'video_tutorial', tone: 'blue', icon: PlayCircle, title: 'Aprende a usar RepuesTop', description: 'Mira el video tutorial para tiendas.', onClick: () => setVideoTutorialOpen(true) },
+      ];
+    }
+    if (isWorkshop) {
+      return [
+        { id: 'fallas', tone: 'amber', icon: Wrench, title: 'Fallas automotrices', description: 'Revisa las fallas de los clientes y deja tu diagnóstico.', onClick: () => setActiveTab('fallas_taller') },
+        { id: 'servicios', tone: 'emerald', icon: Settings, title: 'Mis servicios', description: 'Registra tus servicios con su precio y tus marcas especialistas.', onClick: () => setActiveTab('servicios_taller') },
+        { id: 'diagnostico', tone: 'purple', icon: Stethoscope, title: 'Servicio Diagnóstico', description: 'Ofrece agenda en tus comentarios. Gratis cada 10 necesidades de compra.', onClick: () => setActiveTab('diagnostico') },
+        { id: 'anuncios', tone: 'sky', icon: Megaphone, title: 'Anuncios y agenda', description: 'Publica tus servicios en el Mural y atiende tus citas.', onClick: () => setActiveTab('anuncios') },
+        { id: 'subastas', tone: 'blue', icon: Gavel, title: 'Necesidades de compra', description: 'Publica los repuestos que necesitas y recibe ofertas.', onClick: () => setActiveTab('subastas') },
+        { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte.', onClick: () => navigate(ROUTES.support) },
       ];
     }
     return [
@@ -1258,10 +1330,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Mis cotizaciones', description: 'Revisa las respuestas de las tiendas y compara precios.', onClick: () => setActiveTab('cotizaciones') },
       { id: 'favoritos', tone: 'amber', icon: Heart, title: 'Repuestos favoritos', description: 'Accede a los repuestos que guardaste.', onClick: () => setActiveTab('favoritos') },
       { id: 'datos', tone: 'sky', icon: UserCog, title: 'Mis datos y perfil', description: 'Actualiza tu información y direcciones de envío.', onClick: () => setActiveTab('datos') },
-      { id: 'anuncios', tone: 'emerald', icon: Megaphone, title: 'Gestión de anuncios', description: 'Publica tu búsqueda en el Mural de Anuncios.', onClick: () => setActiveTab('anuncios') },
+      { id: 'fallas', tone: 'emerald', icon: Wrench, title: 'Fallas automotrices', description: 'Cuéntanos qué le pasó a tu vehículo y recibe el diagnóstico de talleres.', onClick: () => setActiveTab('mis_fallas') },
       { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte de compra.', onClick: () => navigate(ROUTES.support) },
     ];
-  }, [isSeller, setActiveTab, openFilteredTab, navigate]);
+  }, [isSeller, isWorkshop, setActiveTab, openFilteredTab, navigate]);
 
   const recentActivities = useMemo(() => {
     const list = [];
@@ -1348,8 +1420,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           <span className="profile-mobile-heading">
             <span className="profile-mobile-title" aria-live="polite">{mobileSectionTitle}</span>
             <span className={`profile-mobile-role ${isSeller ? 'is-seller' : 'is-buyer'}`}>
-              {isSeller ? <Store size={11} /> : <ShoppingBag size={11} />}
-              <span>{isSeller ? 'Cuenta vendedor' : 'Cuenta comprador'}</span>
+              {isSeller ? <Store size={11} /> : isWorkshop ? <Wrench size={11} /> : <ShoppingBag size={11} />}
+              <span>{isSeller ? 'Cuenta vendedor' : isWorkshop ? 'Cuenta taller' : 'Cuenta comprador'}</span>
             </span>
           </span>
           <button type="button" className="profile-mobile-home" onClick={onBackToStore} aria-label="Ir al inicio" title="Ir al inicio">
@@ -1358,8 +1430,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
           <div className="profile-topbar-user">
             <div className={`profile-role-chip ${isSeller ? 'chip-seller' : 'chip-buyer'}`}>
-              {isSeller ? <Store size={13} /> : <ShoppingBag size={13} />}
-              <span>{isSeller ? 'Proveedor' : 'Comprador'}</span>
+              {isSeller ? <Store size={13} /> : isWorkshop ? <Wrench size={13} /> : <ShoppingBag size={13} />}
+              <span>{isSeller ? 'Proveedor' : isWorkshop ? 'Taller' : 'Comprador'}</span>
             </div>
             <HeaderWalletButton variant="topbar" />
             <ProfileAppointmentsButton user={user} />
@@ -1591,12 +1663,12 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
             </div>
             <div className="sidebar-mini-info">
-              <strong>{isSeller ? (storeInfo?.storeName || user?.storeName || displayName) : displayName}</strong>
-              <span>{isSeller ? 'Cuenta Proveedor' : 'Cuenta Comprador'}</span>
+              <strong>{isSeller ? (storeInfo?.storeName || user?.storeName || displayName) : (isWorkshop ? (user?.workshopName || displayName) : displayName)}</strong>
+              <span>{isSeller ? 'Cuenta Proveedor' : isWorkshop ? 'Cuenta Taller' : 'Cuenta Comprador'}</span>
             </div>
           </div>
 
-          <nav className="sidebar-nav-list" aria-label={isSeller ? 'Menú de proveedor' : 'Menú de comprador'}>
+          <nav className="sidebar-nav-list" aria-label={isSeller ? 'Menú de proveedor' : isWorkshop ? 'Menú de taller' : 'Menú de comprador'}>
             {sidebarGroups.map((group) => (
               <div key={group.title || 'general'} className="sidebar-nav-group">
                 {group.title && <span className="sidebar-group-title">{group.title}</span>}
@@ -1802,7 +1874,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 />
               )}
 
-              {activeTab === 'anuncios' && (
+              {(activeTab === 'mis_fallas' || activeTab === 'fallas_taller') && <FaultsList heading={false} />}
+              {activeTab === 'servicios_taller' && isWorkshop && <ProfileWorkshopServicesPanel />}
+              {activeTab === 'diagnostico' && isWorkshop && <ProfileDiagnosticPanel onOpenAds={() => setActiveTab('anuncios')} />}
+
+              {activeTab === 'anuncios' && isWorkshop && (
                 <AdsManagementSection
                   onNavigateToMural={() => window.location.assign('/mural-anuncios')}
                 />

@@ -9,6 +9,7 @@ import CoinDropAnimation from './CoinDropAnimation';
 import { AD_TIERS, AD_TIER_ORDER } from '../../data/automotiveAdsData';
 import { UPGRADE_TOKEN_COSTS } from '../../services/adsStorage';
 import { profilePath } from '../../routes/paths';
+import { useAuth } from '../../context/AuthContext';
 import ProductTopBadge from '../ProductTopBadge';
 
 /**
@@ -61,6 +62,8 @@ export default function WalletModal({
   onCelebracionLista,
   onClose,
 }) {
+  // Publicar anuncios es del perfil Taller; el resto solo ve la guía.
+  const { role: accountRole } = useAuth();
   const [isRechargeOpen, setIsRechargeOpen] = useState(false);
   // La lluvia solo corre si se llego aca volviendo de un pago, y nunca para quien pidio
   // menos movimiento: a ese se le muestra el saldo ya actualizado y nada mas.
@@ -144,10 +147,12 @@ export default function WalletModal({
 
           <StepList steps={PUBLISH_STEPS} />
 
-          <a className="wallet-modal-cta" href={profilePath('anuncios')}>
-            <span>Ir a Gestión de anuncios</span>
-            <ArrowRight size={15} />
-          </a>
+          {accountRole === 'WORKSHOP' && (
+            <a className="wallet-modal-cta" href={profilePath('anuncios')}>
+              <span>Ir a Anuncios y agenda</span>
+              <ArrowRight size={15} />
+            </a>
+          )}
         </div>
       </div>
 

@@ -701,6 +701,7 @@ export function adaptAd(dto) {
     storyImages,
     features: Array.isArray(dto.features) ? dto.features : [],
     servicesOffered: Array.isArray(dto.servicesOffered) ? dto.servicesOffered : [],
+    serviceIds: Array.isArray(dto.serviceIds) ? dto.serviceIds : [],
     // Las marcas forman parte del expediente del anuncio y deben sobrevivir a la
     // adaptación para mostrarse tanto en la tarjeta como en el resumen de empresa.
     specialistBrands: Array.isArray(dto.specialistBrands) ? dto.specialistBrands.filter(Boolean) : [],
@@ -784,6 +785,8 @@ export function toAdRequestPayload(ad) {
     storyImages: media(ad?.storyImages, limits.maxStories),
     features: list(ad?.features, limits.maxTags),
     servicesOffered: list(ad?.servicesOffered, limits.maxTags),
+    // Cuenta de taller: servicios elegidos del catalogo (el backend deriva de ellos nombres y marcas).
+    serviceIds: Array.isArray(ad?.serviceIds) ? ad.serviceIds.map(Number).filter(Number.isFinite).slice(0, limits.maxTags) : undefined,
     specialistBrands: list(ad?.specialistBrands, 20),
     is24Hours: ad?.is24Hours === true,
     // Viaja siempre: el PUT reemplaza todos los campos y sin él se perdería al editar.

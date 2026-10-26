@@ -16,6 +16,7 @@ import {
 import AgendaConfigModal from './AgendaConfigModal';
 import { resolverUbicacionPorNombre } from '../../services/geoLookup';
 import { useAuth } from '../../context/AuthContext';
+import { getWorkshopServices } from '../../services/workshopApi';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import OpeningHoursPicker from './OpeningHoursPicker';
 import {
@@ -172,6 +173,21 @@ export default function AdForm({
   const [brandCatalog, setBrandCatalog] = useState([]);
   const [brandDraft, setBrandDraft] = useState('');
   const [serviceDraft, setServiceDraft] = useState('');
+  // Cuenta de taller: los servicios no se escriben, se eligen del catalogo que registro en "Mis servicios".
+  const { role: accountRole } = useAuth();
+  const isWorkshopAccount = accountRole === 'WORKSHOP';
+  const [catalogServices, setCatalogServices] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(isWorkshopAccount);
+  const [serviceIds, setServiceIds] = useState(() => (Array.isArray(initialAd?.serviceIds) ? initialAd.serviceIds : []));
+  useEffect(() => {
+    if (!isWorkshopAccount) return undefined;
+    let active = true;
+    getWorkshopServices()
+      .then((list) => { if (active) setCatalogServices(Array.isArray(list) ? list : []); })
+      .catch(() => { if (active) setCatalogServices([]); })
+      .finally(() => { if (active) setCatalogLoading(false); });
+    return () => { active = false; };
+  }, [isWorkshopAccount]);
   const [images, setImages] = useState(initialAd?.images || []);
   const [storyImages, setStoryImages] = useState(initialAd?.storyImages || []);
   const [uploadTarget, setUploadTarget] = useState('');
@@ -392,9 +408,14 @@ export default function AdForm({
     !comunaId && 'la comuna',
     !address.trim() && 'la dirección',
     phone.replace(/\D/g, '').length !== PHONE_DIGITS && 'un teléfono de 9 dígitos',
+    isWorkshopAccount && serviceIds.length === 0 && 'al menos un servicio de tu catálogo',
   ].filter(Boolean);
 
   const stepMissing = step === 1 ? contentMissing : [];
+
+  const toggleCatalogService = (id) => setServiceIds((current) => (
+    current.includes(id) ? current.filter((value) => value !== id) : (current.length >= limits.maxTags ? current : [...current, id])));
+  const catalogNames = serviceIds.map((id) => catalogServices.find((service) => service.id === id)?.nombre).filter(Boolean);
 
   const addService = () => {
     const value = serviceDraft.trim();
@@ -557,8 +578,9 @@ export default function AdForm({
       openingHours: is24Hours ? 'Atención 24 horas' : formatOpeningHours(schedule),
       is24Hours,
       homeService,
-      features: visibleFeatures,
-      servicesOffered: visibleServices,
+      features: isWorkshopAccount ? catalogNames.slice(0, limits.maxTags) : visibleFeatures,
+      servicesOffered: isWorkshopAccount ? catalogNames.slice(0, limits.maxTags) : visibleServices,
+      serviceIds: isWorkshopAccount ? serviceIds.slice(0, limits.maxTags) : undefined,
       specialistBrands,
       images: visibleImages,
       storyImages: visibleStories,
@@ -1008,6 +1030,33 @@ export default function AdForm({
                 )}
               </div>
 
+              {isWorkshopAccount ? (
+                <div className="ad-field booking-field col-span-2">
+                  <div className="ad-field-header">
+                    <label>Servicios de tu catálogo ({serviceIds.length}/{limits.maxTags})</label>
+                  </div>
+                  {catalogLoading ? (
+                    <small className="ad-upload-hint">Cargando tus servicios…</small>
+                  ) : catalogServices.length === 0 ? (
+                    <small className="ad-upload-hint">Aún no registras servicios. Agrégalos en “Mis servicios” del perfil para elegirlos aquí.</small>
+                  ) : (
+                    <div className="ad-tag-picker" style={{ marginTop: '8px' }}>
+                      {catalogServices.map((service) => (
+                        <button
+                          key={service.id}
+                          type="button"
+                          className={`ad-tag-chip ${serviceIds.includes(service.id) ? 'active' : ''}`}
+                          aria-pressed={serviceIds.includes(service.id)}
+                          onClick={() => toggleCatalogService(service.id)}
+                        >
+                          {service.nombre} · {service.precioTexto}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <small className="ad-upload-hint">Las marcas especialistas de cada servicio se suman a las de tu aviso.</small>
+                </div>
+              ) : (
               <div className="ad-field booking-field col-span-2">
                 <div className="ad-field-header">
                   <label>Servicios que ofreces ({visibleServices.length}/{limits.maxTags})</label>
@@ -1051,6 +1100,7 @@ export default function AdForm({
                   </div>
                 )}
               </div>
+              )}
 
               <div className="ad-field booking-field col-span-2">
                 <div className="ad-field-header">
