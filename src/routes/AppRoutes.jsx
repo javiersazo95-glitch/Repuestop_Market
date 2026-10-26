@@ -27,6 +27,10 @@ const AuctionsPage = lazy(() => import('../pages/AuctionsPage'));
 const AuctionDetailPage = lazy(() => import('../pages/AuctionDetailPage'));
 const AuctionCheckoutPage = lazy(() => import('../pages/AuctionCheckoutPage'));
 const AdDetailPage = lazy(() => import('../pages/AdDetailPage'));
+const FaultsPage = lazy(() => import('../pages/FaultsPage'));
+const FaultDetailPage = lazy(() => import('../pages/FaultDetailPage'));
+const WorkshopProfilePage = lazy(() => import('../pages/WorkshopProfilePage'));
+const WorkshopRegisterPage = lazy(() => import('../pages/WorkshopRegisterPage'));
 const CartPage = lazy(() => import('../pages/CartPage'));
 const CheckoutPage = lazy(() => import('../pages/CheckoutPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
@@ -55,6 +59,13 @@ export default function AppRoutes() {
               <Route path={ROUTES.auctionDetail} element={<AuctionDetailPage />} />
               <Route path={ROUTES.auctionCheckout} element={<RequireAuth><AuctionCheckoutPage /></RequireAuth>} />
               <Route path={ROUTES.adDetail} element={<AdDetailPage />} />
+              {/* Fallas automotrices: el comprador registra la suya y los talleres la diagnostican (con sesion). */}
+              <Route path={ROUTES.faults} element={<RequireAuth><FaultsPage /></RequireAuth>} />
+              <Route path={ROUTES.faultDetail} element={<RequireAuth><FaultDetailPage /></RequireAuth>} />
+              {/* Perfil publico del taller y su registro como cuenta propia. */}
+              <Route path={ROUTES.workshopByAd} element={<WorkshopProfilePage />} />
+              <Route path={ROUTES.workshop} element={<WorkshopProfilePage />} />
+              <Route path={ROUTES.workshopRegister} element={<WorkshopRegisterPage />} />
               <Route path={ROUTES.about} element={<AboutPage />} />
               {/* El carrito es público: un invitado tiene que poder revisarlo antes de
                   iniciar sesión. El checkout sí exige sesión. */}

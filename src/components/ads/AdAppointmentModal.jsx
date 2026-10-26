@@ -78,8 +78,17 @@ import {
  */
 const HOME_SERVICE_PREFIX = 'Servicio a domicilio. Dirección del servicio: ';
 
-export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isRescheduling = false, rescheduleFromId = null, fromAppointment = null }) {
+export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isRescheduling = false, rescheduleFromId = null, fromAppointment: fromAppointmentProp = null, fallaContext = null }) {
   const { user } = useAuth();
+  // Desde el diagnostico de una falla la cita parte con el vehiculo y el motivo ya cargados: se reusa
+  // el mismo precargado que "reservar otra hora" (el servicio es el diagnostico de esa falla).
+  const fromAppointment = fromAppointmentProp || (fallaContext ? {
+    services: ['Diagnóstico de la falla'],
+    service: 'Diagnóstico de la falla',
+    vehiclePatent: fallaContext.patente || '',
+    vehicleModel: fallaContext.vehiculo || '',
+    notes: `Falla: ${fallaContext.titulo || ''}`,
+  } : null);
   const { isOwn } = useAdOwnership();
   const previousNoteLines = String(fromAppointment?.notes || '').split('\n');
   // Citas antiguas guardaban la dirección dentro de las notas; las nuevas traen campos propios.
@@ -265,11 +274,13 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isR
   if (!adOrCompany) return null;
 
   // Mismo origen que la app: las etiquetas del aviso (`features`) y, en avisos antiguos, `servicesOffered`.
-  const offeredServices = (
+  const adServices = (
     (Array.isArray(adOrCompany.features) && adOrCompany.features.filter(Boolean).length > 0)
       ? adOrCompany.features
       : (Array.isArray(adOrCompany.servicesOffered) ? adOrCompany.servicesOffered : [])
   ).filter(Boolean).slice(0, 8);
+  // El anuncio interno del servicio Diagnostico no lista servicios: desde una falla el servicio es el diagnostico.
+  const offeredServices = adServices.length === 0 && fallaContext ? ['Diagnóstico de la falla'] : adServices;
   const offeredIcons = serviceIcons(offeredServices);
   const servicesLabel = selectedServices.join(', ');
   const accountEmail = user?.email || '';
@@ -353,7 +364,8 @@ export default function AdAppointmentModal({ adOrCompany, onClose, onBooked, isR
         // Campos propios (igual que la app): el backend valida que el anuncio ofrezca
         // domicilio y exige la dirección.
         homeService: atHome,
-        homeAddress
+        homeAddress,
+        fallaId: fallaContext?.id ?? null
       };
       const appointment = rescheduleFromId
         ? await rescheduleAdAppointment(rescheduleFromId, form)

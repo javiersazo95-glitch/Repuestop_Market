@@ -841,6 +841,10 @@ export function adaptAppointment(dto) {
     notes: dto.notes || '',
     homeService: dto.homeService === true,
     homeAddress: dto.homeAddress || '',
+    // Falla automotriz de la que nace la cita (se agendo desde el diagnostico de un taller).
+    fallaId: dto.fallaId ? String(dto.fallaId) : null,
+    fallaTitle: dto.fallaTitle || '',
+    fallaDescription: dto.fallaDescription || '',
     status: APPOINTMENT_STATUSES.includes(dto.status) ? dto.status : 'pending',
     createdAt: dto.createdAt || null,
     isRedacted: !dto.customerName && !dto.customerUserId
@@ -883,6 +887,8 @@ export function toAppointmentRequestPayload(form) {
     notes: text(form?.notes) || null,
     // Servicio a domicilio: el backend exige que el anuncio lo ofrezca y que venga la dirección.
     homeService: form?.homeService === true,
-    homeAddress: form?.homeService === true ? (text(form?.homeAddress) || null) : null
+    homeAddress: form?.homeService === true ? (text(form?.homeAddress) || null) : null,
+    // Cita agendada desde el diagnostico de un taller: queda ligada a la falla.
+    fallaId: form?.fallaId ? Number(form.fallaId) : null
   };
 }

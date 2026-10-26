@@ -35,6 +35,13 @@ export const ROUTES = {
   // Pago de las ofertas aceptadas de una subasta: un pedido de varias tiendas.
   auctionCheckout: '/subastas/:id/pago',
   adDetail: '/mural-anuncios/:adId',
+  // Fallas automotrices: el comprador registra la falla de su vehiculo y los talleres la diagnostican.
+  faults: '/fallas',
+  faultDetail: '/fallas/:id',
+  // Registro del taller como cuenta propia y su perfil publico (por id o por el aviso del Mural).
+  workshopRegister: '/taller/registro',
+  workshop: '/talleres/:workshopId',
+  workshopByAd: '/talleres/anuncio/:adId',
   sellerRegister: '/vender',
   purchaseSuccess: '/compra-exitosa',
   notFound: '/404',
@@ -98,7 +105,24 @@ export const PROFILE_TABS = [
   'subastas',
   // Seguimiento de las ofertas que envió una tienda a pedidos de subasta.
   'gestion_subastas',
+  // Perfil Taller: sus servicios, el servicio Diagnostico y sus fallas comentadas. `mis_fallas` es del comprador.
+  'mis_fallas', 'fallas_taller', 'servicios_taller', 'diagnostico', 'citas',
 ];
+
+/** `/fallas/12`: el detalle de una falla automotriz con los diagnosticos de los talleres. */
+export function faultDetailPath(fault) {
+  return `${ROUTES.faults}/${encodeURIComponent(String(fault?.id ?? fault ?? ''))}`;
+}
+
+/** `/talleres/5`: el perfil publico de un taller. */
+export function workshopPath(workshopId) {
+  return `/talleres/${encodeURIComponent(String(workshopId ?? ''))}`;
+}
+
+/** `/talleres/anuncio/45`: el perfil del taller dueno de un anuncio del Mural. */
+export function workshopByAdPath(adId) {
+  return `/talleres/anuncio/${encodeURIComponent(String(adId ?? ''))}`;
+}
 
 /** Slug legible para URLs de producto/tienda: "Pastillas de freno" -> "pastillas-de-freno" */
 export function slugify(value) {

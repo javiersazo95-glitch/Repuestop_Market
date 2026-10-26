@@ -684,6 +684,8 @@ export default function Header({
           {/* "Ofertas" se elimino: llevaba al mismo catalogo que "Catálogo de repuestos". */}
           <button type="button" className="nav-item-catalog" aria-current={navCurrent(ROUTES.catalog)} onClick={() => { setShowMobileNav(false); onOpenCatalog(); }}><Cog size={16} /> <span>Catálogo de repuestos</span></button>
           <button type="button" className="nav-item-auctions" aria-current={navCurrent(ROUTES.auctions)} onClick={() => { setShowMobileNav(false); navigate(ROUTES.auctions); }}><Gavel size={16} /> <span>Necesidades de compra</span></button>
+          {/* Junto a Necesidades de compra: el comprador registra la falla de su vehiculo y los talleres la diagnostican. */}
+          <button type="button" className="nav-item-faults" aria-current={navCurrent(ROUTES.faults)} onClick={() => { setShowMobileNav(false); navigate(ROUTES.faults); }}><Wrench size={16} /> <span>Fallas automotrices</span></button>
           {showAdsWallNav && (
             <button type="button" className="nav-item-ads" aria-current={navCurrent(ROUTES.adsWall)} onClick={() => { setShowMobileNav(false); onOpenAdsWall(); }}><CarFront size={16} /> <span>Servicios automotrices</span></button>
           )}

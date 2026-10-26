@@ -127,6 +127,9 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
               {appointment.customerEmail && (
                 <a href={`mailto:${appointment.customerEmail}`}><Mail size={12} /> {appointment.customerEmail}</a>
               )}
+              {appointment.fallaTitle && (
+                <span><Wrench size={12} /> Falla: {appointment.fallaTitle}</span>
+              )}
               {(appointment.vehiclePatent || appointment.vehicleModel) && (
                 <span>
                   <Car size={12} /> {[appointment.vehiclePatent, appointment.vehicleModel].filter(Boolean).join(' · ')}
@@ -221,6 +224,8 @@ export default function AdAgendaModal({ ad, appointments, onClose, onAppointment
           <DetailRow Icon={Mail} label="Correo" value={appointment.customerEmail} href={appointment.customerEmail ? `mailto:${appointment.customerEmail}` : null} />
           <DetailRow Icon={Car} label="Vehículo" value={appointment.vehicleModel} />
           <DetailRow Icon={Hash} label="Patente" value={appointment.vehiclePatent} />
+          <DetailRow Icon={Wrench} label="Falla" value={appointment.fallaTitle} />
+          <DetailRow Icon={MessageSquare} label="Lo que describió" value={appointment.fallaDescription} />
           <DetailRow Icon={Home} label="Lugar" value={appointment.homeService ? `A domicilio · ${appointment.homeAddress || 'sin dirección'}` : 'En el taller'} />
           <DetailRow Icon={MessageSquare} label="Comentarios" value={appointment.notes} />
         </div>

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, CalendarClock, CalendarDays, Check, XCircle, Loader2, AlertTriangle,
-  Phone, Mail, Car, StickyNote, RotateCcw, Megaphone, Clock, Settings, Home, Lock
+  Phone, Mail, Car, StickyNote, RotateCcw, Megaphone, Clock, Settings, Home, Lock, Wrench
 } from 'lucide-react';
 import {
   formatAgendaDateLong, getTimeUntilLabel, parseIsoDate, toIsoDate
@@ -225,6 +225,9 @@ export default function AppointmentsHistoryModal({
                   )}
                 </>
               : <span><Clock size={12} /> {formatAgendaDateLong(appointment.date)}</span>}
+            {appointment.fallaTitle && (
+              <span><Wrench size={12} /> Falla: {appointment.fallaTitle}</span>
+            )}
             {(appointment.vehiclePatent || appointment.vehicleModel) && (
               <span><Car size={12} /> {[appointment.vehiclePatent, appointment.vehicleModel].filter(Boolean).join(' · ')}</span>
             )}
