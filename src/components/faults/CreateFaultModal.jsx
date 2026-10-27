@@ -27,6 +27,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated }) {
   const [before, setBefore] = useState('');
   const [symptoms, setSymptoms] = useState([]);
   const [canMove, setCanMove] = useState(null);
+  const [priority, setPriority] = useState('MEDIA');
   const [region, setRegion] = useState(user?.region || '');
   const [comuna, setComuna] = useState(user?.comuna || '');
   const [photos, setPhotos] = useState([]);
@@ -105,6 +106,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated }) {
         antesDelFallo: before.trim() || null,
         sintomas: symptoms,
         seMueve: canMove,
+        prioridad: priority,
         region: region.trim() || null,
         comuna: comuna.trim(),
         fotos: photos,
@@ -158,6 +160,14 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated }) {
           <div className="ft-chips">
             <button type="button" className={`ft-chip is-toggle ${canMove === true ? 'is-on' : ''}`} aria-pressed={canMove === true} onClick={() => setCanMove(canMove === true ? null : true)}>Sí, se puede mover</button>
             <button type="button" className={`ft-chip is-toggle ${canMove === false ? 'is-on' : ''}`} aria-pressed={canMove === false} onClick={() => setCanMove(canMove === false ? null : false)}>No, necesita grúa</button>
+          </div>
+        </div>
+        <div className="ft-field">
+          <span>Prioridad</span>
+          <div className="ft-chips">
+            {[['BAJA', 'Baja'], ['MEDIA', 'Media'], ['ALTA', 'Alta']].map(([value, label]) => (
+              <button key={value} type="button" className={`ft-chip is-toggle ${priority === value ? 'is-on' : ''}`} aria-pressed={priority === value} onClick={() => setPriority(value)}>{label}</button>
+            ))}
           </div>
         </div>
 

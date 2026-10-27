@@ -132,6 +132,7 @@ export default function FaultDetailPage() {
             <Fact icon={Gauge} label="Motor" value={fault.motor} />
             <Fact icon={Gauge} label="Kilometraje" value={fault.kilometraje != null ? `${fault.kilometraje.toLocaleString('es-CL')} km` : ''} />
             <Fact icon={MapPin} label="Ubicación" value={place} />
+            <Fact icon={Gauge} label="Prioridad" value={{ ALTA: 'Alta', MEDIA: 'Media', BAJA: 'Baja' }[fault.prioridad] || ''} />
             <Fact icon={Wrench} label="¿Se puede mover?" value={fault.seMueve == null ? '' : (fault.seMueve ? 'Sí, se puede mover' : 'No, necesita grúa')} />
           </div>
           {fault.sintomas?.length > 0 && <div className="ft-chips">{fault.sintomas.map((s) => <span key={s} className="ft-chip">{s}</span>)}</div>}
