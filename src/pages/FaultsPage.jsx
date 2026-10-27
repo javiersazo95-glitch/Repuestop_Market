@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import FaultsList from '../components/faults/FaultsList';
 import { ROUTES } from '../routes/paths';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
+import fallasBanner from '../assets/fallas-banner.webp';
 import '../styles/faults.css';
 
 /** `/fallas`: fallas automotrices (el comprador registra las suyas; el taller diagnostica las de los clientes). */
@@ -12,6 +13,13 @@ export default function FaultsPage() {
     <div className="ft-page">
       <div className="ft-shell" style={{ paddingBottom: 0 }}>
         <nav className="ft-sub" aria-label="Ruta"><Link to={ROUTES.home}>Inicio</Link> / <span aria-current="page">Fallas automotrices</span></nav>
+        <img
+          className="ft-banner"
+          src={fallasBanner}
+          alt="¿Tu auto presenta una falla? Registra tu falla, recibe posibles indicaciones de talleres y agenda tu cita."
+          width="2000"
+          height="387"
+        />
       </div>
       <FaultsList />
     </div>

@@ -113,3 +113,7 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-head h2 { font-size: 22px; letter-spacing: -0.3px; }
 .ft-shell p.ft-sub, .ft-head p { font-size: 13px; }
 @media (max-width: 640px) { .ft-shell h1, .ft-head h1 { font-size: 22px; } }
+
+/* Banner de la pagina: va bajo la ruta, antes de la lista, como el de las casas de repuestos. */
+.ft-banner { display: block; width: 100%; height: auto; border-radius: 16px; background: #eef6fd; }
+@media (max-width: 640px) { .ft-banner { min-height: 96px; object-fit: cover; object-position: left center; border-radius: 12px; } }
