@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  AlertCircle, Building2, CalendarPlus, Clock, Home, Info, Loader2, MapPin, MessageCircle, Moon, Phone,
+  AlertCircle, Building2, CalendarPlus, Clock, Home, Info, Loader2, MapPin, MessageCircle, Moon,
   ShieldCheck, Wrench, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -90,7 +90,10 @@ export default function WorkshopProfilePage() {
           <div className="ft-hero">
             {profile.logoUrl ? <img className="ft-logo" src={resolveMediaUrl(profile.logoUrl)} alt={`Logo de ${profile.nombre}`} /> : <span className="ft-logo" aria-hidden="true">{profile.nombre.slice(0, 1)}</span>}
             <div style={{ flex: 1, minWidth: 220 }}>
-              <h1>{profile.nombre}</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h1 style={{ flex: 1, minWidth: 0 }}>{profile.nombre}</h1>
+                <button type="button" className="ft-icon-btn ft-info-btn" onClick={() => setInfoOpen(true)} aria-label="Información del taller" title="Información del taller"><Info size={20} /></button>
+              </div>
               <p className="ft-sub" style={{ display: 'flex', gap: 6, alignItems: 'center' }}><MapPin size={14} /> {place || 'Ubicación por confirmar'}</p>
               <div className="ft-chips" style={{ marginTop: 8 }}>
                 <span className="ft-badge"><ShieldCheck size={12} /> Taller acreditado</span>
@@ -105,9 +108,7 @@ export default function WorkshopProfilePage() {
                 {loadingBooking ? <Loader2 size={16} className="spin-icon" /> : <CalendarPlus size={16} />} Agendar visita
               </button>
             )}
-            {profile.telefono && <a className="ft-btn ft-btn-outline" href={`tel:${profile.telefono.replace(/[^+\d]/g, '')}`}><Phone size={16} /> Llamar</a>}
             {profile.whatsapp && <a className="ft-btn ft-btn-outline" href={whatsappLink()} target="_blank" rel="noopener noreferrer"><MessageCircle size={16} /> WhatsApp</a>}
-            <button type="button" className="ft-btn ft-btn-outline" onClick={() => setInfoOpen(true)}><Info size={16} /> Información del taller</button>
           </div>
           {!canBook && !isOwnWorkshop && <p className="ft-sub">Este taller no agenda desde la web: contáctalo para coordinar la revisión de tu vehículo.</p>}
           {error && <p className="ft-error" role="alert"><AlertCircle size={15} /> {error}</p>}
@@ -121,18 +122,29 @@ export default function WorkshopProfilePage() {
         </div>
 
         {profile.marcasEspecialistas?.length > 0 && (
-          <section className="ft-card"><h3>Marcas en que es especialista</h3><div className="ft-chips">{profile.marcasEspecialistas.map((b) => <span key={b} className="ft-chip">{b}</span>)}</div></section>
+          <section className="ft-table">
+            <div className="ft-table-head"><ShieldCheck size={16} /> Marcas en que es especialista</div>
+            <div className="ft-chips ft-table-body">{profile.marcasEspecialistas.map((b) => <span key={b} className="ft-chip">{b}</span>)}</div>
+          </section>
         )}
 
-        <section className="ft-card">
-          <h3>Servicios y precios</h3>
-          {profile.servicios?.length ? profile.servicios.map((service) => (
-            <div key={service.id} className="ft-service">
-              <div className="ft-service-top"><strong>{service.nombre}</strong><span>{service.precioTexto}</span></div>
-              {service.descripcion && <p className="ft-sub">{service.descripcion}</p>}
-              <p className="ft-sub">{[service.duracionMinutos ? `${service.duracionMinutos} min` : null, service.marcasEspecialistas?.length ? `Especialista: ${service.marcasEspecialistas.join(', ')}` : null].filter(Boolean).join(' · ')}</p>
-            </div>
-          )) : <p className="ft-sub">Este taller aún no publica su lista de servicios. Contáctalo para consultar.</p>}
+        <section className="ft-table">
+          <div className="ft-table-head"><Wrench size={16} /> Servicios y precios</div>
+          {profile.servicios?.length ? (
+            <>
+              <div className="ft-table-cols"><span>SERVICIO</span><span>PRECIO</span></div>
+              {profile.servicios.map((service) => (
+                <div key={service.id} className="ft-table-row">
+                  <div>
+                    <strong>{service.nombre}</strong>
+                    {service.descripcion && <p className="ft-sub">{service.descripcion}</p>}
+                    <small>{[service.duracionMinutos ? `${service.duracionMinutos} min` : null, service.marcasEspecialistas?.length ? `Especialista: ${service.marcasEspecialistas.join(', ')}` : null].filter(Boolean).join(' · ')}</small>
+                  </div>
+                  <span className="ft-price-pill">{service.precioTexto}</span>
+                </div>
+              ))}
+            </>
+          ) : <p className="ft-sub ft-table-body">Este taller aún no publica su lista de servicios. Contáctalo para consultar.</p>}
         </section>
       </div>
 
@@ -142,8 +154,6 @@ export default function WorkshopProfilePage() {
             <div className="ft-modal-head"><h2>Información del taller</h2><button type="button" className="ft-icon-btn" onClick={() => setInfoOpen(false)} aria-label="Cerrar"><X size={20} /></button></div>
             <div className="ft-info-list">
               <InfoRow icon={Building2} label="Taller" value={profile.nombre} />
-              <InfoRow icon={MapPin} label="Dirección" value={[profile.direccion, profile.comuna, profile.region].filter(Boolean).join(', ')} />
-              <InfoRow icon={Phone} label="Teléfono" value={profile.telefono} />
               <InfoRow icon={MessageCircle} label="WhatsApp" value={profile.whatsapp} />
               <InfoRow icon={Clock} label="Horario" value={profile.horario} />
               {profile.atiende24Horas && <InfoRow icon={Moon} label="Atención 24/7" value={profile.servicios24Horas?.length ? profile.servicios24Horas.join(', ') : 'Atiende urgencias a toda hora'} />}

@@ -155,7 +155,7 @@ export default function FaultDetailPage() {
       <article key={d.id} className="ft-card">
         <div className="ft-diag-author">
           {d.autorFotoUrl ? <img className="ft-avatar" src={resolveMediaUrl(d.autorFotoUrl)} alt="" /> : <span className="ft-avatar">{d.autor?.slice(0, 1)}</span>}
-          <div><strong>{d.autor}</strong><div className="ft-sub">{[workshop?.comuna, timeSince(d.createdAt)].filter(Boolean).join(' · ')}</div></div>
+          <div><strong>{d.autor}</strong><div className="ft-sub">{[workshop?.comuna, timeSince(d.createdAt)].filter(Boolean).join(' · ')}</div>{workshop && <Link className="ft-link-sub" to={workshopPath(workshop.tallerId)}>Ver perfil del taller ›</Link>}</div>
         </div>
         <p>{d.texto}</p>
         {price && <span className="ft-price"><Tag size={14} /> Precio estimado: {price}</span>}
@@ -167,7 +167,6 @@ export default function FaultDetailPage() {
                 {loadingBookingId === workshop.agendaAnuncioId ? <Loader2 size={16} className="spin-icon" /> : <CalendarPlus size={16} />} Agendar visita
               </button>
             )}
-            <Link className="ft-btn ft-btn-outline" to={workshopPath(workshop.tallerId)}>Ver perfil del taller</Link>
           </div>
         )}
         {!isPublic && fault.propia && fault.vigente && !workshop?.puedeAgendar && (
@@ -314,7 +313,7 @@ export default function FaultDetailPage() {
               </form>
             ) : openDiagnosis ? (
               <div className="ft-form">
-                <p><strong>{openDiagnosis.autor}</strong> emitió un diagnóstico · {timeSince(openDiagnosis.createdAt)} {openDiagnosis.aceptado && <span className="ft-badge">Aceptado</span>}</p>
+                <p><strong>{openDiagnosis.autor}</strong> emitió un diagnóstico · {timeSince(openDiagnosis.createdAt)} {openDiagnosis.aceptado && <span className="ft-badge">Aceptado</span>}{openDiagnosis.taller && <><br /><Link className="ft-link-sub" to={workshopPath(openDiagnosis.taller.tallerId)}>Ver perfil del taller ›</Link></>}</p>
                 <p>{openDiagnosis.texto}</p>
                 {priceRange(openDiagnosis.precioDesde, openDiagnosis.precioHasta) && <span className="ft-price"><Tag size={14} /> Precio estimado: {priceRange(openDiagnosis.precioDesde, openDiagnosis.precioHasta)}</span>}
                 {openDiagnosis.taller?.servicios?.length > 0 && <div className="ft-chips">{openDiagnosis.taller.servicios.slice(0, 6).map((sv) => <span key={sv} className="ft-chip">{sv}</span>)}</div>}
@@ -331,7 +330,6 @@ export default function FaultDetailPage() {
                       <CalendarPlus size={16} /> Agendar cita
                     </button>
                   )}
-                  {openDiagnosis.taller && <Link className="ft-btn ft-btn-outline" to={workshopPath(openDiagnosis.taller.tallerId)}>Ver perfil del taller</Link>}
                 </div>
                 {fault.propia && fault.vigente && openDiagnosis.aceptado && !openDiagnosis.taller?.puedeAgendar && (
                   <p className="ft-sub">Este taller no agenda desde la web: entra a su perfil para llamar o escribirle.</p>
