@@ -3,12 +3,12 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { AlertCircle, CalendarPlus, Car, ClipboardList, FileText, Gauge, Loader2, Lock, MapPin, Tag, Wrench, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
-  acceptFaultDiagnosis, closeFault, commentFault, getFault, getFaultComments, priceRange, timeSince,
+  acceptFaultDiagnosis, closeFault, commentFault, getDiagnosisEligibility, getFault, getFaultComments, priceRange, timeSince,
 } from '../services/faultApi';
 import { resolveMediaUrl } from '../services/api';
 import { fetchPublicAd } from '../services/adsStorage';
 import AdAppointmentModal from '../components/ads/AdAppointmentModal';
-import { ROUTES, workshopPath } from '../routes/paths';
+import { ROUTES, profilePath, workshopPath } from '../routes/paths';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 import '../styles/faults.css';
 
@@ -35,6 +35,7 @@ export default function FaultDetailPage() {
   // Popup del diagnostico privado: 'new' (taller) o el id del registro abierto.
   const [diagModal, setDiagModal] = useState(null);
   const [accepting, setAccepting] = useState(false);
+  const [eligibility, setEligibility] = useState(undefined);
   const [priceFrom, setPriceFrom] = useState('');
   const [priceTo, setPriceTo] = useState('');
   const [replyTo, setReplyTo] = useState(null);
@@ -57,6 +58,15 @@ export default function FaultDetailPage() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Comentar es libre; registrar un diagnostico pide Diagnostico activo o un anuncio Empresarial.
+  useEffect(() => {
+    if (diagModal !== 'new') return;
+    let active = true;
+    setEligibility(undefined);
+    getDiagnosisEligibility().then((e) => { if (active) setEligibility(e); }).catch(() => { if (active) setEligibility(null); });
+    return () => { active = false; };
+  }, [diagModal]);
 
   const roots = useMemo(() => comments.filter((c) => c.respondeAId == null), [comments]);
   // Comentarios: hilo publico para afinar el diagnostico. Diagnosticos: privados (dueno de la falla y su taller).
@@ -263,7 +273,38 @@ export default function FaultDetailPage() {
               <h2><Lock size={16} /> {diagModal === 'new' ? 'Registrar diagnóstico' : 'Diagnóstico privado'}</h2>
               <button type="button" className="ft-btn ft-btn-outline ft-btn-sm" aria-label="Cerrar" onClick={() => setDiagModal(null)}><X size={14} /></button>
             </div>
-            {diagModal === 'new' ? (
+            {diagModal === 'new' && eligibility === undefined ? (
+              <div className="ft-empty"><Loader2 size={18} className="spin-icon" /> Comprobando…</div>
+            ) : diagModal === 'new' && eligibility?.habilitado !== true ? (
+              <div className="ft-form">
+                <p>Comentar es libre, pero para registrar un diagnóstico privado necesitas uno de estos dos caminos. Elige el que más te acomode:</p>
+                <section className="ft-card ft-path">
+                  <strong><Lock size={14} /> Camino 1: servicio Diagnóstico</strong>
+                  <p className="ft-sub">Un periodo mensual pagado con monedas. Cada 10 necesidades de compra que publicas ganas 1 periodo gratis.</p>
+                  <ol>
+                    <li>Entra a <b>Diagnóstico</b> en tu perfil de taller.</li>
+                    <li>Revisa tu saldo de monedas y recarga si te faltan.</li>
+                    <li>Deja registrado el horario de atención de tu taller: es la agenda de tus citas.</li>
+                    <li>Presiona <b>Activar</b> y vuelve a esta falla para registrar tu diagnóstico.</li>
+                  </ol>
+                  <Link className="ft-btn ft-btn-primary" to={profilePath('diagnostico')}>Ir a Diagnóstico</Link>
+                </section>
+                <section className="ft-card ft-path">
+                  <strong><Tag size={14} /> Camino 2: anuncio Empresarial</strong>
+                  <p className="ft-sub">Un anuncio publicado en Servicios y anuncios con el plan Empresarial, que además incluye agenda de citas.</p>
+                  <ol>
+                    <li>Entra a <b>Anuncios y agenda</b> en tu perfil de taller.</li>
+                    <li>Crea un anuncio y elige el plan <b>Empresarial</b>.</li>
+                    <li>Selecciona los servicios de tu catálogo (<b>Mis servicios</b>) y completa fotos y horario.</li>
+                    <li>Págalo con monedas, espera la aprobación y vuelve a esta falla.</li>
+                  </ol>
+                  <div className="ft-actions">
+                    <Link className="ft-btn ft-btn-primary" to={profilePath('anuncios')}>Ir a Anuncios y agenda</Link>
+                    <Link className="ft-btn ft-btn-outline" to={profilePath('servicios_taller')}>Revisar Mis servicios</Link>
+                  </div>
+                </section>
+              </div>
+            ) : diagModal === 'new' ? (
               <form className="ft-form" onSubmit={(e) => send(e, 'DIAGNOSTICO')}>
                 <p className="ft-sub">Solo el cliente y tú podrán verlo. Si le gusta, lo acepta y podrá agendar una cita contigo.</p>
                 <label className="ft-field"><textarea rows={4} value={text} maxLength={1500} onChange={(e) => setText(e.target.value)} placeholder="Qué crees que es, qué revisarías y cómo lo resolverías" /></label>

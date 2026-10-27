@@ -50,6 +50,11 @@ export async function commentFault(id, { texto, precioDesde, precioHasta, respon
   });
 }
 
+/** Si el taller puede registrar diagnosticos: Diagnostico activo o anuncio Empresarial vigente. */
+export async function getDiagnosisEligibility() {
+  return fetchApi('/fallas-automotrices/habilitacion-diagnostico');
+}
+
 /** El cliente acepta el diagnostico privado de un taller: habilita agendar con el. */
 export async function acceptFaultDiagnosis(id, commentId) {
   return fetchApi(`/fallas-automotrices/${encodeURIComponent(String(id))}/comentarios/${encodeURIComponent(String(commentId))}/aceptar`, { method: 'POST', body: JSON.stringify({}) });
