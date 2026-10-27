@@ -50,6 +50,11 @@ export async function commentFault(id, { texto, precioDesde, precioHasta, respon
   });
 }
 
+/** El cliente acepta el diagnostico privado de un taller: habilita agendar con el. */
+export async function acceptFaultDiagnosis(id, commentId) {
+  return fetchApi(`/fallas-automotrices/${encodeURIComponent(String(id))}/comentarios/${encodeURIComponent(String(commentId))}/aceptar`, { method: 'POST', body: JSON.stringify({}) });
+}
+
 /** Sube una foto de la falla y devuelve `{ url }` para enviarla al registrar. */
 export async function uploadFaultPhoto(file) {
   const formData = new FormData();

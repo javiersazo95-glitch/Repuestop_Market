@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { AlertCircle, CalendarPlus, Car, Gauge, Loader2, MapPin, Tag, Wrench } from 'lucide-react';
+import { AlertCircle, CalendarPlus, Car, ClipboardList, FileText, Gauge, Loader2, Lock, MapPin, Tag, Wrench, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
-  closeFault, commentFault, getFault, getFaultComments, priceRange, timeSince,
+  acceptFaultDiagnosis, closeFault, commentFault, getFault, getFaultComments, priceRange, timeSince,
 } from '../services/faultApi';
 import { resolveMediaUrl } from '../services/api';
 import { fetchPublicAd } from '../services/adsStorage';
@@ -32,6 +32,9 @@ export default function FaultDetailPage() {
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [publicText, setPublicText] = useState('');
+  // Popup del diagnostico privado: 'new' (taller) o el id del registro abierto.
+  const [diagModal, setDiagModal] = useState(null);
+  const [accepting, setAccepting] = useState(false);
   const [priceFrom, setPriceFrom] = useState('');
   const [priceTo, setPriceTo] = useState('');
   const [replyTo, setReplyTo] = useState(null);
@@ -62,7 +65,11 @@ export default function FaultDetailPage() {
   const repliesOf = (commentId) => comments.filter((c) => c.respondeAId === commentId);
   const myId = String(user?.userId ?? user?.id);
   const isMine = (c) => Boolean(c.taller && String(c.taller.usuarioId) === myId);
-  const alreadyDiagnosed = diagnostics.some(isMine);
+  const myDiagnosis = diagnostics.find(isMine) || null;
+  const alreadyDiagnosed = Boolean(myDiagnosis);
+  // Los diagnosticos se muestran como registros dentro del hilo de comentarios.
+  const records = useMemo(() => [...publicComments, ...diagnostics].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)), [publicComments, diagnostics]);
+  const openDiagnosis = typeof diagModal === 'number' ? comments.find((c) => c.id === diagModal) : null;
 
   /** Publica un diagnostico privado (`DIAGNOSTICO`), un comentario publico (`COMENTARIO`) o una respuesta. */
   const send = async (event, kind) => {
@@ -83,13 +90,19 @@ export default function FaultDetailPage() {
         precioDesde: isDiagnosis && Number.isFinite(from) ? from : null,
         precioHasta: isDiagnosis && Number.isFinite(to) ? to : null,
       });
-      setText(''); setPublicText(''); setPriceFrom(''); setPriceTo(''); setReplyTo(null);
+      setText(''); setPublicText(''); setPriceFrom(''); setPriceTo(''); setReplyTo(null); setDiagModal(null);
       await load();
     } catch (err) {
       setFormError(err?.message || 'No pudimos publicar tu comentario.');
     } finally {
       setSending(false);
     }
+  };
+
+  const accept = async (commentId) => {
+    setAccepting(true);
+    setFormError('');
+    try { await acceptFaultDiagnosis(fault.id, commentId); await load(); } catch (err) { setFormError(err?.message || 'No pudimos aceptar el diagnóstico.'); } finally { setAccepting(false); }
   };
 
   const close = async () => {
@@ -193,59 +206,109 @@ export default function FaultDetailPage() {
           {fault.propia && fault.vigente && <div className="ft-actions"><button type="button" className="ft-btn ft-btn-outline" onClick={close}>Cerrar falla</button></div>}
         </section>
 
-        <h2 style={{ color: 'var(--ft-strong)' }}>Comentarios ({publicComments.length})</h2>
-        <p className="ft-sub">Públicos: los talleres preguntan para afinar su diagnóstico y el cliente responde.</p>
-        {publicComments.length === 0 ? (
+        <div className="ft-section-head">
+          <h2 style={{ color: 'var(--ft-strong)' }}>Comentarios ({publicComments.length})</h2>
+          {isWorkshop && fault.vigente && (
+            <button type="button" className="ft-btn ft-btn-outline ft-btn-sm" onClick={() => setDiagModal(myDiagnosis ? myDiagnosis.id : 'new')}>
+              <ClipboardList size={14} /> {myDiagnosis ? 'Mi diagnóstico' : 'Diagnosticar'}
+            </button>
+          )}
+        </div>
+        <p className="ft-sub">Los talleres preguntan para afinar su diagnóstico y el cliente responde. Los diagnósticos son privados: solo los ven el cliente y el taller que los emitió.</p>
+        {records.length === 0 ? (
           <div className="ft-empty"><strong>Aún no hay comentarios</strong>{fault.propia ? 'Los talleres pueden preguntarte para afinar su diagnóstico.' : 'Haz una pregunta para afinar el diagnóstico.'}</div>
         ) : (
-          <div className="ft-list">{publicComments.map((c) => renderThread(c, true))}</div>
+          <div className="ft-list">
+            {records.map((r) => (r.tipo === 'COMENTARIO' ? renderThread(r, true) : (
+              <article key={r.id} className="ft-card ft-record">
+                <span className="ft-record-icon"><FileText size={18} /></span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <strong>{r.autor} emitió un diagnóstico</strong>
+                  <div className="ft-sub"><Lock size={11} /> Privado · {timeSince(r.createdAt)}</div>
+                </div>
+                {r.aceptado && <span className="ft-badge">Aceptado</span>}
+                <button type="button" className="ft-btn ft-btn-outline ft-btn-sm" onClick={() => setDiagModal(r.id)}>Ver</button>
+              </article>
+            )))}
+          </div>
         )}
-        {isWorkshop && fault.vigente && !replying && (
+
+        {replying && diagModal == null ? (
+          <form className="ft-card ft-form" onSubmit={(e) => send(e, 'COMENTARIO')}>
+            <strong>Responder</strong>
+            <label className="ft-field"><textarea rows={3} value={text} maxLength={1500} onChange={(e) => setText(e.target.value)} placeholder="Escribe tu respuesta" /></label>
+            {formError && <p className="ft-error" role="alert"><AlertCircle size={15} /> {formError}</p>}
+            <div className="ft-actions">
+              <button type="submit" className="ft-btn ft-btn-primary" disabled={sending || !text.trim()}>{sending ? 'Publicando…' : 'Publicar'}</button>
+              <button type="button" className="ft-btn ft-btn-outline" onClick={() => { setReplyTo(null); setText(''); }}>Cancelar</button>
+            </div>
+          </form>
+        ) : isWorkshop && fault.vigente && !replying ? (
           <form className="ft-card ft-form" onSubmit={(e) => send(e, 'COMENTARIO')}>
             <strong>Comentar para afinar el diagnóstico</strong>
             <label className="ft-field">
               <textarea rows={3} value={publicText} maxLength={1500} onChange={(e) => setPublicText(e.target.value)}
                 placeholder="Ej: ¿Se enciende la luz de motor? ¿Cuándo empezó el ruido?" />
             </label>
+            {formError && <p className="ft-error" role="alert"><AlertCircle size={15} /> {formError}</p>}
             <div className="ft-actions"><button type="submit" className="ft-btn ft-btn-primary" disabled={sending || !publicText.trim()}>{sending ? 'Publicando…' : 'Publicar comentario'}</button></div>
           </form>
-        )}
-
-        <h2 style={{ color: 'var(--ft-strong)' }}>{fault.propia ? `Diagnósticos de talleres (${diagnostics.length})` : isWorkshop ? 'Tu diagnóstico privado' : 'Diagnósticos'}</h2>
-        <p className="ft-sub">Privados: solo los ven el dueño de la falla y el taller que los registró.</p>
-        {fault.propia || isWorkshop ? (
-          diagnostics.length === 0 ? (
-            <div className="ft-empty"><strong>{fault.propia ? 'Aún no hay diagnósticos' : 'Aún no registras tu diagnóstico'}</strong>{fault.propia ? 'Avisamos a los talleres acreditados. Te notificaremos cuando respondan.' : 'Regístralo abajo: solo el cliente y tú podrán verlo.'}</div>
-          ) : (
-            <div className="ft-list">{diagnostics.map((d) => renderThread(d, false))}</div>
-          )
-        ) : (
-          <div className="ft-empty"><strong>Diagnósticos privados</strong>Solo el dueño de la falla y el taller que los registró pueden verlos.</div>
-        )}
-
-        {(canComment || replying) && (
-          <form className="ft-card ft-form" onSubmit={(e) => send(e, 'DIAGNOSTICO')}>
-            <strong>{replying ? 'Responder' : 'Registrar diagnóstico privado'}</strong>
-            <label className="ft-field">
-              <textarea rows={4} value={text} maxLength={1500} onChange={(e) => setText(e.target.value)}
-                placeholder={replying ? 'Escribe tu respuesta' : 'Qué crees que es, qué revisarías y cómo lo resolverías'} />
-            </label>
-            {!replying && (
-              <div className="ft-row">
-                <label className="ft-field"><span>Precio desde <small>Opcional</small></span><input inputMode="numeric" value={priceFrom} maxLength={9} onChange={(e) => setPriceFrom(e.target.value.replace(/\D/g, ''))} placeholder="40000" /></label>
-                <label className="ft-field"><span>Hasta <small>Opcional</small></span><input inputMode="numeric" value={priceTo} maxLength={9} onChange={(e) => setPriceTo(e.target.value.replace(/\D/g, ''))} placeholder="80000" /></label>
-              </div>
-            )}
-            {formError && <p className="ft-error" role="alert"><AlertCircle size={15} /> {formError}</p>}
-            <div className="ft-actions">
-              <button type="submit" className="ft-btn ft-btn-primary" disabled={sending || !text.trim()}>{sending ? 'Publicando…' : replying ? 'Publicar' : 'Registrar diagnóstico'}</button>
-              {replying && <button type="button" className="ft-btn ft-btn-outline" onClick={() => { setReplyTo(null); setText(''); }}>Cancelar</button>}
-            </div>
-          </form>
-        )}
-        {!canComment && !replying && formError && <p className="ft-error" role="alert"><AlertCircle size={15} /> {formError}</p>}
-        {isWorkshop && fault.vigente && alreadyDiagnosed && <p className="ft-sub">Ya registraste tu diagnóstico en esta falla.</p>}
+        ) : formError ? <p className="ft-error" role="alert"><AlertCircle size={15} /> {formError}</p> : null}
       </div>
+
+      {diagModal != null && (
+        <div className="ft-modal-backdrop" role="dialog" aria-modal="true" onClick={() => setDiagModal(null)}>
+          <div className="ft-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="ft-modal-head">
+              <h2><Lock size={16} /> {diagModal === 'new' ? 'Registrar diagnóstico' : 'Diagnóstico privado'}</h2>
+              <button type="button" className="ft-btn ft-btn-outline ft-btn-sm" aria-label="Cerrar" onClick={() => setDiagModal(null)}><X size={14} /></button>
+            </div>
+            {diagModal === 'new' ? (
+              <form className="ft-form" onSubmit={(e) => send(e, 'DIAGNOSTICO')}>
+                <p className="ft-sub">Solo el cliente y tú podrán verlo. Si le gusta, lo acepta y podrá agendar una cita contigo.</p>
+                <label className="ft-field"><textarea rows={4} value={text} maxLength={1500} onChange={(e) => setText(e.target.value)} placeholder="Qué crees que es, qué revisarías y cómo lo resolverías" /></label>
+                <div className="ft-row">
+                  <label className="ft-field"><span>Precio desde <small>Opcional</small></span><input inputMode="numeric" value={priceFrom} maxLength={9} onChange={(e) => setPriceFrom(e.target.value.replace(/\D/g, ''))} placeholder="40000" /></label>
+                  <label className="ft-field"><span>Hasta <small>Opcional</small></span><input inputMode="numeric" value={priceTo} maxLength={9} onChange={(e) => setPriceTo(e.target.value.replace(/\D/g, ''))} placeholder="80000" /></label>
+                </div>
+                {formError && <p className="ft-error" role="alert"><AlertCircle size={15} /> {formError}</p>}
+                <div className="ft-actions"><button type="submit" className="ft-btn ft-btn-primary" disabled={sending || !text.trim()}>{sending ? 'Registrando…' : 'Registrar diagnóstico'}</button></div>
+              </form>
+            ) : openDiagnosis ? (
+              <div className="ft-form">
+                <p><strong>{openDiagnosis.autor}</strong> emitió un diagnóstico · {timeSince(openDiagnosis.createdAt)} {openDiagnosis.aceptado && <span className="ft-badge">Aceptado</span>}</p>
+                <p>{openDiagnosis.texto}</p>
+                {priceRange(openDiagnosis.precioDesde, openDiagnosis.precioHasta) && <span className="ft-price"><Tag size={14} /> Precio estimado: {priceRange(openDiagnosis.precioDesde, openDiagnosis.precioHasta)}</span>}
+                {openDiagnosis.taller?.servicios?.length > 0 && <div className="ft-chips">{openDiagnosis.taller.servicios.slice(0, 6).map((sv) => <span key={sv} className="ft-chip">{sv}</span>)}</div>}
+                {repliesOf(openDiagnosis.id).map((r) => (
+                  <div key={r.id} className="ft-reply"><small>{r.esCreador ? `${r.autor} (cliente)` : r.autor}</small>{r.texto}</div>
+                ))}
+                {formError && <p className="ft-error" role="alert"><AlertCircle size={15} /> {formError}</p>}
+                <div className="ft-actions">
+                  {fault.propia && fault.vigente && !openDiagnosis.aceptado && (
+                    <button type="button" className="ft-btn ft-btn-primary" disabled={accepting} onClick={() => accept(openDiagnosis.id)}>{accepting ? 'Aceptando…' : 'Aceptar diagnóstico'}</button>
+                  )}
+                  {fault.propia && fault.vigente && openDiagnosis.aceptado && openDiagnosis.taller?.puedeAgendar && openDiagnosis.taller?.agendaAnuncioId && (
+                    <button type="button" className="ft-btn ft-btn-primary" disabled={loadingBookingId != null} onClick={() => { setDiagModal(null); openBooking(openDiagnosis.taller.agendaAnuncioId); }}>
+                      <CalendarPlus size={16} /> Agendar cita
+                    </button>
+                  )}
+                  {openDiagnosis.taller && <Link className="ft-btn ft-btn-outline" to={workshopPath(openDiagnosis.taller.tallerId)}>Ver perfil del taller</Link>}
+                </div>
+                {fault.propia && fault.vigente && openDiagnosis.aceptado && !openDiagnosis.taller?.puedeAgendar && (
+                  <p className="ft-sub">Este taller no agenda desde la web: entra a su perfil para llamar o escribirle.</p>
+                )}
+                {fault.vigente && (fault.propia || isMine(openDiagnosis)) && (
+                  <form className="ft-form" onSubmit={(e) => { setReplyTo(openDiagnosis.id); send(e, 'COMENTARIO'); }}>
+                    <label className="ft-field"><textarea rows={2} value={text} maxLength={1500} onChange={(e) => { setText(e.target.value); setReplyTo(openDiagnosis.id); }} placeholder="Escribe una respuesta" /></label>
+                    <div className="ft-actions"><button type="submit" className="ft-btn ft-btn-outline" disabled={sending || !text.trim()}>Enviar respuesta</button></div>
+                  </form>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
 
       {booking && (
         <AdAppointmentModal

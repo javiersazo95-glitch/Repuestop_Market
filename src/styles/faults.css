@@ -129,3 +129,9 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-priority.is-high { background: #fee2e2; color: #b91c1c; }
 .ft-priority.is-mid { background: #fef3c7; color: #b45309; }
 .ft-priority.is-low { background: #dcfce7; color: #15803d; }
+
+/* Diagnostico privado como registro dentro del hilo de comentarios. */
+.ft-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ft-btn-sm { padding: 6px 12px; font-size: 13px; border-radius: 999px; }
+.ft-record { flex-direction: row; align-items: center; gap: 12px; background: var(--ft-primary-light); border-color: var(--ft-primary); }
+.ft-record-icon { display: inline-flex; width: 36px; height: 36px; border-radius: 50%; background: #fff; color: var(--ft-primary); align-items: center; justify-content: center; flex: none; }
