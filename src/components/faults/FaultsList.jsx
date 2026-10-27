@@ -35,7 +35,7 @@ export default function FaultsList({ heading = true }) {
   const { role } = useAuth();
   const navigate = useNavigate();
   const isWorkshop = role === 'WORKSHOP';
-  const [view, setView] = useState(isWorkshop ? 'OPEN' : 'MINE');
+  const [view, setView] = useState('OPEN');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -58,7 +58,7 @@ export default function FaultsList({ heading = true }) {
   useEffect(() => { load(view); }, [load, view]);
 
   const empty = view === 'OPEN'
-    ? ['No hay fallas abiertas', 'Cuando un cliente registre una falla, la verás aquí y te avisaremos.']
+    ? ['No hay fallas abiertas', 'Cuando alguien registre una falla, la verás aquí.']
     : view === 'COMMENTED'
       ? ['Aún no dejas diagnósticos', 'Comenta una falla abierta para que el cliente conozca tu taller.']
       : ['No has registrado fallas', 'Cuéntanos qué le pasó a tu vehículo y los talleres te enviarán su diagnóstico.'];
@@ -78,12 +78,14 @@ export default function FaultsList({ heading = true }) {
           )}
         </div>
 
-        {isWorkshop && (
-          <div className="ft-tabs" role="tablist">
-            <button type="button" role="tab" aria-selected={view === 'OPEN'} className={`ft-tab ${view === 'OPEN' ? 'is-active' : ''}`} onClick={() => setView('OPEN')}>Abiertas</button>
+        <div className="ft-tabs" role="tablist">
+          <button type="button" role="tab" aria-selected={view === 'OPEN'} className={`ft-tab ${view === 'OPEN' ? 'is-active' : ''}`} onClick={() => setView('OPEN')}>Mural público</button>
+          {isWorkshop ? (
             <button type="button" role="tab" aria-selected={view === 'COMMENTED'} className={`ft-tab ${view === 'COMMENTED' ? 'is-active' : ''}`} onClick={() => setView('COMMENTED')}>Mis diagnósticos</button>
-          </div>
-        )}
+          ) : (
+            <button type="button" role="tab" aria-selected={view === 'MINE'} className={`ft-tab ${view === 'MINE' ? 'is-active' : ''}`} onClick={() => setView('MINE')}>Mis fallas</button>
+          )}
+        </div>
 
         {loading ? (
           <div className="ft-empty"><Loader2 size={20} className="spin-icon" /> Cargando fallas…</div>
@@ -93,7 +95,7 @@ export default function FaultsList({ heading = true }) {
         ) : items.length === 0 ? (
           <div className="ft-empty"><Wrench size={22} /><strong>{empty[0]}</strong>{empty[1]}</div>
         ) : (
-          <div className="ft-list">{items.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop} />)}</div>
+          <div className="ft-list">{items.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop && view === 'MINE'} />)}</div>
         )}
       </div>
 
