@@ -24,6 +24,9 @@ function FaultCard({ fault, showStatus, showClient, fromMural }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="ft-card-badges">
             {fault.propia && <span className="ft-badge is-mine">Mi falla</span>}
+            {fault.propia && (fault.preguntasPendientes || 0) + (fault.propuestasPendientes || 0) > 0 && (
+              <span className="ft-badge is-pending" title={`${fault.propuestasPendientes || 0} propuestas y ${fault.preguntasPendientes || 0} preguntas por revisar`}>● {(fault.preguntasPendientes || 0) + (fault.propuestasPendientes || 0)} por revisar</span>
+            )}
             {showStatus && <span className={`ft-badge ${fault.vigente ? '' : 'is-closed'}`}>{fault.vigente ? 'Abierta' : 'Cerrada'}</span>}
           </div>
           <h3>{vehicle}</h3>
@@ -57,26 +60,28 @@ export default function FaultsList({ heading = true }) {
   const navigate = useNavigate();
   const isWorkshop = role === 'WORKSHOP';
   const [view, setView] = useState('OPEN');
-  const [items, setItems] = useState([]);
+  const [lists, setLists] = useState({ OPEN: [], MINE: [], COMMENTED: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
 
-  const load = useCallback(async (current) => {
+  // Se cargan las dos listas de la persona para mostrar cuántos registros lleva cada pestaña.
+  const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const fetcher = current === 'OPEN' ? getOpenFaults : current === 'COMMENTED' ? getCommentedFaults : getMyFaults;
-      const data = await fetcher();
-      setItems(Array.isArray(data) ? data : []);
+      const second = isWorkshop ? getCommentedFaults : getMyFaults;
+      const [open, other] = await Promise.all([getOpenFaults(), second()]);
+      setLists({ OPEN: Array.isArray(open) ? open : [], [isWorkshop ? 'COMMENTED' : 'MINE']: Array.isArray(other) ? other : [] });
     } catch (err) {
       setError(err?.message || 'No pudimos cargar las fallas.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isWorkshop]);
 
-  useEffect(() => { load(view); }, [load, view]);
+  useEffect(() => { load(); }, [load]);
+  const items = lists[view] || [];
 
   const empty = view === 'OPEN'
     ? ['No hay fallas abiertas', 'Cuando alguien registre una falla, la verás aquí.']
@@ -100,11 +105,11 @@ export default function FaultsList({ heading = true }) {
         </div>
 
         <div className="ft-tabs" role="tablist">
-          <button type="button" role="tab" aria-selected={view === 'OPEN'} className={`ft-tab ${view === 'OPEN' ? 'is-active' : ''}`} onClick={() => setView('OPEN')}>Mural público</button>
+          <button type="button" role="tab" aria-selected={view === 'OPEN'} className={`ft-tab ${view === 'OPEN' ? 'is-active' : ''}`} onClick={() => setView('OPEN')}>Mural público ({lists.OPEN.length})</button>
           {isWorkshop ? (
-            <button type="button" role="tab" aria-selected={view === 'COMMENTED'} className={`ft-tab ${view === 'COMMENTED' ? 'is-active' : ''}`} onClick={() => setView('COMMENTED')}>Mis diagnósticos</button>
+            <button type="button" role="tab" aria-selected={view === 'COMMENTED'} className={`ft-tab ${view === 'COMMENTED' ? 'is-active' : ''}`} onClick={() => setView('COMMENTED')}>Mis diagnósticos ({lists.COMMENTED.length})</button>
           ) : (
-            <button type="button" role="tab" aria-selected={view === 'MINE'} className={`ft-tab ${view === 'MINE' ? 'is-active' : ''}`} onClick={() => setView('MINE')}>Mis fallas</button>
+            <button type="button" role="tab" aria-selected={view === 'MINE'} className={`ft-tab ${view === 'MINE' ? 'is-active' : ''}`} onClick={() => setView('MINE')}>Mis fallas ({lists.MINE.length})</button>
           )}
         </div>
 
@@ -112,7 +117,7 @@ export default function FaultsList({ heading = true }) {
           <div className="ft-empty"><Loader2 size={20} className="spin-icon" /> Cargando fallas…</div>
         ) : error ? (
           <div className="ft-empty" role="alert"><AlertCircle size={20} /><strong>No pudimos cargar las fallas</strong>{error}<br />
-            <button type="button" className="ft-btn ft-btn-outline" style={{ marginTop: 10 }} onClick={() => load(view)}>Reintentar</button></div>
+            <button type="button" className="ft-btn ft-btn-outline" style={{ marginTop: 10 }} onClick={() => load()}>Reintentar</button></div>
         ) : items.length === 0 ? (
           <div className="ft-empty"><Wrench size={22} /><strong>{empty[0]}</strong>{empty[1]}</div>
         ) : (

@@ -157,3 +157,5 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-service-meta { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--ft-border); }
 .ft-service-meta small { color: var(--ft-muted); }
 .ft-service-meta small b { color: var(--ft-text); font-weight: 700; }
+
+.ft-badge.is-pending { background: #fef3c7; color: #b45309; margin-right: 6px; }
