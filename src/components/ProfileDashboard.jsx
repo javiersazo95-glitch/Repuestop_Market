@@ -552,6 +552,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // Datos del perfil y rol
   const isSeller = role === 'SELLER';
   const isWorkshop = role === 'WORKSHOP';
+  // Declarado antes de la consulta de acreditacion, que lo usa: despues rompia todo el perfil
+  // ("Cannot access ... before initialization").
+  const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
   // Como la tienda: el taller solo entra a su panel con el expediente aprobado. Sin enviar, en
   // revision, por corregir o rechazado ve unicamente su acreditacion.
   const workshopAccreditation = useQuery({
@@ -565,7 +568,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     && String(workshopAccreditation.data?.estado || 'SIN_SOLICITUD').toUpperCase() !== 'APROBADO';
   const baseSidebarGroups = isSeller ? SELLER_SIDEBAR_GROUPS : isWorkshop ? WORKSHOP_SIDEBAR_GROUPS : BUYER_SIDEBAR_GROUPS;
   const effectiveSellerId = user?.sellerId || user?.proveedorId || user?.tiendaId || user?.userId || user?.id;
-  const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
   const effectiveBuyerId = user?.buyerId || user?.compradorId;
   const [selectedCatalogProduct, setSelectedCatalogProduct] = useState(null);
   const [selectedTopProduct, setSelectedTopProduct] = useState(null);
