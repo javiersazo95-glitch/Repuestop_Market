@@ -4,6 +4,7 @@ import { AlertCircle, Loader2, MessageSquare, Plus, Wrench } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext';
 import { getCommentedFaults, getMyFaults, getOpenFaults, timeSince } from '../../services/faultApi';
 import { faultDetailPath } from '../../routes/paths';
+import { resolveMediaUrl } from '../../services/api';
 import CreateFaultModal from './CreateFaultModal';
 import '../../styles/faults.css';
 
@@ -12,7 +13,9 @@ function FaultCard({ fault, showStatus }) {
   return (
     <Link to={faultDetailPath(fault)} className="ft-card" aria-label={`Falla: ${fault.titulo}, ${fault.vehiculo}`}>
       <div className="ft-card-top">
-        <h3>{fault.titulo}</h3>
+        {/* La primera imagen es la foto del vehiculo que se sube al registrar la falla. */}
+        {fault.fotoUrl ? <img className="ft-card-thumb" src={resolveMediaUrl(fault.fotoUrl)} alt={fault.vehiculo} loading="lazy" /> : <span className="ft-card-thumb is-empty" aria-hidden="true"><Wrench size={20} /></span>}
+        <h3 style={{ flex: 1, minWidth: 0 }}>{fault.titulo}</h3>
         {fault.propia && <span className="ft-badge is-mine">Mi falla</span>}
         {showStatus && <span className={`ft-badge ${fault.vigente ? '' : 'is-closed'}`}>{fault.vigente ? 'Abierta' : 'Cerrada'}</span>}
       </div>
