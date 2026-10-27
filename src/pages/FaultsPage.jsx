@@ -17,8 +17,8 @@ export default function FaultsPage() {
           className="ft-banner"
           src={fallasBanner}
           alt="¿Tu auto presenta una falla? Registra tu falla, recibe posibles indicaciones de talleres y agenda tu cita."
-          width="2000"
-          height="387"
+          width="1898"
+          height="294"
         />
       </div>
       <FaultsList />

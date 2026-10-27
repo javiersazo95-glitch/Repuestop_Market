@@ -135,7 +135,8 @@ export default function WorkshopProfilePage() {
               <div className="ft-table-cols"><span>SERVICIO</span><span>PRECIO</span></div>
               {profile.servicios.map((service) => (
                 <div key={service.id} className="ft-table-row">
-                  <div>
+                  {service.imagenUrl && <img className="ft-service-img" src={resolveMediaUrl(service.imagenUrl)} alt={service.nombre} loading="lazy" />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <strong>{service.nombre}</strong>
                     {service.descripcion && <p className="ft-sub">{service.descripcion}</p>}
                     <small>{[service.duracionMinutos ? `${service.duracionMinutos} min` : null, service.marcasEspecialistas?.length ? `Especialista: ${service.marcasEspecialistas.join(', ')}` : null].filter(Boolean).join(' · ')}</small>

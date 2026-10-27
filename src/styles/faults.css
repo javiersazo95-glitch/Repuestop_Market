@@ -116,7 +116,7 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 
 /* Banner de la pagina: va bajo la ruta, antes de la lista, como el de las casas de repuestos. */
 .ft-banner { display: block; width: 100%; height: auto; border-radius: 16px; background: #eef6fd; }
-@media (max-width: 640px) { .ft-banner { min-height: 96px; object-fit: cover; object-position: left center; border-radius: 12px; } }
+@media (max-width: 640px) { .ft-banner { border-radius: 12px; } }
 
 .ft-badge.is-mine { background: var(--ft-primary-light); color: var(--ft-primary); margin-right: 6px; }
 
@@ -151,3 +151,5 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-table-row small { color: var(--ft-muted); display: block; }
 .ft-price-pill { flex: none; padding: 5px 12px; border-radius: 999px; background: var(--ft-primary-light); color: var(--ft-primary); font-weight: 800; white-space: nowrap; }
 .ft-link-sub { display: inline-block; font-size: 12px; color: var(--ft-primary); text-decoration: underline; }
+
+.ft-service-img { width: 72px; height: 72px; border-radius: 12px; object-fit: cover; flex: none; background: #e2e8f0; }
