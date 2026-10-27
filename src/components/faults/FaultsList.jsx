@@ -11,13 +11,13 @@ import '../../styles/faults.css';
 const PRIORITY = { ALTA: ['Prioridad alta', 'is-high'], MEDIA: ['Prioridad media', 'is-mid'], BAJA: ['Prioridad baja', 'is-low'] };
 
 /** Vista previa en bloques (vehiculo, falla, contexto): lo que un taller necesita para distinguir una falla de otra sin abrirla. */
-function FaultCard({ fault, showStatus, showClient }) {
+function FaultCard({ fault, showStatus, showClient, fromMural }) {
   const place = [fault.comuna, fault.region].filter(Boolean).join(', ');
   const vehicle = [fault.marca, fault.modelo].filter(Boolean).join(' ') || fault.vehiculo;
   const data = [fault.anio, fault.motor, fault.kilometraje ? `${fault.kilometraje.toLocaleString('es-CL')} km` : null].filter(Boolean).join(' • ');
   const [priorityLabel, priorityClass] = PRIORITY[fault.prioridad || (fault.seMueve === false ? 'ALTA' : 'MEDIA')];
   return (
-    <Link to={faultDetailPath(fault)} className="ft-card" aria-label={`Falla: ${fault.titulo}, ${fault.vehiculo}`}>
+    <Link to={faultDetailPath(fault)} state={{ fromMural }} className="ft-card" aria-label={`Falla: ${fault.titulo}, ${fault.vehiculo}`}>
       <div className="ft-card-top">
         {/* La primera imagen es la foto del vehiculo que se sube al registrar la falla. */}
         {fault.fotoUrl ? <img className="ft-card-thumb" src={resolveMediaUrl(fault.fotoUrl)} alt={fault.vehiculo} loading="lazy" /> : <span className="ft-card-thumb is-empty" aria-hidden="true"><Wrench size={20} /></span>}
@@ -116,7 +116,7 @@ export default function FaultsList({ heading = true }) {
         ) : items.length === 0 ? (
           <div className="ft-empty"><Wrench size={22} /><strong>{empty[0]}</strong>{empty[1]}</div>
         ) : (
-          <div className="ft-list">{items.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} />)}</div>
+          <div className="ft-list">{items.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} />)}</div>
         )}
       </div>
 

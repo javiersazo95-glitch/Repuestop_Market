@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { AlertCircle, CalendarPlus, Car, Gauge, Loader2, MapPin, Tag, Wrench } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -20,6 +20,9 @@ function Fact({ icon: Icon, label, value }) {
 /** `/fallas/:id`: la falla con los diagnosticos de los talleres, donde el comprador agenda o abre el perfil del taller. */
 export default function FaultDetailPage() {
   const { id } = useParams();
+  const location = useLocation();
+  // La patente es privada: se ve en "Mis fallas", no al abrir la falla desde el mural publico.
+  const showPlate = !location.state?.fromMural;
   const { user, role } = useAuth();
   useDocumentTitle('Falla automotriz');
   const isWorkshop = role === 'WORKSHOP';
@@ -128,7 +131,7 @@ export default function FaultDetailPage() {
             </div>
           )}
           <div className="ft-facts">
-            <Fact icon={Car} label="Vehículo" value={fault.propia && fault.patente ? `${vehicle} · ${fault.patente}` : vehicle} />
+            <Fact icon={Car} label="Vehículo" value={showPlate && fault.propia && fault.patente ? `${vehicle} · ${fault.patente}` : vehicle} />
             <Fact icon={Gauge} label="Motor" value={fault.motor} />
             <Fact icon={Gauge} label="Kilometraje" value={fault.kilometraje != null ? `${fault.kilometraje.toLocaleString('es-CL')} km` : ''} />
             <Fact icon={MapPin} label="Ubicación" value={place} />
