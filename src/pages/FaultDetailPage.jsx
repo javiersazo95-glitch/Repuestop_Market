@@ -122,6 +122,11 @@ export default function FaultDetailPage() {
             <span className={`ft-badge ${fault.vigente ? '' : 'is-closed'}`}>{fault.vigente ? 'Abierta' : 'Cerrada'}</span>
           </div>
           <p className="ft-sub">{fault.autor} · {timeSince(fault.createdAt)}</p>
+          {[fault.fotoVehiculo, ...(fault.fotos || [])].filter(Boolean).length > 0 && (
+            <div className="ft-photos">
+              {[fault.fotoVehiculo, ...(fault.fotos || [])].filter(Boolean).map((photo, index) => <img key={photo} src={resolveMediaUrl(photo)} alt={index === 0 && fault.fotoVehiculo ? 'Foto del vehículo' : 'Foto de la falla'} />)}
+            </div>
+          )}
           <div className="ft-facts">
             <Fact icon={Car} label="Vehículo" value={`${vehicle} · ${fault.patente}`} />
             <Fact icon={Gauge} label="Motor" value={fault.motor} />
@@ -132,7 +137,6 @@ export default function FaultDetailPage() {
           {fault.sintomas?.length > 0 && <div className="ft-chips">{fault.sintomas.map((s) => <span key={s} className="ft-chip">{s}</span>)}</div>}
           <div className="ft-block"><h4>Qué pasó</h4><p>{fault.descripcion}</p></div>
           {fault.antesDelFallo && <div className="ft-block"><h4>Antes del fallo</h4><p>{fault.antesDelFallo}</p></div>}
-          {fault.fotos?.length > 0 && <div className="ft-photos">{fault.fotos.map((photo) => <img key={photo} src={resolveMediaUrl(photo)} alt="Foto de la falla" />)}</div>}
           {fault.propia && fault.vigente && <div className="ft-actions"><button type="button" className="ft-btn ft-btn-outline" onClick={close}>Cerrar falla</button></div>}
         </section>
 
