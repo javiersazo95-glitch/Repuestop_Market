@@ -280,28 +280,25 @@ export default function FaultDetailPage() {
                 <p>Comentar es libre, pero para registrar un diagnóstico privado necesitas uno de estos dos caminos. Elige el que más te acomode:</p>
                 <section className="ft-card ft-path">
                   <strong><Lock size={14} /> Camino 1: servicio Diagnóstico</strong>
-                  <p className="ft-sub">Un periodo mensual pagado con monedas. Cada 10 necesidades de compra que publicas ganas 1 periodo gratis.</p>
+                  <p className="ft-sub">Un servicio mensual que se activa con monedas. Cada 10 necesidades de compra que publicas ganas 1 periodo gratis.</p>
                   <ol>
-                    <li>Entra a <b>Diagnóstico</b> en tu perfil de taller.</li>
-                    <li>Revisa tu saldo de monedas y recarga si te faltan.</li>
-                    <li>Deja registrado el horario de atención de tu taller: es la agenda de tus citas.</li>
-                    <li>Presiona <b>Activar</b> y vuelve a esta falla para registrar tu diagnóstico.</li>
+                    <li>Entra a <b>Mis servicios</b> en tu perfil de taller.</li>
+                    <li>Ahí verás el servicio <b>Diagnóstico</b> apagado: es una ranura que debes activar.</li>
+                    <li>Actívala pagando las monedas que indica el servicio; si te faltan, recarga en Monedas.</li>
+                    <li>Con el servicio encendido, vuelve a esta falla y registra tu diagnóstico.</li>
                   </ol>
-                  <Link className="ft-btn ft-btn-primary" to={profilePath('diagnostico')}>Ir a Diagnóstico</Link>
+                  <Link className="ft-btn ft-btn-primary" to={profilePath('servicios_taller')}>Ir a Mis servicios</Link>
                 </section>
                 <section className="ft-card ft-path">
                   <strong><Tag size={14} /> Camino 2: anuncio Empresarial</strong>
-                  <p className="ft-sub">Un anuncio publicado en Servicios y anuncios con el plan Empresarial, que además incluye agenda de citas.</p>
+                  <p className="ft-sub">Un anuncio con el plan Empresarial publicado desde Anuncios y agenda, que además incluye agenda de citas.</p>
                   <ol>
                     <li>Entra a <b>Anuncios y agenda</b> en tu perfil de taller.</li>
-                    <li>Crea un anuncio y elige el plan <b>Empresarial</b>.</li>
-                    <li>Selecciona los servicios de tu catálogo (<b>Mis servicios</b>) y completa fotos y horario.</li>
+                    <li>Desde ese menú registra un anuncio nuevo y elige el plan <b>Empresarial</b>.</li>
+                    <li>Completa el anuncio: elige tus servicios, fotos y horario de atención.</li>
                     <li>Págalo con monedas, espera la aprobación y vuelve a esta falla.</li>
                   </ol>
-                  <div className="ft-actions">
-                    <Link className="ft-btn ft-btn-primary" to={profilePath('anuncios')}>Ir a Anuncios y agenda</Link>
-                    <Link className="ft-btn ft-btn-outline" to={profilePath('servicios_taller')}>Revisar Mis servicios</Link>
-                  </div>
+                  <Link className="ft-btn ft-btn-primary" to={profilePath('anuncios')}>Ir a Anuncios y agenda</Link>
                 </section>
               </div>
             ) : diagModal === 'new' ? (
