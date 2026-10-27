@@ -143,7 +143,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated }) {
           <label className="ft-field"><span>Kilometraje <small>Opcional</small></span><input inputMode="numeric" value={mileage} maxLength={7} onChange={(e) => setMileage(e.target.value.replace(/\D/g, ''))} /></label>
         </div>
 
-        <label className="ft-field"><span>Resumen de la falla</span><input value={title} maxLength={160} placeholder="Ej: Ruido metálico al frenar" onChange={(e) => setTitle(e.target.value)} /></label>
+        <label className="ft-field"><span>Título de la falla</span><input value={title} maxLength={160} placeholder="Ej: Ruido metálico al frenar" onChange={(e) => setTitle(e.target.value)} /></label>
         <label className="ft-field"><span>Qué pasó</span><textarea rows={4} value={description} maxLength={2000} placeholder="Describe lo que notas y cuándo ocurre" onChange={(e) => setDescription(e.target.value)} /></label>
         <label className="ft-field"><span>Qué pasaba antes del fallo <small>Opcional</small></span><textarea rows={3} value={before} maxLength={1000} placeholder="Mantenciones recientes, golpes, luces encendidas…" onChange={(e) => setBefore(e.target.value)} /></label>
 
