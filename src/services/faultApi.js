@@ -36,8 +36,8 @@ export async function closeFault(id) {
   return fetchApi(`/fallas-automotrices/${encodeURIComponent(String(id))}/cerrar`, { method: 'POST', body: '{}' });
 }
 
-/** Diagnostico del taller (con precio estimado opcional) o respuesta del comprador (`respondeAId`). */
-export async function commentFault(id, { texto, precioDesde, precioHasta, respondeAId }) {
+/** Diagnostico privado del taller (con precio estimado opcional), comentario publico (`tipo: 'COMENTARIO'`) o respuesta (`respondeAId`). */
+export async function commentFault(id, { texto, precioDesde, precioHasta, respondeAId, tipo }) {
   return fetchApi(`/fallas-automotrices/${encodeURIComponent(String(id))}/comentarios`, {
     method: 'POST',
     body: JSON.stringify({
@@ -45,6 +45,7 @@ export async function commentFault(id, { texto, precioDesde, precioHasta, respon
       precioDesde: precioDesde ?? null,
       precioHasta: precioHasta ?? null,
       respondeAId: respondeAId ?? null,
+      tipo: tipo ?? null,
     }),
   });
 }
