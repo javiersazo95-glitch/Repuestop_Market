@@ -9,9 +9,12 @@ import { resolveMediaUrl } from '../services/api';
 import { fetchPublicAd } from '../services/adsStorage';
 import { getWorkshopProfile, getWorkshopProfileByAd, seniorityLabel } from '../services/workshopApi';
 import AdAppointmentModal from '../components/ads/AdAppointmentModal';
+import { SERVICE_CATEGORIES } from '../data/automotiveAdsData';
 import { ROUTES } from '../routes/paths';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 import '../styles/faults.css';
+
+const categoryLabel = (id) => SERVICE_CATEGORIES.find((c) => c.id === id)?.label || id;
 
 function InfoRow({ icon: Icon, label, value }) {
   if (!value) return null;
@@ -139,7 +142,17 @@ export default function WorkshopProfilePage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <strong>{service.nombre}</strong>
                     {service.descripcion && <p className="ft-sub">{service.descripcion}</p>}
-                    <small>{[service.duracionMinutos ? `${service.duracionMinutos} min` : null, service.marcasEspecialistas?.length ? `Especialista: ${service.marcasEspecialistas.join(', ')}` : null].filter(Boolean).join(' · ')}</small>
+                    {(service.categoria || service.duracionMinutos || service.marcasEspecialistas?.length > 0) && (
+                      <div className="ft-service-meta">
+                        {(service.categoria || service.duracionMinutos) && (
+                          <div className="ft-chips">
+                            {service.categoria && <span className="ft-chip">{categoryLabel(service.categoria)}</span>}
+                            {service.duracionMinutos ? <span className="ft-chip"><Clock size={11} /> {service.duracionMinutos} min</span> : null}
+                          </div>
+                        )}
+                        {service.marcasEspecialistas?.length > 0 && <small>Especialista en <b>{service.marcasEspecialistas.join(', ')}</b></small>}
+                      </div>
+                    )}
                   </div>
                   <span className="ft-price-pill">{service.precioTexto}</span>
                 </div>
