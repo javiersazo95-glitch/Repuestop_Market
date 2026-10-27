@@ -117,3 +117,5 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 /* Banner de la pagina: va bajo la ruta, antes de la lista, como el de las casas de repuestos. */
 .ft-banner { display: block; width: 100%; height: auto; border-radius: 16px; background: #eef6fd; }
 @media (max-width: 640px) { .ft-banner { min-height: 96px; object-fit: cover; object-position: left center; border-radius: 12px; } }
+
+.ft-badge.is-mine { background: var(--ft-primary-light); color: var(--ft-primary); margin-right: 6px; }

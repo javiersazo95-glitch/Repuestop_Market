@@ -13,6 +13,7 @@ function FaultCard({ fault, showStatus }) {
     <Link to={faultDetailPath(fault)} className="ft-card" aria-label={`Falla: ${fault.titulo}, ${fault.vehiculo}`}>
       <div className="ft-card-top">
         <h3>{fault.titulo}</h3>
+        {fault.propia && <span className="ft-badge is-mine">Mi falla</span>}
         {showStatus && <span className={`ft-badge ${fault.vigente ? '' : 'is-closed'}`}>{fault.vigente ? 'Abierta' : 'Cerrada'}</span>}
       </div>
       <p className="ft-sub">{fault.vehiculo}{place ? ` · ${place}` : ''}</p>
