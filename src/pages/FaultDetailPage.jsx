@@ -128,7 +128,7 @@ export default function FaultDetailPage() {
             </div>
           )}
           <div className="ft-facts">
-            <Fact icon={Car} label="Vehículo" value={`${vehicle} · ${fault.patente}`} />
+            <Fact icon={Car} label="Vehículo" value={fault.propia && fault.patente ? `${vehicle} · ${fault.patente}` : vehicle} />
             <Fact icon={Gauge} label="Motor" value={fault.motor} />
             <Fact icon={Gauge} label="Kilometraje" value={fault.kilometraje != null ? `${fault.kilometraje.toLocaleString('es-CL')} km` : ''} />
             <Fact icon={MapPin} label="Ubicación" value={place} />

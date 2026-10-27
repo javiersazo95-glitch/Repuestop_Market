@@ -8,23 +8,40 @@ import { resolveMediaUrl } from '../../services/api';
 import CreateFaultModal from './CreateFaultModal';
 import '../../styles/faults.css';
 
-function FaultCard({ fault, showStatus }) {
+const PRIORITY = { ALTA: ['Prioridad alta', 'is-high'], MEDIA: ['Prioridad media', 'is-mid'], BAJA: ['Prioridad baja', 'is-low'] };
+
+/** Vista previa en bloques (vehiculo, falla, contexto): lo que un taller necesita para distinguir una falla de otra sin abrirla. */
+function FaultCard({ fault, showStatus, showClient }) {
   const place = [fault.comuna, fault.region].filter(Boolean).join(', ');
+  const vehicle = [fault.marca, fault.modelo].filter(Boolean).join(' ') || fault.vehiculo;
+  const data = [fault.anio, fault.motor, fault.kilometraje ? `${fault.kilometraje.toLocaleString('es-CL')} km` : null].filter(Boolean).join(' • ');
+  const [priorityLabel, priorityClass] = PRIORITY[fault.prioridad || (fault.seMueve === false ? 'ALTA' : 'MEDIA')];
   return (
     <Link to={faultDetailPath(fault)} className="ft-card" aria-label={`Falla: ${fault.titulo}, ${fault.vehiculo}`}>
       <div className="ft-card-top">
         {/* La primera imagen es la foto del vehiculo que se sube al registrar la falla. */}
         {fault.fotoUrl ? <img className="ft-card-thumb" src={resolveMediaUrl(fault.fotoUrl)} alt={fault.vehiculo} loading="lazy" /> : <span className="ft-card-thumb is-empty" aria-hidden="true"><Wrench size={20} /></span>}
-        <h3 style={{ flex: 1, minWidth: 0 }}>{fault.titulo}</h3>
-        {fault.propia && <span className="ft-badge is-mine">Mi falla</span>}
-        {showStatus && <span className={`ft-badge ${fault.vigente ? '' : 'is-closed'}`}>{fault.vigente ? 'Abierta' : 'Cerrada'}</span>}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="ft-card-badges">
+            {fault.propia && <span className="ft-badge is-mine">Mi falla</span>}
+            {showStatus && <span className={`ft-badge ${fault.vigente ? '' : 'is-closed'}`}>{fault.vigente ? 'Abierta' : 'Cerrada'}</span>}
+          </div>
+          <h3>{vehicle}</h3>
+          {data && <p className="ft-sub">{data}</p>}
+        </div>
       </div>
-      <p className="ft-sub">{fault.vehiculo}{place ? ` · ${place}` : ''}</p>
-      {fault.sintomas?.length > 0 && (
-        <div className="ft-chips">{fault.sintomas.slice(0, 4).map((symptom) => <span key={symptom} className="ft-chip">{symptom}</span>)}</div>
-      )}
+      <div className="ft-card-block">
+        <strong>{fault.titulo}</strong>
+        <div className="ft-chips">
+          <span className={`ft-chip ft-priority ${priorityClass}`}>{priorityLabel}</span>
+          {fault.seMueve === false && <span className="ft-chip ft-priority is-high">No se mueve</span>}
+          {fault.sintomas?.slice(0, 3).map((symptom) => <span key={symptom} className="ft-chip">{symptom}</span>)}
+        </div>
+      </div>
       <div className="ft-meta">
+        {showClient && !fault.propia && <span>{fault.clienteNombre || 'Cliente'}</span>}
         <span>{timeSince(fault.createdAt)}</span>
+        {place && <span>{place}</span>}
         <span><MessageSquare size={13} /> {fault.diagnosticos} {fault.diagnosticos === 1 ? 'diagnóstico' : 'diagnósticos'}</span>
       </div>
     </Link>
@@ -99,7 +116,7 @@ export default function FaultsList({ heading = true }) {
         ) : items.length === 0 ? (
           <div className="ft-empty"><Wrench size={22} /><strong>{empty[0]}</strong>{empty[1]}</div>
         ) : (
-          <div className="ft-list">{items.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop && view === 'MINE'} />)}</div>
+          <div className="ft-list">{items.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} />)}</div>
         )}
       </div>
 
