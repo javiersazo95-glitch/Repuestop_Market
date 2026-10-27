@@ -67,7 +67,7 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-diag-author { display: flex; align-items: center; gap: 10px; }
 .ft-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: var(--ft-primary-light); color: var(--ft-primary); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; flex: none; }
 .ft-price { color: var(--ft-primary); font-weight: 700; font-size: 14px; display: inline-flex; gap: 6px; align-items: center; }
-.ft-reply { background: #f4f7fb; border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+.ft-reply { background: #eef4ff; border-left: 3px solid var(--ft-primary); border-radius: 10px; margin-left: 16px; padding: 10px 12px; font-size: 13px; }
 .ft-reply small { color: var(--ft-muted); display: block; margin-bottom: 2px; }
 .ft-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 

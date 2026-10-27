@@ -150,7 +150,7 @@ export default function FaultDetailPage() {
   const renderThread = (d, isPublic) => {
     const workshop = d.taller;
     const price = isPublic ? null : priceRange(d.precioDesde, d.precioHasta);
-    const canReply = fault.vigente && (fault.propia || isMine(d));
+    const canReply = fault.vigente && fault.propia;
     return (
       <article key={d.id} className="ft-card">
         <div className="ft-diag-author">
@@ -336,7 +336,7 @@ export default function FaultDetailPage() {
                 {fault.propia && fault.vigente && openDiagnosis.aceptado && !openDiagnosis.taller?.puedeAgendar && (
                   <p className="ft-sub">Este taller no agenda desde la web: entra a su perfil para llamar o escribirle.</p>
                 )}
-                {fault.vigente && (fault.propia || isMine(openDiagnosis)) && (
+                {fault.vigente && fault.propia && (
                   <form className="ft-form" onSubmit={(e) => { setReplyTo(openDiagnosis.id); send(e, 'COMENTARIO'); }}>
                     <label className="ft-field"><textarea rows={2} value={text} maxLength={1500} onChange={(e) => { setText(e.target.value); setReplyTo(openDiagnosis.id); }} placeholder="Escribe una respuesta" /></label>
                     <div className="ft-actions"><button type="submit" className="ft-btn ft-btn-outline" disabled={sending || !text.trim()}>Enviar respuesta</button></div>
