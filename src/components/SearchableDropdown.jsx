@@ -28,9 +28,11 @@ export default function SearchableDropdown({ value, options, placeholder, onChan
     {open && <div className="catalog-search-select-menu">
       <div className="catalog-search-select-search"><Search size={15} /><input autoFocus value={query} maxLength={80} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar..." /></div>
       <div className="catalog-search-select-options">
+        {/* Primero y fijo arriba (27-oct): al final de una lista de ~115 marcas no se veia, y en el
+            celular quedaba bajo el borde de la pantalla aunque se bajara hasta la ultima. */}
+        {customOptionLabel && <button type="button" className="catalog-search-select-custom" onClick={() => { onCustomOption?.(); setOpen(false); }}><span>{customOptionLabel}</span><Plus size={15} /></button>}
         {filtered.map((option) => <button type="button" key={option.value} className={String(option.value) === String(value) ? 'selected' : ''} onClick={() => { onChange(option.value); setOpen(false); }}><span>{option.label}{option.count != null && <span className="catalog-search-select-count"> ({option.count})</span>}</span>{String(option.value) === String(value) && <Check size={15} />}</button>)}
         {allowCustom && query.trim() && !options.some((option) => option.label.toLocaleLowerCase('es') === normalizedQuery) && <button type="button" className="catalog-search-select-custom" onClick={() => { onChange(query.trim().slice(0, 40)); setOpen(false); }}><span>Usar “{query.trim().slice(0, 40)}”</span><Plus size={15} /></button>}
-        {customOptionLabel && <button type="button" className="catalog-search-select-custom" onClick={() => { onCustomOption?.(); setOpen(false); }}><span>{customOptionLabel}</span><Plus size={15} /></button>}
         {!filtered.length && !(allowCustom && query.trim()) && <p>{emptyText}</p>}
       </div>
     </div>}
