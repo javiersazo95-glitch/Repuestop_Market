@@ -61,6 +61,7 @@ export default function FaultDetailPage() {
   const [editing, setEditing] = useState(false);
   // Talleres que ya diagnosticaron (sin el contenido): lo ve cualquiera que no sea el dueño.
   const [publicDiagnoses, setPublicDiagnoses] = useState([]);
+  const [publicDiagnosesOpen, setPublicDiagnosesOpen] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
@@ -245,18 +246,12 @@ export default function FaultDetailPage() {
 
         <section className="ft-detail-thread-section is-private">
           <header><div><h2><Wrench size={23} /> Diagnósticos de talleres (privado)</h2><p>Los siguientes diagnósticos son visibles solo para talleres registrados y el dueño de la falla.</p></div><span className="ft-private-pill"><Lock size={14} /> Solo talleres</span></header>
-          {!fault.propia && publicDiagnoses.length > 0 && (
-            <div className="ft-public-diagnoses">
-              <p><strong>Esta falla ya recibió {publicDiagnoses.length} {publicDiagnoses.length === 1 ? 'diagnóstico' : 'diagnósticos'}.</strong> El detalle es privado: solo lo ve quien la publicó.</p>
-              {publicDiagnoses.map((item) => <Link key={`${item.tallerId}-${item.createdAt}`} className="ft-public-diagnosis" to={workshopPath(item.tallerId)}><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{item.nombre}</strong><small>{[item.comuna, timeSince(item.createdAt)].filter(Boolean).join(' · ')}</small>{item.aceptado && <em>Aceptado</em>}<ChevronRight size={15} /></Link>)}
-            </div>
-          )}
-          {diagnostics.length === 0 ? (fault.propia || publicDiagnoses.length === 0) && <div className="ft-detail-thread-empty">Aún no hay diagnósticos registrados.</div> : diagnostics.map((diagnosis) => <article key={diagnosis.id} className="ft-detail-diagnosis-row"><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{diagnosis.autor}</strong><time>{timeSince(diagnosis.createdAt)}</time><p>Diagnóstico y posible causa registrada.</p><button type="button" onClick={() => setDiagModal(diagnosis.id)}><Settings size={14} /> Ver diagnóstico</button><ChevronDown size={15} /></article>)}
+          {diagnostics.length === 0 ? <div className="ft-detail-thread-empty">Aún no hay diagnósticos registrados.</div> : diagnostics.map((diagnosis) => <article key={diagnosis.id} className="ft-detail-diagnosis-row"><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{diagnosis.autor}</strong><time>{timeSince(diagnosis.createdAt)}</time><p>Diagnóstico y posible causa registrada.</p><button type="button" onClick={() => setDiagModal(diagnosis.id)}><Settings size={14} /> Ver diagnóstico</button><ChevronDown size={15} /></article>)}
           {isWorkshop && fault.vigente && <button type="button" className="ft-btn ft-btn-primary ft-detail-diagnose" onClick={() => setDiagModal(myDiagnosis ? myDiagnosis.id : 'new')}>{myDiagnosis ? 'Ver mi diagnóstico' : 'Agregar diagnóstico'}</button>}
         </section>
 
         <section className="ft-detail-thread-section is-public">
-          <header><div><h2><MessageCircle size={23} /> Comentarios (público)</h2><p>Los comentarios ayudan a afinar el diagnóstico. Todos los talleres pueden ver y comentar.</p></div>{isWorkshop && fault.vigente && <button type="button" className="ft-btn ft-btn-primary" onClick={() => setCommentFormOpen((value) => !value)}><MessageCircle size={16} /> Agregar comentario</button>}</header>
+          <header><div><h2><MessageCircle size={23} /> Comentarios (público)</h2><p>Los comentarios ayudan a afinar el diagnóstico. Todos los talleres pueden ver y comentar.</p></div>{!fault.propia && publicDiagnoses.length > 0 && <button type="button" className="ft-btn ft-btn-outline" onClick={() => setPublicDiagnosesOpen(true)}><Wrench size={16} /> Ver diagnósticos ({publicDiagnoses.length})</button>}{isWorkshop && fault.vigente && <button type="button" className="ft-btn ft-btn-primary" onClick={() => setCommentFormOpen((value) => !value)}><MessageCircle size={16} /> Agregar comentario</button>}</header>
           {publicComments.length === 0 && !commentFormOpen ? <div className="ft-detail-thread-empty">Aún no hay comentarios públicos.</div> : publicComments.map((comment) => <article key={comment.id} className="ft-detail-comment-row"><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{comment.autor}</strong><time>{timeSince(comment.createdAt)}</time><p>{comment.texto}</p>{repliesOf(comment.id).map((reply) => <small key={reply.id}>{reply.autor}: {reply.texto}</small>)}</article>)}
           {commentFormOpen && <form className="ft-detail-comment-form" onSubmit={(event) => send(event, 'COMENTARIO')}><textarea rows={3} value={publicText} maxLength={1500} onChange={(event) => setPublicText(event.target.value)} placeholder="Escribe una pregunta o comentario para afinar el diagnóstico" />{formError && <p className="ft-error"><AlertCircle size={15} /> {formError}</p>}<div><button type="button" className="ft-btn ft-btn-outline" onClick={() => setCommentFormOpen(false)}>Cancelar</button><button type="submit" className="ft-btn ft-btn-primary" disabled={sending || !publicText.trim()}>{sending ? 'Publicando…' : 'Publicar comentario'}</button></div></form>}
         </section>
@@ -264,6 +259,13 @@ export default function FaultDetailPage() {
         {fault.propia && fault.vigente && <div className="ft-detail-owner-actions"><button type="button" className="ft-btn ft-btn-danger" onClick={close}>Cerrar falla</button></div>}
       </div>
 
+      {publicDiagnosesOpen && <div className="ft-modal-backdrop" role="dialog" aria-modal="true" onClick={() => setPublicDiagnosesOpen(false)}><div className="ft-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="ft-modal-head"><h2><Wrench size={16} /> Diagnósticos recibidos ({publicDiagnoses.length})</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={() => setPublicDiagnosesOpen(false)}><X size={20} /></button></div>
+        <div className="ft-public-diagnoses">
+          <p>Esta falla ya está recibiendo diagnósticos de talleres. El detalle es privado: solo lo ve quien la publicó.</p>
+          {publicDiagnoses.map((item) => <Link key={`${item.tallerId}-${item.createdAt}`} className="ft-public-diagnosis" to={workshopPath(item.tallerId)}><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{item.nombre}</strong><small>{[item.comuna, timeSince(item.createdAt)].filter(Boolean).join(' · ')}</small>{item.aceptado && <em>Aceptado</em>}<ChevronRight size={15} /></Link>)}
+        </div>
+      </div></div>}
       {diagModal != null && <div className="ft-modal-backdrop" role="dialog" aria-modal="true" onClick={() => setDiagModal(null)}><div className="ft-modal" onClick={(event) => event.stopPropagation()}>
         <div className="ft-modal-head"><h2><Lock size={16} /> {diagModal === 'new' ? 'Registrar diagnóstico' : 'Diagnóstico privado'}</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={() => setDiagModal(null)}><X size={20} /></button></div>
         {diagModal === 'new' && eligibility === undefined ? <div className="ft-empty"><Loader2 size={18} className="spin-icon" /> Comprobando…</div>
