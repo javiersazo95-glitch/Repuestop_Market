@@ -9,7 +9,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import {
   acceptFaultDiagnosis, closeFault, commentFault, getDiagnosisEligibility, getFault,
-  getFaultComments, priceRange, timeSince,
+  getFaultComments, getPublicDiagnoses, priceRange, timeSince,
 } from '../services/faultApi';
 import { resolveMediaUrl } from '../services/api';
 import { fetchPublicAd } from '../services/adsStorage';
@@ -59,6 +59,8 @@ export default function FaultDetailPage() {
   const [saved, setSaved] = useState(false);
   const [commentFormOpen, setCommentFormOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  // Talleres que ya diagnosticaron (sin el contenido): lo ve cualquiera que no sea el dueño.
+  const [publicDiagnoses, setPublicDiagnoses] = useState([]);
 
   const load = useCallback(async () => {
     setError('');
@@ -66,6 +68,10 @@ export default function FaultDetailPage() {
       const [detail, list] = await Promise.all([getFault(id), getFaultComments(id)]);
       setFault(detail);
       setComments(Array.isArray(list) ? list : []);
+      if (!detail?.propia) {
+        const received = await getPublicDiagnoses(id).catch(() => []);
+        setPublicDiagnoses(Array.isArray(received) ? received : []);
+      }
     } catch (err) {
       setError(err?.message || 'No pudimos cargar la falla.');
     } finally {
@@ -239,7 +245,13 @@ export default function FaultDetailPage() {
 
         <section className="ft-detail-thread-section is-private">
           <header><div><h2><Wrench size={23} /> Diagnósticos de talleres (privado)</h2><p>Los siguientes diagnósticos son visibles solo para talleres registrados y el dueño de la falla.</p></div><span className="ft-private-pill"><Lock size={14} /> Solo talleres</span></header>
-          {diagnostics.length === 0 ? <div className="ft-detail-thread-empty">Aún no hay diagnósticos registrados.</div> : diagnostics.map((diagnosis) => <article key={diagnosis.id} className="ft-detail-diagnosis-row"><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{diagnosis.autor}</strong><time>{timeSince(diagnosis.createdAt)}</time><p>Diagnóstico y posible causa registrada.</p><button type="button" onClick={() => setDiagModal(diagnosis.id)}><Settings size={14} /> Ver diagnóstico</button><ChevronDown size={15} /></article>)}
+          {!fault.propia && publicDiagnoses.length > 0 && (
+            <div className="ft-public-diagnoses">
+              <p><strong>Esta falla ya recibió {publicDiagnoses.length} {publicDiagnoses.length === 1 ? 'diagnóstico' : 'diagnósticos'}.</strong> El detalle es privado: solo lo ve quien la publicó.</p>
+              {publicDiagnoses.map((item) => <Link key={`${item.tallerId}-${item.createdAt}`} className="ft-public-diagnosis" to={workshopPath(item.tallerId)}><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{item.nombre}</strong><small>{[item.comuna, timeSince(item.createdAt)].filter(Boolean).join(' · ')}</small>{item.aceptado && <em>Aceptado</em>}<ChevronRight size={15} /></Link>)}
+            </div>
+          )}
+          {diagnostics.length === 0 ? (fault.propia || publicDiagnoses.length === 0) && <div className="ft-detail-thread-empty">Aún no hay diagnósticos registrados.</div> : diagnostics.map((diagnosis) => <article key={diagnosis.id} className="ft-detail-diagnosis-row"><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{diagnosis.autor}</strong><time>{timeSince(diagnosis.createdAt)}</time><p>Diagnóstico y posible causa registrada.</p><button type="button" onClick={() => setDiagModal(diagnosis.id)}><Settings size={14} /> Ver diagnóstico</button><ChevronDown size={15} /></article>)}
           {isWorkshop && fault.vigente && <button type="button" className="ft-btn ft-btn-primary ft-detail-diagnose" onClick={() => setDiagModal(myDiagnosis ? myDiagnosis.id : 'new')}>{myDiagnosis ? 'Ver mi diagnóstico' : 'Agregar diagnóstico'}</button>}
         </section>
 

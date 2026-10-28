@@ -36,8 +36,10 @@ function faultTypeOf(fault) {
   return { label: match[0], key: match[2], emoji: null };
 }
 
+// El backend manda `diagnosticos` como cantidad (numero); las otras formas son de respuestas antiguas.
 const diagnosisCountOf = (fault) => Number(
-  fault.cantidadDiagnosticos ?? fault.totalDiagnosticos ?? fault.diagnosticosCount ?? fault.diagnosticos?.length ?? 0,
+  fault.cantidadDiagnosticos ?? fault.totalDiagnosticos ?? fault.diagnosticosCount
+    ?? (Array.isArray(fault.diagnosticos) ? fault.diagnosticos.length : fault.diagnosticos) ?? 0,
 ) || 0;
 
 function FaultCard({ fault, showStatus, showClient, fromMural }) {
@@ -83,7 +85,7 @@ function FaultCard({ fault, showStatus, showClient, fromMural }) {
           <div><dt><Settings size={14} /> Tipo de falla</dt><dd>{fault.sintomas?.[0] || type.label}</dd></div>
           <div><dt><FileText size={14} /> Título del anuncio</dt><dd>{fault.titulo || 'Sin título'}</dd></div>
           <div><dt><Car size={14} /> Movilidad</dt><dd>{mobility}</dd></div>
-          <div><dt><MessageCircle size={14} /> Diagnósticos</dt><dd>{diagnosisCount} {diagnosisCount === 1 ? 'diagnóstico' : 'diagnósticos'}</dd></div>
+          <div><dt><MessageCircle size={14} /> Diagnósticos</dt><dd>{diagnosisCount === 0 ? 'Sin diagnósticos aún' : `${diagnosisCount} ${diagnosisCount === 1 ? 'taller diagnosticó' : 'talleres diagnosticaron'}`}</dd></div>
         </dl>
         <Link to={faultDetailPath(fault)} state={{ fromMural }} className="ft-btn ft-btn-primary ft-detail-button" aria-label={`Ver detalle de ${vehicle}`}>
           Ver detalle <ChevronRight size={16} />

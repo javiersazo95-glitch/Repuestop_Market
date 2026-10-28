@@ -411,6 +411,12 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-detail-diagnosis-row button { padding: 7px 14px; border: 0; border-radius: 7px; color: #0062d9; background: #e6f3ff; display: inline-flex; align-items: center; gap: 7px; font: inherit; font-weight: 750; cursor: pointer; }
 .ft-detail-comment-row { grid-template-columns: 32px 190px 130px 1fr; }
 .ft-detail-comment-row small { grid-column: 4; color: #5b7088; }
+.ft-public-diagnoses { margin: 10px 0; padding: 12px 14px; border: 1px solid #bbf7d0; border-left: 5px solid #15803d; border-radius: 10px; background: #f0fdf4; display: grid; gap: 4px; color: #294666; font-size: 12px; }
+.ft-public-diagnoses p { margin: 0 0 4px; }
+.ft-public-diagnosis { padding: 8px 0; border-top: 1px solid #d5f5e0; display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+.ft-public-diagnosis strong { flex: 0 1 auto; }
+.ft-public-diagnosis small { flex: 1; color: #5a6b7a; }
+.ft-public-diagnosis em { padding: 2px 9px; border-radius: 999px; color: #15803d; background: #dcfce7; font-size: 10px; font-style: normal; font-weight: 750; }
 .ft-thread-avatar { width: 28px; height: 28px; border-radius: 50%; color: #fff; background: #2c4160; display: grid; place-items: center; }
 .ft-detail-thread-empty { padding: 18px; border-top: 1px solid #e4eaf0; margin-top: 8px; color: #718096; font-size: 13px; text-align: center; }
 .ft-detail-diagnose { margin: 10px 0 0 auto; display: flex; }

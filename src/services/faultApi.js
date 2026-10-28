@@ -24,6 +24,11 @@ export async function getFault(id) {
   return fetchApi(`/fallas-automotrices/${encodeURIComponent(String(id))}`);
 }
 
+/** Lo unico publico de los diagnosticos: que talleres respondieron y cuando, sin texto ni precio. */
+export async function getPublicDiagnoses(id) {
+  return fetchApi(`/fallas-automotrices/${encodeURIComponent(String(id))}/diagnosticos-publicos`);
+}
+
 export async function getFaultComments(id) {
   return fetchApi(`/fallas-automotrices/${encodeURIComponent(String(id))}/comentarios`);
 }
