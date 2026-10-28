@@ -59,9 +59,9 @@ export default function AppRoutes() {
               <Route path={ROUTES.auctionDetail} element={<AuctionDetailPage />} />
               <Route path={ROUTES.auctionCheckout} element={<RequireAuth><AuctionCheckoutPage /></RequireAuth>} />
               <Route path={ROUTES.adDetail} element={<AdDetailPage />} />
-              {/* Fallas automotrices: el comprador registra la suya y los talleres la diagnostican (con sesion). */}
-              <Route path={ROUTES.faults} element={<RequireAuth><FaultsPage /></RequireAuth>} />
-              <Route path={ROUTES.faultDetail} element={<RequireAuth><FaultDetailPage /></RequireAuth>} />
+              {/* El mural y el detalle de una falla son públicos; publicar y participar exige sesión. */}
+              <Route path={ROUTES.faults} element={<FaultsPage />} />
+              <Route path={ROUTES.faultDetail} element={<FaultDetailPage />} />
               {/* Perfil publico del taller y su registro como cuenta propia. */}
               <Route path={ROUTES.workshopByAd} element={<WorkshopProfilePage />} />
               <Route path={ROUTES.workshop} element={<WorkshopProfilePage />} />

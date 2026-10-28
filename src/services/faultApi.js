@@ -1,11 +1,11 @@
 import { fetchApi } from './api';
 
 /**
- * Fallas automotrices (`/api/v1/fallas-automotrices`): el comprador registra la falla de su vehiculo y
- * los talleres acreditados la comentan con un diagnostico. Todo requiere sesion.
+ * Fallas automotrices (`/api/v1/fallas-automotrices`): el mural, detalle y comentarios publicos son
+ * de lectura publica; registrar, editar y participar en los hilos requiere sesion.
  */
 
-/** Fallas abiertas de todos los clientes (solo talleres). */
+/** Fallas abiertas del mural público; el backend mantiene la propiedad cuando hay sesión. */
 export async function getOpenFaults() {
   return fetchApi('/fallas-automotrices');
 }
@@ -30,6 +30,11 @@ export async function getFaultComments(id) {
 
 export async function createFault(payload) {
   return fetchApi('/fallas-automotrices', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+/** Actualiza una falla del usuario en sesión. El backend valida que sea su propietario. */
+export async function updateFault(id, payload) {
+  return fetchApi(`/fallas-automotrices/${encodeURIComponent(String(id))}`, { method: 'PUT', body: JSON.stringify(payload) });
 }
 
 export async function closeFault(id) {

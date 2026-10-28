@@ -9,6 +9,7 @@ import {
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
   Megaphone, CheckCircle2, ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, Wrench, Stethoscope, Settings
 } from 'lucide-react';
+import EngineIcon from './EngineIcon';
 import VideoTutorialModal from './VideoTutorialModal';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
@@ -216,7 +217,7 @@ const BUYER_SIDEBAR_GROUPS = [
       { id: 'pedidos', label: 'Mis pedidos', icon: Package },
       { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
       { id: 'subastas', label: 'Necesidades de compra', icon: Gavel },
-      { id: 'mis_fallas', label: 'Fallas automotrices', icon: Wrench },
+      { id: 'mis_fallas', label: 'Fallas automotrices', icon: EngineIcon },
       { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
       { id: 'chats_vendedor', label: 'Chats con vendedor', icon: MessageSquare },
       { id: 'favoritos', label: 'Favoritos', icon: Heart }
@@ -252,7 +253,7 @@ const WORKSHOP_SIDEBAR_GROUPS = [
     title: 'MI TALLER',
     flag: 'market.perfil.taller.mi-taller',
     items: [
-      { id: 'fallas_taller', label: 'Fallas automotrices', icon: Wrench },
+      { id: 'fallas_taller', label: 'Fallas automotrices', icon: EngineIcon },
       { id: 'servicios_taller', label: 'Mis servicios', icon: Settings },
       { id: 'diagnostico', label: 'Servicio Diagnóstico', icon: Stethoscope },
       { id: 'anuncios', label: 'Anuncios y agenda', icon: Megaphone }
@@ -1332,7 +1333,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     }
     if (isWorkshop) {
       return [
-        { id: 'fallas', tone: 'amber', icon: Wrench, title: 'Fallas automotrices', description: 'Revisa las fallas de los clientes y deja tu diagnóstico.', onClick: () => setActiveTab('fallas_taller') },
+        { id: 'fallas', tone: 'amber', icon: EngineIcon, title: 'Fallas automotrices', description: 'Revisa las fallas de los clientes y deja tu diagnóstico.', onClick: () => setActiveTab('fallas_taller') },
         { id: 'servicios', tone: 'emerald', icon: Settings, title: 'Mis servicios', description: 'Registra tus servicios con su precio y tus marcas especialistas.', onClick: () => setActiveTab('servicios_taller') },
         { id: 'diagnostico', tone: 'purple', icon: Stethoscope, title: 'Servicio Diagnóstico', description: 'Ofrece agenda en tus comentarios. Gratis cada 10 necesidades de compra.', onClick: () => setActiveTab('diagnostico') },
         { id: 'anuncios', tone: 'sky', icon: Megaphone, title: 'Anuncios y agenda', description: 'Publica tus servicios en el Mural y atiende tus citas.', onClick: () => setActiveTab('anuncios') },
@@ -1345,7 +1346,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Mis cotizaciones', description: 'Revisa las respuestas de las tiendas y compara precios.', onClick: () => setActiveTab('cotizaciones') },
       { id: 'favoritos', tone: 'amber', icon: Heart, title: 'Repuestos favoritos', description: 'Accede a los repuestos que guardaste.', onClick: () => setActiveTab('favoritos') },
       { id: 'datos', tone: 'sky', icon: UserCog, title: 'Mis datos y perfil', description: 'Actualiza tu información y direcciones de envío.', onClick: () => setActiveTab('datos') },
-      { id: 'fallas', tone: 'emerald', icon: Wrench, title: 'Fallas automotrices', description: 'Cuéntanos qué le pasó a tu vehículo y recibe el diagnóstico de talleres.', onClick: () => setActiveTab('mis_fallas') },
+      { id: 'fallas', tone: 'emerald', icon: EngineIcon, title: 'Fallas automotrices', description: 'Cuéntanos qué le pasó a tu vehículo y recibe el diagnóstico de talleres.', onClick: () => setActiveTab('mis_fallas') },
       { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte de compra.', onClick: () => navigate(ROUTES.support) },
     ];
   }, [isSeller, isWorkshop, setActiveTab, openFilteredTab, navigate]);

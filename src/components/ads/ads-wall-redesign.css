@@ -20,7 +20,10 @@
   color: var(--ads-text);
   padding-bottom: 64px;
 }
-.ads-wall-shell { padding-top: 20px; }
+.ads-wall-shell.container {
+  max-width: none;
+  padding: 20px clamp(16px, 3.2vw, 60px) 0;
+}
 
 /* ---------- 1. Barra de filtros ---------- */
 .ads-filterbar {
@@ -185,6 +188,10 @@
   grid-template-columns: 264px minmax(0, 1fr);
   gap: 24px;
   align-items: start;
+}
+.ads-wall-page .ads-layout.container {
+  max-width: none;
+  padding-inline: 0;
 }
 
 .ads-sidebar {

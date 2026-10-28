@@ -202,6 +202,7 @@
     border-radius: 20px 20px 0 0;
     overscroll-behavior: contain;
   }
+  .auth-modal-card--login { max-height: 100dvh; }
   .auth-modal-header { padding: 22px 16px 14px; }
   .auth-modal-body { padding: 16px 16px calc(24px + var(--pub-safe-bottom)); gap: 14px; }
   .auth-modal-card .modal-close-btn { width: 44px; height: 44px; }

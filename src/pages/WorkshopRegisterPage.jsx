@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AddressAutocompleteInput from '../components/AddressAutocompleteInput';
@@ -16,8 +16,9 @@ import '../styles/faults.css';
 export default function WorkshopRegisterPage() {
   useDocumentTitle('Registra tu taller');
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLoggedIn, registerWorkshop, verifyRegisterEmail, resendRegisterCode } = useAuth();
-  const [form, setForm] = useState({ responsibleName: '', workshopName: '', taxId: '', email: '', phone: '', password: '', address: '' });
+  const [form, setForm] = useState({ responsibleName: '', workshopName: '', taxId: '', email: location.state?.email || '', phone: '', password: '', address: '' });
   const [place, setPlace] = useState(null);
   const [accepts, setAccepts] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');

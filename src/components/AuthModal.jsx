@@ -414,10 +414,10 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
   };
 
   /** El taller se registra en `/taller/registro` (RUT, direccion del taller), no con el registro de comprador. */
-  const goToWorkshopRegister = () => {
+  const goToWorkshopRegister = ({ email: correo } = {}) => {
     setErrorMessage(null);
     handleClose();
-    navigate(ROUTES.workshopRegister);
+    navigate(ROUTES.workshopRegister, { state: correo ? { email: correo } : undefined });
   };
 
   const handleContinueFromRole = () => {
@@ -971,7 +971,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
   return (
     <div className="modal-backdrop" onClick={handleClose}>
       <div
-        className={`auth-modal-card ${step === 'select_role' ? 'auth-modal-card--wide' : ''}`}
+        className={`auth-modal-card ${step === 'select_role' || step === 'google_role' ? 'auth-modal-card--wide' : step === 'login_form' ? 'auth-modal-card--login' : ''}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -997,8 +997,8 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
 
           {step === 'login_form' && (
             <>
-              <h2>Iniciar sesión como {selectedRole === 'BUYER' ? 'Comprador' : 'Tienda'}</h2>
-              <p>Ingresa tus credenciales para acceder a tu panel de {selectedRole === 'BUYER' ? 'compras' : 'ventas'}.</p>
+              <h2>Iniciar sesión como {selectedRole === 'BUYER' ? 'Comprador' : selectedRole === 'WORKSHOP' ? 'Taller automotriz' : 'Tienda'}</h2>
+              <p>Ingresa tus credenciales para acceder a tu panel de {selectedRole === 'BUYER' ? 'compras' : selectedRole === 'WORKSHOP' ? 'taller' : 'ventas'}.</p>
             </>
           )}
 
@@ -1065,7 +1065,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
           {step === 'google_role' && (
             <>
               <h2>¿Qué cuenta quieres crear?</h2>
-              <p>No encontramos una cuenta con {googlePending?.email}. Elige si vas a comprar o a vender repuestos.</p>
+              <p>No encontramos una cuenta con {googlePending?.email}. Elige cómo quieres usar RepuesTop.</p>
             </>
           )}
 
@@ -1133,6 +1133,17 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                   <p>Registra tu tienda, sube tus documentos y vende tus repuestos en RepuesTop.</p>
                 </div>
                 <div className="role-badge-tag">Para tiendas con inicio de actividades</div>
+              </button>
+              <button type="button" className="role-option-card workshop-card"
+                onClick={() => goToWorkshopRegister({ email: googlePending.email })}>
+                <div className="role-card-header">
+                  <div className="role-icon-box workshop-icon"><Wrench size={30} /></div>
+                </div>
+                <div className="role-card-content">
+                  <h3>Taller automotriz</h3>
+                  <p>Registra tu taller, publica tus servicios, diagnostica fallas y recibe solicitudes de atención.</p>
+                </div>
+                <div className="role-badge-tag workshop-tag">Para talleres automotrices</div>
               </button>
             </div>
           </div>
@@ -1292,12 +1303,18 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                   <span><strong>Tienda / Vendedor</strong><small>Vendo repuestos</small></span>
                   {selectedRole === 'SELLER' && <CheckCircle2 size={18} className="auth-role-check" />}
                 </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedRole === 'WORKSHOP'}
+                  className={`auth-role-option workshop ${selectedRole === 'WORKSHOP' ? 'active' : ''}`}
+                  onClick={() => switchLoginRole('WORKSHOP')}
+                >
+                  <Wrench size={20} />
+                  <span><strong>Taller automotriz</strong><small>Ofrezco servicios</small></span>
+                  {selectedRole === 'WORKSHOP' && <CheckCircle2 size={18} className="auth-role-check" />}
+                </button>
               </div>
-              <p className={`auth-role-switch-hint ${selectedRole === 'SELLER' ? 'seller' : ''}`}>
-                {selectedRole === 'BUYER'
-                  ? <>¿Tienes una tienda de repuestos? Elige <strong>Tienda / Vendedor</strong> para entrar o registrarla.</>
-                  : <>Si tu tienda aún no tiene cuenta, al ingresar te llevamos a crear tu <strong>cuenta fundadora</strong>.</>}
-              </p>
             </div>
 
             <GoogleSignInButton onCredential={handleGoogleCredential} disabled={isSubmitting} />
@@ -1429,6 +1446,17 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                     }}
                   >
                     Crear cuenta rápida
+                  </button>
+                </p>
+              ) : selectedRole === 'WORKSHOP' ? (
+                <p>
+                  ¿No tienes cuenta de taller?{' '}
+                  <button
+                    type="button"
+                    className="link-btn highlight"
+                    onClick={goToWorkshopRegister}
+                  >
+                    Crear cuenta de taller
                   </button>
                 </p>
               ) : (
