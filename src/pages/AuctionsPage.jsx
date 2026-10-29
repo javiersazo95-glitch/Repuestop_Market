@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertCircle, ArrowRight, ArrowUpDown, CalendarDays, CalendarPlus, ChevronDown, ChevronLeft, ChevronRight, Clock,
   FileText, Gavel, LayoutGrid, List, Lock, MapPin, Package, Plus, RotateCcw, Search,
@@ -13,6 +13,7 @@ import MobileStickyBar from '../components/MobileStickyBar';
 import AuctionsListMobile from '../components/AuctionsListMobile';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useAuth } from '../context/AuthContext';
+import { useMarketplace } from '../context/MarketplaceContext';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 import { useCategories } from '../data/categories';
 import '../styles/auctions-list.css';
@@ -188,9 +189,12 @@ function AuctionRow({ auction, status, now, onOpen }) {
 export default function AuctionsPage() {
   useDocumentTitle('Necesidades de compra');
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLoggedIn, role } = useAuth();
-  // Solo las cuentas creadas como comprador publican; una tienda no, aunque entre al perfil de comprador.
-  const canCreate = isLoggedIn && role === 'BUYER';
+  const { openAuthModal } = useMarketplace();
+  // Publican el comprador y el taller (el backend lo permite y cada necesidad suma al premio del servicio Diagnostico);
+  // una tienda no, aunque entre al perfil de comprador. Sin sesion el boton se muestra y abre el inicio de sesion.
+  const canCreate = !isLoggedIn || role === 'BUYER' || role === 'WORKSHOP';
   const { HEADER_CATEGORIES } = useCategories();
   const isMobile = useIsMobile();
 
@@ -327,8 +331,10 @@ export default function AuctionsPage() {
 
   const handleOpenCreateModal = () => {
     if (!isLoggedIn) {
-      const shouldLogin = window.confirm('Debes iniciar sesión para publicar una necesidad de compra. ¿Deseas ir a tu cuenta?');
-      if (shouldLogin) navigate(ROUTES.profile);
+      // `from`: al iniciar sesion se vuelve a este mural y no al perfil (lo resuelve AppLayout). Antes era un
+      // window.confirm, que en un navegador embebido no abre nada y dejaba el boton mudo.
+      navigate(`${location.pathname}${location.search}`, { replace: true, state: { from: `${location.pathname}${location.search}` } });
+      openAuthModal();
       return;
     }
     setIsCreateModalOpen(true);
@@ -631,7 +637,7 @@ export default function AuctionsPage() {
       )}
 
       <CreateAuctionModal
-        isOpen={isCreateModalOpen}
+        isOpen={isLoggedIn && isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSuccess={handleCreatedSuccess}
       />
