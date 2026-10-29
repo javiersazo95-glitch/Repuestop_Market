@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, Gift, Loader2, Stethoscope } from 'lucide-react';
 import { activateDiagnostic, coinsToPesos, getDiagnosticStatus, prizeProgress } from '../../services/workshopApi';
 import { ROUTES } from '../../routes/paths';
+import ConfirmDialog from '../ConfirmDialog';
 import '../../styles/faults.css';
 
 function formatDate(iso) {
@@ -14,6 +15,7 @@ export default function ProfileDiagnosticPanel({ onOpenAds }) {
   const [status, setStatus] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
@@ -22,16 +24,21 @@ export default function ProfileDiagnosticPanel({ onOpenAds }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const activate = async () => {
+  // window.confirm no abre nada en un navegador embebido y dejaba el boton mudo: se confirma con ConfirmDialog.
+  const requestActivate = () => {
     if (!status) return;
     if (status.saldoMonedas < status.costoMonedas) {
       setError(`Necesitas ${status.costoMonedas} monedas y tienes ${status.saldoMonedas}. Recarga tu monedero para continuar.`);
       return;
     }
-    if (!window.confirm(`Se descontarán ${status.costoMonedas} monedas (${coinsToPesos(status.costoMonedas)}) por ${status.vigenciaDias} días${status.activo ? ', que se suman a los que ya tienes' : ''}.`)) return;
+    setError('');
+    setConfirming(true);
+  };
+
+  const activate = async () => {
     setBusy(true);
     setError('');
-    try { setStatus(await activateDiagnostic()); } catch (err) { setError(err?.message || 'No pudimos activar el Diagnóstico.'); } finally { setBusy(false); }
+    try { setStatus(await activateDiagnostic()); setConfirming(false); } catch (err) { setError(err?.message || 'No pudimos activar el Diagnóstico.'); } finally { setBusy(false); }
   };
 
   if (error && !status) return <div className="ft-empty" role="alert"><AlertCircle size={20} /><strong>No pudimos cargar el servicio</strong>{error}<br /><button type="button" className="ft-btn ft-btn-outline" style={{ marginTop: 10 }} onClick={load}>Reintentar</button></div>;
@@ -50,8 +57,8 @@ export default function ProfileDiagnosticPanel({ onOpenAds }) {
           <p className="ft-sub">{status.activo && status.venceEn ? `Vence el ${formatDate(status.venceEn)}` : 'Tus comentarios no ofrecerán agenda desde el Diagnóstico.'}</p>
           <p>{status.vigenciaDias} días por {status.costoMonedas} monedas ({coinsToPesos(status.costoMonedas)}). Tienes {status.saldoMonedas} monedas.</p>
           {!status.agendaConfigurada && <p className="ft-note">Antes de activarlo registra el horario de atención de tu taller: es la agenda de tus citas.{onOpenAds && <> <button type="button" className="ft-btn ft-btn-outline" style={{ marginLeft: 8 }} onClick={onOpenAds}>Registrar mi horario</button></>}</p>}
-          {error && <p className="ft-error" role="alert"><AlertCircle size={15} /> {error}</p>}
-          <div className="ft-actions"><button type="button" className="ft-btn ft-btn-primary" onClick={activate} disabled={busy || !status.agendaConfigurada}>{busy ? 'Procesando…' : (status.activo ? 'Renovar Diagnóstico' : 'Activar Diagnóstico')}</button></div>
+          {error && !confirming && <p className="ft-error" role="alert"><AlertCircle size={15} /> {error}</p>}
+          <div className="ft-actions"><button type="button" className="ft-btn ft-btn-primary" onClick={requestActivate} disabled={busy || !status.agendaConfigurada}>{busy ? 'Procesando…' : (status.activo ? 'Renovar Diagnóstico' : 'Activar Diagnóstico')}</button></div>
         </section>
 
         <section className="ft-card">
@@ -62,6 +69,17 @@ export default function ProfileDiagnosticPanel({ onOpenAds }) {
           <div className="ft-actions"><Link className="ft-btn ft-btn-outline" to={ROUTES.auctions}>Publicar una necesidad de compra</Link></div>
         </section>
       </div>
+      <ConfirmDialog
+        isOpen={confirming}
+        tone="primary"
+        title={status.activo ? 'Renovar Diagnóstico' : 'Activar Diagnóstico'}
+        message={`Se descontarán ${status.costoMonedas} monedas (${coinsToPesos(status.costoMonedas)}) por ${status.vigenciaDias} días${status.activo ? ', que se suman a los que ya tienes' : ''}.`}
+        confirmLabel={status.activo ? 'Sí, renovar' : 'Sí, activar'}
+        isBusy={busy}
+        error={confirming ? error : ''}
+        onConfirm={activate}
+        onCancel={() => setConfirming(false)}
+      />
     </div>
   );
 }

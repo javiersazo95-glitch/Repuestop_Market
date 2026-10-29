@@ -5,7 +5,8 @@ import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import { createFault, getFaultCategories, updateFault, uploadFaultPhoto } from '../../services/faultApi';
 import { resolveMediaUrl } from '../../services/api';
 import { isValidPlate, lookupVehicleByPlate, normalizePlate } from '../../utils/vehicleLookup';
-import { searchVehicleByPatenteApi } from '../../services/api';
+import { getComunasApi, getRegionesApi, searchVehicleByPatenteApi } from '../../services/api';
+import { normalizarNombreGeografico } from '../../services/geoLookup';
 import { useAuth } from '../../context/AuthContext';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import '../../styles/faults.css';
@@ -18,6 +19,15 @@ const OTHER_SYMPTOM = 'Otro';
 const MAX_EVIDENCE_PHOTOS = 4;
 const MAX_SYMPTOMS = 8;
 const FAULT_CATEGORIES = SERVICE_CATEGORIES.filter((category) => category.id !== 'TODAS');
+
+// "Metropolitana" calza con "Region Metropolitana de Santiago": los nombres guardados (perfil, fallas antiguas o la
+// direccion elegida) no siempre traen el prefijo ni las tildes del catalogo de `/geografia`.
+const sameRegion = (a, b) => {
+  const left = normalizarNombreGeografico(a);
+  const right = normalizarNombreGeografico(b);
+  return Boolean(left && right) && (left === right || left.includes(right) || right.includes(left));
+};
+const sameComuna = (a, b) => Boolean(a && b) && normalizarNombreGeografico(a) === normalizarNombreGeografico(b);
 
 /** Registro de una falla automotriz: el vehiculo, lo que paso y donde esta. Los talleres acreditados la diagnostican. */
 export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated, fault = null }) {
@@ -37,8 +47,13 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   const [customSymptom, setCustomSymptom] = useState('');
   const [canMove, setCanMove] = useState(null);
   const [priority, setPriority] = useState('MEDIA');
+  // Region y comuna se eligen del catalogo (`/geografia`) y viajan como nombre, igual que antes: el filtro "Mi comuna"
+  // del mural compara nombres y con texto libre ("Nunoa", "nuñoa") no calzaban.
   const [region, setRegion] = useState(user?.region || '');
   const [comuna, setComuna] = useState(user?.comuna || '');
+  const [regions, setRegions] = useState([]);
+  const [regionId, setRegionId] = useState('');
+  const [communes, setCommunes] = useState([]);
   // Recogida: null = sin responder (obligatorio), true/false = elegido. Con coordenadas el mapa del taller ubica al cliente.
   const [needsPickup, setNeedsPickup] = useState(null);
   const [pickupAddress, setPickupAddress] = useState('');
@@ -99,6 +114,36 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     }).catch(() => {});
     return () => { active = false; };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    let active = true;
+    getRegionesApi('CL').then((list) => { if (active) setRegions(Array.isArray(list) ? list : []); }).catch(() => {});
+    return () => { active = false; };
+  }, [isOpen]);
+
+  // El nombre de la region (perfil, falla editada o direccion de recogida) elige su opcion del catalogo.
+  useEffect(() => {
+    if (!regions.length || !region) return;
+    const match = regions.find((item) => sameRegion(item.nombre, region));
+    if (match && String(match.id) !== String(regionId)) {
+      setRegionId(String(match.id));
+      setRegion(match.nombre);
+    }
+  }, [regions, region, regionId]);
+
+  useEffect(() => {
+    if (!regionId) { setCommunes([]); return undefined; }
+    let active = true;
+    getComunasApi(regionId).then((list) => {
+      if (!active) return;
+      const items = Array.isArray(list) ? list : [];
+      setCommunes(items);
+      // La comuna guardada queda escrita como en el catalogo, para que los filtros la reconozcan.
+      setComuna((current) => items.find((item) => sameComuna(item.nombre, current))?.nombre || current);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [regionId]);
 
   // Con una patente completa los datos del vehiculo se rellenan solos.
   useEffect(() => {
@@ -171,7 +216,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     if (!description.trim()) return setError('Cuéntanos qué le pasó a tu vehículo.');
     if (symptoms.includes(OTHER_SYMPTOM) && !customSymptom.trim()) return setError('Escribe cuál es el otro síntoma.');
     if (photos.length === 0) return setError('Agrega al menos una foto de evidencia de la falla.');
-    if (!comuna.trim()) return setError('Indica tu comuna: los talleres cercanos son los más útiles.');
+    if (!comuna.trim()) return setError('Elige tu región y tu comuna: los talleres cercanos son los más útiles.');
     if (needsPickup === null) return setError('Indica si necesitas que el taller recoja tu vehículo.');
     if (needsPickup && !pickupAddress.trim()) return setError('Indica la dirección donde el taller debe recoger tu vehículo.');
     const km = parseInt(String(mileage).replace(/\D/g, ''), 10);
@@ -326,8 +371,23 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         </div>
 
         <div className="ft-row">
-          <label className="ft-field"><span>Región</span><input value={region} maxLength={100} onChange={(e) => setRegion(e.target.value)} /></label>
-          <label className="ft-field"><span>Comuna</span><input value={comuna} maxLength={100} onChange={(e) => setComuna(e.target.value)} /></label>
+          <label className="ft-field"><span>Región</span>
+            <select value={regionId} onChange={(e) => {
+              const picked = regions.find((item) => String(item.id) === e.target.value);
+              setRegionId(e.target.value); setRegion(picked?.nombre || ''); setComuna('');
+            }}>
+              <option value="">{regions.length ? 'Selecciona una región' : 'Cargando regiones…'}</option>
+              {regions.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+            </select>
+          </label>
+          <label className="ft-field"><span>Comuna</span>
+            <select value={comuna} disabled={!regionId} onChange={(e) => setComuna(e.target.value)}>
+              <option value="">{regionId ? 'Selecciona una comuna' : 'Elige una región primero'}</option>
+              {/* Una falla antigua con una comuna escrita a mano que no esta en el catalogo la conserva. */}
+              {comuna && communes.length > 0 && !communes.some((item) => item.nombre === comuna) && <option value={comuna}>{comuna}</option>}
+              {communes.map((item) => <option key={item.id} value={item.nombre}>{item.nombre}</option>)}
+            </select>
+          </label>
         </div>
 
         <div className="ft-field">

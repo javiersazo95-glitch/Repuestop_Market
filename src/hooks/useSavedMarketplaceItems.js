@@ -13,9 +13,10 @@ function readSaved(userId) {
       // Los favoritos de la llave vieja `ads` eran anuncios que ya no existen: no se migran.
       talleres: Array.isArray(parsed.talleres) ? parsed.talleres : [],
       stores: Array.isArray(parsed.stores) ? parsed.stores : [],
+      faults: Array.isArray(parsed.faults) ? parsed.faults : [],
     };
   } catch {
-    return { talleres: [], stores: [] };
+    return { talleres: [], stores: [], faults: [] };
   }
 }
 
@@ -25,7 +26,8 @@ function writeSaved(userId, value) {
 }
 
 /**
- * Favoritos que todavía no tienen tabla propia en el backend (talleres y tiendas).
+ * Favoritos que todavía no tienen tabla propia en el backend (talleres, tiendas y fallas automotrices; la app los
+ * guarda igual, en el dispositivo: `mobile/hooks/use-saved-talleres.ts`).
  * Se separan por usuario y se emite un evento para que buscador, directorio, perfil del taller y
  * panel de perfil se actualicen de inmediato aunque monten instancias distintas del hook.
  */
@@ -47,7 +49,7 @@ export function useSavedMarketplaceItems(userId) {
   }, [userId]);
 
   const toggle = useCallback((type, item) => {
-    const collection = type === 'stores' ? 'stores' : 'talleres';
+    const collection = ['stores', 'faults'].includes(type) ? type : 'talleres';
     const id = String(item?.id ?? item?.proveedorId ?? '');
     if (!id) return;
     const current = readSaved(userId);
@@ -63,14 +65,18 @@ export function useSavedMarketplaceItems(userId) {
 
   const tallerIds = useMemo(() => new Set(saved.talleres.map((item) => String(item.id))), [saved.talleres]);
   const storeIds = useMemo(() => new Set(saved.stores.map((item) => String(item.id))), [saved.stores]);
+  const faultIds = useMemo(() => new Set(saved.faults.map((item) => String(item.id))), [saved.faults]);
 
   return {
     savedTalleres: saved.talleres,
     savedStores: saved.stores,
+    savedFaults: saved.faults,
+    isFaultSaved: useCallback((id) => faultIds.has(String(id)), [faultIds]),
     isTallerSaved: useCallback((id) => tallerIds.has(String(id)), [tallerIds]),
     isStoreSaved: useCallback((id) => storeIds.has(String(id)), [storeIds]),
     toggleTaller: useCallback((taller) => toggle('talleres', taller), [toggle]),
     toggleStore: useCallback((store) => toggle('stores', store), [toggle]),
+    toggleFault: useCallback((fault) => toggle('faults', fault), [toggle]),
   };
 }
 

@@ -1,25 +1,30 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowUpDown, CheckCircle2, ChevronRight, FileText, Heart, Package, Search,
+  ArrowUpDown, Bookmark, Car, CheckCircle2, ChevronRight, FileText, Heart, Package, Search,
   ShieldCheck, Star, Store, Trash2, Wrench, X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MarketplaceProductCard from './MarketplaceProductCard';
 import MarketplaceSellerCard from './MarketplaceSellerCard';
 import TallerCard from './talleres/TallerCard';
+import { FaultCard } from './faults/FaultsList';
 import { getPublicProductApi, removeFavoriteApi, resolveMediaUrl } from '../services/api';
 import { adaptProduct } from '../services/adapters';
 import { qk } from '../services/queryKeys';
-import { tallerPath, productPath, ROUTES, storePath } from '../routes/paths';
+import { faultDetailPath, tallerPath, productPath, ROUTES, storePath } from '../routes/paths';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useRestoredState } from '../routes/useRestoredState';
 import { useScrollMemory } from '../routes/useScrollMemory';
+
+// Destino de "Explorar" en cada sección vacía.
+const exploreTarget = (type) => ({ products: ROUTES.catalog, talleres: ROUTES.talleres, faults: ROUTES.faults }[type] || ROUTES.stores);
 
 const TABS = [
   { id: 'all', label: 'Todos', Icon: Heart },
   { id: 'products', label: 'Repuestos', Icon: Package },
   { id: 'talleres', label: 'Talleres', Icon: Wrench },
+  { id: 'faults', label: 'Fallas', Icon: Car },
   { id: 'stores', label: 'Casas de repuestos', Icon: Store },
 ];
 
@@ -27,6 +32,7 @@ function EmptySection({ type, onExplore }) {
   const config = {
     products: { Icon: Package, title: 'Aún no guardas repuestos', text: 'Explora el catálogo y toca el corazón de los repuestos que quieras revisar después.', button: 'Explorar repuestos' },
     talleres: { Icon: Wrench, title: 'Aún no guardas talleres', text: 'Guarda talleres para volver a ver sus servicios y reservar rápidamente.', button: 'Explorar talleres' },
+    faults: { Icon: Car, title: 'Aún no guardas fallas', text: 'Guarda las fallas automotrices que quieras seguir o diagnosticar más tarde.', button: 'Ver fallas automotrices' },
     stores: { Icon: Store, title: 'Aún no guardas casas de repuestos', text: 'Sigue tus tiendas preferidas para tener siempre su catálogo a mano.', button: 'Explorar casas de repuestos' },
   }[type];
   return (
@@ -81,7 +87,7 @@ export default function ProfileFavoritesPanel({ userId, productFavorites = [], i
   const [query, setQuery] = useRestoredState('favoritos', 'query', '');
   const [removingId, setRemovingId] = useState(null);
   useScrollMemory(!isLoading);
-  const { savedTalleres, savedStores, toggleTaller, toggleStore } = useSavedMarketplaceItems(userId);
+  const { savedTalleres, savedStores, savedFaults, toggleTaller, toggleStore, toggleFault } = useSavedMarketplaceItems(userId);
 
   // Ficha de cada favorito (tienda, marca, categoría, calidad y stock real), como hace la app. El
   // favorito del backend solo trae nombre, precio e imagen: sin esto todas las tarjetas decían
@@ -119,7 +125,8 @@ export default function ProfileFavoritesPanel({ userId, productFavorites = [], i
   const products = normalizedProducts.filter((item) => !term || `${item.titulo || ''}`.toLocaleLowerCase('es').includes(term));
   const talleres = savedTalleres.filter((item) => !term || `${item.name || ''} ${item.commune || ''}`.toLocaleLowerCase('es').includes(term));
   const stores = savedStores.filter((item) => !term || `${item.nombre || item.storeName || ''} ${item.ciudad || ''}`.toLocaleLowerCase('es').includes(term));
-  const total = normalizedProducts.length + savedTalleres.length + savedStores.length;
+  const faults = savedFaults.filter((item) => !term || `${item.titulo || ''} ${item.marca || ''} ${item.modelo || ''} ${item.comuna || ''}`.toLocaleLowerCase('es').includes(term));
+  const total = normalizedProducts.length + savedTalleres.length + savedFaults.length + savedStores.length;
 
   const removeProduct = async (product) => {
     if (!userId || !product.favoritoId || removingId) return;
@@ -139,23 +146,27 @@ export default function ProfileFavoritesPanel({ userId, productFavorites = [], i
       <FavoritesMobile
         products={normalizedProducts}
         talleres={savedTalleres}
+        faults={savedFaults}
         stores={savedStores}
         isLoading={isLoading}
         error={error}
         removingId={removingId}
         onRemoveProduct={removeProduct}
         onRemoveTaller={toggleTaller}
+        onRemoveFault={toggleFault}
+        onOpenFault={(fault) => navigate(faultDetailPath(fault), { state: { fromMural: true } })}
         onRemoveStore={toggleStore}
         onOpenProduct={(product) => navigate(productPath(product))}
         onOpenStore={(store) => navigate(storePath(store), { state: { store } })}
         onOpenTaller={(taller) => navigate(tallerPath(taller), { state: { taller } })}
-        onExplore={(type) => navigate(type === 'products' ? ROUTES.catalog : type === 'talleres' ? ROUTES.talleres : ROUTES.stores)}
+        onExplore={(type) => navigate(exploreTarget(type))}
       />
     );
   }
   const sections = [
     { type: 'products', title: 'Repuestos favoritos', subtitle: 'Productos que guardaste para revisar o comprar', count: normalizedProducts.length },
     { type: 'talleres', title: 'Talleres favoritos', subtitle: 'Talleres que quieres tener a mano', count: savedTalleres.length },
+    { type: 'faults', title: 'Fallas guardadas', subtitle: 'Fallas automotrices que quieres seguir', count: savedFaults.length },
     { type: 'stores', title: 'Casas de repuestos favoritas', subtitle: 'Vendedores y catálogos que sigues', count: savedStores.length },
   ];
 
@@ -173,7 +184,7 @@ export default function ProfileFavoritesPanel({ userId, productFavorites = [], i
       <div className="favorites-toolbar">
         <div className="favorites-tabs" role="tablist" aria-label="Tipos de favoritos">
           {TABS.map(({ id, label, Icon }) => {
-            const count = id === 'all' ? total : id === 'products' ? normalizedProducts.length : id === 'talleres' ? savedTalleres.length : savedStores.length;
+            const count = id === 'all' ? total : id === 'products' ? normalizedProducts.length : id === 'talleres' ? savedTalleres.length : id === 'faults' ? savedFaults.length : savedStores.length;
             return (
               <button key={id} type="button" role="tab" aria-selected={activeTab === id} className={activeTab === id ? 'is-active' : ''} onClick={() => setActiveTab(id)}>
                 <Icon size={16} /><span>{label}</span><small>{count}</small>
@@ -188,7 +199,7 @@ export default function ProfileFavoritesPanel({ userId, productFavorites = [], i
       {isLoading ? <div className="favorites-loading">Cargando tus favoritos…</div> : (
         <div className="favorites-sections">
           {sections.filter((section) => show(section.type)).map((section) => {
-            const visibleCount = section.type === 'products' ? products.length : section.type === 'talleres' ? talleres.length : stores.length;
+            const visibleCount = section.type === 'products' ? products.length : section.type === 'talleres' ? talleres.length : section.type === 'faults' ? faults.length : stores.length;
             return (
               <section className="favorites-section" key={section.type}>
                 <div className="favorites-section-heading">
@@ -197,7 +208,7 @@ export default function ProfileFavoritesPanel({ userId, productFavorites = [], i
                 </div>
                 {visibleCount === 0 ? (
                   term ? <div className="favorites-no-results"><Search size={22} /> No encontramos coincidencias en esta sección.</div> : (
-                    <EmptySection type={section.type} onExplore={() => navigate(section.type === 'products' ? ROUTES.catalog : section.type === 'talleres' ? ROUTES.talleres : ROUTES.stores)} />
+                    <EmptySection type={section.type} onExplore={() => navigate(exploreTarget(section.type))} />
                   )
                 ) : section.type === 'products' ? (
                   <div className="favorites-cards-grid favorites-product-grid">
@@ -211,6 +222,10 @@ export default function ProfileFavoritesPanel({ userId, productFavorites = [], i
                 ) : section.type === 'talleres' ? (
                   <div className="favorites-cards-grid favorites-ad-grid">
                     {talleres.map((taller) => <TallerCard key={taller.id} taller={taller} isFavorite onToggleFavorite={toggleTaller} onOpenProfile={() => navigate(tallerPath(taller), { state: { taller } })} />)}
+                  </div>
+                ) : section.type === 'faults' ? (
+                  <div className="ft-fault-list">
+                    {faults.map((fault) => <FaultCard key={fault.id} fault={fault} fromMural isSaved onToggleSaved={toggleFault} />)}
                   </div>
                 ) : (
                   <div className="favorites-cards-grid favorites-store-grid">
@@ -229,11 +244,11 @@ export default function ProfileFavoritesPanel({ userId, productFavorites = [], i
 /**
  * Favoritos en celular con el diseño de la app (`mobile/app/favorites.tsx`): pestañas con
  * contador, buscador y filtros de repuestos, tarjetas en lista con la tienda y la disponibilidad,
- * y bloques de talleres y tiendas con "Ver todos".
+ * y bloques de talleres, fallas y tiendas con "Ver todos".
  */
 function FavoritesMobile({
-  products, talleres, stores, isLoading, error, removingId,
-  onRemoveProduct, onRemoveTaller, onRemoveStore, onOpenProduct, onOpenStore, onOpenTaller, onExplore,
+  products, talleres, faults, stores, isLoading, error, removingId,
+  onRemoveProduct, onRemoveTaller, onRemoveFault, onRemoveStore, onOpenProduct, onOpenStore, onOpenTaller, onOpenFault, onExplore,
 }) {
   const [tab, setTab] = useRestoredState('favoritos-movil', 'tab', 'all');
   const [query, setQuery] = useRestoredState('favoritos-movil', 'query', '');
@@ -250,12 +265,13 @@ function FavoritesMobile({
       : String(a.titulo || '').localeCompare(String(b.titulo || ''), 'es')));
   const hasFilters = Boolean(term) || onlyAvailable;
   const show = (type) => tab === 'all' || tab === type;
-  const total = products.length + talleres.length + stores.length;
+  const total = products.length + talleres.length + faults.length + stores.length;
 
   const tabs = [
     { id: 'all', label: 'Todo', count: total },
     { id: 'products', label: 'Repuestos', count: products.length },
     { id: 'talleres', label: 'Talleres', count: talleres.length },
+    { id: 'faults', label: 'Fallas', count: faults.length },
     { id: 'stores', label: 'Tiendas', count: stores.length },
   ];
 
@@ -356,6 +372,38 @@ function FavoritesMobile({
             </div>
           ) : (
             <EmptyMobile icon={Wrench} title="Aún no tienes talleres guardados" text="Toca el corazón en un taller para tenerlo a mano y reservar rápido." action="Ver talleres" onAction={() => onExplore('talleres')} compact />
+          )}
+        </section>
+      )}
+
+      {show('faults') && (
+        <section className="fav-m-section">
+          <SectionTitle
+            title="Fallas guardadas"
+            count={faults.length}
+            actionLabel={tab === 'all' && faults.length > 2 ? 'Ver todos' : undefined}
+            onAction={() => setTab('faults')}
+          />
+          {faults.length ? (
+            <div className="fav-m-list">
+              {(tab === 'all' ? faults.slice(0, 2) : faults).map((fault) => (
+                <div key={fault.id} className="fav-m-ad" role="button" tabIndex={0} onClick={() => onOpenFault(fault)} onKeyDown={(e) => e.key === 'Enter' && onOpenFault(fault)}>
+                  <span className="fav-m-thumb is-ad">
+                    {fault.fotoVehiculo ? <img src={resolveMediaUrl(fault.fotoVehiculo)} alt="" /> : <Car size={26} />}
+                  </span>
+                  <span className="fav-m-copy">
+                    {fault.titulo && <em className="fav-m-overline">{fault.titulo}</em>}
+                    <strong>{[fault.marca, fault.modelo, fault.anio].filter(Boolean).join(' ') || 'Falla automotriz'}</strong>
+                    <small>{[fault.comuna, fault.region].filter(Boolean).join(' · ') || 'Ubicación no informada'}</small>
+                  </span>
+                  <button type="button" className="fav-m-heart" aria-label={`Quitar la falla ${fault.titulo || ''} de guardados`} onClick={(e) => { e.stopPropagation(); onRemoveFault(fault); }}>
+                    <Bookmark size={17} fill="currentColor" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyMobile icon={Car} title="Aún no tienes fallas guardadas" text="Guarda una falla desde su detalle para seguirla o diagnosticarla más tarde." action="Ver fallas" onAction={() => onExplore('faults')} compact />
           )}
         </section>
       )}

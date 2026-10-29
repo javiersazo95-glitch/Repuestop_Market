@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  AlertCircle, CalendarDays, Camera, Car, ChevronRight, FileText, Filter, Loader2,
+  AlertCircle, Bookmark, CalendarDays, Camera, Car, ChevronRight, FileText, Filter, Loader2,
   MapPin, MessageCircle, Plus, RotateCcw, Search, Settings, Truck, Wrench,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -24,6 +24,12 @@ const FAULT_TYPES = [
 ];
 
 const normalizeComuna = (comuna) => String(comuna || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+// "Metropolitana" (perfil) calza con "Region Metropolitana de Santiago" (catalogo de las fallas nuevas).
+const sameRegion = (a, b) => {
+  const left = normalizeComuna(a);
+  const right = normalizeComuna(b);
+  return Boolean(left && right) && (left === right || left.includes(right) || right.includes(left));
+};
 
 const textOf = (fault) => [
   fault.titulo, fault.descripcion, fault.antesDelFallo, fault.marca, fault.modelo,
@@ -44,7 +50,8 @@ const diagnosisCountOf = (fault) => Number(
     ?? (Array.isArray(fault.diagnosticos) ? fault.diagnosticos.length : fault.diagnosticos) ?? 0,
 ) || 0;
 
-function FaultCard({ fault, showStatus, showClient, fromMural }) {
+/** Tarjeta de una falla del mural. Tambien la usa Favoritos, con `onToggleSaved` para quitarla de los guardados. */
+export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = false, onToggleSaved }) {
   const place = [fault.comuna, fault.region].filter(Boolean).join(', ');
   const vehicle = [fault.marca, fault.modelo].filter(Boolean).join(' ') || fault.vehiculo;
   const vehicleData = [fault.anio, fault.motor || fault.combustible].filter(Boolean);
@@ -95,6 +102,11 @@ function FaultCard({ fault, showStatus, showClient, fromMural }) {
         <Link to={faultDetailPath(fault)} state={{ fromMural }} className="ft-btn ft-btn-primary ft-detail-button" aria-label={`Ver detalle de ${vehicle}`}>
           Ver detalle <ChevronRight size={16} />
         </Link>
+        {onToggleSaved && (
+          <button type="button" className={`ft-btn ft-btn-outline ${isSaved ? 'is-saved' : ''}`} aria-pressed={isSaved} onClick={() => onToggleSaved(fault)}>
+            <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} /> {isSaved ? 'Guardada' : 'Guardar'}
+          </button>
+        )}
       </div>
     </article>
   );
@@ -140,6 +152,10 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (!isLoggedIn) setView('OPEN'); }, [isLoggedIn]);
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(searchText.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [searchText]);
 
   const source = useMemo(() => lists[view] || [], [lists, view]);
   const brands = useMemo(() => [...new Set(source.map((fault) => fault.marca).filter(Boolean))].sort(), [source]);
@@ -148,6 +164,8 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   const communes = useMemo(() => [...new Set(source.map((fault) => fault.comuna).filter(Boolean))].sort(), [source]);
   const years = useMemo(() => [...new Set(source.map((fault) => Number(fault.anio)).filter(Boolean))].sort((a, b) => b - a), [source]);
   const placeOptions = locationMode === 'region' ? regions : communes;
+  const userComuna = user?.comuna || '';
+  const userRegion = user?.region || '';
 
   const items = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('es');
@@ -156,14 +174,15 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
       && (!model || fault.modelo === model)
       && (!yearFrom || Number(fault.anio) >= Number(yearFrom))
       && (!yearTo || Number(fault.anio) <= Number(yearTo))
-      && (locationMode === 'all' || !place || (locationMode === 'region' ? fault.region === place : fault.comuna === place))
+      && (locationMode !== 'mine' || !userComuna || normalizeComuna(fault.comuna) === normalizeComuna(userComuna))
+      && (locationMode !== 'region' || !(place || userRegion) || sameRegion(fault.region, place || userRegion))
+      && (locationMode !== 'all' || !place || normalizeComuna(fault.comuna) === normalizeComuna(place))
       && (selectedTypes.length === 0 || selectedTypes.includes(fault.categoria))
-      && (locationMode !== 'mine' || !user?.comuna || fault.comuna === user.comuna)
       && (!onlyMyComuna || !myComuna || normalizeComuna(fault.comuna) === normalizeComuna(myComuna)))
       .sort((a, b) => sort === 'oldest'
         ? new Date(a.createdAt) - new Date(b.createdAt)
         : new Date(b.createdAt) - new Date(a.createdAt));
-  }, [source, query, brand, model, yearFrom, yearTo, locationMode, place, selectedTypes, sort, user?.comuna, onlyMyComuna, myComuna]);
+  }, [source, query, brand, model, yearFrom, yearTo, locationMode, place, selectedTypes, sort, userComuna, userRegion, onlyMyComuna, myComuna]);
 
   useEffect(() => {
     if (!onMetricsChange) return;
@@ -223,13 +242,16 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
 
             <fieldset className="ft-filter-group">
               <legend><MapPin size={17} /> Ubicación</legend>
-              <label className="ft-radio"><input type="radio" name="fault-location" checked={locationMode === 'mine'} onChange={() => { setLocationMode('mine'); setPlace(''); }} /> Mi comuna</label>
-              <label className="ft-radio"><input type="radio" name="fault-location" checked={locationMode === 'region'} onChange={() => { setLocationMode('region'); setPlace(''); }} /> Mi región</label>
+              <label className="ft-radio"><input type="radio" name="fault-location" checked={locationMode === 'mine'} disabled={!userComuna} onChange={() => { setLocationMode('mine'); setPlace(''); }} /> Mi comuna{userComuna ? ` (${userComuna})` : ''}</label>
+              <label className="ft-radio"><input type="radio" name="fault-location" checked={locationMode === 'region'} onChange={() => { setLocationMode('region'); setPlace(''); }} /> {userRegion ? 'Mi región' : 'Por región'}</label>
               <label className="ft-radio"><input type="radio" name="fault-location" checked={locationMode === 'all'} onChange={() => { setLocationMode('all'); setPlace(''); }} /> Todo Chile</label>
-              <select aria-label="Comuna o región" value={place} onChange={(event) => setPlace(event.target.value)} disabled={locationMode === 'all'}>
-                <option value="">{locationMode === 'region' ? user?.region || 'Todas las regiones' : user?.comuna || 'Todas las comunas'}</option>
-                {placeOptions.map((item) => <option key={item}>{item}</option>)}
-              </select>
+              {!userComuna && <small className="ft-filter-hint">{isLoggedIn ? 'Agrega tu comuna en tu perfil para filtrar por ella.' : 'Inicia sesión para filtrar por tu comuna.'}</small>}
+              {locationMode !== 'mine' && (
+                <select aria-label={locationMode === 'region' ? 'Región' : 'Comuna'} value={place} onChange={(event) => setPlace(event.target.value)}>
+                  <option value="">{locationMode === 'region' ? userRegion || 'Todas las regiones' : 'Todas las comunas'}</option>
+                  {placeOptions.map((item) => <option key={item}>{item}</option>)}
+                </select>
+              )}
             </fieldset>
 
             <label><span><Car size={17} /> Marca del vehículo</span><select value={brand} onChange={(event) => { setBrand(event.target.value); setModel(''); }}><option value="">Todas las marcas</option>{brands.map((item) => <option key={item}>{item}</option>)}</select></label>
@@ -248,7 +270,6 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
               {SERVICE_CATEGORIES.filter((category) => category.id !== 'TODAS').map((category) => <label key={category.id} className="ft-check"><input type="checkbox" checked={selectedTypes.includes(category.id)} onChange={() => toggleType(category.id)} /> <span aria-hidden="true">{category.emoji}</span> {category.label}</label>)}
             </fieldset>
 
-            <button type="button" className="ft-btn ft-btn-primary" onClick={() => setQuery(searchText.trim())}><Search size={16} /> Aplicar filtros</button>
             <button type="button" className="ft-btn ft-btn-outline" onClick={clearFilters}><RotateCcw size={16} /> Limpiar filtros</button>
           </aside>
 

@@ -859,8 +859,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   }, [paymentStatus, paymentOrderId, effectiveUserId, queryClient]);
 
   const favorites = favoritesQuery.data || [];
-  const { savedTalleres: savedFavoriteTalleres, savedStores: savedFavoriteStores } = useSavedMarketplaceItems(effectiveUserId);
-  const favoritesTotal = favorites.length + savedFavoriteTalleres.length + savedFavoriteStores.length;
+  const { savedTalleres: savedFavoriteTalleres, savedStores: savedFavoriteStores, savedFaults: savedFavoriteFaults } = useSavedMarketplaceItems(effectiveUserId);
+  const favoritesTotal = favorites.length + savedFavoriteTalleres.length + savedFavoriteStores.length + savedFavoriteFaults.length;
   const conversations = conversationsQuery.data || [];
   // Cotizaciones donde el usuario es el COMPRADOR. Para el vendedor salen del query aparte;
   // para el comprador son las mismas de arriba. `quotesAsBuyer` decide con que set y en que

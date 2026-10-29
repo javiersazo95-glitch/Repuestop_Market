@@ -15,10 +15,13 @@ import { resolveMediaUrl } from '../services/api';
 import { fetchTaller } from '../services/talleresStorage';
 import { SERVICE_CATEGORIES } from '../data/talleresData';
 import BookingModal from '../components/talleres/BookingModal';
+import ConfirmDialog from '../components/ConfirmDialog';
+import ContextualReportButton from '../components/ContextualReportButton';
 import CreateFaultModal from '../components/faults/CreateFaultModal';
 import { ROUTES, profilePath, workshopPath } from '../routes/paths';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 import { useUserLocation } from '../hooks/useUserLocation';
+import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { formatDistanceKm, haversineDistanceKm } from '../utils/geoDistance';
 import '../styles/faults.css';
 
@@ -37,7 +40,8 @@ export default function FaultDetailPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const showPlate = !location.state?.fromMural;
-  const { user, role } = useAuth();
+  const { user, role, isLoggedIn } = useAuth();
+  const { isFaultSaved, toggleFault } = useSavedMarketplaceItems(user?.userId ?? user?.id ?? null);
   const isWorkshop = role === 'WORKSHOP';
   useDocumentTitle('Falla automotriz');
   // Posición del taller para medir la distancia al cliente: se lee sola si el permiso ya estaba concedido.
@@ -54,15 +58,20 @@ export default function FaultDetailPage() {
   const [eligibility, setEligibility] = useState(undefined);
   const [priceFrom, setPriceFrom] = useState('');
   const [priceTo, setPriceTo] = useState('');
+  // Respuesta del cliente a un diagnostico o comentario: `replyTo` es el id del comentario que responde.
   const [replyTo, setReplyTo] = useState(null);
+  const [replyText, setReplyText] = useState('');
+  const [replyError, setReplyError] = useState('');
   const [sending, setSending] = useState(false);
   const [formError, setFormError] = useState('');
   const [booking, setBooking] = useState(null);
   const [loadingBookingId, setLoadingBookingId] = useState(null);
   const [activePhoto, setActivePhoto] = useState(0);
-  const [saved, setSaved] = useState(false);
   const [commentFormOpen, setCommentFormOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [closeConfirm, setCloseConfirm] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [closeError, setCloseError] = useState('');
   // Talleres que ya diagnosticaron (sin el contenido): lo ve cualquiera que no sea el dueño.
   const [publicDiagnoses, setPublicDiagnoses] = useState([]);
   const [publicDiagnosesOpen, setPublicDiagnosesOpen] = useState(false);
@@ -101,25 +110,24 @@ export default function FaultDetailPage() {
   const myDiagnosis = diagnostics.find((comment) => comment.taller && String(comment.taller.usuarioId) === myId) || null;
   const openDiagnosis = typeof diagModal === 'number' ? comments.find((comment) => comment.id === diagModal) : null;
 
+  /** Diagnostico privado nuevo (`DIAGNOSTICO`, con precio estimado) o comentario publico (`COMENTARIO`) de un taller. */
   const send = async (event, kind) => {
     event.preventDefault();
-    const isReply = replyTo != null;
-    const body = kind === 'COMENTARIO' && !isReply ? publicText.trim() : text.trim();
+    const body = kind === 'COMENTARIO' ? publicText.trim() : text.trim();
     if (!body || !fault) return;
     setSending(true);
     setFormError('');
     try {
       const from = parseInt(priceFrom.replace(/\D/g, ''), 10);
       const to = parseInt(priceTo.replace(/\D/g, ''), 10);
-      const isDiagnosis = kind === 'DIAGNOSTICO' && !isReply;
+      const isDiagnosis = kind === 'DIAGNOSTICO';
       await commentFault(fault.id, {
         texto: body,
-        respondeAId: replyTo,
-        tipo: isReply ? null : kind,
+        tipo: kind,
         precioDesde: isDiagnosis && Number.isFinite(from) ? from : null,
         precioHasta: isDiagnosis && Number.isFinite(to) ? to : null,
       });
-      setText(''); setPublicText(''); setPriceFrom(''); setPriceTo(''); setReplyTo(null);
+      setText(''); setPublicText(''); setPriceFrom(''); setPriceTo('');
       setDiagModal(null); setCommentFormOpen(false);
       await load();
     } catch (err) {
@@ -129,6 +137,36 @@ export default function FaultDetailPage() {
     }
   };
 
+  // Solo el cliente que registro la falla responde (al diagnostico o al comentario de un taller); el backend lo exige
+  // y avisa al taller. Sin datos de contacto: el telefono se acepta solo en el diagnostico con una cita confirmada.
+  const startReply = (commentId) => { setReplyTo(commentId); setReplyText(''); setReplyError(''); };
+  const sendReply = async (event) => {
+    event.preventDefault();
+    const body = replyText.trim();
+    if (!body || !fault || replyTo == null) return;
+    setSending(true);
+    setReplyError('');
+    try {
+      await commentFault(fault.id, { texto: body, respondeAId: replyTo });
+      setReplyText(''); setReplyTo(null);
+      await load();
+    } catch (err) {
+      setReplyError(err?.message || 'No pudimos enviar tu respuesta.');
+    } finally {
+      setSending(false);
+    }
+  };
+  const canReply = fault?.propia && fault?.vigente;
+  const replyForm = (commentId, placeholder) => replyTo === commentId && (
+    <form className="ft-detail-comment-form ft-reply-form" onSubmit={sendReply}>
+      <textarea rows={2} value={replyText} maxLength={1500} onChange={(event) => setReplyText(event.target.value)} placeholder={placeholder} autoFocus />
+      {replyError && <p className="ft-error" role="alert"><AlertCircle size={15} /> {replyError}</p>}
+      <div><button type="button" className="ft-btn ft-btn-outline" onClick={() => setReplyTo(null)} disabled={sending}>Cancelar</button><button type="submit" className="ft-btn ft-btn-primary" disabled={sending || !replyText.trim()}>{sending ? 'Enviando…' : 'Responder'}</button></div>
+    </form>
+  );
+  // Reportar es para contenido ajeno: el backend rechaza reportar lo propio.
+  const isMine = (comment) => comment.esCreador ? Boolean(fault?.propia) : Boolean(comment.taller && String(comment.taller.usuarioId) === myId);
+
   const accept = async (commentId) => {
     setAccepting(true);
     try { await acceptFaultDiagnosis(fault.id, commentId); await load(); }
@@ -137,13 +175,18 @@ export default function FaultDetailPage() {
   };
 
   const close = async () => {
-    if (!fault || !window.confirm('Los talleres dejarán de poder comentar esta falla. ¿Quieres cerrarla?')) return;
-    try { setFault(await closeFault(fault.id)); }
-    catch (err) { setFormError(err?.message || 'No pudimos cerrar la falla.'); }
+    if (!fault) return;
+    setClosing(true);
+    setCloseError('');
+    try { setFault(await closeFault(fault.id)); setCloseConfirm(false); }
+    catch (err) { setCloseError(err?.message || 'No pudimos cerrar la falla.'); }
+    finally { setClosing(false); }
   };
 
+  // La cita se pide al taller del diagnostico aceptado: sus bloques salen de su "Horario principal".
   const openBooking = async (tallerId) => {
     setLoadingBookingId(tallerId);
+    setFormError('');
     try { setBooking(await fetchTaller(tallerId)); }
     catch (err) { setFormError(err?.message || 'No pudimos abrir la agenda del taller.'); }
     finally { setLoadingBookingId(null); }
@@ -178,6 +221,18 @@ export default function FaultDetailPage() {
   const symptomSummary = fault.sintomas?.length ? `${fault.sintomas.slice(0, 3).join(' · ')}${fault.sintomas.length > 3 ? ` +${fault.sintomas.length - 3}` : ''}` : 'Sin síntomas informados';
   const memberSince = fault.autorMiembroDesde || fault.miembroDesde || fault.autorCreadoAt || fault.usuarioCreadoAt;
   const evaluationCount = fault.autorEvaluaciones ?? fault.evaluaciones ?? fault.cantidadEvaluaciones;
+  // El dueño ve todos los diagnósticos; los demás reciben solo el propio (taller) o ninguno: el total sale del resumen público.
+  const diagnosisCount = fault.propia ? diagnostics.length : Math.max(diagnostics.length, publicDiagnoses.length);
+  const saved = isFaultSaved(fault.id);
+  // Copia para Favoritos (en el navegador, como la app): lo que pinta la tarjeta del mural, sin patente ni ubicacion exacta.
+  const toggleSaved = () => toggleFault({
+    id: fault.id, titulo: fault.titulo, descripcion: fault.descripcion, antesDelFallo: fault.antesDelFallo,
+    marca: fault.marca, modelo: fault.modelo, anio: fault.anio, motor: fault.motor, combustible: fault.combustible,
+    comuna: fault.comuna, region: fault.region, categoria: fault.categoria, subcategoria: fault.subcategoria,
+    sintomas: fault.sintomas, seMueve: fault.seMueve, requiereRecogida: fault.requiereRecogida,
+    fotoVehiculo: fault.fotoVehiculo || fault.fotoUrl, fotos: fault.fotos, cantidadDiagnosticos: diagnosisCount,
+    createdAt: fault.createdAt, vigente: fault.vigente,
+  });
   const nextPhoto = (step) => setActivePhoto((current) => (current + step + photos.length) % photos.length);
 
   return (
@@ -207,21 +262,21 @@ export default function FaultDetailPage() {
               <div><dt>Servicio relacionado</dt><dd>{fault.subcategoria || fault.titulo || category}</dd></div>
               <div><dt>Estado del vehículo</dt><dd>{mobility}</dd></div>
               <div><dt>Síntomas informados</dt><dd>{symptomSummary}</dd></div>
-              <div><dt>Diagnósticos recibidos</dt><dd>{diagnostics.length} {diagnostics.length === 1 ? 'diagnóstico' : 'diagnósticos'}</dd></div>
+              <div><dt>Diagnósticos recibidos</dt><dd>{diagnosisCount} {diagnosisCount === 1 ? 'diagnóstico' : 'diagnósticos'}</dd></div>
             </dl>
             <div className="ft-detail-meta"><span><MapPin size={18} /> {place}</span>{fault.requiereRecogida && <span className="ft-pickup-meta"><Truck size={18} /> Requiere recogida del vehículo</span>}<span><Clock3 size={18} /> Publicado {timeSince(fault.createdAt).toLowerCase()}</span>{fault.visitas != null && <span><Eye size={18} /> {fault.visitas} visitas</span>}</div>
             {fault.requiereRecogida && (
               <p className="ft-pickup-alert" role="note"><Truck size={20} aria-hidden="true" /> {fault.propia ? 'Pediste que el taller vaya a buscar tu vehículo.' : 'Este cliente necesita que vayan a buscar el vehículo.'}</p>
             )}
-            <div className="ft-detail-hero-actions">{fault.propia && fault.vigente && <button type="button" className="ft-btn ft-btn-primary" onClick={() => setEditing(true)}><Pencil size={17} /> Editar falla</button>}<button type="button" className="ft-detail-icon-action" onClick={share} aria-label="Compartir"><Share2 size={20} /></button>{!fault.propia && <button type="button" className={`ft-btn ft-btn-outline ${saved ? 'is-saved' : ''}`} onClick={() => setSaved((value) => !value)}><Bookmark size={17} fill={saved ? 'currentColor' : 'none'} /> {saved ? 'Guardado' : 'Guardar'}</button>}</div>
+            <div className="ft-detail-hero-actions">{fault.propia && fault.vigente && <button type="button" className="ft-btn ft-btn-primary" onClick={() => setEditing(true)}><Pencil size={17} /> Editar falla</button>}<button type="button" className="ft-detail-icon-action" onClick={share} aria-label="Compartir"><Share2 size={20} /></button>{!fault.propia && isLoggedIn && <button type="button" className={`ft-btn ft-btn-outline ${saved ? 'is-saved' : ''}`} aria-pressed={saved} onClick={toggleSaved}><Bookmark size={17} fill={saved ? 'currentColor' : 'none'} /> {saved ? 'Guardado' : 'Guardar'}</button>}{!fault.propia && <ContextualReportButton tipoObjeto="FALLA" objetoId={fault.id} objetoTitulo={fault.titulo} className="ft-btn ft-btn-outline" />}</div>
           </div>
         </section>
 
         <div className="ft-detail-columns">
           <div className="ft-detail-column">
             <div className="ft-detail-case-group">
-              <DetailPanel icon={FileText} title="Descripción general"><p>{fault.descripcion || 'Sin descripción general.'}</p></DetailPanel>
-              <DetailPanel icon={AlertTriangle} title="¿Qué pasó?" tone="is-alert"><p>{fault.antesDelFallo || fault.descripcion || 'El usuario no agregó más antecedentes.'}</p></DetailPanel>
+              <DetailPanel icon={AlertTriangle} title="¿Qué pasó?" tone="is-alert"><p>{fault.descripcion || 'El usuario no describió lo que pasó.'}</p></DetailPanel>
+              <DetailPanel icon={FileText} title="Qué pasaba antes del fallo"><p>{fault.antesDelFallo || 'El usuario no agregó antecedentes previos.'}</p></DetailPanel>
               <DetailPanel icon={Car} title="Estado actual del vehículo">
                 <strong>¿Se puede mover?</strong>
                 <div className="ft-mobility-options"><span className={fault.seMueve === false ? 'is-selected' : ''}><Car size={20} /> No se puede mover</span><span className={fault.seMueve === true ? 'is-selected' : ''}><Car size={20} /> Sí se puede mover</span></div>
@@ -280,7 +335,7 @@ export default function FaultDetailPage() {
               <dl className="ft-user-facts">
                 <div><dt>Miembro desde</dt><dd>{formatMonthYear(memberSince)}</dd></div>
                 <div><dt>Fallas publicadas</dt><dd>{fault.fallasPublicadas ?? '—'}</dd></div>
-                <div><dt>Diagnósticos en este caso</dt><dd>{diagnostics.length}</dd></div>
+                <div><dt>Diagnósticos en este caso</dt><dd>{diagnosisCount}</dd></div>
                 <div><dt>Ubicación declarada</dt><dd>{place || 'No informada'}</dd></div>
               </dl>
               {fault.autorRating != null && <div className="ft-detail-rating"><span>{[1, 2, 3, 4, 5].map((item) => <Star key={item} size={15} fill="currentColor" />)}</span><strong>{fault.autorRating}</strong>{evaluationCount != null && <small>({evaluationCount} {evaluationCount === 1 ? 'evaluación' : 'evaluaciones'})</small>}</div>}
@@ -289,18 +344,22 @@ export default function FaultDetailPage() {
         </div>
 
         <section className="ft-detail-thread-section is-private">
-          <header><div><h2><Wrench size={23} /> Diagnósticos de talleres (privado)</h2><p>Los siguientes diagnósticos son visibles solo para talleres registrados y el dueño de la falla.</p></div><span className="ft-private-pill"><Lock size={14} /> Solo talleres</span></header>
-          {diagnostics.length === 0 ? <div className="ft-detail-thread-empty">Aún no hay diagnósticos registrados.</div> : diagnostics.map((diagnosis) => <article key={diagnosis.id} className="ft-detail-diagnosis-row"><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{diagnosis.autor}</strong><time>{timeSince(diagnosis.createdAt)}</time><p>Diagnóstico y posible causa registrada.</p><button type="button" onClick={() => setDiagModal(diagnosis.id)}><Settings size={14} /> Ver diagnóstico</button><ChevronDown size={15} /></article>)}
+          <header><div><h2><Wrench size={23} /> Diagnósticos de talleres (privado)</h2><p>{fault.propia ? 'Cada diagnóstico lo ven solo tú y el taller que lo escribió. Compáralos y acepta el que te convenza para agendar.' : isWorkshop ? 'Tu diagnóstico lo ven solo tú y el cliente. Los de otros talleres no se muestran.' : 'Los diagnósticos son privados entre el cliente y cada taller.'}</p></div><span className="ft-private-pill"><Lock size={14} /> Privado</span></header>
+          {diagnostics.length === 0 ? <div className="ft-detail-thread-empty">{!fault.propia && !isWorkshop && publicDiagnoses.length > 0 ? `${publicDiagnoses.length} ${publicDiagnoses.length === 1 ? 'taller ya diagnosticó' : 'talleres ya diagnosticaron'} esta falla. El detalle solo lo ve quien la publicó.` : 'Aún no hay diagnósticos registrados.'}</div> : diagnostics.map((diagnosis) => {
+            const price = priceRange(diagnosis.precioDesde, diagnosis.precioHasta);
+            const replies = repliesOf(diagnosis.id).length;
+            return <article key={diagnosis.id} className={`ft-detail-diagnosis-row ${diagnosis.aceptado ? 'is-accepted' : ''}`}><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{diagnosis.autor}{diagnosis.aceptado && <em className="ft-accepted-pill">Aceptado</em>}</strong><time>{timeSince(diagnosis.createdAt)}</time><p>{diagnosis.texto}</p><span className="ft-diagnosis-facts"><span className="ft-price"><Tag size={13} /> {price || 'Sin precio estimado'}</span>{replies > 0 && <span><MessageCircle size={13} /> {replies} {replies === 1 ? 'respuesta' : 'respuestas'}</span>}</span><button type="button" onClick={() => setDiagModal(diagnosis.id)}><Settings size={14} /> Ver diagnóstico</button><ChevronDown size={15} /></article>;
+          })}
           {isWorkshop && fault.vigente && <button type="button" className="ft-btn ft-btn-primary ft-detail-diagnose" onClick={() => setDiagModal(myDiagnosis ? myDiagnosis.id : 'new')}>{myDiagnosis ? 'Ver mi diagnóstico' : 'Agregar diagnóstico'}</button>}
         </section>
 
         <section className="ft-detail-thread-section is-public">
           <header><div><h2><MessageCircle size={23} /> Comentarios (público)</h2><p>Los comentarios ayudan a afinar el diagnóstico. Todos los talleres pueden ver y comentar.</p></div>{!fault.propia && publicDiagnoses.length > 0 && <button type="button" className="ft-btn ft-btn-outline" onClick={() => setPublicDiagnosesOpen(true)}><Wrench size={16} /> Ver diagnósticos ({publicDiagnoses.length})</button>}{isWorkshop && fault.vigente && <button type="button" className="ft-btn ft-btn-primary" onClick={() => setCommentFormOpen((value) => !value)}><MessageCircle size={16} /> Agregar comentario</button>}</header>
-          {publicComments.length === 0 && !commentFormOpen ? <div className="ft-detail-thread-empty">Aún no hay comentarios públicos.</div> : publicComments.map((comment) => <article key={comment.id} className="ft-detail-comment-row"><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{comment.autor}</strong><time>{timeSince(comment.createdAt)}</time><p>{comment.texto}</p>{repliesOf(comment.id).map((reply) => <small key={reply.id}>{reply.autor}: {reply.texto}</small>)}</article>)}
+          {publicComments.length === 0 && !commentFormOpen ? <div className="ft-detail-thread-empty">Aún no hay comentarios públicos.</div> : publicComments.map((comment) => <article key={comment.id} className="ft-detail-comment-row"><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{comment.autor}</strong><time>{timeSince(comment.createdAt)}</time><p>{comment.texto}</p>{repliesOf(comment.id).map((reply) => <small key={reply.id} className="ft-comment-reply"><b>{reply.esCreador ? 'Cliente' : reply.autor}:</b> {reply.texto}</small>)}<span className="ft-comment-actions">{canReply && replyTo !== comment.id && <button type="button" className="ft-link-btn" onClick={() => startReply(comment.id)}>Responder</button>}{!isMine(comment) && <ContextualReportButton tipoObjeto="FALLA_COMENTARIO" objetoId={comment.id} objetoTitulo={`Comentario de ${comment.autor}`} className="ft-link-btn" />}</span>{replyForm(comment.id, 'Responde al taller')}</article>)}
           {commentFormOpen && <form className="ft-detail-comment-form" onSubmit={(event) => send(event, 'COMENTARIO')}><textarea rows={3} value={publicText} maxLength={1500} onChange={(event) => setPublicText(event.target.value)} placeholder="Escribe una pregunta o comentario para afinar el diagnóstico" />{formError && <p className="ft-error"><AlertCircle size={15} /> {formError}</p>}<div><button type="button" className="ft-btn ft-btn-outline" onClick={() => setCommentFormOpen(false)}>Cancelar</button><button type="submit" className="ft-btn ft-btn-primary" disabled={sending || !publicText.trim()}>{sending ? 'Publicando…' : 'Publicar comentario'}</button></div></form>}
         </section>
 
-        {fault.propia && fault.vigente && <div className="ft-detail-owner-actions"><button type="button" className="ft-btn ft-btn-danger" onClick={close}>Cerrar falla</button></div>}
+        {fault.propia && fault.vigente && <div className="ft-detail-owner-actions"><button type="button" className="ft-btn ft-btn-danger" onClick={() => { setCloseError(''); setCloseConfirm(true); }}>Cerrar falla</button></div>}
       </div>
 
       {publicDiagnosesOpen && <div className="ft-modal-backdrop" role="dialog" aria-modal="true" onClick={() => setPublicDiagnosesOpen(false)}><div className="ft-modal" onClick={(event) => event.stopPropagation()}>
@@ -310,15 +369,25 @@ export default function FaultDetailPage() {
           {publicDiagnoses.map((item) => <Link key={`${item.tallerId}-${item.createdAt}`} className="ft-public-diagnosis" to={workshopPath(item.tallerId)}><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{item.nombre}</strong><small>{[item.comuna, timeSince(item.createdAt)].filter(Boolean).join(' · ')}</small>{item.aceptado && <em>Aceptado</em>}<ChevronRight size={15} /></Link>)}
         </div>
       </div></div>}
-      {diagModal != null && <div className="ft-modal-backdrop" role="dialog" aria-modal="true" onClick={() => setDiagModal(null)}><div className="ft-modal" onClick={(event) => event.stopPropagation()}>
-        <div className="ft-modal-head"><h2><Lock size={16} /> {diagModal === 'new' ? 'Registrar diagnóstico' : 'Diagnóstico privado'}</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={() => setDiagModal(null)}><X size={20} /></button></div>
+      {diagModal != null && <div className="ft-modal-backdrop" role="dialog" aria-modal="true" onClick={() => { setDiagModal(null); setReplyTo(null); }}><div className="ft-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="ft-modal-head"><h2><Lock size={16} /> {diagModal === 'new' ? 'Registrar diagnóstico' : 'Diagnóstico privado'}</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={() => { setDiagModal(null); setReplyTo(null); }}><X size={20} /></button></div>
         {diagModal === 'new' && eligibility === undefined ? <div className="ft-empty"><Loader2 size={18} className="spin-icon" /> Comprobando…</div>
-          : diagModal === 'new' && eligibility?.habilitado !== true ? <div className="ft-form"><p>Para registrar un diagnóstico privado necesitas tener activo el servicio Diagnóstico.</p><div className="ft-actions"><Link className="ft-btn ft-btn-primary" to={profilePath('servicios_taller')}>Ir a Mis servicios</Link><Link className="ft-btn ft-btn-outline" to={profilePath('anuncios')}>Ir a Anuncios</Link></div></div>
+          : diagModal === 'new' && eligibility?.habilitado !== true ? <div className="ft-form"><p>Para registrar un diagnóstico privado necesitas tener activo el servicio Diagnóstico.</p><div className="ft-actions"><Link className="ft-btn ft-btn-primary" to={profilePath('diagnostico')}>Activar Diagnóstico</Link></div></div>
             : diagModal === 'new' ? <form className="ft-form" onSubmit={(event) => send(event, 'DIAGNOSTICO')}><p className="ft-sub">Solo el cliente y tú podrán verlo.</p><label className="ft-field"><span>Diagnóstico</span><textarea rows={5} value={text} maxLength={1500} onChange={(event) => setText(event.target.value)} placeholder="Posible causa, revisión y solución" /></label><div className="ft-row"><label className="ft-field"><span>Precio desde</span><input inputMode="numeric" value={priceFrom} onChange={(event) => setPriceFrom(event.target.value.replace(/\D/g, ''))} /></label><label className="ft-field"><span>Precio hasta</span><input inputMode="numeric" value={priceTo} onChange={(event) => setPriceTo(event.target.value.replace(/\D/g, ''))} /></label></div>{formError && <p className="ft-error"><AlertCircle size={15} /> {formError}</p>}<button type="submit" className="ft-btn ft-btn-primary" disabled={sending || !text.trim()}>{sending ? 'Registrando…' : 'Registrar diagnóstico'}</button></form>
-              : openDiagnosis ? <div className="ft-form"><p><strong>{openDiagnosis.autor}</strong> · {timeSince(openDiagnosis.createdAt)} {openDiagnosis.taller && <><br /><Link className="ft-link-sub" to={workshopPath(openDiagnosis.taller.tallerId)}>Ver perfil del taller ›</Link></>}</p><p>{openDiagnosis.texto}</p>{priceRange(openDiagnosis.precioDesde, openDiagnosis.precioHasta) && <span className="ft-price"><Tag size={14} /> Precio estimado: {priceRange(openDiagnosis.precioDesde, openDiagnosis.precioHasta)}</span>}{repliesOf(openDiagnosis.id).map((reply) => <div key={reply.id} className="ft-reply"><small>{reply.autor}</small>{reply.texto}</div>)}<div className="ft-actions">{fault.propia && fault.vigente && !openDiagnosis.aceptado && <button type="button" className="ft-btn ft-btn-primary" disabled={accepting} onClick={() => accept(openDiagnosis.id)}>{accepting ? 'Aceptando…' : 'Aceptar diagnóstico'}</button>}{fault.propia && openDiagnosis.aceptado && openDiagnosis.taller?.puedeAgendar && <button type="button" className="ft-btn ft-btn-primary" disabled={loadingBookingId != null} onClick={() => openBooking(openDiagnosis.taller.tallerId)}><CalendarPlus size={16} /> Agendar cita</button>}</div></div> : null}
+              : openDiagnosis ? <div className="ft-form"><p><strong>{openDiagnosis.autor}</strong> · {timeSince(openDiagnosis.createdAt)} {openDiagnosis.taller && <><br /><Link className="ft-link-sub" to={workshopPath(openDiagnosis.taller.tallerId)}>Ver perfil del taller ›</Link></>}</p><p>{openDiagnosis.texto}</p>{priceRange(openDiagnosis.precioDesde, openDiagnosis.precioHasta) && <span className="ft-price"><Tag size={14} /> Precio estimado: {priceRange(openDiagnosis.precioDesde, openDiagnosis.precioHasta)}</span>}{repliesOf(openDiagnosis.id).map((reply) => <div key={reply.id} className="ft-reply"><small>{reply.esCreador ? (fault.propia ? 'Tú' : 'Cliente') : reply.autor}</small>{reply.texto}</div>)}{canReply && replyTo !== openDiagnosis.id && <button type="button" className="ft-link-btn" onClick={() => startReply(openDiagnosis.id)}><MessageCircle size={14} /> Responder al taller</button>}{replyForm(openDiagnosis.id, 'Pregúntale al taller o confirma detalles del diagnóstico')}<div className="ft-actions">{fault.propia && fault.vigente && !openDiagnosis.aceptado && <button type="button" className="ft-btn ft-btn-primary" disabled={accepting} onClick={() => accept(openDiagnosis.id)}>{accepting ? 'Aceptando…' : 'Aceptar diagnóstico'}</button>}{fault.propia && openDiagnosis.aceptado && openDiagnosis.taller?.puedeAgendar && <button type="button" className="ft-btn ft-btn-primary" disabled={loadingBookingId != null} onClick={() => openBooking(openDiagnosis.taller.tallerId)}>{loadingBookingId != null ? <Loader2 size={16} className="spin-icon" /> : <CalendarPlus size={16} />} Agendar cita</button>}{fault.propia && <ContextualReportButton tipoObjeto="FALLA_COMENTARIO" objetoId={openDiagnosis.id} objetoTitulo={`Diagnóstico de ${openDiagnosis.autor}`} className="ft-btn ft-btn-outline" />}</div>{formError && <p className="ft-error" role="alert"><AlertCircle size={15} /> {formError}</p>}</div> : null}
       </div></div>}
 
       {booking && <BookingModal taller={booking} fallaContext={{ id: fault.id, patente: fault.patente, vehiculo: vehicle, titulo: fault.titulo }} onClose={() => setBooking(null)} />}
+      <ConfirmDialog
+        isOpen={closeConfirm}
+        title="Cerrar falla"
+        message="Al cerrarla dejará de verse en el mural público y los talleres no podrán comentarla ni enviarte más diagnósticos. Si más adelante necesitas más diagnósticos, tendrás que volver a publicarla."
+        confirmLabel="Sí, cerrar falla"
+        isBusy={closing}
+        error={closeError}
+        onConfirm={close}
+        onCancel={() => setCloseConfirm(false)}
+      />
       {fault.propia && <CreateFaultModal isOpen={editing} fault={fault} onClose={() => setEditing(false)} onUpdated={async () => { setEditing(false); await load(); }} />}
     </div>
   );

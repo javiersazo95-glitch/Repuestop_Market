@@ -5,7 +5,7 @@ import { createContextualReportApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 /**
- * Reportar una tienda, un producto, un anuncio o una opinion de comprador.
+ * Reportar una tienda, un producto, un taller, una opinion de comprador, o una falla automotriz y sus comentarios.
  *
  * Es la contraparte de `ContextualEntityActions` del movil, que ya usaba
  * `POST /usuarios/{id}/reportes`. En la web el unico reporte que existia era el del chat
@@ -13,9 +13,9 @@ import { useAuth } from '../context/AuthContext';
  * fuera de una conversacion.
  *
  * `tipoObjeto` tiene que ser uno de los que acepta `ReporteUsuarioService`: TIENDA,
- * PRODUCTO, ANUNCIO, y desde el 19-oct OPINION_PRODUCTO y OPINION_TIENDA (con `objetoId` =
- * el `id` de la opinion en las listas publicas). Cualquier otro valor responde "El tipo de
- * reporte no es valido".
+ * PRODUCTO, TALLER, desde el 19-oct OPINION_PRODUCTO y OPINION_TIENDA (con `objetoId` = el `id`
+ * de la opinion en las listas publicas) y desde el 28-oct FALLA y FALLA_COMENTARIO (diagnosticos
+ * y comentarios de una falla). Cualquier otro valor responde "El tipo de reporte no es valido".
  *
  * Sin sesion el boton no se pinta, salvo que se pase `onRequireLogin`: entonces se muestra y
  * al tocarlo ofrece iniciar sesion (lo usan las opiniones).
@@ -31,6 +31,15 @@ const OPINION_REASONS = [
   'Spam o publicidad',
   'No corresponde a este producto o tienda',
   'Otro',
+];
+
+// Fallas (28-oct): los mismos motivos que la app (`mobile/app/fallas/[id].tsx`); se revisan en el backoffice.
+const FAULT_REASONS = [
+  'Comparte datos de contacto',
+  'Contenido ofensivo o inapropiado',
+  'Spam o publicidad',
+  'Información falsa o engañosa',
+  'Otro motivo',
 ];
 
 const REASONS = {
@@ -57,6 +66,8 @@ const REASONS = {
     'Los precios no corresponden',
     'Otro motivo',
   ],
+  FALLA: FAULT_REASONS,
+  FALLA_COMENTARIO: FAULT_REASONS,
 };
 
 export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTitulo, className, label, onRequireLogin }) {
@@ -76,7 +87,11 @@ export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTit
       ? 'tienda'
       : tipoObjeto === 'PRODUCTO'
         ? 'producto'
-        : 'taller';
+        : tipoObjeto === 'FALLA'
+          ? 'falla'
+          : tipoObjeto === 'FALLA_COMENTARIO'
+            ? 'comentario'
+            : 'taller';
 
   // El backend resuelve al reportado a partir del id, asi que uno invalido solo sirve para
   // gastar un 400. Y sin sesion no hay a quien atribuir el reporte.

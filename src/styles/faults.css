@@ -468,3 +468,34 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
   .ft-detail-diagnosis-row button { grid-column: 2 / -1; justify-self: start; }
   .ft-detail-diagnosis-row > svg { display: none; }
 }
+
+/* Boton "Guardada" de la tarjeta de falla en Favoritos. */
+.ft-fault-detail .ft-btn.is-saved { background: var(--ft-primary-light); }
+
+/* Diagnósticos comparables (texto, precio, respuestas y aceptado) y respuestas del cliente en el hilo. */
+.ft-detail-diagnosis-row { grid-template-columns: 32px 190px 130px 1fr auto auto 18px; }
+.ft-detail-diagnosis-row p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; color: #253b50; font-size: 12px; line-height: 1.4; }
+.ft-detail-diagnosis-row.is-accepted { background: #f0fbf4; }
+.ft-diagnosis-facts { display: inline-flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; color: #5b7088; }
+.ft-diagnosis-facts > span { display: inline-flex; gap: 4px; align-items: center; }
+.ft-diagnosis-facts .ft-price { font-size: 12px; }
+.ft-accepted-pill { margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: #d6f3e4; color: #17613e; font-size: 10px; font-style: normal; font-weight: 800; }
+.ft-comment-reply { display: block; }
+.ft-comment-reply b { color: #294666; }
+.ft-comment-actions { grid-column: 4; display: inline-flex; gap: 12px; align-items: center; }
+.ft-detail-comment-row .ft-reply-form { grid-column: 2 / -1; }
+.ft-link-btn { padding: 0; border: 0; background: none; color: #0062d9; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; gap: 5px; align-items: center; }
+.ft-link-btn:hover { text-decoration: underline; }
+.ft-reply-form { margin-top: 8px; }
+@media (max-width: 1050px) {
+  .ft-detail-diagnosis-row { grid-template-columns: 32px 150px 90px 1fr auto auto 18px; }
+}
+@media (max-width: 720px) {
+  .ft-detail-diagnosis-row { grid-template-columns: 32px 1fr auto; }
+  .ft-diagnosis-facts { grid-column: 2 / -1; }
+  .ft-comment-actions { grid-column: 2 / -1; }
+}
+
+/* Aviso bajo "Mi comuna" cuando la cuenta no tiene comuna (o no hay sesion). */
+.ft-filter-hint { color: #5b7088; font-size: 11.5px; line-height: 1.4; }
+.ft-radio:has(input:disabled) { opacity: .55; }
