@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   ChevronDown, ChevronRight, Compass, Disc3, FileText, Filter, Headphones,
-  Lock, Megaphone, MessageSquare, PackageSearch, Search, ShieldCheck, Store, Tag,
-  Truck, Users
+  Lock, MessageSquare, PackageSearch, Search, ShieldCheck, Store, Tag,
+  Truck, Users, Wrench
 } from 'lucide-react';
 import {
   ROUTES, buyerProfilePath, catalogPath, helpCategoryPath, helpContactPath,
@@ -27,7 +27,7 @@ import { EMPRESA } from '../data/legalTexts';
 const EXPLORE_LINKS = [
   ['Catálogo de repuestos', PackageSearch, ROUTES.catalog],
   ['Casas de repuestos verificadas', Store, ROUTES.stores],
-  ['Mural de Anuncios', Megaphone, ROUTES.adsWall],
+  ['Talleres y servicios', Wrench, ROUTES.talleres],
 ];
 
 const CATEGORY_LINKS = [
@@ -42,7 +42,7 @@ const CATEGORY_LINKS = [
 // es válido para un invitado y ya trae el asunto "Quiero vender en RepuesTop".
 const SELLER_LINKS = [
   ['Vende tus repuestos', Store, ROUTES.sellerRegister],
-  ['Publica en el Mural', Megaphone, ROUTES.adsWall],
+  ['Registra tu taller', Wrench, ROUTES.talleres],
   ['¿Quieres vender? Escríbenos', MessageSquare, helpContactPath('info')],
 ];
 

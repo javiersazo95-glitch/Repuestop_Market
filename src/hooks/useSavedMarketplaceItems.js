@@ -10,11 +10,12 @@ function readSaved(userId) {
   try {
     const parsed = JSON.parse(localStorage.getItem(storageKey(userId)) || '{}');
     return {
-      ads: Array.isArray(parsed.ads) ? parsed.ads : [],
+      // Los favoritos de la llave vieja `ads` eran anuncios que ya no existen: no se migran.
+      talleres: Array.isArray(parsed.talleres) ? parsed.talleres : [],
       stores: Array.isArray(parsed.stores) ? parsed.stores : [],
     };
   } catch {
-    return { ads: [], stores: [] };
+    return { talleres: [], stores: [] };
   }
 }
 
@@ -24,9 +25,9 @@ function writeSaved(userId, value) {
 }
 
 /**
- * Favoritos que todavía no tienen tabla propia en el backend (anuncios y tiendas).
- * Se separan por usuario y se emite un evento para que mural, directorio, detalle y
- * perfil se actualicen de inmediato aunque monten instancias distintas del hook.
+ * Favoritos que todavía no tienen tabla propia en el backend (talleres y tiendas).
+ * Se separan por usuario y se emite un evento para que buscador, directorio, perfil del taller y
+ * panel de perfil se actualicen de inmediato aunque monten instancias distintas del hook.
  */
 export function useSavedMarketplaceItems(userId) {
   const [saved, setSaved] = useState(() => readSaved(userId));
@@ -46,7 +47,7 @@ export function useSavedMarketplaceItems(userId) {
   }, [userId]);
 
   const toggle = useCallback((type, item) => {
-    const collection = type === 'stores' ? 'stores' : 'ads';
+    const collection = type === 'stores' ? 'stores' : 'talleres';
     const id = String(item?.id ?? item?.proveedorId ?? '');
     if (!id) return;
     const current = readSaved(userId);
@@ -60,15 +61,15 @@ export function useSavedMarketplaceItems(userId) {
     writeSaved(userId, next);
   }, [userId]);
 
-  const adIds = useMemo(() => new Set(saved.ads.map((item) => String(item.id))), [saved.ads]);
+  const tallerIds = useMemo(() => new Set(saved.talleres.map((item) => String(item.id))), [saved.talleres]);
   const storeIds = useMemo(() => new Set(saved.stores.map((item) => String(item.id))), [saved.stores]);
 
   return {
-    savedAds: saved.ads,
+    savedTalleres: saved.talleres,
     savedStores: saved.stores,
-    isAdSaved: useCallback((id) => adIds.has(String(id)), [adIds]),
+    isTallerSaved: useCallback((id) => tallerIds.has(String(id)), [tallerIds]),
     isStoreSaved: useCallback((id) => storeIds.has(String(id)), [storeIds]),
-    toggleAd: useCallback((ad) => toggle('ads', ad), [toggle]),
+    toggleTaller: useCallback((taller) => toggle('talleres', taller), [toggle]),
     toggleStore: useCallback((store) => toggle('stores', store), [toggle]),
   };
 }

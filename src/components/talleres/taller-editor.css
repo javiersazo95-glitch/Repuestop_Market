@@ -1,0 +1,145 @@
+/* Editor del perfil del taller (Mi taller). */
+.taller-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 18px;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #d9e0e7;
+  border-radius: 16px;
+}
+.taller-editor--loading { flex-direction: row; align-items: center; gap: 10px; color: #64748b; }
+.taller-editor__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.taller-editor__head h3 { margin: 0 0 4px; font-size: 18px; color: #1e293b; }
+.taller-editor__head p { margin: 0; font-size: 13px; color: #64748b; max-width: 62ch; }
+.taller-editor__save {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 11px;
+  background: #0056bf;
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.taller-editor__save:disabled { opacity: 0.6; cursor: default; }
+.taller-editor__ok { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: #e7f6ee; color: #047857; font-size: 13px; font-weight: 600; }
+
+.taller-editor__block { display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid #edf1f5; }
+.taller-editor__block h4 { display: flex; align-items: baseline; gap: 8px; margin: 0; font-size: 15px; color: #1e293b; }
+.taller-editor__block h4 small { font-size: 12px; font-weight: 600; color: #94a3b8; }
+.taller-editor__hint { margin: -4px 0 0; font-size: 12.5px; color: #64748b; }
+
+.taller-editor input[type='text'],
+.taller-editor input[type='number'],
+.taller-editor input[type='tel'],
+.taller-editor select,
+.taller-editor textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 13.5px;
+  color: #1e293b;
+  font-family: inherit;
+}
+.taller-editor input:focus, .taller-editor select:focus, .taller-editor textarea:focus {
+  outline: none;
+  border-color: #0056bf;
+  box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.14);
+}
+.taller-editor input:disabled { background: #f1f5f9; color: #94a3b8; }
+.taller-editor textarea { resize: vertical; }
+.taller-editor__counter { align-self: flex-end; margin-top: -6px; font-size: 11.5px; color: #94a3b8; }
+
+.taller-editor__services { display: flex; flex-direction: column; gap: 8px; }
+.taller-editor__service {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+.taller-editor__remove {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 9px;
+  background: #fee2e2;
+  color: #b91c1c;
+  cursor: pointer;
+}
+.taller-editor__add {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px dashed #0056bf;
+  border-radius: 10px;
+  background: #eaf2ff;
+  color: #0056bf;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.taller-editor__add:disabled { opacity: 0.5; cursor: default; }
+
+.taller-editor__chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.taller-editor__chips button {
+  padding: 6px 12px;
+  border: 1px solid #d9e0e7;
+  border-radius: 999px;
+  background: #fff;
+  color: #3b4b5b;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.taller-editor__chips button.is-on { border-color: #0056bf; background: #eaf2ff; color: #0056bf; }
+
+.taller-editor__photos { display: flex; flex-wrap: wrap; gap: 10px; }
+.taller-editor__photo { position: relative; width: 112px; height: 84px; border-radius: 11px; overflow: hidden; border: 1px solid #d9e0e7; }
+.taller-editor__photo img { width: 100%; height: 100%; object-fit: cover; }
+.taller-editor__photo span {
+  position: absolute; left: 5px; bottom: 5px; padding: 2px 7px; border-radius: 999px;
+  background: rgba(15, 23, 42, 0.8); color: #fff; font-size: 10.5px; font-weight: 700;
+}
+.taller-editor__photo button {
+  position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 24px; height: 24px;
+  border: none; border-radius: 50%; background: rgba(255, 255, 255, 0.94); color: #b91c1c; cursor: pointer;
+}
+.taller-editor__photo-add {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  width: 112px; height: 84px; border: 1px dashed #94a3b8; border-radius: 11px; background: #f8fafc;
+  color: #475569; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+
+.taller-editor__switch { display: flex; align-items: flex-start; gap: 11px; padding: 10px 12px; border: 1px solid #e3eaf1; border-radius: 12px; cursor: pointer; }
+.taller-editor__switch.is-disabled { opacity: 0.7; cursor: default; }
+.taller-editor__switch input { margin-top: 3px; width: 17px; height: 17px; flex-shrink: 0; }
+.taller-editor__switch span { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13.5px; color: #1e293b; }
+.taller-editor__switch small { flex-basis: 100%; font-size: 12px; color: #64748b; }
+.taller-editor__switch small button { padding: 0; border: none; background: none; color: #0056bf; font-weight: 700; cursor: pointer; text-decoration: underline; }
+
+.taller-editor__field { display: flex; flex-direction: column; gap: 6px; max-width: 320px; }
+.taller-editor__field > label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #1e293b; }
+.taller-editor__field small { font-size: 12px; color: #64748b; }
+.taller-editor__phone { display: flex; align-items: center; gap: 8px; }
+.taller-editor__phone span { padding: 9px 11px; border-radius: 10px; background: #f1f5f9; color: #475569; font-size: 13.5px; font-weight: 700; }
+.taller-editor__foot { display: flex; justify-content: flex-end; padding-top: 14px; border-top: 1px solid #edf1f5; }
+
+@media (max-width: 760px) {
+  .taller-editor { padding: 14px; }
+  .taller-editor__head { flex-direction: column; }
+  .taller-editor__service { grid-template-columns: 1fr 1fr; }
+  .taller-editor__service > input[type='text'] { grid-column: 1 / -1; }
+  .taller-editor__remove { grid-column: 1 / -1; width: 100%; }
+}

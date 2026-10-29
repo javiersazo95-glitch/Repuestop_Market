@@ -15,7 +15,7 @@ interface AboutRepuesTopPageProps {
   onOpenSeller: () => void;
   onOpenCatalog?: () => void;
   onOpenStores?: () => void;
-  onOpenAdsWall?: () => void;
+  onOpenTalleres?: () => void;
 }
 
 const BENEFITS: { Icon: LucideIcon; title: string; text: string }[] = [
@@ -82,7 +82,7 @@ const FAQ_GROUPS: FaqGroup[] = [
       ['¿Para qué sirve buscar por patente?', 'Para no equivocarte de pieza. Con la patente identificamos marca, modelo, año y versión de tu vehículo, y filtramos el catálogo: ves solo lo compatible, incluidos los repuestos universales, y no una lista genérica que tendrías que revisar a mano.'],
       ['¿Qué pasa si un repuesto no muestra precio?', 'Significa que la tienda lo vende solo a cotización. Pides el precio desde la misma ficha y queda una conversación con el vendedor donde puedes acordar condiciones, plazos y despacho antes de pagar.'],
       ['¿Cómo publico mi catálogo como casa de repuestos?', 'Creas tu cuenta de tienda, subes los documentos que acreditan tu negocio y, una vez aprobada, publicas tu inventario desde el panel de vendedor. Publicar no tiene costo ni límite de productos.'],
-      ['¿Cómo encuentro un taller cerca de mí?', 'En el Mural de Anuncios. Desde la app puedes filtrar los talleres especialistas en la marca de tu vehículo y ver a cuántos kilómetros está cada uno de tu ubicación, además de escribir por WhatsApp o reservar hora.'],
+      ['¿Cómo encuentro un taller cerca de mí?', 'En el buscador de Talleres. Desde la app puedes filtrar los talleres especialistas en la marca de tu vehículo y ver a cuántos kilómetros está cada uno de tu ubicación, además de escribir por WhatsApp o reservar hora.'],
     ],
   },
   {
@@ -90,14 +90,14 @@ const FAQ_GROUPS: FaqGroup[] = [
     label: 'Cobros',
     Icon: Wallet,
     image: '/about-assets/monedas-real.webp',
-    alt: 'Monedero de Monedas RepuesTop, con el saldo disponible y el costo en Monedas de cada tipo de anuncio',
+    alt: 'Monedero de Monedas RepuesTop, con el saldo disponible',
     width: 1096,
     height: 782,
     caption: 'Monedero de Monedas RepuesTop',
     items: [
       ['¿Cuánto cuesta usar RepuesTop?', 'Nada. Buscar por patente, comparar, pedir cotizaciones y comprar es gratis para cualquier persona, y publicar tu catálogo como casa de repuestos tampoco tiene costo. La plataforma cobra una tarifa de servicio solo sobre las ventas concretadas: 7% + IVA por venta. Las primeras 100 tiendas aprobadas como Fundadoras tienen 2 meses gratis (0%) desde su aprobación y después pasan al 7% + IVA; el costo de la pasarela Flow se mantiene en ambos casos.'],
       ['¿Cuándo se cobra la tarifa de servicio?', 'Solo cuando una venta se concreta, y se descuenta de esa misma venta. No hay suscripción, ni cobro por publicar, ni costo por recibir cotizaciones: si no vendes, no pagas nada.'],
-      ['¿Qué son las Monedas RepuesTop?', 'Son el saldo interno de la plataforma y son totalmente opcionales. Cada Moneda equivale a $50 CLP y sirven para dos cosas: impulsar un repuesto al posicionamiento Top Ventas y publicar o subir de plan un anuncio en el Mural. Tus 2 primeros repuestos Top y tu primer anuncio Básico no cuestan Monedas.'],
+      ['¿Qué son las Monedas RepuesTop?', 'Son el saldo interno de la plataforma y son totalmente opcionales. Cada Moneda equivale a $50 CLP y sirven para impulsar un repuesto al posicionamiento Top Ventas. Tus 2 primeros repuestos Top no cuestan Monedas.'],
       ['¿Qué formas de pago están disponibles?', 'Pagas con tarjeta de crédito, débito o Redcompra a través de Flow, con la opción de simular cuotas antes de confirmar. Los datos de tu tarjeta se ingresan solo en la pasarela, nunca en RepuesTop.'],
     ],
   },
@@ -272,10 +272,10 @@ const PLATE_STEPS: { Icon: LucideIcon; title: string; text: string }[] = [
   },
 ];
 
-/** Ventajas del Mural de Anuncios para quien busca un taller. */
+/** Ventajas del buscador de talleres para quien necesita un servicio. */
 const MURAL_POINTS = [
   'Talleres, grúas, vulcanizaciones y estética automotriz',
-  'Con precio desde, horario y comuna a la vista',
+  'Servicios con precio desde, horario y comuna a la vista',
   'WhatsApp directo o reserva de hora sin llamar',
   'Puedes buscar por patente y ver solo lo compatible',
 ];
@@ -303,8 +303,8 @@ const PRICING_CARDS: { Icon: LucideIcon; tag: string; title: string; text: strin
     Icon: Coins,
     tag: 'Opcional',
     title: 'Monedas RepuesTop',
-    text: 'Solo si quieres más visibilidad: impulsar un repuesto a Top Ventas o publicar en el Mural de Anuncios.',
-    points: ['Se compran cuando las necesitas', 'Nunca son obligatorias', 'Tu primer anuncio Básico es gratis'],
+    text: 'Solo si quieres más visibilidad: impulsar un repuesto a Top Ventas.',
+    points: ['Se compran cuando las necesitas', 'Nunca son obligatorias', 'Tus 2 primeros repuestos Top no cuestan Monedas'],
   },
 ];
 
@@ -378,7 +378,7 @@ export default function AboutRepuesTopPage({
   onOpenSeller,
   onOpenCatalog,
   onOpenStores,
-  onOpenAdsWall,
+  onOpenTalleres,
 }: AboutRepuesTopPageProps) {
   // La pregunta abierta se guarda por grupo, no por indice suelto: si fuera un indice global,
   // cambiar de pestaña dejaria abierta "la tercera" del grupo nuevo sin que nadie la pidiera.
@@ -390,7 +390,7 @@ export default function AboutRepuesTopPage({
   const currentFaqGroup = FAQ_GROUPS[activeFaqGroup];
   const goCatalog = onOpenCatalog || onBack;
   const goStores = onOpenStores || onBack;
-  const goAdsWall = onOpenAdsWall || onBack;
+  const goTalleres = onOpenTalleres || onBack;
   const moduleActions = { stores: goStores, catalog: goCatalog, seller: onOpenSeller };
   const currentModule = PLATFORM_MODULES[activeModule];
 
@@ -675,16 +675,16 @@ export default function AboutRepuesTopPage({
         <section className="rt-section rt-mural" id="mural" aria-labelledby="rt-mural-title">
           <div className="rt-shell">
             <Reveal as="header" className="rt-section-head">
-              <p className="rt-kicker"><Megaphone aria-hidden="true" /> Mural de Anuncios</p>
+              <p className="rt-kicker"><Wrench aria-hidden="true" /> Talleres y servicios</p>
               <h2 id="rt-mural-title">El repuesto es la mitad: alguien tiene que instalarlo</h2>
-              <p>El Mural reúne talleres mecánicos, eléctricos, vulcanizaciones, grúas y estética automotriz de todo Chile. Cada anuncio muestra precio desde, horario, comuna y las marcas en las que ese taller es especialista.</p>
+              <p>El buscador reúne talleres mecánicos, eléctricos, vulcanizaciones, grúas y estética automotriz de todo Chile. Cada taller muestra sus servicios con precio desde, horario, comuna y las marcas en las que es especialista.</p>
             </Reveal>
 
             <div className="rt-mural__grid">
               <Reveal className="rt-mural__visual">
                 <img
                   src="/about-assets/mural-real.webp"
-                  alt="Mural de Anuncios de RepuesTop con talleres de distintas regiones"
+                  alt="Buscador de talleres de RepuesTop con talleres de distintas regiones"
                   width={1096}
                   height={782}
                   loading="lazy"
@@ -715,8 +715,8 @@ export default function AboutRepuesTopPage({
                   </ul>
                 </article>
 
-                <button className="rt-btn rt-btn--primary" type="button" onClick={goAdsWall}>
-                  Ver el Mural de Anuncios <ArrowRight aria-hidden="true" />
+                <button className="rt-btn rt-btn--primary" type="button" onClick={goTalleres}>
+                  Ver talleres y servicios <ArrowRight aria-hidden="true" />
                 </button>
               </div>
             </div>

@@ -21,7 +21,7 @@ const SECTIONS = [
   { id: 'patente', label: 'Búsqueda por patente' },
   { id: 'como-funciona', label: 'Cómo funciona' },
   { id: 'app', label: 'App móvil' },
-  { id: 'mural', label: 'Mural' },
+  { id: 'mural', label: 'Talleres' },
   { id: 'precios', label: 'Precios' },
   { id: 'preguntas', label: 'Preguntas' },
 ] as const;

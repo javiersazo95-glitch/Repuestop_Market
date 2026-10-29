@@ -16,7 +16,7 @@ export default function AboutPage() {
       onOpenSeller={nav.goSellerRegister}
       onOpenCatalog={nav.goCatalog}
       onOpenStores={nav.goStores}
-      onOpenAdsWall={nav.goAdsWall}
+      onOpenTalleres={nav.goTalleres}
     />
   );
 }

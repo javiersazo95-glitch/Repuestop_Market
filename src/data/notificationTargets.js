@@ -19,7 +19,7 @@ import { ROUTES, buyerCaseChatPath, productPath, profilePurchasePath, sellerCase
  * - `/product-detail`             -> `{ productId, questionId? }`
  * - `/quote-chat`                 -> `{ quoteId, viewMode? }`
  * - `/mediation-chat`             -> `{ orderId, viewMode?, proveedorId?, tab? }` (la tienda del chat en multi-tienda; `tab: 'mediator'` abre la pestaña del mediador)
- * - `/ad-detail`, `/ads-management` -> `{ id }`; la aprobación del taller manda `{ seccion: 'agenda' }`
+ * - `/workshop-detail` -> `{ id }`; `/my-workshop` (aprobación del taller) manda `{ seccion: 'agenda' }`
  * - `/automotive-service-accreditation` -> `{}` (corrección o rechazo de la acreditación)
  * - `/support-ticket-detail`      -> `{ ticketId }`
  * - `/provider-verification-status` -> `{ sellerId }`
@@ -92,16 +92,19 @@ const TARGETS = {
     : PROFILE('consultas')),
   '/tickets': () => PROFILE('consultas'),
 
-  '/ad-detail': (params) => (params?.id
-    ? `${ROUTES.adsWall}?anuncio=${encodeURIComponent(params.id)}`
-    : ROUTES.adsWall),
-  // `seccion: 'agenda'` (aprobación del taller): Gestión de anuncios abre el horario
-  // principal si la agenda sigue pendiente (lo atiende `AdsManagementSection`).
+  // Perfil publico de un taller. Los avisos de anuncio viejos (`/ad-detail`) caen en el buscador.
+  '/workshop-detail': (params) => (params?.id ? `${ROUTES.talleres}/${encodeURIComponent(params.id)}` : ROUTES.talleres),
+  '/ad-detail': () => ROUTES.talleres,
+  // `seccion: 'agenda'` (aprobación del taller): Mi taller abre el horario principal si la
+  // agenda sigue pendiente (lo atiende `MiTallerSection`).
+  '/my-workshop': (params) => (params?.seccion === 'agenda'
+    ? `${PROFILE('mi_taller')}?seccion=agenda`
+    : PROFILE('mi_taller')),
   '/ads-management': (params) => (params?.seccion === 'agenda'
-    ? `${PROFILE('anuncios')}?seccion=agenda`
-    : PROFILE('anuncios')),
-  // En la web la acreditación vive dentro de Gestión de anuncios (`AccreditationModal`).
-  '/automotive-service-accreditation': () => PROFILE('anuncios'),
+    ? `${PROFILE('mi_taller')}?seccion=agenda`
+    : PROFILE('mi_taller')),
+  // En la web la acreditación vive dentro de Mi taller (`AccreditationModal`).
+  '/automotive-service-accreditation': () => PROFILE('mi_taller'),
   // Notificaciones de cita (las crea el backend): abren "Mis citas" en la bandeja que
   // corresponde, con la cita resaltada. Lo atiende `ProfileAppointmentsButton`.
   '/appointments-history': (params) => {
@@ -118,9 +121,9 @@ const TARGETS = {
   '/(seller)/retiros': () => PROFILE('retiros'),
   '/seller/retiros': () => PROFILE('retiros'),
 
-  // El monedero de Monedas. En la app es una pantalla propia (`app/wallet.tsx`); en la web vive
-  // dentro del panel de anuncios, que es donde estan el saldo y el historial.
-  '/wallet': () => PROFILE('anuncios'),
+  // El monedero de Monedas. En la app es una pantalla propia (`app/wallet.tsx`); en la web es el
+  // indicador de la cabecera, asi que el aviso aterriza en el resumen del perfil.
+  '/wallet': () => PROFILE('resumen'),
 
   '/perfil': () => ROUTES.profile,
   '/(seller)': () => ROUTES.profile,

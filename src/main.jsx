@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import './components/ads/ads-wall.css'
+import './components/talleres/ads-wall.css'
 // Va DESPUES de index.css: sus reglas moviles pisan a las de escritorio de igual especificidad.
 import './styles/profile-mobile.css'
 // Chats de la intranet y titulo del pedido en movil; tambien despues de index.css.

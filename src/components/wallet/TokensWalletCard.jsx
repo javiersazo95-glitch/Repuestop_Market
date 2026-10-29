@@ -1,0 +1,130 @@
+import React, { useState } from 'react';
+import { Trophy, Gift, ChevronRight, History, Info } from 'lucide-react';
+import RepuestopCoin from './RepuestopCoin';
+import CoinInfoModal from './CoinInfoModal';
+
+/**
+ * Saldo del Monedero de Monedas RepuesTop.
+ *
+ * Port de `mobile/components/wallet/TokensWalletCard.tsx` (monorepo `fae41ed`).
+ *
+ * El fondo lleva el azul de la marca con el MISMO barrido diagonal que el anillo
+ * de la moneda (`#1d5fc4 → #0f4aa8 → #06285c`): la tarjeta y la moneda tienen que
+ * leerse como una sola pieza. En el movil el azul oscuro anterior (`#0b1730`) no
+ * salia de la paleta de RepuesTop y desentonaba con el logo.
+ *
+ * ESTO REVIERTE A PROPOSITO el aplanado del handoff §4.15, donde el monedero de
+ * la web se dejo como una barra plana `#0f172a` para que no destacara como isla
+ * de otra plataforma. La decision se cambio el 2026-08-24: ahora prima que el
+ * monedero se vea igual en la web y en la app. Si alguien vuelve a leer esa
+ * seccion del handoff, quedo superada por esta.
+ *
+ * Lo unico que la web tiene de mas es el boton de Historial: en el movil el
+ * historial se abre desde un mosaico del encabezado de la pantalla, que aca no
+ * existe. Va como accion secundaria al lado de la recarga.
+ */
+
+const BENEFITS = [
+  { Icon: Gift, label: 'Primeros 2 Top', detail: 'gratis', color: '#6ee7b7' },
+  { Icon: Trophy, label: 'Del 3.º al 10.º', detail: '200 monedas', color: '#fbbf24' }
+];
+
+export default function TokensWalletCard({
+  tokensBalance,
+  onOpenRechargeModal,
+  onOpenHistoryModal
+}) {
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
+
+  return (
+    <div className="tokens-wallet-card">
+      <div className="tokens-wallet-top">
+        {/* Del tamaño del badge depende que se distingan las leyendas y el
+            emblema del troquel: mas chica, la moneda se lee como un punto
+            cualquiera y deja de ser reconocible. */}
+        <span className="tokens-wallet-coin">
+          <RepuestopCoin size={74} face="front" />
+        </span>
+
+        <div className="tokens-wallet-top-copy">
+          <div className="tokens-wallet-label-row">
+            {/* En celular el nombre corto: el largo partía en tres líneas junto a "Saldo activo". */}
+            <span className="tokens-wallet-label">
+              <span className="tokens-wallet-label-long">Monedero de Monedas RepuesTop</span>
+              <span className="tokens-wallet-label-short">Monedero RepuesTop</span>
+            </span>
+            <span className="tokens-wallet-active">
+              <i className="tokens-wallet-active-dot" />
+              Saldo activo
+            </span>
+          </div>
+
+          <div className="tokens-wallet-amount">
+            <strong>{tokensBalance.toLocaleString('es-CL')}</strong>
+            <span>Monedas disponibles</span>
+            <button
+              type="button"
+              className="tokens-wallet-info-btn"
+              onClick={() => setIsInfoOpen(true)}
+              aria-label="Qué es la Moneda RepuesTop"
+              title="Qué es la Moneda RepuesTop"
+            >
+              <Info size={13} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <p className="tokens-wallet-hint">
+        Usa tus monedas para destacar tus repuestos con la insignia Top Ventas.
+      </p>
+
+      {/* Tarifario y acciones en la misma fila: el tarifario es la referencia que
+          el socio necesita justo antes de decidir si recarga, y el boton queda
+          apoyado en el, no flotando solo sobre una franja de azul vacia. */}
+      <div className="tokens-wallet-bottom">
+        <div className="tokens-wallet-benefits">
+          {BENEFITS.map(({ Icon, label, detail, color }) => (
+            <div className="tokens-wallet-benefit" key={label}>
+              <Icon size={19} color={color} />
+              <span>
+                <b style={{ color }}>{label}</b>
+                <small>{detail}</small>
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* El historial va PRIMERO: la recarga termina en un chevron que apunta a
+            la derecha, asi que con el historial a su lado esa flecha apuntaba a
+            otro boton en vez de al borde. Ademas la accion primaria pesa mas en
+            la posicion terminal de la fila. */}
+        <div className="tokens-wallet-actions">
+          {onOpenHistoryModal && (
+            <button
+              type="button"
+              className="btn-token-history"
+              onClick={onOpenHistoryModal}
+              title="Ver historial de movimientos"
+            >
+              <History size={15} />
+              <span>Historial</span>
+            </button>
+          )}
+
+          {/* El boton lleva el metal de la moneda, no el ambar de antes: ese dorado
+              venia de cuando la moneda era dorada y sobre el azul era el unico
+              elemento fuera de la paleta. En plata sigue siendo lo mas claro de la
+              tarjeta, asi que no pierde fuerza como accion. */}
+          <button type="button" className="btn-recharge-tokens" onClick={onOpenRechargeModal}>
+            <RepuestopCoin size={30} face="front" />
+            <span>Recargar monedas</span>
+            <ChevronRight size={18} className="btn-recharge-chevron" />
+          </button>
+        </div>
+      </div>
+
+      <CoinInfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
+    </div>
+  );
+}

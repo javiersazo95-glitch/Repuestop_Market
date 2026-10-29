@@ -101,7 +101,7 @@ export const ADVANTAGES: Advantage[] = [
   { id: 6,  Icon: Truck,      accent: 'amber',   tier: 'row', title: 'Retiro $0 o despacho',      line: 'Retira con PIN o recibe por courier en todo Chile.' },
   { id: 5,  Icon: CircleHelp, accent: 'cyan',    tier: 'row', title: 'Preguntas públicas',        line: 'Pregunta antes de pagar; la respuesta queda visible.' },
   { id: 9,  Icon: PackageCheck, accent: 'indigo', tier: 'row', title: 'Captadores de repuestos',  line: 'Rastreamos por ti la pieza difícil o descontinuada.' },
-  { id: 10, Icon: Wrench,     accent: 'rose',    tier: 'row', title: 'Mural de talleres',         line: 'Talleres acreditados por comuna, cerca de ti.' },
+  { id: 10, Icon: Wrench,     accent: 'rose',    tier: 'row', title: 'Buscador de talleres',         line: 'Talleres acreditados por comuna, cerca de ti.' },
   { id: 12, Icon: Layers,     accent: 'blue',    tier: 'row', title: 'Ingeniería chilena',        line: 'Un equipo mejorando la plataforma cada día.' },
 ];
 
@@ -186,5 +186,5 @@ export const TICKER_ITEMS: { Icon: LucideIcon; text: string }[] = [
   { Icon: MessageSquareQuote, text: 'Cotizaciones formales por chat en vivo' },
   { Icon: Truck,              text: 'Retiro con PIN $0 o despacho a todo Chile' },
   { Icon: Users,              text: 'Equipo de mediación si una pieza no calza' },
-  { Icon: Wrench,             text: 'Mural de talleres mecánicos por comuna' },
+  { Icon: Wrench,             text: 'Buscador de talleres mecánicos por comuna' },
 ];

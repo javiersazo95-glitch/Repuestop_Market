@@ -22,8 +22,8 @@ const HelpAllFaqsView = lazy(() => import('../pages/help/HelpAllFaqsView'));
 const TermsPage = lazy(() => import('../pages/TermsPage'));
 const PrivacyPage = lazy(() => import('../pages/PrivacyPage'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
-const AdsWallPage = lazy(() => import('../pages/AdsWallPage'));
-const AdDetailPage = lazy(() => import('../pages/AdDetailPage'));
+const TalleresPage = lazy(() => import('../pages/TalleresPage'));
+const TallerPage = lazy(() => import('../pages/TallerPage'));
 const CartPage = lazy(() => import('../pages/CartPage'));
 const CheckoutPage = lazy(() => import('../pages/CheckoutPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
@@ -47,8 +47,12 @@ export default function AppRoutes() {
               <Route path={ROUTES.store} element={<StorePage />} />
               {/* Publica: el enlace de "Compartir cotizacion" se abre sin sesion. */}
               <Route path={ROUTES.sharedQuote} element={<SharedQuotePage />} />
-              <Route path={ROUTES.adsWall} element={<AdsWallPage />} />
-              <Route path={ROUTES.adDetail} element={<AdDetailPage />} />
+              <Route path={ROUTES.talleres} element={<TalleresPage />} />
+              <Route path={ROUTES.taller} element={<TallerPage />} />
+              {/* Enlaces viejos del Mural de Anuncios: el anuncio ya no existe, el buscador de
+                  talleres es su reemplazo. */}
+              <Route path={ROUTES.legacyAdsWall} element={<Navigate to={ROUTES.talleres} replace />} />
+              <Route path={ROUTES.legacyAdDetail} element={<Navigate to={ROUTES.talleres} replace />} />
               <Route path={ROUTES.about} element={<AboutPage />} />
               {/* El carrito es público: un invitado tiene que poder revisarlo antes de
                   iniciar sesión. El checkout sí exige sesión. */}

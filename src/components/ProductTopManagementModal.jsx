@@ -2,11 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertCircle, CalendarClock, Loader2, Trophy, X } from 'lucide-react';
 import { getSellerProductTopSummaryApi, updateSellerProductTopApi } from '../services/api';
-import { fetchTokensBalance } from '../services/adsStorage';
+import { fetchTokensBalance } from '../services/walletStorage';
 import { getProductTopStatus, topExpiryDateLabel } from '../utils/productTop';
 import ProductTopBadge from './ProductTopBadge';
-import RepuestopCoin from './ads/RepuestopCoin';
-import RechargeTokensModal from './ads/RechargeTokensModal';
+import RepuestopCoin from './wallet/RepuestopCoin';
+import RechargeTokensModal from './wallet/RechargeTokensModal';
 
 const DEFAULT_SUMMARY = {
   activos: 0,

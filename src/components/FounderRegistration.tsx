@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 // asi que depender de que otra vista la inyectara dejaba /vender sin estilos.
 // Vite la inyecta una sola vez aunque la importen las dos vistas.
 import '../styles/founder.css';
-import OpeningHoursPicker from './ads/OpeningHoursPicker';
+import OpeningHoursPicker from './talleres/OpeningHoursPicker';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import { normalizarNombreGeografico } from '../services/geoLookup';
 import ShippingMethodsPicker from './ShippingMethodsPicker';

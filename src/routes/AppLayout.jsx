@@ -100,7 +100,7 @@ export default function AppLayout() {
         onOpenStores={nav.goStores}
         onOpenCatalog={() => nav.goCatalog()}
         onOpenAbout={nav.goAbout}
-        onOpenAdsWall={nav.goAdsWall}
+        onOpenTalleres={nav.goTalleres}
         onOpenHelp={nav.goHelp}
         cartCount={cartCount}
         onOpenCart={nav.goCart}
@@ -124,7 +124,7 @@ export default function AppLayout() {
           const enFlujoDeCompra = location.pathname.startsWith(ROUTES.cart)
             || location.pathname.startsWith(ROUTES.checkout);
           if (!enFlujoDeCompra) {
-            const defaultTarget = location.pathname === ROUTES.adsWall ? profilePath('anuncios') : profilePath('resumen');
+            const defaultTarget = profilePath('resumen');
             navigate(redirectedFrom || defaultTarget, { replace: true });
           }
         }}

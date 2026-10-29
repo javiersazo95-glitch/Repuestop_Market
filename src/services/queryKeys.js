@@ -56,5 +56,5 @@ export const qk = {
   vehicleVersions: (marca, modelo, anio) => ['vehicleVersions', { marca, modelo, anio }],
   profile: () => ['profile'],
   /** Ficha publica de un anuncio del mural (GET /anuncios/{id}). */
-  publicAd: (id) => ['publicAd', id],
+  taller: (id) => ['taller', id],
 };

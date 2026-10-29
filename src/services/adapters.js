@@ -10,7 +10,7 @@
 
 import { HEADER_CATEGORIES, SIDEBAR_CATEGORIES } from '../data/categories';
 import { isNoReturnCategory } from '../utils/noReturnProducts';
-import { AD_TIERS, APPOINTMENT_STATUSES } from '../data/automotiveAdsData';
+import { APPOINTMENT_STATUSES } from '../data/talleresData';
 import { resolveMediaUrl, toMediaPath } from './api';
 
 /**
@@ -628,180 +628,109 @@ export function adaptCompatibleOffersPage(response) {
 }
 
 /**
- * `AnuncioResponseDTO` -> anuncio del Mural.
+ * `ServicioAutomotrizDTOs.Perfil` -> taller de la UI (card del buscador y perfil publico).
  *
- * El backend fue modelado desde el cliente, asi que casi todos los campos ya
- * vienen con el nombre que usa la UI. Lo que si hay que normalizar:
+ * Lo que hay que normalizar:
  *
- * - `rating` y `reviewsCount`: los anuncios aún no tienen reseñas en el backend.
- *   Antes llegaba un 5.0 fijo; ahora llega `rating: null` y `reviewsCount: 0`.
- *   Solo se conserva una nota si viene con reseñas reales (ver `getAdRatingSummary`),
- *   para no mostrar nunca un 5.0 falso en las tarjetas ni en Favoritos.
- * - las imagenes pueden venir como ruta relativa del servidor de archivos.
- * - `agendaConfig` viene como `Map<String,Object>`; puede llegar vacio ({}).
+ * - fotos y logo pueden venir como ruta relativa del servidor de archivos.
+ * - `servicios` trae el catalogo con precio "desde"; un servicio sin monto es "A cotizar".
+ * - `agenda` solo viene si el taller recibe citas en linea: es el horario con el que se
+ *   calculan los bloques disponibles.
+ * - los talleres aun no tienen resenas: no se inventa una nota.
  */
-/**
- * Nota del taller lista para mostrarse, o `null` si no corresponde mostrar estrellas:
- * sin reseñas (o con una copia vieja que no trae `reviewsCount`) no hay nota que mostrar.
- */
-export function getAdRatingSummary(ad) {
-  const rating = toNumber(ad?.rating);
-  const reviewsCount = toNumber(ad?.reviewsCount);
-  if (rating == null || rating <= 0 || reviewsCount == null || reviewsCount <= 0) return null;
-  return { rating, reviewsCount };
-}
-
-function adRatingFields(dto) {
-  const summary = getAdRatingSummary(dto);
-  return summary ?? { rating: null, reviewsCount: 0 };
-}
-
-export function adaptAd(dto) {
+export function adaptTaller(dto) {
   if (!dto) return null;
-  const images = (Array.isArray(dto.images) ? dto.images : []).map(resolveMediaUrl).filter(Boolean);
-  const storyImages = (Array.isArray(dto.storyImages) ? dto.storyImages : []).map(resolveMediaUrl).filter(Boolean);
-  const agendaConfig = dto.agendaConfig && Object.keys(dto.agendaConfig).length > 0 ? dto.agendaConfig : null;
+  const services = (Array.isArray(dto.servicios) ? dto.servicios : [])
+    .map((item) => ({
+      name: String(item?.nombre || '').trim(),
+      category: item?.categoria || '',
+      priceFrom: toNumber(item?.precioDesde) ?? null,
+      priceText: item?.precioTexto || '',
+      priceType: item?.tipoPrecio === 'fixed' ? 'fixed' : 'quote',
+    }))
+    .filter((item) => item.name);
+  const agendaConfig = dto.agenda && Object.keys(dto.agenda).length > 0 ? dto.agenda : null;
 
   return {
     id: String(dto.id),
-    tier: dto.tier || 'basica',
-    title: dto.title || '',
-    company: dto.company || '',
-    // Logo de la empresa: viene del expediente de servicio automotriz del dueño,
-    // no del anuncio. Puede ser ruta relativa del servidor de archivos.
-    companyLogo: resolveMediaUrl(dto.companyLogo) || null,
-    category: dto.category || '',
-    categoryLabel: dto.categoryLabel || '',
-    description: dto.description || '',
-    priceType: dto.priceType || 'quote',
-    priceText: dto.priceText || '',
-    priceValue: toNumber(dto.priceValue) ?? null,
+    ownerUserId: dto.usuarioId ? String(dto.usuarioId) : null,
+    name: dto.nombre || '',
+    logo: resolveMediaUrl(dto.logoUrl) || null,
+    description: dto.descripcion || '',
+    photos: (Array.isArray(dto.fotos) ? dto.fotos : []).map(resolveMediaUrl).filter(Boolean),
     region: dto.region || '',
-    commune: dto.commune || '',
-    address: dto.address || '',
-    // Coordenadas geocodificadas por el backend: distancia y orden "cerca de mí" del mural.
-    latitude: toNumber(dto.latitude) ?? null,
-    longitude: toNumber(dto.longitude) ?? null,
-    phone: dto.phone || '',
+    commune: dto.comuna || '',
+    address: dto.direccion || '',
+    // Coordenadas geocodificadas por el backend: distancia y orden "cerca de mí" del buscador.
+    latitude: toNumber(dto.latitud) ?? null,
+    longitude: toNumber(dto.longitud) ?? null,
+    phone: dto.telefono || '',
     whatsapp: dto.whatsapp || null,
-    openingHours: dto.openingHours || '',
-    ...adRatingFields(dto),
-    images,
-    storyImages,
-    features: Array.isArray(dto.features) ? dto.features : [],
-    servicesOffered: Array.isArray(dto.servicesOffered) ? dto.servicesOffered : [],
-    // Las marcas forman parte del expediente del anuncio y deben sobrevivir a la
-    // adaptación para mostrarse tanto en la tarjeta como en el resumen de empresa.
-    specialistBrands: Array.isArray(dto.specialistBrands) ? dto.specialistBrands.filter(Boolean) : [],
-    is24Hours: dto.is24Hours === true,
-    hasOnlineBooking: dto.hasOnlineBooking === true,
-    // El taller va donde está el vehículo, dentro de la comuna del anuncio.
-    homeService: dto.homeService === true,
+    hours: dto.horario || '',
+    is24Hours: dto.atiende24Horas === true,
+    only24Hours: dto.solo24Horas === true,
+    homeService: dto.servicioDomicilio === true,
+    hasOnlineBooking: dto.permiteReservas === true && Boolean(agendaConfig),
+    categories: Array.isArray(dto.categorias) ? dto.categorias.filter(Boolean) : [],
+    services,
+    specialistBrands: Array.isArray(dto.marcasEspecialistas) ? dto.marcasEspecialistas.filter(Boolean) : [],
+    features: Array.isArray(dto.caracteristicas) ? dto.caracteristicas.filter(Boolean) : [],
+    priceFrom: toNumber(dto.precioDesde) ?? null,
+    memberSince: dto.miembroDesde || null,
     agendaConfig,
-    agendaConfigId: dto.agendaConfigId || null,
-    agendaConfigName: dto.agendaConfigName || null,
-    agendaHours: dto.agendaHours || '',
-    ownerUserId: dto.ownerUserId ? String(dto.ownerUserId) : null,
-    ownerSellerId: dto.ownerSellerId ? String(dto.ownerSellerId) : null,
-    ownerSellerExternalId: dto.ownerSellerExternalId ? String(dto.ownerSellerExternalId) : null,
-    ownerEmail: dto.ownerEmail || null,
-    publishedAt: dto.publishedAt || null,
-    expiresAt: dto.expiresAt || null,
-    updatedAt: dto.updatedAt || null,
-    moderationStatus: dto.moderationStatus || 'PENDIENTE',
-    rejectionReason: dto.rejectionReason || null,
-    // M3 (6-oct): Monedas que se vuelven a cobrar al reenviar a revisión un anuncio rechazado.
-    monedasParaReenviar: Number(dto.monedasParaReenviar) || 0,
-    reviewedAt: dto.reviewedAt || null,
-    activo: dto.activo === true,
   };
 }
 
-export function adaptAds(list) {
-  return (Array.isArray(list) ? list : []).map(adaptAd).filter(Boolean);
+export function adaptTalleres(list) {
+  return (Array.isArray(list) ? list : []).map(adaptTaller).filter(Boolean);
 }
 
 /**
- * Anuncio de la UI -> `AnuncioRequestDTO`.
- *
- * El POST y el PUT comparten DTO, y `AnuncioService.aplicar()` escribe TODOS los
- * campos: al editar hay que mandar el anuncio completo (fotos, historias y agenda
- * incluidas) o se borran los que no viajen.
- *
- * Recorta las listas al tope del plan porque `AnuncioService.validar()` responde
- * 400 si se pasan, y los topes cambian al mejorar o al cambiar de plan en el
- * formulario. Es la misma tabla que `AD_TIERS`, replicada alli a proposito.
+ * Perfil editado en la UI -> `ActualizarPerfil`. Los campos ausentes no viajan (el backend no los
+ * toca); los topes replican `TallerPerfilService` para no recibir 400 por una lista larga.
  */
-export function toAdRequestPayload(ad) {
-  const tier = AD_TIERS[ad?.tier] ? ad.tier : 'basica';
-  const limits = AD_TIERS[tier];
+export function toTallerProfilePayload(profile) {
   const text = (value) => String(value ?? '').trim();
-  const list = (value, max) => (Array.isArray(value) ? value : []).filter(Boolean).slice(0, max);
-  const media = (value, max) => list(value, max).map(toMediaPath).filter(Boolean);
-
-  // El backend rechaza `hasOnlineBooking` sin una agenda configurada, y la agenda
-  // solo existe en el plan Empresarial. Sin configuracion valida, la reserva
-  // queda apagada aunque el plan la permita (la configura la fase C).
-  const agendaConfig = ad?.agendaConfig && Object.keys(ad.agendaConfig).length > 0 ? ad.agendaConfig : null;
-  const hasOnlineBooking = Boolean(ad?.hasOnlineBooking) && limits.hasBooking && Boolean(agendaConfig);
-  const priceType = ad?.priceType === 'fixed' ? 'fixed' : 'quote';
-  const priceValue = Number(ad?.priceValue);
-
-  return {
-    tier,
-    title: text(ad?.title),
-    company: text(ad?.company),
-    category: text(ad?.category),
-    categoryLabel: text(ad?.categoryLabel),
-    description: text(ad?.description),
-    priceType,
-    priceText: text(ad?.priceText),
-    // `@PositiveOrZero Long`: un texto o un negativo tiran 400. En "a cotizar" no
-    // hay monto que mandar.
-    priceValue: priceType === 'fixed' && Number.isFinite(priceValue) && priceValue >= 0
-      ? Math.round(priceValue)
-      : null,
-    region: text(ad?.region),
-    commune: text(ad?.commune),
-    address: text(ad?.address),
-    phone: text(ad?.phone),
-    // WhatsApp es una funcion del plan: mandarlo en uno que no lo incluye deja el
-    // dato guardado y la tarjeta igual no muestra el boton.
-    whatsapp: limits.hasWhatsapp ? (text(ad?.whatsapp).replace(/\D/g, '') || null) : null,
-    openingHours: text(ad?.openingHours),
-    images: media(ad?.images, limits.maxImages),
-    storyImages: media(ad?.storyImages, limits.maxStories),
-    features: list(ad?.features, limits.maxTags),
-    servicesOffered: list(ad?.servicesOffered, limits.maxTags),
-    specialistBrands: list(ad?.specialistBrands, 20),
-    is24Hours: ad?.is24Hours === true,
-    // Viaja siempre: el PUT reemplaza todos los campos y sin él se perdería al editar.
-    homeService: ad?.homeService === true,
-    hasOnlineBooking,
-    agendaConfig: hasOnlineBooking ? agendaConfig : null,
-    agendaConfigId: ad?.agendaConfigId || null,
-    agendaConfigName: ad?.agendaConfigName || null,
-    agendaHours: text(ad?.agendaHours),
-    // Solo sirve al editar: al crear, el backend fija 30 dias y descarta cualquier
-    // fecha posterior a ese tope.
-    expiresAt: ad?.expiresAt || null,
-  };
+  const list = (value, max) => (Array.isArray(value) ? value : []).map(text).filter(Boolean).slice(0, max);
+  const payload = {};
+  if ('description' in profile) payload.descripcion = text(profile.description);
+  if ('photos' in profile) payload.fotos = (Array.isArray(profile.photos) ? profile.photos : []).map(toMediaPath).filter(Boolean).slice(0, 6);
+  if ('categories' in profile) payload.categorias = list(profile.categories, 10);
+  if ('specialistBrands' in profile) payload.marcasEspecialistas = list(profile.specialistBrands, 20);
+  if ('features' in profile) payload.caracteristicas = list(profile.features, 12);
+  if ('whatsapp' in profile) payload.whatsapp = text(profile.whatsapp).replace(/\D/g, '');
+  if ('hours' in profile) payload.horarioTexto = text(profile.hours);
+  if ('homeService' in profile) payload.servicioDomicilio = profile.homeService === true;
+  if ('hasOnlineBooking' in profile) payload.permiteReservas = profile.hasOnlineBooking === true;
+  if ('services' in profile) {
+    payload.servicios = (Array.isArray(profile.services) ? profile.services : []).slice(0, 30).map((item) => {
+      const price = Number(item?.priceFrom);
+      const fixed = item?.priceType === 'fixed' && Number.isFinite(price) && price >= 0;
+      return {
+        nombre: text(item?.name),
+        categoria: text(item?.category) || null,
+        precioDesde: fixed ? Math.round(price) : null,
+        tipoPrecio: fixed ? 'fixed' : 'quote',
+      };
+    });
+  }
+  return payload;
 }
 
 /**
- * `AnuncioAgendamientoResponseDTO` -> reserva de la UI.
+ * `AgendamientoResponseDTO` -> reserva de la UI.
  *
  * Casi todo llega con el nombre que usa la web porque el DTO fue modelado desde
  * el cliente. Lo que hay que tener presente:
  *
  * - `time` NO es lo que se mando: el backend guarda solo la hora de inicio y
- *   reconstruye la etiqueta como `inicio - inicio+slotMinutes` leyendo el
- *   `agendaConfig` del anuncio. Si el socio cambia el largo del bloque, las
+ *   reconstruye la etiqueta como `inicio - inicio+duracion` con la duracion
+ *   del bloque guardada al reservar. Si el socio cambia el largo del bloque, las
  *   reservas viejas se re-etiquetan solas.
  * - cuando quien pregunta no es ni el dueño ni el cliente, los datos personales
  *   vienen censurados (strings vacios y nulls). `isRedacted` lo marca para que la
  *   vista muestre "Horario reservado" en vez de una ficha vacia.
- * - `id` y `adId` ya vienen como String desde el backend.
+ * - `id` y `workshopId` ya vienen como String desde el backend.
  */
 export function adaptAppointment(dto) {
   if (!dto) return null;
@@ -809,8 +738,8 @@ export function adaptAppointment(dto) {
 
   return {
     id: String(dto.id),
-    adId: String(dto.adId),
-    adTitle: dto.adTitle || '',
+    tallerId: String(dto.workshopId),
+    tallerName: dto.workshopName || '',
     service: dto.service || '',
     services,
     date: dto.date || '',
@@ -819,7 +748,7 @@ export function adaptAppointment(dto) {
     customerPhone: dto.customerPhone || '',
     customerEmail: dto.customerEmail || '',
     customerUserId: dto.customerUserId ? String(dto.customerUserId) : null,
-    // Dueño del anuncio: decide qué citas son "recibidas" sin depender de la lista de anuncios.
+    // Dueño del taller: decide qué citas son "recibidas" sin depender de la lista de anuncios.
     ownerUserId: dto.ownerUserId ? String(dto.ownerUserId) : null,
     cancelledBy: dto.cancelledBy || null,
     cancelReason: dto.cancelReason || '',
@@ -841,7 +770,7 @@ export function adaptAppointments(list) {
 }
 
 /**
- * Datos del formulario -> `AnuncioAgendamientoRequestDTO`.
+ * Datos del formulario -> `AgendamientoRequestDTO`.
  *
  * `time` viaja como la etiqueta completa ('09:00 - 10:00'): el `@Pattern` del DTO
  * acepta las dos formas y el servicio se queda con lo anterior al guion. Se manda
@@ -870,7 +799,7 @@ export function toAppointmentRequestPayload(form) {
     vehiclePatent: text(form?.vehiclePatent) || null,
     vehicleModel: text(form?.vehicleModel) || null,
     notes: text(form?.notes) || null,
-    // Servicio a domicilio: el backend exige que el anuncio lo ofrezca y que venga la dirección.
+    // Servicio a domicilio: el backend exige que el taller lo ofrezca y que venga la dirección.
     homeService: form?.homeService === true,
     homeAddress: form?.homeService === true ? (text(form?.homeAddress) || null) : null
   };

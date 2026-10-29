@@ -9,7 +9,7 @@ import { API_BASE_URL, apiOrigin } from './apiBaseUrl';
 // ese host y no se ve desde otra build (y si el host quedo en http://, el
 // navegador la bloquea por contenido mixto). Del proxy propio solo importa la
 // ruta. Contraparte de `resolveImageUri()` en `mobile/utils/images.ts` y de
-// `AnuncioService.normalizarRutaImagen()`, que arregla el dato en el origen.
+// `TallerPerfilService.normalizarRutaImagen()`, que arregla el dato en el origen.
 const PROXY_ABSOLUTE_URL = /^https?:\/\/[^/]+(\/api\/v1\/uploads\/.*)$/i;
 
 // El backend persiste rutas de R2 como `/api/v1/uploads/...`. En desarrollo el
@@ -1914,91 +1914,44 @@ export async function deleteNotificationApi(userId, notificationId) {
 }
 
 // -------------------------------------------------------------
-// MURAL DE ANUNCIOS
+// TALLERES (buscador y perfil publico)
 // -------------------------------------------------------------
 
 /**
- * Mural publico. El backend ya filtra por activo + APROBADO + no expirado
- * (`AnuncioService.listarPublicos()`), asi que devuelve solo lo visible.
- * No pagina: `AnuncioController` responde la lista completa.
+ * Buscador publico de talleres. El backend entrega solo talleres acreditados que ya publicaron
+ * al menos un servicio (`TallerPerfilService.listarPublicos()`); no pagina.
  */
-export async function getPublicAdsApi({ signal } = {}) {
-  return fetchApi('/anuncios', { method: 'GET', signal });
+export async function getTalleresApi({ signal } = {}) {
+  return fetchApi('/talleres', { method: 'GET', signal });
 }
 
-/** Ficha publica de un anuncio. Da 404 si esta pendiente, rechazado o vencido. */
-export async function getPublicAdApi(adId, { signal } = {}) {
-  return fetchApi(`/anuncios/${adId}`, { method: 'GET', signal });
+/** Perfil publico de un taller. Da 404 si no esta acreditado o aun no publica servicios. */
+export async function getTallerApi(tallerId, { signal } = {}) {
+  return fetchApi(`/talleres/${tallerId}`, { method: 'GET', signal });
 }
 
-/**
- * Anuncios de la sesion, en cualquier estado de moderacion (PENDIENTE, APROBADO
- * o RECHAZADO) y tambien los vencidos. Es la unica lectura que ve un anuncio que
- * todavia no esta publicado: `GET /anuncios` solo devuelve lo aprobado y vigente.
- */
-export async function getMyAdsApi({ signal } = {}) {
-  return fetchApi('/anuncios/mios', { method: 'GET', signal });
+/** Perfil del taller de la sesion, tambien cuando aun no es publico (sin servicios). 404 si no esta acreditado. */
+export async function getMiTallerPerfilApi({ signal } = {}) {
+  return fetchApi('/automotive-services/me/perfil', { method: 'GET', signal });
 }
 
 /**
- * Publica un anuncio. Nace `PENDIENTE` y con `activo=false`
- * (`AnuncioService.crear()`): no aparece en el mural hasta que moderacion lo aprueba.
+ * Edita el perfil publico del taller de la sesion (`PUT /automotive-services/me/perfil`).
+ * Los campos que no vienen no se tocan. Devuelve el perfil publico ya guardado.
  */
-export async function createAdApi(payload) {
-  return fetchApi('/anuncios', { method: 'POST', body: JSON.stringify(payload) });
+export async function updateMiTallerPerfilApi(payload) {
+  return fetchApi('/automotive-services/me/perfil', { method: 'PUT', body: JSON.stringify(payload) });
 }
 
 /**
- * Reemplaza TODOS los campos del anuncio: `AnuncioService.aplicar()` escribe cada
- * uno, asi que lo que no venga en el payload se pierde (las historias, la agenda
- * y las fotos incluidas). Hay que mandar el anuncio completo, no solo lo editado.
- *
- * Ademas devuelve el anuncio a `PENDIENTE` y lo deja `activo=false`, o sea que lo
- * saca del mural hasta que lo re-aprueben. La UI tiene que advertirlo antes.
+ * Sube fotos del taller a R2 y devuelve `{ imagenes: [{ key, url }] }` con rutas relativas al
+ * proxy del backend. Timeout largo: son varias imagenes de hasta 5MB.
  */
-export async function updateAdApi(adId, payload) {
-  return fetchApi(`/anuncios/${adId}`, { method: 'PUT', body: JSON.stringify(payload) });
-}
-
-/**
- * Ajuste puntual de la agenda de un anuncio empresarial (`PATCH /anuncios/{id}/agenda`).
- * A diferencia del PUT completo, NO devuelve el anuncio a moderacion ni lo saca
- * del mural: el proveedor solo esta afinando sus horarios de reserva.
- * `payload`: { hasOnlineBooking, agendaConfig, agendaConfigId, agendaConfigName, agendaHours }.
- */
-export async function updateAdAgendaApi(adId, payload) {
-  return fetchApi(`/anuncios/${adId}/agenda`, { method: 'PATCH', body: JSON.stringify(payload) });
-}
-
-/**
- * Agrega 30 dias de vigencia al anuncio (`POST /anuncios/{id}/renovar`), cobrando
- * en el mismo request la tarifa de su tier actual. A diferencia de `updateAdApi`
- * no toca moderacion ni contenido: el anuncio no vuelve a PENDIENTE.
- */
-export async function renewAdApi(adId) {
-  return fetchApi(`/anuncios/${adId}/renovar`, { method: 'POST' });
-}
-
-/**
- * Baja logica: el backend solo hace `setActivo(false)` y conserva el
- * `moderationStatus`, asi que el anuncio sigue llegando en `GET /anuncios/mios`.
- * Quien lo consuma tiene que ocultarlo por su cuenta (ver `adsStorage.js`).
- */
-export async function deleteAdApi(adId) {
-  return fetchApi(`/anuncios/${adId}`, { method: 'DELETE' });
-}
-
-/**
- * Sube las fotos del anuncio a la carpeta Media de R2 (se llamaba Publicidad hasta
- * que se detecto que varios bloqueadores de anuncios bloquean esa palabra en la
- * URL) y devuelve `{ imagenes: [{ key, url }] }` con rutas relativas al proxy del
- * backend. Timeout largo como manda CLAUDE.md: son varias imagenes de hasta 5MB.
- */
-export async function uploadAdImagesApi(files) {
+export async function uploadTallerPhotosApi(files) {
   const formData = new FormData();
   const comprimidas = await Promise.all((files || []).map((file) => compressImageFile(file)));
   comprimidas.forEach((file) => formData.append('imagenes', file));
-  return fetchApi('/anuncios/imagenes', {
+  return fetchApi('/automotive-services/me/fotos', {
     method: 'POST',
     body: formData,
     signal: AbortSignal.timeout(30000),
@@ -2006,74 +1959,56 @@ export async function uploadAdImagesApi(files) {
 }
 
 // -------------------------------------------------------------
-// AGENDAMIENTO DE ANUNCIOS
+// AGENDAMIENTO DE CITAS EN TALLERES
 // -------------------------------------------------------------
 
 /**
- * Reservas de un anuncio. La respuesta depende de QUIEN pregunta
- * (`AnuncioAgendamientoService.listarPorAnuncio()`):
+ * Reservas de un taller. La respuesta depende de QUIEN pregunta
+ * (`AgendamientoService.listarPorTaller()`):
  *
- * - el dueño del anuncio recibe todas las reservas, de cualquier fecha y estado,
- *   con los datos completos del cliente. Es su agenda.
- * - cualquier otra sesion recibe solo las futuras en `pending` o `accepted`, y
- *   con los datos del cliente CENSURADOS (nombre, telefono, correo y patente
- *   vienen vacios o en null). Sirve para saber que bloques estan tomados sin
- *   exponer a quien reservo.
- *
- * O sea que el modal de reserva usa esta misma ruta para tachar los horarios
- * ocupados: no hace falta un endpoint de disponibilidad aparte.
+ * - el dueño del taller recibe todas las reservas, de cualquier fecha y estado, con los datos
+ *   completos del cliente. Es su agenda.
+ * - cualquier otra sesion recibe solo las futuras en `pending` o `accepted`, con los datos del
+ *   cliente CENSURADOS. Sirve para tachar los bloques ocupados sin exponer a quien reservo.
  */
-export async function getAdAppointmentsApi(adId, { signal } = {}) {
-  return fetchApi(`/anuncios/agendamientos/anuncios/${adId}`, { method: 'GET', signal });
+export async function getTallerAppointmentsApi(tallerId, { signal } = {}) {
+  return fetchApi(`/agendamientos/talleres/${tallerId}`, { method: 'GET', signal });
 }
 
-/**
- * Reservas relevantes para la sesion: `findRelevantes()` trae tanto las que uno
- * pidio como cliente como las que le hicieron a sus anuncios, en una sola lista.
- * Se separan por `adId` contra los anuncios propios, no por un campo del DTO.
- */
+/** Reservas de la sesion: las que pidio como cliente y las que le hicieron a su taller, en una lista. */
 export async function getMyAppointmentsApi({ signal } = {}) {
-  return fetchApi('/anuncios/agendamientos/mias', { method: 'GET', signal });
+  return fetchApi('/agendamientos/mias', { method: 'GET', signal });
 }
 
 /**
- * Reserva una hora. Exige sesion iniciada y falla con 400 si el anuncio no tiene
- * las reservas encendidas, si esta vencido, si el bloque no pertenece al horario
- * publicado, si ya paso, o si es tu propio anuncio.
- *
- * `customerEmail` viaja porque el DTO lo exige (`@NotBlank @Email`), pero el
- * backend lo IGNORA: guarda siempre el correo de la sesion. No sirve para
- * reservar a nombre de otro.
- *
- * Un 409 (`DuplicateResourceException`) significa que alguien tomo ese bloque
- * mientras se llenaba el formulario; hay que recargar la disponibilidad.
+ * Reserva una hora. Exige sesion y falla con 400 si el taller no recibe reservas en linea, si el
+ * bloque no pertenece a su horario, si ya paso o si es tu propio taller. Un 409 significa que
+ * alguien tomo ese bloque mientras se llenaba el formulario.
  */
-export async function createAdAppointmentApi(adId, payload) {
-  return fetchApi(`/anuncios/agendamientos/anuncios/${adId}`, {
+export async function createTallerAppointmentApi(tallerId, payload) {
+  return fetchApi(`/agendamientos/talleres/${tallerId}`, {
     method: 'POST',
     body: JSON.stringify(payload)
   });
 }
 
 /**
- * Responde o cancela una reserva. Quien puede hacer que esta partido:
- * `accepted` y `rejected` solo el dueño del anuncio, y solo mientras siga
- * `pending`; `cancelled` solo el cliente, y solo si todavia no se cerro.
- * Cualquier otra combinacion responde 403.
+ * Responde o cancela una reserva: `accepted` y `rejected` solo el taller y solo mientras siga
+ * `pending`; `cancelled` el cliente (o el taller si ya la habia confirmado) fuera de las 24 horas.
  */
-export async function updateAdAppointmentStatusApi(appointmentId, status, reason) {
-  return fetchApi(`/anuncios/agendamientos/${appointmentId}/estado`, {
+export async function updateAppointmentStatusApi(appointmentId, status, reason) {
+  return fetchApi(`/agendamientos/${appointmentId}/estado`, {
     method: 'PATCH',
     body: JSON.stringify({ status, reason: reason?.trim() || undefined })
   });
 }
 
 /**
- * Mueve una cita propia a otro bloque del mismo anuncio. Una sola operacion en el backend:
+ * Mueve una cita propia a otro bloque del mismo taller. Una sola operacion en el backend:
  * cancela la anterior, crea la nueva enlazada y avisa al taller del cambio.
  */
-export async function rescheduleAdAppointmentApi(appointmentId, payload) {
-  return fetchApi(`/anuncios/agendamientos/${appointmentId}/reagendar`, {
+export async function rescheduleAppointmentApi(appointmentId, payload) {
+  return fetchApi(`/agendamientos/${appointmentId}/reagendar`, {
     method: 'POST',
     body: JSON.stringify(payload)
   });
@@ -2081,17 +2016,15 @@ export async function rescheduleAdAppointmentApi(appointmentId, payload) {
 
 /** Contadores de citas vigentes de la sesion: `{ cliente: {pendientes, aceptadas}, taller: {porResponder, aceptadas, hoy} }`. */
 export async function getAppointmentsSummaryApi({ signal } = {}) {
-  return fetchApi('/anuncios/agendamientos/resumen', { method: 'GET', signal });
+  return fetchApi('/agendamientos/resumen', { method: 'GET', signal });
 }
 
 /**
- * Manda el resumen de la cita por correo al cliente y al taller. Es solo el
- * despacho del mail: la reserva ya quedo guardada por el POST.
- * `AgendamientoNotificacionService` lo envia con `enviarSeguro()`, asi que un
- * fallo de correo no revienta la respuesta.
+ * Manda el resumen de la cita por correo al cliente y al taller. Es solo el despacho del mail:
+ * la reserva ya quedo guardada por el POST.
  */
 export async function sendAppointmentSummaryEmailsApi(payload) {
-  return fetchApi('/anuncios/agendamientos/notificaciones', {
+  return fetchApi('/agendamientos/notificaciones', {
     method: 'POST',
     body: JSON.stringify(payload)
   });

@@ -1,0 +1,295 @@
+/* ==========================================================================
+   CARD DEL TALLER (buscador). Pensada para comparar rapido: servicios con precio,
+   marcas, horario, domicilio y agenda. Se carga despues de ads-wall-redesign.css
+   para usar sus variables (--ads-*).
+   ========================================================================== */
+
+.taller-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+}
+
+.taller-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--ads-border);
+  border-radius: 16px;
+  box-shadow: 0 4px 14px -10px rgba(15, 23, 42, 0.18);
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+.taller-card:hover {
+  transform: translateY(-2px);
+  border-color: #b7c4d0;
+  box-shadow: 0 16px 34px -18px rgba(15, 23, 42, 0.28);
+}
+.taller-card.is-own { border-color: #93c5fd; background: #fbfdff; }
+
+.taller-card__media {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 150px;
+  padding: 0;
+  border: none;
+  border-radius: 16px 16px 0 0;
+  overflow: hidden;
+  background: var(--ads-surface-muted);
+  cursor: pointer;
+}
+.taller-card__media.is-empty {
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, #0056bf 0%, #0a3d8f 60%, #06285c 100%);
+}
+.taller-card__cover { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.taller-card__verified,
+.taller-card__own,
+.taller-card__distance {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.taller-card__verified { top: 10px; left: 10px; background: #059669; color: #fff; }
+.taller-card__own { bottom: 10px; right: 10px; background: #1e40af; color: #fff; }
+.taller-card__distance { bottom: 10px; right: 10px; background: rgba(15, 23, 42, 0.78); color: #fff; }
+.taller-card__own + .taller-card__distance { right: auto; left: 10px; }
+
+.taller-card__logo {
+  position: absolute;
+  top: 118px;
+  left: 14px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  border: 3px solid #fff;
+  background: #eaf2ff;
+  color: var(--ads-primary);
+  font-weight: 800;
+  font-size: 17px;
+  overflow: hidden;
+  box-shadow: 0 6px 16px -8px rgba(15, 23, 42, 0.45);
+}
+.taller-card__logo img { width: 100%; height: 100%; object-fit: cover; }
+.taller-card__logo.has-logo { background: #fff; }
+
+.taller-card__fav {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: #475569;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.taller-card__fav.is-active { color: #e11d48; }
+.taller-card__report { position: absolute !important; top: 50px; right: 10px; z-index: 3; }
+
+.taller-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 9px;
+  padding: 34px 14px 14px;
+}
+
+.taller-card__title { padding: 0; border: none; background: none; text-align: left; cursor: pointer; }
+.taller-card__title h3 {
+  margin: 0;
+  font-size: 16.5px;
+  line-height: 1.25;
+  font-weight: 800;
+  color: var(--ads-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.taller-card__title:hover h3 { color: var(--ads-primary); }
+
+.taller-card__where {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: -4px 0 0;
+  font-size: 12.5px;
+  color: var(--ads-muted);
+}
+.taller-card__where svg { flex-shrink: 0; }
+.taller-card__where span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.taller-card__cats { display: flex; flex-wrap: wrap; gap: 6px; }
+.taller-card__cat {
+  padding: 3px 9px;
+  border: none;
+  border-radius: 999px;
+  background: var(--ads-surface-muted);
+  color: #3b4b5b;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.taller-card__cat:hover { background: var(--ads-primary-light); color: var(--ads-primary); }
+.taller-card__cat.is-more { cursor: default; }
+
+/* --- Servicios y precios: lo que decide la visita --- */
+.taller-card__services {
+  padding: 10px 11px;
+  border: 1px solid #e3eaf1;
+  border-radius: 12px;
+  background: #fafcfe;
+}
+.taller-card__services-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ads-muted);
+}
+.taller-card__services-title svg { color: #059669; }
+.taller-card__services ul { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.taller-card__services li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--ads-text);
+}
+.taller-card__services li.is-match { background: #e7f6ee; box-shadow: inset 3px 0 0 #059669; }
+.taller-card__service-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.taller-card__service-price { display: inline-flex; align-items: baseline; gap: 4px; flex-shrink: 0; }
+.taller-card__service-price em { font-style: normal; font-size: 11px; color: var(--ads-muted); }
+.taller-card__service-price strong { font-size: 13.5px; font-weight: 800; color: var(--ads-primary); }
+.taller-card__services li.is-match .taller-card__service-price strong { color: #047857; }
+.taller-card__more {
+  margin: 6px 0 0 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ads-primary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.taller-card__more:hover { text-decoration: underline; }
+
+/* --- Marcas --- */
+.taller-card__brands { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.taller-card__brands-label { font-size: 11.5px; font-weight: 700; color: var(--ads-muted); }
+.taller-card__brand-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #fff7e6;
+  color: #92400e;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.taller-card__brand-note.is-good { background: #e7f6ee; color: #047857; }
+.taller-card__brand-logos { display: flex; align-items: center; gap: 5px; }
+.taller-card__brand {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #e3eaf1;
+  overflow: hidden;
+}
+.taller-card__brand.is-more { font-size: 10.5px; font-weight: 800; color: var(--ads-muted); }
+
+/* --- Hechos rapidos: horario, domicilio, agenda --- */
+.taller-card__facts { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 0; padding: 0; list-style: none; }
+.taller-card__facts li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  font-size: 12px;
+  color: #3b4b5b;
+}
+.taller-card__facts li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.taller-card__facts li svg { flex-shrink: 0; color: #64748b; }
+.taller-card__facts li.is-accent { color: #b45309; font-weight: 700; }
+.taller-card__facts li.is-accent svg { color: #d97706; }
+.taller-card__facts li.is-good { color: #047857; font-weight: 700; }
+.taller-card__facts li.is-good svg { color: #059669; }
+
+/* --- Pie --- */
+.taller-card__footer { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
+.taller-card__quick { display: flex; gap: 6px; }
+.taller-card__pill {
+  display: inline-flex;
+  flex: 1 1 0;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+.taller-card__pill:hover { filter: brightness(0.95); }
+.taller-card__pill.is-book { background: #059669; color: #fff; }
+.taller-card__pill.is-wsp { background: #25d366; color: #fff; }
+.taller-card__pill.is-phone { background: rgba(0, 86, 191, 0.12); color: var(--ads-primary); }
+
+.taller-card__profile-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--ads-primary);
+  border-radius: 11px;
+  background: var(--ads-primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.taller-card__profile-btn:hover { background: var(--ads-primary-dark); }
+.taller-card__notice { margin: 0; font-size: 11.5px; color: #b45309; }
+
+@media (max-width: 520px) {
+  .taller-grid { grid-template-columns: 1fr; }
+}

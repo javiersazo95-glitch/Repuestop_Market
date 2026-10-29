@@ -27,7 +27,7 @@ interface Module {
   crop?: string;
   isReal: boolean;
   actionText: string;
-  action: 'catalog' | 'stores' | 'adsWall' | 'contact' | 'seller';
+  action: 'catalog' | 'stores' | 'talleres' | 'contact' | 'seller';
 }
 
 const MODULES: Module[] = [
@@ -91,17 +91,17 @@ const MODULES: Module[] = [
   {
     id: 'services',
     Icon: Wrench,
-    tab: 'Mural de servicios',
+    tab: 'Talleres y servicios',
     tag: 'Talleres y mecánicos',
-    title: 'Mural de Servicios Automotrices',
-    desc: 'Mecánicos y talleres acreditados por comuna, con distancia y agenda de citas.',
+    title: 'Talleres y Servicios Automotrices',
+    desc: 'Talleres acreditados por comuna, con sus servicios y precios, distancia y agenda de citas.',
     image: '/about-assets/mecanico-taller.webp',
     width: 1440,
     height: 810,
     ratio: '16 / 9',
     isReal: true,
-    actionText: 'Ver mural de servicios',
-    action: 'adsWall',
+    actionText: 'Ver talleres y servicios',
+    action: 'talleres',
   },
   {
     id: 'quotes',
@@ -199,13 +199,13 @@ const MODULES: Module[] = [
 export default function ProductPreviewSection({
   onCatalog,
   onStores,
-  onAdsWall,
+  onTalleres,
   onContact,
   onOpenSeller,
 }: {
   onCatalog: () => void;
   onStores: () => void;
-  onAdsWall: () => void;
+  onTalleres: () => void;
   onContact: () => void;
   onOpenSeller: () => void;
 }) {
@@ -219,7 +219,7 @@ export default function ProductPreviewSection({
   const actions = {
     catalog: onCatalog,
     stores: onStores,
-    adsWall: onAdsWall,
+    talleres: onTalleres,
     contact: onContact,
     seller: onOpenSeller,
   };

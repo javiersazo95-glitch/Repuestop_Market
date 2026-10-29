@@ -9,7 +9,7 @@ import {
   markNotificationReadApi, deleteReadNotificationsApi, deleteNotificationApi
 } from '../services/api';
 import { notificationTargetPath } from '../data/notificationTargets';
-import { notifyAppointmentsChanged } from '../services/adsStorage';
+import { notifyAppointmentsChanged } from '../services/talleresStorage';
 import { classifyForInbox, preferencesFromUser } from '../utils/notificationPreferences';
 import NotificationPreferencesPanel from './NotificationPreferencesPanel';
 

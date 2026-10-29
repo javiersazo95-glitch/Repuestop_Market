@@ -50,11 +50,11 @@ const REASONS = {
     'Contenido inapropiado',
     'Otro motivo',
   ],
-  ANUNCIO: [
-    'Anuncio engañoso o spam',
-    'Vendedor no responde o sospechoso',
+  TALLER: [
+    'Perfil engañoso o spam',
+    'El taller no responde o es sospechoso',
     'Contenido inapropiado o prohibido',
-    'Precio no corresponde',
+    'Los precios no corresponden',
     'Otro motivo',
   ],
 };
@@ -76,7 +76,7 @@ export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTit
       ? 'tienda'
       : tipoObjeto === 'PRODUCTO'
         ? 'producto'
-        : 'anuncio';
+        : 'taller';
 
   // El backend resuelve al reportado a partir del id, asi que uno invalido solo sirve para
   // gastar un 400. Y sin sesion no hay a quien atribuir el reporte.

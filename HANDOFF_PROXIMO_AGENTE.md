@@ -30,6 +30,29 @@ fases 0–7 de ese plan están implementadas. En esta sesión se resolvieron:
 
 Verificación técnica: `npm run build` compila limpiamente en **3.4s** generando chunks independientes por ruta.
 
+## 1.a Sesión 2026-10-29 — el perfil del taller reemplaza al anuncio
+
+El servicio automotriz ya no sale al público como anuncio: lo que se muestra es el **perfil del taller**.
+
+- **Buscador** `/talleres` (`components/talleres/TalleresDirectoryView.jsx`) y **perfil** `/talleres/:id-slug`
+  (`TallerProfileView.jsx`). `/mural-anuncios[/:id]` redirige al buscador. Datos: `GET /talleres`,
+  `GET /talleres/{id}` (público); `adaptTaller()` en `services/adapters.js`.
+- **Card** (`TallerCard.jsx`): servicios con precio "desde" (los que calzan con la búsqueda suben y se
+  marcan "Lo que buscas"), marcas, horario, domicilio, agenda en línea y contacto directo; todo apunta
+  al perfil. `utils/tallerSearch.js` (`matchingServices`) hace el calce con plural/tildes.
+- **Mi taller** (pestaña `mi_taller`, antes `anuncios`; `MiTallerSection.jsx`): acreditación, pasos
+  siguientes, horario principal (`PrincipalAgendaCard`), citas y el editor del perfil
+  (`TallerProfileEditor.jsx`, `PUT /automotive-services/me/perfil`).
+- **Citas** (`/agendamientos/...`): cuelgan del taller y usan su "Horario principal".
+- **Se eliminó** el flujo de anuncios: crear/editar/renovar/subir de plan, historias, tiers y moderación.
+  `services/adsStorage.js` se partió en `talleresStorage.js` y `walletStorage.js`; el monedero
+  (`components/wallet/`) queda solo para destacar repuestos (Top Ventas) y se muestra a vendedores o a
+  quien aún tenga saldo.
+- **Pendiente**: los textos legales (`data/legalTexts.js`: Mural de Anuncios, planes en Monedas) siguen
+  describiendo el modelo anterior; requieren revisión legal y subir `LEGAL_VERSION`. La captura
+  `public/about-assets/mural-real.webp` de /nosotros muestra la card antigua. `components/talleres/ads-wall*.css`
+  conserva reglas de componentes ya borrados (modales de plan, historias, tabla de gestión): podarlas.
+
 ## 1.b Sesión 2026-08-19 — panel de perfil
 
 1. **Vista del comprador alineada con la del proveedor (LISTO)**. El rediseño

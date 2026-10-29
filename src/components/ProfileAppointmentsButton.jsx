@@ -2,12 +2,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { CalendarClock } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { getAppointmentsSummaryApi } from '../services/api';
-import { APPOINTMENTS_UPDATED_EVENT } from '../services/adsStorage';
-import MyAppointmentsHub from './ads/MyAppointmentsHub';
+import { APPOINTMENTS_UPDATED_EVENT } from '../services/talleresStorage';
+import MyAppointmentsHub from './talleres/MyAppointmentsHub';
 
 /**
  * Acceso a "Mis citas" en la barra del perfil, junto a la campana, con el contador de citas
- * vigentes (`GET /anuncios/agendamientos/resumen`: ni pasadas ni canceladas). Si hay
+ * vigentes (`GET /agendamientos/resumen`: ni pasadas ni canceladas). Si hay
  * solicitudes por responder, el contador las muestra a ellas y en ámbar.
  *
  * También atiende el enlace de las notificaciones de cita: `?citas=recibidas|pedidas&cita=ID`

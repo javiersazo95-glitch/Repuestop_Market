@@ -81,10 +81,10 @@ export default function ProfilePage() {
     return <Navigate to={profilePath('resumen')} replace />;
   }
 
-  // La acreditación del servicio automotriz dejó de tener pestaña propia: ahora
-  // vive dentro de "Gestión de anuncios". Los enlaces viejos caen ahí.
-  if (tab === 'acreditar_servicio') {
-    return <Navigate to={profilePath('anuncios')} replace />;
+  // La acreditación del servicio automotriz vive dentro de "Mi taller", igual que lo que antes
+  // era "Gestión de anuncios". Los enlaces viejos caen ahí.
+  if (tab === 'acreditar_servicio' || tab === 'anuncios') {
+    return <Navigate to={profilePath('mi_taller')} replace />;
   }
 
   // `/perfil/pedidos/:orderId` no declara `:tab`, asi que `tab` llega vacio: sin esta guarda la

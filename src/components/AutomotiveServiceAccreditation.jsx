@@ -5,11 +5,11 @@ import {
   getAutomotiveServiceAccreditationApi, submitAutomotiveServiceAccreditationApi,
   updateAutomotiveServiceLogoApi, updateAutomotiveServicePhoneApi, updateAutomotiveServiceHoursApi, resolveMediaUrl,
 } from '../services/api';
-import WorkshopHoursSection from './ads/WorkshopHoursSection';
+import WorkshopHoursSection from './talleres/WorkshopHoursSection';
 import { EMPTY_WORKSHOP_HOURS, toWorkshopHoursPayload, workshopHoursMissing } from '../data/workshopHours';
 import { getAgendaConfigs } from '../services/agendaConfigsStorage';
 import { getAgendaSummaryText, PRINCIPAL_AGENDA_ID } from '../data/agendaConfig';
-import { uploadAdImages } from '../services/adsStorage';
+import { uploadTallerPhotos } from '../services/talleresStorage';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import { normalizarNombreGeografico } from '../services/geoLookup';
 import { formatRut, isValidRut } from '../services/adapters';
@@ -81,7 +81,7 @@ function LogoPicker({ value, onPick, busy, error, caption }) {
       </span>
       <div className="acc-logo-copy">
         <strong>Logo de tu empresa</strong>
-        <span>{caption || 'Se muestra en la tarjeta del Mural y en la ficha de tus anuncios. PNG o JPG, cuadrado se ve mejor.'}</span>
+        <span>{caption || 'Se muestra en tu tarjeta del buscador y en tu perfil. PNG o JPG, cuadrado se ve mejor.'}</span>
         <button
           type="button"
           className="btn-auth-secondary acc-logo-btn"
@@ -266,7 +266,7 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
     setLogoBusy(true);
     setLogoError('');
     try {
-      const [url] = await uploadAdImages([file]);
+      const [url] = await uploadTallerPhotos([file]);
       if (!url) throw new Error('No se pudo procesar la imagen.');
       setLogoUrl(url);
       if (!editable) {
@@ -396,10 +396,10 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
       {isApproved && (
         <>
           <p style={{ marginTop: '16px', fontSize: '13.5px', fontWeight: 700, color: '#166534' }}>
-            Tu servicio está aprobado: ya puedes comprar monedas y publicar múltiples anuncios.
+            Tu servicio está aprobado: completa tu perfil para aparecer en el buscador de talleres.
           </p>
           <div className="form-group" style={{ marginTop: '14px' }}>
-            <label>Teléfono publicado en tus anuncios</label>
+            <label>Teléfono publicado en tu perfil</label>
             {phoneEditing ? (
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <input
@@ -462,7 +462,7 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
             onPick={handleLogoPick}
             busy={logoBusy}
             error={logoError}
-            caption="Este logo aparece en tus anuncios del Mural. Puedes cambiarlo cuando quieras."
+            caption="Este logo aparece en tu perfil de taller. Puedes cambiarlo cuando quieras."
           />
         </>
       )}
@@ -502,7 +502,7 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
 
       {editable && (
         <form onSubmit={handleSubmit} style={{ marginTop: '18px' }}>
-          {/* El logo va al inicio: es lo primero que verá el cliente en el Mural. */}
+          {/* El logo va al inicio: es lo primero que verá el cliente en el buscador. */}
           <LogoPicker
             value={logoUrl}
             onPick={handleLogoPick}

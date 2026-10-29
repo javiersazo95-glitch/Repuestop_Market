@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Truck, ShieldCheck, Store, HelpCircle, Search, ShoppingCart, User,
   ChevronDown, ChevronRight, ArrowLeft, X, LogOut, LayoutDashboard, MessageSquare, Menu,
-  Package, Info, Megaphone, Wrench, Heart
+  Package, Info, Wrench, Heart
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
@@ -11,7 +11,7 @@ import { CATEGORY_VISUALS, HEADER_CATEGORIES } from '../data/categories';
 import RepuesTopLogo from './RepuesTopLogo';
 import { useAuth } from '../context/AuthContext';
 import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
-import HeaderWalletButton from './HeaderWalletButton';
+import HeaderWalletButton from './wallet/HeaderWalletButton';
 import WithdrawalFailureAlert from './WithdrawalFailureAlert';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
@@ -34,7 +34,7 @@ export default function Header({
   onOpenStores,
   onOpenCatalog,
   onOpenAbout,
-  onOpenAdsWall,
+  onOpenTalleres,
   onOpenHelp,
   searchQuery,
   setSearchQuery,
@@ -417,7 +417,7 @@ export default function Header({
                 </div>
                 <div className="user-dropdown-body">
                   <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.(); }}><LayoutDashboard size={15} /> Mi perfil</button>
-                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.('anuncios'); }}><Megaphone size={15} /> Gestión de anuncios</button>
+                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.('mi_taller'); }}><Wrench size={15} /> Mi taller</button>
                   {isSellerAccount && (
                     <button className="dropdown-item" onClick={openInventoryPanel}><Package size={15} /> Panel de inventario</button>
                   )}
@@ -670,7 +670,7 @@ export default function Header({
           <button type="button" className="nav-item-stores" aria-current={navCurrent(ROUTES.stores)} onClick={() => { setShowMobileNav(false); onOpenStores(); }}><Store size={16} /> <span>Casas de repuestos</span></button>
           <button type="button" className="nav-item-catalog" aria-current={navCurrent(ROUTES.catalog)} onClick={() => { setShowMobileNav(false); onOpenCatalog(); }}><Package size={16} /> <span>Catálogo de repuestos</span></button>
           <button type="button" className="nav-item-about" aria-current={navCurrent(ROUTES.about)} onClick={() => { setShowMobileNav(false); onOpenAbout(); }}><Info size={16} /> <span>Sobre RepuesTop</span></button>
-          <button type="button" className="nav-item-ads" aria-current={navCurrent(ROUTES.adsWall)} onClick={() => { setShowMobileNav(false); onOpenAdsWall(); }}><Megaphone size={16} /> <span>Mural de anuncios</span></button>
+          <button type="button" className="nav-item-ads" aria-current={navCurrent(ROUTES.talleres)} onClick={() => { setShowMobileNav(false); onOpenTalleres(); }}><Wrench size={16} /> <span>Talleres y servicios</span></button>
           <p className="mobile-drawer-section-title is-more mobile-only-nav-item">RepuesTop</p>
           <button type="button" className="nav-item-help" aria-current={navCurrent(ROUTES.support)} onClick={() => { setShowMobileNav(false); onOpenHelp(); }}><HelpCircle size={16} /> <span className="nav-label-desktop">Ayuda</span><span className="nav-label-mobile">Centro de ayuda</span></button>
           {/* Solo movil: en escritorio este acceso vive en la barra superior, que en el celular

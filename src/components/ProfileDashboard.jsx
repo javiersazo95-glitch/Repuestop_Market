@@ -7,7 +7,7 @@ import {
   Clock, ShieldCheck, PackageCheck, Loader2, Inbox, Search,
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
-  Megaphone, CheckCircle2, ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle
+  Wrench, CheckCircle2, ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle
 } from 'lucide-react';
 import VideoTutorialModal from './VideoTutorialModal';
 import { useAuth } from '../context/AuthContext';
@@ -47,11 +47,11 @@ import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
 import SellerChatsView from './SellerChatsView';
 import ProfileNotificationsBell from './ProfileNotificationsBell';
 import ProfileAppointmentsButton from './ProfileAppointmentsButton';
-import HeaderWalletButton from './HeaderWalletButton';
+import HeaderWalletButton from './wallet/HeaderWalletButton';
 import NewCatalogProductModal from './NewCatalogProductModal';
 import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
 import SellerWithdrawalsPanel, { isCompleteBankAccount } from './SellerWithdrawalsPanel';
-import AdsManagementSection from './ads/AdsManagementSection';
+import MiTallerSection from './talleres/MiTallerSection';
 import ProfileFavoritesPanel from './ProfileFavoritesPanel';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -143,7 +143,7 @@ const SELLER_SIDEBAR_GROUPS = [
     items: [
       { id: 'tienda_datos', label: 'Mi tienda y datos', icon: Store },
       { id: 'retiros', label: 'Retirar dinero', icon: Wallet },
-      { id: 'anuncios', label: 'Gestión de anuncios', icon: Megaphone }
+      { id: 'mi_taller', label: 'Mi taller', icon: Wrench }
     ]
   },
   {
@@ -167,7 +167,7 @@ const SELLER_BLOCKED_HIDDEN_TABS = [
   'cotizaciones',
   'preguntas_productos',
   'tienda_datos',
-  'anuncios',
+  'mi_taller',
   // Una cuenta suspendida no deja feedback (pruebas en dev, 2026-10-09).
   'feedback',
 ];
@@ -179,7 +179,7 @@ const BUYER_BLOCKED_HIDDEN_TABS = [
   'mis_preguntas',
   'favoritos',
   'datos',
-  'anuncios',
+  'mi_taller',
   'consultas',
   'feedback',
 ];
@@ -205,7 +205,7 @@ const BUYER_SIDEBAR_GROUPS = [
     title: 'MI CUENTA',
     items: [
       { id: 'datos', label: 'Mis datos y perfil', icon: UserCog },
-      { id: 'anuncios', label: 'Gestión de anuncios', icon: Megaphone }
+      { id: 'mi_taller', label: 'Mi taller', icon: Wrench }
     ]
   },
   {
@@ -756,8 +756,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   }, [paymentStatus, paymentOrderId, effectiveUserId, queryClient]);
 
   const favorites = favoritesQuery.data || [];
-  const { savedAds: savedFavoriteAds, savedStores: savedFavoriteStores } = useSavedMarketplaceItems(effectiveUserId);
-  const favoritesTotal = favorites.length + savedFavoriteAds.length + savedFavoriteStores.length;
+  const { savedTalleres: savedFavoriteTalleres, savedStores: savedFavoriteStores } = useSavedMarketplaceItems(effectiveUserId);
+  const favoritesTotal = favorites.length + savedFavoriteTalleres.length + savedFavoriteStores.length;
   const conversations = conversationsQuery.data || [];
   // Cotizaciones donde el usuario es el COMPRADOR. Para el vendedor salen del query aparte;
   // para el comprador son las mismas de arriba. `quotesAsBuyer` decide con que set y en que
@@ -1227,7 +1227,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Responder cotizaciones', description: 'Atiende solicitudes directas de clientes.', onClick: () => openFilteredTab('cotizaciones', 'pending') },
         { id: 'tienda', tone: 'sky', icon: Store, title: 'Mi tienda y datos', description: 'Edita la información comercial de tu tienda.', onClick: () => setActiveTab('tienda_datos') },
         { id: 'retiros', tone: 'emerald', icon: Wallet, title: 'Retirar dinero', description: 'Solicita el depósito bancario de tus ventas.', onClick: () => setActiveTab('retiros') },
-        { id: 'anuncios', tone: 'amber', icon: Megaphone, title: 'Gestión de anuncios', description: 'Publica y destaca en el Mural de Anuncios.', onClick: () => setActiveTab('anuncios') },
+        { id: 'mi_taller', tone: 'amber', icon: Wrench, title: 'Mi taller', description: 'Muestra tus servicios y recibe reservas de hora.', onClick: () => setActiveTab('mi_taller') },
         { id: 'video_tutorial', tone: 'blue', icon: PlayCircle, title: 'Aprende a usar RepuesTop', description: 'Mira el video tutorial para tiendas.', onClick: () => setVideoTutorialOpen(true) },
       ];
     }
@@ -1236,7 +1236,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Mis cotizaciones', description: 'Revisa las respuestas de las tiendas y compara precios.', onClick: () => setActiveTab('cotizaciones') },
       { id: 'favoritos', tone: 'amber', icon: Heart, title: 'Repuestos favoritos', description: 'Accede a los repuestos que guardaste.', onClick: () => setActiveTab('favoritos') },
       { id: 'datos', tone: 'sky', icon: UserCog, title: 'Mis datos y perfil', description: 'Actualiza tu información y direcciones de envío.', onClick: () => setActiveTab('datos') },
-      { id: 'anuncios', tone: 'emerald', icon: Megaphone, title: 'Gestión de anuncios', description: 'Publica tu búsqueda en el Mural de Anuncios.', onClick: () => setActiveTab('anuncios') },
+      { id: 'mi_taller', tone: 'emerald', icon: Wrench, title: 'Mi taller', description: 'Registra tu taller y recibe clientes.', onClick: () => setActiveTab('mi_taller') },
       { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte de compra.', onClick: () => navigate(ROUTES.support) },
     ];
   }, [isSeller, setActiveTab, openFilteredTab, navigate]);
@@ -1777,11 +1777,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 />
               )}
 
-              {activeTab === 'anuncios' && (
-                <AdsManagementSection
-                  onNavigateToMural={() => window.location.assign('/mural-anuncios')}
-                />
-              )}
+              {activeTab === 'mi_taller' && <MiTallerSection />}
 
               {activeTab === 'retiros' && isSeller && (
                 <SellerWithdrawalsPanel sellerId={user?.sellerId} sellerEmail={user?.email} />

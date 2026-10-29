@@ -29,8 +29,11 @@ export const ROUTES = {
   terms: '/terminos',
   privacy: '/privacidad',
   about: '/nosotros',
-  adsWall: '/mural-anuncios',
-  adDetail: '/mural-anuncios/:adId',
+  talleres: '/talleres',
+  taller: '/talleres/:tallerId',
+  // Enlaces viejos del Mural de Anuncios: caen en el buscador de talleres.
+  legacyAdsWall: '/mural-anuncios',
+  legacyAdDetail: '/mural-anuncios/:adId',
   sellerRegister: '/vender',
   purchaseSuccess: '/compra-exitosa',
   notFound: '/404',
@@ -81,7 +84,7 @@ export function sellerCaseChatPath(orderId, proveedorId, tab) {
 export const PROFILE_TABS = [
   'resumen', 'pedidos', 'compras', 'favoritos', 'datos', 'consultas',
   'cotizaciones', 'mis_cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'tienda', 'tienda_datos',
-  'anuncios', 'feedback',
+  'mi_taller', 'feedback',
   // "Chats con vendedor" (sección Mis compras) y "Chats con compradores" (sección Ventas):
   // cada uno su vista propia (SellerChatsView), antes eran una pestaña dentro de consultas.
   'chats_vendedor', 'chats_compradores',
@@ -125,11 +128,11 @@ export function productPath(product) {
   return `${ROUTES.catalog}/${toIdSlug(id, product.titulo || product.nombre)}`;
 }
 
-/** `/mural-anuncios/45-alineacion-y-balanceo-3d` -> id 45. */
-export function adDetailPath(ad) {
-  if (!ad) return ROUTES.adsWall;
-  const id = ad.id ?? ad;
-  return `${ROUTES.adsWall}/${toIdSlug(id, ad.title)}`;
+/** `/talleres/45-frenos-del-sur` -> id 45. */
+export function tallerPath(taller) {
+  if (!taller) return ROUTES.talleres;
+  const id = taller.id ?? taller;
+  return `${ROUTES.talleres}/${toIdSlug(id, taller.name)}`;
 }
 
 export function storePath(store) {

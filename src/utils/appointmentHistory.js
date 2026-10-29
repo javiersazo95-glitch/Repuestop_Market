@@ -1,11 +1,11 @@
-import { isClosedAppointment } from '../data/automotiveAdsData';
+import { isClosedAppointment } from '../data/talleresData';
 import { getAppointmentStartDate, toIsoDate } from '../data/agendaConfig';
 
 /**
  * Utilidades para separar y contar los agendamientos de la sesión según el rol.
- * Port de `mobile/utils/appointment-history.ts`. `GET /anuncios/agendamientos/mias`
+ * Port de `mobile/utils/appointment-history.ts`. `GET /agendamientos/mias`
  * devuelve en UNA lista las citas de los dos roles (las que pedí como cliente y
- * las que me reservaron en mis anuncios); estas funciones las clasifican.
+ * las que me reservaron en mi taller); estas funciones las clasifican.
  */
 
 function sameEmail(a, b) {
@@ -15,15 +15,15 @@ function sameEmail(a, b) {
 
 /**
  * Citas que le corresponden a quien mira:
- * - `mode: 'provider'` → las recibidas en sus anuncios (`ownedAdIds`).
+ * - `mode: 'provider'` → las recibidas en su taller (`ownedTallerIds`).
  * - `mode: 'customer'` → las que reservó él mismo (`identity`).
  */
 export function filterAppointmentsFor(appointments, mode, context = {}) {
   if (mode === 'provider') {
-    const owned = new Set((context.ownedAdIds || []).map(String));
+    const owned = new Set((context.ownedTallerIds || []).map(String));
     const me = context.identity?.userId ? String(context.identity.userId) : '';
     return appointments.filter(
-      (appointment) => owned.has(String(appointment.adId)) || (Boolean(me) && String(appointment.ownerUserId ?? '') === me)
+      (appointment) => owned.has(String(appointment.tallerId)) || (Boolean(me) && String(appointment.ownerUserId ?? '') === me)
     );
   }
 
@@ -50,7 +50,7 @@ export function getAppointmentEndDate(appointment) {
  * Una solicitud pendiente vale hasta su hora de inicio (después ya no se puede responder) y
  * una aceptada hasta que termina su bloque. Canceladas, rechazadas y pasadas no son vigentes.
  * Mismo criterio que la app (`mobile/utils/appointment-history.ts`) y que
- * `AnuncioAgendamientoService.vigente` del backend.
+ * `AgendamientoService.vigente` del backend.
  */
 export function isAppointmentCurrent(appointment, now = new Date()) {
   if (isClosedAppointment(appointment.status)) return false;
@@ -63,7 +63,7 @@ export function isAppointmentCurrent(appointment, now = new Date()) {
 /**
  * Horas antes de una cita en que nadie (ni el cliente ni el taller) puede cancelarla
  * ni reagendarla (regla del 13-oct). Mismo plazo que la app y que
- * `AnuncioAgendamientoService.PLAZO_CAMBIOS` del backend.
+ * `AgendamientoService.PLAZO_CAMBIOS` del backend.
  */
 export const APPOINTMENT_CHANGE_LOCK_HOURS = 24;
 
@@ -108,9 +108,9 @@ export function summarizeAppointments(appointments, now = new Date()) {
 }
 
 /**
- * Separa las citas de la cuenta por rol. Recibidas = el anuncio es mío (`ownerUserId`, que
+ * Separa las citas de la cuenta por rol. Recibidas = el taller es mío (`ownerUserId`, que
  * manda el backend); reservadas = las pedí yo. Un solo criterio para todo el panel: antes el
- * badge usaba `customerUserId` y el historial `ownedAdIds`, y los números no cuadraban.
+ * badge usaba `customerUserId` y el historial `ownedTallerIds`, y los números no cuadraban.
  */
 export function splitAppointmentsByRole(appointments, userId) {
   const me = userId ? String(userId) : '';
@@ -142,7 +142,7 @@ export function groupAppointmentsByTime(appointments, now = new Date()) {
 
 /**
  * Une listas de citas sin repetir. Una misma cita puede caer a la vez en "las que
- * reservé" y en "las que me reservaron" cuando el dueño del anuncio y quien
+ * reservé" y en "las que me reservaron" cuando el dueño del taller y quien
  * reservó son la misma cuenta; sin esto aparecería duplicada.
  */
 export function mergeAppointmentsById(...lists) {
@@ -212,15 +212,9 @@ export function describeAppointment(appointment, viewer, now = new Date()) {
 }
 
 /**
- * Bandeja con la que abre Gestión de citas (regla del 4-oct, igual en la app): quien tiene un
- * anuncio de servicio automotriz PUBLICADO (aprobado y activo) es taller y ve primero las citas
- * recibidas; cualquier otra cuenta ve primero sus reservas. Un anuncio en revisión, rechazado o
- * pausado no cuenta: todavía no recibe reservas.
+ * Bandeja con la que abre Gestión de citas (igual en la app): quien tiene un taller acreditado
+ * es taller y ve primero las citas recibidas; cualquier otra cuenta ve primero sus reservas.
  */
-export function hasPublishedServiceAd(ads = []) {
-  return ads.some((ad) => ad?.moderationStatus === 'APROBADO' && ad?.activo !== false);
-}
-
-export function defaultAppointmentsSegment(ads = []) {
-  return hasPublishedServiceAd(ads) ? 'recibidas' : 'pedidas';
+export function defaultAppointmentsSegment(myTaller = null) {
+  return myTaller ? 'recibidas' : 'pedidas';
 }

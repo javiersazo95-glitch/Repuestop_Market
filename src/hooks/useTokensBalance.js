@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   getCachedTokensBalance, fetchTokensBalance, TOKENS_UPDATED_EVENT
-} from '../services/adsStorage';
+} from '../services/walletStorage';
 
 /**
  * Saldo del Monedero de Monedas RepuesTop, compartido entre el indicador global
@@ -9,8 +9,8 @@ import {
  *
  * Arranca con la última copia local (`getCachedTokensBalance`) para no parpadear,
  * pide el saldo real al montar y se mantiene al día escuchando
- * `TOKENS_UPDATED_EVENT`, que `adsStorage` emite cada vez que el backend confirma
- * un saldo nuevo (recarga, cobro de publicación o de mejora de plan).
+ * `TOKENS_UPDATED_EVENT`, que `walletStorage` emite cada vez que el backend confirma
+ * un saldo nuevo (recarga o cobro).
  *
  * Solo se consulta con sesión iniciada para no pedir el monedero de un visitante.
  */

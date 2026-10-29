@@ -20,7 +20,7 @@ const SUBJECTS = {
   general: ['Problemas para iniciar sesión', 'Modificar datos de mi cuenta', 'Error al subir foto de perfil', 'Cambiar mi dirección de despacho', 'Eliminar mi cuenta', 'Otro'],
   'buyer-report': ['Publicación engañosa o con fotos que no corresponden', 'Sospecha de producto falsificado o sin procedencia', 'Producto prohibido o peligroso', 'La tienda insiste en vender fuera de RepuesTop', 'Trato irrespetuoso o acoso', 'Precio o stock que no se respeta', 'Otro'],
   'account-security': ['Creo que accedieron a mi cuenta', 'Recibí un correo o mensaje sospechoso a nombre de RepuesTop', 'Me pidieron mi clave o datos de tarjeta', 'No puedo recuperar el acceso a mi cuenta', 'Otro'],
-  ads: ['Error al crear o publicar un anuncio', 'Pagué un anuncio y no se publicó', 'Quiero editar o dar de baja un anuncio', 'Dudas sobre los planes de difusión', 'Otro'],
+  workshop: ['Mi taller no aparece en el buscador', 'Error al guardar el perfil de mi taller', 'Problemas con mi agenda o las reservas de hora', 'Una cita que reservé o recibí', 'Otro'],
   info: ['Cómo funciona la compra en RepuesTop', 'Cómo funcionan las cotizaciones', 'Cómo funciona la mediación', 'Quiero vender en RepuesTop', 'Otro'],
   'seller-orders': [],
   'seller-products': ['Error al crear o publicar producto', 'Problemas con las fotos del producto', 'Error al actualizar stock/inventario', 'Problemas con la carga masiva', 'Otro'],
