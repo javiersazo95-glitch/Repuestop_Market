@@ -23,7 +23,13 @@ const TermsPage = lazy(() => import('../pages/TermsPage'));
 const PrivacyPage = lazy(() => import('../pages/PrivacyPage'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
 const TalleresPage = lazy(() => import('../pages/TalleresPage'));
+const AuctionsPage = lazy(() => import('../pages/AuctionsPage'));
+const AuctionDetailPage = lazy(() => import('../pages/AuctionDetailPage'));
+const AuctionCheckoutPage = lazy(() => import('../pages/AuctionCheckoutPage'));
+const FaultsPage = lazy(() => import('../pages/FaultsPage'));
+const FaultDetailPage = lazy(() => import('../pages/FaultDetailPage'));
 const TallerPage = lazy(() => import('../pages/TallerPage'));
+const WorkshopRegisterPage = lazy(() => import('../pages/WorkshopRegisterPage'));
 const CartPage = lazy(() => import('../pages/CartPage'));
 const CheckoutPage = lazy(() => import('../pages/CheckoutPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
@@ -48,11 +54,19 @@ export default function AppRoutes() {
               {/* Publica: el enlace de "Compartir cotizacion" se abre sin sesion. */}
               <Route path={ROUTES.sharedQuote} element={<SharedQuotePage />} />
               <Route path={ROUTES.talleres} element={<TalleresPage />} />
-              <Route path={ROUTES.taller} element={<TallerPage />} />
               {/* Enlaces viejos del Mural de Anuncios: el anuncio ya no existe, el buscador de
                   talleres es su reemplazo. */}
               <Route path={ROUTES.legacyAdsWall} element={<Navigate to={ROUTES.talleres} replace />} />
               <Route path={ROUTES.legacyAdDetail} element={<Navigate to={ROUTES.talleres} replace />} />
+              <Route path={ROUTES.auctions} element={<AuctionsPage />} />
+              <Route path={ROUTES.auctionDetail} element={<AuctionDetailPage />} />
+              <Route path={ROUTES.auctionCheckout} element={<RequireAuth><AuctionCheckoutPage /></RequireAuth>} />
+              {/* El mural y el detalle de una falla son públicos; publicar y participar exige sesión. */}
+              <Route path={ROUTES.faults} element={<FaultsPage />} />
+              <Route path={ROUTES.faultDetail} element={<FaultDetailPage />} />
+              {/* Perfil publico del taller y su registro como cuenta propia. */}
+              <Route path={ROUTES.workshop} element={<TallerPage />} />
+              <Route path={ROUTES.workshopRegister} element={<WorkshopRegisterPage />} />
               <Route path={ROUTES.about} element={<AboutPage />} />
               {/* El carrito es público: un invitado tiene que poder revisarlo antes de
                   iniciar sesión. El checkout sí exige sesión. */}

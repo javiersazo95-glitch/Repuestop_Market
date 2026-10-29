@@ -24,7 +24,7 @@ async function fetchTallerById(tallerId, signal) {
 }
 
 export default function TallerPage() {
-  const { tallerId: tallerParam } = useParams();
+  const { workshopId: tallerParam } = useParams();
   const location = useLocation();
   const nav = useAppNavigation();
 

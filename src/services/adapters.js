@@ -8,7 +8,7 @@
  * solo lugar para que los componentes no tengan que conocer la forma del backend.
  */
 
-import { HEADER_CATEGORIES, SIDEBAR_CATEGORIES } from '../data/categories';
+import { findCategoryBySlugOrName, getCategories } from '../data/categories';
 import { isNoReturnCategory } from '../utils/noReturnProducts';
 import { APPOINTMENT_STATUSES } from '../data/talleresData';
 import { resolveMediaUrl, toMediaPath } from './api';
@@ -38,8 +38,6 @@ function realProductImages(urls) {
 
 const normalizeNameKey = (value) => String(value || '').normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-const CATEGORY_IDS = SIDEBAR_CATEGORIES.map((c) => c.id);
 
 /**
  * Deja solo dígitos + dígito verificador (k/K) y aplica puntos de miles + guion.
@@ -80,8 +78,13 @@ export function isValidClPhone(value) {
 }
 
 /**
- * El backend devuelve el nombre de la categoría ("Accesorios", "Carrocería", "Sistema de Frenos", etc.).
- * Se resuelve primero por coincidencia exacta/slug con HEADER_CATEGORIES y luego por palabras clave.
+ * El backend devuelve el nombre de la categoría ("Accesorios", "Carrocería", "Sistema de Frenos", etc.)
+ * y, desde el Mantenedor comun, tambien su `slug`. Se resuelve primero por slug, despues por
+ * coincidencia exacta con las categorias vigentes (bootstrap o respaldo local) y recien al final
+ * por palabras clave.
+ *
+ * `CATEGORY_KEYWORDS` es solo el ultimo respaldo: sirve para nombres viejos o libres que no calzan
+ * con ninguna categoria ("Sistema de Frenos"). Con el slug del mantenedor no hace falta adivinar.
  */
 const CATEGORY_KEYWORDS = {
   frenos: ['freno', 'brake', 'pastilla', 'disco'],
@@ -94,22 +97,30 @@ const CATEGORY_KEYWORDS = {
   neumaticos: ['neumat', 'neumát', 'llanta', 'rueda', 'tire'],
 };
 
-export function normalizeCategoryId(rawCategoria) {
+export function normalizeCategoryId(rawCategoria, categoriaSlug = null) {
+  const categories = getCategories();
+
+  // 0. Slug del mantenedor (inmutable): no depende de como se escriba el nombre.
+  if (categoriaSlug) {
+    const bySlug = findCategoryBySlugOrName(categories, { slug: categoriaSlug });
+    if (bySlug) return bySlug.id;
+  }
+
   if (!rawCategoria) return 'motor';
 
   const texto = String(rawCategoria).trim();
   const norm = normalizeNameKey(texto);
 
-  // 1. Coincidencia directa con alguna de las 24 categorías canónicas
-  const matchedCanonical = HEADER_CATEGORIES.find((c) =>
+  // 1. Coincidencia directa con alguna de las categorías técnicas vigentes
+  const matchedCanonical = categories.HEADER_CATEGORIES.find((c) =>
     c.id === texto.toLowerCase() ||
     normalizeNameKey(c.nombre) === norm ||
     normalizeNameKey(c.id) === norm
-  );
+  ) || findCategoryBySlugOrName(categories, { nombre: texto });
   if (matchedCanonical) return matchedCanonical.id;
 
-  // 2. Coincidencia por id corto de SIDEBAR_CATEGORIES
-  if (CATEGORY_IDS.includes(texto.toLowerCase())) return texto.toLowerCase();
+  // 2. Coincidencia por id corto de las familias (SIDEBAR_CATEGORIES)
+  if (categories.SIDEBAR_CATEGORIES.some((c) => c.id === texto.toLowerCase())) return texto.toLowerCase();
 
   // 3. Fallback por palabras clave
   for (const [id, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
@@ -164,7 +175,7 @@ export function formatRelativeTime(isoDate) {
  * Arma la lista de compatibilidad. El backend entrega o bien un JSON de grupos
  * (compatibilityGroupsJson) o los campos sueltos marca/modelo/años/motor.
  */
-function mapCompatibilidad(dto) {
+export function mapCompatibilidad(dto) {
   if (dto.compatibilityGroupsJson) {
     try {
       const grupos = typeof dto.compatibilityGroupsJson === 'string'
@@ -270,7 +281,7 @@ export function adaptProduct(dto) {
     // `categoria` es el identificador normalizado que usa la UI para color e
     // icono. Conservamos además el nombre literal del backend para no cambiar
     // etiquetas válidas como "Aceite" por una categoría visual genérica.
-    categoria: normalizeCategoryId(dto.categoria),
+    categoria: normalizeCategoryId(dto.categoria, dto.categoriaSlug),
     categoriaNombre: dto.categoria || '',
     subcategoria: dto.subcategoria || '',
     // Electricos: sin derecho a devolucion (lo marca el backend; respaldo por nombre).
@@ -544,7 +555,7 @@ export function adaptCompatibleOffer(spare, offer) {
     id: offer.proveedorProductoId || offer.id,
     repuestoId: spare?.repuestoId,
     titulo: offer.nombrePublicado || spare?.nombre || 'Repuesto compatible',
-    categoria: normalizeCategoryId(spare?.categoria),
+    categoria: normalizeCategoryId(spare?.categoria, spare?.categoriaSlug),
     categoriaNombre: spare?.categoria || '',
     // Viene de `RepuestoOfertaDTO.subcategoria`. Antes quedaba vacia y el filtro de
     // subcategoria de la ficha de tienda dejaba la vitrina en cero apenas habia una
@@ -636,27 +647,44 @@ export function adaptCompatibleOffersPage(response) {
  * - `servicios` trae el catalogo con precio "desde"; un servicio sin monto es "A cotizar".
  * - `agenda` solo viene si el taller recibe citas en linea: es el horario con el que se
  *   calculan los bloques disponibles.
- * - los talleres aun no tienen resenas: no se inventa una nota.
+ * - `calificacion` y `opiniones` son el promedio y la cantidad de opiniones de clientes (0 sin opiniones).
  */
 export function adaptTaller(dto) {
   if (!dto) return null;
   const services = (Array.isArray(dto.servicios) ? dto.servicios : [])
-    .map((item) => ({
-      name: String(item?.nombre || '').trim(),
-      category: item?.categoria || '',
-      priceFrom: toNumber(item?.precioDesde) ?? null,
-      priceText: item?.precioTexto || '',
-      priceType: item?.tipoPrecio === 'fixed' ? 'fixed' : 'quote',
-    }))
+    .map((item) => {
+      const price = toNumber(item?.precio);
+      return {
+        id: item?.id != null ? String(item.id) : null,
+        name: String(item?.nombre || '').trim(),
+        category: item?.categoria || '',
+        description: item?.descripcion || '',
+        priceFrom: price ?? null,
+        priceText: item?.precioTexto || (price == null ? 'A cotizar' : ''),
+        priceType: price == null ? 'quote' : 'fixed',
+        durationMinutes: toNumber(item?.duracionMinutos) ?? null,
+        brands: Array.isArray(item?.marcasEspecialistas) ? item.marcasEspecialistas.filter(Boolean) : [],
+        includes: Array.isArray(item?.incluye) ? item.incluye.filter(Boolean) : [],
+      };
+    })
     .filter((item) => item.name);
   const agendaConfig = dto.agenda && Object.keys(dto.agenda).length > 0 ? dto.agenda : null;
+  const info = dto.info
+    ? {
+      description: dto.info.descripcion || '',
+      yearsExperience: toNumber(dto.info.aniosExperiencia) ?? null,
+      equipment: Array.isArray(dto.info.equipamiento) ? dto.info.equipamiento.filter(Boolean) : [],
+      warranty: dto.info.garantia || '',
+    }
+    : null;
 
   return {
     id: String(dto.id),
     ownerUserId: dto.usuarioId ? String(dto.usuarioId) : null,
     name: dto.nombre || '',
     logo: resolveMediaUrl(dto.logoUrl) || null,
-    description: dto.descripcion || '',
+    description: info?.description || '',
+    info,
     photos: (Array.isArray(dto.fotos) ? dto.fotos : []).map(resolveMediaUrl).filter(Boolean),
     region: dto.region || '',
     commune: dto.comuna || '',
@@ -669,13 +697,23 @@ export function adaptTaller(dto) {
     hours: dto.horario || '',
     is24Hours: dto.atiende24Horas === true,
     only24Hours: dto.solo24Horas === true,
-    homeService: dto.servicioDomicilio === true,
-    hasOnlineBooking: dto.permiteReservas === true && Boolean(agendaConfig),
+    homeService: dto.servicioADomicilio === true,
+    hasOnlineBooking: dto.puedeAgendar === true && Boolean(agendaConfig),
     categories: Array.isArray(dto.categorias) ? dto.categorias.filter(Boolean) : [],
     services,
     specialistBrands: Array.isArray(dto.marcasEspecialistas) ? dto.marcasEspecialistas.filter(Boolean) : [],
-    features: Array.isArray(dto.caracteristicas) ? dto.caracteristicas.filter(Boolean) : [],
+    features: [],
     priceFrom: toNumber(dto.precioDesde) ?? null,
+    rating: toNumber(dto.calificacion) ?? 0,
+    reviewsCount: toNumber(dto.opiniones) ?? 0,
+    metrics: dto.metricas
+      ? {
+        services: toNumber(dto.metricas.serviciosRegistrados) ?? 0,
+        diagnostics: toNumber(dto.metricas.diagnosticosDados) ?? 0,
+        appointments: toNumber(dto.metricas.citasConfirmadas) ?? 0,
+        months: toNumber(dto.metricas.antiguedadMeses) ?? 0,
+      }
+      : null,
     memberSince: dto.miembroDesde || null,
     agendaConfig,
   };
@@ -691,29 +729,12 @@ export function adaptTalleres(list) {
  */
 export function toTallerProfilePayload(profile) {
   const text = (value) => String(value ?? '').trim();
-  const list = (value, max) => (Array.isArray(value) ? value : []).map(text).filter(Boolean).slice(0, max);
   const payload = {};
-  if ('description' in profile) payload.descripcion = text(profile.description);
   if ('photos' in profile) payload.fotos = (Array.isArray(profile.photos) ? profile.photos : []).map(toMediaPath).filter(Boolean).slice(0, 6);
-  if ('categories' in profile) payload.categorias = list(profile.categories, 10);
-  if ('specialistBrands' in profile) payload.marcasEspecialistas = list(profile.specialistBrands, 20);
-  if ('features' in profile) payload.caracteristicas = list(profile.features, 12);
   if ('whatsapp' in profile) payload.whatsapp = text(profile.whatsapp).replace(/\D/g, '');
   if ('hours' in profile) payload.horarioTexto = text(profile.hours);
   if ('homeService' in profile) payload.servicioDomicilio = profile.homeService === true;
   if ('hasOnlineBooking' in profile) payload.permiteReservas = profile.hasOnlineBooking === true;
-  if ('services' in profile) {
-    payload.servicios = (Array.isArray(profile.services) ? profile.services : []).slice(0, 30).map((item) => {
-      const price = Number(item?.priceFrom);
-      const fixed = item?.priceType === 'fixed' && Number.isFinite(price) && price >= 0;
-      return {
-        nombre: text(item?.name),
-        categoria: text(item?.category) || null,
-        precioDesde: fixed ? Math.round(price) : null,
-        tipoPrecio: fixed ? 'fixed' : 'quote',
-      };
-    });
-  }
   return payload;
 }
 
@@ -759,6 +780,10 @@ export function adaptAppointment(dto) {
     notes: dto.notes || '',
     homeService: dto.homeService === true,
     homeAddress: dto.homeAddress || '',
+    // Falla automotriz de la que nace la cita (se agendo desde el diagnostico de un taller).
+    fallaId: dto.fallaId ? String(dto.fallaId) : null,
+    fallaTitle: dto.fallaTitle || '',
+    fallaDescription: dto.fallaDescription || '',
     status: APPOINTMENT_STATUSES.includes(dto.status) ? dto.status : 'pending',
     createdAt: dto.createdAt || null,
     isRedacted: !dto.customerName && !dto.customerUserId
@@ -801,6 +826,8 @@ export function toAppointmentRequestPayload(form) {
     notes: text(form?.notes) || null,
     // Servicio a domicilio: el backend exige que el taller lo ofrezca y que venga la dirección.
     homeService: form?.homeService === true,
-    homeAddress: form?.homeService === true ? (text(form?.homeAddress) || null) : null
+    homeAddress: form?.homeService === true ? (text(form?.homeAddress) || null) : null,
+    // Cita agendada desde el diagnostico de un taller: queda ligada a la falla.
+    fallaId: form?.fallaId ? Number(form.fallaId) : null
   };
 }

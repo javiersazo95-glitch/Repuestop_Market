@@ -135,7 +135,11 @@
   .ads-mobile-search .ads-plate-result { font-size: 12.5px; color: var(--ads-muted); }
   .ads-mobile-search .ads-plate-result.is-error { color: #b91c1c; }
   .ads-wall-page .ads-location-notice { margin-top: 8px; }
-  .ads-wall-page .container { padding-left: 12px; padding-right: 12px; }
+  .ads-wall-page .ads-wall-shell.container {
+    max-width: none;
+    padding-left: clamp(16px, 3.2vw, 60px);
+    padding-right: clamp(16px, 3.2vw, 60px);
+  }
   .ads-wall-page .ads-wall-shell { padding-top: 12px; }
 
   /* Sin zoom automatico de iOS al enfocar campos. */

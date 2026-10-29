@@ -7,6 +7,7 @@ import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 import { useScrollMemory } from '../routes/useScrollMemory';
+import Feature from '../remoteConfig/Feature';
 
 export default function HomePage() {
   useDocumentTitle(null);
@@ -18,33 +19,43 @@ export default function HomePage() {
 
   return (
     <>
+      {/* Cada seccion se puede apagar desde el Mantenedor comun (`market.home.*`). Sin bootstrap
+          el flag vale `true` y el inicio se ve como siempre. */}
       {/* 1. Official Patent Hero Console */}
-      <OfficialPatentHero
-        activeVehicle={activeVehicle}
-        onSelectVehicle={setActiveVehicle}
-        onOpenSellerModal={nav.goSellerRegister}
-        onOpenCatalog={(filter, extra) => nav.goCatalog(filter, extra)}
-        onOpenHelp={nav.goHelp}
-        selectedCategory={null}
-        onSelectCategory={(filter) => nav.goCatalog(filter)}
-      />
+      <Feature flag="market.home.hero-patente">
+        <OfficialPatentHero
+          activeVehicle={activeVehicle}
+          onSelectVehicle={setActiveVehicle}
+          onOpenSellerModal={nav.goSellerRegister}
+          onOpenCatalog={(filter, extra) => nav.goCatalog(filter, extra)}
+          onOpenHelp={nav.goHelp}
+          selectedCategory={null}
+          onSelectCategory={(filter) => nav.goCatalog(filter)}
+        />
+      </Feature>
 
       {/* 2. LATEST ADDED SPARE PARTS IN REAL-TIME */}
-      <LatestAddedPartsSection
-        onQuickView={nav.goProduct}
-        onOpenQuote={openQuote}
-        onOpenCatalog={() => nav.goCatalog(null, { todos: true })}
-      />
+      <Feature flag="market.home.ultimos-agregados">
+        <LatestAddedPartsSection
+          onQuickView={nav.goProduct}
+          onOpenQuote={openQuote}
+          onOpenCatalog={() => nav.goCatalog(null, { todos: true })}
+        />
+      </Feature>
 
       {/* 3. NEW ONBOARDED AUTO PARTS STORES & WRECKING YARDS */}
-      <NewOnboardedStoresSection
-        onOpenSellerModal={nav.goSellerRegister}
-        onOpenStores={nav.goStores}
-        onSelectStore={nav.goStore}
-      />
+      <Feature flag="market.home.tiendas-nuevas">
+        <NewOnboardedStoresSection
+          onOpenSellerModal={nav.goSellerRegister}
+          onOpenStores={nav.goStores}
+          onSelectStore={nav.goStore}
+        />
+      </Feature>
 
       {/* 4. Social Proof Testimonials Section */}
-      <SocialProofTestimonials />
+      <Feature flag="market.home.testimonios">
+        <SocialProofTestimonials />
+      </Feature>
     </>
   );
 }

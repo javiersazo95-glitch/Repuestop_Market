@@ -1,0 +1,68 @@
+/* Pestaña "Subastas" del perfil (Mis compras). Reusa .seller-quotes-* de la pestaña de cotizaciones. */
+.pa-list { display: flex; flex-direction: column; gap: 12px; }
+.pa-card { background: #fff; border: 1px solid #dbe6f3; border-radius: 12px; box-shadow: 0 1px 2px rgba(15, 40, 90, 0.04); overflow: hidden; }
+.pa-card.is-quote, .pa-card.is-awarded { border-color: #fde3a7; }
+.pa-card.is-purchased { border-color: #bbf7d0; }
+.pa-card-top { display: grid; grid-template-columns: 84px minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 16px 18px; }
+.pa-thumb { display: flex; align-items: center; justify-content: center; width: 84px; height: 84px; border-radius: 10px; background: #f3f5f7; color: #8a97a5; overflow: hidden; }
+.pa-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pa-card-main { min-width: 0; }
+.pa-card-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+.pa-card-head h3 { margin: 0; font-size: 15.5px; font-weight: 800; color: #243442; overflow-wrap: anywhere; }
+.pa-card-id { display: block; margin-top: 2px; font-size: 12px; color: #8a97a5; }
+.pa-badge { padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #eaf2ff; color: #00459a; white-space: nowrap; }
+.pa-badge.is-ending, .pa-badge.is-awarded, .pa-badge.is-quote { background: #fff7e6; color: #9a5a00; }
+.pa-badge.is-purchased { background: #eafbf1; color: #0e7038; }
+.pa-badge.is-closed { background: #f3f5f7; color: #5a6b7a; }
+.pa-facts { display: flex; flex-wrap: wrap; gap: 8px 26px; margin: 10px 0 0; }
+.pa-facts > div { min-width: 0; }
+.pa-facts dt { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #8a97a5; }
+.pa-facts dd { margin: 2px 0 0; font-size: 12.5px; font-weight: 700; color: #243442; }
+.pa-card-side { display: flex; flex-direction: column; gap: 8px; padding-left: 16px; border-left: 1px solid #e6eaef; min-width: 150px; }
+.pa-stat { display: flex; flex-direction: column; }
+.pa-stat strong { display: inline-flex; align-items: center; gap: 5px; font-size: 15.5px; font-weight: 800; color: #0056bf; }
+.pa-stat small { font-size: 12px; color: #5a6b7a; }
+.pa-stat.is-urgent strong { color: #9a5a00; }
+.pa-card-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 12px 18px; border-top: 1px solid #e6eaef; background: #fbfcfe; }
+.pa-steps { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; padding: 0; list-style: none; }
+.pa-steps li { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #8a97a5; }
+.pa-steps li span { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #d9e0e7; font-size: 11px; font-weight: 800; background: #fff; }
+.pa-steps li.is-current { color: #0056bf; }
+.pa-steps li.is-current span { border-color: #0056bf; color: #0056bf; }
+.pa-steps li.is-done { color: #0e7038; }
+.pa-steps li.is-done span { border: none; background: transparent; color: #0e7038; width: auto; }
+.pa-card-actions { display: flex; align-items: center; gap: 12px; }
+.pa-btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 18px;
+  border: none; border-radius: 10px; background: #0056bf; color: #fff; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.pa-btn-primary:hover { background: #00459a; }
+.pa-btn-link { display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 4px; border: none; background: none; color: #0056bf; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.pa-btn-link:hover { text-decoration: underline; }
+.pa-error { display: flex; align-items: center; gap: 8px; padding: 14px; border-radius: 10px; background: #fff0f0; color: #b42318; font-size: 12.5px; }
+.pa-error button { margin-left: auto; border: none; background: none; color: #b42318; font-weight: 700; cursor: pointer; text-decoration: underline; }
+
+@media (max-width: 720px) {
+  .pa-card-top { grid-template-columns: 64px minmax(0, 1fr); }
+  .pa-thumb { width: 64px; height: 64px; }
+  .pa-card-side { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; gap: 8px 22px; padding: 10px 0 0; border-left: none; border-top: 1px solid #e6eaef; }
+  .pa-card-actions { width: 100%; justify-content: space-between; }
+}
+
+.pa-progress { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; max-width: 360px; }
+.pa-progress-track { height: 6px; border-radius: 999px; background: #e6eaef; overflow: hidden; }
+.pa-progress-track span { display: block; height: 100%; border-radius: 999px; background: #0056bf; }
+.pa-progress small { font-size: 12px; font-weight: 600; color: #5a6b7a; }
+.pa-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 16px; border: 1.5px solid #0056bf; border-radius: 10px; background: #fff; color: #0056bf; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.pa-btn-secondary:hover { background: #eaf2ff; }
+.pa-badge.is-quote { background: #fff7e6; color: #9a5a00; }
+
+.pa-btn-edit.is-locked { border-color: #cfd8e3; color: #8a97a5; background: #f3f5f7; cursor: not-allowed; }
+.pa-btn-edit.is-locked:hover { background: #f3f5f7; }
+.pa-edit-notice { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 18px; border-top: 1px solid #fde3a7; background: #fff7e6; color: #7a4a00; font-size: 12.5px; line-height: 1.45; }
+.pa-edit-notice svg { flex-shrink: 0; margin-top: 2px; }
+
+.pa-btn-icon { position: relative; padding: 0 12px; }
+.pa-q-badge { position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: #d92d20; color: #fff; font-size: 11px; font-weight: 800; line-height: 20px; text-align: center; box-shadow: 0 0 0 2px #fff; }
+.pa-q-banner { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; padding: 10px 14px; border: 1px solid #f5d38a; border-radius: 12px; background: #fff8e6; color: #7a4d00; font-size: 13px; }
+.pa-q-banner svg { flex: 0 0 auto; }

@@ -2,7 +2,7 @@ import React from 'react';
 import { Heart, MapPin, PackageCheck, ShieldCheck, ShoppingBag, Sparkles, Star, Store, Tag } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
 import ProductTopBadge from './ProductTopBadge';
-import { CATEGORY_COLOR_BY_ID, CATEGORY_ICON_BY_ID, CATEGORY_IMAGE_BY_ID, getPartImage } from '../data/categories';
+import { getPartImage, useCategories } from '../data/categories';
 import { isProductTopActive } from '../utils/productTop';
 import { compatibilidadLinea } from '../services/adapters';
 
@@ -41,6 +41,7 @@ function getPartType(product) {
 
 export default function MarketplaceProductCard({ product, onView, fallbackCity, isFavorite = false, onToggleFavorite }) {
   const category = product.categoria || 'motor';
+  const { CATEGORY_ICON_BY_ID, CATEGORY_ICON_URL_BY_ID, CATEGORY_COLOR_BY_ID, CATEGORY_IMAGE_BY_ID } = useCategories();
   const price = Number(product.precio || 0);
   const oldPrice = Number(product.precioOriginal || 0);
   const isOffer = Number(product.descuento || 0) > 0;
@@ -84,6 +85,7 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
       <div className="market-product-media" onClick={() => onView?.(product)}>
         <CategoryIconTile
           iconName={CATEGORY_ICON_BY_ID[category]}
+          iconUrl={CATEGORY_ICON_URL_BY_ID[category]}
           color={CATEGORY_COLOR_BY_ID[category]}
           image={productImage}
           fallbackImage={referenceImage}
@@ -109,7 +111,7 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
         <p className="market-product-compatibility">{getCompatibility(product)}</p>
         <div className="market-product-tags">
           <span className="market-product-category" data-category={category}>
-            <CategoryIconTile iconName={CATEGORY_ICON_BY_ID[category]} color={CATEGORY_COLOR_BY_ID[category]} size={11} className="market-product-tag-icon" />
+            <CategoryIconTile iconName={CATEGORY_ICON_BY_ID[category]} iconUrl={CATEGORY_ICON_URL_BY_ID[category]} color={CATEGORY_COLOR_BY_ID[category]} size={11} className="market-product-tag-icon" />
             {product.categoriaNombre || CATEGORY_LABELS[category] || 'Repuesto'}
           </span>
           <span className={`market-product-origin ${partType.kind}`}><PartTypeIcon size={11} /> {partType.label}</span>

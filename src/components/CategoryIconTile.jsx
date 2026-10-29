@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Disc3, Cog, ArrowUpDown, Lightbulb, Droplets, Zap, CarFront, CircleDot, Package, Wind, ThermometerSun, KeyRound, Fuel, Gauge, CircleGauge, Recycle, GitFork, Layers, Filter, Cable, Snowflake, Radar, Box } from 'lucide-react';
 
-const ICONS = { Disc3, Cog, ArrowUpDown, Lightbulb, Droplets, Zap, CarFront, CircleDot, Wind, ThermometerSun, KeyRound, Fuel, Gauge, CircleGauge, Recycle, GitFork, Layers, Filter, Cable, Snowflake, Radar, Box };
+// Iconos lucide que puede nombrar el mantenedor en `iconoNombre`. Se importan uno por uno (y no el
+// objeto `icons` completo de lucide) para no sumar cientos de KB al bundle; un nombre que no este
+// aca cae en `Package`. Para un icono distinto, el mantenedor sube `iconoUrl` y se usa la imagen.
+const ICONS = { Disc3, Cog, ArrowUpDown, Lightbulb, Droplets, Zap, CarFront, CircleDot, Wind, ThermometerSun, KeyRound, Fuel, Gauge, CircleGauge, Recycle, GitFork, Layers, Filter, Cable, Snowflake, Radar, Box, Package };
 
 // Darkens a #rrggbb hex color by a given amount (0-1), used for the flat
 // gradient fallback when no reference photo is available for a category.
 function darken(hex, amount = 0.35) {
+  // El color ahora puede venir del mantenedor: si no es #rrggbb se usa tal cual (gradiente plano).
+  if (!/^#[0-9a-f]{6}$/i.test(String(hex || ''))) return hex;
   const num = parseInt(hex.replace('#', ''), 16);
   const r = Math.round(((num >> 16) & 255) * (1 - amount));
   const g = Math.round(((num >> 8) & 255) * (1 - amount));
@@ -20,8 +25,21 @@ function darken(hex, amount = 0.35) {
  * colorful even when the photo itself is dark. Falls back to a flat colored
  * gradient + centered icon when no photo is available for that category.
  */
-export default function CategoryIconTile({ iconName, color = '#0066ff', image, fallbackImage, size = 32, className = '' }) {
+/**
+ * Icono de la categoria: la imagen subida al mantenedor (`iconUrl`, SVG/PNG en R2) o, si no hay o
+ * no carga, el icono lucide `iconName` (`iconoNombre` del mantenedor o el respaldo local).
+ */
+function CategoryGlyph({ iconName, iconUrl, size, strokeWidth }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [iconUrl]);
+  if (iconUrl && !failed) {
+    return <img src={iconUrl} alt="" width={size} height={size} className="category-tile-icon-img" onError={() => setFailed(true)} />;
+  }
   const Icon = ICONS[iconName] || Package;
+  return <Icon size={size} strokeWidth={strokeWidth} />;
+}
+
+export default function CategoryIconTile({ iconName, iconUrl = null, color = '#0066ff', image, fallbackImage, size = 32, className = '' }) {
   // Una foto que no carga (archivo borrado del bucket, URL vieja, sin conexion) dejaba el
   // icono de imagen rota del navegador dentro de la tarjeta. Al fallar se intenta primero con
   // `fallbackImage` -la foto referencial de la categoria- y recien despues se cae al mosaico
@@ -44,7 +62,7 @@ export default function CategoryIconTile({ iconName, color = '#0066ff', image, f
           onError={handleError}
         />
         <span className="category-tile-badge" style={{ background: color }}>
-          <Icon size={Math.round(size * 0.55)} strokeWidth={1.8} />
+          <CategoryGlyph iconName={iconName} iconUrl={iconUrl} size={Math.round(size * 0.55)} strokeWidth={1.8} />
         </span>
       </div>
     );
@@ -55,7 +73,7 @@ export default function CategoryIconTile({ iconName, color = '#0066ff', image, f
       className={`category-icon-tile ${className}`}
       style={{ background: `linear-gradient(135deg, ${color} 0%, ${darken(color)} 100%)` }}
     >
-      <Icon size={size} strokeWidth={1.6} />
+      <CategoryGlyph iconName={iconName} iconUrl={iconUrl} size={size} strokeWidth={1.6} />
     </div>
   );
 }

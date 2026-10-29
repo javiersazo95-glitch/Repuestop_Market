@@ -16,6 +16,7 @@ import { orderDisplayCode } from '../../data/orderIdentity';
 const SUBJECTS = {
   'buyer-orders': [],
   'buyer-payment': ['Error al procesar el pago', 'Cobro duplicado en mi tarjeta', 'El pago se descontó y el pedido no aparece', 'Estado de un reembolso', 'Error al cargar el carrito de compra', 'Otro'],
+  'buyer-auction': ['Mi necesidad no recibe ofertas', 'Quiero cerrar o liberar una necesidad', 'Problema al aceptar o pagar ofertas', 'Una tienda no cumple tras aceptar su oferta', 'Otro'],
   'buyer-quote': ['Vendedor no responde el chat', 'Error al aceptar cotización', 'Dudas sobre vigencia de cotización', 'Otro'],
   general: ['Problemas para iniciar sesión', 'Modificar datos de mi cuenta', 'Error al subir foto de perfil', 'Cambiar mi dirección de despacho', 'Eliminar mi cuenta', 'Otro'],
   'buyer-report': ['Publicación engañosa o con fotos que no corresponden', 'Sospecha de producto falsificado o sin procedencia', 'Producto prohibido o peligroso', 'La tienda insiste en vender fuera de RepuesTop', 'Trato irrespetuoso o acoso', 'Precio o stock que no se respeta', 'Otro'],
@@ -24,6 +25,7 @@ const SUBJECTS = {
   info: ['Cómo funciona la compra en RepuesTop', 'Cómo funcionan las cotizaciones', 'Cómo funciona la mediación', 'Quiero vender en RepuesTop', 'Otro'],
   'seller-orders': [],
   'seller-products': ['Error al crear o publicar producto', 'Problemas con las fotos del producto', 'Error al actualizar stock/inventario', 'Problemas con la carga masiva', 'Otro'],
+  'seller-auction': ['Problema al enviar o modificar una oferta', 'Mi oferta aceptada no se puede cumplir', 'El comprador no paga una oferta aceptada', 'No veo una necesidad de compra', 'Otro'],
   'seller-quote': ['Mensajes bloqueados o no cargan', 'Problema al enviar una cotización', 'Comprador no responde el chat', 'Otro'],
   'seller-payouts': ['No puedo solicitar un retiro', 'Un retiro no ha sido depositado', 'Error al validar mis datos bancarios', 'Mi saldo disponible no cuadra', 'Dudas sobre la comisión aplicada a una venta', 'Dudas sobre la marcha blanca de Fundador', 'Otro'],
   'seller-store': ['Corregir el nombre o el RUT de mi tienda', 'Problemas con el logo o la portada', 'Dudas sobre la verificación de mi tienda', 'Actualizar mis métodos de envío', 'Cambiar el correo o el representante de la cuenta', 'Otro'],

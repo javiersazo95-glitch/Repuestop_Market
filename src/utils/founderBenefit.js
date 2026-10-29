@@ -1,4 +1,6 @@
-import { FLOW_RATE_BASE, FOUNDER_FREE_MONTHS, STANDARD_RATE_LABEL, calculateSellerEarnings } from './pricing';
+// Las tasas de los textos se leen al momento (`standardRateLabel()`, `flowRateLabel()`): vienen
+// del Mantenedor comun y una constante de modulo dejaria el copy con la tasa vieja.
+import { FOUNDER_FREE_MONTHS, calculateSellerEarnings, flowRateLabel, standardRateLabel } from './pricing';
 
 /**
  * Marcha blanca de Tienda Fundadora: tarifa de servicio RepuesTop 0% durante los primeros
@@ -54,7 +56,7 @@ export function founderBenefitLabel(founderUntil, now = new Date()) {
 
 /** Lo que viene despues de la marcha blanca; va en tooltips, ayuda y pantallas de fundador. */
 export function founderAfterLabel() {
-  return `Después: ${STANDARD_RATE_LABEL} + IVA por venta. El costo de Flow se mantiene.`;
+  return `Después: ${standardRateLabel()} + IVA por venta. El costo de Flow se mantiene.`;
 }
 
 /**
@@ -64,10 +66,9 @@ export function founderAfterLabel() {
 export function founderBenefitTooltip(founderUntil) {
   const until = founderEndsAtDateLabel(founderUntil);
   const span = `tu marcha blanca de ${FOUNDER_FREE_MONTHS} meses${until ? ` (hasta ${until})` : ''}`;
-  return `0% de tarifa de servicio RepuesTop durante ${span}. Solo pagas Flow 2,89% + IVA. ${founderAfterLabel()}`;
+  return `0% de tarifa de servicio RepuesTop durante ${span}. Solo pagas Flow ${flowRateLabel()} + IVA. ${founderAfterLabel()}`;
 }
 
-const FLOW_RATE_LABEL = `${(FLOW_RATE_BASE * 100).toFixed(2).replace('.', ',')}%`;
 const EXAMPLE_PRICE = 100000;
 const clp = (value) => `$${Math.round(value).toLocaleString('es-CL')}`;
 
@@ -100,7 +101,7 @@ export function founderBenefitDetails(founderSince, founderUntil, now = new Date
       },
       {
         title: '¿De cuánto es?',
-        text: `Durante la marcha blanca: 0%. Al terminar: ${STANDARD_RATE_LABEL} + IVA por venta. Flow (${FLOW_RATE_LABEL} + IVA) se descuenta siempre.`,
+        text: `Durante la marcha blanca: 0%. Al terminar: ${standardRateLabel()} + IVA por venta. Flow (${flowRateLabel()} + IVA) se descuenta siempre.`,
       },
       {
         title: '¿Cuándo empieza?',
@@ -109,8 +110,8 @@ export function founderBenefitDetails(founderSince, founderUntil, now = new Date
       {
         title: '¿Cuándo termina?',
         text: until
-          ? `${isExpired ? 'Terminó' : 'Termina'} el ${until}. Desde esa fecha rige la comisión estándar de ${STANDARD_RATE_LABEL} + IVA por venta.`
-          : `${FOUNDER_FREE_MONTHS} meses después de la aprobación. Desde ahí rige la comisión estándar de ${STANDARD_RATE_LABEL} + IVA por venta.`,
+          ? `${isExpired ? 'Terminó' : 'Termina'} el ${until}. Desde esa fecha rige la comisión estándar de ${standardRateLabel()} + IVA por venta.`
+          : `${FOUNDER_FREE_MONTHS} meses después de la aprobación. Desde ahí rige la comisión estándar de ${standardRateLabel()} + IVA por venta.`,
       },
     ],
     example: {

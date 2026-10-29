@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { registerWorkshopApi } from '../services/workshopApi';
 import { loginApi, loginByTaxIdApi, loginGoogleApi, logoutApi, getProfileApi, updateProfileApi, deleteAccountApi, registerBuyerApi, registerSellerApi, verifyRegisterEmailApi, resendRegisterCodeApi, resolveMediaUrl, acceptTermsApi } from '../services/api';
 import { clearSessionData } from '../utils/sessionCleanup';
 
@@ -12,7 +13,8 @@ function normalizeUserMedia(profile) {
   const buyerId = profile.buyerId ?? profile.compradorId ?? null;
   return {
     ...profile,
-    role: profile.role || (rawRole === 'SELLER' ? 'SELLER' : 'BUYER'),
+    // WORKSHOP es el perfil Taller (cuenta propia): compra como un comprador y suma lo de su taller.
+    role: profile.role || (rawRole === 'SELLER' ? 'SELLER' : rawRole === 'TALLER' ? 'WORKSHOP' : 'BUYER'),
     sellerId: sellerId != null ? (isNaN(Number(sellerId)) ? sellerId : Number(sellerId)) : null,
     buyerId: buyerId != null ? (isNaN(Number(buyerId)) ? buyerId : Number(buyerId)) : null,
     userProfileUrl: resolveMediaUrl(profile.userProfileUrl),
@@ -136,6 +138,9 @@ export function AuthProvider({ children }) {
       buyerId: authResponse.buyerId ?? baseUser.buyerId,
       sellerId: authResponse.sellerId ?? baseUser.sellerId,
       storeName: authResponse.storeName ?? baseUser.storeName,
+      // Cuenta Taller: id del expediente (ficha publica) y nombre del taller.
+      workshopId: authResponse.workshopId ?? baseUser.workshopId,
+      workshopName: authResponse.workshopName ?? baseUser.workshopName,
       region: authResponse.region ?? baseUser.region,
       comuna: authResponse.comuna ?? baseUser.comuna,
       address: authResponse.address ?? baseUser.address,
@@ -281,6 +286,21 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const registerWorkshop = async (workshopData) => {
+    setIsLoading(true);
+    try {
+      const response = await registerWorkshopApi(workshopData);
+      if (response.token || response.accessToken) {
+        saveSession(response, 'WORKSHOP');
+      }
+      return { success: true, data: response };
+    } catch (error) {
+      return { success: false, error: error.message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const verifyRegisterEmail = async (email, code) => {
     setIsLoading(true);
     try {
@@ -408,6 +428,7 @@ export function AuthProvider({ children }) {
     acceptTerms,
     registerBuyer,
     registerSeller,
+    registerWorkshop,
     verifyRegisterEmail,
     resendRegisterCode,
     updateProfile,

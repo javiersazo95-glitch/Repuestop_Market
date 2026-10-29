@@ -79,8 +79,17 @@ import { apiErrorMessage } from '../../services/walletStorage';
  */
 const HOME_SERVICE_PREFIX = 'Servicio a domicilio. Dirección del servicio: ';
 
-export default function BookingModal({ taller, initialService = null, onClose, onBooked, isRescheduling = false, rescheduleFromId = null, fromAppointment = null }) {
+export default function BookingModal({ taller, initialService = null, onClose, onBooked, isRescheduling = false, rescheduleFromId = null, fromAppointment: fromAppointmentProp = null, fallaContext = null }) {
   const { user } = useAuth();
+  // Desde el diagnostico de una falla la cita parte con el vehiculo y el motivo ya cargados: se reusa
+  // el mismo precargado que "reservar otra hora" (el servicio es el diagnostico de esa falla).
+  const fromAppointment = fromAppointmentProp || (fallaContext ? {
+    services: ['Diagnóstico de la falla'],
+    service: 'Diagnóstico de la falla',
+    vehiclePatent: fallaContext.patente || '',
+    vehicleModel: fallaContext.vehiculo || '',
+    notes: `Falla: ${fallaContext.titulo || ''}`,
+  } : null);
   const { isOwn } = useTallerOwnership();
   const previousNoteLines = String(fromAppointment?.notes || '').split('\n');
   // Citas antiguas guardaban la dirección dentro de las notas; las nuevas traen campos propios.
@@ -270,6 +279,8 @@ export default function BookingModal({ taller, initialService = null, onClose, o
     ...(taller.services || []).map((service) => service.name),
     ...(taller.services?.length ? [] : (taller.features || [])),
     ...(initialService ? [initialService] : []),
+    // Desde una falla el servicio es el diagnostico, aunque el taller no lo tenga en su catalogo.
+    ...(fallaContext && !taller.services?.length ? ['Diagnóstico de la falla'] : []),
   ])].filter(Boolean).slice(0, 12);
   const offeredIcons = serviceIcons(offeredServices);
   const servicesLabel = selectedServices.join(', ');
@@ -354,7 +365,8 @@ export default function BookingModal({ taller, initialService = null, onClose, o
         // Campos propios (igual que la app): el backend valida que el taller ofrezca
         // domicilio y exige la dirección.
         homeService: atHome,
-        homeAddress
+        homeAddress,
+        fallaId: fallaContext?.id ?? null
       };
       const appointment = rescheduleFromId
         ? await rescheduleAppointment(rescheduleFromId, form)

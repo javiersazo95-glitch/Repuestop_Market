@@ -10,6 +10,8 @@ import {
 } from '../routes/paths';
 import { useAuth } from '../context/AuthContext';
 import { EMPRESA } from '../data/legalTexts';
+import { useCategories } from '../data/categories';
+import { useFlag } from '../remoteConfig/hooks';
 
 /**
  * Los enlaces del footer son `<a>` reales (`Link`), no botones: así se indexan,
@@ -19,7 +21,7 @@ import { EMPRESA } from '../data/legalTexts';
  *
  * Ojo con las categorías: el `id` tiene que existir en `HEADER_CATEGORIES`
  * (`src/data/categories.js`). `PartsCatalogView` traduce ese id a un id real del
- * backend comparando NOMBRES, y si no calza no falla: la consulta sale sin
+ * backend por slug (Mantenedor comun) o comparando NOMBRES, y si no calza no falla: la consulta sale sin
  * filtro y el catálogo se ve completo con un chip que promete una categoría.
  * Por eso "Filtros y Aceites" apunta a `filtros` y no a `aceites`, que solo
  * existe en la grilla decorativa del home.
@@ -30,12 +32,28 @@ const EXPLORE_LINKS = [
   ['Talleres y servicios', Wrench, ROUTES.talleres],
 ];
 
-const CATEGORY_LINKS = [
-  ['Frenos y Discos', Disc3, catalogPath({ category: 'frenos' })],
-  ['Motor y Distribución', PackageSearch, catalogPath({ category: 'motor' })],
-  ['Suspensión y Dirección', Tag, catalogPath({ category: 'suspension' })],
-  ['Filtros y Aceites', Filter, catalogPath({ category: 'filtros' })],
+// Respaldo curado (sin bootstrap se ve exactamente esto). Con el Mantenedor comun se muestran
+// solo los que siguen activos y se completa hasta 4 con las demas categorias en el orden del
+// mantenedor (ver `useCategoryLinks`).
+const CATEGORY_LINKS_FALLBACK = [
+  ['Frenos y Discos', Disc3, 'frenos'],
+  ['Motor y Distribución', PackageSearch, 'motor'],
+  ['Suspensión y Dirección', Tag, 'suspension'],
+  ['Filtros y Aceites', Filter, 'filtros'],
 ];
+const FOOTER_CATEGORY_LINKS = CATEGORY_LINKS_FALLBACK.length;
+
+function useCategoryLinks() {
+  const { HEADER_CATEGORIES } = useCategories();
+  const activeIds = new Set(HEADER_CATEGORIES.map((category) => category.id));
+  const curated = CATEGORY_LINKS_FALLBACK.filter(([, , id]) => activeIds.has(id));
+  const curatedIds = new Set(curated.map(([, , id]) => id));
+  const extra = HEADER_CATEGORIES
+    .filter((category) => !curatedIds.has(category.id))
+    .slice(0, Math.max(0, FOOTER_CATEGORY_LINKS - curated.length))
+    .map((category) => [category.nombre, Tag, category.id]);
+  return [...curated, ...extra].map(([label, Icon, id]) => [label, Icon, catalogPath({ category: id })]);
+}
 
 // `/vender` es directamente el formulario de registro, así que no hay una segunda
 // URL "de beneficios" a la que apuntar. El tercer enlace usa el tema `info`, que
@@ -59,6 +77,13 @@ export default function Footer() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  // Mantenedor comun: enlaces de categorias (`market.footer.enlaces-categorias`) y del Mural
+  // (`market.nav.mural-anuncios`). Sin bootstrap ambos se ven como siempre.
+  const showCategoryLinks = useFlag('market.footer.enlaces-categorias');
+  const showAdsWall = useFlag('market.nav.mural-anuncios');
+  const categoryLinks = useCategoryLinks();
+  const exploreLinks = showAdsWall ? EXPLORE_LINKS : EXPLORE_LINKS.filter(([, , to]) => to !== ROUTES.adsWall);
+  const sellerLinks = showAdsWall ? SELLER_LINKS : SELLER_LINKS.filter(([, , to]) => to !== ROUTES.adsWall);
   const [openSections, setOpenSections] = useState({
     explore: false,
     categories: false,
@@ -156,7 +181,7 @@ export default function Footer() {
             aria-labelledby="footer-heading-explore"
           >
             <ul>
-              {EXPLORE_LINKS.map(([label, Icon, to]) => renderLink(label, Icon, to))}
+              {exploreLinks.map(([label, Icon, to]) => renderLink(label, Icon, to))}
               <li>
                 <button type="button" onClick={goPatentSearch}>
                   <Search /> <span>Buscar por patente</span> <ChevronRight className="footer-link-chevron" />
@@ -166,6 +191,7 @@ export default function Footer() {
           </div>
         </section>
 
+        {showCategoryLinks && (
         <section className={`reference-footer-column ${openSections.categories ? 'is-open' : ''}`}>
           <h2 id="footer-heading-categories">
             <button
@@ -189,10 +215,11 @@ export default function Footer() {
             aria-labelledby="footer-heading-categories"
           >
             <ul>
-              {CATEGORY_LINKS.map(([label, Icon, to]) => renderLink(label, Icon, to))}
+              {categoryLinks.map(([label, Icon, to]) => renderLink(label, Icon, to))}
             </ul>
           </div>
         </section>
+        )}
 
         <section className={`reference-footer-column ${openSections.sellers ? 'is-open' : ''}`}>
           <h2 id="footer-heading-sellers">
@@ -217,7 +244,7 @@ export default function Footer() {
             aria-labelledby="footer-heading-sellers"
           >
             <ul>
-              {SELLER_LINKS.map(([label, Icon, to]) => renderLink(label, Icon, to))}
+              {sellerLinks.map(([label, Icon, to]) => renderLink(label, Icon, to))}
             </ul>
           </div>
         </section>

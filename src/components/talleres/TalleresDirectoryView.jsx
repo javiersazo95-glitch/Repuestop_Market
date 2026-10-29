@@ -2,11 +2,12 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   Wrench, Plus, Search, RotateCcw, Loader2, WifiOff, AlertTriangle,
   RefreshCw, SlidersHorizontal, X, Car, MapPin, Settings, ArrowUpDown, ArrowRight,
-  ShieldCheck, Zap, CheckCircle2, Sparkles
+  CheckCircle2, Sparkles, ShieldCheck, Zap
 } from 'lucide-react';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import { fetchTalleres, getCachedTalleres, TALLERES_UPDATED_EVENT } from '../../services/talleresStorage';
 import { searchVehicleByPatenteApi } from '../../services/api';
+import { getFaultCategories } from '../../services/faultApi';
 import {
   isValidPlate, normalizePlate, lookupVehicleByPlate, formatVehicleLabel, getRecentPlates, addRecentPlate
 } from '../../utils/vehicleLookup';
@@ -72,6 +73,8 @@ export default function TalleresDirectoryView() {
   // El buscador vive en el backend; localStorage solo guarda la ultima copia para
   // que la grilla no parpadee en vacio mientras responde la red.
   const [talleres, setTalleres] = useState(() => getCachedTalleres());
+  // Categorias de servicio con sus subcategorias: completan el filtro aunque ningun taller las ofrezca aun.
+  const [serviceCatalog, setServiceCatalog] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [isStale, setIsStale] = useState(false);
@@ -96,6 +99,10 @@ export default function TalleresDirectoryView() {
     loadTalleres({ signal: controller.signal });
     return () => controller.abort();
   }, [loadTalleres]);
+
+  useEffect(() => {
+    getFaultCategories().then((items) => setServiceCatalog(Array.isArray(items) ? items : [])).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const handleUpdated = (e) => {
@@ -395,7 +402,9 @@ export default function TalleresDirectoryView() {
         + (canBookTaller(taller) ? 3 : 0)
         + (taller.whatsapp ? 1 : 0)
         + Math.min(taller.services.length, 5) * 0.2;
-      result.sort((a, b) => score(b) - score(a));
+      result.sort((a, b) => score(b) - score(a)
+        || (b.rating || 0) - (a.rating || 0)
+        || (b.reviewsCount || 0) - (a.reviewsCount || 0));
     }
 
     // "Cerca de mí" manda sobre el orden elegido, igual que en la app: pura cercanía real.
@@ -476,12 +485,19 @@ export default function TalleresDirectoryView() {
           else byKey.set(key, { value: tag, count: 1 });
         });
     });
+    serviceCatalog
+      .filter((category) => selectedCategory === 'TODAS' || category.id === selectedCategory)
+      .flatMap((category) => category.subcategorias || category.incluye || [])
+      .forEach((tag) => {
+        const key = normalizeSearchText(tag);
+        if (!byKey.has(key)) byKey.set(key, { value: tag, count: 0 });
+      });
     if (selectedServiceTag !== ALL_TAGS && !byKey.has(normalizeSearchText(selectedServiceTag))) {
       byKey.set(normalizeSearchText(selectedServiceTag), { value: selectedServiceTag, count: 0 });
     }
     return Array.from(byKey.values())
       .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value, 'es'));
-  }, [talleres, selectedServiceTag]);
+  }, [talleres, selectedCategory, selectedServiceTag, serviceCatalog]);
 
   // Pastillas de filtros activos sobre la grilla: cada una se quita por separado.
   const activeFilterPills = [
@@ -749,6 +765,9 @@ export default function TalleresDirectoryView() {
         </TalleresFiltersSidebar>
 
         <section className="ads-main-col">
+          <div className="workshop-directory-banner" aria-label="Encuentra el taller ideal para tu vehículo">
+            <img src="/workshop-directory-banner.png" alt="Encuentra el taller ideal para tu vehículo: talleres verificados, variedad de servicios y atención en tu zona" />
+          </div>
           <div className="ads-main-head" id="talleres-results-top">
             <div className="ads-main-head-text">
               <h2>Talleres y servicios automotrices</h2>
@@ -860,6 +879,7 @@ export default function TalleresDirectoryView() {
                       if (!isLoggedIn) { openAuthModal(); return; }
                       toggleTaller(data);
                     }}
+                    directoryVariant
                   />
                 ))}
               </div>

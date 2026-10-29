@@ -48,6 +48,12 @@ El servicio automotriz ya no sale al público como anuncio: lo que se muestra es
   `services/adsStorage.js` se partió en `talleresStorage.js` y `walletStorage.js`; el monedero
   (`components/wallet/`) queda solo para destacar repuestos (Top Ventas) y se muestra a vendedores o a
   quien aún tenga saldo.
+- **Integrado con `dev`** (catálogo de servicios, Diagnóstico, fallas, necesidades de compra): el catálogo de
+  `ServicioTaller` (precio, qué incluye, marcas) alimenta la card y el perfil (`adaptTaller` lee el DTO
+  unificado: `servicios[].precio/incluye`, `calificacion`, `info`). El perfil público es `TallerPage` +
+  `TallerProfileView`; la página `WorkshopProfilePage` de dev se retiró. Agendar desde un diagnóstico de
+  falla usa `BookingModal` con `fallaContext` y el taller (`fetchTaller`); el Diagnóstico vigente reemplaza
+  al anuncio interno. En el perfil Taller la pestaña `anuncios` pasó a `mi_taller`.
 - **Pendiente**: los textos legales (`data/legalTexts.js`: Mural de Anuncios, planes en Monedas) siguen
   describiendo el modelo anterior; requieren revisión legal y subir `LEGAL_VERSION`. La captura
   `public/about-assets/mural-real.webp` de /nosotros muestra la card antigua. `components/talleres/ads-wall*.css`

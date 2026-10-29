@@ -222,6 +222,9 @@ export default function AppointmentsHistoryModal({
                   )}
                 </>
               : <span><Clock size={12} /> {formatAgendaDateLong(appointment.date)}</span>}
+            {appointment.fallaTitle && (
+              <span><Wrench size={12} /> Falla: {appointment.fallaTitle}</span>
+            )}
             {(appointment.vehiclePatent || appointment.vehicleModel) && (
               <span><Car size={12} /> {[appointment.vehiclePatent, appointment.vehicleModel].filter(Boolean).join(' · ')}</span>
             )}

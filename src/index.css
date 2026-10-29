@@ -2876,8 +2876,19 @@ input, select, textarea {
 }
 
 .auth-modal-card--wide {
-  max-width: 800px;
+  /* Tres tarjetas de rol (comprador, taller y tienda) en una misma fila. */
+  max-width: 1080px;
 }
+
+.auth-modal-card--login {
+  width: min(560px, 100%);
+  max-width: 560px;
+  min-width: 0;
+  max-height: calc(100dvh - 16px);
+  overflow: hidden;
+}
+
+.modal-backdrop:has(> .auth-modal-card--login) { padding-block: 8px; }
 
 .modal-close-btn {
   position: absolute;
@@ -3045,8 +3056,8 @@ input, select, textarea {
 .auth-role-switch {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px;
+  gap: 6px;
+  padding: 10px;
   border: 1px solid #dbe4f0;
   border-radius: 14px;
   background: #f8fafc;
@@ -3062,8 +3073,9 @@ input, select, textarea {
 
 .auth-role-switch-options {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 8px;
+  min-width: 0;
 }
 
 .auth-role-option {
@@ -3071,8 +3083,10 @@ input, select, textarea {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 58px;
-  padding: 10px 12px;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 6px 10px;
   border: 2px solid #e2e8f0;
   border-radius: 12px;
   background: #fff;
@@ -3091,6 +3105,7 @@ input, select, textarea {
 
 .auth-role-option.buyer.active { border-color: #0284c7; background: #e0f2fe; color: #0369a1; box-shadow: 0 4px 12px rgba(2, 132, 199, .18); }
 .auth-role-option.seller.active { border-color: #ea580c; background: #fff7ed; color: #c2410c; box-shadow: 0 4px 12px rgba(234, 88, 12, .18); }
+.auth-role-option.workshop.active { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; box-shadow: 0 4px 12px rgba(37, 99, 235, .16); }
 
 .auth-role-switch-hint {
   margin: 0;
@@ -3104,10 +3119,19 @@ input, select, textarea {
 }
 
 .auth-role-switch-hint.seller { border-color: #fdba74; background: #fffbf5; }
+.auth-role-switch-hint.workshop { border-color: #93c5fd; background: #f5f9ff; }
 
 @media (max-width: 420px) {
-  .auth-role-option { gap: 8px; padding: 8px 10px; }
-  .auth-role-option small { display: none; }
+  .auth-role-option { gap: 8px; padding: 6px 8px; }
+}
+
+@media (max-height: 850px) {
+  .auth-modal-card--login .auth-modal-header { padding-top: 18px; padding-bottom: 10px; }
+  .auth-modal-card--login .auth-modal-body { gap: 10px; padding: 12px 24px 16px; }
+  .auth-modal-card--login .auth-role-switch { gap: 4px; padding: 8px; }
+  .auth-modal-card--login .auth-role-option { min-height: 40px; padding-block: 4px; }
+  .auth-modal-card--login .btn-auth-google { padding-block: 8px; }
+  .auth-modal-card--login .btn-auth-primary { padding-block: 9px; }
 }
 
 .auth-login-mode {
@@ -3142,11 +3166,16 @@ input, select, textarea {
 
 .role-selection-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
 
-@media (max-width: 640px) {
+.auth-modal-card--wide .role-selection-grid > .role-option-card {
+  min-height: 210px;
+  padding: 22px;
+}
+
+@media (max-width: 900px) {
   .role-selection-grid {
     grid-template-columns: 1fr;
   }
@@ -3181,6 +3210,10 @@ button.role-option-card {
   background: linear-gradient(165deg, #f9f2ff 0%, #ffffff 55%);
 }
 
+.role-option-card.workshop-card {
+  background: linear-gradient(165deg, #eff6ff 0%, #ffffff 58%);
+}
+
 .role-option-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 16px 32px -12px rgba(15, 23, 42, 0.18);
@@ -3192,6 +3225,10 @@ button.role-option-card {
 
 .role-option-card.seller-card:hover {
   border-color: #c4a4f5;
+}
+
+.role-option-card.workshop-card:hover {
+  border-color: #60a5fa;
 }
 
 .role-option-card:hover .role-icon-box {
@@ -3235,6 +3272,12 @@ button.role-option-card {
   background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
   color: #ffffff;
   box-shadow: 0 6px 14px rgba(30, 41, 59, 0.3);
+}
+
+.workshop-icon {
+  background: linear-gradient(135deg, #0759c7 0%, #38bdf8 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 14px rgba(7, 89, 199, 0.28);
 }
 
 .role-feature-list {
@@ -3334,6 +3377,11 @@ button.role-option-card {
 .seller-tag {
   color: #1e293b;
   background: #e2e8f0;
+}
+
+.workshop-tag {
+  color: #1d4ed8;
+  background: #dbeafe;
 }
 
 .auth-action-row {
@@ -11216,6 +11264,11 @@ button.role-option-card {
 .catalog-refine-notice { display: flex; align-items: flex-start; gap: 10px; margin: 18px 0 0; padding: 12px 14px; border: 1px solid #bfdbfe; border-radius: var(--radius-lg); background: #eff6ff; color: #1e40af; font-size: 13px; line-height: 1.5; }
 .catalog-refine-notice svg { flex-shrink: 0; margin-top: 1px; }
 
+/* Aviso sutil al pie de los resultados por vehículo: registrar una necesidad de compra. */
+.catalog-need-hint { display: flex; align-items: flex-start; gap: 8px; margin: 18px 0 0; color: var(--text-secondary, #64748b); font-size: 13px; line-height: 1.5; }
+.catalog-need-hint svg { flex-shrink: 0; margin-top: 2px; }
+.catalog-need-hint-link { padding: 0; border: 0; background: none; color: var(--primary, #2563eb); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
 .catalog-control-bar {
   background: #ffffff;
   border-radius: var(--radius-lg);
@@ -18651,6 +18704,11 @@ button.role-option-card {
 .address-autocomplete > input { width: 100%; }
 .address-autocomplete-spinner { position: absolute; top: 50%; right: 11px; margin-top: -8px; color: var(--text-muted); pointer-events: none; }
 
+.address-autocomplete.has-locate > input { padding-right: 40px; }
+.address-autocomplete.has-locate .address-autocomplete-spinner { right: 40px; }
+.address-autocomplete-locate { position: absolute; top: 0; right: 0; display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 100%; max-height: 44px; border: 0; background: transparent; color: var(--color-brand-blue); cursor: pointer; }
+.address-autocomplete-locate:disabled { cursor: progress; opacity: .7; }
+.address-autocomplete-error { display: block; margin-top: 4px; color: #b91c1c; font-size: 12px; }
 .address-autocomplete-list { position: absolute; z-index: 30; top: calc(100% + 4px); right: 0; left: 0; max-height: 232px; overflow-y: auto; margin: 0; padding: 4px; list-style: none; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--bg-white); box-shadow: var(--shadow-hover); }
 .address-autocomplete-list li + li { border-top: 1px solid var(--border-subtle); }
 .address-autocomplete-list button { display: flex; align-items: flex-start; gap: 9px; width: 100%; padding: 9px 10px; border-radius: 6px; text-align: left; background: transparent; }
@@ -20672,6 +20730,14 @@ input.has-success {
   .light-market-header .primary-nav-inner > .nav-item-help { display: none; }
 }
 
+@media (min-width: 1201px) and (max-width: 1400px) {
+  .light-market-header .primary-nav-inner { gap: 0; }
+  .light-market-header .categories-nav-wrap { margin-right: 6px; padding-right: 8px; }
+  .light-market-header .categories-nav-wrap .categories-nav-button { padding-inline: 10px; gap: 6px; font-size: 13px; }
+  .light-market-header .primary-nav-inner > button { gap: 6px; padding-inline: 8px; font-size: 12.5px; }
+  .light-market-header .primary-nav-inner > button svg { width: 16px; height: 16px; }
+}
+
 /* Catalogo: "Ver todos los repuestos" al pie de la vitrina "Recien publicados". */
 .catalog-showcase-see-all { display: flex; justify-content: center; margin-top: 24px; }
 .catalog-showcase-see-all-btn {
@@ -21485,3 +21551,9 @@ input.has-success {
 
 .info-hint-sheet-footer { padding: 0 16px 16px; }
 .info-hint-sheet-footer button { width: 100%; min-height: 44px; border: 0; border-radius: 10px; background: #0b5fd0; color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+/* Icono de categoria subido al mantenedor (SVG/PNG en R2): mismo tamano que el icono lucide. */
+.category-tile-icon-img {
+  display: block;
+  object-fit: contain;
+}

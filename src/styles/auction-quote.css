@@ -1,0 +1,454 @@
+/* Formulario de oferta de una tienda: elegir repuesto (sugerido por patente), fijar precio y ver el cumplimiento. */
+.aq-overlay { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(3px); font-family: var(--font-primary, inherit); }
+.aq-modal { display: flex; flex-direction: column; width: 100%; max-width: 1040px; max-height: min(92vh, 940px); background: #f7f9fb; border-radius: 16px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3); overflow: hidden; color: #243442; }
+.aq-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 22px; background: #fff; border-bottom: 1px solid #dbe6f3; }
+.aq-eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #0056bf; }
+.aq-head h2 { margin: 3px 0 0; font-family: var(--font-display, inherit); font-size: 20px; font-weight: 800; color: #0f172a; }
+.aq-head p { margin: 3px 0 0; font-size: 12.5px; color: #5a6b7a; }
+.aq-head b { color: #243442; }
+.aq-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.03em; }
+.aq-close { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: none; border-radius: 50%; background: transparent; color: #5a6b7a; cursor: pointer; }
+.aq-close:hover { background: #f3f5f7; }
+
+.aq-body { display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; flex: 1; }
+.aq-main { grid-column: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 16px 18px; min-height: 0; }
+.aq-side { grid-column: 2; grid-row: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 16px 0; min-height: 0; }
+.aq-foot { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; padding: 12px 22px; background: #fff; border-top: 1px solid #dbe6f3; }
+.aq-foot-actions { display: flex; gap: 8px; margin-left: auto; }
+
+.aq-step { padding: 16px 18px; background: #fff; border: 1px solid #dbe6f3; border-radius: 12px; box-shadow: 0 1px 2px rgba(15, 40, 90, 0.04); }
+.aq-step h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font-size: 15.5px; font-weight: 800; color: #243442; }
+.aq-step h3 span { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: #0056bf; color: #fff; font-size: 12px; font-weight: 800; }
+.aq-step.is-locked .aq-fields { opacity: 0.55; }
+
+.aq-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; margin-bottom: 12px; background: #f3f5f7; border-radius: 10px; }
+.aq-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; border: none; border-radius: 8px; background: transparent; font-family: inherit; font-size: 12.5px; font-weight: 700; color: #5a6b7a; cursor: pointer; }
+.aq-tabs button.active { background: #fff; color: #0056bf; box-shadow: 0 1px 3px rgba(15, 40, 90, 0.12); }
+
+.aq-search-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 10px; }
+.aq-search { flex: 1 1 240px; display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 12px; border: 1px solid #d9e0e7; border-radius: 10px; background: #fff; color: #5a6b7a; }
+.aq-search:focus-within { border-color: #0056bf; box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.12); }
+.aq-search input { flex: 1; min-width: 0; border: none; outline: none; background: none; font-family: inherit; font-size: 13px; color: #243442; }
+.aq-search button { display: inline-flex; border: none; background: none; color: #5a6b7a; cursor: pointer; padding: 2px; }
+.aq-switch { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: #3b4e5d; cursor: pointer; }
+.aq-switch input { width: 16px; height: 16px; accent-color: #0056bf; }
+
+.aq-parts { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; padding: 2px; }
+.aq-hint { display: flex; align-items: center; gap: 7px; margin: 0 0 2px; font-size: 12px; font-weight: 600; color: #0056bf; }
+.aq-part { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 14px; align-items: center; width: 100%; padding: 10px 12px; border: 1.5px solid #e6eaef; border-radius: 12px; background: #fff; text-align: left; font-family: inherit; cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease; }
+.aq-part:hover { border-color: #bfd6f7; background: #fbfdff; }
+.aq-part.is-selected { border-color: #0056bf; background: #f5f9ff; box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.1); }
+.aq-part-photo { display: flex; align-items: center; justify-content: center; width: 72px; height: 72px; border-radius: 10px; background: #f3f5f7; color: #8a97a5; overflow: hidden; }
+.aq-part-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.aq-part-body { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.aq-part-body > strong { font-size: 13px; font-weight: 800; color: #0f172a; overflow-wrap: anywhere; }
+.aq-part-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.aq-part-tags em { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: #f3f5f7; font-style: normal; font-size: 11px; font-weight: 700; color: #3b4e5d; }
+.aq-part-tags em.is-ok { background: #eafbf1; color: #0e7038; }
+.aq-part-tags em.is-warn { background: #fff7e6; color: #9a5a00; }
+.aq-part-tags em.is-bad { background: #fff0f0; color: #b42318; }
+.aq-part-meta { display: flex; flex-wrap: wrap; gap: 3px 14px; font-size: 12px; font-weight: 600; color: #243442; }
+.aq-part-meta small { font-size: 11px; font-weight: 600; color: #8a97a5; }
+.aq-part-price { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.aq-part-price small { font-size: 11px; color: #8a97a5; }
+.aq-part-price strong { font-size: 15.5px; font-weight: 800; color: #0056bf; }
+.aq-part-check { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 12px; font-weight: 700; color: #0056bf; }
+.aq-skeleton { height: 94px; border-style: dashed; background: linear-gradient(90deg, #f3f5f7 25%, #e9edf1 50%, #f3f5f7 75%); background-size: 200% 100%; animation: aq-shimmer 1.3s linear infinite; cursor: default; }
+@keyframes aq-shimmer { to { background-position: -200% 0; } }
+
+.aq-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 12px; text-align: center; color: #5a6b7a; border: 1.5px dashed #d9e0e7; border-radius: 12px; }
+.aq-empty strong { font-size: 13px; color: #243442; }
+.aq-empty p { margin: 0; font-size: 12px; }
+.aq-empty > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
+
+.aq-new { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 12px; background: #f5f9ff; border: 1px solid #bfd6f7; }
+.aq-new p { margin: 0; font-size: 12.5px; line-height: 1.5; color: #3b4e5d; }
+.aq-new ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.aq-new li { display: flex; align-items: flex-start; gap: 10px; font-size: 12.5px; line-height: 1.45; color: #243442; }
+.aq-new li span { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 1.5px solid #0056bf; color: #0056bf; font-size: 11px; font-weight: 800; }
+.aq-new .aq-btn-primary { align-self: flex-start; }
+
+.aq-notice { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; background: #f3f5f7; font-size: 12.5px; font-weight: 600; color: #3b4e5d; }
+.aq-notice svg { flex-shrink: 0; margin-top: 1px; }
+.aq-notice.is-ok { background: #eafbf1; color: #0e7038; }
+.aq-notice.is-bad { background: #fff0f0; color: #b42318; margin: 0; }
+.aq-linked { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 12px; font-size: 12.5px; }
+.aq-linked .aq-part { flex: 1 0 100%; cursor: default; }
+.aq-linked > button { border: none; background: none; font-family: inherit; font-size: 12.5px; font-weight: 700; color: #0056bf; cursor: pointer; text-decoration: underline; }
+
+.aq-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; margin: 0; padding: 0; border: none; min-width: 0; }
+.aq-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.aq-field > span { font-size: 12.5px; font-weight: 700; color: #243442; }
+.aq-field > span small, .aq-field > small { font-size: 11.5px; font-weight: 500; color: #8a97a5; }
+.aq-field input, .aq-field select, .aq-field textarea { width: 100%; box-sizing: border-box; min-height: 42px; padding: 0 12px; border: 1px solid #d9e0e7; border-radius: 10px; background: #fff; font-family: inherit; font-size: 13px; color: #243442; }
+.aq-field textarea { padding: 10px 12px; resize: vertical; }
+.aq-field input:focus, .aq-field select:focus, .aq-field textarea:focus { outline: none; border-color: #0056bf; box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.12); }
+.aq-field-wide { grid-column: 1 / -1; }
+.aq-field-price { grid-column: 1 / -1; }
+.aq-money { display: flex; align-items: center; border: 2px solid #0056bf; border-radius: 12px; background: #fff; overflow: hidden; }
+.aq-money i { padding: 0 6px 0 14px; font-style: normal; font-size: 20px; font-weight: 800; color: #0056bf; }
+.aq-money input { border: none !important; box-shadow: none !important; min-height: 50px; font-family: var(--font-display, inherit); font-size: 22px; font-weight: 800; letter-spacing: -0.2px; }
+
+.aq-card { padding: 14px 16px; background: #fff; border: 1px solid #dbe6f3; border-radius: 12px; box-shadow: 0 1px 2px rgba(15, 40, 90, 0.04); }
+.aq-card h4 { margin: 0 0 10px; font-size: 12.5px; font-weight: 800; color: #243442; }
+.aq-card dl { margin: 0; display: grid; gap: 8px; }
+.aq-card dl > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.aq-card dt { font-size: 12px; color: #5a6b7a; }
+.aq-card dd { margin: 0; font-size: 12.5px; font-weight: 700; color: #0f172a; text-align: right; }
+.aq-fit ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.aq-fit li { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.4; color: #3b4e5d; }
+.aq-fit li span { display: flex; flex-direction: column; min-width: 0; }
+.aq-fit li strong { font-size: 12px; font-weight: 800; color: #243442; }
+.aq-fit li svg { flex-shrink: 0; margin-top: 1px; }
+.aq-fit li.is-ok svg { color: #18a957; } .aq-fit li.is-warn svg { color: #d97706; } .aq-fit li.is-bad svg { color: #d92d20; } .aq-fit li.is-neutral svg { color: #8a97a5; }
+.aq-fit p { margin: 0; font-size: 12px; line-height: 1.5; color: #5a6b7a; }
+.aq-fit.is-ok { background: #f4fcf7; border-color: #bbf7d0; }
+.aq-fit.is-warn { background: #fffbf1; border-color: #fde3a7; }
+.aq-fit.is-bad { background: #fff7f6; border-color: #fecaca; }
+.aq-total { display: flex; flex-direction: column; gap: 2px; background: linear-gradient(135deg, #0a2149, #0056bf); border: none; color: #fff; }
+.aq-total small { font-size: 12px; color: #cfe1fa; }
+.aq-total strong { font-family: var(--font-display, inherit); font-size: 28px; line-height: 1.1; font-weight: 800; }
+.aq-total span { font-size: 12px; color: #cfe1fa; }
+.aq-secure { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 12px; color: #5a6b7a; }
+.aq-secure svg { color: #0e7038; flex-shrink: 0; }
+.aq-pending { margin: 0; font-size: 12.5px; font-weight: 600; color: #9a5a00; }
+
+.aq-btn-primary, .aq-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; padding: 0 20px; border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.aq-btn-primary { border: none; background: #0056bf; color: #fff; }
+.aq-btn-primary:hover:not(:disabled) { background: #00459a; }
+.aq-btn-outline { border: 1.5px solid #d9e0e7; background: #fff; color: #3b4e5d; }
+.aq-btn-primary:disabled, .aq-btn-outline:disabled { opacity: 0.55; cursor: default; }
+.aq-spin { animation: aq-spin 0.9s linear infinite; }
+@keyframes aq-spin { to { transform: rotate(360deg); } }
+
+.aq-sent { max-width: 460px; align-items: center; text-align: center; gap: 8px; padding: 32px 28px; background: #fff; }
+.aq-sent-icon { display: inline-flex; color: #18a957; }
+.aq-sent h2 { margin: 0; font-family: var(--font-display, inherit); font-size: 22px; font-weight: 800; color: #0f172a; }
+.aq-sent p { margin: 0 0 8px; font-size: 13px; color: #5a6b7a; }
+.aq-sent dl { width: 100%; margin: 0 0 12px; padding: 12px 14px; border-radius: 10px; background: #f5f9ff; border: 1px solid #bfd6f7; display: grid; gap: 8px; text-align: left; }
+.aq-sent dl > div { display: flex; justify-content: space-between; gap: 12px; }
+.aq-sent dt { font-size: 12px; color: #5a6b7a; }
+.aq-sent dd { margin: 0; font-size: 12.5px; font-weight: 700; color: #0f172a; text-align: right; }
+
+/* El formulario de carga de repuesto se abre encima de este modal. */
+.aq-nested .catalog-product-modal-backdrop { z-index: 10020; }
+
+@media (max-width: 900px) {
+  .aq-overlay { padding: 0; align-items: flex-end; }
+  .aq-modal { max-height: 96vh; border-radius: 16px 16px 0 0; }
+  .aq-body { grid-template-columns: minmax(0, 1fr); overflow-y: auto; grid-template-rows: auto; }
+  .aq-main, .aq-side { overflow: visible; grid-column: 1; grid-row: auto; min-height: auto; }
+  .aq-side { padding: 0 18px 16px; }
+  .aq-foot { position: sticky; bottom: 0; }
+  .aq-part { grid-template-columns: 56px minmax(0, 1fr); }
+  .aq-part-photo { width: 56px; height: 56px; }
+  .aq-part-price { grid-column: 1 / -1; flex-direction: row; align-items: baseline; gap: 8px; }
+  .aq-fields { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Ofrecer por repuesto: cada repuesto del pedido es una fila que la tienda marca si lo tiene */
+.aq-lead { margin: -4px 0 12px; font-size: 12.5px; line-height: 1.5; color: #5a6b7a; }
+.aq-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.aq-item { border: 1.5px solid #e6eaef; border-radius: 12px; background: #fff; overflow: hidden; transition: border-color 0.15s ease; }
+.aq-item.is-on { border-color: #bfd6f7; box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.06); }
+.aq-item-head { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; cursor: pointer; }
+.aq-item-head > input { width: 18px; height: 18px; margin-top: 2px; accent-color: #0056bf; flex-shrink: 0; }
+.aq-item-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.aq-item-title strong { font-size: 13.5px; font-weight: 800; color: #0f172a; overflow-wrap: anywhere; }
+.aq-item-title strong small { font-size: 12.5px; font-weight: 700; color: #5a6b7a; }
+.aq-item-title > span { font-size: 12px; color: #5a6b7a; }
+.aq-item-other { margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: #fff7e6; font-style: normal; font-size: 11px; font-weight: 700; color: #9a5a00; }
+.aq-item-desc { color: #3b4e5d !important; }
+.aq-item-have { align-self: center; display: inline-flex; align-items: center; gap: 5px; padding: 3px 12px; border-radius: 999px; background: #f3f5f7; font-size: 12px; font-weight: 700; color: #5a6b7a; white-space: nowrap; }
+.aq-item-have.is-on { background: #eafbf1; color: #0e7038; }
+.aq-item-body { padding: 0 14px 14px 44px; display: flex; flex-direction: column; gap: 10px; }
+.aq-item-price { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.aq-item-price .aq-field { flex: 1 1 200px; }
+.aq-item-subtotal { display: flex; flex-direction: column; align-items: flex-end; padding-bottom: 8px; }
+.aq-item-subtotal small { font-size: 11.5px; color: #8a97a5; }
+.aq-item-subtotal strong { font-size: 17px; font-weight: 800; color: #0056bf; }
+.aq-item .aq-parts { max-height: 260px; }
+.aq-item .aq-money input { min-height: 44px; font-size: 18px; }
+.aq-link-btn { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 4px 0; border: none; background: none; font-family: inherit; font-size: 12.5px; font-weight: 700; color: #0056bf; cursor: pointer; text-decoration: underline; }
+.aq-notice.is-warn { background: #fff7e6; color: #9a5a00; margin: 10px 0 0; }
+@media (max-width: 900px) { .aq-item-body { padding-left: 14px; } }
+
+.aq-delivery-reason { display: block; margin-top: 4px; color: #9a5a00; }
+.aq-delivery-reason.is-blocking { color: #b42318; font-weight: 700; }
+
+.aq-create-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 10px 0; padding: 10px 12px; border: 1px dashed #b9d0ee; border-radius: 10px; background: #f5f9ff; font-size: 12.5px; color: #3b4e5d; }
+.aq-create-bar .aq-btn-outline { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+.aq-delivery-explain { display: block; margin-top: 4px; color: #0056bf; font-weight: 600; }
+
+/* El total del pie solo existe en el celular (en escritorio va en la columna derecha). */
+.aq-foot-total { display: none; }
+
+/* ===========================================================================
+   FORMULARIO DE OFERTA EN EL CELULAR (≤768px): pantalla completa, pasos compactos y pie fijo con el total
+   y el botón de enviar. Mismo orden que la hoja de la app: lo pedido, precio, condiciones y confidencialidad.
+   =========================================================================== */
+@media (max-width: 768px) {
+  .aq-overlay { padding: 0; align-items: stretch; background: #f8fafc; backdrop-filter: none; }
+  .aq-modal { max-width: none; max-height: none; height: 100dvh; border-radius: 0; box-shadow: none; }
+  .aq-modal.aq-sent { height: auto; margin: auto 16px; border-radius: 16px; }
+
+  .aq-head { align-items: center; padding: 12px 14px; }
+  .aq-head > div { min-width: 0; }
+  .aq-eyebrow { font-size: 11.5px; }
+  .aq-head h2 { font-size: 16px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .aq-head p { font-size: 12px; line-height: 1.35; }
+  .aq-close { flex: 0 0 40px; width: 40px; height: 40px; background: #f3f5f7; }
+
+  .aq-body { display: flex; flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  /* Lo que pidió el comprador va primero y compacto; el resto de la columna lateral baja. */
+  /* flex: none evita que las secciones se encojan y se monten unas sobre otras dentro del contenedor con scroll. */
+  .aq-main { order: 2; flex: none; min-height: auto; overflow: visible; gap: 12px; padding: 12px 14px; }
+  .aq-side { order: 1; flex: none; min-height: auto; overflow: visible; gap: 10px; padding: 12px 14px 0; }
+  .aq-main > *, .aq-side > *, .aq-items > * { flex-shrink: 0; }
+  .aq-foot { flex: none; }
+  .aq-side .aq-total { display: none; }
+  .aq-side .aq-secure { display: none; }
+  .aq-card { padding: 12px 14px; border-radius: 12px; }
+  .aq-card h4 { font-size: 12px; margin-bottom: 8px; }
+  .aq-card dl > div { padding-bottom: 6px; border-bottom: 1px solid #e6eaef; }
+  .aq-card dl > div:last-child { padding-bottom: 0; border-bottom: 0; }
+
+  .aq-step { padding: 14px; border-radius: 12px; box-shadow: none; }
+  .aq-step h3 { gap: 8px; margin-bottom: 10px; font-size: 14px; }
+  .aq-step h3 span { width: 22px; height: 22px; font-size: 11px; }
+  .aq-lead { font-size: 12px; }
+
+  /* Cada repuesto del pedido: casilla grande, título y estado en una columna ordenada. */
+  .aq-items { gap: 10px; }
+  .aq-item-head { flex-wrap: wrap; gap: 8px 10px; padding: 12px; }
+  .aq-item-head > input { width: 22px; height: 22px; }
+  .aq-item-title { flex: 1 1 calc(100% - 40px); }
+  .aq-item-title strong { font-size: 13px; }
+  .aq-item-have { margin-left: 32px; padding: 3px 10px; font-size: 11.5px; }
+  .aq-item-body { padding: 0 12px 12px; }
+  .aq-search-row { flex-direction: column; align-items: stretch; gap: 8px; }
+  .aq-search { flex: 0 0 auto; min-height: 44px; }
+  .aq-switch { min-height: 36px; }
+  .aq-create-bar { flex-direction: column; align-items: stretch; text-align: left; }
+  .aq-create-bar .aq-btn-outline { width: 100%; }
+  .aq-parts { max-height: 300px; }
+  .aq-part { grid-template-columns: 52px minmax(0, 1fr); gap: 10px; padding: 10px; }
+  .aq-part-photo { width: 52px; height: 52px; }
+  .aq-part-price { grid-column: 1 / -1; flex-direction: row; align-items: baseline; justify-content: space-between; padding-top: 6px; border-top: 1px solid #e6eaef; }
+  .aq-part-price strong { font-size: 15px; }
+  .aq-item-price { flex-direction: column; align-items: stretch; gap: 8px; }
+  .aq-item-subtotal { flex-direction: row; align-items: baseline; justify-content: space-between; padding: 0; }
+  .aq-linked { flex-wrap: wrap; }
+
+  /* Campos a una columna, cómodos de tocar y sin que iOS haga zoom (16px). */
+  .aq-fields { gap: 12px; }
+  .aq-field input, .aq-field select, .aq-field textarea { min-height: 46px; font-size: 16px; }
+  .aq-money input { min-height: 48px; font-size: 20px; }
+
+  /* Pie fijo: total a la izquierda; Cancelar y Enviar debajo, a todo el ancho. */
+  .aq-foot {
+    position: sticky; bottom: 0; z-index: 2; display: grid; grid-template-columns: 1fr; gap: 8px;
+    padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.06);
+  }
+  .aq-foot-total { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .aq-foot-total small { font-size: 12px; color: #5a6b7a; }
+  .aq-foot-total strong { font-size: 20px; font-weight: 800; color: #0056bf; letter-spacing: -0.2px; }
+  .aq-foot-actions { margin-left: 0; display: grid; grid-template-columns: 1fr 2fr; gap: 8px; }
+  .aq-foot-actions .aq-btn-primary, .aq-foot-actions .aq-btn-outline { min-height: 48px; width: 100%; }
+  .aq-notice, .aq-pending { font-size: 12px; }
+}
+
+.aq-part-desc { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; line-height: 16px; color: #5a6b7a; }
+
+.aq-create-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.aq-create-bar { flex-direction: column; align-items: flex-start; }
+
+
+/* Escritorio: el icono de la cabecera y el contador del pie solo existen en el celular. */
+.aq-head-icon, .aq-foot-count { display: none; }
+
+/* ===========================================================================
+   Mismo aspecto que la hoja "Enviar oferta" de la app: hoja inferior con esquinas redondeadas,
+   cabecera con icono, tarjetas blancas sobre fondo gris, repuestos con interruptor y pie con total.
+   =========================================================================== */
+@media (max-width: 768px) {
+  .aq-overlay { align-items: flex-end; background: rgba(15, 23, 42, 0.55); }
+  .aq-modal:not(.aq-sent) { height: 94dvh; max-height: 94dvh; border-radius: 28px 28px 0 0; background: #f7f9fb; }
+
+  .aq-head { align-items: center; gap: 12px; padding: 16px 16px 14px; }
+  .aq-head-icon { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 16px; background: #e8f0fe; color: #0056bf; }
+  .aq-head-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .aq-eyebrow { order: 1; font-size: 18px; font-weight: 800; color: #0f172a; }
+  .aq-eyebrow svg { display: none; }
+  .aq-head h2 { order: 2; margin: 2px 0 0; display: block; font-family: inherit; font-size: 13px; font-weight: 500; line-height: 1.3; color: #5a6b7a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .aq-head p { display: none; }
+  .aq-close { width: 36px; height: 36px; background: transparent; }
+
+  .aq-main { gap: 16px; padding: 16px 14px; }
+  .aq-side { padding: 16px 14px 0; }
+  .aq-step, .aq-card { border: none; border-radius: 20px; padding: 18px 16px; background: #fff; box-shadow: none; }
+  .aq-step h3 { gap: 10px; margin-bottom: 8px; font-size: 15px; font-weight: 800; }
+  .aq-step h3 span { width: 26px; height: 26px; font-size: 13px; }
+  .aq-lead { margin: 0 0 14px; font-size: 14px; line-height: 1.45; }
+
+  /* Repuesto del pedido: título a la izquierda, interruptor "Lo tengo" a la derecha. */
+  .aq-items { gap: 12px; }
+  .aq-item, .aq-item.is-on { border: 1.5px solid #dbe3ec; border-radius: 18px; box-shadow: none; }
+  .aq-item.is-on { border-color: #0056bf; }
+  .aq-item-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title sw" "title have"; align-items: start; gap: 4px 12px; padding: 16px; }
+  .aq-item-title { grid-area: title; flex: none; gap: 3px; }
+  .aq-item-title strong { font-size: 18px; line-height: 1.2; }
+  .aq-item-title strong small { font-size: 14px; font-weight: 600; }
+  .aq-item-title > span { font-size: 14px; line-height: 1.35; }
+  .aq-item-head > input[type="checkbox"] {
+    grid-area: sw; justify-self: end; appearance: none; -webkit-appearance: none; position: relative; width: 52px; height: 30px; margin: 0;
+    border-radius: 999px; background: #dfe5ec; cursor: pointer; transition: background 0.15s ease;
+  }
+  .aq-item-head > input[type="checkbox"]::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25); transition: transform 0.15s ease; }
+  .aq-item-head > input[type="checkbox"]:checked { background: #0056bf; }
+  .aq-item-head > input[type="checkbox"]:checked::after { transform: translateX(22px); }
+  .aq-item-have, .aq-item-have.is-on { grid-area: have; justify-self: end; margin: 0; padding: 0; background: none; font-size: 12.5px; font-weight: 800; color: #5a6b7a; }
+  .aq-item-have.is-on { color: #0056bf; }
+  .aq-item-have svg { display: none; }
+  .aq-item-body { padding: 0 16px 16px; }
+
+  /* Pie: total (y cuántos repuestos cubre) a la izquierda y el botón de enviar a la derecha; la X ya cierra. */
+  .aq-foot { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 14px; padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px)); }
+  .aq-foot > .aq-notice, .aq-foot > .aq-pending { grid-column: 1 / -1; }
+  .aq-foot-total { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+  .aq-foot-total strong { font-size: 20px; }
+  .aq-foot-actions { display: block; }
+  .aq-foot-actions .aq-btn-outline { display: none; }
+  .aq-foot-actions .aq-btn-primary { width: auto; min-width: 150px; min-height: 52px; padding: 0 22px; border-radius: 16px; font-size: 16px; font-weight: 800; }
+  .aq-foot-actions .aq-btn-primary:disabled { background: #b8c2cf; color: #fff; cursor: not-allowed; }
+}
+
+/* Como la hoja de la app: en el celular no se muestra la columna "Lo que pidió el comprador / Tu oferta frente a lo pedido",
+   y el pie (total + botón) va al final de la hoja, no al principio. */
+@media (max-width: 768px) {
+  .aq-side { display: none; }
+  .aq-main { order: 1; }
+  .aq-foot { order: 3; }
+  .aq-foot > .aq-pending { display: none; }
+}
+
+/* Inventario completo a pantalla completa (se abre desde "Buscar en todo mi inventario"). */
+.aq-inventory { position: fixed; inset: 0; z-index: 10010; display: flex; flex-direction: column; background: #f7f9fb; color: #243442; font-family: var(--font-primary, inherit); }
+.aq-inv-head { display: flex; align-items: center; gap: 16px; padding: 14px 24px; background: #fff; border-bottom: 1px solid #dbe6f3; }
+.aq-inv-head h2 { margin: 0; font-family: var(--font-display, inherit); font-size: 20px; font-weight: 800; color: #0f172a; }
+.aq-inv-head p { margin: 2px 0 0; font-size: 12.5px; color: #5a6b7a; }
+.aq-inv-back { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; min-height: 40px; padding: 0 14px; border: 1px solid #dbe6f3; border-radius: 10px; background: #fff; font: inherit; font-size: 13px; font-weight: 700; color: #0056bf; cursor: pointer; }
+.aq-inv-back:hover { background: #eaf2ff; border-color: #0056bf; }
+.aq-inv-bar { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 960px; box-sizing: border-box; margin: 0 auto; padding: 16px 24px 0; }
+.aq-inv-bar .aq-search { flex: 1 1 auto; min-width: 0; }
+.aq-inv-filter-btn { position: relative; display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; min-height: 42px; padding: 0 14px; border: 1px solid #d9e0e7; border-radius: 10px; background: #fff; font: inherit; font-size: 13px; font-weight: 700; color: #243442; cursor: pointer; }
+.aq-inv-filter-btn.is-active { border-color: #0056bf; color: #0056bf; background: #eaf2ff; }
+.aq-inv-filter-btn em { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #0056bf; color: #fff; font-style: normal; font-size: 11px; font-weight: 800; }
+.aq-inv-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 14px; align-items: end; width: 100%; max-width: 960px; box-sizing: border-box; margin: 12px auto 0; padding: 14px 24px; }
+.aq-inv-filters { background: #fff; border: 1px solid #dbe6f3; border-radius: 12px; width: calc(100% - 48px); padding: 14px 16px; }
+.aq-inv-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 960px; box-sizing: border-box; margin: 0 auto; padding: 14px 24px 28px; }
+.aq-inv-list > * { flex-shrink: 0; }
+.aq-inv-more { align-self: center; }
+@media (max-width: 768px) {
+  .aq-inv-head { gap: 10px; padding: 10px 14px; flex-wrap: wrap; }
+  .aq-inv-head h2 { font-size: 17px; }
+  .aq-inv-back span, .aq-inv-back { min-height: 40px; }
+  .aq-inv-bar { padding: 12px 14px 0; }
+  .aq-inv-filter-btn span { display: none; }
+  .aq-inv-filters { grid-template-columns: 1fr; width: calc(100% - 28px); }
+  .aq-inv-list { padding: 12px 14px 24px; }
+}
+
+/* Pulido del inventario completo: mismas proporciones que la pantalla de la app. */
+.aq-inventory .aq-inv-head { flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 20px 14px; box-shadow: 0 1px 0 #e6eaef; }
+.aq-inventory .aq-inv-back { min-height: 36px; padding: 0; border: 0; background: none; font-size: 14px; }
+.aq-inventory .aq-inv-back:hover { background: none; text-decoration: underline; }
+.aq-inventory .aq-inv-head h2 { font-size: 22px; letter-spacing: -0.2px; }
+.aq-inventory .aq-inv-head p { font-size: 13.5px; line-height: 1.4; color: #5a6b7a; }
+.aq-inventory .aq-inv-head p b { color: #0f172a; font-weight: 800; }
+.aq-inventory .aq-inv-bar .aq-search { min-height: 48px; border-radius: 14px; border-color: #dbe3ec; }
+.aq-inventory .aq-inv-bar .aq-search input { font-size: 15px; }
+.aq-inventory .aq-inv-filter-btn { min-height: 48px; min-width: 48px; justify-content: center; border-radius: 14px; border-color: #dbe3ec; }
+.aq-inventory .aq-hint { margin: 2px 0 0; color: #5a6b7a; font-size: 12.5px; font-weight: 700; }
+.aq-inventory .aq-part { grid-template-columns: 72px minmax(0, 1fr); align-items: start; gap: 6px 14px; padding: 14px; border: 1.5px solid #e6eaef; border-radius: 16px; background: #fff; box-shadow: 0 1px 2px rgba(15, 40, 90, 0.04); }
+.aq-inventory .aq-part.is-selected { border-color: #0056bf; background: #f5f9ff; }
+.aq-inventory .aq-part-photo { width: 72px; height: 72px; border-radius: 12px; }
+.aq-inventory .aq-part-body { gap: 6px; }
+.aq-inventory .aq-part-body > strong { font-size: 15px; line-height: 1.25; }
+.aq-inventory .aq-part-tags em { font-size: 11.5px; padding: 3px 9px; }
+.aq-inventory .aq-part-meta { gap: 2px 12px; font-size: 12.5px; color: #243442; }
+.aq-inventory .aq-part-meta small { font-size: 11.5px; color: #6b7a89; }
+.aq-inventory .aq-part-price { grid-column: 1 / -1; flex-direction: row; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 4px; padding-top: 10px; border-top: 1px solid #eef1f4; }
+.aq-inventory .aq-part-price small { font-size: 12px; color: #6b7a89; }
+.aq-inventory .aq-part-price strong { font-size: 18px; margin-left: auto; }
+.aq-inventory .aq-part-check { margin: 0; }
+.aq-inventory .aq-inv-more { min-height: 46px; width: 100%; border-radius: 14px; }
+@media (max-width: 768px) {
+  .aq-inventory .aq-inv-head { padding: 12px 16px 14px; }
+  .aq-inventory .aq-inv-bar { padding: 14px 16px 0; }
+  .aq-inventory .aq-inv-filters { width: calc(100% - 32px); }
+  .aq-inventory .aq-inv-list { padding: 14px 16px calc(24px + env(safe-area-inset-bottom, 0px)); gap: 12px; }
+  .aq-inventory .aq-search input { font-size: 16px; }
+}
+
+/* Inventario en escritorio: mosaico por defecto (como la vista de productos del panel) o tabla. */
+.aq-inventory .aq-inv-bar, .aq-inventory .aq-inv-list { max-width: 1280px; }
+.aq-inventory .aq-inv-filters { max-width: 1232px; }
+.aq-inv-view { display: inline-flex; flex: 0 0 auto; padding: 3px; gap: 2px; border: 1px solid #dbe3ec; border-radius: 12px; background: #fff; }
+.aq-inv-view button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 13px; font-weight: 700; color: #5a6b7a; cursor: pointer; }
+.aq-inv-view button.active { background: #0056bf; color: #fff; }
+.aq-inv-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.aq-inv-grid > .aq-skeleton { height: 280px; }
+@media (max-width: 1280px) { .aq-inv-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .aq-inv-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.aq-tile { display: flex; flex-direction: column; min-width: 0; padding: 0; overflow: hidden; border: 1.5px solid #e6eaef; border-radius: 16px; background: #fff; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05); text-align: left; font: inherit; cursor: pointer; transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
+.aq-tile:hover { transform: translateY(-3px); border-color: #bfd6f7; box-shadow: 0 10px 22px rgba(15, 23, 42, 0.1); }
+.aq-tile.is-selected { border-color: #0056bf; box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.12); }
+.aq-tile-image { position: relative; display: flex; align-items: center; justify-content: center; height: 150px; background: #f5f7fa; color: #8a97a5; overflow: hidden; }
+.aq-tile-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.aq-tile-compat { position: absolute; left: 8px; top: 8px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; background: rgba(234, 251, 241, 0.96); color: #0e7038; font-style: normal; font-size: 11px; font-weight: 800; }
+.aq-tile-body { display: flex; flex-direction: column; gap: 5px; padding: 12px 14px 10px; }
+.aq-tile-body small { overflow: hidden; color: #0056bf; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.aq-tile-body > strong { min-height: 2.4em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14px; line-height: 1.2; color: #0f172a; }
+.aq-tile-sub { font-size: 12px; color: #5a6b7a; }
+.aq-tile-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 12px; color: #5a6b7a; }
+.aq-tile-row .is-bad { color: #b42318; font-weight: 700; }
+.aq-tile-row b { font-size: 16px; font-weight: 800; color: #0056bf; }
+.aq-tile-cta { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: auto; padding: 10px 14px; border-top: 1px solid #eef1f4; font-size: 12.5px; font-weight: 800; color: #0056bf; }
+.aq-tile:hover .aq-tile-cta { background: #eaf2ff; }
+.aq-inv-table-wrap { overflow-x: auto; border: 1px solid #e6eaef; border-radius: 14px; background: #fff; }
+.aq-inv-table { width: 100%; border-collapse: collapse; font-size: 12.5px; color: #243442; }
+.aq-inv-table th { position: sticky; top: 0; padding: 10px 12px; background: #f3f6fa; text-align: left; font-size: 11.5px; font-weight: 800; color: #5a6b7a; white-space: nowrap; border-bottom: 1px solid #e6eaef; }
+.aq-inv-table td { padding: 8px 12px; border-bottom: 1px solid #eef1f4; vertical-align: middle; }
+.aq-inv-table tbody tr { cursor: pointer; }
+.aq-inv-table tbody tr:hover { background: #f5f9ff; }
+.aq-inv-table tbody tr.is-selected { background: #eaf2ff; }
+.aq-inv-table .is-num { text-align: right; white-space: nowrap; }
+.aq-inv-table .is-bad { color: #b42318; font-weight: 700; }
+.aq-inv-cell-name { display: flex; align-items: center; gap: 10px; min-width: 220px; }
+.aq-inv-cell-name strong { font-size: 13px; color: #0f172a; }
+.aq-inv-thumb { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 38px; width: 38px; height: 38px; border-radius: 8px; background: #f3f5f7; color: #8a97a5; overflow: hidden; }
+.aq-inv-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.aq-inv-yes { display: inline-flex; align-items: center; gap: 4px; font-style: normal; font-weight: 700; color: #0e7038; }
+.aq-inv-no { font-style: normal; color: #9a5a00; }
+.aq-inv-pick { min-height: 32px; padding: 0 14px; }
+.aq-inv-pager { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; padding-top: 6px; font-size: 12.5px; color: #5a6b7a; }
+.aq-inv-pager label { display: inline-flex; align-items: center; gap: 8px; }
+.aq-inv-pager select { min-height: 34px; padding: 0 8px; border: 1px solid #d9e0e7; border-radius: 8px; background: #fff; font: inherit; font-weight: 700; color: #243442; }
+.aq-inv-pager > div { display: inline-flex; align-items: center; gap: 10px; }
+.aq-inv-pager .aq-btn-outline { min-height: 36px; padding: 0 12px; }
+.aq-inv-pager .aq-btn-outline:disabled { opacity: 0.5; cursor: not-allowed; }
+@media (max-width: 768px) { .aq-inv-pager > div { width: 100%; justify-content: space-between; } }
+
+.aq-tile-oem { display: flex; align-items: baseline; gap: 6px; font-size: 12px; color: #243442; }
+.aq-tile-oem small { color: #6b7a89; font-weight: 700; }
+.aq-tile-oem b { overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.aq-tile-fit { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; padding: 6px 8px; border-radius: 8px; background: #f3f8ff; font-size: 11.5px; line-height: 1.3; font-weight: 600; color: #243442; }
+.aq-tile-fit small { display: block; margin-bottom: 1px; color: #0056bf; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; white-space: normal; }
+.aq-tile-fit.is-empty { background: #fff7e6; color: #9a5a00; }
+.aq-tile-fit.is-empty small { color: #9a5a00; }
+.aq-inv-fit { min-width: 200px; max-width: 280px; }
+.aq-inv-fit span { display: block; font-size: 12px; color: #243442; }
+.aq-inv-fit .aq-inv-yes { margin-bottom: 2px; font-size: 11.5px; }

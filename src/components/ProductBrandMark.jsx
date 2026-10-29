@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getBrandColor, getBrandInitials, getBrandLogoUrl } from '../data/brandGuidance';
+import { useCatalogo } from '../remoteConfig/hooks';
 
 export default function ProductBrandMark({ brand = '', logoUrl = '', size = 28, className = '' }) {
   const cleanBrand = String(brand || '').trim();
@@ -13,6 +14,10 @@ export default function ProductBrandMark({ brand = '', logoUrl = '', size = 28, 
   // favicon de 32x32 con fondo blanco de Google, que a tamano de icono se ve casi en
   // blanco. `logoUrl` solo deberia usarse como respaldo para marcas sin SVG local ni
   // entrada en el catalogo.
+  //
+  // Mantenedor comun: si el dueno subio el icono de la marca (destacada), ese manda sobre todo lo
+  // anterior. Se lee el catalogo aca solo para volver a resolver cuando llega el bootstrap.
+  const featuredBrands = useCatalogo('marcasRepuestoDestacadas', null);
   const initialLogo = getBrandLogoUrl(cleanBrand, { brandLogoUrl: logoUrl });
   const [currentSrc, setCurrentSrc] = useState(initialLogo);
   const [imageFailed, setImageFailed] = useState(false);
@@ -21,7 +26,7 @@ export default function ProductBrandMark({ brand = '', logoUrl = '', size = 28, 
     const next = getBrandLogoUrl(cleanBrand, { brandLogoUrl: logoUrl });
     setCurrentSrc(next);
     setImageFailed(false);
-  }, [cleanBrand, logoUrl]);
+  }, [cleanBrand, logoUrl, featuredBrands]);
 
   const handleImageError = () => {
     // Si la imagen externa falló, intentar con el logo local de repuesto automotriz

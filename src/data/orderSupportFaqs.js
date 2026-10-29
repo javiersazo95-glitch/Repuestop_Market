@@ -10,16 +10,12 @@
  */
 import { cancellationReasonHint, cancellationReasonLabel } from './cancellationReason';
 import {
-  AUTO_FINALIZATION_DAYS,
-  AUTO_RECEPTION_DAYS,
-  AUTO_RECEPTION_LOCAL_DAYS,
-  DELIVERY_VETO_WINDOW_HOURS,
-  RETRACTION_DAYS,
   fundsReleaseNotice,
+  orderDeadlineParams,
   retractionNotice,
   storeAutoCloseNotice,
 } from './orderDeadlines';
-import { isStorePickupOrder, orderPaymentWindow, PAYMENT_WINDOW_MINUTES } from './orderStatusFlow';
+import { isStorePickupOrder, orderPaymentWindow } from './orderStatusFlow';
 import { activeBuyerRefunds, FLOW_REFUND_NOTICE } from './refundStatus';
 
 const STATUS_LABELS = {
@@ -77,8 +73,8 @@ function retractionFaq(status, entregadoAt, now) {
   const a = notice
     ? `${notice.label}. ${notice.detail}`
     : entregadoAt
-      ? `El retracto dura ${RETRACTION_DAYS} días desde que recibiste y ese plazo ya venció. Si el repuesto tiene fallas, sigue vigente la garantía legal de 6 meses.`
-      : `Tienes ${RETRACTION_DAYS} días desde que recibes para retractarte si el repuesto está sin usar y en su empaque original sellado.`;
+      ? `El retracto dura ${orderDeadlineParams().retractionDays} días desde que recibiste y ese plazo ya venció. Si el repuesto tiene fallas, sigue vigente la garantía legal de 6 meses.`
+      : `Tienes ${orderDeadlineParams().retractionDays} días desde que recibes para retractarte si el repuesto está sin usar y en su empaque original sellado.`;
   return faq('¿Puedo retractarme de la compra?', a);
 }
 
@@ -99,7 +95,7 @@ function buyerFaqs(order, store, status, { isStorePickup, isLocalDelivery, now }
     case 'PENDIENTE': {
       const window = orderPaymentWindow(order, now);
       out.push(
-        faq('¿Cuánto tiempo tengo para pagar?', `${window ? `${window.label}. ` : ''}Tienes ${PAYMENT_WINDOW_MINUTES} minutos desde que inicias el pago. Mientras tanto reservamos los productos para ti.`),
+        faq('¿Cuánto tiempo tengo para pagar?', `${window ? `${window.label}. ` : ''}Tienes ${orderDeadlineParams().paymentWindowMinutes} minutos desde que inicias el pago. Mientras tanto reservamos los productos para ti.`),
         faq('¿Qué pasa si no alcanzo a pagar?', 'El pedido se cancela solo y los productos vuelven al stock de la tienda. No se te cobra nada; puedes volver a comprarlos desde el carrito.'),
         faq('Ya pagué y sigue pendiente', 'Flow puede tardar unos minutos en confirmar el pago. No pagues de nuevo: recarga el detalle en unos minutos. Si te cobraron y el pedido igual se cancela, el dinero se devuelve por Flow.'),
         faq('¿Cómo reintento el pago?', 'Con "Retomar pago" en este detalle: vuelves a Flow con el mismo pedido y puedes elegir otro medio de pago.'),
@@ -141,13 +137,13 @@ function buyerFaqs(order, store, status, { isStorePickup, isLocalDelivery, now }
           isLocalDelivery,
         }, now);
         if (notice?.kind === 'delivery_veto') {
-          out.push(faq('La tienda dice que lo entregó', `${notice.label}. Tienes ${DELIVERY_VETO_WINDOW_HOURS} horas desde su aviso: si lo recibiste, confírmalo en el bloque de la tienda; si no, toca "No la he recibido". Vencido el plazo, se da por recibido.`));
+          out.push(faq('La tienda dice que lo entregó', `${notice.label}. Tienes ${orderDeadlineParams().deliveryVetoWindowHours} horas desde su aviso: si lo recibiste, confírmalo en el bloque de la tienda; si no, toca "No la he recibido". Vencido el plazo, se da por recibido.`));
         }
         out.push(
           faq('¿Cómo sigo mi envío?', isLocalDelivery
             ? 'Es un despacho dentro de tu comuna (delivery de la tienda o app de reparto). Coordina la entrega con la tienda por el chat.'
             : 'En el bloque de la tienda están el courier y el número de seguimiento. Úsalo en el sitio del courier para ver dónde va tu paquete.'),
-          faq('¿Qué pasa si no confirmo que lo recibí?', `${notice?.kind === 'reception' ? `${notice.label}. ` : ''}Si no confirmas ni reclamas, lo damos por recibido ${isLocalDelivery ? AUTO_RECEPTION_LOCAL_DAYS : AUTO_RECEPTION_DAYS} días después del despacho. Si llegó, confírmalo en el bloque de la tienda.`),
+          faq('¿Qué pasa si no confirmo que lo recibí?', `${notice?.kind === 'reception' ? `${notice.label}. ` : ''}Si no confirmas ni reclamas, lo damos por recibido ${isLocalDelivery ? orderDeadlineParams().autoReceptionLocalDays : orderDeadlineParams().autoReceptionDays} días después del despacho. Si llegó, confírmalo en el bloque de la tienda.`),
           faq('No me ha llegado', 'Revisa el seguimiento y pregúntale a la tienda por el chat. Si no aparece, abre un reclamo con el motivo "El producto no ha llegado" antes de que se dé por recibido.'),
           faq('Llegó dañado o no es lo que pedí', 'Confirma la recepción y abre un reclamo con el motivo que corresponda, adjuntando fotos del paquete y del repuesto.'),
         );
@@ -156,7 +152,7 @@ function buyerFaqs(order, store, status, { isStorePickup, isLocalDelivery, now }
     case 'ENTREGADO': {
       const finalization = storeAutoCloseNotice({ estado: status, entregadoAt, isStorePickup, isLocalDelivery }, now);
       out.push(
-        faq('¿Cuándo se cierra mi compra?', `${finalization ? `${finalization.label}. ` : ''}La compra se cierra sola ${AUTO_FINALIZATION_DAYS} días después de recibirla. El cierre da la entrega por conforme, pero no te quita el retracto ni la garantía legal.`),
+        faq('¿Cuándo se cierra mi compra?', `${finalization ? `${finalization.label}. ` : ''}La compra se cierra sola ${orderDeadlineParams().autoFinalizationDays} días después de recibirla. El cierre da la entrega por conforme, pero no te quita el retracto ni la garantía legal.`),
         retractionFaq(status, entregadoAt, now),
         faq('El repuesto no calza o viene con fallas', 'Abre un reclamo con el motivo "Pieza incompatible" o "Pieza defectuosa" y adjunta fotos. Primero conversas con la tienda; si no llegan a acuerdo, puedes pedir un mediador de RepuesTop.'),
         faq('¿Cómo califico a la tienda?', 'Con "Calificar" en el bloque de la tienda. Tu opinión ayuda a otros compradores.'),
@@ -166,7 +162,7 @@ function buyerFaqs(order, store, status, { isStorePickup, isLocalDelivery, now }
     case 'FINALIZADO': {
       if (retractionNotice({ status, entregadoAt }, now)) out.push(retractionFaq(status, entregadoAt, now));
       out.push(
-        faq('¿Qué significa "Finalizado"?', `La entrega quedó conforme y la venta se cerró. Tus derechos siguen vigentes: retracto por ${RETRACTION_DAYS} días y garantía legal por 6 meses desde que recibiste.`),
+        faq('¿Qué significa "Finalizado"?', `La entrega quedó conforme y la venta se cerró. Tus derechos siguen vigentes: retracto por ${orderDeadlineParams().retractionDays} días y garantía legal por 6 meses desde que recibiste.`),
         faq('El repuesto falló después del cierre', withinWarranty(entregadoAt, now)
           ? `Tienes garantía legal por fallas hasta 6 meses desde que lo recibiste${warrantyUntil(entregadoAt)}. Abre un reclamo desde el bloque de la tienda o escríbenos a soporte.`
           : 'La garantía legal de 6 meses desde la recepción ya venció. Igual puedes escribirle a la tienda por el chat o contarnos tu caso.'),
@@ -229,14 +225,14 @@ function sellerFaqs(order, status, isStorePickup, now) {
     case 'ENVIADO':
       out.push(isStorePickup
         ? faq('¿Cómo entrego el pedido?', 'Ingresa el código que te dicta el comprador. Sin el código no hay prueba de entrega.')
-        : faq('Ya lo entregué, ¿cómo lo aviso?', `Con "Marcar como recibida". El comprador tiene ${DELIVERY_VETO_WINDOW_HOURS} horas para confirmar o reclamar; si no responde, queda como recibido. Si no haces nada, se da por recibido ${AUTO_RECEPTION_DAYS} días después del despacho (${AUTO_RECEPTION_LOCAL_DAYS} en reparto local).`));
+        : faq('Ya lo entregué, ¿cómo lo aviso?', `Con "Marcar como recibida". El comprador tiene ${orderDeadlineParams().deliveryVetoWindowHours} horas para confirmar o reclamar; si no responde, queda como recibido. Si no haces nada, se da por recibido ${orderDeadlineParams().autoReceptionDays} días después del despacho (${orderDeadlineParams().autoReceptionLocalDays} en reparto local).`));
       out.push(faq('Problema con el courier', 'Escríbele al comprador por el chat y cuéntanos el caso a soporte, con el número de seguimiento.'));
       break;
     case 'ENTREGADO': {
       const funds = fundsReleaseNotice({ status, entregadoAt: order?.entregadoAt }, now);
       out.push(
-        faq('¿Cuándo puedo finalizar la venta?', `${AUTO_FINALIZATION_DAYS} días después de la entrega. Si nadie la finaliza, se cierra sola.`),
-        faq('¿Cuándo puedo retirar el dinero?', `${funds ? `${funds.label}. ` : ''}Los fondos quedan en custodia mientras el comprador conserva su derecho a retracto (${RETRACTION_DAYS} días). Después se suman a lo que puedes retirar.`),
+        faq('¿Cuándo puedo finalizar la venta?', `${orderDeadlineParams().autoFinalizationDays} días después de la entrega. Si nadie la finaliza, se cierra sola.`),
+        faq('¿Cuándo puedo retirar el dinero?', `${funds ? `${funds.label}. ` : ''}Los fondos quedan en custodia mientras el comprador conserva su derecho a retracto (${orderDeadlineParams().retractionDays} días). Después se suman a lo que puedes retirar.`),
       );
       break;
     }

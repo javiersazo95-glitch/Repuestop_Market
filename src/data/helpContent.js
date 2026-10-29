@@ -10,6 +10,8 @@
  *   selector de asunto vacío (el formulario lo sanea al primer tema).
  */
 
+import { AUCTION_HELP_FAQS, AUCTION_HELP_INTRO } from './auctionHelpFaqs';
+
 export const HELP_ROLES = { BUYER: 'COMPRADOR', SELLER: 'VENDEDOR', GUEST: 'INVITADO' };
 
 const ALL_ROLES = [HELP_ROLES.BUYER, HELP_ROLES.SELLER, HELP_ROLES.GUEST];
@@ -33,6 +35,7 @@ export const TICKET_CATEGORIES = { TECNICA: 'FALLA_TECNICA', AYUDA: 'SOLICITUD_A
 export const CONTACT_TOPICS = {
   COMPRADOR: [
     { id: 'buyer-orders', label: 'Pedido o despacho', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'buyer-auction', label: 'Necesidades de compra y ofertas', categoria: TICKET_CATEGORIES.AYUDA },
     { id: 'buyer-payment', label: 'Pago, cobro o reembolso', categoria: TICKET_CATEGORIES.TECNICA },
     { id: 'buyer-quote', label: 'Cotizaciones o mensajes', categoria: TICKET_CATEGORIES.AYUDA },
     { id: 'buyer-report', label: 'Denunciar una publicación o una tienda', categoria: TICKET_CATEGORIES.AYUDA, target: 'Publicación, tienda o enlace' },
@@ -44,6 +47,7 @@ export const CONTACT_TOPICS = {
   ],
   VENDEDOR: [
     { id: 'seller-orders', label: 'Pedidos o envío', categoria: TICKET_CATEGORIES.AYUDA },
+    { id: 'seller-auction', label: 'Necesidades de compra y ofertas', categoria: TICKET_CATEGORIES.AYUDA },
     { id: 'seller-products', label: 'Productos y publicaciones', categoria: TICKET_CATEGORIES.TECNICA },
     { id: 'seller-quote', label: 'Mensajes o cotización', categoria: TICKET_CATEGORIES.AYUDA },
     { id: 'seller-payouts', label: 'Retiros, pagos y comisiones', categoria: TICKET_CATEGORIES.AYUDA },
@@ -344,6 +348,14 @@ export const HELP_CATEGORIES = [
         topicId: 'general',
       },
     ],
+  },
+  {
+    slug: 'necesidades',
+    titulo: AUCTION_HELP_INTRO.titulo,
+    descripcion: AUCTION_HELP_INTRO.descripcion,
+    icono: 'gavel',
+    topicId: { [HELP_ROLES.SELLER]: 'seller-auction', [HELP_ROLES.BUYER]: 'buyer-auction' },
+    faqs: AUCTION_HELP_FAQS,
   },
 ];
 

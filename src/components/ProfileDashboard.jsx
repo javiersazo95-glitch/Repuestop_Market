@@ -7,8 +7,9 @@ import {
   Clock, ShieldCheck, PackageCheck, Loader2, Inbox, Search,
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
-  Wrench, CheckCircle2, ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle
+  ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, Wrench, Stethoscope, Settings
 } from 'lucide-react';
+import EngineIcon from './EngineIcon';
 import VideoTutorialModal from './VideoTutorialModal';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
@@ -21,6 +22,8 @@ import ProfileSummaryPanel from './ProfileSummaryPanel';
 import ProfileFeedbackPanel from './ProfileFeedbackPanel';
 import ProfileOrdersPanel from './ProfileOrdersPanel';
 import ProfileQuotesPanel from './ProfileQuotesPanel';
+import ProfileAuctionsPanel from './ProfileAuctionsPanel';
+import ProfileAuctionManagementPanel from './ProfileAuctionManagementPanel';
 import ProfileCatalogPanel from './ProfileCatalogPanel';
 import ProfileMyQuestionsPanel from './ProfileMyQuestionsPanel';
 import ProfileStoreSummaryPanel from './ProfileStoreSummaryPanel';
@@ -34,7 +37,8 @@ import {
   saveConversationQuoteApi, sendConversationMessageApi,
   pauseSellerProductApi, resumeSellerProductApi, deleteSellerProductApi, getSellerFullInventoryApi,
   getSellerVerificationStatusApi, submitSellerVerificationApi, appealSellerVerificationApi, acceptSellerAdhesionApi,
-  getSellerPendingWithdrawalsApi
+  getSellerPendingWithdrawalsApi,
+  getAutomotiveServiceAccreditationApi,
 } from '../services/api';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { qk } from '../services/queryKeys';
@@ -53,6 +57,10 @@ import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
 import SellerWithdrawalsPanel, { isCompleteBankAccount } from './SellerWithdrawalsPanel';
 import MiTallerSection from './talleres/MiTallerSection';
 import ProfileFavoritesPanel from './ProfileFavoritesPanel';
+import FaultsList from './faults/FaultsList';
+import ProfileWorkshopServicesPanel from './workshop/ProfileWorkshopServicesPanel';
+import AutomotiveServiceAccreditation from './AutomotiveServiceAccreditation';
+import ProfileDiagnosticPanel from './workshop/ProfileDiagnosticPanel';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES, storePath } from '../routes/paths';
@@ -60,6 +68,8 @@ import { orderDisplayCode } from '../data/orderIdentity';
 import { deliveryTermsLabel, isConversationPaused, quoteChargeBase, quoteShippingCost } from '../utils/quoteFlow';
 import { founderBenefitLabel, founderDaysLeft } from '../utils/founderBenefit';
 import FounderBenefitInfo from './FounderBenefitInfo';
+import { useRemoteData } from '../remoteConfig/hooks';
+import { readFlag } from '../remoteConfig/remoteConfig';
 
 function formatQuoteCLP(value) {
   return `$${Math.round(Number(value) || 0).toLocaleString('es-CL')}`;
@@ -108,6 +118,9 @@ const BUYER_PROFILE_COVER_URL = import.meta.env.VITE_BUYER_PROFILE_COVER_URL
 // Navegación del panel: cada rol ve solo los accesos que le corresponden.
 // Los grupos se recorren tal cual para pintar el sidebar, así que un `id` no
 // puede repetirse entre grupos (dos ítems quedarían activos a la vez).
+// Mantenedor comun (2026-10-20): cada grupo con `flag` se puede ocultar desde el mantenedor
+// (`market.perfil.vendedor.<grupo>` / `market.perfil.comprador.<grupo>`). El grupo sin titulo
+// (Resumen) no lleva flag: es la portada del panel y no se apaga. Sin bootstrap se ve todo.
 const SELLER_SIDEBAR_GROUPS = [
   {
     title: null,
@@ -117,10 +130,12 @@ const SELLER_SIDEBAR_GROUPS = [
   },
   {
     title: 'VENTAS',
+    flag: 'market.perfil.vendedor.ventas',
     items: [
       { id: 'pedidos', label: 'Pedidos recibidos', icon: ShoppingBag },
       { id: 'productos', label: 'Productos', icon: Package },
       { id: 'cotizaciones', label: 'Cotizaciones', icon: ReceiptText },
+      { id: 'gestion_subastas', label: 'Seguimiento de propuestas', icon: Gavel },
       { id: 'preguntas_productos', label: 'Preguntas de productos', icon: MessageCircleQuestion },
       { id: 'chats_compradores', label: 'Chats con compradores', icon: MessageSquare }
     ]
@@ -130,6 +145,7 @@ const SELLER_SIDEBAR_GROUPS = [
     // perfil. El backend solo le impide comprarse a si mismo; todo lo demas (comprar a otras
     // tiendas, pedir cotizaciones, preguntar en productos ajenos, guardar favoritos) es igual.
     title: 'MIS COMPRAS',
+    flag: 'market.perfil.vendedor.mis-compras',
     items: [
       { id: 'compras', label: 'Mis compras', icon: ShoppingCart },
       { id: 'mis_cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
@@ -140,6 +156,7 @@ const SELLER_SIDEBAR_GROUPS = [
   },
   {
     title: 'MI TIENDA',
+    flag: 'market.perfil.vendedor.mi-tienda',
     items: [
       { id: 'tienda_datos', label: 'Mi tienda y datos', icon: Store },
       { id: 'retiros', label: 'Retirar dinero', icon: Wallet },
@@ -148,6 +165,7 @@ const SELLER_SIDEBAR_GROUPS = [
   },
   {
     title: 'SOPORTE',
+    flag: 'market.perfil.vendedor.soporte',
     items: [
       { id: 'consultas', label: 'Reportes/Soporte', icon: MessageSquare },
       { id: 'soporte', label: 'Centro de ayuda', icon: Headphones, href: ROUTES.support },
@@ -165,6 +183,7 @@ const SELLER_SIDEBAR_GROUPS = [
 const SELLER_BLOCKED_HIDDEN_TABS = [
   'productos',
   'cotizaciones',
+  'gestion_subastas',
   'preguntas_productos',
   'tienda_datos',
   'mi_taller',
@@ -176,6 +195,7 @@ const SELLER_BLOCKED_HIDDEN_TABS = [
 // de ayuda sigue (es una ruta propia, no una pestana del panel).
 const BUYER_BLOCKED_HIDDEN_TABS = [
   'cotizaciones',
+  'subastas',
   'mis_preguntas',
   'favoritos',
   'datos',
@@ -193,9 +213,12 @@ const BUYER_SIDEBAR_GROUPS = [
   },
   {
     title: 'MIS COMPRAS',
+    flag: 'market.perfil.comprador.mis-compras',
     items: [
       { id: 'pedidos', label: 'Mis pedidos', icon: Package },
       { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
+      { id: 'subastas', label: 'Necesidades de compra', icon: Gavel },
+      { id: 'mis_fallas', label: 'Fallas automotrices', icon: EngineIcon },
       { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
       { id: 'chats_vendedor', label: 'Chats con vendedor', icon: MessageSquare },
       { id: 'favoritos', label: 'Favoritos', icon: Heart }
@@ -203,6 +226,7 @@ const BUYER_SIDEBAR_GROUPS = [
   },
   {
     title: 'MI CUENTA',
+    flag: 'market.perfil.comprador.mi-cuenta',
     items: [
       { id: 'datos', label: 'Mis datos y perfil', icon: UserCog },
       { id: 'mi_taller', label: 'Mi taller', icon: Wrench }
@@ -210,6 +234,55 @@ const BUYER_SIDEBAR_GROUPS = [
   },
   {
     title: 'SOPORTE',
+    flag: 'market.perfil.comprador.soporte',
+    items: [
+      { id: 'consultas', label: 'Reportes/Soporte', icon: MessageSquare },
+      { id: 'soporte', label: 'Centro de ayuda', icon: Headphones, href: ROUTES.support }
+    ]
+  }
+];
+
+// Perfil Taller: compra como un comprador (mismo grupo de compras) y suma lo propio de su taller. Publicar
+// avisos, el catalogo de servicios, el Diagnostico y las fallas de los clientes viven solo aqui.
+const WORKSHOP_SIDEBAR_GROUPS = [
+  {
+    title: null,
+    items: [
+      { id: 'resumen', label: 'Resumen', icon: LayoutGrid }
+    ]
+  },
+  {
+    title: 'MI TALLER',
+    flag: 'market.perfil.taller.mi-taller',
+    items: [
+      { id: 'fallas_taller', label: 'Fallas automotrices', icon: EngineIcon },
+      { id: 'servicios_taller', label: 'Mis servicios', icon: Settings },
+      { id: 'diagnostico', label: 'Servicio Diagnóstico', icon: Stethoscope },
+      { id: 'mi_taller', label: 'Mi taller', icon: Wrench }
+    ]
+  },
+  {
+    title: 'MIS COMPRAS',
+    flag: 'market.perfil.taller.mis-compras',
+    items: [
+      { id: 'pedidos', label: 'Mis pedidos', icon: Package },
+      { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
+      { id: 'subastas', label: 'Necesidades de compra', icon: Gavel },
+      { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
+      { id: 'chats_vendedor', label: 'Chats con vendedor', icon: MessageSquare },
+      { id: 'favoritos', label: 'Favoritos', icon: Heart }
+    ]
+  },
+  {
+    title: 'MI CUENTA',
+    flag: 'market.perfil.taller.mi-cuenta',
+    items: [
+      { id: 'datos', label: 'Mis datos y perfil', icon: UserCog }
+    ]
+  },
+  {
+    title: 'SOPORTE',
+    flag: 'market.perfil.taller.soporte',
     items: [
       { id: 'consultas', label: 'Reportes/Soporte', icon: MessageSquare },
       { id: 'soporte', label: 'Centro de ayuda', icon: Headphones, href: ROUTES.support }
@@ -223,6 +296,7 @@ const BUYER_SIDEBAR_GROUPS = [
 // abre la hoja con todos los grupos.
 const MOBILE_PRIMARY_TAB_IDS = {
   seller: ['resumen', 'pedidos', 'productos', 'chats_compradores'],
+  workshop: ['resumen', 'fallas_taller', 'servicios_taller', 'pedidos'],
   buyer: ['resumen', 'pedidos', 'cotizaciones', 'chats_vendedor'],
 };
 // Etiquetas cortas para la barra inferior (caben en ~70px); la hoja "Mas" y la app bar
@@ -480,9 +554,23 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
   // Datos del perfil y rol
   const isSeller = role === 'SELLER';
-  const baseSidebarGroups = isSeller ? SELLER_SIDEBAR_GROUPS : BUYER_SIDEBAR_GROUPS;
-  const effectiveSellerId = user?.sellerId || user?.proveedorId || user?.tiendaId || user?.userId || user?.id;
+  const isWorkshop = role === 'WORKSHOP';
+  // Declarado antes de la consulta de acreditacion, que lo usa: despues rompia todo el perfil
+  // ("Cannot access ... before initialization").
   const effectiveUserId = user?.userId || user?.buyerId || user?.compradorId || user?.id;
+  // Como la tienda: el taller solo entra a su panel con el expediente aprobado. Sin enviar, en
+  // revision, por corregir o rechazado ve unicamente su acreditacion.
+  const workshopAccreditation = useQuery({
+    queryKey: ['workshop-accreditation-gate', effectiveUserId],
+    queryFn: () => getAutomotiveServiceAccreditationApi(),
+    enabled: isWorkshop,
+    staleTime: 30_000,
+  });
+  const workshopPendingApproval = isWorkshop
+    && workshopAccreditation.isSuccess
+    && String(workshopAccreditation.data?.estado || 'SIN_SOLICITUD').toUpperCase() !== 'APROBADO';
+  const baseSidebarGroups = isSeller ? SELLER_SIDEBAR_GROUPS : isWorkshop ? WORKSHOP_SIDEBAR_GROUPS : BUYER_SIDEBAR_GROUPS;
+  const effectiveSellerId = user?.sellerId || user?.proveedorId || user?.tiendaId || user?.userId || user?.id;
   const effectiveBuyerId = user?.buyerId || user?.compradorId;
   const [selectedCatalogProduct, setSelectedCatalogProduct] = useState(null);
   const [selectedTopProduct, setSelectedTopProduct] = useState(null);
@@ -605,28 +693,32 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // Reportes/Soporte siguen accesibles (para el vendedor ademas pedidos en solo
   // lectura). Soporte es justamente donde vive la mediacion que suele originar el
   // bloqueo.
+  // Grupos que el dueno oculto desde el Mantenedor comun. Se leen los flags del bootstrap (no un
+  // `useFlag` por grupo) porque la lista de grupos depende del rol.
+  const remoteConfigData = useRemoteData();
   const sidebarGroups = useMemo(() => {
+    const enabledGroups = baseSidebarGroups.filter((group) => !group.flag || readFlag(remoteConfigData, group.flag, true));
     const hiddenTabs = isSellerBlocked
       ? SELLER_BLOCKED_HIDDEN_TABS
       : isBuyerBlocked
         ? BUYER_BLOCKED_HIDDEN_TABS
         : null;
-    if (!hiddenTabs) return baseSidebarGroups;
-    return baseSidebarGroups
+    if (!hiddenTabs) return enabledGroups;
+    return enabledGroups
       .map((group) => ({
         ...group,
         items: group.items.filter((item) => !hiddenTabs.includes(item.id)),
       }))
       .filter((group) => group.items.length > 0);
-  }, [baseSidebarGroups, isSellerBlocked, isBuyerBlocked]);
+  }, [baseSidebarGroups, remoteConfigData, isSellerBlocked, isBuyerBlocked]);
 
   // Version movil: items de la barra inferior y titulo de la app bar. Solo derivan de
   // `sidebarGroups` y `activeTab`; no hay estado nuevo.
   const sidebarItems = useMemo(() => sidebarGroups.flatMap((group) => group.items), [sidebarGroups]);
   const mobilePrimaryTabs = useMemo(() => {
-    const ids = MOBILE_PRIMARY_TAB_IDS[isSeller ? 'seller' : 'buyer'];
+    const ids = MOBILE_PRIMARY_TAB_IDS[isSeller ? 'seller' : isWorkshop ? 'workshop' : 'buyer'];
     return ids.map((id) => sidebarItems.find((item) => item.id === id)).filter(Boolean);
-  }, [sidebarItems, isSeller]);
+  }, [sidebarItems, isSeller, isWorkshop]);
   const mobileSectionTitle = useMemo(() => {
     if (activeTab === 'feedback') return 'Dejar feedback';
     return sidebarItems.find((item) => item.id === activeTab)?.label || 'Mi cuenta';
@@ -653,6 +745,17 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // al resumen.
   // Reemplaza la entrada del historial (no la apila): con push, "atras" volvia a la pestana oculta,
   // esta la volvia a sacar y la persona quedaba atrapada (pruebas en dev, 2026-10-09).
+  // Publicar avisos, acreditar el taller y su agenda son del perfil Taller: un enlace guardado a
+  // `/perfil/fallas_taller` (o a las pestañas del taller) de otra cuenta vuelve al resumen.
+  useEffect(() => {
+    const soloTaller = ['fallas_taller', 'servicios_taller', 'diagnostico'].includes(activeTab);
+    const soloComprador = activeTab === 'mis_fallas';
+    if ((soloTaller && !isWorkshop) || (soloComprador && isWorkshop)) {
+      setActiveTabState('resumen');
+      onTabChange?.('resumen', { replace: true });
+    }
+  }, [activeTab, isWorkshop, onTabChange]);
+
   useEffect(() => {
     const oculta = (isSellerBlocked && SELLER_BLOCKED_HIDDEN_TABS.includes(activeTab))
       || (isBuyerBlocked && BUYER_BLOCKED_HIDDEN_TABS.includes(activeTab));
@@ -1231,6 +1334,16 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         { id: 'video_tutorial', tone: 'blue', icon: PlayCircle, title: 'Aprende a usar RepuesTop', description: 'Mira el video tutorial para tiendas.', onClick: () => setVideoTutorialOpen(true) },
       ];
     }
+    if (isWorkshop) {
+      return [
+        { id: 'fallas', tone: 'amber', icon: EngineIcon, title: 'Fallas automotrices', description: 'Revisa las fallas de los clientes y deja tu diagnóstico.', onClick: () => setActiveTab('fallas_taller') },
+        { id: 'servicios', tone: 'emerald', icon: Settings, title: 'Mis servicios', description: 'Registra tus servicios con su precio y tus marcas especialistas.', onClick: () => setActiveTab('servicios_taller') },
+        { id: 'diagnostico', tone: 'purple', icon: Stethoscope, title: 'Servicio Diagnóstico', description: 'Ofrece agenda en tus comentarios. Gratis cada 10 necesidades de compra.', onClick: () => setActiveTab('diagnostico') },
+        { id: 'mi_taller', tone: 'sky', icon: Wrench, title: 'Mi taller', description: 'Muestra tus servicios con precio y atiende tus citas.', onClick: () => setActiveTab('mi_taller') },
+        { id: 'subastas', tone: 'blue', icon: Gavel, title: 'Necesidades de compra', description: 'Publica los repuestos que necesitas y recibe ofertas.', onClick: () => setActiveTab('subastas') },
+        { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte.', onClick: () => navigate(ROUTES.support) },
+      ];
+    }
     return [
       { id: 'pedidos', tone: 'blue', icon: Package, title: 'Mis pedidos', description: 'Sigue el estado de tus compras y recepciones.', onClick: () => setActiveTab('pedidos') },
       { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Mis cotizaciones', description: 'Revisa las respuestas de las tiendas y compara precios.', onClick: () => setActiveTab('cotizaciones') },
@@ -1239,7 +1352,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       { id: 'mi_taller', tone: 'emerald', icon: Wrench, title: 'Mi taller', description: 'Registra tu taller y recibe clientes.', onClick: () => setActiveTab('mi_taller') },
       { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte de compra.', onClick: () => navigate(ROUTES.support) },
     ];
-  }, [isSeller, setActiveTab, openFilteredTab, navigate]);
+  }, [isSeller, isWorkshop, setActiveTab, openFilteredTab, navigate]);
 
   const recentActivities = useMemo(() => {
     const list = [];
@@ -1286,6 +1399,32 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     return list.slice(0, 5);
   }, [orders, conversations, isSeller, sellerProducts]);
 
+  if (workshopPendingApproval) {
+    return (
+      <div className="profile-dashboard buyer-profile-dashboard">
+        <div className="profile-topbar">
+          <div className="profile-topbar-inner">
+            <div className="profile-logo-group" onClick={onBackToStore}>
+              <RepuesTopLogo height={38} />
+            </div>
+            <div className="profile-topbar-actions">
+              <button className="btn-back-to-store" onClick={onBackToStore}>
+                <ArrowLeft size={16} />
+                <span>Volver a la tienda</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 16px' }}>
+          <AutomotiveServiceAccreditation
+            user={user}
+            onSaved={() => workshopAccreditation.refetch()}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`profile-dashboard ${isSeller ? 'seller-profile-dashboard' : 'buyer-profile-dashboard'}`} data-active-tab={activeTab}>
       {/* Top Bar */}
@@ -1326,8 +1465,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           <span className="profile-mobile-heading">
             <span className="profile-mobile-title" aria-live="polite">{mobileSectionTitle}</span>
             <span className={`profile-mobile-role ${isSeller ? 'is-seller' : 'is-buyer'}`}>
-              {isSeller ? <Store size={11} /> : <ShoppingBag size={11} />}
-              <span>{isSeller ? 'Cuenta vendedor' : 'Cuenta comprador'}</span>
+              {isSeller ? <Store size={11} /> : isWorkshop ? <Wrench size={11} /> : <ShoppingBag size={11} />}
+              <span>{isSeller ? 'Cuenta vendedor' : isWorkshop ? 'Cuenta taller' : 'Cuenta comprador'}</span>
             </span>
           </span>
           <button type="button" className="profile-mobile-home" onClick={onBackToStore} aria-label="Ir al inicio" title="Ir al inicio">
@@ -1336,8 +1475,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
           <div className="profile-topbar-user">
             <div className={`profile-role-chip ${isSeller ? 'chip-seller' : 'chip-buyer'}`}>
-              {isSeller ? <Store size={13} /> : <ShoppingBag size={13} />}
-              <span>{isSeller ? 'Proveedor' : 'Comprador'}</span>
+              {isSeller ? <Store size={13} /> : isWorkshop ? <Wrench size={13} /> : <ShoppingBag size={13} />}
+              <span>{isSeller ? 'Proveedor' : isWorkshop ? 'Taller' : 'Comprador'}</span>
             </div>
             <HeaderWalletButton variant="topbar" />
             <ProfileAppointmentsButton user={user} />
@@ -1569,12 +1708,12 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
             </div>
             <div className="sidebar-mini-info">
-              <strong>{isSeller ? (storeInfo?.storeName || user?.storeName || displayName) : displayName}</strong>
-              <span>{isSeller ? 'Cuenta Proveedor' : 'Cuenta Comprador'}</span>
+              <strong>{isSeller ? (storeInfo?.storeName || user?.storeName || displayName) : (isWorkshop ? (user?.workshopName || displayName) : displayName)}</strong>
+              <span>{isSeller ? 'Cuenta Proveedor' : isWorkshop ? 'Cuenta Taller' : 'Cuenta Comprador'}</span>
             </div>
           </div>
 
-          <nav className="sidebar-nav-list" aria-label={isSeller ? 'Menú de proveedor' : 'Menú de comprador'}>
+          <nav className="sidebar-nav-list" aria-label={isSeller ? 'Menú de proveedor' : isWorkshop ? 'Menú de taller' : 'Menú de comprador'}>
             {sidebarGroups.map((group) => (
               <div key={group.title || 'general'} className="sidebar-nav-group">
                 {group.title && <span className="sidebar-group-title">{group.title}</span>}
@@ -1681,6 +1820,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 paymentOrderId={paymentOrderId}
               />
 
+              {activeTab === 'subastas' && <ProfileAuctionsPanel />}
+              {activeTab === 'gestion_subastas' && isSeller && <ProfileAuctionManagementPanel />}
+
               {activeTab === 'mis_preguntas' && (
                 <ProfileMyQuestionsPanel effectiveUserId={effectiveUserId} />
               )}
@@ -1778,6 +1920,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
 
               {activeTab === 'mi_taller' && <MiTallerSection />}
+              {(activeTab === 'mis_fallas' || activeTab === 'fallas_taller') && <FaultsList heading={false} />}
+              {activeTab === 'servicios_taller' && isWorkshop && <ProfileWorkshopServicesPanel />}
+              {activeTab === 'diagnostico' && isWorkshop && <ProfileDiagnosticPanel onOpenAds={() => setActiveTab('mi_taller')} />}
 
               {activeTab === 'retiros' && isSeller && (
                 <SellerWithdrawalsPanel sellerId={user?.sellerId} sellerEmail={user?.email} />

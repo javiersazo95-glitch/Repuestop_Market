@@ -12,7 +12,12 @@
  * Un codigo nuevo que se agregue alla sin agregarlo aca aparece crudo en pantalla,
  * no vacio, asi que el sintoma se ve.
  */
-export const CLAIM_REASON_LABELS = {
+import { remoteConfig } from '../remoteConfig/remoteConfig';
+
+// Mantenedor comun (2026-10-20): la lista vigente es `MOTIVO_RECLAMO` (`valor` = codigo). Estos
+// textos son el respaldo y siguen traduciendo los codigos que el dueno oculte, porque un reclamo
+// viejo con ese codigo tiene que seguir leyendose.
+export const CLAIM_REASON_LABELS_FALLBACK = {
   incompatible: 'Pieza incompatible con mi vehículo/modelo',
   defective: 'Pieza en mal estado / Defectuosa / Dañada',
   not_received: 'El producto no ha llegado / Retraso en la entrega',
@@ -40,10 +45,31 @@ export const CLAIM_REASON_LABELS = {
 export function claimReasonLabel(code) {
   const key = String(code || '').trim();
   if (!key) return '';
-  return CLAIM_REASON_LABELS[key] || key;
+  const remote = remoteClaimReasons()?.find((opcion) => opcion?.valor === key);
+  return remote?.etiqueta || CLAIM_REASON_LABELS_FALLBACK[key] || key;
 }
 
-/** Arma los pares [etiqueta, codigo] que consume el selector del formulario. */
+/** ¿Es un codigo de motivo conocido (de la lista del mantenedor o del respaldo)? */
+export function isClaimReasonCode(code) {
+  const key = String(code || '').trim();
+  if (!key) return false;
+  return Object.prototype.hasOwnProperty.call(CLAIM_REASON_LABELS_FALLBACK, key)
+    || Boolean(remoteClaimReasons()?.some((opcion) => opcion?.valor === key));
+}
+
+/**
+ * Arma los pares [etiqueta, codigo] que consume el selector del formulario. Con la lista del
+ * mantenedor se omiten los motivos que el dueno oculto; `other` queda siempre, para que el
+ * formulario nunca se quede sin una opcion.
+ */
 export function claimReasonPairs(...codes) {
-  return codes.map((code) => [claimReasonLabel(code), code]);
+  const remote = remoteClaimReasons();
+  const visible = remote
+    ? codes.filter((code) => code === 'other' || remote.some((opcion) => opcion?.valor === code))
+    : codes;
+  return visible.map((code) => [claimReasonLabel(code), code]);
+}
+
+function remoteClaimReasons() {
+  return remoteConfig.lista('MOTIVO_RECLAMO', null);
 }

@@ -30,10 +30,19 @@ export const ROUTES = {
   privacy: '/privacidad',
   about: '/nosotros',
   talleres: '/talleres',
-  taller: '/talleres/:tallerId',
   // Enlaces viejos del Mural de Anuncios: caen en el buscador de talleres.
   legacyAdsWall: '/mural-anuncios',
   legacyAdDetail: '/mural-anuncios/:adId',
+  auctions: '/subastas',
+  auctionDetail: '/subastas/:id',
+  // Pago de las ofertas aceptadas de una subasta: un pedido de varias tiendas.
+  auctionCheckout: '/subastas/:id/pago',
+  // Fallas automotrices: el comprador registra la falla de su vehiculo y los talleres la diagnostican.
+  faults: '/fallas',
+  faultDetail: '/fallas/:id',
+  // Registro del taller como cuenta propia y su perfil publico.
+  workshopRegister: '/taller/registro',
+  workshop: '/talleres/:workshopId',
   sellerRegister: '/vender',
   purchaseSuccess: '/compra-exitosa',
   notFound: '/404',
@@ -93,7 +102,23 @@ export const PROFILE_TABS = [
   // en el sidebar y con su panel implementado, pero faltaba aca: la ruta no se
   // reconocia y `/perfil/mis_preguntas` caia en el 404.
   'mis_preguntas',
+  // Compra por subasta: publicar una necesidad, su historial y el seguimiento hasta la compra.
+  'subastas',
+  // Seguimiento de las ofertas que envió una tienda a pedidos de subasta.
+  'gestion_subastas',
+  // Perfil Taller: sus servicios, el servicio Diagnostico y sus fallas comentadas. `mis_fallas` es del comprador.
+  'mis_fallas', 'fallas_taller', 'servicios_taller', 'diagnostico',
 ];
+
+/** `/fallas/12`: el detalle de una falla automotriz con los diagnosticos de los talleres. */
+export function faultDetailPath(fault) {
+  return `${ROUTES.faults}/${encodeURIComponent(String(fault?.id ?? fault ?? ''))}`;
+}
+
+/** `/talleres/5`: el perfil publico de un taller. */
+export function workshopPath(workshopId) {
+  return `/talleres/${encodeURIComponent(String(workshopId ?? ''))}`;
+}
 
 /** Slug legible para URLs de producto/tienda: "Pastillas de freno" -> "pastillas-de-freno" */
 export function slugify(value) {
@@ -292,5 +317,14 @@ export function catalogAdvancedFiltersFromParams(searchParams) {
     // Solo se anota cuando el comprador quito el filtro del vehiculo activo.
     onlyCompatible: get('onlyCompatible') === '0' ? false : null,
   };
+}
+
+
+export function auctionDetailPath(id) {
+  return `/subastas/${encodeURIComponent(String(id))}`;
+}
+
+export function auctionCheckoutPath(id) {
+  return `/subastas/${encodeURIComponent(String(id))}/pago`;
 }
 

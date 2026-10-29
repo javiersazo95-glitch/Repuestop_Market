@@ -1,3 +1,4 @@
+import { GOOGLE_PLAY_URL } from '../config/mobileApp';
 import { useEffect, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -64,7 +65,7 @@ const FAQ_GROUPS: FaqGroup[] = [
     items: [
       ['¿Qué es RepuesTop?', 'Un marketplace chileno de repuestos automotrices. Escribes la patente de tu vehículo y RepuesTop cruza tu auto con el inventario de las casas de repuestos adheridas para mostrarte solo las piezas que le calzan, con precio, stock y tienda a la vista.'],
       ['¿En qué regiones funciona RepuesTop?', 'RepuesTop conecta compradores y casas de repuestos en las 16 regiones de Chile. Puedes filtrar por comuna y elegir retiro en tienda o despacho a todo el país.'],
-      ['¿RepuesTop tiene aplicación móvil?', 'La app Android está en camino a Google Play. Es la misma cuenta y los mismos datos que la web: buscas en el computador y sigues la cotización desde el celular. Mientras tanto, la versión web funciona completa desde el navegador del teléfono.'],
+      ['¿RepuesTop tiene aplicación móvil?', 'Sí: la app Android de RepuesTop ya está disponible en Google Play. Es la misma cuenta y los mismos datos que la web: buscas en el computador y sigues la cotización desde el celular. La versión web también funciona completa desde el navegador del teléfono.'],
       ['¿Cómo puedo contactar al soporte?', 'Desde el Centro de Ayuda, donde están las respuestas por tema y el formulario para escribirnos. Si tienes cuenta, además puedes seguir el estado de tu caso.'],
     ],
   },
@@ -637,15 +638,15 @@ export default function AboutRepuesTopPage({
               <p>RepuesTop es la misma plataforma en los dos lados. Buscas por patente en la web, guardas el repuesto y sigues la cotización desde el teléfono: es una sola cuenta y los mismos datos, no dos sistemas distintos.</p>
               <CheckList items={APP_POINTS} />
               <div className="rt-apps__actions">
-                <span className="rt-store-badge" role="note">
+                <a className="rt-store-badge" href={GOOGLE_PLAY_URL} target="_blank" rel="noopener noreferrer" aria-label="Descargar la app RepuesTop en Google Play">
                   <GooglePlayMark />
-                  <span><small>Muy pronto en</small><strong>Google Play</strong></span>
-                </span>
+                  <span><small>Disponible en</small><strong>Google Play</strong></span>
+                </a>
                 <button className="rt-btn rt-btn--primary" type="button" onClick={goCatalog}>
                   <MonitorSmartphone aria-hidden="true" /> Usar la versión web
                 </button>
               </div>
-              <p className="rt-apps__note"><BellRing aria-hidden="true" /> La app Android está en camino. Mientras tanto, la versión web funciona completa desde el navegador del celular.</p>
+              <p className="rt-apps__note"><BellRing aria-hidden="true" /> La app Android ya está disponible en Google Play. Descárgala y entra con la misma cuenta; la versión web sigue funcionando completa desde el navegador.</p>
             </div>
 
             <Reveal className="rt-apps__visual" delay={110}>

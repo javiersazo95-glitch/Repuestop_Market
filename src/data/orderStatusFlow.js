@@ -1,3 +1,4 @@
+import { orderDeadlineParams, PAYMENT_WINDOW_MINUTES_FALLBACK } from './orderDeadlines';
 import { activeOrderItems, isCancelledItem } from './orderIdentity';
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
@@ -13,7 +14,8 @@ const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
  * cambia, este numero miente y hay que actualizarlo; lo correcto de fondo es que
  * el backend lo publique en el DTO del pedido.
  */
-export const PAYMENT_WINDOW_MINUTES = 30;
+// Respaldo; el vigente es `pedido.expiracion.minutos` del Mantenedor comun (orderDeadlineParams).
+export const PAYMENT_WINDOW_MINUTES = PAYMENT_WINDOW_MINUTES_FALLBACK;
 
 /**
  * Cuanto le queda al comprador para pagar un pedido PENDIENTE.
@@ -28,7 +30,7 @@ export function orderPaymentWindow(order, now = Date.now()) {
   const updatedAt = new Date(order?.updatedAt || order?.fechaActualizacion || 0).getTime();
   if (!Number.isFinite(updatedAt) || updatedAt <= 0) return null;
 
-  const remaining = updatedAt + PAYMENT_WINDOW_MINUTES * 60 * 1000 - now;
+  const remaining = updatedAt + orderDeadlineParams().paymentWindowMinutes * 60 * 1000 - now;
   if (remaining <= 0) {
     return { expired: true, minutes: 0, label: 'El plazo para pagar venció' };
   }

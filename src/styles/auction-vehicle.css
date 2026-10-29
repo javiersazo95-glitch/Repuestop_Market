@@ -1,0 +1,75 @@
+/* Sección "Datos del vehículo" del formulario de publicar necesidad: la patente es el dato central. */
+.acv-section { padding-bottom: 16px; border-bottom: 1px solid #f1f5f9; }
+.acv-title { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 14px; font-weight: 800; color: #0f172a; }
+.acv-title svg { color: #0056bf; }
+.acv-plate { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px 16px; border: 1px solid #dbe6f3; border-radius: 12px; background: #f5f9ff; text-align: center; }
+.acv-plate-label { font-size: 12.5px; font-weight: 700; color: #3b4e5d; }
+.acv-plate-input {
+  width: min(280px, 100%); padding: 10px 14px; border: 2px solid #0056bf; border-radius: 12px; background: #fff; text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 28px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: #0f172a;
+}
+.acv-plate-input::placeholder { color: #b8c2cc; font-weight: 700; }
+.acv-plate-input:focus { outline: none; box-shadow: 0 0 0 4px rgba(0, 86, 191, 0.15); }
+.acv-plate-hint { font-size: 12px; color: #5a6b7a; }
+.acv-plate.is-confirmed { flex-direction: row; justify-content: center; flex-wrap: wrap; gap: 8px 16px; padding: 14px 16px; background: #fff; }
+.acv-plate-value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 26px; font-weight: 800; letter-spacing: 0.2em; color: #0f172a; }
+.acv-plate-change { padding: 0; border: none; background: none; font-family: inherit; font-size: 12.5px; font-weight: 700; color: #0056bf; cursor: pointer; text-decoration: underline; }
+.acv-error { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: #fff0f0; color: #b42318; font-size: 12.5px; font-weight: 600; }
+.acv-error svg { flex-shrink: 0; margin-top: 1px; }
+.acv-vehicle { margin-top: 12px; padding: 14px 16px; border: 1px solid #bbf7d0; border-radius: 12px; background: #f4fcf7; }
+.acv-vehicle-head { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; font-size: 12.5px; font-weight: 800; color: #0e7038; }
+.acv-vehicle dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px 16px; margin: 0 0 10px; }
+.acv-vehicle dt { font-size: 11px; font-weight: 600; color: #5a6b7a; }
+.acv-vehicle dd { margin: 2px 0 0; font-size: 13px; font-weight: 700; color: #0f172a; }
+.acv-vehicle .is-chasis { grid-column: 1 / -1; padding: 8px 12px; border-radius: 8px; background: #fff; border: 1px solid #dbe6f3; }
+.acv-vehicle .is-chasis dd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.05em; }
+.acv-vehicle small { font-size: 11.5px; color: #5a6b7a; }
+
+/* Repuestos del pedido: una tarjeta por repuesto, con patente propia si va para otro vehículo. */
+.acv-count { margin-left: auto; padding: 3px 10px; border-radius: 999px; background: #eaf2ff; font-style: normal; font-size: 12px; font-weight: 700; color: #00459a; }
+.acv-lead { margin: -4px 0 12px; font-size: 12.5px; line-height: 1.5; color: #5a6b7a; }
+.acv-items { display: flex; flex-direction: column; gap: 12px; }
+.acv-item { position: relative; margin: 0; padding: 14px 16px 14px; border: 1px solid #dbe6f3; border-radius: 12px; background: #fff; min-width: 0; }
+.acv-item legend { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; font-size: 12.5px; font-weight: 800; color: #0056bf; }
+.acv-item-remove { position: absolute; top: -12px; right: 12px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border: 1px solid #fecaca; border-radius: 999px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 700; color: #b42318; cursor: pointer; }
+.acv-item-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+.acv-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.acv-field > span { font-size: 12.5px; font-weight: 700; color: #243442; }
+.acv-field > span small { font-size: 11.5px; font-weight: 500; color: #8a97a5; }
+.acv-field input, .acv-field select, .acv-field textarea { width: 100%; box-sizing: border-box; min-height: 42px; padding: 0 12px; border: 1px solid #d9e0e7; border-radius: 10px; background: #fff; font-family: inherit; font-size: 13px; color: #243442; }
+.acv-field textarea { padding: 10px 12px; resize: vertical; }
+.acv-field input:focus, .acv-field select:focus, .acv-field textarea:focus { outline: none; border-color: #0056bf; box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.12); }
+.acv-field-wide { grid-column: 1 / -1; }
+.acv-other-vehicle { display: flex; align-items: flex-start; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #f3f5f7; cursor: pointer; }
+.acv-other-vehicle input { width: 18px; height: 18px; margin-top: 1px; accent-color: #0056bf; flex-shrink: 0; }
+.acv-other-vehicle span { display: flex; flex-direction: column; gap: 1px; }
+.acv-other-vehicle strong { font-size: 12.5px; font-weight: 700; color: #243442; }
+.acv-other-vehicle small { font-size: 12px; color: #5a6b7a; }
+.acv-item-vehicle { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.acv-plate-input.is-compact { font-size: 22px; width: min(220px, 100%); }
+.acv-add-item { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 12px; min-height: 44px; border: 1.5px dashed #0056bf; border-radius: 12px; background: #f5f9ff; font-family: inherit; font-size: 13px; font-weight: 700; color: #0056bf; cursor: pointer; }
+.acv-add-item:hover:not(:disabled) { background: #eaf2ff; }
+.acv-add-item:disabled { opacity: 0.5; cursor: default; }
+.acv-location { display: block; margin-top: 10px; font-size: 12px; color: #5a6b7a; }
+
+@media (max-width: 560px) {
+  .acv-item-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.auction-optional { font-style: normal; font-weight: 600; color: #8a97a5; }
+
+.auction-required { font-style: normal; font-weight: 600; color: #b42318; }
+.acv-address-ok { display: flex; align-items: flex-start; gap: 10px; margin-top: 8px; padding: 10px 12px; border: 1px solid #bbf7d0; border-radius: 10px; background: #f0fdf4; color: #0e7038; }
+.acv-address-ok span { display: flex; flex-direction: column; }
+.acv-address-ok strong { font-size: 13px; color: #243442; }
+.acv-address-ok small { font-size: 12px; color: #5a6b7a; }
+.acv-address-note { margin: 8px 0 0; font-size: 12.5px; color: #5a6b7a; }
+.acv-address-note.is-warn { padding: 10px 12px; border-radius: 10px; background: #fff7e6; color: #7a4a00; }
+.acv-address-book { margin-top: 10px; }
+
+.acv-quick-address { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; margin-top: 8px; }
+.acv-quick-address > small { grid-column: 1 / -1; margin: 0; }
+.acv-quick-address .auction-btn-primary { min-height: 42px; }
+.acv-address-error { color: #b42318; font-size: 12.5px; }
+
+.acv-shipping-rule { display: block; margin-top: 6px; font-size: 12px; line-height: 1.45; color: #5a6b7a; }

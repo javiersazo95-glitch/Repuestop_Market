@@ -105,7 +105,9 @@ export async function refreshSessionApi(currentJwt) {
  * Generic fetch wrapper for backend endpoints
  */
 export async function fetchApi(endpoint, options = {}) {
-  const token = localStorage.getItem('repuestop_token');
+  // `anonymous`: endpoints publicos que se consultan solos (config del mantenedor). Sin token,
+  // un JWT vencido no dispara el refresh de sesion ni el aviso de "sesion expirada".
+  const token = options.anonymous ? null : localStorage.getItem('repuestop_token');
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   
   const isCustomSignal = Boolean(options.signal);
@@ -119,6 +121,10 @@ export async function fetchApi(endpoint, options = {}) {
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     'X-Request-Id': requestId,
+    // Identifica al cliente ante el backend (contrato del mantenedor, seccion 6.6). Solo `app`
+    // cambia comportamiento hoy (`ClientOriginFilter`: retorno de Flow al deep link); `market`
+    // deja el origen explicito en los logs. CORS ya admite cualquier cabecera.
+    'X-Client': 'market',
     ...options.headers,
   };
 
@@ -864,6 +870,17 @@ export async function getDireccionSugerenciasApi(texto, { comuna, region, signal
   if (comuna) params.set('comuna', comuna);
   if (region) params.set('region', region);
   return fetchApi(`/ubicaciones/direcciones?${params.toString()}`, { method: 'GET', signal });
+}
+
+/**
+ * Direccion aproximada de unas coordenadas (boton "usar mi ubicacion"). Requiere sesion.
+ * Devuelve `{ direccion, comuna, region, latitud, longitud }` o null si no se pudo resolver
+ * (el backend responde 204): quien llama deja la direccion para escribirla a mano.
+ */
+export async function getDireccionInversaApi(latitud, longitud) {
+  const params = new URLSearchParams({ lat: String(latitud), lng: String(longitud) });
+  const data = await fetchApi(`/ubicaciones/direcciones/inversa?${params.toString()}`, { method: 'GET' });
+  return data && typeof data === 'object' ? data : null;
 }
 
 export async function getPaisesApi(options = {}) {
@@ -2448,7 +2465,7 @@ export async function updateAutomotiveServiceHoursApi(payload) {
 }
 
 /**
- * Pasos que le quedan al taller aprobado: registrar su agenda y crear su primer anuncio
+ * Pasos que le quedan al taller aprobado: registrar su agenda y completar su perfil
  * (`ServicioAutomotrizDTOs.Onboarding`). `null` si falla: el banner simplemente no se muestra.
  */
 export async function getAutomotiveServiceOnboardingApi({ signal } = {}) {

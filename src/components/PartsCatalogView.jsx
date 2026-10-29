@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useDeferredValue, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   Search, Filter, SlidersHorizontal, ShieldCheck, MapPin,
@@ -10,9 +11,8 @@ import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
 import ProductCardSkeleton from './skeletons/ProductCardSkeleton';
 import { qk } from '../services/queryKeys';
-import {
-  NAVIGATION_CATEGORIES, CAROUSEL_CATEGORIES, HEADER_CATEGORIES
-} from '../data/categories';
+import { matchesBackendCategory, useCategories } from '../data/categories';
+import { usePartConditions } from '../data/productConditions';
 import {
   getPartCategoriesApi, getPublicProductsApi, getVehicleCatalogPartsApi, searchVehicleByPatenteApi, getAddressesApi,
   getPartSubcategoriesApi, getPartBrandsApi,
@@ -28,6 +28,9 @@ import TextSearchWithSuggestions from './TextSearchWithSuggestions';
 import SheetSelect from './SheetSelect';
 import { useIsMobile } from '../hooks/useIsMobile';
 import PaginationBar from './PaginationBar';
+import { auctionDetailPath, ROUTES } from '../routes/paths';
+
+const CreateAuctionModal = lazy(() => import('./CreateAuctionModal'));
 
 const normalizeNameKey = (value) => String(value || '').normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -61,10 +64,13 @@ const PRICE_CEILING = 1000000;
 const PRICE_STEP = 5000;
 const PRICE_PRESETS = [20000, 50000, 100000, 300000];
 
-/** Categoría publicada que corresponde a una de NAVIGATION_CATEGORIES (por id o nombre). */
+/**
+ * Categoría publicada que corresponde a una de NAVIGATION_CATEGORIES: por id, por `slug` del
+ * mantenedor y, si el backend aun no lo manda, por nombre (ver `matchesBackendCategory`).
+ */
 function findPublishedCategory(filterSource, cat) {
   return (filterSource?.categorias || []).find((c) => String(c.id) === String(cat.id)
-    || normalizeNameKey(c.nombre) === normalizeNameKey(cat.nombre));
+    || matchesBackendCategory(cat, c));
 }
 
 /**
@@ -95,22 +101,6 @@ function useVehicleCascadeStep(params, enabled) {
   });
   return data;
 }
-
-/**
- * Condicion tecnica ofrecida en el filtro. RepuesTop opera solo con tiendas verificadas que
- * venden repuesto NUEVO, asi que la unica distincion util para el comprador es si la pieza es
- * la del fabricante o un equivalente homologado.
- *
- * `InventarioValidationSupport.condicionValida` del backend todavia acepta ademas NUEVO, USADO
- * y REACONDICIONADO. Hoy no hay ninguna publicacion con esos valores, pero si alguna se carga
- * (por Excel o por el formulario del vendedor) quedaria fuera de las dos opciones de aqui: se
- * seguiria viendo en el catalogo sin filtrar, pero no bajo ninguna condicion. Cerrar esa puerta
- * es acotar la validacion alla, no ampliar esta lista.
- */
-const PART_CONDITIONS = [
-  { value: 'ORIGINAL', label: 'Original', hint: 'Pieza nueva del fabricante del vehículo' },
-  { value: 'ALTERNATIVO', label: 'Alternativo', hint: 'Pieza nueva equivalente y homologada' },
-];
 
 const formatCLP = (value) => `$${Number(value || 0).toLocaleString('es-CL')}`;
 
@@ -200,6 +190,9 @@ export default function PartsCatalogView({
   onResultsChange,
 }) {
   const embedded = Boolean(lockedStoreId);
+  // Categorias y condiciones del mantenedor, con el respaldo local de siempre.
+  const { NAVIGATION_CATEGORIES, CAROUSEL_CATEGORIES, HEADER_CATEGORIES } = useCategories();
+  const PART_CONDITIONS = usePartConditions();
   // Los filtros avanzados que trae la URL (al volver de la ficha de un repuesto, recargar o
   // abrir un enlace compartido). Solo siembran el estado inicial: despues manda el panel.
   const [initialAdvanced] = useState(() => initialAdvancedFilters || {});
@@ -300,7 +293,9 @@ export default function PartsCatalogView({
     setCurrentPage(1);
   };
 
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, role } = useAuth();
+  const navigate = useNavigate();
+  const [needModalOpen, setNeedModalOpen] = useState(false);
   const { isFavorite, toggleFavorite } = useFavorites(user?.userId ?? user?.id);
   const [filterByMyComuna, setFilterByMyComuna] = useState(Boolean(initialAdvanced.myComunaId));
   const [myComunaId, setMyComunaId] = useState(initialAdvanced.myComunaId || null);
@@ -377,13 +372,12 @@ export default function PartsCatalogView({
 
   const activeCategoryId = useMemo(() => {
     if (selectedCategory === 'TODAS') return initialCatalogFilter?.categoryId || undefined;
-    const matched = backendCategories.find((c) => {
-      const norm = normalizeNameKey(c.nombre);
-      return norm === normalizeNameKey(selectedCategory) ||
-             norm === normalizeNameKey(HEADER_CATEGORIES.find((h) => h.id === selectedCategory)?.nombre);
-    });
+    // Cruce por slug (CatalogoOpcionDTO lo trae desde el mantenedor) y por nombre como respaldo.
+    const headerCategory = HEADER_CATEGORIES.find((h) => h.id === selectedCategory);
+    const matched = backendCategories.find((c) => (headerCategory && matchesBackendCategory(headerCategory, c))
+      || normalizeNameKey(c.nombre) === normalizeNameKey(selectedCategory));
     return matched?.id || initialCatalogFilter?.categoryId || undefined;
-  }, [selectedCategory, backendCategories, initialCatalogFilter?.categoryId]);
+  }, [HEADER_CATEGORIES, selectedCategory, backendCategories, initialCatalogFilter?.categoryId]);
 
   // Las subcategorías del panel son nombres fijos de `HEADER_CATEGORIES`, pero el endpoint
   // filtra por `subcategoriaId`. Se resuelve el id real contra el catálogo del backend para
@@ -400,11 +394,11 @@ export default function PartsCatalogView({
 
   const activeSubcategoryId = useMemo(() => {
     if (selectedSubcategory === 'TODAS') return initialCatalogFilter?.subcategoryId || undefined;
-    const matched = backendSubcategories.find(
-      (sub) => normalizeNameKey(sub.nombre) === normalizeNameKey(selectedSubcategory)
-    );
+    const subcategorySlug = HEADER_CATEGORIES.find((h) => h.id === selectedCategory)?.subcategorySlugs?.[selectedSubcategory];
+    const matched = (subcategorySlug && backendSubcategories.find((sub) => sub.slug === subcategorySlug))
+      || backendSubcategories.find((sub) => normalizeNameKey(sub.nombre) === normalizeNameKey(selectedSubcategory));
     return matched?.id || initialCatalogFilter?.subcategoryId || undefined;
-  }, [selectedSubcategory, backendSubcategories, initialCatalogFilter?.subcategoryId]);
+  }, [HEADER_CATEGORIES, selectedCategory, selectedSubcategory, backendSubcategories, initialCatalogFilter?.subcategoryId]);
 
   // Compatibilidad del panel: cada desplegable ofrece solo marcas, modelos, años y versiones
   // con repuestos publicados registrados como compatibles, con su conteo. Antes eran el catálogo
@@ -571,7 +565,7 @@ export default function PartsCatalogView({
         subcategoryCounts: Object.fromEntries(subcategories.map((name) => [name, subCounts.get(normalizeNameKey(name))])),
       };
     }).filter(Boolean);
-  }, [filterSource, selectedCategory, selectedSubcategory]);
+  }, [NAVIGATION_CATEGORIES, filterSource, selectedCategory, selectedSubcategory]);
 
   // Ids publicados de la categoría y subcategoría elegidas, con el mismo cruce por id o nombre
   // del panel; si no aparecen en lo publicado, los ids resueltos contra el catálogo maestro.
@@ -579,7 +573,7 @@ export default function PartsCatalogView({
     if (selectedCategory === 'TODAS') return activeCategoryId;
     const navCategory = NAVIGATION_CATEGORIES.find((cat) => selectedCategory === cat.id || selectedCategory === cat.nombre);
     return (navCategory && findPublishedCategory(filterSource, navCategory)?.id) ?? activeCategoryId;
-  }, [filterSource, selectedCategory, activeCategoryId]);
+  }, [NAVIGATION_CATEGORIES, filterSource, selectedCategory, activeCategoryId]);
   const publishedSubcategoryId = useMemo(() => {
     if (selectedSubcategory === 'TODAS') return activeSubcategoryId;
     const sub = (filterSource?.subcategorias || []).find((item) => String(item.categoriaId) === String(publishedCategoryId)
@@ -1216,6 +1210,14 @@ export default function PartsCatalogView({
         placeholder={placeholder}
       />
   );
+
+  const handleOpenNeed = () => {
+    if (!isLoggedIn) {
+      if (window.confirm('Debes iniciar sesión para registrar una necesidad de compra. ¿Deseas ir a tu cuenta?')) navigate(ROUTES.profile);
+      return;
+    }
+    setNeedModalOpen(true);
+  };
 
   const clearActiveVehicle = () => {
     setActiveVehicle(null);
@@ -1879,9 +1881,34 @@ export default function PartsCatalogView({
                 </button>
               </div>
             )}
+
+            {/* Aviso sutil: lo que no aparece puede estar en una casa de repuestos sin cargar o recién unida. */}
+            {activeVehicle && onlyCompatible && !productsLoading && !productsError && (!isLoggedIn || role === 'BUYER') && (
+              <p className="catalog-need-hint">
+                <Info size={15} aria-hidden="true" />
+                <span>
+                  ¿No encontraste lo que buscas? Puede que alguna casa de repuestos lo tenga y aún no lo haya cargado.{' '}
+                  <button type="button" className="catalog-need-hint-link" onClick={handleOpenNeed}>Registra tu necesidad de compra</button>
+                </span>
+              </p>
+            )}
           </main>
         </div>
       </div>
+
+      {needModalOpen && (
+        <Suspense fallback={null}>
+          <CreateAuctionModal
+            isOpen
+            initialPatente={activeVehicle?.patente && activeVehicle.patente !== 'MANUAL' ? activeVehicle.patente : ''}
+            onClose={() => setNeedModalOpen(false)}
+            onSuccess={(created) => {
+              setNeedModalOpen(false);
+              if (created?.id) navigate(auctionDetailPath(created.id));
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

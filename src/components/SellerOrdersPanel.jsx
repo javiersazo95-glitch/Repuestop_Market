@@ -21,6 +21,7 @@ const STATUS_FILTERS = [
 const SOURCE_FILTERS = [
   { value: 'cart', label: 'Carrito' },
   { value: 'quote', label: 'Cotización' },
+  { value: 'auction', label: 'Necesidad de compra' },
 ];
 
 const DATE_FILTERS = [
@@ -48,6 +49,7 @@ function canonicalStatus(order) {
 
 function canonicalSource(order) {
   const source = String(order?.source || order?.origen || '').toLowerCase();
+  if (source === 'auction' || source === 'subasta') return 'auction';
   return source === 'quote' || source.includes('cotiz') || order?.quoteChatId ? 'quote' : 'cart';
 }
 

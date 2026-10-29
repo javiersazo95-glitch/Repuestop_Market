@@ -1,5 +1,5 @@
 import React from 'react';
-import { SHIPPING_METHOD_DEFS } from '../data/shippingMethods';
+import { SHIPPING_METHOD_DEFS_FALLBACK, useShippingMethodDefs } from '../data/shippingMethods';
 
 /**
  * Selector de metodos de envio de la tienda.
@@ -12,13 +12,21 @@ import { SHIPPING_METHOD_DEFS } from '../data/shippingMethods';
  * `parseShippingSelections()` y se envia con `buildShippingMethodsString()`.
  */
 export default function ShippingMethodsPicker({ selections, onChange }) {
+  // Metodos activos del mantenedor (`METODO_ENVIO`). Uno que el dueno oculto se sigue mostrando
+  // mientras la tienda lo tenga marcado, para que pueda verlo y desmarcarlo a conciencia.
+  const activeDefs = useShippingMethodDefs();
+  const activeIds = new Set(activeDefs.map((def) => def.id));
+  const defs = [
+    ...activeDefs,
+    ...SHIPPING_METHOD_DEFS_FALLBACK.filter((def) => !activeIds.has(def.id) && selections[def.id]?.enabled),
+  ];
   const update = (id, patch) => {
     onChange({ ...selections, [id]: { ...selections[id], ...patch } });
   };
 
   return (
     <div className="shipping-methods-editor">
-      {SHIPPING_METHOD_DEFS.map((def) => {
+      {defs.map((def) => {
         const selection = selections[def.id] || { enabled: false, price: '' };
         return (
           <label key={def.id} className={`shipping-method-option ${selection.enabled ? 'checked' : ''}`}>

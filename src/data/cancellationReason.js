@@ -7,7 +7,13 @@
 // etiqueta ya renderizada y eso impedia filtrar por causa en el backoffice y
 // cambiar la frase sin reescribir el pasado. Un valor inventado aca no falla,
 // simplemente no encuentra etiqueta: por eso el fallback existe.
-export const CANCELLATION_REASON_LABELS = {
+import { remoteConfig } from '../remoteConfig/remoteConfig';
+
+// Mantenedor comun (2026-10-20): `MOTIVO_CANCELACION_PEDIDO` es lista de sistema; el dueno puede
+// cambiar la etiqueta (y la descripcion, que aca se usa como explicacion al comprador). Los textos
+// de abajo son el respaldo y cubren tambien los motivos que el dueno oculte: un pedido viejo
+// cancelado con ese motivo tiene que seguir leyendose.
+export const CANCELLATION_REASON_LABELS_FALLBACK = {
   EXPIRACION_PAGO: 'No se completó el pago a tiempo',
   // SEC-BACKEND-077 (pruebas de lanzamiento, 25-sep): el pago llegó después del plazo y la unidad
   // ya se había vendido; el backend pide el reembolso íntegro automáticamente.
@@ -31,7 +37,7 @@ const BUYER_FIRST_PERSON_LABELS = {
 
 // Explicacion para el comprador, que es distinta de la etiqueta: dice que pasa
 // ahora, no solo que ocurrio. Solo se escriben las que tienen algo que agregar.
-export const CANCELLATION_REASON_HINTS = {
+export const CANCELLATION_REASON_HINTS_FALLBACK = {
   EXPIRACION_PAGO: 'Venció el plazo de pago y la unidad volvió al stock. Puedes volver a comprarla.',
   PAGO_TARDIO_SIN_STOCK: 'Tu pago llegó cuando el plazo ya había vencido y la unidad se había vendido. Te devolvemos todo lo que pagaste: te llegará un correo de Flow para aceptar la devolución.',
   SOLICITUD_DEL_COMPRADOR: 'La unidad volvió al stock. Puedes comprarla de nuevo cuando quieras.',
@@ -56,12 +62,20 @@ export const CANCELLATION_REASON_HINTS = {
 export function cancellationReasonLabel(order, mode = 'buyer') {
   const code = order?.motivoCancelacion;
   if (!code) return null;
-  if (code === 'OTRO') return order.detalleCancelacion || CANCELLATION_REASON_LABELS.OTRO;
+  const remote = remoteReason(code);
+  if (code === 'OTRO') return order.detalleCancelacion || remote?.etiqueta || CANCELLATION_REASON_LABELS_FALLBACK.OTRO;
   if (mode === 'buyer' && BUYER_FIRST_PERSON_LABELS[code]) return BUYER_FIRST_PERSON_LABELS[code];
-  return CANCELLATION_REASON_LABELS[code] || null;
+  return remote?.etiqueta || CANCELLATION_REASON_LABELS_FALLBACK[code] || null;
 }
 
 export function cancellationReasonHint(order) {
   const code = order?.motivoCancelacion;
-  return code ? CANCELLATION_REASON_HINTS[code] || null : null;
+  if (!code) return null;
+  return remoteReason(code)?.descripcion || CANCELLATION_REASON_HINTS_FALLBACK[code] || null;
+}
+
+/** Opcion de la lista del mantenedor para un codigo, o null (sin bootstrap o motivo oculto). */
+function remoteReason(code) {
+  const opciones = remoteConfig.lista('MOTIVO_CANCELACION_PEDIDO', null);
+  return opciones?.find((opcion) => opcion?.valor === code) || null;
 }

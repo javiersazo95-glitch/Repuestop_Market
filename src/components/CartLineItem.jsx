@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertTriangle, Minus, Plus } from 'lucide-react';
-import { CATEGORY_ICON_BY_ID, CATEGORY_COLOR_BY_ID } from '../data/categories';
+import { useCategories } from '../data/categories';
 import CategoryIconTile from './CategoryIconTile';
 import ProductPhoto from './ProductPhoto';
 import { productReferenceImage } from '../utils/productImage';
@@ -16,6 +16,7 @@ export default function CartLineItem({ item, activeVehicle, compatibility = null
   const stock = Number(item.stock || 0);
   const atStockLimit = stock > 0 && item.quantity >= stock;
   const lowStock = stock > 0 && stock <= 3;
+  const { CATEGORY_ICON_BY_ID, CATEGORY_ICON_URL_BY_ID, CATEGORY_COLOR_BY_ID } = useCategories();
 
   return (
     <article className="cart-line">
@@ -25,6 +26,7 @@ export default function CartLineItem({ item, activeVehicle, compatibility = null
         ) : (
           <CategoryIconTile
             iconName={CATEGORY_ICON_BY_ID[item.categoria]}
+            iconUrl={CATEGORY_ICON_URL_BY_ID[item.categoria]}
             color={CATEGORY_COLOR_BY_ID[item.categoria]}
             size={24}
           />
