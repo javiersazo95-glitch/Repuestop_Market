@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle, ArrowRight, CalendarDays, Car, CheckCircle2, Clock, Gavel, Inbox, Lock, MapPin, MessageCircle, Package, PackageCheck, Pencil, Plus,
-  ReceiptText, Search, ShoppingCart, Tag, X,
+  ReceiptText, RotateCcw, Search, ShoppingCart, Tag, X,
 } from 'lucide-react';
 import { getAuctionDetail, getMyAuctionRequests, getPendingQuestionCounts } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
@@ -59,7 +59,7 @@ const FILTERS = [
   ['history', 'Historial'],
 ];
 
-function AuctionRow({ auction, stage, now, isSeller, onNavigate, onOpenOffers, onOpenPurchase, onOpenQuestions, pendingQuestions, onEdit, editBusy }) {
+function AuctionRow({ auction, stage, now, isSeller, onNavigate, onOpenOffers, onOpenPurchase, onOpenQuestions, pendingQuestions, onEdit, editBusy, onRepublish }) {
   const [blockedNotice, setBlockedNotice] = useState(false);
   const canEdit = auction.editable !== false;
   const vehicle = [auction.marca, auction.modelo, auction.anio].filter(Boolean).join(' ');
@@ -82,6 +82,9 @@ function AuctionRow({ auction, stage, now, isSeller, onNavigate, onOpenOffers, o
       label: 'Seguir compra', icon: PackageCheck, primary: true,
       onClick: () => onNavigate(isSeller ? profilePurchasePath(auction.pedidoId) : profileOrderPath(auction.pedidoId)),
     });
+  } else if (stage.key === 'closed' && stage.accepted === 0) {
+    // Vencio o se cancelo sin adjudicar: ya no se edita, se vuelve a publicar con los mismos datos.
+    actions.push({ label: 'Publicar de nuevo', icon: RotateCcw, onClick: () => onRepublish(auction), primary: true });
   }
 
   const facts = [
@@ -254,6 +257,19 @@ export default function ProfileAuctionsPanel() {
     }
   };
 
+  // "Publicar de nuevo": se abre el formulario con el detalle completo (repuestos, fotos, entrega) como plantilla.
+  const [template, setTemplate] = useState(null);
+  const openRepublish = async (auction) => {
+    setEditBusyId(auction.id);
+    try {
+      setTemplate(await getAuctionDetail(auction.id));
+    } catch (err) {
+      setError(err?.message || 'No pudimos abrir tu pedido para publicarlo de nuevo.');
+    } finally {
+      setEditBusyId(null);
+    }
+  };
+
   const handleCreated = (created) => {
     if (created?.id) navigate(auctionDetailPath(created.id));
     else load();
@@ -309,7 +325,7 @@ export default function ProfileAuctionsPanel() {
         <>
           <div className="pa-list">
             {pageItems.map(({ auction, stage }) => (
-              <AuctionRow key={auction.id} auction={auction} stage={stage} now={now} isSeller={isSeller} onNavigate={navigate} onOpenOffers={(item) => setOffersAuctionId(item.id)} onOpenPurchase={(item) => setPurchaseAuctionId(item.id)} onOpenQuestions={setQuestionsAuction} pendingQuestions={pendingQuestions[auction.id] || 0} onEdit={openEdit} editBusy={editBusyId === auction.id} />
+              <AuctionRow key={auction.id} auction={auction} stage={stage} now={now} isSeller={isSeller} onNavigate={navigate} onOpenOffers={(item) => setOffersAuctionId(item.id)} onOpenPurchase={(item) => setPurchaseAuctionId(item.id)} onOpenQuestions={setQuestionsAuction} pendingQuestions={pendingQuestions[auction.id] || 0} onEdit={openEdit} editBusy={editBusyId === auction.id} onRepublish={openRepublish} />
             ))}
           </div>
           <ListPager pagerProps={pagerProps} itemLabel="necesidades" />
@@ -349,6 +365,9 @@ export default function ProfileAuctionsPanel() {
       <CreateAuctionModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onSuccess={handleCreated} />
       {editing && (
         <CreateAuctionModal isOpen auction={editing} onClose={() => setEditing(null)} onSuccess={() => { setEditing(null); load(); }} />
+      )}
+      {template && (
+        <CreateAuctionModal isOpen template={template} onClose={() => setTemplate(null)} onSuccess={(created) => { setTemplate(null); handleCreated(created); }} />
       )}
     </div>
   );

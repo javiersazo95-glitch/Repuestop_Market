@@ -203,8 +203,13 @@ function itemsFromAuction(auction) {
   return list.length ? list : [newItem()];
 }
 
-function CreateAuctionModalContent({ onClose, onSuccess, auction = null, initialPatente = '' }) {
+/**
+ * `auction`: editar esa necesidad. `template`: "Publicar de nuevo" una necesidad vencida o cancelada; el formulario
+ * parte con sus datos (vehiculo, repuestos, fotos, entrega) pero publica una necesidad nueva.
+ */
+function CreateAuctionModalContent({ onClose, onSuccess, auction = null, template = null, initialPatente = '' }) {
   const isEditing = Boolean(auction);
+  const source = auction || template;
   const { user } = useAuth();
   const { HEADER_CATEGORIES } = useCategories();
 
@@ -241,18 +246,18 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, initial
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const [patente, setPatente] = useState(() => auction?.patente || initialPatente);
+  const [patente, setPatente] = useState(() => source?.patente || initialPatente);
   const { vehicle, error: plateError, looking: lookingUpPlate } = usePlateLookup(patente);
 
-  const [items, setItems] = useState(() => (auction ? itemsFromAuction(auction) : [newItem()]));
+  const [items, setItems] = useState(() => (source ? itemsFromAuction(source) : [newItem()]));
   const [itemVehicles, setItemVehicles] = useState({});
 
-  const [tiempoVigenciaHoras, setTiempoVigenciaHoras] = useState(() => auction?.tiempoVigenciaHoras || 48);
-  const [tiempoMaximoEnvio, setTiempoMaximoEnvio] = useState(() => auction?.tiempoMaximoEnvio || '24 horas');
-  const [tipoEnvio, setTipoEnvio] = useState(() => (auction?.tipoEnvio && shippingClass(auction.tipoEnvio) === 'pickup' ? 'Retiro en tienda' : 'Despacho a domicilio'));
-  const [presupuestoMaximo, setPresupuestoMaximo] = useState(() => (auction?.presupuestoMaximo ? String(Math.round(auction.presupuestoMaximo)) : ''));
+  const [tiempoVigenciaHoras, setTiempoVigenciaHoras] = useState(() => source?.tiempoVigenciaHoras || 48);
+  const [tiempoMaximoEnvio, setTiempoMaximoEnvio] = useState(() => source?.tiempoMaximoEnvio || '24 horas');
+  const [tipoEnvio, setTipoEnvio] = useState(() => (source?.tipoEnvio && shippingClass(source.tipoEnvio) === 'pickup' ? 'Retiro en tienda' : 'Despacho a domicilio'));
+  const [presupuestoMaximo, setPresupuestoMaximo] = useState(() => (source?.presupuestoMaximo ? String(Math.round(source.presupuestoMaximo)) : ''));
 
-  const [fotos, setFotos] = useState(() => auction?.fotos || []);
+  const [fotos, setFotos] = useState(() => source?.fotos || []);
   const [uploadingFoto, setUploadingFoto] = useState(false);
 
   const changeItem = (key, patch) => setItems((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)));
@@ -363,7 +368,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, initial
             <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#38bdf8', fontWeight: 800 }}>
               Necesidades de compra RepuesTop
             </div>
-            <h2 className="auction-modal-title" style={{ color: '#ffffff', marginTop: '2px' }}>{isEditing ? 'Editar pedido de repuestos' : 'Publicar pedido de repuestos'}</h2>
+            <h2 className="auction-modal-title" style={{ color: '#ffffff', marginTop: '2px' }}>{isEditing ? 'Editar pedido de repuestos' : template ? 'Publicar de nuevo tu pedido' : 'Publicar pedido de repuestos'}</h2>
           </div>
           <button type="button" onClick={onClose} className="auction-modal-close-btn" style={{ color: '#cbd5e1' }}>
             <X size={20} />
@@ -574,7 +579,7 @@ export default function CreateAuctionModal(props) {
   if (!props.isOpen) return null;
   // En el celular, publicar y editar usan el formulario idéntico al de la app.
   const view = isMobile
-    ? <AuctionCreateMobile auction={props.auction || null} initialPatente={props.initialPatente || ''} onClose={props.onClose} onSuccess={props.onSuccess} />
+    ? <AuctionCreateMobile auction={props.auction || null} template={props.template || null} initialPatente={props.initialPatente || ''} onClose={props.onClose} onSuccess={props.onSuccess} />
     : <CreateAuctionModalContent {...props} />;
   // Fuera del panel del perfil: los contenedores del intranet (scroll, apilado) recortaban el popup y dejaban
   // el menú y la barra superior encima de los campos.

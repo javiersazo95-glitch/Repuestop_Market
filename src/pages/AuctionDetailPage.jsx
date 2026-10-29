@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle, ArrowRight, CalendarDays, Car, ChevronRight, Clock, Gavel,
-  Bookmark, BookmarkCheck, ChevronDown, Star, HelpCircle, Pencil, Home, ListTree, Lock, Maximize2, X, MapPin, Package, PackageCheck, ShieldCheck, ShoppingCart, Trophy,
+  Bookmark, BookmarkCheck, ChevronDown, Star, HelpCircle, Pencil, RotateCcw, Home, ListTree, Lock, Maximize2, X, MapPin, Package, PackageCheck, ShieldCheck, ShoppingCart, Trophy,
 } from 'lucide-react';
 import { auctionTrackingCode, getAuctionDetail, setAuctionSaved } from '../services/auctionApi';
-import { ROUTES, helpCategoryPath, profileOrderPath, profilePurchasePath } from '../routes/paths';
+import { ROUTES, auctionDetailPath, helpCategoryPath, profileOrderPath, profilePurchasePath } from '../routes/paths';
 import { resolveMediaUrl } from '../services/api';
 import AuctionQuoteModal from '../components/AuctionQuoteModal';
 import AuctionBuyerCard from '../components/AuctionBuyerCard';
@@ -154,6 +154,7 @@ export default function AuctionDetailPage() {
   const [storePhoto, setStorePhoto] = useState(null); // { url, name }
   const openStorePhoto = (url, name) => setStorePhoto({ url, name });
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isRepublishOpen, setIsRepublishOpen] = useState(false);
   const [openFolds, setOpenFolds] = useState({ comments: true });
   const toggleFold = (key) => setOpenFolds((current) => ({ ...current, [key]: !current[key] }));
   const [saved, setSaved] = useState(false);
@@ -254,6 +255,8 @@ export default function AuctionDetailPage() {
   const location = [comuna, region].filter(Boolean).join(', ');
   const canQuote = isSeller && !esCreador && isOpen && itemsPendientes > 0 && !miCotizacion?.aceptada;
   const acceptedCount = cotizaciones.filter((quote) => quote.aceptada).length;
+  // Vencio o se cancelo sin aceptar ninguna oferta: ya no se edita, pero se vuelve a publicar con los mismos datos.
+  const canRepublish = Boolean(esCreador) && isExpirada && acceptedCount === 0;
   const totalUnits = items.reduce((sum, item) => sum + item.cantidad, 0) || cantidad;
 
   return (
@@ -279,6 +282,8 @@ export default function AuctionDetailPage() {
           onEdit={() => (auction.editable === false
             ? flashSaveNotice(auction.motivoNoEditable || 'Esta necesidad de compra ya no se puede editar.')
             : setIsEditOpen(true))}
+          canRepublish={canRepublish}
+          onRepublish={() => setIsRepublishOpen(true)}
         />
       ) : (
       <div className="container av-shell">
@@ -381,7 +386,12 @@ export default function AuctionDetailPage() {
                         iconSize={15}
                         stopPropagation={false}
                       />
-                      {esCreador && (
+                      {canRepublish && (
+                        <button type="button" className="av-action-btn av-edit-btn" onClick={() => setIsRepublishOpen(true)}>
+                          <RotateCcw size={15} /> Publicar de nuevo
+                        </button>
+                      )}
+                      {esCreador && !canRepublish && (
                         <button
                           type="button"
                           className={`av-action-btn av-edit-btn ${auction.editable === false ? 'is-locked' : ''}`}
@@ -572,6 +582,14 @@ export default function AuctionDetailPage() {
 
       {esCreador && isEditOpen && (
         <CreateAuctionModal isOpen auction={auction} onClose={() => setIsEditOpen(false)} onSuccess={() => { setIsEditOpen(false); loadDetail(); }} />
+      )}
+      {canRepublish && isRepublishOpen && (
+        <CreateAuctionModal
+          isOpen
+          template={auction}
+          onClose={() => setIsRepublishOpen(false)}
+          onSuccess={(created) => { setIsRepublishOpen(false); if (created?.id) navigate(auctionDetailPath(created.id)); }}
+        />
       )}
 
       {storePhoto && (

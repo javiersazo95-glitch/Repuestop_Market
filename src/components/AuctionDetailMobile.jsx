@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { helpCategoryPath } from '../routes/paths';
 import {
   ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, Bus, CalendarDays, Car, ChevronRight, Clock, Gavel, Info, ListChecks, Lock, MapPin,
-  Hash, MessageCircle, Package, PackageCheck, Pencil, Send, ShoppingCart, Star, Tag, Trophy, User, Wallet, X,
+  Hash, MessageCircle, Package, PackageCheck, Pencil, RotateCcw, Send, ShoppingCart, Star, Tag, Trophy, User, Wallet, X,
 } from 'lucide-react';
 import { auctionTrackingCode, getAuctionBuyerProfile, getAuctionComments, postAuctionComment } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
@@ -124,6 +124,8 @@ export default function AuctionDetailMobile({
   saveNotice,
   onToggleSaved,
   onEdit,
+  canRepublish = false,
+  onRepublish,
 }) {
   const [profile, setProfile] = useState(null);
   const [comments, setComments] = useState([]);
@@ -209,7 +211,12 @@ export default function AuctionDetailMobile({
 
       {/* Editar (solo el comprador), compartir y guardar */}
       <div className="am-actions" role="group" aria-label="Acciones de la necesidad">
-        {esCreador && (
+        {canRepublish && (
+          <button type="button" className="am-action" onClick={onRepublish}>
+            <RotateCcw size={16} /> Publicar de nuevo
+          </button>
+        )}
+        {esCreador && !canRepublish && (
           <button type="button" className={`am-action ${auction.editable === false ? 'is-locked' : ''}`} onClick={onEdit} aria-disabled={auction.editable === false}>
             {auction.editable === false ? <Lock size={16} /> : <Pencil size={16} />} Editar
           </button>

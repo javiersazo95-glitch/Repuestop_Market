@@ -64,22 +64,24 @@ function ItemVehicle({ itemKey, patente, onChange, onVehicle }) {
  * datos del vehículo con la patente que se autocompleta, qué repuesto se necesita con fotos, y plazos y
  * condiciones con listas desplegables) y un botón para volver. Solo crea; editar usa el formulario de escritorio.
  */
-export default function AuctionCreateMobile({ onClose, onSuccess, auction = null, initialPatente = '' }) {
+/** `template`: "Publicar de nuevo" una necesidad vencida o cancelada (precarga sus datos y publica una nueva). */
+export default function AuctionCreateMobile({ onClose, onSuccess, auction = null, template = null, initialPatente = '' }) {
   const isEditing = Boolean(auction);
+  const source = auction || template;
   const { HEADER_CATEGORIES } = useCategories();
-  const [patente, setPatente] = useState(() => auction?.patente || initialPatente);
+  const [patente, setPatente] = useState(() => source?.patente || initialPatente);
   const { vehicle, error: plateError, looking } = usePlateLookup(patente);
 
-  const [items, setItems] = useState(() => (auction ? itemsFromAuction(auction) : [newItem()]));
+  const [items, setItems] = useState(() => (source ? itemsFromAuction(source) : [newItem()]));
   const [itemVehicles, setItemVehicles] = useState({});
   const [askingNext, setAskingNext] = useState(false);
-  const [fotos, setFotos] = useState(() => auction?.fotos || []);
+  const [fotos, setFotos] = useState(() => source?.fotos || []);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
 
-  const [presupuesto, setPresupuesto] = useState(() => (auction?.presupuestoMaximo ? String(Math.round(auction.presupuestoMaximo)) : ''));
-  const [plazo, setPlazo] = useState(() => auction?.tiempoMaximoEnvio || '24 horas');
-  const [tipoEnvio, setTipoEnvio] = useState(() => (/retiro/i.test(auction?.tipoEnvio || '') ? 'Retiro en tienda' : 'Despacho a domicilio'));
+  const [presupuesto, setPresupuesto] = useState(() => (source?.presupuestoMaximo ? String(Math.round(source.presupuestoMaximo)) : ''));
+  const [plazo, setPlazo] = useState(() => source?.tiempoMaximoEnvio || '24 horas');
+  const [tipoEnvio, setTipoEnvio] = useState(() => (/retiro/i.test(source?.tipoEnvio || '') ? 'Retiro en tienda' : 'Despacho a domicilio'));
   const [regiones, setRegiones] = useState([]);
   const [comunas, setComunas] = useState([]);
   const [regionId, setRegionId] = useState('');
@@ -179,7 +181,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
           cantidad: parseInt(item.cantidad, 10) || 1,
           patente: item.otroVehiculo ? normalizePlate(item.patente) : undefined,
         })),
-        tiempoVigenciaHoras: auction?.tiempoVigenciaHoras || 48,
+        tiempoVigenciaHoras: source?.tiempoVigenciaHoras || 48,
         tiempoMaximoEnvio: plazo,
         tipoEnvio,
         presupuestoMaximo: presupuesto ? parseFloat(presupuesto) : undefined,
@@ -201,7 +203,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
     <div className="am-create" role="dialog" aria-modal="true" aria-label={isEditing ? 'Editar necesidad' : 'Publicar necesidad'}>
       <form className="am-page am-form" onSubmit={submit} noValidate>
         <button type="button" className="am-back" onClick={onClose}><ArrowLeft size={16} /> Volver</button>
-        {isEditing && <h1 className="am-form-heading">Editar necesidad de compra</h1>}
+        {(isEditing || template) && <h1 className="am-form-heading">{isEditing ? 'Editar necesidad de compra' : 'Publicar de nuevo tu necesidad'}</h1>}
 
         <section className="am-card">
           <h3 className="am-form-title">1. Datos del vehículo</h3>
