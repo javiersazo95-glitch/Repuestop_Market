@@ -208,9 +208,9 @@ export default function AuctionCheckoutPage() {
               </div>
               {documentType === 'FACTURA' && (
                 <div className="apc-fields">
-                  <label>RUT<input value={invoice.rut} onChange={(e) => setInvoice({ ...invoice, rut: formatRut(e.target.value) })} placeholder="12.345.678-9" /></label>
-                  <label>Giro<input value={invoice.giro} onChange={(e) => setInvoice({ ...invoice, giro: e.target.value })} /></label>
-                  <label className="is-wide">Razón social<input value={invoice.razonSocial} onChange={(e) => setInvoice({ ...invoice, razonSocial: e.target.value })} /></label>
+                  <label>RUT<input value={invoice.rut} maxLength={12} onChange={(e) => setInvoice({ ...invoice, rut: formatRut(e.target.value) })} placeholder="12.345.678-9" /></label>
+                  <label>Giro<input value={invoice.giro} maxLength={150} onChange={(e) => setInvoice({ ...invoice, giro: e.target.value })} /></label>
+                  <label className="is-wide">Razón social<input value={invoice.razonSocial} maxLength={180} onChange={(e) => setInvoice({ ...invoice, razonSocial: e.target.value })} /></label>
                 </div>
               )}
             </section>

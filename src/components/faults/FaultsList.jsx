@@ -10,6 +10,7 @@ import { faultDetailPath } from '../../routes/paths';
 import { resolveMediaUrl } from '../../services/api';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import CreateFaultModal from './CreateFaultModal';
+import { MAX_SEARCH_LENGTH } from '../../utils/inputLimits';
 import '../../styles/faults.css';
 
 const FAULT_TYPES = [
@@ -275,7 +276,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
 
           <main className="ft-results">
             <form className="ft-search-row" onSubmit={(event) => { event.preventDefault(); setQuery(searchText.trim()); }}>
-              <label className="ft-search-box"><Search size={19} /><input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="Buscar por palabra clave (ej: no enciende, pérdida de potencia, frenos, etc.)" /></label>
+              <label className="ft-search-box"><Search size={19} /><input value={searchText} maxLength={MAX_SEARCH_LENGTH} onChange={(event) => setSearchText(event.target.value)} placeholder="Buscar por palabra clave (ej: no enciende, pérdida de potencia, frenos, etc.)" /></label>
               <button type="submit" className="ft-btn ft-btn-primary ft-search-button">Buscar</button>
             </form>
             <div className="ft-results-head">

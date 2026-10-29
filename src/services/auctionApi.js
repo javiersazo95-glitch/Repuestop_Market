@@ -139,6 +139,17 @@ export async function acceptAuctionOffer(auctionId, offerId) {
   });
 }
 
+/**
+ * El comprador cancela su necesidad (sin ofertas aceptadas) con un motivo de `CANCEL_REASONS`; `detalle` es
+ * obligatorio con OTRO y queda privado. Devuelve el detalle actualizado.
+ */
+export async function cancelAuction(id, { motivo, detalle }) {
+  return fetchApi(`/necesidades-compra/${encodeURIComponent(String(id))}/cancelar`, {
+    method: 'POST',
+    body: JSON.stringify({ motivo, detalle: detalle?.trim() || undefined }),
+  });
+}
+
 /** El comprador rechaza una oferta (motivo opcional): la tienda lo sabe al instante y deja de esperar. */
 export async function rejectAuctionOffer(auctionId, offerId, motivo) {
   return fetchApi(`/necesidades-compra/${encodeURIComponent(String(auctionId))}/cotizaciones/${encodeURIComponent(String(offerId))}/rechazar`, {

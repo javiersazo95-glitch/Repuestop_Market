@@ -9,6 +9,7 @@ import { getComunasApi, getRegionesApi, searchVehicleByPatenteApi } from '../../
 import { normalizarNombreGeografico } from '../../services/geoLookup';
 import { useAuth } from '../../context/AuthContext';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
+import { MAX_MILEAGE, MIN_VEHICLE_YEAR, maxVehicleYear } from '../../utils/inputLimits';
 import '../../styles/faults.css';
 
 const SYMPTOMS = [
@@ -18,6 +19,8 @@ const SYMPTOMS = [
 const OTHER_SYMPTOM = 'Otro';
 const MAX_EVIDENCE_PHOTOS = 4;
 const MAX_SYMPTOMS = 8;
+// Cada sintoma tiene tope de 60 caracteres en el backend (`sintomas` de FallaAutomotrizDTOs.CrearRequest).
+const MAX_SYMPTOM_LENGTH = 60;
 const FAULT_CATEGORIES = SERVICE_CATEGORIES.filter((category) => category.id !== 'TODAS');
 
 // "Metropolitana" calza con "Region Metropolitana de Santiago": los nombres guardados (perfil, fallas antiguas o la
@@ -219,7 +222,10 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     if (!comuna.trim()) return setError('Elige tu región y tu comuna: los talleres cercanos son los más útiles.');
     if (needsPickup === null) return setError('Indica si necesitas que el taller recoja tu vehículo.');
     if (needsPickup && !pickupAddress.trim()) return setError('Indica la dirección donde el taller debe recoger tu vehículo.');
+    const year = vehicle.anio ? parseInt(vehicle.anio, 10) : null;
+    if (year != null && (year < MIN_VEHICLE_YEAR || year > maxVehicleYear())) return setError(`Indica un año entre ${MIN_VEHICLE_YEAR} y ${maxVehicleYear()}.`);
     const km = parseInt(String(mileage).replace(/\D/g, ''), 10);
+    if (Number.isFinite(km) && km > MAX_MILEAGE) return setError(`El kilometraje no puede superar ${MAX_MILEAGE.toLocaleString('es-CL')} km.`);
     setSaving(true);
     try {
       const payload = {
@@ -349,7 +355,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
                 {OTHER_SYMPTOM}
               </label>
               {symptoms.includes(OTHER_SYMPTOM) && (
-                <input className="ft-other-symptom" value={customSymptom} maxLength={100} placeholder="Escribe el síntoma" onChange={(event) => setCustomSymptom(event.target.value)} />
+                <input className="ft-other-symptom" value={customSymptom} maxLength={MAX_SYMPTOM_LENGTH} placeholder="Escribe el síntoma" onChange={(event) => setCustomSymptom(event.target.value)} />
               )}
             </div>
           </details>

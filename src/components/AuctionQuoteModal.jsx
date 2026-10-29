@@ -3,6 +3,7 @@ import {
   AlertCircle, AlertTriangle, ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, Gavel, LayoutGrid, List, Loader2, MinusCircle, Package, PackagePlus, Search,
   ShieldCheck, SlidersHorizontal, Sparkles, X, XCircle,
 } from 'lucide-react';
+import { MAX_PRICE, MAX_SEARCH_LENGTH, onlyDigits } from '../utils/inputLimits';
 import { getAuctionSuggestedParts, submitAuctionQuote } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
 import { compatibilidadLinea, mapCompatibilidad } from '../services/adapters';
@@ -237,7 +238,7 @@ function InventoryPicker({ auction, item, vehicle, takenPartIds, selectedId, onS
       <div className="aq-inv-bar">
         <label className="aq-search">
           <Search size={16} />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre, OEM o SKU…" aria-label="Buscar en todo tu inventario" autoFocus />
+          <input value={search} maxLength={MAX_SEARCH_LENGTH} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre, OEM o SKU…" aria-label="Buscar en todo tu inventario" autoFocus />
           {search && <button type="button" onClick={() => setSearch('')} aria-label="Limpiar búsqueda"><X size={14} /></button>}
         </label>
         <button type="button" className={`aq-inv-filter-btn ${filtersOpen || activeFilters ? 'is-active' : ''}`} onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen}>
@@ -406,7 +407,7 @@ function ItemOfferRow({ auction, item, line, takenPartIds, onChange, onCreateReq
               <div className="aq-search-row">
                 <label className="aq-search">
                   <Search size={16} />
-                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre, OEM o SKU…" aria-label={`Buscar ${item.repuesto} en tu inventario`} />
+                  <input value={search} maxLength={MAX_SEARCH_LENGTH} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre, OEM o SKU…" aria-label={`Buscar ${item.repuesto} en tu inventario`} />
                   {search && <button type="button" onClick={() => setSearch('')} aria-label="Limpiar búsqueda"><X size={14} /></button>}
                 </label>
               </div>
@@ -452,7 +453,7 @@ function ItemOfferRow({ auction, item, line, takenPartIds, onChange, onCreateReq
                 <span>Precio unitario *</span>
                 <div className="aq-money">
                   <i>$</i>
-                  <input type="number" min="1" inputMode="numeric" value={line.unitPrice} onChange={(e) => onChange(item.id, { unitPrice: e.target.value })} placeholder="Ej: 45000" />
+                  <input type="text" inputMode="numeric" maxLength={9} value={line.unitPrice} onChange={(e) => onChange(item.id, { unitPrice: onlyDigits(e.target.value, 9) })} placeholder="Ej: 45000" />
                 </div>
                 {line.part.precio ? <small>Precio en tu catálogo: {money(line.part.precio)}</small> : null}
               </label>
@@ -588,6 +589,7 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
   const uncovered = pendingItems.filter((item) => !lines[item.id]?.part);
   if (uncovered.length > 0) missing.push(`cubre todos los repuestos del pedido (te falta: ${uncovered.map((item) => item.repuesto).join(', ')})`);
   if (uncovered.length === 0 && covered.some((entry) => !(entry.unit > 0))) missing.push('fija el precio de cada repuesto');
+  if (covered.some((entry) => entry.unit > MAX_PRICE)) missing.push(`deja cada precio en $${MAX_PRICE.toLocaleString('es-CL')} o menos`);
 
   const handleSubmit = async (event) => {
     event.preventDefault();

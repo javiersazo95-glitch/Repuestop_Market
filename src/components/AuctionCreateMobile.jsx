@@ -6,6 +6,7 @@ import { getComunasApi, getRegionesApi } from '../services/api';
 import { createAuction, updateAuction, uploadAuctionPhoto } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
 import { useCategories } from '../data/categories';
+import { MAX_PRICE, MAX_QUANTITY, onlyDigits } from '../utils/inputLimits';
 import '../styles/auction-app-mobile.css';
 
 // Mismas opciones que la app y el formulario de escritorio.
@@ -161,6 +162,9 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
       setError('Hay repuestos para otro vehículo sin patente identificada. Ingresa su patente o cámbialo al mismo vehículo.');
       return;
     }
+    const badQuantity = items.findIndex((item) => { const value = parseInt(item.cantidad, 10); return !(value >= 1 && value <= MAX_QUANTITY); });
+    if (badQuantity >= 0) { setError(`La cantidad del repuesto ${badQuantity + 1} debe estar entre 1 y ${MAX_QUANTITY}.`); return; }
+    if (presupuesto && parseInt(presupuesto, 10) > MAX_PRICE) { setError(`El presupuesto no puede superar $${MAX_PRICE.toLocaleString('es-CL')}.`); return; }
     setLoading(true);
     setError('');
     try {
@@ -251,7 +255,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
               </Field>
               <div className="am-two">
                 <Field label="Cantidad *">
-                  <input type="number" inputMode="numeric" min="1" max="999" value={item.cantidad} onChange={(event) => changeItem(item.key, { cantidad: event.target.value })} />
+                  <input type="text" inputMode="numeric" maxLength={3} value={item.cantidad} onChange={(event) => changeItem(item.key, { cantidad: onlyDigits(event.target.value, 3) })} />
                 </Field>
                 <Field label="Categoría *">
                   <select value={item.categoria} onChange={(event) => changeItem(item.key, { categoria: event.target.value })}>
@@ -303,7 +307,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
 
         <section className="am-card">
           <h3 className="am-form-title">3. Plazos y condiciones</h3>
-          <Field label="Presupuesto sugerido (opcional)"><input type="number" inputMode="numeric" min="0" value={presupuesto} onChange={(event) => setPresupuesto(event.target.value)} placeholder="Ej: 50000" /></Field>
+          <Field label="Presupuesto sugerido (opcional)"><input type="text" inputMode="numeric" maxLength={9} value={presupuesto} onChange={(event) => setPresupuesto(onlyDigits(event.target.value, 9))} placeholder="Ej: 50000" /></Field>
           {totalUnits > 0 && <p className="am-muted">{items.length} {items.length === 1 ? 'repuesto' : 'repuestos'} · {totalUnits} {totalUnits === 1 ? 'unidad' : 'unidades'}</p>}
           <Field label="Plazo máximo de envío">
             <select value={plazo} onChange={(event) => setPlazo(event.target.value)}>

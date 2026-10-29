@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { helpCategoryPath } from '../routes/paths';
 import {
   ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, Bus, CalendarDays, Car, ChevronRight, Clock, Gavel, Info, ListChecks, Lock, MapPin,
-  Hash, MessageCircle, Package, PackageCheck, Pencil, RotateCcw, Send, ShoppingCart, Star, Tag, Trophy, User, Wallet, X,
+  Hash, MessageCircle, Package, PackageCheck, Pencil, RotateCcw, Send, XCircle, ShoppingCart, Star, Tag, Trophy, User, Wallet, X,
 } from 'lucide-react';
 import { auctionTrackingCode, getAuctionBuyerProfile, getAuctionComments, postAuctionComment } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
@@ -126,6 +126,8 @@ export default function AuctionDetailMobile({
   onEdit,
   canRepublish = false,
   onRepublish,
+  canCancel = false,
+  onCancel,
 }) {
   const [profile, setProfile] = useState(null);
   const [comments, setComments] = useState([]);
@@ -211,6 +213,11 @@ export default function AuctionDetailMobile({
 
       {/* Editar (solo el comprador), compartir y guardar */}
       <div className="am-actions" role="group" aria-label="Acciones de la necesidad">
+        {canCancel && (
+          <button type="button" className="am-action is-danger" onClick={onCancel}>
+            <XCircle size={16} /> Cancelar
+          </button>
+        )}
         {canRepublish && (
           <button type="button" className="am-action" onClick={onRepublish}>
             <RotateCcw size={16} /> Publicar de nuevo
@@ -249,6 +256,7 @@ export default function AuctionDetailMobile({
           <div className="am-summary-info">
             <div className="am-pills">
               <span className={`am-pill is-${tone}`}>{statusLabel}</span>
+              {estado === 'CANCELADA' && auction.motivoCancelacion && <span className="am-pill is-closed"><XCircle size={14} /> {auction.motivoCancelacion}</span>}
               {isOpen && <span className={`am-pill is-${tone}`}><Clock size={14} /> {formatRemaining(remainingMs)}</span>}
             </div>
             <h2>{repuestoSolicitado}</h2>
@@ -407,7 +415,7 @@ export default function AuctionDetailMobile({
               value={commentText}
               onChange={(event) => setCommentText(event.target.value)}
               placeholder="Escribe un comentario o pregunta para afinar tu cotización..."
-              maxLength={500}
+              maxLength={1000}
               aria-label="Escribe un comentario"
             />
             <button type="submit" disabled={posting || !commentText.trim()} aria-label="Publicar comentario"><Send size={20} /></button>

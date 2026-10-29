@@ -3,13 +3,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle, ArrowRight, CalendarDays, Car, CheckCircle2, Clock, Gavel, Inbox, Lock, MapPin, MessageCircle, Package, PackageCheck, Pencil, Plus,
-  ReceiptText, RotateCcw, Search, ShoppingCart, Tag, X,
+  ReceiptText, RotateCcw, Search, ShoppingCart, Tag, X, XCircle,
 } from 'lucide-react';
 import { getAuctionDetail, getMyAuctionRequests, getPendingQuestionCounts } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
 import { auctionDetailPath, profilePurchasePath, profileOrderPath } from '../routes/paths';
 import { useAuth } from '../context/AuthContext';
 import CreateAuctionModal from './CreateAuctionModal';
+import CancelAuctionDialog from './CancelAuctionDialog';
 import AuctionOffersModal from './AuctionOffersModal';
 import AuctionPurchaseModal from './AuctionPurchaseModal';
 import AuctionQuestionsModal from './AuctionQuestionsModal';
@@ -59,7 +60,7 @@ const FILTERS = [
   ['history', 'Historial'],
 ];
 
-function AuctionRow({ auction, stage, now, isSeller, onNavigate, onOpenOffers, onOpenPurchase, onOpenQuestions, pendingQuestions, onEdit, editBusy, onRepublish }) {
+function AuctionRow({ auction, stage, now, isSeller, onNavigate, onOpenOffers, onOpenPurchase, onOpenQuestions, pendingQuestions, onEdit, editBusy, onRepublish, onCancel }) {
   const [blockedNotice, setBlockedNotice] = useState(false);
   const canEdit = auction.editable !== false;
   const vehicle = [auction.marca, auction.modelo, auction.anio].filter(Boolean).join(' ');
@@ -77,6 +78,8 @@ function AuctionRow({ auction, stage, now, isSeller, onNavigate, onOpenOffers, o
   } else if (isRunning) {
     actions.push({ label: offers > 0 ? `Ver ofertas (${offers})` : 'Ver ofertas', icon: Gavel, onClick: () => onOpenOffers(auction), primary: true });
     if (stage.accepted > 0) actions.push({ label: 'Ver mi pedido', icon: PackageCheck, onClick: () => onOpenPurchase(auction) });
+    // Sin ofertas aceptadas todavía se puede cancelar (el backend lo vuelve a validar).
+    else actions.push({ label: 'Cancelar', icon: XCircle, onClick: () => onCancel(auction) });
   } else if (stage.key === 'purchased' && auction.pedidoId) {
     actions.push({
       label: 'Seguir compra', icon: PackageCheck, primary: true,
@@ -257,6 +260,19 @@ export default function ProfileAuctionsPanel() {
     }
   };
 
+  // Cancelar: el dialogo necesita el detalle (ofertas pendientes y si aun se puede editar).
+  const [cancelling, setCancelling] = useState(null);
+  const openCancel = async (auction) => {
+    setEditBusyId(auction.id);
+    try {
+      setCancelling(await getAuctionDetail(auction.id));
+    } catch (err) {
+      setError(err?.message || 'No pudimos abrir tu pedido para cancelarlo.');
+    } finally {
+      setEditBusyId(null);
+    }
+  };
+
   // "Publicar de nuevo": se abre el formulario con el detalle completo (repuestos, fotos, entrega) como plantilla.
   const [template, setTemplate] = useState(null);
   const openRepublish = async (auction) => {
@@ -325,7 +341,7 @@ export default function ProfileAuctionsPanel() {
         <>
           <div className="pa-list">
             {pageItems.map(({ auction, stage }) => (
-              <AuctionRow key={auction.id} auction={auction} stage={stage} now={now} isSeller={isSeller} onNavigate={navigate} onOpenOffers={(item) => setOffersAuctionId(item.id)} onOpenPurchase={(item) => setPurchaseAuctionId(item.id)} onOpenQuestions={setQuestionsAuction} pendingQuestions={pendingQuestions[auction.id] || 0} onEdit={openEdit} editBusy={editBusyId === auction.id} onRepublish={openRepublish} />
+              <AuctionRow key={auction.id} auction={auction} stage={stage} now={now} isSeller={isSeller} onNavigate={navigate} onOpenOffers={(item) => setOffersAuctionId(item.id)} onOpenPurchase={(item) => setPurchaseAuctionId(item.id)} onOpenQuestions={setQuestionsAuction} pendingQuestions={pendingQuestions[auction.id] || 0} onEdit={openEdit} editBusy={editBusyId === auction.id} onRepublish={openRepublish} onCancel={openCancel} />
             ))}
           </div>
           <ListPager pagerProps={pagerProps} itemLabel="necesidades" />
@@ -365,6 +381,15 @@ export default function ProfileAuctionsPanel() {
       <CreateAuctionModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onSuccess={handleCreated} />
       {editing && (
         <CreateAuctionModal isOpen auction={editing} onClose={() => setEditing(null)} onSuccess={() => { setEditing(null); load(); }} />
+      )}
+      {cancelling && (
+        <CancelAuctionDialog
+          auction={cancelling}
+          pendingOffers={(cancelling.cotizaciones || []).filter((quote) => !quote.aceptada && quote.estado === 'ENVIADA').length}
+          onClose={() => setCancelling(null)}
+          onEdit={() => { const target = cancelling; setCancelling(null); setEditing(target); }}
+          onCancelled={() => { setCancelling(null); load(); }}
+        />
       )}
       {template && (
         <CreateAuctionModal isOpen template={template} onClose={() => setTemplate(null)} onSuccess={(created) => { setTemplate(null); handleCreated(created); }} />

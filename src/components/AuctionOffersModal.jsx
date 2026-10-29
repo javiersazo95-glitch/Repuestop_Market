@@ -586,7 +586,7 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
           {fullScreen && offers.length > 0 && (
             <div className="ao-toolbar">
               <label className="ao-search"><Search size={15} />
-                <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por tienda o repuesto…" aria-label="Buscar ofertas" />
+                <input type="search" value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por tienda o repuesto…" aria-label="Buscar ofertas" />
               </label>
               <div className="ao-tabs" role="tablist" aria-label="Estado de la oferta">
                 {[['all', 'Todas'], ['open', 'Vigentes'], ['accepted', 'Aceptadas'], ['rejected', 'Rechazadas']].map(([key, label]) => (

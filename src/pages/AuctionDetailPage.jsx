@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle, ArrowRight, CalendarDays, Car, ChevronRight, Clock, Gavel,
-  Bookmark, BookmarkCheck, ChevronDown, Star, HelpCircle, Pencil, RotateCcw, Home, ListTree, Lock, Maximize2, X, MapPin, Package, PackageCheck, ShieldCheck, ShoppingCart, Trophy,
+  Bookmark, BookmarkCheck, ChevronDown, Star, HelpCircle, Pencil, RotateCcw, XCircle, Home, ListTree, Lock, Maximize2, X, MapPin, Package, PackageCheck, ShieldCheck, ShoppingCart, Trophy,
 } from 'lucide-react';
 import { auctionTrackingCode, getAuctionDetail, setAuctionSaved } from '../services/auctionApi';
 import { ROUTES, auctionDetailPath, helpCategoryPath, profileOrderPath, profilePurchasePath } from '../routes/paths';
@@ -16,6 +16,7 @@ import AuctionItemsCard from '../components/AuctionItemsCard';
 import AuctionInfoTip from '../components/AuctionInfoTip';
 import AuctionImageViewer from '../components/AuctionImageViewer';
 import CreateAuctionModal from '../components/CreateAuctionModal';
+import CancelAuctionDialog from '../components/CancelAuctionDialog';
 import MobileStickyBar from '../components/MobileStickyBar';
 import AuctionDetailMobile from '../components/AuctionDetailMobile';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -155,6 +156,7 @@ export default function AuctionDetailPage() {
   const openStorePhoto = (url, name) => setStorePhoto({ url, name });
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isRepublishOpen, setIsRepublishOpen] = useState(false);
+  const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [openFolds, setOpenFolds] = useState({ comments: true });
   const toggleFold = (key) => setOpenFolds((current) => ({ ...current, [key]: !current[key] }));
   const [saved, setSaved] = useState(false);
@@ -248,7 +250,7 @@ export default function AuctionDetailPage() {
   const isOpen = !isFinalizada && !isExpirada;
   const isUrgent = isOpen && remainingMs < HOUR;
   const statusKey = isFinalizada || isExpirada ? 'finalizada' : isUrgent ? 'por-finalizar' : 'activa';
-  const statusLabel = isFinalizada ? 'Finalizada' : isExpirada ? 'Expirada' : isUrgent ? 'Por finalizar' : 'Activa';
+  const statusLabel = isFinalizada ? 'Finalizada' : estado === 'CANCELADA' ? 'Cancelada' : isExpirada ? 'Expirada' : isUrgent ? 'Por finalizar' : 'Activa';
 
   const photos = fotos.map((url) => resolveMediaUrl(url));
   const currentPhoto = photos[activePhotoIndex] || null;
@@ -257,6 +259,9 @@ export default function AuctionDetailPage() {
   const acceptedCount = cotizaciones.filter((quote) => quote.aceptada).length;
   // Vencio o se cancelo sin aceptar ninguna oferta: ya no se edita, pero se vuelve a publicar con los mismos datos.
   const canRepublish = Boolean(esCreador) && isExpirada && acceptedCount === 0;
+  // Se cancela mientras siga abierta y sin ofertas aceptadas (el backend lo vuelve a validar).
+  const canCancel = Boolean(esCreador) && isOpen && acceptedCount === 0;
+  const pendingOffersCount = cotizaciones.filter((quote) => !quote.aceptada && quote.estado === 'ENVIADA').length;
   const totalUnits = items.reduce((sum, item) => sum + item.cantidad, 0) || cantidad;
 
   return (
@@ -284,6 +289,8 @@ export default function AuctionDetailPage() {
             : setIsEditOpen(true))}
           canRepublish={canRepublish}
           onRepublish={() => setIsRepublishOpen(true)}
+          canCancel={canCancel}
+          onCancel={() => setIsCancelOpen(true)}
         />
       ) : (
       <div className="container av-shell">
@@ -354,6 +361,9 @@ export default function AuctionDetailPage() {
                 <div className="as-card av-top-info">
                   <div className="av-top-meta">
                     <span className={`av-badge is-${statusKey}`}>{statusLabel}</span>
+                    {estado === 'CANCELADA' && auction.motivoCancelacion && (
+                      <span className="av-cancel-reason"><XCircle size={14} aria-hidden="true" /> Cancelada por el comprador: {auction.motivoCancelacion}</span>
+                    )}
                     {isOpen && (
                       <span className={`av-meta-time ${isUrgent ? 'is-urgent' : ''}`}>
                         <Clock size={24} />
@@ -386,6 +396,11 @@ export default function AuctionDetailPage() {
                         iconSize={15}
                         stopPropagation={false}
                       />
+                      {canCancel && (
+                        <button type="button" className="av-action-btn av-cancel-btn" onClick={() => setIsCancelOpen(true)}>
+                          <XCircle size={15} /> Cancelar
+                        </button>
+                      )}
                       {canRepublish && (
                         <button type="button" className="av-action-btn av-edit-btn" onClick={() => setIsRepublishOpen(true)}>
                           <RotateCcw size={15} /> Publicar de nuevo
@@ -582,6 +597,15 @@ export default function AuctionDetailPage() {
 
       {esCreador && isEditOpen && (
         <CreateAuctionModal isOpen auction={auction} onClose={() => setIsEditOpen(false)} onSuccess={() => { setIsEditOpen(false); loadDetail(); }} />
+      )}
+      {canCancel && isCancelOpen && (
+        <CancelAuctionDialog
+          auction={auction}
+          pendingOffers={pendingOffersCount}
+          onClose={() => setIsCancelOpen(false)}
+          onEdit={() => { setIsCancelOpen(false); setIsEditOpen(true); }}
+          onCancelled={() => { setIsCancelOpen(false); loadDetail(); }}
+        />
       )}
       {canRepublish && isRepublishOpen && (
         <CreateAuctionModal

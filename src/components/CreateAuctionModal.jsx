@@ -15,6 +15,7 @@ import { createAuction, updateAuction, uploadAuctionPhoto } from '../services/au
 import { useAuth } from '../context/AuthContext';
 import { useCategories } from '../data/categories';
 import '../styles/auctions.css';
+import { MAX_PRICE, MAX_QUANTITY, onlyDigits } from '../utils/inputLimits';
 import '../styles/auction-vehicle.css';
 
 const MAX_ITEMS = 20;
@@ -68,7 +69,7 @@ function ItemEditor({ item, index, canRemove, categories, onChange, onRemove, on
         </label>
         <label className="acv-field">
           <span>Cantidad *</span>
-          <input type="number" min="1" max="999" value={item.cantidad} onChange={(e) => onChange(item.key, { cantidad: e.target.value })} required />
+          <input type="text" inputMode="numeric" maxLength={3} value={item.cantidad} onChange={(e) => onChange(item.key, { cantidad: onlyDigits(e.target.value, 3) })} required />
         </label>
         <label className="acv-field">
           <span>Categoría *</span>
@@ -318,6 +319,15 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
       setError('Hay repuestos para otro vehículo sin patente identificada. Ingresa su patente o desmarca la opción.');
       return;
     }
+    const badQuantity = items.findIndex((item) => { const value = parseInt(item.cantidad, 10); return !(value >= 1 && value <= MAX_QUANTITY); });
+    if (badQuantity >= 0) {
+      setError(`La cantidad del repuesto ${badQuantity + 1} debe estar entre 1 y ${MAX_QUANTITY}.`);
+      return;
+    }
+    if (presupuestoMaximo && parseInt(presupuestoMaximo, 10) > MAX_PRICE) {
+      setError(`El presupuesto no puede superar $${MAX_PRICE.toLocaleString('es-CL')}.`);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -528,9 +538,11 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
                   <span>Presupuesto máximo del pedido (opcional)</span>
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={9}
                   value={presupuestoMaximo}
-                  onChange={(e) => setPresupuestoMaximo(e.target.value)}
+                  onChange={(e) => setPresupuestoMaximo(onlyDigits(e.target.value, 9))}
                   placeholder="Ej: 150000"
                   className="auction-form-input"
                 />

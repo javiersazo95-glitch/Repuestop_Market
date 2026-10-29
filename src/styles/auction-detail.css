@@ -254,3 +254,8 @@
 .av-send-offer-btn:hover { background: #004aa6; }
 
 .av-offer-ribbon.is-rejected { background: #ffe9e9; color: #b42318; }
+
+/* Cancelar una necesidad (29-oct): accion del creador y motivo visible cuando ya esta cancelada. */
+.av-cancel-btn { color: #b42318; border-color: #f3c7c2; }
+.av-cancel-btn:hover { background: #fef3f2; border-color: #e8a59d; }
+.av-cancel-reason { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #fef3f2; border: 1px solid #f3c7c2; color: #b42318; font-size: 12px; font-weight: 700; }
