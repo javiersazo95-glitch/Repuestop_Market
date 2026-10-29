@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
-  ArrowUpDown, CalendarDays, Car, Check, ChevronRight, Clock, Eye, Gavel, MapPin, Package, Plus, Search,
+  ArrowUpDown, CalendarDays, Car, Check, ChevronRight, Clock, Eye, Gavel, MapPin, MessageCircle, Package, Plus, Search,
   SlidersHorizontal, Tag, Wallet, X,
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
 import { auctionTrackingCode } from '../services/auctionApi';
+import { pendingSummary } from '../utils/auctionPending';
 import '../styles/auction-app-mobile.css';
 
 const HOUR = 60 * 60 * 1000;
@@ -37,7 +38,7 @@ function formatPublished(iso, now) {
   return `Publicado el ${date.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
 }
 
-function AuctionCardMobile({ auction, status, now, onOpen }) {
+function AuctionCardMobile({ auction, status, now, onOpen, pendingQuestions = null }) {
   const vehicle = [auction.marca, auction.modelo, auction.anio].filter(Boolean).join(' ') || 'Vehículo';
   const motor = auction.motor || auction.version;
   const location = [auction.comuna, auction.region].filter(Boolean).join(', ');
@@ -74,6 +75,9 @@ function AuctionCardMobile({ auction, status, now, onOpen }) {
         <span><Wallet size={15} /> {auction.presupuestoMaximo != null ? `${formatCLP(auction.presupuestoMaximo)} máx.` : 'Sin tope'}</span>
         <span><Tag size={15} /> {offers} {offers === 1 ? 'oferta' : 'ofertas'}</span>
       </div>
+      {pendingQuestions != null && pendingSummary(offers, pendingQuestions) && (
+        <p className="am-card-pending"><MessageCircle size={14} aria-hidden="true" /> {pendingSummary(offers, pendingQuestions)}</p>
+      )}
 
     </article>
   );
@@ -101,6 +105,12 @@ export default function AuctionsListMobile({
   canCreate = false,
   onOpenAuction,
   filtersPanel,
+  /** "Mural publico (N)" / "Mis necesidades (N)" (null sin sesion de quien publica), como la app. */
+  tabs = null,
+  tab = 'MURAL',
+  onTabChange,
+  /** Preguntas sin responder por necesidad, solo en "Mis necesidades". */
+  pendingQuestions = null,
 }) {
   const [sortOpen, setSortOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(8);
@@ -153,6 +163,16 @@ export default function AuctionsListMobile({
         </button>
       </div>
 
+      {tabs && (
+        <div className="am-tabs" role="tablist" aria-label="Necesidades de compra">
+          {tabs.map((item) => (
+            <button key={item.value} type="button" role="tab" aria-selected={tab === item.value} className={tab === item.value ? 'is-active' : ''} onClick={() => { onTabChange?.(item.value); setVisibleCount(8); }}>
+              {item.label} ({item.count})
+            </button>
+          ))}
+        </div>
+      )}
+
       {sortOpen && (
         <div className="am-sort-menu" role="menu">
           {sortOptions.map((option) => (
@@ -193,7 +213,7 @@ export default function AuctionsListMobile({
       ) : (
         <div className="am-list-cards">
           {rows.slice(0, visibleCount).map(({ auction, status }) => (
-            <AuctionCardMobile key={auction.id} auction={auction} status={status} now={now} onOpen={onOpenAuction} />
+            <AuctionCardMobile key={auction.id} auction={auction} status={status} now={now} onOpen={onOpenAuction} pendingQuestions={pendingQuestions ? Number(pendingQuestions[auction.id] || 0) : null} />
           ))}
           {rows.length > visibleCount && (
             <button type="button" className="am-btn am-btn-outline" onClick={() => setVisibleCount((count) => count + 8)}>

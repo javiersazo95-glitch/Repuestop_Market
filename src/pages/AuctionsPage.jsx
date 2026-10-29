@@ -2,13 +2,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertCircle, ArrowRight, ArrowUpDown, CalendarDays, CalendarPlus, ChevronDown, ChevronLeft, ChevronRight, Clock,
-  FileText, Gavel, LayoutGrid, List, Lock, MapPin, Package, Plus, RotateCcw, Search,
+  FileText, Gavel, LayoutGrid, List, Lock, MapPin, MessageCircle, Package, Plus, RotateCcw, Search,
   SlidersHorizontal, Tag, X,
 } from 'lucide-react';
-import { auctionTrackingCode, getAuctionMetrics, getAuctions } from '../services/auctionApi';
+import { auctionTrackingCode, getAuctionMetrics, getAuctions, getMyAuctionRequests, getPendingQuestionCounts } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
 import { auctionDetailPath, ROUTES } from '../routes/paths';
 import CreateAuctionModal from '../components/CreateAuctionModal';
+import { pendingSummary } from '../utils/auctionPending';
 import MobileStickyBar from '../components/MobileStickyBar';
 import AuctionsListMobile from '../components/AuctionsListMobile';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -143,7 +144,7 @@ function CheckRow({ checked, onChange, label, count }) {
   );
 }
 
-function AuctionRow({ auction, status, now, onOpen }) {
+function AuctionRow({ auction, status, now, onOpen, pendingQuestions = null }) {
   const vehicle = [auction.marca, auction.modelo, auction.anio].filter(Boolean).join(' ');
   const detail = [vehicle, auction.motor].filter(Boolean).join(' · ');
   const location = [auction.comuna, auction.region].filter(Boolean).join(', ');
@@ -170,6 +171,9 @@ function AuctionRow({ auction, status, now, onOpen }) {
           {auction.presupuestoMaximo ? <span className="is-budget">Tope {formatCLP(auction.presupuestoMaximo)}</span> : null}
           <span><Lock size={12} /> {offers} {offers === 1 ? 'oferta' : 'ofertas'}</span>
         </div>
+        {pendingQuestions != null && pendingSummary(offers, pendingQuestions) && (
+          <p className="aw-card-pending"><MessageCircle size={13} aria-hidden="true" /> {pendingSummary(offers, pendingQuestions)}</p>
+        )}
       </div>
 
       <div className="aw-card-status">
@@ -210,6 +214,11 @@ export default function AuctionsPage() {
   const [regiones, setRegiones] = useState([]);
   const [tiempos, setTiempos] = useState([]);
   const [scope, setScope] = useState('TODAS');
+  // "Mural publico" / "Mis necesidades", como la app (26-oct). Lo propio solo existe para quien publica.
+  const canSeeMine = isLoggedIn && (role === 'BUYER' || role === 'WORKSHOP');
+  const [tab, setTab] = useState('MURAL');
+  const [myAuctions, setMyAuctions] = useState([]);
+  const [pendingQuestions, setPendingQuestions] = useState({});
   const [sortBy, setSortBy] = useState('RECIENTES');
   const [view, setView] = useState('list');
   const [page, setPage] = useState(1);
@@ -236,7 +245,19 @@ export default function AuctionsPage() {
     try { setMetrics(await getAuctionMetrics()); } catch { /* sin métricas se muestran los conteos de la lista */ }
   }, []);
 
+  // Las necesidades propias (de cualquier estado) y las preguntas de las tiendas sin responder en cada una.
+  const loadMine = useCallback(async () => {
+    if (!canSeeMine) { setMyAuctions([]); setPendingQuestions({}); return; }
+    try {
+      const [list, pending] = await Promise.all([getMyAuctionRequests(), getPendingQuestionCounts().catch(() => ({}))]);
+      setMyAuctions(Array.isArray(list) ? list : []);
+      setPendingQuestions(pending && typeof pending === 'object' ? pending : {});
+    } catch { /* sin la lista propia, la pestaña queda vacía; el mural sigue */ }
+  }, [canSeeMine]);
+
   useEffect(() => { loadAuctions(); loadMetrics(); }, [loadAuctions, loadMetrics]);
+  useEffect(() => { loadMine(); }, [loadMine]);
+  useEffect(() => { if (!canSeeMine) setTab('MURAL'); }, [canSeeMine]);
 
   // "Actualizadas en tiempo real": la lista se refresca sola y los cronómetros avanzan cada minuto.
   useEffect(() => {
@@ -244,11 +265,12 @@ export default function AuctionsPage() {
       setNow(Date.now());
       loadAuctions({ silent: true });
       loadMetrics();
+      loadMine();
     }, REFRESH_MS);
     return () => clearInterval(timer);
-  }, [loadAuctions, loadMetrics]);
+  }, [loadAuctions, loadMetrics, loadMine]);
 
-  useEffect(() => { setPage(1); }, [searchQuery, estados, categorias, marcas, regiones, tiempos, scope, sortBy]);
+  useEffect(() => { setPage(1); }, [searchQuery, estados, categorias, marcas, regiones, tiempos, scope, sortBy, tab]);
 
   useEffect(() => {
     document.body.style.overflow = isFiltersOpen ? 'hidden' : '';
@@ -261,6 +283,7 @@ export default function AuctionsPage() {
   ));
 
   const rows = useMemo(() => auctions.map((auction) => ({ auction, status: resolveStatus(auction, now) })), [auctions, now]);
+  const myRows = useMemo(() => myAuctions.map((auction) => ({ auction, status: resolveStatus(auction, now) })), [myAuctions, now]);
 
   // Todas las categorías del catálogo (con su conteo, aunque sea 0), más las que traigan subastas antiguas.
   const categoryOptions = useMemo(() => {
@@ -272,14 +295,14 @@ export default function AuctionsPage() {
   const brandOptions = useMemo(() => countBy(rows, ({ auction }) => auction.marca), [rows]);
   const regionOptions = useMemo(() => countBy(rows, ({ auction }) => auction.region), [rows]);
 
-  const filtered = useMemo(() => {
+  const { muralMatches, mineMatches } = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    const list = rows.filter(({ auction, status }) => {
+    const matches = ({ auction, status }, ignoreEstados) => {
       if (q) {
         const haystack = `${auction.repuestoSolicitado || ''} ${auction.marca || ''} ${auction.modelo || ''} ${auction.patenteAnonimizada || ''}`.toLowerCase();
         if (!haystack.includes(q)) return false;
       }
-      if (estados.length > 0) {
+      if (!ignoreEstados && estados.length > 0) {
         const ok = estados.some((estado) => {
           if (estado === 'ACTIVA') return status.key === 'activa' || status.key === 'por-finalizar';
           if (estado === 'POR_FINALIZAR') return status.key === 'por-finalizar';
@@ -291,6 +314,23 @@ export default function AuctionsPage() {
       if (marcas.length > 0 && !marcas.includes(auction.marca)) return false;
       if (regiones.length > 0 && !regiones.includes(auction.region)) return false;
       if (tiempos.length > 0 && !tiempos.some((value) => matchesTiempo(auction, status, value, now))) return false;
+      return true;
+    };
+    return {
+      muralMatches: rows.filter((row) => matches(row, false)),
+      mineMatches: myRows.filter((row) => matches(row, true)),
+    };
+  }, [rows, myRows, searchQuery, estados, categorias, marcas, regiones, tiempos, now]);
+
+  const tabMatches = tab === 'MIS' ? mineMatches : muralMatches;
+  const scopeCounts = useMemo(() => ({
+    TODAS: tabMatches.length,
+    CON_OFERTAS: tabMatches.filter(({ auction }) => auction.totalCotizaciones > 0).length,
+    SIN_OFERTAS: tabMatches.filter(({ auction }) => !(auction.totalCotizaciones > 0)).length,
+  }), [tabMatches]);
+
+  const filtered = useMemo(() => {
+    const list = tabMatches.filter(({ auction }) => {
       if (scope === 'CON_OFERTAS' && !(auction.totalCotizaciones > 0)) return false;
       if (scope === 'SIN_OFERTAS' && auction.totalCotizaciones > 0) return false;
       return true;
@@ -302,7 +342,11 @@ export default function AuctionsPage() {
       MAS_OFERTAS: (a, b) => (b.auction.totalCotizaciones || 0) - (a.auction.totalCotizaciones || 0),
     };
     return [...list].sort(sorters[sortBy]);
-  }, [rows, searchQuery, estados, categorias, marcas, regiones, tiempos, scope, sortBy, now]);
+  }, [tabMatches, scope, sortBy]);
+  const tabs = canSeeMine ? [
+    { value: 'MURAL', label: 'Mural público', count: muralMatches.length },
+    { value: 'MIS', label: 'Mis necesidades', count: mineMatches.length },
+  ] : null;
 
   // Métricas generales de necesidades de compra: no cambian con los filtros del listado.
   const activeCount = metrics?.solicitudesActivas ?? rows.filter(({ status }) => status.key !== 'finalizada').length;
@@ -474,6 +518,10 @@ export default function AuctionsPage() {
           canCreate={canCreate}
           onOpenAuction={handleOpenAuction}
           filtersPanel={filtersPanel}
+          tabs={tabs}
+          tab={tab}
+          onTabChange={setTab}
+          pendingQuestions={tab === 'MIS' ? pendingQuestions : null}
         />
         <CreateAuctionModal
           isOpen={isCreateModalOpen}
@@ -524,10 +572,19 @@ export default function AuctionsPage() {
           {filtersPanel}
 
           <section className="aw-main">
+            {tabs && (
+              <div className="aw-tabs" role="tablist" aria-label="Necesidades de compra">
+                {tabs.map((item) => (
+                  <button key={item.value} type="button" role="tab" aria-selected={tab === item.value} className={tab === item.value ? 'is-active' : ''} onClick={() => setTab(item.value)}>
+                    {item.label} ({nf.format(item.count)})
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="aw-scope-chips" role="tablist" aria-label="Tipo de necesidad">
               {SCOPE_OPTIONS.map((option) => (
                 <button key={option.value} type="button" role="tab" aria-selected={scope === option.value} className={scope === option.value ? 'is-active' : ''} onClick={() => setScope(option.value)}>
-                  {option.label}
+                  {option.label} ({nf.format(scopeCounts[option.value])})
                 </button>
               ))}
             </div>
@@ -538,7 +595,7 @@ export default function AuctionsPage() {
 
               <label className="aw-select">
                 <select value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Tipo de necesidad">
-                  {SCOPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  {SCOPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label} ({nf.format(scopeCounts[option.value])})</option>)}
                 </select>
                 <ChevronDown size={16} />
               </label>
@@ -579,8 +636,8 @@ export default function AuctionsPage() {
             ) : visible.length === 0 ? (
               <div className="aw-empty">
                 <div className="aw-empty-icon"><Gavel size={30} /></div>
-                <h3>No hay necesidades de compra con estos filtros</h3>
-                <p>Prueba cambiando los filtros o publica tú la necesidad de compra para recibir cotizaciones de tiendas verificadas.</p>
+                <h3>{tab === 'MIS' && myAuctions.length === 0 ? 'Aún no publicas necesidades de compra' : 'No hay necesidades de compra con estos filtros'}</h3>
+                <p>{tab === 'MIS' && myAuctions.length === 0 ? 'Publica lo que necesitas y aquí verás las ofertas y preguntas de las tiendas.' : 'Prueba cambiando los filtros o publica tú la necesidad de compra para recibir cotizaciones de tiendas verificadas.'}</p>
                 <div className="aw-empty-actions">
                   {activeFiltersCount > 0 && (
                     <button type="button" className="aw-btn-outline" onClick={handleResetFilters}><RotateCcw size={15} /> Limpiar filtros</button>
@@ -592,7 +649,7 @@ export default function AuctionsPage() {
               <>
                 <div className={`aw-list ${view === 'grid' ? 'is-grid' : ''}`}>
                   {visible.map(({ auction, status }) => (
-                    <AuctionRow key={auction.id} auction={auction} status={status} now={now} onOpen={handleOpenAuction} />
+                    <AuctionRow key={auction.id} auction={auction} status={status} now={now} onOpen={handleOpenAuction} pendingQuestions={tab === 'MIS' ? Number(pendingQuestions[auction.id] || 0) : null} />
                   ))}
                 </div>
 

@@ -517,3 +517,9 @@
 }
 
 .aw-card-code { margin: 0; font-size: 12px; color: #5a6b7a; letter-spacing: 0.02em; }
+
+/* "Mural publico (N)" / "Mis necesidades (N)" y lo pendiente de cada necesidad propia (como la app, 26-oct). */
+.aw-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.aw-tabs button { min-height: 40px; padding: 0 18px; border: 1px solid var(--aw-border, #dbe6f3); border-radius: 999px; background: #fff; font: inherit; font-size: 14px; font-weight: 700; color: #5a6b7a; cursor: pointer; }
+.aw-tabs button.is-active { background: var(--aw-primary); border-color: var(--aw-primary); color: #fff; }
+.aw-card-pending { display: inline-flex; align-items: center; gap: 6px; margin: 8px 0 0; padding: 4px 10px; border-radius: 999px; background: var(--aw-amber-bg); border: 1px solid var(--aw-amber-border); color: var(--aw-amber); font-size: 12px; font-weight: 700; }
