@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, ShieldCheck, ShoppingCart, Truck } from 'lucide-react';
 import { getAuctionPurchase, payAuctionPurchase } from '../services/auctionApi';
-import { confirmOrderPaymentApi, getAddressesApi } from '../services/api';
+import { confirmOrderPaymentApi } from '../services/api';
 import { formatRut, isValidRut } from '../services/adapters';
 import { auctionDetailPath, profilePath, ROUTES } from '../routes/paths';
 import { useAuth } from '../context/AuthContext';
@@ -17,7 +17,8 @@ const isPickup = (method) => /retiro/i.test(method || '');
 
 /**
  * Pago de una subasta: las ofertas aceptadas de una o varias tiendas se pagan juntas, en un solo pedido
- * de varias tiendas. Los precios y los envíos los fija el servidor con lo que cada tienda ofertó.
+ * de varias tiendas. Los precios y los envíos los fija el servidor con lo que cada tienda ofertó (28-oct): cada tienda
+ * entrega como lo ofertó y el despacho va a la dirección del comprador en la comuna de la necesidad, sin elegir otra.
  */
 export default function AuctionCheckoutPage() {
   useDocumentTitle('Pagar pedido');
@@ -30,61 +31,39 @@ export default function AuctionCheckoutPage() {
   const [purchase, setPurchase] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [addresses, setAddresses] = useState([]);
-  const [addressId, setAddressId] = useState('');
   const [documentType, setDocumentType] = useState(user?.facturaRut ? 'FACTURA' : 'BOLETA');
   const [invoice, setInvoice] = useState({ rut: user?.facturaRut ? formatRut(user.facturaRut) : '', razonSocial: user?.facturaRazonSocial || '', giro: user?.facturaGiro || '' });
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState('');
-  const [choices, setChoices] = useState({});
-  const [addressesReady, setAddressesReady] = useState(false);
   const submittingRef = useRef(false);
 
-  // La composición depende de la dirección: cada tienda dice qué entregas llegan ahí. Al cambiarla se recarga
-  // y cada tienda vuelve al método que le corresponde para esa dirección.
   useEffect(() => {
-    if (userId && !addressesReady) return undefined;
     let active = true;
-    getAuctionPurchase(id, addressId || null)
+    getAuctionPurchase(id)
       .then((data) => {
         if (!active) return;
         setPurchase(data);
-        setChoices(Object.fromEntries((data?.tiendas || []).map((store) => [store.cotizacionId, store.metodoEntrega])));
         setLoadError('');
       })
       .catch((err) => { if (active) setLoadError(err?.message || 'No pudimos cargar tu pedido.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [id, addressId, addressesReady, userId]);
-
-  useEffect(() => {
-    if (!userId) return undefined;
-    let active = true;
-    getAddressesApi(userId)
-      .then((data) => {
-        if (!active) return;
-        const list = Array.isArray(data) ? data : [];
-        setAddresses(list);
-        const principal = list.find((address) => address.esPrincipal) || list[0];
-        if (principal) setAddressId(String(principal.id));
-      })
-      .catch(() => { if (active) setAddresses([]); })
-      .finally(() => { if (active) setAddressesReady(true); });
-    return () => { active = false; };
-  }, [userId]);
+  }, [id]);
 
   const stores = purchase?.tiendas || [];
   const toPay = useMemo(() => stores.filter((store) => !store.pagada), [stores]);
-  const chosenMethod = (store) => choices[store.cotizacionId] || store.metodoEntrega;
-  const chosenOption = (store) => (store.opcionesEntrega || []).find((option) => option.metodo === chosenMethod(store));
-  const shippingOf = (store) => Number(chosenOption(store)?.costo ?? store.costoEnvio ?? 0);
+  const chosenMethod = (store) => store.metodoEntrega;
+  const isCourierToPay = (method) => /fuera/i.test(method || '');
+  const shippingOf = (store) => Number(store.costoEnvio ?? 0);
+  const shippingLabel = (store) => (shippingOf(store) > 0 ? money(shippingOf(store)) : isCourierToPay(chosenMethod(store)) ? 'Por pagar al recibir' : 'Sin costo');
+  const anyCourierToPay = toPay.some((store) => isCourierToPay(chosenMethod(store)));
   const totalOf = (store) => Number(store.subtotal) + shippingOf(store);
   const totalShipping = toPay.reduce((sum, store) => sum + shippingOf(store), 0);
   const totalToPay = toPay.reduce((sum, store) => sum + totalOf(store), 0);
   const needsAddress = toPay.some((store) => !isPickup(chosenMethod(store)));
 
   const missing = [];
-  if (needsAddress && !addressId) missing.push('elige la dirección de despacho');
+  if (needsAddress && !purchase?.direccionId) missing.push(`agrega una dirección en ${purchase?.comuna || 'la comuna de tu necesidad'}`);
   if (documentType === 'FACTURA' && (!isValidRut(invoice.rut) || !invoice.razonSocial.trim() || !invoice.giro.trim())) {
     missing.push('completa los datos de la factura (RUT, razón social y giro)');
   }
@@ -100,7 +79,7 @@ export default function AuctionCheckoutPage() {
     setError('');
     try {
       const order = await payAuctionPurchase(id, {
-        direccionId: needsAddress && addressId ? Number(addressId) : null,
+        direccionId: purchase?.direccionId ?? null,
         tipoDocumentoTributario: documentType,
         facturaRut: documentType === 'FACTURA' ? invoice.rut.trim() : null,
         facturaRazonSocial: documentType === 'FACTURA' ? invoice.razonSocial.trim() : null,
@@ -190,34 +169,14 @@ export default function AuctionCheckoutPage() {
                       ))}
                     </tbody>
                     <tfoot>
-                      <tr><td colSpan={2}>Envío</td><td className="is-num">{shippingOf(store) > 0 ? money(shippingOf(store)) : 'Sin costo'}</td></tr>
+                      <tr><td colSpan={2}>Envío</td><td className="is-num">{shippingLabel(store)}</td></tr>
                     </tfoot>
                   </table>
                   {isPickup(chosenMethod(store)) && store.direccionRetiro && (
                     <p className="apc-note"><Truck size={14} /> Retiras en <strong>{store.direccionRetiro}</strong>.</p>
                   )}
-                  {/fuera/i.test(chosenMethod(store)) && <p className="apc-note apc-note-warn"><AlertCircle size={14} /> Despacho a domicilio por pagar: el costo del envío no está incluido, lo pagas aparte al recibirlo.</p>}
+                  {isCourierToPay(chosenMethod(store)) && <p className="apc-note apc-note-warn"><AlertCircle size={14} /> Despacho a domicilio por pagar: el costo del envío no está incluido, lo pagas aparte al recibirlo.</p>}
                   {store.avisoEntrega && <p className="apc-note apc-note-warn"><AlertCircle size={14} /> {store.avisoEntrega}</p>}
-                  {(store.opcionesEntrega || []).length > 1 && (
-                    <div className="apc-delivery" role="radiogroup" aria-label={`Entrega de ${store.tienda}`}>
-                      <span className="apc-delivery-title"><Truck size={13} /> Cómo recibes lo de {store.tienda}</span>
-                      {store.opcionesEntrega.map((option) => (
-                        <label key={option.metodo} className={`apc-delivery-option ${chosenMethod(store) === option.metodo ? 'is-selected' : ''} ${option.disponible ? '' : 'is-disabled'}`}>
-                          <input
-                            type="radio"
-                            name={`delivery-${store.cotizacionId}`}
-                            checked={chosenMethod(store) === option.metodo}
-                            disabled={!option.disponible}
-                            onChange={() => setChoices((current) => ({ ...current, [store.cotizacionId]: option.metodo }))}
-                          />
-                          <span>
-                            <strong>{option.metodo}{option.costo > 0 ? ` · ${money(option.costo)}` : ''}</strong>
-                            {!option.disponible && <small>No disponible: {option.motivo}</small>}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
                 </article>
               ))}
               {purchase.itemsPendientes > 0 && (
@@ -225,28 +184,20 @@ export default function AuctionCheckoutPage() {
               )}
             </section>
 
-            {(needsAddress || addresses.length > 0) && (
+            {needsAddress && (
               <section className="apc-card">
                 <h2><span>2</span> Dirección de despacho</h2>
-                <p className="apc-note">Las opciones de entrega de cada tienda dependen de esta dirección. Si no llega a tu comuna, te lo indicamos antes de pagar.</p>
-                {addresses.length === 0 ? (
-                  <p className="apc-note">No tienes direcciones guardadas. <Link to={profilePath('datos')}>Agrega una en tu perfil</Link> y vuelve para pagar.</p>
+                <p className="apc-note">Las tiendas ofertaron para {purchase.comuna || 'la comuna de tu necesidad'}: el pedido llega a tu dirección en esa comuna.</p>
+                {purchase.direccionId ? (
+                  <p className="apc-option is-selected"><span><strong>{purchase.direccionTexto}</strong></span></p>
                 ) : (
-                  <div className="apc-options">
-                    {addresses.map((address) => (
-                      <label key={address.id} className={`apc-option ${String(address.id) === addressId ? 'is-selected' : ''}`}>
-                        <input type="radio" name="address" value={address.id} checked={String(address.id) === addressId} onChange={() => setAddressId(String(address.id))} />
-                        <span><strong>{address.calleYNumero}</strong><small>{[address.comunaNombre, address.regionNombre].filter(Boolean).join(', ')}{address.esPrincipal ? ' · Principal' : ''}</small></span>
-                      </label>
-                    ))}
-                  </div>
+                  <p className="apc-note apc-note-warn">No tienes una dirección en {purchase.comuna || 'la comuna de tu necesidad'}. <Link to={profilePath('datos')}>Agrégala en tu perfil</Link> y vuelve para pagar.</p>
                 )}
-                {addresses.length > 0 && <p className="ap-muted" style={{ marginTop: 8 }}><Link to={profilePath('datos')}>Agregar o editar mis direcciones</Link></p>}
               </section>
             )}
 
             <section className="apc-card">
-              <h2><span>{needsAddress || addresses.length > 0 ? 3 : 2}</span> Documento tributario</h2>
+              <h2><span>{needsAddress ? 3 : 2}</span> Documento tributario</h2>
               <div className="apc-options">
                 {[['BOLETA', 'Boleta', 'Para personas.'], ['FACTURA', 'Factura', 'Para empresas: requiere RUT, razón social y giro.']].map(([value, label, hint]) => (
                   <label key={value} className={`apc-option ${documentType === value ? 'is-selected' : ''}`}>
@@ -269,9 +220,10 @@ export default function AuctionCheckoutPage() {
             <h2>Resumen</h2>
             <dl className="ap-totals">
               <div><dt>Productos</dt><dd>{money(toPay.reduce((sum, s) => sum + s.subtotal, 0))}</dd></div>
-              <div><dt>Envíos</dt><dd>{totalShipping > 0 ? money(totalShipping) : 'Sin costo'}</dd></div>
+              <div><dt>Envíos</dt><dd>{totalShipping > 0 ? `${money(totalShipping)}${anyCourierToPay ? ' + por pagar al recibir' : ''}` : anyCourierToPay ? 'Por pagar al recibir' : 'Sin costo'}</dd></div>
               <div className="is-total"><dt>Total a pagar</dt><dd>{money(totalToPay)}</dd></div>
             </dl>
+            {anyCourierToPay && <p className="apc-note apc-note-warn"><AlertCircle size={14} /> No incluye el despacho fuera de la comuna: lo pagas al courier cuando recibes el pedido.</p>}
             {error && <p className="apc-error" role="alert" style={{ marginTop: 12 }}><AlertCircle size={15} /> {error}</p>}
             <button type="button" className="ap-btn-primary apc-pay" onClick={pay} disabled={placing}>
               {placing ? <><Loader2 size={16} className="ap-spin" /> Generando pedido…</> : <><ShoppingCart size={16} /> Pagar {money(totalToPay)}</>}
