@@ -64,10 +64,10 @@ function ItemVehicle({ itemKey, patente, onChange, onVehicle }) {
  * datos del vehículo con la patente que se autocompleta, qué repuesto se necesita con fotos, y plazos y
  * condiciones con listas desplegables) y un botón para volver. Solo crea; editar usa el formulario de escritorio.
  */
-export default function AuctionCreateMobile({ onClose, onSuccess, auction = null }) {
+export default function AuctionCreateMobile({ onClose, onSuccess, auction = null, initialPatente = '' }) {
   const isEditing = Boolean(auction);
   const { HEADER_CATEGORIES } = useCategories();
-  const [patente, setPatente] = useState(() => auction?.patente || '');
+  const [patente, setPatente] = useState(() => auction?.patente || initialPatente);
   const { vehicle, error: plateError, looking } = usePlateLookup(patente);
 
   const [items, setItems] = useState(() => (auction ? itemsFromAuction(auction) : [newItem()]));

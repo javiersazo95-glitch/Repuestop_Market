@@ -872,6 +872,17 @@ export async function getDireccionSugerenciasApi(texto, { comuna, region, signal
   return fetchApi(`/ubicaciones/direcciones?${params.toString()}`, { method: 'GET', signal });
 }
 
+/**
+ * Direccion aproximada de unas coordenadas (boton "usar mi ubicacion"). Requiere sesion.
+ * Devuelve `{ direccion, comuna, region, latitud, longitud }` o null si no se pudo resolver
+ * (el backend responde 204): quien llama deja la direccion para escribirla a mano.
+ */
+export async function getDireccionInversaApi(latitud, longitud) {
+  const params = new URLSearchParams({ lat: String(latitud), lng: String(longitud) });
+  const data = await fetchApi(`/ubicaciones/direcciones/inversa?${params.toString()}`, { method: 'GET' });
+  return data && typeof data === 'object' ? data : null;
+}
+
 export async function getPaisesApi(options = {}) {
   return fetchApi('/geografia/paises', { method: 'GET', ...options });
 }

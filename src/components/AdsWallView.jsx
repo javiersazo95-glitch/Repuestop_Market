@@ -2,10 +2,10 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   Megaphone, Plus, Search, RotateCcw, Loader2, WifiOff, AlertTriangle,
   RefreshCw, SlidersHorizontal, X, Car, MapPin, Settings, ArrowUpDown, ArrowRight,
-  ShieldCheck, Zap, CheckCircle2, Sparkles
+  CheckCircle2
 } from 'lucide-react';
-import { AD_TIERS, SERVICE_CATEGORIES } from '../data/automotiveAdsData';
-import { AD_TIER_PRICES_CLP, fetchPublicAds, getCachedWallAds, ADS_WALL_UPDATED_EVENT } from '../services/adsStorage';
+import { SERVICE_CATEGORIES } from '../data/automotiveAdsData';
+import { fetchPublicAds, getCachedWallAds, ADS_WALL_UPDATED_EVENT } from '../services/adsStorage';
 import { searchVehicleByPatenteApi } from '../services/api';
 import {
   isValidPlate, normalizePlate, lookupVehicleByPlate, formatVehicleLabel, getRecentPlates, addRecentPlate
@@ -23,8 +23,6 @@ import { useScrollMemory } from '../routes/useScrollMemory';
 import { useUserLocation } from '../hooks/useUserLocation';
 import { distanceKmTo, sortByDistance } from '../utils/geoDistance';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
-import AdsStoriesCarousel from './ads/AdsStoriesCarousel';
-import StoriesViewerModal from './ads/StoriesViewerModal';
 import AdCard from './ads/AdCard';
 import AdsSearchBar from './ads/AdsSearchBar';
 import AdsFiltersSidebar, { ALL_BRANDS, ALL_COMMUNES, ALL_TAGS } from './ads/AdsFiltersSidebar';
@@ -35,6 +33,7 @@ import './ads/ads-wall-redesign.css';
 // Va DESPUES del rediseño: solo distribucion para <=768px; el escritorio no cambia.
 import '../styles/ads-wall-mobile.css';
 import { canBookAd } from '../utils/adBooking';
+import { getFaultCategories } from '../services/faultApi';
 
 const PAGE_SIZE = 12;
 // Filtros y "cargar mas" del mural, recuperados al volver de un anuncio.
@@ -54,17 +53,6 @@ const SORT_OPTIONS = [
   { value: 'precio-mayor', label: 'Precio: mayor a menor' },
 ];
 
-// Planes de publicación para proveedores (bloque estático del sidebar).
-// Precios en CLP por período de 30 días, derivados de AD_TIER_PRICES_CLP
-// (src/services/adsStorage.js) para no repetir montos sueltos que se desfasen.
-const formatPlanPrice = (tier) => `$${AD_TIER_PRICES_CLP[tier].toLocaleString('es-CL')}`;
-const PROVIDER_PLANS = [
-  { tier: 'basica', name: 'Básica', priceLabel: 'Gratis 30 días', note: `luego ${formatPlanPrice('basica')}/30 días` },
-  { tier: 'destacada', name: 'Destacada', priceLabel: `desde ${formatPlanPrice('destacada')}`, note: '/ 30 días' },
-  { tier: 'premium', name: 'Premium', priceLabel: `desde ${formatPlanPrice('premium')}`, note: '/ 30 días' },
-  { tier: 'empresarial', name: 'Empresarial', priceLabel: `desde ${formatPlanPrice('empresarial')}`, note: '/ 30 días' },
-];
-
 export default function AdsWallView() {
   const navigate = useNavigate();
   const { isLoggedIn, user, role: accountRole } = useAuth();
@@ -79,6 +67,7 @@ export default function AdsWallView() {
   // El mural vive en el backend; localStorage solo guarda la ultima copia para
   // que la grilla no parpadee en vacio mientras responde la red.
   const [adsList, setAdsList] = useState(() => getCachedWallAds());
+  const [serviceCatalog, setServiceCatalog] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [isStale, setIsStale] = useState(false);
@@ -105,6 +94,10 @@ export default function AdsWallView() {
   }, [loadAds]);
 
   useEffect(() => {
+    getFaultCategories().then((items) => setServiceCatalog(Array.isArray(items) ? items : [])).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const handleAdsUpdated = (e) => {
       if (Array.isArray(e.detail)) setAdsList(e.detail);
     };
@@ -117,7 +110,6 @@ export default function AdsWallView() {
   const [searchQuery, setSearchQuery] = useRestoredState(VIEW_ID, 'searchQuery', '');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [selectedCategory, setSelectedCategory] = useRestoredState(VIEW_ID, 'selectedCategory', 'TODAS');
-  const [selectedTier, setSelectedTier] = useRestoredState(VIEW_ID, 'selectedTier', 'TODOS');
   const [selectedCommune, setSelectedCommune] = useRestoredState(VIEW_ID, 'selectedCommune', ALL_COMMUNES);
   const [selectedServiceTag, setSelectedServiceTag] = useRestoredState(VIEW_ID, 'selectedServiceTag', ALL_TAGS);
   // Filtro por marca especialista del taller (paridad con la app, ads-wall.tsx).
@@ -141,7 +133,6 @@ export default function AdsWallView() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useRestoredState(VIEW_ID, 'visibleCount', PAGE_SIZE);
 
-  const [selectedAdForStories, setSelectedAdForStories] = useState(null);
   const [selectedAdForBooking, setSelectedAdForBooking] = useState(null);
 
   // El texto se aplica con retardo: mientras se escribe solo se recalculan las
@@ -155,7 +146,7 @@ export default function AdsWallView() {
   useEffectAfterMount(() => {
     setVisibleCount(PAGE_SIZE);
   }, [
-    searchQuery, selectedCategory, selectedTier, selectedCommune, selectedServiceTag,
+    searchQuery, selectedCategory, selectedCommune, selectedServiceTag,
     onlyBooking, onlyWhatsapp, only24Hours, onlyHomeService, sortBy, plateVehicle, selectedSpecialistBrand,
     includeMultibrand,
   ]);
@@ -217,7 +208,6 @@ export default function AdsWallView() {
     setSearchInput('');
     setSearchQuery('');
     setSelectedCategory('TODAS');
-    setSelectedTier('TODOS');
     setSelectedCommune(ALL_COMMUNES);
     setIsNearbySortActive(false);
     setLocationNotice('');
@@ -241,7 +231,6 @@ export default function AdsWallView() {
     (selectedCategory !== 'TODAS' ? 1 : 0) +
     (selectedServiceTag !== ALL_TAGS ? 1 : 0) +
     (selectedSpecialistBrand !== ALL_BRANDS ? 1 : 0) +
-    (selectedTier !== 'TODOS' ? 1 : 0) +
     (onlyBooking ? 1 : 0) +
     (onlyWhatsapp ? 1 : 0) +
     (only24Hours ? 1 : 0) +
@@ -259,8 +248,7 @@ export default function AdsWallView() {
     (only24Hours ? 1 : 0) +
     (onlyHomeService ? 1 : 0) +
     (onlyBooking ? 1 : 0) +
-    (onlyWhatsapp ? 1 : 0) +
-    (selectedTier !== 'TODOS' ? 1 : 0);
+    (onlyWhatsapp ? 1 : 0);
 
   const handlePublishAdClick = () => {
     if (isWorkshopAccount) nav.goProfile('anuncios');
@@ -348,16 +336,13 @@ export default function AdsWallView() {
     if (selectedCategory !== 'TODAS') {
       result = result.filter((ad) => ad.category === selectedCategory);
     }
-    if (selectedTier !== 'TODOS') {
-      result = result.filter((ad) => ad.tier === selectedTier);
-    }
     if (selectedCommune !== ALL_COMMUNES) {
       result = result.filter((ad) => ad.commune === selectedCommune);
     }
     if (selectedServiceTag !== ALL_TAGS) {
       const target = normalizeSearchText(selectedServiceTag);
       result = result.filter((ad) =>
-        [...(ad.features || []), ...(ad.servicesOffered || [])]
+        [...(ad.features || []), ...(ad.servicesOffered || []), ad.subcategory]
           .some((tag) => normalizeSearchText(tag) === target)
       );
     }
@@ -376,7 +361,7 @@ export default function AdsWallView() {
       result = result.filter((ad) => canBookAd(ad));
     }
     if (onlyWhatsapp) {
-      result = result.filter((ad) => AD_TIERS[ad.tier]?.hasWhatsapp && Boolean(ad.whatsapp));
+      result = result.filter((ad) => Boolean(ad.whatsapp));
     }
     if (only24Hours) {
       result = result.filter((ad) => ad.is24Hours);
@@ -393,8 +378,11 @@ export default function AdsWallView() {
     } else if (sortBy === 'recientes') {
       result.sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
     } else {
-      const tierWeight = { empresarial: 4, premium: 3, destacada: 2, basica: 1 };
-      result.sort((a, b) => (tierWeight[b.tier] || 0) - (tierWeight[a.tier] || 0));
+      result.sort((a, b) =>
+        (b.rating || 0) - (a.rating || 0)
+        || (b.reviewsCount || 0) - (a.reviewsCount || 0)
+        || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0)
+      );
     }
 
     // "Cerca de mí" manda sobre el orden elegido, igual que en la app: pura cercanía real.
@@ -404,7 +392,7 @@ export default function AdsWallView() {
 
     return result;
   }, [
-    adsList, searchQuery, selectedCategory, selectedTier, selectedCommune, selectedServiceTag,
+    adsList, searchQuery, selectedCategory, selectedCommune, selectedServiceTag,
     onlyBooking, onlyWhatsapp, only24Hours, onlyHomeService, sortBy, plateVehicle, isNearbySortActive, userLocation.coords,
     selectedSpecialistBrand, includeMultibrand,
   ]);
@@ -447,13 +435,7 @@ export default function AdsWallView() {
     adsList.forEach((ad) => { if (ad.category) counts[ad.category] = (counts[ad.category] || 0) + 1; });
     return counts;
   }, [adsList]);
-  const tierCounts = useMemo(() => {
-    const counts = {};
-    adsList.forEach((ad) => { if (ad.tier) counts[ad.tier] = (counts[ad.tier] || 0) + 1; });
-    return counts;
-  }, [adsList]);
-  const availableCategories = SERVICE_CATEGORIES.filter((cat) => cat.id !== 'TODAS'
-    && (categoryCounts[cat.id] > 0 || selectedCategory === cat.id));
+  const availableCategories = SERVICE_CATEGORIES.filter((cat) => cat.id !== 'TODAS');
 
   const visibleAds = useMemo(
     () => filteredAds.slice(0, visibleCount),
@@ -471,7 +453,7 @@ export default function AdsWallView() {
   const serviceTagOptions = useMemo(() => {
     const byKey = new Map();
     adsList.forEach((ad) => {
-      new Map([...(ad.features || []), ...(ad.servicesOffered || [])]
+      new Map([...(ad.features || []), ...(ad.servicesOffered || []), ad.subcategory]
         .filter((tag) => typeof tag === 'string' && tag.trim())
         .map((tag) => [normalizeSearchText(tag), tag.trim()]))
         .forEach((tag, key) => {
@@ -480,12 +462,19 @@ export default function AdsWallView() {
           else byKey.set(key, { value: tag, count: 1 });
         });
     });
+    serviceCatalog
+      .filter((category) => selectedCategory === 'TODAS' || category.id === selectedCategory)
+      .flatMap((category) => category.subcategorias || category.incluye || [])
+      .forEach((tag) => {
+        const key = normalizeSearchText(tag);
+        if (!byKey.has(key)) byKey.set(key, { value: tag, count: 0 });
+      });
     if (selectedServiceTag !== ALL_TAGS && !byKey.has(normalizeSearchText(selectedServiceTag))) {
       byKey.set(normalizeSearchText(selectedServiceTag), { value: selectedServiceTag, count: 0 });
     }
     return Array.from(byKey.values())
       .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value, 'es'));
-  }, [adsList, selectedServiceTag]);
+  }, [adsList, selectedCategory, selectedServiceTag, serviceCatalog]);
 
   // Pastillas de filtros activos sobre la grilla: cada una se quita por separado.
   const activeFilterPills = [
@@ -504,7 +493,6 @@ export default function AdsWallView() {
     onlyHomeService && { key: 'home', label: 'A domicilio', onRemove: () => setOnlyHomeService(false) },
     onlyBooking && { key: 'booking', label: 'Agenda en línea', onRemove: () => setOnlyBooking(false) },
     onlyWhatsapp && { key: 'whatsapp', label: 'WhatsApp', onRemove: () => setOnlyWhatsapp(false) },
-    selectedTier !== 'TODOS' && { key: 'tier', label: `Plan ${AD_TIERS[selectedTier]?.name || selectedTier}`, onRemove: () => setSelectedTier('TODOS') },
   ].filter(Boolean);
 
   return (
@@ -698,9 +686,6 @@ export default function AdsWallView() {
         )}
       </div>
 
-      {/* 2. Carrusel de historias */}
-      <AdsStoriesCarousel ads={adsList} onSelectAd={(ad) => setSelectedAdForStories(ad)} />
-
       {/* 3. Layout de 2 columnas: sidebar + grilla */}
       <div className="container ads-layout">
         <AdsFiltersSidebar
@@ -738,51 +723,16 @@ export default function AdsWallView() {
           setOnlyBooking={setOnlyBooking}
           onlyWhatsapp={onlyWhatsapp}
           setOnlyWhatsapp={setOnlyWhatsapp}
-          tierCounts={tierCounts}
-          selectedTier={selectedTier}
-          setSelectedTier={setSelectedTier}
-        >
-          <div className="ads-provider-card">
-            <div className="ads-provider-glow" aria-hidden="true" />
-            <span className="ads-provider-eyebrow"><Sparkles size={13} /> Para proveedores</span>
-            <h3>Haz crecer tu taller o tienda</h3>
-            <p>Publica tus servicios y conecta cada día con clientes que buscan repuestos y talleres cerca de ellos.</p>
-
-            <ul className="ads-provider-plans">
-              {PROVIDER_PLANS.map(({ tier, name, priceLabel, note }) => (
-                <li key={tier} data-tier={tier}>
-                  <span className="plan-dot" />
-                  <span className="plan-name">{name}</span>
-                  <span className="plan-price">{priceLabel} <em>{note}</em></span>
-                </li>
-              ))}
-            </ul>
-
-            <button type="button" className="ads-provider-cta" onClick={handlePublishAdClick}>
-              <Plus size={16} /> {isWorkshopAccount ? 'Publica tu primer anuncio gratis' : 'Registra tu taller'}
-            </button>
-            {isLoggedIn && isWorkshopAccount && (
-              <button
-                type="button"
-                className="ads-provider-link"
-                onClick={() => nav.goProfile('anuncios')}
-              >
-                <Megaphone size={14} /> Gestión de anuncios
-              </button>
-            )}
-
-            <div className="ads-provider-trust">
-              <span><ShieldCheck size={13} /> Proveedores verificados</span>
-              <span><Zap size={13} /> Respuesta rápida</span>
-            </div>
-          </div>
-        </AdsFiltersSidebar>
+        />
 
         <section className="ads-main-col">
+          <div className="workshop-directory-banner" aria-label="Encuentra el taller ideal para tu vehículo">
+            <img src="/workshop-directory-banner.png" alt="Encuentra el taller ideal para tu vehículo: talleres verificados, variedad de servicios y atención en tu zona" />
+          </div>
           <div className="ads-main-head" id="ads-results-top">
             <div className="ads-main-head-text">
-              <h2>Servicios automotrices destacados</h2>
-              <p>Encuentra expertos cerca de ti</p>
+              <h2>Talleres disponibles{selectedServiceTag !== ALL_TAGS ? <> para <strong>{selectedServiceTag}</strong></> : ''}</h2>
+              <p><strong>{filteredAds.length}</strong> {filteredAds.length === 1 ? 'taller encontrado' : 'talleres encontrados'}</p>
             </div>
             <label className="ads-sort-field">
               <ArrowUpDown size={15} />
@@ -888,6 +838,7 @@ export default function AdsWallView() {
                       if (!isLoggedIn) { openAuthModal(); return; }
                       toggleAd(adData);
                     }}
+                    directoryVariant
                   />
                 ))}
               </div>
@@ -919,14 +870,6 @@ export default function AdsWallView() {
       </div>
 
       {/* Modales */}
-      {selectedAdForStories && (
-        <StoriesViewerModal
-          ad={selectedAdForStories}
-          onClose={() => setSelectedAdForStories(null)}
-          onOpenBooking={(adData) => setSelectedAdForBooking(adData)}
-        />
-      )}
-
       {selectedAdForBooking && (
         <AdAppointmentModal
           adOrCompany={selectedAdForBooking}
@@ -939,8 +882,6 @@ export default function AdsWallView() {
         onClose={() => setIsFilterOpen(false)}
         selectedCategory={selectedCategory}
         setSelectedCategory={setSelectedCategory}
-        selectedTier={selectedTier}
-        setSelectedTier={setSelectedTier}
         selectedCommune={selectedCommune}
         setSelectedCommune={setSelectedCommune}
         onlyBooking={onlyBooking}
@@ -954,7 +895,6 @@ export default function AdsWallView() {
         communeOptions={communeOptions}
         categoryOptions={availableCategories}
         categoryCounts={categoryCounts}
-        tierCounts={tierCounts}
         specialistBrandOptions={searchMode === 'service' ? specialistBrandOptions : []}
         selectedSpecialistBrand={selectedSpecialistBrand}
         setSelectedSpecialistBrand={setSelectedSpecialistBrand}

@@ -1,11 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlarmClock, AlertCircle, Home, CalendarClock, Camera, Car, Check, ChevronLeft, ChevronRight, Clock3, Eye,
-  Film, Heart, Loader2, LockKeyhole, MessageCircle, Plus, PlusCircle, Sparkles, Trash2, TrendingUp, UserPlus, X
+  AlarmClock, AlertCircle, Home, CalendarClock, Camera, Car, Check, ChevronLeft, ChevronRight, Clock3,
+  Film, Loader2, MessageCircle, Plus, PlusCircle, Trash2, X
 } from 'lucide-react';
-import {
-  AD_TIERS, AD_TIER_ORDER, SERVICE_CATEGORIES, getNewlyUnlockedFeatures
-} from '../../data/automotiveAdsData';
+import { SERVICE_CATEGORIES } from '../../data/automotiveAdsData';
 import {
   createDefaultSchedule, parseOpeningHours, formatOpeningHours
 } from '../../data/openingHours';
@@ -17,6 +15,7 @@ import AgendaConfigModal from './AgendaConfigModal';
 import { resolverUbicacionPorNombre } from '../../services/geoLookup';
 import { useAuth } from '../../context/AuthContext';
 import { getWorkshopServices } from '../../services/workshopApi';
+import { getFaultCategories } from '../../services/faultApi';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import OpeningHoursPicker from './OpeningHoursPicker';
 import {
@@ -24,9 +23,8 @@ import {
   pickDefaultAgendaConfig, PRINCIPAL_AGENDA_ID,
 } from '../../data/agendaConfig';
 import { agendaToOpeningSchedule } from '../../data/workshopHours';
-import { UPGRADE_TOKEN_COSTS, tierPriceClp, uploadAdImages, adErrorMessage } from '../../services/adsStorage';
+import { uploadAdImages, adErrorMessage } from '../../services/adsStorage';
 import { validateUpload, FILE_LIMITS } from '../../utils/fileValidation';
-import RepuestopCoin from './RepuestopCoin';
 
 /**
  * Contador de caracteres. Existe porque el campo dejaba de aceptar texto sin
@@ -61,6 +59,13 @@ const MAX_DESCRIPTION = 500;
 const MAX_PRICE_DIGITS = 9;
 const MAX_PRICE_TEXT = 80;
 const MAX_ADDRESS = 300;
+const STANDARD_AD_LIMITS = {
+  maxImages: 6,
+  maxTags: 8,
+  maxStories: 4,
+  hasWhatsapp: true,
+  hasBooking: true,
+};
 
 /**
  * Telefono chileno: el prefijo +56 es fijo y solo se escriben los 9 digitos.
@@ -75,17 +80,9 @@ const quitarPrefijo = (valor) => {
   return (digitos.startsWith('56') ? digitos.slice(2) : digitos).slice(-PHONE_DIGITS);
 };
 
-/** Marca la funcion que se acaba de desbloquear, para que salte a la vista. */
-function EtiquetaNueva() {
-  return <span className="ad-nuevo-tag">NUEVO</span>;
-}
-
-const AD_FORM_STEPS = ['Plan', 'Aviso', 'Beneficios del plan'];
-const WHY_PUBLISH_REASONS = [
-  { Icon: Eye, title: 'Más visibilidad', text: 'Aparece frente a miles de conductores.' },
-  { Icon: UserPlus, title: 'Nuevos clientes', text: 'Recibe consultas de personas interesadas.' },
-  { Icon: Heart, title: 'Más confianza', text: 'Construye reputación para tu negocio.' },
-  { Icon: TrendingUp, title: 'Crecimiento', text: 'Haz crecer tu taller o servicio.' },
+const AD_FORM_STEPS = [
+  { index: 1, label: 'Aviso' },
+  { index: 2, label: 'Contacto y agenda' },
 ];
 
 /**
@@ -97,33 +94,36 @@ const WHY_PUBLISH_REASONS = [
  * mandaba (las historias y la agenda, por ejemplo). Por eso el formulario emite
  * el anuncio COMPLETO, mezclado sobre `initialAd`, y no solo lo que se toco.
  *
- * Los topes por plan (`maxImages`, `maxTags`, `maxStories`) son los de
- * `AD_TIERS`, que replican las validaciones del backend: pasarse es un 400.
+ * El backend conserva `tier` como campo técnico para compatibilidad con datos
+ * anteriores, pero todos los anuncios usan la misma capacidad y experiencia.
  */
 export default function AdForm({
   initialAd,
   mode = 'create',
-  tokensBalance = 0,
   accreditationProfile = null,
-  hasUsedBasicFreePeriod = false,
   isSubmitting = false,
   submitError = '',
   submitLabel,
-  upgradedFromTier = null,
-  upgradedToTier = null,
   onSubmit,
   onCancel,
-  onOpenRecharge
 }) {
   // Al publicar, los datos del negocio ya validados en la acreditación
   // (`/automotive-services/me`) mandan sobre los de la tienda: son los que
   // RepuesTop revisó para este servicio. Solo siembran campos vacíos y todo
   // sigue siendo editable (el taller del aviso puede ser otro local).
   const prefill = mode === 'create' ? accreditationProfile : null;
-  const [tier, setTier] = useState(initialAd?.tier || 'basica');
+  const tier = 'empresarial';
   const [title, setTitle] = useState(initialAd?.title || '');
   const [company, setCompany] = useState(initialAd?.company || prefill?.businessName || '');
   const [category, setCategory] = useState(initialAd?.category || 'mecanica');
+  // Subcategoría opcional: el servicio concreto de la categoría (misma lista de fallas y servicios del taller).
+  const [subcategory, setSubcategory] = useState(initialAd?.subcategory || '');
+  const [categoryCatalog, setCategoryCatalog] = useState([]);
+  useEffect(() => {
+    let active = true;
+    getFaultCategories().then((items) => { if (active) setCategoryCatalog(Array.isArray(items) ? items : []); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
   const [description, setDescription] = useState(initialAd?.description || '');
   const [priceType, setPriceType] = useState(initialAd?.priceType === 'fixed' ? 'fixed' : 'quote');
   const [priceText, setPriceText] = useState(initialAd?.priceText || '');
@@ -192,16 +192,11 @@ export default function AdForm({
   const [storyImages, setStoryImages] = useState(initialAd?.storyImages || []);
   const [uploadTarget, setUploadTarget] = useState('');
   const [uploadError, setUploadError] = useState('');
-  // En creación se parte del plan. Al editar se parte del contenido, salvo que
-  // se venga de una mejora de plan: ahí se va directo a "Beneficios del plan"
-  // (etapa 3), que es donde se enciende lo recién desbloqueado.
-  const [step, setStep] = useState(mode === 'create' ? 0 : (upgradedToTier ? 2 : 1));
+  const [step, setStep] = useState(1);
   const [stepError, setStepError] = useState('');
   const scrollRef = useRef(null);
 
-  // La agenda solo existe en el plan Empresarial. Se elige de las agendas con
-  // nombre guardadas (sincronizadas con la app); lo que decide si viaja al
-  // backend es `bookingEnabled` + el plan + una agenda elegida.
+  // La agenda se elige de las configuraciones guardadas y compartidas con la app.
   const [bookingEnabled, setBookingEnabled] = useState(initialAd?.hasOnlineBooking === true);
   const [agendaConfigs, setAgendaConfigs] = useState(() => getCachedAgendaConfigs());
   const [agendaConfigId, setAgendaConfigId] = useState(initialAd?.agendaConfigId || '');
@@ -254,37 +249,6 @@ export default function AdForm({
       .catch(() => {});
     return () => { active = false; };
   }, []);
-
-  /**
-   * Funciones que se desbloquearon con la ULTIMA mejora de plan, no todas las
-   * del plan nuevo: quien sube de Destacada a Premium ya tenia WhatsApp, y
-   * listarselo como novedad lo manda a buscar algo que ya estaba encendido.
-   *
-   * Llega desde `UpgradeAdRankModal`, que congela el plan anterior al montarse.
-   * Sin ese dato el formulario se abre como una edicion cualquiera.
-   */
-  const unlockedFeatures = useMemo(
-    () => (upgradedToTier ? getNewlyUnlockedFeatures(upgradedFromTier || 'basica', upgradedToTier) : []),
-    [upgradedFromTier, upgradedToTier]
-  );
-  const esFuncionNueva = (nombre) => unlockedFeatures.includes(nombre);
-  /**
-   * Primera funcion recien desbloqueada dentro del formulario. Al entrar desde
-   * "Activar mejoras" el formulario se abre arriba del todo y los controles de
-   * esas funciones quedan mas abajo: sin llevar la vista hasta alla, el socio no
-   * tiene como saber que le falta un paso.
-   */
-  const primeraNuevaRef = useRef(null);
-
-  useEffect(() => {
-    if (unlockedFeatures.length === 0) return undefined;
-    // Un frame de gracia: el modal recien monto y las secciones todavia se estan
-    // acomodando, asi que la posicion del primer intento no sirve.
-    const id = setTimeout(() => {
-      primeraNuevaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 250);
-    return () => clearTimeout(id);
-  }, [unlockedFeatures.length]);
 
   const { user } = useAuth();
   const regionNombre = regiones.find((r) => String(r.id) === String(regionId))?.nombre || '';
@@ -366,20 +330,14 @@ export default function AdForm({
 
   const handleBookingToggle = (activar) => setBookingEnabled(activar);
 
-  const limits = AD_TIERS[tier] || AD_TIERS.basica;
-  const tierCost = mode === 'create' && tier === 'basica' && !hasUsedBasicFreePeriod
-    ? 0
-    : UPGRADE_TOKEN_COSTS[tier] || 0;
-  const canAffordTier = mode !== 'create' || tokensBalance >= tierCost;
+  const limits = STANDARD_AD_LIMITS;
 
   const categoryLabel = useMemo(
     () => SERVICE_CATEGORIES.find((c) => c.id === category)?.label || '',
     [category]
   );
 
-  // Al bajar de plan (solo posible en el formulario de creacion) los topes se
-  // achican: se recortan aca para que la vista previa muestre lo que realmente
-  // se va a guardar, y no fotos que el backend va a rechazar.
+  // Se recortan para que la vista previa muestre lo que realmente se guardará.
   const visibleImages = images.slice(0, limits.maxImages);
   const visibleStories = storyImages.slice(0, limits.maxStories);
   const visibleFeatures = features.slice(0, limits.maxTags);
@@ -395,8 +353,7 @@ export default function AdForm({
     : [];
   const hasAgendaErrors = agendaErrors.length > 0;
   // Etapa 2 ("Aviso") junta TODO lo obligatorio: contenido + contacto + ubicación.
-  // La etapa 3 son solo los extras del plan y no tiene campos obligatorios (salvo
-  // la agenda si el usuario enciende las reservas, que se valida aparte).
+  // La segunda etapa no tiene campos obligatorios salvo la agenda cuando se activa.
   const contentMissing = [
     !category && 'la categoría',
     !title.trim() && 'el título',
@@ -476,14 +433,7 @@ export default function AdForm({
 
   const goToNextStep = () => {
     setStepError('');
-    if (step === 0) {
-      if (!canAffordTier) {
-        setStepError(`Te faltan ${(tierCost - tokensBalance).toLocaleString('es-CL')} monedas para elegir el plan ${limits.name}.`);
-        return;
-      }
-      setStep(1);
-      scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (step === 1) {
+    if (step === 1) {
       if (contentMissing.length > 0) {
         setStepError(`Falta completar en el aviso: ${contentMissing.join(', ')}.`);
         return;
@@ -498,14 +448,10 @@ export default function AdForm({
     if (step === 2) {
       setStep(1);
       scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (step === 1 && mode !== 'edit') {
-      setStep(0);
-      scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const handleStepClick = (index) => {
-    if (mode === 'edit' && index === 0) return;
     if (index === step) return;
     if (index < step) {
       setStepError('');
@@ -513,19 +459,7 @@ export default function AdForm({
       scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    if (step === 0) {
-      if (!canAffordTier) {
-        setStepError(`Te faltan ${(tierCost - tokensBalance).toLocaleString('es-CL')} monedas para elegir el plan ${limits.name}.`);
-        return;
-      }
-      if (index === 2 && contentMissing.length > 0) {
-        setStep(1);
-        setStepError(`Completa los datos del aviso antes de pasar a detalles: falta ${contentMissing.join(', ')}.`);
-        return;
-      }
-      setStep(index);
-      scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (step === 1) {
+    if (step === 1) {
       if (contentMissing.length > 0) {
         setStepError(`Falta completar en el aviso: ${contentMissing.join(', ')}.`);
         return;
@@ -566,6 +500,7 @@ export default function AdForm({
       company: company.trim(),
       category,
       categoryLabel,
+      subcategory: subcategory || null,
       description: description.trim(),
       priceType,
       priceText: priceText.trim(),
@@ -634,13 +569,13 @@ export default function AdForm({
   return (
     <form className={`ad-publish-form ${mode === 'create' ? 'is-create' : 'is-edit'}`} data-step={step} onSubmit={handleSubmit} noValidate>
       <nav className="ad-form-stepper" aria-label="Etapas de publicación">
-        {AD_FORM_STEPS.map((label, index) => {
+        {AD_FORM_STEPS.map(({ index, label }, position) => {
           const isDone = index < step;
           const isCurrent = index === step;
-          const isDisabled = mode === 'edit' && index === 0;
+          const isDisabled = false;
           return (
             <React.Fragment key={label}>
-              {index > 0 && <span className={`ad-form-step-line ${index <= step ? 'is-done' : ''}`} />}
+              {position > 0 && <span className={`ad-form-step-line ${index <= step ? 'is-done' : ''}`} />}
               <button
                 type="button"
                 className={`ad-form-step ${isCurrent ? 'is-current' : ''} ${isDone ? 'is-done' : ''} ${isDisabled ? 'is-disabled' : ''}`}
@@ -648,7 +583,7 @@ export default function AdForm({
                 disabled={isDisabled}
                 onClick={() => handleStepClick(index)}
               >
-                <i>{isDone ? <Check size={13} /> : index + 1}</i>
+                <i>{isDone ? <Check size={13} /> : position + 1}</i>
                 <span>{label}</span>
               </button>
             </React.Fragment>
@@ -658,115 +593,16 @@ export default function AdForm({
 
       <div className="ad-form-scroll-area" ref={scrollRef}>
         <div className="ad-form-step-intro">
-          <span>ETAPA {step + 1} DE 3 · {AD_FORM_STEPS[step].toUpperCase()}</span>
+          <span>ETAPA {step} DE 2 · {AD_FORM_STEPS[step - 1].label.toUpperCase()}</span>
           <h4>
-            {step === 0
-              ? 'Elige el plan de tu anuncio'
-              : step === 1
-                ? 'Datos del aviso'
-                : `Beneficios de tu plan ${limits.name}`}
+            {step === 1 ? 'Datos del aviso' : 'Contacto y agenda'}
           </h4>
           <p>
-            {step === 0
-              ? 'Define la visibilidad y las herramientas que tendrá tu publicación durante 30 días.'
-              : step === 1
-                ? 'Todo lo necesario para publicar: qué ofreces, precio, fotos, contacto, ubicación y horario.'
-                : 'Solo los extras que suma tu plan: etiquetas, WhatsApp, carrusel de historias y agenda de citas.'}
+            {step === 1
+              ? 'Todo lo necesario para publicar: qué ofreces, precio, fotos, contacto, ubicación y horario.'
+              : 'Configura WhatsApp, fotos destacadas y la agenda de citas de tu taller.'}
           </p>
         </div>
-
-        {unlockedFeatures.length > 0 && step === 2 && (
-          <div className="ad-unlocked-banner">
-            <Sparkles size={17} />
-            <div>
-              <strong>
-                {unlockedFeatures.length === 1
-                  ? `Con el plan ${limits.name} desbloqueaste: ${unlockedFeatures[0]}.`
-                  : `Con el plan ${limits.name} desbloqueaste ${unlockedFeatures.length} funciones: ${unlockedFeatures.join(', ')}.`}
-              </strong>
-              <p>
-                Marcada con <span className="ad-nuevo-tag">NUEVO</span> aquí abajo. Enciéndela y guarda para que quede activa.
-              </p>
-            </div>
-          </div>
-        )}
-        {unlockedFeatures.length > 0 && step === 1 && (
-          <div className="ad-unlocked-banner">
-            <Sparkles size={17} />
-            <div>
-              <strong>Desbloqueaste {unlockedFeatures.join(', ')} con tu nuevo plan.</strong>
-              <p>Pasa a la etapa <b>Beneficios del plan</b> para encenderla.</p>
-            </div>
-          </div>
-        )}
-
-        {/* ETAPA 0: PLAN */}
-        {step === 0 && mode === 'create' && (
-          <div className="ad-step-panel ad-step-plan">
-            <div className="ad-plan-heading">
-              <label className="ad-form-step-label">Plan de tu anuncio</label>
-              <button type="button" className="ad-form-balance-pill" onClick={onOpenRecharge}>
-                <RepuestopCoin size={20} />
-                <span><b>{Number(tokensBalance).toLocaleString('es-CL')}</b> monedas</span>
-                <Plus size={14} />
-              </button>
-            </div>
-            <div className="tier-selector-grid">
-              {AD_TIER_ORDER.map((tierId) => {
-                const config = AD_TIERS[tierId];
-                const cost = tierId === 'basica' && !hasUsedBasicFreePeriod ? 0 : UPGRADE_TOKEN_COSTS[tierId] || 0;
-                const affordable = tokensBalance >= cost;
-                return (
-                  <button
-                    type="button"
-                    key={tierId}
-                    className={`tier-card-option ${tier === tierId ? `selected-${tierId}` : ''} ${affordable ? '' : 'is-locked'}`}
-                    onClick={() => setTier(tierId)}
-                  >
-                    <span className="tier-option-topline">
-                      <span className="tier-option-badge" style={{ background: `${config.badgeColor}1a`, color: config.badgeColor }}>
-                        {tierId === 'basica' && cost === 0 ? '1.er mes gratis' : config.name}
-                      </span>
-                      {tier === tierId && <span className="tier-selected-check"><Check size={12} /></span>}
-                    </span>
-                    <h4>{config.name}</h4>
-                    <strong className="tier-option-price">{cost === 0 ? 'Gratis por 30 días' : `$${tierPriceClp(tierId).toLocaleString('es-CL')} CLP`}</strong>
-                    {cost > 0 && <span className="tier-option-coins"><RepuestopCoin size={15} /> {cost} monedas</span>}
-                    <div className="tier-features-list">
-                      • {config.maxImages} fotos · {config.maxTags} etiquetas<br />
-                      • {config.hasWhatsapp ? 'WhatsApp directo' : 'Solo teléfono'}<br />
-                      • {config.maxStories > 0 ? `${config.maxStories} historias` : 'Sin historias'}
-                      {config.hasBooking ? <><br />• Agenda en línea</> : null}
-                    </div>
-                    {!affordable && <small className="tier-locked-note"><LockKeyhole size={11} /> Te faltan {cost - tokensBalance} monedas</small>}
-                  </button>
-                );
-              })}
-            </div>
-            {tier === 'basica' && !hasUsedBasicFreePeriod && (
-              <p className="ad-basic-free-note">
-                <RepuestopCoin size={15} />
-                <span>
-                  Tu primer anuncio Básico es <strong>gratis por 30 días</strong>. Después,
-                  cada período nuevo cuesta 100 Monedas ($5.000 CLP).
-                </span>
-              </p>
-            )}
-
-            <section className="ad-why-publish">
-              <h4>¿Por qué publicar tu servicio en el Mural?</h4>
-              <div>
-                {WHY_PUBLISH_REASONS.map(({ Icon, title: reasonTitle, text }) => (
-                  <article key={reasonTitle}>
-                    <span><Icon size={18} /></span>
-                    <strong>{reasonTitle}</strong>
-                    <p>{text}</p>
-                  </article>
-                ))}
-              </div>
-            </section>
-          </div>
-        )}
 
         {/* ETAPA 1: AVISO */}
         {step === 1 && (
@@ -798,12 +634,24 @@ export default function AdForm({
                 <div className="ad-field-header">
                   <label htmlFor="ad-category">Categoría de servicio *</label>
                 </div>
-                <select id="ad-category" value={category} onChange={(e) => setCategory(e.target.value)} required>
+                <select id="ad-category" value={category} onChange={(e) => { setCategory(e.target.value); setSubcategory(''); }} required>
                   {SERVICE_CATEGORIES.filter((c) => c.id !== 'TODAS').map((c) => (
                     <option key={c.id} value={c.id}>{c.emoji ? `${c.emoji} ` : ''}{c.label}</option>
                   ))}
                 </select>
               </div>
+
+              {(categoryCatalog.find((item) => item.id === category)?.subcategorias || []).length > 0 && (
+                <div className="ad-field booking-field col-span-2">
+                  <div className="ad-field-header">
+                    <label htmlFor="ad-subcategory">Servicio específico <small>Opcional</small></label>
+                  </div>
+                  <select id="ad-subcategory" value={subcategory} onChange={(e) => setSubcategory(e.target.value)}>
+                    <option value="">Todos los de la categoría</option>
+                    {(categoryCatalog.find((item) => item.id === category)?.subcategorias || []).map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </div>
+              )}
 
               {/* ¿Este anuncio es 24/7? Solo si el taller declaró urgencias 24/7 en su
                   acreditación. El aviso entra en el filtro "Urgencias 24 horas" del Mural
@@ -931,7 +779,7 @@ export default function AdForm({
 
               <div className="ad-field booking-field col-span-2">
                 <div className="ad-field-header">
-                  <label>Fotos del anuncio ({visibleImages.length}/{limits.maxImages} del plan {limits.name}) *</label>
+                  <label>Fotos del anuncio ({visibleImages.length}/{limits.maxImages}) *</label>
                 </div>
                 {renderGallery('images', visibleImages, limits.maxImages, 'Formatos: JPG, PNG o WEBP, hasta 5MB por foto. Sube al menos una foto para publicar tu anuncio.')}
               </div>
@@ -1167,23 +1015,21 @@ export default function AdForm({
           </div>
         )}
 
-        {/* ETAPA 3: BENEFICIOS DEL PLAN — solo los extras que suma el plan elegido */}
+        {/* ETAPA 2: CONTACTO Y AGENDA */}
         {step === 2 && (
           <div className="ad-step-panel ad-step-details">
             <div className="ad-section-header">
-              <h5>Beneficios de tu plan {limits.name}</h5>
-              <p>Solo lo que suma tu plan: WhatsApp directo, carrusel de historias y agenda de citas.</p>
+              <h5>Contacto y agenda</h5>
+              <p>Configura WhatsApp directo, fotos destacadas y reservas de citas.</p>
             </div>
             <div className="ad-form-grid booking-form-grid">
               {limits.hasWhatsapp && (
                 <div
-                  className={`ad-field booking-field col-span-2 ${esFuncionNueva('WhatsApp directo') ? 'is-unlocked' : ''}`}
-                  ref={unlockedFeatures[0] === 'WhatsApp directo' ? primeraNuevaRef : null}
+                  className="ad-field booking-field col-span-2"
                 >
                   <div className="ad-field-header">
                     <label htmlFor="ad-whatsapp">
-                      <MessageCircle size={14} /> WhatsApp directo (plan {limits.name})
-                      {esFuncionNueva('WhatsApp directo') && <EtiquetaNueva />}
+                      <MessageCircle size={14} /> WhatsApp directo
                     </label>
                     <CharCount value={whatsapp} max={PHONE_DIGITS} />
                   </div>
@@ -1215,13 +1061,11 @@ export default function AdForm({
 
               {limits.maxStories > 0 && (
                 <div
-                  className={`ad-field booking-field col-span-2 ${esFuncionNueva('Carrusel de Historias') ? 'is-unlocked' : ''}`}
-                  ref={unlockedFeatures[0] === 'Carrusel de Historias' ? primeraNuevaRef : null}
+                  className="ad-field booking-field col-span-2"
                 >
                   <div className="ad-field-header">
                     <label>
-                      Carrusel de historias ({visibleStories.length}/{limits.maxStories} del plan {limits.name})
-                      {esFuncionNueva('Carrusel de Historias') && <EtiquetaNueva />}
+                      Carrusel de historias ({visibleStories.length}/{limits.maxStories})
                     </label>
                   </div>
                   {renderGallery('stories', visibleStories, limits.maxStories, 'Fotos destacadas que aparecen en el carrusel de la parte superior del mural.')}
@@ -1230,20 +1074,18 @@ export default function AdForm({
 
               {limits.hasBooking && (
                 <div
-                  className={`ad-field booking-field col-span-2 ${esFuncionNueva('Agenda de citas en línea') ? 'is-unlocked' : ''}`}
-                  ref={unlockedFeatures[0] === 'Agenda de citas en línea' ? primeraNuevaRef : null}
+                  className="ad-field booking-field col-span-2"
                 >
                   <div className="ad-field-header">
                     <label>
-                      <CalendarClock size={14} /> Agenda de citas en línea (plan {limits.name})
-                      {esFuncionNueva('Agenda de citas en línea') && <EtiquetaNueva />}
+                      <CalendarClock size={14} /> Agenda de citas en línea
                     </label>
                   </div>
 
                   <div className="ad-form-error" style={{ background: '#fffbeb', borderColor: '#fde68a', color: '#92400e' }}>
                     <CalendarClock size={15} />
                     <span>
-                      El plan Empresarial <strong>necesita una agenda</strong> para recibir citas.
+                      El anuncio <strong>necesita una agenda</strong> para recibir citas.
                       Las agendas se comparten con la app.
                     </span>
                   </div>
@@ -1330,13 +1172,6 @@ export default function AdForm({
           </div>
         )}
 
-        {mode === 'create' && !canAffordTier && (
-          <div className="ad-form-balance-note">
-            <RepuestopCoin size={19} />
-            <span>El plan {limits.name} cuesta {tierCost} Monedas y tu saldo es de {tokensBalance}.</span>
-            <button type="button" onClick={onOpenRecharge}>Recargar monedas</button>
-          </div>
-        )}
       </div>
 
       <div className="ad-form-footer">
@@ -1347,13 +1182,13 @@ export default function AdForm({
             </span>
           ) : (
             <>
-              <span>Etapa {step + 1} de 3</span>
-              <strong>{AD_FORM_STEPS[step]}</strong>
+              <span>Etapa {step} de 2</span>
+              <strong>{AD_FORM_STEPS[step - 1].label}</strong>
             </>
           )}
         </div>
         <div className="booking-actions-row">
-          {step > 0 && !(mode === 'edit' && step === 1) ? (
+          {step > 1 ? (
             <button type="button" className="ad-form-back" onClick={goToPrevStep} disabled={isSubmitting}>
               <ChevronLeft size={16} /> Atrás
             </button>
@@ -1375,14 +1210,12 @@ export default function AdForm({
               key="ad-form-submit"
               type="submit"
               className="btn-post-ad"
-              disabled={isSubmitting || Boolean(uploadTarget) || !canAffordTier || hasAgendaErrors}
+              disabled={isSubmitting || Boolean(uploadTarget) || hasAgendaErrors}
             >
               {isSubmitting ? <Loader2 size={16} className="spin-icon" /> : <Plus size={16} />}
               {isSubmitting
                 ? 'Enviando…'
-                : submitLabel || (mode === 'create'
-                  ? (tierCost > 0 ? `Enviar a revisión por ${tierCost} Monedas` : 'Enviar a revisión')
-                  : 'Guardar cambios')}
+                : submitLabel || (mode === 'create' ? 'Enviar a revisión' : 'Guardar cambios')}
             </button>
           )}
         </div>

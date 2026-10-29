@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useDeferredValue, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   Search, Filter, SlidersHorizontal, ShieldCheck, MapPin,
@@ -27,6 +28,9 @@ import TextSearchWithSuggestions from './TextSearchWithSuggestions';
 import SheetSelect from './SheetSelect';
 import { useIsMobile } from '../hooks/useIsMobile';
 import PaginationBar from './PaginationBar';
+import { auctionDetailPath, ROUTES } from '../routes/paths';
+
+const CreateAuctionModal = lazy(() => import('./CreateAuctionModal'));
 
 const normalizeNameKey = (value) => String(value || '').normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -289,7 +293,9 @@ export default function PartsCatalogView({
     setCurrentPage(1);
   };
 
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, role } = useAuth();
+  const navigate = useNavigate();
+  const [needModalOpen, setNeedModalOpen] = useState(false);
   const { isFavorite, toggleFavorite } = useFavorites(user?.userId ?? user?.id);
   const [filterByMyComuna, setFilterByMyComuna] = useState(Boolean(initialAdvanced.myComunaId));
   const [myComunaId, setMyComunaId] = useState(initialAdvanced.myComunaId || null);
@@ -1205,6 +1211,14 @@ export default function PartsCatalogView({
       />
   );
 
+  const handleOpenNeed = () => {
+    if (!isLoggedIn) {
+      if (window.confirm('Debes iniciar sesión para registrar una necesidad de compra. ¿Deseas ir a tu cuenta?')) navigate(ROUTES.profile);
+      return;
+    }
+    setNeedModalOpen(true);
+  };
+
   const clearActiveVehicle = () => {
     setActiveVehicle(null);
     onVehicleChange?.(null);
@@ -1867,9 +1881,34 @@ export default function PartsCatalogView({
                 </button>
               </div>
             )}
+
+            {/* Aviso sutil: lo que no aparece puede estar en una casa de repuestos sin cargar o recién unida. */}
+            {activeVehicle && onlyCompatible && !productsLoading && !productsError && (!isLoggedIn || role === 'BUYER') && (
+              <p className="catalog-need-hint">
+                <Info size={15} aria-hidden="true" />
+                <span>
+                  ¿No encontraste lo que buscas? Puede que alguna casa de repuestos lo tenga y aún no lo haya cargado.{' '}
+                  <button type="button" className="catalog-need-hint-link" onClick={handleOpenNeed}>Registra tu necesidad de compra</button>
+                </span>
+              </p>
+            )}
           </main>
         </div>
       </div>
+
+      {needModalOpen && (
+        <Suspense fallback={null}>
+          <CreateAuctionModal
+            isOpen
+            initialPatente={activeVehicle?.patente && activeVehicle.patente !== 'MANUAL' ? activeVehicle.patente : ''}
+            onClose={() => setNeedModalOpen(false)}
+            onSuccess={(created) => {
+              setNeedModalOpen(false);
+              if (created?.id) navigate(auctionDetailPath(created.id));
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

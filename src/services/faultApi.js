@@ -10,6 +10,10 @@ export async function getOpenFaults() {
   return fetchApi('/fallas-automotrices');
 }
 
+export async function getFaultCategories() {
+  return fetchApi('/fallas-automotrices/categorias', { anonymous: true });
+}
+
 /** Fallas registradas por el usuario en sesion. */
 export async function getMyFaults() {
   return fetchApi('/fallas-automotrices/mias');

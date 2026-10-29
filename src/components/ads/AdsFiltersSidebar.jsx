@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   SlidersHorizontal, RotateCcw, X, ChevronDown, Car, Layers, Wrench, Settings,
-  MapPin, Clock, ShieldCheck, Zap, Star, Calendar, MessageCircle, AlarmClock, Home, CheckCircle2
+  MapPin, Clock, Calendar, MessageCircle, AlarmClock, Home, CheckCircle2
 } from 'lucide-react';
 import SearchableDropdown from '../SearchableDropdown';
 import { getCategoryIcon } from './categoryIcons';
@@ -10,14 +10,6 @@ import { formatVehicleLabel } from '../../utils/vehicleLookup';
 export const ALL_BRANDS = 'Todas las marcas';
 export const ALL_COMMUNES = 'Todas las comunas';
 export const ALL_TAGS = 'Todos los servicios';
-
-const TIER_OPTIONS = [
-  { value: 'TODOS', label: 'Todos los planes', Icon: null, tone: '' },
-  { value: 'empresarial', label: 'Empresarial', Icon: ShieldCheck, tone: 'empresarial' },
-  { value: 'premium', label: 'Premium', Icon: Zap, tone: 'premium' },
-  { value: 'destacada', label: 'Destacada', Icon: Star, tone: 'destacada' },
-  { value: 'basica', label: 'Básica', Icon: null, tone: '' },
-];
 
 /*
  * Panel de filtros del Mural, a la izquierda como los "Filtros Avanzados" del
@@ -94,10 +86,6 @@ export default function AdsFiltersSidebar({
   setOnlyBooking,
   onlyWhatsapp,
   setOnlyWhatsapp,
-  // Plan
-  tierCounts,
-  selectedTier,
-  setSelectedTier,
   children,
 }) {
   const [openSections, setOpenSections] = useState({
@@ -107,7 +95,6 @@ export default function AdsFiltersSidebar({
     brand: true,
     location: true,
     availability: true,
-    tier: false,
   });
   const toggleSection = (id) => setOpenSections((current) => ({ ...current, [id]: !current[id] }));
 
@@ -240,23 +227,6 @@ export default function AdsFiltersSidebar({
           <SwitchCard icon={Home} iconClass="is-home" title="Servicio a domicilio" checked={onlyHomeService} onChange={setOnlyHomeService} />
           <SwitchCard icon={Calendar} iconClass="is-home" title="Agenda en línea" checked={onlyBooking} onChange={setOnlyBooking} />
           <SwitchCard icon={MessageCircle} iconClass="is-whatsapp" title="Contacto por WhatsApp" checked={onlyWhatsapp} onChange={setOnlyWhatsapp} />
-        </FilterSection>
-
-        <FilterSection id="tier" icon={ShieldCheck} label="Nivel del anuncio" isOpen={openSections.tier} onToggle={toggleSection}>
-          <div className="ads-filter-chips">
-            {TIER_OPTIONS.filter(({ value }) => value === 'TODOS' || tierCounts[value] > 0 || selectedTier === value)
-              .map(({ value, label, Icon, tone }) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={`ads-filter-chip ${tone ? `tone-${tone}` : ''} ${selectedTier === value ? 'active' : ''}`}
-                  onClick={() => setSelectedTier(value)}
-                >
-                  {Icon && <Icon size={13} />} {label}
-                  {value !== 'TODOS' && <span className="filter-option-count"> ({tierCounts[value] || 0})</span>}
-                </button>
-              ))}
-          </div>
         </FilterSection>
 
         <button type="button" className="ads-fs-mobile-apply" onClick={onCloseMobile}>

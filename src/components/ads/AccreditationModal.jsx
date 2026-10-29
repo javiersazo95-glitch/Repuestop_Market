@@ -27,7 +27,7 @@ const STEPS = [
   },
   {
     title: 'Publica en el Mural',
-    detail: 'Con el expediente aprobado quedan habilitadas la compra de Monedas y la publicación de anuncios. El logo se puede cambiar cuando quieras desde este mismo apartado.'
+    detail: 'Con el expediente aprobado queda habilitada la publicación de anuncios. El logo se puede cambiar cuando quieras desde este mismo apartado.'
   }
 ];
 

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import {
-  MapPin, MessageCircle, Star, ShieldCheck, Phone, Calendar,
-  CheckCircle2, CalendarClock, UserCheck, ArrowRight, Zap, Heart, Navigation, AlarmClock, Home
+  MapPin, MessageCircle, Star, Phone, Calendar,
+  CheckCircle2, CalendarClock, UserCheck, ArrowRight, Heart, Navigation, AlarmClock, Home
 } from 'lucide-react';
-import { AD_TIERS, SERVICE_CATEGORIES, getAdExpiryInfo } from '../../data/automotiveAdsData';
+import { SERVICE_CATEGORIES, getAdExpiryInfo } from '../../data/automotiveAdsData';
 import { getCategoryIcon } from './categoryIcons';
 import { useAdOwnership } from './useAdOwnership';
 import ContextualReportButton from '../ContextualReportButton';
@@ -15,31 +15,20 @@ import { formatDistanceKm } from '../../utils/geoDistance';
 import './ads-wall-redesign.css';
 import { canBookAd } from '../../utils/adBooking';
 
-/** Distintivo visual de cada plan en el mural (1:1 con mobile/components/ads/AdCard.tsx). */
-const TIER_THEME = {
-  basica: {},
-  destacada: { badge: { label: 'Destacado', color: '#d97706', Icon: Star } },
-  premium: { badge: { label: 'Premium', color: '#7c3aed', Icon: Zap } },
-  empresarial: { badge: { label: 'Taller Verificado', color: '#059669', Icon: ShieldCheck } },
-};
-
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80';
 
-export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCategory, isFavorite = false, onToggleFavorite, distanceKm = null }) {
+export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCategory, isFavorite = false, onToggleFavorite, distanceKm = null, directoryVariant = false }) {
   const [blockNotice, setBlockNotice] = useState(null);
   const { isOwn, blockIfOwnAd } = useAdOwnership();
 
   const categoryObj = SERVICE_CATEGORIES.find((c) => c.id === ad.category);
   const categoryLabel = ad.categoryLabel || categoryObj?.label || 'Servicio automotriz';
-  const tierConfig = AD_TIERS[ad.tier] || AD_TIERS.basica;
-  const theme = TIER_THEME[ad.tier] || TIER_THEME.basica;
-  const isEmpresarial = ad.tier === 'empresarial';
   // "Agendar" solo si el anuncio tiene la agenda activa (no basta el plan) y no es 24/7.
   const canBook = canBookAd(ad);
   const isOwnAdCard = isOwn(ad);
 
-  const canWhatsapp = Boolean(tierConfig.hasWhatsapp && ad.whatsapp);
+  const canWhatsapp = Boolean(ad.whatsapp);
 
   const expiry = getAdExpiryInfo(ad);
   const showExpiryChip = Boolean(expiry) && !expiry.isExpired && expiry.daysLeft <= 7;
@@ -47,12 +36,6 @@ export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCatego
   const [coverSrc, setCoverSrc] = useState((ad.images && ad.images[0]) || FALLBACK_IMAGE);
 
   const CategoryIcon = getCategoryIcon(ad.category);
-
-  // Todas las tarjetas llevan un distintivo arriba-izquierda: el del plan si lo
-  // tiene, y si no uno neutro del tipo de publicación.
-  const badge = theme.badge
-    || { label: 'Servicio', color: '#2563eb', Icon: null };
-  const BadgeIcon = badge.Icon;
 
   // "Desde $30.000 CLP": el prefijo "Desde" se pinta aparte, así que se quita si
   // ya viene incluido en el texto del backend.
@@ -88,7 +71,7 @@ export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCatego
   const previewBrands = specialistBrands.slice(0, 4);
 
   return (
-    <article className={`ad-card ${tierConfig.cardTheme} ${isOwnAdCard ? 'is-own-ad' : ''}`} id={`ad-${ad.id}`}>
+    <article className={`ad-card ${directoryVariant ? 'is-workshop-directory' : ''} ${isOwnAdCard ? 'is-own-ad' : ''}`} id={`ad-${ad.id}`}>
       {/* Imagen de portada con distintivos */}
       <button
         type="button"
@@ -104,9 +87,8 @@ export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCatego
           onError={() => { if (coverSrc !== FALLBACK_IMAGE) setCoverSrc(FALLBACK_IMAGE); }}
         />
 
-        <span className="ad-tier-badge" style={{ backgroundColor: badge.color }}>
-          {BadgeIcon && <BadgeIcon size={12} />}
-          {badge.label}
+        <span className="ad-tier-badge" style={{ backgroundColor: '#059669' }}>
+          <CheckCircle2 size={12} /> Taller verificado
         </span>
 
         {isOwnAdCard && (
@@ -160,6 +142,13 @@ export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCatego
           <h3 className="ad-card-title">{ad.title}</h3>
         </button>
 
+        {directoryVariant && (
+          <div className="directory-rating" aria-label={ad.rating ? `Calificación ${ad.rating} de 5` : 'Taller publicado'}>
+            <Star size={14} fill="currentColor" /> <strong>{ad.rating ? Number(ad.rating).toFixed(1) : 'Nuevo'}</strong>
+            {Number(ad.reviewsCount) > 0 && <span>({ad.reviewsCount})</span>}
+          </div>
+        )}
+
         {ad.description && <p className="ad-card-desc">{ad.description}</p>}
 
         <p className="ad-card-price">
@@ -177,11 +166,10 @@ export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCatego
           >
             <CategoryIcon size={13} /> {categoryLabel}
           </button>
-          {isEmpresarial && (
-            <span className="ad-meta-verified" title="Taller verificado">
-              <CheckCircle2 size={13} /> Verificado
-            </span>
-          )}
+          {ad.subcategory && <span className="ad-meta-item ad-meta-sub" title="Servicio específico">{ad.subcategory}</span>}
+          <span className="ad-meta-verified" title="Taller verificado">
+            <CheckCircle2 size={13} /> Verificado
+          </span>
         </div>
 
         <div className="ad-card-metarow">
@@ -247,13 +235,14 @@ export default function AdCard({ ad, onOpenDetail, onOpenBooking, onSelectCatego
             )}
           </div>
 
-          <button
-            type="button"
-            className="ad-card-detail-btn"
-            onClick={() => onOpenDetail?.(ad)}
-          >
-            Ver detalle del anuncio <ArrowRight size={15} />
+          <button type="button" className="ad-card-detail-btn" onClick={() => onOpenDetail?.(ad)}>
+            {directoryVariant ? 'Ver taller' : <>Ver detalle del anuncio <ArrowRight size={15} /></>}
           </button>
+          {directoryVariant && !isOwnAdCard && (
+            <button type="button" className="ad-card-request-btn" onClick={() => canBook ? handleBookingClick() : onOpenDetail?.(ad)}>
+              Solicitar servicio
+            </button>
+          )}
         </div>
 
         {blockNotice && <p className="ad-block-notice" role="status">{blockNotice}</p>}

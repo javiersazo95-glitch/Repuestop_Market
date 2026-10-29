@@ -128,6 +128,10 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-shell p.ft-sub, .ft-head p { font-size: 13px; }
 @media (max-width: 640px) { .ft-shell h1, .ft-head h1 { font-size: 22px; } }
 
+.ft-badge.is-pickup { background: #fff4e0; color: #8a5200; margin-right: 6px; }
+.ft-subcategory-field { margin-top: 12px; padding: 0; border: 0; }
+.ft-subcategory-field select { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; color: #172b45; font: inherit; }
+.ft-pickup-alert { margin: 12px 0 0; padding: 11px 14px; border: 1px solid #f3c87a; border-radius: 10px; background: #fff4e0; color: #8a5200; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; }
 .ft-badge.is-mine { background: var(--ft-primary-light); color: var(--ft-primary); margin-right: 6px; }
 
 .ft-card-thumb { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; flex: none; background: var(--ft-primary-light); }
@@ -381,6 +385,15 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-detail-map::before { top: 35px; }
 .ft-detail-map::after { top: 102px; transform: rotate(12deg); }
 .ft-map-marker { position: absolute; z-index: 3; left: 50%; top: 50%; filter: drop-shadow(0 6px 5px rgba(12,42,69,.25)); transform: translate(-50%, -50%); }
+.ft-location-card.is-live { grid-template-columns: minmax(0, 1fr); }
+.ft-live-map { height: 210px; background: #e8eef4; }
+.ft-live-map iframe { display: block; width: 100%; height: 100%; border: 0; }
+.ft-pickup-badge { align-self: flex-start; margin-bottom: 8px; padding: 5px 10px; border-radius: 999px; background: #fff4e0; color: #8a5200; display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; line-height: 1.3; }
+.ft-pickup-meta { color: #8a5200; font-weight: 700; }
+.ft-location-place { margin-top: 2px; color: #71849a; font-size: 12px; }
+.ft-distance { margin: 10px 0 0; display: flex; align-items: center; gap: 6px; color: #0d2c56; font-size: 13px; }
+.ft-distance-btn { margin-top: 10px; align-self: flex-start; padding: 7px 12px; border: 1px solid #0767d7; border-radius: 999px; background: #fff; color: #0767d7; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; cursor: pointer; }
+.ft-distance-btn:disabled { opacity: .7; cursor: progress; }
 .ft-location-content { min-width: 0; padding: 13px 14px; display: flex; flex-direction: column; justify-content: center; }
 .ft-location-content > small { color: #71849a; font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: .05em; }
 .ft-location-content > strong { margin-top: 3px; color: #0d2c56; display: block; font-size: 15px; overflow-wrap: anywhere; }

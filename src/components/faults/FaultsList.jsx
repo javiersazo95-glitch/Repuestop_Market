@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertCircle, CalendarDays, Camera, Car, ChevronRight, FileText, Filter, Loader2,
-  MapPin, MessageCircle, Plus, RotateCcw, Search, Settings, Wrench,
+  MapPin, MessageCircle, Plus, RotateCcw, Search, Settings, Truck, Wrench,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getCommentedFaults, getMyFaults, getOpenFaults, timeSince } from '../../services/faultApi';
@@ -22,6 +22,8 @@ const FAULT_TYPES = [
   ['Aire acondicionado', /aire|climat|a\/c/i, 'air'],
   ['Otros', /.*/i, 'other'],
 ];
+
+const normalizeComuna = (comuna) => String(comuna || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
 
 const textOf = (fault) => [
   fault.titulo, fault.descripcion, fault.antesDelFallo, fault.marca, fault.modelo,
@@ -67,7 +69,9 @@ function FaultCard({ fault, showStatus, showClient, fromMural }) {
       <div className="ft-fault-summary">
         <div className="ft-card-badges">
           {fault.propia && <span className="ft-badge is-mine">Mi falla</span>}
+          {fault.requiereRecogida && <span className="ft-badge is-pickup"><Truck size={13} aria-hidden="true" /> {showClient ? 'Hay que ir a buscar el vehículo' : 'Piden recogida del vehículo'}</span>}
           {showStatus && <span className={`ft-badge ${fault.vigente ? '' : 'is-closed'}`}>{fault.vigente ? 'Abierta' : 'Cerrada'}</span>}
+          {fault.subcategoria && <span className="ft-badge">{fault.subcategoria}</span>}
         </div>
         <h3>{vehicle}</h3>
         {vehicleData.length > 0 && <p className="ft-vehicle-data">{vehicleData.map((item) => <span key={item}>{item}</span>)}</p>}
@@ -85,6 +89,7 @@ function FaultCard({ fault, showStatus, showClient, fromMural }) {
           <div><dt><Settings size={14} /> Tipo de falla</dt><dd>{fault.sintomas?.[0] || type.label}</dd></div>
           <div><dt><FileText size={14} /> Título del anuncio</dt><dd>{fault.titulo || 'Sin título'}</dd></div>
           <div><dt><Car size={14} /> Movilidad</dt><dd>{mobility}</dd></div>
+          {fault.requiereRecogida && <div><dt><Truck size={14} /> Recogida</dt><dd>El cliente necesita que vayan por el vehículo</dd></div>}
           <div><dt><MessageCircle size={14} /> Diagnósticos</dt><dd>{diagnosisCount === 0 ? 'Sin diagnósticos aún' : `${diagnosisCount} ${diagnosisCount === 1 ? 'taller diagnosticó' : 'talleres diagnosticaron'}`}</dd></div>
         </dl>
         <Link to={faultDetailPath(fault)} state={{ fromMural }} className="ft-btn ft-btn-primary ft-detail-button" aria-label={`Ver detalle de ${vehicle}`}>
@@ -114,6 +119,9 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   const [yearTo, setYearTo] = useState('');
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [sort, setSort] = useState('recent');
+  // Taller: ranura para ver solo las fallas de su comuna (sin tildes ni mayúsculas, "Ñuñoa" = "NUNOA").
+  const [onlyMyComuna, setOnlyMyComuna] = useState(false);
+  const myComuna = isWorkshop ? user?.comuna || '' : '';
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -150,11 +158,12 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
       && (!yearTo || Number(fault.anio) <= Number(yearTo))
       && (locationMode === 'all' || !place || (locationMode === 'region' ? fault.region === place : fault.comuna === place))
       && (selectedTypes.length === 0 || selectedTypes.includes(fault.categoria))
-      && (locationMode !== 'mine' || !user?.comuna || fault.comuna === user.comuna))
+      && (locationMode !== 'mine' || !user?.comuna || fault.comuna === user.comuna)
+      && (!onlyMyComuna || !myComuna || normalizeComuna(fault.comuna) === normalizeComuna(myComuna)))
       .sort((a, b) => sort === 'oldest'
         ? new Date(a.createdAt) - new Date(b.createdAt)
         : new Date(b.createdAt) - new Date(a.createdAt));
-  }, [source, query, brand, model, yearFrom, yearTo, locationMode, place, selectedTypes, sort, user?.comuna]);
+  }, [source, query, brand, model, yearFrom, yearTo, locationMode, place, selectedTypes, sort, user?.comuna, onlyMyComuna, myComuna]);
 
   useEffect(() => {
     if (!onMetricsChange) return;
@@ -170,8 +179,13 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   const toggleType = (type) => setSelectedTypes((current) => current.includes(type) ? current.filter((item) => item !== type) : [...current, type]);
   const clearFilters = () => {
     setSearchText(''); setQuery(''); setLocationMode('all'); setPlace(''); setBrand('');
-    setModel(''); setYearFrom(''); setYearTo(''); setSelectedTypes([]);
+    setModel(''); setYearFrom(''); setYearTo(''); setSelectedTypes([]); setOnlyMyComuna(false);
   };
+  const myComunaToggle = myComuna ? (
+    <button type="button" aria-pressed={onlyMyComuna} className={`ft-tab ${onlyMyComuna ? 'is-active' : ''}`} onClick={() => setOnlyMyComuna((current) => !current)}>
+      <MapPin size={14} aria-hidden="true" /> Solo mi comuna ({myComuna})
+    </button>
+  ) : null;
   const empty = view === 'OPEN'
     ? ['No encontramos fallas', 'Prueba cambiando o limpiando los filtros de búsqueda.']
     : view === 'COMMENTED'
@@ -190,6 +204,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
           <div className="ft-tabs" role="tablist">
             <button type="button" role="tab" aria-selected={view === 'OPEN'} className={`ft-tab ${view === 'OPEN' ? 'is-active' : ''}`} onClick={() => setView('OPEN')}>Mural público ({lists.OPEN.length})</button>
             <button type="button" role="tab" aria-selected={view !== 'OPEN'} className={`ft-tab ${view !== 'OPEN' ? 'is-active' : ''}`} onClick={() => setView(isWorkshop ? 'COMMENTED' : 'MINE')}>{isWorkshop ? 'Mis diagnósticos' : 'Mis fallas'}</button>
+            {myComunaToggle}
           </div>
           {role === 'BUYER' && <button type="button" className="ft-btn ft-btn-primary" onClick={() => setCreating(true)}><Plus size={16} /> Registrar una falla</button>}
         </div>
@@ -244,6 +259,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
             </form>
             <div className="ft-results-head">
               <p>Se encontraron <strong>{items.length}</strong> fallas automotrices</p>
+              {myComunaToggle}
               <label>Ordenar por: <select value={sort} onChange={(event) => setSort(event.target.value)}><option value="recent">Más recientes</option><option value="oldest">Más antiguas</option></select></label>
             </div>
             {results}

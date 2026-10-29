@@ -1,20 +1,13 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Clock3, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
-import RepuestopCoin from './RepuestopCoin';
-import { AD_TIERS, getAdExpiryInfo } from '../../data/automotiveAdsData';
-import { UPGRADE_TOKEN_COSTS, renewAd, adErrorMessage } from '../../services/adsStorage';
+import { getAdExpiryInfo } from '../../data/automotiveAdsData';
+import { renewAd, adErrorMessage } from '../../services/adsStorage';
 
 /**
- * Agrega 30 días de vigencia a un anuncio ya aprobado, cobrando la misma tarifa
- * que publicarlo de nuevo en su plan actual (200 Monedas una Destacada, 400 una
- * Premium, etc.) — así 400 Monedas rinden lo mismo renovando dos veces una
- * Destacada (60 días) que comprando una Premium nueva, y el usuario elige.
- *
- * A diferencia de `UpgradeAdRankModal` no cambia el plan ni el contenido: solo
- * mueve `expiresAt`, así que un anuncio ya aprobado sigue aprobado.
+ * Agrega 30 días de vigencia sin cambiar contenido ni moderación.
  */
-export default function RenewAdModal({ ad, tokensBalance, onClose, onOpenRechargeModal, onRenewSuccess }) {
+export default function RenewAdModal({ ad, onClose, onRenewSuccess }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -22,21 +15,17 @@ export default function RenewAdModal({ ad, tokensBalance, onClose, onOpenRecharg
 
   if (!ad) return null;
 
-  const tierConfig = AD_TIERS[ad.tier] || AD_TIERS.basica;
-  const cost = UPGRADE_TOKEN_COSTS[ad.tier] || 0;
-  const hasEnoughTokens = tokensBalance >= cost;
   const expiry = getAdExpiryInfo(ad);
 
   const handleConfirm = async (e) => {
     e.preventDefault();
-    if (!hasEnoughTokens) return;
     setIsProcessing(true);
     setErrorMsg('');
     try {
-      const { ad: saved, balance } = await renewAd(ad);
+      const { ad: saved } = await renewAd(ad);
       setSavedAd(saved);
       setIsSuccess(true);
-      onRenewSuccess?.(saved, balance);
+      onRenewSuccess?.(saved);
     } catch (err) {
       setErrorMsg(adErrorMessage(err, 'No se pudo renovar el anuncio.'));
     } finally {
@@ -61,7 +50,7 @@ export default function RenewAdModal({ ad, tokensBalance, onClose, onOpenRecharg
                   Agregar 30 días
                 </h3>
                 <p>
-                  <strong>"{ad.title}"</strong> — plan actual: <strong>{tierConfig.name}</strong>
+                  <strong>"{ad.title}"</strong>
                   {expiry && (
                     <> · <span className={expiry.isExpired ? 'is-urgent' : ''}>{expiry.label}</span></>
                   )}
@@ -92,33 +81,9 @@ export default function RenewAdModal({ ad, tokensBalance, onClose, onOpenRecharg
                   <p>
                     {expiry?.isExpired
                       ? 'Tu anuncio estaba vencido: al confirmar vuelve a estar visible en el Mural por 30 días desde hoy.'
-                      : 'Se suman 30 días a la fecha de vencimiento actual. El contenido y el plan no cambian.'}
+                      : 'Se suman 30 días a la fecha de vencimiento actual. El contenido no cambia.'}
                   </p>
                 </div>
-              </div>
-
-              <div className="upgrade-balance-box">
-                <div className="upgrade-balance-row">
-                  <span>Tu saldo de Monedas RepuesTop</span>
-                  <strong><RepuestopCoin size={16} /> {tokensBalance.toLocaleString('es-CL')}</strong>
-                </div>
-                <div className="upgrade-balance-row">
-                  <span>Costo de agregar 30 días ({tierConfig.name})</span>
-                  <strong className="is-cost"><RepuestopCoin size={16} /> {cost}</strong>
-                </div>
-
-                {!hasEnoughTokens && (
-                  <div className="upgrade-balance-short">
-                    <span>Te faltan {cost - tokensBalance} Monedas para renovar.</span>
-                    <button
-                      type="button"
-                      className="upgrade-recharge-btn"
-                      onClick={() => { onClose?.(); onOpenRechargeModal?.(); }}
-                    >
-                      Recargar Monedas
-                    </button>
-                  </div>
-                )}
               </div>
 
               <div className="upgrade-actions-row">
@@ -128,10 +93,10 @@ export default function RenewAdModal({ ad, tokensBalance, onClose, onOpenRecharg
                 <button
                   type="submit"
                   className="upgrade-confirm-btn"
-                  disabled={isProcessing || !hasEnoughTokens}
+                  disabled={isProcessing}
                 >
                   {isProcessing ? <Loader2 size={16} className="spin-icon" /> : <Clock3 size={16} />}
-                  {isProcessing ? 'Renovando…' : `Agregar 30 días por ${cost} Monedas`}
+                  {isProcessing ? 'Renovando…' : 'Agregar 30 días'}
                 </button>
               </div>
             </form>

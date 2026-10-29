@@ -38,6 +38,10 @@ export async function getWorkshopServices() {
   return fetchApi('/taller/servicios');
 }
 
+export async function getWorkshopServiceCategories() {
+  return fetchApi('/taller/servicios/categorias');
+}
+
 export async function createWorkshopService(payload) {
   return fetchApi('/taller/servicios', { method: 'POST', body: JSON.stringify(payload) });
 }

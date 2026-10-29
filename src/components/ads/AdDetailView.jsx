@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Heart, Share2, MapPin, BadgeCheck,
   ShieldCheck, Zap, Phone, MessageCircle, Calendar, CalendarCheck,
-  Building2, Tag, ListChecks, FileText, CheckCircle2, ThumbsUp, Clock, ExternalLink, Home
+  Building2, Tag, ListChecks, FileText, CheckCircle2, ThumbsUp, Clock, ExternalLink, Home, Wrench
 } from 'lucide-react';
-import { AD_TIERS, SERVICE_CATEGORIES } from '../../data/automotiveAdsData';
+import { SERVICE_CATEGORIES } from '../../data/automotiveAdsData';
 import { getCategoryIcon } from './categoryIcons';
 import { useAdOwnership } from './useAdOwnership';
 import AdAppointmentModal from './AdAppointmentModal';
@@ -51,13 +51,11 @@ export default function AdDetailView({ ad, onBack, backLabel = 'Volver al mural'
   const { isOwn, blockIfOwnAd } = useAdOwnership();
   const isOwnAd = isOwn(ad);
 
-  const tierConfig = AD_TIERS[ad.tier] || AD_TIERS.basica;
-  const isEmpresarial = ad.tier === 'empresarial';
   const categoryObj = SERVICE_CATEGORIES.find((c) => c.id === ad.category);
   const categoryLabel = ad.categoryLabel || categoryObj?.label || 'Servicio automotriz';
   const CategoryIcon = getCategoryIcon(ad.category);
 
-  const canWhatsapp = Boolean(tierConfig.hasWhatsapp && ad.whatsapp);
+  const canWhatsapp = Boolean(ad.whatsapp);
   // Un anuncio 24/7 se contacta directo: nunca ofrece agenda (ver `canBookAd`).
   const canBook = canBookAd(ad);
 
@@ -91,6 +89,7 @@ export default function AdDetailView({ ad, onBack, backLabel = 'Volver al mural'
   const memberSince = formatMonthYear(ad.publishedAt);
   const companyFacts = [
     { Icon: Tag, label: 'Rubro', value: categoryLabel },
+    ...(ad.subcategory ? [{ Icon: Wrench, label: 'Servicio', value: ad.subcategory }] : []),
     { Icon: MapPin, label: 'Dirección', value: locationText },
     { Icon: Phone, label: 'Teléfono', value: ad.phone },
     { Icon: MessageCircle, label: 'WhatsApp', value: canWhatsapp ? 'Contacto directo disponible' : null },
@@ -174,6 +173,7 @@ export default function AdDetailView({ ad, onBack, backLabel = 'Volver al mural'
                   <span className="ad-detail-cat">
                     <CategoryIcon size={14} /> {categoryLabel}
                   </span>
+                  {ad.subcategory && <><span className="ad-detail-dot">•</span><span className="ad-detail-cat">{ad.subcategory}</span></>}
                   <span className="ad-detail-dot">•</span>
                   <span className="ad-detail-loc">
                     <MapPin size={14} /> {ad.commune || ad.region || 'Chile'}
@@ -182,7 +182,7 @@ export default function AdDetailView({ ad, onBack, backLabel = 'Volver al mural'
                     <>
                       <span className="ad-detail-dot">•</span>
                       <span className="ad-detail-company">
-                        {isEmpresarial && <BadgeCheck size={14} />} {ad.company}
+                        <BadgeCheck size={14} /> {ad.company}
                       </span>
                     </>
                   )}
@@ -296,9 +296,9 @@ export default function AdDetailView({ ad, onBack, backLabel = 'Volver al mural'
                   <div>
                     <strong>
                       {ad.company || 'Proveedor RepuesTop'}
-                      {isEmpresarial && <BadgeCheck size={15} />}
+                      <BadgeCheck size={15} />
                     </strong>
-                    {isEmpresarial && <span>Taller verificado por RepuesTop</span>}
+                    <span>Taller verificado por RepuesTop</span>
                   </div>
                 </div>
                 {specialistBrands.length > 0 && (
@@ -347,7 +347,7 @@ export default function AdDetailView({ ad, onBack, backLabel = 'Volver al mural'
               <ShieldCheck size={14} />
               Servicio profesional y garantizado
               <span className="ad-detail-dot">•</span>
-              {isEmpresarial ? 'Taller verificado por RepuesTop' : 'Publicado en RepuesTop'}
+              Taller verificado por RepuesTop
             </p>
           </div>
 
@@ -368,9 +368,9 @@ export default function AdDetailView({ ad, onBack, backLabel = 'Volver al mural'
                 <div>
                   <strong>
                     {ad.company || 'Proveedor RepuesTop'}
-                    {isEmpresarial && <BadgeCheck size={15} />}
+                    <BadgeCheck size={15} />
                   </strong>
-                  {isEmpresarial && <span>Taller verificado</span>}
+                  <span>Taller verificado</span>
                 </div>
               </div>
 

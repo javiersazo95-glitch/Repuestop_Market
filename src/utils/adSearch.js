@@ -42,6 +42,7 @@ export function buildAdSuggestionIndex(ads = []) {
     push(ad.title, 'servicio');
     push(ad.company, 'taller');
     push(ad.categoryLabel, 'categoria');
+    push(ad.subcategory, 'servicio');
     push(ad.commune, 'comuna');
   });
 
@@ -82,6 +83,7 @@ export function adMatchesSearch(ad, query) {
     ad.description,
     ad.commune,
     ad.categoryLabel,
+    ad.subcategory,
     ...(ad.features || []),
     ...(ad.servicesOffered || []),
     ...(ad.specialistBrands || []),

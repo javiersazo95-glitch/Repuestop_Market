@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertCircle, Camera, Loader2, Trash2, X } from 'lucide-react';
-import { createFault, updateFault, uploadFaultPhoto } from '../../services/faultApi';
+import AddressAutocompleteInput from '../AddressAutocompleteInput';
+import { createFault, getFaultCategories, updateFault, uploadFaultPhoto } from '../../services/faultApi';
 import { resolveMediaUrl } from '../../services/api';
 import { isValidPlate, lookupVehicleByPlate, normalizePlate } from '../../utils/vehicleLookup';
 import { searchVehicleByPatenteApi } from '../../services/api';
@@ -30,12 +31,18 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   const [description, setDescription] = useState('');
   const [before, setBefore] = useState('');
   const [category, setCategory] = useState('');
+  const [subcategory, setSubcategory] = useState('');
+  const [categoryCatalog, setCategoryCatalog] = useState(FAULT_CATEGORIES);
   const [symptoms, setSymptoms] = useState([]);
   const [customSymptom, setCustomSymptom] = useState('');
   const [canMove, setCanMove] = useState(null);
   const [priority, setPriority] = useState('MEDIA');
   const [region, setRegion] = useState(user?.region || '');
   const [comuna, setComuna] = useState(user?.comuna || '');
+  // Recogida: null = sin responder (obligatorio), true/false = elegido. Con coordenadas el mapa del taller ubica al cliente.
+  const [needsPickup, setNeedsPickup] = useState(null);
+  const [pickupAddress, setPickupAddress] = useState('');
+  const [pickupCoords, setPickupCoords] = useState(null);
   const [vehiclePhoto, setVehiclePhoto] = useState('');
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -57,6 +64,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     setDescription(fault.descripcion || '');
     setBefore(fault.antesDelFallo || '');
     setCategory(fault.categoria || '');
+    setSubcategory(fault.subcategoria || '');
     const savedSymptoms = Array.isArray(fault.sintomas) ? fault.sintomas : [];
     const knownSymptoms = savedSymptoms.filter((symptom) => SYMPTOMS.includes(symptom));
     const otherSymptoms = savedSymptoms.filter((symptom) => !SYMPTOMS.includes(symptom));
@@ -66,6 +74,9 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     setPriority(fault.prioridad || 'MEDIA');
     setRegion(fault.region || '');
     setComuna(fault.comuna || '');
+    setNeedsPickup(Boolean(fault.requiereRecogida));
+    setPickupAddress(fault.direccionRecogida || '');
+    setPickupCoords(fault.latitud != null && fault.longitud != null ? { latitud: fault.latitud, longitud: fault.longitud } : null);
     const existingPhotos = Array.isArray(fault.fotos) ? fault.fotos : [];
     const hasSeparateVehiclePhoto = Boolean(fault.fotoVehiculo || fault.fotoUrl);
     setVehiclePhoto(fault.fotoVehiculo || fault.fotoUrl || existingPhotos[0] || '');
@@ -73,6 +84,21 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     setPhotos((hasSeparateVehiclePhoto ? existingPhotos : existingPhotos.slice(1)).filter((photo, index, list) => list.indexOf(photo) === index));
     setError('');
   }, [fault, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    getFaultCategories().then((items) => {
+      if (!active || !Array.isArray(items)) return;
+      setCategoryCatalog(items.map((item) => ({
+        id: item.id,
+        label: item.nombre,
+        emoji: SERVICE_CATEGORIES.find((category) => category.id === item.id)?.emoji || '🔧',
+        subcategories: item.subcategorias || item.incluye || [],
+      })));
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [isOpen]);
 
   // Con una patente completa los datos del vehiculo se rellenan solos.
   useEffect(() => {
@@ -146,6 +172,8 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     if (symptoms.includes(OTHER_SYMPTOM) && !customSymptom.trim()) return setError('Escribe cuál es el otro síntoma.');
     if (photos.length === 0) return setError('Agrega al menos una foto de evidencia de la falla.');
     if (!comuna.trim()) return setError('Indica tu comuna: los talleres cercanos son los más útiles.');
+    if (needsPickup === null) return setError('Indica si necesitas que el taller recoja tu vehículo.');
+    if (needsPickup && !pickupAddress.trim()) return setError('Indica la dirección donde el taller debe recoger tu vehículo.');
     const km = parseInt(String(mileage).replace(/\D/g, ''), 10);
     setSaving(true);
     try {
@@ -159,6 +187,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         kilometraje: Number.isFinite(km) ? km : null,
         titulo: title.trim(),
         categoria: category || null,
+        subcategoria: subcategory || null,
         descripcion: description.trim(),
         antesDelFallo: before.trim() || null,
         sintomas: symptoms.map((symptom) => symptom === OTHER_SYMPTOM ? customSymptom.trim() : symptom),
@@ -168,6 +197,10 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         comuna: comuna.trim(),
         fotoVehiculo: vehiclePhoto,
         fotos: photos,
+        requiereRecogida: needsPickup === true,
+        direccionRecogida: needsPickup ? pickupAddress.trim() : null,
+        latitud: needsPickup && pickupCoords ? pickupCoords.latitud : null,
+        longitud: needsPickup && pickupCoords ? pickupCoords.longitud : null,
       };
       const saved = isEditing ? await updateFault(fault.id, payload) : await createFault(payload);
       if (isEditing) onUpdated?.(saved);
@@ -236,13 +269,23 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
           <span>Posible categoría <small>Opcional</small></span>
           <small>Si no sabes cuál elegir, no pasa nada: puedes dejarla sin seleccionar. Los talleres te ayudarán a identificarla.</small>
           <div className="ft-category-options">
-            {FAULT_CATEGORIES.map((option) => {
+            {categoryCatalog.map((option) => {
               const selected = category === option.id;
-              return <button key={option.id} type="button" className={`ft-category-option ${selected ? 'is-selected' : ''}`} aria-pressed={selected} onClick={() => setCategory((current) => current === option.id ? '' : option.id)}>
+              return <button key={option.id} type="button" className={`ft-category-option ${selected ? 'is-selected' : ''}`} aria-pressed={selected} onClick={() => { setCategory((current) => current === option.id ? '' : option.id); setSubcategory(''); }}>
                 <span aria-hidden="true">{option.emoji}</span><span>{option.label}</span>
               </button>;
             })}
           </div>
+          {category && (
+            <label className="ft-field ft-subcategory-field">
+              <span>Servicio relacionado <small>Opcional</small></span>
+              <select value={subcategory} onChange={(event) => setSubcategory(event.target.value)}>
+                <option value="">No sé cuál es</option>
+                {(categoryCatalog.find((option) => option.id === category)?.subcategories || []).map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+              <small>Elige el trabajo que probablemente necesitas; el taller confirmará el diagnóstico.</small>
+            </label>
+          )}
         </div>
 
         <div className="ft-field">
@@ -285,6 +328,35 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         <div className="ft-row">
           <label className="ft-field"><span>Región</span><input value={region} maxLength={100} onChange={(e) => setRegion(e.target.value)} /></label>
           <label className="ft-field"><span>Comuna</span><input value={comuna} maxLength={100} onChange={(e) => setComuna(e.target.value)} /></label>
+        </div>
+
+        <div className="ft-field">
+          <span>¿Necesitas que el taller recoja tu vehículo?</span>
+          <div className="ft-chips">
+            <button type="button" className={`ft-chip is-toggle ${needsPickup === true ? 'is-on' : ''}`} aria-pressed={needsPickup === true} onClick={() => setNeedsPickup(true)}>Sí, que vengan por él</button>
+            <button type="button" className={`ft-chip is-toggle ${needsPickup === false ? 'is-on' : ''}`} aria-pressed={needsPickup === false} onClick={() => setNeedsPickup(false)}>No, lo llevo yo</button>
+          </div>
+          {needsPickup && (
+            <>
+              <span>Dirección de recogida</span>
+              <AddressAutocompleteInput
+                locatable
+                requireComuna={false}
+                value={pickupAddress}
+                maxLength={300}
+                comuna={comuna}
+                region={region}
+                placeholder="Calle y número donde debe pasar el taller"
+                onChange={(value) => { setPickupAddress(value); setPickupCoords(null); }}
+                onSelectLocation={({ comuna: pickedComuna, region: pickedRegion, latitud, longitud }) => {
+                  if (latitud != null && longitud != null) setPickupCoords({ latitud, longitud });
+                  if (pickedComuna && !comuna.trim()) setComuna(pickedComuna);
+                  if (pickedRegion && !region.trim()) setRegion(pickedRegion);
+                }}
+              />
+              <small>{pickupCoords ? 'Ubicación marcada: los talleres verán a qué distancia estás.' : 'Elige una sugerencia o usa el ícono de ubicación para marcar el punto exacto. Solo la ven los talleres.'}</small>
+            </>
+          )}
         </div>
 
         <div className="ft-field">

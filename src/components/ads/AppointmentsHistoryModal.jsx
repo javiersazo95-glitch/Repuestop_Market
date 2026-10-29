@@ -57,7 +57,7 @@ export default function AppointmentsHistoryModal({
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState('');
 
-  const businessAds = useMemo(() => ads.filter((ad) => ad.tier === 'empresarial'), [ads]);
+  const businessAds = useMemo(() => ads, [ads]);
 
   const identity = useMemo(
     () => ({ userId: sessionUserId, email: userEmail }),

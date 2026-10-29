@@ -3,7 +3,7 @@
 // tarjeta (AdCard), para no repetir el mapa en dos archivos.
 import {
   LayoutGrid, Wrench, Zap, CircleDot, Truck, SprayCan, Sparkles, Snowflake,
-  KeyRound, ClipboardCheck, Bike, Car, Home, Package
+  KeyRound, ClipboardCheck, Home, Package
 } from 'lucide-react';
 
 export const CATEGORY_ICON = {
@@ -17,9 +17,6 @@ export const CATEGORY_ICON = {
   climatizacion: Snowflake,
   'cerrajeria-seguridad': KeyRound,
   'servicios-inspeccion': ClipboardCheck,
-  motos: Bike,
-  'camiones-maquinaria': Truck,
-  'compra-venta-arriendo': Car,
   'servicios-domicilio': Home,
   'otros-servicios': Package,
 };

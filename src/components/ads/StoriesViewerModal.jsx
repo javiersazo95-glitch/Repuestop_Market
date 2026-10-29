@@ -157,9 +157,7 @@ export default function StoriesViewerModal({
             <div className="story-author-details">
               <span className="story-author-name">
                 {ad.company}
-                {ad.tier === 'empresarial' && (
-                  <CheckCircle2 size={14} className="text-blue-400" />
-                )}
+                <CheckCircle2 size={14} className="text-blue-400" />
               </span>
               <span className="story-author-time">
                 {ad.categoryLabel || categoryObj?.label || 'Servicio automotriz'} • Historia {currentSlideIndex + 1} de {slides.length}

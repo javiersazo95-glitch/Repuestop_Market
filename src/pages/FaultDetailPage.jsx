@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle, AlertTriangle, ArrowLeft, Bookmark, CalendarPlus, Car, ChevronDown,
   ChevronLeft, ChevronRight, Clock3, Eye, ExternalLink, FileText,
-  Loader2, Lock, MapPin, MapPinned, MessageCircle, Pencil, Settings, Share2, Star, Tag, UserRound,
+  Loader2, Lock, MapPin, MapPinned, MessageCircle, Navigation, Pencil, Settings, Share2, Star, Tag, Truck, UserRound,
   Wrench, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +18,8 @@ import AdAppointmentModal from '../components/ads/AdAppointmentModal';
 import CreateFaultModal from '../components/faults/CreateFaultModal';
 import { ROUTES, profilePath, workshopPath } from '../routes/paths';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
+import { useUserLocation } from '../hooks/useUserLocation';
+import { formatDistanceKm, haversineDistanceKm } from '../utils/geoDistance';
 import '../styles/faults.css';
 
 const formatMonthYear = (value) => {
@@ -38,6 +40,8 @@ export default function FaultDetailPage() {
   const { user, role } = useAuth();
   const isWorkshop = role === 'WORKSHOP';
   useDocumentTitle('Falla automotriz');
+  // Posición del taller para medir la distancia al cliente: se lee sola si el permiso ya estaba concedido.
+  const userLocation = useUserLocation();
 
   const [fault, setFault] = useState(null);
   const [comments, setComments] = useState([]);
@@ -157,6 +161,13 @@ export default function FaultDetailPage() {
   const vehicleTitle = [fault.marca, fault.modelo].filter(Boolean).join(' ') || fault.vehiculo || fault.titulo;
   const vehicle = [fault.marca, fault.modelo, fault.anio, fault.version].filter(Boolean).join(' ');
   const place = [fault.comuna, fault.region].filter(Boolean).join(', ');
+  // Mapa: el punto exacto del cliente si lo dio; si no, su dirección de recogida o la comuna (aproximado).
+  const hasPoint = fault.latitud != null && fault.longitud != null;
+  const mapText = [fault.direccionRecogida, place].filter(Boolean).join(', ');
+  const mapQuery = hasPoint ? `${fault.latitud},${fault.longitud}` : mapText ? encodeURIComponent(mapText) : '';
+  const distanceKm = isWorkshop && hasPoint && userLocation.coords
+    ? haversineDistanceKm(userLocation.coords, { latitude: Number(fault.latitud), longitude: Number(fault.longitud) })
+    : null;
   const photos = [fault.fotoVehiculo || fault.fotoUrl, ...(fault.fotos || [])].filter(Boolean).filter((photo, index, list) => list.indexOf(photo) === index);
   const selectedCategory = SERVICE_CATEGORIES.find((item) => item.id === fault.categoria && item.id !== 'TODAS');
   const category = selectedCategory?.label || (/fren|abs/i.test(`${fault.titulo} ${fault.sintomas?.join(' ')}`) ? 'Frenos'
@@ -193,12 +204,15 @@ export default function FaultDetailPage() {
             <p className="ft-detail-vehicle-line">{[fault.anio, fault.combustible || fault.motor, fault.kilometraje != null ? `${fault.kilometraje.toLocaleString('es-CL')} km` : null].filter(Boolean).map((item) => <span key={item}>{item}</span>)}</p>
             <p className="ft-detail-lead">{fault.titulo || 'Falla automotriz sin título'}</p>
             <dl className="ft-detail-case-grid">
-              <div><dt>Falla registrada</dt><dd>{fault.titulo || category}</dd></div>
+              <div><dt>Servicio relacionado</dt><dd>{fault.subcategoria || fault.titulo || category}</dd></div>
               <div><dt>Estado del vehículo</dt><dd>{mobility}</dd></div>
               <div><dt>Síntomas informados</dt><dd>{symptomSummary}</dd></div>
               <div><dt>Diagnósticos recibidos</dt><dd>{diagnostics.length} {diagnostics.length === 1 ? 'diagnóstico' : 'diagnósticos'}</dd></div>
             </dl>
-            <div className="ft-detail-meta"><span><MapPin size={18} /> {place}</span><span><Clock3 size={18} /> Publicado {timeSince(fault.createdAt).toLowerCase()}</span>{fault.visitas != null && <span><Eye size={18} /> {fault.visitas} visitas</span>}</div>
+            <div className="ft-detail-meta"><span><MapPin size={18} /> {place}</span>{fault.requiereRecogida && <span className="ft-pickup-meta"><Truck size={18} /> Requiere recogida del vehículo</span>}<span><Clock3 size={18} /> Publicado {timeSince(fault.createdAt).toLowerCase()}</span>{fault.visitas != null && <span><Eye size={18} /> {fault.visitas} visitas</span>}</div>
+            {fault.requiereRecogida && (
+              <p className="ft-pickup-alert" role="note"><Truck size={20} aria-hidden="true" /> {fault.propia ? 'Pediste que el taller vaya a buscar tu vehículo.' : 'Este cliente necesita que vayan a buscar el vehículo.'}</p>
+            )}
             <div className="ft-detail-hero-actions">{fault.propia && fault.vigente && <button type="button" className="ft-btn ft-btn-primary" onClick={() => setEditing(true)}><Pencil size={17} /> Editar falla</button>}<button type="button" className="ft-detail-icon-action" onClick={share} aria-label="Compartir"><Share2 size={20} /></button>{!fault.propia && <button type="button" className={`ft-btn ft-btn-outline ${saved ? 'is-saved' : ''}`} onClick={() => setSaved((value) => !value)}><Bookmark size={17} fill={saved ? 'currentColor' : 'none'} /> {saved ? 'Guardado' : 'Guardar'}</button>}</div>
           </div>
         </section>
@@ -219,18 +233,48 @@ export default function FaultDetailPage() {
 
           <div className="ft-detail-column is-side">
             <DetailPanel icon={Car} title="Información del vehículo"><dl className="ft-detail-table"><div><dt>Marca</dt><dd>{fault.marca || '—'}</dd></div><div><dt>Modelo</dt><dd>{fault.modelo || '—'}</dd></div><div><dt>Año</dt><dd>{fault.anio || '—'}</dd></div><div><dt>Combustible</dt><dd>{fault.combustible || fault.motor || '—'}</dd></div><div><dt>Kilometraje</dt><dd>{fault.kilometraje != null ? `${fault.kilometraje.toLocaleString('es-CL')} km` : '—'}</dd></div><div><dt>Chasis</dt><dd>{fault.chasis || fault.vin || '—'}</dd></div>{showPlate && fault.propia && <div><dt>Patente</dt><dd>{fault.patente || '—'}</dd></div>}</dl></DetailPanel>
-            <DetailPanel icon={MapPinned} title="Ubicación del vehículo">
-              <div className="ft-location-card">
-                <div className="ft-detail-map" aria-hidden="true">
-                  <span className="ft-map-marker"><MapsPinIcon /></span>
-                </div>
+            {/* El mapa solo aparece si el cliente pidió que vayan por el vehículo: es hasta donde debe llegar el taller. */}
+            {fault.requiereRecogida && (
+            <DetailPanel icon={MapPinned} title="Ubicación del cliente">
+              <div className={`ft-location-card ${mapQuery ? 'is-live' : ''}`}>
+                {mapQuery ? (
+                  <div className="ft-live-map">
+                    <iframe
+                      title="Mapa de la ubicación del cliente"
+                      src={`https://maps.google.com/maps?q=${mapQuery}&z=${hasPoint ? 16 : 13}&output=embed`}
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  </div>
+                ) : (
+                  <div className="ft-detail-map" aria-hidden="true">
+                    <span className="ft-map-marker"><MapsPinIcon /></span>
+                  </div>
+                )}
                 <div className="ft-location-content">
-                  <small>Ubicación aproximada</small>
-                  <strong>{place || 'Ubicación no informada'}</strong>
-                  {place && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`} target="_blank" rel="noreferrer">Abrir ubicación en Google Maps <ExternalLink size={14} /></a>}
+                  {fault.requiereRecogida && (
+                    <span className="ft-pickup-badge"><Truck size={14} aria-hidden="true" /> El cliente necesita que vengan por el vehículo</span>
+                  )}
+                  <small>{hasPoint ? 'Ubicación exacta' : 'Ubicación aproximada'}</small>
+                  <strong>{fault.direccionRecogida || place || 'Ubicación no informada'}</strong>
+                  {fault.direccionRecogida && place && <span className="ft-location-place">{place}</span>}
+                  {isWorkshop && hasPoint && (
+                    distanceKm != null ? (
+                      <p className="ft-distance"><Navigation size={14} aria-hidden="true" /> A <strong>{formatDistanceKm(distanceKm)}</strong> de ti, en línea recta</p>
+                    ) : (
+                      <button type="button" className="ft-distance-btn" onClick={userLocation.requestLocation} disabled={userLocation.status === 'loading'}>
+                        {userLocation.status === 'loading' ? <Loader2 size={14} className="spin-icon" /> : <Navigation size={14} aria-hidden="true" />}
+                        {userLocation.status === 'denied' ? 'Permite tu ubicación para ver la distancia' : 'Ver a qué distancia está'}
+                      </button>
+                    )
+                  )}
+                  {(hasPoint || place || fault.direccionRecogida) && (
+                    <a href={hasPoint ? `https://www.google.com/maps/search/?api=1&query=${fault.latitud},${fault.longitud}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([fault.direccionRecogida, place].filter(Boolean).join(', '))}`} target="_blank" rel="noreferrer">Abrir ubicación en Google Maps <ExternalLink size={14} /></a>
+                  )}
                 </div>
               </div>
             </DetailPanel>
+            )}
             <DetailPanel icon={UserRound} title="Información del usuario">
               <div className="ft-user-profile"><span>{(fault.autor || 'U').slice(0, 1).toUpperCase()}</span><div><strong>{fault.autor || 'Usuario de RepuesTop'}</strong><small>Persona que registró esta falla</small></div></div>
               <dl className="ft-user-facts">

@@ -75,11 +75,9 @@ export default function AdsStoriesCarousel({ ads = [], onSelectAd }) {
                         <Building2 size={26} />
                       </span>
                     )}
-                    {ad.tier === 'empresarial' && (
-                      <span className="story-verified-badge" title="Empresa verificada">
-                        <CheckCircle2 size={12} strokeWidth={3} />
-                      </span>
-                    )}
+                    <span className="story-verified-badge" title="Empresa verificada">
+                      <CheckCircle2 size={12} strokeWidth={3} />
+                    </span>
                   </div>
                   <span className="story-company-name">{ad.company}</span>
                   <span className="story-category-tag">{ad.categoryLabel || categoryObj?.label || ''}</span>

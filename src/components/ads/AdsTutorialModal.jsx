@@ -11,25 +11,25 @@ import { X, GraduationCap, Sparkles, ShieldCheck, Megaphone, Check } from 'lucid
 const BENEFITS = [
   'Te encuentran los conductores de tu zona que justo buscan tu servicio.',
   'Contacto directo: te llaman o te escriben por WhatsApp, sin intermediarios.',
-  'Tu primer anuncio Básico es gratis por 30 días.',
-  'Con el plan Empresarial recibes reservas de hora online desde el Mural.',
+  'Todos tus anuncios pueden recibir contacto por teléfono o WhatsApp.',
+  'Puedes recibir reservas de hora online desde el Mural.',
   'Tu taller aparece con la insignia "Verificado" una vez acreditado.',
-  'Eliges cuánta visibilidad quieres: Básico, Destacado, Premium o Empresarial.'
+  'Puedes mostrar fotos destacadas, servicios y marcas especialistas.'
 ];
 
 const ACCREDITATION_STEPS = [
   'Abre "Acreditar servicio" y completa los datos de tu negocio (nombre, RUT, región y comuna).',
   'Adjunta los tres documentos: identidad del responsable, inicio de actividades del SII y patente municipal vigente.',
   'Envía el expediente. RepuesTop lo revisa y te avisa por correo si queda aprobado, con observaciones o rechazado.',
-  'Con el expediente aprobado se habilitan la compra de Monedas y la publicación de anuncios.'
+  'Con el expediente aprobado se habilita la publicación de anuncios.'
 ];
 
 const PUBLISH_STEPS = [
   'Ten tu servicio automotriz acreditado (paso anterior).',
-  'Pulsa "Publicar anuncio" y elige un plan: Básica (la primera es gratis por 30 días), Destacada, Premium o Empresarial.',
-  'Completa el anuncio: fotos, descripción, contacto, etiquetas y —solo en Empresarial— tu agenda de horas para recibir reservas.',
+  'Pulsa "Publicar anuncio" y completa los datos del servicio.',
+  'Agrega fotos, descripción, contacto, servicios y, si quieres, tu agenda de horas para recibir reservas.',
   'Envíalo. Moderación lo revisa antes de publicarlo; te llega una notificación con el resultado.',
-  'Ya publicado, puedes editarlo (vuelve a revisión), mejorar su plan con Monedas o darlo de baja cuando quieras.'
+  'Ya publicado, puedes editarlo, extender su vigencia o darlo de baja cuando quieras.'
 ];
 
 function StepList({ steps }) {

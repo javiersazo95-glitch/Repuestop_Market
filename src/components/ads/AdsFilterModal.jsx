@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, RotateCcw, SlidersHorizontal, ShieldCheck, Zap, Star,
+  X, RotateCcw, SlidersHorizontal,
   Calendar, MessageCircle, AlarmClock, Home
 } from 'lucide-react';
 import { SERVICE_CATEGORIES } from '../../data/automotiveAdsData';
@@ -18,28 +18,17 @@ const ALL_COMMUNES = 'Todas las comunas';
  * muchas y como chips el panel se volvia interminable.
  */
 
-const TIER_OPTIONS = [
-  { value: 'TODOS', label: 'Todos los planes', Icon: null, tone: '' },
-  { value: 'empresarial', label: 'Empresarial', Icon: ShieldCheck, tone: 'empresarial' },
-  { value: 'premium', label: 'Premium', Icon: Zap, tone: 'premium' },
-  { value: 'destacada', label: 'Destacada', Icon: Star, tone: 'destacada' },
-  { value: 'basica', label: 'Básica', Icon: null, tone: '' },
-];
-
 export default function AdsFilterModal({
   isOpen,
   onClose,
   selectedCategory,
   setSelectedCategory,
-  selectedTier,
-  setSelectedTier,
   selectedCommune,
   setSelectedCommune,
-  // Solo valores con anuncios publicados: [{ value, count }] y conteos por especialidad y plan.
+  // Solo valores con anuncios publicados: [{ value, count }] y conteos por especialidad.
   communeOptions = [],
   categoryOptions = SERVICE_CATEGORIES.filter((cat) => cat.id !== 'TODAS'),
   categoryCounts = null,
-  tierCounts = null,
   specialistBrandOptions = [],
   selectedSpecialistBrand = ALL_BRANDS,
   setSelectedSpecialistBrand,
@@ -139,24 +128,6 @@ export default function AdsFilterModal({
                 >
                   <span aria-hidden="true">{cat.emoji}</span> {cat.label}
                   {categoryCounts && cat.id !== 'TODAS' && <span className="filter-option-count"> ({categoryCounts[cat.id] || 0})</span>}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="ads-filter-group">
-            <span className="ads-filter-label">Nivel del anuncio</span>
-            <div className="ads-filter-chips">
-              {TIER_OPTIONS.filter(({ value }) => !tierCounts || value === 'TODOS' || tierCounts[value] > 0 || selectedTier === value)
-                .map(({ value, label, Icon, tone }) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={`ads-filter-chip ${tone ? `tone-${tone}` : ''} ${selectedTier === value ? 'active' : ''}`}
-                  onClick={() => setSelectedTier(value)}
-                >
-                  {Icon && <Icon size={13} />} {label}
-                  {tierCounts && value !== 'TODOS' && <span className="filter-option-count"> ({tierCounts[value] || 0})</span>}
                 </button>
               ))}
             </div>

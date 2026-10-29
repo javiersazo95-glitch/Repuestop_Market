@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Edit3, CheckCircle2, AlertTriangle, Clock3 } from 'lucide-react';
-import { AD_TIERS, AD_MODERATION_STATUS } from '../../data/automotiveAdsData';
+import { AD_MODERATION_STATUS } from '../../data/automotiveAdsData';
 import { updateAd, adErrorMessage } from '../../services/adsStorage';
 import AdForm from './AdForm';
 
@@ -14,7 +14,7 @@ import AdForm from './AdForm';
  * revisión (PENDIENTE / rechazados) siguen en la cola tras editarlos.
  */
 export default function EditAdModal({
-  ad, isOpen, onClose, onAdUpdated, upgradedFromTier, upgradedToTier, accreditationProfile = null
+  ad, isOpen, onClose, onAdUpdated, accreditationProfile = null
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -22,7 +22,6 @@ export default function EditAdModal({
 
   if (!isOpen || !ad) return null;
 
-  const tierConfig = AD_TIERS[ad.tier] || AD_TIERS.basica;
   const wasPublished = ad.moderationStatus === AD_MODERATION_STATUS.APROBADO && ad.activo === true;
 
   const handleSubmit = async (draft) => {
@@ -61,11 +60,11 @@ export default function EditAdModal({
                 <div className="create-ad-header-text">
                   <div className="create-ad-header-topline">
                     <span className="create-ad-modal-eyebrow">Mural Automotriz</span>
-                    <span className="create-ad-header-badge plan-badge">Plan {tierConfig.name}</span>
+                    <span className="create-ad-header-badge">Editar</span>
                   </div>
                   <h3>Editar anuncio publicado</h3>
                   <p>
-                    Modifica los datos de tu aviso. Para cambiar de categoría de visibilidad usa "Mejorar rango".
+                    Modifica los datos, servicios, contacto y disponibilidad de tu aviso.
                   </p>
                 </div>
               </div>
@@ -102,8 +101,6 @@ export default function EditAdModal({
               accreditationProfile={accreditationProfile}
               isSubmitting={isSubmitting}
               submitError={submitError}
-              upgradedFromTier={upgradedFromTier}
-              upgradedToTier={upgradedToTier}
               onSubmit={handleSubmit}
               onCancel={handleClose}
             />
@@ -118,7 +115,7 @@ export default function EditAdModal({
 
               <h3>
                 {savedPublished
-                  ? (upgradedToTier ? 'Plan mejorado y publicado' : 'Cambios publicados')
+                  ? 'Cambios publicados'
                   : 'Cambios guardados, en revisión'}
               </h3>
 

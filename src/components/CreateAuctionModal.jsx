@@ -203,7 +203,7 @@ function itemsFromAuction(auction) {
   return list.length ? list : [newItem()];
 }
 
-function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
+function CreateAuctionModalContent({ onClose, onSuccess, auction = null, initialPatente = '' }) {
   const isEditing = Boolean(auction);
   const { user } = useAuth();
   const { HEADER_CATEGORIES } = useCategories();
@@ -241,7 +241,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const [patente, setPatente] = useState(() => auction?.patente || '');
+  const [patente, setPatente] = useState(() => auction?.patente || initialPatente);
   const { vehicle, error: plateError, looking: lookingUpPlate } = usePlateLookup(patente);
 
   const [items, setItems] = useState(() => (auction ? itemsFromAuction(auction) : [newItem()]));
@@ -574,7 +574,7 @@ export default function CreateAuctionModal(props) {
   if (!props.isOpen) return null;
   // En el celular, publicar y editar usan el formulario idéntico al de la app.
   const view = isMobile
-    ? <AuctionCreateMobile auction={props.auction || null} onClose={props.onClose} onSuccess={props.onSuccess} />
+    ? <AuctionCreateMobile auction={props.auction || null} initialPatente={props.initialPatente || ''} onClose={props.onClose} onSuccess={props.onSuccess} />
     : <CreateAuctionModalContent {...props} />;
   // Fuera del panel del perfil: los contenedores del intranet (scroll, apilado) recortaban el popup y dejaban
   // el menú y la barra superior encima de los campos.

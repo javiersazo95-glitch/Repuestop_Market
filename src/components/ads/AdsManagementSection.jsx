@@ -1,19 +1,18 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Megaphone, Plus, Zap, Edit3, Trash2, Eye, AlertTriangle, Search,
+  Megaphone, Plus, Edit3, Trash2, Eye, AlertTriangle, Search,
   RefreshCw,
   Loader2, CheckCircle2, Clock3, XCircle, CalendarClock, Lock, ChevronRight, PackageOpen,
   GraduationCap
 } from 'lucide-react';
 import {
   fetchMyAds, deleteAd, adErrorMessage,
-  getCachedTokensBalance, fetchTokensBalance, TOKENS_UPDATED_EVENT,
   fetchMyAppointments, fetchPublicAd, APPOINTMENTS_UPDATED_EVENT
 } from '../../services/adsStorage';
 import {
-  AD_TIERS, AD_TIER_ORDER, AD_MODERATION_STATUS, AD_MODERATION_LABELS,
-  SERVICE_CATEGORIES, getAdExpiryInfo, getUpgradableTiers,
+  AD_MODERATION_STATUS, AD_MODERATION_LABELS,
+  SERVICE_CATEGORIES, getAdExpiryInfo,
 } from '../../data/automotiveAdsData';
 import { isAppointmentCurrent, splitAppointmentsByRole, summarizeAppointmentsByRole } from '../../utils/appointmentHistory';
 import { useAuth } from '../../context/AuthContext';
@@ -26,9 +25,6 @@ import AdsTutorialModal from './AdsTutorialModal';
 import AdAgendaModal from './AdAgendaModal';
 import AppointmentsHistoryModal from './AppointmentsHistoryModal';
 import AdAppointmentModal from './AdAppointmentModal';
-import TokensHistoryModal from './TokensHistoryModal';
-import RechargeTokensModal from './RechargeTokensModal';
-import UpgradeAdRankModal from './UpgradeAdRankModal';
 import RenewAdModal from './RenewAdModal';
 import EditAdModal from './EditAdModal';
 import CreateAdModal from './CreateAdModal';
@@ -57,7 +53,7 @@ const STATUS_ICONS = {
 };
 
 // Un anuncio esta realmente publicado solo si ademas de APROBADO sigue activo. Editar un
-// anuncio ya aprobado (o subirle el plan) no lo saca del Mural: `AnuncioService.actualizar()`
+// anuncio ya aprobado no lo saca del Mural: `AnuncioService.actualizar()`
 // lo mantiene APROBADO y activo. Solo la primera publicacion pasa por moderacion.
 const isLive = (ad) => ad.moderationStatus === AD_MODERATION_STATUS.APROBADO && ad.activo === true;
 
@@ -75,14 +71,6 @@ const STATUS_FILTERS = [
  * cualquier estado de moderacion: `GET /anuncios` solo trae lo aprobado, vigente
  * y activo, asi que ahi un anuncio en revision o rechazado no existe.
  */
-// M3 (6-oct): el rechazo en la primera revisión devuelve las Monedas y reenviar el anuncio las
-// vuelve a cobrar. Mismo texto que la app (getResubmitCostNotice).
-function resubmitCostNotice(monedas) {
-  if (!monedas || monedas <= 0) return '';
-  const cantidad = monedas.toLocaleString('es-CL');
-  return ` Te devolvimos ${cantidad} ${monedas === 1 ? 'Moneda' : 'Monedas'} por el rechazo. Al reenviarlo a revisión se vuelven a cobrar.`;
-}
-
 export default function AdsManagementSection({ onNavigateToMural }) {
   const { user } = useAuth();
   const accreditation = useAutomotiveAccreditation(Boolean(user));
@@ -107,24 +95,12 @@ export default function AdsManagementSection({ onNavigateToMural }) {
   const [rebookState, setRebookState] = useState(null); // { ad, appointmentId } | 'loading'
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  // Arranca con la ultima copia local para no pintar un cero mientras responde
-  // la red, pero el saldo real lo trae `fetchTokensBalance()`: desde que el
-  // backend cobra, lo que diga el navegador es solo una referencia.
-  const [tokensBalance, setTokensBalanceState] = useState(() => getCachedTokensBalance());
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('TODOS');
-  const [tierFilter, setTierFilter] = useState('TODOS');
 
-  const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [adToUpgrade, setAdToUpgrade] = useState(null);
   const [adToRenew, setAdToRenew] = useState(null);
   const [adToEdit, setAdToEdit] = useState(null);
-  // Planes de origen y destino de la ultima mejora, para que el formulario pueda
-  // destacar SOLO lo que se acaba de desbloquear.
-  const [upgradedFromTier, setUpgradedFromTier] = useState(null);
-  const [upgradedToTier, setUpgradedToTier] = useState(null);
   const [adToDelete, setAdToDelete] = useState(null);
   const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -211,13 +187,6 @@ export default function AdsManagementSection({ onNavigateToMural }) {
   const isAccredited = accreditation.isLoading || accreditation.isApproved;
   const gateMessage = ACCREDITATION_GATE_MESSAGE[accreditation.status]
     || ACCREDITATION_GATE_MESSAGE.SIN_SOLICITUD;
-  // La primera Básica de la cuenta no cobra Monedas (lo decide el backend). Si ya
-  // hay una Básica publicada, el período gratis ya se usó.
-  const hasUsedBasicFreePeriod = useMemo(
-    () => ads.some((ad) => ad.tier === 'basica'),
-    [ads]
-  );
-
   const handleOpenCreate = () => {
     if (accreditation.isLoading || accreditation.isApproved) {
       setIsCreateModalOpen(true);
@@ -266,23 +235,6 @@ export default function AdsManagementSection({ onNavigateToMural }) {
     loadAppointments();
   };
 
-  useEffect(() => {
-    const handleTokensUpdated = (e) => {
-      if (typeof e.detail === 'number') setTokensBalanceState(e.detail);
-    };
-    window.addEventListener(TOKENS_UPDATED_EVENT, handleTokensUpdated);
-    return () => window.removeEventListener(TOKENS_UPDATED_EVENT, handleTokensUpdated);
-  }, []);
-
-  // El saldo se consulta al montar y no crea movimientos en el monedero.
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchTokensBalance({ signal: controller.signal })
-      .then(setTokensBalanceState)
-      .catch(() => {});
-    return () => controller.abort();
-  }, []);
-
   const replaceAd = (saved) => {
     setAds((current) => current.map((ad) => (ad.id === saved.id ? saved : ad)));
   };
@@ -290,9 +242,8 @@ export default function AdsManagementSection({ onNavigateToMural }) {
   // No cierra el modal: `CreateAdModal` tiene que poder mostrar su pantalla de
   // "quedó en revisión", que es donde se explica que el anuncio todavia no esta
   // en el mural. Lo cierra el usuario, con su propio `onClose`.
-  const handleAdCreated = (created, balance) => {
+  const handleAdCreated = (created) => {
     setAds((current) => [created, ...current]);
-    setTokensBalanceState(balance);
     accreditation.refresh();
   };
 
@@ -300,35 +251,12 @@ export default function AdsManagementSection({ onNavigateToMural }) {
     replaceAd(saved);
   };
 
-  const handleUpgradeSuccess = (saved, balance) => {
+  const handleRenewSuccess = (saved) => {
     replaceAd(saved);
-    setTokensBalanceState(balance);
-  };
-
-  const handleRenewSuccess = (saved, balance) => {
-    replaceAd(saved);
-    setTokensBalanceState(balance);
-  };
-
-  /**
-   * "Activar mejoras": lleva del modal de mejora al formulario, ya sabiendo que
-   * funciones se acaban de desbloquear.
-   *
-   * El plan anterior lo entrega `UpgradeAdRankModal`, que lo congelo al montarse:
-   * para cuando se pulsa este boton, el anuncio de la lista ya quedo con el plan
-   * nuevo y la diferencia daria vacia.
-   */
-  const handleActivateFeatures = (saved, fromTier, toTier) => {
-    setUpgradedFromTier(fromTier);
-    setUpgradedToTier(toTier);
-    setAdToUpgrade(null);
-    setAdToEdit(saved);
   };
 
   const closeEditModal = () => {
     setAdToEdit(null);
-    setUpgradedFromTier(null);
-    setUpgradedToTier(null);
   };
 
   const handleDeleteConfirm = async () => {
@@ -362,13 +290,12 @@ export default function AdsManagementSection({ onNavigateToMural }) {
     const q = searchQuery.trim().toLowerCase();
     return ads.filter((ad) => {
       if (!status.match(ad)) return false;
-      if (tierFilter !== 'TODOS' && ad.tier !== tierFilter) return false;
       if (!q) return true;
       return [ad.title, ad.company, ad.commune].some(
         (field) => field && field.toLowerCase().includes(q)
       );
     });
-  }, [ads, searchQuery, statusFilter, tierFilter]);
+  }, [ads, searchQuery, statusFilter]);
 
   return (
     <div className="profile-panel ads-management-panel">
@@ -381,8 +308,8 @@ export default function AdsManagementSection({ onNavigateToMural }) {
                 Gestión de anuncios
               </h2>
               <p>
-                Publica servicios automotrices en el Mural, responde las reservas de hora que te
-                hacen y administra tus Monedas RepuesTop, todo desde un solo lugar.
+                Publica servicios automotrices en el Mural y responde las reservas de hora que te
+                hacen, todo desde un solo lugar.
               </p>
             </div>
 
@@ -465,15 +392,6 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           <ChevronRight size={15} className="ads-tile-arrow" />
         </button>
 
-        <button type="button" className="ads-tile" onClick={() => setIsHistoryModalOpen(true)}>
-          <span className="ads-tile-ic"><Clock3 size={18} /></span>
-          <span className="ads-tile-body">
-            <strong>Historial de Monedas</strong>
-            <em>Consulta tus movimientos</em>
-          </span>
-          <ChevronRight size={15} className="ads-tile-arrow" />
-        </button>
-
         <button
           type="button"
           className={`ads-tile ${isAccredited ? 'is-primary' : 'is-locked'}`}
@@ -535,17 +453,6 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           })}
         </div>
 
-        <select
-          className="mgmt-tier-select"
-          value={tierFilter}
-          onChange={(e) => setTierFilter(e.target.value)}
-          aria-label="Filtrar por plan"
-        >
-          <option value="TODOS">Todos los planes</option>
-          {AD_TIER_ORDER.map((tierId) => (
-            <option key={tierId} value={tierId}>{AD_TIERS[tierId].name}</option>
-          ))}
-        </select>
       </div>
 
       {/* El aviso de moderacion, una sola vez. Antes se repetia dentro de cada
@@ -565,7 +472,6 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           <thead>
             <tr>
               <th>Anuncio</th>
-              <th>Plan</th>
               <th>Estado</th>
               <th>Publicado el</th>
               <th>Vence el</th>
@@ -576,7 +482,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
           <tbody>
             {isLoading && ads.length === 0 && (
               <tr className="mgmt-table-msg">
-                <td colSpan={7}>
+                <td colSpan={6}>
                   <div className="ads-mgmt-state">
                     <Loader2 size={22} className="spin-icon" />
                     <p>Cargando tus anuncios…</p>
@@ -587,7 +493,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
 
             {!isLoading && loadError && (
               <tr className="mgmt-table-msg">
-                <td colSpan={7}>
+                <td colSpan={6}>
                   <div className="ads-mgmt-state is-error">
                     <AlertTriangle size={22} />
                     <p>{adErrorMessage(loadError, 'No pudimos cargar tus anuncios.')}</p>
@@ -601,7 +507,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
 
             {!isLoading && !loadError && filteredAds.length === 0 && (
               <tr className="mgmt-table-msg">
-                <td colSpan={7}>
+                <td colSpan={6}>
                   <div className="ads-mgmt-state">
                     <span className="ads-mgmt-empty-art"><PackageOpen size={26} /></span>
                     <strong>
@@ -612,7 +518,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
                     <p>
                       {ads.length === 0
                         ? 'Comienza publicando tu primer anuncio y llega a más clientes.'
-                        : 'Prueba con otro estado o plan.'}
+                        : 'Prueba con otro estado o término de búsqueda.'}
                     </p>
                     {ads.length === 0 && (
                       <button type="button" className="btn-post-ad" onClick={handleOpenCreate}>
@@ -626,7 +532,6 @@ export default function AdsManagementSection({ onNavigateToMural }) {
             )}
 
             {filteredAds.map((ad) => {
-              const tierConfig = AD_TIERS[ad.tier] || AD_TIERS.basica;
               // APROBADO pero apagado (dato antiguo o inconsistente): se pinta como
               // pendiente, no como publicado.
               const isWaitingRecheck = ad.moderationStatus === AD_MODERATION_STATUS.APROBADO && !ad.activo;
@@ -636,7 +541,6 @@ export default function AdsManagementSection({ onNavigateToMural }) {
               const expiry = getAdExpiryInfo(ad);
               const catObj = SERVICE_CATEGORIES.find((c) => c.id === ad.category);
               const coverPhoto = ad.images?.[0] || null;
-              const canUpgrade = getUpgradableTiers(ad.tier).length > 0;
               // Por anuncio se cuentan solo las citas vigentes, no todo su historial.
               const adAppointments = (receivedByAd.get(ad.id) || []).filter((item) => isAppointmentCurrent(item, now));
               const adPending = adAppointments.filter((item) => item.status === 'pending').length;
@@ -661,7 +565,6 @@ export default function AdsManagementSection({ onNavigateToMural }) {
                         </span>
                       </div>
                     </td>
-                    <td><span className={`mgmt-ad-plan plan-${ad.tier}`}>{tierConfig.name}</span></td>
                     <td>
                       <span
                         className={`mgmt-status-pill tone-${status.tone}`}
@@ -685,21 +588,12 @@ export default function AdsManagementSection({ onNavigateToMural }) {
                     </td>
                     <td className="col-actions">
                       <div className="mgmt-ad-actions">
-                        <button
-                          type="button"
-                          className="btn-mgmt-icon"
-                          onClick={() => setAdToUpgrade(ad)}
-                          disabled={!canUpgrade}
-                          title={canUpgrade ? 'Mejorar el plan con Monedas RepuesTop' : 'Ya está en el plan más alto'}
-                        >
-                          <Zap size={15} />
-                        </button>
                         {ad.moderationStatus === AD_MODERATION_STATUS.APROBADO && (
                           <button
                             type="button"
                             className="btn-mgmt-icon"
                             onClick={() => setAdToRenew(ad)}
-                            title="Agregar 30 días con Monedas RepuesTop"
+                            title="Agregar 30 días"
                           >
                             <Clock3 size={15} />
                           </button>
@@ -748,15 +642,15 @@ export default function AdsManagementSection({ onNavigateToMural }) {
 
                   {(isRejected || expiry?.isExpired) && (
                     <tr className="mgmt-ad-note-row">
-                      <td colSpan={7}>
+                      <td colSpan={6}>
                         <div className="mgmt-ad-note tone-danger">
                           {isRejected ? <XCircle size={14} /> : <CalendarClock size={14} />}
                           <div>
                             <strong>{isRejected ? 'Moderación rechazó este anuncio.' : 'Anuncio vencido.'}</strong>
                             <p>
                               {isRejected
-                                ? `${ad.rejectionReason || 'Sin motivo informado.'} Corrige los datos y se vuelve a revisar automáticamente al guardar.${resubmitCostNotice(ad.monedasParaReenviar)}`
-                                : 'Los anuncios duran 30 días en el mural. Usa el botón de reloj para agregar 30 días con Monedas RepuesTop.'}
+                                ? `${ad.rejectionReason || 'Sin motivo informado.'} Corrige los datos y se vuelve a revisar automáticamente al guardar.`
+                                : 'Los anuncios duran 30 días en el mural. Usa el botón de reloj para agregar 30 días.'}
                             </p>
                           </div>
                         </div>
@@ -779,34 +673,10 @@ export default function AdsManagementSection({ onNavigateToMural }) {
         />
       )}
 
-      <TokensHistoryModal
-        isOpen={isHistoryModalOpen}
-        onClose={() => setIsHistoryModalOpen(false)}
-      />
-
-      <RechargeTokensModal
-        isOpen={isRechargeModalOpen}
-        onClose={() => setIsRechargeModalOpen(false)}
-        onRechargeSuccess={(newBalance) => setTokensBalanceState(newBalance)}
-      />
-
-      {adToUpgrade && (
-        <UpgradeAdRankModal
-          ad={adToUpgrade}
-          tokensBalance={tokensBalance}
-          onClose={() => setAdToUpgrade(null)}
-          onOpenRechargeModal={() => setIsRechargeModalOpen(true)}
-          onUpgradeSuccess={handleUpgradeSuccess}
-          onActivateFeatures={handleActivateFeatures}
-        />
-      )}
-
       {adToRenew && (
         <RenewAdModal
           ad={adToRenew}
-          tokensBalance={tokensBalance}
           onClose={() => setAdToRenew(null)}
-          onOpenRechargeModal={() => setIsRechargeModalOpen(true)}
           onRenewSuccess={handleRenewSuccess}
         />
       )}
@@ -815,8 +685,6 @@ export default function AdsManagementSection({ onNavigateToMural }) {
         <EditAdModal
           ad={adToEdit}
           isOpen={Boolean(adToEdit)}
-          upgradedFromTier={upgradedFromTier}
-          upgradedToTier={upgradedToTier}
           accreditationProfile={accreditation.profile}
           onClose={closeEditModal}
           onAdUpdated={handleAdUpdated}
@@ -825,9 +693,7 @@ export default function AdsManagementSection({ onNavigateToMural }) {
 
       <CreateAdModal
         isOpen={isCreateModalOpen}
-        tokensBalance={tokensBalance}
         accreditationProfile={accreditation.profile}
-        hasUsedBasicFreePeriod={hasUsedBasicFreePeriod}
         onClose={() => setIsCreateModalOpen(false)}
         onAdCreated={handleAdCreated}
       />

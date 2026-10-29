@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Plus, ShieldCheck, Clock3 } from 'lucide-react';
-import { AD_TIERS } from '../../data/automotiveAdsData';
-import { createAd, fetchTokensBalance, adErrorMessage } from '../../services/adsStorage';
+import { createAd, adErrorMessage } from '../../services/adsStorage';
 import AdForm from './AdForm';
-import RechargeTokensModal from './RechargeTokensModal';
 
 /**
  * Publicar un anuncio en el Mural.
@@ -17,35 +15,21 @@ import RechargeTokensModal from './RechargeTokensModal';
 export default function CreateAdModal({
   isOpen,
   onClose,
-  tokensBalance = 0,
   accreditationProfile = null,
-  hasUsedBasicFreePeriod = false,
   onAdCreated
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [createdAd, setCreatedAd] = useState(null);
-  const [rechargeOpen, setRechargeOpen] = useState(false);
-  const [currentBalance, setCurrentBalance] = useState(tokensBalance);
-
-  useEffect(() => {
-    if (isOpen) setCurrentBalance(tokensBalance);
-  }, [isOpen, tokensBalance]);
-
   if (!isOpen) return null;
 
   const handleSubmit = async (draft) => {
     setIsSubmitting(true);
     setSubmitError('');
     try {
-      // El cobro ya no se hace aca: `AnuncioService.crear()` descuenta las Monedas
-      // del plan en la misma transaccion que el anuncio. Si el saldo no alcanza
-      // responde 422 y el anuncio no llega a existir, asi que ese error entra por
-      // el mismo `catch` y se muestra en el formulario. Antes se cobraba en el
-      // navegador despues del POST, y ese descuento no significaba nada.
       const created = await createAd(draft);
       setCreatedAd(created);
-      onAdCreated?.(created, await fetchTokensBalance());
+      onAdCreated?.(created);
     } catch (error) {
       setSubmitError(adErrorMessage(error, 'No se pudo publicar el anuncio.'));
     } finally {
@@ -56,7 +40,6 @@ export default function CreateAdModal({
   const handleClose = () => {
     setCreatedAd(null);
     setSubmitError('');
-    setRechargeOpen(false);
     onClose?.();
   };
 
@@ -103,14 +86,11 @@ export default function CreateAdModal({
 
             <AdForm
               mode="create"
-              tokensBalance={currentBalance}
               accreditationProfile={accreditationProfile}
-              hasUsedBasicFreePeriod={hasUsedBasicFreePeriod}
               isSubmitting={isSubmitting}
               submitError={submitError}
               onSubmit={handleSubmit}
               onCancel={handleClose}
-              onOpenRecharge={() => setRechargeOpen(true)}
             />
           </>
         ) : (
@@ -127,13 +107,12 @@ export default function CreateAdModal({
             <span className="create-ad-success-status">PENDIENTE DE VALIDACIÓN</span>
             <h3>Tu anuncio quedó en revisión</h3>
             <p>
-              Publicaste <strong>“{createdAd.title}”</strong> en el plan{' '}
-              <strong>{(AD_TIERS[createdAd.tier] || AD_TIERS.basica).name}</strong>. Nuestro equipo lo revisará antes de mostrarlo en el Mural.
+              Publicaste <strong>“{createdAd.title}”</strong>. Nuestro equipo lo revisará antes de mostrarlo en el Mural.
             </p>
 
             <div className="create-ad-success-summary">
               <div><span>Publicación</span><strong>{createdAd.title}</strong></div>
-              <div><span>Plan seleccionado</span><strong>{(AD_TIERS[createdAd.tier] || AD_TIERS.basica).name}</strong></div>
+              <div><span>Estado</span><strong>En revisión</strong></div>
             </div>
 
             <div className="create-ad-success-flow" aria-label="Proceso de publicación">
@@ -154,12 +133,6 @@ export default function CreateAdModal({
           </div>
         )}
       </div>
-      <RechargeTokensModal
-        isOpen={rechargeOpen}
-        origin="ANUNCIOS"
-        onClose={() => setRechargeOpen(false)}
-        onRechargeSuccess={setCurrentBalance}
-      />
     </div>,
     document.body
   );

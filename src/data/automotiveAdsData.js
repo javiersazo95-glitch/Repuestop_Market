@@ -21,9 +21,6 @@ export const SERVICE_CATEGORIES = [
   { id: 'climatizacion', label: 'Climatización', emoji: '❄️' },
   { id: 'cerrajeria-seguridad', label: 'Cerrajería y Seguridad', emoji: '🔑' },
   { id: 'servicios-inspeccion', label: 'Servicios de Inspección', emoji: '📋' },
-  { id: 'motos', label: 'Motos', emoji: '🏍️' },
-  { id: 'camiones-maquinaria', label: 'Camiones y Maquinaria', emoji: '🚚' },
-  { id: 'compra-venta-arriendo', label: 'Compra, Venta y Arriendo', emoji: '🚗' },
   { id: 'servicios-domicilio', label: 'Servicios a Domicilio', emoji: '🏠' },
   { id: 'otros-servicios', label: 'Otros Servicios Automotrices', emoji: '📦' }
 ];
@@ -193,16 +190,6 @@ export const AD_FEATURE_TAGS = [
   'Revisión técnica',
   'Certificación de gases',
   'Inspección pre-compra',
-  // Motos
-  'Mantención de motos',
-  'Repuestos para motos',
-  // Camiones y Maquinaria
-  'Mantención de camiones',
-  'Reparación de maquinaria pesada',
-  // Compra, Venta y Arriendo
-  'Compra de vehículos',
-  'Venta de vehículos',
-  'Arriendo de vehículos',
   // Servicios a Domicilio
   'Mecánico a domicilio',
   // Otros
