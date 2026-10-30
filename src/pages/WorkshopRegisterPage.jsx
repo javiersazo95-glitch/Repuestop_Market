@@ -3,9 +3,8 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Check, CheckCircle2, Eye, EyeOff, Lock, Mail, ShieldCheck, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AddressAutocompleteInput from '../components/AddressAutocompleteInput';
-import GoogleSignInButton from '../components/GoogleSignInButton';
 import { resolverUbicacionPorNombre } from '../services/geoLookup';
-import { decodeGoogleIdToken, tomarGoogleParaTaller } from '../utils/googleIdToken';
+import { tomarGoogleParaTaller } from '../utils/googleIdToken';
 import { formatRut, isValidRut } from '../services/adapters';
 import { ROUTES } from '../routes/paths';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
@@ -34,12 +33,12 @@ export default function WorkshopRegisterPage() {
   useDocumentTitle('Registra tu taller');
   const navigate = useNavigate();
   const location = useLocation();
-  const { isLoggedIn, loginWithGoogle, registerWorkshop, verifyRegisterEmail, resendRegisterCode } = useAuth();
+  const { isLoggedIn, registerWorkshop, verifyRegisterEmail, resendRegisterCode } = useAuth();
   const [form, setForm] = useState({ responsibleName: '', workshopName: '', taxId: '', giro: '', giroOtro: '', email: location.state?.email || '', phone: '', password: '', address: '' });
   const [place, setPlace] = useState(null);
   const [accepts, setAccepts] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  // Cuenta de Google elegida aqui o en el modal de acceso: { idToken, email, nombre, picture }.
+  // Cuenta de Google elegida en el modal de acceso, que es donde se pide: { idToken, email, nombre, picture }.
   const [google, setGoogle] = useState(() => tomarGoogleParaTaller());
   // Google ya entrega el nombre: queda escrito y se puede corregir.
   useEffect(() => {
@@ -54,18 +53,6 @@ export default function WorkshopRegisterPage() {
   if (isLoggedIn && !done) return <Navigate to={`${ROUTES.profile}/resumen`} replace />;
 
   const set = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
-
-  // Si ese Google ya tiene cuenta entra directo; si no, sigue aqui sin pedir correo ni contraseña.
-  const handleGoogleCredential = async (idToken) => {
-    setError('');
-    setBusy(true);
-    const result = await loginWithGoogle(idToken);
-    setBusy(false);
-    if (result.success) return;
-    const perfil = result.status === 404 || result.requiresRegistration ? decodeGoogleIdToken(idToken) : null;
-    if (!perfil) { setError(result.error || 'No pudimos verificar tu cuenta de Google.'); return; }
-    setGoogle({ ...perfil, idToken });
-  };
 
   const pickLocation = async ({ comuna, region }) => {
     const resolved = await resolverUbicacionPorNombre({ comuna, region });
@@ -157,7 +144,7 @@ export default function WorkshopRegisterPage() {
   return shell('Crear cuenta de taller', 'Ofrece tus servicios, comenta fallas y recibe citas. Los documentos de acreditación se suben después, desde tu perfil.', (
     <form className="auth-modal-body" onSubmit={submit}>
       {errorBox}
-      {google ? (
+      {google && (
         <div className="google-account-card">
           {google.picture
             ? <img src={google.picture} alt="" referrerPolicy="no-referrer" />
@@ -166,12 +153,8 @@ export default function WorkshopRegisterPage() {
             <strong>{google.nombre || 'Cuenta de Google'}</strong>
             <span>{google.email}</span>
           </div>
+          <button type="button" className="link-btn" style={{ marginLeft: 'auto', flexShrink: 0 }} onClick={() => setGoogle(null)}>Cambiar método</button>
         </div>
-      ) : (
-        <>
-          <GoogleSignInButton onCredential={handleGoogleCredential} disabled={busy} />
-          <div className="auth-divider"><span>o regístrate con tu correo</span></div>
-        </>
       )}
 
       <h3 className="taller-register-title">Tus datos</h3>
