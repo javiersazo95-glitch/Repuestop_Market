@@ -13,12 +13,27 @@ import '../styles/faults.css';
  * `/taller/registro`: crea la cuenta de un taller automotriz (rol propio). Pide los datos del responsable y del taller;
  * los documentos de acreditación se suben después desde el perfil. El correo se verifica con un código, como el resto.
  */
+// Giro comercial (el backend lo exige: AuthService.registrarTaller). Las mismas opciones que la app
+// (`mobile/app/(auth)/register-workshop.tsx`); "Otro" pide escribirlo, hasta 180 caracteres.
+const WORKSHOP_GIROS = [
+  'Mantenimiento y reparación de vehículos automotores',
+  'Diagnóstico automotriz',
+  'Electricidad y electrónica automotriz',
+  'Frenos, suspensión y dirección',
+  'Desabolladura y pintura automotriz',
+  'Neumáticos, alineación y balanceo',
+  'Mantención y reparación de motocicletas',
+  'Servicio automotriz a domicilio',
+  'Venta e instalación de repuestos y accesorios',
+];
+const OTHER_GIRO = 'other';
+
 export default function WorkshopRegisterPage() {
   useDocumentTitle('Registra tu taller');
   const navigate = useNavigate();
   const location = useLocation();
   const { isLoggedIn, registerWorkshop, verifyRegisterEmail, resendRegisterCode } = useAuth();
-  const [form, setForm] = useState({ responsibleName: '', workshopName: '', taxId: '', email: location.state?.email || '', phone: '', password: '', address: '' });
+  const [form, setForm] = useState({ responsibleName: '', workshopName: '', taxId: '', giro: '', giroOtro: '', email: location.state?.email || '', phone: '', password: '', address: '' });
   const [place, setPlace] = useState(null);
   const [accepts, setAccepts] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
@@ -41,14 +56,18 @@ export default function WorkshopRegisterPage() {
     setError('');
     if (!form.responsibleName.trim() || !form.workshopName.trim()) return setError('Indica tu nombre y el nombre del taller.');
     if (!isValidRut(form.taxId)) return setError('Ingresa un RUT válido (con dígito verificador).');
+    const giro = (form.giro === OTHER_GIRO ? form.giroOtro : form.giro).trim();
+    if (!giro) return setError(form.giro === OTHER_GIRO ? 'Describe el giro de tu taller.' : 'Selecciona el giro comercial de tu taller.');
     if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) return setError('Ingresa un correo válido.');
     if (!/^9\d{8}$/.test(form.phone.replace(/\D/g, ''))) return setError('Ingresa un celular chileno de 9 dígitos que empiece con 9.');
     if (form.password.length < 8) return setError('La contraseña debe tener al menos 8 caracteres.');
     if (!form.address.trim() || !/\d/.test(form.address) || !place) return setError('Escribe la dirección del taller con su número y elige una de las sugerencias para ubicar la comuna.');
     if (!accepts) return setError('Debes aceptar los Términos y Condiciones para crear tu cuenta.');
     setBusy(true);
+    const { giroOtro: _giroOtro, ...fields } = form;
     const result = await registerWorkshop({
-      ...form,
+      ...fields,
+      giro,
       phone: form.phone.replace(/\D/g, ''),
       acceptsTerms: true,
       direccion: { comunaId: place.comunaId, calleYNumero: form.address.trim() },
@@ -104,6 +123,16 @@ export default function WorkshopRegisterPage() {
           <label className="ft-field"><span>Nombre del responsable</span><input value={form.responsibleName} maxLength={80} onChange={set('responsibleName')} /></label>
           <label className="ft-field"><span>Nombre del taller</span><input value={form.workshopName} maxLength={120} onChange={set('workshopName')} /></label>
           <label className="ft-field"><span>RUT empresa o persona</span><input value={form.taxId} maxLength={12} placeholder="12.345.678-9" onChange={(e) => setForm((c) => ({ ...c, taxId: formatRut(e.target.value) }))} /></label>
+          <label className="ft-field"><span>Giro comercial</span>
+            <select value={form.giro} onChange={(e) => setForm((c) => ({ ...c, giro: e.target.value, giroOtro: e.target.value === OTHER_GIRO ? c.giroOtro : '' }))}>
+              <option value="">Selecciona el giro de tu taller</option>
+              {WORKSHOP_GIROS.map((item) => <option key={item} value={item}>{item}</option>)}
+              <option value={OTHER_GIRO}>Otro</option>
+            </select>
+          </label>
+          {form.giro === OTHER_GIRO && (
+            <label className="ft-field"><span>Especifica el giro de tu taller</span><input value={form.giroOtro} maxLength={180} placeholder="Describe la actividad del taller" onChange={set('giroOtro')} /></label>
+          )}
           <div className="ft-row">
             <label className="ft-field"><span>Correo</span><input type="email" value={form.email} maxLength={120} autoComplete="email" onChange={set('email')} /></label>
             <label className="ft-field"><span>Celular</span><input inputMode="numeric" value={form.phone} maxLength={9} placeholder="912345678" onChange={(e) => setForm((c) => ({ ...c, phone: e.target.value.replace(/\D/g, '') }))} /></label>

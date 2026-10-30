@@ -39,10 +39,10 @@ const textOf = (fault) => [
 
 function faultTypeOf(fault) {
   const selected = SERVICE_CATEGORIES.find((category) => category.id === fault.categoria && category.id !== 'TODAS');
-  if (selected) return { label: selected.label, key: 'category', emoji: selected.emoji };
+  if (selected) return { label: selected.label, key: 'category' };
   const text = textOf(fault);
   const match = FAULT_TYPES.find(([, pattern]) => pattern.test(text)) || FAULT_TYPES.at(-1);
-  return { label: match[0], key: match[2], emoji: null };
+  return { label: match[0], key: match[2] };
 }
 
 // El backend manda `diagnosticos` como cantidad (numero); las otras formas son de respuestas antiguas.
@@ -92,7 +92,7 @@ export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = 
       </div>
 
       <div className="ft-fault-detail">
-        <span className={`ft-type-pill is-${type.key}`}>{type.emoji ? <span aria-hidden="true">{type.emoji}</span> : <Wrench size={15} />} {type.label}</span>
+        <span className={`ft-type-pill is-${type.key}`}><Wrench size={15} /> {type.label}</span>
         <dl>
           <div><dt><Settings size={14} /> Tipo de falla</dt><dd>{fault.sintomas?.[0] || type.label}</dd></div>
           <div><dt><FileText size={14} /> Título del anuncio</dt><dd>{fault.titulo || 'Sin título'}</dd></div>
@@ -268,7 +268,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
 
             <fieldset className="ft-filter-group ft-type-filter">
               <legend><Wrench size={17} /> Tipo de falla</legend>
-              {SERVICE_CATEGORIES.filter((category) => category.id !== 'TODAS').map((category) => <label key={category.id} className="ft-check"><input type="checkbox" checked={selectedTypes.includes(category.id)} onChange={() => toggleType(category.id)} /> <span aria-hidden="true">{category.emoji}</span> {category.label}</label>)}
+              {SERVICE_CATEGORIES.filter((category) => category.id !== 'TODAS').map((category) => <label key={category.id} className="ft-check"><input type="checkbox" checked={selectedTypes.includes(category.id)} onChange={() => toggleType(category.id)} /> {category.label}</label>)}
             </fieldset>
 
             <button type="button" className="ft-btn ft-btn-outline" onClick={clearFilters}><RotateCcw size={16} /> Limpiar filtros</button>

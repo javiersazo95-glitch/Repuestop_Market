@@ -260,7 +260,7 @@ export default function FaultDetailPage() {
           </div>
 
           <div className="ft-detail-hero-copy">
-            <div className="ft-detail-title-row"><h1>{vehicleTitle}</h1><span className={`ft-type-pill is-${categoryKey}`}>{selectedCategory ? <span aria-hidden="true">{selectedCategory.emoji}</span> : <Wrench size={16} />} {category}</span></div>
+            <div className="ft-detail-title-row"><h1>{vehicleTitle}</h1><span className={`ft-type-pill is-${categoryKey}`}><Wrench size={16} /> {category}</span></div>
             <p className="ft-detail-vehicle-line">{[fault.anio, fault.combustible || fault.motor, fault.kilometraje != null ? `${fault.kilometraje.toLocaleString('es-CL')} km` : null].filter(Boolean).map((item) => <span key={item}>{item}</span>)}</p>
             <p className="ft-detail-lead">{fault.titulo || 'Falla automotriz sin título'}</p>
             <dl className="ft-detail-case-grid">

@@ -20,6 +20,7 @@ import NextStepsBanner from './NextStepsBanner';
 import AgendaConfigModal from './AgendaConfigModal';
 import PrincipalAgendaCard from './PrincipalAgendaCard';
 import TallerProfileEditor from './TallerProfileEditor';
+import ProfileWorkshopServicesPanel from '../workshop/ProfileWorkshopServicesPanel';
 import { fetchTaller } from '../../services/talleresStorage';
 import { getAgendaConfigs } from '../../services/agendaConfigsStorage';
 import { createDefaultAgendaConfig, PRINCIPAL_AGENDA_ID, PRINCIPAL_AGENDA_NAME } from '../../data/agendaConfig';
@@ -131,6 +132,8 @@ export default function MiTallerSection() {
   };
 
   const hasAgenda = Boolean(accreditation.onboarding?.agendaLista);
+  // «Próximos pasos» lleva a la sección de servicios de esta misma página.
+  const openServices = () => document.getElementById('taller-servicios')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const publicProfile = tallerId && accreditation.onboarding?.perfilPublicado
     ? tallerPath({ id: tallerId, name: accreditation.businessName })
     : null;
@@ -187,7 +190,7 @@ export default function MiTallerSection() {
         <NextStepsBanner
           onboarding={accreditation.onboarding}
           onOpenAgenda={openPrincipalAgenda}
-          onOpenProfile={() => document.getElementById('taller-editor-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          onOpenProfile={openServices}
         />
       )}
 
@@ -248,6 +251,7 @@ export default function MiTallerSection() {
       {accreditation.isApproved && (
         <>
           <PrincipalAgendaCard onSaved={() => { accreditation.refresh(); setProfileKey((key) => key + 1); }} />
+          <ProfileWorkshopServicesPanel embedded />
           <TallerProfileEditor
             key={profileKey}
             hasAgenda={hasAgenda}

@@ -58,40 +58,6 @@
 .taller-editor textarea { resize: vertical; }
 .taller-editor__counter { align-self: flex-end; margin-top: -6px; font-size: 11.5px; color: #94a3b8; }
 
-.taller-editor__services { display: flex; flex-direction: column; gap: 8px; }
-.taller-editor__service {
-  display: grid;
-  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-}
-.taller-editor__remove {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border: none;
-  border-radius: 9px;
-  background: #fee2e2;
-  color: #b91c1c;
-  cursor: pointer;
-}
-.taller-editor__add {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border: 1px dashed #0056bf;
-  border-radius: 10px;
-  background: #eaf2ff;
-  color: #0056bf;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.taller-editor__add:disabled { opacity: 0.5; cursor: default; }
-
 .taller-editor__chips { display: flex; flex-wrap: wrap; gap: 7px; }
 .taller-editor__chips button {
   padding: 6px 12px;
@@ -134,12 +100,23 @@
 .taller-editor__field small { font-size: 12px; color: #64748b; }
 .taller-editor__phone { display: flex; align-items: center; gap: 8px; }
 .taller-editor__phone span { padding: 9px 11px; border-radius: 10px; background: #f1f5f9; color: #475569; font-size: 13.5px; font-weight: 700; }
+.taller-editor__field > span { font-size: 13px; font-weight: 700; color: #1e293b; }
+.taller-editor__pair { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 14px; }
+
+.taller-editor__label { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; font-size: 13px; font-weight: 700; color: #1e293b; }
+.taller-editor__label small { font-size: 12px; font-weight: 600; color: #94a3b8; }
+
+.taller-editor__checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+.taller-editor__checks label {
+  display: flex; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid #e3eaf1; border-radius: 10px;
+  font-size: 13px; color: #1e293b; cursor: pointer;
+}
+.taller-editor__checks label.is-on { border-color: #0056bf; background: #eaf2ff; }
+.taller-editor__checks input { width: 16px; height: 16px; flex-shrink: 0; }
 .taller-editor__foot { display: flex; justify-content: flex-end; padding-top: 14px; border-top: 1px solid #edf1f5; }
 
 @media (max-width: 760px) {
   .taller-editor { padding: 14px; }
   .taller-editor__head { flex-direction: column; }
-  .taller-editor__service { grid-template-columns: 1fr 1fr; }
-  .taller-editor__service > input[type='text'] { grid-column: 1 / -1; }
-  .taller-editor__remove { grid-column: 1 / -1; width: 100%; }
+  .taller-editor__pair { grid-template-columns: 1fr; }
 }

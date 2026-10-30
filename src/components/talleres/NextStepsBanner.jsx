@@ -29,8 +29,8 @@ export default function NextStepsBanner({ onboarding, onOpenAgenda, onOpenProfil
           done={profileDone}
           Icon={Wrench}
           title="Completa tu perfil"
-          description="Agrega tus servicios con precio desde, fotos y marcas. Sin servicios publicados tu taller no aparece en el buscador."
-          actionLabel="Completar"
+          description="Agrega tus servicios con su precio y las marcas en que eres especialista. Sin servicios publicados tu taller no aparece en el buscador."
+          actionLabel="Agregar servicios"
           onClick={onOpenProfile}
         />
         <Step

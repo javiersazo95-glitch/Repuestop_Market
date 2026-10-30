@@ -54,6 +54,16 @@ export async function deleteWorkshopService(id) {
   return fetchApi(`/taller/servicios/${encodeURIComponent(String(id))}`, { method: 'DELETE' });
 }
 
+// --- Informacion breve del taller (`/taller/informacion`): descripcion, experiencia, equipamiento y garantia ---
+
+export async function getTallerInfo() {
+  return fetchApi('/taller/informacion');
+}
+
+export async function saveTallerInfo(payload) {
+  return fetchApi('/taller/informacion', { method: 'PUT', body: JSON.stringify(payload) });
+}
+
 // --- Servicio Diagnostico (`/taller/diagnostico`) ---
 
 export async function getDiagnosticStatus() {

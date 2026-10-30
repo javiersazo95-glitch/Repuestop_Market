@@ -111,7 +111,6 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
       setCategoryCatalog(items.map((item) => ({
         id: item.id,
         label: item.nombre,
-        emoji: SERVICE_CATEGORIES.find((category) => category.id === item.id)?.emoji || '🔧',
         subcategories: item.subcategorias || item.incluye || [],
       })));
     }).catch(() => {});
@@ -323,7 +322,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             {categoryCatalog.map((option) => {
               const selected = category === option.id;
               return <button key={option.id} type="button" className={`ft-category-option ${selected ? 'is-selected' : ''}`} aria-pressed={selected} onClick={() => { setCategory((current) => current === option.id ? '' : option.id); setSubcategory(''); }}>
-                <span aria-hidden="true">{option.emoji}</span><span>{option.label}</span>
+                <span>{option.label}</span>
               </button>;
             })}
           </div>

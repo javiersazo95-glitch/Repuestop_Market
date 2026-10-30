@@ -7,7 +7,7 @@ import {
   Clock, ShieldCheck, PackageCheck, Loader2, Inbox, Search,
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
-  ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, Wrench, Stethoscope, Settings
+  ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, Wrench, Stethoscope
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
 import VideoTutorialModal from './VideoTutorialModal';
@@ -58,7 +58,6 @@ import SellerWithdrawalsPanel, { isCompleteBankAccount } from './SellerWithdrawa
 import MiTallerSection from './talleres/MiTallerSection';
 import ProfileFavoritesPanel from './ProfileFavoritesPanel';
 import FaultsList from './faults/FaultsList';
-import ProfileWorkshopServicesPanel from './workshop/ProfileWorkshopServicesPanel';
 import AutomotiveServiceAccreditation from './AutomotiveServiceAccreditation';
 import ProfileDiagnosticPanel from './workshop/ProfileDiagnosticPanel';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
@@ -256,7 +255,6 @@ const WORKSHOP_SIDEBAR_GROUPS = [
     flag: 'market.perfil.taller.mi-taller',
     items: [
       { id: 'fallas_taller', label: 'Fallas automotrices', icon: EngineIcon },
-      { id: 'servicios_taller', label: 'Mis servicios', icon: Settings },
       { id: 'diagnostico', label: 'Servicio Diagnóstico', icon: Stethoscope },
       { id: 'mi_taller', label: 'Mi taller', icon: Wrench }
     ]
@@ -296,7 +294,7 @@ const WORKSHOP_SIDEBAR_GROUPS = [
 // abre la hoja con todos los grupos.
 const MOBILE_PRIMARY_TAB_IDS = {
   seller: ['resumen', 'pedidos', 'productos', 'chats_compradores'],
-  workshop: ['resumen', 'fallas_taller', 'servicios_taller', 'pedidos'],
+  workshop: ['resumen', 'fallas_taller', 'mi_taller', 'pedidos'],
   buyer: ['resumen', 'pedidos', 'cotizaciones', 'chats_vendedor'],
 };
 // Etiquetas cortas para la barra inferior (caben en ~70px); la hoja "Mas" y la app bar
@@ -1337,9 +1335,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     if (isWorkshop) {
       return [
         { id: 'fallas', tone: 'amber', icon: EngineIcon, title: 'Fallas automotrices', description: 'Revisa las fallas de los clientes y deja tu diagnóstico.', onClick: () => setActiveTab('fallas_taller') },
-        { id: 'servicios', tone: 'emerald', icon: Settings, title: 'Mis servicios', description: 'Registra tus servicios con su precio y tus marcas especialistas.', onClick: () => setActiveTab('servicios_taller') },
         { id: 'diagnostico', tone: 'purple', icon: Stethoscope, title: 'Servicio Diagnóstico', description: 'Ofrece agenda en tus comentarios. Gratis cada 10 necesidades de compra.', onClick: () => setActiveTab('diagnostico') },
-        { id: 'mi_taller', tone: 'sky', icon: Wrench, title: 'Mi taller', description: 'Muestra tus servicios con precio y atiende tus citas.', onClick: () => setActiveTab('mi_taller') },
+        { id: 'mi_taller', tone: 'sky', icon: Wrench, title: 'Mi taller', description: 'Tus servicios con precio, tu perfil y tus citas.', onClick: () => setActiveTab('mi_taller') },
         { id: 'subastas', tone: 'blue', icon: Gavel, title: 'Necesidades de compra', description: 'Publica los repuestos que necesitas y recibe ofertas.', onClick: () => setActiveTab('subastas') },
         { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte.', onClick: () => navigate(ROUTES.support) },
       ];
@@ -1921,7 +1918,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
               {activeTab === 'mi_taller' && <MiTallerSection />}
               {(activeTab === 'mis_fallas' || activeTab === 'fallas_taller') && <FaultsList heading={false} />}
-              {activeTab === 'servicios_taller' && isWorkshop && <ProfileWorkshopServicesPanel />}
+              {/* «Mis servicios» ahora vive dentro de Mi taller; la pestaña queda para enlaces antiguos. */}
+              {activeTab === 'servicios_taller' && isWorkshop && <MiTallerSection />}
               {activeTab === 'diagnostico' && isWorkshop && <ProfileDiagnosticPanel onOpenAds={() => setActiveTab('mi_taller')} />}
 
               {activeTab === 'retiros' && isSeller && (

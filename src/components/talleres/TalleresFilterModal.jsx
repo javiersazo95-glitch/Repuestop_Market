@@ -126,7 +126,7 @@ export default function TalleresFilterModal({
                   className={`ads-filter-chip ${selectedCategory === cat.id ? 'active' : ''}`}
                   onClick={() => setSelectedCategory(cat.id)}
                 >
-                  <span aria-hidden="true">{cat.emoji}</span> {cat.label}
+                  {cat.label}
                   {categoryCounts && cat.id !== 'TODAS' && <span className="filter-option-count"> ({categoryCounts[cat.id] || 0})</span>}
                 </button>
               ))}
