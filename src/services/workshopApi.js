@@ -17,8 +17,11 @@ export async function registerWorkshopApi(data) {
       giro: data.giro?.trim() || null,
       email: String(data.email || '').trim(),
       phone: String(data.phone || '').trim(),
-      password: data.password || '',
-      authProvider: 'EMAIL_PASSWORD',
+      password: data.idToken ? undefined : (data.password || ''),
+      // Con Google el backend verifica el idToken y toma el correo de ahi, no del formulario.
+      authProvider: data.idToken ? 'GOOGLE' : 'EMAIL_PASSWORD',
+      idToken: data.idToken || undefined,
+      userProfileUrl: data.userProfileUrl || undefined,
       acceptsTerms: data.acceptsTerms === true,
       termsVersion: LEGAL_VERSION_CODE,
       referral: data.referral?.trim().toUpperCase() || null,

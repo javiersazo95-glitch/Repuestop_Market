@@ -68,6 +68,32 @@ export function tomarGoogleParaTienda() {
   }
 }
 
+/** Lo mismo para `/taller/registro`, cuando la cuenta nueva es de taller. */
+const CLAVE_GOOGLE_TALLER = 'repuestop_google_pendiente_taller';
+
+export function guardarGoogleParaTaller(idToken) {
+  try {
+    sessionStorage.setItem(CLAVE_GOOGLE_TALLER, idToken);
+  } catch {
+    /* sin almacenamiento: /taller/registro ofrece Google de nuevo */
+  }
+}
+
+/**
+ * El perfil guardado para `/taller/registro`, o null. Se borra al leerlo.
+ * @returns {{ idToken: string, email: string, nombre: string, picture: string } | null}
+ */
+export function tomarGoogleParaTaller() {
+  try {
+    const idToken = sessionStorage.getItem(CLAVE_GOOGLE_TALLER);
+    sessionStorage.removeItem(CLAVE_GOOGLE_TALLER);
+    const perfil = idToken ? decodeGoogleIdToken(idToken) : null;
+    return perfil && idToken ? { ...perfil, idToken } : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Correo que escribió en el modal una tienda que intentó entrar como vendedor sin tener cuenta.
  * `/vender` lo usa para precargar el registro. sessionStorage y se borra al leerlo, igual que

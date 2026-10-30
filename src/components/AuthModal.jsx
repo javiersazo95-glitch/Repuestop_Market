@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Car, Store, ChevronRight, X, Eye, EyeOff, Lock, Mail,
   ShieldCheck, ArrowLeft, AlertCircle, CheckCircle2, UserPlus, LogIn, Check,
@@ -9,8 +9,8 @@ import { useAuth } from '../context/AuthContext';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import CaptadorCodeField, { useCaptadorCode } from './CaptadorCodeField';
 import { clearStoredCaptadorReferral, getStoredCaptadorReferral } from '../utils/captadorReferral';
-import { decodeGoogleIdToken, guardarCorreoParaTienda, guardarGoogleParaTienda } from '../utils/googleIdToken';
-import { GOOGLE_CLIENT_ID } from './founderConfig';
+import { decodeGoogleIdToken, guardarCorreoParaTienda, guardarGoogleParaTaller, guardarGoogleParaTienda } from '../utils/googleIdToken';
+import GoogleSignInButton from './GoogleSignInButton';
 import { lookupSellerByTaxId } from './founderApi';
 import { formatRut, isValidRut } from '../services/adapters';
 import { ROUTES } from '../routes/paths';
@@ -33,32 +33,6 @@ import {
 // producción a client ids distintos -- que es lo que permite restringir los orígenes autorizados
 // de cada uno -- arreglaba el registro de vendedor y dejaba este modal con el id de siempre.
 
-// Google Identity Services mantiene una única configuración global por página.
-// React puede montar efectos dos veces en desarrollo y el modal puede abrirse muchas
-// veces, por lo que initialize() no debe vivir dentro del ciclo de vida del botón.
-const googleIdentityState = {
-  initialized: false,
-  activeCredentialHandler: null,
-};
-
-function initializeGoogleIdentity(onCredential) {
-  if (!window.google?.accounts?.id) return false;
-
-  googleIdentityState.activeCredentialHandler = onCredential;
-  if (!googleIdentityState.initialized) {
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: (response) => {
-        if (response?.credential) {
-          googleIdentityState.activeCredentialHandler?.(response.credential);
-        }
-      },
-    });
-    googleIdentityState.initialized = true;
-  }
-  return true;
-}
-
 const BUYER_FEATURES = [
   'Busca repuestos compatibles por patente',
   'Cotiza en tiempo real con varias tiendas',
@@ -79,75 +53,6 @@ const SELLER_FEATURES = [
   'Administra pedidos, pagos y despachos',
   'Aparece como tienda verificada en la vitrina',
 ];
-
-function GoogleSignInButton({ onCredential, disabled }) {
-  const containerRef = useRef(null);
-  const credentialHandlerRef = useRef(onCredential);
-
-  useEffect(() => {
-    credentialHandlerRef.current = onCredential;
-  }, [onCredential]);
-
-  useEffect(() => {
-    if (disabled || !containerRef.current) return;
-
-    let cancelled = false;
-    const currentContainer = containerRef.current;
-    const credentialHandler = (credential) => credentialHandlerRef.current?.(credential);
-
-    const renderButton = () => {
-      if (cancelled || !currentContainer.isConnected || !initializeGoogleIdentity(credentialHandler)) return;
-      currentContainer.replaceChildren();
-      window.google.accounts.id.renderButton(currentContainer, {
-        type: 'standard',
-        theme: 'outline',
-        size: 'large',
-        shape: 'pill',
-        text: 'continue_with',
-        logo_alignment: 'left',
-        width: currentContainer.offsetWidth || 360,
-      });
-    };
-
-    if (window.google?.accounts?.id) {
-      renderButton();
-    } else {
-      // El script de Google Identity Services carga async; reintentamos hasta que esté listo.
-      const intervalId = setInterval(() => {
-        if (window.google?.accounts?.id) {
-          clearInterval(intervalId);
-          renderButton();
-        }
-      }, 200);
-      return () => {
-        cancelled = true;
-        clearInterval(intervalId);
-        if (googleIdentityState.activeCredentialHandler === credentialHandler) {
-          googleIdentityState.activeCredentialHandler = null;
-        }
-        currentContainer.replaceChildren();
-      };
-    }
-
-    return () => {
-      cancelled = true;
-      if (googleIdentityState.activeCredentialHandler === credentialHandler) {
-        googleIdentityState.activeCredentialHandler = null;
-      }
-      currentContainer.replaceChildren();
-    };
-  }, [disabled]);
-
-  if (disabled) {
-    return (
-      <button type="button" className="btn-auth-google" disabled title="Conectando...">
-        <span>Cargando Google Sign-In...</span>
-      </button>
-    );
-  }
-
-  return <div ref={containerRef} className="google-signin-container" />;
-}
 
 export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerRegister, onLoginSuccess }) {
   // El acceso comienza en login_form salvo cuando se abre directamente para crear cuenta o referido.
@@ -414,7 +319,8 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
   };
 
   /** El taller se registra en `/taller/registro` (RUT, direccion del taller), no con el registro de comprador. */
-  const goToWorkshopRegister = ({ email: correo } = {}) => {
+  const goToWorkshopRegister = ({ email: correo, googleIdToken } = {}) => {
+    if (googleIdToken) guardarGoogleParaTaller(googleIdToken);
     setErrorMessage(null);
     handleClose();
     navigate(ROUTES.workshopRegister, { state: correo ? { email: correo } : undefined });
@@ -734,6 +640,11 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
     // mismo Google, sin volver a preguntar el tipo de cuenta.
     if (perfil && selectedRole === 'SELLER') {
       goToSellerRegister({ googleIdToken: idToken });
+      return;
+    }
+    // Lo mismo con "Taller": sigue en `/taller/registro` con su cuenta de Google.
+    if (perfil && selectedRole === 'WORKSHOP') {
+      goToWorkshopRegister({ googleIdToken: idToken });
       return;
     }
     if (perfil) {
@@ -1135,7 +1046,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                 <div className="role-badge-tag">Para tiendas con inicio de actividades</div>
               </button>
               <button type="button" className="role-option-card workshop-card"
-                onClick={() => goToWorkshopRegister({ email: googlePending.email })}>
+                onClick={() => goToWorkshopRegister({ googleIdToken: googlePending.idToken })}>
                 <div className="role-card-header">
                   <div className="role-icon-box workshop-icon"><Wrench size={30} /></div>
                 </div>
