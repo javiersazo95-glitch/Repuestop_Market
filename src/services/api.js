@@ -2020,6 +2020,14 @@ export async function updateAppointmentStatusApi(appointmentId, status, reason) 
   });
 }
 
+/** El cliente califica al taller de una cita confirmada que ya comenzo (una vez por cita): estrellas 1-5 y comentario opcional. */
+export async function rateAppointmentWorkshopApi(appointmentId, stars, comment) {
+  return fetchApi(`/agendamientos/${appointmentId}/opinion`, {
+    method: 'POST',
+    body: JSON.stringify({ estrellas: stars, comentario: comment?.trim() || null })
+  });
+}
+
 /**
  * Mueve una cita propia a otro bloque del mismo taller. Una sola operacion en el backend:
  * cancela la anterior, crea la nueva enlazada y avisa al taller del cambio.

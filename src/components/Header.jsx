@@ -429,7 +429,10 @@ export default function Header({
                 </div>
                 <div className="user-dropdown-body">
                   <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.(); }}><LayoutDashboard size={15} /> Mi perfil</button>
-                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.('mi_taller'); }}>{role === 'BUYER' ? <><CalendarClock size={15} /> Mis citas</> : <><Wrench size={15} /> Mi taller</>}</button>
+                  {/* Las citas son de compradores (las piden) y talleres (las reciben): una tienda no las tiene. */}
+                  {(role === 'BUYER' || role === 'WORKSHOP') && (
+                    <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.('mi_taller'); }}>{role === 'BUYER' ? <><CalendarClock size={15} /> Mis citas</> : <><Wrench size={15} /> Mi taller</>}</button>
+                  )}
                   {isSellerAccount && (
                     <button className="dropdown-item" onClick={openInventoryPanel}><Package size={15} /> Panel de inventario</button>
                   )}

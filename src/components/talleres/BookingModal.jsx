@@ -80,7 +80,9 @@ import { apiErrorMessage } from '../../services/walletStorage';
 const HOME_SERVICE_PREFIX = 'Servicio a domicilio. Dirección del servicio: ';
 
 export default function BookingModal({ taller, initialService = null, onClose, onBooked, isRescheduling = false, rescheduleFromId = null, fromAppointment: fromAppointmentProp = null, fallaContext = null }) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  // Las citas las piden los compradores: una cuenta de taller las recibe, pero no las solicita.
+  const isWorkshopAccount = role === 'WORKSHOP';
   // Desde el diagnostico de una falla la cita parte con el vehiculo y el motivo ya cargados: se reusa
   // el mismo precargado que "reservar otra hora" (el servicio es el diagnostico de esa falla).
   const fromAppointment = fromAppointmentProp || (fallaContext ? {
@@ -276,11 +278,12 @@ export default function BookingModal({ taller, initialService = null, onClose, o
 
   // Los servicios del catálogo del taller (con el que se llegó, primero); en perfiles sin catálogo, sus etiquetas.
   const offeredServices = [...new Set([
+    // Desde una falla el servicio es el diagnostico, aunque el taller no lo tenga en su catalogo: va primero y
+    // parte marcado (antes solo aparecia sin catalogo y el contador decia "1 seleccionado" sin ninguna fila marcada).
+    ...(fallaContext ? ['Diagnóstico de la falla'] : []),
     ...(taller.services || []).map((service) => service.name),
     ...(taller.services?.length ? [] : (taller.features || [])),
     ...(initialService ? [initialService] : []),
-    // Desde una falla el servicio es el diagnostico, aunque el taller no lo tenga en su catalogo.
-    ...(fallaContext && !taller.services?.length ? ['Diagnóstico de la falla'] : []),
   ])].filter(Boolean).slice(0, 12);
   const offeredIcons = serviceIcons(offeredServices);
   const servicesLabel = selectedServices.join(', ');
@@ -309,14 +312,15 @@ export default function BookingModal({ taller, initialService = null, onClose, o
     if (!appointmentTime) missing.push('el bloque horario');
     if (!userName.trim()) missing.push('tu nombre completo');
     if (!userPhone.trim()) missing.push('tu teléfono de contacto');
+    if (!vehicleModel.trim()) missing.push('la marca y el modelo de tu vehículo');
     if (atHome && !serviceAddress.trim()) missing.push('la dirección del servicio a domicilio');
     if (!dataConfirmed) missing.push('confirmar que tus datos son correctos');
     return missing;
   };
 
-  const canSubmit = isLoggedIn && !isOwnTaller && agendaConfig
+  const canSubmit = isLoggedIn && !isOwnTaller && !isWorkshopAccount && agendaConfig
     && selectedServices.length > 0 && appointmentDate && appointmentTime
-    && userName.trim() && userPhone.trim() && dataConfirmed
+    && userName.trim() && userPhone.trim() && vehicleModel.trim() && dataConfirmed
     && (!atHome || serviceAddress.trim());
 
   /** Valida el formulario y abre el resumen previo a confirmar, como en la app. */
@@ -450,13 +454,19 @@ export default function BookingModal({ taller, initialService = null, onClose, o
                 'No puedes reservar una hora en tu propio taller. Para ver las reservas que recibiste, abre Mis citas en tu perfil.'
               )}
 
-              {isLoggedIn && !isOwnTaller && !agendaConfig && renderBlockedState(
+              {isLoggedIn && !isOwnTaller && isWorkshopAccount && renderBlockedState(
+                <AlertCircle size={30} />,
+                'Las citas las agendan los compradores',
+                'Con una cuenta de taller recibes citas, pero no las solicitas. Para reservar una hora en otro taller, usa una cuenta de comprador.'
+              )}
+
+              {isLoggedIn && !isOwnTaller && !isWorkshopAccount && !agendaConfig && renderBlockedState(
                 <Clock size={30} />,
                 'Este taller no tiene horarios publicados',
                 'El taller todavía no configuró su agenda en línea. Vuelve a revisar más adelante.'
               )}
 
-              {isLoggedIn && !isOwnTaller && agendaConfig && (
+              {isLoggedIn && !isOwnTaller && !isWorkshopAccount && agendaConfig && (
                 <form onSubmit={handleReview} className="bk-form">
                   {/* Taller al que se le agenda */}
                   <div className="bk-card bk-provider">
@@ -485,9 +495,12 @@ export default function BookingModal({ taller, initialService = null, onClose, o
 
                   {/* 1. Servicios */}
                   <section className="bk-card">
-                    <h5 className="bk-section-title"><Wrench size={17} /> Selecciona el servicio</h5>
+                    <h5 className="bk-section-title"><Wrench size={17} /> ¿Qué servicio necesitas?</h5>
                     {offeredServices.length > 0 ? (
                       <>
+                        <p className="bk-hint">
+                          {offeredServices.length > 1 ? 'Elige uno o más de los servicios que ofrece el taller.' : 'Este es el servicio que ofrece el taller para tu cita.'}
+                        </p>
                         <div className="bk-services">
                           {offeredServices.map((service, index) => {
                             const Icon = offeredIcons[index];
@@ -500,27 +513,33 @@ export default function BookingModal({ taller, initialService = null, onClose, o
                                 aria-pressed={isSelected}
                                 onClick={() => toggleService(service)}
                               >
-                                <Icon size={22} />
-                                <span>{service}</span>
+                                <span className="bk-service-check" aria-hidden="true">{isSelected && <Check size={13} />}</span>
+                                <Icon size={20} />
+                                <span className="bk-service-name">{service}</span>
                               </button>
                             );
                           })}
                         </div>
-                        {selectedServices.length > 0 && (
-                          <small className="bk-muted">{selectedServices.length} de {offeredServices.length} servicios seleccionados</small>
+                        {offeredServices.length > 1 && selectedServices.length > 0 && (
+                          <small className="bk-muted">
+                            {selectedServices.length} {selectedServices.length === 1 ? 'servicio seleccionado' : 'servicios seleccionados'}
+                          </small>
                         )}
                       </>
                     ) : (
-                      <label className="bk-field">
-                        <Wrench size={18} />
-                        <input
-                          type="text"
-                          maxLength={120}
-                          placeholder="¿Qué servicio necesitas? *"
-                          value={selectedServices[0] || ''}
-                          onChange={(e) => setSelectedServices(e.target.value ? [e.target.value] : [])}
-                        />
-                      </label>
+                      <div className="bk-group">
+                        <span className="bk-label">Servicio que necesitas <em aria-hidden="true">*</em></span>
+                        <label className="bk-field">
+                          <Wrench size={18} />
+                          <input
+                            type="text"
+                            maxLength={120}
+                            placeholder="Ej: Cambio de pastillas de freno"
+                            value={selectedServices[0] || ''}
+                            onChange={(e) => setSelectedServices(e.target.value ? [e.target.value] : [])}
+                          />
+                        </label>
+                      </div>
                     )}
                   </section>
 
@@ -587,19 +606,26 @@ export default function BookingModal({ taller, initialService = null, onClose, o
                   {/* 3. Datos del cliente */}
                   <section className="bk-card">
                     <h5 className="bk-section-title"><User size={18} /> Completa tus datos</h5>
-                    <span className="bk-required"><AlertCircle size={13} /> Los campos con * son obligatorios para agendar</span>
+                    <span className="bk-required"><em aria-hidden="true">*</em> Los campos marcados con asterisco son obligatorios</span>
 
-                    <label className="bk-field">
-                      <User size={18} />
-                      <input type="text" maxLength={160} placeholder="Nombre completo *" value={userName} onChange={(e) => setUserName(e.target.value)} />
-                    </label>
-                    <label className="bk-field">
-                      <Phone size={18} />
-                      <input type="tel" maxLength={40} placeholder="Teléfono de contacto *" value={userPhone} onChange={(e) => setUserPhone(e.target.value)} />
-                    </label>
+                    <div className="bk-group">
+                      <span className="bk-label">Nombre completo <em aria-hidden="true">*</em></span>
+                      <label className="bk-field">
+                        <User size={18} />
+                        <input type="text" maxLength={160} placeholder="Ej: Camila Prueba" aria-required="true" value={userName} onChange={(e) => setUserName(e.target.value)} />
+                      </label>
+                    </div>
+                    <div className="bk-group">
+                      <span className="bk-label">Teléfono de contacto <em aria-hidden="true">*</em></span>
+                      <label className="bk-field">
+                        <Phone size={18} />
+                        <input type="tel" maxLength={40} placeholder="Ej: +56 9 1234 5678" aria-required="true" value={userPhone} onChange={(e) => setUserPhone(e.target.value)} />
+                      </label>
+                    </div>
                     {/* El correo es el de la cuenta y no se edita: `AgendamientoService.crear()`
                         guarda siempre el de la sesión e ignora lo que venga en el request. */}
-                    <div>
+                    <div className="bk-group">
+                      <span className="bk-label">Correo</span>
                       <label className="bk-field is-locked">
                         <Mail size={18} />
                         <input type="email" value={accountEmail} readOnly disabled aria-label="Correo de tu cuenta" />
@@ -607,19 +633,26 @@ export default function BookingModal({ taller, initialService = null, onClose, o
                       </label>
                       <small className="bk-helper">Es el correo de tu cuenta. Ahí llega el resumen de la cita.</small>
                     </div>
+                    <div className="bk-group">
+                    <span className="bk-label">Patente del vehículo <small>Opcional</small></span>
                     <label className="bk-field">
                       <Tag size={18} />
-                      <input type="text" maxLength={20} placeholder="Patente del vehículo (opcional)" value={vehiclePatent} onChange={(e) => setVehiclePatent(e.target.value.toUpperCase())} />
+                      <input type="text" maxLength={20} placeholder="Ej: ABCD12" value={vehiclePatent} onChange={(e) => setVehiclePatent(e.target.value.toUpperCase())} />
                       {plateLookup === 'searching' && <Loader2 size={17} className="spin-icon" />}
                       {plateLookup === 'found' && <CheckCircle2 size={17} className="bk-ok" />}
                     </label>
+                    </div>
                     {plateLookup === 'searching' && <small className="bk-muted">Buscando el vehículo de esa patente…</small>}
-                    {plateLookup === 'found' && <div className="bk-plate-found"><Car size={16} /> Vehículo detectado: {vehicleModel}</div>}
+                    {plateLookup === 'found' && vehicleModel.trim() && <div className="bk-plate-found"><Car size={16} /> Vehículo detectado: {vehicleModel}</div>}
                     {plateLookup === 'not-found' && <small className="bk-muted">No pudimos detectar el vehículo de esa patente. Escribe la marca y el modelo.</small>}
-                    <label className="bk-field">
-                      <Car size={18} />
-                      <input type="text" maxLength={160} placeholder="Marca y modelo del vehículo (opcional)" value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} />
-                    </label>
+                    <div className="bk-group">
+                      <span className="bk-label">Marca y modelo del vehículo <em aria-hidden="true">*</em></span>
+                      <label className="bk-field">
+                        <Car size={18} />
+                        <input type="text" maxLength={160} placeholder="Ej: Toyota Yaris 2018" aria-required="true" value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} />
+                      </label>
+                      <small className="bk-helper">El taller lo usa para confirmar si trabaja con la marca de tu vehículo.</small>
+                    </div>
                     {/* Ranura "Servicio a domicilio": solo en talleres que lo ofrecen. Apagada por
                         defecto; al activarla se despliega la dirección donde está el vehículo, que
                         pasa a ser obligatoria. */}
@@ -642,22 +675,27 @@ export default function BookingModal({ taller, initialService = null, onClose, o
                     </label>
                     )}
                     {atHome && (
-                      <div className="bk-address">
+                      <div className="bk-group bk-address">
+                        <span className="bk-label">Dirección del servicio <em aria-hidden="true">*</em></span>
                         <AddressAutocompleteInput
                           value={serviceAddress}
                           onChange={setServiceAddress}
                           comuna={taller?.commune}
                           region={taller?.region}
                           requireComuna={false}
-                          placeholder="Dirección del servicio *"
+                          placeholder="Calle y número donde está el vehículo"
                           maxLength={200}
                         />
                       </div>
                     )}
-                    <label className="bk-field is-multiline">
-                      <FileText size={18} />
-                      <textarea rows={3} maxLength={2000} placeholder="Descripción breve del servicio solicitado" value={notes} onChange={(e) => setNotes(e.target.value)} />
-                    </label>
+                    <div className="bk-group">
+                      <span className="bk-label">Descripción del servicio <small>Opcional</small></span>
+                      <label className="bk-field is-multiline">
+                        <FileText size={18} />
+                        <textarea rows={3} maxLength={2000} placeholder="Cuéntale al taller qué necesitas" value={notes} onChange={(e) => setNotes(e.target.value)} />
+                      </label>
+                      <small className="bk-count">{notes.length}/2000</small>
+                    </div>
 
                     <button
                       type="button"
@@ -699,6 +737,7 @@ export default function BookingModal({ taller, initialService = null, onClose, o
                 <VoucherRow label="Día:" value={dateLabel} />
                 <VoucherRow label="Hora:" value={appointmentTime} />
                 <VoucherRow label="Lugar:" value={homeAddress ? `A domicilio · ${homeAddress}` : 'En el taller'} />
+                <VoucherRow label="Vehículo:" value={vehicleModel.trim()} />
                 <VoucherRow label="Nombre:" value={userName.trim()} />
                 <VoucherRow label="Correo:" value={accountEmail} />
               </div>
@@ -735,6 +774,7 @@ export default function BookingModal({ taller, initialService = null, onClose, o
                 <VoucherRow label="Servicio:" value={confirmedAppointment?.service || servicesLabel} />
                 <VoucherRow label="Fecha y hora:" value={`${dateLabel} a las ${confirmedAppointment?.time || appointmentTime}`} />
                 <VoucherRow label="Dirección taller:" value={[taller.address, taller.commune].filter(Boolean).join(', ') || 'Por confirmar con el taller'} />
+                <VoucherRow label="Vehículo:" value={vehicleModel.trim()} />
                 <VoucherRow label="Cliente:" value={`${userName.trim()} (${accountEmail})`} />
               </div>
               {(confirmedAppointment?.workshopPhone || confirmedAppointment?.workshopWhatsapp) && (

@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, CalendarClock, CalendarDays, Check, XCircle, Loader2, AlertTriangle,
-  Phone, Mail, Car, StickyNote, RotateCcw, Wrench, Clock, Settings, Home, Lock, MessageCircle } from 'lucide-react';
+  Phone, Mail, Car, StickyNote, RotateCcw, Wrench, Clock, Settings, Home, Lock, MessageCircle, Star } from 'lucide-react';
 import { confirmWhatsappContact } from '../../utils/whatsappContact';
 import {
   formatAgendaDateLong, getTimeUntilLabel, parseIsoDate, toIsoDate
@@ -13,7 +13,8 @@ import {
   getAppointmentChangeDeadline, isAppointmentChangeLocked
 } from '../../utils/appointmentHistory';
 import AppointmentReasonDialog from './AppointmentReasonDialog';
-import { updateAppointmentStatus } from '../../services/talleresStorage';
+import { updateAppointmentStatus, rateAppointmentWorkshop } from '../../services/talleresStorage';
+import WorkshopRatingDialog from './WorkshopRatingDialog';
 import { apiErrorMessage } from '../../services/walletStorage';
 import AppointmentsCalendarModal from './AppointmentsCalendarModal';
 import PrincipalAgendaCard from './PrincipalAgendaCard';
@@ -53,6 +54,8 @@ export default function AppointmentsHistoryModal({
   const [showHistory, setShowHistory] = useState(false);
   const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'cancelled' | 'past'
   const [reasonTarget, setReasonTarget] = useState(null); // { kind, appointment }
+  const [rateTarget, setRateTarget] = useState(null); // cita a calificar
+  const [givenRatings, setGivenRatings] = useState({}); // { [citaId]: estrellas } recien dadas
   // Cada minuto se reevalúa qué citas siguen vigentes: contadores y secciones se mueven solos.
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -87,10 +90,19 @@ export default function AppointmentsHistoryModal({
   // Taller acreditado → "Recibidas"; cliente sin taller → "Mis reservas". Solo un
   // enlace explícito (notificación) abre otra bandeja.
   const isProviderAccount = Boolean(myTaller) || received.length > 0;
+  // La bandeja se elige sola y se corrige si la cuenta resulta ser de taller (las citas o el taller llegan despues):
+  // antes podia quedar en «Mis reservas (0)» con una solicitud esperando en «Recibidas». Si la persona ya eligio una
+  // pestaña, o llego con un enlace explicito, no se toca.
+  const segmentChosenByUser = useRef(false);
   useEffect(() => {
     if (!tallerLoaded) return;
-    setSegment((current) => current || initialSegment || defaultAppointmentsSegment(myTaller));
-  }, [tallerLoaded, initialSegment, myTaller]);
+    setSegment((current) => {
+      if (initialSegment) return current || initialSegment;
+      if (segmentChosenByUser.current) return current;
+      return isProviderAccount ? 'recibidas' : defaultAppointmentsSegment(myTaller);
+    });
+  }, [tallerLoaded, initialSegment, myTaller, isProviderAccount]);
+  const chooseSegment = (next) => { segmentChosenByUser.current = true; setSegment(next); };
   const isResolving = segment === null;
 
   // Llegada desde una notificación: se abre la bandeja y la cita que corresponde.
@@ -98,6 +110,7 @@ export default function AppointmentsHistoryModal({
     if (!focusAppointmentId) return;
     const target = appointments.find((item) => String(item.id) === String(focusAppointmentId));
     if (!target) return;
+    segmentChosenByUser.current = true;
     setSegment(received.some((item) => item.id === target.id) ? 'recibidas' : 'pedidas');
     setShowHistory(!isAppointmentCurrent(target));
     setHistoryFilter('all');
@@ -186,6 +199,9 @@ export default function AppointmentsHistoryModal({
     const canProviderCancel = isReceived && meta.state === 'accepted';
     const lockedTitle = 'Falta menos de 24 horas para la cita: ya no se puede cancelar ni reagendar';
     const canBookAgain = !isReceived && !isCurrent && !appointment.rescheduledToId && Boolean(onRebook);
+    // Una cita confirmada que ya paso se califica una sola vez; despues se ve la nota dada.
+    const canRate = !isReceived && appointment.status === 'accepted' && meta.state === 'past';
+    const givenRating = givenRatings[appointment.id] ?? appointment.tallerRating ?? null;
     const isFocused = String(appointment.id) === String(focusAppointmentId);
     const services = appointment.services?.length ? appointment.services.join(', ') : appointment.service;
 
@@ -245,7 +261,8 @@ export default function AppointmentsHistoryModal({
           {appointment.homeService && (
             <p className="agenda-appointment-notes is-home"><Home size={12} /> A domicilio{appointment.homeAddress ? ` · ${appointment.homeAddress}` : ''}</p>
           )}
-          {appointment.notes && (
+          {/* Desde una falla la nota nace como "Falla: <titulo>", que ya se ve arriba como la falla de la cita. */}
+          {appointment.notes && !(appointment.fallaTitle && appointment.notes.trim() === `Falla: ${appointment.fallaTitle}`.trim()) && (
             <p className="agenda-appointment-notes"><StickyNote size={12} /> {appointment.notes}</p>
           )}
 
@@ -255,13 +272,25 @@ export default function AppointmentsHistoryModal({
               {appointment.cancelReason && !appointment.rescheduledToId ? ` Motivo: ${appointment.cancelReason}.` : ''}
             </p>
           )}
+          {isReceived && appointment.tallerRating && (
+            <p className="agenda-appointment-notes"><Star size={12} /> El cliente te calificó con {appointment.tallerRating}/5</p>
+          )}
           {changeNote && (
             <p className="agenda-appointment-notes">{changeLocked ? <Lock size={12} /> : <Clock size={12} />} {changeNote}</p>
           )}
         </div>
 
-        {(canRespond || canCancel || canProviderCancel || canBookAgain) && (
+        {(canRespond || canCancel || canProviderCancel || canBookAgain || canRate) && (
           <div className="agenda-appointment-actions">
+            {canRate && (givenRating ? (
+              <span className="appt-rated" aria-label={`Calificaste este taller con ${givenRating} de 5`}>
+                <Star size={14} /> Calificaste {givenRating}/5
+              </span>
+            ) : (
+              <button type="button" className="btn-mgmt-rate" onClick={() => setRateTarget(appointment)}>
+                <Star size={14} /> <span>Calificar taller</span>
+              </button>
+            ))}
             {canProviderCancel && (
               <button
                 type="button"
@@ -344,8 +373,8 @@ export default function AppointmentsHistoryModal({
         <div className={`booking-modal-card agenda-modal-card ${inline ? 'is-inline' : ''}`}>
           <div className="booking-modal-header">
             <div>
-              <h3><CalendarClock size={22} className="text-emerald-600" /> {customerOnly ? 'Mis citas' : 'Gestión de citas'}</h3>
-              <p>{customerOnly ? 'Las visitas que agendaste en talleres automotrices.' : 'Las horas que pediste y las que te reservaron, en un solo lugar.'}</p>
+              <h3><CalendarClock size={22} className="text-emerald-600" /> {customerOnly ? 'Mis citas' : 'Citas del taller'}</h3>
+              <p>{customerOnly ? 'Las visitas que agendaste en talleres automotrices.' : 'Las solicitudes y citas confirmadas de tus clientes, y el horario en que las recibes.'}</p>
             </div>
             {!inline && (
               <button
@@ -379,27 +408,31 @@ export default function AppointmentsHistoryModal({
           )}
 
           <div className="appt-history-toolbar">
-            {!customerOnly && (
+            {/* Un comprador solo tiene reservas (sin pestañas); un taller recibe citas y no las pide: «Mis reservas»
+                solo aparece si ya tuviera alguna de antes. */}
+            {!customerOnly && isProviderAccount && (
             <div className="appt-seg">
               <button
                 type="button"
                 className={segment === 'recibidas' ? 'active' : ''}
-                onClick={() => setSegment('recibidas')}
+                onClick={() => chooseSegment('recibidas')}
               >
                 Recibidas ({receivedSummary.current})
               </button>
-              <button
-                type="button"
-                className={segment === 'pedidas' ? 'active' : ''}
-                onClick={() => setSegment('pedidas')}
-              >
-                Mis reservas ({bookedSummary.current})
-              </button>
+              {booked.length > 0 && (
+                <button
+                  type="button"
+                  className={segment === 'pedidas' ? 'active' : ''}
+                  onClick={() => chooseSegment('pedidas')}
+                >
+                  Mis reservas ({bookedSummary.current})
+                </button>
+              )}
               {isProviderAccount && (
                 <button
                   type="button"
                   className={segment === 'agenda' ? 'active' : ''}
-                  onClick={() => setSegment('agenda')}
+                  onClick={() => chooseSegment('agenda')}
                 >
                   <Settings size={13} /> Configuración de agenda
                 </button>
@@ -506,6 +539,21 @@ export default function AppointmentsHistoryModal({
           message={reasonMessage}
           onConfirm={confirmReason}
           onClose={() => setReasonTarget(null)}
+        />
+      )}
+
+      {rateTarget && (
+        <WorkshopRatingDialog
+          workshopName={rateTarget.tallerName || 'Taller'}
+          onSubmit={async (stars, comment) => {
+            try {
+              await rateAppointmentWorkshop(rateTarget.id, stars, comment);
+            } catch (error) {
+              throw new Error(apiErrorMessage(error, 'No pudimos guardar tu opinión.'));
+            }
+            setGivenRatings((current) => ({ ...current, [rateTarget.id]: stars }));
+          }}
+          onClose={() => setRateTarget(null)}
         />
       )}
     </>

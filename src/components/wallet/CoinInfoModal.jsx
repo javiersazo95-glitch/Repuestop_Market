@@ -14,15 +14,23 @@ import RepuestopCoin from './RepuestopCoin';
  * Se abre desde el boton de informacion del monedero (`TokensWalletCard`).
  */
 
+// El texto cambia segun el perfil: una tienda usa las monedas en productos Top y un taller en su agendamiento.
 const VENTAJAS = [
   { Icon: Server, title: 'Moneda exclusiva', detail: 'de RepuesTop' },
   { Icon: ShieldCheck, title: 'Úsala para destacar', detail: 'tus repuestos' },
   { Icon: Rocket, title: 'Más visibilidad,', detail: 'más oportunidades' },
   { Icon: BarChart3, title: 'Impulsa tu negocio', detail: 'con RepuesTop' }
 ];
+const VENTAJAS_TALLER = [
+  { Icon: Server, title: 'Moneda exclusiva', detail: 'de RepuesTop' },
+  { Icon: ShieldCheck, title: 'Úsala para tu agenda', detail: 'de citas en línea' },
+  { Icon: Rocket, title: 'Más clientes,', detail: 'más oportunidades' },
+  { Icon: BarChart3, title: 'Impulsa tu taller', detail: 'con RepuesTop' }
+];
 
-export default function CoinInfoModal({ isOpen, onClose }) {
+export default function CoinInfoModal({ isOpen, onClose, isWorkshop = false }) {
   if (!isOpen) return null;
+  const perks = isWorkshop ? VENTAJAS_TALLER : VENTAJAS;
 
   return createPortal(
     <div
@@ -36,7 +44,7 @@ export default function CoinInfoModal({ isOpen, onClose }) {
         <div className="booking-modal-header">
           <div>
             <h3>Moneda RepuesTop</h3>
-            <p>La moneda oficial para productos Top · 1 moneda = $50 CLP.</p>
+            <p>{isWorkshop ? 'La moneda oficial para tu servicio de agendamiento' : 'La moneda oficial para productos Top'} · 1 moneda = $50 CLP.</p>
           </div>
           <button
             type="button"
@@ -62,7 +70,7 @@ export default function CoinInfoModal({ isOpen, onClose }) {
 
         {/* Las cuatro ventajas van en UNA sola fila, como en la lamina. */}
         <div className="coin-info-perks">
-          {VENTAJAS.map(({ Icon, title, detail }) => (
+          {perks.map(({ Icon, title, detail }) => (
             <div className="coin-info-perk" key={title}>
               <Icon size={18} />
               <b>{title}</b>
@@ -76,8 +84,9 @@ export default function CoinInfoModal({ isOpen, onClose }) {
           <div>
             <strong>¿Qué es la Moneda RepuesTop?</strong>
             <p>
-              Es la moneda oficial de RepuesTop que te permite mejorar la visibilidad de tus
-              repuestos con la insignia Top Ventas y llegar a más clientes.
+              {isWorkshop
+                ? 'Es la moneda oficial de RepuesTop que te permite activar tu servicio de agendamiento y recibir citas en línea de los clientes que registran su falla.'
+                : 'Es la moneda oficial de RepuesTop que te permite mejorar la visibilidad de tus repuestos con la insignia Top Ventas y llegar a más clientes.'}
             </p>
           </div>
         </div>

@@ -9,7 +9,7 @@
 import {
   getTalleresApi, getTallerApi, getMiTallerPerfilApi, updateMiTallerPerfilApi, uploadTallerPhotosApi, resolveMediaUrl,
   getTallerAppointmentsApi, getMyAppointmentsApi, createTallerAppointmentApi,
-  updateAppointmentStatusApi, sendAppointmentSummaryEmailsApi, rescheduleAppointmentApi,
+  updateAppointmentStatusApi, sendAppointmentSummaryEmailsApi, rescheduleAppointmentApi, rateAppointmentWorkshopApi,
 } from './api';
 import {
   adaptTaller, adaptTalleres, toTallerProfilePayload,
@@ -141,6 +141,12 @@ export async function updateAppointmentStatus(appointmentId, status, reason) {
   const updated = adaptAppointment(await updateAppointmentStatusApi(appointmentId, status, reason));
   notifyAppointmentsChanged();
   return updated;
+}
+
+/** Califica al taller de una cita ya realizada (una vez por cita). Avisa a las listas para que muestren la nota. */
+export async function rateAppointmentWorkshop(appointmentId, stars, comment) {
+  await rateAppointmentWorkshopApi(appointmentId, stars, comment);
+  notifyAppointmentsChanged();
 }
 
 /** Cambia la hora de una cita propia: el backend cancela la anterior y crea la nueva. */

@@ -132,7 +132,7 @@ export default function TokensWalletCard({
         </div>
       </div>
 
-      <CoinInfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
+      <CoinInfoModal isOpen={isInfoOpen} isWorkshop={isWorkshop} onClose={() => setIsInfoOpen(false)} />
     </div>
   );
 }

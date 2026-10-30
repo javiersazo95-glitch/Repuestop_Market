@@ -1478,7 +1478,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               <span>{isSeller ? 'Proveedor' : isWorkshop ? 'Taller' : 'Comprador'}</span>
             </div>
             <HeaderWalletButton variant="topbar" />
-            <ProfileAppointmentsButton user={user} />
+            {/* Las citas son de compradores y talleres; una tienda no las pide ni las recibe. */}
+            {!isSeller && <ProfileAppointmentsButton user={user} />}
             <ProfileNotificationsBell user={user} />
             <button className="btn-topbar-logout" onClick={handleLogout}>
               <LogOut size={15} />

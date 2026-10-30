@@ -105,13 +105,13 @@ const TARGETS = {
     : PROFILE('mi_taller')),
   // En la web la acreditación vive dentro de Mi taller (`AccreditationModal`).
   '/automotive-service-accreditation': () => PROFILE('mi_taller'),
-  // Notificaciones de cita (las crea el backend): abren "Mis citas" en la bandeja que
-  // corresponde, con la cita resaltada. Lo atiende `ProfileAppointmentsButton`.
+  // Notificaciones de cita (las crea el backend): abren la página de citas del perfil (`Mis citas` del comprador,
+  // `Mi taller > Citas` del taller) en la bandeja que corresponde, con la cita resaltada. Lo atiende `MiTallerSection`.
   '/appointments-history': (params) => {
     const query = new URLSearchParams({ citas: params?.segmento === 'received' ? 'recibidas' : 'pedidas' });
     if (params?.id) query.set('cita', params.id);
     // Con la pestaña explícita: `/perfil` a secas redirige a `/perfil/resumen` y pierde la consulta.
-    return `${PROFILE('resumen')}?${query.toString()}`;
+    return `${PROFILE('mi_taller')}?${query.toString()}`;
   },
 
   '/provider-verification-status': () => PROFILE('tienda_datos'),

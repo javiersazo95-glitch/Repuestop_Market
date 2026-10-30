@@ -789,6 +789,8 @@ export function adaptAppointment(dto) {
     fallaDescription: dto.fallaDescription || '',
     status: APPOINTMENT_STATUSES.includes(dto.status) ? dto.status : 'pending',
     createdAt: dto.createdAt || null,
+    // Nota (1 a 5) que el cliente le dio al taller por esta cita; null si aun no califica.
+    tallerRating: Number.isFinite(Number(dto.tallerRating)) && Number(dto.tallerRating) > 0 ? Number(dto.tallerRating) : null,
     isRedacted: !dto.customerName && !dto.customerUserId
   };
 }

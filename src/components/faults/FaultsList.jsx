@@ -206,8 +206,12 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
       <MapPin size={14} aria-hidden="true" /> Solo mi comuna ({myComuna})
     </button>
   ) : null;
+  // Con filtros puestos se sugiere limpiarlos; sin filtros simplemente aun no hay fallas abiertas.
+  const hasFilters = Boolean(searchText.trim() || query || locationMode !== 'all' || place || brand || model || yearFrom || yearTo || selectedTypes.length || onlyMyComuna);
   const empty = view === 'OPEN'
-    ? ['No encontramos fallas', 'Prueba cambiando o limpiando los filtros de búsqueda.']
+    ? (hasFilters
+      ? ['No encontramos fallas', 'Prueba cambiando o limpiando los filtros de búsqueda.']
+      : ['Aún no hay fallas abiertas', isWorkshop ? 'Cuando un cliente registre una falla, la verás aquí para dejar tu diagnóstico.' : 'Cuando alguien registre una falla, aparecerá aquí.'])
     : view === 'COMMENTED'
       ? ['Aún no dejas diagnósticos', 'Comenta una falla abierta para que el cliente conozca tu taller.']
       : ['No has registrado fallas', 'Cuéntanos qué le pasó a tu vehículo y los talleres te enviarán su diagnóstico.'];

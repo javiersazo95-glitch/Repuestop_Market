@@ -44,10 +44,12 @@ const ACCREDITATION_GATE_MESSAGE = {
  */
 export default function MiTallerSection() {
   const { role } = useAuth();
+  const [searchParams] = useSearchParams();
   if (role === 'BUYER') {
     return (
       <div className="profile-panel ads-management-panel">
-        <MyAppointmentsHub inline customerOnly initialSegment="pedidas" />
+        {/* `?cita=ID` (desde una notificacion) resalta esa cita en la lista. */}
+        <MyAppointmentsHub inline customerOnly initialSegment="pedidas" focusAppointmentId={searchParams.get('cita')} />
       </div>
     );
   }
@@ -136,6 +138,22 @@ function WorkshopSection() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams, accreditation.isLoading, accreditation.onboarding, openPrincipalAgenda]);
 
+  // Enlaces de las citas (boton del calendario y notificaciones): `?citas=abrir|recibidas|pedidas&cita=ID` abre la
+  // pestaña Citas, en esa bandeja y con la cita resaltada. Se consumen una sola vez.
+  const [focusCitaId, setFocusCitaId] = useState(null);
+  const [citasSegment, setCitasSegment] = useState(undefined);
+  useEffect(() => {
+    const citas = searchParams.get('citas');
+    if (!citas) return;
+    setActiveTab('citas');
+    setFocusCitaId(searchParams.get('cita'));
+    setCitasSegment(citas === 'recibidas' || citas === 'pedidas' ? citas : undefined);
+    const next = new URLSearchParams(searchParams);
+    next.delete('citas');
+    next.delete('cita');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const handleRebook = async (appointment) => {
     try {
       const taller = await fetchTaller(appointment.tallerId);
@@ -211,7 +229,7 @@ function WorkshopSection() {
       )}
 
       {/* Accesos rápidos, equivalente web de las "action tiles" de la app. */}
-      <div className="ads-mgmt-tiles">
+      <div className="ads-mgmt-tiles is-compact">
         {publicProfile ? (
           <Link className="ads-tile" to={publicProfile}>
             <span className="ads-tile-ic"><Eye size={18} /></span>
@@ -271,6 +289,8 @@ function WorkshopSection() {
           appointments={appointments}
           sessionUserId={sessionUserId}
           userEmail={user?.email || ''}
+          initialSegment={citasSegment}
+          focusAppointmentId={focusCitaId}
           onClose={() => setActiveTab('perfil')}
           onAppointmentUpdated={replaceAppointment}
           onRebook={handleRebook}

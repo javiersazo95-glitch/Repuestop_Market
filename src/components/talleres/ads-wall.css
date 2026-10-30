@@ -2674,6 +2674,15 @@
 
 .ads-mgmt-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; margin-bottom: 20px; }
 .ads-tile { display: flex; align-items: center; gap: 11px; padding: 13px 14px; border: 1px solid #e2e8f0; border-radius: 13px; background: #ffffff; text-align: left; cursor: pointer; transition: border-color .15s ease, transform .1s ease, box-shadow .15s ease; }
+/* Con pocos accesos (Mi taller: ver y compartir el perfil publico) van compactos, en una fila: antes cada uno
+   ocupaba un cuarto del ancho y el texto se partia en varias lineas. */
+.ads-mgmt-tiles.is-compact { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.ads-mgmt-tiles.is-compact .ads-tile { width: auto; padding: 7px 14px 7px 8px; gap: 8px; border-radius: 999px; }
+.ads-mgmt-tiles.is-compact .ads-tile { text-decoration: none; }
+.ads-mgmt-tiles.is-compact .ads-tile-ic { width: 28px; height: 28px; }
+.ads-mgmt-tiles.is-compact .ads-tile-body { flex: none; }
+.ads-mgmt-tiles.is-compact .ads-tile-body strong { white-space: nowrap; font-size: 13px; font-weight: 700; }
+.ads-mgmt-tiles.is-compact .ads-tile-body em, .ads-mgmt-tiles.is-compact .ads-tile-arrow { display: none; }
 .ads-tile:hover { border-color: #0066ff; box-shadow: 0 5px 16px -10px rgba(0, 102, 255, .5); }
 .ads-tile:active { transform: translateY(1px); }
 .ads-tile-ic { position: relative; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 38px; height: 38px; border-radius: 999px; background: #eff6ff; color: #0066ff; }
@@ -2960,6 +2969,26 @@
 .appt-reason-back { border: 1px solid #e2e8f0; background: #ffffff; color: #0066ff; }
 .appt-reason-confirm { border: none; background: #d92d20; color: #ffffff; }
 .appt-reason-actions button:disabled { opacity: .7; cursor: progress; }
+
+/* Calificar al taller de una cita realizada: estrellas, nota en palabras y comentario con contador. */
+.appt-rating-card .appt-rating-icon { align-self: center; display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; color: #b7791f; background: #fff7e6; }
+.appt-rating-stars { display: flex; justify-content: center; gap: 4px; padding-top: 2px; }
+.appt-rating-stars button { padding: 2px; border: 0; background: none; color: #cbd5e1; cursor: pointer; line-height: 0; }
+.appt-rating-stars button.is-on { color: #f5a524; }
+.appt-rating-stars button.is-on svg { fill: currentColor; }
+.appt-rating-stars button:focus-visible { outline: 2px solid #0066ff; outline-offset: 2px; border-radius: 6px; }
+.appt-rating-grade { text-align: center; min-height: 18px; font-size: 13px; font-weight: 700; color: #475569; }
+.appt-rating-comment { display: flex; flex-direction: column; gap: 4px; }
+.appt-rating-comment textarea { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 10px; font: inherit; font-size: 14px; color: #0f172a; resize: vertical; outline: none; }
+.appt-rating-comment textarea:focus { border-color: #0066ff; box-shadow: 0 0 0 3px rgba(0, 102, 255, .12); }
+.appt-rating-comment small { color: #64748b; font-weight: 500; }
+.appt-rating-count { align-self: flex-end; font-size: 12px; font-variant-numeric: tabular-nums; }
+.appt-rating-count.is-near { color: #9a5a00; font-weight: 700; }
+.appt-rating-note { font-size: 12px; color: #64748b; text-align: center; }
+.appt-rating-card .appt-reason-confirm { background: #0056bf; }
+.appt-rated { display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; border-radius: 999px; background: #fff7e6; color: #9a5a00; font-size: 12.5px; font-weight: 800; }
+.appt-rated svg { fill: #f5a524; color: #f5a524; }
+.btn-mgmt-rate { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 14px; border: 1px solid #0056bf; border-radius: 10px; background: #0056bf; color: #ffffff; font-size: 13px; font-weight: 800; cursor: pointer; }
 
 /* Acceso "Mis citas" junto a la campana, y notificaciones de cita */
 .profile-bell-count.is-pending { background: #f59e0b; color: #1f1300; }
@@ -4859,7 +4888,7 @@
    ============================================================ */
 .bk-overlay { background: rgba(0, 0, 0, .5); backdrop-filter: none; }
 .bk-sheet {
-  display: flex; flex-direction: column; width: 100%; max-width: 520px; max-height: 92vh; max-height: 92dvh;
+  display: flex; flex-direction: column; width: 100%; max-width: 720px; max-height: 92vh; max-height: 92dvh;
   overflow: hidden; border-radius: 20px; background: #f3f5f7; box-shadow: 0 24px 60px -20px rgba(15, 23, 42, .45);
   color: #243442; animation: bk-slide-up .25s ease-out;
 }
@@ -4891,11 +4920,21 @@
 
 .bk-section-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; font-weight: 700; color: #243442; }
 .bk-section-title svg { color: #0056bf; }
-.bk-services { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.bk-service { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 88px; padding: 12px 8px; border: 1px solid #d9e0e7; border-radius: 12px; background: #ffffff; color: #0056bf; cursor: pointer; }
-.bk-service span { font-size: 12px; font-weight: 600; line-height: 1.3; text-align: center; color: #243442; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.bk-service.is-selected { border-color: #0056bf; background: #0056bf; color: #ffffff; }
-.bk-service.is-selected span { color: #ffffff; font-weight: 700; }
+.bk-hint { margin: -4px 0 0; font-size: 12px; color: #5a6b7a; }
+.bk-services { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+/* Cada servicio es una fila con marca de seleccion a la izquierda: se entiende que se puede elegir. */
+.bk-service { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; min-height: 56px; padding: 10px 12px; border: 1px solid #d9e0e7; border-radius: 12px; background: #ffffff; color: #0056bf; text-align: left; cursor: pointer; }
+.bk-service svg { flex: none; }
+.bk-service-check { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border: 1.5px solid #9fb0c0; border-radius: 50%; background: #ffffff; color: #ffffff; }
+.bk-service-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; line-height: 1.3; color: #243442; }
+.bk-service.is-selected { border-color: #0056bf; background: #eaf2ff; }
+.bk-service.is-selected .bk-service-check { border-color: #0056bf; background: #0056bf; }
+.bk-service.is-selected .bk-service-name { color: #0056bf; font-weight: 700; }
+.bk-group { display: flex; flex-direction: column; gap: 5px; }
+.bk-label { font-size: 12.5px; font-weight: 700; color: #243442; }
+.bk-label em, .bk-required em { color: #d92d20; font-style: normal; font-weight: 800; }
+.bk-label small { font-weight: 500; color: #5a6b7a; }
+.bk-count { align-self: flex-end; font-size: 12px; color: #5a6b7a; font-variant-numeric: tabular-nums; }
 
 .bk-agenda-hint { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 8px; background: #eaf2ff; color: #0056bf; font-size: 12px; font-weight: 600; }
 .bk-month { display: flex; align-items: center; justify-content: space-between; }
@@ -4908,13 +4947,13 @@
 .bk-day.is-selected { background: #0056bf; color: #ffffff; font-weight: 800; }
 .bk-day.is-empty { cursor: default; }
 .bk-slots-title { margin-top: 4px; font-size: 14px; font-weight: 700; }
-.bk-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.bk-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .bk-slot { padding: 10px 0; border: 1px solid #d9e0e7; border-radius: 12px; background: #ffffff; color: #0056bf; font-size: 13px; font-weight: 700; cursor: pointer; }
 .bk-slot.is-selected { border-color: #0056bf; background: #0056bf; color: #ffffff; }
 .bk-locked-box { display: flex; align-items: center; gap: 8px; padding: 12px; border: 1px dashed #d9e0e7; border-radius: 12px; background: #f3f5f7; font-size: 12px; color: #5a6b7a; }
 .bk-warn { display: flex; align-items: center; gap: 6px; padding: 10px; border-radius: 8px; background: #fff7e6; color: #9a5a00; font-size: 12px; font-weight: 600; }
 
-.bk-required { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: #d92d20; }
+.bk-required { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: #5a6b7a; }
 .bk-field { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 12px; border: 1px solid #d9e0e7; border-radius: 12px; background: #ffffff; color: #8a97a5; }
 .bk-field:focus-within { border-color: #0056bf; box-shadow: 0 0 0 3px rgba(0, 86, 191, .12); }
 .bk-field input, .bk-field textarea { flex: 1; min-width: 0; padding: 12px 0; border: 0; outline: none; background: transparent; font: inherit; font-size: 15px; color: #243442; }

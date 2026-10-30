@@ -1,16 +1,41 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, Camera, Loader2, Trash2, X } from 'lucide-react';
+import { AlertCircle, Camera, CheckCircle2, CircleHelp, Loader2, Trash2, X } from 'lucide-react';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import { createFault, getFaultCategories, updateFault, uploadFaultPhoto } from '../../services/faultApi';
 import { resolveMediaUrl } from '../../services/api';
 import { isValidPlate, lookupVehicleByPlate, normalizePlate } from '../../utils/vehicleLookup';
-import { getComunasApi, getRegionesApi, searchVehicleByPatenteApi } from '../../services/api';
+import { getComunasApi, getRegionesApi, getVehicleBrandsApi, getVehicleModelsApi, getVehicleVersionsApi, searchVehicleByPatenteApi } from '../../services/api';
 import { normalizarNombreGeografico } from '../../services/geoLookup';
 import { useAuth } from '../../context/AuthContext';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import { MAX_MILEAGE, MIN_VEHICLE_YEAR, maxVehicleYear } from '../../utils/inputLimits';
+import CharCount from './CharCount';
+import { maskPlate } from '../../utils/usePlateLookup';
+import { ANIOS_DISPONIBLES } from '../../data/sampleVehicles';
+import { useCombustibles } from '../../data/vehicleOptions';
 import '../../styles/faults.css';
+
+const TITLE_MAX = 160;
+const DESCRIPTION_MAX = 2000;
+const BEFORE_MAX = 1000;
+const nameOf = (item) => item?.nombre || item?.name || '';
+
+/** Seccion numerada del formulario: titulo y una linea que explica que se pide ahi. */
+function FormSection({ number, title, hint, children }) {
+  return (
+    <section className="ft-section" aria-labelledby={`ft-section-${number}`}>
+      <header className="ft-section-head">
+        <span className="ft-section-num" aria-hidden="true">{number}</span>
+        <div>
+          <h3 id={`ft-section-${number}`}>{title}</h3>
+          {hint && <p>{hint}</p>}
+        </div>
+      </header>
+      {children}
+    </section>
+  );
+}
 
 const SYMPTOMS = [
   'Ruido extraño', 'Vibración', 'Humo', 'Luz de check engine', 'Pérdida de potencia', 'No parte',
@@ -36,9 +61,26 @@ const sameComuna = (a, b) => Boolean(a && b) && normalizarNombreGeografico(a) ==
 export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated, fault = null }) {
   const { user, role } = useAuth();
   const isEditing = Boolean(fault?.id);
+  // El vehiculo va primero: por patente (se identifica sola) o a mano con el catalogo, como en la busqueda de repuestos.
+  // `resolved` es el vehiculo ya definido ({ patente, marca, modelo, anio, version, motor }); sin el no se muestra el resto.
+  const [mode, setMode] = useState('plate');
   const [plate, setPlate] = useState('');
-  const [vehicle, setVehicle] = useState({ marca: '', modelo: '', anio: '', version: '', motor: '' });
-  const [lookingPlate, setLookingPlate] = useState(false);
+  const [plateStatus, setPlateStatus] = useState('idle');
+  const [resolved, setResolved] = useState(null);
+  // Busqueda manual: los mismos campos y orden que la del buscador del home (patente opcional, marca, modelo, año,
+  // version, combustible y chasis opcional).
+  const [brands, setBrands] = useState([]);
+  const [models, setModels] = useState([]);
+  const [versions, setVersions] = useState([]);
+  const [brandId, setBrandId] = useState('');
+  const [modelId, setModelId] = useState('');
+  const [manualYear, setManualYear] = useState('');
+  const [manualVersion, setManualVersion] = useState('');
+  const [manualFuel, setManualFuel] = useState('');
+  const [manualChassis, setManualChassis] = useState('');
+  const [manualPlate, setManualPlate] = useState('');
+  const [manualError, setManualError] = useState('');
+  const fuels = useCombustibles();
   const [mileage, setMileage] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -73,9 +115,10 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     const initialPlate = normalizePlate(fault.patente || '');
     lastPlate.current = initialPlate;
     setPlate(initialPlate);
-    setVehicle({
-      marca: fault.marca || '', modelo: fault.modelo || '', anio: fault.anio ? String(fault.anio) : '',
-      version: fault.version || '', motor: fault.motor || '',
+    setMode(initialPlate ? 'plate' : 'manual');
+    setResolved({
+      patente: initialPlate, marca: fault.marca || '', modelo: fault.modelo || '', anio: fault.anio ? String(fault.anio) : '',
+      version: fault.version || '', motor: fault.motor || '', combustible: fault.combustible || '', chasis: fault.chasis || '',
     });
     setMileage(fault.kilometraje != null ? String(fault.kilometraje) : '');
     setTitle(fault.titulo || '');
@@ -147,32 +190,82 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     return () => { active = false; };
   }, [regionId]);
 
-  // Con una patente completa los datos del vehiculo se rellenan solos.
+  // Con una patente completa se identifica el vehiculo y pasa a la tarjeta; si no se encuentra, se ofrece ingresarlo a mano.
   useEffect(() => {
+    if (resolved) return undefined;
     const normalized = normalizePlate(plate);
-    if (!isValidPlate(normalized)) { lastPlate.current = ''; return undefined; }
+    if (!isValidPlate(normalized)) { lastPlate.current = ''; setPlateStatus('idle'); return undefined; }
     if (normalized === lastPlate.current) return undefined;
     let active = true;
+    setPlateStatus('loading');
     const timer = setTimeout(async () => {
       lastPlate.current = normalized;
-      setLookingPlate(true);
       try {
         const data = await lookupVehicleByPlate(normalized, { searchVehicleByPatenteApi });
-        if (!active || !data) return;
-        setVehicle({
-          marca: data.marca || '', modelo: data.modelo || '', anio: data.anio ? String(data.anio) : '',
+        if (!active) return;
+        if (!data || !data.marca || !data.modelo) { setPlateStatus('notfound'); return; }
+        setPlateStatus('found');
+        setResolved({
+          patente: normalized, marca: data.marca, modelo: data.modelo, anio: data.anio ? String(data.anio) : '',
           version: data.version || '', motor: data.motor || '',
         });
       } catch {
-        // Sin consulta disponible el vehiculo se completa a mano.
-      } finally {
-        if (active) setLookingPlate(false);
+        if (active) setPlateStatus('notfound');
       }
     }, 350);
     return () => { active = false; clearTimeout(timer); };
-  }, [plate]);
+  }, [plate, resolved]);
+
+  // Catalogo de marcas y modelos para la busqueda manual (se carga solo si se usa).
+  useEffect(() => {
+    if (!isOpen || mode !== 'manual' || resolved || brands.length) return undefined;
+    let active = true;
+    getVehicleBrandsApi().then((list) => { if (active) setBrands(Array.isArray(list) ? list : []); }).catch(() => {});
+    return () => { active = false; };
+  }, [isOpen, mode, resolved, brands.length]);
+
+  useEffect(() => {
+    setModels([]);
+    if (!brandId) return undefined;
+    let active = true;
+    getVehicleModelsApi(brandId).then((list) => { if (active) setModels(Array.isArray(list) ? list : []); }).catch(() => {});
+    return () => { active = false; };
+  }, [brandId]);
+
+  const brandName = nameOf(brands.find((item) => String(item.id) === brandId));
+  const modelName = nameOf(models.find((item) => String(item.id || item.nombre) === modelId));
+
+  // La version depende del modelo y del año, igual que en el buscador del home.
+  useEffect(() => {
+    setVersions([]);
+    if (!brandName || !modelName || !manualYear) return undefined;
+    let active = true;
+    getVehicleVersionsApi({ marca: brandName, modelo: modelName, anioDesde: manualYear, anioHasta: manualYear })
+      .then((list) => { if (active) setVersions(Array.isArray(list) ? list : []); }).catch(() => {});
+    return () => { active = false; };
+  }, [brandName, modelName, manualYear]);
 
   if (!isOpen) return null;
+
+  const useManualVehicle = () => {
+    if (!brandName) return setManualError('Por favor selecciona la marca del vehículo.');
+    if (!modelName) return setManualError('Por favor selecciona el modelo del vehículo.');
+    if (!manualYear) return setManualError('Por favor selecciona el año del vehículo.');
+    const manualPlateNormalized = normalizePlate(manualPlate);
+    if (manualPlateNormalized && !isValidPlate(manualPlateNormalized)) return setManualError('Patente no válida. Formato: ABCD12 o BB-CL-12');
+    setManualError('');
+    return setResolved({
+      patente: manualPlateNormalized, marca: brandName, modelo: modelName, anio: manualYear, version: manualVersion, motor: '',
+      combustible: manualFuel, chasis: manualChassis.trim(),
+    });
+  };
+
+  const changeVehicle = () => {
+    setResolved(null);
+    setPlate('');
+    setPlateStatus('idle');
+    lastPlate.current = '';
+  };
 
   const toggleSymptom = (symptom) => setSymptoms((current) => (
     current.includes(symptom) ? current.filter((s) => s !== symptom) : (current.length >= MAX_SYMPTOMS ? current : [...current, symptom])));
@@ -211,8 +304,8 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     event.preventDefault();
     setError('');
     if (!isEditing && role !== 'BUYER') return setError('Solo los perfiles Comprador pueden registrar fallas automotrices.');
-    if (!isValidPlate(normalizePlate(plate))) return setError('Ingresa la patente de tu vehículo.');
-    if (!vehicle.marca.trim() || !vehicle.modelo.trim()) return setError('Indica la marca y el modelo de tu vehículo.');
+    if (!resolved?.marca || !resolved?.modelo) return setError('Indica tu vehículo con la patente o a mano.');
+    const vehicle = resolved;
     if (!vehiclePhoto) return setError('Agrega una foto del vehículo; será la imagen principal del aviso.');
     if (!title.trim()) return setError('Resume la falla en una frase, por ejemplo "Ruido al frenar".');
     if (!description.trim()) return setError('Cuéntanos qué le pasó a tu vehículo.');
@@ -228,12 +321,14 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     setSaving(true);
     try {
       const payload = {
-        patente: normalizePlate(plate),
+        patente: vehicle.patente || null,
         marca: vehicle.marca.trim(),
         modelo: vehicle.modelo.trim(),
         anio: vehicle.anio ? parseInt(vehicle.anio, 10) : null,
-        version: vehicle.version.trim() || null,
-        motor: vehicle.motor.trim() || null,
+        version: vehicle.version?.trim() || null,
+        motor: vehicle.motor?.trim() || null,
+        combustible: vehicle.combustible?.trim() || null,
+        chasis: vehicle.chasis?.trim() || null,
         kilometraje: Number.isFinite(km) ? km : null,
         titulo: title.trim(),
         categoria: category || null,
@@ -271,6 +366,114 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         </div>
         <p className="ft-sub">{isEditing ? 'Actualiza la información de tu falla para que los talleres tengan los antecedentes correctos.' : 'Cuéntanos qué le pasó a tu vehículo antes del fallo. Los talleres acreditados te enviarán su diagnóstico y tú decides con cuál agendar.'}</p>
 
+        <FormSection number={1} title="Tu vehículo" hint={resolved ? 'Verifica sus datos y agrega la foto que será la portada del aviso.' : 'Indícalo con la patente o ingrésalo a mano.'}>
+        {resolved ? (
+          <div className="ft-vehicle-card">
+            <div className="ft-vehicle-head">
+              <span><CheckCircle2 size={16} /> {resolved.patente ? 'Vehículo identificado' : 'Vehículo ingresado a mano'}</span>
+              <button type="button" className="ft-link" onClick={changeVehicle}>{resolved.patente ? 'Cambiar patente' : 'Cambiar vehículo'}</button>
+            </div>
+            <dl>
+              {[['Patente', maskPlate(resolved.patente)], ['Marca', resolved.marca], ['Modelo', resolved.modelo], ['Año', resolved.anio], ['Versión', resolved.version], ['Combustible', resolved.combustible], ['Chasis', resolved.chasis]]
+                .filter(([, value]) => value).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+            </dl>
+          </div>
+        ) : (
+          <div className="ft-vehicle-step">
+            <div className="ft-field">
+              <div className="ft-tabs" role="tablist" aria-label="Cómo indicar el vehículo">
+                <button type="button" role="tab" aria-selected={mode === 'plate'} className={`ft-tab ${mode === 'plate' ? 'is-active' : ''}`} onClick={() => setMode('plate')}>Por patente</button>
+                <button type="button" role="tab" aria-selected={mode === 'manual'} className={`ft-tab ${mode === 'manual' ? 'is-active' : ''}`} onClick={() => setMode('manual')}>Búsqueda manual</button>
+              </div>
+            </div>
+            {mode === 'plate' ? (
+              <label className="ft-field">
+                <span>Patente</span>
+                <input value={plate} maxLength={8} autoCapitalize="characters" autoComplete="off" spellCheck={false} placeholder="ABCD12" autoFocus
+                  onChange={(e) => setPlate(e.target.value.toUpperCase().replace(/[^A-Z0-9-\s]/g, ''))} />
+                {plateStatus === 'loading' && <small><Loader2 size={12} className="spin-icon" /> Consultando patente…</small>}
+                {plateStatus === 'notfound' && <small>No pudimos identificar esta patente. Revísala o <button type="button" className="ft-link" onClick={() => setMode('manual')}>ingresa los datos a mano</button>.</small>}
+                {(plateStatus === 'idle') && <small>Con tu patente obtenemos la marca, el modelo y el año. ¿No la tienes a mano? <button type="button" className="ft-link" onClick={() => setMode('manual')}>Ingresa el vehículo a mano</button>.</small>}
+              </label>
+            ) : (
+              <div className="hero-manual-form">
+                <div className="hero-manual-grid">
+                  <div className="hero-manual-field">
+                    <div className="field-label-with-tooltip">
+                      <label>Patente (opcional)</label>
+                      <span className="field-tooltip-trigger" tabIndex={0} aria-label="Información sobre patente opcional">
+                        <CircleHelp size={13} />
+                        <span className="field-tooltip-box">Si la ingresas, los talleres la usan para identificar tu vehículo. Nunca se muestra a otros usuarios.</span>
+                      </span>
+                    </div>
+                    <div className="plate-input-with-counter">
+                      <input type="text" className="hero-manual-input" placeholder="Ej: ABCD-12" value={manualPlate} maxLength={8}
+                        onChange={(e) => setManualPlate(e.target.value.toUpperCase().replace(/[^A-Z0-9-\s]/g, ''))} />
+                      <span className="plate-char-counter">{manualPlate.length}/8</span>
+                    </div>
+                  </div>
+                  <div className="hero-manual-field">
+                    <label>Marca</label>
+                    <select className="hero-manual-select" value={brandId}
+                      onChange={(e) => { setBrandId(e.target.value); setModelId(''); setManualVersion(''); }}>
+                      <option value="">{brands.length ? 'Seleccionar' : 'Cargando...'}</option>
+                      {brands.map((item) => <option key={item.id} value={item.id}>{nameOf(item)}</option>)}
+                    </select>
+                  </div>
+                  <div className="hero-manual-field">
+                    <label>Modelo</label>
+                    <select className="hero-manual-select" value={modelId} disabled={!brandId}
+                      onChange={(e) => { setModelId(e.target.value); setManualVersion(''); }}>
+                      <option value="">Seleccionar</option>
+                      {models.map((item, index) => <option key={item.id || `${item.nombre}-${index}`} value={item.id || item.nombre}>{nameOf(item)}</option>)}
+                    </select>
+                  </div>
+                  <div className="hero-manual-field">
+                    <label>Año</label>
+                    <select className="hero-manual-select" value={manualYear} disabled={!modelId} onChange={(e) => { setManualYear(e.target.value); setManualVersion(''); }}>
+                      <option value="">Seleccionar</option>
+                      {ANIOS_DISPONIBLES.map((year) => <option key={year} value={year}>{year}</option>)}
+                    </select>
+                  </div>
+                  <div className="hero-manual-field">
+                    <label>Versión</label>
+                    <select className="hero-manual-select" value={manualVersion} disabled={!modelName || !manualYear} onChange={(e) => setManualVersion(e.target.value)}>
+                      <option value="">Seleccionar</option>
+                      {versions.map((item, index) => <option key={item.id || index} value={nameOf(item)}>{nameOf(item)}</option>)}
+                    </select>
+                  </div>
+                  <div className="hero-manual-field">
+                    <label>Combustible</label>
+                    <select className="hero-manual-select" value={manualFuel} onChange={(e) => setManualFuel(e.target.value)}>
+                      <option value="">Seleccionar</option>
+                      {fuels.map((fuel) => <option key={fuel} value={fuel}>{fuel}</option>)}
+                    </select>
+                  </div>
+                  <div className="hero-manual-field full-width">
+                    <div className="field-label-with-tooltip">
+                      <label>Nro Chasis (opcional)</label>
+                      <span className="field-tooltip-trigger" tabIndex={0} aria-label="Información sobre número de chasis">
+                        <CircleHelp size={13} />
+                        <span className="field-tooltip-box">Con este dato los talleres pueden validar con mayor precisión la compatibilidad exacta de tu vehículo.</span>
+                      </span>
+                    </div>
+                    <input type="text" className="hero-manual-input" placeholder="Ej: Número de chasis (VIN)" value={manualChassis} maxLength={30}
+                      onChange={(e) => setManualChassis(e.target.value.toUpperCase())} />
+                    <span className="field-help-text">Permite a los talleres confirmar la compatibilidad técnica exacta del vehículo.</span>
+                  </div>
+                </div>
+                {manualError && <p className="ft-error" role="alert"><AlertCircle size={15} /> {manualError}</p>}
+                <button type="button" className="btn-hero-manual-submit" disabled={!brandName || !modelName || !manualYear} onClick={useManualVehicle}>
+                  <CheckCircle2 size={18} /><span>Usar este vehículo</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {resolved && (<>
+        <label className="ft-field"><span>Kilometraje <small>Opcional</small></span><input inputMode="numeric" value={mileage} maxLength={7} placeholder="Ej: 85000" onChange={(e) => setMileage(e.target.value.replace(/\D/g, ''))} /></label>
+
         <div className="ft-field">
           <span>Foto del vehículo <small>Una imagen · será la portada del aviso</small></span>
           <div className="ft-photos">
@@ -295,34 +498,25 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             )}
           </div>
         </div>
+        </>)}
+        </FormSection>
 
-        <label className="ft-field">
-          <span>Patente</span>
-          <input value={plate} maxLength={8} autoCapitalize="characters" placeholder="ABCD12"
-            onChange={(e) => setPlate(e.target.value.toUpperCase().replace(/[^A-Z0-9-\s]/g, ''))} />
-          <small>{lookingPlate ? 'Consultando patente…' : 'Completamos la marca, el modelo y el año por ti.'}</small>
-        </label>
-        <div className="ft-row">
-          <label className="ft-field"><span>Marca</span><input value={vehicle.marca} maxLength={100} onChange={(e) => setVehicle({ ...vehicle, marca: e.target.value })} /></label>
-          <label className="ft-field"><span>Modelo</span><input value={vehicle.modelo} maxLength={100} onChange={(e) => setVehicle({ ...vehicle, modelo: e.target.value })} /></label>
-        </div>
-        <div className="ft-row">
-          <label className="ft-field"><span>Año</span><input inputMode="numeric" value={vehicle.anio} maxLength={4} onChange={(e) => setVehicle({ ...vehicle, anio: e.target.value.replace(/\D/g, '') })} /></label>
-          <label className="ft-field"><span>Kilometraje <small>Opcional</small></span><input inputMode="numeric" value={mileage} maxLength={7} onChange={(e) => setMileage(e.target.value.replace(/\D/g, ''))} /></label>
-        </div>
+        {resolved && (<>
+        <FormSection number={2} title="Qué le pasa" hint="Cuéntalo con tus palabras; mientras más detalle, mejor el diagnóstico.">
+        <label className="ft-field"><span>Título de la falla</span><input value={title} maxLength={TITLE_MAX} placeholder="Ej: Ruido metálico al frenar" onChange={(e) => setTitle(e.target.value)} /><CharCount value={title} max={TITLE_MAX} /></label>
+        <label className="ft-field"><span>Qué pasó</span><textarea rows={4} value={description} maxLength={DESCRIPTION_MAX} placeholder="Describe lo que notas y cuándo ocurre" onChange={(e) => setDescription(e.target.value)} /><CharCount value={description} max={DESCRIPTION_MAX} /></label>
+        <label className="ft-field"><span>Qué pasaba antes del fallo <small>Opcional</small></span><textarea rows={3} value={before} maxLength={BEFORE_MAX} placeholder="Mantenciones recientes, golpes, luces encendidas…" onChange={(e) => setBefore(e.target.value)} /><CharCount value={before} max={BEFORE_MAX} /></label>
+        </FormSection>
 
-        <label className="ft-field"><span>Título de la falla</span><input value={title} maxLength={160} placeholder="Ej: Ruido metálico al frenar" onChange={(e) => setTitle(e.target.value)} /></label>
-        <label className="ft-field"><span>Qué pasó</span><textarea rows={4} value={description} maxLength={2000} placeholder="Describe lo que notas y cuándo ocurre" onChange={(e) => setDescription(e.target.value)} /></label>
-        <label className="ft-field"><span>Qué pasaba antes del fallo <small>Opcional</small></span><textarea rows={3} value={before} maxLength={1000} placeholder="Mantenciones recientes, golpes, luces encendidas…" onChange={(e) => setBefore(e.target.value)} /></label>
-
+        <FormSection number={3} title="Clasifica la falla" hint="Opcional: ayuda a que lleguen los talleres indicados.">
         <div className="ft-field">
           <span>Posible categoría <small>Opcional</small></span>
           <small>Si no sabes cuál elegir, no pasa nada: puedes dejarla sin seleccionar. Los talleres te ayudarán a identificarla.</small>
-          <div className="ft-category-options">
+          <div className="ft-chips">
             {categoryCatalog.map((option) => {
               const selected = category === option.id;
-              return <button key={option.id} type="button" className={`ft-category-option ${selected ? 'is-selected' : ''}`} aria-pressed={selected} onClick={() => { setCategory((current) => current === option.id ? '' : option.id); setSubcategory(''); }}>
-                <span>{option.label}</span>
+              return <button key={option.id} type="button" className={`ft-chip is-toggle is-pick ${selected ? 'is-on' : ''}`} aria-pressed={selected} onClick={() => { setCategory((current) => current === option.id ? '' : option.id); setSubcategory(''); }}>
+                {option.label}
               </button>;
             })}
           </div>
@@ -339,26 +533,24 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         </div>
 
         <div className="ft-field">
-          <span>Síntomas ({symptoms.length}/{MAX_SYMPTOMS})</span>
-          <details className="ft-symptom-dropdown">
-            <summary>{symptoms.length ? `${symptoms.length} síntoma${symptoms.length === 1 ? '' : 's'} seleccionado${symptoms.length === 1 ? '' : 's'}` : 'Selecciona los síntomas'}</summary>
-            <div className="ft-symptom-options">
-              {SYMPTOMS.map((symptom) => (
-                <label key={symptom} className="ft-symptom-option">
-                  <input type="checkbox" checked={symptoms.includes(symptom)} disabled={!symptoms.includes(symptom) && symptoms.length >= MAX_SYMPTOMS} onChange={() => toggleSymptom(symptom)} />
-                  {symptom}
-                </label>
-              ))}
-              <label className="ft-symptom-option">
-                <input type="checkbox" checked={symptoms.includes(OTHER_SYMPTOM)} disabled={!symptoms.includes(OTHER_SYMPTOM) && symptoms.length >= MAX_SYMPTOMS} onChange={() => toggleSymptom(OTHER_SYMPTOM)} />
-                {OTHER_SYMPTOM}
-              </label>
-              {symptoms.includes(OTHER_SYMPTOM) && (
-                <input className="ft-other-symptom" value={customSymptom} maxLength={MAX_SYMPTOM_LENGTH} placeholder="Escribe el síntoma" onChange={(event) => setCustomSymptom(event.target.value)} />
-              )}
-            </div>
-          </details>
+          <span>Síntomas <small>Opcional · {symptoms.length}/{MAX_SYMPTOMS} elegidos</small></span>
+          <div className="ft-chips">
+            {[...SYMPTOMS, OTHER_SYMPTOM].map((symptom) => {
+              const selected = symptoms.includes(symptom);
+              return <button key={symptom} type="button" className={`ft-chip is-toggle is-pick ${selected ? 'is-on' : ''}`} aria-pressed={selected}
+                disabled={!selected && symptoms.length >= MAX_SYMPTOMS} onClick={() => toggleSymptom(symptom)}>{symptom}</button>;
+            })}
+          </div>
+          {symptoms.includes(OTHER_SYMPTOM) && (
+            <>
+              <input value={customSymptom} maxLength={MAX_SYMPTOM_LENGTH} placeholder="Escribe el síntoma" onChange={(event) => setCustomSymptom(event.target.value)} />
+              <CharCount value={customSymptom} max={MAX_SYMPTOM_LENGTH} />
+            </>
+          )}
         </div>
+        </FormSection>
+
+        <FormSection number={4} title="Estado del vehículo" hint="Así el taller sabe qué tan urgente es y si necesita grúa.">
         <div className="ft-field">
           <span>¿El vehículo se puede mover?</span>
           <div className="ft-chips">
@@ -374,7 +566,9 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             ))}
           </div>
         </div>
+        </FormSection>
 
+        <FormSection number={5} title="Dónde está" hint="Los talleres cercanos son los más útiles para ti.">
         <div className="ft-row">
           <label className="ft-field"><span>Región</span>
             <select value={regionId} onChange={(e) => {
@@ -394,6 +588,9 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             </select>
           </label>
         </div>
+        {!isEditing && sameComuna(user?.comuna, comuna) && (
+          <small className="ft-hint">Tomamos tu región y comuna de tu perfil. Cámbialas si el vehículo está en otro lugar.</small>
+        )}
 
         <div className="ft-field">
           <span>¿Necesitas que el taller recoja tu vehículo?</span>
@@ -423,9 +620,11 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             </>
           )}
         </div>
+        </FormSection>
 
+        <FormSection number={6} title="Evidencia" hint={`Agrega hasta ${MAX_EVIDENCE_PHOTOS} fotos del tablero, el motor o la pieza afectada.`}>
         <div className="ft-field">
-          <span>Evidencia de la falla <small>Agrega hasta {MAX_EVIDENCE_PHOTOS} fotos del tablero, motor o pieza afectada</small></span>
+          <span>Fotos de la falla <small>{photos.length}/{MAX_EVIDENCE_PHOTOS}</small></span>
           <div className="ft-photos">
             {photos.map((photo) => (
               <div key={photo} style={{ position: 'relative' }}>
@@ -442,10 +641,12 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             )}
           </div>
         </div>
+        </FormSection>
+        </>)}
 
         {error && <p className="ft-error" role="alert"><AlertCircle size={15} /> {error}</p>}
         <div className="ft-actions">
-          <button type="submit" className="ft-btn ft-btn-primary" disabled={saving}>{saving ? (isEditing ? 'Guardando…' : 'Registrando…') : (isEditing ? 'Guardar cambios' : 'Registrar falla')}</button>
+          {resolved && <button type="submit" className="ft-btn ft-btn-primary" disabled={saving}>{saving ? (isEditing ? 'Guardando…' : 'Registrando…') : (isEditing ? 'Guardar cambios' : 'Registrar falla')}</button>}
           <button type="button" className="ft-btn ft-btn-outline" onClick={onClose} disabled={saving}>Cancelar</button>
         </div>
       </form>

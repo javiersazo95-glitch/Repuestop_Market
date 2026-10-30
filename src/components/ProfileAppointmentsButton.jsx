@@ -1,26 +1,23 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { CalendarClock } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { getAppointmentsSummaryApi } from '../services/api';
 import { APPOINTMENTS_UPDATED_EVENT } from '../services/talleresStorage';
-import MyAppointmentsHub from './talleres/MyAppointmentsHub';
+import { profilePath } from '../routes/paths';
 
 /**
- * Acceso a "Mis citas" en la barra del perfil, junto a la campana, con el contador de citas
+ * Acceso a las citas en la barra del perfil, junto a la campana, con el contador de citas
  * vigentes (`GET /agendamientos/resumen`: ni pasadas ni canceladas). Si hay
  * solicitudes por responder, el contador las muestra a ellas y en ámbar.
  *
- * También atiende el enlace de las notificaciones de cita: `?citas=recibidas|pedidas&cita=ID`
- * abre la gestión en esa bandeja con la cita resaltada.
+ * 30-oct: las citas viven en una sola página por perfil («Mis citas» del comprador, «Mi taller > Citas» del
+ * taller); este botón lleva a ella en vez de abrir una ventana con el mismo contenido. Las notificaciones de
+ * cita también aterrizan ahí (`?citas=recibidas|pedidas&cita=ID`).
  */
 export default function ProfileAppointmentsButton({ user }) {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [summary, setSummary] = useState(null);
   const userId = user?.userId ?? user?.id;
-
-  const segmentParam = searchParams.get('citas');
-  const focusId = searchParams.get('cita');
-  const isOpen = Boolean(segmentParam);
 
   const loadSummary = useCallback(async () => {
     if (!userId) return;
@@ -42,13 +39,6 @@ export default function ProfileAppointmentsButton({ user }) {
     };
   }, [loadSummary]);
 
-  const setOpen = (open) => {
-    const next = new URLSearchParams(searchParams);
-    next.delete('cita');
-    if (open) next.set('citas', 'abrir'); else next.delete('citas');
-    setSearchParams(next, { replace: true });
-  };
-
   const toAnswer = summary?.taller?.porResponder ?? 0;
   const current = (summary?.taller?.porResponder ?? 0) + (summary?.taller?.aceptadas ?? 0)
     + (summary?.cliente?.pendientes ?? 0) + (summary?.cliente?.aceptadas ?? 0);
@@ -58,28 +48,19 @@ export default function ProfileAppointmentsButton({ user }) {
     : current > 0 ? `Mis citas: ${current} vigentes` : 'Mis citas';
 
   return (
-    <>
-      <button
-        type="button"
-        className="profile-bell-button profile-appointments-button"
-        aria-label={label}
-        title={label}
-        onClick={() => setOpen(true)}
-      >
-        <CalendarClock size={18} />
-        {badge > 0 && (
-          <span className={`profile-bell-count ${toAnswer > 0 ? 'is-pending' : 'is-neutral'}`}>
-            {badge > 99 ? '99+' : badge}
-          </span>
-        )}
-      </button>
-      {isOpen && (
-        <MyAppointmentsHub
-          initialSegment={segmentParam === 'recibidas' ? 'recibidas' : segmentParam === 'pedidas' ? 'pedidas' : undefined}
-          focusAppointmentId={focusId}
-          onClose={() => setOpen(false)}
-        />
+    <button
+      type="button"
+      className="profile-bell-button profile-appointments-button"
+      aria-label={label}
+      title={label}
+      onClick={() => navigate(`${profilePath('mi_taller')}?citas=abrir`)}
+    >
+      <CalendarClock size={18} />
+      {badge > 0 && (
+        <span className={`profile-bell-count ${toAnswer > 0 ? 'is-pending' : 'is-neutral'}`}>
+          {badge > 99 ? '99+' : badge}
+        </span>
       )}
-    </>
+    </button>
   );
 }
