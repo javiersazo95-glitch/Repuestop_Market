@@ -3,7 +3,7 @@ import '../styles/profile-auction-tracking.css';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertCircle, ArrowRight, Bookmark, CheckCircle2, ClipboardList, Clock, Eye, EyeOff, Gavel, Loader2, MessageCircle, PackageCheck,
+  AlertCircle, ArrowRight, Bookmark, CheckCircle2, ClipboardList, Clock, Eye, EyeOff, Gavel, PackageSearch, Loader2, MessageCircle, PackageCheck,
   Pencil, Search, Send, Tag, Trophy, User, Wallet, XCircle,
 } from 'lucide-react';
 import {
@@ -119,7 +119,7 @@ function CompareRow({ icon: Icon, label, value, tone }) {
   );
 }
 
-/** Preguntas públicas de la necesidad: la tienda lee lo que preguntaron y responde para afinar su propuesta. */
+/** Preguntas públicas de la búsqueda: la tienda lee lo que preguntaron y responde para afinar su propuesta. */
 function PublicQuestions({ auctionId, isOpen }) {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -156,12 +156,12 @@ function PublicQuestions({ auctionId, isOpen }) {
   };
 
   return (
-    <section className="pt-questions" aria-label="Preguntas públicas de la necesidad">
-      <h4><MessageCircle size={16} /> Preguntas públicas de la necesidad <small>Las preguntas y respuestas son públicas para esta necesidad de compra.</small></h4>
+    <section className="pt-questions" aria-label="Preguntas públicas de la búsqueda">
+      <h4><MessageCircle size={16} /> Preguntas públicas de la búsqueda <small>Las preguntas y respuestas son públicas para esta búsqueda de repuestos.</small></h4>
       {loading ? (
         <p className="pt-muted"><Loader2 size={14} className="pg-spin" /> Cargando preguntas…</p>
       ) : comments.length === 0 ? (
-        <p className="pt-muted">Aún no hay preguntas sobre esta necesidad.</p>
+        <p className="pt-muted">Aún no hay preguntas sobre esta búsqueda.</p>
       ) : (
         <ul className="pt-comment-list">
           {comments.filter((comment) => comment.respondeAId == null || !comments.some((c) => c.id === comment.respondeAId)).map((comment) => (
@@ -194,10 +194,10 @@ function PublicQuestions({ auctionId, isOpen }) {
   );
 }
 
-/** Preguntas que la tienda hizo a las necesidades, cada una con la respuesta anidada del comprador. */
+/** Preguntas que la tienda hizo a las búsquedas, cada una con la respuesta anidada del comprador. */
 function MyQuestionsList({ questions, onOpen }) {
   if (questions.length === 0) {
-    return <EmptyState label="Aún no has hecho preguntas. Abre una necesidad de compra y pregunta lo que necesites para afinar tu oferta." />;
+    return <EmptyState label="Aún no has hecho preguntas. Abre una búsqueda de repuestos y pregunta lo que necesites para afinar tu oferta." />;
   }
   return (
     <ul className="pt-myq-list">
@@ -210,7 +210,7 @@ function MyQuestionsList({ questions, onOpen }) {
               <strong title={question.necesidadTitulo}>{question.necesidadTitulo}</strong>
               <span className={`pt-pill is-${answered ? 'green' : 'amber'}`}>{answered ? 'Respondida' : 'Sin respuesta'}</span>
               <small>{formatDateTime(question.createdAt)}</small>
-              <button type="button" className="pt-btn" onClick={() => onOpen(question.necesidadId)}>Ver necesidad <ArrowRight size={14} /></button>
+              <button type="button" className="pt-btn" onClick={() => onOpen(question.necesidadId)}>Ver búsqueda <ArrowRight size={14} /></button>
             </header>
             <p className="pt-myq-text">{question.texto}</p>
             {(question.respuestas || []).map((reply) => (
@@ -236,7 +236,7 @@ function DetailPanel({ item, busy, onEdit, onOpen, onOrder }) {
   return (
     <aside className="pt-detail" aria-label="Detalle de la propuesta">
       <header className="pt-detail-head">
-        <span className="pt-thumb is-lg"><Gavel size={26} /></span>
+        <span className="pt-thumb is-lg"><PackageSearch size={26} /></span>
         <div>
           <h3>{necesidad.titulo}</h3>
           <small>Pedido N.º {necesidad.id} · Oferta N.º {oferta.id}</small>
@@ -251,10 +251,10 @@ function DetailPanel({ item, busy, onEdit, onOpen, onOrder }) {
       <div className="pt-buyer">
         <span className="pt-avatar-lg"><User size={20} /></span>
         <span><small>Comprador</small><strong>{necesidad.comprador || 'Comprador'}</strong>{necesidad.ubicacion && <em>{necesidad.ubicacion}</em>}</span>
-        <button type="button" className="pt-btn" onClick={() => onOpen(necesidad.id)}>Ver necesidad <ArrowRight size={14} /></button>
+        <button type="button" className="pt-btn" onClick={() => onOpen(necesidad.id)}>Ver búsqueda <ArrowRight size={14} /></button>
       </div>
 
-      <h4 className="pt-section-title"><ClipboardList size={18} /> Comparación de la necesidad</h4>
+      <h4 className="pt-section-title"><ClipboardList size={18} /> Comparación de la búsqueda</h4>
       <div className="pt-compare">
         <section className="is-buyer">
           <h5>Lo que pide el comprador</h5>
@@ -427,7 +427,7 @@ export default function ProfileAuctionManagementPanel() {
           <p>Haz seguimiento a tus ofertas, compara tu propuesta con lo que pide el comprador y revisa las preguntas públicas.</p>
         </div>
         <button type="button" className="pt-btn is-primary" onClick={() => navigate(ROUTES.auctions)}>
-          <Gavel size={15} /> Ver necesidades públicas
+          <PackageSearch size={15} /> Ver búsquedas públicas
         </button>
       </header>
 
@@ -461,11 +461,11 @@ export default function ProfileAuctionManagementPanel() {
             <MyQuestionsList questions={visibleQuestions} onOpen={(id) => navigate(auctionDetailPath(id))} />
           ) : filter === 'saved' ? (
             visibleSaved.length === 0 ? (
-              <EmptyState label="No tienes solicitudes guardadas. Abre una necesidad de compra y presiona «Guardar» para hacerle seguimiento." />
+              <EmptyState label="No tienes solicitudes guardadas. Abre una búsqueda de repuestos y presiona «Guardar» para hacerle seguimiento." />
             ) : (
               <div className="pt-table-wrap">
                 <table className="pt-table">
-                  <thead><tr><th>Necesidad</th><th>Vehículo</th><th>Ofertas</th><th>Estado</th><th>Tiempo restante</th><th /></tr></thead>
+                  <thead><tr><th>Búsqueda</th><th>Vehículo</th><th>Ofertas</th><th>Estado</th><th>Tiempo restante</th><th /></tr></thead>
                   <tbody>
                     {visibleSaved.map((auction) => (
                       <SavedRow key={auction.id} auction={auction} myOffer={myOfferIds.has(auction.id)} busy={removingId === auction.id} onOpen={(id) => navigate(auctionDetailPath(id))} onRemove={removeSaved} />
@@ -475,13 +475,13 @@ export default function ProfileAuctionManagementPanel() {
               </div>
             )
           ) : visible.length === 0 ? (
-            <EmptyState label={offers.length === 0 ? 'Aún no has enviado ofertas. Entra a las necesidades de compra públicas y ofrece tus repuestos.' : 'No hay propuestas en este filtro.'} />
+            <EmptyState label={offers.length === 0 ? 'Aún no has enviado ofertas. Entra a las búsquedas de repuestos públicas y ofrece tus repuestos.' : 'No hay propuestas en este filtro.'} />
           ) : (
             <div className="pt-layout">
               <div className="pt-table-wrap">
                 <table className="pt-table">
                   <thead>
-                    <tr><th className="pt-col-need">Necesidad</th><th className="pt-col-vehicle">Vehículo</th><th className="pt-col-state">Estado</th><th className="pt-col-date">Última actividad</th></tr>
+                    <tr><th className="pt-col-need">Búsqueda</th><th className="pt-col-vehicle">Vehículo</th><th className="pt-col-state">Estado</th><th className="pt-col-date">Última actividad</th></tr>
                   </thead>
                   <tbody>
                     {visible.map((item) => {

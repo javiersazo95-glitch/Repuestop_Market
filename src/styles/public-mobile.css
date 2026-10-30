@@ -1030,7 +1030,7 @@
   .light-market-header .primary-nav-inner > .categories-nav-wrap { order: 1; }
   .light-market-header .primary-nav-inner > .nav-item-catalog { order: 2; }
   .light-market-header .primary-nav-inner > .nav-item-auctions { order: 3; }
-  /* Mismo orden que Necesidades de compra: queda justo despues (orden del DOM). */
+  /* Mismo orden que Búsqueda de repuestos: queda justo despues (orden del DOM). */
   .light-market-header .primary-nav-inner > .nav-item-faults { order: 3; }
   .light-market-header .primary-nav-inner > .nav-item-ads { order: 4; }
   .light-market-header .primary-nav-inner > .nav-item-stores { order: 5; }

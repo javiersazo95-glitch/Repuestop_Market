@@ -1,5 +1,5 @@
 /* ===========================================================================
-   SUBASTAS EN EL CELULAR (≤768px): listado /subastas y detalle de la necesidad.
+   SUBASTAS EN EL CELULAR (≤768px): listado /subastas y detalle de la búsqueda.
    Sigue el patrón del resto del Market móvil (ficha del repuesto, anuncios): tarjetas de borde #dbe6f3 y radio 14,
    áreas táctiles de 44px, barra fija inferior con la acción principal (MobileStickyBar) y secciones largas plegables.
    Solo reglas dentro de media queries: el escritorio no cambia. Se importa después de auctions-list / auction-detail.
@@ -25,7 +25,7 @@
   .aw-page .aw-stat-icon.is-solid { width: 30px; height: 30px; }
   .aw-page .aw-stat strong { font-size: 18px; }
   .aw-page .aw-stat small { font-size: 11px; line-height: 1.25; }
-  /* Tipo de necesidad como fichas deslizables en vez de un select a todo el ancho. */
+  /* Tipo de búsqueda como fichas deslizables en vez de un select a todo el ancho. */
   .aw-page .aw-scope-chips { display: flex; gap: 8px; margin: 0 calc(var(--pub-gutter, 14px) * -1) 10px; padding: 2px var(--pub-gutter, 14px); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .aw-page .aw-scope-chips::-webkit-scrollbar { display: none; }
   .aw-page .aw-scope-chips button { flex: 0 0 auto; min-height: 40px; padding: 0 16px; border: 1px solid #dbe6f3; border-radius: 999px; background: #fff; font: inherit; font-size: 13px; font-weight: 700; color: #5a6b7a; white-space: nowrap; cursor: pointer; }

@@ -138,7 +138,7 @@ const TARGETS = {
 export function notificationTargetPath(notification, context = {}) {
   const route = notification?.targetRoute;
   if (!route) return null;
-  // Necesidades de compra: el aviso trae `/subastas/{id}` con el id ya incluido en la ruta.
+  // Búsqueda de repuestos: el aviso trae `/subastas/{id}` con el id ya incluido en la ruta.
   const auctionMatch = /^\/subastas\/(\d+)$/.exec(route);
   if (auctionMatch) return auctionDetailPath(auctionMatch[1]);
   // Fallas automotrices: el aviso trae `/fallas/{id}` (nueva falla, diagnostico de un taller o respuesta del cliente).

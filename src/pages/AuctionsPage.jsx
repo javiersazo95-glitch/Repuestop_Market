@@ -38,7 +38,7 @@ const TIEMPO_OPTIONS = [
 ];
 
 const SCOPE_OPTIONS = [
-  { value: 'TODAS', label: 'Todas las necesidades' },
+  { value: 'TODAS', label: 'Todas las búsquedas' },
   { value: 'CON_OFERTAS', label: 'Con ofertas' },
   { value: 'SIN_OFERTAS', label: 'Sin ofertas' },
 ];
@@ -184,19 +184,19 @@ function AuctionRow({ auction, status, now, onOpen, pendingQuestions = null }) {
       </div>
 
       <button type="button" className="aw-card-cta" onClick={() => onOpen(auction.id)}>
-        Ver necesidad <ArrowRight size={16} />
+        Ver búsqueda <ArrowRight size={16} />
       </button>
     </article>
   );
 }
 
 export default function AuctionsPage() {
-  useDocumentTitle('Necesidades de compra');
+  useDocumentTitle('Búsqueda de repuestos');
   const navigate = useNavigate();
   const location = useLocation();
   const { isLoggedIn, role } = useAuth();
   const { openAuthModal } = useMarketplace();
-  // Publican el comprador y el taller (el backend lo permite y cada necesidad suma al premio del servicio Diagnostico);
+  // Publican el comprador y el taller (el backend lo permite y cada búsqueda suma al premio del servicio Diagnostico);
   // una tienda no, aunque entre al perfil de comprador. Sin sesion el boton se muestra y abre el inicio de sesion.
   const canCreate = !isLoggedIn || role === 'BUYER' || role === 'WORKSHOP';
   const { HEADER_CATEGORIES } = useCategories();
@@ -214,7 +214,7 @@ export default function AuctionsPage() {
   const [regiones, setRegiones] = useState([]);
   const [tiempos, setTiempos] = useState([]);
   const [scope, setScope] = useState('TODAS');
-  // "Mural publico" / "Mis necesidades", como la app (26-oct). Lo propio solo existe para quien publica.
+  // "Mural publico" / "Mis búsquedas", como la app (26-oct). Lo propio solo existe para quien publica.
   const canSeeMine = isLoggedIn && (role === 'BUYER' || role === 'WORKSHOP');
   const [tab, setTab] = useState('MURAL');
   const [myAuctions, setMyAuctions] = useState([]);
@@ -234,7 +234,7 @@ export default function AuctionsPage() {
       setAuctions(data?.content || (Array.isArray(data) ? data : []));
     } catch (err) {
       console.error('Error cargando subastas:', err);
-      if (!silent) setError('No pudimos conectar con el servidor de necesidades de compra. Verifica tu conexión o reintenta.');
+      if (!silent) setError('No pudimos conectar con el servidor de búsquedas de repuestos. Verifica tu conexión o reintenta.');
     } finally {
       if (!silent) setLoading(false);
     }
@@ -245,7 +245,7 @@ export default function AuctionsPage() {
     try { setMetrics(await getAuctionMetrics()); } catch { /* sin métricas se muestran los conteos de la lista */ }
   }, []);
 
-  // Las necesidades propias (de cualquier estado) y las preguntas de las tiendas sin responder en cada una.
+  // Las búsquedas propias (de cualquier estado) y las preguntas de las tiendas sin responder en cada una.
   const loadMine = useCallback(async () => {
     if (!canSeeMine) { setMyAuctions([]); setPendingQuestions({}); return; }
     try {
@@ -345,10 +345,10 @@ export default function AuctionsPage() {
   }, [tabMatches, scope, sortBy]);
   const tabs = canSeeMine ? [
     { value: 'MURAL', label: 'Mural público', count: muralMatches.length },
-    { value: 'MIS', label: 'Mis necesidades', count: mineMatches.length },
+    { value: 'MIS', label: 'Mis búsquedas', count: mineMatches.length },
   ] : null;
 
-  // Métricas generales de necesidades de compra: no cambian con los filtros del listado.
+  // Métricas generales de búsquedas de repuestos: no cambian con los filtros del listado.
   const activeCount = metrics?.solicitudesActivas ?? rows.filter(({ status }) => status.key !== 'finalizada').length;
   const newTodayCount = metrics?.registradasHoy ?? rows.filter(({ auction }) => auction.createdAt && sameDay(new Date(auction.createdAt), new Date(now))).length;
   const offersTodayCount = metrics?.ofertasHoy ?? 0;
@@ -538,22 +538,22 @@ export default function AuctionsPage() {
         <nav className="aw-breadcrumb" aria-label="Ruta de navegación">
           <Link to={ROUTES.home}>Inicio</Link>
           <span>/</span>
-          <span aria-current="page">Necesidades de compra</span>
+          <span aria-current="page">Búsqueda de repuestos</span>
         </nav>
 
         <header className="aw-head">
           <div className="aw-head-text">
-            <h1>Necesidades de compra</h1>
+            <h1>Búsqueda de repuestos</h1>
             <p>Encuentra solicitudes de compra y ofrece el repuesto que alguien necesita.</p>
           </div>
           {canCreate && (
             <button type="button" className="aw-btn-publish" onClick={handleOpenCreateModal}>
-              <Plus size={18} /> Publicar necesidad
+              <Plus size={18} /> Publicar búsqueda
             </button>
           )}
         </header>
 
-        <section className="aw-stats" aria-label="Resumen de necesidades de compra">
+        <section className="aw-stats" aria-label="Resumen de búsquedas de repuestos">
           <div className="aw-stat">
             <span className="aw-stat-icon is-solid"><FileText size={17} /></span>
             <span><strong>{nf.format(activeCount)}</strong><small>solicitudes activas</small></span>
@@ -573,7 +573,7 @@ export default function AuctionsPage() {
 
           <section className="aw-main">
             {tabs && (
-              <div className="aw-tabs" role="tablist" aria-label="Necesidades de compra">
+              <div className="aw-tabs" role="tablist" aria-label="Búsqueda de repuestos">
                 {tabs.map((item) => (
                   <button key={item.value} type="button" role="tab" aria-selected={tab === item.value} className={tab === item.value ? 'is-active' : ''} onClick={() => setTab(item.value)}>
                     {item.label} ({nf.format(item.count)})
@@ -581,7 +581,7 @@ export default function AuctionsPage() {
                 ))}
               </div>
             )}
-            <div className="aw-scope-chips" role="tablist" aria-label="Tipo de necesidad">
+            <div className="aw-scope-chips" role="tablist" aria-label="Tipo de búsqueda">
               {SCOPE_OPTIONS.map((option) => (
                 <button key={option.value} type="button" role="tab" aria-selected={scope === option.value} className={scope === option.value ? 'is-active' : ''} onClick={() => setScope(option.value)}>
                   {option.label} ({nf.format(scopeCounts[option.value])})
@@ -594,7 +594,7 @@ export default function AuctionsPage() {
               </button>
 
               <label className="aw-select">
-                <select value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Tipo de necesidad">
+                <select value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Tipo de búsqueda">
                   {SCOPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label} ({nf.format(scopeCounts[option.value])})</option>)}
                 </select>
                 <ChevronDown size={16} />
@@ -625,7 +625,7 @@ export default function AuctionsPage() {
             {error ? (
               <div className="aw-empty">
                 <div className="aw-empty-icon is-error"><AlertCircle size={30} /></div>
-                <h3>Error al cargar las necesidades de compra</h3>
+                <h3>Error al cargar las búsquedas de repuestos</h3>
                 <p>{error}</p>
                 <button type="button" className="aw-btn-publish" onClick={() => loadAuctions()}>Reintentar</button>
               </div>
@@ -636,13 +636,13 @@ export default function AuctionsPage() {
             ) : visible.length === 0 ? (
               <div className="aw-empty">
                 <div className="aw-empty-icon"><Gavel size={30} /></div>
-                <h3>{tab === 'MIS' && myAuctions.length === 0 ? 'Aún no publicas necesidades de compra' : 'No hay necesidades de compra con estos filtros'}</h3>
-                <p>{tab === 'MIS' && myAuctions.length === 0 ? 'Publica lo que necesitas y aquí verás las ofertas y preguntas de las tiendas.' : 'Prueba cambiando los filtros o publica tú la necesidad de compra para recibir cotizaciones de tiendas verificadas.'}</p>
+                <h3>{tab === 'MIS' && myAuctions.length === 0 ? 'Aún no publicas búsquedas de repuestos' : 'No hay búsquedas de repuestos con estos filtros'}</h3>
+                <p>{tab === 'MIS' && myAuctions.length === 0 ? 'Publica lo que necesitas y aquí verás las ofertas y preguntas de las tiendas.' : 'Prueba cambiando los filtros o publica tú la búsqueda de repuestos para recibir cotizaciones de tiendas verificadas.'}</p>
                 <div className="aw-empty-actions">
                   {activeFiltersCount > 0 && (
                     <button type="button" className="aw-btn-outline" onClick={handleResetFilters}><RotateCcw size={15} /> Limpiar filtros</button>
                   )}
-                  {canCreate && <button type="button" className="aw-btn-publish" onClick={handleOpenCreateModal}><Plus size={16} /> Publicar necesidad</button>}
+                  {canCreate && <button type="button" className="aw-btn-publish" onClick={handleOpenCreateModal}><Plus size={16} /> Publicar búsqueda</button>}
                 </div>
               </div>
             ) : (
@@ -686,9 +686,9 @@ export default function AuctionsPage() {
       </div>
 
       {canCreate && (
-        <MobileStickyBar label="Solicitudes activas" value={nf.format(activeCount)} hint="¿Necesitas un repuesto?" ariaLabel="Publicar una necesidad">
+        <MobileStickyBar label="Solicitudes activas" value={nf.format(activeCount)} hint="¿Necesitas un repuesto?" ariaLabel="Publicar una búsqueda">
           <button type="button" className="mobile-sticky-bar__btn" onClick={handleOpenCreateModal}>
-            <Plus size={18} /> Publicar necesidad
+            <Plus size={18} /> Publicar búsqueda
           </button>
         </MobileStickyBar>
       )}

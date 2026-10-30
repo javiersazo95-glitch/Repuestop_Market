@@ -1,5 +1,5 @@
 /**
- * Motivos para cancelar una necesidad, en el mismo orden y con los mismos codigos que el backend
+ * Motivos para cancelar una búsqueda, en el mismo orden y con los mismos codigos que el backend
  * (`NecesidadCompraService.MOTIVOS_CANCELACION`). El motivo elegido lo ven las tiendas que ofertaron; el detalle de
  * "Otro motivo" es obligatorio y queda privado (lo ve soporte).
  */

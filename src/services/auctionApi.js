@@ -1,7 +1,7 @@
 import { fetchApi } from './api';
 
 /**
- * Consulta el listado público de subastas de repuestos / necesidades de compra.
+ * Consulta el listado público de subastas de repuestos / búsquedas de repuestos.
  */
 export async function getAuctions({ estado = 'ACTIVA', marca, region, page = 0, size = 12 } = {}) {
   const params = new URLSearchParams();
@@ -26,7 +26,7 @@ export async function getAuctionDetail(id) {
 }
 
 /**
- * Publica una nueva necesidad de compra.
+ * Publica una nueva búsqueda de repuestos.
  */
 export async function createAuction(payload) {
   return fetchApi('/necesidades-compra', {
@@ -95,12 +95,12 @@ export async function rateAuctionBuyer(auctionId, { estrellas, comentario }) {
   });
 }
 
-/** Comentarios públicos de la necesidad (preguntas de tiendas y respuestas del comprador). */
+/** Comentarios públicos de la búsqueda (preguntas de tiendas y respuestas del comprador). */
 export async function getAuctionComments(auctionId) {
   return fetchApi(`/necesidades-compra/${encodeURIComponent(String(auctionId))}/comentarios`, { anonymous: true });
 }
 
-/** Preguntas de tiendas sin responder en las necesidades del comprador: { [idNecesidad]: cantidad }. */
+/** Preguntas de tiendas sin responder en las búsquedas del comprador: { [idNecesidad]: cantidad }. */
 export async function getPendingQuestionCounts() {
   return fetchApi('/necesidades-compra/mis-solicitudes/preguntas-pendientes');
 }
@@ -110,7 +110,7 @@ export async function getMyAuctionQuestions() {
   return fetchApi('/necesidades-compra/mis-solicitudes/preguntas-realizadas');
 }
 
-/** Con `respondeAId` el creador de la necesidad contesta una pregunta puntual de una tienda. */
+/** Con `respondeAId` el creador de la búsqueda contesta una pregunta puntual de una tienda. */
 export async function postAuctionComment(auctionId, texto, respondeAId = null) {
   return fetchApi(`/necesidades-compra/${encodeURIComponent(String(auctionId))}/comentarios`, {
     method: 'POST',
@@ -190,14 +190,14 @@ export async function markAuctionOfferSeen(auctionId, offerId) {
 }
 
 /**
- * Metricas generales de las necesidades de compra (activas, registradas hoy y ofertas de hoy), sin filtros.
+ * Metricas generales de las búsquedas de repuestos (activas, registradas hoy y ofertas de hoy), sin filtros.
  */
 export async function getAuctionMetrics() {
   return fetchApi('/necesidades-compra/metricas', { anonymous: true });
 }
 
 /**
- * El comprador edita su necesidad de compra mientras no haya aceptado ninguna oferta.
+ * El comprador edita su búsqueda de repuestos mientras no haya aceptado ninguna oferta.
  */
 export async function updateAuction(id, payload) {
   return fetchApi(`/necesidades-compra/${encodeURIComponent(String(id))}`, {
@@ -222,7 +222,7 @@ export async function getSavedAuctions() {
   return fetchApi('/necesidades-compra/guardadas');
 }
 
-/** Código corto para hacerle seguimiento a una necesidad de compra (igual al de la app). */
+/** Código corto para hacerle seguimiento a una búsqueda de repuestos (igual al de la app). */
 export function auctionTrackingCode(id) {
   return `NC-${String(id).padStart(6, '0')}`;
 }

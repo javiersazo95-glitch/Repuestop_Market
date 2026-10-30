@@ -12,7 +12,7 @@ export function maskPlate(plate) {
  * Identifica el vehículo de una patente apenas tiene un formato válido. El chasis es obligatorio: si la
  * consulta no lo trae, el vehículo no se acepta y se explica por qué.
  */
-export default function usePlateLookup(plate, { subject = 'la necesidad' } = {}) {
+export default function usePlateLookup(plate, { subject = 'la búsqueda' } = {}) {
   const [vehicle, setVehicle] = useState(null);
   const [error, setError] = useState('');
   const [looking, setLooking] = useState(false);

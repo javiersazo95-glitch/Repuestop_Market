@@ -185,7 +185,7 @@ function AuctionRow({ auction, stage, now, isSeller, onNavigate, onOpenOffers, o
   );
 }
 
-/** Pestaña "Subastas" de Mis compras: publicar una necesidad, su historial y el seguimiento hasta la compra. */
+/** Pestaña "Subastas" de Mis compras: publicar una búsqueda, su historial y el seguimiento hasta la compra. */
 export default function ProfileAuctionsPanel() {
   const navigate = useNavigate();
   const { user, role } = useAuth();
@@ -212,7 +212,7 @@ export default function ProfileAuctionsPanel() {
       setPendingQuestions(pending && typeof pending === 'object' ? pending : {});
       setError('');
     } catch (err) {
-      setError(err?.message || 'No pudimos cargar tus necesidades de compra.');
+      setError(err?.message || 'No pudimos cargar tus búsquedas de repuestos.');
     } finally {
       setLoading(false);
     }
@@ -295,13 +295,13 @@ export default function ProfileAuctionsPanel() {
     <div className="profile-panel seller-quotes-panel">
       <div className="seller-quotes-heading">
         <div>
-          <span className="seller-quotes-eyebrow"><Gavel size={14} /> Necesidades de compra</span>
-          <h2 className="profile-panel-title">Necesidades de compra</h2>
+          <span className="seller-quotes-eyebrow"><Gavel size={14} /> Búsqueda de repuestos</span>
+          <h2 className="profile-panel-title">Búsqueda de repuestos</h2>
           <p>Arma un pedido con todos los repuestos que necesitas, recibe ofertas de las tiendas y acepta las que te sirvan, aunque cubran solo una parte. Lo aceptado se paga junto, en un solo pedido de varias tiendas.</p>
         </div>
         <div className="seller-quotes-heading-actions">
           <button type="button" className="pa-btn-primary" onClick={() => setIsCreateOpen(true)}>
-            <Plus size={16} /> Publicar necesidad
+            <Plus size={16} /> Publicar búsqueda
           </button>
         </div>
       </div>
@@ -316,13 +316,13 @@ export default function ProfileAuctionsPanel() {
       {pendingTotal > 0 && (
         <p className="pa-q-banner" role="status">
           <MessageCircle size={16} />
-          <span>Tienes <b>{pendingTotal} {pendingTotal === 1 ? 'pregunta nueva' : 'preguntas nuevas'}</b> de las tiendas por responder en {pendingAuctions} {pendingAuctions === 1 ? 'necesidad' : 'necesidades'}.</span>
+          <span>Tienes <b>{pendingTotal} {pendingTotal === 1 ? 'pregunta nueva' : 'preguntas nuevas'}</b> de las tiendas por responder en {pendingAuctions} {pendingAuctions === 1 ? 'búsqueda' : 'búsquedas'}.</span>
         </p>
       )}
 
       <div className="seller-quotes-toolbar">
         <label className="seller-quotes-search"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar repuesto, vehículo o categoría..." />{search && <button type="button" onClick={() => setSearch('')} aria-label="Limpiar búsqueda"><X size={13} /></button>}</label>
-        <div className="seller-quotes-filters" role="group" aria-label="Filtrar necesidades de compra">
+        <div className="seller-quotes-filters" role="group" aria-label="Filtrar búsquedas de repuestos">
           {FILTERS.map(([value, label]) => (
             <button key={value} type="button" className={filter === value ? 'active' : ''} onClick={() => setFilter(value)}>{label}</button>
           ))}
@@ -330,13 +330,13 @@ export default function ProfileAuctionsPanel() {
       </div>
 
       {loading ? (
-        <EmptyState label="Cargando tus necesidades de compra..." />
+        <EmptyState label="Cargando tus búsquedas de repuestos..." />
       ) : error ? (
         <div className="pa-error" role="alert"><AlertCircle size={16} /> {error} <button type="button" onClick={load}>Reintentar</button></div>
       ) : rows.length === 0 ? (
-        <EmptyState label="Aún no has publicado ninguna necesidad de compra." />
+        <EmptyState label="Aún no has publicado ninguna búsqueda de repuestos." />
       ) : visibleRows.length === 0 ? (
-        <EmptyState label="No encontramos necesidades de compra con esos filtros." />
+        <EmptyState label="No encontramos búsquedas de repuestos con esos filtros." />
       ) : (
         <>
           <div className="pa-list">
@@ -344,7 +344,7 @@ export default function ProfileAuctionsPanel() {
               <AuctionRow key={auction.id} auction={auction} stage={stage} now={now} isSeller={isSeller} onNavigate={navigate} onOpenOffers={(item) => setOffersAuctionId(item.id)} onOpenPurchase={(item) => setPurchaseAuctionId(item.id)} onOpenQuestions={setQuestionsAuction} pendingQuestions={pendingQuestions[auction.id] || 0} onEdit={openEdit} editBusy={editBusyId === auction.id} onRepublish={openRepublish} onCancel={openCancel} />
             ))}
           </div>
-          <ListPager pagerProps={pagerProps} itemLabel="necesidades" />
+          <ListPager pagerProps={pagerProps} itemLabel="búsquedas" />
         </>
       )}
 

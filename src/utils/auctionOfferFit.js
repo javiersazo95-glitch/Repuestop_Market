@@ -1,5 +1,5 @@
 /*
- * Evaluación de una oferta de subasta frente a lo que el comprador fijó al publicar la necesidad:
+ * Evaluación de una oferta de subasta frente a lo que el comprador fijó al publicar la búsqueda:
  * presupuesto tope, plazo máximo de envío, método de envío y cantidad. Cada criterio sale en verde
  * (cumple), ámbar (revisar) o rojo (no cumple); sin dato exigido queda neutro.
  */

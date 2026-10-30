@@ -5,7 +5,7 @@ import { cancelAuction } from '../services/auctionApi';
 import { CANCEL_DETAIL_MAX, CANCEL_REASONS } from '../data/auctionCancelReasons';
 
 /**
- * Cancelar una necesidad de compra (solo sin ofertas aceptadas; el backend lo valida). Reutiliza el dialogo del
+ * Cancelar una búsqueda de repuestos (solo sin ofertas aceptadas; el backend lo valida). Reutiliza el dialogo del
  * reporte (`.quote-ws-report-*`): es la misma forma, un motivo de una lista y un detalle.
  */
 export default function CancelAuctionDialog({ auction, pendingOffers = 0, onClose, onCancelled, onEdit }) {
@@ -27,7 +27,7 @@ export default function CancelAuctionDialog({ auction, pendingOffers = 0, onClos
       const updated = await cancelAuction(auction.id, { motivo: reason, detalle: needsDetail ? detail.trim() : '' });
       onCancelled?.(updated);
     } catch (err) {
-      setError(err?.message || 'No pudimos cancelar la necesidad. Inténtalo nuevamente.');
+      setError(err?.message || 'No pudimos cancelar la búsqueda. Inténtalo nuevamente.');
     } finally {
       setBusy(false);
     }
@@ -35,13 +35,13 @@ export default function CancelAuctionDialog({ auction, pendingOffers = 0, onClos
 
   return createPortal(
     <div className="quote-ws-dialog-backdrop" onClick={close}>
-      <form className="quote-ws-report-dialog" onSubmit={submit} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Cancelar necesidad">
+      <form className="quote-ws-report-dialog" onSubmit={submit} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Cancelar búsqueda">
         <header>
           <div>
             <XCircle size={22} />
             <span>
-              <strong>Cancelar necesidad</strong>
-              <small>{auction?.repuestoSolicitado || 'Necesidad de compra'}</small>
+              <strong>Cancelar búsqueda</strong>
+              <small>{auction?.repuestoSolicitado || 'Búsqueda de repuestos'}</small>
             </span>
           </div>
           <button type="button" aria-label="Cerrar" disabled={busy} onClick={close}><X size={19} /></button>
@@ -51,7 +51,7 @@ export default function CancelAuctionDialog({ auction, pendingOffers = 0, onClos
           <p className="cancel-auction-note">
             <AlertTriangle size={16} aria-hidden="true" />
             <span>
-              La necesidad deja de recibir ofertas y sale del mural.
+              La búsqueda deja de recibir ofertas y sale del mural.
               {pendingOffers === 1 && <> La <b>oferta</b> que espera respuesta se descarta y avisamos a la tienda con el motivo que elijas.</>}
               {pendingOffers > 1 && <> Las <b>{pendingOffers} ofertas</b> que esperan respuesta se descartan y avisamos a cada tienda con el motivo que elijas.</>}
             </span>
@@ -71,7 +71,7 @@ export default function CancelAuctionDialog({ auction, pendingOffers = 0, onClos
           {/* Un error en los datos se corrige editando, sin perder las ofertas que siguen sirviendo. */}
           {reason === 'ERROR_DATOS' && auction?.editable !== false && onEdit && (
             <button type="button" className="cancel-auction-edit" onClick={onEdit}>
-              <Pencil size={15} /> Mejor edito mi necesidad
+              <Pencil size={15} /> Mejor edito mi búsqueda
             </button>
           )}
 
@@ -97,7 +97,7 @@ export default function CancelAuctionDialog({ auction, pendingOffers = 0, onClos
           <button type="button" className="secondary" disabled={busy} onClick={close}>Volver</button>
           <button type="submit" disabled={!canSubmit || busy}>
             {busy ? <Loader2 size={17} className="spin-icon" /> : <XCircle size={17} />}
-            {busy ? 'Cancelando…' : 'Cancelar necesidad'}
+            {busy ? 'Cancelando…' : 'Cancelar búsqueda'}
           </button>
         </footer>
       </form>

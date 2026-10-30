@@ -11264,7 +11264,7 @@ button.role-option-card {
 .catalog-refine-notice { display: flex; align-items: flex-start; gap: 10px; margin: 18px 0 0; padding: 12px 14px; border: 1px solid #bfdbfe; border-radius: var(--radius-lg); background: #eff6ff; color: #1e40af; font-size: 13px; line-height: 1.5; }
 .catalog-refine-notice svg { flex-shrink: 0; margin-top: 1px; }
 
-/* Aviso sutil al pie de los resultados por vehículo: registrar una necesidad de compra. */
+/* Aviso sutil al pie de los resultados por vehículo: registrar una búsqueda de repuestos. */
 .catalog-need-hint { display: flex; align-items: flex-start; gap: 8px; margin: 18px 0 0; color: var(--text-secondary, #64748b); font-size: 13px; line-height: 1.5; }
 .catalog-need-hint svg { flex-shrink: 0; margin-top: 2px; }
 .catalog-need-hint-link { padding: 0; border: 0; background: none; color: var(--primary, #2563eb); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
@@ -21558,7 +21558,7 @@ input.has-success {
   object-fit: contain;
 }
 
-/* Dialogo "Cancelar necesidad" (CancelAuctionDialog): reutiliza .quote-ws-report-*; solo agrega el aviso y la ayuda. */
+/* Dialogo "Cancelar búsqueda" (CancelAuctionDialog): reutiliza .quote-ws-report-*; solo agrega el aviso y la ayuda. */
 .cancel-auction-note { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; background: #fff7e6; border: 1px solid #fde3a7; color: #7a4a00; font-size: 13px; line-height: 1.45; }
 .cancel-auction-note svg { flex: none; margin-top: 2px; }
 .cancel-auction-edit { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 0; padding: 8px 12px; border: 1px solid #c7dcf5; border-radius: 8px; background: #eef5ff; color: #0056bf; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }

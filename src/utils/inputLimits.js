@@ -1,5 +1,5 @@
 /**
- * Topes de los campos de fallas y necesidades de compra, los mismos que validan los DTO del backend
+ * Topes de los campos de fallas y búsquedas de repuestos, los mismos que validan los DTO del backend
  * (FallaAutomotrizDTOs, NecesidadCompraCrearRequestDTO, CotizacionNecesidadCrearRequestDTO). Si cambian alla,
  * cambian aqui.
  */

@@ -205,8 +205,8 @@ function itemsFromAuction(auction) {
 }
 
 /**
- * `auction`: editar esa necesidad. `template`: "Publicar de nuevo" una necesidad vencida o cancelada; el formulario
- * parte con sus datos (vehiculo, repuestos, fotos, entrega) pero publica una necesidad nueva.
+ * `auction`: editar esa búsqueda. `template`: "Publicar de nuevo" una búsqueda vencida o cancelada; el formulario
+ * parte con sus datos (vehiculo, repuestos, fotos, entrega) pero publica una búsqueda nueva.
  */
 function CreateAuctionModalContent({ onClose, onSuccess, auction = null, template = null, initialPatente = '' }) {
   const isEditing = Boolean(auction);
@@ -215,7 +215,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
   const { HEADER_CATEGORIES } = useCategories();
 
   const userId = user?.userId ?? user?.id;
-  // La necesidad se publica con la ubicación de una dirección registrada: la del comprador o la que cree aquí mismo.
+  // La búsqueda se publica con la ubicación de una dirección registrada: la del comprador o la que cree aquí mismo.
   const [addresses, setAddresses] = useState([]);
   const [addressesLoaded, setAddressesLoaded] = useState(false);
   const [addressChoice, setAddressChoice] = useState('');   // id elegido, o NEW_ADDRESS para crear una
@@ -298,7 +298,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!mainAddress) {
-      setError('Registra una dirección para publicar tu necesidad: la usamos para ubicarla y para que las tiendas sepan si despachan a tu comuna.');
+      setError('Registra una dirección para publicar tu búsqueda: la usamos para ubicarla y para que las tiendas sepan si despachan a tu comuna.');
       return;
     }
     if (!vehicle?.chasis) {
@@ -364,7 +364,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
       if (onSuccess) onSuccess(creada);
       onClose();
     } catch (err) {
-      setError(err?.message || (isEditing ? 'No pudimos guardar los cambios de tu pedido.' : 'Hubo un error al publicar la necesidad de compra.'));
+      setError(err?.message || (isEditing ? 'No pudimos guardar los cambios de tu pedido.' : 'Hubo un error al publicar la búsqueda de repuestos.'));
     } finally {
       setLoading(false);
     }
@@ -376,7 +376,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
         <div className="auction-modal-header" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: '#ffffff' }}>
           <div>
             <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#38bdf8', fontWeight: 800 }}>
-              Necesidades de compra RepuesTop
+              Búsqueda de repuestos RepuesTop
             </div>
             <h2 className="auction-modal-title" style={{ color: '#ffffff', marginTop: '2px' }}>{isEditing ? 'Editar pedido de repuestos' : template ? 'Publicar de nuevo tu pedido' : 'Publicar pedido de repuestos'}</h2>
           </div>
@@ -492,14 +492,14 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
 
           {/* Dirección: obligatoria, sale de una dirección registrada o se crea aquí mismo */}
           <div>
-            <div className="acv-title"><MapPin size={18} /><span>Dirección de la necesidad <em className="auction-required">(obligatoria)</em></span></div>
+            <div className="acv-title"><MapPin size={18} /><span>Dirección de la búsqueda <em className="auction-required">(obligatoria)</em></span></div>
             <div className="auction-form-group acv-address-select">
               <select
                 value={addressChoice}
                 onChange={(e) => setAddressChoice(e.target.value)}
                 className="auction-form-select"
                 disabled={!addressesLoaded}
-                aria-label="Dirección de la necesidad"
+                aria-label="Dirección de la búsqueda"
               >
                 {!addressesLoaded && <option value="">Cargando tus direcciones…</option>}
                 {addresses.map((address) => (
@@ -520,7 +520,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
 
           {/* Sección 3: Condiciones */}
           <div>
-            <div className="acv-title"><Clock size={18} /><span>Condiciones de la necesidad de compra</span></div>
+            <div className="acv-title"><Clock size={18} /><span>Condiciones de la búsqueda de repuestos</span></div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '12px' }}>
               <div className="auction-form-group">

@@ -102,7 +102,7 @@ export const PROFILE_TABS = [
   // en el sidebar y con su panel implementado, pero faltaba aca: la ruta no se
   // reconocia y `/perfil/mis_preguntas` caia en el 404.
   'mis_preguntas',
-  // Compra por subasta: publicar una necesidad, su historial y el seguimiento hasta la compra.
+  // Compra por subasta: publicar una búsqueda, su historial y el seguimiento hasta la compra.
   'subastas',
   // Seguimiento de las ofertas que envió una tienda a pedidos de subasta.
   'gestion_subastas',

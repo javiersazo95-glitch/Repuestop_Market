@@ -1213,7 +1213,7 @@ export default function PartsCatalogView({
 
   const handleOpenNeed = () => {
     if (!isLoggedIn) {
-      if (window.confirm('Debes iniciar sesión para registrar una necesidad de compra. ¿Deseas ir a tu cuenta?')) navigate(ROUTES.profile);
+      if (window.confirm('Debes iniciar sesión para registrar una búsqueda de repuestos. ¿Deseas ir a tu cuenta?')) navigate(ROUTES.profile);
       return;
     }
     setNeedModalOpen(true);
@@ -1888,7 +1888,7 @@ export default function PartsCatalogView({
                 <Info size={15} aria-hidden="true" />
                 <span>
                   ¿No encontraste lo que buscas? Puede que alguna casa de repuestos lo tenga y aún no lo haya cargado.{' '}
-                  <button type="button" className="catalog-need-hint-link" onClick={handleOpenNeed}>Registra tu necesidad de compra</button>
+                  <button type="button" className="catalog-need-hint-link" onClick={handleOpenNeed}>Registra tu búsqueda de repuestos</button>
                 </span>
               </p>
             )}

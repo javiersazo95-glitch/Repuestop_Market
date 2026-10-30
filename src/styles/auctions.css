@@ -810,7 +810,7 @@
   transform: translateY(-1px);
 }
 
-/* ---------- 8. Modales (Publicar Necesidad & Emitir Cotización) ---------- */
+/* ---------- 8. Modales (Publicar Búsqueda & Emitir Cotización) ---------- */
 .auction-modal-overlay {
   position: fixed;
   inset: 0;

@@ -53,7 +53,7 @@ function RateBuyerForm({ auctionId, onRated }) {
   );
 }
 
-/** Tarjeta lateral con los datos públicos del comprador que publicó la necesidad. */
+/** Tarjeta lateral con los datos públicos del comprador que publicó la búsqueda. */
 export default function AuctionBuyerCard({ auctionId, vehicle, region }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -131,7 +131,7 @@ export default function AuctionBuyerCard({ auctionId, vehicle, region }) {
       </div>
 
       <dl className="as-stats">
-        <div><dt><Gavel size={13} /> Necesidades publicadas</dt><dd>{profile.totalSubastasPublicadas}</dd></div>
+        <div><dt><Gavel size={13} /> Búsquedas publicadas</dt><dd>{profile.totalSubastasPublicadas}</dd></div>
         <div><dt><PackageCheck size={13} /> Compras cerradas</dt><dd>{profile.totalSubastasCerradas}</dd></div>
         <div><dt><TrendingUp size={13} /> Tasa de adjudicación</dt><dd>{profile.tasaAdjudicacion != null ? `${profile.tasaAdjudicacion}%` : '—'}</dd></div>
         <div><dt><CalendarDays size={13} /> Miembro desde</dt><dd>{profile.miembroDesde ? new Date(profile.miembroDesde).toLocaleDateString('es-CL', { month: 'short', year: 'numeric' }) : '—'}</dd></div>
@@ -142,7 +142,7 @@ export default function AuctionBuyerCard({ auctionId, vehicle, region }) {
       </button>
 
       {profile.puedoCalificar && <RateBuyerForm auctionId={auctionId} onRated={load} />}
-      {profile.yaCalifique && <p className="as-muted as-rated-note">Ya calificaste a este comprador por esta necesidad de compra.</p>}
+      {profile.yaCalifique && <p className="as-muted as-rated-note">Ya calificaste a este comprador por esta búsqueda de repuestos.</p>}
 
       <AuctionBuyerReviewsModal
         isOpen={isReviewsOpen}

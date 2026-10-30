@@ -70,7 +70,7 @@ const WORKSHOP_FEATURES = [
   'Diagnostica las fallas que registran los clientes',
   'Publica tus servicios con precio en el Mural',
   'Recibe citas agendadas con la falla del cliente',
-  'Compra repuestos y publica tus necesidades',
+  'Compra repuestos y publica tus búsquedas',
 ];
 
 const SELLER_FEATURES = [

@@ -1,5 +1,5 @@
 /**
- * Preguntas y respuestas de las necesidades de compra (subastas de repuestos).
+ * Preguntas y respuestas de las búsquedas de repuestos (subastas de repuestos).
  *
  * Cada respuesta describe lo que hace hoy el backend (NecesidadCompraService, SubastaPedidoService y
  * PedidoCheckoutSubastaSupport); si cambia una regla, se corrige aquí y en la copia de la app
@@ -19,7 +19,7 @@ export const AUCTION_HELP_FAQS = [
   // ---------------------------------------------------------------- Cómo funciona
   {
     grupo: 'Cómo funciona',
-    q: '¿Qué es una necesidad de compra?',
+    q: '¿Qué es una búsqueda de repuestos?',
     a: 'Es un pedido que publicas cuando quieres que las casas de repuestos compitan por ofrecértelo. Indicas tu vehículo (por patente), uno o varios repuestos con su cantidad, el plazo máximo de envío, un presupuesto de referencia y cuánto tiempo quieres recibir ofertas. Las tiendas verificadas te envían sus ofertas en privado, tú las comparas y aceptas la que más te convenga. Publicar es gratis.',
     roles: ALL,
   },
@@ -31,40 +31,40 @@ export const AUCTION_HELP_FAQS = [
   },
   {
     grupo: 'Cómo funciona',
-    q: '¿Cómo hago seguimiento a mi necesidad?',
-    a: 'Cada necesidad tiene un código del tipo NC-000123, visible en la lista y en el detalle. Desde Mis necesidades de compra ves su estado (Activa, Finalizada, Expirada), el tiempo restante y las ofertas recibidas, y te llega una notificación cada vez que una tienda ofrece. Si escribes a soporte, indica ese código para que lo ubiquemos de inmediato.',
+    q: '¿Cómo hago seguimiento a mi búsqueda?',
+    a: 'Cada búsqueda tiene un código del tipo NC-000123, visible en la lista y en el detalle. Desde Mis búsquedas de repuestos ves su estado (Activa, Finalizada, Expirada), el tiempo restante y las ofertas recibidas, y te llega una notificación cada vez que una tienda ofrece. Si escribes a soporte, indica ese código para que lo ubiquemos de inmediato.',
     roles: [BUYER, SELLER],
   },
   {
     grupo: 'Cómo funciona',
-    q: '¿Quién puede ver mi necesidad y qué información se muestra?',
-    a: 'Cualquier persona puede ver las necesidades activas, pero tu patente nunca se muestra completa (por ejemplo AB**12). Las ofertas son privadas: cada tienda ve solo la suya, los montos no se comparten entre tiendas ni con otros compradores. Solo las tiendas y el creador de la necesidad pueden comentar.',
+    q: '¿Quién puede ver mi búsqueda y qué información se muestra?',
+    a: 'Cualquier persona puede ver las búsquedas activas, pero tu patente nunca se muestra completa (por ejemplo AB**12). Las ofertas son privadas: cada tienda ve solo la suya, los montos no se comparten entre tiendas ni con otros compradores. Solo las tiendas y el creador de la búsqueda pueden comentar.',
     roles: ALL,
   },
   {
     grupo: 'Cómo funciona',
-    q: '¿Puedo ver necesidades de compra si no tengo cuenta?',
-    a: 'Sí, puedes explorarlas. Para publicar una necesidad debes iniciar sesión como comprador y tener al menos una dirección registrada; para ofertar debes ser una casa de repuestos verificada y aprobada.',
+    q: '¿Puedo ver búsquedas de repuestos si no tengo cuenta?',
+    a: 'Sí, puedes explorarlas. Para publicar una búsqueda debes iniciar sesión como comprador y tener al menos una dirección registrada; para ofertar debes ser una casa de repuestos verificada y aprobada.',
     roles: [GUEST],
   },
 
   // ---------------------------------------------------------------- Publicar y editar (comprador)
   {
     grupo: 'Publicar y editar',
-    q: '¿Cuánto tiempo dura mi necesidad y qué pasa cuando termina?',
-    a: 'Tú eliges la vigencia al publicar: 24 horas, 48 horas (la recomendada), 72 horas, 5 o 7 días, contadas desde la publicación. Al terminar el plazo la necesidad pasa a Expirada y deja de recibir ofertas. Si ya habías aceptado ofertas, esas se mantienen y puedes pagarlas; solo lo que seguía pendiente se cierra.',
+    q: '¿Cuánto tiempo dura mi búsqueda y qué pasa cuando termina?',
+    a: 'Tú eliges la vigencia al publicar: 24 horas, 48 horas (la recomendada), 72 horas, 5 o 7 días, contadas desde la publicación. Al terminar el plazo la búsqueda pasa a Expirada y deja de recibir ofertas. Si ya habías aceptado ofertas, esas se mantienen y puedes pagarlas; solo lo que seguía pendiente se cierra.',
     roles: BUYER_AND_GUEST,
   },
   {
     grupo: 'Publicar y editar',
-    q: '¿Puedo editar mi necesidad después de publicarla?',
+    q: '¿Puedo editar mi búsqueda después de publicarla?',
     a: 'Sí, mientras no hayas aceptado ninguna oferta y el plazo no haya terminado. Si cambias los repuestos, las cantidades o la patente de algún repuesto, las ofertas ya enviadas quedan sin efecto y se avisa a las tiendas para que vuelvan a ofertar. Si solo cambias datos como fotos, descripción, presupuesto o plazo de envío, las ofertas se mantienen. Una vez que aceptas una oferta ya no se puede editar, porque las condiciones quedaron fijadas con las tiendas.',
     roles: [BUYER],
   },
   {
     grupo: 'Publicar y editar',
-    q: '¿Qué pasa si me arrepiento y ya no quiero la necesidad?',
-    a: 'Si todavía no aceptaste ninguna oferta, no tienes que hacer nada: no aceptes ofertas y la necesidad se cierra sola al terminar el plazo, sin cobro ni sanción alguna. Hoy no existe un botón para cancelarla antes de tiempo; si necesitas que se cierre antes, escríbenos desde Contactar soporte indicando el código NC-… de tu necesidad y lo revisamos.',
+    q: '¿Qué pasa si me arrepiento y ya no quiero la búsqueda?',
+    a: 'Si todavía no aceptaste ninguna oferta, no tienes que hacer nada: no aceptes ofertas y la búsqueda se cierra sola al terminar el plazo, sin cobro ni sanción alguna. Hoy no existe un botón para cancelarla antes de tiempo; si necesitas que se cierre antes, escríbenos desde Contactar soporte indicando el código NC-… de tu búsqueda y lo revisamos.',
     roles: [BUYER],
   },
   {
@@ -78,7 +78,7 @@ export const AUCTION_HELP_FAQS = [
   {
     grupo: 'Ofertas y aceptación',
     q: '¿Cómo comparo y acepto una oferta?',
-    a: 'En el detalle de tu necesidad abre Ofertas recibidas. Verás cada tienda con su evaluación, la fecha en que envió la oferta, el precio por repuesto, el despacho y la garantía. Puedes aceptar una oferta en cualquier momento mientras la necesidad esté activa: no tienes que esperar a que termine el plazo.',
+    a: 'En el detalle de tu búsqueda abre Ofertas recibidas. Verás cada tienda con su evaluación, la fecha en que envió la oferta, el precio por repuesto, el despacho y la garantía. Puedes aceptar una oferta en cualquier momento mientras la búsqueda esté activa: no tienes que esperar a que termine el plazo.',
     roles: [BUYER],
   },
   {
@@ -108,7 +108,7 @@ export const AUCTION_HELP_FAQS = [
   {
     grupo: 'Ofertas y aceptación',
     q: '¿Qué pasa si no recibo ninguna oferta?',
-    a: 'Cuando termina el plazo, la necesidad queda Expirada sin ningún costo para ti. Para volver a intentarlo puedes publicar una nueva con una vigencia mayor, revisar que el repuesto y el vehículo estén bien descritos, agregar fotos o ajustar el presupuesto. También puedes pedir cotización directa a una tienda desde la ficha de un repuesto del catálogo.',
+    a: 'Cuando termina el plazo, la búsqueda queda Expirada sin ningún costo para ti. Para volver a intentarlo puedes publicar una nueva con una vigencia mayor, revisar que el repuesto y el vehículo estén bien descritos, agregar fotos o ajustar el presupuesto. También puedes pedir cotización directa a una tienda desde la ficha de un repuesto del catálogo.',
     roles: [BUYER],
   },
   {
@@ -128,7 +128,7 @@ export const AUCTION_HELP_FAQS = [
   {
     grupo: 'Pago y entrega',
     q: '¿Cómo pago mis ofertas aceptadas?',
-    a: 'Desde el detalle de la necesidad entra a Pagar. Verás el pedido separado por tienda, eliges el método de entrega de cada una (retiro en tienda, despacho dentro de la comuna o fuera de ella, según lo que la tienda ofrezca) y tu dirección, y pagas una sola vez por la plataforma de pago aunque hayas aceptado ofertas de varias tiendas. Pagar como comprador no tiene comisión adicional.',
+    a: 'Desde el detalle de la búsqueda entra a Pagar. Verás el pedido separado por tienda, eliges el método de entrega de cada una (retiro en tienda, despacho dentro de la comuna o fuera de ella, según lo que la tienda ofrezca) y tu dirección, y pagas una sola vez por la plataforma de pago aunque hayas aceptado ofertas de varias tiendas. Pagar como comprador no tiene comisión adicional.',
     roles: [BUYER],
   },
   {
@@ -172,19 +172,19 @@ export const AUCTION_HELP_FAQS = [
   {
     grupo: 'Para casas de repuestos',
     q: '¿Quién puede enviar ofertas?',
-    a: 'Solo las casas de repuestos verificadas, aprobadas y activas. No puedes ofertar en tu propia necesidad, y solo puedes ofrecer repuestos que estén en tu inventario. Te avisamos por notificación cuando se publica una necesidad nueva.',
+    a: 'Solo las casas de repuestos verificadas, aprobadas y activas. No puedes ofertar en tu propia búsqueda, y solo puedes ofrecer repuestos que estén en tu inventario. Te avisamos por notificación cuando se publica una búsqueda nueva.',
     roles: [SELLER],
   },
   {
     grupo: 'Para casas de repuestos',
     q: '¿Cómo envío una oferta?',
-    a: 'Abre la necesidad y toca Ofertar ahora. Para cada repuesto pendiente eliges un producto de tu inventario y su precio unitario. Debes cubrir todos los repuestos del pedido: si te falta alguno, no podrás registrar la oferta. Indica además tiempo de entrega, tipo de entrega, garantía y notas. Tu método de envío debe servir para la comuna del comprador (retiro, dentro de la comuna o fuera de ella); si no, la plataforma te indicará por qué no puedes ofrecerlo.',
+    a: 'Abre la búsqueda y toca Ofertar ahora. Para cada repuesto pendiente eliges un producto de tu inventario y su precio unitario. Debes cubrir todos los repuestos del pedido: si te falta alguno, no podrás registrar la oferta. Indica además tiempo de entrega, tipo de entrega, garantía y notas. Tu método de envío debe servir para la comuna del comprador (retiro, dentro de la comuna o fuera de ella); si no, la plataforma te indicará por qué no puedes ofrecerlo.',
     roles: [SELLER],
   },
   {
     grupo: 'Para casas de repuestos',
     q: '¿Puedo modificar o retirar mi oferta?',
-    a: 'Puedes modificarla mientras la necesidad esté activa y el comprador no la haya aceptado: al volver a enviarla se actualiza tu oferta (hay una sola por tienda). No existe la opción de retirarla; si ya no puedes cumplir, modifícala antes de que sea aceptada o escríbenos desde Contactar soporte. Una oferta aceptada ya no se puede modificar.',
+    a: 'Puedes modificarla mientras la búsqueda esté activa y el comprador no la haya aceptado: al volver a enviarla se actualiza tu oferta (hay una sola por tienda). No existe la opción de retirarla; si ya no puedes cumplir, modifícala antes de que sea aceptada o escríbenos desde Contactar soporte. Una oferta aceptada ya no se puede modificar.',
     roles: [SELLER],
   },
   {
@@ -196,19 +196,19 @@ export const AUCTION_HELP_FAQS = [
   {
     grupo: 'Para casas de repuestos',
     q: 'Me aceptaron la oferta pero el comprador no paga, ¿qué hago?',
-    a: 'Mientras no haya pago no hay venta ni obligación de despachar, y no se genera ningún cobro. Un pago iniciado vence a los 30 minutos y el comprador puede reintentarlo. Si pasan los días y el comprador no paga, puedes escribirnos a soporte con el código NC-… de la necesidad.',
+    a: 'Mientras no haya pago no hay venta ni obligación de despachar, y no se genera ningún cobro. Un pago iniciado vence a los 30 minutos y el comprador puede reintentarlo. Si pasan los días y el comprador no paga, puedes escribirnos a soporte con el código NC-… de la búsqueda.',
     roles: [SELLER],
   },
   {
     grupo: 'Para casas de repuestos',
-    q: 'Perdí la necesidad: el comprador eligió a otra tienda, ¿qué pasa con mi oferta?',
+    q: 'Perdí la búsqueda: el comprador eligió a otra tienda, ¿qué pasa con mi oferta?',
     a: 'Si el comprador acepta la oferta de otra tienda, la tuya queda descartada y te lo avisamos. No tiene ningún costo ni afecta tu evaluación.',
     roles: [SELLER],
   },
   {
     grupo: 'Para casas de repuestos',
     q: 'El comprador no responde ni revisa mi oferta, ¿qué pasa?',
-    a: 'En el seguimiento de tus ofertas puedes ver si el comprador ya la revisó. El comprador puede aceptar en cualquier momento hasta el cierre del plazo. Si el plazo termina sin que acepte, la necesidad queda Expirada y tu oferta también, sin costo para ti. Puedes mejorar tu oferta mientras siga activa y no esté aceptada.',
+    a: 'En el seguimiento de tus ofertas puedes ver si el comprador ya la revisó. El comprador puede aceptar en cualquier momento hasta el cierre del plazo. Si el plazo termina sin que acepte, la búsqueda queda Expirada y tu oferta también, sin costo para ti. Puedes mejorar tu oferta mientras siga activa y no esté aceptada.',
     roles: [SELLER],
   },
   {
@@ -238,6 +238,6 @@ export const AUCTION_HELP_FAQS = [
 ];
 
 export const AUCTION_HELP_INTRO = {
-  titulo: 'Necesidades de compra',
+  titulo: 'Búsqueda de repuestos',
   descripcion: 'Todo sobre publicar, ofertar, aceptar, pagar y qué pasa si te arrepientes o no hay respuesta.',
 };

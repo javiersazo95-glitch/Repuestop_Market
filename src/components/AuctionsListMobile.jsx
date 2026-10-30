@@ -55,8 +55,8 @@ function AuctionCardMobile({ auction, status, now, onOpen, pendingQuestions = nu
         <div className="am-card-body">
           <div className="am-card-head">
             <span className={`am-card-state is-${status.key}`}>{status.label}</span>
-            <button type="button" className="am-card-view" onClick={() => onOpen(auction.id)} aria-label="Ver necesidad">
-              <Eye size={13} /> Ver necesidad <ChevronRight size={13} />
+            <button type="button" className="am-card-view" onClick={() => onOpen(auction.id)} aria-label="Ver búsqueda">
+              <Eye size={13} /> Ver búsqueda <ChevronRight size={13} />
             </button>
           </div>
           <h3 className="am-card-title">{auction.repuestoSolicitado}</h3>
@@ -84,7 +84,7 @@ function AuctionCardMobile({ auction, status, now, onOpen, pendingQuestions = nu
 }
 
 /**
- * Listado de necesidades de compra para el celular: idéntico al de la app (banner, búsqueda con íconos de
+ * Listado de búsquedas de repuestos para el celular: idéntico al de la app (banner, búsqueda con íconos de
  * filtros y orden, tarjetas con foto y botón "+" flotante). Los filtros avanzados entran desde la derecha.
  */
 export default function AuctionsListMobile({
@@ -105,11 +105,11 @@ export default function AuctionsListMobile({
   canCreate = false,
   onOpenAuction,
   filtersPanel,
-  /** "Mural publico (N)" / "Mis necesidades (N)" (null sin sesion de quien publica), como la app. */
+  /** "Mural publico (N)" / "Mis búsquedas (N)" (null sin sesion de quien publica), como la app. */
   tabs = null,
   tab = 'MURAL',
   onTabChange,
-  /** Preguntas sin responder por necesidad, solo en "Mis necesidades". */
+  /** Preguntas sin responder por búsqueda, solo en "Mis búsquedas". */
   pendingQuestions = null,
 }) {
   const [sortOpen, setSortOpen] = useState(false);
@@ -117,11 +117,11 @@ export default function AuctionsListMobile({
 
   return (
     <main className="am-page am-list">
-      <section className="am-banner" aria-label="Necesidades de compra: publica lo que necesitas y recibe ofertas de distintas casas de repuestos">
+      <section className="am-banner" aria-label="Búsqueda de repuestos: publica lo que necesitas y recibe ofertas de distintas casas de repuestos">
         <div className="am-banner-text">
           <h1>
-            <span>Necesidades</span>
-            <span className="is-accent">de compra</span>
+            <span>Búsqueda</span>
+            <span className="is-accent">de repuestos</span>
           </h1>
           <p>Publica lo que necesitas y recibe ofertas de distintas casas de repuestos.</p>
         </div>
@@ -156,7 +156,7 @@ export default function AuctionsListMobile({
           type="button"
           className={`am-icon-btn ${sortOpen || sortBy !== 'RECIENTES' ? 'is-active' : ''}`}
           onClick={() => setSortOpen((open) => !open)}
-          aria-label="Ordenar necesidades"
+          aria-label="Ordenar búsquedas"
           aria-expanded={sortOpen}
         >
           <ArrowUpDown size={22} />
@@ -164,7 +164,7 @@ export default function AuctionsListMobile({
       </div>
 
       {tabs && (
-        <div className="am-tabs" role="tablist" aria-label="Necesidades de compra">
+        <div className="am-tabs" role="tablist" aria-label="Búsqueda de repuestos">
           {tabs.map((item) => (
             <button key={item.value} type="button" role="tab" aria-selected={tab === item.value} className={tab === item.value ? 'is-active' : ''} onClick={() => { onTabChange?.(item.value); setVisibleCount(8); }}>
               {item.label} ({item.count})
@@ -194,7 +194,7 @@ export default function AuctionsListMobile({
       {error ? (
         <div className="am-empty">
           <Gavel size={32} />
-          <h2>No pudimos cargar las necesidades</h2>
+          <h2>No pudimos cargar las búsquedas</h2>
           <p>{error}</p>
           <button type="button" className="am-btn" onClick={onRetry}>Reintentar</button>
         </div>
@@ -205,10 +205,10 @@ export default function AuctionsListMobile({
       ) : rows.length === 0 ? (
         <div className="am-empty">
           <Gavel size={32} />
-          <h2>No hay necesidades de compra en esta sección</h2>
+          <h2>No hay búsquedas de repuestos en esta sección</h2>
           {canCreate && <p>Publica lo que necesitas para recibir cotizaciones de tiendas verificadas.</p>}
           {activeFiltersCount > 0 && <button type="button" className="am-btn am-btn-outline" onClick={onResetFilters}>Limpiar filtros</button>}
-          {canCreate && <button type="button" className="am-btn" onClick={onCreate}>Publicar necesidad de repuesto</button>}
+          {canCreate && <button type="button" className="am-btn" onClick={onCreate}>Publicar búsqueda de repuesto</button>}
         </div>
       ) : (
         <div className="am-list-cards">
@@ -217,14 +217,14 @@ export default function AuctionsListMobile({
           ))}
           {rows.length > visibleCount && (
             <button type="button" className="am-btn am-btn-outline" onClick={() => setVisibleCount((count) => count + 8)}>
-              Ver más necesidades ({rows.length - visibleCount})
+              Ver más búsquedas ({rows.length - visibleCount})
             </button>
           )}
         </div>
       )}
 
       {canCreate && (
-        <button type="button" className="am-fab" onClick={onCreate} aria-label="Publicar una necesidad de compra">
+        <button type="button" className="am-fab" onClick={onCreate} aria-label="Publicar una búsqueda de repuestos">
           <Plus size={26} />
         </button>
       )}

@@ -18,7 +18,7 @@ const isPickup = (method) => /retiro/i.test(method || '');
 /**
  * Pago de una subasta: las ofertas aceptadas de una o varias tiendas se pagan juntas, en un solo pedido
  * de varias tiendas. Los precios y los envíos los fija el servidor con lo que cada tienda ofertó (28-oct): cada tienda
- * entrega como lo ofertó y el despacho va a la dirección del comprador en la comuna de la necesidad, sin elegir otra.
+ * entrega como lo ofertó y el despacho va a la dirección del comprador en la comuna de la búsqueda, sin elegir otra.
  */
 export default function AuctionCheckoutPage() {
   useDocumentTitle('Pagar pedido');
@@ -63,7 +63,7 @@ export default function AuctionCheckoutPage() {
   const needsAddress = toPay.some((store) => !isPickup(chosenMethod(store)));
 
   const missing = [];
-  if (needsAddress && !purchase?.direccionId) missing.push(`agrega una dirección en ${purchase?.comuna || 'la comuna de tu necesidad'}`);
+  if (needsAddress && !purchase?.direccionId) missing.push(`agrega una dirección en ${purchase?.comuna || 'la comuna de tu búsqueda'}`);
   if (documentType === 'FACTURA' && (!isValidRut(invoice.rut) || !invoice.razonSocial.trim() || !invoice.giro.trim())) {
     missing.push('completa los datos de la factura (RUT, razón social y giro)');
   }
@@ -187,11 +187,11 @@ export default function AuctionCheckoutPage() {
             {needsAddress && (
               <section className="apc-card">
                 <h2><span>2</span> Dirección de despacho</h2>
-                <p className="apc-note">Las tiendas ofertaron para {purchase.comuna || 'la comuna de tu necesidad'}: el pedido llega a tu dirección en esa comuna.</p>
+                <p className="apc-note">Las tiendas ofertaron para {purchase.comuna || 'la comuna de tu búsqueda'}: el pedido llega a tu dirección en esa comuna.</p>
                 {purchase.direccionId ? (
                   <p className="apc-option is-selected"><span><strong>{purchase.direccionTexto}</strong></span></p>
                 ) : (
-                  <p className="apc-note apc-note-warn">No tienes una dirección en {purchase.comuna || 'la comuna de tu necesidad'}. <Link to={profilePath('datos')}>Agrégala en tu perfil</Link> y vuelve para pagar.</p>
+                  <p className="apc-note apc-note-warn">No tienes una dirección en {purchase.comuna || 'la comuna de tu búsqueda'}. <Link to={profilePath('datos')}>Agrégala en tu perfil</Link> y vuelve para pagar.</p>
                 )}
               </section>
             )}

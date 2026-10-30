@@ -61,11 +61,11 @@ function ItemVehicle({ itemKey, patente, onChange, onVehicle }) {
 }
 
 /**
- * Formulario para publicar una necesidad de compra en el celular: idéntico al de la app (tres tarjetas:
+ * Formulario para publicar una búsqueda de repuestos en el celular: idéntico al de la app (tres tarjetas:
  * datos del vehículo con la patente que se autocompleta, qué repuesto se necesita con fotos, y plazos y
  * condiciones con listas desplegables) y un botón para volver. Solo crea; editar usa el formulario de escritorio.
  */
-/** `template`: "Publicar de nuevo" una necesidad vencida o cancelada (precarga sus datos y publica una nueva). */
+/** `template`: "Publicar de nuevo" una búsqueda vencida o cancelada (precarga sus datos y publica una nueva). */
 export default function AuctionCreateMobile({ onClose, onSuccess, auction = null, template = null, initialPatente = '' }) {
   const isEditing = Boolean(auction);
   const source = auction || template;
@@ -197,17 +197,17 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
       if (onSuccess) onSuccess(created);
       onClose();
     } catch (err) {
-      setError(err?.message || (isEditing ? 'No pudimos guardar los cambios de tu pedido.' : 'No se pudo publicar la necesidad de compra.'));
+      setError(err?.message || (isEditing ? 'No pudimos guardar los cambios de tu pedido.' : 'No se pudo publicar la búsqueda de repuestos.'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="am-create" role="dialog" aria-modal="true" aria-label={isEditing ? 'Editar necesidad' : 'Publicar necesidad'}>
+    <div className="am-create" role="dialog" aria-modal="true" aria-label={isEditing ? 'Editar búsqueda' : 'Publicar búsqueda'}>
       <form className="am-page am-form" onSubmit={submit} noValidate>
         <button type="button" className="am-back" onClick={onClose}><ArrowLeft size={16} /> Volver</button>
-        {(isEditing || template) && <h1 className="am-form-heading">{isEditing ? 'Editar necesidad de compra' : 'Publicar de nuevo tu necesidad'}</h1>}
+        {(isEditing || template) && <h1 className="am-form-heading">{isEditing ? 'Editar búsqueda de repuestos' : 'Publicar de nuevo tu búsqueda'}</h1>}
 
         <section className="am-card">
           <h3 className="am-form-title">1. Datos del vehículo</h3>
@@ -335,7 +335,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
 
         {error && <p className="am-error am-error-box" role="alert">{error}</p>}
         <button type="submit" className="am-btn" disabled={loading}>
-          {loading ? <Loader2 size={18} className="am-spin" /> : null} {isEditing ? 'Guardar cambios' : 'Publicar necesidad de compra'}
+          {loading ? <Loader2 size={18} className="am-spin" /> : null} {isEditing ? 'Guardar cambios' : 'Publicar búsqueda de repuestos'}
         </button>
       </form>
     </div>

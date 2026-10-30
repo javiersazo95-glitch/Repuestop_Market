@@ -7,7 +7,7 @@ import {
   Clock, ShieldCheck, PackageCheck, Loader2, Inbox, Search,
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
-  ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, Wrench, Stethoscope
+  ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, PackageSearch, Wrench, Stethoscope
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
 import VideoTutorialModal from './VideoTutorialModal';
@@ -216,7 +216,7 @@ const BUYER_SIDEBAR_GROUPS = [
     items: [
       { id: 'pedidos', label: 'Mis pedidos', icon: Package },
       { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
-      { id: 'subastas', label: 'Necesidades de compra', icon: Gavel },
+      { id: 'subastas', label: 'Búsqueda de repuestos', icon: PackageSearch },
       { id: 'mis_fallas', label: 'Fallas automotrices', icon: EngineIcon },
       { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
       { id: 'chats_vendedor', label: 'Chats con vendedor', icon: MessageSquare },
@@ -265,7 +265,7 @@ const WORKSHOP_SIDEBAR_GROUPS = [
     items: [
       { id: 'pedidos', label: 'Mis pedidos', icon: Package },
       { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
-      { id: 'subastas', label: 'Necesidades de compra', icon: Gavel },
+      { id: 'subastas', label: 'Búsqueda de repuestos', icon: PackageSearch },
       { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
       { id: 'chats_vendedor', label: 'Chats con vendedor', icon: MessageSquare },
       { id: 'favoritos', label: 'Favoritos', icon: Heart }
@@ -1335,9 +1335,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     if (isWorkshop) {
       return [
         { id: 'fallas', tone: 'amber', icon: EngineIcon, title: 'Fallas automotrices', description: 'Revisa las fallas de los clientes y deja tu diagnóstico.', onClick: () => setActiveTab('fallas_taller') },
-        { id: 'diagnostico', tone: 'purple', icon: Stethoscope, title: 'Servicio Diagnóstico', description: 'Ofrece agenda en tus comentarios. Gratis cada 10 necesidades de compra.', onClick: () => setActiveTab('diagnostico') },
+        { id: 'diagnostico', tone: 'purple', icon: Stethoscope, title: 'Servicio Diagnóstico', description: 'Ofrece agenda en tus comentarios. Gratis cada 10 búsquedas de repuestos.', onClick: () => setActiveTab('diagnostico') },
         { id: 'mi_taller', tone: 'sky', icon: Wrench, title: 'Mi taller', description: 'Tus servicios con precio, tu perfil y tus citas.', onClick: () => setActiveTab('mi_taller') },
-        { id: 'subastas', tone: 'blue', icon: Gavel, title: 'Necesidades de compra', description: 'Publica los repuestos que necesitas y recibe ofertas.', onClick: () => setActiveTab('subastas') },
+        { id: 'subastas', tone: 'blue', icon: PackageSearch, title: 'Búsqueda de repuestos', description: 'Publica los repuestos que necesitas y recibe ofertas.', onClick: () => setActiveTab('subastas') },
         { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte.', onClick: () => navigate(ROUTES.support) },
       ];
     }

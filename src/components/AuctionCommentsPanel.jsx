@@ -18,7 +18,7 @@ function timeAgo(iso) {
   return `Hace ${days} ${days === 1 ? 'día' : 'días'}`;
 }
 
-/** Comentarios públicos de la necesidad: las tiendas preguntan para afinar la cotización. */
+/** Comentarios públicos de la búsqueda: las tiendas preguntan para afinar la cotización. */
 export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = true, isCreator = false }) {
   const { isLoggedIn } = useAuth();
   const [comments, setComments] = useState([]);
@@ -84,7 +84,7 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
   const ordered = sortBy === 'RECIENTES' ? [...questions].reverse() : questions;
 
   return (
-    <section className="as-card as-comments" aria-label="Comentarios de la necesidad">
+    <section className="as-card as-comments" aria-label="Comentarios de la búsqueda">
       <div className="as-comments-head">
         <h2 className="as-title">
           <span><MessageCircle size={18} /> Comentarios de usuarios</span>
@@ -102,9 +102,9 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
       </div>
 
       {!isOpen ? (
-        <p className="as-muted as-closed">Esta necesidad de compra ya no recibe comentarios.</p>
+        <p className="as-muted as-closed">Esta búsqueda de repuestos ya no recibe comentarios.</p>
       ) : isLoggedIn && !canComment ? (
-        <p className="as-muted as-closed">Solo las tiendas pueden comentar esta necesidad para afinar su oferta; el comprador responde aquí.</p>
+        <p className="as-muted as-closed">Solo las tiendas pueden comentar esta búsqueda para afinar su oferta; el comprador responde aquí.</p>
       ) : isCreator ? (
         <p className="as-muted as-closed">Responde cada pregunta con el botón «Responder» bajo ella; tu respuesta queda anidada en esa pregunta.</p>
       ) : isLoggedIn ? (
@@ -129,7 +129,7 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
       {loading ? (
         <p className="as-muted">Cargando comentarios…</p>
       ) : comments.length === 0 ? (
-        <p className="as-muted as-empty">Aún no hay comentarios sobre esta necesidad. Pregunta lo que necesites saber para afinar tu cotización.</p>
+        <p className="as-muted as-empty">Aún no hay comentarios sobre esta búsqueda. Pregunta lo que necesites saber para afinar tu cotización.</p>
       ) : (
         <ul className="as-comment-list">
           {ordered.map((comment) => (

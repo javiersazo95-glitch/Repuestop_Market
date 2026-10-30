@@ -16,7 +16,7 @@ const HOUR = 60 * 60 * 1000;
 
 const PROCESS_STEPS = [
   { title: 'Publicación', Icon: Pencil, text: 'El comprador detalla el vehículo, los repuestos que necesita, el plazo de envío y un presupuesto sugerido (solo referencial).' },
-  { title: 'Ofertas privadas', Icon: Lock, text: 'Las casas de repuestos verificadas reciben el aviso y envían su oferta mientras la necesidad está activa. Cada tienda ve solo la suya.' },
+  { title: 'Ofertas privadas', Icon: Lock, text: 'Las casas de repuestos verificadas reciben el aviso y envían su oferta mientras la búsqueda está activa. Cada tienda ve solo la suya.' },
   { title: 'Elección de la oferta', Icon: ListChecks, text: 'Al cerrar el plazo, el comprador compara las ofertas y elige la que más le conviene: precio, garantía, despacho y reputación.' },
   { title: 'Pago seguro', Icon: Wallet, text: 'El comprador paga la oferta ganadora por la plataforma y la tienda es notificada para preparar el pedido.' },
   { title: 'Entrega y calificación', Icon: Package, text: 'La tienda despacha o entrega el repuesto. Luego ambas partes pueden calificarse, lo que construye la confianza de la comunidad.' },
@@ -102,7 +102,7 @@ function VehicleRow({ label, value, full }) {
 }
 
 /**
- * Detalle de la necesidad de compra para el celular: idéntico al de la app (resumen con fotos y estado,
+ * Detalle de la búsqueda de repuestos para el celular: idéntico al de la app (resumen con fotos y estado,
  * datos separados por líneas, perfil del comprador y ofertas, repuestos, vehículo, comentarios y paneles
  * centrados de desglose, ofertas y explicación del proceso / presupuesto).
  */
@@ -135,7 +135,7 @@ export default function AuctionDetailMobile({
   const [posting, setPosting] = useState(false);
   const [commentError, setCommentError] = useState('');
   const [photoIndex, setPhotoIndex] = useState(0);
-  // Visor a pantalla completa: fotos de la necesidad o la foto de una tienda que ofertó.
+  // Visor a pantalla completa: fotos de la búsqueda o la foto de una tienda que ofertó.
   const [viewer, setViewer] = useState(null); // { photos, index, title }
   const [modal, setModal] = useState(null); // 'breakdown' | 'offers' | 'budget' | 'process'
   const [budgetNoteOpen, setBudgetNoteOpen] = useState(false);
@@ -203,16 +203,16 @@ export default function AuctionDetailMobile({
 
   return (
     <main className="am-page am-detail">
-      <button type="button" className="am-back" onClick={onBack}><ArrowLeft size={16} /> Volver a necesidades</button>
+      <button type="button" className="am-back" onClick={onBack}><ArrowLeft size={16} /> Volver a búsquedas</button>
       <div className="am-title-row">
-        <h1>Detalle de necesidad de compra</h1>
-        <button type="button" className="am-info-btn" onClick={() => setModal('process')} aria-label="Qué es una necesidad de compra y sus etapas">
+        <h1>Detalle de búsqueda de repuestos</h1>
+        <button type="button" className="am-info-btn" onClick={() => setModal('process')} aria-label="Qué es una búsqueda de repuestos y sus etapas">
           <Info size={22} />
         </button>
       </div>
 
       {/* Editar (solo el comprador), compartir y guardar */}
-      <div className="am-actions" role="group" aria-label="Acciones de la necesidad">
+      <div className="am-actions" role="group" aria-label="Acciones de la búsqueda">
         {canCancel && (
           <button type="button" className="am-action is-danger" onClick={onCancel}>
             <XCircle size={16} /> Cancelar
@@ -426,7 +426,7 @@ export default function AuctionDetailMobile({
 
       {/* Desglose */}
       {modal === 'breakdown' && (
-        <CenterModal title="Desglose de la necesidad" Icon={ListChecks} onClose={close}>
+        <CenterModal title="Desglose de la búsqueda" Icon={ListChecks} onClose={close}>
           <p className="am-muted">
             Esto es lo que necesita el comprador{[marca, modelo, anio].filter(Boolean).length ? ` para su ${[marca, modelo, anio].filter(Boolean).join(' ')}` : ''}.
           </p>
@@ -517,13 +517,13 @@ export default function AuctionDetailMobile({
           <p className="am-point"><Wallet size={16} /><span>Es un valor <b>estimado y referencial</b> que el comprador indicó para orientar a las tiendas. No es un precio fijo ni obligatorio.</span></p>
           <p className="am-point"><ArrowRight size={16} /><span>Tu casa de repuestos puede ofertar <b>por sobre o bajo</b> este valor, según disponibilidad, calidad, garantía y despacho.</span></p>
           <p className="am-point"><Lock size={16} /><span>Las ofertas son privadas: ninguna tienda ve el precio de las demás.</span></p>
-          <div className="am-budget-box"><small>Presupuesto sugerido de esta necesidad</small><strong>{presupuestoMaximo ? formatCLP(presupuestoMaximo) : 'No definido'}</strong></div>
+          <div className="am-budget-box"><small>Presupuesto sugerido de esta búsqueda</small><strong>{presupuestoMaximo ? formatCLP(presupuestoMaximo) : 'No definido'}</strong></div>
         </CenterModal>
       )}
 
       {/* Proceso */}
       {modal === 'process' && (
-        <CenterModal title="¿Qué es una necesidad de compra?" Icon={Info} onClose={close} footer={<button type="button" className="am-btn" onClick={close}>Entendido</button>}>
+        <CenterModal title="¿Qué es una búsqueda de repuestos?" Icon={Info} onClose={close} footer={<button type="button" className="am-btn" onClick={close}>Entendido</button>}>
           <p className="am-muted">
             Es una solicitud que publica un comprador cuando busca un repuesto: indica qué necesita, para qué vehículo y un presupuesto de referencia. Las casas de repuestos verificadas la ven y le envían su mejor oferta.
           </p>

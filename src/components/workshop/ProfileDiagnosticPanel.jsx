@@ -62,11 +62,11 @@ export default function ProfileDiagnosticPanel({ onOpenAds }) {
         </section>
 
         <section className="ft-card">
-          <h3 style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Gift size={20} /> Gratis cada {status.necesidadesPorGratis} necesidades de compra</h3>
-          <p className="ft-sub">Registra tus compras de repuestos en Necesidades de compra: por cada {status.necesidadesPorGratis} ganas {status.vigenciaDias} días de Diagnóstico.</p>
+          <h3 style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Gift size={20} /> Gratis cada {status.necesidadesPorGratis} búsquedas de repuestos</h3>
+          <p className="ft-sub">Registra tus compras de repuestos en Búsqueda de repuestos: por cada {status.necesidadesPorGratis} ganas {status.vigenciaDias} días de Diagnóstico.</p>
           <div className="ft-progress" role="progressbar" aria-valuemin={0} aria-valuemax={status.necesidadesPorGratis} aria-valuenow={status.necesidadesPorGratis - status.necesidadesParaProximoGratis}><div style={{ width: `${Math.round(prizeProgress(status) * 100)}%` }} /></div>
           <p className="ft-sub">Te faltan {status.necesidadesParaProximoGratis} para el próximo premio · {status.necesidadesRegistradas} registradas · {status.periodosGanados} premios ganados</p>
-          <div className="ft-actions"><Link className="ft-btn ft-btn-outline" to={ROUTES.auctions}>Publicar una necesidad de compra</Link></div>
+          <div className="ft-actions"><Link className="ft-btn ft-btn-outline" to={ROUTES.auctions}>Publicar una búsqueda de repuestos</Link></div>
         </section>
       </div>
       <ConfirmDialog

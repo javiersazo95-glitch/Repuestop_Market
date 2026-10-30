@@ -123,7 +123,7 @@ export default function AuctionItemsModal({ isOpen, onClose, items = [], vehicle
         {canOffer && (
           <footer className="aim-foot">
             <span>¿Tienes alguno de estos repuestos? Puedes ofrecer solo los que tengas.</span>
-            <button type="button" className="aim-offer" onClick={onOffer}><Gavel size={15} /> Tomar necesidad y ofertar</button>
+            <button type="button" className="aim-offer" onClick={onOffer}><Gavel size={15} /> Tomar búsqueda y ofertar</button>
           </footer>
         )}
       </div>

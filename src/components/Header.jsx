@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Truck, ShieldCheck, Store, HelpCircle, Search, ShoppingCart, User,
   ChevronDown, ChevronRight, ArrowLeft, X, LogOut, LayoutDashboard, MessageSquare, Menu,
-  Package, Info, Wrench, Heart, Gavel, Cog, CarFront
+  Package, Info, Wrench, Heart, PackageSearch, Cog, CarFront
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
@@ -683,8 +683,8 @@ export default function Header({
           )}
           {/* "Ofertas" se elimino: llevaba al mismo catalogo que "Catálogo de repuestos". */}
           <button type="button" className="nav-item-catalog" aria-current={navCurrent(ROUTES.catalog)} onClick={() => { setShowMobileNav(false); onOpenCatalog(); }}><Cog size={16} /> <span>Catálogo de repuestos</span></button>
-          <button type="button" className="nav-item-auctions" aria-current={navCurrent(ROUTES.auctions)} onClick={() => { setShowMobileNav(false); navigate(ROUTES.auctions); }}><Gavel size={16} /> <span>Necesidades de compra</span></button>
-          {/* Junto a Necesidades de compra: el comprador registra la falla de su vehiculo y los talleres la diagnostican. */}
+          <button type="button" className="nav-item-auctions" aria-current={navCurrent(ROUTES.auctions)} onClick={() => { setShowMobileNav(false); navigate(ROUTES.auctions); }}><PackageSearch size={16} /> <span>Búsqueda de repuestos</span></button>
+          {/* Junto a Búsqueda de repuestos: el comprador registra la falla de su vehiculo y los talleres la diagnostican. */}
           <button type="button" className="nav-item-faults" aria-current={navCurrent(ROUTES.faults)} onClick={() => { setShowMobileNav(false); navigate(ROUTES.faults); }}><EngineIcon size={16} /> <span>Fallas automotrices</span></button>
           <button type="button" className="nav-item-stores" aria-current={navCurrent(ROUTES.stores)} onClick={() => { setShowMobileNav(false); onOpenStores(); }}><Store size={16} /> <span>Casas de repuestos</span></button>
           <button type="button" className="nav-item-about" aria-current={navCurrent(ROUTES.about)} onClick={() => { setShowMobileNav(false); onOpenAbout(); }}><Info size={16} /> <span>Sobre RepuesTop</span></button>

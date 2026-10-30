@@ -1514,7 +1514,7 @@ export default function OrderDetailView({
                   para que el numero de 10 digitos no parta el titulo en tres. */}
               <h2><span className="order-modal-title-label">{isSeller ? "Detalles de la Venta" : "Detalles del Pedido"}</span> <span className="order-modal-title-number">{orderIdShort}</span></h2>
               <span className="order-modal-subtitle">
-                {formatDate(order.createdAt || order.fecha)} · {order.origen === 'SUBASTA' ? 'Necesidad de compra' : order.source === 'quote' || order.origen === 'COTIZACION' ? 'Cotización' : 'Carrito'}
+                {formatDate(order.createdAt || order.fecha)} · {order.origen === 'SUBASTA' ? 'Búsqueda de repuestos' : order.source === 'quote' || order.origen === 'COTIZACION' ? 'Cotización' : 'Carrito'}
                 {/* O72: el numero de arriba ya es el publico, el mismo que le pide soporte; no se
                     repite como "Código". */}
               </span>

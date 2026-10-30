@@ -1,4 +1,4 @@
-/* Sección "Datos del vehículo" del formulario de publicar necesidad: la patente es el dato central. */
+/* Sección "Datos del vehículo" del formulario de publicar búsqueda: la patente es el dato central. */
 .acv-section { padding-bottom: 16px; border-bottom: 1px solid #f1f5f9; }
 .acv-title { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 14px; font-weight: 800; color: #0f172a; }
 .acv-title svg { color: #0056bf; }

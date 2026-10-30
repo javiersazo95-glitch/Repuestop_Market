@@ -4,7 +4,7 @@ import { MessageCircle, X } from 'lucide-react';
 import AuctionQuestionsPanel from './AuctionQuestionsPanel';
 import '../styles/auction-questions.css';
 
-/** Popup con todas las preguntas de las tiendas a una necesidad, donde el comprador las responde. */
+/** Popup con todas las preguntas de las tiendas a una búsqueda, donde el comprador las responde. */
 export default function AuctionQuestionsModal({ auctionId, title, canReply, onPendingChange, onClose }) {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -18,10 +18,10 @@ export default function AuctionQuestionsModal({ auctionId, title, canReply, onPe
 
   const view = (
     <div className="qq-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div className="qq-modal" role="dialog" aria-modal="true" aria-label="Preguntas a tu necesidad">
+      <div className="qq-modal" role="dialog" aria-modal="true" aria-label="Preguntas a tu búsqueda">
         <header className="qq-modal-head">
           <div>
-            <span><MessageCircle size={14} /> Preguntas a tu necesidad</span>
+            <span><MessageCircle size={14} /> Preguntas a tu búsqueda</span>
             <h3>{title}</h3>
           </div>
           <button type="button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button>

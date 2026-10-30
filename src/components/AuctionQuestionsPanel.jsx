@@ -13,7 +13,7 @@ function formatDate(iso) {
 }
 
 /**
- * Preguntas de las tiendas sobre una necesidad, para quien la publicó: lista a la izquierda, pregunta seleccionada y
+ * Preguntas de las tiendas sobre una búsqueda, para quien la publicó: lista a la izquierda, pregunta seleccionada y
  * caja de respuesta a la derecha. Cada respuesta queda enlazada a su pregunta y la vista pública la muestra como
  * «Respuesta del cliente».
  */
@@ -180,10 +180,10 @@ export default function AuctionQuestionsPanel({ auctionId, canReply = true, onPe
                     {sending ? <Loader2 size={15} className="qq-spin" /> : <Send size={15} />} Responder
                   </button>
                 </div>
-                <p className="qq-note">Tu respuesta se publica en los comentarios de la necesidad como «Respuesta del cliente».</p>
+                <p className="qq-note">Tu respuesta se publica en los comentarios de la búsqueda como «Respuesta del cliente».</p>
               </form>
             ) : (
-              <p className="qq-note">Esta necesidad ya cerró, por lo que no se pueden agregar respuestas.</p>
+              <p className="qq-note">Esta búsqueda ya cerró, por lo que no se pueden agregar respuestas.</p>
             )}
           </>
         ) : (
