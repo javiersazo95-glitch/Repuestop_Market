@@ -68,7 +68,7 @@ const BUYER_FEATURES = [
 
 const WORKSHOP_FEATURES = [
   'Diagnostica las fallas que registran los clientes',
-  'Publica tus servicios con precio en el Mural',
+  'Publica tus servicios con precio y aparece en el buscador',
   'Recibe citas agendadas con la falla del cliente',
   'Compra repuestos y publica tus búsquedas',
 ];

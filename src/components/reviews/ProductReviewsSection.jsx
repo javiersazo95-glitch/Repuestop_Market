@@ -15,11 +15,18 @@ const PREVIEW_COUNT = 3;
  * (primero las que traen comentario o fotos); "Ver todas" abre el popup completo. La nota del
  * producto de arriba baja hasta aca.
  */
-const ProductReviewsSection = forwardRef(function ProductReviewsSection({ productId, productName }, ref) {
+const ProductReviewsSection = forwardRef(function ProductReviewsSection({
+  productId,
+  productName,
+  // `kind="workshop"`: la misma seccion en el perfil del taller (`productId` es el del taller).
+  kind = 'product',
+  title = 'Opiniones del producto',
+  emptyText = 'Las dejan los compradores después de recibir este repuesto',
+}, ref) {
   const [modalOpen, setModalOpen] = useState(false);
   const { data = EMPTY_REVIEWS, isLoading } = useQuery({
-    queryKey: qk.reviews('product', productId, PREVIEW_COUNT),
-    queryFn: ({ signal }) => getReviewsApi('product', productId, { size: PREVIEW_COUNT, signal }),
+    queryKey: qk.reviews(kind, productId, PREVIEW_COUNT),
+    queryFn: ({ signal }) => getReviewsApi(kind, productId, { size: PREVIEW_COUNT, signal }),
     enabled: Boolean(productId),
     staleTime: 60000,
   });
@@ -27,7 +34,7 @@ const ProductReviewsSection = forwardRef(function ProductReviewsSection({ produc
   return (
     <section className="rv-section" ref={ref} aria-labelledby="rv-section-title">
       <div className="rv-section-head">
-        <h2 id="rv-section-title"><Star size={18} /> Opiniones del producto</h2>
+        <h2 id="rv-section-title"><Star size={18} /> {title}</h2>
         {data.total > 0 && <span>{reviewCountLabel(data.total)}</span>}
       </div>
       {isLoading ? (
@@ -35,13 +42,13 @@ const ProductReviewsSection = forwardRef(function ProductReviewsSection({ produc
       ) : data.total === 0 ? (
         <div className="rv-empty">
           <MessageSquareText size={22} />
-          <span><strong>Aún no hay opiniones</strong><small>Las dejan los compradores después de recibir este repuesto.</small></span>
+          <span><strong>Aún no hay opiniones</strong><small>{emptyText}</small></span>
         </div>
       ) : (
         <>
           <ReviewSummary data={data} />
           <div className="rv-list">
-            {data.items.map((review) => <ReviewCard key={review.id} review={review} kind="product" />)}
+            {data.items.map((review) => <ReviewCard key={review.id} review={review} kind={kind} />)}
           </div>
           {data.total > data.items.length && (
             <button type="button" className="rv-outline-btn" onClick={() => setModalOpen(true)}>
@@ -53,9 +60,9 @@ const ProductReviewsSection = forwardRef(function ProductReviewsSection({ produc
       <ReviewsModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        kind="product"
+        kind={kind}
         id={productId}
-        title="Opiniones del producto"
+        title={title}
         subtitle={productName}
       />
     </section>

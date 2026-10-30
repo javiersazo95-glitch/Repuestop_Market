@@ -41,7 +41,9 @@ export default function AppointmentsHistoryModal({
   /** Cita a resaltar al abrir (desde una notificación). */
   focusAppointmentId = null,
   /** Si ya se cargo el taller propio: hasta entonces no se sabe con qué bandeja abrir. */
-  tallerLoaded = true
+  tallerLoaded = true,
+  /** Dentro de una pagina (la pestaña Citas de Mi taller) en vez de ventana flotante. */
+  inline = false
 }) {
   // La bandeja inicial se decide recién cuando se sabe si la cuenta tiene un taller acreditado:
   // antes partía en "Recibidas" y un cliente la veía un instante antes de saltar a sus reservas.
@@ -336,28 +338,23 @@ export default function AppointmentsHistoryModal({
     </div>
   );
 
-  return createPortal(
-    <>
-      <div
-        className="booking-modal-overlay"
-        onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
-        role="dialog"
-        aria-modal="true"
-      >
-        <div className="booking-modal-card agenda-modal-card">
+  const card = (
+        <div className={`booking-modal-card agenda-modal-card ${inline ? 'is-inline' : ''}`}>
           <div className="booking-modal-header">
             <div>
               <h3><CalendarClock size={22} className="text-emerald-600" /> Gestión de citas</h3>
               <p>Las horas que pediste y las que te reservaron, en un solo lugar.</p>
             </div>
-            <button
-              type="button"
-              className="story-close-btn"
-              style={{ background: '#f1f5f9', color: '#0f172a' }}
-              onClick={onClose}
-            >
-              <X size={18} />
-            </button>
+            {!inline && (
+              <button
+                type="button"
+                className="story-close-btn"
+                style={{ background: '#f1f5f9', color: '#0f172a' }}
+                onClick={onClose}
+              >
+                <X size={18} />
+              </button>
+            )}
           </div>
 
           {isResolving ? (
@@ -478,8 +475,10 @@ export default function AppointmentsHistoryModal({
           </>
           )}
         </div>
-      </div>
+  );
 
+  const secondary = (
+    <>
       {isCalendarOpen && (
         <AppointmentsCalendarModal
           bookedAppointments={booked}
@@ -505,6 +504,21 @@ export default function AppointmentsHistoryModal({
           onClose={() => setReasonTarget(null)}
         />
       )}
+    </>
+  );
+
+  if (inline) return <>{card}{secondary}</>;
+  return createPortal(
+    <>
+      <div
+        className="booking-modal-overlay"
+        onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
+        role="dialog"
+        aria-modal="true"
+      >
+        {card}
+      </div>
+      {secondary}
     </>,
     document.body
   );

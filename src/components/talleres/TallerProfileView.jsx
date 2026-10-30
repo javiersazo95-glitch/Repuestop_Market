@@ -8,6 +8,7 @@ import {
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import { getCategoryIcon } from './categoryIcons';
 import { useTallerOwnership } from './useTallerOwnership';
+import ProductReviewsSection from '../reviews/ProductReviewsSection';
 import BookingModal from './BookingModal';
 import ContextualReportButton from '../ContextualReportButton';
 import { ROUTES } from '../../routes/paths';
@@ -297,6 +298,8 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
                 </dl>
               </section>
             </div>
+
+            <ProductReviewsSection kind="workshop" productId={taller.id} productName={taller.name} title="Opiniones del taller" emptyText="Las dejan los clientes después de su cita." />
 
             <p className="ad-detail-foot">
               <ShieldCheck size={14} />

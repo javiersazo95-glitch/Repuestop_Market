@@ -45,7 +45,7 @@ export default function MiTallerSection() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('perfil'); // 'perfil' | 'citas'
   const [rebookState, setRebookState] = useState(null); // { taller, appointment, appointmentId } | null
   const [isLoading, setIsLoading] = useState(true);
   const [profileKey, setProfileKey] = useState(0);
@@ -214,18 +214,6 @@ export default function MiTallerSection() {
           </button>
         )}
 
-        <button type="button" className="ads-tile" onClick={() => setIsHistoryOpen(true)}>
-          <span className="ads-tile-ic">
-            <CalendarClock size={18} />
-            {upcomingAppointmentsCount > 0 && <i className="ads-tile-badge">{upcomingAppointmentsCount}</i>}
-          </span>
-          <span className="ads-tile-body">
-            <strong>Gestión de citas</strong>
-            <em>{pendingReceived > 0 ? `${pendingReceived} por responder` : 'Tus reservas y solicitudes'}</em>
-          </span>
-          <ChevronRight size={15} className="ads-tile-arrow" />
-        </button>
-
         {publicProfile && (
           <ShareLinkButton
             className="ads-tile"
@@ -237,7 +225,7 @@ export default function MiTallerSection() {
         )}
       </div>
 
-      {!accreditation.isLoading && !accreditation.isApproved && (
+      {activeTab === 'perfil' && !accreditation.isLoading && !accreditation.isApproved && (
         <div className="ads-mgmt-state is-locked-note">
           <ShieldCheck size={22} />
           <p>{gateMessage}</p>
@@ -247,7 +235,32 @@ export default function MiTallerSection() {
         </div>
       )}
 
-      {accreditation.isApproved && (
+      {/* Mi perfil y Citas, como las pestañas de la app. */}
+      <div className="taller-editor__tabs" role="tablist" aria-label="Mi taller">
+        <button type="button" role="tab" aria-selected={activeTab === 'perfil'} className={activeTab === 'perfil' ? 'is-active' : ''} onClick={() => setActiveTab('perfil')}>
+          <Wrench size={15} /> Mi perfil
+        </button>
+        <button type="button" role="tab" aria-selected={activeTab === 'citas'} className={activeTab === 'citas' ? 'is-active' : ''} onClick={() => setActiveTab('citas')}>
+          <CalendarClock size={15} /> Citas
+          {pendingReceived > 0 ? <i aria-label={`${pendingReceived} por responder`}>{pendingReceived}</i> : upcomingAppointmentsCount > 0 ? <i>{upcomingAppointmentsCount}</i> : null}
+        </button>
+      </div>
+
+      {activeTab === 'citas' && (
+        <AppointmentsHistoryModal
+          inline
+          myTaller={myTaller}
+          tallerLoaded={!accreditation.isLoading}
+          appointments={appointments}
+          sessionUserId={sessionUserId}
+          userEmail={user?.email || ''}
+          onClose={() => setActiveTab('perfil')}
+          onAppointmentUpdated={replaceAppointment}
+          onRebook={handleRebook}
+        />
+      )}
+
+      {activeTab === 'perfil' && accreditation.isApproved && (
         <>
           <TallerProfileEditor
             key={profileKey}
@@ -277,19 +290,6 @@ export default function MiTallerSection() {
           user={user}
           onSaved={() => accreditation.refresh()}
           onClose={() => { setIsAccreditationOpen(false); accreditation.refresh(); }}
-        />
-      )}
-
-      {isHistoryOpen && (
-        <AppointmentsHistoryModal
-          myTaller={myTaller}
-          tallerLoaded={!accreditation.isLoading}
-          appointments={appointments}
-          sessionUserId={sessionUserId}
-          userEmail={user?.email || ''}
-          onClose={() => setIsHistoryOpen(false)}
-          onAppointmentUpdated={replaceAppointment}
-          onRebook={handleRebook}
         />
       )}
 

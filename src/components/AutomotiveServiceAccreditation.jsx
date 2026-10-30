@@ -361,7 +361,7 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
             <div>
               <h3 className="profile-panel-title" style={{ margin: 0 }}>Acreditar servicio automotriz</h3>
               <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                Este expediente es independiente de los documentos de tu tienda.
+                Nuestro equipo revisa tus documentos antes de publicar tu taller.
               </p>
             </div>
           </div>
@@ -457,10 +457,10 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
         </>
       )}
 
-      {/* Horario y urgencias: editable con el expediente en revisión o aprobado. */}
+      {/* Horario y urgencias: editable con el expediente en revisión o aprobado. Sin `.form-group`: sus reglas de label deforman las casillas del editor. */}
       {!editable && record && (
-        <div className="form-group" style={{ marginTop: '14px' }}>
-          <label>Horario y urgencias</label>
+        <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <strong style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155' }}>Horario y urgencias</strong>
           {hoursEditing ? (
             <>
               <WorkshopHoursSection value={hours} onChange={setHours} disabled={hoursSaving} idPrefix="acc-hours-edit" />
@@ -609,8 +609,8 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
             />
           </div>
 
-          <div className="form-group">
-            <label>Horario de atención</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+            <strong style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155' }}>Horario de atención</strong>
             <WorkshopHoursSection value={hours} onChange={setHours} disabled={saving} idPrefix="acc-hours" />
           </div>
 

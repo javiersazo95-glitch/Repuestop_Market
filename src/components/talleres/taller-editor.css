@@ -65,9 +65,17 @@
 .taller-editor__checks label.is-on { border-color: var(--ads-primary, #0056BF); background: var(--ads-primary-light, #EAF2FF); }
 .taller-editor__checks input { width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--ads-primary, #0056BF); }
 
-/* Opciones de radio dentro de `.form-group`, cuyas reglas de label e input son para campos de texto. */
-.taller-editor__dialog .workshop-hours-option { justify-content: flex-start; margin: 0; }
-.taller-editor__dialog .workshop-hours-option input { width: auto; flex: none; }
+/* Pestañas de Mi taller */
+.taller-editor__tabs { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.taller-editor__tabs button {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 18px; border: 1px solid var(--ads-border, #D9E0E7); border-radius: 12px;
+  background: #fff; color: #334155; font-size: 13.5px; font-weight: 700; cursor: pointer;
+}
+.taller-editor__tabs button.is-active { border-color: var(--ads-primary, #0056BF); background: var(--ads-primary, #0056BF); color: #fff; }
+.taller-editor__tabs i { min-width: 18px; padding: 0 5px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-style: normal; line-height: 18px; text-align: center; }
+
+/* Citas dentro de la pagina, sin la caja flotante */
+.agenda-modal-card.is-inline { max-width: none; max-height: none; width: 100%; margin-top: 14px; overflow: visible; animation: none; box-shadow: none; border: 1px solid var(--ads-border, #D9E0E7); }
 
 /* Servicios */
 .taller-editor__ok { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: #ecfdf5; color: #059669; font-size: 13px; font-weight: 600; }

@@ -4989,6 +4989,9 @@
 .workshop-hours-option { flex: 1 1 140px; display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; font-size: 13px; font-weight: 600; color: #334155; cursor: pointer; }
 .workshop-hours-option.is-active { border-color: #0066ff; background: #eff6ff; color: #0052cc; }
 .workshop-hours-option input { accent-color: #0066ff; margin: 0; }
+/* Dentro de `.form-group`, cuyas reglas de label e input son para campos de texto. */
+.form-group .workshop-hours-option { flex-direction: row; justify-content: flex-start; margin: 0; }
+.form-group .workshop-hours-option input { width: auto; flex: none; }
 .workshop-hours-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .workshop-hours-notice { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid #a7f3d0; background: #ecfdf5; color: #047857; font-size: 12.5px; }
 

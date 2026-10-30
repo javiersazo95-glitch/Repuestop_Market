@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { AlertCircle, ArrowLeft, Check, CheckCircle2, Eye, EyeOff, Lock, Mail, ShieldCheck, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AddressAutocompleteInput from '../components/AddressAutocompleteInput';
 import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import { formatRut, isValidRut } from '../services/adapters';
 import { ROUTES } from '../routes/paths';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
-import '../styles/faults.css';
 
 /**
  * `/taller/registro`: crea la cuenta de un taller automotriz (rol propio). Pide los datos del responsable y del taller;
@@ -36,6 +35,7 @@ export default function WorkshopRegisterPage() {
   const [form, setForm] = useState({ responsibleName: '', workshopName: '', taxId: '', giro: '', giroOtro: '', email: location.state?.email || '', phone: '', password: '', address: '' });
   const [place, setPlace] = useState(null);
   const [accepts, setAccepts] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -89,69 +89,113 @@ export default function WorkshopRegisterPage() {
     setDone(true);
   };
 
-  if (done) {
-    return (
-      <div className="ft-page"><div className="ft-shell">
-        <div className="ft-card" style={{ alignItems: 'center', textAlign: 'center' }}>
-          <CheckCircle2 size={40} color="#0e7038" />
-          <h1>Taller creado</h1>
-          <p className="ft-sub">Tu cuenta quedó lista. Falta acreditar tu negocio para publicar anuncios y comentar fallas: sube tu identidad, inicio de actividades y patente municipal.</p>
-          <button type="button" className="ft-btn ft-btn-primary" onClick={() => navigate(`${ROUTES.profile}/resumen`, { replace: true })}>Ir a mi perfil</button>
+  const shell = (title, subtitle, body) => (
+    <div className="taller-register-page">
+      <div className="auth-modal-card" style={{ maxHeight: 'none', overflow: 'visible' }}>
+        <div className="auth-modal-header">
+          <div className="auth-brand-badge"><ShieldCheck size={14} /> PORTAL REPUESTOP ACCOUNTS</div>
+          <h2>{title}</h2>
+          <p>{subtitle}</p>
         </div>
-      </div></div>
-    );
+        {body}
+      </div>
+    </div>
+  );
+
+  const errorBox = error && <div className="auth-alert alert-error" role="alert"><AlertCircle size={16} /> <span>{error}</span></div>;
+
+  if (done) {
+    return shell('Taller creado', 'Tu cuenta quedó lista. Falta acreditar tu negocio para aparecer en el buscador y comentar fallas: sube tu identidad, inicio de actividades y patente municipal.', (
+      <div className="auth-modal-body">
+        <button type="button" className="btn-auth-primary" onClick={() => navigate(`${ROUTES.profile}/resumen`, { replace: true })}><CheckCircle2 size={18} /> <span>Ir a mi perfil</span></button>
+      </div>
+    ));
   }
 
-  return (
-    <div className="ft-page"><div className="ft-shell" style={{ maxWidth: 640 }}>
-      <nav className="ft-sub" aria-label="Ruta"><Link to={ROUTES.home}>Inicio</Link> / <span aria-current="page">Registra tu taller</span></nav>
-      <div className="ft-head"><div><h1>Crear cuenta de taller</h1><p>Registra tu taller automotriz para ofrecer tus servicios, comentar fallas y recibir citas.</p></div></div>
+  if (pendingEmail) {
+    return shell('Verifica tu correo', `Te enviamos un código de 6 dígitos a ${pendingEmail}.`, (
+      <form className="auth-modal-body" onSubmit={verify}>
+        {errorBox}
+        <div className="form-group">
+          <label htmlFor="workshop-code">Código de verificación *</label>
+          <input id="workshop-code" type="text" inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} />
+        </div>
+        <div className="auth-action-row gap-2">
+          <button type="button" className="btn-auth-secondary" disabled={busy} onClick={async () => { const r = await resendRegisterCode(pendingEmail); setError(r?.success === false ? (r.error || 'No pudimos reenviar el código.') : ''); }}>Reenviar código</button>
+          <button type="submit" className="btn-auth-primary" disabled={busy || code.length < 6}>{busy ? 'Verificando…' : 'Verificar código'}</button>
+        </div>
+      </form>
+    ));
+  }
 
-      {pendingEmail ? (
-        <form className="ft-card ft-form" onSubmit={verify}>
-          <h2>Verifica tu correo</h2>
-          <p className="ft-sub">Te enviamos un código de 6 dígitos a {pendingEmail}.</p>
-          <label className="ft-field"><span>Código de verificación</span><input inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} /></label>
-          {error && <p className="ft-error" role="alert"><AlertCircle size={15} /> {error}</p>}
-          <div className="ft-actions">
-            <button type="submit" className="ft-btn ft-btn-primary" disabled={busy || code.length < 6}>{busy ? 'Verificando…' : 'Verificar código'}</button>
-            <button type="button" className="ft-btn ft-btn-outline" disabled={busy} onClick={async () => { const r = await resendRegisterCode(pendingEmail); setError(r?.success === false ? (r.error || 'No pudimos reenviar el código.') : ''); }}>Reenviar código</button>
-          </div>
-        </form>
-      ) : (
-        <form className="ft-card ft-form" onSubmit={submit}>
-          <label className="ft-field"><span>Nombre del responsable</span><input value={form.responsibleName} maxLength={80} onChange={set('responsibleName')} /></label>
-          <label className="ft-field"><span>Nombre del taller</span><input value={form.workshopName} maxLength={120} onChange={set('workshopName')} /></label>
-          <label className="ft-field"><span>RUT empresa o persona</span><input value={form.taxId} maxLength={12} placeholder="12.345.678-9" onChange={(e) => setForm((c) => ({ ...c, taxId: formatRut(e.target.value) }))} /></label>
-          <label className="ft-field"><span>Giro comercial</span>
-            <select value={form.giro} onChange={(e) => setForm((c) => ({ ...c, giro: e.target.value, giroOtro: e.target.value === OTHER_GIRO ? c.giroOtro : '' }))}>
-              <option value="">Selecciona el giro de tu taller</option>
-              {WORKSHOP_GIROS.map((item) => <option key={item} value={item}>{item}</option>)}
-              <option value={OTHER_GIRO}>Otro</option>
-            </select>
-          </label>
-          {form.giro === OTHER_GIRO && (
-            <label className="ft-field"><span>Especifica el giro de tu taller</span><input value={form.giroOtro} maxLength={180} placeholder="Describe la actividad del taller" onChange={set('giroOtro')} /></label>
-          )}
-          <div className="ft-row">
-            <label className="ft-field"><span>Correo</span><input type="email" value={form.email} maxLength={120} autoComplete="email" onChange={set('email')} /></label>
-            <label className="ft-field"><span>Celular</span><input inputMode="numeric" value={form.phone} maxLength={9} placeholder="912345678" onChange={(e) => setForm((c) => ({ ...c, phone: e.target.value.replace(/\D/g, '') }))} /></label>
-          </div>
-          <label className="ft-field"><span>Contraseña</span><input type="password" value={form.password} maxLength={32} autoComplete="new-password" onChange={set('password')} /><small>Mínimo 8 caracteres.</small></label>
-          <div className="ft-field">
-            <span>Dirección del taller</span>
-            <AddressAutocompleteInput value={form.address} onChange={(value) => { setForm((c) => ({ ...c, address: value })); setPlace(null); }} onSelectLocation={pickLocation} requireComuna={false} placeholder="Calle y número, comuna (Ej: Av. Italia 1234, Ñuñoa)" />
-            {place && <small>Comuna: <strong>{[place.comuna, place.region].filter(Boolean).join(', ')}</strong></small>}
-          </div>
-          <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13 }}>
-            <input type="checkbox" checked={accepts} onChange={(e) => setAccepts(e.target.checked)} />
-            <span>Acepto los <Link to={ROUTES.terms} target="_blank">Términos y Condiciones</Link> y la <Link to={ROUTES.privacy} target="_blank">Política de Privacidad</Link>.</span>
-          </label>
-          {error && <p className="ft-error" role="alert"><AlertCircle size={15} /> {error}</p>}
-          <button type="submit" className="ft-btn ft-btn-primary" disabled={busy}>{busy ? 'Creando cuenta…' : 'Crear cuenta de taller'}</button>
-          <p className="ft-sub">¿Ya tienes cuenta? Inicia sesión desde el menú superior.</p>
-        </form>
+  return shell('Crear cuenta de taller', 'Ofrece tus servicios, comenta fallas y recibe citas. Los documentos de acreditación se suben después, desde tu perfil.', (
+    <form className="auth-modal-body" onSubmit={submit}>
+      {errorBox}
+      <h3 className="taller-register-title">Tus datos</h3>
+      <div className="form-group">
+        <label htmlFor="workshop-responsible">Nombre del responsable *</label>
+        <input id="workshop-responsible" type="text" value={form.responsibleName} maxLength={80} placeholder="Ej: Juan Pérez" autoComplete="name" onChange={set('responsibleName')} />
+      </div>
+      <div className="form-group">
+        <label htmlFor="workshop-email">Correo Electrónico *</label>
+        <div className="input-with-icon">
+          <Mail size={18} className="field-icon" />
+          <input id="workshop-email" type="email" value={form.email} maxLength={120} placeholder="ejemplo@correo.com" autoComplete="email" onChange={set('email')} />
+        </div>
+      </div>
+      <div className="form-group">
+        <label htmlFor="workshop-phone">Celular *</label>
+        <input id="workshop-phone" type="tel" inputMode="numeric" value={form.phone} maxLength={9} placeholder="912345678" autoComplete="tel" onChange={(e) => setForm((c) => ({ ...c, phone: e.target.value.replace(/\D/g, '') }))} />
+      </div>
+      <div className="form-group">
+        <label htmlFor="workshop-password">Contraseña *</label>
+        <div className="input-with-icon">
+          <Lock size={18} className="field-icon" />
+          <input id="workshop-password" type={showPassword ? 'text' : 'password'} value={form.password} maxLength={32} placeholder="Mínimo 8 caracteres" autoComplete="new-password" onChange={set('password')} />
+          <button type="button" className="btn-toggle-eye" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setShowPassword(!showPassword)}>
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </div>
+      </div>
+
+      <h3 className="taller-register-title">Tu taller</h3>
+      <div className="form-group">
+        <label htmlFor="workshop-name">Nombre del taller *</label>
+        <input id="workshop-name" type="text" value={form.workshopName} maxLength={120} onChange={set('workshopName')} />
+      </div>
+      <div className="form-group">
+        <label htmlFor="workshop-rut">RUT empresa o persona *</label>
+        <input id="workshop-rut" type="text" value={form.taxId} maxLength={12} placeholder="12.345.678-9" onChange={(e) => setForm((c) => ({ ...c, taxId: formatRut(e.target.value) }))} />
+      </div>
+      <div className="form-group">
+        <label htmlFor="workshop-giro">Giro comercial *</label>
+        <select id="workshop-giro" value={form.giro} onChange={(e) => setForm((c) => ({ ...c, giro: e.target.value, giroOtro: e.target.value === OTHER_GIRO ? c.giroOtro : '' }))}>
+          <option value="">Selecciona el giro de tu taller</option>
+          {WORKSHOP_GIROS.map((item) => <option key={item} value={item}>{item}</option>)}
+          <option value={OTHER_GIRO}>Otro</option>
+        </select>
+      </div>
+      {form.giro === OTHER_GIRO && (
+        <div className="form-group">
+          <label htmlFor="workshop-giro-other">Especifica el giro de tu taller *</label>
+          <input id="workshop-giro-other" type="text" value={form.giroOtro} maxLength={180} placeholder="Describe el giro de tu taller" onChange={set('giroOtro')} />
+        </div>
       )}
-    </div></div>
-  );
+      <div className="form-group">
+        <label>Dirección del taller *</label>
+        <AddressAutocompleteInput value={form.address} onChange={(value) => { setForm((c) => ({ ...c, address: value })); setPlace(null); }} onSelectLocation={pickLocation} requireComuna={false} placeholder="Calle y número, comuna (Ej: Av. Italia 1234, Ñuñoa)" />
+        {place && <small className="auth-field-success"><Check size={13} /> Comuna: {[place.comuna, place.region].filter(Boolean).join(', ')}</small>}
+      </div>
+
+      <label className="auth-terms">
+        <input type="checkbox" checked={accepts} onChange={(e) => setAccepts(e.target.checked)} />
+        <span>He leído y acepto los <a href={ROUTES.terms} target="_blank" rel="noreferrer">Términos y Condiciones</a> y la <a href={ROUTES.privacy} target="_blank" rel="noreferrer">Política de Privacidad</a>.</span>
+      </label>
+
+      <div className="auth-action-row gap-2">
+        <button type="button" className="btn-auth-secondary" onClick={() => navigate(-1)}><ArrowLeft size={16} /> <span>Volver</span></button>
+        <button type="submit" className="btn-auth-primary" disabled={busy}><UserPlus size={18} /> <span>{busy ? 'Creando cuenta…' : 'Crear cuenta de taller'}</span></button>
+      </div>
+    </form>
+  ));
 }

@@ -1409,7 +1409,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             <div className="profile-topbar-actions">
               <button className="btn-back-to-store" onClick={onBackToStore}>
                 <ArrowLeft size={16} />
-                <span>Volver a la tienda</span>
+                <span>{isWorkshop ? 'Volver al inicio' : 'Volver a la tienda'}</span>
               </button>
             </div>
           </div>
@@ -1436,7 +1436,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           <div className="profile-topbar-actions">
             <button className="btn-back-to-store" onClick={onBackToStore}>
               <ArrowLeft size={16} />
-              <span>Volver a la tienda</span>
+              <span>{isWorkshop ? 'Volver al inicio' : 'Volver a la tienda'}</span>
             </button>
 
             {isSeller && user?.sellerId && (

@@ -23,6 +23,7 @@ export const EMPTY_REVIEWS = {
 };
 
 function reviewsPath(kind, id) {
+  if (kind === 'workshop') return `/talleres/${id}/opiniones`;
   return kind === 'product' ? `/inventario/productos/${id}/opiniones` : `/tiendas/${id}/opiniones`;
 }
 
