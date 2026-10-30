@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertCircle, CalendarClock, CheckCircle2, Gift, Loader2 } from 'lucide-react';
 import { activateDiagnostic, coinsToPesos, daysLeft, getDiagnosticStatus, prizeProgress } from '../../services/workshopApi';
+import { fetchTokensBalance } from '../../services/walletStorage';
 import { ROUTES } from '../../routes/paths';
 import ConfirmDialog from '../ConfirmDialog';
 import '../../styles/faults.css';
@@ -52,7 +53,7 @@ export default function ProfileDiagnosticPanel({ onOpenAds }) {
   const activate = async () => {
     setBusy(true);
     setError('');
-    try { setStatus(await activateDiagnostic()); setConfirming(false); } catch (err) { setError(err?.message || 'No pudimos activar el servicio.'); } finally { setBusy(false); }
+    try { setStatus(await activateDiagnostic()); setConfirming(false); fetchTokensBalance().catch(() => {}); } catch (err) { setError(err?.message || 'No pudimos activar el servicio.'); } finally { setBusy(false); }
   };
 
   if (error && !status) return <div className="ft-empty" role="alert"><AlertCircle size={20} /><strong>No pudimos cargar el servicio</strong>{error}<br /><button type="button" className="ft-btn ft-btn-outline" style={{ marginTop: 10 }} onClick={load}>Reintentar</button></div>;
@@ -75,20 +76,20 @@ export default function ProfileDiagnosticPanel({ onOpenAds }) {
           </div>
           <p className="ft-sub">
             {status.activo
-              ? `${days === 1 ? 'Te queda 1 día' : `Te quedan ${days} días`}${status.venceEn ? ` (vence el ${formatDate(status.venceEn)})` : ''}`
+              ? `${days === 1 ? 'Te queda 1 día' : `Te quedan ${days} días`}${status.venceEn ? ` (vence el ${formatDate(status.venceEn)})` : ''}. Puedes apagar las citas en Mi taller cuando quieras.`
               : 'Tus clientes aún no pueden agendar contigo.'}
           </p>
           <p><strong>{price} por {status.vigenciaDias} días.</strong> Equivale a {status.costoMonedas} monedas (cada moneda vale $50). Tienes {status.saldoMonedas} monedas.</p>
 
-          <div>
-            <strong style={{ fontSize: 13 }}>Cómo activarlo</strong>
+          {/* Ya activo, los pasos sobran salvo para renovar: quedan plegados. */}
+          <details open={!status.activo}>
+            <summary style={{ fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{status.activo ? 'Cómo agregar más días' : 'Cómo activarlo'}</summary>
             <ol className="taller-profile__steps" aria-label="Cómo activarlo">
               <li><span>1</span>Registra tu horario para recibir citas en Mi taller › Atención y citas.</li>
               <li><span>2</span>Ten {status.costoMonedas} monedas en tu saldo: si te faltan, recarga en el monedero, con la moneda de arriba a la derecha.</li>
-              <li><span>3</span>Toca «{actionLabel}» y confirma: se descuentan las monedas y se suman {status.vigenciaDias} días.</li>
-              <li><span>4</span>En Mi taller marca «Recibir citas en línea»: ahí ves cuántos días te quedan.</li>
+              <li><span>3</span>Toca «{actionLabel}» y confirma: se descuentan las monedas y se suman {status.vigenciaDias} días. {status.activo ? '' : '«Recibir citas en línea» queda encendido en Mi taller.'}</li>
             </ol>
-          </div>
+          </details>
 
           {!status.agendaConfigurada && <p className="ft-note">Antes de activarlo registra el horario de tu taller: es la agenda de tus citas.{onOpenAds && <> <button type="button" className="ft-btn ft-btn-outline" style={{ marginLeft: 8 }} onClick={onOpenAds}>Ir a Mi taller</button></>}</p>}
           {error && !confirming && <p className="ft-error" role="alert"><AlertCircle size={15} /> {error}</p>}

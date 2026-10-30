@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trophy, Gift, ChevronRight, History, Info } from 'lucide-react';
+import { Trophy, Gift, ChevronRight, History, Info, CalendarClock } from 'lucide-react';
 import RepuestopCoin from './RepuestopCoin';
 import CoinInfoModal from './CoinInfoModal';
 
@@ -28,9 +28,15 @@ const BENEFITS = [
   { Icon: Gift, label: 'Primeros 2 Top', detail: 'gratis', color: '#6ee7b7' },
   { Icon: Trophy, label: 'Del 3.º al 10.º', detail: '200 monedas', color: '#fbbf24' }
 ];
+// Al taller las monedas le sirven para el servicio de agendamiento, no para Top Ventas.
+const WORKSHOP_BENEFITS = [
+  { Icon: CalendarClock, label: 'Agendamiento', detail: '400 monedas', color: '#6ee7b7' },
+  { Icon: Gift, label: '30 días', detail: 'de citas en línea', color: '#fbbf24' }
+];
 
 export default function TokensWalletCard({
   tokensBalance,
+  isWorkshop = false,
   onOpenRechargeModal,
   onOpenHistoryModal
 }) {
@@ -76,7 +82,9 @@ export default function TokensWalletCard({
       </div>
 
       <p className="tokens-wallet-hint">
-        Usa tus monedas para destacar tus repuestos con la insignia Top Ventas.
+        {isWorkshop
+          ? 'Usa tus monedas para activar tu servicio de agendamiento.'
+          : 'Usa tus monedas para destacar tus repuestos con la insignia Top Ventas.'}
       </p>
 
       {/* Tarifario y acciones en la misma fila: el tarifario es la referencia que
@@ -84,7 +92,7 @@ export default function TokensWalletCard({
           apoyado en el, no flotando solo sobre una franja de azul vacia. */}
       <div className="tokens-wallet-bottom">
         <div className="tokens-wallet-benefits">
-          {BENEFITS.map(({ Icon, label, detail, color }) => (
+          {(isWorkshop ? WORKSHOP_BENEFITS : BENEFITS).map(({ Icon, label, detail, color }) => (
             <div className="tokens-wallet-benefit" key={label}>
               <Icon size={19} color={color} />
               <span>

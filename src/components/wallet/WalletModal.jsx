@@ -47,6 +47,7 @@ function prefiereMenosMovimiento() {
 export default function WalletModal({
   balance = 0,
   isSeller = false,
+  isWorkshop = false,
   celebrar = false,
   onCelebracionLista,
   onClose,
@@ -82,6 +83,7 @@ export default function WalletModal({
 
         <TokensWalletCard
           tokensBalance={balance}
+          isWorkshop={isWorkshop}
           onOpenRechargeModal={() => setIsRechargeOpen(true)}
           onOpenHistoryModal={() => setIsHistoryOpen(true)}
         />
@@ -90,8 +92,10 @@ export default function WalletModal({
           <span className="wallet-modal-note-ic"><Lightbulb size={18} /></span>
           <p>
             <strong>¿Para qué sirven tus Monedas?</strong><br />
-            Cada Moneda vale $50 CLP. Se usan para dar más visibilidad a tus repuestos con la insignia Top Ventas
-            y <b>nunca se descuentan sin tu confirmación</b>.
+            Cada Moneda vale $50 CLP. {isWorkshop
+              ? 'Se usan para activar tu servicio de agendamiento y recibir citas en línea'
+              : 'Se usan para dar más visibilidad a tus repuestos con la insignia Top Ventas'}
+            {' '}y <b>nunca se descuentan sin tu confirmación</b>.
           </p>
         </div>
 

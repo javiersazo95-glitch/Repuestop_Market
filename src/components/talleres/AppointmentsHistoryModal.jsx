@@ -43,7 +43,9 @@ export default function AppointmentsHistoryModal({
   /** Si ya se cargo el taller propio: hasta entonces no se sabe con qué bandeja abrir. */
   tallerLoaded = true,
   /** Dentro de una pagina (la pestaña Citas de Mi taller) en vez de ventana flotante. */
-  inline = false
+  inline = false,
+  /** Comprador: solo las horas que pidio, sin bandeja de recibidas ni agenda. */
+  customerOnly = false
 }) {
   // La bandeja inicial se decide recién cuando se sabe si la cuenta tiene un taller acreditado:
   // antes partía en "Recibidas" y un cliente la veía un instante antes de saltar a sus reservas.
@@ -342,8 +344,8 @@ export default function AppointmentsHistoryModal({
         <div className={`booking-modal-card agenda-modal-card ${inline ? 'is-inline' : ''}`}>
           <div className="booking-modal-header">
             <div>
-              <h3><CalendarClock size={22} className="text-emerald-600" /> Gestión de citas</h3>
-              <p>Las horas que pediste y las que te reservaron, en un solo lugar.</p>
+              <h3><CalendarClock size={22} className="text-emerald-600" /> {customerOnly ? 'Mis citas' : 'Gestión de citas'}</h3>
+              <p>{customerOnly ? 'Las visitas que agendaste en talleres automotrices.' : 'Las horas que pediste y las que te reservaron, en un solo lugar.'}</p>
             </div>
             {!inline && (
               <button
@@ -377,6 +379,7 @@ export default function AppointmentsHistoryModal({
           )}
 
           <div className="appt-history-toolbar">
+            {!customerOnly && (
             <div className="appt-seg">
               <button
                 type="button"
@@ -402,6 +405,7 @@ export default function AppointmentsHistoryModal({
                 </button>
               )}
             </div>
+            )}
 
             {segment !== 'agenda' && (
               <div className="appt-history-toolbar-right">

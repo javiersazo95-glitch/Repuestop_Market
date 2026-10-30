@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { fetchTokenPacks, fetchDatosDocumentoRecarga, iniciarRecargaApi, apiErrorMessage } from '../../services/walletStorage';
 import { formatRut, isValidRut } from '../../services/adapters';
+import { useAuth } from '../../context/AuthContext';
 import RepuestopCoin from './RepuestopCoin';
 
 export default function RechargeTokensModal({
@@ -13,6 +14,7 @@ export default function RechargeTokensModal({
   onClose,
   origin = 'INVENTARIO'
 }) {
+  const { role } = useAuth();
   // El catalogo lo sirve el backend: antes estaba fijo aca y en la app, con el precio en dos
   // archivos que nadie garantizaba sincronizados.
   const [packs, setPacks] = useState([]);
@@ -123,7 +125,7 @@ export default function RechargeTokensModal({
                 <div>
                   <span className="recharge-modal-eyebrow">MONEDERO REPUESTOP</span>
                   <h3>Recargar Monedas RepuesTop</h3>
-                  <p>Para destacar tus productos Top <i /> <strong>1 moneda = $50 CLP</strong></p>
+                  <p>{role === 'WORKSHOP' ? 'Para tu servicio de agendamiento' : 'Para destacar tus productos Top'} <i /> <strong>1 moneda = $50 CLP</strong></p>
                 </div>
               </div>
               <button

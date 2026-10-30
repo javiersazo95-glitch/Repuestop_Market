@@ -18,6 +18,7 @@ import BookingModal from './BookingModal';
 import CapturerContactCard from '../CapturerContactCard';
 import NextStepsBanner from './NextStepsBanner';
 import AgendaConfigModal from './AgendaConfigModal';
+import MyAppointmentsHub from './MyAppointmentsHub';
 import TallerProfileEditor from './TallerProfileEditor';
 import { fetchTaller } from '../../services/talleresStorage';
 import { getAgendaConfigs } from '../../services/agendaConfigsStorage';
@@ -37,7 +38,23 @@ const ACCREDITATION_GATE_MESSAGE = {
  * "Mi taller": el panel del taller. Reúne su acreditación, el perfil que ven los clientes (el que
  * reemplazó al anuncio), su horario y la gestión de citas.
  */
+/**
+ * La pestaña `mi_taller` segun la cuenta. El comprador no acredita talleres (el backend solo lo permite a la cuenta Taller):
+ * ve «Mis citas», las horas que agendo, igual que `mobile/app/my-workshop.tsx`.
+ */
 export default function MiTallerSection() {
+  const { role } = useAuth();
+  if (role === 'BUYER') {
+    return (
+      <div className="profile-panel ads-management-panel">
+        <MyAppointmentsHub inline customerOnly initialSegment="pedidas" />
+      </div>
+    );
+  }
+  return <WorkshopSection />;
+}
+
+function WorkshopSection() {
   const { user } = useAuth();
   const accreditation = useAutomotiveAccreditation(Boolean(user));
   const [isAccreditationOpen, setIsAccreditationOpen] = useState(false);

@@ -230,7 +230,7 @@ const BUYER_SIDEBAR_GROUPS = [
     flag: 'market.perfil.comprador.mi-cuenta',
     items: [
       { id: 'datos', label: 'Mis datos y perfil', icon: UserCog },
-      { id: 'mi_taller', label: 'Mi taller', icon: Wrench }
+      { id: 'mi_taller', label: 'Mis citas', icon: CalendarClock }
     ]
   },
   {
@@ -1348,7 +1348,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Mis cotizaciones', description: 'Revisa las respuestas de las tiendas y compara precios.', onClick: () => setActiveTab('cotizaciones') },
       { id: 'favoritos', tone: 'amber', icon: Heart, title: 'Repuestos favoritos', description: 'Accede a los repuestos que guardaste.', onClick: () => setActiveTab('favoritos') },
       { id: 'datos', tone: 'sky', icon: UserCog, title: 'Mis datos y perfil', description: 'Actualiza tu información y direcciones de envío.', onClick: () => setActiveTab('datos') },
-      { id: 'mi_taller', tone: 'emerald', icon: Wrench, title: 'Mi taller', description: 'Registra tu taller y recibe clientes.', onClick: () => setActiveTab('mi_taller') },
+      { id: 'mi_taller', tone: 'emerald', icon: CalendarClock, title: 'Mis citas', description: 'Las visitas que agendaste en talleres.', onClick: () => setActiveTab('mi_taller') },
       { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte de compra.', onClick: () => navigate(ROUTES.support) },
     ];
   }, [isSeller, isWorkshop, setActiveTab, openFilteredTab, navigate]);

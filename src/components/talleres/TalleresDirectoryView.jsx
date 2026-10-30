@@ -63,7 +63,9 @@ function sortPrice(taller, matchedPrices) {
 }
 
 export default function TalleresDirectoryView() {
-  const { isLoggedIn, user } = useAuth();
+  const { isLoggedIn, user, role } = useAuth();
+  // El comprador no registra talleres: esa invitacion es para quien no tiene sesion o ya es taller.
+  const showWorkshopInvite = !isLoggedIn || role !== 'BUYER';
   const { openAuthModal } = useMarketplace();
   const nav = useAppNavigation();
   const { isTallerSaved, toggleTaller } = useSavedMarketplaceItems(user?.userId ?? user?.id);
@@ -760,7 +762,7 @@ export default function TalleresDirectoryView() {
           onlyBooking={onlyBooking}
           setOnlyBooking={setOnlyBooking}
         >
-          <div className="ads-provider-card">
+          {showWorkshopInvite && <div className="ads-provider-card">
             <div className="ads-provider-glow" aria-hidden="true" />
             <span className="ads-provider-eyebrow"><Sparkles size={13} /> Para talleres</span>
             <h3>Que te encuentren por lo que haces</h3>
@@ -774,7 +776,7 @@ export default function TalleresDirectoryView() {
               <span><ShieldCheck size={13} /> Talleres verificados</span>
               <span><Zap size={13} /> Agenda en línea</span>
             </div>
-          </div>
+          </div>}
         </TalleresFiltersSidebar>
 
         <section className="ads-main-col">
@@ -868,11 +870,13 @@ export default function TalleresDirectoryView() {
               <h3>Todavía no hay talleres publicados</h3>
               <p>
                 Los talleres aparecen aquí una vez que RepuesTop acredita su servicio y completan su
-                perfil con sus servicios. Registra el tuyo y serás de los primeros.
+                perfil con sus servicios.{showWorkshopInvite ? ' Registra el tuyo y serás de los primeros.' : ''}
               </p>
-              <button type="button" className="btn-post-ad" onClick={handleMyWorkshopClick}>
-                <Plus size={18} /> {isLoggedIn ? 'Ir a Mi taller' : 'Registrar mi taller'}
-              </button>
+              {showWorkshopInvite && (
+                <button type="button" className="btn-post-ad" onClick={handleMyWorkshopClick}>
+                  <Plus size={18} /> {isLoggedIn ? 'Ir a Mi taller' : 'Registrar mi taller'}
+                </button>
+              )}
             </div>
           ) : visibleTalleres.length > 0 ? (
             <>

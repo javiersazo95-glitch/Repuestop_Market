@@ -2892,6 +2892,8 @@ input, select, textarea {
 
 /* Registro de taller: la misma tarjeta del registro de comprador, como pagina. */
 .taller-register-page { display: flex; justify-content: center; padding: 28px 16px 56px; background: var(--bg-page); }
+select.has-error, .taller-register-address.has-error input { border-color: #ef4444 !important; background-color: #fffbfb !important; }
+select.has-success, .taller-register-address.has-success input { border-color: #86efac !important; }
 .taller-register-title { margin: 6px 0 0; font-size: 14px; font-weight: 800; color: #0f172a; }
 
 .modal-close-btn {

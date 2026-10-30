@@ -45,6 +45,8 @@ export function AuthProvider({ children }) {
     return localStorage.getItem('repuestop_token') || null;
   });
 
+  // Salió por su cuenta: la próxima persona no debe heredar la página en que estaba (ver RequireAuth).
+  const [loggedOutByUser, setLoggedOutByUser] = useState(false);
   const [role, setRole] = useState(() => {
     return localStorage.getItem('repuestop_role') || (user?.role || 'BUYER');
   });
@@ -122,6 +124,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const saveSession = (authResponse, preferredRole) => {
+    setLoggedOutByUser(false);
     const accessToken = authResponse.token || authResponse.accessToken;
     const baseUser = authResponse.usuario || authResponse.user || {
       userId: authResponse.userId,
@@ -329,6 +332,7 @@ export function AuthProvider({ children }) {
     if (token) {
       await logoutApi(token);
     }
+    setLoggedOutByUser(true);
     logoutLocal();
   };
 
@@ -420,6 +424,7 @@ export function AuthProvider({ children }) {
     isLoading,
     login,
     loginWithGoogle,
+    loggedOutByUser,
     // Para quien autentica fuera de este contexto (la postulacion de tienda en `/vender`
     // usa su propio cliente): sin pasar por aqui, `/perfil` no veia la sesion y mandaba
     // a iniciar sesion hasta recargar la pagina.

@@ -3,8 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Truck, ShieldCheck, Store, HelpCircle, Search, ShoppingCart, User,
   ChevronDown, ChevronRight, ArrowLeft, X, LogOut, LayoutDashboard, MessageSquare, Menu,
-  Package, Info, Wrench, Heart, PackageSearch, Cog, CarFront
-} from 'lucide-react';
+  Package, Info, Wrench, Heart, PackageSearch, Cog, CarFront, CalendarClock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '../services/queryKeys';
 import { matchesBackendCategory, useCategories } from '../data/categories';
@@ -430,7 +429,7 @@ export default function Header({
                 </div>
                 <div className="user-dropdown-body">
                   <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.(); }}><LayoutDashboard size={15} /> Mi perfil</button>
-                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.('mi_taller'); }}><Wrench size={15} /> Mi taller</button>
+                  <button className="dropdown-item" onClick={() => { setShowUserMenu(false); onOpenProfile?.('mi_taller'); }}>{role === 'BUYER' ? <><CalendarClock size={15} /> Mis citas</> : <><Wrench size={15} /> Mi taller</>}</button>
                   {isSellerAccount && (
                     <button className="dropdown-item" onClick={openInventoryPanel}><Package size={15} /> Panel de inventario</button>
                   )}

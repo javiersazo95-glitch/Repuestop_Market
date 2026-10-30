@@ -51,9 +51,10 @@ export default function HeaderWalletButton({ variant = 'header' }) {
   // La guía de "Top Ventas" del modal es solo para vendedores con tienda.
   const isSeller = String(user?.role || role || '').toUpperCase() === 'SELLER' && Boolean(user?.sellerId);
 
-  // Las Monedas solo sirven para destacar repuestos (vendedores). Quien tiene saldo de cuando
-  // pagaban anuncios lo sigue viendo, para no esconderle plata.
-  if (!isLoggedIn || (!isSeller && balance <= 0 && !isOpen)) return null;
+  // Las Monedas sirven a la tienda (destacar repuestos) y al taller (servicio de agendamiento). Un comprador con
+  // saldo de antes lo sigue viendo, para no esconderle plata.
+  const isWorkshop = String(user?.role || role || '').toUpperCase() === 'WORKSHOP';
+  if (!isLoggedIn || (!isSeller && !isWorkshop && balance <= 0 && !isOpen)) return null;
 
   return (
     <>
@@ -72,6 +73,7 @@ export default function HeaderWalletButton({ variant = 'header' }) {
         <WalletModal
           balance={balance}
           isSeller={isSeller}
+          isWorkshop={isWorkshop}
           celebrar={celebrar}
           onCelebracionLista={() => setCelebrar(false)}
           onClose={() => { setCelebrar(false); setIsOpen(false); }}

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ShieldCheck, UploadCloud, Loader2, Check, AlertCircle, ImagePlus, Building2 } from 'lucide-react';
+import { ShieldCheck, UploadCloud, Loader2, Check, AlertCircle, ImagePlus, Building2, CheckCircle2 } from 'lucide-react';
 import {
   getPaisesApi, getRegionesApi, getComunasApi,
   getAutomotiveServiceAccreditationApi, submitAutomotiveServiceAccreditationApi,
@@ -127,6 +127,38 @@ function hoursSummary(record, hours) {
  * porque la revisión la hace otro equipo y sobre otro registro del backend
  * (`/automotive-services/me`).
  */
+/** Documento del expediente: la misma pieza del logo de arriba, con el nombre del archivo elegido. */
+function DocumentField({ label, file, received, onPick }) {
+  const inputRef = useRef(null);
+  const hasDocument = Boolean(file || received);
+  return (
+    <div className="acc-logo-field" style={{ marginBottom: '10px' }}>
+      <span className="acc-logo-preview">{file ? <CheckCircle2 size={24} color="#059669" /> : <UploadCloud size={24} />}</span>
+      <div className="acc-logo-copy">
+        <strong>{label} *</strong>
+        <span>
+          {file
+            ? file.name
+            : received
+              ? `Ya recibido: ${received}. Adjunta otro solo si te pidieron reemplazarlo.`
+              : 'PDF o imagen, legible.'}
+        </span>
+        <button type="button" className="btn-auth-secondary acc-logo-btn" onClick={() => inputRef.current?.click()}>
+          <UploadCloud size={15} /> {hasDocument ? 'Cambiar documento' : 'Subir documento'}
+        </button>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf,image/*"
+        hidden
+        aria-label={label}
+        onChange={(e) => { onPick(e.target.files?.[0] || null); e.target.value = ''; }}
+      />
+    </div>
+  );
+}
+
 export default function AutomotiveServiceAccreditation({ user, embedded = false, onSaved }) {
   const [record, setRecord] = useState(null);
   const [form, setForm] = useState({
@@ -276,6 +308,14 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
 
     if (!isValidRut(form.rutNegocio)) {
       setError('El RUT del negocio no es válido.');
+      return;
+    }
+    if (!form.giro.trim()) {
+      setError('Indica el giro del negocio.');
+      return;
+    }
+    if (!form.direccion.trim() || !/\d/.test(form.direccion)) {
+      setError('Indica la dirección del taller con calle y número.');
       return;
     }
     if (form.telefono.length !== 9) {
@@ -525,7 +565,7 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
 
           <div className="form-grid-2">
             <div className="form-group">
-              <label>Giro (opcional)</label>
+              <label>Giro *</label>
               <input
                 type="text"
                 value={form.giro}
@@ -567,7 +607,7 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
           </div>
 
           <div className="form-group">
-            <label>Dirección (opcional)</label>
+            <label>Dirección *</label>
             <AddressAutocompleteInput
               value={form.direccion}
               onChange={(valor) => handleChange('direccion', valor)}
@@ -615,22 +655,13 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
           </div>
 
           {REQUIRED_DOCS.map((doc) => (
-            <div className="form-group" key={doc.key}>
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <UploadCloud size={15} /> {doc.label}
-              </label>
-              <input
-                type="file"
-                accept="application/pdf,image/*"
-                onChange={(e) => handleFileChange(doc.key, e.target.files?.[0] || null)}
-                required={!record?.[doc.recordField]}
-              />
-              {record?.[doc.recordField] && !files[doc.key] ? (
-                <small style={{ color: '#64748b' }}>
-                  Ya recibido: {record[doc.recordField]}. Adjunta otro solo si te pidieron reemplazarlo.
-                </small>
-              ) : null}
-            </div>
+            <DocumentField
+              key={doc.key}
+              label={doc.label}
+              file={files[doc.key]}
+              received={record?.[doc.recordField]}
+              onPick={(file) => handleFileChange(doc.key, file)}
+            />
           ))}
 
           <div className="profile-data-form-actions" style={{ marginTop: '10px' }}>

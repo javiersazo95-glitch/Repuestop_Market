@@ -10,7 +10,7 @@ import { ROUTES } from './paths';
  * al usuario al home, que era lo que hacía perder la página al recargar.
  */
 export default function RequireAuth({ children }) {
-  const { isLoggedIn, isRestoringSession } = useAuth();
+  const { isLoggedIn, isRestoringSession, loggedOutByUser } = useAuth();
   const location = useLocation();
 
   if (isRestoringSession) {
@@ -23,6 +23,8 @@ export default function RequireAuth({ children }) {
   }
 
   if (!isLoggedIn) {
+    // «Salir» es voluntario: sin pedir sesión ni recordar la página, que la siguiente cuenta caía en ella.
+    if (loggedOutByUser) return <Navigate to={ROUTES.home} replace />;
     return (
       <Navigate
         to={ROUTES.home}
