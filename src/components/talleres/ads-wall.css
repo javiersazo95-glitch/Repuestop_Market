@@ -4949,6 +4949,10 @@
 .bk-primary, .bk-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 18px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; }
 .bk-primary { width: 100%; border: 0; background: #0056bf; color: #ffffff; }
 .bk-primary.is-incomplete { opacity: .75; }
+.bk-contact { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.bk-contact p { margin: 0; font-size: 13px; color: #64748b; text-align: center; }
+.bk-contact > div { display: flex; gap: 8px; }
+.bk-contact .bk-outline { flex: 1; text-decoration: none; }
 .bk-primary:disabled, .bk-outline:disabled { opacity: .7; cursor: progress; }
 .bk-outline { border: 1px solid #0056bf; background: #ffffff; color: #0056bf; }
 .bk-footer-note { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; font-size: 12px; color: #5a6b7a; }

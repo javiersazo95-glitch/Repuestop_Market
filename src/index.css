@@ -19025,7 +19025,7 @@ input.has-success {
 .favorites-total { width: 90px; height: 74px; flex: 0 0 auto; display: grid; place-content: center; border: 1px solid rgba(255,255,255,.2); border-radius: 17px; background: rgba(255,255,255,.11); backdrop-filter: blur(9px); text-align: center; }
 .favorites-total strong { font-size: 27px; line-height: 1; }.favorites-total span { margin-top: 5px; color: #dbeafe; font-size: 10.5px; font-weight: 700; }
 .favorites-toolbar { padding: 16px 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid #e7edf5; background: #fff; }
-.favorites-tabs { display: flex; align-items: center; gap: 5px; overflow-x: auto; scrollbar-width: none; }.favorites-tabs::-webkit-scrollbar { display: none; }
+.favorites-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }.favorites-tabs::-webkit-scrollbar { display: none; }
 .favorites-tabs button { min-height: 38px; padding: 7px 11px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: 10px; color: #627086; background: transparent; font-size: 12px; font-weight: 800; white-space: nowrap; cursor: pointer; }
 .favorites-tabs button small { min-width: 20px; height: 20px; display: grid; place-items: center; border-radius: 10px; color: #718096; background: #edf2f7; font-size: 9.5px; }
 .favorites-tabs button.is-active { border-color: #cfe0fd; color: #075cca; background: #eff6ff; }.favorites-tabs button.is-active small { color: #fff; background: #1268f3; }

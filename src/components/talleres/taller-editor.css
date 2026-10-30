@@ -1,122 +1,89 @@
-/* Editor del perfil del taller (Mi taller). */
-.taller-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  margin-top: 18px;
-  padding: 20px;
-  background: #fff;
-  border: 1px solid #d9e0e7;
-  border-radius: 16px;
-}
-.taller-editor--loading { flex-direction: row; align-items: center; gap: 10px; color: #64748b; }
-.taller-editor__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.taller-editor__head h3 { margin: 0 0 4px; font-size: 18px; color: #1e293b; }
-.taller-editor__head p { margin: 0; font-size: 13px; color: #64748b; max-width: 62ch; }
-.taller-editor__save {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 10px 18px;
-  border: none;
-  border-radius: 11px;
-  background: #0056bf;
-  color: #fff;
-  font-size: 13.5px;
-  font-weight: 800;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.taller-editor__save:disabled { opacity: 0.6; cursor: default; }
-.taller-editor__ok { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: #e7f6ee; color: #047857; font-size: 13px; font-weight: 600; }
+/* «Mi perfil» del taller: arma sus grupos y filas con las clases de la agenda (`.agenda-cfg-*`, ads-wall.css) y aqui
+   solo agrega lo que esas clases no tienen. Colores: la misma paleta de Mi taller. */
+.taller-editor { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.taller-editor__row { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.taller-editor__row .agenda-cfg-row-summary { overflow-wrap: anywhere; }
+.taller-editor__attention { color: #b45309; font-weight: 700; }
+.taller-editor__inline-link { padding: 0; border: none; background: none; color: var(--ads-primary, #0056BF); font: inherit; font-weight: 800; text-decoration: underline; cursor: pointer; }
+.taller-editor__check { width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--ads-primary, #0056BF); cursor: pointer; }
+.taller-editor__check:disabled { cursor: default; }
+.taller-editor .agenda-cfg-icon:disabled { opacity: 0.55; cursor: default; }
 
-.taller-editor__block { display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid #edf1f5; }
-.taller-editor__block h4 { display: flex; align-items: baseline; gap: 8px; margin: 0; font-size: 15px; color: #1e293b; }
-.taller-editor__block h4 small { font-size: 12px; font-weight: 600; color: #94a3b8; }
-.taller-editor__hint { margin: -4px 0 0; font-size: 12.5px; color: #64748b; }
-
-.taller-editor input[type='text'],
-.taller-editor input[type='number'],
-.taller-editor input[type='tel'],
-.taller-editor select,
-.taller-editor textarea {
-  width: 100%;
-  padding: 9px 11px;
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  background: #fff;
-  font-size: 13.5px;
-  color: #1e293b;
-  font-family: inherit;
+/* Portada y logo */
+.taller-editor__identity { padding: 0; gap: 0; overflow: hidden; }
+.taller-editor__cover { position: relative; height: 170px; background: #F7F9FB; border-bottom: 1px solid var(--ads-border, #D9E0E7); }
+.taller-editor__cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.taller-editor__cover-empty { display: flex; align-items: center; justify-content: center; gap: 8px; height: 100%; color: #64748b; font-size: 13px; font-weight: 700; }
+.taller-editor__cover-btn { position: absolute; right: 10px; bottom: 10px; }
+.taller-editor__who { display: flex; align-items: center; gap: 14px; padding: 12px 14px; min-width: 0; }
+.taller-editor__logo { position: relative; flex-shrink: 0; width: 72px; height: 72px; }
+.taller-editor__logo-img {
+  display: flex; align-items: center; justify-content: center; width: 72px; height: 72px; overflow: hidden;
+  border: 1px solid var(--ads-border, #D9E0E7); border-radius: 14px; background: var(--ads-primary-light, #EAF2FF); color: var(--ads-primary, #0056BF);
 }
-.taller-editor input:focus, .taller-editor select:focus, .taller-editor textarea:focus {
-  outline: none;
-  border-color: #0056bf;
-  box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.14);
-}
-.taller-editor input:disabled { background: #f1f5f9; color: #94a3b8; }
-.taller-editor textarea { resize: vertical; }
-.taller-editor__counter { align-self: flex-end; margin-top: -6px; font-size: 11.5px; color: #94a3b8; }
+.taller-editor__logo-img img { width: 100%; height: 100%; object-fit: cover; }
+.taller-editor__logo .agenda-cfg-icon { position: absolute; right: -8px; bottom: -8px; width: 28px; height: 28px; border: 2px solid #fff; }
+.taller-editor__who-text { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.taller-editor__who-text strong { font-size: 16px; font-weight: 800; color: #0f172a; overflow-wrap: anywhere; }
+.taller-editor__who-text > span { font-size: 12px; font-weight: 700; color: #b45309; }
+.taller-editor__who-text > span.is-on { color: #059669; }
 
-.taller-editor__chips { display: flex; flex-wrap: wrap; gap: 7px; }
-.taller-editor__chips button {
-  padding: 6px 12px;
-  border: 1px solid #d9e0e7;
-  border-radius: 999px;
-  background: #fff;
-  color: #3b4b5b;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.taller-editor__chips button.is-on { border-color: #0056bf; background: #eaf2ff; color: #0056bf; }
+/* Progreso bajo «Recibir citas en linea» */
+.taller-editor__progress { display: flex; flex-direction: column; gap: 5px; padding: 0 12px; }
+.taller-editor__progress-track { height: 6px; border-radius: 3px; overflow: hidden; background: #e2e8f0; }
+.taller-editor__progress-track > div { height: 100%; background: var(--ads-primary, #0056BF); }
+.taller-editor__progress p { display: flex; justify-content: space-between; gap: 8px; margin: 0; font-size: 11.5px; color: #64748b; }
+.taller-editor__progress strong { font-weight: 800; }
+.taller-editor__progress .is-ok { color: #059669; }
+.taller-editor__progress .is-warn { color: #b45309; }
 
-.taller-editor__photos { display: flex; flex-wrap: wrap; gap: 10px; }
-.taller-editor__photo { position: relative; width: 112px; height: 84px; border-radius: 11px; overflow: hidden; border: 1px solid #d9e0e7; }
+/* Galeria */
+.taller-editor__photos { display: flex; flex-wrap: wrap; gap: 8px; }
+.taller-editor__photo { position: relative; width: 96px; height: 72px; border-radius: 10px; overflow: hidden; border: 1px solid var(--ads-border, #D9E0E7); }
 .taller-editor__photo img { width: 100%; height: 100%; object-fit: cover; }
-.taller-editor__photo span {
-  position: absolute; left: 5px; bottom: 5px; padding: 2px 7px; border-radius: 999px;
-  background: rgba(15, 23, 42, 0.8); color: #fff; font-size: 10.5px; font-weight: 700;
-}
 .taller-editor__photo button {
-  position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 24px; height: 24px;
-  border: none; border-radius: 50%; background: rgba(255, 255, 255, 0.94); color: #b91c1c; cursor: pointer;
-}
-.taller-editor__photo-add {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  width: 112px; height: 84px; border: 1px dashed #94a3b8; border-radius: 11px; background: #f8fafc;
-  color: #475569; font-size: 12px; font-weight: 700; cursor: pointer;
+  position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 22px; height: 22px;
+  border: none; border-radius: 50%; background: rgba(255, 255, 255, 0.94); color: #dc2626; cursor: pointer;
 }
 
-.taller-editor__switch { display: flex; align-items: flex-start; gap: 11px; padding: 10px 12px; border: 1px solid #e3eaf1; border-radius: 12px; cursor: pointer; }
-.taller-editor__switch.is-disabled { opacity: 0.7; cursor: default; }
-.taller-editor__switch input { margin-top: 3px; width: 17px; height: 17px; flex-shrink: 0; }
-.taller-editor__switch span { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13.5px; color: #1e293b; }
-.taller-editor__switch small { flex-basis: 100%; font-size: 12px; color: #64748b; }
-.taller-editor__switch small button { padding: 0; border: none; background: none; color: #0056bf; font-weight: 700; cursor: pointer; text-decoration: underline; }
-
-.taller-editor__field { display: flex; flex-direction: column; gap: 6px; max-width: 320px; }
-.taller-editor__field > label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #1e293b; }
-.taller-editor__field small { font-size: 12px; color: #64748b; }
+/* Ventanas de edicion */
+.taller-editor__dialog textarea,
+.taller-editor__dialog select,
+.taller-editor__dialog input[type='text'],
+.taller-editor__dialog input[type='tel'] { width: 100%; font-family: inherit; }
+/* El textarea no tiene estilo propio en `.form-group`: toma el de sus inputs. */
+.taller-editor__dialog textarea { padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #0f172a; font-size: 13.5px; resize: vertical; }
+.taller-editor__counter { display: block; text-align: right; font-size: 11.5px; color: #94a3b8; }
+.taller-editor__pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .taller-editor__phone { display: flex; align-items: center; gap: 8px; }
-.taller-editor__phone span { padding: 9px 11px; border-radius: 10px; background: #f1f5f9; color: #475569; font-size: 13.5px; font-weight: 700; }
-.taller-editor__field > span { font-size: 13px; font-weight: 700; color: #1e293b; }
-.taller-editor__pair { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 14px; }
-
-.taller-editor__label { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; font-size: 13px; font-weight: 700; color: #1e293b; }
-.taller-editor__label small { font-size: 12px; font-weight: 600; color: #94a3b8; }
-
-.taller-editor__checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+.taller-editor__phone span { padding: 10px 11px; border-radius: 10px; background: #f1f5f9; color: #475569; font-size: 13.5px; font-weight: 700; }
+.taller-editor__checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
 .taller-editor__checks label {
-  display: flex; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid #e3eaf1; border-radius: 10px;
-  font-size: 13px; color: #1e293b; cursor: pointer;
+  display: flex; align-items: center; justify-content: flex-start; gap: 9px; margin: 0; padding: 9px 11px; border: 1px solid var(--ads-border, #D9E0E7); border-radius: 10px;
+  background: #F7F9FB; font-size: 12.5px; font-weight: 600; color: #0f172a; cursor: pointer;
 }
-.taller-editor__checks label.is-on { border-color: #0056bf; background: #eaf2ff; }
-.taller-editor__checks input { width: 16px; height: 16px; flex-shrink: 0; }
-.taller-editor__foot { display: flex; justify-content: flex-end; padding-top: 14px; border-top: 1px solid #edf1f5; }
+.taller-editor__checks label.is-on { border-color: var(--ads-primary, #0056BF); background: var(--ads-primary-light, #EAF2FF); }
+.taller-editor__checks input { width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--ads-primary, #0056BF); }
+
+/* Opciones de radio dentro de `.form-group`, cuyas reglas de label e input son para campos de texto. */
+.taller-editor__dialog .workshop-hours-option { justify-content: flex-start; margin: 0; }
+.taller-editor__dialog .workshop-hours-option input { width: auto; flex: none; }
+
+/* Servicios */
+.taller-editor__ok { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: #ecfdf5; color: #059669; font-size: 13px; font-weight: 600; }
+.taller-editor__list-tools { display: flex; flex-direction: column; gap: 10px; }
+.taller-editor__search { display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--ft-border, #D9E0E7); border-radius: 10px; background: #fff; color: #64748b; }
+.ft-field .taller-editor__search input { flex: 1; min-width: 0; padding: 10px 0; border: none; background: none; outline: none; }
+.taller-editor__include { display: flex; align-items: center; gap: 8px; }
+.taller-editor__include input { flex: 1; min-width: 0; }
+.taller-editor__include .agenda-cfg-icon:disabled { opacity: 0.55; cursor: default; }
+.taller-editor__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.taller-editor__chips button {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border: 1px solid var(--ads-primary, #0056BF); border-radius: 999px;
+  background: var(--ads-primary-light, #EAF2FF); color: var(--ads-primary, #0056BF); font-size: 12px; font-weight: 600; cursor: pointer;
+}
 
 @media (max-width: 760px) {
-  .taller-editor { padding: 14px; }
-  .taller-editor__head { flex-direction: column; }
+  .taller-editor__cover { height: 130px; }
   .taller-editor__pair { grid-template-columns: 1fr; }
 }

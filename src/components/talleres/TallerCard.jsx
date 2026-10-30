@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import {
   MapPin, MessageCircle, Phone, Calendar, ShieldCheck, ArrowRight, Heart, Navigation,
-  AlarmClock, Home, Clock, UserCheck, CheckCircle2
+  AlarmClock, Home, Clock, UserCheck, CheckCircle2, ChevronDown, ChevronUp, Wrench
 } from 'lucide-react';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import { getCategoryIcon } from './categoryIcons';
 import { useTallerOwnership } from './useTallerOwnership';
-import { matchingServices } from '../../utils/tallerSearch';
+import { matchingServices, normalizeSearchText } from '../../utils/tallerSearch';
 import { canBookTaller } from '../../utils/tallerBooking';
 import ContextualReportButton from '../ContextualReportButton';
 import VehicleBrandLogo from '../VehicleBrandLogo';
@@ -24,10 +24,11 @@ const formatPrice = (service) => (
 
 /**
  * Card del taller en el buscador. Pensada para quien ya sabe que servicio necesita y compara
- * entre cientos de talleres: lo primero que ve es si el taller ofrece justo eso y a que precio,
- * despues si atiende su marca, cuando abre, si va a domicilio y si puede agendar en linea.
- * Todo el resto (descripcion, galeria, resto del catalogo) vive en el perfil, al que apunta la card.
+ * entre cientos de talleres: compacta, con lo justo para comparar (servicio, precio, 24 h, domicilio y
+ * agenda) y, si filtro, el bloque «Tiene lo que buscas». El resto se despliega con «Ver detalle», como en
+ * `mobile/components/talleres/TallerCard.tsx`; la descripcion y la galeria viven en el perfil.
  *
+ * - `filterMatch`: lo pedido en los filtros (servicio, marca, categoria, comuna, 24 h, domicilio).
  * - `highlightTerms`: lo que el cliente busca (texto o servicio elegido en el filtro). Los
  *   servicios que calzan suben primero y se marcan.
  * - `plateBrand`: marca del vehiculo identificado por patente; la card dice si el taller la atiende.
@@ -42,8 +43,10 @@ export default function TallerCard({
   distanceKm = null,
   highlightTerms = [],
   plateBrand = null,
+  filterMatch = null,
 }) {
   const [blockNotice, setBlockNotice] = useState(null);
+  const [expanded, setExpanded] = useState(false);
   const { isOwn, blockIfOwnTaller } = useTallerOwnership();
   const isOwnCard = isOwn(taller);
   const canBook = canBookTaller(taller);
@@ -75,6 +78,19 @@ export default function TallerCard({
     if (brands.length === 0) return { text: 'Multimarca: atiende tu vehículo', good: false };
     return null;
   })();
+
+  // Lo que el cliente filtro y este taller tiene.
+  const wantedService = normalizeSearchText(filterMatch?.service);
+  const filterService = wantedService ? taller.services.find((service) => normalizeSearchText(service.name) === wantedService) : null;
+  const filterBrand = filterMatch?.brand ? brands.find((brand) => brand.toLowerCase() === filterMatch.brand.toLowerCase()) : null;
+  const filterChips = filterMatch ? [
+    filterMatch.categoryLabel,
+    filterMatch.commune,
+    filterMatch.only24Hours ? 'Urgencias 24 h' : null,
+    filterMatch.homeService ? 'Va a domicilio' : null,
+  ].filter(Boolean) : [];
+  const hasFilterMatch = Boolean(filterService || filterBrand || filterChips.length > 0);
+  const firstService = orderedServices[0];
 
   const [coverFailed, setCoverFailed] = useState(false);
   const cover = !coverFailed ? taller.photos[0] : null;
@@ -154,7 +170,32 @@ export default function TallerCard({
           <span>{[taller.commune, taller.region && taller.region !== taller.commune ? taller.region : null].filter(Boolean).join(', ') || 'Chile'}</span>
         </p>
 
-        {categoryLabels.length > 0 && (
+        {!expanded && (
+          <ul className="taller-card__facts">
+            {firstService && (
+              <li className="taller-card__summary-service">
+                <Wrench size={13} />
+                <span>{firstService.name} · {formatPrice(firstService)}{orderedServices.length > 1 ? ` · +${orderedServices.length - 1}` : ''}</span>
+              </li>
+            )}
+            {taller.is24Hours && <li className="is-accent"><AlarmClock size={13} /><span>24 h</span></li>}
+            {taller.homeService && <li><Home size={13} /><span>Domicilio</span></li>}
+            {canBook && <li className="is-good"><Calendar size={13} /><span>Agenda en línea</span></li>}
+          </ul>
+        )}
+
+        {hasFilterMatch && (
+          <div className="taller-card__match">
+            <strong><CheckCircle2 size={14} /> Tiene lo que buscas</strong>
+            {filterService && (
+              <p><span>{filterService.name}</span><b>{filterService.priceFrom != null ? `desde ${formatPrice(filterService)}` : 'A cotizar'}</b></p>
+            )}
+            {filterBrand && <p><span>Especialista en {filterBrand}</span></p>}
+            {filterChips.length > 0 && <div>{filterChips.map((chip) => <span key={chip}>{chip}</span>)}</div>}
+          </div>
+        )}
+
+        {expanded && categoryLabels.length > 0 && (
           <div className="taller-card__cats">
             {categoryLabels.slice(0, 2).map((label, index) => (
               <button
@@ -171,7 +212,7 @@ export default function TallerCard({
           </div>
         )}
 
-        {visibleServices.length > 0 && (
+        {expanded && visibleServices.length > 0 && (
           <div className="taller-card__services" aria-label="Servicios y precios">
             <p className="taller-card__services-title">
               {matched.length > 0 ? <><CheckCircle2 size={12} /> Lo que buscas</> : 'Servicios y precios'}
@@ -195,7 +236,7 @@ export default function TallerCard({
           </div>
         )}
 
-        {(previewBrands.length > 0 || brandNote) && (
+        {expanded && (previewBrands.length > 0 || brandNote) && (
           <div className="taller-card__brands" aria-label={brands.length ? `Marcas especialistas: ${brands.join(', ')}` : undefined}>
             {brandNote
               ? <span className={`taller-card__brand-note ${brandNote.good ? 'is-good' : ''}`}><CheckCircle2 size={12} /> {brandNote.text}</span>
@@ -211,7 +252,7 @@ export default function TallerCard({
           </div>
         )}
 
-        <ul className="taller-card__facts">
+        {expanded && <ul className="taller-card__facts">
           {taller.hours && (
             <li className={taller.is24Hours ? 'is-accent' : ''}>
               {taller.is24Hours ? <AlarmClock size={13} /> : <Clock size={13} />}
@@ -221,7 +262,13 @@ export default function TallerCard({
           {taller.is24Hours && !taller.only24Hours && <li className="is-accent"><AlarmClock size={13} /><span>Urgencias 24 h</span></li>}
           {taller.homeService && <li><Home size={13} /><span>Va a domicilio</span></li>}
           {canBook && <li className="is-good"><Calendar size={13} /><span>Agenda en línea</span></li>}
-        </ul>
+        </ul>}
+
+        {expanded && (
+          <button type="button" className="taller-card__more" onClick={() => onOpenProfile?.(taller)}>
+            Ver perfil del taller <ArrowRight size={13} />
+          </button>
+        )}
 
         <div className="taller-card__footer">
           <div className="taller-card__quick">
@@ -241,8 +288,8 @@ export default function TallerCard({
               </button>
             )}
           </div>
-          <button type="button" className="taller-card__profile-btn" onClick={() => onOpenProfile?.(taller)}>
-            Ver perfil del taller <ArrowRight size={15} />
+          <button type="button" className="taller-card__profile-btn" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
+            {expanded ? 'Ocultar detalle' : 'Ver detalle'} {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
           </button>
         </div>
 

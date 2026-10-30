@@ -27,6 +27,16 @@ export const EMPTY_WORKSHOP_HOURS = {
 };
 
 /** El taller necesita horario normal salvo que sea "solo 24/7". */
+/** Estado inicial del horario a partir del expediente guardado y su "Horario principal". */
+export function hoursFromRecord(record, principal) {
+  return {
+    atiende24Horas: record?.atiende24Horas === true,
+    servicios24Horas: Array.isArray(record?.servicios24Horas) ? record.servicios24Horas : [],
+    tieneHorarioNormal: record?.atiende24Horas ? record?.tieneHorarioNormal !== false : null,
+    horario: principal,
+  };
+}
+
 export function needsRegularHours(value) {
   if (value.atiende24Horas === false) return true;
   return value.atiende24Horas === true && value.tieneHorarioNormal === true;

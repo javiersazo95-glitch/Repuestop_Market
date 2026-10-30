@@ -68,6 +68,16 @@ const REASONS = {
   ],
   FALLA: FAULT_REASONS,
   FALLA_COMENTARIO: FAULT_REASONS,
+  // Mismas causas que `NECESIDAD_REPORT_REASONS` de la app.
+  NECESIDAD_COMPRA: [
+    'Solicitud falsa o sin intención de compra',
+    'Comparte datos de contacto para negociar fuera de RepuesTop',
+    'Contenido ofensivo o inapropiado',
+    'Repuesto prohibido o ilegal',
+    'Spam o publicidad',
+    'Información falsa o engañosa',
+    'Otro motivo',
+  ],
 };
 
 export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTitulo, className, label, onRequireLogin }) {
@@ -91,7 +101,9 @@ export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTit
           ? 'falla'
           : tipoObjeto === 'FALLA_COMENTARIO'
             ? 'comentario'
-            : 'taller';
+            : tipoObjeto === 'NECESIDAD_COMPRA'
+              ? 'búsqueda'
+              : 'taller';
 
   // El backend resuelve al reportado a partir del id, asi que uno invalido solo sirve para
   // gastar un 400. Y sin sesion no hay a quien atribuir el reporte.

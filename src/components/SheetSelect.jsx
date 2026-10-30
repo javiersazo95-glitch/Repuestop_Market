@@ -24,7 +24,8 @@ const withCount = (option) => (option.count != null ? `${option.label} (${option
  *   repuesto se encuentran escribiendo, sin recorrer la lista entera.
  * - En escritorio sin busqueda, el `<select>` de siempre.
  *
- * `options`: [{ value, label, count? }] con `value` como string. `count` (cuantas publicaciones
+ * `options`: [{ value, label, count?, alwaysVisible? }] con `value` como string. `alwaysVisible` la deja en la lista aunque
+ * la busqueda no coincida (el "Otro" de una lista cerrada). `count` (cuantas publicaciones
  * tiene esa opcion) se muestra solo en la lista, nunca en el campo cerrado. `placeholder` es la opcion vacia
  * ("Todas las marcas") y lo que se muestra mientras no hay nada elegido.
  *
@@ -83,7 +84,7 @@ export default function SheetSelect({
 
   const filtered = useMemo(() => {
     const term = normalize(query);
-    return term ? options.filter((option) => normalize(option.label).includes(term)) : options;
+    return term ? options.filter((option) => option.alwaysVisible || normalize(option.label).includes(term)) : options;
   }, [options, query]);
 
   if (!isMobile && !isPopover) {

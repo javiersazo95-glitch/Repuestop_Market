@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { auctionTrackingCode, getAuctionBuyerProfile, getAuctionComments, postAuctionComment } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
+import ContextualReportButton from './ContextualReportButton';
 import AuctionAvatar from './AuctionAvatar';
 import AuctionImageViewer from './AuctionImageViewer';
 import ShareLinkButton from './ShareLinkButton';
@@ -240,6 +241,7 @@ export default function AuctionDetailMobile({
         <button type="button" className={`am-action ${saved ? 'is-saved' : ''}`} onClick={onToggleSaved} disabled={saveBusy} aria-pressed={saved}>
           {saved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />} {saved ? 'Guardada' : 'Guardar'}
         </button>
+        {!esCreador && <ContextualReportButton tipoObjeto="NECESIDAD_COMPRA" objetoId={id} objetoTitulo={repuestoSolicitado} className="am-action" />}
       </div>
       {saveNotice && <p className="am-save-notice" role="status">{saveNotice}</p>}
 

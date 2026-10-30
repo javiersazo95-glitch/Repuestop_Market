@@ -6,7 +6,7 @@ import {
   updateAutomotiveServiceLogoApi, updateAutomotiveServicePhoneApi, updateAutomotiveServiceHoursApi, resolveMediaUrl,
 } from '../services/api';
 import WorkshopHoursSection from './talleres/WorkshopHoursSection';
-import { EMPTY_WORKSHOP_HOURS, toWorkshopHoursPayload, workshopHoursMissing } from '../data/workshopHours';
+import { EMPTY_WORKSHOP_HOURS, hoursFromRecord, toWorkshopHoursPayload, workshopHoursMissing } from '../data/workshopHours';
 import { getAgendaConfigs } from '../services/agendaConfigsStorage';
 import { getAgendaSummaryText, PRINCIPAL_AGENDA_ID } from '../data/agendaConfig';
 import { uploadTallerPhotos } from '../services/talleresStorage';
@@ -105,16 +105,6 @@ function LogoPicker({ value, onPick, busy, error, caption }) {
       />
     </div>
   );
-}
-
-/** Estado inicial del horario a partir del expediente guardado y su "Horario principal". */
-function hoursFromRecord(record, principal) {
-  return {
-    atiende24Horas: record?.atiende24Horas === true,
-    servicios24Horas: Array.isArray(record?.servicios24Horas) ? record.servicios24Horas : [],
-    tieneHorarioNormal: record?.atiende24Horas ? record?.tieneHorarioNormal !== false : null,
-    horario: principal,
-  };
 }
 
 /** Una línea legible para el modo consulta. */

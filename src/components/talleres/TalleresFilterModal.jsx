@@ -2,12 +2,13 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, RotateCcw, SlidersHorizontal,
-  Calendar, MessageCircle, AlarmClock, Home
+  Calendar, AlarmClock, Home
 } from 'lucide-react';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import SearchableDropdown from '../SearchableDropdown';
 
 const ALL_BRANDS = 'Todas las marcas';
+const ALL_TAGS = 'Todos los servicios';
 const ALL_COMMUNES = 'Todas las comunas';
 
 /*
@@ -23,6 +24,9 @@ export default function TalleresFilterModal({
   onClose,
   selectedCategory,
   setSelectedCategory,
+  subcategoryOptions = [],
+  selectedServiceTag,
+  setSelectedServiceTag,
   selectedCommune,
   setSelectedCommune,
   // Solo valores con talleres publicados: [{ value, count }] y conteos por especialidad.
@@ -34,8 +38,6 @@ export default function TalleresFilterModal({
   setSelectedSpecialistBrand,
   onlyBooking,
   setOnlyBooking,
-  onlyWhatsapp,
-  setOnlyWhatsapp,
   only24Hours,
   setOnly24Hours,
   onlyHomeService,
@@ -131,6 +133,25 @@ export default function TalleresFilterModal({
                 </button>
               ))}
             </div>
+            {subcategoryOptions.length > 0 && (
+              <div className="filter-subcategory-branch" role="group" aria-label="Servicios de la categoría">
+                {subcategoryOptions.map(({ value, count }) => {
+                  const active = selectedServiceTag === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      className={`filter-subcategory-option ${active ? 'active' : ''}`}
+                      aria-pressed={active}
+                      onClick={() => setSelectedServiceTag(active ? ALL_TAGS : value)}
+                    >
+                      <span className="filter-subcategory-checkbox" aria-hidden="true" />
+                      <span className="filter-subcategory-text">{value}<span className="filter-option-count"> ({count})</span></span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {setSelectedSpecialistBrand && specialistBrandOptions.length > 0 && (
@@ -162,10 +183,6 @@ export default function TalleresFilterModal({
             <label className="ads-filter-toggle">
               <span><Calendar size={16} /> Permite agendar cita en línea</span>
               <input type="checkbox" checked={onlyBooking} onChange={(e) => setOnlyBooking(e.target.checked)} />
-            </label>
-            <label className="ads-filter-toggle">
-              <span><MessageCircle size={16} /> Contacto rápido por WhatsApp</span>
-              <input type="checkbox" checked={onlyWhatsapp} onChange={(e) => setOnlyWhatsapp(e.target.checked)} />
             </label>
           </div>
         </div>

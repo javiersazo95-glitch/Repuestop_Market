@@ -767,6 +767,9 @@ export function adaptAppointment(dto) {
     time: dto.time || '',
     customerName: dto.customerName || '',
     customerPhone: dto.customerPhone || '',
+    // Contacto del taller: solo llega en una cita vigente.
+    workshopPhone: dto.workshopPhone || '',
+    workshopWhatsapp: dto.workshopWhatsapp || '',
     customerEmail: dto.customerEmail || '',
     customerUserId: dto.customerUserId ? String(dto.customerUserId) : null,
     // Dueño del taller: decide qué citas son "recibidas" sin depender de la lista de anuncios.

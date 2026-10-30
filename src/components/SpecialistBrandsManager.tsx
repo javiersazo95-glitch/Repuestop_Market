@@ -15,6 +15,8 @@ export type SpecialistBrandsManagerProps = {
   onBrandsChange?: (brands: VehicleBrandOption[]) => void;
   /** Solo conserva la selección local; el formulario padre la enviará al crear la tienda. */
   selectionOnly?: boolean;
+  /** Dentro del formulario de un servicio de taller: sin el texto dirigido a tiendas. */
+  forWorkshop?: boolean;
 };
 
 const EMPTY_BRANDS: VehicleBrandOption[] = [];
@@ -38,6 +40,7 @@ export default function SpecialistBrandsManager({
   initialBrands = EMPTY_BRANDS,
   onBrandsChange,
   selectionOnly = false,
+  forWorkshop = false,
 }: SpecialistBrandsManagerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [savedBrands, setSavedBrands] = useState<VehicleBrandOption[]>(() => uniqueSortedBrands(initialBrands));
@@ -160,12 +163,14 @@ export default function SpecialistBrandsManager({
           </button>
         </div>
 
-        <div className="specialist-brands-card-infobox">
-          <Info size={16} />
-          <span>
-            Indica las marcas de vehículos en las que tu tienda tiene mayor experiencia, stock o asesoría. Se mostrarán en el directorio para que los compradores puedan encontrarte; no limita las marcas que puedes vender.
-          </span>
-        </div>
+        {!forWorkshop && (
+          <div className="specialist-brands-card-infobox">
+            <Info size={16} />
+            <span>
+              Indica las marcas de vehículos en las que tu tienda tiene mayor experiencia, stock o asesoría. Se mostrarán en el directorio para que los compradores puedan encontrarte; no limita las marcas que puedes vender.
+            </span>
+          </div>
+        )}
 
         {savedBrands.length > 0 ? (
           <div className="specialist-brands-preview-chips">
@@ -183,7 +188,9 @@ export default function SpecialistBrandsManager({
           </div>
         ) : (
           <p className="specialist-brands-card-empty">
-            Selecciona tus especialidades para destacarlas en la búsqueda de tiendas.
+            {forWorkshop
+              ? 'Déjalo vacío si atiendes todas las marcas.'
+              : 'Selecciona tus especialidades para destacarlas en la búsqueda de tiendas.'}
           </p>
         )}
       </div>
@@ -193,6 +200,8 @@ export default function SpecialistBrandsManager({
         createPortal(
           <div
             className="order-modal-backdrop specialist-brands-backdrop"
+            // Dentro de una ventana de Mi taller (`.booking-modal-overlay`, z-index 99999) debe quedar encima.
+            style={forWorkshop ? { zIndex: 100000 } : undefined}
             onClick={() => setIsOpen(false)}
             role="presentation"
           >

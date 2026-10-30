@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import {
   Wrench, Eye, CalendarClock, RefreshCw, ChevronRight, Lock, ShieldCheck
 } from 'lucide-react';
@@ -8,7 +8,7 @@ import {
   isAppointmentCurrent, summarizeAppointmentsByRole
 } from '../../utils/appointmentHistory';
 import { useAuth } from '../../context/AuthContext';
-import { tallerPath } from '../../routes/paths';
+import { profilePath, tallerPath } from '../../routes/paths';
 import ShareLinkButton from '../ShareLinkButton';
 import { useAutomotiveAccreditation } from '../../hooks/useAutomotiveAccreditation';
 import { AccreditationPill } from './AccreditationPill';
@@ -18,9 +18,7 @@ import BookingModal from './BookingModal';
 import CapturerContactCard from '../CapturerContactCard';
 import NextStepsBanner from './NextStepsBanner';
 import AgendaConfigModal from './AgendaConfigModal';
-import PrincipalAgendaCard from './PrincipalAgendaCard';
 import TallerProfileEditor from './TallerProfileEditor';
-import ProfileWorkshopServicesPanel from '../workshop/ProfileWorkshopServicesPanel';
 import { fetchTaller } from '../../services/talleresStorage';
 import { getAgendaConfigs } from '../../services/agendaConfigsStorage';
 import { createDefaultAgendaConfig, PRINCIPAL_AGENDA_ID, PRINCIPAL_AGENDA_NAME } from '../../data/agendaConfig';
@@ -45,6 +43,7 @@ export default function MiTallerSection() {
   const [isAccreditationOpen, setIsAccreditationOpen] = useState(false);
   const [principalAgenda, setPrincipalAgenda] = useState(null); // { config, exists } | null
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [rebookState, setRebookState] = useState(null); // { taller, appointment, appointmentId } | null
@@ -132,8 +131,8 @@ export default function MiTallerSection() {
   };
 
   const hasAgenda = Boolean(accreditation.onboarding?.agendaLista);
-  // «Próximos pasos» lleva a la sección de servicios de esta misma página.
-  const openServices = () => document.getElementById('taller-servicios')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Los servicios tienen su propia vista, con vuelta a Mi taller. `isNew` la abre con el formulario de uno nuevo.
+  const openServices = (isNew = false) => navigate(`${profilePath('servicios_taller')}${isNew === true ? '?nuevo=1' : ''}`);
   const publicProfile = tallerId && accreditation.onboarding?.perfilPublicado
     ? tallerPath({ id: tallerId, name: accreditation.businessName })
     : null;
@@ -190,7 +189,7 @@ export default function MiTallerSection() {
         <NextStepsBanner
           onboarding={accreditation.onboarding}
           onOpenAgenda={openPrincipalAgenda}
-          onOpenProfile={openServices}
+          onOpenProfile={() => openServices()}
         />
       )}
 
@@ -250,11 +249,12 @@ export default function MiTallerSection() {
 
       {accreditation.isApproved && (
         <>
-          <PrincipalAgendaCard onSaved={() => { accreditation.refresh(); setProfileKey((key) => key + 1); }} />
-          <ProfileWorkshopServicesPanel embedded />
           <TallerProfileEditor
             key={profileKey}
+            record={accreditation.record}
+            businessName={accreditation.businessName}
             hasAgenda={hasAgenda}
+            onOpenServices={openServices}
             only24Hours={Boolean(accreditation.onboarding?.solo24Horas)}
             onOpenAgenda={openPrincipalAgenda}
             onSaved={() => accreditation.refresh()}

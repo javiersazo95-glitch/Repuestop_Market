@@ -11,7 +11,7 @@ import AgendaConfigModal from './AgendaConfigModal';
  * usa para calcular los bloques disponibles (antes cada anuncio elegía una agenda con nombre).
  * Contraparte de `mobile/components/talleres/PrincipalAgendaCard.tsx`.
  */
-export default function PrincipalAgendaCard({ onSaved }) {
+export default function PrincipalAgendaCard({ onSaved, compact = false }) {
   const [configs, setConfigs] = useState(() => getCachedAgendaConfigs());
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,6 +28,35 @@ export default function PrincipalAgendaCard({ onSaved }) {
 
   const principal = configs.find((config) => config.id === PRINCIPAL_AGENDA_ID) || null;
   const configToEdit = principal || { ...createDefaultAgendaConfig(), id: PRINCIPAL_AGENDA_ID, name: PRINCIPAL_AGENDA_NAME };
+
+  const modal = (
+    <AgendaConfigModal
+      isOpen={isModalOpen}
+      title="Tu agenda de citas"
+      configToEdit={configToEdit}
+      allowDelete={false}
+      onClose={() => setIsModalOpen(false)}
+      onSaved={(list) => { setConfigs(list); onSaved?.(list); }}
+    />
+  );
+
+  // `compact`: una fila dentro de un grupo del perfil del taller.
+  if (compact) {
+    return (
+      <div className="agenda-cfg-row">
+        <span className="agenda-cfg-row-ic"><CalendarClock size={19} /></span>
+        <button type="button" className="agenda-cfg-row-main" onClick={() => setIsModalOpen(true)} title="Editar horario">
+          <span className="agenda-cfg-row-title">Horario para recibir citas</span>
+          <span className="agenda-cfg-row-summary">{principal ? getAgendaSummaryText(principal) : loading ? 'Cargando horario…' : 'Todavía no registras tu horario.'}</span>
+          {principal && <span className="agenda-cfg-row-slots">{getAgendaWeeklySlotsCount(principal)} bloques por semana</span>}
+        </button>
+        <button type="button" className="agenda-cfg-icon" onClick={() => setIsModalOpen(true)} aria-label="Editar horario para recibir citas">
+          <Pencil size={15} />
+        </button>
+        {modal}
+      </div>
+    );
+  }
 
   return (
     <div className="agenda-configs-section">
@@ -63,14 +92,7 @@ export default function PrincipalAgendaCard({ onSaved }) {
         </div>
       )}
 
-      <AgendaConfigModal
-        isOpen={isModalOpen}
-        title="Tu agenda de citas"
-        configToEdit={configToEdit}
-        allowDelete={false}
-        onClose={() => setIsModalOpen(false)}
-        onSaved={(list) => { setConfigs(list); onSaved?.(list); }}
-      />
+      {modal}
     </div>
   );
 }

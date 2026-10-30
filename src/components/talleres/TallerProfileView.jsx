@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Heart, Share2, MapPin, BadgeCheck,
   ShieldCheck, Phone, MessageCircle, Calendar, CalendarCheck, Clock, ExternalLink, Home,
-  ListChecks, FileText, AlarmClock, CheckCircle2, Wrench, Tag
+  ListChecks, FileText, AlarmClock, CheckCircle2, Wrench, Tag, Star
 } from 'lucide-react';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import { getCategoryIcon } from './categoryIcons';
@@ -42,6 +42,7 @@ const HOW_IT_WORKS = [
 export default function TallerProfileView({ taller, onBack, backLabel = 'Volver a talleres' }) {
   const [imgIndex, setImgIndex] = useState(0);
   const [coverError, setCoverError] = useState({});
+  const [logoFailed, setLogoFailed] = useState(false);
   const [shareMsg, setShareMsg] = useState('');
   const [booking, setBooking] = useState(null); // { service } | null
   const [blockNotice, setBlockNotice] = useState(null);
@@ -130,8 +131,8 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
           <div className="ad-detail-main">
             <div className="ad-detail-headrow">
               <div className="taller-profile__head">
-                <span className={`taller-profile__logo ${taller.logo ? 'has-logo' : ''}`}>
-                  {taller.logo ? <img src={taller.logo} alt={`Logo de ${taller.name}`} /> : initials}
+                <span className={`taller-profile__logo ${taller.logo && !logoFailed ? 'has-logo' : ''}`}>
+                  {taller.logo && !logoFailed ? <img src={taller.logo} alt={`Logo de ${taller.name}`} onError={() => setLogoFailed(true)} /> : initials}
                 </span>
                 <div>
                   <h1 className="ad-detail-title">{taller.name} <BadgeCheck size={20} className="taller-profile__badge" aria-label="Taller verificado por RepuesTop" /></h1>
@@ -146,6 +147,7 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
                   </div>
                   <div className="taller-profile__chips">
                     <span className="is-verified"><ShieldCheck size={13} /> Taller verificado</span>
+                    {taller.reviewsCount > 0 && <span><Star size={13} /> {Number(taller.rating).toFixed(1).replace('.', ',')} ({taller.reviewsCount} {taller.reviewsCount === 1 ? 'opinión' : 'opiniones'})</span>}
                     {taller.is24Hours && <span className="is-24h"><AlarmClock size={13} /> {taller.only24Hours ? '24 horas' : 'Urgencias 24/7'}</span>}
                     {taller.homeService && <span><Home size={13} /> A domicilio</span>}
                     {canBook && <span className="is-book"><Calendar size={13} /> Agenda en línea</span>}
@@ -217,6 +219,23 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
               </div>
             ) : null}
 
+            {/* Presentacion: lo que el taller cuenta de si mismo. Mismo orden que Mi taller. */}
+            {taller.info && (
+              <section className="ad-detail-card ad-detail-desc">
+                <h2><FileText size={17} /> Sobre el taller</h2>
+                {taller.description && <p>{taller.description}</p>}
+                <div className="taller-profile__chips">
+                  {taller.info.yearsExperience != null && <span><Clock size={13} /> {taller.info.yearsExperience === 1 ? '1 año de experiencia' : `${taller.info.yearsExperience} años de experiencia`}</span>}
+                  {taller.info.warranty && <span><ShieldCheck size={13} /> {taller.info.warranty === 'Sin garantía' ? 'Sin garantía' : `Garantía de ${taller.info.warranty}`}</span>}
+                </div>
+                {taller.info.equipment.length > 0 && (
+                  <ul className="ad-detail-checklist">
+                    {taller.info.equipment.map((item) => <li key={item}><CheckCircle2 size={15} /> {item}</li>)}
+                  </ul>
+                )}
+              </section>
+            )}
+
             {/* Servicios y precios: el corazon del perfil */}
             <section className="ad-detail-card taller-services" aria-labelledby="taller-services-title">
               <h2 id="taller-services-title"><ListChecks size={17} /> Servicios y precios</h2>
@@ -244,7 +263,7 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
                   })}
                 </ul>
               ) : (
-                <p className="taller-services__empty">Este taller aún no publica su lista de servicios. Contáctalo para consultar.</p>
+                <p className="taller-services__empty">Este taller aún no publica su lista de servicios.</p>
               )}
               <p className="taller-services__note"><Tag size={13} /> Los precios son referenciales («desde»): el taller confirma el valor final según tu vehículo.</p>
             </section>
@@ -278,24 +297,6 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
                 </dl>
               </section>
             </div>
-
-            {taller.features.length > 0 && (
-              <section className="ad-detail-card">
-                <h2><CheckCircle2 size={17} /> Lo que ofrece</h2>
-                <ul className="ad-detail-checklist">
-                  {taller.features.map((feature) => (
-                    <li key={feature}><CheckCircle2 size={15} /> {feature}</li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {taller.description && (
-              <section className="ad-detail-card ad-detail-desc">
-                <h2><FileText size={17} /> Sobre el taller</h2>
-                <p>{taller.description}</p>
-              </section>
-            )}
 
             <p className="ad-detail-foot">
               <ShieldCheck size={14} />

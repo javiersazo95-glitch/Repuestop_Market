@@ -499,8 +499,3 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 /* Aviso bajo "Mi comuna" cuando la cuenta no tiene comuna (o no hay sesion). */
 .ft-filter-hint { color: #5b7088; font-size: 11.5px; line-height: 1.4; }
 .ft-radio:has(input:disabled) { opacity: .55; }
-
-/* Servicios dentro de Mi taller: una tarjeta más de la página, como el perfil. */
-.ft-page--embedded { margin-top: 18px; padding: 20px !important; background: #fff !important; border: 1px solid #d9e0e7; border-radius: 16px; }
-.ft-page--embedded .ft-head h2 { font-size: 18px; letter-spacing: 0; }
-@media (max-width: 760px) { .ft-page--embedded { padding: 14px !important; } }

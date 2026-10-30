@@ -7,6 +7,7 @@ import {
 import { auctionTrackingCode, getAuctionDetail, setAuctionSaved } from '../services/auctionApi';
 import { ROUTES, auctionDetailPath, helpCategoryPath, profileOrderPath, profilePurchasePath } from '../routes/paths';
 import { resolveMediaUrl } from '../services/api';
+import ContextualReportButton from '../components/ContextualReportButton';
 import AuctionQuoteModal from '../components/AuctionQuoteModal';
 import AuctionBuyerCard from '../components/AuctionBuyerCard';
 import AuctionCommentsPanel from '../components/AuctionCommentsPanel';
@@ -421,6 +422,7 @@ export default function AuctionDetailPage() {
                       <button type="button" className={`av-action-btn ${saved ? 'is-saved' : ''}`} onClick={toggleSaved} disabled={saveBusy} aria-pressed={saved}>
                         {saved ? <BookmarkCheck size={15} /> : <Bookmark size={15} />} {saved ? 'Guardada' : 'Guardar'}
                       </button>
+                      {!esCreador && <ContextualReportButton tipoObjeto="NECESIDAD_COMPRA" objetoId={auction.id} objetoTitulo={repuestoSolicitado} className="av-action-btn" />}
                     </div>
                   </div>
                   {saveNotice && <p className="av-save-notice" role="status">{saveNotice}</p>}

@@ -1,18 +1,26 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { AlertCircle, Loader2, Pencil, Plus, Trash2, Wrench } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, Pencil, Plus, Search, Trash2, Wrench, X } from 'lucide-react';
 import {
-  createWorkshopService, deleteWorkshopService, getWorkshopServiceCategories, getWorkshopServices, updateWorkshopService,
+  createWorkshopService, deleteWorkshopService, getDiagnosticStatus, getWorkshopServiceCategories, getWorkshopServices, updateWorkshopService,
 } from '../../services/workshopApi';
 import { getVehicleBrandsApi } from '../../services/api';
-import { MAX_PRICE } from '../../utils/inputLimits';
+import { MAX_PRICE, MAX_SEARCH_LENGTH } from '../../utils/inputLimits';
 import ConfirmDialog from '../ConfirmDialog';
+import SheetSelect from '../SheetSelect';
 import SpecialistBrandsManager from '../SpecialistBrandsManager';
+import EditDialog from '../talleres/EditDialog';
 import '../../styles/faults.css';
+import '../talleres/taller-editor.css';
 
 const EMPTY = { nombre: '', categoria: '', incluye: [], descripcion: '', cotizar: false, precio: '', duracion: '', marcas: [] };
 // Mismos topes que `ServicioTallerDTOs.Request`.
 const MAX_DURATION = 1440;
 const MAX_BRANDS = 20;
+const MAX_INCLUDES = 20;
+const OTHER_NAME = '__otro__';
+
+const normalize = (text) => String(text || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
 function toForm(service) {
   return {
@@ -38,23 +46,29 @@ function toPayload(form) {
 }
 
 /**
- * Catálogo de servicios del taller: se registran una vez y se muestran en el perfil del taller. De sus categorías y
- * marcas salen las especialidades del perfil. `embedded`: va dentro de Mi taller, como una sección más de la página.
+ * Catálogo de servicios del taller, con la misma organización de `mobile/components/workshop/WorkshopServicesManager.tsx`:
+ * lista con búsqueda y filtro, y alta o edición en una ventana. El nombre se elige de las subcategorías del catálogo para
+ * evitar errores de tipeo; «Otro» deja escribir uno propio. Se llega desde Mi taller (`onBack` vuelve); `?nuevo=1` abre uno nuevo.
  */
-export default function ProfileWorkshopServicesPanel({ embedded = false }) {
+export default function ProfileWorkshopServicesPanel({ onBack }) {
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [editing, setEditing] = useState(null); // 'new' | servicio
   const [form, setForm] = useState(EMPTY);
+  const [customName, setCustomName] = useState(false);
+  const [includeText, setIncludeText] = useState('');
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [notice, setNotice] = useState('');
   const [brandOptions, setBrandOptions] = useState([]);
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
 
   const load = useCallback(async () => {
     setLoadError('');
@@ -70,12 +84,19 @@ export default function ProfileWorkshopServicesPanel({ embedded = false }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     getVehicleBrandsApi()
       .then((list) => setBrandOptions((Array.isArray(list) ? list : []).map((item) => ({ id: item.id, nombre: item.nombre || item.name }))))
       .catch(() => {});
   }, []);
 
+  // Todas las subcategorías del catálogo, cada una con su categoría.
+  const nameOptions = useMemo(() => categories.flatMap((category) => (category.subcategorias || []).map((nombre) => ({
+    value: `${category.id}::${nombre}`, label: `${nombre} · ${category.nombre}`, nombre, categoria: category.id,
+  }))), [categories]);
+  const nameSelectOptions = useMemo(() => [...nameOptions, { value: OTHER_NAME, label: 'Otro (escribir el nombre)', alwaysVisible: true }], [nameOptions]);
+  const categorySelected = categories.find((category) => category.id === form.categoria);
 
   // Las marcas del servicio se guardan por nombre; el selector parte de las del catalogo al abrir el formulario
   // (no en cada cambio, o se reiniciaria mientras el taller elige).
@@ -85,32 +106,75 @@ export default function ProfileWorkshopServicesPanel({ embedded = false }) {
     setSelectedBrands(next.marcas.map((name) => byName.get(String(name).toLowerCase()) || { id: `nombre:${name}`, nombre: name }));
     setEditing(service);
     setForm(next);
+    setCustomName(service !== 'new' && !nameOptions.some((option) => normalize(option.nombre) === normalize(next.nombre)));
+    setIncludeText('');
     setFormError('');
   };
 
-  const save = async (event) => {
-    event.preventDefault();
-    if (!form.nombre.trim()) return setFormError('Indica el nombre del servicio.');
-    if (!form.categoria) return setFormError('Selecciona la categoría del servicio.');
+  // El «+» de Mi taller llega con `?nuevo=1`: se consume una sola vez.
+  useEffect(() => {
+    if (searchParams.get('nuevo') !== '1') return;
+    open('new');
+    const next = new URLSearchParams(searchParams);
+    next.delete('nuevo');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  const pickName = (value) => {
+    if (value === OTHER_NAME) {
+      setCustomName(true);
+      setForm((current) => ({ ...current, nombre: '' }));
+      return;
+    }
+    const option = nameOptions.find((item) => item.value === value);
+    if (!option) return;
+    setCustomName(false);
+    setForm((current) => ({ ...current, nombre: option.nombre, categoria: option.categoria }));
+  };
+  const nameValue = customName ? OTHER_NAME : (nameOptions.find((option) => normalize(option.nombre) === normalize(form.nombre) && option.categoria === form.categoria)?.value || '');
+
+  const addInclude = () => {
+    const item = includeText.trim();
+    if (!item || form.incluye.length >= MAX_INCLUDES) return;
+    if (!form.incluye.some((current) => normalize(current) === normalize(item))) setForm({ ...form, incluye: [...form.incluye, item] });
+    setIncludeText('');
+  };
+
+  // Al registrar un servicio se recuerda que el servicio de agendamiento habilita las citas.
+  const announceDiagnostic = async () => {
+    const status = await getDiagnosticStatus().catch(() => null);
+    setNotice(status?.activo
+      ? 'Servicio registrado. Tu servicio de agendamiento está activo: puedes recibir citas y ofrecerlas en tus comentarios de fallas.'
+      : 'Servicio registrado. Activa el servicio de agendamiento para recibir citas y ofrecerlas en tus comentarios de fallas.');
+  };
+
+  const save = async () => {
+    if (!form.nombre.trim()) return setFormError('Elige el servicio de la lista, o usa «Otro» para escribir su nombre.');
+    if (!form.categoria) return setFormError('Elige la categoría del servicio (usa «Otros» si ninguna calza).');
     if (!form.cotizar) {
       const price = parseInt(form.precio, 10);
-      if (!Number.isFinite(price)) return setFormError('Indica el precio o márcalo como "a cotizar".');
+      if (!Number.isFinite(price)) return setFormError('Indica el precio o márcalo como «A cotizar».');
       if (price < 1 || price > MAX_PRICE) return setFormError(`El precio debe estar entre $1 y $${MAX_PRICE.toLocaleString('es-CL')}.`);
     }
     const duration = parseInt(form.duracion, 10);
     if (Number.isFinite(duration) && duration > MAX_DURATION) return setFormError(`La duración no puede superar ${MAX_DURATION} minutos (24 horas).`);
     setSaving(true);
     setFormError('');
+    setNotice('');
     try {
-      if (editing === 'new') await createWorkshopService(toPayload(form));
+      const isNew = editing === 'new';
+      if (isNew) await createWorkshopService(toPayload(form));
       else await updateWorkshopService(editing.id, toPayload(form));
       setEditing(null);
       await load();
+      if (isNew) await announceDiagnostic();
     } catch (err) {
       setFormError(err?.message || 'No pudimos guardar el servicio.');
     } finally {
       setSaving(false);
     }
+    return undefined;
   };
 
   const confirmDelete = async () => {
@@ -119,7 +183,6 @@ export default function ProfileWorkshopServicesPanel({ embedded = false }) {
     setDeleteError('');
     try {
       await deleteWorkshopService(pendingDelete.id);
-      if (editing && editing !== 'new' && editing.id === pendingDelete.id) setEditing(null);
       setPendingDelete(null);
       await load();
     } catch (err) {
@@ -129,54 +192,44 @@ export default function ProfileWorkshopServicesPanel({ embedded = false }) {
     }
   };
 
+  const categoriesInUse = useMemo(() => {
+    const ids = new Set(services.map((service) => service.categoria));
+    return categories.filter((category) => ids.has(category.id));
+  }, [services, categories]);
+  const visible = useMemo(() => {
+    const needle = normalize(search);
+    return services.filter((service) => (!categoryFilter || service.categoria === categoryFilter)
+      && (!needle || normalize(`${service.nombre} ${service.categoriaNombre || ''}`).includes(needle)));
+  }, [services, search, categoryFilter]);
+
   return (
-    <div id="taller-servicios" className={`ft-page${embedded ? ' ft-page--embedded' : ''}`} style={{ background: 'transparent', minHeight: 0, paddingBottom: 0 }}>
+    <div className="ft-page" style={{ background: 'transparent', minHeight: 0, paddingBottom: 0 }}>
       <div className="ft-shell" style={{ padding: 0 }}>
         <div className="ft-head">
           <div>
-            <h2>{embedded ? 'Servicios y precios' : 'Mis servicios'}</h2>
+            {onBack && <button type="button" className="ft-btn ft-btn-outline" style={{ marginBottom: 10 }} onClick={onBack}><ArrowLeft size={15} /> Volver a Mi taller</button>}
+            <h2>Servicios y precios</h2>
             <p>Regístralos con su precio y las marcas en que eres especialista. Sin al menos un servicio, tu taller no aparece en el buscador.</p>
           </div>
           <button type="button" className="ft-btn ft-btn-primary" onClick={() => open('new')}><Plus size={16} /> Nuevo servicio</button>
         </div>
 
-        {editing && (
-          <form className="ft-card ft-form" onSubmit={save}>
-            <strong>{editing === 'new' ? 'Nuevo servicio' : 'Editar servicio'}</strong>
-            <label className="ft-field"><span>Nombre del servicio</span><input value={form.nombre} maxLength={120} placeholder="Ej: Cambio de pastillas de freno" onChange={(e) => setForm({ ...form, nombre: e.target.value })} /></label>
-            <div className="ft-row">
-              <label className="ft-field"><span>Categoría</span><select value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value, incluye: [] })}><option value="">Selecciona una categoría</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.nombre}</option>)}</select></label>
-              <label className="ft-field"><span>Duración en minutos <small>Opcional</small></span><input inputMode="numeric" value={form.duracion} maxLength={4} placeholder="Ej: 60" onChange={(e) => setForm({ ...form, duracion: e.target.value.replace(/\D/g, '') })} /></label>
-            </div>
-            <div className="ft-field">
-              <span>Subcategorías del servicio <small>Selecciona todas las que correspondan</small></span>
-              <div className="ft-chips">
-                {(categories.find((category) => category.id === form.categoria)?.subcategorias || []).map((subcategory) => {
-                  const selected = form.incluye.includes(subcategory);
-                  return <button key={subcategory} type="button" className={`ft-chip is-toggle ${selected ? 'is-on' : ''}`} aria-pressed={selected} onClick={() => setForm({ ...form, incluye: selected ? form.incluye.filter((item) => item !== subcategory) : [...form.incluye, subcategory] })}>{subcategory}</button>;
-                })}
-              </div>
-              {!form.categoria && <small>Elige primero una categoría.</small>}
-            </div>
-            <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14 }}>
-              <input type="checkbox" checked={form.cotizar} onChange={(e) => setForm({ ...form, cotizar: e.target.checked })} /> Precio a cotizar
+        {notice && <div className="taller-editor__ok" role="status"><CheckCircle2 size={15} /> {notice}</div>}
+
+        {services.length > 0 && (
+          <div className="taller-editor__list-tools">
+            <label className="ft-field">
+              <span className="taller-editor__search"><Search size={15} /><input type="search" value={search} maxLength={MAX_SEARCH_LENGTH} placeholder="Buscar servicio…" aria-label="Buscar servicio" onChange={(event) => setSearch(event.target.value)} /></span>
             </label>
-            {!form.cotizar && <label className="ft-field"><span>Precio (CLP)</span><input inputMode="numeric" value={form.precio} maxLength={9} placeholder="35000" onChange={(e) => setForm({ ...form, precio: e.target.value.replace(/\D/g, '') })} /></label>}
-            <label className="ft-field"><span>Descripción <small>Opcional</small></span><textarea rows={3} value={form.descripcion} maxLength={2000} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} /></label>
-            <div className="ft-field">
-              <span>Marcas en que eres especialista <small>Opcional. Sin marcas, el servicio se muestra como multimarca.</small></span>
-              <SpecialistBrandsManager
-                selectionOnly
-                initialBrands={selectedBrands}
-                onBrandsChange={(brands) => setForm((current) => ({ ...current, marcas: brands.map((brand) => brand.nombre).slice(0, MAX_BRANDS) }))}
-              />
-            </div>
-            {formError && <p className="ft-error" role="alert"><AlertCircle size={15} /> {formError}</p>}
-            <div className="ft-actions">
-              <button type="submit" className="ft-btn ft-btn-primary" disabled={saving}>{saving ? 'Guardando…' : 'Guardar servicio'}</button>
-              <button type="button" className="ft-btn ft-btn-outline" onClick={() => setEditing(null)} disabled={saving}>Cancelar</button>
-            </div>
-          </form>
+            {categoriesInUse.length > 1 && (
+              <div className="ft-chips" role="group" aria-label="Filtrar por categoría">
+                <button type="button" className={`ft-chip is-toggle ${!categoryFilter ? 'is-on' : ''}`} aria-pressed={!categoryFilter} onClick={() => setCategoryFilter('')}>Todas</button>
+                {categoriesInUse.map((category) => (
+                  <button key={category.id} type="button" className={`ft-chip is-toggle ${categoryFilter === category.id ? 'is-on' : ''}`} aria-pressed={categoryFilter === category.id} onClick={() => setCategoryFilter(categoryFilter === category.id ? '' : category.id)}>{category.nombre}</button>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {loading ? (
@@ -186,9 +239,11 @@ export default function ProfileWorkshopServicesPanel({ embedded = false }) {
             <button type="button" className="ft-btn ft-btn-outline" style={{ marginTop: 10 }} onClick={load}>Reintentar</button></div>
         ) : services.length === 0 ? (
           <div className="ft-empty"><Wrench size={22} /><strong>Aún no registras servicios</strong>Agrega cada servicio con su precio y las marcas en que eres especialista.</div>
+        ) : visible.length === 0 ? (
+          <div className="ft-empty"><Search size={22} /><strong>Sin resultados</strong>Ningún servicio coincide con tu búsqueda.</div>
         ) : (
           <div className="ft-list">
-            {services.map((service) => (
+            {visible.map((service) => (
               <div key={service.id} className="ft-card">
                 <div className="ft-card-top">
                   <div><h3>{service.nombre}</h3><span className="ft-price">{service.precioTexto}</span></div>
@@ -205,6 +260,99 @@ export default function ProfileWorkshopServicesPanel({ embedded = false }) {
           </div>
         )}
       </div>
+
+      {editing && (
+        <EditDialog
+          icon={Wrench}
+          title={editing === 'new' ? 'Nuevo servicio' : 'Editar servicio'}
+          subtitle="Lo que elijas es el título que ven tus clientes."
+          busy={saving}
+          error={formError}
+          saveLabel="Guardar servicio"
+          onClose={() => setEditing(null)}
+          onSave={save}
+        >
+          <div className="form-group">
+            <label>Servicio</label>
+            <SheetSelect label="Servicio" ariaLabel="Servicio" searchable value={nameValue} options={nameSelectOptions} placeholder="Busca y elige el servicio" onChange={pickName} />
+          </div>
+          {customName && (
+            <div className="taller-editor__pair">
+              <div className="form-group">
+                <label htmlFor="service-custom-name">Nombre del servicio</label>
+                <input id="service-custom-name" type="text" maxLength={120} value={form.nombre} placeholder="Ej: Cambio de pastillas de freno" onChange={(event) => setForm({ ...form, nombre: event.target.value })} />
+              </div>
+              <div className="form-group">
+                <label htmlFor="service-category">Categoría</label>
+                <select id="service-category" value={form.categoria} onChange={(event) => setForm({ ...form, categoria: event.target.value })}>
+                  <option value="">Selecciona una categoría</option>
+                  {categories.map((category) => <option key={category.id} value={category.id}>{category.nombre}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+          {!customName && categorySelected && <p className="ft-sub">Categoría: {categorySelected.nombre}</p>}
+
+          <div className="form-group">
+            <label>Precio</label>
+            <div className="workshop-hours-yesno" role="radiogroup" aria-label="Tipo de precio">
+              {[[false, 'Precio fijo'], [true, 'A cotizar']].map(([value, label]) => (
+                <label key={label} className={`workshop-hours-option ${form.cotizar === value ? 'is-active' : ''}`}>
+                  <input type="radio" name="service-price-type" checked={form.cotizar === value} onChange={() => setForm({ ...form, cotizar: value })} />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="taller-editor__pair">
+            {!form.cotizar && (
+              <div className="form-group">
+                <label htmlFor="service-price">Precio (CLP)</label>
+                <input id="service-price" type="text" inputMode="numeric" maxLength={9} value={form.precio} placeholder="35000" onChange={(event) => setForm({ ...form, precio: event.target.value.replace(/\D/g, '') })} />
+              </div>
+            )}
+            <div className="form-group">
+              <label htmlFor="service-duration">Duración en minutos (opcional)</label>
+              <input id="service-duration" type="text" inputMode="numeric" maxLength={4} value={form.duracion} placeholder="60" onChange={(event) => setForm({ ...form, duracion: event.target.value.replace(/\D/g, '') })} />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="service-include">Qué incluye ({form.incluye.length}/{MAX_INCLUDES}, opcional)</label>
+            <div className="taller-editor__include">
+              <input
+                id="service-include"
+                type="text"
+                maxLength={120}
+                value={includeText}
+                placeholder="Ej: Revisión de discos"
+                onChange={(event) => setIncludeText(event.target.value)}
+                onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addInclude(); } }}
+              />
+              <button type="button" className="agenda-cfg-icon" aria-label="Agregar a lo que incluye" disabled={!includeText.trim() || form.incluye.length >= MAX_INCLUDES} onClick={addInclude}><Plus size={16} /></button>
+            </div>
+            {form.incluye.length > 0 && (
+              <div className="taller-editor__chips">
+                {form.incluye.map((item) => (
+                  <button key={item} type="button" aria-label={`Quitar ${item}`} onClick={() => setForm({ ...form, incluye: form.incluye.filter((value) => value !== item) })}>
+                    {item} <X size={12} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label>Marcas especialistas (opcional)</label>
+            <SpecialistBrandsManager
+              selectionOnly
+              forWorkshop
+              initialBrands={selectedBrands}
+              onBrandsChange={(brands) => setForm((current) => ({ ...current, marcas: brands.map((brand) => brand.nombre).slice(0, MAX_BRANDS) }))}
+            />
+          </div>
+        </EditDialog>
+      )}
 
       <ConfirmDialog
         isOpen={Boolean(pendingDelete)}

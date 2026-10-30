@@ -7,7 +7,7 @@ import {
   Clock, ShieldCheck, PackageCheck, Loader2, Inbox, Search,
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
-  ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, PackageSearch, Wrench, Stethoscope
+  ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, PackageSearch, Wrench, CalendarClock
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
 import VideoTutorialModal from './VideoTutorialModal';
@@ -59,7 +59,9 @@ import MiTallerSection from './talleres/MiTallerSection';
 import ProfileFavoritesPanel from './ProfileFavoritesPanel';
 import FaultsList from './faults/FaultsList';
 import AutomotiveServiceAccreditation from './AutomotiveServiceAccreditation';
+import ProfileWorkshopServicesPanel from './workshop/ProfileWorkshopServicesPanel';
 import ProfileDiagnosticPanel from './workshop/ProfileDiagnosticPanel';
+import WorkshopBookingStatus from './workshop/WorkshopBookingStatus';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES, storePath } from '../routes/paths';
@@ -255,7 +257,7 @@ const WORKSHOP_SIDEBAR_GROUPS = [
     flag: 'market.perfil.taller.mi-taller',
     items: [
       { id: 'fallas_taller', label: 'Fallas automotrices', icon: EngineIcon },
-      { id: 'diagnostico', label: 'Servicio Diagnóstico', icon: Stethoscope },
+      { id: 'diagnostico', label: 'Servicio de agendamiento', icon: CalendarClock },
       { id: 'mi_taller', label: 'Mi taller', icon: Wrench }
     ]
   },
@@ -1335,7 +1337,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     if (isWorkshop) {
       return [
         { id: 'fallas', tone: 'amber', icon: EngineIcon, title: 'Fallas automotrices', description: 'Revisa las fallas de los clientes y deja tu diagnóstico.', onClick: () => setActiveTab('fallas_taller') },
-        { id: 'diagnostico', tone: 'purple', icon: Stethoscope, title: 'Servicio Diagnóstico', description: 'Ofrece agenda en tus comentarios. Gratis cada 10 búsquedas de repuestos.', onClick: () => setActiveTab('diagnostico') },
+        { id: 'diagnostico', tone: 'purple', icon: CalendarClock, title: 'Servicio de agendamiento', description: 'Recibe citas en línea y ofrece agenda en tus comentarios. Gratis cada 10 búsquedas de repuestos.', onClick: () => setActiveTab('diagnostico') },
         { id: 'mi_taller', tone: 'sky', icon: Wrench, title: 'Mi taller', description: 'Tus servicios con precio, tu perfil y tus citas.', onClick: () => setActiveTab('mi_taller') },
         { id: 'subastas', tone: 'blue', icon: PackageSearch, title: 'Búsqueda de repuestos', description: 'Publica los repuestos que necesitas y recibe ofertas.', onClick: () => setActiveTab('subastas') },
         { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte.', onClick: () => navigate(ROUTES.support) },
@@ -1777,6 +1779,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   onHelp={() => navigate(ROUTES.support)}
                 />
               )}
+              {activeTab === 'resumen' && isWorkshop && !isBuyerBlocked && (
+                <WorkshopBookingStatus onOpenWorkshop={() => setActiveTab('mi_taller')} onOpenService={() => setActiveTab('diagnostico')} />
+              )}
               {activeTab === 'resumen' && !isSellerBlocked && !isBuyerBlocked && (
                 <ProfileSummaryPanel
                   isSeller={isSeller}
@@ -1918,8 +1923,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
               {activeTab === 'mi_taller' && <MiTallerSection />}
               {(activeTab === 'mis_fallas' || activeTab === 'fallas_taller') && <FaultsList heading={false} />}
-              {/* «Mis servicios» ahora vive dentro de Mi taller; la pestaña queda para enlaces antiguos. */}
-              {activeTab === 'servicios_taller' && isWorkshop && <MiTallerSection />}
+              {activeTab === 'servicios_taller' && isWorkshop && <div className="profile-panel"><ProfileWorkshopServicesPanel onBack={() => setActiveTab('mi_taller')} /></div>}
               {activeTab === 'diagnostico' && isWorkshop && <ProfileDiagnosticPanel onOpenAds={() => setActiveTab('mi_taller')} />}
 
               {activeTab === 'retiros' && isSeller && (

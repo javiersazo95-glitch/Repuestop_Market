@@ -79,6 +79,12 @@ export function coinsToPesos(coins) {
   return `$${(Number(coins || 0) * 50).toLocaleString('es-CL')}`;
 }
 
+/** Dias que le quedan al servicio; 0 si no esta activo. */
+export function daysLeft(status) {
+  if (!status?.activo || !status.venceEn) return 0;
+  return Math.max(0, Math.ceil((new Date(status.venceEn).getTime() - Date.now()) / 86400000));
+}
+
 /** Fraccion 0-1 del camino al proximo Diagnostico gratis. */
 export function prizeProgress(status) {
   const per = Number(status?.necesidadesPorGratis || 0);

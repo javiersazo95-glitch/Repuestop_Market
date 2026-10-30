@@ -4,8 +4,8 @@ import {
   Calendar, Car, CheckCircle2, X, AlertCircle, MapPin, Loader2, LogIn, Clock, Phone, Mail,
   ChevronLeft, ChevronRight, Check, Lock, Info, User, FileText, Tag, LifeBuoy,
   Wrench, Gauge, Disc, Droplet, BatteryCharging, Settings, Sparkles, Thermometer, Zap,
-  ScanLine, Snowflake, CircleDot, Hammer, PaintBucket, ShieldCheck, Home
-} from 'lucide-react';
+  ScanLine, Snowflake, CircleDot, Hammer, PaintBucket, ShieldCheck, Home, MessageCircle } from 'lucide-react';
+import { confirmWhatsappContact } from '../../utils/whatsappContact';
 import { useAuth } from '../../context/AuthContext';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import { useTallerOwnership } from './useTallerOwnership';
@@ -453,7 +453,7 @@ export default function BookingModal({ taller, initialService = null, onClose, o
               {isLoggedIn && !isOwnTaller && !agendaConfig && renderBlockedState(
                 <Clock size={30} />,
                 'Este taller no tiene horarios publicados',
-                'El taller todavía no configuró su agenda en línea. Puedes contactarlo por teléfono o WhatsApp desde su perfil.'
+                'El taller todavía no configuró su agenda en línea. Vuelve a revisar más adelante.'
               )}
 
               {isLoggedIn && !isOwnTaller && agendaConfig && (
@@ -737,6 +737,27 @@ export default function BookingModal({ taller, initialService = null, onClose, o
                 <VoucherRow label="Dirección taller:" value={[taller.address, taller.commune].filter(Boolean).join(', ') || 'Por confirmar con el taller'} />
                 <VoucherRow label="Cliente:" value={`${userName.trim()} (${accountEmail})`} />
               </div>
+              {(confirmedAppointment?.workshopPhone || confirmedAppointment?.workshopWhatsapp) && (
+                <div className="bk-contact">
+                  <p>Ya agendaste: puedes coordinar directo con el taller.</p>
+                  <div>
+                    {confirmedAppointment.workshopPhone && (
+                      <a className="bk-outline" href={`tel:${confirmedAppointment.workshopPhone.replace(/\s+/g, '')}`}><Phone size={17} /> Llamar</a>
+                    )}
+                    {confirmedAppointment.workshopWhatsapp && (
+                      <a
+                        className="bk-outline"
+                        href={`https://wa.me/${confirmedAppointment.workshopWhatsapp.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(event) => { if (!confirmWhatsappContact(taller.name, confirmedAppointment.workshopWhatsapp)) event.preventDefault(); }}
+                      >
+                        <MessageCircle size={17} /> WhatsApp
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
               <button type="button" className="bk-primary" onClick={onClose}>Listo, cerrar</button>
             </div>
           )}

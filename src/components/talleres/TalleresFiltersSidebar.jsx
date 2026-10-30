@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   SlidersHorizontal, RotateCcw, X, ChevronDown, Car, Layers, Wrench, Settings,
-  MapPin, Clock, Calendar, MessageCircle, AlarmClock, Home, CheckCircle2
+  MapPin, Clock, Calendar, AlarmClock, Home, CheckCircle2
 } from 'lucide-react';
 import SearchableDropdown from '../SearchableDropdown';
 import { getCategoryIcon } from './categoryIcons';
@@ -65,7 +65,7 @@ export default function TalleresFiltersSidebar({
   selectedCategory,
   onSelectCategory,
   // Servicio, marca y comuna (desplegables con buscador)
-  serviceTagOptions,
+  subcategoryOptions = [],
   selectedServiceTag,
   setSelectedServiceTag,
   specialistBrandOptions,
@@ -84,8 +84,6 @@ export default function TalleresFiltersSidebar({
   setOnlyHomeService,
   onlyBooking,
   setOnlyBooking,
-  onlyWhatsapp,
-  setOnlyWhatsapp,
   children,
 }) {
   const [openSections, setOpenSections] = useState({
@@ -160,34 +158,42 @@ export default function TalleresFiltersSidebar({
               const CatIcon = getCategoryIcon(cat.id);
               const isSelected = selectedCategory === cat.id;
               return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  className={`filter-option-btn ${isSelected ? 'active' : ''}`}
-                  onClick={() => onSelectCategory(isSelected ? 'TODAS' : cat.id)}
-                >
-                  <span className="ads-fs-cat-icon"><CatIcon size={14} /></span>
-                  <span className="filter-option-copy">
-                    <strong>{cat.label}<span className="filter-option-count"> ({categoryCounts[cat.id] || 0})</span></strong>
-                  </span>
-                  {isSelected && <CheckCircle2 size={18} className="check-active" />}
-                </button>
+                <React.Fragment key={cat.id}>
+                  <button
+                    type="button"
+                    className={`filter-option-btn ${isSelected ? 'active' : ''}`}
+                    onClick={() => onSelectCategory(isSelected ? 'TODAS' : cat.id)}
+                  >
+                    <span className="ads-fs-cat-icon"><CatIcon size={14} /></span>
+                    <span className="filter-option-copy">
+                      <strong>{cat.label}<span className="filter-option-count"> ({categoryCounts[cat.id] || 0})</span></strong>
+                    </span>
+                    {isSelected && <CheckCircle2 size={18} className="check-active" />}
+                  </button>
+                  {isSelected && subcategoryOptions.length > 0 && (
+                    <div className="filter-subcategory-branch" role="group" aria-label={`Servicios de ${cat.label}`}>
+                      {subcategoryOptions.map(({ value, count }) => {
+                        const active = selectedServiceTag === value;
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            className={`filter-subcategory-option ${active ? 'active' : ''}`}
+                            aria-pressed={active}
+                            onClick={() => setSelectedServiceTag(active ? ALL_TAGS : value)}
+                          >
+                            <span className="filter-subcategory-checkbox" aria-hidden="true" />
+                            <span className="filter-subcategory-text">{value}<span className="filter-option-count"> ({count})</span></span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </React.Fragment>
               );
             })}
           </div>
         </FilterSection>
-
-        {serviceTagOptions.length > 0 && (
-          <FilterSection id="service" icon={Wrench} label="Servicio" isOpen={openSections.service} onToggle={toggleSection}>
-            <SearchableDropdown
-              value={selectedServiceTag}
-              options={[{ value: ALL_TAGS, label: ALL_TAGS }, ...serviceTagOptions.map(({ value, count }) => ({ value, label: value, count }))]}
-              placeholder={ALL_TAGS}
-              onChange={(value) => setSelectedServiceTag(value || ALL_TAGS)}
-              emptyText="No encontramos ese servicio."
-            />
-          </FilterSection>
-        )}
 
         {specialistBrandOptions.length > 0 && (
           <FilterSection id="brand" icon={Settings} label="Marca especialista" isOpen={openSections.brand} onToggle={toggleSection}>
@@ -226,7 +232,6 @@ export default function TalleresFiltersSidebar({
           <SwitchCard icon={AlarmClock} title="Urgencias 24 horas" checked={only24Hours} onChange={setOnly24Hours} />
           <SwitchCard icon={Home} iconClass="is-home" title="Servicio a domicilio" checked={onlyHomeService} onChange={setOnlyHomeService} />
           <SwitchCard icon={Calendar} iconClass="is-home" title="Agenda en línea" checked={onlyBooking} onChange={setOnlyBooking} />
-          <SwitchCard icon={MessageCircle} iconClass="is-whatsapp" title="Contacto por WhatsApp" checked={onlyWhatsapp} onChange={setOnlyWhatsapp} />
         </FilterSection>
 
         <button type="button" className="ads-fs-mobile-apply" onClick={onCloseMobile}>

@@ -122,7 +122,6 @@ export default function TalleresDirectoryView() {
   // Filtro por marca especialista del taller (paridad con la app, ads-wall.tsx).
   const [selectedSpecialistBrand, setSelectedSpecialistBrand] = useRestoredState(VIEW_ID, 'selectedSpecialistBrand', ALL_BRANDS);
   const [onlyBooking, setOnlyBooking] = useRestoredState(VIEW_ID, 'onlyBooking', false);
-  const [onlyWhatsapp, setOnlyWhatsapp] = useRestoredState(VIEW_ID, 'onlyWhatsapp', false);
   const [only24Hours, setOnly24Hours] = useRestoredState(VIEW_ID, 'only24Hours', false);
   const [onlyHomeService, setOnlyHomeService] = useRestoredState(VIEW_ID, 'onlyHomeService', false);
   const [sortBy, setSortBy] = useRestoredState(VIEW_ID, 'sortBy', 'relevancia');
@@ -154,7 +153,7 @@ export default function TalleresDirectoryView() {
     setVisibleCount(PAGE_SIZE);
   }, [
     searchQuery, selectedCategory, selectedCommune, selectedServiceTag,
-    onlyBooking, onlyWhatsapp, only24Hours, onlyHomeService, sortBy, plateVehicle, selectedSpecialistBrand,
+    onlyBooking, only24Hours, onlyHomeService, sortBy, plateVehicle, selectedSpecialistBrand,
     includeMultibrand,
   ]);
 
@@ -221,7 +220,6 @@ export default function TalleresDirectoryView() {
     setSelectedServiceTag(ALL_TAGS);
     setSelectedSpecialistBrand(ALL_BRANDS);
     setOnlyBooking(false);
-    setOnlyWhatsapp(false);
     setOnly24Hours(false);
     setOnlyHomeService(false);
     setSortBy('relevancia');
@@ -239,7 +237,6 @@ export default function TalleresDirectoryView() {
     (selectedServiceTag !== ALL_TAGS ? 1 : 0) +
     (selectedSpecialistBrand !== ALL_BRANDS ? 1 : 0) +
     (onlyBooking ? 1 : 0) +
-    (onlyWhatsapp ? 1 : 0) +
     (only24Hours ? 1 : 0) +
     (onlyHomeService ? 1 : 0);
 
@@ -254,8 +251,7 @@ export default function TalleresDirectoryView() {
     (isNearbySortActive ? 1 : 0) +
     (only24Hours ? 1 : 0) +
     (onlyHomeService ? 1 : 0) +
-    (onlyBooking ? 1 : 0) +
-    (onlyWhatsapp ? 1 : 0);
+    (onlyBooking ? 1 : 0);
 
   const handleMyWorkshopClick = () => {
     if (!isLoggedIn) openAuthModal();
@@ -369,9 +365,6 @@ export default function TalleresDirectoryView() {
     if (onlyBooking) {
       result = result.filter((taller) => canBookTaller(taller));
     }
-    if (onlyWhatsapp) {
-      result = result.filter((taller) => Boolean(taller.whatsapp));
-    }
     if (only24Hours) {
       result = result.filter((taller) => taller.is24Hours);
     }
@@ -400,7 +393,6 @@ export default function TalleresDirectoryView() {
       // en línea y los que tienen su catálogo más completo. Nada de esto se paga.
       const score = (taller) => (matchingServices(taller, highlightTerms).length * 10)
         + (canBookTaller(taller) ? 3 : 0)
-        + (taller.whatsapp ? 1 : 0)
         + Math.min(taller.services.length, 5) * 0.2;
       result.sort((a, b) => score(b) - score(a)
         || (b.rating || 0) - (a.rating || 0)
@@ -415,7 +407,7 @@ export default function TalleresDirectoryView() {
     return result;
   }, [
     talleres, searchQuery, selectedCategory, selectedCommune, selectedServiceTag, highlightTerms,
-    onlyBooking, onlyWhatsapp, only24Hours, onlyHomeService, sortBy, plateVehicle, isNearbySortActive, userLocation.coords,
+    onlyBooking, only24Hours, onlyHomeService, sortBy, plateVehicle, isNearbySortActive, userLocation.coords,
     selectedSpecialistBrand, includeMultibrand,
   ]);
 
@@ -499,6 +491,30 @@ export default function TalleresDirectoryView() {
       .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value, 'es'));
   }, [talleres, selectedCategory, selectedServiceTag, serviceCatalog]);
 
+  // Servicios de la categoria elegida, anidados bajo ella en los filtros como en la app.
+  const subcategoryOptions = useMemo(() => {
+    if (selectedCategory === 'TODAS') return [];
+    const category = serviceCatalog.find((item) => item.id === selectedCategory);
+    const counts = new Map(serviceTagOptions.map(({ value, count }) => [normalizeSearchText(value), count]));
+    return (category?.subcategorias || category?.incluye || []).map((value) => ({ value, count: counts.get(normalizeSearchText(value)) || 0 }));
+  }, [selectedCategory, serviceCatalog, serviceTagOptions]);
+
+  // Cambiar de categoria descarta el servicio elegido en la anterior.
+  const selectCategory = (categoryId) => {
+    setSelectedCategory(categoryId);
+    setSelectedServiceTag(ALL_TAGS);
+  };
+
+  // Lo que el cliente pidio en los filtros: la tarjeta muestra que el taller lo tiene.
+  const filterMatch = useMemo(() => ({
+    service: selectedServiceTag !== ALL_TAGS ? selectedServiceTag : null,
+    brand: selectedSpecialistBrand !== ALL_BRANDS ? selectedSpecialistBrand : null,
+    categoryLabel: selectedCategory !== 'TODAS' ? SERVICE_CATEGORIES.find((cat) => cat.id === selectedCategory)?.label || null : null,
+    commune: selectedCommune !== ALL_COMMUNES ? selectedCommune : null,
+    only24Hours,
+    homeService: onlyHomeService,
+  }), [selectedServiceTag, selectedSpecialistBrand, selectedCategory, selectedCommune, only24Hours, onlyHomeService]);
+
   // Pastillas de filtros activos sobre la grilla: cada una se quita por separado.
   const activeFilterPills = [
     plateVehicle && { key: 'vehicle', label: formatVehicleLabel(plateVehicle), onRemove: handleRemoveVehicle },
@@ -515,7 +531,6 @@ export default function TalleresDirectoryView() {
     only24Hours && { key: '24h', label: '24 horas', onRemove: () => setOnly24Hours(false) },
     onlyHomeService && { key: 'home', label: 'A domicilio', onRemove: () => setOnlyHomeService(false) },
     onlyBooking && { key: 'booking', label: 'Agenda en línea', onRemove: () => setOnlyBooking(false) },
-    onlyWhatsapp && { key: 'whatsapp', label: 'WhatsApp', onRemove: () => setOnlyWhatsapp(false) },
   ].filter(Boolean);
 
   return (
@@ -725,8 +740,8 @@ export default function TalleresDirectoryView() {
           categoryOptions={availableCategories}
           categoryCounts={categoryCounts}
           selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
-          serviceTagOptions={serviceTagOptions}
+          onSelectCategory={selectCategory}
+          subcategoryOptions={subcategoryOptions}
           selectedServiceTag={selectedServiceTag}
           setSelectedServiceTag={setSelectedServiceTag}
           specialistBrandOptions={specialistBrandOptions}
@@ -744,8 +759,6 @@ export default function TalleresDirectoryView() {
           setOnlyHomeService={setOnlyHomeService}
           onlyBooking={onlyBooking}
           setOnlyBooking={setOnlyBooking}
-          onlyWhatsapp={onlyWhatsapp}
-          setOnlyWhatsapp={setOnlyWhatsapp}
         >
           <div className="ads-provider-card">
             <div className="ads-provider-glow" aria-hidden="true" />
@@ -870,7 +883,8 @@ export default function TalleresDirectoryView() {
                     taller={taller}
                     onOpenProfile={(data) => nav.goTaller(data)}
                     onOpenBooking={(data) => setSelectedTallerForBooking(data)}
-                    onSelectCategory={(catId) => setSelectedCategory(catId)}
+                    onSelectCategory={selectCategory}
+                    filterMatch={filterMatch}
                     isFavorite={isTallerSaved(taller.id)}
                     distanceKm={isNearbySortActive ? distanceKmTo(userLocation.coords, taller) : null}
                     highlightTerms={highlightTerms}
@@ -922,13 +936,14 @@ export default function TalleresDirectoryView() {
         isOpen={isFilterOpen}
         onClose={() => setIsFilterOpen(false)}
         selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
+        setSelectedCategory={selectCategory}
+        subcategoryOptions={subcategoryOptions}
+        selectedServiceTag={selectedServiceTag}
+        setSelectedServiceTag={setSelectedServiceTag}
         selectedCommune={selectedCommune}
         setSelectedCommune={setSelectedCommune}
         onlyBooking={onlyBooking}
         setOnlyBooking={setOnlyBooking}
-        onlyWhatsapp={onlyWhatsapp}
-        setOnlyWhatsapp={setOnlyWhatsapp}
         only24Hours={only24Hours}
         setOnly24Hours={setOnly24Hours}
         onlyHomeService={onlyHomeService}

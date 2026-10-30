@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, CalendarClock, CalendarDays, Check, XCircle, Loader2, AlertTriangle,
-  Phone, Mail, Car, StickyNote, RotateCcw, Wrench, Clock, Settings, Home, Lock
-} from 'lucide-react';
+  Phone, Mail, Car, StickyNote, RotateCcw, Wrench, Clock, Settings, Home, Lock, MessageCircle } from 'lucide-react';
+import { confirmWhatsappContact } from '../../utils/whatsappContact';
 import {
   formatAgendaDateLong, getTimeUntilLabel, parseIsoDate, toIsoDate
 } from '../../data/agendaConfig';
@@ -221,7 +221,15 @@ export default function AppointmentsHistoryModal({
                     <a href={`mailto:${appointment.customerEmail}`}><Mail size={12} /> {appointment.customerEmail}</a>
                   )}
                 </>
-              : <span><Clock size={12} /> {formatAgendaDateLong(appointment.date)}</span>}
+              : <>
+                  <span><Clock size={12} /> {formatAgendaDateLong(appointment.date)}</span>
+                  {appointment.workshopPhone && (
+                    <a href={`tel:${appointment.workshopPhone.replace(/\s+/g, '')}`}><Phone size={12} /> {appointment.workshopPhone}</a>
+                  )}
+                  {appointment.workshopWhatsapp && (
+                    <a href={`https://wa.me/${appointment.workshopWhatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" onClick={(event) => { if (!confirmWhatsappContact(appointment.tallerName, appointment.workshopWhatsapp)) event.preventDefault(); }}><MessageCircle size={12} /> WhatsApp</a>
+                  )}
+                </>}
             {appointment.fallaTitle && (
               <span><Wrench size={12} /> Falla: {appointment.fallaTitle}</span>
             )}
