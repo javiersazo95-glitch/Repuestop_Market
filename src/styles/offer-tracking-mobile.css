@@ -1,0 +1,45 @@
+/* Mis ofertas (casa de repuestos) en celular: tarjetas de `app/subastas/seguimiento.tsx`. */
+@media (max-width: 767px) {
+  .pt-panel .pt-kpis, .pt-panel .pt-toolbar .pt-search { display: none; }
+  .pt-panel .pt-header p { display: none; }
+  .pt-panel .pt-header .pt-btn { display: none; }
+  .pt-panel .pt-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  .pt-panel .pt-tabs button { flex: 0 0 auto; min-height: 36px; padding: 0 14px; border: 1px solid #d9e0e7; border-radius: 999px; background: #fff; color: #5a6b7a; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .pt-panel .pt-tabs button.is-active { border-color: #bfd6f7; background: #eaf2ff; color: #0056bf; }
+}
+.otm-list { display: flex; flex-direction: column; gap: 12px; }
+.otm-card { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid #d9e0e7; border-radius: 16px; background: #fff; box-shadow: 0 2px 8px rgba(15, 23, 42, .06); }
+.otm-head { display: flex; align-items: flex-start; gap: 8px; }
+.otm-head > div { flex: 1; min-width: 0; }
+.otm-head h3 { margin: 0; font-size: 15px; line-height: 20px; font-weight: 700; color: #243442; overflow-wrap: anywhere; }
+.otm-head small { display: block; font-size: 11px; color: #5a6b7a; }
+.otm-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid #e6eaef; }
+.otm-strip > div { display: flex; flex-direction: column; gap: 2px; padding: 8px 6px 0; min-width: 0; }
+.otm-strip > div:nth-child(even) { border-left: 1px solid #e6eaef; }
+.otm-strip small { font-size: 11px; color: #5a6b7a; }
+.otm-strip strong { font-size: 13px; font-weight: 700; color: #243442; }
+.otm-strip .is-bad, .otm-alerts .is-bad, .otm-cond-row .is-bad { color: #b42318; }
+.otm-strip .is-ok { color: #0e7038; }
+.otm-strip .is-muted { color: #5a6b7a; }
+.otm-alerts { display: flex; flex-direction: column; gap: 2px; margin: 0; font-size: 11px; font-weight: 700; }
+.otm-alerts .is-warn, .otm-alerts.is-warn { color: #9a5a00; }
+.otm-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e6eaef; padding-top: 6px; }
+.otm-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0; border: 0; background: transparent; color: #0056bf; font: inherit; font-size: 13px; }
+.otm-actions { display: flex; gap: 8px; }
+.otm-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 36px; padding: 0 12px; border: 1px solid #0056bf; border-radius: 8px; background: #fff; color: #0056bf; font: inherit; font-size: 13px; font-weight: 600; }
+.otm-btn.is-primary { background: #0056bf; color: #fff; }
+.otm-btn.is-wide { width: 100%; min-height: 44px; }
+.otm-news-line { margin: 0; font-size: 11px; font-weight: 700; color: #9a5a00; }
+.otm-detail { display: flex; flex-direction: column; gap: 12px; }
+.otm-detail section { display: flex; flex-direction: column; gap: 8px; }
+.otm-detail h4 { margin: 0; font-size: 13px; font-weight: 700; color: #243442; }
+.otm-muted { margin: 0; font-size: 13px; color: #5a6b7a; }
+.otm-event { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; }
+.otm-event strong { flex: 1; }
+.otm-event time { font-size: 11px; color: #5a6b7a; }
+.otm-event.is-ok strong { color: #0e7038; }
+.otm-event.is-warn strong { color: #9a5a00; }
+.otm-event.is-lost strong { color: #5a6b7a; }
+.otm-cond-row { display: grid; grid-template-columns: 1fr 1.2fr 1.2fr; gap: 6px; padding: 6px 0; border-top: 1px solid #e6eaef; font-size: 12px; }
+.otm-cond-row.is-head { border-top: 0; color: #5a6b7a; font-size: 11px; }
+.otm-cond-row strong { font-weight: 700; }

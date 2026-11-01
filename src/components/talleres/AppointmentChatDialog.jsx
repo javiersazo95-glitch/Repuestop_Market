@@ -3,6 +3,13 @@ import { createPortal } from 'react-dom';
 import { Loader2, Lock, MessageCircle, Send, X } from 'lucide-react';
 import { fetchAppointmentMessages, sendAppointmentMessage } from '../../services/talleresStorage';
 import { apiErrorMessage } from '../../services/walletStorage';
+import { resolveMediaUrl } from '../../services/api';
+import '../../styles/appointment-chat-mobile.css';
+
+/** Avatar chico del autor (foto o inicial), como el de la burbuja de la app. */
+function ChatAvatar({ name, src }) {
+  return <span className="appointment-chat-avatar" aria-hidden="true">{src ? <img src={resolveMediaUrl(src)} alt="" /> : (name || 'U').slice(0, 1).toUpperCase()}</span>;
+}
 
 export default function AppointmentChatDialog({ appointment, sessionUserId, onClose }) {
   const [messages, setMessages] = useState([]);
@@ -87,14 +94,19 @@ export default function AppointmentChatDialog({ appointment, sessionUserId, onCl
           {loading ? (
             <div className="appointment-chat-state"><Loader2 className="spin-icon" size={24} /> Cargando mensajes…</div>
           ) : messages.length === 0 ? (
-            <div className="appointment-chat-state"><MessageCircle size={28} /> Escribe para coordinar los detalles de la cita.</div>
+            <div className="appointment-chat-state"><MessageCircle size={34} /><strong>Coordina los detalles de tu cita</strong>Puedes escribir desde ahora y durante la atención.</div>
           ) : messages.map((message) => {
             const mine = String(message.autorId) === String(sessionUserId);
+            const label = message.autorNombre || (mine ? 'Tú' : 'Usuario');
             return (
-              <div key={message.id} className={`appointment-chat-message ${mine ? 'is-mine' : ''}`}>
-                {!mine && <strong>{message.autorNombre || 'Taller'}</strong>}
-                <p>{message.mensaje}</p>
-                <time>{message.creadoEn ? new Date(message.creadoEn).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) : ''}</time>
+              <div key={message.id} className={`appointment-chat-row ${mine ? 'is-mine' : ''}`}>
+                {!mine && <ChatAvatar name={label} src={message.autorFotoUrl} />}
+                <div className={`appointment-chat-message ${mine ? 'is-mine' : ''}`}>
+                  {!mine && <strong>{label}</strong>}
+                  <p>{message.mensaje}</p>
+                  <time>{message.creadoEn ? new Date(message.creadoEn).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) : ''}</time>
+                </div>
+                {mine && <ChatAvatar name={label} src={message.autorFotoUrl} />}
               </div>
             );
           })}

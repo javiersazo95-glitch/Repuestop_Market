@@ -141,7 +141,7 @@ const SELLER_SIDEBAR_GROUPS = [
       { id: 'pedidos', label: 'Pedidos recibidos', icon: ShoppingBag },
       { id: 'productos', label: 'Productos', icon: Package },
       { id: 'cotizaciones', label: 'Cotizaciones', icon: ReceiptText },
-      { id: 'gestion_subastas', label: 'Seguimiento de propuestas', icon: Gavel },
+      { id: 'gestion_subastas', label: 'Mis ofertas', icon: Gavel },
       { id: 'preguntas_productos', label: 'Preguntas de productos', icon: MessageCircleQuestion },
       { id: 'chats_compradores', label: 'Chats con compradores', icon: MessageSquare }
     ]
@@ -224,7 +224,7 @@ const BUYER_SIDEBAR_GROUPS = [
       { id: 'pedidos', label: 'Mis pedidos', icon: Package },
       { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
       { id: 'subastas', label: 'Búsqueda de repuestos', icon: PackageSearch },
-      { id: 'mis_fallas', label: 'Fallas automotrices', icon: EngineIcon },
+      { id: 'mis_fallas', label: 'Mis fallas', icon: EngineIcon },
       { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
       { id: 'chats_vendedor', label: 'Chats con vendedor', icon: MessageSquare },
       { id: 'favoritos', label: 'Favoritos', icon: Heart }
@@ -261,7 +261,7 @@ const WORKSHOP_SIDEBAR_GROUPS = [
     title: 'MI TALLER',
     flag: 'market.perfil.taller.mi-taller',
     items: [
-      { id: 'fallas_taller', label: 'Fallas automotrices', icon: EngineIcon },
+      { id: 'fallas_taller', label: 'Mis fallas', icon: EngineIcon },
       { id: 'diagnostico', label: 'Servicio de agendamiento', icon: CalendarClock },
       { id: 'mi_taller', label: 'Mi taller', icon: Wrench }
     ]
@@ -304,8 +304,8 @@ const WORKSHOP_SIDEBAR_GROUPS = [
 // (la app también cambia de pantalla). El quinto botón es "Más", que abre la hoja con todos los grupos.
 const MOBILE_APP_TABS = {
   buyer: [
-    { key: 'vehiculo', label: 'Vehículo', icon: Car, to: ROUTES.home },
-    { key: 'fallas', label: 'Fallas', icon: EngineIcon, tab: 'mis_fallas' },
+    { key: 'inicio', label: 'Inicio', icon: Home, to: ROUTES.home },
+    { key: 'fallas', label: 'Mis fallas', icon: EngineIcon, tab: 'mis_fallas' },
     { key: 'repuestos', label: 'Repuestos', icon: Cog, tab: 'repuestos', virtual: true },
     { key: 'busco', label: 'Busco', icon: Search, tab: 'subastas' },
   ],
@@ -317,7 +317,7 @@ const MOBILE_APP_TABS = {
   ],
   workshop: [
     { key: 'inicio', label: 'Inicio', icon: Gauge, tab: 'resumen' },
-    { key: 'fallas', label: 'Fallas', icon: EngineIcon, tab: 'fallas_taller' },
+    { key: 'fallas', label: 'Mis fallas', icon: EngineIcon, tab: 'fallas_taller' },
     { key: 'repuestos', label: 'Repuestos', icon: Cog, tab: 'repuestos', virtual: true },
     { key: 'busco', label: 'Busco', icon: Search, tab: 'subastas' },
   ],
@@ -1358,6 +1358,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         { id: 'fallas', tone: 'amber', icon: EngineIcon, title: 'Fallas automotrices', description: 'Revisa las fallas de los clientes y deja tu diagnóstico.', onClick: () => setActiveTab('fallas_taller') },
         { id: 'diagnostico', tone: 'purple', icon: CalendarClock, title: 'Servicio de agendamiento', description: 'Recibe citas en línea y ofrece agenda en tus comentarios. Gratis cada 10 búsquedas de repuestos.', onClick: () => setActiveTab('diagnostico') },
         { id: 'mi_taller', tone: 'sky', icon: Wrench, title: 'Mi taller', description: 'Tus servicios con precio, tu perfil y tus citas.', onClick: () => setActiveTab('mi_taller') },
+        { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Mis cotizaciones', description: 'Pide cotizaciones de repuestos y sigue las respuestas de las tiendas.', onClick: () => setActiveTab('cotizaciones') },
         { id: 'subastas', tone: 'blue', icon: PackageSearch, title: 'Búsqueda de repuestos', description: 'Publica los repuestos que necesitas y recibe ofertas.', onClick: () => setActiveTab('subastas') },
         { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte.', onClick: () => navigate(ROUTES.support) },
       ];

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle, AlertTriangle, ArrowLeft, Bookmark, CalendarPlus, Car, ChevronDown,
@@ -26,6 +26,9 @@ import { formatDistanceKm, haversineDistanceKm } from '../utils/geoDistance';
 import { onlyDigits } from '../utils/inputLimits';
 import { maskPlate } from '../utils/usePlateLookup';
 import CharCount from '../components/faults/CharCount';
+import FaultDetailMobile from '../components/faults/FaultDetailMobile';
+import DiagnosticoDesglose from '../components/tracking/DiagnosticoDesglose';
+import { useIsMobile } from '../hooks/useIsMobile';
 import '../styles/faults.css';
 
 const formatMonthYear = (value) => {
@@ -42,6 +45,7 @@ export default function FaultDetailPage() {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const showPlate = !location.state?.fromMural;
   const { user, role, isLoggedIn } = useAuth();
   const { isFaultSaved, toggleFault } = useSavedMarketplaceItems(user?.userId ?? user?.id ?? null);
@@ -104,6 +108,17 @@ export default function FaultDetailPage() {
     getDiagnosisEligibility().then((value) => { if (active) setEligibility(value); }).catch(() => { if (active) setEligibility(null); });
     return () => { active = false; };
   }, [diagModal]);
+
+  // Desde "Detalle" de Mis fallas se llega con ?diagnostico=<id>: se abre ese diagnóstico (aceptarlo, responder o agendar).
+  const autoOpened = useRef(false);
+  useEffect(() => {
+    if (autoOpened.current || comments.length === 0) return;
+    const wanted = Number(new URLSearchParams(location.search).get('diagnostico'));
+    if (wanted && comments.some((comment) => comment.id === wanted)) {
+      autoOpened.current = true;
+      setDiagModal(wanted);
+    }
+  }, [comments, location.search]);
 
   const roots = useMemo(() => comments.filter((comment) => comment.respondeAId == null), [comments]);
   const publicComments = useMemo(() => roots.filter((comment) => comment.tipo === 'COMENTARIO'), [roots]);
@@ -249,6 +264,19 @@ export default function FaultDetailPage() {
 
   return (
     <div className="ft-page ft-detail-page">
+      {isMobile ? (
+        <FaultDetailMobile
+          fault={fault} vehicleTitle={vehicleTitle} place={place} photos={photos}
+          diagnostics={diagnostics} publicComments={publicComments} repliesOf={repliesOf} diagnosisCount={diagnosisCount}
+          publicDiagnoses={publicDiagnoses} isWorkshop={isWorkshop} isLoggedIn={isLoggedIn} saved={saved} onToggleSaved={toggleSaved}
+          myDiagnosis={myDiagnosis} canReply={canReply} onReply={startReply} replyForm={replyForm} isMine={isMine}
+          onBack={() => navigate(-1)} onEdit={() => setEditing(true)} onCloseFault={() => { setCloseError(''); setCloseConfirm(true); }}
+          onOpenDiagnosis={setDiagModal} onOpenPublicList={() => setPublicDiagnosesOpen(true)} onShare={share}
+          comment={{ text: publicText, setText: setPublicText, error: formError, sending, submit: (event) => send(event, 'COMENTARIO') }}
+          distanceKm={distanceKm} userLocation={userLocation}
+          mapHref={hasPoint || place || fault.direccionRecogida ? (hasPoint ? `https://www.google.com/maps/search/?api=1&query=${fault.latitud},${fault.longitud}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([fault.direccionRecogida, place].filter(Boolean).join(', '))}`) : null}
+        />
+      ) : (
       <div className="ft-detail-shell">
         <nav className="ft-detail-breadcrumb" aria-label="Ruta">
           <button type="button" onClick={() => navigate(-1)}><ArrowLeft size={15} /> Volver a resultados</button><i />
@@ -373,6 +401,7 @@ export default function FaultDetailPage() {
 
         {fault.propia && fault.vigente && <div className="ft-detail-owner-actions"><button type="button" className="ft-btn ft-btn-danger" onClick={() => { setCloseError(''); setCloseConfirm(true); }}>Cerrar falla</button></div>}
       </div>
+      )}
 
       {publicDiagnosesOpen && <div className="ft-modal-backdrop" role="dialog" aria-modal="true" onClick={() => setPublicDiagnosesOpen(false)}><div className="ft-modal" onClick={(event) => event.stopPropagation()}>
         <div className="ft-modal-head"><h2><Wrench size={16} /> Diagnósticos recibidos ({publicDiagnoses.length})</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={() => setPublicDiagnosesOpen(false)}><X size={20} /></button></div>
@@ -381,7 +410,18 @@ export default function FaultDetailPage() {
           {publicDiagnoses.map((item) => <Link key={`${item.tallerId}-${item.createdAt}`} className="ft-public-diagnosis" to={workshopPath(item.tallerId)}><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{item.nombre}</strong><small>{[item.comuna, timeSince(item.createdAt)].filter(Boolean).join(' · ')}</small>{item.aceptado && <em>Aceptado</em>}<ChevronRight size={15} /></Link>)}
         </div>
       </div></div>}
-      {diagModal != null && <div className="ft-modal-backdrop" role="dialog" aria-modal="true" onClick={() => { setDiagModal(null); setReplyTo(null); }}><div className="ft-modal" onClick={(event) => event.stopPropagation()}>
+      {isMobile && openDiagnosis && (
+        <DiagnosticoDesglose
+          key={openDiagnosis.id}
+          faultId={fault.id}
+          diagnosis={openDiagnosis}
+          replies={repliesOf(openDiagnosis.id)}
+          canAct={Boolean(fault.propia && fault.vigente)}
+          onClose={() => { setDiagModal(null); setReplyTo(null); }}
+          onChanged={load}
+        />
+      )}
+      {diagModal != null && !(isMobile && openDiagnosis) && <div className="ft-modal-backdrop" role="dialog" aria-modal="true" onClick={() => { setDiagModal(null); setReplyTo(null); }}><div className="ft-modal" onClick={(event) => event.stopPropagation()}>
         <div className="ft-modal-head"><h2><Lock size={16} /> {diagModal === 'new' ? 'Registrar diagnóstico' : 'Diagnóstico privado'}</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={() => { setDiagModal(null); setReplyTo(null); }}><X size={20} /></button></div>
         {diagModal === 'new' && eligibility === undefined ? <div className="ft-empty"><Loader2 size={18} className="spin-icon" /> Comprobando…</div>
           : diagModal === 'new' && eligibility?.habilitado !== true ? <div className="ft-form"><p>Para registrar un diagnóstico privado necesitas tener activo el servicio de agendamiento.</p><div className="ft-actions"><Link className="ft-btn ft-btn-primary" to={profilePath('diagnostico')}>Activar servicio</Link></div></div>

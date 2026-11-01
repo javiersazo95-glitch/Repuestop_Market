@@ -7,6 +7,11 @@ import SectionHero, { HeroChip } from './ui/SectionHero';
 import { resolveMediaUrl } from '../services/api';
 import { auctionTrackingCode } from '../services/auctionApi';
 import { pendingSummary } from '../utils/auctionPending';
+import { useAuth } from '../context/AuthContext';
+import { needNews, newOffersCount } from '../utils/trackingNews';
+import { useTrackingSeen } from '../hooks/useTrackingSeen';
+import TrackingDetail from './tracking/TrackingDetail';
+import NeedTrackingDetail from './tracking/NeedTrackingDetail';
 import '../styles/auction-app-mobile.css';
 
 const HOUR = 60 * 60 * 1000;
@@ -39,7 +44,7 @@ function formatPublished(iso, now) {
   return `Publicado el ${date.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
 }
 
-function AuctionCardMobile({ auction, status, now, onOpen, pendingQuestions = null }) {
+function AuctionCardMobile({ auction, status, now, onOpen, pendingQuestions = null, tracking = null }) {
   const vehicle = [auction.marca, auction.modelo, auction.anio].filter(Boolean).join(' ') || 'Vehículo';
   const motor = auction.motor || auction.version;
   const location = [auction.comuna, auction.region].filter(Boolean).join(', ');
@@ -79,6 +84,18 @@ function AuctionCardMobile({ auction, status, now, onOpen, pendingQuestions = nu
       {pendingQuestions != null && pendingSummary(offers, pendingQuestions) && (
         <p className="am-card-pending"><MessageCircle size={14} aria-hidden="true" /> {pendingSummary(offers, pendingQuestions)}</p>
       )}
+      {tracking && (() => {
+        const key = `need:${auction.id}`;
+        const seenValue = tracking.seen[key];
+        const news = needNews({ totalCotizaciones: offers, preguntasPendientes: pendingQuestions ?? 0 }, seenValue);
+        return (
+          <div className="am-card-tracking">
+            <TrackingDetail news={news} onClose={() => tracking.markSeen(key, news.signature)}>
+              <NeedTrackingDetail auctionId={auction.id} newOffers={newOffersCount(offers, seenValue)} onChanged={tracking.onChanged} />
+            </TrackingDetail>
+          </div>
+        );
+      })()}
 
     </article>
   );
@@ -109,6 +126,7 @@ export default function AuctionsListMobile({
   /** Dentro de la intranet: sin alto de pantalla completa (la barra inferior y el título ya son de la cuenta). */
   embedded = false,
   onOpenAuction,
+  onTrackingChanged,
   filtersPanel,
   /** "Mural publico (N)" / "Mis búsquedas (N)" (null sin sesion de quien publica), como la app. */
   tabs = null,
@@ -119,16 +137,21 @@ export default function AuctionsListMobile({
 }) {
   const [sortOpen, setSortOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(8);
+  const { user } = useAuth();
+  const { seen, markSeen } = useTrackingSeen(user?.userId ?? user?.id);
+  const mineTab = tab === 'MIS';
 
   return (
     <main className={`am-page am-list${embedded ? ' is-embedded' : ''}`}>
       <SectionHero
         gradient={['#0B3B91', '#0056BF', '#2E9BFF']}
-        eyebrow={{ icon: forStores ? <Telescope /> : <Search />, label: forStores ? 'BUSCAN' : 'BUSCO' }}
-        title="Búsqueda de repuestos"
-        subtitle={forStores
-          ? 'Mira qué repuestos buscan los compradores y envía tu oferta.'
-          : 'Publica el repuesto que buscas y recibe ofertas de varias tiendas.'}
+        eyebrow={{ icon: forStores ? <Telescope /> : <Search />, label: mineTab ? 'SEGUIMIENTO' : forStores ? 'BUSCAN' : 'BUSCO' }}
+        title={mineTab ? 'Mis búsquedas' : 'Búsqueda de repuestos'}
+        subtitle={mineTab
+          ? 'Sigue tus búsquedas y las ofertas que recibiste de las tiendas.'
+          : forStores
+            ? 'Mira qué repuestos buscan los compradores y envía tu oferta.'
+            : 'Publica el repuesto que buscas y recibe ofertas de varias tiendas.'}
         art={(
           <>
             <span className="ak-hero-halo" />
@@ -226,7 +249,7 @@ export default function AuctionsListMobile({
       ) : (
         <div className="am-list-cards">
           {rows.slice(0, visibleCount).map(({ auction, status }) => (
-            <AuctionCardMobile key={auction.id} auction={auction} status={status} now={now} onOpen={onOpenAuction} pendingQuestions={pendingQuestions ? Number(pendingQuestions[auction.id] || 0) : null} />
+            <AuctionCardMobile key={auction.id} auction={auction} status={status} now={now} onOpen={onOpenAuction} pendingQuestions={pendingQuestions ? Number(pendingQuestions[auction.id] || 0) : null} tracking={mineTab && pendingQuestions ? { seen, markSeen, onChanged: onTrackingChanged } : null} />
           ))}
           {rows.length > visibleCount && (
             <button type="button" className="am-btn am-btn-outline" onClick={() => setVisibleCount((count) => count + 8)}>

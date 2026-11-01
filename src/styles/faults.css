@@ -596,3 +596,10 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
   .ft-mural.is-mine { padding-bottom: 8px; }
   .ft-mural.is-mine .ft-m-fab { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 }
+
+/* Mis fallas (intranet del celular): acceso rápido al mural público de fallas. */
+@media (max-width: 767px) {
+  .ft-m-public { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; margin: 0 0 12px; padding: 0 14px; border: 1px solid #bfd6f7; border-radius: 12px; background: #eaf2ff; color: #0056bf; font: inherit; font-size: 14px; font-weight: 600; text-align: left; }
+  .ft-m-public svg:last-child { margin-left: auto; }
+}
+.ftm-tracking { padding: 0 12px 8px; }

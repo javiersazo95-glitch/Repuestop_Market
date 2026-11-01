@@ -523,8 +523,9 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
           forStores={!canCreate}
           embedded={embedded}
           onOpenAuction={handleOpenAuction}
+          onTrackingChanged={() => { loadMine(); loadAuctions({ silent: true }); }}
           filtersPanel={filtersPanel}
-          tabs={embedded ? null : tabs}
+          tabs={tabs}
           tab={tab}
           onTabChange={setTab}
           pendingQuestions={tab === 'MIS' ? pendingQuestions : null}

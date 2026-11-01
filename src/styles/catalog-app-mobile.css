@@ -117,3 +117,26 @@
   .parts-catalog-view-wrapper .catalog-main-container { padding-bottom: 12px; margin-bottom: 0; }
   .parts-catalog-view-wrapper + footer { margin-top: 0; }
 }
+
+/* Sin franja entre el header y el catálogo: la barra de búsqueda/filtros sigue al header (mismo blanco, sin hueco) y el
+   explorador de categorías llena el resto de la pantalla de borde a borde, como la pestaña Repuestos de la app. */
+@media (max-width: 767px) {
+  .parts-catalog-view-wrapper .catalog-main-container { margin-top: 0; }
+  .parts-catalog-view-wrapper .catalog-main-container > .catalog-mobile-actions-row {
+    margin: 0 -14px;
+    padding: 8px 14px;
+    background: #fff;
+    border-bottom: 1px solid var(--ak-divider, #e6eaef);
+  }
+  .parts-catalog-view-wrapper .catalog-main-container > .catalog-mobile-actions-row.is-stuck { box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08); }
+  .parts-catalog-view-wrapper .catalog-showcase-carousel-wrapper { margin-bottom: 0; }
+  .parts-catalog-view-wrapper .catalog-showcase-search-controls.catalog-post-category-filters { margin: 0; }
+  .cbm {
+    margin: 0 -14px;
+    border-width: 0 0 1px;
+    border-radius: 0;
+    height: calc(100dvh - 57px - 65px);
+    min-height: 380px;
+  }
+  .cbm-left, .cbm-right { max-height: none; }
+}

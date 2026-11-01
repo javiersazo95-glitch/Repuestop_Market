@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle, ArrowRight, Bookmark, CheckCircle2, ClipboardList, Clock, Eye, EyeOff, Gavel, PackageSearch, Loader2, MessageCircle, PackageCheck,
-  Pencil, Search, Send, Tag, Trophy, User, Wallet, XCircle,
+  Pencil, Search, Send, Tag, Trophy, User, Wallet, XCircle, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import {
   auctionTrackingCode, getAuctionComments, getAuctionDetail, getMyAuctionOffers, getMyAuctionQuestions, getSavedAuctions, postAuctionComment, setAuctionSaved,
@@ -14,6 +14,10 @@ import { useAuth } from '../context/AuthContext';
 import AuctionQuoteModal from './AuctionQuoteModal';
 import AuctionAvatar from './AuctionAvatar';
 import { EmptyState } from './ProfileDashboard';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { useTrackingSeen } from '../hooks/useTrackingSeen';
+import { offerEvents, offerNews } from '../utils/trackingNews';
+import '../styles/offer-tracking-mobile.css';
 
 const nf = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 const money = (value) => (value == null || Number.isNaN(Number(value)) ? '—' : nf.format(Number(value)));
@@ -314,6 +318,113 @@ function DetailPanel({ item, busy, onEdit, onOpen, onOrder }) {
   );
 }
 
+/**
+ * Mis ofertas en el celular (`OfferCard` de `app/subastas/seguimiento.tsx`): una tarjeta por oferta con los datos clave y el
+ * desplegable "Detalle" (novedades, seguimiento, condiciones frente a lo que pide el comprador y repuestos ofrecidos).
+ */
+function OfferCardMobile({ item, seenSignature, onSeen, busy, onEdit, onOpen, onOrder }) {
+  const { necesidad, oferta } = item;
+  const [expanded, setExpanded] = useState(false);
+  const [newsAtOpen, setNewsAtOpen] = useState(false);
+  const news = offerNews(oferta, seenSignature);
+  const budget = necesidad.presupuestoMaximo;
+  const overBudget = budget != null && oferta.totalVigente != null && Number(oferta.totalVigente) > Number(budget);
+  const open = necesidad.estado === 'ACTIVA' && necesidad.segundosRestantes > 0;
+  const seen = Boolean(oferta.vistaEn);
+  const missing = oferta.itemsFaltantes?.length ?? 0;
+  const competitors = oferta.ofertasCompetidoras || 0;
+  const toggle = () => {
+    if (expanded) { if (newsAtOpen) onSeen(`offer:${oferta.id}`, news.signature); } else setNewsAtOpen(news.hasNews);
+    setExpanded((value) => !value);
+  };
+  const cond = (label, buyer, mine, bad) => (
+    <div className="otm-cond-row" key={label}><strong>{label}</strong><span>{buyer || '—'}</span><span className={bad ? 'is-bad' : ''}>{mine || '—'}</span></div>
+  );
+
+  return (
+    <article className="otm-card">
+      <header className="otm-head">
+        <div>
+          <h3>{necesidad.titulo}</h3>
+          <small>{`N.º ${necesidad.id} · ${necesidad.itemsTotal} ${necesidad.itemsTotal === 1 ? 'repuesto' : 'repuestos'}${necesidad.vehiculo ? ` · ${necesidad.vehiculo}` : ''}`}</small>
+        </div>
+        <StatePill estado={oferta.estado} />
+      </header>
+      <div className="otm-strip">
+        <div><small>Tu oferta</small><strong className={overBudget ? 'is-bad' : ''}>{money(oferta.totalVigente)}</strong></div>
+        <div><small>Competencia</small><strong className={competitors > 0 ? '' : 'is-muted'}>{competitors > 0 ? `${competitors} ${competitors === 1 ? 'oferta' : 'ofertas'}` : 'Sin competencia'}</strong></div>
+        <div><small>Comprador</small><strong className={seen ? 'is-ok' : 'is-muted'}>{seen ? 'Revisada' : 'Sin revisar'}</strong></div>
+        <div><small>{open ? 'Cierra en' : 'Búsqueda'}</small><strong className={open ? '' : 'is-muted'}>{open ? formatRemaining(necesidad.segundosRestantes) : 'Cerrada'}</strong></div>
+      </div>
+      {(overBudget || missing > 0) && (
+        <div className="otm-alerts">
+          {overBudget && <span className="is-bad">{`Sobre el tope del comprador (${money(budget)})`}</span>}
+          {missing > 0 && <span className="is-warn">{`No cubre ${missing} ${missing === 1 ? 'repuesto' : 'repuestos'}`}</span>}
+        </div>
+      )}
+      <div className="otm-foot">
+        <button type="button" className="otm-toggle" aria-expanded={expanded} aria-label={news.hasNews ? `Detalle con novedad: ${news.summary}` : 'Detalle'} onClick={toggle}>
+          {news.hasNews && <i className="trk-dot" />}<strong>Detalle</strong>{expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
+        <div className="otm-actions">
+          <button type="button" className="otm-btn" onClick={() => onOpen(necesidad.id)}>Ver búsqueda</button>
+          {oferta.pedidoId && <button type="button" className="otm-btn is-primary" onClick={() => onOrder(oferta.pedidoId)}><PackageCheck size={14} /> Pedido</button>}
+        </div>
+      </div>
+      {news.hasNews && !expanded && <p className="otm-news-line">{`Novedad: ${news.summary}`}</p>}
+      {expanded && (
+        <div className="otm-detail">
+          {newsAtOpen && (
+            <section>
+              <h4>Novedades</h4>
+              {offerEvents(oferta).map((event) => (
+                <p key={event.key} className={`otm-event is-${event.tone}`}><strong>{event.title}</strong>{event.at && <time>{formatDateTime(event.at)}</time>}</p>
+              ))}
+              {oferta.pedidoId && <p className="otm-muted">Gestiona el despacho desde el botón «Pedido».</p>}
+            </section>
+          )}
+          {oferta.detalleEstado && <p className="otm-muted">{oferta.detalleEstado}</p>}
+          <section>
+            <h4>Seguimiento</h4>
+            <Stepper offer={oferta} />
+            {competitors > 0 && oferta.posicionPrecio && <p className="otm-muted">{POSITION_LABEL[oferta.posicionPrecio] || ''}</p>}
+          </section>
+          <section>
+            <h4>Condiciones</h4>
+            <div className="otm-cond-row is-head"><span /><span>Pide el comprador</span><span>Tu oferta</span></div>
+            {cond('Presupuesto', budget != null ? `hasta ${money(budget)}` : 'Sin tope', money(oferta.totalVigente), overBudget)}
+            {cond('Plazo', necesidad.tiempoMaximoEnvio || 'Sin plazo', oferta.tiempoEntrega)}
+            {cond('Entrega', necesidad.tipoEnvio || 'Cualquiera', oferta.tipoEntrega)}
+            {cond('Garantía', '—', oferta.garantia)}
+            {cond('Vigencia', '—', oferta.vigencia)}
+            {missing > 0 && <p className="otm-alerts is-warn">{`No cubre: ${oferta.itemsFaltantes.join(', ')}`}</p>}
+          </section>
+          {oferta.lineas?.length > 0 && (
+            <section>
+              <h4>Repuestos ofrecidos</h4>
+              <ul className="pt-lines">
+                {oferta.lineas.map((line) => (
+                  <li key={line.itemId}>
+                    <span><strong>{line.repuesto}</strong><small>{line.producto} · {line.cantidad} u. × {money(line.precioUnitario)}</small></span>
+                    <b>{money(line.precioTotal)}</b>
+                    <span className={`pt-pill is-${LINE_TONE[line.estado] || 'blue'}`}>{LINE_LABEL[line.estado] || line.estado}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          <PublicQuestions auctionId={necesidad.id} isOpen={open} />
+          {oferta.editable && (
+            <button type="button" className="otm-btn is-wide" onClick={() => onEdit(necesidad.id)} disabled={busy}>
+              {busy ? <Loader2 size={14} className="pg-spin" /> : <Pencil size={14} />} Editar oferta
+            </button>
+          )}
+        </div>
+      )}
+    </article>
+  );
+}
+
 /** Solicitud guardada para seguimiento: lo esencial y si la tienda ya ofertó. */
 function SavedRow({ auction, myOffer, onOpen, onRemove, busy }) {
   const vehicle = [auction.marca, auction.modelo, auction.anio].filter(Boolean).join(' ');
@@ -338,6 +449,8 @@ export default function ProfileAuctionManagementPanel() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const sellerId = user?.sellerId || user?.proveedorId;
+  const isMobile = useIsMobile();
+  const { seen: trackingSeen, markSeen } = useTrackingSeen(user?.userId ?? user?.id);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -423,7 +536,7 @@ export default function ProfileAuctionManagementPanel() {
     <section className="pg-panel pt-panel">
       <header className="pt-header">
         <div>
-          <h2>Seguimiento de propuestas</h2>
+          <h2>{isMobile ? 'Mis ofertas' : 'Seguimiento de propuestas'}</h2>
           <p>Haz seguimiento a tus ofertas, compara tu propuesta con lo que pide el comprador y revisa las preguntas públicas.</p>
         </div>
         <button type="button" className="pt-btn is-primary" onClick={() => navigate(ROUTES.auctions)}>
@@ -476,6 +589,21 @@ export default function ProfileAuctionManagementPanel() {
             )
           ) : visible.length === 0 ? (
             <EmptyState label={offers.length === 0 ? 'Aún no has enviado ofertas. Entra a las búsquedas de repuestos públicas y ofrece tus repuestos.' : 'No hay propuestas en este filtro.'} />
+          ) : isMobile ? (
+            <div className="otm-list">
+              {visible.map((item) => (
+                <OfferCardMobile
+                  key={item.oferta.id}
+                  item={item}
+                  seenSignature={trackingSeen[`offer:${item.oferta.id}`]}
+                  onSeen={markSeen}
+                  busy={busyId === item.necesidad.id}
+                  onEdit={openEdit}
+                  onOpen={(id) => navigate(auctionDetailPath(id))}
+                  onOrder={(id) => navigate(profileOrderPath(id))}
+                />
+              ))}
+            </div>
           ) : (
             <div className="pt-layout">
               <div className="pt-table-wrap">

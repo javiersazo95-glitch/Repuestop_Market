@@ -1,0 +1,30 @@
+/* Chat de la cita en el celular: el de la app (`appointment-chat.tsx`): pantalla completa, burbuja propia azul, la del taller
+   blanca con borde y avatar, y compositor con envío redondo azul. Escritorio conserva su ventana. */
+@media (max-width: 767px) {
+  .appointment-chat-overlay { padding: 0; background: var(--ak-canvas, #f8fafc); backdrop-filter: none; align-items: stretch; }
+  .appointment-chat-card { width: 100%; height: 100%; max-height: none; border-radius: 0; box-shadow: none; background: var(--ak-canvas, #f8fafc); }
+  .appointment-chat-header { gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--ak-divider, #e6eaef); background: #fff; }
+  .appointment-chat-header > div { flex: 1; min-width: 0; gap: 12px; color: var(--ak-primary, #0056bf); }
+  .appointment-chat-header > div > svg { flex: 0 0 44px; box-sizing: border-box; width: 44px; height: 44px; padding: 10px; border-radius: 50%; background: var(--ak-primary-light, #eaf2ff); }
+  .appointment-chat-header span { min-width: 0; }
+  .appointment-chat-header strong { font-size: 17px; line-height: 22px; font-weight: 600; color: var(--ak-text, #243442); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .appointment-chat-header small { font-size: 12px; line-height: 16px; color: var(--ak-text-muted, #5a6b7a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .appointment-chat-header button { width: 40px; height: 40px; }
+  .appointment-chat-messages { gap: 8px; padding: 16px; background: var(--ak-canvas, #f8fafc); }
+  .appointment-chat-state strong { font-size: 15px; color: var(--ak-text, #243442); }
+  .appointment-chat-row { display: flex; align-items: flex-end; gap: 8px; max-width: 86%; align-self: flex-start; }
+  .appointment-chat-row.is-mine { align-self: flex-end; }
+  .appointment-chat-avatar { flex: 0 0 28px; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 50%; background: var(--ak-primary-light, #eaf2ff); color: var(--ak-primary, #0056bf); font-size: 12px; font-weight: 700; }
+  .appointment-chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .appointment-chat-message { max-width: none; min-width: 0; padding: 8px 12px; border: 1px solid var(--ak-border, #d9e0e7); border-radius: 12px 12px 12px 4px; background: #fff; }
+  .appointment-chat-message.is-mine { border-color: var(--ak-primary, #0056bf); border-radius: 12px 12px 4px 12px; background: var(--ak-primary, #0056bf); color: #fff; }
+  .appointment-chat-message strong { margin: 0 0 2px; font-size: 11px; letter-spacing: 0.3px; color: var(--ak-primary, #0056bf); }
+  .appointment-chat-message p { font-size: 15px; line-height: 22px; }
+  .appointment-chat-message time { margin-top: 2px; font-size: 11px; color: var(--ak-text-muted, #5a6b7a); }
+  .appointment-chat-message.is-mine time { color: var(--ak-primary-light, #eaf2ff); }
+  .appointment-chat-form { gap: 8px; padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--ak-divider, #e6eaef); background: #fff; }
+  .appointment-chat-form textarea { min-height: 44px; padding: 10px 12px; border: 1px solid var(--ak-border, #d9e0e7); border-radius: 12px; background: var(--ak-canvas, #f8fafc); font-size: 16px; resize: none; }
+  .appointment-chat-form textarea:focus { border-color: var(--ak-primary, #0056bf); box-shadow: none; }
+  .appointment-chat-form button { width: 44px; height: 44px; flex-basis: 44px; background: var(--ak-primary, #0056bf); }
+  .appointment-chat-form button:disabled { background: #cbd5e1; }
+}

@@ -40,7 +40,7 @@ const MENUS = {
   buyer: [
     ['Explorar', [
       t('Marketplace de repuestos', Cog, COLORS.catalog, { tab: 'repuestos' }),
-      t('Fallas automotrices', EngineIcon, COLORS.faults, { tab: 'mis_fallas' }),
+      t('Mis fallas', EngineIcon, COLORS.faults, { tab: 'mis_fallas' }),
       t('Búsqueda de repuestos', Search, COLORS.search, { tab: 'subastas' }),
       t('Casas de repuestos', Store, COLORS.stores, { to: ROUTES.stores }),
       t('Talleres y servicios', Hammer, COLORS.workshops, { to: ROUTES.talleres }),
@@ -81,12 +81,15 @@ const MENUS = {
   workshop: [
     ['Explorar', [
       t('Marketplace de repuestos', Cog, COLORS.catalog, { tab: 'repuestos' }),
-      t('Fallas automotrices', EngineIcon, COLORS.faults, { tab: 'fallas_taller' }),
+      t('Mis fallas', EngineIcon, COLORS.faults, { tab: 'fallas_taller' }),
       t('Búsqueda de repuestos', Search, COLORS.search, { tab: 'subastas' }),
       t('Casas de repuestos', Store, COLORS.stores, { to: ROUTES.stores }),
     ]],
     ['Gestión del taller', [
+      t('Cotización', Tags, COLORS.quotes, { tab: 'cotizaciones' }),
       t('Mis compras', PackageCheck, COLORS.orders, { tab: 'pedidos' }),
+      t('Mis preguntas', MessageSquare, COLORS.questions, { tab: 'mis_preguntas' }),
+      t('Chats con vendedor', MessagesSquare, COLORS.questions, { tab: 'chats_vendedor' }),
       t('Mi taller', Store, COLORS.stores, { tab: 'mi_taller' }),
       t('Citas del taller', Calendar, COLORS.calendar, { tab: 'mi_taller' }),
       t('Favoritos', Heart, COLORS.heart, { tab: 'favoritos' }),

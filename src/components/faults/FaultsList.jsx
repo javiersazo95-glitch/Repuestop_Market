@@ -11,6 +11,10 @@ import { resolveMediaUrl } from '../../services/api';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import CreateFaultModal from './CreateFaultModal';
 import FaultsHero from './FaultsHero';
+import TrackingDetail from '../tracking/TrackingDetail';
+import FallaTrackingDetail, { DiagnosticoTrackingDetail } from '../tracking/FallaTrackingDetail';
+import { fallaNews, newOffersCount } from '../../utils/trackingNews';
+import { useTrackingSeen } from '../../hooks/useTrackingSeen';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MAX_SEARCH_LENGTH } from '../../utils/inputLimits';
 import '../../styles/faults.css';
@@ -54,7 +58,7 @@ const diagnosisCountOf = (fault) => Number(
 ) || 0;
 
 /** Tarjeta de la falla en el celular: la de la app (vehículo, la falla, contexto y diagnósticos, separados por líneas). */
-function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto }) {
+function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking }) {
   const symptoms = (fault.sintomas || []).slice(0, 3);
   return (
     <article className="ftm-card">
@@ -102,12 +106,36 @@ function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, on
             : <ChevronRight size={20} className="ftm-chev" />}
         </div>
       </Link>
+      {tracking && (() => {
+        // Taller: su historial siempre se puede abrir (lo que dejó en la falla y lo que respondió el cliente).
+        if (tracking.workshopUserId != null) {
+          const key = `diag:${fault.id}`;
+          const news = { hasNews: false, hasRecords: true, summary: '', history: 'Lo que dejaste en esta falla', signature: tracking.seen[key] ?? '' };
+          return (
+            <div className="ftm-tracking">
+              <TrackingDetail news={news}>
+                <DiagnosticoTrackingDetail faultId={fault.id} myUserId={tracking.workshopUserId} />
+              </TrackingDetail>
+            </div>
+          );
+        }
+        const key = `falla:${fault.id}`;
+        const seenValue = tracking.seen[key];
+        const news = fallaNews({ diagnosticos: diagnosisCount, preguntasPendientes: fault.preguntasPendientes }, seenValue);
+        return (
+          <div className="ftm-tracking">
+            <TrackingDetail news={news} onClose={() => tracking.markSeen(key, news.signature)}>
+              <FallaTrackingDetail faultId={fault.id} vigente={fault.vigente !== false} newDiagnoses={newOffersCount(diagnosisCount, seenValue)} onChanged={tracking.onChanged} />
+            </TrackingDetail>
+          </div>
+        );
+      })()}
     </article>
   );
 }
 
 /** Tarjeta de una falla del mural. Tambien la usa Favoritos, con `onToggleSaved` para quitarla de los guardados. */
-export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = false, onToggleSaved }) {
+export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = false, onToggleSaved, tracking = null }) {
   const place = [fault.comuna, fault.region].filter(Boolean).join(', ');
   const vehicle = [fault.marca, fault.modelo].filter(Boolean).join(' ') || fault.vehiculo;
   const vehicleData = [fault.anio, fault.motor || fault.combustible].filter(Boolean);
@@ -122,7 +150,7 @@ export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = 
   const mobility = fault.seMueve === true ? 'Sí, se puede mover' : fault.seMueve === false ? 'No se puede mover' : 'No informado';
 
   if (isMobile) {
-    return <FaultCardMobile {...{ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto }} />;
+    return <FaultCardMobile {...{ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking }} />;
   }
 
   return (
@@ -181,6 +209,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   // público vive en /fallas.
   const isMobile = useIsMobile();
   const mineOnly = !heading && isMobile;
+  const { seen, markSeen } = useTrackingSeen(user?.userId ?? user?.id);
   const [view, setView] = useState(mineOnly ? (isWorkshop ? 'COMMENTED' : 'MINE') : 'OPEN');
   const [lists, setLists] = useState({ OPEN: [], MINE: [], COMMENTED: [] });
   const [loading, setLoading] = useState(true);
@@ -206,7 +235,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
     setLoading(true);
     setError('');
     try {
-      const open = mineOnly ? [] : await getOpenFaults();
+      const open = await getOpenFaults();
       let other = [];
       if (isLoggedIn) other = await (isWorkshop ? getCommentedFaults() : getMyFaults());
       setLists({ OPEN: Array.isArray(open) ? open : [], [isWorkshop ? 'COMMENTED' : 'MINE']: Array.isArray(other) ? other : [] });
@@ -215,7 +244,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
     } finally {
       setLoading(false);
     }
-  }, [isLoggedIn, isWorkshop, mineOnly]);
+  }, [isLoggedIn, isWorkshop]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (!isLoggedIn) setView('OPEN'); }, [isLoggedIn]);
@@ -285,7 +314,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   const results = loading ? <div className="ft-empty"><Loader2 size={20} className="spin-icon" /> Cargando fallas…</div>
     : error ? <div className="ft-empty" role="alert"><AlertCircle size={20} /><strong>No pudimos cargar las fallas</strong>{error}<br /><button type="button" className="ft-btn ft-btn-outline" onClick={load}>Reintentar</button></div>
       : items.length === 0 ? <div className="ft-empty"><Wrench size={22} /><strong>{empty[0]}</strong>{empty[1]}</div>
-        : <div className="ft-fault-list">{items.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} />)}</div>;
+        : <div className="ft-fault-list">{items.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} tracking={isMobile && ((!isWorkshop && view === 'MINE') || (isWorkshop && view === 'COMMENTED')) ? { seen, markSeen, onChanged: () => load(), workshopUserId: isWorkshop ? (user?.userId ?? user?.id) : null } : null} />)}</div>;
 
   if (!heading && !mineOnly) {
     return (
@@ -306,7 +335,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
 
   return (
     <div className={`ft-mural ${mineOnly ? 'is-mine' : ''}`}>
-      {mineOnly && <div className="ft-m-hero"><FaultsHero isWorkshop={isWorkshop} /></div>}
+      {mineOnly && <div className="ft-m-hero"><FaultsHero isWorkshop={isWorkshop} mine={view !== 'OPEN'} /></div>}
       {mineOnly && role === 'BUYER' && <button type="button" className="ft-m-fab" onClick={() => setCreating(true)} aria-label="Registrar una falla automotriz"><Plus size={26} /></button>}
       <div className="ft-wide-shell">
         <div className="ft-mural-grid">
@@ -349,10 +378,10 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
 
           <main className="ft-results">
             <div className="ft-m-only ft-m-controls">
-              {isLoggedIn && !mineOnly && (
+              {isLoggedIn && (
                 <div className="ft-m-tabs" role="tablist">
                   <button type="button" role="tab" aria-selected={view === 'OPEN'} className={view === 'OPEN' ? 'is-active' : ''} onClick={() => setView('OPEN')}>Mural público ({lists.OPEN.length})</button>
-                  <button type="button" role="tab" aria-selected={view !== 'OPEN'} className={view !== 'OPEN' ? 'is-active' : ''} onClick={() => setView(isWorkshop ? 'COMMENTED' : 'MINE')}>{isWorkshop ? 'Mis diagnósticos' : 'Mis fallas'}</button>
+                  <button type="button" role="tab" aria-selected={view !== 'OPEN'} className={view !== 'OPEN' ? 'is-active' : ''} onClick={() => setView(isWorkshop ? 'COMMENTED' : 'MINE')}>Mis fallas ({lists[isWorkshop ? 'COMMENTED' : 'MINE'].length})</button>
                 </div>
               )}
               <div className="ft-m-row">
