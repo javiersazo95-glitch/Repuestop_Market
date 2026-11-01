@@ -103,3 +103,12 @@ export function priceRange(from, to) {
   if (to != null) return `Hasta ${formatPesos(to)}`;
   return null;
 }
+
+/** A qué talleres se avisó la falla (1-nov): "Solo talleres de Temuco", "Talleres de la región La Araucanía"... */
+export function scopeText(fault) {
+  if (!fault) return '';
+  if (fault.alcance === 'COMUNA') return `Solo talleres de ${fault.comuna || 'la comuna'}`;
+  if (fault.alcance === 'REGION') return `Talleres de la región ${fault.region || ''}`.trim();
+  if (fault.alcance === 'REGIONES') return `Talleres de ${(fault.regionesAviso || []).join(', ')}`;
+  return 'Talleres de todo Chile';
+}

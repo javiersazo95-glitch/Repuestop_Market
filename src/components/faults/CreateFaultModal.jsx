@@ -98,6 +98,9 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   const [comuna, setComuna] = useState(user?.comuna || '');
   const [regions, setRegions] = useState([]);
   const [regionId, setRegionId] = useState('');
+  // A qué talleres avisar (1-nov): así una falla de Temuco no le llega a un taller de Arica.
+  const [scope, setScope] = useState('REGION');
+  const [extraRegions, setExtraRegions] = useState([]);
   const [communes, setCommunes] = useState([]);
   // Recogida: null = sin responder (obligatorio), true/false = elegido. Con coordenadas el mapa del taller ubica al cliente.
   const [needsPickup, setNeedsPickup] = useState(null);
@@ -136,6 +139,8 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     setRegion(fault.region || '');
     setComuna(fault.comuna || '');
     setNeedsPickup(Boolean(fault.requiereRecogida));
+    if (fault.alcance) setScope(fault.alcance);
+    setExtraRegions((fault.regionesAviso || []).filter((name) => !sameRegion(name, fault.region)));
     setPickupAddress(fault.direccionRecogida || '');
     setPickupCoords(fault.latitud != null && fault.longitud != null ? { latitud: fault.latitud, longitud: fault.longitud } : null);
     const existingPhotos = Array.isArray(fault.fotos) ? fault.fotos : [];
@@ -312,6 +317,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     if (symptoms.includes(OTHER_SYMPTOM) && !customSymptom.trim()) return setError('Escribe cuál es el otro síntoma.');
     if (photos.length === 0) return setError('Agrega al menos una foto de evidencia de la falla.');
     if (!comuna.trim()) return setError('Elige tu región y tu comuna: los talleres cercanos son los más útiles.');
+    if (scope === 'REGIONES' && extraRegions.length === 0) return setError('Elige al menos otra región, además de la del vehículo, o avisa solo a tu región.');
     if (needsPickup === null) return setError('Indica si necesitas que el taller recoja tu vehículo.');
     if (needsPickup && !pickupAddress.trim()) return setError('Indica la dirección donde el taller debe recoger tu vehículo.');
     const year = vehicle.anio ? parseInt(vehicle.anio, 10) : null;
@@ -346,6 +352,8 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         direccionRecogida: needsPickup ? pickupAddress.trim() : null,
         latitud: needsPickup && pickupCoords ? pickupCoords.latitud : null,
         longitud: needsPickup && pickupCoords ? pickupCoords.longitud : null,
+        alcance: scope,
+        regionesAviso: scope === 'REGIONES' ? extraRegions : null,
       };
       const saved = isEditing ? await updateFault(fault.id, payload) : await createFault(payload);
       if (isEditing) onUpdated?.(saved);
@@ -591,6 +599,32 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         {!isEditing && sameComuna(user?.comuna, comuna) && (
           <small className="ft-hint">Tomamos tu región y comuna de tu perfil. Cámbialas si el vehículo está en otro lugar.</small>
         )}
+
+        <div className="ft-field">
+          <span>¿A qué talleres avisamos?</span>
+          <small className="ft-hint">Solo los talleres de la zona que elijas reciben el aviso y el correo, y ven la falla en su mural. Así no le llega a un taller que está lejos.</small>
+          <div className="ft-chips">
+            {[['COMUNA', comuna ? `Solo ${comuna}` : 'Solo mi comuna'], ['REGION', 'Toda mi región'], ['REGIONES', 'Varias regiones']].map(([value, label]) => (
+              <button key={value} type="button" className={`ft-chip is-toggle is-pick ${scope === value ? 'is-on' : ''}`} aria-pressed={scope === value} onClick={() => setScope(value)}>{label}</button>
+            ))}
+          </div>
+          {scope === 'REGIONES' && (
+            <>
+              <small className="ft-hint">{region ? `${region} va siempre. Suma las regiones cercanas que quieras:` : 'Primero elige la región del vehículo. Luego suma las regiones cercanas:'}</small>
+              <div className="ft-chips">
+                {regions.filter((item) => !sameRegion(item.nombre, region)).map((item) => {
+                  const on = extraRegions.some((name) => sameRegion(name, item.nombre));
+                  return (
+                    <button key={item.id} type="button" className={`ft-chip is-toggle is-pick ${on ? 'is-on' : ''}`} aria-pressed={on}
+                      onClick={() => setExtraRegions((current) => (on ? current.filter((name) => !sameRegion(name, item.nombre)) : [...current, item.nombre]))}>
+                      {item.nombre}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
 
         <div className="ft-field">
           <span>¿Necesitas que el taller recoja tu vehículo?</span>

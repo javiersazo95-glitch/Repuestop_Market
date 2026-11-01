@@ -3,13 +3,13 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle, AlertTriangle, ArrowLeft, Bookmark, CalendarPlus, Car, ChevronDown,
   ChevronLeft, ChevronRight, Clock3, Eye, ExternalLink, FileText,
-  Loader2, Lock, MapPin, MapPinned, MessageCircle, Navigation, Pencil, Settings, Share2, Star, Tag, Truck, UserRound,
+  Loader2, Lock, MapPin, Megaphone, MapPinned, MessageCircle, Navigation, Pencil, Settings, Share2, Star, Tag, Truck, UserRound,
   Wrench, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
   acceptFaultDiagnosis, closeFault, commentFault, getDiagnosisEligibility, getFault,
-  getFaultComments, getPublicDiagnoses, priceRange, timeSince,
+  getFaultComments, getPublicDiagnoses, priceRange, scopeText, timeSince,
 } from '../services/faultApi';
 import { resolveMediaUrl } from '../services/api';
 import { fetchTaller } from '../services/talleresStorage';
@@ -304,7 +304,7 @@ export default function FaultDetailPage() {
               <div><dt>Síntomas informados</dt><dd>{symptomSummary}</dd></div>
               <div><dt>Diagnósticos recibidos</dt><dd>{diagnosisCount} {diagnosisCount === 1 ? 'diagnóstico' : 'diagnósticos'}</dd></div>
             </dl>
-            <div className="ft-detail-meta"><span><MapPin size={18} /> {place}</span>{fault.requiereRecogida && <span className="ft-pickup-meta"><Truck size={18} /> Requiere recogida del vehículo</span>}<span><Clock3 size={18} /> Publicado {timeSince(fault.createdAt).toLowerCase()}</span>{fault.visitas != null && <span><Eye size={18} /> {fault.visitas} visitas</span>}</div>
+            <div className="ft-detail-meta"><span><MapPin size={18} /> {place}</span>{fault.requiereRecogida && <span className="ft-pickup-meta"><Truck size={18} /> Requiere recogida del vehículo</span>}{fault.alcance && <span><Megaphone size={18} /> {scopeText(fault)}</span>}<span><Clock3 size={18} /> Publicado {timeSince(fault.createdAt).toLowerCase()}</span>{fault.visitas != null && <span><Eye size={18} /> {fault.visitas} visitas</span>}</div>
             {fault.requiereRecogida && (
               <p className="ft-pickup-alert" role="note"><Truck size={20} aria-hidden="true" /> {fault.propia ? 'Pediste que el taller vaya a buscar tu vehículo.' : 'Este cliente necesita que vayan a buscar el vehículo.'}</p>
             )}
