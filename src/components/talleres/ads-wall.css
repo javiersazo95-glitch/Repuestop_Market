@@ -2498,7 +2498,7 @@
 .agenda-appointments-list { display: flex; flex-direction: column; gap: 10px; }
 .agenda-appointments-list.is-history { margin-top: 10px; opacity: .82; }
 
-.agenda-appointment { display: flex; gap: 13px; padding: 12px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; border-left: 4px solid #cbd5e1; }
+.agenda-appointment { display: flex; flex-wrap: wrap; gap: 13px; padding: 12px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; border-left: 4px solid #cbd5e1; }
 /* Codigo de colores unico de la agenda (regla del 4-oct), igual que la app: amarillo =
    pendiente de aceptar, verde = aceptada, rojo = cancelada o rechazada, gris = ya paso.
    Lo comparten el punto del calendario, la pildora de estado y el tono de la tarjeta. */
@@ -2540,7 +2540,8 @@
 .agenda-appointment-notes svg { flex-shrink: 0; margin-top: 2px; }
 .agenda-appointment-notes.is-home { background: #EAF2FF; color: #0056BF; font-weight: 600; }
 
-.agenda-appointment-actions { display: flex; flex-direction: column; justify-content: center; gap: 7px; flex-shrink: 0; }
+.agenda-appointment-actions { display: flex; flex-direction: row; justify-content: center; gap: 7px; width: 100%; flex-shrink: 0; }
+.agenda-appointment-actions > button { flex: 1; min-width: 0; justify-content: center; padding-inline: 8px; white-space: nowrap; }
 .btn-agenda-accept { display: inline-flex; align-items: center; gap: 5px; padding: 8px 13px; border: none; border-radius: 8px; background: linear-gradient(135deg, #059669, #047857); color: #ffffff; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s ease; }
 .btn-agenda-accept:hover { transform: translateY(-1px); }
 .btn-agenda-accept:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; transform: none; }
@@ -2553,10 +2554,34 @@
 .btn-mgmt-agenda { display: flex; align-items: center; gap: 6px; padding: 8px 13px; border: 1px solid #a7f3d0; border-radius: 8px; background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s ease; }
 .btn-mgmt-agenda:hover { background: #d1fae5; }
 
+/* Chat privado disponible solo mientras la cita esta vigente. */
+.appointment-chat-overlay { position: fixed; inset: 0; z-index: 100002; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15, 23, 42, .68); backdrop-filter: blur(4px); }
+.appointment-chat-card { display: flex; flex-direction: column; width: min(100%, 520px); height: min(680px, 88vh); overflow: hidden; border-radius: 18px; background: #fff; box-shadow: 0 24px 70px rgba(15, 23, 42, .3); }
+.appointment-chat-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid #e2e8f0; }
+.appointment-chat-header > div { display: flex; align-items: center; gap: 10px; color: #047857; }
+.appointment-chat-header span { display: flex; flex-direction: column; }
+.appointment-chat-header strong { color: #0f172a; font-size: 14px; }
+.appointment-chat-header small { color: #64748b; font-size: 11px; }
+.appointment-chat-header button { display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 50%; background: #f1f5f9; color: #334155; cursor: pointer; }
+.appointment-chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; padding: 16px; background: #f8fafc; }
+.appointment-chat-state { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 9px; max-width: 280px; text-align: center; color: #64748b; font-size: 13px; }
+.appointment-chat-message { align-self: flex-start; max-width: 78%; padding: 9px 11px 6px; border: 1px solid #e2e8f0; border-radius: 12px 12px 12px 3px; background: #fff; color: #1e293b; }
+.appointment-chat-message.is-mine { align-self: flex-end; border-color: #a7f3d0; border-radius: 12px 12px 3px 12px; background: #dcfce7; }
+.appointment-chat-message strong { display: block; margin-bottom: 3px; color: #047857; font-size: 10.5px; }
+.appointment-chat-message p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.4; }
+.appointment-chat-message time { display: block; margin-top: 3px; text-align: right; color: #94a3b8; font-size: 9.5px; }
+.appointment-chat-error { margin: 0; padding: 8px 16px; background: #fef2f2; color: #b91c1c; font-size: 11.5px; }
+.appointment-chat-closed { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 14px; border-top: 1px solid #e2e8f0; background: #f8fafc; color: #64748b; font-size: 12px; font-weight: 700; }
+.appointment-chat-form { display: flex; align-items: flex-end; gap: 9px; padding: 12px; border-top: 1px solid #e2e8f0; }
+.appointment-chat-form textarea { flex: 1; min-height: 42px; max-height: 110px; resize: vertical; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 11px; outline: none; font: inherit; font-size: 13px; }
+.appointment-chat-form textarea:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, .12); }
+.appointment-chat-form button { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; border: 0; border-radius: 50%; background: #059669; color: #fff; cursor: pointer; }
+.appointment-chat-form button:disabled { background: #cbd5e1; cursor: not-allowed; }
+
 @media (max-width: 640px) {
   .agenda-preview-grid { grid-template-columns: repeat(4, 1fr); }
   .agenda-appointment { flex-wrap: wrap; }
-  .agenda-appointment-actions { flex-direction: row; width: 100%; }
+  .agenda-appointment-actions { width: 100%; }
 }
 
 /* --- Historial del Monedero de Monedas (fase D) --- */
@@ -4907,7 +4932,6 @@
 .bk-provider { gap: 6px; }
 .bk-provider h4 { margin: 0; font-size: 17px; font-weight: 700; color: #243442; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bk-provider-row { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #5a6b7a; }
-.bk-provider-badge { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 16px; background: #eaf2ff; color: #0056bf; font-size: 12px; font-weight: 700; }
 
 .bk-stepper { flex-direction: row; align-items: center; gap: 0; padding: 12px 10px; }
 .bk-stepper-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -4937,6 +4961,11 @@
 .bk-count { align-self: flex-end; font-size: 12px; color: #5a6b7a; font-variant-numeric: tabular-nums; }
 
 .bk-agenda-hint { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 8px; background: #eaf2ff; color: #0056bf; font-size: 12px; font-weight: 600; }
+.bk-agenda-hint > span { display: flex; flex-direction: column; gap: 1px; }
+.bk-agenda-hint small { color: #64748b; font-weight: 500; }
+.bk-origin-options { display: grid; gap: 6px; margin-top: 6px; }
+.bk-origin-option { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #64748b; font-weight: 600; }
+.bk-origin-option.is-selected { border-color: #0056bf; background: #dbeafe; color: #0056bf; font-weight: 700; }
 .bk-month { display: flex; align-items: center; justify-content: space-between; }
 .bk-month strong { font-size: 14px; font-weight: 700; text-transform: capitalize; }
 .bk-month button { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0; border-radius: 8px; background: #eaf2ff; color: #0056bf; cursor: pointer; }

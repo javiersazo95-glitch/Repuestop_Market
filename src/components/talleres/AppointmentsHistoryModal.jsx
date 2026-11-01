@@ -18,6 +18,7 @@ import WorkshopRatingDialog from './WorkshopRatingDialog';
 import { apiErrorMessage } from '../../services/walletStorage';
 import AppointmentsCalendarModal from './AppointmentsCalendarModal';
 import PrincipalAgendaCard from './PrincipalAgendaCard';
+import AppointmentChatDialog from './AppointmentChatDialog';
 
 /**
  * Gestión de citas en una sola vista: las reservas que la cuenta pidió en otros
@@ -55,6 +56,7 @@ export default function AppointmentsHistoryModal({
   const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'cancelled' | 'past'
   const [reasonTarget, setReasonTarget] = useState(null); // { kind, appointment }
   const [rateTarget, setRateTarget] = useState(null); // cita a calificar
+  const [chatTarget, setChatTarget] = useState(null);
   const [givenRatings, setGivenRatings] = useState({}); // { [citaId]: estrellas } recien dadas
   // Cada minuto se reevalúa qué citas siguen vigentes: contadores y secciones se mueven solos.
   const [now, setNow] = useState(() => new Date());
@@ -201,9 +203,13 @@ export default function AppointmentsHistoryModal({
     const canBookAgain = !isReceived && !isCurrent && !appointment.rescheduledToId && Boolean(onRebook);
     // Una cita confirmada que ya paso se califica una sola vez; despues se ve la nota dada.
     const canRate = !isReceived && appointment.status === 'accepted' && meta.state === 'past';
+    const canChat = isCurrent && appointment.chatAvailable !== false;
     const givenRating = givenRatings[appointment.id] ?? appointment.tallerRating ?? null;
     const isFocused = String(appointment.id) === String(focusAppointmentId);
-    const services = appointment.services?.length ? appointment.services.join(', ') : appointment.service;
+    const isGeneralAppointment = !appointment.services?.length
+      && ['Perfil del taller', 'Anuncio de falla automotriz', 'Diagnóstico en fallas automotrices'].includes(appointment.service);
+    const services = isGeneralAppointment ? 'Cita general' : (appointment.services?.length ? appointment.services.join(', ') : appointment.service);
+    const origin = appointment.fallaId ? 'Diagnóstico en fallas automotrices' : 'Perfil del taller';
 
     return (
       <div
@@ -228,6 +234,7 @@ export default function AppointmentsHistoryModal({
           </div>
 
           <h5>{services || 'Servicio no informado'}</h5>
+          {isGeneralAppointment && <p className="agenda-appointment-notes"><MessageCircle size={12} /> Origen: {origin}</p>}
 
           <div className="agenda-appointment-meta">
             <span><Wrench size={12} /> {appointment.tallerName || 'Taller'}</span>
@@ -280,8 +287,13 @@ export default function AppointmentsHistoryModal({
           )}
         </div>
 
-        {(canRespond || canCancel || canProviderCancel || canBookAgain || canRate) && (
+        {(canChat || canRespond || canCancel || canProviderCancel || canBookAgain || canRate) && (
           <div className="agenda-appointment-actions">
+            {canChat && (
+              <button type="button" className="btn-mgmt-edit" aria-label="Enviar mensaje" onClick={() => setChatTarget(appointment)}>
+                <MessageCircle size={14} /> <span>Mensaje</span>
+              </button>
+            )}
             {canRate && (givenRating ? (
               <span className="appt-rated" aria-label={`Calificaste este taller con ${givenRating} de 5`}>
                 <Star size={14} /> Calificaste {givenRating}/5
@@ -554,6 +566,14 @@ export default function AppointmentsHistoryModal({
             setGivenRatings((current) => ({ ...current, [rateTarget.id]: stars }));
           }}
           onClose={() => setRateTarget(null)}
+        />
+      )}
+
+      {chatTarget && (
+        <AppointmentChatDialog
+          appointment={chatTarget}
+          sessionUserId={sessionUserId}
+          onClose={() => setChatTarget(null)}
         />
       )}
     </>

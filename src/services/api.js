@@ -1997,6 +1997,19 @@ export async function getMyAppointmentsApi({ signal } = {}) {
   return fetchApi('/agendamientos/mias', { method: 'GET', signal });
 }
 
+/** Mensajes privados de una cita vigente, visibles solo para cliente y taller. */
+export async function getAppointmentMessagesApi(appointmentId, { signal } = {}) {
+  return fetchApi(`/agendamientos/${appointmentId}/mensajes`, { method: 'GET', signal });
+}
+
+/** Envia un mensaje al otro participante de una cita vigente. */
+export async function sendAppointmentMessageApi(appointmentId, text) {
+  return fetchApi(`/agendamientos/${appointmentId}/mensajes`, {
+    method: 'POST',
+    body: JSON.stringify({ texto: text.trim() })
+  });
+}
+
 /**
  * Reserva una hora. Exige sesion y falla con 400 si el taller no recibe reservas en linea, si el
  * bloque no pertenece a su horario, si ya paso o si es tu propio taller. Un 409 significa que

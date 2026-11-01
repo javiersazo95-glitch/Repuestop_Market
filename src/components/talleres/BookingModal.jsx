@@ -2,9 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import {
   Calendar, Car, CheckCircle2, X, AlertCircle, MapPin, Loader2, LogIn, Clock, Phone, Mail,
-  ChevronLeft, ChevronRight, Check, Lock, Info, User, FileText, Tag, LifeBuoy,
-  Wrench, Gauge, Disc, Droplet, BatteryCharging, Settings, Sparkles, Thermometer, Zap,
-  ScanLine, Snowflake, CircleDot, Hammer, PaintBucket, ShieldCheck, Home, MessageCircle } from 'lucide-react';
+  ChevronLeft, ChevronRight, Check, Lock, Info, User, Tag, LifeBuoy,
+  Home, MessageCircle } from 'lucide-react';
 import { confirmWhatsappContact } from '../../utils/whatsappContact';
 import { useAuth } from '../../context/AuthContext';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
@@ -19,27 +18,7 @@ import { getAppointmentChangeDeadline } from '../../utils/appointmentHistory';
 import { searchVehicleByPatenteApi } from '../../services/api';
 import { isValidPlate, normalizePlate } from '../../utils/quoteFlow';
 
-const WIZARD_STEPS = ['Servicios', 'Fecha y hora', 'Tus datos'];
-
-// Un ícono por servicio, buscado por palabra clave, como `constants/service-icons.ts` de la app.
-const SERVICE_ICON_RULES = [
-  [/escaner|escáner|diagn/i, ScanLine], [/freno/i, Disc], [/aceite|lubric|filtro/i, Droplet],
-  [/bater/i, BatteryCharging], [/electr/i, Zap], [/suspens|amortig/i, Gauge], [/neum|rueda|alinea|balance/i, CircleDot],
-  [/aire|climat|a\/c/i, Snowflake], [/motor|afinam|mantenc|kilomet/i, Settings], [/pintur|desaboll|carroc/i, PaintBucket],
-  [/lavad|estétic|estetic|pulid/i, Sparkles], [/temperat|radiador|refriger/i, Thermometer], [/garant/i, ShieldCheck],
-  [/presupuesto|cotiza/i, FileText], [/desarm|soldad/i, Hammer]
-];
-const FALLBACK_SERVICE_ICONS = [Wrench, Settings, Gauge, Car, Sparkles, Zap, Disc, Droplet];
-
-function serviceIcons(services) {
-  const used = new Set();
-  return services.map((service, index) => {
-    let Icon = SERVICE_ICON_RULES.find(([pattern]) => pattern.test(service))?.[1];
-    if (!Icon || used.has(Icon)) Icon = FALLBACK_SERVICE_ICONS.find((candidate) => !used.has(candidate)) || FALLBACK_SERVICE_ICONS[index % FALLBACK_SERVICE_ICONS.length];
-    used.add(Icon);
-    return Icon;
-  });
-}
+const WIZARD_STEPS = ['Fecha', 'Hora', 'Datos'];
 
 /** "Toyota Yaris 2020", listo para el campo de marca, modelo y año. */
 function vehicleLabel(vehicle) {
@@ -79,18 +58,15 @@ import { apiErrorMessage } from '../../services/walletStorage';
  */
 const HOME_SERVICE_PREFIX = 'Servicio a domicilio. Dirección del servicio: ';
 
-export default function BookingModal({ taller, initialService = null, onClose, onBooked, isRescheduling = false, rescheduleFromId = null, fromAppointment: fromAppointmentProp = null, fallaContext = null }) {
+export default function BookingModal({ taller, onClose, onBooked, isRescheduling = false, rescheduleFromId = null, fromAppointment: fromAppointmentProp = null, fallaContext = null }) {
   const { user, role } = useAuth();
   // Las citas las piden los compradores: una cuenta de taller las recibe, pero no las solicita.
   const isWorkshopAccount = role === 'WORKSHOP';
   // Desde el diagnostico de una falla la cita parte con el vehiculo y el motivo ya cargados: se reusa
   // el mismo precargado que "reservar otra hora" (el servicio es el diagnostico de esa falla).
   const fromAppointment = fromAppointmentProp || (fallaContext ? {
-    services: ['Diagnóstico de la falla'],
-    service: 'Diagnóstico de la falla',
     vehiclePatent: fallaContext.patente || '',
     vehicleModel: fallaContext.vehiculo || '',
-    notes: `Falla: ${fallaContext.titulo || ''}`,
   } : null);
   const { isOwn } = useTallerOwnership();
   const previousNoteLines = String(fromAppointment?.notes || '').split('\n');
@@ -105,9 +81,6 @@ export default function BookingModal({ taller, initialService = null, onClose, o
   const [step, setStep] = useState('form'); // 'form' | 'confirm' | 'success'
   const [monthCursor, setMonthCursor] = useState(() => new Date());
   const [dataConfirmed, setDataConfirmed] = useState(false);
-  const [selectedServices, setSelectedServices] = useState(() => (fromAppointment
-    ? (fromAppointment.services?.length ? fromAppointment.services : [fromAppointment.service]).filter(Boolean)
-    : (initialService ? [initialService] : [])));
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointmentTime, setAppointmentTime] = useState('');
   const [bookedSlots, setBookedSlots] = useState([]);
@@ -124,7 +97,6 @@ export default function BookingModal({ taller, initialService = null, onClose, o
   // Último texto que puso la detección: se reemplaza si cambia la patente, pero no lo que
   // haya escrito el usuario.
   const autoFilledVehicle = useRef('');
-  const [notes, setNotes] = useState(() => previousNoteLines.filter((line) => line !== previousHomeLine).join('\n').trim());
   // Solo hace falta si el taller va donde está el vehículo (igual que en la app).
   const [serviceAddress, setServiceAddress] = useState(previousHomeAddress);
   // Ranura "Servicio a domicilio" (igual que la app): apagada por defecto; al activarla se pide la dirección.
@@ -272,23 +244,13 @@ export default function BookingModal({ taller, initialService = null, onClose, o
   // depende de estado local, asi que subirlo no cambia cuando corre.
   useEffect(() => {
     setSubmitError('');
-  }, [selectedServices, appointmentDate, appointmentTime, userName, userPhone, dataConfirmed, atHome, serviceAddress]);
+  }, [appointmentDate, appointmentTime, userName, userPhone, vehicleModel, dataConfirmed, atHome, serviceAddress]);
 
   if (!taller) return null;
 
-  // Los servicios del catálogo del taller (con el que se llegó, primero); en perfiles sin catálogo, sus etiquetas.
-  const offeredServices = [...new Set([
-    // Desde una falla el servicio es el diagnostico, aunque el taller no lo tenga en su catalogo: va primero y
-    // parte marcado (antes solo aparecia sin catalogo y el contador decia "1 seleccionado" sin ninguna fila marcada).
-    ...(fallaContext ? ['Diagnóstico de la falla'] : []),
-    ...(taller.services || []).map((service) => service.name),
-    ...(taller.services?.length ? [] : (taller.features || [])),
-    ...(initialService ? [initialService] : []),
-  ])].filter(Boolean).slice(0, 12);
-  const offeredIcons = serviceIcons(offeredServices);
-  const servicesLabel = selectedServices.join(', ');
+  const originLabel = fallaContext ? 'Diagnóstico en fallas automotrices' : 'Perfil del taller';
   const accountEmail = user?.email || '';
-  const currentStep = selectedServices.length === 0 ? 1 : (!appointmentDate || !appointmentTime ? 2 : 3);
+  const currentStep = !appointmentDate ? 1 : (!appointmentTime ? 2 : 3);
   const shiftMonth = (delta) =>
     setMonthCursor((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1));
   const dateLabel = appointmentDate ? formatAgendaDateLong(appointmentDate) : '';
@@ -296,18 +258,11 @@ export default function BookingModal({ taller, initialService = null, onClose, o
   const changeDeadline = appointmentDate && appointmentTime ? getAppointmentChangeDeadline({ date: appointmentDate, time: appointmentTime }) : null;
   const slotWithinChangeLock = Boolean(changeDeadline && changeDeadline.getTime() <= Date.now());
 
-  const toggleService = (service) => {
-    setSelectedServices((current) => (current.includes(service)
-      ? current.filter((item) => item !== service)
-      : [...current, service].slice(0, 8)));
-  };
-
   // Lista de campos obligatorios del formulario aun sin completar, en el orden
   // en que aparecen. Se usa para decirle al usuario exactamente que falta en
   // vez de solo deshabilitar el boton sin explicacion.
   const getMissingFieldLabels = () => {
     const missing = [];
-    if (selectedServices.length === 0) missing.push('el servicio que necesitas');
     if (!appointmentDate) missing.push('el día de la cita');
     if (!appointmentTime) missing.push('el bloque horario');
     if (!userName.trim()) missing.push('tu nombre completo');
@@ -319,7 +274,7 @@ export default function BookingModal({ taller, initialService = null, onClose, o
   };
 
   const canSubmit = isLoggedIn && !isOwnTaller && !isWorkshopAccount && agendaConfig
-    && selectedServices.length > 0 && appointmentDate && appointmentTime
+    && appointmentDate && appointmentTime
     && userName.trim() && userPhone.trim() && vehicleModel.trim() && dataConfirmed
     && (!atHome || serviceAddress.trim());
 
@@ -356,8 +311,8 @@ export default function BookingModal({ taller, initialService = null, onClose, o
     setSubmitError('');
     try {
       const form = {
-        service: servicesLabel,
-        services: selectedServices,
+        service: 'Cita general',
+        services: [],
         date: appointmentDate,
         time: appointmentTime,
         customerName: userName.trim(),
@@ -365,7 +320,7 @@ export default function BookingModal({ taller, initialService = null, onClose, o
         customerEmail: accountEmail,
         vehiclePatent: vehiclePatent.trim(),
         vehicleModel: vehicleModel.trim(),
-        notes: notes.trim(),
+        notes: '',
         // Campos propios (igual que la app): el backend valida que el taller ofrezca
         // domicilio y exige la dirección.
         homeService: atHome,
@@ -472,10 +427,24 @@ export default function BookingModal({ taller, initialService = null, onClose, o
                   <div className="bk-card bk-provider">
                     <h4>{taller.name}</h4>
                     <span className="bk-provider-row"><MapPin size={14} /> {taller.commune || 'Santiago'}</span>
-                    <span className="bk-provider-badge"><CheckCircle2 size={13} /> Servicio registrado</span>
                   </div>
 
-                  {/* Progreso: Servicios · Fecha y hora · Tus datos */}
+                  <div className="bk-agenda-hint">
+                    <Info size={16} />
+                    <span>
+                      <small>Origen del agendamiento</small>
+                      <span className="bk-origin-options">
+                        {['Perfil del taller', 'Diagnóstico en fallas automotrices'].map((option) => (
+                          <span key={option} className={`bk-origin-option ${originLabel === option ? 'is-selected' : ''}`}>
+                            <span aria-hidden="true">{originLabel === option ? '●' : '○'}</span> {option}
+                          </span>
+                        ))}
+                      </span>
+                      {fallaContext?.titulo && <small>{fallaContext.titulo}</small>}
+                    </span>
+                  </div>
+
+                  {/* Progreso: fecha, luego hora y finalmente datos. */}
                   <div className="bk-card bk-stepper" aria-hidden="true">
                     {WIZARD_STEPS.map((label, index) => {
                       const stepNumber = index + 1;
@@ -493,59 +462,9 @@ export default function BookingModal({ taller, initialService = null, onClose, o
                     })}
                   </div>
 
-                  {/* 1. Servicios */}
+                  {/* 1. Fecha y 2. hora */}
                   <section className="bk-card">
-                    <h5 className="bk-section-title"><Wrench size={17} /> ¿Qué servicio necesitas?</h5>
-                    {offeredServices.length > 0 ? (
-                      <>
-                        <p className="bk-hint">
-                          {offeredServices.length > 1 ? 'Elige uno o más de los servicios que ofrece el taller.' : 'Este es el servicio que ofrece el taller para tu cita.'}
-                        </p>
-                        <div className="bk-services">
-                          {offeredServices.map((service, index) => {
-                            const Icon = offeredIcons[index];
-                            const isSelected = selectedServices.includes(service);
-                            return (
-                              <button
-                                type="button"
-                                key={service}
-                                className={`bk-service ${isSelected ? 'is-selected' : ''}`}
-                                aria-pressed={isSelected}
-                                onClick={() => toggleService(service)}
-                              >
-                                <span className="bk-service-check" aria-hidden="true">{isSelected && <Check size={13} />}</span>
-                                <Icon size={20} />
-                                <span className="bk-service-name">{service}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {offeredServices.length > 1 && selectedServices.length > 0 && (
-                          <small className="bk-muted">
-                            {selectedServices.length} {selectedServices.length === 1 ? 'servicio seleccionado' : 'servicios seleccionados'}
-                          </small>
-                        )}
-                      </>
-                    ) : (
-                      <div className="bk-group">
-                        <span className="bk-label">Servicio que necesitas <em aria-hidden="true">*</em></span>
-                        <label className="bk-field">
-                          <Wrench size={18} />
-                          <input
-                            type="text"
-                            maxLength={120}
-                            placeholder="Ej: Cambio de pastillas de freno"
-                            value={selectedServices[0] || ''}
-                            onChange={(e) => setSelectedServices(e.target.value ? [e.target.value] : [])}
-                          />
-                        </label>
-                      </div>
-                    )}
-                  </section>
-
-                  {/* 2. Día y horario */}
-                  <section className="bk-card">
-                    <h5 className="bk-section-title"><Calendar size={17} /> Elige día y horario</h5>
+                    <h5 className="bk-section-title"><Calendar size={17} /> Primero elige la fecha</h5>
                     <div className="bk-agenda-hint"><Info size={14} /> {getAgendaSummaryText(agendaConfig)}</div>
 
                     {availableDates.length === 0 ? (
@@ -688,15 +607,6 @@ export default function BookingModal({ taller, initialService = null, onClose, o
                         />
                       </div>
                     )}
-                    <div className="bk-group">
-                      <span className="bk-label">Descripción del servicio <small>Opcional</small></span>
-                      <label className="bk-field is-multiline">
-                        <FileText size={18} />
-                        <textarea rows={3} maxLength={2000} placeholder="Cuéntale al taller qué necesitas" value={notes} onChange={(e) => setNotes(e.target.value)} />
-                      </label>
-                      <small className="bk-count">{notes.length}/2000</small>
-                    </div>
-
                     <button
                       type="button"
                       className={`bk-confirm-check ${dataConfirmed ? 'is-checked' : ''}`}
@@ -733,11 +643,12 @@ export default function BookingModal({ taller, initialService = null, onClose, o
             <div className="bk-form">
               <div className="bk-confirm-intro"><LifeBuoy size={20} /> Revisa que todo esté correcto antes de enviar tu reserva al taller.</div>
               <div className="bk-voucher">
-                <VoucherRow label="Servicio:" value={servicesLabel} />
+                <VoucherRow label="Origen:" value={originLabel} />
                 <VoucherRow label="Día:" value={dateLabel} />
                 <VoucherRow label="Hora:" value={appointmentTime} />
                 <VoucherRow label="Lugar:" value={homeAddress ? `A domicilio · ${homeAddress}` : 'En el taller'} />
                 <VoucherRow label="Vehículo:" value={vehicleModel.trim()} />
+                {vehiclePatent.trim() && <VoucherRow label="Patente:" value={vehiclePatent.trim()} />}
                 <VoucherRow label="Nombre:" value={userName.trim()} />
                 <VoucherRow label="Correo:" value={accountEmail} />
               </div>
@@ -771,7 +682,7 @@ export default function BookingModal({ taller, initialService = null, onClose, o
               </p>
               <div className="bk-voucher">
                 <VoucherRow label="Código de reserva:" value={confirmedAppointment?.id} mono />
-                <VoucherRow label="Servicio:" value={confirmedAppointment?.service || servicesLabel} />
+                <VoucherRow label="Origen:" value={originLabel} />
                 <VoucherRow label="Fecha y hora:" value={`${dateLabel} a las ${confirmedAppointment?.time || appointmentTime}`} />
                 <VoucherRow label="Dirección taller:" value={[taller.address, taller.commune].filter(Boolean).join(', ') || 'Por confirmar con el taller'} />
                 <VoucherRow label="Vehículo:" value={vehicleModel.trim()} />

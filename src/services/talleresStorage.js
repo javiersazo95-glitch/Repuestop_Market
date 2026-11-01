@@ -10,6 +10,7 @@ import {
   getTalleresApi, getTallerApi, getMiTallerPerfilApi, updateMiTallerPerfilApi, uploadTallerPhotosApi, resolveMediaUrl,
   getTallerAppointmentsApi, getMyAppointmentsApi, createTallerAppointmentApi,
   updateAppointmentStatusApi, sendAppointmentSummaryEmailsApi, rescheduleAppointmentApi, rateAppointmentWorkshopApi,
+  getAppointmentMessagesApi, sendAppointmentMessageApi,
 } from './api';
 import {
   adaptTaller, adaptTalleres, toTallerProfilePayload,
@@ -114,6 +115,15 @@ export async function fetchTallerAppointments(tallerId, { signal } = {}) {
  */
 export async function fetchMyAppointments({ signal } = {}) {
   return adaptAppointments(await getMyAppointmentsApi({ signal }));
+}
+
+export async function fetchAppointmentMessages(appointmentId, { signal } = {}) {
+  const messages = await getAppointmentMessagesApi(appointmentId, { signal });
+  return Array.isArray(messages) ? messages : [];
+}
+
+export async function sendAppointmentMessage(appointmentId, text) {
+  return sendAppointmentMessageApi(appointmentId, text);
 }
 
 /**
