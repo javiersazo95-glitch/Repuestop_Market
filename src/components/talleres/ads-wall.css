@@ -5081,3 +5081,10 @@
 .next-steps-optional { padding: 1px 8px; border-radius: 999px; background: #f1f5f9; color: #64748b; font-size: 11px; font-weight: 600; }
 .next-steps-action { flex-shrink: 0; display: inline-flex; align-items: center; gap: 2px; color: #0066ff; font-size: 12.5px; font-weight: 700; }
 .next-steps-warning { display: flex; gap: 8px; align-items: flex-start; width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid #fcd34d; background: #fffbeb; color: #92400e; font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; }
+
+/* Mensaje de la cita con mensajes sin leer: el botón se ilumina y muestra cuántos son. */
+.btn-mgmt-edit.has-unread { position: relative; border-color: #0056bf; background: #eaf2ff; color: #0056bf; box-shadow: 0 0 0 3px rgba(0, 86, 191, .16); animation: appt-unread-pulse 1.8s ease-in-out infinite; }
+.btn-mgmt-edit.has-unread:hover { background: #dbe9ff; color: #00459a; }
+.appt-unread-count { min-width: 18px; height: 18px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: #d92d20; color: #fff; font-size: 11px; font-weight: 800; line-height: 1; }
+@keyframes appt-unread-pulse { 0%, 100% { box-shadow: 0 0 0 3px rgba(0, 86, 191, .16); } 50% { box-shadow: 0 0 0 6px rgba(0, 86, 191, .06); } }
+@media (prefers-reduced-motion: reduce) { .btn-mgmt-edit.has-unread { animation: none; } }

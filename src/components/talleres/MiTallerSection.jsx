@@ -88,6 +88,12 @@ function WorkshopSection() {
     return () => controller.abort();
   }, [loadAppointments]);
 
+  // Mensajes nuevos del chat de la cita: se consulta cada 30 s para que el contador se encienda solo.
+  useEffect(() => {
+    const timer = window.setInterval(() => { if (!document.hidden) loadAppointments(); }, 30000);
+    return () => window.clearInterval(timer);
+  }, [loadAppointments]);
+
   // Una accion sobre una cita o una notificacion de cita recargan la lista.
   useEffect(() => {
     const reload = () => loadAppointments();

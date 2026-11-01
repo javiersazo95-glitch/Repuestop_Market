@@ -36,7 +36,9 @@ export default function MyAppointmentsHub({ onClose, initialSegment, focusAppoin
   useEffect(() => {
     loadAppointments();
     window.addEventListener(APPOINTMENTS_UPDATED_EVENT, loadAppointments);
-    return () => window.removeEventListener(APPOINTMENTS_UPDATED_EVENT, loadAppointments);
+    // Mensajes nuevos del chat de la cita: cada 30 s para que el contador se encienda solo.
+    const timer = window.setInterval(() => { if (!document.hidden) loadAppointments(); }, 30000);
+    return () => { window.removeEventListener(APPOINTMENTS_UPDATED_EVENT, loadAppointments); window.clearInterval(timer); };
   }, [loadAppointments]);
 
   const handleRebook = async (appointment) => {

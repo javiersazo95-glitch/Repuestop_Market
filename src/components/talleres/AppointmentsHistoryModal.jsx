@@ -290,8 +290,14 @@ export default function AppointmentsHistoryModal({
         {(canChat || canRespond || canCancel || canProviderCancel || canBookAgain || canRate) && (
           <div className="agenda-appointment-actions">
             {canChat && (
-              <button type="button" className="btn-mgmt-edit" aria-label="Enviar mensaje" onClick={() => setChatTarget(appointment)}>
+              <button
+                type="button"
+                className={`btn-mgmt-edit ${appointment.unreadMessages > 0 ? 'has-unread' : ''}`}
+                aria-label={appointment.unreadMessages > 0 ? `Enviar mensaje, ${appointment.unreadMessages} sin leer` : 'Enviar mensaje'}
+                onClick={() => setChatTarget(appointment)}
+              >
                 <MessageCircle size={14} /> <span>Mensaje</span>
+                {appointment.unreadMessages > 0 && <b className="appt-unread-count">{appointment.unreadMessages > 9 ? '9+' : appointment.unreadMessages}</b>}
               </button>
             )}
             {canRate && (givenRating ? (

@@ -790,6 +790,8 @@ export function adaptAppointment(dto) {
     status: APPOINTMENT_STATUSES.includes(dto.status) ? dto.status : 'pending',
     createdAt: dto.createdAt || null,
     chatAvailable: dto.chatAvailable !== false,
+    // Mensajes del chat de la cita que escribió la otra parte y aún no se leen.
+    unreadMessages: Number.isFinite(Number(dto.unreadMessages)) ? Math.max(0, Number(dto.unreadMessages)) : 0,
     // Nota (1 a 5) que el cliente le dio al taller por esta cita; null si aun no califica.
     tallerRating: Number.isFinite(Number(dto.tallerRating)) && Number(dto.tallerRating) > 0 ? Number(dto.tallerRating) : null,
     isRedacted: !dto.customerName && !dto.customerUserId

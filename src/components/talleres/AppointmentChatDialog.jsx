@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Loader2, Lock, MessageCircle, Send, X } from 'lucide-react';
-import { fetchAppointmentMessages, sendAppointmentMessage } from '../../services/talleresStorage';
+import { fetchAppointmentMessages, notifyAppointmentsChanged, sendAppointmentMessage } from '../../services/talleresStorage';
 import { apiErrorMessage } from '../../services/walletStorage';
 import { resolveMediaUrl } from '../../services/api';
 import '../../styles/appointment-chat-mobile.css';
@@ -25,6 +25,7 @@ export default function AppointmentChatDialog({ appointment, sessionUserId, onCl
       const next = await fetchAppointmentMessages(appointment.id, { signal });
       setMessages(next);
       setError('');
+      if (!silent) notifyAppointmentsChanged();
     } catch (loadError) {
       if (loadError?.name === 'AbortError') return;
       if (loadError?.status === 400 || loadError?.status === 403) setClosed(true);
@@ -43,6 +44,9 @@ export default function AppointmentChatDialog({ appointment, sessionUserId, onCl
       clearInterval(timer);
     };
   }, [loadMessages]);
+
+  // Abrir el chat deja leído lo del otro lado (lo marca el backend): las listas de citas actualizan su contador.
+  useEffect(() => () => notifyAppointmentsChanged(), []);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
