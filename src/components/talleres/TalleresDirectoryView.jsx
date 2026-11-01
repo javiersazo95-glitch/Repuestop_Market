@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   Wrench, Plus, Search, RotateCcw, Loader2, WifiOff, AlertTriangle,
   RefreshCw, SlidersHorizontal, X, Car, MapPin, Settings, ArrowUpDown, ArrowRight,
-  CheckCircle2, Sparkles, ShieldCheck, Zap
+  CheckCircle2, Sparkles, ShieldCheck, Zap, CalendarDays, Store
 } from 'lucide-react';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import { fetchTalleres, getCachedTalleres, TALLERES_UPDATED_EVENT } from '../../services/talleresStorage';
@@ -541,6 +541,24 @@ export default function TalleresDirectoryView() {
         {/* Celular (rediseño del 4-oct): como en repuestos, tabs de busqueda y una sola
             fila con el campo (pin de "cerca de mi" adentro), el filtro avanzado (panel
             lateral) y el orden. La barra de escritorio de abajo se oculta en celular. */}
+        {/* Celular: cabecera de la app (foto del taller con degradado, etiqueta, título y el acceso a Mis citas / Mi taller). */}
+        <section className="ads-mobile-hero" aria-label="Talleres y servicios automotrices cerca de ti">
+          <img src="/workshop-hero-mechanic.webp" alt="" decoding="async" />
+          <div className="ads-mobile-hero-copy">
+            <span className="ads-mobile-hero-tag"><Wrench size={12} /> Servicio automotriz</span>
+            <h1>Talleres y servicios automotrices cerca de ti</h1>
+            <p>Expertos verificados, agenda en línea.</p>
+          </div>
+          <button
+            type="button"
+            className="ads-mobile-hero-corner"
+            onClick={handleMyWorkshopClick}
+            aria-label={role === 'WORKSHOP' ? 'Ir a Mi taller' : 'Ir a Mis citas'}
+          >
+            {role === 'WORKSHOP' ? <Store size={22} /> : <CalendarDays size={22} />}
+          </button>
+        </section>
+
         <div className="ads-mobile-search">
           <div className="ads-mobile-tabs" role="tablist" aria-label="Tipo de búsqueda">
             <button

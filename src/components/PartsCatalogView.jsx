@@ -5,7 +5,7 @@ import {
   Search, Filter, SlidersHorizontal, ShieldCheck, MapPin,
   X, CheckCircle2, RotateCcw,
   ChevronDown, ChevronRight, ShoppingCart, Car, Wrench, Layers, AlertCircle, Info, Tag, Globe,
-  CarFront, RefreshCw, ArrowUpDown, ArrowRight, LayoutGrid, Store
+  CarFront, RefreshCw, ArrowUpDown, LayoutGrid, Store
 } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
 import MarketplaceProductCard from './MarketplaceProductCard';
@@ -28,7 +28,9 @@ import TextSearchWithSuggestions from './TextSearchWithSuggestions';
 import SheetSelect from './SheetSelect';
 import { useIsMobile } from '../hooks/useIsMobile';
 import PaginationBar from './PaginationBar';
+import CategoryBrowserMobile from './CategoryBrowserMobile';
 import { auctionDetailPath, ROUTES } from '../routes/paths';
+import '../styles/catalog-app-mobile.css';
 
 const CreateAuctionModal = lazy(() => import('./CreateAuctionModal'));
 
@@ -43,7 +45,6 @@ const normalizeNameKey = (value) => String(value || '').normalize('NFD')
 // La vitrina inicial combina publicaciones Top y recientes en una sola grilla.
 // Los productos Top se anteponen al entrar con “Recomendados”; después se completa
 // con el orden que corresponde al filtro seleccionado.
-const SHOWCASE_SIZE = 12;
 
 /**
  * Tope de resultados navegables por paginacion. Igual que MercadoLibre (que corta
@@ -191,7 +192,7 @@ export default function PartsCatalogView({
 }) {
   const embedded = Boolean(lockedStoreId);
   // Categorias y condiciones del mantenedor, con el respaldo local de siempre.
-  const { NAVIGATION_CATEGORIES, CAROUSEL_CATEGORIES, HEADER_CATEGORIES } = useCategories();
+  const { NAVIGATION_CATEGORIES, CAROUSEL_CATEGORIES, HEADER_CATEGORIES, CATEGORY_VISUALS } = useCategories();
   const PART_CONDITIONS = usePartConditions();
   // Los filtros avanzados que trae la URL (al volver de la ficha de un repuesto, recargar o
   // abrir un enlace compartido). Solo siembran el estado inicial: despues manda el panel.
@@ -547,6 +548,16 @@ export default function PartsCatalogView({
   });
   const filterSource = isVehicleCatalogSearch ? scopedFilters : publishedFilters;
 
+  // Cuántos repuestos publicados tiene cada categoría y subcategoría, para el navegador del celular (como la app).
+  const browserCounts = useMemo(() => Object.fromEntries(HEADER_CATEGORIES.map((cat) => {
+    const published = findPublishedCategory(publishedFilters, cat);
+    const subs = (publishedFilters?.subcategorias || []).filter((sub) => published && String(sub.categoriaId) === String(published.id));
+    return [cat.id, {
+      count: published?.productos,
+      subs: Object.fromEntries(subs.map((sub) => [normalizeNameKey(sub.nombre), sub.productos])),
+    }];
+  })), [HEADER_CATEGORIES, publishedFilters]);
+
   const visibleNavigationCategories = useMemo(() => {
     if (!filterSource) return NAVIGATION_CATEGORIES;
     return NAVIGATION_CATEGORIES.map((cat) => {
@@ -784,45 +795,8 @@ export default function PartsCatalogView({
     },
   });
 
-  // Vitrina inicial: una única sección de recién publicados. La recomendación por
-  // defecto antepone los productos Top, sin separarlos en otro bloque visual.
-  const {
-    data: showcase = { items: [] },
-    isLoading: showcaseLoading,
-  } = useQuery({
-    queryKey: qk.products({ vitrina: true, size: SHOWCASE_SIZE, sort: backendSort, topFirst: sortBy === 'relevancia' }),
-    enabled: !hasActiveContext,
-    staleTime: 1000 * 60 * 5,
-    queryFn: async ({ signal }) => {
-      if (sortBy !== 'relevancia') {
-        const data = await getPublicProductsApi({
-          page: 0,
-          size: SHOWCASE_SIZE * 2,
-          sort: backendSort,
-          signal,
-        });
-        return { items: adaptPage(data, adaptProduct).items };
-      }
-
-      const destacados = adaptPage(await getPublicProductsApi({
-        page: 0,
-        size: SHOWCASE_SIZE,
-        soloDestacados: true,
-        sort: backendSort,
-        signal,
-      }), adaptProduct).items;
-      const recientes = adaptPage(await getPublicProductsApi({
-        page: 0,
-        size: SHOWCASE_SIZE + destacados.length,
-        sort: backendSort,
-        signal,
-      }), adaptProduct).items;
-      const idsTop = new Set(destacados.map((item) => item.id));
-      return {
-        items: [...destacados, ...recientes.filter((item) => !idsTop.has(item.id)).slice(0, SHOWCASE_SIZE)],
-      };
-    },
-  });
+  // Sin vitrina de "Recién publicados": sin categoría, patente ni búsqueda no se carga ningún repuesto (evita cargas
+  // grandes y simultáneas); el comprador entra por el navegador de categorías.
 
   const products = catalogData.items;
   // Opciones de los desplegables en el formato { value, label } de SheetSelect.
@@ -850,7 +824,7 @@ export default function PartsCatalogView({
   );
   const originOptions = keepSelected(visibleOrigins, selectedOrigin, selectedOrigin);
   // Al volver de la ficha de un repuesto el scroll se devuelve cuando el listado ya esta pintado.
-  useScrollMemory(hasActiveContext ? filtersResolved && !productsLoading : !showcaseLoading);
+  useScrollMemory(hasActiveContext ? filtersResolved && !productsLoading : true);
   const totalProducts = catalogData.total;
   useEffect(() => {
     if (!onResultsChange || productsLoading) return;
@@ -1305,12 +1279,6 @@ export default function PartsCatalogView({
         </section>
         )}
 
-        {!hasActiveContext && !showcaseLoading && showcase.items.length > 0 && (
-          <div className="catalog-mobile-showcase-heading">
-            <h2>Recién publicados</h2>
-            <p>Una muestra del catálogo. Filtra por categoría, patente o busca por nombre para ver el resto.</p>
-          </div>
-        )}
         <div ref={mobileActionsRef} className={`catalog-mobile-actions-row ${mobileActionsStuck ? 'is-stuck' : ''}`}>
           {renderCatalogTextSearch('Buscar repuestos')}
           <button type="button" className="catalog-mobile-filter-trigger" onClick={() => setMobileFiltersOpen(true)} aria-controls="catalog-filter-panel" aria-expanded={mobileFiltersOpen}><SlidersHorizontal size={18} /> Filtro{activeAdvancedCount > 0 && <span className="catalog-mobile-filter-count" aria-label={`${activeAdvancedCount} filtros aplicados`}>{activeAdvancedCount}</span>}</button>
@@ -1324,6 +1292,20 @@ export default function PartsCatalogView({
             </select>
           </label>
         </div>
+
+        {isMobileLayout && !hasActiveContext && !embedded && (
+            <CategoryBrowserMobile
+              categories={HEADER_CATEGORIES}
+              visuals={CATEGORY_VISUALS}
+              counts={browserCounts}
+              normalizeKey={normalizeNameKey}
+              onPick={({ category, subcategory }) => {
+                setSelectedCategory(category.id);
+                setSelectedSubcategory(subcategory || 'TODAS');
+                setCurrentPage(1);
+              }}
+            />
+          )}
 
         {/* Como en la app: primero el vehículo, abajo los filtros extra y después los resultados. */}
         {activeVehicle && onlyCompatible && (
@@ -1759,66 +1741,10 @@ export default function PartsCatalogView({
           {/* Parts Cards Column (Right Grid) */}
           <main className="catalog-parts-main">
             {!hasActiveContext ? (
-              /* Vitrina acotada: una sola sección. En “Recomendados”, los productos Top
-                 ocupan los primeros lugares y el resto sigue el orden del backend. */
-              <div className="catalog-showcase-block">
-                {showcaseLoading ? (
-                  <div className="parts-cards-grid-catalog" aria-busy="true">
-                    {Array.from({ length: SHOWCASE_SIZE }).map((_, i) => (
-                      <ProductCardSkeleton key={i} />
-                    ))}
-                  </div>
-                ) : showcase.items.length === 0 ? (
-                  <div className="directory-empty-state">
-                    <Wrench size={56} className="empty-icon-gray" />
-                    <h3>Todavía no hay repuestos publicados</h3>
-                    <p>Vuelve pronto: las tiendas verificadas están cargando su inventario.</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="catalog-showcase-block-header">
-                      <div>
-                        <h2>Recién publicados</h2>
-                        <p>Una muestra del catálogo. Filtra por categoría, patente o busca por nombre para ver el resto.</p>
-                      </div>
-                      <div className="sort-dropdown-box catalog-showcase-sort">
-                        <span className="sort-label">Ordenar por:</span>
-                        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sort-select-input" aria-label="Ordenar recién publicados">
-                          <option value="relevancia">Recomendados</option>
-                          <option value="recientes">Más recientes</option>
-                          <option value="precio-asc">Precio: menor a mayor</option>
-                          <option value="precio-desc">Precio: mayor a menor</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="parts-cards-grid-catalog">
-                      {showcase.items.map((prod) => (
-                        <MarketplaceProductCard
-                          key={prod.id}
-                          product={prod}
-                          onView={onQuickView}
-                          isFavorite={isFavorite(prod.id)}
-                          onToggleFavorite={isLoggedIn ? toggleFavorite : undefined}
-                        />
-                      ))}
-                    </div>
-                    <div className="catalog-showcase-see-all">
-                      <button
-                        type="button"
-                        className="catalog-showcase-see-all-btn"
-                        onClick={() => {
-                          setCurrentPage(1);
-                          setShowAllProducts(true);
-                          requestAnimationFrame(() => document.querySelector('.catalog-parts-main')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-                        }}
-                      >
-                        <LayoutGrid size={18} aria-hidden="true" />
-                        <span>Ver todos los repuestos</span>
-                        <ArrowRight size={18} aria-hidden="true" />
-                      </button>
-                    </div>
-                  </>
-                )}
+              <div className="catalog-pick-hint">
+                <LayoutGrid size={28} aria-hidden="true" />
+                <h2>Elige una categoría para ver repuestos</h2>
+                <p>También puedes ingresar tu patente o buscar por nombre.</p>
               </div>
             ) : productsLoading ? (
               <div className="parts-cards-grid-catalog" aria-busy="true">

@@ -95,3 +95,7 @@
   .taller-editor__cover { height: 130px; }
   .taller-editor__pair { grid-template-columns: 1fr; }
 }
+
+/* Los desplegables dentro de las ventanas de Mi taller (Nuevo servicio, etc.): la hoja del celular sube sobre la ventana
+   (z-index) y la lista de escritorio se despliega en el flujo, porque el cuerpo de la ventana corta lo que sobresale. */
+.agenda-config-modal-body .sheet-select-popover { position: static; margin-top: 4px; max-height: 300px; box-shadow: none; }

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
-  ArrowUpDown, CalendarDays, Car, Check, ChevronRight, Clock, Eye, Gavel, MapPin, MessageCircle, Package, Plus, Search,
-  SlidersHorizontal, Tag, Wallet, X,
+  ArrowUpDown, CalendarDays, Car, Check, ChevronRight, Clock, Cog, Eye, Gavel, MapPin, MessageCircle, Package, Plus, Search,
+  SlidersHorizontal, Store, Tag, Telescope, Wallet, X,
 } from 'lucide-react';
+import SectionHero, { HeroChip } from './ui/SectionHero';
 import { resolveMediaUrl } from '../services/api';
 import { auctionTrackingCode } from '../services/auctionApi';
 import { pendingSummary } from '../utils/auctionPending';
@@ -103,6 +104,10 @@ export default function AuctionsListMobile({
   onResetFilters,
   onCreate,
   canCreate = false,
+  /** La casa de repuestos ve lo que buscan los compradores (no publica): cambia la etiqueta y la bajada del hero. */
+  forStores = false,
+  /** Dentro de la intranet: sin alto de pantalla completa (la barra inferior y el título ya son de la cuenta). */
+  embedded = false,
   onOpenAuction,
   filtersPanel,
   /** "Mural publico (N)" / "Mis búsquedas (N)" (null sin sesion de quien publica), como la app. */
@@ -116,17 +121,34 @@ export default function AuctionsListMobile({
   const [visibleCount, setVisibleCount] = useState(8);
 
   return (
-    <main className="am-page am-list">
-      <section className="am-banner" aria-label="Búsqueda de repuestos: publica lo que necesitas y recibe ofertas de distintas casas de repuestos">
-        <div className="am-banner-text">
-          <h1>
-            <span>Búsqueda</span>
-            <span className="is-accent">de repuestos</span>
-          </h1>
-          <p>Publica lo que necesitas y recibe ofertas de distintas casas de repuestos.</p>
+    <main className={`am-page am-list${embedded ? ' is-embedded' : ''}`}>
+      <SectionHero
+        gradient={['#0B3B91', '#0056BF', '#2E9BFF']}
+        eyebrow={{ icon: forStores ? <Telescope /> : <Search />, label: forStores ? 'BUSCAN' : 'BUSCO' }}
+        title="Búsqueda de repuestos"
+        subtitle={forStores
+          ? 'Mira qué repuestos buscan los compradores y envía tu oferta.'
+          : 'Publica el repuesto que buscas y recibe ofertas de varias tiendas.'}
+        art={(
+          <>
+            <span className="ak-hero-halo" />
+            <span className="ak-hero-disc"><Cog /></span>
+            <span className="ak-hero-lens" style={{ color: '#1D4ED8' }}><Search /></span>
+            <HeroChip className="is-top" icon={<Tag />} label="3 ofertas" color="#1D4ED8" />
+            <HeroChip className="is-bottom" icon={<Store />} label="Tiendas" color="#0F766E" />
+          </>
+        )}
+      />
+
+      {tabs && (
+        <div className="am-tabs" role="tablist" aria-label="Búsqueda de repuestos">
+          {tabs.map((item) => (
+            <button key={item.value} type="button" role="tab" aria-selected={tab === item.value} className={tab === item.value ? 'is-active' : ''} onClick={() => { onTabChange?.(item.value); setVisibleCount(8); }}>
+              {item.label} ({item.count})
+            </button>
+          ))}
         </div>
-        <span className="am-banner-art" aria-hidden="true" />
-      </section>
+      )}
 
       <div className="am-search-row">
         <label className="am-search">
@@ -163,15 +185,6 @@ export default function AuctionsListMobile({
         </button>
       </div>
 
-      {tabs && (
-        <div className="am-tabs" role="tablist" aria-label="Búsqueda de repuestos">
-          {tabs.map((item) => (
-            <button key={item.value} type="button" role="tab" aria-selected={tab === item.value} className={tab === item.value ? 'is-active' : ''} onClick={() => { onTabChange?.(item.value); setVisibleCount(8); }}>
-              {item.label} ({item.count})
-            </button>
-          ))}
-        </div>
-      )}
 
       {sortOpen && (
         <div className="am-sort-menu" role="menu">

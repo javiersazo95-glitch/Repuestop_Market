@@ -7,9 +7,11 @@ import {
   Clock, ShieldCheck, PackageCheck, Loader2, Inbox, Search,
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
-  ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, PackageSearch, Wrench, CalendarClock
+  ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, PackageSearch, Wrench, CalendarClock,
+  Cog, Gauge, Telescope, Box
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
+import ProfileMoreMenu from './ProfileMoreMenu';
 import VideoTutorialModal from './VideoTutorialModal';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
@@ -23,6 +25,9 @@ import ProfileFeedbackPanel from './ProfileFeedbackPanel';
 import ProfileOrdersPanel from './ProfileOrdersPanel';
 import ProfileQuotesPanel from './ProfileQuotesPanel';
 import ProfileAuctionsPanel from './ProfileAuctionsPanel';
+import AuctionsPage from '../pages/AuctionsPage';
+import CatalogPage from '../pages/CatalogPage';
+import { useIsMobile } from '../hooks/useIsMobile';
 import ProfileAuctionManagementPanel from './ProfileAuctionManagementPanel';
 import ProfileCatalogPanel from './ProfileCatalogPanel';
 import ProfileMyQuestionsPanel from './ProfileMyQuestionsPanel';
@@ -294,18 +299,28 @@ const WORKSHOP_SIDEBAR_GROUPS = [
 // Los items se DERIVAN de `sidebarGroups` (ya filtrado por cuenta bloqueada), asi que
 // nunca aparece aqui una pestaña que el sidebar oculta. El quinto boton es "Mas", que
 // abre la hoja con todos los grupos.
-const MOBILE_PRIMARY_TAB_IDS = {
-  seller: ['resumen', 'pedidos', 'productos', 'chats_compradores'],
-  workshop: ['resumen', 'fallas_taller', 'mi_taller', 'pedidos'],
-  buyer: ['resumen', 'pedidos', 'cotizaciones', 'chats_vendedor'],
-};
-// Etiquetas cortas para la barra inferior (caben en ~70px); la hoja "Mas" y la app bar
-// usan la etiqueta completa del sidebar.
-const MOBILE_TAB_SHORT_LABELS = {
-  pedidos: 'Pedidos',
-  cotizaciones: 'Cotizaciones',
-  chats_compradores: 'Chats',
-  chats_vendedor: 'Chats',
+// Barra inferior del celular: las mismas pestañas, etiquetas e iconos que la app según el perfil
+// (`AppBottomTabBar.tsx`). `tab` abre esa sección de la cuenta; `to` sale a la página pública equivalente
+// (la app también cambia de pantalla). El quinto botón es "Más", que abre la hoja con todos los grupos.
+const MOBILE_APP_TABS = {
+  buyer: [
+    { key: 'vehiculo', label: 'Vehículo', icon: Car, to: ROUTES.home },
+    { key: 'fallas', label: 'Fallas', icon: EngineIcon, tab: 'mis_fallas' },
+    { key: 'repuestos', label: 'Repuestos', icon: Cog, tab: 'repuestos', virtual: true },
+    { key: 'busco', label: 'Busco', icon: Search, tab: 'subastas' },
+  ],
+  seller: [
+    { key: 'inicio', label: 'Inicio', icon: Home, tab: 'resumen' },
+    { key: 'pedidos', label: 'Pedidos', icon: ShoppingBag, tab: 'pedidos' },
+    { key: 'inventario', label: 'Inventario', icon: Box, tab: 'productos' },
+    { key: 'buscan', label: 'Buscan', icon: Telescope, tab: 'buscan', virtual: true },
+  ],
+  workshop: [
+    { key: 'inicio', label: 'Inicio', icon: Gauge, tab: 'resumen' },
+    { key: 'fallas', label: 'Fallas', icon: EngineIcon, tab: 'fallas_taller' },
+    { key: 'repuestos', label: 'Repuestos', icon: Cog, tab: 'repuestos', virtual: true },
+    { key: 'busco', label: 'Busco', icon: Search, tab: 'subastas' },
+  ],
 };
 
 const ORDER_STATUS_LABELS = {
@@ -388,6 +403,7 @@ function yearsOf(product) {
 }
 
 export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen', onTabChange, paymentStatus, paymentOrderId, deepLinkOrderId, deepLinkTicketId, deepLinkQuoteId, onClearDeepLink, detailOrderId, detailPurchaseId }) {
+  const isMobileView = useIsMobile();
   const { user, role, logout, refreshProfile } = useAuth();
   // El centro de ayuda dejó de ser una pestaña del perfil: vive en /ayuda y se
   // navega hacia allá desde el sidebar y los accesos rápidos.
@@ -715,12 +731,15 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // Version movil: items de la barra inferior y titulo de la app bar. Solo derivan de
   // `sidebarGroups` y `activeTab`; no hay estado nuevo.
   const sidebarItems = useMemo(() => sidebarGroups.flatMap((group) => group.items), [sidebarGroups]);
-  const mobilePrimaryTabs = useMemo(() => {
-    const ids = MOBILE_PRIMARY_TAB_IDS[isSeller ? 'seller' : isWorkshop ? 'workshop' : 'buyer'];
-    return ids.map((id) => sidebarItems.find((item) => item.id === id)).filter(Boolean);
-  }, [sidebarItems, isSeller, isWorkshop]);
+  const mobilePrimaryTabs = useMemo(() => (
+    MOBILE_APP_TABS[isSeller ? 'seller' : isWorkshop ? 'workshop' : 'buyer']
+      // Una cuenta bloqueada no ve las secciones que el sidebar oculta.
+      .filter((item) => !item.tab || item.virtual || sidebarItems.some((entry) => entry.id === item.tab))
+  ), [sidebarItems, isSeller, isWorkshop]);
   const mobileSectionTitle = useMemo(() => {
     if (activeTab === 'feedback') return 'Dejar feedback';
+    if (activeTab === 'repuestos') return 'Repuestos';
+    if (activeTab === 'buscan') return 'Búsqueda de repuestos';
     return sidebarItems.find((item) => item.id === activeTab)?.label || 'Mi cuenta';
   }, [sidebarItems, activeTab]);
 
@@ -1823,7 +1842,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 paymentOrderId={paymentOrderId}
               />
 
-              {activeTab === 'subastas' && <ProfileAuctionsPanel />}
+              {/* Se monta cuando la URL ya es /perfil/repuestos: el catálogo escribe sus filtros en la URL y con la ruta vieja la devolvía a la pestaña anterior. */}
+              {activeTab === 'repuestos' && location.pathname.endsWith('/repuestos') && <CatalogPage />}
+              {activeTab === 'buscan' && <AuctionsPage embedded initialTab="MURAL" />}
+              {activeTab === 'subastas' && (isMobileView ? <AuctionsPage embedded initialTab="MIS" /> : <ProfileAuctionsPanel />)}
               {activeTab === 'gestion_subastas' && isSeller && <ProfileAuctionManagementPanel />}
 
               {activeTab === 'mis_preguntas' && (
@@ -1965,19 +1987,23 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           backdrop-filter y seria el containing block de un `position: fixed`. Reutiliza los
           mismos items y el mismo onClick que el sidebar; en escritorio va display:none. */}
       <nav className="profile-bottom-bar" aria-label="Secciones principales">
-        {mobilePrimaryTabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+        {mobilePrimaryTabs.map((item) => {
+          const Icon = item.icon;
+          const isActive = Boolean(item.tab) && activeTab === item.tab;
           return (
             <button
-              key={tab.id}
+              key={item.key}
               type="button"
               className={`profile-bottom-bar-item ${isActive ? 'active' : ''}`}
               aria-current={isActive ? 'page' : undefined}
-              onClick={() => { setProfileNavOpen(false); setActiveTab(tab.id); }}
+              onClick={() => {
+                setProfileNavOpen(false);
+                if (item.to) navigate(item.to);
+                else setActiveTab(item.tab);
+              }}
             >
-              <Icon size={22} />
-              <span>{MOBILE_TAB_SHORT_LABELS[tab.id] || tab.label}</span>
+              <Icon size={24} />
+              <span>{item.label}</span>
             </button>
           );
         })}
@@ -1996,79 +2022,32 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       {profileNavOpen && (
         <>
           <button type="button" className="profile-sheet-backdrop" aria-label="Cerrar menú" onClick={() => setProfileNavOpen(false)} />
-          <div id="profile-more-sheet" className="profile-sheet" role="dialog" aria-modal="true" aria-label="Todas las secciones de mi cuenta">
-            <div className="profile-sheet-grip" aria-hidden="true" />
-            <header className="profile-sheet-head">
-              <div className="sidebar-mini-avatar">
-                {user?.userProfileUrl || storeInfo?.logoUrl ? (
-                  <img src={user?.userProfileUrl || storeInfo?.logoUrl} alt="" referrerPolicy="no-referrer" />
-                ) : (
-                  initialsFromName(displayName)
-                )}
-              </div>
-              <div className="profile-sheet-identity">
-                <strong>{isSeller ? (storeInfo?.storeName || user?.storeName || displayName) : displayName}</strong>
-                <span>{isSeller ? 'Cuenta Proveedor' : 'Cuenta Comprador'} · {user?.email}</span>
-              </div>
-              <button type="button" className="profile-sheet-close" aria-label="Cerrar" onClick={() => setProfileNavOpen(false)}>
-                <X size={18} />
-              </button>
-            </header>
-
-            {isSeller && user?.sellerId && (
-              <a
-                className="profile-sheet-store-link"
-                href={storePath({ id: user.sellerId, nombre: storeInfo?.storeName || user?.storeName })}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setProfileNavOpen(false)}
-              >
-                <Store size={17} />
-                <span>Visitar mi tienda</span>
-                <ArrowUpRight size={15} />
-              </a>
-            )}
-
-            <div className="profile-sheet-body">
-              {sidebarGroups.map((group) => (
-                <div key={group.title || 'general'} className="sidebar-nav-group">
-                  {group.title && <span className="sidebar-group-title">{group.title}</span>}
-                  <div className="sidebar-group-items">
-                    {group.items.map((tab) => {
-                      const Icon = tab.icon;
-                      const isActive = !tab.href && activeTab === tab.id;
-                      return (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          aria-current={isActive ? 'page' : undefined}
-                          className={`profile-nav-item ${isSeller ? 'nav-seller' : 'nav-buyer'} ${isActive ? 'active' : ''}`}
-                          onClick={() => { setProfileNavOpen(false); if (tab.action === 'video_tutorial') setVideoTutorialOpen(true); else if (tab.href) navigate(tab.href); else setActiveTab(tab.id); }}
-                        >
-                          <Icon size={18} />
-                          <span>{tab.label}</span>
-                          <ChevronRight size={16} className="profile-nav-item-chevron" />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-
-              <div className="profile-nav-final-actions">
-                {!isSellerBlocked && !isBuyerBlocked && (
-                  <button type="button" className={`profile-nav-item profile-nav-feedback ${activeTab === 'feedback' ? 'active' : ''}`} onClick={() => { setProfileNavOpen(false); openFeedback(); }}>
-                    <MessageSquare size={18} /><span>Dejar feedback</span>
-                  </button>
-                )}
-                <button type="button" className="profile-nav-item profile-nav-delete" onClick={() => { setProfileNavOpen(false); setShowDeleteAccountModal(true); }}>
-                  <Trash2 size={18} /><span>Cerrar cuenta</span>
-                </button>
-                <button type="button" className="profile-nav-item profile-nav-logout" onClick={() => { setProfileNavOpen(false); handleLogout(); }}>
-                  <LogOut size={18} /><span>Salir</span>
-                </button>
-              </div>
-            </div>
+          <div id="profile-more-sheet" className="profile-sheet">
+            <ProfileMoreMenu
+              profile={isSeller ? 'seller' : isWorkshop ? 'workshop' : 'buyer'}
+              displayName={isSeller ? (storeInfo?.storeName || user?.storeName || displayName) : displayName}
+              email={user?.email}
+              avatarUrl={user?.userProfileUrl || storeInfo?.logoUrl}
+              initials={initialsFromName(displayName)}
+              availableTabs={new Set([...sidebarItems.map((item) => item.id), 'repuestos', 'buscan'])}
+              activeTab={activeTab}
+              stats={isSeller ? [
+                { label: 'Por despachar', value: ordersToDispatchCount, icon: Truck, tab: 'pedidos' },
+                { label: 'Por responder', value: quoteSummary.pending, icon: ReceiptText, tab: 'cotizaciones' },
+              ] : isWorkshop ? [] : [
+                { label: 'Pedidos en curso', value: openOrdersCount, icon: Package, tab: 'pedidos' },
+                { label: 'Cotizaciones', value: quoteSummary.sent, icon: ReceiptText, tab: 'cotizaciones' },
+                { label: favorites.length === 1 ? 'Favorito' : 'Favoritos', value: favorites.length, icon: Heart, tab: 'favoritos' },
+              ]}
+              storeLink={isSeller && user?.sellerId ? storePath({ id: user.sellerId, nombre: storeInfo?.storeName || user?.storeName }) : null}
+              onTab={setActiveTab}
+              onTo={(path) => navigate(path)}
+              onFeedback={openFeedback}
+              onProfile={() => setActiveTab(isSeller ? 'tienda_datos' : 'datos')}
+              onDeleteAccount={() => setShowDeleteAccountModal(true)}
+              onLogout={handleLogout}
+              onClose={() => setProfileNavOpen(false)}
+            />
           </div>
         </>
       )}

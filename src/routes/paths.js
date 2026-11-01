@@ -108,6 +108,8 @@ export const PROFILE_TABS = [
   'gestion_subastas',
   // Perfil Taller: sus servicios, el servicio Diagnostico y sus fallas comentadas. `mis_fallas` es del comprador.
   'mis_fallas', 'fallas_taller', 'servicios_taller', 'diagnostico',
+  // Celular: el catálogo y el mural de búsquedas dentro de la cuenta, para que la barra inferior no desaparezca.
+  'repuestos', 'buscan',
 ];
 
 /** `/fallas/12`: el detalle de una falla automotriz con los diagnosticos de los talleres. */

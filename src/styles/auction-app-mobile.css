@@ -28,9 +28,10 @@
   gap: 12px;
   box-sizing: border-box;
 }
+.am-page.is-embedded { min-height: 0; padding: 0 0 24px; background: transparent; }
 .am-page *, .am-page *::before, .am-page *::after { box-sizing: border-box; }
 .am-page h1, .am-page h2, .am-page h3, .am-page p { margin: 0; }
-.am-page button { font: inherit; cursor: pointer; }
+.am-page button { font-family: inherit; cursor: pointer; }
 .am-page .am-muted { color: var(--am-muted); font-size: 12px; font-weight: 400; }
 .am-divider { border: 0; border-top: 1px solid var(--am-divider); margin: 4px 0; width: 100%; }
 
@@ -325,11 +326,14 @@
 .am-card-timeline.is-por-finalizar { color: var(--am-warn) !important; }
 
 /* Pestañas "Mural publico (N)" / "Mis búsquedas (N)" y lo pendiente de cada búsqueda propia (como la app). */
-.am-tabs { display: flex; gap: 8px; margin: 0 0 12px; overflow-x: auto; scrollbar-width: none; }
+.am-tabs { display: flex; gap: 8px; margin: 0; overflow-x: auto; scrollbar-width: none; }
 .am-tabs::-webkit-scrollbar { display: none; }
-.am-tabs button { flex: 0 0 auto; min-height: 40px; padding: 0 16px; border: 1px solid #dbe6f3; border-radius: 999px; background: #fff; font: inherit; font-size: 13px; font-weight: 700; color: #5a6b7a; white-space: nowrap; cursor: pointer; }
-.am-tabs button.is-active { background: #0056bf; border-color: #0056bf; color: #fff; }
+.am-tabs button { flex: 0 0 auto; min-height: 36px; padding: 0 14px; border: 1px solid var(--am-border); border-radius: 999px; background: #fff; font: inherit; font-size: 13px; font-weight: 600; color: var(--am-muted); white-space: nowrap; cursor: pointer; }
+.am-tabs button.is-active { background: var(--am-primary-light); border-color: var(--am-primary-border); color: var(--am-primary); }
 .am-card-pending { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; padding: 6px 10px; border-radius: 10px; background: #fff7e6; border: 1px solid #fde3a7; color: #9a5a00; font-size: 12.5px; font-weight: 700; }
 
 /* Cancelar una búsqueda (29-oct). */
 .am-action.is-danger { color: #b42318; border-color: #f3c7c2; }
+
+/* Dentro de la intranet el botón "+" queda sobre la barra inferior de la cuenta. */
+.am-page.is-embedded .am-fab { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }

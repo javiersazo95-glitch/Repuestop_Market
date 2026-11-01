@@ -190,7 +190,11 @@ function AuctionRow({ auction, status, now, onOpen, pendingQuestions = null }) {
   );
 }
 
-export default function AuctionsPage() {
+/**
+ * `embedded`: la intranet del celular (`/perfil/subastas`) muestra esta misma vista, empezando en "Mis búsquedas", para que
+ * el menú del inicio y la cuenta no se vean distintos. `initialTab`: pestaña con la que abre.
+ */
+export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' }) {
   useDocumentTitle('Búsqueda de repuestos');
   const navigate = useNavigate();
   const location = useLocation();
@@ -216,7 +220,7 @@ export default function AuctionsPage() {
   const [scope, setScope] = useState('TODAS');
   // "Mural publico" / "Mis búsquedas", como la app (26-oct). Lo propio solo existe para quien publica.
   const canSeeMine = isLoggedIn && (role === 'BUYER' || role === 'WORKSHOP');
-  const [tab, setTab] = useState('MURAL');
+  const [tab, setTab] = useState(initialTab);
   const [myAuctions, setMyAuctions] = useState([]);
   const [pendingQuestions, setPendingQuestions] = useState({});
   const [sortBy, setSortBy] = useState('RECIENTES');
@@ -516,9 +520,11 @@ export default function AuctionsPage() {
           onResetFilters={handleResetFilters}
           onCreate={handleOpenCreateModal}
           canCreate={canCreate}
+          forStores={!canCreate}
+          embedded={embedded}
           onOpenAuction={handleOpenAuction}
           filtersPanel={filtersPanel}
-          tabs={tabs}
+          tabs={embedded ? null : tabs}
           tab={tab}
           onTabChange={setTab}
           pendingQuestions={tab === 'MIS' ? pendingQuestions : null}

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { CarFront, ClipboardList, Plus, Stethoscope } from 'lucide-react';
+import FaultsHero from '../components/faults/FaultsHero';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { Link, useNavigate } from 'react-router-dom';
 import FaultsList from '../components/faults/FaultsList';
 import CreateFaultModal from '../components/faults/CreateFaultModal';
@@ -13,6 +15,8 @@ export default function FaultsPage() {
   useDocumentTitle('Fallas automotrices');
   const { isLoggedIn, role } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const isWorkshop = role === 'WORKSHOP';
   const [creating, setCreating] = useState(false);
   const [metrics, setMetrics] = useState({ loading: true, failed: false, faults: 0, withoutDiagnosis: 0, immobilized: 0 });
   const formatMetric = (value) => new Intl.NumberFormat('es-CL').format(value);
@@ -20,6 +24,14 @@ export default function FaultsPage() {
 
   return (
     <div className="ft-page">
+      {isMobile && (
+        <div className="ft-m-hero">
+          <FaultsHero isWorkshop={isWorkshop} />
+        </div>
+      )}
+      {isMobile && isLoggedIn && role === 'BUYER' && (
+        <button type="button" className="ft-m-fab" onClick={() => setCreating(true)} aria-label="Registrar una falla automotriz"><Plus size={26} /></button>
+      )}
       <div className="ft-wide-shell ft-index-shell">
         <nav className="ft-index-breadcrumb" aria-label="Ruta de navegación">
           <Link to={ROUTES.home}>Inicio</Link><span>/</span><span aria-current="page">Fallas automotrices</span>

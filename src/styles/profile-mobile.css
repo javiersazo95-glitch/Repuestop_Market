@@ -502,7 +502,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .profile-dashboard .profile-bottom-bar-item.active { color: #0875eb; background: #eaf3ff; }
+  .profile-dashboard .profile-bottom-bar-item.active { color: #0056bf; background: transparent; }
   .profile-dashboard .profile-bottom-bar-item:focus-visible { outline: 2px solid #0066ff; outline-offset: -2px; }
 
   /* Con un chat abierto (.dispute-workspace) la barra se esconde: ver chat-mobile.css. */
@@ -1319,3 +1319,64 @@
 .fav-m-empty strong { font-size: 15px; color: #243442; }
 .fav-m-empty p { margin: 0; font-size: 13px; line-height: 1.45; color: #5a6b7a; }
 .fav-m-empty button { min-height: 40px; padding: 0 16px; border: 0; border-radius: 12px; background: #0056bf; color: #ffffff; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+/* Mis citas / Mi taller en el celular: sin tarjeta dentro de tarjeta, como la pantalla de la app. */
+@media (max-width: 768px) {
+  .profile-dashboard .profile-main .profile-panel.ads-management-panel,
+  .profile-dashboard .profile-main .booking-modal-card.is-inline { padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+}
+
+/* Mi taller en el celular: sin la fila "Actualizar" + estado de acreditación (la acreditación se abre desde sus avisos y pasos). */
+@media (max-width: 768px) {
+  .profile-dashboard .ads-mgmt-titles-actions { display: none; }
+}
+
+/* Barra inferior como la de la app: 64 px, iconos de 24, etiqueta de 12 px y una marca azul arriba de la pestaña activa. */
+@media (max-width: 768px) {
+  .profile-dashboard .profile-bottom-bar { height: calc(64px + var(--pm-safe-bottom)); padding: 0 8px var(--pm-safe-bottom); background: #fff; border-top: 1px solid #d9e0e7; box-shadow: 0 -4px 16px rgba(15, 23, 42, .06); }
+  .profile-dashboard .profile-bottom-bar-item { position: relative; min-height: 64px; margin: 0; padding: 0; gap: 4px; border-radius: 0; color: #5a6b7a; font-size: 12px; font-weight: 600; line-height: 16px; }
+  .profile-dashboard .profile-bottom-bar-item.active::before { content: ''; position: absolute; top: 0; left: 50%; width: 28px; height: 3px; transform: translateX(-50%); border-radius: 0 0 3px 3px; background: #0056bf; }
+}
+
+/* ---------------------------------------------------------------------------
+   HOJA "MÁS" como el menú de la app (ProfileMoreMenu): tarjeta de perfil, secciones con cabecera de color y grilla de 4 accesos
+   --------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .profile-dashboard .profile-sheet { max-height: 92dvh; background: #f8fafc; }
+  .pmm { position: relative; display: flex; flex-direction: column; min-height: 0; max-height: 92dvh; }
+  .pmm-grip { flex: 0 0 auto; width: 40px; height: 4px; margin: 8px auto 4px; border-radius: 2px; background: #cbd5e1; }
+  .pmm-close { position: absolute; top: 8px; right: 12px; z-index: 2; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: #f3f5f7; color: #243442; }
+  .pmm-scroll { display: flex; flex-direction: column; gap: 16px; padding: 8px 16px calc(24px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .pmm-hero, .pmm-section, .pmm-store-link, .pmm-actions { flex: 0 0 auto; }
+  .pmm-hero { overflow: hidden; border: 1px solid #bfd6f7; border-radius: 16px; background: #fff; box-shadow: 0 2px 8px rgba(15, 23, 42, .06); }
+  .pmm-hero-top { display: flex; align-items: center; gap: 16px; padding: 16px 48px 16px 16px; background: linear-gradient(135deg, #f5f9ff, #fff); }
+  .pmm-avatar { flex: 0 0 80px; width: 80px; height: 80px; display: grid; place-items: center; overflow: hidden; border-radius: 50%; background: linear-gradient(135deg, #0052cc, #0066ff); color: #fff; font-size: 26px; font-weight: 700; }
+  .pmm-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .pmm-hero-text { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 0; border: 0; background: none; text-align: left; font: inherit; color: #243442; }
+  .pmm-hero-text strong { max-width: 100%; font-size: 20px; line-height: 26px; font-weight: 700; letter-spacing: -.2px; overflow-wrap: anywhere; }
+  .pmm-hero-text small { max-width: 100%; font-size: 13px; line-height: 18px; color: #5a6b7a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pmm-hero-link { display: inline-flex; align-items: center; gap: 2px; margin-top: 2px; font-size: 12px; font-weight: 600; color: #0056bf; }
+  .pmm-stats { display: flex; align-items: center; padding: 4px; border-top: 1px solid #e6eaef; background: #f8fafc; }
+  .pmm-stats button { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 2px; border: 0; border-radius: 8px; background: transparent; font: inherit; }
+  .pmm-stats button + button { border-left: 1px solid #e6eaef; border-radius: 0; }
+  .pmm-stats span { display: inline-flex; align-items: center; gap: 4px; color: #0056bf; }
+  .pmm-stats b { font-size: 17px; line-height: 22px; font-weight: 600; color: #243442; }
+  .pmm-stats small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; line-height: 14px; font-weight: 600; color: #5a6b7a; }
+  .pmm-store-link { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; border: 1px solid #bfd6f7; border-radius: 12px; background: #eaf2ff; color: #0056bf; font-size: 14px; font-weight: 600; text-decoration: none; }
+  .pmm-store-link span { flex: 1; }
+  .pmm-section { overflow: hidden; border: 1px solid #d9e0e7; border-radius: 16px; background: #fff; box-shadow: 0 2px 8px rgba(15, 23, 42, .06); }
+  .pmm-section > header { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+  .pmm-section > header > i { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .pmm-section-icon { flex: 0 0 30px; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; color: #fff; }
+  .pmm-section-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .pmm-section-copy strong { font-size: 15px; line-height: 22px; font-weight: 600; color: #243442; }
+  .pmm-section-copy small { font-size: 13px; line-height: 18px; color: #5a6b7a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pmm-grid { display: flex; flex-wrap: wrap; row-gap: 12px; padding: 12px 4px; }
+  .pmm-grid button { width: 25%; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0 2px; border: 0; background: transparent; font: inherit; -webkit-tap-highlight-color: transparent; }
+  .pmm-grid button:active { opacity: .7; }
+  .pmm-tile-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; }
+  .pmm-tile-label { font-size: 11px; line-height: 13px; font-weight: 600; color: #243442; text-align: center; overflow-wrap: anywhere; }
+  .pmm-actions { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .pmm-logout { width: 100%; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #0056bf; border-radius: 12px; background: #fff; color: #0056bf; font: inherit; font-size: 15px; font-weight: 600; }
+  .pmm-delete { display: inline-flex; align-items: center; gap: 6px; padding: 8px; border: 0; background: transparent; color: #b42318; font: inherit; font-size: 13px; font-weight: 600; }
+}

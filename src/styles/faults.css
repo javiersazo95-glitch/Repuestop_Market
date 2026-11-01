@@ -523,3 +523,76 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 /* Aviso bajo "Mi comuna" cuando la cuenta no tiene comuna (o no hay sesion). */
 .ft-filter-hint { color: #5b7088; font-size: 11.5px; line-height: 1.4; }
 .ft-radio:has(input:disabled) { opacity: .55; }
+
+/* ===========================================================================
+   CELULAR — misma vista que la app: hero, chips, buscador + filtros (panel derecho) + orden
+   =========================================================================== */
+.ft-m-only { display: none; }
+@media (max-width: 767px) {
+  .ft-page { background: #f8fafc; }
+  .ft-m-hero { padding: 12px 16px 0; }
+  .ft-index-breadcrumb, .ft-index-head, .ft-index-value-row { display: none; }
+  .ft-index-shell { display: none; }
+  .ft-m-only { display: block; }
+  .ft-m-controls { display: flex; flex-direction: column; gap: 12px; margin: 12px 0; }
+  .ft-m-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  .ft-m-tabs button { flex: 0 0 auto; min-height: 36px; padding: 0 14px; border: 1px solid #d9e0e7; border-radius: 999px; background: #fff; color: #5a6b7a; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .ft-m-tabs button.is-active { border-color: #bfd6f7; background: #eaf2ff; color: #0056bf; }
+  .ft-m-row { display: flex; align-items: center; gap: 8px; }
+  .ft-m-search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 12px; border: 1px solid #d9e0e7; border-radius: 12px; background: #fff; color: #5a6b7a; }
+  .ft-m-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 14px; color: #243442; }
+  .ft-m-search button { display: inline-flex; padding: 0; border: 0; background: transparent; color: #5a6b7a; }
+  .ft-m-icon { position: relative; flex: 0 0 48px; width: 48px; height: 48px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid #d9e0e7; border-radius: 12px; background: #fff; color: #243442; }
+  .ft-m-icon.is-active { border-color: #0056bf; background: #eaf2ff; color: #0056bf; }
+  .ft-m-icon select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
+  .ft-search-row, .ft-results-head label { display: none; }
+  .ft-results-head { min-height: 0; padding: 0 0 8px; color: #5a6b7a; }
+  .ft-mural-grid { display: block; }
+  .ft-filter-panel {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 1200; display: flex; width: min(90vw, 400px); overflow-y: auto;
+    border: 0; border-radius: 20px 0 0 20px; box-shadow: -14px 0 36px rgba(6, 19, 41, .24); transform: translateX(104%); transition: transform .22s ease-out;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+  .ft-filter-panel.is-open { transform: translateX(0); }
+  .ft-filter-panel h2 { display: flex; align-items: center; }
+  .ft-m-close { margin-left: auto; padding: 4px; border: 0; background: transparent; color: #243442; }
+  .ft-m-backdrop { position: fixed; inset: 0; z-index: 1190; width: 100%; padding: 0; border: 0; background: rgba(15, 23, 42, .45); }
+  .ft-m-fab { position: fixed; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 60; width: 52px; height: 52px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: #0056bf; color: #fff; box-shadow: 0 6px 16px rgba(15, 23, 42, .18); }
+}
+
+/* Tarjeta de falla en celular (FallaPreviewCard de la app) */
+.ftm-card { position: relative; background: #fff; border: 1px solid #d9e0e7; border-radius: 16px; box-shadow: 0 2px 8px rgba(15, 23, 42, .06); }
+.ftm-press { display: flex; flex-direction: column; gap: 8px; padding: 12px; color: inherit; text-decoration: none; }
+.ftm-press hr { width: 100%; height: 1px; margin: 0; border: 0; background: #d9e0e7; }
+.ftm-save { position: absolute; top: 8px; right: 8px; z-index: 2; width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #5a6b7a; }
+.ftm-save.is-saved { color: #d92d20; }
+.ftm-vehicle { display: flex; align-items: center; gap: 12px; }
+.ftm-thumb { flex: 0 0 64px; width: 64px; height: 64px; display: grid; place-items: center; overflow: hidden; border-radius: 8px; background: #f8fafc; }
+.ftm-thumb.is-empty { background: #eaf2ff; color: #0056bf; }
+.ftm-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.ftm-vehicle-body { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding-right: 32px; }
+.ftm-vehicle-body strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; line-height: 22px; font-weight: 600; color: #243442; }
+.ftm-data { font-size: 13px; line-height: 18px; color: #5a6b7a; }
+.ftm-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.ftm-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: #f3f5f7; color: #5a6b7a; font-size: 11px; line-height: 14px; font-weight: 600; }
+.ftm-chip.is-primary { background: #eaf2ff; color: #0056bf; }
+.ftm-chip.is-ok { background: #eafbf1; color: #0e7038; }
+.ftm-chip.is-warn { background: #fff7e6; color: #9a5a00; }
+.ftm-chip.is-error { background: #fff0f0; color: #b42318; }
+.ftm-block { display: flex; flex-direction: column; gap: 4px; }
+.ftm-block p { margin: 0; font-size: 13px; line-height: 18px; font-weight: 600; color: #243442; }
+.ftm-meta { display: flex; flex-wrap: wrap; align-items: center; column-gap: 12px; row-gap: 2px; font-size: 13px; line-height: 18px; color: #5a6b7a; }
+.ftm-meta span, .ftm-diag { display: inline-flex; align-items: center; gap: 3px; min-width: 0; }
+.ftm-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ftm-diag { font-size: 13px; line-height: 18px; color: #0056bf; }
+.ftm-chev { color: #0056bf; }
+.ftm-action { padding: 6px 16px; border: 1px solid #0056bf; border-radius: 8px; background: #fff; color: #0056bf; font-size: 12px; font-weight: 600; }
+.ftm-action.is-primary { background: #0056bf; color: #fff; }
+@media (max-width: 767px) {
+  .ft-fault-list { gap: 12px; }
+  .ft-m-hero + .ft-wide-shell, .ft-index-shell { margin: 0; }
+}
+@media (max-width: 767px) {
+  .ft-mural.is-mine { padding-bottom: 8px; }
+  .ft-mural.is-mine .ft-m-fab { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+}

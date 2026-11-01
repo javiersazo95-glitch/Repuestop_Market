@@ -1,0 +1,119 @@
+/* ===========================================================================
+   CATÁLOGO DE REPUESTOS EN CELULAR — misma apariencia de la app (pestaña Repuestos)
+   Controles de 48 px con radio 12, borde #d9e0e7, azul de marca #0056bf y chips tonales (ver app-kit.css).
+   Solo celular: el escritorio conserva su diseño.
+   =========================================================================== */
+@media (max-width: 767px) {
+  .parts-catalog-view-wrapper { background: var(--ak-canvas, #f8fafc); }
+
+  .parts-catalog-view-wrapper .catalog-showcase-carousel-header h2 { font-size: 20px; line-height: 26px; font-weight: 700; letter-spacing: -0.2px; color: var(--ak-text, #243442); }
+  .parts-catalog-view-wrapper .catalog-showcase-carousel-header p { font-size: 13px; line-height: 18px; color: var(--ak-text-muted, #5a6b7a); }
+
+  /* Patente y "mi comuna": tarjetas de la app (borde, radio 12) en lugar de píldoras. */
+  .parts-catalog-view-wrapper .catalog-quick-patente-bar {
+    min-height: 48px;
+    padding: 4px 4px 4px 12px;
+    border: 1px solid var(--ak-border, #d9e0e7);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: none;
+  }
+  .parts-catalog-view-wrapper .catalog-quick-patente-bar .patente-icon { color: var(--ak-primary, #0056bf); }
+  .parts-catalog-view-wrapper .btn-quick-patente-submit {
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: 8px;
+    background: var(--ak-primary, #0056bf);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .parts-catalog-view-wrapper .btn-comuna-toggle-pill {
+    min-height: 48px;
+    border: 1px solid var(--ak-border, #d9e0e7);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--ak-text, #243442);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .parts-catalog-view-wrapper .btn-comuna-toggle-pill svg { color: var(--ak-primary, #0056bf); }
+  .parts-catalog-view-wrapper .btn-comuna-toggle-pill.active {
+    border-color: var(--ak-primary-border, #bfd6f7);
+    background: var(--ak-primary-light, #eaf2ff);
+    color: var(--ak-primary, #0056bf);
+  }
+
+  /* Buscador + filtro + orden: una fila de controles de 48 px, como en la app. */
+  .parts-catalog-view-wrapper .catalog-mobile-actions-row { gap: 8px; }
+  .parts-catalog-view-wrapper .catalog-mobile-actions-row .catalog-text-search {
+    min-height: 48px;
+    border: 1px solid var(--ak-border, #d9e0e7);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: none;
+  }
+  .parts-catalog-view-wrapper .catalog-mobile-filter-trigger,
+  .parts-catalog-view-wrapper .catalog-mobile-sort-trigger {
+    min-width: 48px;
+    min-height: 48px;
+    border: 1px solid var(--ak-border, #d9e0e7);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--ak-text, #243442);
+    box-shadow: none;
+  }
+  .parts-catalog-view-wrapper .catalog-mobile-filter-trigger { font-size: 13px; font-weight: 600; }
+  .parts-catalog-view-wrapper .catalog-mobile-filter-trigger svg,
+  .parts-catalog-view-wrapper .catalog-mobile-sort-trigger svg { color: var(--ak-primary, #0056bf); }
+
+  /* Categorías: círculos con foto y nombre, como el explorador de la app. */
+  .parts-catalog-view-wrapper .category-catalog-card strong { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ak-text, #243442); }
+  .parts-catalog-view-wrapper .category-catalog-card.active-selected strong { color: var(--ak-primary, #0056bf); }
+
+  .parts-catalog-view-wrapper .catalog-mobile-showcase-heading h2 { font-size: 17px; line-height: 22px; font-weight: 600; color: var(--ak-text, #243442); }
+  .parts-catalog-view-wrapper .catalog-mobile-showcase-heading p { font-size: 13px; line-height: 18px; color: var(--ak-text-muted, #5a6b7a); }
+}
+
+/* Explorador de categorías (CategoryBrowser de la app) */
+.cbm { display: none; }
+@media (max-width: 767px) {
+  .parts-catalog-view-wrapper .category-showcase-carousel { display: none; }
+  .cbm { display: flex; margin-top: 12px; border: 1px solid #d9e0e7; border-radius: 16px; background: #fff; overflow: hidden; }
+  .cbm-left { flex: 0 0 30%; min-width: 98px; max-width: 132px; max-height: 460px; overflow-y: auto; border-right: 1px solid #d9e0e7; background: #f8fafc; }
+  .cbm-left button { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; border: 0; border-left: 3px solid transparent; background: transparent; color: #5a6b7a; font: inherit; font-size: 12px; line-height: 16px; font-weight: 600; text-align: center; }
+  .cbm-left button.is-active { border-left-color: #0056bf; background: #fff; color: #0056bf; }
+  .cbm-right { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 8px; max-height: 460px; overflow-y: auto; }
+  .cbm-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .cbm-head h3 { flex: 1; min-width: 0; margin: 0; font-size: 17px; line-height: 22px; font-weight: 600; color: #243442; }
+  .cbm-all { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 2px; padding: 0; border: 0; background: transparent; color: #0056bf; font: inherit; font-size: 12px; font-weight: 600; }
+  .cbm-count { font-size: 11px; line-height: 14px; font-weight: 600; color: #5a6b7a; text-align: center; }
+  .cbm-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 4px; }
+  .cbm-sub { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; border: 0; background: transparent; font: inherit; }
+  .cbm-circle { width: 100%; max-width: 72px; aspect-ratio: 1; display: block; overflow: hidden; border: 1px solid #e6eaef; border-radius: 50%; background: #f3f5f7; }
+  .cbm-circle img { width: 100%; height: 100%; object-fit: cover; }
+  .cbm-name { font-size: 11px; line-height: 14px; font-weight: 600; color: #243442; text-align: center; overflow-wrap: anywhere; }
+}
+@media (max-width: 767px) {
+  .cbm-left .category-icon-tile { width: 36px; height: 36px; flex: 0 0 36px; border-radius: 10px; color: #fff; }
+  .cbm-left .category-icon-tile svg { color: #fff !important; opacity: 1; stroke: currentColor; }
+}
+
+.catalog-pick-hint { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 32px 20px; text-align: center; color: #5a6b7a; }
+.catalog-pick-hint h2 { margin: 0; font-size: 17px; line-height: 22px; font-weight: 600; color: #243442; }
+.catalog-pick-hint p { margin: 0; font-size: 13px; line-height: 18px; }
+@media (max-width: 767px) { .catalog-pick-hint { display: none; } }
+@media (max-width: 767px) {
+  /* Como en la app: sin título; arriba vehículo/ubicación, luego la barra de búsqueda y filtros y debajo el navegador. */
+  .parts-catalog-view-wrapper .catalog-showcase-carousel-header { display: none; }
+  .parts-catalog-view-wrapper .catalog-showcase-search-controls > .catalog-text-search { display: none; }
+}
+@media (max-width: 767px) {
+  /* Sin patente ni "Mi comuna" en el catálogo móvil: la patente se busca en el inicio y el vehículo filtrado se ve en su tarjeta. */
+  .parts-catalog-view-wrapper .catalog-vehicle-location-filters { display: none; }
+}
+@media (max-width: 767px) {
+  /* Sin alto mínimo de pantalla ni relleno inferior: el contenido queda pegado al pie de página. */
+  .parts-catalog-view-wrapper { min-height: 0; padding-bottom: 0; }
+  .parts-catalog-view-wrapper .catalog-main-container { padding-bottom: 12px; margin-bottom: 0; }
+  .parts-catalog-view-wrapper + footer { margin-top: 0; }
+}

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertCircle, Bookmark, CalendarDays, Camera, Car, ChevronRight, FileText, Filter, Loader2,
-  MapPin, MessageCircle, Plus, RotateCcw, Search, Settings, Truck, Wrench,
+  ArrowUpDown, MapPin, MessageCircle, Plus, RotateCcw, Search, Settings, SlidersHorizontal, Truck, Wrench, X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getCommentedFaults, getMyFaults, getOpenFaults, timeSince } from '../../services/faultApi';
@@ -10,6 +10,8 @@ import { faultDetailPath } from '../../routes/paths';
 import { resolveMediaUrl } from '../../services/api';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import CreateFaultModal from './CreateFaultModal';
+import FaultsHero from './FaultsHero';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { MAX_SEARCH_LENGTH } from '../../utils/inputLimits';
 import '../../styles/faults.css';
 
@@ -51,6 +53,59 @@ const diagnosisCountOf = (fault) => Number(
     ?? (Array.isArray(fault.diagnosticos) ? fault.diagnosticos.length : fault.diagnosticos) ?? 0,
 ) || 0;
 
+/** Tarjeta de la falla en el celular: la de la app (vehículo, la falla, contexto y diagnósticos, separados por líneas). */
+function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto }) {
+  const symptoms = (fault.sintomas || []).slice(0, 3);
+  return (
+    <article className="ftm-card">
+      {onToggleSaved && (
+        <button type="button" className={`ftm-save ${isSaved ? 'is-saved' : ''}`} aria-pressed={isSaved} aria-label={isSaved ? 'Quitar falla de favoritos' : 'Guardar falla en favoritos'} onClick={() => onToggleSaved(fault)}>
+          <Bookmark size={18} fill={isSaved ? 'currentColor' : 'none'} />
+        </button>
+      )}
+      <Link to={faultDetailPath(fault)} state={{ fromMural }} className="ftm-press" aria-label={`Ver detalle de ${vehicle}`}>
+        <div className="ftm-vehicle">
+          <span className={`ftm-thumb ${coverPhoto ? '' : 'is-empty'}`}>
+            {coverPhoto ? <img src={resolveMediaUrl(coverPhoto)} alt="" loading="lazy" /> : <Car size={28} />}
+          </span>
+          <div className="ftm-vehicle-body">
+            <div className="ftm-chips">
+              {fault.propia && <span className="ftm-chip is-primary">Mi falla</span>}
+              {showStatus && <span className={`ftm-chip ${fault.vigente ? 'is-ok' : ''}`}>{fault.vigente ? 'Abierta' : 'Cerrada'}</span>}
+              {!showStatus && <span className={`ftm-chip ${diagnosisCount > 0 ? 'is-ok' : 'is-warn'}`}>{diagnosisCount > 0 ? 'Con diagnóstico' : 'Pendiente'}</span>}
+            </div>
+            {fault.requiereRecogida && <span className="ftm-chip is-warn"><Truck size={12} aria-hidden="true" /> {showClient ? 'Hay que ir a buscar el vehículo' : 'Piden recogida del vehículo'}</span>}
+            <strong>{vehicle}</strong>
+            {vehicleData.length > 0 && <span className="ftm-data">{vehicleData.join(' • ')}</span>}
+          </div>
+        </div>
+        <hr />
+        <div className="ftm-block">
+          <p>{fault.titulo || 'Sin título'}</p>
+          <div className="ftm-chips">
+            <span className="ftm-chip is-primary"><Wrench size={12} aria-hidden="true" /> {type.label}</span>
+            {fault.subcategoria && <span className="ftm-chip is-primary">{fault.subcategoria}</span>}
+            {fault.seMueve === false && <span className="ftm-chip is-error">No se mueve</span>}
+            {symptoms.map((symptom) => <span key={symptom} className="ftm-chip is-primary">{symptom}</span>)}
+          </div>
+        </div>
+        <hr />
+        <div className="ftm-meta">
+          {showClient && !fault.propia && <span>{fault.clienteNombre || 'Cliente'}</span>}
+          <span><CalendarDays size={12} /> {timeSince(fault.createdAt)}</span>
+          {place && <span><MapPin size={12} /> {place}</span>}
+        </div>
+        <div className="ftm-footer">
+          <span className="ftm-diag"><MessageCircle size={12} /> {diagnosisCount === 0 ? 'Sin diagnósticos aún' : `${diagnosisCount} ${diagnosisCount === 1 ? 'taller diagnosticó' : 'talleres diagnosticaron'}`}</span>
+          {showClient
+            ? <span className={`ftm-action ${diagnosisCount === 0 ? 'is-primary' : ''}`}>{diagnosisCount === 0 ? 'Diagnosticar' : 'Ver detalle'}</span>
+            : <ChevronRight size={20} className="ftm-chev" />}
+        </div>
+      </Link>
+    </article>
+  );
+}
+
 /** Tarjeta de una falla del mural. Tambien la usa Favoritos, con `onToggleSaved` para quitarla de los guardados. */
 export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = false, onToggleSaved }) {
   const place = [fault.comuna, fault.region].filter(Boolean).join(', ');
@@ -63,7 +118,12 @@ export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = 
   const photoCount = Math.max(previewPhotos.length, Number.isFinite(backendPhotoCount) ? backendPhotoCount : 0);
   const coverPhoto = previewPhotos[0];
   const diagnosisCount = diagnosisCountOf(fault);
+  const isMobile = useIsMobile();
   const mobility = fault.seMueve === true ? 'Sí, se puede mover' : fault.seMueve === false ? 'No se puede mover' : 'No informado';
+
+  if (isMobile) {
+    return <FaultCardMobile {...{ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto }} />;
+  }
 
   return (
     <article className="ft-fault-card">
@@ -117,7 +177,11 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   const { role, isLoggedIn, user } = useAuth();
   const navigate = useNavigate();
   const isWorkshop = role === 'WORKSHOP';
-  const [view, setView] = useState('OPEN');
+  // Intranet del celular: solo el seguimiento de lo propio (Mis fallas / Mis diagnósticos), con el banner de la app; el mural
+  // público vive en /fallas.
+  const isMobile = useIsMobile();
+  const mineOnly = !heading && isMobile;
+  const [view, setView] = useState(mineOnly ? (isWorkshop ? 'COMMENTED' : 'MINE') : 'OPEN');
   const [lists, setLists] = useState({ OPEN: [], MINE: [], COMMENTED: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -135,12 +199,14 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   // Taller: ranura para ver solo las fallas de su comuna (sin tildes ni mayúsculas, "Ñuñoa" = "NUNOA").
   const [onlyMyComuna, setOnlyMyComuna] = useState(false);
   const myComuna = isWorkshop ? user?.comuna || '' : '';
+  // Celular: los filtros entran como panel lateral derecho (como en Búsqueda de repuestos).
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const open = await getOpenFaults();
+      const open = mineOnly ? [] : await getOpenFaults();
       let other = [];
       if (isLoggedIn) other = await (isWorkshop ? getCommentedFaults() : getMyFaults());
       setLists({ OPEN: Array.isArray(open) ? open : [], [isWorkshop ? 'COMMENTED' : 'MINE']: Array.isArray(other) ? other : [] });
@@ -149,7 +215,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
     } finally {
       setLoading(false);
     }
-  }, [isLoggedIn, isWorkshop]);
+  }, [isLoggedIn, isWorkshop, mineOnly]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (!isLoggedIn) setView('OPEN'); }, [isLoggedIn]);
@@ -221,7 +287,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
       : items.length === 0 ? <div className="ft-empty"><Wrench size={22} /><strong>{empty[0]}</strong>{empty[1]}</div>
         : <div className="ft-fault-list">{items.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} />)}</div>;
 
-  if (!heading) {
+  if (!heading && !mineOnly) {
     return (
       <div className="ft-profile-faults">
         <div className="ft-mural-toolbar">
@@ -239,11 +305,14 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   }
 
   return (
-    <div className="ft-mural">
+    <div className={`ft-mural ${mineOnly ? 'is-mine' : ''}`}>
+      {mineOnly && <div className="ft-m-hero"><FaultsHero isWorkshop={isWorkshop} /></div>}
+      {mineOnly && role === 'BUYER' && <button type="button" className="ft-m-fab" onClick={() => setCreating(true)} aria-label="Registrar una falla automotriz"><Plus size={26} /></button>}
       <div className="ft-wide-shell">
         <div className="ft-mural-grid">
-          <aside className="ft-filter-panel" aria-label="Filtros de búsqueda">
-            <h2><Filter size={20} /> Filtros de búsqueda</h2>
+          {filtersOpen && <button type="button" className="ft-m-only ft-m-backdrop" aria-label="Cerrar filtros" onClick={() => setFiltersOpen(false)} />}
+          <aside className={`ft-filter-panel ${filtersOpen ? 'is-open' : ''}`} aria-label="Filtros de búsqueda">
+            <h2><Filter size={20} /> Filtros de búsqueda <button type="button" className="ft-m-only ft-m-close" aria-label="Cerrar filtros" onClick={() => setFiltersOpen(false)}><X size={20} /></button></h2>
 
             <fieldset className="ft-filter-group">
               <legend><MapPin size={17} /> Ubicación</legend>
@@ -279,6 +348,19 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
           </aside>
 
           <main className="ft-results">
+            <div className="ft-m-only ft-m-controls">
+              {isLoggedIn && !mineOnly && (
+                <div className="ft-m-tabs" role="tablist">
+                  <button type="button" role="tab" aria-selected={view === 'OPEN'} className={view === 'OPEN' ? 'is-active' : ''} onClick={() => setView('OPEN')}>Mural público ({lists.OPEN.length})</button>
+                  <button type="button" role="tab" aria-selected={view !== 'OPEN'} className={view !== 'OPEN' ? 'is-active' : ''} onClick={() => setView(isWorkshop ? 'COMMENTED' : 'MINE')}>{isWorkshop ? 'Mis diagnósticos' : 'Mis fallas'}</button>
+                </div>
+              )}
+              <div className="ft-m-row">
+                <label className="ft-m-search"><Search size={18} /><input value={searchText} maxLength={MAX_SEARCH_LENGTH} onChange={(event) => setSearchText(event.target.value)} placeholder="Buscar por falla o vehículo..." aria-label="Buscar fallas" />{searchText && <button type="button" onClick={() => { setSearchText(''); setQuery(''); }} aria-label="Limpiar búsqueda"><X size={16} /></button>}</label>
+                <button type="button" className={`ft-m-icon ${hasFilters ? 'is-active' : ''}`} onClick={() => setFiltersOpen(true)} aria-label="Abrir filtros avanzados"><SlidersHorizontal size={22} /></button>
+                <label className={`ft-m-icon ${sort !== 'recent' ? 'is-active' : ''}`}><ArrowUpDown size={22} /><select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Ordenar fallas"><option value="recent">Más recientes</option><option value="oldest">Más antiguas</option></select></label>
+              </div>
+            </div>
             <form className="ft-search-row" onSubmit={(event) => { event.preventDefault(); setQuery(searchText.trim()); }}>
               <label className="ft-search-box"><Search size={19} /><input value={searchText} maxLength={MAX_SEARCH_LENGTH} onChange={(event) => setSearchText(event.target.value)} placeholder="Buscar por palabra clave (ej: no enciende, pérdida de potencia, frenos, etc.)" /></label>
               <button type="submit" className="ft-btn ft-btn-primary ft-search-button">Buscar</button>

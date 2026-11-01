@@ -303,3 +303,53 @@
 @media (max-width: 520px) {
   .taller-grid { grid-template-columns: 1fr; }
 }
+
+/* --- Card compacta del celular (cerrada): la de la app --------------------------------------------------- */
+.taller-card.is-compact { gap: 10px; padding: 12px; border-radius: 16px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06); }
+.taller-card.is-compact .taller-card__body { padding: 0; gap: 10px; }
+.taller-card__compact { display: flex; align-items: flex-start; gap: 4px; }
+.taller-card__compact-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.taller-card__compact-logo {
+  flex: 0 0 52px; width: 52px; height: 52px; display: grid; place-items: center; overflow: hidden;
+  border: 1px solid #d9e0e7; border-radius: 50%; background: #eaf2ff; color: #0056bf; font-size: 15px; font-weight: 700;
+}
+.taller-card__compact-logo img { width: 100%; height: 100%; object-fit: cover; }
+.taller-card__compact-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.taller-card__compact-name { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.taller-card__compact-name strong { min-width: 0; font-size: 17px; line-height: 22px; font-weight: 600; color: #243442; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.taller-card__compact-name svg { flex: 0 0 auto; color: #0056bf; }
+.taller-card__compact-meta { display: flex; flex-wrap: wrap; align-items: center; column-gap: 12px; row-gap: 2px; font-size: 13px; line-height: 18px; color: #5a6b7a; }
+.taller-card__compact-meta > span { display: inline-flex; align-items: center; gap: 3px; min-width: 0; }
+.taller-card__compact-meta .is-rating { color: #243442; }
+.taller-card__compact-meta .is-rating svg { color: #f59e0b; }
+.taller-card__compact-meta .is-rating em { font-style: normal; color: #5a6b7a; }
+.taller-card__compact-meta .is-where span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.taller-card__compact-meta .is-distance { color: #0056bf; font-weight: 700; }
+.taller-card__compact-meta .is-own { padding: 1px 8px; border-radius: 999px; background: #eaf2ff; color: #0056bf; font-size: 11px; font-weight: 700; }
+.taller-card__compact-actions { display: flex; align-items: center; gap: 4px; }
+.taller-card__icon-btn {
+  display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%;
+  background: #f3f5f7; color: #243442; cursor: pointer;
+}
+.taller-card__icon-btn.is-active { color: #d92d20; }
+.taller-card.is-compact .taller-card__facts { gap: 4px 16px; }
+.taller-card.is-compact .taller-card__facts li { font-size: 13px; line-height: 18px; color: #5a6b7a; }
+.taller-card.is-compact .taller-card__facts li.is-good { color: #0e7038; }
+.taller-card.is-compact .taller-card__summary-service span { color: #243442; }
+.taller-card.is-compact .taller-card__footer { flex-direction: row; align-items: center; gap: 8px; padding-top: 0; }
+.taller-card.is-compact .taller-card__quick { flex: 1; }
+.taller-card.is-compact .taller-card__pill { height: 38px; border-radius: 12px; font-size: 13px; font-weight: 800; }
+.taller-card.is-compact .taller-card__pill.is-book { background: #0056bf; }
+.taller-card.is-compact .taller-card__profile-btn {
+  flex: 1; width: auto; height: 38px; padding: 0 8px; border: 1px solid #bfd6f7; border-radius: 12px;
+  background: #eaf2ff; color: #0056bf; font-size: 12px; font-weight: 600;
+}
+.taller-card.is-compact .taller-card__profile-btn:hover { background: #dbe9fd; }
+.taller-card.is-compact .taller-card__quick:empty { display: none; }
+
+/* Celular: los mismos botones de la app (azul de marca y "Ver detalle" tonal) también con la card abierta. */
+@media (max-width: 767px) {
+  .taller-card__pill.is-book { background: #0056bf; }
+  .taller-card__profile-btn { border-color: #bfd6f7; background: #eaf2ff; color: #0056bf; border-radius: 12px; }
+  .taller-card__profile-btn:hover { background: #dbe9fd; }
+}

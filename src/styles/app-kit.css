@@ -1,0 +1,156 @@
+/* ===========================================================================
+   KIT VISUAL DE LA APP PARA EL MARKET MÓVIL
+   Tokens y piezas copiados de `mobile/theme/*` y `mobile/components/ui/*` (rediseño de la app, sept-oct 2026):
+   un azul, tres radios (8/12/16), dos sombras, chips de 36 px y controles de 44-48 px.
+   Las vistas móviles (Búsqueda de repuestos, Talleres, Catálogo) lo usan en lugar de valores sueltos.
+   =========================================================================== */
+
+:root {
+  --ak-primary: #0056bf;
+  --ak-primary-dark: #00459a;
+  --ak-primary-light: #eaf2ff;
+  --ak-primary-border: #bfd6f7;
+  --ak-primary-wash: #f5f9ff;
+  --ak-canvas: #f8fafc;
+  --ak-surface: #fff;
+  --ak-surface-muted: #f3f5f7;
+  --ak-border: #d9e0e7;
+  --ak-divider: #e6eaef;
+  --ak-text: #243442;
+  --ak-text-muted: #5a6b7a;
+  --ak-text-subtle: #8a97a5;
+  --ak-success-text: #0e7038;
+  --ak-success-bg: #eafbf1;
+  --ak-success-border: #bbf7d0;
+  --ak-warning-text: #9a5a00;
+  --ak-warning-bg: #fff7e6;
+  --ak-warning-border: #fde3a7;
+  --ak-error-text: #b42318;
+  --ak-ink: #0f172a;
+  --ak-radius-sm: 8px;
+  --ak-radius-md: 12px;
+  --ak-radius-lg: 16px;
+  --ak-shadow-card: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --ak-shadow-floating: 0 6px 16px rgba(15, 23, 42, 0.18);
+}
+
+/* ---------------------------------------------------------------- SectionHero */
+.ak-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 116px;
+  overflow: hidden;
+  border-radius: var(--ak-radius-lg);
+  background: linear-gradient(135deg, var(--ak-hero-from) 0%, var(--ak-hero-via) 55%, var(--ak-hero-to) 100%);
+  color: #fff;
+}
+.ak-hero::before,
+.ak-hero::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+.ak-hero::before { width: 140px; height: 140px; right: -24px; top: -38px; }
+.ak-hero::after { width: 116px; height: 116px; right: 70px; bottom: -70px; background: rgba(255, 255, 255, 0.07); }
+.ak-hero-copy {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 4px 12px 16px;
+}
+.ak-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+.ak-hero-eyebrow svg { width: 12px; height: 12px; }
+.ak-hero h1 { margin: 0; color: #fff; font-size: 19px; line-height: 23px; font-weight: 700; letter-spacing: -0.2px; }
+.ak-hero p { margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 12.5px; line-height: 17px; font-weight: 400; }
+.ak-hero-art {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 108px;
+  width: 108px;
+  height: 116px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ak-hero-chip {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.ak-hero-chip svg { width: 11px; height: 11px; }
+.ak-hero-halo { position: absolute; width: 92px; height: 92px; border-radius: 50%; background: rgba(255, 255, 255, 0.14); }
+.ak-hero-disc {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.22);
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  color: #fff;
+}
+.ak-hero-disc svg { width: 34px; height: 34px; }
+.ak-hero-lens {
+  position: absolute;
+  right: 20px;
+  bottom: 22px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+}
+.ak-hero-lens svg { width: 22px; height: 22px; }
+.ak-hero-chip.is-top { top: 14px; right: 4px; }
+.ak-hero-chip.is-bottom { bottom: 12px; left: 0; }
+/* Botón circular de la esquina (Mis citas / Mi taller), como en la app. */
+.ak-hero-corner {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 8px;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  cursor: pointer;
+}

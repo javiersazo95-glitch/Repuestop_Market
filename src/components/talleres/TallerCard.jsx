@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import {
   MapPin, MessageCircle, Phone, Calendar, ShieldCheck, ArrowRight, Heart, Navigation,
-  AlarmClock, Home, Clock, UserCheck, CheckCircle2, ChevronDown, ChevronUp, Wrench
+  AlarmClock, Home, Clock, UserCheck, CheckCircle2, ChevronDown, ChevronUp, Wrench, Star
 } from 'lucide-react';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import { getCategoryIcon } from './categoryIcons';
 import { useTallerOwnership } from './useTallerOwnership';
@@ -47,6 +48,10 @@ export default function TallerCard({
 }) {
   const [blockNotice, setBlockNotice] = useState(null);
   const [expanded, setExpanded] = useState(false);
+  // Celular: la card cerrada es la compacta de la app (logo redondo, nombre, calificación y un resumen); la portada
+  // y el resto solo aparecen con "Ver detalle".
+  const isMobile = useIsMobile();
+  const compact = isMobile && !expanded;
   const { isOwn, blockIfOwnTaller } = useTallerOwnership();
   const isOwnCard = isOwn(taller);
   const canBook = canBookTaller(taller);
@@ -113,8 +118,62 @@ export default function TallerCard({
   const handleBooking = () => guard('booking', () => onOpenBooking?.(taller));
 
   return (
-    <article className={`taller-card ${isOwnCard ? 'is-own' : ''}`} id={`taller-${taller.id}`}>
-      <button
+    <article className={`taller-card ${isOwnCard ? 'is-own' : ''} ${compact ? 'is-compact' : ''}`} id={`taller-${taller.id}`}>
+      {compact && (
+        <div className="taller-card__compact">
+          <button
+            type="button"
+            className="taller-card__compact-main"
+            onClick={() => setExpanded(true)}
+            aria-label={`${taller.name}. Ver detalle`}
+          >
+            <span className={`taller-card__compact-logo ${taller.logo ? 'has-logo' : ''}`} aria-hidden="true">
+              {taller.logo
+                ? <img src={taller.logo} alt="" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
+                : initials}
+            </span>
+            <span className="taller-card__compact-copy">
+              <span className="taller-card__compact-name">
+                <strong>{taller.name}</strong>
+                <ShieldCheck size={14} aria-label="Taller verificado" />
+              </span>
+              <span className="taller-card__compact-meta">
+                {taller.reviewsCount > 0 && (
+                  <span className="is-rating" aria-label={`Calificación ${taller.rating.toFixed(1)} de 5, ${taller.reviewsCount} opiniones`}>
+                    <Star size={13} fill="currentColor" /> <b>{taller.rating.toFixed(1).replace('.', ',')}</b> <em>({taller.reviewsCount})</em>
+                  </span>
+                )}
+                <span className="is-where"><MapPin size={13} aria-hidden="true" /><span>{[taller.commune, taller.region && taller.region !== taller.commune ? taller.region : null].filter(Boolean).join(', ') || 'Chile'}</span></span>
+                {distanceKm != null && <span className="is-distance"><Navigation size={12} aria-hidden="true" /> {formatDistanceKm(distanceKm)}</span>}
+                {isOwnCard && <span className="is-own">Tu taller</span>}
+              </span>
+            </span>
+          </button>
+          <div className="taller-card__compact-actions">
+            {onToggleFavorite && !isOwnCard && (
+              <button
+                type="button"
+                className={`taller-card__icon-btn ${isFavorite ? 'is-active' : ''}`}
+                onClick={() => onToggleFavorite(taller)}
+                aria-label={isFavorite ? 'Quitar taller de favoritos' : 'Guardar taller en favoritos'}
+                aria-pressed={isFavorite}
+              >
+                <Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} />
+              </button>
+            )}
+            {!isOwnCard && (
+              <ContextualReportButton
+                tipoObjeto="TALLER"
+                objetoId={taller.id}
+                objetoTitulo={taller.name}
+                className="taller-card__icon-btn"
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {!compact && <button
         type="button"
         className={`taller-card__media ${cover ? '' : 'is-empty'}`}
         onClick={() => onOpenProfile?.(taller)}
@@ -131,15 +190,15 @@ export default function TallerCard({
             <Navigation size={11} /> {formatDistanceKm(distanceKm)}
           </span>
         )}
-      </button>
+      </button>}
 
-      <span className={`taller-card__logo ${taller.logo ? 'has-logo' : ''}`} aria-hidden="true">
+      {!compact && <span className={`taller-card__logo ${taller.logo ? 'has-logo' : ''}`} aria-hidden="true">
         {taller.logo
           ? <img src={taller.logo} alt="" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
           : initials}
-      </span>
+      </span>}
 
-      {onToggleFavorite && !isOwnCard && (
+      {!compact && onToggleFavorite && !isOwnCard && (
         <button
           type="button"
           className={`taller-card__fav ${isFavorite ? 'is-active' : ''}`}
@@ -151,7 +210,7 @@ export default function TallerCard({
         </button>
       )}
 
-      {!isOwnCard && (
+      {!compact && !isOwnCard && (
         <ContextualReportButton
           tipoObjeto="TALLER"
           objetoId={taller.id}
@@ -161,14 +220,18 @@ export default function TallerCard({
       )}
 
       <div className="taller-card__body">
-        <button type="button" className="taller-card__title" onClick={() => onOpenProfile?.(taller)}>
-          <h3>{taller.name}</h3>
-        </button>
+        {!compact && (
+          <>
+            <button type="button" className="taller-card__title" onClick={() => onOpenProfile?.(taller)}>
+              <h3>{taller.name}</h3>
+            </button>
 
-        <p className="taller-card__where">
-          <MapPin size={13} aria-hidden="true" />
-          <span>{[taller.commune, taller.region && taller.region !== taller.commune ? taller.region : null].filter(Boolean).join(', ') || 'Chile'}</span>
-        </p>
+            <p className="taller-card__where">
+              <MapPin size={13} aria-hidden="true" />
+              <span>{[taller.commune, taller.region && taller.region !== taller.commune ? taller.region : null].filter(Boolean).join(', ') || 'Chile'}</span>
+            </p>
+          </>
+        )}
 
         {!expanded && (
           <ul className="taller-card__facts">
@@ -277,12 +340,12 @@ export default function TallerCard({
                 <Calendar size={13} /> Agendar
               </button>
             )}
-            {canWhatsapp && (
+            {!compact && canWhatsapp && (
               <button type="button" className="taller-card__pill is-wsp" onClick={handleWhatsApp}>
                 <MessageCircle size={13} /> WhatsApp
               </button>
             )}
-            {taller.phone && (
+            {!compact && taller.phone && (
               <button type="button" className="taller-card__pill is-phone" onClick={handlePhone}>
                 <Phone size={13} /> Llamar
               </button>
