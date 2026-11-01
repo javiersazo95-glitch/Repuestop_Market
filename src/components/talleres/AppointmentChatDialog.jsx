@@ -117,10 +117,17 @@ export default function AppointmentChatDialog({ appointment, sessionUserId, onCl
         {closed ? (
           <div className="appointment-chat-closed"><Lock size={15} /> El chat terminó junto con la cita.</div>
         ) : (
+          <>
           <form className="appointment-chat-form" onSubmit={submit}>
             <textarea
               value={text}
               onChange={(event) => setText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }}
               placeholder="Escribe un mensaje…"
               maxLength={2000}
               rows={2}
@@ -130,6 +137,8 @@ export default function AppointmentChatDialog({ appointment, sessionUserId, onCl
               {sending ? <Loader2 className="spin-icon" size={18} /> : <Send size={18} />}
             </button>
           </form>
+          <p className="appointment-chat-hint">Enter envía · Shift+Enter agrega una línea</p>
+          </>
         )}
       </section>
     </div>,

@@ -690,7 +690,7 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
               </div>
               {(confirmedAppointment?.workshopPhone || confirmedAppointment?.workshopWhatsapp) && (
                 <div className="bk-contact">
-                  <p>Ya agendaste: puedes coordinar directo con el taller.</p>
+                  <p>Mientras el taller responde, escríbele desde <strong>Mis citas</strong> o contáctalo directo.</p>
                   <div>
                     {confirmedAppointment.workshopPhone && (
                       <a className="bk-outline" href={`tel:${confirmedAppointment.workshopPhone.replace(/\s+/g, '')}`}><Phone size={17} /> Llamar</a>

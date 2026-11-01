@@ -35,8 +35,8 @@ const formatPrice = (service) => (
 );
 
 const HOW_IT_WORKS = [
-  'Elige el servicio que necesitas.',
   'Escoge el día y la hora disponibles.',
+  'Indica tu vehículo y confirma tus datos.',
   'El taller confirma tu cita y te avisamos.',
 ];
 
