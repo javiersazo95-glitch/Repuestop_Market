@@ -791,6 +791,12 @@ export function adaptAppointment(dto) {
     createdAt: dto.createdAt || null,
     chatAvailable: dto.chatAvailable !== false,
     // Mensajes del chat de la cita que escribió la otra parte y aún no se leen.
+    // Resultado de la cita (lo registra el taller): el cliente lo recibe en `result` solo después de evaluar al taller.
+    // El taller puede finalizar la cita en curso antes de la hora y registrar el resultado.
+    canFinish: dto.canFinish === true,
+    resultPending: dto.resultPending === true,
+    resultAvailable: dto.resultAvailable === true,
+    result: dto.result ? { outcome: dto.result.outcome, detail: dto.result.detail || '', finalCost: dto.result.finalCost ?? null, registeredAt: dto.result.registeredAt || null } : null,
     unreadMessages: Number.isFinite(Number(dto.unreadMessages)) ? Math.max(0, Number(dto.unreadMessages)) : 0,
     // Nota (1 a 5) que el cliente le dio al taller por esta cita; null si aun no califica.
     tallerRating: Number.isFinite(Number(dto.tallerRating)) && Number(dto.tallerRating) > 0 ? Number(dto.tallerRating) : null,

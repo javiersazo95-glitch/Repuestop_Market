@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, CalendarClock, CalendarDays, Check, XCircle, Loader2, AlertTriangle,
-  Phone, Mail, Car, StickyNote, RotateCcw, Wrench, Clock, Settings, Home, Lock, MessageCircle, Star } from 'lucide-react';
+  Phone, Mail, Car, StickyNote, RotateCcw, Wrench, Clock, Settings, Home, Lock, MessageCircle, Star, Flag } from 'lucide-react';
 import { confirmWhatsappContact } from '../../utils/whatsappContact';
 import {
   formatAgendaDateLong, getTimeUntilLabel, parseIsoDate, toIsoDate
@@ -15,6 +15,7 @@ import {
 import AppointmentReasonDialog from './AppointmentReasonDialog';
 import { updateAppointmentStatus, rateAppointmentWorkshop } from '../../services/talleresStorage';
 import WorkshopRatingDialog from './WorkshopRatingDialog';
+import AppointmentResultToggle from './AppointmentResult';
 import { apiErrorMessage } from '../../services/walletStorage';
 import AppointmentsCalendarModal from './AppointmentsCalendarModal';
 import PrincipalAgendaCard from './PrincipalAgendaCard';
@@ -56,6 +57,8 @@ export default function AppointmentsHistoryModal({
   const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'cancelled' | 'past'
   const [reasonTarget, setReasonTarget] = useState(null); // { kind, appointment }
   const [rateTarget, setRateTarget] = useState(null); // cita a calificar
+  // "Finalizar cita": despliega el resultado de esa cita para registrarlo sin esperar a que termine el bloque.
+  const [finishSignals, setFinishSignals] = useState({});
   const [chatTarget, setChatTarget] = useState(null);
   const [givenRatings, setGivenRatings] = useState({}); // { [citaId]: estrellas } recien dadas
   // Cada minuto se reevalúa qué citas siguen vigentes: contadores y secciones se mueven solos.
@@ -191,6 +194,8 @@ export default function AppointmentsHistoryModal({
     const isCurrent = meta.state === 'pending' || meta.state === 'accepted';
     const isBusy = busyId === appointment.id;
     const canRespond = isReceived && meta.state === 'pending';
+    // Cita en curso: el taller puede terminarla antes de la hora y registrar el resultado de una vez.
+    const canFinish = isReceived && Boolean(appointment.canFinish);
     // Dentro de las 24 horas previas una cita confirmada queda fija para ambos (13-oct).
     const changeLocked = isAppointmentChangeLocked(appointment, now);
     const changeNote = isCurrent ? appointmentChangeNote(appointment, isReceived, changeLocked) : null;
@@ -287,7 +292,7 @@ export default function AppointmentsHistoryModal({
           )}
         </div>
 
-        {(canChat || canRespond || canCancel || canProviderCancel || canBookAgain || canRate) && (
+        {(canChat || canFinish || canRespond || canCancel || canProviderCancel || canBookAgain || canRate) && (
           <div className="agenda-appointment-actions">
             {canChat && (
               <button
@@ -309,6 +314,11 @@ export default function AppointmentsHistoryModal({
                 <Star size={14} /> <span>Calificar taller</span>
               </button>
             ))}
+            {canFinish && (
+              <button type="button" className="btn-agenda-accept" onClick={() => setFinishSignals((current) => ({ ...current, [appointment.id]: Date.now() }))}>
+                <Flag size={14} /> Finalizar cita
+              </button>
+            )}
             {canProviderCancel && (
               <button
                 type="button"
@@ -373,6 +383,8 @@ export default function AppointmentsHistoryModal({
             )}
           </div>
         )}
+        {/* Resultado de la cita: el taller lo registra aquí (o en el aviso al entrar); el cliente lo ve tras evaluar. */}
+        <AppointmentResultToggle appointment={appointment} asProvider={isReceived} onEvaluate={() => setRateTarget(appointment)} openSignal={finishSignals[appointment.id]} />
       </div>
     );
   };
@@ -563,6 +575,7 @@ export default function AppointmentsHistoryModal({
       {rateTarget && (
         <WorkshopRatingDialog
           workshopName={rateTarget.tallerName || 'Taller'}
+          requireComment={Boolean(rateTarget.resultAvailable)}
           onSubmit={async (stars, comment) => {
             try {
               await rateAppointmentWorkshop(rateTarget.id, stars, comment);

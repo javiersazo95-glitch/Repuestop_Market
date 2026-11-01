@@ -7,6 +7,7 @@ import AppRoutes from './routes/AppRoutes';
 import TermsReacceptanceModal from './components/TermsReacceptanceModal';
 import SellerAdhesionModal from './components/SellerAdhesionModal';
 import DeclaracionIvaPrompt from './components/DeclaracionIvaPrompt';
+import PendingResultsPrompt from './components/talleres/PendingResultsPrompt';
 import SystemErrorPage from './components/SystemErrorPage';
 import CookieConsentBanner from './components/CookieConsentBanner';
 import MobileAppNotice from './components/MobileAppNotice';
@@ -85,6 +86,8 @@ export default function App() {
                 <Feature flag="market.global.modal-reaceptacion-terminos"><TermsReacceptanceModal /></Feature>
                 <Feature flag="market.global.modal-adhesion-vendedor"><SellerAdhesionModal /></Feature>
                 <Feature flag="market.global.prompt-declaracion-iva"><DeclaracionIvaPrompt /></Feature>
+                {/* Taller con citas terminadas sin resultado: aviso al centro, también en el perfil (fuera de AppLayout). */}
+                <PendingResultsPrompt />
                 <Feature flag="market.global.cookie-banner"><CookieConsentBanner /></Feature>
               </MarketplaceProvider>
             </AuthProvider>
