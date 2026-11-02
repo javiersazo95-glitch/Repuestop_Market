@@ -16,6 +16,8 @@ import FallaTrackingDetail, { DiagnosticoTrackingDetail } from '../tracking/Fall
 import { fallaNews, newOffersCount } from '../../utils/trackingNews';
 import { useTrackingSeen } from '../../hooks/useTrackingSeen';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import usePagedList from '../../hooks/usePagedList';
+import ListPager from '../ListPager';
 import { MAX_SEARCH_LENGTH } from '../../utils/inputLimits';
 import '../../styles/faults.css';
 
@@ -280,6 +282,13 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
         : new Date(b.createdAt) - new Date(a.createdAt));
   }, [source, query, brand, model, yearFrom, yearTo, locationMode, place, selectedTypes, sort, userComuna, userRegion, onlyMyComuna, myComuna]);
 
+  // El mural público va de a 12 (como las búsquedas de repuestos); mis fallas y las comentadas, de a 10.
+  const { pageItems, pagerProps } = usePagedList(
+    items,
+    JSON.stringify([view, query, brand, model, yearFrom, yearTo, locationMode, place, selectedTypes, sort, onlyMyComuna]),
+    view === 'OPEN' ? 12 : 10
+  );
+
   useEffect(() => {
     if (!onMetricsChange) return;
     onMetricsChange({
@@ -314,7 +323,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   const results = loading ? <div className="ft-empty"><Loader2 size={20} className="spin-icon" /> Cargando fallas…</div>
     : error ? <div className="ft-empty" role="alert"><AlertCircle size={20} /><strong>No pudimos cargar las fallas</strong>{error}<br /><button type="button" className="ft-btn ft-btn-outline" onClick={load}>Reintentar</button></div>
       : items.length === 0 ? <div className="ft-empty"><Wrench size={22} /><strong>{empty[0]}</strong>{empty[1]}</div>
-        : <div className="ft-fault-list">{items.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} tracking={isMobile && ((!isWorkshop && view === 'MINE') || (isWorkshop && view === 'COMMENTED')) ? { seen, markSeen, onChanged: () => load(), workshopUserId: isWorkshop ? (user?.userId ?? user?.id) : null } : null} />)}</div>;
+        : <><div className="ft-fault-list">{pageItems.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} tracking={isMobile && ((!isWorkshop && view === 'MINE') || (isWorkshop && view === 'COMMENTED')) ? { seen, markSeen, onChanged: () => load(), workshopUserId: isWorkshop ? (user?.userId ?? user?.id) : null } : null} />)}</div><ListPager pagerProps={pagerProps} itemLabel="fallas" /></>;
 
   if (!heading && !mineOnly) {
     return (

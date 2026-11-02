@@ -247,7 +247,7 @@ export default function ProfileAuctionsPanel() {
     });
   }, [rows, filter, search]);
 
-  const { pageItems, pagerProps } = usePagedList(visibleRows, JSON.stringify([filter, search]));
+  const { pageItems, pagerProps } = usePagedList(visibleRows, JSON.stringify([filter, search]), 10);
 
   const openEdit = async (auction) => {
     setEditBusyId(auction.id);

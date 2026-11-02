@@ -105,7 +105,26 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 }
 .taller-card__fav.is-active { color: #e11d48; }
-.taller-card__report { position: absolute !important; top: 50px; right: 10px; z-index: 3; }
+/* Mismo círculo que el corazón, debajo de él: sobre la foto la etiqueta transparente no se leía. El texto
+   queda solo para lectores de pantalla (aria-label y title del botón). */
+.taller-card__report {
+  position: absolute !important;
+  top: 52px;
+  right: 10px;
+  z-index: 3;
+  display: grid !important;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  color: #475569 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.taller-card__report span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.taller-card__report:hover { color: #c2333d !important; background: #fff !important; }
 
 .taller-card__body {
   display: flex;

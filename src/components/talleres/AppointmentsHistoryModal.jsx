@@ -20,6 +20,8 @@ import { apiErrorMessage } from '../../services/walletStorage';
 import AppointmentsCalendarModal from './AppointmentsCalendarModal';
 import PrincipalAgendaCard from './PrincipalAgendaCard';
 import AppointmentChatDialog from './AppointmentChatDialog';
+import ListPager from '../ListPager';
+import usePagedList from '../../hooks/usePagedList';
 
 /**
  * Gestión de citas en una sola vista: las reservas que la cuenta pidió en otros
@@ -176,6 +178,8 @@ export default function AppointmentsHistoryModal({
     (appointment) => historyFilter === 'all' || appointmentVisualState(appointment, now) === historyFilter
   );
   const list = showHistory ? pastList : groups.upcoming;
+  // Lo vigente se muestra completo (es lo que hay que atender); el historial crece sin fin, así que va de a 20.
+  const { pageItems: pastPage, pagerProps: pastPager } = usePagedList(pastList, JSON.stringify([segment, historyFilter]), 20);
   const todayIso = toIsoDate(now);
 
   // Lo vigente, en el orden en que hay que mirarlo: primero lo que espera respuesta del taller,
@@ -527,7 +531,8 @@ export default function AppointmentsHistoryModal({
             </div>
           ) : showHistory ? (
             <div className="agenda-appointments-list">
-              {list.map(renderCard)}
+              {pastPage.map(renderCard)}
+              <ListPager pagerProps={pastPager} itemLabel="citas" />
             </div>
           ) : (
             <div className="agenda-appointments-list">
