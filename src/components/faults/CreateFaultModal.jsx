@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, Camera, CheckCircle2, CircleHelp, Loader2, Trash2, X } from 'lucide-react';
+import { AlertCircle, Camera, CheckCircle2, CircleHelp, Loader2, MapPin, Trash2, X } from 'lucide-react';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import { createFault, getFaultCategories, updateFault, uploadFaultPhoto } from '../../services/faultApi';
 import { resolveMediaUrl } from '../../services/api';
@@ -19,6 +19,11 @@ import '../../styles/faults.css';
 const TITLE_MAX = 160;
 const DESCRIPTION_MAX = 2000;
 const BEFORE_MAX = 1000;
+/**
+ * Formulario corto (2-nov): solo lo imprescindible (vehículo, qué pasa con una foto, si se mueve y dónde está). El resto de los campos
+ * sigue en el código, apagado, con valores por defecto, para ir sumándolos de a poco. Al editar se conservan los valores ya guardados.
+ */
+const SHOW_ADVANCED_FIELDS = false;
 const nameOf = (item) => item?.nombre || item?.name || '';
 
 /** Seccion numerada del formulario: titulo y una linea que explica que se pide ahi. */
@@ -90,7 +95,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   const [categoryCatalog, setCategoryCatalog] = useState(FAULT_CATEGORIES);
   const [symptoms, setSymptoms] = useState([]);
   const [customSymptom, setCustomSymptom] = useState('');
-  const [canMove, setCanMove] = useState(null);
+  const [canMove, setCanMove] = useState(true);
   const [priority, setPriority] = useState('MEDIA');
   // Region y comuna se eligen del catalogo (`/geografia`) y viajan como nombre, igual que antes: el filtro "Mi comuna"
   // del mural compara nombres y con texto libre ("Nunoa", "nuñoa") no calzaban.
@@ -103,15 +108,24 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   const [extraRegions, setExtraRegions] = useState([]);
   const [communes, setCommunes] = useState([]);
   // Recogida: null = sin responder (obligatorio), true/false = elegido. Con coordenadas el mapa del taller ubica al cliente.
-  const [needsPickup, setNeedsPickup] = useState(null);
+  const [needsPickup, setNeedsPickup] = useState(false);
   const [pickupAddress, setPickupAddress] = useState('');
   const [pickupCoords, setPickupCoords] = useState(null);
   const [vehiclePhoto, setVehiclePhoto] = useState('');
   const [photos, setPhotos] = useState([]);
+  const [editLocation, setEditLocation] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const lastPlate = useRef('');
+  // Un solo grupo de fotos para el usuario: la primera hace de portada (con el formulario corto no hay una foto aparte del vehículo).
+  const evidencePhotos = SHOW_ADVANCED_FIELDS ? photos : [vehiclePhoto, ...photos].filter(Boolean);
+  const removePhoto = (photo) => {
+    if (!SHOW_ADVANCED_FIELDS && photo === vehiclePhoto) setVehiclePhoto('');
+    else setPhotos((current) => current.filter((item) => item !== photo));
+  };
+  // Recogida: solo se pregunta si el vehículo no se puede mover (o si la falla que se edita ya la tenía).
+  const showPickup = SHOW_ADVANCED_FIELDS || canMove === false || (isEditing && needsPickup === true);
 
   useEffect(() => {
     if (!isOpen || !fault) return;
@@ -300,7 +314,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   const addPhoto = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file || photos.length >= MAX_EVIDENCE_PHOTOS) return;
+    if (!file || evidencePhotos.length >= MAX_EVIDENCE_PHOTOS) return;
     const url = await uploadPhoto(file);
     if (url) setPhotos((current) => [...current, url]);
   };
@@ -311,15 +325,19 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     if (!isEditing && role !== 'BUYER') return setError('Solo los perfiles Comprador pueden registrar fallas automotrices.');
     if (!resolved?.marca || !resolved?.modelo) return setError('Indica tu vehículo con la patente o a mano.');
     const vehicle = resolved;
-    if (!vehiclePhoto) return setError('Agrega una foto del vehículo; será la imagen principal del aviso.');
+    if (SHOW_ADVANCED_FIELDS && !vehiclePhoto) return setError('Agrega una foto del vehículo; será la imagen principal del aviso.');
     if (!title.trim()) return setError('Resume la falla en una frase, por ejemplo "Ruido al frenar".');
     if (!description.trim()) return setError('Cuéntanos qué le pasó a tu vehículo.');
     if (symptoms.includes(OTHER_SYMPTOM) && !customSymptom.trim()) return setError('Escribe cuál es el otro síntoma.');
-    if (photos.length === 0) return setError('Agrega al menos una foto de evidencia de la falla.');
+    if (evidencePhotos.length === 0) return setError('Agrega una foto de la falla: ayuda mucho al diagnóstico.');
     if (!comuna.trim()) return setError('Elige tu región y tu comuna: los talleres cercanos son los más útiles.');
     if (scope === 'REGIONES' && extraRegions.length === 0) return setError('Elige al menos otra región, además de la del vehículo, o avisa solo a tu región.');
-    if (needsPickup === null) return setError('Indica si necesitas que el taller recoja tu vehículo.');
-    if (needsPickup && !pickupAddress.trim()) return setError('Indica la dirección donde el taller debe recoger tu vehículo.');
+    if (showPickup && needsPickup === null) return setError('Indica si necesitas que el taller recoja tu vehículo.');
+    if (showPickup && needsPickup && !pickupAddress.trim()) return setError('Indica la dirección donde el taller debe recoger tu vehículo.');
+    // Foto de portada y fotos extra, prioridad y recogida cuando el formulario corto no las pregunta.
+    const cover = SHOW_ADVANCED_FIELDS ? vehiclePhoto : (vehiclePhoto || photos[0]);
+    const extras = SHOW_ADVANCED_FIELDS || vehiclePhoto ? photos : photos.slice(1);
+    const autoPriority = SHOW_ADVANCED_FIELDS || isEditing ? priority : (canMove === false ? 'ALTA' : 'MEDIA');
     const year = vehicle.anio ? parseInt(vehicle.anio, 10) : null;
     if (year != null && (year < MIN_VEHICLE_YEAR || year > maxVehicleYear())) return setError(`Indica un año entre ${MIN_VEHICLE_YEAR} y ${maxVehicleYear()}.`);
     const km = parseInt(String(mileage).replace(/\D/g, ''), 10);
@@ -343,15 +361,15 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         antesDelFallo: before.trim() || null,
         sintomas: symptoms.map((symptom) => symptom === OTHER_SYMPTOM ? customSymptom.trim() : symptom),
         seMueve: canMove,
-        prioridad: priority,
+        prioridad: autoPriority,
         region: region.trim() || null,
         comuna: comuna.trim(),
-        fotoVehiculo: vehiclePhoto,
-        fotos: photos,
-        requiereRecogida: needsPickup === true,
-        direccionRecogida: needsPickup ? pickupAddress.trim() : null,
-        latitud: needsPickup && pickupCoords ? pickupCoords.latitud : null,
-        longitud: needsPickup && pickupCoords ? pickupCoords.longitud : null,
+        fotoVehiculo: cover,
+        fotos: extras,
+        requiereRecogida: showPickup && needsPickup === true,
+        direccionRecogida: showPickup && needsPickup ? pickupAddress.trim() : null,
+        latitud: showPickup && needsPickup && pickupCoords ? pickupCoords.latitud : null,
+        longitud: showPickup && needsPickup && pickupCoords ? pickupCoords.longitud : null,
         alcance: scope,
         regionesAviso: scope === 'REGIONES' ? extraRegions : null,
       };
@@ -372,9 +390,9 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
           <h2>{isEditing ? 'Editar falla' : 'Registrar falla'}</h2>
           <button type="button" className="ft-icon-btn" onClick={onClose} aria-label="Cerrar"><X size={20} /></button>
         </div>
-        <p className="ft-sub">{isEditing ? 'Actualiza la información de tu falla para que los talleres tengan los antecedentes correctos.' : 'Cuéntanos qué le pasó a tu vehículo antes del fallo. Los talleres acreditados te enviarán su diagnóstico y tú decides con cuál agendar.'}</p>
+        <p className="ft-sub">{isEditing ? 'Actualiza la información de tu falla para que los talleres tengan los antecedentes correctos.' : 'Cuéntanos qué le pasa a tu vehículo. Los talleres acreditados te enviarán su diagnóstico y tú decides con cuál agendar.'}</p>
 
-        <FormSection number={1} title="Tu vehículo" hint={resolved ? 'Verifica sus datos y agrega la foto que será la portada del aviso.' : 'Indícalo con la patente o ingrésalo a mano.'}>
+        <FormSection number={1} title="Tu vehículo" hint={resolved ? 'Verifica que los datos de tu vehículo estén correctos.' : 'Indícalo con la patente o ingrésalo a mano.'}>
         {resolved ? (
           <div className="ft-vehicle-card">
             <div className="ft-vehicle-head">
@@ -382,7 +400,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
               <button type="button" className="ft-link" onClick={changeVehicle}>{resolved.patente ? 'Cambiar patente' : 'Cambiar vehículo'}</button>
             </div>
             <dl>
-              {[['Patente', maskPlate(resolved.patente)], ['Marca', resolved.marca], ['Modelo', resolved.modelo], ['Año', resolved.anio], ['Versión', resolved.version], ['Combustible', resolved.combustible], ['Chasis', resolved.chasis]]
+              {[['Patente', maskPlate(resolved.patente)], ['Marca', resolved.marca], ['Modelo', resolved.modelo], ['Año', resolved.anio], ...(SHOW_ADVANCED_FIELDS ? [['Versión', resolved.version], ['Combustible', resolved.combustible], ['Chasis', resolved.chasis]] : [])]
                 .filter(([, value]) => value).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
             </dl>
           </div>
@@ -406,6 +424,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             ) : (
               <div className="hero-manual-form">
                 <div className="hero-manual-grid">
+                  {SHOW_ADVANCED_FIELDS && (
                   <div className="hero-manual-field">
                     <div className="field-label-with-tooltip">
                       <label>Patente (opcional)</label>
@@ -420,6 +439,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
                       <span className="plate-char-counter">{manualPlate.length}/8</span>
                     </div>
                   </div>
+                  )}
                   <div className="hero-manual-field">
                     <label>Marca</label>
                     <select className="hero-manual-select" value={brandId}
@@ -443,6 +463,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
                       {ANIOS_DISPONIBLES.map((year) => <option key={year} value={year}>{year}</option>)}
                     </select>
                   </div>
+                  {SHOW_ADVANCED_FIELDS && (<>
                   <div className="hero-manual-field">
                     <label>Versión</label>
                     <select className="hero-manual-select" value={manualVersion} disabled={!modelName || !manualYear} onChange={(e) => setManualVersion(e.target.value)}>
@@ -469,6 +490,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
                       onChange={(e) => setManualChassis(e.target.value.toUpperCase())} />
                     <span className="field-help-text">Permite a los talleres confirmar la compatibilidad técnica exacta del vehículo.</span>
                   </div>
+                  </>)}
                 </div>
                 {manualError && <p className="ft-error" role="alert"><AlertCircle size={15} /> {manualError}</p>}
                 <button type="button" className="btn-hero-manual-submit" disabled={!brandName || !modelName || !manualYear} onClick={useManualVehicle}>
@@ -479,7 +501,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
           </div>
         )}
 
-        {resolved && (<>
+        {resolved && SHOW_ADVANCED_FIELDS && (<>
         <label className="ft-field"><span>Kilometraje <small>Opcional</small></span><input inputMode="numeric" value={mileage} maxLength={7} placeholder="Ej: 85000" onChange={(e) => setMileage(e.target.value.replace(/\D/g, ''))} /></label>
 
         <div className="ft-field">
@@ -510,12 +532,33 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         </FormSection>
 
         {resolved && (<>
-        <FormSection number={2} title="Qué le pasa" hint="Cuéntalo con tus palabras; mientras más detalle, mejor el diagnóstico.">
+        <FormSection number={2} title="Qué le pasa" hint="Cuéntalo con tus palabras y suma una foto: así el diagnóstico es más preciso.">
         <label className="ft-field"><span>Título de la falla</span><input value={title} maxLength={TITLE_MAX} placeholder="Ej: Ruido metálico al frenar" onChange={(e) => setTitle(e.target.value)} /><CharCount value={title} max={TITLE_MAX} /></label>
         <label className="ft-field"><span>Qué pasó</span><textarea rows={4} value={description} maxLength={DESCRIPTION_MAX} placeholder="Describe lo que notas y cuándo ocurre" onChange={(e) => setDescription(e.target.value)} /><CharCount value={description} max={DESCRIPTION_MAX} /></label>
+        {SHOW_ADVANCED_FIELDS && (
         <label className="ft-field"><span>Qué pasaba antes del fallo <small>Opcional</small></span><textarea rows={3} value={before} maxLength={BEFORE_MAX} placeholder="Mantenciones recientes, golpes, luces encendidas…" onChange={(e) => setBefore(e.target.value)} /><CharCount value={before} max={BEFORE_MAX} /></label>
+        )}
+        <div className="ft-field">
+          <span>Foto de la falla <small>Obligatoria · {evidencePhotos.length}/{MAX_EVIDENCE_PHOTOS}</small></span>
+          <div className="ft-photos">
+            {evidencePhotos.map((photo) => (
+              <div key={photo} style={{ position: 'relative' }}>
+                <img src={resolveMediaUrl(photo)} alt="Foto de la falla" />
+                <button type="button" className="ft-icon-btn" style={{ position: 'absolute', top: 2, right: 2, background: '#fff', borderRadius: 6 }}
+                  onClick={() => removePhoto(photo)} aria-label="Quitar foto"><Trash2 size={14} /></button>
+              </div>
+            ))}
+            {evidencePhotos.length < MAX_EVIDENCE_PHOTOS && (
+              <label className="ft-btn ft-btn-outline" style={{ cursor: 'pointer' }}>
+                {uploading ? <Loader2 size={16} className="spin-icon" /> : <Camera size={16} />} {evidencePhotos.length === 0 ? 'Agregar foto' : 'Agregar otra foto'}
+                <input type="file" accept="image/*" hidden disabled={uploading} onChange={addPhoto} />
+              </label>
+            )}
+          </div>
+        </div>
         </FormSection>
 
+        {SHOW_ADVANCED_FIELDS && (
         <FormSection number={3} title="Clasifica la falla" hint="Opcional: ayuda a que lleguen los talleres indicados.">
         <div className="ft-field">
           <span>Posible categoría <small>Opcional</small></span>
@@ -557,8 +600,9 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
           )}
         </div>
         </FormSection>
+        )}
 
-        <FormSection number={4} title="Estado del vehículo" hint="Así el taller sabe qué tan urgente es y si necesita grúa.">
+        <FormSection number={3} title="Estado y ubicación" hint="Así el taller sabe si necesita grúa y qué talleres cercanos te sirven.">
         <div className="ft-field">
           <span>¿El vehículo se puede mover?</span>
           <div className="ft-chips">
@@ -566,66 +610,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             <button type="button" className={`ft-chip is-toggle ${canMove === false ? 'is-on' : ''}`} aria-pressed={canMove === false} onClick={() => setCanMove(canMove === false ? null : false)}>No, necesita grúa</button>
           </div>
         </div>
-        <div className="ft-field">
-          <span>Prioridad</span>
-          <div className="ft-chips">
-            {[['BAJA', 'Baja'], ['MEDIA', 'Media'], ['ALTA', 'Alta']].map(([value, label]) => (
-              <button key={value} type="button" className={`ft-chip is-toggle ${priority === value ? 'is-on' : ''}`} aria-pressed={priority === value} onClick={() => setPriority(value)}>{label}</button>
-            ))}
-          </div>
-        </div>
-        </FormSection>
-
-        <FormSection number={5} title="Dónde está" hint="Los talleres cercanos son los más útiles para ti.">
-        <div className="ft-row">
-          <label className="ft-field"><span>Región</span>
-            <select value={regionId} onChange={(e) => {
-              const picked = regions.find((item) => String(item.id) === e.target.value);
-              setRegionId(e.target.value); setRegion(picked?.nombre || ''); setComuna('');
-            }}>
-              <option value="">{regions.length ? 'Selecciona una región' : 'Cargando regiones…'}</option>
-              {regions.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
-            </select>
-          </label>
-          <label className="ft-field"><span>Comuna</span>
-            <select value={comuna} disabled={!regionId} onChange={(e) => setComuna(e.target.value)}>
-              <option value="">{regionId ? 'Selecciona una comuna' : 'Elige una región primero'}</option>
-              {/* Una falla antigua con una comuna escrita a mano que no esta en el catalogo la conserva. */}
-              {comuna && communes.length > 0 && !communes.some((item) => item.nombre === comuna) && <option value={comuna}>{comuna}</option>}
-              {communes.map((item) => <option key={item.id} value={item.nombre}>{item.nombre}</option>)}
-            </select>
-          </label>
-        </div>
-        {!isEditing && sameComuna(user?.comuna, comuna) && (
-          <small className="ft-hint">Tomamos tu región y comuna de tu perfil. Cámbialas si el vehículo está en otro lugar.</small>
-        )}
-
-        <div className="ft-field">
-          <span>¿A qué talleres avisamos?</span>
-          <small className="ft-hint">Solo los talleres de la zona que elijas reciben el aviso y el correo, y ven la falla en su mural. Así no le llega a un taller que está lejos.</small>
-          <div className="ft-chips">
-            {[['COMUNA', comuna ? `Solo ${comuna}` : 'Solo mi comuna'], ['REGION', 'Toda mi región'], ['REGIONES', 'Varias regiones']].map(([value, label]) => (
-              <button key={value} type="button" className={`ft-chip is-toggle is-pick ${scope === value ? 'is-on' : ''}`} aria-pressed={scope === value} onClick={() => setScope(value)}>{label}</button>
-            ))}
-          </div>
-          {scope === 'REGIONES' && (
-            <>
-              <small className="ft-hint">{region ? `${region} va siempre. Suma las regiones cercanas que quieras:` : 'Primero elige la región del vehículo. Luego suma las regiones cercanas:'}</small>
-              <div className="ft-chips">
-                {regions.filter((item) => !sameRegion(item.nombre, region)).map((item) => {
-                  const on = extraRegions.some((name) => sameRegion(name, item.nombre));
-                  return (
-                    <button key={item.id} type="button" className={`ft-chip is-toggle is-pick ${on ? 'is-on' : ''}`} aria-pressed={on}
-                      onClick={() => setExtraRegions((current) => (on ? current.filter((name) => !sameRegion(name, item.nombre)) : [...current, item.nombre]))}>
-                      {item.nombre}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-
+        {showPickup && (
         <div className="ft-field">
           <span>¿Necesitas que el taller recoja tu vehículo?</span>
           <div className="ft-chips">
@@ -654,27 +639,74 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             </>
           )}
         </div>
-        </FormSection>
-
-        <FormSection number={6} title="Evidencia" hint={`Agrega hasta ${MAX_EVIDENCE_PHOTOS} fotos del tablero, el motor o la pieza afectada.`}>
+        )}
+        {SHOW_ADVANCED_FIELDS && (
         <div className="ft-field">
-          <span>Fotos de la falla <small>{photos.length}/{MAX_EVIDENCE_PHOTOS}</small></span>
-          <div className="ft-photos">
-            {photos.map((photo) => (
-              <div key={photo} style={{ position: 'relative' }}>
-                <img src={resolveMediaUrl(photo)} alt="Foto de la falla" />
-                <button type="button" className="ft-icon-btn" style={{ position: 'absolute', top: 2, right: 2, background: '#fff', borderRadius: 6 }}
-                  onClick={() => setPhotos((current) => current.filter((p) => p !== photo))} aria-label="Quitar foto"><Trash2 size={14} /></button>
-              </div>
+          <span>Prioridad</span>
+          <div className="ft-chips">
+            {[['BAJA', 'Baja'], ['MEDIA', 'Media'], ['ALTA', 'Alta']].map(([value, label]) => (
+              <button key={value} type="button" className={`ft-chip is-toggle ${priority === value ? 'is-on' : ''}`} aria-pressed={priority === value} onClick={() => setPriority(value)}>{label}</button>
             ))}
-            {photos.length < MAX_EVIDENCE_PHOTOS && (
-              <label className="ft-btn ft-btn-outline" style={{ cursor: 'pointer' }}>
-                {uploading ? <Loader2 size={16} className="spin-icon" /> : <Camera size={16} />} Agregar foto
-                <input type="file" accept="image/*" hidden disabled={uploading} onChange={addPhoto} />
-              </label>
-            )}
           </div>
         </div>
+        )}
+        {!editLocation && comuna.trim() ? (
+          <div className="ft-location-line">
+            <MapPin size={15} aria-hidden="true" />
+            <span>Tu vehículo está en <strong>{comuna}{region ? `, ${region}` : ''}</strong></span>
+            <button type="button" className="ft-link" onClick={() => setEditLocation(true)}>Cambiar</button>
+          </div>
+        ) : (<>
+        <div className="ft-row">
+          <label className="ft-field"><span>Región</span>
+            <select value={regionId} onChange={(e) => {
+              const picked = regions.find((item) => String(item.id) === e.target.value);
+              setRegionId(e.target.value); setRegion(picked?.nombre || ''); setComuna('');
+            }}>
+              <option value="">{regions.length ? 'Selecciona una región' : 'Cargando regiones…'}</option>
+              {regions.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+            </select>
+          </label>
+          <label className="ft-field"><span>Comuna</span>
+            <select value={comuna} disabled={!regionId} onChange={(e) => setComuna(e.target.value)}>
+              <option value="">{regionId ? 'Selecciona una comuna' : 'Elige una región primero'}</option>
+              {/* Una falla antigua con una comuna escrita a mano que no esta en el catalogo la conserva. */}
+              {comuna && communes.length > 0 && !communes.some((item) => item.nombre === comuna) && <option value={comuna}>{comuna}</option>}
+              {communes.map((item) => <option key={item.id} value={item.nombre}>{item.nombre}</option>)}
+            </select>
+          </label>
+        </div>
+        {!isEditing && sameComuna(user?.comuna, comuna) && (
+          <small className="ft-hint">Tomamos tu región y comuna de tu perfil. Cámbialas si el vehículo está en otro lugar.</small>
+        )}
+        </>)}
+        {SHOW_ADVANCED_FIELDS && (
+        <div className="ft-field">
+          <span>¿A qué talleres avisamos?</span>
+          <small className="ft-hint">Solo los talleres de la zona que elijas reciben el aviso y el correo, y ven la falla en su mural. Así no le llega a un taller que está lejos.</small>
+          <div className="ft-chips">
+            {[['COMUNA', comuna ? `Solo ${comuna}` : 'Solo mi comuna'], ['REGION', 'Toda mi región'], ['REGIONES', 'Varias regiones']].map(([value, label]) => (
+              <button key={value} type="button" className={`ft-chip is-toggle is-pick ${scope === value ? 'is-on' : ''}`} aria-pressed={scope === value} onClick={() => setScope(value)}>{label}</button>
+            ))}
+          </div>
+          {scope === 'REGIONES' && (
+            <>
+              <small className="ft-hint">{region ? `${region} va siempre. Suma las regiones cercanas que quieras:` : 'Primero elige la región del vehículo. Luego suma las regiones cercanas:'}</small>
+              <div className="ft-chips">
+                {regions.filter((item) => !sameRegion(item.nombre, region)).map((item) => {
+                  const on = extraRegions.some((name) => sameRegion(name, item.nombre));
+                  return (
+                    <button key={item.id} type="button" className={`ft-chip is-toggle is-pick ${on ? 'is-on' : ''}`} aria-pressed={on}
+                      onClick={() => setExtraRegions((current) => (on ? current.filter((name) => !sameRegion(name, item.nombre)) : [...current, item.nombre]))}>
+                      {item.nombre}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+        )}
         </FormSection>
         </>)}
 
