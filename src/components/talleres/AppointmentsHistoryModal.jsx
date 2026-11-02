@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, CalendarClock, CalendarDays, Check, XCircle, Loader2, AlertTriangle,
-  Phone, Mail, Car, StickyNote, Stethoscope, ChevronRight, RotateCcw, Wrench, Clock, Settings, Home, Lock, MessageCircle, Star, Flag, MapPin } from 'lucide-react';
+  Phone, Mail, Car, StickyNote, CarFront, ChevronRight, ClipboardList, RotateCcw, Wrench, Clock, Settings, Home, Lock, MessageCircle, Star, Flag, MapPin } from 'lucide-react';
 import { confirmWhatsappContact } from '../../utils/whatsappContact';
 import {
   formatAgendaDateLong, getTimeUntilLabel, parseIsoDate, toIsoDate
@@ -15,7 +15,6 @@ import {
 import AppointmentReasonDialog from './AppointmentReasonDialog';
 import { updateAppointmentStatus, rateAppointmentWorkshop } from '../../services/talleresStorage';
 import WorkshopRatingDialog from './WorkshopRatingDialog';
-import AppointmentResultToggle from './AppointmentResult';
 import AppointmentDetailDialog from './AppointmentDetailDialog';
 import '../../styles/appointment-detail.css';
 import { apiErrorMessage } from '../../services/walletStorage';
@@ -63,7 +62,6 @@ export default function AppointmentsHistoryModal({
   const [detailId, setDetailId] = useState(null); // cita cuyo detalle y diagnóstico se ve
   const [rateTarget, setRateTarget] = useState(null); // cita a calificar
   // "Finalizar cita": despliega el resultado de esa cita para registrarlo sin esperar a que termine el bloque.
-  const [finishSignals, setFinishSignals] = useState({});
   const [chatTarget, setChatTarget] = useState(null);
   const [givenRatings, setGivenRatings] = useState({}); // { [citaId]: estrellas } recien dadas
   // Cada minuto se reevalúa qué citas siguen vigentes: contadores y secciones se mueven solos.
@@ -203,6 +201,9 @@ export default function AppointmentsHistoryModal({
     const canRespond = isReceived && meta.state === 'pending';
     // Cita en curso: el taller puede terminarla antes de la hora y registrar el resultado de una vez.
     const canFinish = isReceived && Boolean(appointment.canFinish);
+    // El taller ya dejó el diagnóstico (el cliente lo ve tras evaluar): solo entonces la tarjeta se abre y muestra el ícono.
+    const hasDiagnosis = Boolean(appointment.result || appointment.resultAvailable);
+    const canRegisterResult = isReceived && Boolean(appointment.resultPending) && !canFinish && !hasDiagnosis;
     // Dentro de las 24 horas previas una cita confirmada queda fija para ambos (13-oct).
     const changeLocked = isAppointmentChangeLocked(appointment, now);
     const changeNote = isCurrent ? appointmentChangeNote(appointment, isReceived, changeLocked) : null;
@@ -227,8 +228,8 @@ export default function AppointmentsHistoryModal({
       <div
         key={appointment.id}
         id={`appt-${appointment.id}`}
-        className={`agenda-appointment tone-${meta.tone} ${isFocused ? 'is-focused' : ''} ${isCurrent ? '' : 'is-selectable'}`}
-        {...(isCurrent ? {} : {
+        className={`agenda-appointment tone-${meta.tone} ${isFocused ? 'is-focused' : ''} ${hasDiagnosis ? 'is-selectable' : ''}`}
+        {...(!hasDiagnosis ? {} : {
           role: 'button',
           tabIndex: 0,
           'aria-label': `Ver el detalle y el diagnóstico de la cita del ${formatAgendaDateLong(appointment.date)}`,
@@ -250,9 +251,9 @@ export default function AppointmentsHistoryModal({
                 {getTimeUntilLabel(appointment.date, appointment.time)}
               </span>
             )}
-            {!isCurrent && (
+            {!isCurrent && hasDiagnosis && (
               <button type="button" className="agenda-appointment-diag" onClick={() => setDetailId(appointment.id)} aria-label="Ver diagnóstico y detalle de la cita">
-                <Stethoscope size={15} /> Ver diagnóstico <ChevronRight size={14} />
+                <CarFront size={16} /> Ver diagnóstico <ChevronRight size={14} />
               </button>
             )}
           </div>
@@ -314,7 +315,7 @@ export default function AppointmentsHistoryModal({
           )}
         </div>
 
-        {(canChat || canFinish || canRespond || canCancel || canProviderCancel || canBookAgain || canRate) && (
+        {(canChat || canFinish || canRegisterResult || canRespond || canCancel || canProviderCancel || canBookAgain || canRate) && (
           <div className="agenda-appointment-actions">
             {canChat && (
               <button
@@ -337,8 +338,13 @@ export default function AppointmentsHistoryModal({
               </button>
             ))}
             {canFinish && (
-              <button type="button" className="btn-agenda-accept" onClick={() => setFinishSignals((current) => ({ ...current, [appointment.id]: Date.now() }))}>
+              <button type="button" className="btn-agenda-accept" onClick={() => setDetailId(appointment.id)}>
                 <Flag size={14} /> Finalizar cita
+              </button>
+            )}
+            {canRegisterResult && (
+              <button type="button" className="btn-agenda-accept" onClick={() => setDetailId(appointment.id)}>
+                <ClipboardList size={14} /> Registrar resultado
               </button>
             )}
             {canProviderCancel && (
@@ -406,7 +412,6 @@ export default function AppointmentsHistoryModal({
           </div>
         )}
         {/* Resultado de la cita: el taller lo registra aquí (o en el aviso al entrar); el cliente lo ve tras evaluar. */}
-        <AppointmentResultToggle appointment={appointment} asProvider={isReceived} onEvaluate={() => setRateTarget(appointment)} openSignal={finishSignals[appointment.id]} />
       </div>
     );
   };

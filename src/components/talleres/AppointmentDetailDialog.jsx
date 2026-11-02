@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Ban, Building2, Calendar, Car, ClipboardList, FileText, Lock, Star, Stethoscope, User, X } from 'lucide-react';
+import { Ban, Building2, Calendar, Car, ClipboardList, FileText, Lock, Star, CarFront, User, X } from 'lucide-react';
 import { formatAgendaDateLong } from '../../data/agendaConfig';
 import { describeAppointment } from '../../utils/appointmentHistory';
 import { AppointmentResultDetail, AppointmentResultForm } from './AppointmentResult';
@@ -47,7 +47,7 @@ export default function AppointmentDetailDialog({ appointment, viewer, onClose, 
     <div className="apd-backdrop" role="dialog" aria-modal="true" aria-label="Detalle de la cita" onClick={onClose}>
       <div className={`apd tone-${meta.tone}`} onClick={(event) => event.stopPropagation()}>
         <header className="apd-head">
-          <span className="apd-head-icon"><Stethoscope size={22} /></span>
+          <span className="apd-head-icon"><CarFront size={24} /></span>
           <div>
             <small>Detalle de la cita</small>
             <h3>{asProvider ? appointment.customerName || 'Cliente' : appointment.tallerName || 'Taller'}</h3>
