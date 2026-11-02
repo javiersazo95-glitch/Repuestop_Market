@@ -120,6 +120,8 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   const lastPlate = useRef('');
   // Últimas patentes consultadas en este navegador: se ofrecen como atajo para no volver a escribirlas.
   const [recentPlates, setRecentPlates] = useState([]);
+  // Kilometraje de la última revisión técnica de la patente: se propone en el campo y sirve de mínimo (el odómetro no baja).
+  const [techReview, setTechReview] = useState(null);
   useEffect(() => { if (isOpen) setRecentPlates(getRecentPlates()); }, [isOpen]);
   // Un solo grupo de fotos para el usuario: la primera hace de portada (con el formulario corto no hay una foto aparte del vehículo).
   const evidencePhotos = photos;
@@ -247,6 +249,10 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         if (!data || !data.marca || !data.modelo) { setPlateStatus('notfound'); return; }
         setPlateStatus('found');
         addRecentPlate(normalized);
+        if (data.kilometraje > 0) {
+          setTechReview({ km: data.kilometraje, fecha: data.fechaRevisionTecnica });
+          setMileage((current) => (parseInt(current, 10) >= data.kilometraje ? current : String(data.kilometraje)));
+        } else setTechReview(null);
         setResolved({
           patente: normalized, marca: data.marca, modelo: data.modelo, anio: data.anio ? String(data.anio) : '',
           version: data.version || '', motor: data.motor || '',
@@ -303,6 +309,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   };
 
   const changeVehicle = () => {
+    setTechReview(null);
     setResolved(null);
     setPlate('');
     setPlateStatus('idle');
@@ -364,6 +371,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     const year = vehicle.anio ? parseInt(vehicle.anio, 10) : null;
     if (year != null && (year < MIN_VEHICLE_YEAR || year > maxVehicleYear())) return setError(`Indica un año entre ${MIN_VEHICLE_YEAR} y ${maxVehicleYear()}.`);
     const km = parseInt(String(mileage).replace(/\D/g, ''), 10);
+    if (techReview && Number.isFinite(km) && km < techReview.km) return setError(`El kilometraje no puede ser menor al de la última revisión técnica (${techReview.km.toLocaleString('es-CL')} km).`);
     if (Number.isFinite(km) && km > MAX_MILEAGE) return setError(`El kilometraje no puede superar ${MAX_MILEAGE.toLocaleString('es-CL')} km.`);
     setSaving(true);
     try {
@@ -533,9 +541,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         )}
 
         {resolved && (<>
-        {SHOW_ADVANCED_FIELDS && (
-        <label className="ft-field"><span>Kilometraje <small>Opcional</small></span><input inputMode="numeric" value={mileage} maxLength={7} placeholder="Ej: 85000" onChange={(e) => setMileage(e.target.value.replace(/\D/g, ''))} /></label>
-        )}
+        <label className="ft-field"><span>Kilometraje <small>Opcional</small></span><input inputMode="numeric" value={mileage} maxLength={7} placeholder="Ej: 85000" onChange={(e) => setMileage(e.target.value.replace(/\D/g, ''))} /><small>{techReview ? `Última revisión técnica${techReview.fecha ? ` (${techReview.fecha.slice(0, 7)})` : ''}: ${techReview.km.toLocaleString('es-CL')} km. Actualízalo si conoces el actual.` : ''}</small></label>
 
         <div className="ft-field">
           <span>Foto del vehículo <small>Una imagen · será la portada del aviso</small></span>

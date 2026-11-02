@@ -71,6 +71,9 @@ export async function lookupVehicleByPlate(plate, { searchVehicleByPatenteApi } 
     chasis: data.chasis || data.vin || '',
     combustible: data.tipoCombustible || data.combustible || undefined,
     transmision: data.transmision || data.transmission || undefined,
+    // Kilometraje y fecha de la última revisión técnica de la patente (0 y vacío si no se conocen).
+    kilometraje: Number(data.kilometraje) || 0,
+    fechaRevisionTecnica: data.fechaRevisionTecnica || '',
   };
 }
 
