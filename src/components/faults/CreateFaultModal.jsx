@@ -119,10 +119,10 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   const [error, setError] = useState('');
   const lastPlate = useRef('');
   // Un solo grupo de fotos para el usuario: la primera hace de portada (con el formulario corto no hay una foto aparte del vehículo).
-  const evidencePhotos = SHOW_ADVANCED_FIELDS ? photos : [vehiclePhoto, ...photos].filter(Boolean);
+  const evidencePhotos = photos;
+  const totalPhotos = photos.length + (vehiclePhoto ? 1 : 0);
   const removePhoto = (photo) => {
-    if (!SHOW_ADVANCED_FIELDS && photo === vehiclePhoto) setVehiclePhoto('');
-    else setPhotos((current) => current.filter((item) => item !== photo));
+    setPhotos((current) => current.filter((item) => item !== photo));
   };
   // Recogida: solo se pregunta si el vehículo no se puede mover (o si la falla que se edita ya la tenía).
   const showPickup = SHOW_ADVANCED_FIELDS || canMove === false || (isEditing && needsPickup === true);
@@ -329,14 +329,14 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     if (!title.trim()) return setError('Resume la falla en una frase, por ejemplo "Ruido al frenar".');
     if (!description.trim()) return setError('Cuéntanos qué le pasó a tu vehículo.');
     if (symptoms.includes(OTHER_SYMPTOM) && !customSymptom.trim()) return setError('Escribe cuál es el otro síntoma.');
-    if (evidencePhotos.length === 0) return setError('Agrega una foto de la falla: ayuda mucho al diagnóstico.');
+    if (totalPhotos === 0) return setError('Agrega una foto de la falla: ayuda mucho al diagnóstico.');
     if (!comuna.trim()) return setError('Elige tu región y tu comuna: los talleres cercanos son los más útiles.');
     if (scope === 'REGIONES' && extraRegions.length === 0) return setError('Elige al menos otra región, además de la del vehículo, o avisa solo a tu región.');
     if (showPickup && needsPickup === null) return setError('Indica si necesitas que el taller recoja tu vehículo.');
     if (showPickup && needsPickup && !pickupAddress.trim()) return setError('Indica la dirección donde el taller debe recoger tu vehículo.');
     // Foto de portada y fotos extra, prioridad y recogida cuando el formulario corto no las pregunta.
-    const cover = SHOW_ADVANCED_FIELDS ? vehiclePhoto : (vehiclePhoto || photos[0]);
-    const extras = SHOW_ADVANCED_FIELDS || vehiclePhoto ? photos : photos.slice(1);
+    const cover = vehiclePhoto || photos[0];
+    const extras = vehiclePhoto ? photos : photos.slice(1);
     const autoPriority = SHOW_ADVANCED_FIELDS || isEditing ? priority : (canMove === false ? 'ALTA' : 'MEDIA');
     const year = vehicle.anio ? parseInt(vehicle.anio, 10) : null;
     if (year != null && (year < MIN_VEHICLE_YEAR || year > maxVehicleYear())) return setError(`Indica un año entre ${MIN_VEHICLE_YEAR} y ${maxVehicleYear()}.`);
@@ -501,8 +501,10 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
           </div>
         )}
 
-        {resolved && SHOW_ADVANCED_FIELDS && (<>
+        {resolved && (<>
+        {SHOW_ADVANCED_FIELDS && (
         <label className="ft-field"><span>Kilometraje <small>Opcional</small></span><input inputMode="numeric" value={mileage} maxLength={7} placeholder="Ej: 85000" onChange={(e) => setMileage(e.target.value.replace(/\D/g, ''))} /></label>
+        )}
 
         <div className="ft-field">
           <span>Foto del vehículo <small>Una imagen · será la portada del aviso</small></span>
@@ -539,7 +541,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         <label className="ft-field"><span>Qué pasaba antes del fallo <small>Opcional</small></span><textarea rows={3} value={before} maxLength={BEFORE_MAX} placeholder="Mantenciones recientes, golpes, luces encendidas…" onChange={(e) => setBefore(e.target.value)} /><CharCount value={before} max={BEFORE_MAX} /></label>
         )}
         <div className="ft-field">
-          <span>Foto de la falla <small>Obligatoria · {evidencePhotos.length}/{MAX_EVIDENCE_PHOTOS}</small></span>
+          <span>Foto de la falla <small>{vehiclePhoto ? 'Opcional' : 'Obligatoria'} · {evidencePhotos.length}/{MAX_EVIDENCE_PHOTOS}</small></span>
           <div className="ft-photos">
             {evidencePhotos.map((photo) => (
               <div key={photo} style={{ position: 'relative' }}>
