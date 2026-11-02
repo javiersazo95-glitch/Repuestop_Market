@@ -81,7 +81,8 @@ const MENUS = {
   workshop: [
     ['Explorar', [
       t('Marketplace de repuestos', Cog, COLORS.catalog, { tab: 'repuestos' }),
-      t('Mis fallas', EngineIcon, COLORS.faults, { tab: 'fallas_taller' }),
+      t('Fallas automotrices', EngineIcon, COLORS.faults, { to: ROUTES.faults }),
+      t('Mis diagnósticos', EngineIcon, COLORS.faults, { tab: 'fallas_taller' }),
       t('Búsqueda de repuestos', Search, COLORS.search, { tab: 'subastas' }),
       t('Casas de repuestos', Store, COLORS.stores, { to: ROUTES.stores }),
     ]],

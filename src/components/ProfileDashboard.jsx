@@ -262,7 +262,8 @@ const WORKSHOP_SIDEBAR_GROUPS = [
     title: 'MI TALLER',
     flag: 'market.perfil.taller.mi-taller',
     items: [
-      { id: 'fallas_taller', label: 'Mis fallas', icon: EngineIcon },
+      { id: 'mural_fallas', label: 'Fallas automotrices', icon: EngineIcon, href: ROUTES.faults },
+      { id: 'fallas_taller', label: 'Mis diagnósticos', icon: EngineIcon },
       { id: 'diagnostico', label: 'Servicio de agendamiento', icon: CalendarClock },
       { id: 'mi_taller', label: 'Mi taller', icon: Wrench }
     ]
@@ -1356,7 +1357,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     }
     if (isWorkshop) {
       return [
-        { id: 'fallas', tone: 'amber', icon: EngineIcon, title: 'Fallas automotrices', description: 'Revisa las fallas de los clientes y deja tu diagnóstico.', onClick: () => setActiveTab('fallas_taller') },
+        { id: 'fallas', tone: 'amber', icon: EngineIcon, title: 'Fallas automotrices', description: 'Revisa las fallas de los clientes y deja tu diagnóstico.', onClick: () => navigate(ROUTES.faults) },
         { id: 'diagnostico', tone: 'purple', icon: CalendarClock, title: 'Servicio de agendamiento', description: 'Recibe citas en línea y ofrece agenda en tus comentarios. Gratis cada 10 búsquedas de repuestos.', onClick: () => setActiveTab('diagnostico') },
         { id: 'mi_taller', tone: 'sky', icon: Wrench, title: 'Mi taller', description: 'Tus servicios con precio, tu perfil y tus citas.', onClick: () => setActiveTab('mi_taller') },
         { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Mis cotizaciones', description: 'Pide cotizaciones de repuestos y sigue las respuestas de las tiendas.', onClick: () => setActiveTab('cotizaciones') },
