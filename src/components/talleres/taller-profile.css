@@ -36,38 +36,48 @@
 .taller-profile__chips .is-24h { background: #fff4e0; color: #b45309; }
 .taller-profile__chips .is-book { background: #e8f0fd; color: #0056bf; }
 
-.taller-services__list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
-.taller-services__list li {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 0;
-  border-top: 1px solid #edf1f5;
+/* Tabla de precios referenciales: el taller no cobra por agendar y el valor final lo confirma él, así que la tabla orienta. */
+.taller-services__note {
+  display: flex; align-items: flex-start; gap: 8px; margin: 0 0 12px !important; padding: 10px 12px;
+  border: 1px solid #bfd6f7; border-radius: 10px; background: #eaf2ff; font-size: 12.5px !important; line-height: 1.5; color: #243442 !important;
 }
-.taller-services__list li:first-child { border-top: none; }
+.taller-services__note svg { flex: 0 0 auto; margin-top: 2px; color: #0056bf; }
+.taller-services__note strong { color: #0056bf; }
+.taller-services__table { width: 100%; border-collapse: collapse; }
+.taller-services__table th {
+  padding: 0 0 8px; border-bottom: 2px solid #e2e8f0; font-size: 11.5px; font-weight: 800; letter-spacing: .04em;
+  text-align: left; text-transform: uppercase; color: #64748b;
+}
+.taller-services__table th.is-price, .taller-services__table td.is-price { text-align: right; white-space: nowrap; }
+.taller-services__table td { padding: 11px 0; border-bottom: 1px solid #edf1f5; vertical-align: middle; }
+.taller-services__table tbody tr:last-child td { border-bottom: none; padding-bottom: 2px; }
 .taller-services__name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.taller-services__name strong { font-size: 14.5px; color: #1e293b; }
-.taller-services__name small { font-size: 12px; color: #64748b; }
-.taller-services__price { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; }
-.taller-services__price em { font-style: normal; font-size: 12px; color: #64748b; }
-.taller-services__price strong { font-size: 16px; font-weight: 800; color: #0056bf; }
-.taller-services__book {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 7px 12px;
-  border: none;
-  border-radius: 999px;
-  background: #059669;
-  color: #fff;
-  font-size: 12.5px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.taller-services__book:hover { filter: brightness(0.95); }
+.taller-services__table td strong { font-size: 14.5px; color: #1e293b; }
+.taller-services__table td small { font-size: 12px; color: #64748b; }
+.taller-services__table td.is-price em { margin-right: 6px; font-style: normal; font-size: 12px; color: #64748b; }
+.taller-services__table td.is-price strong { font-size: 16px; font-weight: 800; color: #0056bf; }
 .taller-services__empty { margin: 0; color: #64748b; font-size: 14px; }
-.taller-services__note { display: flex; align-items: center; gap: 6px; margin: 12px 0 0; font-size: 12px; color: #64748b; }
+
+/* "Sobre el taller" por preguntas: dos columnas y subtítulos, sin una columna angosta con mucho blanco. */
+.taller-about { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
+.taller-about__block { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.taller-about__block.is-wide { grid-column: 1 / -1; }
+.taller-about__block h3 { margin: 0; font-size: 12.5px; font-weight: 800; letter-spacing: .02em; color: #0056bf; }
+.taller-about__block p { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0; font-size: 14px; line-height: 1.55; color: #243442; }
+.taller-about__block p svg { flex: 0 0 auto; color: #0056bf; }
+.taller-about__equipment { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px; }
+.taller-about__equipment li { display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; line-height: 1.45; color: #243442; }
+.taller-about__equipment svg { flex: 0 0 auto; margin-top: 2px; color: #0F9D58; }
+.taller-about__offers { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.taller-about__offers li { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+.taller-about__offers li > span { display: grid; place-items: center; flex: 0 0 30px; width: 30px; height: 30px; border-radius: 50%; background: #e8f0fd; color: #0056bf; }
+.taller-about__offers li > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.taller-about__offers strong { font-size: 13.5px; color: #1e293b; }
+.taller-about__offers small { font-size: 12.5px; line-height: 1.4; color: #64748b; }
+@media (max-width: 640px) {
+  .taller-about { grid-template-columns: minmax(0, 1fr); }
+  .taller-about__equipment { grid-template-columns: minmax(0, 1fr); }
+}
 
 .taller-profile__steps { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 0; padding: 12px 0 0; border-top: 1px solid #edf1f5; list-style: none; }
 .taller-profile__steps li { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: #475569; }
@@ -85,8 +95,6 @@
 }
 
 @media (max-width: 560px) {
-  .taller-services__list li { grid-template-columns: minmax(0, 1fr) auto; }
-  .taller-services__book { grid-column: 1 / -1; justify-content: center; }
   .taller-profile__logo { width: 52px; height: 52px; font-size: 18px; }
 }
 

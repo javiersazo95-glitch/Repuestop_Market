@@ -77,13 +77,22 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
 
   const facts = [
     { Icon: Clock, label: 'Horario', value: taller.is24Hours && taller.only24Hours ? 'Atención 24 horas, todos los días' : taller.hours },
-    { Icon: AlarmClock, label: 'Urgencias 24/7', value: taller.is24Hours && !taller.only24Hours ? 'Disponible, a toda hora' : null },
-    { Icon: Home, label: 'A domicilio', value: taller.homeService ? `Dentro de ${taller.commune || 'su comuna'}` : null },
-    { Icon: CalendarCheck, label: 'Agenda en línea', value: canBook ? 'Reserva tu hora aquí' : null },
     { Icon: Phone, label: 'Teléfono', value: taller.phone },
     { Icon: MessageCircle, label: 'WhatsApp', value: canWhatsapp ? 'Contacto directo disponible' : null },
     { Icon: Wrench, label: 'En RepuesTop desde', value: memberSince },
   ].filter((fact) => fact.value);
+
+  // Lo que el taller ofrece además de sus servicios y precios (lo que completa en Mi taller): se cuenta en "Sobre el taller"
+  // y ya no se repite en "Atención".
+  const offerings = [
+    taller.homeService && { Icon: Home, title: 'Servicio a domicilio', text: `Vamos donde está tu vehículo, dentro de ${taller.commune || 'nuestra comuna'}.` },
+    taller.is24Hours && {
+      Icon: AlarmClock,
+      title: taller.only24Hours ? 'Atención 24 horas' : 'Urgencias 24/7',
+      text: taller.services24h.length > 0 ? `A toda hora: ${taller.services24h.join(', ')}.` : 'Atendemos a toda hora, todos los días.'
+    },
+    canBook && { Icon: CalendarCheck, title: 'Agenda en línea gratis', text: 'Reserva tu hora sin costo, en el día y horario que te acomode.' }
+  ].filter(Boolean);
 
   const guard = (action, run) => {
     const blocked = blockIfOwnTaller(taller, action);
@@ -224,52 +233,92 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
             ) : null}
 
             {/* Presentacion: lo que el taller cuenta de si mismo. Mismo orden que Mi taller. */}
-            {taller.info && (
+            {(taller.info || offerings.length > 0) && (
               <section className="ad-detail-card ad-detail-desc">
                 <h2><FileText size={17} /> Sobre el taller</h2>
-                {taller.description && <p>{taller.description}</p>}
-                <div className="taller-profile__chips">
-                  {taller.info.yearsExperience != null && <span><Clock size={13} /> {taller.info.yearsExperience === 1 ? '1 año de experiencia' : `${taller.info.yearsExperience} años de experiencia`}</span>}
-                  {taller.info.warranty && <span><ShieldCheck size={13} /> {taller.info.warranty === 'Sin garantía' ? 'Sin garantía' : `Garantía de ${taller.info.warranty}`}</span>}
+                {/* Ordenado por preguntas: cada dato bajo su subtítulo, en dos columnas, sin bloques anchos en blanco. */}
+                <div className="taller-about">
+                  {taller.description && (
+                    <div className="taller-about__block is-wide">
+                      <h3>¿Quiénes somos?</h3>
+                      <p>{taller.description}</p>
+                    </div>
+                  )}
+                  {taller.info?.yearsExperience != null && (
+                    <div className="taller-about__block">
+                      <h3>¿Cuánta experiencia tenemos?</h3>
+                      <p><Clock size={14} /> <strong>{taller.info.yearsExperience === 1 ? '1 año' : `${taller.info.yearsExperience} años`}</strong> atendiendo vehículos</p>
+                    </div>
+                  )}
+                  {taller.info?.warranty && (
+                    <div className="taller-about__block">
+                      <h3>¿Ofrecemos garantía?</h3>
+                      <p><ShieldCheck size={14} /> {taller.info.warranty === 'Sin garantía' ? 'Sin garantía por ahora' : <><strong>Garantía de {taller.info.warranty}</strong> en nuestros trabajos</>}</p>
+                    </div>
+                  )}
+                  {taller.info?.equipment?.length > 0 && (
+                    <div className="taller-about__block is-wide">
+                      <h3>¿Con qué equipamiento trabajamos?</h3>
+                      <ul className="taller-about__equipment">
+                        {taller.info.equipment.map((item) => <li key={item}><CheckCircle2 size={15} /> {item}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                  {offerings.length > 0 && (
+                    <div className="taller-about__block is-wide">
+                      <h3>¿Qué más ofrecemos?</h3>
+                      <ul className="taller-about__offers">
+                        {offerings.map(({ Icon, title, text }) => (
+                          <li key={title}>
+                            <span><Icon size={16} /></span>
+                            <div><strong>{title}</strong><small>{text}</small></div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
-                {taller.info.equipment.length > 0 && (
-                  <ul className="ad-detail-checklist">
-                    {taller.info.equipment.map((item) => <li key={item}><CheckCircle2 size={15} /> {item}</li>)}
-                  </ul>
-                )}
               </section>
             )}
 
             {/* Servicios y precios: el corazon del perfil */}
             <section className="ad-detail-card taller-services" aria-labelledby="taller-services-title">
-              <h2 id="taller-services-title"><ListChecks size={17} /> Servicios y precios</h2>
+              <h2 id="taller-services-title"><ListChecks size={17} /> Servicios y precios referenciales</h2>
+              <p className="taller-services__note">
+                <Tag size={14} />
+                <span><strong>Agendar es gratis.</strong> Estos valores son referenciales («desde») y sirven para orientarte: el valor final lo confirma el taller según tu vehículo y el trabajo que realice. Si el problema resulta ser de otra área, el valor puede cambiar.</span>
+              </p>
               {taller.services.length > 0 ? (
-                <ul className="taller-services__list">
-                  {taller.services.map((service) => {
-                    const category = SERVICE_CATEGORIES.find((item) => item.id === service.category);
-                    return (
-                      <li key={service.name}>
-                        <div className="taller-services__name">
-                          <strong>{service.name}</strong>
-                          {category && <small>{category.label}</small>}
-                        </div>
-                        <div className="taller-services__price">
-                          {service.priceFrom != null && <em>desde</em>}
-                          <strong>{formatPrice(service)}</strong>
-                        </div>
-                        {canBook && !isOwnTaller && (
-                          <button type="button" className="taller-services__book" onClick={() => handleBooking(service)}>
-                            <Calendar size={14} /> Agendar
-                          </button>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
+                <table className="taller-services__table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Servicio</th>
+                      <th scope="col" className="is-price">Precio referencial</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {taller.services.map((service) => {
+                      const category = SERVICE_CATEGORIES.find((item) => item.id === service.category);
+                      return (
+                        <tr key={service.name}>
+                          <td>
+                            <div className="taller-services__name">
+                              <strong>{service.name}</strong>
+                              {category && <small>{category.label}</small>}
+                            </div>
+                          </td>
+                          <td className="is-price">
+                            {service.priceFrom != null && <em>desde</em>}
+                            <strong>{formatPrice(service)}</strong>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               ) : (
                 <p className="taller-services__empty">Este taller aún no publica su lista de servicios.</p>
               )}
-              <p className="taller-services__note"><Tag size={13} /> Agendar es gratis. Los precios son referenciales («desde»): el taller confirma el valor final según tu vehículo, y si el problema es de otra área el valor puede cambiar.</p>
             </section>
 
             <div className="ad-detail-info-grid">
@@ -313,7 +362,7 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
           {/* Solo móvil: la columna lateral queda al final. */}
           {!isOwnTaller && (canWhatsapp || canBook || taller.phone) && (
             <MobileStickyBar label={priceCaption} value={priceValue} watchSelector=".ad-detail-side .ad-detail-btn" ariaLabel="Contactar al taller">
-              {canBook && <button type="button" className="mobile-sticky-bar__btn" onClick={() => handleBooking()}><Calendar size={18} /> Agendar</button>}
+              {canBook && <button type="button" className="mobile-sticky-bar__btn" onClick={() => handleBooking()}><Calendar size={18} /> Agendar gratis</button>}
               {canWhatsapp && <button type="button" className={`mobile-sticky-bar__btn is-whatsapp ${canBook ? 'is-secondary' : ''}`} onClick={handleWhatsApp} aria-label="WhatsApp"><MessageCircle size={18} />{!canBook && ' WhatsApp'}</button>}
               {taller.phone && (!canBook || !canWhatsapp) && <button type="button" className="mobile-sticky-bar__btn is-secondary" onClick={handlePhone} aria-label="Llamar al taller"><Phone size={18} />{!canBook && !canWhatsapp && ' Llamar'}</button>}
             </MobileStickyBar>
@@ -329,7 +378,7 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
 
               {canBook && (
                 <button type="button" className="ad-detail-btn is-book" onClick={() => handleBooking()}>
-                  <Calendar size={17} /> Agendar hora
+                  <Calendar size={17} /> Agendar hora gratis
                 </button>
               )}
               {canWhatsapp && (

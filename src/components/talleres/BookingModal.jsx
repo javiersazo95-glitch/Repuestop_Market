@@ -111,6 +111,9 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
   const homeAddress = atHome ? serviceAddress.trim() : '';
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  // Validación reactiva: un campo muestra su error al salir de él (o al intentar avanzar), no antes.
+  const [touched, setTouched] = useState({});
+  const touch = (field) => setTouched((current) => (current[field] ? current : { ...current, [field]: true }));
   const [confirmedAppointment, setConfirmedAppointment] = useState(null);
 
   /**
@@ -271,6 +274,16 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
   const changeDeadline = appointmentDate && appointmentTime ? getAppointmentChangeDeadline({ date: appointmentDate, time: appointmentTime }) : null;
   const slotWithinChangeLock = Boolean(changeDeadline && changeDeadline.getTime() <= Date.now());
 
+  // Errores de cada campo obligatorio (vacío = válido). Alimentan el mensaje bajo el campo y el botón de agendar.
+  const phoneDigits = userPhone.replace(/\D/g, '');
+  const fieldErrors = {
+    name: userName.trim().length < 3 ? 'Escribe tu nombre completo.' : '',
+    phone: !userPhone.trim() ? 'Ingresa un teléfono de contacto.'
+      : (phoneDigits.length < 8 || phoneDigits.length > 15 ? 'Ingresa un teléfono válido, por ejemplo +56 9 1234 5678.' : ''),
+    vehicle: vehicleModel.trim().length < 3 ? 'Indica la marca y el modelo de tu vehículo.' : '',
+    address: atHome && serviceAddress.trim().length < 5 ? 'Indica la dirección donde está el vehículo.' : ''
+  };
+
   // Lista de campos obligatorios del formulario aun sin completar, en el orden
   // en que aparecen. Se usa para decirle al usuario exactamente que falta en
   // vez de solo deshabilitar el boton sin explicacion.
@@ -278,18 +291,18 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
     const missing = [];
     if (!appointmentDate) missing.push('el día de la cita');
     if (!appointmentTime) missing.push('el bloque horario');
-    if (!userName.trim()) missing.push('tu nombre completo');
-    if (!userPhone.trim()) missing.push('tu teléfono de contacto');
-    if (!vehicleModel.trim()) missing.push('la marca y el modelo de tu vehículo');
-    if (atHome && !serviceAddress.trim()) missing.push('la dirección del servicio a domicilio');
+    if (fieldErrors.name) missing.push('tu nombre completo');
+    if (fieldErrors.phone) missing.push('un teléfono de contacto válido');
+    if (fieldErrors.vehicle) missing.push('la marca y el modelo de tu vehículo');
+    if (fieldErrors.address) missing.push('la dirección del servicio a domicilio');
     if (!dataConfirmed) missing.push('confirmar que tus datos son correctos');
     return missing;
   };
 
-  const canSubmit = isLoggedIn && !isOwnTaller && !isWorkshopAccount && agendaConfig
+  const canSubmit = Boolean(isLoggedIn && !isOwnTaller && !isWorkshopAccount && agendaConfig
     && appointmentDate && appointmentTime
-    && userName.trim() && userPhone.trim() && vehicleModel.trim() && dataConfirmed
-    && (!atHome || serviceAddress.trim());
+    && !fieldErrors.name && !fieldErrors.phone && !fieldErrors.vehicle && !fieldErrors.address
+    && dataConfirmed);
 
   /** Valida el formulario y abre el resumen previo a confirmar, como en la app. */
   const handleReview = (event) => {
@@ -436,35 +449,18 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
 
               {isLoggedIn && !isOwnTaller && !isWorkshopAccount && agendaConfig && (
                 <form onSubmit={handleReview} className="bk-form">
-                  {/* Taller al que se le agenda */}
-                  <div className="bk-card bk-provider">
-                    <h4>{taller.name}</h4>
-                    <span className="bk-provider-row"><MapPin size={14} /> {taller.commune || 'Santiago'}</span>
+                  {/* Taller al que se le agenda, en una sola línea: el título del modal ya dice de qué se trata. */}
+                  <div className="bk-provider-line">
+                    <strong>{taller.name}</strong>
+                    <span><MapPin size={13} /> {taller.commune || 'Santiago'}</span>
+                    <span className="bk-origin-tag">{originLabel}{fallaContext?.titulo ? ` · ${fallaContext.titulo}` : ''}</span>
                   </div>
 
                   {/* Antes de elegir: agendar no cuesta y el valor final lo confirma el taller al revisar el vehículo (si el
-                      problema es de otra área, el precio puede ser otro). Mismo aviso en la app. */}
+                      problema es de otra área, el precio puede ser otro). Mismo aviso en la app; el detalle está en el perfil. */}
                   <div className="bk-free-notice" role="note">
-                    <Info size={18} />
-                    <span>
-                      <strong>Agendar es gratis</strong>
-                      Reservar tu hora no tiene costo. Los precios de los servicios son referenciales («desde»): el taller revisa tu vehículo y confirma el valor final. Si el problema resulta ser de otra área, el valor puede cambiar: acuérdalo con el taller antes de aceptar el trabajo.
-                    </span>
-                  </div>
-
-                  <div className="bk-agenda-hint">
-                    <Info size={16} />
-                    <span>
-                      <small>Origen del agendamiento</small>
-                      <span className="bk-origin-options">
-                        {['Perfil del taller', 'Diagnóstico en fallas automotrices'].map((option) => (
-                          <span key={option} className={`bk-origin-option ${originLabel === option ? 'is-selected' : ''}`}>
-                            <span aria-hidden="true">{originLabel === option ? '●' : '○'}</span> {option}
-                          </span>
-                        ))}
-                      </span>
-                      {fallaContext?.titulo && <small>{fallaContext.titulo}</small>}
-                    </span>
+                    <Info size={15} />
+                    <span><strong>Agendar es gratis.</strong> Los precios son referenciales: el taller confirma el valor final al revisar tu vehículo.</span>
                   </div>
 
                   {/* Progreso: fecha, luego hora y finalmente datos. */}
@@ -494,6 +490,8 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                       <div className="bk-warn"><AlertCircle size={15} /> Este taller no tiene días disponibles en las próximas semanas.</div>
                     ) : (
                       <>
+                        <div className="bk-pick">
+                        <div className="bk-pick__cal">
                         <div className="bk-month">
                           <button type="button" onClick={() => shiftMonth(-1)} aria-label="Mes anterior"><ChevronLeft size={17} /></button>
                           <strong>{formatAgendaMonthLabel(monthCursor)}</strong>
@@ -517,8 +515,10 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                             </button>
                           ) : <span key={`empty-${index}`} className="bk-day is-empty" />))}
                         </div>
+                        </div>
 
-                        <strong className="bk-slots-title">Horarios disponibles</strong>
+                        <div className="bk-pick__slots">
+                        <strong className="bk-slots-title">Horarios disponibles{dateLabel ? ` · ${dateLabel}` : ''}</strong>
                         {!appointmentDate ? (
                           <div className="bk-locked-box"><Lock size={15} /> Elige primero el día y aquí aparecerán los horarios disponibles.</div>
                         ) : isLoadingSlots ? (
@@ -541,6 +541,8 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                             ))}
                           </div>
                         )}
+                        </div>
+                        </div>
                       </>
                     )}
                   </section>
@@ -552,17 +554,21 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
 
                     <div className="bk-group">
                       <span className="bk-label">Nombre completo <em aria-hidden="true">*</em></span>
-                      <label className="bk-field">
+                      <label className={`bk-field ${touched.name && fieldErrors.name ? 'is-invalid' : ''}`}>
                         <User size={18} />
-                        <input type="text" maxLength={160} placeholder="Ej: Camila Prueba" aria-required="true" value={userName} onChange={(e) => setUserName(e.target.value)} />
+                        <input type="text" maxLength={160} placeholder="Ej: Camila Prueba" aria-required="true" aria-invalid={Boolean(touched.name && fieldErrors.name)} value={userName} onChange={(e) => setUserName(e.target.value)} onBlur={() => touch('name')} />
+                        {!fieldErrors.name && <CheckCircle2 size={17} className="bk-ok" />}
                       </label>
+                      {touched.name && fieldErrors.name && <small className="bk-error" role="alert">{fieldErrors.name}</small>}
                     </div>
                     <div className="bk-group">
                       <span className="bk-label">Teléfono de contacto <em aria-hidden="true">*</em></span>
-                      <label className="bk-field">
+                      <label className={`bk-field ${touched.phone && fieldErrors.phone ? 'is-invalid' : ''}`}>
                         <Phone size={18} />
-                        <input type="tel" maxLength={40} placeholder="Ej: +56 9 1234 5678" aria-required="true" value={userPhone} onChange={(e) => setUserPhone(e.target.value)} />
+                        <input type="tel" maxLength={40} placeholder="Ej: +56 9 1234 5678" aria-required="true" aria-invalid={Boolean(touched.phone && fieldErrors.phone)} value={userPhone} onChange={(e) => setUserPhone(e.target.value)} onBlur={() => touch('phone')} />
+                        {!fieldErrors.phone && <CheckCircle2 size={17} className="bk-ok" />}
                       </label>
+                      {touched.phone && fieldErrors.phone && <small className="bk-error" role="alert">{fieldErrors.phone}</small>}
                     </div>
                     {/* El correo es el de la cuenta y no se edita: `AgendamientoService.crear()`
                         guarda siempre el de la sesión e ignora lo que venga en el request. */}
@@ -589,10 +595,12 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                     {plateLookup === 'not-found' && <small className="bk-muted">No pudimos detectar el vehículo de esa patente. Escribe la marca y el modelo.</small>}
                     <div className="bk-group">
                       <span className="bk-label">Marca y modelo del vehículo <em aria-hidden="true">*</em></span>
-                      <label className="bk-field">
+                      <label className={`bk-field ${touched.vehicle && fieldErrors.vehicle ? 'is-invalid' : ''}`}>
                         <Car size={18} />
-                        <input type="text" maxLength={160} placeholder="Ej: Toyota Yaris 2018" aria-required="true" value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} />
+                        <input type="text" maxLength={160} placeholder="Ej: Toyota Yaris 2018" aria-required="true" aria-invalid={Boolean(touched.vehicle && fieldErrors.vehicle)} value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} onBlur={() => touch('vehicle')} />
+                        {!fieldErrors.vehicle && <CheckCircle2 size={17} className="bk-ok" />}
                       </label>
+                      {touched.vehicle && fieldErrors.vehicle && <small className="bk-error" role="alert">{fieldErrors.vehicle}</small>}
                       <small className="bk-helper">El taller lo usa para confirmar si trabaja con la marca de tu vehículo.</small>
                     </div>
                     <div className="bk-group">
@@ -631,7 +639,7 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                     </label>
                     )}
                     {atHome && (
-                      <div className="bk-group bk-address">
+                      <div className="bk-group bk-address" onBlur={() => touch('address')}>
                         <span className="bk-label">Dirección del servicio <em aria-hidden="true">*</em></span>
                         <AddressAutocompleteInput
                           value={serviceAddress}
@@ -642,6 +650,7 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                           placeholder="Calle y número donde está el vehículo"
                           maxLength={200}
                         />
+                        {touched.address && fieldErrors.address && <small className="bk-error" role="alert">{fieldErrors.address}</small>}
                       </div>
                     )}
                     <button
@@ -667,7 +676,9 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                     </div>
                   )}
 
-                  <button type="submit" className={`bk-primary ${!canSubmit ? 'is-incomplete' : ''}`} aria-disabled={!canSubmit}>
+                  {/* Reactivo: el botón se activa solo con todo completo, y mientras tanto dice qué falta. */}
+                  {!canSubmit && <p className="bk-missing" role="status">Para agendar completa: {getMissingFieldLabels().join(', ')}.</p>}
+                  <button type="submit" className="bk-primary" disabled={!canSubmit}>
                     <Calendar size={18} /> {isRescheduling ? 'Cambiar la hora' : 'Agendar cita'}
                   </button>
                   <p className="bk-footer-note"><Mail size={14} /> Recibirás la confirmación por correo y por notificación</p>
@@ -692,7 +703,7 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
               </div>
               <div className="bk-confirm-intro bk-free-rule">
                 <Tag size={18} />
-                <span> Agendar es gratis. Los precios son referenciales: el taller confirma el valor final al revisar tu vehículo.</span>
+                <span> Agendar es gratis. Los precios son referenciales: el taller confirma el valor final al revisar tu vehículo, y si el problema es de otra área el valor puede cambiar. Acuérdalo con el taller antes de aceptar el trabajo.</span>
               </div>
               {/* Regla del 13-oct: dentro de las 24 horas previas la cita confirmada queda fija para ambos. */}
               <div className="bk-confirm-intro bk-change-rule">
