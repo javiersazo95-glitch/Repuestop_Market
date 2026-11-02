@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import TallerRating from '../components/talleres/TallerRating';
+import AuctionAvatar from '../components/AuctionAvatar';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
-  AlertCircle, AlertTriangle, ArrowLeft, Bookmark, CalendarPlus, Car, ChevronDown,
+  AlertCircle, AlertTriangle, ArrowLeft, Bookmark, CalendarPlus, Car, CheckCircle2, Clock,
   ChevronLeft, ChevronRight, Clock3, Eye, ExternalLink, FileText,
-  Loader2, Lock, MapPin, Megaphone, MapPinned, MessageCircle, Navigation, Pencil, Settings, Share2, Star, Tag, Truck, UserRound,
+  Loader2, Lock, MapPin, Megaphone, MapPinned, MessageCircle, Navigation, Pencil, Share2, Star, Tag, Truck, UserRound,
   Wrench, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -31,6 +32,7 @@ import FaultDetailMobile from '../components/faults/FaultDetailMobile';
 import DiagnosticoDesglose from '../components/tracking/DiagnosticoDesglose';
 import { useIsMobile } from '../hooks/useIsMobile';
 import '../styles/faults.css';
+import '../styles/fault-threads.css';
 
 const formatMonthYear = (value) => {
   if (!value) return 'No informado';
@@ -83,6 +85,16 @@ export default function FaultDetailPage() {
   // Talleres que ya diagnosticaron (sin el contenido): lo ve cualquiera que no sea el dueño.
   const [publicDiagnoses, setPublicDiagnoses] = useState([]);
   const [publicDiagnosesOpen, setPublicDiagnosesOpen] = useState(false);
+  // Quién publicó la falla: se despliega desde el ícono junto a la categoría.
+  const [userOpen, setUserOpen] = useState(false);
+  const userChipRef = useRef(null);
+  useEffect(() => {
+    if (!userOpen) return undefined;
+    const close = (event) => { if (event.type === 'keydown' ? event.key === 'Escape' : !userChipRef.current?.contains(event.target)) setUserOpen(false); };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', close);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close); };
+  }, [userOpen]);
 
   const load = useCallback(async () => {
     setError('');
@@ -296,7 +308,14 @@ export default function FaultDetailPage() {
           </div>
 
           <div className="ft-detail-hero-copy">
-            <div className="ft-detail-title-row"><h1>{vehicleTitle}</h1>{fault.propia && <span className={`ft-badge ${fault.vigente ? '' : 'is-closed'}`}>{fault.vigente ? 'Abierta' : 'Cerrada'}</span>}<span className={`ft-type-pill is-${categoryKey}`}><Wrench size={16} /> {category}</span></div>
+            <div className="ft-detail-title-row"><h1>{vehicleTitle}</h1>{fault.propia && <span className={`ft-badge ${fault.vigente ? '' : 'is-closed'}`}>{fault.vigente ? 'Abierta' : 'Cerrada'}</span>}<span className={`ft-type-pill is-${categoryKey}`}><Wrench size={16} /> {category}</span><span className="ft-user-chip-wrap" ref={userChipRef}><button type="button" className="ft-user-chip" aria-expanded={userOpen} aria-haspopup="dialog" aria-label="Ver perfil de quien publicó la falla" onClick={() => setUserOpen((value) => !value)}><UserRound size={18} /> <span>Ver perfil</span></button>{userOpen && <div className="ft-user-pop" role="dialog" aria-label="Información del usuario"><div className="ft-user-pop-head"><UserRound size={16} /> Información del usuario<button type="button" aria-label="Cerrar" onClick={() => setUserOpen(false)}><X size={16} /></button></div>              <div className="ft-user-profile"><span>{(fault.autor || 'U').slice(0, 1).toUpperCase()}</span><div><strong>{fault.autor || 'Usuario de RepuesTop'}</strong><small>Persona que registró esta falla</small></div></div>
+              <dl className="ft-user-facts">
+                <div><dt>Miembro desde</dt><dd>{formatMonthYear(memberSince)}</dd></div>
+                <div><dt>Fallas publicadas</dt><dd>{fault.fallasPublicadas ?? '—'}</dd></div>
+                <div><dt>Diagnósticos en este caso</dt><dd>{diagnosisCount}</dd></div>
+                <div><dt>Ubicación declarada</dt><dd>{place || 'No informada'}</dd></div>
+              </dl>
+              {fault.autorRating != null && <div className="ft-detail-rating"><span>{[1, 2, 3, 4, 5].map((item) => <Star key={item} size={15} fill="currentColor" />)}</span><strong>{fault.autorRating}</strong>{evaluationCount != null && <small>({evaluationCount} {evaluationCount === 1 ? 'evaluación' : 'evaluaciones'})</small>}</div>}</div>}</span></div>
             <p className="ft-detail-vehicle-line">{[fault.anio, fault.combustible, fault.kilometraje != null ? `${fault.kilometraje.toLocaleString('es-CL')} km` : null].filter(Boolean).map((item) => <span key={item}>{item}</span>)}</p>
             <p className="ft-detail-lead">{fault.titulo || 'Falla automotriz sin título'}</p>
             <dl className="ft-detail-case-grid">
@@ -323,7 +342,6 @@ export default function FaultDetailPage() {
                 <div className="ft-mobility-options"><span className={fault.seMueve === false ? 'is-selected' : ''}><Car size={20} /> No se puede mover</span><span className={fault.seMueve === true ? 'is-selected' : ''}><Car size={20} /> Sí se puede mover</span></div>
                 <p>{fault.seMueve === false ? 'El vehículo necesita grúa o asistencia para ser trasladado.' : fault.seMueve === true ? 'El vehículo se puede trasladar por sus propios medios.' : 'El usuario no indicó si el vehículo se puede mover.'}</p>
               </DetailPanel>
-              <DetailPanel icon={Settings} title="Síntomas"><ul>{fault.sintomas?.length ? fault.sintomas.map((symptom) => <li key={symptom}>{symptom}</li>) : <li>Sin síntomas adicionales registrados.</li>}</ul></DetailPanel>
             </div>
           </div>
 
@@ -371,33 +389,108 @@ export default function FaultDetailPage() {
               </div>
             </DetailPanel>
             )}
-            <DetailPanel icon={UserRound} title="Información del usuario">
-              <div className="ft-user-profile"><span>{(fault.autor || 'U').slice(0, 1).toUpperCase()}</span><div><strong>{fault.autor || 'Usuario de RepuesTop'}</strong><small>Persona que registró esta falla</small></div></div>
-              <dl className="ft-user-facts">
-                <div><dt>Miembro desde</dt><dd>{formatMonthYear(memberSince)}</dd></div>
-                <div><dt>Fallas publicadas</dt><dd>{fault.fallasPublicadas ?? '—'}</dd></div>
-                <div><dt>Diagnósticos en este caso</dt><dd>{diagnosisCount}</dd></div>
-                <div><dt>Ubicación declarada</dt><dd>{place || 'No informada'}</dd></div>
-              </dl>
-              {fault.autorRating != null && <div className="ft-detail-rating"><span>{[1, 2, 3, 4, 5].map((item) => <Star key={item} size={15} fill="currentColor" />)}</span><strong>{fault.autorRating}</strong>{evaluationCount != null && <small>({evaluationCount} {evaluationCount === 1 ? 'evaluación' : 'evaluaciones'})</small>}</div>}
-            </DetailPanel>
+            <section className="fdt fdt-diag" aria-label="Diagnósticos de talleres">
+              <div className="fdt-banner">
+                <span className="fdt-count">{diagnostics.length}</span>
+                <div className="fdt-banner-text">
+                  <h2>{diagnostics.length === 1 ? 'Diagnóstico de taller' : 'Diagnósticos de talleres'}</h2>
+                  <small>{fault.propia ? 'Compáralos y acepta el que te convenza para agendar.' : isWorkshop ? 'Tu diagnóstico lo ven solo tú y el cliente.' : 'Cada diagnóstico es privado entre el cliente y el taller.'}</small>
+                </div>
+                {diagnostics.length > 0 && (
+                  <span className="fdt-stack" aria-hidden="true">
+                    {diagnostics.slice(0, 4).map((item) => <AuctionAvatar key={item.id} className="fdt-stack-avatar" src={item.autorFotoUrl || item.taller?.logoUrl} name={item.autor} isStore />)}
+                  </span>
+                )}
+                <span className="fdt-private"><Lock size={13} /> Privado</span>
+              </div>
+              <p className="fdt-note"><Lock size={14} /> {fault.propia ? 'Solo tú y el taller que lo escribió ven cada diagnóstico.' : isWorkshop ? 'Los diagnósticos de otros talleres no se muestran.' : 'El detalle de cada diagnóstico solo lo ve quien publicó la falla.'}</p>
+              {diagnostics.length === 0 ? (
+                <div className="fdt-empty"><Wrench size={22} /><strong>{!fault.propia && !isWorkshop && publicDiagnoses.length > 0 ? `${publicDiagnoses.length} ${publicDiagnoses.length === 1 ? 'taller ya diagnosticó' : 'talleres ya diagnosticaron'} esta falla` : 'Aún no hay diagnósticos'}</strong><p>{!fault.propia && !isWorkshop && publicDiagnoses.length > 0 ? 'El detalle solo lo ve quien la publicó.' : 'Cuando un taller la diagnostique, lo verás aquí.'}</p></div>
+              ) : (
+                <ul className="fdt-list">
+                  {diagnostics.map((diagnosis) => {
+                    const price = priceRange(diagnosis.precioDesde, diagnosis.precioHasta);
+                    const replies = repliesOf(diagnosis.id).length;
+                    const taller = diagnosis.taller;
+                    return (
+                      <li key={diagnosis.id} className={`fdt-card ${diagnosis.aceptado ? 'is-accepted' : ''}`}>
+                        {diagnosis.aceptado && <span className="fdt-ribbon"><CheckCircle2 size={13} /> Diagnóstico aceptado</span>}
+                        <div className="fdt-top">
+                          <AuctionAvatar className="fdt-avatar" src={diagnosis.autorFotoUrl || taller?.logoUrl} name={diagnosis.autor} isStore />
+                          <div className="fdt-info">
+                            <strong>{diagnosis.autor}</strong>
+                            <span className="fdt-meta">
+                              {taller && <TallerRating rating={taller.calificacion} count={taller.opiniones} />}
+                              {taller?.comuna && <span><MapPin size={12} /> {taller.comuna}</span>}
+                              <span><Clock size={12} /> {timeSince(diagnosis.createdAt)}</span>
+                            </span>
+                          </div>
+                          <span className={`fdt-price ${price ? '' : 'is-empty'}`}>{price || 'Sin precio estimado'}</span>
+                        </div>
+                        <p className="fdt-text">{diagnosis.texto}</p>
+                        <div className="fdt-foot">
+                          <span className="fdt-facts"><span><Tag size={13} /> {price ? 'Precio estimado' : 'Sin precio'}</span>{replies > 0 && <span><MessageCircle size={13} /> {replies} {replies === 1 ? 'respuesta' : 'respuestas'}</span>}</span>
+                          <span className="fdt-actions">
+                            {taller && <Link className="fdt-link" to={workshopPath(taller.tallerId)}>Ver perfil del taller</Link>}
+                            <button type="button" className="fdt-btn" onClick={() => setDiagModal(diagnosis.id)}><Wrench size={14} /> Ver diagnóstico</button>
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {isWorkshop && fault.vigente && <button type="button" className="fdt-cta" onClick={() => setDiagModal(myDiagnosis ? myDiagnosis.id : 'new')}>{myDiagnosis ? 'Ver mi diagnóstico' : 'Agregar diagnóstico'}</button>}
+            </section>
           </div>
         </div>
 
-        <section className="ft-detail-thread-section is-private">
-          <header><div><h2><Wrench size={23} /> Diagnósticos de talleres (privado)</h2><p>{fault.propia ? 'Cada diagnóstico lo ven solo tú y el taller que lo escribió. Compáralos y acepta el que te convenza para agendar.' : isWorkshop ? 'Tu diagnóstico lo ven solo tú y el cliente. Los de otros talleres no se muestran.' : 'Los diagnósticos son privados entre el cliente y cada taller.'}</p></div><span className="ft-private-pill"><Lock size={14} /> Privado</span></header>
-          {diagnostics.length === 0 ? <div className="ft-detail-thread-empty">{!fault.propia && !isWorkshop && publicDiagnoses.length > 0 ? `${publicDiagnoses.length} ${publicDiagnoses.length === 1 ? 'taller ya diagnosticó' : 'talleres ya diagnosticaron'} esta falla. El detalle solo lo ve quien la publicó.` : 'Aún no hay diagnósticos registrados.'}</div> : diagnostics.map((diagnosis) => {
-            const price = priceRange(diagnosis.precioDesde, diagnosis.precioHasta);
-            const replies = repliesOf(diagnosis.id).length;
-            return <article key={diagnosis.id} className={`ft-detail-diagnosis-row ${diagnosis.aceptado ? 'is-accepted' : ''}`}><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{diagnosis.autor}{diagnosis.aceptado && <em className="ft-accepted-pill">Aceptado</em>}</strong><time>{timeSince(diagnosis.createdAt)}</time><p>{diagnosis.texto}</p><span className="ft-diagnosis-facts"><span className="ft-price"><Tag size={13} /> {price || 'Sin precio estimado'}</span>{replies > 0 && <span><MessageCircle size={13} /> {replies} {replies === 1 ? 'respuesta' : 'respuestas'}</span>}</span><button type="button" onClick={() => setDiagModal(diagnosis.id)}><Settings size={14} /> Ver diagnóstico</button><ChevronDown size={15} /></article>;
-          })}
-          {isWorkshop && fault.vigente && <button type="button" className="ft-btn ft-btn-primary ft-detail-diagnose" onClick={() => setDiagModal(myDiagnosis ? myDiagnosis.id : 'new')}>{myDiagnosis ? 'Ver mi diagnóstico' : 'Agregar diagnóstico'}</button>}
-        </section>
-
-        <section className="ft-detail-thread-section is-public">
-          <header><div><h2><MessageCircle size={23} /> Comentarios (público)</h2><p>Los comentarios ayudan a afinar el diagnóstico. Todos los talleres pueden ver y comentar.</p></div>{!fault.propia && publicDiagnoses.length > 0 && <button type="button" className="ft-btn ft-btn-outline" onClick={() => setPublicDiagnosesOpen(true)}><Wrench size={16} /> Ver diagnósticos ({publicDiagnoses.length})</button>}{isWorkshop && fault.vigente && <button type="button" className="ft-btn ft-btn-primary" onClick={() => setCommentFormOpen((value) => !value)}><MessageCircle size={16} /> Agregar comentario</button>}</header>
-          {publicComments.length === 0 && !commentFormOpen ? <div className="ft-detail-thread-empty">Aún no hay comentarios públicos.</div> : publicComments.map((comment) => <article key={comment.id} className="ft-detail-comment-row"><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{comment.autor}</strong>{comment.taller && <TallerRating rating={comment.taller.calificacion} count={comment.taller.opiniones} />}<time>{timeSince(comment.createdAt)}</time><p>{comment.texto}</p>{repliesOf(comment.id).map((reply) => <small key={reply.id} className="ft-comment-reply"><b>{reply.esCreador ? 'Cliente' : reply.autor}:</b> {reply.texto}</small>)}<span className="ft-comment-actions">{canReply && replyTo !== comment.id && <button type="button" className="ft-link-btn" onClick={() => startReply(comment.id)}>Responder</button>}{!isMine(comment) && <ContextualReportButton tipoObjeto="FALLA_COMENTARIO" objetoId={comment.id} objetoTitulo={`Comentario de ${comment.autor}`} className="ft-link-btn" />}</span>{replyForm(comment.id, 'Responde al taller')}</article>)}
-          {commentFormOpen && <form className="ft-detail-comment-form" onSubmit={(event) => send(event, 'COMENTARIO')}><textarea rows={3} value={publicText} maxLength={1500} onChange={(event) => setPublicText(event.target.value)} placeholder="Escribe una pregunta o comentario para afinar el diagnóstico" /><CharCount value={publicText} max={1500} />{formError && <p className="ft-error"><AlertCircle size={15} /> {formError}</p>}<div><button type="button" className="ft-btn ft-btn-outline" onClick={() => setCommentFormOpen(false)}>Cancelar</button><button type="submit" className="ft-btn ft-btn-primary" disabled={sending || !publicText.trim()}>{sending ? 'Publicando…' : 'Publicar comentario'}</button></div></form>}
+        <section className="fdt fdt-comments" aria-label="Comentarios públicos">
+          <div className="fdt-banner is-soft">
+            <span className="fdt-count">{publicComments.length}</span>
+            <div className="fdt-banner-text">
+              <h2>{publicComments.length === 1 ? 'Comentario público' : 'Comentarios públicos'}</h2>
+              <small>Ayudan a afinar el diagnóstico. Todos los talleres pueden verlos y comentar.</small>
+            </div>
+            {!fault.propia && publicDiagnoses.length > 0 && <button type="button" className="fdt-banner-btn" onClick={() => setPublicDiagnosesOpen(true)}><Wrench size={15} /> Diagnósticos ({publicDiagnoses.length})</button>}
+            {isWorkshop && fault.vigente && <button type="button" className="fdt-banner-btn is-solid" onClick={() => setCommentFormOpen((value) => !value)}><MessageCircle size={15} /> Agregar comentario</button>}
+          </div>
+          {publicComments.length === 0 && !commentFormOpen ? (
+            <div className="fdt-empty"><MessageCircle size={22} /><strong>Aún no hay comentarios</strong><p>Las preguntas de los talleres aparecerán aquí.</p></div>
+          ) : (
+            <ul className="fdt-list">
+              {publicComments.map((comment) => (
+                <li key={comment.id} className="fdt-card is-comment">
+                  <div className="fdt-top">
+                    <AuctionAvatar className="fdt-avatar" src={comment.autorFotoUrl || comment.taller?.logoUrl} name={comment.autor} isStore={Boolean(comment.taller)} />
+                    <div className="fdt-info">
+                      <strong>{comment.autor}</strong>
+                      <span className="fdt-meta">
+                        {comment.taller && <TallerRating rating={comment.taller.calificacion} count={comment.taller.opiniones} />}
+                        {comment.taller?.comuna && <span><MapPin size={12} /> {comment.taller.comuna}</span>}
+                        <span><Clock size={12} /> {timeSince(comment.createdAt)}</span>
+                      </span>
+                    </div>
+                    {comment.taller && <Link className="fdt-link" to={workshopPath(comment.taller.tallerId)}>Ver perfil</Link>}
+                  </div>
+                  <p className="fdt-text">{comment.texto}</p>
+                  {repliesOf(comment.id).length > 0 && (
+                    <div className="fdt-replies">
+                      {repliesOf(comment.id).map((reply) => <p key={reply.id}><b>{reply.esCreador ? 'Cliente' : reply.autor}:</b> {reply.texto}</p>)}
+                    </div>
+                  )}
+                  <div className="fdt-foot">
+                    <span className="fdt-actions">
+                      {canReply && replyTo !== comment.id && <button type="button" className="fdt-btn is-ghost" onClick={() => startReply(comment.id)}><MessageCircle size={14} /> Responder</button>}
+                      {!isMine(comment) && <ContextualReportButton tipoObjeto="FALLA_COMENTARIO" objetoId={comment.id} objetoTitulo={`Comentario de ${comment.autor}`} className="ft-link-btn" />}
+                    </span>
+                  </div>
+                  {replyForm(comment.id, 'Responde al taller')}
+                </li>
+              ))}
+            </ul>
+          )}
+          {commentFormOpen && <form className="ft-detail-comment-form fdt-form" onSubmit={(event) => send(event, 'COMENTARIO')}><textarea rows={3} value={publicText} maxLength={1500} onChange={(event) => setPublicText(event.target.value)} placeholder="Escribe una pregunta o comentario para afinar el diagnóstico" /><CharCount value={publicText} max={1500} />{formError && <p className="ft-error"><AlertCircle size={15} /> {formError}</p>}<div><button type="button" className="ft-btn ft-btn-outline" onClick={() => setCommentFormOpen(false)}>Cancelar</button><button type="submit" className="ft-btn ft-btn-primary" disabled={sending || !publicText.trim()}>{sending ? 'Publicando…' : 'Publicar comentario'}</button></div></form>}
         </section>
 
         {fault.propia && fault.vigente && <div className="ft-detail-owner-actions"><button type="button" className="ft-btn ft-btn-danger" onClick={() => { setCloseError(''); setCloseConfirm(true); }}>Cerrar falla</button></div>}
