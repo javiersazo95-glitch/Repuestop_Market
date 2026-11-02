@@ -4989,6 +4989,10 @@
 .bk-service-chip.is-selected { border-color: #0056bf; background: #eaf2ff; color: #0056bf; }
 .bk-locked-box { display: flex; align-items: center; gap: 8px; padding: 12px; border: 1px dashed #d9e0e7; border-radius: 12px; background: #f3f5f7; font-size: 12px; color: #5a6b7a; }
 .bk-warn { display: flex; align-items: center; gap: 6px; padding: 10px; border-radius: 8px; background: #fff7e6; color: #9a5a00; font-size: 12px; font-weight: 600; }
+.bk-free-notice { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid #bfd6f7; border-radius: 12px; background: #eaf2ff; color: #243442; font-size: 13px; line-height: 1.5; }
+.bk-free-notice svg { flex: 0 0 auto; margin-top: 2px; color: #0056bf; }
+.bk-free-notice strong { display: block; margin-bottom: 2px; color: #0056bf; font-size: 13.5px; }
+.bk-free-rule svg { color: #0056bf; }
 
 .bk-required { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: #5a6b7a; }
 .bk-field { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 12px; border: 1px solid #d9e0e7; border-radius: 12px; background: #ffffff; color: #8a97a5; }

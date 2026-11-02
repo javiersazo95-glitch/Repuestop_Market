@@ -447,6 +447,16 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                     <span className="bk-provider-row"><MapPin size={14} /> {taller.commune || 'Santiago'}</span>
                   </div>
 
+                  {/* Antes de elegir: agendar no cuesta y el valor final lo confirma el taller al revisar el vehículo (si el
+                      problema es de otra área, el precio puede ser otro). Mismo aviso en la app. */}
+                  <div className="bk-free-notice" role="note">
+                    <Info size={18} />
+                    <span>
+                      <strong>Agendar es gratis</strong>
+                      Reservar tu hora no tiene costo. Los precios de los servicios son referenciales («desde»): el taller revisa tu vehículo y confirma el valor final. Si el problema resulta ser de otra área, el valor puede cambiar: acuérdalo con el taller antes de aceptar el trabajo.
+                    </span>
+                  </div>
+
                   <div className="bk-agenda-hint">
                     <Info size={16} />
                     <span>
@@ -705,6 +715,10 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                 <VoucherRow label="Nombre:" value={userName.trim()} />
                 <VoucherRow label="Correo:" value={accountEmail} />
               </div>
+              <div className="bk-confirm-intro bk-free-rule">
+                <Tag size={18} />
+                <span> Agendar es gratis. Los precios son referenciales: el taller confirma el valor final al revisar tu vehículo.</span>
+              </div>
               {/* Regla del 13-oct: dentro de las 24 horas previas la cita confirmada queda fija para ambos. */}
               <div className="bk-confirm-intro bk-change-rule">
                 <Lock size={18} />
@@ -739,7 +753,7 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                 {selectedServices.length > 0 && <VoucherRow label="Servicio:" value={selectedServices.join(', ')} />}
                 {reason.trim() && <VoucherRow label="Detalle:" value={reason.trim()} />}
                 <VoucherRow label="Fecha y hora:" value={`${dateLabel} a las ${confirmedAppointment?.time || appointmentTime}`} />
-                <VoucherRow label="Dirección taller:" value={[taller.address, taller.commune].filter(Boolean).join(', ') || 'Por confirmar con el taller'} />
+                <VoucherRow label="Dirección taller:" value={confirmedAppointment?.workshopAddress || [taller.address, taller.commune].filter(Boolean).join(', ') || 'Por confirmar con el taller'} />
                 <VoucherRow label="Vehículo:" value={vehicleModel.trim()} />
                 <VoucherRow label="Cliente:" value={`${userName.trim()} (${accountEmail})`} />
               </div>

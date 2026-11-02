@@ -770,6 +770,8 @@ export function adaptAppointment(dto) {
     // Contacto del taller: solo llega en una cita vigente.
     workshopPhone: dto.workshopPhone || '',
     workshopWhatsapp: dto.workshopWhatsapp || '',
+    // Dirección exacta del taller (calle, número y comuna): también llega solo con la cita; el perfil público no la trae.
+    workshopAddress: dto.workshopAddress || '',
     customerEmail: dto.customerEmail || '',
     customerUserId: dto.customerUserId ? String(dto.customerUserId) : null,
     // Dueño del taller: decide qué citas son "recibidas" sin depender de la lista de anuncios.

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, CalendarClock, CalendarDays, Check, XCircle, Loader2, AlertTriangle,
-  Phone, Mail, Car, StickyNote, RotateCcw, Wrench, Clock, Settings, Home, Lock, MessageCircle, Star, Flag } from 'lucide-react';
+  Phone, Mail, Car, StickyNote, RotateCcw, Wrench, Clock, Settings, Home, Lock, MessageCircle, Star, Flag, MapPin } from 'lucide-react';
 import { confirmWhatsappContact } from '../../utils/whatsappContact';
 import {
   formatAgendaDateLong, getTimeUntilLabel, parseIsoDate, toIsoDate
@@ -259,6 +259,9 @@ export default function AppointmentsHistoryModal({
                 </>
               : <>
                   <span><Clock size={12} /> {formatAgendaDateLong(appointment.date)}</span>
+                  {appointment.workshopAddress && (
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(appointment.workshopAddress)}`} target="_blank" rel="noopener noreferrer"><MapPin size={12} /> {appointment.workshopAddress}</a>
+                  )}
                   {appointment.workshopPhone && (
                     <a href={`tel:${appointment.workshopPhone.replace(/\s+/g, '')}`}><Phone size={12} /> {appointment.workshopPhone}</a>
                   )}

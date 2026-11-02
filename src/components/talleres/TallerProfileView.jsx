@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Heart, Share2, MapPin, BadgeCheck,
   ShieldCheck, Phone, MessageCircle, Calendar, CalendarCheck, Clock, ExternalLink, Home,
-  ListChecks, FileText, AlarmClock, CheckCircle2, Wrench, Tag, Star
+  ListChecks, FileText, AlarmClock, CheckCircle2, Wrench, Tag, Star, Lock
 } from 'lucide-react';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import { getCategoryIcon } from './categoryIcons';
@@ -65,6 +65,9 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
     .filter(Boolean), [taller.categories]);
   const initials = (taller.name || 'T').split(/\s+/).slice(0, 2).map((word) => word[0]).join('').toUpperCase();
 
+  // Calle, número y mapa solo los entrega el backend si el taller tiene el servicio activo (pagado, ganado o regalado) o es su
+  // dueño quien mira; sin eso el perfil trae solo comuna y región. Con la cita siempre llega la dirección exacta.
+  const hasExactAddress = Boolean(taller.address);
   const locationText = [taller.address, taller.commune, taller.region].filter(Boolean).join(', ')
     || taller.commune || 'Ubicación a confirmar';
   const mapsQuery = encodeURIComponent(
@@ -266,7 +269,7 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
               ) : (
                 <p className="taller-services__empty">Este taller aún no publica su lista de servicios.</p>
               )}
-              <p className="taller-services__note"><Tag size={13} /> Los precios son referenciales («desde»): el taller confirma el valor final según tu vehículo.</p>
+              <p className="taller-services__note"><Tag size={13} /> Agendar es gratis. Los precios son referenciales («desde»): el taller confirma el valor final según tu vehículo, y si el problema es de otra área el valor puede cambiar.</p>
             </section>
 
             <div className="ad-detail-info-grid">
@@ -357,22 +360,30 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
             <div className="ad-detail-side-card">
               <h2 className="ad-detail-side-title"><MapPin size={16} /> Ubicación</h2>
               <p className="ad-detail-address">{locationText}</p>
-              <a
-                className="ad-detail-mapslink"
-                href={`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Ver en Google Maps <ExternalLink size={13} />
-              </a>
-              <div className="ad-detail-map">
-                <iframe
-                  title={`Mapa de ${taller.name}`}
-                  src={`https://maps.google.com/maps?q=${mapsQuery}&z=15&output=embed`}
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
-              </div>
+              {hasExactAddress ? (
+                <>
+                  <a
+                    className="ad-detail-mapslink"
+                    href={`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Ver en Google Maps <ExternalLink size={13} />
+                  </a>
+                  <div className="ad-detail-map">
+                    <iframe
+                      title={`Mapa de ${taller.name}`}
+                      src={`https://maps.google.com/maps?q=${mapsQuery}&z=15&output=embed`}
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  </div>
+                </>
+              ) : (
+                <p className="ad-detail-address-note">
+                  <Lock size={13} /> Este taller no tiene su servicio activo por ahora: la dirección y el mapa no están disponibles.
+                </p>
+              )}
             </div>
 
             <button type="button" className="ad-detail-back" onClick={onBack}>

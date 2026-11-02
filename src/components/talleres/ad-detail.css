@@ -474,6 +474,8 @@
 }
 .ad-detail-side-title svg { color: var(--adp-primary); }
 .ad-detail-address { margin: 0 0 6px; font-size: 13px; line-height: 1.5; color: var(--adp-muted); }
+.ad-detail-address-note { display: flex; align-items: flex-start; gap: 6px; margin: 0; padding: 10px; border-radius: 10px; background: #eaf2ff; color: #243442; font-size: 12.5px; line-height: 1.5; }
+.ad-detail-address-note svg { flex: 0 0 auto; margin-top: 2px; color: #0056bf; }
 .ad-detail-mapslink {
   display: inline-flex;
   align-items: center;

@@ -193,7 +193,7 @@ export async function notifyAppointmentCreated({ appointment, taller, dateLabel 
       vehiculo: appointment.vehicleModel,
       patente: appointment.vehiclePatent,
       notas: appointment.notes,
-      direccion: [taller?.address, taller?.commune].filter(Boolean).join(', '),
+      direccion: appointment.workshopAddress || [taller?.address, taller?.commune].filter(Boolean).join(', '),
       // Los destinatarios los pone el backend desde la reserva guardada.
       tallerNombre: taller?.name
     });
