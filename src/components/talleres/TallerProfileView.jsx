@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
+import TallerRating from './TallerRating';
 import { Link } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Heart, Share2, MapPin, BadgeCheck,
   ShieldCheck, Phone, MessageCircle, Calendar, CalendarCheck, Clock, ExternalLink, Home,
-  ListChecks, FileText, AlarmClock, CheckCircle2, Wrench, Tag, Star, Lock
+  ListChecks, FileText, AlarmClock, CheckCircle2, Wrench, Tag, Lock
 } from 'lucide-react';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import { getCategoryIcon } from './categoryIcons';
@@ -160,7 +161,7 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
                   </div>
                   <div className="taller-profile__chips">
                     <span className="is-verified"><ShieldCheck size={13} /> Taller verificado</span>
-                    {taller.reviewsCount > 0 && <span><Star size={13} /> {Number(taller.rating).toFixed(1).replace('.', ',')} ({taller.reviewsCount} {taller.reviewsCount === 1 ? 'opinión' : 'opiniones'})</span>}
+                    <span><TallerRating rating={taller.rating} count={taller.reviewsCount} /></span>
                     {taller.is24Hours && <span className="is-24h"><AlarmClock size={13} /> {taller.only24Hours ? '24 horas' : 'Urgencias 24/7'}</span>}
                     {taller.homeService && <span><Home size={13} /> A domicilio</span>}
                     {canBook && <span className="is-book"><Calendar size={13} /> Agenda en línea</span>}

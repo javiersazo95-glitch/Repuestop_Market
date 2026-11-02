@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
+import TallerRating from './TallerRating';
 import {
   MapPin, MessageCircle, Phone, Calendar, ShieldCheck, ArrowRight, Heart, Navigation,
-  AlarmClock, Home, Clock, UserCheck, CheckCircle2, ChevronDown, ChevronUp, Wrench, Star
+  AlarmClock, Home, Clock, UserCheck, CheckCircle2, ChevronDown, ChevronUp, Wrench
 } from 'lucide-react';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
@@ -138,11 +139,7 @@ export default function TallerCard({
                 <ShieldCheck size={14} aria-label="Taller verificado" />
               </span>
               <span className="taller-card__compact-meta">
-                {taller.reviewsCount > 0 && (
-                  <span className="is-rating" aria-label={`Calificación ${taller.rating.toFixed(1)} de 5, ${taller.reviewsCount} opiniones`}>
-                    <Star size={13} fill="currentColor" /> <b>{taller.rating.toFixed(1).replace('.', ',')}</b> <em>({taller.reviewsCount})</em>
-                  </span>
-                )}
+                <TallerRating className="is-rating" rating={taller.rating} count={taller.reviewsCount} />
                 <span className="is-where"><MapPin size={13} aria-hidden="true" /><span>{[taller.commune, taller.region && taller.region !== taller.commune ? taller.region : null].filter(Boolean).join(', ') || 'Chile'}</span></span>
                 {distanceKm != null && <span className="is-distance"><Navigation size={12} aria-hidden="true" /> {formatDistanceKm(distanceKm)}</span>}
                 {isOwnCard && <span className="is-own">Tu taller</span>}

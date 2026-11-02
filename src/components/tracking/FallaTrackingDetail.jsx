@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import TallerRating from '../talleres/TallerRating';
 import { Link } from 'react-router-dom';
 import { ChevronRight, CircleHelp, ClipboardList, Loader2, Tag } from 'lucide-react';
 import { commentFault, getFaultComments, priceRange, timeSince } from '../../services/faultApi';
@@ -84,6 +85,7 @@ export default function FallaTrackingDetail({ faultId, vigente, newDiagnoses, on
                 {index < newDiagnoses && <TrackingTag label="Nuevo" tone="info" />}
                 {diagnosis.aceptado && <TrackingTag label="Aceptado" tone="ok" />}
               </div>
+              {diagnosis.taller && <TallerRating rating={diagnosis.taller.calificacion} count={diagnosis.taller.opiniones} />}
               <p>{diagnosis.texto}</p>
               <span className="trk-price"><Tag size={13} /> {price || 'Sin precio estimado'}{replyCount > 0 && ` · ${replyCount} ${replyCount === 1 ? 'respuesta' : 'respuestas'}`}</span>
               <div className="trk-actions">

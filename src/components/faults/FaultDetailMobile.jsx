@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import TallerRating from '../talleres/TallerRating';
 import { Link } from 'react-router-dom';
 import {
   AlertCircle, ArrowLeft, Bookmark, Calendar, Car, Check, ChevronDown, ChevronRight, ChevronUp, Copy, ExternalLink,
@@ -252,6 +253,7 @@ export default function FaultDetailMobile({
                   <span className="ftd-group-copy">
                     <strong>{group.author}</strong>
                     <small>{[group.taller ? 'Taller' : null, group.taller?.comuna, `${count} ${count === 1 ? 'comentario' : 'comentarios'}`].filter(Boolean).join(' · ')}</small>
+                    {group.taller && <TallerRating rating={group.taller.calificacion} count={group.taller.opiniones} />}
                   </span>
                 </button>
                 {group.taller && <Link className="ftd-profile" to={workshopPath(group.taller.tallerId)}>Ver perfil ›</Link>}
@@ -305,6 +307,7 @@ export default function FaultDetailMobile({
                     <span className="ftd-group-copy">
                       <strong>{diagnosis.autor}{diagnosis.aceptado && <em>Aceptado</em>}</strong>
                       <small>{[diagnosis.taller?.comuna, timeSince(diagnosis.createdAt)].filter(Boolean).join(' · ')}</small>
+                      {diagnosis.taller && <TallerRating rating={diagnosis.taller.calificacion} count={diagnosis.taller.opiniones} />}
                       <span className="ftd-diag-text">{diagnosis.texto}</span>
                       <span className="ftd-diag-facts"><span><Tag size={12} /> {price || 'Sin precio estimado'}</span>{replies > 0 && <span><MessageCircle size={12} /> {replies}</span>}</span>
                     </span>
