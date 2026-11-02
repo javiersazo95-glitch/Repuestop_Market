@@ -382,24 +382,25 @@ export function formatAgendaMonthLabel(date) {
 /**
  * Proximos dias en que el taller atiende, del mas cercano al mas lejano.
  *
- * Arranca en mañana: el backend rechaza cualquier bloque que ya paso
- * (`validarBloque()` compara contra el ahora de America/Santiago), y ofrecer hoy
- * significa ofrecer bloques que pueden haber vencido hace horas.
+ * Desde hoy (1-nov): se puede pedir una hora para hoy mismo, en un bloque que aun no empieza, y el taller decide si la
+ * acepta. El backend (`validarBloque()`) solo rechaza los bloques que ya pasaron, asi que hoy se ofrecen unicamente los
+ * que quedan; si no queda ninguno, hoy no aparece.
  */
 export function getUpcomingAgendaDates(config, { daysAhead = 60, from = new Date() } = {}) {
   const today = new Date(from.getFullYear(), from.getMonth(), from.getDate());
   const dates = [];
-  for (let offset = 1; offset <= daysAhead; offset += 1) {
+  for (let offset = 0; offset <= daysAhead; offset += 1) {
     const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset);
     const day = weekdayIndexFromDate(date);
-    const slots = config ? buildAgendaDaySlots(config, day) : [];
+    const iso = toIsoDate(date);
+    let slots = config ? buildAgendaDaySlots(config, day) : [];
+    if (config && offset === 0) slots = slots.filter((slot) => !isSlotPast(iso, slot.label, from));
     if (config && slots.length === 0) continue;
 
-    const iso = toIsoDate(date);
     dates.push({
       iso,
       day,
-      shortLabel: offset === 1 ? 'Mañana' : `${WEEKDAYS[day].short} ${date.getDate()}`,
+      shortLabel: offset === 0 ? 'Hoy' : offset === 1 ? 'Mañana' : `${WEEKDAYS[day].short} ${date.getDate()}`,
       longLabel: formatAgendaDateLong(iso),
       dayNumber: date.getDate(),
       monthShort: MONTH_NAMES[date.getMonth()].slice(0, 3),
@@ -407,6 +408,12 @@ export function getUpcomingAgendaDates(config, { daysAhead = 60, from = new Date
     });
   }
   return dates;
+}
+
+/** ¿El bloque ('09:00 - 10:00') de esa fecha ya empezo? Hoy solo se ofrecen los bloques que aun no empiezan. */
+export function isSlotPast(isoDate, slotLabel, now = new Date()) {
+  const start = getAppointmentStartDate(isoDate, slotLabel);
+  return !start || start.getTime() <= now.getTime();
 }
 
 /** Momento en que parte la cita, a partir de la fecha y del bloque ('09:00 - 10:00'). */

@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import { useTallerOwnership } from './useTallerOwnership';
 import {
-  normalizeAgendaConfig, getUpcomingAgendaDates, getAgendaSlotsForDate,
+  normalizeAgendaConfig, getUpcomingAgendaDates, getAgendaSlotsForDate, isSlotPast,
   getAgendaSummaryText, formatAgendaDateLong, formatAgendaMonthLabel, parseIsoDate, toIsoDate,
   weekdayIndexFromDate, WEEKDAYS
 } from '../../data/agendaConfig';
@@ -176,13 +176,20 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
     [taller?.agendaConfig]
   );
 
-  // Dias con atencion, desde mañana. Si el taller no trae agenda no se ofrece
+  // La hora actual (renovada cada minuto): hoy solo se ofrecen los bloques que aun no empiezan.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  // Dias con atencion, desde hoy (el taller decide si acepta una hora para hoy mismo). Si el taller no trae agenda no se ofrece
   // ninguna fecha: sin configuracion el backend rechaza cualquier reserva con
   // "El taller no tiene una agenda configurada", asi que inventar bloques de
   // relleno solo llevaria al usuario a un error garantizado.
   const availableDates = useMemo(
-    () => (agendaConfig ? getUpcomingAgendaDates(agendaConfig) : []),
-    [agendaConfig]
+    () => (agendaConfig ? getUpcomingAgendaDates(agendaConfig, { from: now }) : []),
+    [agendaConfig, now]
   );
 
   // Igual que la app: no se elige un día por el usuario; el calendario abre en el mes de la
@@ -244,8 +251,8 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
   const availableSlots = useMemo(() => {
     if (!appointmentDate || !agendaConfig) return [];
     return getAgendaSlotsForDate(agendaConfig, appointmentDate)
-      .filter((slot) => !bookedSlots.includes(slot.label));
-  }, [agendaConfig, appointmentDate, bookedSlots]);
+      .filter((slot) => !bookedSlots.includes(slot.label) && !isSlotPast(appointmentDate, slot.label, now));
+  }, [agendaConfig, appointmentDate, bookedSlots, now]);
 
   // Cambiar de dia invalida el bloque elegido para el dia anterior.
   useEffect(() => {
