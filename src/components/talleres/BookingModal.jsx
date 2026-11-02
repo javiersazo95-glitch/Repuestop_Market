@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Calendar, Car, CheckCircle2, X, AlertCircle, MapPin, Loader2, LogIn, Clock, Phone, Mail,
   ChevronLeft, ChevronRight, Check, Lock, Info, User, Tag, LifeBuoy,
-  Home, MessageCircle, StickyNote, Wrench } from 'lucide-react';
+  Home, MessageCircle, StickyNote } from 'lucide-react';
 import { confirmWhatsappContact } from '../../utils/whatsappContact';
 import { useAuth } from '../../context/AuthContext';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
@@ -60,7 +60,7 @@ const HOME_SERVICE_PREFIX = 'Servicio a domicilio. Dirección del servicio: ';
 /** Largo del comentario "¿Qué necesitas?" (el backend acepta más, pero un motivo corto se lee de un vistazo). */
 const MAX_REASON_LENGTH = 300;
 
-export default function BookingModal({ taller, onClose, onBooked, isRescheduling = false, rescheduleFromId = null, fromAppointment: fromAppointmentProp = null, fallaContext = null, initialService = null }) {
+export default function BookingModal({ taller, onClose, onBooked, isRescheduling = false, rescheduleFromId = null, fromAppointment: fromAppointmentProp = null, fallaContext = null, initialService: _initialService = null }) {
   const { user, role } = useAuth();
   // Las citas las piden los compradores: una cuenta de taller las recibe, pero no las solicita.
   const isWorkshopAccount = role === 'WORKSHOP';
@@ -91,22 +91,10 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
   const [userPhone, setUserPhone] = useState(fromAppointment?.customerPhone || user?.phone || user?.telefono || '');
   const [vehiclePatent, setVehiclePatent] = useState(fromAppointment?.vehiclePatent || '');
   const [vehicleModel, setVehicleModel] = useState(fromAppointment?.vehicleModel || '');
-  // "¿Qué necesitas?": servicios del catálogo del taller (el backend rechaza uno ajeno) y un comentario
-  // libre. Ambos opcionales; sin ellos la cita llega al taller como "Cita general". Al reagendar o llegar
-  // desde la fila de un servicio parten precargados.
-  const offeredServices = useMemo(
-    () => (taller?.services || []).map((service) => service?.name).filter(Boolean),
-    [taller?.services]
-  );
-  const [selectedServices, setSelectedServices] = useState(() => {
-    const wanted = [...(fromAppointment?.services || []), initialService].filter(Boolean);
-    return offeredServices.filter((name) => wanted.some((item) => String(item).toLowerCase() === name.toLowerCase()));
-  });
+  // Comentario libre opcional: "Cuéntale al taller qué necesitas". Sin él la cita llega al taller como "Cita general".
   const [reason, setReason] = useState(() => previousNoteLines
     .filter((line) => line.trim() && !line.startsWith(HOME_SERVICE_PREFIX) && !line.startsWith('Falla: '))
     .join('\n').slice(0, MAX_REASON_LENGTH));
-  const toggleService = (name) => setSelectedServices((current) => (
-    current.includes(name) ? current.filter((item) => item !== name) : [...current, name]));
   // Detección por patente, igual que en la app: 'idle' | 'searching' | 'found' | 'not-found'.
   const [plateLookup, setPlateLookup] = useState('idle');
   // Con patente y vehículo precargados no se vuelve a consultar la patente (cada consulta nueva cuesta).
@@ -337,7 +325,7 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
     try {
       const form = {
         service: 'Cita general',
-        services: selectedServices,
+        services: [],
         date: appointmentDate,
         time: appointmentTime,
         customerName: userName.trim(),
@@ -607,25 +595,6 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                       </label>
                       <small className="bk-helper">El taller lo usa para confirmar si trabaja con la marca de tu vehículo.</small>
                     </div>
-                    {/* "¿Qué necesitas?": sin esto la cita llega como "Cita general" y el taller no sabe de qué se trata. */}
-                    {offeredServices.length > 0 && (
-                      <div className="bk-group">
-                        <span className="bk-label">¿Qué servicio necesitas? <small>Opcional</small></span>
-                        <div className="bk-service-chips" role="group" aria-label="Servicios del taller">
-                          {offeredServices.map((name) => (
-                            <button
-                              type="button"
-                              key={name}
-                              className={`bk-service-chip ${selectedServices.includes(name) ? 'is-selected' : ''}`}
-                              aria-pressed={selectedServices.includes(name)}
-                              onClick={() => toggleService(name)}
-                            >
-                              {selectedServices.includes(name) ? <Check size={13} /> : <Wrench size={13} />} {name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                     <div className="bk-group">
                       <span className="bk-label">Cuéntale al taller qué necesitas <small>Opcional</small></span>
                       <label className="bk-field is-multiline">
@@ -712,7 +681,6 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
               <div className="bk-confirm-intro"><LifeBuoy size={20} /> Revisa que todo esté correcto antes de enviar tu reserva al taller.</div>
               <div className="bk-voucher">
                 <VoucherRow label="Origen:" value={originLabel} />
-                {selectedServices.length > 0 && <VoucherRow label="Servicio:" value={selectedServices.join(', ')} />}
                 {reason.trim() && <VoucherRow label="Detalle:" value={reason.trim()} />}
                 <VoucherRow label="Día:" value={dateLabel} />
                 <VoucherRow label="Hora:" value={appointmentTime} />
@@ -757,7 +725,6 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
               <div className="bk-voucher">
                 <VoucherRow label="Código de reserva:" value={confirmedAppointment?.id} mono />
                 <VoucherRow label="Origen:" value={originLabel} />
-                {selectedServices.length > 0 && <VoucherRow label="Servicio:" value={selectedServices.join(', ')} />}
                 {reason.trim() && <VoucherRow label="Detalle:" value={reason.trim()} />}
                 <VoucherRow label="Fecha y hora:" value={`${dateLabel} a las ${confirmedAppointment?.time || appointmentTime}`} />
                 <VoucherRow label="Dirección taller:" value={confirmedAppointment?.workshopAddress || [taller.address, taller.commune].filter(Boolean).join(', ') || 'Por confirmar con el taller'} />
