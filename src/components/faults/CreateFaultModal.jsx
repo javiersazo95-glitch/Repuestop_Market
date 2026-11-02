@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import { AlertCircle, Camera, CheckCircle2, CircleHelp, Loader2, MapPin, Trash2, X } from 'lucide-react';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import { createFault, getFaultCategories, updateFault, uploadFaultPhoto } from '../../services/faultApi';
-import { resolveMediaUrl } from '../../services/api';
-import { isValidPlate, lookupVehicleByPlate, normalizePlate } from '../../utils/vehicleLookup';
+import { getAddressesApi, resolveMediaUrl } from '../../services/api';
+import { addRecentPlate, getRecentPlates, isValidPlate, lookupVehicleByPlate, normalizePlate } from '../../utils/vehicleLookup';
 import { getComunasApi, getRegionesApi, getVehicleBrandsApi, getVehicleModelsApi, getVehicleVersionsApi, searchVehicleByPatenteApi } from '../../services/api';
 import { normalizarNombreGeografico } from '../../services/geoLookup';
 import { useAuth } from '../../context/AuthContext';
@@ -118,6 +118,9 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const lastPlate = useRef('');
+  // Últimas patentes consultadas en este navegador: se ofrecen como atajo para no volver a escribirlas.
+  const [recentPlates, setRecentPlates] = useState([]);
+  useEffect(() => { if (isOpen) setRecentPlates(getRecentPlates()); }, [isOpen]);
   // Un solo grupo de fotos para el usuario: la primera hace de portada (con el formulario corto no hay una foto aparte del vehículo).
   const evidencePhotos = photos;
   const totalPhotos = photos.length + (vehiclePhoto ? 1 : 0);
@@ -126,6 +129,25 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   };
   // Recogida: solo se pregunta si el vehículo no se puede mover (o si la falla que se edita ya la tenía).
   const showPickup = SHOW_ADVANCED_FIELDS || canMove === false || (isEditing && needsPickup === true);
+  // Al pedir que recojan el vehículo se propone la dirección principal de la libreta (una vez, y solo si el campo sigue vacío).
+  const pickupPrefilled = useRef(false);
+  const buyerId = user?.userId ?? user?.id;
+  useEffect(() => {
+    if (!isOpen) pickupPrefilled.current = false;
+    if (!isOpen || !showPickup || !needsPickup || pickupPrefilled.current || !buyerId) return undefined;
+    pickupPrefilled.current = true;
+    let active = true;
+    getAddressesApi(buyerId)
+      .then((list) => {
+        const saved = (Array.isArray(list) ? list : []).find((item) => item.esPrincipal) || list?.[0];
+        const text = [saved?.calleYNumero, saved?.comunaNombre].filter(Boolean).join(', ');
+        if (active && text) setPickupAddress((current) => (current.trim() ? current : text));
+      })
+      .catch(() => {});
+    return () => { active = false; };
+    // Solo reacciona a la elección: lo que se escriba después no debe cancelar la carga en curso.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, showPickup, needsPickup, buyerId]);
 
   useEffect(() => {
     if (!isOpen || !fault) return;
@@ -224,6 +246,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         if (!active) return;
         if (!data || !data.marca || !data.modelo) { setPlateStatus('notfound'); return; }
         setPlateStatus('found');
+        addRecentPlate(normalized);
         setResolved({
           patente: normalized, marca: data.marca, modelo: data.modelo, anio: data.anio ? String(data.anio) : '',
           version: data.version || '', motor: data.motor || '',
@@ -417,6 +440,14 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
                 <span>Patente</span>
                 <input value={plate} maxLength={8} autoCapitalize="characters" autoComplete="off" spellCheck={false} placeholder="ABCD12" autoFocus
                   onChange={(e) => setPlate(e.target.value.toUpperCase().replace(/[^A-Z0-9-\s]/g, ''))} />
+                {recentPlates.length > 0 && !isValidPlate(normalizePlate(plate)) && (
+                  <div className="ft-recent-plates" aria-label="Tus últimas patentes">
+                    <small>Tus últimas patentes:</small>
+                    {recentPlates.map((recent) => (
+                      <button key={recent} type="button" className="ft-chip is-toggle" onClick={() => setPlate(recent)}>{maskPlate(recent)}</button>
+                    ))}
+                  </div>
+                )}
                 {plateStatus === 'loading' && <small><Loader2 size={12} className="spin-icon" /> Consultando patente…</small>}
                 {plateStatus === 'notfound' && <small>No pudimos identificar esta patente. Revísala o <button type="button" className="ft-link" onClick={() => setMode('manual')}>ingresa los datos a mano</button>.</small>}
                 {(plateStatus === 'idle') && <small>Con tu patente obtenemos la marca, el modelo y el año. ¿No la tienes a mano? <button type="button" className="ft-link" onClick={() => setMode('manual')}>Ingresa el vehículo a mano</button>.</small>}

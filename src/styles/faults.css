@@ -608,3 +608,5 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-location-line { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 10px 12px; border: 1px solid #bfd6f7; border-radius: 10px; background: #eaf2ff; font-size: 13.5px; color: #243442; }
 .ft-location-line svg { flex: 0 0 auto; color: #0056bf; }
 .ft-location-line .ft-link { margin-left: auto; }
+
+.ft-recent-plates { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
