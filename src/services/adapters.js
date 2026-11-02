@@ -697,6 +697,8 @@ export function adaptTaller(dto) {
     hours: dto.horario || '',
     is24Hours: dto.atiende24Horas === true,
     only24Hours: dto.solo24Horas === true,
+    // Lo que atiende a toda hora (grúa, scanner…): el taller lo marca en Mi taller.
+    services24h: Array.isArray(dto.servicios24Horas) ? dto.servicios24Horas.filter(Boolean) : [],
     homeService: dto.servicioADomicilio === true,
     hasOnlineBooking: dto.puedeAgendar === true && Boolean(agendaConfig),
     categories: Array.isArray(dto.categorias) ? dto.categorias.filter(Boolean) : [],

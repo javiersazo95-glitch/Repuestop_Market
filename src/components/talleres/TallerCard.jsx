@@ -337,7 +337,7 @@ export default function TallerCard({
           <div className="taller-card__quick">
             {canBook && (
               <button type="button" className="taller-card__pill is-book" onClick={handleBooking}>
-                <Calendar size={13} /> Agendar
+                <Calendar size={13} /> Agendar gratis
               </button>
             )}
             {!compact && canWhatsapp && (
