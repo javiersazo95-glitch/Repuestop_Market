@@ -330,6 +330,10 @@ export default function Header({
             <button className="trust-item-plain utility-link" onClick={onOpenStores}>
               <Store size={15} /> Casas de repuestos verificadas
             </button>
+            {/* Escritorio: "Sobre RepuesTop" vive aquí, junto a las casas verificadas. En el celular sigue en el menú lateral. */}
+            <button className="trust-item-plain utility-link" aria-current={navCurrent(ROUTES.about)} onClick={onOpenAbout}>
+              <Info size={15} /> Sobre RepuesTop
+            </button>
           </div>
           <div className="trust-items-right-vivid">
             <button className="trust-item-plain utility-link" onClick={onOpenHelp}>
@@ -689,7 +693,7 @@ export default function Header({
           {/* Junto a Búsqueda de repuestos: el comprador registra la falla de su vehiculo y los talleres la diagnostican. */}
           <button type="button" className="nav-item-faults" aria-current={navCurrent(ROUTES.faults)} onClick={() => { setShowMobileNav(false); navigate(ROUTES.faults); }}><EngineIcon size={16} /> <span>Fallas automotrices</span></button>
           <button type="button" className="nav-item-stores" aria-current={navCurrent(ROUTES.stores)} onClick={() => { setShowMobileNav(false); onOpenStores(); }}><Store size={16} /> <span>Casas de repuestos</span></button>
-          <button type="button" className="nav-item-about" aria-current={navCurrent(ROUTES.about)} onClick={() => { setShowMobileNav(false); onOpenAbout(); }}><Info size={16} /> <span>Sobre RepuesTop</span></button>
+          <button type="button" className="nav-item-about mobile-only-nav-item" aria-current={navCurrent(ROUTES.about)} onClick={() => { setShowMobileNav(false); onOpenAbout(); }}><Info size={16} /> <span>Sobre RepuesTop</span></button>
           <button type="button" className="nav-item-ads" aria-current={navCurrent(ROUTES.talleres)} onClick={() => { setShowMobileNav(false); onOpenTalleres(); }}><CarFront size={16} /> <span>Servicios automotrices</span></button>
           <p className="mobile-drawer-section-title is-more mobile-only-nav-item">RepuesTop</p>
           <button type="button" className="nav-item-help" aria-current={navCurrent(ROUTES.support)} onClick={() => { setShowMobileNav(false); onOpenHelp(); }}><HelpCircle size={16} /> <span className="nav-label-desktop">Ayuda</span><span className="nav-label-mobile">Centro de ayuda</span></button>
