@@ -1,0 +1,45 @@
+.apd-backdrop { position: fixed; inset: 0; z-index: 2600; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15, 23, 42, 0.6); }
+.apd { --apd-color: #475569; --apd-bg: #f1f5f9; --apd-border: #cbd5e1; --apd-dot: #94a3b8; width: 100%; max-width: 760px; max-height: 92vh; display: flex; flex-direction: column; border-radius: 20px; background: #fff; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3); overflow: hidden; }
+.apd.tone-success { --apd-color: #0e7038; --apd-bg: #eafbf1; --apd-border: #bbf7d0; --apd-dot: #18a957; }
+.apd.tone-warning { --apd-color: #9a5a00; --apd-bg: #fff7e6; --apd-border: #fde3a7; --apd-dot: #f59e0b; }
+.apd.tone-danger { --apd-color: #b42318; --apd-bg: #fef2f2; --apd-border: #fecaca; --apd-dot: #d92d20; }
+.apd-head { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: var(--apd-bg); border-bottom: 1px solid var(--apd-border); }
+.apd-head > div { flex: 1; min-width: 0; }
+.apd-head small { display: block; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--apd-color); }
+.apd-head h3 { margin: 2px 0; font-size: 19px; font-weight: 800; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.apd-head-icon { flex: none; width: 48px; height: 48px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--apd-dot); color: #fff; }
+.apd-status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--apd-color); }
+.apd-close { flex: none; border: 0; background: transparent; color: #64748b; cursor: pointer; padding: 4px; border-radius: 8px; }
+.apd-close:hover { background: rgba(15, 23, 42, 0.06); }
+.apd-body { padding: 18px 20px 22px; overflow-y: auto; display: grid; gap: 14px; }
+.apd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.apd-section { display: grid; gap: 8px; padding: 14px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; align-content: start; }
+.apd-section h4 { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #64748b; }
+.apd-section h4 svg { color: #0b66c3; }
+.apd-row { display: flex; gap: 10px; font-size: 13.5px; align-items: flex-start; }
+.apd-row span { flex: 0 0 82px; color: #64748b; }
+.apd-row b { flex: 1; min-width: 0; font-weight: 600; color: #0f172a; word-break: break-word; }
+.apd-row a { color: #0b66c3; font-weight: 700; }
+.apd-text { margin: 0; font-size: 13.5px; line-height: 1.5; color: #334155; }
+.apd-muted { margin: 0; font-size: 13px; color: #64748b; }
+.apd-pending { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: #fff7e6; }
+.apd-pending p { margin: 0; color: #9a5a00; font-size: 13.5px; }
+.apd-locked { display: grid; justify-items: center; gap: 8px; padding: 16px; border-radius: 12px; background: #eaf2ff; color: #0b66c3; text-align: center; }
+.apd-locked p { margin: 0; font-size: 13.5px; color: #0f172a; }
+.apd-cta { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border: 0; border-radius: 12px; background: #0b66c3; color: #fff; font-weight: 800; cursor: pointer; }
+.apd-stars { display: flex; align-items: center; gap: 2px; color: #f59e0b; }
+.apd-stars b { margin-left: 8px; color: #0f172a; font-size: 14px; }
+@media (max-width: 640px) {
+  .apd-grid { grid-template-columns: 1fr; }
+  .apd-backdrop { padding: 0; align-items: flex-end; }
+  .apd { max-height: 94vh; border-radius: 20px 20px 0 0; }
+}
+
+/* Tarjeta del historial: seleccionable y con el acceso al diagnóstico */
+.agenda-appointment.is-selectable { cursor: pointer; transition: box-shadow .15s ease, transform .15s ease; }
+.agenda-appointment.is-selectable:hover, .agenda-appointment.is-selectable:focus-visible { box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12); transform: translateY(-1px); outline: none; }
+.agenda-appointment.is-selectable:focus-visible { box-shadow: 0 0 0 3px rgba(0, 102, 255, .28); }
+.agenda-appointment-diag { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border: 0; border-radius: 999px; background: #0b66c3; color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; }
+.agenda-appointment.tone-success .agenda-appointment-diag { background: #18a957; }
+.agenda-appointment.tone-warning .agenda-appointment-diag { background: #d97706; }
+.agenda-appointment.tone-danger .agenda-appointment-diag { background: #d92d20; }

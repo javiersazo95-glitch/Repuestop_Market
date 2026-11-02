@@ -209,9 +209,10 @@ export function describeAppointment(appointment, viewer, now = new Date()) {
     return { ...base, label: 'Cancelada', longLabel };
   }
   if (state === 'past') {
+    // Ya pasó: sin respuesta en ámbar (se perdió), finalizada en verde. El estado sigue siendo 'past' para los contadores.
     return appointment.status === 'pending'
-      ? { ...base, label: 'Sin respuesta', longLabel: isProvider ? 'Venció sin que la respondieras' : 'El taller no respondió a tiempo' }
-      : { ...base, label: 'Finalizada', longLabel: 'La cita ya terminó' };
+      ? { ...base, tone: 'warning', label: 'Sin respuesta', longLabel: isProvider ? 'Venció sin que la respondieras' : 'El taller no respondió a tiempo' }
+      : { ...base, tone: 'success', label: 'Finalizada', longLabel: 'La cita ya terminó' };
   }
   if (state === 'pending') {
     return { ...base, label: isProvider ? 'Por responder' : 'Pendiente', longLabel: isProvider ? 'Espera tu respuesta' : 'Esperando la respuesta del taller' };

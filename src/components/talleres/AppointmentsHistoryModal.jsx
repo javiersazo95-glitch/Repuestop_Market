@@ -2,20 +2,22 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, CalendarClock, CalendarDays, Check, XCircle, Loader2, AlertTriangle,
-  Phone, Mail, Car, StickyNote, RotateCcw, Wrench, Clock, Settings, Home, Lock, MessageCircle, Star, Flag, MapPin } from 'lucide-react';
+  Phone, Mail, Car, StickyNote, Stethoscope, ChevronRight, RotateCcw, Wrench, Clock, Settings, Home, Lock, MessageCircle, Star, Flag, MapPin } from 'lucide-react';
 import { confirmWhatsappContact } from '../../utils/whatsappContact';
 import {
   formatAgendaDateLong, getTimeUntilLabel, parseIsoDate, toIsoDate
 } from '../../data/agendaConfig';
 import {
   appointmentHistoryKind, filterAppointmentsFor, groupAppointmentsByTime, summarizeAppointments,
-  describeAppointment, appointmentVisualState, isAppointmentCurrent, defaultAppointmentsSegment,
+  describeAppointment, isAppointmentCurrent, defaultAppointmentsSegment,
   getAppointmentChangeDeadline, isAppointmentChangeLocked
 } from '../../utils/appointmentHistory';
 import AppointmentReasonDialog from './AppointmentReasonDialog';
 import { updateAppointmentStatus, rateAppointmentWorkshop } from '../../services/talleresStorage';
 import WorkshopRatingDialog from './WorkshopRatingDialog';
 import AppointmentResultToggle from './AppointmentResult';
+import AppointmentDetailDialog from './AppointmentDetailDialog';
+import '../../styles/appointment-detail.css';
 import { apiErrorMessage } from '../../services/walletStorage';
 import AppointmentsCalendarModal from './AppointmentsCalendarModal';
 import PrincipalAgendaCard from './PrincipalAgendaCard';
@@ -58,6 +60,7 @@ export default function AppointmentsHistoryModal({
   const [showHistory, setShowHistory] = useState(false);
   const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'cancelled' | 'unanswered' | 'finished'
   const [reasonTarget, setReasonTarget] = useState(null); // { kind, appointment }
+  const [detailId, setDetailId] = useState(null); // cita cuyo detalle y diagnóstico se ve
   const [rateTarget, setRateTarget] = useState(null); // cita a calificar
   // "Finalizar cita": despliega el resultado de esa cita para registrarlo sin esperar a que termine el bloque.
   const [finishSignals, setFinishSignals] = useState({});
@@ -224,7 +227,14 @@ export default function AppointmentsHistoryModal({
       <div
         key={appointment.id}
         id={`appt-${appointment.id}`}
-        className={`agenda-appointment tone-${meta.tone} ${isFocused ? 'is-focused' : ''}`}
+        className={`agenda-appointment tone-${meta.tone} ${isFocused ? 'is-focused' : ''} ${isCurrent ? '' : 'is-selectable'}`}
+        {...(isCurrent ? {} : {
+          role: 'button',
+          tabIndex: 0,
+          'aria-label': `Ver el detalle y el diagnóstico de la cita del ${formatAgendaDateLong(appointment.date)}`,
+          onClick: (event) => { if (!event.target.closest('a, button')) setDetailId(appointment.id); },
+          onKeyDown: (event) => { if ((event.key === 'Enter' || event.key === ' ') && event.target === event.currentTarget) { event.preventDefault(); setDetailId(appointment.id); } },
+        })}
       >
         <div className="agenda-appointment-when">
           <strong>{parseIsoDate(appointment.date)?.getDate() ?? '--'}</strong>
@@ -239,6 +249,11 @@ export default function AppointmentsHistoryModal({
               <span className="agenda-appointment-eta">
                 {getTimeUntilLabel(appointment.date, appointment.time)}
               </span>
+            )}
+            {!isCurrent && (
+              <button type="button" className="agenda-appointment-diag" onClick={() => setDetailId(appointment.id)} aria-label="Ver diagnóstico y detalle de la cita">
+                <Stethoscope size={15} /> Ver diagnóstico <ChevronRight size={14} />
+              </button>
             )}
           </div>
 
@@ -578,6 +593,15 @@ export default function AppointmentsHistoryModal({
           message={reasonMessage}
           onConfirm={confirmReason}
           onClose={() => setReasonTarget(null)}
+        />
+      )}
+
+      {detailId && (
+        <AppointmentDetailDialog
+          appointment={appointments.find((item) => item.id === detailId) || null}
+          viewer={kind === 'recibidas' ? 'provider' : 'customer'}
+          onClose={() => setDetailId(null)}
+          onEvaluate={(item) => setRateTarget(item)}
         />
       )}
 
