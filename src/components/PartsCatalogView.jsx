@@ -29,6 +29,7 @@ import SheetSelect from './SheetSelect';
 import { useIsMobile } from '../hooks/useIsMobile';
 import PaginationBar from './PaginationBar';
 import CategoryBrowserMobile from './CategoryBrowserMobile';
+import CategoryBrowserWeb from './CategoryBrowserWeb';
 import { auctionDetailPath, ROUTES } from '../routes/paths';
 import '../styles/catalog-app-mobile.css';
 
@@ -549,14 +550,18 @@ export default function PartsCatalogView({
   const filterSource = isVehicleCatalogSearch ? scopedFilters : publishedFilters;
 
   // Cuántos repuestos publicados tiene cada categoría y subcategoría, para el navegador del celular (como la app).
+  // Con patente salen del universo compatible con el vehículo (`filterSource`): los contadores bajan.
+  const countsSource = filterSource || publishedFilters;
   const browserCounts = useMemo(() => Object.fromEntries(HEADER_CATEGORIES.map((cat) => {
-    const published = findPublishedCategory(publishedFilters, cat);
-    const subs = (publishedFilters?.subcategorias || []).filter((sub) => published && String(sub.categoriaId) === String(published.id));
+    const published = findPublishedCategory(countsSource, cat);
+    const subs = (countsSource?.subcategorias || []).filter((sub) => published && String(sub.categoriaId) === String(published.id));
     return [cat.id, {
+      // Con los contadores cargados, lo que no aparece tiene 0 repuestos (el explorador lo apaga); mientras cargan, no se sabe.
+      loaded: Boolean(countsSource),
       count: published?.productos,
       subs: Object.fromEntries(subs.map((sub) => [normalizeNameKey(sub.nombre), sub.productos])),
     }];
-  })), [HEADER_CATEGORIES, publishedFilters]);
+  })), [HEADER_CATEGORIES, countsSource]);
 
   const visibleNavigationCategories = useMemo(() => {
     if (!filterSource) return NAVIGATION_CATEGORIES;
@@ -668,7 +673,9 @@ export default function PartsCatalogView({
     || selectedCategory !== 'TODAS'
     || activeCategoryId
     || activeComunaId
-    || (onlyCompatible && activeVehicle)
+    // En escritorio la patente sola no pide resultados: acota los contadores del explorador de categorías y el comprador
+    // elige la subcategoría (así no se consulta todo lo compatible). En el celular sigue mostrando lo compatible.
+    || (isMobileLayout && onlyCompatible && activeVehicle)
     || onlyQuoteOnly
     || selectedCondition
     || selectedOrigin
@@ -680,6 +687,10 @@ export default function PartsCatalogView({
     || minPrice > 0
     || maxPrice < PRICE_CEILING
   );
+
+  // Escritorio sin filtros: el explorador de categorías (fotos a la izquierda, subcategorías a la derecha) reemplaza a la
+  // barra de categorías, los filtros avanzados y la grilla. Al elegir una subcategoría (o filtrar) vuelve la vista de siempre.
+  const showWebBrowser = !isMobileLayout && !hasActiveContext && !embedded;
 
   /**
    * Categoría y subcategoría llegan como nombre y se traducen a id contra el catálogo
@@ -1252,7 +1263,7 @@ export default function PartsCatalogView({
                 <p>Ingresa tu patente para ver solo lo compatible con tu vehículo, o elige una categoría para empezar a filtrar.</p>
               </div>
             </div>
-            <div className="category-showcase-carousel">
+            {!showWebBrowser && <div className="category-showcase-carousel">
               <div className="category-carousel-viewport" role="region" aria-label="Categorías de repuestos; desliza para ver todas" tabIndex={0}>
                 <div className="category-carousel-track">
                   {CAROUSEL_CATEGORIES.map((category) => {
@@ -1274,7 +1285,7 @@ export default function PartsCatalogView({
                   })}
                 </div>
               </div>
-            </div>
+            </div>}
             {renderCatalogSearchControls()}
         </section>
         )}
@@ -1306,6 +1317,21 @@ export default function PartsCatalogView({
               }}
             />
           )}
+
+        {showWebBrowser && (
+          <CategoryBrowserWeb
+            categories={CAROUSEL_CATEGORIES}
+            counts={browserCounts}
+            normalizeKey={normalizeNameKey}
+            vehicleLabel={activeVehicle && onlyCompatible ? [activeVehicle.marca, activeVehicle.modelo].filter(Boolean).join(' ') : ''}
+            onPick={({ category, subcategory }) => {
+              setSelectedCategory(category.id);
+              setSelectedSubcategory(subcategory || 'TODAS');
+              setCurrentPage(1);
+              requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+            }}
+          />
+        )}
 
         {/* Como en la app: primero el vehículo, abajo los filtros extra y después los resultados. */}
         {activeVehicle && onlyCompatible && (
@@ -1406,8 +1432,8 @@ export default function PartsCatalogView({
 
         {mobileFiltersOpen && <button type="button" className="catalog-mobile-filter-backdrop" aria-label="Cerrar filtros" onClick={() => setMobileFiltersOpen(false)} />}
 
-        {/* 3. Main 2-Column Content Layout (Technical Sidebar + Parts Grid) */}
-        <div className="catalog-content-grid catalog-main-content-grid">
+        {/* 3. Main 2-Column Content Layout (Technical Sidebar + Parts Grid). Sin filtros en escritorio lo reemplaza el explorador. */}
+        {!showWebBrowser && <div className="catalog-content-grid catalog-main-content-grid">
           {/* Sidebar Technical Filters (Left 280px) */}
           <aside id="catalog-filter-panel" className={`catalog-sidebar-filters catalog-advanced-filter-panel ${mobileFiltersOpen ? 'mobile-filters-open' : ''}`} aria-label="Filtros del catálogo">
             <button type="button" className="catalog-mobile-filter-close" onClick={() => setMobileFiltersOpen(false)}><X size={19} /> Cerrar filtros</button>
@@ -1819,7 +1845,7 @@ export default function PartsCatalogView({
               </p>
             )}
           </main>
-        </div>
+        </div>}
       </div>
 
       {needModalOpen && (
