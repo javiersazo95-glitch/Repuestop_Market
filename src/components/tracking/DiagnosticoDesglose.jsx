@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import TallerRating from '../talleres/TallerRating';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { CalendarDays, CheckCircle2, ChevronRight, Flag, Loader2, Lock, MessagesSquare, Send, Stethoscope, X, Zap } from 'lucide-react';
@@ -115,6 +116,7 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
           <div>
             <strong>{diagnosis.autor}</strong>
             <small>{['Taller', taller?.comuna].filter(Boolean).join(' · ')}</small>
+            {taller && <TallerRating rating={taller.calificacion} count={taller.opiniones} />}
             {taller && <Link className="dsg-link" to={workshopPath(taller.tallerId)} onClick={onClose}>Ver perfil del taller <ChevronRight size={13} /></Link>}
           </div>
           <span className={`trk-tag ${accepted ? 'is-ok' : 'is-warn'}`}>{accepted ? 'Aceptado' : 'Sin aceptar'}</span>

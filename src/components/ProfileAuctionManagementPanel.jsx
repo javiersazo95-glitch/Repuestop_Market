@@ -1,4 +1,5 @@
 import '../styles/profile-auction-management.css';
+import { availabilityLabel } from '../utils/availability';
 import '../styles/profile-auction-tracking.css';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -393,6 +394,7 @@ function OfferCardMobile({ item, seenSignature, onSeen, busy, onEdit, onOpen, on
             <h4>Condiciones</h4>
             <div className="otm-cond-row is-head"><span /><span>Pide el comprador</span><span>Tu oferta</span></div>
             {cond('Presupuesto', budget != null ? `hasta ${money(budget)}` : 'Sin tope', money(oferta.totalVigente), overBudget)}
+            {cond('Disponible', '—', availabilityLabel(oferta.disponibilidadDias) || '—')}
             {cond('Plazo', necesidad.tiempoMaximoEnvio || 'Sin plazo', oferta.tiempoEntrega)}
             {cond('Entrega', necesidad.tipoEnvio || 'Cualquiera', oferta.tipoEntrega)}
             {cond('Garantía', '—', oferta.garantia)}

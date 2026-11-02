@@ -32,3 +32,8 @@
 @media (max-width: 1100px) { .cbw { grid-template-columns: 280px minmax(0, 1fr); } .cbw-cat-img { flex-basis: 64px; width: 64px; height: 64px; } .cbw-grid { gap: 18px 8px; } .cbw-right { padding: 16px 14px 18px; } }
 /* En el celular el explorador es `CategoryBrowserMobile`. */
 @media (max-width: 767px) { .cbw { display: none; } }
+
+.cbw-head { flex-wrap: wrap; }
+.cbw-all-products { margin-left: auto; background: #0056bf; border-color: #0056bf; color: #fff; }
+.cbw-all-products + .cbw-all { margin-left: 0; }
+.catalog-back-categories { display: inline-flex; align-items: center; gap: 4px; min-height: 34px; padding: 0 12px; margin-right: 12px; border: 1px solid #bfd6f7; border-radius: 999px; background: #eaf2ff; color: #0056bf; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }

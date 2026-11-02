@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AVAILABILITY_OPTIONS, availabilityLabel } from '../utils/availability';
 import {
   AlertCircle, AlertTriangle, ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, Gavel, LayoutGrid, List, Loader2, MinusCircle, Package, PackagePlus, Search,
   ShieldCheck, SlidersHorizontal, Sparkles, X, XCircle,
@@ -535,6 +536,7 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
   const [createFor, setCreateFor] = useState(null);
   const [justCreated, setJustCreated] = useState('');
 
+  const [availability, setAvailability] = useState(myQuote?.disponibilidadDias ?? 0);
   const [deliveryTime, setDeliveryTime] = useState(myQuote?.tiempoEntrega || '24 horas');
   const deliveryChoices = useMemo(() => deliveryOptions(auction), [auction]);
   const noDeliveryAllowed = !deliveryChoices.some((option) => option.disponible);
@@ -605,6 +607,7 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
         precio: total,
         precioFinal: total,
         cantidad: covered.reduce((sum, entry) => sum + entry.item.cantidad, 0),
+        disponibilidadDias: availability,
         tiempoEntrega: deliveryTime,
         tipoEntrega: deliveryType,
         garantia: warranty,
@@ -635,6 +638,7 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
             <div><dt>Repuestos que ofreces</dt><dd>{enabledItems.length} de {pendingItems.length}</dd></div>
             <div><dt>Total ofertado</dt><dd>{money(total)}</dd></div>
             <div><dt>Entrega</dt><dd>{deliveryType} · {deliveryTime}</dd></div>
+            <div><dt>Disponibilidad</dt><dd>{availabilityLabel(availability)}</dd></div>
           </dl>
           <button type="button" className="aq-btn-primary" onClick={finish}>Listo</button>
         </div>
@@ -689,6 +693,13 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
             <section className="aq-step">
               <h3><span>2</span> Condiciones de tu oferta</h3>
               <fieldset className="aq-fields">
+                <label className="aq-field">
+                  <span>¿Cuándo tendrás el repuesto disponible? *</span>
+                  <select value={availability} onChange={(e) => setAvailability(Number(e.target.value))}>
+                    {AVAILABILITY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                  {availability > 0 && <small>El comprador verá que lo tendrás en {availabilityLabel(availability).toLowerCase()}. El plazo de entrega corre desde que lo tengas.</small>}
+                </label>
                 <label className="aq-field">
                   <span>Plazo de entrega *</span>
                   <select value={deliveryTime} onChange={(e) => setDeliveryTime(e.target.value)}>{DELIVERY_TIMES.map((v) => <option key={v}>{v}</option>)}</select>

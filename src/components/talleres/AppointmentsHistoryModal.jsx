@@ -2,20 +2,21 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, CalendarClock, CalendarDays, Check, XCircle, Loader2, AlertTriangle,
-  Phone, Mail, Car, StickyNote, RotateCcw, Wrench, Clock, Settings, Home, Lock, MessageCircle, Star, Flag, MapPin } from 'lucide-react';
+  Phone, Mail, Car, StickyNote, CarFront, ChevronRight, ClipboardList, RotateCcw, Wrench, Clock, Settings, Home, Lock, MessageCircle, Star, Flag, MapPin } from 'lucide-react';
 import { confirmWhatsappContact } from '../../utils/whatsappContact';
 import {
   formatAgendaDateLong, getTimeUntilLabel, parseIsoDate, toIsoDate
 } from '../../data/agendaConfig';
 import {
-  filterAppointmentsFor, groupAppointmentsByTime, summarizeAppointments,
-  describeAppointment, appointmentVisualState, isAppointmentCurrent, defaultAppointmentsSegment,
+  appointmentHistoryKind, filterAppointmentsFor, groupAppointmentsByTime, summarizeAppointments,
+  describeAppointment, isAppointmentCurrent, defaultAppointmentsSegment,
   getAppointmentChangeDeadline, isAppointmentChangeLocked
 } from '../../utils/appointmentHistory';
 import AppointmentReasonDialog from './AppointmentReasonDialog';
 import { updateAppointmentStatus, rateAppointmentWorkshop } from '../../services/talleresStorage';
 import WorkshopRatingDialog from './WorkshopRatingDialog';
-import AppointmentResultToggle from './AppointmentResult';
+import AppointmentDetailDialog from './AppointmentDetailDialog';
+import '../../styles/appointment-detail.css';
 import { apiErrorMessage } from '../../services/walletStorage';
 import AppointmentsCalendarModal from './AppointmentsCalendarModal';
 import PrincipalAgendaCard from './PrincipalAgendaCard';
@@ -56,11 +57,11 @@ export default function AppointmentsHistoryModal({
   // antes partía en "Recibidas" y un cliente la veía un instante antes de saltar a sus reservas.
   const [segment, setSegment] = useState(initialSegment || null); // 'pedidas' | 'recibidas' | 'agenda'
   const [showHistory, setShowHistory] = useState(false);
-  const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'cancelled' | 'past'
+  const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'cancelled' | 'unanswered' | 'finished'
   const [reasonTarget, setReasonTarget] = useState(null); // { kind, appointment }
+  const [detailId, setDetailId] = useState(null); // cita cuyo detalle y diagnóstico se ve
   const [rateTarget, setRateTarget] = useState(null); // cita a calificar
   // "Finalizar cita": despliega el resultado de esa cita para registrarlo sin esperar a que termine el bloque.
-  const [finishSignals, setFinishSignals] = useState({});
   const [chatTarget, setChatTarget] = useState(null);
   const [givenRatings, setGivenRatings] = useState({}); // { [citaId]: estrellas } recien dadas
   // Cada minuto se reevalúa qué citas siguen vigentes: contadores y secciones se mueven solos.
@@ -175,7 +176,7 @@ export default function AppointmentsHistoryModal({
   const kind = segment === 'recibidas' ? 'recibidas' : 'mias';
   const groups = segment === 'recibidas' ? receivedGroups : bookedGroups;
   const pastList = groups.past.filter(
-    (appointment) => historyFilter === 'all' || appointmentVisualState(appointment, now) === historyFilter
+    (appointment) => historyFilter === 'all' || appointmentHistoryKind(appointment) === historyFilter
   );
   const list = showHistory ? pastList : groups.upcoming;
   // Lo vigente se muestra completo (es lo que hay que atender); el historial crece sin fin, así que va de a 20.
@@ -200,6 +201,9 @@ export default function AppointmentsHistoryModal({
     const canRespond = isReceived && meta.state === 'pending';
     // Cita en curso: el taller puede terminarla antes de la hora y registrar el resultado de una vez.
     const canFinish = isReceived && Boolean(appointment.canFinish);
+    // El taller ya dejó el diagnóstico (el cliente lo ve tras evaluar): solo entonces la tarjeta se abre y muestra el ícono.
+    const hasDiagnosis = Boolean(appointment.result || appointment.resultAvailable);
+    const canRegisterResult = isReceived && Boolean(appointment.resultPending) && !canFinish && !hasDiagnosis;
     // Dentro de las 24 horas previas una cita confirmada queda fija para ambos (13-oct).
     const changeLocked = isAppointmentChangeLocked(appointment, now);
     const changeNote = isCurrent ? appointmentChangeNote(appointment, isReceived, changeLocked) : null;
@@ -224,7 +228,14 @@ export default function AppointmentsHistoryModal({
       <div
         key={appointment.id}
         id={`appt-${appointment.id}`}
-        className={`agenda-appointment tone-${meta.tone} ${isFocused ? 'is-focused' : ''}`}
+        className={`agenda-appointment tone-${meta.tone} ${isFocused ? 'is-focused' : ''} ${hasDiagnosis ? 'is-selectable' : ''}`}
+        {...(!hasDiagnosis ? {} : {
+          role: 'button',
+          tabIndex: 0,
+          'aria-label': `Ver el detalle y el diagnóstico de la cita del ${formatAgendaDateLong(appointment.date)}`,
+          onClick: (event) => { if (!event.target.closest('a, button')) setDetailId(appointment.id); },
+          onKeyDown: (event) => { if ((event.key === 'Enter' || event.key === ' ') && event.target === event.currentTarget) { event.preventDefault(); setDetailId(appointment.id); } },
+        })}
       >
         <div className="agenda-appointment-when">
           <strong>{parseIsoDate(appointment.date)?.getDate() ?? '--'}</strong>
@@ -239,6 +250,11 @@ export default function AppointmentsHistoryModal({
               <span className="agenda-appointment-eta">
                 {getTimeUntilLabel(appointment.date, appointment.time)}
               </span>
+            )}
+            {!isCurrent && hasDiagnosis && (
+              <button type="button" className="agenda-appointment-diag" onClick={() => setDetailId(appointment.id)} aria-label="Ver diagnóstico y detalle de la cita">
+                <CarFront size={16} /> Ver diagnóstico <ChevronRight size={14} />
+              </button>
             )}
           </div>
 
@@ -299,7 +315,7 @@ export default function AppointmentsHistoryModal({
           )}
         </div>
 
-        {(canChat || canFinish || canRespond || canCancel || canProviderCancel || canBookAgain || canRate) && (
+        {(canChat || canFinish || canRegisterResult || canRespond || canCancel || canProviderCancel || canBookAgain || canRate) && (
           <div className="agenda-appointment-actions">
             {canChat && (
               <button
@@ -322,8 +338,13 @@ export default function AppointmentsHistoryModal({
               </button>
             ))}
             {canFinish && (
-              <button type="button" className="btn-agenda-accept" onClick={() => setFinishSignals((current) => ({ ...current, [appointment.id]: Date.now() }))}>
+              <button type="button" className="btn-agenda-accept" onClick={() => setDetailId(appointment.id)}>
                 <Flag size={14} /> Finalizar cita
+              </button>
+            )}
+            {canRegisterResult && (
+              <button type="button" className="btn-agenda-accept" onClick={() => setDetailId(appointment.id)}>
+                <ClipboardList size={14} /> Registrar resultado
               </button>
             )}
             {canProviderCancel && (
@@ -391,7 +412,6 @@ export default function AppointmentsHistoryModal({
           </div>
         )}
         {/* Resultado de la cita: el taller lo registra aquí (o en el aviso al entrar); el cliente lo ve tras evaluar. */}
-        <AppointmentResultToggle appointment={appointment} asProvider={isReceived} onEvaluate={() => setRateTarget(appointment)} openSignal={finishSignals[appointment.id]} />
       </div>
     );
   };
@@ -505,7 +525,8 @@ export default function AppointmentsHistoryModal({
               {[
                 { key: 'all', label: `Todas (${groups.past.length})` },
                 { key: 'cancelled', label: 'Canceladas', tone: 'danger' },
-                { key: 'past', label: 'Ya pasaron', tone: 'muted' }
+                { key: 'unanswered', label: 'Sin respuesta', tone: 'warning' },
+                { key: 'finished', label: 'Finalizadas', tone: 'success' }
               ].map((option) => (
                 <button
                   key={option.key}
@@ -577,6 +598,15 @@ export default function AppointmentsHistoryModal({
           message={reasonMessage}
           onConfirm={confirmReason}
           onClose={() => setReasonTarget(null)}
+        />
+      )}
+
+      {detailId && (
+        <AppointmentDetailDialog
+          appointment={appointments.find((item) => item.id === detailId) || null}
+          viewer={kind === 'recibidas' ? 'provider' : 'customer'}
+          onClose={() => setDetailId(null)}
+          onEvaluate={(item) => setRateTarget(item)}
         />
       )}
 

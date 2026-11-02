@@ -372,3 +372,8 @@
   .taller-card__profile-btn { border-color: #bfd6f7; background: #eaf2ff; color: #0056bf; border-radius: 12px; }
   .taller-card__profile-btn:hover { background: #dbe9fd; }
 }
+
+.taller-rating { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: #243442; }
+.taller-rating svg { color: #f59e0b; }
+.taller-rating em { font-style: normal; color: #5a6b7a; }
+.taller-rating.is-empty { color: #5a6b7a; }

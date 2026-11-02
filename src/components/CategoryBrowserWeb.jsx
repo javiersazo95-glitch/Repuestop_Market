@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, LayoutGrid } from 'lucide-react';
 import '../styles/catalog-browser-web.css';
 
 /**
@@ -11,7 +11,7 @@ import '../styles/catalog-browser-web.css';
  * `counts` trae lo publicado por categoría y subcategoría; con patente llega acotado al vehículo, y por eso los contadores
  * bajan. Una subcategoría sin repuestos conserva su color, pero no se puede abrir.
  */
-export default function CategoryBrowserWeb({ categories, onPick, counts = {}, normalizeKey = (value) => String(value), vehicleLabel = '' }) {
+export default function CategoryBrowserWeb({ categories, onPick, counts = {}, normalizeKey = (value) => String(value), vehicleLabel = '', onShowAll }) {
   const [activeId, setActiveId] = useState(categories[0]?.id);
   const active = categories.find((category) => category.id === activeId) || categories[0];
   if (!active) return null;
@@ -53,6 +53,11 @@ export default function CategoryBrowserWeb({ categories, onPick, counts = {}, no
             <h2>{active.nombre}</h2>
             <p>{vehicleLabel ? `Lo que hay para tu ${vehicleLabel}. Elige una subcategoría.` : 'Elige una subcategoría para ver los repuestos.'}</p>
           </div>
+          {onShowAll && (
+            <button type="button" className="cbw-all cbw-all-products" onClick={onShowAll}>
+              <LayoutGrid size={15} aria-hidden="true" /> Ver todos los repuestos
+            </button>
+          )}
           <button
             type="button"
             className="cbw-all"

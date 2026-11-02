@@ -4,7 +4,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   Search, Filter, SlidersHorizontal, ShieldCheck, MapPin,
   X, CheckCircle2, RotateCcw,
-  ChevronDown, ChevronRight, ShoppingCart, Car, Wrench, Layers, AlertCircle, Info, Tag, Globe,
+  ChevronDown, ChevronLeft, ChevronRight, ShoppingCart, Car, Wrench, Layers, AlertCircle, Info, Tag, Globe,
   CarFront, RefreshCw, ArrowUpDown, LayoutGrid, Store
 } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
@@ -1324,6 +1324,11 @@ export default function PartsCatalogView({
             counts={browserCounts}
             normalizeKey={normalizeNameKey}
             vehicleLabel={activeVehicle && onlyCompatible ? [activeVehicle.marca, activeVehicle.modelo].filter(Boolean).join(' ') : ''}
+            onShowAll={() => {
+              setShowAllProducts(true);
+              setCurrentPage(1);
+              requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+            }}
             onPick={({ category, subcategory }) => {
               setSelectedCategory(category.id);
               setSelectedSubcategory(subcategory || 'TODAS');
@@ -1401,6 +1406,11 @@ export default function PartsCatalogView({
         {hasActiveContext && (
           <div className="catalog-control-bar">
             <div className="control-bar-left-group">
+              {!isMobileLayout && showAllProducts && (
+                <button type="button" className="catalog-back-categories" onClick={() => { setShowAllProducts(false); setCurrentPage(1); }}>
+                  <ChevronLeft size={15} aria-hidden="true" /> Volver a categorías
+                </button>
+              )}
               <div className="results-count-badge">
                 {activeVehicle && onlyCompatible ? (
                   <span><strong>{totalProducts}</strong> repuestos compatibles con tu <strong>{activeVehicle.marca} {activeVehicle.modelo}</strong></span>

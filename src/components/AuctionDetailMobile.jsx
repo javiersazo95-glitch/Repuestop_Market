@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { availabilityLabel } from '../utils/availability';
 import { Link } from 'react-router-dom';
 import { helpCategoryPath } from '../routes/paths';
 import {
@@ -496,7 +497,7 @@ export default function AuctionDetailMobile({
                   <small>
                     {quote.esPrivada
                       ? 'Oferta confidencial'
-                      : `${formatCLP(quote.precioFinal || quote.precio)}${quote.tiempoEntrega ? ` · ${quote.tiempoEntrega}` : ''}`}
+                      : `${formatCLP(quote.precioFinal || quote.precio)}${quote.tiempoEntrega ? ` · ${quote.tiempoEntrega}` : ''}${quote.disponibilidadDias > 0 ? ` · ${availabilityLabel(quote.disponibilidadDias)} para tenerlo` : ''}`}
                   </small>
                   {quote.fechaEnvio && (
                     <span className="am-offer-meta"><CalendarDays size={12} />Oferta enviada {formatPublished(quote.fechaEnvio)}</span>

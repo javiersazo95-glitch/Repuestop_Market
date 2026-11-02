@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertCircle, Bookmark, CalendarDays, Camera, Car, ChevronRight, FileText, Filter, Loader2,
-  ArrowUpDown, MapPin, MessageCircle, Plus, RotateCcw, Search, Settings, SlidersHorizontal, Truck, Wrench, X,
+  ArrowUpDown, ClipboardList, Stethoscope, CheckCircle2, MapPin, MessageCircle, Plus, RotateCcw, Search, Settings, SlidersHorizontal, Truck, Wrench, X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getCommentedFaults, getMyFaults, getOpenFaults, timeSince } from '../../services/faultApi';
@@ -20,6 +20,7 @@ import usePagedList from '../../hooks/usePagedList';
 import ListPager from '../ListPager';
 import { MAX_SEARCH_LENGTH } from '../../utils/inputLimits';
 import '../../styles/faults.css';
+import '../../styles/profile-auctions.css';
 
 const FAULT_TYPES = [
   ['Motor', /motor|arranque|humo|aceite|temperatura/i, 'motor'],
@@ -210,9 +211,11 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   // Intranet del celular: solo el seguimiento de lo propio (Mis fallas / Mis diagnósticos), con el banner de la app; el mural
   // público vive en /fallas.
   const isMobile = useIsMobile();
+  // Intranet (sin encabezado): siempre solo lo propio, en celular y en escritorio.
   const mineOnly = !heading && isMobile;
+  const intranet = !heading;
   const { seen, markSeen } = useTrackingSeen(user?.userId ?? user?.id);
-  const [view, setView] = useState(mineOnly ? (isWorkshop ? 'COMMENTED' : 'MINE') : 'OPEN');
+  const [view, setView] = useState(intranet ? (isWorkshop ? 'COMMENTED' : 'MINE') : 'OPEN');
   const [lists, setLists] = useState({ OPEN: [], MINE: [], COMMENTED: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -227,6 +230,8 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   const [yearTo, setYearTo] = useState('');
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [sort, setSort] = useState('recent');
+  // Intranet de escritorio: filtro rápido por estado, como en Búsqueda de repuestos.
+  const [statusFilter, setStatusFilter] = useState('all');
   // Taller: ranura para ver solo las fallas de su comuna (sin tildes ni mayúsculas, "Ñuñoa" = "NUNOA").
   const [onlyMyComuna, setOnlyMyComuna] = useState(false);
   const myComuna = isWorkshop ? user?.comuna || '' : '';
@@ -237,7 +242,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
     setLoading(true);
     setError('');
     try {
-      const open = await getOpenFaults();
+      const open = intranet ? [] : await getOpenFaults();
       let other = [];
       if (isLoggedIn) other = await (isWorkshop ? getCommentedFaults() : getMyFaults());
       setLists({ OPEN: Array.isArray(open) ? open : [], [isWorkshop ? 'COMMENTED' : 'MINE']: Array.isArray(other) ? other : [] });
@@ -246,10 +251,10 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
     } finally {
       setLoading(false);
     }
-  }, [isLoggedIn, isWorkshop]);
+  }, [isLoggedIn, isWorkshop, intranet]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { if (!isLoggedIn) setView('OPEN'); }, [isLoggedIn]);
+  useEffect(() => { if (!isLoggedIn && !intranet) setView('OPEN'); }, [isLoggedIn, intranet]);
   useEffect(() => {
     const timer = setTimeout(() => setQuery(searchText.trim()), 250);
     return () => clearTimeout(timer);
@@ -276,16 +281,21 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
       && (locationMode !== 'region' || !(place || userRegion) || sameRegion(fault.region, place || userRegion))
       && (locationMode !== 'all' || !place || normalizeComuna(fault.comuna) === normalizeComuna(place))
       && (selectedTypes.length === 0 || selectedTypes.includes(fault.categoria))
+      && (statusFilter === 'all'
+        || (statusFilter === 'open' && fault.vigente !== false)
+        || (statusFilter === 'closed' && fault.vigente === false)
+        || (statusFilter === 'diagnosed' && diagnosisCountOf(fault) > 0)
+        || (statusFilter === 'pending' && diagnosisCountOf(fault) === 0))
       && (!onlyMyComuna || !myComuna || normalizeComuna(fault.comuna) === normalizeComuna(myComuna)))
       .sort((a, b) => sort === 'oldest'
         ? new Date(a.createdAt) - new Date(b.createdAt)
         : new Date(b.createdAt) - new Date(a.createdAt));
-  }, [source, query, brand, model, yearFrom, yearTo, locationMode, place, selectedTypes, sort, userComuna, userRegion, onlyMyComuna, myComuna]);
+  }, [source, query, brand, model, yearFrom, yearTo, locationMode, place, selectedTypes, sort, userComuna, userRegion, onlyMyComuna, myComuna, statusFilter]);
 
   // El mural público va de a 12 (como las búsquedas de repuestos); mis fallas y las comentadas, de a 10.
   const { pageItems, pagerProps } = usePagedList(
     items,
-    JSON.stringify([view, query, brand, model, yearFrom, yearTo, locationMode, place, selectedTypes, sort, onlyMyComuna]),
+    JSON.stringify([view, query, brand, model, yearFrom, yearTo, locationMode, place, selectedTypes, sort, onlyMyComuna, statusFilter]),
     view === 'OPEN' ? 12 : 10
   );
 
@@ -326,16 +336,55 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
         : <><div className="ft-fault-list">{pageItems.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} tracking={isMobile && ((!isWorkshop && view === 'MINE') || (isWorkshop && view === 'COMMENTED')) ? { seen, markSeen, onChanged: () => load(), workshopUserId: isWorkshop ? (user?.userId ?? user?.id) : null } : null} />)}</div><ListPager pagerProps={pagerProps} itemLabel="fallas" /></>;
 
   if (!heading && !mineOnly) {
+    const mine = lists[isWorkshop ? 'COMMENTED' : 'MINE'];
+    const summary = {
+      total: mine.length,
+      open: mine.filter((fault) => fault.vigente !== false).length,
+      closed: mine.filter((fault) => fault.vigente === false).length,
+      diagnosed: mine.filter((fault) => diagnosisCountOf(fault) > 0).length,
+      pending: mine.filter((fault) => diagnosisCountOf(fault) === 0).length,
+    };
+    const filters = isWorkshop
+      ? [['all', 'Todas'], ['open', 'Abiertas'], ['closed', 'Cerradas']]
+      : [['all', 'Todas'], ['open', 'Abiertas'], ['pending', 'Sin diagnóstico'], ['diagnosed', 'Con diagnóstico'], ['closed', 'Cerradas']];
+    const title = isWorkshop ? 'Mis diagnósticos' : 'Mis fallas';
     return (
-      <div className="ft-profile-faults">
-        <div className="ft-mural-toolbar">
-          <div className="ft-tabs" role="tablist">
-            <button type="button" role="tab" aria-selected={view === 'OPEN'} className={`ft-tab ${view === 'OPEN' ? 'is-active' : ''}`} onClick={() => setView('OPEN')}>Mural público ({lists.OPEN.length})</button>
-            <button type="button" role="tab" aria-selected={view !== 'OPEN'} className={`ft-tab ${view !== 'OPEN' ? 'is-active' : ''}`} onClick={() => setView(isWorkshop ? 'COMMENTED' : 'MINE')}>{isWorkshop ? 'Mis diagnósticos' : 'Mis fallas'}</button>
-            {myComunaToggle}
+      <div className="profile-panel seller-quotes-panel ft-profile-faults">
+        <div className="seller-quotes-heading">
+          <div>
+            <span className="seller-quotes-eyebrow"><Wrench size={14} /> Fallas automotrices</span>
+            <h2 className="profile-panel-title">{title}</h2>
+            <p>{isWorkshop
+              ? 'Las fallas de clientes en las que dejaste tu diagnóstico. Desde aquí les haces seguimiento.'
+              : 'Registra lo que le pasa a tu vehículo, recibe el diagnóstico de los talleres y agenda con el que prefieras. Aquí le haces seguimiento a cada falla.'}</p>
           </div>
-          {role === 'BUYER' && <button type="button" className="ft-btn ft-btn-primary" onClick={() => setCreating(true)}><Plus size={16} /> Registrar una falla</button>}
+          {role === 'BUYER' && (
+            <div className="seller-quotes-heading-actions">
+              <button type="button" className="pa-btn-primary" onClick={() => setCreating(true)}><Plus size={16} /> Publicar falla</button>
+            </div>
+          )}
         </div>
+
+        <div className="seller-quotes-summary">
+          <article><ClipboardList size={18} /><span><strong>{summary.total}</strong>{isWorkshop ? 'Diagnósticos' : 'Registradas'}</span></article>
+          <article className="is-sent"><Wrench size={18} /><span><strong>{summary.open}</strong>Abiertas</span></article>
+          {isWorkshop
+            ? <article className="is-pending"><CheckCircle2 size={18} /><span><strong>{summary.closed}</strong>Cerradas</span></article>
+            : <>
+              <article className="is-pending"><MessageCircle size={18} /><span><strong>{summary.pending}</strong>Sin diagnóstico</span></article>
+              <article className="is-unread"><Stethoscope size={18} /><span><strong>{summary.diagnosed}</strong>Con diagnóstico</span></article>
+            </>}
+        </div>
+
+        <div className="seller-quotes-toolbar">
+          <label className="seller-quotes-search"><Search size={15} /><input value={searchText} maxLength={MAX_SEARCH_LENGTH} onChange={(event) => setSearchText(event.target.value)} placeholder="Buscar por falla, vehículo o comuna..." />{searchText && <button type="button" onClick={() => { setSearchText(''); setQuery(''); }} aria-label="Limpiar búsqueda"><X size={13} /></button>}</label>
+          <div className="seller-quotes-filters" role="group" aria-label={`Filtrar ${title.toLowerCase()}`}>
+            {filters.map(([value, label]) => (
+              <button key={value} type="button" className={statusFilter === value ? 'active' : ''} onClick={() => setStatusFilter(value)}>{label}</button>
+            ))}
+          </div>
+        </div>
+
         {results}
         {role === 'BUYER' && <CreateFaultModal isOpen={creating} onClose={() => setCreating(false)} onCreated={(fault) => { setCreating(false); navigate(faultDetailPath(fault)); }} />}
       </div>

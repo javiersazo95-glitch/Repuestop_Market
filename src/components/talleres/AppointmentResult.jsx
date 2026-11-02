@@ -57,12 +57,12 @@ export function AppointmentResultForm({ appointment, onDone }) {
 
   return (
     <form className="apr-form" onSubmit={submit}>
-      <span className="apr-label">¿Qué pasó con la cita?</span>
-      <div className="apr-chips">
-        {OUTCOMES.map((item) => (
-          <button key={item.value} type="button" className={outcome === item.value ? 'is-on' : ''} aria-pressed={outcome === item.value} onClick={() => setOutcome(item.value)}>{item.label}</button>
-        ))}
-      </div>
+      <label className="apr-field"><span>¿Qué pasó con la cita?</span>
+        <select value={outcome || ''} onChange={(e) => setOutcome(e.target.value || null)}>
+          <option value="">Elige el motivo</option>
+          {OUTCOMES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+        </select>
+      </label>
       {outcome && <small className="apr-hint">{OUTCOMES.find((item) => item.value === outcome)?.hint}</small>}
       <label className="apr-field"><span>Detalle del resultado</span>
         <textarea rows={3} value={detail} maxLength={1000} onChange={(event) => setDetail(event.target.value)}
