@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Calendar, Car, CheckCircle2, X, AlertCircle, MapPin, Loader2, LogIn, Clock, Phone, Mail,
   ChevronLeft, ChevronRight, Check, Lock, Info, User, Tag, LifeBuoy,
-  Home, MessageCircle } from 'lucide-react';
+  Home, MessageCircle, StickyNote, Wrench } from 'lucide-react';
 import { confirmWhatsappContact } from '../../utils/whatsappContact';
 import { useAuth } from '../../context/AuthContext';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
@@ -57,8 +57,10 @@ import { apiErrorMessage } from '../../services/walletStorage';
  * de nuevo y, si no se reescribía, la cita nueva perdía la descripción (pruebas E2E, 5-oct).
  */
 const HOME_SERVICE_PREFIX = 'Servicio a domicilio. Dirección del servicio: ';
+/** Largo del comentario "¿Qué necesitas?" (el backend acepta más, pero un motivo corto se lee de un vistazo). */
+const MAX_REASON_LENGTH = 300;
 
-export default function BookingModal({ taller, onClose, onBooked, isRescheduling = false, rescheduleFromId = null, fromAppointment: fromAppointmentProp = null, fallaContext = null }) {
+export default function BookingModal({ taller, onClose, onBooked, isRescheduling = false, rescheduleFromId = null, fromAppointment: fromAppointmentProp = null, fallaContext = null, initialService = null }) {
   const { user, role } = useAuth();
   // Las citas las piden los compradores: una cuenta de taller las recibe, pero no las solicita.
   const isWorkshopAccount = role === 'WORKSHOP';
@@ -89,6 +91,22 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
   const [userPhone, setUserPhone] = useState(fromAppointment?.customerPhone || user?.phone || user?.telefono || '');
   const [vehiclePatent, setVehiclePatent] = useState(fromAppointment?.vehiclePatent || '');
   const [vehicleModel, setVehicleModel] = useState(fromAppointment?.vehicleModel || '');
+  // "¿Qué necesitas?": servicios del catálogo del taller (el backend rechaza uno ajeno) y un comentario
+  // libre. Ambos opcionales; sin ellos la cita llega al taller como "Cita general". Al reagendar o llegar
+  // desde la fila de un servicio parten precargados.
+  const offeredServices = useMemo(
+    () => (taller?.services || []).map((service) => service?.name).filter(Boolean),
+    [taller?.services]
+  );
+  const [selectedServices, setSelectedServices] = useState(() => {
+    const wanted = [...(fromAppointment?.services || []), initialService].filter(Boolean);
+    return offeredServices.filter((name) => wanted.some((item) => String(item).toLowerCase() === name.toLowerCase()));
+  });
+  const [reason, setReason] = useState(() => previousNoteLines
+    .filter((line) => line.trim() && !line.startsWith(HOME_SERVICE_PREFIX) && !line.startsWith('Falla: '))
+    .join('\n').slice(0, MAX_REASON_LENGTH));
+  const toggleService = (name) => setSelectedServices((current) => (
+    current.includes(name) ? current.filter((item) => item !== name) : [...current, name]));
   // Detección por patente, igual que en la app: 'idle' | 'searching' | 'found' | 'not-found'.
   const [plateLookup, setPlateLookup] = useState('idle');
   // Con patente y vehículo precargados no se vuelve a consultar la patente (cada consulta nueva cuesta).
@@ -312,7 +330,7 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
     try {
       const form = {
         service: 'Cita general',
-        services: [],
+        services: selectedServices,
         date: appointmentDate,
         time: appointmentTime,
         customerName: userName.trim(),
@@ -320,7 +338,7 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
         customerEmail: accountEmail,
         vehiclePatent: vehiclePatent.trim(),
         vehicleModel: vehicleModel.trim(),
-        notes: '',
+        notes: reason.trim(),
         // Campos propios (igual que la app): el backend valida que el taller ofrezca
         // domicilio y exige la dirección.
         homeService: atHome,
@@ -572,6 +590,39 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                       </label>
                       <small className="bk-helper">El taller lo usa para confirmar si trabaja con la marca de tu vehículo.</small>
                     </div>
+                    {/* "¿Qué necesitas?": sin esto la cita llega como "Cita general" y el taller no sabe de qué se trata. */}
+                    {offeredServices.length > 0 && (
+                      <div className="bk-group">
+                        <span className="bk-label">¿Qué servicio necesitas? <small>Opcional</small></span>
+                        <div className="bk-service-chips" role="group" aria-label="Servicios del taller">
+                          {offeredServices.map((name) => (
+                            <button
+                              type="button"
+                              key={name}
+                              className={`bk-service-chip ${selectedServices.includes(name) ? 'is-selected' : ''}`}
+                              aria-pressed={selectedServices.includes(name)}
+                              onClick={() => toggleService(name)}
+                            >
+                              {selectedServices.includes(name) ? <Check size={13} /> : <Wrench size={13} />} {name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="bk-group">
+                      <span className="bk-label">Cuéntale al taller qué necesitas <small>Opcional</small></span>
+                      <label className="bk-field is-multiline">
+                        <StickyNote size={18} />
+                        <textarea
+                          rows={3}
+                          maxLength={MAX_REASON_LENGTH}
+                          placeholder="Ej: Ruido al frenar, quiero una revisión"
+                          value={reason}
+                          onChange={(e) => setReason(e.target.value)}
+                        />
+                      </label>
+                      <small className="bk-helper">{reason.length}/{MAX_REASON_LENGTH} · El taller lo ve antes de aceptar tu cita.</small>
+                    </div>
                     {/* Ranura "Servicio a domicilio": solo en talleres que lo ofrecen. Apagada por
                         defecto; al activarla se despliega la dirección donde está el vehículo, que
                         pasa a ser obligatoria. */}
@@ -644,6 +695,8 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
               <div className="bk-confirm-intro"><LifeBuoy size={20} /> Revisa que todo esté correcto antes de enviar tu reserva al taller.</div>
               <div className="bk-voucher">
                 <VoucherRow label="Origen:" value={originLabel} />
+                {selectedServices.length > 0 && <VoucherRow label="Servicio:" value={selectedServices.join(', ')} />}
+                {reason.trim() && <VoucherRow label="Detalle:" value={reason.trim()} />}
                 <VoucherRow label="Día:" value={dateLabel} />
                 <VoucherRow label="Hora:" value={appointmentTime} />
                 <VoucherRow label="Lugar:" value={homeAddress ? `A domicilio · ${homeAddress}` : 'En el taller'} />
@@ -683,6 +736,8 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
               <div className="bk-voucher">
                 <VoucherRow label="Código de reserva:" value={confirmedAppointment?.id} mono />
                 <VoucherRow label="Origen:" value={originLabel} />
+                {selectedServices.length > 0 && <VoucherRow label="Servicio:" value={selectedServices.join(', ')} />}
+                {reason.trim() && <VoucherRow label="Detalle:" value={reason.trim()} />}
                 <VoucherRow label="Fecha y hora:" value={`${dateLabel} a las ${confirmedAppointment?.time || appointmentTime}`} />
                 <VoucherRow label="Dirección taller:" value={[taller.address, taller.commune].filter(Boolean).join(', ') || 'Por confirmar con el taller'} />
                 <VoucherRow label="Vehículo:" value={vehicleModel.trim()} />

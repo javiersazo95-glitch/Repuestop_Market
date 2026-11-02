@@ -4984,6 +4984,9 @@
 .bk-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .bk-slot { padding: 10px 0; border: 1px solid #d9e0e7; border-radius: 12px; background: #ffffff; color: #0056bf; font-size: 13px; font-weight: 700; cursor: pointer; }
 .bk-slot.is-selected { border-color: #0056bf; background: #0056bf; color: #ffffff; }
+.bk-service-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.bk-service-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid #d9e0e7; border-radius: 999px; background: #ffffff; color: #243442; font-size: 13px; font-weight: 600; cursor: pointer; }
+.bk-service-chip.is-selected { border-color: #0056bf; background: #eaf2ff; color: #0056bf; }
 .bk-locked-box { display: flex; align-items: center; gap: 8px; padding: 12px; border: 1px dashed #d9e0e7; border-radius: 12px; background: #f3f5f7; font-size: 12px; color: #5a6b7a; }
 .bk-warn { display: flex; align-items: center; gap: 6px; padding: 10px; border-radius: 8px; background: #fff7e6; color: #9a5a00; font-size: 12px; font-weight: 600; }
 
