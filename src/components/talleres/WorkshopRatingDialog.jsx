@@ -12,7 +12,7 @@ const COMMENT_MAX = 500;
  *
  * `onSubmit(estrellas, comentario)` puede lanzar: el error se muestra aqui y la ventana sigue abierta.
  */
-export default function WorkshopRatingDialog({ workshopName, onSubmit, onClose }) {
+export default function WorkshopRatingDialog({ workshopName, onSubmit, onClose, requireComment = false }) {
   const [stars, setStars] = useState(0);
   const [hover, setHover] = useState(0);
   const [comment, setComment] = useState('');
@@ -22,6 +22,7 @@ export default function WorkshopRatingDialog({ workshopName, onSubmit, onClose }
 
   const submit = async () => {
     if (stars < 1 || busy) return;
+    if (requireComment && comment.trim().length < 3) { setError('Cuéntanos en pocas palabras cómo fue tu experiencia con el taller.'); return; }
     setBusy(true);
     setError('');
     try {
@@ -65,24 +66,24 @@ export default function WorkshopRatingDialog({ workshopName, onSubmit, onClose }
         <span className="appt-rating-grade" aria-live="polite">{shown > 0 ? GRADES[shown - 1] : 'Toca una estrella para calificar'}</span>
 
         <label className="appt-rating-comment">
-          <span className="appt-reason-label">Comentario <small>Opcional</small></span>
+          <span className="appt-reason-label">{requireComment ? '¿Cómo fue tu experiencia con el taller?' : 'Comentario'} {!requireComment && <small>Opcional</small>}</span>
           <textarea
             rows={3}
             value={comment}
             maxLength={COMMENT_MAX}
-            placeholder="Cuéntanos cómo fue tu experiencia"
+            placeholder={requireComment ? 'Ej: Atención rápida, me explicaron todo con claridad' : 'Cuéntanos cómo fue tu experiencia'}
             onChange={(e) => setComment(e.target.value)}
           />
           <small className={`appt-rating-count ${comment.length >= COMMENT_MAX * 0.9 ? 'is-near' : ''}`}>{comment.length}/{COMMENT_MAX}</small>
         </label>
-        <small className="appt-rating-note">Tu opinión es pública, con tu nombre abreviado, y no se puede editar después.</small>
+        <small className="appt-rating-note">{requireComment ? 'Tu evaluación y tu comentario son públicos en el perfil del taller, con tu nombre abreviado. Al enviarla verás el resultado de tu cita.' : 'Tu opinión es pública, con tu nombre abreviado, y no se puede editar después.'}</small>
 
         {error && <p className="appt-reason-error" role="alert">{error}</p>}
 
         <div className="appt-reason-actions">
           <button type="button" className="appt-reason-back" onClick={onClose} disabled={busy}>Volver</button>
-          <button type="button" className="appt-reason-confirm" onClick={submit} disabled={busy || stars < 1}>
-            {busy ? <Loader2 size={15} className="spin-icon" /> : 'Enviar opinión'}
+          <button type="button" className="appt-reason-confirm" onClick={submit} disabled={busy || stars < 1 || (requireComment && comment.trim().length < 3)}>
+            {busy ? <Loader2 size={15} className="spin-icon" /> : (requireComment ? 'Enviar y ver resultado' : 'Enviar opinión')}
           </button>
         </div>
       </div>

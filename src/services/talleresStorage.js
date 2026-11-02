@@ -9,7 +9,7 @@
 import {
   getTalleresApi, getTallerApi, getMiTallerPerfilApi, updateMiTallerPerfilApi, uploadTallerPhotosApi, resolveMediaUrl,
   getTallerAppointmentsApi, getMyAppointmentsApi, createTallerAppointmentApi,
-  updateAppointmentStatusApi, sendAppointmentSummaryEmailsApi, rescheduleAppointmentApi, rateAppointmentWorkshopApi,
+  updateAppointmentStatusApi, sendAppointmentSummaryEmailsApi, rescheduleAppointmentApi, rateAppointmentWorkshopApi, registerAppointmentResultApi,
   getAppointmentMessagesApi, sendAppointmentMessageApi,
 } from './api';
 import {
@@ -154,6 +154,12 @@ export async function updateAppointmentStatus(appointmentId, status, reason) {
 }
 
 /** Califica al taller de una cita ya realizada (una vez por cita). Avisa a las listas para que muestren la nota. */
+/** El taller registra el resultado de una cita terminada; al cliente se le avisa que lo verá tras evaluar al taller. */
+export async function registerAppointmentResult(appointmentId, data) {
+  await registerAppointmentResultApi(appointmentId, data);
+  notifyAppointmentsChanged();
+}
+
 export async function rateAppointmentWorkshop(appointmentId, stars, comment) {
   await rateAppointmentWorkshopApi(appointmentId, stars, comment);
   notifyAppointmentsChanged();
