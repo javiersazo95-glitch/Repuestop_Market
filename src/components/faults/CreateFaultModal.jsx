@@ -719,10 +719,9 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
           <small className="ft-hint">Tomamos tu región y comuna de tu perfil. Cámbialas si el vehículo está en otro lugar.</small>
         )}
         </>)}
-        {SHOW_ADVANCED_FIELDS && (
         <div className="ft-field">
-          <span>¿A qué talleres avisamos?</span>
-          <small className="ft-hint">Solo los talleres de la zona que elijas reciben el aviso y el correo, y ven la falla en su mural. Así no le llega a un taller que está lejos.</small>
+          <span>¿En qué regiones llevarías tu vehículo a reparar?</span>
+          <small className="ft-hint">Solo los talleres de las regiones que elijas verán tu falla y recibirán el aviso. Así no le llega a un taller que te queda lejos.</small>
           <div className="ft-chips">
             {[['COMUNA', comuna ? `Solo ${comuna}` : 'Solo mi comuna'], ['REGION', 'Toda mi región'], ['REGIONES', 'Varias regiones']].map(([value, label]) => (
               <button key={value} type="button" className={`ft-chip is-toggle is-pick ${scope === value ? 'is-on' : ''}`} aria-pressed={scope === value} onClick={() => setScope(value)}>{label}</button>
@@ -745,7 +744,6 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             </>
           )}
         </div>
-        )}
         </FormSection>
         </>)}
 
