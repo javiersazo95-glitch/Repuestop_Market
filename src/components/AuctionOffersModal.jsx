@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { availabilityLabel, availabilitySentence } from '../utils/availability';
 import { createPortal } from 'react-dom';
 import {
   Search,
@@ -277,6 +278,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
               <div><dt>Entrega</dt><dd>{quote.tipoEntrega || '—'}</dd></div>
               {quote.costoEnvio > 0 && <div><dt>Costo de envío</dt><dd>{money(quote.costoEnvio)}</dd></div>}
               {quote.envioPorPagar && <div><dt>Costo de envío</dt><dd>Por pagar</dd></div>}
+              <div><dt>Disponibilidad</dt><dd>{availabilityLabel(quote.disponibilidadDias) || '—'}</dd></div>
               <div><dt>Plazo</dt><dd>{quote.tiempoEntrega || '—'}</dd></div>
               <div><dt>Garantía</dt><dd>{quote.garantia || 'Garantía legal'}</dd></div>
               <div><dt>Vigencia</dt><dd>{quote.vigencia || '—'}</dd></div>
@@ -312,6 +314,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
             <Term label="Método de entrega" value={quote.tipoEntrega} />
             {quote.costoEnvio > 0 && <Term label="Costo del envío" value={`${money(quote.costoEnvio)} (se suma al total al pagar)`} />}
             {quote.envioPorPagar && <Term label="Costo del envío" value="Por pagar: no está incluido en el total" />}
+            <Term label="Disponibilidad" value={availabilitySentence(quote.disponibilidadDias) || availabilityLabel(quote.disponibilidadDias)} />
             <Term label="Plazo de entrega" value={quote.tiempoEntrega} />
             <Term label="Garantía" value={quote.garantia || 'Garantía legal'} />
             <Term label="Vigencia de la oferta" value={quote.vigencia} />

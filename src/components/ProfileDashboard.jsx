@@ -67,6 +67,7 @@ import AutomotiveServiceAccreditation from './AutomotiveServiceAccreditation';
 import ProfileWorkshopServicesPanel from './workshop/ProfileWorkshopServicesPanel';
 import ProfileDiagnosticPanel from './workshop/ProfileDiagnosticPanel';
 import WorkshopBookingStatus from './workshop/WorkshopBookingStatus';
+import WorkshopActiveAppointments from './workshop/WorkshopActiveAppointments';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES, storePath } from '../routes/paths';
@@ -1799,6 +1800,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   onRefresh={refreshAccountStatus}
                   onHelp={() => navigate(ROUTES.support)}
                 />
+              )}
+              {activeTab === 'resumen' && isWorkshop && !isBuyerBlocked && (
+                <WorkshopActiveAppointments onOpenAppointments={() => setActiveTab('mi_taller')} />
               )}
               {activeTab === 'resumen' && isWorkshop && !isBuyerBlocked && (
                 <WorkshopBookingStatus onOpenWorkshop={() => setActiveTab('mi_taller')} onOpenService={() => setActiveTab('diagnostico')} />

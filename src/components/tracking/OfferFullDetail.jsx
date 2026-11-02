@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { availabilityLabel, availabilitySentence } from '../../utils/availability';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Box, CheckCircle2, ChevronRight, CreditCard, FileText, GitCompare, MessageSquare, Star } from 'lucide-react';
@@ -128,7 +129,9 @@ export default function OfferFullDetail({ auction, quote, onClose, onChanged }) 
 
         <div className="ofd-card">
           <Section icon={FileText} title="Condiciones">
-            <TrackingCells cells={[{ label: 'Plazo de entrega', value: quote.tiempoEntrega || '—' }, { label: 'Método de entrega', value: quote.tipoEntrega || '—' }]} />
+            <TrackingCells cells={[{ label: 'Disponibilidad', value: availabilityLabel(quote.disponibilidadDias) || '—', tone: quote.disponibilidadDias > 0 ? 'primary' : undefined }, { label: 'Plazo de entrega', value: quote.tiempoEntrega || '—' }]} />
+            {availabilitySentence(quote.disponibilidadDias) && <p className="trk-note">{availabilitySentence(quote.disponibilidadDias)} El plazo de entrega corre desde ese momento.</p>}
+            <TrackingCells cells={[{ label: 'Método de entrega', value: quote.tipoEntrega || '—' }]} />
             <TrackingCells cells={[{ label: 'Garantía', value: quote.garantia || '—' }, { label: 'Vigencia de la oferta', value: quote.vigencia || '—' }]} />
           </Section>
         </div>

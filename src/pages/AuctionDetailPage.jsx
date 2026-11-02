@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { availabilityLabel } from '../utils/availability';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle, ArrowRight, CalendarDays, Car, ChevronRight, Clock, Gavel,
@@ -130,7 +131,7 @@ function QuoteRow({ quote, index, onViewPhoto }) {
       )}
       {missing.length > 0 && <p className="av-offer-missing">Faltan en esta oferta: {missing.join(', ')}</p>}
       <small className="av-offer-terms">
-        Garantía: <strong>{quote.garantia || 'Garantía legal'}</strong> · Plazo: <strong>{quote.tiempoEntrega || 'A coordinar'}</strong>
+        Garantía: <strong>{quote.garantia || 'Garantía legal'}</strong> · Plazo: <strong>{quote.tiempoEntrega || 'A coordinar'}</strong>{quote.disponibilidadDias > 0 && <> · Disponible en <strong>{availabilityLabel(quote.disponibilidadDias).toLowerCase()}</strong></>}
       </small>
       {quote.notas && <p className="av-offer-notes">“{quote.notas}”</p>}
     </li>

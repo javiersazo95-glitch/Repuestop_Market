@@ -8,7 +8,7 @@ import {
   formatAgendaDateLong, getTimeUntilLabel, parseIsoDate, toIsoDate
 } from '../../data/agendaConfig';
 import {
-  filterAppointmentsFor, groupAppointmentsByTime, summarizeAppointments,
+  appointmentHistoryKind, filterAppointmentsFor, groupAppointmentsByTime, summarizeAppointments,
   describeAppointment, appointmentVisualState, isAppointmentCurrent, defaultAppointmentsSegment,
   getAppointmentChangeDeadline, isAppointmentChangeLocked
 } from '../../utils/appointmentHistory';
@@ -56,7 +56,7 @@ export default function AppointmentsHistoryModal({
   // antes partía en "Recibidas" y un cliente la veía un instante antes de saltar a sus reservas.
   const [segment, setSegment] = useState(initialSegment || null); // 'pedidas' | 'recibidas' | 'agenda'
   const [showHistory, setShowHistory] = useState(false);
-  const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'cancelled' | 'past'
+  const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'cancelled' | 'unanswered' | 'finished'
   const [reasonTarget, setReasonTarget] = useState(null); // { kind, appointment }
   const [rateTarget, setRateTarget] = useState(null); // cita a calificar
   // "Finalizar cita": despliega el resultado de esa cita para registrarlo sin esperar a que termine el bloque.
@@ -175,7 +175,7 @@ export default function AppointmentsHistoryModal({
   const kind = segment === 'recibidas' ? 'recibidas' : 'mias';
   const groups = segment === 'recibidas' ? receivedGroups : bookedGroups;
   const pastList = groups.past.filter(
-    (appointment) => historyFilter === 'all' || appointmentVisualState(appointment, now) === historyFilter
+    (appointment) => historyFilter === 'all' || appointmentHistoryKind(appointment) === historyFilter
   );
   const list = showHistory ? pastList : groups.upcoming;
   // Lo vigente se muestra completo (es lo que hay que atender); el historial crece sin fin, así que va de a 20.
@@ -505,7 +505,8 @@ export default function AppointmentsHistoryModal({
               {[
                 { key: 'all', label: `Todas (${groups.past.length})` },
                 { key: 'cancelled', label: 'Canceladas', tone: 'danger' },
-                { key: 'past', label: 'Ya pasaron', tone: 'muted' }
+                { key: 'unanswered', label: 'Sin respuesta', tone: 'warning' },
+                { key: 'finished', label: 'Finalizadas', tone: 'success' }
               ].map((option) => (
                 <button
                   key={option.key}

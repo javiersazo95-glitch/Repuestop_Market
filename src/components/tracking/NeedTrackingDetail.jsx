@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { availabilityLabel } from '../../utils/availability';
 import { ChevronRight, CircleHelp, Loader2, Tags, XCircle } from 'lucide-react';
 import { getAuctionComments, getAuctionDetail, postAuctionComment, rejectAuctionOffer } from '../../services/auctionApi';
 import ConfirmDialog from '../ConfirmDialog';
@@ -100,6 +101,7 @@ export default function NeedTrackingDetail({ auctionId, newOffers, onChanged }) 
               </div>
               <TrackingCells cells={[
                 { label: 'Total', value: quote.esPrivada ? 'Confidencial' : formatCLP(quote.precioFinal || quote.precio), tone: 'primary' },
+                { label: 'Disponible', value: availabilityLabel(quote.disponibilidadDias) || '—' },
                 { label: 'Plazo', value: quote.tiempoEntrega || '—' },
                 { label: 'Llegó', value: formatWhen(quote.fechaEnvio) },
               ]} />

@@ -54,6 +54,8 @@ export function getAppointmentEndDate(appointment) {
  */
 export function isAppointmentCurrent(appointment, now = new Date()) {
   if (isClosedAppointment(appointment.status)) return false;
+  // Con el resultado registrado la cita está finalizada, aunque su bloque no haya terminado: pasa al historial.
+  if (appointment.result || appointment.resultAvailable) return false;
   const limit = appointment.status === 'pending'
     ? getAppointmentStartDate(appointment.date, appointment.time)
     : getAppointmentEndDate(appointment);
@@ -81,6 +83,12 @@ export function isAppointmentChangeLocked(appointment, now = new Date()) {
   if (appointment.status !== 'accepted' && appointment.status !== 'pending') return false;
   const deadline = getAppointmentChangeDeadline(appointment);
   return Boolean(deadline) && deadline.getTime() <= now.getTime();
+}
+
+/** Con qué cierre quedó una cita en el historial: 'cancelled' (o rechazada), 'unanswered' (sin respuesta) o 'finished'. */
+export function appointmentHistoryKind(appointment) {
+  if (isClosedAppointment(appointment.status)) return 'cancelled';
+  return appointment.status === 'pending' ? 'unanswered' : 'finished';
 }
 
 /** Lo que se ve de una cita: 'pending' | 'accepted' | 'cancelled' (o rechazada) | 'past'. */
@@ -203,7 +211,7 @@ export function describeAppointment(appointment, viewer, now = new Date()) {
   if (state === 'past') {
     return appointment.status === 'pending'
       ? { ...base, label: 'Sin respuesta', longLabel: isProvider ? 'Venció sin que la respondieras' : 'El taller no respondió a tiempo' }
-      : { ...base, label: 'Realizada', longLabel: 'La fecha de esta cita ya pasó' };
+      : { ...base, label: 'Finalizada', longLabel: 'La cita ya terminó' };
   }
   if (state === 'pending') {
     return { ...base, label: isProvider ? 'Por responder' : 'Pendiente', longLabel: isProvider ? 'Espera tu respuesta' : 'Esperando la respuesta del taller' };
