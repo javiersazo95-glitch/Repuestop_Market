@@ -15,7 +15,7 @@ import {
 } from '../../data/agendaConfig';
 import { blocksAppointmentSlot } from '../../data/talleresData';
 import { getAppointmentChangeDeadline } from '../../utils/appointmentHistory';
-import { searchVehicleByPatenteApi } from '../../services/api';
+import { getAddressesApi, searchVehicleByPatenteApi } from '../../services/api';
 import { isValidPlate, normalizePlate } from '../../utils/quoteFlow';
 
 const WIZARD_STEPS = ['Fecha', 'Hora', 'Datos'];
@@ -109,6 +109,25 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
   const [atHomeChoice, setAtHome] = useState(Boolean(fromAppointment?.homeService || previousHomeLine));
   const atHome = offersHomeService && atHomeChoice;
   const homeAddress = atHome ? serviceAddress.trim() : '';
+  // Al activar el domicilio se propone la dirección principal de la libreta del comprador (una sola vez,
+  // y solo si el campo sigue vacío): puede borrarla o cambiarla.
+  const addressPrefilled = useRef(false);
+  const buyerId = user?.userId ?? user?.id;
+  useEffect(() => {
+    if (!atHome || addressPrefilled.current || serviceAddress.trim() || !buyerId) return undefined;
+    addressPrefilled.current = true;
+    let active = true;
+    getAddressesApi(buyerId)
+      .then((list) => {
+        const saved = (Array.isArray(list) ? list : []).find((item) => item.esPrincipal) || list?.[0];
+        const text = [saved?.calleYNumero, saved?.comunaNombre].filter(Boolean).join(', ');
+        if (active && text) setServiceAddress((current) => current.trim() ? current : text);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+    // Solo reacciona al interruptor: lo que se escriba después no debe cancelar la carga en curso.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atHome, buyerId]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   // Validación reactiva: un campo muestra su error al salir de él (o al intentar avanzar), no antes.
