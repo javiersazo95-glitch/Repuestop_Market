@@ -41,7 +41,7 @@ const MENUS = {
     ['Explorar', [
       t('Marketplace de repuestos', Cog, COLORS.catalog, { tab: 'repuestos' }),
       t('Mis fallas', EngineIcon, COLORS.faults, { tab: 'mis_fallas' }),
-      t('Búsqueda de repuestos', Search, COLORS.search, { tab: 'subastas' }),
+      t('Encargar repuesto', Search, COLORS.search, { tab: 'subastas' }),
       t('Casas de repuestos', Store, COLORS.stores, { to: ROUTES.stores }),
       t('Talleres y servicios', Hammer, COLORS.workshops, { to: ROUTES.talleres }),
     ]],
@@ -59,7 +59,7 @@ const MENUS = {
   seller: [
     ['Explorar', [
       t('Talleres y servicios', Hammer, COLORS.workshops, { to: ROUTES.talleres }),
-      t('Búsqueda de repuestos', Telescope, COLORS.search, { tab: 'buscan' }),
+      t('Atender encargos', Telescope, COLORS.search, { tab: 'buscan' }),
       t('Citas del taller', Calendar, COLORS.calendar, { tab: 'citas_taller' }),
     ]],
     ['Mi actividad', [
@@ -83,7 +83,7 @@ const MENUS = {
       t('Marketplace de repuestos', Cog, COLORS.catalog, { tab: 'repuestos' }),
       t('Fallas automotrices', EngineIcon, COLORS.faults, { to: ROUTES.faults }),
       t('Mis diagnósticos', EngineIcon, COLORS.faults, { tab: 'fallas_taller' }),
-      t('Búsqueda de repuestos', Search, COLORS.search, { tab: 'subastas' }),
+      t('Encargar repuesto', Search, COLORS.search, { tab: 'subastas' }),
       t('Casas de repuestos', Store, COLORS.stores, { to: ROUTES.stores }),
     ]],
     ['Gestión del taller', [

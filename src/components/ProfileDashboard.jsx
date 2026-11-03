@@ -228,7 +228,7 @@ const BUYER_SIDEBAR_GROUPS = [
     items: [
       { id: 'pedidos', label: 'Mis pedidos', icon: Package },
       { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
-      { id: 'subastas', label: 'Búsqueda de repuestos', icon: PackageSearch },
+      { id: 'subastas', label: 'Encargar repuesto', icon: PackageSearch },
       { id: 'mis_fallas', label: 'Mis fallas', icon: EngineIcon },
       { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
       { id: 'chats_vendedor', label: 'Chats con vendedor', icon: MessageSquare },
@@ -280,7 +280,7 @@ const WORKSHOP_SIDEBAR_GROUPS = [
     items: [
       { id: 'pedidos', label: 'Mis pedidos', icon: Package },
       { id: 'cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
-      { id: 'subastas', label: 'Búsqueda de repuestos', icon: PackageSearch },
+      { id: 'subastas', label: 'Encargar repuesto', icon: PackageSearch },
       { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
       { id: 'chats_vendedor', label: 'Chats con vendedor', icon: MessageSquare },
       { id: 'favoritos', label: 'Favoritos', icon: Heart }
@@ -315,19 +315,19 @@ const MOBILE_APP_TABS = {
     { key: 'inicio', label: 'Inicio', icon: Home, to: ROUTES.home },
     { key: 'fallas', label: 'Mis fallas', icon: EngineIcon, tab: 'mis_fallas' },
     { key: 'repuestos', label: 'Repuestos', icon: Cog, tab: 'repuestos', virtual: true },
-    { key: 'busco', label: 'Busco', icon: Search, tab: 'subastas' },
+    { key: 'busco', label: 'Encargar', icon: Search, tab: 'subastas' },
   ],
   seller: [
     { key: 'inicio', label: 'Inicio', icon: Home, tab: 'resumen' },
     { key: 'pedidos', label: 'Pedidos', icon: ShoppingBag, tab: 'pedidos' },
     { key: 'inventario', label: 'Inventario', icon: Box, tab: 'productos' },
-    { key: 'buscan', label: 'Buscan', icon: Telescope, tab: 'buscan', virtual: true },
+    { key: 'buscan', label: 'Encargos', icon: Telescope, tab: 'buscan', virtual: true },
   ],
   workshop: [
     { key: 'inicio', label: 'Inicio', icon: Gauge, tab: 'resumen' },
     { key: 'fallas', label: 'Mis fallas', icon: EngineIcon, tab: 'fallas_taller' },
     { key: 'repuestos', label: 'Repuestos', icon: Cog, tab: 'repuestos', virtual: true },
-    { key: 'busco', label: 'Busco', icon: Search, tab: 'subastas' },
+    { key: 'busco', label: 'Encargar', icon: Search, tab: 'subastas' },
   ],
 };
 
@@ -747,7 +747,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const mobileSectionTitle = useMemo(() => {
     if (activeTab === 'feedback') return 'Dejar feedback';
     if (activeTab === 'repuestos') return 'Repuestos';
-    if (activeTab === 'buscan') return 'Búsqueda de repuestos';
+    if (activeTab === 'buscan') return 'Atender encargos';
     return sidebarItems.find((item) => item.id === activeTab)?.label || 'Mi cuenta';
   }, [sidebarItems, activeTab]);
 
@@ -1369,7 +1369,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         { id: 'diagnostico', tone: 'purple', icon: CalendarClock, title: 'Servicio de agendamiento', description: 'Recibe citas en línea y ofrece agenda en tus comentarios. Gratis cada 10 búsquedas de repuestos.', onClick: () => setActiveTab('diagnostico') },
         { id: 'mi_taller', tone: 'sky', icon: Wrench, title: 'Mi taller', description: 'Tus servicios con precio, tu perfil y tus citas.', onClick: () => setActiveTab('mi_taller') },
         { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Mis cotizaciones', description: 'Pide cotizaciones de repuestos y sigue las respuestas de las tiendas.', onClick: () => setActiveTab('cotizaciones') },
-        { id: 'subastas', tone: 'blue', icon: PackageSearch, title: 'Búsqueda de repuestos', description: 'Publica los repuestos que necesitas y recibe ofertas.', onClick: () => setActiveTab('subastas') },
+        { id: 'subastas', tone: 'blue', icon: PackageSearch, title: 'Encargar repuesto', description: 'Publica los repuestos que necesitas y recibe ofertas.', onClick: () => setActiveTab('subastas') },
         { id: 'soporte', tone: 'blue', icon: Headphones, title: 'Centro de ayuda', description: 'Resuelve dudas o abre un reporte.', onClick: () => navigate(ROUTES.support) },
       ];
     }

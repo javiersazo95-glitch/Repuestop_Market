@@ -66,6 +66,8 @@ export default function TalleresFiltersSidebar({
   onSelectCategory,
   // Servicio, marca y comuna (desplegables con buscador)
   subcategoryOptions = [],
+  // Servicios de cada categoría (id → [{ value, count }]): cada categoría se despliega sin tener que elegirla antes.
+  subcategoriesByCategory = {},
   selectedServiceTag,
   setSelectedServiceTag,
   specialistBrandOptions,
@@ -95,6 +97,8 @@ export default function TalleresFiltersSidebar({
     availability: true,
   });
   const toggleSection = (id) => setOpenSections((current) => ({ ...current, [id]: !current[id] }));
+  // Categorías cuyos servicios la persona abrió (true) o cerró (false) con la flecha; sin gesto, sigue a la categoría elegida.
+  const [expandedCategories, setExpandedCategories] = useState({});
 
   return (
     <aside
@@ -157,22 +161,47 @@ export default function TalleresFiltersSidebar({
             {categoryOptions.map((cat) => {
               const CatIcon = getCategoryIcon(cat.id);
               const isSelected = selectedCategory === cat.id;
+              // Servicios de la categoría: los del catálogo de servicios; la elegida cae al listado ya calculado si aún no cargó.
+              const services = subcategoriesByCategory[cat.id]?.length ? subcategoriesByCategory[cat.id] : (isSelected ? subcategoryOptions : []);
+              // Sin gesto propio, la categoría elegida está abierta; con él, manda lo que la persona abrió o cerró.
+              const expanded = expandedCategories[cat.id] ?? isSelected;
               return (
-                <React.Fragment key={cat.id}>
-                  <button
-                    type="button"
-                    className={`filter-option-btn ${isSelected ? 'active' : ''}`}
-                    onClick={() => onSelectCategory(isSelected ? 'TODAS' : cat.id)}
-                  >
-                    <span className="ads-fs-cat-icon"><CatIcon size={14} /></span>
-                    <span className="filter-option-copy">
-                      <strong>{cat.label}<span className="filter-option-count"> ({categoryCounts[cat.id] || 0})</span></strong>
-                    </span>
-                    {isSelected && <CheckCircle2 size={18} className="check-active" />}
-                  </button>
-                  {isSelected && subcategoryOptions.length > 0 && (
+                <div className="filter-category-tree" key={cat.id}>
+                  <div className={`filter-option-btn ${isSelected ? 'active' : ''}`}>
+                    <button
+                      type="button"
+                      className="filter-category-main-action"
+                      onClick={() => {
+                        onSelectCategory(isSelected ? 'TODAS' : cat.id);
+                        setExpandedCategories((current) => ({ ...current, [cat.id]: !isSelected }));
+                      }}
+                    >
+                      <span className="ads-fs-cat-icon"><CatIcon size={14} /></span>
+                      <span className="filter-option-copy">
+                        <strong>{cat.label}<span className="filter-option-count"> ({categoryCounts[cat.id] || 0})</span></strong>
+                      </span>
+                      {isSelected && <CheckCircle2 size={18} className="check-active" />}
+                    </button>
+                    {services.length > 0 && (
+                      <button
+                        type="button"
+                        className="filter-subcategory-toggle"
+                        aria-label={`${expanded ? 'Ocultar' : 'Mostrar'} servicios de ${cat.label}`}
+                        aria-expanded={expanded}
+                        onClick={() => {
+                          const willExpand = !expanded;
+                          setExpandedCategories((current) => ({ ...current, [cat.id]: willExpand }));
+                          // Como en el catálogo: al desplegar una categoría queda elegida (y sin servicio puntual).
+                          if (willExpand && !isSelected) onSelectCategory(cat.id);
+                        }}
+                      >
+                        <ChevronDown size={16} className={expanded ? 'is-open' : ''} />
+                      </button>
+                    )}
+                  </div>
+                  {expanded && services.length > 0 && (
                     <div className="filter-subcategory-branch" role="group" aria-label={`Servicios de ${cat.label}`}>
-                      {subcategoryOptions.map(({ value, count }) => {
+                      {services.map(({ value, count }) => {
                         const active = selectedServiceTag === value;
                         return (
                           <button
@@ -180,7 +209,11 @@ export default function TalleresFiltersSidebar({
                             type="button"
                             className={`filter-subcategory-option ${active ? 'active' : ''}`}
                             aria-pressed={active}
-                            onClick={() => setSelectedServiceTag(active ? ALL_TAGS : value)}
+                            onClick={() => {
+                              // Elegir un servicio de otra categoría elige primero esa categoría (que limpia el servicio) y luego el servicio.
+                              if (!isSelected) onSelectCategory(cat.id);
+                              setSelectedServiceTag(active ? ALL_TAGS : value);
+                            }}
                           >
                             <span className="filter-subcategory-checkbox" aria-hidden="true" />
                             <span className="filter-subcategory-text">{value}<span className="filter-option-count"> ({count})</span></span>
@@ -189,7 +222,7 @@ export default function TalleresFiltersSidebar({
                       })}
                     </div>
                   )}
-                </React.Fragment>
+                </div>
               );
             })}
           </div>

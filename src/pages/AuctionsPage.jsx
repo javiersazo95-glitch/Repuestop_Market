@@ -195,7 +195,7 @@ function AuctionRow({ auction, status, now, onOpen, pendingQuestions = null }) {
  * el menú del inicio y la cuenta no se vean distintos. `initialTab`: pestaña con la que abre.
  */
 export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' }) {
-  useDocumentTitle('Búsqueda de repuestos');
+  useDocumentTitle('Encargar repuesto');
   const navigate = useNavigate();
   const location = useLocation();
   const { isLoggedIn, role } = useAuth();

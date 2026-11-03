@@ -501,6 +501,18 @@ export default function TalleresDirectoryView() {
     return (category?.subcategorias || category?.incluye || []).map((value) => ({ value, count: counts.get(normalizeSearchText(value)) || 0 }));
   }, [selectedCategory, serviceCatalog, serviceTagOptions]);
 
+  // Los servicios de TODAS las categorías (con cuántos talleres los ofrecen), para que cada categoría del filtro se pueda
+  // desplegar y mostrar sus subcategorías sin tener que elegirla antes, como en el filtro avanzado del catálogo de repuestos.
+  const subcategoriesByCategory = useMemo(() => {
+    const counts = new Map(serviceTagOptions.map(({ value, count }) => [normalizeSearchText(value), count]));
+    const byCategory = {};
+    serviceCatalog.forEach((category) => {
+      byCategory[category.id] = (category.subcategorias || category.incluye || [])
+        .map((value) => ({ value, count: counts.get(normalizeSearchText(value)) || 0 }));
+    });
+    return byCategory;
+  }, [serviceCatalog, serviceTagOptions]);
+
   // Cambiar de categoria descarta el servicio elegido en la anterior.
   const selectCategory = (categoryId) => {
     setSelectedCategory(categoryId);
@@ -762,6 +774,7 @@ export default function TalleresDirectoryView() {
           selectedCategory={selectedCategory}
           onSelectCategory={selectCategory}
           subcategoryOptions={subcategoryOptions}
+          subcategoriesByCategory={subcategoriesByCategory}
           selectedServiceTag={selectedServiceTag}
           setSelectedServiceTag={setSelectedServiceTag}
           specialistBrandOptions={specialistBrandOptions}

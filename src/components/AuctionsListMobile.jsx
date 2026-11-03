@@ -145,8 +145,8 @@ export default function AuctionsListMobile({
     <main className={`am-page am-list${embedded ? ' is-embedded' : ''}`}>
       <SectionHero
         gradient={['#0B3B91', '#0056BF', '#2E9BFF']}
-        eyebrow={{ icon: forStores ? <Telescope /> : <Search />, label: mineTab ? 'SEGUIMIENTO' : forStores ? 'BUSCAN' : 'BUSCO' }}
-        title={mineTab ? 'Mis búsquedas' : 'Búsqueda de repuestos'}
+        eyebrow={{ icon: forStores ? <Telescope /> : <Search />, label: mineTab ? 'SEGUIMIENTO' : forStores ? 'ENCARGOS' : 'ENCARGAR' }}
+        title={mineTab ? 'Mis búsquedas' : forStores ? 'Atender encargos' : 'Encargar repuesto'}
         subtitle={mineTab
           ? 'Sigue tus búsquedas y las ofertas que recibiste de las tiendas.'
           : forStores

@@ -689,8 +689,8 @@ export default function Header({
           )}
           {/* "Ofertas" se elimino: llevaba al mismo catalogo que "Catálogo de repuestos". */}
           <button type="button" className="nav-item-catalog" aria-current={navCurrent(ROUTES.catalog)} onClick={() => { setShowMobileNav(false); onOpenCatalog(); }}><Cog size={16} /> <span>Catálogo de repuestos</span></button>
-          <button type="button" className="nav-item-auctions" aria-current={navCurrent(ROUTES.auctions)} onClick={() => { setShowMobileNav(false); navigate(ROUTES.auctions); }}><PackageSearch size={16} /> <span>Búsqueda de repuestos</span></button>
-          {/* Junto a Búsqueda de repuestos: el comprador registra la falla de su vehiculo y los talleres la diagnostican. */}
+          <button type="button" className="nav-item-auctions" aria-current={navCurrent(ROUTES.auctions)} onClick={() => { setShowMobileNav(false); navigate(ROUTES.auctions); }}><PackageSearch size={16} /> <span>{isSellerAccount ? 'Atender encargos' : 'Encargar repuesto'}</span></button>
+          {/* Junto a Encargar repuesto: el comprador registra la falla de su vehiculo y los talleres la diagnostican. */}
           <button type="button" className="nav-item-faults" aria-current={navCurrent(ROUTES.faults)} onClick={() => { setShowMobileNav(false); navigate(ROUTES.faults); }}><EngineIcon size={16} /> <span>Fallas automotrices</span></button>
           <button type="button" className="nav-item-stores" aria-current={navCurrent(ROUTES.stores)} onClick={() => { setShowMobileNav(false); onOpenStores(); }}><Store size={16} /> <span>Casas de repuestos</span></button>
           <button type="button" className="nav-item-about mobile-only-nav-item" aria-current={navCurrent(ROUTES.about)} onClick={() => { setShowMobileNav(false); onOpenAbout(); }}><Info size={16} /> <span>Sobre RepuesTop</span></button>
